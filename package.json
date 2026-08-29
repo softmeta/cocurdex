@@ -1,15 +1,30 @@
 {
   "name": "@cocurdex/workspace",
   "version": "0.1.0",
-  "description": "Cocurdex desktop app",
+  "description": "A desktop-first multi-agent development workspace",
   "author": "softmeta LLC",
   "license": "SEE LICENSE IN LICENSE.md",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=22 <23",
+    "pnpm": ">=11 <12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/softmeta/cocurdex.git"
+  },
+  "homepage": "https://cocurdex.com",
+  "bugs": {
+    "url": "https://github.com/softmeta/cocurdex/issues"
+  },
   "scripts": {
     "prepare": "lefthook install",
     "lint:design-tokens": "node ./scripts/lint-design-tokens.mjs",
-    "lint:theme-parity": "node ./scripts/lint-theme-parity.mjs"
+    "lint:theme-parity": "node ./scripts/lint-theme-parity.mjs",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",

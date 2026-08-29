@@ -3,6 +3,8 @@
 Cocurdex is pre-release. Bug reports and small, focused fixes are welcome.
 Larger features need an issue and explicit agreement on scope before a pull
 request.
+Participation in this repository is governed by
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Contribution terms
 
@@ -29,8 +31,8 @@ agreement with softmeta LLC takes precedence over these terms.
 2. For anything beyond a small bug fix, open an issue first and wait for
    agreement on the approach. Filing an issue is not approval.
 3. Do not report security vulnerabilities in a public issue. Use this
-   repository's GitHub Security Advisories so maintainers can fix the issue
-   before disclosure.
+   repository's private reporting process in [SECURITY.md](SECURITY.md) so
+   maintainers can fix the issue before disclosure.
 4. Do not commit secrets, access tokens, real user data, or user/agent
    transcripts. Test fixtures must be synthetic.
 

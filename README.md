@@ -15,12 +15,19 @@ Cocurdex is **source-available** under the
 [Functional Source License 1.1](LICENSE.md) (`FSL-1.1-ALv2`), which becomes
 Apache-2.0 two years after each version is published.
 
+During the FSL period, Cocurdex is source-available rather than OSI-approved
+open-source software.
+
 You may use, modify, and self-host Cocurdex, including inside a company. You
 may not offer Cocurdex as a competing product or hosted service. The Cocurdex
 name and marks stay with softmeta LLC.
 
 See [LICENSE.md](LICENSE.md) for the full terms, and
 [CONTRIBUTING.md](CONTRIBUTING.md) if you want to submit a change.
+
+Security reports must follow [SECURITY.md](SECURITY.md). General support is
+described in [SUPPORT.md](SUPPORT.md), and use of the Cocurdex name and marks is
+governed by [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Run from source
 
