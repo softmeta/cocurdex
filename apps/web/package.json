@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

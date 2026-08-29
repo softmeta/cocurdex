@@ -5,7 +5,22 @@ packages:
 # electron-builder/@electron/rebuild pulls node-abi@4.29 which only maps
 # Electron through 42; Electron 43.x needs node-abi >= 4.33.
 overrides:
+  '@babel/core': ^7.29.1
+  '@hono/node-server': ^1.19.15
   node-abi: ^4.33.0
+  body-parser: ^2.3.0
+  brace-expansion: ^5.0.9
+  esbuild: ^0.28.1
+  fast-uri: ^3.1.5
+  hono: ^4.12.25
+  ip-address: ^10.3.1
+  nanoid: ^3.3.18
+  postcss: ^8.5.18
+  protobufjs: ^7.6.5
+  qs: ^6.15.2
+  sharp: ^0.35.4
+  undici: ^8.9.0
+  ws: ^8.21.0
   # Astro 7 needs cookie@2 (parseCookie / ESM-friendly API). Do not force
   # cookie@2 on the whole monorepo — express (MCP via desktop) still needs
   # cookie@0.7. Scope the pin to Astro's dependency edge only.

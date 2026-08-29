@@ -28,6 +28,8 @@ See [LICENSE.md](LICENSE.md) for the full terms, and
 Security reports must follow [SECURITY.md](SECURITY.md). General support is
 described in [SUPPORT.md](SUPPORT.md), and use of the Cocurdex name and marks is
 governed by [TRADEMARKS.md](TRADEMARKS.md).
+Third-party components and services remain subject to their own terms; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Run from source
 
