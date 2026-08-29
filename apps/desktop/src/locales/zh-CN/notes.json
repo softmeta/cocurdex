@@ -1,0 +1,70 @@
+{
+  "editor": {
+    "empty": {
+      "description": "从侧栏选择一篇笔记，或新建一篇。",
+      "title": "未选择笔记"
+    },
+    "folder": {
+      "description": "可在侧栏里在内部新建笔记，也可直接编辑上方标题重命名文件夹。",
+      "emptyTitle": "文件夹",
+      "renameLabel": "文件夹名称"
+    },
+    "placeholder": "开始写作，或按 “/” 插入块…",
+    "save": {
+      "error": "保存失败",
+      "saved": "已保存",
+      "saving": "保存中…"
+    },
+    "untitledPlaceholder": "无标题"
+  },
+  "scope": {
+    "private": "私人",
+    "workspace": "{{name}}",
+    "workspaceFallback": "项目"
+  },
+  "sidebar": {
+    "collapse": "折叠侧栏",
+    "collapseFolder": "折叠文件夹",
+    "delete": "删除",
+    "deleteConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "descriptionFolder": "此文件夹及其内部的全部内容将被永久删除。",
+      "descriptionNote": "此笔记将被永久删除。",
+      "title": "删除“{{title}}”？"
+    },
+    "dropToRoot": "拖到这里移到顶层",
+    "empty": {
+      "description": "创建第一篇笔记开始写作。",
+      "title": "还没有笔记"
+    },
+    "expand": "展开侧栏",
+    "expandFolder": "展开文件夹",
+    "moveTo": "移动到",
+    "moveToRoot": "顶层",
+    "newFolder": "新建文件夹",
+    "newFolderDefaultTitle": "新建文件夹",
+    "newFolderInside": "在内部新建文件夹",
+    "newNote": "新建笔记",
+    "newNoteInside": "在内部新建笔记",
+    "rename": "重命名",
+    "resize": "调整侧栏宽度",
+    "title": "笔记",
+    "untitled": "无标题"
+  },
+  "slash": {
+    "empty": "无匹配块",
+    "items": {
+      "blockquote": "引用",
+      "bulletList": "无序列表",
+      "codeBlock": "代码块",
+      "divider": "分隔线",
+      "heading1": "标题 1",
+      "heading2": "标题 2",
+      "heading3": "标题 3",
+      "orderedList": "有序列表",
+      "paragraph": "正文",
+      "taskList": "待办列表"
+    }
+  }
+}

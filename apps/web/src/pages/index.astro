@@ -1,0 +1,81 @@
+---
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import { site } from "../lib/site";
+---
+
+<MarketingLayout title={site.name} path="/">
+  <main>
+    <section class="hero">
+      <div class="hero__inner">
+        <p class="eyebrow">Desktop workspace</p>
+        <h1>Multi-agent development without the context switch tax</h1>
+        <p class="lede">
+          Run several AI coding agents in parallel. Chat, terminal, editor, and
+          browser preview stay in one shell — so you always know which session
+          needs you next.
+        </p>
+        <div class="actions">
+          <a class="button button--primary" href="/download/">Download</a>
+          <a class="button button--secondary" href="/docs/">Documentation</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="features-heading">
+      <div class="section-inner">
+        <h2 id="features-heading">Built for long sessions</h2>
+        <p>
+          Cocurdex is for developers who juggle agents across features, fixes,
+          and design loops — not for scrolling a single chat forever.
+        </p>
+        <ul class="feature-grid">
+          <li>
+            <h3>Parallel sessions</h3>
+            <p>
+              Keep multiple agent runs visible. Status stays honest: thinking,
+              using tools, waiting for you.
+            </p>
+          </li>
+          <li>
+            <h3>Workspace, not chat window</h3>
+            <p>
+              Terminal (PTY), editor, and browser preview sit beside chat as
+              peers — not buried behind a transcript.
+            </p>
+          </li>
+          <li>
+            <h3>Keyboard-first</h3>
+            <p>
+              Command palette and shortcuts for primary actions. Mouse stays
+              idiomatic; power users are not second-class.
+            </p>
+          </li>
+          <li>
+            <h3>Local-first product data</h3>
+            <p>
+              Notes and issues live in app-owned storage on your machine. Cloud
+              team surfaces come later without rewriting that boundary.
+            </p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="next-heading">
+      <div class="section-inner">
+        <h2 id="next-heading">Start here</h2>
+        <p>
+          Pre-release builds target macOS first, then Windows. Linux follows.
+        </p>
+        <div class="actions">
+          <a class="button button--secondary" href="/docs/getting-started/"
+            >Getting started</a
+          >
+          <a class="button button--secondary" href="/docs/desktop/"
+            >Desktop overview</a
+          >
+        </div>
+      </div>
+    </section>
+  </main>
+</MarketingLayout>

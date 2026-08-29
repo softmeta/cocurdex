@@ -1,0 +1,187 @@
+---
+title: CLI
+description: cocurdex CLI reference — open the desktop app, manage notes and issues, sessions, providers, skills, and workflows.
+---
+
+The **`cocurdex` CLI** is the supported command-line boundary for app-owned product data and daemon operations. External tools and agents should use the CLI rather than reading private database files.
+
+Most data and session commands require the **desktop daemon** (normally started when you open the desktop app).
+
+## Install
+
+When the CLI is packaged with the desktop app, install the launcher from **Settings → CLI** so `cocurdex` is on your `PATH`.
+
+```bash
+cocurdex --version
+cocurdex --help
+```
+
+In monorepo development, use the workspace CLI package (`apps/cli`).
+
+### Finding the desktop binary
+
+Open flows need the Cocurdex / Electron binary. Resolution order includes:
+
+1. `COCURDEX_ELECTRON` environment variable  
+2. Running under Electron / packaged app  
+3. Development `node_modules/electron` under the monorepo  
+4. Common macOS install paths (`/Applications/Cocurdex.app/...`)
+
+If resolution fails, open the desktop app once and install the CLI launcher, or set `COCURDEX_ELECTRON`.
+
+## Global flags
+
+| Flag | Meaning |
+| --- | --- |
+| `--help` / `help` | Print usage |
+| `--version` / `-v` / `version` | Print CLI version |
+| `--json` | Machine-readable output where supported |
+
+## Open the desktop app
+
+VS Code-style folder open:
+
+```bash
+cocurdex                 # open app
+cocurdex .               # open current directory as workspace
+cocurdex open            # open app
+cocurdex open /path/to/project
+```
+
+## Notes
+
+```bash
+cocurdex note list [--json]
+cocurdex note show <id> [--json]
+cocurdex note create --title <title> [--body <markdown>] [--parent <id>] [--workspace <id>] [--folder] [--json]
+cocurdex note update <id> [--title <title>] [--body <markdown>] [--json]
+cocurdex note delete <id> [--json]
+cocurdex note backlinks <id> [--json]
+cocurdex note tags [note-id] [--json]
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `--title` | Required on create |
+| `--body` | Markdown body (create applies after create when not a folder) |
+| `--folder` | Create a folder node instead of a note |
+| `--parent` | Parent note/folder id |
+| `--workspace` | Optional workspace association |
+
+Updates use optimistic concurrency (revision) under the hood — always prefer CLI/desktop over editing SQLite.
+
+## Issues
+
+Default view id is `project` unless you pass `--view`.
+
+```bash
+cocurdex issue list [--status <column>] [--view <id>] [--json]
+cocurdex issue show <id> [--view <id>] [--json]
+cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <text>] [--workspace <id>] [--view <id>] [--json]
+cocurdex issue move <id> <column> [--view <id>] [--json]
+cocurdex issue delete <id> [--view <id>] [--json]
+cocurdex issue views [--json]
+```
+
+Default **status** columns: `backlog`, `doing`, `review`, `done`.  
+Default **priority** columns: `urgent`, `high`, `medium`, `low`, `none`.
+
+Examples:
+
+```bash
+cocurdex issue create --title "Fix download page" --status backlog --priority high
+cocurdex issue move <id> doing
+cocurdex issue list --status doing
+```
+
+## Search
+
+```bash
+cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]
+```
+
+## Skills
+
+Product skills are namespaced `cocurdex-*`. Install is **manual** (not automatic).
+
+```bash
+cocurdex skills list [--json]
+cocurdex skills status --scope project|global [--root <path>] [--json]
+cocurdex skills install --scope project|global [--root <path>] [--json]
+cocurdex skills remove --scope project|global [--root <path>] [--json]
+```
+
+`--root` defaults to the current working directory for project scope. See [Skills](/docs/skills/).
+
+## Daemon and workspaces
+
+```bash
+cocurdex daemon status
+cocurdex workspace list
+```
+
+## Sessions
+
+```bash
+cocurdex session list
+cocurdex session create --workspace <id|path> --agent <agent> --provider <provider> --model <model>
+cocurdex session tui [session-id]
+cocurdex session tui --workspace <id|path> --agent <agent> --provider <provider> --model <model>
+cocurdex session send <session-id> <prompt>
+cocurdex session stop <session-id>
+```
+
+| Flag | Required for | Meaning |
+| --- | --- | --- |
+| `--workspace` | create / tui create | Workspace id or filesystem path |
+| `--agent` | create / tui create | Agent id (`claude-agent`, `codex`, `opencode`, `grok-build`, `pi`) |
+| `--provider` | create / tui create | Provider config id from `provider list` |
+| `--model` | create / tui create | Model id from `provider models` |
+
+`session tui` without flags attaches to the latest non-archived session. It does not support `--json`.
+
+Agent ids and permissions: [Agents](/docs/agents/).
+
+## Providers
+
+```bash
+cocurdex provider list
+cocurdex provider models <provider>
+```
+
+## Workflows
+
+Daemon-owned multi-step runs (plan → implement → review style). Full detail: [Workflows](/docs/workflows/).
+
+```bash
+cocurdex workflow list
+cocurdex workflow create --workspace <id|path> --prompt <prompt> \
+  [--planner <agent>] [--implementer <agent>] [--reviewer <agent>]
+cocurdex workflow tui [run-id]
+cocurdex workflow tui --workspace <id|path> --prompt <prompt> [...]
+cocurdex workflow show <run-id>
+cocurdex workflow start <run-id>
+cocurdex workflow approve|reject <run-id> [--reason <text>] [--step <step-id>]
+cocurdex workflow cancel <run-id>
+```
+
+Default role agents when flags are omitted: planner `codex`, implementer `grok-build`, reviewer `codex`. Optional `--planner-model`, `--implementer-model`, `--reviewer-model`.
+
+## What the CLI is not
+
+- A second source of truth — the desktop daemon still owns the local database  
+- A full replacement for the multi-pane desktop workspace  
+- A cloud team admin tool (that will be a separate console + API)  
+- A license to open `cocurdex.sqlite` or private schema paths  
+
+## Safety
+
+Do not point scripts at `cocurdex.sqlite` or private schema paths. Those are implementation details and can change without a compatibility promise during pre-release. Prefer `--json` output and stable ids returned by the CLI.
+
+## Related
+
+- [Notes and issues](/docs/notes-and-issues/)  
+- [Agents](/docs/agents/)  
+- [Skills](/docs/skills/)  
+- [Workflows](/docs/workflows/)  
+- [Workspaces and data](/docs/concepts/workspaces-and-data/)  

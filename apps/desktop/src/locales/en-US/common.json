@@ -1,0 +1,68 @@
+{
+  "actions": {
+    "attach": "Attach",
+    "attachFile": "Attach file",
+    "back": "Back",
+    "close": "Close",
+    "closeFile": "Close file",
+    "closeSearch": "Close search",
+    "copyCode": "Copy code",
+    "decrease": "Decrease",
+    "increase": "Increase",
+    "send": "Send",
+    "stop": "Stop"
+  },
+  "agentDescriptions": {
+    "claudeCli": "Uses the Claude Agent installed and signed in on this computer",
+    "claudeCode": "Only uses Anthropic Messages models from cocurdex Providers",
+    "codex": "Fast code generation",
+    "grokBuild": "Grok's agent runtime over ACP",
+    "opencode": "Open-source alternative",
+    "pi": "Built-in agent"
+  },
+  "agents": {
+    "claudeCli": "Claude Agent",
+    "codex": "Codex",
+    "grokBuild": "Grok Build",
+    "opencode": "OpenCode",
+    "pi": "Pi"
+  },
+  "jumpToLatest": "Jump to latest",
+  "jumpToTop": "Jump to top",
+  "permissions": {
+    "allowed": "",
+    "denied": "",
+    "pending": ""
+  },
+  "relativeTime": {
+    "lastActiveDays_one": "Last active {{count}} day ago",
+    "lastActiveDays_other": "Last active {{count}} days ago",
+    "lastActiveHours_one": "Last active {{count}} hour ago",
+    "lastActiveHours_other": "Last active {{count}} hours ago",
+    "lastActiveMinutes_one": "Last active {{count}} minute ago",
+    "lastActiveMinutes_other": "Last active {{count}} minutes ago",
+    "lastActiveMonths_one": "Last active {{count}} month ago",
+    "lastActiveMonths_other": "Last active {{count}} months ago",
+    "lastActiveNow": "Just now",
+    "lastActiveYears_one": "Last active {{count}} year ago",
+    "lastActiveYears_other": "Last active {{count}} years ago"
+  },
+  "states": {
+    "gitEmptyBranchDescription": "",
+    "gitEmptyBranchTitle": "",
+    "gitEmptyCommitDescription": "",
+    "gitEmptyCommitTitle": "",
+    "gitEmptyDescription": "",
+    "gitEmptyStagedDescription": "",
+    "gitEmptyStagedTitle": "",
+    "gitEmptyTitle": "",
+    "gitEmptyUnstagedDescription": "",
+    "gitEmptyUnstagedTitle": "",
+    "gitErrorDescription": "",
+    "gitErrorTitle": "",
+    "gitFilterEmptyDescription": "",
+    "gitFilterEmptyTitle": "",
+    "gitNotRepoDescription": "",
+    "gitNotRepoTitle": ""
+  }
+}

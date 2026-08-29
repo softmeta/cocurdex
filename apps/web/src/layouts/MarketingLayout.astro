@@ -1,0 +1,95 @@
+---
+import { site } from "../lib/site";
+import "../styles/marketing.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  path?: string;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  path = "/",
+  noindex = false,
+} = Astro.props;
+
+const canonical = new URL(path, site.url).href;
+const pageTitle = title === site.name ? title : `${title} · ${site.name}`;
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: site.name,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Windows, Linux",
+  description: site.description,
+  url: site.url,
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    availability: "https://schema.org/PreOrder",
+  },
+};
+---
+
+<!doctype html>
+<html lang={site.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content={new URL("/cocurdex-icon.svg", site.url).href} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="theme-color" content="#0c0c0d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="/">
+          <img src="/cocurdex-icon.svg" alt="" width="24" height="24" />
+          <span>{site.name}</span>
+        </a>
+        <nav class="nav" aria-label="Primary">
+          <a href="/docs/" aria-current={path.startsWith("/docs") ? "page" : undefined}
+            >Docs</a
+          >
+          <a
+            href="/download/"
+            class="nav-cta"
+            aria-current={path === "/download/" || path === "/download"
+              ? "page"
+              : undefined}>Download</a
+          >
+        </nav>
+      </div>
+    </header>
+    <slot />
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>© {new Date().getFullYear()} {site.name}. Pre-release.</p>
+        <nav aria-label="Footer">
+          <a href="/docs/">Docs</a>
+          <a href="/download/">Download</a>
+          <a href="/docs/getting-started/">Getting started</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

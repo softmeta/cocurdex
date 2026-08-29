@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist-mono";
+@import "katex/dist/katex.min.css";
+
+/* Keep this file as the ordered style entrypoint. Put concrete rules in the
+ * focused files below so shadcn preset output, project tokens, vendor
+ * overrides, and app-wide behavior stay independently replaceable. */
+@import "./theme-preset.css";
+@import "./theme-tokens.css";
+@import "./theme-tailwind.css";
+@import "./streamdown.css";
+@import "./base.css";
+@import "./motion.css";
+
+@custom-variant dark (&:is(.dark *));

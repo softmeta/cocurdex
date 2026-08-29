@@ -1,0 +1,28 @@
+{
+  "name": "@cocurdex/daemon",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./paths": "./src/paths.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "daemon": "node --import tsx src/bin.ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@cocurdex/agent-adapters": "workspace:*",
+    "@cocurdex/agent-core": "workspace:*",
+    "@cocurdex/db": "workspace:*",
+    "@cocurdex/rpc": "workspace:*",
+    "@cocurdex/shared": "workspace:*",
+    "undici": "^8.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.8.1",
+    "vitest": "^3.2.4"
+  }
+}

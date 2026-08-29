@@ -1,0 +1,303 @@
+/* Shared motion primitives used by streaming text, settings panels, sticky
+ * chat affordances, and running subagent indicators. */
+.stream-char {
+  animation: stream-char-fade-in 280ms ease-out both;
+  will-change: opacity, transform;
+}
+
+.stream-char-revealed {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+.settings-panel-enter {
+  animation: settings-panel-fade-in 180ms ease-out;
+}
+
+.sticky-user-bar-enter {
+  animation: sticky-user-bar-fade-in 180ms ease-out;
+}
+
+.subagent-trigger-running {
+  animation: subagent-card-breathe 1800ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.subagent-trigger-activity {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 1px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--chat-status-running-fg) 16%,
+    transparent
+  );
+}
+
+.subagent-trigger-activity::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--chat-status-running-fg) 72%, transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: subagent-activity-scan 1600ms cubic-bezier(0.16, 1, 0.3, 1)
+    infinite;
+}
+
+/* Running activity line: the label itself carries the motion, so the row needs
+ * no spinner. A highlight sweeps across the text via background-clip. */
+.activity-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--chat-text-muted) 35%,
+    var(--chat-text-primary) 50%,
+    var(--chat-text-muted) 65%
+  );
+  background-clip: text;
+  background-size: 250% 100%;
+  animation: activity-shimmer-sweep 1800ms linear infinite;
+  color: transparent;
+}
+
+/* Truncated sidebar titles: at rest ellipsis, on hover scroll the remainder
+ * using the clip container's inline size (cqi) vs the text's own width. */
+.sidebar-overflow-title {
+  container-type: inline-size;
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+.sidebar-overflow-title__text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.group\/list-row:is(:hover, :focus-visible) .sidebar-overflow-title__text {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  animation: sidebar-overflow-marquee 4s linear 400ms 1 forwards;
+}
+
+:dir(rtl)
+  .group\/list-row:is(:hover, :focus-visible)
+  .sidebar-overflow-title__text {
+  animation-name: sidebar-overflow-marquee-rtl;
+}
+
+@keyframes sidebar-overflow-marquee {
+  to {
+    transform: translateX(min(0px, calc(100cqi - 100%)));
+  }
+}
+
+@keyframes sidebar-overflow-marquee-rtl {
+  to {
+    transform: translateX(max(0px, calc(100% - 100cqi)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subagent-trigger-running,
+  .subagent-trigger-activity::after {
+    animation: none;
+  }
+
+  .group\/list-row:is(:hover, :focus-visible) .sidebar-overflow-title__text {
+    animation: none;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .activity-shimmer {
+    background: none;
+    animation: none;
+    color: var(--chat-text-muted);
+  }
+}
+
+@keyframes settings-panel-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sticky-user-bar-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes subagent-card-breathe {
+  0%,
+  100% {
+    border-color: var(--chat-border-soft);
+  }
+
+  50% {
+    border-color: var(--chat-status-running-border);
+  }
+}
+
+@keyframes subagent-activity-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  65%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes activity-shimmer-sweep {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes stream-char-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Boot splash: the app mark breathes while the persisted snapshot loads, so a
+ * slow start reads as "working" rather than "frozen". */
+@keyframes boot-mark-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.boot-mark {
+  animation: boot-mark-breathe 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-mark {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+/* Welcome mark: hover redraws the C, then the prompt dash blinks. */
+.cocurdex-mark-live {
+  overflow: visible;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cocurdex-mark-live .cocurdex-mark-body,
+.cocurdex-mark-live .cocurdex-mark-caret {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.cocurdex-mark-live:hover {
+  transform: scale(1.06);
+}
+
+.cocurdex-mark-live:hover .cocurdex-mark-body {
+  animation: cocurdex-mark-draw 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cocurdex-mark-live:hover .cocurdex-mark-caret {
+  animation:
+    cocurdex-mark-caret-in 160ms cubic-bezier(0.16, 1, 0.3, 1) 260ms both,
+    cocurdex-mark-caret-blink 1s steps(1, end) 480ms infinite;
+}
+
+@keyframes cocurdex-mark-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes cocurdex-mark-caret-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cocurdex-mark-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cocurdex-mark-live {
+    transition: none;
+  }
+
+  .cocurdex-mark-live:hover {
+    transform: none;
+  }
+
+  .cocurdex-mark-live:hover .cocurdex-mark-body,
+  .cocurdex-mark-live:hover .cocurdex-mark-caret {
+    animation: none;
+  }
+
+  .cocurdex-mark-live:hover .cocurdex-mark-caret {
+    opacity: 0.45;
+  }
+}

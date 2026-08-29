@@ -1,0 +1,66 @@
+{
+  "empty": {
+    "error": {
+      "description": "ripgrep 无法列出这个工作区的文件。",
+      "title": "无法索引文件"
+    },
+    "loading": {
+      "description": "正在用 ripgrep 索引工作区。",
+      "title": "正在加载文件..."
+    },
+    "noFiles": {
+      "description": "工作区没有返回可搜索文件。",
+      "title": "未找到文件"
+    },
+    "noMatches": {
+      "description": "试试其他文件名或路径。",
+      "title": "没有匹配文件"
+    },
+    "noWorkspace": {
+      "description": "先打开一个工作区再搜索文件。",
+      "title": "未选择工作区"
+    },
+    "typeToSearch": {
+      "description": "",
+      "title": "输入关键词搜索文件"
+    }
+  },
+  "files": "文件",
+  "fullText": {
+    "caseSensitive": "区分大小写",
+    "clearResults": "清空搜索结果",
+    "collapseAll": "全部收起",
+    "emptyQueryDescription": "按文件内容搜索当前工作区。",
+    "emptyQueryTitle": "搜索文件内容",
+    "error": "错误",
+    "errorDescription": "ripgrep 无法完成这次搜索。",
+    "errorTitle": "搜索失败",
+    "expandAll": "全部展开",
+    "fileMatchCount_one": "{{count}} 处匹配",
+    "fileMatchCount_other": "{{count}} 处匹配",
+    "filesToExclude": "排除的文件",
+    "filesToInclude": "包含的文件",
+    "globPlaceholder": "例如 *.ts, src/**, .claude",
+    "inputLabel": "搜索文件内容",
+    "matchCount_one": "{{count}} 处",
+    "matchCount_other": "{{count}} 处",
+    "noMatchesDescription": "试试其他关键词，或调整搜索选项。",
+    "noMatchesTitle": "没有文本匹配",
+    "placeholder": "搜索文件内容...",
+    "resultsInFiles_one": "{{count}} 个结果，位于 {{fileCount}} 个文件",
+    "resultsInFiles_other": "{{count}} 个结果，位于 {{fileCount}} 个文件",
+    "searching": "正在搜索...",
+    "toggleFilters": "切换搜索详情",
+    "useRegex": "使用正则表达式",
+    "wholeWord": "全词匹配"
+  },
+  "headings": {
+    "all": "全部文件",
+    "recent": "最近打开",
+    "results": "搜索结果"
+  },
+  "more": "更多",
+  "openSearch": "打开搜索",
+  "placeholder": "按名称或路径搜索文件...",
+  "searchFiles": "搜索文件"
+}

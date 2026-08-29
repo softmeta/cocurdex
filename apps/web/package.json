@@ -1,0 +1,25 @@
+{
+  "name": "@cocurdex/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/starlight": "^0.41.7",
+    "astro": "^7.2.0",
+    "cookie": "^2.0.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "sharp": "^0.34.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

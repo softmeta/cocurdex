@@ -1,0 +1,126 @@
+---
+title: Notes and issues
+description: App-owned notes, issues, kanban views, search, and backlinks in Cocurdex.
+---
+
+Notes and issues are first-class **product records** in Cocurdex. They live in app-owned storage (`cocurdex.sqlite`), not as an implicit dual-write Markdown tree in your repository.
+
+## Why app-owned
+
+| Capability | Why SQLite helps |
+| --- | --- |
+| Stable ids | Titles and folders can change without breaking links |
+| Transactions | Multi-row updates stay consistent |
+| Revisions | Stale writes can be detected |
+| Full-text search | Notes and issues share a search index |
+| Backlinks / tags | Normalized graphs instead of path scraping |
+
+Markdown remains available for **explicit** import/export later. Until then, treat the CLI and desktop UI as the only supported writers.
+
+## Notes
+
+Notes support:
+
+- Hierarchical **folders** and note pages  
+- Markdown bodies  
+- **Tags**  
+- **Backlinks** between notes  
+- Optional association with a **workspace**  
+
+### Desktop
+
+Use the notes surface in the desktop app to browse, edit, and link notes. Prefer stable note titles and links so agents and humans can find the same record later.
+
+### CLI
+
+```bash
+cocurdex note list
+cocurdex note create --title "Architecture notes" --body "## Context\n..."
+cocurdex note show <id>
+cocurdex note update <id> --body "..."
+cocurdex note backlinks <id>
+cocurdex note tags
+cocurdex note delete <id>
+```
+
+Create a folder:
+
+```bash
+cocurdex note create --title "PRDs" --folder
+```
+
+## Issues
+
+Issues are the product’s **todo / ticket / board card** model. Language differs; the storage is one pool:
+
+| You say | Same model |
+| --- | --- |
+| issue | issue |
+| todo | issue |
+| ticket | issue |
+
+### Default board columns (status)
+
+| Id | Title |
+| --- | --- |
+| `backlog` | Backlog |
+| `doing` | Doing |
+| `review` | Review |
+| `done` | Done |
+
+### Default priority values
+
+| Id | Title |
+| --- | --- |
+| `urgent` | Urgent |
+| `high` | High |
+| `medium` | Medium |
+| `low` | Low |
+| `none` | No priority |
+
+### Views
+
+The built-in view id is **`project`**. Views can group by **status** or **priority**, and layout can be **board** or **list**. List views and create/move operations go through the daemon (desktop UI or CLI) — do not invent issue ids by hand.
+
+```bash
+cocurdex issue views
+cocurdex issue list
+cocurdex issue list --status doing
+cocurdex issue create --title "Wire download artifacts" --status backlog --priority high
+cocurdex issue move <id> doing
+cocurdex issue show <id>
+cocurdex issue delete <id>
+```
+
+## Search
+
+```bash
+cocurdex search "download" 
+cocurdex search "auth" --kind note
+cocurdex search "release" --kind issue --workspace <workspace-id>
+```
+
+## Working with agents
+
+Product skills (`/cocurdex-note`, `/cocurdex-issue`, …) call the same CLI surface so agents do not open SQLite. See [Skills](/docs/skills/).
+
+Recommended loop for product work:
+
+```text
+/cocurdex-grill  →  /cocurdex-prd  →  /cocurdex-spec?  →  /cocurdex-issue  →  /cocurdex-ship
+```
+
+PRDs and specs are stored as **private notes by default**. Publishing into a repository requires an explicit user request — never assume “open workspace” means “write product docs into the repo.”
+
+## What not to do
+
+- Do not treat paths under the project as issue identity  
+- Do not hand-edit `cocurdex.sqlite`  
+- Do not invent issue or note ids in scripts — create via CLI and keep returned ids  
+- Do not dual-write Markdown copies “for safety” unless you own an explicit export workflow  
+
+## Related
+
+- [Workspaces and data](/docs/concepts/workspaces-and-data/)  
+- [CLI](/docs/cli/)  
+- [Skills](/docs/skills/)  

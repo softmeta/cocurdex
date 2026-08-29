@@ -1,0 +1,17 @@
+{
+  "action": {
+    "configureProviders": "Configure providers",
+    "dontShowAgain": "Don't show this again",
+    "enterApp": "Go to cocurdex",
+    "openProject": "Open a project folder",
+    "openProjectHint": "Agents run inside the folder you pick. This is the main way to use cocurdex.",
+    "skip": "Skip",
+    "startChat": "Go to chat"
+  },
+  "description": "cocurdex runs coding agents against a local folder. Here is what is available on this machine.",
+  "providers": {
+    "title": "Configure a model provider",
+    "description": "Add a provider and enable the models you want. The built-in pi agent needs one; the other adapters bring their own."
+  },
+  "title": "Welcome to cocurdex"
+}

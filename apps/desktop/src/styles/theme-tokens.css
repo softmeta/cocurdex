@@ -1,0 +1,403 @@
+/* Project semantic token layer.
+ * These aliases keep feature code on Cocurdex domain names while sourcing
+ * actual colors from the active shadcn preset variables in theme-preset.css. */
+:root {
+  color-scheme: light;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Defaults before JS applies appearance settings (syncAppearanceSettings). */
+  --app-ui-font-size: 13px;
+  --app-code-font-size: 13px;
+
+  --app-bg: var(--background);
+  --app-fg: var(--foreground);
+  --app-overlay: color-mix(in srgb, var(--background) 90%, transparent);
+  --selection-bg: color-mix(in srgb, var(--primary) 18%, transparent);
+  --selection-fg: var(--foreground);
+  --scrollbar-thumb: color-mix(in srgb, var(--foreground) 9%, transparent);
+  /* Keep a clear gap from the idle thumb so the hover / active (scrolling)
+     state is visibly darker — a 9% -> 24% jump reads as a real state change,
+     whereas the previous 7% -> 13% was nearly imperceptible. */
+  --scrollbar-thumb-hover: color-mix(
+    in srgb,
+    var(--foreground) 24%,
+    transparent
+  );
+
+  /* Cocurdex mark teal. Fixed, not preset-derived: the logo keeps its brand
+   * color whichever theme preset is active. */
+  --brand-mark: oklch(0.6 0.105 183);
+
+  /* App-wide success accent, the counterpart to the preset's --destructive
+   * (which has no positive twin). Fixed emerald steps like the git accents:
+   * 600 holds contrast on light surfaces, .dark swaps in 300. */
+  --status-success: oklch(0.596 0.145 163.225); /* emerald-600 */
+
+  /* Mid-severity accent between success and --destructive, for quota meters
+   * approaching their limit. Same fixed-step scheme: 500 on light, 300 dark. */
+  --status-warning: oklch(0.769 0.188 70.08); /* amber-500 */
+
+  /* Chat surfaces stay semantic because many states share the same preset
+   * colors with different emphasis, opacity, or status meaning. */
+  /* Surface hierarchy (Cursor-style), both themes:
+   *   sidebar (sunk nav) < canvas < card
+   * Chat column and editor/right panel share one canvas plane so the two
+   * content areas read as a single surface; only the sidebar sits below. */
+  --chat-canvas: var(--editor-canvas);
+  --chat-surface: var(--card);
+  --chat-surface-raised: var(--popover);
+  --chat-surface-strong: var(--muted);
+  /* Chat and editor share one canvas, so the input plane needs its own
+   * separation. Light keeps a clean white fill and floats on border + shadow;
+   * tinting it grey here reads as haze on a white canvas (see .dark for the
+   * lifted-fill variant, which only works on a dark canvas). */
+  --chat-surface-input: var(--background);
+  /* User bubbles are small, so a tinted fill reads as a distinct message
+   * instead of haze — the opposite of the full-width composer plane. */
+  --chat-surface-bubble: color-mix(
+    in srgb,
+    var(--foreground) 3.5%,
+    var(--chat-canvas)
+  );
+  --chat-surface-subtle: color-mix(in srgb, var(--muted) 72%, transparent);
+  --chat-surface-control: var(--secondary);
+  --chat-surface-control-hover: var(--accent);
+  /* Hover state for menu rows. The preset's neutral ramp clusters between
+   * popover and secondary in dark mode, so mix in foreground to lift the row
+   * clearly above the surface instead of leaning on `--secondary`. */
+  --chat-surface-row-hover: color-mix(
+    in srgb,
+    var(--foreground) 8%,
+    var(--popover)
+  );
+  /* Active menu-row selection. A neutral lift, slightly stronger than the
+   * hover state above so the selected row stays distinct without leaning on a
+   * heavy fill. */
+  --chat-surface-selected: color-mix(
+    in srgb,
+    var(--foreground) 10%,
+    var(--popover)
+  );
+  /* Anchored to the input plane it sits on (not the canvas), so the disabled
+   * send button reads as a control instead of a hole in the composer. */
+  --chat-surface-disabled: color-mix(
+    in srgb,
+    var(--foreground) 9%,
+    var(--chat-surface-input)
+  );
+  --chat-surface-tint: color-mix(in srgb, var(--primary) 4%, transparent);
+  --chat-surface-tint-hover: color-mix(in srgb, var(--primary) 8%, transparent);
+  --chat-overlay-strong: color-mix(in srgb, var(--popover) 96%, transparent);
+  --chat-overlay-sticky: color-mix(in srgb, var(--card) 94%, transparent);
+  --chat-jump-bg: color-mix(in srgb, var(--popover) 96%, transparent);
+  --chat-jump-hover: var(--accent);
+  --chat-code-inline: var(--muted);
+  --chat-code-inline-user: color-mix(in srgb, var(--primary) 10%, var(--muted));
+  --chat-code-block: color-mix(in srgb, var(--muted) 80%, var(--background));
+  --chat-code-panel: var(--background);
+  --chat-border-soft: color-mix(in srgb, var(--border) 70%, transparent);
+  --chat-border: var(--border);
+  --chat-border-strong: color-mix(
+    in srgb,
+    var(--border) 78%,
+    var(--foreground)
+  );
+  --chat-border-accent: color-mix(in srgb, var(--border) 66%, var(--primary));
+  --chat-text-primary: var(--foreground);
+  --chat-text-secondary: var(--card-foreground);
+  --chat-text-muted: var(--muted-foreground);
+  --chat-text-subtle: color-mix(in srgb, var(--foreground) 76%, transparent);
+  --chat-fg-muted: var(--chat-text-muted);
+  --chat-link: var(--primary);
+  --chat-link-hover: color-mix(in srgb, var(--primary) 72%, var(--foreground));
+  --chat-user-icon: var(--chart-5);
+  --chat-assistant-icon: var(--primary);
+  --chat-system-border: color-mix(in srgb, var(--destructive) 24%, transparent);
+  --chat-system-bg: color-mix(in srgb, var(--destructive) 10%, transparent);
+  --chat-system-text: var(--destructive);
+  --chat-system-muted: color-mix(
+    in srgb,
+    var(--destructive) 72%,
+    var(--muted-foreground)
+  );
+  --chat-status-completed-border: color-mix(
+    in srgb,
+    var(--chart-2) 24%,
+    transparent
+  );
+  --chat-status-completed-bg: color-mix(
+    in srgb,
+    var(--chart-2) 12%,
+    transparent
+  );
+  --chat-status-completed-text: var(--chart-2);
+  --chat-status-failed-border: color-mix(
+    in srgb,
+    var(--destructive) 24%,
+    transparent
+  );
+  --chat-status-failed-bg: color-mix(
+    in srgb,
+    var(--destructive) 12%,
+    transparent
+  );
+  --chat-status-failed-text: var(--destructive);
+  --chat-status-pending-border: color-mix(
+    in srgb,
+    var(--chart-5) 24%,
+    transparent
+  );
+  --chat-status-pending-bg: color-mix(in srgb, var(--chart-5) 12%, transparent);
+  --chat-status-pending-text: var(--chart-5);
+  --chat-status-running-border: color-mix(
+    in srgb,
+    var(--chart-3) 24%,
+    transparent
+  );
+  --chat-status-running-bg: color-mix(in srgb, var(--chart-3) 12%, transparent);
+  --chat-status-running-text: var(--chart-3);
+  --chat-status-running-fg: var(--chat-status-running-text);
+  --chat-shadow-soft: 0 1px 2px
+    color-mix(in srgb, var(--foreground) 8%, transparent);
+  --chat-shadow-card: 0 8px 24px
+    color-mix(in srgb, var(--foreground) 10%, transparent);
+  --chat-shadow-raised: 0 10px 28px
+    color-mix(in srgb, var(--foreground) 12%, transparent);
+  --chat-shadow-panel: 0 14px 36px
+    color-mix(in srgb, var(--foreground) 13%, transparent);
+  --chat-shadow-shell: 0 18px 48px
+    color-mix(in srgb, var(--foreground) 14%, transparent);
+  --chat-shadow-floating: 0 12px 32px
+    color-mix(in srgb, var(--foreground) 14%, transparent);
+  --chat-shadow-inline-inset: inset 0 1px 0
+    color-mix(in srgb, var(--background) 72%, transparent);
+  --chat-shadow-code-inset: inset 0 1px 0
+    color-mix(in srgb, var(--background) 64%, transparent);
+
+  --chrome-separator: color-mix(in srgb, var(--border) 60%, transparent);
+  --chrome-separator-hover: color-mix(
+    in srgb,
+    var(--border) 86%,
+    var(--foreground)
+  );
+  --chrome-separator-active: color-mix(
+    in srgb,
+    var(--border) 70%,
+    var(--primary)
+  );
+
+  /* Sidebar aliases bridge existing app-specific utilities to the preset's
+   * sidebar token family. */
+  --sidebar-bg: var(--sidebar);
+  --sidebar-surface: color-mix(in srgb, var(--sidebar-accent) 68%, transparent);
+  /* Hover and selected are both foreground-tinted steps off the accent so they
+   * stay perceptible regardless of theme. Raw accent is nearly identical to the
+   * panel bg in light mode (0.97 vs 0.965), so a bare accent hover is invisible;
+   * mixing in a little foreground darkens it in light mode and lightens it in
+   * dark mode — always a visible step in the right direction. Selected sits one
+   * step deeper than hover while sharing the same hue, so the two states read as
+   * the same control rather than two different colors. */
+  --sidebar-surface-hover: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 5%,
+    var(--sidebar-accent)
+  );
+  --sidebar-surface-active: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 8%,
+    var(--sidebar-accent)
+  );
+  --sidebar-divider: color-mix(in srgb, var(--sidebar-border) 74%, transparent);
+  --sidebar-text: var(--sidebar-foreground);
+  --sidebar-text-secondary: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 78%,
+    transparent
+  );
+  --sidebar-text-muted: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 58%,
+    transparent
+  );
+  --sidebar-text-subtle: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 42%,
+    transparent
+  );
+  --sidebar-avatar-bg: var(--sidebar-primary);
+  --sidebar-thinking-border: color-mix(
+    in srgb,
+    var(--sidebar-primary) 24%,
+    transparent
+  );
+  --sidebar-thinking-bg: color-mix(
+    in srgb,
+    var(--sidebar-primary) 10%,
+    transparent
+  );
+  --sidebar-thinking-dot: var(--sidebar-primary);
+  --sidebar-thinking-text: var(--sidebar-primary);
+
+  --editor-shell: var(--background);
+  --editor-chrome: var(--card);
+  --editor-pane: var(--popover);
+  --editor-canvas: var(--background);
+  --editor-border: var(--border);
+  --editor-text: var(--foreground);
+  --editor-text-muted: var(--muted-foreground);
+  --editor-text-subtle: color-mix(in srgb, var(--foreground) 62%, transparent);
+  --editor-preview-border: color-mix(in srgb, var(--chart-2) 24%, transparent);
+  --editor-preview-bg: color-mix(in srgb, var(--chart-2) 10%, transparent);
+  --editor-preview-text: var(--chart-2);
+  --editor-tab-active-border: color-mix(
+    in srgb,
+    var(--border) 80%,
+    var(--primary)
+  );
+  --editor-tab-active-bg: color-mix(in srgb, var(--primary) 8%, transparent);
+  /* Opaque equivalent of the active tab fill (tint composited over the shell),
+     used as a gradient stop to mask text behind the close button. */
+  --editor-tab-active-solid: color-mix(
+    in srgb,
+    var(--primary) 8%,
+    var(--editor-shell)
+  );
+  --editor-tab-hover-bg: var(--accent);
+  --editor-file-icon-active: var(--chart-5);
+  --editor-file-icon: var(--muted-foreground);
+  --editor-folder-icon: color-mix(
+    in srgb,
+    var(--muted-foreground) 78%,
+    var(--primary)
+  );
+  /* Git change accents (added / deleted / modified). Fixed hues from the
+   * Tailwind palette rather than preset variables, mirroring diff colors used
+   * across tools; the 600 steps keep contrast on light surfaces, .dark below
+   * swaps in the 300/400 steps for dark surfaces. */
+  --editor-git-added: oklch(0.596 0.145 163.225); /* emerald-600 */
+  --editor-git-deleted: oklch(0.586 0.253 17.585); /* rose-600 */
+  --editor-git-modified: oklch(0.588 0.158 241.966); /* sky-600 */
+  --editor-monaco-bg: var(--editor-canvas);
+  --editor-monaco-line-highlight: color-mix(
+    in srgb,
+    var(--accent) 46%,
+    transparent
+  );
+  --editor-monaco-selection: color-mix(
+    in srgb,
+    var(--primary) 24%,
+    transparent
+  );
+  --editor-monaco-selection-inactive: color-mix(
+    in srgb,
+    var(--muted) 54%,
+    transparent
+  );
+  --editor-monaco-gutter: var(--editor-canvas);
+  --editor-monaco-line-number: var(--muted-foreground);
+  --editor-monaco-line-number-active: var(--foreground);
+  --editor-monaco-whitespace: color-mix(
+    in srgb,
+    var(--muted-foreground) 32%,
+    transparent
+  );
+  --editor-monaco-indent: color-mix(in srgb, var(--border) 58%, transparent);
+  --editor-monaco-indent-active: color-mix(
+    in srgb,
+    var(--primary) 46%,
+    transparent
+  );
+
+  /* Welcome tokens mirror the main app surfaces so the first-run flow follows
+   * preset changes without separate palette maintenance. */
+  --welcome-surface: var(--card);
+  --welcome-surface-hover: var(--accent);
+  --welcome-surface-strong: var(--muted);
+  /* Menu-row hover/selection lifts, mirroring the chat tones (see
+   * --chat-surface-row-hover) so the welcome flow follows preset changes. */
+  --welcome-surface-row-hover: color-mix(
+    in srgb,
+    var(--foreground) 8%,
+    var(--welcome-surface)
+  );
+  /* Mirror --chat-surface-selected: a neutral lift over the welcome surface. */
+  --welcome-surface-selected: color-mix(
+    in srgb,
+    var(--foreground) 10%,
+    var(--welcome-surface)
+  );
+  --welcome-border: var(--border);
+  --welcome-border-strong: color-mix(
+    in srgb,
+    var(--border) 72%,
+    var(--foreground)
+  );
+  --welcome-text: var(--foreground);
+  --welcome-text-secondary: var(--card-foreground);
+  --welcome-text-muted: var(--muted-foreground);
+  --welcome-text-subtle: color-mix(in srgb, var(--foreground) 58%, transparent);
+  --welcome-selected-border: color-mix(
+    in srgb,
+    var(--primary) 30%,
+    transparent
+  );
+  --welcome-selected-bg: color-mix(in srgb, var(--primary) 10%, transparent);
+  --welcome-selected-fg: var(--primary);
+  --welcome-send-bg: var(--primary);
+  --welcome-send-hover: color-mix(
+    in srgb,
+    var(--primary) 86%,
+    var(--foreground)
+  );
+
+  --control-thumb: var(--background);
+}
+
+/* Dark surface ramp (mirrors light: sunk nav < content canvas < raised card):
+ *   chat + editor  --background 0.145 (shared canvas)
+ *   session/nav    --sidebar     ~0.175  (raised above canvas)
+ * Preset ties --sidebar and --card both to 0.205; without an explicit sidebar
+ * step the chat dock session drawer and chat body paint as one slab. */
+.dark {
+  /* Half step from shell toward card — separates nav from the shared canvas. */
+  --sidebar: color-mix(in srgb, var(--background) 50%, var(--card));
+  /* Dark canvas swallows borders and shadows, so the input plane separates by
+   * lifting its fill instead (light does the opposite — see :root). */
+  --chat-surface-input: color-mix(
+    in srgb,
+    var(--foreground) 6%,
+    var(--chat-canvas)
+  );
+  /* One step above the input plane so bubbles stay legible on the dark canvas. */
+  --chat-surface-bubble: color-mix(
+    in srgb,
+    var(--foreground) 10%,
+    var(--chat-canvas)
+  );
+  /* Dark needs a wider step: the same mix that pops on white barely clears the
+   * lifted input fill here. */
+  --chat-surface-disabled: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    var(--chat-surface-input)
+  );
+  /* Light uses primary at 18%, which reads fine on white. Dark primary is both
+   * darker and lower-chroma, so the same mix nearly vanishes on the canvas —
+   * raise the mix so text selection stays obvious without becoming a solid bar. */
+  --selection-bg: color-mix(in srgb, var(--primary) 90%, transparent);
+  /* The shared 70%-of-border soft edge reads fine on light surfaces but nearly
+   * vanishes on the dark canvas, where --border is white at only 10% alpha
+   * (so chat-border-soft lands around 7%). Drop the 70% mix and use the full
+   * --border (white at 10%) so chat bubbles and tables keep a subtle but
+   * visible outline without looking heavy. */
+  --chat-border-soft: var(--border);
+  /* Lift code panels above the card-level canvas (muted is brighter than card). */
+  --chat-code-panel: color-mix(in srgb, var(--muted) 40%, var(--card));
+  /* Lighter status/git accent steps for dark surfaces (see :root above). */
+  --brand-mark: oklch(0.72 0.11 183);
+  --status-success: oklch(0.845 0.143 164.978); /* emerald-300 */
+  --status-warning: oklch(0.879 0.169 91.605); /* amber-300 */
+  --editor-git-added: oklch(0.845 0.143 164.978); /* emerald-300 */
+  --editor-git-deleted: oklch(0.81 0.117 11.638); /* rose-300 */
+  --editor-git-modified: oklch(0.746 0.16 232.661); /* sky-400 */
+}

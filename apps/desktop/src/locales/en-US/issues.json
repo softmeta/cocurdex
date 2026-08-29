@@ -1,0 +1,92 @@
+{
+  "board": {
+    "addCard": "Add card",
+    "addColumn": "Add column",
+    "columnMenu": "Column menu",
+    "columnsField": "Columns",
+    "columnsFieldHint": "Columns follow this issue field. Drag a card to update the field.",
+    "deleteCard": "Delete card",
+    "deleteColumn": "Delete column",
+    "deleteColumnConfirm": {
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "description": "\"{{title}}\" will be removed from this view. Issues keep their field values.",
+      "title": "Delete column?"
+    },
+    "displayOptions": "View display",
+    "displayOptionsHint": "Layout and grouping apply only to this view.",
+    "dragCard": "Drag card",
+    "dragColumn": "Drag column",
+    "groupBy": "Grouping",
+    "groupByHint": "Rows are grouped by this issue field.",
+    "groupByPriority": "Priority",
+    "groupByStatus": "Status",
+    "layout": "Layout",
+    "layoutBoard": "Board",
+    "layoutList": "List",
+    "renameColumnPrompt": "Column name",
+    "untitledBoard": "Untitled view",
+    "untitledCard": "Untitled card",
+    "untitledColumn": "Untitled column"
+  },
+  "cardMenu": {
+    "delete": "Delete",
+    "open": "Open",
+    "priority": "Priority",
+    "status": "Status"
+  },
+  "dialog": {
+    "cancel": "Cancel",
+    "createIssue": "Create issue",
+    "descriptionPlaceholder": "Add description…",
+    "editCard": "Edit issue",
+    "newIssue": "New issue",
+    "noProject": "No project",
+    "priority": "Priority",
+    "project": "Project",
+    "save": "Save",
+    "status": "Status",
+    "titlePlaceholder": "Issue title",
+    "unknownProject": "Unknown project"
+  },
+  "empty": {
+    "description": "Create a card or column to start organizing work.",
+    "title": "No view yet"
+  },
+  "filter": {
+    "allProjects": "All projects",
+    "ariaLabel": "Filter view",
+    "noProject": "No project",
+    "project": "Project"
+  },
+  "list": {
+    "collapseGroup": "Collapse {{title}}",
+    "createdOn": "Created on {{date}}",
+    "expandGroup": "Expand {{title}}",
+    "updatedOn": "Updated on {{date}}"
+  },
+  "scope": {
+    "private": "Private",
+    "workspace": "{{name}}",
+    "workspaceFallback": "Project"
+  },
+  "sidebar": {
+    "addBoard": "Add view",
+    "collapse": "Collapse sidebar",
+    "deleteView": "Delete view",
+    "deleteViewConfirm": {
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "description": "Delete view \"{{title}}\"? Issues are shared and will not be deleted.",
+      "title": "Delete view?"
+    },
+    "expand": "Expand sidebar",
+    "hint": "Issues and views are stored privately by cocurdex.",
+    "newBoardTitle": "New view",
+    "renameBoard": "Rename view",
+    "resize": "Resize sidebar",
+    "title": "View",
+    "untitledBoard": "Untitled view",
+    "views": "Views"
+  }
+}

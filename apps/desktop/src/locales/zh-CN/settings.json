@@ -1,0 +1,567 @@
+{
+  "adapters": {
+    "action": {
+      "copyCommand": "复制命令",
+      "copyPath": "复制路径",
+      "docs": "文档",
+      "refresh": "刷新"
+    },
+    "badge": {
+      "builtin": "内置",
+      "updateRequired": "需要升级"
+    },
+    "description": "cocurdex 通过本机上的这些 agent CLI 工作。安装或升级你要在新会话里选用的适配器。",
+    "kind": {
+      "builtin": "内置",
+      "detecting": "检测中…",
+      "error": "失败",
+      "missing": "未安装",
+      "outdated": "需要升级",
+      "ready": "可用"
+    },
+    "status": {
+      "builtin": "内置 — 随 cocurdex 提供，无需安装。",
+      "detecting": "正在检测安装情况…",
+      "error": "检测失败。",
+      "missing": "未安装 — PATH 中找不到 `{{executable}}`。",
+      "outdated": "已安装 {{installed}}，低于要求的 {{minimum}}。",
+      "outdatedHint": "仍可开新会话。升级前部分能力可能不可用。",
+      "ready": "已安装，可以使用。"
+    },
+    "toast": {
+      "commandCopied": "已复制安装命令",
+      "pathCopied": "已复制路径",
+      "refreshFailed": "刷新适配器失败"
+    }
+  },
+  "appearance": {
+    "groupTitle": "外观",
+    "modes": {
+      "dark": "深色",
+      "light": "浅色",
+      "system": "系统"
+    },
+    "preset": {
+      "description": "同时作用于浅色与深色模式的色板。cocurdex 为产品默认外观。",
+      "empty": "未找到主题",
+      "searchPlaceholder": "搜索主题…",
+      "title": "颜色主题"
+    },
+    "theme": {
+      "description": "选择浅色、深色或跟随系统主题。",
+      "title": "主题"
+    },
+    "typography": {
+      "codeFontFamily": {
+        "description": "代码编辑器和 diff 使用的字体。",
+        "system": "系统等宽字体",
+        "title": "代码字体"
+      },
+      "codeFontSize": {
+        "description": "代码编辑器和 diff 的字体大小。",
+        "title": "代码字号"
+      },
+      "fontEmpty": "未找到字体",
+      "fontSearchPlaceholder": "搜索字体…",
+      "groupTitle": "字体",
+      "uiFontFamily": {
+        "description": "应用界面使用的字体。",
+        "system": "系统字体",
+        "title": "界面字体"
+      },
+      "uiFontSize": {
+        "description": "应用界面的基础字体大小。",
+        "title": "界面字号"
+      }
+    }
+  },
+  "chatDisplay": {
+    "activity": {
+      "description": "回答前的推理和工具调用在对话里怎么显示。默认按整轮折叠，点开才看细节。",
+      "options": {
+        "condensed": "按整轮折叠",
+        "expanded": "全部展开",
+        "hidden": "完全隐藏"
+      },
+      "title": "过程展示"
+    },
+    "groupTitle": "会话显示",
+    "hideFab": {
+      "description": "在浮动或钉住布局下关闭聊天时，隐藏右下角按钮。可用 {{shortcut}} 再次打开聊天。",
+      "title": "关闭时隐藏聊天按钮"
+    },
+    "layout": {
+      "description": "聊天区相对编辑器的摆放方式。下次启动会恢复。",
+      "options": {
+        "center": "中间栏",
+        "float": "浮动窗口",
+        "pinned": "右侧钉住"
+      },
+      "title": "聊天布局"
+    }
+  },
+  "cli": {
+    "actions": {
+      "install": "安装",
+      "refresh": "刷新",
+      "reinstall": "修复",
+      "uninstall": "卸载"
+    },
+    "description": "安装 cocurdex 命令，让终端和 agent 可以直接调用 CLI。",
+    "groupTitle": "命令行",
+    "loading": "正在检查 CLI 安装状态…",
+    "status": {
+      "foreignInstall": "在 {{path}} 已有其他 cocurdex 命令。可点修复以指向本应用。",
+      "installedNotOnPath": "已安装到 {{path}}，但该目录不在 PATH 中。请新开终端，或手动把该目录加入 PATH。",
+      "notInstalled": "当前用户尚未安装 cocurdex 命令。",
+      "ready": "已就绪。终端可运行 cocurdex（{{path}}）。"
+    },
+    "title": "Shell 命令",
+    "toast": {
+      "installed": "已安装 cocurdex 命令",
+      "installFailed": "无法安装 cocurdex 命令",
+      "uninstalled": "已移除 cocurdex 命令",
+      "uninstallFailed": "无法卸载 cocurdex 命令"
+    }
+  },
+  "daemon": {
+    "actions": {
+      "refresh": "检查状态",
+      "restart": "重启",
+      "start": "启动"
+    },
+    "description": "本地 cocurdex daemon 持有应用数据库与 agent 会话。若笔记、议题或 agent 无响应，可在此重启。",
+    "details": {
+      "protocol": "协议版本 {{version}}",
+      "runtime": "运行时 {{fingerprint}}",
+      "socket": "Socket {{path}}",
+      "startedAt": "启动于 {{value}}"
+    },
+    "groupTitle": "Daemon",
+    "loading": "正在检查 daemon 状态…",
+    "status": {
+      "outdated": "运行中（pid {{pid}}），但运行时与当前应用不匹配。请重启以替换。",
+      "running": "运行中（pid {{pid}}）。",
+      "runningOwned": "运行中（pid {{pid}}），由本应用管理。",
+      "stopped": "未运行。可启动或重启以恢复。"
+    },
+    "title": "本地 daemon",
+    "toast": {
+      "restarted": "Daemon 已重启",
+      "restartFailed": "无法重启 daemon"
+    }
+  },
+  "followUp": {
+    "description": "将后续消息排到当前运行结束后执行，或在支持时引导当前运行。按 {{shortcut}} 可对单条消息使用相反行为。",
+    "groupTitle": "Agent 行为",
+    "options": {
+      "queue": "排队",
+      "steer": "引导"
+    },
+    "title": "后续消息行为"
+  },
+  "git": {
+    "commitMessageModel": {
+      "agentDescription": "按该 agent 兼容的模型过滤。生成是一次性补全，不会创建聊天 session。",
+      "agentLabel": "Agent",
+      "footnote": "提交说明留空时，用所选模型根据 staged 变更生成 Conventional Commits 标题。未配置模型时必须手动填写。",
+      "group": "提交说明",
+      "modelDescription": "用于一次性生成提交说明的模型。",
+      "modelLabel": "模型",
+      "noModels": "没有兼容模型",
+      "none": "无（手动填写）",
+      "saveFailed": "无法更新提交说明模型"
+    }
+  },
+  "groups": {
+    "advanced": "其他",
+    "core": "基础",
+    "workspace": "工作流"
+  },
+  "language": {
+    "description": "选择产品界面使用的语言。",
+    "empty": "未找到语言",
+    "groupTitle": "语言",
+    "modes": {
+      "system": "跟随系统"
+    },
+    "searchPlaceholder": "搜索语言…",
+    "title": "界面语言"
+  },
+  "mcp": {
+    "description": "配置内置 Pi agent 可用的 MCP 服务器。只有 Pi 使用相关工具时，服务器才会连接。",
+    "editorLabel": "MCP 服务器配置",
+    "form": {
+      "add": "添加服务器",
+      "arguments": "参数",
+      "argumentsDescription": "每行输入一个参数。",
+      "argumentsPlaceholder": "-y\npackage-name",
+      "command": "命令",
+      "commandPlaceholder": "npx",
+      "emptyDescription": "添加本地命令或远程端点，让 Pi 可以使用其中的工具。",
+      "emptyTitle": "尚未配置 MCP 服务器",
+      "environment": "环境变量",
+      "environmentDescription": "每行输入一组 KEY=value。",
+      "environmentPlaceholder": "API_KEY=${API_KEY}",
+      "local": "本地",
+      "name": "服务器名称",
+      "namePlaceholder": "github",
+      "remote": "远程",
+      "remove": "移除服务器",
+      "servers": "服务器",
+      "transport": "连接方式",
+      "url": "服务器 URL",
+      "urlPlaceholder": "https://example.com/mcp"
+    },
+    "mode": {
+      "form": "表单",
+      "json": "JSON",
+      "label": "配置模式"
+    },
+    "restartHint": "更改会在 Pi 会话启动时生效，已经运行的会话会继续使用当前工具。",
+    "save": "保存",
+    "saved": "MCP 配置已保存",
+    "saving": "正在保存",
+    "title": "MCP"
+  },
+  "network": {
+    "proxy": {
+      "allProxy": {
+        "description": "可选的全局代理（ALL_PROXY），例如 socks5://127.0.0.1:1080。在未设置 HTTP/HTTPS 代理时，部分 Agent CLI 会使用它。",
+        "placeholder": "socks5://127.0.0.1:1080",
+        "title": "全局 / SOCKS 代理"
+      },
+      "credentialsNote": "代理地址以明文保存在应用设置中，并会传递给 Agent 子进程。请避免填入不希望被子进程 CLI 读取的凭据。",
+      "groupTitle": "网络代理",
+      "httpProxy": {
+        "description": "HTTP 代理地址。例如：http://127.0.0.1:7890 或 http://user:pass@host:port。",
+        "placeholder": "http://127.0.0.1:7890",
+        "title": "HTTP 代理"
+      },
+      "httpsProxy": {
+        "description": "HTTPS 代理地址。留空则复用 HTTP 代理。",
+        "placeholder": "与 HTTP 代理相同",
+        "title": "HTTPS 代理"
+      },
+      "invalidUrl": "{{field}} 需要填写带协议的完整地址，例如 http://127.0.0.1:7890",
+      "loading": "正在加载代理设置…",
+      "manualGroupTitle": "手动代理",
+      "manualIncomplete": "已选择手动模式但未填写任何代理地址，流量仍会直连。",
+      "modes": {
+        "manual": "手动",
+        "off": "关闭",
+        "system": "系统 / 环境变量"
+      },
+      "modeTitle": "代理模式",
+      "noProxy": {
+        "description": "不走代理的主机列表（逗号分隔）。建议保留 localhost，避免应用内部通信误走代理。",
+        "placeholder": "localhost,127.0.0.1,::1,.local",
+        "title": "绕过列表（NO_PROXY）"
+      },
+      "notesBody": "作用于 Agent 子进程（含 ACP）、应用与 daemon 的模型/API 请求，以及 Chromium 网络流量。不会修改系统代理，默认也不强制内置终端使用这些设置。修改后请重新启动正在运行的 Agent 会话，以便加载新环境。",
+      "notesGroupTitle": "作用范围",
+      "saveFailed": "保存代理设置失败",
+      "scopeDescription": "用于 Agent 与应用出站网络请求。默认不劫持系统代理，也不接管内置终端。",
+      "status": {
+        "checking": "正在检测连通性…",
+        "idle": "悬停可检测连通性",
+        "label": "代理状态",
+        "offDetail": "出站流量直连，未使用应用内代理。",
+        "openSettings": "打开网络设置"
+      },
+      "test": {
+        "action": "测试",
+        "description": "通过应用的出站链路向 ipinfo.io 发一次请求，并显示出口地址，用于确认代理是否真的生效。",
+        "failure": "失败：{{error}}",
+        "success": "连通，耗时 {{durationMs}} ms — 出口 IP {{ip}}",
+        "title": "测试连通性",
+        "unknownIp": "未知"
+      }
+    }
+  },
+  "notifications": {
+    "completed": {
+      "body": "一次 Agent 运行已结束。",
+      "title": "Agent 已完成"
+    },
+    "completionSound": {
+      "description": "Agent 回复完成时播放提示音。",
+      "title": "完成提示音"
+    },
+    "groupTitle": "通知",
+    "permission": {
+      "body": "有 Agent 正在等待权限审批。",
+      "title": "需要审批"
+    },
+    "question": {
+      "body": "有 Agent 正在等待你的回答。",
+      "title": "Agent 需要输入"
+    },
+    "systemNotifications": {
+      "description": "Agent 运行结束或需要你关注时显示系统通知。",
+      "title": "系统通知"
+    }
+  },
+  "placeholder": {
+    "description": "这一组先保留为占位骨架。等你确定信息架构后，再把具体字段和交互补进去。",
+    "title": "{{section}} 占位区"
+  },
+  "providers": {
+    "actions": {
+      "add": "添加",
+      "clearKey": "清除密钥",
+      "delete": "删除",
+      "importJson": "导入 JSON",
+      "newProvider": "新建服务商",
+      "refresh": "刷新",
+      "save": "保存"
+    },
+    "deleteConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "description": "确定删除 {{provider}} 及其全部模型？此操作无法撤销。",
+      "title": "删除服务商"
+    },
+    "details": {
+      "title": "服务商详情"
+    },
+    "empty": {
+      "noMatches": "没有匹配的服务商"
+    },
+    "fields": {
+      "baseUrl": "Base URL",
+      "capabilities": "能力",
+      "capability": {
+        "agent": "Agent",
+        "chat": "对话",
+        "reasoning": "推理",
+        "vision": "视觉"
+      },
+      "contextLimit": "上下文",
+      "costJson": "成本 JSON，例如 {\"input\":3,\"output\":15}",
+      "displayName": "显示名称",
+      "headersJson": "自定义 headers JSON，例如 {\"x-api-version\":\"1\"}",
+      "modelCompatJson": "模型兼容性 JSON",
+      "modelId": "模型 ID",
+      "modelRuntime": "模型运行时",
+      "newApiKey": "新 API Key",
+      "outputLimit": "输出",
+      "providerCompatJson": "服务商兼容性 JSON",
+      "providerId": "服务商 ID",
+      "reasoning": "支持推理",
+      "thinkingLevelMapJson": "思考级别映射 JSON，例如 {\"high\":10000}"
+    },
+    "header": {
+      "description": "配置服务端点、模型和 Agent 默认选择。",
+      "title": "服务商管理"
+    },
+    "heading": "提供方",
+    "importJson": {
+      "back": "返回",
+      "confirm": "导入",
+      "description": "粘贴 pi 风格的 models.json。每个服务商及其模型会写入（同 ID 覆盖）。字面量 apiKey 会保存；$ENV 与 !command 需手动填写密钥。",
+      "importing": "导入中…",
+      "title": "导入 JSON",
+      "warnings": {
+        "authHeaderNoKey": "服务商「{{id}}」：设置了 authHeader 但未提供字面量 apiKey。",
+        "commandApiKey": "服务商「{{id}}」：命令形式的 apiKey（!…）导入时不会执行，请手动填写密钥。",
+        "envApiKey": "服务商「{{id}}」：环境变量形式的 apiKey（$…）导入时不会展开，请手动填写密钥。",
+        "oauthIgnored": "服务商「{{id}}」：oauth 配置在导入时会被忽略。"
+      }
+    },
+    "list": {
+      "configuredCount": "已配置 {{count}} 个"
+    },
+    "models": {
+      "addTitle": "添加模型",
+      "columns": {
+        "capabilities": "能力",
+        "compat": "兼容配置",
+        "cost": "成本 / 1M",
+        "defaultModel": "默认",
+        "input": "输入",
+        "no": "否",
+        "reasoning": "推理",
+        "reasoningEfforts": "推理选项",
+        "serviceTiers": "服务档位",
+        "thinking": "思考映射",
+        "yes": "是"
+      },
+      "empty": "{{provider}} 尚未配置模型。",
+      "modelCount": "{{count}} 个模型",
+      "modelCount_other": "{{count}} 个模型",
+      "noMatches": "没有匹配的模型",
+      "parametersFor": "设置 {{model}} 参数",
+      "parametersTitle": "模型参数",
+      "runtimeFor": "{{model}} 运行时",
+      "searchPlaceholder": "搜索模型...",
+      "showingCount": "显示 {{visible}} / {{total}} 个模型",
+      "title": "模型",
+      "toggleFor": "启用或停用 {{model}}"
+    },
+    "searchPlaceholder": "搜索服务商...",
+    "sections": {
+      "advanced": "高级",
+      "auth": "认证",
+      "provider": "服务商"
+    },
+    "select": "选择",
+    "state": {
+      "configured": "已配置",
+      "disabled": "已停用",
+      "enabled": "已启用",
+      "keySet": "已设置密钥",
+      "noKey": "无密钥",
+      "notConfigured": "未配置"
+    },
+    "status": {
+      "deleteFailed": "无法删除服务商",
+      "idExists": "服务商 ID {{id}} 已存在",
+      "importFailed": "无法导入服务商",
+      "importSucceeded": "已导入 {{count}} 个服务商",
+      "importSucceeded_other": "",
+      "missingFields": "必填项未填写",
+      "modelSaved": "模型已保存",
+      "modelsRefreshed": "模型已刷新",
+      "modelsRefreshFailed": "无法刷新模型",
+      "providerDeleted": "服务商已删除",
+      "providerSaved": "服务商已保存",
+      "refreshingModels": "正在刷新模型...",
+      "saveFailed": "无法保存服务商"
+    },
+    "templates": {
+      "description": "选择一个预设模板，只需填入 API Key 即可。",
+      "title": "添加服务商"
+    },
+    "titleModel": {
+      "description": "用于内置 Pi agent 和聊天对话生成标题；其他 Agent 使用各自的标题能力。",
+      "label": "Pi 标题生成模型",
+      "none": "使用当前模型",
+      "probeFailed": "连通失败 · {{latencyMs}} ms · {{error}}",
+      "probeOk": "连通成功 · {{latencyMs}} ms",
+      "probeOkWithTitle": "连通成功 · {{latencyMs}} ms · “{{title}}”",
+      "saveFailed": "标题模型更新失败",
+      "selectModelFirst": "请先选择标题模型",
+      "test": "测试",
+      "testing": "测试中…"
+    }
+  },
+  "sections": {
+    "adapters": "适配器",
+    "appearance": "外观",
+    "archived": "已归档聊天",
+    "computer": "电脑使用",
+    "environment": "网络",
+    "general": "常规",
+    "git": "Git",
+    "mcp": "MCP",
+    "personalization": "个性化",
+    "providers": "服务商",
+    "shortcuts": "快捷键",
+    "skills": "Skills",
+    "usage": "使用情况",
+    "workspace": "工作树"
+  },
+  "sendShortcut": {
+    "description": "选择按 Enter 时发送消息还是插入换行。",
+    "options": {
+      "command-enter": "始终使用 {{shortcut}}",
+      "command-enter-multiline": "多行消息使用 {{shortcut}}",
+      "enter": "Enter"
+    },
+    "title": "发送快捷键"
+  },
+  "shortcuts": {
+    "actions": {
+      "fileSearch": {
+        "description": "打开工作区文件搜索面板。",
+        "title": "搜索文件"
+      },
+      "toggleChatDock": {
+        "description": "在编辑器全屏时显示或隐藏浮动/钉住的聊天坞。",
+        "title": "切换聊天坞"
+      },
+      "toggleDesignMode": {
+        "description": "切换浏览器设计标注模式。",
+        "title": "切换设计模式"
+      },
+      "toggleEditorFullscreen": {
+        "description": "将编辑器扩展为全屏（浮动/钉住聊天），或回到中间栏聊天布局。",
+        "title": "切换编辑器全屏"
+      },
+      "toggleLeftSidebar": {
+        "description": "显示或隐藏左侧边栏。",
+        "title": "切换左侧边栏"
+      },
+      "toggleRightPanel": {
+        "description": "显示或隐藏编辑器面板。",
+        "title": "切换编辑器面板"
+      },
+      "toggleWorkspaceSearch": {
+        "description": "在编辑器面板中打开工作区搜索。",
+        "title": "在工作区中搜索"
+      }
+    },
+    "categories": {
+      "browser": "浏览器",
+      "chat": "聊天",
+      "editor": "编辑器",
+      "general": "通用",
+      "layout": "布局"
+    },
+    "conflict": "与「{{action}}」冲突",
+    "description": "点击绑定开始录制新组合键。Escape 取消录制；Backspace 清除绑定。",
+    "editBinding": "编辑快捷键 {{binding}}",
+    "emptyDescription": "试试其他名称或分类。",
+    "emptyTitle": "没有匹配的快捷键",
+    "hint": "录制绑定时会暂停全局快捷键。修改会自动保存。",
+    "recording": "请按键…",
+    "reset": "恢复默认",
+    "resetAll": "全部重置",
+    "searchPlaceholder": "搜索快捷键…",
+    "unbound": "无"
+  },
+  "sidebar": {
+    "resize": "调整设置侧边栏宽度"
+  },
+  "skills": {
+    "actions": {
+      "install": "安装",
+      "refresh": "刷新",
+      "reinstall": "重新安装",
+      "remove": "移除",
+      "update": "更新"
+    },
+    "cliHint": "命令行：cocurdex skills install --scope project|global  ·  cocurdex skills status --scope project|global",
+    "groupTitle": "安装位置",
+    "intro": "安装 cocurdex 产品 Skills，让 Claude、OpenCode、Pi 等 agent 能跑 Notes / Issues 工作流。默认不会自动安装，需你主动安装。",
+    "loading": "正在检查 Skills 安装状态…",
+    "scope": {
+      "global": {
+        "description": "安装到本机 ~/.agents/skills 与 ~/.claude/skills，对所有项目生效。",
+        "title": "全局（所有项目）"
+      },
+      "project": {
+        "description": "安装到当前工作区（.agents/skills 与 .claude/skills），适合提交到团队仓库。",
+        "title": "当前项目"
+      }
+    },
+    "status": {
+      "conflict": "已存在非托管的 cocurdex skill 目录（{{skills}}）。请先删除或重命名 {{path}} 下的冲突项，再重新安装。",
+      "installed": "已安装 v{{version}}，路径 {{path}}",
+      "notInstalled": "未安装。将写入 {{path}}",
+      "noWorkspace": "请先选择一个项目工作区，再安装项目级 Skills。",
+      "updateAvailable": "已安装 v{{installed}}；可用 pack v{{latest}}，路径 {{path}}"
+    },
+    "toast": {
+      "alreadyInstalled": "Skills 已是最新",
+      "conflict": "无法安装：与已有 Skills 冲突（{{skills}}）",
+      "installed": "已安装 cocurdex Skills",
+      "installFailed": "安装 Skills 失败",
+      "removed": "已移除 cocurdex Skills",
+      "removeFailed": "移除 Skills 失败",
+      "updated": "已更新 cocurdex Skills"
+    },
+    "workspaceLabel": "当前项目：{{name}}"
+  }
+}

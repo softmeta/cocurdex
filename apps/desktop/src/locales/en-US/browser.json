@@ -1,0 +1,29 @@
+{
+  "actions": {
+    "back": "Back",
+    "captureScreenshot": "Capture screenshot",
+    "clearAnnotations": "Clear all annotations",
+    "enterDesignMode": "Enter Design Mode",
+    "exitDesignMode": "Exit Design Mode",
+    "forward": "Forward",
+    "reload": "Reload",
+    "removeAnnotation": "Remove annotation",
+    "stop": "Stop loading"
+  },
+  "annotations": {
+    "element": "Element",
+    "region": "Region {{width}}×{{height}}",
+    "title": "Annotations ({{count}})",
+    "title_one": "Annotation ({{count}})",
+    "title_other": "Annotations ({{count}})"
+  },
+  "placeholder": {
+    "description": "Enter your dev server URL above to preview your app and use Design Mode to annotate UI elements.",
+    "title": "Browser Preview"
+  },
+  "states": {
+    "loadError": "Unable to load page",
+    "loading": "Loading..."
+  },
+  "urlPlaceholder": "Enter dev server URL (e.g. http://localhost:3000)"
+}

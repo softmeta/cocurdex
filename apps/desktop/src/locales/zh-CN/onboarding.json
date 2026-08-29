@@ -1,0 +1,17 @@
+{
+  "action": {
+    "configureProviders": "配置服务商",
+    "dontShowAgain": "不再显示",
+    "enterApp": "前往 cocurdex",
+    "openProject": "打开项目文件夹",
+    "openProjectHint": "agent 会在你选择的文件夹里运行，这是 cocurdex 的主要用法。",
+    "skip": "跳过",
+    "startChat": "前往聊天"
+  },
+  "description": "cocurdex 让编码 agent 在本地文件夹中工作。下面是这台机器上的可用情况。",
+  "providers": {
+    "title": "配置模型服务商",
+    "description": "添加服务商并启用需要的模型。内置的 pi agent 需要它，其他适配器自带模型。"
+  },
+  "title": "欢迎使用 cocurdex"
+}

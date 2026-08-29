@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@cocurdex/shared": ["../../packages/shared/src/index.ts"],
+      "@cocurdex/rpc": ["../../packages/rpc/src/index.ts"],
+      "@cocurdex/daemon": ["../../packages/daemon/src/index.ts"],
+      "@cocurdex/daemon/client": ["../../packages/daemon/src/client.ts"],
+      "@cocurdex/daemon/paths": ["../../packages/daemon/src/paths.ts"],
+      "@cocurdex/agent-core": ["../../packages/agent-core/src/index.ts"],
+      "@cocurdex/agent-adapters": [
+        "../../packages/agent-adapters/src/index.ts"
+      ],
+      "@cocurdex/agent-adapters/desktop-provider": [
+        "../../packages/agent-adapters/src/desktop-provider.ts"
+      ],
+      "@cocurdex/db": ["../../packages/db/src/index.ts"],
+      "@cocurdex/llm-chat": ["../../packages/llm-chat/src/index.ts"],
+      "@cocurdex/product-skills": ["../../packages/product-skills/src/index.ts"]
+    }
+  },
+  "include": ["src", "electron", "vitest.config.ts"]
+}

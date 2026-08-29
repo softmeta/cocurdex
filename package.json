@@ -1,0 +1,18 @@
+{
+  "name": "@cocurdex/workspace",
+  "version": "0.1.0",
+  "description": "Cocurdex desktop app",
+  "author": "softmeta LLC",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "lefthook install",
+    "lint:design-tokens": "node ./scripts/lint-design-tokens.mjs",
+    "lint:theme-parity": "node ./scripts/lint-theme-parity.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "lefthook": "2.1.9"
+  }
+}

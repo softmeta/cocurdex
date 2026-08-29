@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cocurdex menu bar template">
+  <g transform="scale(3.41333)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M104 52 L58 52 Q44 52 44 66 L44 88 Q44 102 58 102" stroke="#000000" stroke-width="13"/>
+    <rect x="70" y="89" width="38" height="14" rx="7" fill="#000000" stroke="none"/>
+  </g>
+</svg>

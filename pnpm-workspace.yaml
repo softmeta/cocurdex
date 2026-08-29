@@ -1,0 +1,37 @@
+packages:
+  - apps/*
+  - packages/*
+  - tests/*
+# electron-builder/@electron/rebuild pulls node-abi@4.29 which only maps
+# Electron through 42; Electron 43.x needs node-abi >= 4.33.
+overrides:
+  node-abi: ^4.33.0
+  # Astro 7 needs cookie@2 (parseCookie / ESM-friendly API). Do not force
+  # cookie@2 on the whole monorepo — express (MCP via desktop) still needs
+  # cookie@0.7. Scope the pin to Astro's dependency edge only.
+  astro>cookie: ^2.0.1
+allowBuilds:
+  '@biomejs/biome': true
+  '@google/genai': false
+  '@swc/core': true
+  core-js: set this to true or false
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  koffi: false
+  lefthook: true
+  msw: true
+  node-pty: true
+  protobufjs: false
+  # next/image optimization (apps/console)
+  sharp: true
+minimumReleaseAgeExclude:
+  - '@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-darwin-x64@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-linux-arm64-musl@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-linux-arm64@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-linux-x64-musl@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-linux-x64@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-win32-arm64@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.221'
+  - '@anthropic-ai/claude-agent-sdk@0.3.221'

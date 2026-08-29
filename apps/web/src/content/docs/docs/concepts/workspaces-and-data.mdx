@@ -1,0 +1,91 @@
+---
+title: Workspaces and data
+description: How Cocurdex stores workspaces, notes, issues, and search data on your machine — and what stays private.
+---
+
+## Workspace
+
+A **workspace** is the project context Cocurdex attaches to — typically a directory on disk where agents, the terminal, and the editor operate.
+
+| Property | Meaning |
+| --- | --- |
+| `id` | Stable workspace id |
+| `name` | Display name (often the folder basename) |
+| `rootPath` | Absolute path on disk |
+
+Open from the desktop UI or:
+
+```bash
+cocurdex .
+cocurdex open /path/to/project
+cocurdex workspace list
+```
+
+Sessions and many product views are oriented around the active workspace. Notes and issues may optionally associate with a workspace id for filtering; they are not “files inside the project tree” by default.
+
+## App-owned data
+
+Notes, issues, views, tags, links, and search indexes live in **app-owned storage** (`cocurdex.sqlite`), not as a dual-write Markdown tree.
+
+Important rules:
+
+1. The **desktop daemon** is the only process that opens the local database.  
+2. The **CLI** is the supported external read/write boundary for automation and agents.  
+3. Markdown import/export is **explicit** — not a second live database.  
+4. Private table schemas and file paths are **not** a public API.  
+5. During pre-release, databases that lack the current application marker / schema version may be **recreated** rather than migrated.
+
+### What lives where
+
+| Data | Authority |
+| --- | --- |
+| Notes, issues, views, tags, links, FTS indexes | Daemon + `cocurdex.sqlite` |
+| Project source files | Your workspace directory on disk |
+| Agent provider auth (e.g. Codex) | That tool’s own config (for example under `~/.codex`) |
+| Product skill files (optional) | Project or global skills directories after install |
+| Engineering docs in a monorepo (`docs/adr`, …) | Your repo — not auto-published to the marketing site |
+
+## Why this exists
+
+Path-as-identity file trees make stable IDs, transactions, full-text search, and backlinks harder. SQLite gives those properties without asking every tool to parse the repo. Agents keep interoperability through `cocurdex note|issue|search …` instead of inventing parallel `.scratch` trees.
+
+## Daemon
+
+The daemon:
+
+- Owns the DB connection  
+- Serves desktop and CLI over documented RPC contracts  
+- Runs session and workflow orchestration  
+
+```bash
+cocurdex daemon status
+```
+
+If CLI data commands fail, open the desktop app (or ensure the daemon process is reachable), then retry.
+
+## Cloud and team later
+
+A future team console and cloud API will expose **organization-scoped projections** for selected entities (likely issues and published docs first). That does **not** replace local write authority for on-device work:
+
+| Surface | Role |
+| --- | --- |
+| Desktop + daemon | Local write authority |
+| CLI | Local automation boundary |
+| Future `app.` console | Team visibility / light collaboration |
+| Future `api.` | Identity, orgs, sync contracts |
+
+Local and cloud boundaries for contributors are documented in monorepo ADRs; end-user behavior for sync will appear here as features ship.
+
+## Safety checklist
+
+- Do not open or migrate `cocurdex.sqlite` in scripts  
+- Do not scrape private schema as an integration surface  
+- Prefer CLI `--json` and returned UUIDs  
+- Treat product notes/issues as private until you explicitly publish  
+
+## Related
+
+- [Notes and issues](/docs/notes-and-issues/)  
+- [CLI](/docs/cli/)  
+- [Skills](/docs/skills/)  
+- [Desktop workspace](/docs/desktop/)  

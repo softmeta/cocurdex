@@ -1,0 +1,12 @@
+/* Quiet Starlight overrides — product tone, not AI-SaaS chrome. */
+:root {
+  --sl-color-accent-low: #d8f3ef;
+  --sl-color-accent: #0f8a7d;
+  --sl-color-accent-high: #0a5c54;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #0a2e2a;
+  --sl-color-accent: #2bb8a8;
+  --sl-color-accent-high: #9ee8de;
+}

@@ -1,0 +1,221 @@
+/* Project Tailwind extension layer.
+ * The shadcn preset registers standard utilities in theme-preset.css. This file
+ * only exposes Cocurdex-specific semantic tokens as Tailwind utilities. */
+@theme {
+  --color-app: var(--app-bg);
+  --color-app-foreground: var(--app-fg);
+  --color-app-overlay: var(--app-overlay);
+  --color-brand-mark: var(--brand-mark);
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-chat-canvas: var(--chat-canvas);
+  --color-chat-surface: var(--chat-surface);
+  --color-chat-surface-raised: var(--chat-surface-raised);
+  --color-chat-surface-strong: var(--chat-surface-strong);
+  --color-chat-surface-input: var(--chat-surface-input);
+  --color-chat-surface-bubble: var(--chat-surface-bubble);
+  --color-chat-surface-subtle: var(--chat-surface-subtle);
+  --color-chat-surface-control: var(--chat-surface-control);
+  --color-chat-surface-control-hover: var(--chat-surface-control-hover);
+  --color-chat-surface-row-hover: var(--chat-surface-row-hover);
+  --color-chat-surface-selected: var(--chat-surface-selected);
+  --color-chat-surface-disabled: var(--chat-surface-disabled);
+  --color-chat-surface-tint: var(--chat-surface-tint);
+  --color-chat-surface-tint-hover: var(--chat-surface-tint-hover);
+  --color-chat-overlay-strong: var(--chat-overlay-strong);
+  --color-chat-overlay-sticky: var(--chat-overlay-sticky);
+  --color-chat-jump: var(--chat-jump-bg);
+  --color-chat-jump-hover: var(--chat-jump-hover);
+  --color-chat-code-inline: var(--chat-code-inline);
+  --color-chat-code-inline-user: var(--chat-code-inline-user);
+  --color-chat-code-block: var(--chat-code-block);
+  --color-chat-code-panel: var(--chat-code-panel);
+  --color-chat-border-soft: var(--chat-border-soft);
+  --color-chat-border: var(--chat-border);
+  --color-chat-border-strong: var(--chat-border-strong);
+  --color-chat-border-accent: var(--chat-border-accent);
+  --color-chat-fg: var(--chat-text-primary);
+  --color-chat-fg-secondary: var(--chat-text-secondary);
+  --color-chat-fg-muted: var(--chat-text-muted);
+  --color-chat-fg-subtle: var(--chat-text-subtle);
+  --color-chat-link: var(--chat-link);
+  --color-chat-link-hover: var(--chat-link-hover);
+  --color-chat-icon-user: var(--chat-user-icon);
+  --color-chat-icon-assistant: var(--chat-assistant-icon);
+  --color-chat-system-border: var(--chat-system-border);
+  --color-chat-system-bg: var(--chat-system-bg);
+  --color-chat-system-fg: var(--chat-system-text);
+  --color-chat-system-muted: var(--chat-system-muted);
+  --color-chat-status-completed-border: var(--chat-status-completed-border);
+  --color-chat-status-completed-bg: var(--chat-status-completed-bg);
+  --color-chat-status-completed-fg: var(--chat-status-completed-text);
+  --color-chat-status-failed-border: var(--chat-status-failed-border);
+  --color-chat-status-failed-bg: var(--chat-status-failed-bg);
+  --color-chat-status-failed-fg: var(--chat-status-failed-text);
+  --color-chat-status-pending-border: var(--chat-status-pending-border);
+  --color-chat-status-pending-bg: var(--chat-status-pending-bg);
+  --color-chat-status-pending-fg: var(--chat-status-pending-text);
+  --color-chat-status-running-border: var(--chat-status-running-border);
+  --color-chat-status-running-bg: var(--chat-status-running-bg);
+  --color-chat-status-running-fg: var(--chat-status-running-text);
+  --color-chrome-separator: var(--chrome-separator);
+  --color-chrome-separator-hover: var(--chrome-separator-hover);
+  --color-chrome-separator-active: var(--chrome-separator-active);
+  --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-surface-hover: var(--sidebar-surface-hover);
+  --color-sidebar-surface-active: var(--sidebar-surface-active);
+  --color-sidebar-divider: var(--sidebar-divider);
+  --color-sidebar-fg: var(--sidebar-text);
+  --color-sidebar-fg-secondary: var(--sidebar-text-secondary);
+  --color-sidebar-fg-muted: var(--sidebar-text-muted);
+  --color-sidebar-fg-subtle: var(--sidebar-text-subtle);
+  --color-sidebar-avatar: var(--sidebar-avatar-bg);
+  --color-sidebar-thinking-border: var(--sidebar-thinking-border);
+  --color-sidebar-thinking-bg: var(--sidebar-thinking-bg);
+  --color-sidebar-thinking-dot: var(--sidebar-thinking-dot);
+  --color-sidebar-thinking-fg: var(--sidebar-thinking-text);
+  --color-editor-shell: var(--editor-shell);
+  --color-editor-chrome: var(--editor-chrome);
+  --color-editor-pane: var(--editor-pane);
+  --color-editor-canvas: var(--editor-canvas);
+  --color-editor-border: var(--editor-border);
+  --color-editor-fg: var(--editor-text);
+  --color-editor-fg-muted: var(--editor-text-muted);
+  --color-editor-fg-subtle: var(--editor-text-subtle);
+  --color-editor-preview-border: var(--editor-preview-border);
+  --color-editor-preview-bg: var(--editor-preview-bg);
+  --color-editor-preview-fg: var(--editor-preview-text);
+  --color-editor-tab-active-border: var(--editor-tab-active-border);
+  --color-editor-tab-active-bg: var(--editor-tab-active-bg);
+  --color-editor-tab-active-solid: var(--editor-tab-active-solid);
+  --color-editor-tab-hover-bg: var(--editor-tab-hover-bg);
+  --color-editor-file-icon-active: var(--editor-file-icon-active);
+  --color-editor-file-icon: var(--editor-file-icon);
+  --color-editor-folder-icon: var(--editor-folder-icon);
+  --color-editor-git-added: var(--editor-git-added);
+  --color-editor-git-deleted: var(--editor-git-deleted);
+  --color-editor-git-modified: var(--editor-git-modified);
+  --color-editor-monaco-bg: var(--editor-monaco-bg);
+  --color-editor-monaco-line-highlight: var(--editor-monaco-line-highlight);
+  --color-editor-monaco-selection: var(--editor-monaco-selection);
+  --color-editor-monaco-selection-inactive: var(
+    --editor-monaco-selection-inactive
+  );
+  --color-editor-monaco-gutter: var(--editor-monaco-gutter);
+  --color-editor-monaco-line-number: var(--editor-monaco-line-number);
+  --color-editor-monaco-line-number-active: var(
+    --editor-monaco-line-number-active
+  );
+  --color-editor-monaco-whitespace: var(--editor-monaco-whitespace);
+  --color-editor-monaco-indent: var(--editor-monaco-indent);
+  --color-editor-monaco-indent-active: var(--editor-monaco-indent-active);
+  --color-welcome-surface: var(--welcome-surface);
+  --color-welcome-surface-hover: var(--welcome-surface-hover);
+  --color-welcome-surface-strong: var(--welcome-surface-strong);
+  --color-welcome-surface-row-hover: var(--welcome-surface-row-hover);
+  --color-welcome-surface-selected: var(--welcome-surface-selected);
+  --color-welcome-border: var(--welcome-border);
+  --color-welcome-border-strong: var(--welcome-border-strong);
+  --color-welcome-fg: var(--welcome-text);
+  --color-welcome-fg-secondary: var(--welcome-text-secondary);
+  --color-welcome-fg-muted: var(--welcome-text-muted);
+  --color-welcome-fg-subtle: var(--welcome-text-subtle);
+  --color-welcome-selected-border: var(--welcome-selected-border);
+  --color-welcome-selected-bg: var(--welcome-selected-bg);
+  --color-welcome-selected-fg: var(--welcome-selected-fg);
+  --color-welcome-send: var(--welcome-send-bg);
+  --color-welcome-send-hover: var(--welcome-send-hover);
+  --shadow-chat-soft: var(--chat-shadow-soft);
+  --shadow-chat-card: var(--chat-shadow-card);
+  --shadow-chat-raised: var(--chat-shadow-raised);
+  --shadow-chat-panel: var(--chat-shadow-panel);
+  --shadow-chat-shell: var(--chat-shadow-shell);
+  --shadow-chat-floating: var(--chat-shadow-floating);
+  --shadow-chat-inline-inset: var(--chat-shadow-inline-inset);
+  --shadow-chat-code-inset: var(--chat-shadow-code-inset);
+
+  /*
+   * Typography scale — relative to --app-ui-font-size (Appearance → UI size).
+   *
+   * Product semantic steps (ratios vs UI base, original 13px-body design):
+   *   text-2xs     ~10/13 — micro labels, keyboard hints
+   *   text-meta    ~11/13 — timestamps, badges, dense list metadata
+   *   text-body    1×     — default body / list rows / form labels
+   *   text-display ~15/13 — card headings, prominent body
+   *   text-title   ~19/13 — page / palette titles
+   *
+   * Tailwind steps: text-sm is pinned to the UI base (same as text-body) so
+   * shadcn's default text-sm matches list rows. Other steps keep the default
+   * Tailwind ladder relative to text-sm (xs:sm:base:lg:xl = 12:14:16:18:20).
+   */
+  /*
+   * Line heights are rounded to whole pixels instead of kept as ratios: at any
+   * UI size other than 13px a ratio yields a fractional line box (14px * 18/13
+   * = 19.38px), which makes every row height and offset fractional. Hover /
+   * selected fills then snap to device pixels row by row, so the visible gap
+   * between adjacent menu or list rows appears to shift as the pointer moves.
+   */
+  --text-2xs: calc(var(--app-ui-font-size) * 10 / 13);
+  --text-2xs--line-height: round(calc(var(--app-ui-font-size) * 14 / 13), 1px);
+  --text-meta: calc(var(--app-ui-font-size) * 11 / 13);
+  --text-meta--line-height: round(calc(var(--app-ui-font-size) * 16 / 13), 1px);
+  --text-body: var(--app-ui-font-size);
+  --text-body--line-height: round(calc(var(--app-ui-font-size) * 18 / 13), 1px);
+  --text-display: calc(var(--app-ui-font-size) * 15 / 13);
+  --text-display--line-height: round(
+    calc(var(--app-ui-font-size) * 22 / 13),
+    1px
+  );
+  --text-title: calc(var(--app-ui-font-size) * 19 / 13);
+  --text-title--line-height: round(
+    calc(var(--app-ui-font-size) * 26 / 13),
+    1px
+  );
+
+  /* Pivot: Appearance UI size / shadcn control text. */
+  --text-sm: var(--app-ui-font-size);
+  --text-sm--line-height: round(calc(var(--app-ui-font-size) * 18 / 13), 1px);
+  /* Default Tailwind ratios vs text-sm (12/14, 16/14, 18/14, 20/14). */
+  --text-xs: calc(var(--text-sm) * 12 / 14);
+  --text-base: calc(var(--text-sm) * 16 / 14);
+  --text-lg: calc(var(--text-sm) * 18 / 14);
+  --text-xl: calc(var(--text-sm) * 20 / 14);
+
+  /*
+   * Radius scale (single source of truth).
+   *
+   * Prefer semantic utilities in app code:
+   *   rounded-micro    2px  — checkbox, tooltip arrow tips, 1px chrome accents
+   *   rounded-dense    4px  — dense glyphs, kbd chips, tiny icon hit targets
+   *   rounded-control  6px  — buttons, inputs, list rows, menu items, triggers
+   *   rounded-card    12px  — cards, raised surfaces, select/menu popups
+   *   rounded-panel   14px  — dialogs, large panels
+   *   rounded-overlay 20px  — command palette, oversized floating shells
+   *   rounded-full           — avatars, dots, true pills only
+   *   rounded-none           — segmented seams / edge-flush chrome
+   *
+   * shadcn utilities (rounded-sm/md/lg/…) are pinned below so components/ui
+   * stay visually on this scale without editing those files. New app code
+   * must not introduce rounded-[Npx] or a second rem-multiplied scale.
+   */
+  --radius-micro: 2px;
+  --radius-dense: 4px;
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-panel: 14px;
+  --radius-overlay: 20px;
+
+  /* Pin Tailwind/shadcn radius steps → semantic tokens. */
+  --radius-sm: var(--radius-dense);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-card);
+  --radius-2xl: var(--radius-panel);
+  --radius-3xl: var(--radius-overlay);
+  --radius-4xl: var(--radius-overlay);
+
+  /*
+   * Semantic surface tokens that are not part of the chat / sidebar / editor groups.
+   */
+  --color-control-thumb: var(--control-thumb);
+}

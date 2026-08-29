@@ -1,0 +1,72 @@
+/* Streamdown integration layer.
+ * Streamdown ships compiled JS with Tailwind utility classes, so register the
+ * compiled files for Tailwind's content scanner. Paths are relative to this CSS
+ * file: apps/desktop/src/styles -> apps/desktop/node_modules. */
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+@source "../../node_modules/@streamdown/mermaid/dist/*.js";
+@source "../../node_modules/@streamdown/math/dist/*.js";
+@source "../../node_modules/@streamdown/cjk/dist/*.js";
+
+[data-streamdown="code-block"] {
+  position: relative;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--chat-border-soft);
+  border-radius: var(--radius-card);
+  background: var(--chat-code-block);
+  padding: 0;
+}
+
+[data-streamdown="code-block-header"] {
+  height: 28px;
+  padding: 0 10px;
+  font-size: calc(var(--app-ui-font-size, 13px) * 11 / 13);
+  color: var(--chat-fg-muted);
+}
+
+[data-streamdown="code-block-header"] > span {
+  margin-left: 0;
+}
+
+[data-streamdown="code-block-header"]
+  + div:has([data-streamdown="code-block-actions"]) {
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-end: 8px;
+  z-index: 10;
+  margin-top: 0;
+  height: 22px;
+  pointer-events: none;
+}
+
+[data-streamdown="code-block-actions"] {
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+[data-streamdown="code-block-actions"] > button {
+  height: 22px;
+  width: 22px;
+  border-radius: 6px;
+}
+
+[data-streamdown="code-block-body"] {
+  border: 0;
+  border-top: 1px solid var(--chat-border-soft);
+  border-radius: 0;
+  background: var(--chat-code-panel);
+  padding: 16px 18px;
+}
+
+/* Streamdown bug workaround: when lineNumbers={false} the per-line <span>
+ * wrapper inside the Shiki code body has no className at all, so each line
+ * defaults to display:inline and the whole code block collapses onto a
+ * single visual line. Force the line wrappers to behave as blocks. Targets
+ * only the direct line spans, not the inner token spans. */
+[data-streamdown="code-block-body"] > pre > code > span {
+  display: block;
+}
