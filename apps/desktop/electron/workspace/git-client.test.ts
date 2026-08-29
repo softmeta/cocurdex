@@ -37,7 +37,9 @@ afterEach(async () => {
     temporaryDirectories.splice(0).map((directory) =>
       rm(directory, {
         force: true,
+        maxRetries: 5,
         recursive: true,
+        retryDelay: 100,
       }),
     ),
   );
