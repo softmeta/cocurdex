@@ -1,0 +1,172 @@
+/* Tiptap content styles for shared Markdown body editors (notes, issue body).
+ *
+ * Tiptap is headless — it ships no content CSS. Tailwind v4 Preflight strips
+ * list markers (`ol, ul { list-style: none; margin: 0; padding: 0 }`) and
+ * flattens headings, blockquotes, etc. to plain body text. Without these
+ * rules, slash-command blocks (bullet list, ordered list, heading, blockquote,
+ * code block, hr) render as unstyled paragraphs.
+ *
+ * Scoped to `.md-body-prose`, the class set on the Tiptap content container via
+ * `editorProps.attributes.class`. Uses project design tokens so light/dark
+ * themes and RTL direction work for free.
+ *
+ * Reference: https://tiptap.dev/docs/editor/getting-started/style-editor
+ */
+
+.md-body-prose {
+  color: var(--editor-text);
+  font-size: var(--text-body);
+  line-height: 1.7;
+}
+
+/* Paragraphs */
+.md-body-prose p {
+  margin: 0.6em 0;
+}
+
+/* Headings */
+.md-body-prose h1 {
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1.4em 0 0.5em;
+}
+.md-body-prose h2 {
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.2em 0 0.4em;
+}
+.md-body-prose h3 {
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1em 0 0.35em;
+}
+
+/* Lists — restore markers and indentation that Preflight stripped.
+ * Marker position uses logical `inside` so the bullet/number stays with the
+ * text under RTL without needing a separate rule. */
+.md-body-prose ul {
+  list-style-type: disc;
+  padding-inline-start: 1.5rem;
+  margin: 0.6em 0;
+}
+.md-body-prose ul ul {
+  list-style-type: circle;
+}
+.md-body-prose ul ul ul {
+  list-style-type: square;
+}
+
+.md-body-prose ol {
+  list-style-type: decimal;
+  padding-inline-start: 1.5rem;
+  margin: 0.6em 0;
+}
+.md-body-prose ol ol {
+  list-style-type: lower-alpha;
+}
+.md-body-prose ol ol ol {
+  list-style-type: lower-roman;
+}
+
+.md-body-prose li {
+  margin: 0.15em 0;
+}
+.md-body-prose li p {
+  margin: 0;
+}
+
+/* Task list — Tiptap renders `ul[data-type="taskList"]` with checkbox labels. */
+.md-body-prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-inline-start: 0.25rem;
+  margin: 0.6em 0;
+}
+.md-body-prose ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.25em 0;
+}
+.md-body-prose ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+.md-body-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--primary);
+}
+.md-body-prose ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.md-body-prose ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+/* Blockquote */
+.md-body-prose blockquote {
+  border-inline-start: 3px solid var(--editor-border);
+  padding-inline-start: 1rem;
+  margin: 0.8em 0;
+  color: var(--editor-text-muted);
+  font-style: italic;
+}
+
+/* Code block */
+.md-body-prose pre {
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: var(--app-code-font-size);
+  line-height: 1.6;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-card);
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
+
+/* Inline code */
+.md-body-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--muted);
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-control);
+}
+
+/* Reset inline-code styling for code inside a pre block. */
+.md-body-prose pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Horizontal rule */
+.md-body-prose hr {
+  border: none;
+  border-top: 1px solid var(--editor-border);
+  margin: 1.2em 0;
+}
+
+/* Links — StarterKit v3 bundles link; openOnClick is disabled in extensions.ts. */
+.md-body-prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Placeholder — Tiptap's Placeholder extension adds `is-editor-empty`/`is-empty`
+ * and reads `data-placeholder`. */
+.md-body-prose p.is-editor-empty:first-child::before,
+.md-body-prose p.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+  float: inline-start;
+  height: 0;
+}

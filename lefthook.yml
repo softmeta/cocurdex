@@ -1,0 +1,35 @@
+# Lefthook config — runs project checks before commits.
+# Install hooks once with `pnpm exec lefthook install` (or run via `pnpm lefthook install`).
+# Skip with `LEFTHOOK=0 git commit ...` only when truly needed.
+
+no_tty: true
+
+pre-commit:
+  jobs:
+    # Biome runs first and on its own: `stage_fixed` rewrites and re-stages the
+    # formatted files, which would race with any job reading the same paths.
+    - name: biome
+      # Format + lint only the staged JS/TS/JSON files so the hook stays fast.
+      glob: "*.{ts,tsx,js,jsx,json,jsonc}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    # Remaining checks are read-only, so run them in parallel after Biome.
+    - group:
+        parallel: true
+        jobs:
+          - name: design-tokens
+            # Repo-wide scan is cheap (regex over .ts/.tsx); always run so
+            # violations cannot slip in via an unrelated file edit.
+            run: pnpm lint:design-tokens
+          - name: theme-parity
+            glob: "apps/desktop/src/styles/theme-tokens.css"
+            run: pnpm lint:theme-parity
+    # TypeScript is slower than the targeted checks above, so keep it last.
+    - group:
+        parallel: true
+        jobs:
+          - name: typecheck
+            glob: "{apps/desktop/src/**/*.{ts,tsx},apps/desktop/*.config.ts,apps/desktop/tsconfig*.json,apps/desktop/package.json,packages/*/src/**/*.{ts,tsx},packages/*/package.json,packages/*/tsconfig*.json}"
+            # `typecheck` runs `tsc --noEmit --incremental`, caching the program
+            # graph in .tsbuildinfo so repeat commits only re-check touched files.
+            run: pnpm --filter @cocurdex/desktop typecheck

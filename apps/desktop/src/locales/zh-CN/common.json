@@ -1,0 +1,68 @@
+{
+  "actions": {
+    "attach": "添加附件",
+    "attachFile": "添加文件",
+    "back": "返回",
+    "close": "关闭",
+    "closeFile": "关闭文件",
+    "closeSearch": "关闭搜索",
+    "copyCode": "复制代码",
+    "decrease": "减少",
+    "increase": "增加",
+    "send": "发送",
+    "stop": "停止"
+  },
+  "agentDescriptions": {
+    "claudeCli": "使用本机已安装并登录的 Claude Agent",
+    "claudeCode": "仅使用 cocurdex Provider 的 Anthropic Messages 模型",
+    "codex": "快速代码生成",
+    "grokBuild": "通过 ACP 接入 Grok agent 运行时",
+    "opencode": "开源替代方案",
+    "pi": "内置 agent"
+  },
+  "agents": {
+    "claudeCli": "Claude Agent",
+    "codex": "Codex",
+    "grokBuild": "Grok Build",
+    "opencode": "OpenCode",
+    "pi": "Pi"
+  },
+  "jumpToLatest": "跳到最新消息",
+  "jumpToTop": "跳到顶部",
+  "permissions": {
+    "allowed": "",
+    "denied": "",
+    "pending": ""
+  },
+  "relativeTime": {
+    "lastActiveDays_one": "上次活动于 {{count}} 天前",
+    "lastActiveDays_other": "上次活动于 {{count}} 天前",
+    "lastActiveHours_one": "上次活动于 {{count}} 小时前",
+    "lastActiveHours_other": "上次活动于 {{count}} 小时前",
+    "lastActiveMinutes_one": "上次活动于 {{count}} 分钟前",
+    "lastActiveMinutes_other": "上次活动于 {{count}} 分钟前",
+    "lastActiveMonths_one": "上次活动于 {{count}} 个月前",
+    "lastActiveMonths_other": "上次活动于 {{count}} 个月前",
+    "lastActiveNow": "刚刚活跃",
+    "lastActiveYears_one": "上次活动于 {{count}} 年前",
+    "lastActiveYears_other": "上次活动于 {{count}} 年前"
+  },
+  "states": {
+    "gitEmptyBranchDescription": "",
+    "gitEmptyBranchTitle": "",
+    "gitEmptyCommitDescription": "",
+    "gitEmptyCommitTitle": "",
+    "gitEmptyDescription": "",
+    "gitEmptyStagedDescription": "",
+    "gitEmptyStagedTitle": "",
+    "gitEmptyTitle": "",
+    "gitEmptyUnstagedDescription": "",
+    "gitEmptyUnstagedTitle": "",
+    "gitErrorDescription": "",
+    "gitErrorTitle": "",
+    "gitFilterEmptyDescription": "",
+    "gitFilterEmptyTitle": "",
+    "gitNotRepoDescription": "",
+    "gitNotRepoTitle": ""
+  }
+}

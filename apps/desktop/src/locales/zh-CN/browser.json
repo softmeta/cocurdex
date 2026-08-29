@@ -1,0 +1,29 @@
+{
+  "actions": {
+    "back": "后退",
+    "captureScreenshot": "截图",
+    "clearAnnotations": "清除全部标注",
+    "enterDesignMode": "进入设计模式",
+    "exitDesignMode": "退出设计模式",
+    "forward": "前进",
+    "reload": "重新加载",
+    "removeAnnotation": "移除标注",
+    "stop": "停止加载"
+  },
+  "annotations": {
+    "element": "元素",
+    "region": "区域 {{width}}×{{height}}",
+    "title": "标注（{{count}}）",
+    "title_one": "标注（{{count}}）",
+    "title_other": "标注（{{count}}）"
+  },
+  "placeholder": {
+    "description": "在上方输入开发服务器 URL 来预览应用，并使用设计模式标注界面元素。",
+    "title": "浏览器预览"
+  },
+  "states": {
+    "loadError": "无法加载页面",
+    "loading": "正在加载..."
+  },
+  "urlPlaceholder": "输入开发服务器 URL（例如 http://localhost:3000）"
+}

@@ -1,0 +1,93 @@
+---
+title: Skills
+description: Install and use Cocurdex product skills (cocurdex-*) for notes, issues, PRDs, and shipping work.
+---
+
+**Product skills** teach agents how to work with Cocurdex notes, issues, and the product knowledge flow. Skill names are **namespaced** with the `cocurdex-` prefix so they do not clash with other global skills.
+
+Skills are **not auto-installed**. Install from **Settings → Skills** in the desktop app, or from the CLI.
+
+## Install
+
+```bash
+cocurdex skills list
+cocurdex skills status --scope project
+cocurdex skills install --scope project
+# or for your user-wide skills directory
+cocurdex skills install --scope global
+```
+
+| Scope | Meaning |
+| --- | --- |
+| `project` | Install under the project root (`--root` defaults to `cwd`) |
+| `global` | Install into the user global skills location |
+
+Managed installs write a marker file so Cocurdex can update or remove its own pack. If skills already exist **without** that marker, install reports a conflict — rename or remove the conflicting folders and retry.
+
+```bash
+cocurdex skills remove --scope project
+```
+
+## Skill catalog
+
+| Skill | Purpose |
+| --- | --- |
+| `cocurdex-ask` | Router: which `/cocurdex-*` skill to run |
+| `cocurdex-grill` | Interview to sharpen a plan before PRD/spec/issue |
+| `cocurdex-prd` | Draft a PRD as an app-owned note |
+| `cocurdex-spec` | Draft a technical spec as an app-owned note |
+| `cocurdex-note` | Free-form notes through the CLI |
+| `cocurdex-issue` | Canonical issue create / list / move / refine flows |
+| `cocurdex-todo` | Alias language for issues (“todo”) |
+| `cocurdex-ticket` | Alias language for issues (“ticket”) |
+| `cocurdex-link` | Link notes and issues via Markdown links / backlinks |
+| `cocurdex-ship` | Implement against a selected issue cleanly |
+| `cocurdex-layout` | Explain app-owned data boundaries and CLI access |
+
+`todo` and `ticket` are **language aliases** for the same issue pool — not separate trackers.
+
+## Recommended product flow
+
+```text
+/cocurdex-grill
+  → /cocurdex-prd
+  → /cocurdex-spec   (optional)
+  → /cocurdex-issue  (slice | create | refine | start)
+  → /cocurdex-ship
+```
+
+| Step | Skill | Writes |
+| --- | --- | --- |
+| Align | `/cocurdex-grill` | Conversation; optional domain docs if you ask |
+| Product reqs | `/cocurdex-prd` | Private notes (PRDs) by default |
+| Design | `/cocurdex-spec` | Private notes (specs) by default |
+| Free-form | `/cocurdex-note` | Private notes by default |
+| Board work | `/cocurdex-issue` | Issues via `cocurdex issue …` |
+| Implement | `/cocurdex-ship` | Code + issue status updates |
+
+## Privacy default
+
+PRDs, specs, notes, and issues are **private app-owned data** unless you explicitly request publishing into the workspace repository. Opening a project folder is **not** permission to dump product docs into `.cocurdex/` or Markdown trees.
+
+Issue structure (list / create / move / validate) always goes through:
+
+```bash
+cocurdex issue …
+```
+
+Skills must not invent issue ids or rewrite status by hand-editing files.
+
+## Using skills in a session
+
+1. Install the skill pack (project or global).  
+2. Start an agent session that can load skills from that location.  
+3. Invoke with the slash form your agent supports (for example `/cocurdex-issue`).  
+4. Prefer `/cocurdex-ask` when you are unsure which skill fits.
+
+Other non-product skills (`tdd`, code review, etc.) may still exist in your environment; product knowledge work should stay on the `cocurdex-*` set so data boundaries stay correct.
+
+## Related
+
+- [Notes and issues](/docs/notes-and-issues/)  
+- [CLI](/docs/cli/)  
+- [Workspaces and data](/docs/concepts/workspaces-and-data/)  

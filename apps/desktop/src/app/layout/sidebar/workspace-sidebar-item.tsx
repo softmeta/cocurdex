@@ -1,0 +1,137 @@
+import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
+import { Folder, FolderOpen, SquarePen, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  SidebarListRow,
+  SidebarListRowActions,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+} from "@/components/ui";
+import { SessionSidebarItem } from "./session-sidebar-item";
+import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
+
+interface WorkspaceSidebarItemProps {
+  activeConversationId: string | null;
+  activeWorkspaceId: string | null;
+  expanded: boolean;
+  optimisticActiveSessionId: string | null;
+  sessions: SessionRecord[];
+  workspace: WorkspaceRecord;
+  onCreateAgent(workspaceId: string): void;
+  onRemoveWorkspace(workspaceId: string): void;
+  onRevealWorkspace(rootPath: string): void;
+  onSelectSession(workspaceId: string, sessionId: string): void;
+  onToggleWorkspace(workspaceId: string): void;
+  onSelectWorkspace(workspaceId: string): void;
+}
+
+export function WorkspaceSidebarItem({
+  activeConversationId,
+  activeWorkspaceId,
+  expanded,
+  optimisticActiveSessionId,
+  sessions,
+  workspace,
+  onCreateAgent,
+  onRemoveWorkspace,
+  onRevealWorkspace,
+  onSelectSession,
+  onToggleWorkspace,
+  onSelectWorkspace,
+}: WorkspaceSidebarItemProps) {
+  const { t } = useTranslation("sessions");
+
+  return (
+    // gap-0.5 matches SidebarMenuSub session spacing so the workspace title
+    // hover/active fill does not sit flush against the first session row.
+    <SidebarMenuItem className="flex flex-col gap-0.5">
+      <ContextMenu>
+        {/* asChild: same stretch/truncate path as session leaf rows. */}
+        <ContextMenuTrigger asChild>
+          <SidebarListRow
+            isActive={activeWorkspaceId === workspace.id}
+            variant="subtle"
+            // px-1 matches SidebarGroupLabel so the folder glyph lines up with
+            // the section title; pe stays roomy enough for the hover action.
+            className="px-1"
+          >
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
+              onClick={() => {
+                onSelectWorkspace(workspace.id);
+                onToggleWorkspace(workspace.id);
+              }}
+            >
+              {expanded ? (
+                <FolderOpen className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
+              ) : (
+                <Folder className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
+              )}
+              <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+            </button>
+            <SidebarListRowActions visibility="hover">
+              <button
+                type="button"
+                aria-label={t("sidebar.newSessionInWorkspace", {
+                  workspaceName: workspace.name,
+                })}
+                className="flex size-5 items-center justify-center text-sidebar-fg-muted transition-colors hover:text-sidebar-fg"
+                onClick={() => onCreateAgent(workspace.id)}
+              >
+                <SquarePen className="size-3.5" />
+              </button>
+            </SidebarListRowActions>
+          </SidebarListRow>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="min-w-44">
+          <SidebarContextMenuItem
+            icon={FolderOpen}
+            onClick={() => onRevealWorkspace(workspace.rootPath)}
+          >
+            {t("sidebar.revealInFileManager", {
+              defaultValue: "Reveal in file manager",
+            })}
+          </SidebarContextMenuItem>
+          <ContextMenuSeparator />
+          <SidebarContextMenuItem
+            destructive
+            icon={Trash2}
+            onClick={() => onRemoveWorkspace(workspace.id)}
+          >
+            {t("sidebar.removeProject", { defaultValue: "Remove project" })}
+          </SidebarContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+      {expanded ? (
+        // No sub-tree gutter: session titles align with the workspace name
+        // (workspace row is ps-1 + size-3.5 icon + gap-1.5 → session ps-6).
+        <SidebarMenuSub className="ms-0 ps-0">
+          {sessions.length === 0 ? (
+            <div className="ps-6 pe-2 py-1 text-xs text-sidebar-fg-subtle">
+              {t("sidebar.noAgentsYet")}
+            </div>
+          ) : (
+            sessions.map((session) => (
+              <SidebarMenuSubItem key={session.id}>
+                <SessionSidebarItem
+                  isActive={
+                    activeConversationId === null &&
+                    session.id === optimisticActiveSessionId
+                  }
+                  onSelect={() => onSelectSession(workspace.id, session.id)}
+                  session={session}
+                />
+              </SidebarMenuSubItem>
+            ))
+          )}
+        </SidebarMenuSub>
+      ) : null}
+    </SidebarMenuItem>
+  );
+}

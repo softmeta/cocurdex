@@ -1,0 +1,87 @@
+{
+  "common": {
+    "back": "返回",
+    "cancel": "取消",
+    "save": "保存"
+  },
+  "composer": {
+    "attachImage": "添加图片",
+    "placeholder": "随便问点什么…",
+    "removeImage": "移除图片",
+    "send": "发送",
+    "stop": "停止"
+  },
+  "detail": {
+    "empty": {
+      "description": "在下方输入文字，Enter 发送。每个对话可单独配置网络搜索和系统提示词。",
+      "noProviderTitle": "配置模型服务商后即可开始",
+      "openProviderSettings": "打开服务商设置",
+      "title": "发条消息开始吧"
+    },
+    "openSystemPrompt": "编辑系统提示词",
+    "welcome": {
+      "cta": "新建对话",
+      "description": "用任意已配置的 provider 开启自由聊天，无需 workspace。",
+      "noProvider": "请先配置一个 provider",
+      "title": "纯对话"
+    }
+  },
+  "list": {
+    "archive": "归档",
+    "delete": "删除对话",
+    "empty": {
+      "description": "新建一个对话开始聊天。",
+      "title": "暂无对话"
+    },
+    "heading": "对话",
+    "new": "新建聊天",
+    "rename": "重命名",
+    "renameConversation": "重命名对话 {{title}}"
+  },
+  "message": {
+    "cancelEdit": "取消编辑",
+    "copy": "复制",
+    "edit": "编辑",
+    "error": "请求失败",
+    "imageAlt": "附图",
+    "regenerate": "重新生成",
+    "retry": "重试",
+    "submitEdit": "提交编辑"
+  },
+  "modelPicker": {
+    "noModels": "尚未配置任何模型",
+    "placeholder": "选择模型"
+  },
+  "presets": {
+    "assistant": {
+      "label": "通用助手"
+    },
+    "coder": {
+      "label": "编程助手"
+    },
+    "custom": "自定义",
+    "researcher": {
+      "label": "研究助手"
+    },
+    "translator": {
+      "label": "翻译助手"
+    }
+  },
+  "sidebar": {
+    "title": "聊天"
+  },
+  "sources": {
+    "heading": "引用来源",
+    "heading_other": ""
+  },
+  "systemPrompt": {
+    "description": "选择内置角色或自定义系统提示词，将作用于此对话之后所有回合。",
+    "placeholder": "可选的系统提示词…",
+    "title": "系统提示词"
+  },
+  "webSearch": {
+    "label": "网络搜索",
+    "tooltip": "为当前对话开启或关闭网络搜索",
+    "unsupported": "此 provider 不支持网络搜索"
+  }
+}

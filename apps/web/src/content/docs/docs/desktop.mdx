@@ -1,0 +1,83 @@
+---
+title: Desktop workspace
+description: How the Cocurdex desktop shell organizes sessions, chat, terminal, editor, browser preview, and keyboard shortcuts.
+---
+
+Cocurdex ships as a **native desktop app** (Electron). The goal is a single workspace for multi-agent coding — not a thin browser wrapper around one chat thread.
+
+## Surfaces
+
+Typical peers in the shell:
+
+| Surface | Role |
+| --- | --- |
+| **Sessions** | Track parallel agent runs and which one needs attention |
+| **Chat** | Steer the active agent; one pane among several |
+| **Terminal** | Integrated PTY for commands and agent-driven shell work |
+| **Editor** | Inspect and edit project files without leaving the app |
+| **Browser preview** | Review UI with optional design-mode annotation |
+| **Notes / issues** | App-owned product data (see [Notes and issues](/docs/notes-and-issues/)) |
+
+Exact layout can change during pre-release; the product model stays multi-pane. No single pane should monopolize the product — chat is a peer, not the whole app.
+
+## Sessions and attention
+
+You can run **more than one** session without merging transcripts. The shell derives a **primary state** so you can scan who needs you:
+
+| Kind | Examples | What to do |
+| --- | --- | --- |
+| Needs you | Pending approval, awaiting input, plan ready | Open the session and resolve the permission, question, or plan |
+| Busy | Working, connecting, monitoring | Wait or steer if the runtime supports it |
+| Result | Completed / unread | Review output, then mark settled by visiting or continuing |
+| Idle | Ready | Available for a new prompt |
+
+Underlying session status values include `idle`, `running`, `error`, and `exited`. UI copy stays neutral (“Thinking”, “Using tools”, “Ready for follow-up”) rather than anthropomorphic flourish.
+
+## Collaboration and write modes
+
+Per session (when the agent supports it):
+
+| Control | Meaning |
+| --- | --- |
+| **Collaboration mode** | `default` for normal work; `plan` when the runtime supports a plan-first loop |
+| **Write mode** | `read-only` vs `native-write` — whether the agent may change the workspace through its normal tools |
+| **Permission mode** | How eagerly the agent auto-approves tools (agent-specific; see [Agents](/docs/agents/)) |
+
+Prefer the narrowest mode that still completes the task.
+
+## Keyboard shortcuts
+
+Defaults are VS Code / Cursor-adjacent where that helps muscle memory. **Primary** means ⌘ on macOS and Ctrl on Windows/Linux. Customize under **Settings → Shortcuts**.
+
+| Action | Default |
+| --- | --- |
+| File / quick open search | `Primary+P` |
+| Toggle left sidebar | `Primary+B` |
+| Toggle right panel | `Primary+\` |
+| Toggle editor fullscreen | `Primary+Shift+E` |
+| Toggle chat dock | `Primary+J` |
+| Toggle workspace search | `Primary+Shift+F` |
+| Toggle browser design mode | `Primary+Shift+D` |
+
+Send-key behavior for chat (Enter vs Primary+Enter for multiline) is configurable in settings.
+
+## Themes
+
+Dark and light are both first-class. Prefer **system appearance** unless you pin a theme in settings. Theme parity is a product requirement, not a fallback afterthought.
+
+## Browser design mode
+
+When reviewing UI in the preview pane, design mode supports annotation-style review so feedback stays attached to the surface you are looking at. Toggle with the default shortcut above, or from the browser chrome.
+
+## What desktop owns
+
+Local product data (notes, issues, views, tags, links, search indexes, and related state) is written through the desktop **daemon** into app-owned storage. The public website and future team console do not replace that path for on-device work.
+
+See [Workspaces and data](/docs/concepts/workspaces-and-data/).
+
+## Related
+
+- [Getting started](/docs/getting-started/)  
+- [Agents](/docs/agents/)  
+- [Notes and issues](/docs/notes-and-issues/)  
+- [CLI](/docs/cli/)  

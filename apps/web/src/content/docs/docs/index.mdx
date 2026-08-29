@@ -1,0 +1,43 @@
+---
+title: Cocurdex documentation
+description: Product docs for the Cocurdex multi-agent desktop workspace, CLI, agents, notes, and issues.
+---
+
+Cocurdex is a **desktop-first multi-agent development workspace**. It puts chat, integrated terminal, editor, and browser preview in one shell so you can run several AI agents without losing track of which session needs attention.
+
+This site is **user-facing product documentation**. Engineering ADRs, plans, and research notes live in the monorepo `docs/` tree and are not published here by default.
+
+## Start here
+
+| Goal | Page |
+| --- | --- |
+| Install and open a first session | [Getting started](/docs/getting-started/) |
+| Understand the multi-pane shell | [Desktop workspace](/docs/desktop/) |
+| Notes, issues, and the board | [Notes and issues](/docs/notes-and-issues/) |
+| Agent runtimes and permissions | [Agents](/docs/agents/) |
+| Product skills for agents | [Skills](/docs/skills/) |
+| Multi-step plan → implement → review | [Workflows](/docs/workflows/) |
+| Script notes, issues, sessions | [CLI](/docs/cli/) |
+| What is stored locally and why | [Workspaces and data](/docs/concepts/workspaces-and-data/) |
+
+## Mental model
+
+Cocurdex is built around a few durable ideas:
+
+1. **Workspace, not chat window** — sessions, chat, terminal, editor, and browser preview are peers. The transcript is one pane among several.
+2. **Parallel sessions** — run more than one agent without merging them into a single conversation history.
+3. **Honest state** — status stays specific: thinking, using tools, waiting for you, unread result.
+4. **Local-first product data** — notes and issues live in app-owned storage on your machine. The CLI is the supported external boundary; the SQLite file is not a public API.
+5. **Desktop writes, cloud later** — a future team console may project selected org-scoped data. On-device work still goes through the desktop daemon.
+
+## What you get
+
+| Surface | Role |
+| --- | --- |
+| **Desktop app** | Primary place to run agents, edit files, preview UI, and manage notes/issues |
+| **CLI (`cocurdex`)** | Open folders, manage notes/issues/search/skills, drive sessions and workflows without opening SQLite yourself |
+| **Product skills** | Optional agent skills (`cocurdex-*`) for PRD → issue → ship style work against app-owned data |
+
+## Pre-release
+
+APIs, installers, and docs are still moving. Prefer current pages on this site over third-party writeups. Platform priority during pre-release: **macOS first**, then Windows, then Linux.

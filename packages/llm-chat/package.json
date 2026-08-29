@@ -1,0 +1,24 @@
+{
+  "name": "@cocurdex/llm-chat",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/google": "^3.0.75",
+    "@ai-sdk/openai": "^3.0.64",
+    "@ai-sdk/openai-compatible": "^2.0.47",
+    "@cocurdex/shared": "workspace:*",
+    "ai": "^6.0.185"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "vitest": "^3.2.4"
+  }
+}

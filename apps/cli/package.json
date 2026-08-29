@@ -1,0 +1,26 @@
+{
+  "name": "@cocurdex/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "cocurdex": "bin/cocurdex.mjs"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --import tsx src/index.ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@cocurdex/daemon": "workspace:*",
+    "@cocurdex/product-skills": "workspace:*",
+    "@cocurdex/rpc": "workspace:*",
+    "@cocurdex/shared": "workspace:*",
+    "@earendil-works/pi-tui": "^0.84.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.8.1",
+    "vitest": "^3.2.4"
+  }
+}

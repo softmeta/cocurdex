@@ -1,0 +1,93 @@
+---
+title: Workflows
+description: Daemon-owned multi-step workflows (plan, implement, review) driven from the CLI or desktop.
+---
+
+**Workflows** are multi-step, daemon-owned runs that coordinate several agent roles — typically plan → implement → review — with explicit gates where you approve or reject.
+
+They are separate from any single provider’s internal “plan mode.” A workflow has its own run id, step list, and status machine.
+
+## When to use a workflow
+
+| Use a workflow when… | Prefer a single session when… |
+| --- | --- |
+| You want structured planner / implementer / reviewer roles | The task is one short loop |
+| You want an explicit approval gate before implementation continues | You will steer one agent yourself |
+| You want CLI/`tui` supervision of a long multi-agent run | You only need chat + tools in one pane |
+
+## Default roles
+
+| Role | Default agent | Permission profile |
+| --- | --- | --- |
+| Planner | `codex` | read-only style profile |
+| Implementer | `grok-build` | workspace write |
+| Reviewer | `codex` | read-only style profile |
+
+Override with flags:
+
+```bash
+cocurdex workflow create \
+  --workspace /path/to/project \
+  --prompt "Add signed download links for macOS" \
+  --planner codex \
+  --implementer grok-build \
+  --reviewer codex
+```
+
+Optional model overrides: `--planner-model`, `--implementer-model`, `--reviewer-model`.
+
+## Commands
+
+```bash
+# Create a run (does not always auto-start — use start or tui)
+cocurdex workflow create --workspace <id|path> --prompt "<goal>"
+
+# List runs
+cocurdex workflow list
+
+# Inspect
+cocurdex workflow show <run-id>
+
+# Start / gate / cancel
+cocurdex workflow start <run-id>
+cocurdex workflow approve <run-id> [--reason "..."]
+cocurdex workflow reject <run-id> [--reason "..."]
+cocurdex workflow cancel <run-id>
+```
+
+### Interactive TUI
+
+```bash
+# Latest run, or create+start with flags
+cocurdex workflow tui
+cocurdex workflow tui <run-id>
+cocurdex workflow tui --workspace . --prompt "..."
+```
+
+The workflow TUI does not support `--json`. Use it to watch steps, decide gates, and cancel.
+
+## Lifecycle (operator view)
+
+1. **Create** a run with workspace + prompt and role bindings.  
+2. **Start** the run (or use `workflow tui` with create flags).  
+3. Watch steps transition (planner → gate → implementer → reviewer, depending on definition).  
+4. When a **gate** needs you, **approve** or **reject** with optional reason.  
+5. **Cancel** if the goal changed or the run is stuck.
+
+Exact step ids depend on the workflow definition version. Prefer `workflow show` / TUI over hard-coding step names in scripts unless you pin a known definition.
+
+## Relation to sessions
+
+- Workflows **orchestrate** multiple agent executions under the daemon.  
+- Regular **sessions** are still the unit of a single agent conversation in the desktop shell.  
+- You can keep using parallel sessions for ad-hoc work while a workflow runs a more formal pipeline.
+
+## Relation to product skills
+
+Skills such as `/cocurdex-ship` help an agent implement against an **issue**. Workflows are a **daemon-level** multi-agent pipeline. Use both when it helps: skills for product knowledge discipline, workflows for multi-role execution.
+
+## Related
+
+- [Agents](/docs/agents/)  
+- [CLI](/docs/cli/)  
+- [Desktop workspace](/docs/desktop/)  

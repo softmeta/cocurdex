@@ -1,0 +1,569 @@
+{
+  "adapters": {
+    "action": {
+      "copyCommand": "Copy command",
+      "copyPath": "Copy path",
+      "docs": "Docs",
+      "refresh": "Refresh"
+    },
+    "badge": {
+      "builtin": "Built in",
+      "updateRequired": "Update required"
+    },
+    "description": "cocurdex runs these agent CLIs on this machine. Install or update the ones you want to pick for new sessions.",
+    "kind": {
+      "builtin": "Built-in",
+      "detecting": "Checking…",
+      "error": "Failed",
+      "missing": "Not installed",
+      "outdated": "Update required",
+      "ready": "Ready"
+    },
+    "status": {
+      "builtin": "Built in — ships with cocurdex, nothing to install.",
+      "detecting": "Checking installation…",
+      "error": "Detection failed.",
+      "missing": "Not installed — `{{executable}}` was not found on PATH.",
+      "outdated": "Installed {{installed}} is below the required {{minimum}}.",
+      "outdatedHint": "Still usable. Some capabilities may not work until you update.",
+      "ready": "Installed and ready."
+    },
+    "toast": {
+      "commandCopied": "Install command copied",
+      "pathCopied": "Path copied",
+      "refreshFailed": "Could not refresh adapters"
+    }
+  },
+  "appearance": {
+    "groupTitle": "Appearance",
+    "modes": {
+      "dark": "Dark",
+      "light": "Light",
+      "system": "System"
+    },
+    "preset": {
+      "description": "Color palette applied to both light and dark modes. cocurdex is the default product look.",
+      "empty": "No themes found",
+      "searchPlaceholder": "Search themes...",
+      "title": "Color theme"
+    },
+    "theme": {
+      "description": "Choose between light, dark, or system themes.",
+      "title": "Theme"
+    },
+    "typography": {
+      "codeFontFamily": {
+        "description": "Font used in code editors and diffs.",
+        "system": "System monospace",
+        "title": "Code font family"
+      },
+      "codeFontSize": {
+        "description": "Font size for code editors and diffs.",
+        "title": "Code font size"
+      },
+      "fontEmpty": "No fonts found",
+      "fontSearchPlaceholder": "Search fonts...",
+      "groupTitle": "Typography",
+      "uiFontFamily": {
+        "description": "Font used across the application interface.",
+        "system": "System font",
+        "title": "UI font family"
+      },
+      "uiFontSize": {
+        "description": "Base font size for the application interface.",
+        "title": "UI font size"
+      }
+    }
+  },
+  "chatDisplay": {
+    "activity": {
+      "description": "How reasoning and tool calls show up before each answer. Collapsed per turn by default; expand for details.",
+      "options": {
+        "condensed": "Collapse by turn",
+        "expanded": "Expand everything",
+        "hidden": "Hide completely"
+      },
+      "title": "Process display"
+    },
+    "groupTitle": "Conversation display",
+    "hideFab": {
+      "description": "When chat is closed in floating or pinned layout, hide the bottom-right button. Open chat again with {{shortcut}}.",
+      "title": "Hide chat button when closed"
+    },
+    "layout": {
+      "description": "How chat sits relative to the editor. Restored on next launch.",
+      "options": {
+        "center": "Center column",
+        "float": "Floating dock",
+        "pinned": "Pinned right rail"
+      },
+      "title": "Chat layout"
+    }
+  },
+  "cli": {
+    "actions": {
+      "install": "Install",
+      "refresh": "Refresh",
+      "reinstall": "Repair",
+      "uninstall": "Uninstall"
+    },
+    "description": "Install the cocurdex command so terminals and agents can call the CLI.",
+    "groupTitle": "Command line",
+    "loading": "Checking CLI install…",
+    "status": {
+      "foreignInstall": "Another cocurdex command exists at {{path}}. Repair to point it at this app.",
+      "installedNotOnPath": "Installed at {{path}}, but that folder is not on PATH. Open a new terminal or add it to PATH.",
+      "notInstalled": "The cocurdex command is not installed for this user.",
+      "ready": "Ready. Terminals can run cocurdex ({{path}})."
+    },
+    "title": "Shell command",
+    "toast": {
+      "installed": "cocurdex command installed",
+      "installFailed": "Could not install the cocurdex command",
+      "uninstalled": "cocurdex command removed",
+      "uninstallFailed": "Could not uninstall the cocurdex command"
+    }
+  },
+  "daemon": {
+    "actions": {
+      "refresh": "Check status",
+      "restart": "Restart",
+      "start": "Start"
+    },
+    "description": "The local cocurdex daemon holds the app database and agent sessions. Restart it if notes, issues, or agents stop responding.",
+    "details": {
+      "protocol": "Protocol version {{version}}",
+      "runtime": "Runtime {{fingerprint}}",
+      "socket": "Socket {{path}}",
+      "startedAt": "Started {{value}}"
+    },
+    "groupTitle": "Daemon",
+    "loading": "Checking daemon status…",
+    "status": {
+      "outdated": "Running (pid {{pid}}), but the runtime does not match this app. Restart to replace it.",
+      "running": "Running (pid {{pid}}).",
+      "runningOwned": "Running (pid {{pid}}), managed by this app.",
+      "stopped": "Not running. Start or restart to bring it back."
+    },
+    "title": "Local daemon",
+    "toast": {
+      "restarted": "Daemon restarted",
+      "restartFailed": "Could not restart the daemon"
+    }
+  },
+  "followUp": {
+    "description": "Queue follow-ups until the current run finishes, or steer an active run when supported. Press {{shortcut}} to use the opposite behavior for one message.",
+    "groupTitle": "Agent behavior",
+    "options": {
+      "queue": "Queue",
+      "steer": "Steer"
+    },
+    "title": "Follow-up behavior"
+  },
+  "git": {
+    "commitMessageModel": {
+      "agentDescription": "Filters models to those compatible with this agent. Generation is a one-shot call — no chat session is created.",
+      "agentLabel": "Agent",
+      "footnote": "When the commit message is left blank, the selected model generates a Conventional Commits subject from the staged changes. If no model is set, you must type a message yourself.",
+      "group": "Commit messages",
+      "modelDescription": "Model used for one-shot commit message generation.",
+      "modelLabel": "Model",
+      "noModels": "No compatible models",
+      "none": "None (type message manually)",
+      "saveFailed": "Failed to update commit message model"
+    }
+  },
+  "groups": {
+    "advanced": "Other",
+    "core": "Basic",
+    "workspace": "Workflow"
+  },
+  "language": {
+    "description": "Choose the interface language used by product UI.",
+    "empty": "No languages found",
+    "groupTitle": "Language",
+    "modes": {
+      "system": "System"
+    },
+    "searchPlaceholder": "Search languages...",
+    "title": "Interface language"
+  },
+  "mcp": {
+    "description": "Configure the MCP servers available to the built-in Pi agent. Servers connect only when Pi uses one of their tools.",
+    "editorLabel": "MCP server configuration",
+    "form": {
+      "add": "Add server",
+      "arguments": "Arguments",
+      "argumentsDescription": "Enter one argument per line.",
+      "argumentsPlaceholder": "-y\npackage-name",
+      "command": "Command",
+      "commandPlaceholder": "npx",
+      "emptyDescription": "Add a local command or remote endpoint to make its tools available to Pi.",
+      "emptyTitle": "No MCP servers configured",
+      "environment": "Environment variables",
+      "environmentDescription": "Enter one KEY=value pair per line.",
+      "environmentPlaceholder": "API_KEY=${API_KEY}",
+      "local": "Local",
+      "name": "Server name",
+      "namePlaceholder": "github",
+      "remote": "Remote",
+      "remove": "Remove server",
+      "servers": "Servers",
+      "transport": "Connection",
+      "url": "Server URL",
+      "urlPlaceholder": "https://example.com/mcp"
+    },
+    "mode": {
+      "form": "Form",
+      "json": "JSON",
+      "label": "Configuration mode"
+    },
+    "restartHint": "Changes apply when a Pi session starts. Existing running sessions keep their current tools.",
+    "save": "Save",
+    "saved": "MCP configuration saved",
+    "saving": "Saving",
+    "title": "MCP"
+  },
+  "network": {
+    "proxy": {
+      "allProxy": {
+        "description": "Optional catch-all proxy (ALL_PROXY), for example socks5://127.0.0.1:1080. Agent CLIs may use this when HTTP/HTTPS proxies are unset.",
+        "placeholder": "socks5://127.0.0.1:1080",
+        "title": "All / SOCKS proxy"
+      },
+      "credentialsNote": "Proxy URLs are stored as plain text in app settings and are passed to Agent subprocesses. Avoid embedding credentials you would not want a spawned CLI to read.",
+      "groupTitle": "Network proxy",
+      "httpProxy": {
+        "description": "HTTP proxy URL. Example: http://127.0.0.1:7890 or http://user:pass@host:port.",
+        "placeholder": "http://127.0.0.1:7890",
+        "title": "HTTP proxy"
+      },
+      "httpsProxy": {
+        "description": "HTTPS proxy URL. Leave empty to reuse the HTTP proxy.",
+        "placeholder": "Same as HTTP proxy",
+        "title": "HTTPS proxy"
+      },
+      "invalidUrl": "{{field}} must be a full URL with a scheme, e.g. http://127.0.0.1:7890",
+      "loading": "Loading proxy settings…",
+      "manualGroupTitle": "Manual proxy",
+      "manualIncomplete": "Manual mode is selected but no proxy address is set, so traffic still goes direct.",
+      "modes": {
+        "manual": "Manual",
+        "off": "Off",
+        "system": "System / environment"
+      },
+      "modeTitle": "Proxy mode",
+      "noProxy": {
+        "description": "Comma-separated hosts that bypass the proxy. Localhost is recommended so app IPC stays direct.",
+        "placeholder": "localhost,127.0.0.1,::1,.local",
+        "title": "Bypass list (NO_PROXY)"
+      },
+      "notesBody": "Applies to Agent subprocesses (including ACP), app and daemon model/API requests, and Chromium network traffic. Does not change your system proxy or force the integrated terminal to use these settings. Restart an active agent session after changing proxy settings so the new environment is picked up.",
+      "notesGroupTitle": "Scope",
+      "saveFailed": "Failed to save proxy settings",
+      "scopeDescription": "Used for Agents and app outbound network requests. Does not hijack the system proxy or the integrated terminal by default.",
+      "status": {
+        "checking": "Checking connectivity…",
+        "idle": "Hover to check connectivity",
+        "label": "Proxy status",
+        "offDetail": "Outbound traffic is direct; no app proxy is applied.",
+        "openSettings": "Open network settings"
+      },
+      "test": {
+        "action": "Test",
+        "description": "Sends one request to ipinfo.io through the app's outbound path and reports the egress address, so you can tell whether the proxy is really in use.",
+        "failure": "Failed: {{error}}",
+        "success": "Reachable in {{durationMs}} ms — egress IP {{ip}}",
+        "title": "Test connectivity",
+        "unknownIp": "unknown"
+      }
+    }
+  },
+  "notifications": {
+    "completed": {
+      "body": "An agent run has completed.",
+      "title": "Agent finished"
+    },
+    "completionSound": {
+      "description": "Play a sound when an agent finishes responding.",
+      "title": "Completion sound"
+    },
+    "groupTitle": "Notifications",
+    "permission": {
+      "body": "An agent is waiting for permission approval.",
+      "title": "Approval needed"
+    },
+    "question": {
+      "body": "An agent is waiting for your answer.",
+      "title": "Agent needs input"
+    },
+    "systemNotifications": {
+      "description": "Show a system notification when an agent finishes or needs your attention.",
+      "title": "System notifications"
+    }
+  },
+  "placeholder": {
+    "description": "This group is reserved as a placeholder. Add concrete fields and interactions after the information architecture is settled.",
+    "title": "{{section}} placeholder"
+  },
+  "providers": {
+    "actions": {
+      "add": "Add",
+      "clearKey": "Clear key",
+      "delete": "Delete",
+      "importJson": "Import JSON",
+      "newProvider": "New provider",
+      "refresh": "Refresh",
+      "save": "Save"
+    },
+    "deleteConfirm": {
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "description": "Delete {{provider}} and all of its models? This cannot be undone.",
+      "title": "Delete provider"
+    },
+    "details": {
+      "title": "Provider details"
+    },
+    "empty": {
+      "noMatches": "No matching providers"
+    },
+    "fields": {
+      "baseUrl": "Base URL",
+      "capabilities": "Capabilities",
+      "capability": {
+        "agent": "Agent",
+        "chat": "Chat",
+        "reasoning": "Reasoning",
+        "vision": "Vision"
+      },
+      "contextLimit": "Context",
+      "costJson": "Cost JSON, e.g. {\"input\":3,\"output\":15}",
+      "displayName": "Display name",
+      "headersJson": "Custom headers JSON, e.g. {\"x-api-version\":\"1\"}",
+      "modelCompatJson": "Model compatibility JSON",
+      "modelId": "Model ID",
+      "modelRuntime": "Model runtime",
+      "newApiKey": "New API key",
+      "outputLimit": "Output",
+      "providerCompatJson": "Provider compatibility JSON",
+      "providerId": "Provider ID",
+      "reasoning": "Supports reasoning",
+      "thinkingLevelMapJson": "Thinking level map JSON, e.g. {\"high\":10000}"
+    },
+    "header": {
+      "description": "Configure service endpoints, models, and agent defaults.",
+      "title": "Provider management"
+    },
+    "heading": "Providers",
+    "importJson": {
+      "back": "Back",
+      "confirm": "Import",
+      "description": "Paste a pi-style models.json. Each provider is upserted with its models. Literal apiKey values are stored; $ENV and !command keys must be set manually.",
+      "importing": "Importing…",
+      "title": "Import JSON",
+      "warnings": {
+        "authHeaderNoKey": "Provider \"{{id}}\": authHeader is set but no literal apiKey was provided.",
+        "commandApiKey": "Provider \"{{id}}\": shell-command apiKey (!…) is not run on import; set the key manually.",
+        "envApiKey": "Provider \"{{id}}\": environment apiKey ($…) is not expanded on import; set the key manually.",
+        "oauthIgnored": "Provider \"{{id}}\": oauth config is ignored on import."
+      }
+    },
+    "list": {
+      "configuredCount": "{{count}} configured"
+    },
+    "models": {
+      "addTitle": "Add model",
+      "columns": {
+        "capabilities": "Capabilities",
+        "compat": "Compat",
+        "cost": "Cost / 1M",
+        "defaultModel": "Default",
+        "input": "Input",
+        "no": "No",
+        "reasoning": "Reasoning",
+        "reasoningEfforts": "Reasoning options",
+        "serviceTiers": "Service tiers",
+        "thinking": "Thinking map",
+        "yes": "Yes"
+      },
+      "empty": "No models configured for {{provider}}.",
+      "modelCount": "{{count}} models",
+      "modelCount_one": "{{count}} model",
+      "modelCount_other": "{{count}} models",
+      "noMatches": "No matching models",
+      "parametersFor": "{{model}} parameters",
+      "parametersTitle": "Model parameters",
+      "runtimeFor": "{{model}} runtime",
+      "searchPlaceholder": "Search models...",
+      "showingCount": "Showing {{visible}} of {{total}} models",
+      "title": "Models",
+      "toggleFor": "Toggle {{model}}"
+    },
+    "searchPlaceholder": "Search providers...",
+    "sections": {
+      "advanced": "Advanced",
+      "auth": "Auth",
+      "provider": "Provider"
+    },
+    "select": "Select",
+    "state": {
+      "configured": "Configured",
+      "disabled": "Disabled",
+      "enabled": "Enabled",
+      "keySet": "Key set",
+      "noKey": "No key",
+      "notConfigured": "Not configured"
+    },
+    "status": {
+      "deleteFailed": "Unable to delete provider",
+      "idExists": "Provider ID {{id}} already exists",
+      "importFailed": "Unable to import providers",
+      "importSucceeded": "Imported {{count}} provider(s)",
+      "importSucceeded_one": "",
+      "importSucceeded_other": "",
+      "missingFields": "Required fields are missing",
+      "modelSaved": "Model saved",
+      "modelsRefreshed": "Models refreshed",
+      "modelsRefreshFailed": "Unable to refresh models",
+      "providerDeleted": "Provider deleted",
+      "providerSaved": "Provider saved",
+      "refreshingModels": "Refreshing models...",
+      "saveFailed": "Unable to save provider"
+    },
+    "templates": {
+      "description": "Pick a preset — you only need to paste in an API key.",
+      "title": "Add a provider"
+    },
+    "titleModel": {
+      "description": "Generates titles for the built-in Pi agent and chat conversations. Other agents use their own title support.",
+      "label": "Pi title generation model",
+      "none": "Use current model",
+      "probeFailed": "Failed · {{latencyMs}} ms · {{error}}",
+      "probeOk": "Connected · {{latencyMs}} ms",
+      "probeOkWithTitle": "Connected · {{latencyMs}} ms · “{{title}}”",
+      "saveFailed": "Failed to update title model",
+      "selectModelFirst": "Select a title model first",
+      "test": "Test",
+      "testing": "Testing…"
+    }
+  },
+  "sections": {
+    "adapters": "Adapters",
+    "appearance": "Appearance",
+    "archived": "Archived chats",
+    "computer": "Computer use",
+    "environment": "Network",
+    "general": "General",
+    "git": "Git",
+    "mcp": "MCP",
+    "personalization": "Personalization",
+    "providers": "Providers",
+    "shortcuts": "Shortcuts",
+    "skills": "Skills",
+    "usage": "Usage",
+    "workspace": "Worktrees"
+  },
+  "sendShortcut": {
+    "description": "Choose when Enter sends a prompt or inserts a new line.",
+    "options": {
+      "command-enter": "{{shortcut}} always",
+      "command-enter-multiline": "{{shortcut}} for multiline prompts",
+      "enter": "Enter"
+    },
+    "title": "Send shortcut"
+  },
+  "shortcuts": {
+    "actions": {
+      "fileSearch": {
+        "description": "Open the workspace file search palette.",
+        "title": "Search files"
+      },
+      "toggleChatDock": {
+        "description": "Show or hide the floating/pinned chat dock when the editor is fullscreen.",
+        "title": "Toggle chat dock"
+      },
+      "toggleDesignMode": {
+        "description": "Toggle browser design annotation mode.",
+        "title": "Toggle design mode"
+      },
+      "toggleEditorFullscreen": {
+        "description": "Expand the editor to fullscreen (floating/pinned chat) or return to the center chat layout.",
+        "title": "Toggle editor fullscreen"
+      },
+      "toggleLeftSidebar": {
+        "description": "Show or hide the left sidebar.",
+        "title": "Toggle left sidebar"
+      },
+      "toggleRightPanel": {
+        "description": "Show or hide the editor panel.",
+        "title": "Toggle editor panel"
+      },
+      "toggleWorkspaceSearch": {
+        "description": "Open workspace search in the editor panel.",
+        "title": "Search in workspace"
+      }
+    },
+    "categories": {
+      "browser": "Browser",
+      "chat": "Chat",
+      "editor": "Editor",
+      "general": "General",
+      "layout": "Layout"
+    },
+    "conflict": "Conflicts with {{action}}",
+    "description": "Click a binding to record a new chord. Escape cancels recording; Backspace clears the binding.",
+    "editBinding": "Edit shortcut {{binding}}",
+    "emptyDescription": "Try a different name or category.",
+    "emptyTitle": "No shortcuts match",
+    "hint": "Shortcuts pause while a binding is being recorded. Changes are saved automatically.",
+    "recording": "Press keys…",
+    "reset": "Reset to default",
+    "resetAll": "Reset all",
+    "searchPlaceholder": "Search shortcuts…",
+    "unbound": "None"
+  },
+  "sidebar": {
+    "resize": "Resize settings sidebar"
+  },
+  "skills": {
+    "actions": {
+      "install": "Install",
+      "refresh": "Refresh",
+      "reinstall": "Reinstall",
+      "remove": "Remove",
+      "update": "Update"
+    },
+    "cliHint": "CLI: cocurdex skills install --scope project|global  ·  cocurdex skills status --scope project|global",
+    "groupTitle": "Install location",
+    "intro": "Install cocurdex product skills so agents (Claude, OpenCode, Pi, and others) can run Notes and Issues workflows. Installation is manual — nothing is written until you install.",
+    "loading": "Checking skill install…",
+    "scope": {
+      "global": {
+        "description": "Install under ~/.agents/skills and ~/.claude/skills for every project on this machine.",
+        "title": "Global (all projects)"
+      },
+      "project": {
+        "description": "Install into the active workspace (.agents/skills and .claude/skills). Good for team repos you commit.",
+        "title": "This project"
+      }
+    },
+    "status": {
+      "conflict": "Unmanaged cocurdex skill folders already exist ({{skills}}). Remove or rename them under {{path}}, then install again.",
+      "installed": "Installed v{{version}} at {{path}}",
+      "notInstalled": "Not installed. Would write to {{path}}",
+      "noWorkspace": "Select a project workspace first to install project-level skills.",
+      "updateAvailable": "Installed v{{installed}}; pack v{{latest}} is available at {{path}}"
+    },
+    "toast": {
+      "alreadyInstalled": "Skills are already up to date",
+      "conflict": "Could not install: conflict with existing skills ({{skills}})",
+      "installed": "cocurdex skills installed",
+      "installFailed": "Could not install skills",
+      "removed": "cocurdex skills removed",
+      "removeFailed": "Could not remove skills",
+      "updated": "cocurdex skills updated"
+    },
+    "workspaceLabel": "Active project: {{name}}"
+  }
+}

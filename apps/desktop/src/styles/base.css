@@ -1,0 +1,258 @@
+/* App-wide browser and Electron shell defaults. Theme values are referenced
+ * here but defined in theme-preset.css and theme-tokens.css. */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-fg);
+  font-family: var(--font-ui);
+  font-size: var(--app-ui-font-size, 13px);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-size: var(--app-code-font-size, 13px);
+}
+
+/* Electron titlebar drag regions must remain globally available because layout
+ * pieces across features opt in and out of native window dragging. */
+.app-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+/*
+ * macOS renders native scrollbars through AppKit, and they flash on top of the
+ * window whenever it changes focus state -- e.g. the cmd+shift screenshot
+ * shortcut deactivates the window -- which is the "phantom scrollbars" caught in
+ * screenshots. Even auto-hiding overlay scrollbars flash this way, so the only
+ * reliable fix is to remove native scrollbars from every surface on macOS.
+ * Visible scrollbars there come only from custom DOM implementations (ScrollArea's
+ * Base UI thumb, xterm, Monaco), never the native pseudo. Other platforms have no
+ * overlay flash and keep a thin styled native bar.
+ */
+html[data-platform="darwin"] * {
+  scrollbar-width: none;
+}
+
+html[data-platform="darwin"] *::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-platform="other"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+html[data-platform="other"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-platform="other"] ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+html[data-platform="other"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/*
+ * xterm.js v5 ships a VS Code-derived custom DOM scrollbar
+ * (.xterm-scrollable-element > .scrollbar). Width is driven by the
+ * `overviewRuler.width` Terminal option (see terminal-registry.ts), and the
+ * slider color comes from theme options (see terminal-theme.ts). The only
+ * thing left to do in CSS is round the slider.
+ */
+.xterm .xterm-scrollable-element > .scrollbar > .slider {
+  border-radius: 3px;
+}
+
+/*
+ * The WebGL renderer (see terminal-registry.ts) paints the terminal background
+ * per-cell onto its canvas, but xterm.js never mirrors `theme.background` onto
+ * the `.xterm-viewport` element — its stylesheet leaves it opaque black. While
+ * dragging a window divider the canvas is briefly resized/cleared and the black
+ * viewport shows through for a frame, reading as a black flicker on light
+ * themes. Mirror the theme surface here so any uncovered frame matches the
+ * terminal background instead. The CSS var tracks dark/light switches for free.
+ */
+.xterm .xterm-viewport {
+  background-color: var(--editor-canvas);
+}
+
+/*
+ * Hide the overview-ruler canvas. We use `overviewRuler.width` solely as
+ * the lever for the scrollbar width (xterm derives verticalScrollbarSize
+ * from it), but we never paint decoration markers, and the canvas still
+ * renders a 1px left divider that looks like a stray vertical hairline.
+ */
+.xterm-decoration-overview-ruler {
+  display: none;
+}
+
+/* pdf.js paints glyphs onto a canvas and overlays a transparent text layer for
+   selection. pdf.js's own `.textLayer ::selection` rule sets only a background,
+   relying on the spans staying `color: transparent` while selected. The global
+   `::selection` rule above also sets `color`, which repaints the otherwise
+   transparent spans on top of the canvas — producing the doubled, misaligned
+   text seen while selecting. Keep the text layer transparent during selection
+   so only pdf.js's highlight background shows. */
+.textLayer ::selection {
+  color: transparent;
+}
+.textLayer ::-moz-selection {
+  color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Chromium on macOS can still ask AppKit to paint overlay scrollbars while a
+ * modifier shortcut is held, even when the viewport has hidden WebKit scrollbar
+ * pseudos. Move those native overlays into the ScrollArea root's clipped gutter
+ * while preserving the original content box with matching inline padding.
+ */
+html[data-platform="darwin"] .scrollbar-native-gutter {
+  margin-inline: -32px;
+  width: calc(100% + 64px);
+  padding-inline: 32px;
+}
+
+.scrollbar-interactive {
+  scrollbar-color: transparent transparent;
+}
+
+/* The sidebar surface is a touch darker than the chat canvas, so the shared
+   thumb reads heavier there. Lighten the thumb locally (cascades to every
+   ScrollArea inside the sidebar) to match the perceived weight on chat. */
+.sidebar-scrollbar {
+  --scrollbar-thumb: color-mix(in srgb, var(--foreground) 5%, transparent);
+  --scrollbar-thumb-hover: color-mix(
+    in srgb,
+    var(--foreground) 15%,
+    transparent
+  );
+}
+
+.scrollbar-interactive:hover,
+.scrollbar-interactive:active {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.scrollbar-interactive::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-interactive::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.scrollbar-interactive:hover::-webkit-scrollbar-thumb,
+.scrollbar-interactive:active::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+.scrollbar-interactive::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.scrollbar-interactive [data-slot="scroll-area-scrollbar"] {
+  opacity: 0;
+  pointer-events: none;
+  transition-property: opacity, color, background-color, border-color;
+}
+
+.scrollbar-interactive
+  [data-slot="scroll-area-scrollbar"]:not([data-orientation="horizontal"]) {
+  /* biome-ignore lint/complexity/noImportantStyles: overrides the inline
+     sizing Radix ScrollArea writes on its scrollbar element */
+  width: 8px !important;
+  /* biome-ignore lint/complexity/noImportantStyles: same Radix inline style */
+  padding: 0 !important;
+}
+
+.scrollbar-interactive
+  [data-slot="scroll-area-scrollbar"][data-orientation="horizontal"] {
+  /* biome-ignore lint/complexity/noImportantStyles: overrides the inline
+     sizing Radix ScrollArea writes on its scrollbar element */
+  height: 8px !important;
+  /* biome-ignore lint/complexity/noImportantStyles: same Radix inline style */
+  padding: 0 !important;
+}
+
+.scrollbar-interactive [data-slot="scroll-area-thumb"] {
+  background: var(--scrollbar-thumb);
+}
+
+.scrollbar-interactive:hover [data-slot="scroll-area-thumb"],
+.scrollbar-interactive
+  [data-slot="scroll-area-scrollbar"][data-scrolling]
+  [data-slot="scroll-area-thumb"] {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.scrollbar-interactive:hover [data-slot="scroll-area-scrollbar"],
+.scrollbar-interactive [data-slot="scroll-area-scrollbar"][data-scrolling] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Suppress the thumb when content does not truly overflow. Base UI renders a
+   scrollbar for a phantom 1px sub-pixel overflow; the ScrollArea component
+   re-derives real overflow with a tolerance and exposes it via
+   `data-overflowing-*`, so gate visibility on that instead of Base UI's check.
+   Use the direct-child combinator: a descendant selector would let a
+   non-overflowing outer ScrollArea hide the scrollbar of a nested, genuinely
+   overflowing inner ScrollArea (e.g. the capped workspace list). */
+.scrollbar-interactive:not([data-overflowing-y])
+> [data-slot="scroll-area-scrollbar"]:not([data-orientation="horizontal"]) {
+  display: none;
+}
+
+.scrollbar-interactive:not([data-overflowing-x])
+  > [data-slot="scroll-area-scrollbar"][data-orientation="horizontal"] {
+  display: none;
+}

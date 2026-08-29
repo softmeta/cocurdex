@@ -1,0 +1,61 @@
+# Deploy the public static site (apps/web/dist) to Cloudflare Pages.
+name: Deploy web
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "apps/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".npmrc"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy @cocurdex/web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Filter keeps the install on the web graph (no Electron desktop postinstall).
+      - name: Install web workspace
+        run: pnpm install --frozen-lockfile --filter @cocurdex/web...
+
+      - name: Test
+        run: pnpm --filter @cocurdex/web test
+
+      - name: Build static site
+        run: pnpm --filter @cocurdex/web build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Project is created on first deploy if it does not exist.
+          command: pages deploy apps/web/dist --project-name=cocurdex-web --commit-dirty=true

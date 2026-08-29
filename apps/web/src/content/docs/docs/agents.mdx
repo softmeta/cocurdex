@@ -1,0 +1,134 @@
+---
+title: Agents
+description: Agent runtimes, permissions, collaboration modes, and how Cocurdex keeps multi-session work legible.
+---
+
+Cocurdex coordinates **multiple agent sessions** in one workspace. Runtimes and providers evolve during pre-release; this page describes the product model and the agents available today.
+
+## Mental model
+
+- Each session has a clear **status** and derived **attention** state (see [Desktop](/docs/desktop/)).
+- You can run **more than one** session without merging them into a single transcript.
+- Permissions, questions, and plan approvals surface in the UI instead of happening silently.
+- Prefer the **narrowest** permission and write mode that still lets the task complete.
+
+## Supported agents
+
+| Id (`--agent`) | UI label | Runtime | Notes |
+| --- | --- | --- | --- |
+| `claude-agent` | Claude Agent | External `claude` CLI | Plan mode, steering, native write |
+| `codex` | Codex | External `codex` CLI | Plan mode, steering, native write; auth via Codex itself |
+| `opencode` | OpenCode | External `opencode` CLI | Streaming; steering not supported |
+| `grok-build` | Grok Build | External `grok` CLI (ACP transport) | Strong multi-step implementer; permission modes over ACP |
+| `pi` | Cocurdex | Built-in | Branded as Cocurdex in the product UI; read-oriented default |
+
+External agents must be installed and authenticated on your machine. If a CLI is missing, the agent shows as unavailable until you install it.
+
+### Choosing a runtime
+
+| Situation | Start with |
+| --- | --- |
+| You already use Claude Code / Claude CLI | `claude-agent` |
+| You already use OpenAI Codex | `codex` |
+| You want Grok-oriented implementation | `grok-build` |
+| You use OpenCode elsewhere | `opencode` |
+| Lightweight chat-style turn without native workspace write | `pi` (Cocurdex) |
+
+## Providers and models
+
+Agents use **provider configs** (API base URL, credentials, catalog) and **models** registered in the app. Configure providers in the desktop UI; list them from the CLI:
+
+```bash
+cocurdex provider list
+cocurdex provider models <provider-id>
+```
+
+Cocurdex reuses your existing provider setup where possible (for example Codex account state under `~/.codex`). Do not paste secrets into product notes or the public docs site.
+
+## Permission modes
+
+Permission modes are **agent-specific**. Risk levels:
+
+| Risk | Intent |
+| --- | --- |
+| **normal** | Ask or carefully gate tool use |
+| **elevated** | Broader auto-approve for edits / review |
+| **dangerous** | Full or bypass-style access — use deliberately |
+
+### Claude Agent
+
+| Mode id | Risk |
+| --- | --- |
+| `claude-default` | normal |
+| `claude-accept-edits` | elevated |
+| `claude-bypass-permissions` | dangerous |
+
+### Codex
+
+| Mode id | Risk |
+| --- | --- |
+| `codex-default` | normal |
+| `codex-auto-review` | elevated |
+| `codex-full-access` | dangerous |
+
+### Grok Build
+
+| Mode id | Risk |
+| --- | --- |
+| `grok-ask` | normal |
+| `grok-auto` | elevated (Grok’s risk classifier; may cost extra model calls) |
+| `grok-always-approve` | dangerous |
+
+### OpenCode
+
+| Mode id | Risk |
+| --- | --- |
+| `opencode-ask` | normal |
+| `opencode-allow` | elevated |
+| `opencode-deny` | normal |
+
+### Built-in Cocurdex (`pi`)
+
+No separate permission-mode list in the fallback catalog; write mode defaults to **read-only**.
+
+When an agent requests a privileged action, Cocurdex surfaces a permission card (and may show path/action detail). Resolve from the session UI or from `session tui` in the CLI.
+
+## Collaboration and write modes
+
+| Control | Values | Meaning |
+| --- | --- | --- |
+| **Collaboration** | `default`, `plan` | Plan mode when the runtime supports a plan-first loop |
+| **Write mode** | `read-only`, `native-write` | Whether tools may change the workspace |
+
+Not every agent supports every combination. For example, Grok Build focuses on native write; built-in `pi` is read-oriented.
+
+## In-session controls
+
+Some runtimes can change **model**, **thinking / reasoning effort**, **permission**, or related axes **without recreating** the provider session. That preserves conversation continuity and provider-side cache. If a control is missing for an agent, it is intentionally unsupported — there is no silent “restart the session under the hood” fallback.
+
+## Steering and follow-ups
+
+When an agent supports **steering**, you can send follow-up guidance while a run is active (or queue follow-ups until the current turn finishes — configurable in chat settings). When steering is unavailable, wait for the turn to finish or stop the session.
+
+Stop a running session from the UI or:
+
+```bash
+cocurdex session stop <session-id>
+```
+
+## Parallel sessions
+
+Typical pattern:
+
+1. One session implementing a feature  
+2. One session investigating a bug or reviewing a branch  
+3. Optional plan-mode session for design  
+
+Keep titles short and status visible. Switch only when attention demands it — do not merge unrelated work into one transcript to “save a session slot.”
+
+## Related
+
+- [Desktop workspace](/docs/desktop/)  
+- [Workflows](/docs/workflows/)  
+- [Skills](/docs/skills/)  
+- [CLI](/docs/cli/)  

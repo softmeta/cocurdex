@@ -1,0 +1,88 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "composer": {
+    "attachImage": "Attach image",
+    "placeholder": "Ask anything…",
+    "removeImage": "Remove image",
+    "send": "Send",
+    "stop": "Stop"
+  },
+  "detail": {
+    "empty": {
+      "description": "Type below. Press Enter to send. Web search and system prompts can be configured per conversation.",
+      "noProviderTitle": "Add a model provider to start",
+      "openProviderSettings": "Open provider settings",
+      "title": "Send a message to start"
+    },
+    "openSystemPrompt": "Edit system prompt",
+    "welcome": {
+      "cta": "New chat",
+      "description": "Start a free-form conversation with any configured provider. No workspace required.",
+      "noProvider": "Configure a provider first",
+      "title": "Pure chat"
+    }
+  },
+  "list": {
+    "archive": "Archive",
+    "delete": "Delete conversation",
+    "empty": {
+      "description": "Start a new chat to begin.",
+      "title": "No conversations yet"
+    },
+    "heading": "Chats",
+    "new": "New chat",
+    "rename": "Rename",
+    "renameConversation": "Rename conversation {{title}}"
+  },
+  "message": {
+    "cancelEdit": "Cancel edit",
+    "copy": "Copy",
+    "edit": "Edit",
+    "error": "Request failed",
+    "imageAlt": "Attached image",
+    "regenerate": "Regenerate",
+    "retry": "Retry",
+    "submitEdit": "Submit edit"
+  },
+  "modelPicker": {
+    "noModels": "No provider models configured",
+    "placeholder": "Select model"
+  },
+  "presets": {
+    "assistant": {
+      "label": "General assistant"
+    },
+    "coder": {
+      "label": "Coding assistant"
+    },
+    "custom": "Custom",
+    "researcher": {
+      "label": "Research assistant"
+    },
+    "translator": {
+      "label": "Translator"
+    }
+  },
+  "sidebar": {
+    "title": "Chat"
+  },
+  "sources": {
+    "heading": "Sources",
+    "heading_one": "Sources",
+    "heading_other": "Sources"
+  },
+  "systemPrompt": {
+    "description": "Pick a built-in role or write a custom system prompt. Applies to all future turns in this conversation.",
+    "placeholder": "Optional system prompt…",
+    "title": "System prompt"
+  },
+  "webSearch": {
+    "label": "Web search",
+    "tooltip": "Toggle web search for this conversation",
+    "unsupported": "Web search is not available for this provider"
+  }
+}

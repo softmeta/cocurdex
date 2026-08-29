@@ -1,0 +1,16 @@
+export {
+  broadcastOpenFolder,
+  consumePendingOpenFolder,
+  extractOpenFolderFromAdditionalData,
+  extractOpenFolderFromArgv,
+  extractOpenFolderFromProcess,
+  focusMainWindow,
+  getPendingOpenFolder,
+  OPEN_FOLDER_FLAG,
+  OPEN_FROM_CLI_CHANNEL,
+  type OpenFolderAdditionalData,
+  queueOpenFolder,
+  resolveDroppedOpenPath,
+  resolveWorkspaceRootPathForOpen,
+  validateOpenFolderPath,
+} from "./open-folder";

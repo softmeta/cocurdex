@@ -1,0 +1,159 @@
+---
+title: Getting started
+description: Install Cocurdex, open a workspace, configure an agent runtime, and run your first session.
+---
+
+This guide gets you from install to a useful first agent session.
+
+## Requirements
+
+| Item | Notes |
+| --- | --- |
+| **macOS** | Primary supported platform during pre-release (Apple silicon first) |
+| **Windows / Linux** | Coming after macOS stabilizes |
+| **Agent runtime** | At least one supported agent CLI or provider you already use (see [Agents](/docs/agents/)) |
+| **Disk / project** | A project directory on disk that agents and the editor can use as the workspace root |
+
+## Install
+
+### Public builds
+
+1. When public artifacts are published, download from the [Download](/download/) page.
+2. Install and open **Cocurdex**.
+3. Complete any first-run prompts (theme, CLI launcher, permissions as offered).
+
+Until public installers are linked, use a local or CI-built package from the monorepo (`apps/desktop`), or run the desktop app from a development checkout.
+
+### CLI on your PATH
+
+After install, open **Settings → CLI** (or the equivalent first-run step) so the `cocurdex` launcher is available in the terminal.
+
+```bash
+cocurdex --version
+cocurdex --help
+```
+
+If the binary cannot find the desktop app, open Cocurdex once from the Dock/Applications, or set `COCURDEX_ELECTRON` to the app executable. See [CLI](/docs/cli/).
+
+## Open a workspace
+
+A **workspace** is the project context Cocurdex attaches to — typically a directory on disk.
+
+**From the desktop app**
+
+1. Open Cocurdex.
+2. Open or create a workspace pointed at your project root.
+3. Confirm the shell shows sessions/chat alongside terminal and editor peers.
+
+**From the terminal** (VS Code-style)
+
+```bash
+# Open the app
+cocurdex
+
+# Open a folder as the workspace
+cocurdex .
+cocurdex open /path/to/project
+```
+
+List known workspaces:
+
+```bash
+cocurdex workspace list
+```
+
+## Prepare an agent
+
+Before the first useful run:
+
+1. Install the agent CLI you want (for example `claude`, `codex`, `opencode`, or `grok`), **or** use the built-in **Cocurdex** (`pi`) runtime when you only need chat-style work without native write.
+2. Complete that tool’s own auth (API key, ChatGPT login, etc.). Cocurdex prefers reusing your existing provider setup where possible.
+3. In the desktop app, create a session and pick **agent + provider + model**.
+
+Supported agent ids and permission modes are documented on [Agents](/docs/agents/).
+
+Check provider configs from the CLI (daemon must be running — opening the desktop app starts it):
+
+```bash
+cocurdex provider list
+cocurdex provider models <provider-id>
+```
+
+## First session (desktop)
+
+1. Start a **new session** from the desktop shell.
+2. Choose an agent runtime and model you already authorize.
+3. Keep **terminal** and **editor** available — agent work often spans more than the chat stream.
+4. Send a small, concrete task first (for example “list the top-level layout and summarize entry points”).
+5. Watch session status:
+   - **Working / thinking / using tools** — agent is busy
+   - **Pending approval / awaiting input** — you need to act
+   - **Ready / completed** — review the result, then continue or start another session
+
+Prefer narrow permission modes until you trust the task. Elevated or “full access” modes exist for power use; they are intentionally high risk.
+
+## First session (CLI TUI)
+
+With the daemon available (desktop open or daemon reachable):
+
+```bash
+cocurdex session tui \
+  --workspace /path/to/project \
+  --agent codex \
+  --provider <provider-id> \
+  --model <model-id>
+```
+
+Or create a session, then send messages:
+
+```bash
+cocurdex session create \
+  --workspace /path/to/project \
+  --agent codex \
+  --provider <provider-id> \
+  --model <model-id>
+
+cocurdex session list
+cocurdex session send <session-id> "Summarize the repo structure"
+cocurdex session stop <session-id>
+```
+
+## Product data in five minutes
+
+Notes and issues are **app-owned**, not a second Markdown tree in your repo:
+
+```bash
+cocurdex note create --title "Kickoff notes" --body "Goals for this week"
+cocurdex issue create --title "Ship getting-started docs" --status backlog
+cocurdex search "getting-started"
+```
+
+Details: [Notes and issues](/docs/notes-and-issues/) and [Workspaces and data](/docs/concepts/workspaces-and-data/).
+
+## Optional: product skills
+
+Install namespaced product skills so agents can run `/cocurdex-*` flows (grill → PRD → issue → ship) against the same data plane:
+
+```bash
+cocurdex skills list
+cocurdex skills install --scope project
+# or
+cocurdex skills install --scope global
+```
+
+See [Skills](/docs/skills/).
+
+## Checklist
+
+- [ ] App opens and a workspace points at the right project root  
+- [ ] At least one agent runtime is installed/authenticated  
+- [ ] You can create a session and see honest status while it runs  
+- [ ] `cocurdex --help` works from a terminal  
+- [ ] You know where notes/issues live (app-owned storage, not ad-hoc repo files)
+
+## Next
+
+- [Desktop workspace](/docs/desktop/) — panes, attention, shortcuts  
+- [Agents](/docs/agents/) — runtimes, permissions, plan mode  
+- [CLI](/docs/cli/) — full command surface  
+- [Workflows](/docs/workflows/) — plan → implement → review runs  

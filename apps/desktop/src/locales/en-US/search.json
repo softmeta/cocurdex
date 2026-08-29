@@ -1,0 +1,66 @@
+{
+  "empty": {
+    "error": {
+      "description": "ripgrep could not list files for this workspace.",
+      "title": "Unable to index files"
+    },
+    "loading": {
+      "description": "Indexing the workspace with ripgrep.",
+      "title": "Loading files..."
+    },
+    "noFiles": {
+      "description": "The workspace did not return any searchable files.",
+      "title": "No files found"
+    },
+    "noMatches": {
+      "description": "Try a different filename or path.",
+      "title": "No matching files"
+    },
+    "noWorkspace": {
+      "description": "Open a workspace before searching files.",
+      "title": "No workspace selected"
+    },
+    "typeToSearch": {
+      "description": "",
+      "title": "Type to search for files"
+    }
+  },
+  "files": "Files",
+  "fullText": {
+    "caseSensitive": "Match case",
+    "clearResults": "Clear search results",
+    "collapseAll": "Collapse all",
+    "emptyQueryDescription": "Search across the current workspace by file contents.",
+    "emptyQueryTitle": "Search file contents",
+    "error": "Error",
+    "errorDescription": "ripgrep could not complete this search.",
+    "errorTitle": "Search failed",
+    "expandAll": "Expand all",
+    "fileMatchCount_one": "{{count}} match",
+    "fileMatchCount_other": "{{count}} matches",
+    "filesToExclude": "files to exclude",
+    "filesToInclude": "files to include",
+    "globPlaceholder": "e.g. *.ts, src/**, .claude",
+    "inputLabel": "Search file contents",
+    "matchCount_one": "{{count}} match",
+    "matchCount_other": "{{count}} matches",
+    "noMatchesDescription": "Try a different term or change the search options.",
+    "noMatchesTitle": "No text matches",
+    "placeholder": "Search file contents...",
+    "resultsInFiles_one": "{{count}} result in {{fileCount}} files",
+    "resultsInFiles_other": "{{count}} results in {{fileCount}} files",
+    "searching": "Searching...",
+    "toggleFilters": "Toggle search details",
+    "useRegex": "Use regular expression",
+    "wholeWord": "Match whole word"
+  },
+  "headings": {
+    "all": "All files",
+    "recent": "Recently opened",
+    "results": "Results"
+  },
+  "more": "More",
+  "openSearch": "Open search",
+  "placeholder": "Search files by name or path...",
+  "searchFiles": "Search files"
+}

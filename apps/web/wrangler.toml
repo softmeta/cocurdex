@@ -1,0 +1,6 @@
+# Cloudflare Pages project metadata for local `wrangler pages deploy`.
+# CI uses the same project name (see .github/workflows/deploy-web.yml).
+# Repo stays private; only the built dist is public.
+name = "cocurdex-web"
+compatibility_date = "2026-04-01"
+pages_build_output_dir = "dist"

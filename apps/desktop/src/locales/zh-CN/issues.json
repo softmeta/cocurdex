@@ -1,0 +1,92 @@
+{
+  "board": {
+    "addCard": "添加卡片",
+    "addColumn": "添加列",
+    "columnMenu": "列菜单",
+    "columnsField": "列",
+    "columnsFieldHint": "列按该 issue 字段分组。拖拽卡片会更新对应字段。",
+    "deleteCard": "删除卡片",
+    "deleteColumn": "删除列",
+    "deleteColumnConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "description": "将从当前视图移除「{{title}}」。Issue 的字段值会保留。",
+      "title": "删除列？"
+    },
+    "displayOptions": "视图显示",
+    "displayOptionsHint": "布局与分组只作用于当前视图。",
+    "dragCard": "拖拽卡片",
+    "dragColumn": "拖拽列",
+    "groupBy": "分组",
+    "groupByHint": "行按该 issue 字段分组。",
+    "groupByPriority": "优先级",
+    "groupByStatus": "状态",
+    "layout": "布局",
+    "layoutBoard": "看板",
+    "layoutList": "列表",
+    "renameColumnPrompt": "列名称",
+    "untitledBoard": "无标题视图",
+    "untitledCard": "无标题卡片",
+    "untitledColumn": "无标题列"
+  },
+  "cardMenu": {
+    "delete": "删除",
+    "open": "打开",
+    "priority": "优先级",
+    "status": "状态"
+  },
+  "dialog": {
+    "cancel": "取消",
+    "createIssue": "创建 Issue",
+    "descriptionPlaceholder": "添加描述…",
+    "editCard": "编辑 Issue",
+    "newIssue": "新建 Issue",
+    "noProject": "无项目",
+    "priority": "优先级",
+    "project": "项目",
+    "save": "保存",
+    "status": "状态",
+    "titlePlaceholder": "Issue 标题",
+    "unknownProject": "未知项目"
+  },
+  "empty": {
+    "description": "新建卡片或列以开始整理工作。",
+    "title": "还没有视图"
+  },
+  "filter": {
+    "allProjects": "全部项目",
+    "ariaLabel": "筛选视图",
+    "noProject": "无项目",
+    "project": "项目"
+  },
+  "list": {
+    "collapseGroup": "折叠 {{title}}",
+    "createdOn": "创建于 {{date}}",
+    "expandGroup": "展开 {{title}}",
+    "updatedOn": "更新于 {{date}}"
+  },
+  "scope": {
+    "private": "私人",
+    "workspace": "{{name}}",
+    "workspaceFallback": "项目"
+  },
+  "sidebar": {
+    "addBoard": "添加视图",
+    "collapse": "折叠侧栏",
+    "deleteView": "删除视图",
+    "deleteViewConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "description": "删除视图「{{title}}」？Issue 是共享的，不会被删除。",
+      "title": "删除视图？"
+    },
+    "expand": "展开侧栏",
+    "hint": "Issue 和视图由 cocurdex 私有存储。",
+    "newBoardTitle": "新视图",
+    "renameBoard": "重命名视图",
+    "resize": "调整侧栏宽度",
+    "title": "视图",
+    "untitledBoard": "无标题视图",
+    "views": "视图"
+  }
+}

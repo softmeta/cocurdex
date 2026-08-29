@@ -1,0 +1,70 @@
+{
+  "editor": {
+    "empty": {
+      "description": "Select a note from the sidebar or create a new one.",
+      "title": "No note selected"
+    },
+    "folder": {
+      "description": "Create a note inside from the sidebar, or rename this folder with the title above.",
+      "emptyTitle": "Folder",
+      "renameLabel": "Folder name"
+    },
+    "placeholder": "Start writing, or press \"/\" for commands…",
+    "save": {
+      "error": "Save failed",
+      "saved": "Saved",
+      "saving": "Saving…"
+    },
+    "untitledPlaceholder": "Untitled"
+  },
+  "scope": {
+    "private": "Private",
+    "workspace": "{{name}}",
+    "workspaceFallback": "Project"
+  },
+  "sidebar": {
+    "collapse": "Collapse sidebar",
+    "collapseFolder": "Collapse folder",
+    "delete": "Delete",
+    "deleteConfirm": {
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "descriptionFolder": "This folder and everything inside it will be permanently deleted.",
+      "descriptionNote": "This note will be permanently deleted.",
+      "title": "Delete \"{{title}}\"?"
+    },
+    "dropToRoot": "Drop here for top level",
+    "empty": {
+      "description": "Create your first note to start writing.",
+      "title": "No notes yet"
+    },
+    "expand": "Expand sidebar",
+    "expandFolder": "Expand folder",
+    "moveTo": "Move to",
+    "moveToRoot": "Top level",
+    "newFolder": "New folder",
+    "newFolderDefaultTitle": "New folder",
+    "newFolderInside": "New folder inside",
+    "newNote": "New note",
+    "newNoteInside": "New note inside",
+    "rename": "Rename",
+    "resize": "Resize sidebar",
+    "title": "Notes",
+    "untitled": "Untitled"
+  },
+  "slash": {
+    "empty": "No matching blocks",
+    "items": {
+      "blockquote": "Quote",
+      "bulletList": "Bulleted list",
+      "codeBlock": "Code block",
+      "divider": "Divider",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "orderedList": "Numbered list",
+      "paragraph": "Text",
+      "taskList": "To-do list"
+    }
+  }
+}

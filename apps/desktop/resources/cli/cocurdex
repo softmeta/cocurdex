@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Cocurdex CLI launcher. Packaged under Contents/Resources/cli/ and typically
+# symlinked into ~/.local/bin. Runs the bundled cli.mjs via Electron as Node.
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  LINK="$(readlink "$SOURCE")"
+  if [[ "$LINK" == /* ]]; then
+    SOURCE="$LINK"
+  else
+    SOURCE="$DIR/$LINK"
+  fi
+done
+CLI_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+CLI_JS="$CLI_DIR/cli.mjs"
+
+if [ ! -f "$CLI_JS" ]; then
+  echo "cocurdex: missing cli.mjs next to the launcher (reinstall Cocurdex or rebuild the desktop package)." >&2
+  exit 1
+fi
+
+resolve_electron() {
+  if [ -n "${COCURDEX_ELECTRON:-}" ] && [ -x "$COCURDEX_ELECTRON" ]; then
+    printf '%s\n' "$COCURDEX_ELECTRON"
+    return 0
+  fi
+
+  # Packaged macOS: Contents/Resources/cli -> Contents/MacOS/Cocurdex
+  local candidate
+  for candidate in \
+    "$CLI_DIR/../../MacOS/Cocurdex" \
+    "$CLI_DIR/../../MacOS/Electron" \
+    "$CLI_DIR/../../../Cocurdex" \
+    "$CLI_DIR/../../../cocurdex"
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  # Dev: electron package under apps/desktop (or monorepo root hoisting)
+  for candidate in \
+    "$CLI_DIR/../../node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
+    "$CLI_DIR/../../node_modules/electron/dist/electron" \
+    "$CLI_DIR/../../../../node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
+    "$CLI_DIR/../../../../node_modules/electron/dist/electron"
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  if command -v electron >/dev/null 2>&1; then
+    command -v electron
+    return 0
+  fi
+
+  return 1
+}
+
+if ! ELECTRON="$(resolve_electron)"; then
+  echo "cocurdex: could not locate the Electron/Cocurdex binary." >&2
+  exit 1
+fi
+
+export ELECTRON_RUN_AS_NODE=1
+exec "$ELECTRON" "$CLI_JS" "$@"
