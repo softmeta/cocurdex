@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a reproducible Cocurdex problem
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not report security vulnerabilities here. Follow SECURITY.md and
+        remove credentials, private code, personal data, and transcripts.
+  - type: input
+    id: version
+    attributes:
+      label: Cocurdex version or commit
+      placeholder: 0.1.0 or a commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: agent-runtime
+    attributes:
+      label: Agent runtime
+      description: Include the runtime and version when relevant.
+      placeholder: Pi, Claude, Codex, OpenCode, or another runtime
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: Describe what happened and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reliable reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove secrets, private paths, source code, and transcripts.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: This report contains no secrets or private user data.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
