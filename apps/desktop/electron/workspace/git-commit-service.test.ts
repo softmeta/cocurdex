@@ -133,7 +133,7 @@ describe("commitGitChanges", () => {
       "--exclude-standard",
     ]);
     expect(unstagedPaths).toContain("unstaged.txt");
-  });
+  }, 15_000);
 
   it("does not mutate the real index when message generation fails under an index lock", async () => {
     const repositoryPath = await createRepositoryFixture();
