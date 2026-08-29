@@ -103,7 +103,7 @@
     "katex": "^0.16.45",
     "lucide-react": "^1.8.0",
     "monaco-editor": "^0.55.1",
-    "pdfjs-dist": "6.1.200",
+    "pdfjs-dist": "6.2.108",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-i18next": "^17.0.6",
