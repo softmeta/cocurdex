@@ -53,7 +53,7 @@ describe("cli-path helpers", () => {
 
   it("resolves user-local install directories", () => {
     expect(getCliInstallBinDir("darwin", "/Users/me")).toBe(
-      "/Users/me/.local/bin",
+      path.join("/Users/me", ".local", "bin"),
     );
     expect(
       getCliInstallBinDir("win32", "C:\\Users\\me", {
@@ -83,23 +83,26 @@ describe("cli-path helpers", () => {
   });
 
   it("resolves packaged vs dev launcher paths", () => {
+    const resourcesPath = "/Apps/Cocurdex.app/Contents/Resources";
+    const desktopRoot = "/repo/apps/desktop";
+
     expect(
       resolveBundledCliLauncherPath({
         platform: "darwin",
         isPackaged: true,
-        resourcesPath: "/Apps/Cocurdex.app/Contents/Resources",
-        desktopRoot: "/repo/apps/desktop",
+        resourcesPath,
+        desktopRoot,
       }),
-    ).toBe("/Apps/Cocurdex.app/Contents/Resources/cli/cocurdex");
+    ).toBe(path.join(resourcesPath, "cli", "cocurdex"));
 
     expect(
       resolveBundledCliLauncherPath({
         platform: "darwin",
         isPackaged: false,
         resourcesPath: "/ignored",
-        desktopRoot: "/repo/apps/desktop",
+        desktopRoot,
       }),
-    ).toBe("/repo/apps/desktop/resources/cli/cocurdex");
+    ).toBe(path.join(desktopRoot, "resources", "cli", "cocurdex"));
   });
 
   it("installs and uninstalls a posix symlink", async () => {
