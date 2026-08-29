@@ -2,8 +2,6 @@
 
 Public **marketing site** and **product documentation** (static, SEO-first).
 
-See [ADR 0003](../../docs/adr/0003-web-surfaces-and-team-sync.md).
-
 ## Stack
 
 - [Astro](https://astro.build/) 7 (`output: "static"`)
@@ -35,7 +33,7 @@ pnpm --filter @cocurdex/web typecheck
 | `/docs/*` | `src/content/docs/docs/**` (Starlight) |
 | Brand marks | `public/` and `src/assets/` (copied from repo `brand/`) |
 
-Internal engineering docs (`docs/adr`, `docs/plans`, …) stay in the monorepo and are **not** auto-published.
+Internal engineering documents are not part of the web application or its build.
 
 ## Boundaries
 
@@ -46,8 +44,8 @@ Internal engineering docs (`docs/adr`, `docs/plans`, …) stay in the monorepo a
 
 ## Deploy
 
-The marketing site is the public static build (`dist/`). Engineering ADRs and
-plans in the monorepo `docs/` tree are not part of this pipeline.
+The marketing site is the public static build (`dist/`). Repository-level
+engineering documents are not part of this pipeline.
 
 ### Automated (recommended)
 

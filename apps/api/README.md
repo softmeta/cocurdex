@@ -2,8 +2,6 @@
 
 Cloud HTTP API for identity, organizations, and team-scoped projections.
 
-See [ADR 0003](../../docs/adr/0003-web-surfaces-and-team-sync.md).
-
 ## Stack
 
 - **Runtime:** Node.js (portable process; no cloud-vendor runtime APIs).

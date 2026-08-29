@@ -1,6 +1,5 @@
 // ChatGPT-style pure conversation service. Lives in the Electron main process
 // because it needs direct DB access and safeStorage for API-key decryption.
-// See docs/plans/2026-05-21-chat-mode.md for the architecture.
 //
 // IPC channels (all under `chat:*`):
 //   chat:list                 list conversations

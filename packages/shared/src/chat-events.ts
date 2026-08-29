@@ -1,6 +1,5 @@
 // Streaming events for the pure-chat mode. Kept separate from AgentEvent so
 // the chat protocol can evolve without touching the agent runtime.
-// See docs/plans/2026-05-21-chat-mode.md §3 (Daemon layer).
 
 import type {
   ConversationMessageRecord,

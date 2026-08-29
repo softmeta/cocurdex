@@ -1,7 +1,3 @@
-// Provider-hosted web search wiring. See docs/plans/2026-05-21-chat-mode.md §6.
-// We deliberately only support the provider-hosted path here; custom search
-// APIs (Brave / Tavily / ...) are a separate strategy slot — see §6.1.
-
 import { anthropic } from "@ai-sdk/anthropic";
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";

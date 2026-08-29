@@ -1,5 +1,10 @@
 .worktrees/
 .cocurdex/
+/TODO.md
+/docs/plans/
+/docs/research/
+/docs/todo/
+/.impeccable/critique/
 node_modules/
 *.tsbuildinfo
 dist/

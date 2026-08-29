@@ -102,8 +102,6 @@ export function LeftSidebar({
   const removeWorkspace = useSetAtom(removeWorkspaceAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  // Pure chat conversations share the center panel with agent sessions, so
-  // they live in the same sidebar — see docs/plans/2026-05-21-chat-mode.md.
   const conversations = useAtomValue(conversationsAtom);
   const activeConversationId = useAtomValue(activeConversationIdAtom);
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);

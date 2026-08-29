@@ -29,11 +29,11 @@ If status is `backlog` → `cocurdex issue move <id> doing --json` (same as `/co
 
 ### 2. Plan
 
-Restate criteria; note seams; use **tdd** for critical pure logic (AGENTS.md).
+Restate criteria; note seams; use **tdd** for critical pure logic.
 
 ### 3. Implement
 
-- Follow `AGENTS.md` (English code, biome/typecheck, no desktop dev server)
+- Follow the repository's contributor guidance and validation commands
 - i18n extract/types when adding `t("...")`
 
 ### 4. Verify

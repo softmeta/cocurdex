@@ -1,6 +1,3 @@
-// ChatGPT-style pure conversation types. Decoupled from agent sessions —
-// no workspace, no tool calls, no permissions. See docs/plans/2026-05-21-chat-mode.md.
-
 import type { ImageAttachment } from "./contracts";
 
 export type ConversationMessageRole = "user" | "assistant" | "system";
