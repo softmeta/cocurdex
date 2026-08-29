@@ -56,6 +56,35 @@ describe("buildClaudeCliEnv", () => {
 });
 
 describe("createClaudeCliAdapter", () => {
+  it("keeps missing-runtime authentication in the official Claude CLI", async () => {
+    const events: AgentEvent[] = [];
+    const createQuery = vi.fn() as never;
+    const session = createClaudeCliAdapter({
+      createQuery,
+      lookupExecutable: async () => null,
+    }).createSession(createSessionPayload(), (event) => events.push(event));
+
+    await session.sendMessage({ content: "Inspect the repo", history: [] });
+
+    expect(createQuery).not.toHaveBeenCalled();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "authenticate directly with Anthropic by running `claude` in your terminal",
+        ),
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "Cocurdex does not receive or store your Claude credentials",
+        ),
+      }),
+    );
+  });
+
   it("waits for the first SDK query and generates the title through it", async () => {
     const harness = createQueryHarness();
     const createQuery = vi.fn(

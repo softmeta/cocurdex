@@ -66,9 +66,9 @@ const CLAUDE_PROVIDER_VERSION = "claude-agent-sdk";
 const CLAUDE_TITLE_TIMEOUT_MS = 20_000;
 
 const CLAUDE_LOGIN_HINT =
-  "Run `claude auth login` in your terminal to authenticate Claude Agent.";
+  "Authenticate directly with Anthropic by running `claude` in your terminal. Cocurdex does not receive or store your Claude credentials.";
 const CLAUDE_INSTALL_HINT =
-  "Claude Agent is unavailable. Install Claude Code and run `claude auth login` in your terminal.";
+  "Claude Agent is unavailable. Install the official Claude Code CLI, then authenticate directly with Anthropic by running `claude` in your terminal. Cocurdex does not receive or store your Claude credentials.";
 
 interface ClaudeProviderState {
   adapter?: string;
