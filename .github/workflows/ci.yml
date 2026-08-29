@@ -75,3 +75,5 @@ jobs:
       - name: Build desktop
         if: runner.os == 'macOS'
         run: pnpm --filter @cocurdex/desktop build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
