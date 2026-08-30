@@ -15,6 +15,8 @@ out/
 apps/web/dist/
 apps/console/.next/
 apps/desktop/release/
+*.p12
+AuthKey_*.p8
 apps/desktop/vendor/fd/darwin-*/
 apps/desktop/resources/cli/cli.mjs
 apps/desktop/resources/cli/cli.mjs.map
