@@ -46,6 +46,7 @@ allowBuilds:
   protobufjs: false
   # next/image optimization (apps/console)
   sharp: true
+  workerd: true
 minimumReleaseAgeExclude:
   - '@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.221'
   - '@anthropic-ai/claude-agent-sdk-darwin-x64@0.3.221'

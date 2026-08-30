@@ -60,6 +60,7 @@ jobs:
           apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
+          packageManager: pnpm
           wranglerVersion: "4"
           # Project is created on first deploy if it does not exist.
           command: pages deploy dist --project-name=cocurdex-web --commit-dirty=true
