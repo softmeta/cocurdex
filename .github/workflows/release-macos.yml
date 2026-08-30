@@ -27,7 +27,6 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
       CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -91,6 +90,8 @@ jobs:
       - name: Publish GitHub Release
         if: github.ref_type == 'tag'
         working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "${GITHUB_REF_NAME}"
           "release/Cocurdex-mac-arm64.dmg"
