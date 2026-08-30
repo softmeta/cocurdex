@@ -1,5 +1,8 @@
 ---
 import MarketingLayout from "../layouts/MarketingLayout.astro";
+
+const macArm64DownloadUrl =
+  "https://github.com/softmeta/cocurdex/releases/latest/download/Cocurdex-mac-arm64.dmg";
 ---
 
 <MarketingLayout
@@ -11,20 +14,29 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
     <p class="eyebrow">Pre-release</p>
     <h1>Download Cocurdex</h1>
     <p>
-      Public installers are not linked here yet. Builds ship from the desktop
-      release pipeline; this page will list signed downloads per platform when
-      they are ready.
+      Download the signed and notarized macOS build for Apple silicon. Cocurdex
+      is still in pre-release, so APIs and workflows may change between builds.
     </p>
+    <div class="actions" style="margin-top: 1.75rem">
+      <a class="button button--primary" href={macArm64DownloadUrl}
+        >Download for Apple silicon</a
+      >
+      <a
+        class="button button--secondary"
+        href="https://github.com/softmeta/cocurdex/releases/latest"
+        >Release notes</a
+      >
+    </div>
     <ul>
-      <li><strong>macOS</strong> — primary target (Apple silicon first)</li>
+      <li><strong>macOS Apple silicon</strong> — available</li>
+      <li><strong>macOS Intel</strong> — coming later</li>
       <li><strong>Windows</strong> — next</li>
       <li><strong>Linux</strong> — after Windows</li>
     </ul>
     <div class="note">
-      Until public artifacts are published, use a local or CI-built desktop
-      package from the monorepo (<code>apps/desktop</code>). See
-      <a href="/docs/getting-started/">Getting started</a> for the intended
-      install flow.
+      Open the DMG, drag Cocurdex to Applications, then launch it from your
+      Applications folder. Every public macOS build is signed with Developer ID
+      and notarized by Apple.
     </div>
     <div class="actions" style="margin-top: 1.75rem">
       <a class="button button--secondary" href="/docs/">Read the docs</a>
