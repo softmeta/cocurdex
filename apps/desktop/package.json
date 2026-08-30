@@ -14,7 +14,7 @@
     "build": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build",
     "dist:dir": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build && electron-builder --dir",
     "dist:mac": "pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac",
-    "dist:mac:arm64": "pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64",
+    "dist:mac:arm64": "pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish never",
     "i18n:extract": "i18next-cli extract --config ./i18next.config.ts",
     "i18n:lint": "node ./scripts/lint-i18n.mjs",
     "lint:cycles": "node ./scripts/check-cycles.mjs",
