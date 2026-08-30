@@ -20,7 +20,7 @@ jobs:
   release:
     name: Build, sign, and notarize macOS arm64
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 360
     env:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
