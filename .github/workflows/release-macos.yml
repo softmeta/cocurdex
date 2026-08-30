@@ -74,7 +74,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Verify packaged runtime
-        run: pnpm --filter @cocurdex/desktop verify:package -- release
+        run: pnpm --filter @cocurdex/desktop verify:package release
 
       - name: Verify signature and notarization
         working-directory: apps/desktop
