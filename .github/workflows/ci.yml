@@ -82,8 +82,7 @@ jobs:
   desktop:
     name: Desktop (${{ matrix.os }})
     needs: changes
-    if: needs.changes.outputs.run_desktop == 'true'
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ needs.changes.outputs.run_desktop == 'true' && matrix.os || 'ubuntu-latest' }}
     timeout-minutes: 35
     strategy:
       fail-fast: false
@@ -93,22 +92,28 @@ jobs:
           - windows-latest
     steps:
       - name: Checkout
+        if: needs.changes.outputs.run_desktop == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup pnpm
+        if: needs.changes.outputs.run_desktop == 'true'
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
       - name: Setup Node
+        if: needs.changes.outputs.run_desktop == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 22
           cache: pnpm
       - name: Install dependencies
+        if: needs.changes.outputs.run_desktop == 'true'
         run: pnpm install --frozen-lockfile
       - name: Typecheck desktop
+        if: needs.changes.outputs.run_desktop == 'true'
         run: pnpm --filter @cocurdex/desktop typecheck
       - name: Test desktop
+        if: needs.changes.outputs.run_desktop == 'true'
         run: pnpm --filter @cocurdex/desktop test
       - name: Build desktop
-        if: runner.os == 'macOS'
+        if: needs.changes.outputs.run_desktop == 'true' && runner.os == 'macOS'
         run: pnpm --filter @cocurdex/desktop build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
