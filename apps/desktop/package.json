@@ -99,7 +99,7 @@
     "github-slugger": "^2.0.0",
     "i18next": "^26.0.8",
     "i18next-cli": "^1.56.9",
-    "jotai": "^2.12.5",
+    "jotai": "^2.20.3",
     "jsdom": "^26.1.0",
     "katex": "^0.16.45",
     "lucide-react": "^1.8.0",
