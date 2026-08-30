@@ -2,6 +2,8 @@ packages:
   - apps/*
   - packages/*
   - tests/*
+registries:
+  default: https://registry.npmjs.org/
 # electron-builder/@electron/rebuild pulls node-abi@4.29 which only maps
 # Electron through 42; Electron 43.x needs node-abi >= 4.33.
 overrides:
