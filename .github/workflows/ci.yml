@@ -24,7 +24,7 @@ jobs:
       run_desktop: ${{ steps.scope.outputs.run_desktop }}
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825a76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - name: Detect desktop scope
