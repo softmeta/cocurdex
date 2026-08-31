@@ -224,6 +224,27 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     });
   }
 
+  function ingestAssistantText(text: string) {
+    if (!text || activeAssistantContent) {
+      return;
+    }
+
+    if (!activeAssistantMessageId) {
+      activeAssistantMessageId = crypto.randomUUID();
+      activeAssistantCreatedAt = new Date().toISOString();
+    }
+
+    activeAssistantContent = text;
+    onEvent({
+      type: "message.delta",
+      sessionId,
+      messageId: activeAssistantMessageId,
+      role: "assistant",
+      delta: text,
+      createdAt: activeAssistantCreatedAt,
+    });
+  }
+
   function handleAssistantMessage(message: Record<string, unknown>) {
     const assistantMessage = asObjectRecord(message.message);
     const assistantContent = assistantMessage?.content;
@@ -239,6 +260,19 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
       sessionId,
     });
 
+    ingestAssistantText(
+      contentBlocks
+        .flatMap((contentBlock) => {
+          const block = asObjectRecord(contentBlock);
+          if (block?.type !== "text" || typeof block.text !== "string") {
+            return [];
+          }
+          return [block.text];
+        })
+        .join(""),
+    );
+
+    let sawToolUse = false;
     for (const contentBlock of contentBlocks) {
       const block = asObjectRecord(contentBlock);
       if (
@@ -249,6 +283,7 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
         continue;
       }
 
+      sawToolUse = true;
       flushAssistantMessage();
 
       let toolCall = createToolCallRecord(
@@ -316,6 +351,10 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
         sessionId,
         toolCall,
       });
+    }
+
+    if (!sawToolUse) {
+      flushAssistantMessage();
     }
   }
 
@@ -443,6 +482,56 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     });
   }
 
+  function handleTaskNotification(message: Record<string, unknown>) {
+    const toolUseId =
+      typeof message.tool_use_id === "string" ? message.tool_use_id : null;
+    if (!toolUseId) {
+      return;
+    }
+
+    const childMapper = childMappers.get(toolUseId);
+    if (childMapper) {
+      childMapper.handleMessage({ type: "result" });
+    }
+
+    const currentToolCall = activeToolCalls.get(toolUseId);
+    if (!currentToolCall) {
+      return;
+    }
+
+    const summary =
+      typeof message.summary === "string" ? message.summary.trim() : "";
+    const failed = message.status === "failed";
+    const finishedToolCall: AgentToolCallRecord = {
+      ...currentToolCall,
+      ...(summary ? { rawOutput: summary } : {}),
+      status: failed ? "failed" : "completed",
+      updatedAt: new Date().toISOString(),
+    };
+    activeToolCalls.set(toolUseId, finishedToolCall);
+
+    const childSession = childSessions.get(toolUseId);
+    if (childSession) {
+      const updatedSession: SessionRecord = {
+        ...childSession,
+        status: failed ? "error" : "idle",
+        updatedAt: finishedToolCall.updatedAt,
+      };
+      childSessions.set(toolUseId, updatedSession);
+      onEvent({
+        type: "session.upserted",
+        sessionId: updatedSession.id,
+        session: updatedSession,
+      });
+    }
+
+    onEvent({
+      type: "tool.finished",
+      sessionId,
+      toolCall: finishedToolCall,
+    });
+  }
+
   return {
     reset() {
       activeAssistantMessageId = "";
@@ -492,6 +581,11 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
           break;
         case "result":
           handleResultMessage(record, handlingOptions.resultAttribution);
+          break;
+        case "system":
+          if (record.subtype === "task_notification") {
+            handleTaskNotification(record);
+          }
           break;
       }
     },

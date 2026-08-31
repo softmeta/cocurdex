@@ -726,6 +726,7 @@ export function createClaudeCliAdapter(
           cwd: payload.workspaceRootPath,
           enableFileCheckpointing: true,
           env: claudeEnv,
+          forwardSubagentText: true,
           includePartialMessages: true,
           ...(effort ? { effort } : {}),
           ...(modelId ? { model: modelId } : {}),

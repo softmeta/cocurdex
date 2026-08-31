@@ -214,4 +214,215 @@ describe("createClaudeMessageMapper subagents", () => {
       ]),
     );
   });
+
+  it("persists child assistant text from complete Agent messages", () => {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+      parentSession: {
+        id: "session-1",
+        workspaceId: "workspace",
+        title: "Parent",
+        agentType: "claude-agent",
+        status: "running",
+        writeMode: "native-write",
+        collaborationMode: "default",
+        createdAt: "2026-08-31T00:00:00.000Z",
+        updatedAt: "2026-08-31T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: null,
+      } as never,
+    });
+
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: null,
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "agent-1",
+            name: "Agent",
+            input: {
+              description: "Review working tree changes",
+              subagent_type: "general-purpose",
+            },
+          },
+        ],
+      },
+    } as never);
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: "agent-1",
+      message: {
+        content: [{ type: "tool_use", id: "read-1", name: "Read", input: {} }],
+      },
+    } as never);
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: "agent-1",
+      message: {
+        content: [{ type: "text", text: "## 审查结论\n校验全部通过。" }],
+      },
+    } as never);
+
+    const childMessages = events.filter(
+      (event) =>
+        event.type === "message.completed" &&
+        event.sessionId === "claude-subagent:session-1:agent-1",
+    );
+
+    expect(childMessages).toEqual([
+      expect.objectContaining({
+        type: "message.completed",
+        sessionId: "claude-subagent:session-1:agent-1",
+        message: expect.objectContaining({
+          role: "assistant",
+          content: "## 审查结论\n校验全部通过。",
+        }),
+      }),
+    ]);
+  });
+
+  it("flushes streamed child text once when the complete message repeats it", () => {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+      parentSession: {
+        id: "session-1",
+        workspaceId: "workspace",
+        title: "Parent",
+        agentType: "claude-agent",
+        status: "running",
+        writeMode: "native-write",
+        collaborationMode: "default",
+        createdAt: "2026-08-31T00:00:00.000Z",
+        updatedAt: "2026-08-31T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: null,
+      } as never,
+    });
+
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: null,
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "task-1",
+            name: "Task",
+            input: { description: "Review changes", subagent_type: "reviewer" },
+          },
+        ],
+      },
+    } as never);
+    mapper.handleMessage({
+      event: {
+        delta: { text: "Child result" },
+        type: "content_block_delta",
+      },
+      parent_tool_use_id: "task-1",
+      type: "stream_event",
+    } as never);
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: "task-1",
+      message: { content: [{ type: "text", text: "Child result" }] },
+    } as never);
+
+    const childMessages = events.filter(
+      (event) =>
+        event.type === "message.completed" &&
+        event.sessionId === "claude-subagent:session-1:task-1",
+    );
+
+    expect(childMessages).toEqual([
+      expect.objectContaining({
+        message: expect.objectContaining({ content: "Child result" }),
+      }),
+    ]);
+  });
+
+  it("flushes streamed child text when the Agent task_notification arrives", () => {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+      parentSession: {
+        id: "session-1",
+        workspaceId: "workspace",
+        title: "Parent",
+        agentType: "claude-agent",
+        status: "running",
+        writeMode: "native-write",
+        collaborationMode: "default",
+        createdAt: "2026-08-31T00:00:00.000Z",
+        updatedAt: "2026-08-31T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: null,
+      } as never,
+    });
+
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: null,
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "agent-1",
+            name: "Agent",
+            input: {
+              description: "Review current uncommitted changes",
+              subagent_type: "general-purpose",
+            },
+          },
+        ],
+      },
+    } as never);
+    mapper.handleMessage({
+      event: {
+        delta: { text: "## Checks — all green" },
+        type: "content_block_delta",
+      },
+      parent_tool_use_id: "agent-1",
+      type: "stream_event",
+    } as never);
+    mapper.handleMessage({
+      type: "system",
+      subtype: "task_notification",
+      tool_use_id: "agent-1",
+      status: "completed",
+      summary: "Review finished.",
+    } as never);
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "message.completed",
+          sessionId: "claude-subagent:session-1:agent-1",
+          message: expect.objectContaining({
+            content: "## Checks — all green",
+          }),
+        }),
+        expect.objectContaining({
+          type: "tool.finished",
+          toolCall: expect.objectContaining({
+            id: "agent-1",
+            rawOutput: "Review finished.",
+            status: "completed",
+          }),
+        }),
+      ]),
+    );
+  });
 });
