@@ -4,6 +4,7 @@ import {
   buildVisibleSessionTree,
   collectSessionSubtreeIds,
   isSubagentSession,
+  sessionAncestorIds,
 } from "./session-tree";
 
 function session(
@@ -116,6 +117,29 @@ describe("buildVisibleSessionTree", () => {
     expect(nodes.map((node) => node.depth)).toEqual([0, 1, 2]);
   });
 
+  it("hides descendants of collapsed sessions without orphaning them", () => {
+    const parent = session({ id: "parent" });
+    const child = session({
+      createdAt: "2026-08-31T00:01:00.000Z",
+      id: "child",
+      parentSessionId: "parent",
+    });
+    const grandchild = session({
+      createdAt: "2026-08-31T00:02:00.000Z",
+      id: "grandchild",
+      parentSessionId: "child",
+    });
+    const other = session({ id: "other" });
+
+    const nodes = buildVisibleSessionTree(
+      [grandchild, child, other, parent],
+      new Set(["parent"]),
+    );
+
+    expect(nodes.map((node) => node.session.id)).toEqual(["parent", "other"]);
+    expect(nodes[0]?.hasChildren).toBe(true);
+  });
+
   it("surfaces orphans whose parent is missing at depth 0", () => {
     const orphan = session({
       id: "orphan",
@@ -147,6 +171,22 @@ describe("collectSessionSubtreeIds", () => {
       "grandchild",
       "root",
     ]);
+  });
+});
+
+describe("sessionAncestorIds", () => {
+  it("walks from a nested session up to the root", () => {
+    const sessions = [
+      session({ id: "root" }),
+      session({ id: "child", parentSessionId: "root" }),
+      session({ id: "grandchild", parentSessionId: "child" }),
+    ];
+
+    expect(sessionAncestorIds("grandchild", sessions)).toEqual([
+      "child",
+      "root",
+    ]);
+    expect(sessionAncestorIds("root", sessions)).toEqual([]);
   });
 });
 

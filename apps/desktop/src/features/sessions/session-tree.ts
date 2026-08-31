@@ -89,13 +89,47 @@ export function collectSessionSubtreeIds(
   return ids;
 }
 
+export function sessionAncestorIds(
+  sessionId: string,
+  sessions: SessionRecord[],
+) {
+  const byId = new Map(sessions.map((session) => [session.id, session]));
+  const ids: string[] = [];
+  const visited = new Set<string>();
+  let current = byId.get(sessionId);
+
+  while (current) {
+    const parentId = parentIdOf(current);
+    if (!parentId || visited.has(parentId)) {
+      break;
+    }
+    visited.add(parentId);
+    const parent = byId.get(parentId);
+    if (!parent) {
+      break;
+    }
+    ids.push(parent.id);
+    current = parent;
+  }
+
+  return ids;
+}
+
 export function buildVisibleSessionTree(
   sessions: SessionRecord[],
+  collapsedIds: ReadonlySet<string> = new Set(),
 ): FlatSessionNode[] {
   const byId = new Map(sessions.map((session) => [session.id, session]));
   const childrenByParent = groupChildren(sessions);
   const result: FlatSessionNode[] = [];
   const visited = new Set<string>();
+
+  const markDescendantsVisited = (sessionId: string) => {
+    for (const child of childrenByParent.get(sessionId) ?? []) {
+      visited.add(child.id);
+      markDescendantsVisited(child.id);
+    }
+  };
 
   const walk = (session: SessionRecord, depth: number) => {
     if (visited.has(session.id)) {
@@ -108,6 +142,10 @@ export function buildVisibleSessionTree(
       hasChildren: children.length > 0,
       session,
     });
+    if (collapsedIds.has(session.id)) {
+      markDescendantsVisited(session.id);
+      return;
+    }
     for (const child of children) {
       walk(child, depth + 1);
     }

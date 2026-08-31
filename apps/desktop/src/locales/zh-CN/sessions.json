@@ -112,7 +112,9 @@
   "sidebar": {
     "addProject": "添加项目",
     "archive": "归档",
+    "collapseChildren": "折叠子会话",
     "delete": "删除",
+    "expandChildren": "展开子会话",
     "marketplace": "市场",
     "newSessionInWorkspace": "在 {{workspaceName}} 中新建会话",
     "noAgentsYet": "暂无会话",

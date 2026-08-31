@@ -1,4 +1,5 @@
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Folder, FolderOpen, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,7 +14,11 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
 } from "@/components/ui";
-import { buildVisibleSessionTree } from "@/features/sessions";
+import {
+  buildVisibleSessionTree,
+  collapsedSessionIdsAtom,
+  toggleSessionCollapsedAtom,
+} from "@/features/sessions";
 import { SessionSidebarItem } from "./session-sidebar-item";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 
@@ -47,9 +52,11 @@ export function WorkspaceSidebarItem({
   onSelectWorkspace,
 }: WorkspaceSidebarItemProps) {
   const { t } = useTranslation("sessions");
+  const collapsedSessionIds = useAtomValue(collapsedSessionIdsAtom);
+  const toggleSessionCollapsed = useSetAtom(toggleSessionCollapsedAtom);
   const sessionTree = useMemo(
-    () => buildVisibleSessionTree(sessions),
-    [sessions],
+    () => buildVisibleSessionTree(sessions, collapsedSessionIds),
+    [sessions, collapsedSessionIds],
   );
 
   return (
@@ -127,13 +134,16 @@ export function WorkspaceSidebarItem({
               <SidebarMenuSubItem key={node.session.id}>
                 <SessionSidebarItem
                   depth={node.depth}
+                  hasChildren={node.hasChildren}
                   isActive={
                     activeConversationId === null &&
                     node.session.id === optimisticActiveSessionId
                   }
+                  isExpanded={!collapsedSessionIds.has(node.session.id)}
                   onSelect={() =>
                     onSelectSession(workspace.id, node.session.id)
                   }
+                  onToggleExpand={() => toggleSessionCollapsed(node.session.id)}
                   session={node.session}
                 />
               </SidebarMenuSubItem>

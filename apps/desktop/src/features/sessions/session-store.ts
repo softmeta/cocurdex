@@ -20,10 +20,26 @@ import { atom, type Getter, type Setter } from "jotai";
 import { i18n } from "@/i18n";
 import { resources } from "@/i18n/resources";
 import { isAgentReadyToStart } from "./adapter-status";
-import { collectSessionSubtreeIds } from "./session-tree";
+import { collectSessionSubtreeIds, sessionAncestorIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
 export const activeSessionIdAtom = atom<string | null>(null);
+export const collapsedSessionIdsAtom = atom<ReadonlySet<string>>(
+  new Set<string>(),
+);
+
+export const toggleSessionCollapsedAtom = atom(
+  null,
+  (get, set, sessionId: string) => {
+    const next = new Set(get(collapsedSessionIdsAtom));
+    if (next.has(sessionId)) {
+      next.delete(sessionId);
+    } else {
+      next.add(sessionId);
+    }
+    set(collapsedSessionIdsAtom, next);
+  },
+);
 const LAST_SELECTED_AGENT_STORAGE_KEY = "agents.desktop.last-selected-agent";
 // Prefer the same order as the new-session agent picker.
 const agentFallbackOrder: AgentId[] = [
@@ -406,8 +422,25 @@ export const bootstrapSessionsAtom = atom(
 
 export const selectSessionAtom = atom(
   null,
-  (_get, set, sessionId: string | null) => {
+  (get, set, sessionId: string | null) => {
     set(activeSessionIdAtom, sessionId);
+    if (!sessionId) {
+      return;
+    }
+    const ancestorIds = sessionAncestorIds(sessionId, get(sessionsAtom));
+    if (ancestorIds.length === 0) {
+      return;
+    }
+    const next = new Set(get(collapsedSessionIdsAtom));
+    let changed = false;
+    for (const ancestorId of ancestorIds) {
+      if (next.delete(ancestorId)) {
+        changed = true;
+      }
+    }
+    if (changed) {
+      set(collapsedSessionIdsAtom, next);
+    }
   },
 );
 

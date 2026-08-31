@@ -1023,7 +1023,9 @@ export default interface Resources {
     sidebar: {
       addProject: "Add project";
       archive: "Archive";
+      collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
+      expandChildren: "Expand subagent sessions";
       marketplace: "Marketplace";
       newSessionInWorkspace: "New session in {{workspaceName}}";
       noAgentsYet: "No sessions yet";

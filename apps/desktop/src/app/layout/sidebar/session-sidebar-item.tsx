@@ -1,6 +1,12 @@
 import type { SessionRecord } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { Archive, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,8 +22,10 @@ import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   agentLabels,
   archiveSessionAtom,
+  collectSessionSubtreeIds,
   deleteSessionAtom,
   isSubagentSession,
+  sessionsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
@@ -28,30 +36,54 @@ import { SidebarRenameInput } from "./sidebar-rename-input";
 
 interface SessionSidebarItemProps {
   depth?: number;
+  hasChildren?: boolean;
   isActive: boolean;
+  isExpanded?: boolean;
   onSelect(): void;
+  onToggleExpand?(): void;
   session: SessionRecord;
 }
 
 export function SessionSidebarItem({
   depth = 0,
+  hasChildren = false,
   isActive,
+  isExpanded = true,
   onSelect,
+  onToggleExpand,
   session,
 }: SessionSidebarItemProps) {
   const { t } = useTranslation("sessions");
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const archiveSession = useSetAtom(archiveSessionAtom);
   const deleteSession = useSetAtom(deleteSessionAtom);
-  const permissions = useAtomValue(permissionsBySessionAtom)[session.id];
-  const questions = useAtomValue(questionsBySessionAtom)[session.id];
+  const permissionsBySession = useAtomValue(permissionsBySessionAtom);
+  const questionsBySession = useAtomValue(questionsBySessionAtom);
+  const sessions = useAtomValue(sessionsAtom);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);
-  const isRunning = session.status === "running";
-  const needsAttention =
-    permissions?.some((permission) => permission.status === "pending") ||
-    questions?.some((question) => question.status === "pending");
+  const descendantIds =
+    hasChildren && !isExpanded
+      ? collectSessionSubtreeIds(sessions, session.id)
+      : null;
+  const isRunning =
+    session.status === "running" ||
+    [...(descendantIds ?? [])].some(
+      (sessionId) =>
+        sessionId !== session.id &&
+        sessions.find((item) => item.id === sessionId)?.status === "running",
+    );
+  const needsAttention = [...(descendantIds ?? [session.id])].some(
+    (sessionId) =>
+      permissionsBySession[sessionId]?.some(
+        (permission) => permission.status === "pending",
+      ) ||
+      questionsBySession[sessionId]?.some(
+        (question) => question.status === "pending",
+      ),
+  );
   const isChild = isSubagentSession(session);
+  const startPaddingPx = 24 + depth * 12 - (hasChildren ? 20 : 0);
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();
     node?.select();
@@ -156,32 +188,80 @@ export function SessionSidebarItem({
           <SidebarListRow
             isActive={isActive}
             className={cn(
-              depth === 0 && "ps-6",
+              depth === 0 && (hasChildren ? "ps-1" : "ps-6"),
               isChild && "text-sidebar-fg-muted",
             )}
-            onClick={onSelect}
-            render={<button type="button" />}
+            onClick={hasChildren ? undefined : onSelect}
+            render={hasChildren ? undefined : <button type="button" />}
             style={
               depth > 0
-                ? { paddingInlineStart: `${24 + depth * 12}px` }
+                ? { paddingInlineStart: `${startPaddingPx}px` }
                 : undefined
             }
           >
-            <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-            {needsAttention ? (
-              <span
-                className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
-                role="img"
-                aria-label={t("sidebar.pendingAttention")}
-              />
+            {hasChildren ? (
+              <button
+                type="button"
+                className="flex size-3.5 shrink-0 items-center justify-center text-sidebar-fg-muted hover:text-sidebar-fg"
+                aria-expanded={isExpanded}
+                aria-label={
+                  isExpanded
+                    ? t("sidebar.collapseChildren")
+                    : t("sidebar.expandChildren")
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleExpand?.();
+                }}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="size-3.5" />
+                ) : (
+                  <ChevronRight className="size-3.5 rtl:-scale-x-100" />
+                )}
+              </button>
             ) : null}
-            {isRunning ? (
-              <Spinner
-                aria-label={t("sidebar.running")}
-                className="shrink-0 text-sidebar-thinking-fg"
-                size="xs"
-              />
-            ) : null}
+            {hasChildren ? (
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
+                onClick={onSelect}
+              >
+                <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
+                {needsAttention ? (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
+                    role="img"
+                    aria-label={t("sidebar.pendingAttention")}
+                  />
+                ) : null}
+                {isRunning ? (
+                  <Spinner
+                    aria-label={t("sidebar.running")}
+                    className="shrink-0 text-sidebar-thinking-fg"
+                    size="xs"
+                  />
+                ) : null}
+              </button>
+            ) : (
+              <>
+                <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
+                {needsAttention ? (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
+                    role="img"
+                    aria-label={t("sidebar.pendingAttention")}
+                  />
+                ) : null}
+                {isRunning ? (
+                  <Spinner
+                    aria-label={t("sidebar.running")}
+                    className="shrink-0 text-sidebar-thinking-fg"
+                    size="xs"
+                  />
+                ) : null}
+              </>
+            )}
           </SidebarListRow>
         </ContextMenuTrigger>
       </SidebarItemTooltip>

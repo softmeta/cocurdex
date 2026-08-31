@@ -11,6 +11,7 @@ import {
   archiveSessionAtom,
   bootstrapAgentsAtom,
   bootstrapSessionsAtom,
+  collapsedSessionIdsAtom,
   createDraftSessionAtom,
   getDefaultPermissionMode,
   getSessionPermissionMode,
@@ -21,6 +22,7 @@ import {
   sessionsAtom,
   supportsLivePermissionMode,
   supportsPermissionMode,
+  toggleSessionCollapsedAtom,
   updateSessionCollaborationModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
@@ -521,6 +523,39 @@ describe("upsertSessionAtom", () => {
       lastMessageAt: "2026-05-07T00:05:00.000Z",
       title: "Updated",
     });
+  });
+});
+
+describe("selectSessionAtom", () => {
+  const childSession: SessionRecord = {
+    ...baseSession,
+    id: "child-1",
+    parentSessionId: baseSession.id,
+    sessionKind: "subagent",
+    title: "Standards review",
+  };
+
+  it("expands collapsed ancestors when selecting a nested session", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, childSession]);
+    store.set(toggleSessionCollapsedAtom, baseSession.id);
+
+    expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(true);
+
+    store.set(selectSessionAtom, childSession.id);
+
+    expect(store.get(activeSessionIdAtom)).toBe(childSession.id);
+    expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(false);
+  });
+
+  it("keeps a parent collapsed after the user folds it with a child selected", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, childSession]);
+    store.set(selectSessionAtom, childSession.id);
+    store.set(toggleSessionCollapsedAtom, baseSession.id);
+
+    expect(store.get(activeSessionIdAtom)).toBe(childSession.id);
+    expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(true);
   });
 });
 
