@@ -25,7 +25,10 @@ import {
   DialogTitle,
   ScrollArea,
 } from "@/components/ui";
-import { ChatContentColumn } from "@/features/composer";
+import {
+  ChatContentColumn,
+  sessionComposerDraftKey,
+} from "@/features/composer";
 import {
   cn,
   isPerfEnabled,
@@ -546,6 +549,9 @@ export function ChatView({
                 agentLabel={agentLabel}
                 agentType={agentType}
                 attachment={attachment}
+                draftKey={
+                  sessionId ? sessionComposerDraftKey(sessionId) : undefined
+                }
                 collaborationMode={collaborationMode}
                 composerRef={composerRef}
                 permissionMode={permissionMode}
@@ -709,6 +715,7 @@ export function ChatView({
           agentLabel={agentLabel}
           agentType={agentType}
           attachment={attachment}
+          draftKey={sessionId ? sessionComposerDraftKey(sessionId) : undefined}
           collaborationMode={collaborationMode}
           composerRef={composerRef}
           permissionMode={permissionMode}

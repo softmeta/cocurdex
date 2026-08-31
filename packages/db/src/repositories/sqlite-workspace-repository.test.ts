@@ -13,6 +13,36 @@ function createDatabase() {
 const now = new Date().toISOString();
 
 describe("createSqliteWorkspaceRepository", () => {
+  it("lists workspaces by sort_order ascending", async () => {
+    const database = createDatabase();
+    const repository = createSqliteWorkspaceRepository(database);
+
+    await repository.upsert({
+      id: "newer-created",
+      name: "newer",
+      rootPath: "/tmp/newer",
+      createdAt: "2026-04-20T10:00:00.000Z",
+      updatedAt: "2026-04-20T12:00:00.000Z",
+      lastOpenedAt: "2026-04-20T12:00:00.000Z",
+      sortOrder: 1000,
+    });
+    await repository.upsert({
+      id: "older-created",
+      name: "older",
+      rootPath: "/tmp/older",
+      createdAt: "2026-04-20T09:00:00.000Z",
+      updatedAt: "2026-04-20T13:00:00.000Z",
+      lastOpenedAt: "2026-04-20T13:00:00.000Z",
+      sortOrder: 2000,
+    });
+
+    const listed = await repository.list();
+    expect(listed.map((workspace) => workspace.id)).toEqual([
+      "newer-created",
+      "older-created",
+    ]);
+  });
+
   it("deletes a workspace that still has workflow runs", async () => {
     const database = createDatabase();
     const repository = createSqliteWorkspaceRepository(database);
@@ -23,6 +53,7 @@ describe("createSqliteWorkspaceRepository", () => {
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
+      sortOrder: 1000,
     });
     database
       .prepare(

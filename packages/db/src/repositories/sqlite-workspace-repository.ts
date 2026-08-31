@@ -11,7 +11,7 @@ export function createSqliteWorkspaceRepository(
       const rows = database
         .prepare(
           `SELECT * FROM workspaces
-           ORDER BY last_opened_at DESC, updated_at DESC, created_at DESC`,
+           ORDER BY sort_order ASC, created_at ASC, id ASC`,
         )
         .all() as SqliteRow[];
       return rows.map(mapWorkspace);
@@ -20,14 +20,16 @@ export function createSqliteWorkspaceRepository(
       database
         .prepare(
           `INSERT INTO workspaces (
-             id, name, root_path, created_at, updated_at, last_opened_at
-           ) VALUES (?, ?, ?, ?, ?, ?)
+             id, name, root_path, created_at, updated_at, last_opened_at,
+             sort_order
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              root_path = excluded.root_path,
              created_at = excluded.created_at,
              updated_at = excluded.updated_at,
-             last_opened_at = excluded.last_opened_at`,
+             last_opened_at = excluded.last_opened_at,
+             sort_order = excluded.sort_order`,
         )
         .run(
           workspace.id,
@@ -36,6 +38,7 @@ export function createSqliteWorkspaceRepository(
           workspace.createdAt,
           workspace.updatedAt,
           workspace.lastOpenedAt,
+          workspace.sortOrder,
         );
     },
     async delete(workspaceId) {

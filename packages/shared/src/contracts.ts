@@ -241,6 +241,7 @@ export interface WorkspaceRecord {
   createdAt: string;
   updatedAt: string;
   lastOpenedAt: string;
+  sortOrder: number;
 }
 
 export interface SessionRecord {

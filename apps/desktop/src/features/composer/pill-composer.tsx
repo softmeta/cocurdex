@@ -28,6 +28,7 @@ import type {
   MentionableAttachment,
   MentionEditorChange,
   MentionEditorHandle,
+  MentionEditorProps,
 } from "./mention-editor";
 import { MentionEditor } from "./mention-editor";
 import type { SendShortcut } from "./send-shortcut";
@@ -65,6 +66,7 @@ interface PillComposerProps {
   text: string;
   mentions: MentionableAttachment[];
   editorRef: RefObject<MentionEditorHandle | null>;
+  initialEditorContent?: MentionEditorProps["initialContent"];
   onEditorChange(next: MentionEditorChange): void;
   onMentionAnchorChange(anchor: MentionAnchor | null): void;
   onPaste(event: ClipboardEvent<HTMLDivElement>): void;
@@ -93,6 +95,7 @@ export function PillComposer({
   text,
   mentions,
   editorRef,
+  initialEditorContent,
   onEditorChange,
   onMentionAnchorChange,
   onPaste,
@@ -265,6 +268,7 @@ export function PillComposer({
             <MentionEditor
               ariaLabel={t("sessions:composer.sendFollowUpCompact")}
               containerRef={editorContainerRef}
+              initialContent={initialEditorContent}
               onChange={onEditorChange}
               onKeyDown={(event) => {
                 slashCommands.handleKeyDown(event);

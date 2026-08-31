@@ -75,6 +75,7 @@ describe("createCocurdexDatabase", () => {
       createdAt: "2026-06-25T00:00:00.000Z",
       updatedAt: "2026-06-25T00:00:00.000Z",
       lastOpenedAt: "2026-06-25T00:00:00.000Z",
+      sortOrder: 1000,
     });
 
     expect(() =>

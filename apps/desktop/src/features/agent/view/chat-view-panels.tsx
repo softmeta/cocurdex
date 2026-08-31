@@ -43,6 +43,7 @@ interface ChatComposerControls {
   agentLabel: string;
   agentType?: AgentId;
   attachment?: MessageAttachment;
+  draftKey?: string;
   collaborationMode: CollaborationModeKind;
   permissionMode?: AgentPermissionMode | null;
   providerSnapshot?: AgentProviderSnapshot | null;

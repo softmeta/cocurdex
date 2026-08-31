@@ -116,6 +116,7 @@
     "delete": "删除",
     "expandChildren": "展开子会话",
     "marketplace": "市场",
+    "newSession": "新建会话",
     "newSessionInWorkspace": "在 {{workspaceName}} 中新建会话",
     "noAgentsYet": "暂无会话",
     "pendingAttention": "需要处理",

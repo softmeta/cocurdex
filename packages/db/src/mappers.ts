@@ -39,6 +39,7 @@ export function mapWorkspace(row: SqliteRow): WorkspaceRecord {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     lastOpenedAt: String(row.last_opened_at),
+    sortOrder: Number(row.sort_order),
   };
 }
 

@@ -26,6 +26,7 @@ describe("createSqliteSessionRepository", () => {
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
+      sortOrder: 1000,
     });
     await sessions.upsert({
       id: "session-1",
@@ -68,6 +69,7 @@ describe("createSqliteSessionRepository", () => {
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
+      sortOrder: 1000,
     });
     await sessions.upsert({
       id: "parent",
@@ -121,6 +123,7 @@ describe("createSqliteSessionRepository", () => {
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
+      sortOrder: 1000,
     });
     await sessions.upsert({
       id: "parent",

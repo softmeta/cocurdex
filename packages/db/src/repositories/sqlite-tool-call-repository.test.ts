@@ -26,6 +26,7 @@ async function seedSession(database: Database, sessionId: string) {
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,
+    sortOrder: 1000,
   });
   await database.sessions.upsert({
     id: sessionId,

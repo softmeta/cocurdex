@@ -55,6 +55,7 @@ describe("CocurdexDatabase.search", () => {
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
+      sortOrder: 1000,
     });
     await database.notes.create({
       title: "Workspace scope",

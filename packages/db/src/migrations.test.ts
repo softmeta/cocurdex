@@ -50,4 +50,56 @@ describe("initializeDatabase", () => {
     }[];
     expect(columns.map((column) => column.name)).toContain("subagent_json");
   });
+
+  it("adds sort_order onto an existing workspaces table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        root_path TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_opened_at TEXT NOT NULL
+      );
+    `);
+    database
+      .prepare(
+        `INSERT INTO workspaces (
+           id, name, root_path, created_at, updated_at, last_opened_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "later",
+        "later",
+        "/tmp/later",
+        "2026-04-20T10:00:00.000Z",
+        "2026-04-20T10:00:00.000Z",
+        "2026-04-20T10:00:00.000Z",
+      );
+    database
+      .prepare(
+        `INSERT INTO workspaces (
+           id, name, root_path, created_at, updated_at, last_opened_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "earlier",
+        "earlier",
+        "/tmp/earlier",
+        "2026-04-20T09:00:00.000Z",
+        "2026-04-20T09:00:00.000Z",
+        "2026-04-20T09:00:00.000Z",
+      );
+
+    initializeDatabase(database);
+
+    const rows = database
+      .prepare("SELECT id, sort_order FROM workspaces ORDER BY sort_order ASC")
+      .all() as { id?: string; sort_order?: number }[];
+    expect(rows).toEqual([
+      { id: "earlier", sort_order: 1000 },
+      { id: "later", sort_order: 2000 },
+    ]);
+  });
 });

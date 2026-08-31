@@ -8,7 +8,8 @@ export function createSchemaSql() {
       root_path TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      last_opened_at TEXT NOT NULL
+      last_opened_at TEXT NOT NULL,
+      sort_order REAL NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS sessions (

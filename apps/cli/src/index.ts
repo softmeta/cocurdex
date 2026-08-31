@@ -411,7 +411,12 @@ async function createSession(parsed: ParsedArgs) {
 
   const now = new Date().toISOString();
   const targetWorkspace =
-    workspace ?? createWorkspaceFromPath(path.resolve(workspaceValue), now);
+    workspace ??
+    createWorkspaceFromPath(
+      path.resolve(workspaceValue),
+      now,
+      workspaces.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1000,
+    );
   const session: SessionRecord = {
     id: crypto.randomUUID(),
     workspaceId: targetWorkspace.id,
@@ -524,7 +529,12 @@ async function createWorkflow(parsed: ParsedArgs) {
 
   const now = new Date().toISOString();
   const targetWorkspace =
-    workspace ?? createWorkspaceFromPath(path.resolve(workspaceValue), now);
+    workspace ??
+    createWorkspaceFromPath(
+      path.resolve(workspaceValue),
+      now,
+      workspaces.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1000,
+    );
 
   return withDaemon(async () => {
     if (!workspace) {
@@ -595,6 +605,7 @@ function workflowBinding(
 function createWorkspaceFromPath(
   rootPath: string,
   now: string,
+  sortOrder: number,
 ): WorkspaceRecord {
   return {
     id: crypto.randomUUID(),
@@ -603,6 +614,7 @@ function createWorkspaceFromPath(
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,
+    sortOrder,
   };
 }
 

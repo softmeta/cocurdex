@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Plus } from "lucide-react";
+import { FolderPlus, Plus } from "lucide-react";
 import { type ReactNode, startTransition, useMemo, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -10,6 +10,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@/components/ui";
 import { activeConversationIdAtom, conversationsAtom } from "@/features/chat";
 import {
@@ -23,6 +26,7 @@ import {
   collapsedWorkspaceIdsAtom,
   openWorkspaceByPathAtom,
   removeWorkspaceAtom,
+  reorderWorkspacesAtom,
   selectWorkspaceAtom,
   workspacesAtom,
 } from "@/features/workspaces";
@@ -100,6 +104,7 @@ export function LeftSidebar({
   const setActiveWorkspaceId = useSetAtom(activeWorkspaceIdAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const removeWorkspace = useSetAtom(removeWorkspaceAtom);
+  const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const conversations = useAtomValue(conversationsAtom);
@@ -223,24 +228,18 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  // The trailing tab action follows the visible list: add a project, or start
-  // a new chat. One button instead of two per-section actions.
-  // Same glyph on both tabs — only the label changes, so the row does not
-  // appear to swap controls when switching tabs.
   const isProjectsTab = activeTab === "projects";
-  const tabAction = isProjectsTab
-    ? {
-        label: t("sessions:sidebar.addProject", {
-          defaultValue: "Add project",
-        }),
-        onClick: () => {
-          void handleOpenWorkspace();
-        },
-      }
-    : {
-        label: t("chat:list.new", { defaultValue: "New chat" }),
-        onClick: handleCreateConversation,
-      };
+  const createActionLabel = isProjectsTab
+    ? t("sessions:sidebar.newSession", {
+        defaultValue: "New session",
+      })
+    : t("chat:list.new", { defaultValue: "New chat" });
+  const onCreateAction = isProjectsTab
+    ? () => handleCreateAgent()
+    : handleCreateConversation;
+  const addProjectLabel = t("sessions:sidebar.addProject", {
+    defaultValue: "Add project",
+  });
 
   return (
     <SidebarShell>
@@ -274,22 +273,37 @@ export function LeftSidebar({
             </TabsList>
           </div>
 
-          {/* Create action for the visible tab, as its own row above the list
-              (same row contract as the list leaves below it). */}
-          <div className="shrink-0 pe-3">
+          <div className="flex shrink-0 items-center gap-0.5 pe-3">
             <SidebarListRow
-              className="ps-1 pe-0"
+              className="min-w-0 flex-1 ps-1 pe-1"
               render={
                 <button
                   type="button"
-                  aria-label={tabAction.label}
-                  onClick={tabAction.onClick}
+                  aria-label={createActionLabel}
+                  onClick={onCreateAction}
                 />
               }
             >
               <Plus />
-              <SidebarListRowLabel>{tabAction.label}</SidebarListRowLabel>
+              <SidebarListRowLabel>{createActionLabel}</SidebarListRowLabel>
             </SidebarListRow>
+            {isProjectsTab ? (
+              <Tooltip>
+                <TooltipTrigger
+                  aria-label={addProjectLabel}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
+                  onClick={() => {
+                    void handleOpenWorkspace();
+                  }}
+                  type="button"
+                >
+                  <FolderPlus className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  {addProjectLabel}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
           </div>
 
           <TabsContent
@@ -303,6 +317,9 @@ export function LeftSidebar({
               onCreateAgent={handleCreateAgent}
               onRemoveWorkspace={(id) => {
                 void handleRemoveWorkspace(id);
+              }}
+              onReorderWorkspaces={(activeId, overId) => {
+                reorderWorkspaces({ activeId, overId });
               }}
               onRevealWorkspace={(rootPath) => {
                 void handleRevealWorkspace(rootPath);

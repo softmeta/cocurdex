@@ -1,20 +1,21 @@
 import type { WorkspaceRecord } from "@cocurdex/shared";
-import { atom } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 import { desktopApi, type GitBranchInfo } from "@/lib";
+import {
+  findMostRecentlyOpenedWorkspace,
+  nextWorkspaceSortOrder,
+  reorderWorkspacesById,
+  sortWorkspacesBySortOrder,
+} from "./workspace-order";
 
 // Stamp the moment a workspace becomes active and persist it. "Opening" a
 // workspace is an event (select / add / bootstrap-restore), so the IPC write
 // lives in those write atoms rather than in a render effect that mirrors the
 // active-workspace object.
 function persistWorkspaceOpened(workspace: WorkspaceRecord) {
-  void desktopApi
-    .saveWorkspace({
-      ...workspace,
-      lastOpenedAt: new Date().toISOString(),
-    })
-    .catch((error) => {
-      console.error("[workspaces] saveWorkspace failed", error);
-    });
+  void desktopApi.saveWorkspace(workspace).catch((error) => {
+    console.error("[workspaces] saveWorkspace failed", error);
+  });
 }
 
 /** Strip trailing slashes for stable rootPath equality (keep root "/"). */
@@ -56,11 +57,16 @@ export const collapsedWorkspaceIdsAtom = atom<string[]>([]);
 export const activeBranchesAtom = atom<GitBranchInfo[]>([]);
 export const activeBranchAtom = atom<string | null>(null);
 
-function promoteWorkspaceToFront(
-  workspaces: WorkspaceRecord[],
-  workspace: WorkspaceRecord,
-): WorkspaceRecord[] {
-  return [workspace, ...workspaces.filter((item) => item.id !== workspace.id)];
+function markWorkspaceOpened(get: Getter, set: Setter, workspaceId: string) {
+  const lastOpenedAt = new Date().toISOString();
+  const next = get(workspacesAtom).map((item) =>
+    item.id === workspaceId ? { ...item, lastOpenedAt } : item,
+  );
+  set(workspacesAtom, next);
+  const opened = next.find((item) => item.id === workspaceId);
+  if (opened) {
+    persistWorkspaceOpened(opened);
+  }
 }
 
 function ensureWorkspaceExpanded(
@@ -72,17 +78,16 @@ function ensureWorkspaceExpanded(
 
 export const bootstrapWorkspacesAtom = atom(
   null,
-  (_get, set, workspaces: WorkspaceRecord[]) => {
-    const sorted = [...workspaces].sort((left, right) =>
-      right.lastOpenedAt.localeCompare(left.lastOpenedAt),
-    );
+  (get, set, workspaces: WorkspaceRecord[]) => {
+    const list = sortWorkspacesBySortOrder(workspaces);
+    const active = findMostRecentlyOpenedWorkspace(list);
 
-    set(workspacesAtom, sorted);
-    set(activeWorkspaceIdAtom, sorted[0]?.id ?? null);
-    set(lastSelectedWorkspaceIdAtom, sorted[0]?.id ?? null);
+    set(workspacesAtom, list);
+    set(activeWorkspaceIdAtom, active?.id ?? null);
+    set(lastSelectedWorkspaceIdAtom, active?.id ?? null);
 
-    if (sorted[0]) {
-      persistWorkspaceOpened(sorted[0]);
+    if (active) {
+      markWorkspaceOpened(get, set, active.id);
     }
   },
 );
@@ -95,7 +100,7 @@ export const selectWorkspaceAtom = atom(
 
     const workspace = get(workspacesAtom).find((w) => w.id === workspaceId);
     if (workspace) {
-      persistWorkspaceOpened(workspace);
+      markWorkspaceOpened(get, set, workspace.id);
     }
   },
 );
@@ -106,12 +111,12 @@ export const addWorkspaceAtom = atom(
     const current = get(workspacesAtom);
     const exists = current.find((w) => w.id === workspace.id);
     if (!exists) {
-      set(workspacesAtom, [...current, workspace]);
+      set(workspacesAtom, sortWorkspacesBySortOrder([...current, workspace]));
     }
     set(activeWorkspaceIdAtom, workspace.id);
     set(lastSelectedWorkspaceIdAtom, workspace.id);
 
-    persistWorkspaceOpened(workspace);
+    markWorkspaceOpened(get, set, workspace.id);
   },
 );
 
@@ -124,8 +129,7 @@ export type OpenWorkspaceByPathResult = {
 /**
  * Open a workspace by absolute directory path (CLI `cocurdex .` / folder dialog).
  * Reuses an existing record with the same rootPath; otherwise creates one.
- * Always activates the project, promotes it to the top of the list, and expands
- * its session list in the sidebar — matching “open this folder as the project”.
+ * Always activates the project and expands its session list in the sidebar.
  */
 export const openWorkspaceByPathAtom = atom(
   null,
@@ -149,16 +153,11 @@ export const openWorkspaceByPathAtom = atom(
         createdAt: now,
         updatedAt: now,
         lastOpenedAt: now,
+        sortOrder: nextWorkspaceSortOrder(get(workspacesAtom)),
       };
       set(addWorkspaceAtom, workspace);
     }
 
-    // Pin the opened project to the top of the projects list (recents order).
-    set(
-      workspacesAtom,
-      promoteWorkspaceToFront(get(workspacesAtom), workspace),
-    );
-    // Ensure the project's session list is expanded in the sidebar.
     set(
       collapsedWorkspaceIdsAtom,
       ensureWorkspaceExpanded(get(collapsedWorkspaceIdsAtom), workspace.id),
@@ -171,10 +170,22 @@ export const openWorkspaceByPathAtom = atom(
   },
 );
 
-// Drops a workspace from the in-memory store. If the removed workspace was
-// active, fall back to the next available one (or null). Caller is expected
-// to also purge any sessions tied to the workspace from sessionsAtom — the
-// backend has already cascaded the delete in the DB.
+export const reorderWorkspacesAtom = atom(
+  null,
+  (get, set, payload: { activeId: string; overId: string }) => {
+    const result = reorderWorkspacesById(
+      get(workspacesAtom),
+      payload.activeId,
+      payload.overId,
+    );
+    if (!result) {
+      return;
+    }
+    set(workspacesAtom, result.workspaces);
+    persistWorkspaceOpened(result.moved);
+  },
+);
+
 export const removeWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string) => {

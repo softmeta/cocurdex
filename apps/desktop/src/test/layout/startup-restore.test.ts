@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeWorkspaceIdAtom,
   bootstrapWorkspacesAtom,
+  workspacesAtom,
 } from "@/features/workspaces";
 
 describe("startup restoration", () => {
@@ -17,6 +18,7 @@ describe("startup restoration", () => {
         createdAt: "2026-04-20T09:00:00.000Z",
         updatedAt: "2026-04-20T09:00:00.000Z",
         lastOpenedAt: "2026-04-20T09:00:00.000Z",
+        sortOrder: 1000,
       },
       {
         id: "w2",
@@ -25,9 +27,14 @@ describe("startup restoration", () => {
         createdAt: "2026-04-20T10:00:00.000Z",
         updatedAt: "2026-04-20T10:00:00.000Z",
         lastOpenedAt: "2026-04-20T10:00:00.000Z",
+        sortOrder: 2000,
       },
     ]);
 
     expect(store.get(activeWorkspaceIdAtom)).toBe("w2");
+    expect(store.get(workspacesAtom).map((workspace) => workspace.id)).toEqual([
+      "w1",
+      "w2",
+    ]);
   });
 });

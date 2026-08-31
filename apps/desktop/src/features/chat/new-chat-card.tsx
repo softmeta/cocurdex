@@ -7,6 +7,7 @@ import { Button } from "@/components/ui";
 import {
   ChatComposer,
   ComposerSurfaceBody,
+  newConversationComposerDraftKey,
   WelcomeHeading,
 } from "@/features/composer";
 import {
@@ -144,6 +145,7 @@ export function NewConversationCard({
         mode="chat"
         variant="panel"
         tone="welcome"
+        draftKey={newConversationComposerDraftKey()}
         mentionMenuPlacement="bottom"
         controls={controls}
         attachMenuExtras={attachMenuExtras}

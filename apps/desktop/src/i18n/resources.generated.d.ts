@@ -1027,6 +1027,7 @@ export default interface Resources {
       delete: "Delete";
       expandChildren: "Expand subagent sessions";
       marketplace: "Marketplace";
+      newSession: "New session";
       newSessionInWorkspace: "New session in {{workspaceName}}";
       noAgentsYet: "No sessions yet";
       pendingAttention: "Needs attention";
