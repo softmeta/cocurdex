@@ -1,93 +1,35 @@
 import type { AgentToolCallRecord } from "@cocurdex/shared";
-import { useAtomValue } from "jotai";
-import {
-  type CSSProperties,
-  Fragment,
-  type ReactNode,
-  type RefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { ChevronRight } from "lucide-react";
+import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
 } from "@/components/ui";
+import { activeConversationIdAtom } from "@/features/chat";
+import { selectSessionAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 
 import { chatDisplaySettingsAtom } from "../chat-display";
-import { ToolCallDetailBody, ToolCallDetailHeader } from "./tool-call-detail";
+import { ToolCallDetailBody } from "./tool-call-detail";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
-  getOpenCodeSubagentDescription,
-  getOpenCodeSubagentType,
+  getSubagentChildSessionId,
+  getSubagentDescription,
+  getSubagentType,
   getToolCallGroupCountLabel,
   getToolCallStatusClasses,
   getToolCallStatusLabel,
   getToolCallStatusSummary,
-  getToolCallTitle,
   getToolCallTriggerParts,
-  isOpenCodeSubagentToolCall,
+  isSubagentToolCall,
+  partitionToolCallRuns,
   type ToolCallPreviewLocation,
   type ToolCallStatusSummaryPart,
   type ToolCallStatusSummaryTone,
 } from "./tool-call-utils";
-
-const DEFAULT_CHAT_SHEET_RIGHT_OFFSET = "0px";
-
-type ChatScopedSheetStyle = CSSProperties & {
-  "--chat-sheet-right-offset"?: string;
-};
-
-function getChatPaneElement(trigger: HTMLElement | null) {
-  return trigger?.closest("section") ?? null;
-}
-
-function useChatSheetRightOffset(
-  open: boolean,
-  triggerRef: RefObject<HTMLElement | null>,
-) {
-  const [rightOffset, setRightOffset] = useState(
-    DEFAULT_CHAT_SHEET_RIGHT_OFFSET,
-  );
-
-  useLayoutEffect(() => {
-    if (!open) {
-      setRightOffset(DEFAULT_CHAT_SHEET_RIGHT_OFFSET);
-      return;
-    }
-
-    const chatPane = getChatPaneElement(triggerRef.current);
-    if (!chatPane) {
-      setRightOffset(DEFAULT_CHAT_SHEET_RIGHT_OFFSET);
-      return;
-    }
-
-    const updateOffset = () => {
-      const paneRect = chatPane.getBoundingClientRect();
-      const nextOffset = Math.max(0, window.innerWidth - paneRect.right);
-      setRightOffset(`${Math.round(nextOffset)}px`);
-    };
-
-    updateOffset();
-    const resizeObserver = new ResizeObserver(updateOffset);
-    resizeObserver.observe(chatPane);
-    window.addEventListener("resize", updateOffset);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateOffset);
-    };
-  }, [open, triggerRef]);
-
-  return rightOffset;
-}
 
 function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
   const { secondary, title } = getToolCallTriggerParts(toolCall);
@@ -139,24 +81,67 @@ function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
   );
 }
 
+function getSubagentTypeClasses(toolCall: AgentToolCallRecord) {
+  if (toolCall.status === "failed") {
+    return "text-chat-status-failed-fg";
+  }
+
+  if (toolCall.status === "pending") {
+    return "text-chat-status-pending-fg";
+  }
+
+  if (toolCall.status === "in_progress") {
+    return "text-chat-status-running-fg";
+  }
+
+  return "text-chat-link";
+}
+
+function getSubagentChipSurfaceClasses(toolCall: AgentToolCallRecord) {
+  if (toolCall.status === "failed") {
+    return "bg-chat-status-failed-bg";
+  }
+
+  if (toolCall.status === "pending") {
+    return "bg-chat-status-pending-bg";
+  }
+
+  if (toolCall.status === "in_progress") {
+    return "bg-chat-status-running-bg";
+  }
+
+  return "bg-chat-surface-tint-hover";
+}
+
 function SubagentTriggerCard({ toolCall }: { toolCall: AgentToolCallRecord }) {
-  const { t } = useTranslation("agent");
-  const type = getOpenCodeSubagentType(toolCall) ?? t("toolCalls.subagent");
-  const description = getOpenCodeSubagentDescription(toolCall);
-  const isRunning =
-    toolCall.status === "pending" || toolCall.status === "in_progress";
+  const type = getSubagentType(toolCall);
+  const description = getSubagentDescription(toolCall);
+  const isCompleted = toolCall.status === "completed";
+  const showType = Boolean(type && type !== description);
 
   return (
     <>
-      {isRunning ? (
-        <span aria-hidden className="subagent-trigger-activity" />
-      ) : null}
-      <span className="shrink-0 text-chat-status-running-fg text-display font-semibold">
-        {type}
-      </span>
-      <span className="min-w-0 truncate text-display text-chat-fg-secondary">
+      <ToolCallStatusIcon
+        className={cn("shrink-0", getToolCallStatusClasses(toolCall))}
+        toolCall={toolCall}
+      />
+      <span className="min-w-0 truncate font-medium text-chat-fg">
         {description}
       </span>
+      {showType ? (
+        <span className={cn("shrink-0", getSubagentTypeClasses(toolCall))}>
+          {type}
+        </span>
+      ) : null}
+      {isCompleted ? null : (
+        <span className={cn("shrink-0", getToolCallStatusClasses(toolCall))}>
+          {getToolCallStatusLabel(toolCall)}
+        </span>
+      )}
+      <ChevronRight
+        aria-hidden
+        className="size-3.5 shrink-0 text-chat-fg-muted rtl:-scale-x-100"
+      />
     </>
   );
 }
@@ -168,81 +153,51 @@ function ToolCallItem({
   toolCall: AgentToolCallRecord;
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
 }) {
-  const isSubagent = isOpenCodeSubagentToolCall(toolCall);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const sheetTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const sheetRightOffset = useChatSheetRightOffset(
-    isSheetOpen,
-    sheetTriggerRef,
-  );
-  const sheetStyle: ChatScopedSheetStyle = {
-    "--chat-sheet-right-offset": sheetRightOffset,
-  };
-  const body: ReactNode = (
-    <ToolCallDetailBody
-      onOpenToolLocation={onOpenToolLocation}
-      toolCall={toolCall}
-    />
-  );
+  const selectSession = useSetAtom(selectSessionAtom);
+  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
 
-  // Subagents render a full nested transcript, so they keep the right-sliding
-  // sheet — inlining that volume of content would bury the rest of the chat.
-  if (isSubagent) {
+  if (isSubagentToolCall(toolCall)) {
+    const description = getSubagentDescription(toolCall);
+    const type = getSubagentType(toolCall);
+    const statusLabel = getToolCallStatusLabel(toolCall);
+    const accessibleName = [description, type, statusLabel]
+      .filter(Boolean)
+      .join(", ");
+    const childSessionId = getSubagentChildSessionId(toolCall);
+
     return (
-      <Sheet modal={false} onOpenChange={setIsSheetOpen} open={isSheetOpen}>
-        <SheetTrigger
-          className={cn(
-            "relative flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-card border border-chat-border-soft bg-chat-surface-subtle px-4 py-3 text-left shadow-chat-soft transition-colors hover:border-chat-border hover:bg-chat-surface-tint-hover",
-            (toolCall.status === "pending" ||
-              toolCall.status === "in_progress") &&
-              "subagent-trigger-running",
-          )}
-          ref={sheetTriggerRef}
-        >
-          <SubagentTriggerCard toolCall={toolCall} />
-        </SheetTrigger>
-        <SheetContent
-          className={cn(
-            // Match the chat theme instead of the default `bg-background` +
-            // generic border, so the panel reads as part of the chat surface
-            // rather than an OS-level dialog.
-            "w-full gap-0 overflow-hidden data-[side=right]:sm:max-w-xl right-(--chat-sheet-right-offset) border-chat-border-soft bg-chat-surface-raised",
-          )}
-          closeButtonClassName="app-no-drag top-6 right-6 -translate-y-1/2"
-          showOverlay={false}
-          side="right"
-          style={sheetStyle}
-        >
-          <SheetTitle className="sr-only">
-            {getToolCallTitle(toolCall)}
-          </SheetTitle>
-          <div className="flex h-12 shrink-0 items-center border-chat-border-soft border-b px-6 pr-14">
-            <ToolCallDetailHeader toolCall={toolCall} />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-3 pb-4">
-            {body}
-          </div>
-        </SheetContent>
-      </Sheet>
+      <button
+        aria-label={accessibleName}
+        className={cn(
+          "flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-control px-2 py-1 text-left text-meta whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          getSubagentChipSurfaceClasses(toolCall),
+        )}
+        onClick={() => {
+          if (!childSessionId) {
+            return;
+          }
+          setActiveConversationId(null);
+          selectSession(childSessionId);
+        }}
+        type="button"
+      >
+        <SubagentTriggerCard toolCall={toolCall} />
+      </button>
     );
   }
 
-  // Regular tool calls expand inline so the detail joins the document flow and
-  // pushes later rows down instead of floating over them. The capped, scrollable
-  // body keeps very long output from running off the screen.
   return (
     <Collapsible className="w-full min-w-0 overflow-hidden">
-      {/* No horizontal padding: first-level tool rows must align flush with the
-          activity/group header and with adjacent reasoning rows. */}
       <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-meta transition-colors hover:bg-chat-surface-row-hover">
         <ToolCallTriggerRow toolCall={toolCall} />
       </CollapsibleTrigger>
-      {/* Align the expanded detail with the trigger's title (status icon):
-          chevron (14) + gap-2 (8) = 22px. No guide line, so the detail reads
-          as a continuation of the row above. Each code panel inside owns its
-          bounded, overscroll-contained scroll. */}
       <CollapsibleContent className="ms-5.5 pt-1">
-        <div className="pb-1 text-chat-fg-secondary text-sm">{body}</div>
+        <div className="pb-1 text-chat-fg-secondary text-sm">
+          <ToolCallDetailBody
+            onOpenToolLocation={onOpenToolLocation}
+            toolCall={toolCall}
+          />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -307,77 +262,86 @@ export function ToolCallGroup({
 }) {
   const { t } = useTranslation("agent");
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
-  const subagentToolCalls = toolCalls.filter(isOpenCodeSubagentToolCall);
-  const regularToolCalls = toolCalls.filter(
-    (toolCall) => !isOpenCodeSubagentToolCall(toolCall),
-  );
-  const countLabel = getToolCallGroupCountLabel(regularToolCalls);
-  const statusSummary = getToolCallStatusSummary(regularToolCalls);
+  const runs = partitionToolCallRuns(toolCalls);
 
   if (activityDisplay === "hidden") {
     return null;
   }
 
+  const runNodes = runs.map((run) => {
+    if (run.kind === "subagent") {
+      return (
+        <div className="flex w-full min-w-0 gap-1" key={run.toolCalls[0]?.id}>
+          {run.toolCalls.map((toolCall) => (
+            <ToolCallItem
+              key={toolCall.id}
+              onOpenToolLocation={onOpenToolLocation}
+              toolCall={toolCall}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (nested) {
+      return (
+        <Fragment key={run.toolCalls[0]?.id}>
+          {run.toolCalls.map((toolCall) => (
+            <ToolCallItem
+              key={toolCall.id}
+              onOpenToolLocation={onOpenToolLocation}
+              toolCall={toolCall}
+            />
+          ))}
+        </Fragment>
+      );
+    }
+
+    return (
+      <Collapsible
+        className="group/tool-group w-full"
+        defaultOpen
+        key={run.toolCalls[0]?.id}
+      >
+        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-0.5 text-sm transition-colors hover:text-chat-fg">
+          <span className="hidden shrink-0 text-xs font-medium text-chat-fg-muted sm:inline">
+            {t("toolCalls.title")}
+          </span>
+          <span className="shrink-0 text-sm font-medium text-chat-fg">
+            {getToolCallGroupCountLabel(run.toolCalls)}
+          </span>
+          <StatusSummaryMeta
+            statusSummary={getToolCallStatusSummary(run.toolCalls)}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent
+          className={cn(
+            "mt-1 flex flex-col items-start gap-1 ms-[7px] border-s border-chat-border-soft ps-[14px]",
+          )}
+        >
+          {run.toolCalls.map((toolCall) => (
+            <ToolCallItem
+              key={toolCall.id}
+              onOpenToolLocation={onOpenToolLocation}
+              toolCall={toolCall}
+            />
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  });
+
   if (nested) {
     return (
-      <div className="flex w-full min-w-0 flex-col items-start gap-0.5 overflow-hidden">
-        {subagentToolCalls.map((toolCall) => (
-          <ToolCallItem
-            key={toolCall.id}
-            onOpenToolLocation={onOpenToolLocation}
-            toolCall={toolCall}
-          />
-        ))}
-        {regularToolCalls.map((toolCall) => (
-          <ToolCallItem
-            key={toolCall.id}
-            onOpenToolLocation={onOpenToolLocation}
-            toolCall={toolCall}
-          />
-        ))}
+      <div className="flex w-full min-w-0 flex-col gap-0.5 overflow-hidden">
+        {runNodes}
       </div>
     );
   }
 
   return (
-    <div className="flex w-full max-w-3xl min-w-0 flex-col items-start gap-2 overflow-hidden">
-      {subagentToolCalls.map((toolCall) => (
-        <ToolCallItem
-          key={toolCall.id}
-          onOpenToolLocation={onOpenToolLocation}
-          toolCall={toolCall}
-        />
-      ))}
-      {regularToolCalls.length > 0 ? (
-        <Collapsible className="group/tool-group w-full" defaultOpen>
-          <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-0.5 text-sm transition-colors hover:text-chat-fg">
-            <span className="hidden shrink-0 text-xs font-medium text-chat-fg-muted sm:inline">
-              {t("toolCalls.title")}
-            </span>
-            <span className="shrink-0 text-sm font-medium text-chat-fg">
-              {countLabel}
-            </span>
-            <StatusSummaryMeta statusSummary={statusSummary} />
-          </CollapsibleTrigger>
-          {/* A subtle guide rail + indent nests the rows under the header so the
-              run reads as the group's children, not a sibling list (see
-              the inline guide class). Nested (condensed) groups skip this —
-              there the ActivityBlock already supplies the enclosing level. */}
-          <CollapsibleContent
-            className={cn(
-              "mt-1 flex flex-col items-start gap-1 ms-[7px] border-s border-chat-border-soft ps-[14px]",
-            )}
-          >
-            {regularToolCalls.map((toolCall) => (
-              <ToolCallItem
-                key={toolCall.id}
-                onOpenToolLocation={onOpenToolLocation}
-                toolCall={toolCall}
-              />
-            ))}
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
+    <div className="flex w-full max-w-3xl min-w-0 flex-col gap-2 overflow-hidden">
+      {runNodes}
     </div>
   );
 }

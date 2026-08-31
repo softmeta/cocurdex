@@ -3,11 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   formatToolCallData,
   formatToolCallOutput,
+  getSubagentChildSessionId,
+  getSubagentDescription,
+  getSubagentType,
   getToolCallInputEntries,
   getToolCallStatusSummary,
   getToolCallTitle,
   getToolCallTriggerParts,
   isMultilineInputField,
+  isSubagentToolCall,
+  partitionToolCallRuns,
 } from "@/features/agent/tool-call/tool-call-utils";
 
 function timedToolCall(startedAt: string, updatedAt: string) {
@@ -43,13 +48,14 @@ function subagentToolCall(
     id: `task-${status}`,
     sessionId: "session-1",
     title: "Using subagent",
-    kind: "task",
+    kind: "other",
     status,
-    rawInput: {
-      childSessionId: "opencode-subagent:session-1:child-session-1",
+    subagent: {
+      sessionId: "child-session-1",
+      type: "code-reviewer",
       description: "Explore source",
-      openCodeSessionId: "child-session-1",
     },
+    rawInput: null,
     rawOutput: null,
     content: [],
     locations: [],
@@ -172,7 +178,40 @@ describe("tool call utils", () => {
     ]);
   });
 
-  it("uses status-aware OpenCode subagent titles", () => {
+  it("partitions tool calls into timeline-ordered runs", () => {
+    const read = statusToolCall("completed");
+    const first = subagentToolCall("in_progress");
+    const second = {
+      ...subagentToolCall("in_progress"),
+      id: "task-second",
+    };
+    const grep = {
+      ...statusToolCall("completed"),
+      id: "tool-grep",
+      kind: "grep",
+    };
+
+    expect(
+      partitionToolCallRuns([read, first, second, grep]).map((run) => ({
+        kind: run.kind,
+        ids: run.toolCalls.map((toolCall) => toolCall.id),
+      })),
+    ).toEqual([
+      { kind: "tool", ids: ["tool-completed"] },
+      { kind: "subagent", ids: ["task-in_progress", "task-second"] },
+      { kind: "tool", ids: ["tool-grep"] },
+    ]);
+  });
+
+  it("reads provider-neutral subagent semantics", () => {
+    const toolCall = subagentToolCall("in_progress");
+    expect(isSubagentToolCall(toolCall)).toBe(true);
+    expect(getSubagentChildSessionId(toolCall)).toBe("child-session-1");
+    expect(getSubagentType(toolCall)).toBe("Code Reviewer");
+    expect(getSubagentDescription(toolCall)).toBe("Explore source");
+  });
+
+  it("uses status-aware subagent titles", () => {
     expect(getToolCallTitle(subagentToolCall("in_progress"))).toBe(
       "Using subagent",
     );

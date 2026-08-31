@@ -272,6 +272,9 @@ export class AcpEventMapper {
     private readonly onEvent: (event: AgentEvent) => void,
     private readonly now: () => string = () => new Date().toISOString(),
     initialSessionTitle: string | null = null,
+    private readonly transformToolCall: (
+      toolCall: AgentToolCallRecord,
+    ) => AgentToolCallRecord | null = (toolCall) => toolCall,
   ) {
     this.updateNativeSessionTitle = createNativeSessionTitleTracker({
       initialTitle: initialSessionTitle,
@@ -418,12 +421,17 @@ export class AcpEventMapper {
         return;
       case "tool_call": {
         this.endMessageSegment();
-        const toolCall = mergeToolCall(
-          undefined,
-          update,
-          this.sessionId,
-          this.nextTimelineTimestamp(),
+        const toolCall = this.transformToolCall(
+          mergeToolCall(
+            undefined,
+            update,
+            this.sessionId,
+            this.nextTimelineTimestamp(),
+          ),
         );
+        if (!toolCall) {
+          return;
+        }
         this.tools.set(toolCall.id, toolCall);
         this.onEvent({
           type: "tool.started",
@@ -434,12 +442,17 @@ export class AcpEventMapper {
       }
       case "tool_call_update": {
         this.endMessageSegment();
-        const toolCall = mergeToolCall(
-          this.tools.get(update.toolCallId),
-          update,
-          this.sessionId,
-          this.nextTimelineTimestamp(),
+        const toolCall = this.transformToolCall(
+          mergeToolCall(
+            this.tools.get(update.toolCallId),
+            update,
+            this.sessionId,
+            this.nextTimelineTimestamp(),
+          ),
         );
+        if (!toolCall) {
+          return;
+        }
         this.tools.set(toolCall.id, toolCall);
         this.ingestToolDiffs(toolCall);
         const type =
@@ -558,6 +571,10 @@ export class AcpEventMapper {
     });
   }
 
+  hasPendingTurn() {
+    return this.messages.size > 0 || this.tools.size > 0;
+  }
+
   /**
    * Apply usage from the `session/prompt` response (Grok `_meta` + optional
    * unstable `usage` object) and complete the turn.
@@ -621,6 +638,24 @@ export class AcpEventMapper {
         attachments: [],
         createdAt: this.nextTimelineTimestamp(),
       } satisfies MessageRecord);
+    if (stopReason === "cancelled") {
+      for (const toolCall of this.tools.values()) {
+        if (toolCall.status === "completed" || toolCall.status === "failed") {
+          continue;
+        }
+        const failedToolCall: AgentToolCallRecord = {
+          ...toolCall,
+          status: "failed",
+          updatedAt: this.nextTimelineTimestamp(),
+        };
+        this.tools.set(failedToolCall.id, failedToolCall);
+        this.onEvent({
+          type: "tool.finished",
+          sessionId: this.sessionId,
+          toolCall: failedToolCall,
+        });
+      }
+    }
     this.onEvent({
       type: "turn.completed",
       sessionId: this.sessionId,

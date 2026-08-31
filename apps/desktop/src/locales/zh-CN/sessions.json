@@ -116,6 +116,7 @@
     "marketplace": "市场",
     "newSessionInWorkspace": "在 {{workspaceName}} 中新建会话",
     "noAgentsYet": "暂无会话",
+    "pendingAttention": "需要处理",
     "projectsGroup": "工作",
     "removeProject": "移除",
     "rename": "重命名",

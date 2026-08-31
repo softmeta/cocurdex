@@ -81,6 +81,7 @@ import {
   getDisplaySessionStatus,
   getSessionPermissionMode,
   isDefaultSessionTitle,
+  isSubagentSession,
   lastSelectedAgentAtom,
   markSessionMessageAtom,
   NewSessionCard,
@@ -383,7 +384,7 @@ export function CenterPanel({
   useActiveSessionTranscript(
     activeSession,
     activeMessages.length,
-    activeToolCalls.length,
+    activeToolCalls,
   );
   useGitBranches(activeWorkspace);
 
@@ -550,7 +551,11 @@ export function CenterPanel({
       : [],
     useOppositeFollowUpBehavior = false,
   ) => {
-    if (!activeSession || !activeWorkspace) {
+    if (
+      !activeSession ||
+      !activeWorkspace ||
+      isSubagentSession(activeSession)
+    ) {
       return;
     }
 
@@ -814,7 +819,7 @@ export function CenterPanel({
   };
 
   const handleStop = async () => {
-    if (!activeSession) {
+    if (!activeSession || isSubagentSession(activeSession)) {
       return;
     }
 
@@ -1205,7 +1210,11 @@ export function CenterPanel({
             onDeleteQueuedInput={handleDeleteQueuedInput}
             onSteerQueuedInput={handleSteerQueuedInput}
             onUpdateQueuedInput={handleUpdateQueuedInput}
-            onSubmitPreviousMessage={handleSubmitPreviousMessage}
+            onSubmitPreviousMessage={
+              isSubagentSession(activeSession)
+                ? undefined
+                : handleSubmitPreviousMessage
+            }
             onStop={handleStop}
             onResolvePlanApproval={handleResolvePlanApproval}
             onDismissPlan={() => {
@@ -1224,6 +1233,24 @@ export function CenterPanel({
             permissionRequests={activePermissions}
             toolCalls={activeToolCalls}
             workspaceRootPath={activeWorkspace?.rootPath}
+            readOnly={isSubagentSession(activeSession)}
+            parentSessionTitle={
+              activeSession.parentSessionId
+                ? (sessions.find(
+                    (session) => session.id === activeSession.parentSessionId,
+                  )?.title ?? null)
+                : null
+            }
+            onOpenParentSession={
+              activeSession.parentSessionId
+                ? () => {
+                    const parentId = activeSession.parentSessionId;
+                    if (parentId) {
+                      selectSession(parentId);
+                    }
+                  }
+                : undefined
+            }
           />
         ) : activeSession ? null : (
           newSessionSurface

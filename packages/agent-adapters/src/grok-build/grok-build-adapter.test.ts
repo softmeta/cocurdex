@@ -329,7 +329,9 @@ describe("GrokBuildAdapter steering", () => {
       expect(options.extNotificationMethods).toContain(
         "x.ai/mcp/server_status",
       );
-      notifyExt = (method) => options.handlers.onExtNotification?.(method);
+      expect(options.extNotificationMethods).toContain("x.ai/session/update");
+      notifyExt = (method) =>
+        options.handlers.onExtNotification?.(method, undefined);
       return connection;
     }).createSession(
       {

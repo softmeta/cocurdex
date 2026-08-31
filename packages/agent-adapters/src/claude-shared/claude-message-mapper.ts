@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   AgentToolCallRecord,
   AgentUsageUpdatedEvent,
+  SessionRecord,
 } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
 
@@ -141,10 +142,21 @@ export function createToolCallRecord(
   };
 }
 
+function getClaudeSubagentType(input: Record<string, unknown> | null) {
+  if (typeof input?.subagent_type === "string") {
+    return input.subagent_type;
+  }
+  if (typeof input?.subagentType === "string") {
+    return input.subagentType;
+  }
+  return null;
+}
+
 export interface ClaudeMessageMapperOptions {
   sessionId: string;
   logLabel: string;
   onEvent(event: AgentEvent): void;
+  parentSession?: SessionRecord;
 }
 
 interface ClaudeMessageHandlingOptions {
@@ -155,11 +167,16 @@ interface ClaudeMessageHandlingOptions {
 // Holds the in-flight assistant message buffer and the open tool-call table;
 // callers reset() it at the start of each turn.
 export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
-  const { sessionId, logLabel, onEvent } = options;
+  const { sessionId, logLabel, onEvent, parentSession } = options;
   let activeAssistantMessageId = "";
   let activeAssistantCreatedAt = "";
   let activeAssistantContent = "";
   let activeToolCalls = new Map<string, AgentToolCallRecord>();
+  const childMappers = new Map<
+    string,
+    ReturnType<typeof createClaudeMessageMapper>
+  >();
+  const childSessions = new Map<string, SessionRecord>();
   let latestAssistantModel = "";
 
   function flushAssistantMessage() {
@@ -234,13 +251,57 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
 
       flushAssistantMessage();
 
-      const toolCall = createToolCallRecord(
+      let toolCall = createToolCallRecord(
         sessionId,
         block.id,
         block.name,
         block.input,
         "in_progress",
       );
+      const input = asObjectRecord(block.input);
+      const isSubagent =
+        parentSession && (block.name === "Task" || block.name === "Agent");
+      if (isSubagent) {
+        const childSessionId = `claude-subagent:${sessionId}:${block.id}`;
+        const description =
+          (typeof input?.description === "string" &&
+            input.description.trim()) ||
+          (typeof input?.prompt === "string" && input.prompt.trim()) ||
+          "Subagent";
+        const type = getClaudeSubagentType(input);
+        toolCall = {
+          ...toolCall,
+          subagent: { sessionId: childSessionId, type, description },
+        };
+        const childSession: SessionRecord = {
+          ...parentSession,
+          id: childSessionId,
+          title: description,
+          sessionKind: "subagent",
+          parentSessionId: sessionId,
+          parentToolCallId: block.id,
+          status: "running",
+          createdAt: toolCall.startedAt,
+          updatedAt: toolCall.updatedAt,
+          lastMessageAt: null,
+          archivedAt: null,
+        };
+        childSessions.set(block.id, childSession);
+        childMappers.set(
+          block.id,
+          createClaudeMessageMapper({
+            sessionId: childSessionId,
+            logLabel,
+            onEvent,
+            parentSession: childSession,
+          }),
+        );
+        onEvent({
+          type: "session.upserted",
+          sessionId: childSessionId,
+          session: childSession,
+        });
+      }
 
       activeToolCalls.set(toolCall.id, toolCall);
       logAdapterDiagnostic("info", `${logLabel} tool started`, {
@@ -290,6 +351,20 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
       };
 
       activeToolCalls.set(finishedToolCall.id, finishedToolCall);
+      const childSession = childSessions.get(finishedToolCall.id);
+      if (childSession) {
+        const updatedSession: SessionRecord = {
+          ...childSession,
+          status: finishedToolCall.status === "failed" ? "error" : "idle",
+          updatedAt: finishedToolCall.updatedAt,
+        };
+        childSessions.set(finishedToolCall.id, updatedSession);
+        onEvent({
+          type: "session.upserted",
+          sessionId: updatedSession.id,
+          session: updatedSession,
+        });
+      }
       logAdapterDiagnostic("info", `${logLabel} tool finished`, {
         isError: toolResult.isError,
         outputBytes: getPayloadSize(toolResult.output),
@@ -380,6 +455,30 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
       handlingOptions: ClaudeMessageHandlingOptions = {},
     ) {
       const record = message as unknown as Record<string, unknown>;
+      const parentToolUseId =
+        typeof record.parent_tool_use_id === "string"
+          ? record.parent_tool_use_id
+          : null;
+      const childMapper = parentToolUseId
+        ? childMappers.get(parentToolUseId)
+        : null;
+      const isParentTaskResult =
+        message.type === "user" &&
+        parentToolUseId &&
+        getToolResultContent({
+          parent_tool_use_id: parentToolUseId,
+          tool_use_result: record.tool_use_result,
+          message: {
+            content: asObjectRecord(record.message)?.content,
+          },
+        }).some((result) => result.toolUseId === parentToolUseId);
+      if (childMapper && !isParentTaskResult) {
+        childMapper.handleMessage({
+          ...record,
+          parent_tool_use_id: null,
+        } as unknown as ClaudeStreamMessage);
+        return;
+      }
 
       switch (message.type) {
         case "stream_event":

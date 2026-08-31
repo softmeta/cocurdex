@@ -97,6 +97,10 @@ export function mapToolCall(row: SqliteRow): AgentToolCallRecord {
     title: String(row.title),
     kind: toNullableString(row.kind),
     status: row.status as AgentToolCallRecord["status"],
+    subagent: parseJson<AgentToolCallRecord["subagent"]>(
+      row.subagent_json,
+      null,
+    ),
     content: parseJson<AgentToolCallRecord["content"]>(row.content_json, []),
     rawInput: parseJson(row.raw_input_json, null),
     rawOutput: parseJson(row.raw_output_json, null),
@@ -119,6 +123,10 @@ export function mapToolCallSummary(row: SqliteRow): AgentToolCallRecord {
     title: String(row.title),
     kind: toNullableString(row.kind),
     status: row.status as AgentToolCallRecord["status"],
+    subagent: parseJson<AgentToolCallRecord["subagent"]>(
+      row.subagent_json,
+      null,
+    ),
     content: undefined,
     rawInput: parseJson(row.raw_input_json, null),
     rawOutput: undefined,

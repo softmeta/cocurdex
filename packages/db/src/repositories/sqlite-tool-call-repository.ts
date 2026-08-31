@@ -7,7 +7,7 @@ import type { ToolCallRepository } from "./tool-call-repository";
 // excludes the result columns — those fields are fetched lazily when the user
 // opens the detail popover/sheet (see getResultById).
 const SUMMARY_COLUMNS =
-  "id, session_id, title, kind, status, raw_input_json, locations_json, started_at, updated_at";
+  "id, session_id, title, kind, status, subagent_json, raw_input_json, locations_json, started_at, updated_at";
 
 export function createSqliteToolCallRepository(
   database: DatabaseSync,
@@ -60,14 +60,15 @@ export function createSqliteToolCallRepository(
       database
         .prepare(
           `INSERT INTO tool_calls (
-             id, session_id, title, kind, status, content_json,
+             id, session_id, title, kind, status, subagent_json, content_json,
              raw_input_json, raw_output_json, locations_json, started_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              session_id = excluded.session_id,
              title = excluded.title,
              kind = excluded.kind,
              status = excluded.status,
+             subagent_json = excluded.subagent_json,
              content_json = excluded.content_json,
              raw_input_json = excluded.raw_input_json,
              raw_output_json = excluded.raw_output_json,
@@ -81,6 +82,7 @@ export function createSqliteToolCallRepository(
           toolCall.title,
           toolCall.kind ?? null,
           toolCall.status,
+          JSON.stringify(toolCall.subagent ?? null),
           JSON.stringify(toolCall.content ?? []),
           JSON.stringify(toolCall.rawInput ?? null),
           JSON.stringify(toolCall.rawOutput ?? null),

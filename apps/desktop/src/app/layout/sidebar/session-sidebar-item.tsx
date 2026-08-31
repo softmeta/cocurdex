@@ -1,5 +1,5 @@
 import type { SessionRecord } from "@cocurdex/shared";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Archive, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,25 +11,30 @@ import {
   SidebarListRow,
   Spinner,
 } from "@/components/ui";
+import { permissionsBySessionAtom } from "@/features/agent/permission";
+import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   agentLabels,
   archiveSessionAtom,
   deleteSessionAtom,
+  isSubagentSession,
   updateSessionTitleAtom,
 } from "@/features/sessions";
-import { desktopApi, logRendererDiagnostic } from "@/lib";
+import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { SidebarItemTooltip } from "./sidebar-item-preview";
 import { SidebarOverflowTitle } from "./sidebar-overflow-title";
 import { SidebarRenameInput } from "./sidebar-rename-input";
 
 interface SessionSidebarItemProps {
+  depth?: number;
   isActive: boolean;
   onSelect(): void;
   session: SessionRecord;
 }
 
 export function SessionSidebarItem({
+  depth = 0,
   isActive,
   onSelect,
   session,
@@ -38,9 +43,15 @@ export function SessionSidebarItem({
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const archiveSession = useSetAtom(archiveSessionAtom);
   const deleteSession = useSetAtom(deleteSessionAtom);
+  const permissions = useAtomValue(permissionsBySessionAtom)[session.id];
+  const questions = useAtomValue(questionsBySessionAtom)[session.id];
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);
   const isRunning = session.status === "running";
+  const needsAttention =
+    permissions?.some((permission) => permission.status === "pending") ||
+    questions?.some((question) => question.status === "pending");
+  const isChild = isSubagentSession(session);
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();
     node?.select();
@@ -144,12 +155,26 @@ export function SessionSidebarItem({
         <ContextMenuTrigger asChild>
           <SidebarListRow
             isActive={isActive}
-            // Match workspace name: parent ps-1 + folder icon size-3.5 + gap-1.5.
-            className="ps-6"
+            className={cn(
+              depth === 0 && "ps-6",
+              isChild && "text-sidebar-fg-muted",
+            )}
             onClick={onSelect}
             render={<button type="button" />}
+            style={
+              depth > 0
+                ? { paddingInlineStart: `${24 + depth * 12}px` }
+                : undefined
+            }
           >
             <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
+            {needsAttention ? (
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
+                role="img"
+                aria-label={t("sidebar.pendingAttention")}
+              />
+            ) : null}
             {isRunning ? (
               <Spinner
                 aria-label={t("sidebar.running")}

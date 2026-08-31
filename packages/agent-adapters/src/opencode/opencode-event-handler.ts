@@ -766,6 +766,11 @@ export class OpenCodeEventHandler {
       title: "Using subagent",
       kind: "task",
       status: "in_progress",
+      subagent: {
+        sessionId: appChildSessionId,
+        type: getSubagentTypeFromTitle(info.title),
+        description: description || "Subagent",
+      },
       content: [],
       rawInput: {
         description,
@@ -950,6 +955,22 @@ export class OpenCodeEventHandler {
       title: isSubagentTask ? "Using subagent" : title,
       kind: typeof part.tool === "string" ? part.tool.toLowerCase() : null,
       status,
+      subagent:
+        isSubagentTask && appChildSessionId
+          ? {
+              sessionId: appChildSessionId,
+              type:
+                getMetadataString(
+                  getRecord(rawInput) ?? undefined,
+                  "subagent_type",
+                ) ?? null,
+              description:
+                getMetadataString(
+                  getRecord(rawInput) ?? undefined,
+                  "description",
+                ) || "Subagent",
+            }
+          : null,
       content: [],
       rawInput,
       rawOutput: isSubagentTask ? null : getToolOutput(part),

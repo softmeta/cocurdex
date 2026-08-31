@@ -81,3 +81,137 @@ describe("createClaudeMessageMapper usage", () => {
     ]);
   });
 });
+
+describe("createClaudeMessageMapper subagents", () => {
+  it("projects Task messages into an isolated child session", () => {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+      parentSession: {
+        id: "session-1",
+        workspaceId: "workspace",
+        title: "Parent",
+        agentType: "claude-agent",
+        status: "running",
+        writeMode: "native-write",
+        collaborationMode: "default",
+        createdAt: "2026-08-31T00:00:00.000Z",
+        updatedAt: "2026-08-31T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: null,
+      } as never,
+    });
+
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: null,
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "task-1",
+            name: "Task",
+            input: {
+              description: "Review changes",
+              subagent_type: "reviewer",
+            },
+          },
+        ],
+      },
+    } as never);
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: "task-1",
+      message: { content: [{ type: "text", text: "Child result" }] },
+    } as never);
+    mapper.handleMessage({ type: "result" } as never);
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "session.upserted",
+          sessionId: "claude-subagent:session-1:task-1",
+        }),
+        expect.objectContaining({
+          type: "tool.started",
+          toolCall: expect.objectContaining({
+            subagent: {
+              sessionId: "claude-subagent:session-1:task-1",
+              type: "reviewer",
+              description: "Review changes",
+            },
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("projects a nested Task onto the child session", () => {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+      parentSession: {
+        id: "session-1",
+        workspaceId: "workspace",
+        title: "Parent",
+        agentType: "claude-agent",
+        status: "running",
+        writeMode: "native-write",
+        collaborationMode: "default",
+        createdAt: "2026-08-31T00:00:00.000Z",
+        updatedAt: "2026-08-31T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: null,
+      } as never,
+    });
+
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: null,
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "task-1",
+            name: "Task",
+            input: { description: "Review changes", subagent_type: "reviewer" },
+          },
+        ],
+      },
+    } as never);
+    mapper.handleMessage({
+      type: "assistant",
+      parent_tool_use_id: "task-1",
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "task-2",
+            name: "Task",
+            input: { description: "Nested review", subagent_type: "explore" },
+          },
+        ],
+      },
+    } as never);
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "session.upserted",
+          sessionId: "claude-subagent:claude-subagent:session-1:task-1:task-2",
+          session: expect.objectContaining({
+            parentSessionId: "claude-subagent:session-1:task-1",
+            sessionKind: "subagent",
+            title: "Nested review",
+          }),
+        }),
+      ]),
+    );
+  });
+});

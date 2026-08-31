@@ -57,6 +57,9 @@ export function initializeDatabase(database: DatabaseSync): void {
   if (!hasColumn(database, "sessions", "permission_mode")) {
     database.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT");
   }
+  if (!hasColumn(database, "tool_calls", "subagent_json")) {
+    database.exec("ALTER TABLE tool_calls ADD COLUMN subagent_json TEXT");
+  }
   database.exec(`PRAGMA application_id = ${COCURDEX_APPLICATION_ID}`);
   database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`);
 }

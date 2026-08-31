@@ -1,6 +1,7 @@
 import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
+  coalesceAdjacentSubagentGroups,
   createTimelineGroups,
   segmentConversationItems,
   type TimelineGroup,
@@ -19,6 +20,17 @@ function toolCall(id: string, kind: string): AgentToolCallRecord {
     locations: [],
     startedAt: `2026-05-20T00:00:0${id}.000Z`,
     updatedAt: `2026-05-20T00:00:0${id}.000Z`,
+  };
+}
+
+function subagentToolCall(id: string): AgentToolCallRecord {
+  return {
+    ...toolCall(id, "other"),
+    subagent: {
+      sessionId: `child-${id}`,
+      type: "reviewer",
+      description: "Review changes",
+    },
   };
 }
 
@@ -61,18 +73,77 @@ describe("createTimelineGroups", () => {
     ]);
   });
 
-  it("keeps subagent (task) tool calls as standalone groups", () => {
+  it("keeps typed subagent tool calls as standalone groups", () => {
     const groups = createTimelineGroups(
       [],
       [
         toolCall("1", "read"),
-        toolCall("2", "task"),
+        subagentToolCall("2"),
         toolCall("3", "grep"),
         toolCall("4", "bash"),
       ],
     );
 
-    expect(toolKinds(groups)).toEqual([["read"], ["task"], ["grep", "bash"]]);
+    expect(toolKinds(groups)).toEqual([["read"], ["other"], ["grep", "bash"]]);
+  });
+
+  it("coalesces adjacent standalone subagent groups without reordering later tools", () => {
+    const groups = coalesceAdjacentSubagentGroups([
+      {
+        id: "tool-group-1",
+        kind: "toolCalls",
+        toolCalls: [toolCall("1", "read")],
+      },
+      {
+        id: "tool-group-2",
+        kind: "toolCalls",
+        toolCalls: [subagentToolCall("2")],
+      },
+      {
+        id: "tool-group-3",
+        kind: "toolCalls",
+        toolCalls: [subagentToolCall("3")],
+      },
+      {
+        id: "tool-group-4",
+        kind: "toolCalls",
+        toolCalls: [toolCall("4", "grep")],
+      },
+      {
+        id: "tool-group-5",
+        kind: "toolCalls",
+        toolCalls: [subagentToolCall("5")],
+      },
+    ]);
+
+    expect(toolKinds(groups)).toEqual([
+      ["read"],
+      ["other", "other"],
+      ["grep"],
+      ["other"],
+    ]);
+  });
+
+  it("merges consecutive subagent tool calls without pulling later ones forward", () => {
+    const groups = createTimelineGroups(
+      [],
+      [
+        toolCall("1", "read"),
+        subagentToolCall("2"),
+        subagentToolCall("3"),
+        toolCall("4", "grep"),
+        subagentToolCall("5"),
+        toolCall("6", "bash"),
+      ],
+    );
+
+    expect(toolKinds(groups)).toEqual([
+      ["read"],
+      ["other", "other"],
+      ["grep"],
+      ["other"],
+      ["bash"],
+    ]);
   });
 
   it("breaks tool-call groups when a message interleaves", () => {

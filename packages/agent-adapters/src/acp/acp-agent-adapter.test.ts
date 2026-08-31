@@ -727,4 +727,185 @@ describe("AcpAgentAdapter", () => {
     });
     expect(connection.close).not.toHaveBeenCalled();
   });
+
+  it("routes extension-linked child updates into the child session", async () => {
+    const events: AgentEvent[] = [];
+    let handlers: Parameters<AcpConnectionFactory>[0]["handlers"] | undefined;
+    const loadSession = vi.fn(async (request) => {
+      if (request.sessionId === "provider-child") {
+        await handlers?.onSessionUpdate({
+          sessionId: "provider-child",
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "Child output" },
+          },
+        });
+        handlers?.onExtNotification?.("vendor/subagents", {
+          sessionId: "provider-child",
+          update: {
+            sessionUpdate: "turn_completed",
+            stop_reason: "end_turn",
+            elapsed_ms: 100,
+          },
+        });
+      }
+      return {};
+    });
+    const connection = createAcpConnection({
+      newSession: async () => ({ sessionId: "provider-parent" }),
+      prompt: async () => {
+        await handlers?.onSessionUpdate({
+          sessionId: "provider-parent",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "spawn-1",
+            title: "Subagent",
+            rawInput: { description: "Review", subagent_type: "reviewer" },
+          },
+        });
+        handlers?.onExtNotification?.("vendor/subagents", {
+          childSessionId: "provider-child",
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+        handlers?.onExtNotification?.("vendor/subagents", {
+          childSessionId: "provider-child",
+          status: "completed",
+        });
+        handlers?.onExtNotification?.("vendor/subagents", {
+          childSessionId: "provider-child",
+          status: "completed",
+        });
+        return { stopReason: "end_turn" };
+      },
+    });
+    const replayConnection = createAcpConnection({ loadSession });
+    let connectionCount = 0;
+    const adapter = new AcpAgentAdapter(
+      {
+        args: ["agent", "stdio"],
+        command: "grok",
+        descriptor,
+        subagentProtocol: {
+          notificationMethods: ["vendor/subagents"],
+          replayLinkedSession: true,
+          inspect(toolCall) {
+            if (toolCall.title !== "Subagent") {
+              return null;
+            }
+            return {
+              kind: "spawn",
+              providerSessionId: null,
+              type: "reviewer",
+              description: "Review",
+            };
+          },
+          inspectNotification(_method, params) {
+            const notification = params as {
+              childSessionId: string;
+              status?: string;
+              update?: unknown;
+            };
+            if (notification.update) {
+              return null;
+            }
+            const providerSessionId = notification.childSessionId;
+            if (notification.status === "completed") {
+              return {
+                kind: "settlement",
+                results: [{ providerSessionId, status: "completed" }],
+              };
+            }
+            return {
+              providerSessionId,
+              type: "reviewer",
+              description: "Review",
+            };
+          },
+          readTurnCompletion(_method, params) {
+            const notification = params as {
+              sessionId?: string;
+              update?: {
+                sessionUpdate?: string;
+                stop_reason?: string;
+                elapsed_ms?: number;
+              };
+            };
+            if (
+              !notification.sessionId ||
+              notification.update?.sessionUpdate !== "turn_completed"
+            ) {
+              return null;
+            }
+            return {
+              providerSessionId: notification.sessionId,
+              stopReason: "end_turn",
+              durationMs: notification.update.elapsed_ms ?? 0,
+            };
+          },
+        },
+      },
+      async (options) => {
+        handlers = options.handlers;
+        expect(options.extNotificationMethods).toContain("vendor/subagents");
+        connectionCount += 1;
+        return connectionCount === 1 ? connection : replayConnection;
+      },
+    );
+    const session = adapter.createSession(
+      {
+        session: {
+          id: "app-parent",
+          workspaceId: "workspace-1",
+          title: "Test",
+          agentType: "grok-build",
+          status: "idle",
+          writeMode: "native-write",
+          collaborationMode: "default",
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      (event) => events.push(event),
+    );
+
+    await session.sendMessage({ content: "Start", history: [] });
+    await vi.waitFor(() => expect(loadSession).toHaveBeenCalledOnce());
+    expect(loadSession).toHaveBeenLastCalledWith({
+      sessionId: "provider-child",
+      cwd: "/workspace",
+      mcpServers: [],
+    });
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "message.delta",
+        sessionId: "acp-subagent:app-parent:spawn-1",
+        delta: "Child output",
+      }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        type: "message.delta",
+        sessionId: "app-parent",
+        delta: "Child output",
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "message.completed",
+        sessionId: "acp-subagent:app-parent:spawn-1",
+        message: expect.objectContaining({ content: "Child output" }),
+      }),
+    );
+    expect(
+      events.filter(
+        (event) =>
+          event.type === "message.delta" &&
+          event.sessionId === "acp-subagent:app-parent:spawn-1",
+      ),
+    ).toHaveLength(1);
+  });
 });

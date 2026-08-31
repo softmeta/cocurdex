@@ -256,6 +256,7 @@ export function createClaudeCliAdapter(
         sessionId,
         logLabel: "[ClaudeAgentSdkAdapter]",
         onEvent,
+        parentSession: payload.session,
       });
 
       function settleQueryWaiters(queryToUse: ClaudeQuery) {

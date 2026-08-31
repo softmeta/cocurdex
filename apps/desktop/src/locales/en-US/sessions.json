@@ -116,6 +116,7 @@
     "marketplace": "Marketplace",
     "newSessionInWorkspace": "New session in {{workspaceName}}",
     "noAgentsYet": "No sessions yet",
+    "pendingAttention": "Needs attention",
     "projectsGroup": "Work",
     "removeProject": "Remove",
     "rename": "Rename",

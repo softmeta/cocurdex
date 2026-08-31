@@ -1,5 +1,5 @@
-/* Shared motion primitives used by streaming text, settings panels, sticky
- * chat affordances, and running subagent indicators. */
+/* Shared motion primitives used by streaming text, settings panels, and sticky
+ * chat affordances. */
 .stream-char {
   animation: stream-char-fade-in 280ms ease-out both;
   will-change: opacity, transform;
@@ -17,40 +17,6 @@
 
 .sticky-user-bar-enter {
   animation: sticky-user-bar-fade-in 180ms ease-out;
-}
-
-.subagent-trigger-running {
-  animation: subagent-card-breathe 1800ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-
-.subagent-trigger-activity {
-  position: absolute;
-  right: 12px;
-  bottom: 0;
-  left: 12px;
-  height: 1px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(
-    in srgb,
-    var(--chat-status-running-fg) 16%,
-    transparent
-  );
-}
-
-.subagent-trigger-activity::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--chat-status-running-fg) 72%, transparent),
-    transparent
-  );
-  transform: translateX(-100%);
-  animation: subagent-activity-scan 1600ms cubic-bezier(0.16, 1, 0.3, 1)
-    infinite;
 }
 
 /* Running activity line: the label itself carries the motion, so the row needs
@@ -112,11 +78,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .subagent-trigger-running,
-  .subagent-trigger-activity::after {
-    animation: none;
-  }
-
   .group\/list-row:is(:hover, :focus-visible) .sidebar-overflow-title__text {
     animation: none;
     max-width: 100%;
@@ -152,28 +113,6 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes subagent-card-breathe {
-  0%,
-  100% {
-    border-color: var(--chat-border-soft);
-  }
-
-  50% {
-    border-color: var(--chat-status-running-border);
-  }
-}
-
-@keyframes subagent-activity-scan {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  65%,
-  100% {
-    transform: translateX(100%);
   }
 }
 

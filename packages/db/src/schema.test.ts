@@ -18,6 +18,7 @@ describe("createSchemaSql", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS queued_agent_inputs");
     expect(sql).toContain("kind TEXT");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS tool_calls");
+    expect(sql).toContain("subagent_json TEXT");
     expect(sql).toContain("raw_input_json TEXT");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS session_usage");
     expect(sql).toContain("usage_json TEXT NOT NULL");

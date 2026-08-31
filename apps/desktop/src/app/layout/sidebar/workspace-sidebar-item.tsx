@@ -1,5 +1,6 @@
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { Folder, FolderOpen, SquarePen, Trash2 } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ContextMenu,
@@ -12,6 +13,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
 } from "@/components/ui";
+import { buildVisibleSessionTree } from "@/features/sessions";
 import { SessionSidebarItem } from "./session-sidebar-item";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 
@@ -45,6 +47,10 @@ export function WorkspaceSidebarItem({
   onSelectWorkspace,
 }: WorkspaceSidebarItemProps) {
   const { t } = useTranslation("sessions");
+  const sessionTree = useMemo(
+    () => buildVisibleSessionTree(sessions),
+    [sessions],
+  );
 
   return (
     // gap-0.5 matches SidebarMenuSub session spacing so the workspace title
@@ -117,15 +123,18 @@ export function WorkspaceSidebarItem({
               {t("sidebar.noAgentsYet")}
             </div>
           ) : (
-            sessions.map((session) => (
-              <SidebarMenuSubItem key={session.id}>
+            sessionTree.map((node) => (
+              <SidebarMenuSubItem key={node.session.id}>
                 <SessionSidebarItem
+                  depth={node.depth}
                   isActive={
                     activeConversationId === null &&
-                    session.id === optimisticActiveSessionId
+                    node.session.id === optimisticActiveSessionId
                   }
-                  onSelect={() => onSelectSession(workspace.id, session.id)}
-                  session={session}
+                  onSelect={() =>
+                    onSelectSession(workspace.id, node.session.id)
+                  }
+                  session={node.session}
                 />
               </SidebarMenuSubItem>
             ))

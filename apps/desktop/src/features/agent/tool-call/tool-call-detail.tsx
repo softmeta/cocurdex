@@ -15,7 +15,9 @@ import {
   formatToolCallData,
   formatToolCallOutput,
   getLineRangeLabel,
-  getOpenCodeSubagentChildSessionId,
+  getSubagentChildSessionId,
+  getSubagentDescription,
+  getSubagentType,
   getToolCallDetailLabel,
   getToolCallInputEntries,
   getToolCallPreviewLocations,
@@ -25,7 +27,7 @@ import {
   getToolCallTitle,
   getToolPreviewTitle,
   isMultilineInputField,
-  isOpenCodeSubagentToolCall,
+  isSubagentToolCall,
   type ToolCallPreviewLocation,
 } from "./tool-call-utils";
 
@@ -43,14 +45,20 @@ export function ToolCallDetailHeader({
 }) {
   const statusLabel = getToolCallStatusLabel(toolCall);
   const timestamp = getToolCallTimestamp(toolCall);
-  const title = getToolCallTitle(toolCall);
+  const isSubagent = isSubagentToolCall(toolCall);
+  const title = isSubagent
+    ? getSubagentDescription(toolCall)
+    : getToolCallTitle(toolCall);
+  const type = isSubagent ? getSubagentType(toolCall) : null;
+  const showType = Boolean(type && type !== title);
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2 text-chat-fg-muted text-meta">
       <ToolCallStatusIcon toolCall={toolCall} />
-      <span className="min-w-0 truncate text-body font-medium text-chat-fg">
+      <span className="min-w-0 flex-1 truncate text-body font-medium text-chat-fg">
         {title}
       </span>
+      {showType ? <span className="shrink-0">{type}</span> : null}
       <span className="ml-auto flex shrink-0 items-center gap-1.5">
         <span className={getToolCallStatusClasses(toolCall)}>
           {statusLabel}
@@ -84,11 +92,11 @@ export function ToolCallDetailBody({
   const fetchToolCallResult = useSetAtom(fetchToolCallResultAtom);
   const hasInlineResult =
     toolCall.content !== undefined && toolCall.rawOutput !== undefined;
-  const isSubagentToolCall = isOpenCodeSubagentToolCall(toolCall);
+  const isSubagent = isSubagentToolCall(toolCall);
   const shouldLazyLoadOutput =
     !hasInlineResult &&
     !shouldHideRawOutput &&
-    !isSubagentToolCall &&
+    !isSubagent &&
     canHaveOutput(toolCall);
   const cacheEntry = resultCache[toolCall.id];
   const shouldFetchOutput =
@@ -106,7 +114,7 @@ export function ToolCallDetailBody({
     resultValue !== undefined
       ? formatToolCallOutput(resultValue?.content, resultValue?.rawOutput)
       : "";
-  const childSessionId = getOpenCodeSubagentChildSessionId(toolCall);
+  const childSessionId = getSubagentChildSessionId(toolCall);
   const outputLoadStatus: "ready" | "loading" | "error" =
     hasInlineResult || cacheEntry?.status === "loaded"
       ? "ready"
@@ -118,7 +126,7 @@ export function ToolCallDetailBody({
   const outputErrorMessage =
     cacheEntry?.status === "error" ? cacheEntry.message : "";
   const showOutputBlock =
-    !isSubagentToolCall &&
+    !isSubagent &&
     !shouldHideRawOutput &&
     (outputLoadStatus !== "ready" || Boolean(output));
   const detailLabel = getToolCallDetailLabel(toolCall);
@@ -126,7 +134,7 @@ export function ToolCallDetailBody({
   const inputFallback = inputEntries
     ? null
     : formatToolCallData(toolCall.rawInput);
-  const showInputBlock = !isSubagentToolCall;
+  const showInputBlock = !isSubagent;
 
   return (
     <div className="flex flex-col gap-3 text-sm text-chat-fg-secondary">
@@ -242,7 +250,7 @@ export function ToolCallDetailBody({
           </pre>
         </div>
       ) : null}
-      {isSubagentToolCall ? (
+      {isSubagent ? (
         <ReadonlySubagentSession sessionId={childSessionId ?? null} />
       ) : null}
       {showOutputBlock ? (

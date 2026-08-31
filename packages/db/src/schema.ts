@@ -75,6 +75,7 @@ export function createSchemaSql() {
       title TEXT NOT NULL,
       kind TEXT,
       status TEXT NOT NULL,
+      subagent_json TEXT,
       content_json TEXT NOT NULL,
       raw_input_json TEXT,
       raw_output_json TEXT,

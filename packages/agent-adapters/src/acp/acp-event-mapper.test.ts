@@ -69,6 +69,36 @@ describe("AcpEventMapper", () => {
     ]);
   });
 
+  it("settles unfinished tool calls when the turn is cancelled", () => {
+    const events: AgentEvent[] = [];
+    const mapper = new AcpEventMapper(
+      "app-session-1",
+      (event) => events.push(event),
+      () => "2026-08-31T05:23:54.429Z",
+    );
+
+    mapper.handle({
+      sessionId: "provider-session-1",
+      update: {
+        sessionUpdate: "tool_call",
+        toolCallId: "tool-1",
+        title: "Inspect repository",
+        kind: "execute",
+        status: "pending",
+      },
+    });
+    mapper.complete("cancelled", 13_958);
+
+    expect(events).toContainEqual({
+      type: "tool.finished",
+      sessionId: "app-session-1",
+      toolCall: expect.objectContaining({
+        id: "tool-1",
+        status: "failed",
+      }),
+    });
+  });
+
   it("forwards dynamic ACP commands and session configuration", () => {
     const events: AgentEvent[] = [];
     const mapper = new AcpEventMapper(

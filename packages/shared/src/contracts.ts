@@ -522,12 +522,19 @@ export interface AgentToolCallResult {
   rawOutput: unknown;
 }
 
+export interface AgentSubagentReference {
+  sessionId: string;
+  type: string | null;
+  description: string;
+}
+
 export interface AgentToolCallRecord {
   id: string;
   sessionId: string;
   title: string;
   kind?: string | null;
   status: "pending" | "in_progress" | "completed" | "failed";
+  subagent?: AgentSubagentReference | null;
   // Undefined is reserved for summary records whose result is loaded lazily.
   content: AgentToolCallContent[] | undefined;
   rawInput?: unknown;

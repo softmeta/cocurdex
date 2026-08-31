@@ -4,6 +4,7 @@ import type {
   AgentEvent,
   AgentId,
   AgentProviderSelection,
+  AgentToolCallRecord,
   AgentUsageUpdatedEvent,
   AppBootstrapData,
   EditorViewRecord,
@@ -16,6 +17,7 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import {
+  childSessionFromSubagentToolCall,
   getContextUsageTokens,
   loadNetworkProxySettingsFromJson,
   mergeUsageRecords,
@@ -552,6 +554,7 @@ export class DaemonState {
       event.type === "tool.finished"
     ) {
       await this.database.toolCalls.upsert(event.toolCall);
+      await this.persistSubagentChildSession(event.toolCall);
       return;
     }
 
@@ -603,6 +606,27 @@ export class DaemonState {
         lastMessageAt: eventTimestamp,
       });
     }
+  }
+
+  private async persistSubagentChildSession(toolCall: AgentToolCallRecord) {
+    const parent = await this.database.sessions.getById(toolCall.sessionId);
+    if (!parent) {
+      return;
+    }
+    const child = childSessionFromSubagentToolCall(parent, toolCall);
+    if (!child) {
+      return;
+    }
+    const existing = await this.database.sessions.getById(child.id);
+    await this.database.sessions.upsert(
+      existing
+        ? {
+            ...child,
+            createdAt: existing.createdAt,
+            lastMessageAt: existing.lastMessageAt,
+          }
+        : child,
+    );
   }
 
   private async flushBufferedMessages(sessionId: string) {

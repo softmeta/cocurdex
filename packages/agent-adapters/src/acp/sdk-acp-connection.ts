@@ -110,7 +110,7 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
         app.onNotification(
           wireMethod,
           (params) => params,
-          () => onExtNotification(method),
+          ({ params }) => onExtNotification(method, params),
         );
       }
     }

@@ -1,25 +1,26 @@
-import type {
-  AgentDescriptor,
-  AgentId,
-  AgentPermissionMode,
-  AgentPermissionModeOption,
-  AgentProviderSnapshot,
-  AgentThinkingLevel,
-  CollaborationModeKind,
-  ReasoningEffort,
-  SessionRecord,
-} from "@cocurdex/shared";
 import {
+  type AgentDescriptor,
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentPermissionModeOption,
+  type AgentProviderSnapshot,
+  type AgentThinkingLevel,
+  type AgentToolCallRecord,
   agentRuntimeAxisCapabilities,
+  type CollaborationModeKind,
+  childSessionFromSubagentToolCall,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   isAgentPermissionModeSupportedForModel,
+  type ReasoningEffort,
+  type SessionRecord,
   supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
-import { atom } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 import { i18n } from "@/i18n";
 import { resources } from "@/i18n/resources";
 import { isAgentReadyToStart } from "./adapter-status";
+import { collectSessionSubtreeIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
 export const activeSessionIdAtom = atom<string | null>(null);
@@ -277,8 +278,24 @@ export function getSessionPermissionMode(
     : getDefaultPermissionMode(agents, session.agentType);
 }
 
-function getNextActiveSessionId(sessions: SessionRecord[], sessionId: string) {
-  return sessions.find((session) => session.id !== sessionId)?.id ?? null;
+function getNextActiveSessionId(
+  remaining: SessionRecord[],
+  removed: SessionRecord | undefined,
+) {
+  if (removed?.parentSessionId) {
+    const parent = remaining.find(
+      (session) => session.id === removed.parentSessionId,
+    );
+    if (parent) {
+      return parent.id;
+    }
+  }
+
+  return (
+    remaining.find((session) => !session.parentSessionId)?.id ??
+    remaining[0]?.id ??
+    null
+  );
 }
 
 // Built-in default is cocurdex (agent id `pi`). Unknown or missing storage
@@ -418,6 +435,9 @@ export const createDraftSessionAtom = atom(
       workspaceId: payload.workspaceId,
       title: getDefaultSessionTitle(agentType),
       agentType,
+      sessionKind: "main",
+      parentSessionId: null,
+      parentToolCallId: null,
       status: "idle",
       writeMode: getDefaultWriteMode(agentType),
       collaborationMode: supportsCollaborationMode(agentType, requestedMode)
@@ -718,6 +738,44 @@ export const applySessionUpdateAtom = atom(
   },
 );
 
+export const upsertSessionAtom = atom(
+  null,
+  (get, set, incoming: SessionRecord) => {
+    const current = get(sessionsAtom);
+    const existing = current.find((session) => session.id === incoming.id);
+    const nextSession: SessionRecord = existing
+      ? {
+          ...incoming,
+          lastMessageAt: incoming.lastMessageAt ?? existing.lastMessageAt,
+        }
+      : incoming;
+    const next = existing
+      ? current.map((session) =>
+          session.id === incoming.id ? nextSession : session,
+        )
+      : [nextSession, ...current];
+
+    set(sessionsAtom, next.sort(compareSessionsByRecency));
+  },
+);
+
+export const projectSubagentSessionFromToolCallAtom = atom(
+  null,
+  (get, set, toolCall: AgentToolCallRecord) => {
+    const parent = get(sessionsAtom).find(
+      (session) => session.id === toolCall.sessionId,
+    );
+    if (!parent) {
+      return;
+    }
+    const child = childSessionFromSubagentToolCall(parent, toolCall);
+    if (!child) {
+      return;
+    }
+    set(upsertSessionAtom, child);
+  },
+);
+
 export const updateSessionStatusAtom = atom(
   null,
   (
@@ -740,41 +798,33 @@ export const updateSessionStatusAtom = atom(
   },
 );
 
+function removeSessionSubtree(get: Getter, set: Setter, sessionId: string) {
+  const currentSessions = get(sessionsAtom);
+  const removedIds = collectSessionSubtreeIds(currentSessions, sessionId);
+  const nextSessions = currentSessions.filter(
+    (session) => !removedIds.has(session.id),
+  );
+  const removed = currentSessions.find((session) => session.id === sessionId);
+  const activeSessionId = get(activeSessionIdAtom);
+
+  set(sessionsAtom, nextSessions);
+
+  if (activeSessionId && removedIds.has(activeSessionId)) {
+    set(activeSessionIdAtom, getNextActiveSessionId(nextSessions, removed));
+  }
+}
+
 export const archiveSessionAtom = atom(
   null,
   (get, set, payload: { sessionId: string; archivedAt?: string }) => {
-    const currentSessions = get(sessionsAtom);
-    const nextSessions = currentSessions.filter(
-      (session) => session.id !== payload.sessionId,
-    );
-
-    set(sessionsAtom, nextSessions);
-
-    if (get(activeSessionIdAtom) === payload.sessionId) {
-      set(
-        activeSessionIdAtom,
-        getNextActiveSessionId(currentSessions, payload.sessionId),
-      );
-    }
+    removeSessionSubtree(get, set, payload.sessionId);
   },
 );
 
 export const deleteSessionAtom = atom(
   null,
   (get, set, payload: { sessionId: string }) => {
-    const currentSessions = get(sessionsAtom);
-    const nextSessions = currentSessions.filter(
-      (session) => session.id !== payload.sessionId,
-    );
-
-    set(sessionsAtom, nextSessions);
-
-    if (get(activeSessionIdAtom) === payload.sessionId) {
-      set(
-        activeSessionIdAtom,
-        getNextActiveSessionId(currentSessions, payload.sessionId),
-      );
-    }
+    removeSessionSubtree(get, set, payload.sessionId);
   },
 );
 

@@ -55,4 +55,110 @@ describe("createSqliteSessionRepository", () => {
       permissionMode: "claude-auto",
     });
   });
+
+  it("lists child sessions with their parent", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPath: "/tmp/repo",
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+    });
+    await sessions.upsert({
+      id: "parent",
+      workspaceId: "workspace-1",
+      title: "Parent",
+      agentType: "grok-build",
+      status: "idle",
+      writeMode: "native-write",
+      collaborationMode: "default",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: now,
+      archivedAt: null,
+    });
+    await sessions.upsert({
+      id: "child",
+      workspaceId: "workspace-1",
+      title: "Standards review",
+      agentType: "grok-build",
+      sessionKind: "subagent",
+      parentSessionId: "parent",
+      status: "running",
+      writeMode: "native-write",
+      collaborationMode: "default",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+    });
+
+    const listed = await sessions.list();
+    expect(listed.map((session) => session.id).sort()).toEqual([
+      "child",
+      "parent",
+    ]);
+    expect(listed.find((session) => session.id === "child")).toMatchObject({
+      parentSessionId: "parent",
+      sessionKind: "subagent",
+    });
+  });
+
+  it("archives a parent and its descendant sessions together", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPath: "/tmp/repo",
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+    });
+    await sessions.upsert({
+      id: "parent",
+      workspaceId: "workspace-1",
+      title: "Parent",
+      agentType: "grok-build",
+      status: "idle",
+      writeMode: "native-write",
+      collaborationMode: "default",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: now,
+      archivedAt: null,
+    });
+    await sessions.upsert({
+      id: "child",
+      workspaceId: "workspace-1",
+      title: "Child",
+      agentType: "grok-build",
+      sessionKind: "subagent",
+      parentSessionId: "parent",
+      status: "idle",
+      writeMode: "native-write",
+      collaborationMode: "default",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+    });
+
+    await sessions.archive("parent", "2026-08-31T12:00:00.000Z");
+
+    expect(await sessions.list()).toEqual([]);
+    expect(await sessions.getById("parent")).toMatchObject({
+      archivedAt: "2026-08-31T12:00:00.000Z",
+    });
+    expect(await sessions.getById("child")).toMatchObject({
+      archivedAt: "2026-08-31T12:00:00.000Z",
+    });
+  });
 });

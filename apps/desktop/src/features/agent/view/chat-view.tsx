@@ -102,6 +102,9 @@ export function ChatView({
   onDismissPlan,
   onTogglePlanCollapsed,
   planCollapsed,
+  readOnly = false,
+  parentSessionTitle = null,
+  onOpenParentSession,
 }: ChatViewProps) {
   const { t } = useTranslation("agent");
   const rememberPreviousMessageChoiceId = useId();
@@ -536,7 +539,7 @@ export function ChatView({
           viewportRef={viewportRef}
         >
           <ChatContentColumn className="py-6" ref={chatContentRef}>
-            {timelineGroups.length === 0 ? (
+            {timelineGroups.length === 0 && !readOnly ? (
               <EmptyChatState
                 activeBranch={activeBranch}
                 workspaceName={workspaceName}
@@ -565,6 +568,10 @@ export function ChatView({
                 onStop={onStop}
                 workspaceRootPath={workspaceRootPath}
               />
+            ) : timelineGroups.length === 0 ? (
+              <div className="text-chat-fg-muted text-meta">
+                {t("toolCalls.subagentEmpty")}
+              </div>
             ) : (
               <div data-testid="chat-timeline">
                 {historicalConversationGroups.length > 0 ? (
@@ -595,8 +602,11 @@ export function ChatView({
                               onAnswerQuestion={stableOnAnswerQuestion}
                               onOpenToolLocation={stableOnOpenToolLocation}
                               onResolvePermission={stableOnResolvePermission}
-                              onSubmitPromptEdit={handleSubmitPromptEdit}
+                              onSubmitPromptEdit={
+                                readOnly ? undefined : handleSubmitPromptEdit
+                              }
                               setUserMessageRef={setUserMessageRef}
+                              showMessageActions={!readOnly}
                             />
                           </div>
                         );
@@ -615,8 +625,11 @@ export function ChatView({
                       onAnswerQuestion={stableOnAnswerQuestion}
                       onOpenToolLocation={stableOnOpenToolLocation}
                       onResolvePermission={stableOnResolvePermission}
-                      onSubmitPromptEdit={handleSubmitPromptEdit}
+                      onSubmitPromptEdit={
+                        readOnly ? undefined : handleSubmitPromptEdit
+                      }
                       setUserMessageRef={setUserMessageRef}
+                      showMessageActions={!readOnly}
                     />
                   </div>
                 ) : null}
@@ -689,7 +702,7 @@ export function ChatView({
           showJumpToTop={shouldShowJumpToTop}
         />
       </div>
-      {timelineGroups.length > 0 ? (
+      {timelineGroups.length > 0 || readOnly ? (
         <ComposerDock
           activeBranch={activeBranch}
           workspaceName={workspaceName}
@@ -732,6 +745,9 @@ export function ChatView({
           plan={plan}
           planCollapsed={planCollapsed}
           workspaceRootPath={workspaceRootPath}
+          hideComposer={readOnly}
+          parentSessionTitle={parentSessionTitle}
+          onOpenParentSession={onOpenParentSession}
         />
       ) : null}
     </section>

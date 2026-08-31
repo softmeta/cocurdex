@@ -27,4 +27,27 @@ describe("initializeDatabase", () => {
     }[];
     expect(columns.map((column) => column.name)).toContain("permission_mode");
   });
+
+  it("adds subagent_json onto an existing tool_calls table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE tool_calls (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        status TEXT NOT NULL,
+        content_json TEXT NOT NULL,
+        locations_json TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    initializeDatabase(database);
+
+    const columns = database.prepare("PRAGMA table_info(tool_calls)").all() as {
+      name?: string;
+    }[];
+    expect(columns.map((column) => column.name)).toContain("subagent_json");
+  });
 });

@@ -124,8 +124,6 @@ interface ChatComposerProps {
     useOppositeFollowUpBehavior?: boolean,
   ): void;
   onStop?(): void;
-  floatPendingAttachments?: boolean;
-  pendingAttachmentHost?: HTMLElement | null;
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
 }
@@ -162,8 +160,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       onSelectRuntimeMode,
       onSend,
       onStop,
-      floatPendingAttachments = false,
-      pendingAttachmentHost = null,
       thinkingLevel = null,
       thinkingLevelOptions = [],
     },
@@ -522,8 +518,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             onRemoveAttachment={removeAttachment}
             onStop={onStop}
             onSubmit={sendMessage}
-            floatPendingAttachments={floatPendingAttachments}
-            pendingAttachmentHost={pendingAttachmentHost}
             placeholderOverride={placeholderOverride}
             resolvedControls={resolvedControls}
             slashCommands={slashCommands}
