@@ -135,6 +135,7 @@
       "node_modules/pi-mcp-adapter/**/*",
       "!node_modules/**/{demo,demos,doc,docs,example,examples,test,tests,__tests__}/**/*",
       "!node_modules/**/*.{md,markdown}",
+      "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
       "!node_modules/recheck-jar/**"
     ],
     "asarUnpack": [
@@ -176,6 +177,7 @@
         "dmg"
       ],
       "files": [
+        "out/**",
         "!node_modules/koffi/**"
       ]
     }
