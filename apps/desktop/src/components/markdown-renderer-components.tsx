@@ -157,7 +157,7 @@ export function createMarkdownComponents(
     },
     p({ children, node }: { children?: ReactNode; node?: unknown }) {
       const className = cn(
-        "break-words whitespace-pre-wrap text-sm",
+        "min-w-0 max-w-full break-words whitespace-pre-wrap text-sm",
         getLeadingClass(tone),
         getToneTextClass(tone),
       );
@@ -177,7 +177,7 @@ export function createMarkdownComponents(
       return (
         <ul
           className={cn(
-            "space-y-1 pl-4 text-sm",
+            "min-w-0 max-w-full space-y-1 pl-4 text-sm",
             className?.includes("contains-task-list") ? "list-none pl-0" : null,
             getLeadingClass(tone),
             getToneTextClass(tone),
@@ -191,7 +191,7 @@ export function createMarkdownComponents(
       return (
         <ol
           className={cn(
-            "space-y-1 pl-4 text-sm",
+            "min-w-0 max-w-full space-y-1 pl-4 text-sm",
             getLeadingClass(tone),
             getToneTextClass(tone),
           )}
@@ -208,6 +208,7 @@ export function createMarkdownComponents(
       return (
         <li
           className={cn(
+            "min-w-0 break-words",
             className?.includes("task-list-item") ? "list-none pl-0" : null,
           )}
         >
@@ -219,7 +220,7 @@ export function createMarkdownComponents(
       return (
         <div
           className={cn(
-            "my-1.5 overflow-x-auto rounded-control border [&_code]:rounded-control [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]",
+            "my-1.5 min-w-0 max-w-full overflow-x-auto rounded-control border [&_code]:rounded-control [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]",
             tone === "editor"
               ? "border-editor-border"
               : tone === "system"
@@ -227,7 +228,7 @@ export function createMarkdownComponents(
                 : "border-chat-border-soft",
           )}
         >
-          <table className="w-full min-w-max border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-sm">
             {children}
           </table>
         </div>
@@ -261,7 +262,7 @@ export function createMarkdownComponents(
     },
     th({ children }: { children?: ReactNode }) {
       return (
-        <th className="px-3 py-2 align-top font-semibold whitespace-nowrap">
+        <th className="px-3 py-2 align-top font-semibold break-words">
           {children}
         </th>
       );
@@ -270,7 +271,7 @@ export function createMarkdownComponents(
       return (
         <td
           className={cn(
-            "px-3 py-2 align-top text-sm leading-[1.65]",
+            "px-3 py-2 align-top text-sm leading-[1.65] break-words",
             getToneTextClass(tone),
           )}
         >
@@ -420,7 +421,7 @@ export function createMarkdownComponents(
       return (
         <code
           className={cn(
-            "rounded-control border px-1.5 py-0.5 font-normal text-[0.92em]",
+            "break-words rounded-control border px-1.5 py-0.5 font-normal text-[0.92em]",
             getInlineCodeToneClass(tone),
             codeClassName,
           )}

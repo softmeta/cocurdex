@@ -110,8 +110,15 @@ describe("workspace change coordinator", () => {
     });
     expect(changeSet?.status).toBe("ready");
     expect(changeSet?.files).toEqual([
-      expect.objectContaining({ path: "notes.md", restorable: true }),
+      expect.objectContaining({
+        path: "notes.md",
+        restorable: true,
+        additions: 1,
+        deletions: 1,
+      }),
     ]);
+    expect(changeSet?.additions).toBe(1);
+    expect(changeSet?.deletions).toBe(1);
   });
 
   it("merges native evidence with host coverage and blocks conflicting undo", async () => {
@@ -191,6 +198,88 @@ describe("workspace change coordinator", () => {
     expect(undo.files.find((file) => file.path === "tracked.md")?.status).toBe(
       "conflict",
     );
+  });
+
+  it("fills Claude-style path-only native evidence with per-file line stats", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-ws-"));
+    const userData = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-data-"));
+    await writeFile(path.join(workspace, "AccountInfo.tsx"), "one\n", "utf8");
+    await writeFile(
+      path.join(workspace, "useHasFreePosition.ts"),
+      "a\nb\n",
+      "utf8",
+    );
+    const coordinator = createWorkspaceChangeCoordinator({
+      userDataPath: userData,
+      repository: createMemoryRepository(),
+      now: () => "2026-08-21T00:00:00.000Z",
+      createId: () => "change-claude",
+      createAdapter: async () =>
+        createFilesystemCheckpointAdapter(
+          createCheckpointBlobStore(userData),
+          userData,
+        ),
+    });
+
+    await coordinator.beginTurn({
+      sessionId: "session-claude",
+      userMessageId: "user-1",
+      workspaceRootPath: workspace,
+    });
+    coordinator.markToolActivity("session-claude");
+    await coordinator.ingestNativeEvidence({
+      sessionId: "session-claude",
+      userMessageId: "user-1",
+      evidence: {
+        source: "claude-checkpoint",
+        coverage: "provider-file-tools",
+        files: [
+          {
+            path: "AccountInfo.tsx",
+            operation: "modify",
+            reviewKind: "text",
+          },
+          {
+            path: "useHasFreePosition.ts",
+            operation: "modify",
+            reviewKind: "text",
+          },
+        ],
+        additions: 3,
+        deletions: 2,
+      },
+    });
+    await writeFile(
+      path.join(workspace, "AccountInfo.tsx"),
+      "one\ntwo\n",
+      "utf8",
+    );
+    await writeFile(
+      path.join(workspace, "useHasFreePosition.ts"),
+      "a\n",
+      "utf8",
+    );
+    const changeSet = await coordinator.finalizeTurn({
+      sessionId: "session-claude",
+      messageId: "assistant-1",
+    });
+
+    expect(changeSet?.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "AccountInfo.tsx",
+          additions: 1,
+          deletions: 0,
+        }),
+        expect.objectContaining({
+          path: "useHasFreePosition.ts",
+          additions: 0,
+          deletions: 1,
+        }),
+      ]),
+    );
+    expect(changeSet?.additions).toBe(1);
+    expect(changeSet?.deletions).toBe(1);
   });
 
   it("captures a recovery checkpoint and restores matching files", async () => {

@@ -7,20 +7,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import { StatusSummaryMeta } from "../tool-call/tool-call-ui";
-import type { ToolCallStatusSummaryPart } from "../tool-call/tool-call-utils";
 
 export function ActivityBlock({
   busy = false,
   children,
   reasoningCount,
-  statusSummary,
   toolCount,
 }: {
   busy?: boolean;
   children: ReactNode;
   reasoningCount: number;
-  statusSummary: ToolCallStatusSummaryPart[];
   toolCount: number;
 }) {
   const { t } = useTranslation("agent");
@@ -52,7 +48,7 @@ export function ActivityBlock({
 
   return (
     <Collapsible
-      className="group/activity w-full max-w-3xl"
+      className="group/activity w-full min-w-0 max-w-3xl"
       onOpenChange={setOpen}
       open={open}
     >
@@ -84,7 +80,6 @@ export function ActivityBlock({
             open && "rotate-180",
           )}
         />
-        <StatusSummaryMeta statusSummary={statusSummary} />
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(

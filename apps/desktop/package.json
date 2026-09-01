@@ -15,6 +15,7 @@
     "dist:dir": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build && electron-builder --dir",
     "dist:mac": "pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac",
     "dist:mac:arm64": "pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish never",
+    "dist:mac:arm64:release": "pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish always",
     "i18n:extract": "i18next-cli extract --config ./i18next.config.ts",
     "i18n:lint": "node ./scripts/lint-i18n.mjs",
     "lint:cycles": "node ./scripts/check-cycles.mjs",
@@ -33,6 +34,7 @@
     "@cocurdex/rpc": "workspace:*",
     "@vscode/ripgrep": "^1.18.0",
     "electron-log": "^5.4.3",
+    "electron-updater": "6.8.9",
     "font-list": "^2.1.0",
     "node-pty": "^1.1.0",
     "pi-mcp-adapter": "2.11.0",
@@ -129,6 +131,13 @@
       "output": "release",
       "buildResources": "build-assets"
     },
+    "electronUpdaterCompatibility": ">=2.16",
+    "publish": {
+      "provider": "github",
+      "owner": "softmeta",
+      "repo": "cocurdex",
+      "releaseType": "release"
+    },
     "files": [
       "out/**",
       "!node_modules/**/*.map",
@@ -175,7 +184,8 @@
       "notarize": true,
       "target": [
         "dir",
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "files": [
         "out/**",

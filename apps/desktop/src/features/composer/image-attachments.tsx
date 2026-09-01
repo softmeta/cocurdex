@@ -3,22 +3,7 @@ import {
   isImageAttachment,
   type MessageAttachment,
 } from "@cocurdex/shared";
-import { Copy, Download, Image, Minus, Plus, RotateCw, X } from "lucide-react";
-import type { ReactNode, WheelEvent } from "react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-  titlebarIconButtonClassName,
-} from "@/app/layout/titlebar-icon-button";
-import { Dialog, DialogContent, DialogTitle, Text } from "@/components/ui";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Image, X } from "lucide-react";
 import type { ImportImageAttachmentPayload } from "@/lib";
 import { cn, desktopApi } from "@/lib";
 import {
@@ -26,10 +11,9 @@ import {
   COMPOSER_IMAGE_CARD_MAX_WIDTH,
   getImageCardSize,
 } from "./image-attachment-card-size";
-import {
-  useImageDataUrl,
-  useTemporaryImageCopyStatus,
-} from "./image-attachment-hooks";
+import { useImageDataUrl } from "./image-attachment-hooks";
+
+export { ImageAttachmentPreview } from "./image-attachment-preview";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
   "image/png",
@@ -39,42 +23,6 @@ const SUPPORTED_IMAGE_TYPES = new Set([
 ]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGES_PER_MESSAGE = 6;
-const MIN_PREVIEW_ZOOM = 0.5;
-const MAX_PREVIEW_ZOOM = 3;
-const PREVIEW_ZOOM_STEP = 0.25;
-// Match PDF / panel toolbars: delay so sweeping the chrome does not flash tips.
-const PREVIEW_TOOLBAR_TOOLTIP_DELAY_MS = 500;
-
-function PreviewToolbarIconButton({
-  label,
-  disabled = false,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick(): void;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <TitlebarIconButton
-            aria-label={label}
-            disabled={disabled}
-            onClick={onClick}
-          >
-            {children}
-          </TitlebarIconButton>
-        }
-      />
-      <TooltipContent side="bottom" sideOffset={6}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 export function getImageAttachmentLimitError() {
   return "Attach up to 6 images per message.";
@@ -262,191 +210,6 @@ function ImageAttachmentThumbnail({
         </button>
       ) : null}
     </span>
-  );
-}
-
-export function ImageAttachmentPreview({
-  attachment,
-  onClose,
-}: {
-  attachment: ImageAttachment;
-  onClose(): void;
-}) {
-  const { t } = useTranslation("agent");
-  const dataUrl = useImageDataUrl(attachment);
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [copyStatus, showCopyStatus] = useTemporaryImageCopyStatus(1800);
-  const zoomPercent = Math.round(zoom * 100);
-  const canZoomOut = zoom > MIN_PREVIEW_ZOOM;
-  const canZoomIn = zoom < MAX_PREVIEW_ZOOM;
-  const isAtDefaultZoom = Math.abs(zoom - 1) < 0.005;
-  const resetZoomLabel = t("imagePreview.resetZoom");
-
-  const updateZoom = (nextZoom: number) => {
-    setZoom(Math.min(MAX_PREVIEW_ZOOM, Math.max(MIN_PREVIEW_ZOOM, nextZoom)));
-  };
-
-  const handleCopy = async () => {
-    if (!dataUrl || typeof ClipboardItem === "undefined") {
-      return;
-    }
-
-    try {
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
-      showCopyStatus("copied");
-    } catch {
-      // Clipboard support varies by platform; preview remains usable without it.
-      showCopyStatus("failed");
-    }
-  };
-
-  const handleDownload = () => {
-    if (!dataUrl) {
-      return;
-    }
-
-    const link = document.createElement("a");
-    link.download = attachment.name;
-    link.href = dataUrl;
-    link.click();
-  };
-
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!(event.metaKey || event.ctrlKey)) {
-      return;
-    }
-
-    event.preventDefault();
-    const direction = event.deltaY > 0 ? -1 : 1;
-    updateZoom(zoom + direction * PREVIEW_ZOOM_STEP);
-  };
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent
-        // Fixed card size (not full-viewport). Zoom uses transform so the
-        // shell never grows with scale. flex-col so the stage can flex-1.
-        className="flex h-[min(85dvh,40rem)] w-full flex-col gap-0 overflow-hidden rounded-panel border-chat-border bg-chat-surface p-0 text-chat-fg shadow-2xl"
-        showCloseButton={false}
-        size="wide"
-      >
-        <DialogTitle className="sr-only">{attachment.name}</DialogTitle>
-        <TooltipProvider delay={PREVIEW_TOOLBAR_TOOLTIP_DELAY_MS}>
-          <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-chat-border/40 border-b px-3">
-            <div className="min-w-0">
-              <Text className="block truncate text-chat-fg" size="body">
-                {attachment.name}
-              </Text>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              {copyStatus ? (
-                <output className="me-1">
-                  <Text className="text-chat-fg-muted" size="meta">
-                    {copyStatus === "copied"
-                      ? t("imagePreview.copied")
-                      : t("imagePreview.copyFailed")}
-                  </Text>
-                </output>
-              ) : null}
-              <PreviewToolbarIconButton
-                disabled={!canZoomOut}
-                label={t("imagePreview.zoomOut")}
-                onClick={() => updateZoom(zoom - PREVIEW_ZOOM_STEP)}
-              >
-                <Minus className={TITLEBAR_ICON_GLYPH_CLASS} />
-              </PreviewToolbarIconButton>
-              {isAtDefaultZoom ? (
-                <button
-                  aria-label={resetZoomLabel}
-                  className={cn(
-                    titlebarIconButtonClassName(),
-                    "h-6 w-auto min-w-10 px-1.5 tabular-nums",
-                  )}
-                  type="button"
-                >
-                  <Text size="meta">100%</Text>
-                </button>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger
-                    aria-label={resetZoomLabel}
-                    className={cn(
-                      titlebarIconButtonClassName(),
-                      "h-6 w-auto min-w-10 px-1.5 tabular-nums",
-                    )}
-                    onClick={() => updateZoom(1)}
-                    type="button"
-                  >
-                    <Text size="meta">{zoomPercent}%</Text>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={6}>
-                    {resetZoomLabel}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              <PreviewToolbarIconButton
-                disabled={!canZoomIn}
-                label={t("imagePreview.zoomIn")}
-                onClick={() => updateZoom(zoom + PREVIEW_ZOOM_STEP)}
-              >
-                <Plus className={TITLEBAR_ICON_GLYPH_CLASS} />
-              </PreviewToolbarIconButton>
-              <PreviewToolbarIconButton
-                label={t("imagePreview.rotate")}
-                onClick={() => setRotation((current) => (current + 90) % 360)}
-              >
-                <RotateCw className={TITLEBAR_ICON_GLYPH_CLASS} />
-              </PreviewToolbarIconButton>
-              <PreviewToolbarIconButton
-                disabled={!dataUrl}
-                label={t("imagePreview.copyImage")}
-                onClick={() => void handleCopy()}
-              >
-                <Copy className={TITLEBAR_ICON_GLYPH_CLASS} />
-              </PreviewToolbarIconButton>
-              <PreviewToolbarIconButton
-                disabled={!dataUrl}
-                label={t("imagePreview.downloadImage")}
-                onClick={handleDownload}
-              >
-                <Download className={TITLEBAR_ICON_GLYPH_CLASS} />
-              </PreviewToolbarIconButton>
-              <PreviewToolbarIconButton
-                label={t("imagePreview.closePreview")}
-                onClick={onClose}
-              >
-                <X className={TITLEBAR_ICON_GLYPH_CLASS} />
-              </PreviewToolbarIconButton>
-            </div>
-          </div>
-        </TooltipProvider>
-        <div
-          className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4"
-          onWheel={handleWheel}
-        >
-          {dataUrl ? (
-            <img
-              alt={attachment.name}
-              className="max-h-full max-w-full origin-center object-contain transition-transform duration-100"
-              src={dataUrl}
-              style={{ transform: `rotate(${rotation}deg) scale(${zoom})` }}
-            />
-          ) : (
-            <Image className="size-8 text-chat-fg-muted" />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

@@ -7,7 +7,6 @@ import {
   getSubagentDescription,
   getSubagentType,
   getToolCallInputEntries,
-  getToolCallStatusSummary,
   getToolCallTitle,
   getToolCallTriggerParts,
   isMultilineInputField,
@@ -141,41 +140,6 @@ describe("tool call utils", () => {
       title: "Run",
       secondary: command,
     });
-  });
-
-  it("splits mixed status into per-tone parts so completed is not a failure", () => {
-    // All-success stays silent — it is the expected outcome, not a badge.
-    expect(
-      getToolCallStatusSummary([
-        statusToolCall("completed"),
-        statusToolCall("completed"),
-      ]),
-    ).toEqual([]);
-
-    // A failure earns a status line, but completed stays its own muted part.
-    expect(
-      getToolCallStatusSummary([
-        statusToolCall("completed"),
-        statusToolCall("failed"),
-      ]),
-    ).toEqual([
-      { label: "1 failed", tone: "failed" },
-      { label: "1 completed", tone: "completed" },
-    ]);
-
-    expect(
-      getToolCallStatusSummary([
-        statusToolCall("in_progress"),
-        statusToolCall("pending"),
-      ]),
-    ).toEqual([
-      { label: "1 running", tone: "running" },
-      { label: "1 pending", tone: "pending" },
-    ]);
-
-    expect(getToolCallStatusSummary([statusToolCall("pending")])).toEqual([
-      { label: "1 pending", tone: "pending" },
-    ]);
   });
 
   it("partitions tool calls into timeline-ordered runs", () => {

@@ -41,10 +41,7 @@ import { QuestionCard } from "../question";
 // Deep imports (not the tool-call barrel): the barrel pulls in the subagent
 // detail view, which renders this component.
 import { ToolCallGroup } from "../tool-call/tool-call-ui";
-import {
-  getToolCallStatusSummary,
-  type ToolCallPreviewLocation,
-} from "../tool-call/tool-call-utils";
+import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
 import type { ActivityState } from "./chat-activity";
 import { ActivityLine } from "./chat-activity";
 import { ActivityBlock } from "./chat-activity-block";
@@ -66,22 +63,22 @@ function getMessageArticleClassName(message: MessageRecord) {
   const isReasoning = isReasoningMessage(message);
 
   if (isReasoning) {
-    return "w-full max-w-3xl text-chat-fg-secondary";
+    return "w-full min-w-0 max-w-3xl text-chat-fg-secondary";
   }
 
   if (message.role === "system") {
     return cn(
-      "w-full max-w-3xl rounded-panel border border-chat-system-border bg-chat-system-bg px-3.5 py-2.5 text-chat-system-fg",
+      "w-full min-w-0 max-w-3xl rounded-panel border border-chat-system-border bg-chat-system-bg px-3.5 py-2.5 text-chat-system-fg",
     );
   }
 
   if (message.role === "user") {
     return cn(
-      "max-w-3xl rounded-panel rounded-tr-md border border-chat-border-soft bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg",
+      "min-w-0 max-w-3xl rounded-panel rounded-tr-md border border-chat-border-soft bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg",
     );
   }
 
-  return "w-full max-w-3xl text-chat-fg";
+  return "w-full min-w-0 max-w-3xl text-chat-fg";
 }
 
 function formatMessageTime(value: string) {
@@ -405,11 +402,11 @@ const UserPrompt = memo(function UserPrompt({
     ? "flex w-full justify-start"
     : "flex w-full justify-end";
   const containerClassName = isContextVariant
-    ? "group flex w-full max-w-3xl flex-col items-stretch gap-1"
-    : "group flex max-w-3xl flex-col items-end gap-1.5";
+    ? "group flex w-full min-w-0 max-w-3xl flex-col items-stretch gap-1"
+    : "group flex min-w-0 max-w-3xl flex-col items-end gap-1.5";
   const articleClassName = isContextVariant
     ? cn(
-        "w-full rounded-card border border-chat-border-soft bg-chat-surface-subtle px-4 py-3 text-chat-fg-secondary shadow-chat-soft",
+        "w-full min-w-0 rounded-card border border-chat-border-soft bg-chat-surface-subtle px-4 py-3 text-chat-fg-secondary shadow-chat-soft",
       )
     : getMessageArticleClassName(message);
 
@@ -607,7 +604,7 @@ const MessageArticle = memo(function MessageArticle({
     !isReasoning &&
     !(isRunning && isStreamingLatest);
   const messageClassName = cn(
-    "flex w-full",
+    "flex w-full min-w-0",
     message.role === "user" ? "justify-end" : "justify-start",
   );
 
@@ -636,7 +633,7 @@ const MessageArticle = memo(function MessageArticle({
 
   return (
     <div className={messageClassName}>
-      <div className="group w-full max-w-3xl">
+      <div className="group w-full min-w-0 max-w-3xl">
         <article className={articleClassName}>
           {isSystem ? (
             <div className="mb-1.5 text-meta font-medium uppercase tracking-[0.18em] text-chat-system-muted">
@@ -705,8 +702,6 @@ function getActivitySegmentSummary(items: TimelineGroup[]) {
         toolCall.status === "pending" || toolCall.status === "in_progress",
     ),
     reasoningCount,
-    statusSummary:
-      toolCalls.length > 0 ? getToolCallStatusSummary(toolCalls) : [],
     toolCount: toolCalls.length,
   };
 }
@@ -854,7 +849,6 @@ export const ChatConversationItem = memo(function ChatConversationItem({
                 busy={summary.isBusy || isLiveTail}
                 key={segment.items[0]?.id ?? "activity"}
                 reasoningCount={summary.reasoningCount}
-                statusSummary={summary.statusSummary}
                 toolCount={summary.toolCount}
               >
                 {segment.items.map((item) => renderTimelineItem(item, true))}

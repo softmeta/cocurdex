@@ -94,6 +94,18 @@ const fallbackApi: DesktopApi = {
   }),
   getHomeDir: async () => "/",
   listFontFamilies: async () => [],
+  getAppUpdateState: async () => ({
+    availableVersion: null,
+    currentVersion: "0.0.0",
+    dismissedVersion: null,
+    errorMessage: null,
+    releaseNotesUrl: null,
+    status: "unsupported",
+  }),
+  checkForAppUpdate: async () => fallbackApi.getAppUpdateState(),
+  dismissAppUpdate: async () => fallbackApi.getAppUpdateState(),
+  installAppUpdate: async () => {},
+  onAppUpdateState: () => () => {},
   getCliPathStatus: async () => ({
     available: false,
     installed: false,

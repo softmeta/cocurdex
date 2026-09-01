@@ -565,5 +565,29 @@
       "updated": "cocurdex skills updated"
     },
     "workspaceLabel": "Active project: {{name}}"
+  },
+  "updates": {
+    "actions": {
+      "check": "Check for updates",
+      "install": "Update and Restart"
+    },
+    "card": {
+      "body": "Version {{version}} is ready. It will take effect after restart.",
+      "changelog": "View release notes",
+      "install": "Update and Restart",
+      "later": "Later",
+      "title": "Update available"
+    },
+    "description": "Installed version {{version}}.",
+    "groupTitle": "App",
+    "status": {
+      "checking": "Checking for updates…",
+      "downloading": "Downloading version {{version}}…",
+      "error": "Could not check for updates. {{message}}",
+      "ready": "Version {{version}} is downloaded and ready to install.",
+      "unsupported": "Automatic updates are available in the packaged app.",
+      "upToDate": "You're up to date."
+    },
+    "title": "Version"
   }
 }

@@ -265,7 +265,15 @@ export function mergeNativeAndHostEvidence(
       continue;
     }
     const existing = byPath.get(file.path);
-    if (!existing || !nativeMatchesHostTransition(file, existing)) {
+    if (!existing) {
+      continue;
+    }
+    if (!nativeMatchesHostTransition(file, existing)) {
+      byPath.set(file.path, {
+        ...existing,
+        additions: existing.additions ?? file.additions ?? null,
+        deletions: existing.deletions ?? file.deletions ?? null,
+      });
       continue;
     }
     byPath.set(file.path, {
@@ -281,6 +289,33 @@ export function mergeNativeAndHostEvidence(
   return [...byPath.values()].sort((left, right) =>
     left.path.localeCompare(right.path),
   );
+}
+
+export function applyContentLineStats(
+  file: TurnFileChange,
+  beforeText: string | null,
+  afterText: string | null,
+): TurnFileChange {
+  if (
+    file.reviewKind !== "text" ||
+    (typeof file.additions === "number" && typeof file.deletions === "number")
+  ) {
+    return file;
+  }
+
+  const oldText = file.operation === "add" ? "" : beforeText;
+  const newText = file.operation === "delete" ? "" : afterText;
+  if (oldText == null || newText == null) {
+    return file;
+  }
+
+  const diff = createUnifiedDiff(file.path, oldText, newText);
+  return {
+    ...file,
+    additions: file.additions ?? diff.additions,
+    deletions: file.deletions ?? diff.deletions,
+    patch: file.patch ?? diff.patch,
+  };
 }
 
 export function sumFileStats(files: TurnFileChange[]) {

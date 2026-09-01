@@ -108,6 +108,7 @@ import { getPtyService } from "./pty";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerSkillsHandlers } from "./skills";
+import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
 import {
   buildPdfAssetUrl,
   checkoutGitBranch,
@@ -1313,11 +1314,13 @@ app
     // to main process.env + Chromium session (daemon applied its own on boot).
     // Nothing paints before this lands — the renderer's first outbound request
     // is user-triggered, long after startup.
-    void loadAndApplyNetworkProxyFromStorage().catch((error: unknown) => {
-      appLogger.warn("networkProxy.loadFailed", {
-        message: error instanceof Error ? error.message : String(error),
-      });
-    });
+    const proxyReady = loadAndApplyNetworkProxyFromStorage().catch(
+      (error: unknown) => {
+        appLogger.warn("networkProxy.loadFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      },
+    );
     configureChatEventBroadcast((event) => {
       for (const window of BrowserWindow.getAllWindows()) {
         window.webContents.send("chat:event", event);
@@ -1347,6 +1350,17 @@ app
     registerDataHandlers(ipcMain, userDataPath);
     registerCliPathHandlers();
     registerSkillsHandlers();
+    registerAppUpdateHandlers();
+    startAppUpdater({
+      currentVersion: app.getVersion(),
+      packaged: app.isPackaged,
+      whenReadyToCheck: proxyReady,
+      broadcast(state) {
+        for (const window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("app:updateState", state);
+        }
+      },
+    });
     ipcMain.handle("daemon:getStatus", async () =>
       requireDaemonRuntimeClient().getStatus(),
     );

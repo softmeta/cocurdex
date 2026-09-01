@@ -1,4 +1,8 @@
-import type { ImageAttachment, MessageAttachment } from "@cocurdex/shared";
+import {
+  type ImageAttachment,
+  isImageAttachment,
+  type MessageAttachment,
+} from "@cocurdex/shared";
 import { CornerDownLeft, Plus } from "lucide-react";
 import type { ClipboardEvent, ReactNode, RefObject } from "react";
 import { useState } from "react";
@@ -97,7 +101,9 @@ export function PanelComposer({
       {previewAttachment ? (
         <ImageAttachmentPreview
           attachment={previewAttachment}
+          gallery={composerAttachments.filter(isImageAttachment)}
           onClose={() => setPreviewAttachment(null)}
+          onSelect={setPreviewAttachment}
         />
       ) : null}
       <div

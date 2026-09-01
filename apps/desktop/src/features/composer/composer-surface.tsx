@@ -11,7 +11,10 @@ export function ChatContentColumn({
   ...props
 }: ComponentProps<"div">) {
   return (
-    <div className={cn("mx-auto w-full max-w-3xl", className)} {...props} />
+    <div
+      className={cn("mx-auto w-full min-w-0 max-w-3xl", className)}
+      {...props}
+    />
   );
 }
 

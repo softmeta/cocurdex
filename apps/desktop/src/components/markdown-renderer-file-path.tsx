@@ -94,7 +94,7 @@ export function MarkdownFilePathCode({
   const baseClassName = isProse
     ? className
     : cn(
-        "rounded-control border px-1.5 py-0.5 font-normal text-[0.92em]",
+        "break-words rounded-control border px-1.5 py-0.5 font-normal text-[0.92em]",
         getInlineCodeToneClass(tone),
         className,
       );

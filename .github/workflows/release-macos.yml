@@ -69,8 +69,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build signed and notarized DMG
-        run: pnpm --filter @cocurdex/desktop dist:mac:arm64
+        run: >-
+          pnpm --filter @cocurdex/desktop
+          ${{ github.ref_type == 'tag' && 'dist:mac:arm64:release' || 'dist:mac:arm64' }}
         env:
+          GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Verify packaged runtime
@@ -87,19 +90,20 @@ jobs:
           hdiutil verify "${dmg_path}"
           shasum -a 256 "${dmg_path}" > "${dmg_path}.sha256"
 
-      - name: Publish GitHub Release
+      - name: Attach checksum and release notes
         if: github.ref_type == 'tag'
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "${GITHUB_REF_NAME}"
-          "release/Cocurdex-mac-arm64.dmg"
-          "release/Cocurdex-mac-arm64.dmg.sha256"
-          --repo "${GITHUB_REPOSITORY}"
-          --title "Cocurdex ${GITHUB_REF_NAME}"
-          --generate-notes
-          --verify-tag
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            "release/Cocurdex-mac-arm64.dmg.sha256" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber
+          gh release edit "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Cocurdex ${GITHUB_REF_NAME}" \
+            --generate-notes
 
       - name: Remove App Store Connect API key
         if: always()

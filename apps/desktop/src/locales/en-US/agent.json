@@ -54,6 +54,9 @@
     "copyFailed": "Copy failed",
     "copyImage": "Copy image",
     "downloadImage": "Download image",
+    "imagePosition": "{{current}} / {{total}}",
+    "nextImage": "Next image",
+    "previousImage": "Previous image",
     "resetZoom": "Reset zoom",
     "rotate": "Rotate clockwise",
     "zoomIn": "Zoom in",
@@ -211,8 +214,6 @@
     "subagentReadOnly": "This subagent session is read-only.",
     "subagentResponse": "Subagent response",
     "subagentSession": "Subagent session",
-    "summaryPart_one": "{{count}} {{label}}",
-    "summaryPart_other": "{{count}} {{label}}s",
     "title": "Tool calls"
   },
   "turnChanges": {
