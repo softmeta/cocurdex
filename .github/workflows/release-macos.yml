@@ -57,6 +57,20 @@ jobs:
           package_version="$(node -p "require('./apps/desktop/package.json').version")"
           test "v${package_version}" = "${GITHUB_REF_NAME}"
 
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            exit 0
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Cocurdex ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag
+
       - name: Prepare App Store Connect API key
         env:
           APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
@@ -90,7 +104,7 @@ jobs:
           hdiutil verify "${dmg_path}"
           shasum -a 256 "${dmg_path}" > "${dmg_path}.sha256"
 
-      - name: Attach checksum and release notes
+      - name: Attach checksum
         if: github.ref_type == 'tag'
         working-directory: apps/desktop
         env:
@@ -102,8 +116,7 @@ jobs:
             --clobber
           gh release edit "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "Cocurdex ${GITHUB_REF_NAME}" \
-            --generate-notes
+            --title "Cocurdex ${GITHUB_REF_NAME}"
 
       - name: Remove App Store Connect API key
         if: always()
