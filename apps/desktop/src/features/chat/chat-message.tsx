@@ -128,14 +128,17 @@ export function ConversationMessage({
 
   return (
     <div
-      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
+      className={cn(
+        "flex w-full min-w-0",
+        isUser ? "justify-end" : "justify-start",
+      )}
     >
       <div
         className={cn(
           "group flex flex-col text-body",
           isUser
-            ? "max-w-[88%] items-end gap-1.5"
-            : "w-full max-w-3xl items-start gap-1",
+            ? "min-w-0 max-w-[88%] items-end gap-1.5"
+            : "w-full min-w-0 max-w-3xl items-start gap-1",
         )}
       >
         {isUser && imageAttachments.length > 0 ? (
@@ -149,7 +152,7 @@ export function ConversationMessage({
                     "rounded-panel rounded-tr-md border border-chat-border-soft",
                     "bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg",
                   )
-                : "w-full text-foreground",
+                : "w-full min-w-0 text-foreground",
             )}
           >
             {!isUser && imageParts.length > 0 ? (

@@ -276,6 +276,23 @@ export interface CliPathStatus {
   error: string | null;
 }
 
+export type AppUpdateStatus =
+  | "checking"
+  | "downloading"
+  | "error"
+  | "idle"
+  | "ready"
+  | "unsupported";
+
+export interface AppUpdateState {
+  availableVersion: string | null;
+  currentVersion: string;
+  dismissedVersion: string | null;
+  errorMessage: string | null;
+  releaseNotesUrl: string | null;
+  status: AppUpdateStatus;
+}
+
 /** Local Cocurdex daemon process health (no auth token). */
 export interface DaemonRuntimeStatus {
   running: boolean;
@@ -352,6 +369,11 @@ export interface DesktopApi {
    * Empty array when enumeration fails — renderer uses a curated fallback list.
    */
   listFontFamilies(): Promise<string[]>;
+  getAppUpdateState(): Promise<AppUpdateState>;
+  checkForAppUpdate(): Promise<AppUpdateState>;
+  dismissAppUpdate(): Promise<AppUpdateState>;
+  installAppUpdate(): Promise<void>;
+  onAppUpdateState(listener: (state: AppUpdateState) => void): () => void;
   getCliPathStatus(): Promise<CliPathStatus>;
   installCliOnPath(): Promise<CliPathStatus>;
   uninstallCliFromPath(): Promise<CliPathStatus>;

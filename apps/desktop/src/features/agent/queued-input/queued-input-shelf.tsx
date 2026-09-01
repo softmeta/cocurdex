@@ -63,7 +63,9 @@ function QueuedInputRow({
   const imagePreview = previewAttachment ? (
     <ImageAttachmentPreview
       attachment={previewAttachment}
+      gallery={item.message.attachments.filter(isImageAttachment)}
       onClose={() => setPreviewAttachment(null)}
+      onSelect={setPreviewAttachment}
     />
   ) : null;
 

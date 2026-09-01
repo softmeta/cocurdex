@@ -8,7 +8,7 @@ import { useState } from "react";
 import { cn } from "@/lib";
 import { getImageCardSize } from "./image-attachment-card-size";
 import { useImageDataUrl } from "./image-attachment-hooks";
-import { ImageAttachmentPreview } from "./image-attachments";
+import { ImageAttachmentPreview } from "./image-attachment-preview";
 
 function MessageImageCard({
   alt,
@@ -109,7 +109,9 @@ export function ImageAttachmentCards({
       {previewAttachment ? (
         <ImageAttachmentPreview
           attachment={previewAttachment}
+          gallery={imageAttachments}
           onClose={() => setPreviewAttachment(null)}
+          onSelect={setPreviewAttachment}
         />
       ) : null}
     </>

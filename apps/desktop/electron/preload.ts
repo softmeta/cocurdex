@@ -58,6 +58,7 @@ import type {
 } from "@cocurdex/shared";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
+  AppUpdateState,
   WorkspaceSearchDoneEvent,
   WorkspaceSearchErrorEvent,
   WorkspaceSearchResultEvent,
@@ -71,6 +72,22 @@ contextBridge.exposeInMainWorld("desktopApi", {
   getHomeDir: () => ipcRenderer.invoke("app:getHomeDir") as Promise<string>,
   listFontFamilies: () =>
     ipcRenderer.invoke("app:listFontFamilies") as Promise<string[]>,
+  getAppUpdateState: () => ipcRenderer.invoke("app:update:getState"),
+  checkForAppUpdate: () => ipcRenderer.invoke("app:update:check"),
+  dismissAppUpdate: () => ipcRenderer.invoke("app:update:dismiss"),
+  installAppUpdate: () => ipcRenderer.invoke("app:update:install"),
+  onAppUpdateState: (listener: (state: AppUpdateState) => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      payload: AppUpdateState,
+    ) => {
+      listener(payload);
+    };
+    ipcRenderer.on("app:updateState", handler);
+    return () => {
+      ipcRenderer.removeListener("app:updateState", handler);
+    };
+  },
   listAgents: () => ipcRenderer.invoke("agent:list"),
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),
   saveWorkspace: (workspace: import("@cocurdex/shared").WorkspaceRecord) =>

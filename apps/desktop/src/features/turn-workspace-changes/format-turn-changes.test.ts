@@ -1,6 +1,8 @@
+import type { TurnChangeSet } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
   fileOperationMarker,
+  hasMeaningfulLineStats,
   splitWorkspaceRelativePath,
 } from "./format-turn-changes";
 
@@ -22,6 +24,42 @@ describe("fileOperationMarker", () => {
       className: "text-editor-git-modified",
       letter: "M",
     });
+  });
+});
+
+describe("hasMeaningfulLineStats", () => {
+  it("shows header totals even when files lack per-file counts", () => {
+    expect(
+      hasMeaningfulLineStats({
+        additions: 12,
+        deletions: 3,
+        files: [
+          {
+            operation: "modify",
+            path: "src/a.ts",
+            reviewKind: "text",
+          },
+        ],
+      } as TurnChangeSet),
+    ).toBe(true);
+  });
+
+  it("hides zero line counts", () => {
+    expect(
+      hasMeaningfulLineStats({
+        additions: 0,
+        deletions: 0,
+        files: [
+          {
+            additions: 0,
+            deletions: 0,
+            operation: "modify",
+            path: "src/a.ts",
+            reviewKind: "text",
+          },
+        ],
+      } as TurnChangeSet),
+    ).toBe(false);
   });
 });
 

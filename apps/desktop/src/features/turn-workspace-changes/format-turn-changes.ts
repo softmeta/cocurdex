@@ -1,15 +1,13 @@
 import type { TurnChangeSet, TurnFileChange } from "@cocurdex/shared";
 
 export function hasMeaningfulLineStats(changeSet: TurnChangeSet) {
-  return (
-    changeSet.files.some(
-      (file) =>
-        file.reviewKind === "text" &&
-        (typeof file.additions === "number" ||
-          typeof file.deletions === "number"),
-    ) &&
-    (typeof changeSet.additions === "number" ||
-      typeof changeSet.deletions === "number")
+  if ((changeSet.additions ?? 0) > 0 || (changeSet.deletions ?? 0) > 0) {
+    return true;
+  }
+  return changeSet.files.some(
+    (file) =>
+      file.reviewKind === "text" &&
+      ((file.additions ?? 0) > 0 || (file.deletions ?? 0) > 0),
   );
 }
 

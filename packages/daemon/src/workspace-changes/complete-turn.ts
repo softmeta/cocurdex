@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { AgentSession } from "@cocurdex/agent-core";
 import type {
   NativeWorkspaceChangeEvidence,
@@ -6,13 +7,14 @@ import type {
   TurnFileChange,
 } from "@cocurdex/shared";
 import {
+  applyContentLineStats,
   mergeNativeAndHostEvidence,
   selectChangeSetCoverage,
   selectChangeSetSource,
   sumFileStats,
 } from "@cocurdex/shared";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
-import { sanitizeTurnFileChanges } from "./path-safety";
+import { resolveWorkspacePath, sanitizeTurnFileChanges } from "./path-safety";
 
 export interface ActiveTurn {
   workspaceRootPath: string;
@@ -93,11 +95,17 @@ export async function completeActiveTurn(input: {
   }
 
   const hostAvailable = after != null && active.before != null;
-  const files = mergeNativeAndHostEvidence(
-    active.native?.files,
-    hostFiles,
-    hostAvailable,
-  );
+  const files = await fillMissingLineStats({
+    adapter: active.adapter,
+    after,
+    before: active.before,
+    files: mergeNativeAndHostEvidence(
+      active.native?.files,
+      hostFiles,
+      hostAvailable,
+    ),
+    workspaceRootPath: active.workspaceRootPath,
+  });
   if (files.length === 0) {
     return input.discard(active, [active.before, after]);
   }
@@ -109,12 +117,8 @@ export async function completeActiveTurn(input: {
     source: selectChangeSetSource(active.native, active.adapter.kind),
     coverage: selectChangeSetCoverage(active.native, hostAvailable),
     files,
-    additions: hostAvailable
-      ? stats.additions
-      : (active.native?.additions ?? stats.additions),
-    deletions: hostAvailable
-      ? stats.deletions
-      : (active.native?.deletions ?? stats.deletions),
+    additions: stats.additions ?? active.native?.additions ?? null,
+    deletions: stats.deletions ?? active.native?.deletions ?? null,
     providerTurnId:
       active.native?.providerTurnId ?? active.changeSet.providerTurnId,
     nativeCheckpointRef:
@@ -134,4 +138,88 @@ export async function completeActiveTurn(input: {
     updatedAt: timestamp,
   };
   return input.persist(active.changeSet);
+}
+
+async function fillMissingLineStats(input: {
+  adapter: HostCheckpointAdapter;
+  after: HostCheckpoint | null;
+  before: HostCheckpoint | null;
+  files: TurnFileChange[];
+  workspaceRootPath: string;
+}) {
+  return Promise.all(
+    input.files.map(async (file) => {
+      if (
+        file.reviewKind !== "text" ||
+        (typeof file.additions === "number" &&
+          typeof file.deletions === "number")
+      ) {
+        return file;
+      }
+
+      return applyContentLineStats(
+        file,
+        await readBeforeText(input, file),
+        await readAfterText(input, file),
+      );
+    }),
+  );
+}
+
+async function readBeforeText(
+  input: {
+    adapter: HostCheckpointAdapter;
+    before: HostCheckpoint | null;
+  },
+  file: TurnFileChange,
+) {
+  if (file.operation === "add") {
+    return "";
+  }
+  if (!input.before) {
+    return null;
+  }
+  return readCheckpointText(
+    input.adapter,
+    input.before,
+    file.previousPath ?? file.path,
+  );
+}
+
+async function readAfterText(
+  input: {
+    adapter: HostCheckpointAdapter;
+    after: HostCheckpoint | null;
+    workspaceRootPath: string;
+  },
+  file: TurnFileChange,
+) {
+  if (file.operation === "delete") {
+    return "";
+  }
+  if (input.after) {
+    return readCheckpointText(input.adapter, input.after, file.path);
+  }
+  return readWorkingTreeText(input.workspaceRootPath, file.path);
+}
+
+async function readCheckpointText(
+  adapter: HostCheckpointAdapter,
+  checkpoint: HostCheckpoint,
+  relativePath: string,
+) {
+  const bytes = await adapter.readFile(checkpoint, relativePath);
+  return bytes ? bytes.toString("utf8") : null;
+}
+
+async function readWorkingTreeText(
+  workspaceRootPath: string,
+  relativePath: string,
+) {
+  try {
+    const { absolute } = resolveWorkspacePath(workspaceRootPath, relativePath);
+    return await readFile(absolute, "utf8");
+  } catch {
+    return null;
+  }
 }

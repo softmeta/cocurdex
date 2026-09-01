@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { Components } from "streamdown";
 import { Streamdown } from "streamdown";
-import { isPerfEnabled, logSessionSwitchPerf } from "@/lib";
+import { cn, isPerfEnabled, logSessionSwitchPerf } from "@/lib";
 import { normalizeMarkdownCodeFenceLanguages } from "./markdown-code-fence";
 import type { MarkdownFilePathHandlers } from "./markdown-file-path";
 import { rewriteMarkdownLocalFileLinks } from "./markdown-file-path";
@@ -251,7 +251,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
   return (
     <Streamdown
-      className={className}
+      className={cn("min-w-0 max-w-full", className)}
       components={components}
       lineNumbers={false}
       mode={streaming ? "streaming" : "static"}

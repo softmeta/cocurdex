@@ -22,6 +22,7 @@ import {
   followUpBehaviors,
   isFollowUpBehavior,
 } from "@/features/agent";
+import { AppUpdateSettingsPanel } from "@/features/app-update";
 import {
   isSendShortcut,
   sendShortcutAtom,
@@ -300,6 +301,10 @@ function GeneralPanel({
             }
           />
         </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup title={t("updates.groupTitle")}>
+        <AppUpdateSettingsPanel />
       </SettingsGroup>
 
       <SettingsGroup title={t("cli.groupTitle")}>

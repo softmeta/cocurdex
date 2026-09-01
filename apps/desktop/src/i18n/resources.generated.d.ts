@@ -56,6 +56,9 @@ export default interface Resources {
       copyFailed: "Copy failed";
       copyImage: "Copy image";
       downloadImage: "Download image";
+      imagePosition: "{{current}} / {{total}}";
+      nextImage: "Next image";
+      previousImage: "Previous image";
       resetZoom: "Reset zoom";
       rotate: "Rotate clockwise";
       zoomIn: "Zoom in";
@@ -213,8 +216,6 @@ export default interface Resources {
       subagentReadOnly: "This subagent session is read-only.";
       subagentResponse: "Subagent response";
       subagentSession: "Subagent session";
-      summaryPart_one: "{{count}} {{label}}";
-      summaryPart_other: "{{count}} {{label}}s";
       title: "Tool calls";
     };
     turnChanges: {
@@ -1624,6 +1625,30 @@ export default interface Resources {
         updated: "cocurdex skills updated";
       };
       workspaceLabel: "Active project: {{name}}";
+    };
+    updates: {
+      actions: {
+        check: "Check for updates";
+        install: "Update and Restart";
+      };
+      card: {
+        body: "Version {{version}} is ready. It will take effect after restart.";
+        changelog: "View release notes";
+        install: "Update and Restart";
+        later: "Later";
+        title: "Update available";
+      };
+      description: "Installed version {{version}}.";
+      groupTitle: "App";
+      status: {
+        checking: "Checking for updates…";
+        downloading: "Downloading version {{version}}…";
+        error: "Could not check for updates. {{message}}";
+        ready: "Version {{version}} is downloaded and ready to install.";
+        unsupported: "Automatic updates are available in the packaged app.";
+        upToDate: "You're up to date.";
+      };
+      title: "Version";
     };
   };
 }

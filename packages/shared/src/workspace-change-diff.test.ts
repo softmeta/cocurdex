@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateTurnFileChanges,
+  applyContentLineStats,
   createUnifiedDiff,
   inferReviewKind,
   mergeNativeAndHostEvidence,
@@ -266,6 +267,24 @@ describe("mergeNativeAndHostEvidence", () => {
     expect(merged).toEqual([]);
   });
 
+  it("keeps native line stats when the host file has none", () => {
+    const merged = mergeNativeAndHostEvidence(
+      [file("src/a.ts", { additions: 4, deletions: 1 })],
+      [file("src/a.ts", { beforeHash: "before", afterHash: "after" })],
+      true,
+    );
+
+    expect(merged).toEqual([
+      expect.objectContaining({
+        path: "src/a.ts",
+        additions: 4,
+        deletions: 1,
+        beforeHash: "before",
+        afterHash: "after",
+      }),
+    ]);
+  });
+
   it("uses native files when host coverage is unavailable", () => {
     const merged = mergeNativeAndHostEvidence(
       [file("only-native.ts", { patch: "native" })],
@@ -290,6 +309,35 @@ describe("createUnifiedDiff", () => {
     expect(result.patch).toContain("+++ b/notes.md");
     expect(result.patch).toContain("-old body");
     expect(result.patch).toContain("+new body");
+  });
+});
+
+describe("applyContentLineStats", () => {
+  it("fills missing additions and deletions from before and after text", () => {
+    expect(
+      applyContentLineStats(file("src/a.ts"), "title\nold\n", "title\nnew\n"),
+    ).toMatchObject({
+      path: "src/a.ts",
+      additions: 1,
+      deletions: 1,
+    });
+  });
+
+  it("leaves existing line stats and non-text files alone", () => {
+    expect(
+      applyContentLineStats(
+        file("src/a.ts", { additions: 9, deletions: 2 }),
+        "a\n",
+        "b\n",
+      ),
+    ).toMatchObject({ additions: 9, deletions: 2 });
+    expect(
+      applyContentLineStats(
+        file("shot.png", { reviewKind: "image" }),
+        "a",
+        "b",
+      ),
+    ).toMatchObject({ reviewKind: "image" });
   });
 });
 

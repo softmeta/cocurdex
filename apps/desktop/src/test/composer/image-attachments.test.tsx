@@ -8,6 +8,7 @@ describe("image attachments", () => {
     const files = [
       "src/features/composer/image-attachments.tsx",
       "src/features/composer/image-attachment-cards.tsx",
+      "src/features/composer/image-attachment-preview.tsx",
     ];
 
     for (const file of files) {

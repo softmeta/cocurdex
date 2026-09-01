@@ -52,6 +52,9 @@
     "copyFailed": "复制失败",
     "copyImage": "复制图片",
     "downloadImage": "下载图片",
+    "imagePosition": "{{current}} / {{total}}",
+    "nextImage": "下一张",
+    "previousImage": "上一张",
     "resetZoom": "重置缩放",
     "rotate": "顺时针旋转",
     "zoomIn": "放大",
@@ -207,8 +210,6 @@
     "subagentReadOnly": "此子代理会话为只读。",
     "subagentResponse": "子代理回复",
     "subagentSession": "子代理会话",
-    "summaryPart_one": "{{count}} 个{{label}}",
-    "summaryPart_other": "{{count}} 个{{label}}",
     "title": "工具调用"
   },
   "turnChanges": {

@@ -22,13 +22,10 @@ import {
   getToolCallGroupCountLabel,
   getToolCallStatusClasses,
   getToolCallStatusLabel,
-  getToolCallStatusSummary,
   getToolCallTriggerParts,
   isSubagentToolCall,
   partitionToolCallRuns,
   type ToolCallPreviewLocation,
-  type ToolCallStatusSummaryPart,
-  type ToolCallStatusSummaryTone,
 } from "./tool-call-utils";
 
 function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
@@ -203,48 +200,6 @@ function ToolCallItem({
   );
 }
 
-function getStatusSummaryToneClass(tone: ToolCallStatusSummaryTone) {
-  if (tone === "failed") {
-    return "text-chat-status-failed-fg";
-  }
-
-  if (tone === "running") {
-    return "text-chat-status-running-fg";
-  }
-
-  if (tone === "pending") {
-    return "text-chat-status-pending-fg";
-  }
-
-  // Completed is context in a mixed rollup, not a celebration. All-success
-  // stays silent; when it appears next to a problem, keep it muted so only
-  // failures and in-flight work earn status color.
-  return "text-chat-fg-muted";
-}
-
-export function StatusSummaryMeta({
-  statusSummary,
-}: {
-  statusSummary: ToolCallStatusSummaryPart[];
-}) {
-  if (statusSummary.length === 0) {
-    return null;
-  }
-
-  return (
-    <span className="ml-auto min-w-0 shrink-0 truncate text-xs">
-      {statusSummary.map((part, index) => (
-        <Fragment key={part.tone}>
-          {index > 0 ? <span className="text-chat-fg-subtle"> · </span> : null}
-          <span className={getStatusSummaryToneClass(part.tone)}>
-            {part.label}
-          </span>
-        </Fragment>
-      ))}
-    </span>
-  );
-}
-
 export function ToolCallGroup({
   toolCalls,
   onOpenToolLocation,
@@ -310,9 +265,6 @@ export function ToolCallGroup({
           <span className="shrink-0 text-sm font-medium text-chat-fg">
             {getToolCallGroupCountLabel(run.toolCalls)}
           </span>
-          <StatusSummaryMeta
-            statusSummary={getToolCallStatusSummary(run.toolCalls)}
-          />
         </CollapsibleTrigger>
         <CollapsibleContent
           className={cn(

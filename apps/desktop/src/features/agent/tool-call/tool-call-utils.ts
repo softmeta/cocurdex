@@ -238,46 +238,6 @@ export function getToolCallStatusClasses(toolCall: AgentToolCallRecord) {
   return "text-chat-status-running-fg";
 }
 
-function getToolCallCounts(toolCalls: AgentToolCallRecord[]) {
-  return toolCalls.reduce(
-    (counts, toolCall) => {
-      counts[toolCall.status] += 1;
-      return counts;
-    },
-    {
-      completed: 0,
-      failed: 0,
-      in_progress: 0,
-      pending: 0,
-    } satisfies Record<AgentToolCallRecord["status"], number>,
-  );
-}
-
-export type ToolCallStatusSummaryTone =
-  | "failed"
-  | "running"
-  | "pending"
-  | "completed";
-
-export type ToolCallStatusSummaryPart = {
-  label: string;
-  tone: ToolCallStatusSummaryTone;
-};
-
-function getStatusSummaryPart(
-  count: number,
-  tone: ToolCallStatusSummaryTone,
-): ToolCallStatusSummaryPart | null {
-  if (count === 0) {
-    return null;
-  }
-
-  return {
-    label: i18n.t("agent:toolCalls.summaryPart", { count, label: tone }),
-    tone,
-  };
-}
-
 // Second precision. Activity runs are bursts of calls seconds apart, so minute
 // precision rounded a 40-second run into a misleadingly wide "12:40 – 12:41"
 // range; seconds keep the endpoints honest.
@@ -655,41 +615,6 @@ export function getToolCallDetailLabel(toolCall: AgentToolCallRecord) {
   }
 
   return i18n.t("agent:toolCalls.input");
-}
-
-export function getToolCallStatusSummary(
-  toolCalls: AgentToolCallRecord[],
-): ToolCallStatusSummaryPart[] {
-  const counts = getToolCallCounts(toolCalls);
-
-  if (counts.failed > 0) {
-    return [
-      getStatusSummaryPart(counts.failed, "failed"),
-      getStatusSummaryPart(counts.in_progress, "running"),
-      getStatusSummaryPart(counts.pending, "pending"),
-      getStatusSummaryPart(counts.completed, "completed"),
-    ].filter((part): part is ToolCallStatusSummaryPart => part !== null);
-  }
-
-  if (counts.in_progress > 0) {
-    return [
-      getStatusSummaryPart(counts.in_progress, "running"),
-      getStatusSummaryPart(counts.pending, "pending"),
-      getStatusSummaryPart(counts.completed, "completed"),
-    ].filter((part): part is ToolCallStatusSummaryPart => part !== null);
-  }
-
-  if (counts.pending > 0) {
-    return [
-      getStatusSummaryPart(counts.pending, "pending"),
-      getStatusSummaryPart(counts.completed, "completed"),
-    ].filter((part): part is ToolCallStatusSummaryPart => part !== null);
-  }
-
-  // All-success is the expected outcome — stay silent rather than stamp every
-  // finished group with a green "all succeeded". Only failures and in-flight
-  // work earn a status line, so problems are the only thing that draws the eye.
-  return [];
 }
 
 export function getToolCallGroupCountLabel(toolCalls: AgentToolCallRecord[]) {

@@ -1,6 +1,7 @@
 import { AppShell } from "@/app/layout";
 import { FileTypeIconSprite } from "@/components";
 import { Toaster } from "@/components/ui";
+import { UpdateReadyCard } from "@/features/app-update";
 
 export function App() {
   return (
@@ -12,6 +13,7 @@ export function App() {
       <FileTypeIconSprite />
       <AppShell />
       <Toaster />
+      <UpdateReadyCard />
     </>
   );
 }
