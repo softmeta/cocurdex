@@ -11,7 +11,7 @@ export function createSqliteSessionRepository(
       const rows = database
         .prepare(
           `SELECT * FROM sessions
-           WHERE archived_at IS NULL AND parent_session_id IS NULL
+           WHERE archived_at IS NULL
            ORDER BY COALESCE(last_message_at, updated_at) DESC, created_at DESC`,
         )
         .all() as SqliteRow[];
@@ -22,7 +22,6 @@ export function createSqliteSessionRepository(
         .prepare(
           `SELECT * FROM sessions
            WHERE workspace_id = ? AND archived_at IS NULL
-             AND parent_session_id IS NULL
            ORDER BY COALESCE(last_message_at, updated_at) DESC, created_at DESC`,
         )
         .all(workspaceId) as SqliteRow[];
@@ -117,11 +116,18 @@ export function createSqliteSessionRepository(
       const nextArchivedAt = archivedAt ?? new Date().toISOString();
       database
         .prepare(
-          `UPDATE sessions
+          `WITH RECURSIVE tree(id) AS (
+             SELECT id FROM sessions WHERE id = ?
+             UNION ALL
+             SELECT sessions.id
+             FROM sessions
+             JOIN tree ON sessions.parent_session_id = tree.id
+           )
+           UPDATE sessions
            SET archived_at = ?, updated_at = ?
-           WHERE id = ?`,
+           WHERE id IN (SELECT id FROM tree)`,
         )
-        .run(nextArchivedAt, nextArchivedAt, sessionId);
+        .run(sessionId, nextArchivedAt, nextArchivedAt);
 
       return this.getById(sessionId);
     },

@@ -59,6 +59,7 @@ import {
 } from "./codex-questions";
 import { parseCodexRateLimits } from "./codex-rate-limits";
 import { getCodexReasoningEffortLabel } from "./codex-reasoning-effort";
+import { CodexSubagentRouter } from "./codex-subagent-router";
 import { createCodexTurnStream } from "./codex-turn-stream";
 
 const descriptor = getAgentDescriptor("codex");
@@ -266,7 +267,22 @@ export function createCodexAdapter(
       const sessionId = payload.session.id;
       const persistedProviderSession = payload.providerSession;
       let desiredThreadTitle = payload.session.title;
-      const turnStream = createCodexTurnStream({ sessionId, onEvent });
+      const subagentRouter = new CodexSubagentRouter({
+        parentSession: payload.session,
+        onEvent,
+        subscribe(providerSessionId, onNotification) {
+          lease?.subscribeThread(providerSessionId, {
+            onNotification,
+            onServerRequest: handleServerRequest,
+            onError: emitError,
+          });
+        },
+      });
+      const turnStream = createCodexTurnStream({
+        sessionId,
+        onEvent,
+        transformToolCall: (toolCall) => subagentRouter.transform(toolCall),
+      });
       let lastUserMessageId: string | null = null;
       // Codex reports MCP startup per server; keep the merged view so the
       // composer menu can show the whole list.
@@ -872,6 +888,11 @@ export function createCodexAdapter(
           if (lease && threadId) {
             lease.unsubscribeThread(threadId);
             void lease.client.unsubscribeThread(threadId).catch(() => {});
+          }
+          if (lease) {
+            for (const childThreadId of subagentRouter.getProviderSessionIds()) {
+              lease.unsubscribeThread(childThreadId);
+            }
           }
 
           lease?.release();

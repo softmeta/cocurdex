@@ -108,6 +108,7 @@ function QueuedInputRow({
           <ImageAttachmentChips
             attachments={item.message.attachments}
             onPreview={setPreviewAttachment}
+            size="chip"
           />
           <DocumentAttachmentChips attachments={item.message.attachments} />
           <div className="ms-auto flex shrink-0 items-center gap-1.5">

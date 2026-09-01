@@ -1,5 +1,6 @@
 import type { AgentEvent } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
+import { createToolCallRecord } from "./codex-app-server-events";
 import { createCodexTurnStream } from "./codex-turn-stream";
 
 function setup() {
@@ -12,6 +13,30 @@ function setup() {
 }
 
 describe("createCodexTurnStream", () => {
+  it("maps collaboration spawns to provider-neutral subagent references", () => {
+    expect(
+      createToolCallRecord(
+        "session-1",
+        {
+          id: "collab-1",
+          type: "collabAgentToolCall",
+          tool: "spawnAgent",
+          status: "completed",
+          senderThreadId: "parent-thread",
+          receiverThreadIds: ["child-thread"],
+          prompt: "Review changes",
+          model: "gpt-5.6-sol",
+          agentsStates: { "child-thread": { status: "running" } },
+        },
+        true,
+      ).subagent,
+    ).toEqual({
+      sessionId: "codex-subagent:session-1:child-thread",
+      type: "gpt-5.6-sol",
+      description: "Review changes",
+    });
+  });
+
   it("streams reasoning summary deltas as reasoning messages", () => {
     const { events, stream } = setup();
 

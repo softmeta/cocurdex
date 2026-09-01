@@ -79,10 +79,7 @@ export interface AcpConnectionHandlers {
   onSessionUpdate(notification: SessionNotification): Promise<void> | void;
   // Vendor extension notifications the agent pushes on its own (Grok Build's
   // `x.ai/mcp/server_status`). Only the methods listed in
-  // `AcpConnectionFactoryOptions.extNotificationMethods` are dispatched here;
-  // the params stay on the wire because callers re-read the authoritative
-  // state instead of patching it from the push.
-  onExtNotification?(method: string): void;
+  onExtNotification?(method: string, params: unknown): void;
   requestPermission(
     request: RequestPermissionRequest,
   ): Promise<RequestPermissionResponse>;

@@ -90,13 +90,34 @@ export function pillElementFromAttachment(
   return span;
 }
 
-export function serializeEditor(editor: HTMLElement) {
-  let text = "";
-  const mentionKeys: string[] = [];
+export type EditorContentNode =
+  | { type: "text"; value: string }
+  | {
+      type: "mention";
+      key: string;
+      displayLabel: string;
+      serializedText: string;
+    };
+
+export function serializeEditorContent(editor: HTMLElement) {
+  const nodes: EditorContentNode[] = [];
+  let textBuffer = "";
+  let emittedText = "";
+
+  const appendText = (value: string) => {
+    textBuffer += value;
+    emittedText += value;
+  };
+
+  const flushText = () => {
+    if (textBuffer.length === 0) return;
+    nodes.push({ type: "text", value: textBuffer });
+    textBuffer = "";
+  };
 
   const visit = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      text += node.textContent ?? "";
+      appendText(node.textContent ?? "");
       return;
     }
 
@@ -107,23 +128,28 @@ export function serializeEditor(editor: HTMLElement) {
     if (element.hasAttribute(MENTION_KEY_ATTR)) {
       const key = element.getAttribute(MENTION_KEY_ATTR);
       if (key) {
-        mentionKeys.push(key);
+        flushText();
+        const serializedText = element.dataset.mentionText ?? "";
+        nodes.push({
+          displayLabel: element.getAttribute(MENTION_DISPLAY_ATTR) ?? "",
+          key,
+          serializedText,
+          type: "mention",
+        });
+        emittedText += serializedText;
       }
-      // Keep the mention inline in the text stream so the sent message (and the
-      // prompt the agent sees) preserves where the user placed it.
-      text += element.dataset.mentionText ?? "";
       return;
     }
 
     if (element.tagName === "BR") {
-      text += "\n";
+      appendText("\n");
       return;
     }
 
     const display = window.getComputedStyle(element).display;
     const isBlock = display === "block" || display === "flex";
-    if (isBlock && text.length > 0 && !text.endsWith("\n")) {
-      text += "\n";
+    if (isBlock && emittedText.length > 0 && !emittedText.endsWith("\n")) {
+      appendText("\n");
     }
 
     for (const child of Array.from(element.childNodes)) {
@@ -135,7 +161,60 @@ export function serializeEditor(editor: HTMLElement) {
     visit(child);
   }
 
-  return { text, mentionKeys };
+  flushText();
+  return nodes;
+}
+
+export function serializeEditor(editor: HTMLElement) {
+  const nodes = serializeEditorContent(editor);
+  let text = "";
+  const mentionKeys: string[] = [];
+
+  for (const node of nodes) {
+    if (node.type === "text") {
+      text += node.value;
+      continue;
+    }
+    mentionKeys.push(node.key);
+    text += node.serializedText;
+  }
+
+  return { mentionKeys, nodes, text };
+}
+
+export function hydrateEditorContent(
+  editor: HTMLElement,
+  nodes: EditorContentNode[],
+  mentions: MentionableAttachment[],
+  removeMentionLabel: string,
+) {
+  const mentionsByKey = new Map(
+    mentions.map((mention) => [getMentionRegistryKey(mention), mention]),
+  );
+  editor.replaceChildren();
+  const restored: MentionableAttachment[] = [];
+
+  for (const node of nodes) {
+    if (node.type === "text") {
+      if (node.value.length > 0) {
+        editor.appendChild(document.createTextNode(node.value));
+      }
+      continue;
+    }
+    const attachment = mentionsByKey.get(node.key);
+    if (!attachment) continue;
+    editor.appendChild(
+      pillElementFromAttachment(
+        attachment,
+        node.displayLabel,
+        node.serializedText,
+        removeMentionLabel,
+      ),
+    );
+    restored.push(attachment);
+  }
+
+  return restored;
 }
 
 interface MentionSelectionState {

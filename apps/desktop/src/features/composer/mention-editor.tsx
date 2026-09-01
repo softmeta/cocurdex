@@ -8,7 +8,9 @@ import {
 import { cn, useDocumentEvent } from "@/lib";
 import {
   appendMentionAtEnd,
+  type EditorContentNode,
   getMentionRegistryKey,
+  hydrateEditorContent,
   MENTION_KEY_ATTR,
   type MentionAnchor,
   type MentionableAttachment,
@@ -20,7 +22,7 @@ import {
   serializeEditor,
 } from "./mention-editor-dom";
 
-export type { MentionAnchor, MentionableAttachment };
+export type { EditorContentNode, MentionAnchor, MentionableAttachment };
 export { getMentionRegistryKey };
 
 import { getComposerEnterAction, type SendShortcut } from "./send-shortcut";
@@ -28,6 +30,7 @@ import { getComposerEnterAction, type SendShortcut } from "./send-shortcut";
 export type MentionEditorChange = {
   text: string;
   mentions: MentionableAttachment[];
+  nodes: EditorContentNode[];
 };
 
 export type MentionEditorHandle = {
@@ -50,6 +53,10 @@ export interface MentionEditorProps {
   className?: string;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   disabled?: boolean;
+  initialContent?: {
+    mentions: MentionableAttachment[];
+    nodes: EditorContentNode[];
+  };
   onChange(value: MentionEditorChange): void;
   onKeyDown?(event: React.KeyboardEvent<HTMLDivElement>): void;
   onMentionQueryChange(query: string | null): void;
@@ -72,6 +79,7 @@ export const MentionEditor = forwardRef<
     className,
     containerRef,
     disabled,
+    initialContent,
     onChange,
     onKeyDown,
     onMentionQueryChange,
@@ -90,13 +98,16 @@ export const MentionEditor = forwardRef<
   const resolvedContainerRef = containerRef ?? localContainerRef;
   const registryRef = useRef<Map<string, MentionableAttachment>>(new Map());
   const isComposingRef = useRef(false);
-  const [isEmpty, setIsEmpty] = useState(true);
+  const pendingHydrateRef = useRef(initialContent);
+  const [isEmpty, setIsEmpty] = useState(
+    () => !initialContent || initialContent.nodes.length === 0,
+  );
 
   const emitChange = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
 
-    const { text, mentionKeys } = serializeEditor(editor);
+    const { mentionKeys, nodes, text } = serializeEditor(editor);
     const mentions: MentionableAttachment[] = [];
     const seen = new Set<string>();
     for (const key of mentionKeys) {
@@ -107,7 +118,7 @@ export const MentionEditor = forwardRef<
     }
 
     setIsEmpty(text.length === 0 && mentionKeys.length === 0);
-    onChange({ text, mentions });
+    onChange({ mentions, nodes, text });
   }, [onChange]);
 
   const emitMentionQuery = useCallback(() => {
@@ -136,7 +147,7 @@ export const MentionEditor = forwardRef<
         editor.innerHTML = "";
         registryRef.current.clear();
         setIsEmpty(true);
-        onChange({ text: "", mentions: [] });
+        onChange({ mentions: [], nodes: [], text: "" });
         onMentionQueryChange(null);
         onSlashQueryChange?.(null);
         onMentionAnchorChange?.(null);
@@ -250,9 +261,23 @@ export const MentionEditor = forwardRef<
   const setEditorNode = useCallback(
     (node: HTMLDivElement | null) => {
       editorRef.current = node;
+      const pending = pendingHydrateRef.current;
+      if (node && pending && pending.nodes.length > 0) {
+        pendingHydrateRef.current = undefined;
+        const restored = hydrateEditorContent(
+          node,
+          pending.nodes,
+          pending.mentions,
+          removeMentionLabel,
+        );
+        registryRef.current.clear();
+        for (const mention of restored) {
+          registryRef.current.set(getMentionRegistryKey(mention), mention);
+        }
+      }
       if (node && autoFocus) node.focus();
     },
-    [autoFocus],
+    [autoFocus, removeMentionLabel],
   );
 
   const handleInput = () => {

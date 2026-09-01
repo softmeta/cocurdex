@@ -194,6 +194,8 @@ export default interface Resources {
       files_one: "{{count}} file";
       files_other: "{{count}} files";
       input: "Input";
+      openParentSession: "View parent session";
+      openParentSessionNamed: "View {{title}}";
       output: "Output";
       outputLoadError: "Failed to load output: {{message}}";
       outputLoading: "Loading output…";
@@ -208,6 +210,7 @@ export default interface Resources {
       subagentEmpty: "No subagent messages yet.";
       subagentFailed: "Subagent failed";
       subagentPrompt: "Prompt";
+      subagentReadOnly: "This subagent session is read-only.";
       subagentResponse: "Subagent response";
       subagentSession: "Subagent session";
       summaryPart_one: "{{count}} {{label}}";
@@ -1020,10 +1023,14 @@ export default interface Resources {
     sidebar: {
       addProject: "Add project";
       archive: "Archive";
+      collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
+      expandChildren: "Expand subagent sessions";
       marketplace: "Marketplace";
+      newSession: "New session";
       newSessionInWorkspace: "New session in {{workspaceName}}";
       noAgentsYet: "No sessions yet";
+      pendingAttention: "Needs attention";
       projectsGroup: "Work";
       removeProject: "Remove";
       rename: "Rename";

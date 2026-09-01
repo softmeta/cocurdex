@@ -105,4 +105,7 @@ export interface ChatViewProps {
   onDismissPlan?(): void;
   onTogglePlanCollapsed?(): void;
   planCollapsed?: boolean;
+  readOnly?: boolean;
+  parentSessionTitle?: string | null;
+  onOpenParentSession?(): void;
 }

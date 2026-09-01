@@ -10,6 +10,18 @@ const REQUIRED_ASAR_PATHS = [
   "out/main/main.js",
 ];
 
+const FORBIDDEN_ASAR_PATHS = [
+  ".tsbuildinfo",
+  "electron",
+  "electron-vite-workspace-dependencies.test.ts",
+  "electron-vite-workspace-dependencies.ts",
+  "electron.vite.config.ts",
+  "scripts",
+  "src",
+];
+
+const FORBIDDEN_ASAR_PACKAGE_PREFIXES = ["@anthropic-ai/claude-agent-sdk-"];
+
 async function findAsarFiles(rootPath) {
   const found = [];
 
@@ -81,10 +93,32 @@ async function inspectAsar(asarPath) {
     const expectedResourcesPath = ${JSON.stringify(expectedResourcesPath)};
     const verifyResourcesPath = ${JSON.stringify(Boolean(packagedExecutable))};
     const required = ${JSON.stringify(REQUIRED_ASAR_PATHS)};
+    const forbidden = ${JSON.stringify(FORBIDDEN_ASAR_PATHS)};
+    const forbiddenPackagePrefixes = ${JSON.stringify(FORBIDDEN_ASAR_PACKAGE_PREFIXES)};
     void (async () => {
       const missing = required.filter((entry) =>
         !fs.existsSync(path.join(asarPath, entry)),
       );
+      const unexpected = forbidden.filter((entry) =>
+        fs.existsSync(path.join(asarPath, entry)),
+      );
+      for (const packagePrefix of forbiddenPackagePrefixes) {
+        const packageDirectory = path.posix.dirname(packagePrefix);
+        const packageNamePrefix = path.posix.basename(packagePrefix);
+        const packageDirectoryPath = path.join(
+          asarPath,
+          "node_modules",
+          packageDirectory,
+        );
+        if (!fs.existsSync(packageDirectoryPath)) continue;
+        for (const packageName of fs.readdirSync(packageDirectoryPath)) {
+          if (packageName.startsWith(packageNamePrefix)) {
+            unexpected.push(
+              path.posix.join("node_modules", packageDirectory, packageName),
+            );
+          }
+        }
+      }
       if (verifyResourcesPath && process.resourcesPath !== expectedResourcesPath) {
         throw new Error(
           \`Expected process.resourcesPath to be \${expectedResourcesPath}, received \${process.resourcesPath}\`,
@@ -115,7 +149,7 @@ async function inspectAsar(asarPath) {
         throw new Error("Packaged pi-mcp-adapter has no default factory");
       }
 
-      process.stdout.write(JSON.stringify({ missing }));
+      process.stdout.write(JSON.stringify({ missing, unexpected }));
     })().catch((error) => {
       console.error(error);
       process.exitCode = 1;
@@ -147,10 +181,15 @@ if (asarFiles.length === 0) {
 }
 
 for (const asarPath of asarFiles) {
-  const { missing } = await inspectAsar(asarPath);
+  const { missing, unexpected } = await inspectAsar(asarPath);
   if (missing.length > 0) {
     throw new Error(
       `Packaged runtime is incomplete at ${asarPath}: missing ${missing.join(", ")}`,
+    );
+  }
+  if (unexpected.length > 0) {
+    throw new Error(
+      `Packaged runtime contains forbidden files at ${asarPath}: ${unexpected.join(", ")}`,
     );
   }
 }

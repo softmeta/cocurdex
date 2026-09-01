@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   applyToolEventAtom,
   bootstrapToolCallsAtom,
+  loadSessionToolCallsAtom,
+  shouldRefreshSessionToolCalls,
   toolCallsBySessionAtom,
 } from "@/features/agent/tool-call/tool-call-store";
 
@@ -102,5 +104,70 @@ describe("tool call store", () => {
     expect(
       store.get(toolCallsBySessionAtom)[sessionId]?.map(({ id }) => id),
     ).toEqual(["tool-1", "tool-2"]);
+  });
+
+  it("replaces a stale running subagent with its persisted terminal state", () => {
+    const store = createStore();
+    const sessionId = "session-1";
+    const running = {
+      id: "subagent-1",
+      sessionId,
+      title: "Review",
+      kind: "other",
+      status: "in_progress" as const,
+      content: [],
+      locations: [],
+      startedAt: "2026-08-31T04:19:18.000Z",
+      updatedAt: "2026-08-31T04:19:18.000Z",
+      subagent: {
+        sessionId: "child-1",
+        type: "reviewer",
+        description: "Review",
+      },
+    };
+
+    store.set(applyToolEventAtom, {
+      type: "tool.started",
+      sessionId,
+      toolCall: running,
+    });
+    store.set(loadSessionToolCallsAtom, {
+      sessionId,
+      toolCalls: [
+        {
+          ...running,
+          status: "failed",
+          updatedAt: "2026-08-31T04:28:22.000Z",
+        },
+      ],
+    });
+
+    expect(store.get(toolCallsBySessionAtom)[sessionId]?.[0]?.status).toBe(
+      "failed",
+    );
+  });
+
+  it("refreshes loaded tool calls when an idle session still looks active", () => {
+    const toolCall = {
+      id: "subagent-1",
+      sessionId: "session-1",
+      title: "Review",
+      kind: "other",
+      status: "in_progress" as const,
+      content: [],
+      locations: [],
+      startedAt: "2026-08-31T04:19:18.000Z",
+      updatedAt: "2026-08-31T04:19:18.000Z",
+    };
+
+    expect(shouldRefreshSessionToolCalls("idle", true, [toolCall])).toBe(true);
+    expect(shouldRefreshSessionToolCalls("running", true, [toolCall])).toBe(
+      false,
+    );
+    expect(
+      shouldRefreshSessionToolCalls("idle", true, [
+        { ...toolCall, status: "completed" },
+      ]),
+    ).toBe(false);
   });
 });

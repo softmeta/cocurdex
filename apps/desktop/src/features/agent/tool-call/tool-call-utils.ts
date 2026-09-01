@@ -82,29 +82,37 @@ function extractTextContent(data: unknown) {
   return textBlocks.length > 0 ? textBlocks.join("") : null;
 }
 
-export function getOpenCodeSubagentChildSessionId(
-  toolCall: AgentToolCallRecord,
-) {
-  const input = asObjectRecord(toolCall.rawInput);
-  const childSessionId = input?.childSessionId;
-
-  return typeof childSessionId === "string" && childSessionId
-    ? childSessionId
-    : null;
+export function getSubagentChildSessionId(toolCall: AgentToolCallRecord) {
+  return toolCall.subagent?.sessionId || null;
 }
 
-export function isOpenCodeSubagentToolCall(toolCall: AgentToolCallRecord) {
-  return toolCall.kind === "task";
+export function isSubagentToolCall(toolCall: AgentToolCallRecord) {
+  return Boolean(toolCall.subagent?.sessionId);
 }
 
-export function getOpenCodeSubagentType(toolCall: AgentToolCallRecord) {
-  const input = asObjectRecord(toolCall.rawInput);
-  const value =
-    typeof input?.subagent_type === "string"
-      ? input.subagent_type
-      : typeof input?.subagentType === "string"
-        ? input.subagentType
-        : null;
+export function partitionToolCallRuns(toolCalls: AgentToolCallRecord[]) {
+  const runs: Array<{
+    kind: "subagent" | "tool";
+    toolCalls: AgentToolCallRecord[];
+  }> = [];
+
+  for (const toolCall of toolCalls) {
+    const kind = isSubagentToolCall(toolCall) ? "subagent" : "tool";
+    const last = runs.at(-1);
+
+    if (last?.kind === kind) {
+      last.toolCalls.push(toolCall);
+      continue;
+    }
+
+    runs.push({ kind, toolCalls: [toolCall] });
+  }
+
+  return runs;
+}
+
+export function getSubagentType(toolCall: AgentToolCallRecord) {
+  const value = toolCall.subagent?.type;
 
   if (!value) {
     return null;
@@ -115,10 +123,8 @@ export function getOpenCodeSubagentType(toolCall: AgentToolCallRecord) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function getOpenCodeSubagentDescription(toolCall: AgentToolCallRecord) {
-  const input = asObjectRecord(toolCall.rawInput);
-  const description =
-    typeof input?.description === "string" ? input.description.trim() : "";
+export function getSubagentDescription(toolCall: AgentToolCallRecord) {
+  const description = toolCall.subagent?.description.trim() ?? "";
 
   return description || getToolCallTitle(toolCall);
 }
@@ -463,7 +469,7 @@ export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
 }
 
 export function getToolCallTitle(toolCall: AgentToolCallRecord) {
-  if (isOpenCodeSubagentToolCall(toolCall)) {
+  if (isSubagentToolCall(toolCall)) {
     if (toolCall.status === "completed") {
       return i18n.t("agent:toolCalls.subagentCompleted");
     }

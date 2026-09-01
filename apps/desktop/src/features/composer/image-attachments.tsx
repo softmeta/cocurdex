@@ -22,6 +22,11 @@ import {
 import type { ImportImageAttachmentPayload } from "@/lib";
 import { cn, desktopApi } from "@/lib";
 import {
+  COMPOSER_IMAGE_CARD_MAX_HEIGHT,
+  COMPOSER_IMAGE_CARD_MAX_WIDTH,
+  getImageCardSize,
+} from "./image-attachment-card-size";
+import {
   useImageDataUrl,
   useTemporaryImageCopyStatus,
 } from "./image-attachment-hooks";
@@ -184,14 +189,25 @@ function ImageAttachmentThumbnail({
   attachment,
   onClick,
   onRemove,
+  size = "card",
   tone = "chat",
 }: {
   attachment: ImageAttachment;
   onClick?(attachment: ImageAttachment): void;
   onRemove?(): void;
+  size?: "card" | "chip";
   tone?: "chat" | "welcome";
 }) {
   const dataUrl = useImageDataUrl(attachment);
+  const composerSize =
+    size === "card"
+      ? getImageCardSize(
+          attachment.width,
+          attachment.height,
+          COMPOSER_IMAGE_CARD_MAX_WIDTH,
+          COMPOSER_IMAGE_CARD_MAX_HEIGHT,
+        )
+      : null;
   const borderClassName =
     tone === "welcome" ? "border-welcome-border" : "border-chat-border";
   const removeClassName =
@@ -202,9 +218,15 @@ function ImageAttachmentThumbnail({
   return (
     <span
       className={cn(
-        "group relative inline-flex size-16 overflow-hidden rounded-control border bg-chat-surface-control shadow-chat-soft",
+        "group relative inline-flex overflow-hidden border bg-chat-surface-control shadow-chat-soft",
+        size === "card" && "rounded-card",
+        size === "card" &&
+          !composerSize &&
+          "h-16 w-28 items-center justify-center",
+        size === "chip" && "size-16 rounded-control",
         borderClassName,
       )}
+      style={composerSize ?? undefined}
       title={attachment.name}
     >
       <button
@@ -230,7 +252,7 @@ function ImageAttachmentThumbnail({
         <button
           aria-label={`Remove image ${attachment.name}`}
           className={cn(
-            "absolute right-1 top-1 flex size-5 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100",
+            "absolute end-1 top-1 flex size-5 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100",
             removeClassName,
           )}
           onClick={onRemove}
@@ -432,11 +454,13 @@ export function ImageAttachmentChips({
   attachments,
   onPreview,
   onRemoveAttachment,
+  size,
   tone,
 }: {
   attachments: MessageAttachment[];
   onPreview?(attachment: ImageAttachment): void;
   onRemoveAttachment?(index: number): void;
+  size?: "card" | "chip";
   tone?: "chat" | "welcome";
 }) {
   const imageAttachments = attachments.filter(isImageAttachment);
@@ -456,6 +480,7 @@ export function ImageAttachmentChips({
               ? () => onRemoveAttachment(attachments.indexOf(attachment))
               : undefined
           }
+          size={size}
           tone={tone}
         />
       ))}

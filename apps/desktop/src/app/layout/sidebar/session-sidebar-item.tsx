@@ -1,6 +1,12 @@
 import type { SessionRecord } from "@cocurdex/shared";
-import { useSetAtom } from "jotai";
-import { Archive, Pencil, Trash2 } from "lucide-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,36 +17,73 @@ import {
   SidebarListRow,
   Spinner,
 } from "@/components/ui";
+import { permissionsBySessionAtom } from "@/features/agent/permission";
+import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   agentLabels,
   archiveSessionAtom,
+  collectSessionSubtreeIds,
   deleteSessionAtom,
+  isSubagentSession,
+  sessionsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
-import { desktopApi, logRendererDiagnostic } from "@/lib";
+import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { SidebarItemTooltip } from "./sidebar-item-preview";
 import { SidebarOverflowTitle } from "./sidebar-overflow-title";
 import { SidebarRenameInput } from "./sidebar-rename-input";
 
 interface SessionSidebarItemProps {
+  depth?: number;
+  hasChildren?: boolean;
   isActive: boolean;
+  isExpanded?: boolean;
   onSelect(): void;
+  onToggleExpand?(): void;
   session: SessionRecord;
 }
 
 export function SessionSidebarItem({
+  depth = 0,
+  hasChildren = false,
   isActive,
+  isExpanded = true,
   onSelect,
+  onToggleExpand,
   session,
 }: SessionSidebarItemProps) {
   const { t } = useTranslation("sessions");
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const archiveSession = useSetAtom(archiveSessionAtom);
   const deleteSession = useSetAtom(deleteSessionAtom);
+  const permissionsBySession = useAtomValue(permissionsBySessionAtom);
+  const questionsBySession = useAtomValue(questionsBySessionAtom);
+  const sessions = useAtomValue(sessionsAtom);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);
-  const isRunning = session.status === "running";
+  const descendantIds =
+    hasChildren && !isExpanded
+      ? collectSessionSubtreeIds(sessions, session.id)
+      : null;
+  const isRunning =
+    session.status === "running" ||
+    [...(descendantIds ?? [])].some(
+      (sessionId) =>
+        sessionId !== session.id &&
+        sessions.find((item) => item.id === sessionId)?.status === "running",
+    );
+  const needsAttention = [...(descendantIds ?? [session.id])].some(
+    (sessionId) =>
+      permissionsBySession[sessionId]?.some(
+        (permission) => permission.status === "pending",
+      ) ||
+      questionsBySession[sessionId]?.some(
+        (question) => question.status === "pending",
+      ),
+  );
+  const isChild = isSubagentSession(session);
+  const startPaddingPx = 24 + depth * 12 - (hasChildren ? 20 : 0);
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();
     node?.select();
@@ -144,19 +187,81 @@ export function SessionSidebarItem({
         <ContextMenuTrigger asChild>
           <SidebarListRow
             isActive={isActive}
-            // Match workspace name: parent ps-1 + folder icon size-3.5 + gap-1.5.
-            className="ps-6"
-            onClick={onSelect}
-            render={<button type="button" />}
+            className={cn(
+              depth === 0 && (hasChildren ? "ps-1" : "ps-6"),
+              isChild && "text-sidebar-fg-muted",
+            )}
+            onClick={hasChildren ? undefined : onSelect}
+            render={hasChildren ? undefined : <button type="button" />}
+            style={
+              depth > 0
+                ? { paddingInlineStart: `${startPaddingPx}px` }
+                : undefined
+            }
           >
-            <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-            {isRunning ? (
-              <Spinner
-                aria-label={t("sidebar.running")}
-                className="shrink-0 text-sidebar-thinking-fg"
-                size="xs"
-              />
+            {hasChildren ? (
+              <button
+                type="button"
+                className="flex size-3.5 shrink-0 items-center justify-center text-sidebar-fg-muted hover:text-sidebar-fg"
+                aria-expanded={isExpanded}
+                aria-label={
+                  isExpanded
+                    ? t("sidebar.collapseChildren")
+                    : t("sidebar.expandChildren")
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleExpand?.();
+                }}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="size-3.5" />
+                ) : (
+                  <ChevronRight className="size-3.5 rtl:-scale-x-100" />
+                )}
+              </button>
             ) : null}
+            {hasChildren ? (
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
+                onClick={onSelect}
+              >
+                <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
+                {needsAttention ? (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
+                    role="img"
+                    aria-label={t("sidebar.pendingAttention")}
+                  />
+                ) : null}
+                {isRunning ? (
+                  <Spinner
+                    aria-label={t("sidebar.running")}
+                    className="shrink-0 text-sidebar-thinking-fg"
+                    size="xs"
+                  />
+                ) : null}
+              </button>
+            ) : (
+              <>
+                <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
+                {needsAttention ? (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
+                    role="img"
+                    aria-label={t("sidebar.pendingAttention")}
+                  />
+                ) : null}
+                {isRunning ? (
+                  <Spinner
+                    aria-label={t("sidebar.running")}
+                    className="shrink-0 text-sidebar-thinking-fg"
+                    size="xs"
+                  />
+                ) : null}
+              </>
+            )}
           </SidebarListRow>
         </ContextMenuTrigger>
       </SidebarItemTooltip>

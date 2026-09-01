@@ -26,6 +26,7 @@ async function seedSession(database: Database, sessionId: string) {
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,
+    sortOrder: 1000,
   });
   await database.sessions.upsert({
     id: sessionId,
@@ -85,5 +86,28 @@ describe("failNonTerminal", () => {
     expect(byId.get("b")?.status).toBe("failed");
     expect(byId.get("c")).toEqual(before.find((record) => record.id === "c"));
     expect(byId.get("d")).toEqual(before.find((record) => record.id === "d"));
+  });
+});
+
+describe("subagent reference", () => {
+  it("persists the provider-neutral child session relationship", async () => {
+    const database = createDatabase();
+    await seedSession(database, "session-1");
+    const record = toolCall("task-1", "session-1", "in_progress");
+    record.subagent = {
+      sessionId: "child-session-1",
+      type: "reviewer",
+      description: "Review the current diff",
+    };
+
+    await database.toolCalls.upsert(record);
+
+    expect(
+      (await database.toolCalls.listBySessionId("session-1"))[0]?.subagent,
+    ).toEqual(record.subagent);
+    expect(
+      (await database.toolCalls.listSummariesBySessionId("session-1"))[0]
+        ?.subagent,
+    ).toEqual(record.subagent);
   });
 });

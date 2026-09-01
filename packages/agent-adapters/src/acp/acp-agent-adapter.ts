@@ -1,4 +1,8 @@
-import { type ContentBlock, RequestError } from "@agentclientprotocol/sdk";
+import {
+  type ContentBlock,
+  RequestError,
+  type SessionNotification,
+} from "@agentclientprotocol/sdk";
 import type {
   AgentAdapter,
   AgentSession,
@@ -13,6 +17,7 @@ import type {
   AgentPermissionMode,
   AgentRateLimitsRecord,
   MessageRecord,
+  SessionRecord,
 } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
 import {
@@ -41,6 +46,10 @@ import {
   resolveAcpModelId,
   resolveAcpReasoningEffort,
 } from "./acp-session-model";
+import {
+  AcpSubagentBridge,
+  type AcpSubagentProtocol,
+} from "./acp-subagent-bridge";
 import { createSdkAcpConnection } from "./sdk-acp-connection";
 
 export type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
@@ -97,6 +106,7 @@ export interface AcpAgentAdapterOptions {
       providerSessionId: string;
     }): Record<string, unknown>;
   };
+  subagentProtocol?: AcpSubagentProtocol;
   // Runs after initialize + auth and before session/new. Grok Build uses this
   // to wait for the remote model catalog so session/new advertises every model.
   afterInitialize?(connection: AcpConnection): Promise<void>;
@@ -120,33 +130,137 @@ export class AcpAgentAdapter implements AgentAdapter {
     payload: CreateAgentSessionPayload,
     onEvent: Parameters<AgentAdapter["createSession"]>[1],
   ): AgentSession {
+    const childMappers = new Map<string, AcpEventMapper>();
+    const completedChildReplays = new Set<string>();
+    const childReplayAttempts = new Map<string, number>();
+    const scheduledChildReplays = new Set<string>();
+    let subagentBridge: AcpSubagentBridge | null = null;
+    let replayLinkedSession: (providerSessionId: string) => void = () =>
+      undefined;
     const mapper = new AcpEventMapper(
       payload.session.id,
       onEvent,
       undefined,
       payload.providerSession ? null : payload.session.title,
+      (toolCall) =>
+        subagentBridge ? subagentBridge.transform(toolCall) : toolCall,
     );
+    const createChildMapper = (session: SessionRecord) => {
+      const existing = childMappers.get(session.id);
+      if (existing) {
+        return existing;
+      }
+      const childMapper = new AcpEventMapper(session.id, onEvent);
+      childMappers.set(session.id, childMapper);
+      return childMapper;
+    };
+    if (this.options.subagentProtocol) {
+      subagentBridge = new AcpSubagentBridge(
+        payload.session,
+        this.options.subagentProtocol,
+        onEvent,
+        (_providerSessionId, session, notifications) => {
+          const childMapper = createChildMapper(session);
+          for (const notification of notifications) {
+            childMapper.handle(notification);
+          }
+        },
+        (providerSessionId) => {
+          const childSession =
+            subagentBridge?.getChildSession(providerSessionId);
+          if (childSession) {
+            const childMapper = createChildMapper(childSession);
+            if (childMapper.hasPendingTurn()) {
+              completedChildReplays.add(providerSessionId);
+              childMapper.complete("end_turn", 0);
+              return;
+            }
+          }
+          replayLinkedSession(providerSessionId);
+        },
+      );
+    }
     let disposed = false;
     let mcpRefreshTimer: ReturnType<typeof setTimeout> | undefined;
     const inlinePlanToolTitles = new Set(
       this.options.inlinePlanToolTitles ?? [],
     );
     const requestPlanApproval = payload.requestPlanApproval;
+    const mcpChangeNotificationMethods =
+      this.options.mcpServersRequest?.changeNotifications ?? [];
+    const buildInitializeRequest = () => ({
+      protocolVersion: 1,
+      clientCapabilities: {
+        fs: {
+          readTextFile: false,
+          writeTextFile: false,
+        },
+        terminal: false,
+      },
+      clientInfo: {
+        name: "Cocurdex",
+        title: "Cocurdex",
+        version: "0.0.0",
+      },
+      _meta: this.options.initializeMeta,
+    });
     let suppressSessionUpdates = false;
+    const routeSessionUpdate = (notification: SessionNotification) => {
+      if (suppressSessionUpdates) {
+        return;
+      }
+      const childSession = subagentBridge?.getChildSession(
+        notification.sessionId,
+      );
+      if (childSession) {
+        createChildMapper(childSession).handle(notification);
+        return;
+      }
+      if (
+        activeProviderSessionId &&
+        notification.sessionId !== activeProviderSessionId &&
+        subagentBridge
+      ) {
+        subagentBridge.buffer(notification);
+        return;
+      }
+      mapper.handle(notification);
+    };
     const connectionOptions: Parameters<AcpConnectionFactory>[0] = {
       args: this.options.args,
       command: this.options.command,
       cwd: payload.workspaceRootPath,
-      extNotificationMethods:
-        this.options.mcpServersRequest?.changeNotifications,
+      extNotificationMethods: [
+        ...(this.options.mcpServersRequest?.changeNotifications ?? []),
+        ...(this.options.subagentProtocol?.notificationMethods ?? []),
+      ],
       handlers: {
         onSessionUpdate(notification) {
-          if (!suppressSessionUpdates) {
-            mapper.handle(notification);
-          }
+          routeSessionUpdate(notification);
         },
-        onExtNotification() {
-          scheduleMcpRefresh();
+        onExtNotification(method, params) {
+          subagentBridge?.handleNotification(method, params);
+          const sessionNotification =
+            subagentBridge?.mapSessionNotification(method, params) ?? null;
+          if (sessionNotification) {
+            routeSessionUpdate(sessionNotification);
+          }
+          const completion = subagentBridge?.readTurnCompletion(method, params);
+          if (completion) {
+            completedChildReplays.add(completion.providerSessionId);
+            const childSession = subagentBridge?.getChildSession(
+              completion.providerSessionId,
+            );
+            if (childSession) {
+              createChildMapper(childSession).complete(
+                completion.stopReason,
+                completion.durationMs,
+              );
+            }
+          }
+          if (mcpChangeNotificationMethods.includes(method)) {
+            scheduleMcpRefresh();
+          }
         },
         async requestPermission(request) {
           if (
@@ -218,6 +332,55 @@ export class AcpAgentAdapter implements AgentAdapter {
     const getConnection = () => {
       connectionPromise ??= this.connectionFactory(connectionOptions);
       return connectionPromise;
+    };
+    replayLinkedSession = (providerSessionId) => {
+      if (
+        !this.options.subagentProtocol?.replayLinkedSession ||
+        completedChildReplays.has(providerSessionId) ||
+        scheduledChildReplays.has(providerSessionId)
+      ) {
+        return;
+      }
+      scheduledChildReplays.add(providerSessionId);
+      const attempt = (childReplayAttempts.get(providerSessionId) ?? 0) + 1;
+      childReplayAttempts.set(providerSessionId, attempt);
+      void this.connectionFactory(connectionOptions)
+        .then(async (connection) => {
+          try {
+            const response = await connection.initialize(
+              buildInitializeRequest(),
+            );
+            const authMethod = this.selectAuthMethod(
+              response.authMethods?.map((method) => method.id) ?? [],
+            );
+            if (authMethod) {
+              await connection.authenticate({ methodId: authMethod });
+            }
+            await connection.loadSession({
+              sessionId: providerSessionId,
+              cwd: payload.workspaceRootPath,
+              mcpServers: [],
+            });
+          } finally {
+            await connection.close();
+          }
+        })
+        .catch((error) => {
+          logAdapterDiagnostic(
+            "info",
+            "[AcpAgentAdapter] child session replay failed",
+            {
+              agentId: payload.session.agentType,
+              childSessionId: providerSessionId,
+              error: error instanceof Error ? error.message : String(error),
+              parentSessionId: payload.session.id,
+            },
+          );
+          if (attempt < 2 && !completedChildReplays.has(providerSessionId)) {
+            scheduledChildReplays.delete(providerSessionId);
+            replayLinkedSession(providerSessionId);
+          }
+        });
     };
     let initialized:
       | Promise<{
@@ -379,22 +542,7 @@ export class AcpAgentAdapter implements AgentAdapter {
 
       const startup = (async () => {
         const connection = await getConnection();
-        const response = await connection.initialize({
-          protocolVersion: 1,
-          clientCapabilities: {
-            fs: {
-              readTextFile: false,
-              writeTextFile: false,
-            },
-            terminal: false,
-          },
-          clientInfo: {
-            name: "Cocurdex",
-            title: "Cocurdex",
-            version: "0.0.0",
-          },
-          _meta: this.options.initializeMeta,
-        });
+        const response = await connection.initialize(buildInitializeRequest());
         const capabilities = mapNegotiatedCapabilities(response);
         onEvent({
           type: "capabilities.updated",

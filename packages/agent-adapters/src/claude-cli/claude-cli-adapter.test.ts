@@ -169,6 +169,7 @@ describe("createClaudeCliAdapter", () => {
       cwd: "/tmp/repo",
       effort: "max",
       enableFileCheckpointing: true,
+      forwardSubagentText: true,
       includePartialMessages: true,
       pathToClaudeCodeExecutable: "/usr/local/bin/claude",
       permissionMode: "default",

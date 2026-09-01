@@ -20,6 +20,7 @@ import type {
   MentionAnchor,
   MentionEditorChange,
   MentionEditorHandle,
+  MentionEditorProps,
 } from "./mention-editor";
 import { MentionEditor } from "./mention-editor";
 import type { SendShortcut } from "./send-shortcut";
@@ -48,6 +49,7 @@ interface PanelComposerProps {
   tone: "chat" | "welcome";
   header?: ReactNode;
   editorRef: RefObject<MentionEditorHandle | null>;
+  initialEditorContent?: MentionEditorProps["initialContent"];
   onEditorChange(next: MentionEditorChange): void;
   onMentionAnchorChange(anchor: MentionAnchor | null): void;
   onPaste(event: ClipboardEvent<HTMLDivElement>): void;
@@ -77,6 +79,7 @@ export function PanelComposer({
   tone,
   header,
   editorRef,
+  initialEditorContent,
   onEditorChange,
   onMentionAnchorChange,
   onPaste,
@@ -179,6 +182,7 @@ export function PanelComposer({
               ariaLabel={
                 placeholderOverride ?? t("sessions:composer.sendFollowUp")
               }
+              initialContent={initialEditorContent}
               onChange={onEditorChange}
               onKeyDown={(event) => {
                 slashCommands.handleKeyDown(event);

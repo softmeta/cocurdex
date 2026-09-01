@@ -26,8 +26,10 @@ import {
 } from "@/features/composer";
 import {
   markSessionMessageAtom,
+  projectSubagentSessionFromToolCallAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
+  upsertSessionAtom,
 } from "@/features/sessions";
 import { applyTurnChangesEventAtom } from "@/features/turn-workspace-changes";
 import { desktopApi } from "@/lib";
@@ -48,6 +50,10 @@ export function useAgentEventBridge() {
   const updateSessionStatus = useSetAtom(updateSessionStatusAtom);
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const markSessionMessage = useSetAtom(markSessionMessageAtom);
+  const upsertSession = useSetAtom(upsertSessionAtom);
+  const projectSubagentSession = useSetAtom(
+    projectSubagentSessionFromToolCallAtom,
+  );
 
   const handleAgentEvent = useEffectEvent(
     (
@@ -69,6 +75,11 @@ export function useAgentEventBridge() {
       applyUsageEvent(event);
       applyRateLimitsEvent(event);
       applyContextBreakdownEvent(event);
+
+      if (event.type === "session.upserted") {
+        upsertSession(event.session);
+        return;
+      }
 
       if (event.type === "session.title.updated") {
         updateSessionTitle({
@@ -96,11 +107,12 @@ export function useAgentEventBridge() {
         return;
       }
 
-      if (event.type === "tool.started") {
-        return;
-      }
-
-      if (event.type === "tool.finished") {
+      if (
+        event.type === "tool.started" ||
+        event.type === "tool.updated" ||
+        event.type === "tool.finished"
+      ) {
+        projectSubagentSession(event.toolCall);
         return;
       }
 
