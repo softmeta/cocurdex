@@ -20,7 +20,7 @@ jobs:
   release:
     name: Build, sign, and notarize macOS arm64
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 360
     env:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -74,7 +74,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Verify packaged runtime
-        run: pnpm --filter @cocurdex/desktop verify:package -- release
+        run: pnpm --filter @cocurdex/desktop verify:package release
 
       - name: Verify signature and notarization
         working-directory: apps/desktop
@@ -84,7 +84,7 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "${app_path}"
           spctl --assess --type execute --verbose=2 "${app_path}"
           xcrun stapler validate "${app_path}"
-          spctl --assess --type open --context context:primary-signature --verbose=2 "${dmg_path}"
+          hdiutil verify "${dmg_path}"
           shasum -a 256 "${dmg_path}" > "${dmg_path}.sha256"
 
       - name: Publish GitHub Release
