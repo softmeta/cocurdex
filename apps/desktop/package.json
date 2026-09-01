@@ -8,8 +8,8 @@
   "type": "module",
   "main": "out/main/main.js",
   "scripts": {
-    "dev": "pnpm run prepare:cli && electron-vite dev",
-    "dev:inspect": "pnpm run prepare:cli && COCURDEX_REMOTE_DEBUGGING_PORT=9222 electron-vite dev",
+    "dev": "pnpm run prepare:electron && pnpm run prepare:cli && electron-vite dev",
+    "dev:inspect": "pnpm run prepare:electron && pnpm run prepare:cli && COCURDEX_REMOTE_DEBUGGING_PORT=9222 electron-vite dev",
     "perf:listen": "node ./scripts/listen-renderer-perf.mjs",
     "build": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build",
     "dist:dir": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build && electron-builder --dir",
@@ -22,6 +22,7 @@
     "i18n:types": "i18next-cli types --config ./i18next.config.ts",
     "postinstall": "node ./scripts/fix-node-pty-perms.mjs",
     "prepare:cli": "node ./scripts/build-cli.mjs",
+    "prepare:electron": "install-electron --no",
     "prepare:fd": "node ./scripts/ensure-fd.mjs",
     "verify:package": "node ./scripts/verify-packaged-runtime.mjs",
     "test": "vitest run",
