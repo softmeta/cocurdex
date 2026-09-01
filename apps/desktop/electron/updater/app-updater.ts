@@ -1,5 +1,5 @@
 import log from "electron-log/main.js";
-import { autoUpdater } from "electron-updater";
+import electronUpdater from "electron-updater";
 import {
   type AppUpdateEvent,
   type AppUpdateState,
@@ -7,6 +7,8 @@ import {
   githubReleaseNotesUrl,
   reduceAppUpdateState,
 } from "./app-update-state";
+
+const { autoUpdater } = electronUpdater;
 
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
