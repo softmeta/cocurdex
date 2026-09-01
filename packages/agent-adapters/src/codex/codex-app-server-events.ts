@@ -54,6 +54,30 @@ export interface DynamicToolCallItem extends ThreadItemBase {
   contentItems: unknown;
 }
 
+export interface CollabAgentToolCallItem extends ThreadItemBase {
+  type: "collabAgentToolCall";
+  tool: "spawnAgent" | "sendInput" | "resumeAgent" | "wait" | "closeAgent";
+  status: "inProgress" | "completed" | "failed";
+  senderThreadId: string;
+  receiverThreadIds: string[];
+  prompt: string | null;
+  model: string | null;
+  agentsStates: Record<
+    string,
+    {
+      status:
+        | "pendingInit"
+        | "running"
+        | "interrupted"
+        | "completed"
+        | "errored"
+        | "shutdown"
+        | "notFound";
+      message?: string | null;
+    }
+  >;
+}
+
 // webSearch items carry no status; the lifecycle phase (item/started vs
 // item/completed) is the only progress signal.
 export interface WebSearchItem extends ThreadItemBase {
@@ -66,6 +90,7 @@ export type CodexToolItem =
   | FileChangeItem
   | McpToolCallItem
   | DynamicToolCallItem
+  | CollabAgentToolCallItem
   | WebSearchItem;
 
 export type CodexThreadItem =
@@ -94,6 +119,7 @@ export function isToolItem(item: CodexThreadItem): item is CodexToolItem {
     (item.type === "fileChange" && "changes" in item) ||
     (item.type === "mcpToolCall" && "tool" in item) ||
     (item.type === "dynamicToolCall" && "tool" in item) ||
+    (item.type === "collabAgentToolCall" && "receiverThreadIds" in item) ||
     (item.type === "webSearch" && "query" in item)
   );
 }
@@ -225,6 +251,32 @@ export function createToolCallRecord(
         rawInput: { query: item.query },
         rawOutput: null,
       };
+    case "collabAgentToolCall": {
+      const receiverThreadId = item.receiverThreadIds[0] ?? null;
+      const childSessionId = receiverThreadId
+        ? `codex-subagent:${sessionId}:${receiverThreadId}`
+        : null;
+      return {
+        ...base,
+        title: item.tool === "spawnAgent" ? "Using subagent" : item.tool,
+        kind: "collaboration",
+        status: normalizeToolStatus(item.status),
+        subagent:
+          item.tool === "spawnAgent" && childSessionId
+            ? {
+                sessionId: childSessionId,
+                type: item.model,
+                description: item.prompt?.trim() || "Subagent",
+              }
+            : null,
+        rawInput: {
+          tool: item.tool,
+          prompt: item.prompt,
+          receiverThreadIds: item.receiverThreadIds,
+        },
+        rawOutput: { agentsStates: item.agentsStates },
+      };
+    }
   }
 }
 

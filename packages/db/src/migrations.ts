@@ -57,6 +57,25 @@ export function initializeDatabase(database: DatabaseSync): void {
   if (!hasColumn(database, "sessions", "permission_mode")) {
     database.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT");
   }
+  if (!hasColumn(database, "tool_calls", "subagent_json")) {
+    database.exec("ALTER TABLE tool_calls ADD COLUMN subagent_json TEXT");
+  }
+  if (!hasColumn(database, "workspaces", "sort_order")) {
+    database.exec(
+      "ALTER TABLE workspaces ADD COLUMN sort_order REAL NOT NULL DEFAULT 0",
+    );
+    const rows = database
+      .prepare("SELECT id FROM workspaces ORDER BY created_at ASC, id ASC")
+      .all() as { id?: string }[];
+    const update = database.prepare(
+      "UPDATE workspaces SET sort_order = ? WHERE id = ?",
+    );
+    for (const [index, row] of rows.entries()) {
+      if (row.id) {
+        update.run((index + 1) * 1000, row.id);
+      }
+    }
+  }
   database.exec(`PRAGMA application_id = ${COCURDEX_APPLICATION_ID}`);
   database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`);
 }

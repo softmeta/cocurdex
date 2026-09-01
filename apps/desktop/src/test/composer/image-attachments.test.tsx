@@ -31,4 +31,15 @@ describe("getImageCardSize", () => {
     expect(getImageCardSize(0, 100)).toBeNull();
     expect(getImageCardSize(100, 0)).toBeNull();
   });
+
+  it("caps composer previews by height so wide screenshots stay short", () => {
+    expect(getImageCardSize(1920, 1080, 176, 72)).toEqual({
+      height: 72,
+      width: 128,
+    });
+    expect(getImageCardSize(1920, 400, 176, 72)).toEqual({
+      height: 37,
+      width: 176,
+    });
+  });
 });

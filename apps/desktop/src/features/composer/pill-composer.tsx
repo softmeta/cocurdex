@@ -2,7 +2,6 @@ import type { ImageAttachment, MessageAttachment } from "@cocurdex/shared";
 import { CornerDownLeft, Plus } from "lucide-react";
 import type { ClipboardEvent, ReactNode, RefObject } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@/components/ui";
 import { cn } from "@/lib";
@@ -29,6 +28,7 @@ import type {
   MentionableAttachment,
   MentionEditorChange,
   MentionEditorHandle,
+  MentionEditorProps,
 } from "./mention-editor";
 import { MentionEditor } from "./mention-editor";
 import type { SendShortcut } from "./send-shortcut";
@@ -37,18 +37,14 @@ import {
   type SlashCommandsState,
 } from "./slash-command-menu";
 
-function mountPendingAttachments(
-  attachments: ReactNode,
-  host: HTMLElement | null,
-  float: boolean,
-) {
-  if (host) {
-    return createPortal(attachments, host);
+function pillGridRowClassName(row: 1 | 2 | 3) {
+  if (row === 3) {
+    return "row-start-3";
   }
-  if (float) {
-    return null;
+  if (row === 2) {
+    return "row-start-2";
   }
-  return attachments;
+  return "row-start-1";
 }
 
 interface PillComposerProps {
@@ -70,14 +66,13 @@ interface PillComposerProps {
   text: string;
   mentions: MentionableAttachment[];
   editorRef: RefObject<MentionEditorHandle | null>;
+  initialEditorContent?: MentionEditorProps["initialContent"];
   onEditorChange(next: MentionEditorChange): void;
   onMentionAnchorChange(anchor: MentionAnchor | null): void;
   onPaste(event: ClipboardEvent<HTMLDivElement>): void;
   onSubmit(useOppositeFollowUpBehavior?: boolean): void;
   onRemoveAttachment(index: number): void;
   onStop?(): void;
-  floatPendingAttachments?: boolean;
-  pendingAttachmentHost?: HTMLElement | null;
   sendShortcut: SendShortcut;
 }
 
@@ -100,14 +95,13 @@ export function PillComposer({
   text,
   mentions,
   editorRef,
+  initialEditorContent,
   onEditorChange,
   onMentionAnchorChange,
   onPaste,
   onSubmit,
   onRemoveAttachment,
   onStop,
-  floatPendingAttachments = false,
-  pendingAttachmentHost = null,
   sendShortcut,
 }: PillComposerProps) {
   const { t } = useTranslation(["common", "sessions"]);
@@ -168,38 +162,25 @@ export function PillComposer({
     return () => resizeObserver.disconnect();
   }, [mentions.length, text]);
 
-  const pendingAttachments = (
-    <>
-      <ImageAttachmentChips
-        attachments={composerAttachments}
-        onPreview={setPreviewAttachment}
-        onRemoveAttachment={onRemoveAttachment}
-      />
-      <DocumentAttachmentChips
-        attachments={composerAttachments}
-        onRemoveAttachment={onRemoveAttachment}
-        removeAttachmentLabel={t("sessions:composer.removeAttachment")}
-      />
-      {contextAttachments.length > 0 ? (
-        <ContextAttachmentChips
-          attachments={contextAttachments}
-          onRemoveAttachment={onRemoveAttachment}
-          removeAttachmentLabel={t("sessions:composer.removeAttachment")}
-        />
-      ) : null}
-      {attachmentError ? (
-        <div className="text-xs text-destructive">{attachmentError}</div>
-      ) : null}
-    </>
-  );
+  const hasComposerExtras =
+    Boolean(attachmentError) ||
+    contextAttachments.length > 0 ||
+    composerAttachments.some(
+      (attachment) =>
+        attachment.kind === "document" || attachment.kind === "image",
+    );
+  const isExpanded = isPillExpanded || hasComposerExtras;
+  let editorRow: 1 | 2 = 1;
+  let actionRow: 1 | 2 | 3 = 1;
+  if (hasComposerExtras) {
+    editorRow = 2;
+    actionRow = 3;
+  } else if (isExpanded) {
+    actionRow = 2;
+  }
 
   return (
     <>
-      {mountPendingAttachments(
-        pendingAttachments,
-        pendingAttachmentHost,
-        floatPendingAttachments,
-      )}
       {previewAttachment ? (
         <ImageAttachmentPreview
           attachment={previewAttachment}
@@ -211,20 +192,47 @@ export function PillComposer({
           ref={pillComposerRef}
           className={cn(
             "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 border border-chat-border bg-chat-surface-input px-3 shadow-chat-soft",
-            getPillComposerShapeClassName(isPillExpanded),
-            isPillExpanded ? "min-h-12 py-2" : "h-12",
+            getPillComposerShapeClassName(isExpanded),
+            isExpanded && "min-h-12 py-2",
+            !isExpanded && "h-12",
           )}
         >
+          {hasComposerExtras ? (
+            <div className="col-span-3 row-start-1 mb-1 flex min-w-0 flex-col gap-1.5">
+              <ImageAttachmentChips
+                attachments={composerAttachments}
+                onPreview={setPreviewAttachment}
+                onRemoveAttachment={onRemoveAttachment}
+              />
+              <DocumentAttachmentChips
+                attachments={composerAttachments}
+                onRemoveAttachment={onRemoveAttachment}
+                removeAttachmentLabel={t("sessions:composer.removeAttachment")}
+              />
+              {contextAttachments.length > 0 ? (
+                <ContextAttachmentChips
+                  attachments={contextAttachments}
+                  onRemoveAttachment={onRemoveAttachment}
+                  removeAttachmentLabel={t(
+                    "sessions:composer.removeAttachment",
+                  )}
+                />
+              ) : null}
+              {attachmentError ? (
+                <div className="text-xs text-destructive">
+                  {attachmentError}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 aria-label={t("common:actions.attach")}
                 type="button"
                 className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-full bg-transparent text-chat-fg-muted transition-colors hover:bg-chat-surface-control-hover hover:text-chat-fg",
-                  isPillExpanded
-                    ? "col-start-1 row-start-2"
-                    : "col-start-1 row-start-1",
+                  "col-start-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-transparent text-chat-fg-muted transition-colors hover:bg-chat-surface-control-hover hover:text-chat-fg",
+                  pillGridRowClassName(actionRow),
                 )}
               >
                 <Plus className="size-4" />
@@ -235,9 +243,9 @@ export function PillComposer({
           <div
             className={cn(
               "relative min-w-0",
-              isPillExpanded
-                ? "col-span-3 row-start-1"
-                : "col-start-2 row-start-1",
+              pillGridRowClassName(editorRow),
+              isExpanded && "col-span-3",
+              !isExpanded && "col-start-2",
             )}
           >
             <ContextFileMentionMenu
@@ -260,6 +268,7 @@ export function PillComposer({
             <MentionEditor
               ariaLabel={t("sessions:composer.sendFollowUpCompact")}
               containerRef={editorContainerRef}
+              initialContent={initialEditorContent}
               onChange={onEditorChange}
               onKeyDown={(event) => {
                 slashCommands.handleKeyDown(event);
@@ -282,9 +291,9 @@ export function PillComposer({
               sendShortcut={sendShortcut}
               className={cn(
                 "min-h-10 resize-none rounded-none border-0 bg-transparent px-0 py-2 text-body text-chat-fg shadow-none outline-none placeholder:text-chat-fg-muted focus-visible:ring-0 dark:bg-transparent",
-                isPillExpanded
-                  ? "min-h-10 max-h-32 overflow-y-auto"
-                  : "grid h-10 max-h-10 min-h-10 items-center overflow-hidden",
+                isExpanded && "max-h-32 overflow-y-auto",
+                !isExpanded &&
+                  "grid h-10 max-h-10 min-h-10 items-center overflow-hidden",
               )}
             />
           </div>
@@ -293,10 +302,8 @@ export function PillComposer({
             className={cn(
               // Same gap as the panel composer's action group so stop + send
               // never sit flush against each other while a turn is running.
-              "flex items-center gap-1.5 justify-self-end",
-              isPillExpanded
-                ? "col-start-3 row-start-2"
-                : "col-start-3 row-start-1",
+              "col-start-3 flex items-center gap-1.5 justify-self-end",
+              pillGridRowClassName(actionRow),
             )}
           >
             {isRunning ? (

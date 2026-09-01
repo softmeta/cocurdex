@@ -5,22 +5,29 @@ import { getAgentInputDelivery } from "@/features/agent/follow-up-behavior/follo
 import { supportsPlanMode } from "@/features/sessions/collaboration-mode";
 import { getDisplaySessionStatus } from "@/features/sessions/session-status";
 import {
+  activeSessionIdAtom,
   agentsAtom,
   applyRefinedSessionTitleAtom,
+  archiveSessionAtom,
   bootstrapAgentsAtom,
   bootstrapSessionsAtom,
+  collapsedSessionIdsAtom,
   createDraftSessionAtom,
   getDefaultPermissionMode,
   getSessionPermissionMode,
   isDefaultSessionTitle,
   lastSelectedAgentAtom,
+  projectSubagentSessionFromToolCallAtom,
+  selectSessionAtom,
   sessionsAtom,
   supportsLivePermissionMode,
   supportsPermissionMode,
+  toggleSessionCollapsedAtom,
   updateSessionCollaborationModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
   updateSessionTitleAtom,
+  upsertSessionAtom,
 } from "@/features/sessions/session-store";
 
 describe("supportsLivePermissionMode", () => {
@@ -437,6 +444,163 @@ describe("updateSessionCollaborationModeAtom", () => {
       collaborationMode: "default",
       permissionMode: "claude-default",
     });
+  });
+});
+
+describe("upsertSessionAtom", () => {
+  it("inserts a child session without selecting it", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession]);
+    store.set(upsertSessionAtom, {
+      ...baseSession,
+      id: "child-1",
+      parentSessionId: baseSession.id,
+      sessionKind: "subagent",
+      title: "Standards review",
+    });
+
+    expect(store.get(sessionsAtom).map((session) => session.id)).toEqual([
+      "child-1",
+      baseSession.id,
+    ]);
+    expect(store.get(sessionsAtom)[0]).toMatchObject({
+      parentSessionId: baseSession.id,
+      sessionKind: "subagent",
+      title: "Standards review",
+    });
+    expect(store.get(activeSessionIdAtom)).toBeNull();
+  });
+
+  it("projects a child session from any adapter's subagent tool call", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession]);
+    store.set(projectSubagentSessionFromToolCallAtom, {
+      id: "spawn-1",
+      sessionId: baseSession.id,
+      title: "Using subagent",
+      kind: "task",
+      status: "in_progress",
+      subagent: {
+        sessionId: "claude-subagent:session-1:task-1",
+        type: "reviewer",
+        description: "Review changes",
+      },
+      content: [],
+      locations: [],
+      startedAt: "2026-05-07T00:01:00.000Z",
+      updatedAt: "2026-05-07T00:01:01.000Z",
+    });
+
+    expect(store.get(sessionsAtom)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "claude-subagent:session-1:task-1",
+          parentSessionId: baseSession.id,
+          sessionKind: "subagent",
+          title: "Review changes",
+        }),
+      ]),
+    );
+    expect(store.get(activeSessionIdAtom)).toBeNull();
+  });
+
+  it("keeps an existing lastMessageAt when an upsert omits it", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [
+      {
+        ...baseSession,
+        lastMessageAt: "2026-05-07T00:05:00.000Z",
+      },
+    ]);
+
+    store.set(upsertSessionAtom, {
+      ...baseSession,
+      lastMessageAt: null,
+      title: "Updated",
+    });
+
+    expect(store.get(sessionsAtom)[0]).toMatchObject({
+      lastMessageAt: "2026-05-07T00:05:00.000Z",
+      title: "Updated",
+    });
+  });
+});
+
+describe("selectSessionAtom", () => {
+  const childSession: SessionRecord = {
+    ...baseSession,
+    id: "child-1",
+    parentSessionId: baseSession.id,
+    sessionKind: "subagent",
+    title: "Standards review",
+  };
+
+  it("expands collapsed ancestors when selecting a nested session", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, childSession]);
+    store.set(toggleSessionCollapsedAtom, baseSession.id);
+
+    expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(true);
+
+    store.set(selectSessionAtom, childSession.id);
+
+    expect(store.get(activeSessionIdAtom)).toBe(childSession.id);
+    expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(false);
+  });
+
+  it("keeps a parent collapsed after the user folds it with a child selected", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, childSession]);
+    store.set(selectSessionAtom, childSession.id);
+    store.set(toggleSessionCollapsedAtom, baseSession.id);
+
+    expect(store.get(activeSessionIdAtom)).toBe(childSession.id);
+    expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(true);
+  });
+});
+
+describe("archiveSessionAtom", () => {
+  it("removes descendant sessions and returns to the parent", () => {
+    const child: SessionRecord = {
+      ...baseSession,
+      id: "child-1",
+      parentSessionId: baseSession.id,
+      sessionKind: "subagent",
+      title: "Standards review",
+    };
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, child]);
+    store.set(selectSessionAtom, child.id);
+    store.set(archiveSessionAtom, { sessionId: child.id });
+
+    expect(store.get(sessionsAtom).map((session) => session.id)).toEqual([
+      baseSession.id,
+    ]);
+    expect(store.get(activeSessionIdAtom)).toBe(baseSession.id);
+  });
+
+  it("archives a parent together with its children", () => {
+    const child: SessionRecord = {
+      ...baseSession,
+      id: "child-1",
+      parentSessionId: baseSession.id,
+      sessionKind: "subagent",
+      title: "Standards review",
+    };
+    const other: SessionRecord = {
+      ...baseSession,
+      id: "session-2",
+      title: "Other",
+    };
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, child, other]);
+    store.set(selectSessionAtom, child.id);
+    store.set(archiveSessionAtom, { sessionId: baseSession.id });
+
+    expect(store.get(sessionsAtom).map((session) => session.id)).toEqual([
+      other.id,
+    ]);
+    expect(store.get(activeSessionIdAtom)).toBe(other.id);
   });
 });
 

@@ -47,9 +47,6 @@ type TimelineCursor = {
 };
 
 const HIDDEN_TOOL_KINDS = new Set(["todowrite"]);
-// Mirrors `isOpenCodeSubagentToolCall` in tool-call-utils. Inlined here to keep
-// the timeline builder free of a tool-call → view dependency cycle.
-const SUBAGENT_TOOL_KIND = "task";
 
 export type TimelineGroup =
   | {
@@ -168,11 +165,22 @@ function getNextTimelineCursor(
   return nextCursor && nextItem ? { cursor: nextCursor, item: nextItem } : null;
 }
 
-// Subagent (task) calls render as standalone cards, so they never coalesce
-// with neighbours. Every other tool call merges into a single collapsible
-// activity block to keep the timeline from drowning in one-call rows.
-function isMergeableToolCall(toolCall: AgentToolCallRecord) {
-  return toolCall.kind !== SUBAGENT_TOOL_KIND;
+function isSubagentTimelineCall(toolCall: AgentToolCallRecord) {
+  return Boolean(toolCall.subagent?.sessionId);
+}
+
+function canMergeToolCall(
+  group: TimelineGroup,
+  toolCall: AgentToolCallRecord,
+): group is Extract<TimelineGroup, { kind: "toolCalls" }> {
+  if (group.kind !== "toolCalls" || group.toolCalls.length === 0) {
+    return false;
+  }
+
+  return (
+    isSubagentTimelineCall(group.toolCalls[0]) ===
+    isSubagentTimelineCall(toolCall)
+  );
 }
 
 function appendTimelineItem(groups: TimelineGroup[], item: TimelineItem) {
@@ -209,11 +217,7 @@ function appendTimelineItem(groups: TimelineGroup[], item: TimelineItem) {
 
   const lastGroup = groups.at(-1);
 
-  if (
-    lastGroup?.kind === "toolCalls" &&
-    isMergeableToolCall(item.toolCall) &&
-    lastGroup.toolCalls.every(isMergeableToolCall)
-  ) {
+  if (lastGroup && canMergeToolCall(lastGroup, item.toolCall)) {
     lastGroup.toolCalls.push(item.toolCall);
     return;
   }
@@ -254,6 +258,40 @@ export function createTimelineGroups(
 
     appendTimelineItem(groups, next.item);
     next.cursor.index += 1;
+  }
+
+  return coalesceAdjacentSubagentGroups(groups);
+}
+
+function isSubagentOnlyGroup(
+  group: TimelineGroup,
+): group is Extract<TimelineGroup, { kind: "toolCalls" }> {
+  return (
+    group.kind === "toolCalls" &&
+    group.toolCalls.length > 0 &&
+    group.toolCalls.every(isSubagentTimelineCall)
+  );
+}
+
+export function coalesceAdjacentSubagentGroups(items: TimelineGroup[]) {
+  const groups: TimelineGroup[] = [];
+
+  for (const item of items) {
+    const last = groups.at(-1);
+
+    if (last && isSubagentOnlyGroup(last) && isSubagentOnlyGroup(item)) {
+      groups[groups.length - 1] = {
+        ...last,
+        toolCalls: [...last.toolCalls, ...item.toolCalls],
+      };
+      continue;
+    }
+
+    groups.push(
+      item.kind === "toolCalls"
+        ? { ...item, toolCalls: [...item.toolCalls] }
+        : item,
+    );
   }
 
   return groups;
@@ -329,8 +367,10 @@ export function segmentConversationItems(
   items: TimelineGroup[],
   condensed: boolean,
 ): ConversationRenderSegment[] {
+  const timelineItems = coalesceAdjacentSubagentGroups(items);
+
   if (!condensed) {
-    return items.map((item) => ({ kind: "item", item }));
+    return timelineItems.map((item) => ({ kind: "item", item }));
   }
 
   const segments: ConversationRenderSegment[] = [];
@@ -345,7 +385,7 @@ export function segmentConversationItems(
     run = [];
   };
 
-  for (const item of items) {
+  for (const item of timelineItems) {
     if (isProcessItem(item)) {
       run.push(item);
       continue;

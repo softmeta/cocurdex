@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   AgentToolCallRecord,
   AgentToolCallResult,
+  SessionRecord,
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { desktopApi } from "@/lib";
@@ -113,9 +114,42 @@ function upsertToolCall(
     );
   }
 
-  return toolCalls.map((toolCall, index) =>
-    index === existingIndex ? nextToolCall : toolCall,
+  const existingToolCall = toolCalls[existingIndex];
+  let selectedToolCall = nextToolCall;
+  const timestampOrder = existingToolCall.updatedAt.localeCompare(
+    nextToolCall.updatedAt,
   );
+  if (timestampOrder > 0) {
+    selectedToolCall = existingToolCall;
+  } else if (
+    timestampOrder === 0 &&
+    isTerminalToolCall(existingToolCall) &&
+    !isTerminalToolCall(nextToolCall)
+  ) {
+    selectedToolCall = existingToolCall;
+  }
+
+  return toolCalls.map((toolCall, index) =>
+    index === existingIndex ? selectedToolCall : toolCall,
+  );
+}
+
+function isTerminalToolCall(toolCall: AgentToolCallRecord) {
+  return toolCall.status === "completed" || toolCall.status === "failed";
+}
+
+export function shouldRefreshSessionToolCalls(
+  sessionStatus: SessionRecord["status"],
+  loaded: boolean,
+  toolCalls: AgentToolCallRecord[],
+) {
+  if (!loaded) {
+    return true;
+  }
+  if (sessionStatus === "running") {
+    return false;
+  }
+  return toolCalls.some((toolCall) => !isTerminalToolCall(toolCall));
 }
 
 export const applyToolEventAtom = atom(null, (get, set, event: AgentEvent) => {

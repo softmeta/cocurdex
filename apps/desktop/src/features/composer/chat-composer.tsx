@@ -14,7 +14,7 @@ import {
   isDocumentAttachment,
   supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { Paperclip, Plus } from "lucide-react";
 import type { ChangeEvent, ClipboardEvent, DragEvent, ReactNode } from "react";
 import {
@@ -45,6 +45,12 @@ import { cn } from "@/lib";
 import { AgentRuntimeConfigControl } from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import {
+  type ComposerDraft,
+  clearComposerDraftAtom,
+  composerDraftsAtom,
+  setComposerDraftAtom,
+} from "./composer-draft-store";
+import {
   getContextAttachmentMentionLabel,
   getContextAttachmentSerializedText,
   useContextFileMentions,
@@ -64,6 +70,7 @@ import {
   importImageFiles,
 } from "./image-attachments";
 import type {
+  EditorContentNode,
   MentionAnchor,
   MentionableAttachment,
   MentionEditorChange,
@@ -83,6 +90,7 @@ export interface ChatComposerHandle {
 
 interface ChatComposerProps {
   attachment?: MessageAttachment;
+  draftKey?: string;
   agentType?: AgentId;
   agentLabel?: string;
   isRunning?: boolean;
@@ -124,16 +132,15 @@ interface ChatComposerProps {
     useOppositeFollowUpBehavior?: boolean,
   ): void;
   onStop?(): void;
-  floatPendingAttachments?: boolean;
-  pendingAttachmentHost?: HTMLElement | null;
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
 }
 
-export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
-  function ChatComposer(
+const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
+  function ChatComposerBound(
     {
       attachment,
+      draftKey,
       agentType,
       agentLabel = "Codex",
       isRunning = false,
@@ -162,8 +169,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       onSelectRuntimeMode,
       onSend,
       onStop,
-      floatPendingAttachments = false,
-      pendingAttachmentHost = null,
       thinkingLevel = null,
       thinkingLevelOptions = [],
     },
@@ -172,11 +177,22 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const { t } = useTranslation(["common", "sessions"]);
     const sendShortcut = useAtomValue(sendShortcutAtom);
     const agents = useAtomValue(agentsAtom);
+    const jotaiStore = useStore();
+    const persistDraft = useSetAtom(setComposerDraftAtom);
+    const clearDraft = useSetAtom(clearComposerDraftAtom);
+    const [initialDraft] = useState(() =>
+      draftKey ? jotaiStore.get(composerDraftsAtom)[draftKey] : undefined,
+    );
     const isAgentMode = mode === "agent";
     const attachmentInputRef = useRef<HTMLInputElement | null>(null);
     const editorRef = useRef<MentionEditorHandle | null>(null);
-    const [text, setText] = useState("");
-    const [mentions, setMentions] = useState<MentionableAttachment[]>([]);
+    const [text, setText] = useState(initialDraft?.text ?? "");
+    const [mentions, setMentions] = useState<MentionableAttachment[]>(
+      initialDraft?.mentions ?? [],
+    );
+    const [nodes, setNodes] = useState<EditorContentNode[]>(
+      initialDraft?.nodes ?? [],
+    );
     const [mentionAnchor, setMentionAnchor] = useState<MentionAnchor | null>(
       null,
     );
@@ -185,7 +201,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     >(null);
     const [managedAttachments, setManagedAttachments] = useState<
       MessageAttachment[]
-    >([]);
+    >(initialDraft?.attachments ?? []);
+
+    const writeDraft = (draft: ComposerDraft) => {
+      if (!draftKey) return;
+      persistDraft({ key: draftKey, draft });
+    };
 
     const hasExternalAttachment = Boolean(attachment);
     const composerAttachments: MessageAttachment[] =
@@ -243,6 +264,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const handleEditorChange = (next: MentionEditorChange) => {
       setText(next.text);
       setMentions(next.mentions);
+      setNodes(next.nodes);
+      writeDraft({
+        attachments: managedAttachments,
+        mentions: next.mentions,
+        nodes: next.nodes,
+        text: next.text,
+      });
     };
 
     const selectedAgent = agentType ?? "pi";
@@ -272,8 +300,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       editorRef.current?.clear();
       setText("");
       setMentions([]);
+      setNodes([]);
       setManagedAttachments([]);
       setAttachmentImportError(null);
+      if (draftKey) clearDraft(draftKey);
     };
 
     const addAttachmentFiles = async (files: File[]) => {
@@ -319,11 +349,18 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           importImageFiles(imageFiles),
           importDocumentFiles(documentFiles),
         ]);
-        setManagedAttachments((current) => [
-          ...current,
+        const nextAttachments = [
+          ...managedAttachments,
           ...importedImages,
           ...importedDocuments,
-        ]);
+        ];
+        setManagedAttachments(nextAttachments);
+        writeDraft({
+          attachments: nextAttachments,
+          mentions,
+          nodes,
+          text,
+        });
         setAttachmentImportError(null);
       } catch (error) {
         setAttachmentImportError(
@@ -371,9 +408,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       const offset = (hasExternalAttachment ? 1 : 0) + mentions.length;
       const managedIndex = index - offset;
       if (managedIndex < 0) return;
-      setManagedAttachments((current) =>
-        current.filter((_, i) => i !== managedIndex),
+      const nextAttachments = managedAttachments.filter(
+        (_, i) => i !== managedIndex,
       );
+      setManagedAttachments(nextAttachments);
+      writeDraft({
+        attachments: nextAttachments,
+        mentions,
+        nodes,
+        text,
+      });
     };
 
     let agentChevronClassName: string | undefined;
@@ -510,6 +554,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             editorRef={editorRef}
             footerLeading={footerLeading}
             footerTrailing={footerTrailing}
+            initialEditorContent={initialDraft}
             runtimeMenuExtras={runtimeMenuExtras}
             attachmentError={attachmentError}
             isAgentMode={isAgentMode}
@@ -522,8 +567,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             onRemoveAttachment={removeAttachment}
             onStop={onStop}
             onSubmit={sendMessage}
-            floatPendingAttachments={floatPendingAttachments}
-            pendingAttachmentHost={pendingAttachmentHost}
             placeholderOverride={placeholderOverride}
             resolvedControls={resolvedControls}
             slashCommands={slashCommands}
@@ -540,6 +583,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             editorRef={editorRef}
             footerLeading={footerLeading}
             footerTrailing={footerTrailing}
+            initialEditorContent={initialDraft}
             runtimeMenuExtras={runtimeMenuExtras}
             header={header}
             attachmentError={attachmentError}
@@ -562,5 +606,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         )}
       </form>
     );
+  },
+);
+
+export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
+  function ChatComposer(props, ref) {
+    return <ChatComposerBound key={props.draftKey} ref={ref} {...props} />;
   },
 );

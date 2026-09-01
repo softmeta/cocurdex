@@ -13,6 +13,7 @@ import {
   ChatContentColumn,
   ComposerSurface,
   ComposerSurfaceBody,
+  conversationComposerDraftKey,
 } from "@/features/composer";
 import { desktopApi, useMountEffect } from "@/lib";
 import { ConversationContextMeter } from "./chat-context-meter";
@@ -200,6 +201,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
     <ChatComposer
       mode="chat"
       variant="pill"
+      draftKey={conversationComposerDraftKey(conversation.id)}
       isRunning={isStreaming}
       footerTrailing={composerFooterTrailing}
       attachMenuExtras={composerAttachMenuExtras}
@@ -229,6 +231,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
             mode="chat"
             variant="panel"
             tone="welcome"
+            draftKey={conversationComposerDraftKey(conversation.id)}
             mentionMenuPlacement="bottom"
             isRunning={isStreaming}
             controls={modelPicker}

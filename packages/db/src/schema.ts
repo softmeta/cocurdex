@@ -8,7 +8,8 @@ export function createSchemaSql() {
       root_path TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      last_opened_at TEXT NOT NULL
+      last_opened_at TEXT NOT NULL,
+      sort_order REAL NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -75,6 +76,7 @@ export function createSchemaSql() {
       title TEXT NOT NULL,
       kind TEXT,
       status TEXT NOT NULL,
+      subagent_json TEXT,
       content_json TEXT NOT NULL,
       raw_input_json TEXT,
       raw_output_json TEXT,

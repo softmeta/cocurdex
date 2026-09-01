@@ -18,6 +18,7 @@ export * from "./provider-compatibility";
 export * from "./search";
 export * from "./session-attention";
 export * from "./session-observation";
+export * from "./subagent-session";
 export * from "./terminal";
 export * from "./workflow";
 export * from "./workspace-change-diff";

@@ -1,6 +1,7 @@
 export * from "./agent-runtime-controls";
 export * from "./chat-composer";
 export * from "./chat-composer-layout";
+export * from "./composer-draft-store";
 export * from "./composer-surface";
 export * from "./context-attachment-chips";
 export * from "./context-file-mentions";

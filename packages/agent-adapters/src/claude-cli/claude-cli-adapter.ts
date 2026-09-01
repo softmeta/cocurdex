@@ -256,6 +256,7 @@ export function createClaudeCliAdapter(
         sessionId,
         logLabel: "[ClaudeAgentSdkAdapter]",
         onEvent,
+        parentSession: payload.session,
       });
 
       function settleQueryWaiters(queryToUse: ClaudeQuery) {
@@ -725,6 +726,7 @@ export function createClaudeCliAdapter(
           cwd: payload.workspaceRootPath,
           enableFileCheckpointing: true,
           env: claudeEnv,
+          forwardSubagentText: true,
           includePartialMessages: true,
           ...(effort ? { effort } : {}),
           ...(modelId ? { model: modelId } : {}),

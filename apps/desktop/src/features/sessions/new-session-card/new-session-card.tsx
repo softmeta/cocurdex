@@ -9,6 +9,7 @@ import {
   ChatComposer,
   ComposerSurfaceBody,
   getThinkingLevelLabel,
+  newSessionComposerDraftKey,
   ThinkingLevelSubmenu,
   WelcomeHeading,
 } from "@/features/composer";
@@ -332,6 +333,7 @@ export function NewSessionCard({
         mode="agent"
         variant="panel"
         tone="welcome"
+        draftKey={newSessionComposerDraftKey(activeWorkspaceId)}
         agentType={effectiveSelectedAgent}
         collaborationMode={selectedCollaborationMode}
         mentionMenuPlacement="bottom"

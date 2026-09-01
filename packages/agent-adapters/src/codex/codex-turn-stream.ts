@@ -32,6 +32,7 @@ const ANONYMOUS_ASSISTANT_ITEM_ID = "";
 interface CodexTurnStreamOptions {
   sessionId: string;
   onEvent(event: AgentEvent): void;
+  transformToolCall?(toolCall: AgentToolCallRecord): AgentToolCallRecord | null;
 }
 
 // Per-turn streaming state for one Codex session: the in-flight assistant
@@ -40,6 +41,7 @@ interface CodexTurnStreamOptions {
 export function createCodexTurnStream({
   sessionId,
   onEvent,
+  transformToolCall = (toolCall) => toolCall,
 }: CodexTurnStreamOptions) {
   // Assistant messages usually complete on `turn/item/completed`, well before
   // the turn ends, so the turn summary tracks the last one completed rather
@@ -300,7 +302,12 @@ export function createCodexTurnStream({
       return;
     }
 
-    const toolCall = createToolCallRecord(sessionId, item, isCompleted);
+    const toolCall = transformToolCall(
+      createToolCallRecord(sessionId, item, isCompleted),
+    );
+    if (!toolCall) {
+      return;
+    }
 
     if (toolCall.status === "in_progress") {
       activeToolCalls.set(item.id, toolCall);

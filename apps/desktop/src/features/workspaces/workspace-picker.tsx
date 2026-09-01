@@ -9,6 +9,7 @@ import {
 } from "@/components";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
+import { sortWorkspacesByLastOpenedAtDesc } from "./workspace-order";
 
 // Collapse the macOS home prefix so long absolute paths read compactly in the
 // trigger and list. Kept local to the picker since it is purely a display
@@ -59,9 +60,14 @@ export function WorkspacePicker({
     triggerClassName,
   );
 
+  const recentWorkspaces = useMemo(
+    () => sortWorkspacesByLastOpenedAtDesc(workspaces),
+    [workspaces],
+  );
+
   const options = useMemo(
     () => [
-      ...workspaces.map((workspace) => ({
+      ...recentWorkspaces.map((workspace) => ({
         value: workspace.id,
         label: compactWorkspacePath(workspace.rootPath),
         keywords: `${workspace.name} ${workspace.rootPath}`,
@@ -77,7 +83,7 @@ export function WorkspacePicker({
         icon: <FolderOpen className="size-3.5" />,
       },
     ],
-    [t, workspaces],
+    [recentWorkspaces, t],
   );
 
   // First-run with zero workspaces: skip the empty menu and open the folder

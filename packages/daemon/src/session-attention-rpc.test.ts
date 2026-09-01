@@ -39,6 +39,7 @@ async function seedSession(service: CocurdexDaemonService) {
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,
+    sortOrder: 1000,
   } satisfies WorkspaceRecord;
   const session = {
     id: "session-1",

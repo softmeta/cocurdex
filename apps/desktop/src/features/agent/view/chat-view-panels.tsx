@@ -16,7 +16,7 @@ import type {
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
-import { type Ref, useState } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { rightPanelResolvedActiveViewAtom } from "@/app/layout/right-editor-panel-store";
 import { AppGitBranchLabel } from "@/components";
@@ -43,6 +43,7 @@ interface ChatComposerControls {
   agentLabel: string;
   agentType?: AgentId;
   attachment?: MessageAttachment;
+  draftKey?: string;
   collaborationMode: CollaborationModeKind;
   permissionMode?: AgentPermissionMode | null;
   providerSnapshot?: AgentProviderSnapshot | null;
@@ -100,6 +101,9 @@ interface ChatComposerControls {
     question: AgentQuestionRequestRecord,
     answer: string,
   ): Promise<void> | void;
+  hideComposer?: boolean;
+  parentSessionTitle?: string | null;
+  onOpenParentSession?(): void;
 }
 
 function SessionWorkspaceFooterLabel({
@@ -193,13 +197,15 @@ export function ComposerDock({
   onDeleteQueuedInput,
   onSteerQueuedInput,
   onUpdateQueuedInput,
+  hideComposer = false,
+  parentSessionTitle,
+  onOpenParentSession,
   ...composerProps
 }: ChatComposerControls) {
+  const { t } = useTranslation("agent");
   const hasBlockingCard = Boolean(
     pendingPlanApproval || pendingPermissionRequest,
   );
-  const [pendingAttachmentHost, setPendingAttachmentHost] =
-    useState<HTMLDivElement | null>(null);
 
   return (
     <div className="overflow-visible bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent px-2 pb-2 md:px-3 xl:px-6">
@@ -212,12 +218,8 @@ export function ComposerDock({
             over the tail of the transcript instead — opaque surface, and the
             user can collapse or dismiss it. Blocking cards stay in flow: they
             need the reading space and they resolve on user action. */}
-        {plan ? (
+        {plan && !hideComposer ? (
           <div className="absolute inset-x-0 bottom-full z-10 mb-2 flex min-w-0 flex-col gap-2">
-            <div
-              className="flex min-w-0 flex-col gap-2 empty:hidden"
-              ref={setPendingAttachmentHost}
-            />
             <PlanPanel
               collapsed={planCollapsed}
               onDismiss={onDismissPlan}
@@ -251,6 +253,7 @@ export function ComposerDock({
           />
         ) : null}
         {queuedInputs.length > 0 &&
+        !hideComposer &&
         onDeleteQueuedInput &&
         onSteerQueuedInput &&
         onUpdateQueuedInput ? (
@@ -262,17 +265,36 @@ export function ComposerDock({
             supportsSteering={supportsSteering}
           />
         ) : null}
-        <ChatComposer
-          {...composerProps}
-          ref={composerRef}
-          variant="pill"
-          floatPendingAttachments={Boolean(plan)}
-          pendingAttachmentHost={plan ? pendingAttachmentHost : null}
-          footerLeading={
-            <SessionWorkspaceFooterLabel workspaceName={workspaceName} />
-          }
-          footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
-        />
+        {hideComposer ? (
+          <div className="flex min-w-0 items-center gap-2 rounded-control border border-chat-border-soft bg-chat-surface-raised px-3 py-2">
+            <span className="min-w-0 flex-1 truncate text-meta text-chat-fg-muted">
+              {t("toolCalls.subagentReadOnly")}
+            </span>
+            {onOpenParentSession ? (
+              <button
+                className="shrink-0 text-meta text-chat-link"
+                onClick={onOpenParentSession}
+                type="button"
+              >
+                {parentSessionTitle
+                  ? t("toolCalls.openParentSessionNamed", {
+                      title: parentSessionTitle,
+                    })
+                  : t("toolCalls.openParentSession")}
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <ChatComposer
+            {...composerProps}
+            ref={composerRef}
+            variant="pill"
+            footerLeading={
+              <SessionWorkspaceFooterLabel workspaceName={workspaceName} />
+            }
+            footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
+          />
+        )}
       </div>
     </div>
   );

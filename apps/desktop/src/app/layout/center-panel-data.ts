@@ -1,11 +1,16 @@
-import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
+import type {
+  AgentToolCallRecord,
+  SessionRecord,
+  WorkspaceRecord,
+} from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   loadSessionMessagesAtom,
   loadSessionToolCallsAtom,
   loadTurnStatsAtom,
   messagesLoadedBySessionAtom,
+  shouldRefreshSessionToolCalls,
   toolCallsLoadedBySessionAtom,
 } from "@/features/agent";
 import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
@@ -46,7 +51,7 @@ export function useSessionSwitchMetrics(
 export function useActiveSessionTranscript(
   activeSession: SessionRecord | undefined,
   messageCount: number,
-  toolCallCount: number,
+  activeToolCalls: AgentToolCallRecord[],
 ) {
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
   const toolCallsLoadedBySession = useAtomValue(toolCallsLoadedBySessionAtom);
@@ -54,6 +59,7 @@ export function useActiveSessionTranscript(
   const loadTurnStats = useSetAtom(loadTurnStatsAtom);
   const loadTurnChangeSets = useSetAtom(loadTurnChangeSetsAtom);
   const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
+  const reconciledTerminalSessions = useRef(new Set<string>());
 
   useEffect(() => {
     if (!activeSession) {
@@ -62,7 +68,21 @@ export function useActiveSessionTranscript(
 
     const sessionId = activeSession.id;
     const shouldLoadMessages = !messagesLoadedBySession[sessionId];
-    const shouldLoadToolCalls = !toolCallsLoadedBySession[sessionId];
+    const toolCallsLoaded = Boolean(toolCallsLoadedBySession[sessionId]);
+    if (activeSession.status === "running") {
+      reconciledTerminalSessions.current.delete(sessionId);
+    }
+    const shouldReconcileTerminalToolCalls =
+      shouldRefreshSessionToolCalls(
+        activeSession.status,
+        toolCallsLoaded,
+        activeToolCalls,
+      ) && !reconciledTerminalSessions.current.has(sessionId);
+    const shouldLoadToolCalls =
+      !toolCallsLoaded || shouldReconcileTerminalToolCalls;
+    if (shouldReconcileTerminalToolCalls) {
+      reconciledTerminalSessions.current.add(sessionId);
+    }
 
     if (!shouldLoadMessages && !shouldLoadToolCalls) {
       return;
@@ -114,7 +134,7 @@ export function useActiveSessionTranscript(
 
         markSessionSwitch(sessionId, "transcript-load-end", {
           messageCount: messages?.messages.length ?? messageCount,
-          toolCallCount: toolCalls?.length ?? toolCallCount,
+          toolCallCount: toolCalls?.length ?? activeToolCalls.length,
         });
         measureSessionSwitch(
           sessionId,
@@ -149,7 +169,7 @@ export function useActiveSessionTranscript(
   }, [
     activeSession,
     messageCount,
-    toolCallCount,
+    activeToolCalls,
     loadSessionMessages,
     loadTurnStats,
     loadTurnChangeSets,

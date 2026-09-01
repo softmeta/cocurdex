@@ -33,6 +33,7 @@ import {
   buildGrokInterjectParams,
   GROK_INTERJECT_REQUEST_METHOD,
 } from "./grok-build-steering";
+import { grokBuildSubagentProtocol } from "./grok-build-subagents";
 
 const descriptor: AgentDescriptor = {
   id: "grok-build",
@@ -88,6 +89,7 @@ export function createGrokBuildAdapter(
         method: GROK_INTERJECT_REQUEST_METHOD,
         buildParams: buildGrokInterjectParams,
       },
+      subagentProtocol: grokBuildSubagentProtocol,
     },
     connectionFactory,
   );

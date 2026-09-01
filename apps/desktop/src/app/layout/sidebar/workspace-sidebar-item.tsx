@@ -1,5 +1,9 @@
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Folder, FolderOpen, SquarePen, Trash2 } from "lucide-react";
+import { type CSSProperties, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ContextMenu,
@@ -12,6 +16,12 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
 } from "@/components/ui";
+import {
+  buildVisibleSessionTree,
+  collapsedSessionIdsAtom,
+  toggleSessionCollapsedAtom,
+} from "@/features/sessions";
+import { cn } from "@/lib";
 import { SessionSidebarItem } from "./session-sidebar-item";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 
@@ -45,24 +55,43 @@ export function WorkspaceSidebarItem({
   onSelectWorkspace,
 }: WorkspaceSidebarItemProps) {
   const { t } = useTranslation("sessions");
+  const collapsedSessionIds = useAtomValue(collapsedSessionIdsAtom);
+  const toggleSessionCollapsed = useSetAtom(toggleSessionCollapsedAtom);
+  const sessionTree = useMemo(
+    () => buildVisibleSessionTree(sessions, collapsedSessionIds),
+    [sessions, collapsedSessionIds],
+  );
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: workspace.id });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
-    // gap-0.5 matches SidebarMenuSub session spacing so the workspace title
-    // hover/active fill does not sit flush against the first session row.
-    <SidebarMenuItem className="flex flex-col gap-0.5">
+    <SidebarMenuItem
+      className={cn("flex flex-col gap-0.5", isDragging && "opacity-40")}
+      ref={setNodeRef}
+      style={style}
+    >
       <ContextMenu>
-        {/* asChild: same stretch/truncate path as session leaf rows. */}
         <ContextMenuTrigger asChild>
           <SidebarListRow
             isActive={activeWorkspaceId === workspace.id}
             variant="subtle"
-            // px-1 matches SidebarGroupLabel so the folder glyph lines up with
-            // the section title; pe stays roomy enough for the hover action.
             className="px-1"
+            {...attributes}
+            {...listeners}
           >
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
+              className="flex min-w-0 flex-1 cursor-grab items-center gap-1.5 text-start active:cursor-grabbing"
               onClick={() => {
                 onSelectWorkspace(workspace.id);
                 onToggleWorkspace(workspace.id);
@@ -83,6 +112,7 @@ export function WorkspaceSidebarItem({
                 })}
                 className="flex size-5 items-center justify-center text-sidebar-fg-muted transition-colors hover:text-sidebar-fg"
                 onClick={() => onCreateAgent(workspace.id)}
+                onPointerDown={(event) => event.stopPropagation()}
               >
                 <SquarePen className="size-3.5" />
               </button>
@@ -117,15 +147,21 @@ export function WorkspaceSidebarItem({
               {t("sidebar.noAgentsYet")}
             </div>
           ) : (
-            sessions.map((session) => (
-              <SidebarMenuSubItem key={session.id}>
+            sessionTree.map((node) => (
+              <SidebarMenuSubItem key={node.session.id}>
                 <SessionSidebarItem
+                  depth={node.depth}
+                  hasChildren={node.hasChildren}
                   isActive={
                     activeConversationId === null &&
-                    session.id === optimisticActiveSessionId
+                    node.session.id === optimisticActiveSessionId
                   }
-                  onSelect={() => onSelectSession(workspace.id, session.id)}
-                  session={session}
+                  isExpanded={!collapsedSessionIds.has(node.session.id)}
+                  onSelect={() =>
+                    onSelectSession(workspace.id, node.session.id)
+                  }
+                  onToggleExpand={() => toggleSessionCollapsed(node.session.id)}
+                  session={node.session}
                 />
               </SidebarMenuSubItem>
             ))
