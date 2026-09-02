@@ -29,6 +29,10 @@
   },
   "jumpToLatest": "跳到最新消息",
   "jumpToTop": "跳到顶部",
+  "message": {
+    "showLess": "收起",
+    "showMore": "展开"
+  },
   "permissions": {
     "allowed": "",
     "denied": "",

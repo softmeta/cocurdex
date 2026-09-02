@@ -402,6 +402,10 @@ export default interface Resources {
     };
     jumpToLatest: "Jump to latest";
     jumpToTop: "Jump to top";
+    message: {
+      showLess: "Show less";
+      showMore: "Show more";
+    };
     permissions: {
       allowed: "";
       denied: "";

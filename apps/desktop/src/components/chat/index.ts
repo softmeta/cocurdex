@@ -2,6 +2,7 @@
 // both features/chat (pure chat) and features/agent import from here.
 // Keep this module small and dependency-free — anything that pulls Jotai
 // atoms or feature-specific types belongs in the feature.
+export { CollapsibleUserMessageBody } from "./collapsible-user-message-body";
 export type { JumpButtonKind } from "./jump-button";
 export { resolveJumpButton } from "./jump-button";
 export { JumpControls } from "./jump-controls";
