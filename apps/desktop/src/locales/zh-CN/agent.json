@@ -100,8 +100,7 @@
     "dismiss": "隐藏任务",
     "expand": "展开任务",
     "label": "任务",
-    "progress": "{{done}}/{{count}}",
-    "progress_other": ""
+    "progress": "{{done}}/{{count}}"
   },
   "planApproval": {
     "abandon": "放弃计划",
@@ -175,9 +174,6 @@
     }
   },
   "reasoning": "推理",
-  "runtime": {
-    "settings": "Agent 设置"
-  },
   "system": "系统",
   "thinking": "思考中",
   "toolCalls": {

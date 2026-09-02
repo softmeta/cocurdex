@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import {
   AppDropdownContent,
   AppDropdownItem,
+  CollapsibleUserMessageBody,
   MarkdownRenderer,
 } from "@/components";
 import {
@@ -339,13 +340,19 @@ function UserPromptBody({
 
   if (isContextVariant) {
     return (
-      <div className="whitespace-pre-wrap break-words text-left text-body leading-6">
-        {message.content}
-      </div>
+      <CollapsibleUserMessageBody key={message.id} text={message.content}>
+        <div className="whitespace-pre-wrap break-words text-left text-body leading-6">
+          {message.content}
+        </div>
+      </CollapsibleUserMessageBody>
     );
   }
 
-  return <UserMessageContent message={message} />;
+  return (
+    <CollapsibleUserMessageBody key={message.id} text={message.content}>
+      <UserMessageContent message={message} />
+    </CollapsibleUserMessageBody>
+  );
 }
 
 const UserPrompt = memo(function UserPrompt({

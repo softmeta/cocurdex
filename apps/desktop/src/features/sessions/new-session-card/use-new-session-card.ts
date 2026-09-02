@@ -19,6 +19,7 @@ import { desktopApi, logRendererDiagnostic } from "@/lib";
 import { isAgentReadyToStart } from "../adapter-status";
 import {
   getAgentRuntimePreferences,
+  resolvePreferredPermissionMode,
   updateAgentRuntimePreferences,
 } from "../agent-runtime-preferences";
 import { supportsPlanMode } from "../collaboration-mode";
@@ -50,6 +51,16 @@ import {
 } from "./new-session-card-config";
 import { shouldPersistProviderDefault } from "./new-session-card-provider-default";
 
+function permissionModeForAgent(
+  agentId: AgentId,
+  agents: UseNewSessionCardProps["agents"],
+) {
+  return resolvePreferredPermissionMode(
+    agentId,
+    getPermissionModeOptions(agents ?? [], agentId),
+  );
+}
+
 // Owns agent/collaboration/permission/provider/workspace/branch state for
 // the new-session card. The actual composer (editor, mentions, image
 // attachments, paste/drag handling) is delegated to ChatComposer, so this
@@ -80,10 +91,8 @@ export function useNewSessionCard({
   const [selectedCollaborationMode, setSelectedCollaborationMode] =
     useState<CollaborationModeKind>(collaborationMode);
   const [selectedPermissionMode, setSelectedPermissionMode] =
-    useState<AgentPermissionMode | null>(
-      () =>
-        initialRuntimePreferences.permissionMode ??
-        getDefaultPermissionMode(agents, initialAgentType),
+    useState<AgentPermissionMode | null>(() =>
+      permissionModeForAgent(initialAgentType, agents),
     );
   const [compatibleProviders, setCompatibleProviders] = useState<
     CompatibleProviderModel[]
@@ -141,6 +150,15 @@ export function useNewSessionCard({
     agents,
     effectiveSelectedAgent,
   );
+  const permissionModeIsCurrent = Boolean(
+    selectedPermissionMode &&
+      permissionModeOptions.some(
+        (option) => option.id === selectedPermissionMode,
+      ),
+  );
+  const resolvedPermissionMode = permissionModeIsCurrent
+    ? selectedPermissionMode
+    : permissionModeForAgent(effectiveSelectedAgent, agents);
   const canStartWithSelectedAgent = availableAgents.some(
     (agent) => agent.id === effectiveSelectedAgent,
   );
@@ -367,6 +385,10 @@ export function useNewSessionCard({
     };
   }, [effectiveSelectedAgent, providerModelCacheVersion]);
 
+  if (selectedPermissionMode !== resolvedPermissionMode) {
+    setSelectedPermissionMode(resolvedPermissionMode);
+  }
+
   const handleSelectPermissionMode = (mode: AgentPermissionMode) => {
     setSelectedPermissionMode(mode);
     updateAgentRuntimePreferences(effectiveSelectedAgent, {
@@ -436,9 +458,7 @@ export function useNewSessionCard({
     setSelectedProviderModel("");
     setIsProviderModelLoading(true);
     const preferences = getAgentRuntimePreferences(nextAgent);
-    setSelectedPermissionMode(
-      preferences.permissionMode ?? getDefaultPermissionMode(agents, nextAgent),
-    );
+    setSelectedPermissionMode(permissionModeForAgent(nextAgent, agents));
     setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
     setSelectedCodexServiceTier(preferences.serviceTier ?? "");
     setSelectedClaudeFastMode(preferences.fastMode ?? false);
@@ -466,10 +486,10 @@ export function useNewSessionCard({
     }
 
     if (
-      selectedPermissionMode &&
+      resolvedPermissionMode &&
       !isAgentPermissionModeSupportedForModel(
         effectiveSelectedAgent,
-        selectedPermissionMode,
+        resolvedPermissionMode,
         nextCompatibleProvider?.model.modelId,
         nextCompatibleProvider?.model.name,
       )
@@ -511,7 +531,7 @@ export function useNewSessionCard({
 
   return {
     selectedCollaborationMode,
-    selectedPermissionMode,
+    selectedPermissionMode: resolvedPermissionMode,
     permissionModeOptions,
     setSelectedPermissionMode: handleSelectPermissionMode,
     selectedCodexReasoningEffort,

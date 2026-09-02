@@ -24,6 +24,7 @@ import {
   protocol,
   shell,
 } from "electron";
+import { registerApplicationMenu } from "./app-menu";
 import { resolveElectronEntryPath, resolveUserDataPath } from "./app-paths";
 import {
   type ImportDocumentAttachmentPayload,
@@ -94,6 +95,7 @@ import {
   queueOpenFolder,
   resolveDroppedOpenPath,
 } from "./open-folder";
+import { registerOssLicensesHandlers } from "./oss-licenses";
 import {
   initializePdfAnnotationsStorage,
   loadPdfDocumentAnnotations,
@@ -1351,6 +1353,7 @@ app
     registerCliPathHandlers();
     registerSkillsHandlers();
     registerAppUpdateHandlers();
+    registerOssLicensesHandlers();
     startAppUpdater({
       currentVersion: app.getVersion(),
       packaged: app.isPackaged,
@@ -1361,6 +1364,7 @@ app
         }
       },
     });
+    registerApplicationMenu();
     ipcMain.handle("daemon:getStatus", async () =>
       requireDaemonRuntimeClient().getStatus(),
     );

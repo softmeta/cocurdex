@@ -71,7 +71,6 @@ export interface ChatViewProps {
   onSelectPermissionMode?(mode: AgentPermissionMode): void;
   onSelectThinkingLevel?(level: AgentThinkingLevel): void;
   onSelectRuntimeMode?(modeId: string): void;
-  onSelectRuntimeConfig?(configId: string, value: boolean | string): void;
   onSelectAgent?(agentType: AgentId): void;
   onSend(
     message: string,

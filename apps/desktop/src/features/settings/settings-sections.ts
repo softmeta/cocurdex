@@ -5,11 +5,13 @@ import {
   FolderTree,
   Gauge,
   GitBranch,
+  Info,
   Keyboard,
   KeyRound,
   Monitor,
   Network,
   Palette,
+  Scale,
   Server,
   Settings,
   SlidersHorizontal,
@@ -42,6 +44,8 @@ export const settingsSections = [
   // Git settings (commit-message model, etc.) must be core so the sidebar
   // lists the section — only the core group is rendered.
   { id: "git", labelKey: "git", icon: GitBranch, group: "core" },
+  { id: "about", labelKey: "about", icon: Info, group: "core" },
+  { id: "licenses", labelKey: "licenses", icon: Scale, group: "core" },
   {
     id: "workspace",
     labelKey: "workspace",

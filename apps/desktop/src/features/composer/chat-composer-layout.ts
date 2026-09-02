@@ -105,7 +105,7 @@ export function getPillComposerShapeClassName(isExpanded: boolean) {
 // cannot make the four items look like different controls.
 export function composerFooterControlClassName(className?: string) {
   return cn(
-    "h-8 min-w-0 items-center gap-1.5 px-0 font-normal text-inherit shadow-none",
+    "h-8 min-w-0 items-center gap-1.5 px-1.5 font-normal text-inherit shadow-none",
     className,
   );
 }

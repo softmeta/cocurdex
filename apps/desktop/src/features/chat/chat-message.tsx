@@ -7,7 +7,7 @@ import type {
 import { AlertTriangle, Check, Copy, Pencil, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MarkdownRenderer } from "@/components";
+import { CollapsibleUserMessageBody, MarkdownRenderer } from "@/components";
 import { Button, Spinner, Textarea } from "@/components/ui";
 import { ImageAttachmentCards } from "@/features/composer";
 import { cn } from "@/lib";
@@ -54,7 +54,11 @@ function ConversationMessageText({
     );
   }
 
-  return <div className="whitespace-pre-wrap break-words">{combinedText}</div>;
+  return (
+    <CollapsibleUserMessageBody text={combinedText}>
+      <div className="whitespace-pre-wrap break-words">{combinedText}</div>
+    </CollapsibleUserMessageBody>
+  );
 }
 
 interface ConversationMessageProps {

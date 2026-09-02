@@ -181,6 +181,13 @@ if (asarFiles.length === 0) {
 }
 
 for (const asarPath of asarFiles) {
+  const updateConfigPath = path.join(path.dirname(asarPath), "app-update.yml");
+  try {
+    await stat(updateConfigPath);
+  } catch {
+    throw new Error(`Missing app-update.yml next to ${asarPath}`);
+  }
+
   const { missing, unexpected } = await inspectAsar(asarPath);
   if (missing.length > 0) {
     throw new Error(

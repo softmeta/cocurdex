@@ -208,7 +208,8 @@ export function PanelComposer({
               ref={editorRef}
               removeMentionLabel={t("sessions:composer.removeAttachment")}
               sendShortcut={sendShortcut}
-              className="min-h-14 px-1"
+              className="px-1"
+              editorClassName="min-h-14 max-h-40 overflow-y-auto overscroll-contain"
             />
           </div>
           <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
@@ -232,16 +233,14 @@ export function PanelComposer({
               </DropdownMenu>
               {footerLeading}
               {resolvedControls}
-              {isAgentMode && tone !== "welcome" ? (
+              {isAgentMode ? (
                 <ContextWindowIndicator
                   afterModel={footerTrailing}
                   footer={runtimeMenuExtras}
+                  isRunning={isRunning}
                   layout="split"
                 />
               ) : null}
-              {isAgentMode && tone === "welcome" && footerTrailing
-                ? footerTrailing
-                : null}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               {!isAgentMode && footerTrailing ? footerTrailing : null}

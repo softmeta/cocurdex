@@ -1,21 +1,21 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.1",
+  "version": "0.1.6",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,
   "type": "module",
   "main": "out/main/main.js",
   "scripts": {
-    "dev": "pnpm run prepare:electron && pnpm run prepare:cli && electron-vite dev",
-    "dev:inspect": "pnpm run prepare:electron && pnpm run prepare:cli && COCURDEX_REMOTE_DEBUGGING_PORT=9222 electron-vite dev",
+    "dev": "pnpm run prepare:licenses && pnpm run prepare:electron && pnpm run prepare:cli && electron-vite dev",
+    "dev:inspect": "pnpm run prepare:licenses && pnpm run prepare:electron && pnpm run prepare:cli && COCURDEX_REMOTE_DEBUGGING_PORT=9222 electron-vite dev",
     "perf:listen": "node ./scripts/listen-renderer-perf.mjs",
-    "build": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build",
-    "dist:dir": "pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build && electron-builder --dir",
-    "dist:mac": "pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac",
-    "dist:mac:arm64": "pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish never",
-    "dist:mac:arm64:release": "pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish always",
+    "build": "pnpm run prepare:licenses && pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build",
+    "dist:dir": "pnpm run prepare:licenses && pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build && electron-builder --dir",
+    "dist:mac": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac",
+    "dist:mac:arm64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish never",
+    "dist:mac:arm64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish always",
     "i18n:extract": "i18next-cli extract --config ./i18next.config.ts",
     "i18n:lint": "node ./scripts/lint-i18n.mjs",
     "lint:cycles": "node ./scripts/check-cycles.mjs",
@@ -23,6 +23,7 @@
     "i18n:types": "i18next-cli types --config ./i18next.config.ts",
     "postinstall": "node ./scripts/fix-node-pty-perms.mjs",
     "prepare:cli": "node ./scripts/build-cli.mjs",
+    "prepare:licenses": "node ./scripts/generate-oss-licenses.mjs",
     "prepare:electron": "install-electron --no",
     "prepare:fd": "node ./scripts/ensure-fd.mjs",
     "verify:package": "node ./scripts/verify-packaged-runtime.mjs",
@@ -154,6 +155,14 @@
       "node_modules/@vscode/ripgrep-*/**/*"
     ],
     "extraResources": [
+      {
+        "from": "build-assets/app-update.yml",
+        "to": "app-update.yml"
+      },
+      {
+        "from": "resources/oss-licenses.json",
+        "to": "oss-licenses.json"
+      },
       {
         "from": "vendor/fd",
         "to": "vendor/fd",

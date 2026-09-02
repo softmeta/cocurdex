@@ -4,7 +4,7 @@ import type {
   UndoTurnChangesResult,
 } from "@cocurdex/shared";
 import { useAtom, useSetAtom } from "jotai";
-import { ChevronDown, FilePlus, RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rightPanelResolvedActiveViewAtom } from "@/app/layout/right-editor-panel-store";
@@ -37,7 +37,7 @@ function TurnChangesListToggle({
 
   return (
     <button
-      className="flex w-full items-center gap-1 rounded-control px-2 py-1.5 text-start text-chat-fg-muted transition-colors hover:bg-chat-surface-row-hover hover:text-chat-fg"
+      className="flex w-full items-center gap-1 px-3 py-1.5 text-start text-chat-fg-muted transition-colors hover:bg-chat-surface-row-hover hover:text-chat-fg"
       type="button"
       onClick={onToggle}
     >
@@ -94,7 +94,7 @@ function TurnChangeFileRow({
     <li className="min-w-0">
       <button
         aria-label={`${t(`turnChanges.${fileOperationLabelKey(file.operation)}`)} ${file.path}`}
-        className="flex w-full min-w-0 items-center gap-2 rounded-control px-2 py-1.5 text-start transition-colors hover:bg-chat-surface-row-hover"
+        className="flex h-9 w-full min-w-0 items-center gap-2 px-3 text-start transition-colors hover:bg-chat-surface-row-hover"
         type="button"
         onClick={onReview}
       >
@@ -190,14 +190,22 @@ export function TurnChangesCard({
     }
   };
 
+  const showUndoConflict = undoResult?.status === "conflict";
+  const showUndoRestored = undoResult?.status === "restored";
+  const showUndoFailed = undoResult?.status === "failed";
+  const showUndoUnavailable =
+    !canUndo && nonRestorableFiles.length > 0 && !isStreaming;
+  const showStatus =
+    showUndoConflict ||
+    showUndoRestored ||
+    showUndoFailed ||
+    showUndoUnavailable;
+
   return (
-    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card bg-chat-surface-subtle">
-      <div className="flex items-center gap-3 px-3 py-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-control bg-chat-surface-raised">
-          <FilePlus className="size-4 text-chat-fg-muted" />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <Text className="text-chat-fg" size="body" weight="medium">
+    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card border border-chat-border-soft">
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <Text className="text-chat-fg" size="meta" weight="medium">
             {t("turnChanges.editedCount", { count: fileCount })}
           </Text>
           {showStats ? (
@@ -223,65 +231,63 @@ export function TurnChangesCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
-            className="text-chat-fg-muted text-meta"
+            className="text-chat-fg-muted"
             disabled={!canUndo || undoing}
             onClick={() => void handleUndo()}
             size="xs"
             type="button"
             variant="ghost"
           >
-            {t("turnChanges.undo")}
+            <Text size="meta">{t("turnChanges.undo")}</Text>
             {undoing ? (
               <Spinner size="xs" />
             ) : (
               <RotateCcw className="size-3.5" />
             )}
           </Button>
-          <Button
-            className="text-meta"
-            onClick={review}
-            size="xs"
-            type="button"
-            variant="secondary"
-          >
-            {t("turnChanges.review")}
+          <Button onClick={review} size="xs" type="button" variant="secondary">
+            <Text size="meta">{t("turnChanges.review")}</Text>
           </Button>
         </div>
       </div>
-      <div className="px-1.5 pb-1.5">
-        <ul className="flex min-w-0 flex-col">
-          {visibleFiles.map((file) => (
-            <TurnChangeFileRow file={file} key={file.path} onReview={review} />
-          ))}
-        </ul>
-        {fileCount >= SHOW_ALL_BELOW ? (
+      <ul className="flex min-w-0 flex-col divide-y divide-chat-border-soft border-t border-chat-border-soft">
+        {visibleFiles.map((file) => (
+          <TurnChangeFileRow file={file} key={file.path} onReview={review} />
+        ))}
+      </ul>
+      {fileCount >= SHOW_ALL_BELOW ? (
+        <div className="border-t border-chat-border-soft">
           <TurnChangesListToggle
             expanded={showAllFiles}
             hiddenCount={hiddenCount}
             onToggle={() => setShowAllFiles((current) => !current)}
           />
-        ) : null}
-        {undoResult?.status === "conflict" ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.conflict")}
-          </Text>
-        ) : null}
-        {undoResult?.status === "restored" ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.restored")}
-          </Text>
-        ) : null}
-        {undoResult?.status === "failed" ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.undoFailed")}
-          </Text>
-        ) : null}
-        {!canUndo && nonRestorableFiles.length > 0 && !isStreaming ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.undoUnavailable")}
-          </Text>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
+      {showStatus ? (
+        <div className="border-t border-chat-border-soft">
+          {showUndoConflict ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.conflict")}
+            </Text>
+          ) : null}
+          {showUndoRestored ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.restored")}
+            </Text>
+          ) : null}
+          {showUndoFailed ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.undoFailed")}
+            </Text>
+          ) : null}
+          {showUndoUnavailable ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.undoUnavailable")}
+            </Text>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

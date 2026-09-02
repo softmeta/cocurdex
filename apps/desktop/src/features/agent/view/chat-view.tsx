@@ -89,7 +89,6 @@ export function ChatView({
   onSelectCollaborationMode,
   onSelectPermissionMode,
   onSelectThinkingLevel,
-  onSelectRuntimeConfig,
   onSelectRuntimeMode,
   onSelectAgent,
   onSend,
@@ -561,13 +560,11 @@ export function ChatView({
                 isRunning={isRunning}
                 canSendWhileRunning={canSendWhileRunning}
                 runtimeCommands={runtime?.commands}
-                runtimeConfigOptions={runtime?.configOptions}
                 runtimeMode={runtime?.mode}
                 onClearAttachment={onClearAttachment}
                 onSelectCollaborationMode={onSelectCollaborationMode}
                 onSelectPermissionMode={onSelectPermissionMode}
                 onSelectThinkingLevel={onSelectThinkingLevel}
-                onSelectRuntimeConfig={onSelectRuntimeConfig}
                 onSelectRuntimeMode={onSelectRuntimeMode}
                 onSelectAgent={onSelectAgent}
                 onSend={stableOnSend}
@@ -725,7 +722,6 @@ export function ChatView({
           isRunning={isRunning}
           canSendWhileRunning={canSendWhileRunning}
           runtimeCommands={runtime?.commands}
-          runtimeConfigOptions={runtime?.configOptions}
           runtimeMode={runtime?.mode}
           queuedInputs={queuedInputs}
           supportsSteering={supportsSteering}
@@ -733,7 +729,6 @@ export function ChatView({
           onSelectCollaborationMode={onSelectCollaborationMode}
           onSelectPermissionMode={onSelectPermissionMode}
           onSelectThinkingLevel={onSelectThinkingLevel}
-          onSelectRuntimeConfig={onSelectRuntimeConfig}
           onSelectRuntimeMode={onSelectRuntimeMode}
           onSelectAgent={onSelectAgent}
           onSend={stableOnSend}

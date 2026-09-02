@@ -102,9 +102,7 @@
     "dismiss": "Hide tasks",
     "expand": "Expand tasks",
     "label": "Tasks",
-    "progress": "{{done}}/{{count}}",
-    "progress_one": "",
-    "progress_other": ""
+    "progress": "{{done}}/{{count}}"
   },
   "planApproval": {
     "abandon": "Abandon plan",
@@ -179,9 +177,6 @@
     }
   },
   "reasoning": "Reasoning",
-  "runtime": {
-    "settings": "Agent settings"
-  },
   "system": "System",
   "thinking": "Thinking",
   "toolCalls": {

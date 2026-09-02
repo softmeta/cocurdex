@@ -293,6 +293,24 @@ export interface AppUpdateState {
   status: AppUpdateStatus;
 }
 
+export type OssLicenseKind = "app" | "native" | "package";
+
+export interface OssLicenseEntry {
+  homepage: string | null;
+  id: string;
+  kind: OssLicenseKind;
+  license: string;
+  name: string;
+  textId: string | null;
+  version: string | null;
+}
+
+export interface OssLicensesPayload {
+  chromiumAvailable: boolean;
+  entries: OssLicenseEntry[];
+  texts: Record<string, string>;
+}
+
 /** Local Cocurdex daemon process health (no auth token). */
 export interface DaemonRuntimeStatus {
   running: boolean;
@@ -374,6 +392,8 @@ export interface DesktopApi {
   dismissAppUpdate(): Promise<AppUpdateState>;
   installAppUpdate(): Promise<void>;
   onAppUpdateState(listener: (state: AppUpdateState) => void): () => void;
+  getOssLicenses(): Promise<OssLicensesPayload>;
+  openChromiumLicenses(): Promise<{ ok: boolean }>;
   getCliPathStatus(): Promise<CliPathStatus>;
   installCliOnPath(): Promise<CliPathStatus>;
   uninstallCliFromPath(): Promise<CliPathStatus>;

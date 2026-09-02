@@ -1,6 +1,7 @@
 import type {
   AgentId,
   AgentPermissionMode,
+  AgentPermissionModeOption,
   AgentThinkingLevel,
   ReasoningEffort,
 } from "@cocurdex/shared";
@@ -148,6 +149,18 @@ export function getAgentRuntimePreferences(
   agentId: AgentId,
 ): AgentRuntimePreferences {
   return readAllPreferences()[agentId] ?? {};
+}
+
+export function resolvePreferredPermissionMode(
+  agentId: AgentId,
+  options: readonly AgentPermissionModeOption[],
+): AgentPermissionMode | null {
+  const preferred = getAgentRuntimePreferences(agentId).permissionMode;
+  if (preferred && options.some((option) => option.id === preferred)) {
+    return preferred;
+  }
+
+  return options[0]?.id ?? null;
 }
 
 export function updateAgentRuntimePreferences(

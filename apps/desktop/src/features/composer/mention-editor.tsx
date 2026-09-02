@@ -51,6 +51,7 @@ export interface MentionEditorProps {
   ariaLabel?: string;
   autoFocus?: boolean;
   className?: string;
+  editorClassName?: string;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   disabled?: boolean;
   initialContent?: {
@@ -77,6 +78,7 @@ export const MentionEditor = forwardRef<
     ariaLabel,
     autoFocus,
     className,
+    editorClassName,
     containerRef,
     disabled,
     initialContent,
@@ -372,6 +374,7 @@ export const MentionEditor = forwardRef<
         className={cn(
           "mention-editor relative min-w-0 whitespace-pre-wrap wrap-break-word outline-none text-body text-chat-fg before:pointer-events-none before:absolute before:inset-0 before:text-chat-fg-muted/55 data-empty:before:content-[attr(data-placeholder)]",
           disabled && "pointer-events-none opacity-60",
+          editorClassName,
         )}
         aria-placeholder={placeholder}
         contentEditable={!disabled}
