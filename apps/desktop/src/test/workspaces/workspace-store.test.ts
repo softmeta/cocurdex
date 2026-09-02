@@ -5,8 +5,11 @@ import {
   activeWorkspaceIdAtom,
   addWorkspaceAtom,
   bootstrapWorkspacesAtom,
+  COLLAPSED_WORKSPACE_IDS_STORAGE_KEY,
   collapsedWorkspaceIdsAtom,
+  normalizeCollapsedWorkspaceIds,
   openWorkspaceByPathAtom,
+  removeWorkspaceAtom,
   reorderWorkspacesAtom,
   selectWorkspaceAtom,
   workspacesAtom,
@@ -205,6 +208,51 @@ describe("openWorkspaceByPathAtom", () => {
 
     expect(result.didSwitchProject).toBe(false);
     expect(store.get(activeWorkspaceIdAtom)).toBe("a");
+  });
+});
+
+describe("collapsed workspace ids persistence", () => {
+  it("writes collapsed ids to localStorage", () => {
+    const store = createStore();
+    store.set(collapsedWorkspaceIdsAtom, ["b", "a"]);
+
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(COLLAPSED_WORKSPACE_IDS_STORAGE_KEY) ??
+          "[]",
+      ),
+    ).toEqual(["b", "a"]);
+  });
+
+  it("drops a workspace from the collapsed list when it is removed", () => {
+    const store = createStore();
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    const b = makeWorkspace("b", "2024-01-02T00:00:00.000Z");
+    store.set(workspacesAtom, [a, b]);
+    store.set(collapsedWorkspaceIdsAtom, ["a", "b"]);
+
+    store.set(removeWorkspaceAtom, "b");
+
+    expect(store.get(collapsedWorkspaceIdsAtom)).toEqual(["a"]);
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(COLLAPSED_WORKSPACE_IDS_STORAGE_KEY) ??
+          "[]",
+      ),
+    ).toEqual(["a"]);
+  });
+});
+
+describe("normalizeCollapsedWorkspaceIds", () => {
+  it("keeps unique non-empty strings and drops everything else", () => {
+    expect(
+      normalizeCollapsedWorkspaceIds(["ok", 1, "", "ok", null, "next"]),
+    ).toEqual(["ok", "next"]);
+  });
+
+  it("returns an empty list for non-arrays", () => {
+    expect(normalizeCollapsedWorkspaceIds(undefined)).toEqual([]);
+    expect(normalizeCollapsedWorkspaceIds("{oops}")).toEqual([]);
   });
 });
 

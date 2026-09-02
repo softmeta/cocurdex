@@ -350,6 +350,7 @@
       "noMatches": "没有匹配的服务商"
     },
     "fields": {
+      "apiKey": "API Key",
       "baseUrl": "Base URL",
       "capabilities": "能力",
       "capability": {

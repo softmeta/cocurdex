@@ -1,14 +1,21 @@
 import type { ProviderConfigRecord } from "@cocurdex/shared";
 import { Check, KeyRound, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppConfirmDialog } from "@/components";
-import { Badge, Button, Checkbox, Input, Label } from "@/components/ui";
+import { Button, Input, Label, Switch, Text } from "@/components/ui";
 import { cn } from "@/lib";
 
 const fieldClass =
   "h-8 min-w-0 rounded-control border-border/70 bg-background/60 text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20";
-const labelClass = "text-xs font-medium text-muted-foreground";
+
+function FieldCaption({ children }: { children: ReactNode }) {
+  return (
+    <Text size="meta" tone="muted" weight="medium">
+      {children}
+    </Text>
+  );
+}
 
 interface ProviderDetailsSectionProps {
   apiKey: string;
@@ -34,8 +41,10 @@ export function ProviderDetailsSection({
   onSaveProvider,
 }: ProviderDetailsSectionProps) {
   const { t } = useTranslation("settings");
-  const enabledCheckboxId = useId();
+  const enabledSwitchId = useId();
+  const apiKeyId = useId();
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const hasStoredApiKey = Boolean(draftProvider.apiKeySecretId);
   const isPresetProvider = presetProviderIds.has(draftProvider.id);
   // The provider id is the primary key: models and the API key secret are
   // keyed by it, so renaming an existing provider would orphan them. The id
@@ -46,16 +55,30 @@ export function ProviderDetailsSection({
     <>
       <div className="grid gap-4 py-4">
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold">
+          <Text size="body" weight="semibold">
             {t("providers.sections.provider")}
-          </div>
+          </Text>
+          <Label
+            className="flex shrink-0 items-center gap-2"
+            htmlFor={enabledSwitchId}
+          >
+            <Text size="body">{t("providers.state.enabled")}</Text>
+            <Switch
+              checked={draftProvider.enabled}
+              id={enabledSwitchId}
+              onCheckedChange={(checked) =>
+                onDraftProviderChange({
+                  ...draftProvider,
+                  enabled: checked,
+                })
+              }
+            />
+          </Label>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <Label className="grid gap-1.5">
-            <span className={labelClass}>
-              {t("providers.fields.providerId")}
-            </span>
+            <FieldCaption>{t("providers.fields.providerId")}</FieldCaption>
             <Input
               className={fieldClass}
               disabled={isIdLocked}
@@ -70,9 +93,7 @@ export function ProviderDetailsSection({
             />
           </Label>
           <Label className="grid gap-1.5">
-            <span className={labelClass}>
-              {t("providers.fields.displayName")}
-            </span>
+            <FieldCaption>{t("providers.fields.displayName")}</FieldCaption>
             <Input
               className={fieldClass}
               disabled={isPresetProvider}
@@ -88,7 +109,7 @@ export function ProviderDetailsSection({
           </Label>
         </div>
         <Label className="grid gap-1.5">
-          <span className={labelClass}>{t("providers.fields.baseUrl")}</span>
+          <FieldCaption>{t("providers.fields.baseUrl")}</FieldCaption>
           <Input
             className={fieldClass}
             disabled={isPresetProvider}
@@ -102,81 +123,64 @@ export function ProviderDetailsSection({
             }
           />
         </Label>
-        <Label
-          className="flex items-center gap-2 text-sm"
-          htmlFor={enabledCheckboxId}
-        >
-          <Checkbox
-            checked={draftProvider.enabled}
-            id={enabledCheckboxId}
-            onCheckedChange={(checked) =>
-              onDraftProviderChange({
-                ...draftProvider,
-                enabled: checked === true,
-              })
-            }
-          />
-          {t("providers.state.enabled")}
-        </Label>
-      </div>
-
-      <div className="grid gap-4 py-4">
-        <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold">
-            {t("providers.sections.auth")}
+        <div className="grid gap-1.5">
+          <Label htmlFor={apiKeyId}>
+            <FieldCaption>{t("providers.fields.apiKey")}</FieldCaption>
+            <Text size="meta" tone="subtle">
+              {hasStoredApiKey
+                ? t("providers.state.configured")
+                : t("providers.state.notConfigured")}
+            </Text>
+          </Label>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              className={cn(fieldClass, "min-w-0 flex-1")}
+              id={apiKeyId}
+              placeholder={
+                hasStoredApiKey ? t("providers.fields.newApiKey") : undefined
+              }
+              type="password"
+              value={apiKey}
+              onChange={(event) => onApiKeyChange(event.target.value)}
+            />
+            {hasStoredApiKey ? (
+              <Button
+                className="shrink-0"
+                type="button"
+                variant="ghost"
+                onClick={onClearApiKey}
+              >
+                <KeyRound className="size-4" />
+                {t("providers.actions.clearKey")}
+              </Button>
+            ) : null}
           </div>
-          <Badge className="shrink-0" variant="outline">
-            {draftProvider.apiKeySecretId
-              ? t("providers.state.configured")
-              : t("providers.state.notConfigured")}
-          </Badge>
         </div>
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-          <Input
-            className={cn(fieldClass, "min-w-0 flex-1")}
-            placeholder={t("providers.fields.newApiKey")}
-            type="password"
-            value={apiKey}
-            onChange={(event) => onApiKeyChange(event.target.value)}
-          />
-          {draftProvider.apiKeySecretId ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {selectedProvider && !presetProviderIds.has(selectedProvider.id) ? (
             <Button
-              className="shrink-0"
+              className="text-muted-foreground hover:text-destructive"
+              size="sm"
               type="button"
               variant="ghost"
-              onClick={onClearApiKey}
+              onClick={() => setIsDeleteConfirmOpen(true)}
             >
-              <KeyRound className="size-4" />
-              {t("providers.actions.clearKey")}
+              <Trash2 className="size-4" />
+              {t("providers.actions.delete")}
             </Button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-border/60 border-t pt-4">
-        {selectedProvider && !presetProviderIds.has(selectedProvider.id) ? (
+          ) : (
+            <span />
+          )}
           <Button
-            className="text-muted-foreground hover:text-destructive"
             size="sm"
             type="button"
-            variant="ghost"
-            onClick={() => setIsDeleteConfirmOpen(true)}
+            variant="secondary"
+            onClick={onSaveProvider}
           >
-            <Trash2 className="size-4" />
-            {t("providers.actions.delete")}
+            <Check className="size-4" />
+            {t("providers.actions.save")}
           </Button>
-        ) : (
-          <span />
-        )}
-        <Button
-          size="sm"
-          type="button"
-          variant="secondary"
-          onClick={onSaveProvider}
-        >
-          <Check className="size-4" />
-          {t("providers.actions.save")}
-        </Button>
+        </div>
       </div>
 
       <AppConfirmDialog
