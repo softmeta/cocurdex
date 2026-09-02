@@ -33,7 +33,7 @@ import {
   useResolvedShortcutLabel,
 } from "@/features/shortcuts";
 import type { LanguageMode } from "@/i18n/language";
-import { cn, formatShortcutLabel } from "@/lib";
+import { formatShortcutLabel } from "@/lib";
 import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
 import { CliPathSettingsPanel } from "./cli-path-settings";
@@ -43,6 +43,7 @@ import { LanguagePicker } from "./language-picker";
 import { McpSettingsPanel } from "./mcp";
 import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
+import { OssLicensesSettingsPanel } from "./oss-licenses";
 import { ProviderSettingsPanel } from "./providers";
 import { settingsSections } from "./settings-sections";
 import { SettingsSelect } from "./settings-select";
@@ -85,11 +86,11 @@ function SettingsGroup({
   return (
     <div className="flex flex-col">
       {title ? (
-        <div className="mb-2 px-1 text-meta font-medium uppercase tracking-wider text-muted-foreground/60">
+        <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
           {title}
         </div>
       ) : null}
-      <div className="rounded-card border border-border/40 bg-card/45 px-4 shadow-sm">
+      <div className="rounded-card border border-border/40 bg-card/45 px-4">
         <div className="flex flex-col divide-y divide-border/30">
           {children}
         </div>
@@ -303,10 +304,6 @@ function GeneralPanel({
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title={t("updates.groupTitle")}>
-        <AppUpdateSettingsPanel />
-      </SettingsGroup>
-
       <SettingsGroup title={t("cli.groupTitle")}>
         <CliPathSettingsPanel />
       </SettingsGroup>
@@ -404,6 +401,24 @@ function SectionPanel({
     return <GitSettingsPanel />;
   }
 
+  if (sectionId === "about") {
+    return (
+      <div className="settings-panel-enter flex flex-col gap-8">
+        <SettingsGroup>
+          <AppUpdateSettingsPanel />
+        </SettingsGroup>
+      </div>
+    );
+  }
+
+  if (sectionId === "licenses") {
+    return (
+      <div className="settings-panel-enter flex min-h-0 flex-1 flex-col">
+        <OssLicensesSettingsPanel />
+      </div>
+    );
+  }
+
   return (
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup>
@@ -451,6 +466,31 @@ export function SettingsScreen({
   const activeSectionMeta =
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];
+  const isFillLayout = activeSection === "licenses";
+  const settingsHeading = (
+    <header>
+      <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        {t(`settings:sections.${activeSectionMeta.labelKey}`)}
+      </h1>
+    </header>
+  );
+  const settingsPanel = (
+    <SectionPanel
+      appearanceSettings={appearanceSettings}
+      chatLayoutMode={chatLayoutMode}
+      hideFabWhenClosed={hideFabWhenClosed}
+      languageMode={languageMode}
+      notificationSettings={notificationSettings}
+      onAppearanceSettingsChange={onAppearanceSettingsChange}
+      onChatLayoutModeChange={onChatLayoutModeChange}
+      onHideFabWhenClosedChange={onHideFabWhenClosedChange}
+      onLanguageModeChange={onLanguageModeChange}
+      onNotificationSettingsChange={onNotificationSettingsChange}
+      onThemeModeChange={onThemeModeChange}
+      sectionId={activeSection}
+      themeMode={themeMode}
+    />
+  );
 
   return (
     <main className="relative flex h-screen overflow-hidden bg-background text-foreground">
@@ -475,37 +515,23 @@ export function SettingsScreen({
           <div className="w-32 shrink-0" />
           <div className="app-drag min-w-0 flex-1" />
         </div>
-        <div className="h-[calc(100vh-2rem)] pb-8">
-          <ScrollArea className="h-full">
-            <div
-              className={cn(
-                "mx-auto flex w-full min-w-0 flex-col gap-8 px-4 pt-10 pb-10 sm:px-6 lg:px-8 max-w-[640px]",
-              )}
-            >
-              <header>
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                  {t(`settings:sections.${activeSectionMeta.labelKey}`)}
-                </h1>
-              </header>
-
-              <SectionPanel
-                appearanceSettings={appearanceSettings}
-                chatLayoutMode={chatLayoutMode}
-                hideFabWhenClosed={hideFabWhenClosed}
-                languageMode={languageMode}
-                notificationSettings={notificationSettings}
-                onAppearanceSettingsChange={onAppearanceSettingsChange}
-                onChatLayoutModeChange={onChatLayoutModeChange}
-                onHideFabWhenClosedChange={onHideFabWhenClosedChange}
-                onLanguageModeChange={onLanguageModeChange}
-                onNotificationSettingsChange={onNotificationSettingsChange}
-                onThemeModeChange={onThemeModeChange}
-                sectionId={activeSection}
-                themeMode={themeMode}
-              />
+        {isFillLayout ? (
+          <div className="flex h-[calc(100vh-2rem)] min-h-0 flex-col pb-8">
+            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-10 sm:px-6 lg:px-8">
+              {settingsHeading}
+              {settingsPanel}
             </div>
-          </ScrollArea>
-        </div>
+          </div>
+        ) : (
+          <div className="h-[calc(100vh-2rem)] pb-8">
+            <ScrollArea className="h-full">
+              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-8 px-4 pt-10 pb-10 sm:px-6 lg:px-8">
+                {settingsHeading}
+                {settingsPanel}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
       </section>
 
       {/*

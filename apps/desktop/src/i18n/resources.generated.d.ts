@@ -1247,6 +1247,27 @@ export default interface Resources {
       searchPlaceholder: "Search languages...";
       title: "Interface language";
     };
+    licenses: {
+      chromiumDescription: "Chromium and Electron third-party notices are kept in a separate credits file shipped with the app.";
+      chromiumOpen: "Open Chromium licenses";
+      chromiumTitle: "Chromium / Electron";
+      chromiumUnavailable: "Chromium license file is not available in this build.";
+      description: "Third-party notices for bundled dependencies";
+      dialogDescription: "License texts for software bundled with Cocurdex.";
+      dialogTitle: "Open source licenses";
+      empty: "Try a different name, license, or version.";
+      emptyTitle: "No matching packages";
+      loadError: "The bundled license catalog could not be read.";
+      loadErrorTitle: "Could not load licenses";
+      loading: "Loading licenses…";
+      noLicenseText: "No license text was bundled for this package.";
+      packageCount: "{{total}} packages";
+      packageCountFiltered: "{{visible}} of {{total}}";
+      retry: "Retry";
+      searchPlaceholder: "Search packages";
+      title: "Open source licenses";
+      view: "View";
+    };
     mcp: {
       description: "Configure the MCP servers available to the built-in Pi agent. Servers connect only when Pi uses one of their tools.";
       editorLabel: "MCP server configuration";
@@ -1508,6 +1529,7 @@ export default interface Resources {
       };
     };
     sections: {
+      about: "About";
       adapters: "Adapters";
       appearance: "Appearance";
       archived: "Archived chats";
@@ -1515,6 +1537,7 @@ export default interface Resources {
       environment: "Network";
       general: "General";
       git: "Git";
+      licenses: "Open source licenses";
       mcp: "MCP";
       personalization: "Personalization";
       providers: "Providers";

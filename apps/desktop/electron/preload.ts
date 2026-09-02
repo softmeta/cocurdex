@@ -76,6 +76,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
   checkForAppUpdate: () => ipcRenderer.invoke("app:update:check"),
   dismissAppUpdate: () => ipcRenderer.invoke("app:update:dismiss"),
   installAppUpdate: () => ipcRenderer.invoke("app:update:install"),
+  getOssLicenses: () => ipcRenderer.invoke("app:getOssLicenses"),
+  openChromiumLicenses: () => ipcRenderer.invoke("app:openChromiumLicenses"),
   onAppUpdateState: (listener: (state: AppUpdateState) => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

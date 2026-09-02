@@ -188,6 +188,27 @@
     "searchPlaceholder": "搜索语言…",
     "title": "界面语言"
   },
+  "licenses": {
+    "chromiumDescription": "Chromium 与 Electron 的第三方声明在随应用分发的独立 credits 文件中。",
+    "chromiumOpen": "打开 Chromium 许可",
+    "chromiumTitle": "Chromium / Electron",
+    "chromiumUnavailable": "当前构建中没有 Chromium 许可文件。",
+    "description": "捆绑依赖的第三方声明",
+    "dialogDescription": "Cocurdex 捆绑软件的许可文本。",
+    "dialogTitle": "开源许可",
+    "empty": "试试其他名称、许可证或版本。",
+    "emptyTitle": "没有匹配的软件包",
+    "loadError": "无法读取捆绑的许可清单。",
+    "loadErrorTitle": "无法加载许可",
+    "loading": "正在加载许可…",
+    "noLicenseText": "此软件包没有捆绑许可文本。",
+    "packageCount": "{{total}} 个软件包",
+    "packageCountFiltered": "{{visible}} / {{total}}",
+    "retry": "重试",
+    "searchPlaceholder": "搜索软件包",
+    "title": "开源许可",
+    "view": "查看"
+  },
   "mcp": {
     "description": "配置内置 Pi agent 可用的 MCP 服务器。只有 Pi 使用相关工具时，服务器才会连接。",
     "editorLabel": "MCP 服务器配置",
@@ -447,6 +468,7 @@
     }
   },
   "sections": {
+    "about": "关于",
     "adapters": "适配器",
     "appearance": "外观",
     "archived": "已归档聊天",
@@ -454,6 +476,7 @@
     "environment": "网络",
     "general": "常规",
     "git": "Git",
+    "licenses": "开源许可",
     "mcp": "MCP",
     "personalization": "个性化",
     "providers": "服务商",

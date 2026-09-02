@@ -106,6 +106,12 @@ const fallbackApi: DesktopApi = {
   dismissAppUpdate: async () => fallbackApi.getAppUpdateState(),
   installAppUpdate: async () => {},
   onAppUpdateState: () => () => {},
+  getOssLicenses: async () => ({
+    chromiumAvailable: false,
+    entries: [],
+    texts: {},
+  }),
+  openChromiumLicenses: async () => ({ ok: false }),
   getCliPathStatus: async () => ({
     available: false,
     installed: false,

@@ -95,6 +95,7 @@ import {
   queueOpenFolder,
   resolveDroppedOpenPath,
 } from "./open-folder";
+import { registerOssLicensesHandlers } from "./oss-licenses";
 import {
   initializePdfAnnotationsStorage,
   loadPdfDocumentAnnotations,
@@ -1352,6 +1353,7 @@ app
     registerCliPathHandlers();
     registerSkillsHandlers();
     registerAppUpdateHandlers();
+    registerOssLicensesHandlers();
     startAppUpdater({
       currentVersion: app.getVersion(),
       packaged: app.isPackaged,

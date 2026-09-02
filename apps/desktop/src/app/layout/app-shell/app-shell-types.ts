@@ -10,6 +10,8 @@ export type SettingsSectionId =
   | "mcp"
   | "skills"
   | "git"
+  | "about"
+  | "licenses"
   | "environment"
   | "workspace"
   | "computer"

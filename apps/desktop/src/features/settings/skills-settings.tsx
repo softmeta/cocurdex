@@ -195,10 +195,10 @@ export function SkillsSettingsPanel() {
       <div className="text-body text-muted-foreground">{t("skills.intro")}</div>
 
       <div className="flex flex-col">
-        <div className="mb-2 px-1 text-meta font-medium uppercase tracking-wider text-muted-foreground/60">
+        <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
           {t("skills.groupTitle")}
         </div>
-        <div className="rounded-card border border-border/40 bg-card/45 px-4 shadow-sm">
+        <div className="rounded-card border border-border/40 bg-card/45 px-4">
           <div className="flex flex-col divide-y divide-border/30">
             <ScopeCard
               key={activeWorkspace?.rootPath ?? "no-project"}

@@ -23,6 +23,7 @@ apps/desktop/resources/cli/cli.mjs.map
 apps/desktop/resources/cli/daemon.cjs
 apps/desktop/resources/cli/daemon.mjs
 apps/desktop/resources/cli/photon_rs_bg.wasm
+apps/desktop/resources/oss-licenses.json
 coverage/
 .playwright/
 playwright-report/

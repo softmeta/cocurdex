@@ -190,8 +190,19 @@ export function TurnChangesCard({
     }
   };
 
+  const showUndoConflict = undoResult?.status === "conflict";
+  const showUndoRestored = undoResult?.status === "restored";
+  const showUndoFailed = undoResult?.status === "failed";
+  const showUndoUnavailable =
+    !canUndo && nonRestorableFiles.length > 0 && !isStreaming;
+  const showStatus =
+    showUndoConflict ||
+    showUndoRestored ||
+    showUndoFailed ||
+    showUndoUnavailable;
+
   return (
-    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card bg-chat-surface-bubble">
+    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card border border-chat-border-soft">
       <div className="flex items-center gap-2 px-3 py-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
           <Text className="text-chat-fg" size="meta" weight="medium">
@@ -239,40 +250,44 @@ export function TurnChangesCard({
           </Button>
         </div>
       </div>
-      <div className="pb-1">
-        <ul className="flex min-w-0 flex-col">
-          {visibleFiles.map((file) => (
-            <TurnChangeFileRow file={file} key={file.path} onReview={review} />
-          ))}
-        </ul>
-        {fileCount >= SHOW_ALL_BELOW ? (
+      <ul className="flex min-w-0 flex-col divide-y divide-chat-border-soft border-t border-chat-border-soft">
+        {visibleFiles.map((file) => (
+          <TurnChangeFileRow file={file} key={file.path} onReview={review} />
+        ))}
+      </ul>
+      {fileCount >= SHOW_ALL_BELOW ? (
+        <div className="border-t border-chat-border-soft">
           <TurnChangesListToggle
             expanded={showAllFiles}
             hiddenCount={hiddenCount}
             onToggle={() => setShowAllFiles((current) => !current)}
           />
-        ) : null}
-        {undoResult?.status === "conflict" ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.conflict")}
-          </Text>
-        ) : null}
-        {undoResult?.status === "restored" ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.restored")}
-          </Text>
-        ) : null}
-        {undoResult?.status === "failed" ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.undoFailed")}
-          </Text>
-        ) : null}
-        {!canUndo && nonRestorableFiles.length > 0 && !isStreaming ? (
-          <Text className="px-2 py-1 text-chat-fg-muted" size="meta">
-            {t("turnChanges.undoUnavailable")}
-          </Text>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
+      {showStatus ? (
+        <div className="border-t border-chat-border-soft">
+          {showUndoConflict ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.conflict")}
+            </Text>
+          ) : null}
+          {showUndoRestored ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.restored")}
+            </Text>
+          ) : null}
+          {showUndoFailed ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.undoFailed")}
+            </Text>
+          ) : null}
+          {showUndoUnavailable ? (
+            <Text className="block px-3 py-1.5 text-chat-fg-muted" size="meta">
+              {t("turnChanges.undoUnavailable")}
+            </Text>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

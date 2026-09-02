@@ -147,7 +147,7 @@ export function ShortcutsSettingsPanel() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-card border border-border/40 bg-card/45 shadow-sm">
+      <div className="overflow-hidden rounded-card border border-border/40 bg-card/45">
         {totalVisible === 0 ? (
           <div className="px-4 py-10">
             <EmptyState
@@ -160,7 +160,7 @@ export function ShortcutsSettingsPanel() {
             {filteredGroups.map((group) => (
               <section key={group.category}>
                 <div className="sticky top-0 z-10 border-b border-border/30 bg-card/95 px-3 py-1.5 backdrop-blur-sm">
-                  <div className="text-meta font-medium uppercase tracking-wider text-muted-foreground/70">
+                  <div className="text-meta font-medium text-muted-foreground/70">
                     {group.label}
                   </div>
                 </div>
