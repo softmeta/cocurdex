@@ -3,6 +3,7 @@ import type {
   AgentMcpServerRuntime,
   AgentPermissionMode,
   AgentProviderSnapshot,
+  AgentSessionConfigOption,
   CompatibleProviderModel,
   ProviderModelRecord,
   ReasoningEffort,
@@ -21,6 +22,12 @@ import {
   resolveOpenCodeRuntimeValue,
 } from "@/features/sessions/provider-model/opencode-runtime-options";
 import { shouldShowProviderGroupLabels } from "@/features/sessions/provider-model/provider-model-label";
+import {
+  AgentRuntimeConfigItems,
+  getComposerSessionConfigOptions,
+  getSessionConfigTriggerValues,
+  type OccupiedSessionConfigAxis,
+} from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
 
@@ -44,6 +51,8 @@ export function SessionRuntimeMenu({
   serviceTier,
   fastMode,
   mcpServers,
+  configOptions = [],
+  isRunning = false,
   thinkingLevel,
   triggerValues,
   onPermissionModeChange,
@@ -54,6 +63,7 @@ export function SessionRuntimeMenu({
   onOpenCodeAgentChange,
   onOpenCodeVariantChange,
   onThinkingLevelReset,
+  onConfigOptionChange,
 }: {
   agentType: AgentId;
   compatibleProviders: CompatibleProviderModel[];
@@ -68,7 +78,8 @@ export function SessionRuntimeMenu({
   serviceTier: string | null;
   fastMode: boolean;
   mcpServers: readonly AgentMcpServerRuntime[] | null;
-  /** Thinking level owned by the composer footer, cleared by "reset". */
+  configOptions?: readonly AgentSessionConfigOption[] | null;
+  isRunning?: boolean;
   thinkingLevel?: string | null;
   /** Extra trigger chips (thinking / permission), matching new-session card. */
   triggerValues?: readonly string[];
@@ -80,6 +91,7 @@ export function SessionRuntimeMenu({
   onOpenCodeAgentChange(value: string | null): void;
   onOpenCodeVariantChange(value: string | null): void;
   onThinkingLevelReset?(): void;
+  onConfigOptionChange?(configId: string, value: boolean | string): void;
 }) {
   const { t } = useTranslation("sessions");
   const hasModel = compatibleProviders.length > 1;
@@ -135,6 +147,26 @@ export function SessionRuntimeMenu({
     openCodeRuntimeOptions.variants,
   );
   const hasPermission = supportsLivePermissionMode(agentType);
+  const occupiedConfigAxes: OccupiedSessionConfigAxis[] = ["model", "mode"];
+  if (supportsRuntimeAxis("thinking") || effortOptions.length > 0) {
+    occupiedConfigAxes.push("thinking");
+  }
+  if (hasPermission) {
+    occupiedConfigAxes.push("permission");
+  }
+  if (supportsRuntimeAxis("speed")) {
+    occupiedConfigAxes.push("speed");
+  }
+  if (supportsRuntimeAxis("agent")) {
+    occupiedConfigAxes.push("agent");
+  }
+  if (supportsRuntimeAxis("variant")) {
+    occupiedConfigAxes.push("variant");
+  }
+  const sessionConfigOptions = getComposerSessionConfigOptions(
+    configOptions ?? [],
+    occupiedConfigAxes,
+  );
   const hasRuntimeOptions =
     effortOptions.length > 0 ||
     tierOptions.length > 0 ||
@@ -144,6 +176,7 @@ export function SessionRuntimeMenu({
   const hasMenu =
     Boolean(footer) ||
     mcpServers !== null ||
+    sessionConfigOptions.length > 0 ||
     hasPermission ||
     hasModel ||
     hasRuntimeOptions;
@@ -155,6 +188,11 @@ export function SessionRuntimeMenu({
   const menuFooter = (
     <>
       {mcpServers !== null ? <McpRuntimeSubmenu servers={mcpServers} /> : null}
+      <AgentRuntimeConfigItems
+        configOptions={sessionConfigOptions}
+        disabled={isRunning}
+        onChange={onConfigOptionChange}
+      />
       {footer}
       {hasPermission ? (
         <PermissionModeSubmenu
@@ -199,7 +237,14 @@ export function SessionRuntimeMenu({
       thinkingLevelValue={thinkingLevel ?? DEFAULT_VALUE}
       showProviderGroupLabels={shouldShowProviderGroupLabels(agentType)}
       triggerClassName={composerFooterControlClassName("min-w-0 max-w-[280px]")}
-      triggerValues={triggerValues}
+      triggerValues={[
+        ...(triggerValues ?? []),
+        ...getSessionConfigTriggerValues(
+          configOptions ?? [],
+          occupiedConfigAxes,
+          triggerValues,
+        ),
+      ]}
       value={modelValue}
       onChange={onModelChange}
       onFastModeChange={(value) => onFastModeChange(value === "on")}

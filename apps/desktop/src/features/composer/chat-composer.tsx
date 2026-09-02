@@ -2,7 +2,6 @@ import type {
   AgentId,
   AgentPermissionMode,
   AgentProviderSnapshot,
-  AgentSessionConfigOption,
   AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
@@ -42,7 +41,6 @@ import {
   supportsPlanMode,
 } from "@/features/sessions";
 import { cn } from "@/lib";
-import { AgentRuntimeConfigControl } from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import {
   type ComposerDraft,
@@ -104,7 +102,6 @@ interface ChatComposerProps {
   attachMenuExtras?: ReactNode;
   controls?: ReactNode;
   runtimeCommands?: AgentSlashCommand[] | null;
-  runtimeConfigOptions?: AgentSessionConfigOption[];
   runtimeMode?: {
     availableModes: AgentSessionMode[];
     currentModeId: string;
@@ -125,7 +122,6 @@ interface ChatComposerProps {
   onSelectAgent?(agentType: AgentId): void;
   onSelectThinkingLevel?(level: AgentThinkingLevel): void;
   onSelectRuntimeMode?(modeId: string): void;
-  onSelectRuntimeConfig?(configId: string, value: boolean | string): void;
   onSend(
     message: string,
     attachments: MessageAttachment[],
@@ -152,7 +148,6 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       attachMenuExtras,
       controls,
       runtimeCommands,
-      runtimeConfigOptions = [],
       runtimeMode,
       footerLeading,
       footerTrailing,
@@ -165,7 +160,6 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       onSelectCollaborationMode,
       onSelectAgent,
       onSelectThinkingLevel,
-      onSelectRuntimeConfig,
       onSelectRuntimeMode,
       onSend,
       onStop,
@@ -485,16 +479,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       </>
     ) : null;
 
-    const defaultAgentControls = isAgentMode ? (
-      <>
-        {agentMenu}
-        <AgentRuntimeConfigControl
-          configOptions={runtimeConfigOptions}
-          disabled={isRunning}
-          onChange={onSelectRuntimeConfig}
-        />
-      </>
-    ) : null;
+    const defaultAgentControls = isAgentMode ? agentMenu : null;
     const resolvedControls = controls ?? defaultAgentControls;
 
     const attachMenuContent = (

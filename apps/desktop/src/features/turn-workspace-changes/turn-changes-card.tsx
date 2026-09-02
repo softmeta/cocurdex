@@ -191,7 +191,7 @@ export function TurnChangesCard({
   };
 
   return (
-    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card bg-chat-surface-subtle">
+    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card bg-chat-surface-bubble">
       <div className="flex items-center gap-2 px-3 py-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
           <Text className="text-chat-fg" size="meta" weight="medium">
@@ -220,33 +220,27 @@ export function TurnChangesCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
-            className="text-chat-fg-muted text-meta"
+            className="text-chat-fg-muted"
             disabled={!canUndo || undoing}
             onClick={() => void handleUndo()}
             size="xs"
             type="button"
             variant="ghost"
           >
-            {t("turnChanges.undo")}
+            <Text size="meta">{t("turnChanges.undo")}</Text>
             {undoing ? (
               <Spinner size="xs" />
             ) : (
               <RotateCcw className="size-3.5" />
             )}
           </Button>
-          <Button
-            className="text-meta"
-            onClick={review}
-            size="xs"
-            type="button"
-            variant="secondary"
-          >
-            {t("turnChanges.review")}
+          <Button onClick={review} size="xs" type="button" variant="secondary">
+            <Text size="meta">{t("turnChanges.review")}</Text>
           </Button>
         </div>
       </div>
-      <div className="border-chat-border-soft border-t pb-1">
-        <ul className="flex min-w-0 flex-col divide-y divide-chat-border-soft">
+      <div className="pb-1">
+        <ul className="flex min-w-0 flex-col">
           {visibleFiles.map((file) => (
             <TurnChangeFileRow file={file} key={file.path} onReview={review} />
           ))}

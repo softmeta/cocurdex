@@ -1192,13 +1192,6 @@ export function CenterPanel({
                 : undefined
             }
             onSelectThinkingLevel={selectThinkingLevel}
-            onSelectRuntimeConfig={(configId, value) => {
-              void desktopApi.setSessionRuntimeConfig(
-                activeSession.id,
-                configId,
-                value,
-              );
-            }}
             onSelectRuntimeMode={(modeId) => {
               void desktopApi.setSessionRuntimeMode(activeSession.id, modeId);
             }}

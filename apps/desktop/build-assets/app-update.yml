@@ -1,0 +1,4 @@
+provider: github
+owner: softmeta
+repo: cocurdex
+releaseType: release

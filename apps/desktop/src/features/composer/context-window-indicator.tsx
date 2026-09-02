@@ -198,10 +198,12 @@ export function ContextUsageMeter({
 // with "—" for tokens until the first `usage.updated` arrives.
 export function ContextWindowIndicator({
   footer,
+  isRunning = false,
   layout = "inline",
   afterModel,
 }: {
   footer?: ReactNode;
+  isRunning?: boolean;
   layout?: "inline" | "split";
   afterModel?: ReactNode;
 }) {
@@ -399,7 +401,9 @@ export function ContextWindowIndicator({
   const permissionModeLabel = effectivePermissionMode
     ? t(`permissionMode.${effectivePermissionMode}`)
     : null;
-  const runtimeMode = agentRuntimeBySession[session.id]?.mode;
+  const sessionRuntime = agentRuntimeBySession[session.id];
+  const runtimeMode = sessionRuntime?.mode;
+  const sessionConfigOptions = sessionRuntime?.configOptions ?? [];
   const collaborationModeLabel = (() => {
     if (runtimeMode && runtimeMode.currentModeId !== "default") {
       return (
@@ -445,9 +449,9 @@ export function ContextWindowIndicator({
       reasoningEffort={snapshot?.reasoningEffort ?? null}
       serviceTier={snapshot?.serviceTier ?? null}
       fastMode={fastMode}
-      mcpServers={
-        agentRuntimeBySession[session.id]?.runtime?.mcpServers ?? null
-      }
+      mcpServers={sessionRuntime?.runtime?.mcpServers ?? null}
+      configOptions={sessionConfigOptions}
+      isRunning={isRunning}
       thinkingLevel={snapshot?.thinkingLevel ?? null}
       triggerValues={menuTriggerValues}
       onPermissionModeChange={(permissionMode) =>
@@ -478,6 +482,9 @@ export function ContextWindowIndicator({
       onThinkingLevelReset={() =>
         updateProviderRuntime({ sessionId: session.id, thinkingLevel: null })
       }
+      onConfigOptionChange={(configId, value) => {
+        void desktopApi.setSessionRuntimeConfig(session.id, configId, value);
+      }}
     />
   );
   // Grok (and similar ACP agents) are not in the global provider-models table

@@ -105,8 +105,6 @@ export default interface Resources {
       expand: "Expand tasks";
       label: "Tasks";
       progress: "{{done}}/{{count}}";
-      progress_one: "";
-      progress_other: "";
     };
     planApproval: {
       abandon: "Abandon plan";
@@ -181,9 +179,6 @@ export default interface Resources {
       };
     };
     reasoning: "Reasoning";
-    runtime: {
-      settings: "Agent settings";
-    };
     system: "System";
     thinking: "Thinking";
     toolCalls: {

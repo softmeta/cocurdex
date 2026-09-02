@@ -232,16 +232,14 @@ export function PanelComposer({
               </DropdownMenu>
               {footerLeading}
               {resolvedControls}
-              {isAgentMode && tone !== "welcome" ? (
+              {isAgentMode ? (
                 <ContextWindowIndicator
                   afterModel={footerTrailing}
                   footer={runtimeMenuExtras}
+                  isRunning={isRunning}
                   layout="split"
                 />
               ) : null}
-              {isAgentMode && tone === "welcome" && footerTrailing
-                ? footerTrailing
-                : null}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               {!isAgentMode && footerTrailing ? footerTrailing : null}

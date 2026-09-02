@@ -351,6 +351,7 @@ export function PillComposer({
               <ContextWindowIndicator
                 afterModel={footerTrailing}
                 footer={runtimeMenuExtras}
+                isRunning={isRunning}
                 layout="split"
               />
             ) : null}

@@ -155,6 +155,10 @@
     ],
     "extraResources": [
       {
+        "from": "build-assets/app-update.yml",
+        "to": "app-update.yml"
+      },
+      {
         "from": "vendor/fd",
         "to": "vendor/fd",
         "filter": [

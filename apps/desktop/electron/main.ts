@@ -24,6 +24,7 @@ import {
   protocol,
   shell,
 } from "electron";
+import { registerApplicationMenu } from "./app-menu";
 import { resolveElectronEntryPath, resolveUserDataPath } from "./app-paths";
 import {
   type ImportDocumentAttachmentPayload,
@@ -1361,6 +1362,7 @@ app
         }
       },
     });
+    registerApplicationMenu();
     ipcMain.handle("daemon:getStatus", async () =>
       requireDaemonRuntimeClient().getStatus(),
     );

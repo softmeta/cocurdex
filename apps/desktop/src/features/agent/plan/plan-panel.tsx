@@ -42,13 +42,12 @@ export function PlanPanel({
     (step) => step.status === "completed",
   ).length;
   const totalCount = plan.steps.length;
-  // i18next types treat interpolation slots as strings; `count` is reserved
-  // for plurals so it stays a number.
+  const activeStep = plan.steps.find((step) => step.status === "in_progress");
   const progressLabel =
     totalCount > 0
       ? t("plan.progress", {
-          done: String(completedCount),
           count: totalCount,
+          done: String(completedCount),
         })
       : null;
 
@@ -68,14 +67,26 @@ export function PlanPanel({
         <button
           aria-expanded={!collapsed}
           aria-label={collapsed ? t("plan.expand") : t("plan.collapse")}
-          className="flex min-w-0 flex-1 items-center justify-between gap-2 text-start"
+          className="flex min-w-0 flex-1 items-center gap-2 text-start"
           onClick={onToggleCollapsed}
           type="button"
         >
-          <span className="text-meta font-medium uppercase tracking-[0.18em] text-chat-fg-muted">
+          <span className="shrink-0 text-meta font-medium uppercase tracking-[0.18em] text-chat-fg-muted">
             {t("plan.label")}
           </span>
-          <span className="flex items-center gap-1.5 text-meta tabular-nums text-chat-fg-muted">
+          {collapsed && activeStep ? (
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-meta text-chat-fg">
+              <Loader2
+                aria-label={t("toolCalls.running")}
+                className="size-3.5 shrink-0 animate-spin"
+                role="status"
+              />
+              <span className="min-w-0 truncate">{activeStep.step}</span>
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1" />
+          )}
+          <span className="flex shrink-0 items-center gap-1.5 text-meta tabular-nums text-chat-fg-muted">
             {progressLabel}
             {/* The panel is docked at the bottom, so the list grows upward:
                 up means "opens", down means "closes". Vertical rotation keeps

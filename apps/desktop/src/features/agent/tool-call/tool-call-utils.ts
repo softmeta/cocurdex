@@ -111,16 +111,54 @@ export function partitionToolCallRuns(toolCalls: AgentToolCallRecord[]) {
   return runs;
 }
 
-export function getSubagentType(toolCall: AgentToolCallRecord) {
-  const value = toolCall.subagent?.type;
+const GENERIC_SUBAGENT_TYPE_KEYS = new Set([
+  "default",
+  "general",
+  "generalpurpose",
+  "other",
+  "subagent",
+  "task",
+]);
 
-  if (!value) {
+function normalizeSubagentTypeKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function formatSubagentType(value: string) {
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function isRedundantSubagentType(type: string, description: string) {
+  const haystack = description.toLowerCase();
+  const formatted = formatSubagentType(type).toLowerCase();
+  const spaced = type.toLowerCase().replace(/[_-]+/g, " ");
+
+  return (
+    haystack.includes(type.toLowerCase()) ||
+    haystack.includes(formatted) ||
+    haystack.includes(spaced)
+  );
+}
+
+export function getSubagentType(toolCall: AgentToolCallRecord) {
+  const value = toolCall.subagent?.type?.trim();
+
+  if (
+    !value ||
+    GENERIC_SUBAGENT_TYPE_KEYS.has(normalizeSubagentTypeKey(value))
+  ) {
     return null;
   }
 
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const description = toolCall.subagent?.description.trim() ?? "";
+  if (description && isRedundantSubagentType(value, description)) {
+    return null;
+  }
+
+  return formatSubagentType(value);
 }
 
 export function getSubagentDescription(toolCall: AgentToolCallRecord) {

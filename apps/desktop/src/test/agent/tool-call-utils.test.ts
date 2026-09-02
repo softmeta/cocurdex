@@ -175,6 +175,33 @@ describe("tool call utils", () => {
     expect(getSubagentDescription(toolCall)).toBe("Explore source");
   });
 
+  it("hides generic provider subagent types from the chip", () => {
+    const toolCall = {
+      ...subagentToolCall("in_progress"),
+      subagent: {
+        sessionId: "child-session-1",
+        type: "general-purpose",
+        description: "[reviewer] local changes",
+      },
+    };
+
+    expect(getSubagentType(toolCall)).toBeNull();
+    expect(getSubagentDescription(toolCall)).toBe("[reviewer] local changes");
+  });
+
+  it("hides a specific type already named in the description", () => {
+    const toolCall = {
+      ...subagentToolCall("in_progress"),
+      subagent: {
+        sessionId: "child-session-1",
+        type: "reviewer",
+        description: "[reviewer] standards axis",
+      },
+    };
+
+    expect(getSubagentType(toolCall)).toBeNull();
+  });
+
   it("uses status-aware subagent titles", () => {
     expect(getToolCallTitle(subagentToolCall("in_progress"))).toBe(
       "Using subagent",

@@ -7,7 +7,6 @@ import type {
   AgentPlanApprovalRecord,
   AgentProviderSnapshot,
   AgentQuestionRequestRecord,
-  AgentSessionConfigOption,
   AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
@@ -52,7 +51,6 @@ interface ChatComposerControls {
   isRunning: boolean;
   canSendWhileRunning?: boolean;
   runtimeCommands?: AgentSlashCommand[] | null;
-  runtimeConfigOptions?: AgentSessionConfigOption[];
   runtimeMode?: {
     availableModes: AgentSessionMode[];
     currentModeId: string;
@@ -71,7 +69,6 @@ interface ChatComposerControls {
   onSelectPermissionMode?(mode: AgentPermissionMode): void;
   onSelectThinkingLevel?(level: AgentThinkingLevel): void;
   onSelectRuntimeMode?(modeId: string): void;
-  onSelectRuntimeConfig?(configId: string, value: boolean | string): void;
   onSelectAgent?(agentType: AgentId): void;
   onSend(
     message: string,
