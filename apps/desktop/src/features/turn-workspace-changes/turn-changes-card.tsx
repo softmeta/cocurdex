@@ -94,7 +94,7 @@ function TurnChangeFileRow({
     <li className="min-w-0">
       <button
         aria-label={`${t(`turnChanges.${fileOperationLabelKey(file.operation)}`)} ${file.path}`}
-        className="flex w-full min-w-0 items-center gap-2 px-3 py-1.5 text-start transition-colors hover:bg-chat-surface-row-hover"
+        className="flex h-9 w-full min-w-0 items-center gap-2 px-3 text-start transition-colors hover:bg-chat-surface-row-hover"
         type="button"
         onClick={onReview}
       >
