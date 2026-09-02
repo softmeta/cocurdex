@@ -65,3 +65,31 @@ After changing TypeScript, run typecheck on the touched packages and
 
 Opening a pull request does not create an obligation to merge it. Large
 drive-by features are likely to be closed.
+
+## Desktop releases
+
+Maintainers ship the macOS app from GitHub Actions
+(`.github/workflows/release-macos.yml`). Pushing a `v*.*.*` tag on `main` is
+enough; the tag can be created locally.
+
+1. Merge the work into `main` through a pull request. GitHub release notes list
+   **merged PRs between the previous tag and this one**. Direct pushes (including
+   tagging `dev` without a PR into `main`) produce only a compare link.
+2. Set the version in `apps/desktop/package.json` (not the repo root
+   `package.json`). The tag must be `v` plus that version, for example `v0.1.7`.
+3. Tag the merge commit on `main` and push that tag only:
+
+   ```bash
+   git checkout main
+   git pull
+   git tag v0.1.7
+   git push origin v0.1.7
+   ```
+
+   Creating the tag in the GitHub UI is equivalent. A local tag that is never
+   pushed does not start the workflow. Do not `git push --tags`.
+
+The workflow drafts the GitHub release with `--generate-notes`, builds and
+notarizes the arm64 DMG, then publishes the release. Do not run
+`pnpm --filter @cocurdex/desktop dist:mac:arm64:release` locally for a
+production ship.
