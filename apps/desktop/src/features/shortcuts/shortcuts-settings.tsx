@@ -147,7 +147,7 @@ export function ShortcutsSettingsPanel() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-card border border-border/40 bg-card/45">
+      <div className="overflow-hidden rounded-card border border-border/70 bg-card/45">
         {totalVisible === 0 ? (
           <div className="px-4 py-10">
             <EmptyState
@@ -164,7 +164,7 @@ export function ShortcutsSettingsPanel() {
                     {group.label}
                   </div>
                 </div>
-                <ul className="divide-y divide-border/30">
+                <ul className="divide-y divide-border/60">
                   {group.items.map((item) => {
                     const { definition } = item;
                     const combo = resolveShortcutCombo(

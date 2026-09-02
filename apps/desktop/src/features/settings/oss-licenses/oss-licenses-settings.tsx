@@ -15,7 +15,6 @@ import {
 const LICENSE_ROW_ESTIMATE = 52;
 
 export function OssLicensesSettingsPanel() {
-  const { t } = useTranslation("settings");
   const [payload, setPayload] = useState<OssLicensesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -38,19 +37,14 @@ export function OssLicensesSettingsPanel() {
   });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <Text size="body" tone="muted">
-        {t("licenses.dialogDescription")}
-      </Text>
-      <OssLicensesBrowser
-        loadError={loadError}
-        loading={loading}
-        payload={payload}
-        onRetry={() => {
-          void loadLicenses();
-        }}
-      />
-    </div>
+    <OssLicensesBrowser
+      loadError={loadError}
+      loading={loading}
+      payload={payload}
+      onRetry={() => {
+        void loadLicenses();
+      }}
+    />
   );
 }
 
@@ -88,19 +82,16 @@ function OssLicensesBrowser({
       })
     : t("licenses.packageCount", { total: String(rows.length) });
 
-  if (loading && !payload) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center gap-2">
-        <Spinner size="md" />
-        <Text size="body" tone="muted">
-          {t("licenses.loading")}
-        </Text>
-      </div>
-    );
-  }
-
-  if (loadError || !payload) {
-    return (
+  let body = (
+    <div className="flex min-h-0 flex-1 items-center justify-center gap-2">
+      <Spinner size="md" />
+      <Text size="body" tone="muted">
+        {t("licenses.loading")}
+      </Text>
+    </div>
+  );
+  if (loadError || (!loading && !payload)) {
+    body = (
       <EmptyState
         action={
           <Button size="sm" variant="outline" onClick={onRetry}>
@@ -113,34 +104,46 @@ function OssLicensesBrowser({
         title={t("licenses.loadErrorTitle")}
       />
     );
+  } else if (payload) {
+    body = (
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(16rem,18rem)_minmax(0,1fr)] overflow-hidden rounded-card border border-border/70">
+        <div className="flex min-h-0 flex-col border-border/40 border-e">
+          <div className="shrink-0 border-border/40 border-b p-2">
+            <Input
+              aria-label={t("licenses.searchPlaceholder")}
+              autoComplete="off"
+              placeholder={t("licenses.searchPlaceholder")}
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+            />
+          </div>
+          <OssLicensesPackageList
+            rows={filtered}
+            selectedId={selected?.id ?? null}
+            onSelect={setSelectedId}
+          />
+        </div>
+        <OssLicensesDetail row={selected} text={selectedText} />
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <Input
-          aria-label={t("licenses.searchPlaceholder")}
-          autoComplete="off"
-          className="min-w-0 flex-1"
-          placeholder={t("licenses.searchPlaceholder")}
-          type="search"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-          }}
-        />
-        <Text className="shrink-0" size="meta" tone="muted">
-          {packageCountLabel}
+      <div className="flex items-baseline justify-between gap-3">
+        <Text size="body" tone="muted">
+          {t("licenses.dialogDescription")}
         </Text>
+        {payload ? (
+          <Text className="shrink-0" size="meta" tone="muted">
+            {packageCountLabel}
+          </Text>
+        ) : null}
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(16rem,18rem)_minmax(0,1fr)] overflow-hidden rounded-card border border-border/40">
-        <OssLicensesPackageList
-          rows={filtered}
-          selectedId={selected?.id ?? null}
-          onSelect={setSelectedId}
-        />
-        <OssLicensesDetail row={selected} text={selectedText} />
-      </div>
+      {body}
     </div>
   );
 }
@@ -165,7 +168,7 @@ function OssLicensesPackageList({
 
   if (rows.length === 0) {
     return (
-      <div className="min-h-0 overflow-hidden border-border/40 border-e">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <EmptyState
           className="h-full py-8"
           description={t("licenses.empty")}
@@ -178,7 +181,7 @@ function OssLicensesPackageList({
 
   return (
     <div
-      className="min-h-0 overflow-auto border-border/40 border-e"
+      className="min-h-0 flex-1 overflow-auto"
       ref={scrollRef}
       role="listbox"
     >

@@ -176,7 +176,7 @@ export function McpSettingsPanel() {
 
       <div className="flex flex-col">
         {mode === "form" ? (
-          <div className="rounded-card border border-border/40 bg-card/45">
+          <div className="rounded-card border border-border/70 bg-card/45">
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="text-body font-medium text-foreground">
                 {t("mcp.form.servers")}
@@ -191,7 +191,7 @@ export function McpSettingsPanel() {
                 {t("mcp.form.add")}
               </Button>
             </div>
-            <div className="flex flex-col divide-y divide-border/30 border-t border-border/30">
+            <div className="flex flex-col divide-y divide-border/60 border-t border-border/60">
               {servers.length ? (
                 servers.map((server, index) => (
                   <McpServerEditor
@@ -224,7 +224,7 @@ export function McpSettingsPanel() {
           <Textarea
             aria-invalid={Boolean(error)}
             aria-label={t("mcp.editorLabel")}
-            className="min-h-96 resize-y rounded-card border-border/40 bg-card/45 font-mono text-body leading-6 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="min-h-96 resize-y rounded-card border-border/70 bg-card/45 font-mono text-body leading-6 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
             spellCheck={false}
             value={config}
             onChange={(event) => {
