@@ -1,5 +1,6 @@
 import type { WorkspaceRecord } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import { desktopApi, type GitBranchInfo } from "@/lib";
 import {
   findMostRecentlyOpenedWorkspace,
@@ -52,8 +53,45 @@ export const activeWorkspaceIdAtom = atom<string | null>(null);
 // "No project"), so the top-level "new session" entry can re-enter that
 // project by default. Stays null only for users who have never had a project.
 export const lastSelectedWorkspaceIdAtom = atom<string | null>(null);
-/** Workspace ids whose session list is collapsed in the projects sidebar. */
-export const collapsedWorkspaceIdsAtom = atom<string[]>([]);
+export const COLLAPSED_WORKSPACE_IDS_STORAGE_KEY =
+  "cocurdex.sidebar.collapsed-workspace-ids";
+
+type CollapsedWorkspaceIdsUpdate = string[] | ((current: string[]) => string[]);
+
+export function normalizeCollapsedWorkspaceIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== "string" || item.length === 0 || seen.has(item)) {
+      continue;
+    }
+    seen.add(item);
+    ids.push(item);
+  }
+  return ids;
+}
+
+const storedCollapsedWorkspaceIdsAtom = atomWithStorage<unknown>(
+  COLLAPSED_WORKSPACE_IDS_STORAGE_KEY,
+  [],
+  undefined,
+  { getOnInit: true },
+);
+
+export const collapsedWorkspaceIdsAtom = atom(
+  (get) => normalizeCollapsedWorkspaceIds(get(storedCollapsedWorkspaceIdsAtom)),
+  (get, set, update: CollapsedWorkspaceIdsUpdate) => {
+    const current = normalizeCollapsedWorkspaceIds(
+      get(storedCollapsedWorkspaceIdsAtom),
+    );
+    const next = typeof update === "function" ? update(current) : update;
+    set(storedCollapsedWorkspaceIdsAtom, normalizeCollapsedWorkspaceIds(next));
+  },
+);
+
 export const activeBranchesAtom = atom<GitBranchInfo[]>([]);
 export const activeBranchAtom = atom<string | null>(null);
 
@@ -198,5 +236,9 @@ export const removeWorkspaceAtom = atom(
     if (get(lastSelectedWorkspaceIdAtom) === workspaceId) {
       set(lastSelectedWorkspaceIdAtom, next[0]?.id ?? null);
     }
+    set(
+      collapsedWorkspaceIdsAtom,
+      get(collapsedWorkspaceIdsAtom).filter((id) => id !== workspaceId),
+    );
   },
 );
