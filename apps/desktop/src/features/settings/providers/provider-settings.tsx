@@ -7,7 +7,7 @@ import type {
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { Braces, Plus, Search } from "lucide-react";
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button, Input, Spinner } from "@/components/ui";
@@ -35,6 +35,14 @@ const activeProviderTabClassName =
   "border-primary/30 bg-primary/10 font-medium text-foreground shadow-sm ring-1 ring-primary/10 dark:bg-primary/15";
 const inactiveProviderTabClassName =
   "border-border/40 bg-muted/30 text-muted-foreground hover:bg-muted/45 hover:text-foreground dark:bg-white/[0.04]";
+
+function ProviderStrip({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
+      {children}
+    </div>
+  );
+}
 
 function createEmptyProvider(): ProviderConfigRecord {
   const now = new Date().toISOString();
@@ -664,82 +672,94 @@ export function ProviderSettingsPanel() {
               />
             </div>
 
-            {filteredProviders.length === 0 &&
-            filteredTemplates.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">
-                {t("providers.empty.noMatches")}
-              </div>
-            ) : (
-              <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
-                {filteredProviders.map((provider) => {
-                  const isActive =
-                    !isCreatingProvider && activeProviderId === provider.id;
-                  const modelCount = models.filter(
-                    (model) => model.providerId === provider.id,
-                  ).length;
+            <ProviderStrip>
+              {filteredProviders.length === 0 &&
+              filteredTemplates.length === 0 ? (
+                <div
+                  className={cn(
+                    providerTabClassName,
+                    "w-auto min-w-44 cursor-default border-transparent bg-transparent",
+                  )}
+                >
+                  <span className="text-body font-medium text-muted-foreground">
+                    {t("providers.empty.noMatches")}
+                  </span>
+                  <span className="w-full text-2xs">&nbsp;</span>
+                </div>
+              ) : (
+                <>
+                  {filteredProviders.map((provider) => {
+                    const isActive =
+                      !isCreatingProvider && activeProviderId === provider.id;
+                    const modelCount = models.filter(
+                      (model) => model.providerId === provider.id,
+                    ).length;
 
-                  return (
-                    <button
-                      className={cn(
-                        providerTabClassName,
-                        isActive
-                          ? activeProviderTabClassName
-                          : inactiveProviderTabClassName,
-                      )}
-                      aria-pressed={isActive}
-                      key={provider.id}
-                      type="button"
-                      onClick={() => selectProvider(provider)}
-                    >
-                      <span className="flex w-full items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-body font-medium">
-                          {provider.name}
+                    return (
+                      <button
+                        className={cn(
+                          providerTabClassName,
+                          isActive
+                            ? activeProviderTabClassName
+                            : inactiveProviderTabClassName,
+                        )}
+                        aria-pressed={isActive}
+                        key={provider.id}
+                        type="button"
+                        onClick={() => selectProvider(provider)}
+                      >
+                        <span className="flex w-full items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-body font-medium">
+                            {provider.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "size-1.5 shrink-0 rounded-full",
+                              provider.enabled
+                                ? "bg-emerald-500/70"
+                                : "bg-muted-foreground/30",
+                            )}
+                          />
                         </span>
-                        <span
-                          className={cn(
-                            "size-1.5 shrink-0 rounded-full",
-                            provider.enabled
-                              ? "bg-emerald-500/70"
-                              : "bg-muted-foreground/30",
-                          )}
-                        />
-                      </span>
-                      <span className="w-full truncate text-2xs text-muted-foreground/70">
-                        {t("providers.models.modelCount", {
-                          count: modelCount,
-                        })}
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span className="w-full truncate text-2xs text-muted-foreground/70">
+                          {t("providers.models.modelCount", {
+                            count: modelCount,
+                          })}
+                        </span>
+                      </button>
+                    );
+                  })}
 
-                {filteredTemplates.map((template) => {
-                  const isActive =
-                    isCreatingProvider && pendingTemplateId === template.id;
-                  return (
-                    <button
-                      className={cn(
-                        templateCardClassName,
-                        isActive
-                          ? activeProviderTabClassName
-                          : inactiveProviderTabClassName,
-                      )}
-                      aria-pressed={isActive}
-                      key={`template:${template.id}`}
-                      type="button"
-                      onClick={() => startNewProviderFromTemplate(template.id)}
-                    >
-                      <span className="w-full truncate text-body font-medium">
-                        {template.name}
-                      </span>
-                      <span className="w-full truncate text-2xs text-muted-foreground/70">
-                        {template.baseUrl}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                  {filteredTemplates.map((template) => {
+                    const isActive =
+                      isCreatingProvider && pendingTemplateId === template.id;
+                    return (
+                      <button
+                        className={cn(
+                          templateCardClassName,
+                          isActive
+                            ? activeProviderTabClassName
+                            : inactiveProviderTabClassName,
+                        )}
+                        aria-pressed={isActive}
+                        key={`template:${template.id}`}
+                        type="button"
+                        onClick={() =>
+                          startNewProviderFromTemplate(template.id)
+                        }
+                      >
+                        <span className="w-full truncate text-body font-medium">
+                          {template.name}
+                        </span>
+                        <span className="w-full truncate text-2xs text-muted-foreground/70">
+                          {template.baseUrl}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </ProviderStrip>
           </div>
 
           {/* Config area: full width below the card strip. */}

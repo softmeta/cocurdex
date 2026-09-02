@@ -1409,6 +1409,7 @@ export default interface Resources {
         noMatches: "No matching providers";
       };
       fields: {
+        apiKey: "API key";
         baseUrl: "Base URL";
         capabilities: "Capabilities";
         capability: {
