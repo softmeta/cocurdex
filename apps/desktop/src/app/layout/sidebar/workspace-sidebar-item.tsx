@@ -91,7 +91,7 @@ export function WorkspaceSidebarItem({
           >
             <button
               type="button"
-              className="flex min-w-0 flex-1 cursor-grab items-center gap-1.5 text-start active:cursor-grabbing"
+              className="flex min-w-0 flex-1 cursor-default items-center gap-1.5 text-start active:cursor-grabbing"
               onClick={() => {
                 onSelectWorkspace(workspace.id);
                 onToggleWorkspace(workspace.id);
