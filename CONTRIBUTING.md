@@ -80,7 +80,9 @@ enough; the tag can be created locally.
    automatically so `.github/release.yml` omits them from notes. Add the label
    yourself only for a user-facing title you still want hidden.
 2. Set the version in `apps/desktop/package.json` (not the repo root
-   `package.json`). The tag must be `v` plus that version, for example `v0.1.7`.
+   `package.json`) in the same pull request as the work you are shipping. Do
+   not open a pull request that only changes the version. The tag must be `v`
+   plus that version, for example `v0.1.7`.
 3. Tag a commit that is already on `main` (it does not have to be `HEAD`) and
    push that tag only. The workflow rejects tags that are not ancestors of
    `origin/main`.
