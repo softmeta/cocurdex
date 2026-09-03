@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
@@ -56,6 +58,9 @@ jobs:
         run: |
           package_version="$(node -p "require('./apps/desktop/package.json').version")"
           test "v${package_version}" = "${GITHUB_REF_NAME}"
+          git fetch --no-tags origin main
+          tag_commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          git merge-base --is-ancestor "${tag_commit}" origin/main
 
       - name: Create draft GitHub release
         if: github.ref_type == 'tag'

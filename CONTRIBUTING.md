@@ -74,10 +74,15 @@ enough; the tag can be created locally.
 
 1. Merge the work into `main` through a pull request. GitHub release notes list
    **merged PRs between the previous tag and this one**. Direct pushes (including
-   tagging `dev` without a PR into `main`) produce only a compare link.
+   tagging `dev` without a PR into `main`) produce only a compare link. Do not
+   merge an entire integration branch as one PR titled `Dev`. Label version-bump
+   and other non-user-facing PRs with `skip-changelog` so `.github/release.yml`
+   omits them from notes.
 2. Set the version in `apps/desktop/package.json` (not the repo root
    `package.json`). The tag must be `v` plus that version, for example `v0.1.7`.
-3. Tag the merge commit on `main` and push that tag only:
+3. Tag a commit that is already on `main` (it does not have to be `HEAD`) and
+   push that tag only. The workflow rejects tags that are not ancestors of
+   `origin/main`.
 
    ```bash
    git checkout main
@@ -89,7 +94,9 @@ enough; the tag can be created locally.
    Creating the tag in the GitHub UI is equivalent. A local tag that is never
    pushed does not start the workflow. Do not `git push --tags`.
 
-The workflow drafts the GitHub release with `--generate-notes`, builds and
-notarizes the arm64 DMG, then publishes the release. Do not run
-`pnpm --filter @cocurdex/desktop dist:mac:arm64:release` locally for a
-production ship.
+The workflow drafts the GitHub release with `--generate-notes`. electron-builder
+uploads the Apple Silicon DMG, zip, and `latest-mac.yml` onto that draft.
+Notarization is verified, then the workflow publishes the release. Auto-update
+clients still read published releases (`build-assets/app-update.yml`), not
+drafts. Do not run `pnpm --filter @cocurdex/desktop dist:mac:arm64:release`
+locally for a production ship. Production packages are Apple Silicon only.
