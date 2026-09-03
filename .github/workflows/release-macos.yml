@@ -88,10 +88,49 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Import Developer ID certificate
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          certificate_path="${RUNNER_TEMP}/developer-id.p12"
+          keychain_path="${RUNNER_TEMP}/app-signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+          echo "::add-mask::${keychain_password}"
+          printf '%s' "${CSC_LINK}" | base64 --decode > "${certificate_path}"
+          security create-keychain -p "${keychain_password}" "${keychain_path}"
+          security set-keychain-settings -lut 21600 "${keychain_path}"
+          security unlock-keychain -p "${keychain_password}" "${keychain_path}"
+          security import "${certificate_path}" \
+            -P "${CSC_KEY_PASSWORD}" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "${keychain_path}" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productbuild
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "${keychain_password}" \
+            "${keychain_path}" \
+            >/dev/null
+          existing_keychains="$(security list-keychains -d user | sed 's/"//g')"
+          security list-keychains -d user -s "${keychain_path}" ${existing_keychains}
+          rm -f "${certificate_path}"
+          security find-identity -v -p codesigning "${keychain_path}" | grep -F "Developer ID Application"
+          {
+            echo "CSC_KEYCHAIN=${keychain_path}"
+            echo "MAC_SIGNING_KEYCHAIN_PASSWORD=${keychain_password}"
+          } >> "${GITHUB_ENV}"
+
       - name: Build signed and notarized DMG
-        run: >-
-          pnpm --filter @cocurdex/desktop
-          ${{ github.ref_type == 'tag' && 'dist:mac:arm64:release' || 'dist:mac:arm64' }}
+        run: |
+          set -euo pipefail
+          security unlock-keychain -p "${MAC_SIGNING_KEYCHAIN_PASSWORD}" "${CSC_KEYCHAIN}"
+          unset CSC_LINK CSC_KEY_PASSWORD
+          pnpm --filter @cocurdex/desktop \
+            ${{ github.ref_type == 'tag' && 'dist:mac:arm64:release' || 'dist:mac:arm64' }}
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: --max-old-space-size=6144
@@ -125,9 +164,13 @@ jobs:
             --title "Cocurdex ${GITHUB_REF_NAME}" \
             --draft=false
 
-      - name: Remove App Store Connect API key
+      - name: Remove signing credentials
         if: always()
         run: |
           if test -n "${APPLE_API_KEY:-}"; then
             rm -f "${APPLE_API_KEY}"
           fi
+          if test -n "${CSC_KEYCHAIN:-}"; then
+            security delete-keychain "${CSC_KEYCHAIN}" || true
+          fi
+          rm -f "${RUNNER_TEMP}/developer-id.p12"
