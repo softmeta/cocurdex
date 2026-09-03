@@ -75,9 +75,10 @@ enough; the tag can be created locally.
 1. Merge the work into `main` through a pull request. GitHub release notes list
    **merged PRs between the previous tag and this one**. Direct pushes (including
    tagging `dev` without a PR into `main`) produce only a compare link. Do not
-   merge an entire integration branch as one PR titled `Dev`. Label version-bump
-   and other non-user-facing PRs with `skip-changelog` so `.github/release.yml`
-   omits them from notes.
+   merge an entire integration branch as one PR titled `Dev`. Titles that start
+   with `chore:`, `ci:`, `docs:`, or `test:` get `skip-changelog`
+   automatically so `.github/release.yml` omits them from notes. Add the label
+   yourself only for a user-facing title you still want hidden.
 2. Set the version in `apps/desktop/package.json` (not the repo root
    `package.json`). The tag must be `v` plus that version, for example `v0.1.7`.
 3. Tag a commit that is already on `main` (it does not have to be `HEAD`) and
