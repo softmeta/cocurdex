@@ -23,6 +23,7 @@ interface SettingsSelectProps {
   appearance?: AppDropdownTriggerAppearance;
   className?: string;
   compact?: boolean;
+  disabled?: boolean;
   groups?: SettingsSelectGroup[];
   options?: SettingsSelectOption[];
   placeholder?: string;
@@ -41,6 +42,7 @@ export function SettingsSelect({
   appearance = "ghost",
   className,
   compact = false,
+  disabled = false,
   groups,
   options,
   placeholder,
@@ -67,6 +69,7 @@ export function SettingsSelect({
         "max-h-72 min-w-[var(--anchor-width)]",
         compact && "min-w-40",
       )}
+      disabled={disabled}
       options={options?.map((option) => ({
         value: option.value,
         label: option.label,

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
@@ -27,12 +27,14 @@ import {
   createUnifiedDiff,
   piThinkingLevels,
 } from "@cocurdex/shared";
-import type { ImageContent } from "@earendil-works/pi-ai";
 import {
-  AuthStorage,
+  type ImageContent,
+  InMemoryCredentialStore,
+} from "@earendil-works/pi-ai";
+import {
   createAgentSession,
   DefaultResourceLoader,
-  ModelRegistry,
+  ModelRuntime,
   type PromptOptions,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
@@ -60,6 +62,7 @@ import {
   parseHeaders,
   parseJsonObject,
 } from "./pi-model-utils";
+import { getPiAgentDir } from "./pi-paths";
 import {
   getPiSkillRootSnapshots,
   logPiSkillDiagnostic,
@@ -96,9 +99,8 @@ type PiSessionLike = {
 type PiSdkResult = { session: PiSessionLike };
 
 interface PiSdkDependencies {
-  AuthStorage: typeof AuthStorage;
   DefaultResourceLoader: typeof DefaultResourceLoader;
-  ModelRegistry: typeof ModelRegistry;
+  ModelRuntime: typeof ModelRuntime;
   SessionManager: typeof SessionManager;
   createAgentSession(options?: Record<string, unknown>): Promise<PiSdkResult>;
 }
@@ -209,14 +211,6 @@ interface ActiveMessageRecord {
   kind: MessageKind;
 }
 
-function getPiAgentDir(userDataPath: string | undefined) {
-  if (!userDataPath) {
-    return path.join(tmpdir(), "cocurdex", "pi-agent");
-  }
-
-  return path.join(userDataPath, "pi-agent");
-}
-
 // List slash commands from disk without booting a full agent session, so the
 // composer can offer completions before the first message is sent. Extensions
 // are skipped because loading them runs user code and needs the trust flow.
@@ -288,9 +282,8 @@ async function listPiSlashCommands(
   return skills;
 }
 
-function registerRuntimeProvider(
-  modelRegistry: ModelRegistry,
-  authStorage: AuthStorage,
+async function registerRuntimeProvider(
+  modelRuntime: ModelRuntime,
   providerConfig: RuntimeProviderConfig,
 ) {
   const api = providerConfig.api;
@@ -299,10 +292,12 @@ function registerRuntimeProvider(
   }
 
   if (providerConfig.apiKey) {
-    authStorage.setRuntimeApiKey(
+    await modelRuntime.setRuntimeApiKey(
       providerConfig.providerId,
       providerConfig.apiKey,
     );
+  } else {
+    await modelRuntime.removeRuntimeApiKey(providerConfig.providerId);
   }
 
   // ponytail: Pi's ProviderConfigInput has no provider-level compat slot, so
@@ -326,7 +321,7 @@ function registerRuntimeProvider(
     usedModelBaseUrl: Boolean(providerConfig.modelBaseUrl),
   });
 
-  modelRegistry.registerProvider(providerConfig.providerId, {
+  modelRuntime.registerProvider(providerConfig.providerId, {
     name: providerConfig.providerName,
     baseUrl: providerConfig.baseUrl || undefined,
     apiKey: providerConfig.apiKey || undefined,
@@ -356,10 +351,13 @@ function registerRuntimeProvider(
     ],
   });
 
-  return modelRegistry.find(providerConfig.providerId, providerConfig.modelId);
+  return modelRuntime.getModel(
+    providerConfig.providerId,
+    providerConfig.modelId,
+  );
 }
 
-type PiModel = NonNullable<ReturnType<typeof registerRuntimeProvider>>;
+type PiModel = NonNullable<Awaited<ReturnType<typeof registerRuntimeProvider>>>;
 
 function getString(value: unknown) {
   return typeof value === "string" ? value : null;
@@ -420,9 +418,8 @@ export function createPiSdkAdapter(
 ): AgentAdapter {
   const descriptor = getAgentDescriptor("pi");
   const sdk = options.sdk ?? {
-    AuthStorage,
     DefaultResourceLoader,
-    ModelRegistry,
+    ModelRuntime,
     SessionManager,
     createAgentSession,
   };
@@ -458,8 +455,7 @@ export function createPiSdkAdapter(
       let disposed = false;
       let piSessionPromise: Promise<PiSessionLike> | null = null;
       let piSession: PiSessionLike | null = null;
-      let piAuthStorage: AuthStorage | null = null;
-      let piModelRegistry: ModelRegistry | null = null;
+      let piModelRuntime: ModelRuntime | null = null;
       let activePiModelKey: string | null = null;
       let unsubscribe: (() => void) | null = null;
       let pendingThinkingLevel: PiThinkingLevel | undefined;
@@ -828,16 +824,13 @@ export function createPiSdkAdapter(
 
           const agentDir = getPiAgentDir(payload.userDataPath);
           process.env.PI_CODING_AGENT_DIR = agentDir;
-          const authStorage = sdk.AuthStorage.create(
-            path.join(agentDir, "auth.json"),
-          );
-          const modelRegistry = sdk.ModelRegistry.create(
-            authStorage,
-            path.join(agentDir, "models.json"),
-          );
-          const model = registerRuntimeProvider(
-            modelRegistry,
-            authStorage,
+          const modelRuntime = await sdk.ModelRuntime.create({
+            credentials: new InMemoryCredentialStore(),
+            modelsPath: null,
+            refreshOnCreate: false,
+          });
+          const model = await registerRuntimeProvider(
+            modelRuntime,
             providerConfig,
           );
           if (!model) {
@@ -845,8 +838,7 @@ export function createPiSdkAdapter(
               `Pi does not support provider api: ${providerConfig.api}`,
             );
           }
-          piAuthStorage = authStorage;
-          piModelRegistry = modelRegistry;
+          piModelRuntime = modelRuntime;
           activePiModelKey = getPiModelKey(providerConfig);
 
           const sessionManager = persistedSessionFile
@@ -872,8 +864,7 @@ export function createPiSdkAdapter(
           const result = await sdk.createAgentSession({
             cwd: payload.workspaceRootPath,
             agentDir,
-            authStorage,
-            modelRegistry,
+            modelRuntime,
             model,
             resourceLoader,
             sessionManager,
@@ -912,19 +903,14 @@ export function createPiSdkAdapter(
         }
 
         const nextModelKey = getPiModelKey(providerConfig);
-        if (nextModelKey === activePiModelKey) {
-          return;
-        }
-
-        if (!piAuthStorage || !piModelRegistry || !session.setModel) {
+        if (!piModelRuntime) {
           throw new Error(
             "Pi cannot change models without rebuilding the active session",
           );
         }
 
-        const nextModel = registerRuntimeProvider(
-          piModelRegistry,
-          piAuthStorage,
+        const nextModel = await registerRuntimeProvider(
+          piModelRuntime,
           providerConfig,
         );
         if (!nextModel) {
@@ -933,7 +919,14 @@ export function createPiSdkAdapter(
           );
         }
 
-        await session.setModel(nextModel);
+        if (nextModelKey !== activePiModelKey) {
+          if (!session.setModel) {
+            throw new Error(
+              "Pi cannot change models without rebuilding the active session",
+            );
+          }
+          await session.setModel(nextModel);
+        }
         activePiModelKey = nextModelKey;
       }
 

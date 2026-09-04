@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   cancelCodexLogin,
   generateCodexConversationTitle,
@@ -9,8 +10,13 @@ import {
   listPiBuiltInProviderIds,
   listPiProviderModels,
   listPiProviderTemplates,
+  loginPiProvider,
   logoutCodex,
+  logoutPiProvider,
   readCodexAccount,
+  readPiProviderAuthState,
+  registerBundledPiProviderOAuthFlows,
+  resolvePiProviderAuth,
   startCodexChatGptLogin,
 } from "@cocurdex/agent-adapters/desktop-provider";
 import type {
@@ -18,6 +24,9 @@ import type {
   CodexLoginOutcome,
   CommitMessageModelSelection,
   CompatibleProviderModel,
+  ProviderAuthLoginUpdate,
+  ProviderAuthMethod,
+  ProviderAuthPrompt,
   ProviderConfigRecord,
   ProviderListModelsResult,
   ProviderModelRecord,
@@ -31,7 +40,7 @@ import {
   filterCompatibleProviderModels,
   getCompatibleProviderApis,
 } from "@cocurdex/shared";
-import { ipcMain, safeStorage } from "electron";
+import { app, ipcMain, safeStorage } from "electron";
 import {
   deleteProviderConfig,
   deleteProviderModel,
@@ -88,13 +97,52 @@ function decryptSecretValue(encryptedValue: string) {
   return buffer.toString("utf8");
 }
 
-async function resolveProviderApiKey(config: ProviderConfigRecord | null) {
+export async function resolveProviderApiKey(
+  config: ProviderConfigRecord | null,
+) {
+  if (config && isBuiltInProviderConfig(config)) {
+    const result = await resolvePiProviderAuth(
+      app.getPath("userData"),
+      config.id,
+    );
+    if (result?.auth.apiKey) {
+      return result.auth.apiKey;
+    }
+  }
+
+  return resolveStoredProviderApiKey(config);
+}
+
+async function resolveStoredProviderApiKey(
+  config: ProviderConfigRecord | null,
+) {
   if (!config?.apiKeySecretId) {
     return null;
   }
 
   const secret = await getProviderSecret(config.apiKeySecretId);
   return secret ? decryptSecretValue(secret.encryptedValue) : null;
+}
+
+async function clearStoredProviderApiKey(providerId: string) {
+  const config = await getProviderConfig(providerId);
+  if (config?.apiKeySecretId) {
+    await deleteProviderSecret(config.apiKeySecretId);
+  }
+  if (config) {
+    await setProviderApiKeySecretId(providerId, null);
+  }
+}
+
+function mergeProviderAuthHeaders(
+  headersJson: string | null | undefined,
+  authHeaders: Record<string, string | null> | undefined,
+) {
+  if (!authHeaders) {
+    return headersJson;
+  }
+  const headers = parseProviderHeaders(headersJson) ?? {};
+  return JSON.stringify({ ...headers, ...authHeaders });
 }
 
 export async function buildRuntimeProviderConfig(
@@ -111,11 +159,20 @@ export async function buildRuntimeProviderConfig(
   }
 
   const provider = await getProviderConfig(snapshot.providerId);
-  const apiKey = await resolveProviderApiKey(provider);
+  const piAuth = provider
+    ? await resolvePiProviderAuth(app.getPath("userData"), provider.id)
+    : undefined;
+  const apiKey =
+    piAuth?.auth.apiKey ?? (await resolveStoredProviderApiKey(provider));
 
   return {
     ...snapshot,
     apiKey,
+    baseUrl: piAuth?.auth.baseUrl ?? snapshot.baseUrl,
+    headersJson: mergeProviderAuthHeaders(
+      snapshot.headersJson,
+      piAuth?.auth.headers,
+    ),
   };
 }
 
@@ -734,6 +791,231 @@ function mergeFetchedProviderModels(
 // authUrl externally, then awaits codex:loginWait for the outcome.
 const pendingCodexLogins = new Map<string, Promise<CodexLoginOutcome>>();
 
+interface PendingProviderAuthLogin {
+  controller: AbortController;
+  prompts: Map<
+    string,
+    { resolve(value: string): void; reject(error: Error): void }
+  >;
+  queue: ProviderAuthLoginUpdate[];
+  waiters: Array<(update: ProviderAuthLoginUpdate) => void>;
+}
+
+const pendingProviderAuthLogins = new Map<string, PendingProviderAuthLogin>();
+const PROVIDER_AUTH_LOGIN_RETENTION_MS = 5 * 60 * 1000;
+
+function pushProviderAuthLoginUpdate(
+  login: PendingProviderAuthLogin,
+  update: ProviderAuthLoginUpdate,
+) {
+  const waiter = login.waiters.shift();
+  if (waiter) {
+    waiter(update);
+    return;
+  }
+  login.queue.push(update);
+}
+
+function finishProviderAuthLogin(
+  loginId: string,
+  login: PendingProviderAuthLogin,
+  update: ProviderAuthLoginUpdate,
+) {
+  pushProviderAuthLoginUpdate(login, update);
+  const cleanup = setTimeout(() => {
+    if (pendingProviderAuthLogins.get(loginId) === login) {
+      pendingProviderAuthLogins.delete(loginId);
+    }
+  }, PROVIDER_AUTH_LOGIN_RETENTION_MS);
+  cleanup.unref();
+}
+
+function normalizeProviderAuthPrompt(
+  promptId: string,
+  prompt: Parameters<Parameters<typeof loginPiProvider>[3]["prompt"]>[0],
+): ProviderAuthPrompt {
+  if (prompt.type === "select") {
+    return {
+      id: promptId,
+      type: "select",
+      message: prompt.message,
+      options: prompt.options.map((option) => ({
+        id: option.id,
+        label: option.label,
+        description: option.description ?? null,
+      })),
+    };
+  }
+  return {
+    id: promptId,
+    type: prompt.type,
+    message: prompt.message,
+    placeholder: prompt.placeholder ?? null,
+  };
+}
+
+function startProviderAuthLogin(
+  providerId: string,
+  method: ProviderAuthMethod,
+) {
+  const loginId = randomUUID();
+  const controller = new AbortController();
+  const login: PendingProviderAuthLogin = {
+    controller,
+    prompts: new Map(),
+    queue: [],
+    waiters: [],
+  };
+  pendingProviderAuthLogins.set(loginId, login);
+
+  void loginPiProvider(app.getPath("userData"), providerId, method, {
+    signal: controller.signal,
+    prompt: (prompt) => {
+      const promptId = randomUUID();
+      return new Promise<string>((resolve, reject) => {
+        const rejectPrompt = () => {
+          login.prompts.delete(promptId);
+          reject(new Error("Login cancelled"));
+          pushProviderAuthLoginUpdate(login, {
+            type: "prompt_cancelled",
+            promptId,
+          });
+        };
+        if (prompt.signal?.aborted || controller.signal.aborted) {
+          rejectPrompt();
+          return;
+        }
+        const abortSignal = prompt.signal ?? controller.signal;
+        abortSignal.addEventListener("abort", rejectPrompt, { once: true });
+        login.prompts.set(promptId, {
+          resolve: (value) => {
+            abortSignal.removeEventListener("abort", rejectPrompt);
+            resolve(value);
+          },
+          reject,
+        });
+        pushProviderAuthLoginUpdate(login, {
+          type: "prompt",
+          prompt: normalizeProviderAuthPrompt(promptId, prompt),
+        });
+      });
+    },
+    notify: (event) => {
+      if (event.type === "info" || event.type === "progress") {
+        pushProviderAuthLoginUpdate(login, {
+          type: event.type,
+          message: event.message,
+        });
+        return;
+      }
+      if (event.type === "auth_url") {
+        pushProviderAuthLoginUpdate(login, {
+          type: "auth_url",
+          url: event.url,
+          instructions: event.instructions ?? null,
+        });
+        return;
+      }
+      pushProviderAuthLoginUpdate(login, {
+        type: "device_code",
+        userCode: event.userCode,
+        verificationUri: event.verificationUri,
+      });
+    },
+  })
+    .then(async () => {
+      await clearStoredProviderApiKey(providerId);
+      finishProviderAuthLogin(loginId, login, { type: "complete" });
+    })
+    .catch((error) => {
+      finishProviderAuthLogin(loginId, login, {
+        type: "error",
+        error: error instanceof Error ? error.message : "Provider login failed",
+      });
+    });
+
+  return { loginId };
+}
+
+function registerProviderAuthHandlers() {
+  ipcMain.handle("provider:authRead", async (_event, providerId: string) => {
+    const auth = await readPiProviderAuthState(
+      app.getPath("userData"),
+      providerId,
+    );
+    if (auth.type) {
+      return auth;
+    }
+    const config = await getProviderConfig(providerId);
+    return config?.apiKeySecretId
+      ? { providerId, type: "api_key" as const, source: "Cocurdex API key" }
+      : auth;
+  });
+  ipcMain.handle(
+    "provider:authLoginStart",
+    async (_event, providerId: string, method: ProviderAuthMethod) =>
+      startProviderAuthLogin(providerId, method),
+  );
+  ipcMain.handle(
+    "provider:authLoginNext",
+    async (_event, loginId: string): Promise<ProviderAuthLoginUpdate> => {
+      const login = pendingProviderAuthLogins.get(loginId);
+      if (!login) {
+        return { type: "error", error: "Unknown login attempt" };
+      }
+      const queued = login.queue.shift();
+      if (queued) {
+        if (queued.type === "complete" || queued.type === "error") {
+          pendingProviderAuthLogins.delete(loginId);
+        }
+        return queued;
+      }
+      const update = await new Promise<ProviderAuthLoginUpdate>((resolve) => {
+        login.waiters.push(resolve);
+      });
+      if (update.type === "complete" || update.type === "error") {
+        pendingProviderAuthLogins.delete(loginId);
+      }
+      return update;
+    },
+  );
+  ipcMain.handle(
+    "provider:authLoginRespond",
+    async (_event, loginId: string, promptId: string, value: string) => {
+      const login = pendingProviderAuthLogins.get(loginId);
+      const prompt = login?.prompts.get(promptId);
+      if (!login || !prompt) {
+        throw new Error("Login prompt is no longer active");
+      }
+      login.prompts.delete(promptId);
+      prompt.resolve(value);
+    },
+  );
+  ipcMain.handle(
+    "provider:authLoginCancel",
+    async (_event, loginId: string) => {
+      const login = pendingProviderAuthLogins.get(loginId);
+      if (!login) {
+        return;
+      }
+      login.controller.abort();
+      for (const prompt of login.prompts.values()) {
+        prompt.reject(new Error("Login cancelled"));
+      }
+      login.prompts.clear();
+      pushProviderAuthLoginUpdate(login, {
+        type: "error",
+        error: "Login cancelled",
+      });
+      pendingProviderAuthLogins.delete(loginId);
+    },
+  );
+  ipcMain.handle("provider:authLogout", async (_event, providerId: string) => {
+    await logoutPiProvider(app.getPath("userData"), providerId);
+    await clearStoredProviderApiKey(providerId);
+  });
+}
+
 function registerCodexAccountHandlers() {
   ipcMain.handle("codex:accountRead", async () => readCodexAccount());
   ipcMain.handle("codex:loginStart", async () => {
@@ -767,7 +1049,9 @@ function registerCodexAccountHandlers() {
 }
 
 export function registerProviderHandlers() {
+  registerBundledPiProviderOAuthFlows();
   registerCodexAccountHandlers();
+  registerProviderAuthHandlers();
   ipcMain.handle("provider:listTemplates", async () =>
     listPiProviderTemplates(),
   );
@@ -795,18 +1079,18 @@ export function registerProviderHandlers() {
   ipcMain.handle(
     "provider:setApiKey",
     async (_event, providerId: string, apiKey: string) => {
+      const config = await getProviderConfig(providerId);
+      if (config && isBuiltInProviderConfig(config)) {
+        await logoutPiProvider(app.getPath("userData"), providerId);
+      }
       const secretId = `provider:${providerId}:api-key`;
       await saveProviderSecret(secretId, getEncryptedSecretValue(apiKey));
       await setProviderApiKeySecretId(providerId, secretId);
     },
   );
-  ipcMain.handle("provider:clearApiKey", async (_event, providerId: string) => {
-    const config = await getProviderConfig(providerId);
-    if (config?.apiKeySecretId) {
-      await deleteProviderSecret(config.apiKeySecretId);
-    }
-    await setProviderApiKeySecretId(providerId, null);
-  });
+  ipcMain.handle("provider:clearApiKey", async (_event, providerId: string) =>
+    clearStoredProviderApiKey(providerId),
+  );
   ipcMain.handle("provider:listModels", async (_event, providerId: string) => {
     const config = await getProviderConfig(providerId);
     if (!config) {

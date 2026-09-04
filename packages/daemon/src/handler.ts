@@ -20,6 +20,8 @@ export async function handleDaemonRequest(
       return service.bootstrap();
     case "agent.list":
       return service.listAgents();
+    case "agent.rateLimits.read":
+      return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":
       return null;
     case "network.proxy.test":

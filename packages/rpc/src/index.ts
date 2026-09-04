@@ -4,6 +4,7 @@ import type {
   AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentProviderSelection,
+  AgentRateLimitsReadResult,
   AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
   AgentSlashCommand,
@@ -61,7 +62,7 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 10;
+export const DAEMON_PROTOCOL_VERSION = 11;
 
 export interface DaemonMetadata {
   pid: number;
@@ -89,6 +90,7 @@ export type DaemonRequestPayloadByMethod = {
   "daemon.status": undefined;
   "app.bootstrap": undefined;
   "agent.list": undefined;
+  "agent.rateLimits.read": { agentIds: AgentId[] };
   "workspace.list": undefined;
   "workspace.save": { workspace: WorkspaceRecord };
   "session.list": undefined;
@@ -185,6 +187,7 @@ export type DaemonResultByMethod = {
   "daemon.status": DaemonStatus;
   "app.bootstrap": AppBootstrapData;
   "agent.list": AgentDescriptor[];
+  "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "workspace.list": WorkspaceRecord[];
   "workspace.save": WorkspaceRecord;
   "session.list": SessionRecord[];

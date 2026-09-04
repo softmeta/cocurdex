@@ -174,64 +174,57 @@ export function ProviderModelsSection({
         .toLowerCase()
         .includes(normalizedQuery);
     })
-    .sort((first, second) => {
-      if (first.enabled !== second.enabled) {
-        return first.enabled ? -1 : 1;
-      }
-
-      return first.name.localeCompare(second.name);
-    });
+    .sort(
+      (first, second) =>
+        first.name.localeCompare(second.name) ||
+        first.modelId.localeCompare(second.modelId),
+    );
 
   return (
     <div className="flex min-w-0 flex-col gap-4 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm font-medium">{t("providers.models.title")}</div>
-        <div className="flex items-center gap-2">
-          <Button
-            className="shrink-0"
-            disabled={isRefreshing}
-            size="sm"
-            type="button"
-            variant="ghost"
-            onClick={onRefreshModels}
-          >
-            <RefreshCw className={cn(isRefreshing && "animate-spin")} />
-            {t("providers.actions.refresh")}
-          </Button>
-          {readOnly ? null : (
-            <AddModelDialog
-              draftModel={draftModel}
-              onDraftModelChange={onDraftModelChange}
-              onSaveModel={onSaveModel}
-            />
-          )}
-        </div>
-      </div>
       {refreshStatus ? (
         <div className="rounded-control bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
           {refreshStatus}
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative sm:w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             className={cn(
               fieldClass,
-              "pl-8 placeholder:text-muted-foreground/70",
+              "ps-8 placeholder:text-muted-foreground/70",
             )}
             placeholder={t("providers.models.searchPlaceholder")}
             value={modelQuery}
             onChange={(event) => setModelQuery(event.target.value)}
           />
         </div>
-        <div className="text-xs text-muted-foreground/70">
+        <div className="shrink-0 text-xs text-muted-foreground/70">
           {t("providers.models.showingCount", {
             total: String(selectedModels.length),
             visible: String(visibleModels.length),
           })}
         </div>
+        <Button
+          className="shrink-0"
+          disabled={isRefreshing}
+          size="sm"
+          type="button"
+          variant="ghost"
+          onClick={onRefreshModels}
+        >
+          <RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
+          {t("providers.actions.refresh")}
+        </Button>
+        {readOnly ? null : (
+          <AddModelDialog
+            draftModel={draftModel}
+            onDraftModelChange={onDraftModelChange}
+            onSaveModel={onSaveModel}
+          />
+        )}
       </div>
 
       <div className="overflow-hidden rounded-control border border-border/40 bg-muted">
@@ -350,21 +343,19 @@ export function ProviderModelsSection({
                   </TableCell>
                   <TableCell className="px-3 py-2">
                     <div className="flex items-center justify-end gap-2">
-                      {readOnly ? null : (
-                        <ModelParametersDialog
-                          model={model}
-                          onReload={onReload}
-                          onSaveModel={onSaveModel}
-                        />
-                      )}
+                      <ModelParametersDialog
+                        model={model}
+                        readOnly={readOnly}
+                        onReload={onReload}
+                        onSaveModel={onSaveModel}
+                      />
                       <Switch
                         aria-label={t("providers.models.toggleFor", {
                           model: model.name,
                         })}
                         checked={model.enabled}
-                        disabled={readOnly}
-                        onCheckedChange={() =>
-                          onSaveModel({ ...model, enabled: !model.enabled })
+                        onCheckedChange={(enabled) =>
+                          onSaveModel({ ...model, enabled })
                         }
                       />
                     </div>
@@ -498,12 +489,14 @@ function formatLimit(value: number) {
 
 interface ModelParametersDialogProps {
   model: ProviderModelRecord;
+  readOnly?: boolean;
   onReload(): Promise<void>;
   onSaveModel(model: ProviderModelRecord): Promise<void>;
 }
 
 function ModelParametersDialog({
   model,
+  readOnly = false,
   onReload,
   onSaveModel,
 }: ModelParametersDialogProps) {
@@ -588,6 +581,7 @@ function ModelParametersDialog({
                 model: model.name,
               })}
               className="w-full min-w-0"
+              disabled={readOnly}
               options={apiOptions}
               value={api}
               onChange={(value) => setApi(value as ProviderApi)}
@@ -600,6 +594,7 @@ function ModelParametersDialog({
               </span>
               <Input
                 className={fieldClass}
+                disabled={readOnly}
                 inputMode="numeric"
                 placeholder={t("providers.fields.contextLimit")}
                 value={contextLimit}
@@ -612,6 +607,7 @@ function ModelParametersDialog({
               </span>
               <Input
                 className={fieldClass}
+                disabled={readOnly}
                 inputMode="numeric"
                 placeholder={t("providers.fields.outputLimit")}
                 value={outputLimit}
@@ -627,11 +623,15 @@ function ModelParametersDialog({
             <div className="flex flex-wrap gap-3">
               {modelCapabilities.map((capability) => (
                 <Label
-                  className="flex items-center gap-2 text-sm"
+                  className={cn(
+                    "flex items-center gap-2 text-sm",
+                    readOnly && "cursor-not-allowed opacity-50",
+                  )}
                   key={capability}
                 >
                   <Checkbox
                     checked={capabilities.includes(capability)}
+                    disabled={readOnly}
                     onCheckedChange={() => toggleCapability(capability)}
                   />
                   {t(`providers.fields.capability.${capability}`)}
@@ -641,11 +641,15 @@ function ModelParametersDialog({
           </div>
 
           <Label
-            className="flex items-center gap-2 text-sm"
+            className={cn(
+              "flex items-center gap-2 text-sm",
+              readOnly && "cursor-not-allowed",
+            )}
             htmlFor={reasoningSwitchId}
           >
             <Switch
               checked={reasoning}
+              disabled={readOnly}
               id={reasoningSwitchId}
               onCheckedChange={(checked) => setReasoning(checked === true)}
             />
@@ -658,6 +662,7 @@ function ModelParametersDialog({
             </span>
             <Textarea
               className={textareaClass}
+              disabled={readOnly}
               placeholder={t("providers.fields.thinkingLevelMapJson")}
               value={thinkingLevelMapJson}
               onChange={(event) => setThinkingLevelMapJson(event.target.value)}
@@ -670,6 +675,7 @@ function ModelParametersDialog({
             </span>
             <Textarea
               className={textareaClass}
+              disabled={readOnly}
               placeholder={t("providers.fields.costJson")}
               value={costJson}
               onChange={(event) => setCostJson(event.target.value)}
@@ -682,6 +688,7 @@ function ModelParametersDialog({
             </span>
             <Textarea
               className={textareaClass}
+              disabled={readOnly}
               placeholder={t("providers.fields.modelCompatJson")}
               value={compatJson}
               onChange={(event) => setCompatJson(event.target.value)}
@@ -689,20 +696,22 @@ function ModelParametersDialog({
           </Label>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button
-            className="text-muted-foreground hover:text-destructive"
-            type="button"
-            variant="ghost"
-            onClick={deleteModel}
-          >
-            <Trash2 />
-            {t("providers.actions.delete")}
-          </Button>
-          <Button type="button" variant="secondary" onClick={saveParameters}>
-            {t("providers.actions.save")}
-          </Button>
-        </DialogFooter>
+        {readOnly ? null : (
+          <DialogFooter className="gap-2">
+            <Button
+              className="text-muted-foreground hover:text-destructive"
+              type="button"
+              variant="ghost"
+              onClick={deleteModel}
+            >
+              <Trash2 />
+              {t("providers.actions.delete")}
+            </Button>
+            <Button type="button" variant="secondary" onClick={saveParameters}>
+              {t("providers.actions.save")}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

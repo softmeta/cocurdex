@@ -7,9 +7,6 @@ import type {
   ArchiveSessionPayload,
   ChatEvent,
   CocurdexDataChangedEvent,
-  CodexAccountState,
-  CodexLoginOutcome,
-  CodexLoginStartResult,
   CompatibleProviderModel,
   CreateColumnPayload,
   CreateConversationPayload,
@@ -30,6 +27,9 @@ import type {
   MoveNotePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
+  ProviderAuthLoginUpdate,
+  ProviderAuthMethod,
+  ProviderAuthState,
   ProviderConfigRecord,
   ProviderListModelsResult,
   ProviderModelRecord,
@@ -91,6 +91,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     };
   },
   listAgents: () => ipcRenderer.invoke("agent:list"),
+  readAdapterRateLimits: (agentIds: AgentId[]) =>
+    ipcRenderer.invoke("agent:readRateLimits", agentIds),
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),
   saveWorkspace: (workspace: import("@cocurdex/shared").WorkspaceRecord) =>
     ipcRenderer.invoke("workspace:save", workspace),
@@ -228,6 +230,25 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("provider:setApiKey", providerId, apiKey),
   clearProviderApiKey: (providerId: string) =>
     ipcRenderer.invoke("provider:clearApiKey", providerId),
+  readProviderAuth: (providerId: string): Promise<ProviderAuthState> =>
+    ipcRenderer.invoke("provider:authRead", providerId),
+  startProviderAuthLogin: (
+    providerId: string,
+    method: ProviderAuthMethod,
+  ): Promise<{ loginId: string }> =>
+    ipcRenderer.invoke("provider:authLoginStart", providerId, method),
+  nextProviderAuthLogin: (loginId: string): Promise<ProviderAuthLoginUpdate> =>
+    ipcRenderer.invoke("provider:authLoginNext", loginId),
+  respondProviderAuthLogin: (
+    loginId: string,
+    promptId: string,
+    value: string,
+  ) =>
+    ipcRenderer.invoke("provider:authLoginRespond", loginId, promptId, value),
+  cancelProviderAuthLogin: (loginId: string) =>
+    ipcRenderer.invoke("provider:authLoginCancel", loginId),
+  logoutProviderAuth: (providerId: string) =>
+    ipcRenderer.invoke("provider:authLogout", providerId),
   listProviderModels: (providerId: string): Promise<ProviderListModelsResult> =>
     ipcRenderer.invoke("provider:listModels", providerId),
   listAllProviderModels: () => ipcRenderer.invoke("provider:listAllModels"),
@@ -274,15 +295,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("network:testProxy", settings),
   testCurrentNetworkProxy: (): Promise<NetworkProxyTestResult> =>
     ipcRenderer.invoke("network:testCurrentProxy"),
-  readCodexAccount: (): Promise<CodexAccountState> =>
-    ipcRenderer.invoke("codex:accountRead"),
-  startCodexLogin: (): Promise<CodexLoginStartResult> =>
-    ipcRenderer.invoke("codex:loginStart"),
-  waitCodexLogin: (loginId: string): Promise<CodexLoginOutcome> =>
-    ipcRenderer.invoke("codex:loginWait", loginId),
-  cancelCodexLogin: (loginId: string) =>
-    ipcRenderer.invoke("codex:loginCancel", loginId),
-  logoutCodex: () => ipcRenderer.invoke("codex:logout"),
   listSessionMessages: (sessionId: string) =>
     ipcRenderer.invoke("session:listMessages", sessionId),
   listSessionToolCalls: (sessionId: string) =>

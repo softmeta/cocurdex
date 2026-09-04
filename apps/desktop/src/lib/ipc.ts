@@ -167,6 +167,7 @@ const fallbackApi: DesktopApi = {
     removedSkills: [],
   }),
   listAgents: async () => fallbackAgents,
+  readAdapterRateLimits: async () => ({}),
   listWorkspaces: async () => [],
   saveWorkspace: async () => {},
   deleteWorkspace: async () => {},
@@ -231,6 +232,19 @@ const fallbackApi: DesktopApi = {
   deleteProviderConfig: async () => {},
   setProviderApiKey: async () => {},
   clearProviderApiKey: async () => {},
+  readProviderAuth: async (providerId) => ({
+    providerId,
+    type: null,
+    source: null,
+  }),
+  startProviderAuthLogin: async () => ({ loginId: "" }),
+  nextProviderAuthLogin: async () => ({
+    type: "error",
+    error: "Provider login is unavailable outside the desktop app",
+  }),
+  respondProviderAuthLogin: async () => {},
+  cancelProviderAuthLogin: async () => {},
+  logoutProviderAuth: async () => {},
   listProviderModels: async () => ({ models: [], error: null }),
   listAllProviderModels: async () => [],
   saveProviderModel: async (model) => model,
@@ -266,18 +280,6 @@ const fallbackApi: DesktopApi = {
     durationMs: 0,
     error: "Proxy test is unavailable outside the desktop app",
   }),
-  readCodexAccount: async () => ({
-    method: null,
-    email: null,
-    planType: null,
-    requiresOpenaiAuth: false,
-  }),
-  startCodexLogin: async () => {
-    throw new Error("Codex login is unavailable outside the desktop app");
-  },
-  waitCodexLogin: async () => ({ success: false, error: null }),
-  cancelCodexLogin: async () => {},
-  logoutCodex: async () => {},
   listSessionMessages: async () => ({
     messages: [],
     turnStats: {},

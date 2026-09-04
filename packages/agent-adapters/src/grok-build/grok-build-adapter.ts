@@ -23,7 +23,10 @@ import {
   GROK_BUILD_INITIALIZE_META,
   getGrokBuildAuthMethodPriority,
 } from "./grok-build-process";
-import { parseGrokBuildRateLimits } from "./grok-build-rate-limits";
+import {
+  GROK_BUILD_BILLING_METHOD,
+  parseGrokBuildRateLimits,
+} from "./grok-build-rate-limits";
 import {
   buildGrokSessionInfoParams,
   GROK_SESSION_INFO_REQUEST_METHOD,
@@ -66,7 +69,7 @@ export function createGrokBuildAdapter(
         await fetchGrokBuildModelCatalog(connection);
       },
       rateLimitsRequest: {
-        method: "x.ai/billing",
+        method: GROK_BUILD_BILLING_METHOD,
         mapResponse: parseGrokBuildRateLimits,
       },
       contextUsageRequest: {

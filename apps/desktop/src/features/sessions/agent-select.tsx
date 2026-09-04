@@ -129,7 +129,7 @@ export function AgentSelect({
         align={align}
         className={cn(
           compactDropdownContentClassName,
-          "min-w-56 [&_[role=menuitem]]:mb-0.5 [&_[role=menuitem]+[role=menuitem]]:mt-0",
+          "[&_[role=menuitem]]:mb-0.5 [&_[role=menuitem]+[role=menuitem]]:mt-0",
           contentClassName,
         )}
         side="bottom"

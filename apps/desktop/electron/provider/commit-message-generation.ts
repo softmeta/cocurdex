@@ -5,11 +5,13 @@ import type {
   CommitMessageModelSelection,
   ProviderConfigRecord,
 } from "@cocurdex/shared";
-import { safeStorage } from "electron";
-import { getCommitMessageModelSetting, getProviderSecret } from "../chat";
+import { getCommitMessageModelSetting } from "../chat";
 import { createLogger } from "../logging";
 import type { GitNameStatusChange } from "../workspace/git-name-status";
-import { buildCompatibleProviderModels } from "./provider-service";
+import {
+  buildCompatibleProviderModels,
+  resolveProviderApiKey,
+} from "./provider-service";
 
 const commitMessageLogger = createLogger("commit-message-provider");
 const COMMIT_MESSAGE_GENERATION_TIMEOUT_MS = 60_000;
@@ -17,23 +19,6 @@ const MAX_CHANGE_SUMMARY_CHARS = 24_000;
 
 const NO_MODEL_CONFIGURED_ERROR =
   "No commit message model configured. Choose one in Settings → Git, or enter a message.";
-
-async function resolveProviderApiKey(config: ProviderConfigRecord) {
-  if (!config.apiKeySecretId) {
-    return null;
-  }
-
-  const secret = await getProviderSecret(config.apiKeySecretId);
-  if (!secret) {
-    return null;
-  }
-
-  const buffer = Buffer.from(secret.encryptedValue, "base64");
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.decryptString(buffer);
-  }
-  return buffer.toString("utf8");
-}
 
 export function createCommitMessageProviderSnapshot(
   provider: ProviderConfigRecord,

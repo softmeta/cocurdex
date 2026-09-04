@@ -25,9 +25,11 @@ function createSessionPayload(
     capture?: {
       createAgentSessionOptions?: Record<string, unknown>;
       createAgentSessionCalls?: number;
+      modelRuntimeOptions?: Record<string, unknown>;
       resourceLoaderOptions?: Record<string, unknown>;
       provider?: RegisteredProvider;
       runtimeApiKey?: unknown[];
+      runtimeApiKeys?: unknown[][];
       setModel?: unknown;
       setThinkingLevel?: unknown;
       steer?: unknown[];
@@ -88,9 +90,11 @@ function createFakeSdk(
   capture?: {
     createAgentSessionOptions?: Record<string, unknown>;
     createAgentSessionCalls?: number;
+    modelRuntimeOptions?: Record<string, unknown>;
     resourceLoaderOptions?: Record<string, unknown>;
     provider?: RegisteredProvider;
     runtimeApiKey?: unknown[];
+    runtimeApiKeys?: unknown[][];
     setModel?: unknown;
     setThinkingLevel?: unknown;
     steer?: unknown[];
@@ -99,18 +103,30 @@ function createFakeSdk(
 ) {
   let listener: ((event: Record<string, unknown>) => void) | null = null;
 
-  class FakeAuthStorage {
-    static lastPath: string | undefined;
-    static create(path: string) {
-      FakeAuthStorage.lastPath = path;
-      return new FakeAuthStorage();
+  class FakeModelRuntime {
+    static async create(options: Record<string, unknown>) {
+      if (capture) {
+        capture.modelRuntimeOptions = options;
+      }
+      return new FakeModelRuntime();
     }
-
     setRuntimeApiKey = vi.fn((...args: unknown[]) => {
       if (capture) {
         capture.runtimeApiKey = args;
+        capture.runtimeApiKeys = [...(capture.runtimeApiKeys ?? []), args];
       }
     });
+    removeRuntimeApiKey = vi.fn();
+
+    registerProvider = vi.fn(
+      (providerId: string, config: Record<string, unknown>) => {
+        if (capture) {
+          capture.provider = { providerId, config };
+        }
+      },
+    );
+
+    getModel = vi.fn(() => ({ provider: "openrouter", id: "model" }));
   }
 
   class FakeDefaultResourceLoader {
@@ -121,26 +137,6 @@ function createFakeSdk(
         capture.resourceLoaderOptions = options;
       }
     }
-  }
-
-  class FakeModelRegistry {
-    static lastPath: string | undefined;
-    static lastProvider: unknown;
-    static create(_authStorage: unknown, path: string) {
-      FakeModelRegistry.lastPath = path;
-      return new FakeModelRegistry();
-    }
-
-    registerProvider = vi.fn(
-      (providerId: string, config: Record<string, unknown>) => {
-        FakeModelRegistry.lastProvider = { providerId, config };
-        if (capture) {
-          capture.provider = { providerId, config };
-        }
-      },
-    );
-
-    find = vi.fn(() => ({ provider: "openrouter", id: "model" }));
   }
 
   const FakeSessionManager = {
@@ -203,9 +199,8 @@ function createFakeSdk(
   };
 
   return {
-    AuthStorage: FakeAuthStorage,
     DefaultResourceLoader: FakeDefaultResourceLoader,
-    ModelRegistry: FakeModelRegistry,
+    ModelRuntime: FakeModelRuntime,
     SessionManager: FakeSessionManager,
     createAgentSession: vi.fn(async (options?: Record<string, unknown>) => {
       if (capture) {
@@ -437,6 +432,32 @@ describe("createPiSdkAdapter", () => {
     expect(capture.runtimeApiKey).toEqual(["openrouter", "sk-test"]);
     expect(capture.provider?.providerId).toBe("openrouter");
     expect(capture.provider?.config.apiKey).toBe("sk-test");
+  });
+
+  it("refreshes runtime auth when the selected model does not change", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { runtimeApiKeys?: unknown[][] } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({ content: "first", history: [] });
+    await session.sendMessage({
+      content: "second",
+      history: [],
+      providerConfig: {
+        providerId: "openrouter",
+        providerName: "OpenRouter",
+        modelId: "anthropic/claude-sonnet-4.5",
+        modelName: "Claude Sonnet 4.5",
+        api: "openai-completions",
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKey: "refreshed-access-token",
+      },
+    });
+
+    expect(capture.runtimeApiKeys?.at(-1)).toEqual([
+      "openrouter",
+      "refreshed-access-token",
+    ]);
   });
 
   it("omits image input for non-vision models", async () => {

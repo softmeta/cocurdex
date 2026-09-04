@@ -1,5 +1,8 @@
 import { EventEmitter } from "node:events";
-import { deleteOpenCodeSession } from "@cocurdex/agent-adapters";
+import {
+  deleteOpenCodeSession,
+  readAdapterRateLimits as probeAdapterRateLimits,
+} from "@cocurdex/agent-adapters";
 import {
   AgentSteeringUnavailableError,
   createAgentRegistry,
@@ -195,6 +198,10 @@ export class CocurdexDaemonService {
   async listAgents() {
     const agents = await detectAgentInstallations(createAgentRegistry().list());
     return discoverInstalledAgentCapabilities(agents);
+  }
+
+  readAdapterRateLimits(agentIds: AgentId[]) {
+    return probeAdapterRateLimits(agentIds);
   }
 
   testNetworkProxy() {

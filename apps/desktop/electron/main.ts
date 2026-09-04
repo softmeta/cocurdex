@@ -53,6 +53,7 @@ import {
   listMessagesBySessionId,
   listToolCallsBySessionId,
   listWorkspaces,
+  readAdapterRateLimits,
   registerChatHandlers,
   saveEditorView,
   saveWorkspace,
@@ -1414,6 +1415,11 @@ app
     // Installed font families for Appearance pickers (cached in system-fonts).
     ipcMain.handle("app:listFontFamilies", () => listSystemFontFamilies());
     ipcMain.handle("agent:list", async () => listAgents());
+    ipcMain.handle(
+      "agent:readRateLimits",
+      async (_event, agentIds: AgentId[]) =>
+        readAdapterRateLimits(Array.isArray(agentIds) ? agentIds : []),
+    );
     ipcMain.handle("dialog:openDirectory", async () =>
       dialog.showOpenDialog({ properties: ["openDirectory"] }),
     );

@@ -19,6 +19,13 @@
       "outdated": "需要升级",
       "ready": "可用"
     },
+    "rateLimits": {
+      "authenticationRequired": "未查询到用量。尚未登录。请运行 claude auth login，然后刷新。",
+      "failed": "无法读取用量：{{message}}",
+      "loading": "正在加载用量…",
+      "timedOut": "用量检查超时，请刷新后重试。",
+      "unknownError": "未知错误"
+    },
     "status": {
       "builtin": "内置 — 随 cocurdex 提供，无需安装。",
       "detecting": "正在检测安装情况…",
@@ -162,11 +169,11 @@
   },
   "git": {
     "commitMessageModel": {
-      "agentDescription": "按该 agent 兼容的模型过滤。生成是一次性补全，不会创建聊天 session。",
+      "agentDescription": "用于生成 Git 提交信息的 Agent。",
       "agentLabel": "Agent",
       "footnote": "提交说明留空时，用所选模型根据 staged 变更生成 Conventional Commits 标题。未配置模型时必须手动填写。",
       "group": "提交说明",
-      "modelDescription": "用于一次性生成提交说明的模型。",
+      "modelDescription": "用于生成 Git 提交信息的模型。",
       "modelLabel": "模型",
       "noModels": "没有兼容模型",
       "none": "无（手动填写）",
@@ -337,6 +344,22 @@
       "refresh": "刷新",
       "save": "保存"
     },
+    "auth": {
+      "accountDescription": "通过 Pi OAuth 使用服务商账户或订阅。",
+      "apiKeyDescription": "使用由 Pi 管理的 API Key。",
+      "cancel": "取消",
+      "connected": "已连接",
+      "continue": "继续",
+      "deviceCode": "请在浏览器中输入代码 {{code}}。",
+      "loginFailed": "无法完成服务商认证",
+      "logoutFailed": "无法退出登录",
+      "readFailed": "无法读取服务商认证状态",
+      "signOut": "退出登录",
+      "starting": "正在开始认证…",
+      "title": "认证",
+      "useMethod": "使用",
+      "waitingForBrowser": "等待浏览器…"
+    },
     "deleteConfirm": {
       "cancel": "取消",
       "confirm": "删除",
@@ -377,7 +400,6 @@
       "description": "配置服务端点、模型和 Agent 默认选择。",
       "title": "服务商管理"
     },
-    "heading": "提供方",
     "importJson": {
       "back": "返回",
       "confirm": "导入",
@@ -443,6 +465,8 @@
       "importSucceeded": "已导入 {{count}} 个服务商",
       "importSucceeded_other": "",
       "missingFields": "必填项未填写",
+      "modelDisabled": "已停止启用该模型",
+      "modelEnabled": "模型已启用",
       "modelSaved": "模型已保存",
       "modelsRefreshed": "模型已刷新",
       "modelsRefreshFailed": "无法刷新模型",
@@ -452,7 +476,7 @@
       "saveFailed": "无法保存服务商"
     },
     "templates": {
-      "description": "选择一个预设模板，只需填入 API Key 即可。",
+      "description": "选择预设并保存，然后从服务商支持的认证方式中选择一种。",
       "title": "添加服务商"
     },
     "titleModel": {

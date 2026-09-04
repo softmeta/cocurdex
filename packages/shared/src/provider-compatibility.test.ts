@@ -58,12 +58,14 @@ describe("filterCompatibleProviderModels", () => {
       filterCompatibleProviderModels("pi", [
         item("openai-completions"),
         item("openai-responses"),
+        item("openai-codex-responses"),
         item("anthropic-messages"),
         item("google-generative-ai"),
       ]).map(({ model }) => model.api),
     ).toEqual([
       "openai-completions",
       "openai-responses",
+      "openai-codex-responses",
       "anthropic-messages",
       "google-generative-ai",
     ]);
@@ -101,6 +103,7 @@ describe("chat picker helpers", () => {
     expect(isChatSupportedApi("openai-completions")).toBe(true);
     expect(isChatSupportedApi("anthropic-messages")).toBe(true);
     expect(isChatSupportedApi("google-generative-ai")).toBe(true);
+    expect(isChatSupportedApi("openai-codex-responses")).toBe(false);
   });
 
   it("treats undeclared capabilities as chat-capable", () => {

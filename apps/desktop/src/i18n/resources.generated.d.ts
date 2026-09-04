@@ -1078,6 +1078,13 @@ export default interface Resources {
         outdated: "Update required";
         ready: "Ready";
       };
+      rateLimits: {
+        authenticationRequired: "No usage found. Not signed in. Run claude auth login, then refresh.";
+        failed: "Could not read usage: {{message}}";
+        loading: "Loading usage…";
+        timedOut: "Usage check timed out. Try refreshing.";
+        unknownError: "Unknown error";
+      };
       status: {
         builtin: "Built in — ships with cocurdex, nothing to install.";
         detecting: "Checking installation…";
@@ -1221,11 +1228,11 @@ export default interface Resources {
     };
     git: {
       commitMessageModel: {
-        agentDescription: "Filters models to those compatible with this agent. Generation is a one-shot call — no chat session is created.";
+        agentDescription: "Agent used to generate Git commit messages.";
         agentLabel: "Agent";
         footnote: "When the commit message is left blank, the selected model generates a Conventional Commits subject from the staged changes. If no model is set, you must type a message yourself.";
         group: "Commit messages";
-        modelDescription: "Model used for one-shot commit message generation.";
+        modelDescription: "Model used to generate Git commit messages.";
         modelLabel: "Model";
         noModels: "No compatible models";
         none: "None (type message manually)";
@@ -1396,6 +1403,22 @@ export default interface Resources {
         refresh: "Refresh";
         save: "Save";
       };
+      auth: {
+        accountDescription: "Use a provider account or subscription through Pi OAuth.";
+        apiKeyDescription: "Use an API key managed by Pi.";
+        cancel: "Cancel";
+        connected: "Connected";
+        continue: "Continue";
+        deviceCode: "Enter code {{code}} in the browser.";
+        loginFailed: "Unable to authenticate with this provider";
+        logoutFailed: "Unable to sign out";
+        readFailed: "Unable to read provider authentication";
+        signOut: "Sign out";
+        starting: "Starting authentication…";
+        title: "Authentication";
+        useMethod: "Use";
+        waitingForBrowser: "Waiting for browser…";
+      };
       deleteConfirm: {
         cancel: "Cancel";
         confirm: "Delete";
@@ -1436,7 +1459,6 @@ export default interface Resources {
         description: "Configure service endpoints, models, and agent defaults.";
         title: "Provider management";
       };
-      heading: "Providers";
       importJson: {
         back: "Back";
         confirm: "Import";
@@ -1504,6 +1526,8 @@ export default interface Resources {
         importSucceeded_one: "";
         importSucceeded_other: "";
         missingFields: "Required fields are missing";
+        modelDisabled: "Model disabled";
+        modelEnabled: "Model enabled";
         modelSaved: "Model saved";
         modelsRefreshFailed: "Unable to refresh models";
         modelsRefreshed: "Models refreshed";
@@ -1513,7 +1537,7 @@ export default interface Resources {
         saveFailed: "Unable to save provider";
       };
       templates: {
-        description: "Pick a preset — you only need to paste in an API key.";
+        description: "Pick a preset, save it, then choose an available authentication method.";
         title: "Add a provider";
       };
       titleModel: {

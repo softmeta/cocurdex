@@ -1,4 +1,5 @@
 export * from "./acp";
+export { readAdapterRateLimits } from "./adapter-rate-limits";
 export * from "./agent-adapter-factory";
 export * from "./claude-cli";
 export * from "./cli";

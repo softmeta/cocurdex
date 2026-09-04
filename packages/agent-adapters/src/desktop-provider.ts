@@ -1,3 +1,4 @@
+export { readAdapterRateLimits } from "./adapter-rate-limits";
 export { listClaudeCliProviderModels } from "./claude-cli";
 export {
   cancelCodexLogin,
@@ -14,6 +15,13 @@ export {
   generatePiCommitMessage,
   normalizeGeneratedCommitMessage,
 } from "./pi-sdk/pi-commit-message";
+export {
+  loginPiProvider,
+  logoutPiProvider,
+  readPiProviderAuthState,
+  registerBundledPiProviderOAuthFlows,
+  resolvePiProviderAuth,
+} from "./pi-sdk/pi-provider-auth";
 export {
   listPiBuiltInProviderIds,
   listPiProviderModels,

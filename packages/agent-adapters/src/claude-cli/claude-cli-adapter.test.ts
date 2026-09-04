@@ -53,6 +53,20 @@ describe("buildClaudeCliEnv", () => {
       PATH: "/usr/bin",
     });
   });
+
+  it("forwards macOS session identity used by Keychain OAuth", () => {
+    expect(
+      buildClaudeCliEnv({
+        PATH: "/usr/bin",
+        XPC_SERVICE_NAME: "com.apple.finder",
+        __CF_USER_TEXT_ENCODING: "0x1F5:0:0",
+      }),
+    ).toMatchObject({
+      PATH: "/usr/bin",
+      XPC_SERVICE_NAME: "com.apple.finder",
+      __CF_USER_TEXT_ENCODING: "0x1F5:0:0",
+    });
+  });
 });
 
 describe("createClaudeCliAdapter", () => {
