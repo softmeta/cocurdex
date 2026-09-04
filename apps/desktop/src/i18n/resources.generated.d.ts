@@ -1217,6 +1217,12 @@ export default interface Resources {
         restarted: "Daemon restarted";
       };
     };
+    editor: {
+      minimap: {
+        description: "Show a miniature overview of the current file along the editor edge.";
+        title: "Code MiniMap";
+      };
+    };
     followUp: {
       description: "Queue follow-ups until the current run finishes, or steer an active run when supported. Press {{shortcut}} to use the opposite behavior for one message.";
       groupTitle: "Agent behavior";
@@ -1559,6 +1565,7 @@ export default interface Resources {
       appearance: "Appearance";
       archived: "Archived chats";
       computer: "Computer use";
+      editor: "Editor";
       environment: "Network";
       general: "General";
       git: "Git";

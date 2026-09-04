@@ -3,6 +3,7 @@ export type AppScreen = "app" | "settings";
 export type SettingsSectionId =
   | "general"
   | "appearance"
+  | "editor"
   | "shortcuts"
   | "providers"
   | "adapters"

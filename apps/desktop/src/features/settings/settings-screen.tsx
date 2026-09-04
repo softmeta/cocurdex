@@ -38,6 +38,7 @@ import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
 import { CliPathSettingsPanel } from "./cli-path-settings";
 import { DaemonSettingsPanel } from "./daemon-settings";
+import { EditorSettingsPanel } from "./editor-settings";
 import { GitSettingsPanel } from "./git-settings";
 import { LanguagePicker } from "./language-picker";
 import { McpSettingsPanel } from "./mcp";
@@ -375,6 +376,10 @@ function SectionPanel({
         themeMode={themeMode}
       />
     );
+  }
+
+  if (sectionId === "editor") {
+    return <EditorSettingsPanel />;
   }
 
   if (sectionId === "providers") {

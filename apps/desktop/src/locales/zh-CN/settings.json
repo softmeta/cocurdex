@@ -158,6 +158,12 @@
       "restartFailed": "无法重启 daemon"
     }
   },
+  "editor": {
+    "minimap": {
+      "description": "在编辑器边缘显示当前文件的缩略预览。",
+      "title": "代码 MiniMap"
+    }
+  },
   "followUp": {
     "description": "将后续消息排到当前运行结束后执行，或在支持时引导当前运行。按 {{shortcut}} 可对单条消息使用相反行为。",
     "groupTitle": "Agent 行为",
@@ -498,6 +504,7 @@
     "appearance": "外观",
     "archived": "已归档聊天",
     "computer": "电脑使用",
+    "editor": "编辑器",
     "environment": "网络",
     "general": "常规",
     "git": "Git",
