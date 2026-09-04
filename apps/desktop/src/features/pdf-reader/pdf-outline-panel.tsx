@@ -15,23 +15,25 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { cn, useScrollIntoViewWhenActive } from "@/lib";
 import {
   collectExpandableOutlineKeys,
+  findOutlineLocationForPage,
   outlineNodePathKey,
   type PdfOutlineNode,
 } from "./pdf-outline";
 
 interface PdfOutlinePanelProps {
   outline: PdfOutlineNode[];
-  // 1-based page currently in view; used to highlight the matching entry.
   currentPage?: number;
+  isOpen: boolean;
   onSelectPage(pageNumber: number): void;
 }
 
 export function PdfOutlinePanel({
   outline,
   currentPage,
+  isOpen,
   onSelectPage,
 }: PdfOutlinePanelProps) {
   const { t } = useTranslation("editor");
@@ -44,8 +46,36 @@ export function PdfOutlinePanel({
     () => new Set(expandableKeys),
     [expandableKeys],
   );
-  // null = default (all expanded). User actions pin an explicit set.
+  const location = useMemo(
+    () =>
+      currentPage == null
+        ? null
+        : findOutlineLocationForPage(outline, currentPage),
+    [outline, currentPage],
+  );
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string> | null>(null);
+  const activeKey = location?.nodeKey ?? null;
+  const locateKey = isOpen ? activeKey : null;
+  const [locatedKey, setLocatedKey] = useState<string | null>(null);
+  if (locateKey !== locatedKey) {
+    setLocatedKey(locateKey);
+    if (location != null && locateKey != null) {
+      const ancestors = location.ancestorKeys;
+      if (ancestors.length > 0) {
+        setOpenKeys((prev) => {
+          const base = prev ?? allExpandableKeySet;
+          if (ancestors.every((key) => base.has(key))) {
+            return prev;
+          }
+          const next = new Set(base);
+          for (const key of ancestors) {
+            next.add(key);
+          }
+          return next;
+        });
+      }
+    }
+  }
   const resolvedOpenKeys = openKeys ?? allExpandableKeySet;
 
   const hasNested = expandableKeys.length > 0;
@@ -110,7 +140,8 @@ export function PdfOutlinePanel({
                   node={node}
                   nodeKey={nodeKey}
                   depth={0}
-                  currentPage={currentPage}
+                  activeKey={activeKey}
+                  locateActive={isOpen}
                   openKeys={resolvedOpenKeys}
                   onOpenChange={handleOpenChange}
                   onSelectPage={onSelectPage}
@@ -128,7 +159,8 @@ interface OutlineItemProps {
   node: PdfOutlineNode;
   nodeKey: string;
   depth: number;
-  currentPage?: number;
+  activeKey: string | null;
+  locateActive: boolean;
   openKeys: ReadonlySet<string>;
   onOpenChange(key: string, open: boolean): void;
   onSelectPage(pageNumber: number): void;
@@ -145,14 +177,18 @@ function OutlineItem({
   node,
   nodeKey,
   depth,
-  currentPage,
+  activeKey,
+  locateActive,
   openKeys,
   onOpenChange,
   onSelectPage,
 }: OutlineItemProps) {
   const hasChildren = node.children.length > 0;
-  const isActive = node.pageNumber != null && node.pageNumber === currentPage;
+  const isActive = activeKey === nodeKey;
   const isOpen = openKeys.has(nodeKey);
+  const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(
+    locateActive && isActive,
+  );
 
   // Indent the whole row (chevron + label) once. Leaf nodes keep an empty
   // chevron-sized spacer so their title lines up with expandable siblings.
@@ -165,7 +201,7 @@ function OutlineItem({
   );
 
   const row = (
-    <div className="flex min-w-0 items-center" style={rowStyle}>
+    <div ref={scrollRef} className="flex min-w-0 items-center" style={rowStyle}>
       {hasChildren ? (
         <CollapsibleTrigger
           className={cn(
@@ -203,7 +239,8 @@ function OutlineItem({
                   node={child}
                   nodeKey={childKey}
                   depth={depth + 1}
-                  currentPage={currentPage}
+                  activeKey={activeKey}
+                  locateActive={locateActive}
                   openKeys={openKeys}
                   onOpenChange={onOpenChange}
                   onSelectPage={onSelectPage}
@@ -250,6 +287,7 @@ function Label({ node, isActive, onSelectPage }: LabelProps) {
     <button
       type="button"
       onClick={() => onSelectPage(pageNumber)}
+      aria-current={isActive ? "true" : undefined}
       className={cn(className, "hover:bg-accent/60")}
     >
       <Text size="meta" truncate as="span">
