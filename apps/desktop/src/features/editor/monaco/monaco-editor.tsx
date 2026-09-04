@@ -13,6 +13,7 @@ import { isPdfPath } from "@/features/pdf-reader/is-pdf-path";
 import { openPdfReaderAtom } from "@/features/pdf-reader/pdf-reader-store";
 import type { AppearanceSettings } from "@/features/settings";
 import { activeWorkspaceIdAtom } from "@/features/workspaces";
+import { editorSettingsAtom } from "../editor-settings";
 import {
   activeFileAtom,
   type EditorPreviewLocation,
@@ -52,6 +53,7 @@ interface MonacoTextEditorProps {
   activeFile: string;
   activePreviewLocation: EditorPreviewLocation | null;
   cachedContent: string | null;
+  codeMinimap: boolean;
   editorRef: ReturnType<typeof useSelectionBubble>["editorRef"];
   editorRevealNonce: number;
   editorThemeName: ReturnType<typeof getEditorThemeName>;
@@ -79,6 +81,7 @@ function MonacoTextEditor({
   activeFile,
   activePreviewLocation,
   cachedContent,
+  codeMinimap,
   editorRef,
   editorRevealNonce,
   editorThemeName,
@@ -104,8 +107,9 @@ function MonacoTextEditor({
       ...MONACO_EDITOR_OPTIONS,
       fontFamily: typography.fontFamily,
       fontSize: typography.fontSize,
+      minimap: { enabled: codeMinimap },
     }),
-    [typography.fontFamily, typography.fontSize],
+    [codeMinimap, typography.fontFamily, typography.fontSize],
   );
   // themePreset is part of the key so chrome colors re-bind when the user
   // switches color packs without flipping light/dark (Monaco themes snapshot
@@ -270,6 +274,7 @@ export function MonacoEditor({
     () => getEditorTypography(appearanceSettings),
     [appearanceSettings],
   );
+  const { codeMinimap } = useAtomValue(editorSettingsAtom);
 
   // Single source of truth for the editor theme: the shared hook tracks the
   // document `data-theme` attribute that app-shell keeps in sync with the
@@ -346,6 +351,7 @@ export function MonacoEditor({
               activeFile={activeFile}
               activePreviewLocation={activePreviewLocation}
               cachedContent={contentByFile[activeFile] ?? null}
+              codeMinimap={codeMinimap}
               editorRef={editorRef}
               editorRevealNonce={editorRevealNonce}
               editorThemeName={editorThemeName}

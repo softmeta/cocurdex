@@ -1,5 +1,6 @@
 export * from "./context-file-attachment";
 export * from "./editor-breadcrumb";
+export * from "./editor-settings";
 export * from "./editor-store";
 export * from "./editor-tabs";
 // Lazy wrapper, not the tree itself — see git-changes-lazy for the same reason.

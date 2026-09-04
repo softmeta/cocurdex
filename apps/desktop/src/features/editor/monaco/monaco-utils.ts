@@ -51,6 +51,7 @@ const EXTENSION_TO_SHIKI_LANGUAGE: Record<string, string> = {
   java: "java",
   sql: "sql",
   astro: "astro",
+  swift: "swift",
 };
 
 // Deduplicated Shiki language ids to load into the highlighter on startup.

@@ -2,6 +2,7 @@ import {
   Archive,
   Blocks,
   BookOpen,
+  Code2,
   FolderTree,
   Gauge,
   GitBranch,
@@ -23,6 +24,7 @@ import type { SettingsSectionId } from "@/app/layout";
 export const settingsSections = [
   { id: "general", labelKey: "general", icon: Settings, group: "core" },
   { id: "appearance", labelKey: "appearance", icon: Palette, group: "core" },
+  { id: "editor", labelKey: "editor", icon: Code2, group: "core" },
   { id: "shortcuts", labelKey: "shortcuts", icon: Keyboard, group: "core" },
   { id: "providers", labelKey: "providers", icon: KeyRound, group: "core" },
   { id: "adapters", labelKey: "adapters", icon: Blocks, group: "core" },

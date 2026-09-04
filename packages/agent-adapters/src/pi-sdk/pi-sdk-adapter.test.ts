@@ -320,6 +320,44 @@ describe("createPiSdkAdapter", () => {
     expect(JSON.stringify(events)).not.toContain(".pi/agent");
   });
 
+  it("continues a newly created Pi session on a second turn", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events);
+
+    await session.sendMessage({ content: "Start", history: [] });
+    const response = await session.sendMessage({
+      content: "Continue",
+      history: [
+        {
+          id: "user-first",
+          sessionId: "session-1",
+          role: "user",
+          content: "Start",
+          attachments: [],
+          createdAt: "2026-08-03T00:00:00.000Z",
+        },
+        {
+          id: "assistant-first",
+          sessionId: "session-1",
+          role: "assistant",
+          content: "hello",
+          attachments: [],
+          createdAt: "2026-08-03T00:00:01.000Z",
+        },
+      ],
+    });
+
+    expect(response.content).toBe("hello");
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "could not restore its native session",
+        ),
+      }),
+    );
+  });
+
   it("fails before creating a Pi runtime when history has no native session file", async () => {
     const events: AgentEvent[] = [];
     const capture: { createAgentSessionOptions?: Record<string, unknown> } = {};

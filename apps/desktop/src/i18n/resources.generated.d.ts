@@ -1217,6 +1217,12 @@ export default interface Resources {
         restarted: "Daemon restarted";
       };
     };
+    editor: {
+      minimap: {
+        description: "Show a miniature overview of the current file along the editor edge.";
+        title: "Code MiniMap";
+      };
+    };
     followUp: {
       description: "Queue follow-ups until the current run finishes, or steer an active run when supported. Press {{shortcut}} to use the opposite behavior for one message.";
       groupTitle: "Agent behavior";
@@ -1541,9 +1547,9 @@ export default interface Resources {
         title: "Add a provider";
       };
       titleModel: {
-        description: "Generates titles for the built-in Pi agent and chat conversations. Other agents use their own title support.";
-        label: "Pi title generation model";
-        none: "Use current model";
+        description: "Generates titles for the built-in Pi agent and chat mode. Other agents use their own title support.";
+        label: "Session title generation model";
+        none: "Use current session model";
         probeFailed: "Failed · {{latencyMs}} ms · {{error}}";
         probeOk: "Connected · {{latencyMs}} ms";
         probeOkWithTitle: "Connected · {{latencyMs}} ms · “{{title}}”";
@@ -1559,6 +1565,7 @@ export default interface Resources {
       appearance: "Appearance";
       archived: "Archived chats";
       computer: "Computer use";
+      editor: "Editor";
       environment: "Network";
       general: "General";
       git: "Git";
