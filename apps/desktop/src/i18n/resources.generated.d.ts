@@ -105,6 +105,8 @@ export default interface Resources {
       expand: "Expand tasks";
       label: "Tasks";
       progress: "{{done}}/{{count}}";
+      progress_one: "";
+      progress_other: "";
     };
     planApproval: {
       abandon: "Abandon plan";
@@ -1078,6 +1080,13 @@ export default interface Resources {
         outdated: "Update required";
         ready: "Ready";
       };
+      rateLimits: {
+        authenticationRequired: "No usage found. Not signed in. Run claude auth login, then refresh.";
+        failed: "Could not read usage: {{message}}";
+        loading: "Loading usage…";
+        timedOut: "Usage check timed out. Try refreshing.";
+        unknownError: "Unknown error";
+      };
       status: {
         builtin: "Built in — ships with cocurdex, nothing to install.";
         detecting: "Checking installation…";
@@ -1396,6 +1405,22 @@ export default interface Resources {
         refresh: "Refresh";
         save: "Save";
       };
+      auth: {
+        accountDescription: "Use a provider account or subscription through Pi OAuth.";
+        apiKeyDescription: "Use an API key managed by Pi.";
+        cancel: "Cancel";
+        connected: "Connected";
+        continue: "Continue";
+        deviceCode: "Enter code {{code}} in the browser.";
+        loginFailed: "Unable to authenticate with this provider";
+        logoutFailed: "Unable to sign out";
+        readFailed: "Unable to read provider authentication";
+        signOut: "Sign out";
+        starting: "Starting authentication…";
+        title: "Authentication";
+        useMethod: "Use";
+        waitingForBrowser: "Waiting for browser…";
+      };
       deleteConfirm: {
         cancel: "Cancel";
         confirm: "Delete";
@@ -1513,7 +1538,7 @@ export default interface Resources {
         saveFailed: "Unable to save provider";
       };
       templates: {
-        description: "Pick a preset — you only need to paste in an API key.";
+        description: "Pick a preset, save it, then choose an available authentication method.";
         title: "Add a provider";
       };
       titleModel: {

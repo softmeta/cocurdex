@@ -1,5 +1,6 @@
 import {
   type ProviderApi,
+  type ProviderAuthMethodRecord,
   type ProviderConfigRecord,
   type ProviderModelCapability,
   type ProviderModelRecord,
@@ -19,14 +20,6 @@ import {
 
 // Models on any api Cocurdex doesn't drive yet are dropped from the catalog.
 const supportedApis = new Set<ProviderApi>(providerApis);
-
-const excludedProviderIds = new Set([
-  "amazon-bedrock",
-  "azure-openai-responses",
-  "github-copilot",
-  "google-vertex",
-  "openai-codex",
-]);
 
 // Base URLs Pi leaves empty on these providers (auth-only or templated hosts).
 // Without them the provider has no endpoint and drops from the template list.
@@ -56,10 +49,31 @@ function getTemplateBaseUrl(provider: Provider) {
 
 function isTemplateProvider(provider: Provider) {
   return (
-    !excludedProviderIds.has(provider.id) &&
-    Boolean(provider.auth.apiKey) &&
+    getSupportedProviderModels(provider).length > 0 &&
+    Boolean(provider.auth.oauth || provider.auth.apiKey?.login) &&
     Boolean(getTemplateBaseUrl(provider))
   );
+}
+
+function getProviderAuthMethods(provider: Provider) {
+  const methods: ProviderAuthMethodRecord[] = [];
+  if (provider.auth.oauth) {
+    methods.push({
+      type: "oauth",
+      name: provider.auth.oauth.name,
+      label: provider.auth.oauth.loginLabel ?? provider.auth.oauth.name,
+      isSubscription: provider.auth.oauth.isSubscription ?? false,
+    });
+  }
+  if (provider.auth.apiKey?.login) {
+    methods.push({
+      type: "api_key",
+      name: provider.auth.apiKey.name,
+      label: provider.auth.apiKey.name,
+      isSubscription: false,
+    });
+  }
+  return methods;
 }
 
 function modelCapabilities(
@@ -114,6 +128,7 @@ export function listPiProviderTemplates(): ProviderTemplateRecord[] {
       id: provider.id,
       name: provider.name,
       baseUrl: getTemplateBaseUrl(provider),
+      authMethods: getProviderAuthMethods(provider),
     }));
 
   // Cocurdex extras first so product-specific presets stay visible near the
@@ -136,10 +151,6 @@ export async function listPiProviderModels(
   const provider = builtinProviders().find((item) => item.id === config.id);
   if (!provider || !isTemplateProvider(provider)) {
     return null;
-  }
-
-  if (provider.refreshModels) {
-    await provider.refreshModels();
   }
 
   const now = new Date().toISOString();

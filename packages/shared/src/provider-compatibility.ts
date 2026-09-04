@@ -38,7 +38,9 @@ export function isAgentCapableModel(
   );
 }
 
-const chatSupportedApis: ProviderApi[] = [...providerApis];
+const chatSupportedApis: ProviderApi[] = providerApis.filter(
+  (api) => api !== "openai-codex-responses",
+);
 
 export function isChatSupportedApi(api: ProviderApi) {
   return chatSupportedApis.includes(api);

@@ -77,6 +77,11 @@ export async function listAgents(): Promise<AgentDescriptor[]> {
   return requestDaemon("agent.list", daemonOptions());
 }
 
+export async function readAdapterRateLimits(agentIds: AgentId[]) {
+  await daemonReady;
+  return requestDaemon("agent.rateLimits.read", { agentIds }, daemonOptions());
+}
+
 export async function saveWorkspace(workspace: WorkspaceRecord) {
   await daemonReady;
   await requestDaemon("workspace.save", { workspace }, daemonOptions());

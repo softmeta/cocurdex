@@ -11,6 +11,18 @@ export type AgentId =
   | "pi"
   | "opencode";
 
+export const PLAN_USAGE_AGENT_IDS = [
+  "claude-agent",
+  "codex",
+  "grok-build",
+] as const satisfies readonly AgentId[];
+
+export type PlanUsageAgentId = (typeof PLAN_USAGE_AGENT_IDS)[number];
+
+export function isPlanUsageAgentId(id: AgentId): id is PlanUsageAgentId {
+  return (PLAN_USAGE_AGENT_IDS as readonly AgentId[]).includes(id);
+}
+
 export type SessionStatus = "idle" | "running" | "error" | "exited";
 export type WriteMode = "read-only" | "native-write";
 export type CollaborationModeKind = "default" | "plan";
@@ -43,14 +55,10 @@ export interface AgentPermissionModeOption {
   id: AgentPermissionMode;
   risk: AgentPermissionModeRisk;
 }
-// Single source of truth for the Pi apis Cocurdex drives. Every api list
-// (model import filter, agent/chat compatibility, manual-model picker) derives
-// from this — adding a new Pi api (e.g. bedrock/vertex once their auth lands)
-// is a one-line change here. Special-auth providers stay in excludedProviderIds
-// until their auth flow exists.
 export const providerApis = [
   "openai-completions",
   "openai-responses",
+  "openai-codex-responses",
   "anthropic-messages",
   "google-generative-ai",
   "mistral-conversations",
@@ -279,7 +287,54 @@ export interface ProviderTemplateRecord {
   id: string;
   name: string;
   baseUrl: string;
+  authMethods?: ProviderAuthMethodRecord[];
 }
+
+export type ProviderAuthMethod = "oauth" | "api_key";
+
+export interface ProviderAuthMethodRecord {
+  type: ProviderAuthMethod;
+  name: string;
+  label: string;
+  isSubscription: boolean;
+}
+
+export interface ProviderAuthState {
+  providerId: string;
+  type: ProviderAuthMethod | null;
+  source: string | null;
+}
+
+export type ProviderAuthPrompt =
+  | {
+      id: string;
+      type: "text" | "secret" | "manual_code";
+      message: string;
+      placeholder: string | null;
+    }
+  | {
+      id: string;
+      type: "select";
+      message: string;
+      options: Array<{
+        id: string;
+        label: string;
+        description: string | null;
+      }>;
+    };
+
+export type ProviderAuthLoginUpdate =
+  | { type: "info" | "progress"; message: string }
+  | { type: "auth_url"; url: string; instructions: string | null }
+  | {
+      type: "device_code";
+      userCode: string;
+      verificationUri: string;
+    }
+  | { type: "prompt"; prompt: ProviderAuthPrompt }
+  | { type: "prompt_cancelled"; promptId: string }
+  | { type: "complete" }
+  | { type: "error"; error: string };
 
 export interface ProviderModelRecord {
   providerId: string;
@@ -963,6 +1018,25 @@ export interface AgentRateLimitsRecord {
   planLabel?: string;
   credits?: AgentUsageCredits;
 }
+
+export type AgentRateLimitsErrorCode =
+  | "authentication-required"
+  | "probe-failed"
+  | "timed-out";
+
+export type AgentRateLimitsReadResult =
+  | {
+      status: "available";
+      rateLimits: AgentRateLimitsRecord;
+    }
+  | {
+      status: "unavailable";
+    }
+  | {
+      status: "error";
+      code: AgentRateLimitsErrorCode;
+      message: string;
+    };
 
 export interface AgentRateLimitsUpdatedEvent {
   type: "rate_limits.updated";

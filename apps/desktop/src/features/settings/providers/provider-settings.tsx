@@ -23,6 +23,7 @@ import type {
   ProviderImportWarning,
 } from "./parse-provider-json";
 import { ProviderEditor } from "./provider-editor";
+import { resolveProviderSettingsSurface } from "./provider-settings-surface";
 import { applyProviderTemplate } from "./provider-templates";
 
 const NEW_PROVIDER_EDITOR_KEY = "__new__";
@@ -206,19 +207,16 @@ export function ProviderSettingsPanel() {
     | { status: "testing" }
     | { status: "done"; result: TitleModelProbeResult }
   >({ status: "idle" });
-
-  const hasProviders = providers.length > 0;
-  // Derive the active provider from data + intent instead of storing it. When
-  // not explicitly creating, fall back to the first provider if the selection
-  // is stale (e.g. the selected provider was deleted).
-  const activeProviderId = isCreatingProvider
-    ? null
-    : selectedProviderId && providers.some((p) => p.id === selectedProviderId)
-      ? selectedProviderId
-      : (providers[0]?.id ?? null);
-  const selectedProvider = providers.find(
-    (provider) => provider.id === activeProviderId,
-  );
+  const surface = resolveProviderSettingsSurface({
+    isCreatingProvider,
+    pendingTemplateId,
+    providerIds: providers.map((provider) => provider.id),
+    selectedProviderId,
+  });
+  const selectedProvider =
+    surface.kind === "provider"
+      ? providers.find((provider) => provider.id === surface.id)
+      : undefined;
   const pendingTemplate = pendingTemplateId
     ? templates.find((template) => template.id === pendingTemplateId)
     : undefined;
@@ -226,9 +224,12 @@ export function ProviderSettingsPanel() {
     ? applyProviderTemplate(createEmptyProvider(), pendingTemplate)
     : createEmptyProvider();
   const editorProvider = selectedProvider ?? newProviderDraft;
-  const editorKey = isCreatingProvider
-    ? `${NEW_PROVIDER_EDITOR_KEY}:${pendingTemplateId}`
-    : (activeProviderId ?? NEW_PROVIDER_EDITOR_KEY);
+  let editorKey = NEW_PROVIDER_EDITOR_KEY;
+  if (surface.kind === "create") {
+    editorKey = `${NEW_PROVIDER_EDITOR_KEY}:${surface.templateId}`;
+  } else if (surface.kind === "provider") {
+    editorKey = surface.id;
+  }
   const selectedModels = models.filter(
     (model) => model.providerId === editorProvider.id,
   );
@@ -252,8 +253,12 @@ export function ProviderSettingsPanel() {
       .includes(providerFilterQuery);
   });
 
-  const shouldShowProviderEditor = hasProviders || isCreatingProvider;
+  const shouldShowProviderEditor =
+    surface.kind === "provider" || surface.kind === "create";
   const presetProviderIds = new Set(templates.map((template) => template.id));
+  const editorAuthMethods =
+    templates.find((template) => template.id === editorProvider.id)
+      ?.authMethods ?? [];
 
   // Loads server data only. It must never touch UI intent (selection /
   // creating), otherwise an async reload could clobber what the user is doing.
@@ -322,7 +327,7 @@ export function ProviderSettingsPanel() {
     const baseUrl = draftProvider.baseUrl.trim();
     if (!id || !name || !baseUrl) {
       toast.error(t("providers.status.missingFields"));
-      return;
+      return false;
     }
 
     const persisted = providers.find((provider) => provider.id === id);
@@ -331,7 +336,7 @@ export function ProviderSettingsPanel() {
     // overwrite an existing config.
     if (!selectedProvider && persisted) {
       toast.error(t("providers.status.idExists", { id }));
-      return;
+      return false;
     }
 
     const now = new Date().toISOString();
@@ -356,7 +361,7 @@ export function ProviderSettingsPanel() {
     } catch (error) {
       console.error("Failed to save provider:", error);
       toast.error(t("providers.status.saveFailed"));
-      return;
+      return false;
     }
 
     setSelectedProviderId(provider.id);
@@ -389,6 +394,7 @@ export function ProviderSettingsPanel() {
         mergeProviderModels(current, provider.id, fetchedModels),
       );
     }
+    return true;
   }
 
   async function removeProvider(providerId: string) {
@@ -404,6 +410,28 @@ export function ProviderSettingsPanel() {
     setPendingTemplateId("");
     toast.success(t("providers.status.providerDeleted"));
     await reload();
+  }
+
+  async function updateProviderEnabled(providerId: string, enabled: boolean) {
+    const provider = providers.find((candidate) => candidate.id === providerId);
+    if (!provider) {
+      return false;
+    }
+
+    try {
+      await desktopApi.saveProviderConfig({
+        ...provider,
+        enabled,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Failed to update provider:", error);
+      toast.error(t("providers.status.saveFailed"));
+      return false;
+    }
+
+    await reload();
+    return true;
   }
 
   async function clearApiKey(providerId: string) {
@@ -690,7 +718,7 @@ export function ProviderSettingsPanel() {
                 <>
                   {filteredProviders.map((provider) => {
                     const isActive =
-                      !isCreatingProvider && activeProviderId === provider.id;
+                      surface.kind === "provider" && surface.id === provider.id;
                     const modelCount = models.filter(
                       (model) => model.providerId === provider.id,
                     ).length;
@@ -766,6 +794,7 @@ export function ProviderSettingsPanel() {
           <div className="flex min-w-0 flex-col gap-6">
             {shouldShowProviderEditor ? (
               <ProviderEditor
+                authMethods={editorAuthMethods}
                 key={editorKey}
                 provider={editorProvider}
                 selectedProvider={selectedProvider}
@@ -777,12 +806,14 @@ export function ProviderSettingsPanel() {
                 onRemoveProvider={removeProvider}
                 onSaveModel={saveModel}
                 onSaveProvider={saveProvider}
+                onUpdateProviderEnabled={updateProviderEnabled}
               />
-            ) : (
+            ) : null}
+            {!shouldShowProviderEditor ? (
               <div className="flex min-h-[160px] items-center justify-center rounded-control border border-dashed border-border/60 px-6 text-center text-body text-muted-foreground">
                 {t("providers.templates.description")}
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-2 rounded-control border border-border/60 px-3 py-2.5">

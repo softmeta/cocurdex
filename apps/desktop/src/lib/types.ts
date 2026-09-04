@@ -5,6 +5,7 @@ import type {
   AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentProviderSelection,
+  AgentRateLimitsReadResult,
   AgentSessionConfigOption,
   AgentSlashCommand,
   AgentToolCallRecord,
@@ -14,9 +15,6 @@ import type {
   BrowserAnnotation,
   ChatEvent,
   CocurdexDataChangedEvent,
-  CodexAccountState,
-  CodexLoginOutcome,
-  CodexLoginStartResult,
   CommitMessageModelSelection,
   CompatibleProviderModel,
   ConversationMessageRecord,
@@ -49,6 +47,9 @@ import type {
   NetworkProxyTestResult,
   NoteRecord,
   NoteSummary,
+  ProviderAuthLoginUpdate,
+  ProviderAuthMethod,
+  ProviderAuthState,
   ProviderConfigRecord,
   ProviderListModelsResult,
   ProviderModelRecord,
@@ -412,6 +413,9 @@ export interface DesktopApi {
     workspaceRootPath?: string | null,
   ): Promise<ProductSkillsRemoveResult>;
   listAgents(): Promise<AgentDescriptor[]>;
+  readAdapterRateLimits(
+    agentIds: AgentId[],
+  ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;
   listWorkspaces(): Promise<WorkspaceRecord[]>;
   saveWorkspace(workspace: WorkspaceRecord): Promise<void>;
   deleteWorkspace(workspaceId: string): Promise<void>;
@@ -504,6 +508,19 @@ export interface DesktopApi {
   deleteProviderConfig(providerId: string): Promise<void>;
   setProviderApiKey(providerId: string, apiKey: string): Promise<void>;
   clearProviderApiKey(providerId: string): Promise<void>;
+  readProviderAuth(providerId: string): Promise<ProviderAuthState>;
+  startProviderAuthLogin(
+    providerId: string,
+    method: ProviderAuthMethod,
+  ): Promise<{ loginId: string }>;
+  nextProviderAuthLogin(loginId: string): Promise<ProviderAuthLoginUpdate>;
+  respondProviderAuthLogin(
+    loginId: string,
+    promptId: string,
+    value: string,
+  ): Promise<void>;
+  cancelProviderAuthLogin(loginId: string): Promise<void>;
+  logoutProviderAuth(providerId: string): Promise<void>;
   listProviderModels(providerId: string): Promise<ProviderListModelsResult>;
   listAllProviderModels(): Promise<ProviderModelRecord[]>;
   saveProviderModel(model: ProviderModelRecord): Promise<ProviderModelRecord>;
@@ -538,11 +555,6 @@ export interface DesktopApi {
     settings: NetworkProxySettings,
   ): Promise<NetworkProxyTestResult>;
   testCurrentNetworkProxy(): Promise<NetworkProxyTestResult>;
-  readCodexAccount(): Promise<CodexAccountState>;
-  startCodexLogin(): Promise<CodexLoginStartResult>;
-  waitCodexLogin(loginId: string): Promise<CodexLoginOutcome>;
-  cancelCodexLogin(loginId: string): Promise<void>;
-  logoutCodex(): Promise<void>;
   listSessionMessages(sessionId: string): Promise<SessionMessagesResult>;
   listSessionToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;
   // Returns user-facing content and raw machine output for a single tool call.

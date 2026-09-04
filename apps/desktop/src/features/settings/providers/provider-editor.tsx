@@ -1,9 +1,11 @@
 import type {
+  ProviderAuthMethodRecord,
   ProviderConfigRecord,
   ProviderModelRecord,
 } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ProviderAuthSection } from "./provider-auth-section";
 import { ProviderDetailsSection } from "./provider-details-section";
 import { ProviderModelsSection } from "./provider-models-section";
 import { SettingsGroup } from "./settings-group";
@@ -34,17 +36,26 @@ interface ProviderEditorProps {
   // new one. Drives delete affordances and "configured" badges.
   selectedProvider?: ProviderConfigRecord;
   selectedModels: ProviderModelRecord[];
+  authMethods: ProviderAuthMethodRecord[];
   presetProviderIds: Set<string>;
   onClearApiKey(providerId: string): Promise<void>;
   onRefreshModels(providerId: string): Promise<{ error?: string }>;
   onReload(): Promise<void>;
   onRemoveProvider(providerId: string): Promise<void>;
   onSaveModel(model: ProviderModelRecord): Promise<void>;
-  onSaveProvider(provider: ProviderConfigRecord, apiKey: string): Promise<void>;
+  onUpdateProviderEnabled(
+    providerId: string,
+    enabled: boolean,
+  ): Promise<boolean>;
+  onSaveProvider(
+    provider: ProviderConfigRecord,
+    apiKey: string,
+  ): Promise<boolean>;
 }
 
 export function ProviderEditor({
   provider,
+  authMethods,
   selectedProvider,
   selectedModels,
   presetProviderIds,
@@ -53,6 +64,7 @@ export function ProviderEditor({
   onReload,
   onRemoveProvider,
   onSaveModel,
+  onUpdateProviderEnabled,
   onSaveProvider,
 }: ProviderEditorProps) {
   const { t } = useTranslation("settings");
@@ -62,6 +74,7 @@ export function ProviderEditor({
     createEmptyModel(provider.id),
   );
   const [apiKey, setApiKey] = useState("");
+  const [isUpdatingEnabled, setIsUpdatingEnabled] = useState(false);
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [modelRefreshStatus, setModelRefreshStatus] = useState<string | null>(
     null,
@@ -71,6 +84,22 @@ export function ProviderEditor({
   async function handleSaveProvider() {
     await onSaveProvider(draftProvider, apiKey);
     setApiKey("");
+  }
+
+  async function handleEnabledChange(enabled: boolean) {
+    const previousProvider = draftProvider;
+    const nextProvider = { ...draftProvider, enabled };
+    setDraftProvider(nextProvider);
+    if (!isPresetProvider || !selectedProvider) {
+      return;
+    }
+
+    setIsUpdatingEnabled(true);
+    const saved = await onUpdateProviderEnabled(nextProvider.id, enabled);
+    if (!saved) {
+      setDraftProvider(previousProvider);
+    }
+    setIsUpdatingEnabled(false);
   }
 
   async function handleRefreshModels() {
@@ -103,15 +132,37 @@ export function ProviderEditor({
         <ProviderDetailsSection
           apiKey={apiKey}
           draftProvider={draftProvider}
+          managedAuth={authMethods.length > 0}
           presetProviderIds={presetProviderIds}
           selectedProvider={selectedProvider}
           onApiKeyChange={setApiKey}
           onClearApiKey={() => onClearApiKey(draftProvider.id)}
           onDraftProviderChange={setDraftProvider}
+          onEnabledChange={(enabled) => {
+            if (!isUpdatingEnabled) {
+              void handleEnabledChange(enabled);
+            }
+          }}
           onRemoveProvider={onRemoveProvider}
           onSaveProvider={handleSaveProvider}
         />
       </SettingsGroup>
+
+      {authMethods.length > 0 ? (
+        <ProviderAuthSection
+          methods={authMethods}
+          providerId={draftProvider.id}
+          onAuthChange={async () => {
+            if (!selectedProvider) {
+              const saved = await onSaveProvider(draftProvider, "");
+              if (!saved) {
+                return;
+              }
+            }
+            await onRefreshModels(draftProvider.id);
+          }}
+        />
+      ) : null}
 
       <SettingsGroup>
         <ProviderModelsSection

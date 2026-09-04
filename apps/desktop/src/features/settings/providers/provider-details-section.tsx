@@ -20,11 +20,13 @@ function FieldCaption({ children }: { children: ReactNode }) {
 interface ProviderDetailsSectionProps {
   apiKey: string;
   draftProvider: ProviderConfigRecord;
+  managedAuth?: boolean;
   presetProviderIds: Set<string>;
   selectedProvider?: ProviderConfigRecord;
   onApiKeyChange(apiKey: string): void;
   onClearApiKey(): Promise<void>;
   onDraftProviderChange(provider: ProviderConfigRecord): void;
+  onEnabledChange(enabled: boolean): void;
   onRemoveProvider(providerId: string): Promise<void>;
   onSaveProvider(): Promise<void>;
 }
@@ -32,11 +34,13 @@ interface ProviderDetailsSectionProps {
 export function ProviderDetailsSection({
   apiKey,
   draftProvider,
+  managedAuth = false,
   presetProviderIds,
   selectedProvider,
   onApiKeyChange,
   onClearApiKey,
   onDraftProviderChange,
+  onEnabledChange,
   onRemoveProvider,
   onSaveProvider,
 }: ProviderDetailsSectionProps) {
@@ -66,12 +70,7 @@ export function ProviderDetailsSection({
             <Switch
               checked={draftProvider.enabled}
               id={enabledSwitchId}
-              onCheckedChange={(checked) =>
-                onDraftProviderChange({
-                  ...draftProvider,
-                  enabled: checked,
-                })
-              }
+              onCheckedChange={onEnabledChange}
             />
           </Label>
         </div>
@@ -123,64 +122,68 @@ export function ProviderDetailsSection({
             }
           />
         </Label>
-        <div className="grid gap-1.5">
-          <Label htmlFor={apiKeyId}>
-            <FieldCaption>{t("providers.fields.apiKey")}</FieldCaption>
-            <Text size="meta" tone="subtle">
-              {hasStoredApiKey
-                ? t("providers.state.configured")
-                : t("providers.state.notConfigured")}
-            </Text>
-          </Label>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              className={cn(fieldClass, "min-w-0 flex-1")}
-              id={apiKeyId}
-              placeholder={
-                hasStoredApiKey ? t("providers.fields.newApiKey") : undefined
-              }
-              type="password"
-              value={apiKey}
-              onChange={(event) => onApiKeyChange(event.target.value)}
-            />
-            {hasStoredApiKey ? (
+        {!managedAuth ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor={apiKeyId}>
+              <FieldCaption>{t("providers.fields.apiKey")}</FieldCaption>
+              <Text size="meta" tone="subtle">
+                {hasStoredApiKey
+                  ? t("providers.state.configured")
+                  : t("providers.state.notConfigured")}
+              </Text>
+            </Label>
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                className={cn(fieldClass, "min-w-0 flex-1")}
+                id={apiKeyId}
+                placeholder={
+                  hasStoredApiKey ? t("providers.fields.newApiKey") : undefined
+                }
+                type="password"
+                value={apiKey}
+                onChange={(event) => onApiKeyChange(event.target.value)}
+              />
+              {hasStoredApiKey ? (
+                <Button
+                  className="shrink-0"
+                  type="button"
+                  variant="ghost"
+                  onClick={onClearApiKey}
+                >
+                  <KeyRound className="size-4" />
+                  {t("providers.actions.clearKey")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {!isPresetProvider ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {selectedProvider ? (
               <Button
-                className="shrink-0"
+                className="text-muted-foreground hover:text-destructive"
+                size="sm"
                 type="button"
                 variant="ghost"
-                onClick={onClearApiKey}
+                onClick={() => setIsDeleteConfirmOpen(true)}
               >
-                <KeyRound className="size-4" />
-                {t("providers.actions.clearKey")}
+                <Trash2 className="size-4" />
+                {t("providers.actions.delete")}
               </Button>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {selectedProvider && !presetProviderIds.has(selectedProvider.id) ? (
+            ) : (
+              <span />
+            )}
             <Button
-              className="text-muted-foreground hover:text-destructive"
               size="sm"
               type="button"
-              variant="ghost"
-              onClick={() => setIsDeleteConfirmOpen(true)}
+              variant="secondary"
+              onClick={onSaveProvider}
             >
-              <Trash2 className="size-4" />
-              {t("providers.actions.delete")}
+              <Check className="size-4" />
+              {t("providers.actions.save")}
             </Button>
-          ) : (
-            <span />
-          )}
-          <Button
-            size="sm"
-            type="button"
-            variant="secondary"
-            onClick={onSaveProvider}
-          >
-            <Check className="size-4" />
-            {t("providers.actions.save")}
-          </Button>
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <AppConfirmDialog

@@ -1,8 +1,13 @@
-import type { AgentDescriptor } from "@cocurdex/shared";
+import {
+  type AgentDescriptor,
+  type AgentId,
+  type AgentRateLimitsReadResult,
+  isPlanUsageAgentId,
+} from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Check, Copy, ExternalLink, RotateCw } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Badge, Button, Spinner, Text } from "@/components/ui";
@@ -14,6 +19,10 @@ import {
   getAdapterStatus,
 } from "@/features/sessions";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import {
+  AdapterRateLimits,
+  AdapterRateLimitsLoading,
+} from "./adapter-rate-limits";
 import { sortAdaptersForSettings } from "./adapter-settings-order";
 
 const statusDotClassName: Record<AdapterStatusKind, string> = {
@@ -131,7 +140,27 @@ function AdapterExecutablePath({ path }: { path: string }) {
   );
 }
 
-function AdapterRow({ agent }: { agent: AgentDescriptor }) {
+function planUsageAgentIds(agents: AgentDescriptor[]) {
+  return agents
+    .filter((agent) => {
+      if (!isPlanUsageAgentId(agent.id)) {
+        return false;
+      }
+      const kind = getAdapterStatus(agent).kind;
+      return kind === "ready" || kind === "outdated";
+    })
+    .map((agent) => agent.id);
+}
+
+function AdapterRow({
+  agent,
+  rateLimitsLoading,
+  rateLimitsResult,
+}: {
+  agent: AgentDescriptor;
+  rateLimitsLoading: boolean;
+  rateLimitsResult: AgentRateLimitsReadResult | undefined;
+}) {
   const { t } = useTranslation("settings");
   const status = getAdapterStatus(agent);
   const needsAction = status.kind === "missing" || status.kind === "outdated";
@@ -140,6 +169,36 @@ function AdapterRow({ agent }: { agent: AgentDescriptor }) {
     status.kind === "ready" || status.kind === "outdated"
       ? status.executablePath
       : null;
+  let rateLimitsContent = null;
+  if (rateLimitsResult?.status === "available") {
+    rateLimitsContent = (
+      <AdapterRateLimits rateLimits={rateLimitsResult.rateLimits} />
+    );
+  } else if (rateLimitsLoading) {
+    rateLimitsContent = (
+      <AdapterRateLimitsLoading label={t("adapters.rateLimits.loading")} />
+    );
+  } else if (rateLimitsResult?.status === "error") {
+    let message: string;
+    if (rateLimitsResult.code === "authentication-required") {
+      message = t("adapters.rateLimits.authenticationRequired");
+    } else if (rateLimitsResult.code === "timed-out") {
+      message = t("adapters.rateLimits.timedOut");
+    } else {
+      message = t("adapters.rateLimits.failed", {
+        message: rateLimitsResult.message,
+      });
+    }
+    const errorTone =
+      rateLimitsResult.code === "authentication-required"
+        ? "muted"
+        : "destructive";
+    rateLimitsContent = (
+      <Text className="mt-1.5 block" size="meta" tone={errorTone}>
+        {message}
+      </Text>
+    );
+  }
 
   const copyInstallCommand = async () => {
     if (!installHint) {
@@ -150,7 +209,7 @@ function AdapterRow({ agent }: { agent: AgentDescriptor }) {
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className="flex items-start justify-between gap-4 py-3">
       <div className="flex min-w-0 flex-1 gap-2.5">
         <span
           className={cn(
@@ -186,6 +245,7 @@ function AdapterRow({ agent }: { agent: AgentDescriptor }) {
               {t("adapters.status.outdatedHint")}
             </Text>
           ) : null}
+          {rateLimitsContent}
           {needsAction && installHint ? (
             <Text className="mt-1 block font-mono" size="meta" tone="muted">
               {installHint.command}
@@ -193,7 +253,7 @@ function AdapterRow({ agent }: { agent: AgentDescriptor }) {
           ) : null}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="mt-0.5 flex shrink-0 items-center gap-1">
         <Text size="meta" tone={kindLabelTone[status.kind]}>
           {adapterKindLabel(status.kind, t)}
         </Text>
@@ -229,14 +289,68 @@ export function AdapterSettingsPanel() {
   const agents = useAtomValue(agentsAtom);
   const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
   const [refreshing, setRefreshing] = useState(false);
+  const [rateLimitsByAgent, setRateLimitsByAgent] = useState<
+    Partial<Record<AgentId, AgentRateLimitsReadResult>>
+  >({});
+  const [loadingAgentIds, setLoadingAgentIds] = useState<AgentId[]>(() =>
+    planUsageAgentIds(agents),
+  );
+  const rateLimitsByAgentRef = useRef(rateLimitsByAgent);
+  rateLimitsByAgentRef.current = rateLimitsByAgent;
   const sortedAgents = sortAdaptersForSettings(agents);
+
+  const loadRateLimits = async (
+    agentsToProbe: AgentDescriptor[],
+    force: boolean,
+  ) => {
+    const ids = planUsageAgentIds(agentsToProbe).filter((agentId) => {
+      return force || rateLimitsByAgentRef.current[agentId] === undefined;
+    });
+    if (ids.length === 0) {
+      return;
+    }
+    const pendingIds = force
+      ? ids.filter(
+          (agentId) => rateLimitsByAgentRef.current[agentId] === undefined,
+        )
+      : ids;
+    if (pendingIds.length > 0) {
+      setLoadingAgentIds((current) => [
+        ...new Set([...current, ...pendingIds]),
+      ]);
+    }
+    try {
+      const next = await desktopApi.readAdapterRateLimits(ids);
+      setRateLimitsByAgent((current) => ({ ...current, ...next }));
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : t("adapters.rateLimits.unknownError");
+      setRateLimitsByAgent((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          ids.map((agentId) => [
+            agentId,
+            { status: "error", code: "probe-failed", message },
+          ]),
+        ),
+      }));
+    } finally {
+      setLoadingAgentIds((current) =>
+        current.filter((agentId) => !ids.includes(agentId)),
+      );
+    }
+  };
 
   const refresh = async (silent = false) => {
     if (!silent) {
       setRefreshing(true);
     }
     try {
-      bootstrapAgents(await desktopApi.listAgents());
+      const nextAgents = await desktopApi.listAgents();
+      bootstrapAgents(nextAgents);
+      await loadRateLimits(nextAgents, !silent);
     } catch (error) {
       if (silent) {
         return;
@@ -253,8 +367,8 @@ export function AdapterSettingsPanel() {
     }
   };
 
-  // 终端里装完 CLI 后切回窗口，自动再测一次 PATH。
   useMountEffect(() => {
+    void loadRateLimits(agents, false);
     const onFocus = () => {
       void refresh(true);
     };
@@ -286,7 +400,12 @@ export function AdapterSettingsPanel() {
       <div className="rounded-card border border-border/70 bg-card/45 px-4">
         <div className="flex flex-col divide-y divide-border/60">
           {sortedAgents.map((agent) => (
-            <AdapterRow agent={agent} key={agent.id} />
+            <AdapterRow
+              agent={agent}
+              key={agent.id}
+              rateLimitsLoading={loadingAgentIds.includes(agent.id)}
+              rateLimitsResult={rateLimitsByAgent[agent.id]}
+            />
           ))}
         </div>
       </div>

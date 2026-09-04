@@ -23,6 +23,10 @@ export function buildClaudeCliEnv(env: NodeJS.ProcessEnv = process.env) {
     extraAllowedNames: [
       "GOOGLE_APPLICATION_CREDENTIALS",
       "GOOGLE_CLOUD_PROJECT",
+      "XPC_FLAGS",
+      "XPC_SERVICE_NAME",
+      "__CFBundleIdentifier",
+      "__CF_USER_TEXT_ENCODING",
     ],
   });
 }
