@@ -402,6 +402,20 @@ describe("listConfiguredProviderModels", () => {
     expect(models).toEqual([overriddenBuiltInModel, customModel]);
   });
 
+  it("keeps a persisted disabled flag on built-in catalog models", async () => {
+    const disabledBuiltInModel = { ...model, enabled: false };
+    const { clearBuiltInProviderModelsCache, listConfiguredProviderModels } =
+      await import("./provider-service");
+    clearBuiltInProviderModelsCache();
+
+    const models = await listConfiguredProviderModels(
+      [builtInProvider],
+      [disabledBuiltInModel],
+    );
+
+    expect(models).toEqual([disabledBuiltInModel]);
+  });
+
   it("caches configured built-in provider models between reloads", async () => {
     const { clearBuiltInProviderModelsCache, listConfiguredProviderModels } =
       await import("./provider-service");

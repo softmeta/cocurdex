@@ -477,7 +477,22 @@ export function ProviderSettingsPanel() {
       toast.error(t("providers.status.saveFailed"));
       return;
     }
-    toast.success(t("providers.status.modelSaved"));
+
+    const previous = models.find(
+      (item) =>
+        item.providerId === model.providerId && item.modelId === modelId,
+    );
+    if (!previous) {
+      toast.success(t("providers.status.modelSaved"));
+    } else if (previous.enabled !== model.enabled) {
+      toast.success(
+        model.enabled
+          ? t("providers.status.modelEnabled")
+          : t("providers.status.modelDisabled"),
+      );
+    } else {
+      toast.success(t("providers.status.modelSaved"));
+    }
     await reload();
   }
 
@@ -644,13 +659,11 @@ export function ProviderSettingsPanel() {
 
   return (
     <div className="settings-panel-enter flex min-w-0 flex-col gap-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-medium">
-          {isImportView
-            ? t("providers.importJson.title")
-            : t("providers.heading")}
-        </div>
-        {isImportView ? (
+      {isImportView ? (
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-medium">
+            {t("providers.importJson.title")}
+          </div>
           <Button
             size="sm"
             type="button"
@@ -659,45 +672,44 @@ export function ProviderSettingsPanel() {
           >
             {t("providers.importJson.back")}
           </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              type="button"
-              variant="ghost"
-              onClick={() => setIsImportView(true)}
-            >
-              <Braces className="size-4" />
-              {t("providers.actions.importJson")}
-            </Button>
-            <Button
-              size="sm"
-              type="button"
-              variant="secondary"
-              onClick={startNewProvider}
-            >
-              <Plus className="size-4" />
-              {t("providers.actions.newProvider")}
-            </Button>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {isImportView ? (
         <ImportProviderJsonPanel onImport={importProvidersFromJson} />
       ) : (
         <>
-          {/* Top row: a horizontally scrolling strip of provider + preset cards so
-              the config area below gets the full panel width. */}
           <div className="flex flex-col gap-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/65" />
-              <Input
-                className="h-8 rounded-control border-border/70 bg-background/60 pl-9 pr-3 text-body shadow-none placeholder:text-muted-foreground/70 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
-                placeholder={t("providers.searchPlaceholder")}
-                value={providerQuery}
-                onChange={(event) => setProviderQuery(event.target.value)}
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/65" />
+                <Input
+                  className="h-8 rounded-control border-border/70 bg-background/60 ps-9 pe-3 text-body shadow-none placeholder:text-muted-foreground/70 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
+                  placeholder={t("providers.searchPlaceholder")}
+                  value={providerQuery}
+                  onChange={(event) => setProviderQuery(event.target.value)}
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsImportView(true)}
+                >
+                  <Braces className="size-4" />
+                  {t("providers.actions.importJson")}
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                  onClick={startNewProvider}
+                >
+                  <Plus className="size-4" />
+                  {t("providers.actions.newProvider")}
+                </Button>
+              </div>
             </div>
 
             <ProviderStrip>

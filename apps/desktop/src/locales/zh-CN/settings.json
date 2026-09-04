@@ -169,11 +169,11 @@
   },
   "git": {
     "commitMessageModel": {
-      "agentDescription": "按该 agent 兼容的模型过滤。生成是一次性补全，不会创建聊天 session。",
+      "agentDescription": "用于生成 Git 提交信息的 Agent。",
       "agentLabel": "Agent",
       "footnote": "提交说明留空时，用所选模型根据 staged 变更生成 Conventional Commits 标题。未配置模型时必须手动填写。",
       "group": "提交说明",
-      "modelDescription": "用于一次性生成提交说明的模型。",
+      "modelDescription": "用于生成 Git 提交信息的模型。",
       "modelLabel": "模型",
       "noModels": "没有兼容模型",
       "none": "无（手动填写）",
@@ -400,7 +400,6 @@
       "description": "配置服务端点、模型和 Agent 默认选择。",
       "title": "服务商管理"
     },
-    "heading": "提供方",
     "importJson": {
       "back": "返回",
       "confirm": "导入",
@@ -466,6 +465,8 @@
       "importSucceeded": "已导入 {{count}} 个服务商",
       "importSucceeded_other": "",
       "missingFields": "必填项未填写",
+      "modelDisabled": "已停止启用该模型",
+      "modelEnabled": "模型已启用",
       "modelSaved": "模型已保存",
       "modelsRefreshed": "模型已刷新",
       "modelsRefreshFailed": "无法刷新模型",

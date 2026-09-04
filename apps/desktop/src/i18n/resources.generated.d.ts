@@ -105,8 +105,6 @@ export default interface Resources {
       expand: "Expand tasks";
       label: "Tasks";
       progress: "{{done}}/{{count}}";
-      progress_one: "";
-      progress_other: "";
     };
     planApproval: {
       abandon: "Abandon plan";
@@ -1230,11 +1228,11 @@ export default interface Resources {
     };
     git: {
       commitMessageModel: {
-        agentDescription: "Filters models to those compatible with this agent. Generation is a one-shot call — no chat session is created.";
+        agentDescription: "Agent used to generate Git commit messages.";
         agentLabel: "Agent";
         footnote: "When the commit message is left blank, the selected model generates a Conventional Commits subject from the staged changes. If no model is set, you must type a message yourself.";
         group: "Commit messages";
-        modelDescription: "Model used for one-shot commit message generation.";
+        modelDescription: "Model used to generate Git commit messages.";
         modelLabel: "Model";
         noModels: "No compatible models";
         none: "None (type message manually)";
@@ -1461,7 +1459,6 @@ export default interface Resources {
         description: "Configure service endpoints, models, and agent defaults.";
         title: "Provider management";
       };
-      heading: "Providers";
       importJson: {
         back: "Back";
         confirm: "Import";
@@ -1529,6 +1526,8 @@ export default interface Resources {
         importSucceeded_one: "";
         importSucceeded_other: "";
         missingFields: "Required fields are missing";
+        modelDisabled: "Model disabled";
+        modelEnabled: "Model enabled";
         modelSaved: "Model saved";
         modelsRefreshFailed: "Unable to refresh models";
         modelsRefreshed: "Models refreshed";
