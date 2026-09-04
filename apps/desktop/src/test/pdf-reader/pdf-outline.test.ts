@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildPdfOutline,
   collectExpandableOutlineKeys,
+  findOutlineLocationForPage,
   outlineNodePathKey,
   type PdfOutlineNode,
   type PdfOutlineSource,
@@ -150,5 +151,101 @@ describe("collectExpandableOutlineKeys", () => {
     ];
 
     expect(collectExpandableOutlineKeys(outline)).toEqual(["0", "0.1", "1"]);
+  });
+});
+
+const nestedOutline: PdfOutlineNode[] = [
+  {
+    title: "Part I",
+    pageNumber: 1,
+    children: [
+      { title: "Section 1", pageNumber: 2, children: [] },
+      {
+        title: "Section 2",
+        pageNumber: 5,
+        children: [{ title: "Sub", pageNumber: 7, children: [] }],
+      },
+    ],
+  },
+  {
+    title: "Part II",
+    pageNumber: 10,
+    children: [{ title: "Section 3", pageNumber: 12, children: [] }],
+  },
+];
+
+describe("findOutlineLocationForPage", () => {
+  it("returns null for an empty outline or a page before the first entry", () => {
+    expect(findOutlineLocationForPage([], 1)).toBeNull();
+    expect(
+      findOutlineLocationForPage(
+        [{ title: "Later", pageNumber: 5, children: [] }],
+        3,
+      ),
+    ).toBeNull();
+  });
+
+  it("skips entries whose destination has no page", () => {
+    expect(
+      findOutlineLocationForPage(
+        [
+          { title: "Unlinked", pageNumber: null, children: [] },
+          { title: "Intro", pageNumber: 4, children: [] },
+        ],
+        4,
+      ),
+    ).toEqual({ nodeKey: "1", ancestorKeys: [] });
+  });
+
+  it("selects the last preorder entry whose page is at most the current page", () => {
+    expect(findOutlineLocationForPage(nestedOutline, 1)).toEqual({
+      nodeKey: "0",
+      ancestorKeys: [],
+    });
+    expect(findOutlineLocationForPage(nestedOutline, 3)).toEqual({
+      nodeKey: "0.0",
+      ancestorKeys: ["0"],
+    });
+    expect(findOutlineLocationForPage(nestedOutline, 6)).toEqual({
+      nodeKey: "0.1",
+      ancestorKeys: ["0"],
+    });
+    expect(findOutlineLocationForPage(nestedOutline, 8)).toEqual({
+      nodeKey: "0.1.0",
+      ancestorKeys: ["0", "0.1"],
+    });
+    expect(findOutlineLocationForPage(nestedOutline, 11)).toEqual({
+      nodeKey: "1",
+      ancestorKeys: [],
+    });
+    expect(findOutlineLocationForPage(nestedOutline, 20)).toEqual({
+      nodeKey: "1.0",
+      ancestorKeys: ["1"],
+    });
+  });
+
+  it("prefers a same-page child over its parent", () => {
+    const outline: PdfOutlineNode[] = [
+      {
+        title: "Chapter",
+        pageNumber: 1,
+        children: [{ title: "Intro", pageNumber: 1, children: [] }],
+      },
+    ];
+    expect(findOutlineLocationForPage(outline, 1)).toEqual({
+      nodeKey: "0.0",
+      ancestorKeys: ["0"],
+    });
+  });
+
+  it("does not let an earlier-page later sibling beat a closer preceding entry", () => {
+    const outline: PdfOutlineNode[] = [
+      { title: "Chapter 1", pageNumber: 10, children: [] },
+      { title: "Chapter 2", pageNumber: 5, children: [] },
+    ];
+    expect(findOutlineLocationForPage(outline, 12)).toEqual({
+      nodeKey: "0",
+      ancestorKeys: [],
+    });
   });
 });

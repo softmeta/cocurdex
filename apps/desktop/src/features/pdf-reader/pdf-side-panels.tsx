@@ -86,6 +86,7 @@ export function PdfSidePanels({
           <PdfOutlinePanel
             outline={outline}
             currentPage={currentPage}
+            isOpen={isOutlineOpen}
             onSelectPage={onSelectPage}
           />
         </PdfSidePanelShell>
