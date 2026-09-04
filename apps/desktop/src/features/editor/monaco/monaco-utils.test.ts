@@ -56,6 +56,7 @@ describe("getEditorLanguage", () => {
     expect(getEditorLanguage("a.sh")).toBe("bash");
     expect(getEditorLanguage("a.py")).toBe("python");
     expect(getEditorLanguage("a.md")).toBe("markdown");
+    expect(getEditorLanguage("a.swift")).toBe("swift");
   });
 
   it("falls back to plaintext for unknown or missing files", () => {
@@ -65,5 +66,9 @@ describe("getEditorLanguage", () => {
 
   it("registers astro in the Shiki language set", () => {
     expect(EDITOR_SHIKI_LANGUAGES).toContain("astro");
+  });
+
+  it("registers swift in the Shiki language set", () => {
+    expect(EDITOR_SHIKI_LANGUAGES).toContain("swift");
   });
 });

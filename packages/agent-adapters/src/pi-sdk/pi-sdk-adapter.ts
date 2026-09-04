@@ -950,6 +950,7 @@ export function createPiSdkAdapter(
           onEvent({ type: "state.changed", sessionId, status: "running" });
           try {
             if (
+              !piSessionPromise &&
               !persistedSessionFile &&
               requiresNativeSessionRecovery(messagePayload.history)
             ) {

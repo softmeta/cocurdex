@@ -482,9 +482,9 @@
       "title": "Add a provider"
     },
     "titleModel": {
-      "description": "Generates titles for the built-in Pi agent and chat conversations. Other agents use their own title support.",
-      "label": "Pi title generation model",
-      "none": "Use current model",
+      "description": "Generates titles for the built-in Pi agent and chat mode. Other agents use their own title support.",
+      "label": "Session title generation model",
+      "none": "Use current session model",
       "probeFailed": "Failed · {{latencyMs}} ms · {{error}}",
       "probeOk": "Connected · {{latencyMs}} ms",
       "probeOkWithTitle": "Connected · {{latencyMs}} ms · “{{title}}”",

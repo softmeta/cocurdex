@@ -64,7 +64,7 @@ export function JumpControls({
     >
       <button
         aria-label={label}
-        className="pointer-events-auto flex size-9 cursor-grab items-center justify-start text-chat-fg-muted transition-colors hover:text-chat-fg active:cursor-grabbing"
+        className="pointer-events-auto flex size-9 cursor-default items-center justify-start text-chat-fg-muted transition-colors hover:text-chat-fg"
         onMouseDown={(event) => startDrag(event.clientY)}
         onClick={() => handleClick(onJump)}
         type="button"

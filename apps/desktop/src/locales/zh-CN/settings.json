@@ -480,9 +480,9 @@
       "title": "添加服务商"
     },
     "titleModel": {
-      "description": "用于内置 Pi agent 和聊天对话生成标题；其他 Agent 使用各自的标题能力。",
-      "label": "Pi 标题生成模型",
-      "none": "使用当前模型",
+      "description": "用于内置 Pi agent 和聊天模式生成标题；其他 Agent 使用各自的标题能力。",
+      "label": "会话标题生成模型",
+      "none": "使用当前会话模型",
       "probeFailed": "连通失败 · {{latencyMs}} ms · {{error}}",
       "probeOk": "连通成功 · {{latencyMs}} ms",
       "probeOkWithTitle": "连通成功 · {{latencyMs}} ms · “{{title}}”",
