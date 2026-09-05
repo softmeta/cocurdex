@@ -50,11 +50,13 @@ import {
   getToolCallResult,
   initializeAppState,
   listAgents,
+  listArchivedSessions,
   listMessagesBySessionId,
   listToolCallsBySessionId,
   listWorkspaces,
   readAdapterRateLimits,
   registerChatHandlers,
+  restoreSession,
   saveEditorView,
   saveWorkspace,
   setDaemonReady,
@@ -810,6 +812,15 @@ function registerSessionHandlers() {
       return archiveSession(payload.sessionId, payload.archivedAt);
     },
   );
+  registerHandler(
+    ipcMain,
+    "session:restore",
+    schemas.delete,
+    async (_event, raw) => {
+      return restoreSession(raw.sessionId);
+    },
+  );
+  ipcMain.handle("session:listArchived", () => listArchivedSessions());
   registerHandler(
     ipcMain,
     "session:delete",

@@ -17,6 +17,43 @@ export function createSqliteSessionRepository(
         .all() as SqliteRow[];
       return rows.map(mapSession);
     },
+    async listArchived() {
+      const rows = database
+        .prepare(
+          `SELECT * FROM sessions
+           WHERE archived_at IS NOT NULL
+           ORDER BY archived_at DESC, id`,
+        )
+        .all() as SqliteRow[];
+      return rows.map(mapSession);
+    },
+    async restore(sessionId) {
+      const session = await this.getById(sessionId);
+      if (!session?.archivedAt) {
+        return [];
+      }
+      if (session.parentSessionId) {
+        const parent = await this.getById(session.parentSessionId);
+        if (parent?.archivedAt) {
+          throw new Error("Restore the parent session first");
+        }
+      }
+      const rows = database
+        .prepare(
+          `WITH RECURSIVE tree(id) AS (
+             SELECT id FROM sessions WHERE id = ?
+             UNION
+             SELECT sessions.id FROM sessions
+             JOIN tree ON sessions.parent_session_id = tree.id
+             WHERE sessions.archived_at = ?
+           )
+           UPDATE sessions SET archived_at = NULL
+           WHERE id IN (SELECT id FROM tree)
+           RETURNING *`,
+        )
+        .all(sessionId, session.archivedAt) as SqliteRow[];
+      return rows.map(mapSession);
+    },
     async listByWorkspaceId(workspaceId) {
       const rows = database
         .prepare(
@@ -125,7 +162,7 @@ export function createSqliteSessionRepository(
            )
            UPDATE sessions
            SET archived_at = ?, updated_at = ?
-           WHERE id IN (SELECT id FROM tree)`,
+           WHERE id IN (SELECT id FROM tree) AND archived_at IS NULL`,
         )
         .run(sessionId, nextArchivedAt, nextArchivedAt);
 

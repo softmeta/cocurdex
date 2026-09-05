@@ -129,6 +129,10 @@ export class DaemonState {
           args[0] as string,
           args[1] as string | undefined,
         );
+      case "session.listArchived":
+        return this.database.sessions.listArchived();
+      case "session.restore":
+        return this.database.sessions.restore(args[0] as string);
       case "session.get":
         return this.database.sessions.getById(args[0] as string);
       case "session.updateTitle":

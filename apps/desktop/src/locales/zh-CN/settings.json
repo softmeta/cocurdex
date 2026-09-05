@@ -82,6 +82,20 @@
       }
     }
   },
+  "archive": {
+    "archivedOn": "归档于 {{date}}",
+    "description": "归档的会话仍保存在本机。恢复后，会话及当时一起归档的子会话会回到侧栏。",
+    "empty": "暂无已归档会话",
+    "loadFailed": "无法加载已归档会话",
+    "loading": "正在加载已归档会话…",
+    "noResults": "没有匹配的会话",
+    "restore": "恢复",
+    "restored": "会话已恢复到侧栏",
+    "restoreFailed": "无法恢复此会话，请重试。",
+    "restoreNamed": "恢复 {{title}}",
+    "retry": "重试",
+    "search": "搜索会话、项目或 Agent"
+  },
   "chatDisplay": {
     "activity": {
       "description": "回答前的推理和工具调用在对话里怎么显示。默认按整轮折叠，点开才看细节。",
@@ -502,7 +516,7 @@
     "about": "关于",
     "adapters": "适配器",
     "appearance": "外观",
-    "archived": "已归档聊天",
+    "archived": "已归档会话",
     "computer": "电脑使用",
     "editor": "编辑器",
     "environment": "网络",

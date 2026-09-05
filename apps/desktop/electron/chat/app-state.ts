@@ -107,6 +107,14 @@ export function archiveSession(
   return callStorage("session.archive", sessionId, archivedAt);
 }
 
+export function listArchivedSessions(): Promise<SessionRecord[]> {
+  return callStorage("session.listArchived");
+}
+
+export function restoreSession(sessionId: string): Promise<SessionRecord[]> {
+  return callStorage("session.restore", sessionId);
+}
+
 export async function deleteSession(sessionId: string) {
   await daemonReady;
   await requestDaemon("session.delete", { sessionId }, daemonOptions());

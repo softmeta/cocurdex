@@ -1,4 +1,9 @@
 {
+  "archive": {
+    "failed": "Could not archive this session. Try again.",
+    "success": "Session archived",
+    "view": "View archived"
+  },
   "branch": {
     "branches": "Branches",
     "empty": "No matching branches.",

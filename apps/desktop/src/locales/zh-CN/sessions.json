@@ -1,4 +1,9 @@
 {
+  "archive": {
+    "failed": "无法归档此会话，请重试。",
+    "success": "会话已归档",
+    "view": "查看归档"
+  },
   "branch": {
     "branches": "分支",
     "empty": "没有匹配的分支。",

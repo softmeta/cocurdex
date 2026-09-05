@@ -82,6 +82,20 @@
       }
     }
   },
+  "archive": {
+    "archivedOn": "Archived {{date}}",
+    "description": "Archived sessions stay on this device. Restore a session to return it to the sidebar, together with sub-sessions archived with it.",
+    "empty": "No archived sessions",
+    "loadFailed": "Could not load archived sessions",
+    "loading": "Loading archived sessions…",
+    "noResults": "No matching sessions",
+    "restore": "Restore",
+    "restored": "Session restored to the sidebar",
+    "restoreFailed": "Could not restore this session. Try again.",
+    "restoreNamed": "Restore {{title}}",
+    "retry": "Retry",
+    "search": "Search by session, project, or agent"
+  },
   "chatDisplay": {
     "activity": {
       "description": "How reasoning and tool calls show up before each answer. Collapsed per turn by default; expand for details.",
@@ -504,7 +518,7 @@
     "about": "About",
     "adapters": "Adapters",
     "appearance": "Appearance",
-    "archived": "Archived chats",
+    "archived": "Archived sessions",
     "computer": "Computer use",
     "editor": "Editor",
     "environment": "Network",

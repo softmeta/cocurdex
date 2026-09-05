@@ -910,6 +910,11 @@ export default interface Resources {
     searchFiles: "Search files";
   };
   sessions: {
+    archive: {
+      failed: "Could not archive this session. Try again.";
+      success: "Session archived";
+      view: "View archived";
+    };
     branch: {
       branches: "Branches";
       empty: "No matching branches.";
@@ -1140,6 +1145,20 @@ export default interface Resources {
           title: "UI font size";
         };
       };
+    };
+    archive: {
+      archivedOn: "Archived {{date}}";
+      description: "Archived sessions stay on this device. Restore a session to return it to the sidebar, together with sub-sessions archived with it.";
+      empty: "No archived sessions";
+      loadFailed: "Could not load archived sessions";
+      loading: "Loading archived sessions…";
+      noResults: "No matching sessions";
+      restore: "Restore";
+      restoreFailed: "Could not restore this session. Try again.";
+      restoreNamed: "Restore {{title}}";
+      restored: "Session restored to the sidebar";
+      retry: "Retry";
+      search: "Search by session, project, or agent";
     };
     chatDisplay: {
       activity: {
@@ -1563,7 +1582,7 @@ export default interface Resources {
       about: "About";
       adapters: "Adapters";
       appearance: "Appearance";
-      archived: "Archived chats";
+      archived: "Archived sessions";
       computer: "Computer use";
       editor: "Editor";
       environment: "Network";

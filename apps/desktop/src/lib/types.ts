@@ -494,6 +494,8 @@ export interface DesktopApi {
     payload: UpdateSessionTitlePayload,
   ): Promise<SessionRecord | null>;
   archiveSession(payload: ArchiveSessionPayload): Promise<SessionRecord | null>;
+  listArchivedSessions(): Promise<SessionRecord[]>;
+  restoreSession(payload: { sessionId: string }): Promise<SessionRecord[]>;
   deleteSession(payload: DeleteSessionPayload): Promise<void>;
   refineSessionTitle(
     payload: RefineSessionTitlePayload,
