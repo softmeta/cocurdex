@@ -213,6 +213,9 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("session:updateTitle", payload),
   archiveSession: (payload: ArchiveSessionPayload) =>
     ipcRenderer.invoke("session:archive", payload),
+  listArchivedSessions: () => ipcRenderer.invoke("session:listArchived"),
+  restoreSession: (payload: { sessionId: string }) =>
+    ipcRenderer.invoke("session:restore", payload),
   deleteSession: (payload: DeleteSessionPayload) =>
     ipcRenderer.invoke("session:delete", payload),
   refineSessionTitle: (payload: RefineSessionTitlePayload) =>

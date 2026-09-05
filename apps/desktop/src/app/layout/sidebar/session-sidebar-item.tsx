@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -28,6 +29,7 @@ import {
   sessionsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
+import { openSettings } from "@/features/settings";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { SidebarItemTooltip } from "./sidebar-item-preview";
@@ -61,6 +63,7 @@ export function SessionSidebarItem({
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessions = useAtomValue(sessionsAtom);
   const [isRenaming, setIsRenaming] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);
   const descendantIds =
     hasChildren && !isExpanded
@@ -129,18 +132,36 @@ export function SessionSidebarItem({
       });
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
+    if (isArchiving) {
+      return;
+    }
+    setIsArchiving(true);
     const archivedAt = new Date().toISOString();
-    archiveSession({ sessionId: session.id, archivedAt });
-
-    void desktopApi
-      .archiveSession({ sessionId: session.id, archivedAt })
-      .catch((error) => {
-        logRendererDiagnostic("debug", "[SessionArchive] archive failed", {
-          sessionId: session.id,
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+    try {
+      const archived = await desktopApi.archiveSession({
+        sessionId: session.id,
+        archivedAt,
       });
+      if (!archived) {
+        throw new Error("Session not found");
+      }
+      archiveSession({ sessionId: session.id, archivedAt });
+      toast.success(t("archive.success"), {
+        action: {
+          label: t("archive.view"),
+          onClick: () => openSettings("archived"),
+        },
+      });
+    } catch (error) {
+      toast.error(t("archive.failed"));
+      logRendererDiagnostic("debug", "[SessionArchive] archive failed", {
+        sessionId: session.id,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   const handleDelete = () => {
@@ -269,7 +290,11 @@ export function SessionSidebarItem({
         <SidebarContextMenuItem icon={Pencil} onClick={startRename}>
           {t("sidebar.rename")}
         </SidebarContextMenuItem>
-        <SidebarContextMenuItem icon={Archive} onClick={handleArchive}>
+        <SidebarContextMenuItem
+          icon={Archive}
+          onClick={handleArchive}
+          disabled={isArchiving}
+        >
           {t("sidebar.archive")}
         </SidebarContextMenuItem>
         <ContextMenuSeparator />

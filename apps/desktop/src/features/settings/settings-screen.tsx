@@ -33,9 +33,10 @@ import {
   useResolvedShortcutLabel,
 } from "@/features/shortcuts";
 import type { LanguageMode } from "@/i18n/language";
-import { formatShortcutLabel } from "@/lib";
+import { cn, formatShortcutLabel } from "@/lib";
 import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
+import { ArchivedSessionsPanel } from "./archived-sessions";
 import { CliPathSettingsPanel } from "./cli-path-settings";
 import { DaemonSettingsPanel } from "./daemon-settings";
 import { EditorSettingsPanel } from "./editor-settings";
@@ -363,6 +364,14 @@ function SectionPanel({
     );
   }
 
+  if (sectionId === "archived") {
+    return (
+      <div className="settings-panel-enter flex min-h-0 flex-1 flex-col">
+        <ArchivedSessionsPanel />
+      </div>
+    );
+  }
+
   if (sectionId === "shortcuts") {
     return <ShortcutsSettingsPanel />;
   }
@@ -471,9 +480,10 @@ export function SettingsScreen({
   const activeSectionMeta =
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];
-  const isFillLayout = activeSection === "licenses";
+  const isFillLayout =
+    activeSection === "licenses" || activeSection === "archived";
   const settingsHeading = (
-    <header>
+    <header className="shrink-0">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">
         {t(`settings:sections.${activeSectionMeta.labelKey}`)}
       </h1>
@@ -522,7 +532,14 @@ export function SettingsScreen({
         </div>
         {isFillLayout ? (
           <div className="flex h-[calc(100vh-2rem)] min-h-0 flex-col pb-8">
-            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-10 sm:px-6 lg:px-8">
+            <div
+              className={cn(
+                "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-10 sm:px-6 lg:px-8",
+                activeSection === "licenses"
+                  ? "max-w-5xl gap-6"
+                  : "max-w-3xl gap-8",
+              )}
+            >
               {settingsHeading}
               {settingsPanel}
             </div>
