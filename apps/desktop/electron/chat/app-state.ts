@@ -7,8 +7,6 @@ import type {
   AgentToolCallResult,
   AppBootstrapData,
   CommitMessageModelSelection,
-  ConversationMessageRecord,
-  ConversationRecord,
   EditorViewRecord,
   MessageRecord,
   NetworkProxyTestResult,
@@ -52,6 +50,11 @@ async function callStorage<T>(
     { operation, args },
     daemonOptions(),
   ) as Promise<T>;
+}
+
+export async function chatDaemonOptions() {
+  await daemonReady;
+  return daemonOptions();
 }
 
 export function initializeAppState(userDataPath: string) {
@@ -255,99 +258,6 @@ export function saveProviderSecret(
 
 export function deleteProviderSecret(secretId: string): Promise<void> {
   return callStorage("providerSecret.delete", secretId);
-}
-
-export function listConversations(): Promise<ConversationRecord[]> {
-  return callStorage("conversation.list");
-}
-
-export function getConversation(
-  conversationId: string,
-): Promise<ConversationRecord | null> {
-  return callStorage("conversation.get", conversationId);
-}
-
-export function saveConversation(
-  conversation: ConversationRecord,
-): Promise<void> {
-  return callStorage("conversation.save", conversation);
-}
-
-export function updateConversationTitle(
-  conversationId: string,
-  title: string,
-): Promise<ConversationRecord | null> {
-  return callStorage("conversation.updateTitle", conversationId, title);
-}
-
-export function archiveConversation(
-  conversationId: string,
-): Promise<ConversationRecord | null> {
-  return callStorage("conversation.archive", conversationId);
-}
-
-export function deleteConversation(conversationId: string): Promise<void> {
-  return callStorage("conversation.delete", conversationId);
-}
-
-export function listConversationMessages(
-  conversationId: string,
-): Promise<ConversationMessageRecord[]> {
-  return callStorage("conversationMessage.list", conversationId);
-}
-
-export function getConversationMessage(
-  messageId: string,
-): Promise<ConversationMessageRecord | null> {
-  return callStorage("conversationMessage.get", messageId);
-}
-
-export async function saveConversationMessage(
-  message: ConversationMessageRecord,
-) {
-  await callStorage("conversationMessage.save", message);
-  await callStorage(
-    "conversation.updateLastMessageAt",
-    message.conversationId,
-    message.updatedAt,
-  );
-}
-
-export function patchConversationMessage(
-  messageId: string,
-  patch: Partial<
-    Pick<
-      ConversationMessageRecord,
-      "content" | "status" | "usage" | "sources" | "error" | "updatedAt"
-    >
-  >,
-): Promise<ConversationMessageRecord | null> {
-  return callStorage("conversationMessage.patch", messageId, patch);
-}
-
-export async function truncateConversationMessages(
-  conversationId: string,
-  fromMessageId: string,
-  options: { inclusive: boolean },
-): Promise<ConversationMessageRecord[]> {
-  const messages = await listConversationMessages(conversationId);
-  const index = messages.findIndex((message) => message.id === fromMessageId);
-  if (index === -1) {
-    throw new Error(
-      `Message ${fromMessageId} not found in conversation ${conversationId}`,
-    );
-  }
-  const keepCount = options.inclusive ? index : index + 1;
-  const remaining = messages.slice(0, keepCount);
-  for (const message of messages.slice(keepCount)) {
-    await callStorage("conversationMessage.delete", message.id);
-  }
-  await callStorage(
-    "conversation.updateLastMessageAt",
-    conversationId,
-    remaining.at(-1)?.updatedAt ?? null,
-  );
-  return remaining;
 }
 
 const TITLE_MODEL_SETTING_KEY = "titleModel";

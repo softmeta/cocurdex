@@ -558,6 +558,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("issue:delete", payload),
   searchDocuments: (payload: SearchDocumentsPayload) =>
     ipcRenderer.invoke("search:documents", payload),
+  onChatInvalidated: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on("chat:invalidated", handler);
+    return () => ipcRenderer.removeListener("chat:invalidated", handler);
+  },
   onChatEvent: (listener: (event: ChatEvent) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: ChatEvent) => {
       listener(payload);

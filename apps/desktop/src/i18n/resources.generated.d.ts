@@ -298,6 +298,7 @@ export default interface Resources {
         openProviderSettings: "Open provider settings";
         title: "Send a message to start";
       };
+      loadFailed: "Could not load conversation";
       openSystemPrompt: "Edit system prompt";
       welcome: {
         cta: "New chat";
@@ -326,6 +327,7 @@ export default interface Resources {
       imageAlt: "Attached image";
       regenerate: "Regenerate";
       retry: "Retry";
+      stopped: "Response stopped";
       submitEdit: "Submit edit";
     };
     modelPicker: {
@@ -363,6 +365,7 @@ export default interface Resources {
     webSearch: {
       label: "Web search";
       tooltip: "Toggle web search for this conversation";
+      unavailable: "Web search is temporarily unavailable";
       unsupported: "Web search is not available for this provider";
     };
   };

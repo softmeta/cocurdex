@@ -1,13 +1,10 @@
-import type {
-  ConversationMessageRecord,
-  ConversationRecord,
-  MessageAttachment,
-} from "@cocurdex/shared";
+import type { ConversationRecord, MessageAttachment } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { JumpControls, useStickToBottom } from "@/components/chat";
-import { ScrollArea } from "@/components/ui";
+import { Button, EmptyState, ScrollArea, Spinner } from "@/components/ui";
 import {
   ChatComposer,
   ChatContentColumn,
@@ -20,7 +17,6 @@ import { ConversationContextMeter } from "./chat-context-meter";
 import { rehydrateChatImages } from "./chat-images";
 import { ConversationMessage } from "./chat-message";
 import {
-  appendConversationMessageAtom,
   loadConversationMessagesAtom,
   messagesByConversationAtom,
   messagesLoadedAtom,
@@ -58,8 +54,8 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
   const loadedMap = useAtomValue(messagesLoadedAtom);
   const streamingIds = useAtomValue(streamingConversationIdsAtom);
   const loadMessages = useSetAtom(loadConversationMessagesAtom);
-  const appendMessage = useSetAtom(appendConversationMessageAtom);
   const upsertConversation = useSetAtom(upsertConversationAtom);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const messages = messagesMap[conversation.id] ?? [];
   const loaded = loadedMap[conversation.id] ?? false;
@@ -77,20 +73,13 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
     viewportProps,
   } = useStickToBottom(scrollViewportRef);
 
-  useMountEffect(() => {
-    if (loaded) return;
-    let cancelled = false;
-    void desktopApi.chatGet(conversation.id).then((result) => {
-      if (cancelled || !result) return;
-      loadMessages({
-        conversationId: result.conversation.id,
-        messages: result.messages,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  });
+  const reloadMessages = () => {
+    setLoadError(null);
+    void loadMessages(conversation.id).catch((error) =>
+      setLoadError(String(error)),
+    );
+  };
+  useMountEffect(reloadMessages);
 
   const handleModelChange = async (providerId: string, modelId: string) => {
     const updated = await desktopApi.chatUpdate({
@@ -101,37 +90,23 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
     if (updated) upsertConversation({ conversation: updated });
   };
 
-  const handleToggleWebSearch = async (enabled: boolean) => {
-    const updated = await desktopApi.chatUpdate({
-      conversationId: conversation.id,
-      webSearchEnabled: enabled,
-    });
-    if (updated) upsertConversation({ conversation: updated });
-  };
-
   const handleSend = async (text: string, attachments: MessageAttachment[]) => {
     if (isStreaming) return;
     // New turn always re-follows the stream, even if the user had scrolled up
     // to read history (mirrors agent chat's send-time bottom re-lock).
     reengageStick();
-    try {
-      const dataUrlImages = await rehydrateChatImages(attachments);
-      const userMessage: ConversationMessageRecord =
-        await desktopApi.chatSendMessage({
-          conversationId: conversation.id,
-          text,
-          images: dataUrlImages.length > 0 ? dataUrlImages : undefined,
-        });
-      // The daemon also emits conversation.message.created for this; the
-      // local append guards against the race on the first turn.
-      appendMessage(userMessage);
-    } catch (error) {
-      console.error("[Chat] send failed", error);
-    }
+    const dataUrlImages = await rehydrateChatImages(attachments);
+    await desktopApi.chatSendMessage({
+      conversationId: conversation.id,
+      text,
+      images: dataUrlImages.length > 0 ? dataUrlImages : undefined,
+    });
   };
 
   const handleStop = async () => {
-    await desktopApi.chatStopStream(conversation.id);
+    await desktopApi
+      .chatStopStream(conversation.id)
+      .catch((error) => toast.error(String(error)));
   };
 
   const handleEditUser = async (messageId: string, text: string) => {
@@ -144,7 +119,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
         text,
       });
     } catch (error) {
-      console.error("[Chat] edit failed", error);
+      toast.error(String(error));
     }
   };
 
@@ -157,7 +132,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
         messageId,
       });
     } catch (error) {
-      console.error("[Chat] retry failed", error);
+      toast.error(String(error));
     }
   };
 
@@ -166,7 +141,9 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
       providerId={conversation.providerId}
       modelId={conversation.modelId}
       onChange={(providerId, modelId) => {
-        void handleModelChange(providerId, modelId);
+        void handleModelChange(providerId, modelId).catch((error) =>
+          toast.error(String(error)),
+        );
       }}
       disabled={isStreaming}
     />
@@ -187,15 +164,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
 
   // Web search lives inside the composer's "+" attach dropdown rather than as
   // a standalone toolbar toggle, keeping the control row compact.
-  const composerAttachMenuExtras = (
-    <WebSearchMenuItem
-      providerId={conversation.providerId}
-      enabled={conversation.webSearchEnabled}
-      onChange={(enabled) => {
-        void handleToggleWebSearch(enabled);
-      }}
-    />
-  );
+  const composerAttachMenuExtras = <WebSearchMenuItem />;
 
   const followUpComposer = (
     <ChatComposer
@@ -208,9 +177,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
       placeholderOverride={t("composer.placeholder", {
         defaultValue: "Ask anything…",
       })}
-      onSend={(text, attachments) => {
-        void handleSend(text, attachments);
-      }}
+      onSend={handleSend}
       onStop={() => {
         void handleStop();
       }}
@@ -223,6 +190,28 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
   // branch of CenterPanel (block container > LAYOUT div > body div) so the
   // computed vertical center is byte-identical and switching between the two
   // never moves the composer.
+  if (loadError && !hasMessages) {
+    return (
+      <EmptyState
+        title={t("detail.loadFailed", {
+          defaultValue: "Could not load conversation",
+        })}
+        description={loadError}
+        action={
+          <Button onClick={reloadMessages} variant="outline">
+            {t("message.retry", { defaultValue: "Retry" })}
+          </Button>
+        }
+      />
+    );
+  }
+  if (!loaded && !hasMessages) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-5" />
+      </div>
+    );
+  }
   if (!hasMessages) {
     return (
       <ComposerSurface className="h-full bg-chat-canvas">
@@ -239,9 +228,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
             placeholderOverride={t("composer.placeholder", {
               defaultValue: "Ask anything…",
             })}
-            onSend={(text, attachments) => {
-              void handleSend(text, attachments);
-            }}
+            onSend={handleSend}
             onStop={() => {
               void handleStop();
             }}
@@ -272,7 +259,8 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
                   message.role === "assistant" &&
                   !isStreaming &&
                   (message.status === "errored" ||
-                    message.status === "completed")
+                    message.status === "completed" ||
+                    message.status === "cancelled")
                 }
                 busy={isStreaming}
                 onEdit={(messageId, text) => {

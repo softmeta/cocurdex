@@ -18,6 +18,7 @@
       "openProviderSettings": "Open provider settings",
       "title": "Send a message to start"
     },
+    "loadFailed": "Could not load conversation",
     "openSystemPrompt": "Edit system prompt",
     "welcome": {
       "cta": "New chat",
@@ -46,6 +47,7 @@
     "imageAlt": "Attached image",
     "regenerate": "Regenerate",
     "retry": "Retry",
+    "stopped": "Response stopped",
     "submitEdit": "Submit edit"
   },
   "modelPicker": {
@@ -83,6 +85,7 @@
   "webSearch": {
     "label": "Web search",
     "tooltip": "Toggle web search for this conversation",
+    "unavailable": "Web search is temporarily unavailable",
     "unsupported": "Web search is not available for this provider"
   }
 }

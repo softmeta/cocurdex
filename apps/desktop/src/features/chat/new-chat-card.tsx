@@ -18,6 +18,7 @@ import {
 // @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
 import { useMountEffect } from "@/lib";
+import { chatModelsAtom } from "./chat-models";
 import { conversationsAtom } from "./chat-store";
 import { ModelPicker } from "./model-picker";
 import { WebSearchMenuItem } from "./web-search-menu-item";
@@ -31,7 +32,7 @@ export interface StartConversationPayload {
 }
 
 interface NewConversationCardProps {
-  onStartConversation(payload: StartConversationPayload): void;
+  onStartConversation(payload: StartConversationPayload): void | Promise<void>;
 }
 
 // Chat-mode counterpart of NewSessionCard: the surface behind the chat tab. It
@@ -50,12 +51,8 @@ export function NewConversationCard({
     providerId: string;
     modelId: string;
   } | null>(null);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
-  const enabledModels = useMemo(
-    () => models.filter((model) => model.enabled),
-    [models],
-  );
+  const enabledModels = useAtomValue(chatModelsAtom);
 
   // Ensure provider models are available so the picker can offer a default.
   // Cheap if already cached (mirrors the sidebar's new-chat handler). Mount-only
@@ -92,8 +89,17 @@ export function NewConversationCard({
   // Default to the last-used (then first enabled) model until the user picks
   // one explicitly — derived in render so it tracks the list without an effect.
   const firstEnabled = enabledModels[0];
+  const validPicked =
+    picked &&
+    enabledModels.some(
+      (model) =>
+        model.providerId === picked.providerId &&
+        model.modelId === picked.modelId,
+    )
+      ? picked
+      : null;
   const selectedModel =
-    picked ??
+    validPicked ??
     lastUsedModel ??
     (firstEnabled
       ? { providerId: firstEnabled.providerId, modelId: firstEnabled.modelId }
@@ -109,13 +115,7 @@ export function NewConversationCard({
     />
   );
 
-  const attachMenuExtras = (
-    <WebSearchMenuItem
-      providerId={selectedModel?.providerId ?? null}
-      enabled={webSearchEnabled}
-      onChange={setWebSearchEnabled}
-    />
-  );
+  const attachMenuExtras = <WebSearchMenuItem />;
 
   // Without a provider the composer cannot send, so the heading points at the
   // one control that unblocks it (the model picker below, which opens
@@ -155,10 +155,10 @@ export function NewConversationCard({
         })}
         onSend={(message, attachments) => {
           if (!selectedModel) return;
-          onStartConversation({
+          return onStartConversation({
             providerId: selectedModel.providerId,
             modelId: selectedModel.modelId,
-            webSearchEnabled,
+            webSearchEnabled: false,
             message,
             attachments: attachments.length > 0 ? attachments : undefined,
           });
