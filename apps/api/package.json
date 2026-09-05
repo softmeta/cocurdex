@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*",
-    "fastify": "^5.6.0"
+    "fastify": "^5.12.1"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
