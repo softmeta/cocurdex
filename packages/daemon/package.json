@@ -18,11 +18,11 @@
     "@cocurdex/db": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "undici": "^8.10.0"
+    "undici": "^8.10.1"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
-    "tsx": "^4.8.1",
+    "tsx": "^4.23.13",
     "vitest": "^3.2.7"
   }
 }
