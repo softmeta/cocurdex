@@ -24,7 +24,6 @@ import {
   upsertConversationAtom,
 } from "./chat-store";
 import { ModelPicker } from "./model-picker";
-import { WebSearchMenuItem } from "./web-search-menu-item";
 
 interface ConversationDetailProps {
   conversation: ConversationRecord;
@@ -37,8 +36,7 @@ interface ConversationDetailProps {
 // dropdown) is replaced by a model picker: on the left control row for the
 // fresh/empty card (matching agent mode's new-session layout), and bundled
 // with the context ring on the right for in-conversation follow-ups (matching
-// agent mode's ContextWindowIndicator). Plus a web-search toggle in the attach
-// menu.
+// agent mode's ContextWindowIndicator).
 export function ConversationDetail({ conversation }: ConversationDetailProps) {
   return (
     <ConversationDetailContent
@@ -162,10 +160,6 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
     </>
   );
 
-  // Web search lives inside the composer's "+" attach dropdown rather than as
-  // a standalone toolbar toggle, keeping the control row compact.
-  const composerAttachMenuExtras = <WebSearchMenuItem />;
-
   const followUpComposer = (
     <ChatComposer
       mode="chat"
@@ -173,7 +167,6 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
       draftKey={conversationComposerDraftKey(conversation.id)}
       isRunning={isStreaming}
       footerTrailing={composerFooterTrailing}
-      attachMenuExtras={composerAttachMenuExtras}
       placeholderOverride={t("composer.placeholder", {
         defaultValue: "Ask anything…",
       })}
@@ -224,7 +217,6 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
             mentionMenuPlacement="bottom"
             isRunning={isStreaming}
             controls={modelPicker}
-            attachMenuExtras={composerAttachMenuExtras}
             placeholderOverride={t("composer.placeholder", {
               defaultValue: "Ask anything…",
             })}

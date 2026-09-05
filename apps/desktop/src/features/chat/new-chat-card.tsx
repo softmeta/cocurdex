@@ -21,7 +21,6 @@ import { useMountEffect } from "@/lib";
 import { chatModelsAtom } from "./chat-models";
 import { conversationsAtom } from "./chat-store";
 import { ModelPicker } from "./model-picker";
-import { WebSearchMenuItem } from "./web-search-menu-item";
 
 export interface StartConversationPayload {
   providerId: string;
@@ -37,8 +36,8 @@ interface NewConversationCardProps {
 
 // Chat-mode counterpart of NewSessionCard: the surface behind the chat tab. It
 // reuses the welcome-toned ChatComposer so it lines up pixel-for-pixel with the
-// agent card, and the model picker + web-search toggle stand in for the agent
-// toolbar. Deliberately offers no workspace entry: projects belong to the
+// agent card, and the model picker stands in for the agent toolbar.
+// Deliberately offers no workspace entry: projects belong to the
 // projects tab, and chat runs without one.
 export function NewConversationCard({
   onStartConversation,
@@ -115,8 +114,6 @@ export function NewConversationCard({
     />
   );
 
-  const attachMenuExtras = <WebSearchMenuItem />;
-
   // Without a provider the composer cannot send, so the heading points at the
   // one control that unblocks it (the model picker below, which opens
   // provider settings) instead of inviting a message.
@@ -148,7 +145,6 @@ export function NewConversationCard({
         draftKey={newConversationComposerDraftKey()}
         mentionMenuPlacement="bottom"
         controls={controls}
-        attachMenuExtras={attachMenuExtras}
         canSubmit={Boolean(selectedModel)}
         placeholderOverride={t("composer.placeholder", {
           defaultValue: "Ask anything…",

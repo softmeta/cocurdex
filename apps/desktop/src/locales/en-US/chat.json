@@ -81,11 +81,5 @@
     "description": "Pick a built-in role or write a custom system prompt. Applies to all future turns in this conversation.",
     "placeholder": "Optional system prompt…",
     "title": "System prompt"
-  },
-  "webSearch": {
-    "label": "Web search",
-    "tooltip": "Toggle web search for this conversation",
-    "unavailable": "Web search is temporarily unavailable",
-    "unsupported": "Web search is not available for this provider"
   }
 }

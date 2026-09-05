@@ -80,11 +80,5 @@
     "description": "选择内置角色或自定义系统提示词，将作用于此对话之后所有回合。",
     "placeholder": "可选的系统提示词…",
     "title": "系统提示词"
-  },
-  "webSearch": {
-    "label": "网络搜索",
-    "tooltip": "为当前对话开启或关闭网络搜索",
-    "unavailable": "网络搜索暂不可用",
-    "unsupported": "此 provider 不支持网络搜索"
   }
 }

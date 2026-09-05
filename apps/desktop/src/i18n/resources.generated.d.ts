@@ -362,12 +362,6 @@ export default interface Resources {
       placeholder: "Optional system prompt…";
       title: "System prompt";
     };
-    webSearch: {
-      label: "Web search";
-      tooltip: "Toggle web search for this conversation";
-      unavailable: "Web search is temporarily unavailable";
-      unsupported: "Web search is not available for this provider";
-    };
   };
   common: {
     actions: {
