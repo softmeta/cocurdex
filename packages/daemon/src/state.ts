@@ -68,6 +68,12 @@ export class DaemonState {
     this.database.close();
   }
 
+  async getChatDatabase() {
+    await this.networkProxyReady;
+    await this.staleChatStreamsSwept;
+    return this.database;
+  }
+
   async bootstrap(): Promise<AppBootstrapData> {
     await this.networkProxyReady;
     await this.staleToolCallsSwept;

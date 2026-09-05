@@ -18,6 +18,7 @@
       "openProviderSettings": "打开服务商设置",
       "title": "发条消息开始吧"
     },
+    "loadFailed": "无法加载对话",
     "openSystemPrompt": "编辑系统提示词",
     "welcome": {
       "cta": "新建对话",
@@ -46,6 +47,7 @@
     "imageAlt": "附图",
     "regenerate": "重新生成",
     "retry": "重试",
+    "stopped": "回答已停止",
     "submitEdit": "提交编辑"
   },
   "modelPicker": {
@@ -78,10 +80,5 @@
     "description": "选择内置角色或自定义系统提示词，将作用于此对话之后所有回合。",
     "placeholder": "可选的系统提示词…",
     "title": "系统提示词"
-  },
-  "webSearch": {
-    "label": "网络搜索",
-    "tooltip": "为当前对话开启或关闭网络搜索",
-    "unsupported": "此 provider 不支持网络搜索"
   }
 }

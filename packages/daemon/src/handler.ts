@@ -14,6 +14,36 @@ export async function handleDaemonRequest(
   request: DaemonRequest,
 ) {
   switch (request.method) {
+    case "chat.list":
+      return service.chatService.list();
+    case "chat.get":
+      return service.chatService.get(request.params.conversationId);
+    case "chat.create":
+      return service.chatService.create(request.params);
+    case "chat.update":
+      return service.chatService.update(request.params);
+    case "chat.archive":
+      return service.chatService.archive(request.params.conversationId);
+    case "chat.delete":
+      return service.chatService.delete(request.params.conversationId);
+    case "chat.stop":
+      return service.chatService.stop(request.params.conversationId);
+    case "chat.send":
+      return service.chatService.send(
+        request.params.message,
+        request.params.providerConfig,
+        request.params.titleProviderConfig,
+      );
+    case "chat.retry":
+      return service.chatService.retry(
+        request.params.message,
+        request.params.providerConfig,
+      );
+    case "chat.edit":
+      return service.chatService.edit(
+        request.params.message,
+        request.params.providerConfig,
+      );
     case "daemon.status":
       return service.status();
     case "app.bootstrap":

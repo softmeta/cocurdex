@@ -80,6 +80,7 @@ import { sendShortcutAtom } from "./send-shortcut";
 import { useSlashCommands } from "./slash-command-menu";
 import type { ThinkingLevelOption } from "./thinking-level";
 import { ThinkingLevelSubmenu } from "./thinking-level-submenu";
+import { useComposerSubmission } from "./use-composer-submission";
 
 export interface ChatComposerHandle {
   insertContextMention(attachment: MessageAttachment): boolean;
@@ -126,7 +127,7 @@ interface ChatComposerProps {
     message: string,
     attachments: MessageAttachment[],
     useOppositeFollowUpBehavior?: boolean,
-  ): void;
+  ): void | Promise<void>;
   onStop?(): void;
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
@@ -178,6 +179,8 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       draftKey ? jotaiStore.get(composerDraftsAtom)[draftKey] : undefined,
     );
     const isAgentMode = mode === "agent";
+    const { submitting, submit } = useComposerSubmission();
+    const draftVersion = useRef(0);
     const attachmentInputRef = useRef<HTMLInputElement | null>(null);
     const editorRef = useRef<MentionEditorHandle | null>(null);
     const [text, setText] = useState(initialDraft?.text ?? "");
@@ -198,6 +201,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     >(initialDraft?.attachments ?? []);
 
     const writeDraft = (draft: ComposerDraft) => {
+      draftVersion.current += 1;
       if (!draftKey) return;
       persistDraft({ key: draftKey, draft });
     };
@@ -278,7 +282,8 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const hasContent = text.trim().length > 0 || composerAttachments.length > 0;
     const externalAllowSend = canSubmit ?? true;
     const canSend = hasContent && externalAllowSend && !hasUnsupportedDocument;
-    const canSubmitNow = canSend && (!isRunning || canSendWhileRunning);
+    const canSubmitNow =
+      canSend && !submitting && (!isRunning || canSendWhileRunning);
     const canSelectAgent = Boolean(onSelectAgent) && !isRunning;
 
     const handleSelectAgent = (nextAgent: AgentId) => {
@@ -290,14 +295,21 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
 
     const sendMessage = (useOppositeFollowUpBehavior = false) => {
       if (!canSubmitNow) return;
-      onSend(text.trim(), composerAttachments, useOppositeFollowUpBehavior);
-      editorRef.current?.clear();
-      setText("");
-      setMentions([]);
-      setNodes([]);
-      setManagedAttachments([]);
-      setAttachmentImportError(null);
-      if (draftKey) clearDraft(draftKey);
+      const version = draftVersion.current;
+      submit(
+        () =>
+          onSend(text.trim(), composerAttachments, useOppositeFollowUpBehavior),
+        () => {
+          if (draftVersion.current !== version) return;
+          editorRef.current?.clear();
+          setText("");
+          setMentions([]);
+          setNodes([]);
+          setManagedAttachments([]);
+          setAttachmentImportError(null);
+          if (draftKey) clearDraft(draftKey);
+        },
+      );
     };
 
     const addAttachmentFiles = async (files: File[]) => {

@@ -6,6 +6,7 @@ export type ConversationMessageStatus =
   | "pending"
   | "streaming"
   | "completed"
+  | "cancelled"
   | "errored";
 
 // Multi-modal message parts modelled after Vercel AI SDK ModelMessage parts.
@@ -44,6 +45,9 @@ export type ConversationContentPart =
   | ConversationToolResultPart;
 
 export interface ConversationUsage {
+  cacheReadInputTokens?: number;
+  cacheCreationInputTokens?: number;
+  finishReason?: string;
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;

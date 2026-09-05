@@ -441,6 +441,7 @@ const fallbackApi: DesktopApi = {
   }),
   chatStopStream: async () => {},
   onChatEvent: () => () => {},
+  onChatInvalidated: () => () => {},
   // Data fallbacks used in unit tests and SSR without the preload bridge.
   notesList: async () => [],
   notesGet: async () => null,

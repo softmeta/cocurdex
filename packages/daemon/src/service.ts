@@ -16,6 +16,7 @@ import type {
   AgentPlanApprovalDecision,
   AgentRuntimeProviderConfig,
   AppBootstrapData,
+  CocurdexDaemonEvent,
   CreateSessionPayload,
   CreateWorkflowPayload,
   MessageRecord,
@@ -28,6 +29,7 @@ import type {
 } from "@cocurdex/shared";
 import { getNetworkProxySettings } from "@cocurdex/shared";
 import { discoverInstalledAgentCapabilities } from "./agents";
+import { DaemonChatService } from "./chat";
 import { DaemonDataService } from "./data-service";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { probeNetworkProxy } from "./network-proxy-probe";
@@ -71,6 +73,7 @@ interface QueuedFollowUp {
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 export class CocurdexDaemonService {
+  readonly chatService: DaemonChatService;
   readonly events = new EventEmitter();
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
@@ -92,6 +95,10 @@ export class CocurdexDaemonService {
     this.socketPath = options.socketPath ?? "";
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.state = new DaemonState(options.userDataPath);
+    this.chatService = new DaemonChatService({
+      getDatabase: () => this.state.getChatDatabase(),
+      broadcast: (event) => this.events.emit("daemon.event", event),
+    });
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
     this.providerService = new DaemonProviderService(this.state);
@@ -858,6 +865,7 @@ export class CocurdexDaemonService {
     this.queuedFollowUps.clear();
     const schedulerClose = this.workflowWorkerScheduler.close();
     try {
+      await this.chatService.shutdown();
       await this.runtime.shutdown();
       await schedulerClose;
     } finally {
@@ -1016,8 +1024,8 @@ export function onAgentEvent(
   service: CocurdexDaemonService,
   listener: (event: AgentEvent) => void,
 ) {
-  const daemonListener = (event: AgentEvent | { type: "data.changed" }) => {
-    if (event.type !== "data.changed") {
+  const daemonListener = (event: CocurdexDaemonEvent) => {
+    if (event.type !== "data.changed" && !("conversationId" in event)) {
       listener(event);
     }
   };

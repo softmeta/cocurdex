@@ -11,7 +11,11 @@ import type {
   AppBootstrapData,
   CocurdexDaemonEvent,
   CompatibleProviderModel,
+  ConversationMessageRecord,
+  ConversationRecord,
+  ConversationSnapshot,
   CreateColumnPayload,
+  CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateSessionPayload,
@@ -21,6 +25,7 @@ import type {
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteViewPayload,
+  EditConversationMessagePayload,
   GetIssuePayload,
   GetNotePayload,
   IssueRecord,
@@ -37,8 +42,10 @@ import type {
   NoteTag,
   ProviderConfigRecord,
   ProviderListModelsResult,
+  RetryConversationMessagePayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
+  SendConversationMessagePayload,
   SendSessionMessagePayload,
   SessionAttentionSnapshot,
   SessionObservationSnapshot,
@@ -48,6 +55,7 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
+  UpdateConversationPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateSessionAttentionPayload,
@@ -62,7 +70,7 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 11;
+export const DAEMON_PROTOCOL_VERSION = 12;
 
 export interface DaemonMetadata {
   pid: number;
@@ -87,6 +95,26 @@ export interface DaemonError {
 }
 
 export type DaemonRequestPayloadByMethod = {
+  "chat.list": undefined;
+  "chat.get": { conversationId: string };
+  "chat.create": CreateConversationPayload;
+  "chat.update": UpdateConversationPayload;
+  "chat.archive": { conversationId: string };
+  "chat.delete": { conversationId: string };
+  "chat.stop": { conversationId: string };
+  "chat.send": {
+    message: SendConversationMessagePayload;
+    providerConfig: AgentRuntimeProviderConfig;
+    titleProviderConfig?: AgentRuntimeProviderConfig | null;
+  };
+  "chat.retry": {
+    message: RetryConversationMessagePayload;
+    providerConfig: AgentRuntimeProviderConfig;
+  };
+  "chat.edit": {
+    message: EditConversationMessagePayload;
+    providerConfig: AgentRuntimeProviderConfig;
+  };
   "daemon.status": undefined;
   "app.bootstrap": undefined;
   "agent.list": undefined;
@@ -184,6 +212,16 @@ export type DaemonRequestPayloadByMethod = {
 };
 
 export type DaemonResultByMethod = {
+  "chat.list": ConversationRecord[];
+  "chat.get": ConversationSnapshot | null;
+  "chat.create": ConversationRecord;
+  "chat.update": ConversationRecord;
+  "chat.archive": ConversationRecord;
+  "chat.delete": null;
+  "chat.stop": null;
+  "chat.send": ConversationMessageRecord;
+  "chat.retry": null;
+  "chat.edit": ConversationMessageRecord;
   "daemon.status": DaemonStatus;
   "app.bootstrap": AppBootstrapData;
   "agent.list": AgentDescriptor[];
@@ -265,6 +303,7 @@ type DaemonNoParamMethod = {
  * The client uses this to tell `{ userDataPath }` options apart from params.
  */
 export const DAEMON_NO_PARAM_METHODS = {
+  "chat.list": true,
   "agent.list": true,
   "app.bootstrap": true,
   "attention.list": true,

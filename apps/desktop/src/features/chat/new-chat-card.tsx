@@ -18,9 +18,9 @@ import {
 // @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
 import { useMountEffect } from "@/lib";
+import { chatModelsAtom } from "./chat-models";
 import { conversationsAtom } from "./chat-store";
 import { ModelPicker } from "./model-picker";
-import { WebSearchMenuItem } from "./web-search-menu-item";
 
 export interface StartConversationPayload {
   providerId: string;
@@ -31,13 +31,13 @@ export interface StartConversationPayload {
 }
 
 interface NewConversationCardProps {
-  onStartConversation(payload: StartConversationPayload): void;
+  onStartConversation(payload: StartConversationPayload): void | Promise<void>;
 }
 
 // Chat-mode counterpart of NewSessionCard: the surface behind the chat tab. It
 // reuses the welcome-toned ChatComposer so it lines up pixel-for-pixel with the
-// agent card, and the model picker + web-search toggle stand in for the agent
-// toolbar. Deliberately offers no workspace entry: projects belong to the
+// agent card, and the model picker stands in for the agent toolbar.
+// Deliberately offers no workspace entry: projects belong to the
 // projects tab, and chat runs without one.
 export function NewConversationCard({
   onStartConversation,
@@ -50,12 +50,8 @@ export function NewConversationCard({
     providerId: string;
     modelId: string;
   } | null>(null);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
-  const enabledModels = useMemo(
-    () => models.filter((model) => model.enabled),
-    [models],
-  );
+  const enabledModels = useAtomValue(chatModelsAtom);
 
   // Ensure provider models are available so the picker can offer a default.
   // Cheap if already cached (mirrors the sidebar's new-chat handler). Mount-only
@@ -92,8 +88,17 @@ export function NewConversationCard({
   // Default to the last-used (then first enabled) model until the user picks
   // one explicitly — derived in render so it tracks the list without an effect.
   const firstEnabled = enabledModels[0];
+  const validPicked =
+    picked &&
+    enabledModels.some(
+      (model) =>
+        model.providerId === picked.providerId &&
+        model.modelId === picked.modelId,
+    )
+      ? picked
+      : null;
   const selectedModel =
-    picked ??
+    validPicked ??
     lastUsedModel ??
     (firstEnabled
       ? { providerId: firstEnabled.providerId, modelId: firstEnabled.modelId }
@@ -106,14 +111,6 @@ export function NewConversationCard({
       providerId={selectedModel?.providerId ?? null}
       modelId={selectedModel?.modelId ?? null}
       onChange={(providerId, modelId) => setPicked({ providerId, modelId })}
-    />
-  );
-
-  const attachMenuExtras = (
-    <WebSearchMenuItem
-      providerId={selectedModel?.providerId ?? null}
-      enabled={webSearchEnabled}
-      onChange={setWebSearchEnabled}
     />
   );
 
@@ -148,17 +145,16 @@ export function NewConversationCard({
         draftKey={newConversationComposerDraftKey()}
         mentionMenuPlacement="bottom"
         controls={controls}
-        attachMenuExtras={attachMenuExtras}
         canSubmit={Boolean(selectedModel)}
         placeholderOverride={t("composer.placeholder", {
           defaultValue: "Ask anything…",
         })}
         onSend={(message, attachments) => {
           if (!selectedModel) return;
-          onStartConversation({
+          return onStartConversation({
             providerId: selectedModel.providerId,
             modelId: selectedModel.modelId,
-            webSearchEnabled,
+            webSearchEnabled: false,
             message,
             attachments: attachments.length > 0 ? attachments : undefined,
           });

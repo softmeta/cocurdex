@@ -42,7 +42,6 @@ import {
 import {
   archiveSession,
   bootstrapAppState,
-  configureChatEventBroadcast,
   deleteWorkspace,
   generateSessionTitle,
   getMessageById,
@@ -1303,10 +1302,17 @@ app
     daemonRuntimeClient = createDaemonRuntimeClient({
       daemonEntryPath: getBundledDaemonEntryPath(),
       logger: daemonLogger,
+      onConnected() {
+        for (const window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("chat:invalidated");
+        }
+      },
       onEvent(event) {
         for (const window of BrowserWindow.getAllWindows()) {
           if (event.type === "data.changed") {
             window.webContents.send("data:changed", event);
+          } else if ("conversationId" in event) {
+            window.webContents.send("chat:event", event);
           } else {
             window.webContents.send("agent:event", event);
           }
@@ -1335,11 +1341,6 @@ app
         });
       },
     );
-    configureChatEventBroadcast((event) => {
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send("chat:event", event);
-      }
-    });
     configureWorkspaceFilesChangedBroadcast((rootPath) => {
       for (const window of BrowserWindow.getAllWindows()) {
         window.webContents.send("workspace:filesChanged", { rootPath });

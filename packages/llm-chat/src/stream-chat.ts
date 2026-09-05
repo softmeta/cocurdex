@@ -1,192 +1,137 @@
 import type {
-  ConversationContentPart,
-  ConversationSource,
+  AgentRuntimeProviderConfig,
+  ConversationMessageRecord,
   ConversationUsage,
 } from "@cocurdex/shared";
-import {
-  type LanguageModel,
-  type ModelMessage,
-  stepCountIs,
-  streamText,
-  type UserContent,
-} from "ai";
-import type { LlmProviderKind } from "./provider-kind";
-import { planWebSearch } from "./web-search";
+import type {
+  AssistantMessage,
+  Context,
+  ProviderStreams,
+} from "@earendil-works/pi-ai";
+import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
+import { googleGenerativeAIApi } from "@earendil-works/pi-ai/api/google-generative-ai.lazy";
+import { mistralConversationsApi } from "@earendil-works/pi-ai/api/mistral-conversations.lazy";
+import { openAICodexResponsesApi } from "@earendil-works/pi-ai/api/openai-codex-responses.lazy";
+import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
+import { toChatContext } from "./chat-context";
+import { resolveChatModel } from "./resolve-model";
 
-// One unified stream delta surface so the daemon doesn't need to know about
-// AI SDK's full chunk taxonomy. Anything beyond text/source/tool-call/usage
-// is silently dropped (e.g. reasoning, finish-step events).
-export type ChatStreamDelta =
-  | { type: "text"; delta: string }
-  | { type: "source"; source: ConversationSource }
-  | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
-  | {
-      type: "tool-result";
-      toolCallId: string;
-      toolName: string;
-      output: unknown;
-    }
-  | { type: "usage"; usage: ConversationUsage };
+const apiFactories = {
+  "openai-completions": openAICompletionsApi,
+  "openai-responses": openAIResponsesApi,
+  "openai-codex-responses": openAICodexResponsesApi,
+  "anthropic-messages": anthropicMessagesApi,
+  "google-generative-ai": googleGenerativeAIApi,
+  "mistral-conversations": mistralConversationsApi,
+};
 
 export interface StreamChatParams {
-  model: LanguageModel;
-  providerKind: LlmProviderKind;
-  messages: ModelMessage[];
+  providerConfig: AgentRuntimeProviderConfig;
+  messages: ConversationMessageRecord[];
   system?: string;
-  webSearch?: boolean;
   abortSignal?: AbortSignal;
-  onDelta: (delta: ChatStreamDelta) => void;
+  onDelta(delta: string): void;
 }
 
 export interface StreamChatResult {
   text: string;
-  usage: ConversationUsage | null;
-  sources: ConversationSource[];
-  finishReason: string | null;
+  usage: ConversationUsage;
+  status: "completed" | "cancelled" | "errored";
+  error: string | null;
 }
 
-// Drives a single assistant turn through the AI SDK. Provider-hosted web
-// search is plugged in here so the conversation layer only sees normalised
-// deltas — see web-search.ts for the per-provider mapping.
-export async function streamChat(
-  params: StreamChatParams,
-): Promise<StreamChatResult> {
-  const tools = params.webSearch
-    ? (planWebSearch(params.providerKind) ?? undefined)
-    : undefined;
-  // `stopWhen` only matters if there are tools; otherwise the model just
-  // produces a single assistant turn.
-  const stopWhen = tools ? stepCountIs(5) : undefined;
+export function createChatStreamRunner(
+  resolveApi: (api: string) => ProviderStreams,
+) {
+  return async (params: StreamChatParams): Promise<StreamChatResult> => {
+    const model = resolveChatModel(params.providerConfig);
+    const context = toChatContext(params.messages, model, params.system);
+    const stream = resolveApi(model.api).streamSimple(model, context, {
+      apiKey: params.providerConfig.apiKey ?? undefined,
+      headers: model.headers,
+      signal: params.abortSignal,
+    });
+    for await (const event of stream) {
+      if (event.type === "text_delta") params.onDelta(event.delta);
+    }
+    return mapChatResult(
+      await stream.result(),
+      params.abortSignal?.aborted ?? false,
+    );
+  };
+}
 
-  const result = streamText({
-    model: params.model,
-    system: params.system,
-    messages: params.messages,
-    abortSignal: params.abortSignal,
-    tools,
-    stopWhen,
+function resolveApi(api: string): ProviderStreams {
+  const factory = apiFactories[api as keyof typeof apiFactories];
+  if (!factory) throw new Error(`Chat does not support provider API: ${api}`);
+  return factory();
+}
+
+export const streamChat = createChatStreamRunner(resolveApi);
+
+export function validateChatRequest(
+  config: AgentRuntimeProviderConfig,
+  messages: ConversationMessageRecord[],
+) {
+  const model = resolveChatModel(config);
+  resolveApi(model.api);
+  toChatContext(messages, model);
+}
+
+function mapChatResult(
+  message: AssistantMessage,
+  aborted: boolean,
+): StreamChatResult {
+  let status: StreamChatResult["status"] = "completed";
+  if (aborted || message.stopReason === "aborted") status = "cancelled";
+  else if (message.stopReason === "error") status = "errored";
+  const usage = message.usage;
+  return {
+    text: message.content
+      .flatMap((part) => (part.type === "text" ? [part.text] : []))
+      .join(""),
+    usage: {
+      inputTokens: usage.input + usage.cacheRead + usage.cacheWrite,
+      outputTokens: usage.output,
+      totalTokens: usage.totalTokens,
+      cacheReadInputTokens: usage.cacheRead,
+      cacheCreationInputTokens: usage.cacheWrite,
+      costUsd: usage.cost.total,
+      finishReason: message.stopReason,
+    },
+    status,
+    error:
+      status === "errored"
+        ? message.errorMessage || "Model request failed"
+        : null,
+  };
+}
+
+export async function generateChatTitle(
+  providerConfig: AgentRuntimeProviderConfig,
+  text: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const model = resolveChatModel(providerConfig);
+  const context: Context = {
+    systemPrompt:
+      "Summarize the user's message as a concise title. Maximum 6 words. Use the user's language. Reply with the title only, without quotes or punctuation at the end.",
+    messages: [{ role: "user", content: text, timestamp: Date.now() }],
+  };
+  const stream = resolveApi(model.api).streamSimple(model, context, {
+    apiKey: providerConfig.apiKey ?? undefined,
+    headers: model.headers,
+    maxTokens: 512,
+    signal,
   });
-
-  const sources: ConversationSource[] = [];
-  let aggregateText = "";
-  let usage: ConversationUsage | null = null;
-  let finishReason: string | null = null;
-
-  for await (const chunk of result.fullStream) {
-    switch (chunk.type) {
-      case "text-delta": {
-        if (!chunk.text) break;
-        aggregateText += chunk.text;
-        params.onDelta({ type: "text", delta: chunk.text });
-        break;
-      }
-      case "source": {
-        if (chunk.sourceType !== "url") break;
-        const source: ConversationSource = {
-          url: chunk.url,
-          title: chunk.title || chunk.url,
-          snippet: null,
-          providerSourceId: chunk.id ?? null,
-        };
-        sources.push(source);
-        params.onDelta({ type: "source", source });
-        break;
-      }
-      case "tool-call": {
-        params.onDelta({
-          type: "tool-call",
-          toolCallId: chunk.toolCallId,
-          toolName: chunk.toolName,
-          input: chunk.input,
-        });
-        break;
-      }
-      case "tool-result": {
-        params.onDelta({
-          type: "tool-result",
-          toolCallId: chunk.toolCallId,
-          toolName: chunk.toolName,
-          output: chunk.output,
-        });
-        break;
-      }
-      case "finish": {
-        finishReason = chunk.finishReason ?? null;
-        if (chunk.totalUsage) {
-          usage = {
-            inputTokens: chunk.totalUsage.inputTokens,
-            outputTokens: chunk.totalUsage.outputTokens,
-            totalTokens: chunk.totalUsage.totalTokens,
-          };
-          params.onDelta({ type: "usage", usage });
-        }
-        break;
-      }
-      case "error": {
-        // streamText never throws — failures (bad key, rate limit, network)
-        // surface as error parts. Rethrow so callers see a failed turn
-        // instead of an empty successful one.
-        throw chunk.error instanceof Error
-          ? chunk.error
-          : new Error(String(chunk.error));
-      }
-      // Other event types (reasoning, raw, etc.) are intentionally ignored.
-      default:
-        break;
-    }
-  }
-
-  return { text: aggregateText, usage, sources, finishReason };
-}
-
-// Convert our persisted ConversationContentPart shape into AI SDK
-// ModelMessages. Tool-call/result parts are dropped: our web-search tools are
-// provider-executed, so their transcripts can't be replayed as client tool
-// messages (which would require a `tool` role we don't persist). Messages
-// that end up empty (e.g. errored assistant turns) are skipped — providers
-// reject empty content blocks.
-export function toModelMessages(
-  messages: Array<{
-    role: "user" | "assistant" | "system";
-    content: ConversationContentPart[];
-  }>,
-): ModelMessage[] {
-  const out: ModelMessage[] = [];
-
-  for (const message of messages) {
-    if (message.role === "system") {
-      const text = joinTextParts(message.content);
-      if (text) out.push({ role: "system", content: text });
-      continue;
-    }
-
-    if (message.role === "user") {
-      const parts: Exclude<UserContent, string> = [];
-      for (const part of message.content) {
-        if (part.type === "text" && part.text) {
-          parts.push({ type: "text", text: part.text });
-        } else if (part.type === "image") {
-          parts.push({
-            type: "image",
-            image: part.image,
-            mediaType: part.mimeType,
-          });
-        }
-      }
-      if (parts.length > 0) out.push({ role: "user", content: parts });
-      continue;
-    }
-
-    const text = joinTextParts(message.content);
-    if (text) out.push({ role: "assistant", content: text });
-  }
-
-  return out;
-}
-
-function joinTextParts(content: ConversationContentPart[]): string {
-  return content
+  const result = await stream.result();
+  if (result.stopReason === "error" || result.stopReason === "aborted")
+    return null;
+  const title = result.content
     .flatMap((part) => (part.type === "text" ? [part.text] : []))
-    .join("\n")
-    .trim();
+    .join(" ")
+    .trim()
+    .replace(/^["'`]+|["'`]+$/g, "");
+  return title ? [...title].slice(0, 64).join("") : null;
 }
