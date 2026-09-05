@@ -11,9 +11,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@astrojs/sitemap": "^3.7.3",
-    "@astrojs/starlight": "^0.41.9",
-    "astro": "^7.2.0",
+    "@astrojs/sitemap": "^3.7.4",
+    "@astrojs/starlight": "^0.42.0",
+    "astro": "^7.2.10",
     "cookie": "^2.0.1"
   },
   "devDependencies": {

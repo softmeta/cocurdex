@@ -16,11 +16,11 @@
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "@earendil-works/pi-tui": "^0.84.1"
+    "@earendil-works/pi-tui": "^0.84.4"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
-    "tsx": "^4.8.1",
+    "tsx": "^4.23.13",
     "vitest": "^3.2.7"
   }
 }
