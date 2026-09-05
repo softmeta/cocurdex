@@ -14,6 +14,7 @@ import {
   GitChanges,
   MonacoEditor,
   openFileAtom,
+  rightPanelResizingAtom,
   SearchPanel,
   SearchResultsPane,
   setChatComposerAttachmentAtom,
@@ -148,6 +149,7 @@ export function RightEditorPanel({
   const [issuesKeepAlive, setIssuesKeepAlive] = useState(false);
   const issuesEverActive = issuesKeepAlive || activeView === "issues";
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
+  const setRightPanelResizing = useSetAtom(rightPanelResizingAtom);
   const openFile = useSetAtom(openFileAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const workspaces = useAtomValue(workspacesAtom);
@@ -186,7 +188,8 @@ export function RightEditorPanel({
   const cleanupDragListeners = useCallback(() => {
     removeDragListenersRef.current?.();
     removeDragListenersRef.current = null;
-  }, []);
+    setRightPanelResizing(false);
+  }, [setRightPanelResizing]);
 
   const handleOpenGitFile = useCallback(
     (relativePath: string) => {
@@ -236,12 +239,14 @@ export function RightEditorPanel({
         clamp: (next) =>
           clampFileTreeWidth(next, getContainerWidth(contentRef.current)),
         onWidthChange: setFileTreeWidth,
+        onDragStart: () => setRightPanelResizing(true),
         onDragEnd: () => {
+          setRightPanelResizing(false);
           removeDragListenersRef.current = null;
         },
       });
     },
-    [cleanupDragListeners, setFileTreeWidth],
+    [cleanupDragListeners, setFileTreeWidth, setRightPanelResizing],
   );
 
   const handlePanelRef = useCallback(
