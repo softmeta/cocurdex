@@ -20,9 +20,10 @@ import {
   editorRevealNonceAtom,
   markdownPreviewModeAtom,
   previewLocationsByFileAtom,
+  rightPanelResizingAtom,
 } from "../editor-store";
 import "./monaco-editor.css";
-import { useResolvedTheme } from "@/lib";
+import { cn, useResolvedTheme } from "@/lib";
 import { useSelectionBubble } from "../selection";
 import { MONACO_EDITOR_OPTIONS } from "./monaco-editor-config";
 import {
@@ -275,6 +276,7 @@ export function MonacoEditor({
     [appearanceSettings],
   );
   const { codeMinimap } = useAtomValue(editorSettingsAtom);
+  const isRightPanelResizing = useAtomValue(rightPanelResizingAtom);
 
   // Single source of truth for the editor theme: the shared hook tracks the
   // document `data-theme` attribute that app-shell keeps in sync with the
@@ -346,7 +348,12 @@ export function MonacoEditor({
           // Blank canvas while the Monaco loader initializes — no loading text.
           <div className="h-full" />
         ) : (
-          <div className="relative h-full">
+          <div
+            className={cn(
+              "relative h-full",
+              isRightPanelResizing && "monaco-editor-resizing",
+            )}
+          >
             <MonacoTextEditor
               activeFile={activeFile}
               activePreviewLocation={activePreviewLocation}
