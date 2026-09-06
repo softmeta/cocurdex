@@ -17,14 +17,14 @@ import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.l
 import { toChatContext } from "./chat-context";
 import { resolveChatModel } from "./resolve-model";
 
-const apiFactories = {
-  "openai-completions": openAICompletionsApi,
-  "openai-responses": openAIResponsesApi,
-  "openai-codex-responses": openAICodexResponsesApi,
-  "anthropic-messages": anthropicMessagesApi,
-  "google-generative-ai": googleGenerativeAIApi,
-  "mistral-conversations": mistralConversationsApi,
-};
+const apiFactories = new Map<string, () => ProviderStreams>([
+  ["openai-completions", openAICompletionsApi],
+  ["openai-responses", openAIResponsesApi],
+  ["openai-codex-responses", openAICodexResponsesApi],
+  ["anthropic-messages", anthropicMessagesApi],
+  ["google-generative-ai", googleGenerativeAIApi],
+  ["mistral-conversations", mistralConversationsApi],
+]);
 
 export interface StreamChatParams {
   providerConfig: AgentRuntimeProviderConfig;
@@ -63,8 +63,10 @@ export function createChatStreamRunner(
 }
 
 function resolveApi(api: string): ProviderStreams {
-  const factory = apiFactories[api as keyof typeof apiFactories];
-  if (!factory) throw new Error(`Chat does not support provider API: ${api}`);
+  const factory = apiFactories.get(api);
+  if (typeof factory !== "function") {
+    throw new Error(`Chat does not support provider API: ${api}`);
+  }
   return factory();
 }
 
