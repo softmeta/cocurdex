@@ -1,7 +1,7 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,
@@ -16,6 +16,16 @@
     "dist:mac": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac",
     "dist:mac:arm64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish never",
     "dist:mac:arm64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish always",
+    "dist:mac:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --x64 --publish never",
+    "dist:mac:x64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --x64 --publish always",
+    "dist:mac:ci": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --x64 --publish never",
+    "dist:mac:ci:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --x64 --publish always",
+    "dist:win": "pnpm run dist:win:x64",
+    "dist:win:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target win32-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --win nsis --x64 --publish never",
+    "dist:win:x64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target win32-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --win nsis --x64 --publish always",
+    "dist:linux": "pnpm run dist:linux:x64",
+    "dist:linux:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target linux-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --linux AppImage --x64 --publish never",
+    "dist:linux:x64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target linux-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --linux AppImage --x64 --publish always",
     "i18n:extract": "i18next-cli extract --config ./i18next.config.ts",
     "i18n:lint": "node ./scripts/lint-i18n.mjs",
     "lint:cycles": "node ./scripts/check-cycles.mjs",
@@ -147,7 +157,8 @@
       "!node_modules/**/{demo,demos,doc,docs,example,examples,test,tests,__tests__}/**/*",
       "!node_modules/**/*.{md,markdown}",
       "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
-      "!node_modules/recheck-jar/**"
+      "!node_modules/recheck-jar/**",
+      "!node_modules/koffi/**"
     ],
     "asarUnpack": [
       "node_modules/node-pty/**/*",
@@ -195,10 +206,23 @@
         "dir",
         "dmg",
         "zip"
-      ],
-      "files": [
-        "out/**",
-        "!node_modules/koffi/**"
+      ]
+    },
+    "win": {
+      "artifactName": "Cocurdex-win-${arch}.${ext}",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "artifactName": "Cocurdex-win-${arch}.${ext}"
+    },
+    "linux": {
+      "artifactName": "Cocurdex-linux-${arch}.${ext}",
+      "category": "Development",
+      "executableName": "Cocurdex",
+      "target": [
+        "AppImage"
       ]
     }
   }

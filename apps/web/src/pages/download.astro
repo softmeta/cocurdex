@@ -1,42 +1,48 @@
 ---
 import MarketingLayout from "../layouts/MarketingLayout.astro";
-
-const macArm64DownloadUrl =
-  "https://github.com/softmeta/cocurdex/releases/latest/download/Cocurdex-mac-arm64.dmg";
+import { desktopDownloads, githubLatestReleaseUrl } from "../lib/site";
 ---
 
 <MarketingLayout
   title="Download"
-  description="Download Cocurdex for macOS. Windows and Linux builds follow. Pre-release."
+  description="Download Cocurdex for macOS, Windows, and Linux. Pre-release."
   path="/download/"
 >
   <main class="prose-page">
     <p class="eyebrow">Pre-release</p>
     <h1>Download Cocurdex</h1>
     <p>
-      Download the signed and notarized macOS build for Apple silicon. Cocurdex
-      is still in pre-release, so APIs and workflows may change between builds.
+      Pre-release builds for macOS, Windows, and Linux. APIs and workflows may
+      change between versions.
     </p>
+    <ul class="download-builds">
+      {
+        desktopDownloads.map((build, index) => (
+          <li>
+            <a
+              class:list={[
+                "button",
+                index === 0 ? "button--primary" : "button--secondary",
+              ]}
+              data-build={build.id}
+              href={build.href}
+            >
+              {build.label}
+            </a>
+            <p>{build.note}</p>
+          </li>
+        ))
+      }
+    </ul>
     <div class="actions" style="margin-top: 1.75rem">
-      <a class="button button--primary" href={macArm64DownloadUrl}
-        >Download for Apple silicon</a
-      >
-      <a
-        class="button button--secondary"
-        href="https://github.com/softmeta/cocurdex/releases/latest"
+      <a class="button button--secondary" href={githubLatestReleaseUrl}
         >Release notes</a
       >
     </div>
-    <ul>
-      <li><strong>macOS Apple silicon</strong> — available</li>
-      <li><strong>macOS Intel</strong> — coming later</li>
-      <li><strong>Windows</strong> — next</li>
-      <li><strong>Linux</strong> — after Windows</li>
-    </ul>
     <div class="note">
-      Open the DMG, drag Cocurdex to Applications, then launch it from your
-      Applications folder. Every public macOS build is signed with Developer ID
-      and notarized by Apple.
+      On macOS, open the DMG and drag Cocurdex to Applications. Every public
+      macOS build is signed with Developer ID and notarized by Apple. Windows
+      installers are unsigned.
     </div>
     <div class="actions" style="margin-top: 1.75rem">
       <a class="button button--secondary" href="/docs/">Read the docs</a>
@@ -44,3 +50,61 @@ const macArm64DownloadUrl =
     </div>
   </main>
 </MarketingLayout>
+
+<script>
+  function detectBuildIdFromUserAgent() {
+    const userAgent = navigator.userAgent;
+    if (/Windows NT/i.test(userAgent)) {
+      return "win-x64";
+    }
+    if (/Linux/i.test(userAgent) && !/Android/i.test(userAgent)) {
+      return "linux-x64";
+    }
+    return "mac-arm64";
+  }
+
+  async function detectBuildId() {
+    const userAgentData = (
+      navigator as Navigator & {
+        userAgentData?: {
+          getHighEntropyValues?: (hints: string[]) => Promise<{
+            architecture?: string;
+            platform?: string;
+          }>;
+        };
+      }
+    ).userAgentData;
+    if (typeof userAgentData?.getHighEntropyValues === "function") {
+      try {
+        const hints = await userAgentData.getHighEntropyValues([
+          "architecture",
+          "platform",
+        ]);
+        const platform = String(hints.platform ?? "").toLowerCase();
+        const architecture = String(hints.architecture ?? "").toLowerCase();
+        if (platform.includes("win")) {
+          return "win-x64";
+        }
+        if (platform.includes("linux")) {
+          return "linux-x64";
+        }
+        if (platform.includes("mac")) {
+          if (architecture.includes("x86") || architecture === "x64") {
+            return "mac-x64";
+          }
+          return "mac-arm64";
+        }
+      } catch {
+        return detectBuildIdFromUserAgent();
+      }
+    }
+    return detectBuildIdFromUserAgent();
+  }
+
+  const recommended = await detectBuildId();
+  for (const link of document.querySelectorAll("[data-build]")) {
+    const isRecommended = link.getAttribute("data-build") === recommended;
+    link.classList.toggle("button--primary", isRecommended);
+    link.classList.toggle("button--secondary", !isRecommended);
+  }
+</script>

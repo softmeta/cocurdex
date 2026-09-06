@@ -68,8 +68,8 @@ drive-by features are likely to be closed.
 
 ## Desktop releases
 
-Maintainers ship the macOS app from GitHub Actions
-(`.github/workflows/release-macos.yml`). Pushing a `v*.*.*` tag on `main` is
+Maintainers ship desktop packages from GitHub Actions
+(`.github/workflows/release.yml`). Pushing a `v*.*.*` tag on `main` is
 enough; the tag can be created locally.
 
 1. Merge the work into `main` through a pull request. GitHub release notes list
@@ -98,8 +98,15 @@ enough; the tag can be created locally.
    pushed does not start the workflow. Do not `git push --tags`.
 
 The workflow drafts the GitHub release with `--generate-notes`. electron-builder
-uploads the Apple Silicon DMG, zip, and `latest-mac.yml` onto that draft.
-Notarization is verified, then the workflow publishes the release. Auto-update
-clients still read published releases (`build-assets/app-update.yml`), not
-drafts. Do not run `pnpm --filter @cocurdex/desktop dist:mac:arm64:release`
-locally for a production ship. Production packages are Apple Silicon only.
+uploads platform artifacts and updater metadata onto that draft:
+
+- macOS Apple Silicon and Intel: signed and notarized DMGs, zips, and `latest-mac.yml`
+- Windows x64: unsigned NSIS installer and `latest.yml`
+- Linux x64: AppImage and `latest-linux.yml`
+
+The release stays a draft until every platform job succeeds, then the workflow
+publishes it. Auto-update clients still read published releases
+(`build-assets/app-update.yml`), not drafts. Windows installers are unsigned, so
+SmartScreen or an unknown-publisher warning is expected.
+
+Do not run the `dist:*:release` scripts locally for a production ship.

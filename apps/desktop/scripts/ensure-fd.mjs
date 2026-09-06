@@ -76,8 +76,10 @@ async function prepareTarget(target) {
   }
 
   const targetDir = path.join(vendorRoot, target);
-  const binaryPath = path.join(targetDir, "fd");
+  const executableName = path.posix.basename(entry.archivePath);
+  const binaryPath = path.join(targetDir, executableName);
   const versionPath = path.join(targetDir, ".version");
+  const isZip = entry.url.endsWith(".zip");
 
   if ((await exists(binaryPath)) && (await exists(versionPath))) {
     const installedVersion = (await readFile(versionPath, "utf8")).trim();
@@ -88,7 +90,7 @@ async function prepareTarget(target) {
   }
 
   const tempDir = await mkdtemp(path.join(tmpdir(), "cocurdex-fd-"));
-  const archivePath = path.join(tempDir, "fd.tar.gz");
+  const archivePath = path.join(tempDir, isZip ? "fd.zip" : "fd.tar.gz");
 
   try {
     await downloadArchive(entry.url, archivePath);
@@ -99,12 +101,21 @@ async function prepareTarget(target) {
       );
     }
 
-    execFileSync("tar", ["-xzf", archivePath, "-C", tempDir], {
-      stdio: "ignore",
-    });
+    execFileSync(
+      "tar",
+      isZip
+        ? ["-xf", archivePath, "-C", tempDir]
+        : ["-xzf", archivePath, "-C", tempDir],
+      {
+        stdio: "ignore",
+      },
+    );
 
     await mkdir(targetDir, { recursive: true });
-    await copyFile(path.join(tempDir, entry.archivePath), binaryPath);
+    await copyFile(
+      path.join(tempDir, ...entry.archivePath.split("/")),
+      binaryPath,
+    );
     await chmod(binaryPath, 0o755);
     await writeFile(versionPath, `${manifest.version}\n`, "utf8");
     console.log(`prepared fd ${manifest.version} for ${target}`);
