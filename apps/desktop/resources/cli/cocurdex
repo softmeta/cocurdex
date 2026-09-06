@@ -32,6 +32,8 @@ resolve_electron() {
   for candidate in \
     "$CLI_DIR/../../MacOS/Cocurdex" \
     "$CLI_DIR/../../MacOS/Electron" \
+    "$CLI_DIR/../../Cocurdex" \
+    "$CLI_DIR/../../cocurdex" \
     "$CLI_DIR/../../../Cocurdex" \
     "$CLI_DIR/../../../cocurdex"
   do

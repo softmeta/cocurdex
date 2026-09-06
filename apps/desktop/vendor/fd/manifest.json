@@ -10,6 +10,26 @@
       "archivePath": "fd-v10.3.0-x86_64-apple-darwin/fd",
       "sha256": "50d30f13fe3d5914b14c4fff5abcbd4d0cdab4b855970a6956f4f006c17117a3",
       "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-x86_64-apple-darwin.tar.gz"
+    },
+    "linux-arm64": {
+      "archivePath": "fd-v10.3.0-aarch64-unknown-linux-gnu/fd",
+      "sha256": "66f297e404400a3358e9a0c0b2f3f4725956e7e4435427a9ae56e22adbe73a68",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-aarch64-unknown-linux-gnu.tar.gz"
+    },
+    "linux-x64": {
+      "archivePath": "fd-v10.3.0-x86_64-unknown-linux-gnu/fd",
+      "sha256": "c3c2bc79f838e780173fc8f18b337ec273e7ba17c7ff8f551be29fc3c19b7916",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-x86_64-unknown-linux-gnu.tar.gz"
+    },
+    "win32-arm64": {
+      "archivePath": "fd-v10.3.0-aarch64-pc-windows-msvc/fd.exe",
+      "sha256": "bf9b1e31bcac71c1e95d49c56f0d872f525b95d03854e94b1d4dd6786f825cc5",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-aarch64-pc-windows-msvc.zip"
+    },
+    "win32-x64": {
+      "archivePath": "fd-v10.3.0-x86_64-pc-windows-msvc/fd.exe",
+      "sha256": "318aa2a6fa664325933e81fda60d523fff29444129e91ebf0726b5b3bcd8b059",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-x86_64-pc-windows-msvc.zip"
     }
   }
 }

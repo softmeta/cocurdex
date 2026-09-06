@@ -17,7 +17,7 @@ apps/console/.next/
 apps/desktop/release/
 *.p12
 AuthKey_*.p8
-apps/desktop/vendor/fd/darwin-*/
+apps/desktop/vendor/fd/*/
 apps/desktop/resources/cli/cli.mjs
 apps/desktop/resources/cli/cli.mjs.map
 apps/desktop/resources/cli/daemon.cjs

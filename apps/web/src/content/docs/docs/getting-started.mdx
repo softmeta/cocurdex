@@ -9,8 +9,9 @@ This guide gets you from install to a useful first agent session.
 
 | Item | Notes |
 | --- | --- |
-| **macOS** | Primary supported platform during pre-release (Apple silicon first) |
-| **Windows / Linux** | Coming after macOS stabilizes |
+| **macOS** | Apple silicon and Intel |
+| **Windows** | x64 (unsigned NSIS installer) |
+| **Linux** | x64 AppImage |
 | **Agent runtime** | At least one supported agent CLI or provider you already use (see [Agents](/docs/agents/)) |
 | **Disk / project** | A project directory on disk that agents and the editor can use as the workspace root |
 
@@ -18,11 +19,9 @@ This guide gets you from install to a useful first agent session.
 
 ### Public builds
 
-1. When public artifacts are published, download from the [Download](/download/) page.
+1. Download the build for your platform from the [Download](/download/) page.
 2. Install and open **Cocurdex**.
 3. Complete any first-run prompts (theme, CLI launcher, permissions as offered).
-
-Until public installers are linked, use a local or CI-built package from the monorepo (`apps/desktop`), or run the desktop app from a development checkout.
 
 ### CLI on your PATH
 

@@ -10,6 +10,7 @@ import type { IPty } from "node-pty";
 import { spawn as ptySpawn } from "node-pty";
 import { createLogger } from "../logging";
 import { terminateProcessTree } from "../process";
+import { resolveDefaultShell } from "./default-shell";
 import { inspectSessions, type PtyActivity } from "./process-inspector";
 import { createPtyDataBuffer } from "./pty-data-buffer";
 
@@ -30,10 +31,7 @@ interface PtySession {
 }
 
 function defaultShell(): string {
-  if (process.platform === "win32") {
-    return process.env.COMSPEC ?? "powershell.exe";
-  }
-  return process.env.SHELL ?? "/bin/zsh";
+  return resolveDefaultShell(process.platform, process.env);
 }
 
 // Strip Electron/dev variables that would leak into the user's shell and
