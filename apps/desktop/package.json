@@ -1,7 +1,7 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,
@@ -218,7 +218,7 @@
       "artifactName": "Cocurdex-win-${arch}.${ext}"
     },
     "linux": {
-      "artifactName": "Cocurdex-linux-${arch}.${ext}",
+      "artifactName": "Cocurdex-linux-x64.${ext}",
       "category": "Development",
       "executableName": "Cocurdex",
       "target": [

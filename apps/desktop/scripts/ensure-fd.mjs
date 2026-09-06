@@ -62,6 +62,37 @@ async function downloadArchive(url, destination) {
   await writeFile(destination, Buffer.from(await response.arrayBuffer()));
 }
 
+function extractArchive(archivePath, destination, isZip) {
+  if (isZip && process.platform === "win32") {
+    execFileSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Expand-Archive -LiteralPath $env:COCURDEX_FD_ARCHIVE -DestinationPath $env:COCURDEX_FD_DEST -Force",
+      ],
+      {
+        env: {
+          ...process.env,
+          COCURDEX_FD_ARCHIVE: archivePath,
+          COCURDEX_FD_DEST: destination,
+        },
+        stdio: "inherit",
+      },
+    );
+    return;
+  }
+
+  execFileSync(
+    "tar",
+    isZip
+      ? ["-xf", archivePath, "-C", destination]
+      : ["-xzf", archivePath, "-C", destination],
+    { stdio: "inherit" },
+  );
+}
+
 async function sha256(filePath) {
   const hash = createHash("sha256");
   const data = await readFile(filePath);
@@ -101,15 +132,7 @@ async function prepareTarget(target) {
       );
     }
 
-    execFileSync(
-      "tar",
-      isZip
-        ? ["-xf", archivePath, "-C", tempDir]
-        : ["-xzf", archivePath, "-C", tempDir],
-      {
-        stdio: "ignore",
-      },
-    );
+    extractArchive(archivePath, tempDir, isZip);
 
     await mkdir(targetDir, { recursive: true });
     await copyFile(
