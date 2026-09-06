@@ -43,6 +43,7 @@ interface DaemonRuntimeClientOptions {
   daemonEntryPath: string;
   logger: DaemonRuntimeLogger;
   onEvent(event: CocurdexDaemonEvent): void;
+  onConnected?(): void;
   userDataPath: string;
 }
 
@@ -308,6 +309,7 @@ export function createDaemonRuntimeClient(
         onDisconnect: scheduleSubscriptionReconnect,
       });
       options.logger.info("daemon.subscriptionConnected");
+      options.onConnected?.();
     } catch (error) {
       scheduleSubscriptionReconnect(
         error instanceof Error ? error : new Error(String(error)),

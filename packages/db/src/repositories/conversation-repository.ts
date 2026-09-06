@@ -1,9 +1,17 @@
-import type { ConversationRecord } from "@cocurdex/shared";
+import type {
+  ConversationMessageRecord,
+  ConversationRecord,
+} from "@cocurdex/shared";
 
 export interface ConversationRepository {
   list(): Promise<ConversationRecord[]>;
   getById(conversationId: string): Promise<ConversationRecord | null>;
   upsert(conversation: ConversationRecord): Promise<void>;
+  commitTurn(
+    conversation: ConversationRecord,
+    messages: ConversationMessageRecord[],
+    deletedIds: string[],
+  ): Promise<void>;
   updateTitle(
     conversationId: string,
     title: string,

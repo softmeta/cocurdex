@@ -2,11 +2,35 @@ import type { DatabaseSync } from "node:sqlite";
 import { mapConversation } from "../mappers";
 import type { SqliteRow } from "../sqlite-types";
 import type { ConversationRepository } from "./conversation-repository";
+import { upsertConversation } from "./upsert-conversation";
+import { upsertConversationMessage } from "./upsert-conversation-message";
 
 export function createSqliteConversationRepository(
   database: DatabaseSync,
 ): ConversationRepository {
   return {
+    async commitTurn(conversation, messages, deletedIds) {
+      database.exec("SAVEPOINT chat_turn");
+      try {
+        for (const id of deletedIds)
+          database
+            .prepare(
+              "DELETE FROM conversation_messages WHERE id = ? AND conversation_id = ?",
+            )
+            .run(id, conversation.id);
+        upsertConversation(database, conversation);
+        for (const message of messages) {
+          if (message.conversationId !== conversation.id)
+            throw new Error("Message belongs to another conversation");
+          upsertConversationMessage(database, message);
+        }
+        database.exec("RELEASE chat_turn");
+      } catch (error) {
+        database.exec("ROLLBACK TO chat_turn");
+        database.exec("RELEASE chat_turn");
+        throw error;
+      }
+    },
     async list() {
       const rows = database
         .prepare(
@@ -24,37 +48,7 @@ export function createSqliteConversationRepository(
       return row ? mapConversation(row) : null;
     },
     async upsert(conversation) {
-      database
-        .prepare(
-          `INSERT INTO conversations (
-             id, title, provider_id, model_id, system_prompt, preset_id,
-             web_search_enabled, created_at, updated_at, last_message_at,
-             archived_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-             title = excluded.title,
-             provider_id = excluded.provider_id,
-             model_id = excluded.model_id,
-             system_prompt = excluded.system_prompt,
-             preset_id = excluded.preset_id,
-             web_search_enabled = excluded.web_search_enabled,
-             updated_at = excluded.updated_at,
-             last_message_at = excluded.last_message_at,
-             archived_at = excluded.archived_at`,
-        )
-        .run(
-          conversation.id,
-          conversation.title,
-          conversation.providerId,
-          conversation.modelId,
-          conversation.systemPrompt,
-          conversation.presetId,
-          conversation.webSearchEnabled ? 1 : 0,
-          conversation.createdAt,
-          conversation.updatedAt,
-          conversation.lastMessageAt,
-          conversation.archivedAt,
-        );
+      upsertConversation(database, conversation);
     },
     async updateTitle(conversationId, title, updatedAt) {
       const nextUpdatedAt = updatedAt ?? new Date().toISOString();

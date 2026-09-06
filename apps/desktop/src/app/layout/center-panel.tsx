@@ -49,7 +49,6 @@ import {
 import { annotationsAtom } from "@/features/browser";
 import {
   activeConversationIdAtom,
-  appendConversationMessageAtom,
   ConversationDetail,
   conversationsAtom,
   NewConversationCard,
@@ -211,7 +210,6 @@ export function CenterPanel({
   const activeConversationId = useAtomValue(activeConversationIdAtom);
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const upsertConversation = useSetAtom(upsertConversationAtom);
-  const appendConversationMessage = useSetAtom(appendConversationMessageAtom);
   const conversations = useAtomValue(conversationsAtom);
   const activeConversation =
     conversations.find((c) => c.id === activeConversationId) ?? null;
@@ -859,15 +857,15 @@ export function CenterPanel({
         webSearchEnabled,
       });
       upsertConversation({ conversation });
-      setActiveConversationId(conversation.id);
-      const userMessage = await desktopApi.chatSendMessage({
+      await desktopApi.chatSendMessage({
         conversationId: conversation.id,
         text: message,
         images: images.length > 0 ? images : undefined,
       });
-      appendConversationMessage(userMessage);
+      setActiveConversationId(conversation.id);
     } catch (error) {
       console.error("[Chat] start conversation failed", error);
+      throw error;
     }
   };
 
@@ -1137,11 +1135,7 @@ export function CenterPanel({
   } else {
     newSessionSurface = (
       <ComposerSurface>
-        <NewConversationCard
-          onStartConversation={(payload) => {
-            void handleStartConversation(payload);
-          }}
-        />
+        <NewConversationCard onStartConversation={handleStartConversation} />
       </ComposerSurface>
     );
   }

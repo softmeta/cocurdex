@@ -103,7 +103,7 @@ describe("chat picker helpers", () => {
     expect(isChatSupportedApi("openai-completions")).toBe(true);
     expect(isChatSupportedApi("anthropic-messages")).toBe(true);
     expect(isChatSupportedApi("google-generative-ai")).toBe(true);
-    expect(isChatSupportedApi("openai-codex-responses")).toBe(false);
+    expect(isChatSupportedApi("openai-codex-responses")).toBe(true);
   });
 
   it("treats undeclared capabilities as chat-capable", () => {

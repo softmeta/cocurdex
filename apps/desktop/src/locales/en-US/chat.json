@@ -18,6 +18,7 @@
       "openProviderSettings": "Open provider settings",
       "title": "Send a message to start"
     },
+    "loadFailed": "Could not load conversation",
     "openSystemPrompt": "Edit system prompt",
     "welcome": {
       "cta": "New chat",
@@ -46,6 +47,7 @@
     "imageAlt": "Attached image",
     "regenerate": "Regenerate",
     "retry": "Retry",
+    "stopped": "Response stopped",
     "submitEdit": "Submit edit"
   },
   "modelPicker": {
@@ -79,10 +81,5 @@
     "description": "Pick a built-in role or write a custom system prompt. Applies to all future turns in this conversation.",
     "placeholder": "Optional system prompt…",
     "title": "System prompt"
-  },
-  "webSearch": {
-    "label": "Web search",
-    "tooltip": "Toggle web search for this conversation",
-    "unsupported": "Web search is not available for this provider"
   }
 }

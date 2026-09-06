@@ -298,6 +298,7 @@ export default interface Resources {
         openProviderSettings: "Open provider settings";
         title: "Send a message to start";
       };
+      loadFailed: "Could not load conversation";
       openSystemPrompt: "Edit system prompt";
       welcome: {
         cta: "New chat";
@@ -326,6 +327,7 @@ export default interface Resources {
       imageAlt: "Attached image";
       regenerate: "Regenerate";
       retry: "Retry";
+      stopped: "Response stopped";
       submitEdit: "Submit edit";
     };
     modelPicker: {
@@ -359,11 +361,6 @@ export default interface Resources {
       description: "Pick a built-in role or write a custom system prompt. Applies to all future turns in this conversation.";
       placeholder: "Optional system prompt…";
       title: "System prompt";
-    };
-    webSearch: {
-      label: "Web search";
-      tooltip: "Toggle web search for this conversation";
-      unsupported: "Web search is not available for this provider";
     };
   };
   common: {

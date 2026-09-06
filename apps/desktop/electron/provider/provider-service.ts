@@ -21,6 +21,7 @@ import {
 } from "@cocurdex/agent-adapters/desktop-provider";
 import type {
   AgentId,
+  AgentProviderSnapshot,
   CodexLoginOutcome,
   CommitMessageModelSelection,
   CompatibleProviderModel,
@@ -158,6 +159,12 @@ export async function buildRuntimeProviderConfig(
     return null;
   }
 
+  return resolveRuntimeProviderSnapshot(snapshot);
+}
+
+export async function resolveRuntimeProviderSnapshot(
+  snapshot: AgentProviderSnapshot,
+) {
   const provider = await getProviderConfig(snapshot.providerId);
   const piAuth = provider
     ? await resolvePiProviderAuth(app.getPath("userData"), provider.id)
@@ -169,6 +176,7 @@ export async function buildRuntimeProviderConfig(
     ...snapshot,
     apiKey,
     baseUrl: piAuth?.auth.baseUrl ?? snapshot.baseUrl,
+    modelBaseUrl: piAuth?.auth.baseUrl ?? snapshot.modelBaseUrl,
     headersJson: mergeProviderAuthHeaders(
       snapshot.headersJson,
       piAuth?.auth.headers,

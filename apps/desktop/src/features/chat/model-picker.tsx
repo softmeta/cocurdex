@@ -1,15 +1,6 @@
-import {
-  type CompatibleProviderModel,
-  isChatCapableModel,
-  isChatSupportedApi,
-} from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
-import {
-  ProviderModelMenu,
-  providerConfigsAtom,
-  providerModelsAtom,
-} from "@/features/sessions";
+import { ProviderModelMenu } from "@/features/sessions";
+import { chatProviderModelsAtom } from "./chat-models";
 
 interface ModelPickerProps {
   providerId: string | null;
@@ -28,23 +19,7 @@ export function ModelPicker({
   onChange,
   disabled,
 }: ModelPickerProps) {
-  const models = useAtomValue(providerModelsAtom);
-  const providers = useAtomValue(providerConfigsAtom);
-
-  const compatibleProviders = useMemo<CompatibleProviderModel[]>(() => {
-    const providerById = new Map(providers.map((p) => [p.id, p]));
-    return models
-      .filter(
-        (m) =>
-          m.enabled &&
-          isChatSupportedApi(m.api) &&
-          isChatCapableModel(m.capabilities),
-      )
-      .flatMap((model) => {
-        const provider = providerById.get(model.providerId);
-        return provider ? [{ model, provider }] : [];
-      });
-  }, [models, providers]);
+  const compatibleProviders = useAtomValue(chatProviderModelsAtom);
 
   const value = providerId && modelId ? `${providerId}::${modelId}` : "";
 

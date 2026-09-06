@@ -15,6 +15,7 @@ export * from "./note-markdown";
 export * from "./notes";
 export * from "./orchestration";
 export * from "./provider-compatibility";
+export { createProviderSnapshotForModel } from "./provider-snapshot";
 export * from "./search";
 export * from "./session-attention";
 export * from "./session-observation";

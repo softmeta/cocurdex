@@ -1,3 +1,4 @@
+import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
 
 export type CocurdexDataArea = "notes" | "issues";
@@ -7,4 +8,7 @@ export interface CocurdexDataChangedEvent {
   areas: CocurdexDataArea[];
 }
 
-export type CocurdexDaemonEvent = AgentEvent | CocurdexDataChangedEvent;
+export type CocurdexDaemonEvent =
+  | AgentEvent
+  | CocurdexDataChangedEvent
+  | ChatEvent;

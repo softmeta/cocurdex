@@ -19,6 +19,7 @@ import type {
   CompatibleProviderModel,
   ConversationMessageRecord,
   ConversationRecord,
+  ConversationSnapshot,
   CreateColumnPayload,
   CreateConversationPayload,
   CreateIssuePayload,
@@ -676,10 +677,7 @@ export interface DesktopApi {
   ): () => void;
   // === Pure chat (ChatGPT-style) ===
   chatList(): Promise<ConversationRecord[]>;
-  chatGet(conversationId: string): Promise<{
-    conversation: ConversationRecord;
-    messages: ConversationMessageRecord[];
-  } | null>;
+  chatGet(conversationId: string): Promise<ConversationSnapshot | null>;
   chatCreate(payload: CreateConversationPayload): Promise<ConversationRecord>;
   chatUpdate(
     payload: UpdateConversationPayload,
@@ -695,6 +693,7 @@ export interface DesktopApi {
   ): Promise<ConversationMessageRecord>;
   chatStopStream(conversationId: string): Promise<void>;
   onChatEvent(listener: (event: ChatEvent) => void): () => void;
+  onChatInvalidated(listener: () => void): () => void;
   // === App-owned notes ===
   notesList(): Promise<NoteSummary[]>;
   notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;

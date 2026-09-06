@@ -3,7 +3,6 @@ export { useChatEventBridge } from "./chat-event-bridge";
 export { rehydrateChatImages } from "./chat-images";
 export {
   activeConversationIdAtom,
-  appendConversationMessageAtom,
   conversationsAtom,
   conversationsLoadedAtom,
   removeConversationAtom,
