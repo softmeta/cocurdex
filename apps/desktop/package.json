@@ -34,7 +34,7 @@
     "postinstall": "node ./scripts/fix-node-pty-perms.mjs",
     "prepare:cli": "node ./scripts/build-cli.mjs",
     "prepare:licenses": "node ./scripts/generate-oss-licenses.mjs",
-    "prepare:electron": "install-electron --no",
+    "prepare:electron": "node ./scripts/prepare-electron.mjs",
     "prepare:fd": "node ./scripts/ensure-fd.mjs",
     "verify:package": "node ./scripts/verify-packaged-runtime.mjs",
     "test": "vitest run",
