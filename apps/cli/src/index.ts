@@ -2,15 +2,18 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
-import type {
-  AgentId,
-  AgentProviderSnapshot,
-  ProviderConfigRecord,
-  ProviderModelRecord,
-  SessionRecord,
-  WorkflowAggregate,
-  WorkflowExecutorBindings,
-  WorkspaceRecord,
+import {
+  type AgentId,
+  type AgentProviderSnapshot,
+  type ProviderConfigRecord,
+  type ProviderModelRecord,
+  projectAgentRoleToExecutorBinding,
+  type SessionRecord,
+  type WorkflowAggregate,
+  type WorkflowExecutorBinding,
+  type WorkflowExecutorBindings,
+  type WorkflowRole,
+  type WorkspaceRecord,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import { handleIssueCommand } from "./issue-commands";
@@ -228,6 +231,12 @@ async function main(rawArgs: string[]) {
     return;
   }
 
+  if (resource === "role" && (action === "list" || action === undefined)) {
+    const roles = await withDaemon(() => requestDaemon("agentRole.list"));
+    printRows(roles, ["id", "name", "agentId", "updatedAt"], parsed);
+    return;
+  }
+
   if (resource === "workflow" && action === "list") {
     const runs = await withDaemon(() => requestDaemon("workflow.list"));
     printRows(
@@ -372,8 +381,9 @@ function printUsage() {
       "  cocurdex provider models <provider>",
       "  cocurdex workflow list",
       "  cocurdex workflow tui [run-id]",
-      "  cocurdex workflow tui --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex]",
-      "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex]",
+      "  cocurdex role list",
+      "  cocurdex workflow tui --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
+      "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
       "  cocurdex workflow show <run-id>",
       "  cocurdex workflow start <run-id>",
       "  cocurdex workflow approve|reject <run-id> [--reason <text>]",
@@ -506,18 +516,11 @@ async function sendSessionMessage(sessionId: string, prompt: string) {
 async function createWorkflow(parsed: ParsedArgs) {
   const workspaceValue = getRequiredFlag(parsed, "workspace");
   const prompt = getRequiredFlag(parsed, "prompt");
-  const bindings: WorkflowExecutorBindings = {
-    planner: workflowBinding(parsed, "planner", "codex", "read_only"),
-    implementer: workflowBinding(
-      parsed,
-      "implementer",
-      "grok-build",
-      "workspace_write",
-    ),
-    reviewer: workflowBinding(parsed, "reviewer", "codex", "read_only"),
-  };
-  const [workspaces] = await withDaemon(async () =>
-    Promise.all([requestDaemon("workspace.list")]),
+  const [workspaces, bindings] = await withDaemon(async () =>
+    Promise.all([
+      requestDaemon("workspace.list"),
+      resolveWorkflowBindings(parsed),
+    ]),
   );
   const workspace = workspaces.find(
     (item) => item.id === workspaceValue || item.rootPath === workspaceValue,
@@ -588,12 +591,55 @@ async function resolveWorkflowTuiRun(
   return aggregate;
 }
 
-function workflowBinding(
+async function resolveWorkflowBindings(
   parsed: ParsedArgs,
-  role: "planner" | "implementer" | "reviewer",
+): Promise<WorkflowExecutorBindings> {
+  return {
+    planner: await resolveWorkflowRoleBinding(
+      parsed,
+      "planner",
+      "codex",
+      "read_only",
+    ),
+    implementer: await resolveWorkflowRoleBinding(
+      parsed,
+      "implementer",
+      "grok-build",
+      "workspace_write",
+    ),
+    reviewer: await resolveWorkflowRoleBinding(
+      parsed,
+      "reviewer",
+      "codex",
+      "read_only",
+    ),
+  };
+}
+
+async function resolveWorkflowRoleBinding(
+  parsed: ParsedArgs,
+  role: WorkflowRole,
   defaultAgentId: AgentId,
   permissionProfile: "read_only" | "workspace_write",
-) {
+): Promise<WorkflowExecutorBinding> {
+  const roleId = stringFlag(parsed, `${role}-role`);
+  if (!roleId) {
+    return workflowBinding(parsed, role, defaultAgentId, permissionProfile);
+  }
+
+  const agentRole = await requestDaemon("agentRole.get", { id: roleId });
+  if (!agentRole) {
+    throw new Error(`Agent role '${roleId}' not found.`);
+  }
+  return projectAgentRoleToExecutorBinding(agentRole, role);
+}
+
+function workflowBinding(
+  parsed: ParsedArgs,
+  role: WorkflowRole,
+  defaultAgentId: AgentId,
+  permissionProfile: "read_only" | "workspace_write",
+): WorkflowExecutorBinding {
   const model = stringFlag(parsed, `${role}-model`);
   return {
     agentId: (stringFlag(parsed, role) ?? defaultAgentId) as AgentId,

@@ -4,6 +4,7 @@ import {
   createInitialAppUpdateState,
   githubReleaseNotesUrl,
   isUpdateReadyPromptVisible,
+  normalizeAppUpdateDownloadPercent,
   reduceAppUpdateState,
 } from "./app-update-state";
 
@@ -30,6 +31,7 @@ describe("createInitialAppUpdateState", () => {
       availableVersion: null,
       currentVersion: "0.1.0",
       dismissedVersion: null,
+      downloadPercent: null,
       errorMessage: null,
       releaseNotesUrl: null,
       status: "idle",
@@ -51,6 +53,15 @@ describe("githubReleaseNotesUrl", () => {
     expect(githubReleaseNotesUrl("0.2.0")).toBe(
       "https://github.com/softmeta/cocurdex/releases/tag/v0.2.0",
     );
+  });
+});
+
+describe("normalizeAppUpdateDownloadPercent", () => {
+  it("clamps, rounds, and treats non-finite values as 0", () => {
+    expect(normalizeAppUpdateDownloadPercent(41.6)).toBe(42);
+    expect(normalizeAppUpdateDownloadPercent(-4)).toBe(0);
+    expect(normalizeAppUpdateDownloadPercent(140)).toBe(100);
+    expect(normalizeAppUpdateDownloadPercent(Number.NaN)).toBe(0);
   });
 });
 
@@ -82,11 +93,21 @@ describe("reduceAppUpdateState", () => {
     });
     expect(state).toMatchObject({
       availableVersion: "0.2.0",
+      downloadPercent: 0,
       status: "downloading",
     });
 
-    state = reduceAppUpdateState(state, { type: "progress" });
-    expect(state.status).toBe("downloading");
+    state = reduceAppUpdateState(state, { percent: 41.6, type: "progress" });
+    expect(state).toMatchObject({
+      downloadPercent: 42,
+      status: "downloading",
+    });
+
+    const sameTick = reduceAppUpdateState(state, {
+      percent: 42.2,
+      type: "progress",
+    });
+    expect(sameTick).toBe(state);
 
     state = reduceAppUpdateState(state, {
       type: "downloaded",
@@ -94,6 +115,7 @@ describe("reduceAppUpdateState", () => {
       releaseNotesUrl: githubReleaseNotesUrl("0.2.0"),
     });
     expect(state.status).toBe("ready");
+    expect(state.downloadPercent).toBeNull();
     expect(isUpdateReadyPromptVisible(state)).toBe(true);
   });
 
@@ -152,7 +174,9 @@ describe("reduceAppUpdateState", () => {
         releaseNotesUrl: githubReleaseNotesUrl("0.2.0"),
       }),
     ).toBe(ready);
-    expect(reduceAppUpdateState(ready, { type: "progress" })).toBe(ready);
+    expect(reduceAppUpdateState(ready, { percent: 50, type: "progress" })).toBe(
+      ready,
+    );
     expect(reduceAppUpdateState(ready, { type: "not-available" })).toBe(ready);
     expect(
       reduceAppUpdateState(ready, { type: "error", message: "later fail" }),

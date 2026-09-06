@@ -62,7 +62,7 @@ export function SessionRuntimeMenu({
   onFastModeChange,
   onOpenCodeAgentChange,
   onOpenCodeVariantChange,
-  onThinkingLevelReset,
+  onSaveAsRole,
   onConfigOptionChange,
 }: {
   agentType: AgentId;
@@ -90,7 +90,7 @@ export function SessionRuntimeMenu({
   onFastModeChange(value: boolean): void;
   onOpenCodeAgentChange(value: string | null): void;
   onOpenCodeVariantChange(value: string | null): void;
-  onThinkingLevelReset?(): void;
+  onSaveAsRole?(): void;
   onConfigOptionChange?(configId: string, value: boolean | string): void;
 }) {
   const { t } = useTranslation("sessions");
@@ -260,7 +260,7 @@ export function SessionRuntimeMenu({
       onServiceTierChange={(value) =>
         onServiceTierChange(value === DEFAULT_VALUE ? null : value)
       }
-      onThinkingLevelReset={onThinkingLevelReset}
+      onSaveAsRole={onSaveAsRole}
     />
   );
 }

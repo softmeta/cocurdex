@@ -101,7 +101,6 @@ export function LeftSidebar({
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
-  const setActiveWorkspaceId = useSetAtom(activeWorkspaceIdAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const removeWorkspace = useSetAtom(removeWorkspaceAtom);
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
@@ -161,19 +160,8 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  // Pure chat is workspace-independent, so its list is its own sidebar tab.
-  // Mirror handleNewSession: open a blank draft surface instead of
-  // eagerly persisting a record. Clearing the workspace forces the center
-  // panel to render NewConversationCard; the conversation is created only when
-  // the user sends the first message (handleStartConversation), matching the
-  // way agent sessions defer creation until the first turn.
   const handleCreateConversation = () => {
     setActiveConversationId(null);
-    startTransition(() => {
-      setOptimisticActiveSessionId(null);
-      setActiveWorkspaceId(null);
-      selectSession(null);
-    });
     onAfterNavigate?.();
   };
 

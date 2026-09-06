@@ -60,6 +60,9 @@ export function initializeDatabase(database: DatabaseSync): void {
   if (!hasColumn(database, "tool_calls", "subagent_json")) {
     database.exec("ALTER TABLE tool_calls ADD COLUMN subagent_json TEXT");
   }
+  if (!hasColumn(database, "agent_roles", "model_name")) {
+    database.exec("ALTER TABLE agent_roles ADD COLUMN model_name TEXT");
+  }
   if (!hasColumn(database, "workspaces", "sort_order")) {
     database.exec(
       "ALTER TABLE workspaces ADD COLUMN sort_order REAL NOT NULL DEFAULT 0",

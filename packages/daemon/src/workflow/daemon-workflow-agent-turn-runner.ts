@@ -1,6 +1,8 @@
 import type {
   AgentId,
+  AgentPermissionMode,
   AgentProviderSnapshot,
+  CollaborationModeKind,
   MessageRecord,
   SessionRecord,
   WorkflowAttemptRecord,
@@ -24,6 +26,10 @@ const agentNames: Record<AgentId, string> = {
 };
 
 function permissionMode(attempt: WorkflowAttemptRecord) {
+  const runtimeMode = attempt.executorBinding.runtime?.permissionMode;
+  if (typeof runtimeMode === "string" && runtimeMode) {
+    return runtimeMode as AgentPermissionMode;
+  }
   const risk =
     attempt.executorBinding.permissionProfile === "workspace_write"
       ? "elevated"
@@ -31,6 +37,15 @@ function permissionMode(attempt: WorkflowAttemptRecord) {
   return getFallbackAgentPermissionModes(attempt.executorBinding.agentId).find(
     (mode) => mode.risk === risk,
   )?.id;
+}
+
+function collaborationMode(
+  attempt: WorkflowAttemptRecord,
+): CollaborationModeKind {
+  const runtimeMode = attempt.executorBinding.runtime?.collaborationMode;
+  return runtimeMode === "plan" || runtimeMode === "default"
+    ? runtimeMode
+    : "default";
 }
 
 function modelSnapshot(
@@ -81,7 +96,7 @@ function createSession(
     sessionKind: "subagent",
     status: "running",
     writeMode,
-    collaborationMode: "default",
+    collaborationMode: collaborationMode(attempt),
     permissionMode: permissionMode(attempt),
     providerSnapshot: modelSnapshot(attempt),
     createdAt: now,

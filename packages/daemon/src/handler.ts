@@ -227,6 +227,15 @@ export async function handleDaemonRequest(
       );
     case "provider.listDefaults":
       return service.providerService.listAgentProviderDefaults();
+    case "agentRole.list":
+      return service.listAgentRoles();
+    case "agentRole.get":
+      return service.getAgentRole(request.params.id);
+    case "agentRole.save":
+      return service.saveAgentRole(request.params);
+    case "agentRole.delete":
+      await service.deleteAgentRole(request.params.id);
+      return null;
     default: {
       const exhaustive: never = request;
       throw new Error(

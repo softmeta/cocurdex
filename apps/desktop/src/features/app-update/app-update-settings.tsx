@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Spinner, Text } from "@/components/ui";
+import { Button, Progress, Spinner, Text } from "@/components/ui";
 import type { AppUpdateState } from "@/lib/types";
 import {
   checkForAppUpdate,
@@ -16,7 +16,8 @@ function statusText(state: AppUpdateState, t: TFunction<"settings">) {
     case "checking":
       return t("updates.status.checking");
     case "downloading":
-      return t("updates.status.downloading", {
+      return t("updates.status.downloadingWithPercent", {
+        percent: String(state.downloadPercent ?? 0),
         version: state.availableVersion ?? "",
       });
     case "ready":
@@ -40,6 +41,8 @@ export function AppUpdateSettingsPanel() {
     busy || state.status === "checking" || state.status === "downloading";
   const canCheck = state.status !== "unsupported" && !inFlight;
   const canInstall = state.status === "ready" && !inFlight;
+  const downloadPercent =
+    state.status === "downloading" ? (state.downloadPercent ?? 0) : null;
 
   const runCheck = async () => {
     setBusy(true);
@@ -62,9 +65,12 @@ export function AppUpdateSettingsPanel() {
         <Text className="mt-2 block" size="meta" tone="muted">
           {statusText(state, t)}
         </Text>
+        {downloadPercent === null ? null : (
+          <Progress className="mt-2" value={downloadPercent} />
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {inFlight ? <Spinner size="md" /> : null}
+        {busy || state.status === "checking" ? <Spinner size="md" /> : null}
         {canInstall ? (
           <Button
             size="sm"

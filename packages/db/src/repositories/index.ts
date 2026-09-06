@@ -1,4 +1,5 @@
 export * from "./agent-provider-default-repository";
+export * from "./agent-role-repository";
 export * from "./app-settings-repository";
 export * from "./conversation-message-repository";
 export * from "./conversation-repository";
@@ -14,6 +15,7 @@ export * from "./session-attention-repository";
 export * from "./session-repository";
 export * from "./session-usage-repository";
 export * from "./sqlite-agent-provider-default-repository";
+export * from "./sqlite-agent-role-repository";
 export * from "./sqlite-app-settings-repository";
 export * from "./sqlite-conversation-message-repository";
 export * from "./sqlite-conversation-repository";

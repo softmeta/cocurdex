@@ -2,6 +2,8 @@ import {
   type AgentId,
   type AgentPermissionMode,
   type AgentProviderSnapshot,
+  type AgentRoleDraft,
+  type AgentRoleRecord,
   type AgentThinkingLevel,
   type CodexReasoningEffort,
   type CollaborationModeKind,
@@ -27,6 +29,7 @@ import {
   getCachedProviderModelEntry,
   getDefaultProviderModelValue,
   getProviderModelCacheVersion,
+  getProviderModelValue,
   isProviderModelCacheFresh,
   loadProviderModelOptions,
   parseProviderModelValue,
@@ -445,6 +448,24 @@ export function useNewSessionCard({
     });
   };
 
+  const currentRoleDraft: AgentRoleDraft = {
+    agentId: effectiveSelectedAgent,
+    providerId: selectedCompatibleProvider?.provider.id ?? null,
+    modelId: selectedCompatibleProvider?.model.modelId ?? null,
+    modelName: selectedCompatibleProvider?.model.name ?? null,
+    permissionMode: resolvedPermissionMode,
+    collaborationMode: selectedCollaborationMode,
+    reasoningEffort: selectedCodexReasoningEffort
+      ? (selectedCodexReasoningEffort as CodexReasoningEffort)
+      : null,
+    serviceTier: selectedCodexServiceTier || null,
+    fastMode: isClaudeAgent ? selectedClaudeFastMode : null,
+    thinkingLevel:
+      rawSelectedThinkingLevel === "default" ? null : rawSelectedThinkingLevel,
+    openCodeAgent: selectedOpenCodeAgentValue || null,
+    openCodeVariant: selectedOpenCodeVariantValue || null,
+  };
+
   const handleSelectAgent = (nextAgent: AgentId) => {
     if (
       !supportsPlanMode(nextAgent) &&
@@ -468,6 +489,45 @@ export function useNewSessionCard({
     // Parent (lastSelectedAgentAtom) persists to localStorage so the choice
     // is restored the next time this card opens, including after restart.
     onSelectAgent?.(nextAgent);
+  };
+
+  const handleApplyRole = (role: AgentRoleRecord) => {
+    updateAgentRuntimePreferences(role.agentId, {
+      providerSelection:
+        role.providerId && role.modelId
+          ? { providerId: role.providerId, modelId: role.modelId }
+          : undefined,
+      permissionMode: role.permissionMode,
+      reasoningEffort: role.reasoningEffort,
+      serviceTier: role.serviceTier,
+      fastMode: role.fastMode,
+      thinkingLevel: role.thinkingLevel,
+      openCodeAgent: role.openCodeAgent,
+      openCodeVariant: role.openCodeVariant,
+    });
+    handleSelectCollaborationMode(
+      role.collaborationMode === "plan" && supportsPlanMode(role.agentId)
+        ? "plan"
+        : "default",
+    );
+    if (role.agentId === effectiveSelectedAgent) {
+      setSelectedPermissionMode(
+        role.permissionMode ?? permissionModeForAgent(role.agentId, agents),
+      );
+      setSelectedCodexReasoningEffort(role.reasoningEffort ?? "");
+      setSelectedCodexServiceTier(role.serviceTier ?? "");
+      setSelectedClaudeFastMode(role.fastMode ?? false);
+      setSelectedThinkingLevel(role.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(role.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(role.openCodeVariant ?? "");
+      if (role.providerId && role.modelId) {
+        setSelectedProviderModel(
+          getProviderModelValue(role.providerId, role.modelId),
+        );
+      }
+      return;
+    }
+    handleSelectAgent(role.agentId);
   };
 
   const handleSelectProviderModel = (nextProviderModel: string) => {
@@ -582,7 +642,9 @@ export function useNewSessionCard({
     setSelectedOpenCodeVariant: handleSelectOpenCodeVariant,
     selectableAgentOptions,
     providerSnapshot,
+    currentRoleDraft,
     handleSelectAgent,
+    handleApplyRole,
     handleSelectCollaborationMode,
     handleSelectProviderModel,
   };

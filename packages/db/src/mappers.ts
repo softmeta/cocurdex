@@ -1,22 +1,27 @@
-import type {
-  AgentProviderSelection,
-  AgentProviderSessionRecord,
-  AgentProviderSnapshot,
-  AgentToolCallRecord,
-  CollaborationModeKind,
-  ConversationContentPart,
-  ConversationMessageRecord,
-  ConversationRecord,
-  ConversationSource,
-  ConversationUsage,
-  EditorViewRecord,
-  MessageRecord,
-  ProviderApi,
-  ProviderConfigRecord,
-  ProviderModelCapability,
-  ProviderModelRecord,
-  SessionRecord,
-  WorkspaceRecord,
+import {
+  type AgentPermissionMode,
+  type AgentProviderSelection,
+  type AgentProviderSessionRecord,
+  type AgentProviderSnapshot,
+  type AgentRoleRecord,
+  type AgentThinkingLevel,
+  type AgentToolCallRecord,
+  type CollaborationModeKind,
+  type ConversationContentPart,
+  type ConversationMessageRecord,
+  type ConversationRecord,
+  type ConversationSource,
+  type ConversationUsage,
+  type EditorViewRecord,
+  isAgentId,
+  type MessageRecord,
+  type ProviderApi,
+  type ProviderConfigRecord,
+  type ProviderModelCapability,
+  type ProviderModelRecord,
+  type ReasoningEffort,
+  type SessionRecord,
+  type WorkspaceRecord,
 } from "@cocurdex/shared";
 import type { ProviderSecretRecord } from "./repositories";
 import {
@@ -254,6 +259,42 @@ export function mapConversationMessage(
     usage: parseJson<ConversationUsage | null>(row.usage_json, null),
     sources: parseJson<ConversationSource[]>(row.sources_json, []),
     error: toNullableString(row.error),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export function mapAgentRole(row: SqliteRow): AgentRoleRecord {
+  const agentId = String(row.agent_id);
+  if (!isAgentId(agentId)) {
+    throw new Error(`Invalid agent role adapter '${agentId}'.`);
+  }
+
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    agentId,
+    providerId: toNullableString(row.provider_id),
+    modelId: toNullableString(row.model_id),
+    modelName: toNullableString(row.model_name),
+    permissionMode: (toNullableString(row.permission_mode) ??
+      null) as AgentPermissionMode | null,
+    collaborationMode: isCollaborationMode(row.collaboration_mode)
+      ? row.collaboration_mode
+      : "default",
+    reasoningEffort: (toNullableString(row.reasoning_effort) ??
+      null) as ReasoningEffort | null,
+    serviceTier: toNullableString(row.service_tier),
+    fastMode:
+      row.fast_mode === null || row.fast_mode === undefined
+        ? null
+        : toBoolean(row.fast_mode),
+    thinkingLevel: (toNullableString(row.thinking_level) ??
+      null) as AgentThinkingLevel | null,
+    openCodeAgent: toNullableString(row.opencode_agent),
+    openCodeVariant: toNullableString(row.opencode_variant),
+    instructions: toNullableString(row.instructions),
+    skillIds: parseJson<string[] | null>(row.skill_ids_json, null),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

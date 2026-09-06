@@ -106,6 +106,7 @@ export interface WorkflowDefinitionRevision {
 
 export interface WorkflowExecutorBinding {
   agentId: AgentId;
+  agentRoleId?: string;
   model?: string;
   providerSnapshot?: AgentProviderSnapshot;
   runtime?: Record<string, unknown>;

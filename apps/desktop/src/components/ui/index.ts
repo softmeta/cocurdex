@@ -16,6 +16,7 @@ export * from "./icon-button";
 export * from "./input";
 export * from "./label";
 export * from "./popover";
+export * from "./progress";
 export * from "./resizable";
 export * from "./scroll-area";
 export * from "./select";

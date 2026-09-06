@@ -10,6 +10,7 @@ export interface AppUpdateCopy {
   status: {
     checking: string;
     downloading: string;
+    downloadingWithPercent: string;
     error: string;
     ready: string;
     unsupported: string;
@@ -52,7 +53,13 @@ export function describeAppUpdateCheckDialog(
     case "downloading":
       return {
         kind: "message",
-        message: fillTemplate(copy.status.downloading, { version }),
+        message:
+          state.downloadPercent === null
+            ? fillTemplate(copy.status.downloading, { version })
+            : fillTemplate(copy.status.downloadingWithPercent, {
+                percent: String(state.downloadPercent),
+                version,
+              }),
         type: "info",
       };
     case "ready":

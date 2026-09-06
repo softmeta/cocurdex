@@ -4,6 +4,7 @@ import type {
   AgentEvent,
   AgentId,
   AgentProviderSelection,
+  AgentRoleRecord,
   AgentToolCallRecord,
   AgentUsageUpdatedEvent,
   AppBootstrapData,
@@ -509,6 +510,22 @@ export class DaemonState {
 
   async saveAgentProviderDefault(selection: AgentProviderSelection) {
     await this.database.agentProviderDefaults.upsert(selection);
+  }
+
+  listAgentRoles() {
+    return this.database.agentRoles.list();
+  }
+
+  getAgentRole(id: string) {
+    return this.database.agentRoles.getById(id);
+  }
+
+  async saveAgentRole(role: AgentRoleRecord) {
+    await this.database.agentRoles.upsert(role);
+  }
+
+  async deleteAgentRole(id: string) {
+    await this.database.agentRoles.delete(id);
   }
 
   async persistAgentEvent(event: AgentEvent) {

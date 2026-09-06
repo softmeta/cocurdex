@@ -1,6 +1,9 @@
-import type { MessageAttachment } from "@cocurdex/shared";
+import {
+  agentRoleMatchesDraft,
+  type MessageAttachment,
+} from "@cocurdex/shared";
 import { FolderOpen, GitBranch } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppSearchableSelect } from "@/components";
@@ -15,6 +18,13 @@ import {
 } from "@/features/composer";
 import { WorkspacePicker } from "@/features/workspaces";
 import { cn } from "@/lib";
+import {
+  formatAgentRoleRecordSummary,
+  getAgentRoles,
+  SaveAgentRoleDialog,
+  saveAgentRoleRecord,
+  subscribeAgentRoles,
+} from "../agent-role";
 import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
 import { CollaborationModeSubmenu } from "../collaboration-mode-control";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
@@ -53,6 +63,8 @@ export function NewSessionCard({
 }: NewSessionCardProps) {
   const { t } = useTranslation(["common", "sessions"]);
   const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
+  const [saveRoleOpen, setSaveRoleOpen] = useState(false);
+  const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
   const {
     selectedCollaborationMode,
     selectedPermissionMode,
@@ -88,7 +100,9 @@ export function NewSessionCard({
     thinkingLevelOptions,
     thinkingLevelOverride,
     providerSnapshot,
+    currentRoleDraft,
     handleSelectAgent,
+    handleApplyRole,
     handleSelectCollaborationMode,
     handleSelectProviderModel,
   } = useNewSessionCard({
@@ -144,11 +158,40 @@ export function NewSessionCard({
       : []),
   ];
 
+  const agentSelectOptions = buildAgentSelectOptions(
+    agents ?? defaultAgentDescriptors,
+  );
+  const selectedRoleId =
+    roles.find((role) => agentRoleMatchesDraft(role, currentRoleDraft))?.id ??
+    null;
+  const roleOptions = roles.map((role) => {
+    const agentOption = agentSelectOptions.find(
+      (option) => option.value === role.agentId,
+    );
+    return {
+      id: role.id,
+      name: role.name,
+      summary: formatAgentRoleRecordSummary(role, {
+        agentLabel: agentLabels[role.agentId],
+        permissionLabel: role.permissionMode
+          ? t(`sessions:permissionMode.${role.permissionMode}`)
+          : null,
+        thinkingLabelFor: (level) =>
+          t(`sessions:composer.thinkingLevels.${level}`),
+        fastModeOn: t("sessions:modelMenu.fastModeOn"),
+      }),
+      selectable: agentOption?.selectable !== false,
+      statusKind: agentOption?.statusKind,
+    };
+  });
+
   const controls = (
     <>
       <AgentSelect
         appearance="ghost"
-        options={buildAgentSelectOptions(agents ?? defaultAgentDescriptors)}
+        options={agentSelectOptions}
+        roles={roleOptions}
+        selectedRoleId={selectedRoleId}
         triggerClassName={cn("max-w-40 shrink-0", compactGhostTriggerClassName)}
         triggerLabel={
           canStartWithSelectedAgent
@@ -156,6 +199,12 @@ export function NewSessionCard({
             : t("sessions:composer.noInstalledAgent")
         }
         value={effectiveSelectedAgent}
+        onSelectRole={(roleId) => {
+          const role = roles.find((item) => item.id === roleId);
+          if (role) {
+            handleApplyRole(role);
+          }
+        }}
         onValueChange={handleSelectAgent}
       />
       <ProviderModelMenu
@@ -210,7 +259,7 @@ export function NewSessionCard({
         onOpenCodeAgentChange={setSelectedOpenCodeAgent}
         onOpenCodeVariantChange={setSelectedOpenCodeVariant}
         onServiceTierChange={setSelectedCodexServiceTier}
-        onThinkingLevelReset={() => setSelectedThinkingLevel("default")}
+        onSaveAsRole={() => setSaveRoleOpen(true)}
       />
     </>
   );
@@ -346,6 +395,17 @@ export function NewSessionCard({
         header={header}
         canSubmit={hasWorkspace && canStartSession}
         onSend={handleStartSession}
+      />
+      <SaveAgentRoleDialog
+        open={saveRoleOpen}
+        onOpenChange={setSaveRoleOpen}
+        onSave={async (name) => {
+          await saveAgentRoleRecord({
+            ...currentRoleDraft,
+            name,
+          });
+          toast.success(t("sessions:agentRole.saved"));
+        }}
       />
     </ComposerSurfaceBody>
   );

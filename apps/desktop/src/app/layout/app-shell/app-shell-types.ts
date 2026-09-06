@@ -7,6 +7,7 @@ export type SettingsSectionId =
   | "shortcuts"
   | "providers"
   | "adapters"
+  | "agentRoles"
   | "personalization"
   | "mcp"
   | "skills"

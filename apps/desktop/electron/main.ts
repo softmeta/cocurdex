@@ -42,12 +42,14 @@ import {
 import {
   archiveSession,
   bootstrapAppState,
+  deleteAgentRole,
   deleteWorkspace,
   generateSessionTitle,
   getMessageById,
   getSession,
   getToolCallResult,
   initializeAppState,
+  listAgentRoles,
   listAgents,
   listArchivedSessions,
   listMessagesBySessionId,
@@ -56,6 +58,7 @@ import {
   readAdapterRateLimits,
   registerChatHandlers,
   restoreSession,
+  saveAgentRole,
   saveEditorView,
   saveWorkspace,
   setDaemonReady,
@@ -1427,6 +1430,13 @@ app
     // Installed font families for Appearance pickers (cached in system-fonts).
     ipcMain.handle("app:listFontFamilies", () => listSystemFontFamilies());
     ipcMain.handle("agent:list", async () => listAgents());
+    ipcMain.handle("agentRole:list", async () => listAgentRoles());
+    ipcMain.handle("agentRole:save", async (_event, payload) =>
+      saveAgentRole(payload),
+    );
+    ipcMain.handle("agentRole:delete", async (_event, id: string) =>
+      deleteAgentRole(id),
+    );
     ipcMain.handle(
       "agent:readRateLimits",
       async (_event, agentIds: AgentId[]) =>
