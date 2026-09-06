@@ -108,6 +108,7 @@ import {
   useGitBranches,
   useSessionSwitchMetrics,
 } from "./center-panel-data";
+import { resolveCenterPanelSurface } from "./center-panel-surface";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
 interface CenterPanelProps {
@@ -1086,10 +1087,14 @@ export function CenterPanel({
     }
   };
 
-  // Pure chat takes precedence over agent session rendering — selecting a
-  // conversation from the sidebar swaps the entire center pane without
-  // mutating the active agent session.
-  if (activeConversation) {
+  const centerSurface = resolveCenterPanelSurface({
+    sidebarTab,
+    hasConversation: Boolean(activeConversation),
+    hasSession: Boolean(activeSession),
+    sessionDataLoaded: activeSessionDataLoaded,
+  });
+
+  if (centerSurface === "conversation" && activeConversation) {
     return (
       <section className="flex h-full flex-col bg-chat-canvas">
         <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
@@ -1103,11 +1108,8 @@ export function CenterPanel({
     );
   }
 
-  // The "no session yet" surface. The projects tab keeps the agent card even
-  // with no project open — its heading and workspace picker are what point the
-  // user at a folder — while the chat tab gets the chat card.
-  let newSessionSurface: ReactNode;
-  if (activeWorkspace || sidebarTab === "projects") {
+  let newSessionSurface: ReactNode = null;
+  if (centerSurface === "new-session") {
     newSessionSurface = (
       <ComposerSurface>
         <NewSessionCard
@@ -1132,7 +1134,7 @@ export function CenterPanel({
         />
       </ComposerSurface>
     );
-  } else {
+  } else if (centerSurface === "new-conversation") {
     newSessionSurface = (
       <ComposerSurface>
         <NewConversationCard onStartConversation={handleStartConversation} />
@@ -1146,7 +1148,7 @@ export function CenterPanel({
         <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
       )}
       <div className="min-h-0 flex-1 overflow-hidden">
-        {activeSession && activeSessionDataLoaded ? (
+        {centerSurface === "agent-session" && activeSession ? (
           <ChatView
             // Tie ChatView's identity to the session. Its scroll position,
             // "initial bottom settled" gate and other session-scoped state
@@ -1239,7 +1241,7 @@ export function CenterPanel({
                 : undefined
             }
           />
-        ) : activeSession ? null : (
+        ) : (
           newSessionSurface
         )}
       </div>

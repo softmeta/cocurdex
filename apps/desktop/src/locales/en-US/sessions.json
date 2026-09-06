@@ -1,4 +1,15 @@
 {
+  "agentRole": {
+    "cancel": "Cancel",
+    "empty": "No saved roles",
+    "menuLabel": "Roles",
+    "namePlaceholder": "Role name",
+    "save": "Save as role",
+    "saved": "Role saved",
+    "saveDescription": "Name this combination of agent, model, and runtime options.",
+    "saveFailed": "Could not save this role.",
+    "saveTitle": "Save as role"
+  },
   "archive": {
     "failed": "Could not archive this session. Try again.",
     "success": "Session archived",
@@ -72,7 +83,6 @@
     "openCodeVariantDefault": "Default",
     "openProviderSettings": "Configure providers",
     "reasoningEffort": "Reasoning effort",
-    "reset": "Reset to default",
     "searchPlaceholder": "Search models...",
     "selectModel": "Select model",
     "serviceTierStandard": "Standard",

@@ -5,6 +5,7 @@ import type {
   AgentPlanApprovalDecision,
   AgentProviderSelection,
   AgentRateLimitsReadResult,
+  AgentRoleRecord,
   AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
   AgentSlashCommand,
@@ -43,6 +44,7 @@ import type {
   ProviderConfigRecord,
   ProviderListModelsResult,
   RetryConversationMessagePayload,
+  SaveAgentRolePayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
@@ -70,7 +72,7 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 12;
+export const DAEMON_PROTOCOL_VERSION = 13;
 
 export interface DaemonMetadata {
   pid: number;
@@ -209,6 +211,10 @@ export type DaemonRequestPayloadByMethod = {
   "provider.listModels": { providerId?: string };
   "provider.listCompatibleForAgent": { agentId: AgentId };
   "provider.listDefaults": undefined;
+  "agentRole.list": undefined;
+  "agentRole.get": { id: string };
+  "agentRole.save": SaveAgentRolePayload;
+  "agentRole.delete": { id: string };
 };
 
 export type DaemonResultByMethod = {
@@ -287,6 +293,10 @@ export type DaemonResultByMethod = {
   "provider.listModels": ProviderListModelsResult;
   "provider.listCompatibleForAgent": CompatibleProviderModel[];
   "provider.listDefaults": AgentProviderSelection[];
+  "agentRole.list": AgentRoleRecord[];
+  "agentRole.get": AgentRoleRecord | null;
+  "agentRole.save": AgentRoleRecord;
+  "agentRole.delete": null;
 };
 
 export type DaemonMethod = keyof DaemonRequestPayloadByMethod;
@@ -314,6 +324,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "note.list": true,
   "provider.listConfigs": true,
   "provider.listDefaults": true,
+  "agentRole.list": true,
   "session.list": true,
   "workflow.list": true,
   "workspace.list": true,

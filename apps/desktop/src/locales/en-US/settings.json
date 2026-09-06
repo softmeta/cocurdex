@@ -41,6 +41,24 @@
       "refreshFailed": "Could not refresh adapters"
     }
   },
+  "agentRoles": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleted": "Role deleted",
+    "deleteDescription": "\"{{name}}\" will be removed. This cannot be undone.",
+    "deleteFailed": "Could not delete this role.",
+    "deleteTitle": "Delete this role?",
+    "description": "Manage saved roles. Save one from the composer model menu, then edit it here.",
+    "edit": "Edit",
+    "editTitle": "Edit role",
+    "empty": "No roles yet",
+    "emptyDescription": "Open the model menu in a new session and choose Save as role.",
+    "name": "Name",
+    "namePlaceholder": "Role name",
+    "save": "Save",
+    "saved": "Role updated",
+    "saveFailed": "Could not save this role."
+  },
   "appearance": {
     "groupTitle": "Appearance",
     "modes": {
@@ -517,6 +535,7 @@
   "sections": {
     "about": "About",
     "adapters": "Adapters",
+    "agentRoles": "Roles",
     "appearance": "Appearance",
     "archived": "Archived sessions",
     "computer": "Computer use",
@@ -652,6 +671,7 @@
     "status": {
       "checking": "Checking for updates…",
       "downloading": "Downloading version {{version}}…",
+      "downloadingWithPercent": "Downloading version {{version}}… {{percent}}%",
       "error": "Could not check for updates. {{message}}",
       "ready": "Version {{version}} is downloaded and ready to install.",
       "unsupported": "Automatic updates are available in the packaged app.",

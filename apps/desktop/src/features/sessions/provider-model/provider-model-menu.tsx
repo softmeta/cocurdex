@@ -83,9 +83,8 @@ interface ProviderModelMenuProps {
   onOpenCodeAgentChange?(value: string): void;
   onOpenCodeVariantChange?(value: string): void;
   onReasoningEffortChange?(value: string): void;
-  onResetRuntimeOptions?(): void;
+  onSaveAsRole?(): void;
   onServiceTierChange?(value: string): void;
-  onThinkingLevelReset?(): void;
 }
 
 interface ProviderModelMenuOption {
@@ -125,9 +124,8 @@ export function ProviderModelMenu({
   onOpenCodeAgentChange,
   onOpenCodeVariantChange,
   onReasoningEffortChange,
-  onResetRuntimeOptions,
+  onSaveAsRole,
   onServiceTierChange,
-  onThinkingLevelReset,
 }: ProviderModelMenuProps) {
   const { t } = useTranslation("sessions");
   const hasConfiguredModels = compatibleProviders.length > 0;
@@ -246,8 +244,7 @@ export function ProviderModelMenu({
         onOpenCodeAgentChange={onOpenCodeAgentChange}
         onOpenCodeVariantChange={onOpenCodeVariantChange}
         onReasoningEffortChange={onReasoningEffortChange}
-        onResetRuntimeOptions={onResetRuntimeOptions}
-        onThinkingLevelReset={onThinkingLevelReset}
+        onSaveAsRole={onSaveAsRole}
         thinkingLevelValue={thinkingLevelValue}
         onServiceTierChange={onServiceTierChange}
       />

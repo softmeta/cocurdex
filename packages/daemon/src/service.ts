@@ -14,12 +14,14 @@ import type {
   AgentId,
   AgentPermissionDecision,
   AgentPlanApprovalDecision,
+  AgentRoleRecord,
   AgentRuntimeProviderConfig,
   AppBootstrapData,
   CocurdexDaemonEvent,
   CreateSessionPayload,
   CreateWorkflowPayload,
   MessageRecord,
+  SaveAgentRolePayload,
   SendSessionMessagePayload,
   TurnChangeFileContentRequest,
   UndoTurnChangesInput,
@@ -27,7 +29,11 @@ import type {
   UpdateSessionTitlePayload,
   WorkspaceRecord,
 } from "@cocurdex/shared";
-import { getNetworkProxySettings } from "@cocurdex/shared";
+import {
+  getNetworkProxySettings,
+  isAgentId,
+  normalizeAgentRoleName,
+} from "@cocurdex/shared";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
 import { DaemonDataService } from "./data-service";
@@ -289,6 +295,55 @@ export class CocurdexDaemonService {
 
   getWorkflowRun(workflowRunId: string) {
     return this.workflows.get(workflowRunId);
+  }
+
+  listAgentRoles() {
+    return this.state.listAgentRoles();
+  }
+
+  getAgentRole(id: string) {
+    return this.state.getAgentRole(id);
+  }
+
+  async saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord> {
+    const name = normalizeAgentRoleName(payload.name);
+    if (!name) {
+      throw new Error("Agent role name is required.");
+    }
+    if (!isAgentId(payload.agentId)) {
+      throw new Error("Agent role adapter is invalid.");
+    }
+
+    const now = new Date().toISOString();
+    const existing = payload.id
+      ? await this.state.getAgentRole(payload.id)
+      : null;
+    const role: AgentRoleRecord = {
+      id: existing?.id ?? payload.id ?? crypto.randomUUID(),
+      name,
+      agentId: payload.agentId,
+      providerId: payload.providerId,
+      modelId: payload.modelId,
+      modelName: payload.modelName,
+      permissionMode: payload.permissionMode,
+      collaborationMode: payload.collaborationMode ?? "default",
+      reasoningEffort: payload.reasoningEffort,
+      serviceTier: payload.serviceTier,
+      fastMode: payload.fastMode,
+      thinkingLevel: payload.thinkingLevel,
+      openCodeAgent: payload.openCodeAgent,
+      openCodeVariant: payload.openCodeVariant,
+      instructions: payload.instructions ?? null,
+      skillIds: payload.skillIds ?? null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    await this.state.saveAgentRole(role);
+    return role;
+  }
+
+  async deleteAgentRole(id: string) {
+    await this.state.deleteAgentRole(id);
   }
 
   async createWorkflow(payload: CreateWorkflowPayload) {

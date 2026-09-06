@@ -6,6 +6,7 @@ import type {
   AgentPlanApprovalDecision,
   AgentProviderSelection,
   AgentRateLimitsReadResult,
+  AgentRoleRecord,
   AgentSessionConfigOption,
   AgentSlashCommand,
   AgentToolCallRecord,
@@ -65,6 +66,7 @@ import type {
   RenameNotePayload,
   RendererLogPayload,
   RetryConversationMessagePayload,
+  SaveAgentRolePayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
@@ -290,6 +292,7 @@ export interface AppUpdateState {
   availableVersion: string | null;
   currentVersion: string;
   dismissedVersion: string | null;
+  downloadPercent: number | null;
   errorMessage: string | null;
   releaseNotesUrl: string | null;
   status: AppUpdateStatus;
@@ -414,6 +417,9 @@ export interface DesktopApi {
     workspaceRootPath?: string | null,
   ): Promise<ProductSkillsRemoveResult>;
   listAgents(): Promise<AgentDescriptor[]>;
+  listAgentRoles(): Promise<AgentRoleRecord[]>;
+  saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
+  deleteAgentRole(id: string): Promise<void>;
   readAdapterRateLimits(
     agentIds: AgentId[],
   ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;

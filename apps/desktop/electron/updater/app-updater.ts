@@ -103,8 +103,8 @@ export function startAppUpdater(options: {
   autoUpdater.on("update-not-available", () => {
     apply({ type: "not-available" });
   });
-  autoUpdater.on("download-progress", () => {
-    apply({ type: "progress" });
+  autoUpdater.on("download-progress", (info) => {
+    apply({ percent: info.percent, type: "progress" });
   });
   autoUpdater.on("update-downloaded", (info) => {
     apply({

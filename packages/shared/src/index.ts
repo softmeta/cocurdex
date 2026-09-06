@@ -1,4 +1,5 @@
 export * from "./agent-permission-modes";
+export * from "./agent-role";
 export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-versions";

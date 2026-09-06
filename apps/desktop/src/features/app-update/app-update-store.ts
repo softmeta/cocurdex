@@ -8,6 +8,7 @@ const initialState: AppUpdateState = {
   availableVersion: null,
   currentVersion: "0.0.0",
   dismissedVersion: null,
+  downloadPercent: null,
   errorMessage: null,
   releaseNotesUrl: null,
   status: "unsupported",

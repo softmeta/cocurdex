@@ -3,6 +3,7 @@ import type {
   AgentDescriptor,
   AgentId,
   AgentProviderSelection,
+  AgentRoleRecord,
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
@@ -12,6 +13,7 @@ import type {
   NetworkProxyTestResult,
   ProviderConfigRecord,
   ProviderModelRecord,
+  SaveAgentRolePayload,
   SessionMessagesResult,
   SessionRecord,
   TitleModelSelection,
@@ -373,4 +375,21 @@ export function saveAgentProviderDefault(
   selection: AgentProviderSelection,
 ): Promise<void> {
   return callStorage("agentProviderDefault.save", selection);
+}
+
+export async function listAgentRoles(): Promise<AgentRoleRecord[]> {
+  await daemonReady;
+  return requestDaemon("agentRole.list", daemonOptions());
+}
+
+export async function saveAgentRole(
+  payload: SaveAgentRolePayload,
+): Promise<AgentRoleRecord> {
+  await daemonReady;
+  return requestDaemon("agentRole.save", payload, daemonOptions());
+}
+
+export async function deleteAgentRole(id: string): Promise<void> {
+  await daemonReady;
+  await requestDaemon("agentRole.delete", { id }, daemonOptions());
 }

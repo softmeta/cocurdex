@@ -364,15 +364,6 @@ export function GitSettingsPanel() {
                 onOpenCodeVariantChange={(value) => {
                   void selectRuntimeOption({ openCodeVariant: value || null });
                 }}
-                onResetRuntimeOptions={() => {
-                  void selectRuntimeOption({
-                    reasoningEffort: null,
-                    serviceTier: null,
-                    fastMode: false,
-                    openCodeAgent: null,
-                    openCodeVariant: null,
-                  });
-                }}
                 onServiceTierChange={(value) => {
                   void selectRuntimeOption({ serviceTier: value || null });
                 }}

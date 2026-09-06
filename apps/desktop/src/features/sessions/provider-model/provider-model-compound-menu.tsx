@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -51,7 +51,7 @@ function toModelSections(
 
 /**
  * Compound picker: one trigger opening model and runtime-axis rows that each
- * drill into a submenu, plus a reset for the runtime axes.
+ * drill into a submenu, plus a save-as-role action.
  */
 export function ProviderModelCompoundMenu({
   align = "start",
@@ -63,16 +63,13 @@ export function ProviderModelCompoundMenu({
   fastModeOptions,
   fastModeValue,
   openCodeAgentOptions,
-  openCodeAgentDefaultValue,
   openCodeAgentValue,
   openCodeVariantOptions,
   openCodeVariantValue,
   reasoningEffortOptions,
-  reasoningEffortDefaultValue,
   reasoningEffortValue,
   serviceTierOptions,
   serviceTierValue,
-  thinkingLevelValue,
   triggerClassName,
   triggerLabel,
   triggerValues,
@@ -81,9 +78,8 @@ export function ProviderModelCompoundMenu({
   onOpenCodeAgentChange,
   onOpenCodeVariantChange,
   onReasoningEffortChange,
-  onResetRuntimeOptions,
+  onSaveAsRole,
   onServiceTierChange,
-  onThinkingLevelReset,
 }: {
   align?: "start" | "center" | "end";
   appearance?: AppDropdownTriggerAppearance;
@@ -104,7 +100,6 @@ export function ProviderModelCompoundMenu({
   reasoningEffortValue: string;
   serviceTierOptions: RuntimeAxisOption[];
   serviceTierValue: string;
-  /** Thinking level owned by the footer row; reset clears it with the axes. */
   thinkingLevelValue?: string;
   triggerClassName?: string;
   triggerLabel: string;
@@ -115,29 +110,17 @@ export function ProviderModelCompoundMenu({
   onOpenCodeAgentChange?(value: string): void;
   onOpenCodeVariantChange?(value: string): void;
   onReasoningEffortChange?(value: string): void;
-  onResetRuntimeOptions?(): void;
+  onSaveAsRole?(): void;
   onServiceTierChange?(value: string): void;
-  onThinkingLevelReset?(): void;
 }) {
   const { t } = useTranslation("sessions");
   const hasReasoningEffort = reasoningEffortOptions.length > 1;
   // The effort axis has no "inherit" row: the model default is preselected, so
   // reset means "go back to that default" rather than "clear the value".
-  const hasEffortOverride =
-    Boolean(reasoningEffortValue) &&
-    reasoningEffortValue !== reasoningEffortDefaultValue;
   const hasServiceTier = serviceTierOptions.length > 1;
   const hasFastMode = fastModeOptions.length > 1;
   const hasOpenCodeAgent = openCodeAgentOptions.length > 1;
   const hasOpenCodeVariant = openCodeVariantOptions.length > 1;
-  const canReset = Boolean(
-    hasEffortOverride ||
-      serviceTierValue ||
-      fastModeValue === "on" ||
-      openCodeAgentValue !== openCodeAgentDefaultValue ||
-      openCodeVariantValue ||
-      thinkingLevelValue,
-  );
   const activeEffortLabel = reasoningEffortOptions.find(
     (option) => option.value === reasoningEffortValue && option.value,
   )?.label;
@@ -237,25 +220,15 @@ export function ProviderModelCompoundMenu({
           />
         ) : null}
         {footer}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={!canReset}
-          onClick={() => {
-            if (onResetRuntimeOptions) {
-              onResetRuntimeOptions();
-              return;
-            }
-            onReasoningEffortChange?.("");
-            onServiceTierChange?.("");
-            onFastModeChange?.("off");
-            onOpenCodeAgentChange?.("");
-            onOpenCodeVariantChange?.("");
-            onThinkingLevelReset?.();
-          }}
-        >
-          <span className="flex-1 truncate">{t("modelMenu.reset")}</span>
-          <RotateCcw className="size-3.5 text-muted-foreground" />
-        </DropdownMenuItem>
+        {onSaveAsRole ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onSaveAsRole()}>
+              <span className="flex-1 truncate">{t("agentRole.save")}</span>
+              <Bookmark className="size-3.5 text-muted-foreground" />
+            </DropdownMenuItem>
+          </>
+        ) : null}
       </AppDropdownContent>
     </DropdownMenu>
   );

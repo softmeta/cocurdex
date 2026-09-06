@@ -204,6 +204,27 @@ export function createSchemaSql() {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS agent_roles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      provider_id TEXT,
+      model_id TEXT,
+      model_name TEXT,
+      permission_mode TEXT,
+      collaboration_mode TEXT NOT NULL DEFAULT 'default',
+      reasoning_effort TEXT,
+      service_tier TEXT,
+      fast_mode INTEGER,
+      thinking_level TEXT,
+      opencode_agent TEXT,
+      opencode_variant TEXT,
+      instructions TEXT,
+      skill_ids_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,

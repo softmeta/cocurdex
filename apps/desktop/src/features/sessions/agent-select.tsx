@@ -15,6 +15,9 @@ import {
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
@@ -34,6 +37,14 @@ export interface AgentSelectOption {
   value: AgentId;
 }
 
+export interface AgentRoleSelectOption {
+  id: string;
+  name: string;
+  summary: string;
+  selectable?: boolean;
+  statusKind?: AdapterStatusKind;
+}
+
 interface AgentSelectProps {
   align?: "start" | "center" | "end";
   appearance?: AppDropdownTriggerAppearance;
@@ -46,6 +57,9 @@ interface AgentSelectProps {
   triggerClassName?: string;
   triggerLabel: ReactNode;
   value: AgentId;
+  roles?: readonly AgentRoleSelectOption[];
+  selectedRoleId?: string | null;
+  onSelectRole?(roleId: string): void;
   onUnavailableClick?(agentId: AgentId): void;
   onValueChange(value: AgentId): void;
 }
@@ -85,6 +99,9 @@ export function AgentSelect({
   triggerClassName,
   triggerLabel,
   value,
+  roles,
+  selectedRoleId = null,
+  onSelectRole,
   onUnavailableClick = openAdapterSettings,
   onValueChange,
 }: AgentSelectProps) {
@@ -134,6 +151,19 @@ export function AgentSelect({
         )}
         side="bottom"
       >
+        {roles ? (
+          <>
+            <AgentRoleSubmenu
+              roles={roles}
+              selectedRoleId={selectedRoleId}
+              onSelectRole={(roleId) => {
+                setOpen(false);
+                onSelectRole?.(roleId);
+              }}
+            />
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuGroup>
           {selectableOptions.map((option) => (
             <AgentSelectRow
@@ -163,6 +193,70 @@ export function AgentSelect({
         ) : null}
       </AppDropdownContent>
     </DropdownMenu>
+  );
+}
+
+function AgentRoleSubmenu({
+  roles,
+  selectedRoleId,
+  onSelectRole,
+}: {
+  roles: readonly AgentRoleSelectOption[];
+  selectedRoleId: string | null;
+  onSelectRole(roleId: string): void;
+}) {
+  const { t } = useTranslation("sessions");
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <span className="min-w-0 flex-1 truncate">
+          {t("agentRole.menuLabel")}
+        </span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="min-w-56 max-w-80">
+        {roles.length === 0 ? (
+          <AppDropdownItem disabled>
+            <span className="text-muted-foreground">
+              {t("agentRole.empty")}
+            </span>
+          </AppDropdownItem>
+        ) : (
+          roles.map((role) => {
+            const unavailable = role.selectable === false;
+            return (
+              <AppDropdownItem
+                key={role.id}
+                className={cn(unavailable && "text-muted-foreground")}
+                selected={role.id === selectedRoleId}
+                onClick={(event) => {
+                  if (unavailable) {
+                    event.preventDefault();
+                    return;
+                  }
+                  onSelectRole(role.id);
+                }}
+              >
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate">{role.name}</span>
+                  <span className="truncate text-meta text-muted-foreground">
+                    {role.summary}
+                  </span>
+                </span>
+                {unavailable ? (
+                  <span className="shrink-0 text-meta text-muted-foreground">
+                    {agentSelectStatusLabel(role.statusKind, t)}
+                  </span>
+                ) : null}
+                {role.id === selectedRoleId ? (
+                  <Check className="size-4 shrink-0" />
+                ) : null}
+              </AppDropdownItem>
+            );
+          })
+        )}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }
 

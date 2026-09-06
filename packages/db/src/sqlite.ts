@@ -8,6 +8,7 @@ import { initializeDatabase, shouldRecreateDatabase } from "./migrations";
 import { createSqliteNotesRepository, type NotesRepository } from "./notes";
 import { createProviderRepositories } from "./provider-repositories";
 import type {
+  AgentRoleRepository,
   AppSettingsRepository,
   ConversationMessageRepository,
   ConversationRepository,
@@ -24,6 +25,7 @@ import type {
   WorkspaceRepository,
 } from "./repositories";
 import {
+  createSqliteAgentRoleRepository,
   createSqliteAppSettingsRepository,
   createSqliteConversationMessageRepository,
   createSqliteConversationRepository,
@@ -76,6 +78,7 @@ export interface CocurdexDatabase {
   agentProviderDefaults: ReturnType<
     typeof createProviderRepositories
   >["agentProviderDefaults"];
+  agentRoles: AgentRoleRepository;
   /**
    * Run a set of repository writes atomically. The callback must be synchronous:
    * node:sqlite is a single synchronous connection, so awaiting inside a
@@ -133,6 +136,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     conversations: createSqliteConversationRepository(database),
     conversationMessages: createSqliteConversationMessageRepository(database),
     appSettings: createSqliteAppSettingsRepository(database),
+    agentRoles: createSqliteAgentRoleRepository(database),
     ...createProviderRepositories(database),
     transaction(fn) {
       database.exec("BEGIN");

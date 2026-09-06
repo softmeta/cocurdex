@@ -28,6 +28,7 @@ import {
   sendShortcutAtom,
   sendShortcuts,
 } from "@/features/composer";
+import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
 import {
   ShortcutsSettingsPanel,
   useResolvedShortcutLabel,
@@ -397,6 +398,10 @@ function SectionPanel({
 
   if (sectionId === "adapters") {
     return <AdapterSettingsPanel />;
+  }
+
+  if (sectionId === "agentRoles") {
+    return <AgentRoleSettingsPanel />;
   }
 
   if (sectionId === "mcp") {

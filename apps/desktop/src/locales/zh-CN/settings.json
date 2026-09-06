@@ -41,6 +41,24 @@
       "refreshFailed": "刷新适配器失败"
     }
   },
+  "agentRoles": {
+    "cancel": "取消",
+    "delete": "删除",
+    "deleted": "角色已删除",
+    "deleteDescription": "「{{name}}」将被删除，此操作无法撤销。",
+    "deleteFailed": "无法删除这个角色。",
+    "deleteTitle": "删除这个角色？",
+    "description": "管理已保存的角色。可在新建会话的模型菜单里保存，然后在这里编辑。",
+    "edit": "编辑",
+    "editTitle": "编辑角色",
+    "empty": "还没有角色",
+    "emptyDescription": "在新建会话的模型菜单中选择「保存为角色」。",
+    "name": "名称",
+    "namePlaceholder": "角色名称",
+    "save": "保存",
+    "saved": "角色已更新",
+    "saveFailed": "无法保存这个角色。"
+  },
   "appearance": {
     "groupTitle": "外观",
     "modes": {
@@ -515,6 +533,7 @@
   "sections": {
     "about": "关于",
     "adapters": "适配器",
+    "agentRoles": "角色",
     "appearance": "外观",
     "archived": "已归档会话",
     "computer": "电脑使用",
@@ -650,6 +669,7 @@
     "status": {
       "checking": "正在检查更新…",
       "downloading": "正在下载版本 {{version}}…",
+      "downloadingWithPercent": "正在下载版本 {{version}}… {{percent}}%",
       "error": "检查更新失败。{{message}}",
       "ready": "版本 {{version}} 已下载，重启后生效。",
       "unsupported": "自动更新仅在安装版应用中可用。",

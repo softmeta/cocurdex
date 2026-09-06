@@ -907,6 +907,17 @@ export default interface Resources {
     searchFiles: "Search files";
   };
   sessions: {
+    agentRole: {
+      cancel: "Cancel";
+      empty: "No saved roles";
+      menuLabel: "Roles";
+      namePlaceholder: "Role name";
+      save: "Save as role";
+      saveDescription: "Name this combination of agent, model, and runtime options.";
+      saveFailed: "Could not save this role.";
+      saveTitle: "Save as role";
+      saved: "Role saved";
+    };
     archive: {
       failed: "Could not archive this session. Try again.";
       success: "Session archived";
@@ -980,7 +991,6 @@ export default interface Resources {
       openCodeVariantDefault: "Default";
       openProviderSettings: "Configure providers";
       reasoningEffort: "Reasoning effort";
-      reset: "Reset to default";
       searchPlaceholder: "Search models...";
       selectModel: "Select model";
       serviceTierStandard: "Standard";
@@ -1101,6 +1111,24 @@ export default interface Resources {
         pathCopied: "Path copied";
         refreshFailed: "Could not refresh adapters";
       };
+    };
+    agentRoles: {
+      cancel: "Cancel";
+      delete: "Delete";
+      deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
+      deleteFailed: "Could not delete this role.";
+      deleteTitle: "Delete this role?";
+      deleted: "Role deleted";
+      description: "Manage saved roles. Save one from the composer model menu, then edit it here.";
+      edit: "Edit";
+      editTitle: "Edit role";
+      empty: "No roles yet";
+      emptyDescription: "Open the model menu in a new session and choose Save as role.";
+      name: "Name";
+      namePlaceholder: "Role name";
+      save: "Save";
+      saveFailed: "Could not save this role.";
+      saved: "Role updated";
     };
     appearance: {
       groupTitle: "Appearance";
@@ -1578,6 +1606,7 @@ export default interface Resources {
     sections: {
       about: "About";
       adapters: "Adapters";
+      agentRoles: "Roles";
       appearance: "Appearance";
       archived: "Archived sessions";
       computer: "Computer use";
@@ -1713,6 +1742,7 @@ export default interface Resources {
       status: {
         checking: "Checking for updates…";
         downloading: "Downloading version {{version}}…";
+        downloadingWithPercent: "Downloading version {{version}}… {{percent}}%";
         error: "Could not check for updates. {{message}}";
         ready: "Version {{version}} is downloaded and ready to install.";
         unsupported: "Automatic updates are available in the packaged app.";

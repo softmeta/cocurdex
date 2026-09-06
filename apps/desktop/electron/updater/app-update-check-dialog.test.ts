@@ -8,6 +8,7 @@ const copy = {
   status: {
     checking: "Checking for updates…",
     downloading: "Downloading version {{version}}…",
+    downloadingWithPercent: "Downloading version {{version}}… {{percent}}%",
     error: "Could not check for updates. {{message}}",
     ready: "Version {{version}} is downloaded and ready to install.",
     unsupported: "Automatic updates are available in the packaged app.",
@@ -53,6 +54,19 @@ describe("describeAppUpdateCheckDialog", () => {
     ).toEqual({
       kind: "message",
       message: "Downloading version 1.2.3…",
+      type: "info",
+    });
+    expect(
+      describeAppUpdateCheckDialog(
+        {
+          ...packagedState("downloading", { availableVersion: "1.2.3" }),
+          downloadPercent: 42,
+        },
+        copy,
+      ),
+    ).toEqual({
+      kind: "message",
+      message: "Downloading version 1.2.3… 42%",
       type: "info",
     });
   });

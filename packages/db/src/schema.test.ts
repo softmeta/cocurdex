@@ -33,6 +33,8 @@ describe("createSchemaSql", () => {
     expect(sql).toContain("undoable INTEGER");
     expect(sql).toContain("idx_turn_change_sets_session");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS editor_views");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS agent_roles");
+    expect(sql).toContain("model_name TEXT");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS agent_provider_sessions");
     expect(sql).toContain("api TEXT");
     expect(sql).toContain("compat_json TEXT");

@@ -58,6 +58,10 @@ _Avoid_: Pause message, permission response
 A durable reason and continuation checkpoint that explains why a Workflow Run cannot currently advance. Resolving a suspension is separate from recording the decision or external event that allows progress.
 _Avoid_: Toast, pause message, temporary error
 
+**Agent Role**:
+A named, user-defined snapshot of an agent, model, runtime options, permission mode, and collaboration mode that can be applied to a new session or projected into an Executor Binding.
+_Avoid_: Preset, persona, profile, custom agent
+
 **Executor Binding**:
-The frozen mapping from a workflow role to an agent, model, runtime options, and permission profile for one Workflow Run.
+The frozen mapping from a Workflow Role to an Agent Role snapshot (agent, model, runtime options, and permission profile) for one Workflow Run.
 _Avoid_: Default provider, current agent selection

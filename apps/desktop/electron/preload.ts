@@ -4,6 +4,7 @@ import type {
   AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentProviderSelection,
+  AgentRoleRecord,
   ArchiveSessionPayload,
   ChatEvent,
   CocurdexDataChangedEvent,
@@ -42,6 +43,7 @@ import type {
   RefineSessionTitlePayload,
   RendererLogPayload,
   RetryConversationMessagePayload,
+  SaveAgentRolePayload,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
   SendSessionMessagePayload,
@@ -91,6 +93,12 @@ contextBridge.exposeInMainWorld("desktopApi", {
     };
   },
   listAgents: () => ipcRenderer.invoke("agent:list"),
+  listAgentRoles: (): Promise<AgentRoleRecord[]> =>
+    ipcRenderer.invoke("agentRole:list"),
+  saveAgentRole: (payload: SaveAgentRolePayload): Promise<AgentRoleRecord> =>
+    ipcRenderer.invoke("agentRole:save", payload),
+  deleteAgentRole: (id: string): Promise<void> =>
+    ipcRenderer.invoke("agentRole:delete", id),
   readAdapterRateLimits: (agentIds: AgentId[]) =>
     ipcRenderer.invoke("agent:readRateLimits", agentIds),
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),
