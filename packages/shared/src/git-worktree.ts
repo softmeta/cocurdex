@@ -130,13 +130,25 @@ export function suggestWorktreeBranchName(id: string): string {
   return `cocurdex/${slug}`;
 }
 
+function stripTrailingPathSeparators(value: string) {
+  let end = value.length;
+  while (end > 0) {
+    const char = value[end - 1];
+    if (char !== "/" && char !== "\\") {
+      break;
+    }
+    end -= 1;
+  }
+  return value.slice(0, end);
+}
+
 export function remapPathUnderRoot(
   filePath: string,
   fromRoot: string,
   toRoot: string,
 ): string {
-  const from = fromRoot.replace(/[\\/]+$/, "");
-  const to = toRoot.replace(/[\\/]+$/, "");
+  const from = stripTrailingPathSeparators(fromRoot);
+  const to = stripTrailingPathSeparators(toRoot);
   if (filePath === from) {
     return to;
   }

@@ -38,8 +38,50 @@ export const DEFAULT_WORKTREE_SETTINGS: WorktreeSettings = {
   rootPath: null,
 };
 
+function isAsciiLetter(char: string | undefined) {
+  if (!char) {
+    return false;
+  }
+  const code = char.charCodeAt(0);
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
 function isAbsoluteFilesystemPath(value: string) {
-  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
+  if (value.startsWith("/")) {
+    return true;
+  }
+  return (
+    value.length >= 3 &&
+    isAsciiLetter(value[0]) &&
+    value[1] === ":" &&
+    (value[2] === "/" || value[2] === "\\")
+  );
+}
+
+function isWindowsDriveRoot(value: string) {
+  if (value.length < 2 || value.length > 3 || value[1] !== ":") {
+    return false;
+  }
+  if (!isAsciiLetter(value[0])) {
+    return false;
+  }
+  if (value.length === 2) {
+    return true;
+  }
+  const sep = value[2];
+  return sep === "/" || sep === "\\";
+}
+
+function stripTrailingPathSeparators(value: string) {
+  let end = value.length;
+  while (end > 0) {
+    const char = value[end - 1];
+    if (char !== "/" && char !== "\\") {
+      break;
+    }
+    end -= 1;
+  }
+  return value.slice(0, end);
 }
 
 export function normalizeWorktreeSettings(input: {
@@ -84,10 +126,11 @@ export function serializeWorktreeSettings(settings: WorktreeSettings): string {
 
 export function normalizeWorktreePath(value: string) {
   const trimmed = value.trim();
-  if (trimmed === "/" || /^[A-Za-z]:[\\/]?$/.test(trimmed)) {
-    return trimmed.replace(/[\\/]+$/, "") || trimmed;
+  const stripped = stripTrailingPathSeparators(trimmed);
+  if (trimmed === "/" || isWindowsDriveRoot(trimmed)) {
+    return stripped || trimmed;
   }
-  return trimmed.replace(/[\\/]+$/, "");
+  return stripped;
 }
 
 export function worktreePathsEqual(left: string, right: string) {
