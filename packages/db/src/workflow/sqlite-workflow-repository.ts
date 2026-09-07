@@ -19,6 +19,7 @@ import {
   mapWorkflowAction,
   mapWorkflowArtifact,
   mapWorkflowAttempt,
+  mapWorkflowDefinition,
   mapWorkflowGateDecision,
   mapWorkflowRun,
   mapWorkflowStepRun,
@@ -371,6 +372,57 @@ export function createSqliteWorkflowRepository(
     },
     async get(runId) {
       return getAggregate(database, runId);
+    },
+    async listDefinitions() {
+      return (
+        database
+          .prepare(
+            `SELECT * FROM workflow_definitions
+             ORDER BY builtin DESC, updated_at DESC, name ASC`,
+          )
+          .all() as SqliteRow[]
+      ).map(mapWorkflowDefinition);
+    },
+    async getDefinition(id) {
+      const row = database
+        .prepare("SELECT * FROM workflow_definitions WHERE id = ?")
+        .get(id) as SqliteRow | undefined;
+      return row ? mapWorkflowDefinition(row) : null;
+    },
+    async putDefinition(record) {
+      database
+        .prepare(
+          `INSERT INTO workflow_definitions (
+             id, name, builtin, definition_json, layout_json,
+             default_bindings_json, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             name = excluded.name,
+             builtin = excluded.builtin,
+             definition_json = excluded.definition_json,
+             layout_json = excluded.layout_json,
+             default_bindings_json = excluded.default_bindings_json,
+             updated_at = excluded.updated_at`,
+        )
+        .run(
+          record.id,
+          record.name,
+          record.builtin ? 1 : 0,
+          JSON.stringify(record.revision),
+          JSON.stringify(record.layout),
+          record.defaultBindings
+            ? JSON.stringify(record.defaultBindings)
+            : null,
+          record.createdAt,
+          record.updatedAt,
+        );
+    },
+    async deleteDefinition(id) {
+      database
+        .prepare(
+          "DELETE FROM workflow_definitions WHERE id = ? AND builtin = 0",
+        )
+        .run(id);
     },
     async create(aggregate) {
       runTransaction(database, () => {

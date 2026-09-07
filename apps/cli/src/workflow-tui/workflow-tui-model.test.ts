@@ -15,6 +15,7 @@ function createAggregate(): WorkflowAggregate {
       frozenDefinition: {
         definitionId: "plan_execute_review",
         version: 2,
+        initialStepId: "plan",
         steps: [
           {
             id: "plan",

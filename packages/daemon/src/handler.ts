@@ -119,6 +119,22 @@ export async function handleDaemonRequest(
       return service.listWorkspaces();
     case "workspace.save":
       return service.saveWorkspace(request.params.workspace);
+    case "workspace.worktreeEnvironment.get":
+      return service.getWorktreeEnvironment(request.params.workspaceId);
+    case "workspace.worktreeEnvironment.save":
+      return service.saveWorktreeEnvironment(request.params);
+    case "workspace.runWorktreeSetup":
+      return service.runWorktreeSetup(request.params);
+    case "worktree.settings.get":
+      return service.getWorktreeSettings();
+    case "worktree.settings.save":
+      return service.saveWorktreeSettings(request.params);
+    case "worktree.list":
+      return service.listManagedWorktrees();
+    case "worktree.create":
+      return service.createWorktree(request.params);
+    case "worktree.remove":
+      return service.removeWorktree(request.params);
     case "session.list":
       return service.listSessions();
     case "session.snapshot":
@@ -192,6 +208,17 @@ export async function handleDaemonRequest(
       return service.listWorkflowRuns();
     case "workflow.get":
       return service.getWorkflowRun(request.params.workflowRunId);
+    case "workflow.listDefinitions":
+      return service.listWorkflowDefinitions();
+    case "workflow.getDefinition":
+      return service.getWorkflowDefinition(request.params.definitionId);
+    case "workflow.saveDefinition":
+      return service.saveWorkflowDefinition(request.params);
+    case "workflow.duplicateDefinition":
+      return service.duplicateWorkflowDefinition(request.params.definitionId);
+    case "workflow.deleteDefinition":
+      await service.deleteWorkflowDefinition(request.params.definitionId);
+      return null;
     case "workflow.create":
       return service.createWorkflow(request.params);
     case "workflow.start":

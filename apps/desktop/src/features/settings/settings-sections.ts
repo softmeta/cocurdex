@@ -3,9 +3,10 @@ import {
   Blocks,
   BookOpen,
   Code2,
-  FolderTree,
+  Folder,
   Gauge,
   GitBranch,
+  GitFork,
   Info,
   Keyboard,
   KeyRound,
@@ -17,6 +18,7 @@ import {
   Settings,
   SlidersHorizontal,
   UserCog,
+  Workflow,
 } from "lucide-react";
 import type { SettingsSectionId } from "@/app/layout";
 
@@ -38,6 +40,7 @@ export const settingsSections = [
   },
   { id: "mcp", labelKey: "mcp", icon: Server, group: "core" },
   { id: "skills", labelKey: "skills", icon: BookOpen, group: "core" },
+  { id: "workflows", labelKey: "workflows", icon: Workflow, group: "core" },
   // Network proxy lives in core so the sidebar surfaces it (only core is listed).
   {
     id: "environment",
@@ -48,14 +51,20 @@ export const settingsSections = [
   // Git settings (commit-message model, etc.) must be core so the sidebar
   // lists the section — only the core group is rendered.
   { id: "git", labelKey: "git", icon: GitBranch, group: "core" },
+  {
+    id: "worktrees",
+    labelKey: "worktrees",
+    icon: GitFork,
+    group: "core",
+  },
+  {
+    id: "projects",
+    labelKey: "projects",
+    icon: Folder,
+    group: "core",
+  },
   { id: "licenses", labelKey: "licenses", icon: Scale, group: "core" },
   { id: "about", labelKey: "about", icon: Info, group: "core" },
-  {
-    id: "workspace",
-    labelKey: "workspace",
-    icon: FolderTree,
-    group: "advanced",
-  },
   { id: "computer", labelKey: "computer", icon: Monitor, group: "advanced" },
   { id: "archived", labelKey: "archived", icon: Archive, group: "core" },
   { id: "usage", labelKey: "usage", icon: Gauge, group: "advanced" },

@@ -1,11 +1,23 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { atomWithRefresh, loadable } from "jotai/utils";
-import { Archive, ArchiveRestore } from "lucide-react";
+import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, EmptyState, Input, Spinner, Text } from "@/components/ui";
-import { agentLabels, upsertSessionAtom } from "@/features/sessions";
+import { AppConfirmDialog } from "@/components";
+import {
+  Button,
+  EmptyState,
+  IconButton,
+  Input,
+  Spinner,
+  Text,
+} from "@/components/ui";
+import {
+  agentLabels,
+  deleteSessionAtom,
+  upsertSessionAtom,
+} from "@/features/sessions";
 import { workspacesAtom } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
 
@@ -20,6 +32,11 @@ export function ArchivedSessionsPanel() {
   const result = useAtomValue(archiveAtoms.result);
   const refresh = useSetAtom(archiveAtoms.source);
   const upsertSession = useSetAtom(upsertSessionAtom);
+  const dropSession = useSetAtom(deleteSessionAtom);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const workspaces = useAtomValue(workspacesAtom);
 
   async function restore(sessionId: string) {
@@ -38,6 +55,23 @@ export function ArchivedSessionsPanel() {
       }
     } catch {
       toast.error(t("archive.restoreFailed"));
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function remove(sessionId: string) {
+    if (pendingId) {
+      return;
+    }
+    setPendingId(sessionId);
+    try {
+      await desktopApi.deleteSession({ sessionId });
+      dropSession({ sessionId });
+      refresh();
+      toast.success(t("archive.deleted"));
+    } catch {
+      toast.error(t("archive.deleteFailed"));
     } finally {
       setPendingId(null);
     }
@@ -136,7 +170,7 @@ export function ArchivedSessionsPanel() {
                   </Text>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   disabled={pendingId !== null}
                   onClick={() => void restore(session.id)}
@@ -151,11 +185,44 @@ export function ArchivedSessionsPanel() {
                   )}
                   {t("archive.restore")}
                 </Button>
+                <IconButton
+                  variant="destructive"
+                  size="sm"
+                  disabled={pendingId !== null}
+                  onClick={() =>
+                    setPendingDelete({ id: session.id, title: session.title })
+                  }
+                  aria-label={t("archive.deleteNamed", {
+                    title: session.title,
+                  })}
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
               </li>
             );
           })}
         </ul>
       )}
+      <AppConfirmDialog
+        open={pendingDelete !== null}
+        variant="destructive"
+        title={t("archive.deleteConfirm.title", {
+          title: pendingDelete?.title ?? "",
+        })}
+        description={t("archive.deleteConfirm.description")}
+        cancelLabel={t("archive.deleteConfirm.cancel")}
+        confirmLabel={t("archive.deleteConfirm.confirm")}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDelete(null);
+          }
+        }}
+        onConfirm={() => {
+          if (pendingDelete) {
+            void remove(pendingDelete.id);
+          }
+        }}
+      />
     </div>
   );
 }

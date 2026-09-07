@@ -5,6 +5,7 @@ import type {
   AgentProviderSnapshot,
   AgentThinkingLevel,
   CollaborationModeKind,
+  GitWorktreeInfo,
   MessageAttachment,
   WorkspaceRecord,
 } from "@cocurdex/shared";
@@ -19,6 +20,8 @@ export interface NewSessionCardProps {
   workspaces?: WorkspaceRecord[];
   activeBranches?: GitBranchInfo[];
   activeBranch?: string | null;
+  worktrees?: GitWorktreeInfo[];
+  selectedWorktreePath?: string | null;
   sessionTitle?: string;
   agentType?: AgentId;
   collaborationMode?: CollaborationModeKind;
@@ -29,6 +32,7 @@ export interface NewSessionCardProps {
   onSelectWorkspace?(workspaceId: string): void;
   onOpenWorkspace?(): void;
   onSelectBranch?(branch: string): Promise<void> | void;
+  onSelectWorktree?(path: string | null): void;
   onSelectAgent?(agentType: AgentId): void;
   onSelectCollaborationMode?(mode: CollaborationModeKind): void;
   onStartSession?: (payload: {
@@ -53,4 +57,7 @@ export type UseNewSessionCardProps = Omit<
   | "onSelectWorkspace"
   | "onOpenWorkspace"
   | "onSelectBranch"
+  | "onSelectWorktree"
+  | "selectedWorktreePath"
+  | "worktrees"
 >;

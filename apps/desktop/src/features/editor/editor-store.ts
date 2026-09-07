@@ -2,6 +2,7 @@ import {
   type EditorViewRecord,
   isContextFileAttachment,
   type MessageAttachment,
+  remapPathUnderRoot,
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
@@ -317,6 +318,47 @@ export const restoreEditorDraftForWorkspaceAtom = atom(
       previewLocationsByFileAtom,
       previewLocationsFromView(view.openFiles, view.selections),
     );
+  },
+);
+
+export const remapEditorRootAtom = atom(
+  null,
+  (get, set, payload: { fromRoot: string; toRoot: string }) => {
+    const fromRoot = payload.fromRoot.replace(/[\\/]+$/, "") || "/";
+    const toRoot = payload.toRoot.replace(/[\\/]+$/, "") || "/";
+    if (fromRoot === toRoot) {
+      return;
+    }
+
+    const remap = (filePath: string) =>
+      remapPathUnderRoot(filePath, fromRoot, toRoot);
+
+    set(openFilesAtom, get(openFilesAtom).map(remap));
+    const activeFile = get(activeFileAtom);
+    if (activeFile) {
+      set(activeFileAtom, remap(activeFile));
+    }
+    const previewFile = get(previewFileAtom);
+    if (previewFile) {
+      set(previewFileAtom, remap(previewFile));
+    }
+
+    const nextPreviewLocations: Record<string, EditorPreviewLocation | null> =
+      {};
+    for (const [filePath, preview] of Object.entries(
+      get(previewLocationsByFileAtom),
+    )) {
+      const nextPath = remap(filePath);
+      if (!preview) {
+        nextPreviewLocations[nextPath] = null;
+        continue;
+      }
+      nextPreviewLocations[nextPath] = {
+        ...preview,
+        filePath: remap(preview.filePath),
+      };
+    }
+    set(previewLocationsByFileAtom, nextPreviewLocations);
   },
 );
 

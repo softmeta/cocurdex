@@ -16,7 +16,10 @@ import type {
   WorkflowTransitionResult,
 } from "./types";
 
-export { createPlanExecuteReviewWorkflow } from "./factory";
+export {
+  createPlanExecuteReviewWorkflow,
+  createWorkflowFromDefinition,
+} from "./factory";
 
 export function transitionWorkflow(
   current: WorkflowAggregate,
@@ -40,7 +43,17 @@ export function transitionWorkflow(
     }
     aggregate.run.revision += 1;
     aggregate.run.updatedAt = context.now;
-    newActionIds.push(scheduleInitialWorkflowStep(aggregate, "plan", context));
+    const initialStepId =
+      aggregate.run.frozenDefinition.initialStepId ??
+      aggregate.run.frozenDefinition.steps[0]?.id;
+    if (!initialStepId) {
+      throw new WorkflowTransitionError(
+        "Workflow definition does not declare an initial step.",
+      );
+    }
+    newActionIds.push(
+      scheduleInitialWorkflowStep(aggregate, initialStepId, context),
+    );
     return { aggregate, newActionIds };
   }
 

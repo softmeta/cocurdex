@@ -29,8 +29,10 @@ import type {
   EditConversationMessagePayload,
   GetIssuePayload,
   GetNotePayload,
+  GitWorktreeInfo,
   IssueRecord,
   LoadViewPayload,
+  ManagedWorktree,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -45,6 +47,7 @@ import type {
   ProviderListModelsResult,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveWorkflowDefinitionPayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
@@ -67,12 +70,16 @@ import type {
   ViewFull,
   ViewSummary,
   WorkflowAggregate,
+  WorkflowDefinitionRecord,
   WorkflowGateDecisionRecord,
   WorkflowRunRecord,
   WorkspaceRecord,
+  WorkspaceWorktreeEnvironment,
+  WorktreeSettings,
+  WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 13;
+export const DAEMON_PROTOCOL_VERSION = 16;
 
 export interface DaemonMetadata {
   pid: number;
@@ -123,6 +130,24 @@ export type DaemonRequestPayloadByMethod = {
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "workspace.list": undefined;
   "workspace.save": { workspace: WorkspaceRecord };
+  "workspace.worktreeEnvironment.get": { workspaceId: string };
+  "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
+  "workspace.runWorktreeSetup": {
+    workspaceId: string;
+    worktreePath: string;
+  };
+  "worktree.settings.get": undefined;
+  "worktree.settings.save": WorktreeSettings;
+  "worktree.list": undefined;
+  "worktree.create": {
+    workspaceId: string;
+    branch: string;
+    startPoint?: string;
+  };
+  "worktree.remove": {
+    workspaceId: string;
+    worktreePath: string;
+  };
   "session.list": undefined;
   "session.snapshot": { sessionId: string };
   "session.create": CreateSessionPayload;
@@ -188,6 +213,11 @@ export type DaemonRequestPayloadByMethod = {
   "search.documents": SearchDocumentsPayload;
   "workflow.list": undefined;
   "workflow.get": { workflowRunId: string };
+  "workflow.listDefinitions": undefined;
+  "workflow.getDefinition": { definitionId: string };
+  "workflow.saveDefinition": SaveWorkflowDefinitionPayload;
+  "workflow.duplicateDefinition": { definitionId: string };
+  "workflow.deleteDefinition": { definitionId: string };
   "workflow.create": CreateWorkflowPayload;
   "workflow.start": { workflowRunId: string };
   "workflow.decideGate": {
@@ -234,6 +264,14 @@ export type DaemonResultByMethod = {
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "workspace.list": WorkspaceRecord[];
   "workspace.save": WorkspaceRecord;
+  "workspace.worktreeEnvironment.get": WorkspaceWorktreeEnvironment;
+  "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
+  "workspace.runWorktreeSetup": { ran: boolean };
+  "worktree.settings.get": WorktreeSettingsSnapshot;
+  "worktree.settings.save": WorktreeSettingsSnapshot;
+  "worktree.list": ManagedWorktree[];
+  "worktree.create": GitWorktreeInfo;
+  "worktree.remove": { removed: boolean };
   "session.list": SessionRecord[];
   "session.snapshot": SessionObservationSnapshot | null;
   "session.create": SessionRecord;
@@ -282,6 +320,11 @@ export type DaemonResultByMethod = {
   "search.documents": SearchDocumentResult[];
   "workflow.list": WorkflowRunRecord[];
   "workflow.get": WorkflowAggregate | null;
+  "workflow.listDefinitions": WorkflowDefinitionRecord[];
+  "workflow.getDefinition": WorkflowDefinitionRecord | null;
+  "workflow.saveDefinition": WorkflowDefinitionRecord;
+  "workflow.duplicateDefinition": WorkflowDefinitionRecord;
+  "workflow.deleteDefinition": null;
   "workflow.create": WorkflowAggregate;
   "workflow.start": WorkflowAggregate;
   "workflow.decideGate": WorkflowAggregate;
@@ -327,7 +370,10 @@ export const DAEMON_NO_PARAM_METHODS = {
   "agentRole.list": true,
   "session.list": true,
   "workflow.list": true,
+  "workflow.listDefinitions": true,
   "workspace.list": true,
+  "worktree.list": true,
+  "worktree.settings.get": true,
 } as const satisfies Record<DaemonNoParamMethod, true>;
 
 export function daemonMethodHasNoParams(

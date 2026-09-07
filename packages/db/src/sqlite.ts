@@ -23,6 +23,7 @@ import type {
   ToolCallRepository,
   TurnChangeSetRepository,
   WorkspaceRepository,
+  WorktreeEnvironmentRepository,
 } from "./repositories";
 import {
   createSqliteAgentRoleRepository,
@@ -40,6 +41,7 @@ import {
   createSqliteToolCallRepository,
   createSqliteTurnChangeSetRepository,
   createSqliteWorkspaceRepository,
+  createSqliteWorktreeEnvironmentRepository,
 } from "./repositories";
 import { createSqliteSearchRepository, type SearchRepository } from "./search";
 import {
@@ -52,6 +54,7 @@ export interface CocurdexDatabase {
   issues: IssueTrackerRepository;
   search: SearchRepository;
   workspaces: WorkspaceRepository;
+  worktreeEnvironments: WorktreeEnvironmentRepository;
   sessions: SessionRepository;
   messages: MessageRepository;
   messageTurnStats: MessageTurnStatsRepository;
@@ -122,6 +125,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     issues: createSqliteIssueTrackerRepository(database),
     search: createSqliteSearchRepository(database),
     workspaces: createSqliteWorkspaceRepository(database),
+    worktreeEnvironments: createSqliteWorktreeEnvironmentRepository(database),
     sessions: createSqliteSessionRepository(database),
     messages: createSqliteMessageRepository(database),
     messageTurnStats: createSqliteMessageTurnStatsRepository(database),

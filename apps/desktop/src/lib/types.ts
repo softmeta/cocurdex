@@ -39,9 +39,11 @@ import type {
   EditorViewRecord,
   GetIssuePayload,
   GetNotePayload,
+  GitWorktreeInfo,
   ImageAttachment,
   IssueRecord,
   LoadViewPayload,
+  ManagedWorktree,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -68,6 +70,7 @@ import type {
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveWorkflowDefinitionPayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
@@ -91,7 +94,11 @@ import type {
   ViewColumnRecord,
   ViewFull,
   ViewSummary,
+  WorkflowDefinitionRecord,
   WorkspaceRecord,
+  WorkspaceWorktreeEnvironment,
+  WorktreeSettings,
+  WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
 export interface WorkspaceEntry {
@@ -421,6 +428,17 @@ export interface DesktopApi {
   listAgentRoles(): Promise<AgentRoleRecord[]>;
   saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   deleteAgentRole(id: string): Promise<void>;
+  listWorkflowDefinitions(): Promise<WorkflowDefinitionRecord[]>;
+  getWorkflowDefinition(
+    definitionId: string,
+  ): Promise<WorkflowDefinitionRecord | null>;
+  saveWorkflowDefinition(
+    payload: SaveWorkflowDefinitionPayload,
+  ): Promise<WorkflowDefinitionRecord>;
+  duplicateWorkflowDefinition(
+    definitionId: string,
+  ): Promise<WorkflowDefinitionRecord>;
+  deleteWorkflowDefinition(definitionId: string): Promise<void>;
   readAdapterRateLimits(
     agentIds: AgentId[],
   ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;
@@ -445,6 +463,30 @@ export interface DesktopApi {
   ): () => void;
   listGitBranches(rootPath: string): Promise<GitBranchInfo[]>;
   checkoutGitBranch(rootPath: string, branch: string): Promise<void>;
+  listGitWorktrees(rootPath: string): Promise<GitWorktreeInfo[]>;
+  addGitWorktree(payload: {
+    repoRootPath: string;
+    workspaceId: string;
+    branch: string;
+    startPoint?: string;
+  }): Promise<GitWorktreeInfo>;
+  getWorktreeSettings(): Promise<WorktreeSettingsSnapshot>;
+  saveWorktreeSettings(
+    settings: WorktreeSettings,
+  ): Promise<WorktreeSettingsSnapshot>;
+  listManagedWorktrees(): Promise<ManagedWorktree[]>;
+  removeWorktree(payload: {
+    workspaceId: string;
+    worktreePath: string;
+  }): Promise<{ removed: boolean }>;
+  getWorktreeEnvironment(
+    workspaceId: string,
+  ): Promise<WorkspaceWorktreeEnvironment>;
+  saveWorktreeEnvironment(payload: {
+    workspaceId: string;
+    setupScript: string;
+    cleanupScript: string;
+  }): Promise<WorkspaceWorktreeEnvironment>;
   listGitCommits(
     rootPath: string,
     options?: { limit?: number },

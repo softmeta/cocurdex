@@ -3,6 +3,8 @@ import type {
   WorkflowArtifactContent,
   WorkflowArtifactRecord,
   WorkflowAttemptRecord,
+  WorkflowCanvasLayout,
+  WorkflowDefinitionRecord,
   WorkflowDefinitionRevision,
   WorkflowExecutorBinding,
   WorkflowExecutorBindings,
@@ -33,9 +35,7 @@ export function mapWorkflowRun(row: SqliteRow): WorkflowRunRecord {
     workspaceId: String(row.workspace_id),
     workspaceRootPath: String(row.workspace_root_path),
     rootPrompt: String(row.root_prompt),
-    definitionId: String(
-      row.definition_id,
-    ) as WorkflowRunRecord["definitionId"],
+    definitionId: String(row.definition_id),
     definitionVersion: Number(row.definition_version),
     frozenDefinition: parseJson<WorkflowDefinitionRevision>(
       row.frozen_definition_json,
@@ -153,6 +153,25 @@ export function mapWorkflowAction(row: SqliteRow): WorkflowActionRecord {
     leaseExpiresAt: nullableString(row.lease_expires_at),
     result: parseNullableJson(row.result_json),
     error: nullableString(row.error),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export function mapWorkflowDefinition(
+  row: SqliteRow,
+): WorkflowDefinitionRecord {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    builtin: Number(row.builtin) === 1,
+    revision: parseJson<WorkflowDefinitionRevision>(row.definition_json),
+    layout: parseJson<WorkflowCanvasLayout>(row.layout_json),
+    defaultBindings:
+      row.default_bindings_json === null ||
+      row.default_bindings_json === undefined
+        ? null
+        : parseJson<WorkflowExecutorBindings>(row.default_bindings_json),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

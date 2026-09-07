@@ -15,12 +15,17 @@ import {
   getStoredNotificationSettings,
   getStoredThemeMode,
   type NotificationSettings,
+  registerCloseSettingsHandler,
   registerOpenSettingsHandler,
   type ThemeMode,
   useCompletionNotifier,
 } from "@/features/settings";
 import { useAppShortcuts } from "@/features/shortcuts";
-import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
+import {
+  activeWorkingPathAtom,
+  activeWorkspaceIdAtom,
+  workspacesAtom,
+} from "@/features/workspaces";
 import {
   getStoredLanguageMode,
   type LanguageMode,
@@ -173,6 +178,7 @@ export function AppShell() {
   const isRightPanelOpenRef = useRef(isRightPanelOpen);
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null;
+  const workingPath = useAtomValue(activeWorkingPathAtom);
   themeModeRef.current = themeMode;
   languageModeRef.current = languageMode;
   effectiveLeftWidthRef.current = effectiveLeftWidth;
@@ -338,6 +344,21 @@ export function AppShell() {
     }),
   );
 
+  const closeSettings = () => {
+    if (canGoBack) {
+      goBackScreen();
+      return;
+    }
+    navigateToScreen("app");
+  };
+  const closeSettingsRef = useRef(closeSettings);
+  closeSettingsRef.current = closeSettings;
+  useMountEffect(() =>
+    registerCloseSettingsHandler(() => {
+      closeSettingsRef.current();
+    }),
+  );
+
   const openFileFromPalette = (file: WorkspaceFileEntry) => {
     openFile(file.path);
     setIsSearchOpen(false);
@@ -376,7 +397,7 @@ export function AppShell() {
     <AppShellFrame
       activeScreen={activeScreen}
       activeSettingsSection={activeSettingsSection}
-      activeWorkspaceRootPath={activeWorkspace?.rootPath ?? null}
+      activeWorkspaceRootPath={workingPath ?? activeWorkspace?.rootPath ?? null}
       appearanceSettings={appearanceSettings}
       canGoBack={canGoBack}
       canGoForward={canGoForward}

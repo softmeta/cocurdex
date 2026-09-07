@@ -56,7 +56,7 @@ describe("plan_execute_review workflow", () => {
       implementer: { agentId: "opencode" },
       reviewer: { agentId: "codex" },
     });
-    expect(aggregate.run.frozenDefinition.version).toBe(2);
+    expect(aggregate.run.frozenDefinition.version).toBe(3);
     expect(aggregate.steps.map((step) => step.stepId)).toEqual([
       "plan",
       "approve_plan",

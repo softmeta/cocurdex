@@ -142,6 +142,39 @@ export const schemas = {
       .refine((value) => !value.includes("\0"), "null byte")
       .refine((value) => !value.startsWith("-"), "option-like branch"),
   }),
+  gitWorktreeAdd: z.object({
+    repoRootPath: filesystemPathSchema,
+    workspaceId: idSchema,
+    branch: z
+      .string()
+      .min(1)
+      .max(256)
+      .refine((value) => !value.includes("\0"), "null byte")
+      .refine((value) => !value.startsWith("-"), "option-like branch"),
+    startPoint: z
+      .string()
+      .max(256)
+      .refine((value) => !value.includes("\0"), "null byte")
+      .optional(),
+  }),
+  worktreeEnvironmentSave: z.object({
+    workspaceId: idSchema,
+    setupScript: z.string().max(100_000),
+    cleanupScript: z.string().max(100_000),
+  }),
+  worktreeSettingsSave: z.object({
+    fetchBeforeCreate: z.boolean(),
+    rootPath: z
+      .union([z.string().max(4096), z.null()])
+      .refine(
+        (value) => value === null || !value.includes("\0"),
+        "path contains null byte",
+      ),
+  }),
+  worktreeRemove: z.object({
+    workspaceId: idSchema,
+    worktreePath: filesystemPathSchema,
+  }),
   // Diff scope for the git panel. Ref/commit strings are git revisions (branch
   // names, tags, hashes) — not filesystem paths — so they stay free of path
   // separators and null bytes but allow `/` for remote refs (origin/main).

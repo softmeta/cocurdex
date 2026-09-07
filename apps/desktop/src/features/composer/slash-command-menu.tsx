@@ -222,6 +222,7 @@ export function SlashCommandMenu({
   const { highlightedItem, setListNode } = useHighlightedMenuRow({
     highlightedIndex,
     isOpen,
+    items: commands,
     itemAttribute: "data-slash-index",
   });
 

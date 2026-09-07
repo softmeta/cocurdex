@@ -31,6 +31,17 @@ vi.mock("@/features/workspaces", async () => {
         kind: "local" | "remote" | "detached";
       }>
     >([]),
+    activeWorktreesAtom: atom<
+      Array<{
+        path: string;
+        head: string;
+        branch: string | null;
+        detached: boolean;
+        locked: boolean;
+        prunable: boolean;
+        bare: boolean;
+      }>
+    >([]),
   };
 });
 
@@ -70,7 +81,7 @@ describe("useGitBranches", () => {
         { name: "main", current: false, kind: "local" },
       ]);
 
-    renderHook(() => useGitBranches(workspace), {
+    renderHook(() => useGitBranches(workspace.rootPath), {
       wrapper: wrapStore(store),
     });
 

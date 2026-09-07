@@ -43,6 +43,10 @@ const alias = {
     __dirname,
     "../../packages/daemon/src/client.ts",
   ),
+  "@cocurdex/daemon/paths": path.resolve(
+    __dirname,
+    "../../packages/daemon/src/paths.ts",
+  ),
   "@cocurdex/llm-chat": path.resolve(
     __dirname,
     "../../packages/llm-chat/src/index.ts",

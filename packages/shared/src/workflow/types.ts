@@ -2,7 +2,7 @@ import type { AgentId, AgentProviderSnapshot } from "../contracts";
 
 export const PLAN_EXECUTE_REVIEW_WORKFLOW_ID = "plan_execute_review" as const;
 
-export type WorkflowDefinitionId = typeof PLAN_EXECUTE_REVIEW_WORKFLOW_ID;
+export type WorkflowDefinitionId = string;
 export type WorkflowStepKind = "agent" | "gate" | "validation";
 export type WorkflowRole = "planner" | "implementer" | "reviewer";
 export type WorkflowPermissionProfile =
@@ -84,6 +84,7 @@ export interface WorkflowStepDefinition {
   kind: WorkflowStepKind;
   role?: WorkflowRole;
   permissionProfile: WorkflowPermissionProfile;
+  instruction?: string;
   inputSchemas: WorkflowArtifactSchemaId[];
   outputSchema?: WorkflowArtifactSchemaId;
   maxAttempts: number;
@@ -100,8 +101,38 @@ export interface WorkflowTransitionDefinition {
 export interface WorkflowDefinitionRevision {
   definitionId: WorkflowDefinitionId;
   version: number;
+  initialStepId: string;
   steps: WorkflowStepDefinition[];
   transitions: WorkflowTransitionDefinition[];
+}
+
+export interface WorkflowCanvasLayout {
+  nodes: Record<string, { x: number; y: number }>;
+}
+
+export interface WorkflowDefinitionIssue {
+  code: string;
+  message: string;
+  stepId?: string;
+}
+
+export interface WorkflowDefinitionRecord {
+  id: string;
+  name: string;
+  builtin: boolean;
+  revision: WorkflowDefinitionRevision;
+  layout: WorkflowCanvasLayout;
+  defaultBindings: WorkflowExecutorBindings | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveWorkflowDefinitionPayload {
+  id: string;
+  name: string;
+  revision: WorkflowDefinitionRevision;
+  layout: WorkflowCanvasLayout;
+  defaultBindings: WorkflowExecutorBindings | null;
 }
 
 export interface WorkflowExecutorBinding {
@@ -282,7 +313,8 @@ export interface CreateWorkflowPayload {
   workspaceId: string;
   workspaceRootPath: string;
   prompt: string;
-  bindings: WorkflowExecutorBindings;
+  bindings?: WorkflowExecutorBindings;
+  definitionId?: string;
 }
 
 export interface WorkflowTransitionContext {

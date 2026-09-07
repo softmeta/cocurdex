@@ -17,11 +17,13 @@ import {
   moveIssuePayloadSchema,
   moveNotePayloadSchema,
   renameNotePayloadSchema,
+  saveWorkflowDefinitionPayloadSchema,
   searchDocumentsPayloadSchema,
   updateColumnPayloadSchema,
   updateIssuePayloadSchema,
   updateNotePayloadSchema,
   updateViewPayloadSchema,
+  workflowDefinitionIdPayloadSchema,
 } from "./data-schemas";
 
 export function registerDataHandlers(ipc: IpcMain, userDataPath: string): void {
@@ -152,5 +154,39 @@ export function registerDataHandlers(ipc: IpcMain, userDataPath: string): void {
     "search:documents",
     searchDocumentsPayloadSchema,
     (_event, payload) => requestDaemon("search.documents", payload, options),
+  );
+
+  ipc.handle("workflow:listDefinitions", () =>
+    requestDaemon("workflow.listDefinitions", options),
+  );
+  registerHandler(
+    ipc,
+    "workflow:getDefinition",
+    workflowDefinitionIdPayloadSchema,
+    (_event, payload) =>
+      requestDaemon("workflow.getDefinition", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "workflow:saveDefinition",
+    saveWorkflowDefinitionPayloadSchema,
+    (_event, payload) =>
+      requestDaemon("workflow.saveDefinition", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "workflow:duplicateDefinition",
+    workflowDefinitionIdPayloadSchema,
+    (_event, payload) =>
+      requestDaemon("workflow.duplicateDefinition", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "workflow:deleteDefinition",
+    workflowDefinitionIdPayloadSchema,
+    async (_event, payload) => {
+      await requestDaemon("workflow.deleteDefinition", payload, options);
+      return null;
+    },
   );
 }

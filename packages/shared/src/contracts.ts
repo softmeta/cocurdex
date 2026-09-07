@@ -270,6 +270,7 @@ export interface SessionRecord {
   lastMessageAt: string | null;
   archivedAt?: string | null;
   providerSnapshot?: AgentProviderSnapshot | null;
+  worktreePath?: string | null;
 }
 
 export interface ProviderConfigRecord {

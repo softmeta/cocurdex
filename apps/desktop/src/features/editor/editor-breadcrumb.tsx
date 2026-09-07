@@ -4,7 +4,11 @@ import { Fragment, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileTypeIcon } from "@/components";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
-import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
+import {
+  activeWorkingPathAtom,
+  activeWorkspaceIdAtom,
+  workspacesAtom,
+} from "@/features/workspaces";
 import { BreadcrumbDirTree } from "./editor-breadcrumb-dir-tree-lazy";
 import { getBreadcrumbTreeTarget } from "./editor-breadcrumb-dir-tree-utils";
 import { activeFileAtom } from "./editor-store";
@@ -17,6 +21,7 @@ export function EditorBreadcrumb() {
   const activeFile = useAtomValue(activeFileAtom);
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
+  const workingPath = useAtomValue(activeWorkingPathAtom);
   // Key of the segment whose popover is open; only one opens at a time.
   const [openSegment, setOpenSegment] = useState<string | null>(null);
 
@@ -27,7 +32,7 @@ export function EditorBreadcrumb() {
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
-  const rootPath = activeWorkspace?.rootPath;
+  const rootPath = workingPath ?? activeWorkspace?.rootPath;
 
   // Without a workspace root we cannot derive a clean relative path; hiding the
   // bar is better than dumping an absolute filesystem path.

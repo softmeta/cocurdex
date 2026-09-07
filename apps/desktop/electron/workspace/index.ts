@@ -10,6 +10,7 @@ export {
   listGitBranches,
   listGitCommits,
 } from "./git-diff-service";
+export { listGitWorktrees } from "./git-worktree-service";
 export { registerPdfProtocol } from "./pdf-protocol";
 export { buildPdfAssetUrl, resolvePdfReadPath } from "./pdf-read-service";
 export { workspaceSearchService } from "./search-service";

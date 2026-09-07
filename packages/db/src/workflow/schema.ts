@@ -1,5 +1,16 @@
 export function createWorkflowSchemaSql(): string {
   return `
+    CREATE TABLE IF NOT EXISTS workflow_definitions (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      builtin INTEGER NOT NULL,
+      definition_json TEXT NOT NULL,
+      layout_json TEXT NOT NULL,
+      default_bindings_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS workflow_runs (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,

@@ -1,8 +1,4 @@
-import type {
-  AgentToolCallRecord,
-  SessionRecord,
-  WorkspaceRecord,
-} from "@cocurdex/shared";
+import type { AgentToolCallRecord, SessionRecord } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
@@ -14,7 +10,11 @@ import {
   toolCallsLoadedBySessionAtom,
 } from "@/features/agent";
 import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
-import { activeBranchAtom, activeBranchesAtom } from "@/features/workspaces";
+import {
+  activeBranchAtom,
+  activeBranchesAtom,
+  activeWorktreesAtom,
+} from "@/features/workspaces";
 import { desktopApi, markSessionSwitch, measureSessionSwitch } from "@/lib";
 
 // Records a perf mark + measurement whenever the active session (or its loaded
@@ -179,14 +179,12 @@ export function useActiveSessionTranscript(
   ]);
 }
 
-// Syncs git branches to the active workspace via IPC. External system
-// (git on disk) keyed on workspace identity — an effect with cancellation.
-export function useGitBranches(activeWorkspace: WorkspaceRecord | undefined) {
+export function useGitBranches(rootPath: string | undefined) {
   const setActiveBranches = useSetAtom(activeBranchesAtom);
   const setActiveBranch = useSetAtom(activeBranchAtom);
 
   useEffect(() => {
-    if (!activeWorkspace) {
+    if (!rootPath) {
       setActiveBranches([]);
       setActiveBranch(null);
       return;
@@ -194,7 +192,6 @@ export function useGitBranches(activeWorkspace: WorkspaceRecord | undefined) {
 
     let cancelled = false;
     let requestSequence = 0;
-    const rootPath = activeWorkspace.rootPath;
 
     const loadBranches = async () => {
       const request = ++requestSequence;
@@ -225,5 +222,44 @@ export function useGitBranches(activeWorkspace: WorkspaceRecord | undefined) {
       cancelled = true;
       unsubscribeGit();
     };
-  }, [activeWorkspace, setActiveBranch, setActiveBranches]);
+  }, [rootPath, setActiveBranch, setActiveBranches]);
+}
+
+export function useGitWorktrees(workspaceRootPath: string | undefined) {
+  const setActiveWorktrees = useSetAtom(activeWorktreesAtom);
+
+  useEffect(() => {
+    if (!workspaceRootPath) {
+      setActiveWorktrees([]);
+      return;
+    }
+
+    let cancelled = false;
+    let requestSequence = 0;
+    const rootPath = workspaceRootPath;
+
+    const loadWorktrees = async () => {
+      const request = ++requestSequence;
+      try {
+        const worktrees = await desktopApi.listGitWorktrees(rootPath);
+        if (cancelled || request !== requestSequence) return;
+        setActiveWorktrees(worktrees);
+      } catch {
+        if (cancelled || request !== requestSequence) return;
+        setActiveWorktrees([]);
+      }
+    };
+
+    void loadWorktrees();
+
+    const unsubscribeGit = desktopApi.onWorkspaceGitStateChanged((event) => {
+      if (event.rootPath !== rootPath) return;
+      void loadWorktrees();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribeGit();
+    };
+  }, [setActiveWorktrees, workspaceRootPath]);
 }

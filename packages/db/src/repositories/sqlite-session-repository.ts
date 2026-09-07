@@ -78,8 +78,9 @@ export function createSqliteSessionRepository(
              parent_session_id, parent_tool_call_id, status, write_mode,
              collaboration_mode, permission_mode, agent_role_id,
              provider_snapshot_json,
-             created_at, updated_at, last_message_at, archived_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             created_at, updated_at, last_message_at, archived_at,
+             worktree_path
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              workspace_id = excluded.workspace_id,
              title = excluded.title,
@@ -96,7 +97,8 @@ export function createSqliteSessionRepository(
              created_at = excluded.created_at,
              updated_at = excluded.updated_at,
              last_message_at = excluded.last_message_at,
-             archived_at = excluded.archived_at`,
+             archived_at = excluded.archived_at,
+             worktree_path = excluded.worktree_path`,
         )
         .run(
           session.id,
@@ -118,6 +120,7 @@ export function createSqliteSessionRepository(
           session.updatedAt,
           session.lastMessageAt,
           session.archivedAt ?? null,
+          session.worktreePath ?? null,
         );
     },
     async updateTitle(sessionId, title, updatedAt, expectedTitle) {

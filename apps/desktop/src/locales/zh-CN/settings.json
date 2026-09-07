@@ -102,6 +102,15 @@
   },
   "archive": {
     "archivedOn": "归档于 {{date}}",
+    "deleteConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "description": "该会话及其子会话会从本机永久删除，无法恢复。",
+      "title": "删除「{{title}}」？"
+    },
+    "deleted": "会话已删除",
+    "deleteFailed": "删除会话失败，请重试。",
+    "deleteNamed": "删除 {{title}}",
     "description": "归档的会话仍保存在本机。恢复后，会话及当时一起归档的子会话会回到侧栏。",
     "empty": "暂无已归档会话",
     "loadFailed": "无法加载已归档会话",
@@ -380,6 +389,16 @@
     "description": "这一组先保留为占位骨架。等你确定信息架构后，再把具体字段和交互补进去。",
     "title": "{{section}} 占位区"
   },
+  "projects": {
+    "back": "返回项目列表",
+    "current": "当前",
+    "description": "选择一个项目，管理它的项目级设置。",
+    "emptyDescription": "先在侧栏「工作」中添加项目，再回来为它配置。",
+    "emptyTitle": "还没有项目",
+    "noResults": "没有匹配的项目",
+    "search": "搜索项目",
+    "worktreeSettings": "工作树设置"
+  },
   "providers": {
     "actions": {
       "add": "添加",
@@ -552,11 +571,13 @@
     "licenses": "开源许可",
     "mcp": "MCP",
     "personalization": "个性化",
+    "projects": "项目",
     "providers": "服务商",
     "shortcuts": "快捷键",
     "skills": "Skills",
     "usage": "使用情况",
-    "workspace": "工作树"
+    "workflows": "工作流",
+    "worktrees": "工作树"
   },
   "sendShortcut": {
     "description": "选择按 Enter 时发送消息还是插入换行。",
@@ -684,5 +705,105 @@
       "upToDate": "已是最新版本。"
     },
     "title": "版本"
+  },
+  "workflows": {
+    "addAgent": "添加 Agent",
+    "addGate": "添加审批",
+    "addTerminal": "添加终点",
+    "artifact": {
+      "change_set": {
+        "v1": ""
+      },
+      "change_set.v1": "变更集",
+      "plan_artifact": {
+        "v1": ""
+      },
+      "plan_artifact.v1": "计划",
+      "review_decision": {
+        "v1": ""
+      },
+      "review_decision.v1": "评审结论",
+      "validation_report": {
+        "v1": ""
+      },
+      "validation_report.v1": "验证报告"
+    },
+    "bindings": {
+      "description": "从这份定义创建运行时使用的默认 planner / implementer / reviewer 角色。",
+      "placeholder": "选择角色"
+    },
+    "builtin": "内置",
+    "custom": "自定义",
+    "delete": "删除",
+    "description": "编辑由 Agent 步骤和审批门组成的状态机。复制内置模板后即可改节点和连线。",
+    "duplicate": "复制",
+    "empty": "还没有工作流定义。",
+    "inspector": {
+      "addInput": "添加输入",
+      "edge": "转移",
+      "empty": "选择一个节点或连线。",
+      "inputs": "输入",
+      "instruction": "指令",
+      "maxAttempts": "最大尝试次数",
+      "maxTraversals": "最大回边次数",
+      "output": "输出",
+      "role": "角色"
+    },
+    "node": {
+      "agent": "Agent",
+      "gate": "审批"
+    },
+    "readonlyHint": "内置定义只读。复制后再编辑。",
+    "role": {
+      "implementer": "实施",
+      "planner": "规划",
+      "reviewer": "评审"
+    },
+    "save": "保存",
+    "terminal": {
+      "blocked": "阻塞",
+      "cancelled": "已取消",
+      "completed": "完成",
+      "exhausted": "次数用尽",
+      "failed": "失败"
+    },
+    "toast": {
+      "deleted": "工作流已删除",
+      "deleteFailed": "无法删除此工作流。",
+      "duplicated": "工作流已复制",
+      "duplicateFailed": "无法复制此工作流。",
+      "loadFailed": "无法加载工作流。",
+      "saved": "工作流已保存",
+      "saveFailed": "无法保存此工作流。"
+    }
+  },
+  "worktrees": {
+    "archivedSession": "{{title}}（已归档）",
+    "browse": "选择",
+    "cleanupDescription": "在 Cocurdex 回收不再使用的 worktree 之前，于该目录中执行。",
+    "cleanupPlaceholder": "可选。例如：rm -rf .turbo",
+    "cleanupTitle": "清理脚本",
+    "delete": "删除",
+    "deleteFailed": "无法删除工作树。{{message}}",
+    "detached": "分离 HEAD",
+    "empty": "还没有托管的工作树。",
+    "fetchDescription": "创建新工作树前先 fetch 远程，让起始点保持最新。",
+    "fetchTitle": "创建工作树前始终 fetch upstream",
+    "groupTitle": "托管工作树",
+    "insertSuggestion": "填入建议的初始化命令",
+    "inventoryDescription": "Cocurdex 为会话创建的检出。初始化和清理脚本仍在项目设置里。",
+    "loading": "加载中…",
+    "newSession": "在此工作树新建会话",
+    "noSessions": "没有会话正在使用这棵工作树。",
+    "projectGroup": "工作树",
+    "refresh": "刷新",
+    "rootDescription": "Cocurdex 创建托管工作树的目录。留空则使用默认位置。",
+    "rootTitle": "工作树根目录",
+    "save": "保存",
+    "saved": "Worktree 环境已保存",
+    "saveFailed": "无法保存工作树设置。{{message}}",
+    "setupDescription": "为这个项目创建 Worktree 之后自动执行。",
+    "setupPlaceholder": "pnpm install",
+    "setupTitle": "初始化脚本"
   }
 }

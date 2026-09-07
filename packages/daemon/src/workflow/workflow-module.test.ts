@@ -2,6 +2,7 @@ import type { WorkflowRepository } from "@cocurdex/db";
 import type {
   WorkflowActionRecord,
   WorkflowAggregate,
+  WorkflowDefinitionRecord,
   WorkflowExecutorBindings,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
@@ -27,6 +28,7 @@ const bindings: WorkflowExecutorBindings = {
 
 class MemoryWorkflowRepository implements WorkflowRepository {
   aggregate: WorkflowAggregate | null = null;
+  definitions = new Map<string, WorkflowDefinitionRecord>();
 
   async listRuns() {
     return this.aggregate ? [structuredClone(this.aggregate.run)] : [];
@@ -34,6 +36,25 @@ class MemoryWorkflowRepository implements WorkflowRepository {
 
   async get() {
     return this.aggregate ? structuredClone(this.aggregate) : null;
+  }
+
+  async listDefinitions() {
+    return [...this.definitions.values()].map((record) =>
+      structuredClone(record),
+    );
+  }
+
+  async getDefinition(id: string) {
+    const record = this.definitions.get(id);
+    return record ? structuredClone(record) : null;
+  }
+
+  async putDefinition(record: WorkflowDefinitionRecord) {
+    this.definitions.set(record.id, structuredClone(record));
+  }
+
+  async deleteDefinition(id: string) {
+    this.definitions.delete(id);
   }
 
   async create(aggregate: WorkflowAggregate) {

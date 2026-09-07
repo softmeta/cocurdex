@@ -72,20 +72,26 @@ function inputArtifacts(
   });
 }
 
-function stepInstruction(stepId: string): string {
-  if (stepId === "plan") {
-    return "Inspect the workspace and produce an actionable implementation plan. Do not modify files.";
+const legacyStepInstructions: Record<string, string> = {
+  plan: "Inspect the workspace and produce an actionable implementation plan. Do not modify files.",
+  implement:
+    "Implement the approved plan in the workspace and report the resulting change set.",
+  validate:
+    "Run the relevant repository checks. Report every executed, failed, and intentionally skipped check.",
+  review:
+    "Review the implementation against the plan and validation evidence. Do not modify files.",
+};
+
+function stepInstruction(definition: WorkflowStepDefinition): string {
+  const configured = definition.instruction?.trim();
+  if (configured) {
+    return configured;
   }
-  if (stepId === "implement") {
-    return "Implement the approved plan in the workspace and report the resulting change set.";
+  const legacy = legacyStepInstructions[definition.id];
+  if (legacy) {
+    return legacy;
   }
-  if (stepId === "validate") {
-    return "Run the relevant repository checks. Report every executed, failed, and intentionally skipped check.";
-  }
-  if (stepId === "review") {
-    return "Review the implementation against the plan and validation evidence. Do not modify files.";
-  }
-  throw new Error(`Workflow agent step '${stepId}' is unsupported.`);
+  throw new Error(`Workflow agent step '${definition.id}' has no instruction.`);
 }
 
 export function buildWorkflowAgentPrompt(
@@ -99,7 +105,7 @@ export function buildWorkflowAgentPrompt(
   };
   return [
     "You are executing one step in a durable Cocurdex workflow.",
-    stepInstruction(stepId),
+    stepInstruction(definition),
     "",
     "Workflow objective:",
     aggregate.run.rootPrompt,

@@ -6,6 +6,9 @@ describe("createSchemaSql", () => {
     const sql = createSchemaSql();
 
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS workspaces");
+    expect(sql).toContain(
+      "CREATE TABLE IF NOT EXISTS workspace_worktree_environments",
+    );
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS sessions");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS session_attention");
     expect(sql).toContain("collaboration_mode TEXT NOT NULL DEFAULT 'default'");
@@ -15,6 +18,7 @@ describe("createSchemaSql", () => {
     expect(sql).toContain("parent_session_id TEXT");
     expect(sql).toContain("parent_tool_call_id TEXT");
     expect(sql).toContain("archived_at TEXT");
+    expect(sql).toContain("worktree_path TEXT");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS messages");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS queued_agent_inputs");
     expect(sql).toContain("kind TEXT");
@@ -52,6 +56,7 @@ describe("createSchemaSql", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS note_links");
     expect(sql).toContain("CREATE VIRTUAL TABLE IF NOT EXISTS note_fts");
     expect(sql).toContain("CREATE VIRTUAL TABLE IF NOT EXISTS issue_fts");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS workflow_definitions");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS workflow_runs");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS workflow_step_runs");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS workflow_attempts");

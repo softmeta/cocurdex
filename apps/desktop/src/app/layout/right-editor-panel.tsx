@@ -29,7 +29,11 @@ import {
   NO_WORKSPACE_TERMINAL_SCOPE_ID,
   TerminalPanel,
 } from "@/features/terminal";
-import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
+import {
+  activeWorkingPathAtom,
+  activeWorkspaceIdAtom,
+  workspacesAtom,
+} from "@/features/workspaces";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { PdfReaderView } from "./pdf-reader-view";
 import {
@@ -155,6 +159,7 @@ export function RightEditorPanel({
   const openFile = useSetAtom(openFileAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const workspaces = useAtomValue(workspacesAtom);
+  const workingPath = useAtomValue(activeWorkingPathAtom);
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.id === activeWorkspaceId) ?? null,
     [workspaces, activeWorkspaceId],
@@ -167,7 +172,7 @@ export function RightEditorPanel({
   });
   const terminalWorkspaceId =
     activeWorkspace?.id ?? NO_WORKSPACE_TERMINAL_SCOPE_ID;
-  const terminalCwd = activeWorkspace?.rootPath ?? homeDir;
+  const terminalCwd = workingPath ?? activeWorkspace?.rootPath ?? homeDir;
   const contentRef = useRef<HTMLDivElement | null>(null);
   const fileTreeWidthRef = useRef(fileTreeWidth);
   const removeDragListenersRef = useRef<(() => void) | null>(null);
@@ -197,7 +202,10 @@ export function RightEditorPanel({
     (relativePath: string) => {
       if (!activeWorkspace) return;
 
-      const rootPath = activeWorkspace.rootPath.replace(/\/$/, "");
+      const rootPath = (workingPath ?? activeWorkspace.rootPath).replace(
+        /\/$/,
+        "",
+      );
       openFile(`${rootPath}/${relativePath}`);
       setFileTreeVisible(true);
       setActiveView("editor");
@@ -209,6 +217,7 @@ export function RightEditorPanel({
       setActiveView,
       setFileTreeVisible,
       setLastNonTerminalView,
+      workingPath,
     ],
   );
 
@@ -370,11 +379,15 @@ export function RightEditorPanel({
                     <div className="flex min-h-0 flex-1 flex-col">
                       <div className="border-b border-editor-border p-2">
                         <SearchPanel
-                          rootPath={activeWorkspace?.rootPath ?? null}
+                          rootPath={
+                            workingPath ?? activeWorkspace?.rootPath ?? null
+                          }
                         />
                       </div>
                       <SearchResultsPane
-                        rootPath={activeWorkspace?.rootPath ?? null}
+                        rootPath={
+                          workingPath ?? activeWorkspace?.rootPath ?? null
+                        }
                       />
                     </div>
                   ) : (

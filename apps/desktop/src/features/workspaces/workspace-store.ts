@@ -1,4 +1,4 @@
-import type { WorkspaceRecord } from "@cocurdex/shared";
+import type { GitWorktreeInfo, WorkspaceRecord } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { desktopApi, type GitBranchInfo } from "@/lib";
@@ -27,7 +27,7 @@ export function normalizeWorkspaceRootPath(rootPath: string): string {
   return rootPath.replace(/[\\/]+$/, "");
 }
 
-function workspacePathsEqual(left: string, right: string): boolean {
+export function workspacePathsEqual(left: string, right: string): boolean {
   const a = normalizeWorkspaceRootPath(left);
   const b = normalizeWorkspaceRootPath(right);
   // Windows paths are case-insensitive; Electron renderer may not set process.
@@ -94,6 +94,8 @@ export const collapsedWorkspaceIdsAtom = atom(
 
 export const activeBranchesAtom = atom<GitBranchInfo[]>([]);
 export const activeBranchAtom = atom<string | null>(null);
+export const draftWorktreePathAtom = atom<string | null>(null);
+export const activeWorktreesAtom = atom<GitWorktreeInfo[]>([]);
 
 function markWorkspaceOpened(get: Getter, set: Setter, workspaceId: string) {
   const lastOpenedAt = new Date().toISOString();
@@ -133,6 +135,9 @@ export const bootstrapWorkspacesAtom = atom(
 export const selectWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string) => {
+    if (get(activeWorkspaceIdAtom) !== workspaceId) {
+      set(draftWorktreePathAtom, null);
+    }
     set(activeWorkspaceIdAtom, workspaceId);
     set(lastSelectedWorkspaceIdAtom, workspaceId);
 
@@ -150,6 +155,9 @@ export const addWorkspaceAtom = atom(
     const exists = current.find((w) => w.id === workspace.id);
     if (!exists) {
       set(workspacesAtom, sortWorkspacesBySortOrder([...current, workspace]));
+    }
+    if (get(activeWorkspaceIdAtom) !== workspace.id) {
+      set(draftWorktreePathAtom, null);
     }
     set(activeWorkspaceIdAtom, workspace.id);
     set(lastSelectedWorkspaceIdAtom, workspace.id);

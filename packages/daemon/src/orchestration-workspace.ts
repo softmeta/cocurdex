@@ -1,12 +1,15 @@
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
 import path from "node:path";
 import {
   decideWorkspaceIsolation,
   type WorkspaceIsolationDecision,
   type WorkspaceIsolationInput,
 } from "@cocurdex/shared";
-import { getWorktreeBasePath } from "./paths";
+import {
+  getWorktreeBasePath,
+  hashRepoPath,
+  isAppManagedWorktreePath,
+} from "./paths";
 
 export interface WorktreePathInput {
   repoRootPath: string;
@@ -26,7 +29,7 @@ export interface WorkspaceAdmissionResult extends WorkspaceIsolationDecision {
 export function createWorktreePath(input: WorktreePathInput) {
   return path.join(
     getWorktreeBasePath(input.userDataPath),
-    hashPath(input.repoRootPath),
+    hashRepoPath(input.repoRootPath),
     input.orchestrationRunId,
     input.agentTaskRunId,
   );
@@ -41,6 +44,37 @@ export async function evaluateWorkspaceAdmission(
   return { ...decision, isRepoDirty };
 }
 
+export async function removeAppManagedWorktree(input: {
+  repoRootPath: string;
+  worktreePath: string;
+  userDataPath: string;
+  worktreeRootPath?: string | null;
+}): Promise<boolean> {
+  if (
+    !isAppManagedWorktreePath(
+      input.worktreePath,
+      input.userDataPath,
+      input.worktreeRootPath,
+    )
+  ) {
+    return false;
+  }
+  if (path.resolve(input.worktreePath) === path.resolve(input.repoRootPath)) {
+    return false;
+  }
+
+  try {
+    await execGit(input.repoRootPath, [
+      "worktree",
+      "remove",
+      input.worktreePath,
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function isGitWorkspaceDirty(repoRootPath: string) {
   const output = await execGit(repoRootPath, [
     "status",
@@ -49,13 +83,6 @@ export async function isGitWorkspaceDirty(repoRootPath: string) {
   ]);
 
   return output.trim().length > 0;
-}
-
-function hashPath(value: string) {
-  return createHash("sha256")
-    .update(path.resolve(value))
-    .digest("hex")
-    .slice(0, 16);
 }
 
 function execGit(cwd: string, args: string[]) {

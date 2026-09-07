@@ -22,23 +22,31 @@ import type {
   CreateWorkflowPayload,
   MessageRecord,
   SaveAgentRolePayload,
+  SaveWorkflowDefinitionPayload,
   SendSessionMessagePayload,
+  SessionRecord,
   TurnChangeFileContentRequest,
   UndoTurnChangesInput,
   UpdateSessionAttentionPayload,
   UpdateSessionTitlePayload,
   WorkspaceRecord,
+  WorkspaceWorktreeEnvironment,
+  WorktreeSettings,
 } from "@cocurdex/shared";
 import {
+  emptyWorktreeEnvironment,
   getNetworkProxySettings,
   isAgentId,
   normalizeAgentRoleName,
+  PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
+  resolveSessionWorkingPath,
 } from "@cocurdex/shared";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
 import { DaemonDataService } from "./data-service";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { probeNetworkProxy } from "./network-proxy-probe";
+import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonProviderService } from "./provider-service";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { DaemonState } from "./state";
@@ -54,6 +62,15 @@ import {
   createWorkspaceChangeCoordinator,
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
+import {
+  createManagedWorktree,
+  listManagedWorktrees,
+  loadWorktreeSettings,
+  removeManagedWorktree,
+  runWorktreeCleanup,
+  saveWorktreeSettings,
+} from "./worktree-management";
+import { runWorktreeLifecycleScript } from "./worktree-script";
 
 export interface CocurdexDaemonServiceOptions {
   runtimeFingerprint: string;
@@ -90,6 +107,7 @@ export class CocurdexDaemonService {
   private readonly runtimeFingerprint: string;
   private readonly socketPath: string;
   private readonly startedAt: string;
+  private readonly userDataPath: string;
   private readonly pendingTurns = new Map<string, { cancelled: boolean }>();
   private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
@@ -100,6 +118,7 @@ export class CocurdexDaemonService {
     this.runtimeFingerprint = options.runtimeFingerprint;
     this.socketPath = options.socketPath ?? "";
     this.startedAt = options.startedAt ?? new Date().toISOString();
+    this.userDataPath = options.userDataPath;
     this.state = new DaemonState(options.userDataPath);
     this.chatService = new DaemonChatService({
       getDatabase: () => this.state.getChatDatabase(),
@@ -251,6 +270,106 @@ export class CocurdexDaemonService {
     return workspace;
   }
 
+  async getWorktreeEnvironment(
+    workspaceId: string,
+  ): Promise<WorkspaceWorktreeEnvironment> {
+    const stored = await this.state.getWorktreeEnvironment(workspaceId);
+    return stored ?? emptyWorktreeEnvironment(workspaceId);
+  }
+
+  async saveWorktreeEnvironment(
+    environment: WorkspaceWorktreeEnvironment,
+  ): Promise<WorkspaceWorktreeEnvironment> {
+    const workspace = (await this.state.listWorkspaces()).find(
+      (candidate) => candidate.id === environment.workspaceId,
+    );
+    if (!workspace) {
+      throw new Error(`Workspace ${environment.workspaceId} not found`);
+    }
+    const next: WorkspaceWorktreeEnvironment = {
+      workspaceId: environment.workspaceId,
+      setupScript: environment.setupScript,
+      cleanupScript: environment.cleanupScript,
+      updatedAt: new Date().toISOString(),
+    };
+    await this.state.saveWorktreeEnvironment(next);
+    return next;
+  }
+
+  async runWorktreeSetup(input: {
+    workspaceId: string;
+    worktreePath: string;
+  }): Promise<{ ran: boolean }> {
+    const environment = await this.getWorktreeEnvironment(input.workspaceId);
+    if (!environment.setupScript.trim()) {
+      return { ran: false };
+    }
+    await runWorktreeLifecycleScript({
+      script: environment.setupScript,
+      cwd: input.worktreePath,
+    });
+    return { ran: true };
+  }
+
+  getWorktreeSettings() {
+    return loadWorktreeSettings(this.state, this.userDataPath);
+  }
+
+  saveWorktreeSettings(settings: WorktreeSettings) {
+    return saveWorktreeSettings(this.state, this.userDataPath, settings);
+  }
+
+  listManagedWorktrees() {
+    return listManagedWorktrees({
+      state: this.state,
+      userDataPath: this.userDataPath,
+    });
+  }
+
+  createWorktree(input: {
+    workspaceId: string;
+    branch: string;
+    startPoint?: string;
+  }) {
+    return createManagedWorktree({
+      state: this.state,
+      userDataPath: this.userDataPath,
+      workspaceId: input.workspaceId,
+      branch: input.branch,
+      startPoint: input.startPoint,
+      runSetup: async (worktreePath) => {
+        await this.runWorktreeSetup({
+          workspaceId: input.workspaceId,
+          worktreePath,
+        });
+      },
+    });
+  }
+
+  async removeWorktree(input: { workspaceId: string; worktreePath: string }) {
+    return removeManagedWorktree({
+      state: this.state,
+      userDataPath: this.userDataPath,
+      workspaceId: input.workspaceId,
+      worktreePath: input.worktreePath,
+      runCleanup: async (worktreePath) => {
+        try {
+          await runWorktreeCleanup({
+            state: this.state,
+            workspaceId: input.workspaceId,
+            worktreePath,
+          });
+        } catch (error) {
+          logDaemonDiagnostic("warn", "worktree.cleanup failed", {
+            error: error instanceof Error ? error.message : String(error),
+            workspaceId: input.workspaceId,
+            worktreePath,
+          });
+        }
+      },
+    });
+  }
+
   listSessions() {
     return this.state.listSessions();
   }
@@ -346,8 +465,35 @@ export class CocurdexDaemonService {
     await this.state.deleteAgentRole(id);
   }
 
+  listWorkflowDefinitions() {
+    return this.workflows.listDefinitions();
+  }
+
+  getWorkflowDefinition(definitionId: string) {
+    return this.workflows.getDefinition(definitionId);
+  }
+
+  saveWorkflowDefinition(payload: SaveWorkflowDefinitionPayload) {
+    return this.workflows.saveDefinition(payload);
+  }
+
+  duplicateWorkflowDefinition(definitionId: string) {
+    return this.workflows.duplicateDefinition(definitionId);
+  }
+
+  async deleteWorkflowDefinition(definitionId: string) {
+    await this.workflows.deleteDefinition(definitionId);
+  }
+
   async createWorkflow(payload: CreateWorkflowPayload) {
-    for (const binding of Object.values(payload.bindings)) {
+    const definitionId =
+      payload.definitionId ?? PLAN_EXECUTE_REVIEW_WORKFLOW_ID;
+    const definition = await this.workflows.getDefinition(definitionId);
+    const bindings = payload.bindings ?? definition?.defaultBindings;
+    if (!bindings) {
+      throw new Error("Workflow executor bindings are required.");
+    }
+    for (const binding of Object.values(bindings)) {
       const agent = await this.ensureAgentAvailable(binding.agentId);
       const requiredWriteMode =
         binding.permissionProfile === "read_only"
@@ -359,7 +505,7 @@ export class CocurdexDaemonService {
         );
       }
     }
-    return this.workflows.create(payload);
+    return this.workflows.create({ ...payload, bindings });
   }
 
   async startWorkflow(workflowRunId: string) {
@@ -406,9 +552,15 @@ export class CocurdexDaemonService {
     const workspace = (await this.state.listWorkspaces()).find(
       (candidate) => candidate.id === session.workspaceId,
     );
+    const workspaceRootPath = workspace
+      ? resolveSessionWorkingPath({
+          workspaceRootPath: workspace.rootPath,
+          worktreePath: session.worktreePath,
+        })
+      : undefined;
     await this.workspaceChanges.deleteSessionCheckpoints(
       sessionId,
-      workspace?.rootPath,
+      workspaceRootPath,
     );
     await this.disposeSessionRuntime(sessionId);
 
@@ -416,16 +568,17 @@ export class CocurdexDaemonService {
       session.agentType === "opencode" &&
       providerSession?.providerSessionId
     ) {
-      if (!workspace) {
+      if (!workspaceRootPath) {
         throw new Error(`Workspace ${session.workspaceId} not found`);
       }
       await deleteOpenCodeSession({
         providerSessionId: providerSession.providerSessionId,
-        workspaceRootPath: workspace.rootPath,
+        workspaceRootPath,
       });
     }
 
     await this.state.deleteSession(sessionId);
+    await this.releaseSessionWorktree(session, workspace);
   }
 
   async updateSessionTitle(payload: UpdateSessionTitlePayload) {
@@ -514,7 +667,7 @@ export class CocurdexDaemonService {
           `${agent.label} does not support steering active turns.`,
         );
       }
-      await this.state.saveSession(payload.session);
+      payload = await this.persistSessionWorkingPath(payload);
       const userMessage = this.createUserMessage(payload);
       await this.state.saveUserMessage(userMessage);
       void this.dispatchSteeringMessage(payload, userMessage, providerConfig);
@@ -523,7 +676,7 @@ export class CocurdexDaemonService {
 
     if (isQueuedFollowUp && hasActiveTurn) {
       await this.ensureAgentAvailable(payload.session.agentType);
-      await this.state.saveSession(payload.session);
+      payload = await this.persistSessionWorkingPath(payload);
       const userMessage = this.createUserMessage(payload);
       await this.state.saveQueuedUserMessage(userMessage, {
         messageId: userMessage.id,
@@ -552,7 +705,7 @@ export class CocurdexDaemonService {
     let persistence: RuntimePersistence;
     try {
       await this.ensureAgentAvailable(payload.session.agentType);
-      await this.state.saveSession(payload.session);
+      payload = await this.persistSessionWorkingPath(payload);
       userMessage = this.createUserMessage(payload);
       await this.state.saveUserMessage(userMessage);
       persistence = {
@@ -935,6 +1088,18 @@ export class CocurdexDaemonService {
     });
   }
 
+  private async persistSessionWorkingPath(
+    payload: SendSessionMessagePayload,
+  ): Promise<SendSessionMessagePayload> {
+    await this.state.saveSession(payload.session);
+    return {
+      ...payload,
+      workspaceRootPath: await this.requireWorkspaceRootPath(
+        payload.session.id,
+      ),
+    };
+  }
+
   private async requireWorkspaceRootPath(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
@@ -946,7 +1111,55 @@ export class CocurdexDaemonService {
     if (!workspace) {
       throw new Error(`Workspace ${session.workspaceId} not found`);
     }
-    return workspace.rootPath;
+    return resolveSessionWorkingPath({
+      workspaceRootPath: workspace.rootPath,
+      worktreePath: session.worktreePath,
+    });
+  }
+
+  private async releaseSessionWorktree(
+    session: SessionRecord,
+    workspace: WorkspaceRecord | undefined,
+  ) {
+    const worktreePath = session.worktreePath?.trim();
+    if (!worktreePath || !workspace) {
+      return;
+    }
+
+    const [activeSessions, archivedSessions] = await Promise.all([
+      this.state.listSessions(),
+      this.state.listArchivedSessions(),
+    ]);
+    const stillBound = [...activeSessions, ...archivedSessions].some(
+      (candidate) => candidate.worktreePath === worktreePath,
+    );
+    if (stillBound) {
+      return;
+    }
+
+    const environment = await this.getWorktreeEnvironment(session.workspaceId);
+    if (environment.cleanupScript.trim()) {
+      try {
+        await runWorktreeLifecycleScript({
+          script: environment.cleanupScript,
+          cwd: worktreePath,
+        });
+      } catch (error) {
+        logDaemonDiagnostic("warn", "worktree.cleanup failed", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: session.id,
+          worktreePath,
+        });
+      }
+    }
+
+    const settings = await loadWorktreeSettings(this.state, this.userDataPath);
+    await removeAppManagedWorktree({
+      repoRootPath: workspace.rootPath,
+      worktreePath,
+      userDataPath: this.userDataPath,
+      worktreeRootPath: settings.rootPath,
+    });
   }
 
   private createUserMessage(payload: SendSessionMessagePayload): MessageRecord {
