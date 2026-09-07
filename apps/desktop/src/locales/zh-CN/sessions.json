@@ -159,5 +159,21 @@
     "startTitleAfter": "做什么？",
     "startTitleBefore": "接下来在",
     "workspace": "工作区"
+  },
+  "worktree": {
+    "branchName": "分支名",
+    "cancel": "取消",
+    "create": "创建 Worktree",
+    "createAction": "创建",
+    "createDescription": "在新分支上为这个仓库创建一份隔离的工作副本。",
+    "createFailed": "无法创建 Worktree。{{message}}",
+    "createTitle": "创建 Worktree",
+    "empty": "没有匹配的 Worktree。",
+    "label": "Worktree",
+    "main": "主目录",
+    "searchPlaceholder": "搜索 Worktree",
+    "startPoint": "基于分支",
+    "startPointHead": "当前 HEAD",
+    "worktrees": "Worktree"
   }
 }

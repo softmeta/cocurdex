@@ -57,6 +57,40 @@ describe("createSqliteSessionRepository", () => {
     });
   });
 
+  it("round-trips a bound worktree path", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPath: "/tmp/repo",
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Isolated",
+      agentType: "claude-agent",
+      status: "idle",
+      writeMode: "native-write",
+      collaborationMode: "default",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+      worktreePath: "/tmp/cocurdex-data/worktrees/abcd/session-1",
+    });
+
+    expect(await sessions.getById("session-1")).toMatchObject({
+      worktreePath: "/tmp/cocurdex-data/worktrees/abcd/session-1",
+    });
+  });
+
   it("round-trips an explicitly selected agent role id", async () => {
     const database = createDatabase();
     const workspaces = createSqliteWorkspaceRepository(database);

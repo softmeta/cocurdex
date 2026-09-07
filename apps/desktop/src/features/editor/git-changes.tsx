@@ -2,7 +2,11 @@ import { useAtomValue } from "jotai";
 import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
+import {
+  activeWorkingPathAtom,
+  activeWorkspaceIdAtom,
+  workspacesAtom,
+} from "@/features/workspaces";
 import type {
   GitBranchInfo,
   GitCommitInfo,
@@ -43,10 +47,11 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const { t } = useTranslation("editor");
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
+  const workingPath = useAtomValue(activeWorkingPathAtom);
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
-  const rootPath = activeWorkspace?.rootPath ?? null;
+  const rootPath = workingPath ?? activeWorkspace?.rootPath ?? null;
   const [fileChanges, setFileChanges] = useState<WorkspaceGitFileChange[]>([]);
   const [diffStatus, setDiffStatus] = useState<WorkspaceGitDiffStatus>("ok");
   const [isLoading, setIsLoading] = useState(false);

@@ -13,12 +13,14 @@ import {
   ThinkingLevelSubmenu,
   WelcomeHeading,
 } from "@/features/composer";
-import { WorkspacePicker } from "@/features/workspaces";
+import { WorkspacePicker, WorktreePicker } from "@/features/workspaces";
 import { cn } from "@/lib";
 import {
   AgentRoleEditDialog,
   formatAgentRoleRecordSummary,
   getAgentRoles,
+  getStoredAgentRoleId,
+  persistAgentRoleId,
   SaveAgentRoleDialog,
   saveAgentRoleRecord,
   subscribeAgentRoles,
@@ -45,6 +47,8 @@ export function NewSessionCard({
   workspaces = [],
   activeBranches = [],
   activeBranch,
+  worktrees = [],
+  selectedWorktreePath = null,
   sessionTitle,
   agentType,
   collaborationMode = "default",
@@ -55,6 +59,7 @@ export function NewSessionCard({
   onSelectWorkspace,
   onOpenWorkspace,
   onSelectBranch,
+  onSelectWorktree,
   onSelectAgent,
   onSelectCollaborationMode,
   onStartSession,
@@ -63,8 +68,14 @@ export function NewSessionCard({
   const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
   const [saveRoleOpen, setSaveRoleOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
-  const [chosenRoleId, setChosenRoleId] = useState<string | null>(null);
+  const [chosenRoleId, setChosenRoleIdState] = useState<string | null>(
+    getStoredAgentRoleId,
+  );
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
+  const setChosenRoleId = (roleId: string | null) => {
+    setChosenRoleIdState(roleId);
+    persistAgentRoleId(roleId);
+  };
   const {
     selectedCollaborationMode,
     selectedPermissionMode,
@@ -321,6 +332,23 @@ export function NewSessionCard({
         onSelectWorkspace={onSelectWorkspace}
         onOpenWorkspace={onOpenWorkspace}
       />
+
+      {hasWorkspace && activeWorkspaceId ? (
+        <WorktreePicker
+          appearance="ghost"
+          branches={activeBranches}
+          currentBranch={activeBranch}
+          selectedPath={selectedWorktreePath}
+          triggerClassName={compactGhostTriggerClassName}
+          workspaceId={activeWorkspaceId}
+          workspaceRootPath={
+            workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+              ?.rootPath ?? ""
+          }
+          worktrees={worktrees}
+          onSelect={(path) => onSelectWorktree?.(path)}
+        />
+      ) : null}
 
       {hasWorkspace ? (
         <AppSearchableSelect

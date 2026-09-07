@@ -37,6 +37,7 @@ import { assertSessionTuiAvailable, runSessionTui } from "./session-tui";
 import { handleSkillsCommand, skillsUsageLines } from "./skill-commands";
 import { getCliVersion } from "./version";
 import { assertWorkflowTuiAvailable, runWorkflowTui } from "./workflow-tui";
+import { handleWorktreeCommand, worktreeUsageLines } from "./worktree-commands";
 
 const [, , ...argv] = process.argv;
 
@@ -106,6 +107,13 @@ async function main(rawArgs: string[]) {
     const status = await withDaemon(() => requestDaemon("daemon.status"));
     printResult(status, parsed);
     return;
+  }
+
+  if (resource === "worktree") {
+    const handled = await handleWorktreeCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
   }
 
   if (resource === "workspace" && action === "list") {
@@ -234,6 +242,14 @@ async function main(rawArgs: string[]) {
   if (resource === "role" && (action === "list" || action === undefined)) {
     const roles = await withDaemon(() => requestDaemon("agentRole.list"));
     printRows(roles, ["id", "name", "agentId", "updatedAt"], parsed);
+    return;
+  }
+
+  if (resource === "workflow" && action === "definitions") {
+    const definitions = await withDaemon(() =>
+      requestDaemon("workflow.listDefinitions"),
+    );
+    printResult(definitions, parsed);
     return;
   }
 
@@ -370,6 +386,7 @@ function printUsage() {
       "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
       ...skillsUsageLines(),
       "  cocurdex daemon status",
+      ...worktreeUsageLines(),
       "  cocurdex workspace list",
       "  cocurdex session list",
       "  cocurdex session create --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
@@ -380,10 +397,11 @@ function printUsage() {
       "  cocurdex provider list",
       "  cocurdex provider models <provider>",
       "  cocurdex workflow list",
+      "  cocurdex workflow definitions",
       "  cocurdex workflow tui [run-id]",
       "  cocurdex role list",
       "  cocurdex workflow tui --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
-      "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
+      "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--definition <id>] [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
       "  cocurdex workflow show <run-id>",
       "  cocurdex workflow start <run-id>",
       "  cocurdex workflow approve|reject <run-id> [--reason <text>]",
@@ -549,6 +567,7 @@ async function createWorkflow(parsed: ParsedArgs) {
       workspaceRootPath: targetWorkspace.rootPath,
       prompt,
       bindings,
+      definitionId: stringFlag(parsed, "definition"),
     });
   });
 }

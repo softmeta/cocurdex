@@ -33,6 +33,8 @@ export * from "./sqlite-session-usage-repository";
 export * from "./sqlite-tool-call-repository";
 export * from "./sqlite-turn-change-set-repository";
 export * from "./sqlite-workspace-repository";
+export * from "./sqlite-worktree-environment-repository";
 export * from "./tool-call-repository";
 export * from "./turn-change-set-repository";
 export * from "./workspace-repository";
+export * from "./worktree-environment-repository";

@@ -79,6 +79,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
       row.provider_snapshot_json,
       null,
     ),
+    worktreePath: toNullableString(row.worktree_path),
   };
 }
 

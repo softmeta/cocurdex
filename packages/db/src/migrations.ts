@@ -66,6 +66,9 @@ export function initializeDatabase(database: DatabaseSync): void {
   if (!hasColumn(database, "agent_roles", "model_name")) {
     database.exec("ALTER TABLE agent_roles ADD COLUMN model_name TEXT");
   }
+  if (!hasColumn(database, "sessions", "worktree_path")) {
+    database.exec("ALTER TABLE sessions ADD COLUMN worktree_path TEXT");
+  }
   if (!hasColumn(database, "workspaces", "sort_order")) {
     database.exec(
       "ALTER TABLE workspaces ADD COLUMN sort_order REAL NOT NULL DEFAULT 0",

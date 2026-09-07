@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import path from "node:path";
+import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
   AgentId,
   AgentPermissionDecision,
@@ -144,6 +145,7 @@ import {
   initializeWorkspaceCheckpoints,
   listGitBranches,
   listGitCommits,
+  listGitWorktrees,
   listWorkspaceFiles,
   pushGitBranch,
   readTextFile,
@@ -481,6 +483,89 @@ function registerWorkspaceHandlers() {
     "git:checkoutBranch",
     schemas.gitBranch,
     async (_event, { rootPath, branch }) => checkoutGitBranch(rootPath, branch),
+  );
+  registerHandler(
+    ipcMain,
+    "git:listWorktrees",
+    schemas.rootPath,
+    async (_event, rootPath) => {
+      await ensureWorkspaceFilesWatcher(rootPath);
+      return listGitWorktrees(rootPath);
+    },
+  );
+  registerHandler(
+    ipcMain,
+    "git:addWorktree",
+    schemas.gitWorktreeAdd,
+    async (_event, payload) => {
+      const userDataPath = app.getPath("userData");
+      const created = await requestDaemon(
+        "worktree.create",
+        {
+          workspaceId: payload.workspaceId,
+          branch: payload.branch,
+          startPoint: payload.startPoint,
+        },
+        { userDataPath },
+      );
+      await ensureWorkspaceFilesWatcher(created.path);
+      return created;
+    },
+  );
+  ipcMain.handle("worktree:getSettings", async () =>
+    requestDaemon("worktree.settings.get", {
+      userDataPath: app.getPath("userData"),
+    }),
+  );
+  ipcMain.handle("worktree:listManaged", async () =>
+    requestDaemon("worktree.list", {
+      userDataPath: app.getPath("userData"),
+    }),
+  );
+  registerHandler(
+    ipcMain,
+    "worktree:saveSettings",
+    schemas.worktreeSettingsSave,
+    async (_event, payload) =>
+      requestDaemon("worktree.settings.save", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  registerHandler(
+    ipcMain,
+    "worktree:remove",
+    schemas.worktreeRemove,
+    async (_event, payload) =>
+      requestDaemon("worktree.remove", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  registerHandler(
+    ipcMain,
+    "workspace:getWorktreeEnvironment",
+    schemas.workspaceId,
+    async (_event, workspaceId) =>
+      requestDaemon(
+        "workspace.worktreeEnvironment.get",
+        { workspaceId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "workspace:saveWorktreeEnvironment",
+    schemas.worktreeEnvironmentSave,
+    async (_event, payload) =>
+      requestDaemon(
+        "workspace.worktreeEnvironment.save",
+        {
+          workspaceId: payload.workspaceId,
+          setupScript: payload.setupScript,
+          cleanupScript: payload.cleanupScript,
+          updatedAt: null,
+        },
+        { userDataPath: app.getPath("userData") },
+      ),
   );
   registerHandler(
     ipcMain,

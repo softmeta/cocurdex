@@ -1,5 +1,7 @@
+import { defaultWorkflowCanvasLayout } from "./definition-graph";
 import {
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
+  type WorkflowDefinitionRecord,
   type WorkflowDefinitionRevision,
   type WorkflowExecutorBindings,
   type WorkflowPermissionProfile,
@@ -8,13 +10,16 @@ import {
 
 export const PLAN_EXECUTE_REVIEW_DEFINITION: WorkflowDefinitionRevision = {
   definitionId: PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
-  version: 2,
+  version: 3,
+  initialStepId: "plan",
   steps: [
     {
       id: "plan",
       kind: "agent",
       role: "planner",
       permissionProfile: "read_only",
+      instruction:
+        "Inspect the workspace and produce an actionable implementation plan. Do not modify files.",
       inputSchemas: [],
       outputSchema: "plan_artifact.v1",
       maxAttempts: 2,
@@ -31,6 +36,8 @@ export const PLAN_EXECUTE_REVIEW_DEFINITION: WorkflowDefinitionRevision = {
       kind: "agent",
       role: "implementer",
       permissionProfile: "workspace_write",
+      instruction:
+        "Implement the approved plan in the workspace and report the resulting change set.",
       inputSchemas: ["plan_artifact.v1"],
       outputSchema: "change_set.v1",
       maxAttempts: 3,
@@ -40,6 +47,8 @@ export const PLAN_EXECUTE_REVIEW_DEFINITION: WorkflowDefinitionRevision = {
       kind: "agent",
       role: "implementer",
       permissionProfile: "validation",
+      instruction:
+        "Run the relevant repository checks. Report every executed, failed, and intentionally skipped check.",
       inputSchemas: ["change_set.v1"],
       outputSchema: "validation_report.v1",
       maxAttempts: 2,
@@ -49,6 +58,8 @@ export const PLAN_EXECUTE_REVIEW_DEFINITION: WorkflowDefinitionRevision = {
       kind: "agent",
       role: "reviewer",
       permissionProfile: "read_only",
+      instruction:
+        "Review the implementation against the plan and validation evidence. Do not modify files.",
       inputSchemas: [
         "plan_artifact.v1",
         "change_set.v1",
@@ -85,6 +96,21 @@ const requiredProfiles: Record<WorkflowRole, WorkflowPermissionProfile> = {
   implementer: "workspace_write",
   reviewer: "read_only",
 };
+
+export function builtinPlanExecuteReviewRecord(
+  now: string,
+): WorkflowDefinitionRecord {
+  return {
+    id: PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
+    name: "Plan, execute, review",
+    builtin: true,
+    revision: PLAN_EXECUTE_REVIEW_DEFINITION,
+    layout: defaultWorkflowCanvasLayout(PLAN_EXECUTE_REVIEW_DEFINITION),
+    defaultBindings: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 export function validatePlanExecuteReviewBindings(
   bindings: WorkflowExecutorBindings,

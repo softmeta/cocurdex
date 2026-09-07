@@ -68,6 +68,7 @@ import {
   chatComposerAttachmentAtom,
   clearChatComposerAttachmentAtom,
   openFilePreviewAtom,
+  remapEditorRootAtom,
   saveEditorViewSnapshotAtom,
 } from "@/features/editor";
 import {
@@ -96,7 +97,10 @@ import {
 import {
   activeBranchAtom,
   activeBranchesAtom,
+  activeWorkingPathAtom,
   activeWorkspaceIdAtom,
+  activeWorktreesAtom,
+  draftWorktreePathAtom,
   openWorkspaceByPathAtom,
   selectWorkspaceAtom,
   workspacesAtom,
@@ -106,6 +110,7 @@ import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
 import {
   useActiveSessionTranscript,
   useGitBranches,
+  useGitWorktrees,
   useSessionSwitchMetrics,
 } from "./center-panel-data";
 import { resolveCenterPanelSurface } from "./center-panel-surface";
@@ -250,7 +255,9 @@ export function CenterPanel({
   );
   const openFilePreview = useSetAtom(openFilePreviewAtom);
   const createDraftSession = useSetAtom(createDraftSessionAtom);
+  const remapEditorRoot = useSetAtom(remapEditorRootAtom);
   const saveEditorViewSnapshot = useSetAtom(saveEditorViewSnapshotAtom);
+  const setDraftWorktreePath = useSetAtom(draftWorktreePathAtom);
   const setLastSelectedAgent = useSetAtom(lastSelectedAgentAtom);
   const markSessionMessage = useSetAtom(markSessionMessageAtom);
   const updateSessionCollaborationMode = useSetAtom(
@@ -267,6 +274,9 @@ export function CenterPanel({
   const selectSession = useSetAtom(selectSessionAtom);
   const activeBranches = useAtomValue(activeBranchesAtom);
   const activeBranch = useAtomValue(activeBranchAtom);
+  const activeWorktrees = useAtomValue(activeWorktreesAtom);
+  const draftWorktreePath = useAtomValue(draftWorktreePathAtom);
+  const workingPath = useAtomValue(activeWorkingPathAtom);
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
@@ -368,7 +378,7 @@ export function CenterPanel({
       });
       void desktopApi.createSession({
         session: updatedSession,
-        workspaceRootPath: activeWorkspace.rootPath,
+        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
       });
     }
   };
@@ -385,7 +395,8 @@ export function CenterPanel({
     activeMessages.length,
     activeToolCalls,
   );
-  useGitBranches(activeWorkspace);
+  useGitBranches(workingPath ?? undefined);
+  useGitWorktrees(activeWorkspace?.rootPath);
 
   function formatAnnotationsContext(anns: BrowserAnnotation[]): string {
     if (anns.length === 0) return "";
@@ -572,7 +583,7 @@ export function CenterPanel({
       requestId,
       agentType: activeSession.agentType,
       sessionId: activeSession.id,
-      workspaceRootPath: activeWorkspace.rootPath,
+      workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
       contentLength: message.length,
       attachmentCount: attachments.length,
     });
@@ -626,11 +637,11 @@ export function CenterPanel({
         },
         thinkingLevel:
           thinkingLevelOptions.length > 0 ? selectedThinkingLevel : undefined,
-        workspaceRootPath: activeWorkspace.rootPath,
+        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
       });
       const savedMessage = await desktopApi.sendMessage({
         session: nextSession,
-        workspaceRootPath: activeWorkspace.rootPath,
+        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
         content: userMessage.content,
@@ -643,7 +654,7 @@ export function CenterPanel({
         appendQueuedInput({
           messageId: savedMessage.id,
           sessionId: savedMessage.sessionId,
-          workspaceRootPath: activeWorkspace.rootPath,
+          workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
           thinkingLevel: selectedThinkingLevel ?? undefined,
           createdAt: savedMessage.createdAt,
           message: savedMessage,
@@ -770,7 +781,7 @@ export function CenterPanel({
     try {
       const userMessage = await desktopApi.submitPreviousMessage({
         session: activeSession,
-        workspaceRootPath: activeWorkspace.rootPath,
+        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
         messageId: message.id,
         content,
         attachments:
@@ -885,7 +896,19 @@ export function CenterPanel({
       return;
     }
 
-    await desktopApi.checkoutGitBranch(activeWorkspace.rootPath, branch);
+    await desktopApi.checkoutGitBranch(
+      workingPath ?? activeWorkspace.rootPath,
+      branch,
+    );
+  };
+
+  const handleSelectWorktree = (path: string | null) => {
+    const nextPath = path ?? activeWorkspace?.rootPath ?? null;
+    const currentPath = workingPath ?? activeWorkspace?.rootPath ?? null;
+    if (currentPath && nextPath && currentPath !== nextPath) {
+      remapEditorRoot({ fromRoot: currentPath, toRoot: nextPath });
+    }
+    setDraftWorktreePath(path);
   };
 
   const handleStartSession = async ({
@@ -918,7 +941,9 @@ export function CenterPanel({
       permissionMode,
       agentRoleId: agentRoleId ?? null,
       providerSnapshot: providerSnapshot ?? null,
+      worktreePath: draftWorktreePath,
     });
+    setDraftWorktreePath(null);
     // Carry the tabs the user was viewing during the draft into the new
     // session so switching to it does not blank the editor. openFiles still
     // reflects the pre-draft view because the draft (null session) no longer
@@ -932,7 +957,7 @@ export function CenterPanel({
       requestId,
       agentType,
       sessionId: titledSession.id,
-      workspaceRootPath: activeWorkspace.rootPath,
+      workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
       contentLength: message.length,
       attachmentCount: attachments?.length ?? 0,
     });
@@ -959,7 +984,7 @@ export function CenterPanel({
 
       await desktopApi.createSession({
         session: titledSession,
-        workspaceRootPath: activeWorkspace.rootPath,
+        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
       });
 
       const annotationAttachments =
@@ -985,12 +1010,12 @@ export function CenterPanel({
             workspaceId: titledSession.workspaceId,
           },
           thinkingLevel,
-          workspaceRootPath: activeWorkspace.rootPath,
+          workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
         },
       );
       await desktopApi.sendMessage({
         session: titledSession,
-        workspaceRootPath: activeWorkspace.rootPath,
+        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
         content: userMessage.content,
@@ -1042,7 +1067,7 @@ export function CenterPanel({
 
     void desktopApi.createSession({
       session,
-      workspaceRootPath: activeWorkspace.rootPath,
+      workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
     });
   };
 
@@ -1127,12 +1152,15 @@ export function CenterPanel({
           onClearAttachment={clearChatComposerAttachment}
           onOpenWorkspace={handleOpenWorkspace}
           onSelectBranch={handleSelectBranch}
+          onSelectWorktree={handleSelectWorktree}
           onSelectAgent={setLastSelectedAgent}
           onSelectWorkspace={selectWorkspace}
           onStartSession={handleStartSession}
+          worktrees={activeWorktrees}
+          selectedWorktreePath={draftWorktreePath}
           sessionTitle={undefined}
           workspaces={workspaces}
-          workspaceRootPath={activeWorkspace?.rootPath}
+          workspaceRootPath={workingPath ?? activeWorkspace?.rootPath}
           workspaceName={activeWorkspace?.name}
         />
       </ComposerSurface>
@@ -1224,7 +1252,7 @@ export function CenterPanel({
             status={activeSession.status}
             permissionRequests={activePermissions}
             toolCalls={activeToolCalls}
-            workspaceRootPath={activeWorkspace?.rootPath}
+            workspaceRootPath={workingPath ?? activeWorkspace?.rootPath}
             readOnly={isSubagentSession(activeSession)}
             parentSessionTitle={
               activeSession.parentSessionId

@@ -102,6 +102,15 @@
   },
   "archive": {
     "archivedOn": "Archived {{date}}",
+    "deleteConfirm": {
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "description": "This permanently removes the session and its sub-sessions from this device. This cannot be undone.",
+      "title": "Delete “{{title}}”?"
+    },
+    "deleted": "Session deleted",
+    "deleteFailed": "Could not delete this session. Try again.",
+    "deleteNamed": "Delete {{title}}",
     "description": "Archived sessions stay on this device. Restore a session to return it to the sidebar, together with sub-sessions archived with it.",
     "empty": "No archived sessions",
     "loadFailed": "Could not load archived sessions",
@@ -380,6 +389,16 @@
     "description": "This group is reserved as a placeholder. Add concrete fields and interactions after the information architecture is settled.",
     "title": "{{section}} placeholder"
   },
+  "projects": {
+    "back": "Back to projects",
+    "current": "Current",
+    "description": "Choose a project to manage its settings.",
+    "emptyDescription": "Add a project from the Work group in the sidebar, then come back to configure it.",
+    "emptyTitle": "No projects",
+    "noResults": "No matching projects",
+    "search": "Search projects",
+    "worktreeSettings": "Worktree settings"
+  },
   "providers": {
     "actions": {
       "add": "Add",
@@ -554,11 +573,13 @@
     "licenses": "Open source licenses",
     "mcp": "MCP",
     "personalization": "Personalization",
+    "projects": "Projects",
     "providers": "Providers",
     "shortcuts": "Shortcuts",
     "skills": "Skills",
     "usage": "Usage",
-    "workspace": "Worktrees"
+    "workflows": "Workflows",
+    "worktrees": "Worktrees"
   },
   "sendShortcut": {
     "description": "Choose when Enter sends a prompt or inserts a new line.",
@@ -686,5 +707,105 @@
       "upToDate": "You're up to date."
     },
     "title": "Version"
+  },
+  "workflows": {
+    "addAgent": "Add agent",
+    "addGate": "Add gate",
+    "addTerminal": "Add end",
+    "artifact": {
+      "change_set": {
+        "v1": ""
+      },
+      "change_set.v1": "Change set",
+      "plan_artifact": {
+        "v1": ""
+      },
+      "plan_artifact.v1": "Plan",
+      "review_decision": {
+        "v1": ""
+      },
+      "review_decision.v1": "Review decision",
+      "validation_report": {
+        "v1": ""
+      },
+      "validation_report.v1": "Validation report"
+    },
+    "bindings": {
+      "description": "Default planner, implementer, and reviewer roles used when creating a run from this definition.",
+      "placeholder": "Select a role"
+    },
+    "builtin": "Built in",
+    "custom": "Custom",
+    "delete": "Delete",
+    "description": "Edit a labeled state machine of agent and gate steps. Duplicate the built-in template to change nodes and connections.",
+    "duplicate": "Duplicate",
+    "empty": "No workflow definitions yet.",
+    "inspector": {
+      "addInput": "Add input",
+      "edge": "Transition",
+      "empty": "Select a node or connection.",
+      "inputs": "Inputs",
+      "instruction": "Instruction",
+      "maxAttempts": "Max attempts",
+      "maxTraversals": "Max traversals",
+      "output": "Output",
+      "role": "Role"
+    },
+    "node": {
+      "agent": "Agent",
+      "gate": "Gate"
+    },
+    "readonlyHint": "The built-in definition is read-only. Duplicate it to edit.",
+    "role": {
+      "implementer": "Implementer",
+      "planner": "Planner",
+      "reviewer": "Reviewer"
+    },
+    "save": "Save",
+    "terminal": {
+      "blocked": "Blocked",
+      "cancelled": "Cancelled",
+      "completed": "Completed",
+      "exhausted": "Exhausted",
+      "failed": "Failed"
+    },
+    "toast": {
+      "deleted": "Workflow deleted",
+      "deleteFailed": "Could not delete this workflow.",
+      "duplicated": "Workflow duplicated",
+      "duplicateFailed": "Could not duplicate this workflow.",
+      "loadFailed": "Could not load workflows.",
+      "saved": "Workflow saved",
+      "saveFailed": "Could not save this workflow."
+    }
+  },
+  "worktrees": {
+    "archivedSession": "{{title}} (archived)",
+    "browse": "Browse",
+    "cleanupDescription": "Runs in the worktree directory before Cocurdex removes an unused checkout.",
+    "cleanupPlaceholder": "Optional. Example: rm -rf .turbo",
+    "cleanupTitle": "Cleanup script",
+    "delete": "Delete",
+    "deleteFailed": "Could not delete worktree. {{message}}",
+    "detached": "Detached HEAD",
+    "empty": "No managed worktrees yet.",
+    "fetchDescription": "Fetch remotes before creating a new worktree so the start point is current.",
+    "fetchTitle": "Always fetch upstream before creating worktrees",
+    "groupTitle": "Managed worktrees",
+    "insertSuggestion": "Insert suggested setup",
+    "inventoryDescription": "Checkouts Cocurdex created for sessions. Setup and cleanup scripts stay in project settings.",
+    "loading": "Loading…",
+    "newSession": "New session in this worktree",
+    "noSessions": "No sessions are using this worktree.",
+    "projectGroup": "Worktrees",
+    "refresh": "Refresh",
+    "rootDescription": "Directory where Cocurdex creates managed worktrees. Leave blank to use the default location.",
+    "rootTitle": "Worktree root",
+    "save": "Save",
+    "saved": "Worktree environment saved",
+    "saveFailed": "Could not save worktree settings. {{message}}",
+    "setupDescription": "Runs automatically after Cocurdex creates a worktree for this project.",
+    "setupPlaceholder": "pnpm install",
+    "setupTitle": "Setup script"
   }
 }

@@ -16,6 +16,7 @@ import {
 import { isPdfPath } from "@/features/pdf-reader/is-pdf-path";
 import { openPdfReaderAtom } from "@/features/pdf-reader/pdf-reader-store";
 import {
+  activeWorkingPathAtom,
   activeWorkspaceIdAtom,
   useWorkspaceFiles,
   workspacesAtom,
@@ -76,6 +77,7 @@ export function FileTree() {
   const { t } = useTranslation("editor");
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
+  const workingPath = useAtomValue(activeWorkingPathAtom);
   const activeFile = useAtomValue(activeFileAtom);
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,10 +87,8 @@ export function FileTree() {
   const openFile = useSetAtom(openFileAtom);
   const openPreviewFile = useSetAtom(openPreviewFileAtom);
   const openPdfReader = useSetAtom(openPdfReaderAtom);
-  // Strip trailing separators so `${rootPath}/${relativePath}` joins never
-  // produce double slashes (which would break tab dedup and selection sync).
-  const rootPath = activeWorkspace
-    ? activeWorkspace.rootPath.replace(/[\\/]+$/, "") || "/"
+  const rootPath = workingPath
+    ? workingPath.replace(/[\\/]+$/, "") || "/"
     : null;
   // Synthetic workspace root row (outside Pierre). Open by default; session-
   // keyed so tab remounts keep the last open/closed choice. Adjust state when

@@ -1,6 +1,7 @@
 import type {
   WorkflowActionRecord,
   WorkflowAggregate,
+  WorkflowDefinitionRecord,
   WorkflowRunRecord,
 } from "@cocurdex/shared";
 
@@ -33,6 +34,10 @@ export interface SettleWorkflowActionInput {
 export interface WorkflowRepository {
   listRuns(): Promise<WorkflowRunRecord[]>;
   get(runId: string): Promise<WorkflowAggregate | null>;
+  listDefinitions(): Promise<WorkflowDefinitionRecord[]>;
+  getDefinition(id: string): Promise<WorkflowDefinitionRecord | null>;
+  putDefinition(record: WorkflowDefinitionRecord): Promise<void>;
+  deleteDefinition(id: string): Promise<void>;
   create(aggregate: WorkflowAggregate): Promise<void>;
   commit(aggregate: WorkflowAggregate, expectedRevision: number): Promise<void>;
   claimNextAction(

@@ -16,6 +16,7 @@ import type {
   SessionRecord,
   SessionStatus,
   WorkspaceRecord,
+  WorkspaceWorktreeEnvironment,
 } from "@cocurdex/shared";
 import {
   childSessionFromSubagentToolCall,
@@ -111,6 +112,22 @@ export class DaemonState {
 
   async saveWorkspace(workspace: WorkspaceRecord) {
     await this.database.workspaces.upsert(workspace);
+  }
+
+  getWorktreeEnvironment(workspaceId: string) {
+    return this.database.worktreeEnvironments.getByWorkspaceId(workspaceId);
+  }
+
+  saveWorktreeEnvironment(environment: WorkspaceWorktreeEnvironment) {
+    return this.database.worktreeEnvironments.upsert(environment);
+  }
+
+  getAppSetting(key: string) {
+    return this.database.appSettings.get(key);
+  }
+
+  setAppSetting(key: string, valueJson: string) {
+    return this.database.appSettings.set(key, valueJson);
   }
 
   async callStorage(operation: string, args: unknown[]): Promise<unknown> {
@@ -287,6 +304,10 @@ export class DaemonState {
 
   listSessions() {
     return this.database.sessions.list();
+  }
+
+  listArchivedSessions() {
+    return this.database.sessions.listArchived();
   }
 
   async saveSession(session: SessionRecord) {

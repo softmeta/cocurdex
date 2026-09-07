@@ -56,3 +56,43 @@ export async function deleteAgentRoleRecord(id: string) {
   roles = roles.filter((role) => role.id !== id);
   notify();
 }
+
+const LAST_SELECTED_AGENT_ROLE_STORAGE_KEY = "cocurdex.lastSelectedAgentRoleId";
+
+function getAgentRoleStorage(): Storage | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredAgentRoleId(): string | null {
+  try {
+    return (
+      getAgentRoleStorage()?.getItem(LAST_SELECTED_AGENT_ROLE_STORAGE_KEY) ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function persistAgentRoleId(roleId: string | null) {
+  const storage = getAgentRoleStorage();
+  if (!storage) {
+    return;
+  }
+
+  try {
+    if (roleId) {
+      storage.setItem(LAST_SELECTED_AGENT_ROLE_STORAGE_KEY, roleId);
+    } else {
+      storage.removeItem(LAST_SELECTED_AGENT_ROLE_STORAGE_KEY);
+    }
+  } catch {}
+}

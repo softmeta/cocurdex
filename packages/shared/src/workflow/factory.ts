@@ -1,3 +1,4 @@
+import { assertValidWorkflowDefinition } from "./definition-validation";
 import { WorkflowTransitionError } from "./errors";
 import {
   PLAN_EXECUTE_REVIEW_DEFINITION,
@@ -6,6 +7,7 @@ import {
 import type {
   CreateWorkflowPayload,
   WorkflowAggregate,
+  WorkflowDefinitionRevision,
   WorkflowTransitionContext,
 } from "./types";
 
@@ -13,17 +15,24 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export function createPlanExecuteReviewWorkflow(
+export function createWorkflowFromDefinition(
   payload: CreateWorkflowPayload,
+  definition: WorkflowDefinitionRevision,
   context: WorkflowTransitionContext,
 ): WorkflowAggregate {
   const prompt = payload.prompt.trim();
   if (!prompt) {
     throw new WorkflowTransitionError("Workflow prompt must not be empty.");
   }
+  if (!payload.bindings) {
+    throw new WorkflowTransitionError(
+      "Workflow executor bindings are required.",
+    );
+  }
   validatePlanExecuteReviewBindings(payload.bindings);
+  assertValidWorkflowDefinition(definition);
 
-  const definition = clone(PLAN_EXECUTE_REVIEW_DEFINITION);
+  const frozenDefinition = clone(definition);
   const runId = context.createId();
   return {
     run: {
@@ -31,9 +40,9 @@ export function createPlanExecuteReviewWorkflow(
       workspaceId: payload.workspaceId,
       workspaceRootPath: payload.workspaceRootPath,
       rootPrompt: prompt,
-      definitionId: definition.definitionId,
-      definitionVersion: definition.version,
-      frozenDefinition: definition,
+      definitionId: frozenDefinition.definitionId,
+      definitionVersion: frozenDefinition.version,
+      frozenDefinition,
       frozenBindings: clone(payload.bindings),
       status: "created",
       currentStepId: null,
@@ -43,7 +52,7 @@ export function createPlanExecuteReviewWorkflow(
       updatedAt: context.now,
       completedAt: null,
     },
-    steps: definition.steps.map((step) => ({
+    steps: frozenDefinition.steps.map((step) => ({
       id: context.createId(),
       workflowRunId: runId,
       stepId: step.id,
@@ -61,4 +70,15 @@ export function createPlanExecuteReviewWorkflow(
     suspensions: [],
     actions: [],
   };
+}
+
+export function createPlanExecuteReviewWorkflow(
+  payload: CreateWorkflowPayload,
+  context: WorkflowTransitionContext,
+): WorkflowAggregate {
+  return createWorkflowFromDefinition(
+    payload,
+    PLAN_EXECUTE_REVIEW_DEFINITION,
+    context,
+  );
 }

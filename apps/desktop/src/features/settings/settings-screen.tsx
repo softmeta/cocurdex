@@ -27,12 +27,15 @@ import { McpSettingsPanel } from "./mcp";
 import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
 import { OssLicensesSettingsPanel } from "./oss-licenses";
+import { ProjectSettingsPanel } from "./projects";
 import { ProviderSettingsPanel } from "./providers";
 import { SettingRow, SettingsGroup } from "./settings-fields";
 import { settingsSections } from "./settings-sections";
 import { SettingsSidebar } from "./settings-sidebar";
 import { SkillsSettingsPanel } from "./skills-settings";
 import type { AppearanceSettings, ThemeMode } from "./theme";
+import { WorkflowSettingsPanel } from "./workflows";
+import { WorktreeSettingsPanel } from "./worktrees";
 
 interface SettingsScreenProps {
   activeSection: SettingsSectionId;
@@ -153,12 +156,28 @@ function SectionPanel({
     return <SkillsSettingsPanel />;
   }
 
+  if (sectionId === "workflows") {
+    return (
+      <div className="settings-panel-enter flex min-h-0 flex-1 flex-col">
+        <WorkflowSettingsPanel />
+      </div>
+    );
+  }
+
   if (sectionId === "environment") {
     return <NetworkProxySettingsPanel />;
   }
 
   if (sectionId === "git") {
     return <GitSettingsPanel />;
+  }
+
+  if (sectionId === "worktrees") {
+    return <WorktreeSettingsPanel />;
+  }
+
+  if (sectionId === "projects") {
+    return <ProjectSettingsPanel />;
   }
 
   if (sectionId === "about") {
@@ -227,7 +246,9 @@ export function SettingsScreen({
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];
   const isFillLayout =
-    activeSection === "licenses" || activeSection === "archived";
+    activeSection === "licenses" ||
+    activeSection === "archived" ||
+    activeSection === "workflows";
   const settingsHeading = (
     <header className="shrink-0">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">
@@ -281,9 +302,11 @@ export function SettingsScreen({
             <div
               className={cn(
                 "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-10 sm:px-6 lg:px-8",
-                activeSection === "licenses"
-                  ? "max-w-5xl gap-6"
-                  : "max-w-3xl gap-8",
+                activeSection === "workflows" && "max-w-none gap-4",
+                activeSection === "licenses" && "max-w-5xl gap-6",
+                activeSection !== "workflows" &&
+                  activeSection !== "licenses" &&
+                  "max-w-3xl gap-8",
               )}
             >
               {settingsHeading}

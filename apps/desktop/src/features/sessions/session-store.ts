@@ -456,6 +456,7 @@ export const createDraftSessionAtom = atom(
       permissionMode?: AgentPermissionMode | null;
       agentRoleId?: string | null;
       providerSnapshot?: AgentProviderSnapshot | null;
+      worktreePath?: string | null;
     },
   ) => {
     const agentType = payload.agentType ?? get(lastSelectedAgentAtom);
@@ -493,6 +494,7 @@ export const createDraftSessionAtom = atom(
       lastMessageAt: null,
       archivedAt: null,
       providerSnapshot: payload.providerSnapshot ?? null,
+      worktreePath: payload.worktreePath ?? null,
     };
 
     set(sessionsAtom, [session, ...get(sessionsAtom)]);

@@ -20,3 +20,20 @@ export function registerOpenSettingsHandler(handler: OpenSettingsHandler) {
 export function openSettings(section: SettingsSectionId = "appearance") {
   openSettingsHandler?.(section);
 }
+
+type CloseSettingsHandler = () => void;
+
+let closeSettingsHandler: CloseSettingsHandler | null = null;
+
+export function registerCloseSettingsHandler(handler: CloseSettingsHandler) {
+  closeSettingsHandler = handler;
+  return () => {
+    if (closeSettingsHandler === handler) {
+      closeSettingsHandler = null;
+    }
+  };
+}
+
+export function closeSettings() {
+  closeSettingsHandler?.();
+}

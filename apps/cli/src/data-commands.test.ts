@@ -3,6 +3,7 @@ import { handleIssueCommand } from "./issue-commands";
 import { handleNoteCommand } from "./note-commands";
 import { parseArgs } from "./parse-args";
 import { handleSearchCommand } from "./search-commands";
+import { handleWorktreeCommand } from "./worktree-commands";
 
 const requestMock = vi.hoisted(() => vi.fn());
 
@@ -25,6 +26,14 @@ describe("data commands", () => {
     const parsed = parseArgs(["--json"]);
     await handleNoteCommand("list", [], parsed);
     expect(requestMock).toHaveBeenCalledWith("note.list");
+    expect(console.log).toHaveBeenCalledWith("[]");
+  });
+
+  it("lists managed worktrees through the daemon contract", async () => {
+    requestMock.mockResolvedValue([]);
+    const parsed = parseArgs(["--json"]);
+    await handleWorktreeCommand("list", [], parsed);
+    expect(requestMock).toHaveBeenCalledWith("worktree.list");
     expect(console.log).toHaveBeenCalledWith("[]");
   });
 

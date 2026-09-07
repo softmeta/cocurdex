@@ -12,6 +12,14 @@ export function createSchemaSql() {
       sort_order REAL NOT NULL DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS workspace_worktree_environments (
+      workspace_id TEXT PRIMARY KEY,
+      setup_script TEXT NOT NULL DEFAULT '',
+      cleanup_script TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,
@@ -30,6 +38,7 @@ export function createSchemaSql() {
       updated_at TEXT NOT NULL,
       last_message_at TEXT,
       archived_at TEXT,
+      worktree_path TEXT,
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
       FOREIGN KEY (parent_session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );

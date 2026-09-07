@@ -4,10 +4,12 @@ export function useHighlightedMenuRow({
   highlightedIndex,
   isOpen,
   itemAttribute,
+  items,
 }: {
   highlightedIndex: number;
   isOpen: boolean;
   itemAttribute: string;
+  items: readonly unknown[];
 }) {
   const [listNode, setListNode] = useState<HTMLElement | null>(null);
   const [highlightedItem, setHighlightedItem] = useState<HTMLElement | null>(
@@ -15,7 +17,7 @@ export function useHighlightedMenuRow({
   );
 
   useLayoutEffect(() => {
-    if (!isOpen || !listNode) {
+    if (!isOpen || !listNode || items[highlightedIndex] === undefined) {
       setHighlightedItem(null);
       return;
     }
@@ -24,7 +26,7 @@ export function useHighlightedMenuRow({
       const item = listNode.querySelector<HTMLElement>(
         `[${itemAttribute}="${highlightedIndex}"]`,
       );
-      if (!item) {
+      if (!item?.isConnected) {
         setHighlightedItem(null);
         return;
       }
@@ -48,7 +50,7 @@ export function useHighlightedMenuRow({
 
     listNode.addEventListener("scroll", sync, { passive: true });
     return () => listNode.removeEventListener("scroll", sync);
-  }, [highlightedIndex, isOpen, itemAttribute, listNode]);
+  }, [highlightedIndex, isOpen, itemAttribute, items, listNode]);
 
   return { highlightedItem, setListNode };
 }

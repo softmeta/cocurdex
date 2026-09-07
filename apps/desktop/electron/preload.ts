@@ -44,6 +44,7 @@ import type {
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveWorkflowDefinitionPayload,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
   SendSessionMessagePayload,
@@ -99,6 +100,15 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("agentRole:save", payload),
   deleteAgentRole: (id: string): Promise<void> =>
     ipcRenderer.invoke("agentRole:delete", id),
+  listWorkflowDefinitions: () => ipcRenderer.invoke("workflow:listDefinitions"),
+  getWorkflowDefinition: (definitionId: string) =>
+    ipcRenderer.invoke("workflow:getDefinition", { definitionId }),
+  saveWorkflowDefinition: (payload: SaveWorkflowDefinitionPayload) =>
+    ipcRenderer.invoke("workflow:saveDefinition", payload),
+  duplicateWorkflowDefinition: (definitionId: string) =>
+    ipcRenderer.invoke("workflow:duplicateDefinition", { definitionId }),
+  deleteWorkflowDefinition: (definitionId: string) =>
+    ipcRenderer.invoke("workflow:deleteDefinition", { definitionId }),
   readAdapterRateLimits: (agentIds: AgentId[]) =>
     ipcRenderer.invoke("agent:readRateLimits", agentIds),
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),
@@ -161,6 +171,29 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("git:listBranches", rootPath),
   checkoutGitBranch: (rootPath: string, branch: string) =>
     ipcRenderer.invoke("git:checkoutBranch", { rootPath, branch }),
+  listGitWorktrees: (rootPath: string) =>
+    ipcRenderer.invoke("git:listWorktrees", rootPath),
+  addGitWorktree: (payload: {
+    repoRootPath: string;
+    workspaceId: string;
+    branch: string;
+    startPoint?: string;
+  }) => ipcRenderer.invoke("git:addWorktree", payload),
+  getWorktreeSettings: () => ipcRenderer.invoke("worktree:getSettings"),
+  saveWorktreeSettings: (payload: {
+    fetchBeforeCreate: boolean;
+    rootPath: string | null;
+  }) => ipcRenderer.invoke("worktree:saveSettings", payload),
+  listManagedWorktrees: () => ipcRenderer.invoke("worktree:listManaged"),
+  removeWorktree: (payload: { workspaceId: string; worktreePath: string }) =>
+    ipcRenderer.invoke("worktree:remove", payload),
+  getWorktreeEnvironment: (workspaceId: string) =>
+    ipcRenderer.invoke("workspace:getWorktreeEnvironment", workspaceId),
+  saveWorktreeEnvironment: (payload: {
+    workspaceId: string;
+    setupScript: string;
+    cleanupScript: string;
+  }) => ipcRenderer.invoke("workspace:saveWorktreeEnvironment", payload),
   listGitCommits: (rootPath: string, options?: { limit?: number }) =>
     ipcRenderer.invoke("git:listCommits", {
       rootPath,

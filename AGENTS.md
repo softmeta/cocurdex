@@ -8,6 +8,26 @@
 
 这是一个跨平台应用。设计、实现、验证和问题排查时，优先考虑 macOS，其次考虑 Windows，Linux 放在最后。
 
+## 能力分层（daemon vs 宿主 IPC）
+
+产品能力必须能被多个客户端复用：当前是桌面和 CLI，后续会有浏览器和移动端。默认把可复用能力放在 daemon，经 `@cocurdex/rpc` 暴露；不要把业务规则写进 Electron main / preload / renderer，以免每个客户端再实现一遍。
+
+判定：如果明天做浏览器客户端，这条能力是否仍应通过 daemon 工作？是 → daemon RPC。只有桌面进程才有的宿主 API → Electron IPC。
+
+**放进 daemon（`packages/daemon` + `@cocurdex/rpc`）**
+
+会话、工作树、笔记、Issue、工作流、provider / agent role、产品级设置、权限与计划审批、可在无窗口环境下执行的 git / 文件系统工作区操作，以及所有持久化。SQLite 只由 daemon 拥有。类型与不变量放 `@cocurdex/shared`。新增产品 API 用具名 RPC 方法，不要往 `storage.call` 堆新业务。
+
+**Electron IPC 只做宿主适配（`apps/desktop/electron`）**
+
+窗口与菜单、原生对话框、系统外观 / 字体、协议与 BrowserView、PTY、需要 `BrowserWindow` 的文件监视、自动更新、把渲染进程接到 daemon 的薄转发。转发 handler 只做校验和 `requestDaemon(...)`，不追加产品策略。
+
+**客户端（renderer / CLI / 未来 web 与移动端）**
+
+只编排 UI 与导航，通过 daemon 契约读写产品状态。不要在 renderer 里藏第二条业务协议。CLI 必须能调用的能力不得只存在于 IPC。
+
+现有 IPC 若包含本该在 daemon 的产品逻辑，改它时把逻辑下沉，不要继续加厚。
+
 ## 联网搜索与官方文档
 
 涉及近期信息、依赖版本、API 行为、平台限制、错误排查、配置语法或第三方工具用法时，要主动联网搜索并优先查阅官方文档、官方仓库、发布说明或权威规范；不要凭记忆猜测。

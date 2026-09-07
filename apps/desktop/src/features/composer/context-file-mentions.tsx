@@ -268,6 +268,7 @@ export function ContextFileMentionMenu({
   const { highlightedItem, setListNode } = useHighlightedMenuRow({
     highlightedIndex,
     isOpen,
+    items: files,
     itemAttribute: "data-mention-index",
   });
 
