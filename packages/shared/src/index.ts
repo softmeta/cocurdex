@@ -3,6 +3,7 @@ export * from "./agent-role";
 export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-versions";
+export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
 export * from "./chat-events";
 export * from "./codex-models";
 export * from "./contracts";

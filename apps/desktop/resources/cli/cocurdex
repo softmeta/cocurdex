@@ -69,5 +69,7 @@ if ! ELECTRON="$(resolve_electron)"; then
   exit 1
 fi
 
+unset NODE_OPTIONS
+unset NODE_REPL_EXTERNAL_MODULE
 export ELECTRON_RUN_AS_NODE=1
 exec "$ELECTRON" "$CLI_JS" "$@"

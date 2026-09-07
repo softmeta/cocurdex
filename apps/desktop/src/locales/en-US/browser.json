@@ -3,6 +3,7 @@
     "back": "Back",
     "captureScreenshot": "Capture screenshot",
     "clearAnnotations": "Clear all annotations",
+    "closeTab": "Close {{title}}",
     "enterDesignMode": "Enter Design Mode",
     "exitDesignMode": "Exit Design Mode",
     "forward": "Forward",
@@ -22,8 +23,14 @@
     "title": "Browser Preview"
   },
   "states": {
+    "generating": "Generating…",
     "loadError": "Unable to load page",
     "loading": "Loading..."
+  },
+  "tabs": {
+    "address": "Page address",
+    "htmlPreview": "HTML preview",
+    "label": "Browser tabs"
   },
   "urlPlaceholder": "Enter dev server URL (e.g. http://localhost:3000)"
 }

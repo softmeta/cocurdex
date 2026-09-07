@@ -33,6 +33,7 @@ function matchesQuery(option: RuntimeAxisOption, query: string) {
  * the choices in a submenu, mirroring the Codex model picker.
  */
 export function RuntimeAxisSubmenu({
+  inspectOnly = false,
   label,
   options,
   sections,
@@ -40,11 +41,10 @@ export function RuntimeAxisSubmenu({
   value,
   onValueChange,
 }: {
+  inspectOnly?: boolean;
   label: string;
-  /** Flat choices; use `sections` instead when the axis is grouped. */
   options?: readonly RuntimeAxisOption[];
   sections?: readonly AppDropdownRadioSection[];
-  /** Off by default: most level names explain themselves. */
   showDescriptions?: boolean;
   value: string;
   onValueChange(value: string): void;
@@ -107,6 +107,7 @@ export function RuntimeAxisSubmenu({
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto">
           <AppDropdownRadioList
+            inspectOnly={inspectOnly}
             value={value}
             onValueChange={onValueChange}
             sections={filteredSections}

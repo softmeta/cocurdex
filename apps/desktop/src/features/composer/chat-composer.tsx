@@ -77,6 +77,7 @@ import type {
 import { PanelComposer } from "./panel-composer";
 import { PillComposer } from "./pill-composer";
 import { sendShortcutAtom } from "./send-shortcut";
+import { SessionRoleName } from "./session-role-name";
 import { useSlashCommands } from "./slash-command-menu";
 import type { ThinkingLevelOption } from "./thinking-level";
 import { ThinkingLevelSubmenu } from "./thinking-level-submenu";
@@ -474,6 +475,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       <>
         <CollaborationModeSubmenu
           agentType={selectedAgent}
+          inspectOnly
           mode={collaborationMode}
           runtimeMode={runtimeMode}
           runtimeModeDisabled={isRunning}
@@ -483,6 +485,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
         {supportsInSessionRuntimeAxis(selectedAgent, "thinking") &&
         thinkingLevelOptions.length > 1 ? (
           <ThinkingLevelSubmenu
+            inspectOnly
             level={thinkingLevel}
             options={thinkingLevelOptions}
             onChange={onSelectThinkingLevel}
@@ -491,7 +494,12 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       </>
     ) : null;
 
-    const defaultAgentControls = isAgentMode ? agentMenu : null;
+    const defaultAgentControls = isAgentMode ? (
+      <>
+        <SessionRoleName />
+        {agentMenu}
+      </>
+    ) : null;
     const resolvedControls = controls ?? defaultAgentControls;
 
     const attachMenuContent = (

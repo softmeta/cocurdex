@@ -28,9 +28,11 @@ export interface AppDropdownRadioSection {
 }
 
 function AppDropdownRadioItem({
+  inspectOnly = false,
   option,
   closeOnClick,
 }: {
+  inspectOnly?: boolean;
   option: AppDropdownRadioOption;
   closeOnClick?: boolean;
 }) {
@@ -39,9 +41,13 @@ function AppDropdownRadioItem({
   return (
     <DropdownMenuRadioItem
       value={option.value}
-      disabled={option.disabled}
+      disabled={option.disabled || inspectOnly}
       closeOnClick={closeOnClick}
-      className={multiLine ? "items-start py-1.5" : undefined}
+      className={cn(
+        multiLine && "items-start py-1.5",
+        inspectOnly &&
+          "data-disabled:pointer-events-auto data-disabled:cursor-not-allowed data-disabled:opacity-100",
+      )}
     >
       {option.icon ? (
         <span className={cn("shrink-0 [&_svg]:size-4", multiLine && "mt-0.5")}>
@@ -75,14 +81,14 @@ function AppDropdownRadioItem({
  * Searchable lists must use AppSearchableSelect.
  */
 export function AppDropdownRadioList({
+  inspectOnly = false,
   value,
   onValueChange,
   options,
   sections,
-  // Default true via DropdownMenuRadioItem; set false for multi-section
-  // settings menus that should stay open after a pick.
   closeOnClick,
 }: {
+  inspectOnly?: boolean;
   value: string;
   onValueChange(value: string): void;
   options?: readonly AppDropdownRadioOption[];
@@ -90,10 +96,14 @@ export function AppDropdownRadioList({
   closeOnClick?: boolean;
 }) {
   return (
-    <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+    <DropdownMenuRadioGroup
+      value={value}
+      onValueChange={inspectOnly ? () => {} : onValueChange}
+    >
       {options?.map((option) => (
         <AppDropdownRadioItem
           key={option.value}
+          inspectOnly={inspectOnly}
           option={option}
           closeOnClick={closeOnClick}
         />
@@ -104,8 +114,6 @@ export function AppDropdownRadioList({
             <DropdownMenuSeparator />
           ) : null}
           <DropdownMenuGroup>
-            {/* Grouped lists can carry unlabeled groups (single-provider model
-                lists); an empty header would just add dead space. */}
             {section.label ? (
               <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
                 {section.label}
@@ -114,6 +122,7 @@ export function AppDropdownRadioList({
             {section.options.map((option) => (
               <AppDropdownRadioItem
                 key={option.value}
+                inspectOnly={inspectOnly}
                 option={option}
                 closeOnClick={closeOnClick}
               />

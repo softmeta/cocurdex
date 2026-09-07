@@ -429,6 +429,7 @@ export function AppShellFrame({
                   }
                 >
                   <RightEditorPanel
+                    onClose={onToggleRightPanel}
                     appearanceSettings={appearanceSettings}
                     onAddContextToChat={handleAddContextToChat}
                     onInsertTextToChat={handleInsertTextToChat}

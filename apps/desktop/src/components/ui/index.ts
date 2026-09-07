@@ -12,6 +12,7 @@ export * from "./dialog";
 export * from "./dropdown-menu";
 export * from "./empty-state";
 export * from "./field";
+export * from "./hover-card";
 export * from "./icon-button";
 export * from "./input";
 export * from "./label";

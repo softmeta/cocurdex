@@ -10,6 +10,7 @@ vi.mock("electron", () => {
       send: vi.fn(),
       setWindowOpenHandler: setWindowOpenHandlerMock,
       executeJavaScript: vi.fn(),
+      session: { protocol: { handle: vi.fn() } },
     };
 
     constructor(options: Record<string, unknown>) {
@@ -43,7 +44,10 @@ describe("createBrowserView security hardening", () => {
 
   async function createView() {
     const { createBrowserView } = await import("./browser-view");
-    return createBrowserView();
+    return createBrowserView(
+      { id: "test", url: "", title: "", loading: false, error: null },
+      () => {},
+    ).view;
   }
 
   it("runs untrusted web content in a sandboxed renderer", async () => {

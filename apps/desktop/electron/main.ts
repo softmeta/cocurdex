@@ -35,8 +35,17 @@ import {
   readImageAttachmentDataUrl,
 } from "./attachment";
 import {
-  createBrowserView,
+  activateBrowserTab,
+  attachBrowserHost,
+  browserNavigationSchema,
+  browserTabIdForContents,
+  closeBrowserTab,
+  getBrowserTabs,
   getBrowserView,
+  navigateBrowser,
+  registerBrowserHtmlHandlers,
+  setBrowserBounds,
+  setBrowserVisible,
   toggleBrowserAnnotationMode,
 } from "./browser";
 import {
@@ -358,9 +367,7 @@ function createWindow() {
   // The renderer takes over background color via `window:setSurfaceColor`
   // once it mounts — that path knows about the user's manual theme override.
   // The initial `backgroundColor` above is just for the pre-mount frame.
-  const view = createBrowserView();
-  view.setBackgroundColor(getSurfaceColor());
-  window.contentView.addChildView(view);
+  attachBrowserHost(window);
 
   denyWindowNavigation(window.webContents);
 
@@ -990,13 +997,30 @@ function registerSessionHandlers() {
 }
 
 function registerBrowserHandlers() {
+  registerBrowserHtmlHandlers(ipcMain);
+  ipcMain.handle("browser:listTabs", () => getBrowserTabs());
+  registerHandler(
+    ipcMain,
+    "browser:activateTab",
+    z.string().uuid(),
+    (_event, id) => {
+      activateBrowserTab(id);
+    },
+  );
+  registerHandler(
+    ipcMain,
+    "browser:closeTab",
+    z.string().uuid(),
+    (_event, id) => {
+      return closeBrowserTab(id);
+    },
+  );
   registerHandler(
     ipcMain,
     "browser:navigate",
-    schemas.url,
+    browserNavigationSchema,
     async (_event, url) => {
-      const view = createBrowserView();
-      await view.webContents.loadURL(url);
+      await navigateBrowser(url);
     },
   );
 
@@ -1037,7 +1061,9 @@ function registerBrowserHandlers() {
 
   // Annotations come from arbitrary web pages via the browser view's preload
   // bridge — validate before rebroadcasting to the trusted main renderer.
-  ipcMain.on("browser:annotation", (_event, annotation: unknown) => {
+  ipcMain.on("browser:annotation", (event, annotation: unknown) => {
+    const tabId = browserTabIdForContents(event.sender.id);
+    if (!tabId) return;
     const parsed = schemas.browserAnnotation.safeParse(annotation);
     if (!parsed.success) {
       appLogger.warn("browser.annotationRejected", {
@@ -1049,7 +1075,10 @@ function registerBrowserHandlers() {
     }
     const validated: BrowserAnnotation = parsed.data;
     for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("browser:annotation", validated);
+      window.webContents.send("browser:annotation", {
+        tabId,
+        annotation: validated,
+      });
     }
   });
 
@@ -1058,12 +1087,7 @@ function registerBrowserHandlers() {
     "browser:setBounds",
     schemas.bounds,
     async (_event, bounds) => {
-      const view = getBrowserView();
-      if (!view) {
-        return;
-      }
-
-      view.setBounds({
+      setBrowserBounds({
         x: Math.round(bounds.x),
         y: Math.round(bounds.y),
         width: Math.round(bounds.w),
@@ -1077,7 +1101,7 @@ function registerBrowserHandlers() {
     "browser:show",
     schemas.visible,
     async (_event, visible) => {
-      getBrowserView()?.setVisible(visible);
+      setBrowserVisible(visible);
     },
   );
 }
@@ -1517,3 +1541,5 @@ app
     dialog.showErrorBox("Cocurdex failed to start", message);
     app.quit();
   });
+
+import { z } from "zod";

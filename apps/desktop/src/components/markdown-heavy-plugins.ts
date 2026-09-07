@@ -1,6 +1,7 @@
 import { cjk } from "@streamdown/cjk";
 import { startTransition } from "react";
 import type { PluginConfig } from "streamdown";
+import { HtmlPreview } from "./markdown-html-preview";
 
 // Streamdown's heavyweight plugins (Shiki, KaTeX, Mermaid) dominate the
 // renderer bundle, and a message only needs them when it actually contains a
@@ -23,7 +24,10 @@ const importers: Record<HeavyPluginKind, () => Promise<unknown>> = {
   mermaid: () => import("@streamdown/mermaid").then((module) => module.mermaid),
 };
 
-export const LIGHT_STREAMDOWN_PLUGINS: PluginConfig = { cjk };
+export const LIGHT_STREAMDOWN_PLUGINS: PluginConfig = {
+  cjk,
+  renderers: [{ language: ["html", "htm"], component: HtmlPreview }],
+};
 
 const loaded = new Map<HeavyPluginKind, unknown>();
 const inFlight = new Set<HeavyPluginKind>();

@@ -37,6 +37,8 @@ echo cocurdex: could not locate Cocurdex.exe / electron.exe. 1>&2
 exit /b 1
 
 :run
+set "NODE_OPTIONS="
+set "NODE_REPL_EXTERNAL_MODULE="
 set ELECTRON_RUN_AS_NODE=1
 "%ELECTRON%" "%CLI_JS%" %*
 exit /b %ERRORLEVEL%

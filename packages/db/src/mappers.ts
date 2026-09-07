@@ -69,6 +69,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
       typeof row.permission_mode === "string" && row.permission_mode
         ? (row.permission_mode as SessionRecord["permissionMode"])
         : undefined,
+    agentRoleId: toNullableString(row.agent_role_id),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     lastMessageAt:

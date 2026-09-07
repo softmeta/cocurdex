@@ -57,6 +57,7 @@ export function ProviderModelCompoundMenu({
   align = "start",
   appearance,
   disabled,
+  inspectOnly = false,
   footer,
   modelOptions,
   modelValue,
@@ -84,7 +85,7 @@ export function ProviderModelCompoundMenu({
   align?: "start" | "center" | "end";
   appearance?: AppDropdownTriggerAppearance;
   disabled?: boolean;
-  /** Extra runtime rows shown under the axes (e.g. permission mode). */
+  inspectOnly?: boolean;
   footer?: ReactNode;
   modelOptions: AppSearchableSelectOption[];
   modelValue: string;
@@ -146,6 +147,17 @@ export function ProviderModelCompoundMenu({
     ...(triggerValues ?? []),
   ].filter((value): value is string => Boolean(value));
 
+  const triggerBody = (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      <AppDropdownTriggerLabel>{triggerLabel}</AppDropdownTriggerLabel>
+      {activeTriggerValues.length > 0 ? (
+        <span className="min-w-0 truncate font-normal text-muted-foreground @max-[26rem]/composer:hidden">
+          {activeTriggerValues.join(" · ")}
+        </span>
+      ) : null}
+    </span>
+  );
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -159,18 +171,12 @@ export function ProviderModelCompoundMenu({
           )}
           disabled={disabled}
         >
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            <AppDropdownTriggerLabel>{triggerLabel}</AppDropdownTriggerLabel>
-            {activeTriggerValues.length > 0 ? (
-              <span className="min-w-0 truncate font-normal text-muted-foreground @max-[26rem]/composer:hidden">
-                {activeTriggerValues.join(" · ")}
-              </span>
-            ) : null}
-          </span>
+          {triggerBody}
         </AppDropdownTriggerButton>
       </DropdownMenuTrigger>
       <AppDropdownContent align={align} className="min-w-56" side="bottom">
         <RuntimeAxisSubmenu
+          inspectOnly={inspectOnly}
           label={t("modelMenu.triggerLabel")}
           sections={toModelSections(modelOptions)}
           value={modelValue}
@@ -178,6 +184,7 @@ export function ProviderModelCompoundMenu({
         />
         {hasReasoningEffort ? (
           <RuntimeAxisSubmenu
+            inspectOnly={inspectOnly}
             label={t("modelMenu.reasoningEffort")}
             options={reasoningEffortOptions}
             value={reasoningEffortValue}
@@ -186,6 +193,7 @@ export function ProviderModelCompoundMenu({
         ) : null}
         {hasFastMode ? (
           <RuntimeAxisSubmenu
+            inspectOnly={inspectOnly}
             label={t("modelMenu.fastMode")}
             options={fastModeOptions}
             value={fastModeValue}
@@ -194,6 +202,7 @@ export function ProviderModelCompoundMenu({
         ) : null}
         {hasOpenCodeAgent ? (
           <RuntimeAxisSubmenu
+            inspectOnly={inspectOnly}
             label={t("modelMenu.openCodeAgent")}
             options={openCodeAgentOptions}
             value={openCodeAgentValue}
@@ -202,6 +211,7 @@ export function ProviderModelCompoundMenu({
         ) : null}
         {hasOpenCodeVariant ? (
           <RuntimeAxisSubmenu
+            inspectOnly={inspectOnly}
             label={t("modelMenu.openCodeVariant")}
             options={openCodeVariantOptions}
             value={openCodeVariantValue}
@@ -210,10 +220,9 @@ export function ProviderModelCompoundMenu({
         ) : null}
         {hasServiceTier ? (
           <RuntimeAxisSubmenu
+            inspectOnly={inspectOnly}
             label={t("modelMenu.speed")}
             options={serviceTierOptions}
-            // The speed tiers carry usage-cost consequences, so their copy
-            // stays on the row instead of being dropped like the other axes.
             showDescriptions
             value={serviceTierValue}
             onValueChange={(value) => onServiceTierChange?.(value)}

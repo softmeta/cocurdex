@@ -57,6 +57,40 @@ describe("createSqliteSessionRepository", () => {
     });
   });
 
+  it("round-trips an explicitly selected agent role id", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPath: "/tmp/repo",
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Frontend",
+      agentType: "grok-build",
+      status: "idle",
+      writeMode: "native-write",
+      collaborationMode: "default",
+      agentRoleId: "role-1",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+    });
+
+    expect(await sessions.getById("session-1")).toMatchObject({
+      agentRoleId: "role-1",
+    });
+  });
+
   it("lists child sessions with their parent", async () => {
     const database = createDatabase();
     const workspaces = createSqliteWorkspaceRepository(database);

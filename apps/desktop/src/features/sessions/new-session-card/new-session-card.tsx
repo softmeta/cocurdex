@@ -1,12 +1,9 @@
-import {
-  agentRoleMatchesDraft,
-  type MessageAttachment,
-} from "@cocurdex/shared";
+import type { AgentRoleRecord, MessageAttachment } from "@cocurdex/shared";
 import { FolderOpen, GitBranch } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppSearchableSelect } from "@/components";
+import { AppDropdownTriggerLabel, AppSearchableSelect } from "@/components";
 import { Button } from "@/components/ui";
 import {
   ChatComposer,
@@ -19,6 +16,7 @@ import {
 import { WorkspacePicker } from "@/features/workspaces";
 import { cn } from "@/lib";
 import {
+  AgentRoleEditDialog,
   formatAgentRoleRecordSummary,
   getAgentRoles,
   SaveAgentRoleDialog,
@@ -61,9 +59,11 @@ export function NewSessionCard({
   onSelectCollaborationMode,
   onStartSession,
 }: NewSessionCardProps) {
-  const { t } = useTranslation(["common", "sessions"]);
+  const { t } = useTranslation(["common", "sessions", "settings"]);
   const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
   const [saveRoleOpen, setSaveRoleOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
+  const [chosenRoleId, setChosenRoleId] = useState<string | null>(null);
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
   const {
     selectedCollaborationMode,
@@ -136,6 +136,7 @@ export function NewSessionCard({
       message: text,
       providerSnapshot,
       thinkingLevel: selectedThinkingLevel ?? undefined,
+      agentRoleId: chosenRoleId,
     });
   };
 
@@ -161,9 +162,6 @@ export function NewSessionCard({
   const agentSelectOptions = buildAgentSelectOptions(
     agents ?? defaultAgentDescriptors,
   );
-  const selectedRoleId =
-    roles.find((role) => agentRoleMatchesDraft(role, currentRoleDraft))?.id ??
-    null;
   const roleOptions = roles.map((role) => {
     const agentOption = agentSelectOptions.find(
       (option) => option.value === role.agentId,
@@ -184,6 +182,71 @@ export function NewSessionCard({
       statusKind: agentOption?.statusKind,
     };
   });
+  const selectedRole =
+    roleOptions.find((role) => role.id === chosenRoleId) ?? null;
+  let agentTriggerLabel: string = t("sessions:composer.noInstalledAgent");
+  if (selectedRole) {
+    agentTriggerLabel = selectedRole.name;
+  } else if (canStartWithSelectedAgent) {
+    agentTriggerLabel = agentLabels[effectiveSelectedAgent];
+  }
+
+  const modelMenu = selectedRole ? null : (
+    <ProviderModelMenu
+      appearance="ghost"
+      compatibleProviders={compatibleProviders}
+      footer={
+        <>
+          <CollaborationModeSubmenu
+            agentType={effectiveSelectedAgent}
+            mode={selectedCollaborationMode}
+            onChange={handleSelectCollaborationMode}
+          />
+          <ThinkingLevelSubmenu
+            level={selectedThinkingLevel}
+            options={thinkingLevelOptions}
+            onChange={setSelectedThinkingLevel}
+          />
+          <PermissionModeSubmenu
+            agentType={effectiveSelectedAgent}
+            mode={selectedPermissionMode}
+            options={permissionModeOptions}
+            providerSnapshot={providerSnapshot}
+            onChange={setSelectedPermissionMode}
+          />
+        </>
+      }
+      isLoading={isProviderModelLoading}
+      reasoningEffortOptions={codexReasoningOptions}
+      reasoningEffortDefaultValue={codexReasoningDefaultValue}
+      reasoningEffortValue={
+        selectedCodexReasoningEffort || codexReasoningDefaultValue
+      }
+      fastModeOptions={claudeFastModeOptions}
+      fastModeValue={selectedClaudeFastMode ? "on" : "off"}
+      serviceTierOptions={codexServiceTierOptions}
+      serviceTierValue={selectedCodexServiceTier}
+      openCodeAgentOptions={openCodeAgentOptions}
+      openCodeAgentDefaultValue={openCodeAgentDefaultValue}
+      openCodeAgentValue={openCodeAgentValue}
+      openCodeVariantOptions={openCodeVariantOptions}
+      openCodeVariantValue={openCodeVariantValue}
+      thinkingLevelValue={thinkingLevelOverride}
+      triggerClassName={compactGhostTriggerClassName}
+      triggerValues={triggerValues}
+      showProviderGroupLabels={shouldShowProviderGroupLabels(
+        effectiveSelectedAgent,
+      )}
+      value={selectedProviderModel}
+      onChange={handleSelectProviderModel}
+      onReasoningEffortChange={setSelectedCodexReasoningEffort}
+      onFastModeChange={setSelectedClaudeFastMode}
+      onOpenCodeAgentChange={setSelectedOpenCodeAgent}
+      onOpenCodeVariantChange={setSelectedOpenCodeVariant}
+      onServiceTierChange={setSelectedCodexServiceTier}
+      onSaveAsRole={() => setSaveRoleOpen(true)}
+    />
+  );
 
   const controls = (
     <>
@@ -191,76 +254,31 @@ export function NewSessionCard({
         appearance="ghost"
         options={agentSelectOptions}
         roles={roleOptions}
-        selectedRoleId={selectedRoleId}
+        selectedRoleId={chosenRoleId}
         triggerClassName={cn("max-w-40 shrink-0", compactGhostTriggerClassName)}
         triggerLabel={
-          canStartWithSelectedAgent
-            ? agentLabels[effectiveSelectedAgent]
-            : t("sessions:composer.noInstalledAgent")
+          <AppDropdownTriggerLabel>{agentTriggerLabel}</AppDropdownTriggerLabel>
         }
         value={effectiveSelectedAgent}
+        onEditRole={(roleId) => {
+          const role = roles.find((item) => item.id === roleId);
+          if (role) {
+            setEditingRole(role);
+          }
+        }}
         onSelectRole={(roleId) => {
           const role = roles.find((item) => item.id === roleId);
           if (role) {
+            setChosenRoleId(role.id);
             handleApplyRole(role);
           }
         }}
-        onValueChange={handleSelectAgent}
+        onValueChange={(agentId) => {
+          setChosenRoleId(null);
+          handleSelectAgent(agentId);
+        }}
       />
-      <ProviderModelMenu
-        appearance="ghost"
-        compatibleProviders={compatibleProviders}
-        footer={
-          <>
-            <CollaborationModeSubmenu
-              agentType={effectiveSelectedAgent}
-              mode={selectedCollaborationMode}
-              onChange={handleSelectCollaborationMode}
-            />
-            <ThinkingLevelSubmenu
-              level={selectedThinkingLevel}
-              options={thinkingLevelOptions}
-              onChange={setSelectedThinkingLevel}
-            />
-            <PermissionModeSubmenu
-              agentType={effectiveSelectedAgent}
-              mode={selectedPermissionMode}
-              options={permissionModeOptions}
-              providerSnapshot={providerSnapshot}
-              onChange={setSelectedPermissionMode}
-            />
-          </>
-        }
-        isLoading={isProviderModelLoading}
-        reasoningEffortOptions={codexReasoningOptions}
-        reasoningEffortDefaultValue={codexReasoningDefaultValue}
-        reasoningEffortValue={
-          selectedCodexReasoningEffort || codexReasoningDefaultValue
-        }
-        fastModeOptions={claudeFastModeOptions}
-        fastModeValue={selectedClaudeFastMode ? "on" : "off"}
-        serviceTierOptions={codexServiceTierOptions}
-        serviceTierValue={selectedCodexServiceTier}
-        openCodeAgentOptions={openCodeAgentOptions}
-        openCodeAgentDefaultValue={openCodeAgentDefaultValue}
-        openCodeAgentValue={openCodeAgentValue}
-        openCodeVariantOptions={openCodeVariantOptions}
-        openCodeVariantValue={openCodeVariantValue}
-        thinkingLevelValue={thinkingLevelOverride}
-        triggerClassName={compactGhostTriggerClassName}
-        triggerValues={triggerValues}
-        showProviderGroupLabels={shouldShowProviderGroupLabels(
-          effectiveSelectedAgent,
-        )}
-        value={selectedProviderModel}
-        onChange={handleSelectProviderModel}
-        onReasoningEffortChange={setSelectedCodexReasoningEffort}
-        onFastModeChange={setSelectedClaudeFastMode}
-        onOpenCodeAgentChange={setSelectedOpenCodeAgent}
-        onOpenCodeVariantChange={setSelectedOpenCodeVariant}
-        onServiceTierChange={setSelectedCodexServiceTier}
-        onSaveAsRole={() => setSaveRoleOpen(true)}
-      />
+      {modelMenu}
     </>
   );
 
@@ -400,11 +418,24 @@ export function NewSessionCard({
         open={saveRoleOpen}
         onOpenChange={setSaveRoleOpen}
         onSave={async (name) => {
-          await saveAgentRoleRecord({
+          const saved = await saveAgentRoleRecord({
             ...currentRoleDraft,
             name,
           });
+          setChosenRoleId(saved.id);
           toast.success(t("sessions:agentRole.saved"));
+        }}
+      />
+      <AgentRoleEditDialog
+        open={Boolean(editingRole)}
+        role={editingRole}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setEditingRole(null);
+          }
+        }}
+        onSaved={(saved) => {
+          handleApplyRole(saved);
         }}
       />
     </ComposerSurfaceBody>

@@ -76,9 +76,10 @@ export function createSqliteSessionRepository(
           `INSERT INTO sessions (
              id, workspace_id, title, agent_type, session_kind,
              parent_session_id, parent_tool_call_id, status, write_mode,
-             collaboration_mode, permission_mode, provider_snapshot_json,
+             collaboration_mode, permission_mode, agent_role_id,
+             provider_snapshot_json,
              created_at, updated_at, last_message_at, archived_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              workspace_id = excluded.workspace_id,
              title = excluded.title,
@@ -90,6 +91,7 @@ export function createSqliteSessionRepository(
              write_mode = excluded.write_mode,
              collaboration_mode = excluded.collaboration_mode,
              permission_mode = excluded.permission_mode,
+             agent_role_id = excluded.agent_role_id,
              provider_snapshot_json = excluded.provider_snapshot_json,
              created_at = excluded.created_at,
              updated_at = excluded.updated_at,
@@ -108,6 +110,7 @@ export function createSqliteSessionRepository(
           session.writeMode,
           session.collaborationMode,
           session.permissionMode ?? null,
+          session.agentRoleId ?? null,
           session.providerSnapshot
             ? JSON.stringify(session.providerSnapshot)
             : null,

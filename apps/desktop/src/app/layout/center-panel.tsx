@@ -896,6 +896,7 @@ export function CenterPanel({
     message,
     providerSnapshot,
     thinkingLevel,
+    agentRoleId,
   }: {
     agentType: AgentId;
     collaborationMode: CollaborationModeKind;
@@ -904,6 +905,7 @@ export function CenterPanel({
     message: string;
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
+    agentRoleId?: string | null;
   }) => {
     if (!activeWorkspace) {
       return;
@@ -914,6 +916,7 @@ export function CenterPanel({
       agentType,
       collaborationMode,
       permissionMode,
+      agentRoleId: agentRoleId ?? null,
       providerSnapshot: providerSnapshot ?? null,
     });
     // Carry the tabs the user was viewing during the draft into the new

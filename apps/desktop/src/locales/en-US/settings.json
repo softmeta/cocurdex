@@ -129,6 +129,14 @@
       "description": "When chat is closed in floating or pinned layout, hide the bottom-right button. Open chat again with {{shortcut}}.",
       "title": "Hide chat button when closed"
     },
+    "htmlPreview": {
+      "description": "Choose where HTML is previewed as it is generated.",
+      "options": {
+        "browser": "Sidebar browser",
+        "chat": "Chat area"
+      },
+      "title": "HTML preview location"
+    },
     "layout": {
       "description": "How chat sits relative to the editor. Restored on next launch.",
       "options": {

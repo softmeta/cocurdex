@@ -64,6 +64,7 @@ export function SessionRuntimeMenu({
   onOpenCodeVariantChange,
   onSaveAsRole,
   onConfigOptionChange,
+  readOnly = false,
 }: {
   agentType: AgentId;
   compatibleProviders: CompatibleProviderModel[];
@@ -92,6 +93,7 @@ export function SessionRuntimeMenu({
   onOpenCodeVariantChange(value: string | null): void;
   onSaveAsRole?(): void;
   onConfigOptionChange?(configId: string, value: boolean | string): void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation("sessions");
   const hasModel = compatibleProviders.length > 1;
@@ -190,13 +192,15 @@ export function SessionRuntimeMenu({
       {mcpServers !== null ? <McpRuntimeSubmenu servers={mcpServers} /> : null}
       <AgentRuntimeConfigItems
         configOptions={sessionConfigOptions}
-        disabled={isRunning}
+        disabled={isRunning || readOnly}
+        inspectOnly={readOnly}
         onChange={onConfigOptionChange}
       />
       {footer}
       {hasPermission ? (
         <PermissionModeSubmenu
           agentType={agentType}
+          inspectOnly={readOnly}
           mode={permissionMode}
           providerSnapshot={providerSnapshot}
           onChange={onPermissionModeChange}
@@ -209,6 +213,7 @@ export function SessionRuntimeMenu({
     <ProviderModelMenu
       appearance="ghost"
       compatibleProviders={compatibleProviders}
+      readOnly={readOnly}
       fastModeOptions={fastModeOptions}
       fastModeValue={fastMode ? "on" : "off"}
       footer={menuFooter}
@@ -260,7 +265,7 @@ export function SessionRuntimeMenu({
       onServiceTierChange={(value) =>
         onServiceTierChange(value === DEFAULT_VALUE ? null : value)
       }
-      onSaveAsRole={onSaveAsRole}
+      onSaveAsRole={readOnly ? undefined : onSaveAsRole}
     />
   );
 }

@@ -77,4 +77,13 @@ describe("childSessionFromSubagentToolCall", () => {
       }),
     ).toBeNull();
   });
+
+  it("does not inherit a parent agent role onto the child session", () => {
+    expect(
+      childSessionFromSubagentToolCall(
+        { ...parentSession("codex"), agentRoleId: "role-1" },
+        toolCall("codex", "codex-subagent:parent:child", "Review"),
+      ),
+    ).toMatchObject({ agentRoleId: null });
+  });
 });

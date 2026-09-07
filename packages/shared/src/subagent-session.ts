@@ -33,5 +33,6 @@ export function childSessionFromSubagentToolCall(
     updatedAt: toolCall.updatedAt,
     lastMessageAt: null,
     archivedAt: null,
+    agentRoleId: null,
   };
 }

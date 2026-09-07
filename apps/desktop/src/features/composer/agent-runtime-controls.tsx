@@ -81,10 +81,12 @@ export function getSessionConfigTriggerValues(
 export function AgentRuntimeConfigItems({
   configOptions,
   disabled,
+  inspectOnly = false,
   onChange,
 }: {
   configOptions: readonly AgentSessionConfigOption[];
   disabled?: boolean;
+  inspectOnly?: boolean;
   onChange?(configId: string, value: boolean | string): void;
 }) {
   if (configOptions.length === 0) {
@@ -109,6 +111,7 @@ export function AgentRuntimeConfigItems({
         ) : (
           <RuntimeAxisSubmenu
             key={config.id}
+            inspectOnly={inspectOnly}
             label={config.name}
             value={String(config.currentValue ?? "")}
             onValueChange={(value) => onChange?.(config.id, value)}

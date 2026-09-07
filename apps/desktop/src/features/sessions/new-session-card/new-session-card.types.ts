@@ -39,6 +39,7 @@ export interface NewSessionCardProps {
     attachments?: MessageAttachment[];
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
+    agentRoleId?: string | null;
   }) => void;
 }
 

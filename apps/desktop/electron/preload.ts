@@ -409,6 +409,20 @@ contextBridge.exposeInMainWorld("desktopApi", {
   setWindowSurfaceColor: (color: string) =>
     ipcRenderer.invoke("window:setSurfaceColor", color),
   browserNavigate: (url: string) => ipcRenderer.invoke("browser:navigate", url),
+  browserUpdateHtml: (
+    url: string,
+    html: string,
+    contentKey: string,
+    streaming: boolean,
+  ) =>
+    ipcRenderer.invoke("browser:updateHtml", {
+      url,
+      html,
+      contentKey,
+      streaming,
+    }),
+  browserOpenHtml: (html: string, sourceId: string, streaming: boolean) =>
+    ipcRenderer.invoke("browser:openHtml", { html, sourceId, streaming }),
   browserReload: () => ipcRenderer.invoke("browser:reload"),
   browserStop: () => ipcRenderer.invoke("browser:stop"),
   browserGoBack: () => ipcRenderer.invoke("browser:goBack"),
@@ -417,66 +431,40 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("browser:toggleAnnotationMode", enabled),
   browserCaptureScreenshot: () =>
     ipcRenderer.invoke("browser:captureScreenshot"),
-  onBrowserAnnotation: (
+  browserListTabs: () => ipcRenderer.invoke("browser:listTabs"),
+  browserActivateTab: (id: string) =>
+    ipcRenderer.invoke("browser:activateTab", id),
+  browserCloseTab: (id: string) => ipcRenderer.invoke("browser:closeTab", id),
+  onBrowserTabs: (
     listener: (
-      annotation: import("@cocurdex/shared").BrowserAnnotation,
+      snapshot: import("@cocurdex/shared").BrowserTabsSnapshot,
     ) => void,
   ) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      payload: import("@cocurdex/shared").BrowserAnnotation,
-    ) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("browser:annotation", handler);
+      snapshot: import("@cocurdex/shared").BrowserTabsSnapshot,
+    ) => listener(snapshot);
+    ipcRenderer.on("browser:tabs", handler);
     return () => {
-      ipcRenderer.removeListener("browser:annotation", handler);
+      ipcRenderer.removeListener("browser:tabs", handler);
     };
   },
-  onBrowserLoading: (listener: (loading: boolean) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: boolean) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("browser:loading", handler);
-    return () => {
-      ipcRenderer.removeListener("browser:loading", handler);
-    };
-  },
-  onBrowserTitle: (listener: (title: string) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: string) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("browser:title", handler);
-    return () => {
-      ipcRenderer.removeListener("browser:title", handler);
-    };
-  },
-  onBrowserNavigated: (listener: (url: string) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: string) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("browser:navigated", handler);
-    return () => {
-      ipcRenderer.removeListener("browser:navigated", handler);
-    };
-  },
-  onBrowserError: (
-    listener: (error: { url: string; message: string }) => void,
+  onBrowserAnnotation: (
+    listener: (payload: {
+      tabId: string;
+      annotation: import("@cocurdex/shared").BrowserAnnotation;
+    }) => void,
   ) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      payload: { url: string; message: string },
-    ) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("browser:error", handler);
+      payload: {
+        tabId: string;
+        annotation: import("@cocurdex/shared").BrowserAnnotation;
+      },
+    ) => listener(payload);
+    ipcRenderer.on("browser:annotation", handler);
     return () => {
-      ipcRenderer.removeListener("browser:error", handler);
+      ipcRenderer.removeListener("browser:annotation", handler);
     };
   },
   setBrowserBounds: (bounds: { x: number; y: number; w: number; h: number }) =>

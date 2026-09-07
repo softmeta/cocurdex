@@ -454,6 +454,7 @@ export const createDraftSessionAtom = atom(
       agentType?: AgentId;
       collaborationMode?: CollaborationModeKind;
       permissionMode?: AgentPermissionMode | null;
+      agentRoleId?: string | null;
       providerSnapshot?: AgentProviderSnapshot | null;
     },
   ) => {
@@ -486,6 +487,7 @@ export const createDraftSessionAtom = atom(
         )
           ? requestedPermissionMode
           : (getDefaultPermissionMode(agents, agentType) ?? undefined),
+      agentRoleId: payload.agentRoleId ?? null,
       createdAt: now,
       updatedAt: now,
       lastMessageAt: null,

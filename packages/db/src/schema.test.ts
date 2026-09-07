@@ -10,6 +10,7 @@ describe("createSchemaSql", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS session_attention");
     expect(sql).toContain("collaboration_mode TEXT NOT NULL DEFAULT 'default'");
     expect(sql).toContain("permission_mode TEXT");
+    expect(sql).toContain("agent_role_id TEXT");
     expect(sql).toContain("session_kind TEXT NOT NULL DEFAULT 'main'");
     expect(sql).toContain("parent_session_id TEXT");
     expect(sql).toContain("parent_tool_call_id TEXT");
