@@ -24,6 +24,7 @@ export function createSchemaSql() {
       write_mode TEXT NOT NULL,
       collaboration_mode TEXT NOT NULL DEFAULT 'default',
       permission_mode TEXT,
+      agent_role_id TEXT,
       provider_snapshot_json TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,

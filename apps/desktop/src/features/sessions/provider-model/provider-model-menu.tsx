@@ -78,6 +78,7 @@ interface ProviderModelMenuProps {
   triggerClassName?: string;
   triggerValues?: readonly string[];
   value: string;
+  readOnly?: boolean;
   onChange(value: string): void;
   onFastModeChange?(value: string): void;
   onOpenCodeAgentChange?(value: string): void;
@@ -119,6 +120,7 @@ export function ProviderModelMenu({
   triggerClassName,
   triggerValues,
   value,
+  readOnly = false,
   onChange,
   onFastModeChange,
   onOpenCodeAgentChange,
@@ -221,6 +223,7 @@ export function ProviderModelMenu({
         align={align}
         appearance={appearance}
         disabled={disabled}
+        inspectOnly={readOnly}
         footer={footer}
         modelOptions={modelOptions}
         modelValue={value}
@@ -244,7 +247,7 @@ export function ProviderModelMenu({
         onOpenCodeAgentChange={onOpenCodeAgentChange}
         onOpenCodeVariantChange={onOpenCodeVariantChange}
         onReasoningEffortChange={onReasoningEffortChange}
-        onSaveAsRole={onSaveAsRole}
+        onSaveAsRole={readOnly ? undefined : onSaveAsRole}
         thinkingLevelValue={thinkingLevelValue}
         onServiceTierChange={onServiceTierChange}
       />

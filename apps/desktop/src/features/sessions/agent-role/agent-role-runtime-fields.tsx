@@ -154,7 +154,7 @@ export function AgentRoleRuntimeFields({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <AgentSelect
-        appearance="outline"
+        appearance="ghost"
         options={agentOptions}
         triggerLabel={
           agentOptions.find((option) => option.value === agentId)?.label ??
@@ -164,7 +164,7 @@ export function AgentRoleRuntimeFields({
         onValueChange={onAgentChange}
       />
       <ProviderModelMenu
-        appearance="outline"
+        appearance="ghost"
         compatibleProviders={compatibleProviders}
         fastModeOptions={claudeFastModeOptions}
         fastModeValue={fastMode ? "on" : "off"}

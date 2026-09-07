@@ -3,6 +3,7 @@
     "back": "后退",
     "captureScreenshot": "截图",
     "clearAnnotations": "清除全部标注",
+    "closeTab": "关闭 {{title}}",
     "enterDesignMode": "进入设计模式",
     "exitDesignMode": "退出设计模式",
     "forward": "前进",
@@ -22,8 +23,14 @@
     "title": "浏览器预览"
   },
   "states": {
+    "generating": "生成中…",
     "loadError": "无法加载页面",
     "loading": "正在加载..."
+  },
+  "tabs": {
+    "address": "页面地址",
+    "htmlPreview": "HTML 预览",
+    "label": "浏览器标签页"
   },
   "urlPlaceholder": "输入开发服务器 URL（例如 http://localhost:3000）"
 }

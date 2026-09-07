@@ -70,3 +70,18 @@
 [data-streamdown="code-block-body"] > pre > code > span {
   display: block;
 }
+
+.markdown-html-source [data-streamdown="code-block"] {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.markdown-html-source [data-streamdown="code-block-header"] {
+  display: none;
+}
+
+.markdown-html-source [data-streamdown="code-block-body"] {
+  border-top: 0;
+  overflow: visible;
+}

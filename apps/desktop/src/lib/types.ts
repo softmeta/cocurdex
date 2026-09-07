@@ -14,6 +14,7 @@ import type {
   AppBootstrapData,
   ArchiveSessionPayload,
   BrowserAnnotation,
+  BrowserTabsSnapshot,
   ChatEvent,
   CocurdexDataChangedEvent,
   CommitMessageModelSelection,
@@ -638,20 +639,32 @@ export interface DesktopApi {
   // window/child views so resize and startup do not flash a mismatched color.
   setWindowSurfaceColor(color: string): Promise<void>;
   browserNavigate(url: string): Promise<void>;
+  browserOpenHtml(
+    html: string,
+    sourceId: string,
+    streaming: boolean,
+  ): Promise<string>;
+  browserUpdateHtml(
+    url: string,
+    html: string,
+    contentKey: string,
+    streaming: boolean,
+  ): Promise<boolean>;
   browserReload(): Promise<void>;
   browserStop(): Promise<void>;
   browserGoBack(): Promise<void>;
   browserGoForward(): Promise<void>;
   browserToggleAnnotationMode(enabled: boolean): Promise<void>;
   browserCaptureScreenshot(): Promise<string>;
+  browserListTabs(): Promise<BrowserTabsSnapshot>;
+  browserActivateTab(id: string): Promise<void>;
+  browserCloseTab(id: string): Promise<BrowserTabsSnapshot>;
+  onBrowserTabs(listener: (snapshot: BrowserTabsSnapshot) => void): () => void;
   onBrowserAnnotation(
-    listener: (annotation: BrowserAnnotation) => void,
-  ): () => void;
-  onBrowserLoading(listener: (loading: boolean) => void): () => void;
-  onBrowserTitle(listener: (title: string) => void): () => void;
-  onBrowserNavigated(listener: (url: string) => void): () => void;
-  onBrowserError(
-    listener: (error: { url: string; message: string }) => void,
+    listener: (payload: {
+      tabId: string;
+      annotation: BrowserAnnotation;
+    }) => void,
   ): () => void;
   setBrowserBounds(bounds: {
     x: number;

@@ -1,17 +1,17 @@
-import type {
-  AgentContextBreakdownRecord,
-  AgentPermissionMode,
-  AgentRateLimitsRecord,
-  AgentThinkingLevel,
-  CollaborationModeKind,
-  ReasoningEffort,
-  SessionRecord,
+import {
+  type AgentContextBreakdownRecord,
+  type AgentPermissionMode,
+  type AgentRateLimitsRecord,
+  type AgentThinkingLevel,
+  type CollaborationModeKind,
+  type ReasoningEffort,
+  type SessionRecord,
+  supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
-import { supportsInSessionRuntimeAxis } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import type { ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { CircularProgress, Popover, PopoverTrigger } from "@/components/ui";
 import { agentRuntimeBySessionAtom } from "@/features/agent/runtime";
 import {
@@ -31,10 +31,6 @@ import {
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
 } from "@/features/sessions";
-import {
-  SaveAgentRoleDialog,
-  saveAgentRoleRecord,
-} from "@/features/sessions/agent-role";
 import { usesAdapterOwnedModelCatalog } from "@/features/sessions/provider-model/adapter-owned-catalog";
 import {
   createProviderSnapshotForModel,
@@ -212,7 +208,6 @@ export function ContextWindowIndicator({
   afterModel?: ReactNode;
 }) {
   const { t } = useTranslation("sessions");
-  const [saveRoleOpen, setSaveRoleOpen] = useState(false);
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const agents = useAtomValue(agentsAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -441,7 +436,7 @@ export function ContextWindowIndicator({
         ownsModelCatalog ? null : snapshot.providerName,
       )
     : agentLabels[session.agentType];
-  const modelLabel = (
+  const runtimeMenu = (
     <SessionRuntimeMenu
       agentType={session.agentType}
       compatibleProviders={runtimeModelItems}
@@ -457,6 +452,7 @@ export function ContextWindowIndicator({
       mcpServers={sessionRuntime?.runtime?.mcpServers ?? null}
       configOptions={sessionConfigOptions}
       isRunning={isRunning}
+      readOnly
       thinkingLevel={snapshot?.thinkingLevel ?? null}
       triggerValues={menuTriggerValues}
       onPermissionModeChange={(permissionMode) =>
@@ -474,8 +470,6 @@ export function ContextWindowIndicator({
       }
       onOpenCodeAgentChange={(openCodeAgent) => {
         updateProviderRuntime({ sessionId: session.id, openCodeAgent });
-        // OpenCode's agent list is its collaboration axis: picking "plan" must
-        // put the session in plan mode, since the adapter keys off that.
         changeCollaborationMode(
           session.id,
           openCodeAgent === "plan" ? "plan" : "default",
@@ -484,12 +478,12 @@ export function ContextWindowIndicator({
       onOpenCodeVariantChange={(openCodeVariant) =>
         updateProviderRuntime({ sessionId: session.id, openCodeVariant })
       }
-      onSaveAsRole={() => setSaveRoleOpen(true)}
       onConfigOptionChange={(configId, value) => {
         void desktopApi.setSessionRuntimeConfig(session.id, configId, value);
       }}
     />
   );
+  const modelLabel = runtimeMenu;
   // Grok (and similar ACP agents) are not in the global provider-models table
   // — their catalog is probed per-agent. Prefer that table when present, then
   // the session snapshot's modelContextWindow, then any agent-reported size.
@@ -501,38 +495,14 @@ export function ContextWindowIndicator({
   const used = usage ? getSessionContextTokens(usage) : null;
 
   return (
-    <>
-      <ContextUsageMeter
-        afterModel={afterModel}
-        breakdown={sessionContextBreakdown[session.id]}
-        contextLimit={contextLimit}
-        layout={layout}
-        modelLabel={modelLabel}
-        rateLimits={sessionRateLimits[session.id]}
-        used={used}
-      />
-      <SaveAgentRoleDialog
-        open={saveRoleOpen}
-        onOpenChange={setSaveRoleOpen}
-        onSave={async (name) => {
-          await saveAgentRoleRecord({
-            name,
-            agentId: session.agentType,
-            providerId: snapshot?.providerId ?? null,
-            modelId: snapshot?.modelId ?? null,
-            modelName: snapshot?.modelName ?? null,
-            permissionMode: session.permissionMode ?? null,
-            collaborationMode: session.collaborationMode,
-            reasoningEffort: snapshot?.reasoningEffort ?? null,
-            serviceTier: snapshot?.serviceTier ?? null,
-            fastMode: snapshot?.fastMode ?? null,
-            thinkingLevel: snapshot?.thinkingLevel ?? null,
-            openCodeAgent: snapshot?.openCodeAgent ?? null,
-            openCodeVariant: snapshot?.openCodeVariant ?? null,
-          });
-          toast.success(t("agentRole.saved"));
-        }}
-      />
-    </>
+    <ContextUsageMeter
+      afterModel={afterModel}
+      breakdown={sessionContextBreakdown[session.id]}
+      contextLimit={contextLimit}
+      layout={layout}
+      modelLabel={modelLabel}
+      rateLimits={sessionRateLimits[session.id]}
+      used={used}
+    />
   );
 }

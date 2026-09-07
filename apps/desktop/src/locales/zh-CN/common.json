@@ -27,6 +27,15 @@
     "opencode": "OpenCode",
     "pi": "Pi"
   },
+  "htmlPreview": {
+    "browserLocation": "HTML 在右侧浏览器中预览。点击地球按钮可打开此预览。",
+    "code": "代码",
+    "download": "下载 HTML",
+    "localOnly": "仅预览内嵌内容。生成完成后运行脚本；不加载外部资源或发起网络请求。",
+    "openInBrowser": "在内置浏览器中打开",
+    "preview": "预览",
+    "title": "HTML 预览"
+  },
   "jumpToLatest": "跳到最新消息",
   "jumpToTop": "跳到顶部",
   "message": {

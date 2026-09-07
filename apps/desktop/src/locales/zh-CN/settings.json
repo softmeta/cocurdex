@@ -129,6 +129,14 @@
       "description": "在浮动或钉住布局下关闭聊天时，隐藏右下角按钮。可用 {{shortcut}} 再次打开聊天。",
       "title": "关闭时隐藏聊天按钮"
     },
+    "htmlPreview": {
+      "description": "选择 HTML 生成过程中实时预览的位置。",
+      "options": {
+        "browser": "右侧浏览器",
+        "chat": "聊天区"
+      },
+      "title": "HTML 预览位置"
+    },
     "layout": {
       "description": "聊天区相对编辑器的摆放方式。下次启动会恢复。",
       "options": {

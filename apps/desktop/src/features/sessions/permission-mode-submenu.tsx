@@ -15,6 +15,7 @@ import {
 
 interface PermissionModeSubmenuProps {
   agentType: AgentId;
+  inspectOnly?: boolean;
   mode: AgentPermissionMode | null;
   options?: AgentPermissionModeOption[];
   providerSnapshot?: AgentProviderSnapshot | null;
@@ -27,6 +28,7 @@ interface PermissionModeSubmenuProps {
  */
 export function PermissionModeSubmenu({
   agentType,
+  inspectOnly = false,
   mode,
   options,
   providerSnapshot,
@@ -48,6 +50,7 @@ export function PermissionModeSubmenu({
 
   return (
     <RuntimeAxisSubmenu
+      inspectOnly={inspectOnly}
       label={t("permissionMode.label")}
       showDescriptions
       options={modes.map((nextMode) => {

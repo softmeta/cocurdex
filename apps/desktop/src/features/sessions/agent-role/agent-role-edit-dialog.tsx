@@ -38,10 +38,12 @@ export function AgentRoleEditDialog({
   role,
   open,
   onOpenChange,
+  onSaved,
 }: {
   role: AgentRoleRecord | null;
   open: boolean;
   onOpenChange(open: boolean): void;
+  onSaved?(role: AgentRoleRecord): void;
 }) {
   if (!role) {
     return null;
@@ -53,6 +55,7 @@ export function AgentRoleEditDialog({
       open={open}
       role={role}
       onOpenChange={onOpenChange}
+      onSaved={onSaved}
     />
   );
 }
@@ -61,10 +64,12 @@ function AgentRoleEditForm({
   role,
   open,
   onOpenChange,
+  onSaved,
 }: {
   role: AgentRoleRecord;
   open: boolean;
   onOpenChange(open: boolean): void;
+  onSaved?(role: AgentRoleRecord): void;
 }) {
   const { t } = useTranslation(["settings", "sessions"]);
   const agents = useAtomValue(agentsAtom);
@@ -174,7 +179,7 @@ function AgentRoleEditForm({
     const parsed = parseProviderModelValue(modelValue);
     setSaving(true);
     try {
-      await saveAgentRoleRecord({
+      const saved = await saveAgentRoleRecord({
         id: role.id,
         name: trimmed,
         agentId,
@@ -196,6 +201,7 @@ function AgentRoleEditForm({
         openCodeVariant: openCodeVariant || null,
       });
       toast.success(t("settings:agentRoles.saved"));
+      onSaved?.(saved);
       onOpenChange(false);
     } catch {
       setSaving(false);

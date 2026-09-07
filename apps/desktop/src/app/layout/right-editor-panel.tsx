@@ -80,6 +80,7 @@ function clampFileTreeWidth(nextWidth: number, totalWidth: number) {
 }
 
 interface RightEditorPanelProps {
+  onClose(): void;
   appearanceSettings?: AppearanceSettings;
   // In global (fullscreen) mode the panel reaches the window's left edge, so the
   // view switcher must clear the macOS traffic-light buttons.
@@ -89,6 +90,7 @@ interface RightEditorPanelProps {
 }
 
 export function RightEditorPanel({
+  onClose,
   appearanceSettings = defaultAppearanceSettings,
   onAddContextToChat,
   onInsertTextToChat,
@@ -402,7 +404,7 @@ export function RightEditorPanel({
 
         {activeView === "browser" ? (
           <div className="min-h-0 flex-1">
-            <BrowserPanel />
+            <BrowserPanel onClose={onClose} />
           </div>
         ) : null}
 

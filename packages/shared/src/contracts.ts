@@ -264,6 +264,7 @@ export interface SessionRecord {
   writeMode: WriteMode;
   collaborationMode: CollaborationModeKind;
   permissionMode?: AgentPermissionMode;
+  agentRoleId?: string | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;

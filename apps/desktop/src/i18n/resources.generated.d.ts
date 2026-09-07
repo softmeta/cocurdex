@@ -254,6 +254,7 @@ export default interface Resources {
       back: "Back";
       captureScreenshot: "Capture screenshot";
       clearAnnotations: "Clear all annotations";
+      closeTab: "Close {{title}}";
       enterDesignMode: "Enter Design Mode";
       exitDesignMode: "Exit Design Mode";
       forward: "Forward";
@@ -273,8 +274,14 @@ export default interface Resources {
       title: "Browser Preview";
     };
     states: {
+      generating: "Generating…";
       loadError: "Unable to load page";
       loading: "Loading...";
+    };
+    tabs: {
+      address: "Page address";
+      htmlPreview: "HTML preview";
+      label: "Browser tabs";
     };
     urlPlaceholder: "Enter dev server URL (e.g. http://localhost:3000)";
   };
@@ -391,6 +398,15 @@ export default interface Resources {
       grokBuild: "Grok Build";
       opencode: "OpenCode";
       pi: "Pi";
+    };
+    htmlPreview: {
+      browserLocation: "HTML previews open in the sidebar browser. Use the globe button to open this preview.";
+      code: "Code";
+      download: "Download HTML";
+      localOnly: "Embedded content only. Scripts run when generation finishes; external resources and network requests are blocked.";
+      openInBrowser: "Open in built-in browser";
+      preview: "Preview";
+      title: "HTML preview";
     };
     jumpToLatest: "Jump to latest";
     jumpToTop: "Jump to top";
@@ -1199,6 +1215,14 @@ export default interface Resources {
       hideFab: {
         description: "When chat is closed in floating or pinned layout, hide the bottom-right button. Open chat again with {{shortcut}}.";
         title: "Hide chat button when closed";
+      };
+      htmlPreview: {
+        description: "Choose where HTML is previewed as it is generated.";
+        options: {
+          browser: "Sidebar browser";
+          chat: "Chat area";
+        };
+        title: "HTML preview location";
       };
       layout: {
         description: "How chat sits relative to the editor. Restored on next launch.";

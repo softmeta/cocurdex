@@ -9,10 +9,12 @@ import type { ThinkingLevelOption } from "./thinking-level";
  * Renders nothing when the selected model offers a single level (or none).
  */
 export function ThinkingLevelSubmenu({
+  inspectOnly = false,
   level,
   options,
   onChange,
 }: {
+  inspectOnly?: boolean;
   level: AgentThinkingLevel | null;
   options: ThinkingLevelOption[];
   onChange?(level: AgentThinkingLevel): void;
@@ -25,6 +27,7 @@ export function ThinkingLevelSubmenu({
 
   return (
     <RuntimeAxisSubmenu
+      inspectOnly={inspectOnly}
       label={t("composer.thinkingLevel")}
       options={options.map((option) => ({
         isDefault: option.isDefault,

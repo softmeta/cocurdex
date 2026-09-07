@@ -12,6 +12,7 @@ import {
   compactDropdownContentClassName,
 } from "@/components";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuSeparator,
@@ -19,6 +20,10 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Text,
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
@@ -59,6 +64,7 @@ interface AgentSelectProps {
   value: AgentId;
   roles?: readonly AgentRoleSelectOption[];
   selectedRoleId?: string | null;
+  onEditRole?(roleId: string): void;
   onSelectRole?(roleId: string): void;
   onUnavailableClick?(agentId: AgentId): void;
   onValueChange(value: AgentId): void;
@@ -101,12 +107,14 @@ export function AgentSelect({
   value,
   roles,
   selectedRoleId = null,
+  onEditRole,
   onSelectRole,
   onUnavailableClick = openAdapterSettings,
   onValueChange,
 }: AgentSelectProps) {
-  const { t } = useTranslation("sessions");
+  const { t } = useTranslation(["sessions", "settings"]);
   const [open, setOpen] = useState(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
   const isDisabled = disabled || options.length === 0;
   const selectableOptions = options.filter(
     (option) => option.selectable !== false,
@@ -128,20 +136,69 @@ export function AgentSelect({
     onUnavailableClick(option.value);
   };
 
+  const selectedRole =
+    roles?.find((role) => role.id === selectedRoleId) ?? null;
+  const showRoleHover = Boolean(selectedRole) && !open;
+
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <AppDropdownTriggerButton
-          appearance={appearance}
-          aria-label={triggerAriaLabel}
-          chevronClassName={chevronClassName}
-          className={triggerClassName}
-          disabled={isDisabled}
-          showChevron={showChevron}
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) {
+          setHoverOpen(false);
+        }
+      }}
+    >
+      <HoverCard
+        open={showRoleHover && hoverOpen}
+        onOpenChange={(nextOpen) => {
+          if (showRoleHover) {
+            setHoverOpen(nextOpen);
+          }
+        }}
+      >
+        <HoverCardTrigger
+          closeDelay={200}
+          delay={400}
+          render={<span className="inline-flex min-w-0" />}
         >
-          {triggerLabel}
-        </AppDropdownTriggerButton>
-      </DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>
+            <AppDropdownTriggerButton
+              appearance={appearance}
+              aria-label={triggerAriaLabel}
+              chevronClassName={chevronClassName}
+              className={triggerClassName}
+              disabled={isDisabled}
+              showChevron={showChevron}
+            >
+              {triggerLabel}
+            </AppDropdownTriggerButton>
+          </DropdownMenuTrigger>
+        </HoverCardTrigger>
+        {selectedRole ? (
+          <HoverCardContent align="start" className="w-72 p-2.5" side="top">
+            <div className="flex min-w-0 flex-col gap-2">
+              <Text size="meta" tone="muted">
+                {selectedRole.summary}
+              </Text>
+              {onEditRole ? (
+                <Button
+                  className="h-auto self-start px-0"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setHoverOpen(false);
+                    onEditRole(selectedRole.id);
+                  }}
+                >
+                  {t("settings:agentRoles.edit")}
+                </Button>
+              ) : null}
+            </div>
+          </HoverCardContent>
+        ) : null}
+      </HoverCard>
       <AppDropdownContent
         align={align}
         className={cn(

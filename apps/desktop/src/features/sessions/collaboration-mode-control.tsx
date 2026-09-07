@@ -12,6 +12,7 @@ import { RuntimeAxisSubmenu } from "./provider-model";
 
 interface CollaborationModeSubmenuProps {
   agentType: AgentId;
+  inspectOnly?: boolean;
   mode: CollaborationModeKind;
   runtimeMode?: {
     availableModes: AgentSessionMode[];
@@ -24,6 +25,7 @@ interface CollaborationModeSubmenuProps {
 
 export function CollaborationModeSubmenu({
   agentType,
+  inspectOnly = false,
   mode,
   runtimeMode,
   runtimeModeDisabled = false,
@@ -35,6 +37,7 @@ export function CollaborationModeSubmenu({
   if (runtimeMode && runtimeMode.availableModes.length > 1) {
     return (
       <RuntimeAxisSubmenu
+        inspectOnly={inspectOnly}
         label={t("collaborationMode.label")}
         options={runtimeMode.availableModes.map((runtimeOption) => ({
           value: runtimeOption.id,
@@ -54,6 +57,7 @@ export function CollaborationModeSubmenu({
 
   return supportsPlanMode(agentType) ? (
     <RuntimeAxisSubmenu
+      inspectOnly={inspectOnly}
       label={t("collaborationMode.label")}
       options={[
         {

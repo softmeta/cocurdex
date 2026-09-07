@@ -152,6 +152,7 @@ export function AppShell() {
   });
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
+  const isAnnotationMode = useAtomValue(isAnnotationModeAtom);
   const setIsAnnotationMode = useSetAtom(isAnnotationModeAtom);
   const canShowLeftSidebar = contentWidth >= LEFT_SIDEBAR_COLLAPSE_WIDTH;
   const canSplitRightPanel = contentWidth >= RIGHT_PANEL_COLLAPSE_WIDTH;
@@ -251,11 +252,9 @@ export function AppShell() {
         });
       },
       toggleDesignMode: () => {
-        setIsAnnotationMode((prev) => {
-          const next = !prev;
-          void desktopApi.browserToggleAnnotationMode(next);
-          return next;
-        });
+        const next = !isAnnotationMode;
+        setIsAnnotationMode(next);
+        void desktopApi.browserToggleAnnotationMode(next);
       },
     },
     {

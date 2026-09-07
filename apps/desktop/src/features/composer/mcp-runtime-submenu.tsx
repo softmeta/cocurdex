@@ -102,7 +102,10 @@ export function McpRuntimeSubmenu({
         <DropdownMenuGroup>
           <DropdownMenuLabel>{t("modelMenu.mcpServers")}</DropdownMenuLabel>
           {servers.length === 0 ? (
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem
+              className="data-disabled:pointer-events-auto data-disabled:cursor-not-allowed"
+              disabled
+            >
               {t("modelMenu.mcpNoneConfigured")}
             </DropdownMenuItem>
           ) : (
@@ -113,7 +116,11 @@ export function McpRuntimeSubmenu({
                   ? server.status
                   : t(`modelMenu.mcpStatuses.${kind}`);
               return (
-                <DropdownMenuItem disabled key={server.name}>
+                <DropdownMenuItem
+                  className="data-disabled:pointer-events-auto data-disabled:cursor-not-allowed"
+                  disabled
+                  key={server.name}
+                >
                   <McpStatusIcon kind={kind} />
                   <span className="min-w-0 flex-1 truncate">{server.name}</span>
                   <span className="text-muted-foreground">{statusLabel}</span>

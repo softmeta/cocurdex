@@ -27,6 +27,15 @@
     "opencode": "OpenCode",
     "pi": "Pi"
   },
+  "htmlPreview": {
+    "browserLocation": "HTML previews open in the sidebar browser. Use the globe button to open this preview.",
+    "code": "Code",
+    "download": "Download HTML",
+    "localOnly": "Embedded content only. Scripts run when generation finishes; external resources and network requests are blocked.",
+    "openInBrowser": "Open in built-in browser",
+    "preview": "Preview",
+    "title": "HTML preview"
+  },
   "jumpToLatest": "Jump to latest",
   "jumpToTop": "Jump to top",
   "message": {

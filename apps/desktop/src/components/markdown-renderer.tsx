@@ -4,6 +4,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
 } from "react";
 import type { Components } from "streamdown";
@@ -189,6 +190,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   perfSessionId,
   filePathHandlers,
 }: MarkdownRendererProps): ReactNode {
+  const [hasStreamed, setHasStreamed] = useState(streaming);
+  if (streaming && !hasStreamed) setHasStreamed(true);
   const renderStartedAt = isPerfEnabled() ? performance.now() : 0;
   const components = useMemo<Components>(
     () =>
@@ -253,8 +256,9 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     <Streamdown
       className={cn("min-w-0 max-w-full", className)}
       components={components}
+      isAnimating={streaming}
       lineNumbers={false}
-      mode={streaming ? "streaming" : "static"}
+      mode={hasStreamed || streaming ? "streaming" : "static"}
       parseIncompleteMarkdown={streaming}
       plugins={plugins}
       shikiTheme={["github-light", "github-dark"]}

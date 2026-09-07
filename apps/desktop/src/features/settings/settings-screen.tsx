@@ -1,10 +1,8 @@
-import { useAtom } from "jotai";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout";
 import {
   type ChatLayoutMode,
-  chatLayoutModes,
   ResizableSidebarSlot,
   ScreenNavButtons,
   SidebarToggleButton,
@@ -13,43 +11,25 @@ import {
   TITLEBAR_HEIGHT,
   TITLEBAR_TRAFFIC_LIGHT_RESERVE,
 } from "@/app/layout/app-shell/app-shell-layout";
-import { ScrollArea, Switch } from "@/components/ui";
-import {
-  type ActivityDisplayMode,
-  activityDisplayModes,
-  chatDisplaySettingsAtom,
-  followUpBehaviorAtom,
-  followUpBehaviors,
-  isFollowUpBehavior,
-} from "@/features/agent";
+import { ScrollArea } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
-import {
-  isSendShortcut,
-  sendShortcutAtom,
-  sendShortcuts,
-} from "@/features/composer";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
-import {
-  ShortcutsSettingsPanel,
-  useResolvedShortcutLabel,
-} from "@/features/shortcuts";
+import { ShortcutsSettingsPanel } from "@/features/shortcuts";
 import type { LanguageMode } from "@/i18n/language";
-import { cn, formatShortcutLabel } from "@/lib";
+import { cn } from "@/lib";
 import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
 import { ArchivedSessionsPanel } from "./archived-sessions";
-import { CliPathSettingsPanel } from "./cli-path-settings";
-import { DaemonSettingsPanel } from "./daemon-settings";
 import { EditorSettingsPanel } from "./editor-settings";
+import { GeneralPanel } from "./general-settings";
 import { GitSettingsPanel } from "./git-settings";
-import { LanguagePicker } from "./language-picker";
 import { McpSettingsPanel } from "./mcp";
 import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
 import { OssLicensesSettingsPanel } from "./oss-licenses";
 import { ProviderSettingsPanel } from "./providers";
+import { SettingRow, SettingsGroup } from "./settings-fields";
 import { settingsSections } from "./settings-sections";
-import { SettingsSelect } from "./settings-select";
 import { SettingsSidebar } from "./settings-sidebar";
 import { SkillsSettingsPanel } from "./skills-settings";
 import type { AppearanceSettings, ThemeMode } from "./theme";
@@ -77,245 +57,6 @@ interface SettingsScreenProps {
   onThemeModeChange(themeMode: ThemeMode): void;
   onToggleSidebar(): void;
   themeMode: ThemeMode;
-}
-
-function SettingsGroup({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title?: string;
-}) {
-  return (
-    <div className="flex flex-col">
-      {title ? (
-        <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
-          {title}
-        </div>
-      ) : null}
-      <div className="rounded-card border border-border/70 bg-card/45 px-4">
-        <div className="flex flex-col divide-y divide-border/60">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SettingRow({
-  children,
-  description,
-  title,
-}: {
-  children?: ReactNode;
-  description?: string;
-  title: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-6 py-3.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-body font-medium text-foreground">{title}</div>
-        {description ? (
-          <div className="mt-0.5 text-body text-muted-foreground">
-            {description}
-          </div>
-        ) : null}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-function GeneralPanel({
-  chatLayoutMode,
-  hideFabWhenClosed,
-  languageMode,
-  notificationSettings,
-  onChatLayoutModeChange,
-  onHideFabWhenClosedChange,
-  onLanguageModeChange,
-  onNotificationSettingsChange,
-}: {
-  chatLayoutMode: ChatLayoutMode;
-  hideFabWhenClosed: boolean;
-  languageMode: LanguageMode;
-  notificationSettings: NotificationSettings;
-  onChatLayoutModeChange(mode: ChatLayoutMode): void;
-  onHideFabWhenClosedChange(hide: boolean): void;
-  onLanguageModeChange(languageMode: LanguageMode): void;
-  onNotificationSettingsChange(settings: NotificationSettings): void;
-}) {
-  const { t } = useTranslation("settings");
-  const [chatDisplay, setChatDisplay] = useAtom(chatDisplaySettingsAtom);
-  const [followUpBehavior, setFollowUpBehavior] = useAtom(followUpBehaviorAtom);
-  const [sendShortcut, setSendShortcut] = useAtom(sendShortcutAtom);
-  const activityOptions = activityDisplayModes.map((value) => ({
-    label: t(`chatDisplay.activity.options.${value}`),
-    value,
-  }));
-  const layoutOptions = chatLayoutModes.map((value) => ({
-    label: t(`chatDisplay.layout.options.${value}`),
-    value,
-  }));
-  const followUpOptions = followUpBehaviors.map((value) => ({
-    label: t(`followUp.options.${value}`),
-    value,
-  }));
-  const primaryEnterShortcut = formatShortcutLabel({
-    key: "Enter",
-    primary: true,
-  });
-  const oppositeFollowUpShortcut = formatShortcutLabel({
-    key: "Enter",
-    primary: true,
-    shift: sendShortcut !== "enter",
-  });
-  const sendShortcutOptions = sendShortcuts.map((value) => ({
-    label: t(`sendShortcut.options.${value}`, {
-      shortcut: primaryEnterShortcut,
-    }),
-    value,
-  }));
-  const toggleChatShortcut = useResolvedShortcutLabel("toggleChatDock");
-
-  return (
-    <div className="settings-panel-enter flex flex-col gap-8">
-      <SettingsGroup title={t("chatDisplay.groupTitle")}>
-        <SettingRow
-          description={t("chatDisplay.layout.description")}
-          title={t("chatDisplay.layout.title")}
-        >
-          <SettingsSelect
-            ariaLabel={t("chatDisplay.layout.title")}
-            compact
-            options={layoutOptions}
-            value={chatLayoutMode}
-            onChange={(value) => {
-              if (
-                value === "center" ||
-                value === "float" ||
-                value === "pinned"
-              ) {
-                onChatLayoutModeChange(value);
-              }
-            }}
-          />
-        </SettingRow>
-        <SettingRow
-          description={t("chatDisplay.hideFab.description", {
-            shortcut: toggleChatShortcut || t("shortcuts.unbound"),
-          })}
-          title={t("chatDisplay.hideFab.title")}
-        >
-          <Switch
-            checked={hideFabWhenClosed}
-            onCheckedChange={onHideFabWhenClosedChange}
-          />
-        </SettingRow>
-        <SettingRow
-          description={t("chatDisplay.activity.description")}
-          title={t("chatDisplay.activity.title")}
-        >
-          <SettingsSelect
-            ariaLabel={t("chatDisplay.activity.title")}
-            compact
-            options={activityOptions}
-            value={chatDisplay.activityDisplay}
-            onChange={(value) =>
-              setChatDisplay({
-                ...chatDisplay,
-                activityDisplay: value as ActivityDisplayMode,
-              })
-            }
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup title={t("followUp.groupTitle")}>
-        <SettingRow
-          description={t("sendShortcut.description")}
-          title={t("sendShortcut.title")}
-        >
-          <SettingsSelect
-            ariaLabel={t("sendShortcut.title")}
-            compact
-            options={sendShortcutOptions}
-            value={sendShortcut}
-            onChange={(value) => {
-              if (isSendShortcut(value)) setSendShortcut(value);
-            }}
-          />
-        </SettingRow>
-        <SettingRow
-          description={t("followUp.description", {
-            shortcut: oppositeFollowUpShortcut,
-          })}
-          title={t("followUp.title")}
-        >
-          <SettingsSelect
-            ariaLabel={t("followUp.title")}
-            compact
-            options={followUpOptions}
-            value={followUpBehavior}
-            onChange={(value) => {
-              if (isFollowUpBehavior(value)) setFollowUpBehavior(value);
-            }}
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup title={t("language.groupTitle")}>
-        <SettingRow
-          description={t("language.description")}
-          title={t("language.title")}
-        >
-          <LanguagePicker
-            value={languageMode}
-            onChange={onLanguageModeChange}
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup title={t("notifications.groupTitle")}>
-        <SettingRow
-          description={t("notifications.systemNotifications.description")}
-          title={t("notifications.systemNotifications.title")}
-        >
-          <Switch
-            checked={notificationSettings.systemNotifications}
-            onCheckedChange={(systemNotifications) =>
-              onNotificationSettingsChange({
-                ...notificationSettings,
-                systemNotifications,
-              })
-            }
-          />
-        </SettingRow>
-        <SettingRow
-          description={t("notifications.completionSound.description")}
-          title={t("notifications.completionSound.title")}
-        >
-          <Switch
-            checked={notificationSettings.completionSound}
-            onCheckedChange={(completionSound) =>
-              onNotificationSettingsChange({
-                ...notificationSettings,
-                completionSound,
-              })
-            }
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup title={t("cli.groupTitle")}>
-        <CliPathSettingsPanel />
-      </SettingsGroup>
-
-      <SettingsGroup title={t("daemon.groupTitle")}>
-        <DaemonSettingsPanel />
-      </SettingsGroup>
-    </div>
-  );
 }
 
 function SectionPanel({

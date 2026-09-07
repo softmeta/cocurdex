@@ -5,7 +5,7 @@ import { atom } from "jotai";
 // Lives in a leaf module so editor-store and pdf-reader-store can write without
 // importing the full right-panel store (avoids cycles with openPdfsAtom).
 
-export type RightPanelRevealView = "editor" | "pdf";
+export type RightPanelRevealView = "editor" | "pdf" | "browser";
 
 export interface RightPanelRevealIntent {
   view: RightPanelRevealView;

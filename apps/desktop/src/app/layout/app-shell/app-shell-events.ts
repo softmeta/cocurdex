@@ -1,6 +1,6 @@
-import type { BrowserAnnotation } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { useEffect, useEffectEvent } from "react";
+import { toast } from "sonner";
 import {
   applyAgentEventAtom,
   applyAgentRuntimeEventAtom,
@@ -11,19 +11,13 @@ import {
   applyQueuedInputEventAtom,
   applyToolEventAtom,
 } from "@/features/agent";
-import {
-  addAnnotationAtom,
-  browserErrorAtom,
-  browserTitleAtom,
-  browserUrlAtom,
-  browserUrlInputAtom,
-  isBrowserLoadingAtom,
-} from "@/features/browser";
+import { addAnnotationAtom, receiveBrowserTabsAtom } from "@/features/browser";
 import {
   applyContextBreakdownEventAtom,
   applyRateLimitsEventAtom,
   applyUsageEventAtom,
 } from "@/features/composer";
+import { editorPanelOpenAtom } from "@/features/editor";
 import {
   markSessionMessageAtom,
   projectSubagentSessionFromToolCallAtom,
@@ -32,7 +26,8 @@ import {
   upsertSessionAtom,
 } from "@/features/sessions";
 import { applyTurnChangesEventAtom } from "@/features/turn-workspace-changes";
-import { desktopApi } from "@/lib";
+import { desktopApi, onOpenHtmlPreview, useMountEffect } from "@/lib";
+import { bumpRightPanelRevealAtom } from "../right-panel-reveal";
 
 export function useAgentEventBridge() {
   const applyAgentEvent = useSetAtom(applyAgentEventAtom);
@@ -137,55 +132,50 @@ export function useAgentEventBridge() {
 }
 
 export function useBrowserEventBridge() {
+  const setEditorPanelOpen = useSetAtom(editorPanelOpenAtom);
+  const revealPanel = useSetAtom(bumpRightPanelRevealAtom);
+  const receiveTabs = useSetAtom(receiveBrowserTabsAtom);
   const addAnnotation = useSetAtom(addAnnotationAtom);
-  const setBrowserError = useSetAtom(browserErrorAtom);
-  const setBrowserTitle = useSetAtom(browserTitleAtom);
-  const setBrowserUrl = useSetAtom(browserUrlAtom);
-  const setBrowserUrlInput = useSetAtom(browserUrlInputAtom);
-  const setIsBrowserLoading = useSetAtom(isBrowserLoadingAtom);
-
-  useEffect(() => {
-    const unsubAnnotation = desktopApi.onBrowserAnnotation(
-      (annotation: BrowserAnnotation) => {
-        addAnnotation(annotation);
-      },
+  const open = useEffectEvent(
+    (
+      html: string,
+      resolve: (url: string | null) => void,
+      sourceId: string,
+      streaming: boolean,
+    ) => {
+      setEditorPanelOpen(true);
+      revealPanel("browser");
+      void desktopApi
+        .browserOpenHtml(html, sourceId, streaming)
+        .then(resolve)
+        .catch((error: unknown) => {
+          toast.error(error instanceof Error ? error.message : String(error));
+          resolve(null);
+        });
+    },
+  );
+  useMountEffect(() => {
+    let received = false;
+    let disposed = false;
+    const unsubscribeTabs = desktopApi.onBrowserTabs((snapshot) => {
+      received = true;
+      receiveTabs(snapshot);
+    });
+    void desktopApi.browserListTabs().then((snapshot) => {
+      if (!received && !disposed) receiveTabs(snapshot);
+    });
+    const unsubscribeHtml = onOpenHtmlPreview(
+      (html, resolve, sourceId, streaming) =>
+        open(html, resolve, sourceId, streaming),
     );
-
-    const unsubLoading = desktopApi.onBrowserLoading((loading: boolean) => {
-      setIsBrowserLoading(loading);
-    });
-
-    const unsubTitle = desktopApi.onBrowserTitle((title: string) => {
-      setBrowserTitle(title);
-    });
-
-    // Keep the URL bar in sync with in-page link clicks and redirects; a
-    // successful navigation also recovers from a previous load error.
-    const unsubNavigated = desktopApi.onBrowserNavigated((url: string) => {
-      setBrowserUrl(url);
-      setBrowserUrlInput(url);
-      setBrowserError(null);
-    });
-
-    const unsubError = desktopApi.onBrowserError(
-      (error: { url: string; message: string }) => {
-        setBrowserError(error.message);
-      },
+    const unsubscribeAnnotation = desktopApi.onBrowserAnnotation(
+      ({ tabId, annotation }) => addAnnotation(annotation, tabId),
     );
-
     return () => {
-      unsubAnnotation();
-      unsubLoading();
-      unsubTitle();
-      unsubNavigated();
-      unsubError();
+      disposed = true;
+      unsubscribeTabs();
+      unsubscribeHtml();
+      unsubscribeAnnotation();
     };
-  }, [
-    addAnnotation,
-    setIsBrowserLoading,
-    setBrowserTitle,
-    setBrowserUrl,
-    setBrowserUrlInput,
-    setBrowserError,
-  ]);
+  });
 }

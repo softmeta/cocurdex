@@ -38,6 +38,17 @@ describe("formatAgentRoleSummary", () => {
       }),
     ).toBe("Codex · 只读");
   });
+
+  it("can format a runtime-only line", () => {
+    expect(
+      formatAgentRoleSummary({
+        agentLabel: "",
+        modelLabel: null,
+        thinkingLabel: "中",
+        permissionLabel: "自动判断",
+      }),
+    ).toBe("中 · 自动判断");
+  });
 });
 
 describe("resolveAgentRoleThinkingLevel", () => {
