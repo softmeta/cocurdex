@@ -57,10 +57,16 @@ jobs:
             --draft
 
   macos:
-    name: macOS arm64 and x64
+    name: macOS ${{ matrix.arch }}
     needs: prepare
     runs-on: macos-latest
-    timeout-minutes: 360
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - arm64
+          - x64
     env:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -146,7 +152,7 @@ jobs:
           security unlock-keychain -p "${MAC_SIGNING_KEYCHAIN_PASSWORD}" "${CSC_KEYCHAIN}"
           unset CSC_LINK CSC_KEY_PASSWORD
           pnpm --filter @cocurdex/desktop \
-            ${{ github.ref_type == 'tag' && 'dist:mac:ci:release' || 'dist:mac:ci' }}
+            ${{ github.ref_type == 'tag' && format('dist:mac:{0}:release', matrix.arch) || format('dist:mac:{0}', matrix.arch) }}
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: --max-old-space-size=6144
@@ -156,6 +162,8 @@ jobs:
 
       - name: Verify signature and notarization
         working-directory: apps/desktop
+        env:
+          MAC_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           verify_mac() {
@@ -169,27 +177,28 @@ jobs:
             hdiutil verify "${dmg_path}"
             node ./scripts/write-artifact-sha256.mjs "${dmg_path}"
           }
-          verify_mac release/mac-arm64/Cocurdex.app release/Cocurdex-mac-arm64.dmg
-          x64_app=""
-          if test -d release/mac-x64/Cocurdex.app; then
-            x64_app=release/mac-x64/Cocurdex.app
+          dmg_path="release/Cocurdex-mac-${MAC_ARCH}.dmg"
+          if test "${MAC_ARCH}" = "arm64"; then
+            app_path="release/mac-arm64/Cocurdex.app"
+          elif test -d release/mac-x64/Cocurdex.app; then
+            app_path="release/mac-x64/Cocurdex.app"
           elif test -d release/mac/Cocurdex.app; then
-            x64_app=release/mac/Cocurdex.app
+            app_path="release/mac/Cocurdex.app"
           else
             echo "Missing Intel Cocurdex.app under release/mac-x64 or release/mac" >&2
             exit 1
           fi
-          verify_mac "${x64_app}" release/Cocurdex-mac-x64.dmg
+          verify_mac "${app_path}" "${dmg_path}"
 
       - name: Attach checksum
         if: github.ref_type == 'tag'
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ github.token }}
+          MAC_ARCH: ${{ matrix.arch }}
         run: |
           gh release upload "${GITHUB_REF_NAME}" \
-            "release/Cocurdex-mac-arm64.dmg.sha256" \
-            "release/Cocurdex-mac-x64.dmg.sha256" \
+            "release/Cocurdex-mac-${MAC_ARCH}.dmg.sha256" \
             --repo "${GITHUB_REPOSITORY}" \
             --clobber
 
