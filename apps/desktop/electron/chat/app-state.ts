@@ -263,7 +263,6 @@ export function deleteProviderSecret(secretId: string): Promise<void> {
 }
 
 const TITLE_MODEL_SETTING_KEY = "titleModel";
-const COMMIT_MESSAGE_MODEL_SETTING_KEY = "commitMessageModel";
 
 export async function getTitleModelSetting(): Promise<TitleModelSelection | null> {
   const raw = await callStorage<string | null>(
@@ -297,59 +296,17 @@ export function setTitleModelSetting(
   );
 }
 
-export async function getCommitMessageModelSetting(): Promise<CommitMessageModelSelection | null> {
-  const raw = await callStorage<string | null>(
-    "appSetting.get",
-    COMMIT_MESSAGE_MODEL_SETTING_KEY,
-  );
-  if (!raw) {
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(raw) as Partial<CommitMessageModelSelection>;
-    if (
-      typeof parsed.agentId === "string" &&
-      typeof parsed.providerId === "string" &&
-      typeof parsed.modelId === "string"
-    ) {
-      return {
-        agentId: parsed.agentId as CommitMessageModelSelection["agentId"],
-        providerId: parsed.providerId,
-        modelId: parsed.modelId,
-        reasoningEffort:
-          typeof parsed.reasoningEffort === "string"
-            ? parsed.reasoningEffort
-            : null,
-        thinkingLevel:
-          typeof parsed.thinkingLevel === "string"
-            ? parsed.thinkingLevel
-            : null,
-        serviceTier:
-          typeof parsed.serviceTier === "string" ? parsed.serviceTier : null,
-        fastMode: typeof parsed.fastMode === "boolean" ? parsed.fastMode : null,
-        openCodeAgent:
-          typeof parsed.openCodeAgent === "string"
-            ? parsed.openCodeAgent
-            : null,
-        openCodeVariant:
-          typeof parsed.openCodeVariant === "string"
-            ? parsed.openCodeVariant
-            : null,
-      };
-    }
-  } catch {
-    return null;
-  }
-  return null;
+export function getCommitMessageModelSetting(): Promise<CommitMessageModelSelection | null> {
+  return requestDaemon("git.commitMessageModel.get", daemonOptions());
 }
 
-export function setCommitMessageModelSetting(
+export async function setCommitMessageModelSetting(
   selection: CommitMessageModelSelection | null,
 ): Promise<void> {
-  return callStorage(
-    "appSetting.set",
-    COMMIT_MESSAGE_MODEL_SETTING_KEY,
-    JSON.stringify(selection),
+  await requestDaemon(
+    "git.commitMessageModel.set",
+    { selection },
+    daemonOptions(),
   );
 }
 

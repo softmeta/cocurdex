@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 import { loader } from "@monaco-editor/react";
-import type { Highlighter } from "shiki";
+import type { BundledLanguage, Highlighter } from "shiki";
+import { configureMonacoHighlighter } from "./monaco-language-loader";
 import {
   EDITOR_SHIKI_THEMES,
   setTextmateThemeToMonacoTheme,
@@ -16,6 +17,8 @@ type MonacoEnvironmentShape = {
 
 let monacoLoaderSetupPromise: Promise<void> | null = null;
 let editorHighlighter: Highlighter | null = null;
+let loadEditorLanguage: ReturnType<typeof configureMonacoHighlighter> | null =
+  null;
 
 export { isTestEnvironment };
 
@@ -42,6 +45,13 @@ export function ensureMonacoLoaderConfigured() {
   });
 
   return monacoLoaderSetupPromise;
+}
+
+export async function ensureMonacoLanguageConfigured(
+  language: BundledLanguage | "plaintext",
+) {
+  await ensureMonacoLoaderConfigured();
+  await loadEditorLanguage?.(language);
 }
 
 async function setupMonaco() {
@@ -99,7 +109,7 @@ async function setupMonaco() {
   // less accurate for embedded languages.
   const highlighter = await createHighlighter({
     themes: [EDITOR_SHIKI_THEMES.dark, EDITOR_SHIKI_THEMES.light],
-    langs: EDITOR_SHIKI_LANGUAGES,
+    langs: [],
   });
 
   // Only registered language ids receive a Shiki tokens provider.
@@ -107,8 +117,13 @@ async function setupMonaco() {
     monaco.languages.register({ id: language });
   }
 
-  shikiToMonaco(highlighter, monaco);
   editorHighlighter = highlighter;
+  loadEditorLanguage = configureMonacoHighlighter(
+    highlighter,
+    monaco,
+    EDITOR_SHIKI_LANGUAGES,
+    shikiToMonaco,
+  );
 
   loader.config({ monaco });
 }

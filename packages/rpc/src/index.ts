@@ -11,6 +11,7 @@ import type {
   AgentSlashCommand,
   AppBootstrapData,
   CocurdexDaemonEvent,
+  CommitMessageModelSelection,
   CompatibleProviderModel,
   ConversationMessageRecord,
   ConversationRecord,
@@ -27,6 +28,7 @@ import type {
   DeleteNotePayload,
   DeleteViewPayload,
   EditConversationMessagePayload,
+  GenerateGitCommitMessagePayload,
   GetIssuePayload,
   GetNotePayload,
   GitWorktreeInfo,
@@ -45,6 +47,7 @@ import type {
   NoteTag,
   ProviderConfigRecord,
   ProviderListModelsResult,
+  ResolvedCommitMessageModel,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
@@ -79,7 +82,7 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 16;
+export const DAEMON_PROTOCOL_VERSION = 17;
 
 export interface DaemonMetadata {
   pid: number;
@@ -238,6 +241,12 @@ export type DaemonRequestPayloadByMethod = {
     decision: AgentPlanApprovalDecision;
   };
   "provider.listConfigs": undefined;
+  "git.commitMessageModel.get": undefined;
+  "git.commitMessageModel.set": {
+    selection: CommitMessageModelSelection | null;
+  };
+  "git.commitMessageModel.resolve": undefined;
+  "git.generateCommitMessage": GenerateGitCommitMessagePayload;
   "provider.listModels": { providerId?: string };
   "provider.listCompatibleForAgent": { agentId: AgentId };
   "provider.listDefaults": undefined;
@@ -333,6 +342,10 @@ export type DaemonResultByMethod = {
   "question.resolve": boolean;
   "planApproval.resolve": boolean;
   "provider.listConfigs": ProviderConfigRecord[];
+  "git.commitMessageModel.get": CommitMessageModelSelection | null;
+  "git.commitMessageModel.set": null;
+  "git.commitMessageModel.resolve": ResolvedCommitMessageModel;
+  "git.generateCommitMessage": string;
   "provider.listModels": ProviderListModelsResult;
   "provider.listCompatibleForAgent": CompatibleProviderModel[];
   "provider.listDefaults": AgentProviderSelection[];
@@ -366,6 +379,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "network.proxy.test": true,
   "note.list": true,
   "provider.listConfigs": true,
+  "git.commitMessageModel.get": true,
+  "git.commitMessageModel.resolve": true,
   "provider.listDefaults": true,
   "agentRole.list": true,
   "session.list": true,

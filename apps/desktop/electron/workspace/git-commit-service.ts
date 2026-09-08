@@ -1,9 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { generateCommitMessageFromConfiguredModel } from "../provider/commit-message-generation";
 import { createGitClient } from "./git-client";
-import { parseNameStatusZero } from "./git-name-status";
 
 export interface CommitGitChangesOptions {
   // Empty / whitespace-only → one-shot model generation from staged name-status
@@ -27,62 +23,11 @@ export interface PushGitBranchResult {
   remote: string;
 }
 
-async function generateMessageFromIndex(
-  rootPath: string,
-  git: ReturnType<typeof createGitClient>,
-) {
-  const nameStatus = await git.raw(["diff", "--cached", "--name-status", "-z"]);
-  const changes = parseNameStatusZero(nameStatus);
-  if (changes.length === 0) {
-    throw new Error("Nothing to commit");
-  }
-  const stagedDiff = await git.raw([
-    "diff",
-    "--cached",
-    "--no-color",
-    "--no-ext-diff",
-    "--unified=3",
-  ]);
-  return generateCommitMessageFromConfiguredModel(
-    rootPath,
-    changes,
-    stagedDiff,
-  );
-}
-
-async function generateMessageForAllChanges(rootPath: string) {
-  const git = createGitClient(rootPath);
-  const originalIndexTree = (await git.raw(["write-tree"])).trim();
-  const temporaryDirectory = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-git-index-"),
-  );
-  const temporaryIndexPath = path.join(temporaryDirectory, "index");
-  const temporaryGit = createGitClient(rootPath).env(
-    "GIT_INDEX_FILE",
-    temporaryIndexPath,
-  );
-
-  try {
-    await temporaryGit.raw(["read-tree", originalIndexTree]);
-    await temporaryGit.raw(["add", "-A"]);
-    return await generateMessageFromIndex(rootPath, temporaryGit);
-  } finally {
-    await rm(temporaryDirectory, { force: true, recursive: true });
-  }
-}
-
-// One-shot Conventional Commits draft for the renderer to fill the message
-// field. Does not stage or commit; when includeUnstaged is true, builds a
-// temporary index so the model sees the full worktree without mutating HEAD.
 export async function generateGitCommitMessage(
   rootPath: string,
   options: { includeUnstaged: boolean },
 ): Promise<string> {
-  if (options.includeUnstaged) {
-    return generateMessageForAllChanges(rootPath);
-  }
-  const git = createGitClient(rootPath);
-  return generateMessageFromIndex(rootPath, git);
+  return generateCommitMessageFromConfiguredModel(rootPath, options);
 }
 
 // Commit staged changes (optionally after staging the whole worktree). When

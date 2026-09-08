@@ -30,7 +30,6 @@ import {
   followUpBehaviorAtom,
   getActiveCollaborationMode,
   getAgentInputDelivery,
-  messagesBySessionAtom,
   messagesLoadedBySessionAtom,
   permissionsBySessionAtom,
   planApprovalsBySessionAtom,
@@ -45,6 +44,7 @@ import {
   toolCallsBySessionAtom,
   toolCallsLoadedBySessionAtom,
   updateQueuedInputAtom,
+  useSessionMessages,
 } from "@/features/agent";
 import { annotationsAtom } from "@/features/browser";
 import {
@@ -221,7 +221,6 @@ export function CenterPanel({
     conversations.find((c) => c.id === activeConversationId) ?? null;
   const agents = useAtomValue(agentsAtom);
   const lastSelectedAgent = useAtomValue(lastSelectedAgentAtom);
-  const messagesBySession = useAtomValue(messagesBySessionAtom);
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const planApprovalsBySession = useAtomValue(planApprovalsBySessionAtom);
@@ -291,11 +290,13 @@ export function CenterPanel({
   const activeQueuedMessageIds = new Set(
     activeQueuedInputs.map((input) => input.messageId),
   );
-  const activeMessages = activeSession
-    ? (messagesBySession[activeSession.id] ?? []).filter(
-        (message) => !activeQueuedMessageIds.has(message.id),
-      )
-    : [];
+  const sessionMessages = useSessionMessages(activeSession?.id ?? null);
+  let activeMessages = sessionMessages;
+  if (activeQueuedMessageIds.size > 0) {
+    activeMessages = sessionMessages.filter(
+      (message) => !activeQueuedMessageIds.has(message.id),
+    );
+  }
   const activeToolCalls = activeSession
     ? (toolCallsBySession[activeSession.id] ?? [])
     : [];

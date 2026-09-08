@@ -16,9 +16,9 @@ import {
 import {
   loadSessionMessagesAtom,
   loadTurnStatsAtom,
-  messagesBySessionAtom,
   messagesLoadedBySessionAtom,
 } from "../view/message-store";
+import { useSessionMessages } from "../view/use-session-messages";
 import {
   loadSessionToolCallsAtom,
   toolCallsBySessionAtom,
@@ -45,7 +45,7 @@ export function ReadonlySubagentSession({
 
 function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation("agent");
-  const messagesBySession = useAtomValue(messagesBySessionAtom);
+  const messages = useSessionMessages(sessionId);
   const toolCallsBySession = useAtomValue(toolCallsBySessionAtom);
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
   const toolCallsLoadedBySession = useAtomValue(toolCallsLoadedBySessionAtom);
@@ -66,7 +66,7 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
     void Promise.all([
       messagesLoaded
         ? Promise.resolve({
-            messages: messagesBySession[sessionId] ?? [],
+            messages,
             turnStats: {},
             turnChangeSets: {},
           })
@@ -103,12 +103,9 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
 
   const conversationGroups = useMemo(() => {
     return createConversationGroups(
-      createTimelineGroups(
-        messagesBySession[sessionId] ?? [],
-        toolCallsBySession[sessionId] ?? [],
-      ),
+      createTimelineGroups(messages, toolCallsBySession[sessionId] ?? []),
     );
-  }, [messagesBySession, sessionId, toolCallsBySession]);
+  }, [messages, sessionId, toolCallsBySession]);
 
   if (!messagesLoaded || !toolCallsLoaded) {
     return (

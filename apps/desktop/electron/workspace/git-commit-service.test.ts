@@ -12,11 +12,7 @@ vi.mock("../provider/commit-message-generation", () => ({
   generateCommitMessageFromConfiguredModel: generateCommitMessageMock,
 }));
 
-import {
-  commitGitChanges,
-  generateGitCommitMessage,
-  pushGitBranch,
-} from "./git-commit-service";
+import { commitGitChanges, pushGitBranch } from "./git-commit-service";
 
 const temporaryDirectories: string[] = [];
 
@@ -182,53 +178,6 @@ describe("commitGitChanges", () => {
         includeUnstaged: false,
       }),
     ).rejects.toThrow();
-  });
-
-  it("rejects blank message when there is nothing staged to generate from", async () => {
-    const repositoryPath = await createRepositoryFixture();
-
-    await expect(
-      commitGitChanges(repositoryPath, {
-        message: "",
-        includeUnstaged: false,
-      }),
-    ).rejects.toThrow(/nothing to commit/i);
-  });
-});
-
-describe("generateGitCommitMessage", () => {
-  it("returns a draft without committing", async () => {
-    const repositoryPath = await createRepositoryFixture();
-    const git = simpleGit(repositoryPath);
-    const generatedMessage = "feat: draft only";
-    await writeFile(path.join(repositoryPath, "feature.ts"), "export {}\n");
-    await git.add("feature.ts");
-    generateCommitMessageMock.mockResolvedValue(generatedMessage);
-
-    const message = await generateGitCommitMessage(repositoryPath, {
-      includeUnstaged: false,
-    });
-
-    expect(message).toBe(generatedMessage);
-    const log = await git.raw(["log", "--oneline"]);
-    expect(log).not.toContain("feat: draft only");
-  });
-
-  it("does not stage unstaged files when includeUnstaged is true", async () => {
-    const repositoryPath = await createRepositoryFixture();
-    const git = simpleGit(repositoryPath);
-    await writeFile(path.join(repositoryPath, "staged.txt"), "staged\n");
-    await writeFile(path.join(repositoryPath, "unstaged.txt"), "unstaged\n");
-    await git.add("staged.txt");
-    generateCommitMessageMock.mockResolvedValue("chore: all changes");
-
-    await generateGitCommitMessage(repositoryPath, {
-      includeUnstaged: true,
-    });
-
-    const stagedPaths = await git.diff(["--cached", "--name-only"]);
-    expect(stagedPaths).toContain("staged.txt");
-    expect(stagedPaths).not.toContain("unstaged.txt");
   });
 });
 

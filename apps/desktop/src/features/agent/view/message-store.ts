@@ -5,6 +5,7 @@ import type {
 } from "@cocurdex/shared";
 import type { Getter, Setter } from "jotai";
 import { atom } from "jotai";
+import { findMessageById, upsertMessages } from "./message-collection";
 
 type MessagesBySession = Record<string, MessageRecord[]>;
 type LoadedBySession = Record<string, boolean>;
@@ -19,30 +20,23 @@ export const messagesLoadedBySessionAtom = atom<LoadedBySession>({});
 export const turnStatsByMessageAtom = atom<TurnStatsByMessage>({});
 
 const DELTA_FLUSH_DELAY_MS = 16;
-const pendingDeltas = new Map<string, PendingDelta>();
-let deltaFlushTimer: ReturnType<typeof setTimeout> | null = null;
+const EMPTY_MESSAGES: MessageRecord[] = [];
+const deltaBufferAtom = atom(() => ({
+  pendingDeltas: new Map<string, PendingDelta>(),
+  timer: null as ReturnType<typeof setTimeout> | null,
+}));
+
+export function createSessionMessagesAtom(sessionId: string | null) {
+  return atom((get) => {
+    if (!sessionId) {
+      return EMPTY_MESSAGES;
+    }
+    return get(messagesBySessionAtom)[sessionId] ?? EMPTY_MESSAGES;
+  });
+}
 
 function getDeltaKey(event: MessageDeltaEvent) {
   return `${event.sessionId}:${event.messageId}`;
-}
-
-function upsertMessage(
-  messages: MessageRecord[],
-  nextMessage: MessageRecord,
-): MessageRecord[] {
-  const existingIndex = messages.findIndex(
-    (message) => message.id === nextMessage.id,
-  );
-
-  if (existingIndex === -1) {
-    return [...messages, nextMessage];
-  }
-
-  return messages.map((message, index) =>
-    index === existingIndex
-      ? { ...nextMessage, createdAt: message.createdAt }
-      : message,
-  );
 }
 
 export const appendMessageAtom = atom(
@@ -53,7 +47,7 @@ export const appendMessageAtom = atom(
 
     set(messagesBySessionAtom, {
       ...current,
-      [message.sessionId]: upsertMessage(sessionMessages, message),
+      [message.sessionId]: upsertMessages(sessionMessages, [message]),
     });
     set(messagesLoadedBySessionAtom, {
       ...get(messagesLoadedBySessionAtom),
@@ -97,15 +91,24 @@ export const loadTurnStatsAtom = atom(
 
 export const bootstrapMessagesAtom = atom(
   null,
-  (_get, set, messages: MessageRecord[]) => {
+  (get, set, messages: MessageRecord[]) => {
+    const buffer = get(deltaBufferAtom);
+    if (buffer.timer) {
+      clearTimeout(buffer.timer);
+      buffer.timer = null;
+    }
+    buffer.pendingDeltas.clear();
     const nextMessagesBySession: MessagesBySession = {};
 
     for (const message of messages) {
       const sessionMessages = nextMessagesBySession[message.sessionId] ?? [];
-      nextMessagesBySession[message.sessionId] = upsertMessage(
-        sessionMessages,
-        message,
-      );
+      nextMessagesBySession[message.sessionId] = sessionMessages;
+      sessionMessages.push(message);
+    }
+    for (const [sessionId, sessionMessages] of Object.entries(
+      nextMessagesBySession,
+    )) {
+      nextMessagesBySession[sessionId] = upsertMessages([], sessionMessages);
     }
 
     set(messagesBySessionAtom, nextMessagesBySession);
@@ -125,11 +128,10 @@ export const loadSessionMessagesAtom = atom(
   null,
   (get, set, payload: { messages: MessageRecord[]; sessionId: string }) => {
     const current = get(messagesBySessionAtom);
-    let nextSessionMessages = payload.messages;
-
-    for (const existingMessage of current[payload.sessionId] ?? []) {
-      nextSessionMessages = upsertMessage(nextSessionMessages, existingMessage);
-    }
+    let nextSessionMessages = upsertMessages(
+      payload.messages,
+      current[payload.sessionId] ?? [],
+    );
 
     nextSessionMessages = [...nextSessionMessages].sort((left, right) =>
       left.createdAt.localeCompare(right.createdAt),
@@ -146,13 +148,11 @@ export const loadSessionMessagesAtom = atom(
   },
 );
 
-function applyDeltaToMessages(
+function createDeltaMessage(
   messages: MessageRecord[],
   event: PendingDelta,
-): MessageRecord[] {
-  const existingMessage = messages.find(
-    (message) => message.id === event.messageId,
-  );
+): MessageRecord {
+  const existingMessage = findMessageById(messages, event.messageId);
 
   const nextMessage: MessageRecord = existingMessage
     ? {
@@ -170,13 +170,15 @@ function applyDeltaToMessages(
         createdAt: event.createdAt,
       };
 
-  return upsertMessage(messages, nextMessage);
+  return nextMessage;
 }
 
 function flushPendingDeltas(get: Getter, set: Setter) {
-  if (deltaFlushTimer) {
-    clearTimeout(deltaFlushTimer);
-    deltaFlushTimer = null;
+  const buffer = get(deltaBufferAtom);
+  const { pendingDeltas } = buffer;
+  if (buffer.timer) {
+    clearTimeout(buffer.timer);
+    buffer.timer = null;
   }
 
   if (pendingDeltas.size === 0) {
@@ -185,12 +187,19 @@ function flushPendingDeltas(get: Getter, set: Setter) {
 
   const current = get(messagesBySessionAtom);
   const nextMessagesBySession = { ...current };
+  const updatesBySession = new Map<string, MessageRecord[]>();
 
   for (const event of pendingDeltas.values()) {
-    const sessionMessages = nextMessagesBySession[event.sessionId] ?? [];
-    nextMessagesBySession[event.sessionId] = applyDeltaToMessages(
-      sessionMessages,
-      event,
+    const updates = updatesBySession.get(event.sessionId) ?? [];
+    updates.push(
+      createDeltaMessage(current[event.sessionId] ?? EMPTY_MESSAGES, event),
+    );
+    updatesBySession.set(event.sessionId, updates);
+  }
+  for (const [sessionId, updates] of updatesBySession) {
+    nextMessagesBySession[sessionId] = upsertMessages(
+      current[sessionId] ?? EMPTY_MESSAGES,
+      updates,
     );
   }
 
@@ -200,7 +209,7 @@ function flushPendingDeltas(get: Getter, set: Setter) {
   // Only touch the loaded map when a session appears for the first time —
   // rewriting it on every flush would wake its subscribers 60 times a second.
   const loaded = get(messagesLoadedBySessionAtom);
-  const newlyLoaded = Object.keys(nextMessagesBySession).filter(
+  const newlyLoaded = [...updatesBySession.keys()].filter(
     (sessionId) => !loaded[sessionId],
   );
   if (newlyLoaded.length > 0) {
@@ -212,6 +221,8 @@ function flushPendingDeltas(get: Getter, set: Setter) {
 }
 
 function enqueueDelta(get: Getter, set: Setter, event: MessageDeltaEvent) {
+  const buffer = get(deltaBufferAtom);
+  const { pendingDeltas } = buffer;
   const key = getDeltaKey(event);
   const pending = pendingDeltas.get(key);
 
@@ -224,11 +235,11 @@ function enqueueDelta(get: Getter, set: Setter, event: MessageDeltaEvent) {
     delta: `${pending?.delta ?? ""}${event.delta}`,
   });
 
-  if (deltaFlushTimer) {
+  if (buffer.timer) {
     return;
   }
 
-  deltaFlushTimer = setTimeout(() => {
+  buffer.timer = setTimeout(() => {
     flushPendingDeltas(get, set);
   }, DELTA_FLUSH_DELAY_MS);
 }

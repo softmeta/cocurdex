@@ -96,6 +96,8 @@ function MonacoTextEditor({
   themePreset,
   typography,
 }: MonacoTextEditorProps) {
+  const language = getEditorLanguage(activeFile);
+  const languageStatus = useMonacoLoaderStatus(language);
   const decorationCollectionRef =
     useRef<MonacoEditorNamespace.IEditorDecorationsCollection | null>(null);
   const { content, hasCachedContent, hasReadError } = useMountedFileContent(
@@ -221,12 +223,19 @@ function MonacoTextEditor({
     );
   }
 
+  if (languageStatus === "error") {
+    return readErrorFallback;
+  }
+  if (languageStatus !== "ready") {
+    return null;
+  }
+
   return (
     <Editor
       beforeMount={handleBeforeMount}
       height="100%"
       key={editorKey}
-      language={getEditorLanguage(activeFile)}
+      language={language}
       loading={null}
       onMount={handleEditorMount}
       options={editorOptions}
