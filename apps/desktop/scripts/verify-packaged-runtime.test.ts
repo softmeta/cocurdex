@@ -28,6 +28,22 @@ describe("packaged Pi SDK resolution", () => {
     ).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED|No "exports" main defined/);
   });
 
+  it("keeps yaml dist/doc in the packaged asar", () => {
+    const desktopPackage = JSON.parse(
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), "../package.json"),
+        "utf8",
+      ),
+    ) as { build: { files: string[] } };
+    const stripRuntimeDocs = desktopPackage.build.files.find((pattern) =>
+      pattern.includes("{demo,demos,"),
+    );
+    expect(stripRuntimeDocs).toBeDefined();
+    const names = stripRuntimeDocs?.match(/\{([^}]+)\}/)?.[1]?.split(",") ?? [];
+    expect(names).toContain("docs");
+    expect(names).not.toContain("doc");
+  });
+
   it("loads ModelRuntime through the ESM export path", async () => {
     const relativeImport = piPackage.exports["."].import;
     if (typeof relativeImport !== "string") {
