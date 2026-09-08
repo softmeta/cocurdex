@@ -16,7 +16,19 @@ function archName(arch) {
 }
 
 function cloneFiles(files) {
-  return Array.isArray(files) ? [...files] : [];
+  if (files == null) {
+    return [];
+  }
+  const entries = Array.isArray(files) ? files : [files];
+  return entries.flatMap((entry) => {
+    if (typeof entry === "string" || entry.from != null || entry.to != null) {
+      return [entry];
+    }
+    if (entry.filter == null) {
+      return ["**/*"];
+    }
+    return Array.isArray(entry.filter) ? [...entry.filter] : [entry.filter];
+  });
 }
 
 export default function beforePack(context) {
