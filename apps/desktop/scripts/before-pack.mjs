@@ -31,6 +31,23 @@ function cloneFiles(files) {
   });
 }
 
+function toFileSets(entries) {
+  const fileSets = [];
+  for (const entry of entries) {
+    if (typeof entry !== "string") {
+      fileSets.push(entry);
+      continue;
+    }
+    const previous = fileSets.at(-1);
+    if (previous != null && previous.from == null && previous.to == null) {
+      previous.filter.push(entry);
+    } else {
+      fileSets.push({ filter: [entry] });
+    }
+  }
+  return fileSets;
+}
+
 export default function beforePack(context) {
   const config = context.packager.config;
   const platformKey = PLATFORM_CONFIG_KEYS[context.electronPlatformName];
@@ -58,13 +75,15 @@ export default function beforePack(context) {
 
   const arch = archName(context.arch);
   if (arch === "universal") {
-    config[platformKey].files = originals.platformFiles[platformKey];
+    config[platformKey].files = toFileSets(
+      originals.platformFiles[platformKey],
+    );
     return;
   }
 
-  config[platformKey].files = [
+  config[platformKey].files = toFileSets([
     ...originals.files,
     ...originals.platformFiles[platformKey],
     ...createNativePackageExcludes(context.electronPlatformName, arch),
-  ];
+  ]);
 }
