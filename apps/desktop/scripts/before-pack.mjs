@@ -6,13 +6,17 @@ const PLATFORM_CONFIG_KEYS = {
   win32: "win",
   linux: "linux",
 };
-const originalPlatformFilesByConfig = new WeakMap();
+const originalFilesByConfig = new WeakMap();
 
 function archName(arch) {
   if (typeof arch === "string") {
     return arch;
   }
   return ARCH_NAMES[arch] ?? String(arch);
+}
+
+function cloneFiles(files) {
+  return Array.isArray(files) ? [...files] : [];
 }
 
 export default function beforePack(context) {
@@ -22,14 +26,18 @@ export default function beforePack(context) {
     return;
   }
 
-  let originals = originalPlatformFilesByConfig.get(config);
+  let originals = originalFilesByConfig.get(config);
   if (originals == null) {
-    originals = {};
-    originalPlatformFilesByConfig.set(config, originals);
+    originals = {
+      files: cloneFiles(config.files),
+      platformFiles: {},
+    };
+    originalFilesByConfig.set(config, originals);
   }
-  if (!Object.hasOwn(originals, platformKey)) {
-    const existing = config[platformKey]?.files;
-    originals[platformKey] = Array.isArray(existing) ? [...existing] : [];
+  if (!Object.hasOwn(originals.platformFiles, platformKey)) {
+    originals.platformFiles[platformKey] = cloneFiles(
+      config[platformKey]?.files,
+    );
   }
 
   if (config[platformKey] == null) {
@@ -38,12 +46,13 @@ export default function beforePack(context) {
 
   const arch = archName(context.arch);
   if (arch === "universal") {
-    config[platformKey].files = originals[platformKey];
+    config[platformKey].files = originals.platformFiles[platformKey];
     return;
   }
 
   config[platformKey].files = [
-    ...originals[platformKey],
+    ...originals.files,
+    ...originals.platformFiles[platformKey],
     ...createNativePackageExcludes(context.electronPlatformName, arch),
   ];
 }
