@@ -336,7 +336,7 @@ jobs:
           node-version: 22
 
       - name: Test Mac update manifest validation
-        run: node --test apps/desktop/scripts/mac-update-manifest.test.mjs
+        run: node --test apps/desktop/scripts/mac-update-manifest.node-test.mjs
 
       - name: Merge and upload Mac update metadata
         env:

@@ -35,7 +35,7 @@
     "prepare:electron": "node ./scripts/prepare-electron.mjs",
     "prepare:fd": "node ./scripts/ensure-fd.mjs",
     "verify:package": "node ./scripts/verify-packaged-runtime.mjs",
-    "test": "vitest run",
+    "test": "vitest run && node --test ./scripts/mac-update-manifest.node-test.mjs",
     "typecheck": "tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo"
   },
   "dependencies": {
