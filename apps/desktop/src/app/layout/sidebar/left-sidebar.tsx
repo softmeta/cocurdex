@@ -17,8 +17,10 @@ import {
 import { activeConversationIdAtom, conversationsAtom } from "@/features/chat";
 import {
   activeSessionIdAtom,
+  bindFocusedPaneContentAtom,
   removeSessionsByWorkspaceAtom,
   selectSessionAtom,
+  sessionPaneCountAtom,
   sessionsAtom,
 } from "@/features/sessions";
 import {
@@ -106,6 +108,8 @@ export function LeftSidebar({
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
+  const bindFocusedPane = useSetAtom(bindFocusedPaneContentAtom);
+  const paneCount = useAtomValue(sessionPaneCountAtom);
   const conversations = useAtomValue(conversationsAtom);
   const activeConversationId = useAtomValue(activeConversationIdAtom);
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);
@@ -162,6 +166,12 @@ export function LeftSidebar({
 
   const handleCreateConversation = () => {
     setActiveConversationId(null);
+    if (paneCount > 1) {
+      bindFocusedPane({
+        sessionId: null,
+        conversationId: null,
+      });
+    }
     onAfterNavigate?.();
   };
 

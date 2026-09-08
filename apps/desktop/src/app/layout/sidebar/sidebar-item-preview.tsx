@@ -9,6 +9,8 @@ import {
 
 interface SidebarItemPreviewProps {
   agentLabel?: string;
+  roleName?: string;
+  roleSummary?: string;
   timestamp: string;
   title: string;
 }
@@ -35,11 +37,14 @@ function relativeTimeLabel(
 
 export function SidebarItemPreview({
   agentLabel,
+  roleName,
+  roleSummary,
   timestamp,
   title,
 }: SidebarItemPreviewProps) {
   const { t } = useTranslation("common");
   const relativeLabel = relativeTimeLabel(getCompactRelativeTime(timestamp), t);
+  const runtimeLabel = roleSummary ?? agentLabel;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-1">
@@ -49,9 +54,14 @@ export function SidebarItemPreview({
       <Text size="meta" tone="muted">
         {relativeLabel}
       </Text>
-      {agentLabel ? (
+      {roleName ? (
+        <Text size="meta" tone="muted" weight="medium">
+          {roleName}
+        </Text>
+      ) : null}
+      {runtimeLabel ? (
         <Text size="meta" tone="muted">
-          {agentLabel}
+          {runtimeLabel}
         </Text>
       ) : null}
     </div>
@@ -61,6 +71,8 @@ export function SidebarItemPreview({
 interface SidebarItemTooltipProps {
   agentLabel?: string;
   children: ReactElement;
+  roleName?: string;
+  roleSummary?: string;
   timestamp: string;
   title: string;
 }
@@ -68,6 +80,8 @@ interface SidebarItemTooltipProps {
 export function SidebarItemTooltip({
   agentLabel,
   children,
+  roleName,
+  roleSummary,
   timestamp,
   title,
 }: SidebarItemTooltipProps) {
@@ -83,6 +97,8 @@ export function SidebarItemTooltip({
       >
         <SidebarItemPreview
           agentLabel={agentLabel}
+          roleName={roleName}
+          roleSummary={roleSummary}
           timestamp={timestamp}
           title={title}
         />

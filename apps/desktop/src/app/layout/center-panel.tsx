@@ -1,15 +1,16 @@
-import type {
-  AgentId,
-  AgentPermissionMode,
-  AgentPlanApprovalDecision,
-  AgentProviderSnapshot,
-  AgentQuestionRequestRecord,
-  AgentThinkingLevel,
-  BrowserAnnotation,
-  CollaborationModeKind,
-  MessageAttachment,
-  MessageRecord,
-  SessionRecord,
+import {
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentPlanApprovalDecision,
+  type AgentProviderSnapshot,
+  type AgentQuestionRequestRecord,
+  type AgentThinkingLevel,
+  type BrowserAnnotation,
+  type CollaborationModeKind,
+  type MessageAttachment,
+  type MessageRecord,
+  resolveSessionWorkingPath,
+  type SessionRecord,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -76,6 +77,8 @@ import {
   agentLabels,
   agentsAtom,
   applyRefinedSessionTitleAtom,
+  bindFocusedPaneContentAtom,
+  bindPaneContentAtom,
   createDraftSessionAtom,
   generateLocalSessionTitle,
   getDisplaySessionStatus,
@@ -85,6 +88,7 @@ import {
   lastSelectedAgentAtom,
   markSessionMessageAtom,
   NewSessionCard,
+  type SessionPaneBinding,
   selectSessionAtom,
   sessionsAtom,
   updateAgentRuntimePreferences,
@@ -113,15 +117,15 @@ import {
   useGitWorktrees,
   useSessionSwitchMetrics,
 } from "./center-panel-data";
-import { resolveCenterPanelSurface } from "./center-panel-surface";
+import { resolvePaneCenterSurface } from "./center-panel-surface";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
 interface CenterPanelProps {
   composerRef?: Ref<ChatComposerHandle>;
-  // Spacer matches TITLEBAR_HEIGHT so content clears the OS titlebar. The
-  // floating chat dock has its own header and sits away from the titlebar, so
-  // it drops the spacer to avoid a dead gap.
   hideTitlebarSpacer?: boolean;
+  pane?: SessionPaneBinding;
+  paneCount?: number;
+  isFocused?: boolean;
 }
 
 function getSessionThinkingLevelOptions(
@@ -205,16 +209,21 @@ function summarizeProviderSnapshotForLog(
 export function CenterPanel({
   composerRef,
   hideTitlebarSpacer,
+  pane,
+  paneCount = 1,
+  isFocused = true,
 }: CenterPanelProps) {
   const workspaces = useAtomValue(workspacesAtom);
   const sidebarTab = useAtomValue(sidebarTabAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const sessions = useAtomValue(sessionsAtom);
-  const activeSessionId = useAtomValue(activeSessionIdAtom);
-  // Pure chat conversations share this panel with agent sessions — when an
-  // active conversation is selected we hide the agent view entirely.
-  const activeConversationId = useAtomValue(activeConversationIdAtom);
+  const atomSessionId = useAtomValue(activeSessionIdAtom);
+  const activeSessionId = pane ? pane.sessionId : atomSessionId;
+  const atomConversationId = useAtomValue(activeConversationIdAtom);
+  const activeConversationId = pane ? pane.conversationId : atomConversationId;
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);
+  const bindPaneContent = useSetAtom(bindPaneContentAtom);
+  const bindFocusedPaneContent = useSetAtom(bindFocusedPaneContentAtom);
   const upsertConversation = useSetAtom(upsertConversationAtom);
   const conversations = useAtomValue(conversationsAtom);
   const activeConversation =
@@ -275,15 +284,29 @@ export function CenterPanel({
   const activeBranch = useAtomValue(activeBranchAtom);
   const activeWorktrees = useAtomValue(activeWorktreesAtom);
   const draftWorktreePath = useAtomValue(draftWorktreePathAtom);
-  const workingPath = useAtomValue(activeWorkingPathAtom);
+  const globalWorkingPath = useAtomValue(activeWorkingPathAtom);
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
-  const activeSession = sessions.find(
-    (session) =>
-      session.id === activeSessionId &&
-      session.workspaceId === activeWorkspaceId,
-  );
+  const activeSession = sessions.find((session) => {
+    if (session.id !== activeSessionId) {
+      return false;
+    }
+    if (pane) {
+      return true;
+    }
+    return session.workspaceId === activeWorkspaceId;
+  });
+  const sessionWorkspace = activeSession
+    ? workspaces.find((workspace) => workspace.id === activeSession.workspaceId)
+    : undefined;
+  const workingPath =
+    activeSession && sessionWorkspace
+      ? resolveSessionWorkingPath({
+          workspaceRootPath: sessionWorkspace.rootPath,
+          worktreePath: activeSession.worktreePath,
+        })
+      : globalWorkingPath;
   const activeQueuedInputs = activeSession
     ? (queuedInputsBySession[activeSession.id] ?? [])
     : [];
@@ -876,6 +899,18 @@ export function CenterPanel({
         images: images.length > 0 ? images : undefined,
       });
       setActiveConversationId(conversation.id);
+      if (pane) {
+        bindPaneContent({
+          paneId: pane.id,
+          sessionId: null,
+          conversationId: conversation.id,
+        });
+      } else {
+        bindFocusedPaneContent({
+          sessionId: null,
+          conversationId: conversation.id,
+        });
+      }
     } catch (error) {
       console.error("[Chat] start conversation failed", error);
       throw error;
@@ -1116,8 +1151,11 @@ export function CenterPanel({
     }
   };
 
-  const centerSurface = resolveCenterPanelSurface({
+  const centerSurface = resolvePaneCenterSurface({
     sidebarTab,
+    paneCount,
+    conversationId: activeConversationId,
+    sessionId: activeSessionId,
     hasConversation: Boolean(activeConversation),
     hasSession: Boolean(activeSession),
     sessionDataLoaded: activeSessionDataLoaded,
@@ -1147,7 +1185,7 @@ export function CenterPanel({
           activeWorkspaceId={activeWorkspaceId}
           agents={agents}
           agentType={lastSelectedAgent}
-          attachment={composerAttachment ?? undefined}
+          attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
           collaborationMode="default"
           composerRef={composerRef}
           onClearAttachment={clearChatComposerAttachment}
@@ -1192,7 +1230,9 @@ export function CenterPanel({
             workspaceName={activeWorkspace?.name}
             agentLabel={agentLabels[activeSession.agentType]}
             agentType={activeSession.agentType}
-            attachment={composerAttachment ?? undefined}
+            attachment={
+              isFocused ? (composerAttachment ?? undefined) : undefined
+            }
             collaborationMode={activeCollaborationMode}
             composerRef={composerRef}
             permissionMode={activePermissionMode}

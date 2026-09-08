@@ -3,8 +3,10 @@
     "cancel": "取消",
     "empty": "还没有保存的角色",
     "menuLabel": "角色",
+    "name": "名称",
     "namePlaceholder": "角色名称",
     "save": "保存为角色",
+    "saveAction": "保存",
     "saved": "角色已保存",
     "saveDescription": "为当前的 Agent、模型和运行时选项命名。",
     "saveFailed": "无法保存这个角色。",
@@ -142,6 +144,13 @@
     "revealInFileManager": "在文件管理器中打开",
     "running": "运行中",
     "settings": "设置"
+  },
+  "split": {
+    "close": "关闭分屏",
+    "down": "向下分屏",
+    "menu": "分屏",
+    "newSession": "新会话",
+    "right": "向右分屏"
   },
   "workspace": {
     "dropFolderDescription": "松开即可作为项目打开。",

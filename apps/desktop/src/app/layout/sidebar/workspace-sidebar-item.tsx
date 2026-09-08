@@ -16,6 +16,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
 } from "@/components/ui";
+import { permissionsBySessionAtom } from "@/features/agent/permission";
+import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   buildVisibleSessionTree,
   collapsedSessionIdsAtom,
@@ -57,10 +59,25 @@ export function WorkspaceSidebarItem({
   const { t } = useTranslation("sessions");
   const collapsedSessionIds = useAtomValue(collapsedSessionIdsAtom);
   const toggleSessionCollapsed = useSetAtom(toggleSessionCollapsedAtom);
+  const permissionsBySession = useAtomValue(permissionsBySessionAtom);
+  const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessionTree = useMemo(
     () => buildVisibleSessionTree(sessions, collapsedSessionIds),
     [sessions, collapsedSessionIds],
   );
+  const isRunning =
+    !expanded && sessions.some((session) => session.status === "running");
+  const needsAttention =
+    !expanded &&
+    sessions.some(
+      (session) =>
+        permissionsBySession[session.id]?.some(
+          (permission) => permission.status === "pending",
+        ) ||
+        questionsBySession[session.id]?.some(
+          (question) => question.status === "pending",
+        ),
+    );
   const {
     attributes,
     listeners,
@@ -104,19 +121,40 @@ export function WorkspaceSidebarItem({
               )}
               <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
             </button>
-            <SidebarListRowActions visibility="hover">
-              <button
-                type="button"
-                aria-label={t("sidebar.newSessionInWorkspace", {
-                  workspaceName: workspace.name,
-                })}
-                className="flex size-5 items-center justify-center text-sidebar-fg-muted transition-colors hover:text-sidebar-fg"
-                onClick={() => onCreateAgent(workspace.id)}
-                onPointerDown={(event) => event.stopPropagation()}
+            <div className="relative flex size-5 shrink-0 items-center justify-center">
+              {isRunning || needsAttention ? (
+                <span
+                  className={cn(
+                    "sidebar-activity-dot size-1.5 rounded-full",
+                    needsAttention
+                      ? "bg-chat-status-pending-fg"
+                      : "bg-sidebar-thinking-dot",
+                  )}
+                  role="img"
+                  aria-label={
+                    needsAttention
+                      ? t("sidebar.pendingAttention")
+                      : t("sidebar.running")
+                  }
+                />
+              ) : null}
+              <SidebarListRowActions
+                className="pointer-events-none absolute inset-0 flex items-center justify-center group-hover/list-row:pointer-events-auto focus-within:pointer-events-auto"
+                visibility="hover"
               >
-                <SquarePen className="size-3.5" />
-              </button>
-            </SidebarListRowActions>
+                <button
+                  type="button"
+                  aria-label={t("sidebar.newSessionInWorkspace", {
+                    workspaceName: workspace.name,
+                  })}
+                  className="flex size-5 items-center justify-center text-sidebar-fg-muted transition-colors hover:text-sidebar-fg"
+                  onClick={() => onCreateAgent(workspace.id)}
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  <SquarePen className="size-3.5" />
+                </button>
+              </SidebarListRowActions>
+            </div>
           </SidebarListRow>
         </ContextMenuTrigger>
         <ContextMenuContent className="min-w-44">

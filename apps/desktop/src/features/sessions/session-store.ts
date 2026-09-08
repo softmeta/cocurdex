@@ -20,6 +20,12 @@ import { atom, type Getter, type Setter } from "jotai";
 import { i18n } from "@/i18n";
 import { resources } from "@/i18n/resources";
 import { isAgentReadyToStart } from "./adapter-status";
+import {
+  bindFocusedPaneContentAtom,
+  clearRemovedPaneSessionsAtom,
+  focusPaneForSessionAtom,
+  resetSessionSplitLayoutAtom,
+} from "./session-split/session-split-store";
 import { collectSessionSubtreeIds, sessionAncestorIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
@@ -416,6 +422,7 @@ export const bootstrapSessionsAtom = atom(
     // which blocks the renderer's main thread (hover, menus) for seconds on a
     // long history. Launch lands on the new-session surface instead; the
     // sidebar is one click away.
+    set(resetSessionSplitLayoutAtom);
     set(activeSessionIdAtom, null);
   },
 );
@@ -423,7 +430,15 @@ export const bootstrapSessionsAtom = atom(
 export const selectSessionAtom = atom(
   null,
   (get, set, sessionId: string | null) => {
-    set(activeSessionIdAtom, sessionId);
+    if (sessionId && set(focusPaneForSessionAtom, sessionId)) {
+      set(activeSessionIdAtom, sessionId);
+    } else {
+      set(activeSessionIdAtom, sessionId);
+      set(bindFocusedPaneContentAtom, {
+        sessionId,
+        conversationId: null,
+      });
+    }
     if (!sessionId) {
       return;
     }
@@ -499,6 +514,10 @@ export const createDraftSessionAtom = atom(
 
     set(sessionsAtom, [session, ...get(sessionsAtom)]);
     set(activeSessionIdAtom, session.id);
+    set(bindFocusedPaneContentAtom, {
+      sessionId: session.id,
+      conversationId: null,
+    });
     set(lastSelectedAgentAtom, agentType);
 
     return session;
@@ -845,9 +864,19 @@ function removeSessionSubtree(get: Getter, set: Setter, sessionId: string) {
   const activeSessionId = get(activeSessionIdAtom);
 
   set(sessionsAtom, nextSessions);
+  set(clearRemovedPaneSessionsAtom, removedIds);
 
   if (activeSessionId && removedIds.has(activeSessionId)) {
-    set(activeSessionIdAtom, getNextActiveSessionId(nextSessions, removed));
+    const nextId = getNextActiveSessionId(nextSessions, removed);
+    if (nextId && set(focusPaneForSessionAtom, nextId)) {
+      set(activeSessionIdAtom, nextId);
+    } else {
+      set(activeSessionIdAtom, nextId);
+      set(bindFocusedPaneContentAtom, {
+        sessionId: nextId,
+        conversationId: null,
+      });
+    }
   }
 }
 
@@ -876,13 +905,28 @@ export const removeSessionsByWorkspaceAtom = atom(
       (session) => session.workspaceId !== workspaceId,
     );
     set(sessionsAtom, next);
+    const removedIds = new Set(
+      current
+        .filter((session) => session.workspaceId === workspaceId)
+        .map((session) => session.id),
+    );
+    set(clearRemovedPaneSessionsAtom, removedIds);
     const activeId = get(activeSessionIdAtom);
     if (
       activeId &&
       current.find((session) => session.id === activeId)?.workspaceId ===
         workspaceId
     ) {
-      set(activeSessionIdAtom, next[0]?.id ?? null);
+      const nextId = next[0]?.id ?? null;
+      if (nextId && set(focusPaneForSessionAtom, nextId)) {
+        set(activeSessionIdAtom, nextId);
+      } else {
+        set(activeSessionIdAtom, nextId);
+        set(bindFocusedPaneContentAtom, {
+          sessionId: nextId,
+          conversationId: null,
+        });
+      }
     }
   },
 );

@@ -7,7 +7,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -29,6 +29,11 @@ import {
   sessionsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
+import {
+  formatAgentRoleRecordSummary,
+  getAgentRoles,
+  subscribeAgentRoles,
+} from "@/features/sessions/agent-role";
 import { openSettings } from "@/features/settings";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
@@ -62,6 +67,20 @@ export function SessionSidebarItem({
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessions = useAtomValue(sessionsAtom);
+  const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
+  const selectedRole = session.agentRoleId
+    ? (roles.find((role) => role.id === session.agentRoleId) ?? null)
+    : null;
+  const roleSummary = selectedRole
+    ? formatAgentRoleRecordSummary(selectedRole, {
+        agentLabel: agentLabels[selectedRole.agentId],
+        permissionLabel: selectedRole.permissionMode
+          ? t(`permissionMode.${selectedRole.permissionMode}`)
+          : null,
+        thinkingLabelFor: (level) => t(`composer.thinkingLevels.${level}`),
+        fastModeOn: t("modelMenu.fastModeOn"),
+      })
+    : null;
   const [isRenaming, setIsRenaming] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);
@@ -202,6 +221,8 @@ export function SessionSidebarItem({
     <ContextMenu>
       <SidebarItemTooltip
         agentLabel={agentLabels[session.agentType]}
+        roleName={selectedRole?.name}
+        roleSummary={roleSummary ?? undefined}
         timestamp={session.lastMessageAt ?? session.updatedAt}
         title={session.title}
       >

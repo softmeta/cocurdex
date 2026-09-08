@@ -164,6 +164,37 @@
   }
 }
 
+@keyframes sidebar-activity-breathe {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.sidebar-activity-dot {
+  animation: sidebar-activity-breathe 2.4s ease-in-out infinite;
+}
+
+.group\/list-row:is(:hover, :focus-within) .sidebar-activity-dot {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-activity-dot {
+    animation: none;
+    opacity: 0.9;
+  }
+
+  .group\/list-row:is(:hover, :focus-within) .sidebar-activity-dot {
+    opacity: 0;
+  }
+}
+
 /* Welcome mark: hover redraws the C, then the prompt dash blinks. */
 .cocurdex-mark-live {
   overflow: visible;

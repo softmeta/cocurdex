@@ -40,6 +40,7 @@ import {
 } from "../chat-dock-geometry";
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { RightEditorPanel } from "../right-editor-panel";
+import { SessionSplitLayout, TitlebarSessionSplitMenu } from "../session-split";
 import {
   LeftSidebar,
   ResizableSidebarSlot,
@@ -231,6 +232,12 @@ export function AppShellFrame({
       hideTitlebarSpacer={isRightPanelMaximized}
     />
   );
+  const splitChatNode = (
+    <SessionSplitLayout
+      composerRef={composerRef}
+      hideTitlebarSpacer={isRightPanelMaximized}
+    />
+  );
 
   // Before the snapshot lands the stores are empty, which is indistinguishable
   // from a fresh install. Show the mark instead of an app frame full of empty
@@ -351,6 +358,7 @@ export function AppShellFrame({
               width: TITLEBAR_EDITOR_TOGGLE_WIDTH,
             }}
           >
+            <TitlebarSessionSplitMenu />
             <NetworkProxyStatusButton />
             {isRightPanelOpen ? (
               <TitlebarIconButton
@@ -402,7 +410,7 @@ export function AppShellFrame({
             </ResizableSidebarSlot>
 
             {isRightPanelMaximized ? null : (
-              <div className="flex-1 overflow-hidden">{chatNode}</div>
+              <div className="flex-1 overflow-hidden">{splitChatNode}</div>
             )}
 
             {isRightPanelOpen ? (

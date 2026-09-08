@@ -6,6 +6,7 @@ export * from "./collaboration-mode-control";
 export * from "./new-session-card";
 export * from "./permission-mode-submenu";
 export * from "./provider-model";
+export * from "./session-split";
 export * from "./session-status";
 export * from "./session-store";
 export * from "./session-title";
