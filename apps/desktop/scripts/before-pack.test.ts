@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import beforePack from "./before-pack.mjs";
 
@@ -9,7 +11,7 @@ const builderRequire = createRequire(
 const { doMergeConfigs } = builderRequire(
   "app-builder-lib/out/util/config/config.js",
 );
-const { getMainFileMatchers } = builderRequire(
+const { getMainFileMatchers, getNodeModuleFileMatcher } = builderRequire(
   "app-builder-lib/out/fileMatcher.js",
 );
 
@@ -18,7 +20,16 @@ it.each([
   "mac",
   "win",
 ])("keeps the normalized %s app whitelist", (platform) => {
-  const config = doMergeConfigs([{ files: ["out/**"], [platform]: {} }]);
+  const { build } = JSON.parse(
+    readFileSync(
+      path.join(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../package.json",
+      ),
+      "utf8",
+    ),
+  );
+  const config = doMergeConfigs([build]);
   beforePack({
     packager: { config },
     arch: x64,
@@ -61,6 +72,22 @@ it.each([
   expect(accepts("electron/main.ts")).toBe(false);
   expect(accepts("scripts/before-pack.mjs")).toBe(false);
   expect(accepts("electron.vite.config.ts")).toBe(false);
+  const dependencyMatcher = getNodeModuleFileMatcher(
+    appDir,
+    path.join(appDir, "destination"),
+    (value: string) => value,
+    config[platform],
+    { config, debugLogger: { isEnabled: false } },
+  );
+  const acceptsDependency = (file: string) =>
+    dependencyMatcher.createFilter()(path.join(appDir, "node_modules", file), {
+      isDirectory: () => false,
+    });
+  expect(acceptsDependency("pi-mcp-adapter/index.ts")).toBe(true);
+  expect(acceptsDependency("pi-mcp-adapter/proxy-modes.ts")).toBe(true);
+  expect(acceptsDependency("pi-mcp-adapter/banner.png")).toBe(false);
+  expect(acceptsDependency("pi-mcp-adapter/index.ts.map")).toBe(false);
+  expect(acceptsDependency("other-package/index.ts")).toBe(false);
 });
 
 const x64 = 1;
@@ -71,7 +98,10 @@ describe("beforePack", () => {
     const extraResources = [{ from: "vendor/fd", to: "vendor/fd" }];
     const config: {
       files: string[];
-      linux: { extraResources: typeof extraResources; files?: string[] };
+      linux: {
+        extraResources: typeof extraResources;
+        files?: { filter: string[] }[];
+      };
     } = {
       files: ["out/**", "!node_modules/**/*.map"],
       linux: { extraResources },
@@ -85,23 +115,26 @@ describe("beforePack", () => {
 
     expect(config.files).toEqual(["out/**", "!node_modules/**/*.map"]);
     expect(config.linux.extraResources).toBe(extraResources);
-    expect(config.linux.files).toContain("out/**");
+    expect(config.linux.files?.[0].filter).toContain("out/**");
     expect(
-      config.linux.files?.some((pattern) => !pattern.startsWith("!")),
+      config.linux.files?.[0].filter.some(
+        (pattern) => !pattern.startsWith("!"),
+      ),
     ).toBe(true);
-    expect(config.linux.files).toContain(
+    expect(config.linux.files?.[0].filter).toContain(
       "!**/node_modules/@napi-rs/keyring-linux-arm64-gnu/**/*",
     );
-    expect(config.linux.files).not.toContain(
+    expect(config.linux.files?.[0].filter).not.toContain(
       "!**/node_modules/@napi-rs/keyring-linux-x64-gnu/**/*",
     );
   });
 
   it("replaces Mac excludes per arch instead of stacking them", () => {
-    const config: { files: string[]; mac: { files?: string[] } } = {
-      files: ["out/**"],
-      mac: {},
-    };
+    const config: { files: string[]; mac: { files?: { filter: string[] }[] } } =
+      {
+        files: ["out/**"],
+        mac: {},
+      };
 
     beforePack({
       packager: { config },
@@ -114,11 +147,11 @@ describe("beforePack", () => {
       electronPlatformName: "darwin",
     });
 
-    expect(config.mac.files).toContain("out/**");
-    expect(config.mac.files).toContain(
+    expect(config.mac.files?.[0].filter).toContain("out/**");
+    expect(config.mac.files?.[0].filter).toContain(
       "!**/node_modules/@mariozechner/clipboard-darwin-arm64/**/*",
     );
-    expect(config.mac.files).not.toContain(
+    expect(config.mac.files?.[0].filter).not.toContain(
       "!**/node_modules/@mariozechner/clipboard-darwin-x64/**/*",
     );
   });

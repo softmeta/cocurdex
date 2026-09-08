@@ -60,14 +60,16 @@ jobs:
   macos:
     name: macOS ${{ matrix.arch }}
     needs: prepare
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - arm64
-          - x64
+        include:
+          - arch: arm64
+            runner: macos-26
+          - arch: x64
+            runner: macos-26-intel
     env:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
