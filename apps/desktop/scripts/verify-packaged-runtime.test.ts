@@ -22,7 +22,7 @@ describe("mac native optional dependencies", () => {
         "../../../pnpm-workspace.yaml",
       ),
       "utf8",
-    );
+    ).replaceAll("\r\n", "\n");
     expect(workspace).toContain("supportedArchitectures:");
     expect(workspace).toMatch(/cpu:\n[ \t]+- x64\n[ \t]+- arm64\n/);
   });
