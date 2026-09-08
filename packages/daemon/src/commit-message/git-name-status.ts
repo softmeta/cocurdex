@@ -1,7 +1,4 @@
-// Parse `git diff --name-status -z` (and `--cached`) output into change rows.
-
 export type GitNameStatusChange = {
-  // First letter of git --name-status (A/M/D/R/C/T/…).
   status: string;
   path: string;
   fromPath?: string;
@@ -18,7 +15,6 @@ export function parseNameStatusZero(raw: string): GitNameStatusChange[] {
       index += 1;
       continue;
     }
-    // Rename / copy: status, from, to.
     if (status === "R" || status === "C") {
       const fromPath = parts[index + 1] ?? "";
       const path = parts[index + 2] ?? "";

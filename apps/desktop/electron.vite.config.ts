@@ -58,12 +58,16 @@ const alias = {
   "@cocurdex/rpc": path.resolve(__dirname, "../../packages/rpc/src/index.ts"),
 };
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   main: {
     resolve: {
       alias,
     },
+    esbuild: {
+      keepNames: true,
+    },
     build: {
+      minify: command === "build" ? "esbuild" : false,
       externalizeDeps: {
         exclude: bundledWorkspaceDependencies,
       },
@@ -76,7 +80,11 @@ export default defineConfig({
     resolve: {
       alias,
     },
+    esbuild: {
+      keepNames: true,
+    },
     build: {
+      minify: command === "build" ? "esbuild" : false,
       externalizeDeps: {
         exclude: bundledWorkspaceDependencies,
       },
@@ -127,9 +135,11 @@ export default defineConfig({
     // Marked pure so esbuild's minifier drops these calls in prod builds while
     // dev (unminified) keeps them. console.warn/error stay for real failures.
     esbuild: {
+      keepNames: true,
       pure: ["console.log", "console.info", "console.debug"],
     },
     build: {
+      minify: command === "build" ? "esbuild" : false,
       rollupOptions: {
         input: {
           index: "index.html",
@@ -137,4 +147,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

@@ -6,6 +6,10 @@ export * from "./agent-versions";
 export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
 export * from "./chat-events";
 export * from "./codex-models";
+export type {
+  GenerateGitCommitMessagePayload,
+  ResolvedCommitMessageModel,
+} from "./commit-message";
 export * from "./contracts";
 export * from "./conversation";
 export * from "./data-events";

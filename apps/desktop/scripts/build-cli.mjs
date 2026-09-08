@@ -67,6 +67,7 @@ await build({
   configFile: false,
   logLevel: "warn",
   resolve: { alias },
+  esbuild: { keepNames: true },
   define: {
     // Packaged cli.mjs has no package.json beside it — inline the version.
     __COCURDEX_CLI_VERSION__: JSON.stringify(cliVersion),
@@ -75,7 +76,7 @@ await build({
     outDir,
     emptyOutDir: false,
     target: "node20",
-    minify: false,
+    minify: "esbuild",
     sourcemap: false,
     ssr: true,
     lib: {
@@ -101,11 +102,12 @@ await build({
   configFile: false,
   logLevel: "warn",
   resolve: { alias },
+  esbuild: { keepNames: true },
   build: {
     outDir,
     emptyOutDir: false,
     target: "node20",
-    minify: false,
+    minify: "esbuild",
     sourcemap: false,
     ssr: true,
     lib: {

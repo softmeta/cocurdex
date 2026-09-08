@@ -8,4 +8,5 @@ export * from "./chat-view";
 export * from "./chat-view-panels";
 export * from "./message-store";
 export * from "./use-chat-scroll-state";
+export { useSessionMessages } from "./use-session-messages";
 export * from "./use-vertical-drag";

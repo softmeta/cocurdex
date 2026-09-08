@@ -244,6 +244,16 @@ export async function handleDaemonRequest(
       );
     case "provider.listConfigs":
       return service.providerService.listProviderConfigs();
+    case "git.commitMessageModel.get":
+      return service.commitMessageService.getModelSetting();
+    case "git.commitMessageModel.set":
+      return service.commitMessageService.setModelSetting(
+        request.params.selection,
+      );
+    case "git.commitMessageModel.resolve":
+      return service.commitMessageService.resolveModel();
+    case "git.generateCommitMessage":
+      return service.commitMessageService.generate(request.params);
     case "provider.listModels":
       return service.providerService.listProviderModels(
         request.params.providerId,

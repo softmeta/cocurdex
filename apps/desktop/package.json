@@ -1,7 +1,7 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,
@@ -41,6 +41,7 @@
   "dependencies": {
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
+    "@earendil-works/pi-coding-agent": "0.84.4",
     "@vscode/ripgrep": "^1.18.0",
     "electron-log": "^5.4.3",
     "electron-updater": "6.8.9",
@@ -174,13 +175,6 @@
         "to": "oss-licenses.json"
       },
       {
-        "from": "vendor/fd",
-        "to": "vendor/fd",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
         "from": "resources/cli",
         "to": "cli",
         "filter": [
@@ -196,6 +190,16 @@
       }
     ],
     "mac": {
+      "extraResources": [
+        {
+          "from": "vendor/fd",
+          "to": "vendor/fd",
+          "filter": [
+            "manifest.json",
+            "darwin-${arch}/**/*"
+          ]
+        }
+      ],
       "artifactName": "Cocurdex-mac-${arch}.${ext}",
       "entitlements": "build-assets/entitlements.mac.plist",
       "entitlementsInherit": "build-assets/entitlements.mac.inherit.plist",
@@ -208,6 +212,16 @@
       ]
     },
     "win": {
+      "extraResources": [
+        {
+          "from": "vendor/fd",
+          "to": "vendor/fd",
+          "filter": [
+            "manifest.json",
+            "win32-${arch}/**/*"
+          ]
+        }
+      ],
       "artifactName": "Cocurdex-win-${arch}.${ext}",
       "target": [
         "nsis"
@@ -217,6 +231,16 @@
       "artifactName": "Cocurdex-win-${arch}.${ext}"
     },
     "linux": {
+      "extraResources": [
+        {
+          "from": "vendor/fd",
+          "to": "vendor/fd",
+          "filter": [
+            "manifest.json",
+            "linux-${arch}/**/*"
+          ]
+        }
+      ],
       "artifactName": "Cocurdex-linux-x64.${ext}",
       "category": "Development",
       "executableName": "Cocurdex",

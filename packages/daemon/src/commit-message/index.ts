@@ -1,0 +1,1 @@
+export { DaemonCommitMessageService } from "./service";

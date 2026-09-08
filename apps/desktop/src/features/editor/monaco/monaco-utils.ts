@@ -1,4 +1,5 @@
 import type { editor as MonacoEditorNamespace } from "monaco-editor";
+import type { BundledLanguage } from "shiki";
 
 export function getRelativePath(filePath: string, rootPath?: string) {
   if (!rootPath || !filePath.startsWith(rootPath)) {
@@ -26,7 +27,7 @@ export function getPreviewRangeLabel(
 // Maps file extensions to Shiki language ids. The values double as the language
 // set we register with the Shiki highlighter, so anything listed here gets real
 // TextMate-grade syntax highlighting in the editor (see monaco-loader).
-const EXTENSION_TO_SHIKI_LANGUAGE: Record<string, string> = {
+const EXTENSION_TO_SHIKI_LANGUAGE: Record<string, BundledLanguage> = {
   ts: "typescript",
   tsx: "tsx",
   mts: "typescript",
@@ -54,8 +55,7 @@ const EXTENSION_TO_SHIKI_LANGUAGE: Record<string, string> = {
   swift: "swift",
 };
 
-// Deduplicated Shiki language ids to load into the highlighter on startup.
-export const EDITOR_SHIKI_LANGUAGES: string[] = [
+export const EDITOR_SHIKI_LANGUAGES: BundledLanguage[] = [
   ...new Set(Object.values(EXTENSION_TO_SHIKI_LANGUAGE)),
 ];
 

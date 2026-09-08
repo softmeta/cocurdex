@@ -43,6 +43,7 @@ import {
 } from "@cocurdex/shared";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
+import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { probeNetworkProxy } from "./network-proxy-probe";
@@ -100,6 +101,7 @@ export class CocurdexDaemonService {
   readonly events = new EventEmitter();
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
+  readonly commitMessageService: DaemonCommitMessageService;
   readonly runtime: AgentRuntimeManager;
   readonly state: DaemonState;
   readonly workflows: WorkflowModule;
@@ -127,6 +129,7 @@ export class CocurdexDaemonService {
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
     this.providerService = new DaemonProviderService(this.state);
+    this.commitMessageService = new DaemonCommitMessageService(this.state);
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);

@@ -10,6 +10,7 @@ import {
   createTimelineGroups,
   type TimelineGroup,
 } from "./chat-timeline";
+import { getFirstChangedMessageIndex } from "./message-collection";
 
 const EMPTY_PERMISSIONS: AgentPermissionRequestRecord[] = [];
 
@@ -88,10 +89,7 @@ function getPatchableSuffixStart(
   if (prev.messages.length !== messages.length) return null;
   if (messages.length === 0) return null;
 
-  let start = 0;
-  while (start < messages.length && prev.messages[start] === messages[start]) {
-    start++;
-  }
+  const start = getFirstChangedMessageIndex(prev.messages, messages);
   if (start === messages.length) return null;
   for (let i = start; i < messages.length; i++) {
     if (prev.messages[i].id !== messages[i].id) return null;

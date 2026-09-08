@@ -130,6 +130,9 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
+      '@earendil-works/pi-coding-agent':
+        specifier: 0.84.4
+        version: 0.84.4(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.3.6))(supports-color@7.2.0)(ws@8.21.3)(zod@4.3.6)
       '@vscode/ripgrep':
         specifier: ^1.18.0
         version: 1.18.0

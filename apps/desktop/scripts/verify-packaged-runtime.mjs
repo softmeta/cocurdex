@@ -7,6 +7,7 @@ const REQUIRED_ASAR_PATHS = [
   "node_modules/pi-mcp-adapter/package.json",
   "node_modules/pi-mcp-adapter/index.ts",
   "node_modules/jiti/lib/jiti-static.mjs",
+  "node_modules/@earendil-works/pi-coding-agent/package.json",
   "out/main/main.js",
 ];
 
@@ -87,6 +88,8 @@ async function inspectAsar(asarPath) {
   const expectedResourcesPath = path.dirname(asarPath);
   const inspectionScript = `
     const fs = require("node:fs");
+    const { execFileSync } = require("node:child_process");
+    const { createRequire } = require("node:module");
     const path = require("node:path");
     const { pathToFileURL } = require("node:url");
     const asarPath = ${JSON.stringify(asarPath)};
@@ -125,7 +128,39 @@ async function inspectAsar(asarPath) {
         );
       }
 
+      const fdRoot = path.join(expectedResourcesPath, "vendor", "fd");
+      const fdTarget = process.platform + "-" + process.arch;
+      const fdTargets = fs.readdirSync(fdRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name);
+      if (fdTargets.length !== 1 || fdTargets[0] !== fdTarget) {
+        throw new Error(
+          "Expected only fd target " + fdTarget + ", received " + fdTargets.join(", "),
+        );
+      }
+      const fdManifest = JSON.parse(
+        fs.readFileSync(path.join(fdRoot, "manifest.json"), "utf8"),
+      );
+      const fdExecutable = path.join(
+        fdRoot,
+        fdTarget,
+        process.platform === "win32" ? "fd.exe" : "fd",
+      );
+      const fdVersion = execFileSync(fdExecutable, ["--version"], {
+        encoding: "utf8",
+        timeout: 10_000,
+      }).trim();
+      if (fdVersion !== "fd " + fdManifest.version) {
+        throw new Error("Unexpected packaged fd version: " + fdVersion);
+      }
+
       const mainEntryPath = path.join(asarPath, "out", "main", "main.js");
+      const mainRequire = createRequire(mainEntryPath);
+      const piRuntimePath = mainRequire.resolve("@earendil-works/pi-coding-agent");
+      const { ModelRuntime } = await import(pathToFileURL(piRuntimePath).href);
+      if (typeof ModelRuntime?.create !== "function") {
+        throw new Error("Packaged Pi SDK has no ModelRuntime.create");
+      }
       const extensionPath = path.join(
         asarPath,
         "node_modules",

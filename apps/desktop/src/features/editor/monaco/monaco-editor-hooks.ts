@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AppearanceSettings } from "@/features/settings";
 import { desktopApi, useMountEffect } from "@/lib";
 import {
+  ensureMonacoLanguageConfigured,
   ensureMonacoLoaderConfigured,
   isTestEnvironment,
 } from "./monaco-loader";
@@ -13,7 +14,9 @@ export function getEditorTypography(settings: AppearanceSettings) {
   };
 }
 
-export function useMonacoLoaderStatus() {
+export function useMonacoLoaderStatus(
+  language?: Parameters<typeof ensureMonacoLanguageConfigured>[0],
+) {
   const [status, setStatus] = useState<"error" | "loading" | "ready">(
     isTestEnvironment ? "ready" : "loading",
   );
@@ -21,7 +24,10 @@ export function useMonacoLoaderStatus() {
   useMountEffect(() => {
     let isActive = true;
 
-    void ensureMonacoLoaderConfigured()
+    const ready = language
+      ? ensureMonacoLanguageConfigured(language)
+      : ensureMonacoLoaderConfigured();
+    void ready
       .then(() => {
         if (isActive) {
           setStatus("ready");
