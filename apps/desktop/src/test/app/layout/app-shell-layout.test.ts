@@ -15,9 +15,8 @@ describe("app shell layout metrics", () => {
     expect(TITLEBAR_TOOLBAR_MIN_WIDTH).toBe(160);
   });
 
-  it("reserves titlebar space for the four right-side chrome icons", () => {
-    // px-3 (24) + 4 × size-6 (24) + 3 × gap-1 (4) = 132.
-    expect(TITLEBAR_EDITOR_TOGGLE_WIDTH).toBe(132);
+  it("reserves titlebar space for the five right-side chrome icons", () => {
+    expect(TITLEBAR_EDITOR_TOGGLE_WIDTH).toBe(160);
   });
 
   it("caps the session sidebar so a wide window cannot drag it past MAX_LEFT", () => {

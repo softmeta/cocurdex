@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveCenterPanelSurface } from "./center-panel-surface";
+import {
+  resolveCenterPanelSurface,
+  resolvePaneCenterSurface,
+} from "./center-panel-surface";
 
 describe("resolveCenterPanelSurface", () => {
   it("shows the chat composer when the chat tab is open, even with a workspace session selected", () => {
@@ -66,5 +69,49 @@ describe("resolveCenterPanelSurface", () => {
         sessionDataLoaded: false,
       }),
     ).toBe("agent-session-loading");
+  });
+});
+
+describe("resolvePaneCenterSurface", () => {
+  it("follows the sidebar tab when only one pane is open", () => {
+    expect(
+      resolvePaneCenterSurface({
+        sidebarTab: "chat",
+        paneCount: 1,
+        conversationId: null,
+        sessionId: "session-1",
+        hasConversation: false,
+        hasSession: true,
+        sessionDataLoaded: true,
+      }),
+    ).toBe("new-conversation");
+  });
+
+  it("keeps a session visible in a split pane while the chat tab is selected", () => {
+    expect(
+      resolvePaneCenterSurface({
+        sidebarTab: "chat",
+        paneCount: 2,
+        conversationId: null,
+        sessionId: "session-1",
+        hasConversation: false,
+        hasSession: true,
+        sessionDataLoaded: true,
+      }),
+    ).toBe("agent-session");
+  });
+
+  it("shows a new session in an empty split pane on the projects tab", () => {
+    expect(
+      resolvePaneCenterSurface({
+        sidebarTab: "projects",
+        paneCount: 2,
+        conversationId: null,
+        sessionId: null,
+        hasConversation: false,
+        hasSession: false,
+        sessionDataLoaded: false,
+      }),
+    ).toBe("new-session");
   });
 });

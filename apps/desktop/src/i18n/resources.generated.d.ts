@@ -1069,6 +1069,13 @@ export default interface Resources {
       running: "Running";
       settings: "Settings";
     };
+    split: {
+      close: "Close Pane";
+      down: "Split Down";
+      menu: "Split session";
+      newSession: "New session";
+      right: "Split Right";
+    };
     workspace: {
       dropFolderDescription: "Release to open it as a project.";
       dropFolderTitle: "Drop folder to open";

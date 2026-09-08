@@ -145,6 +145,13 @@
     "running": "运行中",
     "settings": "设置"
   },
+  "split": {
+    "close": "关闭分屏",
+    "down": "向下分屏",
+    "menu": "分屏",
+    "newSession": "新会话",
+    "right": "向右分屏"
+  },
   "workspace": {
     "dropFolderDescription": "松开即可作为项目打开。",
     "dropFolderTitle": "拖入文件夹以打开",
