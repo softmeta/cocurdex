@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import electronPath from "electron";
+import { nativeIdMatchesTarget } from "./packaging-native-filters.mjs";
 
 const REQUIRED_ASAR_PATHS = [
   "node_modules/pi-mcp-adapter/package.json",
@@ -103,6 +104,7 @@ async function inspectAsar(asarPath) {
     const required = ${JSON.stringify(REQUIRED_ASAR_PATHS)};
     const forbidden = ${JSON.stringify(FORBIDDEN_ASAR_PATHS)};
     const forbiddenPackagePrefixes = ${JSON.stringify(FORBIDDEN_ASAR_PACKAGE_PREFIXES)};
+    const nativeIdMatchesTarget = ${nativeIdMatchesTarget.toString()};
     void (async () => {
       const missing = required.filter((entry) =>
         !fs.existsSync(path.join(asarPath, entry)),
@@ -126,6 +128,53 @@ async function inspectAsar(asarPath) {
             );
           }
         }
+      }
+      function collectWrongArchNatives(rootPath) {
+        const scopes = [
+          ["@mariozechner", "clipboard-"],
+          ["@napi-rs", "keyring-"],
+          ["@vscode", "ripgrep-"],
+        ];
+        for (const [scope, prefix] of scopes) {
+          const dir = path.join(rootPath, "node_modules", scope);
+          if (!fs.existsSync(dir)) continue;
+          for (const name of fs.readdirSync(dir)) {
+            if (!name.startsWith(prefix)) continue;
+            if (
+              !nativeIdMatchesTarget(
+                name.slice(prefix.length),
+                process.platform,
+                process.arch,
+              )
+            ) {
+              unexpected.push(path.posix.join("node_modules", scope, name));
+            }
+          }
+        }
+        const prebuilds = path.join(
+          rootPath,
+          "node_modules",
+          "node-pty",
+          "prebuilds",
+        );
+        if (!fs.existsSync(prebuilds)) return;
+        for (const name of fs.readdirSync(prebuilds)) {
+          if (
+            !nativeIdMatchesTarget(name, process.platform, process.arch)
+          ) {
+            unexpected.push(
+              path.posix.join("node_modules", "node-pty", "prebuilds", name),
+            );
+          }
+        }
+      }
+      collectWrongArchNatives(asarPath);
+      const unpackedRoot = path.join(
+        expectedResourcesPath,
+        "app.asar.unpacked",
+      );
+      if (fs.existsSync(unpackedRoot)) {
+        collectWrongArchNatives(unpackedRoot);
       }
       if (verifyResourcesPath && process.resourcesPath !== expectedResourcesPath) {
         throw new Error(
@@ -162,6 +211,17 @@ async function inspectAsar(asarPath) {
       const mainEntryPath = path.join(asarPath, "out", "main", "main.js");
       const mainRequire = createRequire(mainEntryPath);
       if (process.platform === "darwin") {
+        const clipboardNative = path.join(
+          asarPath,
+          "node_modules",
+          "@mariozechner",
+          "clipboard-darwin-" + process.arch,
+        );
+        if (!fs.existsSync(clipboardNative)) {
+          throw new Error(
+            "Packaged clipboard native module missing for " + process.arch,
+          );
+        }
         const clipboard = mainRequire("@mariozechner/clipboard");
         if (typeof clipboard.getText !== "function") {
           throw new Error("Packaged clipboard native module did not load");

@@ -1,7 +1,7 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.24",
+  "version": "0.1.25",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,
@@ -142,6 +142,7 @@
       "output": "release",
       "buildResources": "build-assets"
     },
+    "beforePack": "./scripts/before-pack.mjs",
     "electronUpdaterCompatibility": ">=2.16",
     "publish": {
       "provider": "github",
