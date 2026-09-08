@@ -19,7 +19,7 @@
     "@earendil-works/pi-coding-agent": "0.84.4",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@opencode-ai/sdk": "^1.14.29",
-    "pi-mcp-adapter": "2.11.0",
+    "pi-mcp-adapter": "2.32.1",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

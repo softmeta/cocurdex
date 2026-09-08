@@ -19,9 +19,14 @@ const FORBIDDEN_ASAR_PATHS = [
   "electron.vite.config.ts",
   "scripts",
   "src",
+  "node_modules/pi-mcp-adapter/banner.png",
+  "node_modules/@mariozechner/clipboard-darwin-universal",
 ];
 
-const FORBIDDEN_ASAR_PACKAGE_PREFIXES = ["@anthropic-ai/claude-agent-sdk-"];
+const FORBIDDEN_ASAR_PACKAGE_PREFIXES = [
+  "@anthropic-ai/claude-agent-sdk-",
+  "recheck-",
+];
 
 async function findAsarFiles(rootPath) {
   const found = [];
@@ -89,6 +94,7 @@ async function inspectAsar(asarPath) {
   const inspectionScript = `
     const fs = require("node:fs");
     const { execFileSync } = require("node:child_process");
+    const { createRequire } = require("node:module");
     const path = require("node:path");
     const { pathToFileURL } = require("node:url");
     const asarPath = ${JSON.stringify(asarPath)};
@@ -154,6 +160,13 @@ async function inspectAsar(asarPath) {
       }
 
       const mainEntryPath = path.join(asarPath, "out", "main", "main.js");
+      const mainRequire = createRequire(mainEntryPath);
+      if (process.platform === "darwin") {
+        const clipboard = mainRequire("@mariozechner/clipboard");
+        if (typeof clipboard.getText !== "function") {
+          throw new Error("Packaged clipboard native module did not load");
+        }
+      }
       const piPackageDir = path.join(
         asarPath,
         "node_modules",
@@ -196,6 +209,47 @@ async function inspectAsar(asarPath) {
         throw new Error("Packaged pi-mcp-adapter has no default factory");
       }
 
+      const mcpRoot = path.dirname(extensionPath);
+      const mcpRequire = createRequire(extensionPath);
+      const keyring = mcpRequire("@napi-rs/keyring");
+      if (typeof keyring.Entry !== "function") {
+        throw new Error("Packaged MCP keyring native module did not load");
+      }
+      function checkSourceMaps(directory) {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+          const entryPath = path.join(directory, entry.name);
+          if (entry.isDirectory()) checkSourceMaps(entryPath);
+          else if (entry.name.endsWith(".map")) {
+            throw new Error("Unexpected MCP source map: " + entryPath);
+          }
+        }
+      }
+      checkSourceMaps(mcpRoot);
+      const { executeSearch } = await jiti.import(path.join(mcpRoot, "proxy-modes.ts"));
+      const searchState = {
+        config: { mcpServers: { fixture: { command: "fixture" } } },
+        manager: { getConnection: () => ({ status: "connected" }) },
+        toolMetadata: new Map([["fixture", [{
+          name: "read_file", description: "Read a file", inputSchema: {},
+        }]]]),
+      };
+      const safe = executeSearch(searchState, "^read_file$", true);
+      if (safe.details.count !== 1) {
+        throw new Error("Packaged MCP regex search failed: " + JSON.stringify(safe.details));
+      }
+      const unsafe = executeSearch(searchState, "(a+)+$", true);
+      if (unsafe.details.error !== "unsafe_pattern") {
+        throw new Error("Packaged MCP search accepted an unsafe regex");
+      }
+      const invalid = executeSearch(searchState, "[", true);
+      if (invalid.details.error !== "invalid_pattern") {
+        throw new Error("Packaged MCP search accepted an invalid regex");
+      }
+      const oversized = executeSearch(searchState, "a".repeat(257), true);
+      if (oversized.details.error !== "query_too_long") {
+        throw new Error("Packaged MCP search lost its regex length limit");
+      }
+
       process.stdout.write(JSON.stringify({ missing, unexpected }));
     })().catch((error) => {
       console.error(error);
@@ -208,6 +262,7 @@ async function inspectAsar(asarPath) {
     {
       encoding: "utf8",
       env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+      timeout: 60_000,
     },
   );
 

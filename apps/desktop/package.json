@@ -1,7 +1,7 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,
@@ -47,7 +47,7 @@
     "electron-updater": "6.8.9",
     "font-list": "^2.1.0",
     "node-pty": "^1.1.0",
-    "pi-mcp-adapter": "2.11.0",
+    "pi-mcp-adapter": "2.32.1",
     "simple-git": "^3.36.0",
     "zod": "^4.0.0"
   },
@@ -154,10 +154,14 @@
       "!node_modules/**/*.map",
       "!node_modules/**/*.{ts,tsx,cts,mts}",
       "node_modules/pi-mcp-adapter/**/*",
+      "!node_modules/pi-mcp-adapter/**/*.map",
+      "!node_modules/pi-mcp-adapter/banner.png",
       "!node_modules/**/{demo,demos,docs,example,examples,test,tests,__tests__}/**/*",
       "!node_modules/**/*.{md,markdown}",
       "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
       "!node_modules/recheck-jar/**",
+      "!node_modules/recheck-{linux,macos,windows}-*/**/*",
+      "!node_modules/@mariozechner/clipboard-darwin-universal/**/*",
       "!node_modules/koffi/**"
     ],
     "asarUnpack": [
