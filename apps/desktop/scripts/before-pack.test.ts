@@ -5,7 +5,7 @@ const x64 = 1;
 const arm64 = 3;
 
 describe("beforePack", () => {
-  it("keeps root files includes and appends excludes on the platform config", () => {
+  it("copies root includes onto the platform files list so ignore-only override cannot pack the app tree", () => {
     const extraResources = [{ from: "vendor/fd", to: "vendor/fd" }];
     const config = {
       files: ["out/**", "!node_modules/**/*.map"],
@@ -20,8 +20,9 @@ describe("beforePack", () => {
 
     expect(config.files).toEqual(["out/**", "!node_modules/**/*.map"]);
     expect(config.linux.extraResources).toBe(extraResources);
+    expect(config.linux.files).toContain("out/**");
     expect(
-      config.linux.files?.every((pattern) => pattern.startsWith("!")),
+      config.linux.files?.some((pattern) => !pattern.startsWith("!")),
     ).toBe(true);
     expect(config.linux.files).toContain(
       "!**/node_modules/@napi-rs/keyring-linux-arm64-gnu/**/*",
@@ -45,6 +46,7 @@ describe("beforePack", () => {
       electronPlatformName: "darwin",
     });
 
+    expect(config.mac.files).toContain("out/**");
     expect(config.mac.files).toContain(
       "!**/node_modules/@mariozechner/clipboard-darwin-arm64/**/*",
     );
