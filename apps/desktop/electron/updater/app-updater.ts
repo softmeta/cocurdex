@@ -1,3 +1,4 @@
+import { app } from "electron";
 import log from "electron-log/main.js";
 import electronUpdater from "electron-updater";
 import {
@@ -7,6 +8,7 @@ import {
   githubReleaseNotesUrl,
   reduceAppUpdateState,
 } from "./app-update-state";
+import { assertUpdateArchitecture } from "./update-architecture";
 
 const { autoUpdater } = electronUpdater;
 
@@ -89,6 +91,15 @@ export function startAppUpdater(options: {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = log;
+  const isUpdateSupported = autoUpdater.isUpdateSupported;
+  autoUpdater.isUpdateSupported = (info) => {
+    assertUpdateArchitecture(info, {
+      platform: process.platform,
+      arch: process.arch,
+      translated: app.runningUnderARM64Translation,
+    });
+    return isUpdateSupported(info);
+  };
 
   autoUpdater.on("checking-for-update", () => {
     apply({ type: "checking" });

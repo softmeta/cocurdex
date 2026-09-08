@@ -47,6 +47,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            test "$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft --jq .isDraft)" = "true"
             exit 0
           fi
           gh release create "${GITHUB_REF_NAME}" \
@@ -152,7 +153,7 @@ jobs:
           security unlock-keychain -p "${MAC_SIGNING_KEYCHAIN_PASSWORD}" "${CSC_KEYCHAIN}"
           unset CSC_LINK CSC_KEY_PASSWORD
           pnpm --filter @cocurdex/desktop \
-            ${{ github.ref_type == 'tag' && format('dist:mac:{0}:release', matrix.arch) || format('dist:mac:{0}', matrix.arch) }}
+            dist:mac:${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: --max-old-space-size=6144
@@ -190,15 +191,17 @@ jobs:
           fi
           verify_mac "${app_path}" "${dmg_path}"
 
-      - name: Attach checksum
+      - name: Upload verified Mac artifacts and architecture manifest
         if: github.ref_type == 'tag'
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ github.token }}
           MAC_ARCH: ${{ matrix.arch }}
         run: |
+          node ./scripts/mac-update-manifest.mjs create release "${GITHUB_REF_NAME#v}" "${MAC_ARCH}"
           gh release upload "${GITHUB_REF_NAME}" \
-            "release/Cocurdex-mac-${MAC_ARCH}.dmg.sha256" \
+            release/Cocurdex-mac-${MAC_ARCH}.* \
+            "release/mac-update-${MAC_ARCH}.json" \
             --repo "${GITHUB_REPOSITORY}" \
             --clobber
 
@@ -324,6 +327,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+
+      - name: Test Mac update manifest validation
+        run: node --test apps/desktop/scripts/mac-update-manifest.test.mjs
+
+      - name: Merge and upload Mac update metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern 'mac-update-*.json' --dir mac-update
+          gh release view "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" --json assets > mac-update/assets.json
+          node apps/desktop/scripts/mac-update-manifest.mjs merge mac-update "${GITHUB_REF_NAME#v}"
+          gh release upload "${GITHUB_REF_NAME}" mac-update/latest-mac.yml \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
