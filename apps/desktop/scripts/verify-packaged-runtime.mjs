@@ -89,7 +89,6 @@ async function inspectAsar(asarPath) {
   const inspectionScript = `
     const fs = require("node:fs");
     const { execFileSync } = require("node:child_process");
-    const { createRequire } = require("node:module");
     const path = require("node:path");
     const { pathToFileURL } = require("node:url");
     const asarPath = ${JSON.stringify(asarPath)};
@@ -155,9 +154,22 @@ async function inspectAsar(asarPath) {
       }
 
       const mainEntryPath = path.join(asarPath, "out", "main", "main.js");
-      const mainRequire = createRequire(mainEntryPath);
-      const piRuntimePath = mainRequire.resolve("@earendil-works/pi-coding-agent");
-      const { ModelRuntime } = await import(pathToFileURL(piRuntimePath).href);
+      const piPackageDir = path.join(
+        asarPath,
+        "node_modules",
+        "@earendil-works",
+        "pi-coding-agent",
+      );
+      const piPackage = JSON.parse(
+        fs.readFileSync(path.join(piPackageDir, "package.json"), "utf8"),
+      );
+      const piImport = piPackage.exports?.["."]?.import;
+      if (typeof piImport !== "string") {
+        throw new Error("Packaged Pi SDK has no ESM export");
+      }
+      const { ModelRuntime } = await import(
+        pathToFileURL(path.join(piPackageDir, piImport)).href
+      );
       if (typeof ModelRuntime?.create !== "function") {
         throw new Error("Packaged Pi SDK has no ModelRuntime.create");
       }
