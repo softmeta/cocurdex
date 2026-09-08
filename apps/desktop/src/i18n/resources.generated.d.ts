@@ -927,8 +927,10 @@ export default interface Resources {
       cancel: "Cancel";
       empty: "No saved roles";
       menuLabel: "Roles";
+      name: "Name";
       namePlaceholder: "Role name";
       save: "Save as role";
+      saveAction: "Save";
       saveDescription: "Name this combination of agent, model, and runtime options.";
       saveFailed: "Could not save this role.";
       saveTitle: "Save as role";

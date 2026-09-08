@@ -195,6 +195,14 @@ export function NewSessionCard({
   });
   const selectedRole =
     roleOptions.find((role) => role.id === chosenRoleId) ?? null;
+  const saveRoleSummary = formatAgentRoleRecordSummary(currentRoleDraft, {
+    agentLabel: agentLabels[currentRoleDraft.agentId],
+    permissionLabel: currentRoleDraft.permissionMode
+      ? t(`sessions:permissionMode.${currentRoleDraft.permissionMode}`)
+      : null,
+    thinkingLabelFor: (level) => t(`sessions:composer.thinkingLevels.${level}`),
+    fastModeOn: t("sessions:modelMenu.fastModeOn"),
+  });
   let agentTriggerLabel: string = t("sessions:composer.noInstalledAgent");
   if (selectedRole) {
     agentTriggerLabel = selectedRole.name;
@@ -445,6 +453,7 @@ export function NewSessionCard({
       <SaveAgentRoleDialog
         open={saveRoleOpen}
         onOpenChange={setSaveRoleOpen}
+        summary={saveRoleSummary}
         onSave={async (name) => {
           const saved = await saveAgentRoleRecord({
             ...currentRoleDraft,

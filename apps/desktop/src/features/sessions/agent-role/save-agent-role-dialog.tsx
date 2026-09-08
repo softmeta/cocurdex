@@ -1,9 +1,11 @@
+import { AGENT_ROLE_NAME_MAX_LENGTH } from "@cocurdex/shared";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, Input } from "@/components/ui";
+import { Button, Field, FieldGroup, FieldLabel, Input } from "@/components/ui";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -15,10 +17,12 @@ export function SaveAgentRoleDialog({
   open,
   onOpenChange,
   onSave,
+  summary,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
   onSave(name: string): Promise<void> | void;
+  summary?: string;
 }) {
   const { t } = useTranslation("sessions");
   const [name, setName] = useState("");
@@ -51,30 +55,38 @@ export function SaveAgentRoleDialog({
   return (
     <Dialog disablePointerDismissal open={open} onOpenChange={handleOpenChange}>
       <DialogContent size="compact">
-        <DialogHeader>
-          <DialogTitle>{t("agentRole.saveTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("agentRole.saveDescription")}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <Input
-            autoFocus
-            maxLength={80}
-            placeholder={t("agentRole.namePlaceholder")}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-            >
-              {t("agentRole.cancel")}
-            </Button>
+        <form className="contents" onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{t("agentRole.saveTitle")}</DialogTitle>
+            <DialogDescription>
+              {summary || t("agentRole.saveDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup className="pb-2">
+            <Field>
+              <FieldLabel htmlFor="save-agent-role-name">
+                {t("agentRole.name")}
+              </FieldLabel>
+              <Input
+                autoFocus
+                id="save-agent-role-name"
+                maxLength={AGENT_ROLE_NAME_MAX_LENGTH}
+                placeholder={t("agentRole.namePlaceholder")}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </Field>
+          </FieldGroup>
+          <DialogFooter className="py-3">
+            <DialogClose
+              render={
+                <Button type="button" variant="outline">
+                  {t("agentRole.cancel")}
+                </Button>
+              }
+            />
             <Button disabled={!name.trim() || saving} type="submit">
-              {t("agentRole.save")}
+              {t("agentRole.saveAction")}
             </Button>
           </DialogFooter>
         </form>

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Button, Field, FieldGroup, FieldLabel, Input } from "@/components/ui";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -215,8 +216,8 @@ function AgentRoleEditForm({
         <DialogHeader>
           <DialogTitle>{t("settings:agentRoles.editTitle")}</DialogTitle>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <FieldGroup>
+        <form className="contents" onSubmit={handleSubmit}>
+          <FieldGroup className="pb-2">
             <Field>
               <FieldLabel htmlFor="agent-role-name">
                 {t("settings:agentRoles.name")}
@@ -258,14 +259,14 @@ function AgentRoleEditForm({
               />
             </Field>
           </FieldGroup>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              {t("settings:agentRoles.cancel")}
-            </Button>
+          <DialogFooter className="py-3">
+            <DialogClose
+              render={
+                <Button type="button" variant="outline">
+                  {t("settings:agentRoles.cancel")}
+                </Button>
+              }
+            />
             <Button disabled={!name.trim() || saving} type="submit">
               {t("settings:agentRoles.save")}
             </Button>

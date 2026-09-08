@@ -177,7 +177,7 @@ export function AgentSelect({
           </DropdownMenuTrigger>
         </HoverCardTrigger>
         {selectedRole ? (
-          <HoverCardContent align="start" className="w-72 p-2.5" side="top">
+          <HoverCardContent align="start" className="w-72 p-2.5" side="bottom">
             <div className="flex min-w-0 flex-col gap-2">
               <Text size="meta" tone="muted">
                 {selectedRole.summary}

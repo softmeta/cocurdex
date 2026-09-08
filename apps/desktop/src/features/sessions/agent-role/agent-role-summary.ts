@@ -1,4 +1,4 @@
-import type { AgentRoleRecord, AgentThinkingLevel } from "@cocurdex/shared";
+import type { AgentRoleDraft, AgentThinkingLevel } from "@cocurdex/shared";
 import {
   getCachedProviderModelEntry,
   providerModelCache,
@@ -15,7 +15,7 @@ export function shortModelDisplayName(name: string) {
 }
 
 function findCachedRoleModel(
-  role: Pick<AgentRoleRecord, "agentId" | "providerId" | "modelId">,
+  role: Pick<AgentRoleDraft, "agentId" | "providerId" | "modelId">,
 ) {
   const items =
     getCachedProviderModelEntry(providerModelCache, role.agentId)?.result
@@ -31,7 +31,7 @@ function findCachedRoleModel(
 
 export function resolveAgentRoleModelLabel(
   role: Pick<
-    AgentRoleRecord,
+    AgentRoleDraft,
     "agentId" | "providerId" | "modelId" | "modelName"
   >,
 ) {
@@ -47,7 +47,7 @@ export function resolveAgentRoleModelLabel(
 
 export function resolveAgentRoleThinkingLevel(
   role: Pick<
-    AgentRoleRecord,
+    AgentRoleDraft,
     "agentId" | "providerId" | "modelId" | "thinkingLevel" | "reasoningEffort"
   >,
 ): AgentThinkingLevel | null {
@@ -62,7 +62,7 @@ export function resolveAgentRoleThinkingLevel(
 
 export function resolveAgentRoleSpeedLabel(
   role: Pick<
-    AgentRoleRecord,
+    AgentRoleDraft,
     "agentId" | "providerId" | "modelId" | "fastMode" | "serviceTier"
   >,
   fastModeOnLabel: string,
@@ -98,7 +98,7 @@ export function formatAgentRoleSummary(parts: {
 }
 
 export function formatAgentRoleRecordSummary(
-  role: AgentRoleRecord,
+  role: AgentRoleDraft,
   labels: {
     agentLabel: string;
     permissionLabel: string | null;
