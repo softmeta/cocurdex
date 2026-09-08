@@ -1,7 +1,12 @@
 import { createNativePackageExcludes } from "./packaging-native-filters.mjs";
 
 const ARCH_NAMES = ["ia32", "x64", "armv7l", "arm64", "universal"];
-const originalFilesByConfig = new WeakMap();
+const PLATFORM_CONFIG_KEYS = {
+  darwin: "mac",
+  win32: "win",
+  linux: "linux",
+};
+const originalPlatformFilesByConfig = new WeakMap();
 
 function archName(arch) {
   if (typeof arch === "string") {
@@ -12,23 +17,33 @@ function archName(arch) {
 
 export default function beforePack(context) {
   const config = context.packager.config;
-  if (!originalFilesByConfig.has(config)) {
-    originalFilesByConfig.set(
-      config,
-      Array.isArray(config.files) ? [...config.files] : config.files,
-    );
-  }
-  const originalFiles = originalFilesByConfig.get(config);
-  if (!Array.isArray(originalFiles)) {
+  const platformKey = PLATFORM_CONFIG_KEYS[context.electronPlatformName];
+  if (platformKey == null) {
     return;
   }
+
+  let originals = originalPlatformFilesByConfig.get(config);
+  if (originals == null) {
+    originals = {};
+    originalPlatformFilesByConfig.set(config, originals);
+  }
+  if (!Object.hasOwn(originals, platformKey)) {
+    const existing = config[platformKey]?.files;
+    originals[platformKey] = Array.isArray(existing) ? [...existing] : [];
+  }
+
+  if (config[platformKey] == null) {
+    config[platformKey] = {};
+  }
+
   const arch = archName(context.arch);
   if (arch === "universal") {
-    config.files = originalFiles;
+    config[platformKey].files = originals[platformKey];
     return;
   }
-  config.files = [
-    ...originalFiles,
+
+  config[platformKey].files = [
+    ...originals[platformKey],
     ...createNativePackageExcludes(context.electronPlatformName, arch),
   ];
 }
