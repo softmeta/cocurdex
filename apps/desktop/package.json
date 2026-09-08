@@ -142,6 +142,7 @@
       "output": "release",
       "buildResources": "build-assets"
     },
+    "beforePack": "./scripts/before-pack.mjs",
     "electronUpdaterCompatibility": ">=2.16",
     "publish": {
       "provider": "github",

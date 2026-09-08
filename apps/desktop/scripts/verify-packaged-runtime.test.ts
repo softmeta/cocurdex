@@ -14,6 +14,35 @@ const piPackage = JSON.parse(
   exports: { ".": { import?: string; require?: string; default?: string } };
 };
 
+describe("mac native optional dependencies", () => {
+  it("installs both darwin CPU optional packages for Intel cross-builds", () => {
+    const workspace = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../pnpm-workspace.yaml",
+      ),
+      "utf8",
+    );
+    expect(workspace).toContain("supportedArchitectures:");
+    expect(workspace).toMatch(/cpu:\n[ \t]+- x64\n[ \t]+- arm64\n/);
+  });
+
+  it("filters foreign-arch natives in beforePack instead of a static files glob", () => {
+    const desktopPackage = JSON.parse(
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), "../package.json"),
+        "utf8",
+      ),
+    ) as { build: { beforePack?: string; files: string[] } };
+    expect(desktopPackage.build.beforePack).toBe("./scripts/before-pack.mjs");
+    expect(
+      desktopPackage.build.files.some((pattern) =>
+        pattern.includes("clipboard-darwin-x64"),
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("packaged Pi SDK resolution", () => {
   it("is ESM-only, so CJS require.resolve cannot load the package root", () => {
     expect(piPackage.exports["."].import).toBe("./dist/index.js");
