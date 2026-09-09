@@ -2,11 +2,12 @@ import { atom } from "jotai";
 import {
   clearPaneSessions,
   closePane,
+  collapseToPane,
   createRootPane,
   findPane,
   findPaneIdByConversationId,
   findPaneIdBySessionId,
-  MAX_SESSION_PANES,
+  firstPane,
   paneCount,
   ROOT_PANE_ID,
   type SessionPaneBinding,
@@ -26,10 +27,6 @@ export const focusedSessionPaneAtom = atom((get) => {
 
 export const sessionPaneCountAtom = atom((get) => {
   return paneCount(get(sessionSplitLayoutAtom));
-});
-
-export const canSplitSessionPaneAtom = atom((get) => {
-  return get(sessionPaneCountAtom) < MAX_SESSION_PANES;
 });
 
 export const resetSessionSplitLayoutAtom = atom(null, (_get, set) => {
@@ -90,6 +87,20 @@ export const splitFocusedPaneAtom = atom(
     set(sessionSplitLayoutAtom, result.root);
     set(focusedPaneIdAtom, result.newPaneId);
     return findPane(result.root, result.newPaneId);
+  },
+);
+
+export const collapseSessionSplitAtom = atom(
+  null,
+  (get, set, paneId: string) => {
+    const next = collapseToPane(get(sessionSplitLayoutAtom), paneId);
+    if (!next) {
+      return null;
+    }
+    const kept = firstPane(next);
+    set(sessionSplitLayoutAtom, next);
+    set(focusedPaneIdAtom, kept.id);
+    return kept;
   },
 );
 

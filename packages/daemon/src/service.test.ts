@@ -99,6 +99,49 @@ async function createService(existingUserDataPath?: string) {
 }
 
 describe("CocurdexDaemonService follow-up queue", () => {
+  it("bootstraps without reading message history or tool results", async () => {
+    const service = await createService();
+    try {
+      const message = createRuntimeMessage("Persisted history");
+      await service.state.saveUserMessage(message);
+      const toolCall = {
+        id: "historical-tool",
+        sessionId: message.sessionId,
+        title: "Historical result",
+        status: "completed" as const,
+        content: [],
+        rawOutput: "Large historical output",
+        locations: [],
+        startedAt: message.createdAt,
+        updatedAt: message.createdAt,
+      };
+      await service.state.persistAgentEvent({
+        type: "tool.finished",
+        sessionId: message.sessionId,
+        toolCall,
+      });
+      const database = await service.state.getChatDatabase();
+      const listMessages = vi.spyOn(database.messages, "list");
+      const listToolCalls = vi.spyOn(database.toolCalls, "list");
+
+      const bootstrap = await service.bootstrap();
+
+      expect(bootstrap.queuedMessages).toEqual([]);
+      expect(bootstrap).not.toHaveProperty("messages");
+      expect(bootstrap).not.toHaveProperty("toolCalls");
+      expect(listMessages).not.toHaveBeenCalled();
+      expect(listToolCalls).not.toHaveBeenCalled();
+      expect(
+        await service.state.listMessagesBySessionId(message.sessionId),
+      ).toEqual([message]);
+      expect(
+        await service.state.listToolCallsBySessionId(message.sessionId),
+      ).toEqual([expect.objectContaining(toolCall)]);
+    } finally {
+      await service.shutdown();
+    }
+  });
+
   it("registers the session runtime before the first send returns", async () => {
     const service = await createService();
     let releaseHistory: (() => void) | undefined;
@@ -251,11 +294,12 @@ describe("CocurdexDaemonService follow-up queue", () => {
     expect(beforeSteer.queuedAgentInputs).toEqual([
       expect.objectContaining({ messageId: firstQueued.id }),
     ]);
-    expect(beforeSteer.messages).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: secondQueued.id }),
-      ]),
-    );
+    expect(beforeSteer.queuedMessages).toEqual([
+      expect.objectContaining({
+        id: firstQueued.id,
+        content: "Edited follow-up",
+      }),
+    ]);
 
     await expect(
       service.steerQueuedAgentInput("session-1", firstQueued.id),
@@ -280,11 +324,10 @@ describe("CocurdexDaemonService follow-up queue", () => {
     );
     temporaryDirectories.push(userDataPath);
     const service = await createService(userDataPath);
-    let completeActiveTurn: (() => void) | undefined;
-    const activeTurn = new Promise<MessageRecord>((resolve) => {
-      completeActiveTurn = () => resolve(createRuntimeMessage("First turn"));
-    });
-    vi.spyOn(service.runtime, "sendSessionMessage").mockReturnValue(activeTurn);
+    const activeTurn = new Promise<MessageRecord>(() => {});
+    const originalSend = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockReturnValue(activeTurn);
 
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
@@ -294,14 +337,19 @@ describe("CocurdexDaemonService follow-up queue", () => {
       createPayload("Survive restart", "queue-after-run"),
       null,
     );
+    await vi.waitFor(() => expect(originalSend).toHaveBeenCalledOnce());
     await service.shutdown();
 
     const restarted = await createService(userDataPath);
-    const bootstrap = (await restarted.bootstrap()) as unknown as {
-      queuedAgentInputs: Array<{ messageId: string; sessionId: string }>;
-    };
+    const bootstrap = await restarted.bootstrap();
     expect(bootstrap.queuedAgentInputs).toEqual([
       expect.objectContaining({ sessionId: "session-1" }),
+    ]);
+    expect(bootstrap.queuedMessages).toEqual([
+      expect.objectContaining({
+        id: bootstrap.queuedAgentInputs[0]?.messageId,
+        content: "Survive restart",
+      }),
     ]);
 
     const resumedSend = vi
@@ -320,7 +368,6 @@ describe("CocurdexDaemonService follow-up queue", () => {
       expect(state.queuedAgentInputs).toEqual([]);
     });
 
-    completeActiveTurn?.();
     await restarted.shutdown();
   });
 });

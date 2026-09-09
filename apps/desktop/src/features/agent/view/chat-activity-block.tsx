@@ -7,20 +7,23 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui";
 import { cn } from "@/lib";
+import { useTranscriptState } from "../transcript-state";
 
 export function ActivityBlock({
   busy = false,
   children,
   reasoningCount,
+  stateKey,
   toolCount,
 }: {
   busy?: boolean;
   children: ReactNode;
   reasoningCount: number;
+  stateKey: string;
   toolCount: number;
 }) {
   const { t } = useTranslation("agent");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useTranscriptState(stateKey, false);
   // Defer mounting the expanded rows. The click commits the chevron rotation
   // and panel reveal on a fast frame; React then mounts the (often heavy) tool
   // / reasoning subtree as a low-priority update. Mounting that whole subtree

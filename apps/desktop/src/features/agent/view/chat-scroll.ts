@@ -32,47 +32,38 @@ export type StickyUserMessageCandidate = {
 
 export type StickyUserMessageSelection = {
   id: string | null;
-  // Whether the overlay bar should be shown. Only true once the active
-  // prompt's real header has scrolled fully above the viewport top, so the
-  // bar never duplicates a header that is still on screen.
-  pinned: boolean;
 };
 
-// Picks which prompt the viewport currently belongs to and whether its header
-// has scrolled off the top. Candidates must be ordered top-to-bottom, matching
-// their DOM order, so relativeTop increases across the list.
 export function resolveStickyUserMessage(
   candidates: StickyUserMessageCandidate[],
   fallbackId: string | null,
+  options?: { atEnd?: boolean; lastId?: string | null },
 ): StickyUserMessageSelection {
+  if (options?.atEnd) {
+    return { id: options.lastId ?? candidates.at(-1)?.id ?? fallbackId };
+  }
+
   let stickyId: string | null = null;
   let stickyTop = Number.NEGATIVE_INFINITY;
-  let pinned = false;
 
   for (const candidate of candidates) {
     const { id, relativeTop } = candidate;
 
     if (relativeTop <= STICKY_ACTIVE_TOP_OFFSET) {
-      // Keep the lowest header that is still at/above the activation line —
-      // that is the section the viewer is reading.
       if (relativeTop >= stickyTop) {
         stickyId = id;
         stickyTop = relativeTop;
-        pinned = relativeTop < 0;
       }
       continue;
     }
 
-    // No header has crossed the activation line yet; fall back to the first
-    // (topmost) prompt and leave the bar hidden — its header is still visible.
     if (!stickyId) {
       stickyId = id;
       stickyTop = relativeTop;
-      pinned = false;
     }
   }
 
-  return { id: stickyId ?? fallbackId, pinned: stickyId ? pinned : false };
+  return { id: stickyId ?? fallbackId };
 }
 
 // Re-arming stream-follow after a manual scroll needs a far tighter test than

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   clearPaneSessions,
   closePane,
+  collapseToPane,
   createRootPane,
   findPane,
   findPaneIdBySessionId,
   listPanes,
-  MAX_SESSION_PANES,
   paneCount,
   ROOT_PANE_ID,
   setPaneBinding,
@@ -80,20 +80,19 @@ describe("session split tree", () => {
     ).toEqual([ROOT_PANE_ID, "pane-b", "pane-c"]);
   });
 
-  it("refuses to split past the pane cap", () => {
+  it("keeps splitting after four panes", () => {
     let root = createRootPane();
     let nextId = 0;
     const createId = () => {
       nextId += 1;
       return `id-${nextId}`;
     };
-    for (let index = 0; index < MAX_SESSION_PANES - 1; index += 1) {
+    for (let index = 0; index < 5; index += 1) {
       const split = splitPane(root, ROOT_PANE_ID, "right", { createId });
       expect(split).not.toBeNull();
       root = split?.root ?? root;
     }
-    expect(paneCount(root)).toBe(MAX_SESSION_PANES);
-    expect(splitPane(root, ROOT_PANE_ID, "down")).toBeNull();
+    expect(paneCount(root)).toBe(6);
   });
 
   it("closes a pane and returns the sibling as successor", () => {
@@ -109,6 +108,40 @@ describe("session split tree", () => {
 
   it("cannot close the last pane", () => {
     expect(closePane(createRootPane(), ROOT_PANE_ID)).toBeNull();
+  });
+
+  it("collapses splits to a single root pane keeping the chosen binding", () => {
+    const split = splitPane(
+      setPaneBinding(createRootPane(), ROOT_PANE_ID, {
+        sessionId: "session-a",
+      }),
+      ROOT_PANE_ID,
+      "right",
+      { createId: createIds(["pane-b", "split-1"]) },
+    );
+    const withSecond = setPaneBinding(
+      split?.root ?? createRootPane(),
+      "pane-b",
+      {
+        conversationId: "conversation-b",
+      },
+    );
+
+    const collapsed = collapseToPane(withSecond, "pane-b");
+    expect(collapsed).toEqual(
+      createRootPane({
+        sessionId: null,
+        conversationId: "conversation-b",
+      }),
+    );
+  });
+
+  it("does not collapse when the pane is missing or already alone", () => {
+    const root = setPaneBinding(createRootPane(), ROOT_PANE_ID, {
+      sessionId: "session-a",
+    });
+    expect(collapseToPane(root, ROOT_PANE_ID)).toBe(root);
+    expect(collapseToPane(root, "missing")).toBeNull();
   });
 
   it("finds a pane that already shows a session", () => {

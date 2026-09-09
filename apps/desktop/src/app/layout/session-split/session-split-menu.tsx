@@ -1,5 +1,6 @@
 import {
   Ellipsis,
+  Square,
   SquareSplitHorizontal,
   SquareSplitVertical,
   X,
@@ -23,16 +24,16 @@ import {
 
 interface SessionSplitMenuProps {
   canClose: boolean;
-  canSplit: boolean;
   onClose(): void;
+  onCloseAll(): void;
   onSplitDown(): void;
   onSplitRight(): void;
 }
 
 export function SessionSplitMenu({
   canClose,
-  canSplit,
   onClose,
+  onCloseAll,
   onSplitDown,
   onSplitRight,
 }: SessionSplitMenuProps) {
@@ -52,15 +53,15 @@ export function SessionSplitMenu({
         </TitlebarIconButton>
       </DropdownMenuTrigger>
       <AppDropdownContent
-        align="end"
+        align="start"
         className={compactDropdownContentClassName}
         side="bottom"
       >
-        <AppDropdownItem disabled={!canSplit} onClick={onSplitDown}>
+        <AppDropdownItem onClick={onSplitDown}>
           <SquareSplitHorizontal className="size-4" />
           {t("split.down")}
         </AppDropdownItem>
-        <AppDropdownItem disabled={!canSplit} onClick={onSplitRight}>
+        <AppDropdownItem onClick={onSplitRight}>
           <SquareSplitVertical className="size-4" />
           {t("split.right")}
         </AppDropdownItem>
@@ -70,6 +71,10 @@ export function SessionSplitMenu({
             <AppDropdownItem onClick={onClose}>
               <X className="size-4" />
               {t("split.close")}
+            </AppDropdownItem>
+            <AppDropdownItem onClick={onCloseAll}>
+              <Square className="size-4" />
+              {t("split.closeAll")}
             </AppDropdownItem>
           </>
         ) : null}

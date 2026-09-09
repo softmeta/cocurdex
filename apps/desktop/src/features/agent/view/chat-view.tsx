@@ -5,7 +5,6 @@ import type {
   MessageRecord,
 } from "@cocurdex/shared";
 import {
-  type CSSProperties,
   useCallback,
   useId,
   useLayoutEffect,
@@ -37,8 +36,6 @@ import {
 } from "@/lib";
 import type { ToolCallPreviewLocation } from "../tool-call";
 import { getActivityState } from "./chat-activity";
-import { ChatConversationItem } from "./chat-conversation-item";
-import { type StickyUserMessage, StickyUserMessageBar } from "./chat-message";
 import { resolveJumpButton } from "./chat-scroll";
 import { getCachedTranscriptModel } from "./chat-transcript-model";
 import {
@@ -53,7 +50,10 @@ import type {
 } from "./chat-view-types";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
-import { useStickyOverlayOffset } from "./use-sticky-overlay-offset";
+import {
+  type ChatTimelineScrollHandle,
+  ChatVirtualTimeline,
+} from "./virtual-timeline";
 
 const PREVIOUS_MESSAGE_REVERT_PREFERENCE_KEY =
   "agents.previousMessageRevertPreference";
@@ -168,19 +168,6 @@ export function ChatView({
 
     return model;
   }, [messages, perfSessionId, questions, toolCalls]);
-  const liveConversationGroup = isRunning
-    ? (conversationGroups.at(-1) ?? null)
-    : null;
-  // Conversations rendered above the live (currently-running) conversation.
-  // The live one is split out so its frequent prop updates don't churn the
-  // memoized history list.
-  const historicalConversationGroups = useMemo(
-    () =>
-      liveConversationGroup
-        ? conversationGroups.slice(0, -1)
-        : conversationGroups,
-    [conversationGroups, liveConversationGroup],
-  );
   const activity = useMemo(
     () =>
       getActivityState({
@@ -230,6 +217,14 @@ export function ChatView({
   );
   const chatContentRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const attachViewport = useCallback((element: HTMLDivElement | null) => {
+    viewportRef.current = element;
+    setViewportElement(element);
+  }, []);
+  const timelineScrollRef = useRef<ChatTimelineScrollHandle | null>(null);
   const userMessageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const latestMessage = messages.at(-1);
   const stickyUserMessages = useMemo(
@@ -241,7 +236,7 @@ export function ChatView({
                 attachments: group.prompt.attachments,
                 content: group.prompt.content,
                 id: group.prompt.id,
-              } satisfies StickyUserMessage & UserMessageAnchor,
+              } satisfies UserMessageAnchor,
             ]
           : [],
       ),
@@ -249,7 +244,8 @@ export function ChatView({
   );
   const setUserMessageRef = useCallback(
     (messageId: string, element: HTMLDivElement | null) => {
-      userMessageRefs.current[messageId] = element;
+      if (element) userMessageRefs.current[messageId] = element;
+      else delete userMessageRefs.current[messageId];
     },
     [],
   );
@@ -260,7 +256,6 @@ export function ChatView({
     isNearBottom,
     isNearTop,
     scrollDirection,
-    isStickyUserMessagePinned,
     markUserScrollIntent,
     markUserScrollStart,
     stickToBottomIfLocked,
@@ -269,6 +264,7 @@ export function ChatView({
     scrollToUserMessage,
     syncScrollState,
   } = useChatScrollState({
+    timelineScrollRef,
     userMessageRefs,
     viewportRef,
   });
@@ -303,20 +299,6 @@ export function ChatView({
   }, [scrollToBottomEpoch, scrollToLatest]);
   const activeUserNavigationMessageId =
     activeUserMessageId ?? stickyUserMessages.at(-1)?.id ?? null;
-  // The overlay bar shows the prompt the viewer is currently reading once its
-  // real header has scrolled above the top. Hidden otherwise so it never
-  // duplicates a visible header.
-  const stickyBarMessage =
-    isStickyUserMessagePinned && timelineGroups.length > 0
-      ? (stickyUserMessages.find(
-          (message) => message.id === activeUserNavigationMessageId,
-        ) ?? null)
-      : null;
-  // Expose the floating overlay's height as `--md-anchor-offset` so markdown
-  // heading anchors clear it when an in-document TOC link scrolls them up.
-  const { offset: anchorScrollOffset, overlayRef } = useStickyOverlayOffset(
-    stickyBarMessage !== null,
-  );
   // One mutually-exclusive jump button. At the edges it points to the opposite
   // end; in the middle it mirrors the scroll direction.
   const jumpButton = resolveJumpButton({
@@ -498,38 +480,19 @@ export function ChatView({
 
   return (
     <section className="flex h-full flex-col bg-chat-canvas">
-      <div
-        className="relative flex-1 overflow-hidden"
-        style={
-          { "--md-anchor-offset": `${anchorScrollOffset}px` } as CSSProperties
-        }
-      >
+      <div className="relative flex-1 overflow-hidden">
         <UserMessageNavigation
           activeMessageId={activeUserNavigationMessageId}
           messages={stickyUserMessages}
           onSelect={scrollToUserMessage}
         />
-        {stickyBarMessage ? (
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-chat-canvas px-2 py-2 md:px-3 xl:px-6"
-            ref={overlayRef}
-          >
-            <ChatContentColumn className="pointer-events-auto">
-              <StickyUserMessageBar
-                attachments={stickyBarMessage.attachments}
-                content={stickyBarMessage.content}
-                id={stickyBarMessage.id}
-                onClick={() => scrollToUserMessage(stickyBarMessage.id)}
-              />
-            </ChatContentColumn>
-          </div>
-        ) : null}
         <ScrollArea
           className={cn(
             "h-full px-2 md:px-3 xl:px-6",
             !isInitialBottomSettled && "opacity-0",
           )}
           viewportProps={{
+            className: "[overflow-anchor:none]",
             onKeyDownCapture: handleUserScrollIntent,
             onPointerDown: markUserScrollIntent,
             onPointerDownCapture: markUserScrollIntent,
@@ -538,13 +501,14 @@ export function ChatView({
             onWheelCapture: handleUserScrollIntent,
             tabIndex: 0,
           }}
-          viewportRef={viewportRef}
+          viewportRef={attachViewport}
         >
           <ChatContentColumn className="py-6" ref={chatContentRef}>
             {timelineGroups.length === 0 && !readOnly ? (
               <EmptyChatState
                 activeBranch={activeBranch}
                 workspaceName={workspaceName}
+                sessionId={sessionId}
                 agentLabel={agentLabel}
                 agentType={agentType}
                 attachment={attachment}
@@ -576,67 +540,23 @@ export function ChatView({
                 {t("toolCalls.subagentEmpty")}
               </div>
             ) : (
-              <div data-testid="chat-timeline">
-                {historicalConversationGroups.length > 0 ? (
-                  <div className="flex flex-col">
-                    {historicalConversationGroups.map(
-                      (conversationGroup, index) => {
-                        const isLatestHistoricalConversation =
-                          !liveConversationGroup &&
-                          index === historicalConversationGroups.length - 1;
-
-                        return (
-                          <div data-index={index} key={conversationGroup.id}>
-                            <ChatConversationItem
-                              // History items never render ActivityLine; omit
-                              // the unstable activity object so React.memo
-                              // sees stable props across streaming deltas.
-                              activity={
-                                isLatestHistoricalConversation
-                                  ? activity
-                                  : undefined
-                              }
-                              conversationGroup={conversationGroup}
-                              isLatestConversation={
-                                isLatestHistoricalConversation
-                              }
-                              isRunning={isRunning}
-                              latestMessageId={latestMessage?.id ?? null}
-                              onAnswerQuestion={stableOnAnswerQuestion}
-                              onOpenToolLocation={stableOnOpenToolLocation}
-                              onResolvePermission={stableOnResolvePermission}
-                              onSubmitPromptEdit={
-                                readOnly ? undefined : handleSubmitPromptEdit
-                              }
-                              setUserMessageRef={setUserMessageRef}
-                              showMessageActions={!readOnly}
-                            />
-                          </div>
-                        );
-                      },
-                    )}
-                  </div>
-                ) : null}
-                {liveConversationGroup ? (
-                  <div className="relative">
-                    <ChatConversationItem
-                      activity={activity}
-                      conversationGroup={liveConversationGroup}
-                      isLatestConversation
-                      isRunning={isRunning}
-                      latestMessageId={latestMessage?.id ?? null}
-                      onAnswerQuestion={stableOnAnswerQuestion}
-                      onOpenToolLocation={stableOnOpenToolLocation}
-                      onResolvePermission={stableOnResolvePermission}
-                      onSubmitPromptEdit={
-                        readOnly ? undefined : handleSubmitPromptEdit
-                      }
-                      setUserMessageRef={setUserMessageRef}
-                      showMessageActions={!readOnly}
-                    />
-                  </div>
-                ) : null}
-              </div>
+              <ChatVirtualTimeline
+                activity={activity}
+                groups={conversationGroups}
+                isRunning={isRunning}
+                latestMessageId={latestMessage?.id ?? null}
+                onAnswerQuestion={stableOnAnswerQuestion}
+                onOpenToolLocation={stableOnOpenToolLocation}
+                onResolvePermission={stableOnResolvePermission}
+                onSubmitPromptEdit={
+                  readOnly ? undefined : handleSubmitPromptEdit
+                }
+                scrollRef={timelineScrollRef}
+                setUserMessageRef={setUserMessageRef}
+                showMessageActions={!readOnly}
+                userMessageRefs={userMessageRefs}
+                viewportElement={viewportElement}
+              />
             )}
           </ChatContentColumn>
         </ScrollArea>
@@ -709,6 +629,7 @@ export function ChatView({
         <ComposerDock
           activeBranch={activeBranch}
           workspaceName={workspaceName}
+          sessionId={sessionId}
           agentLabel={agentLabel}
           agentType={agentType}
           attachment={attachment}

@@ -8,6 +8,7 @@ import {
   type StickyUserMessageCandidate,
 } from "./chat-scroll";
 import type { UserMessageAnchor } from "./chat-user-navigation";
+import type { ChatTimelineScrollHandle } from "./virtual-timeline";
 
 const USER_SCROLL_INTENT_WINDOW_MS = 600;
 
@@ -34,9 +35,11 @@ function getMountedUserMessageTop(
 }
 
 export function useChatScrollState({
+  timelineScrollRef,
   userMessageRefs,
   viewportRef,
 }: {
+  timelineScrollRef?: RefObject<ChatTimelineScrollHandle | null>;
   userMessageRefs: RefObject<Record<string, HTMLDivElement | null>>;
   viewportRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -53,11 +56,10 @@ export function useChatScrollState({
   const [stickyUserMessageId, setStickyUserMessageId] = useState<string | null>(
     null,
   );
-  const [isStickyUserMessagePinned, setIsStickyUserMessagePinned] =
-    useState(false);
   const [pendingUserMessageId, setPendingUserMessageId] = useState<
     string | null
   >(null);
+  const pendingUserMessageIdRef = useRef<string | null>(null);
   const isNearBottomRef = useRef(true);
   const shouldStickToBottomRef = useRef(true);
   const userScrollIntentTsRef = useRef(0);
@@ -97,6 +99,11 @@ export function useChatScrollState({
     );
   }, []);
 
+  const clearPendingUserMessage = useCallback(() => {
+    pendingUserMessageIdRef.current = null;
+    setPendingUserMessageId(null);
+  }, []);
+
   const syncScrollState = useCallback(
     (stickyUserMessages: UserMessageAnchor[]) => {
       const viewport = viewportRef.current;
@@ -129,19 +136,31 @@ export function useChatScrollState({
         performance.now() - userScrollIntentTsRef.current <
         USER_SCROLL_INTENT_WINDOW_MS;
       setNearBottomState(nextIsNearBottom);
-      shouldStickToBottomRef.current = resolveStickToBottom({
-        autoScrollTarget,
-        hasRecentUserScrollIntent,
-        isAtBottom: isViewportAtBottom(viewport),
-        isNearBottom: nextIsNearBottom,
-        wasSticking: shouldStickToBottomRef.current,
-      });
+      shouldStickToBottomRef.current =
+        !timelineScrollRef?.current?.hasNavigationTarget() &&
+        resolveStickToBottom({
+          autoScrollTarget,
+          hasRecentUserScrollIntent,
+          isAtBottom: isViewportAtBottom(viewport),
+          isNearBottom: nextIsNearBottom,
+          wasSticking: shouldStickToBottomRef.current,
+        });
 
-      setPendingUserMessageId((currentMessageId) =>
-        currentMessageId === null ? currentMessageId : null,
-      );
+      if (pendingUserMessageIdRef.current) {
+        if (!hasRecentUserScrollIntent) {
+          return;
+        }
+        pendingUserMessageIdRef.current = null;
+        setPendingUserMessageId(null);
+      }
 
       const fallbackMessage = stickyUserMessages[0] ?? null;
+      const lastMessage = stickyUserMessages.at(-1) ?? null;
+      const virtualSelection = timelineScrollRef?.current?.getStickySelection();
+      if (virtualSelection) {
+        setStickyUserMessageState(virtualSelection.id);
+        return;
+      }
       const viewportRect = viewport.getBoundingClientRect();
 
       const candidates: StickyUserMessageCandidate[] = [];
@@ -161,20 +180,22 @@ export function useChatScrollState({
       const selection = resolveStickyUserMessage(
         candidates,
         fallbackMessage?.id ?? null,
+        { atEnd: nextIsNearBottom, lastId: lastMessage?.id ?? null },
       );
       setStickyUserMessageState(selection.id);
-      setIsStickyUserMessagePinned(selection.pinned);
     },
     [
       endAutoScroll,
       setNearBottomState,
       setStickyUserMessageState,
+      timelineScrollRef,
       userMessageRefs,
       viewportRef,
     ],
   );
 
   const markUserScrollIntent = useCallback(() => {
+    timelineScrollRef?.current?.cancelNavigation();
     userScrollIntentTsRef.current = performance.now();
     setHasUserScrolled(true);
     endAutoScroll();
@@ -183,17 +204,20 @@ export function useChatScrollState({
       shouldStickToBottomRef.current = false;
       setNearBottomState(false);
     }
-  }, [endAutoScroll, setNearBottomState, viewportRef]);
+  }, [endAutoScroll, setNearBottomState, timelineScrollRef, viewportRef]);
 
   const markUserScrollStart = useCallback(() => {
+    timelineScrollRef?.current?.cancelNavigation();
     userScrollIntentTsRef.current = performance.now();
     setHasUserScrolled(true);
     endAutoScroll();
     shouldStickToBottomRef.current = false;
-  }, [endAutoScroll]);
+  }, [endAutoScroll, timelineScrollRef]);
 
   const scrollToLatest = useCallback(
     (behavior: ScrollBehavior = "auto") => {
+      timelineScrollRef?.current?.cancelNavigation();
+      clearPendingUserMessage();
       const viewport = viewportRef.current;
 
       if (!viewport) {
@@ -218,11 +242,19 @@ export function useChatScrollState({
       shouldStickToBottomRef.current = true;
       setNearBottomState(true);
     },
-    [setNearBottomState, stopScrollAnimation, viewportRef],
+    [
+      clearPendingUserMessage,
+      setNearBottomState,
+      stopScrollAnimation,
+      timelineScrollRef,
+      viewportRef,
+    ],
   );
 
   const scrollToTop = useCallback(
     (behavior: ScrollBehavior = "auto") => {
+      timelineScrollRef?.current?.cancelNavigation();
+      clearPendingUserMessage();
       const viewport = viewportRef.current;
 
       if (!viewport) {
@@ -248,7 +280,13 @@ export function useChatScrollState({
       setNearBottomState(false);
       setIsNearTop(true);
     },
-    [setNearBottomState, stopScrollAnimation, viewportRef],
+    [
+      clearPendingUserMessage,
+      setNearBottomState,
+      stopScrollAnimation,
+      timelineScrollRef,
+      viewportRef,
+    ],
   );
 
   const scrollToUserMessage = useCallback(
@@ -262,11 +300,14 @@ export function useChatScrollState({
 
       stopScrollAnimation();
       shouldStickToBottomRef.current = false;
+      userScrollIntentTsRef.current = 0;
+      pendingUserMessageIdRef.current = messageId;
       setPendingUserMessageId(messageId);
       setStickyUserMessageState(messageId);
-      // Jumping scrolls the real header back into view, so hide the overlay
-      // bar until the next scroll re-evaluates whether it is pinned.
-      setIsStickyUserMessagePinned(false);
+
+      if (timelineScrollRef?.current?.scrollToUserMessage(messageId)) {
+        return;
+      }
 
       if (!element) {
         return;
@@ -280,6 +321,7 @@ export function useChatScrollState({
     [
       setStickyUserMessageState,
       stopScrollAnimation,
+      timelineScrollRef,
       userMessageRefs,
       viewportRef,
     ],
@@ -304,7 +346,6 @@ export function useChatScrollState({
     isNearBottom,
     isNearTop,
     scrollDirection,
-    isStickyUserMessagePinned,
     markUserScrollIntent,
     markUserScrollStart,
     stickToBottomIfLocked,

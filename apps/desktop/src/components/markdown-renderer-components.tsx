@@ -35,10 +35,6 @@ interface MarkdownElementNode {
   tagName?: string;
 }
 
-// Anchored headings scroll to `block: "start"`, which would tuck them under the
-// chat's floating sticky-prompt overlay. `--md-anchor-offset` carries that
-// overlay's height (set by the chat view, 0 elsewhere) so scroll-margin-top
-// stops the heading just below it.
 // Derive a github-slugger-compatible id from a heading's text so in-document
 // TOC anchors (which the assistant emits using the same slug rule) can target it.
 function headingId(node: unknown): string | undefined {
@@ -81,7 +77,7 @@ export function createMarkdownComponents(
       return (
         <h1
           className={cn(
-            "text-title leading-7 font-semibold scroll-mt-[var(--md-anchor-offset,0px)]",
+            "text-title leading-7 font-semibold",
             getToneTextClass(tone),
           )}
           id={headingId(node)}
@@ -94,7 +90,7 @@ export function createMarkdownComponents(
       return (
         <h2
           className={cn(
-            "text-display leading-6 font-semibold scroll-mt-[var(--md-anchor-offset,0px)]",
+            "text-display leading-6 font-semibold",
             getToneTextClass(tone),
           )}
           id={headingId(node)}
@@ -107,7 +103,7 @@ export function createMarkdownComponents(
       return (
         <h3
           className={cn(
-            "text-sm leading-6 font-semibold scroll-mt-[var(--md-anchor-offset,0px)]",
+            "text-sm leading-6 font-semibold",
             getToneTextClass(tone),
           )}
           id={headingId(node)}
@@ -120,7 +116,7 @@ export function createMarkdownComponents(
       return (
         <h4
           className={cn(
-            "text-sm leading-6 font-semibold scroll-mt-[var(--md-anchor-offset,0px)]",
+            "text-sm leading-6 font-semibold",
             getToneTextClass(tone),
           )}
           id={headingId(node)}
@@ -133,7 +129,7 @@ export function createMarkdownComponents(
       return (
         <h5
           className={cn(
-            "text-sm leading-6 font-semibold scroll-mt-[var(--md-anchor-offset,0px)]",
+            "text-sm leading-6 font-semibold",
             getToneTextClass(tone),
           )}
           id={headingId(node)}
@@ -146,7 +142,7 @@ export function createMarkdownComponents(
       return (
         <h6
           className={cn(
-            "text-sm leading-6 font-semibold scroll-mt-[var(--md-anchor-offset,0px)]",
+            "text-sm leading-6 font-semibold",
             getToneTextClass(tone),
           )}
           id={headingId(node)}

@@ -1,5 +1,4 @@
 export const ROOT_PANE_ID = "session-pane-root";
-export const MAX_SESSION_PANES = 4;
 
 export type SessionSplitDirection = "right" | "down";
 
@@ -154,12 +153,8 @@ export function splitPane(
   node: SessionSplitNode,
   paneId: string,
   direction: SessionSplitDirection,
-  options?: { createId?: () => string; maxPanes?: number },
+  options?: { createId?: () => string },
 ): { root: SessionSplitNode; newPaneId: string } | null {
-  const maxPanes = options?.maxPanes ?? MAX_SESSION_PANES;
-  if (paneCount(node) >= maxPanes) {
-    return null;
-  }
   if (!findPane(node, paneId)) {
     return null;
   }
@@ -174,6 +169,23 @@ export function splitPane(
     newPaneId,
   );
   return { root: next, newPaneId };
+}
+
+export function collapseToPane(
+  node: SessionSplitNode,
+  paneId: string,
+): SessionSplitNode | null {
+  const pane = findPane(node, paneId);
+  if (!pane) {
+    return null;
+  }
+  if (node.type === "pane") {
+    return node;
+  }
+  return createRootPane({
+    sessionId: pane.sessionId,
+    conversationId: pane.conversationId,
+  });
 }
 
 export function closePane(

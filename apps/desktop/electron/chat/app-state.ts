@@ -166,10 +166,14 @@ export function listToolCallsBySessionId(
   return callStorage("toolCall.listBySession", sessionId);
 }
 
-export function getToolCallResult(
+export async function getToolCallResult(
   toolCallId: string,
 ): Promise<AgentToolCallResult | null> {
-  return callStorage("toolCall.getResult", toolCallId);
+  return requestDaemon(
+    "session.getToolCallResult",
+    { toolCallId },
+    await chatDaemonOptions(),
+  );
 }
 
 export function getMessageById(

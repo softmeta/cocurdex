@@ -1,6 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { httpUrlSchema, schemas } from "./ipc-schemas";
 
+describe("schemas.toolCallId", () => {
+  it.each([
+    "tool-1",
+    "call_example|fc_example",
+    `call_example|${"a".repeat(400)}+/=`,
+  ])("preserves provider tool call ID %s", (id) => {
+    expect(schemas.toolCallId.parse(id)).toBe(id);
+  });
+
+  it.each([
+    "",
+    "tool\u0000id",
+    "tool\nid",
+    "a".repeat(4097),
+    42,
+    null,
+  ])("rejects malformed tool call ID %j", (id) => {
+    expect(schemas.toolCallId.safeParse(id).success).toBe(false);
+  });
+
+  it("keeps session IDs restricted", () => {
+    expect(schemas.sessionId.safeParse("call_example|fc_example").success).toBe(
+      false,
+    );
+  });
+});
+
 describe("httpUrlSchema", () => {
   it("accepts http and https URLs", () => {
     expect(httpUrlSchema.safeParse("http://localhost:3000/").success).toBe(

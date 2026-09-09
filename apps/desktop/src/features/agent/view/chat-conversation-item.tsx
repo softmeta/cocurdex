@@ -43,6 +43,7 @@ import { QuestionCard } from "../question";
 // detail view, which renders this component.
 import { ToolCallGroup } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
+import { useTranscriptState } from "../transcript-state";
 import type { ActivityState } from "./chat-activity";
 import { ActivityLine } from "./chat-activity";
 import { ActivityBlock } from "./chat-activity-block";
@@ -371,7 +372,10 @@ const UserPrompt = memo(function UserPrompt({
   variant?: "chat" | "context";
 }) {
   const { t } = useTranslation("agent");
-  const [draftContent, setDraftContent] = useState<string | null>(null);
+  const [draftContent, setDraftContent] = useTranscriptState<string | null>(
+    `prompt-draft:${message.id}`,
+    null,
+  );
   const [hasCopied, setHasCopied] = useState(false);
   const isEditing = draftContent !== null;
   const sentAt = formatMessageTime(message.createdAt);
@@ -855,6 +859,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
               <ActivityBlock
                 busy={summary.isBusy || isLiveTail}
                 key={segment.items[0]?.id ?? "activity"}
+                stateKey={`activity:${segment.items[0]?.id}`}
                 reasoningCount={summary.reasoningCount}
                 toolCount={summary.toolCount}
               >

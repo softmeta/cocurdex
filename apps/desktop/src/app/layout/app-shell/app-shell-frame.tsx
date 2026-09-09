@@ -40,7 +40,7 @@ import {
 } from "../chat-dock-geometry";
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { RightEditorPanel } from "../right-editor-panel";
-import { SessionSplitLayout, TitlebarSessionSplitMenu } from "../session-split";
+import { SessionSplitLayout } from "../session-split";
 import {
   LeftSidebar,
   ResizableSidebarSlot,
@@ -358,7 +358,6 @@ export function AppShellFrame({
               width: TITLEBAR_EDITOR_TOGGLE_WIDTH,
             }}
           >
-            <TitlebarSessionSplitMenu />
             <NetworkProxyStatusButton />
             {isRightPanelOpen ? (
               <TitlebarIconButton

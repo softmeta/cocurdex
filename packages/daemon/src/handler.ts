@@ -204,6 +204,8 @@ export async function handleDaemonRequest(
       return service.undoTurnChanges(request.params);
     case "session.getTurnChangeFile":
       return service.getTurnChangeFile(request.params);
+    case "session.getToolCallResult":
+      return service.getToolCallResult(request.params);
     case "workflow.list":
       return service.listWorkflowRuns();
     case "workflow.get":

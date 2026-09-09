@@ -6,7 +6,6 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { useTranslation } from "react-i18next";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -22,10 +21,9 @@ import {
   sessionsAtom,
   setSessionSplitSizesAtom,
 } from "@/features/sessions";
-import { TITLEBAR_HEIGHT } from "../app-shell/app-shell-layout";
 import { CenterPanel } from "../center-panel";
+import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { SessionPaneHeader } from "./session-pane-header";
-import { SessionSplitMenu } from "./session-split-menu";
 import { useSessionSplitActions } from "./use-session-split-actions";
 
 function assignComposerRef(
@@ -69,15 +67,17 @@ export function SessionSplitLayout({
   composerRef,
   hideTitlebarSpacer = false,
 }: SessionSplitLayoutProps) {
-  const { t } = useTranslation("sessions");
   const layout = useAtomValue(sessionSplitLayoutAtom);
   const sessions = useAtomValue(sessionsAtom);
   const conversations = useAtomValue(conversationsAtom);
+  const sidebarTab = useAtomValue(sidebarTabAtom);
+  const activeSessionId = useAtomValue(activeSessionIdAtom);
+  const activeConversationId = useAtomValue(activeConversationIdAtom);
   const setActiveSessionId = useSetAtom(activeSessionIdAtom);
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const setSplitSizes = useSetAtom(setSessionSplitSizesAtom);
   const {
-    canSplit,
+    closeAllPanes,
     closePane,
     focusedPaneId,
     focusSessionPane,
@@ -89,21 +89,27 @@ export function SessionSplitLayout({
   );
 
   const paneTitle = (pane: SessionPaneBinding) => {
-    if (pane.conversationId) {
+    const conversationId =
+      pane.conversationId ??
+      (paneCount <= 1 && sidebarTab === "chat" ? activeConversationId : null);
+    if (conversationId) {
       const conversation = conversations.find(
-        (item) => item.id === pane.conversationId,
+        (item) => item.id === conversationId,
       );
       if (conversation?.title) {
         return conversation.title;
       }
     }
-    if (pane.sessionId) {
-      const session = sessions.find((item) => item.id === pane.sessionId);
+    const sessionId =
+      pane.sessionId ??
+      (paneCount <= 1 && sidebarTab !== "chat" ? activeSessionId : null);
+    if (sessionId) {
+      const session = sessions.find((item) => item.id === sessionId);
       if (session?.title) {
         return session.title;
       }
     }
-    return t("split.newSession");
+    return "";
   };
 
   const handleClose = useCallback(
@@ -118,6 +124,20 @@ export function SessionSplitLayout({
       );
     },
     [closePane, composerRef],
+  );
+
+  const handleCloseAll = useCallback(
+    (paneId: string) => {
+      const kept = closeAllPanes(paneId);
+      if (!kept) {
+        return;
+      }
+      assignComposerRef(
+        composerRef,
+        composerByPaneRef.current.get(paneId) ?? null,
+      );
+    },
+    [closeAllPanes, composerRef],
   );
 
   const handleActivate = useCallback(
@@ -199,19 +219,16 @@ export function SessionSplitLayout({
     const isFocused = node.pane.id === focusedPaneId;
     return (
       <SessionPaneFrame onActivate={() => handleActivate(node.pane)}>
-        {occupiesTitlebar && !hideTitlebarSpacer ? (
-          <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
-        ) : null}
-        {paneCount > 1 ? (
-          <SessionPaneHeader
-            canSplit={canSplit}
-            isFocused={isFocused}
-            title={paneTitle(node.pane)}
-            onClose={() => handleClose(node.pane.id)}
-            onSplitDown={() => splitPaneById(node.pane.id, "down")}
-            onSplitRight={() => splitPaneById(node.pane.id, "right")}
-          />
-        ) : null}
+        <SessionPaneHeader
+          canClose={paneCount > 1}
+          isFocused={isFocused}
+          occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
+          title={paneTitle(node.pane)}
+          onClose={() => handleClose(node.pane.id)}
+          onCloseAll={() => handleCloseAll(node.pane.id)}
+          onSplitDown={() => splitPaneById(node.pane.id, "down")}
+          onSplitRight={() => splitPaneById(node.pane.id, "right")}
+        />
         <div className="min-h-0 flex-1 overflow-hidden">
           <CenterPanel
             composerRef={(handle) => {
@@ -232,27 +249,5 @@ export function SessionSplitLayout({
 
   return (
     <div className="h-full min-h-0 min-w-0">{renderNode(layout, true)}</div>
-  );
-}
-
-export function TitlebarSessionSplitMenu() {
-  const {
-    canSplit,
-    closePane,
-    focusedPaneId,
-    paneCount,
-    splitFocusedFromChrome,
-  } = useSessionSplitActions();
-
-  return (
-    <SessionSplitMenu
-      canClose={paneCount > 1}
-      canSplit={canSplit}
-      onClose={() => {
-        closePane(focusedPaneId);
-      }}
-      onSplitDown={() => splitFocusedFromChrome("down")}
-      onSplitRight={() => splitFocusedFromChrome("right")}
-    />
   );
 }

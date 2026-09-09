@@ -1239,9 +1239,8 @@ export interface EditorViewRecord {
 export interface AppBootstrapData {
   workspaces: WorkspaceRecord[];
   sessions: SessionRecord[];
-  messages?: MessageRecord[];
+  queuedMessages: MessageRecord[];
   queuedAgentInputs: QueuedAgentInputRecord[];
-  toolCalls?: AgentToolCallRecord[];
   sessionUsage: Record<string, AgentUsageRecord>;
   editorViews: EditorViewRecord[];
 }

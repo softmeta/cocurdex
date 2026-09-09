@@ -40,6 +40,7 @@ export { JumpControls };
 interface ChatComposerControls {
   activeBranch?: string | null;
   agentLabel: string;
+  sessionId?: string;
   agentType?: AgentId;
   attachment?: MessageAttachment;
   draftKey?: string;

@@ -721,4 +721,167 @@ describe("workspace change coordinator", () => {
     expect(changeSet?.files).toEqual([]);
     expect(await repository.listAll()).toEqual([]);
   });
+
+  it("does not attribute another session's overlapping writes to a tool turn", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-ws-"));
+    const userData = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-data-"));
+    await writeFile(path.join(workspace, "notes.md"), "before\n", "utf8");
+    const repository = createMemoryRepository();
+    const coordinator = createWorkspaceChangeCoordinator({
+      userDataPath: userData,
+      repository,
+      createAdapter: async () =>
+        createFilesystemCheckpointAdapter(
+          createCheckpointBlobStore(userData),
+          userData,
+        ),
+    });
+
+    await coordinator.beginTurn({
+      sessionId: "session-a",
+      userMessageId: "user-a",
+      workspaceRootPath: workspace,
+    });
+    await coordinator.beginTurn({
+      sessionId: "session-b",
+      userMessageId: "user-b",
+      workspaceRootPath: workspace,
+    });
+    coordinator.markToolActivity("session-b");
+    await writeFile(path.join(workspace, "motion.css"), "changed\n", "utf8");
+    const sessionB = await coordinator.finalizeTurn({
+      sessionId: "session-b",
+      messageId: "assistant-b",
+    });
+    coordinator.markToolActivity("session-a");
+    const sessionA = await coordinator.finalizeTurn({
+      sessionId: "session-a",
+      messageId: "assistant-a",
+    });
+
+    expect(sessionB?.files.map((file) => file.path)).toEqual(["motion.css"]);
+    expect(sessionA?.files).toEqual([]);
+    expect(
+      Object.values(await repository.listBySessionId("session-a")),
+    ).toEqual([]);
+  });
+
+  it("keeps each overlapping session's own files when both wrote", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-ws-"));
+    const userData = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-data-"));
+    await writeFile(path.join(workspace, "a.md"), "a0\n", "utf8");
+    await writeFile(path.join(workspace, "b.md"), "b0\n", "utf8");
+    const coordinator = createWorkspaceChangeCoordinator({
+      userDataPath: userData,
+      repository: createMemoryRepository(),
+      createAdapter: async () =>
+        createFilesystemCheckpointAdapter(
+          createCheckpointBlobStore(userData),
+          userData,
+        ),
+    });
+
+    await coordinator.beginTurn({
+      sessionId: "session-a",
+      userMessageId: "user-a",
+      workspaceRootPath: workspace,
+    });
+    await coordinator.beginTurn({
+      sessionId: "session-b",
+      userMessageId: "user-b",
+      workspaceRootPath: workspace,
+    });
+    coordinator.markToolActivity("session-a");
+    coordinator.markToolActivity("session-b");
+    await writeFile(path.join(workspace, "a.md"), "a1\n", "utf8");
+    await coordinator.ingestNativeEvidence({
+      sessionId: "session-a",
+      userMessageId: "user-a",
+      evidence: {
+        source: "pi-tool-patch",
+        coverage: "tool-call",
+        files: [
+          {
+            path: "a.md",
+            operation: "modify",
+            reviewKind: "text",
+            additions: 1,
+            deletions: 1,
+          },
+        ],
+      },
+    });
+    await writeFile(path.join(workspace, "b.md"), "b1\n", "utf8");
+    await coordinator.ingestNativeEvidence({
+      sessionId: "session-b",
+      userMessageId: "user-b",
+      evidence: {
+        source: "pi-tool-patch",
+        coverage: "tool-call",
+        files: [
+          {
+            path: "b.md",
+            operation: "modify",
+            reviewKind: "text",
+            additions: 1,
+            deletions: 1,
+          },
+        ],
+      },
+    });
+
+    const sessionA = await coordinator.finalizeTurn({
+      sessionId: "session-a",
+      messageId: "assistant-a",
+    });
+    const sessionB = await coordinator.finalizeTurn({
+      sessionId: "session-b",
+      messageId: "assistant-b",
+    });
+
+    expect(sessionA?.files.map((file) => file.path)).toEqual(["a.md"]);
+    expect(sessionB?.files.map((file) => file.path)).toEqual(["b.md"]);
+  });
+
+  it("does not publish workspace dirt on a read-only turn while another session writes", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-ws-"));
+    const userData = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-data-"));
+    const repository = createMemoryRepository();
+    const coordinator = createWorkspaceChangeCoordinator({
+      userDataPath: userData,
+      repository,
+      createAdapter: async () =>
+        createFilesystemCheckpointAdapter(
+          createCheckpointBlobStore(userData),
+          userData,
+        ),
+    });
+
+    await coordinator.beginTurn({
+      sessionId: "session-a",
+      userMessageId: "user-a",
+      workspaceRootPath: workspace,
+    });
+    await coordinator.beginTurn({
+      sessionId: "session-b",
+      userMessageId: "user-b",
+      workspaceRootPath: workspace,
+    });
+    coordinator.markToolActivity("session-b");
+    await writeFile(path.join(workspace, "motion.css"), "changed\n", "utf8");
+    const sessionA = await coordinator.finalizeTurn({
+      sessionId: "session-a",
+      messageId: "assistant-a",
+    });
+    const sessionB = await coordinator.finalizeTurn({
+      sessionId: "session-b",
+      messageId: "assistant-b",
+    });
+
+    expect(sessionA?.files).toEqual([]);
+    expect(sessionB?.files.map((file) => file.path)).toEqual(["motion.css"]);
+    expect(
+      Object.values(await repository.listBySessionId("session-a")),
+    ).toEqual([]);
+  });
 });

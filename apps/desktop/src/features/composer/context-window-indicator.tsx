@@ -40,6 +40,7 @@ import {
 import { getRuntimeModelItems } from "@/features/sessions/provider-model/runtime-model-items";
 import { workspacesAtom } from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
+import { resolveComposerSessionId } from "./composer-session-id";
 import { formatTokenCount } from "./context-token-format";
 import { ContextUsagePopoverContent } from "./context-usage-popover";
 import { sessionContextBreakdownAtom } from "./session-context-breakdown-store";
@@ -201,14 +202,20 @@ export function ContextWindowIndicator({
   isRunning = false,
   layout = "inline",
   afterModel,
+  sessionId,
 }: {
   footer?: ReactNode;
   isRunning?: boolean;
   layout?: "inline" | "split";
   afterModel?: ReactNode;
+  sessionId?: string | null;
 }) {
   const { t } = useTranslation("sessions");
   const activeSessionId = useAtomValue(activeSessionIdAtom);
+  const resolvedSessionId = resolveComposerSessionId(
+    sessionId,
+    activeSessionId,
+  );
   const agents = useAtomValue(agentsAtom);
   const sessions = useAtomValue(sessionsAtom);
   const providerConfigs = useAtomValue(providerConfigsAtom);
@@ -307,8 +314,8 @@ export function ContextWindowIndicator({
     persistSession(updatedSession);
   };
 
-  const session = activeSessionId
-    ? sessions.find((s) => s.id === activeSessionId)
+  const session = resolvedSessionId
+    ? sessions.find((s) => s.id === resolvedSessionId)
     : null;
   useMountEffect(() => {
     if (!session || !usesAdapterOwnedModelCatalog(session.agentType)) {
@@ -346,7 +353,7 @@ export function ContextWindowIndicator({
     session.agentType === "claude-agent" ||
     session.agentType === "grok-build" ||
     session.agentType === "codex";
-  const usage = activeSessionId ? sessionUsage[activeSessionId] : undefined;
+  const usage = resolvedSessionId ? sessionUsage[resolvedSessionId] : undefined;
   const model = resolveRuntimeProviderModel(
     session.agentType,
     runtimeModelItems,

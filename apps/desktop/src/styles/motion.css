@@ -1,5 +1,4 @@
-/* Shared motion primitives used by streaming text, settings panels, and sticky
- * chat affordances. */
+/* Shared motion primitives used by streaming text and settings panels. */
 .stream-char {
   animation: stream-char-fade-in 280ms ease-out both;
   will-change: opacity, transform;
@@ -13,10 +12,6 @@
 
 .settings-panel-enter {
   animation: settings-panel-fade-in 180ms ease-out;
-}
-
-.sticky-user-bar-enter {
-  animation: sticky-user-bar-fade-in 180ms ease-out;
 }
 
 /* Running activity line: the label itself carries the motion, so the row needs
@@ -104,18 +99,6 @@
   }
 }
 
-@keyframes sticky-user-bar-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.995);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 @keyframes activity-shimmer-sweep {
   from {
     background-position: 150% 0;
@@ -167,16 +150,18 @@
 @keyframes sidebar-activity-breathe {
   0%,
   100% {
-    opacity: 0.78;
+    box-shadow: 0 0 2px 0 color-mix(in srgb, currentColor 0%, transparent);
   }
 
   50% {
-    opacity: 1;
+    box-shadow: 0 0 2.5px 1px color-mix(in srgb, currentColor 52%, transparent);
   }
 }
 
 .sidebar-activity-dot {
-  animation: sidebar-activity-breathe 2.4s ease-in-out infinite;
+  background-color: currentColor;
+  animation: sidebar-activity-breathe 2.6s cubic-bezier(0.37, 0, 0.63, 1)
+    infinite;
 }
 
 .group\/list-row:is(:hover, :focus-within) .sidebar-activity-dot {
@@ -187,7 +172,6 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar-activity-dot {
     animation: none;
-    opacity: 0.9;
   }
 
   .group\/list-row:is(:hover, :focus-within) .sidebar-activity-dot {

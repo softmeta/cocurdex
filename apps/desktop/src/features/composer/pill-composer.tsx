@@ -10,6 +10,9 @@ import { useTranslation } from "react-i18next";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@/components/ui";
 import { cn } from "@/lib";
 import {
+  composerSendButtonClassName,
+  composerStopButtonClassName,
+  composerStopGlyphClassName,
   getCollapsedPillTextareaWidth,
   getNextPillExpandedState,
   getPillComposerShapeClassName,
@@ -61,6 +64,7 @@ interface PillComposerProps {
   footerLeading?: ReactNode;
   footerTrailing?: ReactNode;
   runtimeMenuExtras?: ReactNode;
+  sessionId?: string | null;
   mentionAnchor: MentionAnchor | null;
   placeholderOverride?: string;
   resolvedControls: ReactNode;
@@ -90,6 +94,7 @@ export function PillComposer({
   footerLeading,
   footerTrailing,
   runtimeMenuExtras,
+  sessionId,
   mentionAnchor,
   placeholderOverride,
   resolvedControls,
@@ -317,12 +322,11 @@ export function PillComposer({
                 aria-label={t("common:actions.stop")}
                 type="button"
                 onClick={onStop}
+                variant="ghost"
                 size="icon-sm"
-                className={cn(
-                  "size-8 rounded-full bg-chat-fg text-chat-canvas shadow-chat-soft transition-colors hover:bg-chat-fg-secondary",
-                )}
+                className={composerStopButtonClassName()}
               >
-                <div className="flex size-3 items-center justify-center rounded-control bg-current" />
+                <div className={composerStopGlyphClassName()} />
               </Button>
             ) : null}
             {!isRunning || canSend ? (
@@ -331,12 +335,7 @@ export function PillComposer({
                 type="submit"
                 disabled={!canSend}
                 size="icon-sm"
-                className={cn(
-                  "size-8 rounded-full shadow-chat-soft transition-colors",
-                  canSend
-                    ? "bg-chat-fg text-chat-canvas hover:bg-chat-fg-secondary"
-                    : "bg-chat-surface-disabled text-chat-fg-muted hover:bg-chat-surface-disabled",
-                )}
+                className={composerSendButtonClassName(canSend)}
               >
                 <CornerDownLeft className="size-4" />
               </Button>
@@ -353,6 +352,7 @@ export function PillComposer({
                 footer={runtimeMenuExtras}
                 isRunning={isRunning}
                 layout="split"
+                sessionId={sessionId}
               />
             ) : null}
           </div>

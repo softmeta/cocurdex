@@ -1,16 +1,17 @@
 import type { AgentToolCallRecord } from "@cocurdex/shared";
-import { useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { FileText, ScrollText, Terminal } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui";
 import { cn, useMountEffect } from "@/lib";
 
 import { ReadonlySubagentSession } from "./subagent-session-detail";
-import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
-  fetchToolCallResultAtom,
+  observeToolCallResultAtom,
   toolCallResultCacheAtom,
-} from "./tool-call-store";
+} from "./tool-call-result-store";
+import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
   formatToolCallData,
   formatToolCallOutput,
@@ -30,13 +31,6 @@ import {
   isSubagentToolCall,
   type ToolCallPreviewLocation,
 } from "./tool-call-utils";
-
-// Whether the tool call could plausibly carry output. Pending / in-progress
-// calls haven't produced rawOutput yet — skip the IPC round-trip and let the
-// next tool.finished event seed the cache instead.
-function canHaveOutput(toolCall: AgentToolCallRecord) {
-  return toolCall.status === "completed" || toolCall.status === "failed";
-}
 
 export function ToolCallDetailHeader({
   toolCall,
@@ -86,43 +80,24 @@ export function ToolCallDetailBody({
   const previewLocations = getToolCallPreviewLocations(toolCall);
   const shouldHideRawOutput =
     toolCall.kind === "read" && previewLocations.length > 0;
-  // Result fields are fetched lazily for records loaded via the summary path.
-  // Live-event records and seeded cache entries skip this IPC round-trip.
-  const resultCache = useAtomValue(toolCallResultCacheAtom);
-  const fetchToolCallResult = useSetAtom(fetchToolCallResultAtom);
-  const hasInlineResult =
-    toolCall.content !== undefined && toolCall.rawOutput !== undefined;
+  const resultAtom = useMemo(
+    () => atom((get) => get(toolCallResultCacheAtom)[toolCall.id]),
+    [toolCall.id],
+  );
+  const cacheEntry = useAtomValue(resultAtom);
   const isSubagent = isSubagentToolCall(toolCall);
-  const shouldLazyLoadOutput =
-    !hasInlineResult &&
-    !shouldHideRawOutput &&
-    !isSubagent &&
-    canHaveOutput(toolCall);
-  const cacheEntry = resultCache[toolCall.id];
-  const shouldFetchOutput =
-    shouldLazyLoadOutput && (!cacheEntry || cacheEntry.status === "error");
-
-  const resultValue = hasInlineResult
-    ? {
-        content: toolCall.content ?? [],
-        rawOutput: toolCall.rawOutput,
-      }
-    : cacheEntry?.status === "loaded"
-      ? cacheEntry.value
-      : undefined;
+  const shouldLoadOutput = !shouldHideRawOutput && !isSubagent;
+  const resultValue =
+    cacheEntry?.status === "loaded" ? cacheEntry.value : undefined;
   const output =
     resultValue !== undefined
       ? formatToolCallOutput(resultValue?.content, resultValue?.rawOutput)
       : "";
   const childSessionId = getSubagentChildSessionId(toolCall);
-  const outputLoadStatus: "ready" | "loading" | "error" =
-    hasInlineResult || cacheEntry?.status === "loaded"
-      ? "ready"
-      : cacheEntry?.status === "error"
-        ? "error"
-        : shouldLazyLoadOutput
-          ? "loading"
-          : "ready";
+  let outputLoadStatus: "ready" | "loading" | "error" = "ready";
+  if (shouldLoadOutput && cacheEntry?.status !== "loaded") {
+    outputLoadStatus = cacheEntry?.status === "error" ? "error" : "loading";
+  }
   const outputErrorMessage =
     cacheEntry?.status === "error" ? cacheEntry.message : "";
   const showOutputBlock =
@@ -138,9 +113,10 @@ export function ToolCallDetailBody({
 
   return (
     <div className="flex flex-col gap-3 text-sm text-chat-fg-secondary">
-      {shouldFetchOutput ? (
-        <ToolCallResultLoader
-          fetchToolCallResult={fetchToolCallResult}
+      {shouldLoadOutput ? (
+        <ToolCallResultSubscription
+          key={toolCall.id}
+          sessionId={toolCall.sessionId}
           toolCallId={toolCall.id}
         />
       ) : null}
@@ -283,15 +259,16 @@ export function ToolCallDetailBody({
   );
 }
 
-function ToolCallResultLoader({
-  fetchToolCallResult,
+function ToolCallResultSubscription({
+  sessionId,
   toolCallId,
 }: {
-  fetchToolCallResult: (toolCallId: string) => void | Promise<void>;
+  sessionId: string;
   toolCallId: string;
 }) {
+  const observeResult = useSetAtom(observeToolCallResultAtom);
   useMountEffect(() => {
-    void fetchToolCallResult(toolCallId);
+    return observeResult({ toolCallId, sessionId });
   });
 
   return null;

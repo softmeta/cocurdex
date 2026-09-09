@@ -89,6 +89,7 @@ const fallbackApi: DesktopApi = {
     workspaces: [],
     sessions: [],
     queuedAgentInputs: [],
+    queuedMessages: [],
     sessionUsage: {},
     editorViews: [],
   }),

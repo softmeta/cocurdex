@@ -230,6 +230,44 @@ export function nativeMatchesHostTransition(
   );
 }
 
+export function collectTurnFilePaths(
+  files: Iterable<TurnFileChange> | null | undefined,
+) {
+  const paths = new Set<string>();
+  for (const file of files ?? []) {
+    paths.add(file.path);
+    if (file.previousPath) {
+      paths.add(file.previousPath);
+    }
+  }
+  return paths;
+}
+
+export function attributeTurnFiles(input: {
+  files: TurnFileChange[];
+  native?: TurnFileChange[] | null;
+  siblingPaths?: Iterable<string>;
+}): TurnFileChange[] {
+  const nativePaths = collectTurnFilePaths(input.native);
+  const siblingPaths = new Set(input.siblingPaths ?? []);
+  if (siblingPaths.size === 0) {
+    return input.files;
+  }
+
+  return input.files.filter((file) => {
+    const inNative =
+      nativePaths.has(file.path) ||
+      (file.previousPath != null && nativePaths.has(file.previousPath));
+    if (inNative) {
+      return true;
+    }
+    const inSibling =
+      siblingPaths.has(file.path) ||
+      (file.previousPath != null && siblingPaths.has(file.previousPath));
+    return !inSibling;
+  });
+}
+
 export function mergeNativeAndHostEvidence(
   native: TurnFileChange[] | null | undefined,
   host: TurnFileChange[],

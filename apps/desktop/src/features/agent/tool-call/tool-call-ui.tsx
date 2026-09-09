@@ -13,6 +13,7 @@ import { selectSessionAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 
 import { chatDisplaySettingsAtom } from "../chat-display";
+import { useTranscriptState } from "../transcript-state";
 import { ToolCallDetailBody } from "./tool-call-detail";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
@@ -152,6 +153,7 @@ function ToolCallItem({
 }) {
   const selectSession = useSetAtom(selectSessionAtom);
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);
+  const [open, setOpen] = useTranscriptState(`tool:${toolCall.id}`, false);
 
   if (isSubagentToolCall(toolCall)) {
     const description = getSubagentDescription(toolCall);
@@ -184,7 +186,11 @@ function ToolCallItem({
   }
 
   return (
-    <Collapsible className="w-full min-w-0 overflow-hidden">
+    <Collapsible
+      className="w-full min-w-0 overflow-hidden"
+      onOpenChange={setOpen}
+      open={open}
+    >
       <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-meta transition-colors hover:bg-chat-surface-row-hover">
         <ToolCallTriggerRow toolCall={toolCall} />
       </CollapsibleTrigger>
@@ -218,6 +224,10 @@ export function ToolCallGroup({
   const { t } = useTranslation("agent");
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
   const runs = partitionToolCallRuns(toolCalls);
+  const [openRuns, setOpenRuns] = useTranscriptState<Record<string, boolean>>(
+    `tool-group:${toolCalls[0]?.id}`,
+    {},
+  );
 
   if (activityDisplay === "hidden") {
     return null;
@@ -255,7 +265,10 @@ export function ToolCallGroup({
     return (
       <Collapsible
         className="group/tool-group w-full"
-        defaultOpen
+        open={openRuns[run.toolCalls[0].id] ?? true}
+        onOpenChange={(open) =>
+          setOpenRuns({ ...openRuns, [run.toolCalls[0].id]: open })
+        }
         key={run.toolCalls[0]?.id}
       >
         <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-0.5 text-sm transition-colors hover:text-chat-fg">

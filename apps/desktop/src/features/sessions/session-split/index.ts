@@ -1,9 +1,9 @@
 export {
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
-  canSplitSessionPaneAtom,
   clearRemovedPaneSessionsAtom,
   closeSessionPaneAtom,
+  collapseSessionSplitAtom,
   focusedPaneIdAtom,
   focusedSessionPaneAtom,
   focusPaneForConversationAtom,
@@ -17,10 +17,10 @@ export {
 } from "./session-split-store";
 export {
   closePane,
+  collapseToPane,
   createRootPane,
   findPane,
   listPanes,
-  MAX_SESSION_PANES,
   paneCount,
   ROOT_PANE_ID,
   type SessionPaneBinding,

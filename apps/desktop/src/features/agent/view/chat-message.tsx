@@ -4,7 +4,6 @@ import {
   formatContextFileChipLabel,
   isContextAttachment,
   isContextFolderAttachment,
-  type MessageAttachment,
   type MessageRecord,
 } from "@cocurdex/shared";
 import { Brain, Loader2 } from "lucide-react";
@@ -22,12 +21,6 @@ import {
 } from "./chat-message-utils";
 
 export { isAssistantEchoOfPrompt, isReasoningMessage };
-
-export type StickyUserMessage = {
-  id: string;
-  attachments: MessageAttachment[];
-  content: string;
-};
 
 function getContextAttachmentLabel(
   attachment: ContextFileAttachment | ContextFolderAttachment,
@@ -199,33 +192,5 @@ export function ReasoningMarkdown({
         {body}
       </CollapsibleContent>
     </Collapsible>
-  );
-}
-
-export function StickyUserMessageBar({
-  attachments,
-  content,
-  onClick,
-}: StickyUserMessage & { onClick(): void }) {
-  const contextAttachments = attachments.filter(isContextAttachment);
-
-  return (
-    <button
-      className="sticky-user-bar-enter block w-full rounded-card rounded-tr-md border border-chat-border-soft bg-chat-surface-bubble px-3 py-2 text-left text-chat-fg shadow-chat-soft"
-      onClick={onClick}
-      type="button"
-    >
-      {/* Single-line preview: the overlay only hints which prompt is being
-          read, so chips and text stay on one row (no wrap) and clip — this also
-          keeps the heading-anchor scroll offset (--md-anchor-offset) stable. */}
-      <div className="flex items-center gap-2 overflow-hidden">
-        {contextAttachments.map((attachment) =>
-          renderAttachmentChip(attachment),
-        )}
-        <div className="min-w-0 flex-1 truncate text-sm text-chat-fg">
-          {content}
-        </div>
-      </div>
-    </button>
   );
 }

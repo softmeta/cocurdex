@@ -7,17 +7,22 @@ import type {
   TurnChangeFileContentRequest,
   TurnChangeOutcome,
   TurnChangeSet,
+  TurnFileChange,
   UndoTurnChangesInput,
   UndoTurnChangesResult,
 } from "@cocurdex/shared";
-import { sumFileStats } from "@cocurdex/shared";
+import { collectTurnFilePaths, sumFileStats } from "@cocurdex/shared";
 import { createCheckpointBlobStore } from "./blob-store";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import {
   reconcileCheckpoints,
   deleteSessionCheckpoints as removeSessionCheckpoints,
 } from "./checkpoint-cleanup";
-import { type ActiveTurn, completeActiveTurn } from "./complete-turn";
+import {
+  type ActiveTurn,
+  completeActiveTurn,
+  type WorkspaceTurnClaim,
+} from "./complete-turn";
 import { readTurnChangeFileContent } from "./coordinator-file-content";
 import { createFilesystemCheckpointAdapter } from "./filesystem-checkpoint";
 import { createGitCheckpointAdapter } from "./git-checkpoint";
@@ -97,6 +102,7 @@ export function createWorkspaceChangeCoordinator(
   );
   const gitAdapter = createGitCheckpointAdapter();
   const activeTurns = new Map<string, ActiveTurn>();
+  const turnClaims: WorkspaceTurnClaim[] = [];
   // Tool events that land before beginTurn resolves would otherwise be lost;
   // carrying them into the next turn only costs one extra diff.
   const pendingToolActivity = new Set<string>();
@@ -195,6 +201,45 @@ export function createWorkspaceChangeCoordinator(
     }
   }
 
+  function overlappingClaims(active: ActiveTurn, endedAt: number) {
+    return turnClaims.filter(
+      (claim) =>
+        claim !== active.claim &&
+        claim.workspaceRootPath === active.workspaceRootPath &&
+        claim.startedAt <= endedAt &&
+        (claim.endedAt == null || claim.endedAt >= active.claim.startedAt),
+    );
+  }
+
+  function siblingPathsFor(active: ActiveTurn, endedAt: number) {
+    return new Set(
+      overlappingClaims(active, endedAt).flatMap((claim) => [...claim.paths]),
+    );
+  }
+
+  function rememberClaimedPaths(
+    claim: WorkspaceTurnClaim,
+    files: TurnFileChange[] | null | undefined,
+  ) {
+    for (const path of collectTurnFilePaths(files)) {
+      claim.paths.add(path);
+    }
+  }
+
+  function pruneClaims(workspaceRootPath: string) {
+    const hasActive = [...activeTurns.values()].some(
+      (turn) => turn.workspaceRootPath === workspaceRootPath,
+    );
+    if (hasActive) {
+      return;
+    }
+    for (let index = turnClaims.length - 1; index >= 0; index -= 1) {
+      if (turnClaims[index]?.workspaceRootPath === workspaceRootPath) {
+        turnClaims.splice(index, 1);
+      }
+    }
+  }
+
   async function completeTurn(
     sessionId: string,
     messageId: string | undefined,
@@ -209,20 +254,27 @@ export function createWorkspaceChangeCoordinator(
       if (!active || active.finalized) {
         return active?.changeSet ?? null;
       }
+      const endedAt = Date.now();
       try {
-        return await completeActiveTurn({
+        const changeSet = await completeActiveTurn({
           active,
           messageId,
           outcome,
           getNativeSession: options.getNativeSession,
           now,
+          siblingPaths: siblingPathsFor(active, endedAt),
           persist,
           discard,
           rememberCheckpoint,
         });
+        active.claim.endedAt = endedAt;
+        rememberClaimedPaths(active.claim, changeSet.files);
+        return changeSet;
       } finally {
         active.finalized = true;
+        active.claim.endedAt = active.claim.endedAt ?? endedAt;
         activeTurns.delete(sessionId);
+        pruneClaims(active.workspaceRootPath);
       }
     });
     completingTurns.set(sessionId, work);
@@ -282,12 +334,21 @@ export function createWorkspaceChangeCoordinator(
           createdAt: timestamp,
           updatedAt: timestamp,
         };
+        const claim: WorkspaceTurnClaim = {
+          sessionId: input.sessionId,
+          workspaceRootPath: input.workspaceRootPath,
+          startedAt: Date.now(),
+          endedAt: null,
+          paths: new Set(),
+        };
+        turnClaims.push(claim);
         activeTurns.set(input.sessionId, {
           workspaceRootPath: input.workspaceRootPath,
           adapter,
           native: null,
           before,
           changeSet,
+          claim,
           touchedWorkspace: pendingToolActivity.delete(input.sessionId),
         });
         return persist(changeSet);
@@ -316,6 +377,7 @@ export function createWorkspaceChangeCoordinator(
       }
       const files = sanitizeTurnFileChanges(input.evidence.files);
       active.native = { ...input.evidence, files };
+      rememberClaimedPaths(active.claim, files);
       const timestamp = now();
       const stats = sumFileStats(files);
       active.changeSet = {
