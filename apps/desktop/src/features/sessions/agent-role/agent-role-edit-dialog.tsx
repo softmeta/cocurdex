@@ -142,8 +142,22 @@ function AgentRoleEditForm({
 
   const handleSelectAgent = async (nextAgentId: AgentId) => {
     setAgentId(nextAgentId);
-    setModelValue("");
-    setIsLoading(true);
+    const cachedResult =
+      getCachedProviderModelEntry(providerModelCache, nextAgentId)?.result ??
+      null;
+    if (cachedResult) {
+      setModelValue(
+        getDefaultProviderModelValue(
+          nextAgentId,
+          cachedResult.items,
+          cachedResult.defaultSelection,
+        ),
+      );
+      setIsLoading(false);
+    } else {
+      setModelValue("");
+      setIsLoading(true);
+    }
     setPermissionMode(getDefaultPermissionMode(agents, nextAgentId));
     setCollaborationMode(
       supportsPlanMode(nextAgentId) ? collaborationMode : "default",

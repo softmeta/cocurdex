@@ -20,7 +20,7 @@ const providerModelCacheAgentIds = new Set<AgentId>([
   "pi",
 ]);
 
-interface ProviderModelCacheResult {
+export interface ProviderModelCacheResult {
   defaultSelection: AgentProviderSelection | null;
   items: CompatibleProviderModel[];
 }
@@ -250,6 +250,13 @@ export function shouldRevalidateProviderModels(
   );
 }
 
+export function shouldForceRefreshAdapterCatalog(
+  agentId: AgentId,
+  hasCachedResult: boolean,
+) {
+  return usesAdapterOwnedModelCatalog(agentId) && hasCachedResult;
+}
+
 export function loadProviderModelOptions(
   cache: ProviderModelCache,
   agentId: AgentId,
@@ -261,9 +268,14 @@ export function loadProviderModelOptions(
     return entry.promise;
   }
 
+  const forceRefresh = shouldForceRefreshAdapterCatalog(
+    agentId,
+    Boolean(entry?.result),
+  );
+
   const promise = Promise.all([
     desktopApi.listCompatibleProvidersForAgent(agentId, {
-      forceRefresh: usesAdapterOwnedModelCatalog(agentId),
+      forceRefresh,
     }),
     desktopApi.getAgentProviderDefault(agentId),
   ])

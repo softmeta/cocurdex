@@ -659,7 +659,7 @@ export async function buildCompatibleProviderModels(
   ]);
 
   if (agentId === "opencode") {
-    return listOpenCodeProviderModels();
+    return listOpenCodeProviderModels(options);
   }
 
   if (agentId === "pi") {
@@ -670,7 +670,7 @@ export async function buildCompatibleProviderModels(
     return compatibleItems;
   }
 
-  const codexModels = await listCodexProviderModels();
+  const codexModels = await listCodexProviderModels(options);
   return [...codexModels, ...compatibleItems];
 }
 

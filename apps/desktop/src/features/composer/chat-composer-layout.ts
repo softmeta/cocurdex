@@ -108,7 +108,7 @@ export function composerSendButtonClassName(canSend: boolean) {
 }
 
 export function composerStopButtonClassName() {
-  return "size-8 rounded-control border border-chat-fg bg-transparent text-chat-fg shadow-none transition-colors hover:bg-chat-surface-control-hover";
+  return composerSendButtonClassName(true);
 }
 
 export function composerStopGlyphClassName() {

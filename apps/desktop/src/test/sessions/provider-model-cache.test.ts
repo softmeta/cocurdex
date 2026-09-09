@@ -182,10 +182,34 @@ describe("loadProviderModelOptions", () => {
     ).toEqual(grokItems);
   });
 
+  it("does not force refresh adapter-owned catalogs on a cold load", async () => {
+    desktopApiMock.getAgentProviderDefault.mockResolvedValue(null);
+    const cache = new Map();
+
+    await loadProviderModelOptions(cache, GROK_AGENT);
+
+    expect(desktopApiMock.listCompatibleProvidersForAgent).toHaveBeenCalledWith(
+      GROK_AGENT,
+      { forceRefresh: false },
+    );
+    expect(cache.get(GROK_AGENT)?.runtimeValidated).toBe(true);
+  });
+
   it("force refreshes adapter-owned catalogs during revalidation", async () => {
     desktopApiMock.getAgentProviderDefault.mockResolvedValue(null);
+    const grokItems = [
+      {
+        provider: { id: GROK_AGENT, name: "Grok Build" },
+        model: { modelId: "grok-4.6", name: "Grok 4.6" },
+      },
+    ] as unknown as CompatibleProviderModel[];
+    const cache = new Map();
+    cache.set(GROK_AGENT, {
+      result: { defaultSelection: null, items: grokItems },
+      updatedAt: Date.now(),
+    });
 
-    await loadProviderModelOptions(new Map(), GROK_AGENT);
+    await loadProviderModelOptions(cache, GROK_AGENT);
 
     expect(desktopApiMock.listCompatibleProvidersForAgent).toHaveBeenCalledWith(
       GROK_AGENT,
