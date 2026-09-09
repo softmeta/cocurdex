@@ -1164,7 +1164,9 @@ export function CenterPanel({
   if (centerSurface === "conversation" && activeConversation) {
     return (
       <section className="flex h-full flex-col bg-chat-canvas">
-        <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
+        {hideTitlebarSpacer ? null : (
+          <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
+        )}
         <div className="min-h-0 flex-1 overflow-hidden">
           <ConversationDetail
             key={activeConversation.id}

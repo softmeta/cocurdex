@@ -91,6 +91,7 @@ export interface ChatComposerHandle {
 interface ChatComposerProps {
   attachment?: MessageAttachment;
   draftKey?: string;
+  sessionId?: string | null;
   agentType?: AgentId;
   agentLabel?: string;
   isRunning?: boolean;
@@ -139,6 +140,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     {
       attachment,
       draftKey,
+      sessionId,
       agentType,
       agentLabel = "Codex",
       isRunning = false,
@@ -496,7 +498,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
 
     const defaultAgentControls = isAgentMode ? (
       <>
-        <SessionRoleName />
+        <SessionRoleName sessionId={sessionId} />
         {agentMenu}
       </>
     ) : null;
@@ -561,6 +563,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             footerTrailing={footerTrailing}
             initialEditorContent={initialDraft}
             runtimeMenuExtras={runtimeMenuExtras}
+            sessionId={sessionId}
             attachmentError={attachmentError}
             isAgentMode={isAgentMode}
             isRunning={isRunning}
@@ -590,6 +593,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             footerTrailing={footerTrailing}
             initialEditorContent={initialDraft}
             runtimeMenuExtras={runtimeMenuExtras}
+            sessionId={sessionId}
             header={header}
             attachmentError={attachmentError}
             isAgentMode={isAgentMode}

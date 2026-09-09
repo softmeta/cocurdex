@@ -127,8 +127,8 @@ export function WorkspaceSidebarItem({
                   className={cn(
                     "sidebar-activity-dot size-1.5 rounded-full",
                     needsAttention
-                      ? "bg-chat-status-pending-fg"
-                      : "bg-sidebar-thinking-dot",
+                      ? "text-chat-status-pending-fg"
+                      : "text-sidebar-thinking-dot",
                   )}
                   role="img"
                   aria-label={

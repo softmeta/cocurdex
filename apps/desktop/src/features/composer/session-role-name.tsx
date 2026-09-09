@@ -6,13 +6,18 @@ import {
   subscribeAgentRoles,
 } from "@/features/sessions/agent-role";
 import { composerFooterControlClassName } from "./chat-composer-layout";
+import { resolveComposerSessionId } from "./composer-session-id";
 
-export function SessionRoleName() {
+export function SessionRoleName({ sessionId }: { sessionId?: string | null }) {
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const sessions = useAtomValue(sessionsAtom);
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
-  const session = activeSessionId
-    ? (sessions.find((item) => item.id === activeSessionId) ?? null)
+  const resolvedSessionId = resolveComposerSessionId(
+    sessionId,
+    activeSessionId,
+  );
+  const session = resolvedSessionId
+    ? (sessions.find((item) => item.id === resolvedSessionId) ?? null)
     : null;
   const selectedRole = session?.agentRoleId
     ? (roles.find((role) => role.id === session.agentRoleId) ?? null)

@@ -3,8 +3,8 @@ import { activeConversationIdAtom } from "@/features/chat";
 import {
   activeSessionIdAtom,
   bindFocusedPaneContentAtom,
-  canSplitSessionPaneAtom,
   closeSessionPaneAtom,
+  collapseSessionSplitAtom,
   focusedPaneIdAtom,
   focusSessionPaneAtom,
   type SessionSplitDirection,
@@ -18,11 +18,11 @@ export function useSessionSplitActions() {
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const activeConversationId = useAtomValue(activeConversationIdAtom);
   const focusedPaneId = useAtomValue(focusedPaneIdAtom);
-  const canSplit = useAtomValue(canSplitSessionPaneAtom);
   const paneCount = useAtomValue(sessionPaneCountAtom);
   const bindFocusedPane = useSetAtom(bindFocusedPaneContentAtom);
   const splitFocusedPane = useSetAtom(splitFocusedPaneAtom);
   const closeSessionPane = useSetAtom(closeSessionPaneAtom);
+  const collapseSessionSplit = useSetAtom(collapseSessionSplitAtom);
   const focusSessionPane = useSetAtom(focusSessionPaneAtom);
   const setActiveSessionId = useSetAtom(activeSessionIdAtom);
   const setActiveConversationId = useSetAtom(activeConversationIdAtom);
@@ -32,26 +32,25 @@ export function useSessionSplitActions() {
     setActiveConversationId(null);
   };
 
-  const splitFocusedFromChrome = (direction: SessionSplitDirection) => {
+  const bindVisibleContent = () => {
     if (sidebarTab === "chat") {
       bindFocusedPane({
         sessionId: null,
         conversationId: activeConversationId,
       });
-    } else {
-      bindFocusedPane({
-        sessionId: activeSessionId,
-        conversationId: null,
-      });
-    }
-    if (!splitFocusedPane(direction)) {
       return;
     }
-    afterSplit();
+    bindFocusedPane({
+      sessionId: activeSessionId,
+      conversationId: null,
+    });
   };
 
   const splitPaneById = (paneId: string, direction: SessionSplitDirection) => {
     focusSessionPane(paneId);
+    if (paneCount <= 1) {
+      bindVisibleContent();
+    }
     if (!splitFocusedPane(direction)) {
       return;
     }
@@ -68,13 +67,22 @@ export function useSessionSplitActions() {
     return nextFocused;
   };
 
+  const closeAllPanes = (paneId: string) => {
+    const kept = collapseSessionSplit(paneId);
+    if (!kept) {
+      return null;
+    }
+    setActiveSessionId(kept.sessionId);
+    setActiveConversationId(kept.conversationId);
+    return kept;
+  };
+
   return {
-    canSplit,
+    closeAllPanes,
     closePane,
     focusedPaneId,
     focusSessionPane,
     paneCount,
-    splitFocusedFromChrome,
     splitPaneById,
   };
 }

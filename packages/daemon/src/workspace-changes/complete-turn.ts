@@ -8,6 +8,7 @@ import type {
 } from "@cocurdex/shared";
 import {
   applyContentLineStats,
+  attributeTurnFiles,
   mergeNativeAndHostEvidence,
   selectChangeSetCoverage,
   selectChangeSetSource,
@@ -16,12 +17,21 @@ import {
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import { resolveWorkspacePath, sanitizeTurnFileChanges } from "./path-safety";
 
+export interface WorkspaceTurnClaim {
+  sessionId: string;
+  workspaceRootPath: string;
+  startedAt: number;
+  endedAt: number | null;
+  paths: Set<string>;
+}
+
 export interface ActiveTurn {
   workspaceRootPath: string;
   adapter: HostCheckpointAdapter;
   native: NativeWorkspaceChangeEvidence | null;
   before: HostCheckpoint | null;
   changeSet: TurnChangeSet;
+  claim: WorkspaceTurnClaim;
   // A turn can only touch the workspace through a tool call. Turns that ran
   // none (plain chat) skip the "after" capture and leave no change set behind.
   touchedWorkspace?: boolean;
@@ -34,6 +44,7 @@ export async function completeActiveTurn(input: {
   outcome: TurnChangeOutcome;
   getNativeSession?(sessionId: string): AgentSession | null;
   now(): string;
+  siblingPaths?: Iterable<string>;
   persist(changeSet: TurnChangeSet): Promise<TurnChangeSet>;
   discard(
     active: ActiveTurn,
@@ -99,11 +110,15 @@ export async function completeActiveTurn(input: {
     adapter: active.adapter,
     after,
     before: active.before,
-    files: mergeNativeAndHostEvidence(
-      active.native?.files,
-      hostFiles,
-      hostAvailable,
-    ),
+    files: attributeTurnFiles({
+      files: mergeNativeAndHostEvidence(
+        active.native?.files,
+        hostFiles,
+        hostAvailable,
+      ),
+      native: active.native?.files,
+      siblingPaths: input.siblingPaths,
+    }),
     workspaceRootPath: active.workspaceRootPath,
   });
   if (files.length === 0) {

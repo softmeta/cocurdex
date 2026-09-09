@@ -3,6 +3,7 @@ import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { bootstrapSessionsAtom, selectSessionAtom } from "../session-store";
 import {
+  collapseSessionSplitAtom,
   focusedPaneIdAtom,
   sessionSplitLayoutAtom,
   splitFocusedPaneAtom,
@@ -48,5 +49,25 @@ describe("session split store", () => {
       store.get(sessionSplitLayoutAtom),
     ).filter((pane) => pane.sessionId === sessionA.id);
     expect(panesWithSession).toHaveLength(1);
+  });
+
+  it("collapses every split and keeps the chosen pane's session", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [sessionA]);
+    store.set(selectSessionAtom, sessionA.id);
+    store.set(splitFocusedPaneAtom, "right");
+    expect(store.get(focusedPaneIdAtom)).not.toBe(ROOT_PANE_ID);
+
+    const kept = store.set(collapseSessionSplitAtom, ROOT_PANE_ID);
+
+    expect(kept?.sessionId).toBe(sessionA.id);
+    expect(store.get(focusedPaneIdAtom)).toBe(ROOT_PANE_ID);
+    expect(listPanes(store.get(sessionSplitLayoutAtom))).toEqual([
+      {
+        id: ROOT_PANE_ID,
+        sessionId: sessionA.id,
+        conversationId: null,
+      },
+    ]);
   });
 });

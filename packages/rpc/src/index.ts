@@ -9,6 +9,7 @@ import type {
   AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
   AgentSlashCommand,
+  AgentToolCallResult,
   AppBootstrapData,
   CocurdexDaemonEvent,
   CommitMessageModelSelection,
@@ -31,6 +32,7 @@ import type {
   GenerateGitCommitMessagePayload,
   GetIssuePayload,
   GetNotePayload,
+  GetToolCallResultInput,
   GitWorktreeInfo,
   IssueRecord,
   LoadViewPayload,
@@ -82,7 +84,7 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 17;
+export const DAEMON_PROTOCOL_VERSION = 18;
 
 export interface DaemonMetadata {
   pid: number;
@@ -186,6 +188,7 @@ export type DaemonRequestPayloadByMethod = {
   "session.stop": { sessionId: string };
   "session.undoTurnChanges": UndoTurnChangesInput;
   "session.getTurnChangeFile": TurnChangeFileContentRequest;
+  "session.getToolCallResult": GetToolCallResultInput;
   "daemon.subscribe": undefined;
   "network.proxy.test": undefined;
   "attention.list": undefined;
@@ -299,6 +302,7 @@ export type DaemonResultByMethod = {
   "session.stop": null;
   "session.undoTurnChanges": UndoTurnChangesResult;
   "session.getTurnChangeFile": TurnChangeFileContent;
+  "session.getToolCallResult": AgentToolCallResult | null;
   "daemon.subscribe": null;
   "network.proxy.test": NetworkProxyTestResult;
   "attention.list": SessionAttentionSnapshot[];

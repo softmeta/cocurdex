@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@cocurdex/shared";
+import type { AgentEvent, AgentToolCallRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,9 +7,50 @@ import {
   loadSessionToolCallsAtom,
   shouldRefreshSessionToolCalls,
   toolCallsBySessionAtom,
+  toolCallsLoadedBySessionAtom,
 } from "@/features/agent/tool-call/tool-call-store";
 
 describe("tool call store", () => {
+  it("merges history with live records without losing newer or terminal states", () => {
+    const store = createStore();
+    const base: AgentToolCallRecord = {
+      id: "shared",
+      sessionId: "session-1",
+      title: "Run command",
+      status: "in_progress",
+      content: undefined,
+      locations: [],
+      startedAt: "2026-09-09T00:00:00.000Z",
+      updatedAt: "2026-09-09T00:00:01.000Z",
+    };
+    const live = [
+      { ...base, status: "completed" as const },
+      { ...base, id: "newer", updatedAt: "2026-09-09T00:00:03.000Z" },
+      { ...base, id: "live-only", startedAt: "2026-09-09T00:00:04.000Z" },
+    ];
+    const history = [
+      { ...base, id: "history-only", startedAt: "2026-09-08T00:00:00.000Z" },
+      base,
+      { ...base, id: "newer" },
+    ];
+    store.set(toolCallsBySessionAtom, { "session-1": live });
+
+    store.set(loadSessionToolCallsAtom, {
+      sessionId: "session-1",
+      toolCalls: history,
+    });
+
+    expect(store.get(toolCallsBySessionAtom)["session-1"]).toEqual([
+      history[0],
+      live[0],
+      live[1],
+      live[2],
+    ]);
+    expect(history).toHaveLength(3);
+    expect(history[1].status).toBe("in_progress");
+    expect(live).toHaveLength(3);
+  });
+
   it("tracks started, updated, and finished tool calls for a session", () => {
     const store = createStore();
     const sessionId = "session-1";
@@ -31,6 +72,7 @@ describe("tool call store", () => {
     };
 
     store.set(applyToolEventAtom, startedEvent);
+    expect(store.get(toolCallsLoadedBySessionAtom)[sessionId]).toBeFalsy();
     store.set(applyToolEventAtom, {
       type: "tool.updated",
       sessionId,
@@ -46,7 +88,7 @@ describe("tool call store", () => {
       {
         ...startedEvent.toolCall,
         status: "in_progress",
-        content: [{ type: "text", text: "Reading package.json" }],
+        content: undefined,
         updatedAt: "2026-04-22T12:00:01.500Z",
       },
     ]);
@@ -66,7 +108,7 @@ describe("tool call store", () => {
       {
         ...startedEvent.toolCall,
         status: "completed",
-        rawOutput: { bytes: 123 },
+        content: undefined,
         updatedAt: "2026-04-22T12:00:02.000Z",
       },
     ]);

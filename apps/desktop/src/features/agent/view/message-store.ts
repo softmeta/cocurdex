@@ -49,10 +49,6 @@ export const appendMessageAtom = atom(
       ...current,
       [message.sessionId]: upsertMessages(sessionMessages, [message]),
     });
-    set(messagesLoadedBySessionAtom, {
-      ...get(messagesLoadedBySessionAtom),
-      [message.sessionId]: true,
-    });
   },
 );
 
@@ -205,19 +201,6 @@ function flushPendingDeltas(get: Getter, set: Setter) {
 
   pendingDeltas.clear();
   set(messagesBySessionAtom, nextMessagesBySession);
-
-  // Only touch the loaded map when a session appears for the first time —
-  // rewriting it on every flush would wake its subscribers 60 times a second.
-  const loaded = get(messagesLoadedBySessionAtom);
-  const newlyLoaded = [...updatesBySession.keys()].filter(
-    (sessionId) => !loaded[sessionId],
-  );
-  if (newlyLoaded.length > 0) {
-    set(messagesLoadedBySessionAtom, {
-      ...loaded,
-      ...Object.fromEntries(newlyLoaded.map((sessionId) => [sessionId, true])),
-    });
-  }
 }
 
 function enqueueDelta(get: Getter, set: Setter, event: MessageDeltaEvent) {

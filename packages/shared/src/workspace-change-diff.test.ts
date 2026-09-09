@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateTurnFileChanges,
   applyContentLineStats,
+  attributeTurnFiles,
   createUnifiedDiff,
   inferReviewKind,
   mergeNativeAndHostEvidence,
@@ -338,6 +339,37 @@ describe("applyContentLineStats", () => {
         "b",
       ),
     ).toMatchObject({ reviewKind: "image" });
+  });
+});
+
+describe("attributeTurnFiles", () => {
+  it("keeps host-only files when this turn has no native evidence and no siblings", () => {
+    expect(
+      attributeTurnFiles({
+        files: [file("motion.css")],
+        native: [],
+      }),
+    ).toEqual([expect.objectContaining({ path: "motion.css" })]);
+  });
+
+  it("drops a sibling session's path from this turn's host coverage", () => {
+    expect(
+      attributeTurnFiles({
+        files: [file("src/a.ts"), file("motion.css")],
+        native: [file("src/a.ts")],
+        siblingPaths: ["motion.css"],
+      }).map((entry) => entry.path),
+    ).toEqual(["src/a.ts"]);
+  });
+
+  it("keeps host-only files that no sibling session has claimed", () => {
+    expect(
+      attributeTurnFiles({
+        files: [file("bash.txt"), file("motion.css")],
+        native: [],
+        siblingPaths: ["motion.css"],
+      }).map((entry) => entry.path),
+    ).toEqual(["bash.txt"]);
   });
 });
 

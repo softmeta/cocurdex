@@ -102,7 +102,7 @@ export function useAppPersistence() {
         bootstrapSessions(data.sessions);
         bootstrapQueuedInputs({
           inputs: data.queuedAgentInputs,
-          messages: data.messages ?? [],
+          messages: data.queuedMessages,
         });
         bootstrapSessionUsage(data.sessionUsage);
         bootstrapEditorViews(data.editorViews);

@@ -24,9 +24,7 @@ describe("isViewportNearTop", () => {
 });
 
 describe("resolveStickyUserMessage", () => {
-  it("pins the current section once its prompt header scrolls above the top", () => {
-    // user-1 header is above the viewport top (negative), user-2 is still
-    // below the activation offset — viewer is reading user-1's answer.
+  it("selects the current section once its prompt header scrolls above the top", () => {
     const result = resolveStickyUserMessage(
       [
         { id: "user-1", relativeTop: -240 },
@@ -35,12 +33,10 @@ describe("resolveStickyUserMessage", () => {
       "user-1",
     );
 
-    expect(result).toEqual({ id: "user-1", pinned: true });
+    expect(result).toEqual({ id: "user-1" });
   });
 
-  it("does not pin while the active prompt header is still visible near the top", () => {
-    // user-1 header sits within [0, offset]; the real bubble is on screen, so
-    // the overlay bar must stay hidden to avoid duplicating it.
+  it("selects the active prompt while its header is still visible near the top", () => {
     const result = resolveStickyUserMessage(
       [
         { id: "user-1", relativeTop: 40 },
@@ -49,7 +45,7 @@ describe("resolveStickyUserMessage", () => {
       "user-1",
     );
 
-    expect(result).toEqual({ id: "user-1", pinned: false });
+    expect(result).toEqual({ id: "user-1" });
   });
 
   it("selects the last prompt that has crossed the activation offset", () => {
@@ -62,23 +58,49 @@ describe("resolveStickyUserMessage", () => {
       "user-1",
     );
 
-    expect(result).toEqual({ id: "user-2", pinned: true });
+    expect(result).toEqual({ id: "user-2" });
   });
 
-  it("does not pin when scrolled above the first prompt", () => {
+  it("falls back to the first prompt when scrolled above it", () => {
     const result = resolveStickyUserMessage(
       [{ id: "user-1", relativeTop: 300 }],
       "user-1",
     );
 
-    expect(result).toEqual({ id: "user-1", pinned: false });
+    expect(result).toEqual({ id: "user-1" });
   });
 
   it("falls back to the provided id when no candidates are mounted", () => {
     expect(resolveStickyUserMessage([], "user-2")).toEqual({
       id: "user-2",
-      pinned: false,
     });
+  });
+
+  it("selects the last prompt at the end even when its header is below the activation offset", () => {
+    const result = resolveStickyUserMessage(
+      [
+        { id: "user-1", relativeTop: -900 },
+        { id: "user-2", relativeTop: -50 },
+        { id: "user-3", relativeTop: 200 },
+      ],
+      "user-1",
+      { atEnd: true, lastId: "user-3" },
+    );
+
+    expect(result).toEqual({ id: "user-3" });
+  });
+
+  it("selects lastId at the end when the last prompt is not in the candidate window", () => {
+    const result = resolveStickyUserMessage(
+      [
+        { id: "user-1", relativeTop: -40 },
+        { id: "user-2", relativeTop: 120 },
+      ],
+      "user-1",
+      { atEnd: true, lastId: "user-3" },
+    );
+
+    expect(result).toEqual({ id: "user-3" });
   });
 });
 

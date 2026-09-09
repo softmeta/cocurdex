@@ -147,6 +147,7 @@
   },
   "split": {
     "close": "关闭分屏",
+    "closeAll": "关闭所有",
     "down": "向下分屏",
     "menu": "分屏",
     "newSession": "新会话",

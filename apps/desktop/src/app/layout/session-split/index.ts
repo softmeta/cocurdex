@@ -1,4 +1,1 @@
-export {
-  SessionSplitLayout,
-  TitlebarSessionSplitMenu,
-} from "./session-split-layout";
+export { SessionSplitLayout } from "./session-split-layout";

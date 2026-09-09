@@ -100,6 +100,21 @@ export function getPillComposerShapeClassName(isExpanded: boolean) {
   return isExpanded ? "rounded-card" : "rounded-full";
 }
 
+export function composerSendButtonClassName(canSend: boolean) {
+  if (!canSend) {
+    return "size-8 rounded-full bg-chat-surface-disabled text-chat-fg-muted transition-colors hover:bg-chat-surface-disabled";
+  }
+  return "size-8 rounded-full bg-chat-fg text-chat-canvas transition-colors hover:bg-chat-fg-secondary";
+}
+
+export function composerStopButtonClassName() {
+  return "size-8 rounded-control border border-chat-fg bg-transparent text-chat-fg shadow-none transition-colors hover:bg-chat-surface-control-hover";
+}
+
+export function composerStopGlyphClassName() {
+  return "size-2.5 rounded-micro bg-current";
+}
+
 // Caption-row chrome for workspace / agent / model / branch. Inherit the
 // footer type so competing trigger utilities (text-body, text-2xs, px-2.5)
 // cannot make the four items look like different controls.

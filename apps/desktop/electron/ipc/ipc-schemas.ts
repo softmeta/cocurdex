@@ -1,4 +1,5 @@
 import path from "node:path";
+import { isToolCallId } from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 
@@ -218,7 +219,7 @@ export const schemas = {
   filePath: filesystemPathSchema,
   sessionId: idSchema,
   messageId: idSchema,
-  toolCallId: idSchema,
+  toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),
   questionId: idSchema,
   decision: decisionSchema,
   answer: z.string().max(64_000),

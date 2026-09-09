@@ -1,28 +1,26 @@
 import type {
   AgentEvent,
   AgentToolCallRecord,
-  AgentToolCallResult,
   SessionRecord,
 } from "@cocurdex/shared";
 import { atom } from "jotai";
-import { desktopApi } from "@/lib";
+import {
+  applyToolCallResultAtom,
+  clearToolCallResultsForSessionAtom,
+  refreshToolCallResultAtom,
+  toolCallResultCacheAtom,
+} from "./tool-call-result-store";
 
 type ToolCallsBySession = Record<string, AgentToolCallRecord[]>;
 type LoadedBySession = Record<string, boolean>;
 
-// Lazy result cache. Session loads return tool-call summaries without content
-// or rawOutput; the cache hydrates both on the first detail open and stays warm
-// across repeated opens within the session.
-export type ToolCallResultCacheEntry =
-  | { status: "loading" }
-  | { status: "loaded"; value: AgentToolCallResult | null }
-  | { status: "error"; message: string };
-
-type ToolCallResultCache = Record<string, ToolCallResultCacheEntry>;
-
 export const toolCallsBySessionAtom = atom<ToolCallsBySession>({});
 export const toolCallsLoadedBySessionAtom = atom<LoadedBySession>({});
-export const toolCallResultCacheAtom = atom<ToolCallResultCache>({});
+
+function toToolCallSummary(toolCall: AgentToolCallRecord): AgentToolCallRecord {
+  const { content: _content, rawOutput: _rawOutput, ...summary } = toolCall;
+  return { ...summary, content: undefined };
+}
 
 export const bootstrapToolCallsAtom = atom(
   null,
@@ -32,9 +30,9 @@ export const bootstrapToolCallsAtom = atom(
     for (const toolCall of toolCalls) {
       const bucket = grouped.get(toolCall.sessionId);
       if (bucket) {
-        bucket.push(toolCall);
+        bucket.push(toToolCallSummary(toolCall));
       } else {
-        grouped.set(toolCall.sessionId, [toolCall]);
+        grouped.set(toolCall.sessionId, [toToolCallSummary(toolCall)]);
       }
     }
 
@@ -66,18 +64,23 @@ export const loadSessionToolCallsAtom = atom(
     payload: { sessionId: string; toolCalls: AgentToolCallRecord[] },
   ) => {
     const current = get(toolCallsBySessionAtom);
-    let nextSessionToolCalls = payload.toolCalls;
+    const mergedToolCalls = new Map(
+      payload.toolCalls.map((toolCall) => [toolCall.id, toolCall]),
+    );
 
     for (const existingToolCall of current[payload.sessionId] ?? []) {
-      nextSessionToolCalls = upsertToolCall(
-        nextSessionToolCalls,
-        existingToolCall,
+      const persistedToolCall = mergedToolCalls.get(existingToolCall.id);
+      mergedToolCalls.set(
+        existingToolCall.id,
+        persistedToolCall
+          ? selectToolCall(persistedToolCall, existingToolCall)
+          : existingToolCall,
       );
     }
 
-    nextSessionToolCalls = [...nextSessionToolCalls].sort((left, right) =>
-      left.startedAt.localeCompare(right.startedAt),
-    );
+    const nextSessionToolCalls = [...mergedToolCalls.values()]
+      .map(toToolCallSummary)
+      .sort((left, right) => left.startedAt.localeCompare(right.startedAt));
 
     set(toolCallsBySessionAtom, {
       ...current,
@@ -87,6 +90,23 @@ export const loadSessionToolCallsAtom = atom(
       ...get(toolCallsLoadedBySessionAtom),
       [payload.sessionId]: true,
     });
+    const previousById = new Map(
+      (current[payload.sessionId] ?? []).map((toolCall) => [
+        toolCall.id,
+        toolCall,
+      ]),
+    );
+    const resultCache = get(toolCallResultCacheAtom);
+    for (const toolCall of nextSessionToolCalls) {
+      if (!resultCache[toolCall.id]) continue;
+      const previous = previousById.get(toolCall.id);
+      if (
+        previous?.updatedAt !== toolCall.updatedAt ||
+        previous.status !== toolCall.status
+      ) {
+        void set(refreshToolCallResultAtom, toolCall.id);
+      }
+    }
   },
 );
 
@@ -97,6 +117,11 @@ export const clearToolCallsForSessionAtom = atom(
     const { [sessionId]: _removed, ...next } = current;
 
     set(toolCallsBySessionAtom, next);
+    const { [sessionId]: _loaded, ...remainingLoaded } = get(
+      toolCallsLoadedBySessionAtom,
+    );
+    set(toolCallsLoadedBySessionAtom, remainingLoaded);
+    set(clearToolCallResultsForSessionAtom, sessionId);
   },
 );
 
@@ -114,24 +139,35 @@ function upsertToolCall(
     );
   }
 
-  const existingToolCall = toolCalls[existingIndex];
-  let selectedToolCall = nextToolCall;
+  const selectedToolCall = selectToolCall(
+    toolCalls[existingIndex],
+    nextToolCall,
+  );
+  if (selectedToolCall === toolCalls[existingIndex]) {
+    return toolCalls;
+  }
+  return toolCalls.map((toolCall, index) =>
+    index === existingIndex ? selectedToolCall : toolCall,
+  );
+}
+
+function selectToolCall(
+  existingToolCall: AgentToolCallRecord,
+  nextToolCall: AgentToolCallRecord,
+) {
   const timestampOrder = existingToolCall.updatedAt.localeCompare(
     nextToolCall.updatedAt,
   );
   if (timestampOrder > 0) {
-    selectedToolCall = existingToolCall;
+    return existingToolCall;
   } else if (
     timestampOrder === 0 &&
     isTerminalToolCall(existingToolCall) &&
     !isTerminalToolCall(nextToolCall)
   ) {
-    selectedToolCall = existingToolCall;
+    return existingToolCall;
   }
-
-  return toolCalls.map((toolCall, index) =>
-    index === existingIndex ? selectedToolCall : toolCall,
-  );
+  return nextToolCall;
 }
 
 function isTerminalToolCall(toolCall: AgentToolCallRecord) {
@@ -163,60 +199,17 @@ export const applyToolEventAtom = atom(null, (get, set, event: AgentEvent) => {
 
   const current = get(toolCallsBySessionAtom);
   const sessionToolCalls = current[event.sessionId] ?? [];
+  const existing = sessionToolCalls.find(
+    (toolCall) => toolCall.id === event.toolCall.id,
+  );
+  if (existing && selectToolCall(existing, event.toolCall) === existing) return;
 
   set(toolCallsBySessionAtom, {
     ...current,
-    [event.sessionId]: upsertToolCall(sessionToolCalls, event.toolCall),
+    [event.sessionId]: upsertToolCall(
+      sessionToolCalls,
+      toToolCallSummary(event.toolCall),
+    ),
   });
-  set(toolCallsLoadedBySessionAtom, {
-    ...get(toolCallsLoadedBySessionAtom),
-    [event.sessionId]: true,
-  });
-
-  // Live updates carry the authoritative result accumulated so far. Keep the
-  // detail cache synchronized instead of waiting for the terminal event.
-  if (event.type !== "tool.started") {
-    const resultCache = get(toolCallResultCacheAtom);
-    set(toolCallResultCacheAtom, {
-      ...resultCache,
-      [event.toolCall.id]: {
-        status: "loaded",
-        value: {
-          content: event.toolCall.content ?? [],
-          rawOutput: event.toolCall.rawOutput,
-        },
-      },
-    });
-  }
+  set(applyToolCallResultAtom, event.toolCall);
 });
-
-export const fetchToolCallResultAtom = atom(
-  null,
-  async (get, set, toolCallId: string) => {
-    const cache = get(toolCallResultCacheAtom);
-    const existing = cache[toolCallId];
-    // Re-issue on prior error so the user can retry by re-opening the detail.
-    if (existing && existing.status !== "error") {
-      return;
-    }
-
-    set(toolCallResultCacheAtom, {
-      ...cache,
-      [toolCallId]: { status: "loading" },
-    });
-
-    try {
-      const value = await desktopApi.getToolCallResult(toolCallId);
-      set(toolCallResultCacheAtom, {
-        ...get(toolCallResultCacheAtom),
-        [toolCallId]: { status: "loaded", value },
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      set(toolCallResultCacheAtom, {
-        ...get(toolCallResultCacheAtom),
-        [toolCallId]: { status: "error", message },
-      });
-    }
-  },
-);

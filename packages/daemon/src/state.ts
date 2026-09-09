@@ -81,13 +81,21 @@ export class DaemonState {
     await this.staleToolCallsSwept;
     await this.database.sessions.normalizeRunningToIdle();
 
+    const queuedAgentInputs = await this.database.queuedAgentInputs.list();
+    const queuedMessages = await Promise.all(
+      queuedAgentInputs.map((input) =>
+        this.database.messages.getById(input.messageId),
+      ),
+    );
+
     return {
       workspaces: await this.database.workspaces.list(),
       sessions: await this.database.sessions.list(),
-      messages: await this.database.messages.list(),
-      queuedAgentInputs: await this.database.queuedAgentInputs.list(),
+      queuedMessages: queuedMessages.filter(
+        (message): message is MessageRecord => message != null,
+      ),
+      queuedAgentInputs,
       sessionUsage: await this.database.sessionUsage.list(),
-      toolCalls: await this.database.toolCalls.list(),
       editorViews: await this.database.editorViews.list(),
     };
   }
@@ -183,8 +191,6 @@ export class DaemonState {
         return this.database.toolCalls.listSummariesBySessionId(
           args[0] as string,
         );
-      case "toolCall.getResult":
-        return this.database.toolCalls.getResultById(args[0] as string);
       case "editorView.save":
         return this.database.editorViews.upsert(args[0] as EditorViewRecord);
       case "providerConfig.list":

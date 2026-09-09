@@ -20,6 +20,7 @@ import type {
   CocurdexDaemonEvent,
   CreateSessionPayload,
   CreateWorkflowPayload,
+  GetToolCallResultInput,
   MessageRecord,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
@@ -37,9 +38,11 @@ import {
   emptyWorktreeEnvironment,
   getNetworkProxySettings,
   isAgentId,
+  isToolCallId,
   normalizeAgentRoleName,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
   resolveSessionWorkingPath,
+  toolMayMutateWorkspace,
 } from "@cocurdex/shared";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
@@ -160,7 +163,9 @@ export class CocurdexDaemonService {
       await this.state.persistAgentEvent(event);
       await this.state.sessionAttention.applyEvent(event);
       if (event.type === "tool.started") {
-        this.workspaceChanges.markToolActivity(event.sessionId);
+        if (toolMayMutateWorkspace(event.toolCall)) {
+          this.workspaceChanges.markToolActivity(event.sessionId);
+        }
       }
       if (event.type === "workspace.native-evidence") {
         await this.workspaceChanges.ingestNativeEvidence({
@@ -624,6 +629,14 @@ export class CocurdexDaemonService {
       ...input,
       workspaceRootPath,
     });
+  }
+
+  async getToolCallResult(input: GetToolCallResultInput) {
+    if (!isToolCallId(input?.toolCallId)) {
+      throw new Error("Invalid tool call ID");
+    }
+    const database = await this.state.getChatDatabase();
+    return database.toolCalls.getResultById(input.toolCallId);
   }
 
   async getTurnChangeFile(input: TurnChangeFileContentRequest) {

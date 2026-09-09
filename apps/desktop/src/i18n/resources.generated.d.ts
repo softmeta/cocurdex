@@ -1071,6 +1071,7 @@ export default interface Resources {
     };
     split: {
       close: "Close Pane";
+      closeAll: "Close All";
       down: "Split Down";
       menu: "Split session";
       newSession: "New session";

@@ -1,7 +1,7 @@
 {
   "name": "@cocurdex/desktop",
   "productName": "Cocurdex",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
   "private": true,

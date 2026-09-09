@@ -9,6 +9,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui";
 import { cn } from "@/lib";
+import {
+  composerSendButtonClassName,
+  composerStopButtonClassName,
+  composerStopGlyphClassName,
+} from "./chat-composer-layout";
 import { ContextAttachmentChips } from "./context-attachment-chips";
 import {
   ContextFileMentionMenu,
@@ -43,6 +48,7 @@ interface PanelComposerProps {
   footerLeading?: ReactNode;
   footerTrailing?: ReactNode;
   runtimeMenuExtras?: ReactNode;
+  sessionId?: string | null;
   mentionAnchor: MentionAnchor | null;
   placeholderOverride?: string;
   mentionMenuPlacement?: "top" | "bottom";
@@ -73,6 +79,7 @@ export function PanelComposer({
   footerLeading,
   footerTrailing,
   runtimeMenuExtras,
+  sessionId,
   mentionAnchor,
   placeholderOverride,
   mentionMenuPlacement = "top",
@@ -239,6 +246,7 @@ export function PanelComposer({
                   footer={runtimeMenuExtras}
                   isRunning={isRunning}
                   layout="split"
+                  sessionId={sessionId}
                 />
               ) : null}
             </div>
@@ -250,13 +258,13 @@ export function PanelComposer({
                   type="button"
                   onClick={onStop}
                   className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
+                    "flex shrink-0 items-center justify-center",
                     tone === "welcome"
-                      ? "bg-chat-surface-control text-welcome-fg-muted hover:bg-chat-surface-control-hover hover:text-welcome-fg-secondary disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-chat-surface-control disabled:hover:text-welcome-fg-muted"
-                      : "bg-chat-fg text-chat-canvas shadow-chat-soft hover:bg-chat-fg-secondary disabled:cursor-not-allowed disabled:bg-chat-surface-disabled disabled:text-chat-fg-muted disabled:hover:bg-chat-surface-disabled",
+                      ? "size-8 rounded-full bg-chat-surface-control text-welcome-fg-muted transition-colors hover:bg-chat-surface-control-hover hover:text-welcome-fg-secondary disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-chat-surface-control disabled:hover:text-welcome-fg-muted"
+                      : composerStopButtonClassName(),
                   )}
                 >
-                  <span className="flex size-3 items-center justify-center rounded-control bg-current" />
+                  <span className={composerStopGlyphClassName()} />
                 </button>
               ) : null}
               {!isRunning || canSend ? (
@@ -265,10 +273,10 @@ export function PanelComposer({
                   type="submit"
                   disabled={!canSend}
                   className={cn(
-                    "flex shrink-0 items-center justify-center rounded-full transition-colors",
+                    "flex shrink-0 items-center justify-center",
                     tone === "welcome"
-                      ? "size-7 bg-chat-surface-control text-welcome-fg-muted hover:bg-chat-surface-control-hover hover:text-welcome-fg-secondary disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-chat-surface-control disabled:hover:text-welcome-fg-muted"
-                      : "size-8 bg-chat-fg text-chat-canvas shadow-chat-soft hover:bg-chat-fg-secondary disabled:cursor-not-allowed disabled:bg-chat-surface-disabled disabled:text-chat-fg-muted disabled:hover:bg-chat-surface-disabled",
+                      ? "size-7 rounded-full bg-chat-surface-control text-welcome-fg-muted transition-colors hover:bg-chat-surface-control-hover hover:text-welcome-fg-secondary disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-chat-surface-control disabled:hover:text-welcome-fg-muted"
+                      : composerSendButtonClassName(canSend),
                   )}
                 >
                   <CornerDownLeft className="size-4" />
