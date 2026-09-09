@@ -13,13 +13,13 @@
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
     "@astrojs/starlight": "^0.41.9",
-    "astro": "^7.2.0",
+    "astro": "^7.2.8",
     "cookie": "^2.0.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "sharp": "^0.35.4",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.0"
   }
 }
