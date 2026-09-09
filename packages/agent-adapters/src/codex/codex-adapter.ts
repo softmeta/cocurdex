@@ -119,9 +119,10 @@ function getCodexServiceTier(
   return serviceTier ? serviceTier : undefined;
 }
 
-export async function listCodexProviderModels(): Promise<
-  CompatibleProviderModel[]
-> {
+let cachedCodexCatalog: CompatibleProviderModel[] | null = null;
+let inFlightCodexCatalog: Promise<CompatibleProviderModel[]> | null = null;
+
+async function probeCodexProviderModels(): Promise<CompatibleProviderModel[]> {
   const lease = acquireCodexClient();
 
   try {
@@ -172,6 +173,28 @@ export async function listCodexProviderModels(): Promise<
   } finally {
     lease.release();
   }
+}
+
+function startCodexCatalogProbe() {
+  inFlightCodexCatalog ??= probeCodexProviderModels()
+    .then((probed) => {
+      cachedCodexCatalog = probed;
+      return probed;
+    })
+    .finally(() => {
+      inFlightCodexCatalog = null;
+    });
+  return inFlightCodexCatalog;
+}
+
+export async function listCodexProviderModels(
+  options: { forceRefresh?: boolean } = {},
+): Promise<CompatibleProviderModel[]> {
+  if (cachedCodexCatalog && !options.forceRefresh) {
+    return cachedCodexCatalog;
+  }
+
+  return startCodexCatalogProbe();
 }
 
 function createCodexSandboxMode(

@@ -10,7 +10,7 @@ import {
   type CompatibleProviderModel,
   isAgentPermissionModeSupportedForModel,
 } from "@cocurdex/shared";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -32,6 +32,7 @@ import {
   getProviderModelValue,
   isProviderModelCacheFresh,
   loadProviderModelOptions,
+  type ProviderModelCacheResult,
   parseProviderModelValue,
   providerModelCache,
   shouldRevalidateProviderModels,
@@ -290,6 +291,46 @@ export function useNewSessionCard({
         ]
       : [];
 
+  const applyCatalogResult = useCallback(
+    (agentId: AgentId, result: ProviderModelCacheResult) => {
+      setCompatibleProviders(result.items);
+      setSelectedProviderModel(
+        getDefaultProviderModelValue(
+          agentId,
+          result.items,
+          result.defaultSelection,
+          getAgentRuntimePreferences(agentId).providerSelection,
+        ),
+      );
+      setIsProviderModelLoading(false);
+      const preferences = getAgentRuntimePreferences(agentId);
+      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
+      setSelectedCodexServiceTier(preferences.serviceTier ?? "");
+      setSelectedClaudeFastMode(preferences.fastMode ?? false);
+      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+    },
+    [],
+  );
+
+  const showCatalogForAgent = useCallback(
+    (agentId: AgentId) => {
+      const cachedResult =
+        getCachedProviderModelEntry(providerModelCache, agentId)?.result ??
+        null;
+      if (cachedResult) {
+        applyCatalogResult(agentId, cachedResult);
+        return true;
+      }
+      setCompatibleProviders([]);
+      setSelectedProviderModel("");
+      setIsProviderModelLoading(true);
+      return false;
+    },
+    [applyCatalogResult],
+  );
+
   useEffect(() => {
     let cancelled = false;
     // providerModelCacheVersion is consumed here so the effect re-runs when
@@ -306,61 +347,21 @@ export function useNewSessionCard({
       cachedEntry?.runtimeValidated ?? false,
     );
 
-    if (cachedResult) {
-      setCompatibleProviders(cachedResult.items);
-      setSelectedProviderModel(
-        getDefaultProviderModelValue(
-          effectiveSelectedAgent,
-          cachedResult.items,
-          cachedResult.defaultSelection,
-          getAgentRuntimePreferences(effectiveSelectedAgent).providerSelection,
-        ),
-      );
-      setIsProviderModelLoading(false);
-      const preferences = getAgentRuntimePreferences(effectiveSelectedAgent);
-      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
-      setSelectedCodexServiceTier(preferences.serviceTier ?? "");
-      setSelectedClaudeFastMode(preferences.fastMode ?? false);
-      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
-      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
-      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
-    } else {
-      // Clear stale providers immediately so the dropdown doesn't show models
-      // from the previously selected agent while the new ones are loading.
-      setCompatibleProviders([]);
-      setIsProviderModelLoading(true);
-      setSelectedProviderModel("");
-    }
+    showCatalogForAgent(effectiveSelectedAgent);
 
     async function loadCompatibleProviders() {
       if (cachedResult && !shouldRefreshCache) {
         return;
       }
 
-      const { defaultSelection, items } = await loadProviderModelOptions(
+      const result = await loadProviderModelOptions(
         providerModelCache,
         effectiveSelectedAgent,
       );
 
       if (cancelled) return;
 
-      setCompatibleProviders(items);
-      setSelectedProviderModel(
-        getDefaultProviderModelValue(
-          effectiveSelectedAgent,
-          items,
-          defaultSelection,
-          getAgentRuntimePreferences(effectiveSelectedAgent).providerSelection,
-        ),
-      );
-      setIsProviderModelLoading(false);
-      const preferences = getAgentRuntimePreferences(effectiveSelectedAgent);
-      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
-      setSelectedCodexServiceTier(preferences.serviceTier ?? "");
-      setSelectedClaudeFastMode(preferences.fastMode ?? false);
-      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
-      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
-      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+      applyCatalogResult(effectiveSelectedAgent, result);
     }
 
     void loadCompatibleProviders().catch((error) => {
@@ -386,7 +387,12 @@ export function useNewSessionCard({
     return () => {
       cancelled = true;
     };
-  }, [effectiveSelectedAgent, providerModelCacheVersion]);
+  }, [
+    applyCatalogResult,
+    effectiveSelectedAgent,
+    providerModelCacheVersion,
+    showCatalogForAgent,
+  ]);
 
   if (selectedPermissionMode !== resolvedPermissionMode) {
     setSelectedPermissionMode(resolvedPermissionMode);
@@ -475,17 +481,17 @@ export function useNewSessionCard({
       onSelectCollaborationMode?.("default");
     }
     setUncontrolledAgent(nextAgent);
-    setCompatibleProviders([]);
-    setSelectedProviderModel("");
-    setIsProviderModelLoading(true);
-    const preferences = getAgentRuntimePreferences(nextAgent);
+    const hadCatalog = showCatalogForAgent(nextAgent);
     setSelectedPermissionMode(permissionModeForAgent(nextAgent, agents));
-    setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
-    setSelectedCodexServiceTier(preferences.serviceTier ?? "");
-    setSelectedClaudeFastMode(preferences.fastMode ?? false);
-    setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
-    setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
-    setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+    if (!hadCatalog) {
+      const preferences = getAgentRuntimePreferences(nextAgent);
+      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
+      setSelectedCodexServiceTier(preferences.serviceTier ?? "");
+      setSelectedClaudeFastMode(preferences.fastMode ?? false);
+      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+    }
     // Parent (lastSelectedAgentAtom) persists to localStorage so the choice
     // is restored the next time this card opens, including after restart.
     onSelectAgent?.(nextAgent);

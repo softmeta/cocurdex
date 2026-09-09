@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { shouldRevalidateProviderModels } from "./provider-model-cache";
+import {
+  shouldForceRefreshAdapterCatalog,
+  shouldRevalidateProviderModels,
+} from "./provider-model-cache";
 
 describe("provider model cache revalidation", () => {
   it("always revalidates the OpenCode catalog while rendering cached models", () => {
@@ -20,5 +23,15 @@ describe("provider model cache revalidation", () => {
 
   it("revalidates stale catalogs for every agent", () => {
     expect(shouldRevalidateProviderModels("codex", false, true)).toBe(true);
+  });
+});
+
+describe("shouldForceRefreshAdapterCatalog", () => {
+  it("force-refreshes adapter catalogs only while stale cached models are already shown", () => {
+    expect(shouldForceRefreshAdapterCatalog("claude-agent", false)).toBe(false);
+    expect(shouldForceRefreshAdapterCatalog("grok-build", true)).toBe(true);
+    expect(shouldForceRefreshAdapterCatalog("codex", true)).toBe(true);
+    expect(shouldForceRefreshAdapterCatalog("opencode", true)).toBe(true);
+    expect(shouldForceRefreshAdapterCatalog("pi", true)).toBe(false);
   });
 });

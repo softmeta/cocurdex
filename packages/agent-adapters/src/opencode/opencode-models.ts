@@ -83,7 +83,10 @@ export function getOpenCodePrimaryAgentNames(agents: ReadonlyArray<Agent>) {
     .map((agent) => agent.name);
 }
 
-export async function listOpenCodeProviderModels(): Promise<
+let cachedOpenCodeCatalog: CompatibleProviderModel[] | null = null;
+let inFlightOpenCodeCatalog: Promise<CompatibleProviderModel[]> | null = null;
+
+async function probeOpenCodeProviderModels(): Promise<
   CompatibleProviderModel[]
 > {
   let runtime = null;
@@ -142,4 +145,31 @@ export async function listOpenCodeProviderModels(): Promise<
   } finally {
     releaseOpenCodeRuntime(runtime);
   }
+}
+
+function startOpenCodeCatalogProbe() {
+  inFlightOpenCodeCatalog ??= probeOpenCodeProviderModels()
+    .then((probed) => {
+      cachedOpenCodeCatalog = probed;
+      return probed;
+    })
+    .finally(() => {
+      inFlightOpenCodeCatalog = null;
+    });
+  return inFlightOpenCodeCatalog;
+}
+
+export async function listOpenCodeProviderModels(
+  options: { forceRefresh?: boolean } = {},
+): Promise<CompatibleProviderModel[]> {
+  if (cachedOpenCodeCatalog && !options.forceRefresh) {
+    return cachedOpenCodeCatalog;
+  }
+
+  const probe = startOpenCodeCatalogProbe();
+  if (!options.forceRefresh && cachedOpenCodeCatalog) {
+    return cachedOpenCodeCatalog;
+  }
+
+  return probe;
 }

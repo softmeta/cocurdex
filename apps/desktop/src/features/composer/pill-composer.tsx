@@ -322,11 +322,10 @@ export function PillComposer({
                 aria-label={t("common:actions.stop")}
                 type="button"
                 onClick={onStop}
-                variant="ghost"
                 size="icon-sm"
                 className={composerStopButtonClassName()}
               >
-                <div className={composerStopGlyphClassName()} />
+                <span className={composerStopGlyphClassName()} />
               </Button>
             ) : null}
             {!isRunning || canSend ? (
