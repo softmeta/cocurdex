@@ -373,10 +373,7 @@ export function ProviderSettingsPanel() {
     // or one is already stored. Otherwise re-saving a configured provider would
     // silently leave it without models.
     const hasApiKey = Boolean(apiKey.trim() || provider.apiKeySecretId);
-    const hasExistingModels = models.some(
-      (model) => model.providerId === provider.id,
-    );
-    if (hasApiKey && !hasExistingModels) {
+    if (hasApiKey) {
       const result = await desktopApi.listProviderModels(provider.id);
       fetchedModels = result.error ? null : result.models;
       if (result.error) {

@@ -33,6 +33,7 @@ export function ImportProviderJsonDialog({
 }: ImportProviderJsonDialogProps) {
   const { t } = useTranslation("settings");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileSelectionRef = useRef(0);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [error, setError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -60,6 +61,7 @@ export function ImportProviderJsonDialog({
   }
 
   function closePreview() {
+    fileSelectionRef.current += 1;
     setPreview(null);
     setError("");
     setIsImporting(false);
@@ -74,7 +76,12 @@ export function ImportProviderJsonDialog({
       return;
     }
 
+    const selection = fileSelectionRef.current + 1;
+    fileSelectionRef.current = selection;
     const parsed = parseProviderJson(await file.text());
+    if (selection !== fileSelectionRef.current) {
+      return;
+    }
     if (!parsed.ok) {
       toast.error(parsed.error);
       return;
