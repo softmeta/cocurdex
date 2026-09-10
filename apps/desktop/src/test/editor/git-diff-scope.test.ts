@@ -7,6 +7,7 @@ import {
   resolveBranchScope,
   resolveCommitScope,
   resolveTurnScope,
+  scopeForActiveSession,
   scopeKey,
   scopeToQuery,
 } from "@/features/editor/git-diff-scope";
@@ -150,6 +151,26 @@ describe("resolveCommitScope / scopeKey / scopeToQuery", () => {
   it("passes git scopes through as the IPC query", () => {
     const scope = { mode: "staged" as const };
     expect(scopeToQuery(scope)).toBe(scope);
+  });
+});
+
+describe("scopeForActiveSession", () => {
+  it("keeps a turn scope for the current session", () => {
+    const scope = {
+      mode: "turn" as const,
+      sessionId: "s1",
+      messageId: "m1",
+    };
+    expect(scopeForActiveSession(scope, "s1")).toBe(scope);
+  });
+
+  it("resets a turn scope from another session", () => {
+    expect(
+      scopeForActiveSession(
+        { mode: "turn", sessionId: "s1", messageId: "m1" },
+        "s2",
+      ),
+    ).toEqual({ mode: "working" });
   });
 });
 

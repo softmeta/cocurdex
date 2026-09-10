@@ -43,6 +43,7 @@ import {
   isMutableScope,
   resolveBranchScope,
   resolveTurnScope,
+  scopeForActiveSession,
   scopeKey,
   scopeToQuery,
   turnChangeSetKey,
@@ -73,6 +74,10 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [scope, setScope] = useAtom(gitDiffScopeAtom);
   const activeSessionId = useAtomValue(activeSessionIdAtom);
+  const activeScope = scopeForActiveSession(scope, activeSessionId);
+  if (activeScope !== scope) {
+    setScope(activeScope);
+  }
   const sessionMessages = useSessionMessages(activeSessionId);
   const [turns, setTurns] = useState<TurnChangeSet[]>([]);
   const [turnsLoading, setTurnsLoading] = useState(false);
@@ -169,7 +174,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     return labels;
   }, [sessionMessages, turns]);
 
-  const actionsEnabled = isMutableScope(scope);
+  const actionsEnabled = isMutableScope(activeScope);
   const canDiscardAll = actionsEnabled && filteredEntries.length > 0;
   const currentBranch = branches.find((branch) => branch.current)?.name ?? null;
 
@@ -210,8 +215,8 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const turnRequestSeqRef = useRef(0);
   const selectedPathRef = useRef(selectedPath);
   selectedPathRef.current = selectedPath;
-  const scopeRef = useRef(scope);
-  scopeRef.current = scope;
+  const scopeRef = useRef(activeScope);
+  scopeRef.current = activeScope;
 
   // Sync: pull the current changes for the active workspace from the main
   // process. Each entry carries the full old/new contents for expandable diffs.
@@ -389,7 +394,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
 
   useSyncWorkspaceGitChanges({
     rootPath,
-    scopeKey: scopeKey(scope),
+    scopeKey: scopeKey(activeScope),
     loadDiff,
     loadBranches,
     setFileChanges,
@@ -559,7 +564,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           onViewModeChange={handleViewModeChange}
           onWrapChange={setWrap}
           expandUnchanged={expandUnchanged}
-          scope={scope}
+          scope={activeScope}
           stagedState={stagedState}
           turnLabels={turnLabels}
           turns={turns}
@@ -583,7 +588,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           onToggleFile={handleToggleFile}
           onUnstage={handleUnstage}
           turnEmptyReason={turnEmptyReason}
-          scopeMode={scope.mode}
+          scopeMode={activeScope.mode}
           viewMode={viewMode}
           workspaceName={activeWorkspace.name}
           wrap={wrap}

@@ -42,6 +42,19 @@ export function turnChangeSetKey(changeSet: TurnChangeSet) {
   return changeSet.messageId || changeSet.userMessageId;
 }
 
+export function scopeForActiveSession(
+  scope: GitDiffScope,
+  sessionId: string | null,
+): GitDiffScope {
+  if (scope.mode !== "turn") {
+    return scope;
+  }
+  if (sessionId && scope.sessionId === sessionId) {
+    return scope;
+  }
+  return GIT_DEFAULT_DIFF_SCOPE;
+}
+
 export function resolveTurnScope(
   sessionId: string,
   turns: readonly TurnChangeSet[],

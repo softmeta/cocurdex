@@ -8,7 +8,10 @@ import type {
 import { buildTurnChangeDiffFile, mimeTypeForPath } from "@cocurdex/shared";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import { MAX_REVIEW_TEXT_BYTES } from "./hash";
+import { mapWithConcurrency } from "./map-with-concurrency";
 import { sanitizeTurnFileChange } from "./path-safety";
+
+const TURN_DIFF_FILE_CONCURRENCY = 8;
 
 export function resolveHostCheckpoint(
   ref: string | null | undefined,
@@ -111,8 +114,13 @@ export async function readTurnChangeDiff(
   if (!changeSet.hostBeforeCheckpointRef && !changeSet.hostAfterCheckpointRef) {
     return { status: "expired", files: [] };
   }
-  const files = await Promise.all(
-    changeSet.files.map(async (file) => {
+  if (!changeSet.hostBeforeCheckpointRef || !changeSet.hostAfterCheckpointRef) {
+    return { status: "missing", files: [] };
+  }
+  const files = await mapWithConcurrency(
+    changeSet.files,
+    TURN_DIFF_FILE_CONCURRENCY,
+    async (file) => {
       const [before, after] = await Promise.all([
         readTurnChangeFileContent(
           changeSet,
@@ -140,7 +148,7 @@ export async function readTurnChangeDiff(
         ),
       ]);
       return buildTurnChangeDiffFile(file, before, after);
-    }),
+    },
   );
   return { status: "ok", files };
 }
