@@ -4,11 +4,12 @@ import {
   useCallback,
   useRef,
   useState,
+  type WheelEvent,
 } from "react";
 import { type JumpButtonKind, resolveJumpButton } from "./jump-button";
 
-// Matches agent chat's near-edge threshold so both surfaces feel consistent.
 export const STICK_TO_BOTTOM_THRESHOLD = 96;
+export const STICK_TO_BOTTOM_RESUME_THRESHOLD = 8;
 const USER_SCROLL_INTENT_WINDOW_MS = 600;
 
 export function isScrollNearBottom(
@@ -25,6 +26,34 @@ export function isScrollNearTop(
   threshold = STICK_TO_BOTTOM_THRESHOLD,
 ): boolean {
   return scrollTop <= threshold;
+}
+
+export function shouldReleaseStickOnUserScroll({
+  isAtBottom,
+  deltaY,
+}: {
+  isAtBottom: boolean;
+  deltaY?: number;
+}): boolean {
+  if (!isAtBottom) {
+    return true;
+  }
+  return typeof deltaY === "number" && deltaY < 0;
+}
+
+export function shouldFollowStreamOnResize({
+  isAtBottom,
+  isLocked,
+  suppressFollow,
+}: {
+  isAtBottom: boolean;
+  isLocked: boolean;
+  suppressFollow: boolean;
+}): boolean {
+  if (suppressFollow) {
+    return false;
+  }
+  return isLocked || isAtBottom;
 }
 
 // Pure lock transition used by the scroll handler. Near-bottom re-engages;
@@ -60,6 +89,15 @@ export function nextShouldStickToBottom({
 
 function elementIsNearBottom(el: HTMLElement): boolean {
   return isScrollNearBottom(el.scrollHeight, el.clientHeight, el.scrollTop);
+}
+
+function elementIsAtBottom(el: HTMLElement): boolean {
+  return isScrollNearBottom(
+    el.scrollHeight,
+    el.clientHeight,
+    el.scrollTop,
+    STICK_TO_BOTTOM_RESUME_THRESHOLD,
+  );
 }
 
 function elementIsNearTop(el: HTMLElement): boolean {
@@ -141,14 +179,18 @@ export function useStickToBottom(viewportRef: RefObject<HTMLElement | null>) {
   );
 
   const stickToBottomIfLocked = useCallback(() => {
-    if (!shouldStickToBottomRef.current) {
-      return;
-    }
-    if (autoScrollTargetRef.current === "top") {
+    const el = viewportRef.current;
+    if (
+      !shouldFollowStreamOnResize({
+        isAtBottom: el ? elementIsAtBottom(el) : false,
+        isLocked: shouldStickToBottomRef.current,
+        suppressFollow: autoScrollTargetRef.current === "top",
+      })
+    ) {
       return;
     }
     scrollToLatest("auto");
-  }, [scrollToLatest]);
+  }, [scrollToLatest, viewportRef]);
 
   stickToBottomIfLockedRef.current = stickToBottomIfLocked;
 
@@ -159,12 +201,23 @@ export function useStickToBottom(viewportRef: RefObject<HTMLElement | null>) {
     scrollToLatest("auto");
   }, [scrollToLatest]);
 
-  const markUserScrollStart = useCallback(() => {
-    userScrollIntentTsRef.current = performance.now();
-    shouldStickToBottomRef.current = false;
-    endAutoScroll();
-    setHasUserScrolled(true);
-  }, [endAutoScroll]);
+  const markUserScrollStart = useCallback(
+    (deltaY?: number) => {
+      userScrollIntentTsRef.current = performance.now();
+      endAutoScroll();
+      setHasUserScrolled(true);
+      const el = viewportRef.current;
+      if (
+        shouldReleaseStickOnUserScroll({
+          deltaY,
+          isAtBottom: el ? elementIsAtBottom(el) : false,
+        })
+      ) {
+        shouldStickToBottomRef.current = false;
+      }
+    },
+    [endAutoScroll, viewportRef],
+  );
 
   const markUserScrollIntent = useCallback(() => {
     userScrollIntentTsRef.current = performance.now();
@@ -253,12 +306,13 @@ export function useStickToBottom(viewportRef: RefObject<HTMLElement | null>) {
     scrollToLatest,
     scrollToTop,
     viewportProps: {
-      onKeyDownCapture: markUserScrollStart,
+      onKeyDownCapture: () => markUserScrollStart(),
       onPointerDown: markUserScrollIntent,
       onPointerDownCapture: markUserScrollIntent,
       onScroll: syncOnScroll,
-      onTouchMoveCapture: markUserScrollStart,
-      onWheelCapture: markUserScrollStart,
+      onTouchMoveCapture: () => markUserScrollStart(),
+      onWheelCapture: (event: WheelEvent<HTMLElement>) =>
+        markUserScrollStart(event.deltaY),
       tabIndex: 0 as const,
     },
   };

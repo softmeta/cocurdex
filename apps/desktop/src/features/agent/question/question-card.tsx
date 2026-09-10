@@ -10,27 +10,44 @@ function QuestionOptionRow({
   disabled,
   isSelected,
   label,
+  multiSelect,
   onSelect,
 }: {
   description?: string;
   disabled: boolean;
   isSelected: boolean;
   label: string;
+  multiSelect: boolean;
   onSelect(): void;
 }) {
   return (
     <button
       aria-pressed={isSelected}
       className={cn(
-        "flex w-full items-start gap-2 rounded-control px-3 py-2 text-start transition-colors",
+        "flex w-full items-start gap-2.5 rounded-control border px-3 py-2 text-start transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
         isSelected
-          ? "bg-primary/10 text-chat-fg"
-          : "bg-chat-surface-subtle text-chat-fg-secondary hover:bg-chat-surface-input",
+          ? "border-chat-border-accent bg-primary/10 text-chat-fg"
+          : "border-chat-border-soft text-chat-fg-secondary hover:border-chat-border hover:bg-chat-surface-row-hover hover:text-chat-fg",
       )}
       disabled={disabled}
       onClick={onSelect}
+      onPointerDown={(event) => {
+        event.preventDefault();
+      }}
       type="button"
     >
+      <span
+        aria-hidden
+        className={cn(
+          "mt-0.5 flex size-3.5 shrink-0 items-center justify-center border",
+          multiSelect ? "rounded-dense" : "rounded-full",
+          isSelected
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-chat-fg-muted",
+        )}
+      >
+        {isSelected ? <Check className="size-2.5" /> : null}
+      </span>
       <div className="min-w-0 flex-1">
         <div className="text-body font-medium">{label}</div>
         {description ? (
@@ -39,9 +56,6 @@ function QuestionOptionRow({
           </div>
         ) : null}
       </div>
-      {isSelected ? (
-        <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
-      ) : null}
     </button>
   );
 }
@@ -70,10 +84,12 @@ export function QuestionCard({
 
   const toggleOption = (label: string) => {
     setSelectedOptions((current) => {
+      if (current.includes(label)) {
+        return current.filter((value) => value !== label);
+      }
+
       if (question.multiSelect) {
-        return current.includes(label)
-          ? current.filter((value) => value !== label)
-          : [...current, label];
+        return [...current, label];
       }
 
       return [label];
@@ -152,6 +168,7 @@ export function QuestionCard({
                   isSelected={selectedOptions.includes(option.label)}
                   key={option.label}
                   label={option.label}
+                  multiSelect={Boolean(question.multiSelect)}
                   onSelect={() => toggleOption(option.label)}
                 />
               ))}

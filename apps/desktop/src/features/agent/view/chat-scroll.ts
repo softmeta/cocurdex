@@ -1,6 +1,7 @@
 import {
   isScrollNearBottom,
   isScrollNearTop,
+  STICK_TO_BOTTOM_RESUME_THRESHOLD,
   STICK_TO_BOTTOM_THRESHOLD,
 } from "@/components/chat";
 
@@ -12,6 +13,7 @@ export {
 } from "@/components/chat";
 
 const SCROLL_BOTTOM_THRESHOLD = STICK_TO_BOTTOM_THRESHOLD;
+const SCROLL_RESUME_BOTTOM_THRESHOLD = STICK_TO_BOTTOM_RESUME_THRESHOLD;
 const SCROLL_ANIMATION_DURATION_MS = 180;
 const SCROLL_INITIAL_LEAD_MS = 18;
 
@@ -65,11 +67,6 @@ export function resolveStickyUserMessage(
 
   return { id: stickyId ?? fallbackId };
 }
-
-// Re-arming stream-follow after a manual scroll needs a far tighter test than
-// the 96px sticky band: inside that band a one-line nudge would hand control
-// straight back to autoscroll and yank the viewer down mid-read.
-const SCROLL_RESUME_BOTTOM_THRESHOLD = 8;
 
 export function isViewportNearBottom(viewport: HTMLDivElement) {
   return isScrollNearBottom(

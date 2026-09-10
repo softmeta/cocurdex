@@ -23,6 +23,7 @@ export interface AcpSubagentSettlement {
 
 export interface AcpSubagentLink {
   providerSessionId: string;
+  alsoKnownAs?: string[];
   type: string | null;
   description: string;
 }
@@ -152,18 +153,33 @@ export class AcpSubagentBridge {
   }
 
   linkSpawn(signal: AcpSubagentLink) {
-    const state = [...this.spawnsByToolCallId.values()].find(
+    const ids = [
+      signal.providerSessionId,
+      ...(signal.alsoKnownAs ?? []),
+    ].filter(Boolean);
+    let state = [...this.spawnsByToolCallId.values()].find(
       (candidate) =>
         !candidate.providerSessionId &&
         candidate.childSession.title === signal.description &&
         candidate.toolCall.subagent?.type === signal.type,
     );
     if (!state) {
+      state = ids
+        .map((id) => this.providerToSpawn.get(id))
+        .find((candidate) => candidate != null);
+    }
+    if (!state) {
       return;
     }
-    const nextState = { ...state, providerSessionId: signal.providerSessionId };
+    const nextState = {
+      ...state,
+      providerSessionId: state.providerSessionId ?? signal.providerSessionId,
+    };
     this.spawnsByToolCallId.set(state.toolCall.id, nextState);
-    this.link(signal.providerSessionId, nextState);
+    this.indexProviderIds(nextState, [
+      ...ids,
+      ...(nextState.providerSessionId ? [nextState.providerSessionId] : []),
+    ]);
   }
 
   transform(toolCall: AgentToolCallRecord): AgentToolCallRecord | null {
@@ -199,6 +215,13 @@ export class AcpSubagentBridge {
         description: signal.description,
       },
     };
+    const projectedStatus = mapChildSessionStatus(status);
+    const existingChildStatus = existing?.childSession.status;
+    const childStatus =
+      projectedStatus === "running" &&
+      (existingChildStatus === "idle" || existingChildStatus === "error")
+        ? existingChildStatus
+        : projectedStatus;
     const childSession: SessionRecord = {
       ...this.parentSession,
       id: childSessionId,
@@ -206,7 +229,7 @@ export class AcpSubagentBridge {
       sessionKind: "subagent",
       parentSessionId: this.parentSession.id,
       parentToolCallId: toolCall.id,
-      status: mapChildSessionStatus(status),
+      status: childStatus,
       createdAt: existing?.childSession.createdAt ?? toolCall.startedAt,
       updatedAt: toolCall.updatedAt,
       lastMessageAt: existing?.childSession.lastMessageAt ?? null,
@@ -226,7 +249,7 @@ export class AcpSubagentBridge {
       session: childSession,
     });
     if (state.providerSessionId) {
-      this.link(state.providerSessionId, state);
+      this.indexProviderIds(state, [state.providerSessionId]);
       if (
         state.toolCall.status === "completed" ||
         state.toolCall.status === "failed"
@@ -237,23 +260,58 @@ export class AcpSubagentBridge {
     return projectedToolCall;
   }
 
-  private link(providerSessionId: string, state: SpawnState) {
-    const wasLinked = this.providerToSpawn.has(providerSessionId);
-    this.providerToSpawn.set(providerSessionId, state);
-    const notifications =
-      this.bufferedNotifications.get(providerSessionId) ?? [];
-    this.bufferedNotifications.delete(providerSessionId);
-    if (!wasLinked || notifications.length > 0) {
-      this.onLinked(providerSessionId, state.childSession, notifications);
+  markChildIdle(providerSessionId: string) {
+    const state = this.providerToSpawn.get(providerSessionId);
+    if (state?.childSession.status === "running") {
+      const updatedAt = new Date().toISOString();
+      const childSession: SessionRecord = {
+        ...state.childSession,
+        status: "idle",
+        updatedAt,
+      };
+      const nextState = { ...state, childSession };
+      this.spawnsByToolCallId.set(state.toolCall.id, nextState);
+      this.indexProviderIds(nextState, [
+        providerSessionId,
+        ...(state.providerSessionId ? [state.providerSessionId] : []),
+      ]);
+      this.onEvent({
+        type: "session.upserted",
+        sessionId: childSession.id,
+        session: childSession,
+      });
+    }
+  }
+
+  private indexProviderIds(state: SpawnState, providerSessionIds: string[]) {
+    const uniqueIds = [...new Set(providerSessionIds.filter(Boolean))];
+    let linkedNotifications: SessionNotification[] = [];
+    let shouldNotify = false;
+    for (const providerSessionId of uniqueIds) {
+      const wasLinked = this.providerToSpawn.has(providerSessionId);
+      this.providerToSpawn.set(providerSessionId, state);
+      const notifications =
+        this.bufferedNotifications.get(providerSessionId) ?? [];
+      this.bufferedNotifications.delete(providerSessionId);
+      if (!wasLinked || notifications.length > 0) {
+        shouldNotify = true;
+        linkedNotifications = linkedNotifications.concat(notifications);
+      }
+    }
+    const providerSessionId = uniqueIds[0];
+    if (shouldNotify && providerSessionId) {
+      this.onLinked(providerSessionId, state.childSession, linkedNotifications);
     }
   }
 
   private settle(signal: AcpSubagentSettlement) {
+    const settledToolCallIds = new Set<string>();
     for (const result of signal.results) {
       const state = this.providerToSpawn.get(result.providerSessionId);
-      if (!state) {
+      if (!state || settledToolCallIds.has(state.toolCall.id)) {
         continue;
       }
+      settledToolCallIds.add(state.toolCall.id);
       const status = mapSettledToolStatus(result.status);
       const updatedAt = new Date().toISOString();
       const toolCall: AgentToolCallRecord = {
@@ -267,8 +325,15 @@ export class AcpSubagentBridge {
         updatedAt,
       };
       const nextState = { ...state, childSession, toolCall };
-      this.providerToSpawn.set(result.providerSessionId, nextState);
       this.spawnsByToolCallId.set(toolCall.id, nextState);
+      const aliasIds = [...this.providerToSpawn.entries()]
+        .filter(([, spawn]) => spawn.toolCall.id === toolCall.id)
+        .map(([id]) => id);
+      this.indexProviderIds(nextState, [
+        result.providerSessionId,
+        ...aliasIds,
+        ...(nextState.providerSessionId ? [nextState.providerSessionId] : []),
+      ]);
       this.onEvent({
         type: "session.upserted",
         sessionId: childSession.id,
@@ -282,7 +347,7 @@ export class AcpSubagentBridge {
         sessionId: this.parentSession.id,
         toolCall,
       });
-      this.onSettled?.(result.providerSessionId);
+      this.onSettled?.(nextState.providerSessionId ?? result.providerSessionId);
     }
   }
 }

@@ -125,6 +125,26 @@ describe("virtual conversation rendering", () => {
     expect(scrollRef.current?.scrollToUserMessage("missing")).toBe(false);
   });
 
+  it("keeps the viewport at the end when the last conversation grows", async () => {
+    const { viewport } = mountTimeline();
+    await screen.findByRole("button", { name: "Prompt 999" });
+    act(() => {
+      viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight;
+    });
+    fireEvent.scroll(viewport);
+    const distanceFromEnd =
+      viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop;
+    act(() => {
+      layout.heights.set("conversation-999", 800);
+      layout.emitResize(getConversationRow("conversation-999"));
+    });
+    await waitFor(() => {
+      expect(
+        viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop,
+      ).toBeCloseTo(distanceFromEnd, 0);
+    });
+  });
+
   it("does not move the reader when the visible live conversation grows below them", async () => {
     layout.heights.set("conversation-999", 4000);
     const { viewport, scrollRef } = mountTimeline();

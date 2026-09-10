@@ -12,6 +12,7 @@ import {
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   isAgentPermissionModeSupportedForModel,
+  mergeProjectedSubagentSession,
   type ReasoningEffort,
   type SessionRecord,
   supportsInSessionRuntimeAxis,
@@ -828,7 +829,10 @@ export const projectSubagentSessionFromToolCallAtom = atom(
     if (!child) {
       return;
     }
-    set(upsertSessionAtom, child);
+    const existing = get(sessionsAtom).find(
+      (session) => session.id === child.id,
+    );
+    set(upsertSessionAtom, mergeProjectedSubagentSession(existing, child));
   },
 );
 

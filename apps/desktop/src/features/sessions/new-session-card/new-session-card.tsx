@@ -13,7 +13,11 @@ import {
   ThinkingLevelSubmenu,
   WelcomeHeading,
 } from "@/features/composer";
-import { WorkspacePicker, WorktreePicker } from "@/features/workspaces";
+import {
+  composerContextTriggerHoverClassName,
+  WorkspacePicker,
+  WorktreePicker,
+} from "@/features/workspaces";
 import { cn } from "@/lib";
 import {
   AgentRoleEditDialog,
@@ -39,6 +43,10 @@ import { useNewSessionCard } from "./use-new-session-card";
 // (via AppDropdownTriggerButton appearance="ghost") — resting transparent,
 // hover/open use ghost muted fill + control radius. Keep dense padding only.
 const compactGhostTriggerClassName = cn("h-7 gap-1 px-1");
+const composerContextTriggerClassName = cn(
+  compactGhostTriggerClassName,
+  composerContextTriggerHoverClassName,
+);
 
 export function NewSessionCard({
   workspaceName,
@@ -333,7 +341,7 @@ export function NewSessionCard({
     <div className="flex items-center gap-1">
       <WorkspacePicker
         appearance="ghost"
-        triggerClassName={cn("max-w-60", compactGhostTriggerClassName)}
+        triggerClassName={cn("max-w-60", composerContextTriggerClassName)}
         activeWorkspaceId={activeWorkspaceId}
         workspaceName={workspaceName}
         workspaces={workspaces}
@@ -347,7 +355,7 @@ export function NewSessionCard({
           branches={activeBranches}
           currentBranch={activeBranch}
           selectedPath={selectedWorktreePath}
-          triggerClassName={compactGhostTriggerClassName}
+          triggerClassName={composerContextTriggerClassName}
           workspaceId={activeWorkspaceId}
           workspaceRootPath={
             workspaces.find((workspace) => workspace.id === activeWorkspaceId)
@@ -366,7 +374,7 @@ export function NewSessionCard({
           options={branchOptions}
           searchPlaceholder={t("sessions:branch.searchPlaceholder")}
           side="top"
-          triggerClassName={cn("max-w-45", compactGhostTriggerClassName)}
+          triggerClassName={cn("max-w-45", composerContextTriggerClassName)}
           triggerLabel={
             <span className="flex min-w-0 items-center gap-1.5">
               <GitBranch className="size-3.5 shrink-0" />

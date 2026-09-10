@@ -11,6 +11,7 @@ import { rightPanelResolvedActiveViewAtom } from "@/app/layout/right-editor-pane
 import { FileTypeIcon } from "@/components";
 import { Button, Spinner, Text } from "@/components/ui";
 import { editorPanelOpenAtom } from "@/features/editor/editor-store";
+import { revealGitFileAtom } from "@/features/editor/git-changes-store";
 import { cn, desktopApi } from "@/lib";
 import {
   compactFilePreview,
@@ -135,6 +136,7 @@ export function TurnChangesCard({
   const { t } = useTranslation("agent");
   const setPanelOpen = useSetAtom(editorPanelOpenAtom);
   const setActiveView = useSetAtom(rightPanelResolvedActiveViewAtom);
+  const revealGitFile = useSetAtom(revealGitFileAtom);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [undoResults, setUndoResults] = useAtom(undoResultsByChangeSetAtom);
@@ -164,9 +166,13 @@ export function TurnChangesCard({
     (file) => file.restorable === false,
   );
   const canUndo = isTurnChangeSetUndoable(changeSet) && !isStreaming;
-  const review = () => {
+  const openGit = () => {
     setPanelOpen(true);
     setActiveView("git");
+  };
+  const reviewFile = (path: string) => {
+    revealGitFile(path);
+    openGit();
   };
 
   const handleUndo = async () => {
@@ -245,14 +251,18 @@ export function TurnChangesCard({
               <RotateCcw className="size-3.5" />
             )}
           </Button>
-          <Button onClick={review} size="xs" type="button" variant="secondary">
+          <Button onClick={openGit} size="xs" type="button" variant="secondary">
             <Text size="meta">{t("turnChanges.review")}</Text>
           </Button>
         </div>
       </div>
       <ul className="flex min-w-0 flex-col divide-y divide-chat-border-soft border-t border-chat-border-soft">
         {visibleFiles.map((file) => (
-          <TurnChangeFileRow file={file} key={file.path} onReview={review} />
+          <TurnChangeFileRow
+            file={file}
+            key={file.path}
+            onReview={() => reviewFile(file.path)}
+          />
         ))}
       </ul>
       {fileCount >= SHOW_ALL_BELOW ? (

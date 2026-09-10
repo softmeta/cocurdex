@@ -14,6 +14,9 @@ export { useWorkspaceFolderDrop } from "./use-workspace-folder-drop";
 export * from "./working-path";
 export { WorkspaceFolderDropOverlay } from "./workspace-folder-drop-overlay";
 export { sortWorkspacesBySortOrder } from "./workspace-order";
-export { WorkspacePicker } from "./workspace-picker";
+export {
+  composerContextTriggerHoverClassName,
+  WorkspacePicker,
+} from "./workspace-picker";
 export * from "./workspace-store";
 export { WorktreePicker } from "./worktree-picker";

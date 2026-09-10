@@ -1,5 +1,9 @@
 import { type RefObject, useCallback, useRef, useState } from "react";
 import {
+  shouldFollowStreamOnResize,
+  shouldReleaseStickOnUserScroll,
+} from "@/components/chat";
+import {
   isViewportAtBottom,
   isViewportNearBottom,
   isViewportNearTop,
@@ -206,13 +210,24 @@ export function useChatScrollState({
     }
   }, [endAutoScroll, setNearBottomState, timelineScrollRef, viewportRef]);
 
-  const markUserScrollStart = useCallback(() => {
-    timelineScrollRef?.current?.cancelNavigation();
-    userScrollIntentTsRef.current = performance.now();
-    setHasUserScrolled(true);
-    endAutoScroll();
-    shouldStickToBottomRef.current = false;
-  }, [endAutoScroll, timelineScrollRef]);
+  const markUserScrollStart = useCallback(
+    (deltaY?: number) => {
+      timelineScrollRef?.current?.cancelNavigation();
+      userScrollIntentTsRef.current = performance.now();
+      setHasUserScrolled(true);
+      endAutoScroll();
+      const viewport = viewportRef.current;
+      if (
+        shouldReleaseStickOnUserScroll({
+          deltaY,
+          isAtBottom: viewport ? isViewportAtBottom(viewport) : false,
+        })
+      ) {
+        shouldStickToBottomRef.current = false;
+      }
+    },
+    [endAutoScroll, timelineScrollRef, viewportRef],
+  );
 
   const scrollToLatest = useCallback(
     (behavior: ScrollBehavior = "auto") => {
@@ -328,16 +343,19 @@ export function useChatScrollState({
   );
 
   const stickToBottomIfLocked = useCallback(() => {
-    if (!shouldStickToBottomRef.current) {
-      return;
-    }
-    // Belt-and-suspenders: never follow the stream mid jump-to-top.
-    if (autoScrollTargetRef.current === "top") {
+    const viewport = viewportRef.current;
+    if (
+      !shouldFollowStreamOnResize({
+        isAtBottom: viewport ? isViewportAtBottom(viewport) : false,
+        isLocked: shouldStickToBottomRef.current,
+        suppressFollow: autoScrollTargetRef.current === "top",
+      })
+    ) {
       return;
     }
 
     scrollToLatest("auto");
-  }, [scrollToLatest]);
+  }, [scrollToLatest, viewportRef]);
 
   return {
     activeUserMessageId: pendingUserMessageId ?? stickyUserMessageId,

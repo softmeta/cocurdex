@@ -1,4 +1,5 @@
 import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react";
+import { useAtom, useAtomValue } from "jotai";
 import { FileDiff, Search } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useCallback, useState } from "react";
@@ -12,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { GitChangeFileDiff } from "./git-changes-file-diff";
 import type { GitChangeEntry } from "./git-changes-model";
+import { gitRevealClockAtom, gitSelectedPathAtom } from "./git-changes-store";
 import type { GitDiffStyle } from "./git-changes-toolbar";
 import { fromGitTreePath, toGitTreePath } from "./git-changes-tree-paths";
 import {
@@ -53,10 +55,18 @@ export function GitChangesTree({
   diffThemeType,
 }: GitChangesTreeProps) {
   const { t } = useTranslation("editor");
-  // Selection is stored as a repo-relative path (matches GitChangeEntry.path).
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useAtom(gitSelectedPathAtom);
+  const revealClock = useAtomValue(gitRevealClockAtom);
   const [searchQuery, setSearchQuery] = useState("");
+  const [appliedRevealClock, setAppliedRevealClock] = useState(0);
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
+
+  if (revealClock !== appliedRevealClock) {
+    setAppliedRevealClock(revealClock);
+    if (searchQuery.length > 0) {
+      setSearchQuery("");
+    }
+  }
 
   // Derive the shown entry instead of mirroring it into state: a stale
   // selection (after refresh/discard) gracefully falls back to the first file.
@@ -72,7 +82,7 @@ export function GitChangesTree({
       if (!relative) return;
       setSelectedPath(relative);
     },
-    [workspaceName],
+    [setSelectedPath, workspaceName],
   );
 
   const { model } = useFileTree({
@@ -91,6 +101,7 @@ export function GitChangesTree({
   useSyncGitChangesTreeSelection(
     model,
     selectedEntry ? toGitTreePath(workspaceName, selectedEntry.path) : null,
+    revealClock,
   );
 
   return (

@@ -251,11 +251,12 @@ export class AcpAgentAdapter implements AgentAdapter {
             const childSession = subagentBridge?.getChildSession(
               completion.providerSessionId,
             );
-            if (childSession) {
+            if (childSession && subagentBridge) {
               createChildMapper(childSession).complete(
                 completion.stopReason,
                 completion.durationMs,
               );
+              subagentBridge.markChildIdle(completion.providerSessionId);
             }
           }
           if (mcpChangeNotificationMethods.includes(method)) {

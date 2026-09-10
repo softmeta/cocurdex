@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, AgentToolCallRecord, SessionRecord } from "./contracts";
-import { childSessionFromSubagentToolCall } from "./subagent-session";
+import {
+  childSessionFromSubagentToolCall,
+  mergeProjectedSubagentSession,
+} from "./subagent-session";
 
 function parentSession(agentType: AgentId): SessionRecord {
   return {
@@ -85,5 +88,35 @@ describe("childSessionFromSubagentToolCall", () => {
         toolCall("codex", "codex-subagent:parent:child", "Review"),
       ),
     ).toMatchObject({ agentRoleId: null });
+  });
+});
+
+describe("mergeProjectedSubagentSession", () => {
+  it("does not reopen an idle child from an in-progress spawn tool", () => {
+    const incoming = childSessionFromSubagentToolCall(
+      parentSession("grok-build"),
+      toolCall(
+        "grok-build",
+        "acp-subagent:parent:task-1",
+        "Explore Codex review",
+      ),
+    );
+    expect(incoming).toEqual(expect.objectContaining({ status: "running" }));
+    if (!incoming) {
+      return;
+    }
+    expect(
+      mergeProjectedSubagentSession(
+        {
+          ...incoming,
+          status: "idle",
+          lastMessageAt: "2026-08-31T00:02:00.000Z",
+        },
+        incoming,
+      ),
+    ).toMatchObject({
+      lastMessageAt: "2026-08-31T00:02:00.000Z",
+      status: "idle",
+    });
   });
 });

@@ -504,6 +504,46 @@ describe("upsertSessionAtom", () => {
     expect(store.get(activeSessionIdAtom)).toBeNull();
   });
 
+  it("does not reopen an idle child from a later in-progress spawn tool", () => {
+    const store = createStore();
+    const childId = "acp-subagent:session-1:task-1";
+    store.set(bootstrapSessionsAtom, [
+      baseSession,
+      {
+        ...baseSession,
+        id: childId,
+        parentSessionId: baseSession.id,
+        sessionKind: "subagent",
+        status: "idle",
+        title: "Explore Codex review",
+        lastMessageAt: "2026-05-07T00:05:00.000Z",
+      },
+    ]);
+    store.set(projectSubagentSessionFromToolCallAtom, {
+      id: "task-1",
+      sessionId: baseSession.id,
+      title: "spawn_subagent",
+      kind: "task",
+      status: "in_progress",
+      subagent: {
+        sessionId: childId,
+        type: "explore",
+        description: "Explore Codex review",
+      },
+      content: [],
+      locations: [],
+      startedAt: "2026-05-07T00:01:00.000Z",
+      updatedAt: "2026-05-07T00:06:00.000Z",
+    });
+
+    expect(
+      store.get(sessionsAtom).find((session) => session.id === childId),
+    ).toMatchObject({
+      lastMessageAt: "2026-05-07T00:05:00.000Z",
+      status: "idle",
+    });
+  });
+
   it("keeps an existing lastMessageAt when an upsert omits it", () => {
     const store = createStore();
     store.set(bootstrapSessionsAtom, [

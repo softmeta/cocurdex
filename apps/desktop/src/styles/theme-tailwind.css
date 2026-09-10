@@ -112,6 +112,7 @@
   --color-welcome-surface: var(--welcome-surface);
   --color-welcome-surface-hover: var(--welcome-surface-hover);
   --color-welcome-surface-strong: var(--welcome-surface-strong);
+  --color-welcome-surface-strong-hover: var(--welcome-surface-strong-hover);
   --color-welcome-surface-row-hover: var(--welcome-surface-row-hover);
   --color-welcome-surface-selected: var(--welcome-surface-selected);
   --color-welcome-border: var(--welcome-border);

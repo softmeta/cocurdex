@@ -322,20 +322,23 @@ export function ChatView({
     perfSessionId,
     conversationCount: conversationGroups.length,
   };
-  const handleUserScrollIntent = useCallback(() => {
-    if (isPerfEnabled()) {
-      const snapshot = perfScrollSnapshotRef.current;
-      if (snapshot.perfSessionId) {
-        const viewport = viewportRef.current;
-        markSessionSwitch(snapshot.perfSessionId, "user-scroll-intent", {
-          scrollHeight: viewport?.scrollHeight ?? null,
-          scrollTop: viewport?.scrollTop ?? null,
-          totalConversationCount: snapshot.conversationCount,
-        });
+  const handleUserScrollIntent = useCallback(
+    (deltaY?: number) => {
+      if (isPerfEnabled()) {
+        const snapshot = perfScrollSnapshotRef.current;
+        if (snapshot.perfSessionId) {
+          const viewport = viewportRef.current;
+          markSessionSwitch(snapshot.perfSessionId, "user-scroll-intent", {
+            scrollHeight: viewport?.scrollHeight ?? null,
+            scrollTop: viewport?.scrollTop ?? null,
+            totalConversationCount: snapshot.conversationCount,
+          });
+        }
       }
-    }
-    markUserScrollStart();
-  }, [markUserScrollStart]);
+      markUserScrollStart(deltaY);
+    },
+    [markUserScrollStart],
+  );
   const submitPreviousMessage = useCallback(
     async (revertWorkspace: boolean) => {
       if (!pendingPreviousMessageSubmit || !onSubmitPreviousMessage) {
@@ -493,12 +496,12 @@ export function ChatView({
           )}
           viewportProps={{
             className: "[overflow-anchor:none]",
-            onKeyDownCapture: handleUserScrollIntent,
+            onKeyDownCapture: () => handleUserScrollIntent(),
             onPointerDown: markUserScrollIntent,
             onPointerDownCapture: markUserScrollIntent,
             onScroll: () => syncScrollState(stickyUserMessages),
-            onTouchMoveCapture: handleUserScrollIntent,
-            onWheelCapture: handleUserScrollIntent,
+            onTouchMoveCapture: () => handleUserScrollIntent(),
+            onWheelCapture: (event) => handleUserScrollIntent(event.deltaY),
             tabIndex: 0,
           }}
           viewportRef={attachViewport}

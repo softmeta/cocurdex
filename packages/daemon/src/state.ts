@@ -22,6 +22,7 @@ import {
   childSessionFromSubagentToolCall,
   getContextUsageTokens,
   loadNetworkProxySettingsFromJson,
+  mergeProjectedSubagentSession,
   mergeUsageRecords,
   NETWORK_PROXY_SETTING_KEY,
 } from "@cocurdex/shared";
@@ -673,13 +674,7 @@ export class DaemonState {
     }
     const existing = await this.database.sessions.getById(child.id);
     await this.database.sessions.upsert(
-      existing
-        ? {
-            ...child,
-            createdAt: existing.createdAt,
-            lastMessageAt: existing.lastMessageAt,
-          }
-        : child,
+      mergeProjectedSubagentSession(existing ?? undefined, child),
     );
   }
 
