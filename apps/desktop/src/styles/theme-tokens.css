@@ -313,6 +313,11 @@
   --welcome-surface: var(--card);
   --welcome-surface-hover: var(--accent);
   --welcome-surface-strong: var(--muted);
+  --welcome-surface-strong-hover: color-mix(
+    in srgb,
+    var(--foreground) 8%,
+    var(--welcome-surface-strong)
+  );
   /* Menu-row hover/selection lifts, mirroring the chat tones (see
    * --chat-surface-row-hover) so the welcome flow follows preset changes. */
   --welcome-surface-row-hover: color-mix(
@@ -400,4 +405,9 @@
   --editor-git-added: oklch(0.845 0.143 164.978); /* emerald-300 */
   --editor-git-deleted: oklch(0.81 0.117 11.638); /* rose-300 */
   --editor-git-modified: oklch(0.746 0.16 232.661); /* sky-400 */
+  --welcome-surface-strong-hover: color-mix(
+    in srgb,
+    var(--foreground) 14%,
+    var(--welcome-surface-strong)
+  );
 }

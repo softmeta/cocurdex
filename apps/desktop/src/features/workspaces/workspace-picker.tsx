@@ -20,6 +20,10 @@ function compactWorkspacePath(path: string) {
 
 const OPEN_FOLDER_VALUE = "__open_folder__";
 
+export const composerContextTriggerHoverClassName = cn(
+  "hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover",
+);
+
 interface WorkspacePickerProps {
   workspaces: WorkspaceRecord[];
   activeWorkspaceId?: string | null;
@@ -56,7 +60,8 @@ export function WorkspacePicker({
   // all. Tint against the foreground instead so it reads as clickable on any
   // surface this picker is mounted on.
   const triggerClass = cn(
-    "h-7 max-w-60 gap-1.5 px-2 hover:bg-foreground/8 aria-expanded:bg-foreground/8",
+    "h-7 max-w-60 gap-1.5 px-2",
+    composerContextTriggerHoverClassName,
     triggerClassName,
   );
 

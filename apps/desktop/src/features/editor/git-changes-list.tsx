@@ -1,6 +1,9 @@
+import { useAtomValue } from "jotai";
 import type { CSSProperties } from "react";
+import { useScrollIntoViewWhenActive } from "@/lib";
 import { GitChangeFileDiff } from "./git-changes-file-diff";
 import type { GitChangeEntry } from "./git-changes-model";
+import { gitSelectedPathAtom } from "./git-changes-store";
 import type { GitDiffStyle } from "./git-changes-toolbar";
 
 interface GitChangesListProps {
@@ -18,8 +21,59 @@ interface GitChangesListProps {
   diffThemeType: "light" | "dark";
 }
 
-// Stacked list of every changed file's diff, each collapsible by its header
-// chevron. This is the default view; the tree view is the alternative.
+interface GitChangeListRowProps {
+  entry: GitChangeEntry;
+  selected: boolean;
+  collapsed: boolean;
+  diffStyle: GitDiffStyle;
+  wrap: boolean;
+  expandUnchanged: boolean;
+  actionsEnabled: boolean;
+  onToggleFile: (key: string) => void;
+  onOpenFile: (path: string) => void;
+  onStage: (path: string) => void;
+  onUnstage: (path: string) => void;
+  onDiscard: (path: string) => void;
+  diffThemeType: "light" | "dark";
+}
+
+function GitChangeListRow({
+  entry,
+  selected,
+  diffStyle,
+  wrap,
+  expandUnchanged,
+  collapsed,
+  actionsEnabled,
+  onToggleFile,
+  onOpenFile,
+  onStage,
+  onUnstage,
+  onDiscard,
+  diffThemeType,
+}: GitChangeListRowProps) {
+  const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(selected);
+
+  return (
+    <div ref={scrollRef}>
+      <GitChangeFileDiff
+        actionsEnabled={actionsEnabled}
+        collapsed={collapsed}
+        diffStyle={diffStyle}
+        diffThemeType={diffThemeType}
+        entry={entry}
+        expandUnchanged={expandUnchanged}
+        onDiscard={onDiscard}
+        onOpenFile={onOpenFile}
+        onStage={onStage}
+        onToggle={() => onToggleFile(entry.path)}
+        onUnstage={onUnstage}
+        wrap={wrap}
+      />
+    </div>
+  );
+}
+
 export function GitChangesList({
   entries,
   diffStyle,
@@ -34,18 +88,15 @@ export function GitChangesList({
   onDiscard,
   diffThemeType,
 }: GitChangesListProps) {
-  // Keep rows on a consistent rhythm in both states. Pierre sizes its header as
-  // `1lh + gap-block * 3`; the 8px default leaves collapsed rows looking floaty
-  // and out of step with each other, so shrink the block gap for every row (it
-  // barely affects expanded code line spacing). Match the toolbar's horizontal
-  // inset so file rows do not press against the panel edges.
+  const selectedPath = useAtomValue(gitSelectedPathAtom);
+
   return (
     <div
       className="min-h-0 flex-1 space-y-1 overflow-auto px-3 py-2"
       style={{ "--diffs-gap-block": "2px" } as CSSProperties}
     >
       {entries.map((entry) => (
-        <GitChangeFileDiff
+        <GitChangeListRow
           actionsEnabled={actionsEnabled}
           collapsed={folded.has(entry.path)}
           diffStyle={diffStyle}
@@ -56,8 +107,9 @@ export function GitChangesList({
           onDiscard={onDiscard}
           onOpenFile={onOpenFile}
           onStage={onStage}
-          onToggle={() => onToggleFile(entry.path)}
+          onToggleFile={onToggleFile}
           onUnstage={onUnstage}
+          selected={entry.path === selectedPath}
           wrap={wrap}
         />
       ))}

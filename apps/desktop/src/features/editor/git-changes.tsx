@@ -24,6 +24,7 @@ import {
   filterEntriesByChangeType,
   type GitChangeTypeFilter,
 } from "./git-changes-model";
+import { gitRevealClockAtom, gitSelectedPathAtom } from "./git-changes-store";
 import {
   useGitChangesAutoViewMode,
   useSyncWorkspaceGitChanges,
@@ -94,6 +95,23 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   // Per-file collapse state, keyed by file path. A file is collapsed when its
   // path is present in the set; the toolbar fills/clears the whole set.
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const selectedPath = useAtomValue(gitSelectedPathAtom);
+  const revealClock = useAtomValue(gitRevealClockAtom);
+  const [appliedRevealClock, setAppliedRevealClock] = useState(0);
+
+  if (revealClock !== appliedRevealClock) {
+    setAppliedRevealClock(revealClock);
+    if (selectedPath) {
+      if (changeTypeFilter !== "all") {
+        setChangeTypeFilter("all");
+      }
+      if (folded.has(selectedPath)) {
+        const next = new Set(folded);
+        next.delete(selectedPath);
+        setFolded(next);
+      }
+    }
+  }
   // Build full-file diffs so pierre owns every line and can expand unchanged
   // context on demand (a partial patch leaves separators inert).
   const entries = useMemo(() => buildEntries(fileChanges), [fileChanges]);

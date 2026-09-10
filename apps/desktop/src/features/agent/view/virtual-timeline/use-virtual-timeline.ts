@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { STICK_TO_BOTTOM_RESUME_THRESHOLD } from "@/components/chat";
 import {
   getStickyUserMessageIdForConversationIndex,
   isViewportNearBottom,
@@ -72,12 +73,15 @@ export function useVirtualTimeline({
     [focusedId, groups.length, lookup, selectedIds, targetId],
   );
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
+    anchorTo: "end",
     count: groups.length,
     estimateSize: () => CONVERSATION_ESTIMATED_HEIGHT,
+    followOnAppend: true,
     getItemKey,
     getScrollElement: () => viewportElement,
     overscan: 2,
     rangeExtractor,
+    scrollEndThreshold: STICK_TO_BOTTOM_RESUME_THRESHOLD,
     scrollMargin,
     scrollPaddingStart: MESSAGE_SCROLL_INSET,
   });

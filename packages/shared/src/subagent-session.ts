@@ -36,3 +36,21 @@ export function childSessionFromSubagentToolCall(
     agentRoleId: null,
   };
 }
+
+export function mergeProjectedSubagentSession(
+  existing: SessionRecord | undefined,
+  incoming: SessionRecord,
+): SessionRecord {
+  if (!existing) {
+    return incoming;
+  }
+  const keepTerminalStatus =
+    incoming.status === "running" &&
+    (existing.status === "idle" || existing.status === "error");
+  return {
+    ...incoming,
+    createdAt: existing.createdAt,
+    lastMessageAt: incoming.lastMessageAt ?? existing.lastMessageAt,
+    status: keepTerminalStatus ? existing.status : incoming.status,
+  };
+}

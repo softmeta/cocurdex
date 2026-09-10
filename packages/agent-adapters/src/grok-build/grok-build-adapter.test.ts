@@ -6,7 +6,10 @@ import { RequestError } from "@agentclientprotocol/sdk";
 import { AgentSteeringUnavailableError } from "@cocurdex/agent-core";
 import type { AgentEvent, SessionRecord } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
-import type { AcpConnection } from "../acp/acp-connection";
+import type {
+  AcpConnection,
+  AcpConnectionFactory,
+} from "../acp/acp-connection";
 import { createGrokBuildAdapter } from "./grok-build-adapter";
 
 function createSessionRecord(): SessionRecord {
@@ -330,6 +333,9 @@ describe("GrokBuildAdapter steering", () => {
         "x.ai/mcp/server_status",
       );
       expect(options.extNotificationMethods).toContain("x.ai/session/update");
+      expect(options.extNotificationMethods).toContain(
+        "x.ai/session_notification",
+      );
       notifyExt = (method) =>
         options.handlers.onExtNotification?.(method, undefined);
       return connection;
@@ -361,5 +367,102 @@ describe("GrokBuildAdapter steering", () => {
         }),
       }),
     );
+  });
+});
+
+describe("GrokBuildAdapter subagents", () => {
+  it("idles a background child after x.ai/session_notification subagent_finished", async () => {
+    const events: AgentEvent[] = [];
+    let handlers: Parameters<AcpConnectionFactory>[0]["handlers"] | undefined;
+    const connection = {
+      initialize: vi.fn(
+        async (): Promise<InitializeResponse> => ({
+          protocolVersion: 1,
+          agentCapabilities: {},
+        }),
+      ),
+      authenticate: vi.fn(async () => ({})),
+      newSession: vi.fn(async () => ({ sessionId: "provider-parent" })),
+      loadSession: vi.fn(async () => ({})),
+      resumeSession: vi.fn(async () => ({})),
+      setSessionMode: vi.fn(async () => ({})),
+      setSessionConfigOption: vi.fn(async () => ({ configOptions: [] })),
+      setSessionModel: vi.fn(async () => ({})),
+      extNotification: vi.fn(async () => undefined),
+      extRequest: vi.fn(async () => ({})),
+      prompt: vi.fn(async (): Promise<PromptResponse> => {
+        await handlers?.onSessionUpdate({
+          sessionId: "provider-parent",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "spawn-1",
+            title: "spawn_subagent",
+            status: "in_progress",
+            rawInput: {
+              description: "Explore Codex review",
+              subagent_type: "explore",
+            },
+          },
+        });
+        handlers?.onExtNotification?.("x.ai/session_notification", {
+          sessionId: "provider-parent",
+          update: {
+            sessionUpdate: "subagent_spawned",
+            subagent_id: "child-1",
+            child_session_id: "child-1",
+            subagent_type: "explore",
+            description: "Explore Codex review",
+          },
+        });
+        await handlers?.onSessionUpdate({
+          sessionId: "provider-parent",
+          update: {
+            sessionUpdate: "tool_call_update",
+            toolCallId: "spawn-1",
+            status: "completed",
+            rawOutput: {
+              type: "Text",
+              text: "Subagent started in background.\nsubagent_id: child-1",
+            },
+          },
+        });
+        handlers?.onExtNotification?.("x.ai/session_notification", {
+          sessionId: "provider-parent",
+          update: {
+            sessionUpdate: "subagent_finished",
+            subagent_id: "child-1",
+            child_session_id: "child-1",
+            status: "completed",
+          },
+        });
+        return { stopReason: "end_turn" };
+      }),
+      cancel: vi.fn(async () => undefined),
+      close: vi.fn(),
+    } satisfies AcpConnection;
+    const session = createGrokBuildAdapter(async (options) => {
+      handlers = options.handlers;
+      return connection;
+    }).createSession(
+      {
+        session: createSessionRecord(),
+        workspaceRootPath: "/workspace",
+      },
+      (event) => events.push(event),
+    );
+
+    await session.sendMessage({ content: "Start", history: [] });
+
+    const childUpserts = events.filter(
+      (event) =>
+        event.type === "session.upserted" &&
+        event.session.sessionKind === "subagent",
+    );
+    expect(childUpserts.at(0)).toMatchObject({
+      session: { status: "running", title: "Explore Codex review" },
+    });
+    expect(childUpserts.at(-1)).toMatchObject({
+      session: { status: "idle" },
+    });
   });
 });

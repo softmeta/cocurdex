@@ -45,7 +45,7 @@ import { ToolCallGroup } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
 import { useTranscriptState } from "../transcript-state";
 import type { ActivityState } from "./chat-activity";
-import { ActivityLine } from "./chat-activity";
+import { ActivityLine, isActivityHeaderBusy } from "./chat-activity";
 import { ActivityBlock } from "./chat-activity-block";
 import {
   isReasoningMessage,
@@ -853,11 +853,14 @@ export const ChatConversationItem = memo(function ChatConversationItem({
             }
 
             const summary = getActivitySegmentSummary(segment.items);
-            const isLiveTail = showActivity && index === segments.length - 1;
 
             return (
               <ActivityBlock
-                busy={summary.isBusy || isLiveTail}
+                busy={isActivityHeaderBusy({
+                  hasActiveToolCall: summary.isBusy,
+                  isLastSegment: index === segments.length - 1,
+                  isLiveConversation: showActivity,
+                })}
                 key={segment.items[0]?.id ?? "activity"}
                 stateKey={`activity:${segment.items[0]?.id}`}
                 reasoningCount={summary.reasoningCount}

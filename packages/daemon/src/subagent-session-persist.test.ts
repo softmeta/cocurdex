@@ -93,4 +93,62 @@ describe("DaemonState subagent persistence", () => {
 
     await service.shutdown();
   });
+
+  it("does not reopen an idle child from a later in-progress spawn tool event", async () => {
+    const service = await createService();
+    const childId = "acp-subagent:session-1:task-1";
+    const startedAt = now;
+    const toolCall = {
+      id: "task-1",
+      sessionId: "session-1",
+      title: "spawn_subagent",
+      kind: "task" as const,
+      status: "in_progress" as const,
+      subagent: {
+        sessionId: childId,
+        type: "explore",
+        description: "Explore Codex review",
+      },
+      content: [],
+      locations: [],
+      startedAt,
+      updatedAt: startedAt,
+    };
+
+    await service.state.persistAgentEvent({
+      type: "tool.started",
+      sessionId: "session-1",
+      toolCall,
+    });
+    const created = await service.state.getSession(childId);
+    expect(created).toEqual(expect.objectContaining({ id: childId }));
+    if (!created) {
+      return;
+    }
+    await service.state.persistAgentEvent({
+      type: "session.upserted",
+      sessionId: childId,
+      session: {
+        ...created,
+        status: "idle",
+        lastMessageAt: "2026-08-31T00:02:00.000Z",
+        updatedAt: "2026-08-31T00:02:00.000Z",
+      },
+    });
+    await service.state.persistAgentEvent({
+      type: "tool.updated",
+      sessionId: "session-1",
+      toolCall: {
+        ...toolCall,
+        updatedAt: "2026-08-31T00:03:00.000Z",
+      },
+    });
+
+    expect(await service.state.getSession(childId)).toMatchObject({
+      lastMessageAt: "2026-08-31T00:02:00.000Z",
+      status: "idle",
+    });
+
+    await service.shutdown();
+  });
 });

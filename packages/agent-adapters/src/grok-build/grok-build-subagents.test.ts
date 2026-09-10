@@ -99,6 +99,65 @@ describe("grokBuildSubagentProtocol", () => {
     });
   });
 
+  it("settles live Grok subagents on x.ai/session_notification", () => {
+    expect(
+      grokBuildSubagentProtocol.inspectNotification?.(
+        "x.ai/session_notification",
+        {
+          sessionId: "parent",
+          update: {
+            sessionUpdate: "subagent_finished",
+            subagent_id: "child-1",
+            child_session_id: "child-1",
+            status: "completed",
+          },
+        },
+      ),
+    ).toEqual({
+      kind: "settlement",
+      results: [{ providerSessionId: "child-1", status: "completed" }],
+    });
+  });
+
+  it("treats a cancelled Grok subagent as settled", () => {
+    expect(
+      grokBuildSubagentProtocol.inspectNotification?.(
+        "x.ai/session_notification",
+        {
+          sessionId: "parent",
+          update: {
+            sessionUpdate: "subagent_finished",
+            child_session_id: "child-1",
+            status: "cancelled",
+          },
+        },
+      ),
+    ).toEqual({
+      kind: "settlement",
+      results: [{ providerSessionId: "child-1", status: "completed" }],
+    });
+  });
+
+  it("reads live child turn completion from x.ai/session_notification", () => {
+    expect(
+      grokBuildSubagentProtocol.readTurnCompletion?.(
+        "x.ai/session_notification",
+        {
+          sessionId: "child-1",
+          update: {
+            sessionUpdate: "turn_completed",
+            stop_reason: "end_turn",
+            elapsed_ms: 1200,
+          },
+        },
+      ),
+    ).toEqual({
+      providerSessionId: "child-1",
+      stopReason: "end_turn",
+      durationMs: 1200,
+    });
+  });
+
   it("unwraps child session updates carried by the Grok extension", () => {
     expect(
       grokBuildSubagentProtocol.mapSessionNotification?.(

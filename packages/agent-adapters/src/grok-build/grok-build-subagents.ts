@@ -62,8 +62,17 @@ function readSpawn(toolCall: AgentToolCallRecord) {
   };
 }
 
+const GROK_SESSION_UPDATE_METHODS = [
+  "x.ai/session/update",
+  "x.ai/session_notification",
+] as const;
+
+function isGrokSessionUpdateMethod(method: string) {
+  return (GROK_SESSION_UPDATE_METHODS as readonly string[]).includes(method);
+}
+
 function readSubagentNotification(method: string, params: unknown) {
-  if (method !== "x.ai/session/update") {
+  if (!isGrokSessionUpdateMethod(method)) {
     return null;
   }
   const update = asRecord(asRecord(params)?.update);
@@ -73,25 +82,34 @@ function readSubagentNotification(method: string, params: unknown) {
   } else if (typeof update?.subagent_id === "string") {
     providerSessionId = update.subagent_id;
   }
-  if (!providerSessionId) {
+  if (!update || !providerSessionId) {
     return null;
   }
-  if (update?.sessionUpdate === "subagent_finished") {
+  const alsoKnownAs = [
+    typeof update.child_session_id === "string"
+      ? update.child_session_id
+      : null,
+    typeof update.subagent_id === "string" ? update.subagent_id : null,
+  ].filter(
+    (id): id is string => typeof id === "string" && id !== providerSessionId,
+  );
+  if (update.sessionUpdate === "subagent_finished") {
     return {
       kind: "settlement" as const,
-      results: [
-        {
-          providerSessionId,
+      results: [...new Set([providerSessionId, ...alsoKnownAs])].map(
+        (sessionId) => ({
+          providerSessionId: sessionId,
           status: readResultStatus(update.status),
-        },
-      ],
+        }),
+      ),
     };
   }
-  if (update?.sessionUpdate !== "subagent_spawned") {
+  if (update.sessionUpdate !== "subagent_spawned") {
     return null;
   }
   return {
     providerSessionId,
+    ...(alsoKnownAs.length > 0 ? { alsoKnownAs } : {}),
     type:
       typeof update.subagent_type === "string" ? update.subagent_type : null,
     description:
@@ -103,7 +121,7 @@ function readResultStatus(value: unknown) {
   if (value === "failed" || value === "error") {
     return "failed" as const;
   }
-  if (value === "completed") {
+  if (value === "completed" || value === "cancelled") {
     return "completed" as const;
   }
   return "in_progress" as const;
@@ -142,7 +160,7 @@ function readSettlement(toolCall: AgentToolCallRecord) {
 }
 
 function mapSessionNotification(method: string, params: unknown) {
-  if (method !== "x.ai/session/update") {
+  if (!isGrokSessionUpdateMethod(method)) {
     return null;
   }
   const notification = asRecord(params);
@@ -156,7 +174,7 @@ function mapSessionNotification(method: string, params: unknown) {
 }
 
 function readTurnCompletion(method: string, params: unknown) {
-  if (method !== "x.ai/session/update") {
+  if (!isGrokSessionUpdateMethod(method)) {
     return null;
   }
   const notification = asRecord(params);
@@ -181,7 +199,7 @@ function readTurnCompletion(method: string, params: unknown) {
 }
 
 export const grokBuildSubagentProtocol: AcpSubagentProtocol = {
-  notificationMethods: ["x.ai/session/update"],
+  notificationMethods: [...GROK_SESSION_UPDATE_METHODS],
   replayLinkedSession: true,
   inspect(toolCall) {
     return readSettlement(toolCall) ?? readSpawn(toolCall);
