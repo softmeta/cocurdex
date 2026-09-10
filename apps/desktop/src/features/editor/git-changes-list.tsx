@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { useScrollIntoViewWhenActive } from "@/lib";
 import { GitChangeFileDiff } from "./git-changes-file-diff";
 import type { GitChangeEntry } from "./git-changes-model";
-import { gitSelectedPathAtom } from "./git-changes-store";
+import { gitRevealClockAtom, gitSelectedPathAtom } from "./git-changes-store";
 import type { GitDiffStyle } from "./git-changes-toolbar";
 
 interface GitChangesListProps {
@@ -35,6 +35,7 @@ interface GitChangeListRowProps {
   onUnstage: (path: string) => void;
   onDiscard: (path: string) => void;
   diffThemeType: "light" | "dark";
+  revealClock: number;
 }
 
 function GitChangeListRow({
@@ -51,8 +52,11 @@ function GitChangeListRow({
   onUnstage,
   onDiscard,
   diffThemeType,
+  revealClock,
 }: GitChangeListRowProps) {
-  const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(selected);
+  const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(
+    selected ? revealClock + 1 : 0,
+  );
 
   return (
     <div ref={scrollRef}>
@@ -89,6 +93,7 @@ export function GitChangesList({
   diffThemeType,
 }: GitChangesListProps) {
   const selectedPath = useAtomValue(gitSelectedPathAtom);
+  const revealClock = useAtomValue(gitRevealClockAtom);
 
   return (
     <div
@@ -109,6 +114,7 @@ export function GitChangesList({
           onStage={onStage}
           onToggleFile={onToggleFile}
           onUnstage={onUnstage}
+          revealClock={revealClock}
           selected={entry.path === selectedPath}
           wrap={wrap}
         />

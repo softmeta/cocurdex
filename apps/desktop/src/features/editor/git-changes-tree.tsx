@@ -101,6 +101,7 @@ export function GitChangesTree({
   useSyncGitChangesTreeSelection(
     model,
     selectedEntry ? toGitTreePath(workspaceName, selectedEntry.path) : null,
+    revealClock,
   );
 
   return (

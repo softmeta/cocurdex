@@ -104,4 +104,66 @@ describe("AcpSubagentBridge", () => {
       bridge.transform(toolCall("completed", { text: "native-child" }))?.status,
     ).toBe("completed");
   });
+
+  it("settles aliased provider ids for one child only once", () => {
+    const events: AgentEvent[] = [];
+    const settled: string[] = [];
+    const protocol: AcpSubagentProtocol = {
+      inspect() {
+        return {
+          kind: "spawn",
+          providerSessionId: "session-42",
+          type: "explore",
+          description: "Explore",
+        };
+      },
+      inspectNotification() {
+        return {
+          kind: "settlement",
+          results: [
+            { providerSessionId: "session-42", status: "completed" },
+            { providerSessionId: "task-7", status: "completed" },
+          ],
+        };
+      },
+    };
+    const bridge = new AcpSubagentBridge(
+      {
+        id: "parent",
+        workspaceId: "workspace",
+        title: "Parent",
+        agentType: "grok-build",
+        status: "running",
+        writeMode: "native-write",
+        collaborationMode: "default",
+        createdAt: "2026-08-31T00:00:00.000Z",
+        updatedAt: "2026-08-31T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: null,
+      } as SessionRecord,
+      protocol,
+      (event) => events.push(event),
+      () => undefined,
+      (providerSessionId) => settled.push(providerSessionId),
+    );
+
+    expect(bridge.transform(toolCall("in_progress", null))?.subagent).toEqual({
+      sessionId: "acp-subagent:parent:task-1",
+      type: "explore",
+      description: "Explore",
+    });
+    bridge.linkSpawn({
+      providerSessionId: "session-42",
+      alsoKnownAs: ["task-7"],
+      type: "explore",
+      description: "Explore",
+    });
+    bridge.handleNotification("x.ai/session_notification", {});
+
+    expect(
+      events.filter((event) => event.type === "tool.finished"),
+    ).toHaveLength(1);
+    expect(settled).toEqual(["session-42"]);
+  });
 });

@@ -20,7 +20,7 @@ export function useMountEffect(effect: EffectCallback) {
 // added while the row is scrolled. Sanctioned `useEffect` seam: syncing scroll
 // position (an external overflow container) to the derived `active` flag.
 export function useScrollIntoViewWhenActive<T extends HTMLElement>(
-  active: boolean,
+  active: boolean | number,
 ): RefObject<T | null> {
   const ref = useRef<T>(null);
   useEffect(() => {
