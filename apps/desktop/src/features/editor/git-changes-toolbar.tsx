@@ -1,3 +1,4 @@
+import type { TurnChangeSet } from "@cocurdex/shared";
 import {
   Columns2,
   FileCode,
@@ -52,6 +53,7 @@ import {
   GitBranchRefSelectors,
   GitCommitScopeChip,
   GitCurrentBranchChip,
+  GitTurnScopeChip,
 } from "./git-changes-ref-selectors";
 import { GitChangesScopeMenu } from "./git-changes-scope-menu";
 import type { GitDiffScope } from "./git-diff-scope";
@@ -68,6 +70,10 @@ interface GitChangesToolbarProps {
   branches: readonly GitBranchInfo[];
   commits: readonly GitCommitInfo[];
   commitsLoading: boolean;
+  sessionId: string | null;
+  turnLabels: Record<string, string>;
+  turns: readonly TurnChangeSet[];
+  turnsLoading: boolean;
   isLoading: boolean;
   fileCount: number;
   // Unfiltered working-tree change count > 0. Used to disable commit/push when clean.
@@ -83,6 +89,7 @@ interface GitChangesToolbarProps {
   onChangeTypeFilterChange: (filter: GitChangeTypeFilter) => void;
   onScopeChange: (scope: GitDiffScope) => void;
   onOpenCommits: () => void;
+  onOpenTurns: () => void;
   viewMode: GitViewMode;
   onViewModeChange: (mode: GitViewMode) => void;
   wrap: boolean;
@@ -146,6 +153,10 @@ export function GitChangesToolbar({
   branches,
   commits,
   commitsLoading,
+  sessionId,
+  turnLabels,
+  turns,
+  turnsLoading,
   isLoading,
   fileCount,
   hasChanges,
@@ -160,6 +171,7 @@ export function GitChangesToolbar({
   onChangeTypeFilterChange,
   onScopeChange,
   onOpenCommits,
+  onOpenTurns,
   viewMode,
   onViewModeChange,
   wrap,
@@ -279,6 +291,10 @@ export function GitChangesToolbar({
           commits={commits}
           commitsLoading={commitsLoading}
           currentBranch={currentBranch}
+          sessionId={sessionId}
+          turnLabels={turnLabels}
+          turns={turns}
+          turnsLoading={turnsLoading}
           disabled={isLoading}
           fileCount={fileCount}
           hasChanges={hasChanges}
@@ -288,6 +304,7 @@ export function GitChangesToolbar({
           onDiscardAll={onDiscardAll}
           onGenerateCommitMessage={onGenerateCommitMessage}
           onOpenCommits={onOpenCommits}
+          onOpenTurns={onOpenTurns}
           onScopeChange={onScopeChange}
           onStageAll={onStageAll}
           onUnstageAll={onUnstageAll}
@@ -315,12 +332,17 @@ function BulkActionsRow({
   onCommitAction,
   onGenerateCommitMessage,
   onOpenCommits,
+  onOpenTurns,
   onScopeChange,
   onStageAll,
   onUnstageAll,
   onDiscardAll,
   scope,
+  sessionId,
   stagedState,
+  turnLabels,
+  turns,
+  turnsLoading,
 }: {
   branches: readonly GitBranchInfo[];
   canDiscardAll: boolean;
@@ -342,12 +364,17 @@ function BulkActionsRow({
     includeUnstaged: boolean;
   }) => Promise<string | null>;
   onOpenCommits: () => void;
+  onOpenTurns: () => void;
   onScopeChange: (scope: GitDiffScope) => void;
   onStageAll: () => void;
   onUnstageAll: () => void;
   onDiscardAll: () => void;
   scope: GitDiffScope;
+  sessionId: string | null;
   stagedState: GitFileStagedState;
+  turnLabels: Record<string, string>;
+  turns: readonly TurnChangeSet[];
+  turnsLoading: boolean;
 }) {
   const { t } = useTranslation("editor");
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -364,8 +391,13 @@ function BulkActionsRow({
         commitsLoading={commitsLoading}
         disabled={disabled}
         onOpenCommits={onOpenCommits}
+        onOpenTurns={onOpenTurns}
         onScopeChange={onScopeChange}
         scope={scope}
+        sessionId={sessionId}
+        turnLabels={turnLabels}
+        turns={turns}
+        turnsLoading={turnsLoading}
       />
       {scope.mode === "branch" ? (
         <GitBranchRefSelectors
@@ -380,6 +412,9 @@ function BulkActionsRow({
       ) : null}
       {scope.mode === "commit" ? (
         <GitCommitScopeChip commits={commits} scope={scope} />
+      ) : null}
+      {scope.mode === "turn" ? (
+        <GitTurnScopeChip scope={scope} turnLabels={turnLabels} turns={turns} />
       ) : null}
       <ChangeTypeFilterSelect
         counts={changeTypeCounts}

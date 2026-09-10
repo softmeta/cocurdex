@@ -1,6 +1,8 @@
 import { inferReviewKind } from "./workspace-change-review";
 import type {
   NativeWorkspaceChangeEvidence,
+  TurnChangeDiffFile,
+  TurnChangeFileContent,
   TurnFileChange,
   TurnFileOperation,
   WorkspaceChangeCoverage,
@@ -8,6 +10,53 @@ import type {
 } from "./workspace-changes";
 
 export { inferReviewKind, mimeTypeForPath } from "./workspace-change-review";
+
+export function turnFileChangeType(
+  operation: TurnFileOperation,
+): TurnChangeDiffFile["changeType"] {
+  if (operation === "add") {
+    return "added";
+  }
+  if (operation === "delete") {
+    return "deleted";
+  }
+  return "modified";
+}
+
+export function buildTurnChangeDiffFile(
+  file: TurnFileChange,
+  before: TurnChangeFileContent,
+  after: TurnChangeFileContent,
+): TurnChangeDiffFile {
+  const changeType = turnFileChangeType(file.operation);
+  if (file.reviewKind !== "text") {
+    return {
+      path: file.path,
+      changeType,
+      oldContents: "",
+      newContents: "",
+      omittedReason: "binary",
+    };
+  }
+  const beforeTooLarge = before.exists && before.text == null;
+  const afterTooLarge = after.exists && after.text == null;
+  if (beforeTooLarge || afterTooLarge) {
+    return {
+      path: file.path,
+      changeType,
+      oldContents: "",
+      newContents: "",
+      omittedReason: "too-large",
+    };
+  }
+  return {
+    path: file.path,
+    changeType,
+    oldContents: changeType === "added" ? "" : (before.text ?? ""),
+    newContents: changeType === "deleted" ? "" : (after.text ?? ""),
+    omittedReason: null,
+  };
+}
 
 export function createUnifiedDiff(
   relativePath: string,

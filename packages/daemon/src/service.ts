@@ -26,6 +26,7 @@ import type {
   SaveWorkflowDefinitionPayload,
   SendSessionMessagePayload,
   SessionRecord,
+  TurnChangeDiffRequest,
   TurnChangeFileContentRequest,
   UndoTurnChangesInput,
   UpdateSessionAttentionPayload,
@@ -644,6 +645,28 @@ export class CocurdexDaemonService {
       input.sessionId,
     );
     return this.workspaceChanges.getFileContent({
+      ...input,
+      workspaceRootPath,
+    });
+  }
+
+  async listTurnChangeSets(sessionId: string) {
+    const byMessage = await this.workspaceChanges.listBySession(sessionId);
+    return Object.values(byMessage)
+      .filter(
+        (changeSet) =>
+          changeSet.files.length > 0 &&
+          changeSet.status !== "collecting" &&
+          changeSet.status !== "error",
+      )
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  async getTurnChangeDiff(input: TurnChangeDiffRequest) {
+    const workspaceRootPath = await this.requireWorkspaceRootPath(
+      input.sessionId,
+    );
+    return this.workspaceChanges.getDiff({
       ...input,
       workspaceRootPath,
     });

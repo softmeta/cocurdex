@@ -157,6 +157,7 @@
     "label": "排队中的后续消息",
     "moreActions": "更多队列操作",
     "save": "保存",
+    "status": "排队中",
     "steer": "引导"
   },
   "rateLimits": {

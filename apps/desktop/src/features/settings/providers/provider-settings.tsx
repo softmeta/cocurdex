@@ -666,18 +666,15 @@ export function ProviderSettingsPanel() {
               onChange={(event) => setProviderQuery(event.target.value)}
             />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              size="sm"
-              type="button"
-              variant="secondary"
-              onClick={startNewProvider}
-            >
-              <Plus className="size-4" />
-              {t("providers.actions.newProvider")}
-            </Button>
-            <ImportProviderJsonDialog onImport={importProvidersFromJson} />
-          </div>
+          <Button
+            size="sm"
+            type="button"
+            variant="secondary"
+            onClick={startNewProvider}
+          >
+            <Plus className="size-4" />
+            {t("providers.actions.newProvider")}
+          </Button>
         </div>
 
         <ProviderStrip>
@@ -861,6 +858,8 @@ export function ProviderSettingsPanel() {
           </span>
         ) : null}
       </div>
+
+      <ImportProviderJsonDialog onImport={importProvidersFromJson} />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import type { TurnChangeSetRepository } from "@cocurdex/db";
 import type {
   HostCheckpointKind,
   NativeWorkspaceChangeEvidence,
+  TurnChangeDiff,
+  TurnChangeDiffRequest,
   TurnChangeFileContent,
   TurnChangeFileContentRequest,
   TurnChangeOutcome,
@@ -23,7 +25,10 @@ import {
   completeActiveTurn,
   type WorkspaceTurnClaim,
 } from "./complete-turn";
-import { readTurnChangeFileContent } from "./coordinator-file-content";
+import {
+  readTurnChangeDiff,
+  readTurnChangeFileContent,
+} from "./coordinator-file-content";
 import { createFilesystemCheckpointAdapter } from "./filesystem-checkpoint";
 import { createGitCheckpointAdapter } from "./git-checkpoint";
 import { isGitWorkspace } from "./git-run";
@@ -73,6 +78,9 @@ export interface WorkspaceChangeCoordinator {
   getFileContent(
     input: TurnChangeFileContentRequest & { workspaceRootPath: string },
   ): Promise<TurnChangeFileContent>;
+  getDiff(
+    input: TurnChangeDiffRequest & { workspaceRootPath: string },
+  ): Promise<TurnChangeDiff>;
   deleteSessionCheckpoints(
     sessionId: string,
     workspaceRootPath?: string,
@@ -494,6 +502,30 @@ export function createWorkspaceChangeCoordinator(
         input.workspaceRootPath,
       );
       return readTurnChangeFileContent(changeSet, input, adapter, checkpoints);
+    },
+
+    async getDiff(input) {
+      const changeSet =
+        (await options.repository.getByMessageId(
+          input.sessionId,
+          input.messageId,
+        )) ??
+        (await options.repository.getByUserMessageId(
+          input.sessionId,
+          input.messageId,
+        ));
+      if (!changeSet) {
+        return { status: "missing", files: [] };
+      }
+      try {
+        const adapter = await adapterForChangeSet(
+          changeSet,
+          input.workspaceRootPath,
+        );
+        return await readTurnChangeDiff(changeSet, input, adapter, checkpoints);
+      } catch {
+        return { status: "error", files: [] };
+      }
     },
 
     deleteSessionCheckpoints(sessionId, workspaceRootPath) {

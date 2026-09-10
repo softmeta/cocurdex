@@ -11,7 +11,7 @@ import { rightPanelResolvedActiveViewAtom } from "@/app/layout/right-editor-pane
 import { FileTypeIcon } from "@/components";
 import { Button, Spinner, Text } from "@/components/ui";
 import { editorPanelOpenAtom } from "@/features/editor/editor-store";
-import { revealGitFileAtom } from "@/features/editor/git-changes-store";
+import { reviewGitTurnAtom } from "@/features/editor/git-changes-store";
 import { cn, desktopApi } from "@/lib";
 import {
   compactFilePreview,
@@ -136,7 +136,7 @@ export function TurnChangesCard({
   const { t } = useTranslation("agent");
   const setPanelOpen = useSetAtom(editorPanelOpenAtom);
   const setActiveView = useSetAtom(rightPanelResolvedActiveViewAtom);
-  const revealGitFile = useSetAtom(revealGitFileAtom);
+  const reviewGitTurn = useSetAtom(reviewGitTurnAtom);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [undoResults, setUndoResults] = useAtom(undoResultsByChangeSetAtom);
@@ -170,8 +170,12 @@ export function TurnChangesCard({
     setPanelOpen(true);
     setActiveView("git");
   };
-  const reviewFile = (path: string) => {
-    revealGitFile(path);
+  const reviewTurn = (path = "") => {
+    reviewGitTurn({
+      sessionId: changeSet.sessionId,
+      messageId: changeSet.messageId || changeSet.userMessageId,
+      path,
+    });
     openGit();
   };
 
@@ -251,7 +255,12 @@ export function TurnChangesCard({
               <RotateCcw className="size-3.5" />
             )}
           </Button>
-          <Button onClick={openGit} size="xs" type="button" variant="secondary">
+          <Button
+            onClick={() => reviewTurn(changeSet.files[0]?.path ?? "")}
+            size="xs"
+            type="button"
+            variant="secondary"
+          >
             <Text size="meta">{t("turnChanges.review")}</Text>
           </Button>
         </div>
@@ -261,7 +270,7 @@ export function TurnChangesCard({
           <TurnChangeFileRow
             file={file}
             key={file.path}
-            onReview={() => reviewFile(file.path)}
+            onReview={() => reviewTurn(file.path)}
           />
         ))}
       </ul>

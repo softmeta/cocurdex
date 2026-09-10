@@ -1,13 +1,17 @@
 import type {
   HostCheckpointKind,
+  TurnChangeDiff,
   TurnChangeFileContent,
   TurnChangeFileContentRequest,
   TurnChangeSet,
 } from "@cocurdex/shared";
-import { mimeTypeForPath } from "@cocurdex/shared";
+import { buildTurnChangeDiffFile, mimeTypeForPath } from "@cocurdex/shared";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import { MAX_REVIEW_TEXT_BYTES } from "./hash";
+import { mapWithConcurrency } from "./map-with-concurrency";
 import { sanitizeTurnFileChange } from "./path-safety";
+
+const TURN_DIFF_FILE_CONCURRENCY = 8;
 
 export function resolveHostCheckpoint(
   ref: string | null | undefined,
@@ -75,9 +79,12 @@ export async function readTurnChangeFileContent(
     input.side === "before" && file.previousPath
       ? file.previousPath
       : file.path;
+  const recordedSize =
+    input.side === "before" ? file.beforeSize : file.afterSize;
   const bytes = checkpoint
     ? await adapter.readFile(checkpoint, relativePath)
     : null;
+  const exists = bytes != null || recordedSize != null;
   const text =
     bytes &&
     file.reviewKind === "text" &&
@@ -88,8 +95,8 @@ export async function readTurnChangeFileContent(
     path: file.path,
     side: input.side,
     reviewKind: file.reviewKind,
-    exists: bytes != null,
-    sizeBytes: bytes?.byteLength ?? null,
+    exists,
+    sizeBytes: bytes?.byteLength ?? recordedSize ?? null,
     hash:
       input.side === "before"
         ? (file.beforeHash ?? null)
@@ -99,4 +106,52 @@ export async function readTurnChangeFileContent(
       bytes && file.reviewKind !== "text" ? bytes.toString("base64") : null,
     mimeType: mimeTypeForPath(file.path),
   };
+}
+
+export async function readTurnChangeDiff(
+  changeSet: TurnChangeSet,
+  input: { workspaceRootPath: string },
+  adapter: HostCheckpointAdapter,
+  known: Map<string, HostCheckpoint>,
+): Promise<TurnChangeDiff> {
+  if (!changeSet.hostBeforeCheckpointRef && !changeSet.hostAfterCheckpointRef) {
+    return { status: "expired", files: [] };
+  }
+  if (!changeSet.hostBeforeCheckpointRef || !changeSet.hostAfterCheckpointRef) {
+    return { status: "missing", files: [] };
+  }
+  const files = await mapWithConcurrency(
+    changeSet.files,
+    TURN_DIFF_FILE_CONCURRENCY,
+    async (file) => {
+      const [before, after] = await Promise.all([
+        readTurnChangeFileContent(
+          changeSet,
+          {
+            sessionId: changeSet.sessionId,
+            messageId: changeSet.messageId || changeSet.userMessageId,
+            path: file.path,
+            side: "before",
+            workspaceRootPath: input.workspaceRootPath,
+          },
+          adapter,
+          known,
+        ),
+        readTurnChangeFileContent(
+          changeSet,
+          {
+            sessionId: changeSet.sessionId,
+            messageId: changeSet.messageId || changeSet.userMessageId,
+            path: file.path,
+            side: "after",
+            workspaceRootPath: input.workspaceRootPath,
+          },
+          adapter,
+          known,
+        ),
+      ]);
+      return buildTurnChangeDiffFile(file, before, after);
+    },
+  );
+  return { status: "ok", files };
 }

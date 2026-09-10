@@ -80,8 +80,11 @@ import type {
   SubmitPreviousMessagePayload,
   TitleModelProbeResult,
   TitleModelSelection,
+  TurnChangeDiff,
+  TurnChangeDiffRequest,
   TurnChangeFileContent,
   TurnChangeFileContentRequest,
+  TurnChangeSet,
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
@@ -618,6 +621,8 @@ export interface DesktopApi {
   getTurnChangeFile(
     payload: TurnChangeFileContentRequest,
   ): Promise<TurnChangeFileContent>;
+  listTurnChangeSets(sessionId: string): Promise<TurnChangeSet[]>;
+  getTurnChangeDiff(payload: TurnChangeDiffRequest): Promise<TurnChangeDiff>;
   sendMessage(payload: SendSessionMessagePayload): Promise<MessageRecord>;
   updateQueuedInput(
     payload: UpdateQueuedAgentInputPayload,

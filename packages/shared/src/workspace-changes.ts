@@ -167,3 +167,23 @@ export interface TurnChangeFileContent {
   contentBase64: string | null;
   mimeType: string | null;
 }
+
+export interface TurnChangeDiffRequest {
+  sessionId: string;
+  messageId: string;
+}
+
+export type TurnChangeDiffStatus = "ok" | "missing" | "expired" | "error";
+
+export interface TurnChangeDiffFile {
+  path: string;
+  changeType: "added" | "modified" | "deleted";
+  oldContents: string;
+  newContents: string;
+  omittedReason: "binary" | "too-large" | null;
+}
+
+export interface TurnChangeDiff {
+  status: TurnChangeDiffStatus;
+  files: TurnChangeDiffFile[];
+}

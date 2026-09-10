@@ -1,5 +1,5 @@
 import { FileUp } from "lucide-react";
-import { useRef, useState } from "react";
+import { type DragEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -12,12 +12,20 @@ import {
   DialogTitle,
   Text,
 } from "@/components/ui";
+import { cn } from "@/lib";
 import {
   isJsonImportFile,
   type ParsedProviderImport,
   type ProviderImportWarning,
   parseProviderJson,
 } from "./parse-provider-json";
+
+function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) {
+    return false;
+  }
+  return Array.from(dataTransfer.types).includes("Files");
+}
 
 interface ImportProviderJsonDialogProps {
   onImport(providers: ParsedProviderImport[]): Promise<void>;
@@ -34,9 +42,11 @@ export function ImportProviderJsonDialog({
   const { t } = useTranslation("settings");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileSelectionRef = useRef(0);
+  const dragDepthRef = useRef(0);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [error, setError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   const modelCount = preview
     ? preview.providers.reduce((total, entry) => total + entry.models.length, 0)
@@ -95,6 +105,55 @@ export function ImportProviderJsonDialog({
     });
   }
 
+  function resetDragState() {
+    dragDepthRef.current = 0;
+    setIsDraggingFile(false);
+  }
+
+  function handleDragEnter(event: DragEvent<HTMLButtonElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current += 1;
+    setIsDraggingFile(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLButtonElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDraggingFile(false);
+    }
+  }
+
+  function handleDragOver(event: DragEvent<HTMLButtonElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  function handleDrop(event: DragEvent<HTMLButtonElement>) {
+    resetDragState();
+    if (!dataTransferHasFiles(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const files = Array.from(event.dataTransfer.files);
+    const file =
+      files.find((candidate) => isJsonImportFile(candidate)) ?? files[0];
+    void handleFileChange(file);
+  }
+
   async function handleConfirm() {
     if (!preview) {
       return;
@@ -115,17 +174,40 @@ export function ImportProviderJsonDialog({
     }
   }
 
+  const dropZoneHint = isDraggingFile
+    ? t("providers.importJson.dropActive")
+    : t("providers.importJson.dropHint");
+
   return (
-    <>
-      <Button
-        size="sm"
+    <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <Text size="sm" weight="medium">
+          {t("providers.importJson.label")}
+        </Text>
+        <Text size="2xs" tone="muted">
+          {t("providers.importJson.intro")}
+        </Text>
+      </div>
+      <button
+        className={cn(
+          "flex w-full flex-col items-center justify-center gap-1 rounded-control border border-dashed border-border/60 px-6 py-6 text-center transition-colors hover:bg-muted/45 hover:text-foreground focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
+          isDraggingFile && "border-primary/40 bg-primary/10",
+        )}
         type="button"
-        variant="outline"
         onClick={() => fileInputRef.current?.click()}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
-        <FileUp className="size-4" />
-        {t("providers.actions.importJson")}
-      </Button>
+        <FileUp className="size-5 text-muted-foreground" />
+        <Text size="sm" weight="medium">
+          {t("providers.importJson.title")}
+        </Text>
+        <Text size="xs" tone="muted">
+          {dropZoneHint}
+        </Text>
+      </button>
       <input
         accept=".json,application/json,text/plain"
         aria-hidden="true"
@@ -222,6 +304,6 @@ export function ImportProviderJsonDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

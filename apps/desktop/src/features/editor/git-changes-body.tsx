@@ -21,6 +21,7 @@ interface GitChangesBodyProps {
   folded: ReadonlySet<string>;
   actionsEnabled: boolean;
   scopeMode: GitDiffScope["mode"];
+  turnEmptyReason?: "none" | "expired" | "missing" | null;
   onToggleFile: (key: string) => void;
   onOpenFile: (path: string) => void;
   onStage: (path: string) => void;
@@ -36,8 +37,9 @@ function resolveEmptyStateCopy(
   diffStatus: WorkspaceGitDiffStatus,
   isFiltered: boolean,
   scopeMode: GitDiffScope["mode"],
+  turnEmptyReason?: "none" | "expired" | "missing" | null,
 ): { title: string; description: string } {
-  if (diffStatus === "not-a-repo") {
+  if (diffStatus === "not-a-repo" && scopeMode !== "turn") {
     return {
       title: t("states.gitNotRepoTitle"),
       description: t("states.gitNotRepoDescription"),
@@ -79,6 +81,24 @@ function resolveEmptyStateCopy(
       description: t("states.gitEmptyBranchDescription"),
     };
   }
+  if (scopeMode === "turn") {
+    if (turnEmptyReason === "expired") {
+      return {
+        title: t("states.gitEmptyTurnExpiredTitle"),
+        description: t("states.gitEmptyTurnExpiredDescription"),
+      };
+    }
+    if (turnEmptyReason === "none") {
+      return {
+        title: t("states.gitEmptyTurnNoneTitle"),
+        description: t("states.gitEmptyTurnNoneDescription"),
+      };
+    }
+    return {
+      title: t("states.gitEmptyTurnTitle"),
+      description: t("states.gitEmptyTurnDescription"),
+    };
+  }
   return {
     title: t("states.gitEmptyTitle"),
     description: t("states.gitEmptyDescription"),
@@ -100,6 +120,7 @@ export function GitChangesBody({
   folded,
   actionsEnabled,
   scopeMode,
+  turnEmptyReason = null,
   onToggleFile,
   onOpenFile,
   onStage,
@@ -125,6 +146,7 @@ export function GitChangesBody({
       diffStatus,
       isFiltered,
       scopeMode,
+      turnEmptyReason,
     );
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center">

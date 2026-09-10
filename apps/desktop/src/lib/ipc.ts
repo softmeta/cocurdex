@@ -386,6 +386,11 @@ const fallbackApi: DesktopApi = {
     contentBase64: null,
     mimeType: null,
   }),
+  listTurnChangeSets: async () => [],
+  getTurnChangeDiff: async () => ({
+    status: "missing" as const,
+    files: [],
+  }),
   sendMessage: async (payload) =>
     ({
       id: crypto.randomUUID(),

@@ -1,3 +1,4 @@
+import type { TurnChangeSet } from "@cocurdex/shared";
 import { GitBranch } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -5,7 +6,7 @@ import { AppSearchableSelect } from "@/components";
 import { Text } from "@/components/ui/text";
 import type { GitBranchInfo, GitCommitInfo } from "@/lib";
 import { CopyButton } from "./copy-button";
-import { formatCommitChip } from "./git-changes-scope-menu";
+import { formatCommitChip, formatTurnChip } from "./git-changes-scope-menu";
 import type { GitDiffScope } from "./git-diff-scope";
 
 interface GitBranchRefSelectorsProps {
@@ -111,6 +112,31 @@ export function GitCommitScopeChip({
           {subject}
         </Text>
       ) : null}
+    </div>
+  );
+}
+
+interface GitTurnScopeChipProps {
+  scope: Extract<GitDiffScope, { mode: "turn" }>;
+  turnLabels: Record<string, string>;
+  turns: readonly TurnChangeSet[];
+}
+
+export function GitTurnScopeChip({
+  scope,
+  turnLabels,
+  turns,
+}: GitTurnScopeChipProps) {
+  const { t } = useTranslation("editor");
+  const label = formatTurnChip(turns, scope.messageId, turnLabels, t);
+  if (!label) {
+    return null;
+  }
+  return (
+    <div className="flex min-w-0 max-w-56 items-center gap-1.5 px-1">
+      <Text size="meta" truncate>
+        {label}
+      </Text>
     </div>
   );
 }

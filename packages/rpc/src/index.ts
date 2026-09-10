@@ -60,8 +60,11 @@ import type {
   SessionAttentionSnapshot,
   SessionObservationSnapshot,
   SessionRecord,
+  TurnChangeDiff,
+  TurnChangeDiffRequest,
   TurnChangeFileContent,
   TurnChangeFileContentRequest,
+  TurnChangeSet,
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
@@ -84,7 +87,7 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 18;
+export const DAEMON_PROTOCOL_VERSION = 19;
 
 export interface DaemonMetadata {
   pid: number;
@@ -188,6 +191,8 @@ export type DaemonRequestPayloadByMethod = {
   "session.stop": { sessionId: string };
   "session.undoTurnChanges": UndoTurnChangesInput;
   "session.getTurnChangeFile": TurnChangeFileContentRequest;
+  "session.listTurnChangeSets": { sessionId: string };
+  "session.getTurnChangeDiff": TurnChangeDiffRequest;
   "session.getToolCallResult": GetToolCallResultInput;
   "daemon.subscribe": undefined;
   "network.proxy.test": undefined;
@@ -302,6 +307,8 @@ export type DaemonResultByMethod = {
   "session.stop": null;
   "session.undoTurnChanges": UndoTurnChangesResult;
   "session.getTurnChangeFile": TurnChangeFileContent;
+  "session.listTurnChangeSets": TurnChangeSet[];
+  "session.getTurnChangeDiff": TurnChangeDiff;
   "session.getToolCallResult": AgentToolCallResult | null;
   "daemon.subscribe": null;
   "network.proxy.test": NetworkProxyTestResult;

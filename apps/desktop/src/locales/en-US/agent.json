@@ -160,6 +160,7 @@
     "label": "Queued follow-ups",
     "moreActions": "More queue actions",
     "save": "Save",
+    "status": "Queued",
     "steer": "Steer"
   },
   "rateLimits": {
