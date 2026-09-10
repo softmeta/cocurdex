@@ -162,6 +162,7 @@ export default interface Resources {
       label: "Queued follow-ups";
       moreActions: "More queue actions";
       save: "Save";
+      status: "Queued";
       steer: "Steer";
     };
     rateLimits: {
@@ -541,9 +542,11 @@ export default interface Resources {
       includeUnstaged: "Include unstaged changes";
       listView: "List view";
       loadingCommits: "Loading commits…";
+      loadingTurns: "Loading turns…";
       noBranch: "No branch";
       noCommits: "No commits yet";
       noMatchingBranches: "No matching branches";
+      noTurns: "No turns with file changes";
       push: "Push";
       pushFailed: "Push failed";
       pushSuccess: "Pushed";
@@ -552,6 +555,7 @@ export default interface Resources {
         branch: "Branch";
         commit: "Commit";
         staged: "Staged";
+        turn: "Turn";
         unstaged: "Unstaged";
         working: "Working tree";
       };
@@ -569,6 +573,9 @@ export default interface Resources {
       treeSearch: "Filter changed files";
       treeSearchPlaceholder: "Filter files…";
       treeView: "Tree view";
+      turnFiles: "{{count}} files";
+      turnFiles_one: "{{count}} file";
+      turnFiles_other: "{{count}} files";
       unifiedView: "Unified view";
       unstageAll: "Unstage all";
       unstageFile: "Unstage file";
@@ -645,6 +652,12 @@ export default interface Resources {
       gitEmptyStagedDescription: "Nothing is staged yet. Stage files from the working tree to review them here.";
       gitEmptyStagedTitle: "No staged changes";
       gitEmptyTitle: "No git changes";
+      gitEmptyTurnDescription: "This turn has no captured file snapshot.";
+      gitEmptyTurnExpiredDescription: "The snapshot for this turn has expired and can no longer be reviewed.";
+      gitEmptyTurnExpiredTitle: "Turn snapshot expired";
+      gitEmptyTurnNoneDescription: "This session has no captured file changes yet.";
+      gitEmptyTurnNoneTitle: "No turns";
+      gitEmptyTurnTitle: "No turn snapshot";
       gitEmptyUnstagedDescription: "All tracked changes are staged, and there are no untracked files.";
       gitEmptyUnstagedTitle: "No unstaged changes";
       gitErrorDescription: "Git could not read this workspace. Check that git is installed and the repository is intact, then refresh.";
@@ -1601,8 +1614,12 @@ export default interface Resources {
         cancel: "Cancel";
         confirm: "Import";
         description: "Import a pi-style models.json. Each provider is upserted with its models. Literal apiKey values are stored; $ENV and !command keys must be set manually.";
+        dropActive: "Drop to import";
+        dropHint: "Drop a JSON file here, or click to choose one.";
         importing: "Importing…";
+        intro: "Add or update providers and models from a pi-style models.json.";
         invalidFile: "Choose a JSON text file.";
+        label: "Import providers from JSON";
         providerCount: "{{count}} providers";
         providerCount_one: "{{count}} provider";
         providerCount_other: "{{count}} providers";
@@ -1686,7 +1703,7 @@ export default interface Resources {
       };
       titleModel: {
         description: "Generates titles for the built-in Pi agent and chat mode. Other agents use their own title support.";
-        label: "Session title generation model";
+        label: "Pi session title generation model";
         none: "Use current session model";
         probeFailed: "Failed · {{latencyMs}} ms · {{error}}";
         probeOk: "Connected · {{latencyMs}} ms";

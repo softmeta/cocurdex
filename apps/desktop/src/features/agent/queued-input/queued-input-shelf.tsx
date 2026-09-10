@@ -151,10 +151,10 @@ function QueuedInputRow({
   return (
     <div className="group min-w-0">
       <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5">
-        <ListEnd
-          aria-hidden="true"
-          className="size-4 shrink-0 text-chat-fg-subtle"
-        />
+        <span className="flex shrink-0 items-center gap-1 text-chat-fg-subtle">
+          <ListEnd aria-hidden="true" className="size-4" />
+          <Text size="meta">{t("queue.status")}</Text>
+        </span>
         {imageCount > 0 ? (
           <span className="flex shrink-0 items-center gap-1 text-chat-fg-subtle">
             <ImageIcon aria-hidden="true" className="size-3.5" />

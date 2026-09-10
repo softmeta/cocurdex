@@ -350,6 +350,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
   getTurnChangeFile: (
     payload: import("@cocurdex/shared").TurnChangeFileContentRequest,
   ) => ipcRenderer.invoke("session:getTurnChangeFile", payload),
+  listTurnChangeSets: (sessionId: string) =>
+    ipcRenderer.invoke("session:listTurnChangeSets", sessionId),
+  getTurnChangeDiff: (
+    payload: import("@cocurdex/shared").TurnChangeDiffRequest,
+  ) => ipcRenderer.invoke("session:getTurnChangeDiff", payload),
   sendMessage: (payload: SendSessionMessagePayload) =>
     ipcRenderer.invoke("session:sendMessage", payload),
   updateQueuedInput: (payload: UpdateQueuedAgentInputPayload) =>

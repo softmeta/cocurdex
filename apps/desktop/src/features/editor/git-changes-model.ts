@@ -1,3 +1,4 @@
+import type { TurnChangeDiffFile } from "@cocurdex/shared";
 import { type FileDiffMetadata, parseDiffFromFile } from "@pierre/diffs";
 import type { GitStatusEntry } from "@pierre/trees";
 import type {
@@ -26,6 +27,19 @@ export type GitChangeTypeCounts = Record<GitChangeTypeFilter, number>;
 
 // Turn raw file changes into renderable entries. Non-omitted files are diffed
 // from their full old/new contents so the result is non-partial (expandable).
+export function toGitFileChangesFromTurn(
+  files: TurnChangeDiffFile[],
+): WorkspaceGitFileChange[] {
+  return files.map((file) => ({
+    path: file.path,
+    changeType: file.changeType,
+    oldContents: file.oldContents,
+    newContents: file.newContents,
+    omittedReason: file.omittedReason,
+    stagedState: "unstaged",
+  }));
+}
+
 export function buildEntries(
   fileChanges: WorkspaceGitFileChange[],
 ): GitChangeEntry[] {

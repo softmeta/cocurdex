@@ -735,6 +735,20 @@ function registerSessionHandlers() {
   );
   registerHandler(
     ipcMain,
+    "session:listTurnChangeSets",
+    schemas.sessionId,
+    async (_event, sessionId) =>
+      requireDaemonRuntimeClient().listTurnChangeSets(sessionId),
+  );
+  registerHandler(
+    ipcMain,
+    "session:getTurnChangeDiff",
+    schemas.turnChangeDiff,
+    async (_event, payload) =>
+      requireDaemonRuntimeClient().getTurnChangeDiff(payload),
+  );
+  registerHandler(
+    ipcMain,
     "session:create",
     schemas.sessionWithWorkspace,
     async (_event, raw) => {

@@ -17,8 +17,11 @@ import type {
   CreateSessionPayload,
   MessageRecord,
   SendSessionMessagePayload,
+  TurnChangeDiff,
+  TurnChangeDiffRequest,
   TurnChangeFileContent,
   TurnChangeFileContentRequest,
+  TurnChangeSet,
   UndoTurnChangesInput,
   UndoTurnChangesResult,
 } from "@cocurdex/shared";
@@ -148,6 +151,8 @@ export interface DaemonRuntimeClient {
   getTurnChangeFile(
     payload: TurnChangeFileContentRequest,
   ): Promise<TurnChangeFileContent>;
+  listTurnChangeSets(sessionId: string): Promise<TurnChangeSet[]>;
+  getTurnChangeDiff(payload: TurnChangeDiffRequest): Promise<TurnChangeDiff>;
 }
 
 export function createDaemonRuntimeClient(
@@ -555,6 +560,22 @@ export function createDaemonRuntimeClient(
       await ensureDaemon();
       return requestDaemon(
         "session.getTurnChangeFile",
+        payload,
+        requestOptions(),
+      );
+    },
+    async listTurnChangeSets(sessionId) {
+      await ensureDaemon();
+      return requestDaemon(
+        "session.listTurnChangeSets",
+        { sessionId },
+        requestOptions(),
+      );
+    },
+    async getTurnChangeDiff(payload) {
+      await ensureDaemon();
+      return requestDaemon(
+        "session.getTurnChangeDiff",
         payload,
         requestOptions(),
       );

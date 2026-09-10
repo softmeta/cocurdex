@@ -51,6 +51,7 @@ export function useGitChangesAutoViewMode(
 
 export function useSyncWorkspaceGitChanges({
   rootPath,
+  scopeKey,
   loadDiff,
   loadBranches,
   setFileChanges,
@@ -60,6 +61,7 @@ export function useSyncWorkspaceGitChanges({
   setIsActionPending,
 }: {
   rootPath: string | null;
+  scopeKey: string;
   loadDiff(path: string, options?: { showLoading?: boolean }): Promise<void>;
   loadBranches(path: string): Promise<void>;
   setFileChanges: Dispatch<SetStateAction<WorkspaceGitFileChange[]>>;
@@ -69,6 +71,7 @@ export function useSyncWorkspaceGitChanges({
   setIsActionPending: Dispatch<SetStateAction<boolean>>;
 }) {
   useEffect(() => {
+    void scopeKey;
     if (!rootPath) {
       setFileChanges([]);
       setBranches([]);
@@ -81,6 +84,7 @@ export function useSyncWorkspaceGitChanges({
     void loadBranches(rootPath);
   }, [
     rootPath,
+    scopeKey,
     loadDiff,
     loadBranches,
     setFileChanges,

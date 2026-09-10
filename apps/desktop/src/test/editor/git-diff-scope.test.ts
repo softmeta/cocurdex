@@ -6,6 +6,7 @@ import {
   pickDefaultTargetRef,
   resolveBranchScope,
   resolveCommitScope,
+  resolveTurnScope,
   scopeKey,
   scopeToQuery,
 } from "@/features/editor/git-diff-scope";
@@ -30,6 +31,13 @@ describe("isMutableScope", () => {
     expect(isMutableScope({ mode: "commit", commit: "abc" })).toBe(false);
     expect(
       isMutableScope({ mode: "branch", source: "dev", target: "main" }),
+    ).toBe(false);
+    expect(
+      isMutableScope({
+        mode: "turn",
+        sessionId: "s",
+        messageId: "m",
+      }),
     ).toBe(false);
   });
 });
@@ -134,10 +142,50 @@ describe("resolveCommitScope / scopeKey / scopeToQuery", () => {
     expect(scopeKey({ mode: "branch", source: "dev", target: "main" })).toBe(
       "branch:dev->main",
     );
+    expect(scopeKey({ mode: "turn", sessionId: "s", messageId: "m" })).toBe(
+      "turn:s:m",
+    );
   });
 
-  it("passes scope through as the IPC query", () => {
+  it("passes git scopes through as the IPC query", () => {
     const scope = { mode: "staged" as const };
     expect(scopeToQuery(scope)).toBe(scope);
+  });
+});
+
+describe("resolveTurnScope", () => {
+  it("selects the most recent turn when none is selected", () => {
+    expect(
+      resolveTurnScope(
+        "s1",
+        [
+          {
+            id: "a",
+            sessionId: "s1",
+            messageId: "m2",
+            userMessageId: "u2",
+            source: "git-checkpoint",
+            coverage: "workspace",
+            files: [],
+            status: "ready",
+            createdAt: "2026-01-02T00:00:00.000Z",
+            updatedAt: "2026-01-02T00:00:00.000Z",
+          },
+          {
+            id: "b",
+            sessionId: "s1",
+            messageId: "m1",
+            userMessageId: "u1",
+            source: "git-checkpoint",
+            coverage: "workspace",
+            files: [],
+            status: "ready",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        null,
+      ),
+    ).toEqual({ mode: "turn", sessionId: "s1", messageId: "m2" });
   });
 });

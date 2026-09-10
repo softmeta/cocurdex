@@ -1,10 +1,11 @@
 import type {
   HostCheckpointKind,
+  TurnChangeDiff,
   TurnChangeFileContent,
   TurnChangeFileContentRequest,
   TurnChangeSet,
 } from "@cocurdex/shared";
-import { mimeTypeForPath } from "@cocurdex/shared";
+import { buildTurnChangeDiffFile, mimeTypeForPath } from "@cocurdex/shared";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import { MAX_REVIEW_TEXT_BYTES } from "./hash";
 import { sanitizeTurnFileChange } from "./path-safety";
@@ -99,4 +100,47 @@ export async function readTurnChangeFileContent(
       bytes && file.reviewKind !== "text" ? bytes.toString("base64") : null,
     mimeType: mimeTypeForPath(file.path),
   };
+}
+
+export async function readTurnChangeDiff(
+  changeSet: TurnChangeSet,
+  input: { workspaceRootPath: string },
+  adapter: HostCheckpointAdapter,
+  known: Map<string, HostCheckpoint>,
+): Promise<TurnChangeDiff> {
+  if (!changeSet.hostBeforeCheckpointRef && !changeSet.hostAfterCheckpointRef) {
+    return { status: "expired", files: [] };
+  }
+  const files = await Promise.all(
+    changeSet.files.map(async (file) => {
+      const [before, after] = await Promise.all([
+        readTurnChangeFileContent(
+          changeSet,
+          {
+            sessionId: changeSet.sessionId,
+            messageId: changeSet.messageId || changeSet.userMessageId,
+            path: file.path,
+            side: "before",
+            workspaceRootPath: input.workspaceRootPath,
+          },
+          adapter,
+          known,
+        ),
+        readTurnChangeFileContent(
+          changeSet,
+          {
+            sessionId: changeSet.sessionId,
+            messageId: changeSet.messageId || changeSet.userMessageId,
+            path: file.path,
+            side: "after",
+            workspaceRootPath: input.workspaceRootPath,
+          },
+          adapter,
+          known,
+        ),
+      ]);
+      return buildTurnChangeDiffFile(file, before, after);
+    }),
+  );
+  return { status: "ok", files };
 }

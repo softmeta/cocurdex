@@ -261,6 +261,10 @@ export const schemas = {
     path: z.string().min(1).max(4096),
     side: z.enum(["before", "after"]),
   }),
+  turnChangeDiff: z.object({
+    sessionId: idSchema,
+    messageId: idSchema,
+  }),
   queuedInputUpdate: z.object({
     sessionId: idSchema,
     messageId: idSchema,

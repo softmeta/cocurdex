@@ -1,7 +1,10 @@
-import { useAtomValue } from "jotai";
+import type { TurnChangeSet } from "@cocurdex/shared";
+import { useAtom, useAtomValue } from "jotai";
 import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useSessionMessages } from "@/features/agent/view/use-session-messages";
+import { activeSessionIdAtom } from "@/features/sessions";
 import {
   activeWorkingPathAtom,
   activeWorkspaceIdAtom,
@@ -23,20 +26,28 @@ import {
   computeStagedState,
   filterEntriesByChangeType,
   type GitChangeTypeFilter,
+  toGitFileChangesFromTurn,
 } from "./git-changes-model";
-import { gitRevealClockAtom, gitSelectedPathAtom } from "./git-changes-store";
+import {
+  gitDiffScopeAtom,
+  gitRevealClockAtom,
+  gitSelectedPathAtom,
+} from "./git-changes-store";
 import {
   useGitChangesAutoViewMode,
   useSyncWorkspaceGitChanges,
 } from "./git-changes-sync";
 import { GitChangesToolbar, type GitDiffStyle } from "./git-changes-toolbar";
 import {
-  GIT_DEFAULT_DIFF_SCOPE,
   type GitDiffScope,
   isMutableScope,
   resolveBranchScope,
+  resolveTurnScope,
+  scopeKey,
   scopeToQuery,
+  turnChangeSetKey,
 } from "./git-diff-scope";
+import { turnListTitle } from "./git-turn-label";
 import { GIT_DEFAULT_VIEW_MODE, type GitViewMode } from "./git-view-mode";
 import { useGitCommitActions } from "./use-git-commit-actions";
 
@@ -60,7 +71,14 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const [branches, setBranches] = useState<GitBranchInfo[]>([]);
   const [commits, setCommits] = useState<GitCommitInfo[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
-  const [scope, setScope] = useState<GitDiffScope>(GIT_DEFAULT_DIFF_SCOPE);
+  const [scope, setScope] = useAtom(gitDiffScopeAtom);
+  const activeSessionId = useAtomValue(activeSessionIdAtom);
+  const sessionMessages = useSessionMessages(activeSessionId);
+  const [turns, setTurns] = useState<TurnChangeSet[]>([]);
+  const [turnsLoading, setTurnsLoading] = useState(false);
+  const [turnEmptyReason, setTurnEmptyReason] = useState<
+    "none" | "expired" | "missing" | null
+  >(null);
   const [diffStyle, setDiffStyle] = useState<GitDiffStyle>("unified");
   // The committed view: `null` until the user chooses one (toolbar toggle or a
   // deliberate panel-divider drag), at which point it pins. Render falls back to
@@ -134,6 +152,23 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     () => computeStagedState(filteredEntries),
     [filteredEntries],
   );
+  const turnLabels = useMemo(() => {
+    const prompts = new Map<string, string>();
+    for (const message of sessionMessages) {
+      if (message.role === "user") {
+        prompts.set(message.id, message.content);
+      }
+    }
+    const labels: Record<string, string> = {};
+    for (const turn of turns) {
+      labels[turnChangeSetKey(turn)] = turnListTitle(
+        turn,
+        prompts.get(turn.userMessageId) ?? "",
+      );
+    }
+    return labels;
+  }, [sessionMessages, turns]);
+
   const actionsEnabled = isMutableScope(scope);
   const canDiscardAll = actionsEnabled && filteredEntries.length > 0;
   const currentBranch = branches.find((branch) => branch.current)?.name ?? null;
@@ -172,8 +207,9 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const diffRequestSeqRef = useRef(0);
   const branchRequestSeqRef = useRef(0);
   const commitRequestSeqRef = useRef(0);
-  // Always read the latest scope inside loadDiff so watcher reloads do not
-  // capture a stale closure after the user switches modes.
+  const turnRequestSeqRef = useRef(0);
+  const selectedPathRef = useRef(selectedPath);
+  selectedPathRef.current = selectedPath;
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 
@@ -182,9 +218,70 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const loadDiff = useCallback(
     async (path: string, options: { showLoading?: boolean } = {}) => {
       const showLoading = options.showLoading ?? true;
-      const query = scopeToQuery(scopeRef.current);
-      // Incomplete branch selection (menu just chose "branch") waits for
-      // resolveBranchScope before loading.
+      const currentScope = scopeRef.current;
+      if (currentScope.mode === "turn") {
+        if (!currentScope.sessionId || !currentScope.messageId) {
+          setFileChanges([]);
+          setDiffStatus("ok");
+          setTurnEmptyReason("none");
+          setFolded(new Set());
+          knownPathsRef.current = new Set();
+          if (showLoading) setIsLoading(false);
+          return;
+        }
+        const seq = ++diffRequestSeqRef.current;
+        if (showLoading) setIsLoading(true);
+        try {
+          const [result, nextTurns] = await Promise.all([
+            desktopApi.getTurnChangeDiff({
+              sessionId: currentScope.sessionId,
+              messageId: currentScope.messageId,
+            }),
+            desktopApi.listTurnChangeSets(currentScope.sessionId),
+          ]);
+          if (seq !== diffRequestSeqRef.current) return;
+          setTurns(nextTurns);
+          const changes = toGitFileChangesFromTurn(result.files);
+          setDiffStatus(result.status === "error" ? "error" : "ok");
+          setFileChanges(changes);
+          if (result.status === "expired") {
+            setTurnEmptyReason("expired");
+          } else if (result.status === "missing") {
+            setTurnEmptyReason("missing");
+          } else {
+            setTurnEmptyReason(null);
+          }
+          const known = knownPathsRef.current;
+          const revealedPath = selectedPathRef.current;
+          setFolded(
+            (prev) =>
+              new Set(
+                changes
+                  .filter((change) => {
+                    if (revealedPath && change.path === revealedPath) {
+                      return false;
+                    }
+                    return !known.has(change.path) || prev.has(change.path);
+                  })
+                  .map((change) => change.path),
+              ),
+          );
+          knownPathsRef.current = new Set(changes.map((change) => change.path));
+        } catch {
+          if (seq !== diffRequestSeqRef.current) return;
+          setDiffStatus("error");
+          setFileChanges([]);
+          setTurnEmptyReason(null);
+          setFolded(new Set());
+          knownPathsRef.current = new Set();
+        } finally {
+          if (showLoading && seq === diffRequestSeqRef.current) {
+            setIsLoading(false);
+          }
+        }
+        return;
+      }
+      const query = scopeToQuery(currentScope);
       if (
         query.mode === "branch" &&
         (query.source.length === 0 || query.target.length === 0)
@@ -201,6 +298,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
         if (seq !== diffRequestSeqRef.current) return;
         const { changes } = result;
         setDiffStatus(result.status);
+        setTurnEmptyReason(null);
         setFileChanges(changes);
         // Preserve fold state across reloads: files already in the list keep
         // whatever the user set; files that just appeared start collapsed.
@@ -261,6 +359,23 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     }
   }, []);
 
+  const loadTurns = useCallback(async (sessionId: string) => {
+    const seq = ++turnRequestSeqRef.current;
+    setTurnsLoading(true);
+    try {
+      const next = await desktopApi.listTurnChangeSets(sessionId);
+      if (seq !== turnRequestSeqRef.current) return;
+      setTurns(next);
+    } catch {
+      if (seq !== turnRequestSeqRef.current) return;
+      setTurns([]);
+    } finally {
+      if (seq === turnRequestSeqRef.current) {
+        setTurnsLoading(false);
+      }
+    }
+  }, []);
+
   const {
     handleCommitAction,
     handleGenerateCommitMessage,
@@ -274,6 +389,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
 
   useSyncWorkspaceGitChanges({
     rootPath,
+    scopeKey: scopeKey(scope),
     loadDiff,
     loadBranches,
     setFileChanges,
@@ -295,11 +411,8 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     (next: GitDiffScope) => {
       scopeRef.current = next;
       setScope(next);
-      if (rootPath) {
-        void loadDiff(rootPath);
-      }
     },
-    [rootPath, loadDiff],
+    [setScope],
   );
 
   // Run a batched stage / unstage / discard over the given paths in a single
@@ -361,8 +474,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const handleScopeChange = useCallback(
     (next: GitDiffScope) => {
       if (next.mode === "branch") {
-        // Empty source/target means "enter branch mode" from the menu; fill
-        // defaults. Non-empty means the user picked new refs.
         if (next.source.length > 0 && next.target.length > 0) {
           applyScope(next);
           return;
@@ -370,15 +481,30 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
         applyScope(resolveBranchScope(branches, scopeRef.current));
         return;
       }
+      if (next.mode === "turn") {
+        if (next.messageId.length > 0) {
+          applyScope(next);
+          return;
+        }
+        applyScope(
+          resolveTurnScope(activeSessionId ?? "", turns, scopeRef.current),
+        );
+        return;
+      }
       applyScope(next);
     },
-    [applyScope, branches],
+    [activeSessionId, applyScope, branches, turns],
   );
 
   const handleOpenCommits = useCallback(() => {
     if (!rootPath) return;
     void loadCommits(rootPath);
   }, [rootPath, loadCommits]);
+
+  const handleOpenTurns = useCallback(() => {
+    if (!activeSessionId) return;
+    void loadTurns(activeSessionId);
+  }, [activeSessionId, loadTurns]);
 
   if (!activeWorkspace) {
     return (
@@ -421,6 +547,8 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           onDiffStyleChange={setDiffStyle}
           onDiscardAll={handleDiscardAll}
           onOpenCommits={handleOpenCommits}
+          sessionId={activeSessionId}
+          onOpenTurns={handleOpenTurns}
           onRefresh={handleRefresh}
           onScopeChange={handleScopeChange}
           onStageAll={handleStageAll}
@@ -433,6 +561,9 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           expandUnchanged={expandUnchanged}
           scope={scope}
           stagedState={stagedState}
+          turnLabels={turnLabels}
+          turns={turns}
+          turnsLoading={turnsLoading}
           viewMode={viewMode}
           wrap={wrap}
         />
@@ -451,6 +582,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           onStage={handleStage}
           onToggleFile={handleToggleFile}
           onUnstage={handleUnstage}
+          turnEmptyReason={turnEmptyReason}
           scopeMode={scope.mode}
           viewMode={viewMode}
           workspaceName={activeWorkspace.name}

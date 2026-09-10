@@ -3,13 +3,18 @@ import {
   aggregateTurnFileChanges,
   applyContentLineStats,
   attributeTurnFiles,
+  buildTurnChangeDiffFile,
   createUnifiedDiff,
   inferReviewKind,
   mergeNativeAndHostEvidence,
   parseUnifiedDiff,
   sumFileStats,
+  turnFileChangeType,
 } from "./workspace-change-diff";
-import type { TurnFileChange } from "./workspace-changes";
+import type {
+  TurnChangeFileContent,
+  TurnFileChange,
+} from "./workspace-changes";
 
 function file(
   path: string,
@@ -381,5 +386,65 @@ describe("sumFileStats", () => {
         file("b.png", { reviewKind: "image" }),
       ]),
     ).toEqual({ additions: 2, deletions: 1 });
+  });
+});
+
+function side(
+  path: string,
+  overrides: Partial<TurnChangeFileContent> = {},
+): TurnChangeFileContent {
+  return {
+    path,
+    side: "before",
+    reviewKind: "text",
+    exists: true,
+    sizeBytes: 1,
+    hash: null,
+    text: null,
+    contentBase64: null,
+    mimeType: null,
+    ...overrides,
+  };
+}
+
+describe("buildTurnChangeDiffFile", () => {
+  it("maps add/delete/rename operations to git change types", () => {
+    expect(turnFileChangeType("add")).toBe("added");
+    expect(turnFileChangeType("delete")).toBe("deleted");
+    expect(turnFileChangeType("rename")).toBe("modified");
+    expect(turnFileChangeType("modify")).toBe("modified");
+  });
+
+  it("uses before/after text for a modify", () => {
+    expect(
+      buildTurnChangeDiffFile(
+        file("src/a.ts"),
+        side("src/a.ts", { text: "old\n" }),
+        side("src/a.ts", { side: "after", text: "new\n" }),
+      ),
+    ).toEqual({
+      path: "src/a.ts",
+      changeType: "modified",
+      oldContents: "old\n",
+      newContents: "new\n",
+      omittedReason: null,
+    });
+  });
+
+  it("omits non-text files and oversized text", () => {
+    expect(
+      buildTurnChangeDiffFile(
+        file("shot.png", { reviewKind: "image", operation: "add" }),
+        side("shot.png", { exists: false, text: null }),
+        side("shot.png", { side: "after", exists: true, text: null }),
+      ).omittedReason,
+    ).toBe("binary");
+    expect(
+      buildTurnChangeDiffFile(
+        file("src/a.ts"),
+        side("src/a.ts", { exists: true, text: null }),
+        side("src/a.ts", { side: "after", exists: true, text: "new\n" }),
+      ).omittedReason,
+    ).toBe("too-large");
   });
 });

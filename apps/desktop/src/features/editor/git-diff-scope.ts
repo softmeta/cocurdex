@@ -1,18 +1,14 @@
-import type {
-  GitBranchInfo,
-  GitDiffScopeMode,
-  WorkspaceGitDiffQuery,
-} from "@/lib";
+import type { TurnChangeSet } from "@cocurdex/shared";
+import type { GitBranchInfo, WorkspaceGitDiffQuery } from "@/lib";
 
-// Renderer-side scope state. Same shape as the IPC query; kept local so the
-// panel can hold selection (commit hash, source/target) without inventing a
-// second model.
-export type GitDiffScope = WorkspaceGitDiffQuery;
+export type GitDiffScope =
+  | WorkspaceGitDiffQuery
+  | { mode: "turn"; sessionId: string; messageId: string };
 
 export const GIT_DEFAULT_DIFF_SCOPE: GitDiffScope = { mode: "working" };
 
 // Modes that still operate on the live worktree / index and allow stage/discard.
-const MUTABLE_MODES = new Set<GitDiffScopeMode>([
+const MUTABLE_MODES = new Set<GitDiffScope["mode"]>([
   "working",
   "unstaged",
   "staged",
@@ -29,8 +25,39 @@ export function isWorkingTreeScope(scope: GitDiffScope): boolean {
   return isMutableScope(scope);
 }
 
+export function isWorkspaceGitDiffScope(
+  scope: GitDiffScope,
+): scope is WorkspaceGitDiffQuery {
+  return scope.mode !== "turn";
+}
+
 export function scopeToQuery(scope: GitDiffScope): WorkspaceGitDiffQuery {
+  if (!isWorkspaceGitDiffScope(scope)) {
+    return { mode: "working" };
+  }
   return scope;
+}
+
+export function turnChangeSetKey(changeSet: TurnChangeSet) {
+  return changeSet.messageId || changeSet.userMessageId;
+}
+
+export function resolveTurnScope(
+  sessionId: string,
+  turns: readonly TurnChangeSet[],
+  previous: GitDiffScope | null,
+): Extract<GitDiffScope, { mode: "turn" }> {
+  const previousId =
+    previous?.mode === "turn" && previous.sessionId === sessionId
+      ? previous.messageId
+      : "";
+  const match = turns.find((turn) => turnChangeSetKey(turn) === previousId);
+  const selected = match ?? turns[0];
+  return {
+    mode: "turn",
+    sessionId,
+    messageId: selected ? turnChangeSetKey(selected) : "",
+  };
 }
 
 // Left selector default: the currently checked-out local branch (the source
@@ -115,5 +142,7 @@ export function scopeKey(scope: GitDiffScope): string {
       return `commit:${scope.commit}`;
     case "branch":
       return `branch:${scope.source}->${scope.target}`;
+    case "turn":
+      return `turn:${scope.sessionId}:${scope.messageId}`;
   }
 }
