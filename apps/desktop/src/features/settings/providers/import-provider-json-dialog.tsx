@@ -71,13 +71,14 @@ export function ImportProviderJsonDialog({
     if (!file) {
       return;
     }
+
+    const selection = fileSelectionRef.current + 1;
+    fileSelectionRef.current = selection;
     if (!isJsonImportFile(file)) {
       toast.error(t("providers.importJson.invalidFile"));
       return;
     }
 
-    const selection = fileSelectionRef.current + 1;
-    fileSelectionRef.current = selection;
     const parsed = parseProviderJson(await file.text());
     if (selection !== fileSelectionRef.current) {
       return;
