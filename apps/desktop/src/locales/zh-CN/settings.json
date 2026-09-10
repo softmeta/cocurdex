@@ -448,9 +448,18 @@
         "vision": "视觉"
       },
       "contextLimit": "上下文",
+      "cost": {
+        "cacheRead": "缓存读取",
+        "cacheWrite": "缓存写入",
+        "input": "输入",
+        "output": "输出",
+        "title": "成本 / 百万 tokens"
+      },
       "costJson": "成本 JSON，例如 {\"input\":3,\"output\":15}",
       "displayName": "显示名称",
       "headersJson": "自定义 headers JSON，例如 {\"x-api-version\":\"1\"}",
+      "modelCompat": "兼容性",
+      "modelCompatHint": "适配器专用兼容标志的 JSON 对象",
       "modelCompatJson": "模型兼容性 JSON",
       "modelId": "模型 ID",
       "modelRuntime": "模型运行时",
@@ -459,6 +468,16 @@
       "providerCompatJson": "服务商兼容性 JSON",
       "providerId": "服务商 ID",
       "reasoning": "支持推理",
+      "runtime": {
+        "anthropic-messages": "Anthropic Messages",
+        "google-generative-ai": "Google Generative AI",
+        "mistral-conversations": "Mistral Conversations",
+        "openai-codex-responses": "OpenAI Codex Responses",
+        "openai-completions": "OpenAI Completions",
+        "openai-responses": "OpenAI Responses"
+      },
+      "thinkingLevelMap": "思考映射",
+      "thinkingLevelMapHint": "将级别映射到 token 预算的 JSON 对象，例如 {\"high\":10000}",
       "thinkingLevelMapJson": "思考级别映射 JSON，例如 {\"high\":10000}"
     },
     "header": {
@@ -466,10 +485,14 @@
       "title": "服务商管理"
     },
     "importJson": {
-      "back": "返回",
+      "cancel": "取消",
       "confirm": "导入",
-      "description": "粘贴 pi 风格的 models.json。每个服务商及其模型会写入（同 ID 覆盖）。字面量 apiKey 会保存；$ENV 与 !command 需手动填写密钥。",
+      "description": "导入 pi 风格的 models.json。每个服务商及其模型会写入（同 ID 覆盖）。字面量 apiKey 会保存；$ENV 与 !command 需手动填写密钥。",
       "importing": "导入中…",
+      "invalidFile": "请选择 JSON 文本文件。",
+      "providerCount": "{{count}} 个服务商",
+      "providerCount_other": "{{count}} 个服务商",
+      "summary": "将写入 {{providers}}、{{models}}。",
       "title": "导入 JSON",
       "warnings": {
         "authHeaderNoKey": "服务商「{{id}}」：设置了 authHeader 但未提供字面量 apiKey。",
@@ -483,6 +506,7 @@
     },
     "models": {
       "addTitle": "添加模型",
+      "advanced": "高级",
       "columns": {
         "capabilities": "能力",
         "compat": "兼容配置",

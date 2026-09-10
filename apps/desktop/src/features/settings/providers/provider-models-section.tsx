@@ -1,25 +1,14 @@
-import {
-  type ProviderApi,
-  type ProviderConfigRecord,
-  type ProviderModelCapability,
-  type ProviderModelRecord,
-  providerApis,
+import type {
+  ProviderConfigRecord,
+  ProviderModelRecord,
 } from "@cocurdex/shared";
-import {
-  Plus,
-  RefreshCw,
-  Search,
-  SlidersHorizontal,
-  Trash2,
-} from "lucide-react";
-import { useId, useState } from "react";
+import { Plus, RefreshCw, Search } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -33,35 +22,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Textarea,
 } from "@/components/ui";
-import { cn, desktopApi } from "@/lib";
-import { SettingsSelect } from "../settings-select";
+import { cn } from "@/lib";
+import { ModelParametersDialog } from "./model-parameters-dialog";
+import { ModelRuntimeSelect } from "./model-runtime-select";
 
 const fieldClass =
   "h-8 min-w-0 rounded-control border-border/70 bg-background/60 text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20";
-const textareaClass =
-  "min-h-16 min-w-0 rounded-control border-border/70 bg-background/60 font-mono text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20";
-const modelCapabilities: ProviderModelCapability[] = [
-  "agent",
-  "chat",
-  "vision",
-  "reasoning",
-];
-const apiOptions = providerApis.map((api) => ({
-  label: api,
-  value: api,
-}));
-
-function parseLimit(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
 
 function getModelInput(model: ProviderModelRecord) {
   return model.capabilities?.includes("vision") ? "text, image" : "text";
@@ -296,7 +263,7 @@ export function ProviderModelsSection({
                     </div>
                   </TableCell>
                   <TableCell className="min-w-44 max-w-56 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {model.api}
+                    {t(`providers.fields.runtime.${model.api}`)}
                   </TableCell>
                   <TableCell className="px-3 py-2">
                     <ModelLimit
@@ -441,15 +408,13 @@ function AddModelDialog({
             <span className="text-xs font-medium text-muted-foreground">
               {t("providers.fields.modelRuntime")}
             </span>
-            <SettingsSelect
+            <ModelRuntimeSelect
               ariaLabel={t("providers.fields.modelRuntime")}
-              className="w-full min-w-0"
-              options={apiOptions}
               value={draftModel.api}
               onChange={(value) =>
                 onDraftModelChange({
                   ...draftModel,
-                  api: value as ProviderApi,
+                  api: value,
                 })
               }
             />
@@ -485,234 +450,4 @@ function ModelLimit({
 
 function formatLimit(value: number) {
   return value >= 1000 ? `${Math.round(value / 1000)}K` : String(value);
-}
-
-interface ModelParametersDialogProps {
-  model: ProviderModelRecord;
-  readOnly?: boolean;
-  onReload(): Promise<void>;
-  onSaveModel(model: ProviderModelRecord): Promise<void>;
-}
-
-function ModelParametersDialog({
-  model,
-  readOnly = false,
-  onReload,
-  onSaveModel,
-}: ModelParametersDialogProps) {
-  const { t } = useTranslation("settings");
-  const reasoningSwitchId = useId();
-  const [contextLimit, setContextLimit] = useState(
-    model.contextLimit?.toString() ?? "",
-  );
-  const [outputLimit, setOutputLimit] = useState(
-    model.outputLimit?.toString() ?? "",
-  );
-  const [isOpen, setIsOpen] = useState(false);
-  const [api, setApi] = useState<ProviderApi>(model.api);
-  const [capabilities, setCapabilities] = useState<ProviderModelCapability[]>(
-    model.capabilities ?? [],
-  );
-  const [reasoning, setReasoning] = useState(model.reasoning ?? false);
-  const [thinkingLevelMapJson, setThinkingLevelMapJson] = useState(
-    model.thinkingLevelMapJson ?? "",
-  );
-  const [costJson, setCostJson] = useState(model.costJson ?? "");
-  const [compatJson, setCompatJson] = useState(model.compatJson ?? "");
-
-  function toggleCapability(capability: ProviderModelCapability) {
-    setCapabilities((current) =>
-      current.includes(capability)
-        ? current.filter((item) => item !== capability)
-        : [...current, capability],
-    );
-  }
-
-  async function saveParameters() {
-    await onSaveModel({
-      ...model,
-      contextLimit: parseLimit(contextLimit),
-      outputLimit: parseLimit(outputLimit),
-      api,
-      capabilities,
-      reasoning,
-      thinkingLevelMapJson: thinkingLevelMapJson.trim() || null,
-      costJson: costJson.trim() || null,
-      compatJson: compatJson.trim() || null,
-    });
-    setIsOpen(false);
-  }
-
-  async function deleteModel() {
-    await desktopApi.deleteProviderModel(model.providerId, model.modelId);
-    await onReload();
-    setIsOpen(false);
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          aria-label={t("providers.models.parametersFor", {
-            model: model.name,
-          })}
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-        >
-          <SlidersHorizontal />
-        </Button>
-      </DialogTrigger>
-      <DialogContent size="default">
-        <DialogHeader>
-          <DialogTitle>{t("providers.models.parametersTitle")}</DialogTitle>
-          <DialogDescription className="truncate text-xs">
-            {model.name}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4">
-          <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("providers.fields.modelRuntime")}
-            </span>
-            <SettingsSelect
-              ariaLabel={t("providers.models.runtimeFor", {
-                model: model.name,
-              })}
-              className="w-full min-w-0"
-              disabled={readOnly}
-              options={apiOptions}
-              value={api}
-              onChange={(value) => setApi(value as ProviderApi)}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Label className="grid gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("providers.fields.contextLimit")}
-              </span>
-              <Input
-                className={fieldClass}
-                disabled={readOnly}
-                inputMode="numeric"
-                placeholder={t("providers.fields.contextLimit")}
-                value={contextLimit}
-                onChange={(event) => setContextLimit(event.target.value)}
-              />
-            </Label>
-            <Label className="grid gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("providers.fields.outputLimit")}
-              </span>
-              <Input
-                className={fieldClass}
-                disabled={readOnly}
-                inputMode="numeric"
-                placeholder={t("providers.fields.outputLimit")}
-                value={outputLimit}
-                onChange={(event) => setOutputLimit(event.target.value)}
-              />
-            </Label>
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("providers.fields.capabilities")}
-            </span>
-            <div className="flex flex-wrap gap-3">
-              {modelCapabilities.map((capability) => (
-                <Label
-                  className={cn(
-                    "flex items-center gap-2 text-sm",
-                    readOnly && "cursor-not-allowed opacity-50",
-                  )}
-                  key={capability}
-                >
-                  <Checkbox
-                    checked={capabilities.includes(capability)}
-                    disabled={readOnly}
-                    onCheckedChange={() => toggleCapability(capability)}
-                  />
-                  {t(`providers.fields.capability.${capability}`)}
-                </Label>
-              ))}
-            </div>
-          </div>
-
-          <Label
-            className={cn(
-              "flex items-center gap-2 text-sm",
-              readOnly && "cursor-not-allowed",
-            )}
-            htmlFor={reasoningSwitchId}
-          >
-            <Switch
-              checked={reasoning}
-              disabled={readOnly}
-              id={reasoningSwitchId}
-              onCheckedChange={(checked) => setReasoning(checked === true)}
-            />
-            {t("providers.fields.reasoning")}
-          </Label>
-
-          <Label className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("providers.fields.thinkingLevelMapJson")}
-            </span>
-            <Textarea
-              className={textareaClass}
-              disabled={readOnly}
-              placeholder={t("providers.fields.thinkingLevelMapJson")}
-              value={thinkingLevelMapJson}
-              onChange={(event) => setThinkingLevelMapJson(event.target.value)}
-            />
-          </Label>
-
-          <Label className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("providers.fields.costJson")}
-            </span>
-            <Textarea
-              className={textareaClass}
-              disabled={readOnly}
-              placeholder={t("providers.fields.costJson")}
-              value={costJson}
-              onChange={(event) => setCostJson(event.target.value)}
-            />
-          </Label>
-
-          <Label className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("providers.fields.modelCompatJson")}
-            </span>
-            <Textarea
-              className={textareaClass}
-              disabled={readOnly}
-              placeholder={t("providers.fields.modelCompatJson")}
-              value={compatJson}
-              onChange={(event) => setCompatJson(event.target.value)}
-            />
-          </Label>
-        </div>
-
-        {readOnly ? null : (
-          <DialogFooter className="gap-2">
-            <Button
-              className="text-muted-foreground hover:text-destructive"
-              type="button"
-              variant="ghost"
-              onClick={deleteModel}
-            >
-              <Trash2 />
-              {t("providers.actions.delete")}
-            </Button>
-            <Button type="button" variant="secondary" onClick={saveParameters}>
-              {t("providers.actions.save")}
-            </Button>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
 }

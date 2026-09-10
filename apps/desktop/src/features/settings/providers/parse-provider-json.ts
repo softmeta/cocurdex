@@ -49,6 +49,15 @@ function isProviderApi(value: unknown): value is ProviderApi {
   return typeof value === "string" && SUPPORTED_APIS.has(value);
 }
 
+export function isJsonImportFile(file: Pick<File, "name" | "type">): boolean {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".json") || name.endsWith(".txt")) {
+    return true;
+  }
+  const type = file.type.toLowerCase();
+  return type === "" || type === "application/json" || type.startsWith("text/");
+}
+
 /** Strip `//` line comments and trailing commas, leaving string literals intact. */
 export function stripJsonComments(input: string): string {
   return input

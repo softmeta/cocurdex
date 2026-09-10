@@ -1561,9 +1561,18 @@ export default interface Resources {
           vision: "Vision";
         };
         contextLimit: "Context";
+        cost: {
+          cacheRead: "Cache read";
+          cacheWrite: "Cache write";
+          input: "Input";
+          output: "Output";
+          title: "Cost / 1M tokens";
+        };
         costJson: 'Cost JSON, e.g. {"input":3,"output":15}';
         displayName: "Display name";
         headersJson: 'Custom headers JSON, e.g. {"x-api-version":"1"}';
+        modelCompat: "Compatibility";
+        modelCompatHint: "JSON object for adapter-specific compatibility flags";
         modelCompatJson: "Model compatibility JSON";
         modelId: "Model ID";
         modelRuntime: "Model runtime";
@@ -1572,6 +1581,16 @@ export default interface Resources {
         providerCompatJson: "Provider compatibility JSON";
         providerId: "Provider ID";
         reasoning: "Supports reasoning";
+        runtime: {
+          "anthropic-messages": "Anthropic Messages";
+          "google-generative-ai": "Google Generative AI";
+          "mistral-conversations": "Mistral Conversations";
+          "openai-codex-responses": "OpenAI Codex Responses";
+          "openai-completions": "OpenAI Completions";
+          "openai-responses": "OpenAI Responses";
+        };
+        thinkingLevelMap: "Thinking map";
+        thinkingLevelMapHint: 'JSON object mapping levels to token budgets, e.g. {"high":10000}';
         thinkingLevelMapJson: 'Thinking level map JSON, e.g. {"high":10000}';
       };
       header: {
@@ -1579,10 +1598,15 @@ export default interface Resources {
         title: "Provider management";
       };
       importJson: {
-        back: "Back";
+        cancel: "Cancel";
         confirm: "Import";
-        description: "Paste a pi-style models.json. Each provider is upserted with its models. Literal apiKey values are stored; $ENV and !command keys must be set manually.";
+        description: "Import a pi-style models.json. Each provider is upserted with its models. Literal apiKey values are stored; $ENV and !command keys must be set manually.";
         importing: "Importing…";
+        invalidFile: "Choose a JSON text file.";
+        providerCount: "{{count}} providers";
+        providerCount_one: "{{count}} provider";
+        providerCount_other: "{{count}} providers";
+        summary: "Will write {{providers}} and {{models}}.";
         title: "Import JSON";
         warnings: {
           authHeaderNoKey: 'Provider "{{id}}": authHeader is set but no literal apiKey was provided.';
@@ -1596,6 +1620,7 @@ export default interface Resources {
       };
       models: {
         addTitle: "Add model";
+        advanced: "Advanced";
         columns: {
           capabilities: "Capabilities";
           compat: "Compat";

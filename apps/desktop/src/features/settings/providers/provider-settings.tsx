@@ -6,7 +6,7 @@ import type {
   TitleModelSelection,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
-import { Braces, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { type ReactNode, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ import {
 } from "@/features/sessions";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { SettingsSearchableSelect } from "../settings-select";
-import { ImportProviderJsonPanel } from "./import-provider-json-panel";
+import { ImportProviderJsonDialog } from "./import-provider-json-dialog";
 import type {
   ParsedProviderImport,
   ProviderImportWarning,
@@ -195,9 +195,6 @@ export function ProviderSettingsPanel() {
   // draft so the user only needs to paste an API key.
   const [pendingTemplateId, setPendingTemplateId] = useState("");
   const [providerQuery, setProviderQuery] = useState("");
-  // JSON import is a one-shot flow (not a dual editor), so it is a view flag
-  // rather than a peer "mode" next to the form.
-  const [isImportView, setIsImportView] = useState(false);
   // Encoded `providerId|modelId` of the dedicated title model, or "" for none.
   const [titleModelValue, setTitleModelValue] = useState("");
   // Connectivity probe result for the dedicated title model. Reset when the
@@ -376,7 +373,10 @@ export function ProviderSettingsPanel() {
     // or one is already stored. Otherwise re-saving a configured provider would
     // silently leave it without models.
     const hasApiKey = Boolean(apiKey.trim() || provider.apiKeySecretId);
-    if (hasApiKey) {
+    const hasExistingModels = models.some(
+      (model) => model.providerId === provider.id,
+    );
+    if (hasApiKey && !hasExistingModels) {
       const result = await desktopApi.listProviderModels(provider.id);
       fetchedModels = result.error ? null : result.models;
       if (result.error) {
@@ -546,7 +546,6 @@ export function ProviderSettingsPanel() {
     setSelectedProviderId(firstId);
     setIsCreatingProvider(false);
     setPendingTemplateId("");
-    setIsImportView(false);
 
     toast.success(
       t("providers.status.importSucceeded", { count: entries.length }),
@@ -659,246 +658,212 @@ export function ProviderSettingsPanel() {
 
   return (
     <div className="settings-panel-enter flex min-w-0 flex-col gap-6">
-      {isImportView ? (
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-medium">
-            {t("providers.importJson.title")}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/65" />
+            <Input
+              className="h-8 rounded-control border-border/70 bg-background/60 ps-9 pe-3 text-body shadow-none placeholder:text-muted-foreground/70 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
+              placeholder={t("providers.searchPlaceholder")}
+              value={providerQuery}
+              onChange={(event) => setProviderQuery(event.target.value)}
+            />
           </div>
-          <Button
-            size="sm"
-            type="button"
-            variant="ghost"
-            onClick={() => setIsImportView(false)}
-          >
-            {t("providers.importJson.back")}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              size="sm"
+              type="button"
+              variant="secondary"
+              onClick={startNewProvider}
+            >
+              <Plus className="size-4" />
+              {t("providers.actions.newProvider")}
+            </Button>
+            <ImportProviderJsonDialog onImport={importProvidersFromJson} />
+          </div>
         </div>
-      ) : null}
 
-      {isImportView ? (
-        <ImportProviderJsonPanel onImport={importProvidersFromJson} />
-      ) : (
-        <>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/65" />
-                <Input
-                  className="h-8 rounded-control border-border/70 bg-background/60 ps-9 pe-3 text-body shadow-none placeholder:text-muted-foreground/70 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
-                  placeholder={t("providers.searchPlaceholder")}
-                  value={providerQuery}
-                  onChange={(event) => setProviderQuery(event.target.value)}
-                />
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsImportView(true)}
-                >
-                  <Braces className="size-4" />
-                  {t("providers.actions.importJson")}
-                </Button>
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="secondary"
-                  onClick={startNewProvider}
-                >
-                  <Plus className="size-4" />
-                  {t("providers.actions.newProvider")}
-                </Button>
-              </div>
-            </div>
-
-            <ProviderStrip>
-              {filteredProviders.length === 0 &&
-              filteredTemplates.length === 0 ? (
-                <div
-                  className={cn(
-                    providerTabClassName,
-                    "w-auto min-w-44 cursor-default border-transparent bg-transparent",
-                  )}
-                >
-                  <span className="text-body font-medium text-muted-foreground">
-                    {t("providers.empty.noMatches")}
-                  </span>
-                  <span className="w-full text-2xs">&nbsp;</span>
-                </div>
-              ) : (
-                <>
-                  {filteredProviders.map((provider) => {
-                    const isActive =
-                      surface.kind === "provider" && surface.id === provider.id;
-                    const modelCount = models.filter(
-                      (model) => model.providerId === provider.id,
-                    ).length;
-
-                    return (
-                      <button
-                        className={cn(
-                          providerTabClassName,
-                          isActive
-                            ? activeProviderTabClassName
-                            : inactiveProviderTabClassName,
-                        )}
-                        aria-pressed={isActive}
-                        key={provider.id}
-                        type="button"
-                        onClick={() => selectProvider(provider)}
-                      >
-                        <span className="flex w-full items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate text-body font-medium">
-                            {provider.name}
-                          </span>
-                          <span
-                            className={cn(
-                              "size-1.5 shrink-0 rounded-full",
-                              provider.enabled
-                                ? "bg-emerald-500/70"
-                                : "bg-muted-foreground/30",
-                            )}
-                          />
-                        </span>
-                        <span className="w-full truncate text-2xs text-muted-foreground/70">
-                          {t("providers.models.modelCount", {
-                            count: modelCount,
-                          })}
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  {filteredTemplates.map((template) => {
-                    const isActive =
-                      isCreatingProvider && pendingTemplateId === template.id;
-                    return (
-                      <button
-                        className={cn(
-                          templateCardClassName,
-                          isActive
-                            ? activeProviderTabClassName
-                            : inactiveProviderTabClassName,
-                        )}
-                        aria-pressed={isActive}
-                        key={`template:${template.id}`}
-                        type="button"
-                        onClick={() =>
-                          startNewProviderFromTemplate(template.id)
-                        }
-                      >
-                        <span className="w-full truncate text-body font-medium">
-                          {template.name}
-                        </span>
-                        <span className="w-full truncate text-2xs text-muted-foreground/70">
-                          {template.baseUrl}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </>
+        <ProviderStrip>
+          {filteredProviders.length === 0 && filteredTemplates.length === 0 ? (
+            <div
+              className={cn(
+                providerTabClassName,
+                "w-auto min-w-44 cursor-default border-transparent bg-transparent",
               )}
-            </ProviderStrip>
-          </div>
-
-          {/* Config area: full width below the card strip. */}
-          <div className="flex min-w-0 flex-col gap-6">
-            {shouldShowProviderEditor ? (
-              <ProviderEditor
-                authMethods={editorAuthMethods}
-                key={editorKey}
-                provider={editorProvider}
-                selectedProvider={selectedProvider}
-                selectedModels={selectedModels}
-                presetProviderIds={presetProviderIds}
-                onClearApiKey={clearApiKey}
-                onRefreshModels={refreshModels}
-                onReload={reload}
-                onRemoveProvider={removeProvider}
-                onSaveModel={saveModel}
-                onSaveProvider={saveProvider}
-                onUpdateProviderEnabled={updateProviderEnabled}
-              />
-            ) : null}
-            {!shouldShowProviderEditor ? (
-              <div className="flex min-h-[160px] items-center justify-center rounded-control border border-dashed border-border/60 px-6 text-center text-body text-muted-foreground">
-                {t("providers.templates.description")}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-control border border-border/60 px-3 py-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-sm font-medium">
-                  {t("providers.titleModel.label")}
-                </span>
-                <span className="text-2xs text-muted-foreground">
-                  {t("providers.titleModel.description")}
-                </span>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <SettingsSearchableSelect
-                  ariaLabel={t("providers.titleModel.label")}
-                  emptyText={t("providers.models.noMatches")}
-                  options={[
-                    {
-                      value: "",
-                      label: titleModelNoneLabel,
-                      group: "none",
-                      groupLabel: "",
-                    },
-                    ...titleModelGroups.flatMap((group) =>
-                      group.options.map((option) => ({
-                        value: option.value,
-                        label: option.label,
-                        keywords: option.value,
-                        group: group.label,
-                        groupLabel: group.label,
-                      })),
-                    ),
-                  ]}
-                  searchPlaceholder={t("providers.models.searchPlaceholder")}
-                  triggerLabel={titleModelSelectedLabel}
-                  value={titleModelValue}
-                  onChange={(next) => {
-                    void selectTitleModel(next);
-                  }}
-                />
-                <Button
-                  disabled={
-                    !titleModelValue || titleModelProbe.status === "testing"
-                  }
-                  type="button"
-                  variant="outline"
-                  onClick={() => void probeSelectedTitleModel()}
-                >
-                  {titleModelProbe.status === "testing" ? (
-                    <Spinner size="sm" />
-                  ) : null}
-                  {titleModelProbe.status === "testing"
-                    ? t("providers.titleModel.testing")
-                    : t("providers.titleModel.test")}
-                </Button>
-              </div>
-            </div>
-            {titleModelProbeStatusText ? (
-              <span
-                className={cn(
-                  "text-2xs",
-                  titleModelProbe.status === "done" &&
-                    !titleModelProbe.result.ok
-                    ? "text-destructive"
-                    : "text-muted-foreground",
-                )}
-              >
-                {titleModelProbeStatusText}
+            >
+              <span className="text-body font-medium text-muted-foreground">
+                {t("providers.empty.noMatches")}
               </span>
-            ) : null}
+              <span className="w-full text-2xs">&nbsp;</span>
+            </div>
+          ) : (
+            <>
+              {filteredProviders.map((provider) => {
+                const isActive =
+                  surface.kind === "provider" && surface.id === provider.id;
+                const modelCount = models.filter(
+                  (model) => model.providerId === provider.id,
+                ).length;
+
+                return (
+                  <button
+                    className={cn(
+                      providerTabClassName,
+                      isActive
+                        ? activeProviderTabClassName
+                        : inactiveProviderTabClassName,
+                    )}
+                    aria-pressed={isActive}
+                    key={provider.id}
+                    type="button"
+                    onClick={() => selectProvider(provider)}
+                  >
+                    <span className="flex w-full items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-body font-medium">
+                        {provider.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          provider.enabled
+                            ? "bg-emerald-500/70"
+                            : "bg-muted-foreground/30",
+                        )}
+                      />
+                    </span>
+                    <span className="w-full truncate text-2xs text-muted-foreground/70">
+                      {t("providers.models.modelCount", {
+                        count: modelCount,
+                      })}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {filteredTemplates.map((template) => {
+                const isActive =
+                  isCreatingProvider && pendingTemplateId === template.id;
+                return (
+                  <button
+                    className={cn(
+                      templateCardClassName,
+                      isActive
+                        ? activeProviderTabClassName
+                        : inactiveProviderTabClassName,
+                    )}
+                    aria-pressed={isActive}
+                    key={`template:${template.id}`}
+                    type="button"
+                    onClick={() => startNewProviderFromTemplate(template.id)}
+                  >
+                    <span className="w-full truncate text-body font-medium">
+                      {template.name}
+                    </span>
+                    <span className="w-full truncate text-2xs text-muted-foreground/70">
+                      {template.baseUrl}
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </ProviderStrip>
+      </div>
+
+      {/* Config area: full width below the card strip. */}
+      <div className="flex min-w-0 flex-col gap-6">
+        {shouldShowProviderEditor ? (
+          <ProviderEditor
+            authMethods={editorAuthMethods}
+            key={editorKey}
+            provider={editorProvider}
+            selectedProvider={selectedProvider}
+            selectedModels={selectedModels}
+            presetProviderIds={presetProviderIds}
+            onClearApiKey={clearApiKey}
+            onRefreshModels={refreshModels}
+            onReload={reload}
+            onRemoveProvider={removeProvider}
+            onSaveModel={saveModel}
+            onSaveProvider={saveProvider}
+            onUpdateProviderEnabled={updateProviderEnabled}
+          />
+        ) : null}
+        {!shouldShowProviderEditor ? (
+          <div className="flex min-h-[160px] items-center justify-center rounded-control border border-dashed border-border/60 px-6 text-center text-body text-muted-foreground">
+            {t("providers.templates.description")}
           </div>
-        </>
-      )}
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-control border border-border/60 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-sm font-medium">
+              {t("providers.titleModel.label")}
+            </span>
+            <span className="text-2xs text-muted-foreground">
+              {t("providers.titleModel.description")}
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <SettingsSearchableSelect
+              ariaLabel={t("providers.titleModel.label")}
+              emptyText={t("providers.models.noMatches")}
+              options={[
+                {
+                  value: "",
+                  label: titleModelNoneLabel,
+                  group: "none",
+                  groupLabel: "",
+                },
+                ...titleModelGroups.flatMap((group) =>
+                  group.options.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                    keywords: option.value,
+                    group: group.label,
+                    groupLabel: group.label,
+                  })),
+                ),
+              ]}
+              searchPlaceholder={t("providers.models.searchPlaceholder")}
+              triggerLabel={titleModelSelectedLabel}
+              value={titleModelValue}
+              onChange={(next) => {
+                void selectTitleModel(next);
+              }}
+            />
+            <Button
+              disabled={
+                !titleModelValue || titleModelProbe.status === "testing"
+              }
+              type="button"
+              variant="outline"
+              onClick={() => void probeSelectedTitleModel()}
+            >
+              {titleModelProbe.status === "testing" ? (
+                <Spinner size="sm" />
+              ) : null}
+              {titleModelProbe.status === "testing"
+                ? t("providers.titleModel.testing")
+                : t("providers.titleModel.test")}
+            </Button>
+          </div>
+        </div>
+        {titleModelProbeStatusText ? (
+          <span
+            className={cn(
+              "text-2xs",
+              titleModelProbe.status === "done" && !titleModelProbe.result.ok
+                ? "text-destructive"
+                : "text-muted-foreground",
+            )}
+          >
+            {titleModelProbeStatusText}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
