@@ -1,5 +1,8 @@
-import type { UseFileTreeResult } from "@pierre/trees/react";
-import { useEffect } from "react";
+import {
+  type UseFileTreeResult,
+  useFileTreeSelection,
+} from "@pierre/trees/react";
+import { useEffect, useRef } from "react";
 import { entriesToGitStatus, type GitChangeEntry } from "./git-changes-model";
 import { toGitTreePath } from "./git-changes-tree-paths";
 
@@ -44,13 +47,20 @@ export function useSyncGitChangesTreeSelection(
   selectedTreePath: string | null,
   revealClock: number,
 ) {
+  const selectedPaths = useFileTreeSelection(model);
+  const appliedRevealClockRef = useRef(revealClock);
+
   useEffect(() => {
     if (!selectedTreePath) {
       return;
     }
-    if (revealClock < 0) {
+    const alreadyFocused =
+      selectedPaths.length === 1 && selectedPaths[0] === selectedTreePath;
+    const revealRequested = appliedRevealClockRef.current !== revealClock;
+    appliedRevealClockRef.current = revealClock;
+    if (alreadyFocused && !revealRequested) {
       return;
     }
     model.focusPath(selectedTreePath);
-  }, [selectedTreePath, revealClock, model]);
+  }, [selectedTreePath, selectedPaths, revealClock, model]);
 }

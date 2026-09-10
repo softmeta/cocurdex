@@ -96,12 +96,12 @@ function readSubagentNotification(method: string, params: unknown) {
   if (update.sessionUpdate === "subagent_finished") {
     return {
       kind: "settlement" as const,
-      results: [
-        {
-          providerSessionId,
+      results: [...new Set([providerSessionId, ...alsoKnownAs])].map(
+        (sessionId) => ({
+          providerSessionId: sessionId,
           status: readResultStatus(update.status),
-        },
-      ],
+        }),
+      ),
     };
   }
   if (update.sessionUpdate !== "subagent_spawned") {

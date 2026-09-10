@@ -99,7 +99,7 @@ describe("grokBuildSubagentProtocol", () => {
     });
   });
 
-  it("settles aliased Grok child ids as one result", () => {
+  it("includes every aliased Grok child id in the settlement lookup", () => {
     expect(
       grokBuildSubagentProtocol.inspectNotification?.(
         "x.ai/session_notification",
@@ -115,7 +115,10 @@ describe("grokBuildSubagentProtocol", () => {
       ),
     ).toEqual({
       kind: "settlement",
-      results: [{ providerSessionId: "session-42", status: "completed" }],
+      results: [
+        { providerSessionId: "session-42", status: "completed" },
+        { providerSessionId: "task-7", status: "completed" },
+      ],
     });
   });
 
