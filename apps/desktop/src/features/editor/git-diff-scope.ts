@@ -44,12 +44,12 @@ export function turnChangeSetKey(changeSet: TurnChangeSet) {
 
 export function scopeForActiveSession(
   scope: GitDiffScope,
-  sessionId: string | null,
+  allowedSessionIds: ReadonlySet<string> | null,
 ): GitDiffScope {
   if (scope.mode !== "turn") {
     return scope;
   }
-  if (sessionId && scope.sessionId === sessionId) {
+  if (allowedSessionIds?.has(scope.sessionId)) {
     return scope;
   }
   return GIT_DEFAULT_DIFF_SCOPE;

@@ -1,7 +1,10 @@
 import type { TurnChangeSet } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import type { HostCheckpointAdapter } from "./checkpoint";
-import { readTurnChangeDiff } from "./coordinator-file-content";
+import {
+  readTurnChangeDiff,
+  readTurnChangeFileContent,
+} from "./coordinator-file-content";
 
 function changeSet(overrides: Partial<TurnChangeSet> = {}): TurnChangeSet {
   return {
@@ -73,5 +76,49 @@ describe("readTurnChangeDiff", () => {
         new Map(),
       ),
     ).resolves.toEqual({ status: "missing", files: [] });
+  });
+});
+
+describe("readTurnChangeFileContent", () => {
+  it("treats recorded size without bytes as an existing omitted file", async () => {
+    const checkpoint = {
+      id: "after",
+      kind: "filesystem-checkpoint" as const,
+      ref: "after",
+      workspaceRootPath: "/tmp",
+    };
+    const adapter: HostCheckpointAdapter = {
+      ...unusedAdapter(),
+      readFile: async () => null,
+    };
+    await expect(
+      readTurnChangeFileContent(
+        changeSet({
+          hostAfterCheckpointRef: "after",
+          hostAfterCheckpointKind: "filesystem-checkpoint",
+          files: [
+            {
+              path: "notes.md",
+              operation: "modify",
+              reviewKind: "text",
+              afterSize: 12_000_000,
+            },
+          ],
+        }),
+        {
+          sessionId: "s1",
+          messageId: "m1",
+          path: "notes.md",
+          side: "after",
+          workspaceRootPath: "/tmp",
+        },
+        adapter,
+        new Map([["after", checkpoint]]),
+      ),
+    ).resolves.toMatchObject({
+      exists: true,
+      text: null,
+      sizeBytes: 12_000_000,
+    });
   });
 });

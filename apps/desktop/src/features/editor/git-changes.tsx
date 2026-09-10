@@ -4,7 +4,11 @@ import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSessionMessages } from "@/features/agent/view/use-session-messages";
-import { activeSessionIdAtom } from "@/features/sessions";
+import {
+  activeSessionIdAtom,
+  collectSessionSubtreeIds,
+  sessionsAtom,
+} from "@/features/sessions";
 import {
   activeWorkingPathAtom,
   activeWorkspaceIdAtom,
@@ -74,12 +78,21 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [scope, setScope] = useAtom(gitDiffScopeAtom);
   const activeSessionId = useAtomValue(activeSessionIdAtom);
-  const activeScope = scopeForActiveSession(scope, activeSessionId);
+  const sessions = useAtomValue(sessionsAtom);
+  const allowedTurnSessionIds = activeSessionId
+    ? collectSessionSubtreeIds(sessions, activeSessionId)
+    : null;
+  const activeScope = scopeForActiveSession(scope, allowedTurnSessionIds);
   if (activeScope !== scope) {
     setScope(activeScope);
   }
   const sessionMessages = useSessionMessages(activeSessionId);
   const [turns, setTurns] = useState<TurnChangeSet[]>([]);
+  const turnsSessionIdRef = useRef(activeSessionId);
+  if (turnsSessionIdRef.current !== activeSessionId) {
+    turnsSessionIdRef.current = activeSessionId;
+    setTurns([]);
+  }
   const [turnsLoading, setTurnsLoading] = useState(false);
   const [turnEmptyReason, setTurnEmptyReason] = useState<
     "none" | "expired" | "missing" | null

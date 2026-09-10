@@ -79,9 +79,12 @@ export async function readTurnChangeFileContent(
     input.side === "before" && file.previousPath
       ? file.previousPath
       : file.path;
+  const recordedSize =
+    input.side === "before" ? file.beforeSize : file.afterSize;
   const bytes = checkpoint
     ? await adapter.readFile(checkpoint, relativePath)
     : null;
+  const exists = bytes != null || recordedSize != null;
   const text =
     bytes &&
     file.reviewKind === "text" &&
@@ -92,8 +95,8 @@ export async function readTurnChangeFileContent(
     path: file.path,
     side: input.side,
     reviewKind: file.reviewKind,
-    exists: bytes != null,
-    sizeBytes: bytes?.byteLength ?? null,
+    exists,
+    sizeBytes: bytes?.byteLength ?? recordedSize ?? null,
     hash:
       input.side === "before"
         ? (file.beforeHash ?? null)

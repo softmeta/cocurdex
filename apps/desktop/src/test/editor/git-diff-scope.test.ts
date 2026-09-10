@@ -155,20 +155,31 @@ describe("resolveCommitScope / scopeKey / scopeToQuery", () => {
 });
 
 describe("scopeForActiveSession", () => {
-  it("keeps a turn scope for the current session", () => {
+  it("keeps a turn scope for an allowed session", () => {
     const scope = {
       mode: "turn" as const,
       sessionId: "s1",
       messageId: "m1",
     };
-    expect(scopeForActiveSession(scope, "s1")).toBe(scope);
+    expect(scopeForActiveSession(scope, new Set(["s1"]))).toBe(scope);
   });
 
-  it("resets a turn scope from another session", () => {
+  it("keeps a child-session turn while the parent is active", () => {
+    const scope = {
+      mode: "turn" as const,
+      sessionId: "child",
+      messageId: "m1",
+    };
+    expect(scopeForActiveSession(scope, new Set(["parent", "child"]))).toBe(
+      scope,
+    );
+  });
+
+  it("resets a turn scope outside the active session tree", () => {
     expect(
       scopeForActiveSession(
         { mode: "turn", sessionId: "s1", messageId: "m1" },
-        "s2",
+        new Set(["s2"]),
       ),
     ).toEqual({ mode: "working" });
   });

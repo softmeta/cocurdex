@@ -446,5 +446,17 @@ describe("buildTurnChangeDiffFile", () => {
         side("src/a.ts", { side: "after", exists: true, text: "new\n" }),
       ).omittedReason,
     ).toBe("too-large");
+    expect(
+      buildTurnChangeDiffFile(
+        file("notes.txt", { beforeSize: 12_000_000, afterSize: 12_000_000 }),
+        side("notes.txt", { exists: true, text: null, sizeBytes: 12_000_000 }),
+        side("notes.txt", {
+          side: "after",
+          exists: true,
+          text: null,
+          sizeBytes: 12_000_000,
+        }),
+      ).omittedReason,
+    ).toBe("too-large");
   });
 });
