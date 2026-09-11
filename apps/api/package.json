@@ -15,11 +15,11 @@
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*",
-    "fastify": "^5.12.1"
+    "fastify": "^5.12.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
-    "tsx": "^4.8.1",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.2",
     "vitest": "^3.2.7"
   }
