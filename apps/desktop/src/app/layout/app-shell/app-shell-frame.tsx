@@ -4,7 +4,6 @@ import { Maximize2, Minimize2, PanelRight, Settings } from "lucide-react";
 import type { Ref } from "react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { activeConversationIdAtom } from "@/features/chat";
 import type { ChatComposerHandle } from "@/features/composer";
 import { setChatComposerAttachmentAtom } from "@/features/editor";
 import {
@@ -183,7 +182,6 @@ export function AppShellFrame({
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const handleAddContextToChat = useCallback(
     (attachment: MessageAttachment) => {
       if (
@@ -207,9 +205,8 @@ export function AppShellFrame({
     (rootPath: string) => {
       openWorkspaceByPath(rootPath);
       selectSession(null);
-      setActiveConversationId(null);
     },
-    [openWorkspaceByPath, selectSession, setActiveConversationId],
+    [openWorkspaceByPath, selectSession],
   );
   const { isDraggingFolder, dropHandlers } = useWorkspaceFolderDrop(
     handleOpenDroppedWorkspace,

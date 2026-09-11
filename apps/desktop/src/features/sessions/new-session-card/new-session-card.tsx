@@ -444,6 +444,7 @@ export function NewSessionCard({
         mode="agent"
         variant="panel"
         tone="welcome"
+        sessionId={null}
         draftKey={newSessionComposerDraftKey(activeWorkspaceId)}
         agentType={effectiveSelectedAgent}
         collaborationMode={selectedCollaborationMode}

@@ -73,25 +73,10 @@ describe("resolveCenterPanelSurface", () => {
 });
 
 describe("resolvePaneCenterSurface", () => {
-  it("follows the sidebar tab when only one pane is open", () => {
+  it("keeps a bound session visible while the chat tab is selected", () => {
     expect(
       resolvePaneCenterSurface({
         sidebarTab: "chat",
-        paneCount: 1,
-        conversationId: null,
-        sessionId: "session-1",
-        hasConversation: false,
-        hasSession: true,
-        sessionDataLoaded: true,
-      }),
-    ).toBe("new-conversation");
-  });
-
-  it("keeps a session visible in a split pane while the chat tab is selected", () => {
-    expect(
-      resolvePaneCenterSurface({
-        sidebarTab: "chat",
-        paneCount: 2,
         conversationId: null,
         sessionId: "session-1",
         hasConversation: false,
@@ -101,11 +86,10 @@ describe("resolvePaneCenterSurface", () => {
     ).toBe("agent-session");
   });
 
-  it("shows a new session in an empty split pane on the projects tab", () => {
+  it("shows a new session in an empty pane on the projects tab", () => {
     expect(
       resolvePaneCenterSurface({
         sidebarTab: "projects",
-        paneCount: 2,
         conversationId: null,
         sessionId: null,
         hasConversation: false,

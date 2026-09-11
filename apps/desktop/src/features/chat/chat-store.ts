@@ -5,9 +5,21 @@ import type {
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { desktopApi } from "@/lib";
+import {
+  bindFocusedPaneContentAtom,
+  clearRemovedPaneConversationsAtom,
+  focusedPaneIdAtom,
+  sessionSplitLayoutAtom,
+} from "../sessions/session-split/session-split-store";
+import { findPane } from "../sessions/session-split/session-split-tree";
 
 export const conversationsAtom = atom<ConversationRecord[]>([]);
-export const activeConversationIdAtom = atom<string | null>(null);
+export const activeConversationIdAtom = atom((get) => {
+  return (
+    findPane(get(sessionSplitLayoutAtom), get(focusedPaneIdAtom))
+      ?.conversationId ?? null
+  );
+});
 export const conversationsLoadedAtom = atom(false);
 export const messagesByConversationAtom = atom<
   Record<string, ConversationMessageRecord[]>
@@ -45,6 +57,16 @@ export const upsertConversationAtom = atom(
   },
 );
 
+export const selectConversationAtom = atom(
+  null,
+  (_get, set, conversationId: string | null) => {
+    set(bindFocusedPaneContentAtom, {
+      sessionId: null,
+      conversationId,
+    });
+  },
+);
+
 export const removeConversationAtom = atom(null, (get, set, id: string) => {
   set(
     conversationsAtom,
@@ -56,7 +78,7 @@ export const removeConversationAtom = atom(null, (get, set, id: string) => {
   const loaded = { ...get(messagesLoadedAtom) };
   delete loaded[id];
   set(messagesLoadedAtom, loaded);
-  if (get(activeConversationIdAtom) === id) set(activeConversationIdAtom, null);
+  set(clearRemovedPaneConversationsAtom, new Set([id]));
 });
 
 const replaceConversationMessageAtom = atom(

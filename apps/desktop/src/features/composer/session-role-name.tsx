@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useSyncExternalStore } from "react";
-import { activeSessionIdAtom, sessionsAtom } from "@/features/sessions";
+import { sessionsAtom } from "@/features/sessions";
 import {
   getAgentRoles,
   subscribeAgentRoles,
@@ -9,13 +9,9 @@ import { composerFooterControlClassName } from "./chat-composer-layout";
 import { resolveComposerSessionId } from "./composer-session-id";
 
 export function SessionRoleName({ sessionId }: { sessionId?: string | null }) {
-  const activeSessionId = useAtomValue(activeSessionIdAtom);
   const sessions = useAtomValue(sessionsAtom);
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
-  const resolvedSessionId = resolveComposerSessionId(
-    sessionId,
-    activeSessionId,
-  );
+  const resolvedSessionId = resolveComposerSessionId(sessionId);
   const session = resolvedSessionId
     ? (sessions.find((item) => item.id === resolvedSessionId) ?? null)
     : null;

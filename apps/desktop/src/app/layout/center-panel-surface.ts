@@ -26,22 +26,12 @@ export function resolveCenterPanelSurface(input: {
 
 export function resolvePaneCenterSurface(input: {
   sidebarTab: SidebarTab;
-  paneCount: number;
   conversationId: string | null;
   sessionId: string | null;
   hasConversation: boolean;
   hasSession: boolean;
   sessionDataLoaded: boolean;
 }): CenterPanelSurface {
-  if (input.paneCount <= 1) {
-    return resolveCenterPanelSurface({
-      sidebarTab: input.sidebarTab,
-      hasConversation: input.hasConversation,
-      hasSession: input.hasSession,
-      sessionDataLoaded: input.sessionDataLoaded,
-    });
-  }
-
   if (input.conversationId) {
     return input.hasConversation ? "conversation" : "new-conversation";
   }
@@ -53,5 +43,10 @@ export function resolvePaneCenterSurface(input: {
     return input.sessionDataLoaded ? "agent-session" : "agent-session-loading";
   }
 
-  return input.sidebarTab === "chat" ? "new-conversation" : "new-session";
+  return resolveCenterPanelSurface({
+    sidebarTab: input.sidebarTab,
+    hasConversation: false,
+    hasSession: false,
+    sessionDataLoaded: false,
+  });
 }

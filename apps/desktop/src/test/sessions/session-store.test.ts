@@ -1,4 +1,4 @@
-import type { SessionRecord } from "@cocurdex/shared";
+import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { getAgentInputDelivery } from "@/features/agent/follow-up-behavior/follow-up-behavior-types";
@@ -29,6 +29,10 @@ import {
   updateSessionTitleAtom,
   upsertSessionAtom,
 } from "@/features/sessions/session-store";
+import {
+  activeWorkspaceIdAtom,
+  workspacesAtom,
+} from "@/features/workspaces/workspace-store";
 
 describe("supportsLivePermissionMode", () => {
   it("allows Claude Agent to apply a new mode on the next turn", () => {
@@ -596,6 +600,34 @@ describe("selectSessionAtom", () => {
 
     expect(store.get(activeSessionIdAtom)).toBe(childSession.id);
     expect(store.get(collapsedSessionIdsAtom).has(baseSession.id)).toBe(true);
+  });
+
+  it("activates the session workspace when selecting a session", () => {
+    const workspace: WorkspaceRecord = {
+      id: "workspace-1",
+      name: "project",
+      rootPath: "/tmp/project",
+      createdAt: "2026-05-07T00:00:00.000Z",
+      updatedAt: "2026-05-07T00:00:00.000Z",
+      lastOpenedAt: "2026-05-07T00:00:00.000Z",
+      sortOrder: 1000,
+    };
+    const other: WorkspaceRecord = {
+      ...workspace,
+      id: "workspace-2",
+      name: "other",
+      rootPath: "/tmp/other",
+    };
+    (window as unknown as { desktopApi: unknown }).desktopApi = {
+      saveWorkspace: () => Promise.resolve(),
+    };
+    const store = createStore();
+    store.set(workspacesAtom, [workspace, other]);
+    store.set(activeWorkspaceIdAtom, other.id);
+    store.set(bootstrapSessionsAtom, [baseSession]);
+    store.set(selectSessionAtom, baseSession.id);
+
+    expect(store.get(activeWorkspaceIdAtom)).toBe(workspace.id);
   });
 });
 

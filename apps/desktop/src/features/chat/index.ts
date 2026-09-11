@@ -6,6 +6,7 @@ export {
   conversationsAtom,
   conversationsLoadedAtom,
   removeConversationAtom,
+  selectConversationAtom,
   upsertConversationAtom,
 } from "./chat-store";
 export {

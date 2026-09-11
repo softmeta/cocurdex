@@ -8,23 +8,28 @@ import {
 } from "./workspace-store";
 
 export const activeWorkingPathAtom = atom((get) => {
+  const sessionId = get(activeSessionIdAtom);
+  const session = sessionId
+    ? get(sessionsAtom).find((candidate) => candidate.id === sessionId)
+    : undefined;
+  if (session) {
+    const sessionWorkspace = get(workspacesAtom).find(
+      (candidate) => candidate.id === session.workspaceId,
+    );
+    if (sessionWorkspace) {
+      return resolveSessionWorkingPath({
+        workspaceRootPath: sessionWorkspace.rootPath,
+        worktreePath: session.worktreePath,
+      });
+    }
+  }
+
   const workspaceId = get(activeWorkspaceIdAtom);
   const workspace = get(workspacesAtom).find(
     (candidate) => candidate.id === workspaceId,
   );
   if (!workspace) {
     return null;
-  }
-
-  const sessionId = get(activeSessionIdAtom);
-  const session = sessionId
-    ? get(sessionsAtom).find((candidate) => candidate.id === sessionId)
-    : undefined;
-  if (session) {
-    return resolveSessionWorkingPath({
-      workspaceRootPath: workspace.rootPath,
-      worktreePath: session.worktreePath,
-    });
   }
 
   return resolveSessionWorkingPath({

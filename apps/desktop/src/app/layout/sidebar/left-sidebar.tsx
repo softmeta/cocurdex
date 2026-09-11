@@ -14,13 +14,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
-import { activeConversationIdAtom, conversationsAtom } from "@/features/chat";
+import {
+  activeConversationIdAtom,
+  conversationsAtom,
+  selectConversationAtom,
+} from "@/features/chat";
 import {
   activeSessionIdAtom,
-  bindFocusedPaneContentAtom,
   removeSessionsByWorkspaceAtom,
   selectSessionAtom,
-  sessionPaneCountAtom,
   sessionsAtom,
 } from "@/features/sessions";
 import {
@@ -108,11 +110,9 @@ export function LeftSidebar({
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const bindFocusedPane = useSetAtom(bindFocusedPaneContentAtom);
-  const paneCount = useAtomValue(sessionPaneCountAtom);
+  const selectConversation = useSetAtom(selectConversationAtom);
   const conversations = useAtomValue(conversationsAtom);
   const activeConversationId = useAtomValue(activeConversationIdAtom);
-  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] =
     useOptimistic(activeSessionId);
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
@@ -143,7 +143,6 @@ export function LeftSidebar({
     if (result.canceled || result.filePaths.length === 0) return;
     const { didSwitchProject } = openWorkspaceByPath(result.filePaths[0]);
     if (didSwitchProject) {
-      setActiveConversationId(null);
       selectSession(null);
     }
   };
@@ -155,7 +154,6 @@ export function LeftSidebar({
       return;
     }
 
-    setActiveConversationId(null);
     startTransition(() => {
       setOptimisticActiveSessionId(null);
       selectWorkspace(targetWorkspaceId);
@@ -165,13 +163,7 @@ export function LeftSidebar({
   };
 
   const handleCreateConversation = () => {
-    setActiveConversationId(null);
-    if (paneCount > 1) {
-      bindFocusedPane({
-        sessionId: null,
-        conversationId: null,
-      });
-    }
+    selectConversation(null);
     onAfterNavigate?.();
   };
 
@@ -199,7 +191,6 @@ export function LeftSidebar({
     // If the user happened to be viewing a session from this workspace,
     // their selection is invalid now — clear it and any active conversation
     // so the center panel falls back to its empty state.
-    setActiveConversationId(null);
     selectSession(null);
   };
 
@@ -215,9 +206,6 @@ export function LeftSidebar({
   const handleSelectSession = (workspaceId: string, sessionId: string) => {
     startSessionSwitchLongTaskObserver(sessionId);
     markSessionSwitch(sessionId, "click", { workspaceId });
-    // Clear any active pure-chat selection so the center panel switches
-    // back to the agent view.
-    setActiveConversationId(null);
     startTransition(() => {
       setOptimisticActiveSessionId(sessionId);
       selectWorkspace(workspaceId);
@@ -336,8 +324,7 @@ export function LeftSidebar({
               activeConversationId={activeConversationId}
               conversations={conversations}
               onSelectConversation={(conversationId) => {
-                selectSession(null);
-                setActiveConversationId(conversationId);
+                selectConversation(conversationId);
                 onAfterNavigate?.();
               }}
             />

@@ -1,7 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { bootstrapQueuedInputsAtom } from "@/features/agent";
-import { activeConversationIdAtom } from "@/features/chat";
 import { bootstrapSessionUsageAtom } from "@/features/composer";
 import {
   activeFileAtom,
@@ -39,7 +38,6 @@ export function useAppPersistence() {
   const bootstrapEditorViews = useSetAtom(bootstrapEditorViewsAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const restoreEditorViewForSession = useSetAtom(
     restoreEditorViewForSessionAtom,
   );
@@ -68,7 +66,6 @@ export function useAppPersistence() {
   const activateWorkspaceFromPath = useEffectEvent((rootPath: string) => {
     openWorkspaceByPath(rootPath);
     selectSession(null);
-    setActiveConversationId(null);
   });
 
   // One-time app bootstrap: pull the persisted snapshot from the main process

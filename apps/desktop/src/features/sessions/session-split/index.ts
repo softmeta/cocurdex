@@ -1,6 +1,7 @@
 export {
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
+  clearRemovedPaneConversationsAtom,
   clearRemovedPaneSessionsAtom,
   closeSessionPaneAtom,
   collapseSessionSplitAtom,

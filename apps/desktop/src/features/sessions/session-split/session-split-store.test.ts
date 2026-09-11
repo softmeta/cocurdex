@@ -1,8 +1,14 @@
 import type { SessionRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
-import { bootstrapSessionsAtom, selectSessionAtom } from "../session-store";
+import { selectConversationAtom } from "@/features/chat/chat-store";
 import {
+  activeSessionIdAtom,
+  bootstrapSessionsAtom,
+  selectSessionAtom,
+} from "../session-store";
+import {
+  bindFocusedPaneContentAtom,
   collapseSessionSplitAtom,
   focusedPaneIdAtom,
   sessionSplitLayoutAtom,
@@ -69,5 +75,33 @@ describe("session split store", () => {
         conversationId: null,
       },
     ]);
+  });
+
+  it("derives the active session from the focused pane", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [sessionA]);
+    store.set(selectSessionAtom, sessionA.id);
+    expect(store.get(activeSessionIdAtom)).toBe(sessionA.id);
+
+    store.set(splitFocusedPaneAtom, "right");
+    expect(store.get(activeSessionIdAtom)).toBeNull();
+  });
+
+  it("focuses the pane that already shows a conversation instead of duplicating it", () => {
+    const store = createStore();
+    store.set(bindFocusedPaneContentAtom, {
+      sessionId: null,
+      conversationId: "conversation-a",
+    });
+    store.set(splitFocusedPaneAtom, "right");
+    expect(store.get(focusedPaneIdAtom)).not.toBe(ROOT_PANE_ID);
+
+    store.set(selectConversationAtom, "conversation-a");
+
+    expect(store.get(focusedPaneIdAtom)).toBe(ROOT_PANE_ID);
+    const panesWithConversation = listPanes(
+      store.get(sessionSplitLayoutAtom),
+    ).filter((pane) => pane.conversationId === "conversation-a");
+    expect(panesWithConversation).toHaveLength(1);
   });
 });

@@ -1,10 +1,8 @@
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
-import {
-  activeSessionIdAtom,
-  sessionsAtom,
-} from "@/features/sessions/session-store";
+import { bindFocusedPaneContentAtom } from "@/features/sessions/session-split/session-split-store";
+import { sessionsAtom } from "@/features/sessions/session-store";
 import { activeWorkingPathAtom } from "@/features/workspaces/working-path";
 import {
   activeWorkspaceIdAtom,
@@ -62,7 +60,29 @@ describe("activeWorkingPathAtom", () => {
     store.set(activeWorkspaceIdAtom, "workspace-1");
     store.set(draftWorktreePathAtom, "/tmp/worktrees/draft");
     store.set(sessionsAtom, [session("/tmp/worktrees/session")]);
-    store.set(activeSessionIdAtom, "session-1");
+    store.set(bindFocusedPaneContentAtom, {
+      sessionId: "session-1",
+      conversationId: null,
+    });
+
+    expect(store.get(activeWorkingPathAtom)).toBe("/tmp/worktrees/session");
+  });
+
+  it("uses the session workspace even when another project is selected", () => {
+    const otherWorkspace: WorkspaceRecord = {
+      ...workspace,
+      id: "workspace-2",
+      name: "other",
+      rootPath: "/Users/me/other",
+    };
+    const store = createStore();
+    store.set(workspacesAtom, [workspace, otherWorkspace]);
+    store.set(activeWorkspaceIdAtom, "workspace-2");
+    store.set(sessionsAtom, [session("/tmp/worktrees/session")]);
+    store.set(bindFocusedPaneContentAtom, {
+      sessionId: "session-1",
+      conversationId: null,
+    });
 
     expect(store.get(activeWorkingPathAtom)).toBe("/tmp/worktrees/session");
   });
