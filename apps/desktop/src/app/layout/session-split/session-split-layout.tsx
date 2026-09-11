@@ -11,10 +11,9 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui";
-import { activeConversationIdAtom, conversationsAtom } from "@/features/chat";
+import { conversationsAtom } from "@/features/chat";
 import type { ChatComposerHandle } from "@/features/composer";
 import {
-  activeSessionIdAtom,
   type SessionPaneBinding,
   type SessionSplitNode,
   sessionSplitLayoutAtom,
@@ -22,7 +21,6 @@ import {
   setSessionSplitSizesAtom,
 } from "@/features/sessions";
 import { CenterPanel } from "../center-panel";
-import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { SessionPaneHeader } from "./session-pane-header";
 import { useSessionSplitActions } from "./use-session-split-actions";
 
@@ -70,11 +68,6 @@ export function SessionSplitLayout({
   const layout = useAtomValue(sessionSplitLayoutAtom);
   const sessions = useAtomValue(sessionsAtom);
   const conversations = useAtomValue(conversationsAtom);
-  const sidebarTab = useAtomValue(sidebarTabAtom);
-  const activeSessionId = useAtomValue(activeSessionIdAtom);
-  const activeConversationId = useAtomValue(activeConversationIdAtom);
-  const setActiveSessionId = useSetAtom(activeSessionIdAtom);
-  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const setSplitSizes = useSetAtom(setSessionSplitSizesAtom);
   const {
     closeAllPanes,
@@ -89,22 +82,16 @@ export function SessionSplitLayout({
   );
 
   const paneTitle = (pane: SessionPaneBinding) => {
-    const conversationId =
-      pane.conversationId ??
-      (paneCount <= 1 && sidebarTab === "chat" ? activeConversationId : null);
-    if (conversationId) {
+    if (pane.conversationId) {
       const conversation = conversations.find(
-        (item) => item.id === conversationId,
+        (item) => item.id === pane.conversationId,
       );
       if (conversation?.title) {
         return conversation.title;
       }
     }
-    const sessionId =
-      pane.sessionId ??
-      (paneCount <= 1 && sidebarTab !== "chat" ? activeSessionId : null);
-    if (sessionId) {
-      const session = sessions.find((item) => item.id === sessionId);
+    if (pane.sessionId) {
+      const session = sessions.find((item) => item.id === pane.sessionId);
       if (session?.title) {
         return session.title;
       }
@@ -146,20 +133,12 @@ export function SessionSplitLayout({
         return;
       }
       focusSessionPane(pane.id);
-      setActiveSessionId(pane.sessionId);
-      setActiveConversationId(pane.conversationId);
       assignComposerRef(
         composerRef,
         composerByPaneRef.current.get(pane.id) ?? null,
       );
     },
-    [
-      composerRef,
-      focusedPaneId,
-      focusSessionPane,
-      setActiveConversationId,
-      setActiveSessionId,
-    ],
+    [composerRef, focusedPaneId, focusSessionPane],
   );
 
   const renderNode = (
@@ -240,7 +219,6 @@ export function SessionSplitLayout({
             hideTitlebarSpacer
             isFocused={isFocused}
             pane={node.pane}
-            paneCount={paneCount}
           />
         </div>
       </SessionPaneFrame>

@@ -9,10 +9,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button, Input, Switch } from "@/components/ui";
-import {
-  activeSessionIdAtom,
-  createDraftSessionAtom,
-} from "@/features/sessions";
+import { createDraftSessionAtom, selectSessionAtom } from "@/features/sessions";
 import { selectWorkspaceAtom } from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
 import { SettingRow, SettingsGroup } from "../settings-fields";
@@ -23,7 +20,7 @@ export function WorktreeSettingsPanel() {
   const { t } = useTranslation("settings");
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const createDraftSession = useSetAtom(createDraftSessionAtom);
-  const setActiveSessionId = useSetAtom(activeSessionIdAtom);
+  const selectSession = useSetAtom(selectSessionAtom);
   const [settings, setSettings] = useState<WorktreeSettingsSnapshot | null>(
     null,
   );
@@ -114,7 +111,7 @@ export function WorktreeSettingsPanel() {
 
   const handleOpenSession = (worktree: ManagedWorktree, sessionId: string) => {
     selectWorkspace(worktree.workspaceId);
-    setActiveSessionId(sessionId);
+    selectSession(sessionId);
     closeSettings();
   };
 

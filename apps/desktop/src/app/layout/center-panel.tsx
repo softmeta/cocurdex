@@ -124,7 +124,6 @@ interface CenterPanelProps {
   composerRef?: Ref<ChatComposerHandle>;
   hideTitlebarSpacer?: boolean;
   pane?: SessionPaneBinding;
-  paneCount?: number;
   isFocused?: boolean;
 }
 
@@ -210,7 +209,6 @@ export function CenterPanel({
   composerRef,
   hideTitlebarSpacer,
   pane,
-  paneCount = 1,
   isFocused = true,
 }: CenterPanelProps) {
   const workspaces = useAtomValue(workspacesAtom);
@@ -221,7 +219,6 @@ export function CenterPanel({
   const activeSessionId = pane ? pane.sessionId : atomSessionId;
   const atomConversationId = useAtomValue(activeConversationIdAtom);
   const activeConversationId = pane ? pane.conversationId : atomConversationId;
-  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const bindPaneContent = useSetAtom(bindPaneContentAtom);
   const bindFocusedPaneContent = useSetAtom(bindFocusedPaneContentAtom);
   const upsertConversation = useSetAtom(upsertConversationAtom);
@@ -898,7 +895,6 @@ export function CenterPanel({
         text: message,
         images: images.length > 0 ? images : undefined,
       });
-      setActiveConversationId(conversation.id);
       if (pane) {
         bindPaneContent({
           paneId: pane.id,
@@ -922,7 +918,6 @@ export function CenterPanel({
     if (result.canceled || result.filePaths.length === 0) return;
     const { didSwitchProject } = openWorkspaceByPath(result.filePaths[0]);
     if (didSwitchProject) {
-      setActiveConversationId(null);
       selectSession(null);
     }
   };
@@ -1153,7 +1148,6 @@ export function CenterPanel({
 
   const centerSurface = resolvePaneCenterSurface({
     sidebarTab,
-    paneCount,
     conversationId: activeConversationId,
     sessionId: activeSessionId,
     hasConversation: Boolean(activeConversation),

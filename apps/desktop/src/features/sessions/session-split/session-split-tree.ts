@@ -149,6 +149,55 @@ export function clearPaneSessions(
   return { ...node, first, second };
 }
 
+export function clearPaneConversations(
+  node: SessionSplitNode,
+  conversationIds: ReadonlySet<string>,
+): SessionSplitNode {
+  if (node.type === "pane") {
+    if (
+      !node.pane.conversationId ||
+      !conversationIds.has(node.pane.conversationId)
+    ) {
+      return node;
+    }
+    return {
+      type: "pane",
+      pane: { ...node.pane, conversationId: null },
+    };
+  }
+  const first = clearPaneConversations(node.first, conversationIds);
+  const second = clearPaneConversations(node.second, conversationIds);
+  if (first === node.first && second === node.second) {
+    return node;
+  }
+  return { ...node, first, second };
+}
+
+export function revealPaneContent(
+  node: SessionSplitNode,
+  paneId: string,
+  binding: Pick<SessionPaneBinding, "sessionId" | "conversationId">,
+): { root: SessionSplitNode; focusedPaneId: string } | null {
+  if (!findPane(node, paneId)) {
+    return null;
+  }
+  if (binding.sessionId) {
+    const existing = findPaneIdBySessionId(node, binding.sessionId);
+    if (existing) {
+      return { root: node, focusedPaneId: existing };
+    }
+  } else if (binding.conversationId) {
+    const existing = findPaneIdByConversationId(node, binding.conversationId);
+    if (existing) {
+      return { root: node, focusedPaneId: existing };
+    }
+  }
+  return {
+    root: setPaneBinding(node, paneId, binding),
+    focusedPaneId: paneId,
+  };
+}
+
 export function splitPane(
   node: SessionSplitNode,
   paneId: string,
@@ -182,10 +231,7 @@ export function collapseToPane(
   if (node.type === "pane") {
     return node;
   }
-  return createRootPane({
-    sessionId: pane.sessionId,
-    conversationId: pane.conversationId,
-  });
+  return { type: "pane", pane };
 }
 
 export function closePane(

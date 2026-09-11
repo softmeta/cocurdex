@@ -8,7 +8,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui";
-import { activeConversationIdAtom } from "@/features/chat";
 import { selectSessionAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 
@@ -152,7 +151,6 @@ function ToolCallItem({
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
 }) {
   const selectSession = useSetAtom(selectSessionAtom);
-  const setActiveConversationId = useSetAtom(activeConversationIdAtom);
   const [open, setOpen] = useTranscriptState(`tool:${toolCall.id}`, false);
 
   if (isSubagentToolCall(toolCall)) {
@@ -175,7 +173,6 @@ function ToolCallItem({
           if (!childSessionId) {
             return;
           }
-          setActiveConversationId(null);
           selectSession(childSessionId);
         }}
         type="button"

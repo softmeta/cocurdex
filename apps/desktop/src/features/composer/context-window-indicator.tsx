@@ -15,7 +15,6 @@ import { useTranslation } from "react-i18next";
 import { CircularProgress, Popover, PopoverTrigger } from "@/components/ui";
 import { agentRuntimeBySessionAtom } from "@/features/agent/runtime";
 import {
-  activeSessionIdAtom,
   agentLabels,
   agentsAtom,
   getProviderModelCacheVersion,
@@ -211,11 +210,7 @@ export function ContextWindowIndicator({
   sessionId?: string | null;
 }) {
   const { t } = useTranslation("sessions");
-  const activeSessionId = useAtomValue(activeSessionIdAtom);
-  const resolvedSessionId = resolveComposerSessionId(
-    sessionId,
-    activeSessionId,
-  );
+  const resolvedSessionId = resolveComposerSessionId(sessionId);
   const agents = useAtomValue(agentsAtom);
   const sessions = useAtomValue(sessionsAtom);
   const providerConfigs = useAtomValue(providerConfigsAtom);

@@ -20,17 +20,30 @@ import {
 import { atom, type Getter, type Setter } from "jotai";
 import { i18n } from "@/i18n";
 import { resources } from "@/i18n/resources";
+import {
+  activeWorkspaceIdAtom,
+  selectWorkspaceAtom,
+  workspacesAtom,
+} from "../workspaces/workspace-store";
 import { isAgentReadyToStart } from "./adapter-status";
 import {
   bindFocusedPaneContentAtom,
   clearRemovedPaneSessionsAtom,
-  focusPaneForSessionAtom,
+  focusedPaneIdAtom,
+  focusSessionPaneAtom,
   resetSessionSplitLayoutAtom,
+  sessionSplitLayoutAtom,
 } from "./session-split/session-split-store";
+import { findPane } from "./session-split/session-split-tree";
 import { collectSessionSubtreeIds, sessionAncestorIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
-export const activeSessionIdAtom = atom<string | null>(null);
+export const activeSessionIdAtom = atom((get) => {
+  return (
+    findPane(get(sessionSplitLayoutAtom), get(focusedPaneIdAtom))?.sessionId ??
+    null
+  );
+});
 export const collapsedSessionIdsAtom = atom<ReadonlySet<string>>(
   new Set<string>(),
 );
@@ -424,25 +437,49 @@ export const bootstrapSessionsAtom = atom(
     // long history. Launch lands on the new-session surface instead; the
     // sidebar is one click away.
     set(resetSessionSplitLayoutAtom);
-    set(activeSessionIdAtom, null);
+  },
+);
+
+function activateWorkspaceForSession(
+  get: Getter,
+  set: Setter,
+  sessionId: string,
+) {
+  const session = get(sessionsAtom).find((item) => item.id === sessionId);
+  if (!session || get(activeWorkspaceIdAtom) === session.workspaceId) {
+    return;
+  }
+  const workspace = get(workspacesAtom).find(
+    (item) => item.id === session.workspaceId,
+  );
+  if (!workspace) {
+    return;
+  }
+  set(selectWorkspaceAtom, session.workspaceId);
+}
+
+export const activateSessionPaneAtom = atom(
+  null,
+  (get, set, paneId: string) => {
+    set(focusSessionPaneAtom, paneId);
+    const pane = findPane(get(sessionSplitLayoutAtom), paneId);
+    if (pane?.sessionId) {
+      activateWorkspaceForSession(get, set, pane.sessionId);
+    }
   },
 );
 
 export const selectSessionAtom = atom(
   null,
   (get, set, sessionId: string | null) => {
-    if (sessionId && set(focusPaneForSessionAtom, sessionId)) {
-      set(activeSessionIdAtom, sessionId);
-    } else {
-      set(activeSessionIdAtom, sessionId);
-      set(bindFocusedPaneContentAtom, {
-        sessionId,
-        conversationId: null,
-      });
-    }
+    set(bindFocusedPaneContentAtom, {
+      sessionId,
+      conversationId: null,
+    });
     if (!sessionId) {
       return;
     }
+    activateWorkspaceForSession(get, set, sessionId);
     const ancestorIds = sessionAncestorIds(sessionId, get(sessionsAtom));
     if (ancestorIds.length === 0) {
       return;
@@ -514,11 +551,11 @@ export const createDraftSessionAtom = atom(
     };
 
     set(sessionsAtom, [session, ...get(sessionsAtom)]);
-    set(activeSessionIdAtom, session.id);
     set(bindFocusedPaneContentAtom, {
       sessionId: session.id,
       conversationId: null,
     });
+    activateWorkspaceForSession(get, set, session.id);
     set(lastSelectedAgentAtom, agentType);
 
     return session;
@@ -872,14 +909,8 @@ function removeSessionSubtree(get: Getter, set: Setter, sessionId: string) {
 
   if (activeSessionId && removedIds.has(activeSessionId)) {
     const nextId = getNextActiveSessionId(nextSessions, removed);
-    if (nextId && set(focusPaneForSessionAtom, nextId)) {
-      set(activeSessionIdAtom, nextId);
-    } else {
-      set(activeSessionIdAtom, nextId);
-      set(bindFocusedPaneContentAtom, {
-        sessionId: nextId,
-        conversationId: null,
-      });
+    if (nextId) {
+      set(selectSessionAtom, nextId);
     }
   }
 }
@@ -915,23 +946,6 @@ export const removeSessionsByWorkspaceAtom = atom(
         .map((session) => session.id),
     );
     set(clearRemovedPaneSessionsAtom, removedIds);
-    const activeId = get(activeSessionIdAtom);
-    if (
-      activeId &&
-      current.find((session) => session.id === activeId)?.workspaceId ===
-        workspaceId
-    ) {
-      const nextId = next[0]?.id ?? null;
-      if (nextId && set(focusPaneForSessionAtom, nextId)) {
-        set(activeSessionIdAtom, nextId);
-      } else {
-        set(activeSessionIdAtom, nextId);
-        set(bindFocusedPaneContentAtom, {
-          sessionId: nextId,
-          conversationId: null,
-        });
-      }
-    }
   },
 );
 

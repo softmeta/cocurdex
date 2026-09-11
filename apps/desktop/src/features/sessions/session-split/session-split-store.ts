@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import {
+  clearPaneConversations,
   clearPaneSessions,
   closePane,
   collapseToPane,
@@ -10,10 +11,10 @@ import {
   firstPane,
   paneCount,
   ROOT_PANE_ID,
+  revealPaneContent,
   type SessionPaneBinding,
   type SessionSplitDirection,
   type SessionSplitNode,
-  setPaneBinding,
   setSplitSizes,
   splitPane,
 } from "./session-split-tree";
@@ -45,13 +46,19 @@ export const bindPaneContentAtom = atom(
       conversationId: string | null;
     },
   ) => {
-    set(
-      sessionSplitLayoutAtom,
-      setPaneBinding(get(sessionSplitLayoutAtom), payload.paneId, {
+    const result = revealPaneContent(
+      get(sessionSplitLayoutAtom),
+      payload.paneId,
+      {
         sessionId: payload.sessionId,
         conversationId: payload.conversationId,
-      }),
+      },
     );
+    if (!result) {
+      return;
+    }
+    set(sessionSplitLayoutAtom, result.root);
+    set(focusedPaneIdAtom, result.focusedPaneId);
   },
 );
 
@@ -169,6 +176,16 @@ export const clearRemovedPaneSessionsAtom = atom(
     set(
       sessionSplitLayoutAtom,
       clearPaneSessions(get(sessionSplitLayoutAtom), sessionIds),
+    );
+  },
+);
+
+export const clearRemovedPaneConversationsAtom = atom(
+  null,
+  (get, set, conversationIds: ReadonlySet<string>) => {
+    set(
+      sessionSplitLayoutAtom,
+      clearPaneConversations(get(sessionSplitLayoutAtom), conversationIds),
     );
   },
 );
