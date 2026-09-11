@@ -130,12 +130,14 @@ describe("session split tree", () => {
     );
 
     const collapsed = collapseToPane(withSecond, "pane-b");
-    expect(collapsed).toEqual(
-      createRootPane({
+    expect(collapsed).toEqual({
+      type: "pane",
+      pane: {
+        id: "pane-b",
         sessionId: null,
         conversationId: "conversation-b",
-      }),
-    );
+      },
+    });
   });
 
   it("does not collapse when the pane is missing or already alone", () => {
@@ -269,6 +271,18 @@ describe("session split tree", () => {
     const revealed = revealPaneContent(createRootPane(), "missing-pane", {
       sessionId: null,
       conversationId: "conversation-late",
+    });
+
+    expect(revealed).toBeNull();
+  });
+
+  it("does not steal focus from a missing pane even if the content exists elsewhere", () => {
+    const root = setPaneBinding(createRootPane(), ROOT_PANE_ID, {
+      conversationId: "conversation-a",
+    });
+    const revealed = revealPaneContent(root, "missing-pane", {
+      sessionId: null,
+      conversationId: "conversation-a",
     });
 
     expect(revealed).toBeNull();

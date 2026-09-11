@@ -178,6 +178,9 @@ export function revealPaneContent(
   paneId: string,
   binding: Pick<SessionPaneBinding, "sessionId" | "conversationId">,
 ): { root: SessionSplitNode; focusedPaneId: string } | null {
+  if (!findPane(node, paneId)) {
+    return null;
+  }
   if (binding.sessionId) {
     const existing = findPaneIdBySessionId(node, binding.sessionId);
     if (existing) {
@@ -188,9 +191,6 @@ export function revealPaneContent(
     if (existing) {
       return { root: node, focusedPaneId: existing };
     }
-  }
-  if (!findPane(node, paneId)) {
-    return null;
   }
   return {
     root: setPaneBinding(node, paneId, binding),
@@ -231,10 +231,7 @@ export function collapseToPane(
   if (node.type === "pane") {
     return node;
   }
-  return createRootPane({
-    sessionId: pane.sessionId,
-    conversationId: pane.conversationId,
-  });
+  return { type: "pane", pane };
 }
 
 export function closePane(
