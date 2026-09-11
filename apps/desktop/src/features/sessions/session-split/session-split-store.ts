@@ -54,6 +54,9 @@ export const bindPaneContentAtom = atom(
         conversationId: payload.conversationId,
       },
     );
+    if (!result) {
+      return;
+    }
     set(sessionSplitLayoutAtom, result.root);
     set(focusedPaneIdAtom, result.focusedPaneId);
   },

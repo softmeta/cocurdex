@@ -3,6 +3,17 @@ import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { getAgentInputDelivery } from "@/features/agent/follow-up-behavior/follow-up-behavior-types";
 import { supportsPlanMode } from "@/features/sessions/collaboration-mode";
+import {
+  focusedPaneIdAtom,
+  focusSessionPaneAtom,
+  sessionSplitLayoutAtom,
+  splitFocusedPaneAtom,
+} from "@/features/sessions/session-split/session-split-store";
+import {
+  findPane,
+  listPanes,
+  ROOT_PANE_ID,
+} from "@/features/sessions/session-split/session-split-tree";
 import { getDisplaySessionStatus } from "@/features/sessions/session-status";
 import {
   activeSessionIdAtom,
@@ -18,6 +29,7 @@ import {
   isDefaultSessionTitle,
   lastSelectedAgentAtom,
   projectSubagentSessionFromToolCallAtom,
+  removeSessionsByWorkspaceAtom,
   selectSessionAtom,
   sessionsAtom,
   supportsLivePermissionMode,
@@ -628,6 +640,56 @@ describe("selectSessionAtom", () => {
     store.set(selectSessionAtom, baseSession.id);
 
     expect(store.get(activeWorkspaceIdAtom)).toBe(workspace.id);
+  });
+
+  it("does not clear a surviving pane when another workspace is removed", () => {
+    const workspace: WorkspaceRecord = {
+      id: "workspace-1",
+      name: "project",
+      rootPath: "/tmp/project",
+      createdAt: "2026-05-07T00:00:00.000Z",
+      updatedAt: "2026-05-07T00:00:00.000Z",
+      lastOpenedAt: "2026-05-07T00:00:00.000Z",
+      sortOrder: 1000,
+    };
+    const other: WorkspaceRecord = {
+      ...workspace,
+      id: "workspace-2",
+      name: "other",
+      rootPath: "/tmp/other",
+    };
+    const otherSession: SessionRecord = {
+      ...baseSession,
+      id: "session-2",
+      workspaceId: other.id,
+      title: "Other",
+    };
+    (window as unknown as { desktopApi: unknown }).desktopApi = {
+      saveWorkspace: () => Promise.resolve(),
+    };
+    const store = createStore();
+    store.set(workspacesAtom, [workspace, other]);
+    store.set(bootstrapSessionsAtom, [baseSession, otherSession]);
+    store.set(selectSessionAtom, baseSession.id);
+    store.set(splitFocusedPaneAtom, "right");
+    store.set(selectSessionAtom, otherSession.id);
+    store.set(focusSessionPaneAtom, ROOT_PANE_ID);
+
+    store.set(removeSessionsByWorkspaceAtom, workspace.id);
+
+    expect(store.get(sessionsAtom).map((session) => session.id)).toEqual([
+      otherSession.id,
+    ]);
+    expect(store.get(focusedPaneIdAtom)).toBe(ROOT_PANE_ID);
+    expect(store.get(activeSessionIdAtom)).toBeNull();
+    expect(
+      findPane(store.get(sessionSplitLayoutAtom), ROOT_PANE_ID)?.sessionId,
+    ).toBeNull();
+    expect(
+      listPanes(store.get(sessionSplitLayoutAtom)).filter(
+        (pane) => pane.sessionId === otherSession.id,
+      ),
+    ).toHaveLength(1);
   });
 });
 

@@ -203,9 +203,13 @@ describe("session split tree", () => {
       },
     );
 
-    expect(revealed.focusedPaneId).toBe("pane-b");
-    expect(findPane(revealed.root, "pane-b")?.sessionId).toBe("session-a");
-    expect(findPane(revealed.root, ROOT_PANE_ID)?.sessionId).toBeNull();
+    expect(revealed?.focusedPaneId).toBe("pane-b");
+    expect(
+      findPane(revealed?.root ?? createRootPane(), "pane-b")?.sessionId,
+    ).toBe("session-a");
+    expect(
+      findPane(revealed?.root ?? createRootPane(), ROOT_PANE_ID)?.sessionId,
+    ).toBeNull();
   });
 
   it("focuses the pane that already shows a session instead of duplicating it", () => {
@@ -226,11 +230,15 @@ describe("session split tree", () => {
       },
     );
 
-    expect(revealed.focusedPaneId).toBe(ROOT_PANE_ID);
+    expect(revealed?.focusedPaneId).toBe(ROOT_PANE_ID);
     expect(
-      listPanes(revealed.root).filter((pane) => pane.sessionId === "session-a"),
+      listPanes(revealed?.root ?? createRootPane()).filter(
+        (pane) => pane.sessionId === "session-a",
+      ),
     ).toHaveLength(1);
-    expect(findPane(revealed.root, "pane-b")?.sessionId).toBeNull();
+    expect(
+      findPane(revealed?.root ?? createRootPane(), "pane-b")?.sessionId,
+    ).toBeNull();
   });
 
   it("focuses the pane that already shows a conversation instead of duplicating it", () => {
@@ -251,8 +259,19 @@ describe("session split tree", () => {
       },
     );
 
-    expect(revealed.focusedPaneId).toBe(ROOT_PANE_ID);
-    expect(findPane(revealed.root, "pane-b")?.conversationId).toBeNull();
+    expect(revealed?.focusedPaneId).toBe(ROOT_PANE_ID);
+    expect(
+      findPane(revealed?.root ?? createRootPane(), "pane-b")?.conversationId,
+    ).toBeNull();
+  });
+
+  it("does not focus a pane that is no longer in the tree", () => {
+    const revealed = revealPaneContent(createRootPane(), "missing-pane", {
+      sessionId: null,
+      conversationId: "conversation-late",
+    });
+
+    expect(revealed).toBeNull();
   });
 
   it("clears removed conversations without dropping the pane", () => {

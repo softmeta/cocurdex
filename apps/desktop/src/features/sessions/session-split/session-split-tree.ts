@@ -177,7 +177,7 @@ export function revealPaneContent(
   node: SessionSplitNode,
   paneId: string,
   binding: Pick<SessionPaneBinding, "sessionId" | "conversationId">,
-): { root: SessionSplitNode; focusedPaneId: string } {
+): { root: SessionSplitNode; focusedPaneId: string } | null {
   if (binding.sessionId) {
     const existing = findPaneIdBySessionId(node, binding.sessionId);
     if (existing) {
@@ -190,7 +190,7 @@ export function revealPaneContent(
     }
   }
   if (!findPane(node, paneId)) {
-    return { root: node, focusedPaneId: paneId };
+    return null;
   }
   return {
     root: setPaneBinding(node, paneId, binding),

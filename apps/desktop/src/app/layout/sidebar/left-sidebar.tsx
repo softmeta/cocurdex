@@ -188,10 +188,6 @@ export function LeftSidebar({
     }
     removeSessionsByWorkspace(workspaceId);
     removeWorkspace(workspaceId);
-    // If the user happened to be viewing a session from this workspace,
-    // their selection is invalid now — clear it and any active conversation
-    // so the center panel falls back to its empty state.
-    selectSession(null);
   };
 
   const handleRevealWorkspace = async (rootPath: string) => {

@@ -936,7 +936,6 @@ export const removeSessionsByWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string) => {
     const current = get(sessionsAtom);
-    const activeId = get(activeSessionIdAtom);
     const next = current.filter(
       (session) => session.workspaceId !== workspaceId,
     );
@@ -947,14 +946,6 @@ export const removeSessionsByWorkspaceAtom = atom(
         .map((session) => session.id),
     );
     set(clearRemovedPaneSessionsAtom, removedIds);
-    if (
-      activeId &&
-      current.find((session) => session.id === activeId)?.workspaceId ===
-        workspaceId
-    ) {
-      const nextId = next[0]?.id ?? null;
-      set(selectSessionAtom, nextId);
-    }
   },
 );
 
