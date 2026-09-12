@@ -7,6 +7,7 @@ import {
   type AgentProviderSnapshot,
   type ProviderConfigRecord,
   type ProviderModelRecord,
+  primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type SessionRecord,
   type WorkflowAggregate,
@@ -118,7 +119,14 @@ async function main(rawArgs: string[]) {
 
   if (resource === "workspace" && action === "list") {
     const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
-    printRows(workspaces, ["id", "name", "rootPath"], parsed);
+    printRows(
+      workspaces.map((workspace) => ({
+        ...workspace,
+        rootPaths: workspace.rootPaths.join(", "),
+      })),
+      ["id", "name", "rootPaths"],
+      parsed,
+    );
     return;
   }
 
@@ -155,7 +163,7 @@ async function main(rawArgs: string[]) {
       subscribe: (onEvent, onDisconnect) =>
         subscribeDaemonEvents(
           (event) => {
-            if (event.type !== "data.changed") onEvent(event);
+            if ("sessionId" in event) onEvent(event);
           },
           { onDisconnect },
         ),
@@ -163,7 +171,7 @@ async function main(rawArgs: string[]) {
         requestDaemon("session.send", {
           message: {
             session: { ...currentSession, status: "running" },
-            workspaceRootPath: workspace.rootPath,
+            workspaceRootPath: primaryWorkspaceRootPath(workspace),
             content,
             delivery,
           },
@@ -423,7 +431,8 @@ async function createSession(parsed: ParsedArgs) {
     ]),
   );
   const workspace = workspaces.find(
-    (item) => item.id === workspaceValue || item.rootPath === workspaceValue,
+    (item) =>
+      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
   );
 
   if (!workspace) {
@@ -465,7 +474,7 @@ async function createSession(parsed: ParsedArgs) {
     }
     return requestDaemon("session.create", {
       session,
-      workspaceRootPath: targetWorkspace.rootPath,
+      workspaceRootPath: primaryWorkspaceRootPath(targetWorkspace),
     });
   });
 
@@ -523,7 +532,7 @@ async function sendSessionMessage(sessionId: string, prompt: string) {
     requestDaemon("session.send", {
       message: {
         session: { ...session, status: "running" },
-        workspaceRootPath: workspace.rootPath,
+        workspaceRootPath: primaryWorkspaceRootPath(workspace),
         content: prompt,
       },
       providerConfig: null,
@@ -541,7 +550,8 @@ async function createWorkflow(parsed: ParsedArgs) {
     ]),
   );
   const workspace = workspaces.find(
-    (item) => item.id === workspaceValue || item.rootPath === workspaceValue,
+    (item) =>
+      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
   );
 
   if (!workspace) {
@@ -564,7 +574,7 @@ async function createWorkflow(parsed: ParsedArgs) {
 
     return requestDaemon("workflow.create", {
       workspaceId: targetWorkspace.id,
-      workspaceRootPath: targetWorkspace.rootPath,
+      workspaceRootPath: primaryWorkspaceRootPath(targetWorkspace),
       prompt,
       bindings,
       definitionId: stringFlag(parsed, "definition"),
@@ -675,7 +685,7 @@ function createWorkspaceFromPath(
   return {
     id: crypto.randomUUID(),
     name: path.basename(rootPath),
-    rootPath,
+    rootPaths: [rootPath],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

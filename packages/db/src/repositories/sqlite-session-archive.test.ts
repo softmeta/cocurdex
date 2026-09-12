@@ -17,7 +17,7 @@ async function setup() {
   await createSqliteWorkspaceRepository(database).upsert({
     id: "workspace",
     name: "Archive test",
-    rootPath: "/tmp/archive-test",
+    rootPaths: ["/tmp/archive-test"],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

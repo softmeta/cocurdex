@@ -43,6 +43,7 @@ export class DaemonState {
   private networkProxyReady: Promise<void>;
   private staleToolCallsSwept: Promise<void>;
   private staleChatStreamsSwept: Promise<void>;
+  private staleSessionsSwept: Promise<void>;
 
   constructor(userDataPath: string) {
     this.database = createCocurdexDatabase(getDatabasePath(userDataPath));
@@ -56,6 +57,7 @@ export class DaemonState {
     this.networkProxyReady = this.loadAndApplyNetworkProxy();
     // Runs once per daemon process, before any agent can start a turn: at this
     // point a non-terminal tool call can only be debris from a previous run.
+    this.staleSessionsSwept = this.database.sessions.normalizeRunningToIdle();
     this.staleToolCallsSwept = this.database.toolCalls.failNonTerminal();
     // Same reasoning for pure-chat turns: an assistant message still marked
     // `streaming` when this process starts can have no stream behind it.
@@ -77,10 +79,17 @@ export class DaemonState {
     return this.database;
   }
 
+  async waitForStartupRecovery(): Promise<void> {
+    await Promise.all([
+      this.networkProxyReady,
+      this.staleToolCallsSwept,
+      this.staleChatStreamsSwept,
+      this.staleSessionsSwept,
+    ]);
+  }
+
   async bootstrap(): Promise<AppBootstrapData> {
-    await this.networkProxyReady;
-    await this.staleToolCallsSwept;
-    await this.database.sessions.normalizeRunningToIdle();
+    await this.waitForStartupRecovery();
 
     const queuedAgentInputs = await this.database.queuedAgentInputs.list();
     const queuedMessages = await Promise.all(

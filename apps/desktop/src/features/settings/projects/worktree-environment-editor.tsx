@@ -1,4 +1,5 @@
 import {
+  primaryWorkspaceRootPath,
   suggestWorktreeSetupScript,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
@@ -66,8 +67,9 @@ export function WorktreeEnvironmentEditor({
         }
         setSetupScript(environment.setupScript);
         setCleanupScript(environment.cleanupScript);
-        if (workspace.rootPath) {
-          const suggestion = await probeSetupScript(workspace.rootPath);
+        const primaryRootPath = primaryWorkspaceRootPath(workspace);
+        if (primaryRootPath) {
+          const suggestion = await probeSetupScript(primaryRootPath);
           if (!cancelled) {
             setSuggestedSetup(suggestion);
           }

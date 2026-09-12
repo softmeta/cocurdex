@@ -30,7 +30,7 @@ async function createService() {
   const workspace = {
     id: "workspace-1",
     name: "Snapshot workspace",
-    rootPath: "/tmp/snapshot-workspace",
+    rootPaths: ["/tmp/snapshot-workspace"],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

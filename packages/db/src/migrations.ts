@@ -3,7 +3,7 @@ import { createSchemaSql } from "./schema";
 
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -85,6 +85,7 @@ export function initializeDatabase(database: DatabaseSync): void {
       }
     }
   }
+
   database.exec(`PRAGMA application_id = ${COCURDEX_APPLICATION_ID}`);
   database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`);
 }

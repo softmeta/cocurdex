@@ -1,5 +1,8 @@
-import type { WorkspaceRecord } from "@cocurdex/shared";
-import { Folder, FolderOpen } from "lucide-react";
+import {
+  primaryWorkspaceRootPath,
+  type WorkspaceRecord,
+} from "@cocurdex/shared";
+import { Folder, FolderOpen, FolderX } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,13 +13,7 @@ import {
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
 import { sortWorkspacesByLastOpenedAtDesc } from "./workspace-order";
-
-// Collapse the macOS home prefix so long absolute paths read compactly in the
-// trigger and list. Kept local to the picker since it is purely a display
-// concern for workspace paths.
-function compactWorkspacePath(path: string) {
-  return path.replace(/^\/Users\/[^/]+/, "~");
-}
+import { compactWorkspacePath } from "./workspace-path";
 
 const OPEN_FOLDER_VALUE = "__open_folder__";
 
@@ -37,6 +34,7 @@ interface WorkspacePickerProps {
   triggerLabel?: ReactNode;
   onSelectWorkspace?(workspaceId: string): void;
   onOpenWorkspace?(): void;
+  onRelocateWorkspace?(workspaceId: string): void;
 }
 
 export function WorkspacePicker({
@@ -52,6 +50,7 @@ export function WorkspacePicker({
   triggerLabel,
   onSelectWorkspace,
   onOpenWorkspace,
+  onRelocateWorkspace,
 }: WorkspacePickerProps) {
   const { t } = useTranslation("sessions");
 
@@ -72,14 +71,30 @@ export function WorkspacePicker({
 
   const options = useMemo(
     () => [
-      ...recentWorkspaces.map((workspace) => ({
-        value: workspace.id,
-        label: compactWorkspacePath(workspace.rootPath),
-        keywords: `${workspace.name} ${workspace.rootPath}`,
-        group: "recents",
-        groupLabel: t("workspace.recents"),
-        icon: <Folder className="size-3.5" />,
-      })),
+      ...recentWorkspaces.map((workspace) => {
+        const missing = workspace.available === false;
+        return {
+          value: workspace.id,
+          label: compactWorkspacePath(primaryWorkspaceRootPath(workspace)),
+          keywords: `${workspace.name} ${workspace.rootPaths.join(" ")}`,
+          group: "recents",
+          groupLabel: t("workspace.recents"),
+          icon: missing ? (
+            <FolderX className="size-3.5 text-destructive" />
+          ) : (
+            <Folder className="size-3.5" />
+          ),
+          ...(missing
+            ? {
+                trailing: (
+                  <span className="text-muted-foreground">
+                    {t("workspace.missing")}
+                  </span>
+                ),
+              }
+            : {}),
+        };
+      }),
       {
         value: OPEN_FOLDER_VALUE,
         label: t("workspace.openFolder"),
@@ -133,6 +148,13 @@ export function WorkspacePicker({
       onValueChange={(next) => {
         if (next === OPEN_FOLDER_VALUE) {
           onOpenWorkspace?.();
+          return;
+        }
+        const selected = recentWorkspaces.find(
+          (workspace) => workspace.id === next,
+        );
+        if (selected?.available === false) {
+          onRelocateWorkspace?.(next);
           return;
         }
         onSelectWorkspace?.(next);

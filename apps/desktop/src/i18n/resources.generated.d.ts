@@ -105,6 +105,8 @@ export default interface Resources {
       expand: "Expand tasks";
       label: "Tasks";
       progress: "{{done}}/{{count}}";
+      progress_one: "";
+      progress_other: "";
     };
     planApproval: {
       abandon: "Abandon plan";
@@ -442,6 +444,12 @@ export default interface Resources {
       gitEmptyStagedDescription: "";
       gitEmptyStagedTitle: "";
       gitEmptyTitle: "";
+      gitEmptyTurnDescription: "";
+      gitEmptyTurnExpiredDescription: "";
+      gitEmptyTurnExpiredTitle: "";
+      gitEmptyTurnNoneDescription: "";
+      gitEmptyTurnNoneTitle: "";
+      gitEmptyTurnTitle: "";
       gitEmptyUnstagedDescription: "";
       gitEmptyUnstagedTitle: "";
       gitErrorDescription: "";
@@ -1068,6 +1076,7 @@ export default interface Resources {
       archive: "Archive";
       collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
+      editProject: "Edit project";
       expandChildren: "Expand subagent sessions";
       marketplace: "Marketplace";
       newSession: "New session";
@@ -1093,11 +1102,22 @@ export default interface Resources {
     workspace: {
       dropFolderDescription: "Release to open it as a project.";
       dropFolderTitle: "Drop folder to open";
+      editAddFolder: "Add folder";
+      editCancel: "Cancel";
+      editFoldersLabel: "Source folders";
+      editMakePrimary: "Make primary";
+      editNameLabel: "Project name";
+      editPrimary: "Primary";
+      editRemoveFolder: "Remove folder";
+      editRemoveProject: "Remove project";
+      editSave: "Save";
+      editTitle: "Edit project";
       empty: "No matching workspaces.";
       emptyTitle: "Open a project to start";
       emptyUnconfigured: "No workspaces yet.";
       enterProject: "Enter project";
       home: "Home";
+      missing: "Folder missing — click to relocate";
       openFolder: "Open Folder";
       recents: "Recents";
       removeFailed: "Could not remove this workspace. Try again.";

@@ -106,49 +106,81 @@ export function invalidateWorkspaceFilesCache(rootPath?: string) {
   inflight.clear();
 }
 
+function initialMergedState(roots: string[]): WorkspaceFilesState {
+  if (roots.length === 0) {
+    return { files: [], status: "idle" };
+  }
+  const files = roots.flatMap((root) => cache.get(root)?.files ?? []);
+  const status = roots.every((root) => cache.has(root)) ? "idle" : "loading";
+  return { files, status };
+}
+
 export function useWorkspaceFiles(
-  rootPath: string | null | undefined,
+  input: string | readonly string[] | null | undefined,
 ): WorkspaceFilesState {
-  const cached = rootPath ? cache.get(rootPath) : undefined;
-  const [state, setState] = useState<WorkspaceFilesState>(() => {
-    if (!rootPath) {
-      return { files: [], status: "idle" };
-    }
-    if (cached) {
-      return { files: cached.files, status: "idle" };
-    }
-    return { files: [], status: "loading" };
-  });
+  const rootsKey = typeof input === "string" ? input : (input ?? []).join("\n");
+  const [state, setState] = useState<WorkspaceFilesState>(() =>
+    initialMergedState(rootsKey ? rootsKey.split("\n") : []),
+  );
 
   useEffect(() => {
-    if (!rootPath) {
+    const roots = rootsKey ? rootsKey.split("\n") : [];
+    if (roots.length === 0) {
       setState({ files: [], status: "idle" });
       return;
     }
 
     ensureChangeSubscription();
-    let listeners = consumers.get(rootPath);
-    if (!listeners) {
-      listeners = new Set();
-      consumers.set(rootPath, listeners);
-    }
-    listeners.add(setState);
+    const latest = new Map<string, WorkspaceFilesState>();
+    const publish = () => {
+      const files = roots.flatMap((root) => latest.get(root)?.files ?? []);
+      const statuses = roots.map(
+        (root) => latest.get(root)?.status ?? "loading",
+      );
+      setState({
+        files,
+        status: statuses.includes("loading")
+          ? "loading"
+          : statuses.includes("error")
+            ? "error"
+            : "idle",
+      });
+    };
+    const attached: Array<[string, WorkspaceFilesListener]> = [];
 
-    const hit = cache.get(rootPath);
-    if (hit) {
-      setState({ files: hit.files, status: "idle" });
-    } else {
-      setState({ files: [], status: "loading" });
-      void primeWorkspaceFiles(rootPath);
+    for (const root of roots) {
+      let listeners = consumers.get(root);
+      if (!listeners) {
+        listeners = new Set();
+        consumers.set(root, listeners);
+      }
+      const listener: WorkspaceFilesListener = (next) => {
+        latest.set(root, next);
+        publish();
+      };
+      listeners.add(listener);
+      attached.push([root, listener]);
+
+      const hit = cache.get(root);
+      if (hit) {
+        latest.set(root, { files: hit.files, status: "idle" });
+      } else {
+        latest.set(root, { files: [], status: "loading" });
+        void primeWorkspaceFiles(root);
+      }
     }
+    publish();
 
     return () => {
-      listeners.delete(setState);
-      if (listeners.size === 0) {
-        consumers.delete(rootPath);
+      for (const [root, listener] of attached) {
+        const listeners = consumers.get(root);
+        listeners?.delete(listener);
+        if (listeners?.size === 0) {
+          consumers.delete(root);
+        }
       }
     };
-  }, [rootPath]);
+  }, [rootsKey]);
 
   return state;
 }

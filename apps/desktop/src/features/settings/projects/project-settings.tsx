@@ -46,7 +46,7 @@ function ProjectSettingsList({
     if (!search) {
       return true;
     }
-    return [workspace.name, workspace.rootPath].some((value) =>
+    return [workspace.name, ...workspace.rootPaths].some((value) =>
       value.toLocaleLowerCase().includes(search),
     );
   });
@@ -102,7 +102,7 @@ function ProjectSettingsList({
                           ) : null}
                         </div>
                         <Text size="meta" tone="muted" truncate>
-                          {workspace.rootPath}
+                          {workspace.rootPaths.join(" · ")}
                         </Text>
                       </div>
                       <Text className="shrink-0" size="meta" tone="muted">
@@ -146,9 +146,18 @@ function ProjectIdentity({ workspace }: { workspace: WorkspaceRecord }) {
       <Text as="p" truncate weight="medium">
         {workspace.name}
       </Text>
-      <Text as="p" size="meta" tone="muted" truncate title={workspace.rootPath}>
-        {workspace.rootPath}
-      </Text>
+      {workspace.rootPaths.map((rootPath) => (
+        <Text
+          as="p"
+          key={rootPath}
+          size="meta"
+          title={rootPath}
+          tone="muted"
+          truncate
+        >
+          {rootPath}
+        </Text>
+      ))}
     </div>
   );
 }

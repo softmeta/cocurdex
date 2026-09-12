@@ -1,4 +1,9 @@
 import type { GitWorktreeInfo, WorkspaceRecord } from "@cocurdex/shared";
+import {
+  normalizeWorkspaceRootPath,
+  normalizeWorkspaceRootPaths,
+  workspacePathsEqual,
+} from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { desktopApi, type GitBranchInfo } from "@/lib";
@@ -19,26 +24,7 @@ function persistWorkspaceOpened(workspace: WorkspaceRecord) {
   });
 }
 
-/** Strip trailing slashes for stable rootPath equality (keep root "/"). */
-export function normalizeWorkspaceRootPath(rootPath: string): string {
-  if (rootPath === "/" || rootPath === "") {
-    return rootPath || "/";
-  }
-  return rootPath.replace(/[\\/]+$/, "");
-}
-
-export function workspacePathsEqual(left: string, right: string): boolean {
-  const a = normalizeWorkspaceRootPath(left);
-  const b = normalizeWorkspaceRootPath(right);
-  // Windows paths are case-insensitive; Electron renderer may not set process.
-  const win =
-    (typeof process !== "undefined" && process.platform === "win32") ||
-    (typeof navigator !== "undefined" && /Win/i.test(navigator.platform));
-  if (win) {
-    return a.toLowerCase() === b.toLowerCase();
-  }
-  return a === b;
-}
+export { normalizeWorkspaceRootPath, workspacePathsEqual };
 
 function workspaceNameFromPath(rootPath: string): string {
   const normalized = normalizeWorkspaceRootPath(rootPath);
@@ -174,7 +160,7 @@ export type OpenWorkspaceByPathResult = {
 
 /**
  * Open a workspace by absolute directory path (CLI `cocurdex .` / folder dialog).
- * Reuses an existing record with the same rootPath; otherwise creates one.
+ * Reuses an existing record containing that root; otherwise creates one.
  * Always activates the project and expands its session list in the sidebar.
  */
 export const openWorkspaceByPathAtom = atom(
@@ -183,7 +169,9 @@ export const openWorkspaceByPathAtom = atom(
     const normalized = normalizeWorkspaceRootPath(rootPath);
     const previousId = get(activeWorkspaceIdAtom);
     const existing = get(workspacesAtom).find((workspace) =>
-      workspacePathsEqual(workspace.rootPath, normalized),
+      workspace.rootPaths.some((workspaceRootPath) =>
+        workspacePathsEqual(workspaceRootPath, normalized),
+      ),
     );
 
     let workspace: WorkspaceRecord;
@@ -195,7 +183,7 @@ export const openWorkspaceByPathAtom = atom(
       workspace = {
         id: crypto.randomUUID(),
         name: workspaceNameFromPath(normalized),
-        rootPath: normalized,
+        rootPaths: [normalized],
         createdAt: now,
         updatedAt: now,
         lastOpenedAt: now,
@@ -229,6 +217,70 @@ export const reorderWorkspacesAtom = atom(
     }
     set(workspacesAtom, result.workspaces);
     persistWorkspaceOpened(result.moved);
+  },
+);
+
+export const relocateWorkspaceAtom = atom(
+  null,
+  (get, set, workspaceId: string, rootPath: string) => {
+    const normalized = normalizeWorkspaceRootPath(rootPath);
+    const current = get(workspacesAtom);
+    const target = current.find((workspace) => workspace.id === workspaceId);
+    if (!target) {
+      return;
+    }
+
+    const relocated: WorkspaceRecord = {
+      ...target,
+      rootPaths: [normalized, ...target.rootPaths.slice(1)],
+      name: workspaceNameFromPath(normalized),
+      updatedAt: new Date().toISOString(),
+      available: true,
+    };
+    set(
+      workspacesAtom,
+      current.map((workspace) =>
+        workspace.id === workspaceId ? relocated : workspace,
+      ),
+    );
+    set(selectWorkspaceAtom, workspaceId);
+  },
+);
+
+export const updateWorkspaceAtom = atom(
+  null,
+  (
+    get,
+    set,
+    workspaceId: string,
+    update: { name?: string; rootPaths?: string[] },
+  ) => {
+    const current = get(workspacesAtom);
+    const target = current.find((workspace) => workspace.id === workspaceId);
+    if (!target) {
+      return;
+    }
+
+    const rootPaths = update.rootPaths
+      ? normalizeWorkspaceRootPaths(update.rootPaths)
+      : target.rootPaths;
+    if (rootPaths.length === 0) {
+      return;
+    }
+
+    const updated: WorkspaceRecord = {
+      ...target,
+      name: update.name?.trim() || target.name,
+      rootPaths,
+      updatedAt: new Date().toISOString(),
+    };
+    set(
+      workspacesAtom,
+      current.map((workspace) =>
+        workspace.id === workspaceId ? updated : workspace,
+      ),
+    );
+    persistWorkspaceOpened(updated);
   },
 );
 

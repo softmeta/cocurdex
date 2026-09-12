@@ -40,8 +40,10 @@ describe("WorkflowWorkerScheduler", () => {
 
     const first = scheduler.wake();
     const second = scheduler.wake();
+    expect(scheduler.isActive).toBe(true);
     release?.();
     await Promise.all([first, second]);
+    expect(scheduler.isActive).toBe(false);
 
     expect(calls).toBe(2);
     await scheduler.close();

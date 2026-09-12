@@ -238,7 +238,7 @@ export function ContextWindowIndicator({
   const persistSession = (updatedSession: SessionRecord | null) => {
     const workspaceRootPath = workspaces.find(
       (workspace) => workspace.id === updatedSession?.workspaceId,
-    )?.rootPath;
+    )?.rootPaths[0];
 
     if (updatedSession && workspaceRootPath) {
       void desktopApi.createSession({

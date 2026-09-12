@@ -71,7 +71,7 @@ describe("createCocurdexDatabase", () => {
     await database.workspaces.upsert({
       id: "workspace-1",
       name: "repo-a",
-      rootPath: "/tmp/repo-a",
+      rootPaths: ["/tmp/repo-a"],
       createdAt: "2026-06-25T00:00:00.000Z",
       updatedAt: "2026-06-25T00:00:00.000Z",
       lastOpenedAt: "2026-06-25T00:00:00.000Z",

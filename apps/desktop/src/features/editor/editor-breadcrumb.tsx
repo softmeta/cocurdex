@@ -32,7 +32,7 @@ export function EditorBreadcrumb() {
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
-  const rootPath = workingPath ?? activeWorkspace?.rootPath;
+  const rootPath = workingPath ?? activeWorkspace?.rootPaths[0];
 
   // Without a workspace root we cannot derive a clean relative path; hiding the
   // bar is better than dumping an absolute filesystem path.

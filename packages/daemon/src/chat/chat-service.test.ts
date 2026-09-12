@@ -71,12 +71,14 @@ describe("daemon chat lifecycle", () => {
         config,
       ),
     ).rejects.toThrow("already streaming");
+    expect(service.activeOperationCount).toBeGreaterThan(0);
     await first;
     calls[0].params.onDelta("Partial");
     expect(
       (await service.get(conversation.id))?.messages.at(-1)?.content,
     ).toEqual([{ type: "text", text: "Partial" }]);
     await service.stop(conversation.id);
+    await vi.waitFor(() => expect(service.activeOperationCount).toBe(0));
     const messages = await db.conversationMessages.listByConversationId(
       conversation.id,
     );

@@ -107,7 +107,7 @@ const sessionRecordShape = z.object({
 
 const workspaceRecordShape = z.object({
   id: idSchema,
-  rootPath: filesystemPathSchema,
+  rootPaths: z.array(filesystemPathSchema).min(1),
 });
 
 export const schemas = {

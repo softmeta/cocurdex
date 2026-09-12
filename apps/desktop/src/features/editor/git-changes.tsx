@@ -68,7 +68,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
-  const rootPath = workingPath ?? activeWorkspace?.rootPath ?? null;
+  const rootPath = workingPath ?? activeWorkspace?.rootPaths[0] ?? null;
   const [fileChanges, setFileChanges] = useState<WorkspaceGitFileChange[]>([]);
   const [diffStatus, setDiffStatus] = useState<WorkspaceGitDiffStatus>("ok");
   const [isLoading, setIsLoading] = useState(false);

@@ -1,6 +1,7 @@
-import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { readFileSync, unlinkSync } from "node:fs";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import net from "node:net";
-import path from "node:path";
 import type {
   DaemonEventEnvelope,
   DaemonMetadata,
@@ -8,6 +9,9 @@ import type {
 } from "@cocurdex/rpc";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import { prepareDaemonEndpoint } from "./daemon-endpoint";
+import { acquireDaemonOwnership } from "./daemon-ownership";
+import { DaemonShutdownGate } from "./daemon-shutdown-gate";
 import { handleDaemonRequest } from "./handler";
 import {
   getConfiguredUserDataPath,
@@ -20,6 +24,7 @@ interface StartDaemonServerOptions {
   runtimeFingerprint: string;
   token: string;
   userDataPath?: string;
+  onIdleShutdown?(): void;
 }
 
 function encodeWireMessage(message: unknown) {
@@ -56,120 +61,179 @@ export async function writeDaemonMetadata(
 ) {
   await mkdir(userDataPath, { recursive: true });
   const metadataPath = getDaemonMetadataPath(userDataPath);
-  await writeFile(metadataPath, JSON.stringify(metadata, null, 2), {
-    mode: 0o600,
-  });
-  await chmod(metadataPath, 0o600);
+  const temporaryPath = `${metadataPath}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, JSON.stringify(metadata, null, 2), {
+      mode: 0o600,
+      flag: "wx",
+    });
+    await rename(temporaryPath, metadataPath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
 }
 
 export async function startDaemonServer(options: StartDaemonServerOptions) {
-  const userDataPath = options.userDataPath ?? getConfiguredUserDataPath();
+  const ownership = await acquireDaemonOwnership(
+    options.userDataPath ?? getConfiguredUserDataPath(),
+  );
+  const userDataPath = ownership.userDataPath;
   const socketPath = getDaemonSocketPath(userDataPath);
   const startedAt = new Date().toISOString();
-  const service = new CocurdexDaemonService({
-    runtimeFingerprint: options.runtimeFingerprint,
-    socketPath,
-    startedAt,
-    userDataPath,
-  });
+  let service: CocurdexDaemonService | undefined;
+  let endpoint: Awaited<ReturnType<typeof prepareDaemonEndpoint>> | undefined;
+  let ready = false;
+  let metadataPublished = false;
+  const gate = new DaemonShutdownGate();
   const sockets = new Set<net.Socket>();
   const server = net.createServer((socket) => {
+    const activeService = service;
+    if (!ready || !activeService) {
+      socket.destroy();
+      return;
+    }
     sockets.add(socket);
+    socket.on("error", () => socket.destroy());
     let subscribedToDaemonEvents = false;
-    const send = (message: unknown) => {
-      socket.write(encodeWireMessage(message));
+    const send = (message: unknown, onSent?: () => void) => {
+      socket.write(encodeWireMessage(message), onSent);
     };
     const eventListener = (event: CocurdexDaemonEvent) => {
-      if (!subscribedToDaemonEvents) {
-        return;
-      }
+      if (!subscribedToDaemonEvents) return;
       send({ event, type: "daemon.event" } satisfies DaemonEventEnvelope);
     };
-
-    service.events.on(
+    activeService.events.on(
       "daemon.event",
       eventListener as (...args: unknown[]) => void,
     );
-
     socket.on("close", () => {
       sockets.delete(socket);
-      service.events.off(
+      activeService.events.off(
         "daemon.event",
         eventListener as (...args: unknown[]) => void,
       );
     });
     readJsonLines(socket, (message) => {
-      void handleSocketMessage(service, options.token, message, send, () => {
-        subscribedToDaemonEvents = true;
-      });
+      void handleSocketMessage(
+        activeService,
+        options.token,
+        message,
+        send,
+        gate,
+        async () => {
+          await close();
+          options.onIdleShutdown?.();
+        },
+        () => {
+          subscribedToDaemonEvents = true;
+        },
+      );
     });
   });
-
-  if (process.platform !== "win32") {
-    await mkdir(path.dirname(socketPath), { recursive: true });
-  }
-  if (await isSocketReachable(socketPath)) {
-    throw new Error(`Cocurdex daemon is already running at ${socketPath}`);
-  }
-  if (process.platform !== "win32") {
-    await rm(socketPath, { force: true });
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(socketPath, () => {
-      server.off("error", reject);
-      resolve();
-    });
-  });
-
-  await writeDaemonMetadata(
-    {
-      pid: process.pid,
-      protocolVersion: DAEMON_PROTOCOL_VERSION,
-      runtimeFingerprint: options.runtimeFingerprint,
-      socketPath,
-      token: options.token,
-      startedAt,
-    },
-    userDataPath,
-  );
 
   let closePromise: Promise<void> | null = null;
   const close = () => {
-    if (!closePromise) {
-      closePromise = (async () => {
-        const serverClosed = new Promise<void>((resolve, reject) => {
-          server.close((error) => {
-            if (error) reject(error);
-            else resolve();
-          });
-        });
-        for (const socket of sockets) {
-          socket.destroy();
-        }
-        await serverClosed;
+    closePromise ??= (async () => {
+      ready = false;
+      try {
         try {
-          await service.shutdown();
+          for (const socket of sockets) socket.destroy();
+          if (server.listening) {
+            await new Promise<void>((resolve, reject) => {
+              server.close((error) => (error ? reject(error) : resolve()));
+            });
+          }
         } finally {
-          await rm(getDaemonMetadataPath(userDataPath), { force: true });
-          if (process.platform !== "win32") {
-            await rm(socketPath, { force: true });
+          await service?.shutdown();
+        }
+      } finally {
+        try {
+          if (metadataPublished) {
+            removeOwnedDaemonMetadata(userDataPath, options.token, startedAt);
+          }
+        } finally {
+          try {
+            endpoint?.remove();
+          } finally {
+            ownership.release();
           }
         }
-      })();
-    }
+      }
+    })();
     return closePromise;
   };
 
-  return { close, server, service };
+  try {
+    const preparedEndpoint = await prepareDaemonEndpoint(socketPath);
+    endpoint = preparedEndpoint;
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(preparedEndpoint.bindPath, () => {
+        server.off("error", reject);
+        resolve();
+      });
+    });
+    endpoint.publish();
+    service = new CocurdexDaemonService({
+      runtimeFingerprint: options.runtimeFingerprint,
+      socketPath,
+      startedAt,
+      userDataPath,
+    });
+    await service.state.waitForStartupRecovery();
+    ready = true;
+    metadataPublished = true;
+    await writeDaemonMetadata(
+      {
+        pid: process.pid,
+        protocolVersion: DAEMON_PROTOCOL_VERSION,
+        runtimeFingerprint: options.runtimeFingerprint,
+        socketPath,
+        token: options.token,
+        startedAt,
+      },
+      userDataPath,
+    );
+    return { close, server, service };
+  } catch (error) {
+    await close();
+    throw error;
+  }
+}
+
+function removeOwnedDaemonMetadata(
+  userDataPath: string,
+  token: string,
+  startedAt: string,
+) {
+  const metadataPath = getDaemonMetadataPath(userDataPath);
+  let metadata: DaemonMetadata;
+  try {
+    metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as DaemonMetadata;
+  } catch (error) {
+    if (
+      (error as NodeJS.ErrnoException).code === "ENOENT" ||
+      error instanceof SyntaxError
+    )
+      return;
+    throw error;
+  }
+  if (
+    metadata.pid === process.pid &&
+    metadata.token === token &&
+    metadata.startedAt === startedAt
+  ) {
+    unlinkSync(metadataPath);
+  }
 }
 
 async function handleSocketMessage(
   service: CocurdexDaemonService,
   token: string,
   message: unknown,
-  send: (message: unknown) => void,
+  send: (message: unknown, onSent?: () => void) => void,
+  gate: DaemonShutdownGate,
+  close: () => Promise<void>,
   subscribeToDaemonEvents: () => void,
 ) {
   const request = message as DaemonRequest;
@@ -183,10 +247,35 @@ async function handleSocketMessage(
   }
 
   try {
+    if (request.method === "daemon.shutdownIfIdle") {
+      const status = service.status();
+      if (
+        request.params.pid !== status.pid ||
+        request.params.startedAt !== status.startedAt
+      ) {
+        throw new Error("Daemon identity changed; shutdown was not accepted");
+      }
+      const result = gate.prepare(service.getActiveWork());
+      send(
+        { id: request.id, result },
+        result.status === "accepted"
+          ? () => {
+              void close().catch((error: unknown) =>
+                console.error("Daemon shutdown failed", error),
+              );
+            }
+          : undefined,
+      );
+      return;
+    }
     if (request.method === "daemon.subscribe") {
       subscribeToDaemonEvents();
     }
-    const result = await handleDaemonRequest(service, request);
+    const result =
+      request.method === "daemon.status" ||
+      request.method === "daemon.subscribe"
+        ? await handleDaemonRequest(service, request)
+        : await gate.run(() => handleDaemonRequest(service, request));
     send({ id: request.id, result });
   } catch (error) {
     send({
@@ -197,19 +286,4 @@ async function handleSocketMessage(
       },
     });
   }
-}
-
-function isSocketReachable(socketPath: string) {
-  return new Promise<boolean>((resolve) => {
-    const socket = net.connect(socketPath);
-
-    socket.once("connect", () => {
-      socket.end();
-      resolve(true);
-    });
-    socket.once("error", () => {
-      socket.destroy();
-      resolve(false);
-    });
-  });
 }

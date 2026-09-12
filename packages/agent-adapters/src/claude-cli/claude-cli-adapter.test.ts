@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type {
   Query as ClaudeQuery,
   Options as ClaudeQueryOptions,
@@ -16,6 +19,8 @@ import {
   getClaudeCliPermissionMode,
 } from "./claude-cli-process";
 import { createClaudeRuntimeFingerprint } from "./claude-runtime";
+
+const testWorkspaceRoot = mkdtempSync(join(tmpdir(), "cocurdex-claude-test-"));
 
 describe("getClaudeCliPermissionMode", () => {
   it("enforces Claude plan permissions when the session is in plan mode", () => {
@@ -179,8 +184,8 @@ describe("createClaudeCliAdapter", () => {
 
     await vi.waitFor(() => expect(createQuery).toHaveBeenCalledOnce());
     expect(harness.options).toMatchObject({
-      additionalDirectories: ["/tmp/repo"],
-      cwd: "/tmp/repo",
+      additionalDirectories: [testWorkspaceRoot],
+      cwd: testWorkspaceRoot,
       effort: "max",
       enableFileCheckpointing: true,
       forwardSubagentText: true,
@@ -245,7 +250,7 @@ describe("createClaudeCliAdapter", () => {
       createClaudeRuntimeFingerprint({
         configDir: null,
         executablePath: "/usr/local/bin/claude",
-        workspaceRootPath: "/tmp/repo",
+        workspaceRootPath: testWorkspaceRoot,
       }),
     );
     expect(events).toContainEqual(
@@ -285,7 +290,7 @@ describe("createClaudeCliAdapter", () => {
       apiKeySource: "oauth",
       capabilities: ["interrupt_receipt_v1"],
       claude_code_version: "2.1.220",
-      cwd: "/tmp/repo",
+      cwd: testWorkspaceRoot,
       fast_mode_state: "off",
       mcp_servers: [
         { name: "filesystem", status: "connected" },
@@ -730,7 +735,7 @@ describe("createClaudeCliAdapter", () => {
     const previousFingerprint = createClaudeRuntimeFingerprint({
       configDir: null,
       executablePath: "/opt/old/claude",
-      workspaceRootPath: "/tmp/repo",
+      workspaceRootPath: testWorkspaceRoot,
     });
     const session = createClaudeCliAdapter({
       createQuery,
@@ -885,6 +890,6 @@ function createSessionPayload(
       archivedAt: null,
       providerSnapshot: providerSnapshot ?? null,
     },
-    workspaceRootPath: "/tmp/repo",
+    workspaceRootPath: testWorkspaceRoot,
   } as const;
 }

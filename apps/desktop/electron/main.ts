@@ -252,7 +252,7 @@ async function handleCliOpenFolder(
   const workspaces = await listWorkspaces();
   await queueOpenFolder(folderPath, {
     broadcast: options?.broadcast,
-    existingRootPaths: workspaces.map((workspace) => workspace.rootPath),
+    existingRootPaths: workspaces.flatMap((workspace) => workspace.rootPaths),
   });
 }
 
@@ -1215,10 +1215,11 @@ async function assertCwdIsAllowedTerminalRoot(cwd: string): Promise<void> {
   const home = path.normalize(homedir());
   const allowed =
     normalized === home ||
-    workspaces.some((workspace) => {
-      const root = path.normalize(workspace.rootPath);
-      return normalized === root;
-    });
+    workspaces.some((workspace) =>
+      workspace.rootPaths.some(
+        (rootPath) => normalized === path.normalize(rootPath),
+      ),
+    );
   if (!allowed) {
     throw new Error(
       "pty:spawn rejected: cwd is not a registered workspace root or home directory",
@@ -1230,16 +1231,17 @@ async function assertCwdIsAllowedTerminalRoot(cwd: string): Promise<void> {
 // straight from main-process state. Never derived from renderer input.
 async function listWorkspaceRootPaths(): Promise<string[]> {
   const workspaces = await listWorkspaces();
-  return workspaces.map((workspace) => workspace.rootPath);
+  return workspaces.flatMap((workspace) => workspace.rootPaths);
 }
 
 async function assertRootIsKnownWorkspace(rootPath: string): Promise<void> {
   const workspaces = await listWorkspaces();
   const normalized = path.normalize(rootPath);
-  const allowed = workspaces.some((workspace) => {
-    const root = path.normalize(workspace.rootPath);
-    return normalized === root;
-  });
+  const allowed = workspaces.some((workspace) =>
+    workspace.rootPaths.some(
+      (workspaceRootPath) => normalized === path.normalize(workspaceRootPath),
+    ),
+  );
   if (!allowed) {
     throw new Error(
       "search:start rejected: rootPath is not a registered workspace root",
@@ -1609,7 +1611,7 @@ app
         const workspaces = await listWorkspaces();
         const rootPath = await resolveDroppedOpenPath(
           folderPath,
-          workspaces.map((workspace) => workspace.rootPath),
+          workspaces.flatMap((workspace) => workspace.rootPaths),
         );
         return rootPath ? { rootPath } : null;
       },

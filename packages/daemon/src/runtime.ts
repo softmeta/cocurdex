@@ -39,6 +39,7 @@ export interface RuntimePersistence {
 interface SessionRuntime {
   session: SessionRecord;
   workspaceRootPath: string;
+  workspaceRootPaths: string[];
   runtime: AgentSession;
 }
 
@@ -323,6 +324,7 @@ export class AgentRuntimeManager {
       {
         session: sessionCopy,
         workspaceRootPath: payload.workspaceRootPath,
+        workspaceRootPaths: payload.workspaceRootPaths,
         userDataPath: this.userDataPath,
         providerSession: persistence.providerSession,
         providerConfig: persistence.providerConfig,
@@ -350,6 +352,9 @@ export class AgentRuntimeManager {
     const nextRuntime: SessionRuntime = {
       session: sessionCopy,
       workspaceRootPath: payload.workspaceRootPath,
+      workspaceRootPaths: payload.workspaceRootPaths ?? [
+        payload.workspaceRootPath,
+      ],
       runtime: createdRuntime,
     };
 
@@ -712,13 +717,17 @@ export class AgentRuntimeManager {
   }
 
   private ensureSessionRuntime(
-    payload: Pick<SendSessionMessagePayload, "session" | "workspaceRootPath">,
+    payload: Pick<
+      SendSessionMessagePayload,
+      "session" | "workspaceRootPath" | "workspaceRootPaths"
+    >,
     persistence: RuntimePersistence,
   ) {
     return this.createSessionRuntime(
       {
         session: payload.session,
         workspaceRootPath: payload.workspaceRootPath,
+        workspaceRootPaths: payload.workspaceRootPaths,
       },
       persistence,
     );

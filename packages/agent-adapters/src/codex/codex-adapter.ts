@@ -658,6 +658,12 @@ export function createCodexAdapter(
         const result = await appServerLease.client.startThread({
           model,
           cwd: payload.workspaceRootPath,
+          runtimeWorkspaceRoots: [
+            ...new Set([
+              payload.workspaceRootPath,
+              ...(payload.workspaceRootPaths ?? []),
+            ]),
+          ],
           sandbox: createCodexSandboxMode(payload, activePermissionMode),
           experimentalRawEvents: false,
           ...(serviceTier ? { serviceTier } : {}),
@@ -687,6 +693,12 @@ export function createCodexAdapter(
           threadId,
           model,
           cwd: payload.workspaceRootPath,
+          runtimeWorkspaceRoots: [
+            ...new Set([
+              payload.workspaceRootPath,
+              ...(payload.workspaceRootPaths ?? []),
+            ]),
+          ],
           sandbox: createCodexSandboxMode(payload, activePermissionMode),
           excludeTurns: true,
           ...(serviceTier ? { serviceTier } : {}),

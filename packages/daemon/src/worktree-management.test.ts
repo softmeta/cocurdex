@@ -58,7 +58,7 @@ function workspaceFor(rootPath: string): WorkspaceRecord {
   return {
     id: "workspace-1",
     name: "fixture",
-    rootPath,
+    rootPaths: [rootPath],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

@@ -68,6 +68,9 @@ export function SidebarItemPreview({
   );
 }
 
+const sidebarItemTooltipContentClassName =
+  "min-w-0 max-w-64 flex-col items-stretch gap-1 rounded-card bg-popover px-3 py-2 text-start text-body text-popover-foreground shadow-md ring-1 ring-foreground/10";
+
 interface SidebarItemTooltipProps {
   agentLabel?: string;
   children: ReactElement;
@@ -93,7 +96,7 @@ export function SidebarItemTooltip({
         hideArrow
         side="right"
         sideOffset={8}
-        className="min-w-0 max-w-64 flex-col items-stretch gap-1 rounded-card bg-popover px-3 py-2 text-start text-body text-popover-foreground shadow-md ring-1 ring-foreground/10"
+        className={sidebarItemTooltipContentClassName}
       >
         <SidebarItemPreview
           agentLabel={agentLabel}
@@ -102,6 +105,47 @@ export function SidebarItemTooltip({
           timestamp={timestamp}
           title={title}
         />
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+interface WorkspaceItemTooltipProps {
+  children: ReactElement;
+  paths: string[];
+  title: string;
+}
+
+export function WorkspaceItemTooltip({
+  children,
+  paths,
+  title,
+}: WorkspaceItemTooltipProps) {
+  return (
+    <Tooltip disableHoverablePopup>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        align="center"
+        hideArrow
+        side="right"
+        sideOffset={8}
+        className={sidebarItemTooltipContentClassName}
+      >
+        <div className="flex w-full min-w-0 flex-col gap-1">
+          <Text size="body" className="min-w-0 whitespace-normal">
+            {title}
+          </Text>
+          {paths.map((path) => (
+            <Text
+              className="min-w-0 break-all"
+              key={path}
+              size="meta"
+              tone="muted"
+            >
+              {path}
+            </Text>
+          ))}
+        </div>
       </TooltipContent>
     </Tooltip>
   );
