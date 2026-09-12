@@ -10,8 +10,8 @@
   },
   "description": "cocurdex runs coding agents against a local folder. Here is what is available on this machine.",
   "providers": {
-    "title": "Configure a model provider",
-    "description": "Add a provider and enable the models you want. The built-in pi agent needs one; the other adapters bring their own."
+    "description": "Add a provider and enable the models you want. The built-in pi agent needs one; the other adapters bring their own.",
+    "title": "Configure a model provider"
   },
   "title": "Welcome to cocurdex"
 }

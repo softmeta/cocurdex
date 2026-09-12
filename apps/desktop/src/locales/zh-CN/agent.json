@@ -100,7 +100,8 @@
     "dismiss": "隐藏任务",
     "expand": "展开任务",
     "label": "任务",
-    "progress": "{{done}}/{{count}}"
+    "progress": "{{done}}/{{count}}",
+    "progress_other": ""
   },
   "planApproval": {
     "abandon": "放弃计划",

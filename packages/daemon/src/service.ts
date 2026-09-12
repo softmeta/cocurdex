@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { statSync } from "node:fs";
 import {
   deleteOpenCodeSession,
   readAdapterRateLimits as probeAdapterRateLimits,
@@ -99,6 +100,14 @@ interface QueuedFollowUp {
 
 /** How often checkpoint retention runs on a daemon that never restarts. */
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+function isExistingDirectory(directoryPath: string) {
+  try {
+    return statSync(directoryPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 export class CocurdexDaemonService {
   readonly chatService: DaemonChatService;
@@ -257,8 +266,12 @@ export class CocurdexDaemonService {
     return this.state.sessionAttention.update(payload);
   }
 
-  listWorkspaces() {
-    return this.state.listWorkspaces();
+  async listWorkspaces() {
+    const workspaces = await this.state.listWorkspaces();
+    return workspaces.map((workspace) => ({
+      ...workspace,
+      available: isExistingDirectory(workspace.rootPath),
+    }));
   }
 
   private async reconcileWorkspaceChanges() {

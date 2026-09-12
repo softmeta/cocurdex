@@ -232,6 +232,33 @@ export const reorderWorkspacesAtom = atom(
   },
 );
 
+export const relocateWorkspaceAtom = atom(
+  null,
+  (get, set, workspaceId: string, rootPath: string) => {
+    const normalized = normalizeWorkspaceRootPath(rootPath);
+    const current = get(workspacesAtom);
+    const target = current.find((workspace) => workspace.id === workspaceId);
+    if (!target) {
+      return;
+    }
+
+    const relocated: WorkspaceRecord = {
+      ...target,
+      rootPath: normalized,
+      name: workspaceNameFromPath(normalized),
+      updatedAt: new Date().toISOString(),
+      available: true,
+    };
+    set(
+      workspacesAtom,
+      current.map((workspace) =>
+        workspace.id === workspaceId ? relocated : workspace,
+      ),
+    );
+    set(selectWorkspaceAtom, workspaceId);
+  },
+);
+
 export const removeWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string) => {

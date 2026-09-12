@@ -105,6 +105,8 @@ export default interface Resources {
       expand: "Expand tasks";
       label: "Tasks";
       progress: "{{done}}/{{count}}";
+      progress_one: "";
+      progress_other: "";
     };
     planApproval: {
       abandon: "Abandon plan";
@@ -442,6 +444,12 @@ export default interface Resources {
       gitEmptyStagedDescription: "";
       gitEmptyStagedTitle: "";
       gitEmptyTitle: "";
+      gitEmptyTurnDescription: "";
+      gitEmptyTurnExpiredDescription: "";
+      gitEmptyTurnExpiredTitle: "";
+      gitEmptyTurnNoneDescription: "";
+      gitEmptyTurnNoneTitle: "";
+      gitEmptyTurnTitle: "";
       gitEmptyUnstagedDescription: "";
       gitEmptyUnstagedTitle: "";
       gitErrorDescription: "";
@@ -1098,6 +1106,7 @@ export default interface Resources {
       emptyUnconfigured: "No workspaces yet.";
       enterProject: "Enter project";
       home: "Home";
+      missing: "Folder missing — click to relocate";
       openFolder: "Open Folder";
       recents: "Recents";
       removeFailed: "Could not remove this workspace. Try again.";

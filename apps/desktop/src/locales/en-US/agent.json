@@ -102,7 +102,9 @@
     "dismiss": "Hide tasks",
     "expand": "Expand tasks",
     "label": "Tasks",
-    "progress": "{{done}}/{{count}}"
+    "progress": "{{done}}/{{count}}",
+    "progress_one": "",
+    "progress_other": ""
   },
   "planApproval": {
     "abandon": "Abandon plan",

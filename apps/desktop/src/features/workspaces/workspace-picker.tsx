@@ -1,5 +1,5 @@
 import type { WorkspaceRecord } from "@cocurdex/shared";
-import { Folder, FolderOpen } from "lucide-react";
+import { Folder, FolderOpen, FolderX } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,6 +37,7 @@ interface WorkspacePickerProps {
   triggerLabel?: ReactNode;
   onSelectWorkspace?(workspaceId: string): void;
   onOpenWorkspace?(): void;
+  onRelocateWorkspace?(workspaceId: string): void;
 }
 
 export function WorkspacePicker({
@@ -52,6 +53,7 @@ export function WorkspacePicker({
   triggerLabel,
   onSelectWorkspace,
   onOpenWorkspace,
+  onRelocateWorkspace,
 }: WorkspacePickerProps) {
   const { t } = useTranslation("sessions");
 
@@ -72,14 +74,30 @@ export function WorkspacePicker({
 
   const options = useMemo(
     () => [
-      ...recentWorkspaces.map((workspace) => ({
-        value: workspace.id,
-        label: compactWorkspacePath(workspace.rootPath),
-        keywords: `${workspace.name} ${workspace.rootPath}`,
-        group: "recents",
-        groupLabel: t("workspace.recents"),
-        icon: <Folder className="size-3.5" />,
-      })),
+      ...recentWorkspaces.map((workspace) => {
+        const missing = workspace.available === false;
+        return {
+          value: workspace.id,
+          label: compactWorkspacePath(workspace.rootPath),
+          keywords: `${workspace.name} ${workspace.rootPath}`,
+          group: "recents",
+          groupLabel: t("workspace.recents"),
+          icon: missing ? (
+            <FolderX className="size-3.5 text-destructive" />
+          ) : (
+            <Folder className="size-3.5" />
+          ),
+          ...(missing
+            ? {
+                trailing: (
+                  <span className="text-muted-foreground">
+                    {t("workspace.missing")}
+                  </span>
+                ),
+              }
+            : {}),
+        };
+      }),
       {
         value: OPEN_FOLDER_VALUE,
         label: t("workspace.openFolder"),
@@ -133,6 +151,13 @@ export function WorkspacePicker({
       onValueChange={(next) => {
         if (next === OPEN_FOLDER_VALUE) {
           onOpenWorkspace?.();
+          return;
+        }
+        const selected = recentWorkspaces.find(
+          (workspace) => workspace.id === next,
+        );
+        if (selected?.available === false) {
+          onRelocateWorkspace?.(next);
           return;
         }
         onSelectWorkspace?.(next);

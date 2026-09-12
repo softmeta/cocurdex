@@ -161,6 +161,7 @@
     "emptyUnconfigured": "No workspaces yet.",
     "enterProject": "Enter project",
     "home": "Home",
+    "missing": "Folder missing — click to relocate",
     "openFolder": "Open Folder",
     "recents": "Recents",
     "removeFailed": "Could not remove this workspace. Try again.",

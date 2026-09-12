@@ -66,6 +66,7 @@ export function NewSessionCard({
   onClearAttachment,
   onSelectWorkspace,
   onOpenWorkspace,
+  onRelocateWorkspace,
   onSelectBranch,
   onSelectWorktree,
   onSelectAgent,
@@ -347,6 +348,7 @@ export function NewSessionCard({
         workspaces={workspaces}
         onSelectWorkspace={onSelectWorkspace}
         onOpenWorkspace={onOpenWorkspace}
+        onRelocateWorkspace={onRelocateWorkspace}
       />
 
       {hasWorkspace && activeWorkspaceId ? (
@@ -416,6 +418,7 @@ export function NewSessionCard({
             workspaceName={workspaceName}
             workspaces={workspaces}
             onOpenWorkspace={onOpenWorkspace}
+            onRelocateWorkspace={onRelocateWorkspace}
             onSelectWorkspace={onSelectWorkspace}
           />
           {t("sessions:workspace.startTitleAfter")}

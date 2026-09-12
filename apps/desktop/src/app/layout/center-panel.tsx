@@ -106,6 +106,7 @@ import {
   activeWorktreesAtom,
   draftWorktreePathAtom,
   openWorkspaceByPathAtom,
+  relocateWorkspaceAtom,
   selectWorkspaceAtom,
   workspacesAtom,
 } from "@/features/workspaces";
@@ -276,6 +277,7 @@ export function CenterPanel({
   const applyRefinedSessionTitle = useSetAtom(applyRefinedSessionTitleAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
+  const relocateWorkspace = useSetAtom(relocateWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const activeBranches = useAtomValue(activeBranchesAtom);
   const activeBranch = useAtomValue(activeBranchAtom);
@@ -922,6 +924,13 @@ export function CenterPanel({
     }
   };
 
+  const handleRelocateWorkspace = async (workspaceId: string) => {
+    const result = await desktopApi.openWorkspace();
+    if (result.canceled || result.filePaths.length === 0) return;
+    relocateWorkspace(workspaceId, result.filePaths[0]);
+    selectSession(null);
+  };
+
   const handleSelectBranch = async (branch: string) => {
     if (!activeWorkspace || branch === activeBranch) {
       return;
@@ -1186,6 +1195,9 @@ export function CenterPanel({
           composerRef={composerRef}
           onClearAttachment={clearChatComposerAttachment}
           onOpenWorkspace={handleOpenWorkspace}
+          onRelocateWorkspace={(workspaceId) =>
+            void handleRelocateWorkspace(workspaceId)
+          }
           onSelectBranch={handleSelectBranch}
           onSelectWorktree={handleSelectWorktree}
           onSelectAgent={setLastSelectedAgent}

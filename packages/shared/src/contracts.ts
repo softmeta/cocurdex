@@ -250,6 +250,7 @@ export interface WorkspaceRecord {
   updatedAt: string;
   lastOpenedAt: string;
   sortOrder: number;
+  available?: boolean;
 }
 
 export interface SessionRecord {

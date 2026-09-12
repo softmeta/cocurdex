@@ -161,6 +161,7 @@
     "emptyUnconfigured": "还没有工作区。",
     "enterProject": "进入项目工作",
     "home": "首页",
+    "missing": "文件夹已丢失，点击重新定位",
     "openFolder": "打开文件夹",
     "recents": "最近",
     "removeFailed": "无法移除该 workspace，请重试。",
