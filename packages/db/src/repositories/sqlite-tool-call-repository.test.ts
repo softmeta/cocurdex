@@ -22,7 +22,7 @@ async function seedSession(database: Database, sessionId: string) {
   await database.workspaces.upsert({
     id: workspaceId,
     name: "workspace",
-    rootPath: `/tmp/${workspaceId}`,
+    rootPaths: [`/tmp/${workspaceId}`],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

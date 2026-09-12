@@ -9,6 +9,8 @@ import {
   type CollaborationModeKind,
   type MessageAttachment,
   type MessageRecord,
+  normalizeWorkspaceRootPaths,
+  primaryWorkspaceRootPath,
   resolveSessionWorkingPath,
   type SessionRecord,
 } from "@cocurdex/shared";
@@ -302,10 +304,14 @@ export function CenterPanel({
   const workingPath =
     activeSession && sessionWorkspace
       ? resolveSessionWorkingPath({
-          workspaceRootPath: sessionWorkspace.rootPath,
+          workspaceRootPath: primaryWorkspaceRootPath(sessionWorkspace),
           worktreePath: activeSession.worktreePath,
         })
       : globalWorkingPath;
+  const composerWorkspaceRootPaths = normalizeWorkspaceRootPaths([
+    ...((sessionWorkspace ?? activeWorkspace)?.rootPaths ?? []),
+    workingPath ?? "",
+  ]);
   const activeQueuedInputs = activeSession
     ? (queuedInputsBySession[activeSession.id] ?? [])
     : [];
@@ -401,7 +407,8 @@ export function CenterPanel({
       });
       void desktopApi.createSession({
         session: updatedSession,
-        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       });
     }
   };
@@ -419,7 +426,7 @@ export function CenterPanel({
     activeToolCalls,
   );
   useGitBranches(workingPath ?? undefined);
-  useGitWorktrees(activeWorkspace?.rootPath);
+  useGitWorktrees(activeWorkspace?.rootPaths[0]);
 
   function formatAnnotationsContext(anns: BrowserAnnotation[]): string {
     if (anns.length === 0) return "";
@@ -606,7 +613,8 @@ export function CenterPanel({
       requestId,
       agentType: activeSession.agentType,
       sessionId: activeSession.id,
-      workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+      workspaceRootPath:
+        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       contentLength: message.length,
       attachmentCount: attachments.length,
     });
@@ -660,11 +668,13 @@ export function CenterPanel({
         },
         thinkingLevel:
           thinkingLevelOptions.length > 0 ? selectedThinkingLevel : undefined,
-        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       });
       const savedMessage = await desktopApi.sendMessage({
         session: nextSession,
-        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
         content: userMessage.content,
@@ -677,7 +687,8 @@ export function CenterPanel({
         appendQueuedInput({
           messageId: savedMessage.id,
           sessionId: savedMessage.sessionId,
-          workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+          workspaceRootPath:
+            workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
           thinkingLevel: selectedThinkingLevel ?? undefined,
           createdAt: savedMessage.createdAt,
           message: savedMessage,
@@ -804,7 +815,8 @@ export function CenterPanel({
     try {
       const userMessage = await desktopApi.submitPreviousMessage({
         session: activeSession,
-        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
         messageId: message.id,
         content,
         attachments:
@@ -937,14 +949,14 @@ export function CenterPanel({
     }
 
     await desktopApi.checkoutGitBranch(
-      workingPath ?? activeWorkspace.rootPath,
+      workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       branch,
     );
   };
 
   const handleSelectWorktree = (path: string | null) => {
-    const nextPath = path ?? activeWorkspace?.rootPath ?? null;
-    const currentPath = workingPath ?? activeWorkspace?.rootPath ?? null;
+    const nextPath = path ?? activeWorkspace?.rootPaths[0] ?? null;
+    const currentPath = workingPath ?? activeWorkspace?.rootPaths[0] ?? null;
     if (currentPath && nextPath && currentPath !== nextPath) {
       remapEditorRoot({ fromRoot: currentPath, toRoot: nextPath });
     }
@@ -997,7 +1009,8 @@ export function CenterPanel({
       requestId,
       agentType,
       sessionId: titledSession.id,
-      workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+      workspaceRootPath:
+        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       contentLength: message.length,
       attachmentCount: attachments?.length ?? 0,
     });
@@ -1024,7 +1037,8 @@ export function CenterPanel({
 
       await desktopApi.createSession({
         session: titledSession,
-        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       });
 
       const annotationAttachments =
@@ -1050,12 +1064,14 @@ export function CenterPanel({
             workspaceId: titledSession.workspaceId,
           },
           thinkingLevel,
-          workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+          workspaceRootPath:
+            workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
         },
       );
       await desktopApi.sendMessage({
         session: titledSession,
-        workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
         content: userMessage.content,
@@ -1107,7 +1123,8 @@ export function CenterPanel({
 
     void desktopApi.createSession({
       session,
-      workspaceRootPath: workingPath ?? activeWorkspace.rootPath,
+      workspaceRootPath:
+        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
     });
   };
 
@@ -1207,7 +1224,7 @@ export function CenterPanel({
           selectedWorktreePath={draftWorktreePath}
           sessionTitle={undefined}
           workspaces={workspaces}
-          workspaceRootPath={workingPath ?? activeWorkspace?.rootPath}
+          workspaceRootPath={workingPath ?? activeWorkspace?.rootPaths[0]}
           workspaceName={activeWorkspace?.name}
         />
       </ComposerSurface>
@@ -1301,7 +1318,8 @@ export function CenterPanel({
             status={activeSession.status}
             permissionRequests={activePermissions}
             toolCalls={activeToolCalls}
-            workspaceRootPath={workingPath ?? activeWorkspace?.rootPath}
+            workspaceRootPath={workingPath ?? activeWorkspace?.rootPaths[0]}
+            workspaceRootPaths={composerWorkspaceRootPaths}
             readOnly={isSubagentSession(activeSession)}
             parentSessionTitle={
               activeSession.parentSessionId

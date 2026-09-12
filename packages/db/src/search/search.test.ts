@@ -51,7 +51,7 @@ describe("CocurdexDatabase.search", () => {
     await database.workspaces.upsert({
       id: "workspace-1",
       name: "Workspace",
-      rootPath: "/tmp/workspace-1",
+      rootPaths: ["/tmp/workspace-1"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,

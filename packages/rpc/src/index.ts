@@ -106,6 +106,19 @@ export interface DaemonStatus {
   startedAt: string;
 }
 
+export interface DaemonActiveWork {
+  agentTurns: number;
+  queuedInputs: number;
+  chatOperations: number;
+  workflowActive: boolean;
+}
+
+export interface DaemonShutdownResult {
+  status: "accepted" | "busy";
+  activeRequests: number;
+  activeWork: DaemonActiveWork;
+}
+
 export interface DaemonError {
   code: string;
   message: string;
@@ -133,6 +146,7 @@ export type DaemonRequestPayloadByMethod = {
     providerConfig: AgentRuntimeProviderConfig;
   };
   "daemon.status": undefined;
+  "daemon.shutdownIfIdle": { pid: number; startedAt: string };
   "app.bootstrap": undefined;
   "agent.list": undefined;
   "agent.rateLimits.read": { agentIds: AgentId[] };
@@ -276,6 +290,7 @@ export type DaemonResultByMethod = {
   "chat.retry": null;
   "chat.edit": ConversationMessageRecord;
   "daemon.status": DaemonStatus;
+  "daemon.shutdownIfIdle": DaemonShutdownResult;
   "app.bootstrap": AppBootstrapData;
   "agent.list": AgentDescriptor[];
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;

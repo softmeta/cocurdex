@@ -1,4 +1,7 @@
-import type { WorkspaceRecord } from "@cocurdex/shared";
+import {
+  primaryWorkspaceRootPath,
+  type WorkspaceRecord,
+} from "@cocurdex/shared";
 import { Folder, FolderOpen, FolderX } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
@@ -10,13 +13,7 @@ import {
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
 import { sortWorkspacesByLastOpenedAtDesc } from "./workspace-order";
-
-// Collapse the macOS home prefix so long absolute paths read compactly in the
-// trigger and list. Kept local to the picker since it is purely a display
-// concern for workspace paths.
-function compactWorkspacePath(path: string) {
-  return path.replace(/^\/Users\/[^/]+/, "~");
-}
+import { compactWorkspacePath } from "./workspace-path";
 
 const OPEN_FOLDER_VALUE = "__open_folder__";
 
@@ -78,8 +75,8 @@ export function WorkspacePicker({
         const missing = workspace.available === false;
         return {
           value: workspace.id,
-          label: compactWorkspacePath(workspace.rootPath),
-          keywords: `${workspace.name} ${workspace.rootPath}`,
+          label: compactWorkspacePath(primaryWorkspaceRootPath(workspace)),
+          keywords: `${workspace.name} ${workspace.rootPaths.join(" ")}`,
           group: "recents",
           groupLabel: t("workspace.recents"),
           icon: missing ? (

@@ -1,3 +1,4 @@
+import { normalizeWorkspaceRootPaths } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -179,6 +180,10 @@ export function AppShell() {
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null;
   const workingPath = useAtomValue(activeWorkingPathAtom);
+  const activeWorkspaceRootPaths = normalizeWorkspaceRootPaths([
+    ...(activeWorkspace?.rootPaths ?? []),
+    workingPath ?? "",
+  ]);
   themeModeRef.current = themeMode;
   languageModeRef.current = languageMode;
   effectiveLeftWidthRef.current = effectiveLeftWidth;
@@ -397,7 +402,7 @@ export function AppShell() {
     <AppShellFrame
       activeScreen={activeScreen}
       activeSettingsSection={activeSettingsSection}
-      activeWorkspaceRootPath={workingPath ?? activeWorkspace?.rootPath ?? null}
+      activeWorkspaceRootPaths={activeWorkspaceRootPaths}
       appearanceSettings={appearanceSettings}
       canGoBack={canGoBack}
       canGoForward={canGoForward}

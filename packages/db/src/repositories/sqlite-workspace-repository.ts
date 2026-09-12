@@ -20,12 +20,12 @@ export function createSqliteWorkspaceRepository(
       database
         .prepare(
           `INSERT INTO workspaces (
-             id, name, root_path, created_at, updated_at, last_opened_at,
+             id, name, root_paths, created_at, updated_at, last_opened_at,
              sort_order
            ) VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
-             root_path = excluded.root_path,
+             root_paths = excluded.root_paths,
              created_at = excluded.created_at,
              updated_at = excluded.updated_at,
              last_opened_at = excluded.last_opened_at,
@@ -34,7 +34,7 @@ export function createSqliteWorkspaceRepository(
         .run(
           workspace.id,
           workspace.name,
-          workspace.rootPath,
+          JSON.stringify(workspace.rootPaths),
           workspace.createdAt,
           workspace.updatedAt,
           workspace.lastOpenedAt,

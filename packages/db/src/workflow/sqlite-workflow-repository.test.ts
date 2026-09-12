@@ -39,13 +39,13 @@ describe("SqliteWorkflowRepository", () => {
     database
       .prepare(
         `INSERT INTO workspaces (
-           id, name, root_path, created_at, updated_at, last_opened_at
+           id, name, root_paths, created_at, updated_at, last_opened_at
          ) VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .run(
         "workspace-1",
         "Workspace",
-        "/workspace",
+        '["/workspace"]',
         "2026-08-09T00:00:00.000Z",
         "2026-08-09T00:00:00.000Z",
         "2026-08-09T00:00:00.000Z",

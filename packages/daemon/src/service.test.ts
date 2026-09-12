@@ -43,7 +43,7 @@ function createWorkspace(): WorkspaceRecord {
   return {
     id: "workspace-1",
     name: "Queue test",
-    rootPath: "/tmp/queue-test",
+    rootPaths: ["/tmp/queue-test"],
     createdAt: "2026-08-02T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
     lastOpenedAt: "2026-08-02T00:00:00.000Z",
@@ -160,10 +160,51 @@ describe("CocurdexDaemonService follow-up queue", () => {
       null,
     );
 
+    expect(service.getActiveWork().agentTurns).toBe(1);
     expect(service.runtime.getAgentSession("session-1")).not.toBeNull();
     releaseHistory?.();
     await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
     await service.shutdown();
+  });
+
+  it("keeps unfinished steering active after the main turn settles", async () => {
+    const service = await createService();
+    let completeTurn!: () => void;
+    let completeSteering!: () => void;
+    const turn = new Promise<MessageRecord>((resolve) => {
+      completeTurn = () => resolve(createRuntimeMessage("First turn"));
+    });
+    const steering = new Promise<MessageRecord>((resolve) => {
+      completeSteering = () => resolve(createRuntimeMessage("Steering"));
+    });
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockReturnValueOnce(turn)
+      .mockReturnValueOnce(steering);
+    try {
+      await service.sendSessionMessage(
+        createPayload("First turn", "start-new-run"),
+        null,
+      );
+      await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+      await service.sendSessionMessage(
+        createPayload("Steering", "steer-active-run"),
+        null,
+      );
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+      completeTurn();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(service.getActiveWork().agentTurns).toBe(1);
+      completeSteering();
+      await vi.waitFor(() =>
+        expect(service.getActiveWork().agentTurns).toBe(0),
+      );
+    } finally {
+      completeTurn();
+      completeSteering();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      await service.shutdown();
+    }
   });
 
   it("falls back to the durable queue when native steering is rejected", async () => {
@@ -238,6 +279,10 @@ describe("CocurdexDaemonService follow-up queue", () => {
       null,
     );
     expect(send).toHaveBeenCalledOnce();
+    expect(service.getActiveWork()).toMatchObject({
+      agentTurns: 1,
+      queuedInputs: 2,
+    });
 
     completeActiveTurn?.();
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(3));

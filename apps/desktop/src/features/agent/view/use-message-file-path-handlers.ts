@@ -30,7 +30,7 @@ export function useMessageFilePathHandlers(): MarkdownFilePathHandlers {
 
   const rootPath =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId)
-      ?.rootPath ?? null;
+      ?.rootPaths[0] ?? null;
 
   return useMemo<MarkdownFilePathHandlers>(
     () => ({

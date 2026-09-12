@@ -42,7 +42,9 @@ import {
   isAgentId,
   isToolCallId,
   normalizeAgentRoleName,
+  normalizeWorkspaceRootPaths,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
+  primaryWorkspaceRootPath,
   resolveSessionWorkingPath,
   toolMayMutateWorkspace,
 } from "@cocurdex/shared";
@@ -124,6 +126,7 @@ export class CocurdexDaemonService {
   private readonly startedAt: string;
   private readonly userDataPath: string;
   private readonly pendingTurns = new Map<string, { cancelled: boolean }>();
+  private readonly backgroundSends = new Set<Promise<unknown>>();
   private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
   private shutdownPromise: Promise<void> | null = null;
@@ -234,6 +237,18 @@ export class CocurdexDaemonService {
     };
   }
 
+  getActiveWork() {
+    return {
+      agentTurns: Math.max(this.pendingTurns.size, this.backgroundSends.size),
+      queuedInputs: [...this.queuedFollowUps.values()].reduce(
+        (count, inputs) => count + inputs.length,
+        0,
+      ),
+      chatOperations: this.chatService.activeOperationCount,
+      workflowActive: this.workflowWorkerScheduler.isActive,
+    };
+  }
+
   shutdown() {
     if (!this.shutdownPromise) {
       this.shutdownPromise = this.performShutdown();
@@ -270,7 +285,9 @@ export class CocurdexDaemonService {
     const workspaces = await this.state.listWorkspaces();
     return workspaces.map((workspace) => ({
       ...workspace,
-      available: isExistingDirectory(workspace.rootPath),
+      available: workspace.rootPaths.every((rootPath) =>
+        isExistingDirectory(rootPath),
+      ),
     }));
   }
 
@@ -278,7 +295,7 @@ export class CocurdexDaemonService {
     try {
       const workspaces = await this.state.listWorkspaces();
       await this.workspaceChanges.reconcile(
-        workspaces.map((workspace) => workspace.rootPath),
+        workspaces.flatMap((workspace) => workspace.rootPaths),
       );
     } catch (error) {
       logDaemonDiagnostic("warn", "workspace-changes.reconcile failed", {
@@ -288,8 +305,13 @@ export class CocurdexDaemonService {
   }
 
   async saveWorkspace(workspace: WorkspaceRecord) {
-    await this.state.saveWorkspace(workspace);
-    return workspace;
+    const rootPaths = normalizeWorkspaceRootPaths(workspace.rootPaths);
+    if (rootPaths.length === 0) {
+      throw new Error("Workspace requires at least one source folder");
+    }
+    const normalized = { ...workspace, rootPaths };
+    await this.state.saveWorkspace(normalized);
+    return normalized;
   }
 
   async getWorktreeEnvironment(
@@ -576,7 +598,7 @@ export class CocurdexDaemonService {
     );
     const workspaceRootPath = workspace
       ? resolveSessionWorkingPath({
-          workspaceRootPath: workspace.rootPath,
+          workspaceRootPath: primaryWorkspaceRootPath(workspace),
           worktreePath: session.worktreePath,
         })
       : undefined;
@@ -636,7 +658,7 @@ export class CocurdexDaemonService {
   }
 
   async undoTurnChanges(input: UndoTurnChangesInput) {
-    const workspaceRootPath = await this.requireWorkspaceRootPath(
+    const { workspaceRootPath } = await this.requireWorkspacePaths(
       input.sessionId,
     );
     return this.workspaceChanges.undo({
@@ -654,7 +676,7 @@ export class CocurdexDaemonService {
   }
 
   async getTurnChangeFile(input: TurnChangeFileContentRequest) {
-    const workspaceRootPath = await this.requireWorkspaceRootPath(
+    const { workspaceRootPath } = await this.requireWorkspacePaths(
       input.sessionId,
     );
     return this.workspaceChanges.getFileContent({
@@ -676,7 +698,7 @@ export class CocurdexDaemonService {
   }
 
   async getTurnChangeDiff(input: TurnChangeDiffRequest) {
-    const workspaceRootPath = await this.requireWorkspaceRootPath(
+    const { workspaceRootPath } = await this.requireWorkspacePaths(
       input.sessionId,
     );
     return this.workspaceChanges.getDiff({
@@ -722,7 +744,9 @@ export class CocurdexDaemonService {
       payload = await this.persistSessionWorkingPath(payload);
       const userMessage = this.createUserMessage(payload);
       await this.state.saveUserMessage(userMessage);
-      void this.dispatchSteeringMessage(payload, userMessage, providerConfig);
+      void this.trackBackgroundSend(
+        this.dispatchSteeringMessage(payload, userMessage, providerConfig),
+      );
       return userMessage;
     }
 
@@ -775,37 +799,44 @@ export class CocurdexDaemonService {
       throw error;
     }
 
-    void this.dispatchSessionMessage(
-      payload,
-      userMessage,
-      pendingTurn,
-      persistence,
-      providerConfig,
-    )
-      .catch(async (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Unknown agent runtime error";
-        console.error("[CocurdexDaemonService] Background send failed", {
-          agentType: payload.session.agentType,
-          error: message,
-          sessionId: payload.session.id,
-        });
-        this.runtime.emitAgentEvent({
-          type: "error",
-          sessionId: payload.session.id,
-          message,
-        });
-      })
-      .finally(() => {
-        if (this.pendingTurns.get(payload.session.id) === pendingTurn) {
-          this.pendingTurns.delete(payload.session.id);
-          void this.startNextQueuedFollowUp(payload.session.id);
-        }
-      });
+    void this.trackBackgroundSend(
+      this.dispatchSessionMessage(
+        payload,
+        userMessage,
+        pendingTurn,
+        persistence,
+        providerConfig,
+      )
+        .catch(async (error: unknown) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Unknown agent runtime error";
+          console.error("[CocurdexDaemonService] Background send failed", {
+            agentType: payload.session.agentType,
+            error: message,
+            sessionId: payload.session.id,
+          });
+          this.runtime.emitAgentEvent({
+            type: "error",
+            sessionId: payload.session.id,
+            message,
+          });
+        })
+        .finally(() => {
+          if (this.pendingTurns.get(payload.session.id) === pendingTurn) {
+            this.pendingTurns.delete(payload.session.id);
+            void this.startNextQueuedFollowUp(payload.session.id);
+          }
+        }),
+    );
 
     return userMessage;
+  }
+
+  private trackBackgroundSend<T>(work: Promise<T>): Promise<T> {
+    this.backgroundSends.add(work);
+    return work.finally(() => this.backgroundSends.delete(work));
   }
 
   async resumeQueuedSession(
@@ -1146,13 +1177,11 @@ export class CocurdexDaemonService {
     await this.state.saveSession(payload.session);
     return {
       ...payload,
-      workspaceRootPath: await this.requireWorkspaceRootPath(
-        payload.session.id,
-      ),
+      ...(await this.requireWorkspacePaths(payload.session.id)),
     };
   }
 
-  private async requireWorkspaceRootPath(sessionId: string) {
+  private async requireWorkspacePaths(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
       throw new Error(`Session ${sessionId} was not found`);
@@ -1163,10 +1192,17 @@ export class CocurdexDaemonService {
     if (!workspace) {
       throw new Error(`Workspace ${session.workspaceId} not found`);
     }
-    return resolveSessionWorkingPath({
-      workspaceRootPath: workspace.rootPath,
+    const workspaceRootPath = resolveSessionWorkingPath({
+      workspaceRootPath: primaryWorkspaceRootPath(workspace),
       worktreePath: session.worktreePath,
     });
+    return {
+      workspaceRootPath,
+      workspaceRootPaths: normalizeWorkspaceRootPaths([
+        ...workspace.rootPaths,
+        workspaceRootPath,
+      ]),
+    };
   }
 
   private async releaseSessionWorktree(
@@ -1207,7 +1243,7 @@ export class CocurdexDaemonService {
 
     const settings = await loadWorktreeSettings(this.state, this.userDataPath);
     await removeAppManagedWorktree({
-      repoRootPath: workspace.rootPath,
+      repoRootPath: primaryWorkspaceRootPath(workspace),
       worktreePath,
       userDataPath: this.userDataPath,
       worktreeRootPath: settings.rootPath,

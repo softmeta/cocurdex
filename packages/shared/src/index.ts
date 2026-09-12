@@ -33,5 +33,6 @@ export * from "./workflow";
 export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";
 export * from "./workspace-changes";
+export * from "./workspace-roots";
 export * from "./worktree-environment";
 export * from "./worktree-settings";

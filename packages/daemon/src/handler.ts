@@ -46,6 +46,10 @@ export async function handleDaemonRequest(
       );
     case "daemon.status":
       return service.status();
+    case "daemon.shutdownIfIdle":
+      throw new Error(
+        "daemon.shutdownIfIdle is intercepted before request dispatch",
+      );
     case "app.bootstrap":
       return service.bootstrap();
     case "agent.list":

@@ -26,7 +26,7 @@ it("reads tool results through the named RPC and rejects invalid IDs", async () 
     await database.workspaces.upsert({
       id: "workspace-1",
       name: "Tool result test",
-      rootPath: userDataPath,
+      rootPaths: [userDataPath],
       createdAt: timestamp,
       updatedAt: timestamp,
       lastOpenedAt: timestamp,

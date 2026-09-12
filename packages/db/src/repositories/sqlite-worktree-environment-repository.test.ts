@@ -22,7 +22,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
     await workspaces.upsert({
       id: "workspace-1",
       name: "repo",
-      rootPath: "/tmp/repo",
+      rootPaths: ["/tmp/repo"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,

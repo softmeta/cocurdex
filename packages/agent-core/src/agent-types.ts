@@ -45,6 +45,7 @@ export interface DiscoveredAgentCapabilities {
 export interface CreateAgentSessionPayload {
   session: SessionRecord;
   workspaceRootPath: string;
+  workspaceRootPaths?: string[];
   userDataPath?: string;
   providerConfig?: RuntimeProviderConfig | null;
   providerSession?: AgentProviderSessionRecord | null;

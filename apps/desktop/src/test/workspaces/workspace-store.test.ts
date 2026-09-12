@@ -27,7 +27,7 @@ function makeWorkspace(
   return {
     id,
     name: id,
-    rootPath: `/ws/${id}`,
+    rootPaths: [`/ws/${id}`],
     createdAt,
     updatedAt: createdAt,
     lastOpenedAt,
@@ -139,7 +139,7 @@ describe("openWorkspaceByPathAtom", () => {
 
     const result = store.set(openWorkspaceByPathAtom, "/tmp/new-project");
 
-    expect(result.workspace.rootPath).toBe("/tmp/new-project");
+    expect(result.workspace.rootPaths).toEqual(["/tmp/new-project"]);
     expect(result.workspace.name).toBe("new-project");
     expect(result.didSwitchProject).toBe(true);
     expect(store.get(activeWorkspaceIdAtom)).toBe(result.workspace.id);
@@ -293,10 +293,12 @@ describe("relocateWorkspaceAtom", () => {
 
     const [relocated] = store.get(workspacesAtom);
     expect(relocated.id).toBe("a");
-    expect(relocated.rootPath).toBe("/osp/project");
+    expect(relocated.rootPaths).toEqual(["/osp/project"]);
     expect(relocated.name).toBe("project");
     expect(relocated.available).toBe(true);
     expect(store.get(activeWorkspaceIdAtom)).toBe("a");
-    expect(saveWorkspace.mock.calls.at(-1)?.[0].rootPath).toBe("/osp/project");
+    expect(saveWorkspace.mock.calls.at(-1)?.[0].rootPaths).toEqual([
+      "/osp/project",
+    ]);
   });
 });

@@ -54,6 +54,7 @@ export interface ChatViewProps {
   activeBranch?: string | null;
   workspaceName?: string | null;
   workspaceRootPath?: string | null;
+  workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
   sessionId?: string;
   status?: SessionStatus;

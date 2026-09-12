@@ -735,7 +735,12 @@ export function createClaudeCliAdapter(
         }
 
         const queryOptions: ClaudeQueryOptions = {
-          additionalDirectories: [payload.workspaceRootPath],
+          additionalDirectories: [
+            ...new Set([
+              payload.workspaceRootPath,
+              ...(payload.workspaceRootPaths ?? []),
+            ]),
+          ],
           allowDangerouslySkipPermissions:
             permissionMode === "bypassPermissions",
           canUseTool: createClaudeCanUseTool(payload),

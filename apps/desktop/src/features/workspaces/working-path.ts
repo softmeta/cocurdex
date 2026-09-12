@@ -1,4 +1,7 @@
-import { resolveSessionWorkingPath } from "@cocurdex/shared";
+import {
+  primaryWorkspaceRootPath,
+  resolveSessionWorkingPath,
+} from "@cocurdex/shared";
 import { atom } from "jotai";
 import { activeSessionIdAtom, sessionsAtom } from "../sessions/session-store";
 import {
@@ -18,7 +21,7 @@ export const activeWorkingPathAtom = atom((get) => {
     );
     if (sessionWorkspace) {
       return resolveSessionWorkingPath({
-        workspaceRootPath: sessionWorkspace.rootPath,
+        workspaceRootPath: primaryWorkspaceRootPath(sessionWorkspace),
         worktreePath: session.worktreePath,
       });
     }
@@ -33,7 +36,7 @@ export const activeWorkingPathAtom = atom((get) => {
   }
 
   return resolveSessionWorkingPath({
-    workspaceRootPath: workspace.rootPath,
+    workspaceRootPath: primaryWorkspaceRootPath(workspace),
     worktreePath: get(draftWorktreePathAtom),
   });
 });

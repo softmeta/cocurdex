@@ -11,7 +11,7 @@ import {
 function workspace(overrides: Partial<WorkspaceRecord> & { id: string }) {
   return {
     name: overrides.id,
-    rootPath: `/ws/${overrides.id}`,
+    rootPaths: [`/ws/${overrides.id}`],
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
     lastOpenedAt: "2024-01-01T00:00:00.000Z",

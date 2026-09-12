@@ -20,7 +20,7 @@ describe("createSqliteWorkspaceRepository", () => {
     await repository.upsert({
       id: "newer-created",
       name: "newer",
-      rootPath: "/tmp/newer",
+      rootPaths: ["/tmp/newer"],
       createdAt: "2026-04-20T10:00:00.000Z",
       updatedAt: "2026-04-20T12:00:00.000Z",
       lastOpenedAt: "2026-04-20T12:00:00.000Z",
@@ -29,7 +29,7 @@ describe("createSqliteWorkspaceRepository", () => {
     await repository.upsert({
       id: "older-created",
       name: "older",
-      rootPath: "/tmp/older",
+      rootPaths: ["/tmp/older"],
       createdAt: "2026-04-20T09:00:00.000Z",
       updatedAt: "2026-04-20T13:00:00.000Z",
       lastOpenedAt: "2026-04-20T13:00:00.000Z",
@@ -49,7 +49,7 @@ describe("createSqliteWorkspaceRepository", () => {
     await repository.upsert({
       id: "workspace-1",
       name: "workspace",
-      rootPath: "/tmp/workspace-1",
+      rootPaths: ["/tmp/workspace-1"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,

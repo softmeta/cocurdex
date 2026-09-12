@@ -3,6 +3,7 @@ import {
   type GitWorktreeInfo,
   type ManagedWorktree,
   parseWorktreeSettings,
+  primaryWorkspaceRootPath,
   serializeWorktreeSettings,
   sessionsUsingWorktreePath,
   WORKTREE_SETTING_KEY,
@@ -58,27 +59,29 @@ export async function listManagedWorktrees(input: {
   const items: ManagedWorktree[] = [];
 
   for (const workspace of workspaces) {
-    const worktrees = await listGitWorktrees(workspace.rootPath);
-    for (const worktree of worktrees) {
-      if (
-        !isAppManagedWorktreePath(
-          worktree.path,
-          input.userDataPath,
-          settings.rootPath,
-        )
-      ) {
-        continue;
+    for (const rootPath of workspace.rootPaths) {
+      const worktrees = await listGitWorktrees(rootPath);
+      for (const worktree of worktrees) {
+        if (
+          !isAppManagedWorktreePath(
+            worktree.path,
+            input.userDataPath,
+            settings.rootPath,
+          )
+        ) {
+          continue;
+        }
+        items.push({
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          workspaceRootPath: rootPath,
+          path: worktree.path,
+          branch: worktree.branch,
+          head: worktree.head,
+          detached: worktree.detached,
+          sessions: sessionsUsingWorktreePath(boundSessions, worktree.path),
+        });
       }
-      items.push({
-        workspaceId: workspace.id,
-        workspaceName: workspace.name,
-        workspaceRootPath: workspace.rootPath,
-        path: worktree.path,
-        branch: worktree.branch,
-        head: worktree.head,
-        detached: worktree.detached,
-        sessions: sessionsUsingWorktreePath(boundSessions, worktree.path),
-      });
     }
   }
 
@@ -96,7 +99,7 @@ export async function createManagedWorktree(input: {
   const workspace = await requireWorkspace(input.state, input.workspaceId);
   const settings = await loadWorktreeSettings(input.state, input.userDataPath);
   const created = await addGitWorktree({
-    repoRootPath: workspace.rootPath,
+    repoRootPath: primaryWorkspaceRootPath(workspace),
     branch: input.branch,
     startPoint: input.startPoint,
     userDataPath: input.userDataPath,
@@ -144,7 +147,7 @@ export async function removeManagedWorktree(input: {
 
   await input.runCleanup(input.worktreePath);
   const removed = await removeAppManagedWorktree({
-    repoRootPath: workspace.rootPath,
+    repoRootPath: primaryWorkspaceRootPath(workspace),
     worktreePath: input.worktreePath,
     userDataPath: input.userDataPath,
     worktreeRootPath: settings.rootPath,

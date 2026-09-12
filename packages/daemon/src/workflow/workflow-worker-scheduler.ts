@@ -35,6 +35,10 @@ export class WorkflowWorkerScheduler {
     return this.drainPromise;
   }
 
+  get isActive() {
+    return this.drainPromise !== null;
+  }
+
   async close(): Promise<void> {
     this.closed = true;
     await this.drainPromise;

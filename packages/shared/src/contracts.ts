@@ -245,7 +245,7 @@ export interface AgentSlashCommand {
 export interface WorkspaceRecord {
   id: string;
   name: string;
-  rootPath: string;
+  rootPaths: string[];
   createdAt: string;
   updatedAt: string;
   lastOpenedAt: string;
@@ -1147,6 +1147,7 @@ export type AgentEvent =
 export interface CreateSessionPayload {
   session: SessionRecord;
   workspaceRootPath: string;
+  workspaceRootPaths?: string[];
 }
 
 export type AgentInputDelivery =
@@ -1157,6 +1158,7 @@ export type AgentInputDelivery =
 export interface SendSessionMessagePayload {
   session: SessionRecord;
   workspaceRootPath: string;
+  workspaceRootPaths?: string[];
   messageId?: string;
   createdAt?: string;
   content: string;

@@ -1076,6 +1076,7 @@ export default interface Resources {
       archive: "Archive";
       collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
+      editProject: "Edit project";
       expandChildren: "Expand subagent sessions";
       marketplace: "Marketplace";
       newSession: "New session";
@@ -1101,6 +1102,16 @@ export default interface Resources {
     workspace: {
       dropFolderDescription: "Release to open it as a project.";
       dropFolderTitle: "Drop folder to open";
+      editAddFolder: "Add folder";
+      editCancel: "Cancel";
+      editFoldersLabel: "Source folders";
+      editMakePrimary: "Make primary";
+      editNameLabel: "Project name";
+      editPrimary: "Primary";
+      editRemoveFolder: "Remove folder";
+      editRemoveProject: "Remove project";
+      editSave: "Save";
+      editTitle: "Edit project";
       empty: "No matching workspaces.";
       emptyTitle: "Open a project to start";
       emptyUnconfigured: "No workspaces yet.";

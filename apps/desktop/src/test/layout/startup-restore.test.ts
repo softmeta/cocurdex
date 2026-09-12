@@ -14,7 +14,7 @@ describe("startup restoration", () => {
       {
         id: "w1",
         name: "older",
-        rootPath: "/tmp/older",
+        rootPaths: ["/tmp/older"],
         createdAt: "2026-04-20T09:00:00.000Z",
         updatedAt: "2026-04-20T09:00:00.000Z",
         lastOpenedAt: "2026-04-20T09:00:00.000Z",
@@ -23,7 +23,7 @@ describe("startup restoration", () => {
       {
         id: "w2",
         name: "newer",
-        rootPath: "/tmp/newer",
+        rootPaths: ["/tmp/newer"],
         createdAt: "2026-04-20T10:00:00.000Z",
         updatedAt: "2026-04-20T10:00:00.000Z",
         lastOpenedAt: "2026-04-20T10:00:00.000Z",

@@ -14,9 +14,11 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ScrollArea, SidebarMenu, TooltipProvider } from "@/components/ui";
+import { EditProjectDialog, updateWorkspaceAtom } from "@/features/workspaces";
 import { WorkspaceSidebarItem } from "./workspace-sidebar-item";
 
 interface ProjectsPanelProps {
@@ -51,6 +53,10 @@ export function ProjectsPanel({
   onToggleWorkspace,
 }: ProjectsPanelProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(
+    null,
+  );
+  const updateWorkspace = useSetAtom(updateWorkspaceAtom);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -63,6 +69,9 @@ export function ProjectsPanel({
   );
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeId,
+  );
+  const editingWorkspace = workspaces.find(
+    (workspace) => workspace.id === editingWorkspaceId,
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -109,6 +118,7 @@ export function ProjectsPanel({
                   expanded={!collapsedWorkspaceIds.includes(workspace.id)}
                   key={workspace.id}
                   onCreateAgent={onCreateAgent}
+                  onEditWorkspace={setEditingWorkspaceId}
                   onRemoveWorkspace={onRemoveWorkspace}
                   onRevealWorkspace={onRevealWorkspace}
                   onSelectSession={onSelectSession}
@@ -131,6 +141,25 @@ export function ProjectsPanel({
           ) : null}
         </DragOverlay>
       </DndContext>
+      {editingWorkspace ? (
+        <EditProjectDialog
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setEditingWorkspaceId(null);
+            }
+          }}
+          onRemoveWorkspace={(workspaceId) => {
+            setEditingWorkspaceId(null);
+            onRemoveWorkspace(workspaceId);
+          }}
+          onSave={(workspaceId, update) => {
+            updateWorkspace(workspaceId, update);
+            setEditingWorkspaceId(null);
+          }}
+          open={editingWorkspace !== undefined}
+          workspace={editingWorkspace}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }
