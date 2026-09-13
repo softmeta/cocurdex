@@ -19,12 +19,11 @@ import {
   type AgentSessionConfigOption,
   type AgentSlashCommand,
   type AgentUsageRecord,
-  type CreateSessionPayload,
   type MessageAttachment,
   type MessageRecord,
   mergeUsageRecords,
-  type SendSessionMessagePayload,
   type SessionRecord,
+  workspacePathsEqual,
 } from "@cocurdex/shared";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
 
@@ -39,6 +38,7 @@ export interface RuntimePersistence {
 interface SessionRuntime {
   session: SessionRecord;
   workspaceRootPath: string;
+  workspaceRootPaths: string[];
   runtime: AgentSession;
 }
 
@@ -300,12 +300,25 @@ export class AgentRuntimeManager {
   }
 
   createSessionRuntime(
-    payload: CreateSessionPayload,
+    payload: SessionExecutionContext,
     persistence: RuntimePersistence,
   ): SessionRuntime {
     const existingRuntime = this.sessionRuntimes.get(payload.session.id);
+    const workspaceRootPaths = payload.workspaceRootPaths ?? [
+      payload.workspaceRootPath,
+    ];
+    const rootsUnchanged =
+      existingRuntime &&
+      workspacePathsEqual(
+        existingRuntime.workspaceRootPath,
+        payload.workspaceRootPath,
+      ) &&
+      existingRuntime.workspaceRootPaths.length === workspaceRootPaths.length &&
+      existingRuntime.workspaceRootPaths.every((rootPath, index) =>
+        workspacePathsEqual(rootPath, workspaceRootPaths[index] ?? ""),
+      );
 
-    if (existingRuntime) {
+    if (existingRuntime && rootsUnchanged) {
       // Replace the session reference instead of mutating it: callers and the
       // UI may hold onto the old object and rely on referential immutability.
       const updated: SessionRuntime = {
@@ -316,6 +329,19 @@ export class AgentRuntimeManager {
       return updated;
     }
 
+    if (existingRuntime) {
+      this.sessionRuntimes.delete(payload.session.id);
+      this.denyPendingPermissionsForSession(payload.session.id);
+      this.cancelPendingQuestionsForSession(payload.session.id);
+      this.abandonPendingPlanApprovalsForSession(payload.session.id);
+      const stale = existingRuntime.runtime;
+      void Promise.resolve()
+        .then(() => stale.stop())
+        .catch(() => undefined)
+        .then(() => stale.dispose())
+        .catch(() => undefined);
+    }
+
     const adapter = this.createAdapter(payload.session.agentType);
     const sessionCopy = { ...payload.session };
     let runtime: AgentSession | null = null;
@@ -323,6 +349,7 @@ export class AgentRuntimeManager {
       {
         session: sessionCopy,
         workspaceRootPath: payload.workspaceRootPath,
+        workspaceRootPaths: payload.workspaceRootPaths,
         userDataPath: this.userDataPath,
         providerSession: persistence.providerSession,
         providerConfig: persistence.providerConfig,
@@ -350,6 +377,7 @@ export class AgentRuntimeManager {
     const nextRuntime: SessionRuntime = {
       session: sessionCopy,
       workspaceRootPath: payload.workspaceRootPath,
+      workspaceRootPaths,
       runtime: createdRuntime,
     };
 
@@ -358,7 +386,7 @@ export class AgentRuntimeManager {
   }
 
   async sendSessionMessage(
-    payload: SendSessionMessagePayload,
+    payload: SessionRuntimeMessage,
     options: RuntimePersistence & { history: MessageRecord[] },
   ) {
     const isSteering = payload.delivery === "steer-active-run";
@@ -530,14 +558,18 @@ export class AgentRuntimeManager {
         failures.push(error);
       }
     }
-    await this.persistQueue;
-    this.broadcastCoalescer.flush();
+    await this.flushEvents();
     if (failures.length === 1) {
       throw failures[0];
     }
     if (failures.length > 1) {
       throw new AggregateError(failures, "Failed to shut down agent runtimes");
     }
+  }
+
+  async flushEvents() {
+    await this.persistQueue;
+    this.broadcastCoalescer.flush();
   }
 
   private createPermissionRecord(
@@ -712,13 +744,17 @@ export class AgentRuntimeManager {
   }
 
   private ensureSessionRuntime(
-    payload: Pick<SendSessionMessagePayload, "session" | "workspaceRootPath">,
+    payload: Pick<
+      SessionRuntimeMessage,
+      "session" | "workspaceRootPath" | "workspaceRootPaths"
+    >,
     persistence: RuntimePersistence,
   ) {
     return this.createSessionRuntime(
       {
         session: payload.session,
         workspaceRootPath: payload.workspaceRootPath,
+        workspaceRootPaths: payload.workspaceRootPaths,
       },
       persistence,
     );
@@ -797,3 +833,8 @@ export class AgentRuntimeManager {
     return mergeUsageRecords(current, delta);
   }
 }
+
+import type {
+  SessionExecutionContext,
+  SessionRuntimeMessage,
+} from "./session-control";

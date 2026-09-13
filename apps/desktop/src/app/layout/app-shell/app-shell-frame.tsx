@@ -65,7 +65,7 @@ import { BootSplash } from "./boot-splash";
 interface AppShellFrameProps {
   activeScreen: AppScreen;
   activeSettingsSection: SettingsSectionId;
-  activeWorkspaceRootPath: string | null;
+  activeWorkspaceRootPaths: string[];
   appearanceSettings: AppearanceSettings;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -116,7 +116,7 @@ interface AppShellFrameProps {
 export function AppShellFrame({
   activeScreen,
   activeSettingsSection,
-  activeWorkspaceRootPath,
+  activeWorkspaceRootPaths,
   appearanceSettings,
   canGoBack,
   canGoForward,
@@ -468,7 +468,7 @@ export function AppShellFrame({
         </div>
 
         <SearchPalette
-          activeWorkspaceRootPath={activeWorkspaceRootPath}
+          activeWorkspaceRootPaths={activeWorkspaceRootPaths}
           onClose={onSearchClose}
           onOpenFile={onOpenFileFromPalette}
           open={isSearchOpen}

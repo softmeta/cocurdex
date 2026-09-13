@@ -27,11 +27,26 @@ export * from "./search";
 export * from "./session-attention";
 export * from "./session-observation";
 export * from "./subagent-session";
+export type {
+  SendSessionCommand,
+  SessionConfiguration,
+  SubmitPreviousMessageCommand,
+  TaskApi,
+} from "./task-control";
+export {
+  createTaskClient,
+  sessionConfiguration,
+  validateSendSessionCommand,
+  validateSessionConfiguration,
+  validateSessionId,
+  validateSubmitPreviousMessageCommand,
+} from "./task-control";
 export * from "./terminal";
 export { type GetToolCallResultInput, isToolCallId } from "./tool-call";
 export * from "./workflow";
 export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";
 export * from "./workspace-changes";
+export * from "./workspace-roots";
 export * from "./worktree-environment";
 export * from "./worktree-settings";

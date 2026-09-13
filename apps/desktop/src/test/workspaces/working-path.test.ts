@@ -13,7 +13,7 @@ import {
 const workspace: WorkspaceRecord = {
   id: "workspace-1",
   name: "project",
-  rootPath: "/Users/me/project",
+  rootPaths: ["/Users/me/project"],
   createdAt: "2026-09-07T00:00:00.000Z",
   updatedAt: "2026-09-07T00:00:00.000Z",
   lastOpenedAt: "2026-09-07T00:00:00.000Z",
@@ -73,7 +73,7 @@ describe("activeWorkingPathAtom", () => {
       ...workspace,
       id: "workspace-2",
       name: "other",
-      rootPath: "/Users/me/other",
+      rootPaths: ["/Users/me/other"],
     };
     const store = createStore();
     store.set(workspacesAtom, [workspace, otherWorkspace]);

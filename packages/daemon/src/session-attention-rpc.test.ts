@@ -35,7 +35,7 @@ async function seedSession(service: CocurdexDaemonService) {
   const workspace = {
     id: "workspace-1",
     name: "Attention workspace",
-    rootPath: "/tmp/attention-workspace",
+    rootPaths: ["/tmp/attention-workspace"],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

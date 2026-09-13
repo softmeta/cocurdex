@@ -20,13 +20,6 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 
-interface ProviderSecretRecord {
-  id: string;
-  encryptedValue: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 let daemonUserDataPath: string | null = null;
 // Resolves once the runtime client has the daemon up. The window is created
 // without waiting for that (so the renderer boots in parallel), which means
@@ -87,9 +80,11 @@ export async function readAdapterRateLimits(agentIds: AgentId[]) {
   return requestDaemon("agent.rateLimits.read", { agentIds }, daemonOptions());
 }
 
-export async function saveWorkspace(workspace: WorkspaceRecord) {
+export async function saveWorkspace(
+  workspace: WorkspaceRecord,
+): Promise<WorkspaceRecord> {
   await daemonReady;
-  await requestDaemon("workspace.save", { workspace }, daemonOptions());
+  return requestDaemon("workspace.save", { workspace }, daemonOptions());
 }
 
 export async function listWorkspaces(): Promise<WorkspaceRecord[]> {
@@ -101,23 +96,28 @@ export function deleteWorkspace(workspaceId: string): Promise<void> {
   return callStorage("workspace.delete", workspaceId);
 }
 
-export function saveSession(session: SessionRecord): Promise<void> {
-  return callStorage("session.save", session);
-}
-
-export function archiveSession(
+export async function archiveSession(
   sessionId: string,
-  archivedAt?: string,
 ): Promise<SessionRecord | null> {
-  return callStorage("session.archive", sessionId, archivedAt);
+  return requestDaemon(
+    "session.archive",
+    { sessionId },
+    await chatDaemonOptions(),
+  );
 }
 
-export function listArchivedSessions(): Promise<SessionRecord[]> {
-  return callStorage("session.listArchived");
+export async function listArchivedSessions(): Promise<SessionRecord[]> {
+  return requestDaemon("session.listArchived", await chatDaemonOptions());
 }
 
-export function restoreSession(sessionId: string): Promise<SessionRecord[]> {
-  return callStorage("session.restore", sessionId);
+export async function restoreSession(
+  sessionId: string,
+): Promise<SessionRecord[]> {
+  return requestDaemon(
+    "session.restore",
+    { sessionId },
+    await chatDaemonOptions(),
+  );
 }
 
 export async function deleteSession(sessionId: string) {
@@ -125,8 +125,10 @@ export async function deleteSession(sessionId: string) {
   await requestDaemon("session.delete", { sessionId }, daemonOptions());
 }
 
-export function getSession(sessionId: string): Promise<SessionRecord | null> {
-  return callStorage("session.get", sessionId);
+export async function getSession(
+  sessionId: string,
+): Promise<SessionRecord | null> {
+  return requestDaemon("session.get", { sessionId }, await chatDaemonOptions());
 }
 
 export async function updateSessionTitle(
@@ -206,13 +208,6 @@ export function deleteProviderConfig(providerId: string): Promise<void> {
   return callStorage("providerConfig.delete", providerId);
 }
 
-export function setProviderApiKeySecretId(
-  providerId: string,
-  secretId: string | null,
-): Promise<void> {
-  return callStorage("providerConfig.setSecret", providerId, secretId);
-}
-
 export function listProviderModels(
   providerId?: string,
 ): Promise<ProviderModelRecord[]> {
@@ -241,29 +236,6 @@ export function deleteProviderModelsByProvider(
   providerId: string,
 ): Promise<void> {
   return callStorage("providerModel.deleteByProvider", providerId);
-}
-
-export function getProviderSecret(
-  secretId: string,
-): Promise<ProviderSecretRecord | null> {
-  return callStorage("providerSecret.get", secretId);
-}
-
-export function saveProviderSecret(
-  id: string,
-  encryptedValue: string,
-): Promise<void> {
-  const now = new Date().toISOString();
-  return callStorage("providerSecret.save", {
-    id,
-    encryptedValue,
-    createdAt: now,
-    updatedAt: now,
-  });
-}
-
-export function deleteProviderSecret(secretId: string): Promise<void> {
-  return callStorage("providerSecret.delete", secretId);
 }
 
 const TITLE_MODEL_SETTING_KEY = "titleModel";

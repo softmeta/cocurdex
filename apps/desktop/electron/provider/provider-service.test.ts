@@ -14,7 +14,19 @@ const listOpenCodeProviderModelsMock = vi.hoisted(() => vi.fn());
 const listGrokBuildProviderModelsMock = vi.hoisted(() => vi.fn());
 const generateCodexConversationTitleMock = vi.hoisted(() => vi.fn());
 const generatePiConversationTitleMock = vi.hoisted(() => vi.fn());
-const resolvePiProviderAuthMock = vi.hoisted(() => vi.fn());
+const requestDaemonMock = vi.hoisted(() => vi.fn());
+vi.mock("@cocurdex/daemon/client", () => ({
+  requestDaemon: requestDaemonMock,
+}));
+beforeEach(() => {
+  requestDaemonMock.mockImplementation(
+    async (method: string, params?: { snapshot: Record<string, unknown> }) => {
+      if (method === "provider.resolveSnapshot")
+        return { ...params?.snapshot, apiKey: null };
+      return null;
+    },
+  );
+});
 const readPiProviderAuthStateMock = vi.hoisted(() => vi.fn());
 const loginPiProviderMock = vi.hoisted(() => vi.fn());
 const logoutPiProviderMock = vi.hoisted(() => vi.fn());
@@ -23,11 +35,6 @@ const registerBundledPiProviderOAuthFlowsMock = vi.hoisted(() => vi.fn());
 vi.mock("electron", () => ({
   app: { getPath: vi.fn(() => "/tmp/cocurdex-user-data") },
   ipcMain: { handle: vi.fn() },
-  safeStorage: {
-    decryptString: vi.fn(),
-    encryptString: vi.fn(),
-    isEncryptionAvailable: vi.fn(() => false),
-  },
 }));
 
 vi.mock("@cocurdex/agent-adapters/desktop-provider", () => ({
@@ -44,26 +51,24 @@ vi.mock("@cocurdex/agent-adapters/desktop-provider", () => ({
   logoutPiProvider: logoutPiProviderMock,
   readPiProviderAuthState: readPiProviderAuthStateMock,
   registerBundledPiProviderOAuthFlows: registerBundledPiProviderOAuthFlowsMock,
-  resolvePiProviderAuth: resolvePiProviderAuthMock,
 }));
 
 vi.mock("../chat", () => ({
+  chatDaemonOptions: vi.fn(async () => ({
+    userDataPath: "/tmp/cocurdex-user-data",
+  })),
   deleteProviderConfig: vi.fn(),
   deleteProviderModel: vi.fn(),
-  deleteProviderSecret: vi.fn(),
   getAgentProviderDefault: vi.fn(),
   getTitleModelSetting: vi.fn(),
   getProviderConfig: vi.fn(),
   getProviderModel: vi.fn(),
-  getProviderSecret: vi.fn(),
   listAgentProviderDefaults: vi.fn(),
   listProviderConfigs: vi.fn(),
   listProviderModels: vi.fn(),
   saveAgentProviderDefault: vi.fn(),
   saveProviderConfig: vi.fn(),
   saveProviderModel: vi.fn(),
-  saveProviderSecret: vi.fn(),
-  setProviderApiKeySecretId: vi.fn(),
 }));
 
 vi.mock("../logging", () => ({
@@ -143,7 +148,6 @@ describe("registerProviderHandlers", () => {
 describe("buildRuntimeProviderConfig", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    resolvePiProviderAuthMock.mockResolvedValue(undefined);
   });
 
   it("does not resolve app-managed provider credentials for Codex", async () => {
@@ -162,47 +166,6 @@ describe("buildRuntimeProviderConfig", () => {
 
     expect(runtime).toBeNull();
     expect(getProviderConfig).not.toHaveBeenCalled();
-  });
-
-  it("injects Pi OAuth request auth into every runtime provider config", async () => {
-    const { getProviderConfig } = await import("../chat");
-    vi.mocked(getProviderConfig).mockResolvedValue(builtInProvider);
-    listPiBuiltInProviderIdsMock.mockReturnValue([builtInProvider.id]);
-    resolvePiProviderAuthMock.mockResolvedValue({
-      auth: {
-        apiKey: "oauth-access-token",
-        baseUrl: "https://oauth.example.com",
-        headers: { "x-oauth-account": "account-1" },
-      },
-      source: "OAuth",
-    });
-    const { buildRuntimeProviderConfig } = await import("./provider-service");
-
-    const runtime = await buildRuntimeProviderConfig({
-      ...codexSession,
-      agentType: "pi",
-      providerSnapshot: {
-        ...codexSession.providerSnapshot,
-        api: "anthropic-messages",
-        baseUrl: builtInProvider.baseUrl,
-        headersJson: JSON.stringify({ "x-existing": "yes" }),
-        modelId: model.modelId,
-        modelName: model.name,
-        providerId: builtInProvider.id,
-        providerName: builtInProvider.name,
-      },
-    });
-
-    expect(runtime).toEqual(
-      expect.objectContaining({
-        apiKey: "oauth-access-token",
-        baseUrl: "https://oauth.example.com",
-        headersJson: JSON.stringify({
-          "x-existing": "yes",
-          "x-oauth-account": "account-1",
-        }),
-      }),
-    );
   });
 });
 

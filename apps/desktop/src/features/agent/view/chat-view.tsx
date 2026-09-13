@@ -76,6 +76,7 @@ export function ChatView({
   activeBranch,
   workspaceName,
   workspaceRootPath,
+  workspaceRootPaths,
   composerRef,
   sessionId,
   status,
@@ -537,6 +538,7 @@ export function ChatView({
                 onSend={stableOnSend}
                 onStop={onStop}
                 workspaceRootPath={workspaceRootPath}
+                workspaceRootPaths={workspaceRootPaths}
               />
             ) : timelineGroups.length === 0 ? (
               <div className="text-chat-fg-muted text-meta">
@@ -671,6 +673,7 @@ export function ChatView({
           plan={plan}
           planCollapsed={planCollapsed}
           workspaceRootPath={workspaceRootPath}
+          workspaceRootPaths={workspaceRootPaths}
           hideComposer={readOnly}
           parentSessionTitle={parentSessionTitle}
           onOpenParentSession={onOpenParentSession}

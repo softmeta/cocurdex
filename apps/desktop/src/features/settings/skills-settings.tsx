@@ -201,10 +201,10 @@ export function SkillsSettingsPanel() {
         <div className="rounded-card border border-border/70 bg-card/45 px-4">
           <div className="flex flex-col divide-y divide-border/60">
             <ScopeCard
-              key={activeWorkspace?.rootPath ?? "no-project"}
+              key={activeWorkspace?.rootPaths[0] ?? "no-project"}
               scope="project"
               workspaceLabel={activeWorkspace?.name ?? null}
-              workspaceRootPath={activeWorkspace?.rootPath ?? null}
+              workspaceRootPath={activeWorkspace?.rootPaths[0] ?? null}
             />
             <ScopeCard scope="global" />
           </div>

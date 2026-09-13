@@ -100,14 +100,9 @@ const boundsSchema = z.object({
 // @cocurdex/shared. Doing exhaustive deep validation here would couple this
 // file to every record evolution; instead we just guarantee the boundary
 // invariants (presence + critical string fields).
-const sessionRecordShape = z.object({
-  id: idSchema,
-  agentType: z.string().min(1).max(64),
-});
-
 const workspaceRecordShape = z.object({
   id: idSchema,
-  rootPath: filesystemPathSchema,
+  rootPaths: z.array(filesystemPathSchema).min(1),
 });
 
 export const schemas = {
@@ -175,6 +170,7 @@ export const schemas = {
   worktreeRemove: z.object({
     workspaceId: idSchema,
     worktreePath: filesystemPathSchema,
+    workspaceRootPath: filesystemPathSchema.optional(),
   }),
   // Diff scope for the git panel. Ref/commit strings are git revisions (branch
   // names, tags, hashes) — not filesystem paths — so they stay free of path
@@ -228,12 +224,6 @@ export const schemas = {
   bounds: boundsSchema,
   visible: z.boolean(),
   enabled: z.boolean(),
-  sessionWithWorkspace: z
-    .object({
-      session: sessionRecordShape.passthrough(),
-      workspaceRootPath: filesystemPathSchema,
-    })
-    .passthrough(),
   slashCommands: z.object({
     agentType: z.string().min(1).max(64),
     workspaceRootPath: filesystemPathSchema,
@@ -251,6 +241,10 @@ export const schemas = {
     sessionId: idSchema,
     messageId: idSchema,
   }),
+  sessionConfigure: z
+    .object({ id: idSchema, workspaceId: idSchema })
+    .passthrough(),
+  checkpointStatus: z.tuple([idSchema, idSchema]),
   undoTurnChanges: z.object({
     sessionId: idSchema,
     messageId: idSchema,
@@ -272,10 +266,6 @@ export const schemas = {
     // an edit only when the message ends up with neither text nor attachments.
     content: z.string().max(200_000),
   }),
-  sessionPayload: z
-    .object({ session: sessionRecordShape.passthrough() })
-    .passthrough(),
-  sessionIdAndMessageId: z.tuple([idSchema, idSchema]),
   permissionResolve: z.tuple([idSchema, decisionSchema]),
   questionResolve: z.tuple([idSchema, z.string().max(64_000)]),
   planApprovalResolve: z.tuple([

@@ -1,8 +1,9 @@
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
+import { primaryWorkspaceRootPath } from "@cocurdex/shared";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAtomValue, useSetAtom } from "jotai";
-import { Folder, FolderOpen, SquarePen, Trash2 } from "lucide-react";
+import { Folder, FolderOpen, Pencil, SquarePen, Trash2 } from "lucide-react";
 import { type CSSProperties, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -23,9 +24,11 @@ import {
   collapsedSessionIdsAtom,
   toggleSessionCollapsedAtom,
 } from "@/features/sessions";
+import { compactWorkspacePath } from "@/features/workspaces";
 import { cn } from "@/lib";
 import { SessionSidebarItem } from "./session-sidebar-item";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
+import { WorkspaceItemTooltip } from "./sidebar-item-preview";
 
 interface WorkspaceSidebarItemProps {
   activeConversationId: string | null;
@@ -35,6 +38,7 @@ interface WorkspaceSidebarItemProps {
   sessions: SessionRecord[];
   workspace: WorkspaceRecord;
   onCreateAgent(workspaceId: string): void;
+  onEditWorkspace(workspaceId: string): void;
   onRemoveWorkspace(workspaceId: string): void;
   onRevealWorkspace(rootPath: string): void;
   onSelectSession(workspaceId: string, sessionId: string): void;
@@ -50,6 +54,7 @@ export function WorkspaceSidebarItem({
   sessions,
   workspace,
   onCreateAgent,
+  onEditWorkspace,
   onRemoveWorkspace,
   onRevealWorkspace,
   onSelectSession,
@@ -98,73 +103,88 @@ export function WorkspaceSidebarItem({
       style={style}
     >
       <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <SidebarListRow
-            isActive={activeWorkspaceId === workspace.id}
-            variant="subtle"
-            className="px-1"
-            {...attributes}
-            {...listeners}
-          >
-            <button
-              type="button"
-              className="flex min-w-0 flex-1 cursor-default items-center gap-1.5 text-start active:cursor-grabbing"
-              onClick={() => {
-                onSelectWorkspace(workspace.id);
-                onToggleWorkspace(workspace.id);
-              }}
+        <WorkspaceItemTooltip
+          paths={workspace.rootPaths.map(compactWorkspacePath)}
+          title={workspace.name}
+        >
+          <ContextMenuTrigger asChild>
+            <SidebarListRow
+              isActive={activeWorkspaceId === workspace.id}
+              variant="subtle"
+              className="px-1"
+              {...attributes}
+              {...listeners}
             >
-              {expanded ? (
-                <FolderOpen className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
-              ) : (
-                <Folder className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
-              )}
-              <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
-            </button>
-            <div className="relative flex size-5 shrink-0 items-center justify-center">
-              {isRunning || needsAttention ? (
-                <span
-                  className={cn(
-                    "sidebar-activity-dot size-1.5 rounded-full",
-                    needsAttention
-                      ? "text-chat-status-pending-fg"
-                      : "text-sidebar-thinking-dot",
-                  )}
-                  role="img"
-                  aria-label={
-                    needsAttention
-                      ? t("sidebar.pendingAttention")
-                      : t("sidebar.running")
-                  }
-                />
-              ) : null}
-              <SidebarListRowActions
-                className="pointer-events-none absolute inset-0 flex items-center justify-center group-hover/list-row:pointer-events-auto focus-within:pointer-events-auto"
-                visibility="hover"
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 cursor-default items-center gap-1.5 text-start active:cursor-grabbing"
+                onClick={() => {
+                  onSelectWorkspace(workspace.id);
+                  onToggleWorkspace(workspace.id);
+                }}
               >
-                <button
-                  type="button"
-                  aria-label={t("sidebar.newSessionInWorkspace", {
-                    workspaceName: workspace.name,
-                  })}
-                  className="flex size-5 items-center justify-center text-sidebar-fg-muted transition-colors hover:text-sidebar-fg"
-                  onClick={() => onCreateAgent(workspace.id)}
-                  onPointerDown={(event) => event.stopPropagation()}
+                {expanded ? (
+                  <FolderOpen className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
+                ) : (
+                  <Folder className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
+                )}
+                <span className="min-w-0 flex-1 truncate">
+                  {workspace.name}
+                </span>
+              </button>
+              <div className="relative flex size-5 shrink-0 items-center justify-center">
+                {isRunning || needsAttention ? (
+                  <span
+                    className={cn(
+                      "sidebar-activity-dot size-1.5 rounded-full",
+                      needsAttention
+                        ? "text-chat-status-pending-fg"
+                        : "text-sidebar-thinking-dot",
+                    )}
+                    role="img"
+                    aria-label={
+                      needsAttention
+                        ? t("sidebar.pendingAttention")
+                        : t("sidebar.running")
+                    }
+                  />
+                ) : null}
+                <SidebarListRowActions
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center group-hover/list-row:pointer-events-auto focus-within:pointer-events-auto"
+                  visibility="hover"
                 >
-                  <SquarePen className="size-3.5" />
-                </button>
-              </SidebarListRowActions>
-            </div>
-          </SidebarListRow>
-        </ContextMenuTrigger>
+                  <button
+                    type="button"
+                    aria-label={t("sidebar.newSessionInWorkspace", {
+                      workspaceName: workspace.name,
+                    })}
+                    className="flex size-5 items-center justify-center text-sidebar-fg-muted transition-colors hover:text-sidebar-fg"
+                    onClick={() => onCreateAgent(workspace.id)}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <SquarePen className="size-3.5" />
+                  </button>
+                </SidebarListRowActions>
+              </div>
+            </SidebarListRow>
+          </ContextMenuTrigger>
+        </WorkspaceItemTooltip>
         <ContextMenuContent className="min-w-44">
           <SidebarContextMenuItem
             icon={FolderOpen}
-            onClick={() => onRevealWorkspace(workspace.rootPath)}
+            onClick={() =>
+              onRevealWorkspace(primaryWorkspaceRootPath(workspace))
+            }
           >
             {t("sidebar.revealInFileManager", {
               defaultValue: "Reveal in file manager",
             })}
+          </SidebarContextMenuItem>
+          <SidebarContextMenuItem
+            icon={Pencil}
+            onClick={() => onEditWorkspace(workspace.id)}
+          >
+            {t("sidebar.editProject", { defaultValue: "Edit project" })}
           </SidebarContextMenuItem>
           <ContextMenuSeparator />
           <SidebarContextMenuItem

@@ -40,7 +40,10 @@ export function mapWorkspace(row: SqliteRow): WorkspaceRecord {
   return {
     id: String(row.id),
     name: String(row.name),
-    rootPath: String(row.root_path),
+    rootPaths: parseJson<string[]>(row.root_paths, []).filter(
+      (rootPath): rootPath is string =>
+        typeof rootPath === "string" && rootPath.length > 0,
+    ),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     lastOpenedAt: String(row.last_opened_at),

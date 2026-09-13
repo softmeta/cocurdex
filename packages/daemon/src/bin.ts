@@ -86,7 +86,11 @@ if (Number.isInteger(ownerFd)) {
   ownerPipe.once("error", () => requestShutdown({ forceProcessTree: true }));
 }
 
-void startDaemonServer({ runtimeFingerprint, token })
+void startDaemonServer({
+  runtimeFingerprint,
+  token,
+  onIdleShutdown: () => process.exit(0),
+})
   .then((daemon) => {
     closeServer = daemon.close;
     console.log("Cocurdex daemon started");

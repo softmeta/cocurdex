@@ -22,7 +22,7 @@ describe("createSqliteSessionRepository", () => {
     await workspaces.upsert({
       id: "workspace-1",
       name: "repo",
-      rootPath: "/tmp/repo",
+      rootPaths: ["/tmp/repo"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
@@ -65,7 +65,7 @@ describe("createSqliteSessionRepository", () => {
     await workspaces.upsert({
       id: "workspace-1",
       name: "repo",
-      rootPath: "/tmp/repo",
+      rootPaths: ["/tmp/repo"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
@@ -99,7 +99,7 @@ describe("createSqliteSessionRepository", () => {
     await workspaces.upsert({
       id: "workspace-1",
       name: "repo",
-      rootPath: "/tmp/repo",
+      rootPaths: ["/tmp/repo"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
@@ -133,7 +133,7 @@ describe("createSqliteSessionRepository", () => {
     await workspaces.upsert({
       id: "workspace-1",
       name: "repo",
-      rootPath: "/tmp/repo",
+      rootPaths: ["/tmp/repo"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
@@ -187,7 +187,7 @@ describe("createSqliteSessionRepository", () => {
     await workspaces.upsert({
       id: "workspace-1",
       name: "repo",
-      rootPath: "/tmp/repo",
+      rootPaths: ["/tmp/repo"],
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,

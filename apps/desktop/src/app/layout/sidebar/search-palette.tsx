@@ -55,12 +55,12 @@ function HighlightedText({
 }
 
 export function SearchPalette({
-  activeWorkspaceRootPath,
+  activeWorkspaceRootPaths,
   onClose,
   onOpenFile,
   open,
 }: {
-  activeWorkspaceRootPath: string | null;
+  activeWorkspaceRootPaths: string[];
   onClose(): void;
   onOpenFile(file: WorkspaceFileEntry): void;
   open: boolean;
@@ -74,7 +74,7 @@ export function SearchPalette({
     >
       {open ? (
         <SearchPaletteContent
-          activeWorkspaceRootPath={activeWorkspaceRootPath}
+          activeWorkspaceRootPaths={activeWorkspaceRootPaths}
           onClose={onClose}
           onOpenFile={onOpenFile}
         />
@@ -84,18 +84,18 @@ export function SearchPalette({
 }
 
 function SearchPaletteContent({
-  activeWorkspaceRootPath,
+  activeWorkspaceRootPaths,
   onClose,
   onOpenFile,
 }: {
-  activeWorkspaceRootPath: string | null;
+  activeWorkspaceRootPaths: string[];
   onClose(): void;
   onOpenFile(file: WorkspaceFileEntry): void;
 }) {
   const { t } = useTranslation(["common", "search"]);
   const openFiles = useAtomValue(openFilesAtom);
   const [query, setQuery] = useState("");
-  const { files, status } = useWorkspaceFiles(activeWorkspaceRootPath);
+  const { files, status } = useWorkspaceFiles(activeWorkspaceRootPaths);
   const fileEntries = useMemo(
     () => files.filter((file) => file.kind === "file"),
     [files],
@@ -136,7 +136,7 @@ function SearchPaletteContent({
   const hasRecentFiles = !normalizedQuery && openFiles.length > 0;
 
   const emptyState = (() => {
-    if (!activeWorkspaceRootPath) {
+    if (activeWorkspaceRootPaths.length === 0) {
       return {
         title: t("search:empty.noWorkspace.title"),
         description: t("search:empty.noWorkspace.description"),

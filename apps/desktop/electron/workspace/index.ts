@@ -15,12 +15,6 @@ export { registerPdfProtocol } from "./pdf-protocol";
 export { buildPdfAssetUrl, resolvePdfReadPath } from "./pdf-read-service";
 export { workspaceSearchService } from "./search-service";
 export {
-  createWorkspaceCheckpoint,
-  getWorkspaceCheckpointStatus,
-  initializeWorkspaceCheckpoints,
-  restoreWorkspaceCheckpoint,
-} from "./workspace-checkpoints";
-export {
   closeAllWorkspacePathCommands,
   discardGitFiles,
   fileExists,

@@ -67,7 +67,7 @@ beforeEach(() => {
 describe("useGitBranches", () => {
   it("reloads the active workspace branches after external git changes", async () => {
     const store = createStore();
-    const workspace = { rootPath: "/repo" } as WorkspaceRecord;
+    const workspace = { rootPaths: ["/repo"] } as WorkspaceRecord;
     let gitStateListener: ((event: { rootPath: string }) => void) | undefined;
 
     desktopApiMock.onWorkspaceGitStateChanged.mockImplementation((listener) => {
@@ -81,7 +81,7 @@ describe("useGitBranches", () => {
         { name: "main", current: false, kind: "local" },
       ]);
 
-    renderHook(() => useGitBranches(workspace.rootPath), {
+    renderHook(() => useGitBranches(workspace.rootPaths[0]), {
       wrapper: wrapStore(store),
     });
 

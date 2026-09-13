@@ -1,8 +1,5 @@
 import type {
-  AgentEvent,
   AgentId,
-  AgentPermissionDecision,
-  AgentPlanApprovalDecision,
   AgentProviderSelection,
   AgentRoleRecord,
   ArchiveSessionPayload,
@@ -13,7 +10,6 @@ import type {
   CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
-  CreateSessionPayload,
   CreateViewPayload,
   DeleteColumnPayload,
   DeleteIssuePayload,
@@ -47,8 +43,6 @@ import type {
   SaveWorkflowDefinitionPayload,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
-  SendSessionMessagePayload,
-  SubmitPreviousMessagePayload,
   TitleModelProbeResult,
   TitleModelSelection,
   UpdateColumnPayload,
@@ -67,6 +61,9 @@ import type {
   WorkspaceSearchResultEvent,
   WorkspaceSearchStartPayload,
 } from "../src/lib/types";
+import { exposeTaskApi } from "./chat/task-preload";
+
+exposeTaskApi();
 
 contextBridge.exposeInMainWorld("desktopApi", {
   bootstrapApp: () => ipcRenderer.invoke("app:bootstrap"),
@@ -185,8 +182,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
     rootPath: string | null;
   }) => ipcRenderer.invoke("worktree:saveSettings", payload),
   listManagedWorktrees: () => ipcRenderer.invoke("worktree:listManaged"),
-  removeWorktree: (payload: { workspaceId: string; worktreePath: string }) =>
-    ipcRenderer.invoke("worktree:remove", payload),
+  removeWorktree: (payload: {
+    workspaceId: string;
+    worktreePath: string;
+    workspaceRootPath?: string;
+  }) => ipcRenderer.invoke("worktree:remove", payload),
   getWorktreeEnvironment: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:getWorktreeEnvironment", workspaceId),
   saveWorktreeEnvironment: (payload: {
@@ -248,8 +248,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
     filePath: string;
     annotations: import("../src/lib/types").PdfDocumentAnnotationsDto;
   }) => ipcRenderer.invoke("pdf:save-annotations", payload),
-  createSession: (payload: CreateSessionPayload) =>
-    ipcRenderer.invoke("session:create", payload),
   updateSessionTitle: (payload: UpdateSessionTitlePayload) =>
     ipcRenderer.invoke("session:updateTitle", payload),
   archiveSession: (payload: ArchiveSessionPayload) =>
@@ -355,26 +353,14 @@ contextBridge.exposeInMainWorld("desktopApi", {
   getTurnChangeDiff: (
     payload: import("@cocurdex/shared").TurnChangeDiffRequest,
   ) => ipcRenderer.invoke("session:getTurnChangeDiff", payload),
-  sendMessage: (payload: SendSessionMessagePayload) =>
-    ipcRenderer.invoke("session:sendMessage", payload),
   updateQueuedInput: (payload: UpdateQueuedAgentInputPayload) =>
     ipcRenderer.invoke("session:updateQueuedInput", payload),
   deleteQueuedInput: (payload: QueuedAgentInputActionPayload) =>
     ipcRenderer.invoke("session:deleteQueuedInput", payload),
   steerQueuedInput: (payload: QueuedAgentInputActionPayload) =>
     ipcRenderer.invoke("session:steerQueuedInput", payload),
-  submitPreviousMessage: (payload: SubmitPreviousMessagePayload) =>
-    ipcRenderer.invoke("session:submitPreviousMessage", payload),
-  getPreviousMessageCheckpointStatus: (sessionId: string, messageId: string) =>
-    ipcRenderer.invoke(
-      "session:getPreviousMessageCheckpointStatus",
-      sessionId,
-      messageId,
-    ),
   saveEditorView: (view: import("@cocurdex/shared").EditorViewRecord) =>
     ipcRenderer.invoke("editorView:save", view),
-  stopSession: (sessionId: string) =>
-    ipcRenderer.invoke("session:stop", sessionId),
   listSlashCommands: (agentType: AgentId, workspaceRootPath: string) =>
     ipcRenderer.invoke("session:listSlashCommands", {
       agentType,
@@ -392,27 +378,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
       configId,
       value,
     }),
-  resolvePermission: (requestId: string, decision: AgentPermissionDecision) =>
-    ipcRenderer.invoke("permission:resolve", requestId, decision),
-  resolveQuestion: (questionId: string, answer: string) =>
-    ipcRenderer.invoke("question:resolve", questionId, answer),
-  resolvePlanApproval: (
-    approvalId: string,
-    decision: AgentPlanApprovalDecision,
-  ) => ipcRenderer.invoke("planApproval:resolve", approvalId, decision),
-  onAgentEvent: (listener: (event: AgentEvent) => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      payload: AgentEvent,
-    ) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("agent:event", handler);
-    return () => {
-      ipcRenderer.removeListener("agent:event", handler);
-    };
-  },
   openWorkspace: () => ipcRenderer.invoke("dialog:openDirectory"),
   consumePendingOpenFolder: () =>
     ipcRenderer.invoke("workspace:consumeOpenFolder") as Promise<{

@@ -4,7 +4,6 @@ import type {
   AgentProviderSessionRecord,
   AgentRuntimeProviderConfig,
   MessageRecord,
-  SendSessionMessagePayload,
   SessionRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -26,7 +25,7 @@ function createSessionRecord(): SessionRecord {
   };
 }
 
-function createPayload(): SendSessionMessagePayload {
+function createPayload(): SessionRuntimeMessage {
   return {
     session: createSessionRecord(),
     workspaceRootPath: "/workspace",
@@ -249,6 +248,75 @@ describe("AgentRuntimeManager", () => {
     expect(setMode).toHaveBeenCalledWith("plan");
     expect(setConfigOption).toHaveBeenCalledWith("thinking", true);
     expect(setTitle).toHaveBeenCalledWith("Updated title");
+  });
+
+  it("reuses the adapter while workspace roots stay unchanged", async () => {
+    const firstRuntime: AgentSession = {
+      dispose: vi.fn(),
+      sendMessage: vi.fn(),
+      stop: vi.fn(),
+    };
+    const createSession = vi.fn(() => firstRuntime);
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: vi.fn(),
+      createAdapter: () => ({
+        getDescriptor() {
+          throw new Error("Descriptor is not used by runtime tests");
+        },
+        createSession,
+      }),
+    });
+    const payload = createPayload();
+
+    const first = manager.createSessionRuntime(payload, createPersistence());
+    const second = manager.createSessionRuntime(
+      { ...payload, workspaceRootPaths: ["/workspace"] },
+      createPersistence(),
+    );
+
+    expect(second.runtime).toBe(first.runtime);
+    expect(createSession).toHaveBeenCalledOnce();
+    expect(firstRuntime.stop).not.toHaveBeenCalled();
+    expect(firstRuntime.dispose).not.toHaveBeenCalled();
+  });
+
+  it("recreates the adapter when workspace roots change", async () => {
+    const firstRuntime: AgentSession = {
+      dispose: vi.fn(),
+      sendMessage: vi.fn(),
+      stop: vi.fn(),
+    };
+    const secondRuntime: AgentSession = {
+      dispose: vi.fn(),
+      sendMessage: vi.fn(),
+      stop: vi.fn(),
+    };
+    const runtimes = [firstRuntime, secondRuntime];
+    const createSession = vi.fn(() => runtimes.shift() ?? secondRuntime);
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: vi.fn(),
+      createAdapter: () => ({
+        getDescriptor() {
+          throw new Error("Descriptor is not used by runtime tests");
+        },
+        createSession,
+      }),
+    });
+    const payload = createPayload();
+
+    const first = manager.createSessionRuntime(payload, createPersistence());
+    const second = manager.createSessionRuntime(
+      { ...payload, workspaceRootPaths: ["/workspace", "/shared"] },
+      createPersistence(),
+    );
+
+    expect(first.runtime).toBe(firstRuntime);
+    expect(second.runtime).toBe(secondRuntime);
+    expect(createSession).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => {
+      expect(firstRuntime.stop).toHaveBeenCalledOnce();
+      expect(firstRuntime.dispose).toHaveBeenCalledOnce();
+    });
   });
 
   it("rejects overlapping turns and emits aggregated turn stats", async () => {
@@ -543,3 +611,5 @@ describe("AgentRuntimeManager", () => {
     expect(createSession).toHaveBeenCalledTimes(1);
   });
 });
+
+import type { SessionRuntimeMessage } from "./session-control/execution-types";

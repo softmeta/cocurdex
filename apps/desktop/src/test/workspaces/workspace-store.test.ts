@@ -9,13 +9,15 @@ import {
   collapsedWorkspaceIdsAtom,
   normalizeCollapsedWorkspaceIds,
   openWorkspaceByPathAtom,
+  relocateWorkspaceAtom,
   removeWorkspaceAtom,
   reorderWorkspacesAtom,
   selectWorkspaceAtom,
   workspacesAtom,
 } from "@/features/workspaces";
 
-const saveWorkspace = vi.fn<(workspace: WorkspaceRecord) => Promise<void>>();
+const saveWorkspace =
+  vi.fn<(workspace: WorkspaceRecord) => Promise<WorkspaceRecord>>();
 
 function makeWorkspace(
   id: string,
@@ -26,7 +28,7 @@ function makeWorkspace(
   return {
     id,
     name: id,
-    rootPath: `/ws/${id}`,
+    rootPaths: [`/ws/${id}`],
     createdAt,
     updatedAt: createdAt,
     lastOpenedAt,
@@ -36,7 +38,10 @@ function makeWorkspace(
 
 beforeEach(() => {
   saveWorkspace.mockReset();
-  saveWorkspace.mockResolvedValue(undefined);
+  saveWorkspace.mockImplementation(async (workspace) => ({
+    ...workspace,
+    missingRootPaths: [],
+  }));
   // The IPC layer reads window.desktopApi at call time; inject a spyable stub.
   (window as unknown as { desktopApi: unknown }).desktopApi = { saveWorkspace };
 });
@@ -138,7 +143,7 @@ describe("openWorkspaceByPathAtom", () => {
 
     const result = store.set(openWorkspaceByPathAtom, "/tmp/new-project");
 
-    expect(result.workspace.rootPath).toBe("/tmp/new-project");
+    expect(result.workspace.rootPaths).toEqual(["/tmp/new-project"]);
     expect(result.workspace.name).toBe("new-project");
     expect(result.didSwitchProject).toBe(true);
     expect(store.get(activeWorkspaceIdAtom)).toBe(result.workspace.id);
@@ -276,5 +281,65 @@ describe("reorderWorkspacesAtom", () => {
     expect(saved.id).toBe("c");
     expect(saved.sortOrder).toBe(0);
     expect(saved.lastOpenedAt).toBe(c.lastOpenedAt);
+  });
+});
+
+describe("relocateWorkspaceAtom", () => {
+  it("repoints a moved project and persists the new root path", async () => {
+    const store = createStore();
+    const moved = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [
+      moved,
+      makeWorkspace("b", "2024-01-02T00:00:00.000Z"),
+    ]);
+
+    await store.set(relocateWorkspaceAtom, "a", "/osp/project/");
+
+    const [relocated] = store.get(workspacesAtom);
+    expect(relocated.id).toBe("a");
+    expect(relocated.rootPaths).toEqual(["/osp/project"]);
+    expect(relocated.name).toBe("project");
+    expect(relocated.missingRootPaths).toEqual([]);
+    expect(store.get(activeWorkspaceIdAtom)).toBe("a");
+    expect(saveWorkspace.mock.calls.at(-1)?.[0].rootPaths).toEqual([
+      "/osp/project",
+    ]);
+  });
+
+  it("replaces only the missing secondary root and keeps the name", async () => {
+    const store = createStore();
+    const moved: WorkspaceRecord = {
+      ...makeWorkspace("a", "2024-01-01T00:00:00.000Z"),
+      name: "app",
+      rootPaths: ["/repo/app", "/repo/deleted-lib"],
+      missingRootPaths: ["/repo/deleted-lib"],
+    };
+    store.set(workspacesAtom, [moved]);
+
+    await store.set(relocateWorkspaceAtom, "a", "/repo/new-lib");
+
+    const [relocated] = store.get(workspacesAtom);
+    expect(relocated.rootPaths).toEqual(["/repo/app", "/repo/new-lib"]);
+    expect(relocated.name).toBe("app");
+    expect(saveWorkspace.mock.calls[0]?.[0].rootPaths).toEqual([
+      "/repo/app",
+      "/repo/new-lib",
+    ]);
+  });
+
+  it("leaves state untouched when the daemon rejects the save", async () => {
+    saveWorkspace.mockRejectedValue(
+      new Error('Folder /repo/app already belongs to project "b"'),
+    );
+    const store = createStore();
+    const moved = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [moved]);
+
+    await expect(
+      store.set(relocateWorkspaceAtom, "a", "/repo/app"),
+    ).rejects.toThrow("already belongs");
+
+    expect(store.get(workspacesAtom)[0]?.rootPaths).toEqual(["/ws/a"]);
+    expect(store.get(activeWorkspaceIdAtom)).not.toBe("a");
   });
 });

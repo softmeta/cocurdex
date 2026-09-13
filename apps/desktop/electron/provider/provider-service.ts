@@ -16,9 +16,9 @@ import {
   readCodexAccount,
   readPiProviderAuthState,
   registerBundledPiProviderOAuthFlows,
-  resolvePiProviderAuth,
   startCodexChatGptLogin,
 } from "@cocurdex/agent-adapters/desktop-provider";
+import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
   AgentId,
   AgentProviderSnapshot,
@@ -32,7 +32,6 @@ import type {
   ProviderListModelsResult,
   ProviderModelRecord,
   RefineSessionTitlePayload,
-  SendSessionMessagePayload,
   SessionRecord,
   TitleModelProbeResult,
   TitleModelSelection,
@@ -41,16 +40,15 @@ import {
   filterCompatibleProviderModels,
   getCompatibleProviderApis,
 } from "@cocurdex/shared";
-import { app, ipcMain, safeStorage } from "electron";
+import { app, ipcMain } from "electron";
 import {
+  chatDaemonOptions,
   deleteProviderConfig,
   deleteProviderModel,
   deleteProviderModelsByProvider,
-  deleteProviderSecret,
   getAgentProviderDefault,
   getCommitMessageModelSetting,
   getProviderConfig,
-  getProviderSecret,
   getTitleModelSetting,
   listAgentProviderDefaults,
   listProviderConfigs,
@@ -58,16 +56,13 @@ import {
   saveAgentProviderDefault,
   saveProviderConfig,
   saveProviderModel,
-  saveProviderSecret,
   setCommitMessageModelSetting,
-  setProviderApiKeySecretId,
   setTitleModelSetting,
 } from "../chat";
 import { createLogger } from "../logging";
 import { enrichProviderModelsWithModelsDev } from "./models-dev-metadata";
 
 const titleLogger = createLogger("session-title-provider");
-const secretsLogger = createLogger("provider-secrets");
 const providerModelsLogger = createLogger("provider-models");
 const BUILT_IN_PROVIDER_MODELS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -76,79 +71,26 @@ const builtInProviderModelsCache = new Map<
   { expiresAt: number; models: ProviderModelRecord[] }
 >();
 
-function getEncryptedSecretValue(value: string) {
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.encryptString(value).toString("base64");
-  }
-
-  // Base64 is encoding, not encryption — the key sits readable on disk. This
-  // happens on Linux without a keyring / secret service; surface it loudly so
-  // the silent downgrade is at least visible in diagnostics.
-  secretsLogger.warn("safeStorage.unavailablePlaintextFallback");
-  return Buffer.from(value, "utf8").toString("base64");
-}
-
-function decryptSecretValue(encryptedValue: string) {
-  const buffer = Buffer.from(encryptedValue, "base64");
-
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.decryptString(buffer);
-  }
-
-  return buffer.toString("utf8");
-}
-
 export async function resolveProviderApiKey(
   config: ProviderConfigRecord | null,
 ) {
-  if (config && isBuiltInProviderConfig(config)) {
-    const result = await resolvePiProviderAuth(
-      app.getPath("userData"),
-      config.id,
-    );
-    if (result?.auth.apiKey) {
-      return result.auth.apiKey;
-    }
-  }
-
-  return resolveStoredProviderApiKey(config);
-}
-
-async function resolveStoredProviderApiKey(
-  config: ProviderConfigRecord | null,
-) {
-  if (!config?.apiKeySecretId) {
-    return null;
-  }
-
-  const secret = await getProviderSecret(config.apiKeySecretId);
-  return secret ? decryptSecretValue(secret.encryptedValue) : null;
+  if (!config) return null;
+  return requestDaemon(
+    "provider.apiKey.read",
+    { providerId: config.id },
+    await chatDaemonOptions(),
+  );
 }
 
 async function clearStoredProviderApiKey(providerId: string) {
-  const config = await getProviderConfig(providerId);
-  if (config?.apiKeySecretId) {
-    await deleteProviderSecret(config.apiKeySecretId);
-  }
-  if (config) {
-    await setProviderApiKeySecretId(providerId, null);
-  }
+  return requestDaemon(
+    "provider.apiKey.set",
+    { providerId, apiKey: null },
+    await chatDaemonOptions(),
+  );
 }
 
-function mergeProviderAuthHeaders(
-  headersJson: string | null | undefined,
-  authHeaders: Record<string, string | null> | undefined,
-) {
-  if (!authHeaders) {
-    return headersJson;
-  }
-  const headers = parseProviderHeaders(headersJson) ?? {};
-  return JSON.stringify({ ...headers, ...authHeaders });
-}
-
-export async function buildRuntimeProviderConfig(
-  session: SendSessionMessagePayload["session"],
-) {
+export async function buildRuntimeProviderConfig(session: SessionRecord) {
   if (session.agentType === "codex") {
     return null;
   }
@@ -165,23 +107,11 @@ export async function buildRuntimeProviderConfig(
 export async function resolveRuntimeProviderSnapshot(
   snapshot: AgentProviderSnapshot,
 ) {
-  const provider = await getProviderConfig(snapshot.providerId);
-  const piAuth = provider
-    ? await resolvePiProviderAuth(app.getPath("userData"), provider.id)
-    : undefined;
-  const apiKey =
-    piAuth?.auth.apiKey ?? (await resolveStoredProviderApiKey(provider));
-
-  return {
-    ...snapshot,
-    apiKey,
-    baseUrl: piAuth?.auth.baseUrl ?? snapshot.baseUrl,
-    modelBaseUrl: piAuth?.auth.baseUrl ?? snapshot.modelBaseUrl,
-    headersJson: mergeProviderAuthHeaders(
-      snapshot.headersJson,
-      piAuth?.auth.headers,
-    ),
-  };
+  return requestDaemon(
+    "provider.resolveSnapshot",
+    { snapshot },
+    await chatDaemonOptions(),
+  );
 }
 
 function parseProviderHeaders(headersJson?: string | null) {
@@ -1076,7 +1006,7 @@ export function registerProviderHandlers() {
     async (_event, providerId: string) => {
       const config = await getProviderConfig(providerId);
       if (config?.apiKeySecretId) {
-        await deleteProviderSecret(config.apiKeySecretId);
+        await clearStoredProviderApiKey(providerId);
       }
       // Cascade: models belong to the config; stale rows would resurface if
       // the same provider id is re-created later.
@@ -1091,9 +1021,11 @@ export function registerProviderHandlers() {
       if (config && isBuiltInProviderConfig(config)) {
         await logoutPiProvider(app.getPath("userData"), providerId);
       }
-      const secretId = `provider:${providerId}:api-key`;
-      await saveProviderSecret(secretId, getEncryptedSecretValue(apiKey));
-      await setProviderApiKeySecretId(providerId, secretId);
+      await requestDaemon(
+        "provider.apiKey.set",
+        { providerId, apiKey },
+        await chatDaemonOptions(),
+      );
     },
   );
   ipcMain.handle("provider:clearApiKey", async (_event, providerId: string) =>

@@ -28,7 +28,7 @@ async function createService() {
   const workspace = {
     id: "workspace-1",
     name: "Title workspace",
-    rootPath: "/tmp/title-workspace",
+    rootPaths: ["/tmp/title-workspace"],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

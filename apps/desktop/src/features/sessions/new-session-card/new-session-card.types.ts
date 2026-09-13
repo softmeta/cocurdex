@@ -31,6 +31,7 @@ export interface NewSessionCardProps {
   onClearAttachment?(): void;
   onSelectWorkspace?(workspaceId: string): void;
   onOpenWorkspace?(): void;
+  onRelocateWorkspace?(workspaceId: string): void;
   onSelectBranch?(branch: string): Promise<void> | void;
   onSelectWorktree?(path: string | null): void;
   onSelectAgent?(agentType: AgentId): void;
@@ -56,6 +57,7 @@ export type UseNewSessionCardProps = Omit<
   | "sessionTitle"
   | "onSelectWorkspace"
   | "onOpenWorkspace"
+  | "onRelocateWorkspace"
   | "onSelectBranch"
   | "onSelectWorktree"
   | "selectedWorktreePath"

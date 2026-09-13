@@ -7,8 +7,10 @@ import {
   type AgentProviderSnapshot,
   type ProviderConfigRecord,
   type ProviderModelRecord,
+  primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type SessionRecord,
+  sessionConfiguration,
   type WorkflowAggregate,
   type WorkflowExecutorBinding,
   type WorkflowExecutorBindings,
@@ -35,6 +37,7 @@ import {
 import { handleSearchCommand } from "./search-commands";
 import { assertSessionTuiAvailable, runSessionTui } from "./session-tui";
 import { handleSkillsCommand, skillsUsageLines } from "./skill-commands";
+import { taskApi } from "./task-client";
 import { getCliVersion } from "./version";
 import { assertWorkflowTuiAvailable, runWorkflowTui } from "./workflow-tui";
 import { handleWorktreeCommand, worktreeUsageLines } from "./worktree-commands";
@@ -118,7 +121,14 @@ async function main(rawArgs: string[]) {
 
   if (resource === "workspace" && action === "list") {
     const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
-    printRows(workspaces, ["id", "name", "rootPath"], parsed);
+    printRows(
+      workspaces.map((workspace) => ({
+        ...workspace,
+        rootPaths: workspace.rootPaths.join(", "),
+      })),
+      ["id", "name", "rootPaths"],
+      parsed,
+    );
     return;
   }
 
@@ -155,19 +165,15 @@ async function main(rawArgs: string[]) {
       subscribe: (onEvent, onDisconnect) =>
         subscribeDaemonEvents(
           (event) => {
-            if (event.type !== "data.changed") onEvent(event);
+            if ("sessionId" in event) onEvent(event);
           },
           { onDisconnect },
         ),
       send: (currentSession, content, delivery) =>
-        requestDaemon("session.send", {
-          message: {
-            session: { ...currentSession, status: "running" },
-            workspaceRootPath: workspace.rootPath,
-            content,
-            delivery,
-          },
-          providerConfig: null,
+        taskApi.sendMessage({
+          sessionId: currentSession.id,
+          content,
+          delivery,
         }),
       stop: async () => {
         await requestDaemon("session.stop", { sessionId: session.id });
@@ -423,7 +429,8 @@ async function createSession(parsed: ParsedArgs) {
     ]),
   );
   const workspace = workspaces.find(
-    (item) => item.id === workspaceValue || item.rootPath === workspaceValue,
+    (item) =>
+      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
   );
 
   if (!workspace) {
@@ -459,17 +466,12 @@ async function createSession(parsed: ParsedArgs) {
     providerSnapshot: createProviderSnapshot(provider, model),
   };
 
-  await withDaemon(async () => {
+  return withDaemon(async () => {
     if (!workspace) {
       await requestDaemon("workspace.save", { workspace: targetWorkspace });
     }
-    return requestDaemon("session.create", {
-      session,
-      workspaceRootPath: targetWorkspace.rootPath,
-    });
+    return taskApi.saveSessionConfiguration(sessionConfiguration(session));
   });
-
-  return session;
 }
 
 async function resolveSessionTuiSession(
@@ -501,34 +503,7 @@ async function resolveSessionTuiSession(
 }
 
 async function sendSessionMessage(sessionId: string, prompt: string) {
-  const [sessions, workspaces] = await withDaemon(async () =>
-    Promise.all([
-      requestDaemon("session.list"),
-      requestDaemon("workspace.list"),
-    ]),
-  );
-  const session = sessions.find((item) => item.id === sessionId);
-
-  if (!session) {
-    throw new Error("Session not found");
-  }
-
-  const workspace = workspaces.find((item) => item.id === session.workspaceId);
-
-  if (!workspace) {
-    throw new Error("Session workspace not found");
-  }
-
-  return withDaemon(() =>
-    requestDaemon("session.send", {
-      message: {
-        session: { ...session, status: "running" },
-        workspaceRootPath: workspace.rootPath,
-        content: prompt,
-      },
-      providerConfig: null,
-    }),
-  );
+  return withDaemon(() => taskApi.sendMessage({ sessionId, content: prompt }));
 }
 
 async function createWorkflow(parsed: ParsedArgs) {
@@ -541,7 +516,8 @@ async function createWorkflow(parsed: ParsedArgs) {
     ]),
   );
   const workspace = workspaces.find(
-    (item) => item.id === workspaceValue || item.rootPath === workspaceValue,
+    (item) =>
+      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
   );
 
   if (!workspace) {
@@ -564,7 +540,7 @@ async function createWorkflow(parsed: ParsedArgs) {
 
     return requestDaemon("workflow.create", {
       workspaceId: targetWorkspace.id,
-      workspaceRootPath: targetWorkspace.rootPath,
+      workspaceRootPath: primaryWorkspaceRootPath(targetWorkspace),
       prompt,
       bindings,
       definitionId: stringFlag(parsed, "definition"),
@@ -675,7 +651,7 @@ function createWorkspaceFromPath(
   return {
     id: crypto.randomUUID(),
     name: path.basename(rootPath),
-    rootPath,
+    rootPaths: [rootPath],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

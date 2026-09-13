@@ -101,7 +101,8 @@ export async function handleWorktreeCommand(
 async function resolveWorkspaceId(workspaceValue: string) {
   const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
   const workspace = workspaces.find(
-    (item) => item.id === workspaceValue || item.rootPath === workspaceValue,
+    (item) =>
+      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
   );
   if (!workspace) {
     throw new Error(`Workspace not found: ${workspaceValue}`);

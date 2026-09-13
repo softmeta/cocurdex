@@ -1,4 +1,7 @@
-import type { MessageAttachment } from "@cocurdex/shared";
+import {
+  type MessageAttachment,
+  primaryWorkspaceRootPath,
+} from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { PanelLeft, Search } from "lucide-react";
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
@@ -172,7 +175,7 @@ export function RightEditorPanel({
   });
   const terminalWorkspaceId =
     activeWorkspace?.id ?? NO_WORKSPACE_TERMINAL_SCOPE_ID;
-  const terminalCwd = workingPath ?? activeWorkspace?.rootPath ?? homeDir;
+  const terminalCwd = workingPath ?? activeWorkspace?.rootPaths[0] ?? homeDir;
   const contentRef = useRef<HTMLDivElement | null>(null);
   const fileTreeWidthRef = useRef(fileTreeWidth);
   const removeDragListenersRef = useRef<(() => void) | null>(null);
@@ -202,10 +205,9 @@ export function RightEditorPanel({
     (relativePath: string) => {
       if (!activeWorkspace) return;
 
-      const rootPath = (workingPath ?? activeWorkspace.rootPath).replace(
-        /\/$/,
-        "",
-      );
+      const rootPath = (
+        workingPath ?? primaryWorkspaceRootPath(activeWorkspace)
+      ).replace(/\/$/, "");
       openFile(`${rootPath}/${relativePath}`);
       setFileTreeVisible(true);
       setActiveView("editor");
@@ -380,13 +382,13 @@ export function RightEditorPanel({
                       <div className="border-b border-editor-border p-2">
                         <SearchPanel
                           rootPath={
-                            workingPath ?? activeWorkspace?.rootPath ?? null
+                            workingPath ?? activeWorkspace?.rootPaths[0] ?? null
                           }
                         />
                       </div>
                       <SearchResultsPane
                         rootPath={
-                          workingPath ?? activeWorkspace?.rootPath ?? null
+                          workingPath ?? activeWorkspace?.rootPaths[0] ?? null
                         }
                       />
                     </div>

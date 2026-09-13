@@ -42,6 +42,7 @@ interface UseContextFileMentionsOptions {
   attachments: MentionableAttachment[];
   editorRef: RefObject<MentionEditorHandle | null>;
   workspaceRootPath?: string | null;
+  workspaceRootPaths?: string[];
 }
 
 function getContextAttachmentPath(attachment: ContextAttachment) {
@@ -52,10 +53,12 @@ function getContextAttachmentPath(attachment: ContextAttachment) {
 
 function getRelativePath(
   absolutePath: string,
-  workspaceRootPath?: string | null,
+  workspaceRootPaths: readonly string[],
 ) {
-  if (workspaceRootPath && absolutePath.startsWith(`${workspaceRootPath}/`)) {
-    return absolutePath.slice(workspaceRootPath.length + 1);
+  for (const rootPath of workspaceRootPaths) {
+    if (rootPath && absolutePath.startsWith(`${rootPath}/`)) {
+      return absolutePath.slice(rootPath.length + 1);
+    }
   }
   return absolutePath;
 }
@@ -70,10 +73,10 @@ export function getMentionDisplayLabel(file: WorkspaceFileEntry) {
 // when reading the editor back into a string at send time.
 export function getMentionSerializedText(
   file: WorkspaceFileEntry,
-  workspaceRootPath?: string | null,
+  workspaceRootPaths?: readonly string[] | null,
 ) {
-  const relative = workspaceRootPath
-    ? getRelativePath(file.path, workspaceRootPath)
+  const relative = workspaceRootPaths?.length
+    ? getRelativePath(file.path, workspaceRootPaths)
     : file.relativePath;
   return `@${relative}`;
 }
@@ -82,9 +85,19 @@ export function useContextFileMentions({
   attachments,
   editorRef,
   workspaceRootPath,
+  workspaceRootPaths,
 }: UseContextFileMentionsOptions) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { files } = useWorkspaceFiles(workspaceRootPath);
+  const mentionRoots = useMemo(
+    () =>
+      workspaceRootPaths?.length
+        ? workspaceRootPaths
+        : workspaceRootPath
+          ? [workspaceRootPath]
+          : [],
+    [workspaceRootPath, workspaceRootPaths],
+  );
+  const { files } = useWorkspaceFiles(mentionRoots);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [query, setQuery] = useState<string | null>(null);
 
@@ -94,7 +107,7 @@ export function useContextFileMentions({
   );
 
   const matchingFiles = useMemo(() => {
-    if (query === null || !workspaceRootPath) {
+    if (query === null || mentionRoots.length === 0) {
       return [];
     }
 
@@ -113,7 +126,7 @@ export function useContextFileMentions({
       0,
       CONTEXT_FILE_RESULT_LIMIT,
     );
-  }, [attachedContextPaths, files, query, workspaceRootPath]);
+  }, [attachedContextPaths, files, query, mentionRoots]);
 
   const isOpen = query !== null && matchingFiles.length > 0;
 
@@ -164,7 +177,7 @@ export function useContextFileMentions({
       editor.insertMention(
         attachment,
         getMentionDisplayLabel(file),
-        getMentionSerializedText(file, workspaceRootPath),
+        getMentionSerializedText(file, mentionRoots),
       );
       clearMention();
       return;
@@ -180,7 +193,7 @@ export function useContextFileMentions({
     editor.insertMention(
       attachment,
       getMentionDisplayLabel(file),
-      getMentionSerializedText(file, workspaceRootPath),
+      getMentionSerializedText(file, mentionRoots),
     );
     clearMention();
   };
@@ -361,10 +374,10 @@ export function getContextAttachmentMentionLabel(
 // provided context attachment, mirroring typed @-mentions (`@relative/path`).
 export function getContextAttachmentSerializedText(
   attachment: ContextFileAttachment | ContextFolderAttachment,
-  workspaceRootPath?: string | null,
+  workspaceRootPaths?: readonly string[] | null,
 ) {
   const absolutePath = isContextFolderAttachment(attachment)
     ? attachment.folderPath
     : attachment.filePath;
-  return `@${getRelativePath(absolutePath, workspaceRootPath)}`;
+  return `@${getRelativePath(absolutePath, workspaceRootPaths ?? [])}`;
 }

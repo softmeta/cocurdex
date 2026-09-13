@@ -11,6 +11,7 @@ export * from "./performance";
 export * from "./platform";
 export * from "./react-hooks";
 export * from "./shortcuts";
+export { taskApi } from "./task-client";
 export * from "./theme-events";
 export * from "./types";
 export * from "./utils";

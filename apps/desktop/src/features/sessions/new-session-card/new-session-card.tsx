@@ -66,6 +66,7 @@ export function NewSessionCard({
   onClearAttachment,
   onSelectWorkspace,
   onOpenWorkspace,
+  onRelocateWorkspace,
   onSelectBranch,
   onSelectWorktree,
   onSelectAgent,
@@ -105,6 +106,7 @@ export function NewSessionCard({
     setSelectedOpenCodeVariant,
     hasWorkspace,
     contextWorkspaceRootPath,
+    contextWorkspaceRootPaths,
     compatibleProviders,
     isProviderModelLoading,
     selectedProviderModel,
@@ -347,6 +349,7 @@ export function NewSessionCard({
         workspaces={workspaces}
         onSelectWorkspace={onSelectWorkspace}
         onOpenWorkspace={onOpenWorkspace}
+        onRelocateWorkspace={onRelocateWorkspace}
       />
 
       {hasWorkspace && activeWorkspaceId ? (
@@ -359,7 +362,7 @@ export function NewSessionCard({
           workspaceId={activeWorkspaceId}
           workspaceRootPath={
             workspaces.find((workspace) => workspace.id === activeWorkspaceId)
-              ?.rootPath ?? ""
+              ?.rootPaths[0] ?? ""
           }
           worktrees={worktrees}
           onSelect={(path) => onSelectWorktree?.(path)}
@@ -416,6 +419,7 @@ export function NewSessionCard({
             workspaceName={workspaceName}
             workspaces={workspaces}
             onOpenWorkspace={onOpenWorkspace}
+            onRelocateWorkspace={onRelocateWorkspace}
             onSelectWorkspace={onSelectWorkspace}
           />
           {t("sessions:workspace.startTitleAfter")}
@@ -453,6 +457,7 @@ export function NewSessionCard({
         onClearAttachment={onClearAttachment}
         onSelectCollaborationMode={handleSelectCollaborationMode}
         workspaceRootPath={contextWorkspaceRootPath}
+        workspaceRootPaths={contextWorkspaceRootPaths}
         placeholderOverride={t("sessions:composer.placeholder")}
         controls={controls}
         header={header}

@@ -28,7 +28,7 @@ async function createService() {
   const workspace = {
     id: "workspace-1",
     name: "Repo",
-    rootPath: "/tmp/subagent-workspace",
+    rootPaths: ["/tmp/subagent-workspace"],
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,

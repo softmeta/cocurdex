@@ -3,11 +3,13 @@ import {
   type GitWorktreeInfo,
   type ManagedWorktree,
   parseWorktreeSettings,
+  primaryWorkspaceRootPath,
   serializeWorktreeSettings,
   sessionsUsingWorktreePath,
   WORKTREE_SETTING_KEY,
   type WorktreeSettings,
   type WorktreeSettingsSnapshot,
+  workspacePathsEqual,
 } from "@cocurdex/shared";
 import { addGitWorktree, listGitWorktrees } from "./git-worktree";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
@@ -58,27 +60,29 @@ export async function listManagedWorktrees(input: {
   const items: ManagedWorktree[] = [];
 
   for (const workspace of workspaces) {
-    const worktrees = await listGitWorktrees(workspace.rootPath);
-    for (const worktree of worktrees) {
-      if (
-        !isAppManagedWorktreePath(
-          worktree.path,
-          input.userDataPath,
-          settings.rootPath,
-        )
-      ) {
-        continue;
+    for (const rootPath of workspace.rootPaths) {
+      const worktrees = await listGitWorktrees(rootPath);
+      for (const worktree of worktrees) {
+        if (
+          !isAppManagedWorktreePath(
+            worktree.path,
+            input.userDataPath,
+            settings.rootPath,
+          )
+        ) {
+          continue;
+        }
+        items.push({
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          workspaceRootPath: rootPath,
+          path: worktree.path,
+          branch: worktree.branch,
+          head: worktree.head,
+          detached: worktree.detached,
+          sessions: sessionsUsingWorktreePath(boundSessions, worktree.path),
+        });
       }
-      items.push({
-        workspaceId: workspace.id,
-        workspaceName: workspace.name,
-        workspaceRootPath: workspace.rootPath,
-        path: worktree.path,
-        branch: worktree.branch,
-        head: worktree.head,
-        detached: worktree.detached,
-        sessions: sessionsUsingWorktreePath(boundSessions, worktree.path),
-      });
     }
   }
 
@@ -96,7 +100,7 @@ export async function createManagedWorktree(input: {
   const workspace = await requireWorkspace(input.state, input.workspaceId);
   const settings = await loadWorktreeSettings(input.state, input.userDataPath);
   const created = await addGitWorktree({
-    repoRootPath: workspace.rootPath,
+    repoRootPath: primaryWorkspaceRootPath(workspace),
     branch: input.branch,
     startPoint: input.startPoint,
     userDataPath: input.userDataPath,
@@ -107,11 +111,41 @@ export async function createManagedWorktree(input: {
   return created;
 }
 
+export async function resolveWorktreeRepoRootPath(
+  workspace: WorkspaceRecord,
+  worktreePath: string,
+  explicitRootPath?: string,
+): Promise<string> {
+  if (explicitRootPath) {
+    const owned = workspace.rootPaths.find((rootPath) =>
+      workspacePathsEqual(rootPath, explicitRootPath),
+    );
+    if (!owned) {
+      throw new Error(
+        `Folder ${explicitRootPath} does not belong to this project.`,
+      );
+    }
+    return owned;
+  }
+  for (const rootPath of workspace.rootPaths) {
+    const worktrees = await listGitWorktrees(rootPath);
+    if (
+      worktrees.some((worktree) =>
+        workspacePathsEqual(worktree.path, worktreePath),
+      )
+    ) {
+      return rootPath;
+    }
+  }
+  return primaryWorkspaceRootPath(workspace);
+}
+
 export async function removeManagedWorktree(input: {
   state: DaemonState;
   userDataPath: string;
   workspaceId: string;
   worktreePath: string;
+  workspaceRootPath?: string;
   runCleanup(worktreePath: string): Promise<void>;
 }): Promise<{ removed: boolean }> {
   const workspace = await requireWorkspace(input.state, input.workspaceId);
@@ -143,8 +177,13 @@ export async function removeManagedWorktree(input: {
   }
 
   await input.runCleanup(input.worktreePath);
+  const repoRootPath = await resolveWorktreeRepoRootPath(
+    workspace,
+    input.worktreePath,
+    input.workspaceRootPath,
+  );
   const removed = await removeAppManagedWorktree({
-    repoRootPath: workspace.rootPath,
+    repoRootPath,
     worktreePath: input.worktreePath,
     userDataPath: input.userDataPath,
     worktreeRootPath: settings.rootPath,

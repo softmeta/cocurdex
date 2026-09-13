@@ -9,6 +9,7 @@ import {
   type CollaborationModeKind,
   type CompatibleProviderModel,
   isAgentPermissionModeSupportedForModel,
+  normalizeWorkspaceRootPaths,
 } from "@cocurdex/shared";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -132,7 +133,11 @@ export function useNewSessionCard({
   const hasWorkspace = Boolean(workspaceName);
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const contextWorkspaceRootPath =
-    workspaceRootPath ?? activeWorkspace?.rootPath ?? null;
+    workspaceRootPath ?? activeWorkspace?.rootPaths[0] ?? null;
+  const contextWorkspaceRootPaths = normalizeWorkspaceRootPaths([
+    ...(activeWorkspace?.rootPaths ?? []),
+    contextWorkspaceRootPath ?? "",
+  ]);
 
   const selectedCompatibleProvider = compatibleProviders.find(
     ({ model, provider }) =>
@@ -644,6 +649,7 @@ export function useNewSessionCard({
           }))
         : [],
     openCodeVariantValue: selectedOpenCodeVariantValue,
+    contextWorkspaceRootPaths,
     setSelectedOpenCodeAgent: handleSelectOpenCodeAgent,
     setSelectedOpenCodeVariant: handleSelectOpenCodeVariant,
     selectableAgentOptions,

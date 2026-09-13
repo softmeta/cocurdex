@@ -618,7 +618,7 @@ describe("selectSessionAtom", () => {
     const workspace: WorkspaceRecord = {
       id: "workspace-1",
       name: "project",
-      rootPath: "/tmp/project",
+      rootPaths: ["/tmp/project"],
       createdAt: "2026-05-07T00:00:00.000Z",
       updatedAt: "2026-05-07T00:00:00.000Z",
       lastOpenedAt: "2026-05-07T00:00:00.000Z",
@@ -628,7 +628,7 @@ describe("selectSessionAtom", () => {
       ...workspace,
       id: "workspace-2",
       name: "other",
-      rootPath: "/tmp/other",
+      rootPaths: ["/tmp/other"],
     };
     (window as unknown as { desktopApi: unknown }).desktopApi = {
       saveWorkspace: () => Promise.resolve(),
@@ -646,7 +646,7 @@ describe("selectSessionAtom", () => {
     const workspace: WorkspaceRecord = {
       id: "workspace-1",
       name: "project",
-      rootPath: "/tmp/project",
+      rootPaths: ["/tmp/project"],
       createdAt: "2026-05-07T00:00:00.000Z",
       updatedAt: "2026-05-07T00:00:00.000Z",
       lastOpenedAt: "2026-05-07T00:00:00.000Z",
@@ -656,7 +656,7 @@ describe("selectSessionAtom", () => {
       ...workspace,
       id: "workspace-2",
       name: "other",
-      rootPath: "/tmp/other",
+      rootPaths: ["/tmp/other"],
     };
     const otherSession: SessionRecord = {
       ...baseSession,

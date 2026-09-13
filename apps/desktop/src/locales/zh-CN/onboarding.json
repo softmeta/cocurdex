@@ -10,8 +10,8 @@
   },
   "description": "cocurdex 让编码 agent 在本地文件夹中工作。下面是这台机器上的可用情况。",
   "providers": {
-    "title": "配置模型服务商",
-    "description": "添加服务商并启用需要的模型。内置的 pi agent 需要它，其他适配器自带模型。"
+    "description": "添加服务商并启用需要的模型。内置的 pi agent 需要它，其他适配器自带模型。",
+    "title": "配置模型服务商"
   },
   "title": "欢迎使用 cocurdex"
 }

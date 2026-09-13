@@ -100,6 +100,7 @@ interface ChatComposerProps {
   providerSnapshot?: AgentProviderSnapshot | null;
   variant?: "panel" | "pill";
   workspaceRootPath?: string | null;
+  workspaceRootPaths?: string[];
   mode?: "agent" | "chat";
   tone?: "chat" | "welcome";
   attachMenuExtras?: ReactNode;
@@ -147,6 +148,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       collaborationMode = "default",
       variant = "panel",
       workspaceRootPath,
+      workspaceRootPaths,
       mode = "agent",
       tone = "chat",
       attachMenuExtras,
@@ -224,6 +226,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       attachments: mentions,
       editorRef,
       workspaceRootPath,
+      workspaceRootPaths,
     });
 
     const slashCommands = useSlashCommands({
@@ -240,12 +243,19 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
         editor.insertMention(
           ctx,
           getContextAttachmentMentionLabel(ctx),
-          getContextAttachmentSerializedText(ctx, workspaceRootPath),
+          getContextAttachmentSerializedText(
+            ctx,
+            workspaceRootPaths?.length
+              ? workspaceRootPaths
+              : workspaceRootPath
+                ? [workspaceRootPath]
+                : null,
+          ),
           { placement: "end" },
         );
         return true;
       },
-      [workspaceRootPath],
+      [workspaceRootPath, workspaceRootPaths],
     );
 
     useImperativeHandle(

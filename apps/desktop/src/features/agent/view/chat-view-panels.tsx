@@ -64,6 +64,7 @@ interface ChatComposerControls {
   plan?: SessionPlan | null;
   workspaceName?: string | null;
   workspaceRootPath?: string | null;
+  workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
   onClearAttachment?(): void;
   onSelectCollaborationMode?(mode: CollaborationModeKind): void;

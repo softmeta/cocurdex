@@ -210,6 +210,10 @@ async function inspectAsar(asarPath) {
 
       const mainEntryPath = path.join(asarPath, "out", "main", "main.js");
       const mainRequire = createRequire(mainEntryPath);
+      const daemonKeyring = mainRequire("@napi-rs/keyring");
+      if (typeof daemonKeyring.AsyncEntry !== "function") {
+        throw new Error("Packaged daemon keyring native module did not load");
+      }
       if (process.platform === "darwin") {
         const clipboardNative = path.join(
           asarPath,

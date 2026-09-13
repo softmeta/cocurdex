@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import {
   type Query as ClaudeQuery,
   type Options as ClaudeQueryOptions,
@@ -69,6 +70,14 @@ const CLAUDE_LOGIN_HINT =
   "Authenticate directly with Anthropic by running `claude` in your terminal. Cocurdex does not receive or store your Claude credentials.";
 const CLAUDE_INSTALL_HINT =
   "Claude Agent is unavailable. Install the official Claude Code CLI, then authenticate directly with Anthropic by running `claude` in your terminal. Cocurdex does not receive or store your Claude credentials.";
+
+function isExistingDirectory(directoryPath: string) {
+  try {
+    return statSync(directoryPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 interface ClaudeProviderState {
   adapter?: string;
@@ -650,6 +659,13 @@ export function createClaudeCliAdapter(
           return true;
         }
 
+        if (!isExistingDirectory(payload.workspaceRootPath)) {
+          emitTurnError(
+            `Workspace directory not found: ${payload.workspaceRootPath}. Update or remove this workspace in Cocurdex.`,
+          );
+          return false;
+        }
+
         const discoveredPath = await lookupClaudeExecutable("claude");
         if (!discoveredPath) {
           emitTurnError(CLAUDE_INSTALL_HINT);
@@ -719,7 +735,12 @@ export function createClaudeCliAdapter(
         }
 
         const queryOptions: ClaudeQueryOptions = {
-          additionalDirectories: [payload.workspaceRootPath],
+          additionalDirectories: [
+            ...new Set([
+              payload.workspaceRootPath,
+              ...(payload.workspaceRootPaths ?? []),
+            ]),
+          ],
           allowDangerouslySkipPermissions:
             permissionMode === "bypassPermissions",
           canUseTool: createClaudeCanUseTool(payload),

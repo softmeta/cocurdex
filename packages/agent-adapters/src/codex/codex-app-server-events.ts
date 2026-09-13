@@ -176,7 +176,12 @@ export function createSandboxPolicy(
   ) {
     return {
       type: "workspaceWrite",
-      writableRoots: [payload.workspaceRootPath],
+      writableRoots: [
+        ...new Set([
+          payload.workspaceRootPath,
+          ...(payload.workspaceRootPaths ?? []),
+        ]),
+      ],
       networkAccess: false,
       excludeTmpdirEnvVar: false,
       excludeSlashTmp: false,

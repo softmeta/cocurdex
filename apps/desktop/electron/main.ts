@@ -6,15 +6,18 @@ import type {
   AgentPermissionDecision,
   ArchiveSessionPayload,
   BrowserAnnotation,
-  CreateSessionPayload,
   DeleteSessionPayload,
   EditorViewRecord,
-  MessageRecord,
   RefineSessionTitlePayload,
-  SendSessionMessagePayload,
-  SubmitPreviousMessagePayload,
+  SendSessionCommand,
+  SessionConfiguration,
+  SubmitPreviousMessageCommand,
   UpdateSessionTitlePayload,
   WorkspaceRecord,
+} from "@cocurdex/shared";
+import {
+  validateSendSessionCommand,
+  validateSubmitPreviousMessageCommand,
 } from "@cocurdex/shared";
 import {
   app,
@@ -52,10 +55,10 @@ import {
 import {
   archiveSession,
   bootstrapAppState,
+  chatDaemonOptions,
   deleteAgentRole,
   deleteWorkspace,
   generateSessionTitle,
-  getMessageById,
   getSession,
   getToolCallResult,
   initializeAppState,
@@ -117,7 +120,6 @@ import {
   savePdfDocumentAnnotations,
 } from "./pdf-annotations";
 import {
-  buildRuntimeProviderConfig,
   generateProviderSessionTitle,
   registerProviderHandlers,
 } from "./provider";
@@ -134,15 +136,12 @@ import {
   commitGitChanges,
   configureWorkspaceFilesChangedBroadcast,
   configureWorkspaceGitStateChangedBroadcast,
-  createWorkspaceCheckpoint,
   discardGitFiles,
   ensureWorkspaceFilesWatcher,
   fileExists,
   generateGitCommitMessage,
-  getWorkspaceCheckpointStatus,
   getWorkspaceDiff,
   getWorkspaceGitStatus,
-  initializeWorkspaceCheckpoints,
   listGitBranches,
   listGitCommits,
   listGitWorktrees,
@@ -152,7 +151,6 @@ import {
   readWorkspaceEntries,
   registerPdfProtocol,
   resolvePdfReadPath,
-  restoreWorkspaceCheckpoint,
   stageGitFiles,
   unstageGitFiles,
   workspaceSearchService,
@@ -163,7 +161,6 @@ const MIN_WINDOW_HEIGHT = 520;
 const REMOTE_DEBUGGING_PORT_ENV = "COCURDEX_REMOTE_DEBUGGING_PORT";
 const appLogger = createLogger("app");
 const sessionLogger = createLogger("session");
-const checkpointLogger = createLogger("workspace-checkpoint");
 const daemonLogger = createLogger("daemon-runtime-client");
 let appQuitAllowed = false;
 let appShutdownPromise: Promise<void> | null = null;
@@ -252,7 +249,7 @@ async function handleCliOpenFolder(
   const workspaces = await listWorkspaces();
   await queueOpenFolder(folderPath, {
     broadcast: options?.broadcast,
-    existingRootPaths: workspaces.map((workspace) => workspace.rootPath),
+    existingRootPaths: workspaces.flatMap((workspace) => workspace.rootPaths),
   });
 }
 
@@ -270,40 +267,12 @@ initializeNetworkProxyRuntime();
 
 configureRemoteDebugging();
 
-function createUserMessage(payload: SendSessionMessagePayload): MessageRecord {
-  return {
-    id: payload.messageId ?? crypto.randomUUID(),
-    sessionId: payload.session.id,
-    role: "user",
-    content: payload.content.trim(),
-    attachments: payload.attachments ?? [],
-    createdAt: payload.createdAt ?? new Date().toISOString(),
-  };
-}
-
 function requireDaemonRuntimeClient() {
   if (!daemonRuntimeClient) {
     throw new Error("Daemon runtime client is not initialized");
   }
 
   return daemonRuntimeClient;
-}
-
-async function captureWorkspaceCheckpoint(
-  payload: SendSessionMessagePayload,
-  userMessage: MessageRecord,
-) {
-  await createWorkspaceCheckpoint({
-    agentType: payload.session.agentType,
-    message: userMessage,
-    workspaceRootPath: payload.workspaceRootPath,
-  }).catch((error: unknown) => {
-    checkpointLogger.warn("checkpoint.captureSkipped", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      messageId: userMessage.id,
-      sessionId: userMessage.sessionId,
-    });
-  });
 }
 
 async function permanentlyDeleteSession(sessionId: string) {
@@ -747,52 +716,33 @@ function registerSessionHandlers() {
     async (_event, payload) =>
       requireDaemonRuntimeClient().getTurnChangeDiff(payload),
   );
-  registerHandler(
-    ipcMain,
-    "session:create",
-    schemas.sessionWithWorkspace,
-    async (_event, raw) => {
-      const payload = raw as unknown as CreateSessionPayload;
-      const session = await requireDaemonRuntimeClient().createSession(payload);
-      const providerSnapshot = payload.session.providerSnapshot;
-      sessionLogger.info("session.created", {
-        agentType: payload.session.agentType,
-        modelId: providerSnapshot?.modelId ?? null,
-        modelName: providerSnapshot?.modelName ?? null,
-        providerId: providerSnapshot?.providerId ?? null,
-        providerName: providerSnapshot?.providerName ?? null,
-        reasoningEffort: providerSnapshot?.reasoningEffort ?? null,
-        serviceTier: providerSnapshot?.serviceTier ?? null,
-        thinkingLevel: providerSnapshot?.thinkingLevel ?? null,
-        sessionId: payload.session.id,
-        title: payload.session.title,
-        workspaceRootPath: payload.workspaceRootPath,
-      });
-      return session;
-    },
+  ipcMain.handle("task:list", async () =>
+    requestDaemon("session.list", await chatDaemonOptions()),
   );
   registerHandler(
     ipcMain,
-    "session:sendMessage",
-    schemas.sessionWithWorkspace,
-    async (_event, raw) => {
-      const payload = raw as unknown as SendSessionMessagePayload;
-      const userMessage = createUserMessage(payload);
-      await captureWorkspaceCheckpoint(payload, userMessage);
-      const providerConfig = await buildRuntimeProviderConfig(payload.session);
-
-      return requireDaemonRuntimeClient().sendMessage(
-        {
-          ...payload,
-          messageId: userMessage.id,
-          createdAt: userMessage.createdAt,
-          content: userMessage.content,
-          attachments: userMessage.attachments,
-        },
-        providerConfig,
-      );
-    },
+    "task:snapshot",
+    schemas.sessionId,
+    async (_event, sessionId) =>
+      requestDaemon(
+        "session.snapshot",
+        { sessionId },
+        await chatDaemonOptions(),
+      ),
   );
+  registerHandler(
+    ipcMain,
+    "task:configure",
+    schemas.sessionConfigure,
+    async (_event, input) =>
+      requireDaemonRuntimeClient().saveSessionConfiguration(
+        input as SessionConfiguration,
+      ),
+  );
+  ipcMain.handle("task:send", async (_event, command: SendSessionCommand) => {
+    validateSendSessionCommand(command);
+    return requireDaemonRuntimeClient().sendMessage(command);
+  });
   registerHandler(
     ipcMain,
     "session:updateQueuedInput",
@@ -824,61 +774,27 @@ function registerSessionHandlers() {
         payload.messageId,
       ),
   );
-  registerHandler(
-    ipcMain,
-    "session:submitPreviousMessage",
-    schemas.sessionPayload,
-    async (_event, raw) => {
-      const payload = raw as unknown as SubmitPreviousMessagePayload;
-      const existingMessage = await getMessageById(payload.messageId);
-
-      if (
-        !existingMessage ||
-        existingMessage.sessionId !== payload.session.id
-      ) {
-        throw new Error("Previous message not found");
-      }
-
-      if (existingMessage.role !== "user") {
-        throw new Error("Only user messages can be resubmitted");
-      }
-
-      await requireDaemonRuntimeClient().stop(payload.session.id);
-
-      if (payload.revertWorkspace) {
-        await restoreWorkspaceCheckpoint({
-          messageId: payload.messageId,
-          sessionId: payload.session.id,
-        });
-      }
-
-      const userMessage: MessageRecord = {
-        ...existingMessage,
-        content: payload.content.trim(),
-        attachments: payload.attachments ?? [],
-      };
-
-      await requireDaemonRuntimeClient().rewindSession(userMessage);
-      await captureWorkspaceCheckpoint(payload, userMessage);
-      const providerConfig = await buildRuntimeProviderConfig(payload.session);
-
-      return requireDaemonRuntimeClient().sendMessage(
-        {
-          ...payload,
-          content: userMessage.content,
-          attachments: userMessage.attachments,
-          createdAt: userMessage.createdAt,
-        },
-        providerConfig,
+  ipcMain.handle(
+    "task:resubmit",
+    async (_event, command: SubmitPreviousMessageCommand) => {
+      validateSubmitPreviousMessageCommand(command);
+      return requestDaemon(
+        "session.resubmit",
+        command,
+        await chatDaemonOptions(),
       );
     },
   );
   registerHandlerArgs(
     ipcMain,
-    "session:getPreviousMessageCheckpointStatus",
-    schemas.sessionIdAndMessageId,
+    "task:checkpointStatus",
+    schemas.checkpointStatus,
     async (_event, sessionId, messageId) =>
-      getWorkspaceCheckpointStatus({ messageId, sessionId }),
+      requestDaemon(
+        "session.checkpointStatus",
+        { sessionId, messageId },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
@@ -916,8 +832,7 @@ function registerSessionHandlers() {
     schemas.archive,
     async (_event, raw) => {
       const payload = raw as unknown as ArchiveSessionPayload;
-      await requireDaemonRuntimeClient().stop(payload.sessionId);
-      return archiveSession(payload.sessionId, payload.archivedAt);
+      return archiveSession(payload.sessionId);
     },
   );
   registerHandler(
@@ -1068,7 +983,7 @@ function registerSessionHandlers() {
     "permission:resolve",
     schemas.permissionResolve,
     async (_event, requestId, decision) => {
-      await requireDaemonRuntimeClient().resolvePermission(
+      return requireDaemonRuntimeClient().resolvePermission(
         requestId,
         decision as AgentPermissionDecision,
       );
@@ -1079,7 +994,7 @@ function registerSessionHandlers() {
     "question:resolve",
     schemas.questionResolve,
     async (_event, questionId, answer) => {
-      await requireDaemonRuntimeClient().resolveQuestion(questionId, answer);
+      return requireDaemonRuntimeClient().resolveQuestion(questionId, answer);
     },
   );
   registerHandlerArgs(
@@ -1087,7 +1002,7 @@ function registerSessionHandlers() {
     "planApproval:resolve",
     schemas.planApprovalResolve,
     async (_event, approvalId, decision) => {
-      await requireDaemonRuntimeClient().resolvePlanApproval(approvalId, {
+      return requireDaemonRuntimeClient().resolvePlanApproval(approvalId, {
         outcome: decision.outcome,
         feedback: decision.feedback ?? null,
       });
@@ -1215,10 +1130,11 @@ async function assertCwdIsAllowedTerminalRoot(cwd: string): Promise<void> {
   const home = path.normalize(homedir());
   const allowed =
     normalized === home ||
-    workspaces.some((workspace) => {
-      const root = path.normalize(workspace.rootPath);
-      return normalized === root;
-    });
+    workspaces.some((workspace) =>
+      workspace.rootPaths.some(
+        (rootPath) => normalized === path.normalize(rootPath),
+      ),
+    );
   if (!allowed) {
     throw new Error(
       "pty:spawn rejected: cwd is not a registered workspace root or home directory",
@@ -1230,16 +1146,17 @@ async function assertCwdIsAllowedTerminalRoot(cwd: string): Promise<void> {
 // straight from main-process state. Never derived from renderer input.
 async function listWorkspaceRootPaths(): Promise<string[]> {
   const workspaces = await listWorkspaces();
-  return workspaces.map((workspace) => workspace.rootPath);
+  return workspaces.flatMap((workspace) => workspace.rootPaths);
 }
 
 async function assertRootIsKnownWorkspace(rootPath: string): Promise<void> {
   const workspaces = await listWorkspaces();
   const normalized = path.normalize(rootPath);
-  const allowed = workspaces.some((workspace) => {
-    const root = path.normalize(workspace.rootPath);
-    return normalized === root;
-  });
+  const allowed = workspaces.some((workspace) =>
+    workspace.rootPaths.some(
+      (workspaceRootPath) => normalized === path.normalize(workspaceRootPath),
+    ),
+  );
   if (!allowed) {
     throw new Error(
       "search:start rejected: rootPath is not a registered workspace root",
@@ -1424,7 +1341,6 @@ app
     initializeAppState(userDataPath);
     initializeAttachmentStorage(userDataPath);
     initializePdfAnnotationsStorage(userDataPath);
-    initializeWorkspaceCheckpoints(userDataPath);
     daemonRuntimeClient = createDaemonRuntimeClient({
       daemonEntryPath: getBundledDaemonEntryPath(),
       logger: daemonLogger,
@@ -1513,42 +1429,7 @@ app
     // Packaged builds: best-effort symlink/shim into ~/.local/bin (or
     // %LOCALAPPDATA%\Cocurdex\bin) so `cocurdex` is on the user PATH.
     void ensureCliOnPathBestEffort();
-    ipcMain.handle("app:bootstrap", async () => {
-      const state = await bootstrapAppState();
-      const resumedSessionIds = new Set<string>();
-      const queuedSessionIds = new Set(
-        state.queuedAgentInputs.map((input) => input.sessionId),
-      );
-      for (const sessionId of queuedSessionIds) {
-        const session = state.sessions.find((item) => item.id === sessionId);
-        if (!session) continue;
-        try {
-          const providerConfig = await buildRuntimeProviderConfig(session);
-          const resumed =
-            await requireDaemonRuntimeClient().resumeQueuedSession(
-              sessionId,
-              providerConfig,
-            );
-          if (resumed) resumedSessionIds.add(sessionId);
-        } catch (error) {
-          sessionLogger.error("session.queueResumeFailed", {
-            error: error instanceof Error ? error.message : String(error),
-            sessionId,
-          });
-        }
-      }
-      if (resumedSessionIds.size === 0) return state;
-
-      // resumeQueuedSession starts the first durable follow-up before this IPC
-      // reply reaches the renderer. Return a fresh snapshot so that message is
-      // already in the transcript and only the remaining inputs hydrate the
-      // queue shelf, even if the renderer was not yet subscribed to events.
-      const resumedState = await bootstrapAppState();
-      for (const session of resumedState.sessions) {
-        if (resumedSessionIds.has(session.id)) session.status = "running";
-      }
-      return resumedState;
-    });
+    ipcMain.handle("app:bootstrap", () => bootstrapAppState());
     ipcMain.handle("app:getHomeDir", () => homedir());
     // Installed font families for Appearance pickers (cached in system-fonts).
     ipcMain.handle("app:listFontFamilies", () => listSystemFontFamilies());
@@ -1609,7 +1490,7 @@ app
         const workspaces = await listWorkspaces();
         const rootPath = await resolveDroppedOpenPath(
           folderPath,
-          workspaces.map((workspace) => workspace.rootPath),
+          workspaces.flatMap((workspace) => workspace.rootPaths),
         );
         return rootPath ? { rootPath } : null;
       },

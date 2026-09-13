@@ -194,6 +194,10 @@ export class DaemonChatService {
     }
   }
 
+  get activeOperationCount() {
+    return this.active.size + this.titles.size + this.locks.size;
+  }
+
   async shutdown() {
     this.closed = true;
     for (const title of this.titles.values()) title.controller.abort();
