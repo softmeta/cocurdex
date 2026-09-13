@@ -21,20 +21,25 @@ interface CheckpointFile {
   mode: number;
 }
 
-interface Checkpoint {
-  version: 2;
-  sessionId: string;
-  messageId: string;
+interface CheckpointRepo {
   root: string;
   head: string;
   indexTree: string;
   files: CheckpointFile[];
 }
 
+interface Checkpoint {
+  version: 3;
+  sessionId: string;
+  messageId: string;
+  repos: CheckpointRepo[];
+}
+
 interface CheckpointInput {
   sessionId: string;
   messageId: string;
   workspaceRootPath: string;
+  workspaceRootPaths?: string[];
 }
 
 async function git(root: string, args: string[]) {
@@ -121,6 +126,85 @@ async function captureFile(
   };
 }
 
+async function captureRepo(root: string): Promise<CheckpointRepo> {
+  return {
+    root,
+    head: (await git(root, ["rev-parse", "HEAD"])).trim(),
+    indexTree: (await git(root, ["write-tree"])).trim(),
+    files: await Promise.all(
+      (await changedPaths(root)).map((entry) => captureFile(root, entry)),
+    ),
+  };
+}
+
+async function validateRepo(repo: CheckpointRepo) {
+  const root = await repositoryRoot(repo.root).catch(() => null);
+  if (root !== repo.root) {
+    throw new Error(
+      "Checkpoint does not belong to the current session workspace",
+    );
+  }
+  if (repo.head !== (await git(root, ["rev-parse", "HEAD"])).trim()) {
+    throw new Error("Workspace HEAD changed since the checkpoint");
+  }
+  if (!/^[a-f0-9]{40,64}$/.test(repo.indexTree))
+    throw new Error("Invalid checkpoint index");
+  await git(root, ["cat-file", "-e", `${repo.indexTree}^{tree}`]);
+  for (const file of repo.files) {
+    await safeFilePath(root, file.path);
+    if (
+      (file.content !== null && typeof file.content !== "string") ||
+      !Number.isInteger(file.mode)
+    ) {
+      throw new Error("Invalid checkpoint file");
+    }
+  }
+}
+
+async function restoreRepo(repo: CheckpointRepo) {
+  const affected = [
+    ...new Set([
+      ...(await changedPaths(repo.root)),
+      ...repo.files.map((file) => file.path),
+    ]),
+  ];
+  await Promise.all(affected.map((entry) => captureFile(repo.root, entry)));
+  const indexPaths = new Set(
+    (
+      await git(repo.root, [
+        "ls-tree",
+        "-r",
+        "--name-only",
+        "-z",
+        repo.indexTree,
+      ])
+    )
+      .split("\0")
+      .filter(Boolean),
+  );
+  await git(repo.root, ["read-tree", repo.indexTree]);
+  for (const entry of affected) {
+    const filePath = await safeFilePath(repo.root, entry);
+    if (indexPaths.has(entry)) {
+      await git(repo.root, ["checkout-index", "--force", "--", entry]);
+    } else {
+      await rm(filePath, { force: true });
+    }
+  }
+  for (const file of repo.files) {
+    const filePath = await safeFilePath(repo.root, file.path);
+    if (file.content === null) {
+      await rm(filePath, { force: true });
+    } else {
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, Buffer.from(file.content, "base64"), {
+        mode: file.mode,
+      });
+      await chmod(filePath, file.mode);
+    }
+  }
+}
+
 export class SessionCheckpointStore {
   constructor(private readonly userDataPath: string) {}
 
@@ -138,20 +222,27 @@ export class SessionCheckpointStore {
   async capture(input: CheckpointInput) {
     const filePath = this.filePath(input.sessionId, input.messageId);
     await rm(filePath, { force: true });
-    const root = await repositoryRoot(input.workspaceRootPath);
-    const head = (await git(root, ["rev-parse", "HEAD"])).trim();
-    const indexTree = (await git(root, ["write-tree"])).trim();
-    const files = await Promise.all(
-      (await changedPaths(root)).map((entry) => captureFile(root, entry)),
-    );
+    const repos: CheckpointRepo[] = [];
+    const seen = new Set<string>();
+    const rootPaths = input.workspaceRootPaths?.length
+      ? input.workspaceRootPaths
+      : [input.workspaceRootPath];
+    for (const workspaceRootPath of rootPaths) {
+      const root = await repositoryRoot(workspaceRootPath).catch(() => null);
+      if (!root || seen.has(root)) {
+        continue;
+      }
+      seen.add(root);
+      repos.push(await captureRepo(root));
+    }
+    if (repos.length === 0) {
+      throw new Error("No checkpointable repository roots");
+    }
     const checkpoint: Checkpoint = {
-      version: 2,
+      version: 3,
       sessionId: input.sessionId,
       messageId: input.messageId,
-      root,
-      head,
-      indexTree,
-      files,
+      repos,
     };
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, JSON.stringify(checkpoint), "utf8");
@@ -161,31 +252,35 @@ export class SessionCheckpointStore {
     const checkpoint = JSON.parse(
       await readFile(this.filePath(input.sessionId, input.messageId), "utf8"),
     ) as Checkpoint;
-    const root = await repositoryRoot(input.workspaceRootPath);
     if (
-      checkpoint.version !== 2 ||
+      checkpoint.version !== 3 ||
       checkpoint.sessionId !== input.sessionId ||
       checkpoint.messageId !== input.messageId ||
-      checkpoint.root !== root
+      !Array.isArray(checkpoint.repos) ||
+      checkpoint.repos.length === 0
     ) {
       throw new Error(
         "Checkpoint does not belong to the current session workspace",
       );
     }
-    if (checkpoint.head !== (await git(root, ["rev-parse", "HEAD"])).trim()) {
-      throw new Error("Workspace HEAD changed since the checkpoint");
+    const expectedRoots = new Set<string>();
+    const rootPaths = input.workspaceRootPaths?.length
+      ? input.workspaceRootPaths
+      : [input.workspaceRootPath];
+    for (const workspaceRootPath of rootPaths) {
+      const root = await repositoryRoot(workspaceRootPath).catch(() => null);
+      if (root) expectedRoots.add(root);
     }
-    if (!/^[a-f0-9]{40,64}$/.test(checkpoint.indexTree))
-      throw new Error("Invalid checkpoint index");
-    await git(root, ["cat-file", "-e", `${checkpoint.indexTree}^{tree}`]);
-    for (const file of checkpoint.files) {
-      await safeFilePath(root, file.path);
-      if (
-        (file.content !== null && typeof file.content !== "string") ||
-        !Number.isInteger(file.mode)
-      ) {
-        throw new Error("Invalid checkpoint file");
-      }
+    if (
+      expectedRoots.size !== checkpoint.repos.length ||
+      checkpoint.repos.some((repo) => !expectedRoots.has(repo.root))
+    ) {
+      throw new Error(
+        "Checkpoint does not belong to the current session workspace",
+      );
+    }
+    for (const repo of checkpoint.repos) {
+      await validateRepo(repo);
     }
     return checkpoint;
   }
@@ -201,48 +296,8 @@ export class SessionCheckpointStore {
 
   async restore(input: CheckpointInput) {
     const checkpoint = await this.load(input);
-    const affected = [
-      ...new Set([
-        ...(await changedPaths(checkpoint.root)),
-        ...checkpoint.files.map((file) => file.path),
-      ]),
-    ];
-    await Promise.all(
-      affected.map((entry) => captureFile(checkpoint.root, entry)),
-    );
-    const indexPaths = new Set(
-      (
-        await git(checkpoint.root, [
-          "ls-tree",
-          "-r",
-          "--name-only",
-          "-z",
-          checkpoint.indexTree,
-        ])
-      )
-        .split("\0")
-        .filter(Boolean),
-    );
-    await git(checkpoint.root, ["read-tree", checkpoint.indexTree]);
-    for (const entry of affected) {
-      const filePath = await safeFilePath(checkpoint.root, entry);
-      if (indexPaths.has(entry)) {
-        await git(checkpoint.root, ["checkout-index", "--force", "--", entry]);
-      } else {
-        await rm(filePath, { force: true });
-      }
-    }
-    for (const file of checkpoint.files) {
-      const filePath = await safeFilePath(checkpoint.root, file.path);
-      if (file.content === null) {
-        await rm(filePath, { force: true });
-      } else {
-        await mkdir(path.dirname(filePath), { recursive: true });
-        await writeFile(filePath, Buffer.from(file.content, "base64"), {
-          mode: file.mode,
-        });
-        await chmod(filePath, file.mode);
-      }
+    for (const repo of checkpoint.repos) {
+      await restoreRepo(repo);
     }
   }
 }

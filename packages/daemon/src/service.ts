@@ -868,6 +868,7 @@ export class CocurdexDaemonService {
       sessionId,
       messageId,
       workspaceRootPath: context.workspaceRootPath,
+      workspaceRootPaths: context.workspaceRootPaths,
     });
   }
 
@@ -896,6 +897,7 @@ export class CocurdexDaemonService {
         sessionId: command.sessionId,
         messageId: command.messageId,
         workspaceRootPath: context.workspaceRootPath,
+        workspaceRootPaths: context.workspaceRootPaths,
       });
     }
     const message: MessageRecord = {
@@ -922,6 +924,7 @@ export class CocurdexDaemonService {
         sessionId: message.sessionId,
         messageId: message.id,
         workspaceRootPath: payload.workspaceRootPath,
+        workspaceRootPaths: payload.workspaceRootPaths,
       })
       .catch((error: unknown) => {
         logDaemonDiagnostic("warn", "checkpoint.captureSkipped", {

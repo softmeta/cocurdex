@@ -132,4 +132,64 @@ describe("session checkpoints", () => {
       readFile(path.join(root, "tracked.txt")),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
+
+  it("captures and restores secondary workspace roots", async () => {
+    const first = await fixture();
+    const secondary = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-checkpoint-secondary-"),
+    );
+    directories.push(secondary);
+    const secondaryGit = async (...args: string[]) =>
+      (
+        await execute("git", args, {
+          cwd: secondary,
+          env: {
+            ...process.env,
+            GIT_AUTHOR_NAME: "Test",
+            GIT_AUTHOR_EMAIL: "test@example.com",
+            GIT_COMMITTER_NAME: "Test",
+            GIT_COMMITTER_EMAIL: "test@example.com",
+          },
+        })
+      ).stdout;
+    await secondaryGit("init");
+    await writeFile(path.join(secondary, "secondary.txt"), "base");
+    await secondaryGit("add", ".");
+    await secondaryGit("-c", "commit.gpgsign=false", "commit", "-m", "Initial");
+
+    const input = {
+      ...first.input,
+      workspaceRootPaths: [first.root, secondary],
+    };
+    await first.store.capture(input);
+    await writeFile(path.join(secondary, "secondary.txt"), "agent output");
+    await writeFile(path.join(secondary, "created.txt"), "new output");
+    await writeFile(path.join(first.root, "tracked.txt"), "agent output");
+
+    await first.store.restore(input);
+
+    expect(await readFile(path.join(secondary, "secondary.txt"), "utf8")).toBe(
+      "base",
+    );
+    await expect(
+      readFile(path.join(secondary, "created.txt")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(path.join(first.root, "tracked.txt"), "utf8")).toBe(
+      "base",
+    );
+  });
+
+  it("rejects a checkpoint when the workspace root set changes", async () => {
+    const first = await fixture();
+    const second = await fixture();
+    const input = {
+      ...first.input,
+      workspaceRootPaths: [first.root, second.root],
+    };
+    await first.store.capture(input);
+    await expect(
+      first.store.restore({ ...input, workspaceRootPaths: [first.root] }),
+    ).rejects.toThrow("current session workspace");
+    expect(await first.store.status(input)).toEqual({ available: true });
+  });
 });
