@@ -1,7 +1,3 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
-import { createInterface } from "node:readline";
 import { lookupExecutable } from "@cocurdex/agent-core";
 import type { CompatibleProviderModel } from "@cocurdex/shared";
 import { isReasoningEffort } from "@cocurdex/shared";
@@ -9,44 +5,17 @@ import {
   T3_CLAUDE_MODEL_CATALOG,
   type T3ClaudeModelCatalogEntry,
 } from "./claude-cli-model-catalog";
-import { buildClaudeCliEnv } from "./claude-cli-process";
+import {
+  type ClaudeCliModelInfo,
+  readClaudeCliModels,
+} from "./claude-cli-model-probe";
 
 export const CLAUDE_CLI_PROVIDER_ID = "claude-agent";
-
-const PROBE_TIMEOUT_MS = 15_000;
-interface ClaudeCliModelInfo {
-  value: string;
-  displayName: string;
-  description: string;
-  supportsEffort?: boolean;
-  supportedEffortLevels?: string[];
-  supportsAdaptiveThinking?: boolean;
-  supportsFastMode?: boolean;
-}
 
 type LookupExecutable = typeof lookupExecutable;
 type ReadClaudeCliModels = (
   executablePath: string,
 ) => Promise<ClaudeCliModelInfo[] | null>;
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  return value as Record<string, unknown>;
-}
-
-function isClaudeCliModelInfo(value: unknown): value is ClaudeCliModelInfo {
-  const model = asRecord(value);
-
-  return Boolean(
-    model &&
-      typeof model.value === "string" &&
-      typeof model.displayName === "string" &&
-      typeof model.description === "string",
-  );
-}
 
 function getVersionedModelDisplayName(model: ClaudeCliModelInfo): string {
   const qualifierStart = model.displayName.indexOf(" (");
@@ -216,131 +185,6 @@ function mergeDynamicAndStaticModels(
   ).map((model) => toStaticCompatibleModel(model, now));
 
   return [...dynamicModels, ...staticModels];
-}
-
-function getInitializeModels(line: string, requestId: string) {
-  let message: unknown;
-  try {
-    message = JSON.parse(line);
-  } catch {
-    return undefined;
-  }
-
-  const envelope = asRecord(message);
-  const response = asRecord(envelope?.response);
-  if (
-    envelope?.type !== "control_response" ||
-    response?.request_id !== requestId
-  ) {
-    return undefined;
-  }
-
-  if (response.subtype !== "success") {
-    throw new Error(
-      typeof response.error === "string"
-        ? response.error
-        : "Claude Agent model initialization failed",
-    );
-  }
-
-  const result = asRecord(response.response);
-  if (!result || !Array.isArray(result.models)) {
-    throw new Error("Claude Agent model initialization returned no model list");
-  }
-
-  return result.models.filter(isClaudeCliModelInfo);
-}
-
-function stopProbe(child: ChildProcessWithoutNullStreams) {
-  if (!child.stdin.destroyed) {
-    child.stdin.end();
-  }
-  if (child.exitCode === null && !child.killed) {
-    child.kill("SIGTERM");
-  }
-}
-
-async function readClaudeCliModels(
-  executablePath: string,
-): Promise<ClaudeCliModelInfo[] | null> {
-  // Claude Agent has no public list-models command. Its account-aware picker is
-  // exposed by the initialize control request used over bidirectional
-  // stream-json. Keep this probe isolated so CLI protocol drift fails without
-  // affecting normal turns.
-  const child = spawn(
-    executablePath,
-    [
-      "-p",
-      "--input-format",
-      "stream-json",
-      "--output-format",
-      "stream-json",
-      "--verbose",
-      "--setting-sources=user",
-    ],
-    {
-      cwd: homedir(),
-      env: buildClaudeCliEnv(),
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
-    },
-  );
-  const requestId = randomUUID();
-  const lines = createInterface({ input: child.stdout });
-  child.stderr.resume();
-
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const settle = (
-      error: Error | null,
-      models: ClaudeCliModelInfo[] | null = null,
-    ) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      lines.close();
-      stopProbe(child);
-
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(models);
-    };
-    const timer = setTimeout(() => settle(null), PROBE_TIMEOUT_MS);
-
-    lines.on("line", (line) => {
-      try {
-        const models = getInitializeModels(line, requestId);
-        if (models) {
-          settle(null, models);
-        }
-      } catch (error) {
-        settle(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
-    child.once("error", (error) => settle(error));
-    child.once("exit", (code, signal) => {
-      if (settled) return;
-      if (code === 0) {
-        settle(null);
-        return;
-      }
-      settle(
-        new Error(
-          `Claude Agent model probe exited before initialization (${signal ?? code ?? "unknown"})`,
-        ),
-      );
-    });
-    child.stdin.once("error", (error) => settle(error));
-    child.stdin.write(
-      `${JSON.stringify({
-        type: "control_request",
-        request_id: requestId,
-        request: { subtype: "initialize" },
-      })}\n`,
-    );
-  });
 }
 
 async function probeClaudeCliModels(
