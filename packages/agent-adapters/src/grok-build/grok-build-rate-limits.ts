@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import type { AgentRateLimitsRecord } from "@cocurdex/shared";
 import type { AcpConnectionFactory } from "../acp/acp-connection";
 import { createSdkAcpConnection } from "../acp/sdk-acp-connection";
@@ -12,6 +11,7 @@ import {
   GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
   getGrokBuildAuthMethodPriority,
+  withGrokBuildProbeCwd,
 } from "./grok-build-process";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -61,10 +61,19 @@ function selectGrokAuthMethod(available: string[]) {
 async function probeGrokBuildRateLimits(
   connectionFactory: AcpConnectionFactory,
 ): Promise<AgentRateLimitsRecord | null> {
+  return withGrokBuildProbeCwd((cwd) =>
+    probeGrokBuildRateLimitsIn(connectionFactory, cwd),
+  );
+}
+
+async function probeGrokBuildRateLimitsIn(
+  connectionFactory: AcpConnectionFactory,
+  cwd: string,
+): Promise<AgentRateLimitsRecord | null> {
   const connection = await connectionFactory({
     args: GROK_BUILD_ARGS,
     command: GROK_BUILD_COMMAND,
-    cwd: homedir(),
+    cwd,
     handlers: {
       onSessionUpdate() {},
       requestPermission() {

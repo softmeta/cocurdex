@@ -1,7 +1,22 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 // Shared spawn contract for `grok agent stdio`, used by both the session
 // adapter and the model-catalog probe so they always talk to the same process
 // shape (and the same startup hints).
 export const GROK_BUILD_COMMAND = "grok";
+
+export async function withGrokBuildProbeCwd<T>(
+  run: (cwd: string) => Promise<T>,
+): Promise<T> {
+  const cwd = await mkdtemp(path.join(tmpdir(), "cocurdex-grok-probe-"));
+  try {
+    return await run(cwd);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
 
 export const GROK_BUILD_ARGS = ["--no-auto-update", "agent", "stdio"];
 

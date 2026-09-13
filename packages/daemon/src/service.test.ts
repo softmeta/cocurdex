@@ -1,5 +1,5 @@
 import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import {
   AgentSteeringUnavailableError,
@@ -94,6 +94,34 @@ async function createService(existingUserDataPath?: string) {
   await service.saveSessionConfiguration(sessionConfiguration(createSession()));
   return service;
 }
+
+describe("CocurdexDaemonService workspace roots", () => {
+  it("rejects the home directory as a project folder", async () => {
+    const service = await createService();
+    try {
+      const home = homedir();
+      const trailing = `${home}${path.sep}`;
+      for (const rootPath of [home, trailing]) {
+        await expect(
+          service.saveWorkspace({
+            ...createWorkspace(),
+            id: "workspace-home",
+            rootPaths: [rootPath],
+          }),
+        ).rejects.toThrow(/home directory/);
+      }
+      await expect(
+        service.saveWorkspace({
+          ...createWorkspace(),
+          id: "workspace-root",
+          rootPaths: [path.parse(home).root],
+        }),
+      ).rejects.toThrow(/filesystem root/);
+    } finally {
+      await service.shutdown();
+    }
+  });
+});
 
 describe("CocurdexDaemonService follow-up queue", () => {
   it("bootstraps without reading message history or tool results", async () => {

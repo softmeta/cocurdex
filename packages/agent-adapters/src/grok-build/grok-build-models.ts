@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import type { CompatibleProviderModel } from "@cocurdex/shared";
 import { isReasoningEffort } from "@cocurdex/shared";
 import type {
@@ -15,6 +14,7 @@ import {
   GROK_BUILD_ARGS,
   GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
+  withGrokBuildProbeCwd,
 } from "./grok-build-process";
 
 export const GROK_BUILD_PROVIDER_ID = "grok-build";
@@ -138,12 +138,19 @@ export async function fetchGrokBuildModelCatalog(connection: AcpConnection) {
 async function probeGrokBuildModels(
   connectionFactory: AcpConnectionFactory,
 ): Promise<CompatibleProviderModel[] | null> {
+  return withGrokBuildProbeCwd((cwd) =>
+    probeGrokBuildModelsIn(connectionFactory, cwd),
+  );
+}
+
+async function probeGrokBuildModelsIn(
+  connectionFactory: AcpConnectionFactory,
+  cwd: string,
+): Promise<CompatibleProviderModel[] | null> {
   const connection = await connectionFactory({
     args: GROK_BUILD_ARGS,
     command: GROK_BUILD_COMMAND,
-    // The catalog is workspace-independent, so probe from the user's home
-    // directory rather than tying it to whichever session opened first.
-    cwd: homedir(),
+    cwd,
     handlers: {
       onSessionUpdate() {},
       requestPermission() {

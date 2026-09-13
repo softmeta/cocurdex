@@ -24,7 +24,7 @@ const TITLE_OUTPUT_SCHEMA = {
 
 export interface CodexTitleCommandRunner {
   run(params: {
-    cwd: string;
+    cwd?: string;
     message: string;
     model?: string;
     signal?: AbortSignal;
@@ -94,7 +94,7 @@ const defaultRunner: CodexTitleCommandRunner = {
         "-",
       ];
       const child = spawn("codex", args, {
-        cwd: params.cwd,
+        cwd: params.cwd ?? tempDirectory,
         env: buildChildProcessEnv(process.env),
         stdio: ["pipe", "ignore", "pipe"],
       });
@@ -144,7 +144,7 @@ export function createCodexConversationTitleGenerator(
     signal?: AbortSignal;
   }): Promise<string | null> {
     const raw = await runner.run({
-      cwd: params.cwd ?? process.cwd(),
+      ...(params.cwd ? { cwd: params.cwd } : {}),
       message: params.message,
       ...(params.model ? { model: params.model } : {}),
       ...(params.signal ? { signal: params.signal } : {}),

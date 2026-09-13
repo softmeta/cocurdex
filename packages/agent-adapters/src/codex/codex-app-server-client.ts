@@ -1,4 +1,5 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { createInterface, type Interface } from "node:readline";
 import { logAdapterDiagnostic } from "../diagnostics";
 import { buildChildProcessEnv } from "../shared";
@@ -114,6 +115,7 @@ export class CodexAppServerClient {
   constructor(options: CodexAppServerClientOptions) {
     this.#options = options;
     this.#process = spawn("codex", ["app-server"], {
+      cwd: tmpdir(),
       env: buildChildProcessEnv(process.env),
       stdio: ["pipe", "pipe", "pipe"],
     });
