@@ -1,7 +1,7 @@
 import type { SessionStatus } from "@cocurdex/shared";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { desktopApi } from "@/lib";
+import { taskApi } from "@/lib";
 import type { NotificationSettings } from "./notifications";
 
 // Show a native OS notification. In Electron the renderer Notification API is
@@ -107,7 +107,7 @@ export function useCompletionNotifier(settings: NotificationSettings) {
   useEffect(() => {
     const previousStatus = previousStatusRef.current;
 
-    return desktopApi.onAgentEvent((event) => {
+    return taskApi.onAgentEvent((event) => {
       const current = settingsRef.current;
       const translate = translateRef.current;
 

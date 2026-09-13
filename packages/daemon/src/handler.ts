@@ -143,8 +143,28 @@ export async function handleDaemonRequest(
       return service.listSessions();
     case "session.snapshot":
       return service.getSessionSnapshot(request.params.sessionId);
-    case "session.create":
-      return service.createSession(request.params);
+    case "session.configure":
+      return service.saveSessionConfiguration(request.params);
+    case "session.get":
+      return service.getSession(request.params.sessionId);
+    case "provider.apiKey.set":
+      await service.providerCredentials.setApiKey(
+        request.params.providerId,
+        request.params.apiKey,
+      );
+      return null;
+    case "provider.apiKey.read":
+      return service.providerCredentials.readApiKey(request.params.providerId);
+    case "provider.resolveSnapshot":
+      return service.providerCredentials.resolveSnapshot(
+        request.params.snapshot,
+      );
+    case "session.archive":
+      return service.archiveSession(request.params.sessionId);
+    case "session.restore":
+      return service.restoreSession(request.params.sessionId);
+    case "session.listArchived":
+      return service.state.listArchivedSessions();
     case "session.delete":
       await service.deleteSession(request.params.sessionId);
       return null;
@@ -160,19 +180,17 @@ export async function handleDaemonRequest(
         request.params.agentType,
         request.params.workspaceRootPath,
       );
-    case "session.rewind":
-      await service.rewindSession(request.params.message);
-      return null;
-    case "session.send":
-      return service.sendSessionMessage(
-        request.params.message,
-        request.params.providerConfig,
-      );
-    case "session.resumeQueued":
-      return service.resumeQueuedSession(
+    case "session.resubmit":
+      return service.submitPreviousMessage(request.params);
+    case "session.checkpointStatus":
+      return service.getPreviousMessageCheckpointStatus(
         request.params.sessionId,
-        request.params.providerConfig,
+        request.params.messageId,
       );
+    case "session.send":
+      return service.sendSessionMessage(request.params);
+    case "session.resumeQueued":
+      return service.resumeQueuedSession(request.params.sessionId);
     case "session.updateQueued":
       return service.updateQueuedAgentInput(
         request.params.sessionId,

@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./desktop-provider": "./src/desktop-provider.ts"
+    "./desktop-provider": "./src/desktop-provider.ts",
+    "./provider-auth": "./src/provider-auth.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

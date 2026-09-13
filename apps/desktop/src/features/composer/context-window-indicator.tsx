@@ -6,6 +6,7 @@ import {
   type CollaborationModeKind,
   type ReasoningEffort,
   type SessionRecord,
+  sessionConfiguration,
   supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -38,7 +39,7 @@ import {
 } from "@/features/sessions/provider-model/provider-model-selection";
 import { getRuntimeModelItems } from "@/features/sessions/provider-model/runtime-model-items";
 import { workspacesAtom } from "@/features/workspaces";
-import { desktopApi, useMountEffect } from "@/lib";
+import { desktopApi, taskApi, useMountEffect } from "@/lib";
 import { resolveComposerSessionId } from "./composer-session-id";
 import { formatTokenCount } from "./context-token-format";
 import { ContextUsagePopoverContent } from "./context-usage-popover";
@@ -241,10 +242,9 @@ export function ContextWindowIndicator({
     )?.rootPaths[0];
 
     if (updatedSession && workspaceRootPath) {
-      void desktopApi.createSession({
-        session: updatedSession,
-        workspaceRootPath,
-      });
+      void taskApi.saveSessionConfiguration(
+        sessionConfiguration(updatedSession),
+      );
     }
   };
 

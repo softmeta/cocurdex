@@ -194,6 +194,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       },
       userDataPath,
     );
+    service.startBackgroundRecovery();
     return { close, server, service };
   } catch (error) {
     await close();

@@ -1,9 +1,6 @@
 import type {
   AgentDescriptor,
-  AgentEvent,
   AgentId,
-  AgentPermissionDecision,
-  AgentPlanApprovalDecision,
   AgentProviderSelection,
   AgentRateLimitsReadResult,
   AgentRoleRecord,
@@ -26,7 +23,6 @@ import type {
   CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
-  CreateSessionPayload,
   CreateViewPayload,
   DeleteColumnPayload,
   DeleteIssuePayload,
@@ -74,10 +70,8 @@ import type {
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
-  SendSessionMessagePayload,
   SessionMessagesResult,
   SessionRecord,
-  SubmitPreviousMessagePayload,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -542,7 +536,6 @@ export interface DesktopApi {
     filePath: string;
     annotations: PdfDocumentAnnotationsDto;
   }): Promise<void>;
-  createSession(payload: CreateSessionPayload): Promise<SessionRecord>;
   updateSessionTitle(
     payload: UpdateSessionTitlePayload,
   ): Promise<SessionRecord | null>;
@@ -623,7 +616,6 @@ export interface DesktopApi {
   ): Promise<TurnChangeFileContent>;
   listTurnChangeSets(sessionId: string): Promise<TurnChangeSet[]>;
   getTurnChangeDiff(payload: TurnChangeDiffRequest): Promise<TurnChangeDiff>;
-  sendMessage(payload: SendSessionMessagePayload): Promise<MessageRecord>;
   updateQueuedInput(
     payload: UpdateQueuedAgentInputPayload,
   ): Promise<MessageRecord>;
@@ -631,15 +623,7 @@ export interface DesktopApi {
   steerQueuedInput(
     payload: QueuedAgentInputActionPayload,
   ): Promise<MessageRecord>;
-  submitPreviousMessage(
-    payload: SubmitPreviousMessagePayload,
-  ): Promise<MessageRecord>;
-  getPreviousMessageCheckpointStatus(
-    sessionId: string,
-    messageId: string,
-  ): Promise<{ available: boolean }>;
   saveEditorView(view: EditorViewRecord): Promise<void>;
-  stopSession(sessionId: string): Promise<void>;
   listSlashCommands(
     agentType: AgentId,
     workspaceRootPath: string,
@@ -650,16 +634,6 @@ export interface DesktopApi {
     configId: string,
     value: boolean | string,
   ): Promise<AgentSessionConfigOption[]>;
-  resolvePermission(
-    requestId: string,
-    decision: AgentPermissionDecision,
-  ): Promise<void>;
-  resolveQuestion(questionId: string, answer: string): Promise<void>;
-  resolvePlanApproval(
-    approvalId: string,
-    decision: AgentPlanApprovalDecision,
-  ): Promise<void>;
-  onAgentEvent(listener: (event: AgentEvent) => void): () => void;
   openWorkspace(): Promise<{
     canceled: boolean;
     filePaths: string[];

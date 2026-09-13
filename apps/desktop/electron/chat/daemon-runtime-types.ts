@@ -2,13 +2,13 @@ import type {
   AgentId,
   AgentPermissionDecision,
   AgentPlanApprovalDecision,
-  AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
   AgentSlashCommand,
   CocurdexDaemonEvent,
-  CreateSessionPayload,
   MessageRecord,
-  SendSessionMessagePayload,
+  SendSessionCommand,
+  SessionConfiguration,
+  SessionRecord,
   TurnChangeDiff,
   TurnChangeDiffRequest,
   TurnChangeFileContent,
@@ -47,9 +47,9 @@ export interface DaemonRuntimeStatus {
 }
 
 export interface DaemonRuntimeClient {
-  createSession(
-    payload: CreateSessionPayload,
-  ): Promise<CreateSessionPayload["session"]>;
+  saveSessionConfiguration(
+    payload: SessionConfiguration,
+  ): Promise<SessionRecord>;
   deleteSession(sessionId: string): Promise<void>;
   dispose(): Promise<void>;
   getStatus(): Promise<DaemonRuntimeStatus>;
@@ -68,15 +68,8 @@ export interface DaemonRuntimeClient {
     approvalId: string,
     decision: AgentPlanApprovalDecision,
   ): Promise<boolean>;
-  rewindSession(message: MessageRecord): Promise<void>;
-  resumeQueuedSession(
-    sessionId: string,
-    providerConfig: AgentRuntimeProviderConfig | null,
-  ): Promise<boolean>;
-  sendMessage(
-    payload: SendSessionMessagePayload,
-    providerConfig: AgentRuntimeProviderConfig | null,
-  ): Promise<MessageRecord>;
+  resumeQueuedSession(sessionId: string): Promise<boolean>;
+  sendMessage(payload: SendSessionCommand): Promise<MessageRecord>;
   updateQueuedInput(
     sessionId: string,
     messageId: string,

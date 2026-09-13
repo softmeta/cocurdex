@@ -10,17 +10,9 @@ describe("desktopApi", () => {
     expect(typeof desktopApi.getWorkspaceGitStatus).toBe("function");
     expect(typeof desktopApi.importImageAttachment).toBe("function");
     expect(typeof desktopApi.readImageAttachmentDataUrl).toBe("function");
-    expect(typeof desktopApi.createSession).toBe("function");
     expect(typeof desktopApi.archiveSession).toBe("function");
     expect(typeof desktopApi.deleteSession).toBe("function");
     expect(typeof desktopApi.listProviderTemplates).toBe("function");
-    expect(typeof desktopApi.sendMessage).toBe("function");
-    expect(typeof desktopApi.submitPreviousMessage).toBe("function");
-    expect(typeof desktopApi.getPreviousMessageCheckpointStatus).toBe(
-      "function",
-    );
-    expect(typeof desktopApi.stopSession).toBe("function");
-    expect(typeof desktopApi.onAgentEvent).toBe("function");
     expect(typeof desktopApi.readPdfData).toBe("function");
   });
 

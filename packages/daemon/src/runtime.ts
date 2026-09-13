@@ -19,11 +19,9 @@ import {
   type AgentSessionConfigOption,
   type AgentSlashCommand,
   type AgentUsageRecord,
-  type CreateSessionPayload,
   type MessageAttachment,
   type MessageRecord,
   mergeUsageRecords,
-  type SendSessionMessagePayload,
   type SessionRecord,
 } from "@cocurdex/shared";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
@@ -301,7 +299,7 @@ export class AgentRuntimeManager {
   }
 
   createSessionRuntime(
-    payload: CreateSessionPayload,
+    payload: SessionExecutionContext,
     persistence: RuntimePersistence,
   ): SessionRuntime {
     const existingRuntime = this.sessionRuntimes.get(payload.session.id);
@@ -363,7 +361,7 @@ export class AgentRuntimeManager {
   }
 
   async sendSessionMessage(
-    payload: SendSessionMessagePayload,
+    payload: SessionRuntimeMessage,
     options: RuntimePersistence & { history: MessageRecord[] },
   ) {
     const isSteering = payload.delivery === "steer-active-run";
@@ -535,14 +533,18 @@ export class AgentRuntimeManager {
         failures.push(error);
       }
     }
-    await this.persistQueue;
-    this.broadcastCoalescer.flush();
+    await this.flushEvents();
     if (failures.length === 1) {
       throw failures[0];
     }
     if (failures.length > 1) {
       throw new AggregateError(failures, "Failed to shut down agent runtimes");
     }
+  }
+
+  async flushEvents() {
+    await this.persistQueue;
+    this.broadcastCoalescer.flush();
   }
 
   private createPermissionRecord(
@@ -718,7 +720,7 @@ export class AgentRuntimeManager {
 
   private ensureSessionRuntime(
     payload: Pick<
-      SendSessionMessagePayload,
+      SessionRuntimeMessage,
       "session" | "workspaceRootPath" | "workspaceRootPaths"
     >,
     persistence: RuntimePersistence,
@@ -806,3 +808,8 @@ export class AgentRuntimeManager {
     return mergeUsageRecords(current, delta);
   }
 }
+
+import type {
+  SessionExecutionContext,
+  SessionRuntimeMessage,
+} from "./session-control";

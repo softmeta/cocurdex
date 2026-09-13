@@ -120,22 +120,14 @@ describe("worktree daemon RPC", () => {
     expect(listed[0]?.path).toBe(created.path);
     expect(listed[0]?.sessions).toEqual([]);
 
-    const now = new Date().toISOString();
-    await service.createSession({
-      workspaceRootPath: repositoryPath,
-      session: {
-        id: "session-1",
-        workspaceId: "workspace-1",
-        title: "Uses worktree",
-        agentType: "pi",
-        status: "idle",
-        writeMode: "read-only",
-        collaborationMode: "default",
-        createdAt: now,
-        updatedAt: now,
-        lastMessageAt: null,
-        worktreePath: created.path,
-      },
+    await service.saveSessionConfiguration({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Uses worktree",
+      agentType: "pi",
+      writeMode: "read-only",
+      collaborationMode: "default",
+      worktreePath: created.path,
     });
 
     await expect(

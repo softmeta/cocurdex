@@ -9,6 +9,7 @@ import type {
   WorkflowAttemptRuntimeIdentity,
 } from "@cocurdex/shared";
 import { getFallbackAgentPermissionModes } from "@cocurdex/shared";
+import type { ProviderCredentials } from "../provider-credentials";
 import type { AgentRuntimeManager, RuntimePersistence } from "../runtime";
 import type { DaemonState } from "../state";
 import type {
@@ -110,6 +111,7 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
   constructor(
     private readonly state: DaemonState,
     private readonly runtime: AgentRuntimeManager,
+    private readonly credentials: Pick<ProviderCredentials, "forSession">,
   ) {}
 
   async run(input: WorkflowAgentTurnInput): Promise<WorkflowAgentTurnResult> {
@@ -153,6 +155,7 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
 
     let checkpointQueue = Promise.resolve();
     const persistence: RuntimePersistence = {
+      providerConfig: await this.credentials.forSession(session),
       providerSession,
       onProviderSessionUpdate: (nextProviderSession) => {
         checkpointQueue = checkpointQueue.then(async () => {

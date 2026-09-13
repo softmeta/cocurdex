@@ -7,10 +7,11 @@ import {
 } from "@cocurdex/agent-core";
 import type {
   MessageRecord,
-  SendSessionMessagePayload,
+  SendSessionCommand,
   SessionRecord,
   WorkspaceRecord,
 } from "@cocurdex/shared";
+import { sessionConfiguration } from "@cocurdex/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CocurdexDaemonService } from "./service";
 
@@ -53,11 +54,10 @@ function createWorkspace(): WorkspaceRecord {
 
 function createPayload(
   content: string,
-  delivery: SendSessionMessagePayload["delivery"],
-): SendSessionMessagePayload {
+  delivery: SendSessionCommand["delivery"],
+): SendSessionCommand {
   return {
-    session: createSession(),
-    workspaceRootPath: "/tmp/queue-test",
+    sessionId: "session-1",
     content,
     delivery,
   };
@@ -91,10 +91,7 @@ async function createService(existingUserDataPath?: string) {
     { ...pi, availability: "available" },
   ]);
   await service.saveWorkspace(createWorkspace());
-  await service.createSession({
-    session: createSession(),
-    workspaceRootPath: "/tmp/queue-test",
-  });
+  await service.saveSessionConfiguration(sessionConfiguration(createSession()));
   return service;
 }
 
@@ -157,7 +154,6 @@ describe("CocurdexDaemonService follow-up queue", () => {
 
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
-      null,
     );
 
     expect(service.getActiveWork().agentTurns).toBe(1);
@@ -184,12 +180,10 @@ describe("CocurdexDaemonService follow-up queue", () => {
     try {
       await service.sendSessionMessage(
         createPayload("First turn", "start-new-run"),
-        null,
       );
       await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
       await service.sendSessionMessage(
         createPayload("Steering", "steer-active-run"),
-        null,
       );
       await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
       completeTurn();
@@ -223,13 +217,11 @@ describe("CocurdexDaemonService follow-up queue", () => {
 
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
-      null,
     );
     await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
 
     const steered = await service.sendSessionMessage(
       createPayload("Queue me if steering fails", "steer-active-run"),
-      null,
     );
     await vi.waitFor(async () => {
       const state = await service.bootstrap();
@@ -266,17 +258,14 @@ describe("CocurdexDaemonService follow-up queue", () => {
 
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
-      null,
     );
     await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
 
     await service.sendSessionMessage(
       createPayload("First queued follow-up", "queue-after-run"),
-      null,
     );
     await service.sendSessionMessage(
       createPayload("Second queued follow-up", "queue-after-run"),
-      null,
     );
     expect(send).toHaveBeenCalledOnce();
     expect(service.getActiveWork()).toMatchObject({
@@ -305,7 +294,16 @@ describe("CocurdexDaemonService follow-up queue", () => {
 
   it("edits, deletes, and steers durable queued inputs", async () => {
     const service = await createService();
-    const activeTurn = new Promise<MessageRecord>(() => {});
+    let completeActiveTurn!: () => void;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      completeActiveTurn = () =>
+        resolve(createRuntimeMessage("Interrupted turn"));
+    });
+    const shutdownRuntime = service.runtime.shutdown.bind(service.runtime);
+    vi.spyOn(service.runtime, "shutdown").mockImplementation(async () => {
+      completeActiveTurn();
+      await shutdownRuntime();
+    });
     const send = vi
       .spyOn(service.runtime, "sendSessionMessage")
       .mockImplementationOnce(() => activeTurn)
@@ -314,16 +312,13 @@ describe("CocurdexDaemonService follow-up queue", () => {
 
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
-      null,
     );
     await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
     const firstQueued = await service.sendSessionMessage(
       createPayload("Edit me", "queue-after-run"),
-      null,
     );
     const secondQueued = await service.sendSessionMessage(
       createPayload("Delete me", "queue-after-run"),
-      null,
     );
 
     await expect(
@@ -369,18 +364,25 @@ describe("CocurdexDaemonService follow-up queue", () => {
     );
     temporaryDirectories.push(userDataPath);
     const service = await createService(userDataPath);
-    const activeTurn = new Promise<MessageRecord>(() => {});
+    let completeActiveTurn!: () => void;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      completeActiveTurn = () =>
+        resolve(createRuntimeMessage("Interrupted turn"));
+    });
+    const shutdownRuntime = service.runtime.shutdown.bind(service.runtime);
+    vi.spyOn(service.runtime, "shutdown").mockImplementation(async () => {
+      completeActiveTurn();
+      await shutdownRuntime();
+    });
     const originalSend = vi
       .spyOn(service.runtime, "sendSessionMessage")
       .mockReturnValue(activeTurn);
 
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
-      null,
     );
     await service.sendSessionMessage(
       createPayload("Survive restart", "queue-after-run"),
-      null,
     );
     await vi.waitFor(() => expect(originalSend).toHaveBeenCalledOnce());
     await service.shutdown();
@@ -400,9 +402,9 @@ describe("CocurdexDaemonService follow-up queue", () => {
     const resumedSend = vi
       .spyOn(restarted.runtime, "sendSessionMessage")
       .mockResolvedValue(createRuntimeMessage("Survive restart"));
-    await expect(
-      restarted.resumeQueuedSession("session-1", null),
-    ).resolves.toBe(true);
+    await expect(restarted.resumeQueuedSession("session-1")).resolves.toBe(
+      true,
+    );
     await vi.waitFor(() => expect(resumedSend).toHaveBeenCalledOnce());
     expect(resumedSend.mock.calls[0]?.[0]).toMatchObject({
       content: "Survive restart",

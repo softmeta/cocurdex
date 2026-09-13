@@ -10,6 +10,7 @@ import {
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type SessionRecord,
+  sessionConfiguration,
   type WorkflowAggregate,
   type WorkflowExecutorBinding,
   type WorkflowExecutorBindings,
@@ -36,6 +37,7 @@ import {
 import { handleSearchCommand } from "./search-commands";
 import { assertSessionTuiAvailable, runSessionTui } from "./session-tui";
 import { handleSkillsCommand, skillsUsageLines } from "./skill-commands";
+import { taskApi } from "./task-client";
 import { getCliVersion } from "./version";
 import { assertWorkflowTuiAvailable, runWorkflowTui } from "./workflow-tui";
 import { handleWorktreeCommand, worktreeUsageLines } from "./worktree-commands";
@@ -168,14 +170,10 @@ async function main(rawArgs: string[]) {
           { onDisconnect },
         ),
       send: (currentSession, content, delivery) =>
-        requestDaemon("session.send", {
-          message: {
-            session: { ...currentSession, status: "running" },
-            workspaceRootPath: primaryWorkspaceRootPath(workspace),
-            content,
-            delivery,
-          },
-          providerConfig: null,
+        taskApi.sendMessage({
+          sessionId: currentSession.id,
+          content,
+          delivery,
         }),
       stop: async () => {
         await requestDaemon("session.stop", { sessionId: session.id });
@@ -468,17 +466,12 @@ async function createSession(parsed: ParsedArgs) {
     providerSnapshot: createProviderSnapshot(provider, model),
   };
 
-  await withDaemon(async () => {
+  return withDaemon(async () => {
     if (!workspace) {
       await requestDaemon("workspace.save", { workspace: targetWorkspace });
     }
-    return requestDaemon("session.create", {
-      session,
-      workspaceRootPath: primaryWorkspaceRootPath(targetWorkspace),
-    });
+    return taskApi.saveSessionConfiguration(sessionConfiguration(session));
   });
-
-  return session;
 }
 
 async function resolveSessionTuiSession(
@@ -510,34 +503,7 @@ async function resolveSessionTuiSession(
 }
 
 async function sendSessionMessage(sessionId: string, prompt: string) {
-  const [sessions, workspaces] = await withDaemon(async () =>
-    Promise.all([
-      requestDaemon("session.list"),
-      requestDaemon("workspace.list"),
-    ]),
-  );
-  const session = sessions.find((item) => item.id === sessionId);
-
-  if (!session) {
-    throw new Error("Session not found");
-  }
-
-  const workspace = workspaces.find((item) => item.id === session.workspaceId);
-
-  if (!workspace) {
-    throw new Error("Session workspace not found");
-  }
-
-  return withDaemon(() =>
-    requestDaemon("session.send", {
-      message: {
-        session: { ...session, status: "running" },
-        workspaceRootPath: primaryWorkspaceRootPath(workspace),
-        content: prompt,
-      },
-      providerConfig: null,
-    }),
-  );
+  return withDaemon(() => taskApi.sendMessage({ sessionId, content: prompt }));
 }
 
 async function createWorkflow(parsed: ParsedArgs) {

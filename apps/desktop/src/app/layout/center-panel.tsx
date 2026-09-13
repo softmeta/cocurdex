@@ -13,6 +13,7 @@ import {
   primaryWorkspaceRootPath,
   resolveSessionWorkingPath,
   type SessionRecord,
+  sessionConfiguration,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -112,7 +113,7 @@ import {
   selectWorkspaceAtom,
   workspacesAtom,
 } from "@/features/workspaces";
-import { desktopApi, logRendererDiagnostic } from "@/lib";
+import { desktopApi, logRendererDiagnostic, taskApi } from "@/lib";
 import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
 import {
   useActiveSessionTranscript,
@@ -405,11 +406,9 @@ export function CenterPanel({
       updateAgentRuntimePreferences(activeSession.agentType, {
         thinkingLevel: thinkingLevel === "default" ? null : thinkingLevel,
       });
-      void desktopApi.createSession({
-        session: updatedSession,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-      });
+      void taskApi.saveSessionConfiguration(
+        sessionConfiguration(updatedSession),
+      );
     }
   };
   const annotations = useAtomValue(annotationsAtom);
@@ -671,10 +670,15 @@ export function CenterPanel({
         workspaceRootPath:
           workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
       });
-      const savedMessage = await desktopApi.sendMessage({
-        session: nextSession,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+      if (nextSession.title !== activeSession.title) {
+        await desktopApi.updateSessionTitle({
+          sessionId: nextSession.id,
+          title: nextSession.title,
+          expectedTitle: activeSession.title,
+        });
+      }
+      const savedMessage = await taskApi.sendMessage({
+        sessionId: nextSession.id,
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
         content: userMessage.content,
@@ -787,7 +791,7 @@ export function CenterPanel({
       return { available: false };
     }
 
-    return desktopApi.getPreviousMessageCheckpointStatus(
+    return taskApi.getPreviousMessageCheckpointStatus(
       activeSession.id,
       message.id,
     );
@@ -813,10 +817,8 @@ export function CenterPanel({
     });
 
     try {
-      const userMessage = await desktopApi.submitPreviousMessage({
-        session: activeSession,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+      const userMessage = await taskApi.submitPreviousMessage({
+        sessionId: activeSession.id,
         messageId: message.id,
         content,
         attachments:
@@ -869,21 +871,21 @@ export function CenterPanel({
     }
 
     updateSessionStatus({ sessionId: activeSession.id, status: "idle" });
-    await desktopApi.stopSession(activeSession.id);
+    await taskApi.stopSession(activeSession.id);
   };
 
   const handleAnswerQuestion = async (
     question: AgentQuestionRequestRecord,
     answer: string,
   ) => {
-    await desktopApi.resolveQuestion(question.id, answer);
+    await taskApi.resolveQuestion(question.id, answer);
   };
 
   const handleResolvePlanApproval = async (
     approvalId: string,
     decision: AgentPlanApprovalDecision,
   ) => {
-    await desktopApi.resolvePlanApproval(approvalId, decision);
+    await taskApi.resolvePlanApproval(approvalId, decision);
   };
 
   // Chat-mode "first message": create the conversation with the picked model,
@@ -1035,11 +1037,9 @@ export function CenterPanel({
       });
       clearChatComposerAttachment();
 
-      await desktopApi.createSession({
-        session: titledSession,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-      });
+      await taskApi.saveSessionConfiguration(
+        sessionConfiguration(titledSession),
+      );
 
       const annotationAttachments =
         await buildAnnotationAttachments(annotations);
@@ -1068,10 +1068,8 @@ export function CenterPanel({
             workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
         },
       );
-      await desktopApi.sendMessage({
-        session: titledSession,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+      await taskApi.sendMessage({
+        sessionId: titledSession.id,
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
         content: userMessage.content,
@@ -1079,8 +1077,6 @@ export function CenterPanel({
         thinkingLevel,
       });
 
-      // sendMessage persists the session again, so refinement must run after
-      // it to avoid the local fallback overwriting the generated title.
       if (titledSession.title !== session.title) {
         refineAutoSessionTitle(titledSession, message, titledSession.title);
       }
@@ -1121,11 +1117,7 @@ export function CenterPanel({
       return;
     }
 
-    void desktopApi.createSession({
-      session,
-      workspaceRootPath:
-        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-    });
+    void taskApi.saveSessionConfiguration(sessionConfiguration(session));
   };
 
   const handleSelectCollaborationMode = (
@@ -1275,7 +1267,9 @@ export function CenterPanel({
             onClearAttachment={clearChatComposerAttachment}
             onAnswerQuestion={handleAnswerQuestion}
             onOpenToolLocation={openFilePreview}
-            onResolvePermission={desktopApi.resolvePermission}
+            onResolvePermission={async (requestId, decision) => {
+              await taskApi.resolvePermission(requestId, decision);
+            }}
             onSelectCollaborationMode={(mode) =>
               handleSelectCollaborationMode(mode, activeSession.id)
             }

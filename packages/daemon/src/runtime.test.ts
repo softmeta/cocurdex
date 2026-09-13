@@ -4,7 +4,6 @@ import type {
   AgentProviderSessionRecord,
   AgentRuntimeProviderConfig,
   MessageRecord,
-  SendSessionMessagePayload,
   SessionRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -26,7 +25,7 @@ function createSessionRecord(): SessionRecord {
   };
 }
 
-function createPayload(): SendSessionMessagePayload {
+function createPayload(): SessionRuntimeMessage {
   return {
     session: createSessionRecord(),
     workspaceRootPath: "/workspace",
@@ -543,3 +542,5 @@ describe("AgentRuntimeManager", () => {
     expect(createSession).toHaveBeenCalledTimes(1);
   });
 });
+
+import type { SessionRuntimeMessage } from "./session-control/execution-types";

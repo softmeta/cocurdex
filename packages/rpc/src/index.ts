@@ -4,6 +4,7 @@ import type {
   AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentProviderSelection,
+  AgentProviderSnapshot,
   AgentRateLimitsReadResult,
   AgentRoleRecord,
   AgentRuntimeProviderConfig,
@@ -21,7 +22,6 @@ import type {
   CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
-  CreateSessionPayload,
   CreateViewPayload,
   CreateWorkflowPayload,
   DeleteColumnPayload,
@@ -56,10 +56,12 @@ import type {
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
-  SendSessionMessagePayload,
+  SendSessionCommand,
   SessionAttentionSnapshot,
+  SessionConfiguration,
   SessionObservationSnapshot,
   SessionRecord,
+  SubmitPreviousMessageCommand,
   TurnChangeDiff,
   TurnChangeDiffRequest,
   TurnChangeFileContent,
@@ -87,7 +89,7 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 19;
+export const DAEMON_PROTOCOL_VERSION = 21;
 
 export interface DaemonMetadata {
   pid: number;
@@ -172,23 +174,25 @@ export type DaemonRequestPayloadByMethod = {
   };
   "session.list": undefined;
   "session.snapshot": { sessionId: string };
-  "session.create": CreateSessionPayload;
+  "session.configure": SessionConfiguration;
+  "session.get": { sessionId: string };
   "session.delete": { sessionId: string };
+  "session.archive": { sessionId: string };
+  "session.restore": { sessionId: string };
+  "session.listArchived": undefined;
+  "provider.apiKey.set": { providerId: string; apiKey: string | null };
+  "provider.apiKey.read": { providerId: string };
+  "provider.resolveSnapshot": { snapshot: AgentProviderSnapshot };
   "session.updateTitle": UpdateSessionTitlePayload;
   "session.generateTitle": { sessionId: string; message: string };
   "session.listSlashCommands": {
     agentType: AgentId;
     workspaceRootPath: string;
   };
-  "session.rewind": { message: MessageRecord };
-  "session.send": {
-    message: SendSessionMessagePayload;
-    providerConfig: AgentRuntimeProviderConfig | null;
-  };
-  "session.resumeQueued": {
-    sessionId: string;
-    providerConfig: AgentRuntimeProviderConfig | null;
-  };
+  "session.resubmit": SubmitPreviousMessageCommand;
+  "session.checkpointStatus": { sessionId: string; messageId: string };
+  "session.send": SendSessionCommand;
+  "session.resumeQueued": { sessionId: string };
   "session.updateQueued": {
     sessionId: string;
     messageId: string;
@@ -306,12 +310,20 @@ export type DaemonResultByMethod = {
   "worktree.remove": { removed: boolean };
   "session.list": SessionRecord[];
   "session.snapshot": SessionObservationSnapshot | null;
-  "session.create": SessionRecord;
+  "session.configure": SessionRecord;
+  "session.get": SessionRecord | null;
   "session.delete": null;
+  "session.archive": SessionRecord | null;
+  "session.restore": SessionRecord[];
+  "session.listArchived": SessionRecord[];
+  "provider.apiKey.set": null;
+  "provider.apiKey.read": string | null;
+  "provider.resolveSnapshot": AgentRuntimeProviderConfig;
   "session.updateTitle": SessionRecord | null;
   "session.generateTitle": string | null;
   "session.listSlashCommands": AgentSlashCommand[];
-  "session.rewind": null;
+  "session.resubmit": MessageRecord;
+  "session.checkpointStatus": { available: boolean };
   "session.send": MessageRecord;
   "session.resumeQueued": boolean;
   "session.updateQueued": MessageRecord;
@@ -410,6 +422,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "provider.listDefaults": true,
   "agentRole.list": true,
   "session.list": true,
+  "session.listArchived": true,
   "workflow.list": true,
   "workflow.listDefinitions": true,
   "workspace.list": true,

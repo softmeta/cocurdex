@@ -164,25 +164,6 @@ export class DaemonState {
     switch (operation) {
       case "workspace.delete":
         return this.database.workspaces.delete(args[0] as string);
-      case "session.save":
-        return this.database.sessions.upsert(args[0] as SessionRecord);
-      case "session.archive":
-        return this.database.sessions.archive(
-          args[0] as string,
-          args[1] as string | undefined,
-        );
-      case "session.listArchived":
-        return this.database.sessions.listArchived();
-      case "session.restore":
-        return this.database.sessions.restore(args[0] as string);
-      case "session.get":
-        return this.database.sessions.getById(args[0] as string);
-      case "session.updateTitle":
-        return this.database.sessions.updateTitle(
-          args[0] as string,
-          args[1] as string,
-          args[2] as string | undefined,
-        );
       case "message.listBySession":
         return {
           messages: await this.database.messages.listBySessionId(
@@ -213,11 +194,6 @@ export class DaemonState {
         );
       case "providerConfig.delete":
         return this.database.providerConfigs.delete(args[0] as string);
-      case "providerConfig.setSecret":
-        return this.database.providerConfigs.setApiKeySecretId(
-          args[0] as string,
-          args[1] as string | null,
-        );
       case "providerModel.list":
         return this.database.providerModels.list(args[0] as string | undefined);
       case "providerModel.get":
@@ -236,19 +212,6 @@ export class DaemonState {
         );
       case "providerModel.deleteByProvider":
         return this.database.providerModels.deleteByProvider(args[0] as string);
-      case "providerSecret.get":
-        return this.database.providerSecrets.getById(args[0] as string);
-      case "providerSecret.save":
-        return this.database.providerSecrets.upsert(
-          args[0] as {
-            id: string;
-            encryptedValue: string;
-            createdAt: string;
-            updatedAt: string;
-          },
-        );
-      case "providerSecret.delete":
-        return this.database.providerSecrets.delete(args[0] as string);
       case "conversation.list":
         return this.database.conversations.list();
       case "conversation.get":
@@ -418,6 +381,21 @@ export class DaemonState {
         });
       }
     });
+  }
+
+  listAllQueuedAgentInputs() {
+    return this.database.queuedAgentInputs.list();
+  }
+
+  restoreSession(sessionId: string) {
+    return this.database.sessions.restore(sessionId);
+  }
+
+  setProviderApiKeySecretId(providerId: string, secretId: string | null) {
+    return this.database.providerConfigs.setApiKeySecretId(
+      providerId,
+      secretId,
+    );
   }
 
   listQueuedAgentInputs(sessionId: string) {

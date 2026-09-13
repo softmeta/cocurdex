@@ -30,9 +30,9 @@ export function createDaemonRuntimeClient(
     },
   });
   return {
-    async createSession(payload) {
+    async saveSessionConfiguration(payload) {
       await ensureDaemon();
-      return requestDaemon("session.create", payload, requestOptions());
+      return requestDaemon("session.configure", payload, requestOptions());
     },
     async deleteSession(sessionId) {
       await ensureDaemon();
@@ -88,25 +88,17 @@ export function createDaemonRuntimeClient(
         requestOptions(),
       );
     },
-    async rewindSession(message) {
-      await ensureDaemon();
-      await requestDaemon("session.rewind", { message }, requestOptions());
-    },
-    async resumeQueuedSession(sessionId, providerConfig) {
+    async resumeQueuedSession(sessionId) {
       await ensureDaemon();
       return requestDaemon(
         "session.resumeQueued",
-        { sessionId, providerConfig },
+        { sessionId },
         requestOptions(),
       );
     },
-    async sendMessage(payload, providerConfig) {
+    async sendMessage(payload) {
       await ensureDaemon();
-      return requestDaemon(
-        "session.send",
-        { message: payload, providerConfig },
-        requestOptions(),
-      );
+      return requestDaemon("session.send", payload, requestOptions());
     },
     async updateQueuedInput(sessionId, messageId, content) {
       await ensureDaemon();

@@ -26,7 +26,7 @@ import {
   upsertSessionAtom,
 } from "@/features/sessions";
 import { applyTurnChangesEventAtom } from "@/features/turn-workspace-changes";
-import { desktopApi, onOpenHtmlPreview, useMountEffect } from "@/lib";
+import { desktopApi, onOpenHtmlPreview, taskApi, useMountEffect } from "@/lib";
 import { bumpRightPanelRevealAtom } from "../right-panel-reveal";
 
 export function useAgentEventBridge() {
@@ -52,7 +52,7 @@ export function useAgentEventBridge() {
 
   const handleAgentEvent = useEffectEvent(
     (
-      event: Parameters<typeof desktopApi.onAgentEvent>[0] extends (
+      event: Parameters<typeof taskApi.onAgentEvent>[0] extends (
         payload: infer T,
       ) => void
         ? T
@@ -128,7 +128,7 @@ export function useAgentEventBridge() {
     },
   );
 
-  useEffect(() => desktopApi.onAgentEvent(handleAgentEvent), []);
+  useEffect(() => taskApi.onAgentEvent(handleAgentEvent), []);
 }
 
 export function useBrowserEventBridge() {

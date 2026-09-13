@@ -76,17 +76,4 @@ describe("CenterPanel logging", () => {
       'console.error("[Chat] start conversation failed"',
     );
   });
-
-  it("refines a new agent session title after sending the message", () => {
-    const startSessionSource = centerPanelSource.slice(
-      centerPanelSource.indexOf("const handleStartSession"),
-      centerPanelSource.indexOf("const handleSelectCollaborationMode"),
-    );
-
-    expect(
-      startSessionSource.indexOf("refineAutoSessionTitle("),
-    ).toBeGreaterThan(
-      startSessionSource.indexOf("await desktopApi.sendMessage("),
-    );
-  });
 });

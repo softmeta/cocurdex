@@ -1144,28 +1144,10 @@ export type AgentEvent =
   | AgentTurnChangesUpdatedEvent
   | AgentErrorEvent;
 
-export interface CreateSessionPayload {
-  session: SessionRecord;
-  workspaceRootPath: string;
-  workspaceRootPaths?: string[];
-}
-
 export type AgentInputDelivery =
   | "start-new-run"
   | "steer-active-run"
   | "queue-after-run";
-
-export interface SendSessionMessagePayload {
-  session: SessionRecord;
-  workspaceRootPath: string;
-  workspaceRootPaths?: string[];
-  messageId?: string;
-  createdAt?: string;
-  content: string;
-  attachments?: MessageAttachment[];
-  thinkingLevel?: AgentThinkingLevel;
-  delivery?: AgentInputDelivery;
-}
 
 export interface QueuedAgentInputRecord {
   messageId: string;
@@ -1184,12 +1166,6 @@ export interface UpdateQueuedAgentInputPayload {
 export interface QueuedAgentInputActionPayload {
   sessionId: string;
   messageId: string;
-}
-
-export interface SubmitPreviousMessagePayload
-  extends SendSessionMessagePayload {
-  messageId: string;
-  revertWorkspace: boolean;
 }
 
 export interface UpdateSessionTitlePayload {

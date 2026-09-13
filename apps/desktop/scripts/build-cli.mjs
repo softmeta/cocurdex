@@ -47,6 +47,10 @@ const alias = {
   ),
   "@cocurdex/daemon/paths": path.join(repoRoot, "packages/daemon/src/paths.ts"),
   "@cocurdex/daemon": path.join(repoRoot, "packages/daemon/src/index.ts"),
+  "@cocurdex/agent-adapters/provider-auth": path.join(
+    repoRoot,
+    "packages/agent-adapters/src/provider-auth.ts",
+  ),
   "@cocurdex/agent-adapters": path.join(
     repoRoot,
     "packages/agent-adapters/src/index.ts",
@@ -124,6 +128,7 @@ await build({
   },
   ssr: {
     noExternal: true,
+    external: ["@napi-rs/keyring"],
   },
 });
 

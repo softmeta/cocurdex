@@ -19,6 +19,7 @@
     "@cocurdex/llm-chat": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
+    "@napi-rs/keyring": "^2.0.0",
     "undici": "^8.10.0"
   },
   "devDependencies": {
