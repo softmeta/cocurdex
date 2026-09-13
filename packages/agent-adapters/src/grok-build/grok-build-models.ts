@@ -14,7 +14,9 @@ import {
   GROK_BUILD_ARGS,
   GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
+  GROK_BUILD_PROBE_TIMEOUT_MS,
   withGrokBuildProbeCwd,
+  withGrokBuildProbeTimeout,
 } from "./grok-build-process";
 
 export const GROK_BUILD_PROVIDER_ID = "grok-build";
@@ -28,7 +30,6 @@ export const GROK_BUILD_MODELS_LIST_METHOD = "x.ai/models/list";
 // (see xai-grok-shell cli_models.rs). We do the same on a short-lived ACP
 // process and never call `session/new`, which would persist under
 // ~/.grok/sessions.
-const PROBE_TIMEOUT_MS = 20_000;
 
 function toCompatibleModel(
   model: AcpSessionModel,
@@ -137,15 +138,17 @@ export async function fetchGrokBuildModelCatalog(connection: AcpConnection) {
 
 async function probeGrokBuildModels(
   connectionFactory: AcpConnectionFactory,
+  timeoutMs: number,
 ): Promise<CompatibleProviderModel[] | null> {
   return withGrokBuildProbeCwd((cwd) =>
-    probeGrokBuildModelsIn(connectionFactory, cwd),
+    probeGrokBuildModelsIn(connectionFactory, cwd, timeoutMs),
   );
 }
 
 async function probeGrokBuildModelsIn(
   connectionFactory: AcpConnectionFactory,
   cwd: string,
+  timeoutMs: number,
 ): Promise<CompatibleProviderModel[] | null> {
   const connection = await connectionFactory({
     args: GROK_BUILD_ARGS,
@@ -160,27 +163,30 @@ async function probeGrokBuildModelsIn(
   });
 
   try {
-    const response = await connection.initialize({
-      protocolVersion: 1,
-      clientCapabilities: {
-        fs: { readTextFile: false, writeTextFile: false },
-        terminal: false,
-      },
-      clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
-      _meta: GROK_BUILD_INITIALIZE_META,
-    });
-    const listed = await fetchGrokBuildModelCatalog(connection);
-    const initializeState = readAcpSessionModelState(response);
-    const state = listed && listed.models.length > 0 ? listed : initializeState;
-    if (!state || state.models.length === 0) {
-      return null;
-    }
-    const now = new Date().toISOString();
-    const defaultModelId =
-      state.currentModelId ?? state.models[0]?.modelId ?? null;
-    return state.models.map((model) =>
-      toCompatibleModel(model, defaultModelId, now),
-    );
+    return await withGrokBuildProbeTimeout(async () => {
+      const response = await connection.initialize({
+        protocolVersion: 1,
+        clientCapabilities: {
+          fs: { readTextFile: false, writeTextFile: false },
+          terminal: false,
+        },
+        clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
+        _meta: GROK_BUILD_INITIALIZE_META,
+      });
+      const listed = await fetchGrokBuildModelCatalog(connection);
+      const initializeState = readAcpSessionModelState(response);
+      const state =
+        listed && listed.models.length > 0 ? listed : initializeState;
+      if (!state || state.models.length === 0) {
+        return null;
+      }
+      const now = new Date().toISOString();
+      const defaultModelId =
+        state.currentModelId ?? state.models[0]?.modelId ?? null;
+      return state.models.map((model) =>
+        toCompatibleModel(model, defaultModelId, now),
+      );
+    }, timeoutMs);
   } finally {
     await connection.close();
   }
@@ -193,25 +199,18 @@ let inFlightProbe: Promise<CompatibleProviderModel[] | null> | null = null;
 
 export async function listGrokBuildProviderModels(
   connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
-  options: { forceRefresh?: boolean } = {},
+  options: { forceRefresh?: boolean; timeoutMs?: number } = {},
 ): Promise<CompatibleProviderModel[]> {
   if (cachedCatalog && !options.forceRefresh) {
     return cachedCatalog;
   }
 
+  const timeoutMs = options.timeoutMs ?? GROK_BUILD_PROBE_TIMEOUT_MS;
   inFlightProbe ??= (async () => {
-    let timer: NodeJS.Timeout | undefined;
     try {
-      return await Promise.race([
-        probeGrokBuildModels(connectionFactory),
-        new Promise<null>((resolve) => {
-          timer = setTimeout(() => resolve(null), PROBE_TIMEOUT_MS);
-        }),
-      ]);
+      return await probeGrokBuildModels(connectionFactory, timeoutMs);
     } catch {
       return null;
-    } finally {
-      clearTimeout(timer);
     }
   })();
 

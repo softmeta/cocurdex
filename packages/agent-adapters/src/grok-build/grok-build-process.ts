@@ -7,6 +7,8 @@ import path from "node:path";
 // shape (and the same startup hints).
 export const GROK_BUILD_COMMAND = "grok";
 
+export const GROK_BUILD_PROBE_TIMEOUT_MS = 20_000;
+
 export async function withGrokBuildProbeCwd<T>(
   run: (cwd: string) => Promise<T>,
 ): Promise<T> {
@@ -15,6 +17,36 @@ export async function withGrokBuildProbeCwd<T>(
     return await run(cwd);
   } finally {
     await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+export async function withGrokBuildProbeTimeout<T>(
+  run: () => Promise<T>,
+  timeoutMs = GROK_BUILD_PROBE_TIMEOUT_MS,
+): Promise<T | null> {
+  let timer: NodeJS.Timeout | undefined;
+  let timedOut = false;
+  const work = run().then(
+    (value) => (timedOut ? null : value),
+    (error: unknown) => {
+      if (timedOut) {
+        return null;
+      }
+      throw error;
+    },
+  );
+  try {
+    return await Promise.race([
+      work,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          resolve(null);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   AcpConnection,
@@ -196,5 +197,37 @@ describe("listGrokBuildProviderModels", () => {
 
     expect(healthy.factory).toHaveBeenCalledOnce();
     expect(items[0]?.model.contextLimit).toBe(500_000);
+  });
+
+  it("closes a hung probe and removes its cwd before returning fallbacks", async () => {
+    let resolveClose: (() => void) | undefined;
+    const close = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveClose = resolve;
+        }),
+    );
+    const { factory } = createFactory({
+      initialize: vi.fn(
+        () => new Promise(() => {}),
+      ) as unknown as AcpConnection["initialize"],
+      close,
+    });
+
+    const pending = listGrokBuildProviderModels(factory, { timeoutMs: 20 });
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+    const cwd = vi.mocked(factory).mock.calls[0]?.[0]?.cwd;
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    resolveClose?.();
+    const items = await pending;
+    expect(items[0]?.model.modelId).toBe("grok-4.6");
+    expect(cwd).toBeTruthy();
+    expect(existsSync(cwd ?? "")).toBe(false);
   });
 });
