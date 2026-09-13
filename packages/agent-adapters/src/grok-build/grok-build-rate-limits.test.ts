@@ -97,4 +97,32 @@ describe("readGrokBuildRateLimits", () => {
     ).resolves.toBeNull();
     expect(connection.close).toHaveBeenCalledOnce();
   });
+
+  it("closes a hung probe before returning", async () => {
+    let resolveClose: (() => void) | undefined;
+    const close = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveClose = resolve;
+        }),
+    );
+    const connection = {
+      initialize: vi.fn(() => new Promise(() => {})),
+      close,
+    } as unknown as AcpConnection;
+
+    const pending = readGrokBuildRateLimits(async () => connection, {
+      timeoutMs: 20,
+    });
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    resolveClose?.();
+    await expect(pending).resolves.toBeNull();
+  });
 });

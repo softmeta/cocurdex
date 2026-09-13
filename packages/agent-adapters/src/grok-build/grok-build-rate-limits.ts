@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import type { AgentRateLimitsRecord } from "@cocurdex/shared";
 import type { AcpConnectionFactory } from "../acp/acp-connection";
 import { createSdkAcpConnection } from "../acp/sdk-acp-connection";
@@ -11,7 +10,10 @@ import {
   GROK_BUILD_ARGS,
   GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
+  GROK_BUILD_PROBE_TIMEOUT_MS,
   getGrokBuildAuthMethodPriority,
+  withGrokBuildProbeCwd,
+  withGrokBuildProbeTimeout,
 } from "./grok-build-process";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -46,7 +48,6 @@ export function parseGrokBuildRateLimits(
   ]);
 }
 
-const PROBE_TIMEOUT_MS = 20_000;
 export const GROK_BUILD_BILLING_METHOD = "x.ai/billing";
 
 function selectGrokAuthMethod(available: string[]) {
@@ -60,11 +61,22 @@ function selectGrokAuthMethod(available: string[]) {
 
 async function probeGrokBuildRateLimits(
   connectionFactory: AcpConnectionFactory,
+  timeoutMs: number,
+): Promise<AgentRateLimitsRecord | null> {
+  return withGrokBuildProbeCwd((cwd) =>
+    probeGrokBuildRateLimitsIn(connectionFactory, cwd, timeoutMs),
+  );
+}
+
+async function probeGrokBuildRateLimitsIn(
+  connectionFactory: AcpConnectionFactory,
+  cwd: string,
+  timeoutMs: number,
 ): Promise<AgentRateLimitsRecord | null> {
   const connection = await connectionFactory({
     args: GROK_BUILD_ARGS,
     command: GROK_BUILD_COMMAND,
-    cwd: homedir(),
+    cwd,
     handlers: {
       onSessionUpdate() {},
       requestPermission() {
@@ -74,24 +86,26 @@ async function probeGrokBuildRateLimits(
   });
 
   try {
-    const response = await connection.initialize({
-      protocolVersion: 1,
-      clientCapabilities: {
-        fs: { readTextFile: false, writeTextFile: false },
-        terminal: false,
-      },
-      clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
-      _meta: GROK_BUILD_INITIALIZE_META,
-    });
-    const authMethod = selectGrokAuthMethod(
-      response.authMethods?.map((method) => method.id) ?? [],
-    );
-    if (authMethod) {
-      await connection.authenticate({ methodId: authMethod });
-    }
-    return parseGrokBuildRateLimits(
-      await connection.extRequest(GROK_BUILD_BILLING_METHOD, {}),
-    );
+    return await withGrokBuildProbeTimeout(async () => {
+      const response = await connection.initialize({
+        protocolVersion: 1,
+        clientCapabilities: {
+          fs: { readTextFile: false, writeTextFile: false },
+          terminal: false,
+        },
+        clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
+        _meta: GROK_BUILD_INITIALIZE_META,
+      });
+      const authMethod = selectGrokAuthMethod(
+        response.authMethods?.map((method) => method.id) ?? [],
+      );
+      if (authMethod) {
+        await connection.authenticate({ methodId: authMethod });
+      }
+      return parseGrokBuildRateLimits(
+        await connection.extRequest(GROK_BUILD_BILLING_METHOD, {}),
+      );
+    }, timeoutMs);
   } finally {
     await connection.close();
   }
@@ -99,21 +113,17 @@ async function probeGrokBuildRateLimits(
 
 export async function readGrokBuildRateLimits(
   connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
+  options: { timeoutMs?: number } = {},
 ): Promise<AgentRateLimitsRecord | null> {
-  let timer: NodeJS.Timeout | undefined;
   try {
-    return await Promise.race([
-      probeGrokBuildRateLimits(connectionFactory),
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), PROBE_TIMEOUT_MS);
-      }),
-    ]);
+    return await probeGrokBuildRateLimits(
+      connectionFactory,
+      options.timeoutMs ?? GROK_BUILD_PROBE_TIMEOUT_MS,
+    );
   } catch (error) {
     logAdapterDiagnostic("debug", "[GrokBuild] rate limits unavailable", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }

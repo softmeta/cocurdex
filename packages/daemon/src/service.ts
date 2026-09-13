@@ -1,5 +1,7 @@
 import { EventEmitter } from "node:events";
 import { statSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
 import {
   deleteOpenCodeSession,
   readAdapterRateLimits as probeAdapterRateLimits,
@@ -387,6 +389,17 @@ export class CocurdexDaemonService {
     const rootPaths = normalizeWorkspaceRootPaths(workspace.rootPaths);
     if (rootPaths.length === 0) {
       throw new Error("Workspace requires at least one source folder");
+    }
+    const home = homedir();
+    if (rootPaths.some((rootPath) => workspacePathsEqual(rootPath, home))) {
+      throw new Error(
+        "The home directory cannot be a project folder; choose a subfolder",
+      );
+    }
+    if (rootPaths.some((rootPath) => path.parse(rootPath).root === rootPath)) {
+      throw new Error(
+        "A filesystem root cannot be a project folder; choose a subfolder",
+      );
     }
     const others = (await this.state.listWorkspaces()).filter(
       (candidate) => candidate.id !== workspace.id,
