@@ -182,8 +182,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
     rootPath: string | null;
   }) => ipcRenderer.invoke("worktree:saveSettings", payload),
   listManagedWorktrees: () => ipcRenderer.invoke("worktree:listManaged"),
-  removeWorktree: (payload: { workspaceId: string; worktreePath: string }) =>
-    ipcRenderer.invoke("worktree:remove", payload),
+  removeWorktree: (payload: {
+    workspaceId: string;
+    worktreePath: string;
+    workspaceRootPath?: string;
+  }) => ipcRenderer.invoke("worktree:remove", payload),
   getWorktreeEnvironment: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:getWorktreeEnvironment", workspaceId),
   saveWorktreeEnvironment: (payload: {

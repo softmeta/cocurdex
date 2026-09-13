@@ -23,6 +23,7 @@ import {
   type MessageRecord,
   mergeUsageRecords,
   type SessionRecord,
+  workspacePathsEqual,
 } from "@cocurdex/shared";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
 
@@ -303,8 +304,21 @@ export class AgentRuntimeManager {
     persistence: RuntimePersistence,
   ): SessionRuntime {
     const existingRuntime = this.sessionRuntimes.get(payload.session.id);
+    const workspaceRootPaths = payload.workspaceRootPaths ?? [
+      payload.workspaceRootPath,
+    ];
+    const rootsUnchanged =
+      existingRuntime &&
+      workspacePathsEqual(
+        existingRuntime.workspaceRootPath,
+        payload.workspaceRootPath,
+      ) &&
+      existingRuntime.workspaceRootPaths.length === workspaceRootPaths.length &&
+      existingRuntime.workspaceRootPaths.every((rootPath, index) =>
+        workspacePathsEqual(rootPath, workspaceRootPaths[index] ?? ""),
+      );
 
-    if (existingRuntime) {
+    if (existingRuntime && rootsUnchanged) {
       // Replace the session reference instead of mutating it: callers and the
       // UI may hold onto the old object and rely on referential immutability.
       const updated: SessionRuntime = {
@@ -313,6 +327,19 @@ export class AgentRuntimeManager {
       };
       this.sessionRuntimes.set(payload.session.id, updated);
       return updated;
+    }
+
+    if (existingRuntime) {
+      this.sessionRuntimes.delete(payload.session.id);
+      this.denyPendingPermissionsForSession(payload.session.id);
+      this.cancelPendingQuestionsForSession(payload.session.id);
+      this.abandonPendingPlanApprovalsForSession(payload.session.id);
+      const stale = existingRuntime.runtime;
+      void Promise.resolve()
+        .then(() => stale.stop())
+        .catch(() => undefined)
+        .then(() => stale.dispose())
+        .catch(() => undefined);
     }
 
     const adapter = this.createAdapter(payload.session.agentType);
@@ -350,9 +377,7 @@ export class AgentRuntimeManager {
     const nextRuntime: SessionRuntime = {
       session: sessionCopy,
       workspaceRootPath: payload.workspaceRootPath,
-      workspaceRootPaths: payload.workspaceRootPaths ?? [
-        payload.workspaceRootPath,
-      ],
+      workspaceRootPaths,
       runtime: createdRuntime,
     };
 

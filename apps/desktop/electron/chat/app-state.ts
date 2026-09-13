@@ -80,9 +80,11 @@ export async function readAdapterRateLimits(agentIds: AgentId[]) {
   return requestDaemon("agent.rateLimits.read", { agentIds }, daemonOptions());
 }
 
-export async function saveWorkspace(workspace: WorkspaceRecord) {
+export async function saveWorkspace(
+  workspace: WorkspaceRecord,
+): Promise<WorkspaceRecord> {
   await daemonReady;
-  await requestDaemon("workspace.save", { workspace }, daemonOptions());
+  return requestDaemon("workspace.save", { workspace }, daemonOptions());
 }
 
 export async function listWorkspaces(): Promise<WorkspaceRecord[]> {

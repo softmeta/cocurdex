@@ -52,6 +52,7 @@ import {
   validateSessionConfiguration,
   validateSessionId,
   validateSubmitPreviousMessageCommand,
+  workspacePathsEqual,
 } from "@cocurdex/shared";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
@@ -88,6 +89,7 @@ import {
   listManagedWorktrees,
   loadWorktreeSettings,
   removeManagedWorktree,
+  resolveWorktreeRepoRootPath,
   runWorktreeCleanup,
   saveWorktreeSettings,
 } from "./worktree-management";
@@ -324,8 +326,17 @@ export class CocurdexDaemonService {
     return this.shutdownPromise;
   }
 
-  bootstrap(): Promise<AppBootstrapData> {
-    return this.state.bootstrap();
+  async bootstrap(): Promise<AppBootstrapData> {
+    const data = await this.state.bootstrap();
+    return {
+      ...data,
+      workspaces: data.workspaces.map((workspace) => ({
+        ...workspace,
+        missingRootPaths: workspace.rootPaths.filter(
+          (rootPath) => !isExistingDirectory(rootPath),
+        ),
+      })),
+    };
   }
 
   async listAgents() {
@@ -353,8 +364,8 @@ export class CocurdexDaemonService {
     const workspaces = await this.state.listWorkspaces();
     return workspaces.map((workspace) => ({
       ...workspace,
-      available: workspace.rootPaths.every((rootPath) =>
-        isExistingDirectory(rootPath),
+      missingRootPaths: workspace.rootPaths.filter(
+        (rootPath) => !isExistingDirectory(rootPath),
       ),
     }));
   }
@@ -377,9 +388,29 @@ export class CocurdexDaemonService {
     if (rootPaths.length === 0) {
       throw new Error("Workspace requires at least one source folder");
     }
+    const others = (await this.state.listWorkspaces()).filter(
+      (candidate) => candidate.id !== workspace.id,
+    );
+    for (const rootPath of rootPaths) {
+      const conflict = others.find((candidate) =>
+        candidate.rootPaths.some((owned) =>
+          workspacePathsEqual(owned, rootPath),
+        ),
+      );
+      if (conflict) {
+        throw new Error(
+          `Folder ${rootPath} already belongs to project "${conflict.name}"`,
+        );
+      }
+    }
     const normalized = { ...workspace, rootPaths };
     await this.state.saveWorkspace(normalized);
-    return normalized;
+    return {
+      ...normalized,
+      missingRootPaths: normalized.rootPaths.filter(
+        (rootPath) => !isExistingDirectory(rootPath),
+      ),
+    };
   }
 
   async getWorktreeEnvironment(
@@ -458,12 +489,17 @@ export class CocurdexDaemonService {
     });
   }
 
-  async removeWorktree(input: { workspaceId: string; worktreePath: string }) {
+  async removeWorktree(input: {
+    workspaceId: string;
+    worktreePath: string;
+    workspaceRootPath?: string;
+  }) {
     return removeManagedWorktree({
       state: this.state,
       userDataPath: this.userDataPath,
       workspaceId: input.workspaceId,
       worktreePath: input.worktreePath,
+      workspaceRootPath: input.workspaceRootPath,
       runCleanup: async (worktreePath) => {
         try {
           await runWorktreeCleanup({
@@ -1492,8 +1528,12 @@ export class CocurdexDaemonService {
     }
 
     const settings = await loadWorktreeSettings(this.state, this.userDataPath);
+    const repoRootPath = await resolveWorktreeRepoRootPath(
+      workspace,
+      worktreePath,
+    );
     await removeAppManagedWorktree({
-      repoRootPath: primaryWorkspaceRootPath(workspace),
+      repoRootPath,
       worktreePath,
       userDataPath: this.userDataPath,
       worktreeRootPath: settings.rootPath,

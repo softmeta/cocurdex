@@ -9,6 +9,7 @@ import {
   WORKTREE_SETTING_KEY,
   type WorktreeSettings,
   type WorktreeSettingsSnapshot,
+  workspacePathsEqual,
 } from "@cocurdex/shared";
 import { addGitWorktree, listGitWorktrees } from "./git-worktree";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
@@ -110,11 +111,41 @@ export async function createManagedWorktree(input: {
   return created;
 }
 
+export async function resolveWorktreeRepoRootPath(
+  workspace: WorkspaceRecord,
+  worktreePath: string,
+  explicitRootPath?: string,
+): Promise<string> {
+  if (explicitRootPath) {
+    const owned = workspace.rootPaths.find((rootPath) =>
+      workspacePathsEqual(rootPath, explicitRootPath),
+    );
+    if (!owned) {
+      throw new Error(
+        `Folder ${explicitRootPath} does not belong to this project.`,
+      );
+    }
+    return owned;
+  }
+  for (const rootPath of workspace.rootPaths) {
+    const worktrees = await listGitWorktrees(rootPath);
+    if (
+      worktrees.some((worktree) =>
+        workspacePathsEqual(worktree.path, worktreePath),
+      )
+    ) {
+      return rootPath;
+    }
+  }
+  return primaryWorkspaceRootPath(workspace);
+}
+
 export async function removeManagedWorktree(input: {
   state: DaemonState;
   userDataPath: string;
   workspaceId: string;
   worktreePath: string;
+  workspaceRootPath?: string;
   runCleanup(worktreePath: string): Promise<void>;
 }): Promise<{ removed: boolean }> {
   const workspace = await requireWorkspace(input.state, input.workspaceId);
@@ -146,8 +177,13 @@ export async function removeManagedWorktree(input: {
   }
 
   await input.runCleanup(input.worktreePath);
+  const repoRootPath = await resolveWorktreeRepoRootPath(
+    workspace,
+    input.worktreePath,
+    input.workspaceRootPath,
+  );
   const removed = await removeAppManagedWorktree({
-    repoRootPath: primaryWorkspaceRootPath(workspace),
+    repoRootPath,
     worktreePath: input.worktreePath,
     userDataPath: input.userDataPath,
     worktreeRootPath: settings.rootPath,

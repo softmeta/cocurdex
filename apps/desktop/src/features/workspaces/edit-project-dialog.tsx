@@ -27,7 +27,7 @@ interface EditProjectDialogProps {
   onSave(
     workspaceId: string,
     update: { name: string; rootPaths: string[] },
-  ): void;
+  ): Promise<void>;
 }
 
 export function EditProjectDialog({
@@ -65,11 +65,13 @@ function EditProjectForm({
   onSave(
     workspaceId: string,
     update: { name: string; rootPaths: string[] },
-  ): void;
+  ): Promise<void>;
 }) {
   const { t } = useTranslation("sessions");
   const [name, setName] = useState(workspace.name);
   const [rootPaths, setRootPaths] = useState<string[]>(workspace.rootPaths);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleAddFolder = async () => {
     const result = await desktopApi.openWorkspace();
@@ -92,7 +94,19 @@ function EditProjectForm({
     ]);
   };
 
-  const canSave = rootPaths.length > 0;
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(workspace.id, { name: name.trim(), rootPaths });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canSave = rootPaths.length > 0 && !saving;
 
   return (
     <>
@@ -167,6 +181,11 @@ function EditProjectForm({
             {t("workspace.editAddFolder")}
           </Button>
         </div>
+        {saveError ? (
+          <Text size="meta" tone="destructive">
+            {saveError}
+          </Text>
+        ) : null}
       </div>
       <DialogFooter className="sm:justify-between">
         <Button
@@ -183,9 +202,7 @@ function EditProjectForm({
           <Button
             disabled={!canSave}
             type="button"
-            onClick={() =>
-              onSave(workspace.id, { name: name.trim(), rootPaths })
-            }
+            onClick={() => void handleSave()}
           >
             {t("workspace.editSave")}
           </Button>

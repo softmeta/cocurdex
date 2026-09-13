@@ -170,6 +170,7 @@ export const schemas = {
   worktreeRemove: z.object({
     workspaceId: idSchema,
     worktreePath: filesystemPathSchema,
+    workspaceRootPath: filesystemPathSchema.optional(),
   }),
   // Diff scope for the git panel. Ref/commit strings are git revisions (branch
   // names, tags, hashes) — not filesystem paths — so they stay free of path

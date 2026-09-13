@@ -941,7 +941,12 @@ export function CenterPanel({
   const handleRelocateWorkspace = async (workspaceId: string) => {
     const result = await desktopApi.openWorkspace();
     if (result.canceled || result.filePaths.length === 0) return;
-    relocateWorkspace(workspaceId, result.filePaths[0]);
+    try {
+      await relocateWorkspace(workspaceId, result.filePaths[0]);
+    } catch (error) {
+      console.error("[Workspaces] relocate failed", error);
+      return;
+    }
     selectSession(null);
   };
 

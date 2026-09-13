@@ -250,7 +250,7 @@ export interface WorkspaceRecord {
   updatedAt: string;
   lastOpenedAt: string;
   sortOrder: number;
-  available?: boolean;
+  missingRootPaths?: string[];
 }
 
 export interface SessionRecord {

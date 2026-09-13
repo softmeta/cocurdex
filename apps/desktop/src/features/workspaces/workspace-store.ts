@@ -222,25 +222,38 @@ export const reorderWorkspacesAtom = atom(
 
 export const relocateWorkspaceAtom = atom(
   null,
-  (get, set, workspaceId: string, rootPath: string) => {
+  async (get, set, workspaceId: string, rootPath: string) => {
     const normalized = normalizeWorkspaceRootPath(rootPath);
-    const current = get(workspacesAtom);
-    const target = current.find((workspace) => workspace.id === workspaceId);
+    const target = get(workspacesAtom).find(
+      (workspace) => workspace.id === workspaceId,
+    );
     if (!target) {
       return;
     }
 
-    const relocated: WorkspaceRecord = {
+    const missingRootPath = target.missingRootPaths?.[0];
+    const replaceIndex = missingRootPath
+      ? Math.max(
+          target.rootPaths.findIndex((candidate) =>
+            workspacePathsEqual(candidate, missingRootPath),
+          ),
+          0,
+        )
+      : 0;
+    const rootPaths = target.rootPaths.map((candidate, index) =>
+      index === replaceIndex ? normalized : candidate,
+    );
+    const saved = await desktopApi.saveWorkspace({
       ...target,
-      rootPaths: [normalized, ...target.rootPaths.slice(1)],
-      name: workspaceNameFromPath(normalized),
+      rootPaths,
+      name:
+        replaceIndex === 0 ? workspaceNameFromPath(normalized) : target.name,
       updatedAt: new Date().toISOString(),
-      available: true,
-    };
+    });
     set(
       workspacesAtom,
-      current.map((workspace) =>
-        workspace.id === workspaceId ? relocated : workspace,
+      get(workspacesAtom).map((workspace) =>
+        workspace.id === workspaceId ? saved : workspace,
       ),
     );
     set(selectWorkspaceAtom, workspaceId);
@@ -249,14 +262,15 @@ export const relocateWorkspaceAtom = atom(
 
 export const updateWorkspaceAtom = atom(
   null,
-  (
+  async (
     get,
     set,
     workspaceId: string,
     update: { name?: string; rootPaths?: string[] },
   ) => {
-    const current = get(workspacesAtom);
-    const target = current.find((workspace) => workspace.id === workspaceId);
+    const target = get(workspacesAtom).find(
+      (workspace) => workspace.id === workspaceId,
+    );
     if (!target) {
       return;
     }
@@ -268,19 +282,18 @@ export const updateWorkspaceAtom = atom(
       return;
     }
 
-    const updated: WorkspaceRecord = {
+    const saved = await desktopApi.saveWorkspace({
       ...target,
       name: update.name?.trim() || target.name,
       rootPaths,
       updatedAt: new Date().toISOString(),
-    };
+    });
     set(
       workspacesAtom,
-      current.map((workspace) =>
-        workspace.id === workspaceId ? updated : workspace,
+      get(workspacesAtom).map((workspace) =>
+        workspace.id === workspaceId ? saved : workspace,
       ),
     );
-    persistWorkspaceOpened(updated);
   },
 );
 

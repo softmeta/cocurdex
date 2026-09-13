@@ -8,7 +8,10 @@ import type {
   WorkflowAttemptRecord,
   WorkflowAttemptRuntimeIdentity,
 } from "@cocurdex/shared";
-import { getFallbackAgentPermissionModes } from "@cocurdex/shared";
+import {
+  getFallbackAgentPermissionModes,
+  normalizeWorkspaceRootPaths,
+} from "@cocurdex/shared";
 import type { ProviderCredentials } from "../provider-credentials";
 import type { AgentRuntimeManager, RuntimePersistence } from "../runtime";
 import type { DaemonState } from "../state";
@@ -192,6 +195,14 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
     await this.state.saveUserMessage(userMessage);
     const history = await this.state.listMessagesBySessionId(sessionId);
 
+    const workspace = (await this.state.listWorkspaces()).find(
+      (candidate) => candidate.id === input.workspaceId,
+    );
+    const workspaceRootPaths = normalizeWorkspaceRootPaths([
+      ...(workspace?.rootPaths ?? []),
+      input.workspaceRootPath,
+    ]);
+
     const cancel = () => {
       void this.runtime.cancelSessionTurn(sessionId);
     };
@@ -201,6 +212,7 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
         {
           session,
           workspaceRootPath: input.workspaceRootPath,
+          workspaceRootPaths,
           messageId: userMessage.id,
           createdAt: userMessage.createdAt,
           content: userMessage.content,

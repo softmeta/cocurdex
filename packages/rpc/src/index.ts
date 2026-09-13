@@ -171,6 +171,7 @@ export type DaemonRequestPayloadByMethod = {
   "worktree.remove": {
     workspaceId: string;
     worktreePath: string;
+    workspaceRootPath?: string;
   };
   "session.list": undefined;
   "session.snapshot": { sessionId: string };

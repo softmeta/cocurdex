@@ -124,6 +124,7 @@ export function WorktreeSettingsPanel() {
       await desktopApi.removeWorktree({
         workspaceId: worktree.workspaceId,
         worktreePath: worktree.path,
+        workspaceRootPath: worktree.workspaceRootPath,
       });
       await loadInventory();
     } catch (error) {

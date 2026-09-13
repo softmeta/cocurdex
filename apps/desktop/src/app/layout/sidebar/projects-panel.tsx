@@ -152,8 +152,8 @@ export function ProjectsPanel({
             setEditingWorkspaceId(null);
             onRemoveWorkspace(workspaceId);
           }}
-          onSave={(workspaceId, update) => {
-            updateWorkspace(workspaceId, update);
+          onSave={async (workspaceId, update) => {
+            await updateWorkspace(workspaceId, update);
             setEditingWorkspaceId(null);
           }}
           open={editingWorkspace !== undefined}

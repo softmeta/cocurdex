@@ -10,7 +10,11 @@ export function normalizeWorkspaceRootPath(rootPath: string): string {
   if (rootPath === "/" || rootPath === "") {
     return rootPath || "/";
   }
-  return rootPath.replace(/[\\/]+$/, "");
+  let end = rootPath.length;
+  while (end > 0 && (rootPath[end - 1] === "/" || rootPath[end - 1] === "\\")) {
+    end -= 1;
+  }
+  return rootPath.slice(0, end);
 }
 
 export function workspacePathsEqual(left: string, right: string): boolean {

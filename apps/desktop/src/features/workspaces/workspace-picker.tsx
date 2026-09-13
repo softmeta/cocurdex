@@ -72,7 +72,7 @@ export function WorkspacePicker({
   const options = useMemo(
     () => [
       ...recentWorkspaces.map((workspace) => {
-        const missing = workspace.available === false;
+        const missing = (workspace.missingRootPaths?.length ?? 0) > 0;
         return {
           value: workspace.id,
           label: compactWorkspacePath(primaryWorkspaceRootPath(workspace)),
@@ -153,7 +153,7 @@ export function WorkspacePicker({
         const selected = recentWorkspaces.find(
           (workspace) => workspace.id === next,
         );
-        if (selected?.available === false) {
+        if ((selected?.missingRootPaths?.length ?? 0) > 0) {
           onRelocateWorkspace?.(next);
           return;
         }

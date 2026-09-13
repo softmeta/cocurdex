@@ -440,7 +440,7 @@ export interface DesktopApi {
     agentIds: AgentId[],
   ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;
   listWorkspaces(): Promise<WorkspaceRecord[]>;
-  saveWorkspace(workspace: WorkspaceRecord): Promise<void>;
+  saveWorkspace(workspace: WorkspaceRecord): Promise<WorkspaceRecord>;
   deleteWorkspace(workspaceId: string): Promise<void>;
   openWorkspaceInFileManager(rootPath: string): Promise<void>;
   // Reveal a specific file or directory in the OS file manager, highlighting it
@@ -475,6 +475,7 @@ export interface DesktopApi {
   removeWorktree(payload: {
     workspaceId: string;
     worktreePath: string;
+    workspaceRootPath?: string;
   }): Promise<{ removed: boolean }>;
   getWorktreeEnvironment(
     workspaceId: string,
