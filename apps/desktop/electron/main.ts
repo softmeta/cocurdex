@@ -10,6 +10,7 @@ import type {
   EditorViewRecord,
   RefineSessionTitlePayload,
   SendSessionCommand,
+  SessionConfiguration,
   SubmitPreviousMessageCommand,
   UpdateSessionTitlePayload,
   WorkspaceRecord,
@@ -718,11 +719,25 @@ function registerSessionHandlers() {
   ipcMain.handle("task:list", async () =>
     requestDaemon("session.list", await chatDaemonOptions()),
   );
-  ipcMain.handle("task:snapshot", async (_event, sessionId: string) =>
-    requestDaemon("session.snapshot", { sessionId }, await chatDaemonOptions()),
+  registerHandler(
+    ipcMain,
+    "task:snapshot",
+    schemas.sessionId,
+    async (_event, sessionId) =>
+      requestDaemon(
+        "session.snapshot",
+        { sessionId },
+        await chatDaemonOptions(),
+      ),
   );
-  ipcMain.handle("task:configure", (_event, input) =>
-    requireDaemonRuntimeClient().saveSessionConfiguration(input),
+  registerHandler(
+    ipcMain,
+    "task:configure",
+    schemas.sessionConfigure,
+    async (_event, input) =>
+      requireDaemonRuntimeClient().saveSessionConfiguration(
+        input as SessionConfiguration,
+      ),
   );
   ipcMain.handle("task:send", async (_event, command: SendSessionCommand) => {
     validateSendSessionCommand(command);
@@ -770,9 +785,11 @@ function registerSessionHandlers() {
       );
     },
   );
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "task:checkpointStatus",
-    async (_event, sessionId: string, messageId: string) =>
+    schemas.checkpointStatus,
+    async (_event, sessionId, messageId) =>
       requestDaemon(
         "session.checkpointStatus",
         { sessionId, messageId },

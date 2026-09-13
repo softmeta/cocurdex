@@ -1307,8 +1307,7 @@ export class CocurdexDaemonService {
       const message =
         error instanceof Error ? error.message : "Unknown queued input error";
       this.runtime.emitAgentEvent({ type: "error", sessionId, message });
-      this.queuedFollowUps.delete(sessionId);
-      return false;
+      return this.dispatchNextQueuedInput(sessionId);
     }
   }
 

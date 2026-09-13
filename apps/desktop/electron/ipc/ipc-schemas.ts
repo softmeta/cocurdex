@@ -241,6 +241,10 @@ export const schemas = {
     sessionId: idSchema,
     messageId: idSchema,
   }),
+  sessionConfigure: z
+    .object({ id: idSchema, workspaceId: idSchema })
+    .passthrough(),
+  checkpointStatus: z.tuple([idSchema, idSchema]),
   undoTurnChanges: z.object({
     sessionId: idSchema,
     messageId: idSchema,
