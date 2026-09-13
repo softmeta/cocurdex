@@ -54,6 +54,7 @@ import {
 import {
   archiveSession,
   bootstrapAppState,
+  chatDaemonOptions,
   deleteAgentRole,
   deleteWorkspace,
   generateSessionTitle,
@@ -714,9 +715,11 @@ function registerSessionHandlers() {
     async (_event, payload) =>
       requireDaemonRuntimeClient().getTurnChangeDiff(payload),
   );
-  ipcMain.handle("task:list", () => requestDaemon("session.list"));
-  ipcMain.handle("task:snapshot", (_event, sessionId: string) =>
-    requestDaemon("session.snapshot", { sessionId }),
+  ipcMain.handle("task:list", async () =>
+    requestDaemon("session.list", await chatDaemonOptions()),
+  );
+  ipcMain.handle("task:snapshot", async (_event, sessionId: string) =>
+    requestDaemon("session.snapshot", { sessionId }, await chatDaemonOptions()),
   );
   ipcMain.handle("task:configure", (_event, input) =>
     requireDaemonRuntimeClient().saveSessionConfiguration(input),
@@ -760,13 +763,21 @@ function registerSessionHandlers() {
     "task:resubmit",
     async (_event, command: SubmitPreviousMessageCommand) => {
       validateSubmitPreviousMessageCommand(command);
-      return requestDaemon("session.resubmit", command);
+      return requestDaemon(
+        "session.resubmit",
+        command,
+        await chatDaemonOptions(),
+      );
     },
   );
   ipcMain.handle(
     "task:checkpointStatus",
-    (_event, sessionId: string, messageId: string) =>
-      requestDaemon("session.checkpointStatus", { sessionId, messageId }),
+    async (_event, sessionId: string, messageId: string) =>
+      requestDaemon(
+        "session.checkpointStatus",
+        { sessionId, messageId },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,

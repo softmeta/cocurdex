@@ -1029,6 +1029,7 @@ export class CocurdexDaemonService {
       await this.ensureAgentAvailable(payload.session.agentType);
       payload = await this.refreshSessionWorkingPath(payload);
       userMessage = this.createUserMessage(payload);
+      await this.captureSessionCheckpoint(payload, userMessage);
       await this.state.saveUserMessage(userMessage);
       persistence = {
         ...(await this.createRuntimePersistence(payload.session.id)),
