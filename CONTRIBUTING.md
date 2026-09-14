@@ -38,7 +38,7 @@ agreement with softmeta LLC takes precedence over these terms.
 
 ## Local development
 
-You need Node.js 22 and the pnpm version pinned by this repository. macOS is
+You need Node.js 24 and the pnpm version pinned by this repository. macOS is
 the primary platform; Windows and Linux follow.
 
 ```bash
