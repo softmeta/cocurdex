@@ -9,6 +9,8 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "worktree.remove": 15 * 60_000,
   "session.generateTitle": 2 * 60_000,
   "git.generateCommitMessage": 2 * 60_000,
+  "git.commit": 2 * 60_000,
+  "git.push": 10 * 60_000,
   "session.undoTurnChanges": 5 * 60_000,
   "session.send": 2 * 60_000,
   "session.resumeQueued": 2 * 60_000,

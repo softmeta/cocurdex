@@ -17,6 +17,7 @@ import {
   createWebSocketTransport,
 } from "@cocurdex/rpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { WebSocket as NodeWebSocket } from "ws";
 import { requestDaemon } from "./client";
 import {
   getDaemonMetadataPath,
@@ -69,6 +70,52 @@ describe("startDaemonServer", () => {
         expect(onEvent).toHaveBeenCalledWith({ type: "test" }),
       );
       subscription.close();
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("keeps serving after a malformed WebSocket frame", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-ws-bad-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "ws-runtime",
+      token: "ws-token",
+      userDataPath,
+      webSocketPort: 0,
+    });
+    try {
+      const url = daemon.webSocketUrl as string;
+      const raw = new NodeWebSocket(url);
+      await once(raw, "open");
+      raw.send("not-json");
+      await once(raw, "close");
+      const client = createDaemonRpcClient(
+        createWebSocketTransport(url),
+        "ws-token",
+      );
+      await expect(
+        client.request("daemon.status", undefined),
+      ).resolves.toMatchObject({ runtimeFingerprint: "ws-runtime" });
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("rejects browser WebSocket connections from a non-loopback origin", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-ws-origin-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "ws-runtime",
+      token: "ws-token",
+      userDataPath,
+      webSocketPort: 0,
+    });
+    try {
+      const raw = new NodeWebSocket(daemon.webSocketUrl as string, {
+        origin: "https://evil.example",
+      });
+      raw.once("error", () => undefined);
+      const [, response] = await once(raw, "unexpected-response");
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
     } finally {
       await daemon.close();
     }

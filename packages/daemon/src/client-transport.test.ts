@@ -125,6 +125,9 @@ describe("daemon request transport", () => {
     expect(daemonRequestTimeout("workspace.runWorktreeSetup")).toBeGreaterThan(
       10 * 60_000,
     );
+    expect(daemonRequestTimeout("git.push")).toBeGreaterThan(
+      daemonRequestTimeout("daemon.status"),
+    );
     expect(daemonRequestTimeout("daemon.status")).toBeLessThan(
       daemonRequestTimeout("session.send"),
     );

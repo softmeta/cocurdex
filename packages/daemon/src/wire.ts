@@ -39,6 +39,27 @@ function encodeWireMessage(message: unknown) {
   return `${JSON.stringify(message)}\n`;
 }
 
+function isAllowedWebSocketOrigin(origin: string | undefined) {
+  if (origin === undefined || origin.length === 0) return true;
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (url.protocol === "file:") return true;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  return url.hostname === "127.0.0.1" || url.hostname === "localhost";
+}
+
+function parseWebSocketJsonFrame(data: { toString(): string }) {
+  try {
+    return JSON.parse(data.toString()) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
 function readJsonLines(
   socket: net.Socket,
   onMessage: (message: unknown) => void,
@@ -149,7 +170,11 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
   let webSocketServer: WebSocketServer | undefined;
   const listenWebSocket = (port: number) =>
     new Promise<string>((resolve, reject) => {
-      const wss = new WebSocketServer({ host: "127.0.0.1", port });
+      const wss = new WebSocketServer({
+        host: "127.0.0.1",
+        port,
+        verifyClient: ({ origin }) => isAllowedWebSocketOrigin(origin),
+      });
       webSocketServer = wss;
       wss.once("error", reject);
       wss.on("connection", (socket) => {
@@ -161,7 +186,12 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         });
         if (!onMessage) return;
         socket.on("message", (data) => {
-          onMessage(JSON.parse(data.toString()) as unknown);
+          const message = parseWebSocketJsonFrame(data);
+          if (message === undefined) {
+            socket.terminate();
+            return;
+          }
+          onMessage(message);
         });
       });
       wss.once("listening", () => {
