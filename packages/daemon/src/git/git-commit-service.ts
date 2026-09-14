@@ -1,4 +1,4 @@
-import { generateCommitMessageFromConfiguredModel } from "../provider/commit-message-generation";
+import type { GitCommitResult, GitPushResult } from "@cocurdex/shared";
 import { createGitClient } from "./git-client";
 
 export interface CommitGitChangesOptions {
@@ -11,42 +11,17 @@ export interface CommitGitChangesOptions {
   includeUnstaged: boolean;
 }
 
-export interface CommitGitChangesResult {
-  commitHash: string;
-  message: string;
-  // True when the subject was produced by the configured model, not the user.
-  generatedMessage: boolean;
-}
-
-export interface PushGitBranchResult {
-  branch: string;
-  remote: string;
-}
-
-export async function generateGitCommitMessage(
-  rootPath: string,
-  options: { includeUnstaged: boolean },
-): Promise<string> {
-  return generateCommitMessageFromConfiguredModel(rootPath, options);
-}
-
 // Commit staged changes (optionally after staging the whole worktree). When
 // the message is blank, require a one-shot model completion. Surfaces failures
 // as thrown Errors so the renderer can toast them.
 export async function commitGitChanges(
   rootPath: string,
   options: CommitGitChangesOptions,
-): Promise<CommitGitChangesResult> {
+): Promise<GitCommitResult> {
   const git = createGitClient(rootPath);
-  const userMessage = options.message.trim();
-  let message = userMessage;
-  let generatedMessage = false;
-
+  const message = options.message.trim();
   if (message.length === 0) {
-    message = await generateGitCommitMessage(rootPath, {
-      includeUnstaged: options.includeUnstaged,
-    });
-    generatedMessage = true;
+    throw new Error("Commit message is required");
   }
 
   // Keep model generation outside the real-index transaction. The temporary
@@ -69,7 +44,7 @@ export async function commitGitChanges(
       throw new Error("Nothing to commit");
     }
 
-    return { commitHash, message, generatedMessage };
+    return { commitHash, message };
   } catch (error) {
     if (originalIndexTree) {
       try {
@@ -87,9 +62,7 @@ export async function commitGitChanges(
 
 // Push the current branch to its upstream remote, or set upstream on `origin`
 // when no tracking branch is configured yet.
-export async function pushGitBranch(
-  rootPath: string,
-): Promise<PushGitBranchResult> {
+export async function pushGitBranch(rootPath: string): Promise<GitPushResult> {
   const git = createGitClient(rootPath);
   const status = await git.status();
   const branch = status.current?.trim() ?? "";

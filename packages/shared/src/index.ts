@@ -13,6 +13,7 @@ export type {
 export * from "./contracts";
 export * from "./conversation";
 export * from "./data-events";
+export * from "./git";
 export * from "./git-worktree";
 export * from "./issues";
 export * from "./logging";

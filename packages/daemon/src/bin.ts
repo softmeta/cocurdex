@@ -6,6 +6,11 @@ import { startDaemonServer } from "./wire";
 const token =
   process.env.COCURDEX_DAEMON_TOKEN ?? randomBytes(32).toString("hex");
 const ownerFd = Number.parseInt(process.env.COCURDEX_DAEMON_OWNER_FD ?? "", 10);
+const webSocketPortValue = process.env.COCURDEX_DAEMON_WS_PORT;
+const webSocketPort =
+  webSocketPortValue === undefined
+    ? undefined
+    : Number.parseInt(webSocketPortValue, 10);
 const runtimeFingerprint =
   process.env.COCURDEX_DAEMON_RUNTIME_FINGERPRINT ?? "source-runtime";
 let closeServer: (() => Promise<void>) | null = null;
@@ -89,6 +94,7 @@ if (Number.isInteger(ownerFd)) {
 void startDaemonServer({
   runtimeFingerprint,
   token,
+  webSocketPort,
   onIdleShutdown: () => process.exit(0),
 })
   .then((daemon) => {

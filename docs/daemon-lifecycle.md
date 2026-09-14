@@ -48,13 +48,33 @@ Run `pnpm --filter @cocurdex/daemon test`. Focused coverage lives in
 The tests cover cross-process exclusion, forced process termination, independent
 profiles, concurrent startup, failed publication cleanup, endpoint replacement,
 probe uncertainty, repeat bootstrap, and recovery without a bootstrap client.
+## Transports
+
+The wire protocol is newline-delimited JSON over the canonical Unix socket or
+Windows named pipe. `packages/rpc/src/client.ts` owns the transport-neutral
+client: request identity, timeouts, abort, subscription handshake and error
+mapping. `createSocketTransport` in `packages/daemon/src/client.ts` and
+`createWebSocketTransport` in the rpc package adapt it to local sockets and
+WebSocket connections respectively.
+
+`startDaemonServer({ webSocketPort })`, or `COCURDEX_DAEMON_WS_PORT` for the
+executable, additionally listens on `127.0.0.1` with one JSON message per
+WebSocket frame and the same token check. Browser `Origin` values other than
+loopback or `file:` are rejected at handshake. Malformed frames close that
+connection and do not shut down the process. The resolved URL is published as
+`webSocketUrl` in the daemon metadata. The listener is loopback only; remote
+access needs authentication and transport security beyond the local token.
+
 ## Request and subscription lifetime
 
 `client.ts` bounds requests from connection establishment through response. Errors,
 peer closure, local abort and timeout settle once and destroy the connection.
 `client-timeout.ts` defines method budgets: health checks are short, ordinary RPCs
-use 30 seconds, and worktree setup/create/remove allow 15 minutes to accommodate
-the existing 10-minute lifecycle scripts. Callers can provide a positive timeout.
+use 30 seconds, Git commit message generation and `git.commit` allow 2 minutes,
+`git.push` allows 10 minutes, and worktree setup/create/remove allow 15 minutes
+to accommodate the existing 10-minute lifecycle scripts. A timed-out mutation
+has an unknown outcome; the client must not retry it automatically. Callers can
+provide a positive timeout.
 Subscription deadlines apply only to the handshake, not the established stream.
 
 Timeout or disconnect does not prove that a mutation failed. The client does not

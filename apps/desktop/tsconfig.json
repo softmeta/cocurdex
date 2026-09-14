@@ -7,6 +7,7 @@
       "@/*": ["./src/*"],
       "@cocurdex/shared": ["../../packages/shared/src/index.ts"],
       "@cocurdex/rpc": ["../../packages/rpc/src/index.ts"],
+      "@cocurdex/rpc/client": ["../../packages/rpc/src/client.ts"],
       "@cocurdex/daemon": ["../../packages/daemon/src/index.ts"],
       "@cocurdex/daemon/client": ["../../packages/daemon/src/client.ts"],
       "@cocurdex/daemon/paths": ["../../packages/daemon/src/paths.ts"],

@@ -3,9 +3,9 @@ import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { DaemonMetadata } from "@cocurdex/rpc";
+import { daemonRequestTimeout } from "@cocurdex/rpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { requestDaemon, subscribeDaemonEvents } from "./client";
-import { daemonRequestTimeout } from "./client-timeout";
 import { getDaemonSocketPath } from "./paths";
 
 const cleanups: (() => Promise<void>)[] = [];
@@ -124,6 +124,9 @@ describe("daemon request transport", () => {
   it("gives setup operations a longer bounded budget", () => {
     expect(daemonRequestTimeout("workspace.runWorktreeSetup")).toBeGreaterThan(
       10 * 60_000,
+    );
+    expect(daemonRequestTimeout("git.push")).toBeGreaterThan(
+      daemonRequestTimeout("daemon.status"),
     );
     expect(daemonRequestTimeout("daemon.status")).toBeLessThan(
       daemonRequestTimeout("session.send"),

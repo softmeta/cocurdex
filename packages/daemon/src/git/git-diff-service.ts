@@ -1,6 +1,5 @@
 import { open, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { SimpleGit } from "simple-git";
 import type {
   GitBranchInfo,
   GitChangeKind,
@@ -13,7 +12,8 @@ import type {
   WorkspaceGitStatusEntry,
   WorkspaceGitStatusResult,
   WorkspaceGitTreeStatus,
-} from "@/lib/types";
+} from "@cocurdex/shared";
+import type { SimpleGit } from "simple-git";
 import { createGitClient } from "./git-client";
 
 // Cap for building an in-memory textual diff. A side larger than this is
