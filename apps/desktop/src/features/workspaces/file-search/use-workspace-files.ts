@@ -72,12 +72,23 @@ async function loadWorkspaceFiles(
   const promise = desktopApi
     .listWorkspaceFiles(rootPath)
     .then((files) => {
-      // A files-changed push may have superseded this request while it was in
-      // flight; only the current request may write the cache.
       if (inflight.get(rootPath) === promise) {
         cache.set(rootPath, { files, loadedAt: Date.now() });
+        failures.delete(rootPath);
+        clearRetryTimer(rootPath);
       }
       return files;
+    })
+    .catch((error: unknown) => {
+      if (inflight.get(rootPath) === promise) {
+        const delayMs = Math.min(
+          MAX_RETRY_MS,
+          (failures.get(rootPath)?.delayMs ?? INITIAL_RETRY_MS / 2) * 2,
+        );
+        failures.set(rootPath, { delayMs, retryAt: Date.now() + delayMs });
+        scheduleRetry(rootPath, delayMs);
+      }
+      throw error;
     })
     .finally(() => {
       if (inflight.get(rootPath) === promise) {
@@ -108,19 +119,10 @@ async function primeWorkspaceFiles(rootPath: string) {
     clearRetryTimer(rootPath);
     emit(rootPath, { files, status: "idle" });
   } catch {
-    if (inflight.has(rootPath)) {
-      return;
-    }
-    const delayMs = Math.min(
-      MAX_RETRY_MS,
-      (failures.get(rootPath)?.delayMs ?? INITIAL_RETRY_MS / 2) * 2,
-    );
-    failures.set(rootPath, { delayMs, retryAt: Date.now() + delayMs });
     emit(rootPath, {
       files: cache.get(rootPath)?.files ?? [],
       status: "error",
     });
-    scheduleRetry(rootPath, delayMs);
   }
 }
 

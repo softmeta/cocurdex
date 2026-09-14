@@ -61,10 +61,6 @@ async function listKnownWorkspaceScanRoots() {
 }
 
 export async function canScanWorkspaceRoot(rootPath: string) {
-  try {
-    const allowed = await listKnownWorkspaceScanRoots();
-    return isKnownWorkspaceScanRoot(rootPath, allowed, homedir());
-  } catch {
-    return false;
-  }
+  const allowed = await listKnownWorkspaceScanRoots();
+  return isKnownWorkspaceScanRoot(rootPath, allowed, homedir());
 }

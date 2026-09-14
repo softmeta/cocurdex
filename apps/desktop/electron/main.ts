@@ -378,14 +378,22 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "workspace:save",
     schemas.workspaceSave,
-    async (_event, workspace) =>
-      saveWorkspace(workspace as unknown as WorkspaceRecord),
+    async (_event, workspace) => {
+      const saved = await saveWorkspace(
+        workspace as unknown as WorkspaceRecord,
+      );
+      invalidateKnownWorkspaceScanRootsCache();
+      return saved;
+    },
   );
   registerHandler(
     ipcMain,
     "workspace:delete",
     schemas.workspaceId,
-    async (_event, workspaceId) => deleteWorkspace(workspaceId),
+    async (_event, workspaceId) => {
+      await deleteWorkspace(workspaceId);
+      invalidateKnownWorkspaceScanRootsCache();
+    },
   );
   // Reveals the workspace root in Finder/Explorer/Files. The directory on
   // disk is never modified — this is the read-only sibling to workspace:delete
@@ -517,10 +525,13 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "worktree:remove",
     schemas.worktreeRemove,
-    async (_event, payload) =>
-      requestDaemon("worktree.remove", payload, {
+    async (_event, payload) => {
+      const removed = await requestDaemon("worktree.remove", payload, {
         userDataPath: app.getPath("userData"),
-      }),
+      });
+      invalidateKnownWorkspaceScanRootsCache();
+      return removed;
+    },
   );
   registerHandler(
     ipcMain,

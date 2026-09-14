@@ -77,4 +77,25 @@ describe("useWorkspaceFiles", () => {
       expect(desktopApiMock.listWorkspaceFiles).toHaveBeenCalledTimes(2),
     );
   });
+
+  it("advances backoff once when several consumers share a failed listing", async () => {
+    desktopApiMock.listWorkspaceFiles.mockRejectedValue(
+      new Error("temporary failure"),
+    );
+
+    renderHook(() => useWorkspaceFiles("/repo"));
+    renderHook(() => useWorkspaceFiles("/repo"));
+    renderHook(() => useWorkspaceFiles("/repo"));
+    await waitFor(() =>
+      expect(desktopApiMock.listWorkspaceFiles).toHaveBeenCalledTimes(1),
+    );
+
+    desktopApiMock.listWorkspaceFiles.mockResolvedValueOnce([]);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    await waitFor(() =>
+      expect(desktopApiMock.listWorkspaceFiles).toHaveBeenCalledTimes(2),
+    );
+  });
 });
