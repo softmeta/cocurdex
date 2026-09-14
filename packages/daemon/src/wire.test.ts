@@ -85,10 +85,12 @@ describe("startDaemonServer", () => {
     });
     try {
       const url = daemon.webSocketUrl as string;
-      const raw = new NodeWebSocket(url);
-      await once(raw, "open");
-      raw.send("not-json");
-      await once(raw, "close");
+      for (const frame of ["not-json", "null", "[]"]) {
+        const raw = new NodeWebSocket(url);
+        await once(raw, "open");
+        raw.send(frame);
+        await once(raw, "close");
+      }
       const client = createDaemonRpcClient(
         createWebSocketTransport(url),
         "ws-token",

@@ -54,10 +54,18 @@ function isAllowedWebSocketOrigin(origin: string | undefined) {
 
 function parseWebSocketJsonFrame(data: { toString(): string }) {
   try {
-    return JSON.parse(data.toString()) as unknown;
+    const parsed = JSON.parse(data.toString()) as unknown;
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    ) {
+      return parsed;
+    }
   } catch {
     return undefined;
   }
+  return undefined;
 }
 
 function readJsonLines(
