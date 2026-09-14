@@ -13,9 +13,11 @@ import {
 
 const KNOWN_ROOTS_TTL_MS = 2_000;
 
+let cacheGeneration = 0;
 let knownRootsCache: { expiresAt: number; roots: string[] } | null = null;
 
 export function invalidateKnownWorkspaceScanRootsCache() {
+  cacheGeneration += 1;
   knownRootsCache = null;
 }
 
@@ -52,7 +54,11 @@ async function listKnownWorkspaceScanRoots() {
   if (knownRootsCache && Date.now() < knownRootsCache.expiresAt) {
     return knownRootsCache.roots;
   }
+  const generation = cacheGeneration;
   const roots = await loadKnownWorkspaceScanRoots();
+  if (generation !== cacheGeneration) {
+    return listKnownWorkspaceScanRoots();
+  }
   knownRootsCache = {
     expiresAt: Date.now() + KNOWN_ROOTS_TTL_MS,
     roots,
