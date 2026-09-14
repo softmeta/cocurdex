@@ -2,15 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { simpleGit } from "simple-git";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-const { generateCommitMessageMock } = vi.hoisted(() => ({
-  generateCommitMessageMock: vi.fn(),
-}));
-
-vi.mock("../provider/commit-message-generation", () => ({
-  generateCommitMessageFromConfiguredModel: generateCommitMessageMock,
-}));
+import { afterEach, describe, expect, it } from "vitest";
 
 import { commitGitChanges, pushGitBranch } from "./git-commit-service";
 
@@ -42,13 +34,6 @@ afterEach(async () => {
   );
 });
 
-beforeEach(() => {
-  generateCommitMessageMock.mockReset();
-  generateCommitMessageMock.mockRejectedValue(
-    new Error("No commit message model configured"),
-  );
-});
-
 describe("commitGitChanges", () => {
   it("commits staged changes only when includeUnstaged is false", async () => {
     const repositoryPath = await createRepositoryFixture();
@@ -57,16 +42,12 @@ describe("commitGitChanges", () => {
     await writeFile(path.join(repositoryPath, "unstaged.txt"), "unstaged\n");
     await git.add("staged.txt");
 
-    const { commitHash, generatedMessage } = await commitGitChanges(
-      repositoryPath,
-      {
-        message: "Stage only",
-        includeUnstaged: false,
-      },
-    );
+    const { commitHash } = await commitGitChanges(repositoryPath, {
+      message: "Stage only",
+      includeUnstaged: false,
+    });
 
     expect(commitHash.length).toBeGreaterThan(0);
-    expect(generatedMessage).toBe(false);
     const show = await git.show(["--name-only", "--pretty=format:", "HEAD"]);
     expect(show).toContain("staged.txt");
     expect(show).not.toContain("unstaged.txt");
@@ -88,75 +69,7 @@ describe("commitGitChanges", () => {
     expect(show).toContain("b.txt");
   });
 
-  it("preserves a generated title and unordered-list body", async () => {
-    const repositoryPath = await createRepositoryFixture();
-    const git = simpleGit(repositoryPath);
-    const generatedMessage =
-      "feat(git): generate detailed commits\n\n- Add a concise title\n- Summarize changes as bullets";
-    await writeFile(path.join(repositoryPath, "feature.ts"), "export {}\n");
-    await git.add("feature.ts");
-    generateCommitMessageMock.mockResolvedValue(generatedMessage);
-
-    await commitGitChanges(repositoryPath, {
-      message: "",
-      includeUnstaged: false,
-    });
-
-    const committedMessage = await git.raw(["log", "-1", "--format=%B"]);
-    expect(committedMessage.trim()).toBe(generatedMessage);
-  });
-
-  it("restores the previous index when an all-changes commit fails", async () => {
-    const repositoryPath = await createRepositoryFixture();
-    const git = simpleGit(repositoryPath);
-    await writeFile(path.join(repositoryPath, "staged.txt"), "staged\n");
-    await writeFile(path.join(repositoryPath, "unstaged.txt"), "unstaged\n");
-    await git.add("staged.txt");
-
-    await expect(
-      commitGitChanges(repositoryPath, {
-        message: "",
-        includeUnstaged: true,
-      }),
-    ).rejects.toThrow(/commit message model/i);
-
-    const stagedPaths = await git.diff(["--cached", "--name-only"]);
-    expect(stagedPaths).toContain("staged.txt");
-    expect(stagedPaths).not.toContain("unstaged.txt");
-    const unstagedPaths = await git.raw([
-      "ls-files",
-      "--others",
-      "--exclude-standard",
-    ]);
-    expect(unstagedPaths).toContain("unstaged.txt");
-  }, 15_000);
-
-  it("does not mutate the real index when message generation fails under an index lock", async () => {
-    const repositoryPath = await createRepositoryFixture();
-    const git = simpleGit(repositoryPath);
-    const indexLockPath = path.join(repositoryPath, ".git", "index.lock");
-    await writeFile(path.join(repositoryPath, "staged.txt"), "staged\n");
-    await writeFile(path.join(repositoryPath, "unstaged.txt"), "unstaged\n");
-    await git.add("staged.txt");
-    generateCommitMessageMock.mockImplementation(async () => {
-      await writeFile(indexLockPath, "");
-      throw new Error("Model returned an empty commit message");
-    });
-
-    await expect(
-      commitGitChanges(repositoryPath, {
-        message: "",
-        includeUnstaged: true,
-      }),
-    ).rejects.toThrow("Model returned an empty commit message");
-
-    await rm(indexLockPath, { force: true });
-    const stagedPaths = await git.diff(["--cached", "--name-only"]);
-    expect(stagedPaths).toContain("staged.txt");
-    expect(stagedPaths).not.toContain("unstaged.txt");
-  });
-
-  it("rejects blank message when no commit message model is configured", async () => {
+  it("rejects a blank message", async () => {
     const repositoryPath = await createRepositoryFixture();
     await writeFile(path.join(repositoryPath, "feature.ts"), "export {}\n");
     await simpleGit(repositoryPath).add("feature.ts");
@@ -166,7 +79,7 @@ describe("commitGitChanges", () => {
         message: "  ",
         includeUnstaged: false,
       }),
-    ).rejects.toThrow(/commit message model/i);
+    ).rejects.toThrow(/commit message is required/i);
   });
 
   it("rejects when there is nothing to commit", async () => {

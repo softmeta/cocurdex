@@ -12,7 +12,11 @@ import {
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+  createDaemonRpcClient,
+  createWebSocketTransport,
+} from "@cocurdex/rpc/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { requestDaemon } from "./client";
 import {
   getDaemonMetadataPath,
@@ -32,6 +36,43 @@ afterEach(async () => {
 });
 
 describe("startDaemonServer", () => {
+  it("serves the same RPC and event stream over a loopback WebSocket", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-ws-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "ws-runtime",
+      token: "ws-token",
+      userDataPath,
+      webSocketPort: 0,
+    });
+    try {
+      const metadata = JSON.parse(
+        await readFile(getDaemonMetadataPath(userDataPath), "utf8"),
+      ) as { webSocketUrl?: string };
+      expect(metadata.webSocketUrl).toBe(daemon.webSocketUrl);
+      expect(daemon.webSocketUrl).toMatch(/^ws:\/\/127\.0\.0\.1:\d+$/);
+      const transport = createWebSocketTransport(daemon.webSocketUrl as string);
+      await expect(
+        createDaemonRpcClient(transport, "wrong").request(
+          "daemon.status",
+          undefined,
+        ),
+      ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      const client = createDaemonRpcClient(transport, "ws-token");
+      await expect(
+        client.request("daemon.status", undefined),
+      ).resolves.toMatchObject({ runtimeFingerprint: "ws-runtime" });
+      const onEvent = vi.fn();
+      const subscription = await client.subscribe(onEvent);
+      daemon.service.events.emit("daemon.event", { type: "test" });
+      await vi.waitFor(() =>
+        expect(onEvent).toHaveBeenCalledWith({ type: "test" }),
+      );
+      subscription.close();
+    } finally {
+      await daemon.close();
+    }
+  });
   it("acknowledges editor view saves with a void result over real RPC", async () => {
     const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-void-"));
     temporaryDirectories.push(userDataPath);

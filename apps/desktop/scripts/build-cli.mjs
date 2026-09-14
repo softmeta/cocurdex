@@ -60,6 +60,7 @@ const alias = {
     "packages/agent-core/src/index.ts",
   ),
   "@cocurdex/db": path.join(repoRoot, "packages/db/src/index.ts"),
+  "@cocurdex/rpc/client": path.join(repoRoot, "packages/rpc/src/client.ts"),
   "@cocurdex/rpc": path.join(repoRoot, "packages/rpc/src/index.ts"),
   "@cocurdex/shared": path.join(repoRoot, "packages/shared/src/index.ts"),
 };

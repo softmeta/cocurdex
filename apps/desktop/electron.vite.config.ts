@@ -55,6 +55,10 @@ const alias = {
     __dirname,
     "../../packages/product-skills/src/index.ts",
   ),
+  "@cocurdex/rpc/client": path.resolve(
+    __dirname,
+    "../../packages/rpc/src/client.ts",
+  ),
   "@cocurdex/rpc": path.resolve(__dirname, "../../packages/rpc/src/index.ts"),
 };
 

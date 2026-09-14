@@ -20,10 +20,13 @@
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
     "@napi-rs/keyring": "^2.0.0",
-    "undici": "^8.10.0"
+    "simple-git": "^3.36.0",
+    "undici": "^8.10.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.8.1",
     "vitest": "^3.2.7"
   }

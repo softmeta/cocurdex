@@ -48,6 +48,21 @@ Run `pnpm --filter @cocurdex/daemon test`. Focused coverage lives in
 The tests cover cross-process exclusion, forced process termination, independent
 profiles, concurrent startup, failed publication cleanup, endpoint replacement,
 probe uncertainty, repeat bootstrap, and recovery without a bootstrap client.
+## Transports
+
+The wire protocol is newline-delimited JSON over the canonical Unix socket or
+Windows named pipe. `packages/rpc/src/client.ts` owns the transport-neutral
+client: request identity, timeouts, abort, subscription handshake and error
+mapping. `createSocketTransport` in `packages/daemon/src/client.ts` and
+`createWebSocketTransport` in the rpc package adapt it to local sockets and
+WebSocket connections respectively.
+
+`startDaemonServer({ webSocketPort })`, or `COCURDEX_DAEMON_WS_PORT` for the
+executable, additionally listens on `127.0.0.1` with one JSON message per
+WebSocket frame and the same token check. The resolved URL is published as
+`webSocketUrl` in the daemon metadata. The listener is loopback only; remote
+access needs authentication and transport security beyond the local token.
+
 ## Request and subscription lifetime
 
 `client.ts` bounds requests from connection establishment through response. Errors,

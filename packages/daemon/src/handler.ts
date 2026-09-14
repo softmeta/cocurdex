@@ -3,6 +3,19 @@ import type {
   DaemonRequest,
   DaemonResultByMethod,
 } from "@cocurdex/rpc";
+import {
+  checkoutGitBranch,
+  commitGitChanges,
+  discardGitFiles,
+  getWorkspaceDiff,
+  getWorkspaceGitStatus,
+  listGitBranches,
+  listGitCommits,
+  listGitWorktrees,
+  pushGitBranch,
+  stageGitFiles,
+  unstageGitFiles,
+} from "./git";
 import type { CocurdexDaemonService } from "./service";
 
 export function handleDaemonRequest<M extends DaemonMethod>(
@@ -282,6 +295,33 @@ export async function handleDaemonRequest(
       return service.commitMessageService.resolveModel();
     case "git.generateCommitMessage":
       return service.commitMessageService.generate(request.params);
+    case "git.listBranches":
+      return listGitBranches(request.params.rootPath);
+    case "git.checkoutBranch":
+      return checkoutGitBranch(request.params.rootPath, request.params.branch);
+    case "git.listWorktrees":
+      return listGitWorktrees(request.params.rootPath);
+    case "git.listCommits":
+      return listGitCommits(request.params.rootPath, {
+        limit: request.params.limit,
+      });
+    case "git.status":
+      return getWorkspaceGitStatus(request.params.rootPath);
+    case "git.diff":
+      return getWorkspaceDiff(request.params.rootPath, request.params.query);
+    case "git.stageFiles":
+      return stageGitFiles(request.params.rootPath, request.params.filePaths);
+    case "git.unstageFiles":
+      return unstageGitFiles(request.params.rootPath, request.params.filePaths);
+    case "git.discardFiles":
+      return discardGitFiles(request.params.rootPath, request.params.filePaths);
+    case "git.commit":
+      return commitGitChanges(request.params.rootPath, {
+        message: request.params.message,
+        includeUnstaged: request.params.includeUnstaged,
+      });
+    case "git.push":
+      return pushGitBranch(request.params.rootPath);
     case "provider.listModels":
       return service.providerService.listProviderModels(
         request.params.providerId,

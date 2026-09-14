@@ -33,6 +33,10 @@ import type {
   GetIssuePayload,
   GetNotePayload,
   GetToolCallResultInput,
+  GitBranchInfo,
+  GitCommitInfo,
+  GitCommitResult,
+  GitPushResult,
   GitWorktreeInfo,
   IssueRecord,
   LoadViewPayload,
@@ -83,13 +87,16 @@ import type {
   WorkflowDefinitionRecord,
   WorkflowGateDecisionRecord,
   WorkflowRunRecord,
+  WorkspaceGitDiffQuery,
+  WorkspaceGitDiffResult,
+  WorkspaceGitStatusResult,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
   WorktreeSettings,
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 21;
+export const DAEMON_PROTOCOL_VERSION = 22;
 
 export interface DaemonMetadata {
   pid: number;
@@ -98,6 +105,7 @@ export interface DaemonMetadata {
   socketPath: string;
   token: string;
   startedAt: string;
+  webSocketUrl?: string;
 }
 
 export interface DaemonStatus {
@@ -274,6 +282,17 @@ export type DaemonRequestPayloadByMethod = {
   };
   "git.commitMessageModel.resolve": undefined;
   "git.generateCommitMessage": GenerateGitCommitMessagePayload;
+  "git.listBranches": { rootPath: string };
+  "git.checkoutBranch": { rootPath: string; branch: string };
+  "git.listWorktrees": { rootPath: string };
+  "git.listCommits": { rootPath: string; limit?: number };
+  "git.status": { rootPath: string };
+  "git.diff": { rootPath: string; query?: WorkspaceGitDiffQuery };
+  "git.stageFiles": { rootPath: string; filePaths: string[] };
+  "git.unstageFiles": { rootPath: string; filePaths: string[] };
+  "git.discardFiles": { rootPath: string; filePaths: string[] };
+  "git.commit": { rootPath: string; message: string; includeUnstaged: boolean };
+  "git.push": { rootPath: string };
   "provider.listModels": { providerId?: string };
   "provider.listCompatibleForAgent": { agentId: AgentId };
   "provider.listDefaults": undefined;
@@ -385,6 +404,17 @@ export type DaemonResultByMethod = {
   "git.commitMessageModel.set": null;
   "git.commitMessageModel.resolve": ResolvedCommitMessageModel;
   "git.generateCommitMessage": string;
+  "git.listBranches": GitBranchInfo[];
+  "git.checkoutBranch": undefined;
+  "git.listWorktrees": GitWorktreeInfo[];
+  "git.listCommits": GitCommitInfo[];
+  "git.status": WorkspaceGitStatusResult;
+  "git.diff": WorkspaceGitDiffResult;
+  "git.stageFiles": undefined;
+  "git.unstageFiles": undefined;
+  "git.discardFiles": undefined;
+  "git.commit": GitCommitResult;
+  "git.push": GitPushResult;
   "provider.listModels": ProviderListModelsResult;
   "provider.listCompatibleForAgent": CompatibleProviderModel[];
   "provider.listDefaults": AgentProviderSelection[];

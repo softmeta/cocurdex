@@ -1,28 +1,12 @@
-export { checkoutGitBranch } from "./git-branch-service";
-export {
-  commitGitChanges,
-  generateGitCommitMessage,
-  pushGitBranch,
-} from "./git-commit-service";
-export {
-  getWorkspaceDiff,
-  getWorkspaceGitStatus,
-  listGitBranches,
-  listGitCommits,
-} from "./git-diff-service";
-export { listGitWorktrees } from "./git-worktree-service";
 export { registerPdfProtocol } from "./pdf-protocol";
 export { buildPdfAssetUrl, resolvePdfReadPath } from "./pdf-read-service";
 export { workspaceSearchService } from "./search-service";
 export {
   closeAllWorkspacePathCommands,
-  discardGitFiles,
   fileExists,
   listWorkspaceFiles,
   readTextFile,
   readWorkspaceEntries,
-  stageGitFiles,
-  unstageGitFiles,
 } from "./workspace-service";
 export {
   closeAllWorkspaceFilesWatchers,

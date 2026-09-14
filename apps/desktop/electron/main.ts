@@ -123,6 +123,7 @@ import {
   generateProviderSessionTitle,
   registerProviderHandlers,
 } from "./provider";
+import { generateCommitMessageFromConfiguredModel } from "./provider/commit-message-generation";
 import { getPtyService } from "./pty";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
@@ -130,29 +131,17 @@ import { registerSkillsHandlers } from "./skills";
 import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
 import {
   buildPdfAssetUrl,
-  checkoutGitBranch,
   closeAllWorkspaceFilesWatchers,
   closeAllWorkspacePathCommands,
-  commitGitChanges,
   configureWorkspaceFilesChangedBroadcast,
   configureWorkspaceGitStateChangedBroadcast,
-  discardGitFiles,
   ensureWorkspaceFilesWatcher,
   fileExists,
-  generateGitCommitMessage,
-  getWorkspaceDiff,
-  getWorkspaceGitStatus,
-  listGitBranches,
-  listGitCommits,
-  listGitWorktrees,
   listWorkspaceFiles,
-  pushGitBranch,
   readTextFile,
   readWorkspaceEntries,
   registerPdfProtocol,
   resolvePdfReadPath,
-  stageGitFiles,
-  unstageGitFiles,
   workspaceSearchService,
 } from "./workspace";
 
@@ -444,14 +433,23 @@ function registerWorkspaceHandlers() {
       // Branch consumers also need external HEAD/refs updates even when the
       // file tree and git diff panel have not initialized this root yet.
       await ensureWorkspaceFilesWatcher(rootPath);
-      return listGitBranches(rootPath);
+      return requestDaemon(
+        "git.listBranches",
+        { rootPath },
+        await chatDaemonOptions(),
+      );
     },
   );
   registerHandler(
     ipcMain,
     "git:checkoutBranch",
     schemas.gitBranch,
-    async (_event, { rootPath, branch }) => checkoutGitBranch(rootPath, branch),
+    async (_event, { rootPath, branch }) =>
+      requestDaemon(
+        "git.checkoutBranch",
+        { rootPath, branch },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
@@ -459,7 +457,11 @@ function registerWorkspaceHandlers() {
     schemas.rootPath,
     async (_event, rootPath) => {
       await ensureWorkspaceFilesWatcher(rootPath);
-      return listGitWorktrees(rootPath);
+      return requestDaemon(
+        "git.listWorktrees",
+        { rootPath },
+        await chatDaemonOptions(),
+      );
     },
   );
   registerHandler(
@@ -542,7 +544,11 @@ function registerWorkspaceHandlers() {
     schemas.gitCommitsQuery,
     async (_event, { rootPath, limit }) => {
       await ensureWorkspaceFilesWatcher(rootPath);
-      return listGitCommits(rootPath, { limit });
+      return requestDaemon(
+        "git.listCommits",
+        { rootPath, limit },
+        await chatDaemonOptions(),
+      );
     },
   );
   registerHandler(
@@ -553,7 +559,11 @@ function registerWorkspaceHandlers() {
       // The git panel may query a root before any file listing does; make sure
       // it gets a watcher so external edits push change notifications.
       await ensureWorkspaceFilesWatcher(rootPath);
-      return getWorkspaceDiff(rootPath, query);
+      return requestDaemon(
+        "git.diff",
+        { rootPath, query },
+        await chatDaemonOptions(),
+      );
     },
   );
   registerHandler(
@@ -562,7 +572,11 @@ function registerWorkspaceHandlers() {
     schemas.rootPath,
     async (_event, rootPath) => {
       await ensureWorkspaceFilesWatcher(rootPath);
-      return getWorkspaceGitStatus(rootPath);
+      return requestDaemon(
+        "git.status",
+        { rootPath },
+        await chatDaemonOptions(),
+      );
     },
   );
   registerHandler(
@@ -570,41 +584,66 @@ function registerWorkspaceHandlers() {
     "git:stageFiles",
     schemas.gitFiles,
     async (_event, { rootPath, filePaths }) =>
-      stageGitFiles(rootPath, filePaths),
+      requestDaemon(
+        "git.stageFiles",
+        { rootPath, filePaths },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "git:unstageFiles",
     schemas.gitFiles,
     async (_event, { rootPath, filePaths }) =>
-      unstageGitFiles(rootPath, filePaths),
+      requestDaemon(
+        "git.unstageFiles",
+        { rootPath, filePaths },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "git:discardFiles",
     schemas.gitFiles,
     async (_event, { rootPath, filePaths }) =>
-      discardGitFiles(rootPath, filePaths),
+      requestDaemon(
+        "git.discardFiles",
+        { rootPath, filePaths },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "git:commit",
     schemas.gitCommit,
-    async (_event, { rootPath, message, includeUnstaged }) =>
-      commitGitChanges(rootPath, { message, includeUnstaged }),
+    async (_event, { rootPath, message, includeUnstaged }) => {
+      const generatedMessage = message.trim().length === 0;
+      const commitMessage = generatedMessage
+        ? await generateCommitMessageFromConfiguredModel(rootPath, {
+            includeUnstaged,
+          })
+        : message;
+      const result = await requestDaemon(
+        "git.commit",
+        { rootPath, message: commitMessage, includeUnstaged },
+        await chatDaemonOptions(),
+      );
+      return { ...result, generatedMessage };
+    },
   );
   registerHandler(
     ipcMain,
     "git:generateCommitMessage",
     schemas.gitGenerateCommitMessage,
     async (_event, { rootPath, includeUnstaged }) =>
-      generateGitCommitMessage(rootPath, { includeUnstaged }),
+      generateCommitMessageFromConfiguredModel(rootPath, { includeUnstaged }),
   );
   registerHandler(
     ipcMain,
     "git:push",
     schemas.rootPath,
-    async (_event, rootPath) => pushGitBranch(rootPath),
+    async (_event, rootPath) =>
+      requestDaemon("git.push", { rootPath }, await chatDaemonOptions()),
   );
   registerHandler(
     ipcMain,
