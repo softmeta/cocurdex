@@ -33,7 +33,7 @@ Third-party components and services remain subject to their own terms; see
 
 ## Run from source
 
-You need Node.js 22 and pnpm.
+You need Node.js 24 and pnpm.
 
 ```bash
 pnpm install
