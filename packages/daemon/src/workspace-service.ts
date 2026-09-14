@@ -119,6 +119,7 @@ async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
     rootPath,
     "--max-results",
     String(MAX_WORKSPACE_FILE_RESULTS),
+    "--follow",
     "--one-file-system",
     "--hidden",
     "--exclude",
