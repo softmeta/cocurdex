@@ -1,6 +1,7 @@
 export {
   filesystemPathSchema,
   idSchema,
+  isBroadFilesystemScanRoot,
   registerHandler,
   registerHandlerArgs,
   schemas,

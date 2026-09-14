@@ -182,7 +182,7 @@ export function AppShell() {
   const workingPath = useAtomValue(activeWorkingPathAtom);
   const activeWorkspaceRootPaths = normalizeWorkspaceRootPaths([
     ...(activeWorkspace?.rootPaths ?? []),
-    workingPath ?? "",
+    ...(workingPath ? [workingPath] : []),
   ]);
   themeModeRef.current = themeMode;
   languageModeRef.current = languageMode;

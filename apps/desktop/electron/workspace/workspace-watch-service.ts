@@ -1,5 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import path from "node:path";
+import { isBroadFilesystemScanRoot } from "../ipc/ipc-schemas";
 import { resolveGitRepositoryPaths } from "./git-client";
 
 // Coalesce fs event bursts (build output, git checkout, pnpm install) into a
@@ -160,6 +161,9 @@ async function initializeWorkspaceWatcherGroup(
 export async function ensureWorkspaceFilesWatcher(
   rootPath: string,
 ): Promise<void> {
+  if (isBroadFilesystemScanRoot(rootPath)) {
+    return;
+  }
   const existingGroup = watcherGroups.get(rootPath);
   if (existingGroup) {
     await existingGroup.initialization;

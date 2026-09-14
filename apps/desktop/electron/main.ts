@@ -144,6 +144,10 @@ import {
   resolvePdfReadPath,
   workspaceSearchService,
 } from "./workspace";
+import {
+  canScanWorkspaceRoot,
+  invalidateKnownWorkspaceScanRootsCache,
+} from "./workspace/workspace-scan-policy";
 
 const MIN_WINDOW_WIDTH = 400;
 const MIN_WINDOW_HEIGHT = 520;
@@ -374,14 +378,22 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "workspace:save",
     schemas.workspaceSave,
-    async (_event, workspace) =>
-      saveWorkspace(workspace as unknown as WorkspaceRecord),
+    async (_event, workspace) => {
+      const saved = await saveWorkspace(
+        workspace as unknown as WorkspaceRecord,
+      );
+      invalidateKnownWorkspaceScanRootsCache();
+      return saved;
+    },
   );
   registerHandler(
     ipcMain,
     "workspace:delete",
     schemas.workspaceId,
-    async (_event, workspaceId) => deleteWorkspace(workspaceId),
+    async (_event, workspaceId) => {
+      await deleteWorkspace(workspaceId);
+      invalidateKnownWorkspaceScanRootsCache();
+    },
   );
   // Reveals the workspace root in Finder/Explorer/Files. The directory on
   // disk is never modified — this is the read-only sibling to workspace:delete
@@ -412,15 +424,21 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "workspace:listEntries",
     schemas.rootPath,
-    async (_event, rootPath) => readWorkspaceEntries(rootPath),
+    async (_event, rootPath) => {
+      if (!(await canScanWorkspaceRoot(rootPath))) {
+        return [];
+      }
+      return readWorkspaceEntries(rootPath);
+    },
   );
   registerHandler(
     ipcMain,
     "workspace:listFiles",
     schemas.rootPath,
     async (_event, rootPath) => {
-      // Piggyback on the listing call: any root the renderer browses gets a
-      // watcher so later external changes push a files-changed notification.
+      if (!(await canScanWorkspaceRoot(rootPath))) {
+        return [];
+      }
       await ensureWorkspaceFilesWatcher(rootPath);
       return listWorkspaceFiles(rootPath);
     },
@@ -479,6 +497,7 @@ function registerWorkspaceHandlers() {
         },
         { userDataPath },
       );
+      invalidateKnownWorkspaceScanRootsCache();
       await ensureWorkspaceFilesWatcher(created.path);
       return created;
     },
@@ -506,10 +525,13 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "worktree:remove",
     schemas.worktreeRemove,
-    async (_event, payload) =>
-      requestDaemon("worktree.remove", payload, {
+    async (_event, payload) => {
+      const removed = await requestDaemon("worktree.remove", payload, {
         userDataPath: app.getPath("userData"),
-      }),
+      });
+      invalidateKnownWorkspaceScanRootsCache();
+      return removed;
+    },
   );
   registerHandler(
     ipcMain,
@@ -1189,18 +1211,12 @@ async function listWorkspaceRootPaths(): Promise<string[]> {
 }
 
 async function assertRootIsKnownWorkspace(rootPath: string): Promise<void> {
-  const workspaces = await listWorkspaces();
-  const normalized = path.normalize(rootPath);
-  const allowed = workspaces.some((workspace) =>
-    workspace.rootPaths.some(
-      (workspaceRootPath) => normalized === path.normalize(workspaceRootPath),
-    ),
-  );
-  if (!allowed) {
-    throw new Error(
-      "search:start rejected: rootPath is not a registered workspace root",
-    );
+  if (await canScanWorkspaceRoot(rootPath)) {
+    return;
   }
+  throw new Error(
+    "search:start rejected: rootPath is not a registered workspace root or worktree",
+  );
 }
 
 function registerSearchHandlers() {

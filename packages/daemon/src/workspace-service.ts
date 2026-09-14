@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isBroadFilesystemScanRoot } from "@cocurdex/shared";
 import type { WorkspaceFileRecord } from "./workspace-types";
 
 const MAX_WORKSPACE_FILE_RESULTS = 5000;
@@ -118,6 +120,7 @@ async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
     "--max-results",
     String(MAX_WORKSPACE_FILE_RESULTS),
     "--follow",
+    "--one-file-system",
     "--hidden",
     "--exclude",
     ".git",
@@ -138,6 +141,9 @@ async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
 }
 
 export async function listWorkspaceFiles(rootPath: string) {
+  if (isBroadFilesystemScanRoot(rootPath, homedir())) {
+    return [];
+  }
   const fdPath = await resolveFdPath();
   if (fdPath) {
     try {

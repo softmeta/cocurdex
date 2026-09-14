@@ -7,8 +7,8 @@ export function primaryWorkspaceRootPath(
 }
 
 export function normalizeWorkspaceRootPath(rootPath: string): string {
-  if (rootPath === "/" || rootPath === "") {
-    return rootPath || "/";
+  if (rootPath === "/") {
+    return "/";
   }
   let end = rootPath.length;
   while (end > 0 && (rootPath[end - 1] === "/" || rootPath[end - 1] === "\\")) {
@@ -45,4 +45,43 @@ export function normalizeWorkspaceRootPaths(
     normalized.push(next);
   }
   return normalized;
+}
+
+export function isFilesystemRootPath(rootPath: string): boolean {
+  const normalized = normalizeWorkspaceRootPath(rootPath);
+  return normalized === "/" || /^[A-Za-z]:$/.test(normalized);
+}
+
+export function isBroadFilesystemScanRoot(
+  rootPath: string,
+  homeDirectory: string,
+): boolean {
+  const normalized = normalizeWorkspaceRootPath(rootPath.trim());
+  if (!normalized || isFilesystemRootPath(normalized)) {
+    return true;
+  }
+  return workspacePathsEqual(normalized, homeDirectory);
+}
+
+export function collectKnownWorkspaceScanRoots(input: {
+  workspaceRootPaths: readonly string[];
+  worktreePaths?: readonly (string | null | undefined)[];
+}): string[] {
+  return normalizeWorkspaceRootPaths([
+    ...input.workspaceRootPaths,
+    ...(input.worktreePaths ?? []).filter((rootPath): rootPath is string =>
+      Boolean(rootPath),
+    ),
+  ]);
+}
+
+export function isKnownWorkspaceScanRoot(
+  rootPath: string,
+  allowedRoots: readonly string[],
+  homeDirectory: string,
+): boolean {
+  if (isBroadFilesystemScanRoot(rootPath, homeDirectory)) {
+    return false;
+  }
+  return allowedRoots.some((allowed) => workspacePathsEqual(rootPath, allowed));
 }

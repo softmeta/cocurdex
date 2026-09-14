@@ -311,7 +311,7 @@ export function CenterPanel({
       : globalWorkingPath;
   const composerWorkspaceRootPaths = normalizeWorkspaceRootPaths([
     ...((sessionWorkspace ?? activeWorkspace)?.rootPaths ?? []),
-    workingPath ?? "",
+    ...(workingPath ? [workingPath] : []),
   ]);
   const activeQueuedInputs = activeSession
     ? (queuedInputsBySession[activeSession.id] ?? [])

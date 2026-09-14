@@ -1,5 +1,9 @@
+import { homedir } from "node:os";
 import path from "node:path";
-import { isToolCallId } from "@cocurdex/shared";
+import {
+  isBroadFilesystemScanRoot as isBroadFilesystemScanRootPath,
+  isToolCallId,
+} from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 
@@ -25,6 +29,10 @@ export const filesystemPathSchema = z
   .max(4096)
   .refine((value) => !value.includes("\0"), "path contains null byte")
   .refine((value) => path.isAbsolute(value), "path must be absolute");
+
+export function isBroadFilesystemScanRoot(rootPath: string): boolean {
+  return isBroadFilesystemScanRootPath(rootPath, homedir());
+}
 
 const gitRelativePathSchema = z
   .string()

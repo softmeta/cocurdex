@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { listWorkspaceFiles } from "./workspace-service";
@@ -54,5 +54,12 @@ describe("listWorkspaceFiles", () => {
         }),
       ]),
     );
+  });
+
+  it("does not walk the filesystem root or the home directory", async () => {
+    await expect(
+      listWorkspaceFiles(path.parse(process.cwd()).root),
+    ).resolves.toEqual([]);
+    await expect(listWorkspaceFiles(homedir())).resolves.toEqual([]);
   });
 });
