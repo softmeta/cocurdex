@@ -1,5 +1,11 @@
+import { homedir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { httpUrlSchema, schemas } from "./ipc-schemas";
+import {
+  httpUrlSchema,
+  isBroadFilesystemScanRoot,
+  schemas,
+} from "./ipc-schemas";
 
 describe("schemas.toolCallId", () => {
   it.each([
@@ -121,5 +127,23 @@ describe("schemas.browserAnnotation", () => {
       type: "script",
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("isBroadFilesystemScanRoot", () => {
+  it("rejects the filesystem root", () => {
+    expect(isBroadFilesystemScanRoot(path.parse(process.cwd()).root)).toBe(
+      true,
+    );
+  });
+
+  it("rejects the user home directory", () => {
+    expect(isBroadFilesystemScanRoot(homedir())).toBe(true);
+  });
+
+  it("allows a project subdirectory", () => {
+    expect(
+      isBroadFilesystemScanRoot(path.join(homedir(), "src", "cocurdex")),
+    ).toBe(false);
   });
 });

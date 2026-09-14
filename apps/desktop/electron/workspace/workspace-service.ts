@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type { WorkspaceEntry, WorkspaceFileEntry } from "@/lib/types";
+import { isBroadFilesystemScanRoot } from "../ipc/ipc-schemas";
 
 const MAX_WORKSPACE_FILE_RESULTS = 5000;
 const FD_TIMEOUT_MS = 5000;
@@ -162,7 +163,7 @@ async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
     rootPath,
     "--max-results",
     String(MAX_WORKSPACE_FILE_RESULTS),
-    "--follow",
+    "--one-file-system",
     "--hidden",
     "--exclude",
     ".git",
@@ -231,6 +232,9 @@ async function listWorkspaceFilesWithNode(rootPath: string) {
 export async function readWorkspaceEntries(
   rootPath: string,
 ): Promise<WorkspaceEntry[]> {
+  if (isBroadFilesystemScanRoot(rootPath)) {
+    return [];
+  }
   const entries = await readdir(rootPath, { withFileTypes: true });
 
   const mappedEntries: WorkspaceEntry[] = entries.map((entry) => {
@@ -263,6 +267,9 @@ export async function readWorkspaceEntries(
 export async function listWorkspaceFiles(
   rootPath: string,
 ): Promise<WorkspaceFileEntry[]> {
+  if (isBroadFilesystemScanRoot(rootPath)) {
+    return [];
+  }
   const fdPath = await resolveFdPath();
   if (fdPath) {
     try {

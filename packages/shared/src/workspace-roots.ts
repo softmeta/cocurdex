@@ -7,8 +7,8 @@ export function primaryWorkspaceRootPath(
 }
 
 export function normalizeWorkspaceRootPath(rootPath: string): string {
-  if (rootPath === "/" || rootPath === "") {
-    return rootPath || "/";
+  if (rootPath === "/") {
+    return "/";
   }
   let end = rootPath.length;
   while (end > 0 && (rootPath[end - 1] === "/" || rootPath[end - 1] === "\\")) {

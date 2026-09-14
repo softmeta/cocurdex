@@ -136,7 +136,7 @@ export function useNewSessionCard({
     workspaceRootPath ?? activeWorkspace?.rootPaths[0] ?? null;
   const contextWorkspaceRootPaths = normalizeWorkspaceRootPaths([
     ...(activeWorkspace?.rootPaths ?? []),
-    contextWorkspaceRootPath ?? "",
+    ...(contextWorkspaceRootPath ? [contextWorkspaceRootPath] : []),
   ]);
 
   const selectedCompatibleProvider = compatibleProviders.find(
