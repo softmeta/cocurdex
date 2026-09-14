@@ -1,6 +1,9 @@
 import { homedir } from "node:os";
 import path from "node:path";
-import { isToolCallId, workspacePathsEqual } from "@cocurdex/shared";
+import {
+  isBroadFilesystemScanRoot as isBroadFilesystemScanRootPath,
+  isToolCallId,
+} from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 
@@ -28,10 +31,7 @@ export const filesystemPathSchema = z
   .refine((value) => path.isAbsolute(value), "path must be absolute");
 
 export function isBroadFilesystemScanRoot(rootPath: string): boolean {
-  if (path.parse(rootPath).root === rootPath) {
-    return true;
-  }
-  return workspacePathsEqual(rootPath, homedir());
+  return isBroadFilesystemScanRootPath(rootPath, homedir());
 }
 
 const gitRelativePathSchema = z

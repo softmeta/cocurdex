@@ -21,6 +21,11 @@ interface CacheEntry {
 // reopens. Entries are invalidated by main-process files-changed pushes.
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<WorkspaceFileEntry[]>>();
+const failures = new Map<string, { delayMs: number; retryAt: number }>();
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+const INITIAL_RETRY_MS = 2_000;
+const MAX_RETRY_MS = 16_000;
 
 // Mounted hooks per root; files-changed pushes and load results fan out here.
 type WorkspaceFilesListener = (state: WorkspaceFilesState) => void;
@@ -33,6 +38,28 @@ function emit(rootPath: string, state: WorkspaceFilesState) {
   for (const listener of listeners) {
     listener(state);
   }
+}
+
+function clearRetryTimer(rootPath: string) {
+  const timer = retryTimers.get(rootPath);
+  if (!timer) {
+    return;
+  }
+  globalThis.clearTimeout(timer);
+  retryTimers.delete(rootPath);
+}
+
+function scheduleRetry(rootPath: string, delayMs: number) {
+  clearRetryTimer(rootPath);
+  retryTimers.set(
+    rootPath,
+    globalThis.setTimeout(() => {
+      retryTimers.delete(rootPath);
+      if (consumers.get(rootPath)?.size) {
+        void primeWorkspaceFiles(rootPath);
+      }
+    }, delayMs),
+  );
 }
 
 async function loadWorkspaceFiles(
@@ -64,20 +91,36 @@ async function loadWorkspaceFiles(
 // Load (or reuse in-flight load) and fan the result out to every mounted
 // consumer of the root. Errors surface as an explicit error state.
 async function primeWorkspaceFiles(rootPath: string) {
+  const failure = failures.get(rootPath);
+  if (failure && Date.now() < failure.retryAt) {
+    emit(rootPath, {
+      files: cache.get(rootPath)?.files ?? [],
+      status: "error",
+    });
+    return;
+  }
   try {
     const files = await loadWorkspaceFiles(rootPath);
     if (cache.get(rootPath)?.files !== files) {
       return;
     }
+    failures.delete(rootPath);
+    clearRetryTimer(rootPath);
     emit(rootPath, { files, status: "idle" });
   } catch {
     if (inflight.has(rootPath)) {
       return;
     }
+    const delayMs = Math.min(
+      MAX_RETRY_MS,
+      (failures.get(rootPath)?.delayMs ?? INITIAL_RETRY_MS / 2) * 2,
+    );
+    failures.set(rootPath, { delayMs, retryAt: Date.now() + delayMs });
     emit(rootPath, {
       files: cache.get(rootPath)?.files ?? [],
       status: "error",
     });
+    scheduleRetry(rootPath, delayMs);
   }
 }
 
@@ -100,10 +143,17 @@ export function invalidateWorkspaceFilesCache(rootPath?: string) {
   if (rootPath) {
     cache.delete(rootPath);
     inflight.delete(rootPath);
+    failures.delete(rootPath);
+    clearRetryTimer(rootPath);
     return;
   }
   cache.clear();
   inflight.clear();
+  failures.clear();
+  for (const timer of retryTimers.values()) {
+    globalThis.clearTimeout(timer);
+  }
+  retryTimers.clear();
 }
 
 function initialMergedState(roots: string[]): WorkspaceFilesState {

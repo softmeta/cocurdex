@@ -144,6 +144,10 @@ import {
   resolvePdfReadPath,
   workspaceSearchService,
 } from "./workspace";
+import {
+  canScanWorkspaceRoot,
+  invalidateKnownWorkspaceScanRootsCache,
+} from "./workspace/workspace-scan-policy";
 
 const MIN_WINDOW_WIDTH = 400;
 const MIN_WINDOW_HEIGHT = 520;
@@ -412,15 +416,21 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "workspace:listEntries",
     schemas.rootPath,
-    async (_event, rootPath) => readWorkspaceEntries(rootPath),
+    async (_event, rootPath) => {
+      if (!(await canScanWorkspaceRoot(rootPath))) {
+        return [];
+      }
+      return readWorkspaceEntries(rootPath);
+    },
   );
   registerHandler(
     ipcMain,
     "workspace:listFiles",
     schemas.rootPath,
     async (_event, rootPath) => {
-      // Piggyback on the listing call: any root the renderer browses gets a
-      // watcher so later external changes push a files-changed notification.
+      if (!(await canScanWorkspaceRoot(rootPath))) {
+        return [];
+      }
       await ensureWorkspaceFilesWatcher(rootPath);
       return listWorkspaceFiles(rootPath);
     },
@@ -479,6 +489,7 @@ function registerWorkspaceHandlers() {
         },
         { userDataPath },
       );
+      invalidateKnownWorkspaceScanRootsCache();
       await ensureWorkspaceFilesWatcher(created.path);
       return created;
     },
@@ -1189,18 +1200,12 @@ async function listWorkspaceRootPaths(): Promise<string[]> {
 }
 
 async function assertRootIsKnownWorkspace(rootPath: string): Promise<void> {
-  const workspaces = await listWorkspaces();
-  const normalized = path.normalize(rootPath);
-  const allowed = workspaces.some((workspace) =>
-    workspace.rootPaths.some(
-      (workspaceRootPath) => normalized === path.normalize(workspaceRootPath),
-    ),
-  );
-  if (!allowed) {
-    throw new Error(
-      "search:start rejected: rootPath is not a registered workspace root",
-    );
+  if (await canScanWorkspaceRoot(rootPath)) {
+    return;
   }
+  throw new Error(
+    "search:start rejected: rootPath is not a registered workspace root or worktree",
+  );
 }
 
 function registerSearchHandlers() {

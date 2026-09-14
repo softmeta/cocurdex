@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   invalidateWorkspaceFilesCache,
   useWorkspaceFiles,
@@ -16,9 +16,15 @@ vi.mock("../../lib/ipc", () => ({
 
 describe("useWorkspaceFiles", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     invalidateWorkspaceFilesCache();
     desktopApiMock.listWorkspaceFiles.mockReset();
     desktopApiMock.onWorkspaceFilesChanged.mockReset();
+  });
+
+  afterEach(() => {
+    invalidateWorkspaceFilesCache();
+    vi.useRealTimers();
   });
 
   it("keeps stale files visible when a background refresh fails", async () => {
@@ -43,30 +49,32 @@ describe("useWorkspaceFiles", () => {
     expect(result.current.files).toEqual([
       { path: "src/index.ts", type: "file" },
     ]);
+  });
 
-    let resolveSuperseded: ((files: unknown[]) => void) | undefined;
-    desktopApiMock.listWorkspaceFiles
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveSuperseded = resolve;
-          }),
-      )
-      .mockResolvedValueOnce([{ path: "src/current.ts", type: "file" }]);
-
-    act(() => onFilesChanged?.({ rootPath: "/repo" }));
-    act(() => onFilesChanged?.({ rootPath: "/repo" }));
-    await waitFor(() =>
-      expect(result.current.files).toEqual([
-        { path: "src/current.ts", type: "file" },
-      ]),
+  it("does not immediately retry a failed listing", async () => {
+    let onFilesChanged: ((event: { rootPath: string }) => void) | undefined;
+    desktopApiMock.onWorkspaceFilesChanged.mockImplementation((listener) => {
+      onFilesChanged = listener;
+      return () => {};
+    });
+    desktopApiMock.listWorkspaceFiles.mockRejectedValue(
+      new Error("temporary failure"),
     );
 
+    renderHook(() => useWorkspaceFiles("/repo"));
+    await waitFor(() =>
+      expect(desktopApiMock.listWorkspaceFiles).toHaveBeenCalledTimes(1),
+    );
+
+    act(() => onFilesChanged?.({ rootPath: "/repo" }));
+    expect(desktopApiMock.listWorkspaceFiles).toHaveBeenCalledTimes(1);
+
+    desktopApiMock.listWorkspaceFiles.mockResolvedValueOnce([]);
     await act(async () => {
-      resolveSuperseded?.([{ path: "src/obsolete.ts", type: "file" }]);
+      await vi.advanceTimersByTimeAsync(2_000);
     });
-    expect(result.current.files).toEqual([
-      { path: "src/current.ts", type: "file" },
-    ]);
+    await waitFor(() =>
+      expect(desktopApiMock.listWorkspaceFiles).toHaveBeenCalledTimes(2),
+    );
   });
 });
