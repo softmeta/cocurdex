@@ -37,9 +37,9 @@ transport-neutral client work.
 - Browser and mobile go through a relay/tunnel (`apps/api`), which is required
   for remote control from outside the machine.
 
-Also decide what `apps/web` (Astro docs site) and `apps/console` (Next shell)
-are for versus the future web client. Auth design and the provider OAuth
-callback URL depend on this.
+Also decide what the docs site (private `cocurdex-sites` repo, Next.js) and
+`apps/console` (Next shell) are for versus the future web client. Auth design
+and the provider OAuth callback URL depend on this.
 
 ### 2. Authentication for non-local clients
 

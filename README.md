@@ -64,13 +64,12 @@ Markdown is an explicit import/export format, never a second writable store.
 | `apps/cli` | `cocurdex` CLI |
 | `packages/daemon` | Local daemon (owns SQLite and agent runtimes) |
 | `packages/rpc` | Desktop/CLI ↔ daemon contract (internal; no compatibility promise yet) |
-| `apps/web` | Marketing and docs site |
 | `apps/console` | Team console (early) |
 | `apps/api` | Team HTTP API (early; self-hosting comes later) |
 
 The desktop works without `apps/api`. Team sync and a self-hosted control plane
 are planned; they will use the same source-available terms.
 
-User-facing docs: [apps/web](apps/web/README.md) and
-[cocurdex.com/docs](https://cocurdex.com/docs/). Engineering ADRs live in
+User-facing docs: [cocurdex.com/docs](https://cocurdex.com/docs/) (site source
+lives in the private `cocurdex-sites` repository). Engineering ADRs live in
 `docs/adr/`.

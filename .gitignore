@@ -11,8 +11,6 @@ dist/
 build/
 out/
 .next/
-.astro/
-apps/web/dist/
 apps/console/.next/
 apps/desktop/release/
 *.p12
