@@ -13,6 +13,7 @@ export type {
 export * from "./contracts";
 export * from "./conversation";
 export * from "./data-events";
+export * from "./files";
 export * from "./git";
 export * from "./git-worktree";
 export * from "./issues";
@@ -22,11 +23,13 @@ export * from "./network-proxy-runtime";
 export * from "./note-markdown";
 export * from "./notes";
 export * from "./orchestration";
+export * from "./pdf-annotations";
 export * from "./provider-compatibility";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
 export * from "./search";
 export * from "./session-attention";
 export * from "./session-observation";
+export * from "./skills";
 export * from "./subagent-session";
 export type {
   SendSessionCommand,
@@ -49,5 +52,6 @@ export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";
 export * from "./workspace-changes";
 export * from "./workspace-roots";
+export * from "./workspace-search";
 export * from "./worktree-environment";
 export * from "./worktree-settings";

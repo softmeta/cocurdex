@@ -17,7 +17,7 @@ export interface CommitGitChangesOptions {
 export async function commitGitChanges(
   rootPath: string,
   options: CommitGitChangesOptions,
-): Promise<GitCommitResult> {
+): Promise<Omit<GitCommitResult, "generatedMessage">> {
   const git = createGitClient(rootPath);
   const message = options.message.trim();
   if (message.length === 0) {

@@ -21,7 +21,8 @@ export class DaemonShutdownGate {
       activeWork.agentTurns > 0 ||
       activeWork.queuedInputs > 0 ||
       activeWork.chatOperations > 0 ||
-      activeWork.workflowActive;
+      activeWork.workflowActive ||
+      activeWork.workspaceSearches > 0;
     if (!busy) this.draining = true;
     return {
       status: busy ? "busy" : "accepted",

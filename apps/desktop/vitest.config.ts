@@ -4,6 +4,10 @@ import { defineConfig } from "vitest/config";
 
 const alias = {
   "@": path.resolve(__dirname, "src"),
+  "@cocurdex/shared/node": path.resolve(
+    __dirname,
+    "../../packages/shared/src/node.ts",
+  ),
   "@cocurdex/shared": path.resolve(
     __dirname,
     "../../packages/shared/src/index.ts",

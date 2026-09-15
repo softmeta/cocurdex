@@ -23,6 +23,7 @@ import type {
   CocurdexDaemonEvent,
   CreateWorkflowPayload,
   GetToolCallResultInput,
+  GitCommitResult,
   MessageRecord,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
@@ -44,6 +45,7 @@ import {
   getNetworkProxySettings,
   isAgentId,
   isToolCallId,
+  isWorkspaceSearchDaemonEvent,
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
@@ -61,11 +63,16 @@ import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { logDaemonDiagnostic } from "./diagnostics";
+import { commitGitChanges } from "./git";
+import { DaemonMcpConfigService } from "./mcp-config";
 import { probeNetworkProxy } from "./network-proxy-probe";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
+import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { ProviderCredentials } from "./provider-credentials";
 import { DaemonProviderService } from "./provider-service";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
+import { createWorkspaceScanPolicy } from "./scan-roots";
+import { DaemonSearchService } from "./search-service";
 import {
   applySessionConfiguration,
   SessionCheckpointStore,
@@ -73,6 +80,7 @@ import {
   type SessionExecutionContext,
   type SessionRuntimeMessage,
 } from "./session-control";
+import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
 import {
   DaemonWorkflowAgentTurnRunner,
@@ -86,6 +94,10 @@ import {
   createWorkspaceChangeCoordinator,
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
+import {
+  listWorkspaceEntries as listWorkspaceEntriesOnDisk,
+  listWorkspaceFiles as listWorkspaceFilesOnDisk,
+} from "./workspace-service";
 import {
   createManagedWorktree,
   listManagedWorktrees,
@@ -136,10 +148,15 @@ export class CocurdexDaemonService {
   private startupRecovery: Promise<void> | null = null;
   private stopping = false;
   readonly commitMessageService: DaemonCommitMessageService;
+  readonly mcpConfigService: DaemonMcpConfigService;
+  readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly runtime: AgentRuntimeManager;
+  readonly searchService: DaemonSearchService;
+  readonly skillsService: DaemonSkillsService;
   readonly state: DaemonState;
   readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;
+  private readonly scanPolicy: ReturnType<typeof createWorkspaceScanPolicy>;
   private readonly runtimeFingerprint: string;
   private readonly socketPath: string;
   private readonly startedAt: string;
@@ -171,7 +188,24 @@ export class CocurdexDaemonService {
       this.state,
       options.userDataPath,
     );
-    this.commitMessageService = new DaemonCommitMessageService(this.state);
+    this.commitMessageService = new DaemonCommitMessageService(
+      this.state,
+      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
+    );
+    this.scanPolicy = createWorkspaceScanPolicy(this.state);
+    this.searchService = new DaemonSearchService({
+      broadcast: (event) => this.events.emit("daemon.event", event),
+      canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
+    });
+    this.mcpConfigService = new DaemonMcpConfigService(options.userDataPath);
+    this.skillsService = new DaemonSkillsService();
+    this.pdfAnnotationsService = new DaemonPdfAnnotationsService(
+      options.userDataPath,
+      async () =>
+        (await this.state.listWorkspaces()).flatMap(
+          (workspace) => workspace.rootPaths,
+        ),
+    );
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);
@@ -318,6 +352,7 @@ export class CocurdexDaemonService {
       ),
       chatOperations: this.chatService.activeOperationCount,
       workflowActive: this.workflowWorkerScheduler.isActive,
+      workspaceSearches: this.searchService.activeCount,
     };
   }
 
@@ -372,6 +407,39 @@ export class CocurdexDaemonService {
     }));
   }
 
+  async listWorkspaceEntries(rootPath: string) {
+    if (!(await this.scanPolicy.canScan(rootPath))) {
+      return [];
+    }
+    return listWorkspaceEntriesOnDisk(rootPath);
+  }
+
+  async listWorkspaceFiles(rootPath: string) {
+    if (!(await this.scanPolicy.canScan(rootPath))) {
+      return [];
+    }
+    return listWorkspaceFilesOnDisk(rootPath);
+  }
+
+  async commitWorkspaceChanges(input: {
+    rootPath: string;
+    message: string;
+    includeUnstaged: boolean;
+  }): Promise<GitCommitResult> {
+    const generatedMessage = input.message.trim().length === 0;
+    const message = generatedMessage
+      ? await this.commitMessageService.generate({
+          workspaceRootPath: input.rootPath,
+          includeUnstaged: input.includeUnstaged,
+        })
+      : input.message;
+    const result = await commitGitChanges(input.rootPath, {
+      message,
+      includeUnstaged: input.includeUnstaged,
+    });
+    return { ...result, generatedMessage };
+  }
+
   private async reconcileWorkspaceChanges() {
     try {
       const workspaces = await this.state.listWorkspaces();
@@ -418,6 +486,7 @@ export class CocurdexDaemonService {
     }
     const normalized = { ...workspace, rootPaths };
     await this.state.saveWorkspace(normalized);
+    this.scanPolicy.invalidate();
     return {
       ...normalized,
       missingRootPaths: normalized.rootPaths.filter(
@@ -487,6 +556,7 @@ export class CocurdexDaemonService {
     branch: string;
     startPoint?: string;
   }) {
+    this.scanPolicy.invalidate();
     return createManagedWorktree({
       state: this.state,
       userDataPath: this.userDataPath,
@@ -507,6 +577,7 @@ export class CocurdexDaemonService {
     worktreePath: string;
     workspaceRootPath?: string;
   }) {
+    this.scanPolicy.invalidate();
     return removeManagedWorktree({
       state: this.state,
       userDataPath: this.userDataPath,
@@ -1288,7 +1359,7 @@ export class CocurdexDaemonService {
     );
   }
 
-  private async dispatchNextQueuedInput(sessionId: string) {
+  private async dispatchNextQueuedInput(sessionId: string): Promise<boolean> {
     if (this.stopping) return false;
     if (this.pendingTurns.has(sessionId)) return false;
 
@@ -1454,6 +1525,7 @@ export class CocurdexDaemonService {
         this.chatService.shutdown(),
         this.runtime.shutdown(),
         schedulerClose,
+        Promise.resolve().then(() => this.searchService.dispose()),
       ]);
       await Promise.allSettled([...this.backgroundSends]);
       await this.runtime.flushEvents();
@@ -1686,7 +1758,11 @@ export function onAgentEvent(
   listener: (event: AgentEvent) => void,
 ) {
   const daemonListener = (event: CocurdexDaemonEvent) => {
-    if (event.type !== "data.changed" && !("conversationId" in event)) {
+    if (
+      event.type !== "data.changed" &&
+      !isWorkspaceSearchDaemonEvent(event) &&
+      !("conversationId" in event)
+    ) {
       listener(event);
     }
   };

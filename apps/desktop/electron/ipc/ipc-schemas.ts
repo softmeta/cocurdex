@@ -397,6 +397,15 @@ export const schemas = {
     rows: z.number().int().positive().max(1000),
   }),
   ptyKill: z.object({ terminalId: idSchema }),
+  mcpSaveConfig: z
+    .string()
+    .min(1)
+    .max(1_000_000)
+    .refine((value) => !value.includes("\0"), "null byte"),
+  skillsRequest: z.object({
+    scope: z.enum(["project", "global"]),
+    workspaceRootPath: filesystemPathSchema.nullish(),
+  }),
   searchStart: z.object({
     caseSensitive: z.boolean(),
     exclude: z.string().max(1024),

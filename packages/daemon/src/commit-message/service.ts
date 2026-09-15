@@ -1,5 +1,7 @@
 import { generateAgentCommitMessage } from "@cocurdex/agent-adapters";
 import type {
+  AgentProviderSnapshot,
+  AgentRuntimeProviderConfig,
   CommitMessageModelSelection,
   GenerateGitCommitMessagePayload,
 } from "@cocurdex/shared";
@@ -10,7 +12,12 @@ import { resolveCommitMessageModel } from "./model";
 import { parseCommitMessageModelSetting } from "./settings";
 
 export class DaemonCommitMessageService {
-  constructor(private readonly state: DaemonState) {}
+  constructor(
+    private readonly state: DaemonState,
+    private readonly resolveRuntimeProviderConfig?: (
+      snapshot: AgentProviderSnapshot,
+    ) => Promise<AgentRuntimeProviderConfig>,
+  ) {}
   async getModelSetting() {
     return parseCommitMessageModelSetting(
       await this.state.getAppSetting("commitMessageModel"),
@@ -28,25 +35,42 @@ export class DaemonCommitMessageService {
   }
   async generate(input: GenerateGitCommitMessagePayload) {
     await this.state.getChatDatabase();
+    let agentId = input.agentId;
+    let providerConfig = input.providerConfig;
+    if (!providerConfig) {
+      if (!this.resolveRuntimeProviderConfig) {
+        throw new Error(
+          "providerConfig is required; no provider snapshot resolver is configured",
+        );
+      }
+      const model = await this.resolveModel();
+      agentId ??= model.agentId;
+      providerConfig = await this.resolveRuntimeProviderConfig(
+        model.providerSnapshot,
+      );
+    }
+    if (!agentId) {
+      throw new Error("agentId is required to generate a commit message");
+    }
     const changeSummary = await collectCommitChangeSummary(
       input.workspaceRootPath,
       input.includeUnstaged,
     );
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
-    const { apiKey: _apiKey, ...providerSnapshot } = input.providerConfig;
+    const { apiKey: _apiKey, ...providerSnapshot } = providerConfig;
     try {
       const message = await generateAgentCommitMessage({
-        agentId: input.agentId,
+        agentId,
         providerSnapshot,
-        providerConfig: input.providerConfig,
+        providerConfig,
         workspaceRootPath: input.workspaceRootPath,
         changeSummary,
         signal: controller.signal,
         onDiagnostic: (event, details) => {
           logDaemonDiagnostic("info", `commitMessage.agent.${event}`, {
             ...details,
-            agentId: input.agentId,
+            agentId,
             modelId: providerSnapshot.modelId,
           });
         },

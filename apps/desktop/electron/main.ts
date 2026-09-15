@@ -115,15 +115,9 @@ import {
 } from "./open-folder";
 import { registerOssLicensesHandlers } from "./oss-licenses";
 import {
-  initializePdfAnnotationsStorage,
-  loadPdfDocumentAnnotations,
-  savePdfDocumentAnnotations,
-} from "./pdf-annotations";
-import {
   generateProviderSessionTitle,
   registerProviderHandlers,
 } from "./provider";
-import { generateCommitMessageFromConfiguredModel } from "./provider/commit-message-generation";
 import { getPtyService } from "./pty";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
@@ -132,22 +126,12 @@ import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
 import {
   buildPdfAssetUrl,
   closeAllWorkspaceFilesWatchers,
-  closeAllWorkspacePathCommands,
   configureWorkspaceFilesChangedBroadcast,
   configureWorkspaceGitStateChangedBroadcast,
   ensureWorkspaceFilesWatcher,
-  fileExists,
-  listWorkspaceFiles,
-  readTextFile,
-  readWorkspaceEntries,
   registerPdfProtocol,
   resolvePdfReadPath,
-  workspaceSearchService,
 } from "./workspace";
-import {
-  canScanWorkspaceRoot,
-  invalidateKnownWorkspaceScanRootsCache,
-} from "./workspace/workspace-scan-policy";
 
 const MIN_WINDOW_WIDTH = 400;
 const MIN_WINDOW_HEIGHT = 520;
@@ -349,9 +333,7 @@ function createWindow() {
 
   // PtyService broadcasts pty:data / pty:exit through this window's webContents.
   getPtyService().attachWindow(window);
-  const webContentsId = window.webContents.id;
   window.on("closed", () => {
-    workspaceSearchService.cancelForWebContents(webContentsId);
     getPtyService().dispose();
   });
 
@@ -382,7 +364,6 @@ function registerWorkspaceHandlers() {
       const saved = await saveWorkspace(
         workspace as unknown as WorkspaceRecord,
       );
-      invalidateKnownWorkspaceScanRootsCache();
       return saved;
     },
   );
@@ -392,7 +373,6 @@ function registerWorkspaceHandlers() {
     schemas.workspaceId,
     async (_event, workspaceId) => {
       await deleteWorkspace(workspaceId);
-      invalidateKnownWorkspaceScanRootsCache();
     },
   );
   // Reveals the workspace root in Finder/Explorer/Files. The directory on
@@ -424,23 +404,24 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "workspace:listEntries",
     schemas.rootPath,
-    async (_event, rootPath) => {
-      if (!(await canScanWorkspaceRoot(rootPath))) {
-        return [];
-      }
-      return readWorkspaceEntries(rootPath);
-    },
+    async (_event, rootPath) =>
+      requestDaemon(
+        "workspace.listEntries",
+        { rootPath },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "workspace:listFiles",
     schemas.rootPath,
     async (_event, rootPath) => {
-      if (!(await canScanWorkspaceRoot(rootPath))) {
-        return [];
-      }
       await ensureWorkspaceFilesWatcher(rootPath);
-      return listWorkspaceFiles(rootPath);
+      return requestDaemon(
+        "workspace.listFiles",
+        { rootPath },
+        await chatDaemonOptions(),
+      );
     },
   );
   registerHandler(
@@ -497,7 +478,6 @@ function registerWorkspaceHandlers() {
         },
         { userDataPath },
       );
-      invalidateKnownWorkspaceScanRootsCache();
       await ensureWorkspaceFilesWatcher(created.path);
       return created;
     },
@@ -529,7 +509,6 @@ function registerWorkspaceHandlers() {
       const removed = await requestDaemon("worktree.remove", payload, {
         userDataPath: app.getPath("userData"),
       });
-      invalidateKnownWorkspaceScanRootsCache();
       return removed;
     },
   );
@@ -638,27 +617,23 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "git:commit",
     schemas.gitCommit,
-    async (_event, { rootPath, message, includeUnstaged }) => {
-      const generatedMessage = message.trim().length === 0;
-      const commitMessage = generatedMessage
-        ? await generateCommitMessageFromConfiguredModel(rootPath, {
-            includeUnstaged,
-          })
-        : message;
-      const result = await requestDaemon(
+    async (_event, { rootPath, message, includeUnstaged }) =>
+      requestDaemon(
         "git.commit",
-        { rootPath, message: commitMessage, includeUnstaged },
+        { rootPath, message, includeUnstaged },
         await chatDaemonOptions(),
-      );
-      return { ...result, generatedMessage };
-    },
+      ),
   );
   registerHandler(
     ipcMain,
     "git:generateCommitMessage",
     schemas.gitGenerateCommitMessage,
     async (_event, { rootPath, includeUnstaged }) =>
-      generateCommitMessageFromConfiguredModel(rootPath, { includeUnstaged }),
+      requestDaemon(
+        "git.generateCommitMessage",
+        { workspaceRootPath: rootPath, includeUnstaged },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
@@ -671,13 +646,15 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "file:readText",
     schemas.filePath,
-    async (_event, filePath) => readTextFile(filePath),
+    async (_event, filePath) =>
+      requestDaemon("file.readText", { filePath }, await chatDaemonOptions()),
   );
   registerHandler(
     ipcMain,
     "file:exists",
     schemas.filePath,
-    async (_event, filePath) => fileExists(filePath),
+    async (_event, filePath) =>
+      requestDaemon("file.exists", { filePath }, await chatDaemonOptions()),
   );
   registerHandler(
     ipcMain,
@@ -714,19 +691,23 @@ function registerWorkspaceHandlers() {
     ipcMain,
     "pdf:load-annotations",
     schemas.loadPdfAnnotations,
-    async (_event, payload) => {
-      resolvePdfReadPath(payload.filePath, await listWorkspaceRootPaths());
-      return loadPdfDocumentAnnotations(payload.filePath);
-    },
+    async (_event, payload) =>
+      requestDaemon(
+        "pdf.loadAnnotations",
+        { filePath: payload.filePath },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "pdf:save-annotations",
     schemas.savePdfAnnotations,
-    async (_event, payload) => {
-      resolvePdfReadPath(payload.filePath, await listWorkspaceRootPaths());
-      await savePdfDocumentAnnotations(payload.filePath, payload.annotations);
-    },
+    async (_event, payload) =>
+      requestDaemon(
+        "pdf.saveAnnotations",
+        { filePath: payload.filePath, annotations: payload.annotations },
+        await chatDaemonOptions(),
+      ),
   );
 }
 
@@ -1210,32 +1191,27 @@ async function listWorkspaceRootPaths(): Promise<string[]> {
   return workspaces.flatMap((workspace) => workspace.rootPaths);
 }
 
-async function assertRootIsKnownWorkspace(rootPath: string): Promise<void> {
-  if (await canScanWorkspaceRoot(rootPath)) {
-    return;
-  }
-  throw new Error(
-    "search:start rejected: rootPath is not a registered workspace root or worktree",
-  );
-}
-
+// Search execution lives in the daemon so headless clients can run the same
+// queries; results stream back through daemon events bridged to the renderer
+// search:result/search:done/search:error channels.
 function registerSearchHandlers() {
   registerHandler(
     ipcMain,
     "search:start",
     schemas.searchStart,
-    async (event, payload) => {
-      await assertRootIsKnownWorkspace(payload.rootPath);
-      workspaceSearchService.start(payload, event.sender);
-    },
+    async (_event, payload) =>
+      requestDaemon("search.start", payload, await chatDaemonOptions()),
   );
   registerHandler(
     ipcMain,
     "search:cancel",
     schemas.searchCancel,
-    async (_event, payload) => {
-      workspaceSearchService.cancel(payload.searchId);
-    },
+    async (_event, payload) =>
+      requestDaemon(
+        "search.cancel",
+        { searchId: payload.searchId },
+        await chatDaemonOptions(),
+      ),
   );
 }
 
@@ -1277,19 +1253,9 @@ function registerPtyHandlers() {
 
 async function shutdownAppResources() {
   try {
-    workspaceSearchService.dispose();
-  } catch (error) {
-    appLogger.error("app.searchShutdownFailed", { error });
-  }
-  try {
     await getPtyService().dispose();
   } catch (error) {
     appLogger.error("app.ptyShutdownFailed", { error });
-  }
-  try {
-    closeAllWorkspacePathCommands();
-  } catch (error) {
-    appLogger.error("app.workspaceCommandShutdownFailed", { error });
   }
   try {
     closeAllWorkspaceFilesWatchers();
@@ -1395,7 +1361,6 @@ app
     });
     initializeAppState(userDataPath);
     initializeAttachmentStorage(userDataPath);
-    initializePdfAnnotationsStorage(userDataPath);
     daemonRuntimeClient = createDaemonRuntimeClient({
       daemonEntryPath: getBundledDaemonEntryPath(),
       logger: daemonLogger,
@@ -1408,6 +1373,21 @@ app
         for (const window of BrowserWindow.getAllWindows()) {
           if (event.type === "data.changed") {
             window.webContents.send("data:changed", event);
+          } else if (event.type === "search.result") {
+            window.webContents.send("search:result", {
+              batch: event.batch,
+              searchId: event.searchId,
+            });
+          } else if (event.type === "search.done") {
+            window.webContents.send("search:done", {
+              reason: event.reason,
+              searchId: event.searchId,
+            });
+          } else if (event.type === "search.error") {
+            window.webContents.send("search:error", {
+              message: event.message,
+              searchId: event.searchId,
+            });
           } else if ("conversationId" in event) {
             window.webContents.send("chat:event", event);
           } else {

@@ -5,7 +5,6 @@ import type {
 } from "@cocurdex/rpc";
 import {
   checkoutGitBranch,
-  commitGitChanges,
   discardGitFiles,
   getWorkspaceDiff,
   getWorkspaceGitStatus,
@@ -17,6 +16,7 @@ import {
   unstageGitFiles,
 } from "./git";
 import type { CocurdexDaemonService } from "./service";
+import { fileExists, readTextFile } from "./workspace-service";
 
 export function handleDaemonRequest<M extends DaemonMethod>(
   service: CocurdexDaemonService,
@@ -134,6 +134,40 @@ export async function handleDaemonRequest(
       return service.dataService.searchDocuments(request.params);
     case "workspace.list":
       return service.listWorkspaces();
+    case "workspace.listEntries":
+      return service.listWorkspaceEntries(request.params.rootPath);
+    case "workspace.listFiles":
+      return service.listWorkspaceFiles(request.params.rootPath);
+    case "file.readText":
+      return readTextFile(request.params.filePath);
+    case "file.exists":
+      return fileExists(request.params.filePath);
+    case "search.start":
+      await service.searchService.start(request.params);
+      return null;
+    case "search.cancel":
+      service.searchService.cancel(request.params.searchId);
+      return null;
+    case "mcp.readConfig":
+      return service.mcpConfigService.readConfig();
+    case "mcp.saveConfig":
+      return service.mcpConfigService.saveConfig(request.params.content);
+    case "skills.getStatus":
+      return service.skillsService.getStatus(request.params);
+    case "skills.install":
+      return service.skillsService.install(request.params);
+    case "skills.remove":
+      return service.skillsService.remove(request.params);
+    case "pdf.loadAnnotations":
+      return service.pdfAnnotationsService.loadAnnotations(
+        request.params.filePath,
+      );
+    case "pdf.saveAnnotations":
+      await service.pdfAnnotationsService.saveAnnotations(
+        request.params.filePath,
+        request.params.annotations,
+      );
+      return null;
     case "workspace.save":
       return service.saveWorkspace(request.params.workspace);
     case "workspace.worktreeEnvironment.get":
@@ -316,10 +350,7 @@ export async function handleDaemonRequest(
     case "git.discardFiles":
       return discardGitFiles(request.params.rootPath, request.params.filePaths);
     case "git.commit":
-      return commitGitChanges(request.params.rootPath, {
-        message: request.params.message,
-        includeUnstaged: request.params.includeUnstaged,
-      });
+      return service.commitWorkspaceChanges(request.params);
     case "git.push":
       return pushGitBranch(request.params.rootPath);
     case "provider.listModels":

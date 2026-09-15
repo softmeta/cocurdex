@@ -495,6 +495,9 @@ importers:
       '@cocurdex/llm-chat':
         specifier: workspace:*
         version: link:../llm-chat
+      '@cocurdex/product-skills':
+        specifier: workspace:*
+        version: link:../product-skills
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../rpc
@@ -504,6 +507,9 @@ importers:
       '@napi-rs/keyring':
         specifier: ^2.0.0
         version: 2.0.0
+      '@vscode/ripgrep':
+        specifier: ^1.18.0
+        version: 1.18.0
       simple-git:
         specifier: ^3.36.0
         version: 3.36.0(supports-color@7.2.0)

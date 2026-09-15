@@ -5,6 +5,7 @@
     "resolveJsonModule": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@cocurdex/shared/node": ["../../packages/shared/src/node.ts"],
       "@cocurdex/shared": ["../../packages/shared/src/index.ts"],
       "@cocurdex/rpc": ["../../packages/rpc/src/index.ts"],
       "@cocurdex/rpc/client": ["../../packages/rpc/src/client.ts"],

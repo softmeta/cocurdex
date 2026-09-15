@@ -41,6 +41,7 @@ import type {
   IssueRecord,
   LoadViewPayload,
   ManagedWorktree,
+  McpConfigFile,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -51,6 +52,11 @@ import type {
   NoteRecord,
   NoteSummary,
   NoteTag,
+  PdfDocumentAnnotations,
+  ProductSkillsInstallResult,
+  ProductSkillsRemoveResult,
+  ProductSkillsRequestPayload,
+  ProductSkillsStatusResult,
   ProviderConfigRecord,
   ProviderListModelsResult,
   ResolvedCommitMessageModel,
@@ -87,16 +93,19 @@ import type {
   WorkflowDefinitionRecord,
   WorkflowGateDecisionRecord,
   WorkflowRunRecord,
+  WorkspaceEntry,
+  WorkspaceFileRecord,
   WorkspaceGitDiffQuery,
   WorkspaceGitDiffResult,
   WorkspaceGitStatusResult,
   WorkspaceRecord,
+  WorkspaceSearchStartPayload,
   WorkspaceWorktreeEnvironment,
   WorktreeSettings,
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 22;
+export const DAEMON_PROTOCOL_VERSION = 23;
 
 export interface DaemonMetadata {
   pid: number;
@@ -121,6 +130,7 @@ export interface DaemonActiveWork {
   queuedInputs: number;
   chatOperations: number;
   workflowActive: boolean;
+  workspaceSearches: number;
 }
 
 export interface DaemonShutdownResult {
@@ -161,6 +171,8 @@ export type DaemonRequestPayloadByMethod = {
   "agent.list": undefined;
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "workspace.list": undefined;
+  "workspace.listEntries": { rootPath: string };
+  "workspace.listFiles": { rootPath: string };
   "workspace.save": { workspace: WorkspaceRecord };
   "workspace.worktreeEnvironment.get": { workspaceId: string };
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
@@ -226,6 +238,20 @@ export type DaemonRequestPayloadByMethod = {
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
   "storage.call": { operation: string; args: unknown[] };
+  "file.readText": { filePath: string };
+  "file.exists": { filePath: string };
+  "search.start": WorkspaceSearchStartPayload;
+  "search.cancel": { searchId: string };
+  "mcp.readConfig": undefined;
+  "mcp.saveConfig": { content: string };
+  "skills.getStatus": ProductSkillsRequestPayload;
+  "skills.install": ProductSkillsRequestPayload;
+  "skills.remove": ProductSkillsRequestPayload;
+  "pdf.loadAnnotations": { filePath: string };
+  "pdf.saveAnnotations": {
+    filePath: string;
+    annotations: PdfDocumentAnnotations;
+  };
   "note.list": undefined;
   "note.get": GetNotePayload;
   "note.create": CreateNotePayload;
@@ -319,6 +345,8 @@ export type DaemonResultByMethod = {
   "agent.list": AgentDescriptor[];
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "workspace.list": WorkspaceRecord[];
+  "workspace.listEntries": WorkspaceEntry[];
+  "workspace.listFiles": WorkspaceFileRecord[];
   "workspace.save": WorkspaceRecord;
   "workspace.worktreeEnvironment.get": WorkspaceWorktreeEnvironment;
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
@@ -362,6 +390,17 @@ export type DaemonResultByMethod = {
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
   "storage.call": unknown;
+  "file.readText": string;
+  "file.exists": boolean;
+  "search.start": null;
+  "search.cancel": null;
+  "mcp.readConfig": McpConfigFile;
+  "mcp.saveConfig": McpConfigFile;
+  "skills.getStatus": ProductSkillsStatusResult;
+  "skills.install": ProductSkillsInstallResult;
+  "skills.remove": ProductSkillsRemoveResult;
+  "pdf.loadAnnotations": PdfDocumentAnnotations;
+  "pdf.saveAnnotations": null;
   "note.list": NoteSummary[];
   "note.get": NoteRecord | null;
   "note.create": NoteRecord;
@@ -445,6 +484,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "daemon.status": true,
   "daemon.subscribe": true,
   "issue.listViews": true,
+  "mcp.readConfig": true,
   "network.proxy.test": true,
   "note.list": true,
   "provider.listConfigs": true,

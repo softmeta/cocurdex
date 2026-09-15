@@ -1,15 +1,15 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import readline from "node:readline";
-import { rgPath } from "@vscode/ripgrep";
-import type { WebContents } from "electron";
+import { fileURLToPath } from "node:url";
 import type {
-  WorkspaceSearchDoneEvent,
-  WorkspaceSearchErrorEvent,
+  WorkspaceSearchDaemonEvent,
   WorkspaceSearchMatch,
-  WorkspaceSearchResultEvent,
   WorkspaceSearchStartPayload,
-} from "../../src/lib/types";
+} from "@cocurdex/shared";
 
 const BATCH_SIZE = 50;
 const BATCH_INTERVAL_MS = 32;
@@ -17,7 +17,6 @@ const MAX_ERROR_MESSAGE_LENGTH = 500;
 
 interface ActiveSearch {
   child: ChildProcessWithoutNullStreams;
-  windowWebContentsId: number;
   flushTimer: NodeJS.Timeout | null;
   pending: WorkspaceSearchMatch[];
   resultCount: number;
@@ -37,8 +36,62 @@ interface RipgrepMatchRecord {
   };
 }
 
-function resolveRgPath() {
-  return rgPath.replace("app.asar", "app.asar.unpacked");
+function getProcessResourcesPath() {
+  return (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+}
+
+// The bundled daemon.cjs sits at <resources>/cli/daemon.cjs, one level below
+// the resources directory that also holds app.asar.unpacked and vendor/.
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+
+// Resolve lazily: in the packaged bundle this require runs from
+// resources/cli, where the platform package only exists inside
+// app.asar.unpacked — a top-level import would throw before the daemon starts.
+function resolveBundledRipgrepPath(executable: string) {
+  try {
+    const require = createRequire(import.meta.url);
+    const platformPkg = `@vscode/ripgrep-${process.platform}-${process.arch}`;
+    return require
+      .resolve(`${platformPkg}/bin/${executable}`)
+      .replace("app.asar", "app.asar.unpacked");
+  } catch {
+    return null;
+  }
+}
+
+// Resolution order: explicit env override, then the packaged desktop layout
+// (app.asar.unpacked next to resources/cli/daemon.cjs), then the workspace
+// node_modules copy used in development.
+async function resolveRipgrepPath(): Promise<string> {
+  const executable = process.platform === "win32" ? "rg.exe" : "rg";
+  const platformPkgDir = `@vscode/ripgrep-${process.platform}-${process.arch}`;
+  const candidates = [
+    process.env.COCURDEX_RIPGREP_PATH,
+    getProcessResourcesPath()
+      ? path.join(
+          getProcessResourcesPath() ?? "",
+          `app.asar.unpacked/node_modules/${platformPkgDir}/bin`,
+          executable,
+        )
+      : null,
+    path.resolve(
+      moduleDir,
+      `../app.asar.unpacked/node_modules/${platformPkgDir}/bin`,
+      executable,
+    ),
+    resolveBundledRipgrepPath(executable),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  throw new Error("ripgrep binary not found");
 }
 
 function truncateErrorMessage(message: string) {
@@ -144,22 +197,40 @@ function parseMatchLine(line: string): WorkspaceSearchMatch | null {
   };
 }
 
-export class WorkspaceSearchService {
+interface DaemonSearchServiceOptions {
+  broadcast(event: WorkspaceSearchDaemonEvent): void;
+  canScanRoot(rootPath: string): Promise<boolean>;
+}
+
+export class DaemonSearchService {
   private readonly searches = new Map<string, ActiveSearch>();
 
-  start(payload: WorkspaceSearchStartPayload, webContents: WebContents) {
+  constructor(private readonly options: DaemonSearchServiceOptions) {}
+
+  get activeCount() {
+    return this.searches.size;
+  }
+
+  async start(payload: WorkspaceSearchStartPayload): Promise<void> {
+    if (!(await this.options.canScanRoot(payload.rootPath))) {
+      throw new Error(
+        "search.start rejected: rootPath is not a registered workspace root or worktree",
+      );
+    }
+
     const query = payload.query.trim();
     this.cancel(payload.searchId);
 
     if (!query) {
-      this.sendDone(webContents, {
+      this.emit({
+        type: "search.done",
         reason: "empty-query",
         searchId: payload.searchId,
       });
       return;
     }
 
-    const child = spawn(resolveRgPath(), buildRgArgs(payload), {
+    const child = spawn(await resolveRipgrepPath(), buildRgArgs(payload), {
       cwd: payload.rootPath,
       env: process.env,
     });
@@ -169,19 +240,22 @@ export class WorkspaceSearchService {
       flushTimer: null,
       pending: [],
       resultCount: 0,
-      windowWebContentsId: webContents.id,
     };
 
     this.searches.set(payload.searchId, search);
 
     const flush = () => {
       search.flushTimer = null;
-      if (search.pending.length === 0 || webContents.isDestroyed()) {
+      if (search.pending.length === 0) {
         return;
       }
 
       const batch = search.pending.splice(0);
-      this.sendResult(webContents, { batch, searchId: payload.searchId });
+      this.emit({
+        type: "search.result",
+        batch,
+        searchId: payload.searchId,
+      });
     };
 
     const scheduleFlush = () => {
@@ -220,7 +294,8 @@ export class WorkspaceSearchService {
         search.finished = true;
         child.kill();
         flush();
-        this.sendDone(webContents, {
+        this.emit({
+          type: "search.done",
           reason: "limit-reached",
           searchId: payload.searchId,
         });
@@ -242,8 +317,10 @@ export class WorkspaceSearchService {
       if (search.finished) {
         return;
       }
+
       search.finished = true;
-      this.sendError(webContents, {
+      this.emit({
+        type: "search.error",
         message: truncateErrorMessage(error.message),
         searchId: payload.searchId,
       });
@@ -260,7 +337,8 @@ export class WorkspaceSearchService {
       this.cleanup(payload.searchId);
 
       if (signal) {
-        this.sendDone(webContents, {
+        this.emit({
+          type: "search.done",
           reason: "cancelled",
           searchId: payload.searchId,
         });
@@ -268,14 +346,16 @@ export class WorkspaceSearchService {
       }
 
       if (code === 0 || code === 1) {
-        this.sendDone(webContents, {
+        this.emit({
+          type: "search.done",
           reason: "completed",
           searchId: payload.searchId,
         });
         return;
       }
 
-      this.sendError(webContents, {
+      this.emit({
+        type: "search.error",
         message: truncateErrorMessage(
           stderr || `ripgrep exited with code ${code}`,
         ),
@@ -295,14 +375,6 @@ export class WorkspaceSearchService {
     this.cleanup(searchId);
   }
 
-  cancelForWebContents(webContentsId: number) {
-    for (const [searchId, search] of this.searches) {
-      if (search.windowWebContentsId === webContentsId) {
-        this.cancel(searchId);
-      }
-    }
-  }
-
   dispose() {
     const failures: unknown[] = [];
     for (const searchId of Array.from(this.searches.keys())) {
@@ -317,6 +389,10 @@ export class WorkspaceSearchService {
     }
   }
 
+  private emit(event: WorkspaceSearchDaemonEvent) {
+    this.options.broadcast(event);
+  }
+
   private cleanup(searchId: string) {
     const search = this.searches.get(searchId);
     if (search?.flushTimer) {
@@ -324,30 +400,4 @@ export class WorkspaceSearchService {
     }
     this.searches.delete(searchId);
   }
-
-  private sendResult(
-    webContents: WebContents,
-    event: WorkspaceSearchResultEvent,
-  ) {
-    if (!webContents.isDestroyed()) {
-      webContents.send("search:result", event);
-    }
-  }
-
-  private sendDone(webContents: WebContents, event: WorkspaceSearchDoneEvent) {
-    if (!webContents.isDestroyed()) {
-      webContents.send("search:done", event);
-    }
-  }
-
-  private sendError(
-    webContents: WebContents,
-    event: WorkspaceSearchErrorEvent,
-  ) {
-    if (!webContents.isDestroyed()) {
-      webContents.send("search:error", event);
-    }
-  }
 }
-
-export const workspaceSearchService = new WorkspaceSearchService();

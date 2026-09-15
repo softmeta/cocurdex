@@ -50,6 +50,11 @@ import type {
   NetworkProxyTestResult,
   NoteRecord,
   NoteSummary,
+  PdfDocumentAnnotations,
+  ProductSkillScope,
+  ProductSkillsInstallResult,
+  ProductSkillsRemoveResult,
+  ProductSkillsStatusResult,
   ProviderAuthLoginUpdate,
   ProviderAuthMethod,
   ProviderAuthState,
@@ -94,28 +99,38 @@ import type {
   ViewFull,
   ViewSummary,
   WorkflowDefinitionRecord,
+  WorkspaceEntry,
+  WorkspaceFileRecord,
   WorkspaceGitDiffQuery,
   WorkspaceGitDiffResult,
   WorkspaceGitStatusResult,
   WorkspaceRecord,
+  WorkspaceSearchDoneEvent,
+  WorkspaceSearchErrorEvent,
+  WorkspaceSearchMatch,
+  WorkspaceSearchMatchRange,
+  WorkspaceSearchResultEvent,
+  WorkspaceSearchStartPayload,
   WorkspaceWorktreeEnvironment,
   WorktreeSettings,
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export interface WorkspaceEntry {
-  name: string;
-  path: string;
-  type: "file" | "folder";
-  children?: WorkspaceEntry[];
-}
-
-export interface WorkspaceFileEntry {
-  kind: "directory" | "file";
-  name: string;
-  path: string;
-  relativePath: string;
-}
+export type WorkspaceFileEntry = WorkspaceFileRecord;
+export type ProductSkillsStatus = ProductSkillsStatusResult;
+export type PdfDocumentAnnotationsDto = PdfDocumentAnnotations;
+export type {
+  ProductSkillScope,
+  ProductSkillsInstallResult,
+  ProductSkillsRemoveResult,
+  WorkspaceEntry,
+  WorkspaceSearchDoneEvent,
+  WorkspaceSearchErrorEvent,
+  WorkspaceSearchMatch,
+  WorkspaceSearchMatchRange,
+  WorkspaceSearchResultEvent,
+  WorkspaceSearchStartPayload,
+};
 
 export interface WorkspaceFilesChangedEvent {
   rootPath: string;
@@ -153,46 +168,6 @@ export interface ImportDocumentAttachmentPayload {
   mimeType: "application/pdf";
   name: string;
   sizeBytes: number;
-}
-
-export interface WorkspaceSearchStartPayload {
-  searchId: string;
-  rootPath: string;
-  query: string;
-  caseSensitive: boolean;
-  wholeWord: boolean;
-  useRegex: boolean;
-  maxResults: number;
-  // Comma-separated glob patterns. Empty string means no filter.
-  include: string;
-  exclude: string;
-}
-
-export interface WorkspaceSearchMatchRange {
-  startColumn: number;
-  endColumn: number;
-}
-
-export interface WorkspaceSearchMatch {
-  filePath: string;
-  line: number;
-  text: string;
-  ranges: WorkspaceSearchMatchRange[];
-}
-
-export interface WorkspaceSearchResultEvent {
-  searchId: string;
-  batch: WorkspaceSearchMatch[];
-}
-
-export interface WorkspaceSearchDoneEvent {
-  searchId: string;
-  reason: "completed" | "cancelled" | "empty-query" | "limit-reached";
-}
-
-export interface WorkspaceSearchErrorEvent {
-  searchId: string;
-  message: string;
 }
 
 /** Status of the `cocurdex` shell command install (PATH). */
@@ -256,59 +231,6 @@ export interface DaemonRuntimeStatus {
   matchesRuntime: boolean;
   ownedByThisApp: boolean;
   error: string | null;
-}
-
-export type ProductSkillScope = "project" | "global";
-
-/** Install status for the bundled cocurdex-* agent skill pack. */
-export interface ProductSkillsStatus {
-  scope: ProductSkillScope;
-  packVersion: string;
-  installed: boolean;
-  managed: boolean;
-  installedVersion: string | null;
-  updateAvailable: boolean;
-  conflict: boolean;
-  conflictSkills: string[];
-  skills: string[];
-  agentsSkillsDir: string;
-  claudeSkillsDir: string;
-  claudeLinkMode: "symlink" | "copy" | "none";
-  workspaceRoot: string | null;
-  sourceAvailable: boolean;
-  sourceRoot: string;
-}
-
-export interface ProductSkillsInstallResult extends ProductSkillsStatus {
-  action: "installed" | "updated" | "skipped" | "conflict";
-}
-
-export interface ProductSkillsRemoveResult {
-  scope: ProductSkillScope;
-  removed: boolean;
-  agentsSkillsDir: string;
-  claudeSkillsDir: string;
-  removedSkills: string[];
-}
-
-// Mirrors PdfDocumentAnnotations in the PDF reader feature. Kept structural at
-// the IPC boundary so main/renderer contracts do not import React feature UI.
-export interface PdfDocumentAnnotationsDto {
-  bookmarks: Array<{
-    id: string;
-    pageNumber: number;
-    label?: string;
-    scrollYRatio?: number;
-    createdAt: number;
-  }>;
-  highlights: Array<{
-    id: string;
-    pageNumber: number;
-    color: "yellow" | "green" | "blue" | "pink";
-    selectedText: string;
-    quads: Array<{ x1: number; y1: number; x2: number; y2: number }>;
-    createdAt: number;
-  }>;
 }
 
 export interface DesktopApi {
