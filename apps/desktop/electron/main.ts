@@ -130,7 +130,7 @@ import {
   configureWorkspaceGitStateChangedBroadcast,
   ensureWorkspaceFilesWatcher,
   registerPdfProtocol,
-  resolvePdfReadPath,
+  resolveAuthorizedPdfReadPath,
 } from "./workspace";
 
 const MIN_WINDOW_WIDTH = 400;
@@ -683,7 +683,10 @@ function registerWorkspaceHandlers() {
     "pdf:read-data",
     schemas.readPdf,
     async (_event, payload) => {
-      resolvePdfReadPath(payload.filePath, await listWorkspaceRootPaths());
+      await resolveAuthorizedPdfReadPath(
+        payload.filePath,
+        await listWorkspaceRootPaths(),
+      );
       return buildPdfAssetUrl(payload.filePath);
     },
   );

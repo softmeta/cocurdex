@@ -16,7 +16,6 @@ import {
   unstageGitFiles,
 } from "./git";
 import type { CocurdexDaemonService } from "./service";
-import { fileExists, readTextFile } from "./workspace-service";
 
 export function handleDaemonRequest<M extends DaemonMethod>(
   service: CocurdexDaemonService,
@@ -77,11 +76,16 @@ export async function handleDaemonRequest(
       return service.listSessionAttention();
     case "attention.update":
       return service.updateSessionAttention(request.params);
-    case "storage.call":
-      return service.state.callStorage(
+    case "storage.call": {
+      const result = await service.state.callStorage(
         request.params.operation,
         request.params.args,
       );
+      if (request.params.operation === "workspace.delete") {
+        service.invalidateScanRoots();
+      }
+      return result;
+    }
     case "note.list":
       return service.dataService.listNotes();
     case "note.get":
@@ -139,9 +143,9 @@ export async function handleDaemonRequest(
     case "workspace.listFiles":
       return service.listWorkspaceFiles(request.params.rootPath);
     case "file.readText":
-      return readTextFile(request.params.filePath);
+      return service.readWorkspaceTextFile(request.params.filePath);
     case "file.exists":
-      return fileExists(request.params.filePath);
+      return service.workspaceFileExists(request.params.filePath);
     case "search.start":
       await service.searchService.start(request.params);
       return null;

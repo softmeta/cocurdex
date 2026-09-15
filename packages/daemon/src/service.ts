@@ -95,8 +95,10 @@ import {
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
 import {
+  fileExists,
   listWorkspaceEntries as listWorkspaceEntriesOnDisk,
   listWorkspaceFiles as listWorkspaceFilesOnDisk,
+  readTextFile,
 } from "./workspace-service";
 import {
   createManagedWorktree,
@@ -198,7 +200,9 @@ export class CocurdexDaemonService {
       canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
     });
     this.mcpConfigService = new DaemonMcpConfigService(options.userDataPath);
-    this.skillsService = new DaemonSkillsService();
+    this.skillsService = new DaemonSkillsService(undefined, (rootPath) =>
+      this.scanPolicy.canScan(rootPath),
+    );
     this.pdfAnnotationsService = new DaemonPdfAnnotationsService(
       options.userDataPath,
       async () =>
@@ -421,6 +425,28 @@ export class CocurdexDaemonService {
     return listWorkspaceFilesOnDisk(rootPath);
   }
 
+  invalidateScanRoots() {
+    this.scanPolicy.invalidate();
+  }
+
+  // file.* RPCs are reachable by any daemon client, so reads are confined to
+  // registered workspace/worktree roots instead of trusting request paths.
+  async readWorkspaceTextFile(filePath: string) {
+    if (!(await this.scanPolicy.canAccessFile(filePath))) {
+      throw new Error(
+        `File is outside every registered workspace (path=${filePath})`,
+      );
+    }
+    return readTextFile(filePath);
+  }
+
+  async workspaceFileExists(filePath: string) {
+    if (!(await this.scanPolicy.canAccessFile(filePath))) {
+      return false;
+    }
+    return fileExists(filePath);
+  }
+
   async commitWorkspaceChanges(input: {
     rootPath: string;
     message: string;
@@ -485,8 +511,11 @@ export class CocurdexDaemonService {
       }
     }
     const normalized = { ...workspace, rootPaths };
-    await this.state.saveWorkspace(normalized);
-    this.scanPolicy.invalidate();
+    try {
+      await this.state.saveWorkspace(normalized);
+    } finally {
+      this.scanPolicy.invalidate();
+    }
     return {
       ...normalized,
       missingRootPaths: normalized.rootPaths.filter(
@@ -551,25 +580,29 @@ export class CocurdexDaemonService {
     });
   }
 
-  createWorktree(input: {
+  async createWorktree(input: {
     workspaceId: string;
     branch: string;
     startPoint?: string;
   }) {
     this.scanPolicy.invalidate();
-    return createManagedWorktree({
-      state: this.state,
-      userDataPath: this.userDataPath,
-      workspaceId: input.workspaceId,
-      branch: input.branch,
-      startPoint: input.startPoint,
-      runSetup: async (worktreePath) => {
-        await this.runWorktreeSetup({
-          workspaceId: input.workspaceId,
-          worktreePath,
-        });
-      },
-    });
+    try {
+      return await createManagedWorktree({
+        state: this.state,
+        userDataPath: this.userDataPath,
+        workspaceId: input.workspaceId,
+        branch: input.branch,
+        startPoint: input.startPoint,
+        runSetup: async (worktreePath) => {
+          await this.runWorktreeSetup({
+            workspaceId: input.workspaceId,
+            worktreePath,
+          });
+        },
+      });
+    } finally {
+      this.scanPolicy.invalidate();
+    }
   }
 
   async removeWorktree(input: {
@@ -578,28 +611,32 @@ export class CocurdexDaemonService {
     workspaceRootPath?: string;
   }) {
     this.scanPolicy.invalidate();
-    return removeManagedWorktree({
-      state: this.state,
-      userDataPath: this.userDataPath,
-      workspaceId: input.workspaceId,
-      worktreePath: input.worktreePath,
-      workspaceRootPath: input.workspaceRootPath,
-      runCleanup: async (worktreePath) => {
-        try {
-          await runWorktreeCleanup({
-            state: this.state,
-            workspaceId: input.workspaceId,
-            worktreePath,
-          });
-        } catch (error) {
-          logDaemonDiagnostic("warn", "worktree.cleanup failed", {
-            error: error instanceof Error ? error.message : String(error),
-            workspaceId: input.workspaceId,
-            worktreePath,
-          });
-        }
-      },
-    });
+    try {
+      return await removeManagedWorktree({
+        state: this.state,
+        userDataPath: this.userDataPath,
+        workspaceId: input.workspaceId,
+        worktreePath: input.worktreePath,
+        workspaceRootPath: input.workspaceRootPath,
+        runCleanup: async (worktreePath) => {
+          try {
+            await runWorktreeCleanup({
+              state: this.state,
+              workspaceId: input.workspaceId,
+              worktreePath,
+            });
+          } catch (error) {
+            logDaemonDiagnostic("warn", "worktree.cleanup failed", {
+              error: error instanceof Error ? error.message : String(error),
+              workspaceId: input.workspaceId,
+              worktreePath,
+            });
+          }
+        },
+      });
+    } finally {
+      this.scanPolicy.invalidate();
+    }
   }
 
   listSessions() {

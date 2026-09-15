@@ -6,7 +6,7 @@ import {
   normalizeDocumentAnnotations,
   type PdfDocumentAnnotations,
 } from "@cocurdex/shared";
-import { resolvePdfReadPath } from "@cocurdex/shared/node";
+import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
 
 const PDF_ANNOTATIONS_DIR = "pdf-annotations";
 const STORAGE_VERSION = 1;
@@ -52,6 +52,7 @@ function isEnoent(error: unknown): boolean {
 
 export class DaemonPdfAnnotationsService {
   private readonly annotationsRootPath: string;
+  private readonly saveChains = new Map<string, Promise<void>>();
 
   constructor(
     userDataPath: string,
@@ -68,7 +69,7 @@ export class DaemonPdfAnnotationsService {
   }
 
   async loadAnnotations(filePath: string): Promise<PdfDocumentAnnotations> {
-    const resolvedPath = resolvePdfReadPath(
+    const resolvedPath = await resolveAuthorizedPdfReadPath(
       filePath,
       await this.listWorkspaceRootPaths(),
     );
@@ -86,15 +87,36 @@ export class DaemonPdfAnnotationsService {
     }
   }
 
+  // Saves arrive as complete snapshots and callers do not await them, so
+  // concurrent saves for one PDF must run in request order or an older
+  // snapshot can overwrite a newer one.
   async saveAnnotations(
     filePath: string,
     annotations: PdfDocumentAnnotations,
   ): Promise<void> {
-    const resolvedPath = resolvePdfReadPath(
+    const resolvedPath = await resolveAuthorizedPdfReadPath(
       filePath,
       await this.listWorkspaceRootPaths(),
     );
     const storagePath = this.storageFilePathFor(resolvedPath);
+    const run = (this.saveChains.get(storagePath) ?? Promise.resolve()).then(
+      () => this.persistAnnotations(resolvedPath, storagePath, annotations),
+    );
+    this.saveChains.set(
+      storagePath,
+      run.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    await run;
+  }
+
+  private async persistAnnotations(
+    resolvedPath: string,
+    storagePath: string,
+    annotations: PdfDocumentAnnotations,
+  ): Promise<void> {
     const normalized = normalizeDocumentAnnotations(annotations);
 
     if (

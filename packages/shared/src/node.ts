@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 // Node-only helpers. This entry is not exported from the package root so the
@@ -14,6 +15,23 @@ function foldCase(value: string): string {
   return isCaseInsensitiveFs ? value.toLowerCase() : value;
 }
 
+// Lexical containment of an already-absolute candidate inside one of the
+// given roots. Pure (no fs access); callers that need symlink safety should
+// realpath both sides first, as resolveAuthorizedPdfReadPath does.
+export function isPathWithinRoots(
+  candidatePath: string,
+  rootPaths: readonly string[],
+): boolean {
+  const foldedPath = foldCase(path.resolve(candidatePath));
+  return rootPaths.some((rootPath) => {
+    const foldedRoot = foldCase(path.resolve(rootPath));
+    return (
+      foldedPath === foldedRoot ||
+      foldedPath.startsWith(`${foldedRoot}${path.sep}`)
+    );
+  });
+}
+
 // `filePath` arrives from a client and is therefore untrusted. The workspace
 // roots, by contrast, MUST come from daemon/main-process state (the registered
 // workspace list) — never from the same request — so the check cannot be
@@ -25,15 +43,8 @@ export function resolvePdfReadPath(
   workspaceRootPaths: readonly string[],
 ): string {
   const resolvedPath = path.resolve(filePath);
-  const foldedPath = foldCase(resolvedPath);
 
-  const isInsideWorkspace = workspaceRootPaths.some((rootPath) => {
-    const foldedRoot = foldCase(path.resolve(rootPath));
-    return (
-      foldedPath === foldedRoot ||
-      foldedPath.startsWith(`${foldedRoot}${path.sep}`)
-    );
-  });
+  const isInsideWorkspace = isPathWithinRoots(resolvedPath, workspaceRootPaths);
 
   if (!isInsideWorkspace) {
     throw new Error(
@@ -46,4 +57,31 @@ export function resolvePdfReadPath(
   }
 
   return resolvedPath;
+}
+
+// resolvePdfReadPath only sees the path string, so a symlink inside a
+// workspace could point outside it. When the target exists, canonicalize the
+// file and the roots and re-check containment so the authorization decision
+// follows the real filesystem. Missing files keep the lexical result — the
+// check is about authorization scope, not existence.
+export async function resolveAuthorizedPdfReadPath(
+  filePath: string,
+  workspaceRootPaths: readonly string[],
+): Promise<string> {
+  const resolvedPath = resolvePdfReadPath(filePath, workspaceRootPaths);
+  const realPath = await realpath(resolvedPath).catch(() => null);
+  if (!realPath) {
+    return resolvedPath;
+  }
+  const realRoots = await Promise.all(
+    workspaceRootPaths.map((rootPath) =>
+      realpath(rootPath).catch(() => path.resolve(rootPath)),
+    ),
+  );
+  if (!isPathWithinRoots(realPath, realRoots)) {
+    throw new Error(
+      `PDF is outside every registered workspace (path=${resolvedPath})`,
+    );
+  }
+  return realPath;
 }

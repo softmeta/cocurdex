@@ -1,8 +1,11 @@
+import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
+import path from "node:path";
 import {
   collectKnownWorkspaceScanRoots,
   isKnownWorkspaceScanRoot,
 } from "@cocurdex/shared";
+import { isPathWithinRoots } from "@cocurdex/shared/node";
 import { listGitWorktrees } from "./git";
 import type { DaemonState } from "./state";
 
@@ -65,6 +68,21 @@ export function createWorkspaceScanPolicy(state: DaemonState) {
     async canScan(rootPath: string) {
       const allowed = await listKnownWorkspaceScanRoots();
       return isKnownWorkspaceScanRoot(rootPath, allowed, homedir());
+    },
+    // File-level access (readText/exists): the candidate may be any path
+    // inside an allowed root, not a root itself. Both sides are canonicalized
+    // so a symlink inside a workspace cannot escape the allowlist.
+    async canAccessFile(filePath: string) {
+      const allowed = await listKnownWorkspaceScanRoots();
+      const realRoots = await Promise.all(
+        allowed.map((rootPath) =>
+          realpath(rootPath).catch(() => path.resolve(rootPath)),
+        ),
+      );
+      const resolved = await realpath(filePath).catch(() =>
+        path.resolve(filePath),
+      );
+      return isPathWithinRoots(resolved, realRoots);
     },
   };
 }

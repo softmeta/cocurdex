@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { McpConfigFile } from "@cocurdex/shared";
 
@@ -23,6 +24,8 @@ export function validateMcpConfig(content: string) {
 }
 
 export class DaemonMcpConfigService {
+  private saveChain: Promise<void> = Promise.resolve();
+
   constructor(private readonly userDataPath: string) {}
 
   async readConfig(): Promise<McpConfigFile> {
@@ -37,16 +40,35 @@ export class DaemonMcpConfigService {
     }
   }
 
+  // Multiple daemon clients can save concurrently; a shared temp path would
+  // let one rename consume another call's file, so each write gets a unique
+  // temp name and saves run in request order.
   async saveConfig(content: string): Promise<McpConfigFile> {
-    const configPath = getMcpConfigPath(this.userDataPath);
     const formatted = validateMcpConfig(content);
+    const run = this.saveChain.then(() => this.persist(formatted));
+    this.saveChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    await run;
+    return {
+      path: getMcpConfigPath(this.userDataPath),
+      content: formatted,
+    };
+  }
+
+  private async persist(formatted: string): Promise<void> {
+    const configPath = getMcpConfigPath(this.userDataPath);
     await mkdir(path.dirname(configPath), { recursive: true });
-    const temporaryPath = `${configPath}.tmp`;
-    await writeFile(temporaryPath, formatted, {
-      encoding: "utf8",
-      mode: 0o600,
-    });
-    await rename(temporaryPath, configPath);
-    return { path: configPath, content: formatted };
+    const temporaryPath = `${configPath}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporaryPath, formatted, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      await rename(temporaryPath, configPath);
+    } finally {
+      await unlink(temporaryPath).catch(() => undefined);
+    }
   }
 }

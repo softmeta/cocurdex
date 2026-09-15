@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -130,5 +130,81 @@ describe("pdf annotations storage", () => {
     await expect(
       service.loadAnnotations(path.join(workspaceRootPath, "notes.txt")),
     ).rejects.toThrow("not a PDF");
+  });
+
+  it("serializes overlapping saves so the newest snapshot wins", async () => {
+    const userDataPath = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-pdf-annotations-"),
+    );
+    const workspaceRootPath = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-pdf-workspace-"),
+    );
+    const service = createService(userDataPath, workspaceRootPath);
+    const filePath = path.join(workspaceRootPath, "doc.pdf");
+
+    const first = service.saveAnnotations(filePath, {
+      bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
+      highlights: [],
+    });
+    const second = service.saveAnnotations(filePath, {
+      bookmarks: [
+        { id: "bm-1", pageNumber: 1, createdAt: 1 },
+        { id: "bm-2", pageNumber: 2, createdAt: 2 },
+      ],
+      highlights: [],
+    });
+    await Promise.all([first, second]);
+
+    const loaded = await service.loadAnnotations(filePath);
+    expect(loaded.bookmarks.map((bookmark) => bookmark.id)).toEqual([
+      "bm-1",
+      "bm-2",
+    ]);
+  });
+
+  it("rejects a PDF that reaches outside the workspace via symlink", async () => {
+    const userDataPath = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-pdf-annotations-"),
+    );
+    const workspaceRootPath = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-pdf-workspace-"),
+    );
+    const outsideDir = await mkdtemp(path.join(tmpdir(), "cocurdex-outside-"));
+    await writeFile(path.join(outsideDir, "secret.pdf"), "%PDF-1.4\n", "utf8");
+    await symlink(outsideDir, path.join(workspaceRootPath, "linked"), "dir");
+    const service = createService(userDataPath, workspaceRootPath);
+
+    await expect(
+      service.loadAnnotations(
+        path.join(workspaceRootPath, "linked", "secret.pdf"),
+      ),
+    ).rejects.toThrow("outside every registered workspace");
+  });
+
+  it("accepts a file when the workspace root itself is a symlink", async () => {
+    const userDataPath = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-pdf-annotations-"),
+    );
+    const realRoot = await mkdtemp(
+      path.join(tmpdir(), "cocurdex-pdf-workspace-"),
+    );
+    const linkedRoot = path.join(
+      await mkdtemp(path.join(tmpdir(), "cocurdex-link-")),
+      "root",
+    );
+    await symlink(realRoot, linkedRoot, "dir");
+    await mkdir(path.join(realRoot, "papers"), { recursive: true });
+    const filePath = path.join(linkedRoot, "papers", "paper.pdf");
+    await writeFile(path.join(realRoot, "papers", "paper.pdf"), "%PDF", "utf8");
+    const service = createService(userDataPath, linkedRoot);
+
+    await service.saveAnnotations(filePath, {
+      bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
+      highlights: [],
+    });
+    await expect(service.loadAnnotations(filePath)).resolves.toEqual({
+      bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
+      highlights: [],
+    });
   });
 });

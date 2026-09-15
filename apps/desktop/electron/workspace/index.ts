@@ -1,5 +1,9 @@
 export { registerPdfProtocol } from "./pdf-protocol";
-export { buildPdfAssetUrl, resolvePdfReadPath } from "./pdf-read-service";
+export {
+  buildPdfAssetUrl,
+  resolveAuthorizedPdfReadPath,
+  resolvePdfReadPath,
+} from "./pdf-read-service";
 export {
   closeAllWorkspaceFilesWatchers,
   configureWorkspaceFilesChangedBroadcast,

@@ -1,8 +1,11 @@
-import { resolvePdfReadPath } from "@cocurdex/shared/node";
+import {
+  resolveAuthorizedPdfReadPath,
+  resolvePdfReadPath,
+} from "@cocurdex/shared/node";
 
 // The workspace-root authorization check is shared with the daemon, which
 // applies the same policy when persisting PDF annotations.
-export { resolvePdfReadPath };
+export { resolveAuthorizedPdfReadPath, resolvePdfReadPath };
 
 // The URL deliberately carries only the file path. The workspace scope is
 // re-derived from main-process state when the protocol handler serves the

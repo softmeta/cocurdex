@@ -16,8 +16,29 @@ import { logDaemonDiagnostic } from "./diagnostics";
 export class DaemonSkillsService {
   private readonly sourceRoot: string;
 
-  constructor(sourceRoot = getDefaultSkillsSourceRoot()) {
+  constructor(
+    sourceRoot = getDefaultSkillsSourceRoot(),
+    private readonly canScanRoot: (
+      rootPath: string,
+    ) => Promise<boolean> = async () => false,
+  ) {
     this.sourceRoot = sourceRoot;
+  }
+
+  // Project scope writes into <root>/.claude/skills, so the target must be a
+  // registered workspace/worktree — never a client-supplied arbitrary path.
+  private async requireAuthorizedProjectRoot(
+    payload: ProductSkillsRequestPayload,
+  ) {
+    if (payload.scope !== "project") {
+      return;
+    }
+    const workspaceRootPath = payload.workspaceRootPath;
+    if (!workspaceRootPath || !(await this.canScanRoot(workspaceRootPath))) {
+      throw new Error(
+        `Project skills target is not a registered workspace (path=${workspaceRootPath ?? "none"})`,
+      );
+    }
   }
 
   private async sourceIsAvailable() {
@@ -32,6 +53,7 @@ export class DaemonSkillsService {
   async getStatus(
     payload: ProductSkillsRequestPayload,
   ): Promise<ProductSkillsStatusResult> {
+    await this.requireAuthorizedProjectRoot(payload);
     const status = await getProductSkillsStatus(
       payload.scope,
       payload.workspaceRootPath ?? undefined,
@@ -47,6 +69,7 @@ export class DaemonSkillsService {
   async install(
     payload: ProductSkillsRequestPayload,
   ): Promise<ProductSkillsInstallResult> {
+    await this.requireAuthorizedProjectRoot(payload);
     const result = await installProductSkills(
       payload.scope,
       payload.workspaceRootPath ?? undefined,
@@ -68,6 +91,7 @@ export class DaemonSkillsService {
   async remove(
     payload: ProductSkillsRequestPayload,
   ): Promise<ProductSkillsRemoveResult> {
+    await this.requireAuthorizedProjectRoot(payload);
     const result = await removeProductSkills(
       payload.scope,
       payload.workspaceRootPath ?? undefined,

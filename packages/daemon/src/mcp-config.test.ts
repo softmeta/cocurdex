@@ -25,4 +25,18 @@ describe("MCP configuration", () => {
   it("rejects config without an mcpServers object", () => {
     expect(() => validateMcpConfig("{}")).toThrow('"mcpServers" object');
   });
+
+  it("keeps concurrent saves intact and in request order", async () => {
+    const userDataPath = await mkdtemp(path.join(tmpdir(), "cocurdex-mcp-"));
+    const service = new DaemonMcpConfigService(userDataPath);
+
+    const [first, second] = await Promise.all([
+      service.saveConfig('{"mcpServers":{"a":{"command":"a"}}}'),
+      service.saveConfig('{"mcpServers":{"b":{"command":"b"}}}'),
+    ]);
+
+    expect(first.content).toContain('"a"');
+    expect(second.content).toContain('"b"');
+    expect(await service.readConfig()).toEqual(second);
+  });
 });
