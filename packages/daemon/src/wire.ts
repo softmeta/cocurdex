@@ -181,7 +181,8 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       const wss = new WebSocketServer({
         host: "127.0.0.1",
         port,
-        verifyClient: ({ origin }) => isAllowedWebSocketOrigin(origin),
+        verifyClient: ({ origin }: { origin: string }) =>
+          isAllowedWebSocketOrigin(origin),
       });
       webSocketServer = wss;
       wss.once("error", reject);

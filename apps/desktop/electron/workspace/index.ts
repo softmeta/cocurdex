@@ -1,13 +1,9 @@
 export { registerPdfProtocol } from "./pdf-protocol";
-export { buildPdfAssetUrl, resolvePdfReadPath } from "./pdf-read-service";
-export { workspaceSearchService } from "./search-service";
 export {
-  closeAllWorkspacePathCommands,
-  fileExists,
-  listWorkspaceFiles,
-  readTextFile,
-  readWorkspaceEntries,
-} from "./workspace-service";
+  buildPdfAssetUrl,
+  resolveAuthorizedPdfReadPath,
+  resolvePdfReadPath,
+} from "./pdf-read-service";
 export {
   closeAllWorkspaceFilesWatchers,
   configureWorkspaceFilesChangedBroadcast,

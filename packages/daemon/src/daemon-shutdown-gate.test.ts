@@ -7,6 +7,7 @@ const idle: DaemonActiveWork = {
   queuedInputs: 0,
   chatOperations: 0,
   workflowActive: false,
+  workspaceSearches: 0,
 };
 
 describe("safe daemon shutdown admission", () => {
@@ -15,6 +16,7 @@ describe("safe daemon shutdown admission", () => {
     "queuedInputs",
     "chatOperations",
     "workflowActive",
+    "workspaceSearches",
   ] as const)("preserves %s", (kind) => {
     const gate = new DaemonShutdownGate();
     expect(

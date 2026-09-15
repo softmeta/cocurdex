@@ -1,7 +1,6 @@
 export * from "./client";
 export * from "./handler";
 export * from "./orchestration-workspace";
-export * from "./orchestration-workspace";
 export * from "./paths";
 export * from "./provider-service";
 export * from "./runtime";
@@ -9,4 +8,3 @@ export * from "./service";
 export * from "./wire";
 export * from "./workflow";
 export * from "./workspace-service";
-export * from "./workspace-types";

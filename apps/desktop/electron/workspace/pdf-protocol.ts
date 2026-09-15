@@ -2,7 +2,10 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { protocol } from "electron";
 import { createLogger } from "../logging";
-import { parsePdfAssetUrl, resolvePdfReadPath } from "./pdf-read-service";
+import {
+  parsePdfAssetUrl,
+  resolveAuthorizedPdfReadPath,
+} from "./pdf-read-service";
 
 const logger = createLogger("pdf-protocol");
 
@@ -15,7 +18,10 @@ export function registerPdfProtocol(
     try {
       const filePath = parsePdfAssetUrl(request.url);
       const workspaceRootPaths = await getWorkspaceRootPaths();
-      const resolvedPath = resolvePdfReadPath(filePath, workspaceRootPaths);
+      const resolvedPath = await resolveAuthorizedPdfReadPath(
+        filePath,
+        workspaceRootPaths,
+      );
 
       const stats = await stat(resolvedPath);
       const stream = createReadStream(resolvedPath);

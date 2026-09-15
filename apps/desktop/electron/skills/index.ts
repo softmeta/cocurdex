@@ -1,8 +1,1 @@
-export {
-  getBundledSkillsSourceRoot,
-  installSkills,
-  readSkillsStatus,
-  registerSkillsHandlers,
-  removeSkills,
-  type SkillsStatusPayload,
-} from "./skills-service";
+export { registerSkillsHandlers } from "./skills-service";

@@ -92,11 +92,6 @@ export async function listWorkspaces(): Promise<WorkspaceRecord[]> {
   return requestDaemon("workspace.list", daemonOptions());
 }
 
-export async function listSessions(): Promise<SessionRecord[]> {
-  await daemonReady;
-  return requestDaemon("session.list", daemonOptions());
-}
-
 export function deleteWorkspace(workspaceId: string): Promise<void> {
   return callStorage("workspace.delete", workspaceId);
 }

@@ -1,5 +1,6 @@
 import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
+import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 
 export type CocurdexDataArea = "notes" | "issues";
 
@@ -11,4 +12,5 @@ export interface CocurdexDataChangedEvent {
 export type CocurdexDaemonEvent =
   | AgentEvent
   | CocurdexDataChangedEvent
-  | ChatEvent;
+  | ChatEvent
+  | WorkspaceSearchDaemonEvent;

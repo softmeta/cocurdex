@@ -14,6 +14,15 @@ transport-neutral client work.
 - `git.*` RPC (11 methods) in daemon under `packages/daemon/src/git/`;
   Electron `git:*` handlers are thin forwards. Git types moved to
   `packages/shared/src/git.ts`. Protocol version 22.
+- Formerly Electron-only product APIs are daemon RPC on protocol 23:
+  `workspace.listEntries`/`workspace.listFiles`, `file.readText`/`file.exists`,
+  `search.start`/`search.cancel` (results stream as `search.*` daemon events,
+  bridged to `search:result`/`search:done`/`search:error` in the host),
+  `mcp.readConfig`/`mcp.saveConfig`, `skills.getStatus`/`skills.install`/
+  `skills.remove`, `pdf.loadAnnotations`/`pdf.saveAnnotations`. Blank
+  `git.commit` messages are generated daemon-side from the configured
+  commit-message model. Root authorization for listings, search, and PDF
+  annotations is daemon-owned (`packages/daemon/src/scan-roots.ts`).
 - Alias maps that must list `@cocurdex/rpc/client` before `@cocurdex/rpc`:
   `electron.vite.config.ts`, `scripts/build-cli.mjs`, `vitest.config.ts`,
   `apps/desktop/tsconfig.json`, root `tsconfig.base.json`.
@@ -50,25 +59,15 @@ listener leaves loopback:
 configs, API keys, model listing and OAuth login flows. Daemon already has
 `provider.*` read methods; writes and auth flows are Electron only.
 
-- Blank commit message generation still lives in the Electron `git:commit`
-  handler because it needs `resolveRuntimeProviderSnapshot`. Move it into
-  `git.commit` once provider snapshot resolution is in the daemon.
 - OAuth callback handling depends on the ADR 0003 decision.
 
 ### 4. Remaining host-only product logic
 
-Move to daemon RPC, keep Electron as forwarding:
-
-- `workspace:listEntries`, `workspace:listFiles`, `file:readText`,
-  `file:exists`, `search:*` (`electron/workspace/workspace-service.ts`,
-  `search-service.ts`).
-- `mcp:*` (`electron/mcp/mcp-service.ts`), `skills:*`
-  (`electron/skills/skills-service.ts`), `pdf:*` reads.
-- `session:listMessages`, `session:listToolCalls` if not already daemon backed.
-
-Stays in Electron: `window`, `dialog`, `shell`, `app:update`, `cli`,
-`browser` (BrowserView), `pty`, `fonts`, `editorView`, `log`, file watching
-(`workspace-watch-service.ts`, which keeps its own `git-client.ts`).
+Done on protocol 23 — see Done. `pdf:read-data` (pdf-asset:// URL) stays in
+Electron since serving the file is a host capability; annotation persistence
+is daemon-side. Stays in Electron: `window`, `dialog`, `shell`, `app:update`,
+`cli`, `browser` (BrowserView), `pty`, `fonts`, `editorView`, `log`, file
+watching (`workspace-watch-service.ts`, which keeps its own `git-client.ts`).
 
 ### 5. Split the renderer `desktopApi` surface
 

@@ -100,6 +100,9 @@ export interface WorkspaceGitStatusResult {
 export interface GitCommitResult {
   commitHash: string;
   message: string;
+  // True when the subject was generated from the staged change set because the
+  // caller submitted a blank message.
+  generatedMessage: boolean;
 }
 
 export interface GitPushResult {

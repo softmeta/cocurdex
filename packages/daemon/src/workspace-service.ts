@@ -1,11 +1,14 @@
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
-import { access, readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isBroadFilesystemScanRoot } from "@cocurdex/shared";
-import type { WorkspaceFileRecord } from "./workspace-types";
+import {
+  isBroadFilesystemScanRoot,
+  type WorkspaceEntry,
+  type WorkspaceFileRecord,
+} from "@cocurdex/shared";
 
 const MAX_WORKSPACE_FILE_RESULTS = 5000;
 const FD_TIMEOUT_MS = 5000;
@@ -32,20 +35,25 @@ function getProcessResourcesPath() {
 }
 
 async function resolveFdPath() {
+  const executable = process.platform === "win32" ? "fd.exe" : "fd";
   const target = getFdTarget();
   const candidates = [
+    // Packaged daemon.cjs sits at <resources>/cli/daemon.cjs, so the vendor
+    // directory lands one level above the bundle.
+    path.resolve(__dirname, "../vendor/fd", target, executable),
+    // Development repo layout: packages/daemon/src -> repo root.
     path.resolve(
       __dirname,
       "../../../apps/desktop/vendor/fd",
       target,
-      process.platform === "win32" ? "fd.exe" : "fd",
+      executable,
     ),
     getProcessResourcesPath()
       ? path.join(
           getProcessResourcesPath() ?? "",
           "vendor/fd",
           target,
-          process.platform === "win32" ? "fd.exe" : "fd",
+          executable,
         )
       : null,
   ].filter((candidate): candidate is string => Boolean(candidate));
@@ -140,6 +148,41 @@ async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
   ].slice(0, MAX_WORKSPACE_FILE_RESULTS);
 }
 
+export async function listWorkspaceEntries(
+  rootPath: string,
+): Promise<WorkspaceEntry[]> {
+  if (isBroadFilesystemScanRoot(rootPath, homedir())) {
+    return [];
+  }
+  const entries = await readdir(rootPath, { withFileTypes: true });
+
+  const mappedEntries: WorkspaceEntry[] = entries.map((entry) => {
+    const entryPath = path.join(rootPath, entry.name);
+
+    if (entry.isDirectory()) {
+      return {
+        name: entry.name,
+        path: entryPath,
+        type: "folder" as const,
+      };
+    }
+
+    return {
+      name: entry.name,
+      path: entryPath,
+      type: "file" as const,
+    };
+  });
+
+  return mappedEntries.sort((left: WorkspaceEntry, right: WorkspaceEntry) => {
+    if (left.type !== right.type) {
+      return left.type === "folder" ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
+
 export async function listWorkspaceFiles(rootPath: string) {
   if (isBroadFilesystemScanRoot(rootPath, homedir())) {
     return [];
@@ -216,6 +259,18 @@ export async function getWorkspaceDiff(rootPath: string) {
 
 export function readTextFile(filePath: string) {
   return readFile(filePath, "utf8");
+}
+
+// Cheap existence probe for clickable file paths in chat messages. Uses stat()
+// rather than reading the file so hovering a path never pulls its contents.
+// Directories are excluded so only regular files are made clickable.
+export async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    const stats = await stat(filePath);
+    return stats.isFile();
+  } catch {
+    return false;
+  }
 }
 
 function execGit(cwd: string, args: string[]) {
