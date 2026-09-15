@@ -1,4 +1,7 @@
-import { subscribeDaemonEvents } from "@cocurdex/daemon/client";
+import {
+  type DaemonEventSubscription,
+  subscribeDaemonEvents,
+} from "@cocurdex/daemon/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDaemonEventConnection } from "./daemon-event-connection";
 
@@ -21,7 +24,12 @@ function fixture() {
     onDisconnect: vi.fn(),
   };
   const close = vi.fn();
-  vi.mocked(subscribeDaemonEvents).mockResolvedValue({ close });
+  vi.mocked(subscribeDaemonEvents).mockResolvedValue({
+    close,
+    epoch: null,
+    lastSeq: null,
+    replayGap: false,
+  });
   const connection = createDaemonEventConnection(options);
   connections.push(connection);
   return { connection, options, close };
@@ -46,14 +54,14 @@ describe("daemon event connection generations", () => {
   });
   it("closes a late subscription after disposal", async () => {
     const { connection, options, close } = fixture();
-    const pending = deferred<{ close(): void }>();
+    const pending = deferred<DaemonEventSubscription>();
     vi.mocked(subscribeDaemonEvents).mockReturnValue(pending.promise);
     const connecting = connection.connect();
     await vi.waitFor(() =>
       expect(subscribeDaemonEvents).toHaveBeenCalledOnce(),
     );
     connection.dispose();
-    pending.resolve({ close });
+    pending.resolve({ close, epoch: null, lastSeq: null, replayGap: false });
     await connecting;
     expect(close).toHaveBeenCalledOnce();
     expect(options.onConnected).not.toHaveBeenCalled();
@@ -64,7 +72,12 @@ describe("daemon event connection generations", () => {
     const previous = vi.mocked(subscribeDaemonEvents).mock.calls[0]?.[1];
     connection.reset();
     const currentClose = vi.fn();
-    vi.mocked(subscribeDaemonEvents).mockResolvedValue({ close: currentClose });
+    vi.mocked(subscribeDaemonEvents).mockResolvedValue({
+      close: currentClose,
+      epoch: null,
+      lastSeq: null,
+      replayGap: false,
+    });
     await connection.connect();
     previous?.onDisconnect?.(new Error("late close"));
     expect(options.onDisconnect).not.toHaveBeenCalled();
@@ -72,7 +85,7 @@ describe("daemon event connection generations", () => {
   });
   it("does not replace a new subscription with a late old handshake", async () => {
     const { connection } = fixture();
-    const pending = deferred<{ close(): void }>();
+    const pending = deferred<DaemonEventSubscription>();
     vi.mocked(subscribeDaemonEvents).mockReturnValueOnce(pending.promise);
     const first = connection.connect();
     await vi.waitFor(() =>
@@ -80,10 +93,20 @@ describe("daemon event connection generations", () => {
     );
     connection.reset();
     const currentClose = vi.fn();
-    vi.mocked(subscribeDaemonEvents).mockResolvedValue({ close: currentClose });
+    vi.mocked(subscribeDaemonEvents).mockResolvedValue({
+      close: currentClose,
+      epoch: null,
+      lastSeq: null,
+      replayGap: false,
+    });
     await connection.connect();
     const oldClose = vi.fn();
-    pending.resolve({ close: oldClose });
+    pending.resolve({
+      close: oldClose,
+      epoch: null,
+      lastSeq: null,
+      replayGap: false,
+    });
     await first;
     expect(oldClose).toHaveBeenCalledOnce();
     expect(currentClose).not.toHaveBeenCalled();

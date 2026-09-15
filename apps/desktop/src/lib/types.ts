@@ -38,6 +38,7 @@ import type {
   GitBranchInfo,
   GitCommitInfo,
   GitWorktreeInfo,
+  HostDirectoryListing,
   ImageAttachment,
   IssueRecord,
   LoadViewPayload,
@@ -233,7 +234,22 @@ export interface DaemonRuntimeStatus {
   error: string | null;
 }
 
+/**
+ * What the client host can do locally. A browser client connected to a remote
+ * daemon reports these as absent so UI can hide host-only actions.
+ */
+export interface HostCapabilities {
+  /** The host can open or reveal paths in the OS file manager. */
+  fileManager: boolean;
+  /**
+   * The host can show a native directory picker. Clients without it use the
+   * daemon `fs.listDirectories` browse RPC to pick paths on the daemon host.
+   */
+  nativeDirectoryDialog: boolean;
+}
+
 export interface DesktopApi {
+  readonly capabilities: HostCapabilities;
   bootstrapApp(): Promise<AppBootstrapData>;
   /** Absolute user home directory (default terminal cwd without a workspace). */
   getHomeDir(): Promise<string>;
@@ -291,6 +307,11 @@ export interface DesktopApi {
   // Reveal a specific file or directory in the OS file manager, highlighting it
   // within its parent folder (vs. openWorkspaceInFileManager which opens a dir).
   revealPathInFileManager(targetPath: string): Promise<void>;
+  /**
+   * List directories on the daemon host (for picking a workspace root when no
+   * native directory dialog is available). Paths are daemon-host absolute.
+   */
+  listHostDirectories(path?: string): Promise<HostDirectoryListing>;
   listWorkspaceEntries(rootPath: string): Promise<WorkspaceEntry[]>;
   listWorkspaceFiles(rootPath: string): Promise<WorkspaceFileEntry[]>;
   // Fires (debounced) when anything inside a watched workspace root changes on

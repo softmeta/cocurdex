@@ -11,6 +11,7 @@ import {
   createDaemonRpcClient,
   type DaemonEventSubscription,
   type DaemonRpcRequestOptions,
+  type DaemonRpcSubscribeOptions,
   type DaemonTransport,
 } from "@cocurdex/rpc/client";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
@@ -26,9 +27,9 @@ export interface RequestClientOptions extends DaemonRpcRequestOptions {
   userDataPath?: string;
 }
 
-interface DaemonEventSubscriptionOptions extends RequestClientOptions {
-  onDisconnect?(error?: Error): void;
-}
+interface DaemonEventSubscriptionOptions
+  extends RequestClientOptions,
+    DaemonRpcSubscribeOptions {}
 
 export function createSocketTransport(socketPath: string): DaemonTransport {
   return (handlers) => {

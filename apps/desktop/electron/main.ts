@@ -413,6 +413,17 @@ function registerWorkspaceHandlers() {
   );
   registerHandler(
     ipcMain,
+    "fs:listDirectories",
+    schemas.directoryBrowse,
+    async (_event, payload) =>
+      requestDaemon(
+        "fs.listDirectories",
+        { path: payload.path },
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandler(
+    ipcMain,
     "workspace:listFiles",
     schemas.rootPath,
     async (_event, rootPath) => {

@@ -16,9 +16,10 @@ import {
   createDaemonRpcClient,
   createWebSocketTransport,
 } from "@cocurdex/rpc/client";
+import type { WorkspaceRecord } from "@cocurdex/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket as NodeWebSocket } from "ws";
-import { requestDaemon } from "./client";
+import { requestDaemon, subscribeDaemonEvents } from "./client";
 import {
   getDaemonMetadataPath,
   getDaemonSocketPath,
@@ -70,6 +71,113 @@ describe("startDaemonServer", () => {
         expect(onEvent).toHaveBeenCalledWith({ type: "test" }),
       );
       subscription.close();
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("replays journaled events to a subscriber resuming after a sequence", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-replay-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    const emit = (scope: string) =>
+      daemon.service.events.emit("daemon.event", {
+        scope,
+        type: "data.changed",
+      });
+    try {
+      emit("first");
+      emit("second");
+      emit("third");
+      const received: string[] = [];
+      const subscription = await subscribeDaemonEvents(
+        (event) =>
+          received.push((event as { scope?: string }).scope ?? event.type),
+        { afterSeq: 1, userDataPath },
+      );
+      try {
+        expect(received).toEqual(["second", "third"]);
+        expect(subscription.lastSeq).toBe(3);
+        emit("fourth");
+        await vi.waitFor(() => expect(received).toContain("fourth"));
+        expect(subscription.lastSeq).toBe(4);
+      } finally {
+        subscription.close();
+      }
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("flags a replay gap for a stale epoch and returns the current epoch", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-epoch-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    try {
+      const subscription = await subscribeDaemonEvents(() => undefined, {
+        afterSeq: 1,
+        epoch: "a-previous-daemon-lifetime",
+        userDataPath,
+      });
+      try {
+        expect(subscription.replayGap).toBe(true);
+        expect(subscription.epoch).toBe(daemon.service.status().startedAt);
+      } finally {
+        subscription.close();
+      }
+
+      const fresh = await subscribeDaemonEvents(() => undefined, {
+        userDataPath,
+      });
+      try {
+        expect(fresh.replayGap).toBe(false);
+        expect(fresh.epoch).toBe(daemon.service.status().startedAt);
+      } finally {
+        fresh.close();
+      }
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("replays the stored outcome for a repeated idempotency key", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-receipt-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    try {
+      const timestamp = new Date().toISOString();
+      const workspace: WorkspaceRecord = {
+        createdAt: timestamp,
+        id: "ws-receipt",
+        lastOpenedAt: timestamp,
+        name: "receipt",
+        rootPaths: [userDataPath],
+        sortOrder: 0,
+        updatedAt: timestamp,
+      };
+      const save = vi.spyOn(daemon.service, "saveWorkspace");
+      const options = { idempotencyKey: "save-1", userDataPath };
+      const first = await requestDaemon(
+        "workspace.save",
+        { workspace },
+        options,
+      );
+      const second = await requestDaemon(
+        "workspace.save",
+        { workspace },
+        options,
+      );
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(second).toEqual(first);
     } finally {
       await daemon.close();
     }

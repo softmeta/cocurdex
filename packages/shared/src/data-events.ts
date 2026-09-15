@@ -2,7 +2,9 @@ import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
 import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 
-export type CocurdexDataArea = "notes" | "issues";
+export const cocurdexDataAreas = ["notes", "issues"] as const;
+
+export type CocurdexDataArea = (typeof cocurdexDataAreas)[number];
 
 export interface CocurdexDataChangedEvent {
   type: "data.changed";

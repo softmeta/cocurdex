@@ -63,13 +63,14 @@ import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { logDaemonDiagnostic } from "./diagnostics";
+import { listHostDirectories } from "./fs-browse";
 import { commitGitChanges } from "./git";
 import { DaemonMcpConfigService } from "./mcp-config";
 import { probeNetworkProxy } from "./network-proxy-probe";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
+import { DaemonProviderService } from "./provider";
 import { ProviderCredentials } from "./provider-credentials";
-import { DaemonProviderService } from "./provider-service";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
 import { DaemonSearchService } from "./search-service";
@@ -185,10 +186,13 @@ export class CocurdexDaemonService {
     });
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
-    this.providerService = new DaemonProviderService(this.state);
     this.providerCredentials = new ProviderCredentials(
       this.state,
       options.userDataPath,
+    );
+    this.providerService = new DaemonProviderService(
+      this.state,
+      this.providerCredentials,
     );
     this.commitMessageService = new DaemonCommitMessageService(
       this.state,
@@ -445,6 +449,13 @@ export class CocurdexDaemonService {
       return false;
     }
     return fileExists(filePath);
+  }
+
+  // Directory browsing for picking a workspace root is intentionally not
+  // confined to scan roots: the whole point is choosing a new root. It lists
+  // directory names only and is still gated by the daemon token.
+  async listHostDirectories(directoryPath?: string) {
+    return listHostDirectories(directoryPath);
   }
 
   async commitWorkspaceChanges(input: {

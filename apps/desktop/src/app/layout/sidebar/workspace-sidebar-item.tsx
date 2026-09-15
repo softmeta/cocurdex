@@ -25,7 +25,7 @@ import {
   toggleSessionCollapsedAtom,
 } from "@/features/sessions";
 import { compactWorkspacePath } from "@/features/workspaces";
-import { cn } from "@/lib";
+import { cn, desktopApi } from "@/lib";
 import { SessionSidebarItem } from "./session-sidebar-item";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { WorkspaceItemTooltip } from "./sidebar-item-preview";
@@ -170,16 +170,18 @@ export function WorkspaceSidebarItem({
           </ContextMenuTrigger>
         </WorkspaceItemTooltip>
         <ContextMenuContent className="min-w-44">
-          <SidebarContextMenuItem
-            icon={FolderOpen}
-            onClick={() =>
-              onRevealWorkspace(primaryWorkspaceRootPath(workspace))
-            }
-          >
-            {t("sidebar.revealInFileManager", {
-              defaultValue: "Reveal in file manager",
-            })}
-          </SidebarContextMenuItem>
+          {desktopApi.capabilities.fileManager ? (
+            <SidebarContextMenuItem
+              icon={FolderOpen}
+              onClick={() =>
+                onRevealWorkspace(primaryWorkspaceRootPath(workspace))
+              }
+            >
+              {t("sidebar.revealInFileManager", {
+                defaultValue: "Reveal in file manager",
+              })}
+            </SidebarContextMenuItem>
+          ) : null}
           <SidebarContextMenuItem
             icon={Pencil}
             onClick={() => onEditWorkspace(workspace.id)}

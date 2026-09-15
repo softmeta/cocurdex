@@ -1,3 +1,4 @@
+import { logoutCodex, readCodexAccount } from "@cocurdex/agent-adapters";
 import type {
   DaemonMethod,
   DaemonRequest,
@@ -69,7 +70,9 @@ export async function handleDaemonRequest(
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":
-      return null;
+      throw new Error(
+        "daemon.subscribe is intercepted before request dispatch",
+      );
     case "network.proxy.test":
       return service.testNetworkProxy();
     case "attention.list":
@@ -146,6 +149,8 @@ export async function handleDaemonRequest(
       return service.readWorkspaceTextFile(request.params.filePath);
     case "file.exists":
       return service.workspaceFileExists(request.params.filePath);
+    case "fs.listDirectories":
+      return service.listHostDirectories(request.params.path);
     case "search.start":
       await service.searchService.start(request.params);
       return null;
@@ -210,6 +215,59 @@ export async function handleDaemonRequest(
       return service.providerCredentials.resolveSnapshot(
         request.params.snapshot,
       );
+    case "provider.listTemplates":
+      return service.providerService.listTemplates();
+    case "provider.config.get":
+      return service.providerService.getProviderConfig(
+        request.params.providerId,
+      );
+    case "provider.config.save":
+      return service.providerService.saveProviderConfig(request.params.config);
+    case "provider.config.delete":
+      await service.providerService.deleteProviderConfig(
+        request.params.providerId,
+      );
+      return null;
+    case "provider.model.save":
+      return service.providerService.saveProviderModel(request.params.model);
+    case "provider.model.delete":
+      await service.providerService.deleteProviderModel(
+        request.params.providerId,
+        request.params.modelId,
+      );
+      return null;
+    case "provider.fetchModels":
+      return service.providerService.fetchModels(request.params.providerId);
+    case "provider.listAllModels":
+      return service.providerService.listAllModels(request.params);
+    case "provider.default.get":
+      return service.providerService.getAgentProviderDefault(
+        request.params.agentId,
+      );
+    case "provider.default.set":
+      await service.providerService.setAgentProviderDefault(
+        request.params.agentId,
+        request.params.providerId,
+        request.params.modelId,
+      );
+      return null;
+    case "provider.titleModel.get":
+      return service.providerService.getTitleModel();
+    case "provider.titleModel.set":
+      await service.providerService.setTitleModel(request.params.selection);
+      return null;
+    case "provider.titleModel.probe":
+      return service.providerService.probeTitleModel(request.params.selection);
+    case "provider.auth.read":
+      return service.providerService.readAuthState(request.params.providerId);
+    case "provider.auth.logout":
+      await service.providerService.authLogout(request.params.providerId);
+      return null;
+    case "codex.account.read":
+      return readCodexAccount();
+    case "codex.logout":
+      await logoutCodex();
+      return null;
     case "session.archive":
       return service.archiveSession(request.params.sessionId);
     case "session.restore":
@@ -364,6 +422,7 @@ export async function handleDaemonRequest(
     case "provider.listCompatibleForAgent":
       return service.providerService.listCompatibleProviderModels(
         request.params.agentId,
+        { forceRefresh: request.params.forceRefresh },
       );
     case "provider.listDefaults":
       return service.providerService.listAgentProviderDefaults();

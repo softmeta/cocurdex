@@ -1,19 +1,10 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
+import { isPathWithinRoots as isLexicallyWithinRoots } from "./workspace-roots";
 
 // Node-only helpers. This entry is not exported from the package root so the
 // isomorphic `@cocurdex/shared` barrel stays browser-safe; import it as
 // `@cocurdex/shared/node` from daemon or Electron main code only.
-
-// Windows and default macOS filesystems are case-insensitive, so a casing
-// mismatch between the stored workspace root and the incoming path must not
-// reject a legitimate file. Linux stays case-sensitive.
-const isCaseInsensitiveFs =
-  process.platform === "win32" || process.platform === "darwin";
-
-function foldCase(value: string): string {
-  return isCaseInsensitiveFs ? value.toLowerCase() : value;
-}
 
 // Lexical containment of an already-absolute candidate inside one of the
 // given roots. Pure (no fs access); callers that need symlink safety should
@@ -22,14 +13,10 @@ export function isPathWithinRoots(
   candidatePath: string,
   rootPaths: readonly string[],
 ): boolean {
-  const foldedPath = foldCase(path.resolve(candidatePath));
-  return rootPaths.some((rootPath) => {
-    const foldedRoot = foldCase(path.resolve(rootPath));
-    return (
-      foldedPath === foldedRoot ||
-      foldedPath.startsWith(`${foldedRoot}${path.sep}`)
-    );
-  });
+  return isLexicallyWithinRoots(
+    path.resolve(candidatePath),
+    rootPaths.map((rootPath) => path.resolve(rootPath)),
+  );
 }
 
 // `filePath` arrives from a client and is therefore untrusted. The workspace

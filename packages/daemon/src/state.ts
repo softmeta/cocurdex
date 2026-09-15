@@ -515,6 +515,14 @@ export class DaemonState {
     await this.database.providerModels.upsert(model);
   }
 
+  async deleteProviderModel(providerId: string, modelId: string) {
+    await this.database.providerModels.delete(providerId, modelId);
+  }
+
+  async deleteProviderModelsByProvider(providerId: string) {
+    await this.database.providerModels.deleteByProvider(providerId);
+  }
+
   listAgentProviderDefaults() {
     return this.database.agentProviderDefaults.list();
   }

@@ -8,17 +8,25 @@ import type {
   DaemonRequest,
 } from "@cocurdex/rpc";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
-import type { CocurdexDaemonEvent } from "@cocurdex/shared";
 import { WebSocketServer } from "ws";
 import { prepareDaemonEndpoint } from "./daemon-endpoint";
 import { acquireDaemonOwnership } from "./daemon-ownership";
 import { DaemonShutdownGate } from "./daemon-shutdown-gate";
+import {
+  createDaemonEventJournal,
+  type DaemonEventJournalEntry,
+} from "./event-journal";
 import { handleDaemonRequest } from "./handler";
 import {
   getConfiguredUserDataPath,
   getDaemonMetadataPath,
   getDaemonSocketPath,
 } from "./paths";
+import {
+  createDaemonReceiptStore,
+  type DaemonReceiptOutcome,
+  type DaemonReceiptStore,
+} from "./rpc-receipts";
 import { CocurdexDaemonService } from "./service";
 
 interface StartDaemonServerOptions {
@@ -123,6 +131,9 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
   let metadataPublished = false;
   const gate = new DaemonShutdownGate();
   const connections = new Set<DaemonConnection>();
+  const eventJournal = createDaemonEventJournal();
+  const eventSubscribers = new Set<(entry: DaemonEventJournalEntry) => void>();
+  const receipts = createDaemonReceiptStore();
   const attachConnection = (connection: DaemonConnection) => {
     const activeService = service;
     if (!ready || !activeService) {
@@ -134,20 +145,21 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     const send = (message: unknown, onSent?: () => void) => {
       connection.send(encodeWireMessage(message), onSent);
     };
-    const eventListener = (event: CocurdexDaemonEvent) => {
-      if (!subscribedToDaemonEvents) return;
-      send({ event, type: "daemon.event" } satisfies DaemonEventEnvelope);
+    const sendEvent = (entry: DaemonEventJournalEntry) => {
+      send({
+        event: entry.event,
+        seq: entry.seq,
+        type: "daemon.event",
+      } satisfies DaemonEventEnvelope);
     };
-    activeService.events.on(
-      "daemon.event",
-      eventListener as (...args: unknown[]) => void,
-    );
+    const eventListener = (entry: DaemonEventJournalEntry) => {
+      if (!subscribedToDaemonEvents) return;
+      sendEvent(entry);
+    };
+    eventSubscribers.add(eventListener);
     connection.onClose(() => {
       connections.delete(connection);
-      activeService.events.off(
-        "daemon.event",
-        eventListener as (...args: unknown[]) => void,
-      );
+      eventSubscribers.delete(eventListener);
     });
     return (message: unknown) => {
       void handleSocketMessage(
@@ -156,12 +168,29 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         message,
         send,
         gate,
+        receipts,
         async () => {
           await close();
           options.onIdleShutdown?.();
         },
-        () => {
+        (afterSeq, requestEpoch) => {
+          // Replay first, then go live: this block is synchronous, so no live
+          // event can interleave between the journaled tail and the flag flip.
+          const crossEpoch =
+            requestEpoch !== undefined && requestEpoch !== startedAt;
+          // A position from a previous daemon lifetime cannot be honored:
+          // replay everything this lifetime retained and flag the gap.
+          const replay = crossEpoch
+            ? eventJournal.entriesAfter(0)
+            : eventJournal.entriesAfter(afterSeq);
+          for (const entry of replay.entries) {
+            sendEvent(entry);
+          }
           subscribedToDaemonEvents = true;
+          return {
+            epoch: startedAt,
+            replayGap: crossEpoch || replay.hasGap,
+          };
         },
       );
     };
@@ -273,6 +302,14 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       startedAt,
       userDataPath,
     });
+    service.events.on("daemon.event", (event: unknown) => {
+      const entry = eventJournal.record(
+        event as DaemonEventJournalEntry["event"],
+      );
+      for (const subscriber of eventSubscribers) {
+        subscriber(entry);
+      }
+    });
     await service.state.waitForStartupRecovery();
     ready = true;
     metadataPublished = true;
@@ -322,14 +359,36 @@ function removeOwnedDaemonMetadata(
   }
 }
 
+function normalizeAfterSeq(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : undefined;
+}
+
+function normalizeEpoch(value: unknown) {
+  return typeof value === "string" && value.length > 0 && value.length <= 128
+    ? value
+    : undefined;
+}
+
+function normalizeIdempotencyKey(value: unknown) {
+  return typeof value === "string" && value.length > 0 && value.length <= 256
+    ? value
+    : undefined;
+}
+
 async function handleSocketMessage(
   service: CocurdexDaemonService,
   token: string,
   message: unknown,
   send: (message: unknown, onSent?: () => void) => void,
   gate: DaemonShutdownGate,
+  receipts: DaemonReceiptStore,
   close: () => Promise<void>,
-  subscribeToDaemonEvents: () => void,
+  subscribeToDaemonEvents: (
+    afterSeq: number | undefined,
+    epoch: string | undefined,
+  ) => { epoch: string; replayGap: boolean },
 ) {
   const request = message as DaemonRequest;
 
@@ -363,15 +422,41 @@ async function handleSocketMessage(
       );
       return;
     }
+    let subscribeResult: { epoch: string; replayGap: boolean } | undefined;
     if (request.method === "daemon.subscribe") {
-      subscribeToDaemonEvents();
+      subscribeResult = subscribeToDaemonEvents(
+        normalizeAfterSeq(request.params?.afterSeq),
+        normalizeEpoch(request.params?.epoch),
+      );
     }
-    const result =
-      request.method === "daemon.status" ||
-      request.method === "daemon.subscribe"
-        ? await handleDaemonRequest(service, request)
-        : await gate.run(() => handleDaemonRequest(service, request));
-    send({ id: request.id, result });
+    const run = async (): Promise<DaemonReceiptOutcome> => {
+      try {
+        const result =
+          request.method === "daemon.subscribe"
+            ? subscribeResult
+            : request.method === "daemon.status"
+              ? await handleDaemonRequest(service, request)
+              : await gate.run(() => handleDaemonRequest(service, request));
+        return { ok: true, result };
+      } catch (error) {
+        return {
+          ok: false,
+          error: {
+            code: "REQUEST_FAILED",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        };
+      }
+    };
+    const idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey);
+    const execution = idempotencyKey
+      ? await receipts.execute(`${request.method}:${idempotencyKey}`, run)
+      : { outcome: await run(), replayed: false };
+    if (execution.outcome.ok) {
+      send({ id: request.id, result: execution.outcome.result });
+    } else {
+      send({ id: request.id, error: execution.outcome.error });
+    }
   } catch (error) {
     send({
       id: request.id,

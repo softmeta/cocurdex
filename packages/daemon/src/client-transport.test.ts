@@ -134,6 +134,21 @@ describe("daemon request transport", () => {
     expect(daemonRequestTimeout("worktree.create", 123)).toBe(123);
     expect(() => daemonRequestTimeout("daemon.status", 0)).toThrow();
   });
+  it("sends the idempotency key on the wire", async () => {
+    let wireRequest: Record<string, unknown> | undefined;
+    const { metadata } = await serve((socket, request) => {
+      wireRequest = request;
+      socket.write(`${JSON.stringify({ id: request.id, result: {} })}\n`);
+    });
+    await requestDaemon("daemon.status", {
+      idempotencyKey: "key-1",
+      metadata,
+    });
+    expect(wireRequest).toMatchObject({
+      idempotencyKey: "key-1",
+      method: "daemon.status",
+    });
+  });
 });
 
 describe("daemon subscription transport", () => {
@@ -182,5 +197,43 @@ describe("daemon subscription transport", () => {
     subscription.close();
     await vi.waitFor(() => expect(sockets.size).toBe(0));
     expect(onDisconnect).not.toHaveBeenCalled();
+  });
+  it("requests catch-up after a recorded sequence", async () => {
+    let wireRequest: Record<string, unknown> | undefined;
+    const { metadata } = await serve((socket, request) => {
+      wireRequest = request;
+      socket.write(`${JSON.stringify({ id: request.id, result: null })}\n`);
+    });
+    const subscription = await subscribeDaemonEvents(vi.fn(), {
+      afterSeq: 7,
+      metadata,
+    });
+    subscription.close();
+    expect(wireRequest).toMatchObject({
+      method: "daemon.subscribe",
+      params: { afterSeq: 7 },
+    });
+  });
+  it("delivers events received before the acknowledgement and tracks sequence", async () => {
+    const { metadata } = await serve((socket, request) => {
+      const pending = `${JSON.stringify({
+        event: { scope: "early", type: "data.changed" },
+        seq: 5,
+        type: "daemon.event",
+      })}\n`;
+      socket.write(pending);
+      socket.write(`${JSON.stringify({ id: request.id, result: null })}\n`);
+    });
+    const onEvent = vi.fn();
+    const subscription = await subscribeDaemonEvents(onEvent, { metadata });
+    try {
+      expect(onEvent).toHaveBeenCalledWith({
+        scope: "early",
+        type: "data.changed",
+      });
+      expect(subscription.lastSeq).toBe(5);
+    } finally {
+      subscription.close();
+    }
   });
 });

@@ -1,3 +1,5 @@
+import { isPathWithinRoots } from "@cocurdex/shared";
+
 // Per-document reading position helpers. Page numbers are 1-based to match
 // pdf.js's public API (currentPageNumber / scrollPageIntoView). `top` / `left`
 // are the in-page offsets pdf.js reports on `updateviewarea`, expressed in PDF
@@ -63,6 +65,15 @@ export function resolveRestoredPosition(
     return { page: numPages, top: 0, left: 0 };
   }
   return { page, top: toOffset(top), left: toOffset(left) };
+}
+
+export function retainOpenPdfPaths(
+  filePaths: readonly string[],
+  workspaceRootPaths: readonly string[],
+): string[] {
+  return filePaths.filter((filePath) =>
+    isPathWithinRoots(filePath, workspaceRootPaths),
+  );
 }
 
 export function normalizeOpenPaths(value: unknown): string[] {

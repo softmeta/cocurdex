@@ -85,6 +85,10 @@ const fallbackAgents: AgentDescriptor[] = [
 ];
 
 const fallbackApi: DesktopApi = {
+  capabilities: {
+    fileManager: false,
+    nativeDirectoryDialog: false,
+  },
   bootstrapApp: async () => ({
     workspaces: [],
     sessions: [],
@@ -222,6 +226,11 @@ const fallbackApi: DesktopApi = {
   deleteWorkspace: async () => {},
   openWorkspaceInFileManager: async () => {},
   revealPathInFileManager: async () => {},
+  listHostDirectories: async () => ({
+    entries: [],
+    parent: null,
+    path: "/",
+  }),
   listWorkspaceEntries: async () => [],
   listWorkspaceFiles: async () => [],
   onWorkspaceFilesChanged: () => () => {},
