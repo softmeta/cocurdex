@@ -23,10 +23,12 @@ export function createDaemonReceiptStore(
   const ttlMs = options.ttlMs ?? 10 * 60 * 1000;
   const maxEntries = options.maxEntries ?? 500;
   const receipts = new Map<string, Promise<DaemonReceiptOutcome>>();
+  const settled = new Set<string>();
   const timers = new Map<string, NodeJS.Timeout>();
 
   const evict = (key: string) => {
     receipts.delete(key);
+    settled.delete(key);
     const timer = timers.get(key);
     if (timer) {
       clearTimeout(timer);
@@ -42,11 +44,33 @@ export function createDaemonReceiptStore(
       }
       const outcome = Promise.resolve().then(run);
       receipts.set(key, outcome);
-      const timer = setTimeout(() => evict(key), ttlMs);
-      timer.unref?.();
-      timers.set(key, timer);
+      // Retention starts only once the operation settles: an in-flight
+      // mutation must keep its receipt so retries coalesce instead of
+      // duplicating side effects.
+      void outcome.then(
+        () => {
+          settled.add(key);
+          const timer = setTimeout(() => evict(key), ttlMs);
+          timer.unref?.();
+          timers.set(key, timer);
+        },
+        () => {
+          settled.add(key);
+          const timer = setTimeout(() => evict(key), ttlMs);
+          timer.unref?.();
+          timers.set(key, timer);
+        },
+      );
+      // Capacity pressure must never drop an active execution; only settled
+      // receipts are evictable, oldest first.
       while (receipts.size > maxEntries) {
-        const oldest = receipts.keys().next().value;
+        let oldest: string | undefined;
+        for (const candidate of receipts.keys()) {
+          if (settled.has(candidate)) {
+            oldest = candidate;
+            break;
+          }
+        }
         if (oldest === undefined) break;
         evict(oldest);
       }

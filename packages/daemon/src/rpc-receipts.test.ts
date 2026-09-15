@@ -73,4 +73,62 @@ describe("createDaemonReceiptStore", () => {
       vi.useRealTimers();
     }
   });
+
+  it("keeps an in-flight receipt past the ttl and starts retention on settle", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = createDaemonReceiptStore({ ttlMs: 1000 });
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const run = vi.fn(async () => {
+        await gate;
+        return { ok: true as const, result: "late" };
+      });
+
+      const first = store.execute("m:k5", run);
+      // The operation is still running well past the retention window; a
+      // duplicate must coalesce instead of starting a second execution.
+      vi.advanceTimersByTime(60_000);
+      const second = store.execute("m:k5", run);
+      release();
+
+      const [firstResult, secondResult] = await Promise.all([first, second]);
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(secondResult.replayed).toBe(true);
+      expect(firstResult.outcome).toEqual(secondResult.outcome);
+
+      // Retention counts from settlement, not from request start.
+      vi.advanceTimersByTime(999);
+      expect((await store.execute("m:k5", run)).replayed).toBe(true);
+      expect(run).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("evicts only settled receipts under capacity pressure", async () => {
+    const store = createDaemonReceiptStore({ maxEntries: 2, ttlMs: 60_000 });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = vi.fn(async () => {
+      await gate;
+      return { ok: true as const, result: "running" };
+    });
+    const instant = vi.fn(async () => ({ ok: true as const, result: "done" }));
+
+    const first = store.execute("m:in-flight", running);
+    await store.execute("m:a", instant);
+    await store.execute("m:b", instant);
+    await store.execute("m:c", instant);
+
+    // Settled receipts a and b were evicted; the in-flight receipt survives.
+    const duplicate = store.execute("m:in-flight", running);
+    release();
+    await Promise.all([first, duplicate]);
+    expect(running).toHaveBeenCalledTimes(1);
+  });
 });

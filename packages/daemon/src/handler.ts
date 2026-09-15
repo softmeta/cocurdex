@@ -70,7 +70,9 @@ export async function handleDaemonRequest(
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":
-      return null;
+      throw new Error(
+        "daemon.subscribe is intercepted before request dispatch",
+      );
     case "network.proxy.test":
       return service.testNetworkProxy();
     case "attention.list":

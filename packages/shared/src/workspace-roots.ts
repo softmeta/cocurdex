@@ -21,28 +21,29 @@ function platformName(): string | undefined {
   return (globalThis as { process?: { platform?: string } }).process?.platform;
 }
 
-function isWindowsPlatform(): boolean {
+// Windows and default macOS filesystems are case-insensitive. Renderer
+// contexts have no process.platform, so fall back to navigator.platform.
+function isCaseInsensitivePathPlatform(): boolean {
+  const platform = platformName();
+  if (platform === "win32" || platform === "darwin") {
+    return true;
+  }
   return (
-    platformName() === "win32" ||
-    (typeof navigator !== "undefined" && /Win/i.test(navigator.platform))
+    typeof navigator !== "undefined" && /Win|Mac/i.test(navigator.platform)
   );
 }
 
 export function workspacePathsEqual(left: string, right: string): boolean {
   const a = normalizeWorkspaceRootPath(left);
   const b = normalizeWorkspaceRootPath(right);
-  if (isWindowsPlatform()) {
+  if (isCaseInsensitivePathPlatform()) {
     return a.toLowerCase() === b.toLowerCase();
   }
   return a === b;
 }
 
 function foldPathForContainment(value: string): string {
-  const platform = platformName();
-  if (platform === "win32" || platform === "darwin") {
-    return value.toLowerCase();
-  }
-  return value;
+  return isCaseInsensitivePathPlatform() ? value.toLowerCase() : value;
 }
 
 function normalizePathForContainment(input: string): string {

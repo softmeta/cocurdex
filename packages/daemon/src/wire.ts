@@ -173,13 +173,24 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
           await close();
           options.onIdleShutdown?.();
         },
-        (afterSeq) => {
+        (afterSeq, requestEpoch) => {
           // Replay first, then go live: this block is synchronous, so no live
           // event can interleave between the journaled tail and the flag flip.
-          for (const entry of eventJournal.entriesAfter(afterSeq)) {
+          const crossEpoch =
+            requestEpoch !== undefined && requestEpoch !== startedAt;
+          // A position from a previous daemon lifetime cannot be honored:
+          // replay everything this lifetime retained and flag the gap.
+          const replay = crossEpoch
+            ? eventJournal.entriesAfter(0)
+            : eventJournal.entriesAfter(afterSeq);
+          for (const entry of replay.entries) {
             sendEvent(entry);
           }
           subscribedToDaemonEvents = true;
+          return {
+            epoch: startedAt,
+            replayGap: crossEpoch || replay.hasGap,
+          };
         },
       );
     };
@@ -354,6 +365,12 @@ function normalizeAfterSeq(value: unknown) {
     : undefined;
 }
 
+function normalizeEpoch(value: unknown) {
+  return typeof value === "string" && value.length > 0 && value.length <= 128
+    ? value
+    : undefined;
+}
+
 function normalizeIdempotencyKey(value: unknown) {
   return typeof value === "string" && value.length > 0 && value.length <= 256
     ? value
@@ -368,7 +385,10 @@ async function handleSocketMessage(
   gate: DaemonShutdownGate,
   receipts: DaemonReceiptStore,
   close: () => Promise<void>,
-  subscribeToDaemonEvents: (afterSeq?: number) => void,
+  subscribeToDaemonEvents: (
+    afterSeq: number | undefined,
+    epoch: string | undefined,
+  ) => { epoch: string; replayGap: boolean },
 ) {
   const request = message as DaemonRequest;
 
@@ -402,16 +422,21 @@ async function handleSocketMessage(
       );
       return;
     }
+    let subscribeResult: { epoch: string; replayGap: boolean } | undefined;
     if (request.method === "daemon.subscribe") {
-      subscribeToDaemonEvents(normalizeAfterSeq(request.params?.afterSeq));
+      subscribeResult = subscribeToDaemonEvents(
+        normalizeAfterSeq(request.params?.afterSeq),
+        normalizeEpoch(request.params?.epoch),
+      );
     }
     const run = async (): Promise<DaemonReceiptOutcome> => {
       try {
         const result =
-          request.method === "daemon.status" ||
           request.method === "daemon.subscribe"
-            ? await handleDaemonRequest(service, request)
-            : await gate.run(() => handleDaemonRequest(service, request));
+            ? subscribeResult
+            : request.method === "daemon.status"
+              ? await handleDaemonRequest(service, request)
+              : await gate.run(() => handleDaemonRequest(service, request));
         return { ok: true, result };
       } catch (error) {
         return {

@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -42,6 +49,26 @@ describe("listHostDirectories", () => {
   it("reports a null parent at the filesystem root", async () => {
     const listing = await listHostDirectories(path.parse("/").root);
     expect(listing.parent).toBeNull();
+  });
+
+  it("includes symlinked directories but not symlinked files", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "cd-browse-"));
+    const target = await mkdtemp(path.join(tmpdir(), "cd-browse-target-"));
+    directories.push(root, target);
+    await mkdir(path.join(target, "linked-dir"));
+    await writeFile(path.join(target, "linked-file.txt"), "x");
+    await symlink(
+      path.join(target, "linked-dir"),
+      path.join(root, "linked-dir"),
+    );
+    await symlink(
+      path.join(target, "linked-file.txt"),
+      path.join(root, "linked-file.txt"),
+    );
+    await symlink(path.join(target, "missing"), path.join(root, "broken-link"));
+
+    const listing = await listHostDirectories(root);
+    expect(listing.entries.map((entry) => entry.name)).toEqual(["linked-dir"]);
   });
 
   it("rejects for a missing directory", async () => {

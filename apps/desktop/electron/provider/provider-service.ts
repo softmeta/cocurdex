@@ -9,10 +9,8 @@ import {
 } from "@cocurdex/agent-adapters/desktop-provider";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
-  AgentId,
   AgentProviderSnapshot,
   CodexLoginOutcome,
-  CommitMessageModelSelection,
   ProviderAuthLoginUpdate,
   ProviderAuthMethod,
   ProviderAuthPrompt,
@@ -21,10 +19,15 @@ import type {
   RefineSessionTitlePayload,
   SessionRecord,
   TitleModelProbeResult,
-  TitleModelSelection,
 } from "@cocurdex/shared";
 import { app, ipcMain } from "electron";
 import { chatDaemonOptions } from "../chat";
+import {
+  idSchema,
+  registerHandler,
+  registerHandlerArgs,
+  schemas,
+} from "../ipc";
 import { createLogger } from "../logging";
 
 const titleLogger = createLogger("session-title-provider");
@@ -444,14 +447,18 @@ function startProviderAuthLogin(
 }
 
 function registerProviderAuthHandlers() {
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "provider:authLoginStart",
-    async (_event, providerId: string, method: ProviderAuthMethod) =>
+    schemas.providerAuthLoginStart,
+    async (_event, providerId, method) =>
       startProviderAuthLogin(providerId, method),
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:authLoginNext",
-    async (_event, loginId: string): Promise<ProviderAuthLoginUpdate> => {
+    idSchema,
+    async (_event, loginId): Promise<ProviderAuthLoginUpdate> => {
       const login = pendingProviderAuthLogins.get(loginId);
       if (!login) {
         return { type: "error", error: "Unknown login attempt" };
@@ -472,9 +479,11 @@ function registerProviderAuthHandlers() {
       return update;
     },
   );
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "provider:authLoginRespond",
-    async (_event, loginId: string, promptId: string, value: string) => {
+    schemas.providerAuthLoginRespond,
+    async (_event, loginId, promptId, value) => {
       const login = pendingProviderAuthLogins.get(loginId);
       const prompt = login?.prompts.get(promptId);
       if (!login || !prompt) {
@@ -484,9 +493,11 @@ function registerProviderAuthHandlers() {
       prompt.resolve(value);
     },
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:authLoginCancel",
-    async (_event, loginId: string) => {
+    idSchema,
+    async (_event, loginId) => {
       const login = pendingProviderAuthLogins.get(loginId);
       if (!login) {
         return;
@@ -520,22 +531,32 @@ function registerCodexAccountHandlers() {
     pendingCodexLogins.set(start.loginId, outcome);
     return start;
   });
-  ipcMain.handle("codex:loginWait", async (_event, loginId: string) => {
-    const outcome = pendingCodexLogins.get(loginId);
+  registerHandler(
+    ipcMain,
+    "codex:loginWait",
+    schemas.codexLoginId,
+    async (_event, loginId) => {
+      const outcome = pendingCodexLogins.get(loginId);
 
-    if (!outcome) {
-      return { success: false, error: "Unknown login attempt" };
-    }
+      if (!outcome) {
+        return { success: false, error: "Unknown login attempt" };
+      }
 
-    try {
-      return await outcome;
-    } finally {
-      pendingCodexLogins.delete(loginId);
-    }
-  });
-  ipcMain.handle("codex:loginCancel", async (_event, loginId: string) => {
-    await cancelCodexLogin(loginId);
-  });
+      try {
+        return await outcome;
+      } finally {
+        pendingCodexLogins.delete(loginId);
+      }
+    },
+  );
+  registerHandler(
+    ipcMain,
+    "codex:loginCancel",
+    schemas.codexLoginId,
+    async (_event, loginId) => {
+      await cancelCodexLogin(loginId);
+    },
+  );
   ipcMain.handle("codex:logout", async () =>
     requestDaemon("codex.logout", await chatDaemonOptions()),
   );
@@ -551,57 +572,77 @@ export function registerProviderHandlers() {
   ipcMain.handle("provider:listConfigs", async () =>
     requestDaemon("provider.listConfigs", await chatDaemonOptions()),
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:saveConfig",
-    async (_event, config: ProviderConfigRecord) =>
+    schemas.providerConfigSave,
+    async (_event, config) =>
       requestDaemon(
         "provider.config.save",
         { config },
         await chatDaemonOptions(),
       ),
   );
-  ipcMain.handle("provider:deleteConfig", async (_event, providerId: string) =>
-    requestDaemon(
-      "provider.config.delete",
-      { providerId },
-      await chatDaemonOptions(),
-    ),
+  registerHandler(
+    ipcMain,
+    "provider:deleteConfig",
+    schemas.providerId,
+    async (_event, providerId) =>
+      requestDaemon(
+        "provider.config.delete",
+        { providerId },
+        await chatDaemonOptions(),
+      ),
   );
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "provider:setApiKey",
-    async (_event, providerId: string, apiKey: string) =>
+    schemas.providerSetApiKey,
+    async (_event, providerId, apiKey) =>
       requestDaemon(
         "provider.apiKey.set",
         { providerId, apiKey },
         await chatDaemonOptions(),
       ),
   );
-  ipcMain.handle("provider:clearApiKey", async (_event, providerId: string) =>
-    requestDaemon(
-      "provider.apiKey.set",
-      { providerId, apiKey: null },
-      await chatDaemonOptions(),
-    ),
+  registerHandler(
+    ipcMain,
+    "provider:clearApiKey",
+    schemas.providerId,
+    async (_event, providerId) =>
+      requestDaemon(
+        "provider.apiKey.set",
+        { providerId, apiKey: null },
+        await chatDaemonOptions(),
+      ),
   );
-  ipcMain.handle("provider:listModels", async (_event, providerId: string) =>
-    requestDaemon(
-      "provider.fetchModels",
-      { providerId },
-      await chatDaemonOptions(),
-    ),
+  registerHandler(
+    ipcMain,
+    "provider:listModels",
+    schemas.providerId,
+    async (_event, providerId) =>
+      requestDaemon(
+        "provider.fetchModels",
+        { providerId },
+        await chatDaemonOptions(),
+      ),
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:saveModel",
-    async (_event, model: ProviderModelRecord) =>
+    schemas.providerModelSave,
+    async (_event, model) =>
       requestDaemon(
         "provider.model.save",
         { model },
         await chatDaemonOptions(),
       ),
   );
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "provider:deleteModel",
-    async (_event, providerId: string, modelId: string) =>
+    schemas.providerDeleteModel,
+    async (_event, providerId, modelId) =>
       requestDaemon(
         "provider.model.delete",
         { providerId, modelId },
@@ -611,9 +652,11 @@ export function registerProviderHandlers() {
   ipcMain.handle("provider:listAllModels", async () =>
     requestDaemon("provider.listAllModels", {}, await chatDaemonOptions()),
   );
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "provider:listCompatibleForAgent",
-    async (_event, agentId: AgentId, options?: { forceRefresh?: boolean }) =>
+    schemas.providerCompatibleForAgent,
+    async (_event, agentId, options) =>
       requestDaemon(
         "provider.listCompatibleForAgent",
         {
@@ -626,16 +669,22 @@ export function registerProviderHandlers() {
   ipcMain.handle("provider:listDefaults", async () =>
     requestDaemon("provider.listDefaults", await chatDaemonOptions()),
   );
-  ipcMain.handle("provider:getDefault", async (_event, agentId: AgentId) =>
-    requestDaemon(
-      "provider.default.get",
-      { agentId },
-      await chatDaemonOptions(),
-    ),
+  registerHandler(
+    ipcMain,
+    "provider:getDefault",
+    schemas.agentId,
+    async (_event, agentId) =>
+      requestDaemon(
+        "provider.default.get",
+        { agentId },
+        await chatDaemonOptions(),
+      ),
   );
-  ipcMain.handle(
+  registerHandlerArgs(
+    ipcMain,
     "provider:setDefault",
-    async (_event, agentId: AgentId, providerId: string, modelId: string) =>
+    schemas.providerSetDefault,
+    async (_event, agentId, providerId, modelId) =>
       requestDaemon(
         "provider.default.set",
         { agentId, providerId, modelId },
@@ -645,21 +694,22 @@ export function registerProviderHandlers() {
   ipcMain.handle("provider:getTitleModel", async () =>
     requestDaemon("provider.titleModel.get", await chatDaemonOptions()),
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:setTitleModel",
-    async (_event, selection: TitleModelSelection | null) =>
+    schemas.providerTitleModelSet,
+    async (_event, selection) =>
       requestDaemon(
         "provider.titleModel.set",
         { selection },
         await chatDaemonOptions(),
       ),
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:probeTitleModel",
-    async (
-      _event,
-      selection: TitleModelSelection,
-    ): Promise<TitleModelProbeResult> =>
+    schemas.providerTitleModelProbe,
+    async (_event, selection): Promise<TitleModelProbeResult> =>
       requestDaemon(
         "provider.titleModel.probe",
         { selection },
@@ -669,27 +719,37 @@ export function registerProviderHandlers() {
   ipcMain.handle("provider:getCommitMessageModel", async () =>
     requestDaemon("git.commitMessageModel.get", await chatDaemonOptions()),
   );
-  ipcMain.handle(
+  registerHandler(
+    ipcMain,
     "provider:setCommitMessageModel",
-    async (_event, selection: CommitMessageModelSelection | null) =>
+    schemas.providerCommitMessageModelSet,
+    async (_event, selection) =>
       requestDaemon(
         "git.commitMessageModel.set",
         { selection },
         await chatDaemonOptions(),
       ),
   );
-  ipcMain.handle("provider:authRead", async (_event, providerId: string) =>
-    requestDaemon(
-      "provider.auth.read",
-      { providerId },
-      await chatDaemonOptions(),
-    ),
+  registerHandler(
+    ipcMain,
+    "provider:authRead",
+    schemas.providerId,
+    async (_event, providerId) =>
+      requestDaemon(
+        "provider.auth.read",
+        { providerId },
+        await chatDaemonOptions(),
+      ),
   );
-  ipcMain.handle("provider:authLogout", async (_event, providerId: string) =>
-    requestDaemon(
-      "provider.auth.logout",
-      { providerId },
-      await chatDaemonOptions(),
-    ),
+  registerHandler(
+    ipcMain,
+    "provider:authLogout",
+    schemas.providerId,
+    async (_event, providerId) =>
+      requestDaemon(
+        "provider.auth.logout",
+        { providerId },
+        await chatDaemonOptions(),
+      ),
   );
 }

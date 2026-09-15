@@ -264,7 +264,7 @@ export type DaemonRequestPayloadByMethod = {
   "session.listTurnChangeSets": { sessionId: string };
   "session.getTurnChangeDiff": TurnChangeDiffRequest;
   "session.getToolCallResult": GetToolCallResultInput;
-  "daemon.subscribe": { afterSeq?: number };
+  "daemon.subscribe": { afterSeq?: number; epoch?: string };
   "network.proxy.test": undefined;
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
@@ -437,7 +437,7 @@ export type DaemonResultByMethod = {
   "session.listTurnChangeSets": TurnChangeSet[];
   "session.getTurnChangeDiff": TurnChangeDiff;
   "session.getToolCallResult": AgentToolCallResult | null;
-  "daemon.subscribe": null;
+  "daemon.subscribe": DaemonSubscribeResult;
   "network.proxy.test": NetworkProxyTestResult;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
@@ -580,6 +580,15 @@ export type DaemonResponse<M extends DaemonMethod = DaemonMethod> = {
     | { id: string; result: DaemonResultByMethod[Method] }
     | { error: DaemonError; id: string };
 }[M];
+
+// Epoch identifies one daemon lifetime (its start timestamp). Sequence numbers
+// restart with each lifetime, so a client must only reuse afterSeq within the
+// epoch that produced it. replayGap tells the subscriber the journaled replay
+// was incomplete and authoritative state must be refetched.
+export interface DaemonSubscribeResult {
+  epoch: string;
+  replayGap: boolean;
+}
 
 export interface DaemonEventEnvelope {
   event: CocurdexDaemonEvent;

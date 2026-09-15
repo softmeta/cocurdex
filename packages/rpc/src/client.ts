@@ -60,12 +60,19 @@ export interface DaemonRpcRequestOptions {
 
 export interface DaemonRpcSubscribeOptions extends DaemonRpcRequestOptions {
   afterSeq?: number;
+  // Daemon lifetime that produced afterSeq. Catch-up is only meaningful within
+  // the same epoch; a mismatched epoch triggers a flagged replay.
+  epoch?: string;
   onDisconnect?(error?: Error): void;
 }
 
 export interface DaemonEventSubscription {
   close(): void;
+  readonly epoch: string | null;
   readonly lastSeq: number | null;
+  // True when the journaled replay could not cover the requested position;
+  // subscribers must resync authoritative state instead of trusting replay.
+  readonly replayGap: boolean;
 }
 
 export class DaemonClientError extends Error {
@@ -210,7 +217,7 @@ export function createDaemonRpcClient(
     subscribe(onEvent, options = {}) {
       const request = buildDaemonRequest(
         "daemon.subscribe",
-        { afterSeq: options.afterSeq },
+        { afterSeq: options.afterSeq, epoch: options.epoch },
         token,
       );
       const timeoutMs = daemonRequestTimeout(
@@ -281,9 +288,23 @@ export function createDaemonRpcClient(
             }
             clearTimeout(timer);
             connected = true;
+            const subscribeResult =
+              typeof message.result === "object" && message.result !== null
+                ? (message.result as {
+                    epoch?: unknown;
+                    replayGap?: unknown;
+                  })
+                : undefined;
+            const epoch =
+              typeof subscribeResult?.epoch === "string"
+                ? subscribeResult.epoch
+                : null;
+            const replayGap = subscribeResult?.replayGap === true;
             for (const event of queuedEvents.splice(0)) onEvent(event);
             resolve({
               close: abort,
+              epoch,
+              replayGap,
               get lastSeq() {
                 return lastSeq;
               },

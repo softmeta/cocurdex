@@ -24,7 +24,12 @@ function fixture() {
     onDisconnect: vi.fn(),
   };
   const close = vi.fn();
-  vi.mocked(subscribeDaemonEvents).mockResolvedValue({ close, lastSeq: null });
+  vi.mocked(subscribeDaemonEvents).mockResolvedValue({
+    close,
+    epoch: null,
+    lastSeq: null,
+    replayGap: false,
+  });
   const connection = createDaemonEventConnection(options);
   connections.push(connection);
   return { connection, options, close };
@@ -56,7 +61,7 @@ describe("daemon event connection generations", () => {
       expect(subscribeDaemonEvents).toHaveBeenCalledOnce(),
     );
     connection.dispose();
-    pending.resolve({ close, lastSeq: null });
+    pending.resolve({ close, epoch: null, lastSeq: null, replayGap: false });
     await connecting;
     expect(close).toHaveBeenCalledOnce();
     expect(options.onConnected).not.toHaveBeenCalled();
@@ -69,7 +74,9 @@ describe("daemon event connection generations", () => {
     const currentClose = vi.fn();
     vi.mocked(subscribeDaemonEvents).mockResolvedValue({
       close: currentClose,
+      epoch: null,
       lastSeq: null,
+      replayGap: false,
     });
     await connection.connect();
     previous?.onDisconnect?.(new Error("late close"));
@@ -88,11 +95,18 @@ describe("daemon event connection generations", () => {
     const currentClose = vi.fn();
     vi.mocked(subscribeDaemonEvents).mockResolvedValue({
       close: currentClose,
+      epoch: null,
       lastSeq: null,
+      replayGap: false,
     });
     await connection.connect();
     const oldClose = vi.fn();
-    pending.resolve({ close: oldClose, lastSeq: null });
+    pending.resolve({
+      close: oldClose,
+      epoch: null,
+      lastSeq: null,
+      replayGap: false,
+    });
     await first;
     expect(oldClose).toHaveBeenCalledOnce();
     expect(currentClose).not.toHaveBeenCalled();

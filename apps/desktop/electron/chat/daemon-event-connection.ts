@@ -2,7 +2,7 @@ import {
   type DaemonEventSubscription,
   subscribeDaemonEvents,
 } from "@cocurdex/daemon/client";
-import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import { type CocurdexDaemonEvent, cocurdexDataAreas } from "@cocurdex/shared";
 
 interface ConnectionOptions {
   ensure(): Promise<void>;
@@ -20,6 +20,7 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
   let controller: AbortController | null = null;
   let timer: NodeJS.Timeout | null = null;
   let lastSeq: number | null = null;
+  let lastEpoch: string | null = null;
 
   function reset() {
     generation += 1;
@@ -35,6 +36,7 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
   function reconnect(attemptGeneration: number, error: Error) {
     if (disposed || attemptGeneration !== generation) return;
     lastSeq = subscription?.lastSeq ?? lastSeq;
+    lastEpoch = subscription?.epoch ?? lastEpoch;
     reset();
     options.onDisconnect(error);
     timer = setTimeout(() => {
@@ -63,6 +65,7 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
           },
           {
             afterSeq: lastSeq ?? undefined,
+            epoch: lastEpoch ?? undefined,
             userDataPath: options.userDataPath,
             signal: attemptController.signal,
             onDisconnect: (error) =>
@@ -77,6 +80,15 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
           return;
         }
         subscription = connected;
+        if (connected.replayGap) {
+          // The journaled replay could not cover our last position (daemon
+          // restart or journal overflow): assume every data area changed so
+          // consumers refetch authoritative state.
+          options.onEvent({
+            type: "data.changed",
+            areas: [...cocurdexDataAreas],
+          });
+        }
         options.onConnected?.();
       } catch (error) {
         reconnect(

@@ -1,11 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   collectKnownWorkspaceScanRoots,
   isKnownWorkspaceScanRoot,
   isPathWithinRoots,
   normalizeWorkspaceRootPath,
   normalizeWorkspaceRootPaths,
+  workspacePathsEqual,
 } from "./workspace-roots";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function stubPlatform(platform: string) {
+  vi.stubGlobal("process", { platform });
+  // Node 21+ exposes a global navigator; override it too so the fallback
+  // branch does not leak the host platform into stubbed-process tests.
+  vi.stubGlobal("navigator", { platform: "TestOS" });
+}
 
 describe("normalizeWorkspaceRootPath", () => {
   it("keeps an empty path empty instead of inventing the filesystem root", () => {
@@ -66,6 +78,46 @@ describe("isPathWithinRoots", () => {
 
   it("returns false when no roots are registered", () => {
     expect(isPathWithinRoots("/Users/me/project/guide.pdf", [])).toBe(false);
+  });
+});
+
+describe("path case folding by platform", () => {
+  it("folds case on macOS", () => {
+    stubPlatform("darwin");
+    expect(workspacePathsEqual("/Users/Me/Project", "/users/me/project")).toBe(
+      true,
+    );
+    expect(
+      isPathWithinRoots("/users/me/project/guide.pdf", ["/Users/Me/Project"]),
+    ).toBe(true);
+  });
+
+  it("folds case on Windows", () => {
+    stubPlatform("win32");
+    expect(workspacePathsEqual("C:\\Users\\Me", "c:\\users\\me")).toBe(true);
+    expect(isPathWithinRoots("c:/users/me/a.pdf", ["C:/Users/Me"])).toBe(true);
+  });
+
+  it("stays case-sensitive on Linux", () => {
+    stubPlatform("linux");
+    expect(workspacePathsEqual("/home/Me/Project", "/home/me/project")).toBe(
+      false,
+    );
+    expect(
+      isPathWithinRoots("/home/me/project/guide.pdf", ["/home/Me/Project"]),
+    ).toBe(false);
+  });
+
+  it("falls back to navigator.platform when process is absent", () => {
+    vi.stubGlobal("process", undefined);
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    expect(workspacePathsEqual("/Users/Me/Project", "/users/me/project")).toBe(
+      true,
+    );
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    expect(workspacePathsEqual("/home/Me/Project", "/home/me/project")).toBe(
+      false,
+    );
   });
 });
 

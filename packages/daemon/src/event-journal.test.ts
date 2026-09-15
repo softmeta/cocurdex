@@ -23,8 +23,10 @@ describe("createDaemonEventJournal", () => {
     journal.record(event("b"));
     journal.record(event("c"));
 
-    expect(journal.entriesAfter(1).map((entry) => entry.seq)).toEqual([2, 3]);
-    expect(journal.entriesAfter(undefined)).toEqual([]);
+    expect(journal.entriesAfter(1).entries.map((entry) => entry.seq)).toEqual([
+      2, 3,
+    ]);
+    expect(journal.entriesAfter(undefined).entries).toEqual([]);
   });
 
   it("evicts the oldest entries beyond capacity", () => {
@@ -33,6 +35,27 @@ describe("createDaemonEventJournal", () => {
     journal.record(event("b"));
     journal.record(event("c"));
 
-    expect(journal.entriesAfter(0).map((entry) => entry.seq)).toEqual([2, 3]);
+    const replay = journal.entriesAfter(0);
+    expect(replay.entries.map((entry) => entry.seq)).toEqual([2, 3]);
+    expect(replay.hasGap).toBe(true);
+  });
+
+  it("flags a gap when the position precedes the retained window", () => {
+    const journal = createDaemonEventJournal(2);
+    journal.record(event("a"));
+    journal.record(event("b"));
+    journal.record(event("c"));
+
+    expect(journal.entriesAfter(0).hasGap).toBe(true);
+    expect(journal.entriesAfter(1).hasGap).toBe(false);
+    expect(journal.entriesAfter(2).hasGap).toBe(false);
+    expect(journal.entriesAfter(3).hasGap).toBe(false);
+  });
+
+  it("flags a gap when the position is ahead of the journal", () => {
+    const journal = createDaemonEventJournal();
+    journal.record(event("a"));
+
+    expect(journal.entriesAfter(5).hasGap).toBe(true);
   });
 });

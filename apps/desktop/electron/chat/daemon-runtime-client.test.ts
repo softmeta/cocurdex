@@ -21,7 +21,9 @@ beforeEach(() => {
   vi.spyOn(process, "kill").mockReturnValue(true);
   vi.mocked(subscribeDaemonEvents).mockResolvedValue({
     close: vi.fn(),
+    epoch: null,
     lastSeq: null,
+    replayGap: false,
   });
 });
 afterEach(async () => {

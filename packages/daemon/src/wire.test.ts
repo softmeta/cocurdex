@@ -111,6 +111,40 @@ describe("startDaemonServer", () => {
       await daemon.close();
     }
   });
+  it("flags a replay gap for a stale epoch and returns the current epoch", async () => {
+    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-epoch-"));
+    temporaryDirectories.push(userDataPath);
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    try {
+      const subscription = await subscribeDaemonEvents(() => undefined, {
+        afterSeq: 1,
+        epoch: "a-previous-daemon-lifetime",
+        userDataPath,
+      });
+      try {
+        expect(subscription.replayGap).toBe(true);
+        expect(subscription.epoch).toBe(daemon.service.status().startedAt);
+      } finally {
+        subscription.close();
+      }
+
+      const fresh = await subscribeDaemonEvents(() => undefined, {
+        userDataPath,
+      });
+      try {
+        expect(fresh.replayGap).toBe(false);
+        expect(fresh.epoch).toBe(daemon.service.status().startedAt);
+      } finally {
+        fresh.close();
+      }
+    } finally {
+      await daemon.close();
+    }
+  });
   it("replays the stored outcome for a repeated idempotency key", async () => {
     const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-receipt-"));
     temporaryDirectories.push(userDataPath);
