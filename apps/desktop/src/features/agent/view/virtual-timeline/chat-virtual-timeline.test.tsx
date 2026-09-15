@@ -30,13 +30,16 @@ vi.mock("../chat-conversation-item", () => ({
   ),
 }));
 
+const SCROLL_END_DEBOUNCE_MS = 160;
+
 let layout: ReturnType<typeof installTimelineTestLayout>;
 beforeEach(() => {
   layout = installTimelineTestLayout();
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   layout.restore();
+  await new Promise((resolve) => setTimeout(resolve, SCROLL_END_DEBOUNCE_MS));
 });
 
 function mountTimeline(count = 1000) {
