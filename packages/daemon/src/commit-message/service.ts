@@ -24,6 +24,30 @@ export class DaemonCommitMessageService {
     );
   }
   async setModelSetting(selection: CommitMessageModelSelection | null) {
+    const hasInvalidRuntimeOption =
+      selection &&
+      [
+        selection.reasoningEffort,
+        selection.thinkingLevel,
+        selection.serviceTier,
+        selection.openCodeAgent,
+        selection.openCodeVariant,
+      ].some(
+        (value) =>
+          value !== undefined && value !== null && typeof value !== "string",
+      );
+    if (
+      selection &&
+      (typeof selection.agentId !== "string" ||
+        typeof selection.providerId !== "string" ||
+        typeof selection.modelId !== "string" ||
+        hasInvalidRuntimeOption ||
+        (selection.fastMode !== undefined &&
+          selection.fastMode !== null &&
+          typeof selection.fastMode !== "boolean"))
+    ) {
+      throw new Error("Invalid commit message model selection");
+    }
     await this.state.setAppSetting(
       "commitMessageModel",
       JSON.stringify(selection),

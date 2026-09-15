@@ -19,6 +19,7 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
   let pending: Promise<void> | null = null;
   let controller: AbortController | null = null;
   let timer: NodeJS.Timeout | null = null;
+  let lastSeq: number | null = null;
 
   function reset() {
     generation += 1;
@@ -33,6 +34,7 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
 
   function reconnect(attemptGeneration: number, error: Error) {
     if (disposed || attemptGeneration !== generation) return;
+    lastSeq = subscription?.lastSeq ?? lastSeq;
     reset();
     options.onDisconnect(error);
     timer = setTimeout(() => {
@@ -60,6 +62,7 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
               options.onEvent(event);
           },
           {
+            afterSeq: lastSeq ?? undefined,
             userDataPath: options.userDataPath,
             signal: attemptController.signal,
             onDisconnect: (error) =>

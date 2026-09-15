@@ -19,7 +19,10 @@ const clients: ReturnType<typeof createDaemonRuntimeClient>[] = [];
 beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(process, "kill").mockReturnValue(true);
-  vi.mocked(subscribeDaemonEvents).mockResolvedValue({ close: vi.fn() });
+  vi.mocked(subscribeDaemonEvents).mockResolvedValue({
+    close: vi.fn(),
+    lastSeq: null,
+  });
 });
 afterEach(async () => {
   await Promise.all(clients.splice(0).map((client) => client.dispose()));

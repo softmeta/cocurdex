@@ -13,24 +13,27 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import { idSchema, registerHandler } from "../ipc";
-import {
-  listConfiguredProviderModels,
-  resolveRuntimeProviderSnapshot,
-} from "../provider/provider-service";
-import {
-  chatDaemonOptions,
-  getProviderConfig,
-  getTitleModelSetting,
-} from "./app-state";
+import { chatDaemonOptions } from "./app-state";
 
 async function resolveChatProvider(
   providerId: string,
   modelId: string,
 ): Promise<AgentRuntimeProviderConfig> {
-  const provider = await getProviderConfig(providerId);
+  const daemonOptions = await chatDaemonOptions();
+  const provider = await requestDaemon(
+    "provider.config.get",
+    { providerId },
+    daemonOptions,
+  );
   if (!provider?.enabled)
     throw new Error("Provider is unavailable or disabled");
-  const model = (await listConfiguredProviderModels([provider])).find(
+  const model = (
+    await requestDaemon(
+      "provider.listAllModels",
+      { providerIds: [providerId] },
+      daemonOptions,
+    )
+  ).find(
     (candidate) =>
       candidate.providerId === providerId && candidate.modelId === modelId,
   );
@@ -41,8 +44,10 @@ async function resolveChatProvider(
   ) {
     throw new Error("The selected model is unavailable for chat");
   }
-  return resolveRuntimeProviderSnapshot(
-    createProviderSnapshotForModel({ provider, model }),
+  return requestDaemon(
+    "provider.resolveSnapshot",
+    { snapshot: createProviderSnapshotForModel({ provider, model }) },
+    daemonOptions,
   );
 }
 
@@ -80,7 +85,10 @@ async function sendConversationMessage(
   );
   let titleProviderConfig: AgentRuntimeProviderConfig | null = null;
   try {
-    const selection = await getTitleModelSetting();
+    const selection = await requestDaemon(
+      "provider.titleModel.get",
+      await chatDaemonOptions(),
+    );
     if (selection)
       titleProviderConfig = await resolveChatProvider(
         selection.providerId,

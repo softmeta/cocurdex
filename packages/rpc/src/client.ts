@@ -55,14 +55,17 @@ export function createWebSocketTransport(url: string): DaemonTransport {
 export interface DaemonRpcRequestOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
+  idempotencyKey?: string;
 }
 
 export interface DaemonRpcSubscribeOptions extends DaemonRpcRequestOptions {
+  afterSeq?: number;
   onDisconnect?(error?: Error): void;
 }
 
 export interface DaemonEventSubscription {
   close(): void;
+  readonly lastSeq: number | null;
 }
 
 export class DaemonClientError extends Error {
@@ -110,12 +113,13 @@ export function buildDaemonRequest<M extends DaemonMethod>(
   method: M,
   params: DaemonRequestPayloadByMethod[M] | undefined,
   token: string,
+  idempotencyKey?: string,
 ): DaemonRequest<M> {
   const id = crypto.randomUUID();
   if (daemonMethodHasNoParams(method)) {
-    return { id, method, token } as DaemonRequest<M>;
+    return { id, method, token, idempotencyKey } as DaemonRequest<M>;
   }
-  return { id, method, params, token } as DaemonRequest<M>;
+  return { id, method, params, token, idempotencyKey } as DaemonRequest<M>;
 }
 
 export interface DaemonRpcClient {
@@ -136,7 +140,12 @@ export function createDaemonRpcClient(
 ): DaemonRpcClient {
   return {
     request(method, params, options) {
-      const request = buildDaemonRequest(method, params, token);
+      const request = buildDaemonRequest(
+        method,
+        params,
+        token,
+        options?.idempotencyKey,
+      );
       const timeoutMs = daemonRequestTimeout(method, options?.timeoutMs);
       options?.signal?.throwIfAborted();
       return new Promise((resolve, reject) => {
@@ -199,7 +208,11 @@ export function createDaemonRpcClient(
       });
     },
     subscribe(onEvent, options = {}) {
-      const request = buildDaemonRequest("daemon.subscribe", undefined, token);
+      const request = buildDaemonRequest(
+        "daemon.subscribe",
+        { afterSeq: options.afterSeq },
+        token,
+      );
       const timeoutMs = daemonRequestTimeout(
         "daemon.subscribe",
         options.timeoutMs,
@@ -209,6 +222,12 @@ export function createDaemonRpcClient(
         let connected = false;
         let finished = false;
         let connection: DaemonTransportConnection | undefined;
+        let lastSeq: number | null = options.afterSeq ?? null;
+        const queuedEvents: CocurdexDaemonEvent[] = [];
+        const dispatchEvent = (envelope: DaemonEventEnvelope) => {
+          if (typeof envelope.seq === "number") lastSeq = envelope.seq;
+          onEvent(envelope.event);
+        };
         const finish = (error: Error, silent = false) => {
           if (finished) return;
           finished = true;
@@ -245,8 +264,13 @@ export function createDaemonRpcClient(
               return;
             }
             if (message.type === "daemon.event") {
-              if (connected)
-                onEvent((message as unknown as DaemonEventEnvelope).event);
+              const envelope = message as unknown as DaemonEventEnvelope;
+              if (!connected) {
+                queuedEvents.push(envelope.event);
+                if (typeof envelope.seq === "number") lastSeq = envelope.seq;
+                return;
+              }
+              dispatchEvent(envelope);
               return;
             }
             if (message.id !== request.id || connected) return;
@@ -257,7 +281,13 @@ export function createDaemonRpcClient(
             }
             clearTimeout(timer);
             connected = true;
-            resolve({ close: abort });
+            for (const event of queuedEvents.splice(0)) onEvent(event);
+            resolve({
+              close: abort,
+              get lastSeq() {
+                return lastSeq;
+              },
+            });
           },
           onError: (error) => finish(error),
           onClose: () =>

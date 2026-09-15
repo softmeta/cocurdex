@@ -242,6 +242,20 @@ export interface AgentSlashCommand {
   source: "agent" | "extension" | "prompt" | "skill";
 }
 
+// A directory on the daemon host, for clients browsing for a workspace root.
+// Paths are daemon-host absolute paths, not client-local paths.
+export interface HostDirectoryEntry {
+  name: string;
+  path: string;
+  hidden: boolean;
+}
+
+export interface HostDirectoryListing {
+  path: string;
+  parent: string | null;
+  entries: HostDirectoryEntry[];
+}
+
 export interface WorkspaceRecord {
   id: string;
   name: string;

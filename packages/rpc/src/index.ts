@@ -13,6 +13,7 @@ import type {
   AgentToolCallResult,
   AppBootstrapData,
   CocurdexDaemonEvent,
+  CodexAccountState,
   CommitMessageModelSelection,
   CompatibleProviderModel,
   ConversationMessageRecord,
@@ -38,6 +39,7 @@ import type {
   GitCommitResult,
   GitPushResult,
   GitWorktreeInfo,
+  HostDirectoryListing,
   IssueRecord,
   LoadViewPayload,
   ManagedWorktree,
@@ -57,8 +59,11 @@ import type {
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
   ProductSkillsStatusResult,
+  ProviderAuthState,
   ProviderConfigRecord,
   ProviderListModelsResult,
+  ProviderModelRecord,
+  ProviderTemplateRecord,
   ResolvedCommitMessageModel,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
@@ -72,6 +77,8 @@ import type {
   SessionObservationSnapshot,
   SessionRecord,
   SubmitPreviousMessageCommand,
+  TitleModelProbeResult,
+  TitleModelSelection,
   TurnChangeDiff,
   TurnChangeDiffRequest,
   TurnChangeFileContent,
@@ -105,7 +112,7 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 23;
+export const DAEMON_PROTOCOL_VERSION = 24;
 
 export interface DaemonMetadata {
   pid: number;
@@ -204,6 +211,30 @@ export type DaemonRequestPayloadByMethod = {
   "provider.apiKey.set": { providerId: string; apiKey: string | null };
   "provider.apiKey.read": { providerId: string };
   "provider.resolveSnapshot": { snapshot: AgentProviderSnapshot };
+  "provider.listTemplates": undefined;
+  "provider.config.get": { providerId: string };
+  "provider.config.save": { config: ProviderConfigRecord };
+  "provider.config.delete": { providerId: string };
+  "provider.model.save": { model: ProviderModelRecord };
+  "provider.model.delete": { providerId: string; modelId: string };
+  "provider.fetchModels": { providerId: string };
+  "provider.listAllModels": {
+    providerIds?: string[];
+    forceRefresh?: boolean;
+  };
+  "provider.default.get": { agentId: AgentId };
+  "provider.default.set": {
+    agentId: AgentId;
+    providerId: string;
+    modelId: string;
+  };
+  "provider.titleModel.get": undefined;
+  "provider.titleModel.set": { selection: TitleModelSelection | null };
+  "provider.titleModel.probe": { selection: TitleModelSelection };
+  "provider.auth.read": { providerId: string };
+  "provider.auth.logout": { providerId: string };
+  "codex.account.read": undefined;
+  "codex.logout": undefined;
   "session.updateTitle": UpdateSessionTitlePayload;
   "session.generateTitle": { sessionId: string; message: string };
   "session.listSlashCommands": {
@@ -233,13 +264,14 @@ export type DaemonRequestPayloadByMethod = {
   "session.listTurnChangeSets": { sessionId: string };
   "session.getTurnChangeDiff": TurnChangeDiffRequest;
   "session.getToolCallResult": GetToolCallResultInput;
-  "daemon.subscribe": undefined;
+  "daemon.subscribe": { afterSeq?: number };
   "network.proxy.test": undefined;
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
   "storage.call": { operation: string; args: unknown[] };
   "file.readText": { filePath: string };
   "file.exists": { filePath: string };
+  "fs.listDirectories": { path?: string };
   "search.start": WorkspaceSearchStartPayload;
   "search.cancel": { searchId: string };
   "mcp.readConfig": undefined;
@@ -320,7 +352,10 @@ export type DaemonRequestPayloadByMethod = {
   "git.commit": { rootPath: string; message: string; includeUnstaged: boolean };
   "git.push": { rootPath: string };
   "provider.listModels": { providerId?: string };
-  "provider.listCompatibleForAgent": { agentId: AgentId };
+  "provider.listCompatibleForAgent": {
+    agentId: AgentId;
+    forceRefresh?: boolean;
+  };
   "provider.listDefaults": undefined;
   "agentRole.list": undefined;
   "agentRole.get": { id: string };
@@ -367,6 +402,23 @@ export type DaemonResultByMethod = {
   "provider.apiKey.set": null;
   "provider.apiKey.read": string | null;
   "provider.resolveSnapshot": AgentRuntimeProviderConfig;
+  "provider.listTemplates": ProviderTemplateRecord[];
+  "provider.config.get": ProviderConfigRecord | null;
+  "provider.config.save": ProviderConfigRecord;
+  "provider.config.delete": null;
+  "provider.model.save": ProviderModelRecord;
+  "provider.model.delete": null;
+  "provider.fetchModels": ProviderListModelsResult;
+  "provider.listAllModels": ProviderModelRecord[];
+  "provider.default.get": AgentProviderSelection | null;
+  "provider.default.set": null;
+  "provider.titleModel.get": TitleModelSelection | null;
+  "provider.titleModel.set": null;
+  "provider.titleModel.probe": TitleModelProbeResult;
+  "provider.auth.read": ProviderAuthState;
+  "provider.auth.logout": null;
+  "codex.account.read": CodexAccountState;
+  "codex.logout": null;
   "session.updateTitle": SessionRecord | null;
   "session.generateTitle": string | null;
   "session.listSlashCommands": AgentSlashCommand[];
@@ -392,6 +444,7 @@ export type DaemonResultByMethod = {
   "storage.call": unknown;
   "file.readText": string;
   "file.exists": boolean;
+  "fs.listDirectories": HostDirectoryListing;
   "search.start": null;
   "search.cancel": null;
   "mcp.readConfig": McpConfigFile;
@@ -482,12 +535,15 @@ export const DAEMON_NO_PARAM_METHODS = {
   "app.bootstrap": true,
   "attention.list": true,
   "daemon.status": true,
-  "daemon.subscribe": true,
   "issue.listViews": true,
   "mcp.readConfig": true,
   "network.proxy.test": true,
   "note.list": true,
   "provider.listConfigs": true,
+  "provider.listTemplates": true,
+  "provider.titleModel.get": true,
+  "codex.account.read": true,
+  "codex.logout": true,
   "git.commitMessageModel.get": true,
   "git.commitMessageModel.resolve": true,
   "provider.listDefaults": true,
@@ -509,12 +565,13 @@ export function daemonMethodHasNoParams(
 
 export type DaemonRequest<M extends DaemonMethod = DaemonMethod> = {
   [Method in DaemonMethod]: DaemonRequestPayloadByMethod[Method] extends undefined
-    ? { id: string; method: Method; token: string }
+    ? { id: string; method: Method; token: string; idempotencyKey?: string }
     : {
         id: string;
         method: Method;
         params: DaemonRequestPayloadByMethod[Method];
         token: string;
+        idempotencyKey?: string;
       };
 }[M];
 
@@ -526,6 +583,7 @@ export type DaemonResponse<M extends DaemonMethod = DaemonMethod> = {
 
 export interface DaemonEventEnvelope {
   event: CocurdexDaemonEvent;
+  seq: number;
   type: "daemon.event";
 }
 

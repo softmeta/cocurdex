@@ -2,21 +2,16 @@ import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
   AgentDescriptor,
   AgentId,
-  AgentProviderSelection,
   AgentRoleRecord,
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
-  CommitMessageModelSelection,
   EditorViewRecord,
   MessageRecord,
   NetworkProxyTestResult,
-  ProviderConfigRecord,
-  ProviderModelRecord,
   SaveAgentRolePayload,
   SessionMessagesResult,
   SessionRecord,
-  TitleModelSelection,
   WorkspaceRecord,
 } from "@cocurdex/shared";
 
@@ -188,126 +183,12 @@ export function saveEditorView(view: EditorViewRecord): Promise<void> {
   return callStorage("editorView.save", view);
 }
 
-export function listProviderConfigs(): Promise<ProviderConfigRecord[]> {
-  return callStorage("providerConfig.list");
-}
-
-export function getProviderConfig(
-  providerId: string,
-): Promise<ProviderConfigRecord | null> {
-  return callStorage("providerConfig.get", providerId);
-}
-
-export function saveProviderConfig(
-  config: ProviderConfigRecord,
-): Promise<void> {
-  return callStorage("providerConfig.save", config);
-}
-
-export function deleteProviderConfig(providerId: string): Promise<void> {
-  return callStorage("providerConfig.delete", providerId);
-}
-
-export function listProviderModels(
-  providerId?: string,
-): Promise<ProviderModelRecord[]> {
-  return callStorage("providerModel.list", providerId);
-}
-
-export function getProviderModel(
-  providerId: string,
-  modelId: string,
-): Promise<ProviderModelRecord | null> {
-  return callStorage("providerModel.get", providerId, modelId);
-}
-
-export function saveProviderModel(model: ProviderModelRecord): Promise<void> {
-  return callStorage("providerModel.save", model);
-}
-
-export function deleteProviderModel(
-  providerId: string,
-  modelId: string,
-): Promise<void> {
-  return callStorage("providerModel.delete", providerId, modelId);
-}
-
-export function deleteProviderModelsByProvider(
-  providerId: string,
-): Promise<void> {
-  return callStorage("providerModel.deleteByProvider", providerId);
-}
-
-const TITLE_MODEL_SETTING_KEY = "titleModel";
-
-export async function getTitleModelSetting(): Promise<TitleModelSelection | null> {
-  const raw = await callStorage<string | null>(
-    "appSetting.get",
-    TITLE_MODEL_SETTING_KEY,
-  );
-  if (!raw) {
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(raw) as Partial<TitleModelSelection>;
-    if (
-      typeof parsed.providerId === "string" &&
-      typeof parsed.modelId === "string"
-    ) {
-      return { providerId: parsed.providerId, modelId: parsed.modelId };
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-export function setTitleModelSetting(
-  selection: TitleModelSelection | null,
-): Promise<void> {
-  return callStorage(
-    "appSetting.set",
-    TITLE_MODEL_SETTING_KEY,
-    JSON.stringify(selection),
-  );
-}
-
-export function getCommitMessageModelSetting(): Promise<CommitMessageModelSelection | null> {
-  return requestDaemon("git.commitMessageModel.get", daemonOptions());
-}
-
-export async function setCommitMessageModelSetting(
-  selection: CommitMessageModelSelection | null,
-): Promise<void> {
-  await requestDaemon(
-    "git.commitMessageModel.set",
-    { selection },
-    daemonOptions(),
-  );
-}
-
 export function getNetworkProxySetting(): Promise<string | null> {
   return callStorage<string | null>("appSetting.get", "network.proxy");
 }
 
 export function setNetworkProxySetting(valueJson: string): Promise<void> {
   return callStorage("appSetting.set", "network.proxy", valueJson);
-}
-
-export function listAgentProviderDefaults(): Promise<AgentProviderSelection[]> {
-  return callStorage("agentProviderDefault.list");
-}
-
-export function getAgentProviderDefault(
-  agentId: AgentId,
-): Promise<AgentProviderSelection | null> {
-  return callStorage("agentProviderDefault.get", agentId);
-}
-
-export function saveAgentProviderDefault(
-  selection: AgentProviderSelection,
-): Promise<void> {
-  return callStorage("agentProviderDefault.save", selection);
 }
 
 export async function listAgentRoles(): Promise<AgentRoleRecord[]> {

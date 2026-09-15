@@ -27,6 +27,7 @@ export interface RequestClientOptions extends DaemonRpcRequestOptions {
 }
 
 interface DaemonEventSubscriptionOptions extends RequestClientOptions {
+  afterSeq?: number;
   onDisconnect?(error?: Error): void;
 }
 

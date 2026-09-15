@@ -73,9 +73,11 @@ export function FileTreeContextMenuItems({
       <FileTreeContextMenuItem onClick={handleAddToChat}>
         {t("actions.addToChat")}
       </FileTreeContextMenuItem>
-      <FileTreeContextMenuItem onClick={handleReveal}>
-        {t("contextMenu.revealInFinder")}
-      </FileTreeContextMenuItem>
+      {desktopApi.capabilities.fileManager ? (
+        <FileTreeContextMenuItem onClick={handleReveal}>
+          {t("contextMenu.revealInFinder")}
+        </FileTreeContextMenuItem>
+      ) : null}
       <ContextMenuSeparator />
       <FileTreeContextMenuItem onClick={handleCopyPath}>
         {t("contextMenu.copyPath")}

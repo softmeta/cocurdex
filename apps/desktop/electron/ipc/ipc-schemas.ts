@@ -221,6 +221,10 @@ export const schemas = {
     limit: z.number().int().min(1).max(200).optional(),
   }),
   filePath: filesystemPathSchema,
+  // Daemon-host directory browse; omitted path means the daemon's home dir.
+  directoryBrowse: z.object({
+    path: filesystemPathSchema.optional(),
+  }),
   sessionId: idSchema,
   messageId: idSchema,
   toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),
