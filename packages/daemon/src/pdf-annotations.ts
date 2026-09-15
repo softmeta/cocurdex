@@ -102,14 +102,18 @@ export class DaemonPdfAnnotationsService {
     const run = (this.saveChains.get(storagePath) ?? Promise.resolve()).then(
       () => this.persistAnnotations(resolvedPath, storagePath, annotations),
     );
-    this.saveChains.set(
-      storagePath,
-      run.then(
-        () => undefined,
-        () => undefined,
-      ),
+    const tail = run.then(
+      () => undefined,
+      () => undefined,
     );
-    await run;
+    this.saveChains.set(storagePath, tail);
+    try {
+      await run;
+    } finally {
+      if (this.saveChains.get(storagePath) === tail) {
+        this.saveChains.delete(storagePath);
+      }
+    }
   }
 
   private async persistAnnotations(

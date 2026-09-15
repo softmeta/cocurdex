@@ -83,5 +83,8 @@ export async function resolveAuthorizedPdfReadPath(
       `PDF is outside every registered workspace (path=${resolvedPath})`,
     );
   }
-  return realPath;
+  // The canonical path only proves authorization; callers keep the lexical
+  // path so identities like annotation storage keys stay stable across
+  // symlinked workspace roots.
+  return resolvedPath;
 }

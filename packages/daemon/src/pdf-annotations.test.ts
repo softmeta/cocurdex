@@ -206,5 +206,15 @@ describe("pdf annotations storage", () => {
       bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
       highlights: [],
     });
+
+    const storagePath = path.join(
+      userDataPath,
+      "pdf-annotations",
+      `${pdfAnnotationsStorageKey(path.resolve(filePath))}.json`,
+    );
+    const onDisk = JSON.parse(await readFile(storagePath, "utf8")) as {
+      filePath: string;
+    };
+    expect(onDisk.filePath).toBe(path.resolve(filePath));
   });
 });
