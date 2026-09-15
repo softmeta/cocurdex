@@ -3,6 +3,7 @@ import {
   normalizeOpenPaths,
   normalizeReadingPositions,
   resolveRestoredPosition,
+  retainOpenPdfPaths,
 } from "@/features/pdf-reader/pdf-reading-position";
 
 describe("normalizeReadingPositions", () => {
@@ -87,6 +88,21 @@ describe("resolveRestoredPosition", () => {
     expect(resolveRestoredPosition({ page: 1.2, top: 0, left: 0 }, 10)).toEqual(
       start,
     );
+  });
+});
+
+describe("retainOpenPdfPaths", () => {
+  it("keeps PDFs that still sit inside a registered workspace", () => {
+    expect(
+      retainOpenPdfPaths(
+        ["/ws/kept/a.pdf", "/Users/me/my-reading/paper.pdf"],
+        ["/ws/kept"],
+      ),
+    ).toEqual(["/ws/kept/a.pdf"]);
+  });
+
+  it("drops every tab when no workspace remains", () => {
+    expect(retainOpenPdfPaths(["/ws/kept/a.pdf"], [])).toEqual([]);
   });
 });
 

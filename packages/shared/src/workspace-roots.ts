@@ -17,17 +17,83 @@ export function normalizeWorkspaceRootPath(rootPath: string): string {
   return rootPath.slice(0, end);
 }
 
+function platformName(): string | undefined {
+  return (globalThis as { process?: { platform?: string } }).process?.platform;
+}
+
+function isWindowsPlatform(): boolean {
+  return (
+    platformName() === "win32" ||
+    (typeof navigator !== "undefined" && /Win/i.test(navigator.platform))
+  );
+}
+
 export function workspacePathsEqual(left: string, right: string): boolean {
   const a = normalizeWorkspaceRootPath(left);
   const b = normalizeWorkspaceRootPath(right);
-  const win =
-    (globalThis as { process?: { platform?: string } }).process?.platform ===
-      "win32" ||
-    (typeof navigator !== "undefined" && /Win/i.test(navigator.platform));
-  if (win) {
+  if (isWindowsPlatform()) {
     return a.toLowerCase() === b.toLowerCase();
   }
   return a === b;
+}
+
+function foldPathForContainment(value: string): string {
+  const platform = platformName();
+  if (platform === "win32" || platform === "darwin") {
+    return value.toLowerCase();
+  }
+  return value;
+}
+
+function normalizePathForContainment(input: string): string {
+  const unified = input.replaceAll("\\", "/");
+  const hasDrive = /^[A-Za-z]:/.test(unified);
+  const isUnixAbsolute = unified.startsWith("/");
+  const stack: string[] = [];
+  for (const segment of unified.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      if (
+        stack.length === 0 ||
+        (hasDrive && stack.length === 1 && /^[A-Za-z]:$/.test(stack[0] ?? ""))
+      ) {
+        continue;
+      }
+      stack.pop();
+      continue;
+    }
+    stack.push(segment);
+  }
+  if (hasDrive) {
+    return stack.join("/");
+  }
+  if (isUnixAbsolute) {
+    return `/${stack.join("/")}`;
+  }
+  return stack.join("/");
+}
+
+export function isPathWithinRoots(
+  candidatePath: string,
+  rootPaths: readonly string[],
+): boolean {
+  const foldedPath = foldPathForContainment(
+    normalizePathForContainment(candidatePath),
+  );
+  if (!foldedPath) {
+    return false;
+  }
+  return rootPaths.some((rootPath) => {
+    const foldedRoot = foldPathForContainment(
+      normalizePathForContainment(rootPath),
+    );
+    if (!foldedRoot) {
+      return false;
+    }
+    return foldedPath === foldedRoot || foldedPath.startsWith(`${foldedRoot}/`);
+  });
 }
 
 export function normalizeWorkspaceRootPaths(

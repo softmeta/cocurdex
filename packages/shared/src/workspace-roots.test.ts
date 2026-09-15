@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   collectKnownWorkspaceScanRoots,
   isKnownWorkspaceScanRoot,
+  isPathWithinRoots,
   normalizeWorkspaceRootPath,
   normalizeWorkspaceRootPaths,
 } from "./workspace-roots";
@@ -29,6 +30,42 @@ describe("normalizeWorkspaceRootPaths", () => {
 
   it("keeps an explicit filesystem root only when it was provided", () => {
     expect(normalizeWorkspaceRootPaths(["/"])).toEqual(["/"]);
+  });
+});
+
+describe("isPathWithinRoots", () => {
+  it("accepts a file inside a registered root", () => {
+    expect(
+      isPathWithinRoots("/Users/me/project/docs/guide.pdf", [
+        "/Users/me/project",
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects a file outside every root", () => {
+    expect(
+      isPathWithinRoots("/Users/me/my-reading/paper.pdf", [
+        "/Users/me/project",
+      ]),
+    ).toBe(false);
+  });
+
+  it("rejects a sibling directory that shares a path prefix", () => {
+    expect(
+      isPathWithinRoots("/Users/me/project-evil/x.pdf", ["/Users/me/project"]),
+    ).toBe(false);
+  });
+
+  it("rejects a traversal that resolves outside the root", () => {
+    expect(
+      isPathWithinRoots("/Users/me/project/../secret.pdf", [
+        "/Users/me/project",
+      ]),
+    ).toBe(false);
+  });
+
+  it("returns false when no roots are registered", () => {
+    expect(isPathWithinRoots("/Users/me/project/guide.pdf", [])).toBe(false);
   });
 });
 
