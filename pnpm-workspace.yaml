@@ -36,6 +36,7 @@ overrides:
   'vite-node>vite': 7.3.5
   'vitest>vite': 7.3.5
   ws: ^8.21.0
+  nwsapi: 2.2.23
 allowBuilds:
   '@biomejs/biome': true
   '@google/genai': false
