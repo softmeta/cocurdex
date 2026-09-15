@@ -1,0 +1,147 @@
+---
+title: Agent
+description: Agent 运行时、权限、协作模式,以及 Cocurdex 如何让多会话工作清晰可读。
+---
+
+Cocurdex 在一个工作区里协调**多个 Agent 会话**。预发布期间运行时和 provider 仍在演进;本页描述产品模型和当前可用的 Agent。
+
+## 心智模型
+
+- 每个会话都有明确的**状态**和推导出的**注意力**状态(见[桌面工作台](/docs/desktop/))。
+- 你可以运行**多个**会话,而不必合并成一条对话记录。
+- 权限、提问和计划批准会浮现在 UI 中,而不是静默发生。
+- 优先选择仍能完成任务的最**窄**权限和写入模式。
+
+## 支持的 Agent
+
+| Id(`--agent`) | UI 名称 | 运行时 | 说明 |
+| --- | --- | --- | --- |
+| `claude-agent` | Claude Agent | 外部 `claude` CLI | 计划模式、引导、本地写入 |
+| `codex` | Codex | 外部 `codex` CLI | 计划模式、引导、本地写入;授权经由 Codex 自身 |
+| `opencode` | OpenCode | 外部 `opencode` CLI | 计划模式、流式输出;不支持引导 |
+| `grok-build` | Grok Build | 外部 `grok` CLI(ACP 传输) | 计划模式、经 ACP 引导;仅本地写入 |
+| `pi` | Pi | 内置 | 默认偏只读;无独立权限模式 |
+
+外部 Agent 必须在你的机器上安装并完成授权。缺少某个 CLI 时,该 Agent 会显示为不可用,直到你安装它。
+
+### 如何选择运行时
+
+| 场景 | 从这些开始 |
+| --- | --- |
+| 你已经在用 Claude Code / Claude CLI | `claude-agent` |
+| 你已经在用 OpenAI Codex | `codex` |
+| 你想要偏 Grok 的实现 | `grok-build` |
+| 你在别处使用 OpenCode | `opencode` |
+| 不需要本地工作区写入的轻量对话轮次 | `pi`(Pi) |
+
+## Provider 与模型
+
+Agent 使用应用中注册的 **provider 配置**(API base URL、凭据、目录)和**模型**。在桌面 UI 中配置 provider;从 CLI 列出:
+
+```bash
+cocurdex provider list
+cocurdex provider models <provider-id>
+```
+
+Cocurdex 会尽可能复用你已有的 provider 配置(例如 `~/.codex` 下的 Codex 账户状态)。不要把密钥贴进产品笔记或公开文档站。
+
+## 权限模式
+
+权限模式**因 Agent 而异**。风险等级:
+
+| 风险 | 意图 |
+| --- | --- |
+| **normal** | 询问或谨慎门控工具使用 |
+| **elevated** | 更宽松地自动批准编辑 / 评审 |
+| **dangerous** | 完全或绕过式访问——谨慎使用 |
+
+### Claude Agent
+
+| 模式 id | 风险 |
+| --- | --- |
+| `claude-default` | normal |
+| `claude-accept-edits` | elevated |
+| `claude-auto` | elevated——当安装的 Claude CLI 支持 auto 模式时提供 |
+| `claude-bypass-permissions` | dangerous |
+
+当协作模式为 `plan` 时,会话使用 `claude-plan`(只做计划,不编辑也不执行命令)。切回 `default` 会恢复为 `claude-default`。
+
+### Codex
+
+| 模式 id | 风险 |
+| --- | --- |
+| `codex-read-only` | normal |
+| `codex-auto` | elevated |
+| `codex-full-access` | dangerous |
+
+### Grok Build
+
+| 模式 id | 风险 |
+| --- | --- |
+| `grok-ask` | normal |
+| `grok-auto` | elevated(Grok 自己的风险分类器;可能产生额外的模型调用) |
+| `grok-always-approve` | dangerous |
+
+### OpenCode
+
+| 模式 id | 风险 |
+| --- | --- |
+| `opencode-ask` | normal |
+| `opencode-allow` | elevated |
+| `opencode-deny` | normal |
+
+### 内置 Pi(`pi`)
+
+没有独立的权限模式列表;写入模式为 **read-only**。
+
+当 Agent 请求特权操作时,Cocurdex 会浮现一张权限卡片(可能附带路径/操作细节)。在会话 UI 或 CLI 的 `session tui` 中处理。
+
+## 协作与写入模式
+
+| 控制项 | 取值 | 含义 |
+| --- | --- | --- |
+| **协作模式** | `default`、`plan` | 运行时支持计划优先循环时的计划模式 |
+| **写入模式** | `read-only`、`native-write` | 工具是否可以修改工作区 |
+
+不是每个 Agent 都支持每种组合。例如 Grok Build 专注于本地写入;内置 `pi` 偏只读。
+
+## Agent 角色
+
+**Agent 角色**是保存好的预设:Agent + provider/模型 + 权限模式 + 协作与推理轴,外加可选的指令和 skills。在 **Settings → Agent roles** 中管理角色(或从会话 UI 把当前会话配置保存为角色),并从 CLI 列出:
+
+```bash
+cocurdex role list
+```
+
+角色可以通过 `--planner-role`、`--implementer-role` 和 `--reviewer-role` 绑定[工作流](/docs/workflows/)的 planner / implementer / reviewer 槽位。只有当角色的权限画像与工作流角色要求匹配时才能绑定:planner 和 reviewer 需要只读画像,implementer 需要工作区写入画像,dangerous 级权限模式完全不能绑定。
+
+## 会话内控制
+
+一些运行时可以在**不重建** provider 会话的情况下切换**模型**、**思考/推理力度**、**权限**或相关轴。这能保持对话连续性和 provider 侧的缓存。如果某个 Agent 缺少某个控制项,那是有意不支持——没有「暗中重启会话」的兜底。
+
+## 引导与后续输入
+
+当 Agent 支持**引导**(steering)时,你可以在运行进行中发送后续指引(或把后续输入排队到当前轮次结束——可在对话设置中配置)。当引导不可用时,等待当前轮次结束或停止会话。
+
+从 UI 或以下命令停止运行中的会话:
+
+```bash
+cocurdex session stop <session-id>
+```
+
+## 并行会话
+
+典型模式:
+
+1. 一个会话实现功能
+2. 一个会话排查 bug 或评审分支
+3. 可选的计划模式会话做设计
+
+标题保持简短,状态保持可见。只在有注意力需求时切换——不要为了「省一个会话位」把不相关的工作塞进同一条对话记录。
+
+## 相关
+
+- [桌面工作台](/docs/desktop/)
+- [工作流](/docs/workflows/)
+- [Skills](/docs/skills/)
+- [CLI](/docs/cli/)

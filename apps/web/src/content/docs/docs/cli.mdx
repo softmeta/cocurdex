@@ -34,7 +34,7 @@ If resolution fails, open the desktop app once and install the CLI launcher, or 
 | Flag | Meaning |
 | --- | --- |
 | `--help` / `help` | Print usage |
-| `--version` / `-v` / `version` | Print CLI version |
+| `--version` / `-v` / `-V` / `version` | Print CLI version |
 | `--json` | Machine-readable output where supported |
 
 ## Open the desktop app
@@ -111,7 +111,7 @@ cocurdex skills install --scope project|global [--root <path>] [--json]
 cocurdex skills remove --scope project|global [--root <path>] [--json]
 ```
 
-`--root` defaults to the current working directory for project scope. See [Skills](/docs/skills/).
+`--root` defaults to the current working directory for project scope. `cocurdex skill` is accepted as an alias. See [Skills](/docs/skills/).
 
 ## Daemon and workspaces
 
@@ -119,6 +119,19 @@ cocurdex skills remove --scope project|global [--root <path>] [--json]
 cocurdex daemon status
 cocurdex workspace list
 ```
+
+## Worktrees
+
+Managed git worktrees give sessions an isolated checkout of a workspace repository.
+
+```bash
+cocurdex worktree list [--json]
+cocurdex worktree settings [--root <path>] [--fetch|--no-fetch] [--json]
+cocurdex worktree create --workspace <id|path> --branch <name> [--start-point <rev>] [--json]
+cocurdex worktree remove --workspace <id|path> --path <worktree-path> [--json]
+```
+
+`worktree settings` with no flags prints the current settings; pass `--root` and/or `--fetch`/`--no-fetch` to update them. `--root` sets the directory where Cocurdex creates managed worktrees (empty clears it back to the default location); `--fetch` controls whether the repository is fetched before creating a worktree.
 
 ## Sessions
 
@@ -149,23 +162,35 @@ cocurdex provider list
 cocurdex provider models <provider>
 ```
 
+## Agent roles
+
+Saved agent presets (agent + provider/model + permission + reasoning axes) that can also bind workflow roles. Manage them in the desktop UI; list them from the CLI:
+
+```bash
+cocurdex role list [--json]
+```
+
 ## Workflows
 
 Daemon-owned multi-step runs (plan → implement → review style). Full detail: [Workflows](/docs/workflows/).
 
 ```bash
 cocurdex workflow list
+cocurdex workflow definitions
 cocurdex workflow create --workspace <id|path> --prompt <prompt> \
-  [--planner <agent>] [--implementer <agent>] [--reviewer <agent>]
+  [--definition <id>] \
+  [--planner <agent>] [--implementer <agent>] [--reviewer <agent>] \
+  [--planner-model <model>] [--implementer-model <model>] [--reviewer-model <model>] \
+  [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]
 cocurdex workflow tui [run-id]
 cocurdex workflow tui --workspace <id|path> --prompt <prompt> [...]
-cocurdex workflow show <run-id>
+cocurdex workflow show|get <run-id>
 cocurdex workflow start <run-id>
 cocurdex workflow approve|reject <run-id> [--reason <text>] [--step <step-id>]
 cocurdex workflow cancel <run-id>
 ```
 
-Default role agents when flags are omitted: planner `codex`, implementer `grok-build`, reviewer `codex`. Optional `--planner-model`, `--implementer-model`, `--reviewer-model`.
+Default role agents when flags are omitted: planner `codex`, implementer `grok-build`, reviewer `codex`. A `--<role>-role` flag binds a saved [agent role](#agent-roles) instead of an ad-hoc agent/model pair; the role's permission profile must match what the workflow role requires.
 
 ## What the CLI is not
 

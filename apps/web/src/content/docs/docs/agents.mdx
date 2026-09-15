@@ -18,9 +18,9 @@ Cocurdex coordinates **multiple agent sessions** in one workspace. Runtimes and 
 | --- | --- | --- | --- |
 | `claude-agent` | Claude Agent | External `claude` CLI | Plan mode, steering, native write |
 | `codex` | Codex | External `codex` CLI | Plan mode, steering, native write; auth via Codex itself |
-| `opencode` | OpenCode | External `opencode` CLI | Streaming; steering not supported |
-| `grok-build` | Grok Build | External `grok` CLI (ACP transport) | Strong multi-step implementer; permission modes over ACP |
-| `pi` | Cocurdex | Built-in | Branded as Cocurdex in the product UI; read-oriented default |
+| `opencode` | OpenCode | External `opencode` CLI | Plan mode, streaming; steering not supported |
+| `grok-build` | Grok Build | External `grok` CLI (ACP transport) | Plan mode, steering over ACP; native write only |
+| `pi` | Pi | Built-in | Read-oriented default; no separate permission modes |
 
 External agents must be installed and authenticated on your machine. If a CLI is missing, the agent shows as unavailable until you install it.
 
@@ -32,7 +32,7 @@ External agents must be installed and authenticated on your machine. If a CLI is
 | You already use OpenAI Codex | `codex` |
 | You want Grok-oriented implementation | `grok-build` |
 | You use OpenCode elsewhere | `opencode` |
-| Lightweight chat-style turn without native workspace write | `pi` (Cocurdex) |
+| Lightweight chat-style turn without native workspace write | `pi` (Pi) |
 
 ## Providers and models
 
@@ -61,14 +61,17 @@ Permission modes are **agent-specific**. Risk levels:
 | --- | --- |
 | `claude-default` | normal |
 | `claude-accept-edits` | elevated |
+| `claude-auto` | elevated — offered when the installed Claude CLI supports auto mode |
 | `claude-bypass-permissions` | dangerous |
+
+When the collaboration mode is `plan`, the session uses `claude-plan` (plan only, no edits or commands). Switching back to `default` restores `claude-default`.
 
 ### Codex
 
 | Mode id | Risk |
 | --- | --- |
-| `codex-default` | normal |
-| `codex-auto-review` | elevated |
+| `codex-read-only` | normal |
+| `codex-auto` | elevated |
 | `codex-full-access` | dangerous |
 
 ### Grok Build
@@ -87,9 +90,9 @@ Permission modes are **agent-specific**. Risk levels:
 | `opencode-allow` | elevated |
 | `opencode-deny` | normal |
 
-### Built-in Cocurdex (`pi`)
+### Built-in Pi (`pi`)
 
-No separate permission-mode list in the fallback catalog; write mode defaults to **read-only**.
+No separate permission-mode list; write mode is **read-only**.
 
 When an agent requests a privileged action, Cocurdex surfaces a permission card (and may show path/action detail). Resolve from the session UI or from `session tui` in the CLI.
 
@@ -101,6 +104,16 @@ When an agent requests a privileged action, Cocurdex surfaces a permission card 
 | **Write mode** | `read-only`, `native-write` | Whether tools may change the workspace |
 
 Not every agent supports every combination. For example, Grok Build focuses on native write; built-in `pi` is read-oriented.
+
+## Agent roles
+
+An **agent role** is a saved preset: agent + provider/model + permission mode + collaboration and reasoning axes, plus optional instructions and skills. Manage roles under **Settings → Agent roles** (or save the current session's setup as a role from the session UI), and list them from the CLI:
+
+```bash
+cocurdex role list
+```
+
+Roles can bind [workflow](/docs/workflows/) planner / implementer / reviewer slots via `--planner-role`, `--implementer-role`, and `--reviewer-role`. A role binds only when its permission profile matches what the workflow role requires: planner and reviewer need a read-only profile, implementer needs workspace write, and dangerous permission modes cannot bind at all.
 
 ## In-session controls
 

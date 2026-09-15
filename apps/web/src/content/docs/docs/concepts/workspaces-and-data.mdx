@@ -11,7 +11,7 @@ A **workspace** is the project context Cocurdex attaches to — typically a dire
 | --- | --- |
 | `id` | Stable workspace id |
 | `name` | Display name (often the folder basename) |
-| `rootPath` | Absolute path on disk |
+| `rootPaths` | Absolute paths on disk; the first entry is the primary root |
 
 Open from the desktop UI or:
 
@@ -40,6 +40,8 @@ Important rules:
 | Data | Authority |
 | --- | --- |
 | Notes, issues, views, tags, links, FTS indexes | Daemon + `cocurdex.sqlite` |
+| Agent roles, worktree settings, session records | Daemon + `cocurdex.sqlite` |
+| Managed git worktrees | Created by the daemon under the configured worktree root |
 | Project source files | Your workspace directory on disk |
 | Agent provider auth (e.g. Codex) | That tool’s own config (for example under `~/.codex`) |
 | Product skill files (optional) | Project or global skills directories after install |

@@ -1,0 +1,126 @@
+---
+title: 笔记与 Issue
+description: Cocurdex 中应用私有的笔记、Issue、看板视图、搜索与反向链接。
+---
+
+笔记和 Issue 是 Cocurdex 中的一等**产品记录**。它们存放在应用私有存储(`cocurdex.sqlite`)中，而不是在仓库里隐式双写一棵 Markdown 树。
+
+## 为什么应用私有
+
+| 能力 | SQLite 帮了什么 |
+| --- | --- |
+| 稳定 id | 标题和文件夹可以改名而不破坏链接 |
+| 事务 | 多行更新保持一致 |
+| 版本号 | 可以检测到过期写入 |
+| 全文搜索 | 笔记和 Issue 共享一个搜索索引 |
+| 反向链接 / 标签 | 规范化图谱，而非路径爬取 |
+
+Markdown 之后仍可用于**显式**导入导出。在此之前，请把 CLI 和桌面 UI 当作唯一受支持的写入方。
+
+## 笔记
+
+笔记支持:
+
+- 层级**文件夹**与笔记页
+- Markdown 正文
+- **标签**
+- 笔记之间的**反向链接**
+- 可选关联到某个**工作区**
+
+### 桌面端
+
+使用桌面应用中的笔记面板浏览、编辑和链接笔记。保持稳定的笔记标题和链接，这样 Agent 和人之后能找到同一条记录。
+
+### CLI
+
+```bash
+cocurdex note list
+cocurdex note create --title "Architecture notes" --body "## Context\n..."
+cocurdex note show <id>
+cocurdex note update <id> --body "..."
+cocurdex note backlinks <id>
+cocurdex note tags
+cocurdex note delete <id>
+```
+
+创建文件夹:
+
+```bash
+cocurdex note create --title "PRDs" --folder
+```
+
+## Issue
+
+Issue 是产品中的 **todo / ticket / 看板卡片**模型。叫法不同，存储是同一个池:
+
+| 你说 | 同一模型 |
+| --- | --- |
+| issue | issue |
+| todo | issue |
+| ticket | issue |
+
+### 默认看板列(状态)
+
+| Id | 标题 |
+| --- | --- |
+| `backlog` | Backlog |
+| `doing` | Doing |
+| `review` | Review |
+| `done` | Done |
+
+### 默认优先级
+
+| Id | 标题 |
+| --- | --- |
+| `urgent` | Urgent |
+| `high` | High |
+| `medium` | Medium |
+| `low` | Low |
+| `none` | No priority |
+
+### 视图
+
+内置视图 id 是 **`project`**。视图可以按**状态**或**优先级**分组，布局可以是**看板**或**列表**。列表视图以及创建/移动操作都经由 daemon(桌面 UI 或 CLI)——不要手工编造 issue id。
+
+```bash
+cocurdex issue views
+cocurdex issue list
+cocurdex issue list --status doing
+cocurdex issue create --title "Wire download artifacts" --status backlog --priority high
+cocurdex issue move <id> doing
+cocurdex issue show <id>
+cocurdex issue delete <id>
+```
+
+## 搜索
+
+```bash
+cocurdex search "download"
+cocurdex search "auth" --kind note
+cocurdex search "release" --kind issue --workspace <workspace-id>
+```
+
+## 与 Agent 协作
+
+产品 Skills(`/cocurdex-note`、`/cocurdex-issue` 等)调用同一套 CLI,因此 Agent 不需要打开 SQLite。见 [Skills](/docs/skills/)。
+
+产品工作的推荐循环:
+
+```text
+/cocurdex-grill  →  /cocurdex-prd  →  /cocurdex-spec?  →  /cocurdex-issue  →  /cocurdex-ship
+```
+
+PRD 和 spec 默认存为**私有笔记**。要发布到仓库中需要明确的用户请求——绝不要认为「打开工作区」就等于「把产品文档写进仓库」。
+
+## 不要做的事
+
+- 不要把项目下的路径当作 Issue 身份
+- 不要手工编辑 `cocurdex.sqlite`
+- 不要在脚本里编造 issue 或 note id——通过 CLI 创建并保存返回的 id
+- 除非你自己负责一条显式的导出流程，否则不要「保险起见」双写 Markdown 副本
+
+## 相关
+
+- [工作区与数据](/docs/concepts/workspaces-and-data/)
+- [CLI](/docs/cli/)
+- [Skills](/docs/skills/)

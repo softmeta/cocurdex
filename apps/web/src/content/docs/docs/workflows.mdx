@@ -34,11 +34,14 @@ cocurdex workflow create \
   --reviewer codex
 ```
 
-Optional model overrides: `--planner-model`, `--implementer-model`, `--reviewer-model`.
+Optional model overrides: `--planner-model`, `--implementer-model`, `--reviewer-model`. To bind a saved [agent role](/docs/agents/#agent-roles) instead of an ad-hoc agent/model pair, use `--planner-role`, `--implementer-role`, or `--reviewer-role`. `--definition <id>` selects a non-default workflow definition.
 
 ## Commands
 
 ```bash
+# List available definitions
+cocurdex workflow definitions
+
 # Create a run (does not always auto-start — use start or tui)
 cocurdex workflow create --workspace <id|path> --prompt "<goal>"
 
@@ -50,8 +53,8 @@ cocurdex workflow show <run-id>
 
 # Start / gate / cancel
 cocurdex workflow start <run-id>
-cocurdex workflow approve <run-id> [--reason "..."]
-cocurdex workflow reject <run-id> [--reason "..."]
+cocurdex workflow approve <run-id> [--reason "..."] [--step <step-id>]
+cocurdex workflow reject <run-id> [--reason "..."] [--step <step-id>]
 cocurdex workflow cancel <run-id>
 ```
 
@@ -70,9 +73,9 @@ The workflow TUI does not support `--json`. Use it to watch steps, decide gates,
 
 1. **Create** a run with workspace + prompt and role bindings.  
 2. **Start** the run (or use `workflow tui` with create flags).  
-3. Watch steps transition (planner → gate → implementer → reviewer, depending on definition).  
-4. When a **gate** needs you, **approve** or **reject** with optional reason.  
-5. **Cancel** if the goal changed or the run is stuck.
+3. Watch steps transition — the built-in definition runs **plan → approve_plan (gate) → implement → validate → review**, and review can request changes that loop back to implement.
+4. When a **gate** needs you, **approve** or **reject** with optional reason (`--step` defaults to the `approve_plan` gate).
+5. **Cancel** if the goal changed or the run is stuck. A rejected plan gate ends the run as cancelled; a failed validation or blocked review ends it as blocked.
 
 Exact step ids depend on the workflow definition version. Prefer `workflow show` / TUI over hard-coding step names in scripts unless you pin a known definition.
 

@@ -1,0 +1,91 @@
+---
+title: Providers and settings
+description: Provider configs, model catalogs, MCP servers, network proxy, git commit models, and other desktop settings in Cocurdex.
+---
+
+Most Cocurdex configuration lives in the desktop app's **Settings**. This page covers the settings that change how agents and models behave — providers, MCP, network, git, and worktree environments.
+
+## Providers and models
+
+**Settings → Providers** manages **provider configs**: named service endpoints with credentials and a model catalog. These configs feed the built-in **Pi** runtime and in-session model controls.
+
+A provider config holds:
+
+| Field | Meaning |
+| --- | --- |
+| Provider id / name | Stable id and display name |
+| Base URL | Service endpoint |
+| API runtime | `openai-completions`, `openai-responses`, `openai-codex-responses`, `anthropic-messages`, `google-generative-ai`, or `mistral-conversations` |
+| Auth | A provider account via Pi OAuth, or an API key managed by Pi |
+| Models | Per-model id, display name, capabilities (agent / chat / reasoning / vision), context and output limits, cost per 1M tokens |
+| Advanced | Custom headers, compatibility JSON, thinking-level maps |
+
+Templates fill the endpoint for common providers; **Import JSON** bulk-loads a provider definition. Manage everything in the UI, then verify from the CLI:
+
+```bash
+cocurdex provider list
+cocurdex provider models <provider-id>
+```
+
+External agent CLIs (`claude`, `codex`, `opencode`, `grok`) keep their own authentication — Codex account state under `~/.codex`, for example. Provider configs do not replace that; they give Pi and the desktop a shared model catalog.
+
+## MCP servers
+
+**Settings → MCP** configures the Model Context Protocol servers available to the built-in **Pi** agent. Servers connect only when Pi uses one of their tools.
+
+- Two editing modes: a **form** (name, transport, command/URL, arguments, environment) and raw **JSON**.
+- The JSON shape is the standard `mcpServers` object.
+- Transports: **local** stdio (`command` + `args` + `env`) and **remote** HTTP (`url`).
+- Changes apply when a Pi session starts; running sessions keep their current tools.
+
+## Network proxy
+
+**Settings → Environment** controls the app's outbound proxy:
+
+| Mode | Behavior |
+| --- | --- |
+| `system` | Follow system / environment proxy configuration |
+| `manual` | Use the HTTP / HTTPS / SOCKS (`allProxy`) URLs and bypass list (`noProxy`) you provide |
+| `off` | Direct outbound traffic; no app proxy applied |
+
+Scope notes:
+
+- Applies to Agent subprocesses (including ACP), app and daemon model/API requests, and Chromium network traffic.
+- Does **not** change the system proxy and does **not** force the integrated terminal to use these settings.
+- Proxy URLs are stored as plain text in app settings and passed to Agent subprocesses — avoid embedding credentials you would not want a spawned CLI to read.
+- Restart an active agent session after changing proxy settings so it picks up the new environment.
+
+**Test connectivity** sends one request through the app's outbound path and reports the egress IP, so you can tell whether the proxy is really in use.
+
+## Git
+
+**Settings → Git** picks the agent and model used to generate commit messages. When the commit message is left blank, the selected model writes a Conventional Commits subject from the staged changes. Choose **None** to always type messages yourself.
+
+## Worktree environments
+
+Two layers:
+
+- **Settings → Worktrees**: the root directory for managed worktrees (blank = default location) and whether to fetch remotes before creating a worktree. The inventory lists every checkout Cocurdex created, which sessions use it, and offers delete / new-session actions.
+- **Settings → Projects → Worktree settings**: per-project **setup** and **cleanup** scripts. Setup runs after Cocurdex creates a worktree (for example `pnpm install`); cleanup runs before an unused checkout is removed.
+
+The same surface is scriptable via `cocurdex worktree settings` — see [CLI](/docs/cli/#worktrees).
+
+## Other settings
+
+| Section | Covers |
+| --- | --- |
+| **General** | Language, CLI launcher install (`cocurdex` on your `PATH`), notifications |
+| **Appearance** | Theme (system / dark / light — parity is a product requirement), fonts |
+| **Editor** | Editor fonts and behavior for the workspace code editor |
+| **Shortcuts** | Rebindable keyboard shortcuts; `null` override unbinds an action |
+| **Skills** | Install/remove the `cocurdex-*` product skill pack |
+| **Agent roles** | Saved agent presets; see [Agents](/docs/agents/#agent-roles) |
+| **Workflows** | Default planner / implementer / reviewer bindings |
+| **Adapters** | Per-agent runtime detection and install hints |
+| **Archived** | Archived sessions |
+
+## Related
+
+- [Agents](/docs/agents/)
+- [CLI](/docs/cli/)
+- [Desktop workspace](/docs/desktop/)

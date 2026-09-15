@@ -14,6 +14,7 @@ const cookieEntry = require.resolve("cookie");
 const cookiePackageRoot = path.resolve(path.dirname(cookieEntry), "..");
 
 // Marketing + docs (ADR 0003). SSG only — no auth, no desktop imports.
+// Locales: English at the unprefixed root, 简体中文 under /zh-cn/.
 export default defineConfig({
   site: "https://cocurdex.com",
   output: "static",
@@ -38,7 +39,10 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: "Cocurdex Docs",
+      title: {
+        en: "Cocurdex Docs",
+        "zh-CN": "Cocurdex 文档",
+      },
       description:
         "Product documentation for Cocurdex — multi-agent desktop workspace, CLI, and agents.",
       favicon: "/favicon.svg",
@@ -46,31 +50,83 @@ export default defineConfig({
         src: "./src/assets/cocurdex-mark.svg",
         alt: "Cocurdex",
       },
-      // Content lives under src/content/docs/docs → public URLs at /docs/*
+      locales: {
+        root: {
+          label: "English",
+          lang: "en",
+        },
+        "zh-cn": {
+          label: "简体中文",
+          lang: "zh-CN",
+        },
+      },
+      // Content lives under src/content/docs/docs → public URLs at /docs/*;
+      // zh-CN mirrors at src/content/docs/zh-cn/docs → /zh-cn/docs/*.
       sidebar: [
         {
           label: "Start",
+          translations: { "zh-CN": "开始" },
           items: [
-            { label: "Introduction", slug: "docs" },
-            { label: "Getting started", slug: "docs/getting-started" },
+            {
+              label: "Introduction",
+              translations: { "zh-CN": "介绍" },
+              slug: "docs",
+            },
+            {
+              label: "Getting started",
+              translations: { "zh-CN": "快速上手" },
+              slug: "docs/getting-started",
+            },
           ],
         },
         {
           label: "Product",
+          translations: { "zh-CN": "产品" },
           items: [
-            { label: "Desktop workspace", slug: "docs/desktop" },
-            { label: "Notes and issues", slug: "docs/notes-and-issues" },
-            { label: "Agents", slug: "docs/agents" },
-            { label: "Skills", slug: "docs/skills" },
-            { label: "Workflows", slug: "docs/workflows" },
-            { label: "CLI", slug: "docs/cli" },
+            {
+              label: "Desktop workspace",
+              translations: { "zh-CN": "桌面工作台" },
+              slug: "docs/desktop",
+            },
+            {
+              label: "Notes and issues",
+              translations: { "zh-CN": "笔记与 Issue" },
+              slug: "docs/notes-and-issues",
+            },
+            {
+              label: "Agents",
+              translations: { "zh-CN": "Agent" },
+              slug: "docs/agents",
+            },
+            {
+              label: "Skills",
+              translations: { "zh-CN": "Skills" },
+              slug: "docs/skills",
+            },
+            {
+              label: "Workflows",
+              translations: { "zh-CN": "工作流" },
+              slug: "docs/workflows",
+            },
+            {
+              label: "CLI",
+              translations: { "zh-CN": "CLI" },
+              slug: "docs/cli",
+            },
+            {
+              label: "Providers and settings",
+              translations: { "zh-CN": "Provider 与设置" },
+              slug: "docs/providers-and-settings",
+            },
           ],
         },
         {
           label: "Concepts",
+          translations: { "zh-CN": "概念" },
           items: [
             {
               label: "Workspaces and data",
+              translations: { "zh-CN": "工作区与数据" },
               slug: "docs/concepts/workspaces-and-data",
             },
           ],
@@ -89,6 +145,13 @@ export default defineConfig({
     }),
     sitemap({
       filter: (page) => !page.includes("/404"),
+      i18n: {
+        defaultLocale: "en",
+        locales: {
+          en: "en",
+          "zh-cn": "zh-CN",
+        },
+      },
     }),
   ],
 });
