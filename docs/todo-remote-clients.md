@@ -1,6 +1,6 @@
 # TODO: web, mobile, and remote control prerequisites
 
-Status as of 2026-09-14. Items 1 to 3 below shipped in the daemon Git RPC and
+Status as of 2026-09-16. Items 1 to 3 below shipped in the daemon Git RPC and
 transport-neutral client work.
 
 ## Done
@@ -89,23 +89,42 @@ watching (`workspace-watch-service.ts`, which keeps its own `git-client.ts`).
 
 ### 5. Split the renderer `desktopApi` surface
 
-`apps/desktop/src/lib/types.ts` (`DesktopApi`) and `lib/ipc.ts` expose 166
-methods through one proxy. Split into:
+Partially done. `DesktopApi` in `apps/desktop/src/lib/types.ts` is now
+`ProductApi` (daemon-RPC contract shared by all clients) + `HostApi`
+(Electron-only: native dialogs, file-manager reveal, local attachment/PDF
+file reads, PTY, BrowserView, fonts, updates, CLI install, renderer logging,
+daemon process management, workspace file watching, interactive provider
+login). Call sites still use one flat `desktopApi` proxy. Remaining:
 
-- Product API backed by the rpc client (shared by desktop, web, mobile).
-- Host API, optional; UI hides features when the capability is absent.
-
-Then extract the renderer into a shared UI package.
+- Expose the split at the proxy boundary (e.g. `desktopApi.product` /
+  `desktopApi.host` or two bridges) and update renderer call sites; treat
+  `HostApi` as optional so UI hides features when the capability is absent.
+- Extract the renderer into a shared UI package.
 
 ### 6. Path semantics for remote clients
 
 Daemon-side pieces done: `fs.listDirectories` browse RPC and
 `DesktopApi.capabilities` with reveal-in-file-manager gating. Remaining:
 
-- 47 renderer files still treat `rootPath` as a local path. Under remote
-  control it is the daemon host's; audit and adjust copy/UI assumptions.
-- Replace `dialog:openDirectory` call sites with a picker built on
-  `fs.listDirectories` for clients lacking `nativeDirectoryDialog`.
+- Audited 2026-09-16. Genuine client-local assumptions (break under remote
+  control): `use-workspace-folder-drop.ts` resolves dropped paths on the
+  client via `getPathForFile`/`resolveWorkspaceOpenPath` (needs a capability
+  gate); `right-editor-panel.tsx` uses client `getHomeDir()` for PTY cwd
+  (daemon PTY, item 8, should use the daemon host's home); attachment import
+  and `pdf:read-data` read client-local file bytes (remote needs an
+  upload/fetch path); `consumePendingOpenFolder`/`onOpenWorkspaceFromCli`/
+  `resolveWorkspaceOpenPath` are host CLI integration.
+- POSIX path-shape assumptions (fine for a remote macOS/Linux daemon, break
+  on a Windows daemon host): `${rootPath}/${rel}` joins and `/` splits in
+  `file-tree*`, `editor-breadcrumb*`, `monaco-utils.getRelativePath`,
+  `use-message-file-path-handlers.toAbsolutePath`, `search-*`,
+  `use-workspace-files`; `compactWorkspacePath` collapses `/Users/*` to `~`
+  (macOS-only cosmetic).
+- Directory picking done: `pickHostDirectoryAtom`
+  (`features/workspaces/host-directory-picker.tsx`) now backs every former
+  `dialog:openDirectory` call site — hosts with `nativeDirectoryDialog` keep
+  the native dialog; other clients get `HostDirectoryPickerHost` (mounted in
+  `App`), a browse dialog built on `fs.listDirectories`.
 
 ### 7. Reconnect and idempotency
 

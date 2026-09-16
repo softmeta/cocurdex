@@ -24,13 +24,14 @@ import type {
 import { NetworkProxyStatusButton, SettingsScreen } from "@/features/settings";
 import {
   openWorkspaceByPathAtom,
+  pickHostDirectoryAtom,
   useWorkspaceFolderDrop,
   WorkspaceFolderDropOverlay,
   workspacesAtom,
 } from "@/features/workspaces";
 import type { LanguageMode } from "@/i18n/language";
 import type { WorkspaceFileEntry } from "@/lib";
-import { cn, desktopApi } from "@/lib";
+import { cn } from "@/lib";
 import { CenterPanel } from "../center-panel";
 import { ChatDock } from "../chat-dock";
 import {
@@ -181,6 +182,7 @@ export function AppShellFrame({
   const composerRef = useRef<ChatComposerHandle>(null);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
+  const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const handleAddContextToChat = useCallback(
     (attachment: MessageAttachment) => {
@@ -212,12 +214,12 @@ export function AppShellFrame({
     handleOpenDroppedWorkspace,
   );
   const handleOpenWorkspaceFromDialog = useCallback(async () => {
-    const result = await desktopApi.openWorkspace();
-    if (result.canceled || result.filePaths.length === 0) {
+    const rootPath = await pickHostDirectory();
+    if (!rootPath) {
       return;
     }
-    handleOpenDroppedWorkspace(result.filePaths[0]);
-  }, [handleOpenDroppedWorkspace]);
+    handleOpenDroppedWorkspace(rootPath);
+  }, [handleOpenDroppedWorkspace, pickHostDirectory]);
 
   // Single CenterPanel instance shared between the center column and the
   // floating dock. Only one mount point renders it at a time (center when

@@ -172,6 +172,16 @@
     "emptyUnconfigured": "还没有工作区。",
     "enterProject": "进入项目工作",
     "home": "首页",
+    "hostPicker": {
+      "cancel": "取消",
+      "empty": "此目录下没有文件夹。",
+      "hideHidden": "隐藏隐藏文件夹",
+      "pathPlaceholder": "文件夹路径",
+      "select": "选择此文件夹",
+      "showHidden": "显示隐藏文件夹",
+      "title": "选择文件夹",
+      "up": "返回上一级"
+    },
     "missing": "文件夹已丢失，点击重新定位",
     "openFolder": "打开文件夹",
     "recents": "最近",

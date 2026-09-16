@@ -29,6 +29,7 @@ import {
   activeWorkspaceIdAtom,
   collapsedWorkspaceIdsAtom,
   openWorkspaceByPathAtom,
+  pickHostDirectoryAtom,
   removeWorkspaceAtom,
   reorderWorkspacesAtom,
   selectWorkspaceAtom,
@@ -106,6 +107,7 @@ export function LeftSidebar({
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
+  const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const removeWorkspace = useSetAtom(removeWorkspaceAtom);
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
@@ -139,9 +141,9 @@ export function LeftSidebar({
   );
 
   const handleOpenWorkspace = async () => {
-    const result = await desktopApi.openWorkspace();
-    if (result.canceled || result.filePaths.length === 0) return;
-    const { didSwitchProject } = openWorkspaceByPath(result.filePaths[0]);
+    const rootPath = await pickHostDirectory();
+    if (!rootPath) return;
+    const { didSwitchProject } = openWorkspaceByPath(rootPath);
     if (didSwitchProject) {
       selectSession(null);
     }

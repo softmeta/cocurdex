@@ -248,28 +248,14 @@ export interface HostCapabilities {
   nativeDirectoryDialog: boolean;
 }
 
-export interface DesktopApi {
-  readonly capabilities: HostCapabilities;
+/**
+ * Product surface backed by daemon RPC — the contract every client (desktop,
+ * web, mobile) shares. Members map to named `@cocurdex/rpc` methods or to
+ * daemon events bridged by the host. Host-only abilities live in
+ * {@link HostApi}.
+ */
+export interface ProductApi {
   bootstrapApp(): Promise<AppBootstrapData>;
-  /** Absolute user home directory (default terminal cwd without a workspace). */
-  getHomeDir(): Promise<string>;
-  /**
-   * Installed font family names from the OS (for Appearance font pickers).
-   * Empty array when enumeration fails — renderer uses a curated fallback list.
-   */
-  listFontFamilies(): Promise<string[]>;
-  getAppUpdateState(): Promise<AppUpdateState>;
-  checkForAppUpdate(): Promise<AppUpdateState>;
-  dismissAppUpdate(): Promise<AppUpdateState>;
-  installAppUpdate(): Promise<void>;
-  onAppUpdateState(listener: (state: AppUpdateState) => void): () => void;
-  getOssLicenses(): Promise<OssLicensesPayload>;
-  openChromiumLicenses(): Promise<{ ok: boolean }>;
-  getCliPathStatus(): Promise<CliPathStatus>;
-  installCliOnPath(): Promise<CliPathStatus>;
-  uninstallCliFromPath(): Promise<CliPathStatus>;
-  getDaemonStatus(): Promise<DaemonRuntimeStatus>;
-  restartDaemon(): Promise<DaemonRuntimeStatus>;
   getProductSkillsStatus(
     scope: ProductSkillScope,
     workspaceRootPath?: string | null,
@@ -303,10 +289,6 @@ export interface DesktopApi {
   listWorkspaces(): Promise<WorkspaceRecord[]>;
   saveWorkspace(workspace: WorkspaceRecord): Promise<WorkspaceRecord>;
   deleteWorkspace(workspaceId: string): Promise<void>;
-  openWorkspaceInFileManager(rootPath: string): Promise<void>;
-  // Reveal a specific file or directory in the OS file manager, highlighting it
-  // within its parent folder (vs. openWorkspaceInFileManager which opens a dir).
-  revealPathInFileManager(targetPath: string): Promise<void>;
   /**
    * List directories on the daemon host (for picking a workspace root when no
    * native directory dialog is available). Paths are daemon-host absolute.
@@ -314,16 +296,6 @@ export interface DesktopApi {
   listHostDirectories(path?: string): Promise<HostDirectoryListing>;
   listWorkspaceEntries(rootPath: string): Promise<WorkspaceEntry[]>;
   listWorkspaceFiles(rootPath: string): Promise<WorkspaceFileEntry[]>;
-  // Fires (debounced) when anything inside a watched workspace root changes on
-  // disk, so cached file listings can be invalidated and refreshed.
-  onWorkspaceFilesChanged(
-    listener: (event: WorkspaceFilesChangedEvent) => void,
-  ): () => void;
-  // Fires (debounced) when git metadata (HEAD, index, refs) changes on disk —
-  // commits, stages, or branch switches done outside the app.
-  onWorkspaceGitStateChanged(
-    listener: (event: WorkspaceFilesChangedEvent) => void,
-  ): () => void;
   listGitBranches(rootPath: string): Promise<GitBranchInfo[]>;
   checkoutGitBranch(rootPath: string, branch: string): Promise<void>;
   listGitWorktrees(rootPath: string): Promise<GitWorktreeInfo[]>;
@@ -387,14 +359,6 @@ export interface DesktopApi {
   pushGitBranch(rootPath: string): Promise<{ branch: string; remote: string }>;
   readTextFile(filePath: string): Promise<string>;
   fileExists(filePath: string): Promise<boolean>;
-  importImageAttachment(
-    payload: ImportImageAttachmentPayload,
-  ): Promise<ImageAttachment>;
-  importDocumentAttachment(
-    payload: ImportDocumentAttachmentPayload,
-  ): Promise<DocumentAttachment>;
-  readImageAttachmentDataUrl(filePath: string): Promise<string>;
-  readPdfData(payload: { filePath: string }): Promise<string>;
   // Per-document bookmarks + highlights in app private storage (userData).
   loadPdfAnnotations(payload: {
     filePath: string;
@@ -424,17 +388,6 @@ export interface DesktopApi {
   setProviderApiKey(providerId: string, apiKey: string): Promise<void>;
   clearProviderApiKey(providerId: string): Promise<void>;
   readProviderAuth(providerId: string): Promise<ProviderAuthState>;
-  startProviderAuthLogin(
-    providerId: string,
-    method: ProviderAuthMethod,
-  ): Promise<{ loginId: string }>;
-  nextProviderAuthLogin(loginId: string): Promise<ProviderAuthLoginUpdate>;
-  respondProviderAuthLogin(
-    loginId: string,
-    promptId: string,
-    value: string,
-  ): Promise<void>;
-  cancelProviderAuthLogin(loginId: string): Promise<void>;
   logoutProviderAuth(providerId: string): Promise<void>;
   listProviderModels(providerId: string): Promise<ProviderListModelsResult>;
   listAllProviderModels(): Promise<ProviderModelRecord[]>;
@@ -501,6 +454,130 @@ export interface DesktopApi {
     configId: string,
     value: boolean | string,
   ): Promise<AgentSessionConfigOption[]>;
+  startWorkspaceSearch(payload: WorkspaceSearchStartPayload): Promise<void>;
+  cancelWorkspaceSearch(searchId: string): Promise<void>;
+  onWorkspaceSearchResult(
+    listener: (event: WorkspaceSearchResultEvent) => void,
+  ): () => void;
+  onWorkspaceSearchDone(
+    listener: (event: WorkspaceSearchDoneEvent) => void,
+  ): () => void;
+  onWorkspaceSearchError(
+    listener: (event: WorkspaceSearchErrorEvent) => void,
+  ): () => void;
+  // === Pure chat (ChatGPT-style) ===
+  chatList(): Promise<ConversationRecord[]>;
+  chatGet(conversationId: string): Promise<ConversationSnapshot | null>;
+  chatCreate(payload: CreateConversationPayload): Promise<ConversationRecord>;
+  chatUpdate(
+    payload: UpdateConversationPayload,
+  ): Promise<ConversationRecord | null>;
+  chatArchive(conversationId: string): Promise<ConversationRecord | null>;
+  chatDelete(conversationId: string): Promise<void>;
+  chatSendMessage(
+    payload: SendConversationMessagePayload,
+  ): Promise<ConversationMessageRecord>;
+  chatRetryMessage(payload: RetryConversationMessagePayload): Promise<null>;
+  chatEditMessage(
+    payload: EditConversationMessagePayload,
+  ): Promise<ConversationMessageRecord>;
+  chatStopStream(conversationId: string): Promise<void>;
+  onChatEvent(listener: (event: ChatEvent) => void): () => void;
+  onChatInvalidated(listener: () => void): () => void;
+  // === App-owned notes ===
+  notesList(): Promise<NoteSummary[]>;
+  notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;
+  notesCreate(payload: CreateNotePayload): Promise<NoteRecord>;
+  notesUpdate(payload: UpdateNotePayload): Promise<NoteRecord>;
+  notesRename(payload: RenameNotePayload): Promise<NoteRecord>;
+  notesMove(payload: MoveNotePayload): Promise<NoteRecord>;
+  notesDelete(payload: DeleteNotePayload): Promise<void>;
+  // === App-owned issues and views ===
+  issueListViews(): Promise<ViewSummary[]>;
+  issueLoad(payload: LoadViewPayload): Promise<ViewFull | null>;
+  /** Full markdown body for the issue detail editor. */
+  issueGet(payload: GetIssuePayload): Promise<IssueRecord>;
+  issueCreateView(payload: CreateViewPayload): Promise<ViewSummary>;
+  issueDeleteView(payload: DeleteViewPayload): Promise<void>;
+  issueUpdateView(payload: UpdateViewPayload): Promise<ViewFull>;
+  issueCreateColumn(payload: CreateColumnPayload): Promise<ViewColumnRecord>;
+  issueUpdateColumn(payload: UpdateColumnPayload): Promise<ViewColumnRecord>;
+  issueMoveColumn(payload: MoveColumnPayload): Promise<ViewColumnRecord>;
+  issueDeleteColumn(payload: DeleteColumnPayload): Promise<void>;
+  issueCreate(payload: CreateIssuePayload): Promise<IssueRecord>;
+  issueUpdate(payload: UpdateIssuePayload): Promise<IssueRecord>;
+  issueMove(payload: MoveIssuePayload): Promise<IssueRecord>;
+  issueDelete(payload: DeleteIssuePayload): Promise<void>;
+  searchDocuments(
+    payload: SearchDocumentsPayload,
+  ): Promise<SearchDocumentResult[]>;
+  onDataChanged(
+    listener: (event: CocurdexDataChangedEvent) => void,
+  ): () => void;
+}
+
+/**
+ * Host-only surface (Electron): OS integration the daemon contract does not
+ * cover — native dialogs, file-manager reveal, local file import, PTY,
+ * BrowserView, fonts, updates, CLI install, renderer logging, daemon process
+ * management, file watching, and the interactive provider login flows. Absent
+ * on clients without a local host; gate features on
+ * {@link HostApi.capabilities} instead of calling blindly.
+ */
+export interface HostApi {
+  readonly capabilities: HostCapabilities;
+  /** Absolute user home directory (default terminal cwd without a workspace). */
+  getHomeDir(): Promise<string>;
+  /**
+   * Installed font family names from the OS (for Appearance font pickers).
+   * Empty array when enumeration fails — renderer uses a curated fallback list.
+   */
+  listFontFamilies(): Promise<string[]>;
+  getAppUpdateState(): Promise<AppUpdateState>;
+  checkForAppUpdate(): Promise<AppUpdateState>;
+  dismissAppUpdate(): Promise<AppUpdateState>;
+  installAppUpdate(): Promise<void>;
+  onAppUpdateState(listener: (state: AppUpdateState) => void): () => void;
+  getOssLicenses(): Promise<OssLicensesPayload>;
+  openChromiumLicenses(): Promise<{ ok: boolean }>;
+  getCliPathStatus(): Promise<CliPathStatus>;
+  installCliOnPath(): Promise<CliPathStatus>;
+  uninstallCliFromPath(): Promise<CliPathStatus>;
+  getDaemonStatus(): Promise<DaemonRuntimeStatus>;
+  restartDaemon(): Promise<DaemonRuntimeStatus>;
+  openWorkspaceInFileManager(rootPath: string): Promise<void>;
+  // Reveal a specific file or directory in the OS file manager, highlighting it
+  // within its parent folder (vs. openWorkspaceInFileManager which opens a dir).
+  revealPathInFileManager(targetPath: string): Promise<void>;
+  // Fires (debounced) when anything inside a watched workspace root changes on
+  // disk, so cached file listings can be invalidated and refreshed.
+  onWorkspaceFilesChanged(
+    listener: (event: WorkspaceFilesChangedEvent) => void,
+  ): () => void;
+  // Fires (debounced) when git metadata (HEAD, index, refs) changes on disk —
+  // commits, stages, or branch switches done outside the app.
+  onWorkspaceGitStateChanged(
+    listener: (event: WorkspaceFilesChangedEvent) => void,
+  ): () => void;
+  importImageAttachment(
+    payload: ImportImageAttachmentPayload,
+  ): Promise<ImageAttachment>;
+  importDocumentAttachment(
+    payload: ImportDocumentAttachmentPayload,
+  ): Promise<DocumentAttachment>;
+  readImageAttachmentDataUrl(filePath: string): Promise<string>;
+  readPdfData(payload: { filePath: string }): Promise<string>;
+  startProviderAuthLogin(
+    providerId: string,
+    method: ProviderAuthMethod,
+  ): Promise<{ loginId: string }>;
+  nextProviderAuthLogin(loginId: string): Promise<ProviderAuthLoginUpdate>;
+  respondProviderAuthLogin(
+    loginId: string,
+    promptId: string,
+    value: string,
+  ): Promise<void>;
+  cancelProviderAuthLogin(loginId: string): Promise<void>;
   openWorkspace(): Promise<{
     canceled: boolean;
     filePaths: string[];
@@ -571,67 +648,10 @@ export interface DesktopApi {
   onPtyData(listener: (event: PtyDataEvent) => void): () => void;
   onPtyExit(listener: (event: PtyExitEvent) => void): () => void;
   onPtyActivity(listener: (event: PtyActivityEvent) => void): () => void;
-  startWorkspaceSearch(payload: WorkspaceSearchStartPayload): Promise<void>;
-  cancelWorkspaceSearch(searchId: string): Promise<void>;
-  onWorkspaceSearchResult(
-    listener: (event: WorkspaceSearchResultEvent) => void,
-  ): () => void;
-  onWorkspaceSearchDone(
-    listener: (event: WorkspaceSearchDoneEvent) => void,
-  ): () => void;
-  onWorkspaceSearchError(
-    listener: (event: WorkspaceSearchErrorEvent) => void,
-  ): () => void;
-  // === Pure chat (ChatGPT-style) ===
-  chatList(): Promise<ConversationRecord[]>;
-  chatGet(conversationId: string): Promise<ConversationSnapshot | null>;
-  chatCreate(payload: CreateConversationPayload): Promise<ConversationRecord>;
-  chatUpdate(
-    payload: UpdateConversationPayload,
-  ): Promise<ConversationRecord | null>;
-  chatArchive(conversationId: string): Promise<ConversationRecord | null>;
-  chatDelete(conversationId: string): Promise<void>;
-  chatSendMessage(
-    payload: SendConversationMessagePayload,
-  ): Promise<ConversationMessageRecord>;
-  chatRetryMessage(payload: RetryConversationMessagePayload): Promise<null>;
-  chatEditMessage(
-    payload: EditConversationMessagePayload,
-  ): Promise<ConversationMessageRecord>;
-  chatStopStream(conversationId: string): Promise<void>;
-  onChatEvent(listener: (event: ChatEvent) => void): () => void;
-  onChatInvalidated(listener: () => void): () => void;
-  // === App-owned notes ===
-  notesList(): Promise<NoteSummary[]>;
-  notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;
-  notesCreate(payload: CreateNotePayload): Promise<NoteRecord>;
-  notesUpdate(payload: UpdateNotePayload): Promise<NoteRecord>;
-  notesRename(payload: RenameNotePayload): Promise<NoteRecord>;
-  notesMove(payload: MoveNotePayload): Promise<NoteRecord>;
-  notesDelete(payload: DeleteNotePayload): Promise<void>;
-  // === App-owned issues and views ===
-  issueListViews(): Promise<ViewSummary[]>;
-  issueLoad(payload: LoadViewPayload): Promise<ViewFull | null>;
-  /** Full markdown body for the issue detail editor. */
-  issueGet(payload: GetIssuePayload): Promise<IssueRecord>;
-  issueCreateView(payload: CreateViewPayload): Promise<ViewSummary>;
-  issueDeleteView(payload: DeleteViewPayload): Promise<void>;
-  issueUpdateView(payload: UpdateViewPayload): Promise<ViewFull>;
-  issueCreateColumn(payload: CreateColumnPayload): Promise<ViewColumnRecord>;
-  issueUpdateColumn(payload: UpdateColumnPayload): Promise<ViewColumnRecord>;
-  issueMoveColumn(payload: MoveColumnPayload): Promise<ViewColumnRecord>;
-  issueDeleteColumn(payload: DeleteColumnPayload): Promise<void>;
-  issueCreate(payload: CreateIssuePayload): Promise<IssueRecord>;
-  issueUpdate(payload: UpdateIssuePayload): Promise<IssueRecord>;
-  issueMove(payload: MoveIssuePayload): Promise<IssueRecord>;
-  issueDelete(payload: DeleteIssuePayload): Promise<void>;
-  searchDocuments(
-    payload: SearchDocumentsPayload,
-  ): Promise<SearchDocumentResult[]>;
-  onDataChanged(
-    listener: (event: CocurdexDataChangedEvent) => void,
-  ): () => void;
 }
+
+/** Desktop facade: product contract plus the Electron host surface. */
+export interface DesktopApi extends ProductApi, HostApi {}
 
 declare global {
   interface Window {
