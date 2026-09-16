@@ -234,11 +234,8 @@ export function createSqliteIssueTrackerRepository(
     },
     async getIssue(payload) {
       const view = requireView(database, payload.viewId ?? DEFAULT_VIEW_ID);
-      return projectSingleIssue(
-        database,
-        requireIssue(database, payload.id),
-        view,
-      );
+      const issue = getIssue(database, payload.id);
+      return issue ? projectSingleIssue(database, issue, view) : null;
     },
     async createIssue(payload) {
       const view = requireView(database, payload.viewId);

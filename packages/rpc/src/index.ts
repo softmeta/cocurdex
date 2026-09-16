@@ -474,7 +474,7 @@ export type DaemonResultByMethod = {
   "issue.updateColumn": ViewColumnRecord;
   "issue.moveColumn": ViewColumnRecord;
   "issue.deleteColumn": null;
-  "issue.get": IssueRecord;
+  "issue.get": IssueRecord | null;
   "issue.create": IssueRecord;
   "issue.update": IssueRecord;
   "issue.move": IssueRecord;

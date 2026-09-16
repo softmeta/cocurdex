@@ -27,7 +27,7 @@ async function startDaemon() {
   child.unref();
 
   const startedAt = Date.now();
-  while (Date.now() - startedAt < 5000) {
+  while (Date.now() - startedAt < 20_000) {
     try {
       await requestDaemon("daemon.status");
       return;

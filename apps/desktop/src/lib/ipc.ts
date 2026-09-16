@@ -597,24 +597,7 @@ const fallbackApi: DesktopApi = {
   // Issues fallbacks (shared issues + multi-issue views)
   issueListViews: async () => [],
   issueLoad: async () => null,
-  issueGet: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: payload.id,
-      columnId: "backlog",
-      viewId: payload.viewId ?? "project",
-      title: "",
-      description: null,
-      color: null,
-      status: "backlog",
-      priority: "none",
-      workspaceId: null,
-      sortOrder: 0,
-      revision: 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
+  issueGet: async () => null,
   issueCreateView: async (payload) => ({
     id: "view",
     title: payload.title ?? "New view",

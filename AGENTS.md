@@ -34,7 +34,10 @@ Use TDD for critical pure functions and similarly stable logic. UI, feature flow
 - Test important business semantics, algorithms, state transitions, protocol/persistence boundaries, and high-risk regressions, not coverage numbers.
 - Avoid testing implementation details such as classes, DOM nesting, indexes, internal call order, trivial string assembly, or pass-through getters unless they express an explicit visual, accessibility, or protocol contract.
 - Import tested modules directly and mock real boundaries, not broad barrels or large objects. Avoid unrelated module initialization; do not export internals solely for tests.
+- Do not write tests that grep source text for the presence or absence of strings, imports, or constructs (logging lines, `useEffect`, file layout), or that assert on incidental implementation text. These tests break on harmless refactors while protecting no observable behavior; enforce the intent with a lint rule, review, or a behavior-level test instead.
 - Rewrite or remove brittle tests that break during routine refactoring or UI/copy changes without protecting important behavior. Do not distort production code to preserve them.
+
+`tests/e2e` (`pnpm --filter @cocurdex/e2e test`) runs deterministic process-level e2e: it spawns the real daemon binary and CLI against an isolated `COCURDEX_USER_DATA_PATH`, then drives production clients over the real socket. `desktop-smoke.test.ts` additionally launches the built Electron app (`pnpm --filter @cocurdex/desktop exec electron-vite build` first) and verifies the window, the spawned daemon, and a clean renderer; it skips when `out/` is absent. Keep e2e free of LLM providers, network, keychain, and UI assertions.
 
 ## Development and UI verification
 

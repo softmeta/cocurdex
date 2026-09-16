@@ -23,7 +23,7 @@ export const issuesIpc = {
   listViews: (): Promise<ViewSummary[]> => desktopApi.issueListViews(),
   load: (payload: LoadViewPayload): Promise<ViewFull | null> =>
     desktopApi.issueLoad(payload),
-  getIssue: (payload: GetIssuePayload): Promise<IssueRecord> =>
+  getIssue: (payload: GetIssuePayload): Promise<IssueRecord | null> =>
     desktopApi.issueGet(payload),
   createView: (payload: CreateViewPayload): Promise<ViewSummary> =>
     desktopApi.issueCreateView(payload),

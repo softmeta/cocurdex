@@ -500,7 +500,7 @@ export interface ProductApi {
   issueListViews(): Promise<ViewSummary[]>;
   issueLoad(payload: LoadViewPayload): Promise<ViewFull | null>;
   /** Full markdown body for the issue detail editor. */
-  issueGet(payload: GetIssuePayload): Promise<IssueRecord>;
+  issueGet(payload: GetIssuePayload): Promise<IssueRecord | null>;
   issueCreateView(payload: CreateViewPayload): Promise<ViewSummary>;
   issueDeleteView(payload: DeleteViewPayload): Promise<void>;
   issueUpdateView(payload: UpdateViewPayload): Promise<ViewFull>;

@@ -94,6 +94,16 @@ export function resolveDaemonRequestArgs<M extends DaemonMethod>(
   params: DaemonRequestPayloadByMethod[M] | undefined;
 } {
   const hasNoParams = daemonMethodHasNoParams(method);
+  if (hasNoParams && args.length > 1) {
+    throw new Error(
+      `Daemon method "${method}" takes no params; pass client options as the only argument after the method name`,
+    );
+  }
+  if (!hasNoParams && args.length > 2) {
+    throw new Error(
+      `Daemon method "${method}" accepts at most params and client options`,
+    );
+  }
   return {
     params: hasNoParams
       ? undefined
