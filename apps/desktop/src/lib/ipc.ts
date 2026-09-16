@@ -275,6 +275,15 @@ const fallbackApi: DesktopApi = {
   stopTeamMember: async () => {
     throw new Error("Team control requires the desktop app");
   },
+  listTeamTemplates: async () => [],
+  saveTeamTemplate: async (payload) => ({
+    id: payload.id ?? "team-template",
+    name: payload.name,
+    members: payload.members,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }),
+  deleteTeamTemplate: async () => {},
   getWorktreeEnvironment: async (workspaceId) => ({
     workspaceId,
     setupScript: "",

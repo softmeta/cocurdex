@@ -75,6 +75,7 @@ import type {
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
@@ -84,6 +85,7 @@ import type {
   TeamMemberRecord,
   TeamRecord,
   TeamSnapshot,
+  TeamTemplateRecord,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -328,6 +330,11 @@ export interface ProductApi {
     teamId: string;
     sessionId: string;
   }): Promise<TeamMemberRecord>;
+  listTeamTemplates(): Promise<TeamTemplateRecord[]>;
+  saveTeamTemplate(
+    payload: SaveTeamTemplatePayload,
+  ): Promise<TeamTemplateRecord>;
+  deleteTeamTemplate(id: string): Promise<void>;
   getWorktreeEnvironment(
     workspaceId: string,
   ): Promise<WorkspaceWorktreeEnvironment>;

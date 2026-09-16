@@ -554,6 +554,31 @@ function registerWorkspaceHandlers() {
         userDataPath: app.getPath("userData"),
       }),
   );
+  ipcMain.handle("teamTemplate:list", async () =>
+    requestDaemon("teamTemplate.list", {
+      userDataPath: app.getPath("userData"),
+    }),
+  );
+  registerHandler(
+    ipcMain,
+    "teamTemplate:save",
+    schemas.teamTemplateSave,
+    async (_event, payload) =>
+      requestDaemon("teamTemplate.save", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  registerHandler(
+    ipcMain,
+    "teamTemplate:delete",
+    schemas.teamId,
+    async (_event, id) =>
+      requestDaemon(
+        "teamTemplate.delete",
+        { id },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
   registerHandler(
     ipcMain,
     "workspace:getWorktreeEnvironment",

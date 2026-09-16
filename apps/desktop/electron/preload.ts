@@ -40,6 +40,7 @@ import type {
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
@@ -200,6 +201,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
   stopTeam: (teamId: string) => ipcRenderer.invoke("team:stop", teamId),
   stopTeamMember: (payload: { teamId: string; sessionId: string }) =>
     ipcRenderer.invoke("team:stopMember", payload),
+  listTeamTemplates: () => ipcRenderer.invoke("teamTemplate:list"),
+  saveTeamTemplate: (payload: SaveTeamTemplatePayload) =>
+    ipcRenderer.invoke("teamTemplate:save", payload),
+  deleteTeamTemplate: (id: string) =>
+    ipcRenderer.invoke("teamTemplate:delete", id),
   getWorktreeEnvironment: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:getWorktreeEnvironment", workspaceId),
   saveWorktreeEnvironment: (payload: {

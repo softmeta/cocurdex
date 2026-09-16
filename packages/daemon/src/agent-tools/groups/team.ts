@@ -1,9 +1,12 @@
 import {
   type SpawnTeammatePayload,
+  type SpawnTeamTemplatePayload,
   TEAM_TASK_STATUSES,
   type TeamMemberRecord,
+  type TeamTemplateRecord,
 } from "@cocurdex/shared";
 import type {
+  TeamRoleSummary,
   TeamTaskSummary,
   TeamTaskUpdateInput,
 } from "../../team/team-module";
@@ -14,6 +17,12 @@ export interface TeamToolDependencies {
     leadSessionId: string,
     payload: SpawnTeammatePayload,
   ): Promise<TeamMemberRecord>;
+  spawnTemplate(
+    leadSessionId: string,
+    payload: SpawnTeamTemplatePayload,
+  ): Promise<TeamMemberRecord[]>;
+  listRoles(): Promise<TeamRoleSummary[]>;
+  listTemplates(): Promise<TeamTemplateRecord[]>;
   taskCreate(
     sessionId: string,
     input: { title: string; description?: string },
@@ -65,6 +74,59 @@ export function registerTeamTools(
           ? { agentType: input.agentType as SpawnTeammatePayload["agentType"] }
           : {}),
         isolateWorktree: input.isolateWorktree === true,
+      }),
+  });
+  registry.register({
+    descriptor: {
+      group: "team",
+      name: "list_roles",
+      description:
+        "List saved agent roles (id, name, agent type, model, permission mode) you can pass as agentRoleId when spawning a teammate.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+    isAvailable: (caller) => caller.sessionKind === "main",
+    execute: () => deps.listRoles(),
+  });
+  registry.register({
+    descriptor: {
+      group: "team",
+      name: "list_templates",
+      description:
+        "List user-defined team templates. Each template names its teammates, their roles, and their standing instructions.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+    isAvailable: (caller) => caller.sessionKind === "main",
+    execute: () => deps.listTemplates(),
+  });
+  registry.register({
+    descriptor: {
+      group: "team",
+      name: "spawn_template",
+      description:
+        "Spawn every teammate defined by a team template. The optional prompt is appended to each teammate's standing instructions.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          templateId: { type: "string" },
+          prompt: { type: "string", description: "Task for the whole team" },
+        },
+        required: ["templateId"],
+        additionalProperties: false,
+      },
+    },
+    isAvailable: (caller) => caller.sessionKind === "main",
+    execute: (caller, input) =>
+      deps.spawnTemplate(caller.sessionId, {
+        templateId: String(input.templateId),
+        ...(typeof input.prompt === "string" ? { prompt: input.prompt } : {}),
       }),
   });
   registry.register({

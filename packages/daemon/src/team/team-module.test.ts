@@ -1,5 +1,6 @@
 import type { TeamRepository } from "@cocurdex/db";
 import type {
+  AgentRoleRecord,
   IssueRecord,
   SendSessionCommand,
   SessionRecord,
@@ -64,7 +65,29 @@ function memoryRepository(): TeamRepository {
   };
 }
 
+const role: AgentRoleRecord = {
+  id: "role-1",
+  name: "Reviewer",
+  agentId: "claude-agent",
+  providerId: null,
+  modelId: "sonnet",
+  modelName: "Sonnet",
+  permissionMode: null,
+  collaborationMode: "default",
+  reasoningEffort: null,
+  serviceTier: null,
+  fastMode: null,
+  thinkingLevel: null,
+  openCodeAgent: null,
+  openCodeVariant: null,
+  instructions: null,
+  skillIds: null,
+  createdAt: "",
+  updatedAt: "",
+};
+
 function harness() {
+  const settings = new Map<string, string>();
   const sessions = new Map<string, SessionRecord>([
     ["lead", session({ id: "lead" })],
   ]);
@@ -80,7 +103,12 @@ function harness() {
     saveSession: async (record) => {
       sessions.set(record.id, record);
     },
-    getAgentRole: async () => null,
+    getAgentRole: async (id) => (id === "role-1" ? role : null),
+    listAgentRoles: async () => [role],
+    getSetting: async (key) => settings.get(key) ?? null,
+    setSetting: async (key, value) => {
+      settings.set(key, value);
+    },
     createIssueView: async ({ title }) => ({
       id: `view:${title}`,
       title,
@@ -271,6 +299,56 @@ describe("TeamModule", () => {
     expect([...((await module.peerScope(a.sessionId)) ?? [])].sort()).toEqual(
       ["lead", a.sessionId, b.sessionId].sort(),
     );
+  });
+
+  it("saves templates and spawns every member from one", async () => {
+    const { module, sessions, sent } = harness();
+    expect(await module.listRoles()).toEqual([
+      {
+        id: "role-1",
+        name: "Reviewer",
+        agentType: "claude-agent",
+        model: "Sonnet",
+        permissionMode: null,
+      },
+    ]);
+    await expect(
+      module.saveTemplate({ name: "Bad", members: [] }),
+    ).rejects.toMatchObject({ code: "invalid_template" });
+    const template = await module.saveTemplate({
+      name: "Review squad",
+      members: [
+        { name: "reviewer", agentRoleId: "role-1", prompt: "Review PRs." },
+        { name: "tester", agentRoleId: null, prompt: "Write tests." },
+      ],
+    });
+    expect(await module.listTemplates()).toEqual([template]);
+    const renamed = await module.saveTemplate({ ...template, name: "Squad" });
+    expect(renamed.id).toBe(template.id);
+    expect((await module.listTemplates()).map((item) => item.name)).toEqual([
+      "Squad",
+    ]);
+
+    const members = await module.spawnTemplate("lead", {
+      templateId: template.id,
+      prompt: "Focus on the auth module.",
+    });
+    expect(members.map((member) => member.name)).toEqual([
+      "reviewer",
+      "tester",
+    ]);
+    expect(sessions.get(members[0]?.sessionId ?? "")?.agentType).toBe(
+      "claude-agent",
+    );
+    expect(sent[0]?.content).toContain(
+      "Review PRs.\n\nFocus on the auth module.",
+    );
+
+    await module.deleteTemplate(template.id);
+    expect(await module.listTemplates()).toEqual([]);
+    await expect(
+      module.spawnTemplate("lead", { templateId: template.id }),
+    ).rejects.toMatchObject({ code: "template_not_found" });
   });
 
   it("lets only one session claim a task", async () => {

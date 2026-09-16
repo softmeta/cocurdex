@@ -603,6 +603,7 @@
     "providers": "服务商",
     "shortcuts": "快捷键",
     "skills": "Skills",
+    "teams": "团队",
     "usage": "使用情况",
     "workflows": "工作流",
     "worktrees": "工作树"
@@ -708,6 +709,35 @@
       "updated": "已更新 cocurdex Skills"
     },
     "workspaceLabel": "当前项目：{{name}}"
+  },
+  "teams": {
+    "addMember": "添加成员",
+    "cancel": "取消",
+    "create": "新建团队",
+    "createTitle": "新建团队",
+    "delete": "删除",
+    "deleted": "团队已删除",
+    "deleteDescription": "将移除“{{name}}”，此操作无法撤销。",
+    "deleteFailed": "无法删除该团队。",
+    "deleteTitle": "删除这个团队？",
+    "description": "定义可复用的团队。lead agent 可以用 team_spawn_template 一次拉起整个团队，也可以从 CLI 启动。",
+    "edit": "编辑",
+    "editTitle": "编辑团队",
+    "empty": "还没有团队",
+    "emptyDescription": "创建一个团队，为每个成员命名并选择已保存的角色。",
+    "inheritRole": "与 lead 相同",
+    "memberName": "成员名称",
+    "memberNamePlaceholder": "reviewer",
+    "memberPrompt": "固定职责",
+    "memberPromptPlaceholder": "这个成员负责什么。",
+    "members": "成员",
+    "name": "名称",
+    "namePlaceholder": "团队名称",
+    "removeMember": "移除成员",
+    "role": "角色",
+    "save": "保存",
+    "saved": "团队已保存",
+    "saveFailed": "无法保存该团队。"
   },
   "updates": {
     "actions": {

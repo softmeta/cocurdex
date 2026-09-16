@@ -84,6 +84,7 @@ opencode 与 pi 的可行路线：为共享进程签发进程级 token，并让�
 - `session.stop` 命中 lead 时同样级联停止整个 team；这意味着用户在 lead 上点"停止"会终止所有 teammate。
 - 桌面 Team 面板放在 lead 的聊天视图内（`features/sessions/team`），teammate 会话本身通过 `parentSessionId` 自然出现在会话树里，没有另建侧栏。
 - 桌面通过 `data.changed { areas: ["agent"] }` 刷新面板；`team.changed` 事件目前只在 Electron 主进程记录日志，未转发给渲染进程。
+- 新增团队模板：`TeamTemplateRecord` 存在 `app_settings` 的 `teamTemplates` 键（JSON），不建新表；RPC `teamTemplate.list/save/delete`、`team.spawnTemplate`；工具 `team_list_roles`、`team_list_templates`、`team_spawn_template`；桌面 Settings > Teams 用已保存的角色为每个成员选配置；CLI `cocurdex team roles|templates|spawn-template`。
 - e2e 只覆盖 RPC 校验路径：`team.spawn` 会真正启动 teammate 的一轮对话，`llm-stub` 无法驱动 agent session，成功路径由 `team-module.test.ts` 的内存桩覆盖。
 
 ## 现状事实（实施前请自行核对）

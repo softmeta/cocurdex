@@ -235,6 +235,17 @@ export async function handleDaemonRequest(
       );
     case "team.stop":
       return service.team.stop(request.params.teamId);
+    case "team.spawnTemplate": {
+      const { leadSessionId, ...payload } = request.params;
+      return service.team.spawnTemplate(leadSessionId, payload);
+    }
+    case "teamTemplate.list":
+      return service.team.listTemplates();
+    case "teamTemplate.save":
+      return service.team.saveTemplate(request.params);
+    case "teamTemplate.delete":
+      await service.team.deleteTemplate(request.params.id);
+      return null;
     case "provider.apiKey.set":
       await service.providerCredentials.setApiKey(
         request.params.providerId,

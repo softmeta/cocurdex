@@ -15,6 +15,9 @@ export function teamUsageLines() {
     "  cocurdex team spawn --lead <session-id> --name <name> --prompt <prompt> [--role <role-id>] [--agent <agent>] [--worktree]",
     "  cocurdex team stop --team <team-id>",
     "  cocurdex team stop-member --team <team-id> --session <session-id>",
+    "  cocurdex team roles [--json]",
+    "  cocurdex team templates [--json]",
+    "  cocurdex team spawn-template --lead <session-id> --template <template-id> [--prompt <prompt>]",
   ];
 }
 
@@ -71,6 +74,44 @@ export async function handleTeamCommand(
       }),
     );
     printResult(member, parsed);
+    return true;
+  }
+
+  if (action === "roles") {
+    const roles = await withDaemon(() => requestDaemon("agentRole.list"));
+    printRows(roles, ["id", "name", "agentId", "modelName"], parsed);
+    return true;
+  }
+
+  if (action === "templates") {
+    const templates = await withDaemon(() =>
+      requestDaemon("teamTemplate.list"),
+    );
+    if (parsed.flags.has("json")) {
+      printResult(templates, parsed);
+      return true;
+    }
+    printRows(
+      templates.map((template) => ({
+        id: template.id,
+        name: template.name,
+        members: template.members.map((member) => member.name).join(","),
+      })),
+      ["id", "name", "members"],
+      parsed,
+    );
+    return true;
+  }
+
+  if (action === "spawn-template") {
+    const members = await withDaemon(() =>
+      requestDaemon("team.spawnTemplate", {
+        leadSessionId: getRequiredFlag(parsed, "lead"),
+        templateId: getRequiredFlag(parsed, "template"),
+        prompt: stringFlag(parsed, "prompt"),
+      }),
+    );
+    printRows(members, ["sessionId", "name", "status"], parsed);
     return true;
   }
 

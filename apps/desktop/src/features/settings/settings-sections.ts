@@ -18,6 +18,7 @@ import {
   Settings,
   SlidersHorizontal,
   UserCog,
+  Users,
 } from "lucide-react";
 import type { SettingsSectionId } from "@/app/layout";
 
@@ -31,6 +32,7 @@ export const settingsSections = [
   { id: "providers", labelKey: "providers", icon: KeyRound, group: "core" },
   { id: "adapters", labelKey: "adapters", icon: Blocks, group: "core" },
   { id: "agentRoles", labelKey: "agentRoles", icon: UserCog, group: "core" },
+  { id: "teams", labelKey: "teams", icon: Users, group: "core" },
   {
     id: "personalization",
     labelKey: "personalization",

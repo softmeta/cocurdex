@@ -9,18 +9,24 @@ import {
   type MessageRecord,
   renderTeammateBriefing,
   renderTeammateReport,
+  type SaveTeamTemplatePayload,
   type SendPeerMessagePayload,
   type SendPeerMessageResult,
   type SendSessionCommand,
   type SessionRecord,
   type SpawnTeammatePayload,
   type SpawnTeammateRejection,
+  type SpawnTeamTemplatePayload,
+  TEAM_MAX_MEMBERS,
+  TEAM_NAME_PATTERN,
   TEAM_TASK_STATUSES,
+  TEAM_TEMPLATES_SETTING_KEY,
   type TeamChangedEvent,
   type TeamMemberRecord,
   type TeamRecord,
   type TeamSnapshot,
   type TeamTaskStatus,
+  type TeamTemplateRecord,
   teamMemberEventFromSessionStatus,
   transitionTeamMember,
   type UpdateIssuePayload,
@@ -37,7 +43,9 @@ export type TeamErrorCode =
   | "lead_not_main"
   | "TASK_CONFLICT"
   | "TASK_NOT_FOUND"
-  | "invalid_status";
+  | "invalid_status"
+  | "template_not_found"
+  | "invalid_template";
 
 export class TeamError extends Error {
   override readonly name = "TeamError";
@@ -55,6 +63,9 @@ export interface TeamModuleDependencies {
   getSession(sessionId: string): Promise<SessionRecord | null>;
   saveSession(session: SessionRecord): Promise<void>;
   getAgentRole(id: string): Promise<AgentRoleRecord | null>;
+  listAgentRoles(): Promise<AgentRoleRecord[]>;
+  getSetting(key: string): Promise<string | null>;
+  setSetting(key: string, valueJson: string): Promise<void>;
   createIssueView(input: { title: string }): Promise<ViewSummary>;
   loadIssueView(viewId: string): Promise<ViewFull | null>;
   createIssue(payload: CreateIssuePayload): Promise<IssueRecord>;
@@ -104,6 +115,34 @@ function summarizeTask(issue: IssueRecord): TeamTaskSummary {
     assigneeSessionId: issue.assigneeSessionId,
     revision: issue.revision,
   };
+}
+
+export interface TeamRoleSummary {
+  id: string;
+  name: string;
+  agentType: AgentRoleRecord["agentId"];
+  model: string | null;
+  permissionMode: AgentRoleRecord["permissionMode"];
+}
+
+function summarizeRole(role: AgentRoleRecord): TeamRoleSummary {
+  return {
+    id: role.id,
+    name: role.name,
+    agentType: role.agentId,
+    model: role.modelName ?? role.modelId,
+    permissionMode: role.permissionMode,
+  };
+}
+
+function parseTemplates(raw: string | null): TeamTemplateRecord[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as TeamTemplateRecord[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export class TeamModule {
@@ -328,6 +367,84 @@ export class TeamModule {
         throw new TeamError("TASK_CONFLICT");
       throw error;
     }
+  }
+
+  async listRoles() {
+    return (await this.deps.listAgentRoles()).map(summarizeRole);
+  }
+
+  async listTemplates() {
+    return parseTemplates(
+      await this.deps.getSetting(TEAM_TEMPLATES_SETTING_KEY),
+    );
+  }
+
+  async saveTemplate(payload: SaveTeamTemplatePayload) {
+    const name = payload.name.trim();
+    const members = payload.members.map((member) => ({
+      name: member.name.trim(),
+      agentRoleId: member.agentRoleId || null,
+      prompt: member.prompt,
+    }));
+    const names = new Set(members.map((member) => member.name));
+    if (
+      !name ||
+      members.length === 0 ||
+      members.length > TEAM_MAX_MEMBERS ||
+      names.size !== members.length ||
+      members.some((member) => !TEAM_NAME_PATTERN.test(member.name))
+    ) {
+      throw new TeamError("invalid_template");
+    }
+    const templates = await this.listTemplates();
+    const now = this.now();
+    const existing = templates.find((item) => item.id === payload.id);
+    const record: TeamTemplateRecord = {
+      id: existing?.id ?? this.createId(),
+      name,
+      members,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    const next = existing
+      ? templates.map((item) => (item.id === record.id ? record : item))
+      : [...templates, record];
+    await this.deps.setSetting(
+      TEAM_TEMPLATES_SETTING_KEY,
+      JSON.stringify(next),
+    );
+    return record;
+  }
+
+  async deleteTemplate(id: string) {
+    const templates = await this.listTemplates();
+    await this.deps.setSetting(
+      TEAM_TEMPLATES_SETTING_KEY,
+      JSON.stringify(templates.filter((item) => item.id !== id)),
+    );
+  }
+
+  async spawnTemplate(
+    leadSessionId: string,
+    payload: SpawnTeamTemplatePayload,
+  ) {
+    const template = (await this.listTemplates()).find(
+      (item) => item.id === payload.templateId,
+    );
+    if (!template) throw new TeamError("template_not_found");
+    const members: TeamMemberRecord[] = [];
+    for (const member of template.members) {
+      members.push(
+        await this.spawn(leadSessionId, {
+          name: member.name,
+          agentRoleId: member.agentRoleId,
+          prompt: payload.prompt
+            ? `${member.prompt}\n\n${payload.prompt}`
+            : member.prompt,
+        }),
+      );
+    }
+    return members;
   }
 
   private async createTeam(lead: SessionRecord, now: string) {

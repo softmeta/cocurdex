@@ -71,6 +71,7 @@ import type {
   ResolvedCommitMessageModel,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
   SearchDocumentResult,
   SearchDocumentsPayload,
@@ -83,10 +84,12 @@ import type {
   SessionObservationSnapshot,
   SessionRecord,
   SpawnTeammatePayload,
+  SpawnTeamTemplatePayload,
   SubmitPreviousMessageCommand,
   TeamMemberRecord,
   TeamRecord,
   TeamSnapshot,
+  TeamTemplateRecord,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -224,6 +227,10 @@ export type DaemonRequestPayloadByMethod = {
   "team.spawn": { leadSessionId: string } & SpawnTeammatePayload;
   "team.stopMember": { teamId: string; sessionId: string };
   "team.stop": { teamId: string };
+  "team.spawnTemplate": { leadSessionId: string } & SpawnTeamTemplatePayload;
+  "teamTemplate.list": undefined;
+  "teamTemplate.save": SaveTeamTemplatePayload;
+  "teamTemplate.delete": { id: string };
   "session.delete": { sessionId: string };
   "session.archive": { sessionId: string };
   "session.restore": { sessionId: string };
@@ -422,6 +429,10 @@ export type DaemonResultByMethod = {
   "team.spawn": TeamMemberRecord;
   "team.stopMember": TeamMemberRecord;
   "team.stop": TeamRecord;
+  "team.spawnTemplate": TeamMemberRecord[];
+  "teamTemplate.list": TeamTemplateRecord[];
+  "teamTemplate.save": TeamTemplateRecord;
+  "teamTemplate.delete": null;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;
@@ -566,6 +577,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "attention.list": true,
   "daemon.status": true,
   "issue.listViews": true,
+  "teamTemplate.list": true,
   "mcp.readConfig": true,
   "network.proxy.test": true,
   "note.list": true,

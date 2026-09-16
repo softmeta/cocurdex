@@ -41,6 +41,33 @@ export interface SpawnTeammatePayload {
   isolateWorktree?: boolean;
 }
 
+export interface TeamTemplateMember {
+  name: string;
+  agentRoleId: string | null;
+  prompt: string;
+}
+
+export interface TeamTemplateRecord {
+  id: string;
+  name: string;
+  members: TeamTemplateMember[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveTeamTemplatePayload {
+  id?: string;
+  name: string;
+  members: TeamTemplateMember[];
+}
+
+export interface SpawnTeamTemplatePayload {
+  templateId: string;
+  prompt?: string;
+}
+
+export const TEAM_TEMPLATES_SETTING_KEY = "teamTemplates";
+
 export interface TeamChangedEvent {
   type: "team.changed";
   teamId: string;

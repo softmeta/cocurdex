@@ -1777,6 +1777,7 @@ export default interface Resources {
       providers: "Providers";
       shortcuts: "Shortcuts";
       skills: "Skills";
+      teams: "Teams";
       usage: "Usage";
       workflows: "Workflows";
       worktrees: "Worktrees";
@@ -1882,6 +1883,35 @@ export default interface Resources {
         updated: "cocurdex skills updated";
       };
       workspaceLabel: "Active project: {{name}}";
+    };
+    teams: {
+      addMember: "Add teammate";
+      cancel: "Cancel";
+      create: "New team";
+      createTitle: "New team";
+      delete: "Delete";
+      deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
+      deleteFailed: "Could not delete this team.";
+      deleteTitle: "Delete this team?";
+      deleted: "Team deleted";
+      description: "Define reusable teams. A lead agent can spawn a whole team with team_spawn_template, or you can spawn one from the CLI.";
+      edit: "Edit";
+      editTitle: "Edit team";
+      empty: "No teams yet";
+      emptyDescription: "Create a team, name its teammates, and pick a saved role for each.";
+      inheritRole: "Same as lead";
+      memberName: "Teammate name";
+      memberNamePlaceholder: "reviewer";
+      memberPrompt: "Standing instructions";
+      memberPromptPlaceholder: "What this teammate is responsible for.";
+      members: "Teammates";
+      name: "Name";
+      namePlaceholder: "Team name";
+      removeMember: "Remove teammate";
+      role: "Role";
+      save: "Save";
+      saveFailed: "Could not save this team.";
+      saved: "Team saved";
     };
     updates: {
       actions: {
