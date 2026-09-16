@@ -222,6 +222,19 @@ export async function handleDaemonRequest(
         request.params.name,
         request.params.input,
       );
+    case "team.get":
+      return service.team.get(request.params.leadSessionId);
+    case "team.spawn": {
+      const { leadSessionId, ...payload } = request.params;
+      return service.team.spawn(leadSessionId, payload);
+    }
+    case "team.stopMember":
+      return service.team.stopMember(
+        request.params.teamId,
+        request.params.sessionId,
+      );
+    case "team.stop":
+      return service.team.stop(request.params.teamId);
     case "provider.apiKey.set":
       await service.providerCredentials.setApiKey(
         request.params.providerId,

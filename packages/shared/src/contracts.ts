@@ -267,12 +267,14 @@ export interface WorkspaceRecord {
   missingRootPaths?: string[];
 }
 
+export type SessionKind = "main" | "subagent" | "teammate";
+
 export interface SessionRecord {
   id: string;
   workspaceId: string;
   title: string;
   agentType: AgentId;
-  sessionKind?: "main" | "subagent";
+  sessionKind?: SessionKind;
   parentSessionId?: string | null;
   parentToolCallId?: string | null;
   status: SessionStatus;

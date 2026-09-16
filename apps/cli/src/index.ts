@@ -38,6 +38,7 @@ import { handleSearchCommand } from "./search-commands";
 import { assertSessionTuiAvailable, runSessionTui } from "./session-tui";
 import { handleSkillsCommand, skillsUsageLines } from "./skill-commands";
 import { taskApi } from "./task-client";
+import { handleTeamCommand, teamUsageLines } from "./team-commands";
 import { getCliVersion } from "./version";
 import { assertWorkflowTuiAvailable, runWorkflowTui } from "./workflow-tui";
 import { handleWorktreeCommand, worktreeUsageLines } from "./worktree-commands";
@@ -86,6 +87,13 @@ async function main(rawArgs: string[]) {
 
   if (resource === "note") {
     const handled = await handleNoteCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "team") {
+    const handled = await handleTeamCommand(action, parsed);
     if (handled) {
       return;
     }
@@ -447,6 +455,7 @@ function printUsage() {
       "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
       "  cocurdex session stop <session-id>",
+      ...teamUsageLines(),
       "  cocurdex provider list",
       "  cocurdex provider models <provider>",
       "  cocurdex workflow list",

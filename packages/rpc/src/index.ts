@@ -82,7 +82,11 @@ import type {
   SessionConfiguration,
   SessionObservationSnapshot,
   SessionRecord,
+  SpawnTeammatePayload,
   SubmitPreviousMessageCommand,
+  TeamMemberRecord,
+  TeamRecord,
+  TeamSnapshot,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -216,6 +220,10 @@ export type DaemonRequestPayloadByMethod = {
   "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
   "agentTool.catalog": { token: string };
   "agentTool.call": { token: string; name: string; input: unknown };
+  "team.get": { leadSessionId: string };
+  "team.spawn": { leadSessionId: string } & SpawnTeammatePayload;
+  "team.stopMember": { teamId: string; sessionId: string };
+  "team.stop": { teamId: string };
   "session.delete": { sessionId: string };
   "session.archive": { sessionId: string };
   "session.restore": { sessionId: string };
@@ -410,6 +418,10 @@ export type DaemonResultByMethod = {
   "session.setPeerInbound": SessionRecord;
   "agentTool.catalog": AgentToolCatalog;
   "agentTool.call": unknown;
+  "team.get": TeamSnapshot | null;
+  "team.spawn": TeamMemberRecord;
+  "team.stopMember": TeamMemberRecord;
+  "team.stop": TeamRecord;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;

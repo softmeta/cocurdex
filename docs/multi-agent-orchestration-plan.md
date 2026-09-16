@@ -55,7 +55,7 @@
 | --- | --- | --- |
 | 0 | 已实现（分支 `feat/agent-tool-bridge`） | 注册表、token 鉴权、stdio MCP 子命令、`agentTool.catalog` / `agentTool.call`；Claude、ACP（Grok Build）、Codex 三个 adapter 已注入 |
 | 1 | 已实现（同一分支） | `messaging_list_agents` / `messaging_send_message`、`session.listPeers` / `session.sendPeerMessage` / `session.setPeerInbound`、`origin` 字段、桌面来源标签、CLI 命令、`peer.message` 事件 |
-| 2 | 未开始 | |
+| 2 | 已实现（同一分支） | `team.get` / `team.spawn` / `team.stopMember` / `team.stop`、`team` 工具组四个工具、`teams` / `team_members` 表、`issues.assignee_session_id`、`sessionKind: "teammate"`、桌面 lead 会话内的 Team 面板、CLI `cocurdex team ...`、`team.changed` 事件 |
 | 3 | 未开始 | |
 
 阶段 0 的 adapter 覆盖与偏差：
@@ -75,6 +75,16 @@ opencode 与 pi 的可行路线：为共享进程签发进程级 token，并让�
 - Claude 没有走 SDK 进程内 MCP，而是与其他 adapter 一样走 stdio 子进程，减少一条代码路径。
 - 工具桥子进程通过 `COCURDEX_USER_DATA_PATH` 读取 daemon 元数据（socket 与 daemon token），只额外携带 `COCURDEX_AGENT_TOKEN`。
 - `SessionRecord.agentToolGroups` 字段尚未添加；catalog 目前完全由各工具的 `isAvailable` 决定。
+
+阶段 2 与原方案的偏差：
+
+- 没有新建 `team-state.ts`，`transitionTeamMember` 与 `canSpawnTeammate` 放在 `packages/shared/src/team.ts`。
+- `isolateWorktree` 直接走 `service.createWorktree`，没有经过 `decideWorkspaceIsolation`；该函数面向自动策略，显式请求隔离时无需再判定。
+- teammate 完成回合的通知复用 `PeerMessagingService.send`，通过可替换的 envelope 渲染函数换前缀，不复制投递逻辑。
+- `session.stop` 命中 lead 时同样级联停止整个 team；这意味着用户在 lead 上点"停止"会终止所有 teammate。
+- 桌面 Team 面板放在 lead 的聊天视图内（`features/sessions/team`），teammate 会话本身通过 `parentSessionId` 自然出现在会话树里，没有另建侧栏。
+- 桌面通过 `data.changed { areas: ["agent"] }` 刷新面板；`team.changed` 事件目前只在 Electron 主进程记录日志，未转发给渲染进程。
+- e2e 只覆盖 RPC 校验路径：`team.spawn` 会真正启动 teammate 的一轮对话，`llm-stub` 无法驱动 agent session，成功路径由 `team-module.test.ts` 的内存桩覆盖。
 
 ## 现状事实（实施前请自行核对）
 

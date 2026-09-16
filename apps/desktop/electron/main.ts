@@ -525,6 +525,37 @@ function registerWorkspaceHandlers() {
   );
   registerHandler(
     ipcMain,
+    "team:get",
+    schemas.sessionId,
+    async (_event, leadSessionId) =>
+      requestDaemon(
+        "team.get",
+        { leadSessionId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "team:stop",
+    schemas.teamId,
+    async (_event, teamId) =>
+      requestDaemon(
+        "team.stop",
+        { teamId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "team:stopMember",
+    schemas.teamMember,
+    async (_event, payload) =>
+      requestDaemon("team.stopMember", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  registerHandler(
+    ipcMain,
     "workspace:getWorktreeEnvironment",
     schemas.workspaceId,
     async (_event, workspaceId) =>
@@ -1406,6 +1437,8 @@ app
             window.webContents.send("chat:event", event);
           } else if (event.type === "peer.message") {
             appLogger.info("daemon.peerMessage", { ...event });
+          } else if (event.type === "team.changed") {
+            appLogger.info("daemon.teamChanged", { ...event });
           } else {
             window.webContents.send("agent:event", event, meta);
           }

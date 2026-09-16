@@ -13,6 +13,7 @@ export interface AgentToolBridgeOptions {
   execPath?: string;
   execArgv?: readonly string[];
   getSession(sessionId: string): Promise<SessionRecord | null>;
+  getTeamId?(sessionId: string): Promise<string | null>;
 }
 
 export class AgentToolBridge {
@@ -60,7 +61,7 @@ export class AgentToolBridge {
       sessionId,
       sessionKind: session.sessionKind ?? "main",
       workspaceId: session.workspaceId,
-      teamId: null,
+      teamId: (await this.options.getTeamId?.(sessionId)) ?? null,
     };
   }
 }

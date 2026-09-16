@@ -255,8 +255,9 @@ export function createSqliteIssueTrackerRepository(
         .prepare(
           `INSERT INTO issues (
              id, title, description_markdown, color, status, priority,
-             workspace_id, sort_order, revision, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+             workspace_id, assignee_session_id, sort_order, revision,
+             created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
         )
         .run(
           id,
@@ -266,6 +267,7 @@ export function createSqliteIssueTrackerRepository(
           status,
           priority,
           payload.workspaceId ?? null,
+          payload.assigneeSessionId ?? null,
           payload.sortOrder ??
             maxIssueOrder(database, view.group_by, payload.columnId),
           now,
@@ -285,8 +287,8 @@ export function createSqliteIssueTrackerRepository(
         .prepare(
           `UPDATE issues
            SET title = ?, description_markdown = ?, color = ?, status = ?,
-               priority = ?, workspace_id = ?, revision = revision + 1,
-               updated_at = ?
+               priority = ?, workspace_id = ?, assignee_session_id = ?,
+               revision = revision + 1, updated_at = ?
            WHERE id = ? AND revision = ?`,
         )
         .run(
@@ -300,6 +302,9 @@ export function createSqliteIssueTrackerRepository(
           payload.workspaceId !== undefined
             ? payload.workspaceId
             : current.workspace_id,
+          payload.assigneeSessionId !== undefined
+            ? payload.assigneeSessionId
+            : current.assignee_session_id,
           new Date().toISOString(),
           current.id,
           current.revision,

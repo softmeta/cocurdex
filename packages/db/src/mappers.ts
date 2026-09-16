@@ -58,7 +58,9 @@ export function mapSession(row: SqliteRow): SessionRecord {
     title: String(row.title),
     agentType: row.agent_type as SessionRecord["agentType"],
     sessionKind:
-      row.session_kind === "subagent" || row.session_kind === "main"
+      row.session_kind === "subagent" ||
+      row.session_kind === "teammate" ||
+      row.session_kind === "main"
         ? row.session_kind
         : "main",
     parentSessionId: toNullableString(row.parent_session_id),

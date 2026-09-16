@@ -81,6 +81,9 @@ import type {
   SendConversationMessagePayload,
   SessionMessagesResult,
   SessionRecord,
+  TeamMemberRecord,
+  TeamRecord,
+  TeamSnapshot,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -319,6 +322,12 @@ export interface ProductApi {
     worktreePath: string;
     workspaceRootPath?: string;
   }): Promise<{ removed: boolean }>;
+  getTeam(leadSessionId: string): Promise<TeamSnapshot | null>;
+  stopTeam(teamId: string): Promise<TeamRecord>;
+  stopTeamMember(payload: {
+    teamId: string;
+    sessionId: string;
+  }): Promise<TeamMemberRecord>;
   getWorktreeEnvironment(
     workspaceId: string,
   ): Promise<WorkspaceWorktreeEnvironment>;

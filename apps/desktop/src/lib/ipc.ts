@@ -268,6 +268,13 @@ const fallbackApi: DesktopApi = {
   }),
   listManagedWorktrees: async () => [],
   removeWorktree: async () => ({ removed: true }),
+  getTeam: async () => null,
+  stopTeam: async () => {
+    throw new Error("Team control requires the desktop app");
+  },
+  stopTeamMember: async () => {
+    throw new Error("Team control requires the desktop app");
+  },
   getWorktreeEnvironment: async (workspaceId) => ({
     workspaceId,
     setupScript: "",
@@ -677,6 +684,7 @@ const fallbackApi: DesktopApi = {
       status: payload.status ?? payload.columnId,
       priority: payload.priority ?? "none",
       workspaceId: payload.workspaceId ?? null,
+      assigneeSessionId: null,
       sortOrder: payload.sortOrder ?? 0,
       revision: 1,
       createdAt: now,
@@ -695,6 +703,7 @@ const fallbackApi: DesktopApi = {
       status: payload.status ?? "backlog",
       priority: payload.priority ?? "none",
       workspaceId: payload.workspaceId ?? null,
+      assigneeSessionId: null,
       sortOrder: 0,
       revision: (payload.expectedRevision ?? 0) + 1,
       createdAt: now,
@@ -713,6 +722,7 @@ const fallbackApi: DesktopApi = {
       status: payload.columnId,
       priority: "none",
       workspaceId: null,
+      assigneeSessionId: null,
       sortOrder: payload.sortOrder,
       revision: (payload.expectedRevision ?? 0) + 1,
       createdAt: now,

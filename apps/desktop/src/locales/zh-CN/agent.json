@@ -180,6 +180,18 @@
   },
   "reasoning": "推理",
   "system": "系统",
+  "team": {
+    "label": "团队",
+    "status": {
+      "error": "出错",
+      "idle": "空闲",
+      "running": "运行中",
+      "spawning": "启动中",
+      "stopped": "已停止"
+    },
+    "stopAll": "全部停止",
+    "stopMember": "停止 {{name}}"
+  },
   "thinking": "思考中",
   "toolCalls": {
     "command": "命令",

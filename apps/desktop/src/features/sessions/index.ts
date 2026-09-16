@@ -11,3 +11,4 @@ export * from "./session-status";
 export * from "./session-store";
 export * from "./session-title";
 export * from "./session-tree";
+export * from "./team";

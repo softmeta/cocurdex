@@ -195,6 +195,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
     worktreePath: string;
     workspaceRootPath?: string;
   }) => ipcRenderer.invoke("worktree:remove", payload),
+  getTeam: (leadSessionId: string) =>
+    ipcRenderer.invoke("team:get", leadSessionId),
+  stopTeam: (teamId: string) => ipcRenderer.invoke("team:stop", teamId),
+  stopTeamMember: (payload: { teamId: string; sessionId: string }) =>
+    ipcRenderer.invoke("team:stopMember", payload),
   getWorktreeEnvironment: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:getWorktreeEnvironment", workspaceId),
   saveWorktreeEnvironment: (payload: {

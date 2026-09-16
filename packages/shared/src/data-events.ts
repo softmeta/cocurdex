@@ -1,6 +1,7 @@
 import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
 import type { PeerMessageEvent } from "./peer-messaging";
+import type { TeamChangedEvent } from "./team";
 import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 
 // `agent` marks agent/session runtime state (sessions, pending interactions,
@@ -28,4 +29,5 @@ export type CocurdexDaemonEvent =
   | CocurdexDataChangedEvent
   | ChatEvent
   | PeerMessageEvent
+  | TeamChangedEvent
   | WorkspaceSearchDaemonEvent;

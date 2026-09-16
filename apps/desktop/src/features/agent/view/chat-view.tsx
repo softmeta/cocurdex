@@ -28,6 +28,7 @@ import {
   ChatContentColumn,
   sessionComposerDraftKey,
 } from "@/features/composer";
+import { TeamPanel } from "@/features/sessions";
 import {
   cn,
   isPerfEnabled,
@@ -630,6 +631,9 @@ export function ChatView({
           showJumpToTop={shouldShowJumpToTop}
         />
       </div>
+      {sessionId && !readOnly ? (
+        <TeamPanel key={sessionId} sessionId={sessionId} />
+      ) : null}
       {timelineGroups.length > 0 || readOnly ? (
         <ComposerDock
           activeBranch={activeBranch}

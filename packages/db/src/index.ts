@@ -12,4 +12,5 @@ export * from "./repositories";
 export * from "./schema";
 export * from "./search";
 export * from "./sqlite";
+export * from "./team";
 export * from "./workflow";

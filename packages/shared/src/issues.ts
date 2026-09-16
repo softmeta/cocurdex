@@ -120,6 +120,7 @@ export interface IssueRecord {
   priority: string;
   /** Linked workspace id, or null when unassigned (no project). */
   workspaceId: string | null;
+  assigneeSessionId: string | null;
   sortOrder: number;
   revision: number;
   createdAt: string;
@@ -202,6 +203,7 @@ export interface CreateIssuePayload {
   priority?: string;
   /** Null / omit = no project association. */
   workspaceId?: string | null;
+  assigneeSessionId?: string | null;
   sortOrder?: number;
 }
 
@@ -215,6 +217,7 @@ export interface UpdateIssuePayload {
   priority?: string;
   /** Null clears the association (no project). */
   workspaceId?: string | null;
+  assigneeSessionId?: string | null;
   expectedRevision?: number;
 }
 

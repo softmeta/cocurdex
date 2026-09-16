@@ -19,7 +19,10 @@ export interface PeerMessagingDependencies {
   hasActiveTurn(sessionId: string): boolean;
   sendSessionMessage(command: SendSessionCommand): Promise<MessageRecord>;
   broadcast(event: PeerMessageEvent): void;
+  peerScope?(sessionId: string): Promise<ReadonlySet<string> | null>;
 }
+
+export type PeerEnvelopeRenderer = typeof renderPeerEnvelope;
 
 export class PeerMessagingService {
   constructor(private readonly deps: PeerMessagingDependencies) {}
@@ -27,12 +30,17 @@ export class PeerMessagingService {
   async listPeers(fromSessionId: string): Promise<PeerSessionSummary[]> {
     validateSessionId(fromSessionId);
     const sessions = await this.deps.listSessions();
+    const scope = await this.scopeFor(fromSessionId);
     return sessions
       .filter((session) => isPeerReachable(session, fromSessionId))
+      .filter((session) => !scope || scope.has(session.id))
       .map(summarizePeerSession);
   }
 
-  async send(payload: SendPeerMessagePayload): Promise<SendPeerMessageResult> {
+  async send(
+    payload: SendPeerMessagePayload,
+    renderEnvelope: PeerEnvelopeRenderer = renderPeerEnvelope,
+  ): Promise<SendPeerMessageResult> {
     validateSessionId(payload.fromSessionId);
     validateSessionId(payload.toSessionId);
     const sender = await this.deps.getSession(payload.fromSessionId);
@@ -40,7 +48,12 @@ export class PeerMessagingService {
       throw new Error(`Session ${payload.fromSessionId} was not found`);
     }
     const target = await this.deps.getSession(payload.toSessionId);
-    if (!target || !isPeerReachable(target, payload.fromSessionId)) {
+    const scope = await this.scopeFor(payload.fromSessionId);
+    if (
+      !target ||
+      !isPeerReachable(target, payload.fromSessionId) ||
+      (scope && !scope.has(target.id))
+    ) {
       throw new Error(`Session ${payload.toSessionId} is not reachable`);
     }
     const origin = {
@@ -56,11 +69,15 @@ export class PeerMessagingService {
     });
     const message = await this.deps.sendSessionMessage({
       sessionId: target.id,
-      content: renderPeerEnvelope(origin, payload.content),
+      content: renderEnvelope(origin, payload.content),
       delivery,
       origin,
     });
     return this.finish(payload, message.id, delivery);
+  }
+
+  private scopeFor(sessionId: string) {
+    return this.deps.peerScope?.(sessionId) ?? Promise.resolve(null);
   }
 
   private finish(

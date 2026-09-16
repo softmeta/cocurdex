@@ -11,6 +11,7 @@ import {
   createAgentRegistry,
   detectAgentInstallations,
 } from "@cocurdex/agent-core";
+import { IssueConflictError } from "@cocurdex/db";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
   AgentEvent,
@@ -61,7 +62,11 @@ import {
   validateSubmitPreviousMessageCommand,
   workspacePathsEqual,
 } from "@cocurdex/shared";
-import { AgentToolBridge, registerMessagingTools } from "./agent-tools";
+import {
+  AgentToolBridge,
+  registerMessagingTools,
+  registerTeamTools,
+} from "./agent-tools";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
@@ -88,6 +93,7 @@ import {
 } from "./session-control";
 import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
+import { TeamModule } from "./team";
 import {
   DaemonWorkflowAgentTurnRunner,
   type DecideWorkflowGateInput,
@@ -153,6 +159,7 @@ export class CocurdexDaemonService {
   readonly events = new EventEmitter();
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
+  readonly team: TeamModule;
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
   readonly providerCredentials: ProviderCredentials;
@@ -226,6 +233,7 @@ export class CocurdexDaemonService {
       userDataPath: options.userDataPath,
       entryPath: options.agentToolsEntryPath ?? process.argv[1] ?? "",
       getSession: (sessionId) => this.state.getSession(sessionId),
+      getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -233,11 +241,37 @@ export class CocurdexDaemonService {
       hasActiveTurn: (sessionId) => this.pendingTurns.has(sessionId),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       broadcast: (event) => this.events.emit("daemon.event", event),
+      peerScope: (sessionId) => this.team.peerScope(sessionId),
+    });
+    this.team = new TeamModule({
+      repository: this.state.teams,
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      saveSession: (session) => this.state.saveSession(session),
+      getAgentRole: (id) => this.state.getAgentRole(id),
+      createIssueView: (input) => this.dataService.createIssueView(input),
+      loadIssueView: (viewId) => this.dataService.loadIssueView({ viewId }),
+      createIssue: (payload) => this.dataService.createIssue(payload),
+      updateIssue: (payload) => this.dataService.updateIssue(payload),
+      isIssueConflict: (error) => error instanceof IssueConflictError,
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      sendPeerMessage: (payload, render) =>
+        this.peerMessaging.send(payload, render),
+      stopSession: (sessionId) => this.stopSession(sessionId),
+      getMessage: (messageId) => this.state.getMessageById(messageId),
+      createWorktree: (input) => this.createWorktree(input),
+      broadcast: (event) => {
+        this.events.emit("daemon.event", event);
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["agent"],
+        });
+      },
     });
     registerMessagingTools(this.agentTools.registry, {
       listPeers: (fromSessionId) => this.peerMessaging.listPeers(fromSessionId),
       sendPeerMessage: (payload) => this.peerMessaging.send(payload),
     });
+    registerTeamTools(this.agentTools.registry, this.team);
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);
@@ -295,6 +329,7 @@ export class CocurdexDaemonService {
           messageId: event.messageId,
         });
       }
+      await this.team.onAgentEvent(event);
       // Only a terminal error ends the turn; a mid-turn "error" event can be
       // followed by more tool calls whose changes still belong to this turn.
       if (event.type === "state.changed" && event.status === "error") {
@@ -352,6 +387,7 @@ export class CocurdexDaemonService {
 
   async archiveSession(sessionId: string) {
     validateSessionId(sessionId);
+    await this.team.onLeadStopped(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
       this.queuedFollowUps.delete(sessionId);
@@ -973,6 +1009,7 @@ export class CocurdexDaemonService {
     if (!session) {
       return;
     }
+    await this.team.onLeadStopped(sessionId);
 
     const providerSession = await this.state.getProviderSession(sessionId);
     const workspace = (await this.state.listWorkspaces()).find(
@@ -1567,6 +1604,7 @@ export class CocurdexDaemonService {
   /** User-facing stop: abandon the current turn, keep the agent session usable. */
   async stopSession(sessionId: string) {
     validateSessionId(sessionId);
+    await this.team.onLeadStopped(sessionId);
     return this.sessionCommands.run(sessionId, () =>
       this.stopSessionTurn(sessionId),
     );
@@ -1912,6 +1950,7 @@ export function onAgentEvent(
     if (
       event.type !== "data.changed" &&
       event.type !== "peer.message" &&
+      event.type !== "team.changed" &&
       !isWorkspaceSearchDaemonEvent(event) &&
       !("conversationId" in event)
     ) {

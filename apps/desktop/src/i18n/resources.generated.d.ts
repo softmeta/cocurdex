@@ -186,6 +186,18 @@ export default interface Resources {
     };
     reasoning: "Reasoning";
     system: "System";
+    team: {
+      label: "Team";
+      status: {
+        error: "Error";
+        idle: "Idle";
+        running: "Running";
+        spawning: "Starting";
+        stopped: "Stopped";
+      };
+      stopAll: "Stop all";
+      stopMember: "Stop {{name}}";
+    };
     thinking: "Thinking";
     toolCalls: {
       command: "Command";

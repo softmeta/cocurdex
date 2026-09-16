@@ -47,6 +47,7 @@ export {
   validateSessionId,
   validateSubmitPreviousMessageCommand,
 } from "./task-control";
+export * from "./team";
 export * from "./terminal";
 export { type GetToolCallResultInput, isToolCallId } from "./tool-call";
 export * from "./workflow";

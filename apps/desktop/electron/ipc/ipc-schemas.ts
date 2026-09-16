@@ -258,6 +258,8 @@ export const schemas = {
   }),
   sessionId: idSchema,
   sessionIds: z.array(idSchema).max(500),
+  teamId: idSchema,
+  teamMember: z.object({ teamId: idSchema, sessionId: idSchema }),
   messageId: idSchema,
   toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),
   questionId: idSchema,

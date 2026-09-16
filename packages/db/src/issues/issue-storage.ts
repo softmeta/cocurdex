@@ -28,6 +28,7 @@ export interface IssueRow extends SqliteRow {
   status: string;
   priority: string;
   workspace_id: string | null;
+  assignee_session_id: string | null;
   sort_order: number;
   revision: number;
   created_at: string;
@@ -162,6 +163,7 @@ function toIssueRecord(
     status: issue.status,
     priority: issue.priority,
     workspaceId: issue.workspace_id,
+    assigneeSessionId: issue.assignee_session_id,
     sortOrder: issue.sort_order,
     revision: issue.revision,
     createdAt: issue.created_at,
