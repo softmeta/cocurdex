@@ -1,6 +1,6 @@
 import type {
   AgentInputDelivery,
-  MessageOrigin,
+  PeerMessageOrigin,
   SessionRecord,
   SessionStatus,
 } from "./contracts";
@@ -47,7 +47,7 @@ export function choosePeerDelivery(target: {
   return target.hasActiveTurn ? "queue-after-run" : "start-new-run";
 }
 
-export function renderPeerEnvelope(origin: MessageOrigin, content: string) {
+export function renderPeerEnvelope(origin: PeerMessageOrigin, content: string) {
   return `[Message from session "${origin.sessionTitle}" (${origin.sessionId})]\n${content}`;
 }
 

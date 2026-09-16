@@ -737,7 +737,19 @@
     "role": "角色",
     "save": "保存",
     "saved": "团队已保存",
-    "saveFailed": "无法保存该团队。"
+    "saveFailed": "无法保存该团队。",
+    "scriptRuns": {
+      "defaultMaxAgents": "默认 agent 上限",
+      "defaultMaxAgentsDescription": "每次脚本运行最多启动的 agent 数，批准时可以单独修改",
+      "description": "会话里的 agent 可以提议后台脚本来编排多个子 agent，经你批准后运行",
+      "maxDuration": "运行最长时间（分钟）",
+      "maxDurationDescription": "超时后取消整个运行和所有子 agent，留空表示不限制",
+      "saveFailed": "保存脚本运行设置失败",
+      "schemaMaxAttempts": "结构化回复最多尝试次数",
+      "schemaMaxAttemptsDescription": "agent 的回复不符合脚本要求的 JSON Schema 时最多尝试几次",
+      "title": "脚本运行",
+      "unlimited": "不限制"
+    }
   },
   "updates": {
     "actions": {

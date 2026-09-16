@@ -59,7 +59,7 @@ import {
   segmentConversationItems,
 } from "./chat-timeline";
 import { turnStatsByMessageAtom } from "./message-store";
-import { PeerPrompt } from "./peer-prompt";
+import { messageOriginLabel, PeerPrompt } from "./peer-prompt";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
 function getMessageArticleClassName(message: MessageRecord) {
@@ -654,7 +654,7 @@ const MessageArticle = memo(function MessageArticle({
           ) : null}
           {message.origin ? (
             <div className="mb-1.5 text-meta font-medium text-chat-fg-secondary">
-              {t("peerMessage.from", { title: message.origin.sessionTitle })}
+              {messageOriginLabel(t, message.origin)}
             </div>
           ) : null}
           <MessageAttachments message={message} />

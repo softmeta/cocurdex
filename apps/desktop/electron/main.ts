@@ -119,6 +119,7 @@ import {
   registerProviderHandlers,
 } from "./provider";
 import { getPtyService } from "./pty";
+import { registerScriptRunHandlers } from "./script-run";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerSkillsHandlers } from "./skills";
@@ -1514,6 +1515,7 @@ app
     registerLoggingHandlers();
     registerChatHandlers(ipcMain);
     registerDataHandlers(ipcMain, userDataPath);
+    registerScriptRunHandlers(ipcMain, userDataPath);
     registerCliPathHandlers();
     registerSkillsHandlers();
     registerAppUpdateHandlers();

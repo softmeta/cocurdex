@@ -56,7 +56,7 @@
 | 0 | 已实现（分支 `feat/agent-tool-bridge`） | 注册表、每 session token、daemon 内置 HTTP MCP 端点 `/mcp`；Claude、ACP（声明 HTTP MCP 的 agent，含 Grok Build）、Codex 走 HTTP，Pi 走进程内 `customTools` |
 | 1 | 已实现（同一分支） | `messaging_list_agents` / `messaging_send_message`、`session.listPeers` / `session.sendPeerMessage` / `session.setPeerInbound`、`origin` 字段、桌面来源标签、CLI 命令、`peer.message` 事件 |
 | 2 | 已实现（同一分支） | `team.get` / `team.spawn` / `team.stopMember` / `team.stop`、`team` 工具组（spawn、task 三件套、`team_stop` / `team_stop_member`）、`teams` / `team_members` 表、`issues.assignee_session_id`、`sessionKind: "teammate"`、桌面 lead 会话内的 Team 面板、CLI `cocurdex team ...`、`team.changed` 事件 |
-| 3 | 未开始 | |
+| 3 | 已实现（同一分支） | `scriptRun.create/start/cancel/get/list`、`scriptRun.settings.get/save`、`script_run_propose` 工具、`script_runs` / `script_run_agents` 表、worker 线程沙箱、结果回传 requester、桌面提议卡片与运行面板、Settings > Teams 的脚本运行设置、CLI `cocurdex script-run ...`；偏差见“阶段 3 与原方案的偏差” |
 
 阶段 0 的 adapter 覆盖：
 
@@ -517,6 +517,24 @@ RPC：
 - e2e：用 `llm-stub` 跑一个三阶段脚本（先列文件，再 `pipeline` 逐个审计，最后过滤），断言 `script_run_agents` 数量、每个都有对应 session、run 最终 `completed` 且 `resultJson` 是过滤后的数组；启动后立刻 `cancel`，断言 run 为 `cancelled` 且没有子 session 处于 `running`。
 
 ---
+
+### 阶段 3 与原方案的偏差
+
+- 沙箱：脚本在 `worker_threads` 的 eval worker 中执行，worker 内再用 `node:vm` 隔离上下文（`script-worker-source.ts` 为内嵌 JS 字符串，打包后的单文件 `daemon.cjs` 无需额外文件）。取消、超时和 daemon 关闭直接 `terminate()` worker，await 之后的死循环不会卡住 daemon。worker 内仍可通过函数构造器拿到 worker 自身的 `process`，不是安全边界；防线是用户批准脚本。
+- 静态拒绝只检查 `import(` 与语法错误，不拒绝 `process`、`require`、`globalThis` 等词，避免误伤 prompt 文本；这些全局在上下文中本就不存在。
+- 取消语义：取消立即终止 worker，脚本不会在 `agent()` 返回 null 后继续执行。
+- `agent()` 选项为 `label`、`agentRoleId`、`schema`、`worktree`，不支持 `model`。子 agent 为 `sessionKind: "subagent"`，`parentSessionId` 为 requester，默认继承 requester 的 agent、模型、`writeMode`、`permissionMode` 与 `worktreePath`；`worktree: true` 时经 `createWorktree` 建独立 worktree。
+- 子 agent 走 `service.sendSessionMessage` 正常发送路径，`service.waitForSessionTurn(sessionId)` 返回该回合的 `completed` / `cancelled` / `failed` 结果；未复用冻结中的 workflow turn runner。
+- schema：用 `@modelcontextprotocol/sdk/validation/ajv` 校验，从回复中解析整段 JSON 或最后一个 ```json 代码块；不合格时在同一会话追问，最多尝试次数由设置决定。
+- 限额与设置：`app_settings` 的 `scriptRunSettings` 键，默认 `defaultMaxAgents` 5、`schemaMaxAttempts` 3、`maxDurationMinutes` 不限制；批准时可为单次运行改 agent 上限，硬上限 1000。超过上限时整个 run 以 failed 结束。
+- `requesterSessionId` 必填且必须是 main session，CLI `create` 需要 `--session`；`script_run_propose` 只对 main session 可见，subagent 不可见 messaging、team、script_run 任何工具，防止递归扇出。
+- 结果回传：run 结束后以 `origin: { kind: "scriptRun", runId, runName }` 投递给 requester（忙时排队）。requester 被停止、归档或删除时级联取消其运行且不回传；从面板取消会回传。草稿可通过 `scriptRun.cancel` 丢弃。
+- daemon 关闭时把 running 的 run 标为 interrupted 并终止 worker；启动恢复时同样处理残留记录。
+- e2e 不驱动 LLM：用不调用 `agent()` 的挂起脚本覆盖创建校验、设置读写、requester 停止级联取消、重启后 interrupted；成功路径由 `script-run-module.test.ts` 的假依赖覆盖。
+
+### 后续：保存复用脚本
+
+保存命名脚本即得到固定编排的工作流。需要：脚本持久化与命名、`args` 运行参数、从桌面与 CLI 按名字运行。届时再按“现有 workflow 引擎的评估与冻结决定”中的规则决定 workflow 引擎去留。
 
 ## 横向要求
 

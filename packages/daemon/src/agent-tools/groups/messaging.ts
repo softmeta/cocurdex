@@ -1,4 +1,5 @@
 import type {
+  AgentToolCallerContext,
   PeerSessionSummary,
   SendPeerMessagePayload,
   SendPeerMessageResult,
@@ -11,6 +12,9 @@ export interface MessagingToolDependencies {
     payload: SendPeerMessagePayload,
   ): Promise<SendPeerMessageResult>;
 }
+
+const isNotSubagent = (caller: AgentToolCallerContext) =>
+  caller.sessionKind !== "subagent";
 
 export function registerMessagingTools(
   registry: AgentToolRegistry,
@@ -28,7 +32,7 @@ export function registerMessagingTools(
         additionalProperties: false,
       },
     },
-    isAvailable: () => true,
+    isAvailable: isNotSubagent,
     execute: (caller) => deps.listPeers(caller.sessionId),
   });
   registry.register({
@@ -47,7 +51,7 @@ export function registerMessagingTools(
         additionalProperties: false,
       },
     },
-    isAvailable: () => true,
+    isAvailable: isNotSubagent,
     execute: (caller, input) =>
       deps.sendPeerMessage({
         fromSessionId: caller.sessionId,

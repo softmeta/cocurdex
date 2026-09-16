@@ -69,7 +69,8 @@
   },
   "openFile": "打开文件",
   "peerMessage": {
-    "from": "来自会话 {{title}}"
+    "from": "来自会话 {{title}}",
+    "fromScriptRun": "来自脚本 {{name}}"
   },
   "permissions": {
     "actions": {
@@ -179,6 +180,28 @@
     }
   },
   "reasoning": "推理",
+  "scriptRun": {
+    "agentCount": "{{started}}/{{max}} 个 agent",
+    "agentStatus": {
+      "cancelled": "已取消",
+      "completed": "已完成",
+      "failed": "失败",
+      "queued": "排队中",
+      "running": "运行中"
+    },
+    "cancel": "取消",
+    "discard": "丢弃",
+    "maxAgents": "agent 上限",
+    "noAgents": "还没有启动 agent",
+    "panelLabel": "脚本运行",
+    "proposalLabel": "脚本提议 {{name}}",
+    "proposalTitle": "脚本 {{name}}",
+    "run": "运行",
+    "showScript": "查看脚本",
+    "status": {
+      "draft": "待批准"
+    }
+  },
   "system": "系统",
   "team": {
     "handle": "去处理",

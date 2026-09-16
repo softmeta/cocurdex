@@ -24,6 +24,7 @@ import type {
   CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
+  CreateScriptRunPayload,
   CreateViewPayload,
   CreateWorkflowPayload,
   DeleteColumnPayload,
@@ -72,6 +73,9 @@ import type {
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
+  ScriptRunRecord,
+  ScriptRunSettings,
+  ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
@@ -84,6 +88,7 @@ import type {
   SessionRecord,
   SpawnTeammatePayload,
   SpawnTeamTemplatePayload,
+  StartScriptRunPayload,
   SubmitPreviousMessageCommand,
   TeamMemberRecord,
   TeamRecord,
@@ -229,6 +234,13 @@ export type DaemonRequestPayloadByMethod = {
   "teamTemplate.list": undefined;
   "teamTemplate.save": SaveTeamTemplatePayload;
   "teamTemplate.delete": { id: string };
+  "scriptRun.create": CreateScriptRunPayload;
+  "scriptRun.start": StartScriptRunPayload;
+  "scriptRun.cancel": { runId: string };
+  "scriptRun.get": { runId: string };
+  "scriptRun.list": { workspaceId?: string; requesterSessionId?: string };
+  "scriptRun.settings.get": undefined;
+  "scriptRun.settings.save": ScriptRunSettings;
   "session.delete": { sessionId: string };
   "session.archive": { sessionId: string };
   "session.restore": { sessionId: string };
@@ -429,6 +441,13 @@ export type DaemonResultByMethod = {
   "teamTemplate.list": TeamTemplateRecord[];
   "teamTemplate.save": TeamTemplateRecord;
   "teamTemplate.delete": null;
+  "scriptRun.create": ScriptRunRecord;
+  "scriptRun.start": ScriptRunRecord;
+  "scriptRun.cancel": ScriptRunRecord;
+  "scriptRun.get": ScriptRunSnapshot;
+  "scriptRun.list": ScriptRunRecord[];
+  "scriptRun.settings.get": ScriptRunSettings;
+  "scriptRun.settings.save": ScriptRunSettings;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;
@@ -574,6 +593,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "daemon.status": true,
   "issue.listViews": true,
   "teamTemplate.list": true,
+  "scriptRun.settings.get": true,
   "mcp.readConfig": true,
   "network.proxy.test": true,
   "note.list": true,

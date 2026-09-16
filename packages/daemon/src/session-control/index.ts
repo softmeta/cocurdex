@@ -4,4 +4,5 @@ export { applySessionConfiguration } from "./configuration";
 export type {
   SessionExecutionContext,
   SessionRuntimeMessage,
+  SessionTurnOutcome,
 } from "./execution-types";

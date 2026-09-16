@@ -77,11 +77,15 @@ import type {
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
+  ScriptRunRecord,
+  ScriptRunSettings,
+  ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
   SessionMessagesResult,
   SessionRecord,
+  StartScriptRunPayload,
   TeamMemberRecord,
   TeamRecord,
   TeamSnapshot,
@@ -324,6 +328,14 @@ export interface ProductApi {
     worktreePath: string;
     workspaceRootPath?: string;
   }): Promise<{ removed: boolean }>;
+  listScriptRuns(requesterSessionId: string): Promise<ScriptRunRecord[]>;
+  getScriptRun(runId: string): Promise<ScriptRunSnapshot>;
+  startScriptRun(payload: StartScriptRunPayload): Promise<ScriptRunRecord>;
+  cancelScriptRun(runId: string): Promise<ScriptRunRecord>;
+  getScriptRunSettings(): Promise<ScriptRunSettings>;
+  saveScriptRunSettings(
+    settings: ScriptRunSettings,
+  ): Promise<ScriptRunSettings>;
   getTeam(leadSessionId: string): Promise<TeamSnapshot | null>;
   stopTeam(teamId: string): Promise<TeamRecord>;
   stopTeamMember(payload: {

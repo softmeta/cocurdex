@@ -558,11 +558,19 @@ export function formatContextFileChipLabel(
   return `${fileName} ${formatContextFileRange(attachment)}`;
 }
 
-export interface MessageOrigin {
+export interface PeerMessageOrigin {
   kind: "peer";
   sessionId: string;
   sessionTitle: string;
 }
+
+export interface ScriptRunMessageOrigin {
+  kind: "scriptRun";
+  runId: string;
+  runName: string;
+}
+
+export type MessageOrigin = PeerMessageOrigin | ScriptRunMessageOrigin;
 
 export interface MessageRecord {
   id: string;

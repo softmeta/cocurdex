@@ -740,7 +740,19 @@
     "role": "Role",
     "save": "Save",
     "saved": "Team saved",
-    "saveFailed": "Could not save this team."
+    "saveFailed": "Could not save this team.",
+    "scriptRuns": {
+      "defaultMaxAgents": "Default agent limit",
+      "defaultMaxAgentsDescription": "Maximum agents one script run may start; you can change it when approving",
+      "description": "Agents in a session can propose background scripts that orchestrate subagents; they run after you approve them",
+      "maxDuration": "Maximum run time (minutes)",
+      "maxDurationDescription": "Cancels the whole run and its subagents when exceeded; leave empty for no limit",
+      "saveFailed": "Could not save script run settings",
+      "schemaMaxAttempts": "Structured reply attempts",
+      "schemaMaxAttemptsDescription": "How many times an agent may try to reply with JSON matching the script's schema",
+      "title": "Script runs",
+      "unlimited": "No limit"
+    }
   },
   "updates": {
     "actions": {

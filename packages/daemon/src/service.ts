@@ -65,6 +65,7 @@ import {
 import {
   AgentToolBridge,
   registerMessagingTools,
+  registerScriptRunTools,
   registerTeamTools,
 } from "./agent-tools";
 import { discoverInstalledAgentCapabilities } from "./agents";
@@ -83,6 +84,7 @@ import { DaemonProviderService } from "./provider";
 import { ProviderCredentials } from "./provider-credentials";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
+import { ScriptRunModule } from "./script-run";
 import { DaemonSearchService } from "./search-service";
 import {
   applySessionConfiguration,
@@ -90,6 +92,7 @@ import {
   SessionCommandQueue,
   type SessionExecutionContext,
   type SessionRuntimeMessage,
+  type SessionTurnOutcome,
 } from "./session-control";
 import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
@@ -160,6 +163,7 @@ export class CocurdexDaemonService {
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
+  readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
   readonly providerCredentials: ProviderCredentials;
@@ -182,6 +186,10 @@ export class CocurdexDaemonService {
   private readonly sessionCheckpoints: SessionCheckpointStore;
   private readonly sessionCommands = new SessionCommandQueue();
   private readonly pendingTurns = new Map<string, { cancelled: boolean }>();
+  private readonly turnOutcomes = new Map<
+    string,
+    Promise<SessionTurnOutcome>
+  >();
   private readonly backgroundSends = new Set<Promise<unknown>>();
   private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
@@ -274,6 +282,30 @@ export class CocurdexDaemonService {
       sendPeerMessage: (payload) => this.peerMessaging.send(payload),
     });
     registerTeamTools(this.agentTools.registry, this.team);
+    this.scriptRuns = new ScriptRunModule({
+      repository: this.state.scriptRuns,
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      saveSession: (session) => this.state.saveSession(session),
+      saveAgent: (agent) => this.state.scriptRuns.saveAgent(agent),
+      getAgentRole: (id) => this.state.getAgentRole(id),
+      getSetting: (key) => this.state.getAppSetting(key),
+      setSetting: (key, value) => this.state.setAppSetting(key, value),
+      createWorktree: (input) => this.createWorktree(input),
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
+      hasActiveTurn: (sessionId) => this.pendingTurns.has(sessionId),
+      stopSession: (sessionId) => this.stopSession(sessionId),
+      broadcast: (event) => {
+        this.events.emit("daemon.event", event);
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["agent"],
+        });
+      },
+      now: () => new Date().toISOString(),
+      createId: () => crypto.randomUUID(),
+    });
+    registerScriptRunTools(this.agentTools.registry, this.scriptRuns);
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);
@@ -371,6 +403,7 @@ export class CocurdexDaemonService {
   private async recoverQueuedSessions() {
     try {
       await this.state.waitForStartupRecovery();
+      await this.scriptRuns.recoverInterrupted();
       const inputs = await this.state.listAllQueuedAgentInputs();
       for (const sessionId of new Set(inputs.map((input) => input.sessionId))) {
         if (this.stopping) break;
@@ -390,6 +423,7 @@ export class CocurdexDaemonService {
   async archiveSession(sessionId: string) {
     validateSessionId(sessionId);
     await this.team.onLeadStopped(sessionId);
+    await this.scriptRuns.cancelForRequester(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
       this.queuedFollowUps.delete(sessionId);
@@ -1012,6 +1046,7 @@ export class CocurdexDaemonService {
       return;
     }
     await this.team.onLeadStopped(sessionId);
+    await this.scriptRuns.cancelForRequester(sessionId);
 
     const providerSession = await this.state.getProviderSession(sessionId);
     const workspace = (await this.state.listWorkspaces()).find(
@@ -1323,15 +1358,20 @@ export class CocurdexDaemonService {
       throw error;
     }
 
-    void this.trackBackgroundSend(
-      this.dispatchSessionMessage(
-        payload,
-        userMessage,
-        pendingTurn,
-        persistence,
-        providerConfig,
-      )
-        .catch(async (error: unknown) => {
+    const sessionId = payload.session.id;
+    const outcome = this.dispatchSessionMessage(
+      payload,
+      userMessage,
+      pendingTurn,
+      persistence,
+      providerConfig,
+    )
+      .then(
+        (message): SessionTurnOutcome =>
+          message && !pendingTurn.cancelled
+            ? { status: "completed", message }
+            : { status: "cancelled" },
+        (error: unknown): SessionTurnOutcome => {
           const message =
             error instanceof Error
               ? error.message
@@ -1339,23 +1379,33 @@ export class CocurdexDaemonService {
           console.error("[CocurdexDaemonService] Background send failed", {
             agentType: payload.session.agentType,
             error: message,
-            sessionId: payload.session.id,
+            sessionId,
           });
           this.runtime.emitAgentEvent({
             type: "error",
-            sessionId: payload.session.id,
+            sessionId,
             message,
           });
-        })
-        .finally(() => {
-          if (this.pendingTurns.get(payload.session.id) === pendingTurn) {
-            this.pendingTurns.delete(payload.session.id);
-            void this.startNextQueuedFollowUp(payload.session.id);
-          }
-        }),
-    );
+          return { status: "failed", error: message };
+        },
+      )
+      .finally(() => {
+        if (this.turnOutcomes.get(sessionId) === outcome) {
+          this.turnOutcomes.delete(sessionId);
+        }
+        if (this.pendingTurns.get(sessionId) === pendingTurn) {
+          this.pendingTurns.delete(sessionId);
+          void this.startNextQueuedFollowUp(sessionId);
+        }
+      });
+    this.turnOutcomes.set(sessionId, outcome);
+    void this.trackBackgroundSend(outcome);
 
     return userMessage;
+  }
+
+  waitForSessionTurn(sessionId: string): Promise<SessionTurnOutcome | null> {
+    return this.turnOutcomes.get(sessionId) ?? Promise.resolve(null);
   }
 
   private trackBackgroundSend<T>(work: Promise<T>): Promise<T> {
@@ -1609,6 +1659,7 @@ export class CocurdexDaemonService {
   async stopSession(sessionId: string) {
     validateSessionId(sessionId);
     await this.team.onLeadStopped(sessionId);
+    await this.scriptRuns.cancelForRequester(sessionId);
     return this.sessionCommands.run(sessionId, () =>
       this.stopSessionTurn(sessionId),
     );
@@ -1711,6 +1762,7 @@ export class CocurdexDaemonService {
     }
     this.pendingTurns.clear();
     this.queuedFollowUps.clear();
+    await this.scriptRuns.shutdown();
     const schedulerClose = this.workflowWorkerScheduler.close();
     try {
       const results = await Promise.allSettled([
@@ -1851,7 +1903,7 @@ export class CocurdexDaemonService {
         message.id === userMessage.id || !queuedMessageIds.has(message.id),
     );
     if (pendingTurn.cancelled) {
-      return;
+      return null;
     }
 
     await this.workspaceChanges.beginTurn({
@@ -1862,10 +1914,10 @@ export class CocurdexDaemonService {
 
     if (pendingTurn.cancelled) {
       await this.workspaceChanges.failTurn(payload.session.id, "interrupted");
-      return;
+      return null;
     }
 
-    await this.runtime.sendSessionMessage(
+    return this.runtime.sendSessionMessage(
       {
         ...payload,
         content: userMessage.content,
@@ -1955,6 +2007,7 @@ export function onAgentEvent(
       event.type !== "data.changed" &&
       event.type !== "peer.message" &&
       event.type !== "team.changed" &&
+      event.type !== "scriptRun.changed" &&
       !isWorkspaceSearchDaemonEvent(event) &&
       !("conversationId" in event)
     ) {

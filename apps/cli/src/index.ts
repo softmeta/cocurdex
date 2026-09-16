@@ -34,6 +34,10 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
+import {
+  handleScriptRunCommand,
+  scriptRunUsageLines,
+} from "./script-run-commands";
 import { handleSearchCommand } from "./search-commands";
 import { assertSessionTuiAvailable, runSessionTui } from "./session-tui";
 import { handleSkillsCommand, skillsUsageLines } from "./skill-commands";
@@ -94,6 +98,13 @@ async function main(rawArgs: string[]) {
 
   if (resource === "team") {
     const handled = await handleTeamCommand(action, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "script-run") {
+    const handled = await handleScriptRunCommand(action, parsed);
     if (handled) {
       return;
     }
@@ -456,6 +467,7 @@ function printUsage() {
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
       "  cocurdex session stop <session-id>",
       ...teamUsageLines(),
+      ...scriptRunUsageLines(),
       "  cocurdex provider list",
       "  cocurdex provider models <provider>",
       "  cocurdex workflow list",

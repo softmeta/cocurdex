@@ -74,6 +74,7 @@ export default interface Resources {
     openFile: "Open file";
     peerMessage: {
       from: "From session {{title}}";
+      fromScriptRun: "From script {{name}}";
     };
     permissions: {
       actions: {
@@ -185,6 +186,28 @@ export default interface Resources {
       };
     };
     reasoning: "Reasoning";
+    scriptRun: {
+      agentCount: "{{started}}/{{max}} agents";
+      agentStatus: {
+        cancelled: "Cancelled";
+        completed: "Completed";
+        failed: "Failed";
+        queued: "Queued";
+        running: "Running";
+      };
+      cancel: "Cancel";
+      discard: "Discard";
+      maxAgents: "Agent limit";
+      noAgents: "No agents started yet";
+      panelLabel: "Script runs";
+      proposalLabel: "Script proposal {{name}}";
+      proposalTitle: "Script {{name}}";
+      run: "Run";
+      showScript: "Show script";
+      status: {
+        draft: "Awaiting approval";
+      };
+    };
     system: "System";
     team: {
       handle: "Respond";
@@ -1918,6 +1941,18 @@ export default interface Resources {
       save: "Save";
       saveFailed: "Could not save this team.";
       saved: "Team saved";
+      scriptRuns: {
+        defaultMaxAgents: "Default agent limit";
+        defaultMaxAgentsDescription: "Maximum agents one script run may start; you can change it when approving";
+        description: "Agents in a session can propose background scripts that orchestrate subagents; they run after you approve them";
+        maxDuration: "Maximum run time (minutes)";
+        maxDurationDescription: "Cancels the whole run and its subagents when exceeded; leave empty for no limit";
+        saveFailed: "Could not save script run settings";
+        schemaMaxAttempts: "Structured reply attempts";
+        schemaMaxAttemptsDescription: "How many times an agent may try to reply with JSON matching the script's schema";
+        title: "Script runs";
+        unlimited: "No limit";
+      };
     };
     updates: {
       actions: {

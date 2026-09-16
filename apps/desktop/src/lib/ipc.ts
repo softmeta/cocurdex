@@ -1,5 +1,6 @@
 import {
   type AgentDescriptor,
+  DEFAULT_SCRIPT_RUN_SETTINGS,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   type MessageRecord,
@@ -268,6 +269,18 @@ const fallbackApi: DesktopApi = {
   }),
   listManagedWorktrees: async () => [],
   removeWorktree: async () => ({ removed: true }),
+  listScriptRuns: async () => [],
+  getScriptRun: async () => {
+    throw new Error("Script runs require the desktop app");
+  },
+  startScriptRun: async () => {
+    throw new Error("Script runs require the desktop app");
+  },
+  cancelScriptRun: async () => {
+    throw new Error("Script runs require the desktop app");
+  },
+  getScriptRunSettings: async () => DEFAULT_SCRIPT_RUN_SETTINGS,
+  saveScriptRunSettings: async (settings) => settings,
   getTeam: async () => null,
   stopTeam: async () => {
     throw new Error("Team control requires the desktop app");

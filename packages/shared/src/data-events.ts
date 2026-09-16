@@ -1,6 +1,7 @@
 import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
 import type { PeerMessageEvent } from "./peer-messaging";
+import type { ScriptRunChangedEvent } from "./script-run";
 import type { TeamChangedEvent } from "./team";
 import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 
@@ -29,5 +30,6 @@ export type CocurdexDaemonEvent =
   | CocurdexDataChangedEvent
   | ChatEvent
   | PeerMessageEvent
+  | ScriptRunChangedEvent
   | TeamChangedEvent
   | WorkspaceSearchDaemonEvent;

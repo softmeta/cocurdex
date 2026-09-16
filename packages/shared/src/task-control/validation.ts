@@ -155,6 +155,12 @@ export function validateSessionConfiguration(
 
 function validateMessageOrigin(value: unknown) {
   record(value);
+  if (value.kind === "scriptRun") {
+    keys(value, ["kind", "runId", "runName"]);
+    validateSessionId(value.runId);
+    text(value.runName, "origin run name", 4096, true);
+    return;
+  }
   keys(value, ["kind", "sessionId", "sessionTitle"]);
   if (value.kind !== "peer") throw new Error("Invalid message origin");
   validateSessionId(value.sessionId);

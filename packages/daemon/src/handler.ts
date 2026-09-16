@@ -238,6 +238,20 @@ export async function handleDaemonRequest(
     case "teamTemplate.delete":
       await service.team.deleteTemplate(request.params.id);
       return null;
+    case "scriptRun.create":
+      return service.scriptRuns.create(request.params);
+    case "scriptRun.start":
+      return service.scriptRuns.start(request.params);
+    case "scriptRun.cancel":
+      return service.scriptRuns.cancel(request.params.runId);
+    case "scriptRun.get":
+      return service.scriptRuns.get(request.params.runId);
+    case "scriptRun.list":
+      return service.scriptRuns.list(request.params);
+    case "scriptRun.settings.get":
+      return service.scriptRuns.getSettings();
+    case "scriptRun.settings.save":
+      return service.scriptRuns.saveSettings(request.params);
     case "provider.apiKey.set":
       await service.providerCredentials.setApiKey(
         request.params.providerId,

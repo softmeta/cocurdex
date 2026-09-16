@@ -28,6 +28,7 @@ import {
   ChatContentColumn,
   sessionComposerDraftKey,
 } from "@/features/composer";
+import { ScriptRunProposals } from "@/features/sessions";
 import {
   cn,
   isPerfEnabled,
@@ -545,23 +546,28 @@ export function ChatView({
                 {t("toolCalls.subagentEmpty")}
               </div>
             ) : (
-              <ChatVirtualTimeline
-                activity={activity}
-                groups={conversationGroups}
-                isRunning={isRunning}
-                latestMessageId={latestMessage?.id ?? null}
-                onAnswerQuestion={stableOnAnswerQuestion}
-                onOpenToolLocation={stableOnOpenToolLocation}
-                onResolvePermission={stableOnResolvePermission}
-                onSubmitPromptEdit={
-                  readOnly ? undefined : handleSubmitPromptEdit
-                }
-                scrollRef={timelineScrollRef}
-                setUserMessageRef={setUserMessageRef}
-                showMessageActions={!readOnly}
-                userMessageRefs={userMessageRefs}
-                viewportElement={viewportElement}
-              />
+              <>
+                <ChatVirtualTimeline
+                  activity={activity}
+                  groups={conversationGroups}
+                  isRunning={isRunning}
+                  latestMessageId={latestMessage?.id ?? null}
+                  onAnswerQuestion={stableOnAnswerQuestion}
+                  onOpenToolLocation={stableOnOpenToolLocation}
+                  onResolvePermission={stableOnResolvePermission}
+                  onSubmitPromptEdit={
+                    readOnly ? undefined : handleSubmitPromptEdit
+                  }
+                  scrollRef={timelineScrollRef}
+                  setUserMessageRef={setUserMessageRef}
+                  showMessageActions={!readOnly}
+                  userMessageRefs={userMessageRefs}
+                  viewportElement={viewportElement}
+                />
+                {sessionId && !readOnly ? (
+                  <ScriptRunProposals key={sessionId} sessionId={sessionId} />
+                ) : null}
+              </>
             )}
           </ChatContentColumn>
         </ScrollArea>

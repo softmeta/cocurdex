@@ -42,8 +42,10 @@ import type {
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
+  ScriptRunSettings,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
+  StartScriptRunPayload,
   TitleModelProbeResult,
   TitleModelSelection,
   UpdateColumnPayload,
@@ -196,6 +198,16 @@ contextBridge.exposeInMainWorld("desktopApi", {
     worktreePath: string;
     workspaceRootPath?: string;
   }) => ipcRenderer.invoke("worktree:remove", payload),
+  listScriptRuns: (requesterSessionId: string) =>
+    ipcRenderer.invoke("scriptRun:list", requesterSessionId),
+  getScriptRun: (runId: string) => ipcRenderer.invoke("scriptRun:get", runId),
+  startScriptRun: (payload: StartScriptRunPayload) =>
+    ipcRenderer.invoke("scriptRun:start", payload),
+  cancelScriptRun: (runId: string) =>
+    ipcRenderer.invoke("scriptRun:cancel", runId),
+  getScriptRunSettings: () => ipcRenderer.invoke("scriptRun:getSettings"),
+  saveScriptRunSettings: (settings: ScriptRunSettings) =>
+    ipcRenderer.invoke("scriptRun:saveSettings", settings),
   getTeam: (leadSessionId: string) =>
     ipcRenderer.invoke("team:get", leadSessionId),
   stopTeam: (teamId: string) => ipcRenderer.invoke("team:stop", teamId),

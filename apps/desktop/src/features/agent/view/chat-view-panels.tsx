@@ -29,7 +29,7 @@ import {
   type ThinkingLevelOption,
 } from "@/features/composer";
 import { editorPanelOpenAtom } from "@/features/editor";
-import { TeamPanel } from "@/features/sessions";
+import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
 import { QuestionCard, questionsBySessionAtom } from "../question";
@@ -249,6 +249,12 @@ export function ComposerDock({
               plan={plan}
             />
           </div>
+        ) : null}
+        {composerProps.sessionId && !hideComposer ? (
+          <ScriptRunPanel
+            key={`script-runs:${composerProps.sessionId}`}
+            sessionId={composerProps.sessionId}
+          />
         ) : null}
         {composerProps.sessionId && !hideComposer ? (
           <TeamPanel

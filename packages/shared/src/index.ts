@@ -28,6 +28,7 @@ export * from "./pdf-annotations";
 export * from "./peer-messaging";
 export * from "./provider-compatibility";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
+export * from "./script-run";
 export * from "./search";
 export * from "./session-attention";
 export * from "./session-observation";

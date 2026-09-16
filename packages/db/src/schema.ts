@@ -1,3 +1,4 @@
+import { createScriptRunSchemaSql } from "./script-run/schema";
 import { createTeamSchemaSql } from "./team/schema";
 import { createWorkflowSchemaSql } from "./workflow/schema";
 
@@ -446,5 +447,7 @@ export function createSchemaSql() {
       ON issue_view_columns(view_id, field, sort_order);
 
     ${createTeamSchemaSql()}
+
+    ${createScriptRunSchemaSql()}
   `;
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components";
 import { Button, EmptyState, IconButton, Text } from "@/components/ui";
 import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
+import { ScriptRunSettingsSection } from "../script-run";
 import { TeamTemplateEditDialog } from "./team-template-edit-dialog";
 import {
   deleteTeamTemplateRecord,
@@ -98,6 +99,7 @@ export function TeamSettingsPanel() {
           ))}
         </ul>
       )}
+      <ScriptRunSettingsSection />
       <TeamTemplateEditDialog
         onOpenChange={(open) => {
           if (!open) {
