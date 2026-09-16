@@ -775,9 +775,6 @@ function registerSessionHandlers() {
   ipcMain.handle("task:list", async () =>
     requestDaemon("session.list", await chatDaemonOptions()),
   );
-  ipcMain.handle("task:interactions", async () =>
-    requestDaemon("session.listInteractions", await chatDaemonOptions()),
-  );
   registerHandler(
     ipcMain,
     "task:snapshot",
@@ -1386,7 +1383,7 @@ app
           window.webContents.send("chat:invalidated");
         }
       },
-      onEvent(event) {
+      onEvent(event, meta) {
         for (const window of BrowserWindow.getAllWindows()) {
           if (event.type === "data.changed") {
             window.webContents.send("data:changed", event);
@@ -1408,7 +1405,7 @@ app
           } else if ("conversationId" in event) {
             window.webContents.send("chat:event", event);
           } else {
-            window.webContents.send("agent:event", event);
+            window.webContents.send("agent:event", event, meta);
           }
         }
       },
@@ -1482,6 +1479,13 @@ app
     // %LOCALAPPDATA%\Cocurdex\bin) so `cocurdex` is on the user PATH.
     void ensureCliOnPathBestEffort();
     ipcMain.handle("app:bootstrap", () => bootstrapAppState());
+    registerHandler(
+      ipcMain,
+      "app:resync",
+      schemas.sessionIds,
+      async (_event, sessionIds) =>
+        requestDaemon("app.resync", { sessionIds }, await chatDaemonOptions()),
+    );
     ipcMain.handle("app:getHomeDir", () => homedir());
     // Installed font families for Appearance pickers (cached in system-fonts).
     ipcMain.handle("app:listFontFamilies", () => listSystemFontFamilies());

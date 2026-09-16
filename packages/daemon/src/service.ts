@@ -19,7 +19,9 @@ import type {
   AgentPlanApprovalDecision,
   AgentRoleRecord,
   AgentRuntimeProviderConfig,
+  AgentToolCallRecord,
   AppBootstrapData,
+  AppResyncSnapshot,
   CocurdexDaemonEvent,
   CreateWorkflowPayload,
   GetToolCallResultInput,
@@ -29,6 +31,7 @@ import type {
   SaveWorkflowDefinitionPayload,
   SendSessionCommand,
   SessionConfiguration,
+  SessionMessagesResult,
   SessionRecord,
   SubmitPreviousMessageCommand,
   TurnChangeDiffRequest,
@@ -656,6 +659,60 @@ export class CocurdexDaemonService {
 
   listPendingInteractions() {
     return this.runtime.getPendingInteractions();
+  }
+
+  // Journal seq provider bound by the wire layer so resync snapshots can
+  // report the position their reads are consistent with.
+  private readEventSeq: () => number = () => 0;
+
+  bindEventSeqProvider(provider: () => number) {
+    this.readEventSeq = provider;
+  }
+
+  // Full authoritative refresh after a replay gap. Reads run behind queued
+  // event persistence, so every journaled event at or below the captured
+  // eventSeq is already reflected here; clients must only apply newer
+  // buffered events on top.
+  async resync(sessionIds: string[]): Promise<AppResyncSnapshot> {
+    return this.runtime.withEventPersistence(async () => {
+      const eventSeq = this.readEventSeq();
+      const data = await this.state.bootstrap();
+      const transcripts = Object.fromEntries(
+        await Promise.all(
+          sessionIds.map(async (sessionId) => {
+            const messages = (await this.state.callStorage(
+              "message.listBySession",
+              [sessionId],
+            )) as SessionMessagesResult;
+            const toolCalls = (await this.state.callStorage(
+              "toolCall.listBySession",
+              [sessionId],
+            )) as AgentToolCallRecord[];
+            return [
+              sessionId,
+              {
+                messages: messages.messages,
+                activeMessages:
+                  this.state.listActiveMessagesBySessionId(sessionId),
+                turnStats: messages.turnStats,
+                turnChangeSets: messages.turnChangeSets,
+                toolCalls,
+              },
+            ] as const;
+          }),
+        ),
+      );
+      return {
+        epoch: this.startedAt,
+        eventSeq,
+        sessions: data.sessions,
+        queuedAgentInputs: data.queuedAgentInputs,
+        queuedMessages: data.queuedMessages,
+        sessionUsage: data.sessionUsage,
+        interactions: this.runtime.getPendingInteractions(),
+        transcripts,
+      };
+    });
   }
 
   async getSessionSnapshot(sessionId: string) {

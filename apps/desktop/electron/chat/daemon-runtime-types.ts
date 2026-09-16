@@ -5,6 +5,7 @@ import type {
   AgentSessionConfigOption,
   AgentSlashCommand,
   CocurdexDaemonEvent,
+  DaemonEventMeta,
   MessageRecord,
   SendSessionCommand,
   SessionConfiguration,
@@ -28,7 +29,7 @@ export interface DaemonRuntimeLogger {
 export interface DaemonRuntimeClientOptions {
   daemonEntryPath: string;
   logger: DaemonRuntimeLogger;
-  onEvent(event: CocurdexDaemonEvent): void;
+  onEvent(event: CocurdexDaemonEvent, meta?: DaemonEventMeta): void;
   onConnected?(): void;
   userDataPath: string;
 }

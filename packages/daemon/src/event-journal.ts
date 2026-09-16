@@ -16,6 +16,8 @@ export interface DaemonEventJournalReplay {
 export interface DaemonEventJournal {
   record(event: CocurdexDaemonEvent): DaemonEventJournalEntry;
   entriesAfter(afterSeq: number | undefined): DaemonEventJournalReplay;
+  // Latest assigned sequence number; 0 before any event is journaled.
+  currentSeq(): number;
 }
 
 export function createDaemonEventJournal(capacity = 2000): DaemonEventJournal {
@@ -30,6 +32,9 @@ export function createDaemonEventJournal(capacity = 2000): DaemonEventJournal {
         buffer.shift();
       }
       return entry;
+    },
+    currentSeq() {
+      return seq;
     },
     entriesAfter(afterSeq) {
       if (afterSeq === undefined) {

@@ -144,6 +144,31 @@ export class AgentRuntimeManager {
     );
   }
 
+  // Runs read behind every queued event persistence. An event's broadcast —
+  // and therefore its journal sequence — is scheduled only after its
+  // persistence resolves, so a journal seq captured inside this read is a
+  // consistent boundary: journaled events at or below it are already
+  // reflected in whatever the read observes. Coalesced deltas are flushed
+  // first: their persistence may have finished while their journal record is
+  // still pending, and they must be journaled before the boundary is read.
+  withEventPersistence<T>(read: () => Promise<T>): Promise<T> {
+    const job = this.persistQueue.then(
+      () => {
+        this.broadcastCoalescer.flush();
+        return read();
+      },
+      () => {
+        this.broadcastCoalescer.flush();
+        return read();
+      },
+    );
+    this.persistQueue = job.then(
+      () => undefined,
+      () => undefined,
+    );
+    return job;
+  }
+
   getPendingInteractions() {
     return {
       permissions: Array.from(

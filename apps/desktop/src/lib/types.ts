@@ -9,6 +9,7 @@ import type {
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
+  AppResyncSnapshot,
   ArchiveSessionPayload,
   BrowserAnnotation,
   BrowserTabsSnapshot,
@@ -256,6 +257,9 @@ export interface HostCapabilities {
  */
 export interface ProductApi {
   bootstrapApp(): Promise<AppBootstrapData>;
+  // Authoritative reload after a daemon event replay gap; the snapshot's
+  // eventSeq boundary tells the client which buffered events it covers.
+  resyncApp(sessionIds: string[]): Promise<AppResyncSnapshot>;
   getProductSkillsStatus(
     scope: ProductSkillScope,
     workspaceRootPath?: string | null,

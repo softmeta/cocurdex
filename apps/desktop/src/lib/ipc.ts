@@ -97,6 +97,16 @@ const fallbackApi: DesktopApi = {
     sessionUsage: {},
     editorViews: [],
   }),
+  resyncApp: async () => ({
+    epoch: "",
+    eventSeq: 0,
+    sessions: [],
+    queuedAgentInputs: [],
+    queuedMessages: [],
+    sessionUsage: {},
+    interactions: { permissions: [], questions: [], planApprovals: [] },
+    transcripts: {},
+  }),
   getHomeDir: async () => "/",
   listFontFamilies: async () => [],
   getAppUpdateState: async () => ({

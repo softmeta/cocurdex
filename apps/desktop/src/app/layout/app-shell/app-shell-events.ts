@@ -1,8 +1,9 @@
-import type { AgentEvent } from "@cocurdex/shared";
+import type { AgentEvent, DaemonEventMeta } from "@cocurdex/shared";
 import { useSetAtom, useStore } from "jotai";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { toast } from "sonner";
 import {
+  appendMessageAtom,
   applyAgentEventAtom,
   applyAgentRuntimeEventAtom,
   applyPermissionEventAtom,
@@ -73,75 +74,14 @@ export function useAgentEventBridge() {
   const hydratePendingPlanApprovals = useSetAtom(
     hydratePendingPlanApprovalsAtom,
   );
+  const appendMessage = useSetAtom(appendMessageAtom);
   const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
   const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
   const loadTurnStats = useSetAtom(loadTurnStatsAtom);
   const loadTurnChangeSets = useSetAtom(loadTurnChangeSetsAtom);
   const store = useStore();
 
-  // Replay-gap recovery: a dropped journaled event means event-sourced agent
-  // state can be stale, so refetch every authoritative snapshot — the session
-  // list, queued inputs, usage, all pending interactions, and the transcripts
-  // already hydrated in memory. Live events arriving while snapshots load are
-  // buffered and applied afterwards so newer updates always win.
-  const resyncInFlightRef = useRef(false);
-  const bufferedAgentEventsRef = useRef<AgentEvent[]>([]);
-  const resyncAgentState = useEffectEvent(async () => {
-    try {
-      const data = await desktopApi.bootstrapApp();
-      reconcileSessions(data.sessions);
-      bootstrapQueuedInputs({
-        inputs: data.queuedAgentInputs,
-        messages: data.queuedMessages,
-      });
-      bootstrapSessionUsage(data.sessionUsage);
-
-      const interactions = await taskApi.listPendingInteractions();
-      hydratePendingPermissions(interactions.permissions);
-      hydratePendingQuestions(interactions.questions);
-      hydratePendingPlanApprovals(interactions.planApprovals);
-
-      const sessionIds = new Set<string>([
-        ...Object.keys(store.get(messagesLoadedBySessionAtom)),
-        ...Object.keys(store.get(toolCallsLoadedBySessionAtom)),
-      ]);
-      const activeSessionId = store.get(activeSessionIdAtom);
-      if (activeSessionId) sessionIds.add(activeSessionId);
-      await Promise.all(
-        [...sessionIds].map(async (sessionId) => {
-          try {
-            const [messages, toolCalls] = await Promise.all([
-              desktopApi.listSessionMessages(sessionId),
-              desktopApi.listSessionToolCalls(sessionId),
-            ]);
-            loadSessionMessages({ messages: messages.messages, sessionId });
-            loadTurnStats(messages.turnStats);
-            loadTurnChangeSets({
-              changeSets: messages.turnChangeSets ?? {},
-              sessionId,
-            });
-            loadSessionToolCalls({ sessionId, toolCalls });
-          } catch (error) {
-            console.error("[AgentEvent] session resync failed", {
-              error,
-              sessionId,
-            });
-          }
-        }),
-      );
-    } catch (error) {
-      console.error("[AgentEvent] resync failed", error);
-    }
-  });
-
-  const handleAgentEvent = useEffectEvent((event: AgentEvent) => {
-    // A replay-gap resync reloads authoritative snapshots; events received
-    // while it runs are newer than those snapshots, so apply them afterwards
-    // in order instead of letting the snapshot overwrite them.
-    if (resyncInFlightRef.current) {
-      bufferedAgentEventsRef.current.push(event);
-      return;
-    }
+  const applyAgentEventToStores = useEffectEvent((event: AgentEvent) => {
     applyAgentEvent(event);
     applyQueuedInputEvent(event);
     applyAgentRuntimeEvent(event);
@@ -211,20 +151,133 @@ export function useAgentEventBridge() {
     }
   });
 
+  // Replay-gap recovery: a dropped journaled event means event-sourced agent
+  // state can be stale, so refetch one authoritative snapshot covering the
+  // session list, queued inputs, usage, all pending interactions, and every
+  // hydrated transcript. Live events arriving while a snapshot loads are
+  // buffered; the snapshot's eventSeq boundary tells which of them it already
+  // covers, and only newer ones are applied on top.
+  const resyncRef = useRef({ running: false, again: false });
+  const resyncBoundaryRef = useRef<{
+    epoch: string | null;
+    seq: number;
+  } | null>(null);
+  const bufferedAgentEventsRef = useRef<
+    { event: AgentEvent; meta: DaemonEventMeta }[]
+  >([]);
+
+  const resyncOnce = async () => {
+    const sessionIds = new Set<string>([
+      ...Object.keys(store.get(messagesLoadedBySessionAtom)),
+      ...Object.keys(store.get(toolCallsLoadedBySessionAtom)),
+    ]);
+    const activeSessionId = store.get(activeSessionIdAtom);
+    if (activeSessionId) sessionIds.add(activeSessionId);
+    const snapshot = await desktopApi.resyncApp([...sessionIds]);
+
+    reconcileSessions(snapshot.sessions);
+    bootstrapQueuedInputs({
+      inputs: snapshot.queuedAgentInputs,
+      messages: snapshot.queuedMessages,
+    });
+    bootstrapSessionUsage(snapshot.sessionUsage);
+    hydratePendingPermissions(snapshot.interactions.permissions);
+    hydratePendingQuestions(snapshot.interactions.questions);
+    hydratePendingPlanApprovals(snapshot.interactions.planApprovals);
+    for (const [sessionId, transcript] of Object.entries(
+      snapshot.transcripts,
+    )) {
+      if (!transcript) continue;
+      loadSessionMessages({ messages: transcript.messages, sessionId });
+      // Active messages carry in-flight streamed content the durable list
+      // lacks; upsert them after the durable merge so the daemon's
+      // accumulation wins over locally diverged deltas.
+      for (const message of transcript.activeMessages) {
+        appendMessage(message);
+      }
+      loadTurnStats(transcript.turnStats);
+      loadTurnChangeSets({
+        changeSets: transcript.turnChangeSets,
+        sessionId,
+      });
+      loadSessionToolCalls({ sessionId, toolCalls: transcript.toolCalls });
+    }
+    resyncBoundaryRef.current = {
+      epoch: snapshot.epoch,
+      seq: snapshot.eventSeq,
+    };
+  };
+
+  const drainBufferedAgentEvents = () => {
+    const buffered = bufferedAgentEventsRef.current;
+    bufferedAgentEventsRef.current = [];
+    const boundary = resyncBoundaryRef.current;
+    for (const item of buffered) {
+      const covered =
+        boundary !== null &&
+        item.meta.epoch === boundary.epoch &&
+        item.meta.seq !== null &&
+        item.meta.seq <= boundary.seq;
+      if (!covered) applyAgentEventToStores(item.event);
+    }
+  };
+
+  // Each gap or failed attempt schedules another pass; the loop ends once a
+  // full snapshot completes with no gap pending.
+  const runResync = useEffectEvent(async () => {
+    let failures = 0;
+    try {
+      do {
+        resyncRef.current.again = false;
+        try {
+          await resyncOnce();
+          failures = 0;
+        } catch (error) {
+          failures += 1;
+          console.error("[AgentEvent] resync attempt failed", error);
+          if (failures >= 5) throw error;
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(500 * 2 ** (failures - 1), 4000)),
+          );
+          resyncRef.current.again = true;
+          continue;
+        }
+        drainBufferedAgentEvents();
+      } while (resyncRef.current.again);
+    } catch (error) {
+      console.error("[AgentEvent] resync abandoned after retries", error);
+    } finally {
+      resyncRef.current.running = false;
+      drainBufferedAgentEvents();
+      if (resyncRef.current.again) {
+        resyncRef.current.running = true;
+        void runResync();
+      }
+    }
+  });
+
+  const handleAgentEvent = useEffectEvent(
+    (event: AgentEvent, meta?: DaemonEventMeta) => {
+      if (resyncRef.current.running) {
+        bufferedAgentEventsRef.current.push({
+          event,
+          meta: meta ?? { epoch: null, seq: null },
+        });
+        return;
+      }
+      applyAgentEventToStores(event);
+    },
+  );
+
   useEffect(() => taskApi.onAgentEvent(handleAgentEvent), []);
   useEffect(
     () =>
       desktopApi.onDataChanged((event) => {
-        if (!event.areas.includes("agent") || resyncInFlightRef.current) return;
-        resyncInFlightRef.current = true;
-        void resyncAgentState().finally(() => {
-          resyncInFlightRef.current = false;
-          const buffered = bufferedAgentEventsRef.current;
-          bufferedAgentEventsRef.current = [];
-          for (const bufferedEvent of buffered) {
-            handleAgentEvent(bufferedEvent);
-          }
-        });
+        if (!event.areas.includes("agent")) return;
+        resyncRef.current.again = true;
+        if (resyncRef.current.running) return;
+        resyncRef.current.running = true;
+        void runResync();
       }),
     [],
   );

@@ -1,4 +1,4 @@
-import type { AgentEvent, TaskApi } from "@cocurdex/shared";
+import type { AgentEvent, DaemonEventMeta, TaskApi } from "@cocurdex/shared";
 import { contextBridge, ipcRenderer } from "electron";
 
 export function exposeTaskApi() {
@@ -10,7 +10,6 @@ export function exposeTaskApi() {
     listSessions: () => ipcRenderer.invoke("task:list"),
     getSessionSnapshot: (sessionId) =>
       ipcRenderer.invoke("task:snapshot", sessionId),
-    listPendingInteractions: () => ipcRenderer.invoke("task:interactions"),
     saveSessionConfiguration: (input) =>
       ipcRenderer.invoke("task:configure", input),
     sendMessage: (input) => ipcRenderer.invoke("task:send", input),
@@ -22,8 +21,11 @@ export function exposeTaskApi() {
     resolvePlanApproval: (id, decision) =>
       ipcRenderer.invoke("planApproval:resolve", id, decision),
     onAgentEvent(listener) {
-      const handler = (_event: Electron.IpcRendererEvent, event: AgentEvent) =>
-        listener(event);
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        event: AgentEvent,
+        meta: DaemonEventMeta,
+      ) => listener(event, meta);
       ipcRenderer.on("agent:event", handler);
       return () => ipcRenderer.removeListener("agent:event", handler);
     },

@@ -47,9 +47,6 @@ export function createTaskClient(resolveApi: () => TaskApi): TaskApi {
     async getSessionSnapshot(id) {
       return resolveApi().getSessionSnapshot(id);
     },
-    async listPendingInteractions() {
-      return resolveApi().listPendingInteractions();
-    },
     async saveSessionConfiguration(input) {
       return resolveApi().saveSessionConfiguration(input);
     },

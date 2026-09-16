@@ -8,10 +8,8 @@ import type {
   MessageRecord,
   SessionRecord,
 } from "../contracts";
-import type {
-  SessionInteractionSnapshot,
-  SessionObservationSnapshot,
-} from "../session-observation";
+import type { DaemonEventMeta } from "../data-events";
+import type { SessionObservationSnapshot } from "../session-observation";
 
 export type SessionConfiguration = Pick<
   SessionRecord,
@@ -57,7 +55,6 @@ export interface TaskApi {
   getSessionSnapshot(
     sessionId: string,
   ): Promise<SessionObservationSnapshot | null>;
-  listPendingInteractions(): Promise<SessionInteractionSnapshot>;
   saveSessionConfiguration(input: SessionConfiguration): Promise<SessionRecord>;
   sendMessage(input: SendSessionCommand): Promise<MessageRecord>;
   stopSession(sessionId: string): Promise<void>;
@@ -70,5 +67,7 @@ export interface TaskApi {
     approvalId: string,
     decision: AgentPlanApprovalDecision,
   ): Promise<boolean>;
-  onAgentEvent(listener: (event: AgentEvent) => void): () => void;
+  onAgentEvent(
+    listener: (event: AgentEvent, meta: DaemonEventMeta) => void,
+  ): () => void;
 }

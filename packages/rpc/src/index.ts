@@ -12,6 +12,7 @@ import type {
   AgentSlashCommand,
   AgentToolCallResult,
   AppBootstrapData,
+  AppResyncSnapshot,
   CocurdexDaemonEvent,
   CodexAccountState,
   CommitMessageModelSelection,
@@ -74,7 +75,6 @@ import type {
   SendSessionCommand,
   SessionAttentionSnapshot,
   SessionConfiguration,
-  SessionInteractionSnapshot,
   SessionObservationSnapshot,
   SessionRecord,
   SubmitPreviousMessageCommand,
@@ -176,6 +176,7 @@ export type DaemonRequestPayloadByMethod = {
   "daemon.status": undefined;
   "daemon.shutdownIfIdle": { pid: number; startedAt: string };
   "app.bootstrap": undefined;
+  "app.resync": { sessionIds: string[] };
   "agent.list": undefined;
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "workspace.list": undefined;
@@ -202,7 +203,6 @@ export type DaemonRequestPayloadByMethod = {
     workspaceRootPath?: string;
   };
   "session.list": undefined;
-  "session.listInteractions": undefined;
   "session.snapshot": { sessionId: string };
   "session.configure": SessionConfiguration;
   "session.get": { sessionId: string };
@@ -379,6 +379,7 @@ export type DaemonResultByMethod = {
   "daemon.status": DaemonStatus;
   "daemon.shutdownIfIdle": DaemonShutdownResult;
   "app.bootstrap": AppBootstrapData;
+  "app.resync": AppResyncSnapshot;
   "agent.list": AgentDescriptor[];
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "workspace.list": WorkspaceRecord[];
@@ -394,7 +395,6 @@ export type DaemonResultByMethod = {
   "worktree.create": GitWorktreeInfo;
   "worktree.remove": { removed: boolean };
   "session.list": SessionRecord[];
-  "session.listInteractions": SessionInteractionSnapshot;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;
@@ -553,7 +553,6 @@ export const DAEMON_NO_PARAM_METHODS = {
   "agentRole.list": true,
   "session.list": true,
   "session.listArchived": true,
-  "session.listInteractions": true,
   "workflow.list": true,
   "workflow.listDefinitions": true,
   "workspace.list": true,

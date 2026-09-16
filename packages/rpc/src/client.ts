@@ -1,4 +1,4 @@
-import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
 import { daemonRequestTimeout } from "./client-timeout.ts";
 import {
   type DaemonEventEnvelope,
@@ -136,7 +136,7 @@ export interface DaemonRpcClient {
     options?: DaemonRpcRequestOptions,
   ): Promise<DaemonResultByMethod[M]>;
   subscribe(
-    onEvent: (event: CocurdexDaemonEvent) => void,
+    onEvent: (event: CocurdexDaemonEvent, meta: DaemonEventMeta) => void,
     options?: DaemonRpcSubscribeOptions,
   ): Promise<DaemonEventSubscription>;
 }
@@ -230,10 +230,14 @@ export function createDaemonRpcClient(
         let finished = false;
         let connection: DaemonTransportConnection | undefined;
         let lastSeq: number | null = options.afterSeq ?? null;
-        const queuedEvents: CocurdexDaemonEvent[] = [];
+        let subscriptionEpoch: string | null = null;
+        const queuedEvents: DaemonEventEnvelope[] = [];
         const dispatchEvent = (envelope: DaemonEventEnvelope) => {
           if (typeof envelope.seq === "number") lastSeq = envelope.seq;
-          onEvent(envelope.event);
+          onEvent(envelope.event, {
+            epoch: subscriptionEpoch,
+            seq: typeof envelope.seq === "number" ? envelope.seq : null,
+          });
         };
         const finish = (error: Error, silent = false) => {
           if (finished) return;
@@ -273,7 +277,7 @@ export function createDaemonRpcClient(
             if (message.type === "daemon.event") {
               const envelope = message as unknown as DaemonEventEnvelope;
               if (!connected) {
-                queuedEvents.push(envelope.event);
+                queuedEvents.push(envelope);
                 if (typeof envelope.seq === "number") lastSeq = envelope.seq;
                 return;
               }
@@ -300,7 +304,10 @@ export function createDaemonRpcClient(
                 ? subscribeResult.epoch
                 : null;
             const replayGap = subscribeResult?.replayGap === true;
-            for (const event of queuedEvents.splice(0)) onEvent(event);
+            subscriptionEpoch = epoch;
+            for (const envelope of queuedEvents.splice(0)) {
+              dispatchEvent(envelope);
+            }
             resolve({
               close: abort,
               epoch,

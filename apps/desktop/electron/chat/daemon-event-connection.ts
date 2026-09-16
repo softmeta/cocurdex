@@ -2,12 +2,16 @@ import {
   type DaemonEventSubscription,
   subscribeDaemonEvents,
 } from "@cocurdex/daemon/client";
-import { type CocurdexDaemonEvent, cocurdexDataAreas } from "@cocurdex/shared";
+import {
+  type CocurdexDaemonEvent,
+  cocurdexDataAreas,
+  type DaemonEventMeta,
+} from "@cocurdex/shared";
 
 interface ConnectionOptions {
   ensure(): Promise<void>;
   userDataPath: string;
-  onEvent(event: CocurdexDaemonEvent): void;
+  onEvent(event: CocurdexDaemonEvent, meta?: DaemonEventMeta): void;
   onConnected?(): void;
   onDisconnect(error: Error): void;
 }
@@ -59,9 +63,9 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
         await Promise.resolve().then(options.ensure);
         if (disposed || attemptGeneration !== generation) return;
         const connected = await subscribeDaemonEvents(
-          (event) => {
+          (event, meta) => {
             if (!disposed && attemptGeneration === generation)
-              options.onEvent(event);
+              options.onEvent(event, meta);
           },
           {
             afterSeq: lastSeq ?? undefined,

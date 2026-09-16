@@ -63,6 +63,8 @@ export async function handleDaemonRequest(
       throw new Error(
         "daemon.shutdownIfIdle is intercepted before request dispatch",
       );
+    case "app.resync":
+      return service.resync(request.params.sessionIds);
     case "app.bootstrap":
       return service.bootstrap();
     case "agent.list":
@@ -197,8 +199,6 @@ export async function handleDaemonRequest(
       return service.removeWorktree(request.params);
     case "session.list":
       return service.listSessions();
-    case "session.listInteractions":
-      return service.listPendingInteractions();
     case "session.snapshot":
       return service.getSessionSnapshot(request.params.sessionId);
     case "session.configure":

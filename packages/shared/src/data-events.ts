@@ -14,6 +14,14 @@ export interface CocurdexDataChangedEvent {
   areas: CocurdexDataArea[];
 }
 
+// Journal position of a delivered daemon event. Clients compare it against a
+// snapshot's eventSeq boundary to decide whether a buffered event is already
+// covered by a refetched snapshot or must be applied on top of it.
+export interface DaemonEventMeta {
+  seq: number | null;
+  epoch: string | null;
+}
+
 export type CocurdexDaemonEvent =
   | AgentEvent
   | CocurdexDataChangedEvent

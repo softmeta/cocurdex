@@ -227,10 +227,13 @@ describe("daemon subscription transport", () => {
     const onEvent = vi.fn();
     const subscription = await subscribeDaemonEvents(onEvent, { metadata });
     try {
-      expect(onEvent).toHaveBeenCalledWith({
-        scope: "early",
-        type: "data.changed",
-      });
+      expect(onEvent).toHaveBeenCalledWith(
+        {
+          scope: "early",
+          type: "data.changed",
+        },
+        { epoch: null, seq: 5 },
+      );
       expect(subscription.lastSeq).toBe(5);
     } finally {
       subscription.close();

@@ -257,6 +257,7 @@ export const schemas = {
     path: filesystemPathSchema.optional(),
   }),
   sessionId: idSchema,
+  sessionIds: z.array(idSchema).max(500),
   messageId: idSchema,
   toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),
   questionId: idSchema,

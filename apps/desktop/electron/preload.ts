@@ -71,6 +71,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     nativeDirectoryDialog: true,
   },
   bootstrapApp: () => ipcRenderer.invoke("app:bootstrap"),
+  resyncApp: (sessionIds: string[]) =>
+    ipcRenderer.invoke("app:resync", sessionIds),
   // Sandboxed preload cannot import node:os — resolve home in main.
   // Default terminal cwd when no project workspace is open.
   getHomeDir: () => ipcRenderer.invoke("app:getHomeDir") as Promise<string>,

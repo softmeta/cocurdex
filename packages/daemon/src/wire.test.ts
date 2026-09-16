@@ -68,7 +68,10 @@ describe("startDaemonServer", () => {
       const subscription = await client.subscribe(onEvent);
       daemon.service.events.emit("daemon.event", { type: "test" });
       await vi.waitFor(() =>
-        expect(onEvent).toHaveBeenCalledWith({ type: "test" }),
+        expect(onEvent).toHaveBeenCalledWith(
+          { type: "test" },
+          { epoch: expect.any(String), seq: 1 },
+        ),
       );
       subscription.close();
     } finally {

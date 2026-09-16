@@ -97,36 +97,6 @@ describe("session snapshot RPC", () => {
     await service.shutdown();
   });
 
-  it("lists pending interactions across sessions", async () => {
-    const service = await createService();
-    void service.runtime.requestAgentPermission({
-      id: "permission-1",
-      sessionId: "session-1",
-      providerId: "codex",
-      kind: "command",
-      title: "Run tests",
-      locations: [],
-      options: [{ id: "allow", kind: "allow_once", label: "Allow once" }],
-    });
-
-    const interactions = await handleDaemonRequest<"session.listInteractions">(
-      service,
-      {
-        id: "1",
-        method: "session.listInteractions",
-        token: "test",
-      },
-    );
-
-    expect(interactions).toMatchObject({
-      permissions: [{ id: "permission-1", sessionId: "session-1" }],
-      questions: [],
-      planApprovals: [],
-    });
-    service.runtime.resolveAgentPermission("permission-1", "cancelled");
-    await service.shutdown();
-  });
-
   it("returns null for an unknown session", async () => {
     const service = await createService();
 
@@ -138,6 +108,54 @@ describe("session snapshot RPC", () => {
         token: "test",
       }),
     ).resolves.toBeNull();
+    await service.shutdown();
+  });
+});
+
+describe("app resync RPC", () => {
+  it("returns authoritative state bounded by the journal position", async () => {
+    const service = await createService();
+    await service.state.persistAgentEvent({
+      type: "message.delta",
+      sessionId: "session-1",
+      messageId: "assistant-1",
+      role: "assistant",
+      kind: "response",
+      delta: "Streaming",
+      createdAt: now,
+    });
+    void service.runtime.requestAgentPermission({
+      id: "permission-1",
+      sessionId: "session-1",
+      providerId: "codex",
+      kind: "command",
+      title: "Run tests",
+      locations: [],
+      options: [{ id: "allow", kind: "allow_once", label: "Allow once" }],
+    });
+    service.bindEventSeqProvider(() => 41);
+
+    const snapshot = await handleDaemonRequest<"app.resync">(service, {
+      id: "1",
+      method: "app.resync",
+      params: { sessionIds: ["session-1", "missing"] },
+      token: "test",
+    });
+
+    expect(snapshot).toMatchObject({
+      epoch: service.startedAt,
+      eventSeq: 41,
+      sessions: [{ id: "session-1" }],
+      interactions: {
+        permissions: [{ id: "permission-1" }],
+      },
+      transcripts: {
+        "session-1": {
+          activeMessages: [{ id: "assistant-1", content: "Streaming" }],
+        },
+      },
+    });
+    service.runtime.resolveAgentPermission("permission-1", "cancelled");
     await service.shutdown();
   });
 });

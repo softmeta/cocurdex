@@ -310,6 +310,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         subscriber(entry);
       }
     });
+    service.bindEventSeqProvider(() => eventJournal.currentSeq());
     await service.state.waitForStartupRecovery();
     ready = true;
     metadataPublished = true;
