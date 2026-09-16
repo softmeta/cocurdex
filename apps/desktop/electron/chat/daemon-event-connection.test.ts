@@ -113,6 +113,22 @@ describe("daemon event connection generations", () => {
     connection.dispose();
     expect(currentClose).toHaveBeenCalledOnce();
   });
+  it("resumes from the last position after an explicit reset", async () => {
+    const { connection } = fixture();
+    vi.mocked(subscribeDaemonEvents).mockResolvedValue({
+      close: vi.fn(),
+      epoch: "daemon-epoch-a",
+      lastSeq: 20,
+      replayGap: false,
+    });
+    await connection.connect();
+    connection.reset();
+    await connection.connect();
+    expect(vi.mocked(subscribeDaemonEvents).mock.calls[1]?.[1]).toMatchObject({
+      afterSeq: 20,
+      epoch: "daemon-epoch-a",
+    });
+  });
   it("schedules one reconnect for duplicate error and close notifications", async () => {
     vi.useFakeTimers();
     const { connection, options } = fixture();

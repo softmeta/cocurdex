@@ -28,6 +28,8 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
     timer = null;
     controller?.abort();
     controller = null;
+    lastSeq = subscription?.lastSeq ?? lastSeq;
+    lastEpoch = subscription?.epoch ?? lastEpoch;
     subscription?.close();
     subscription = null;
     pending = null;
@@ -35,8 +37,6 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
 
   function reconnect(attemptGeneration: number, error: Error) {
     if (disposed || attemptGeneration !== generation) return;
-    lastSeq = subscription?.lastSeq ?? lastSeq;
-    lastEpoch = subscription?.epoch ?? lastEpoch;
     reset();
     options.onDisconnect(error);
     timer = setTimeout(() => {

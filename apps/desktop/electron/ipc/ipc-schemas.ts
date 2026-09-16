@@ -53,6 +53,11 @@ const agentIdSchema = z
 
 const providerJsonFieldSchema = z.string().max(131_072).nullish();
 
+const providerModelSelectionSchema = z
+  .string()
+  .max(256)
+  .refine(noNullByte, "null byte");
+
 const reasoningEffortSchema = z.enum(reasoningEfforts);
 
 const titleModelSelectionSchema = z.object({
@@ -515,7 +520,7 @@ export const schemas = {
   providerSetDefault: z.tuple([
     agentIdSchema,
     providerIdSchema,
-    providerIdSchema,
+    providerModelSelectionSchema,
   ]),
   providerCompatibleForAgent: z.tuple([
     agentIdSchema,
@@ -527,7 +532,7 @@ export const schemas = {
     .object({
       agentId: agentIdSchema,
       providerId: providerIdSchema,
-      modelId: providerIdSchema,
+      modelId: providerModelSelectionSchema,
       reasoningEffort: reasoningEffortSchema.nullish(),
       thinkingLevel: z.enum(["default", "off", ...reasoningEfforts]).nullish(),
       serviceTier: z.string().max(256).nullish(),
