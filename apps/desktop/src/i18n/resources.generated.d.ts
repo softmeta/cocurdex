@@ -187,7 +187,13 @@ export default interface Resources {
     reasoning: "Reasoning";
     system: "System";
     team: {
+      handle: "Respond";
       label: "Team";
+      needsInput: "Needs input";
+      noReply: "No reply yet";
+      open: "Open session";
+      replyPlaceholder: "Reply to {{name}}…";
+      send: "Send";
       status: {
         error: "Error";
         idle: "Idle";

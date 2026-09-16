@@ -1,4 +1,5 @@
 import {
+  supportsAgentTeam,
   TEAM_MAX_MEMBERS,
   TEAM_NAME_PATTERN,
   type TeamTemplateMember,
@@ -108,7 +109,9 @@ function TeamTemplateForm({
 
   const roleOptions = [
     { value: NO_ROLE, label: t("teams.inheritRole") },
-    ...roles.map((role) => ({ value: role.id, label: role.name })),
+    ...roles
+      .filter((role) => supportsAgentTeam(role.agentId))
+      .map((role) => ({ value: role.id, label: role.name })),
   ];
 
   return (

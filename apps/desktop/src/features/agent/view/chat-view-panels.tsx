@@ -13,7 +13,7 @@ import type {
   CollaborationModeKind,
   MessageAttachment,
 } from "@cocurdex/shared";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,9 +29,10 @@ import {
   type ThinkingLevelOption,
 } from "@/features/composer";
 import { editorPanelOpenAtom } from "@/features/editor";
-import { PermissionCard } from "../permission";
+import { TeamPanel } from "@/features/sessions";
+import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
-import { QuestionCard } from "../question";
+import { QuestionCard, questionsBySessionAtom } from "../question";
 import { type QueuedAgentInputItem, QueuedInputShelf } from "../queued-input";
 
 // Shared with pure chat — re-export so existing agent imports keep working.
@@ -177,6 +178,22 @@ export function EmptyChatState({
   );
 }
 
+function collectPendingPrompts(
+  permissionsBySession: Record<string, AgentPermissionRequestRecord[]>,
+  questionsBySession: Record<string, AgentQuestionRequestRecord[]>,
+) {
+  const prompts: Record<string, string> = {};
+  for (const [sessionId, permissions] of Object.entries(permissionsBySession)) {
+    const pending = permissions.find((item) => item.status === "pending");
+    if (pending) prompts[sessionId] = pending.title;
+  }
+  for (const [sessionId, questions] of Object.entries(questionsBySession)) {
+    const pending = questions.find((item) => item.status === "pending");
+    if (pending) prompts[sessionId] = pending.question;
+  }
+  return prompts;
+}
+
 export function ComposerDock({
   activeBranch,
   workspaceName,
@@ -205,6 +222,12 @@ export function ComposerDock({
   const hasBlockingCard = Boolean(
     pendingPlanApproval || pendingPermissionRequest,
   );
+  const permissionsBySession = useAtomValue(permissionsBySessionAtom);
+  const questionsBySession = useAtomValue(questionsBySessionAtom);
+  const pendingPromptBySession = collectPendingPrompts(
+    permissionsBySession,
+    questionsBySession,
+  );
 
   return (
     <div className="overflow-visible bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent px-2 pb-2 md:px-3 xl:px-6">
@@ -226,6 +249,13 @@ export function ComposerDock({
               plan={plan}
             />
           </div>
+        ) : null}
+        {composerProps.sessionId && !hideComposer ? (
+          <TeamPanel
+            key={composerProps.sessionId}
+            pendingPromptBySession={pendingPromptBySession}
+            sessionId={composerProps.sessionId}
+          />
         ) : null}
         {hasBlockingCard ? (
           <div className="flex min-w-0 flex-col gap-2 overflow-visible">

@@ -5,6 +5,7 @@ import type {
   TeamRecord,
   TeamSnapshot,
   TeamStatus,
+  TeamTaskLinks,
 } from "@cocurdex/shared";
 import type { SqliteRow } from "../sqlite-types";
 import type { TeamRepository } from "./team-repository";
@@ -27,6 +28,35 @@ interface TeamMemberRow extends SqliteRow {
   status: TeamMemberStatus;
   created_at: string;
   updated_at: string;
+}
+
+interface TeamTaskRow extends SqliteRow {
+  team_id: string;
+  issue_id: string;
+  blocked_by_json: string;
+  evidence: string | null;
+  updated_at: string;
+}
+
+function parseBlockedBy(value: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function mapTaskLinks(row: TeamTaskRow): TeamTaskLinks {
+  return {
+    teamId: row.team_id,
+    issueId: row.issue_id,
+    blockedBy: parseBlockedBy(row.blocked_by_json),
+    evidence: row.evidence,
+    updatedAt: row.updated_at,
+  };
 }
 
 function mapTeam(row: TeamRow): TeamRecord {
@@ -112,6 +142,31 @@ export function createSqliteTeamRepository(
           team.status,
           team.createdAt,
           team.updatedAt,
+        );
+    },
+    async listTaskLinks(teamId) {
+      const rows = database
+        .prepare("SELECT * FROM team_tasks WHERE team_id = ?")
+        .all(teamId) as TeamTaskRow[];
+      return rows.map(mapTaskLinks);
+    },
+    async saveTaskLinks(links) {
+      database
+        .prepare(
+          `INSERT INTO team_tasks (
+             team_id, issue_id, blocked_by_json, evidence, updated_at
+           ) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(team_id, issue_id) DO UPDATE SET
+             blocked_by_json = excluded.blocked_by_json,
+             evidence = excluded.evidence,
+             updated_at = excluded.updated_at`,
+        )
+        .run(
+          links.teamId,
+          links.issueId,
+          JSON.stringify(links.blockedBy),
+          links.evidence,
+          links.updatedAt,
         );
     },
     async saveMember(member) {

@@ -5,6 +5,7 @@ import {
   type AgentRoleRecord,
   type CreateIssuePayload,
   canSpawnTeammate,
+  checkTeamTaskUpdate,
   type IssueRecord,
   type MessageRecord,
   renderTeammateBriefing,
@@ -17,6 +18,7 @@ import {
   type SpawnTeammatePayload,
   type SpawnTeammateRejection,
   type SpawnTeamTemplatePayload,
+  supportsAgentTeam,
   TEAM_MAX_MEMBERS,
   TEAM_NAME_PATTERN,
   TEAM_TASK_STATUSES,
@@ -25,6 +27,8 @@ import {
   type TeamMemberRecord,
   type TeamRecord,
   type TeamSnapshot,
+  type TeamTaskLinks,
+  type TeamTaskRejection,
   type TeamTaskStatus,
   type TeamTemplateRecord,
   teamMemberEventFromSessionStatus,
@@ -37,7 +41,9 @@ import {
 
 export type TeamErrorCode =
   | SpawnTeammateRejection
+  | TeamTaskRejection
   | "team_not_found"
+  | "unsupported_agent"
   | "member_not_found"
   | "lead_not_found"
   | "lead_not_main"
@@ -94,27 +100,48 @@ export interface TeamTaskSummary {
   status: string;
   assigneeSessionId: string | null;
   revision: number;
+  blockedBy: string[];
+  blocked: boolean;
+  evidence: string | null;
+}
+
+export interface TeamTaskCreateInput {
+  title: string;
+  description?: string;
+  blockedBy?: string[];
 }
 
 export interface TeamTaskUpdateInput {
   issueId: string;
   status?: TeamTaskStatus;
   assignee?: "me" | null;
+  evidence?: string;
 }
 
 function isTeamTaskStatus(value: string): value is TeamTaskStatus {
   return (TEAM_TASK_STATUSES as readonly string[]).includes(value);
 }
 
-function summarizeTask(issue: IssueRecord): TeamTaskSummary {
-  return {
-    id: issue.id,
-    title: issue.title,
-    description: issue.description,
-    status: issue.status,
-    assigneeSessionId: issue.assigneeSessionId,
-    revision: issue.revision,
-  };
+function summarizeTasks(
+  issues: IssueRecord[],
+  links: TeamTaskLinks[],
+): TeamTaskSummary[] {
+  const statusById = new Map(issues.map((issue) => [issue.id, issue.status]));
+  const linksById = new Map(links.map((item) => [item.issueId, item]));
+  return issues.map((issue) => {
+    const blockedBy = linksById.get(issue.id)?.blockedBy ?? [];
+    return {
+      id: issue.id,
+      title: issue.title,
+      description: issue.description,
+      status: issue.status,
+      assigneeSessionId: issue.assigneeSessionId,
+      revision: issue.revision,
+      blockedBy,
+      blocked: blockedBy.some((id) => statusById.get(id) !== "done"),
+      evidence: linksById.get(issue.id)?.evidence ?? null,
+    };
+  });
 }
 
 export interface TeamRoleSummary {
@@ -186,6 +213,9 @@ export class TeamModule {
     if ((lead.sessionKind ?? "main") !== "main") {
       throw new TeamError("lead_not_main");
     }
+    if (!supportsAgentTeam(lead.agentType)) {
+      throw new TeamError("unsupported_agent");
+    }
     const existing = await this.deps.repository.getByLead(leadSessionId);
     const verdict = canSpawnTeammate(
       existing?.team ?? null,
@@ -200,6 +230,9 @@ export class TeamModule {
       ? await this.deps.getAgentRole(payload.agentRoleId)
       : null;
     const agentType = role?.agentId ?? payload.agentType ?? lead.agentType;
+    if (!supportsAgentTeam(agentType)) {
+      throw new TeamError("unsupported_agent");
+    }
     const worktreePath =
       payload.isolateWorktree && this.deps.createWorktree
         ? (
@@ -265,6 +298,16 @@ export class TeamModule {
     return stopped;
   }
 
+  async stopLeadMember(leadSessionId: string, sessionId: string) {
+    const snapshot = await this.requireLeadTeam(leadSessionId);
+    return this.stopMember(snapshot.team.id, sessionId);
+  }
+
+  async stopLeadTeam(leadSessionId: string) {
+    const snapshot = await this.requireLeadTeam(leadSessionId);
+    return this.stop(snapshot.team.id);
+  }
+
   async stop(teamId: string) {
     const snapshot = await this.requireTeam(teamId);
     for (const member of snapshot.members) {
@@ -315,25 +358,39 @@ export class TeamModule {
     }
   }
 
-  async taskCreate(
-    sessionId: string,
-    input: { title: string; description?: string },
-  ) {
-    const snapshot = await this.requireTeamForSession(sessionId);
+  async taskCreate(sessionId: string, input: TeamTaskCreateInput) {
+    const team = await this.teamForTaskCreate(sessionId);
+    const blockedBy = [...new Set(input.blockedBy ?? [])];
+    if (blockedBy.length > 0) {
+      const view = await this.deps.loadIssueView(team.issueViewId);
+      const known = new Set(view?.issues.map((issue) => issue.id));
+      if (blockedBy.some((id) => !known.has(id))) {
+        throw new TeamError("TASK_NOT_FOUND");
+      }
+    }
     const issue = await this.deps.createIssue({
-      viewId: snapshot.team.issueViewId,
+      viewId: team.issueViewId,
       columnId: "backlog",
       title: input.title,
       description: input.description ?? null,
-      workspaceId: snapshot.team.workspaceId,
+      workspaceId: team.workspaceId,
     });
-    return summarizeTask(issue);
+    if (blockedBy.length > 0) {
+      await this.deps.repository.saveTaskLinks({
+        teamId: team.id,
+        issueId: issue.id,
+        blockedBy,
+        evidence: null,
+        updatedAt: this.now(),
+      });
+    }
+    return this.describeTask(team, issue.id);
   }
 
   async taskList(sessionId: string) {
-    const snapshot = await this.requireTeamForSession(sessionId);
-    const view = await this.deps.loadIssueView(snapshot.team.issueViewId);
-    return (view?.issues ?? []).map(summarizeTask);
+    const snapshot = await this.findForSession(sessionId);
+    if (!snapshot) return [];
+    return this.loadTasks(snapshot.team);
   }
 
   async taskUpdate(sessionId: string, input: TeamTaskUpdateInput) {
@@ -351,8 +408,21 @@ export class TeamModule {
     ) {
       throw new TeamError("TASK_CONFLICT");
     }
+    const links = (
+      await this.deps.repository.listTaskLinks(snapshot.team.id)
+    ).find((item) => item.issueId === current.id);
+    const blockerIds = new Set(links?.blockedBy ?? []);
+    const verdict = checkTeamTaskUpdate({
+      task: current,
+      blockers: (view?.issues ?? []).filter((issue) =>
+        blockerIds.has(issue.id),
+      ),
+      callerSessionId: sessionId,
+      update: input,
+    });
+    if (!verdict.ok) throw new TeamError(verdict.reason);
     try {
-      const issue = await this.deps.updateIssue({
+      await this.deps.updateIssue({
         viewId: snapshot.team.issueViewId,
         id: input.issueId,
         ...(input.status ? { status: input.status } : {}),
@@ -361,16 +431,43 @@ export class TeamModule {
           : {}),
         expectedRevision: current.revision,
       });
-      return summarizeTask(issue);
     } catch (error) {
       if (this.deps.isIssueConflict(error))
         throw new TeamError("TASK_CONFLICT");
       throw error;
     }
+    if (input.status === "review") {
+      await this.deps.repository.saveTaskLinks({
+        teamId: snapshot.team.id,
+        issueId: current.id,
+        blockedBy: links?.blockedBy ?? [],
+        evidence: input.evidence?.trim() ?? null,
+        updatedAt: this.now(),
+      });
+    }
+    return this.describeTask(snapshot.team, current.id);
+  }
+
+  private async loadTasks(team: TeamRecord) {
+    const [view, links] = await Promise.all([
+      this.deps.loadIssueView(team.issueViewId),
+      this.deps.repository.listTaskLinks(team.id),
+    ]);
+    return summarizeTasks(view?.issues ?? [], links);
+  }
+
+  private async describeTask(team: TeamRecord, issueId: string) {
+    const task = (await this.loadTasks(team)).find(
+      (item) => item.id === issueId,
+    );
+    if (!task) throw new TeamError("TASK_NOT_FOUND");
+    return task;
   }
 
   async listRoles() {
-    return (await this.deps.listAgentRoles()).map(summarizeRole);
+    return (await this.deps.listAgentRoles())
+      .filter((role) => supportsAgentTeam(role.agentId))
+      .map(summarizeRole);
   }
 
   async listTemplates() {
@@ -395,6 +492,14 @@ export class TeamModule {
       members.some((member) => !TEAM_NAME_PATTERN.test(member.name))
     ) {
       throw new TeamError("invalid_template");
+    }
+    for (const member of members) {
+      const role = member.agentRoleId
+        ? await this.deps.getAgentRole(member.agentRoleId)
+        : null;
+      if (role && !supportsAgentTeam(role.agentId)) {
+        throw new TeamError("unsupported_agent");
+      }
     }
     const templates = await this.listTemplates();
     const now = this.now();
@@ -432,6 +537,14 @@ export class TeamModule {
       (item) => item.id === payload.templateId,
     );
     if (!template) throw new TeamError("template_not_found");
+    for (const member of template.members) {
+      const role = member.agentRoleId
+        ? await this.deps.getAgentRole(member.agentRoleId)
+        : null;
+      if (role && !supportsAgentTeam(role.agentId)) {
+        throw new TeamError("unsupported_agent");
+      }
+    }
     const members: TeamMemberRecord[] = [];
     for (const member of template.members) {
       members.push(
@@ -493,6 +606,22 @@ export class TeamModule {
 
   private async requireTeam(teamId: string): Promise<TeamSnapshot> {
     const snapshot = await this.deps.repository.getById(teamId);
+    if (!snapshot) throw new TeamError("team_not_found");
+    return snapshot;
+  }
+
+  private async teamForTaskCreate(sessionId: string) {
+    const snapshot = await this.findForSession(sessionId);
+    if (snapshot) return snapshot.team;
+    const lead = await this.deps.getSession(sessionId);
+    if (!lead || lead.archivedAt || (lead.sessionKind ?? "main") !== "main") {
+      throw new TeamError("team_not_found");
+    }
+    return this.createTeam(lead, this.now());
+  }
+
+  private async requireLeadTeam(leadSessionId: string) {
+    const snapshot = await this.deps.repository.getByLead(leadSessionId);
     if (!snapshot) throw new TeamError("team_not_found");
     return snapshot;
   }

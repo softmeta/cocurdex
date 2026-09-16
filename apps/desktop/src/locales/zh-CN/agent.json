@@ -181,7 +181,13 @@
   "reasoning": "推理",
   "system": "系统",
   "team": {
+    "handle": "去处理",
     "label": "团队",
+    "needsInput": "等待处理",
+    "noReply": "暂无回复",
+    "open": "打开会话",
+    "replyPlaceholder": "回复 {{name}}…",
+    "send": "发送",
     "status": {
       "error": "出错",
       "idle": "空闲",

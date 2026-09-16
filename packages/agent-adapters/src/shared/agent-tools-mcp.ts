@@ -1,44 +1,48 @@
 import {
   AGENT_TOOL_SERVER_NAME,
   type AgentToolsBinding,
+  agentToolAuthorization,
 } from "@cocurdex/shared";
 
-export interface StdioMcpServerConfig {
-  type: "stdio";
-  command: string;
-  args: string[];
-  env: Record<string, string>;
+export interface ClaudeHttpMcpServerConfig {
+  type: "http";
+  url: string;
+  headers: Record<string, string>;
 }
 
 export function claudeAgentToolsMcpServers(
   binding: AgentToolsBinding | null | undefined,
-): Record<string, StdioMcpServerConfig> {
+): Record<string, ClaudeHttpMcpServerConfig> {
   if (!binding) return {};
   return {
-    [AGENT_TOOL_SERVER_NAME]: { type: "stdio", ...binding.stdio },
+    [AGENT_TOOL_SERVER_NAME]: {
+      type: "http",
+      url: binding.url,
+      headers: { Authorization: agentToolAuthorization(binding.token) },
+    },
   };
 }
 
-export interface AcpStdioMcpServer {
+export interface AcpHttpMcpServer {
+  type: "http";
   name: string;
-  command: string;
-  args: string[];
-  env: Array<{ name: string; value: string }>;
+  url: string;
+  headers: Array<{ name: string; value: string }>;
 }
 
 export function acpAgentToolsMcpServers(
   binding: AgentToolsBinding | null | undefined,
-): AcpStdioMcpServer[] {
-  if (!binding) return [];
+  mcpCapabilities: { http?: boolean } | null | undefined,
+): AcpHttpMcpServer[] {
+  if (!binding || mcpCapabilities?.http !== true) return [];
   return [
     {
+      type: "http",
       name: AGENT_TOOL_SERVER_NAME,
-      command: binding.stdio.command,
-      args: binding.stdio.args,
-      env: Object.entries(binding.stdio.env).map(([name, value]) => ({
-        name,
-        value,
-      })),
+      url: binding.url,
+      headers: [
+        { name: "Authorization", value: agentToolAuthorization(binding.token) },
+      ],
     },
   ];
 }
@@ -51,9 +55,10 @@ export function codexAgentToolsThreadConfig(
     config: {
       mcp_servers: {
         [AGENT_TOOL_SERVER_NAME]: {
-          command: binding.stdio.command,
-          args: binding.stdio.args,
-          env: binding.stdio.env,
+          url: binding.url,
+          http_headers: {
+            Authorization: agentToolAuthorization(binding.token),
+          },
         },
       },
     },

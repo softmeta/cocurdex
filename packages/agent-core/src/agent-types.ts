@@ -15,6 +15,7 @@ import type {
   AgentSessionConfigOption,
   AgentSlashCommand,
   AgentThinkingLevel,
+  AgentToolCatalog,
   AgentToolsBinding,
   AgentWorkspaceChangeCapabilities,
   CollaborationModeKind,
@@ -43,6 +44,11 @@ export interface DiscoveredAgentCapabilities {
   version?: string;
 }
 
+export interface AgentToolInvoker {
+  catalog(): Promise<AgentToolCatalog>;
+  call(name: string, input: unknown): Promise<unknown>;
+}
+
 export interface CreateAgentSessionPayload {
   session: SessionRecord;
   workspaceRootPath: string;
@@ -51,6 +57,7 @@ export interface CreateAgentSessionPayload {
   providerConfig?: RuntimeProviderConfig | null;
   providerSession?: AgentProviderSessionRecord | null;
   agentTools?: AgentToolsBinding | null;
+  agentToolInvoker?: AgentToolInvoker | null;
   onProviderSessionUpdate?(
     providerSession: AgentProviderSessionRecord | null,
   ): void;

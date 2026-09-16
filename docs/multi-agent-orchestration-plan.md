@@ -53,28 +53,31 @@
 
 | 阶段 | 状态 | 说明 |
 | --- | --- | --- |
-| 0 | 已实现（分支 `feat/agent-tool-bridge`） | 注册表、token 鉴权、stdio MCP 子命令、`agentTool.catalog` / `agentTool.call`；Claude、ACP（Grok Build）、Codex 三个 adapter 已注入 |
+| 0 | 已实现（分支 `feat/agent-tool-bridge`） | 注册表、每 session token、daemon 内置 HTTP MCP 端点 `/mcp`；Claude、ACP（声明 HTTP MCP 的 agent，含 Grok Build）、Codex 走 HTTP，Pi 走进程内 `customTools` |
 | 1 | 已实现（同一分支） | `messaging_list_agents` / `messaging_send_message`、`session.listPeers` / `session.sendPeerMessage` / `session.setPeerInbound`、`origin` 字段、桌面来源标签、CLI 命令、`peer.message` 事件 |
-| 2 | 已实现（同一分支） | `team.get` / `team.spawn` / `team.stopMember` / `team.stop`、`team` 工具组四个工具、`teams` / `team_members` 表、`issues.assignee_session_id`、`sessionKind: "teammate"`、桌面 lead 会话内的 Team 面板、CLI `cocurdex team ...`、`team.changed` 事件 |
+| 2 | 已实现（同一分支） | `team.get` / `team.spawn` / `team.stopMember` / `team.stop`、`team` 工具组（spawn、task 三件套、`team_stop` / `team_stop_member`）、`teams` / `team_members` 表、`issues.assignee_session_id`、`sessionKind: "teammate"`、桌面 lead 会话内的 Team 面板、CLI `cocurdex team ...`、`team.changed` 事件 |
 | 3 | 未开始 | |
 
-阶段 0 的 adapter 覆盖与偏差：
+阶段 0 的 adapter 覆盖：
 
-| adapter | 结果 | 备注 |
+| adapter | 结果 | 方式与依据 |
 | --- | --- | --- |
-| claude-agent | 已注入 | 走 `query()` 的 `mcpServers` stdio 配置，与用户自己的 MCP 配置并存 |
-| grok-build 及其他 ACP agent | 已注入 | `session/new` 与 `session/load` 的 `mcpServers` |
-| codex | 已注入，待实测 | 通过 `thread/start` / `thread/resume` 的 `config.mcp_servers` 覆盖；app-server 是一个共享进程，需确认它对每个 thread 独立启动该 MCP server |
-| opencode | 未注入 | OpenCode server 是 daemon 级共享进程，`OPENCODE_CONFIG_CONTENT` 是进程级配置，无法携带每个 session 的 token |
-| pi | 未注入 | `pi-mcp-adapter` 只读文件配置，同样无法按 session 区分 |
+| claude-agent | 已注入 | `query()` 的 `mcpServers`：`{ type: "http", url, headers: { Authorization } }`，与用户自己的 MCP 配置并存 |
+| ACP agent | 按能力注入 | 仅当 `initialize` 响应的 `agentCapabilities.mcpCapabilities.http === true` 时，在 `session/new`、`session/load`、`session/resume` 传 `McpServerHttp`（headers 为 `HttpHeader[]`）。ACP 规范只保证 stdio，未声明 HTTP 的 agent 不注入。Grok Build 声明了 `http(true)`（`grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/acp_agent.rs`） |
+| codex | 已注入 | `thread/start` / `thread/resume` 的 `config.mcp_servers.cocurdex = { url, http_headers }`，对应 `McpServerTransportConfig::StreamableHttp`（`codex-rs/config/src/mcp_types.rs`）。该覆盖经 `config_manager.load_with_overrides` 生成 thread 自己的 `Config`，`Session::new` 为每个 session 新建 `McpRuntime`，header 不会在 thread 间串用 |
+| pi | 已注入 | `createAgentSession({ customTools })`，工具在 daemon 进程内由 `AgentToolInvoker` 执行，无网络、无 token 传输。参数直接用 JSON Schema，Pi 的 `validateToolArguments` 对非 TypeBox schema 走 JSON Schema 校验分支（`pi-mono/packages/ai/src/utils/validation.ts`） |
+| opencode | 未注入，排除出 agent team | MCP 配置是 instance 级（`MCP.add` 写 `InstanceState`），所有 session 共享。可行路线：每个 cocurdex session 通过 `POST /mcp` 注册一个 `cocurdex-<sessionId>` 的 remote server（headers 带该 session 的 token），再用 `session.prompt` 的 `tools` 映射只允许本 session 那一个；需实测 `tools` 是否接受通配符 |
 
-opencode 与 pi 的可行路线：为共享进程签发进程级 token，并让工具桥在调用时要求 agent 自报 session id，再由 daemon 校验该 session 确实运行在该进程上。这会削弱"调用方不可伪造"的保证，留到有需求时再做。
+核对日期 2026-09-16，对应 codex `8f38d5a877`、pi-mono `6671c6047`、opencode `e03db9bc6`、grok-build `48271133`。
 
 与原方案的偏差：
 
-- Claude 没有走 SDK 进程内 MCP，而是与其他 adapter 一样走 stdio 子进程，减少一条代码路径。
-- 工具桥子进程通过 `COCURDEX_USER_DATA_PATH` 读取 daemon 元数据（socket 与 daemon token），只额外携带 `COCURDEX_AGENT_TOKEN`。
-- `SessionRecord.agentToolGroups` 字段尚未添加；catalog 目前完全由各工具的 `isAvailable` 决定。
+- 传输是 daemon 内置的 Streamable HTTP MCP 端点，而不是每个 session 一个 stdio 子进程。进程数与活跃 session 数无关；身份仍由 daemon 签发的每 session token 决定，token 只出现在该 session 的 MCP 配置里。
+- 端点与 WebSocket 共用一个只监听 `127.0.0.1` 的 HTTP server（`wire.ts`），端口为 `COCURDEX_DAEMON_WS_PORT` 或随机端口，地址写入 daemon 元数据的 `agentToolsUrl`。每个请求新建无状态 `StreamableHTTPServerTransport`（`sessionIdGenerator: undefined`），缺少 bearer token 返回 401。
+- 没有 `agentTool.catalog` / `agentTool.call` RPC。HTTP 端点与 Pi 的进程内调用都直接调用 `AgentToolBridge`，不经过 daemon socket。
+- 工具可见性只取决于 `sessionKind`，不取决于是否已有 team。MCP 客户端通常只在启动时列一次工具，Pi 的 `customTools` 也在创建时固定，依赖运行时状态的可见性会让 lead 永远看不到后来才可用的工具。lead 可在 spawn 之前 `team_task_create`，此时自动建 team；无 team 时 `team_task_list` 返回空，`team_stop` 返回 `team_not_found`。
+- `SessionRecord.agentToolGroups` 字段尚未添加。
+- OpenCode 不参加 agent team（`supportsAgentTeam`）：OpenCode 会话不能当 lead，也不能被拉起为 teammate；`team_list_roles` 与 Settings > Teams 不列出 OpenCode 角色；保存或拉起含 OpenCode 角色的模板返回 `unsupported_agent`。
 
 阶段 2 与原方案的偏差：
 
@@ -85,6 +88,8 @@ opencode 与 pi 的可行路线：为共享进程签发进程级 token，并让�
 - 桌面 Team 面板放在 lead 的聊天视图内（`features/sessions/team`），teammate 会话本身通过 `parentSessionId` 自然出现在会话树里，没有另建侧栏。
 - 桌面通过 `data.changed { areas: ["agent"] }` 刷新面板；`team.changed` 事件目前只在 Electron 主进程记录日志，未转发给渲染进程。
 - 新增团队模板：`TeamTemplateRecord` 存在 `app_settings` 的 `teamTemplates` 键（JSON），不建新表；RPC `teamTemplate.list/save/delete`、`team.spawnTemplate`；工具 `team_list_roles`、`team_list_templates`、`team_spawn_template`；桌面 Settings > Teams 用已保存的角色为每个成员选配置；CLI `cocurdex team roles|templates|spawn-template`。
+- 跨 session 消息有往返上限：同一对 session 在没有用户输入的情况下累计投递 `PEER_EXCHANGE_LIMIT`（12）条后，`send` 返回 `loop_limit` 且不投递；任一方收到无 `origin` 的消息时清零。计数只在 daemon 内存中，重启即清零。teammate 回合结束的自动汇报同样计入，超限时该汇报不投递，Team 面板仍显示成员状态。
+- 任务依赖与审核：依赖和审核证据存在新表 `team_tasks`（`team_id`、`issue_id`、`blocked_by_json`、`evidence`），issue 数据模型不变。`team_task_create` 接受 `blockedBy`（只能引用本 team 已有任务，因此不会成环）；`team_task_list` 返回 `blockedBy`、`blocked`、`evidence`。`checkTeamTaskUpdate`（`packages/shared/src/team.ts`）规定：前置任务未全部 done 时不能认领或进入 doing（`TASK_BLOCKED`）；进入 review 必须附 evidence（`EVIDENCE_REQUIRED`）；只有 review 状态能进入 done（`REVIEW_REQUIRED`），且负责人不能批准自己的任务（`SELF_APPROVAL`）。前置任务完成时不主动通知，被阻塞的成员通过 `team_task_list` 查看；桌面 issue 看板暂不显示依赖。
 - e2e 只覆盖 RPC 校验路径：`team.spawn` 会真正启动 teammate 的一轮对话，`llm-stub` 无法驱动 agent session，成功路径由 `team-module.test.ts` 的内存桩覆盖。
 
 ## 现状事实（实施前请自行核对）
@@ -95,7 +100,7 @@ opencode 与 pi 的可行路线：为共享进程签发进程级 token，并让�
 | `@modelcontextprotocol/sdk` 已是 `@cocurdex/agent-adapters` 依赖 | `packages/agent-adapters/package.json` |
 | Claude adapter 通过 `@anthropic-ai/claude-agent-sdk` 的 `query()` 启动，可传 `mcpServers` 选项 | `packages/agent-adapters/src/claude-cli/claude-cli-adapter.ts` |
 | Codex adapter 以 `spawn("codex", ["app-server"])` 启动，再 `thread/start` | `packages/agent-adapters/src/codex/codex-app-server-client.ts` |
-| Grok Build 已有 MCP 相关文件，OpenCode 以本地 server 启动，Pi 依赖 `pi-mcp-adapter` | `packages/agent-adapters/src/{grok-build,opencode,pi-sdk}` |
+| Grok Build 已有 MCP 相关文件，OpenCode 以本地 server 启动，Pi 通过 `pi-mcp-adapter` 加载用户 MCP | `packages/agent-adapters/src/{grok-build,opencode,pi-sdk}` |
 | `session.send` 已支持三种投递：`start-new-run`、`steer-active-run`、`queue-after-run` | `packages/daemon/src/service.ts` `acceptSessionMessage` |
 | `SessionRecord` 已有 `sessionKind: "main" \| "subagent"`、`parentSessionId`、`parentToolCallId` | `packages/shared/src/contracts.ts` |
 | provider 自带的子 agent 已被投影为子 session | `packages/shared/src/subagent-session.ts`、`packages/agent-adapters/src/*/…-subagent-*.ts` |
@@ -117,123 +122,41 @@ opencode 与 pi 的可行路线：为共享进程签发进程级 token，并让�
 ### 设计
 
 ```
-agent 进程 ──MCP stdio──▶ cocurdex agent-tools 子进程 ──daemon socket RPC──▶ daemon
-                          (env: COCURDEX_DAEMON_SOCKET, COCURDEX_AGENT_TOKEN)
+agent 进程 ──MCP Streamable HTTP（Authorization: Bearer <session token>）──▶ daemon /mcp ──▶ AgentToolBridge
+Pi（daemon 进程内）──customTools.execute──▶ AgentToolInvoker（闭包绑定 token）──▶ AgentToolBridge
 ```
 
-- 工具桥是一个 stdio MCP server 可执行入口，放在 `packages/daemon/src/agent-tools/`，通过 daemon 二进制的子命令启动（例如 `cocurdex-daemon agent-tools`）。不要新建 package。
-- Claude adapter 走例外：`@anthropic-ai/claude-agent-sdk` 支持进程内 MCP server（`createSdkMcpServer`），直接在 adapter 内用同一套工具定义注册，省掉子进程。工具定义与 handler 必须与 stdio 版本共用同一份代码。
-- 身份：daemon 在创建 session runtime 时为该 session 签发一次性 token，写入子进程环境变量。工具桥每次调用都带 token；daemon 侧新增 `agentTool.*` RPC，由 token 反查 `sessionId`，请求体里不接受调用方自报的 sessionId。
-- 注入点：`packages/daemon/src/runtime.ts` `ensureSessionRuntime` 组装 `CreateAgentSessionPayload` 时增加 `agentTools: { socketPath, token }`；各 adapter 负责把它翻译成自己的 MCP 配置。
+- 身份：`ensureSessionRuntime` 为 session 签发 token（`AgentToolBridge.bind`），同时得到 `AgentToolsBinding { token, url }` 与进程内 `AgentToolInvoker`，都放进 `CreateAgentSessionPayload`。请求体不接受调用方自报的 sessionId。runtime 释放时吊销 token。
+- 各 adapter 只负责把 binding 翻译成自己的 MCP 配置，或像 Pi 一样把 invoker 注册成进程内工具。所有写入都是追加，不覆盖用户自己的 MCP 配置。
 
 ### 契约
 
-工具桥是长期扩展点，后续会承载消息、team、script run 之外的能力（例如记忆、笔记、issue、工作区搜索）。因此工具按**工具组**组织，工具桥本身不知道任何具体工具，只负责鉴权、注册与转发。
+工具桥是长期扩展点，工具按工具组组织，桥本身不知道任何具体工具，只负责鉴权、注册与转发。
 
-`packages/shared/src/agent-tools.ts`（新增，经 `@cocurdex/shared` 导出）：
+`packages/shared/src/agent-tools.ts`：`AgentToolGroupId`、`AgentToolDescriptor`、`AgentToolCallerContext`、`AgentToolCatalog`、`AgentToolsBinding { token, url }`、`agentToolFullName`、`agentToolAuthorization` / `agentToolTokenFromAuthorization`。`packages/agent-core/src/agent-types.ts`：`AgentToolInvoker { catalog(), call(name, input) }`。
 
-```ts
-export interface AgentToolsBinding {
-  socketPath: string;
-  token: string;
-}
+工具名对 agent 暴露为 `<group>_<name>`，避免与用户自己配置的 MCP server 撞名。
 
-export type AgentToolGroupId =
-  | "messaging"
-  | "team"
-  | "script_run"
-  | "memory"
-  | "notes"
-  | "issues";
+daemon 侧注册接口（`packages/daemon/src/agent-tools/tool-registry.ts`）：`AgentToolHandler { descriptor, isAvailable(caller), execute(caller, input) }` 与 `AgentToolRegistry { register, catalog, call }`。
 
-export interface AgentToolDescriptor {
-  group: AgentToolGroupId;
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-}
+- 每个工具组是 `packages/daemon/src/agent-tools/groups/<group>.ts`，依赖通过参数注入；新增一个组不改工具桥、不改 adapter。
+- `isAvailable` 只能依赖在 session 生命周期内不变的属性（目前是 `sessionKind`）。
+- 输入校验在 `execute` 之前统一做一次。
+- 需要给 UI 或 CLI 用的能力另行提供具名 RPC（例如 `session.sendPeerMessage`、`team.spawn`），工具 handler 复用同一 service 方法。
 
-export interface AgentToolCallerContext {
-  sessionId: string;
-  sessionKind: SessionRecord["sessionKind"];
-  workspaceId: string;
-  teamId: string | null;
-}
+### 文件
 
-export interface AgentToolCatalog {
-  caller: AgentToolCallerContext;
-  tools: AgentToolDescriptor[];
-}
-```
-
-工具名对 agent 暴露为 `<group>_<name>`（例如 `messaging_send_message`、`memory_recall`），避免与用户自己配置的 MCP server 撞名。
-
-daemon 侧的注册接口（`packages/daemon/src/agent-tools/tool-registry.ts`）：
-
-```ts
-export interface AgentToolHandler<Input = unknown, Output = unknown> {
-  descriptor: AgentToolDescriptor;
-  isAvailable(caller: AgentToolCallerContext): boolean;
-  execute(caller: AgentToolCallerContext, input: Input): Promise<Output>;
-}
-
-export class AgentToolRegistry {
-  register(handler: AgentToolHandler): void;
-  catalog(caller: AgentToolCallerContext): AgentToolCatalog;
-  call(caller: AgentToolCallerContext, name: string, input: unknown): Promise<unknown>;
-}
-```
-
-- 每个工具组是 daemon 里一个独立模块（`packages/daemon/src/agent-tools/groups/<group>.ts`），只依赖它需要的 service 能力，通过构造函数注入；新增一个组不改工具桥、不改 adapter。
-- `isAvailable` 由各工具自己判断（例如 `team_spawn_teammate` 只对 `sessionKind === "main"` 可用），catalog 按调用方动态生成，agent 看到的就是它此刻能用的集合。
-- 输入校验在 `execute` 之前用 `inputSchema` 做一次，所有工具统一，不在各组内重复。
-- 阶段 0 交付注册表、鉴权、stdio 与进程内两种传输，以及一个空的 `messaging` 组骨架；具体工具由后续阶段填充。`memory`、`notes`、`issues` 等组现在只占枚举位，不实现。
-- 工具组的启用可以按 session 由用户关闭：`SessionRecord` 预留 `agentToolGroups?: AgentToolGroupId[] | null`，为 null 表示全部启用。阶段 0 只加字段，不做 UI。
-
-`packages/rpc/src/index.ts` 新增（请求都不带 sessionId，由 token 决定）：
-
-| 方法 | 参数 | 返回 |
-| --- | --- | --- |
-| `agentTool.catalog` | `{ token }` | `AgentToolCatalog` |
-| `agentTool.call` | `{ token, name, input }` | `unknown` |
-
-只这两个 RPC。后续阶段新增工具时不再新增 `agentTool.*` 方法，都走 `agentTool.call`；需要给 UI 或 CLI 用的能力另行提供具名 RPC（例如 `session.sendPeerMessage`、`team.spawn`），工具 handler 内部复用同一 service 方法，保证 CLI 与 agent 走同一份逻辑。
-
-### 各 adapter 注入方式
-
-| adapter | 方式 | 需先验证 |
-| --- | --- | --- |
-| claude-agent | `query()` 的 `mcpServers` 选项注册进程内 server | 当前 SDK 版本 `0.3.221` 的 `createSdkMcpServer` 签名 |
-| codex | `spawn("codex", ["app-server", "-c", "mcp_servers.cocurdex.command=…"])` 或 `thread/start` 的 config 覆盖 | 官方 app-server 是否接受 per-thread MCP 配置；若不接受则用进程级 `-c` |
-| grok-build | 已有 `grok-build-mcp.ts`，沿其配置通道加入 | 配置格式 |
-| opencode | `opencode-server.ts` 启动参数或配置文件写入 MCP server | opencode 的 MCP 配置文件位置与热加载行为 |
-| pi | 通过 `pi-mcp-adapter` 注册 | 现有接入方式 |
-
-所有 adapter 的写入必须是**追加**，不能覆盖用户自己的 MCP 配置。每个 adapter 一个单元测试：给定 `AgentToolsBinding`，断言生成的启动配置包含 cocurdex server 且保留原有 server。
-
-### 文件清单
-
-新增：
-
-- `packages/shared/src/agent-tools.ts`
-- `packages/daemon/src/agent-tools/tool-registry.ts`（注册表、catalog、输入校验与转发）
-- `packages/daemon/src/agent-tools/groups/messaging.ts`（阶段 0 为空骨架）
-- `packages/daemon/src/agent-tools/stdio-server.ts`（stdio MCP 入口）
-- `packages/daemon/src/agent-tools/token-registry.ts`（token → sessionId，进程内 Map，daemon 重启后失效即可）
-- `packages/daemon/src/agent-tools/index.ts`
-
-修改：
-
-- `packages/agent-core/src/agent-types.ts`：`CreateAgentSessionPayload` 增加 `agentTools?: AgentToolsBinding`
-- `packages/daemon/src/runtime.ts`：签发 token 并传入
-- `packages/daemon/src/handler.ts`：`agentTool.catalog` 与 `agentTool.call` 两个分支
-- 五个 adapter 的 session 启动路径
-- daemon 二进制入口：加 `agent-tools` 子命令
+- `packages/daemon/src/agent-tools/agent-tool-bridge.ts`：签发与吊销 token、解析 caller、`bind` 返回 binding 与 invoker
+- `packages/daemon/src/agent-tools/http-server.ts`：`/mcp` 请求处理，每请求一个无状态 MCP server
+- `packages/daemon/src/agent-tools/token-registry.ts`：token 与 sessionId 双向映射，进程内，daemon 重启即失效
+- `packages/daemon/src/wire.ts`：HTTP server，同时承载 WebSocket 与 `/mcp`
+- `packages/agent-adapters/src/shared/agent-tools-mcp.ts`：Claude、ACP、Codex 的 HTTP MCP 配置
+- `packages/agent-adapters/src/pi-sdk/pi-agent-tools.ts`：Pi 的 `customTools`
 
 ### 验收
 
-- 单元：token 不匹配返回错误码 `UNAUTHORIZED_AGENT_TOOL`；同一 token 只能解析到签发时的 session。
-- e2e（`tests/e2e`）：以 `llm-stub` 驱动一个 session，stub 返回一次 `messaging_list_agents` 工具调用，断言 daemon 收到 `agentTool.call` 且解析出的 `caller.sessionId` 正确。若现有 stub 不支持工具调用回放，先扩展 stub。
+- 单元：未知或已吊销 token 返回 `UNAUTHORIZED_AGENT_TOOL`；重复绑定使旧 token 失效；两个带不同 token 的 MCP 客户端并发 `tools/list` 各自得到自己的 caller；无 bearer token 返回 401；ACP 未声明 HTTP 时不注入。
+- e2e：真实 daemon 元数据发布 `agentToolsUrl`；匿名请求 401；错误 token 的 `tools/list` 报 `not valid`。
 
 ---
 
@@ -346,7 +269,6 @@ export interface PeerMessageEvent {
 ### 明确不做
 
 - 嵌套 team：`team_spawn_teammate` 对 teammate 不可用。
-- 任务依赖（`blockedBy`）：首版不做，issue 数据模型不加依赖字段。
 - tmux / 分屏：桌面用面板，CLI 用现有 session TUI 打开某个 teammate。
 - daemon 重启后恢复 team 运行中的回合：team 记录保留，成员回合按现有 session 恢复语义处理，不额外承诺。
 
@@ -604,14 +526,14 @@ RPC：
 - **不加注释**：意图用命名、类型、测试表达。
 - **文件长度**：`service.ts` 已近 1900 行，阶段 1 与 2 对它的改动只允许"加一处调用"，逻辑放进新模块。
 - **事件**：新增事件类型统一加入 `CocurdexDaemonEvent` 联合，客户端用现有 `daemon.subscribe` 消费。
-- **安全**：`agentTool.*` 必须只信 token；`messaging_send_message` 内容进入目标 session 前不做任何解释，仅包一层 envelope，让接收方模型知道这是来自另一个 agent 的文本而非用户指令。
+- **安全**：工具桥必须只信 token；`messaging_send_message` 内容进入目标 session 前不做任何解释，仅包一层 envelope，让接收方模型知道这是来自另一个 agent 的文本而非用户指令。
 
 ## 风险与需要提前验证的点
 
 | 风险 | 验证方式 | 若不成立 |
 | --- | --- | --- |
 | Codex app-server 不支持 per-thread MCP 配置 | 阅读 codex 当前版本 app-server 协议文档并实测 | 用进程级 `-c mcp_servers.…` 注入，一个 daemon 只起一个 app-server 时无差异 |
-| 某个 adapter 无法追加 MCP 配置而不覆盖用户配置 | 每个 adapter 的单元测试 | 该 adapter 首版不支持 agent 工具，`agentTool.catalog` 的 `tools` 返回空数组，UI 提示 |
+| 某个 adapter 无法追加 MCP 配置而不覆盖用户配置 | 每个 adapter 的单元测试 | 该 adapter 首版不注入 agent 工具 |
 | `queue-after-run` 在目标 session 的队列语义与用户手动排队冲突 | 阅读 `acceptSessionMessage` 与 `resumeQueuedSession` | 为 peer 消息单独维护队列并在 `turn.completed` 后投递 |
 | `node:vm` 中 `Promise` 与宿主不同 realm 导致 `instanceof` 问题 | sandbox 单元测试覆盖 `parallel` 返回值 | 在 context 里注入宿主 `Promise` |
 | e2e 的 `llm-stub` 不支持工具调用回放 | 阅读 `tests/e2e/helpers/llm-stub.ts` | 先给 stub 增加"按脚本返回 tool_call"的能力，作为阶段 0 的一部分 |

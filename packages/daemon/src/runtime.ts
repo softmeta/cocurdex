@@ -18,7 +18,6 @@ import {
   type AgentQuestionRequestRecord,
   type AgentSessionConfigOption,
   type AgentSlashCommand,
-  type AgentToolsBinding,
   type AgentUsageRecord,
   type MessageAttachment,
   type MessageRecord,
@@ -26,6 +25,7 @@ import {
   type SessionRecord,
   workspacePathsEqual,
 } from "@cocurdex/shared";
+import type { AgentToolSessionBinding } from "./agent-tools";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
 
 export interface RuntimePersistence {
@@ -59,7 +59,7 @@ interface PendingPlanApproval {
 }
 
 export interface AgentToolsProvider {
-  bindingFor(session: SessionRecord): AgentToolsBinding | null;
+  bind(session: SessionRecord): AgentToolSessionBinding | null;
   revoke(sessionId: string): void;
 }
 
@@ -393,6 +393,7 @@ export class AgentRuntimeManager {
 
     const adapter = this.createAdapter(payload.session.agentType);
     const sessionCopy = { ...payload.session };
+    const agentToolSession = this.agentTools?.bind(sessionCopy) ?? null;
     let runtime: AgentSession | null = null;
     const createdRuntime = adapter.createSession(
       {
@@ -402,7 +403,8 @@ export class AgentRuntimeManager {
         userDataPath: this.userDataPath,
         providerSession: persistence.providerSession,
         providerConfig: persistence.providerConfig,
-        agentTools: this.agentTools?.bindingFor(sessionCopy) ?? null,
+        agentTools: agentToolSession?.binding ?? null,
+        agentToolInvoker: agentToolSession?.invoker ?? null,
         onProviderSessionUpdate: (providerSession) => {
           const activeRuntime = this.sessionRuntimes.get(payload.session.id);
           if (!runtime || activeRuntime?.runtime !== runtime) {

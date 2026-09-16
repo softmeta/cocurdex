@@ -1,19 +1,21 @@
+import type { AgentToolInvoker } from "@cocurdex/agent-core";
 import type {
   AgentToolCallerContext,
   AgentToolsBinding,
   SessionRecord,
 } from "@cocurdex/shared";
-import { buildAgentToolStdioSpec } from "./stdio-spec";
 import { AgentToolTokenRegistry } from "./token-registry";
 import { AgentToolError, AgentToolRegistry } from "./tool-registry";
 
 export interface AgentToolBridgeOptions {
-  userDataPath: string;
-  entryPath: string;
-  execPath?: string;
-  execArgv?: readonly string[];
+  url: string | null;
   getSession(sessionId: string): Promise<SessionRecord | null>;
   getTeamId?(sessionId: string): Promise<string | null>;
+}
+
+export interface AgentToolSessionBinding {
+  binding: AgentToolsBinding;
+  invoker: AgentToolInvoker;
 }
 
 export class AgentToolBridge {
@@ -22,17 +24,16 @@ export class AgentToolBridge {
 
   constructor(private readonly options: AgentToolBridgeOptions) {}
 
-  bindingFor(session: Pick<SessionRecord, "id">): AgentToolsBinding {
+  bind(session: Pick<SessionRecord, "id">): AgentToolSessionBinding | null {
+    const url = this.options.url;
+    if (url === null) return null;
     const token = this.tokens.issue(session.id);
     return {
-      token,
-      stdio: buildAgentToolStdioSpec({
-        execPath: this.options.execPath ?? process.execPath,
-        execArgv: this.options.execArgv ?? process.execArgv,
-        entryPath: this.options.entryPath,
-        token,
-        userDataPath: this.options.userDataPath,
-      }),
+      binding: { token, url },
+      invoker: {
+        catalog: () => this.catalog(token),
+        call: (name, input) => this.call(token, name, input),
+      },
     };
   }
 

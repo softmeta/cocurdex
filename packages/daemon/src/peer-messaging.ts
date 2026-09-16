@@ -2,6 +2,7 @@ import {
   choosePeerDelivery,
   isPeerReachable,
   type MessageRecord,
+  PEER_EXCHANGE_LIMIT,
   type PeerMessageEvent,
   type PeerSessionSummary,
   renderPeerEnvelope,
@@ -24,8 +25,20 @@ export interface PeerMessagingDependencies {
 
 export type PeerEnvelopeRenderer = typeof renderPeerEnvelope;
 
+function exchangeKey(left: string, right: string) {
+  return left < right ? `${left}|${right}` : `${right}|${left}`;
+}
+
 export class PeerMessagingService {
+  private readonly exchanges = new Map<string, number>();
+
   constructor(private readonly deps: PeerMessagingDependencies) {}
+
+  noteHumanInput(sessionId: string) {
+    for (const key of this.exchanges.keys()) {
+      if (key.split("|").includes(sessionId)) this.exchanges.delete(key);
+    }
+  }
 
   async listPeers(fromSessionId: string): Promise<PeerSessionSummary[]> {
     validateSessionId(fromSessionId);
@@ -64,6 +77,12 @@ export class PeerMessagingService {
     if (target.peerInbound === "refuse") {
       return this.finish(payload, null, "refused");
     }
+    const key = exchangeKey(sender.id, target.id);
+    const exchanges = this.exchanges.get(key) ?? 0;
+    if (exchanges >= PEER_EXCHANGE_LIMIT) {
+      return this.finish(payload, null, "loop_limit");
+    }
+    this.exchanges.set(key, exchanges + 1);
     const delivery = choosePeerDelivery({
       hasActiveTurn: this.deps.hasActiveTurn(target.id),
     });

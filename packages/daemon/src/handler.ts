@@ -214,14 +214,6 @@ export async function handleDaemonRequest(
         request.params.sessionId,
         request.params.policy,
       );
-    case "agentTool.catalog":
-      return service.agentTools.catalog(request.params.token);
-    case "agentTool.call":
-      return service.agentTools.call(
-        request.params.token,
-        request.params.name,
-        request.params.input,
-      );
     case "team.get":
       return service.team.get(request.params.leadSessionId);
     case "team.spawn": {

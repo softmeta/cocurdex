@@ -8,53 +8,46 @@ import {
 
 const binding: AgentToolsBinding = {
   token: "t",
-  stdio: {
-    command: "/usr/bin/node",
-    args: ["/app/daemon.cjs", "agent-tools"],
-    env: { COCURDEX_AGENT_TOKEN: "t", COCURDEX_USER_DATA_PATH: "/data" },
-  },
+  url: "http://127.0.0.1:4000/mcp",
 };
 
 describe("agent tools MCP configs", () => {
   it("produces nothing without a binding", () => {
     expect(claudeAgentToolsMcpServers(null)).toEqual({});
-    expect(acpAgentToolsMcpServers(undefined)).toEqual([]);
+    expect(acpAgentToolsMcpServers(undefined, { http: true })).toEqual([]);
     expect(codexAgentToolsThreadConfig(null)).toEqual({});
   });
 
-  it("maps the stdio spec into each provider's shape", () => {
+  it("carries the session token as a bearer header in each provider's shape", () => {
     expect(claudeAgentToolsMcpServers(binding)).toEqual({
       cocurdex: {
-        type: "stdio",
-        command: "/usr/bin/node",
-        args: ["/app/daemon.cjs", "agent-tools"],
-        env: { COCURDEX_AGENT_TOKEN: "t", COCURDEX_USER_DATA_PATH: "/data" },
+        type: "http",
+        url: "http://127.0.0.1:4000/mcp",
+        headers: { Authorization: "Bearer t" },
       },
     });
-    expect(acpAgentToolsMcpServers(binding)).toEqual([
+    expect(acpAgentToolsMcpServers(binding, { http: true })).toEqual([
       {
+        type: "http",
         name: "cocurdex",
-        command: "/usr/bin/node",
-        args: ["/app/daemon.cjs", "agent-tools"],
-        env: [
-          { name: "COCURDEX_AGENT_TOKEN", value: "t" },
-          { name: "COCURDEX_USER_DATA_PATH", value: "/data" },
-        ],
+        url: "http://127.0.0.1:4000/mcp",
+        headers: [{ name: "Authorization", value: "Bearer t" }],
       },
     ]);
     expect(codexAgentToolsThreadConfig(binding)).toEqual({
       config: {
         mcp_servers: {
           cocurdex: {
-            command: "/usr/bin/node",
-            args: ["/app/daemon.cjs", "agent-tools"],
-            env: {
-              COCURDEX_AGENT_TOKEN: "t",
-              COCURDEX_USER_DATA_PATH: "/data",
-            },
+            url: "http://127.0.0.1:4000/mcp",
+            http_headers: { Authorization: "Bearer t" },
           },
         },
       },
     });
+  });
+
+  it("skips ACP agents that do not advertise HTTP MCP support", () => {
+    expect(acpAgentToolsMcpServers(binding, undefined)).toEqual([]);
+    expect(acpAgentToolsMcpServers(binding, { http: false })).toEqual([]);
   });
 });

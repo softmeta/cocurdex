@@ -1,4 +1,4 @@
-import { AGENT_TOOL_TOKEN_ENV, type SessionRecord } from "@cocurdex/shared";
+import type { SessionRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { AgentToolBridge } from "./agent-tool-bridge";
 
@@ -15,55 +15,59 @@ const session: SessionRecord = {
   lastMessageAt: null,
 };
 
-function bridge() {
+function bridge(url: string | null = "http://127.0.0.1:4000/mcp") {
   return new AgentToolBridge({
-    userDataPath: "/tmp/cocurdex",
-    entryPath: "/app/daemon.cjs",
-    execPath: "/usr/bin/node",
-    execArgv: ["--import", "tsx"],
+    url,
     getSession: async (sessionId) => (sessionId === "s-1" ? session : null),
   });
 }
 
+function bind(instance: AgentToolBridge) {
+  const bound = instance.bind(session);
+  if (!bound) throw new Error("expected a binding");
+  return bound;
+}
+
 describe("AgentToolBridge", () => {
-  it("issues a per-session token and a stdio spec that launches the subcommand", () => {
-    const binding = bridge().bindingFor(session);
-    expect(binding.stdio.command).toBe("/usr/bin/node");
-    expect(binding.stdio.args).toEqual([
-      "--import",
-      "tsx",
-      "/app/daemon.cjs",
-      "agent-tools",
-    ]);
-    expect(binding.stdio.env[AGENT_TOOL_TOKEN_ENV]).toBe(binding.token);
+  it("binds nothing when the daemon has no agent tool endpoint", () => {
+    expect(bridge(null).bind(session)).toBeNull();
+  });
+
+  it("issues a per-session token for the shared endpoint", () => {
+    const { binding } = bind(bridge());
+    expect(binding.url).toBe("http://127.0.0.1:4000/mcp");
+    expect(binding.token).toMatch(/^[0-9a-f]{48}$/);
   });
 
   it("resolves the caller from the token and rejects unknown or revoked tokens", async () => {
     const instance = bridge();
-    const binding = instance.bindingFor(session);
-    const catalog = await instance.catalog(binding.token);
-    expect(catalog.caller).toEqual({
+    const { binding, invoker } = bind(instance);
+    const expectedCaller = {
       sessionId: "s-1",
       sessionKind: "main",
       workspaceId: "w-1",
       teamId: null,
-    });
+    };
+    expect((await instance.catalog(binding.token)).caller).toEqual(
+      expectedCaller,
+    );
+    expect((await invoker.catalog()).caller).toEqual(expectedCaller);
     await expect(instance.catalog("nope")).rejects.toMatchObject({
       code: "UNAUTHORIZED_AGENT_TOOL",
     });
     instance.revoke("s-1");
-    await expect(instance.catalog(binding.token)).rejects.toMatchObject({
+    await expect(invoker.catalog()).rejects.toMatchObject({
       code: "UNAUTHORIZED_AGENT_TOOL",
     });
   });
 
   it("replaces the previous token when a session is rebound", async () => {
     const instance = bridge();
-    const first = instance.bindingFor(session);
-    const second = instance.bindingFor(session);
-    await expect(instance.catalog(first.token)).rejects.toMatchObject({
+    const first = bind(instance);
+    const second = bind(instance);
+    await expect(first.invoker.catalog()).rejects.toMatchObject({
       code: "UNAUTHORIZED_AGENT_TOOL",
     });
-    await expect(instance.catalog(second.token)).resolves.toBeDefined();
+    await expect(second.invoker.catalog()).resolves.toBeDefined();
   });
 });

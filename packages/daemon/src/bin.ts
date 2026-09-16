@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { AGENT_TOOLS_SUBCOMMAND, runAgentToolStdioServer } from "./agent-tools";
 import { startDaemonServer } from "./wire";
 
 function startDaemonProcess() {
@@ -122,13 +121,4 @@ function startDaemonProcess() {
     });
 }
 
-if (process.argv[2] === AGENT_TOOLS_SUBCOMMAND) {
-  runAgentToolStdioServer(process.env).catch((error: unknown) => {
-    console.error(
-      error instanceof Error ? error.message : "Agent tool server failed",
-    );
-    process.exit(1);
-  });
-} else {
-  startDaemonProcess();
-}
+startDaemonProcess();

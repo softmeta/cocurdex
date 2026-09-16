@@ -25,7 +25,6 @@ import {
   archiveSessionAtom,
   collectSessionSubtreeIds,
   deleteSessionAtom,
-  isSubagentSession,
   sessionsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
@@ -104,7 +103,7 @@ export function SessionSidebarItem({
         (question) => question.status === "pending",
       ),
   );
-  const isChild = isSubagentSession(session);
+  const isChild = Boolean(session.parentSessionId);
   const startPaddingPx = 24 + depth * 12 - (hasChildren ? 20 : 0);
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();

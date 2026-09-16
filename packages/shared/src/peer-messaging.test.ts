@@ -4,7 +4,9 @@ import {
   choosePeerDelivery,
   isPeerReachable,
   renderPeerEnvelope,
+  stripPeerEnvelope,
 } from "./peer-messaging";
+import { renderTeammateReport } from "./team";
 
 function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
   return {
@@ -62,5 +64,28 @@ describe("isPeerReachable", () => {
 
   it("includes main sessions", () => {
     expect(isPeerReachable(session(), "x")).toBe(true);
+  });
+});
+
+describe("stripPeerEnvelope", () => {
+  const origin = {
+    kind: "peer" as const,
+    sessionId: "s-2",
+    sessionTitle: "Two",
+  };
+
+  it("recovers the body of peer envelopes and teammate reports", () => {
+    expect(stripPeerEnvelope(renderPeerEnvelope(origin, "hi\nthere"))).toBe(
+      "hi\nthere",
+    );
+    expect(
+      stripPeerEnvelope(
+        renderTeammateReport({ name: "probe", outcome: "finished" }, "ok"),
+      ),
+    ).toBe("ok");
+  });
+
+  it("keeps content without an envelope", () => {
+    expect(stripPeerEnvelope("[x] done\nnext")).toBe("[x] done\nnext");
   });
 });

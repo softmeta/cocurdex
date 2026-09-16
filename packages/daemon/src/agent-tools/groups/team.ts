@@ -1,8 +1,10 @@
 import {
+  type AgentToolCallerContext,
   type SpawnTeammatePayload,
   type SpawnTeamTemplatePayload,
   TEAM_TASK_STATUSES,
   type TeamMemberRecord,
+  type TeamRecord,
   type TeamTemplateRecord,
 } from "@cocurdex/shared";
 import type {
@@ -32,6 +34,19 @@ export interface TeamToolDependencies {
     sessionId: string,
     input: TeamTaskUpdateInput,
   ): Promise<TeamTaskSummary>;
+  stopLeadMember(
+    leadSessionId: string,
+    sessionId: string,
+  ): Promise<TeamMemberRecord>;
+  stopLeadTeam(leadSessionId: string): Promise<TeamRecord>;
+}
+
+function isLead(caller: AgentToolCallerContext) {
+  return caller.sessionKind === "main";
+}
+
+function isTeamParticipant(caller: AgentToolCallerContext) {
+  return caller.sessionKind === "main" || caller.sessionKind === "teammate";
 }
 
 export function registerTeamTools(
@@ -63,7 +78,7 @@ export function registerTeamTools(
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.sessionKind === "main",
+    isAvailable: isLead,
     execute: (caller, input) =>
       deps.spawn(caller.sessionId, {
         name: String(input.name),
@@ -88,7 +103,7 @@ export function registerTeamTools(
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.sessionKind === "main",
+    isAvailable: isLead,
     execute: () => deps.listRoles(),
   });
   registry.register({
@@ -103,7 +118,7 @@ export function registerTeamTools(
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.sessionKind === "main",
+    isAvailable: isLead,
     execute: () => deps.listTemplates(),
   });
   registry.register({
@@ -122,7 +137,7 @@ export function registerTeamTools(
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.sessionKind === "main",
+    isAvailable: isLead,
     execute: (caller, input) =>
       deps.spawnTemplate(caller.sessionId, {
         templateId: String(input.templateId),
@@ -133,23 +148,32 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "task_create",
-      description: "Create a task on the team's shared task list.",
+      description:
+        "Create a task on the team's shared task list. A lead may create tasks before spawning teammates. List prerequisite task ids in blockedBy to enforce ordering: nobody can start this task until every prerequisite is done.",
       inputSchema: {
         type: "object",
         properties: {
           title: { type: "string" },
           description: { type: "string" },
+          blockedBy: {
+            type: "array",
+            items: { type: "string" },
+            description: "Ids of existing tasks that must be done first",
+          },
         },
         required: ["title"],
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.teamId !== null,
+    isAvailable: isTeamParticipant,
     execute: (caller, input) =>
       deps.taskCreate(caller.sessionId, {
         title: String(input.title),
         ...(typeof input.description === "string"
           ? { description: input.description }
+          : {}),
+        ...(Array.isArray(input.blockedBy)
+          ? { blockedBy: input.blockedBy.map(String) }
           : {}),
       }),
   });
@@ -158,14 +182,14 @@ export function registerTeamTools(
       group: "team",
       name: "task_list",
       description:
-        "List the team's shared tasks with status and assignee session id.",
+        "List the team's shared tasks with status, assignee session id, prerequisites (blockedBy, blocked), and review evidence.",
       inputSchema: {
         type: "object",
         properties: {},
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.teamId !== null,
+    isAvailable: isTeamParticipant,
     execute: (caller) => deps.taskList(caller.sessionId),
   });
   registry.register({
@@ -173,19 +197,23 @@ export function registerTeamTools(
       group: "team",
       name: "task_update",
       description:
-        'Update a shared task. Claim it with assignee "me" and status "doing"; only one session can hold a task.',
+        'Update a shared task. Claim it with assignee "me" and status "doing"; only one session can hold a task, and blocked tasks cannot be started. When finished, move it to "review" with evidence: the commands you ran and their results, or the files to inspect. Only a different session, usually the lead or a reviewer, may move a reviewed task to "done".',
       inputSchema: {
         type: "object",
         properties: {
           issueId: { type: "string" },
           status: { type: "string", enum: [...TEAM_TASK_STATUSES] },
           assignee: { type: ["string", "null"], enum: ["me", null] },
+          evidence: {
+            type: "string",
+            description: "Required when moving to review",
+          },
         },
         required: ["issueId"],
         additionalProperties: false,
       },
     },
-    isAvailable: (caller) => caller.teamId !== null,
+    isAvailable: isTeamParticipant,
     execute: (caller, input) =>
       deps.taskUpdate(caller.sessionId, {
         issueId: String(input.issueId),
@@ -195,6 +223,43 @@ export function registerTeamTools(
         ...(input.assignee === "me" || input.assignee === null
           ? { assignee: input.assignee }
           : {}),
+        ...(typeof input.evidence === "string"
+          ? { evidence: input.evidence }
+          : {}),
       }),
+  });
+  registry.register({
+    descriptor: {
+      group: "team",
+      name: "stop_member",
+      description:
+        "Stop one teammate session. Use when a teammate is done or off track.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          sessionId: { type: "string", description: "Teammate session id" },
+        },
+        required: ["sessionId"],
+        additionalProperties: false,
+      },
+    },
+    isAvailable: isLead,
+    execute: (caller, input) =>
+      deps.stopLeadMember(caller.sessionId, String(input.sessionId)),
+  });
+  registry.register({
+    descriptor: {
+      group: "team",
+      name: "stop",
+      description:
+        "Stop every teammate and end the team. Use once all tasks are merged.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+    isAvailable: isLead,
+    execute: (caller) => deps.stopLeadTeam(caller.sessionId),
   });
 }

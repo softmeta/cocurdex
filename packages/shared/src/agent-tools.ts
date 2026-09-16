@@ -1,8 +1,7 @@
 import type { SessionRecord } from "./contracts";
 
 export const AGENT_TOOL_SERVER_NAME = "cocurdex";
-export const AGENT_TOOL_TOKEN_ENV = "COCURDEX_AGENT_TOKEN";
-export const AGENT_TOOL_USER_DATA_PATH_ENV = "COCURDEX_USER_DATA_PATH";
+export const AGENT_TOOL_HTTP_PATH = "/mcp";
 
 export const agentToolGroupIds = [
   "messaging",
@@ -34,15 +33,21 @@ export interface AgentToolCatalog {
   tools: AgentToolDescriptor[];
 }
 
-export interface AgentToolStdioServerSpec {
-  command: string;
-  args: string[];
-  env: Record<string, string>;
-}
-
 export interface AgentToolsBinding {
   token: string;
-  stdio: AgentToolStdioServerSpec;
+  url: string;
+}
+
+export function agentToolAuthorization(token: string) {
+  return `Bearer ${token}`;
+}
+
+export function agentToolTokenFromAuthorization(
+  header: string | string[] | undefined,
+) {
+  const value = Array.isArray(header) ? header[0] : header;
+  const match = /^Bearer\s+(\S+)$/i.exec(value ?? "");
+  return match ? match[1] : null;
 }
 
 export function agentToolFullName(descriptor: {

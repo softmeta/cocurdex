@@ -10,7 +10,9 @@ export type PeerMessageDelivery = Extract<
   AgentInputDelivery,
   "start-new-run" | "queue-after-run"
 >;
-export type PeerMessageOutcome = PeerMessageDelivery | "refused";
+export type PeerMessageOutcome = PeerMessageDelivery | "refused" | "loop_limit";
+
+export const PEER_EXCHANGE_LIMIT = 12;
 
 export interface PeerSessionSummary {
   sessionId: string;
@@ -68,4 +70,8 @@ export function summarizePeerSession(
     status: session.status,
     workspaceId: session.workspaceId,
   };
+}
+
+export function stripPeerEnvelope(content: string) {
+  return content.replace(/^\[[^\n]*\](?:\n|$)/, "");
 }

@@ -1,8 +1,9 @@
-import type {
-  MessageRecord,
-  PeerMessageEvent,
-  SendSessionCommand,
-  SessionRecord,
+import {
+  type MessageRecord,
+  PEER_EXCHANGE_LIMIT,
+  type PeerMessageEvent,
+  type SendSessionCommand,
+  type SessionRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { PeerMessagingService } from "./peer-messaging";
@@ -109,6 +110,44 @@ describe("PeerMessagingService", () => {
     expect(result).toEqual({ messageId: null, delivery: "refused" });
     expect(sent).toEqual([]);
     expect(events[0]?.delivery).toBe("refused");
+  });
+
+  it("stops a ping-pong between two sessions at the exchange limit", async () => {
+    const { service, sent } = harness({ sessions: [alpha, beta] });
+    for (let index = 0; index < PEER_EXCHANGE_LIMIT; index += 1) {
+      const [from, to] = index % 2 === 0 ? ["a", "b"] : ["b", "a"];
+      await service.send({
+        fromSessionId: from,
+        toSessionId: to,
+        content: "x",
+      });
+    }
+    const result = await service.send({
+      fromSessionId: "a",
+      toSessionId: "b",
+      content: "x",
+    });
+    expect(result).toEqual({ messageId: null, delivery: "loop_limit" });
+    expect(sent).toHaveLength(PEER_EXCHANGE_LIMIT);
+  });
+
+  it("resets the exchange budget after human input to either session", async () => {
+    const { service, sent } = harness({ sessions: [alpha, beta] });
+    for (let index = 0; index < PEER_EXCHANGE_LIMIT; index += 1) {
+      await service.send({
+        fromSessionId: "a",
+        toSessionId: "b",
+        content: "x",
+      });
+    }
+    service.noteHumanInput("b");
+    const result = await service.send({
+      fromSessionId: "a",
+      toSessionId: "b",
+      content: "x",
+    });
+    expect(result.delivery).toBe("start-new-run");
+    expect(sent).toHaveLength(PEER_EXCHANGE_LIMIT + 1);
   });
 
   it("rejects unreachable targets", async () => {

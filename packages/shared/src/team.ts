@@ -28,6 +28,14 @@ export interface TeamMemberRecord {
   updatedAt: string;
 }
 
+export interface TeamTaskLinks {
+  teamId: string;
+  issueId: string;
+  blockedBy: string[];
+  evidence: string | null;
+  updatedAt: string;
+}
+
 export interface TeamSnapshot {
   team: TeamRecord;
   members: TeamMemberRecord[];
@@ -75,6 +83,12 @@ export interface TeamChangedEvent {
 }
 
 export const TEAM_MAX_MEMBERS = 8;
+
+const TEAM_UNSUPPORTED_AGENTS: ReadonlySet<AgentId> = new Set(["opencode"]);
+
+export function supportsAgentTeam(agentId: AgentId) {
+  return !TEAM_UNSUPPORTED_AGENTS.has(agentId);
+}
 export const TEAM_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
 export const TEAM_TASK_STATUSES = [
   "backlog",
@@ -83,6 +97,38 @@ export const TEAM_TASK_STATUSES = [
   "done",
 ] as const;
 export type TeamTaskStatus = (typeof TEAM_TASK_STATUSES)[number];
+
+export type TeamTaskRejection =
+  | "TASK_BLOCKED"
+  | "EVIDENCE_REQUIRED"
+  | "REVIEW_REQUIRED"
+  | "SELF_APPROVAL";
+
+export function checkTeamTaskUpdate(input: {
+  task: { status: string; assigneeSessionId: string | null };
+  blockers: { status: string }[];
+  callerSessionId: string;
+  update: {
+    status?: TeamTaskStatus;
+    assignee?: "me" | null;
+    evidence?: string;
+  };
+}): { ok: true } | { ok: false; reason: TeamTaskRejection } {
+  const { task, update } = input;
+  const starting = update.assignee === "me" || update.status === "doing";
+  if (starting && input.blockers.some((blocker) => blocker.status !== "done"))
+    return { ok: false, reason: "TASK_BLOCKED" };
+  if (update.status === "review" && !update.evidence?.trim())
+    return { ok: false, reason: "EVIDENCE_REQUIRED" };
+  if (update.status === "done" && task.status !== "review")
+    return { ok: false, reason: "REVIEW_REQUIRED" };
+  if (
+    update.status === "done" &&
+    task.assigneeSessionId === input.callerSessionId
+  )
+    return { ok: false, reason: "SELF_APPROVAL" };
+  return { ok: true };
+}
 
 export type TeamMemberEvent =
   | { type: "turn.started" }
@@ -144,8 +190,9 @@ export function renderTeammateBriefing(input: {
 }) {
   return [
     `You are teammate "${input.name}" in a Cocurdex agent team led by session ${input.leadSessionId}.`,
-    'Use team_task_list, team_task_create, and team_task_update to coordinate on the shared task list; claim a task with team_task_update({ issueId, status: "doing", assignee: "me" }).',
+    'Use team_task_list, team_task_create, and team_task_update to coordinate on the shared task list; claim a task with team_task_update({ issueId, status: "doing", assignee: "me" }). Blocked tasks wait for their prerequisites. When you finish, move the task to "review" with evidence (commands run and results); you cannot mark your own task done.',
     "Use messaging_send_message to talk to the lead or other teammates. Your final reply for each turn is delivered to the lead automatically.",
+    "Every message starts a new turn for its receiver, so never reply to acknowledgements or send thanks; message only when you have new information or a request.",
     "",
     input.prompt,
   ].join("\n");

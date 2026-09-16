@@ -26,6 +26,16 @@ export function createTeamSchemaSql(): string {
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS team_tasks (
+      team_id TEXT NOT NULL,
+      issue_id TEXT NOT NULL,
+      blocked_by_json TEXT NOT NULL,
+      evidence TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (team_id, issue_id),
+      FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_team_members_session
       ON team_members(session_id);
   `;

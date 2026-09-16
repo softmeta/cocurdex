@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canSpawnTeammate,
+  checkTeamTaskUpdate,
   TEAM_MAX_MEMBERS,
   type TeamMemberRecord,
   transitionTeamMember,
@@ -84,5 +85,88 @@ describe("canSpawnTeammate", () => {
       ok: false,
       reason: "member_limit",
     });
+  });
+});
+
+describe("checkTeamTaskUpdate", () => {
+  const task = { status: "backlog", assigneeSessionId: null };
+
+  it("refuses to start a task while a blocker is unfinished", () => {
+    const blockers = [{ status: "done" }, { status: "doing" }];
+    expect(
+      checkTeamTaskUpdate({
+        task,
+        blockers,
+        callerSessionId: "a",
+        update: { assignee: "me" },
+      }),
+    ).toEqual({ ok: false, reason: "TASK_BLOCKED" });
+    expect(
+      checkTeamTaskUpdate({
+        task,
+        blockers,
+        callerSessionId: "a",
+        update: { status: "doing" },
+      }),
+    ).toEqual({ ok: false, reason: "TASK_BLOCKED" });
+  });
+
+  it("allows starting once every blocker is done", () => {
+    expect(
+      checkTeamTaskUpdate({
+        task,
+        blockers: [{ status: "done" }],
+        callerSessionId: "a",
+        update: { status: "doing", assignee: "me" },
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("requires evidence to submit for review", () => {
+    const doing = { status: "doing", assigneeSessionId: "a" };
+    expect(
+      checkTeamTaskUpdate({
+        task: doing,
+        blockers: [],
+        callerSessionId: "a",
+        update: { status: "review", evidence: "  " },
+      }),
+    ).toEqual({ ok: false, reason: "EVIDENCE_REQUIRED" });
+    expect(
+      checkTeamTaskUpdate({
+        task: doing,
+        blockers: [],
+        callerSessionId: "a",
+        update: { status: "review", evidence: "pnpm test: 12 passed" },
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("only approves reviewed work, and never by its assignee", () => {
+    expect(
+      checkTeamTaskUpdate({
+        task: { status: "doing", assigneeSessionId: "a" },
+        blockers: [],
+        callerSessionId: "lead",
+        update: { status: "done" },
+      }),
+    ).toEqual({ ok: false, reason: "REVIEW_REQUIRED" });
+    const inReview = { status: "review", assigneeSessionId: "a" };
+    expect(
+      checkTeamTaskUpdate({
+        task: inReview,
+        blockers: [],
+        callerSessionId: "a",
+        update: { status: "done" },
+      }),
+    ).toEqual({ ok: false, reason: "SELF_APPROVAL" });
+    expect(
+      checkTeamTaskUpdate({
+        task: inReview,
+        blockers: [],
+        callerSessionId: "reviewer",
+        update: { status: "done" },
+      }),
+    ).toEqual({ ok: true });
   });
 });

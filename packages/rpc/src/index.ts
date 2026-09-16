@@ -11,7 +11,6 @@ import type {
   AgentSessionConfigOption,
   AgentSlashCommand,
   AgentToolCallResult,
-  AgentToolCatalog,
   AppBootstrapData,
   AppResyncSnapshot,
   CocurdexDaemonEvent,
@@ -135,6 +134,7 @@ export interface DaemonMetadata {
   token: string;
   startedAt: string;
   webSocketUrl?: string;
+  agentToolsUrl?: string;
 }
 
 export interface DaemonStatus {
@@ -221,8 +221,6 @@ export type DaemonRequestPayloadByMethod = {
   "session.listPeers": { sessionId: string };
   "session.sendPeerMessage": SendPeerMessagePayload;
   "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
-  "agentTool.catalog": { token: string };
-  "agentTool.call": { token: string; name: string; input: unknown };
   "team.get": { leadSessionId: string };
   "team.spawn": { leadSessionId: string } & SpawnTeammatePayload;
   "team.stopMember": { teamId: string; sessionId: string };
@@ -423,8 +421,6 @@ export type DaemonResultByMethod = {
   "session.listPeers": PeerSessionSummary[];
   "session.sendPeerMessage": SendPeerMessageResult;
   "session.setPeerInbound": SessionRecord;
-  "agentTool.catalog": AgentToolCatalog;
-  "agentTool.call": unknown;
   "team.get": TeamSnapshot | null;
   "team.spawn": TeamMemberRecord;
   "team.stopMember": TeamMemberRecord;

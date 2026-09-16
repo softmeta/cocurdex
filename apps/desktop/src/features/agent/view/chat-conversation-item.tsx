@@ -59,6 +59,7 @@ import {
   segmentConversationItems,
 } from "./chat-timeline";
 import { turnStatsByMessageAtom } from "./message-store";
+import { PeerPrompt } from "./peer-prompt";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
 function getMessageArticleClassName(message: MessageRecord) {
@@ -839,7 +840,12 @@ export const ChatConversationItem = memo(function ChatConversationItem({
 
   return (
     <div className="flex flex-col gap-1.5 pb-4 px-2">
-      {conversationGroup.prompt ? (
+      {conversationGroup.prompt?.origin ? (
+        <PeerPrompt
+          message={conversationGroup.prompt}
+          setUserMessageRef={setUserMessageRef}
+        />
+      ) : conversationGroup.prompt ? (
         <UserPrompt
           canEdit={!isRunning && !isLatestConversation}
           message={conversationGroup.prompt}

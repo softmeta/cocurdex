@@ -7,6 +7,7 @@ import type {
   TeamChangedEvent,
   TeamMemberRecord,
   TeamRecord,
+  TeamTaskLinks,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { TeamModule } from "./team-module";
@@ -30,6 +31,7 @@ function session(overrides: Partial<SessionRecord>): SessionRecord {
 function memoryRepository(): TeamRepository {
   const teams = new Map<string, TeamRecord>();
   const members = new Map<string, TeamMemberRecord>();
+  const taskLinks = new Map<string, TeamTaskLinks>();
   const snapshot = (team: TeamRecord | undefined) =>
     team
       ? {
@@ -61,6 +63,12 @@ function memoryRepository(): TeamRepository {
     },
     async saveMember(member) {
       members.set(`${member.teamId}:${member.sessionId}`, member);
+    },
+    async listTaskLinks(teamId) {
+      return [...taskLinks.values()].filter((item) => item.teamId === teamId);
+    },
+    async saveTaskLinks(links) {
+      taskLinks.set(`${links.teamId}:${links.issueId}`, links);
     },
   };
 }
@@ -372,5 +380,107 @@ describe("TeamModule", () => {
     await expect(
       module.taskUpdate(a.sessionId, { issueId: "nope", status: "done" }),
     ).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+  });
+
+  it("runs dependent tasks in order and requires an independent review", async () => {
+    const { module } = harness();
+    const builder = await module.spawn("lead", {
+      name: "builder",
+      prompt: "go",
+    });
+    const design = await module.taskCreate("lead", { title: "Design" });
+    const build = await module.taskCreate("lead", {
+      title: "Build",
+      blockedBy: [design.id],
+    });
+    expect(
+      (await module.taskList(builder.sessionId)).find(
+        (task) => task.id === build.id,
+      ),
+    ).toMatchObject({ blockedBy: [design.id], blocked: true });
+    await expect(
+      module.taskUpdate(builder.sessionId, {
+        issueId: build.id,
+        status: "doing",
+        assignee: "me",
+      }),
+    ).rejects.toMatchObject({ code: "TASK_BLOCKED" });
+
+    await module.taskUpdate(builder.sessionId, {
+      issueId: design.id,
+      status: "doing",
+      assignee: "me",
+    });
+    await expect(
+      module.taskUpdate(builder.sessionId, {
+        issueId: design.id,
+        status: "review",
+      }),
+    ).rejects.toMatchObject({ code: "EVIDENCE_REQUIRED" });
+    const reviewed = await module.taskUpdate(builder.sessionId, {
+      issueId: design.id,
+      status: "review",
+      evidence: "docs/design.md written; lint clean",
+    });
+    expect(reviewed).toMatchObject({
+      status: "review",
+      evidence: "docs/design.md written; lint clean",
+    });
+    await expect(
+      module.taskUpdate(builder.sessionId, {
+        issueId: design.id,
+        status: "done",
+      }),
+    ).rejects.toMatchObject({ code: "SELF_APPROVAL" });
+    await module.taskUpdate("lead", { issueId: design.id, status: "done" });
+
+    expect(
+      await module.taskUpdate(builder.sessionId, {
+        issueId: build.id,
+        status: "doing",
+        assignee: "me",
+      }),
+    ).toMatchObject({ status: "doing", blocked: false });
+  });
+
+  it("rejects dependencies on tasks outside the team", async () => {
+    const { module } = harness();
+    await expect(
+      module.taskCreate("lead", { title: "Build", blockedBy: ["missing"] }),
+    ).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+  });
+
+  it("lets a lead plan tasks before spawning, then reuses that team", async () => {
+    const { module } = harness();
+    expect(await module.taskList("lead")).toEqual([]);
+    const task = await module.taskCreate("lead", { title: "Plan" });
+    const member = await module.spawn("lead", { name: "a", prompt: "go" });
+    const tasks = await module.taskList(member.sessionId);
+    expect(tasks.map((item) => item.id)).toEqual([task.id]);
+  });
+
+  it("stops only the caller's own team", async () => {
+    const { module } = harness();
+    await expect(module.stopLeadTeam("lead")).rejects.toMatchObject({
+      code: "team_not_found",
+    });
+    const member = await module.spawn("lead", { name: "a", prompt: "go" });
+    await expect(
+      module.stopLeadMember(member.sessionId, member.sessionId),
+    ).rejects.toMatchObject({ code: "team_not_found" });
+    const team = await module.stopLeadTeam("lead");
+    expect(team.status).toBe("stopped");
+  });
+
+  it("keeps OpenCode out of agent teams", async () => {
+    const { module, sessions } = harness();
+    sessions.set("oc-lead", session({ id: "oc-lead", agentType: "opencode" }));
+    await expect(
+      module.spawn("oc-lead", { name: "a", prompt: "go" }),
+    ).rejects.toMatchObject({ code: "unsupported_agent" });
+    await expect(
+      module.spawn("lead", { name: "a", prompt: "go", agentType: "opencode" }),
+    ).rejects.toMatchObject({ code: "unsupported_agent" });
+    expect(await module.taskList("lead")).toEqual([]);
   });
 });

@@ -128,7 +128,7 @@ export interface CocurdexDaemonServiceOptions {
   socketPath?: string;
   startedAt?: string;
   userDataPath: string;
-  agentToolsEntryPath?: string;
+  agentToolsUrl?: string;
 }
 
 export interface CocurdexDaemonStatus {
@@ -230,8 +230,7 @@ export class CocurdexDaemonService {
         ),
     );
     this.agentTools = new AgentToolBridge({
-      userDataPath: options.userDataPath,
-      entryPath: options.agentToolsEntryPath ?? process.argv[1] ?? "",
+      url: options.agentToolsUrl ?? null,
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
     });
@@ -1222,6 +1221,7 @@ export class CocurdexDaemonService {
 
   async sendSessionMessage(command: SendSessionCommand) {
     validateSendSessionCommand(command);
+    if (!command.origin) this.peerMessaging.noteHumanInput(command.sessionId);
     return this.sessionCommands.run(command.sessionId, async () => {
       if (
         command.messageId &&
@@ -1572,6 +1572,7 @@ export class CocurdexDaemonService {
         attachments: next.payload.attachments,
         thinkingLevel: next.payload.thinkingLevel,
         delivery: next.payload.delivery,
+        origin: next.payload.origin,
       });
       await this.state.deleteQueuedAgentInput(next.payload.messageId);
       this.runtime.emitAgentEvent({
