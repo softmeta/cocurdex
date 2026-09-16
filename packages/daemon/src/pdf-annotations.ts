@@ -89,29 +89,36 @@ export class DaemonPdfAnnotationsService {
 
   // Saves arrive as complete snapshots and callers do not await them, so
   // concurrent saves for one PDF must run in request order or an older
-  // snapshot can overwrite a newer one.
+  // snapshot can overwrite a newer one. The chain is keyed by filePath and
+  // entered synchronously: awaiting path resolution before enqueuing would
+  // let a later save whose awaits settle first jump the queue.
   async saveAnnotations(
     filePath: string,
     annotations: PdfDocumentAnnotations,
   ): Promise<void> {
-    const resolvedPath = await resolveAuthorizedPdfReadPath(
-      filePath,
-      await this.listWorkspaceRootPaths(),
-    );
-    const storagePath = this.storageFilePathFor(resolvedPath);
-    const run = (this.saveChains.get(storagePath) ?? Promise.resolve()).then(
-      () => this.persistAnnotations(resolvedPath, storagePath, annotations),
+    const run = (this.saveChains.get(filePath) ?? Promise.resolve()).then(
+      async () => {
+        const resolvedPath = await resolveAuthorizedPdfReadPath(
+          filePath,
+          await this.listWorkspaceRootPaths(),
+        );
+        await this.persistAnnotations(
+          resolvedPath,
+          this.storageFilePathFor(resolvedPath),
+          annotations,
+        );
+      },
     );
     const tail = run.then(
       () => undefined,
       () => undefined,
     );
-    this.saveChains.set(storagePath, tail);
+    this.saveChains.set(filePath, tail);
     try {
       await run;
     } finally {
-      if (this.saveChains.get(storagePath) === tail) {
-        this.saveChains.delete(storagePath);
+      if (this.saveChains.get(filePath) === tail) {
+        this.saveChains.delete(filePath);
       }
     }
   }
