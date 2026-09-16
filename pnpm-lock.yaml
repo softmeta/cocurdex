@@ -561,6 +561,9 @@ importers:
       '@cocurdex/daemon':
         specifier: workspace:*
         version: link:../../packages/daemon
+      '@cocurdex/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc

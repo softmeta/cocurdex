@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@cocurdex/daemon": "workspace:*",
+    "@cocurdex/db": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*"
   },

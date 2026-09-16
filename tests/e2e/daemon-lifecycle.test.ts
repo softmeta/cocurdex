@@ -115,4 +115,31 @@ describe("daemon process lifecycle", () => {
       await second.dispose();
     }
   });
+
+  it("recovers from a SIGKILLed daemon, keeping data and replacing stale metadata", async () => {
+    const userDataPath = mkdtempSync(
+      path.join(tmpdir(), "cocurdex-e2e-crash-"),
+    );
+    const first = await spawnDaemon({ userDataPath });
+    const note = await requestDaemon(
+      "note.create",
+      { title: "Crash survivor" },
+      first.options,
+    );
+    first.child.kill("SIGKILL");
+    await first.exit;
+
+    const second = await spawnDaemon({ userDataPath });
+    try {
+      expect(second.metadata.pid).toBe(second.child.pid);
+      const fetched = await requestDaemon(
+        "note.get",
+        { id: note.id },
+        second.options,
+      );
+      expect(fetched).toMatchObject({ id: note.id, title: "Crash survivor" });
+    } finally {
+      await second.dispose();
+    }
+  });
 });
