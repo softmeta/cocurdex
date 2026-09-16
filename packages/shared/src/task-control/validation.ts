@@ -128,8 +128,15 @@ export function validateSessionConfiguration(
     "agentRoleId",
     "providerSnapshot",
     "worktreePath",
+    "peerInbound",
   ]);
   validateSessionId(value.id);
+  if (
+    value.peerInbound !== undefined &&
+    value.peerInbound !== "deliver" &&
+    value.peerInbound !== "refuse"
+  )
+    throw new Error("Invalid peer inbound policy");
   validateSessionId(value.workspaceId);
   text(value.title, "title", 4096, true);
   if (typeof value.agentType !== "string" || !isAgentId(value.agentType))
@@ -146,6 +153,14 @@ export function validateSessionConfiguration(
   provider(value.providerSnapshot);
 }
 
+function validateMessageOrigin(value: unknown) {
+  record(value);
+  keys(value, ["kind", "sessionId", "sessionTitle"]);
+  if (value.kind !== "peer") throw new Error("Invalid message origin");
+  validateSessionId(value.sessionId);
+  text(value.sessionTitle, "origin session title", 4096, true);
+}
+
 export function validateSendSessionCommand(
   value: unknown,
 ): asserts value is SendSessionCommand {
@@ -158,8 +173,10 @@ export function validateSendSessionCommand(
     "attachments",
     "thinkingLevel",
     "delivery",
+    "origin",
   ]);
   validateSessionId(value.sessionId);
+  if (value.origin !== undefined) validateMessageOrigin(value.origin);
   if (value.messageId !== undefined) validateSessionId(value.messageId);
   text(value.content, "message content", 200_000, true);
   if (value.createdAt !== undefined) {

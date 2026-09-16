@@ -18,7 +18,6 @@ import {
   Settings,
   SlidersHorizontal,
   UserCog,
-  Workflow,
 } from "lucide-react";
 import type { SettingsSectionId } from "@/app/layout";
 
@@ -40,7 +39,6 @@ export const settingsSections = [
   },
   { id: "mcp", labelKey: "mcp", icon: Server, group: "core" },
   { id: "skills", labelKey: "skills", icon: BookOpen, group: "core" },
-  { id: "workflows", labelKey: "workflows", icon: Workflow, group: "core" },
   // Network proxy lives in core so the sidebar surfaces it (only core is listed).
   {
     id: "environment",

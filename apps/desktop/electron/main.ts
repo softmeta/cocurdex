@@ -1404,6 +1404,8 @@ app
             });
           } else if ("conversationId" in event) {
             window.webContents.send("chat:event", event);
+          } else if (event.type === "peer.message") {
+            appLogger.info("daemon.peerMessage", { ...event });
           } else {
             window.webContents.send("agent:event", event, meta);
           }

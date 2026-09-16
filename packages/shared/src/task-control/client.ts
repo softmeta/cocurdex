@@ -15,6 +15,7 @@ export function sessionConfiguration(
     agentRoleId,
     providerSnapshot,
     worktreePath,
+    peerInbound,
   } = session;
   return {
     id,
@@ -27,6 +28,7 @@ export function sessionConfiguration(
     agentRoleId,
     providerSnapshot,
     worktreePath,
+    ...(peerInbound ? { peerInbound } : {}),
   };
 }
 

@@ -15,6 +15,7 @@ import type {
   AgentSessionConfigOption,
   AgentSlashCommand,
   AgentThinkingLevel,
+  AgentToolsBinding,
   AgentWorkspaceChangeCapabilities,
   CollaborationModeKind,
   MessageAttachment,
@@ -49,6 +50,7 @@ export interface CreateAgentSessionPayload {
   userDataPath?: string;
   providerConfig?: RuntimeProviderConfig | null;
   providerSession?: AgentProviderSessionRecord | null;
+  agentTools?: AgentToolsBinding | null;
   onProviderSessionUpdate?(
     providerSession: AgentProviderSessionRecord | null,
   ): void;

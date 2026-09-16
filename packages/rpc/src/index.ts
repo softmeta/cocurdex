@@ -11,6 +11,7 @@ import type {
   AgentSessionConfigOption,
   AgentSlashCommand,
   AgentToolCallResult,
+  AgentToolCatalog,
   AppBootstrapData,
   AppResyncSnapshot,
   CocurdexDaemonEvent,
@@ -56,6 +57,8 @@ import type {
   NoteSummary,
   NoteTag,
   PdfDocumentAnnotations,
+  PeerInboundPolicy,
+  PeerSessionSummary,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
@@ -72,6 +75,8 @@ import type {
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
+  SendPeerMessagePayload,
+  SendPeerMessageResult,
   SendSessionCommand,
   SessionAttentionSnapshot,
   SessionConfiguration,
@@ -206,6 +211,11 @@ export type DaemonRequestPayloadByMethod = {
   "session.snapshot": { sessionId: string };
   "session.configure": SessionConfiguration;
   "session.get": { sessionId: string };
+  "session.listPeers": { sessionId: string };
+  "session.sendPeerMessage": SendPeerMessagePayload;
+  "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
+  "agentTool.catalog": { token: string };
+  "agentTool.call": { token: string; name: string; input: unknown };
   "session.delete": { sessionId: string };
   "session.archive": { sessionId: string };
   "session.restore": { sessionId: string };
@@ -395,6 +405,11 @@ export type DaemonResultByMethod = {
   "worktree.create": GitWorktreeInfo;
   "worktree.remove": { removed: boolean };
   "session.list": SessionRecord[];
+  "session.listPeers": PeerSessionSummary[];
+  "session.sendPeerMessage": SendPeerMessageResult;
+  "session.setPeerInbound": SessionRecord;
+  "agentTool.catalog": AgentToolCatalog;
+  "agentTool.call": unknown;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;

@@ -39,6 +39,7 @@ export function createSchemaSql() {
       last_message_at TEXT,
       archived_at TEXT,
       worktree_path TEXT,
+      peer_inbound TEXT NOT NULL DEFAULT 'deliver',
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
       FOREIGN KEY (parent_session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
@@ -51,6 +52,7 @@ export function createSchemaSql() {
       content TEXT NOT NULL,
       attachments_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      origin_json TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 

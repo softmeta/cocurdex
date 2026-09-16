@@ -72,6 +72,9 @@ export default interface Resources {
       jumpToPrompt: "Jump to prompt {{index}}";
     };
     openFile: "Open file";
+    peerMessage: {
+      from: "From session {{title}}";
+    };
     permissions: {
       actions: {
         edit: "edit";

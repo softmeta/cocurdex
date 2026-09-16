@@ -83,6 +83,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
       null,
     ),
     worktreePath: toNullableString(row.worktree_path),
+    peerInbound: row.peer_inbound === "refuse" ? "refuse" : "deliver",
   };
 }
 
@@ -98,6 +99,9 @@ export function mapMessage(row: SqliteRow): MessageRecord {
     content: String(row.content),
     attachments: parseJson(row.attachments_json, []),
     createdAt: String(row.created_at),
+    ...(typeof row.origin_json === "string" && row.origin_json
+      ? { origin: parseJson<MessageRecord["origin"]>(row.origin_json, null) }
+      : {}),
   };
 }
 

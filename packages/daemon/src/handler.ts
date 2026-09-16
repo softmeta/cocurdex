@@ -205,6 +205,23 @@ export async function handleDaemonRequest(
       return service.saveSessionConfiguration(request.params);
     case "session.get":
       return service.getSession(request.params.sessionId);
+    case "session.listPeers":
+      return service.peerMessaging.listPeers(request.params.sessionId);
+    case "session.sendPeerMessage":
+      return service.peerMessaging.send(request.params);
+    case "session.setPeerInbound":
+      return service.setSessionPeerInbound(
+        request.params.sessionId,
+        request.params.policy,
+      );
+    case "agentTool.catalog":
+      return service.agentTools.catalog(request.params.token);
+    case "agentTool.call":
+      return service.agentTools.call(
+        request.params.token,
+        request.params.name,
+        request.params.input,
+      );
     case "provider.apiKey.set":
       await service.providerCredentials.setApiKey(
         request.params.providerId,

@@ -68,6 +68,9 @@
     "jumpToPrompt": "跳到提示 {{index}}"
   },
   "openFile": "打开文件",
+  "peerMessage": {
+    "from": "来自会话 {{title}}"
+  },
   "permissions": {
     "actions": {
       "edit": "编辑",

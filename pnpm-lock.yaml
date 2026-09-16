@@ -476,6 +476,9 @@ importers:
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../shared
+      '@modelcontextprotocol/sdk':
+        specifier: 1.30.0
+        version: 1.30.0(supports-color@7.2.0)(zod@4.6.5)
       '@napi-rs/keyring':
         specifier: ^2.0.0
         version: 2.0.0
@@ -571,6 +574,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
     devDependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 1.30.0
+        version: 1.30.0(supports-color@7.2.0)(zod@4.6.5)
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.63.0

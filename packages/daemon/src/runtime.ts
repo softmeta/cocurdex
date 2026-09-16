@@ -18,6 +18,7 @@ import {
   type AgentQuestionRequestRecord,
   type AgentSessionConfigOption,
   type AgentSlashCommand,
+  type AgentToolsBinding,
   type AgentUsageRecord,
   type MessageAttachment,
   type MessageRecord,
@@ -57,10 +58,16 @@ interface PendingPlanApproval {
   resolve(decision: AgentPlanApprovalDecision): void;
 }
 
+export interface AgentToolsProvider {
+  bindingFor(session: SessionRecord): AgentToolsBinding | null;
+  revoke(sessionId: string): void;
+}
+
 interface AgentRuntimeManagerOptions {
   broadcastAgentEvent(event: AgentEvent): void;
   createAdapter?: (agentType: AgentId) => AgentAdapter;
   userDataPath?: string;
+  agentTools?: AgentToolsProvider;
 }
 
 export class AgentRuntimeManager {
@@ -89,6 +96,7 @@ export class AgentRuntimeManager {
   private persistQueue: Promise<void> = Promise.resolve();
 
   private readonly userDataPath?: string;
+  private readonly agentTools: AgentToolsProvider | null;
 
   constructor(options: AgentRuntimeManagerOptions) {
     this.broadcastCoalescer = createEventBroadcastCoalescer(
@@ -96,6 +104,7 @@ export class AgentRuntimeManager {
     );
     this.createAdapter = options.createAdapter ?? createAgentAdapter;
     this.userDataPath = options.userDataPath;
+    this.agentTools = options.agentTools ?? null;
   }
 
   configureAgentEventPersistence(
@@ -393,6 +402,7 @@ export class AgentRuntimeManager {
         userDataPath: this.userDataPath,
         providerSession: persistence.providerSession,
         providerConfig: persistence.providerConfig,
+        agentTools: this.agentTools?.bindingFor(sessionCopy) ?? null,
         onProviderSessionUpdate: (providerSession) => {
           const activeRuntime = this.sessionRuntimes.get(payload.session.id);
           if (!runtime || activeRuntime?.runtime !== runtime) {
@@ -550,6 +560,7 @@ export class AgentRuntimeManager {
     }
 
     this.sessionRuntimes.delete(sessionId);
+    this.agentTools?.revoke(sessionId);
     const failures: unknown[] = [];
     try {
       await sessionRuntime.runtime.stop();

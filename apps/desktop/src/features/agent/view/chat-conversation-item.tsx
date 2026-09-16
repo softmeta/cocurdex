@@ -651,6 +651,11 @@ const MessageArticle = memo(function MessageArticle({
               {t("system")}
             </div>
           ) : null}
+          {message.origin ? (
+            <div className="mb-1.5 text-meta font-medium text-chat-fg-secondary">
+              {t("peerMessage.from", { title: message.origin.sessionTitle })}
+            </div>
+          ) : null}
           <MessageAttachments message={message} />
           {isReasoning ? (
             <ReasoningMarkdown

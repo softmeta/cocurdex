@@ -61,6 +61,7 @@ import {
   validateSubmitPreviousMessageCommand,
   workspacePathsEqual,
 } from "@cocurdex/shared";
+import { AgentToolBridge, registerMessagingTools } from "./agent-tools";
 import { discoverInstalledAgentCapabilities } from "./agents";
 import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
@@ -72,6 +73,7 @@ import { DaemonMcpConfigService } from "./mcp-config";
 import { probeNetworkProxy } from "./network-proxy-probe";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
+import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
 import { ProviderCredentials } from "./provider-credentials";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
@@ -120,6 +122,7 @@ export interface CocurdexDaemonServiceOptions {
   socketPath?: string;
   startedAt?: string;
   userDataPath: string;
+  agentToolsEntryPath?: string;
 }
 
 export interface CocurdexDaemonStatus {
@@ -148,6 +151,8 @@ function isExistingDirectory(directoryPath: string) {
 export class CocurdexDaemonService {
   readonly chatService: DaemonChatService;
   readonly events = new EventEmitter();
+  readonly agentTools: AgentToolBridge;
+  readonly peerMessaging: PeerMessagingService;
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
   readonly providerCredentials: ProviderCredentials;
@@ -217,11 +222,28 @@ export class CocurdexDaemonService {
           (workspace) => workspace.rootPaths,
         ),
     );
+    this.agentTools = new AgentToolBridge({
+      userDataPath: options.userDataPath,
+      entryPath: options.agentToolsEntryPath ?? process.argv[1] ?? "",
+      getSession: (sessionId) => this.state.getSession(sessionId),
+    });
+    this.peerMessaging = new PeerMessagingService({
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      listSessions: () => this.state.listSessions(),
+      hasActiveTurn: (sessionId) => this.pendingTurns.has(sessionId),
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      broadcast: (event) => this.events.emit("daemon.event", event),
+    });
+    registerMessagingTools(this.agentTools.registry, {
+      listPeers: (fromSessionId) => this.peerMessaging.listPeers(fromSessionId),
+      sendPeerMessage: (payload) => this.peerMessaging.send(payload),
+    });
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);
       },
       userDataPath: options.userDataPath,
+      agentTools: this.agentTools,
     });
     this.workspaceChanges = createWorkspaceChangeCoordinator({
       userDataPath: options.userDataPath,
@@ -914,6 +936,25 @@ export class CocurdexDaemonService {
   async getSession(sessionId: string) {
     validateSessionId(sessionId);
     return this.state.getSession(sessionId);
+  }
+
+  async setSessionPeerInbound(sessionId: string, policy: "deliver" | "refuse") {
+    validateSessionId(sessionId);
+    return this.sessionCommands.run(sessionId, async () => {
+      const session = await this.state.getSession(sessionId);
+      if (!session) throw new Error(`Session ${sessionId} was not found`);
+      const updated: SessionRecord = {
+        ...session,
+        peerInbound: policy,
+        updatedAt: new Date().toISOString(),
+      };
+      await this.state.saveSession(updated);
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
+      return updated;
+    });
   }
 
   private async getSessionExecutionContext(
@@ -1745,6 +1786,7 @@ export class CocurdexDaemonService {
       content: payload.content.trim(),
       attachments: payload.attachments ?? [],
       createdAt: payload.createdAt ?? new Date().toISOString(),
+      ...(payload.origin ? { origin: payload.origin } : {}),
     };
   }
 
@@ -1869,6 +1911,7 @@ export function onAgentEvent(
   const daemonListener = (event: CocurdexDaemonEvent) => {
     if (
       event.type !== "data.changed" &&
+      event.type !== "peer.message" &&
       !isWorkspaceSearchDaemonEvent(event) &&
       !("conversationId" in event)
     ) {

@@ -13,6 +13,7 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@playwright/test": "^1.52.0",
     "@types/node": "^25.6.0",
     "vitest": "^3.2.7"

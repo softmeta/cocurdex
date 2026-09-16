@@ -216,6 +216,50 @@ async function main(rawArgs: string[]) {
     return;
   }
 
+  if (resource === "session" && action === "peers") {
+    const [sessionId] = args;
+    if (!sessionId) {
+      throw new Error("Usage: cocurdex session peers <session-id>");
+    }
+    const peers = await withDaemon(() =>
+      requestDaemon("session.listPeers", { sessionId }),
+    );
+    printRows(peers, ["sessionId", "title", "agentType", "status"], parsed);
+    return;
+  }
+
+  if (resource === "session" && action === "send-peer") {
+    const [fromSessionId, toSessionId, content] = args;
+    if (!fromSessionId || !toSessionId || !content) {
+      throw new Error(
+        "Usage: cocurdex session send-peer <from-session-id> <to-session-id> <message>",
+      );
+    }
+    const result = await withDaemon(() =>
+      requestDaemon("session.sendPeerMessage", {
+        fromSessionId,
+        toSessionId,
+        content,
+      }),
+    );
+    printResult(result, parsed);
+    return;
+  }
+
+  if (resource === "session" && action === "peer-inbound") {
+    const [sessionId, policy] = args;
+    if (!sessionId || (policy !== "deliver" && policy !== "refuse")) {
+      throw new Error(
+        "Usage: cocurdex session peer-inbound <session-id> deliver|refuse",
+      );
+    }
+    const session = await withDaemon(() =>
+      requestDaemon("session.setPeerInbound", { sessionId, policy }),
+    );
+    printResult(session, parsed);
+    return;
+  }
+
   if (resource === "session" && action === "stop") {
     const [sessionId] = args;
 
@@ -399,6 +443,9 @@ function printUsage() {
       "  cocurdex session tui [session-id]",
       "  cocurdex session tui --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
       "  cocurdex session send <session-id> <prompt>",
+      "  cocurdex session peers <session-id>",
+      "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
+      "  cocurdex session peer-inbound <session-id> deliver|refuse",
       "  cocurdex session stop <session-id>",
       "  cocurdex provider list",
       "  cocurdex provider models <provider>",
