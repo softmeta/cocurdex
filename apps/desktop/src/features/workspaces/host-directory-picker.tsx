@@ -1,7 +1,7 @@
 import type { HostDirectoryListing } from "@cocurdex/shared";
 import { atom, useAtom } from "jotai";
 import { ArrowUp, Eye, EyeOff, Folder } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -79,18 +79,22 @@ function HostDirectoryBrowser({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
+  const requestSeqRef = useRef(0);
 
   const load = async (path?: string) => {
+    const request = ++requestSeqRef.current;
     setLoading(true);
     try {
       const next = await desktopApi.listHostDirectories(path);
+      if (request !== requestSeqRef.current) return;
       setListing(next);
       setPathDraft(next.path);
       setError(null);
     } catch (cause) {
+      if (request !== requestSeqRef.current) return;
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setLoading(false);
+      if (request === requestSeqRef.current) setLoading(false);
     }
   };
 
@@ -104,11 +108,14 @@ function HostDirectoryBrowser({
       onSelect(listing.path);
       return;
     }
+    const request = ++requestSeqRef.current;
     setLoading(true);
     try {
       const next = await desktopApi.listHostDirectories(draft);
+      if (request !== requestSeqRef.current) return;
       onSelect(next.path);
     } catch (cause) {
+      if (request !== requestSeqRef.current) return;
       setError(cause instanceof Error ? cause.message : String(cause));
       setLoading(false);
     }

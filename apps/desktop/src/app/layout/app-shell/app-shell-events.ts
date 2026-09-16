@@ -1,5 +1,6 @@
+import type { AgentEvent } from "@cocurdex/shared";
 import { useSetAtom, useStore } from "jotai";
-import { useEffect, useEffectEvent } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { toast } from "sonner";
 import {
   applyAgentEventAtom,
@@ -30,9 +31,9 @@ import {
 import { editorPanelOpenAtom } from "@/features/editor";
 import {
   activeSessionIdAtom,
-  bootstrapSessionsAtom,
   markSessionMessageAtom,
   projectSubagentSessionFromToolCallAtom,
+  reconcileSessionsAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
   upsertSessionAtom,
@@ -64,7 +65,7 @@ export function useAgentEventBridge() {
   const projectSubagentSession = useSetAtom(
     projectSubagentSessionFromToolCallAtom,
   );
-  const bootstrapSessions = useSetAtom(bootstrapSessionsAtom);
+  const reconcileSessions = useSetAtom(reconcileSessionsAtom);
   const bootstrapQueuedInputs = useSetAtom(bootstrapQueuedInputsAtom);
   const bootstrapSessionUsage = useSetAtom(bootstrapSessionUsageAtom);
   const hydratePendingPermissions = useSetAtom(hydratePendingPermissionsAtom);
@@ -81,11 +82,14 @@ export function useAgentEventBridge() {
   // Replay-gap recovery: a dropped journaled event means event-sourced agent
   // state can be stale, so refetch every authoritative snapshot — the session
   // list, queued inputs, usage, all pending interactions, and the transcripts
-  // already hydrated in memory.
+  // already hydrated in memory. Live events arriving while snapshots load are
+  // buffered and applied afterwards so newer updates always win.
+  const resyncInFlightRef = useRef(false);
+  const bufferedAgentEventsRef = useRef<AgentEvent[]>([]);
   const resyncAgentState = useEffectEvent(async () => {
     try {
       const data = await desktopApi.bootstrapApp();
-      bootstrapSessions(data.sessions);
+      reconcileSessions(data.sessions);
       bootstrapQueuedInputs({
         inputs: data.queuedAgentInputs,
         messages: data.queuedMessages,
@@ -130,89 +134,97 @@ export function useAgentEventBridge() {
     }
   });
 
-  const handleAgentEvent = useEffectEvent(
-    (
-      event: Parameters<typeof taskApi.onAgentEvent>[0] extends (
-        payload: infer T,
-      ) => void
-        ? T
-        : never,
-    ) => {
-      applyAgentEvent(event);
-      applyQueuedInputEvent(event);
-      applyAgentRuntimeEvent(event);
-      applyPermissionEvent(event);
-      applyPlanApprovalEvent(event);
-      applyPlanEvent(event);
-      applyQuestionEvent(event);
-      applyToolEvent(event);
-      applyTurnChangesEvent(event);
-      applyUsageEvent(event);
-      applyRateLimitsEvent(event);
-      applyContextBreakdownEvent(event);
+  const handleAgentEvent = useEffectEvent((event: AgentEvent) => {
+    // A replay-gap resync reloads authoritative snapshots; events received
+    // while it runs are newer than those snapshots, so apply them afterwards
+    // in order instead of letting the snapshot overwrite them.
+    if (resyncInFlightRef.current) {
+      bufferedAgentEventsRef.current.push(event);
+      return;
+    }
+    applyAgentEvent(event);
+    applyQueuedInputEvent(event);
+    applyAgentRuntimeEvent(event);
+    applyPermissionEvent(event);
+    applyPlanApprovalEvent(event);
+    applyPlanEvent(event);
+    applyQuestionEvent(event);
+    applyToolEvent(event);
+    applyTurnChangesEvent(event);
+    applyUsageEvent(event);
+    applyRateLimitsEvent(event);
+    applyContextBreakdownEvent(event);
 
-      if (event.type === "session.upserted") {
-        upsertSession(event.session);
-        return;
-      }
+    if (event.type === "session.upserted") {
+      upsertSession(event.session);
+      return;
+    }
 
-      if (event.type === "session.title.updated") {
-        updateSessionTitle({
-          sessionId: event.sessionId,
-          title: event.title,
-          expectedTitle: event.expectedTitle,
-          updatedAt: event.updatedAt,
-        });
-        return;
-      }
+    if (event.type === "session.title.updated") {
+      updateSessionTitle({
+        sessionId: event.sessionId,
+        title: event.title,
+        expectedTitle: event.expectedTitle,
+        updatedAt: event.updatedAt,
+      });
+      return;
+    }
 
-      if (event.type === "state.changed") {
-        updateSessionStatus({
-          sessionId: event.sessionId,
-          status: event.status,
-        });
-        return;
-      }
+    if (event.type === "state.changed") {
+      updateSessionStatus({
+        sessionId: event.sessionId,
+        status: event.status,
+      });
+      return;
+    }
 
-      if (event.type === "message.completed") {
-        markSessionMessage({
-          sessionId: event.sessionId,
-          createdAt: event.message.createdAt,
-        });
-        return;
-      }
+    if (event.type === "message.completed") {
+      markSessionMessage({
+        sessionId: event.sessionId,
+        createdAt: event.message.createdAt,
+      });
+      return;
+    }
 
-      if (
-        event.type === "tool.started" ||
-        event.type === "tool.updated" ||
-        event.type === "tool.finished"
-      ) {
-        projectSubagentSession(event.toolCall);
-        return;
-      }
+    if (
+      event.type === "tool.started" ||
+      event.type === "tool.updated" ||
+      event.type === "tool.finished"
+    ) {
+      projectSubagentSession(event.toolCall);
+      return;
+    }
 
-      if (event.type === "error") {
-        console.error("[AgentEvent] error", {
-          error: event.message,
-          sessionId: event.sessionId,
-        });
-        updateSessionStatus({
-          sessionId: event.sessionId,
-          status: "error",
-        });
-        markSessionMessage({
-          sessionId: event.sessionId,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    },
-  );
+    if (event.type === "error") {
+      console.error("[AgentEvent] error", {
+        error: event.message,
+        sessionId: event.sessionId,
+      });
+      updateSessionStatus({
+        sessionId: event.sessionId,
+        status: "error",
+      });
+      markSessionMessage({
+        sessionId: event.sessionId,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  });
 
   useEffect(() => taskApi.onAgentEvent(handleAgentEvent), []);
   useEffect(
     () =>
       desktopApi.onDataChanged((event) => {
-        if (event.areas.includes("agent")) void resyncAgentState();
+        if (!event.areas.includes("agent") || resyncInFlightRef.current) return;
+        resyncInFlightRef.current = true;
+        void resyncAgentState().finally(() => {
+          resyncInFlightRef.current = false;
+          const buffered = bufferedAgentEventsRef.current;
+          bufferedAgentEventsRef.current = [];
+          for (const bufferedEvent of buffered) {
+            handleAgentEvent(bufferedEvent);
+          }
+        });
       }),
     [],
   );
