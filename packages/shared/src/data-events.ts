@@ -2,7 +2,10 @@ import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
 import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 
-export const cocurdexDataAreas = ["notes", "issues"] as const;
+// `agent` marks agent/session runtime state (sessions, pending interactions,
+// transcripts) as unsynchronized; emitted synthetically on event-replay gaps
+// so clients resync from authoritative snapshots.
+export const cocurdexDataAreas = ["notes", "issues", "agent"] as const;
 
 export type CocurdexDataArea = (typeof cocurdexDataAreas)[number];
 

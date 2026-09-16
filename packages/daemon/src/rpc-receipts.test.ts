@@ -131,4 +131,33 @@ describe("createDaemonReceiptStore", () => {
     await Promise.all([first, duplicate]);
     expect(running).toHaveBeenCalledTimes(1);
   });
+
+  it("drains a burst of in-flight receipts back under capacity as they settle", async () => {
+    const store = createDaemonReceiptStore({ maxEntries: 2, ttlMs: 60_000 });
+    const releases: Array<() => void> = [];
+    let call = 0;
+    const run = vi.fn(() => {
+      call += 1;
+      if (call > 3) {
+        return Promise.resolve({ ok: true as const, result: "done" });
+      }
+      return new Promise<{ ok: true; result: string }>((resolve) => {
+        releases.push(() => resolve({ ok: true, result: "done" }));
+      });
+    });
+
+    // Every receipt is in-flight when inserted, so nothing is evictable yet.
+    const pending = [
+      store.execute("m:k1", run),
+      store.execute("m:k2", run),
+      store.execute("m:k3", run),
+    ];
+    await new Promise(setImmediate);
+    for (const release of releases) release();
+    await Promise.all(pending);
+
+    // Once settled, capacity enforcement drops all but the two newest.
+    expect((await store.execute("m:k1", run)).replayed).toBe(false);
+    expect((await store.execute("m:k3", run)).replayed).toBe(true);
+  });
 });

@@ -654,6 +654,10 @@ export class CocurdexDaemonService {
     return this.state.listSessions();
   }
 
+  listPendingInteractions() {
+    return this.runtime.getPendingInteractions();
+  }
+
   async getSessionSnapshot(sessionId: string) {
     validateSessionId(sessionId);
     const session = await this.state.getSession(sessionId);

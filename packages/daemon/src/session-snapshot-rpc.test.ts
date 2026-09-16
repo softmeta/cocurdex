@@ -97,6 +97,36 @@ describe("session snapshot RPC", () => {
     await service.shutdown();
   });
 
+  it("lists pending interactions across sessions", async () => {
+    const service = await createService();
+    void service.runtime.requestAgentPermission({
+      id: "permission-1",
+      sessionId: "session-1",
+      providerId: "codex",
+      kind: "command",
+      title: "Run tests",
+      locations: [],
+      options: [{ id: "allow", kind: "allow_once", label: "Allow once" }],
+    });
+
+    const interactions = await handleDaemonRequest<"session.listInteractions">(
+      service,
+      {
+        id: "1",
+        method: "session.listInteractions",
+        token: "test",
+      },
+    );
+
+    expect(interactions).toMatchObject({
+      permissions: [{ id: "permission-1", sessionId: "session-1" }],
+      questions: [],
+      planApprovals: [],
+    });
+    service.runtime.resolveAgentPermission("permission-1", "cancelled");
+    await service.shutdown();
+  });
+
   it("returns null for an unknown session", async () => {
     const service = await createService();
 

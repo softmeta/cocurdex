@@ -74,6 +74,7 @@ import type {
   SendSessionCommand,
   SessionAttentionSnapshot,
   SessionConfiguration,
+  SessionInteractionSnapshot,
   SessionObservationSnapshot,
   SessionRecord,
   SubmitPreviousMessageCommand,
@@ -201,6 +202,7 @@ export type DaemonRequestPayloadByMethod = {
     workspaceRootPath?: string;
   };
   "session.list": undefined;
+  "session.listInteractions": undefined;
   "session.snapshot": { sessionId: string };
   "session.configure": SessionConfiguration;
   "session.get": { sessionId: string };
@@ -392,6 +394,7 @@ export type DaemonResultByMethod = {
   "worktree.create": GitWorktreeInfo;
   "worktree.remove": { removed: boolean };
   "session.list": SessionRecord[];
+  "session.listInteractions": SessionInteractionSnapshot;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;
@@ -550,6 +553,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "agentRole.list": true,
   "session.list": true,
   "session.listArchived": true,
+  "session.listInteractions": true,
   "workflow.list": true,
   "workflow.listDefinitions": true,
   "workspace.list": true,

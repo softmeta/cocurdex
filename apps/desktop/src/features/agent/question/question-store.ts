@@ -32,6 +32,34 @@ function upsertQuestion(
   );
 }
 
+// Same reconciliation as hydratePendingPermissionsAtom: upsert the daemon's
+// pending questions, drop locally-pending entries it no longer holds, and
+// preserve answered records for transcript history.
+export const hydratePendingQuestionsAtom = atom(
+  null,
+  (get, set, pending: AgentQuestionRequestRecord[]) => {
+    const pendingIds = new Set(pending.map((record) => record.id));
+    const next: QuestionsBySession = {};
+    for (const [sessionId, records] of Object.entries(
+      get(questionsBySessionAtom),
+    )) {
+      const kept = records.filter(
+        (record) => record.status !== "pending" || pendingIds.has(record.id),
+      );
+      if (kept.length > 0) {
+        next[sessionId] = kept;
+      }
+    }
+    for (const record of pending) {
+      next[record.sessionId] = upsertQuestion(
+        next[record.sessionId] ?? [],
+        record,
+      );
+    }
+    set(questionsBySessionAtom, next);
+  },
+);
+
 export const applyQuestionEventAtom = atom(
   null,
   (get, set, event: AgentEvent) => {

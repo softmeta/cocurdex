@@ -94,6 +94,26 @@ function HostDirectoryBrowser({
     }
   };
 
+  // Select resolves the path field: an edited draft is validated through the
+  // daemon before being returned, so a failed or uncommitted path can never
+  // select the previously listed directory.
+  const selectCurrent = async () => {
+    const draft = pathDraft.trim();
+    if (!draft) return;
+    if (listing && draft === listing.path) {
+      onSelect(listing.path);
+      return;
+    }
+    setLoading(true);
+    try {
+      const next = await desktopApi.listHostDirectories(draft);
+      onSelect(next.path);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setLoading(false);
+    }
+  };
+
   useMountEffect(() => {
     void load();
   });
@@ -190,11 +210,9 @@ function HostDirectoryBrowser({
           {t("workspace.hostPicker.cancel")}
         </Button>
         <Button
-          disabled={!listing}
+          disabled={loading || !pathDraft.trim()}
           type="button"
-          onClick={() => {
-            if (listing) onSelect(listing.path);
-          }}
+          onClick={() => void selectCurrent()}
         >
           {t("workspace.hostPicker.select")}
         </Button>

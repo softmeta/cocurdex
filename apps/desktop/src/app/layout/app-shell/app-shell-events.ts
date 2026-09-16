@@ -1,4 +1,4 @@
-import { useSetAtom } from "jotai";
+import { useSetAtom, useStore } from "jotai";
 import { useEffect, useEffectEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -10,22 +10,37 @@ import {
   applyQuestionEventAtom,
   applyQueuedInputEventAtom,
   applyToolEventAtom,
+  bootstrapQueuedInputsAtom,
+  hydratePendingPermissionsAtom,
+  hydratePendingPlanApprovalsAtom,
+  hydratePendingQuestionsAtom,
+  loadSessionMessagesAtom,
+  loadSessionToolCallsAtom,
+  loadTurnStatsAtom,
+  messagesLoadedBySessionAtom,
+  toolCallsLoadedBySessionAtom,
 } from "@/features/agent";
 import { addAnnotationAtom, receiveBrowserTabsAtom } from "@/features/browser";
 import {
   applyContextBreakdownEventAtom,
   applyRateLimitsEventAtom,
   applyUsageEventAtom,
+  bootstrapSessionUsageAtom,
 } from "@/features/composer";
 import { editorPanelOpenAtom } from "@/features/editor";
 import {
+  activeSessionIdAtom,
+  bootstrapSessionsAtom,
   markSessionMessageAtom,
   projectSubagentSessionFromToolCallAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
   upsertSessionAtom,
 } from "@/features/sessions";
-import { applyTurnChangesEventAtom } from "@/features/turn-workspace-changes";
+import {
+  applyTurnChangesEventAtom,
+  loadTurnChangeSetsAtom,
+} from "@/features/turn-workspace-changes";
 import { desktopApi, onOpenHtmlPreview, taskApi, useMountEffect } from "@/lib";
 import { bumpRightPanelRevealAtom } from "../right-panel-reveal";
 
@@ -49,6 +64,71 @@ export function useAgentEventBridge() {
   const projectSubagentSession = useSetAtom(
     projectSubagentSessionFromToolCallAtom,
   );
+  const bootstrapSessions = useSetAtom(bootstrapSessionsAtom);
+  const bootstrapQueuedInputs = useSetAtom(bootstrapQueuedInputsAtom);
+  const bootstrapSessionUsage = useSetAtom(bootstrapSessionUsageAtom);
+  const hydratePendingPermissions = useSetAtom(hydratePendingPermissionsAtom);
+  const hydratePendingQuestions = useSetAtom(hydratePendingQuestionsAtom);
+  const hydratePendingPlanApprovals = useSetAtom(
+    hydratePendingPlanApprovalsAtom,
+  );
+  const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
+  const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
+  const loadTurnStats = useSetAtom(loadTurnStatsAtom);
+  const loadTurnChangeSets = useSetAtom(loadTurnChangeSetsAtom);
+  const store = useStore();
+
+  // Replay-gap recovery: a dropped journaled event means event-sourced agent
+  // state can be stale, so refetch every authoritative snapshot — the session
+  // list, queued inputs, usage, all pending interactions, and the transcripts
+  // already hydrated in memory.
+  const resyncAgentState = useEffectEvent(async () => {
+    try {
+      const data = await desktopApi.bootstrapApp();
+      bootstrapSessions(data.sessions);
+      bootstrapQueuedInputs({
+        inputs: data.queuedAgentInputs,
+        messages: data.queuedMessages,
+      });
+      bootstrapSessionUsage(data.sessionUsage);
+
+      const interactions = await taskApi.listPendingInteractions();
+      hydratePendingPermissions(interactions.permissions);
+      hydratePendingQuestions(interactions.questions);
+      hydratePendingPlanApprovals(interactions.planApprovals);
+
+      const sessionIds = new Set<string>([
+        ...Object.keys(store.get(messagesLoadedBySessionAtom)),
+        ...Object.keys(store.get(toolCallsLoadedBySessionAtom)),
+      ]);
+      const activeSessionId = store.get(activeSessionIdAtom);
+      if (activeSessionId) sessionIds.add(activeSessionId);
+      await Promise.all(
+        [...sessionIds].map(async (sessionId) => {
+          try {
+            const [messages, toolCalls] = await Promise.all([
+              desktopApi.listSessionMessages(sessionId),
+              desktopApi.listSessionToolCalls(sessionId),
+            ]);
+            loadSessionMessages({ messages: messages.messages, sessionId });
+            loadTurnStats(messages.turnStats);
+            loadTurnChangeSets({
+              changeSets: messages.turnChangeSets ?? {},
+              sessionId,
+            });
+            loadSessionToolCalls({ sessionId, toolCalls });
+          } catch (error) {
+            console.error("[AgentEvent] session resync failed", {
+              error,
+              sessionId,
+            });
+          }
+        }),
+      );
+    } catch (error) {
+      console.error("[AgentEvent] resync failed", error);
+    }
+  });
 
   const handleAgentEvent = useEffectEvent(
     (
@@ -129,6 +209,13 @@ export function useAgentEventBridge() {
   );
 
   useEffect(() => taskApi.onAgentEvent(handleAgentEvent), []);
+  useEffect(
+    () =>
+      desktopApi.onDataChanged((event) => {
+        if (event.areas.includes("agent")) void resyncAgentState();
+      }),
+    [],
+  );
 }
 
 export function useBrowserEventBridge() {

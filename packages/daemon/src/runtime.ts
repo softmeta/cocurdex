@@ -144,20 +144,35 @@ export class AgentRuntimeManager {
     );
   }
 
-  getSessionInteractions(sessionId: string) {
+  getPendingInteractions() {
     return {
       permissions: Array.from(
         this.pendingPermissions.values(),
         ({ request }) => request,
-      ).filter((request) => request.sessionId === sessionId),
+      ),
       questions: Array.from(
         this.pendingQuestions.values(),
         ({ question }) => question,
-      ).filter((question) => question.sessionId === sessionId),
+      ),
       planApprovals: Array.from(
         this.pendingPlanApprovals.values(),
         ({ approval }) => approval,
-      ).filter((approval) => approval.sessionId === sessionId),
+      ),
+    };
+  }
+
+  getSessionInteractions(sessionId: string) {
+    const pending = this.getPendingInteractions();
+    return {
+      permissions: pending.permissions.filter(
+        (request) => request.sessionId === sessionId,
+      ),
+      questions: pending.questions.filter(
+        (question) => question.sessionId === sessionId,
+      ),
+      planApprovals: pending.planApprovals.filter(
+        (approval) => approval.sessionId === sessionId,
+      ),
     };
   }
 

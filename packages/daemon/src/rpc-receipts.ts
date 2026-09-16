@@ -36,6 +36,22 @@ export function createDaemonReceiptStore(
     }
   };
 
+  // Capacity pressure must never drop an active execution; only settled
+  // receipts are evictable, oldest first.
+  const enforceCapacity = () => {
+    while (receipts.size > maxEntries) {
+      let oldest: string | undefined;
+      for (const candidate of receipts.keys()) {
+        if (settled.has(candidate)) {
+          oldest = candidate;
+          break;
+        }
+      }
+      if (oldest === undefined) break;
+      evict(oldest);
+    }
+  };
+
   return {
     execute(key, run) {
       const existing = receipts.get(key);
@@ -46,34 +62,17 @@ export function createDaemonReceiptStore(
       receipts.set(key, outcome);
       // Retention starts only once the operation settles: an in-flight
       // mutation must keep its receipt so retries coalesce instead of
-      // duplicating side effects.
-      void outcome.then(
-        () => {
-          settled.add(key);
-          const timer = setTimeout(() => evict(key), ttlMs);
-          timer.unref?.();
-          timers.set(key, timer);
-        },
-        () => {
-          settled.add(key);
-          const timer = setTimeout(() => evict(key), ttlMs);
-          timer.unref?.();
-          timers.set(key, timer);
-        },
-      );
-      // Capacity pressure must never drop an active execution; only settled
-      // receipts are evictable, oldest first.
-      while (receipts.size > maxEntries) {
-        let oldest: string | undefined;
-        for (const candidate of receipts.keys()) {
-          if (settled.has(candidate)) {
-            oldest = candidate;
-            break;
-          }
-        }
-        if (oldest === undefined) break;
-        evict(oldest);
-      }
+      // duplicating side effects. Capacity is enforced again on settle so a
+      // burst larger than maxEntries drains once its members finish.
+      const markSettled = () => {
+        settled.add(key);
+        const timer = setTimeout(() => evict(key), ttlMs);
+        timer.unref?.();
+        timers.set(key, timer);
+        enforceCapacity();
+      };
+      void outcome.then(markSettled, markSettled);
+      enforceCapacity();
       return outcome.then((value) => ({ outcome: value, replayed: false }));
     },
   };

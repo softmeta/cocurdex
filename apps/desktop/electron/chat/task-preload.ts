@@ -10,6 +10,7 @@ export function exposeTaskApi() {
     listSessions: () => ipcRenderer.invoke("task:list"),
     getSessionSnapshot: (sessionId) =>
       ipcRenderer.invoke("task:snapshot", sessionId),
+    listPendingInteractions: () => ipcRenderer.invoke("task:interactions"),
     saveSessionConfiguration: (input) =>
       ipcRenderer.invoke("task:configure", input),
     sendMessage: (input) => ipcRenderer.invoke("task:send", input),

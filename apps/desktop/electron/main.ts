@@ -775,6 +775,9 @@ function registerSessionHandlers() {
   ipcMain.handle("task:list", async () =>
     requestDaemon("session.list", await chatDaemonOptions()),
   );
+  ipcMain.handle("task:interactions", async () =>
+    requestDaemon("session.listInteractions", await chatDaemonOptions()),
+  );
   registerHandler(
     ipcMain,
     "task:snapshot",
