@@ -78,13 +78,28 @@ provide a positive timeout.
 Subscription deadlines apply only to the handshake, not the established stream.
 
 Timeout or disconnect does not prove that a mutation failed. The client does not
-retry mutations automatically and does not cancel accepted daemon work. Persistent
-operation receipts remain a separate follow-up.
+retry mutations automatically and does not cancel accepted daemon work. Callers
+may instead attach an `idempotencyKey` to a request: `rpc-receipts.ts` coalesces
+in-flight duplicates and replays the stored outcome (result or error) for
+repeated keys within its retention window, so a client that reconnects after an
+ambiguous outcome can resend the same keyed request without double execution.
+Receipts are in-memory and scoped to the daemon lifetime; they are not a
+persistent audit log.
+
+Every daemon event is journaled with a monotonically increasing sequence number
+by `event-journal.ts`, bounded to a fixed capacity. `daemon.subscribe` accepts
+`afterSeq`: the server replays journaled entries after that sequence before the
+subscription goes live, and the rpc client buffers events that arrive before the
+handshake resolves. `DaemonEventSubscription.lastSeq` exposes the latest
+observed sequence for a resubscribe attempt. Sequences reset when the daemon
+restarts, so clients must not deduplicate across lifetimes; desktop reconnect
+still broadcasts `chat:invalidated` for a full state refresh.
 
 Desktop subscription ownership lives in `daemon-event-connection.ts`: concurrent
 connection attempts are merged; reset, disposal and disconnection invalidate the
-generation before closing resources. Late events, close callbacks and handshake
-results from an older generation cannot replace the current subscription.
+generation before closing resources, and resubscribes pass the recorded
+`lastSeq` as `afterSeq`. Late events, close callbacks and handshake results from
+an older generation cannot replace the current subscription.
 
 ## Safe runtime replacement
 

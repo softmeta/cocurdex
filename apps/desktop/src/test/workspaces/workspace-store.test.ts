@@ -2,6 +2,12 @@ import type { WorkspaceRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  activePdfPathAtom,
+  openPdfsAtom,
+  PDF_ACTIVE_PATH_KEY,
+  PDF_OPEN_PATHS_KEY,
+} from "@/features/pdf-reader/pdf-reader-store";
+import {
   activeWorkspaceIdAtom,
   addWorkspaceAtom,
   bootstrapWorkspacesAtom,
@@ -42,6 +48,8 @@ beforeEach(() => {
     ...workspace,
     missingRootPaths: [],
   }));
+  window.localStorage.removeItem(PDF_OPEN_PATHS_KEY);
+  window.localStorage.removeItem(PDF_ACTIVE_PATH_KEY);
   // The IPC layer reads window.desktopApi at call time; inject a spyable stub.
   (window as unknown as { desktopApi: unknown }).desktopApi = { saveWorkspace };
 });
@@ -111,6 +119,39 @@ describe("workspace activation persistence", () => {
     store.set(bootstrapWorkspacesAtom, []);
 
     expect(saveWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("drops persisted PDF tabs that belong to a removed workspace", () => {
+    const store = createStore();
+    const kept = makeWorkspace("kept", "2024-01-02T00:00:00.000Z");
+    const reading = makeWorkspace("reading", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [kept, reading]);
+    store.set(openPdfsAtom, [
+      "/ws/kept/guide.pdf",
+      "/ws/reading/AI-Agents-in-Depth-zh-CN.pdf",
+    ]);
+    store.set(activePdfPathAtom, "/ws/reading/AI-Agents-in-Depth-zh-CN.pdf");
+
+    store.set(removeWorkspaceAtom, "reading");
+
+    expect(store.get(openPdfsAtom)).toEqual(["/ws/kept/guide.pdf"]);
+    expect(store.get(activePdfPathAtom)).toBe("/ws/kept/guide.pdf");
+  });
+
+  it("drops persisted PDF tabs on bootstrap when their workspace is gone", () => {
+    const store = createStore();
+    store.set(openPdfsAtom, [
+      "/ws/kept/guide.pdf",
+      "/Users/richard/my-reading/paper.pdf",
+    ]);
+    store.set(activePdfPathAtom, "/Users/richard/my-reading/paper.pdf");
+
+    store.set(bootstrapWorkspacesAtom, [
+      makeWorkspace("kept", "2024-01-02T00:00:00.000Z"),
+    ]);
+
+    expect(store.get(openPdfsAtom)).toEqual(["/ws/kept/guide.pdf"]);
+    expect(store.get(activePdfPathAtom)).toBe("/ws/kept/guide.pdf");
   });
 
   it("does not persist when selecting an unknown workspace id", () => {

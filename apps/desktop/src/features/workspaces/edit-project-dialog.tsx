@@ -2,6 +2,7 @@ import {
   normalizeWorkspaceRootPaths,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
+import { useSetAtom } from "jotai";
 import { FolderOpen, FolderPlus, Star, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,7 +17,7 @@ import {
   Label,
   Text,
 } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { pickHostDirectoryAtom } from "./host-directory-picker";
 import { compactWorkspacePath } from "./workspace-path";
 
 interface EditProjectDialogProps {
@@ -68,18 +69,19 @@ function EditProjectForm({
   ): Promise<void>;
 }) {
   const { t } = useTranslation("sessions");
+  const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const [name, setName] = useState(workspace.name);
   const [rootPaths, setRootPaths] = useState<string[]>(workspace.rootPaths);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleAddFolder = async () => {
-    const result = await desktopApi.openWorkspace();
-    if (result.canceled || result.filePaths.length === 0) {
+    const rootPath = await pickHostDirectory();
+    if (!rootPath) {
       return;
     }
     setRootPaths((current) =>
-      normalizeWorkspaceRootPaths([...current, result.filePaths[0]]),
+      normalizeWorkspaceRootPaths([...current, rootPath]),
     );
   };
 

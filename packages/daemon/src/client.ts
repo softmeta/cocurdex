@@ -11,9 +11,10 @@ import {
   createDaemonRpcClient,
   type DaemonEventSubscription,
   type DaemonRpcRequestOptions,
+  type DaemonRpcSubscribeOptions,
   type DaemonTransport,
 } from "@cocurdex/rpc/client";
-import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
 import { getConfiguredUserDataPath, getDaemonMetadataPath } from "./paths.ts";
 
 export {
@@ -26,9 +27,9 @@ export interface RequestClientOptions extends DaemonRpcRequestOptions {
   userDataPath?: string;
 }
 
-interface DaemonEventSubscriptionOptions extends RequestClientOptions {
-  onDisconnect?(error?: Error): void;
-}
+interface DaemonEventSubscriptionOptions
+  extends RequestClientOptions,
+    DaemonRpcSubscribeOptions {}
 
 export function createSocketTransport(socketPath: string): DaemonTransport {
   return (handlers) => {
@@ -113,7 +114,7 @@ export async function requestDaemon<M extends DaemonMethod>(
 }
 
 export async function subscribeDaemonEvents(
-  onEvent: (event: CocurdexDaemonEvent) => void,
+  onEvent: (event: CocurdexDaemonEvent, meta: DaemonEventMeta) => void,
   options: DaemonEventSubscriptionOptions = {},
 ): Promise<DaemonEventSubscription> {
   const client = await socketClient(options);

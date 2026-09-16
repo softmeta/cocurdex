@@ -144,20 +144,60 @@ export class AgentRuntimeManager {
     );
   }
 
-  getSessionInteractions(sessionId: string) {
+  // Runs read behind every queued event persistence. An event's broadcast —
+  // and therefore its journal sequence — is scheduled only after its
+  // persistence resolves, so a journal seq captured inside this read is a
+  // consistent boundary: journaled events at or below it are already
+  // reflected in whatever the read observes. Coalesced deltas are flushed
+  // first: their persistence may have finished while their journal record is
+  // still pending, and they must be journaled before the boundary is read.
+  withEventPersistence<T>(read: () => Promise<T>): Promise<T> {
+    const job = this.persistQueue.then(
+      () => {
+        this.broadcastCoalescer.flush();
+        return read();
+      },
+      () => {
+        this.broadcastCoalescer.flush();
+        return read();
+      },
+    );
+    this.persistQueue = job.then(
+      () => undefined,
+      () => undefined,
+    );
+    return job;
+  }
+
+  getPendingInteractions() {
     return {
       permissions: Array.from(
         this.pendingPermissions.values(),
         ({ request }) => request,
-      ).filter((request) => request.sessionId === sessionId),
+      ),
       questions: Array.from(
         this.pendingQuestions.values(),
         ({ question }) => question,
-      ).filter((question) => question.sessionId === sessionId),
+      ),
       planApprovals: Array.from(
         this.pendingPlanApprovals.values(),
         ({ approval }) => approval,
-      ).filter((approval) => approval.sessionId === sessionId),
+      ),
+    };
+  }
+
+  getSessionInteractions(sessionId: string) {
+    const pending = this.getPendingInteractions();
+    return {
+      permissions: pending.permissions.filter(
+        (request) => request.sessionId === sessionId,
+      ),
+      questions: pending.questions.filter(
+        (question) => question.sessionId === sessionId,
+      ),
+      planApprovals: pending.planApprovals.filter(
+        (approval) => approval.sessionId === sessionId,
+      ),
     };
   }
 

@@ -66,7 +66,13 @@ import { exposeTaskApi } from "./chat/task-preload";
 exposeTaskApi();
 
 contextBridge.exposeInMainWorld("desktopApi", {
+  capabilities: {
+    fileManager: true,
+    nativeDirectoryDialog: true,
+  },
   bootstrapApp: () => ipcRenderer.invoke("app:bootstrap"),
+  resyncApp: (sessionIds: string[]) =>
+    ipcRenderer.invoke("app:resync", sessionIds),
   // Sandboxed preload cannot import node:os — resolve home in main.
   // Default terminal cwd when no project workspace is open.
   getHomeDir: () => ipcRenderer.invoke("app:getHomeDir") as Promise<string>,
@@ -117,6 +123,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("workspace:openInFileManager", rootPath),
   revealPathInFileManager: (targetPath: string) =>
     ipcRenderer.invoke("workspace:revealPath", targetPath),
+  listHostDirectories: (path?: string) =>
+    ipcRenderer.invoke("fs:listDirectories", { path }),
   listWorkspaceEntries: (rootPath: string) =>
     ipcRenderer.invoke("workspace:listEntries", rootPath),
   listWorkspaceFiles: (rootPath: string) =>

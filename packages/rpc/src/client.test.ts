@@ -69,12 +69,16 @@ describe("daemon rpc client over an arbitrary transport", () => {
       client(() => {}).request("daemon.status", undefined, { timeoutMs: 10 }),
     ).rejects.toMatchObject({ code: "TIMEOUT" });
   });
-  it("delivers events only after the subscription is acknowledged", async () => {
+  it("buffers pre-acknowledgement events and delivers them in order", async () => {
     let handlers: DaemonTransportHandlers | undefined;
     const { transport, closed } = memoryTransport((request, h) => {
       handlers = h;
       h.onMessage(
-        JSON.stringify({ type: "daemon.event", event: { type: "early" } }),
+        JSON.stringify({
+          type: "daemon.event",
+          seq: 2,
+          event: { type: "early" },
+        }),
       );
       h.onMessage(JSON.stringify({ id: request.id, result: null }));
     });
@@ -82,13 +86,21 @@ describe("daemon rpc client over an arbitrary transport", () => {
     const onDisconnect = vi.fn();
     const subscription = await createDaemonRpcClient(transport, "t").subscribe(
       onEvent,
-      { onDisconnect },
+      { afterSeq: 1, onDisconnect },
     );
     handlers?.onMessage(
-      JSON.stringify({ type: "daemon.event", event: { type: "late" } }),
+      JSON.stringify({
+        type: "daemon.event",
+        seq: 3,
+        event: { type: "late" },
+      }),
     );
-    expect(onEvent).toHaveBeenCalledOnce();
-    expect(onEvent).toHaveBeenCalledWith({ type: "late" });
+    expect(onEvent).toHaveBeenCalledTimes(2);
+    expect(onEvent.mock.calls.map(([event]) => event.type)).toEqual([
+      "early",
+      "late",
+    ]);
+    expect(subscription.lastSeq).toBe(3);
     subscription.close();
     expect(closed).toHaveBeenCalledOnce();
     expect(onDisconnect).not.toHaveBeenCalled();

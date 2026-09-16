@@ -425,12 +425,17 @@ function compareSessionsByRecency(
   return rightValue.localeCompare(leftValue);
 }
 
+export const reconcileSessionsAtom = atom(
+  null,
+  (_get, set, sessions: SessionRecord[]) => {
+    set(sessionsAtom, [...sessions].sort(compareSessionsByRecency));
+  },
+);
+
 export const bootstrapSessionsAtom = atom(
   null,
   (_get, set, sessions: SessionRecord[]) => {
-    const sorted = [...sessions].sort(compareSessionsByRecency);
-
-    set(sessionsAtom, sorted);
+    set(reconcileSessionsAtom, sessions);
     // Deliberately no auto-selection: selecting the most recent session on cold
     // start loads and renders its whole transcript right after the first paint,
     // which blocks the renderer's main thread (hover, menus) for seconds on a

@@ -2,12 +2,16 @@ import {
   type DaemonEventSubscription,
   subscribeDaemonEvents,
 } from "@cocurdex/daemon/client";
-import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import {
+  type CocurdexDaemonEvent,
+  cocurdexDataAreas,
+  type DaemonEventMeta,
+} from "@cocurdex/shared";
 
 interface ConnectionOptions {
   ensure(): Promise<void>;
   userDataPath: string;
-  onEvent(event: CocurdexDaemonEvent): void;
+  onEvent(event: CocurdexDaemonEvent, meta?: DaemonEventMeta): void;
   onConnected?(): void;
   onDisconnect(error: Error): void;
 }
@@ -19,6 +23,8 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
   let pending: Promise<void> | null = null;
   let controller: AbortController | null = null;
   let timer: NodeJS.Timeout | null = null;
+  let lastSeq: number | null = null;
+  let lastEpoch: string | null = null;
 
   function reset() {
     generation += 1;
@@ -26,6 +32,8 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
     timer = null;
     controller?.abort();
     controller = null;
+    lastSeq = subscription?.lastSeq ?? lastSeq;
+    lastEpoch = subscription?.epoch ?? lastEpoch;
     subscription?.close();
     subscription = null;
     pending = null;
@@ -55,11 +63,13 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
         await Promise.resolve().then(options.ensure);
         if (disposed || attemptGeneration !== generation) return;
         const connected = await subscribeDaemonEvents(
-          (event) => {
+          (event, meta) => {
             if (!disposed && attemptGeneration === generation)
-              options.onEvent(event);
+              options.onEvent(event, meta);
           },
           {
+            afterSeq: lastSeq ?? undefined,
+            epoch: lastEpoch ?? undefined,
             userDataPath: options.userDataPath,
             signal: attemptController.signal,
             onDisconnect: (error) =>
@@ -74,6 +84,15 @@ export function createDaemonEventConnection(options: ConnectionOptions) {
           return;
         }
         subscription = connected;
+        if (connected.replayGap) {
+          // The journaled replay could not cover our last position (daemon
+          // restart or journal overflow): assume every data area changed so
+          // consumers refetch authoritative state.
+          options.onEvent({
+            type: "data.changed",
+            areas: [...cocurdexDataAreas],
+          });
+        }
         options.onConnected?.();
       } catch (error) {
         reconnect(

@@ -6,6 +6,7 @@ import {
 } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import { reconcileOpenPdfsWithWorkspaceRootsAtom } from "@/features/pdf-reader/pdf-reader-store";
 import { desktopApi, type GitBranchInfo } from "@/lib";
 import {
   findMostRecentlyOpenedWorkspace,
@@ -83,6 +84,13 @@ export const activeBranchAtom = atom<string | null>(null);
 export const draftWorktreePathAtom = atom<string | null>(null);
 export const activeWorktreesAtom = atom<GitWorktreeInfo[]>([]);
 
+function dropOpenPdfsOutsideWorkspaces(get: Getter, set: Setter) {
+  set(
+    reconcileOpenPdfsWithWorkspaceRootsAtom,
+    get(workspacesAtom).flatMap((workspace) => workspace.rootPaths),
+  );
+}
+
 function markWorkspaceOpened(get: Getter, set: Setter, workspaceId: string) {
   const lastOpenedAt = new Date().toISOString();
   const next = get(workspacesAtom).map((item) =>
@@ -111,6 +119,7 @@ export const bootstrapWorkspacesAtom = atom(
     set(workspacesAtom, list);
     set(activeWorkspaceIdAtom, active?.id ?? null);
     set(lastSelectedWorkspaceIdAtom, active?.id ?? null);
+    dropOpenPdfsOutsideWorkspaces(get, set);
 
     if (active) {
       markWorkspaceOpened(get, set, active.id);
@@ -256,6 +265,7 @@ export const relocateWorkspaceAtom = atom(
         workspace.id === workspaceId ? saved : workspace,
       ),
     );
+    dropOpenPdfsOutsideWorkspaces(get, set);
     set(selectWorkspaceAtom, workspaceId);
   },
 );
@@ -294,6 +304,7 @@ export const updateWorkspaceAtom = atom(
         workspace.id === workspaceId ? saved : workspace,
       ),
     );
+    dropOpenPdfsOutsideWorkspaces(get, set);
   },
 );
 
@@ -303,6 +314,7 @@ export const removeWorkspaceAtom = atom(
     const current = get(workspacesAtom);
     const next = current.filter((w) => w.id !== workspaceId);
     set(workspacesAtom, next);
+    dropOpenPdfsOutsideWorkspaces(get, set);
     if (get(activeWorkspaceIdAtom) === workspaceId) {
       set(activeWorkspaceIdAtom, next[0]?.id ?? null);
     }

@@ -35,6 +35,35 @@ export const clearPermissionsForSessionAtom = atom(
   },
 );
 
+// Reconciles with the daemon's authoritative pending list after an event
+// replay gap: pending records are upserted, locally-pending records the
+// daemon no longer holds were resolved during the gap and are dropped, and
+// resolved records are preserved for transcript history.
+export const hydratePendingPermissionsAtom = atom(
+  null,
+  (get, set, pending: AgentPermissionRequestRecord[]) => {
+    const pendingIds = new Set(pending.map((record) => record.id));
+    const next: PermissionsBySession = {};
+    for (const [sessionId, records] of Object.entries(
+      get(permissionsBySessionAtom),
+    )) {
+      const kept = records.filter(
+        (record) => record.status !== "pending" || pendingIds.has(record.id),
+      );
+      if (kept.length > 0) {
+        next[sessionId] = kept;
+      }
+    }
+    for (const record of pending) {
+      next[record.sessionId] = upsertPermission(
+        next[record.sessionId] ?? [],
+        record,
+      );
+    }
+    set(permissionsBySessionAtom, next);
+  },
+);
+
 export const applyPermissionEventAtom = atom(
   null,
   (get, set, event: AgentEvent) => {

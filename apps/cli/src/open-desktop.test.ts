@@ -24,11 +24,15 @@ describe("shouldHandleAsOpen", () => {
   it("leaves known subcommands alone", () => {
     expect(shouldHandleAsOpen("init")).toBe(false);
     expect(shouldHandleAsOpen("issue")).toBe(false);
+    expect(shouldHandleAsOpen("note")).toBe(false);
+    expect(shouldHandleAsOpen("search")).toBe(false);
     expect(shouldHandleAsOpen("skills")).toBe(false);
     expect(shouldHandleAsOpen("daemon")).toBe(false);
+    expect(shouldHandleAsOpen("worktree")).toBe(false);
     expect(shouldHandleAsOpen("workspace")).toBe(false);
     expect(shouldHandleAsOpen("session")).toBe(false);
     expect(shouldHandleAsOpen("provider")).toBe(false);
+    expect(shouldHandleAsOpen("role")).toBe(false);
     expect(shouldHandleAsOpen("workflow")).toBe(false);
   });
 });

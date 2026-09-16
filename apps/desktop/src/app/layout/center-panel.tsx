@@ -109,6 +109,7 @@ import {
   activeWorktreesAtom,
   draftWorktreePathAtom,
   openWorkspaceByPathAtom,
+  pickHostDirectoryAtom,
   relocateWorkspaceAtom,
   selectWorkspaceAtom,
   workspacesAtom,
@@ -280,6 +281,7 @@ export function CenterPanel({
   const applyRefinedSessionTitle = useSetAtom(applyRefinedSessionTitleAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
+  const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const relocateWorkspace = useSetAtom(relocateWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const activeBranches = useAtomValue(activeBranchesAtom);
@@ -930,19 +932,19 @@ export function CenterPanel({
   };
 
   const handleOpenWorkspace = async () => {
-    const result = await desktopApi.openWorkspace();
-    if (result.canceled || result.filePaths.length === 0) return;
-    const { didSwitchProject } = openWorkspaceByPath(result.filePaths[0]);
+    const rootPath = await pickHostDirectory();
+    if (!rootPath) return;
+    const { didSwitchProject } = openWorkspaceByPath(rootPath);
     if (didSwitchProject) {
       selectSession(null);
     }
   };
 
   const handleRelocateWorkspace = async (workspaceId: string) => {
-    const result = await desktopApi.openWorkspace();
-    if (result.canceled || result.filePaths.length === 0) return;
+    const rootPath = await pickHostDirectory();
+    if (!rootPath) return;
     try {
-      await relocateWorkspace(workspaceId, result.filePaths[0]);
+      await relocateWorkspace(workspaceId, rootPath);
     } catch (error) {
       console.error("[Workspaces] relocate failed", error);
       return;

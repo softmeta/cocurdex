@@ -20,6 +20,7 @@ import {
   pdfReaderRevealNonceAtom,
   pdfReadingPositionsAtom,
   pdfSidePanelWidthAtom,
+  reconcileOpenPdfsWithWorkspaceRootsAtom,
   removePdfHighlightAtom,
   resetPdfAnnotationsHydrationStateForTests,
   setActivePdfAtom,
@@ -141,6 +142,30 @@ describe("setActivePdfAtom / closePdfAtom", () => {
     expect(store.get(openPdfsAtom)).toEqual([]);
     expect(store.get(activePdfPathAtom)).toBeNull();
     expect(store.get(activeOpenPdfPathAtom)).toBeNull();
+  });
+});
+
+describe("reconcileOpenPdfsWithWorkspaceRootsAtom", () => {
+  it("drops tabs whose workspace is gone and keeps the rest", () => {
+    const store = createStore();
+    store.set(openPdfReaderAtom, targetA);
+    store.set(openPdfReaderAtom, "/Users/me/my-reading/paper.pdf");
+    store.set(activePdfPathAtom, "/Users/me/my-reading/paper.pdf");
+
+    store.set(reconcileOpenPdfsWithWorkspaceRootsAtom, ["/workspace"]);
+
+    expect(store.get(openPdfsAtom)).toEqual([targetA]);
+    expect(store.get(activePdfPathAtom)).toBe(targetA);
+  });
+
+  it("clears the active path when every tab is unauthorized", () => {
+    const store = createStore();
+    store.set(openPdfReaderAtom, "/Users/me/my-reading/paper.pdf");
+
+    store.set(reconcileOpenPdfsWithWorkspaceRootsAtom, ["/workspace"]);
+
+    expect(store.get(openPdfsAtom)).toEqual([]);
+    expect(store.get(activePdfPathAtom)).toBeNull();
   });
 });
 

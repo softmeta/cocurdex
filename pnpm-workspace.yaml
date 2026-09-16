@@ -36,10 +36,7 @@ overrides:
   'vite-node>vite': 7.3.5
   'vitest>vite': 7.3.5
   ws: ^8.21.0
-  # Astro 7 needs cookie@2 (parseCookie / ESM-friendly API). Do not force
-  # cookie@2 on the whole monorepo — express (MCP via desktop) still needs
-  # cookie@0.7. Scope the pin to Astro's dependency edge only.
-  astro>cookie: ^2.0.1
+  nwsapi: 2.2.23
 allowBuilds:
   '@biomejs/biome': true
   '@google/genai': false

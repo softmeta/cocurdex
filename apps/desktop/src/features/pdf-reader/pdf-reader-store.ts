@@ -28,6 +28,7 @@ import {
   normalizeReadingPositions,
   type PdfReadingPosition,
   type PdfReadingPositions,
+  retainOpenPdfPaths,
 } from "./pdf-reading-position";
 import {
   normalizePdfSidePanelWidth,
@@ -516,6 +517,25 @@ export const setActivePdfAtom = atom(null, (_get, set, filePath: string) => {
   set(activePdfPathAtom, filePath);
   void set(hydratePdfAnnotationsAtom, filePath);
 });
+
+export const reconcileOpenPdfsWithWorkspaceRootsAtom = atom(
+  null,
+  (get, set, workspaceRootPaths: readonly string[]) => {
+    const current = get(openPdfsAtom);
+    const nextOpen = retainOpenPdfPaths(current, workspaceRootPaths);
+    if (
+      nextOpen.length === current.length &&
+      nextOpen.every((filePath, index) => filePath === current[index])
+    ) {
+      return;
+    }
+    set(openPdfsAtom, nextOpen);
+    const activePath = get(activePdfPathAtom);
+    if (activePath && !nextOpen.includes(activePath)) {
+      set(activePdfPathAtom, nextOpen[0] ?? null);
+    }
+  },
+);
 
 export const closePdfAtom = atom(null, (get, set, filePath: string) => {
   const current = get(openPdfsAtom);

@@ -1117,6 +1117,16 @@ export default interface Resources {
       emptyUnconfigured: "No workspaces yet.";
       enterProject: "Enter project";
       home: "Home";
+      hostPicker: {
+        cancel: "Cancel";
+        empty: "No folders here.";
+        hideHidden: "Hide hidden folders";
+        pathPlaceholder: "Folder path";
+        select: "Select this folder";
+        showHidden: "Show hidden folders";
+        title: "Choose folder";
+        up: "Go to parent folder";
+      };
       missing: "Folder missing — click to relocate";
       openFolder: "Open Folder";
       recents: "Recents";

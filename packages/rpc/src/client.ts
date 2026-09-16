@@ -1,4 +1,4 @@
-import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
 import { daemonRequestTimeout } from "./client-timeout.ts";
 import {
   type DaemonEventEnvelope,
@@ -55,14 +55,24 @@ export function createWebSocketTransport(url: string): DaemonTransport {
 export interface DaemonRpcRequestOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
+  idempotencyKey?: string;
 }
 
 export interface DaemonRpcSubscribeOptions extends DaemonRpcRequestOptions {
+  afterSeq?: number;
+  // Daemon lifetime that produced afterSeq. Catch-up is only meaningful within
+  // the same epoch; a mismatched epoch triggers a flagged replay.
+  epoch?: string;
   onDisconnect?(error?: Error): void;
 }
 
 export interface DaemonEventSubscription {
   close(): void;
+  readonly epoch: string | null;
+  readonly lastSeq: number | null;
+  // True when the journaled replay could not cover the requested position;
+  // subscribers must resync authoritative state instead of trusting replay.
+  readonly replayGap: boolean;
 }
 
 export class DaemonClientError extends Error {
@@ -110,12 +120,13 @@ export function buildDaemonRequest<M extends DaemonMethod>(
   method: M,
   params: DaemonRequestPayloadByMethod[M] | undefined,
   token: string,
+  idempotencyKey?: string,
 ): DaemonRequest<M> {
   const id = crypto.randomUUID();
   if (daemonMethodHasNoParams(method)) {
-    return { id, method, token } as DaemonRequest<M>;
+    return { id, method, token, idempotencyKey } as DaemonRequest<M>;
   }
-  return { id, method, params, token } as DaemonRequest<M>;
+  return { id, method, params, token, idempotencyKey } as DaemonRequest<M>;
 }
 
 export interface DaemonRpcClient {
@@ -125,7 +136,7 @@ export interface DaemonRpcClient {
     options?: DaemonRpcRequestOptions,
   ): Promise<DaemonResultByMethod[M]>;
   subscribe(
-    onEvent: (event: CocurdexDaemonEvent) => void,
+    onEvent: (event: CocurdexDaemonEvent, meta: DaemonEventMeta) => void,
     options?: DaemonRpcSubscribeOptions,
   ): Promise<DaemonEventSubscription>;
 }
@@ -136,7 +147,12 @@ export function createDaemonRpcClient(
 ): DaemonRpcClient {
   return {
     request(method, params, options) {
-      const request = buildDaemonRequest(method, params, token);
+      const request = buildDaemonRequest(
+        method,
+        params,
+        token,
+        options?.idempotencyKey,
+      );
       const timeoutMs = daemonRequestTimeout(method, options?.timeoutMs);
       options?.signal?.throwIfAborted();
       return new Promise((resolve, reject) => {
@@ -199,7 +215,11 @@ export function createDaemonRpcClient(
       });
     },
     subscribe(onEvent, options = {}) {
-      const request = buildDaemonRequest("daemon.subscribe", undefined, token);
+      const request = buildDaemonRequest(
+        "daemon.subscribe",
+        { afterSeq: options.afterSeq, epoch: options.epoch },
+        token,
+      );
       const timeoutMs = daemonRequestTimeout(
         "daemon.subscribe",
         options.timeoutMs,
@@ -209,6 +229,16 @@ export function createDaemonRpcClient(
         let connected = false;
         let finished = false;
         let connection: DaemonTransportConnection | undefined;
+        let lastSeq: number | null = options.afterSeq ?? null;
+        let subscriptionEpoch: string | null = null;
+        const queuedEvents: DaemonEventEnvelope[] = [];
+        const dispatchEvent = (envelope: DaemonEventEnvelope) => {
+          if (typeof envelope.seq === "number") lastSeq = envelope.seq;
+          onEvent(envelope.event, {
+            epoch: subscriptionEpoch,
+            seq: typeof envelope.seq === "number" ? envelope.seq : null,
+          });
+        };
         const finish = (error: Error, silent = false) => {
           if (finished) return;
           finished = true;
@@ -245,8 +275,13 @@ export function createDaemonRpcClient(
               return;
             }
             if (message.type === "daemon.event") {
-              if (connected)
-                onEvent((message as unknown as DaemonEventEnvelope).event);
+              const envelope = message as unknown as DaemonEventEnvelope;
+              if (!connected) {
+                queuedEvents.push(envelope);
+                if (typeof envelope.seq === "number") lastSeq = envelope.seq;
+                return;
+              }
+              dispatchEvent(envelope);
               return;
             }
             if (message.id !== request.id || connected) return;
@@ -257,7 +292,30 @@ export function createDaemonRpcClient(
             }
             clearTimeout(timer);
             connected = true;
-            resolve({ close: abort });
+            const subscribeResult =
+              typeof message.result === "object" && message.result !== null
+                ? (message.result as {
+                    epoch?: unknown;
+                    replayGap?: unknown;
+                  })
+                : undefined;
+            const epoch =
+              typeof subscribeResult?.epoch === "string"
+                ? subscribeResult.epoch
+                : null;
+            const replayGap = subscribeResult?.replayGap === true;
+            subscriptionEpoch = epoch;
+            for (const envelope of queuedEvents.splice(0)) {
+              dispatchEvent(envelope);
+            }
+            resolve({
+              close: abort,
+              epoch,
+              replayGap,
+              get lastSeq() {
+                return lastSeq;
+              },
+            });
           },
           onError: (error) => finish(error),
           onClose: () =>

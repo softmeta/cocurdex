@@ -8,6 +8,7 @@ import {
   PdfViewer,
   pdfReaderRevealNonceAtom,
 } from "@/features/pdf-reader";
+import { appBootstrappedAtom } from "./app-shell/app-bootstrap-store";
 
 export function PdfReaderView({
   isActive,
@@ -17,8 +18,13 @@ export function PdfReaderView({
   onInsertTextToChat?(text: string): boolean;
 }) {
   const { t } = useTranslation("editor");
+  const bootstrapped = useAtomValue(appBootstrappedAtom);
   const filePath = useAtomValue(activeOpenPdfPathAtom);
   const revealNonce = useAtomValue(pdfReaderRevealNonceAtom);
+
+  if (!bootstrapped) {
+    return null;
+  }
 
   return (
     <>

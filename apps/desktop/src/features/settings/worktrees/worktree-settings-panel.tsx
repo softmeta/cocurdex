@@ -10,7 +10,10 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button, Input, Switch } from "@/components/ui";
 import { createDraftSessionAtom, selectSessionAtom } from "@/features/sessions";
-import { selectWorkspaceAtom } from "@/features/workspaces";
+import {
+  pickHostDirectoryAtom,
+  selectWorkspaceAtom,
+} from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
 import { SettingRow, SettingsGroup } from "../settings-fields";
 import { closeSettings } from "../settings-navigation";
@@ -19,6 +22,7 @@ import { WorktreeInventory } from "./worktree-inventory";
 export function WorktreeSettingsPanel() {
   const { t } = useTranslation("settings");
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
+  const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const createDraftSession = useSetAtom(createDraftSessionAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const [settings, setSettings] = useState<WorktreeSettingsSnapshot | null>(
@@ -79,13 +83,13 @@ export function WorktreeSettingsPanel() {
   };
 
   const handleBrowseRoot = async () => {
-    const result = await desktopApi.openWorkspace();
-    if (result.canceled || !result.filePaths[0]) {
+    const rootPath = await pickHostDirectory();
+    if (!rootPath) {
       return;
     }
     await persistSettings({
       fetchBeforeCreate: settings?.fetchBeforeCreate ?? false,
-      rootPath: result.filePaths[0],
+      rootPath,
     });
   };
 

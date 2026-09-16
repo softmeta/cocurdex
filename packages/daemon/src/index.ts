@@ -2,7 +2,7 @@ export * from "./client";
 export * from "./handler";
 export * from "./orchestration-workspace";
 export * from "./paths";
-export * from "./provider-service";
+export * from "./provider";
 export * from "./runtime";
 export * from "./service";
 export * from "./wire";

@@ -11,6 +11,10 @@ export {
   scoreWorkspaceEntry,
   useWorkspaceFiles,
 } from "./file-search";
+export {
+  HostDirectoryPickerHost,
+  pickHostDirectoryAtom,
+} from "./host-directory-picker";
 export { useWorkspaceFolderDrop } from "./use-workspace-folder-drop";
 export * from "./working-path";
 export { WorkspaceFolderDropOverlay } from "./workspace-folder-drop-overlay";

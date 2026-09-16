@@ -15,7 +15,7 @@
 | 能力 | 源码证据 | 对后续实现的意义 |
 |---|---|---|
 | 桌面编排界面 | 检索桌面 renderer、Electron 源码和依赖声明，只找到无关的本地化文案，没有 Workflow 功能页面或 React Flow 依赖 | 需要新增功能模块和导航入口 |
-| 终端操作界面 | 已有 [Workflow TUI](../apps/cli/src/workflow-tui/workflow-tui.ts) 和[使用文档](../apps/web/src/content/docs/docs/workflows.mdx) | 严格说并非完全没有 UI，而是没有桌面图形编排 UI |
+| 终端操作界面 | 已有 [Workflow TUI](../apps/cli/src/workflow-tui/workflow-tui.ts) 和[使用文档](https://cocurdex.com/docs/workflows/) | 严格说并非完全没有 UI，而是没有桌面图形编排 UI |
 | 运行控制 RPC | [RPC 契约](../packages/rpc/src/index.ts) 已提供 list、get、create、start、decideGate、cancel | 可以复用运行控制，尚缺定义编辑接口 |
 | 步骤与转移 | [类型定义](../packages/shared/src/workflow/types.ts) 已有 steps 和按结果选择的 transitions | 有图结构雏形，但还不是通用数据流图 |
 | 内置模板 | [模板](../packages/shared/src/workflow/template.ts) 定义了 `plan_execute_review` 第 2 版 | 当前行为仍是一套固定编码流程 |

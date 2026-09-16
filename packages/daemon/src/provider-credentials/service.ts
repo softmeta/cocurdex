@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
+import { listPiBuiltInProviderIds } from "@cocurdex/agent-adapters";
 import {
+  logoutPiProvider,
+  readPiProviderAuthState,
   registerBundledPiProviderOAuthFlows,
   resolvePiProviderAuth,
 } from "@cocurdex/agent-adapters/provider-auth";
 import type {
   AgentProviderSnapshot,
   AgentRuntimeProviderConfig,
+  ProviderAuthState,
   SessionRecord,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
@@ -36,6 +40,11 @@ export class ProviderCredentials {
       throw new Error("Invalid API key");
     const provider = await this.state.getProviderConfig(providerId);
     if (!provider) throw new Error("Provider not found");
+    // A manually entered key replaces bundled OAuth: drop the Pi login so the
+    // key is the single credential source for built-in providers.
+    if (apiKey !== null && listPiBuiltInProviderIds().includes(provider.id)) {
+      await logoutPiProvider(this.userDataPath, providerId);
+    }
     if (apiKey === null) {
       if (provider.apiKeySecretId)
         await this.vault.remove(provider.apiKeySecretId);
@@ -52,6 +61,22 @@ export class ProviderCredentials {
         throw error;
       }
     }
+  }
+
+  async readAuthState(providerId: string): Promise<ProviderAuthState> {
+    const auth = await readPiProviderAuthState(this.userDataPath, providerId);
+    if (auth.type) {
+      return auth;
+    }
+    const config = await this.state.getProviderConfig(providerId);
+    return config?.apiKeySecretId
+      ? { providerId, type: "api_key", source: "Cocurdex API key" }
+      : auth;
+  }
+
+  async logout(providerId: string) {
+    await logoutPiProvider(this.userDataPath, providerId);
+    await this.setApiKey(providerId, null);
   }
 
   async readApiKey(providerId: string) {

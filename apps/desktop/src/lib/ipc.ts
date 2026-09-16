@@ -85,6 +85,10 @@ const fallbackAgents: AgentDescriptor[] = [
 ];
 
 const fallbackApi: DesktopApi = {
+  capabilities: {
+    fileManager: false,
+    nativeDirectoryDialog: false,
+  },
   bootstrapApp: async () => ({
     workspaces: [],
     sessions: [],
@@ -92,6 +96,16 @@ const fallbackApi: DesktopApi = {
     queuedMessages: [],
     sessionUsage: {},
     editorViews: [],
+  }),
+  resyncApp: async () => ({
+    epoch: "",
+    eventSeq: 0,
+    sessions: [],
+    queuedAgentInputs: [],
+    queuedMessages: [],
+    sessionUsage: {},
+    interactions: { permissions: [], questions: [], planApprovals: [] },
+    transcripts: {},
   }),
   getHomeDir: async () => "/",
   listFontFamilies: async () => [],
@@ -222,6 +236,11 @@ const fallbackApi: DesktopApi = {
   deleteWorkspace: async () => {},
   openWorkspaceInFileManager: async () => {},
   revealPathInFileManager: async () => {},
+  listHostDirectories: async () => ({
+    entries: [],
+    parent: null,
+    path: "/",
+  }),
   listWorkspaceEntries: async () => [],
   listWorkspaceFiles: async () => [],
   onWorkspaceFilesChanged: () => () => {},
