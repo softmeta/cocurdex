@@ -1,10 +1,19 @@
 {
   "name": "@cocurdex/e2e",
   "private": true,
+  "type": "module",
   "scripts": {
-    "test": "playwright test"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@cocurdex/daemon": "workspace:*",
+    "@cocurdex/rpc": "workspace:*",
+    "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0"
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^25.6.0",
+    "vitest": "^3.2.7"
   }
 }

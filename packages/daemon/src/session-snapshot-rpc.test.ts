@@ -143,7 +143,7 @@ describe("app resync RPC", () => {
     });
 
     expect(snapshot).toMatchObject({
-      epoch: service.startedAt,
+      epoch: service.status().startedAt,
       eventSeq: 41,
       sessions: [{ id: "session-1" }],
       interactions: {

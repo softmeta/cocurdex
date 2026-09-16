@@ -557,10 +557,26 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@25.9.6)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.23.13)(yaml@2.9.1)
 
   tests/e2e:
+    dependencies:
+      '@cocurdex/daemon':
+        specifier: workspace:*
+        version: link:../../packages/daemon
+      '@cocurdex/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      '@cocurdex/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
     devDependencies:
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.63.0
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.9.6
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@25.9.6)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.23.13)(yaml@2.9.1)
 
 packages:
 

@@ -30,10 +30,13 @@ export async function handleIssueCommand(
 
   if (action === "show") {
     const id = requiredId(args, "show");
-    printResult(
-      await withDaemon(() => requestDaemon("issue.get", { id, viewId })),
-      parsed,
+    const issue = await withDaemon(() =>
+      requestDaemon("issue.get", { id, viewId }),
     );
+    if (!issue) {
+      throw new Error(`Issue not found: ${id}`);
+    }
+    printResult(issue, parsed);
     return true;
   }
 
@@ -62,6 +65,9 @@ export async function handleIssueCommand(
     const current = await withDaemon(() =>
       requestDaemon("issue.get", { id, viewId }),
     );
+    if (!current) {
+      throw new Error(`Issue not found: ${id}`);
+    }
     const moved = await withDaemon(() =>
       requestDaemon("issue.move", {
         viewId,
@@ -80,6 +86,9 @@ export async function handleIssueCommand(
     const current = await withDaemon(() =>
       requestDaemon("issue.get", { id, viewId }),
     );
+    if (!current) {
+      throw new Error(`Issue not found: ${id}`);
+    }
     await withDaemon(() =>
       requestDaemon("issue.delete", {
         id,

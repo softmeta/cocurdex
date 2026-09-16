@@ -28,7 +28,7 @@ export interface IssueTrackerRepository {
   updateColumn(payload: UpdateColumnPayload): Promise<ViewColumnRecord>;
   moveColumn(payload: MoveColumnPayload): Promise<ViewColumnRecord>;
   deleteColumn(payload: DeleteColumnPayload): Promise<void>;
-  getIssue(payload: GetIssuePayload): Promise<IssueRecord>;
+  getIssue(payload: GetIssuePayload): Promise<IssueRecord | null>;
   createIssue(payload: CreateIssuePayload): Promise<IssueRecord>;
   updateIssue(payload: UpdateIssuePayload): Promise<IssueRecord>;
   moveIssue(payload: MoveIssuePayload): Promise<IssueRecord>;
