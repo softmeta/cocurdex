@@ -26,6 +26,8 @@ export const AGENT_RUNTIME_PREFERENCES_STORAGE_KEY =
 const agentIds = new Set<AgentId>([
   "claude-agent",
   "codex",
+  "cursor",
+  "devin",
   "grok-build",
   "opencode",
   "pi",

@@ -1,3 +1,10 @@
+import {
+  type AppUpdateChannel,
+  DEFAULT_APP_UPDATE_CHANNEL,
+} from "./app-update-channel";
+
+export type { AppUpdateChannel } from "./app-update-channel";
+
 export type AppUpdateStatus =
   | "checking"
   | "downloading"
@@ -8,6 +15,7 @@ export type AppUpdateStatus =
 
 export interface AppUpdateState {
   availableVersion: string | null;
+  channel: AppUpdateChannel;
   currentVersion: string;
   dismissedVersion: string | null;
   downloadPercent: number | null;
@@ -27,6 +35,7 @@ export type AppUpdateEvent =
       type: "downloaded";
       version: string;
     }
+  | { channel: AppUpdateChannel; type: "set-channel" }
   | { message: string; type: "error" }
   | { type: "checking" }
   | { type: "dismiss" }
@@ -36,11 +45,13 @@ export type AppUpdateEvent =
 export const APP_UPDATE_GITHUB_REPO = "softmeta/cocurdex";
 
 export function createInitialAppUpdateState(input: {
+  channel?: AppUpdateChannel;
   currentVersion: string;
   packaged: boolean;
 }): AppUpdateState {
   return {
     availableVersion: null,
+    channel: input.channel ?? DEFAULT_APP_UPDATE_CHANNEL,
     currentVersion: input.currentVersion,
     dismissedVersion: null,
     downloadPercent: null,
@@ -73,6 +84,22 @@ export function reduceAppUpdateState(
   state: AppUpdateState,
   event: AppUpdateEvent,
 ): AppUpdateState {
+  if (event.type === "set-channel") {
+    if (state.channel === event.channel) {
+      return state;
+    }
+    return {
+      ...state,
+      availableVersion: null,
+      channel: event.channel,
+      dismissedVersion: null,
+      downloadPercent: null,
+      errorMessage: null,
+      releaseNotesUrl: null,
+      status: state.status === "unsupported" ? "unsupported" : "idle",
+    };
+  }
+
   if (state.status === "unsupported") {
     return state;
   }

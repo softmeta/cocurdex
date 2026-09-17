@@ -58,6 +58,7 @@ import type {
 } from "@cocurdex/shared";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
+  AppUpdateChannel,
   AppUpdateState,
   WorkspaceSearchDoneEvent,
   WorkspaceSearchErrorEvent,
@@ -84,6 +85,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
   getAppUpdateState: () => ipcRenderer.invoke("app:update:getState"),
   checkForAppUpdate: () => ipcRenderer.invoke("app:update:check"),
   dismissAppUpdate: () => ipcRenderer.invoke("app:update:dismiss"),
+  setAppUpdateChannel: (channel: AppUpdateChannel) =>
+    ipcRenderer.invoke("app:update:setChannel", channel),
   installAppUpdate: () => ipcRenderer.invoke("app:update:install"),
   getOssLicenses: () => ipcRenderer.invoke("app:getOssLicenses"),
   openChromiumLicenses: () => ipcRenderer.invoke("app:openChromiumLicenses"),

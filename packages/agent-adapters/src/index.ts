@@ -5,6 +5,8 @@ export * from "./claude-cli";
 export * from "./cli";
 export * from "./codex";
 export * from "./commit-message";
+export * from "./cursor";
+export * from "./devin";
 export * from "./grok-build";
 export * from "./opencode";
 export * from "./pi-sdk";

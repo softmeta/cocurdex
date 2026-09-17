@@ -763,6 +763,15 @@
       "later": "稍后",
       "title": "发现新版本"
     },
+    "channel": {
+      "ariaLabel": "更新通道",
+      "description": "测试版可能不稳定。切回稳定通道时可能会安装更旧的版本。",
+      "options": {
+        "stable": "稳定",
+        "test": "测试"
+      },
+      "title": "更新通道"
+    },
     "description": "当前版本 {{version}}。",
     "groupTitle": "应用",
     "status": {

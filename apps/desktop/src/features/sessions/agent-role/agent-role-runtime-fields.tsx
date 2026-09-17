@@ -164,6 +164,7 @@ export function AgentRoleRuntimeFields({
         onValueChange={onAgentChange}
       />
       <ProviderModelMenu
+        agentId={agentId}
         appearance="ghost"
         compatibleProviders={compatibleProviders}
         fastModeOptions={claudeFastModeOptions}

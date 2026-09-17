@@ -16,6 +16,8 @@
     "claudeCli": "Uses the Claude Agent installed and signed in on this computer",
     "claudeCode": "Only uses Anthropic Messages models from cocurdex Providers",
     "codex": "Fast code generation",
+    "cursor": "Cursor CLI over ACP",
+    "devin": "Devin CLI over ACP",
     "grokBuild": "Grok's agent runtime over ACP",
     "opencode": "Open-source alternative",
     "pi": "Built-in agent"
@@ -23,6 +25,8 @@
   "agents": {
     "claudeCli": "Claude Agent",
     "codex": "Codex",
+    "cursor": "Cursor",
+    "devin": "Devin",
     "grokBuild": "Grok Build",
     "opencode": "OpenCode",
     "pi": "Pi"

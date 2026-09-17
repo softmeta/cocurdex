@@ -24,6 +24,8 @@ import type {
 const agentNames: Record<AgentId, string> = {
   "claude-agent": "Claude Agent",
   codex: "Codex",
+  cursor: "Cursor",
+  devin: "Devin",
   "grok-build": "Grok Build",
   opencode: "OpenCode",
   pi: "Pi",

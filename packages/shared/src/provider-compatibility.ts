@@ -10,6 +10,8 @@ const agentApiCompatibility: Record<AgentId, ProviderApi[]> = {
   // consumes an app-managed provider, so no api is compatible by design.
   "claude-agent": [],
   codex: ["openai-responses"],
+  cursor: [],
+  devin: [],
   "grok-build": [],
   opencode: ["openai-completions", "openai-responses", "anthropic-messages"],
   // Pi is Cocurdex's built-in agent — it drives every api Cocurdex supports.

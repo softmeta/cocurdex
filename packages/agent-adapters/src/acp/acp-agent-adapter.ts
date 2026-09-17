@@ -46,6 +46,7 @@ import {
 } from "./acp-mappers";
 import {
   type AcpSessionModelState,
+  readAcpModelConfigOptionId,
   readAcpSessionModelState,
   resolveAcpModelId,
   resolveAcpReasoningEffort,
@@ -67,6 +68,9 @@ export interface AcpAgentAdapterOptions {
   // Provider ID whose catalog-backed model selection this ACP adapter owns.
   // Other ACP agents keep their native/default model behavior.
   modelProviderId?: string;
+  // Devin always advertises `devin-browser` even when the CLI already has
+  // stored credentials. Calling authenticate would open a login tab.
+  skipAuthenticate?: boolean;
   // Agents whose permission mode is set through a vendor ext notification map
   // it here; returning null means "this agent has nothing to send".
   permissionModeNotification?: {
@@ -355,12 +359,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             const response = await connection.initialize(
               buildInitializeRequest(),
             );
-            const authMethod = this.selectAuthMethod(
-              response.authMethods?.map((method) => method.id) ?? [],
-            );
-            if (authMethod) {
-              await connection.authenticate({ methodId: authMethod });
-            }
+            await this.maybeAuthenticate(connection, response.authMethods);
             await connection.loadSession({
               sessionId: providerSessionId,
               cwd: payload.workspaceRootPath,
@@ -399,6 +398,7 @@ export class AcpAgentAdapter implements AgentAdapter {
       | undefined;
     let activeProviderSessionId: string | undefined;
     let modelState: AcpSessionModelState | null = null;
+    let modelConfigOptionId: string | null = null;
     let appliedModelId: string | null = null;
     let appliedReasoningEffort: string | null = null;
     let appliedPermissionMode: AgentPermissionMode | null = null;
@@ -558,12 +558,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           capabilities,
         });
 
-        const authMethod = this.selectAuthMethod(
-          response.authMethods?.map((method) => method.id) ?? [],
-        );
-        if (authMethod) {
-          await connection.authenticate({ methodId: authMethod });
-        }
+        await this.maybeAuthenticate(connection, response.authMethods);
         if (this.options.afterInitialize) {
           await this.options.afterInitialize(connection);
         }
@@ -596,6 +591,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           modes = { ...modes, currentModeId: requestedModeId };
         }
         modelState = providerSession.modelState;
+        modelConfigOptionId = readAcpModelConfigOptionId(providerSession);
         appliedModelId = modelState?.currentModelId ?? null;
         const currentModel = modelState?.models.find(
           (model) => model.modelId === modelState?.currentModelId,
@@ -733,11 +729,19 @@ export class AcpAgentAdapter implements AgentAdapter {
             reasoningEffort !== null &&
             reasoningEffort !== appliedReasoningEffort;
           if (currentModelId && (modelChanged || reasoningEffortChanged)) {
-            await connection.setSessionModel({
-              sessionId: providerSessionId,
-              modelId: currentModelId,
-              ...(reasoningEffort ? { _meta: { reasoningEffort } } : {}),
-            });
+            if (modelConfigOptionId) {
+              await connection.setSessionConfigOption({
+                sessionId: providerSessionId,
+                configId: modelConfigOptionId,
+                value: currentModelId,
+              });
+            } else {
+              await connection.setSessionModel({
+                sessionId: providerSessionId,
+                modelId: currentModelId,
+                ...(reasoningEffort ? { _meta: { reasoningEffort } } : {}),
+              });
+            }
             appliedModelId = currentModelId;
             appliedReasoningEffort = reasoningEffort;
           }
@@ -867,6 +871,21 @@ export class AcpAgentAdapter implements AgentAdapter {
       }
     }
     return available[0];
+  }
+
+  private async maybeAuthenticate(
+    connection: AcpConnection,
+    authMethods: { id: string }[] | undefined,
+  ) {
+    if (this.options.skipAuthenticate) {
+      return;
+    }
+    const authMethod = this.selectAuthMethod(
+      authMethods?.map((method) => method.id) ?? [],
+    );
+    if (authMethod) {
+      await connection.authenticate({ methodId: authMethod });
+    }
   }
 
   private async openProviderSession({

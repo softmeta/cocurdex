@@ -217,7 +217,15 @@ const workflowTransitionSchema = z.object({
 });
 
 const workflowExecutorBindingSchema = z.object({
-  agentId: z.enum(["claude-agent", "codex", "grok-build", "pi", "opencode"]),
+  agentId: z.enum([
+    "claude-agent",
+    "codex",
+    "cursor",
+    "devin",
+    "grok-build",
+    "pi",
+    "opencode",
+  ]),
   agentRoleId: z.string().min(1).max(128).optional(),
   model: z.string().max(256).optional(),
   permissionProfile: z.enum(["read_only", "workspace_write", "validation"]),

@@ -18,6 +18,8 @@ export const AGENT_ROLE_NAME_MAX_LENGTH = 80;
 const AGENT_IDS: readonly AgentId[] = [
   "claude-agent",
   "codex",
+  "cursor",
+  "devin",
   "grok-build",
   "opencode",
   "pi",

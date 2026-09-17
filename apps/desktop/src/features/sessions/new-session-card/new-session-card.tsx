@@ -222,6 +222,7 @@ export function NewSessionCard({
 
   const modelMenu = selectedRole ? null : (
     <ProviderModelMenu
+      agentId={effectiveSelectedAgent}
       appearance="ghost"
       compatibleProviders={compatibleProviders}
       footer={

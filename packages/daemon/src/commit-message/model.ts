@@ -1,6 +1,8 @@
 import {
   listClaudeCliProviderModels,
   listCodexProviderModels,
+  listCursorProviderModels,
+  listDevinProviderModels,
   listGrokBuildProviderModels,
   listOpenCodeProviderModels,
   listPiProviderModels,
@@ -85,6 +87,12 @@ export async function resolveCommitMessageModel(
   switch (selection.agentId) {
     case "claude-agent":
       native = await listClaudeCliProviderModels();
+      break;
+    case "cursor":
+      native = await listCursorProviderModels();
+      break;
+    case "devin":
+      native = await listDevinProviderModels();
       break;
     case "grok-build":
       native = await listGrokBuildProviderModels();

@@ -8,6 +8,8 @@ export {
 } from "./codex/codex-account";
 export { listCodexProviderModels } from "./codex/codex-adapter";
 export { generateCodexConversationTitle } from "./codex/codex-title";
+export { listCursorProviderModels } from "./cursor";
+export { listDevinProviderModels } from "./devin";
 export { listGrokBuildProviderModels } from "./grok-build";
 export { listOpenCodeProviderModels } from "./opencode/opencode-models";
 export {

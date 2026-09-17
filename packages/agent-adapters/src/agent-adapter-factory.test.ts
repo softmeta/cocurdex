@@ -9,6 +9,8 @@ describe("createAgentAdapter", () => {
     const agentIds = [
       "claude-agent",
       "codex",
+      "cursor",
+      "devin",
       "grok-build",
       "opencode",
       "pi",

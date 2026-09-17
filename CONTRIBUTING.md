@@ -82,7 +82,11 @@ enough; the tag can be created locally.
 2. Set the version in `apps/desktop/package.json` (not the repo root
    `package.json`) in the same pull request as the work you are shipping. Do
    not open a pull request that only changes the version. The tag must be `v`
-   plus that version, for example `v0.1.7`.
+   plus that version, for example `v0.1.7`. Test-channel builds use a
+   prerelease version such as `0.1.41-beta.1` and tag `v0.1.41-beta.1`; the
+   workflow publishes those as GitHub pre-releases. Users receive them only
+   after choosing the Test update channel in Settings → About. The test
+   version must be newer than the current stable release.
 3. Tag a commit that is already on `main` (it does not have to be `HEAD`) and
    push that tag only. The workflow rejects tags that are not ancestors of
    `origin/main`.
@@ -101,12 +105,16 @@ The workflow drafts the GitHub release with `--generate-notes`. electron-builder
 uploads platform artifacts and updater metadata onto that draft:
 
 - macOS Apple Silicon and Intel: signed and notarized DMGs, zips, and `latest-mac.yml`
-- Windows x64: unsigned NSIS installer and `latest.yml`
-- Linux x64: AppImage and `latest-linux.yml`
+  (plus `beta-mac.yml` when the version is a prerelease)
+- Windows x64: unsigned NSIS installer and `latest.yml` (or `beta.yml` for
+  prereleases)
+- Linux x64: AppImage and `latest-linux.yml` (or `beta-linux.yml` for
+  prereleases)
 
 The release stays a draft until every platform job succeeds, then the workflow
-publishes it. Auto-update clients still read published releases
-(`build-assets/app-update.yml`), not drafts. Windows installers are unsigned, so
-SmartScreen or an unknown-publisher warning is expected.
+publishes it. Stable auto-update clients still read published production
+releases (`build-assets/app-update.yml`), not drafts or GitHub pre-releases.
+Windows installers are unsigned, so SmartScreen or an unknown-publisher warning
+is expected.
 
 Do not run the `dist:*:release` scripts locally for a production ship.

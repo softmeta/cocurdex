@@ -6,6 +6,14 @@ import { pathToFileURL } from "node:url";
 
 const architectures = ["arm64", "x64"];
 
+export function macUpdateChannelFileName(version) {
+  const identifier = version.split("-")[1]?.split(".")[0];
+  if (!identifier) {
+    return "latest-mac.yml";
+  }
+  return `${identifier}-mac.yml`;
+}
+
 export async function createMacManifest(directory, arch, version) {
   if (!architectures.includes(arch)) {
     throw new Error(`Unsupported Mac architecture: ${arch}`);
@@ -105,10 +113,12 @@ async function main() {
     await readFile(path.join(directory, "assets.json"), "utf8"),
   );
   const manifest = mergeMacManifests(manifests, version, assets);
-  await writeFile(
-    path.join(directory, "latest-mac.yml"),
-    `${JSON.stringify(manifest, null, 2)}\n`,
-  );
+  const content = `${JSON.stringify(manifest, null, 2)}\n`;
+  await writeFile(path.join(directory, "latest-mac.yml"), content);
+  const channelFile = macUpdateChannelFileName(version);
+  if (channelFile !== "latest-mac.yml") {
+    await writeFile(path.join(directory, channelFile), content);
+  }
 }
 
 if (

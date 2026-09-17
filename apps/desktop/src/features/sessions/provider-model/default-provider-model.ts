@@ -52,7 +52,9 @@ export function getDefaultProviderModelValue(
   if (
     agentId === "opencode" ||
     agentId === "grok-build" ||
-    agentId === "claude-agent"
+    agentId === "claude-agent" ||
+    agentId === "cursor" ||
+    agentId === "devin"
   ) {
     return getItemValue(items.find(({ model }) => model.isDefault) ?? items[0]);
   }

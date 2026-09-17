@@ -194,6 +194,8 @@ export interface CliPathStatus {
   error: string | null;
 }
 
+export type AppUpdateChannel = "stable" | "test";
+
 export type AppUpdateStatus =
   | "checking"
   | "downloading"
@@ -204,6 +206,7 @@ export type AppUpdateStatus =
 
 export interface AppUpdateState {
   availableVersion: string | null;
+  channel: AppUpdateChannel;
   currentVersion: string;
   dismissedVersion: string | null;
   downloadPercent: number | null;
@@ -568,6 +571,7 @@ export interface HostApi {
   getAppUpdateState(): Promise<AppUpdateState>;
   checkForAppUpdate(): Promise<AppUpdateState>;
   dismissAppUpdate(): Promise<AppUpdateState>;
+  setAppUpdateChannel(channel: AppUpdateChannel): Promise<AppUpdateState>;
   installAppUpdate(): Promise<void>;
   onAppUpdateState(listener: (state: AppUpdateState) => void): () => void;
   getOssLicenses(): Promise<OssLicensesPayload>;

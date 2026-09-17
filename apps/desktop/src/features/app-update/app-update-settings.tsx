@@ -1,13 +1,17 @@
 import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AppSelect } from "@/components";
 import { Button, Progress, Spinner, Text } from "@/components/ui";
-import type { AppUpdateState } from "@/lib/types";
+import type { AppUpdateChannel, AppUpdateState } from "@/lib/types";
 import {
   checkForAppUpdate,
   installAppUpdate,
+  setAppUpdateChannel,
   useAppUpdateState,
 } from "./app-update-store";
+
+const updateChannels: AppUpdateChannel[] = ["stable", "test"];
 
 function statusText(state: AppUpdateState, t: TFunction<"settings">) {
   switch (state.status) {
@@ -43,6 +47,13 @@ export function AppUpdateSettingsPanel() {
   const canInstall = state.status === "ready" && !inFlight;
   const downloadPercent =
     state.status === "downloading" ? (state.downloadPercent ?? 0) : null;
+  const channelOptions = updateChannels.map((value) => ({
+    label: t(`updates.channel.options.${value}`),
+    value,
+  }));
+  const selectedChannel = channelOptions.find(
+    (option) => option.value === state.channel,
+  );
 
   const runCheck = async () => {
     setBusy(true);
@@ -53,45 +64,85 @@ export function AppUpdateSettingsPanel() {
     }
   };
 
+  const runChannelChange = async (value: string) => {
+    if (value !== "stable" && value !== "test") {
+      return;
+    }
+    setBusy(true);
+    try {
+      await setAppUpdateChannel(value);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="flex items-start justify-between gap-6 py-3.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-body font-medium text-foreground">
-          {t("updates.title")}
+    <>
+      <div className="flex items-start justify-between gap-6 py-3.5">
+        <div className="min-w-0 flex-1">
+          <div className="text-body font-medium text-foreground">
+            {t("updates.title")}
+          </div>
+          <div className="mt-0.5 text-body text-muted-foreground">
+            {t("updates.description", { version: state.currentVersion })}
+          </div>
+          <Text className="mt-2 block" size="meta" tone="muted">
+            {statusText(state, t)}
+          </Text>
+          {downloadPercent === null ? null : (
+            <Progress className="mt-2" value={downloadPercent} />
+          )}
         </div>
-        <div className="mt-0.5 text-body text-muted-foreground">
-          {t("updates.description", { version: state.currentVersion })}
-        </div>
-        <Text className="mt-2 block" size="meta" tone="muted">
-          {statusText(state, t)}
-        </Text>
-        {downloadPercent === null ? null : (
-          <Progress className="mt-2" value={downloadPercent} />
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {busy || state.status === "checking" ? <Spinner size="md" /> : null}
-        {canInstall ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {busy || state.status === "checking" ? <Spinner size="md" /> : null}
+          {canInstall ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                void installAppUpdate();
+              }}
+            >
+              {t("updates.actions.install")}
+            </Button>
+          ) : null}
           <Button
+            disabled={!canCheck}
             size="sm"
+            variant="outline"
             onClick={() => {
-              void installAppUpdate();
+              void runCheck();
             }}
           >
-            {t("updates.actions.install")}
+            {t("updates.actions.check")}
           </Button>
-        ) : null}
-        <Button
-          disabled={!canCheck}
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            void runCheck();
-          }}
-        >
-          {t("updates.actions.check")}
-        </Button>
+        </div>
       </div>
-    </div>
+      <div className="flex items-center justify-between gap-6 py-3.5">
+        <div className="min-w-0 flex-1">
+          <div className="text-body font-medium text-foreground">
+            {t("updates.channel.title")}
+          </div>
+          <div className="mt-0.5 text-body text-muted-foreground">
+            {t("updates.channel.description")}
+          </div>
+        </div>
+        <AppSelect
+          align="end"
+          appearance="ghost"
+          disabled={inFlight}
+          options={channelOptions}
+          triggerAriaLabel={t("updates.channel.ariaLabel")}
+          triggerClassName="h-8 w-auto max-w-56 gap-1 px-2 font-normal"
+          triggerLabel={
+            selectedChannel?.label ?? t("updates.channel.options.stable")
+          }
+          triggerRadius="control"
+          value={state.channel}
+          onValueChange={(value) => {
+            void runChannelChange(value);
+          }}
+        />
+      </div>
+    </>
   );
 }

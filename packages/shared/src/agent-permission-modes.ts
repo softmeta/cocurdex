@@ -35,6 +35,8 @@ const fallbackAgentPermissionModes: Record<
     { id: "codex-auto", risk: "elevated" },
     { id: "codex-full-access", risk: "dangerous" },
   ],
+  cursor: [],
+  devin: [],
   "grok-build": [
     { id: "grok-ask", risk: "normal" },
     { id: "grok-auto", risk: "elevated" },

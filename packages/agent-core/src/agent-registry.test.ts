@@ -30,6 +30,8 @@ describe("createAgentRegistry", () => {
     expect(supportsSteering).toEqual({
       "claude-agent": true,
       codex: true,
+      cursor: false,
+      devin: false,
       opencode: false,
       "grok-build": true,
       pi: true,
@@ -48,6 +50,8 @@ describe("createAgentRegistry", () => {
     expect(sessionTitleStrategies).toEqual({
       "claude-agent": "adapter-generated",
       codex: "adapter-generated",
+      cursor: "native",
+      devin: "native",
       opencode: "native",
       "grok-build": "native",
       pi: "app-generated",
@@ -79,6 +83,26 @@ describe("createAgentRegistry", () => {
       availability: "missing",
       installation: {
         executableName: "opencode",
+        executablePath: null,
+      },
+    });
+    expect(agents.find((agent) => agent.id === "cursor")).toMatchObject({
+      availability: "missing",
+      capabilities: {
+        transport: "acp",
+      },
+      installation: {
+        executableName: "cursor-agent",
+        executablePath: null,
+      },
+    });
+    expect(agents.find((agent) => agent.id === "devin")).toMatchObject({
+      availability: "missing",
+      capabilities: {
+        transport: "acp",
+      },
+      installation: {
+        executableName: "devin",
         executablePath: null,
       },
     });

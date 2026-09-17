@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  readAcpModelConfigOptionId,
   readAcpSessionModelState,
   resolveAcpModelId,
   resolveAcpReasoningEffort,
@@ -87,6 +88,61 @@ describe("readAcpSessionModelState", () => {
   it("returns null when the agent reports no model catalog", () => {
     expect(readAcpSessionModelState({ sessionId: "sess-1" })).toBeNull();
     expect(readAcpSessionModelState(null)).toBeNull();
+  });
+
+  it("reads Devin-style model config options", () => {
+    expect(
+      readAcpSessionModelState({
+        sessionId: "successful-ping",
+        configOptions: [
+          {
+            id: "mode",
+            category: "mode",
+            type: "select",
+            currentValue: "ask",
+            options: [{ value: "ask", name: "Ask" }],
+          },
+          {
+            id: "model",
+            name: "Model",
+            category: "model",
+            type: "select",
+            currentValue: "swe-2-high",
+            options: [
+              { value: "swe-2-high", name: "SWE-2 High" },
+              { value: "claude-sonnet-5-high", name: "Claude Sonnet 5 High" },
+            ],
+          },
+        ],
+      }),
+    ).toEqual({
+      currentModelId: "swe-2-high",
+      models: [
+        {
+          modelId: "swe-2-high",
+          name: "SWE-2 High",
+          description: null,
+          contextWindow: null,
+          defaultReasoningEffort: null,
+          reasoningEfforts: [],
+        },
+        {
+          modelId: "claude-sonnet-5-high",
+          name: "Claude Sonnet 5 High",
+          description: null,
+          contextWindow: null,
+          defaultReasoningEffort: null,
+          reasoningEfforts: [],
+        },
+      ],
+    });
+    expect(
+      readAcpModelConfigOptionId({
+        configOptions: [
+          { id: "model", category: "model", type: "select", options: [] },
+        ],
+      }),
+    ).toBe("model");
   });
 });
 

@@ -487,17 +487,14 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       <>
         <CollaborationModeSubmenu
           agentType={selectedAgent}
-          inspectOnly
           mode={collaborationMode}
           runtimeMode={runtimeMode}
-          runtimeModeDisabled={isRunning}
           onChange={onSelectCollaborationMode}
           onRuntimeModeChange={onSelectRuntimeMode}
         />
         {supportsInSessionRuntimeAxis(selectedAgent, "thinking") &&
         thinkingLevelOptions.length > 1 ? (
           <ThinkingLevelSubmenu
-            inspectOnly
             level={thinkingLevel}
             options={thinkingLevelOptions}
             onChange={onSelectThinkingLevel}

@@ -2,6 +2,8 @@ import type { AgentAdapter } from "@cocurdex/agent-core";
 import type { AgentId } from "@cocurdex/shared";
 import { createClaudeCliAdapter } from "./claude-cli";
 import { createCodexAdapter } from "./codex";
+import { createCursorAdapter } from "./cursor";
+import { createDevinAdapter } from "./devin";
 import { createGrokBuildAdapter } from "./grok-build";
 import { createOpencodeAdapter } from "./opencode";
 import { createPiSdkAdapter } from "./pi-sdk";
@@ -34,6 +36,12 @@ export function createAgentAdapter(agentId: AgentId): AgentAdapter {
       break;
     case "codex":
       adapter = createCodexAdapter();
+      break;
+    case "cursor":
+      adapter = createCursorAdapter();
+      break;
+    case "devin":
+      adapter = createDevinAdapter();
       break;
     case "grok-build":
       adapter = createGrokBuildAdapter();

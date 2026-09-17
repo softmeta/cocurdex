@@ -435,6 +435,8 @@ export default interface Resources {
       claudeCli: "Uses the Claude Agent installed and signed in on this computer";
       claudeCode: "Only uses Anthropic Messages models from cocurdex Providers";
       codex: "Fast code generation";
+      cursor: "Cursor CLI over ACP";
+      devin: "Devin CLI over ACP";
       grokBuild: "Grok's agent runtime over ACP";
       opencode: "Open-source alternative";
       pi: "Built-in agent";
@@ -442,6 +444,8 @@ export default interface Resources {
     agents: {
       claudeCli: "Claude Agent";
       codex: "Codex";
+      cursor: "Cursor";
+      devin: "Devin";
       grokBuild: "Grok Build";
       opencode: "OpenCode";
       pi: "Pi";
@@ -1965,6 +1969,15 @@ export default interface Resources {
         install: "Update and Restart";
         later: "Later";
         title: "Update available";
+      };
+      channel: {
+        ariaLabel: "Update channel";
+        description: "Test builds can be unstable. Switching back to Stable may install an older version.";
+        options: {
+          stable: "Stable";
+          test: "Test";
+        };
+        title: "Update channel";
       };
       description: "Installed version {{version}}.";
       groupTitle: "App";
