@@ -143,17 +143,38 @@ export function parseScriptRunSettings(raw: string | null): ScriptRunSettings {
   };
 }
 
-const FENCED_JSON_PATTERN = /```json\s*\n([\s\S]*?)\n```/g;
+const JSON_FENCE_OPEN = "```json";
+const JSON_FENCE_CLOSE = "\n```";
+const WHITESPACE_CHAR = /\s/;
+
+function fencedJsonBodies(text: string) {
+  const bodies: string[] = [];
+  const lastClose = text.lastIndexOf(JSON_FENCE_CLOSE);
+  let from = 0;
+  while (from < text.length && from <= lastClose) {
+    const start = text.indexOf(JSON_FENCE_OPEN, from);
+    if (start === -1) break;
+    let bodyStart = -1;
+    let cursor = start + JSON_FENCE_OPEN.length;
+    while (cursor < lastClose && WHITESPACE_CHAR.test(text.charAt(cursor))) {
+      if (text.charAt(cursor) === "\n") bodyStart = cursor + 1;
+      cursor++;
+    }
+    if (bodyStart === -1) {
+      from = start + JSON_FENCE_OPEN.length;
+      continue;
+    }
+    const close = text.indexOf(JSON_FENCE_CLOSE, bodyStart);
+    bodies.push(text.slice(bodyStart, close));
+    from = close + JSON_FENCE_CLOSE.length;
+  }
+  return bodies;
+}
 
 export function extractJsonReply(
   text: string,
 ): { ok: true; value: unknown } | { ok: false } {
-  const candidates = [
-    text.trim(),
-    ...[...text.matchAll(FENCED_JSON_PATTERN)]
-      .map((match) => match[1] ?? "")
-      .reverse(),
-  ];
+  const candidates = [text.trim(), ...fencedJsonBodies(text).reverse()];
   for (const candidate of candidates) {
     try {
       return { ok: true, value: JSON.parse(candidate) };
