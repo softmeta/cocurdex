@@ -86,6 +86,7 @@ export interface ChatViewProps {
   ): Promise<{ available: boolean }> | { available: boolean };
   onStop?(): void;
   onDeleteQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
+  onSendNowQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onSteerQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onUpdateQueuedInput?(
     item: QueuedAgentInputItem,

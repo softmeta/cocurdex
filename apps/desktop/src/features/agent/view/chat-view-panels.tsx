@@ -78,6 +78,7 @@ interface ChatComposerControls {
   ): void;
   onStop?(): void;
   onDeleteQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
+  onSendNowQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onSteerQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onUpdateQueuedInput?(
     item: QueuedAgentInputItem,
@@ -196,6 +197,7 @@ export function ComposerDock({
   activeBranch,
   workspaceName,
   composerRef,
+  isRunning,
   pendingPermissionRequest,
   pendingPlanApproval,
   queuedInputs = [],
@@ -209,6 +211,7 @@ export function ComposerDock({
   pendingQuestion,
   onAnswerQuestion,
   onDeleteQueuedInput,
+  onSendNowQueuedInput,
   onSteerQueuedInput,
   onUpdateQueuedInput,
   hideComposer = false,
@@ -242,6 +245,7 @@ export function ComposerDock({
           <div className="absolute inset-x-0 bottom-full z-10 mb-2 flex min-w-0 flex-col gap-2">
             <PlanPanel
               collapsed={planCollapsed}
+              isRunning={isRunning}
               onDismiss={onDismissPlan}
               onToggleCollapsed={onTogglePlanCollapsed}
               plan={plan}
@@ -288,11 +292,13 @@ export function ComposerDock({
         {queuedInputs.length > 0 &&
         !hideComposer &&
         onDeleteQueuedInput &&
+        onSendNowQueuedInput &&
         onSteerQueuedInput &&
         onUpdateQueuedInput ? (
           <QueuedInputShelf
             items={queuedInputs}
             onDelete={onDeleteQueuedInput}
+            onSendNow={onSendNowQueuedInput}
             onSteer={onSteerQueuedInput}
             onUpdate={onUpdateQueuedInput}
             supportsSteering={supportsSteering}
@@ -320,6 +326,7 @@ export function ComposerDock({
         ) : (
           <ChatComposer
             {...composerProps}
+            isRunning={isRunning}
             ref={composerRef}
             variant="pill"
             footerLeading={

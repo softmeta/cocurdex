@@ -500,6 +500,15 @@ const fallbackApi: DesktopApi = {
       attachments: [],
       createdAt: new Date().toISOString(),
     }) satisfies MessageRecord,
+  sendQueuedInputNow: async (payload) =>
+    ({
+      id: payload.messageId,
+      sessionId: payload.sessionId,
+      role: "user",
+      content: "",
+      attachments: [],
+      createdAt: new Date().toISOString(),
+    }) satisfies MessageRecord,
   saveEditorView: async () => {},
   listSlashCommands: async () => [],
   setSessionRuntimeMode: async () => {},

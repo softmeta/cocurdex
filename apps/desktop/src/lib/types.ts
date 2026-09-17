@@ -481,6 +481,9 @@ export interface ProductApi {
   steerQueuedInput(
     payload: QueuedAgentInputActionPayload,
   ): Promise<MessageRecord>;
+  sendQueuedInputNow(
+    payload: QueuedAgentInputActionPayload,
+  ): Promise<MessageRecord>;
   saveEditorView(view: EditorViewRecord): Promise<void>;
   listSlashCommands(
     agentType: AgentId,

@@ -397,6 +397,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("session:deleteQueuedInput", payload),
   steerQueuedInput: (payload: QueuedAgentInputActionPayload) =>
     ipcRenderer.invoke("session:steerQueuedInput", payload),
+  sendQueuedInputNow: (payload: QueuedAgentInputActionPayload) =>
+    ipcRenderer.invoke("session:sendQueuedInputNow", payload),
   saveEditorView: (view: import("@cocurdex/shared").EditorViewRecord) =>
     ipcRenderer.invoke("editorView:save", view),
   listSlashCommands: (agentType: AgentId, workspaceRootPath: string) =>

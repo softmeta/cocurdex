@@ -1613,6 +1613,42 @@ export class CocurdexDaemonService {
     return message;
   }
 
+  async sendQueuedAgentInputNow(sessionId: string, messageId: string) {
+    validateSessionId(sessionId);
+    return this.sessionCommands.run(sessionId, async () => {
+      const queued = this.queuedFollowUps.get(sessionId);
+      const index = queued?.findIndex(
+        (item) => item.payload.messageId === messageId,
+      );
+      if (!queued || index == null || index < 0) {
+        throw new Error(`Queued message ${messageId} was not found`);
+      }
+
+      const message = await this.state.getMessageById(messageId);
+      if (
+        !message ||
+        message.sessionId !== sessionId ||
+        message.role !== "user"
+      ) {
+        throw new Error(`Queued message ${messageId} was not found`);
+      }
+
+      if (this.pendingTurns.has(sessionId)) {
+        await this.stopSessionTurn(sessionId);
+      }
+
+      const [item] = queued.splice(index, 1);
+      queued.unshift(item);
+      this.queuedFollowUps.set(sessionId, queued);
+
+      const dispatched = await this.dispatchNextQueuedInput(sessionId);
+      if (!dispatched) {
+        throw new Error(`Queued message ${messageId} could not be sent`);
+      }
+      return message;
+    });
+  }
+
   private async startNextQueuedFollowUp(sessionId: string) {
     return this.sessionCommands.run(sessionId, () =>
       this.dispatchNextQueuedInput(sessionId),

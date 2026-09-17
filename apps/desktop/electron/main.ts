@@ -887,6 +887,16 @@ function registerSessionHandlers() {
         payload.messageId,
       ),
   );
+  registerHandler(
+    ipcMain,
+    "session:sendQueuedInputNow",
+    schemas.queuedInput,
+    async (_event, payload) =>
+      requireDaemonRuntimeClient().sendQueuedInputNow(
+        payload.sessionId,
+        payload.messageId,
+      ),
+  );
   ipcMain.handle(
     "task:resubmit",
     async (_event, command: SubmitPreviousMessageCommand) => {

@@ -768,6 +768,13 @@ export function CenterPanel({
     });
   };
 
+  const handleSendNowQueuedInput = async (item: QueuedAgentInputItem) => {
+    await desktopApi.sendQueuedInputNow({
+      sessionId: item.sessionId,
+      messageId: item.messageId,
+    });
+  };
+
   const handleSteerQueuedInput = async (item: QueuedAgentInputItem) => {
     await desktopApi.steerQueuedInput({
       sessionId: item.sessionId,
@@ -1292,6 +1299,7 @@ export function CenterPanel({
             }
             onSend={handleSend}
             onDeleteQueuedInput={handleDeleteQueuedInput}
+            onSendNowQueuedInput={handleSendNowQueuedInput}
             onSteerQueuedInput={handleSteerQueuedInput}
             onUpdateQueuedInput={handleUpdateQueuedInput}
             onSubmitPreviousMessage={

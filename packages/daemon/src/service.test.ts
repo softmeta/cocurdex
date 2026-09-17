@@ -386,6 +386,59 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
+  it("interrupts the active turn to send a queued input immediately", async () => {
+    const service = await createService();
+    let completeActiveTurn: (() => void) | undefined;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      completeActiveTurn = () =>
+        resolve(createRuntimeMessage("Interrupted turn"));
+    });
+    let completeSecondTurn: (() => void) | undefined;
+    const secondTurn = new Promise<MessageRecord>((resolve) => {
+      completeSecondTurn = () => resolve(createRuntimeMessage("Sent now"));
+    });
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockImplementationOnce(() => activeTurn)
+      .mockImplementation(() => secondTurn);
+    const cancel = vi
+      .spyOn(service.runtime, "cancelSessionTurn")
+      .mockImplementation(async () => {
+        completeActiveTurn?.();
+        return true;
+      });
+
+    await service.sendSessionMessage(
+      createPayload("First turn", "start-new-run"),
+    );
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    const firstQueued = await service.sendSessionMessage(
+      createPayload("Stays queued", "queue-after-run"),
+    );
+    const secondQueued = await service.sendSessionMessage(
+      createPayload("Send me now", "queue-after-run"),
+    );
+
+    await expect(
+      service.sendQueuedAgentInputNow("session-1", secondQueued.id),
+    ).resolves.toMatchObject({ id: secondQueued.id, content: "Send me now" });
+    expect(cancel).toHaveBeenCalledWith("session-1");
+
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+    expect(send.mock.calls[1]?.[0]).toMatchObject({
+      messageId: secondQueued.id,
+      content: "Send me now",
+      delivery: "start-new-run",
+    });
+    expect(service.getActiveWork().queuedInputs).toBe(1);
+    expect((await service.bootstrap()).queuedAgentInputs).toEqual([
+      expect.objectContaining({ messageId: firstQueued.id }),
+    ]);
+
+    completeSecondTurn?.();
+    await service.shutdown();
+  });
+
   it("persists accepted follow-ups across daemon restarts", async () => {
     const userDataPath = await mkdtemp(
       path.join(tmpdir(), "cocurdex-queue-restart-"),

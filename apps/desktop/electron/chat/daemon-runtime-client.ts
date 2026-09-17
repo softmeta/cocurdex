@@ -124,6 +124,14 @@ export function createDaemonRuntimeClient(
         requestOptions(),
       );
     },
+    async sendQueuedInputNow(sessionId, messageId) {
+      await ensureDaemon();
+      return requestDaemon(
+        "session.sendQueuedNow",
+        { sessionId, messageId },
+        requestOptions(),
+      );
+    },
     async setConfig(sessionId, configId, value) {
       await ensureDaemon();
       return requestDaemon(

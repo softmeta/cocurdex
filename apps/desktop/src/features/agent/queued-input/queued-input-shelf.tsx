@@ -7,6 +7,7 @@ import {
   ListEnd,
   MoreHorizontal,
   Pencil,
+  SendHorizontal,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -32,6 +33,7 @@ interface QueuedInputShelfProps {
   items: QueuedAgentInputItem[];
   supportsSteering: boolean;
   onDelete(item: QueuedAgentInputItem): Promise<void>;
+  onSendNow(item: QueuedAgentInputItem): Promise<void>;
   onSteer(item: QueuedAgentInputItem): Promise<void>;
   onUpdate(item: QueuedAgentInputItem, content: string): Promise<void>;
 }
@@ -44,6 +46,7 @@ function QueuedInputRow({
   item,
   supportsSteering,
   onDelete,
+  onSendNow,
   onSteer,
   onUpdate,
 }: QueuedInputRowProps) {
@@ -51,7 +54,7 @@ function QueuedInputRow({
   const [draft, setDraft] = useState(item.message.content);
   const [editing, setEditing] = useState(false);
   const [pendingAction, setPendingAction] = useState<
-    "delete" | "steer" | "update" | null
+    "delete" | "sendNow" | "steer" | "update" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [previewAttachment, setPreviewAttachment] =
@@ -194,6 +197,14 @@ function QueuedInputRow({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 rounded-card">
+            <DropdownMenuItem
+              onClick={() => {
+                void runAction("sendNow", () => onSendNow(item));
+              }}
+            >
+              <SendHorizontal className="size-4" />
+              {t("queue.sendNow")}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 setDraft(item.message.content);
