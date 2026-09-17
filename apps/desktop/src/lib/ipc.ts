@@ -411,6 +411,7 @@ const fallbackApi: DesktopApi = {
   saveProviderModel: async (model) => model,
   deleteProviderModel: async () => {},
   listCompatibleProvidersForAgent: async () => [],
+  loginAgent: async () => {},
   listAgentProviderDefaults: async () => [],
   getAgentProviderDefault: async () => null,
   setAgentProviderDefault: async () => {},

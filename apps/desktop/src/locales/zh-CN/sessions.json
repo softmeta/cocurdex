@@ -88,6 +88,9 @@
     "searchPlaceholder": "搜索模型...",
     "selectModel": "选择模型",
     "serviceTierStandard": "标准",
+    "signIn": "登录 {{agent}}",
+    "signInFailed": "登录 {{agent}} 失败：{{message}}",
+    "signInWaiting": "请在浏览器中完成登录…",
     "speed": "速度",
     "triggerLabel": "模型"
   },

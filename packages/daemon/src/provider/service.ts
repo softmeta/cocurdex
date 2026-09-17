@@ -6,6 +6,8 @@ import {
   listGrokBuildProviderModels,
   listOpenCodeProviderModels,
   listPiProviderTemplates,
+  loginCursorProvider,
+  loginDevinProvider,
 } from "@cocurdex/agent-adapters";
 import type {
   AgentId,
@@ -177,6 +179,18 @@ export class DaemonProviderService {
 
   async authLogout(providerId: string) {
     await this.credentials.logout(providerId);
+  }
+
+  async loginAgent(agentId: AgentId) {
+    if (agentId === "cursor") {
+      await loginCursorProvider();
+      return null;
+    }
+    if (agentId === "devin") {
+      await loginDevinProvider();
+      return null;
+    }
+    throw new Error(`Agent ${agentId} does not support login`);
   }
 
   async listCompatibleProviderModels(

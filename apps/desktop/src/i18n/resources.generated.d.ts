@@ -1081,6 +1081,9 @@ export default interface Resources {
       searchPlaceholder: "Search models...";
       selectModel: "Select model";
       serviceTierStandard: "Standard";
+      signIn: "Sign in to {{agent}}";
+      signInFailed: "Sign-in to {{agent}} failed: {{message}}";
+      signInWaiting: "Finish sign-in in the browser…";
       speed: "Speed";
       triggerLabel: "Model";
     };

@@ -342,6 +342,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     options?: { forceRefresh?: boolean },
   ): Promise<CompatibleProviderModel[]> =>
     ipcRenderer.invoke("provider:listCompatibleForAgent", agentId, options),
+  loginAgent: (agentId: AgentId): Promise<void> =>
+    ipcRenderer.invoke("agent:login", agentId),
   listAgentProviderDefaults: (): Promise<AgentProviderSelection[]> =>
     ipcRenderer.invoke("provider:listDefaults"),
   getAgentProviderDefault: (agentId: AgentId) =>

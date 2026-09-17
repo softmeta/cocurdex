@@ -195,6 +195,7 @@ export type DaemonRequestPayloadByMethod = {
   "app.bootstrap": undefined;
   "app.resync": { sessionIds: string[] };
   "agent.list": undefined;
+  "agent.login": { agentId: AgentId };
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
@@ -416,6 +417,7 @@ export type DaemonResultByMethod = {
   "app.bootstrap": AppBootstrapData;
   "app.resync": AppResyncSnapshot;
   "agent.list": AgentDescriptor[];
+  "agent.login": null;
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];

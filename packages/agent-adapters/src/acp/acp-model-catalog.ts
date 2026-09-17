@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { CompatibleProviderModel } from "@cocurdex/shared";
 import { isReasoningEffort } from "@cocurdex/shared";
-import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
+import type { AcpConnectionFactory } from "./acp-connection";
 import {
   type AcpSessionModel,
   type AcpSessionModelState,
@@ -19,13 +19,19 @@ export interface AcpModelCatalogSpec {
   providerName: string;
 }
 
+export interface AcpProviderLoginSpec extends AcpModelCatalogSpec {
+  authMethodPriority: string[];
+}
+
 const ACP_MODEL_PROBE_TIMEOUT_MS = 20_000;
+const ACP_PROVIDER_LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
 const catalogCache = new Map<string, CompatibleProviderModel[]>();
 const inFlightProbes = new Map<
   string,
   Promise<CompatibleProviderModel[] | null>
 >();
+const inFlightLogins = new Map<string, Promise<void>>();
 
 function toCompatibleModel(
   spec: AcpModelCatalogSpec,
@@ -134,6 +140,46 @@ async function withProbeTimeout<T>(
   }
 }
 
+async function withLoginTimeout<T>(
+  run: () => Promise<T>,
+  timeoutMs: number,
+  providerName: string,
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      run(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${providerName} login timed out`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function buildProbeInitializeRequest(spec: AcpModelCatalogSpec) {
+  return {
+    protocolVersion: 1,
+    clientCapabilities: {
+      fs: { readTextFile: false, writeTextFile: false },
+      terminal: false,
+    },
+    clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
+    _meta: spec.initializeMeta,
+  };
+}
+
+const silentProbeHandlers = {
+  onSessionUpdate() {},
+  requestPermission() {
+    return Promise.resolve({ outcome: { outcome: "cancelled" as const } });
+  },
+};
+
 async function probeCatalog(
   spec: AcpModelCatalogSpec,
   connectionFactory: AcpConnectionFactory,
@@ -144,25 +190,14 @@ async function probeCatalog(
     args: spec.args,
     command: spec.command,
     cwd,
-    handlers: {
-      onSessionUpdate() {},
-      requestPermission() {
-        return Promise.resolve({ outcome: { outcome: "cancelled" as const } });
-      },
-    },
+    handlers: silentProbeHandlers,
   });
 
   try {
     return await withProbeTimeout(async () => {
-      const response = await connection.initialize({
-        protocolVersion: 1,
-        clientCapabilities: {
-          fs: { readTextFile: false, writeTextFile: false },
-          terminal: false,
-        },
-        clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
-        _meta: spec.initializeMeta,
-      });
+      const response = await connection.initialize(
+        buildProbeInitializeRequest(spec),
+      );
       const initializeCatalog = mapCatalog(
         spec,
         readAcpSessionModelState(response),
@@ -228,4 +263,57 @@ export function resetAcpProviderModelsCache(providerId?: string) {
   }
   catalogCache.clear();
   inFlightProbes.clear();
+}
+
+export function loginAcpProvider(
+  spec: AcpProviderLoginSpec,
+  connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
+  options: { timeoutMs?: number } = {},
+): Promise<void> {
+  const pending = inFlightLogins.get(spec.providerId);
+  if (pending) {
+    return pending;
+  }
+
+  const timeoutMs = options.timeoutMs ?? ACP_PROVIDER_LOGIN_TIMEOUT_MS;
+  const login = withProbeCwd(async (cwd) => {
+    const connection = await connectionFactory({
+      args: spec.args,
+      command: spec.command,
+      cwd,
+      handlers: silentProbeHandlers,
+    });
+    try {
+      await withLoginTimeout(
+        async () => {
+          const response = await connection.initialize(
+            buildProbeInitializeRequest(spec),
+          );
+          const advertised = (response.authMethods ?? []).map(
+            (method) => method.id,
+          );
+          const methodId =
+            spec.authMethodPriority.find((id) => advertised.includes(id)) ??
+            advertised[0];
+          if (!methodId) {
+            return;
+          }
+          await connection.authenticate({ methodId });
+        },
+        timeoutMs,
+        spec.providerName,
+      );
+    } finally {
+      await connection.close();
+    }
+  })
+    .then(() => {
+      resetAcpProviderModelsCache(spec.providerId);
+    })
+    .finally(() => {
+      inFlightLogins.delete(spec.providerId);
+    });
+
+  inFlightLogins.set(spec.providerId, login);
+  return login;
 }

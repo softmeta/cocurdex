@@ -1,6 +1,8 @@
 import type { AgentId, CompatibleProviderModel } from "@cocurdex/shared";
-import { type ReactNode, useMemo } from "react";
+import { LogIn } from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   type AppDropdownTriggerAppearance,
   AppDropdownTriggerButton,
@@ -11,8 +13,10 @@ import { Button, Spinner } from "@/components/ui";
 // Sub-entry, not the settings barrel: that barrel reaches SettingsScreen ->
 // @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
-import { cn } from "@/lib";
+import { cn, desktopApi } from "@/lib";
 import { usesAdapterOwnedModelCatalog } from "./adapter-owned-catalog";
+import { getAgentLoginLabel } from "./agent-login";
+import { invalidateProviderModelCache } from "./provider-model-cache";
 import { ProviderModelCompoundMenu } from "./provider-model-compound-menu";
 
 function getProviderModelValue({ model, provider }: CompatibleProviderModel) {
@@ -133,6 +137,29 @@ export function ProviderModelMenu({
   onServiceTierChange,
 }: ProviderModelMenuProps) {
   const { t } = useTranslation("sessions");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const agentLoginLabel = getAgentLoginLabel(agentId);
+
+  async function handleAgentLogin() {
+    if (!agentId || !agentLoginLabel || isLoggingIn) {
+      return;
+    }
+    setIsLoggingIn(true);
+    try {
+      await desktopApi.loginAgent(agentId);
+      invalidateProviderModelCache();
+    } catch (error) {
+      toast.error(
+        t("modelMenu.signInFailed", {
+          agent: agentLoginLabel,
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }
+
   const hasConfiguredModels = compatibleProviders.length > 0;
   const selectedProviderModel = compatibleProviders.find(
     (providerModel) => getProviderModelValue(providerModel) === value,
@@ -204,6 +231,24 @@ export function ProviderModelMenu({
     !hasConfiguredModels && !(agentId && usesAdapterOwnedModelCatalog(agentId));
 
   if (!hasConfiguredModels && !opensSettingsDirectly) {
+    if (agentLoginLabel) {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label={t("modelMenu.signIn", { agent: agentLoginLabel })}
+          className={cn("h-7 max-w-[280px] gap-1.5 px-2", triggerClassName)}
+          disabled={disabled || isLoggingIn}
+          onClick={() => void handleAgentLogin()}
+        >
+          {isLoggingIn ? <Spinner size="xs" /> : <LogIn className="size-3.5" />}
+          {isLoggingIn
+            ? t("modelMenu.signInWaiting")
+            : t("modelMenu.signIn", { agent: agentLoginLabel })}
+        </Button>
+      );
+    }
     return (
       <AppDropdownTriggerButton
         aria-label={t("modelMenu.triggerLabel")}

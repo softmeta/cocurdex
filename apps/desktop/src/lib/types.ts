@@ -432,6 +432,7 @@ export interface ProductApi {
     agentId: AgentId,
     options?: { forceRefresh?: boolean },
   ): Promise<CompatibleProviderModel[]>;
+  loginAgent(agentId: AgentId): Promise<void>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
     agentId: AgentId,
