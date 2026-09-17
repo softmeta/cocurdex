@@ -284,8 +284,12 @@ export class AcpEventMapper {
     });
   }
 
+  getToolCall(toolCallId: string) {
+    return this.tools.get(toolCallId) ?? null;
+  }
+
   getToolCallTitle(toolCallId: string) {
-    return this.tools.get(toolCallId)?.title ?? null;
+    return this.getToolCall(toolCallId)?.title ?? null;
   }
 
   beginTurn(userMessageId: string) {
@@ -441,10 +445,10 @@ export class AcpEventMapper {
         return;
       }
       case "tool_call_update": {
-        this.endMessageSegment();
+        const startedToolCall = this.tools.get(update.toolCallId);
         const toolCall = this.transformToolCall(
           mergeToolCall(
-            this.tools.get(update.toolCallId),
+            startedToolCall,
             update,
             this.sessionId,
             this.nextTimelineTimestamp(),
@@ -452,6 +456,9 @@ export class AcpEventMapper {
         );
         if (!toolCall) {
           return;
+        }
+        if (!startedToolCall) {
+          this.endMessageSegment();
         }
         this.tools.set(toolCall.id, toolCall);
         this.ingestToolDiffs(toolCall);
@@ -748,8 +755,11 @@ export class AcpEventMapper {
     }
 
     // ACP message IDs identify provider messages, but Cocurdex messages are
-    // renderable timeline segments. A tool boundary therefore ends every open
-    // segment even when the provider resumes streaming with the same message ID.
+    // renderable timeline segments. A tool call starting therefore ends every
+    // open segment even when the provider resumes streaming with the same
+    // message ID. Only the start is a boundary: later updates keep the tool
+    // row where it already sits in the timeline, so a provider that streams
+    // anonymous chunks alongside them must not have its stream split per update.
     // Within one boundary, segments are tracked per (kind, message ID): agents
     // that explore in parallel interleave chunks from several provider messages,
     // and a single active segment would splice those streams into each other.

@@ -239,6 +239,101 @@ describe("AcpEventMapper", () => {
     ]);
   });
 
+  it("keeps anonymous chunks in one segment across tool call updates", () => {
+    const events: AgentEvent[] = [];
+    const mapper = new AcpEventMapper(
+      "app-session-1",
+      (event) => events.push(event),
+      () => "2026-07-24T00:00:00.000Z",
+    );
+
+    mapper.handle({
+      sessionId: "provider-session-1",
+      update: {
+        sessionUpdate: "tool_call",
+        toolCallId: "tool-1",
+        title: "Run tests",
+        status: "in_progress",
+      },
+    });
+    for (const text of [
+      "There",
+      "'s no migration ",
+      "for renaming ",
+      "the column.",
+    ]) {
+      mapper.handle({
+        sessionId: "provider-session-1",
+        update: {
+          sessionUpdate: "agent_thought_chunk",
+          content: { type: "text", text },
+        },
+      });
+      mapper.handle({
+        sessionId: "provider-session-1",
+        update: {
+          sessionUpdate: "tool_call_update",
+          toolCallId: "tool-1",
+          status: "in_progress",
+          rawOutput: { type: "Bash", output: [] },
+        },
+      });
+    }
+    mapper.complete("end_turn", 1);
+
+    const reasoning = events.flatMap((event) =>
+      event.type === "message.completed" && event.message.kind === "reasoning"
+        ? [event.message.content]
+        : [],
+    );
+
+    expect(reasoning).toEqual([
+      "There's no migration for renaming the column.",
+    ]);
+  });
+
+  it("starts a new segment when a tool call begins mid-stream", () => {
+    const events: AgentEvent[] = [];
+    const mapper = new AcpEventMapper(
+      "app-session-1",
+      (event) => events.push(event),
+      () => "2026-07-24T00:00:00.000Z",
+    );
+
+    mapper.handle({
+      sessionId: "provider-session-1",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        content: { type: "text", text: "Before the call. " },
+      },
+    });
+    mapper.handle({
+      sessionId: "provider-session-1",
+      update: {
+        sessionUpdate: "tool_call",
+        toolCallId: "tool-1",
+        title: "Run tests",
+        status: "in_progress",
+      },
+    });
+    mapper.handle({
+      sessionId: "provider-session-1",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        content: { type: "text", text: "After the call." },
+      },
+    });
+    mapper.complete("end_turn", 1);
+
+    const reasoning = events.flatMap((event) =>
+      event.type === "message.completed" && event.message.kind === "reasoning"
+        ? [event.message.content]
+        : [],
+    );
+
+    expect(reasoning).toEqual(["Before the call. ", "After the call."]);
+  });
+
   it("preserves response-tool-response ordering as separate message segments", () => {
     const events: AgentEvent[] = [];
     const mapper = new AcpEventMapper(
