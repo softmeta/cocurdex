@@ -8,6 +8,10 @@
 - Prefer the latest stable dependencies. Use prerelease or deprecated versions only when explicitly requested or required for compatibility.
 - Verify current information, versions, API behavior, platform limits, troubleshooting, configuration, and third-party tooling against official documentation, repositories, release notes, or standards before drawing conclusions or changing code. Prefer current official sources when sources conflict and explain the choice. If verification is unavailable, state the uncertainty and limit conclusions to local evidence. Verify advice with cost, risk, or long-term maintenance implications.
 
+## Git and branches
+
+Never change code or commit on `main`. Create a branch before the first edit or commit. If work has already landed on `main`, move it to a branch with `git branch <name>`, `git checkout <name>`, then `git branch -f main <original-commit>`, leaving the working tree untouched. Never push to `main` or rewrite its history.
+
 ## Architecture: daemon, host, and clients
 
 Reusable product capabilities belong in `packages/daemon`, exposed through `@cocurdex/rpc`. Ask: would a browser client need this capability through the daemon? If yes, use daemon RPC; desktop-only host APIs use Electron IPC.
