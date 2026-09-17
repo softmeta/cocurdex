@@ -3,8 +3,40 @@ import { describe, expect, it } from "vitest";
 import {
   createSessionWorktreePath,
   getDaemonSocketPath,
+  getDefaultUserDataPath,
   isAppManagedWorktreePath,
 } from "./paths";
+
+describe("getDefaultUserDataPath", () => {
+  it("keeps the published per-platform location", () => {
+    expect(getDefaultUserDataPath("darwin", {}, "/Users/example")).toBe(
+      path.join("/Users/example", "Library", "Application Support", "Cocurdex"),
+    );
+    expect(getDefaultUserDataPath("win32", {}, "C:\\Users\\example")).toBe(
+      path.join("C:\\Users\\example", "AppData", "Roaming", "Cocurdex"),
+    );
+    expect(getDefaultUserDataPath("linux", {}, "/home/example")).toBe(
+      path.join("/home/example", ".config", "cocurdex"),
+    );
+  });
+
+  it("honors the platform data directory variables", () => {
+    expect(
+      getDefaultUserDataPath(
+        "win32",
+        { APPDATA: "D:\\Roaming" },
+        "C:\\Users\\example",
+      ),
+    ).toBe(path.join("D:\\Roaming", "Cocurdex"));
+    expect(
+      getDefaultUserDataPath(
+        "linux",
+        { XDG_CONFIG_HOME: "/etc/cocurdex" },
+        "/home/example",
+      ),
+    ).toBe(path.join("/etc/cocurdex", "cocurdex"));
+  });
+});
 
 describe("getDaemonSocketPath", () => {
   it("uses a filesystem socket on macOS and Linux", () => {

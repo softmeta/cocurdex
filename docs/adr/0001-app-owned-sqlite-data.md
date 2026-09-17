@@ -25,12 +25,20 @@ formats have no compatibility obligation.
    boundary.
 6. Markdown is supported only through explicit import/export flows. Cocurdex
    does not dual-write Markdown and SQLite.
-7. Pre-release databases without the current application marker and schema
-   version are recreated instead of migrated.
+7. Databases that carry the Cocurdex application marker are migrated forward
+   to the current schema version. A database without the marker is moved aside
+   as a `.bak-<timestamp>` file and recreated instead.
+8. A migration writes a `cocurdex.sqlite.pre-migration-<timestamp>` snapshot
+   first and keeps the newest three. A database written by a newer schema
+   version is refused rather than downgraded or deleted.
 
 ## Consequences
 
 - Stable UUIDs survive title changes, moves, and hierarchy changes.
+- Sessions, workspaces, notes, and issues survive an application update that
+  advances the schema version.
+- A migration that loses data is recoverable from the pre-migration snapshot,
+  so no release can silently destroy local state.
 - Transactions protect multi-row updates and revision fields detect stale
   writes.
 - FTS5, backlinks, and tag aggregation operate on normalized data.

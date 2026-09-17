@@ -13,12 +13,21 @@ interface PragmaRow {
 }
 
 describe("daemon startup against a stale schema version", () => {
-  it("recreates a pre-release database and serves requests", async () => {
+  it("migrates a pre-release database and keeps its workspaces", async () => {
     const userDataPath = mkdtempSync(
       path.join(tmpdir(), "cocurdex-e2e-upgrade-"),
     );
     const databasePath = getDatabasePath(userDataPath);
     const seeded = createCocurdexDatabase(databasePath);
+    await seeded.workspaces.upsert({
+      id: "workspace-1",
+      name: "repo-a",
+      rootPaths: ["/tmp/repo-a"],
+      createdAt: "2026-06-25T00:00:00.000Z",
+      updatedAt: "2026-06-25T00:00:00.000Z",
+      lastOpenedAt: "2026-06-25T00:00:00.000Z",
+      sortOrder: 1000,
+    });
     seeded.close();
 
     const stale = new DatabaseSync(databasePath);
@@ -27,14 +36,18 @@ describe("daemon startup against a stale schema version", () => {
         ?.user_version ?? 0;
     expect(currentVersion).toBeGreaterThan(0);
     stale.exec(`PRAGMA user_version = ${currentVersion - 1}`);
-    stale.exec("CREATE TABLE legacy_sentinel (id TEXT)");
     stale.close();
 
     const daemon = await spawnDaemon({ userDataPath });
     try {
+      const workspaces = await requestDaemon("workspace.list", daemon.options);
+      expect(workspaces).toMatchObject([
+        { id: "workspace-1", rootPaths: ["/tmp/repo-a"] },
+      ]);
+
       const note = await requestDaemon(
         "note.create",
-        { title: "after recreate" },
+        { title: "after migrate" },
         daemon.options,
       );
       const fetched = await requestDaemon(
@@ -42,23 +55,14 @@ describe("daemon startup against a stale schema version", () => {
         { id: note.id },
         daemon.options,
       );
-      expect(fetched).toMatchObject({ title: "after recreate" });
+      expect(fetched).toMatchObject({ title: "after migrate" });
 
-      const recreated = new DatabaseSync(databasePath);
+      const migrated = new DatabaseSync(databasePath);
       const version =
-        (
-          recreated.prepare("PRAGMA user_version").get() as
-            | PragmaRow
-            | undefined
-        )?.user_version ?? 0;
-      const sentinel = recreated
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'legacy_sentinel'",
-        )
-        .get();
-      recreated.close();
+        (migrated.prepare("PRAGMA user_version").get() as PragmaRow | undefined)
+          ?.user_version ?? 0;
+      migrated.close();
       expect(version).toBe(currentVersion);
-      expect(sentinel).toBeUndefined();
     } finally {
       await daemon.dispose();
     }

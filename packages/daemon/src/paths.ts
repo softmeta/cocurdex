@@ -7,20 +7,24 @@ export const DATABASE_FILENAME = "cocurdex.sqlite";
 export const DAEMON_METADATA_FILENAME = "daemon.json";
 export const COCURDEX_USER_DATA_PATH_ENV = "COCURDEX_USER_DATA_PATH";
 
-export function getDefaultUserDataPath() {
-  if (process.platform === "darwin") {
-    return path.join(homedir(), "Library", "Application Support", "Cocurdex");
+export function getDefaultUserDataPath(
+  platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+  home = homedir(),
+) {
+  if (platform === "darwin") {
+    return path.join(home, "Library", "Application Support", "Cocurdex");
   }
 
-  if (process.platform === "win32") {
+  if (platform === "win32") {
     return path.join(
-      process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming"),
+      env.APPDATA ?? path.join(home, "AppData", "Roaming"),
       "Cocurdex",
     );
   }
 
   return path.join(
-    process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config"),
+    env.XDG_CONFIG_HOME ?? path.join(home, ".config"),
     "cocurdex",
   );
 }

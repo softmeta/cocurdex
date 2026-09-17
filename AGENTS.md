@@ -27,6 +27,18 @@ Reusable product capabilities belong in `packages/daemon`, exposed through `@coc
 
 Capabilities needed by the CLI must not exist only in IPC. When modifying IPC that contains product logic, move that logic into the daemon instead of extending it there.
 
+## Data compatibility
+
+Persisted user data outlives any single release. Never delete, recreate, or rewrite a database because the application version changed.
+
+- Migrate `cocurdex.sqlite` forward in `packages/db/src/migrations.ts`. Every schema change bumps `CURRENT_SCHEMA_VERSION` and adds a step to `MIGRATION_STEPS` that preserves existing rows.
+- Keep migrations additive or value-preserving. Add and backfill columns instead of renaming or dropping columns that hold user data; a rename copies the old values into the new column before the old one is removed.
+- Treat persisted JSON columns (`provider_snapshot_json`, `attachments_json`, `origin_json`, workflow artifacts) as versioned data: read old shapes, and change them additively or migrate the stored values in the same release.
+- Keep `getDefaultUserDataPath()` and `DATABASE_FILENAME` stable. A new channel, build flavor, or rename must not move where an installed app reads its existing data.
+- Recreate only a file without the `COCU` application marker, and move it aside as a `.bak-<timestamp>` file first. Refuse a database written by a newer schema version; never downgrade or delete it.
+- Opening a database that needs a migration writes a `cocurdex.sqlite.pre-migration-<timestamp>` snapshot and keeps the newest three.
+- Cover each migration with a test that seeds the previous schema, migrates, and asserts that sessions, workspaces, messages, notes, and issues survive.
+
 ## Verification and tests
 
 After edits, run applicable checks in this order and fix reported issues:

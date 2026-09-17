@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -11,6 +11,15 @@ function databasePath() {
     mkdtempSync(path.join(tmpdir(), "cocurdex-db-")),
     "cocurdex.sqlite",
   );
+}
+
+function preMigrationSnapshots(target: string) {
+  const directory = path.dirname(target);
+  const prefix = `${path.basename(target)}.pre-migration-`;
+  return readdirSync(directory)
+    .filter((name) => name.startsWith(prefix))
+    .map((name) => path.join(directory, name))
+    .sort();
 }
 
 describe("createCocurdexDatabase", () => {
@@ -63,6 +72,106 @@ describe("createCocurdexDatabase", () => {
 
     expect(legacyTable).toBeUndefined();
     expect(notesTable).toEqual({ name: "notes" });
+    expect(readdirSync(path.dirname(target))).toContainEqual(
+      expect.stringMatching(/^cocurdex\.sqlite\.bak-/),
+    );
+  });
+
+  it("keeps sessions and workspaces when the schema version advances", async () => {
+    const target = databasePath();
+    const database = createCocurdexDatabase(target);
+    await database.workspaces.upsert({
+      id: "workspace-1",
+      name: "repo-a",
+      rootPaths: ["/tmp/repo-a"],
+      createdAt: "2026-06-25T00:00:00.000Z",
+      updatedAt: "2026-06-25T00:00:00.000Z",
+      lastOpenedAt: "2026-06-25T00:00:00.000Z",
+      sortOrder: 1000,
+    });
+    await database.sessions.upsert({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Survives an update",
+      agentType: "codex",
+      status: "idle",
+      writeMode: "read-only",
+      sessionModeId: "plan",
+      createdAt: "2026-06-25T00:00:00.000Z",
+      updatedAt: "2026-06-25T00:00:00.000Z",
+      lastMessageAt: null,
+      archivedAt: null,
+      providerSnapshot: null,
+    });
+    database.close();
+
+    const stale = new DatabaseSync(target);
+    stale.exec("PRAGMA user_version = 5");
+    stale.close();
+
+    const reopened = createCocurdexDatabase(target);
+    await expect(reopened.workspaces.list()).resolves.toMatchObject([
+      { id: "workspace-1", rootPaths: ["/tmp/repo-a"] },
+    ]);
+    await expect(reopened.sessions.getById("session-1")).resolves.toMatchObject(
+      { id: "session-1", sessionModeId: "plan" },
+    );
+    reopened.close();
+  });
+
+  it("keeps a snapshot of the database as it was before a migration", async () => {
+    const target = databasePath();
+    const database = createCocurdexDatabase(target);
+    await database.workspaces.upsert({
+      id: "workspace-1",
+      name: "repo-a",
+      rootPaths: ["/tmp/repo-a"],
+      createdAt: "2026-06-25T00:00:00.000Z",
+      updatedAt: "2026-06-25T00:00:00.000Z",
+      lastOpenedAt: "2026-06-25T00:00:00.000Z",
+      sortOrder: 1000,
+    });
+    database.close();
+
+    const stale = new DatabaseSync(target);
+    stale.exec("PRAGMA user_version = 5");
+    stale.close();
+
+    createCocurdexDatabase(target).close();
+
+    const snapshots = preMigrationSnapshots(target);
+    expect(snapshots).toHaveLength(1);
+    const snapshot = new DatabaseSync(snapshots[0], { readOnly: true });
+    const version = snapshot.prepare("PRAGMA user_version").get() as
+      | { user_version?: number }
+      | undefined;
+    const workspaces = snapshot
+      .prepare("SELECT id, name, root_paths FROM workspaces")
+      .all();
+    snapshot.close();
+
+    expect(version?.user_version).toBe(5);
+    expect(workspaces).toEqual([
+      { id: "workspace-1", name: "repo-a", root_paths: '["/tmp/repo-a"]' },
+    ]);
+  });
+
+  it("keeps only the newest pre-migration snapshots", () => {
+    const target = databasePath();
+    for (let index = 0; index < 5; index++) {
+      createCocurdexDatabase(target).close();
+      const stale = new DatabaseSync(target);
+      stale.exec("PRAGMA user_version = 5");
+      stale.close();
+    }
+    createCocurdexDatabase(target).close();
+
+    const snapshots = preMigrationSnapshots(target);
+    expect(snapshots).toHaveLength(3);
+    for (const snapshot of snapshots) {
+      expect(existsSync(snapshot)).toBe(true);
+    }
+    expect(existsSync(target)).toBe(true);
   });
 
   it("rolls back every repository write when a transaction throws", async () => {
