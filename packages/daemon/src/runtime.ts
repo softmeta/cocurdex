@@ -25,6 +25,7 @@ import {
   type SessionRecord,
   workspacePathsEqual,
 } from "@cocurdex/shared";
+import type { AgentToolSessionBinding } from "./agent-tools";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
 
 export interface RuntimePersistence {
@@ -57,10 +58,16 @@ interface PendingPlanApproval {
   resolve(decision: AgentPlanApprovalDecision): void;
 }
 
+export interface AgentToolsProvider {
+  bind(session: SessionRecord): AgentToolSessionBinding | null;
+  revoke(sessionId: string): void;
+}
+
 interface AgentRuntimeManagerOptions {
   broadcastAgentEvent(event: AgentEvent): void;
   createAdapter?: (agentType: AgentId) => AgentAdapter;
   userDataPath?: string;
+  agentTools?: AgentToolsProvider;
 }
 
 export class AgentRuntimeManager {
@@ -89,6 +96,7 @@ export class AgentRuntimeManager {
   private persistQueue: Promise<void> = Promise.resolve();
 
   private readonly userDataPath?: string;
+  private readonly agentTools: AgentToolsProvider | null;
 
   constructor(options: AgentRuntimeManagerOptions) {
     this.broadcastCoalescer = createEventBroadcastCoalescer(
@@ -96,6 +104,7 @@ export class AgentRuntimeManager {
     );
     this.createAdapter = options.createAdapter ?? createAgentAdapter;
     this.userDataPath = options.userDataPath;
+    this.agentTools = options.agentTools ?? null;
   }
 
   configureAgentEventPersistence(
@@ -384,6 +393,7 @@ export class AgentRuntimeManager {
 
     const adapter = this.createAdapter(payload.session.agentType);
     const sessionCopy = { ...payload.session };
+    const agentToolSession = this.agentTools?.bind(sessionCopy) ?? null;
     let runtime: AgentSession | null = null;
     const createdRuntime = adapter.createSession(
       {
@@ -393,6 +403,8 @@ export class AgentRuntimeManager {
         userDataPath: this.userDataPath,
         providerSession: persistence.providerSession,
         providerConfig: persistence.providerConfig,
+        agentTools: agentToolSession?.binding ?? null,
+        agentToolInvoker: agentToolSession?.invoker ?? null,
         onProviderSessionUpdate: (providerSession) => {
           const activeRuntime = this.sessionRuntimes.get(payload.session.id);
           if (!runtime || activeRuntime?.runtime !== runtime) {
@@ -550,6 +562,7 @@ export class AgentRuntimeManager {
     }
 
     this.sessionRuntimes.delete(sessionId);
+    this.agentTools?.revoke(sessionId);
     const failures: unknown[] = [];
     try {
       await sessionRuntime.runtime.stop();

@@ -69,6 +69,17 @@ export function initializeDatabase(database: DatabaseSync): void {
   if (!hasColumn(database, "sessions", "worktree_path")) {
     database.exec("ALTER TABLE sessions ADD COLUMN worktree_path TEXT");
   }
+  if (!hasColumn(database, "sessions", "peer_inbound")) {
+    database.exec(
+      "ALTER TABLE sessions ADD COLUMN peer_inbound TEXT NOT NULL DEFAULT 'deliver'",
+    );
+  }
+  if (!hasColumn(database, "messages", "origin_json")) {
+    database.exec("ALTER TABLE messages ADD COLUMN origin_json TEXT");
+  }
+  if (!hasColumn(database, "issues", "assignee_session_id")) {
+    database.exec("ALTER TABLE issues ADD COLUMN assignee_session_id TEXT");
+  }
   if (!hasColumn(database, "workspaces", "sort_order")) {
     database.exec(
       "ALTER TABLE workspaces ADD COLUMN sort_order REAL NOT NULL DEFAULT 0",

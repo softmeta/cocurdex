@@ -258,6 +258,22 @@ export const schemas = {
   }),
   sessionId: idSchema,
   sessionIds: z.array(idSchema).max(500),
+  teamId: idSchema,
+  teamMember: z.object({ teamId: idSchema, sessionId: idSchema }),
+  teamTemplateSave: z.object({
+    id: idSchema.optional(),
+    name: z.string().min(1).max(80),
+    members: z
+      .array(
+        z.object({
+          name: z.string().min(1).max(32),
+          agentRoleId: idSchema.nullable(),
+          prompt: z.string().max(8000),
+        }),
+      )
+      .min(1)
+      .max(8),
+  }),
   messageId: idSchema,
   toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),
   questionId: idSchema,

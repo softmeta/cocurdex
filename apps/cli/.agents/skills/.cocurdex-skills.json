@@ -1,0 +1,20 @@
+{
+  "managedBy": "cocurdex",
+  "packVersion": "0.1.0",
+  "skills": [
+    "cocurdex-ask",
+    "cocurdex-grill",
+    "cocurdex-issue",
+    "cocurdex-layout",
+    "cocurdex-link",
+    "cocurdex-note",
+    "cocurdex-prd",
+    "cocurdex-ship",
+    "cocurdex-spec",
+    "cocurdex-team",
+    "cocurdex-ticket",
+    "cocurdex-todo"
+  ],
+  "scope": "project",
+  "installedAt": "2026-09-16T12:17:19.347Z"
+}

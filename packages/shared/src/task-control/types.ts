@@ -5,6 +5,7 @@ import type {
   AgentPlanApprovalDecision,
   AgentThinkingLevel,
   MessageAttachment,
+  MessageOrigin,
   MessageRecord,
   SessionRecord,
 } from "../contracts";
@@ -23,6 +24,7 @@ export type SessionConfiguration = Pick<
   | "agentRoleId"
   | "providerSnapshot"
   | "worktreePath"
+  | "peerInbound"
 >;
 
 export interface SendSessionCommand {
@@ -33,6 +35,7 @@ export interface SendSessionCommand {
   attachments?: MessageAttachment[];
   thinkingLevel?: AgentThinkingLevel;
   delivery?: AgentInputDelivery;
+  origin?: MessageOrigin;
 }
 
 export type SubmitPreviousMessageCommand = Pick<

@@ -25,6 +25,10 @@ import {
   serializeProviderSessionState,
 } from "../shared";
 import {
+  type AcpHttpMcpServer,
+  acpAgentToolsMcpServers,
+} from "../shared/agent-tools-mcp";
+import {
   createNativeSessionRecoveryError,
   requiresNativeSessionRecovery,
 } from "../shared/session-recovery";
@@ -360,7 +364,10 @@ export class AcpAgentAdapter implements AgentAdapter {
             await connection.loadSession({
               sessionId: providerSessionId,
               cwd: payload.workspaceRootPath,
-              mcpServers: [],
+              mcpServers: acpAgentToolsMcpServers(
+                payload.agentTools,
+                response.agentCapabilities?.mcpCapabilities,
+              ),
             });
           } finally {
             await connection.close();
@@ -564,6 +571,10 @@ export class AcpAgentAdapter implements AgentAdapter {
         const providerSession = await this.openProviderSession({
           capabilities,
           connection,
+          mcpServers: acpAgentToolsMcpServers(
+            payload.agentTools,
+            response.agentCapabilities?.mcpCapabilities,
+          ),
           history,
           payload,
           suppressUpdates(value) {
@@ -861,12 +872,14 @@ export class AcpAgentAdapter implements AgentAdapter {
   private async openProviderSession({
     capabilities,
     connection,
+    mcpServers,
     history,
     payload,
     suppressUpdates,
   }: {
     capabilities: AgentNegotiatedCapabilities;
     connection: AcpConnection;
+    mcpServers: AcpHttpMcpServer[];
     history: SendAgentMessagePayload["history"];
     payload: CreateAgentSessionPayload;
     suppressUpdates(value: boolean): void;
@@ -880,7 +893,7 @@ export class AcpAgentAdapter implements AgentAdapter {
         const response = await connection.resumeSession({
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
-          mcpServers: [],
+          mcpServers,
         });
         logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
           agentId: payload.session.agentType,
@@ -920,7 +933,7 @@ export class AcpAgentAdapter implements AgentAdapter {
         const response = await connection.loadSession({
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
-          mcpServers: [],
+          mcpServers,
           // The app transcript is authoritative, so the agent's replay of every
           // past session update would be deserialized, streamed and dropped.
           // Grok Build reads `noReplay` to skip loading those updates entirely.
@@ -971,7 +984,7 @@ export class AcpAgentAdapter implements AgentAdapter {
 
     const response = await connection.newSession({
       cwd: payload.workspaceRootPath,
-      mcpServers: [],
+      mcpServers,
     });
     logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
       agentId: payload.session.agentType,

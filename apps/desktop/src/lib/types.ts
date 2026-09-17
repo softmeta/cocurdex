@@ -75,12 +75,21 @@ import type {
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
+  ScriptRunRecord,
+  ScriptRunSettings,
+  ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
   SessionMessagesResult,
   SessionRecord,
+  StartScriptRunPayload,
+  TeamMemberRecord,
+  TeamRecord,
+  TeamSnapshot,
+  TeamTemplateRecord,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -319,6 +328,25 @@ export interface ProductApi {
     worktreePath: string;
     workspaceRootPath?: string;
   }): Promise<{ removed: boolean }>;
+  listScriptRuns(requesterSessionId: string): Promise<ScriptRunRecord[]>;
+  getScriptRun(runId: string): Promise<ScriptRunSnapshot>;
+  startScriptRun(payload: StartScriptRunPayload): Promise<ScriptRunRecord>;
+  cancelScriptRun(runId: string): Promise<ScriptRunRecord>;
+  getScriptRunSettings(): Promise<ScriptRunSettings>;
+  saveScriptRunSettings(
+    settings: ScriptRunSettings,
+  ): Promise<ScriptRunSettings>;
+  getTeam(leadSessionId: string): Promise<TeamSnapshot | null>;
+  stopTeam(teamId: string): Promise<TeamRecord>;
+  stopTeamMember(payload: {
+    teamId: string;
+    sessionId: string;
+  }): Promise<TeamMemberRecord>;
+  listTeamTemplates(): Promise<TeamTemplateRecord[]>;
+  saveTeamTemplate(
+    payload: SaveTeamTemplatePayload,
+  ): Promise<TeamTemplateRecord>;
+  deleteTeamTemplate(id: string): Promise<void>;
   getWorktreeEnvironment(
     workspaceId: string,
   ): Promise<WorkspaceWorktreeEnvironment>;

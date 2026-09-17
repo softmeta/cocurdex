@@ -70,6 +70,10 @@
     "jumpToPrompt": "Jump to prompt {{index}}"
   },
   "openFile": "Open file",
+  "peerMessage": {
+    "from": "From session {{title}}",
+    "fromScriptRun": "From script {{name}}"
+  },
   "permissions": {
     "actions": {
       "edit": "edit",
@@ -180,7 +184,47 @@
     }
   },
   "reasoning": "Reasoning",
+  "scriptRun": {
+    "agentCount": "{{started}}/{{max}} agents",
+    "agentStatus": {
+      "cancelled": "Cancelled",
+      "completed": "Completed",
+      "failed": "Failed",
+      "queued": "Queued",
+      "running": "Running"
+    },
+    "cancel": "Cancel",
+    "discard": "Discard",
+    "maxAgents": "Agent limit",
+    "noAgents": "No agents started yet",
+    "panelLabel": "Script runs",
+    "proposalLabel": "Script proposal {{name}}",
+    "proposalTitle": "Script {{name}}",
+    "run": "Run",
+    "showScript": "Show script",
+    "status": {
+      "draft": "Awaiting approval"
+    }
+  },
   "system": "System",
+  "team": {
+    "handle": "Respond",
+    "label": "Team",
+    "needsInput": "Needs input",
+    "noReply": "No reply yet",
+    "open": "Open session",
+    "replyPlaceholder": "Reply to {{name}}…",
+    "send": "Send",
+    "status": {
+      "error": "Error",
+      "idle": "Idle",
+      "running": "Running",
+      "spawning": "Starting",
+      "stopped": "Stopped"
+    },
+    "stopAll": "Stop all",
+    "stopMember": "Stop {{name}}"
+  },
   "thinking": "Thinking",
   "toolCalls": {
     "command": "Command",

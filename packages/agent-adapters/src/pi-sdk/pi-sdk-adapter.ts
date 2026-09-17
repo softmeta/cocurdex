@@ -55,6 +55,7 @@ import {
   emitNativeWorkspaceEvidence,
   extractPiEditSnapshot,
 } from "../workspace-changes/native-evidence";
+import { createPiAgentToolDefinitions } from "./pi-agent-tools";
 import {
   buildModelCost,
   buildModelInput,
@@ -862,6 +863,9 @@ export function createPiSdkAdapter(
           });
           await resourceLoader.reload();
           const result = await sdk.createAgentSession({
+            customTools: await createPiAgentToolDefinitions(
+              payload.agentToolInvoker,
+            ),
             cwd: payload.workspaceRootPath,
             agentDir,
             modelRuntime,

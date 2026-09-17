@@ -24,6 +24,7 @@ import type {
   CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
+  CreateScriptRunPayload,
   CreateViewPayload,
   CreateWorkflowPayload,
   DeleteColumnPayload,
@@ -56,6 +57,8 @@ import type {
   NoteSummary,
   NoteTag,
   PdfDocumentAnnotations,
+  PeerInboundPolicy,
+  PeerSessionSummary,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
@@ -68,16 +71,29 @@ import type {
   ResolvedCommitMessageModel,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
+  ScriptRunRecord,
+  ScriptRunSettings,
+  ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
+  SendPeerMessagePayload,
+  SendPeerMessageResult,
   SendSessionCommand,
   SessionAttentionSnapshot,
   SessionConfiguration,
   SessionObservationSnapshot,
   SessionRecord,
+  SpawnTeammatePayload,
+  SpawnTeamTemplatePayload,
+  StartScriptRunPayload,
   SubmitPreviousMessageCommand,
+  TeamMemberRecord,
+  TeamRecord,
+  TeamSnapshot,
+  TeamTemplateRecord,
   TitleModelProbeResult,
   TitleModelSelection,
   TurnChangeDiff,
@@ -123,6 +139,7 @@ export interface DaemonMetadata {
   token: string;
   startedAt: string;
   webSocketUrl?: string;
+  agentToolsUrl?: string;
 }
 
 export interface DaemonStatus {
@@ -206,6 +223,24 @@ export type DaemonRequestPayloadByMethod = {
   "session.snapshot": { sessionId: string };
   "session.configure": SessionConfiguration;
   "session.get": { sessionId: string };
+  "session.listPeers": { sessionId: string };
+  "session.sendPeerMessage": SendPeerMessagePayload;
+  "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
+  "team.get": { leadSessionId: string };
+  "team.spawn": { leadSessionId: string } & SpawnTeammatePayload;
+  "team.stopMember": { teamId: string; sessionId: string };
+  "team.stop": { teamId: string };
+  "team.spawnTemplate": { leadSessionId: string } & SpawnTeamTemplatePayload;
+  "teamTemplate.list": undefined;
+  "teamTemplate.save": SaveTeamTemplatePayload;
+  "teamTemplate.delete": { id: string };
+  "scriptRun.create": CreateScriptRunPayload;
+  "scriptRun.start": StartScriptRunPayload;
+  "scriptRun.cancel": { runId: string };
+  "scriptRun.get": { runId: string };
+  "scriptRun.list": { workspaceId?: string; requesterSessionId?: string };
+  "scriptRun.settings.get": undefined;
+  "scriptRun.settings.save": ScriptRunSettings;
   "session.delete": { sessionId: string };
   "session.archive": { sessionId: string };
   "session.restore": { sessionId: string };
@@ -395,6 +430,24 @@ export type DaemonResultByMethod = {
   "worktree.create": GitWorktreeInfo;
   "worktree.remove": { removed: boolean };
   "session.list": SessionRecord[];
+  "session.listPeers": PeerSessionSummary[];
+  "session.sendPeerMessage": SendPeerMessageResult;
+  "session.setPeerInbound": SessionRecord;
+  "team.get": TeamSnapshot | null;
+  "team.spawn": TeamMemberRecord;
+  "team.stopMember": TeamMemberRecord;
+  "team.stop": TeamRecord;
+  "team.spawnTemplate": TeamMemberRecord[];
+  "teamTemplate.list": TeamTemplateRecord[];
+  "teamTemplate.save": TeamTemplateRecord;
+  "teamTemplate.delete": null;
+  "scriptRun.create": ScriptRunRecord;
+  "scriptRun.start": ScriptRunRecord;
+  "scriptRun.cancel": ScriptRunRecord;
+  "scriptRun.get": ScriptRunSnapshot;
+  "scriptRun.list": ScriptRunRecord[];
+  "scriptRun.settings.get": ScriptRunSettings;
+  "scriptRun.settings.save": ScriptRunSettings;
   "session.snapshot": SessionObservationSnapshot | null;
   "session.configure": SessionRecord;
   "session.get": SessionRecord | null;
@@ -539,6 +592,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "attention.list": true,
   "daemon.status": true,
   "issue.listViews": true,
+  "teamTemplate.list": true,
+  "scriptRun.settings.get": true,
   "mcp.readConfig": true,
   "network.proxy.test": true,
   "note.list": true,

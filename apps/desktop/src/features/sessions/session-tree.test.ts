@@ -191,15 +191,9 @@ describe("sessionAncestorIds", () => {
 });
 
 describe("isSubagentSession", () => {
-  it("treats sessionKind or parentSessionId as a subagent session", () => {
-    expect(
-      isSubagentSession({ parentSessionId: null, sessionKind: "subagent" }),
-    ).toBe(true);
-    expect(
-      isSubagentSession({ parentSessionId: "parent", sessionKind: "main" }),
-    ).toBe(true);
-    expect(
-      isSubagentSession({ parentSessionId: null, sessionKind: "main" }),
-    ).toBe(false);
+  it("treats only provider subagent sessions as subagents", () => {
+    expect(isSubagentSession({ sessionKind: "subagent" })).toBe(true);
+    expect(isSubagentSession({ sessionKind: "teammate" })).toBe(false);
+    expect(isSubagentSession({ sessionKind: "main" })).toBe(false);
   });
 });

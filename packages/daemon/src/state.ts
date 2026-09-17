@@ -1,5 +1,10 @@
 import crypto from "node:crypto";
-import { createCocurdexDatabase, type WorkflowRepository } from "@cocurdex/db";
+import {
+  createCocurdexDatabase,
+  type ScriptRunRepository,
+  type TeamRepository,
+  type WorkflowRepository,
+} from "@cocurdex/db";
 import type {
   AgentEvent,
   AgentId,
@@ -37,6 +42,8 @@ const TERMINAL_STATUSES = new Set<SessionStatus>(["idle", "error", "exited"]);
 export class DaemonState {
   readonly sessionAttention: SessionAttentionProjection;
   readonly workflows: WorkflowRepository;
+  readonly teams: TeamRepository;
+  readonly scriptRuns: ScriptRunRepository;
   private closed = false;
   private readonly database: CocurdexDatabase;
   private readonly deltaBuffer = createMessageDeltaBuffer();
@@ -48,6 +55,8 @@ export class DaemonState {
   constructor(userDataPath: string) {
     this.database = createCocurdexDatabase(getDatabasePath(userDataPath));
     this.workflows = this.database.workflows;
+    this.teams = this.database.teams;
+    this.scriptRuns = this.database.scriptRuns;
     this.sessionAttention = new SessionAttentionProjection(
       this.database.sessionAttention,
       this.database.sessions,

@@ -205,6 +205,53 @@ export async function handleDaemonRequest(
       return service.saveSessionConfiguration(request.params);
     case "session.get":
       return service.getSession(request.params.sessionId);
+    case "session.listPeers":
+      return service.peerMessaging.listPeers(request.params.sessionId);
+    case "session.sendPeerMessage":
+      return service.peerMessaging.send(request.params);
+    case "session.setPeerInbound":
+      return service.setSessionPeerInbound(
+        request.params.sessionId,
+        request.params.policy,
+      );
+    case "team.get":
+      return service.team.get(request.params.leadSessionId);
+    case "team.spawn": {
+      const { leadSessionId, ...payload } = request.params;
+      return service.team.spawn(leadSessionId, payload);
+    }
+    case "team.stopMember":
+      return service.team.stopMember(
+        request.params.teamId,
+        request.params.sessionId,
+      );
+    case "team.stop":
+      return service.team.stop(request.params.teamId);
+    case "team.spawnTemplate": {
+      const { leadSessionId, ...payload } = request.params;
+      return service.team.spawnTemplate(leadSessionId, payload);
+    }
+    case "teamTemplate.list":
+      return service.team.listTemplates();
+    case "teamTemplate.save":
+      return service.team.saveTemplate(request.params);
+    case "teamTemplate.delete":
+      await service.team.deleteTemplate(request.params.id);
+      return null;
+    case "scriptRun.create":
+      return service.scriptRuns.create(request.params);
+    case "scriptRun.start":
+      return service.scriptRuns.start(request.params);
+    case "scriptRun.cancel":
+      return service.scriptRuns.cancel(request.params.runId);
+    case "scriptRun.get":
+      return service.scriptRuns.get(request.params.runId);
+    case "scriptRun.list":
+      return service.scriptRuns.list(request.params);
+    case "scriptRun.settings.get":
+      return service.scriptRuns.getSettings();
+    case "scriptRun.settings.save":
+      return service.scriptRuns.saveSettings(request.params);
     case "provider.apiKey.set":
       await service.providerCredentials.setApiKey(
         request.params.providerId,

@@ -58,10 +58,8 @@ function sortSpawnOrder(sessions: SessionRecord[]) {
   });
 }
 
-export function isSubagentSession(
-  session: Pick<SessionRecord, "parentSessionId" | "sessionKind">,
-) {
-  return session.sessionKind === "subagent" || Boolean(session.parentSessionId);
+export function isSubagentSession(session: Pick<SessionRecord, "sessionKind">) {
+  return session.sessionKind === "subagent";
 }
 
 export function collectSessionSubtreeIds(

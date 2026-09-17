@@ -267,12 +267,14 @@ export interface WorkspaceRecord {
   missingRootPaths?: string[];
 }
 
+export type SessionKind = "main" | "subagent" | "teammate";
+
 export interface SessionRecord {
   id: string;
   workspaceId: string;
   title: string;
   agentType: AgentId;
-  sessionKind?: "main" | "subagent";
+  sessionKind?: SessionKind;
   parentSessionId?: string | null;
   parentToolCallId?: string | null;
   status: SessionStatus;
@@ -286,6 +288,7 @@ export interface SessionRecord {
   archivedAt?: string | null;
   providerSnapshot?: AgentProviderSnapshot | null;
   worktreePath?: string | null;
+  peerInbound?: "deliver" | "refuse";
 }
 
 export interface ProviderConfigRecord {
@@ -555,6 +558,20 @@ export function formatContextFileChipLabel(
   return `${fileName} ${formatContextFileRange(attachment)}`;
 }
 
+export interface PeerMessageOrigin {
+  kind: "peer";
+  sessionId: string;
+  sessionTitle: string;
+}
+
+export interface ScriptRunMessageOrigin {
+  kind: "scriptRun";
+  runId: string;
+  runName: string;
+}
+
+export type MessageOrigin = PeerMessageOrigin | ScriptRunMessageOrigin;
+
 export interface MessageRecord {
   id: string;
   sessionId: string;
@@ -563,6 +580,7 @@ export interface MessageRecord {
   content: string;
   attachments: MessageAttachment[];
   createdAt: string;
+  origin?: MessageOrigin | null;
 }
 
 export interface AgentToolCallLocation {

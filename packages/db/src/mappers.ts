@@ -58,7 +58,9 @@ export function mapSession(row: SqliteRow): SessionRecord {
     title: String(row.title),
     agentType: row.agent_type as SessionRecord["agentType"],
     sessionKind:
-      row.session_kind === "subagent" || row.session_kind === "main"
+      row.session_kind === "subagent" ||
+      row.session_kind === "teammate" ||
+      row.session_kind === "main"
         ? row.session_kind
         : "main",
     parentSessionId: toNullableString(row.parent_session_id),
@@ -83,6 +85,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
       null,
     ),
     worktreePath: toNullableString(row.worktree_path),
+    peerInbound: row.peer_inbound === "refuse" ? "refuse" : "deliver",
   };
 }
 
@@ -98,6 +101,9 @@ export function mapMessage(row: SqliteRow): MessageRecord {
     content: String(row.content),
     attachments: parseJson(row.attachments_json, []),
     createdAt: String(row.created_at),
+    ...(typeof row.origin_json === "string" && row.origin_json
+      ? { origin: parseJson<MessageRecord["origin"]>(row.origin_json, null) }
+      : {}),
   };
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync, unlinkSync } from "node:fs";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import http from "node:http";
 import net from "node:net";
 import type {
   DaemonEventEnvelope,
@@ -8,7 +9,12 @@ import type {
   DaemonRequest,
 } from "@cocurdex/rpc";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
+import { AGENT_TOOL_HTTP_PATH } from "@cocurdex/shared";
 import { WebSocketServer } from "ws";
+import {
+  createAgentToolHttpHandler,
+  isAgentToolHttpRequest,
+} from "./agent-tools";
 import { prepareDaemonEndpoint } from "./daemon-endpoint";
 import { acquireDaemonOwnership } from "./daemon-ownership";
 import { DaemonShutdownGate } from "./daemon-shutdown-gate";
@@ -204,44 +210,64 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     });
     if (onMessage) readJsonLines(socket, onMessage);
   });
-  let webSocketServer: WebSocketServer | undefined;
-  const listenWebSocket = (port: number) =>
+  let agentToolHandler:
+    | ReturnType<typeof createAgentToolHttpHandler>
+    | undefined;
+  const httpServer = http.createServer((request, response) => {
+    if (!isAgentToolHttpRequest(request)) {
+      response.writeHead(404);
+      response.end();
+      return;
+    }
+    if (!ready || !agentToolHandler) {
+      response.writeHead(503);
+      response.end();
+      return;
+    }
+    void agentToolHandler(request, response).catch(() => {
+      if (!response.headersSent) response.writeHead(500);
+      response.end();
+    });
+  });
+  const listenHttp = (port: number) =>
     new Promise<string>((resolve, reject) => {
-      const wss = new WebSocketServer({
-        host: "127.0.0.1",
-        port,
-        verifyClient: ({ origin }: { origin: string }) =>
-          isAllowedWebSocketOrigin(origin),
-      });
-      webSocketServer = wss;
-      wss.once("error", reject);
-      wss.on("connection", (socket) => {
-        socket.on("error", () => socket.terminate());
-        const onMessage = attachConnection({
-          send: (message, onSent) => socket.send(message, () => onSent?.()),
-          onClose: (listener) => socket.on("close", listener),
-          close: () => socket.terminate(),
-        });
-        if (!onMessage) return;
-        socket.on("message", (data) => {
-          const message = parseWebSocketJsonFrame(data);
-          if (message === undefined) {
-            socket.terminate();
-            return;
-          }
-          onMessage(message);
-        });
-      });
-      wss.once("listening", () => {
-        wss.off("error", reject);
-        const address = wss.address();
+      httpServer.once("error", reject);
+      httpServer.listen(port, "127.0.0.1", () => {
+        httpServer.off("error", reject);
+        const address = httpServer.address();
         if (!address || typeof address === "string") {
-          reject(new Error("Unexpected WebSocket listener address"));
+          reject(new Error("Unexpected HTTP listener address"));
           return;
         }
-        resolve(`ws://127.0.0.1:${address.port}`);
+        resolve(`127.0.0.1:${address.port}`);
       });
     });
+  let webSocketServer: WebSocketServer | undefined;
+  const attachWebSocket = () => {
+    const wss = new WebSocketServer({
+      server: httpServer,
+      verifyClient: ({ origin }: { origin: string }) =>
+        isAllowedWebSocketOrigin(origin),
+    });
+    webSocketServer = wss;
+    wss.on("connection", (socket) => {
+      socket.on("error", () => socket.terminate());
+      const onMessage = attachConnection({
+        send: (message, onSent) => socket.send(message, () => onSent?.()),
+        onClose: (listener) => socket.on("close", listener),
+        close: () => socket.terminate(),
+      });
+      if (!onMessage) return;
+      socket.on("message", (data) => {
+        const message = parseWebSocketJsonFrame(data);
+        if (message === undefined) {
+          socket.terminate();
+          return;
+        }
+        onMessage(message);
+      });
+    });
+  };
 
   let closePromise: Promise<void> | null = null;
   const close = () => {
@@ -254,6 +280,12 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
             const wss = webSocketServer;
             await new Promise<void>((resolve, reject) => {
               wss.close((error) => (error ? reject(error) : resolve()));
+            });
+          }
+          if (httpServer.listening) {
+            httpServer.closeAllConnections();
+            await new Promise<void>((resolve, reject) => {
+              httpServer.close((error) => (error ? reject(error) : resolve()));
             });
           }
           if (server.listening) {
@@ -292,16 +324,21 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       });
     });
     endpoint.publish();
-    const webSocketUrl =
-      options.webSocketPort === undefined
-        ? undefined
-        : await listenWebSocket(options.webSocketPort);
+    const httpHost = await listenHttp(options.webSocketPort ?? 0);
+    const agentToolsUrl = `http://${httpHost}${AGENT_TOOL_HTTP_PATH}`;
+    let webSocketUrl: string | undefined;
+    if (options.webSocketPort !== undefined) {
+      attachWebSocket();
+      webSocketUrl = `ws://${httpHost}`;
+    }
     service = new CocurdexDaemonService({
       runtimeFingerprint: options.runtimeFingerprint,
       socketPath,
       startedAt,
       userDataPath,
+      agentToolsUrl,
     });
+    agentToolHandler = createAgentToolHttpHandler(service.agentTools);
     service.events.on("daemon.event", (event: unknown) => {
       const entry = eventJournal.record(
         event as DaemonEventJournalEntry["event"],
@@ -323,6 +360,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         token: options.token,
         startedAt,
         webSocketUrl,
+        agentToolsUrl,
       },
       userDataPath,
     );

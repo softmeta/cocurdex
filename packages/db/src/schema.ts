@@ -1,3 +1,5 @@
+import { createScriptRunSchemaSql } from "./script-run/schema";
+import { createTeamSchemaSql } from "./team/schema";
 import { createWorkflowSchemaSql } from "./workflow/schema";
 
 export function createSchemaSql() {
@@ -39,6 +41,7 @@ export function createSchemaSql() {
       last_message_at TEXT,
       archived_at TEXT,
       worktree_path TEXT,
+      peer_inbound TEXT NOT NULL DEFAULT 'deliver',
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
       FOREIGN KEY (parent_session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
@@ -51,6 +54,7 @@ export function createSchemaSql() {
       content TEXT NOT NULL,
       attachments_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      origin_json TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 
@@ -321,6 +325,7 @@ export function createSchemaSql() {
       status TEXT NOT NULL DEFAULT 'backlog',
       priority TEXT NOT NULL DEFAULT 'none',
       workspace_id TEXT,
+      assignee_session_id TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
@@ -440,5 +445,9 @@ export function createSchemaSql() {
 
     CREATE INDEX IF NOT EXISTS idx_issue_view_columns_sort
       ON issue_view_columns(view_id, field, sort_order);
+
+    ${createTeamSchemaSql()}
+
+    ${createScriptRunSchemaSql()}
   `;
 }

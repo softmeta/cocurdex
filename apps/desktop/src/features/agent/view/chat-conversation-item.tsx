@@ -59,6 +59,7 @@ import {
   segmentConversationItems,
 } from "./chat-timeline";
 import { turnStatsByMessageAtom } from "./message-store";
+import { messageOriginLabel, PeerPrompt } from "./peer-prompt";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
 function getMessageArticleClassName(message: MessageRecord) {
@@ -651,6 +652,11 @@ const MessageArticle = memo(function MessageArticle({
               {t("system")}
             </div>
           ) : null}
+          {message.origin ? (
+            <div className="mb-1.5 text-meta font-medium text-chat-fg-secondary">
+              {messageOriginLabel(t, message.origin)}
+            </div>
+          ) : null}
           <MessageAttachments message={message} />
           {isReasoning ? (
             <ReasoningMarkdown
@@ -834,7 +840,12 @@ export const ChatConversationItem = memo(function ChatConversationItem({
 
   return (
     <div className="flex flex-col gap-1.5 pb-4 px-2">
-      {conversationGroup.prompt ? (
+      {conversationGroup.prompt?.origin ? (
+        <PeerPrompt
+          message={conversationGroup.prompt}
+          setUserMessageRef={setUserMessageRef}
+        />
+      ) : conversationGroup.prompt ? (
         <UserPrompt
           canEdit={!isRunning && !isLatestConversation}
           message={conversationGroup.prompt}

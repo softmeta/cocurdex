@@ -119,6 +119,7 @@ import {
   registerProviderHandlers,
 } from "./provider";
 import { getPtyService } from "./pty";
+import { registerScriptRunHandlers } from "./script-run";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerSkillsHandlers } from "./skills";
@@ -522,6 +523,62 @@ function registerWorkspaceHandlers() {
       });
       return removed;
     },
+  );
+  registerHandler(
+    ipcMain,
+    "team:get",
+    schemas.sessionId,
+    async (_event, leadSessionId) =>
+      requestDaemon(
+        "team.get",
+        { leadSessionId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "team:stop",
+    schemas.teamId,
+    async (_event, teamId) =>
+      requestDaemon(
+        "team.stop",
+        { teamId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "team:stopMember",
+    schemas.teamMember,
+    async (_event, payload) =>
+      requestDaemon("team.stopMember", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  ipcMain.handle("teamTemplate:list", async () =>
+    requestDaemon("teamTemplate.list", {
+      userDataPath: app.getPath("userData"),
+    }),
+  );
+  registerHandler(
+    ipcMain,
+    "teamTemplate:save",
+    schemas.teamTemplateSave,
+    async (_event, payload) =>
+      requestDaemon("teamTemplate.save", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  registerHandler(
+    ipcMain,
+    "teamTemplate:delete",
+    schemas.teamId,
+    async (_event, id) =>
+      requestDaemon(
+        "teamTemplate.delete",
+        { id },
+        { userDataPath: app.getPath("userData") },
+      ),
   );
   registerHandler(
     ipcMain,
@@ -1404,6 +1461,10 @@ app
             });
           } else if ("conversationId" in event) {
             window.webContents.send("chat:event", event);
+          } else if (event.type === "peer.message") {
+            appLogger.info("daemon.peerMessage", { ...event });
+          } else if (event.type === "team.changed") {
+            appLogger.info("daemon.teamChanged", { ...event });
           } else {
             window.webContents.send("agent:event", event, meta);
           }
@@ -1454,6 +1515,7 @@ app
     registerLoggingHandlers();
     registerChatHandlers(ipcMain);
     registerDataHandlers(ipcMain, userDataPath);
+    registerScriptRunHandlers(ipcMain, userDataPath);
     registerCliPathHandlers();
     registerSkillsHandlers();
     registerAppUpdateHandlers();

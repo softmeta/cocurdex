@@ -22,6 +22,7 @@ import {
   logOutgoingPromptForDiagnostics,
   serializeProviderSessionState,
 } from "../shared";
+import { codexAgentToolsThreadConfig } from "../shared/agent-tools-mcp";
 import {
   createNativeSessionRecoveryError,
   requiresNativeSessionRecovery,
@@ -667,6 +668,7 @@ export function createCodexAdapter(
           sandbox: createCodexSandboxMode(payload, activePermissionMode),
           experimentalRawEvents: false,
           ...(serviceTier ? { serviceTier } : {}),
+          ...codexAgentToolsThreadConfig(payload.agentTools),
         });
         threadId = result.thread.id;
         subscribeThread(threadId);
@@ -702,6 +704,7 @@ export function createCodexAdapter(
           sandbox: createCodexSandboxMode(payload, activePermissionMode),
           excludeTurns: true,
           ...(serviceTier ? { serviceTier } : {}),
+          ...codexAgentToolsThreadConfig(payload.agentTools),
         });
         threadReady = true;
         await syncThreadTitle(appServerLease, result.thread.name);

@@ -14,6 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
+import { TeamSettingsPanel } from "@/features/sessions/team";
 import { ShortcutsSettingsPanel } from "@/features/shortcuts";
 import type { LanguageMode } from "@/i18n/language";
 import { cn } from "@/lib";
@@ -146,6 +147,10 @@ function SectionPanel({
 
   if (sectionId === "agentRoles") {
     return <AgentRoleSettingsPanel />;
+  }
+
+  if (sectionId === "teams") {
+    return <TeamSettingsPanel />;
   }
 
   if (sectionId === "mcp") {

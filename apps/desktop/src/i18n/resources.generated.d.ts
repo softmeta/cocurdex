@@ -72,6 +72,10 @@ export default interface Resources {
       jumpToPrompt: "Jump to prompt {{index}}";
     };
     openFile: "Open file";
+    peerMessage: {
+      from: "From session {{title}}";
+      fromScriptRun: "From script {{name}}";
+    };
     permissions: {
       actions: {
         edit: "edit";
@@ -182,7 +186,47 @@ export default interface Resources {
       };
     };
     reasoning: "Reasoning";
+    scriptRun: {
+      agentCount: "{{started}}/{{max}} agents";
+      agentStatus: {
+        cancelled: "Cancelled";
+        completed: "Completed";
+        failed: "Failed";
+        queued: "Queued";
+        running: "Running";
+      };
+      cancel: "Cancel";
+      discard: "Discard";
+      maxAgents: "Agent limit";
+      noAgents: "No agents started yet";
+      panelLabel: "Script runs";
+      proposalLabel: "Script proposal {{name}}";
+      proposalTitle: "Script {{name}}";
+      run: "Run";
+      showScript: "Show script";
+      status: {
+        draft: "Awaiting approval";
+      };
+    };
     system: "System";
+    team: {
+      handle: "Respond";
+      label: "Team";
+      needsInput: "Needs input";
+      noReply: "No reply yet";
+      open: "Open session";
+      replyPlaceholder: "Reply to {{name}}…";
+      send: "Send";
+      status: {
+        error: "Error";
+        idle: "Idle";
+        running: "Running";
+        spawning: "Starting";
+        stopped: "Stopped";
+      };
+      stopAll: "Stop all";
+      stopMember: "Stop {{name}}";
+    };
     thinking: "Thinking";
     toolCalls: {
       command: "Command";
@@ -1762,6 +1806,7 @@ export default interface Resources {
       providers: "Providers";
       shortcuts: "Shortcuts";
       skills: "Skills";
+      teams: "Teams";
       usage: "Usage";
       workflows: "Workflows";
       worktrees: "Worktrees";
@@ -1867,6 +1912,47 @@ export default interface Resources {
         updated: "cocurdex skills updated";
       };
       workspaceLabel: "Active project: {{name}}";
+    };
+    teams: {
+      addMember: "Add teammate";
+      cancel: "Cancel";
+      create: "New team";
+      createTitle: "New team";
+      delete: "Delete";
+      deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
+      deleteFailed: "Could not delete this team.";
+      deleteTitle: "Delete this team?";
+      deleted: "Team deleted";
+      description: "Define reusable teams. A lead agent can spawn a whole team with team_spawn_template, or you can spawn one from the CLI.";
+      edit: "Edit";
+      editTitle: "Edit team";
+      empty: "No teams yet";
+      emptyDescription: "Create a team, name its teammates, and pick a saved role for each.";
+      inheritRole: "Same as lead";
+      memberName: "Teammate name";
+      memberNamePlaceholder: "reviewer";
+      memberPrompt: "Standing instructions";
+      memberPromptPlaceholder: "What this teammate is responsible for.";
+      members: "Teammates";
+      name: "Name";
+      namePlaceholder: "Team name";
+      removeMember: "Remove teammate";
+      role: "Role";
+      save: "Save";
+      saveFailed: "Could not save this team.";
+      saved: "Team saved";
+      scriptRuns: {
+        defaultMaxAgents: "Default agent limit";
+        defaultMaxAgentsDescription: "Maximum agents one script run may start; you can change it when approving";
+        description: "Agents in a session can propose background scripts that orchestrate subagents; they run after you approve them";
+        maxDuration: "Maximum run time (minutes)";
+        maxDurationDescription: "Cancels the whole run and its subagents when exceeded; leave empty for no limit";
+        saveFailed: "Could not save script run settings";
+        schemaMaxAttempts: "Structured reply attempts";
+        schemaMaxAttemptsDescription: "How many times an agent may try to reply with JSON matching the script's schema";
+        title: "Script runs";
+        unlimited: "No limit";
+      };
     };
     updates: {
       actions: {

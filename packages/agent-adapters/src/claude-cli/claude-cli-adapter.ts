@@ -34,6 +34,7 @@ import {
   logOutgoingPromptForDiagnostics,
   serializeProviderSessionState,
 } from "../shared";
+import { claudeAgentToolsMcpServers } from "../shared/agent-tools-mcp";
 import { createNativeSessionTitleTracker } from "../shared/native-session-title";
 import {
   createNativeSessionRecoveryError,
@@ -752,6 +753,7 @@ export function createClaudeCliAdapter(
           ...(effort ? { effort } : {}),
           ...(modelId ? { model: modelId } : {}),
           ...(fastMode !== null ? { fastMode } : {}),
+          mcpServers: claudeAgentToolsMcpServers(payload.agentTools),
           pathToClaudeCodeExecutable: binaryPath,
           permissionMode,
           ...(resumeSessionId ? { resume: resumeSessionId } : {}),

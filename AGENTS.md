@@ -137,7 +137,7 @@ References: [Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warnin
 ## Product knowledge and skills
 
 - PRDs, specs, notes, and issues are private in app-owned storage by default. Publish to workspace `.cocurdex/` only on explicit user request. See `docs/agents/issue-tracker.md` and `docs/agents/cocurdex-layout.md`.
-- Use namespaced skills: `/cocurdex-grill` -> `/cocurdex-prd` -> optional `/cocurdex-spec` -> `/cocurdex-issue` -> `/cocurdex-ship`. Router: `/cocurdex-ask`; notes: `/cocurdex-note`; links: `/cocurdex-link`. Todo and ticket mean issue in the selected private or explicitly published pool.
+- Use namespaced skills: `/cocurdex-grill` -> `/cocurdex-prd` -> optional `/cocurdex-spec` -> `/cocurdex-issue` -> `/cocurdex-ship`. Router: `/cocurdex-ask`; notes: `/cocurdex-note`; links: `/cocurdex-link`; parallel teammate agents: `/cocurdex-team`. Todo and ticket mean issue in the selected private or explicitly published pool.
 - Manage issue structure (init, list, create, move, validate) through `@cocurdex/cli` using `cocurdex issue ...`. Never invent IDs or manually rewrite status.
 - Distribute skills from `packages/product-skills` through Settings > Skills or `cocurdex skills install --scope project|global`; do not auto-install.
 - Use the single-context domain documentation layout described in `docs/agents/domain.md`.

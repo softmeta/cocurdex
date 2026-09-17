@@ -1,5 +1,6 @@
 import {
   type AgentDescriptor,
+  DEFAULT_SCRIPT_RUN_SETTINGS,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   type MessageRecord,
@@ -268,6 +269,34 @@ const fallbackApi: DesktopApi = {
   }),
   listManagedWorktrees: async () => [],
   removeWorktree: async () => ({ removed: true }),
+  listScriptRuns: async () => [],
+  getScriptRun: async () => {
+    throw new Error("Script runs require the desktop app");
+  },
+  startScriptRun: async () => {
+    throw new Error("Script runs require the desktop app");
+  },
+  cancelScriptRun: async () => {
+    throw new Error("Script runs require the desktop app");
+  },
+  getScriptRunSettings: async () => DEFAULT_SCRIPT_RUN_SETTINGS,
+  saveScriptRunSettings: async (settings) => settings,
+  getTeam: async () => null,
+  stopTeam: async () => {
+    throw new Error("Team control requires the desktop app");
+  },
+  stopTeamMember: async () => {
+    throw new Error("Team control requires the desktop app");
+  },
+  listTeamTemplates: async () => [],
+  saveTeamTemplate: async (payload) => ({
+    id: payload.id ?? "team-template",
+    name: payload.name,
+    members: payload.members,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }),
+  deleteTeamTemplate: async () => {},
   getWorktreeEnvironment: async (workspaceId) => ({
     workspaceId,
     setupScript: "",
@@ -677,6 +706,7 @@ const fallbackApi: DesktopApi = {
       status: payload.status ?? payload.columnId,
       priority: payload.priority ?? "none",
       workspaceId: payload.workspaceId ?? null,
+      assigneeSessionId: null,
       sortOrder: payload.sortOrder ?? 0,
       revision: 1,
       createdAt: now,
@@ -695,6 +725,7 @@ const fallbackApi: DesktopApi = {
       status: payload.status ?? "backlog",
       priority: payload.priority ?? "none",
       workspaceId: payload.workspaceId ?? null,
+      assigneeSessionId: null,
       sortOrder: 0,
       revision: (payload.expectedRevision ?? 0) + 1,
       createdAt: now,
@@ -713,6 +744,7 @@ const fallbackApi: DesktopApi = {
       status: payload.columnId,
       priority: "none",
       workspaceId: null,
+      assigneeSessionId: null,
       sortOrder: payload.sortOrder,
       revision: (payload.expectedRevision ?? 0) + 1,
       createdAt: now,

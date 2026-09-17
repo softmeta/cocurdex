@@ -40,9 +40,12 @@ import type {
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
+  SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
+  ScriptRunSettings,
   SearchDocumentsPayload,
   SendConversationMessagePayload,
+  StartScriptRunPayload,
   TitleModelProbeResult,
   TitleModelSelection,
   UpdateColumnPayload,
@@ -195,6 +198,26 @@ contextBridge.exposeInMainWorld("desktopApi", {
     worktreePath: string;
     workspaceRootPath?: string;
   }) => ipcRenderer.invoke("worktree:remove", payload),
+  listScriptRuns: (requesterSessionId: string) =>
+    ipcRenderer.invoke("scriptRun:list", requesterSessionId),
+  getScriptRun: (runId: string) => ipcRenderer.invoke("scriptRun:get", runId),
+  startScriptRun: (payload: StartScriptRunPayload) =>
+    ipcRenderer.invoke("scriptRun:start", payload),
+  cancelScriptRun: (runId: string) =>
+    ipcRenderer.invoke("scriptRun:cancel", runId),
+  getScriptRunSettings: () => ipcRenderer.invoke("scriptRun:getSettings"),
+  saveScriptRunSettings: (settings: ScriptRunSettings) =>
+    ipcRenderer.invoke("scriptRun:saveSettings", settings),
+  getTeam: (leadSessionId: string) =>
+    ipcRenderer.invoke("team:get", leadSessionId),
+  stopTeam: (teamId: string) => ipcRenderer.invoke("team:stop", teamId),
+  stopTeamMember: (payload: { teamId: string; sessionId: string }) =>
+    ipcRenderer.invoke("team:stopMember", payload),
+  listTeamTemplates: () => ipcRenderer.invoke("teamTemplate:list"),
+  saveTeamTemplate: (payload: SaveTeamTemplatePayload) =>
+    ipcRenderer.invoke("teamTemplate:save", payload),
+  deleteTeamTemplate: (id: string) =>
+    ipcRenderer.invoke("teamTemplate:delete", id),
   getWorktreeEnvironment: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:getWorktreeEnvironment", workspaceId),
   saveWorktreeEnvironment: (payload: {

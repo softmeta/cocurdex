@@ -43,7 +43,12 @@ import {
   createSqliteWorkspaceRepository,
   createSqliteWorktreeEnvironmentRepository,
 } from "./repositories";
+import {
+  createSqliteScriptRunRepository,
+  type ScriptRunRepository,
+} from "./script-run";
 import { createSqliteSearchRepository, type SearchRepository } from "./search";
+import { createSqliteTeamRepository, type TeamRepository } from "./team";
 import {
   createSqliteWorkflowRepository,
   type WorkflowRepository,
@@ -60,6 +65,8 @@ export interface CocurdexDatabase {
   messageTurnStats: MessageTurnStatsRepository;
   turnChangeSets: TurnChangeSetRepository;
   workflows: WorkflowRepository;
+  teams: TeamRepository;
+  scriptRuns: ScriptRunRepository;
   sessionUsage: SessionUsageRepository;
   toolCalls: ToolCallRepository;
   editorViews: EditorViewRepository;
@@ -131,6 +138,8 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     messageTurnStats: createSqliteMessageTurnStatsRepository(database),
     turnChangeSets: createSqliteTurnChangeSetRepository(database),
     workflows: createSqliteWorkflowRepository(database),
+    teams: createSqliteTeamRepository(database),
+    scriptRuns: createSqliteScriptRunRepository(database),
     sessionUsage: createSqliteSessionUsageRepository(database),
     toolCalls: createSqliteToolCallRepository(database),
     editorViews: createSqliteEditorViewRepository(database),

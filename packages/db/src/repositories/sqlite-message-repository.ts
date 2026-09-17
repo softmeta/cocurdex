@@ -39,8 +39,9 @@ export function createSqliteMessageRepository(
       database
         .prepare(
           `INSERT OR REPLACE INTO messages (
-             id, session_id, role, kind, content, attachments_json, created_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             id, session_id, role, kind, content, attachments_json, created_at,
+             origin_json
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           message.id,
@@ -50,6 +51,7 @@ export function createSqliteMessageRepository(
           message.content,
           JSON.stringify(message.attachments),
           message.createdAt,
+          message.origin ? JSON.stringify(message.origin) : null,
         );
     },
     async update(message) {
