@@ -60,6 +60,7 @@
       "modified": "修改"
     },
     "changeTypeFilter": "按变更类型筛选",
+    "checkpointUnavailable": "该回合的内容已不可用",
     "collapseAll": "折叠所有文件",
     "commit": "提交",
     "commitAndPush": "提交并推送",

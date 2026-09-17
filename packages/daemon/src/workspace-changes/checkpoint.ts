@@ -30,6 +30,11 @@ export interface RestorePathPlan {
 
 export type RestorePathResult = UndoFileResult;
 
+export type CheckpointCleanupInput =
+  | { mode: "refs"; refs: string[]; workspaceRootPath?: string }
+  | { mode: "session"; sessionId: string; workspaceRootPath?: string }
+  | { mode: "prune"; keep: string[]; workspaceRootPath?: string };
+
 export interface HostCheckpointAdapter {
   kind: HostCheckpointKind;
   capture(input: CaptureCheckpointInput): Promise<HostCheckpoint>;
@@ -60,10 +65,5 @@ export interface HostCheckpointAdapter {
       workspaceRootPath?: string;
     }>
   >;
-  cleanup(input: {
-    refs: string[];
-    workspaceRootPath?: string;
-    sessionId?: string;
-    pruneUnreferenced?: boolean;
-  }): Promise<void>;
+  cleanup(input: CheckpointCleanupInput): Promise<void>;
 }

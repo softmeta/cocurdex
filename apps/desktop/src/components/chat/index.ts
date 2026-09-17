@@ -6,6 +6,7 @@ export { CollapsibleUserMessageBody } from "./collapsible-user-message-body";
 export type { JumpButtonKind } from "./jump-button";
 export { resolveJumpButton } from "./jump-button";
 export { JumpControls } from "./jump-controls";
+export { LinkifiedText } from "./linkified-text";
 export {
   isScrollNearBottom,
   isScrollNearTop,

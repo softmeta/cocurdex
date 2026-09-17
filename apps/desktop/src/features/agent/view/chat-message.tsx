@@ -8,7 +8,7 @@ import {
 } from "@cocurdex/shared";
 import { Brain, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { FileTypeIcon, MarkdownRenderer } from "@/components";
+import { FileTypeIcon, LinkifiedText, MarkdownRenderer } from "@/components";
 import {
   Collapsible,
   CollapsibleContent,
@@ -92,7 +92,9 @@ export function MessageAttachments({ message }: { message: MessageRecord }) {
 function MessageTextRun({ text }: { text: string }) {
   return (
     <span className="inline-flex min-h-[1lh] min-w-0 max-w-full items-center whitespace-pre-wrap wrap-break-word">
-      {text}
+      <span className="min-w-0">
+        <LinkifiedText text={text} />
+      </span>
     </span>
   );
 }

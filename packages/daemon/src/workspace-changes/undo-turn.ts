@@ -173,9 +173,9 @@ export async function undoTurnChanges(input: {
       // protects a failed undo, so drop it instead of waiting for expiry.
       await adapter
         .cleanup({
+          mode: "refs",
           refs: [recovery.ref],
           workspaceRootPath,
-          sessionId: persisted.sessionId,
         })
         .catch(() => undefined);
       input.checkpoints.delete(recovery.id);

@@ -42,16 +42,21 @@ export function useMessageFilePathHandlers(): MarkdownFilePathHandlers {
         if (!absolutePath) {
           return null;
         }
-        return { absolutePath, startLine: candidate.startLine };
+        return {
+          absolutePath,
+          startLine: candidate.startLine,
+          endLine: candidate.endLine,
+        };
       },
       checkExists: (absolutePath) => desktopApi.fileExists(absolutePath),
-      open: ({ absolutePath, startLine }) => {
+      open: ({ absolutePath, startLine, endLine }) => {
         // The chat link already pointed at the file, so collapse the explorer
         // instead of letting it steal space alongside the opened file.
         setFileTreeVisible(false);
         openFilePreview({
           filePath: absolutePath,
           startLine: startLine ?? null,
+          endLine: endLine ?? null,
         });
       },
       openLabel: t("openFile"),

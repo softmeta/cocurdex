@@ -143,9 +143,9 @@ describe("git checkpoint adapter", () => {
     );
 
     await adapter.cleanup({
-      refs: [before.ref, after.ref],
-      workspaceRootPath: workspace,
+      mode: "session",
       sessionId: "session-1",
+      workspaceRootPath: workspace,
     });
     const remaining = await runGit(
       [

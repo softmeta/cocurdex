@@ -150,7 +150,12 @@ export async function readTurnChangeDiff(
           known,
         ),
       ]);
-      return buildTurnChangeDiffFile(file, before, after);
+      return buildTurnChangeDiffFile(
+        file,
+        before,
+        after,
+        MAX_REVIEW_TEXT_BYTES,
+      );
     },
   );
   return { status: "ok", files };

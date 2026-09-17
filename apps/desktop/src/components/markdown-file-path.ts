@@ -3,12 +3,14 @@ import type { ReactNode } from "react";
 export interface FilePathCandidate {
   path: string;
   startLine?: number;
+  endLine?: number;
   column?: number;
 }
 
 export interface ResolvedFilePath {
   absolutePath: string;
   startLine?: number;
+  endLine?: number;
 }
 
 // Wiring supplied by the chat surface so the generic markdown renderer stays
@@ -85,8 +87,9 @@ const KNOWN_EXTENSIONS = new Set([
 // Only these characters may appear in a path candidate. Spaces, parentheses,
 // quotes and backticks immediately disqualify a token (e.g. `buildArgs()`).
 const PATH_CHARS = /^[\w.\-/@~]+$/;
-// Peel an optional trailing `:line` or `:line:column` location suffix.
-const LOCATION_SUFFIX = /^(.*?):(\d+)(?::(\d+))?$/;
+// Peel an optional trailing `:line`, `:start-end` or `:line:column` location
+// suffix. Ranges use a hyphen or an en dash — agents write both.
+const LOCATION_SUFFIX = /^(.*?):(\d+)(?:[-–](\d+))?(?::(\d+))?$/;
 
 function looksLikePath(path: string): boolean {
   if (path.length < 2 || !PATH_CHARS.test(path)) {
@@ -107,30 +110,44 @@ function looksLikePath(path: string): boolean {
   return KNOWN_EXTENSIONS.has(path.slice(lastDot + 1).toLowerCase());
 }
 
+// Split a `<path>:<location>` token, keeping the line range when it is ordered.
+// A reversed range (`:20-10`) collapses to its start line so callers never
+// highlight backwards.
+function parseLocationSuffix(raw: string): FilePathCandidate | null {
+  const match = raw.match(LOCATION_SUFFIX);
+  if (!match || match[1].length === 0) {
+    return null;
+  }
+
+  const path = match[1];
+  if (!looksLikePath(path)) {
+    return null;
+  }
+
+  const startLine = Number(match[2]);
+  const candidate: FilePathCandidate = { path, startLine };
+  const endLine = match[3] === undefined ? undefined : Number(match[3]);
+  if (endLine !== undefined && endLine > startLine) {
+    candidate.endLine = endLine;
+  }
+  if (match[4] !== undefined) {
+    candidate.column = Number(match[4]);
+  }
+  return candidate;
+}
+
 // Decide whether an inline-code token denotes a clickable file path, parsing an
-// optional `:line(:column)` suffix. Returns null for non-path code so the caller
-// renders the token as ordinary inline code.
+// optional `:line`, `:start-end` or `:line:column` suffix. Returns null for
+// non-path code so the caller renders the token as ordinary inline code.
 export function parseFilePathCandidate(raw: string): FilePathCandidate | null {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     return null;
   }
 
-  const suffixMatch = trimmed.match(LOCATION_SUFFIX);
-  if (suffixMatch && suffixMatch[1].length > 0) {
-    const path = suffixMatch[1];
-    if (!looksLikePath(path)) {
-      return null;
-    }
-
-    const candidate: FilePathCandidate = {
-      path,
-      startLine: Number(suffixMatch[2]),
-    };
-    if (suffixMatch[3] !== undefined) {
-      candidate.column = Number(suffixMatch[3]);
-    }
-    return candidate;
+  const location = parseLocationSuffix(trimmed);
+  if (location) {
+    return location;
   }
 
   return looksLikePath(trimmed) ? { path: trimmed } : null;
@@ -192,6 +209,7 @@ export type WorkspaceLinkLabelPart =
       kind: "path";
       text: string;
       startLine?: number;
+      endLine?: number;
       column?: number;
     };
 
@@ -223,6 +241,7 @@ export function splitWorkspaceLinkLabel(
       kind: "path",
       text: trimmed.slice(match.index, match.index + match.length),
       startLine: match.candidate.startLine,
+      endLine: match.candidate.endLine,
       column: match.candidate.column,
     });
     cursor = match.index + match.length;
@@ -275,6 +294,9 @@ export function buildWorkspaceFileHref(candidate: FilePathCandidate): string {
   if (candidate.startLine !== undefined) {
     params.set("line", String(candidate.startLine));
   }
+  if (candidate.endLine !== undefined) {
+    params.set("end", String(candidate.endLine));
+  }
   if (candidate.column !== undefined) {
     params.set("column", String(candidate.column));
   }
@@ -310,6 +332,17 @@ export function parseWorkspaceFileHref(
     const startLine = Number(lineRaw);
     if (Number.isInteger(startLine) && startLine > 0) {
       candidate.startLine = startLine;
+    }
+  }
+  const endRaw = url.searchParams.get("end");
+  if (endRaw) {
+    const endLine = Number(endRaw);
+    if (
+      Number.isInteger(endLine) &&
+      endLine > 0 &&
+      (candidate.startLine === undefined || endLine >= candidate.startLine)
+    ) {
+      candidate.endLine = endLine;
     }
   }
   const columnRaw = url.searchParams.get("column");
@@ -377,17 +410,25 @@ function parseFileUrlCandidate(href: string): FilePathCandidate | null {
     return null;
   }
 
-  let path: string;
+  let rawPath: string;
   try {
-    path = decodeURIComponent(url.pathname);
+    rawPath = decodeURIComponent(url.pathname);
   } catch {
     return null;
   }
-  if (LEADING_DRIVE_SLASH.test(path)) {
-    path = path.slice(1);
+  if (LEADING_DRIVE_SLASH.test(rawPath)) {
+    rawPath = rawPath.slice(1);
   }
 
-  return isAbsoluteFilePath(path) ? { path } : null;
+  // Some agents put the location on the URL path itself
+  // (`file:///…/service.ts:1544-1572`) instead of the link label.
+  const location = parseLocationSuffix(rawPath);
+  const path = location?.path ?? rawPath;
+  if (!isAbsoluteFilePath(path)) {
+    return null;
+  }
+
+  return location ? { ...location, path } : { path };
 }
 
 // Match `[label](href)` / `[label](<href>)` / `[label](href "title")`.

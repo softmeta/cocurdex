@@ -178,9 +178,9 @@ export function createWorkspaceChangeCoordinator(
     if (refs.length > 0) {
       await active.adapter
         .cleanup({
+          mode: "refs",
           refs,
           workspaceRootPath: active.workspaceRootPath,
-          sessionId: active.changeSet.sessionId,
         })
         .catch(() => undefined);
     }

@@ -180,7 +180,7 @@ export interface TurnChangeDiffFile {
   changeType: "added" | "modified" | "deleted";
   oldContents: string;
   newContents: string;
-  omittedReason: "binary" | "too-large" | null;
+  omittedReason: "binary" | "too-large" | "unavailable" | null;
 }
 
 export interface TurnChangeDiff {

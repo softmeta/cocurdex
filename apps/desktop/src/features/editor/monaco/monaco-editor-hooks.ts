@@ -53,6 +53,9 @@ export function useMountedFileContent(
   onContentLoaded: (filePath: string, content: string) => void,
 ) {
   const [content, setContent] = useState(initialContent ?? "");
+  const [isContentLoaded, setIsContentLoaded] = useState(
+    initialContent !== null,
+  );
   const [hasReadError, setHasReadError] = useState(false);
 
   useMountEffect(() => {
@@ -67,6 +70,7 @@ export function useMountedFileContent(
           }
           setHasReadError(false);
           setContent(nextContent);
+          setIsContentLoaded(true);
           onContentLoaded(filePath, nextContent);
         })
         .catch(() => {
@@ -96,5 +100,6 @@ export function useMountedFileContent(
     content,
     hasCachedContent: initialContent !== null,
     hasReadError,
+    isContentLoaded,
   };
 }

@@ -46,7 +46,7 @@ export type GitChangeKind = "added" | "modified" | "deleted";
 
 // Why a change carries no textual contents: git flagged it binary, or the file
 // exceeds the size cap for building an in-memory diff.
-export type GitContentsOmittedReason = "binary" | "too-large";
+export type GitContentsOmittedReason = "binary" | "too-large" | "unavailable";
 
 // A single changed file relative to HEAD, carrying full old/new contents so the
 // renderer can build a non-partial diff and expand unchanged context on demand.
