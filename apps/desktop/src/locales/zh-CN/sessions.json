@@ -166,7 +166,7 @@
       "bypass": "跳过权限确认",
       "normal": "代码",
       "plan": "计划",
-      "smart": "Smart"
+      "smart": "智能判断"
     },
     "grok-build": {
       "default": "默认",

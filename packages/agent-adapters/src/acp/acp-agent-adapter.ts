@@ -253,6 +253,10 @@ export class AcpAgentAdapter implements AgentAdapter {
     const buildInitializeRequest = () =>
       buildAcpInitializeRequest(this.options.initializeMeta);
     let suppressSessionUpdates = false;
+    const mapperForProviderSession = (providerSessionId: string) => {
+      const childSession = subagentBridge?.getChildSession(providerSessionId);
+      return childSession ? createChildMapper(childSession) : mapper;
+    };
     const routeSessionUpdate = (notification: SessionNotification) => {
       if (suppressSessionUpdates) {
         return;
@@ -312,11 +316,15 @@ export class AcpAgentAdapter implements AgentAdapter {
           }
         },
         async requestPermission(request) {
+          const startedToolCall = mapperForProviderSession(
+            request.sessionId,
+          ).getToolCall(request.toolCall.toolCallId);
+          const kind =
+            request.toolCall.kind ?? startedToolCall?.kind ?? "other";
+
           if (
             payload.session.writeMode === "read-only" &&
-            ["delete", "edit", "move"].includes(
-              request.toolCall.kind ?? "other",
-            )
+            ["delete", "edit", "move"].includes(kind)
           ) {
             return rejectPermission(request);
           }
@@ -325,20 +333,20 @@ export class AcpAgentAdapter implements AgentAdapter {
             return { outcome: { outcome: "cancelled" } };
           }
 
+          const locations =
+            request.toolCall.locations ?? startedToolCall?.locations;
           const resolution = await payload.requestPermission({
             id: request.toolCall.toolCallId,
             sessionId: payload.session.id,
             providerId: payload.session.agentType,
-            kind: request.toolCall.kind ?? "other",
+            kind,
             title:
               request.toolCall.title ??
-              request.toolCall.toolCallId ??
-              "Agent tool",
-            description: request.options
-              .map((option) => option.name)
-              .join(", "),
-            rawInput: request.toolCall.rawInput,
-            locations: request.toolCall.locations?.map((location) => ({
+              startedToolCall?.title ??
+              request.toolCall.toolCallId,
+            description: null,
+            rawInput: request.toolCall.rawInput ?? startedToolCall?.rawInput,
+            locations: locations?.map((location) => ({
               path: location.path,
               line: location.line,
             })),
