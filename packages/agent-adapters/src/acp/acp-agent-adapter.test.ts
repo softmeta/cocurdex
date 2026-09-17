@@ -623,6 +623,143 @@ describe("AcpAgentAdapter", () => {
     );
   });
 
+  it("fills a sparse permission prompt from the tool call it follows", async () => {
+    let handlers: Parameters<AcpConnectionFactory>[0]["handlers"] | undefined;
+    const connectionFactory: AcpConnectionFactory = vi.fn(async (options) => {
+      handlers = options.handlers;
+      return createAcpConnection();
+    });
+    const adapter = new AcpAgentAdapter(
+      {
+        args: ["agent", "stdio"],
+        command: "devin",
+        descriptor,
+      },
+      connectionFactory,
+    );
+    const requestPermission = vi.fn(async () => ({
+      decision: "allow_once" as const,
+      optionId: "once",
+    }));
+    adapter.createSession(
+      {
+        session: {
+          id: "app-session-1",
+          workspaceId: "workspace-1",
+          title: "Test",
+          agentType: "grok-build",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+        requestPermission,
+      },
+      () => undefined,
+    );
+
+    await vi.waitFor(() => expect(handlers).toBeDefined());
+    await handlers?.onSessionUpdate({
+      sessionId: "unused",
+      update: {
+        sessionUpdate: "tool_call",
+        toolCallId: "call-1",
+        title: "Ran echo",
+        kind: "execute",
+        rawInput: { command: "echo hi > /Users/richard/out.txt" },
+        locations: [{ path: "/Users/richard/out.txt" }],
+      },
+    });
+
+    await expect(
+      handlers?.requestPermission({
+        sessionId: "unused",
+        toolCall: { toolCallId: "call-1" },
+        options: [
+          { optionId: "once", name: "Allow", kind: "allow_once" },
+          { optionId: "reject", name: "Reject", kind: "reject_once" },
+        ],
+      }),
+    ).resolves.toEqual({
+      outcome: { outcome: "selected", optionId: "once" },
+    });
+    expect(requestPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "execute",
+        title: "Ran echo",
+        rawInput: { command: "echo hi > /Users/richard/out.txt" },
+        locations: [{ path: "/Users/richard/out.txt" }],
+      }),
+    );
+  });
+
+  it("rejects an edit in read-only mode when only the tool call knows the kind", async () => {
+    let handlers: Parameters<AcpConnectionFactory>[0]["handlers"] | undefined;
+    const connectionFactory: AcpConnectionFactory = vi.fn(async (options) => {
+      handlers = options.handlers;
+      return createAcpConnection();
+    });
+    const adapter = new AcpAgentAdapter(
+      {
+        args: ["agent", "stdio"],
+        command: "devin",
+        descriptor,
+      },
+      connectionFactory,
+    );
+    const requestPermission = vi.fn(async () => ({
+      decision: "allow_once" as const,
+      optionId: "once",
+    }));
+    adapter.createSession(
+      {
+        session: {
+          id: "app-session-1",
+          workspaceId: "workspace-1",
+          title: "Test",
+          agentType: "grok-build",
+          status: "idle",
+          writeMode: "read-only",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+        requestPermission,
+      },
+      () => undefined,
+    );
+
+    await vi.waitFor(() => expect(handlers).toBeDefined());
+    await handlers?.onSessionUpdate({
+      sessionId: "unused",
+      update: {
+        sessionUpdate: "tool_call",
+        toolCallId: "call-1",
+        title: "Wrote /workspace/a.ts",
+        kind: "edit",
+      },
+    });
+
+    await expect(
+      handlers?.requestPermission({
+        sessionId: "unused",
+        toolCall: { toolCallId: "call-1" },
+        options: [
+          { optionId: "once", name: "Allow", kind: "allow_once" },
+          { optionId: "reject", name: "Reject", kind: "reject_once" },
+        ],
+      }),
+    ).resolves.toEqual({
+      outcome: { outcome: "selected", optionId: "reject" },
+    });
+    expect(requestPermission).not.toHaveBeenCalled();
+  });
+
   it("fails before sending when the saved ACP session cannot be loaded", async () => {
     const prompt = vi.fn(
       async (): Promise<PromptResponse> => ({ stopReason: "end_turn" }),
