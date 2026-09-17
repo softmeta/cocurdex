@@ -8,7 +8,7 @@ const input: SessionConfiguration = {
   title: "Configured title",
   agentType: "pi",
   writeMode: "read-only",
-  collaborationMode: "default",
+  sessionModeId: null,
 };
 const original: SessionRecord = {
   ...input,

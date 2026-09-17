@@ -1,15 +1,18 @@
 import crypto from "node:crypto";
 import {
+  type AgentCapabilityCacheRepository,
   createCocurdexDatabase,
   type ScriptRunRepository,
   type TeamRepository,
   type WorkflowRepository,
 } from "@cocurdex/db";
 import type {
+  AgentDescriptor,
   AgentEvent,
   AgentId,
   AgentProviderSelection,
   AgentRoleRecord,
+  AgentSessionMode,
   AgentToolCallRecord,
   AgentUsageUpdatedEvent,
   AppBootstrapData,
@@ -44,7 +47,9 @@ export class DaemonState {
   readonly workflows: WorkflowRepository;
   readonly teams: TeamRepository;
   readonly scriptRuns: ScriptRunRepository;
+  readonly agentCapabilityCache: AgentCapabilityCacheRepository;
   private closed = false;
+  private readonly agentVersions = new Map<AgentId, string>();
   private readonly database: CocurdexDatabase;
   private readonly deltaBuffer = createMessageDeltaBuffer();
   private networkProxyReady: Promise<void>;
@@ -57,6 +62,7 @@ export class DaemonState {
     this.workflows = this.database.workflows;
     this.teams = this.database.teams;
     this.scriptRuns = this.database.scriptRuns;
+    this.agentCapabilityCache = this.database.agentCapabilityCache;
     this.sessionAttention = new SessionAttentionProjection(
       this.database.sessionAttention,
       this.database.sessions,
@@ -518,6 +524,36 @@ export class DaemonState {
 
   getProviderModel(providerId: string, modelId: string) {
     return this.database.providerModels.get(providerId, modelId);
+  }
+
+  recordAgentVersions(agents: AgentDescriptor[]) {
+    for (const agent of agents) {
+      const version = agent.installation?.version;
+      if (version) {
+        this.agentVersions.set(agent.id, version);
+      } else {
+        this.agentVersions.delete(agent.id);
+      }
+    }
+  }
+
+  async cacheSessionModes(sessionId: string, modes: AgentSessionMode[]) {
+    const session = await this.database.sessions.getById(sessionId);
+    const version = session
+      ? this.agentVersions.get(session.agentType)
+      : undefined;
+    if (!session || !version) {
+      return;
+    }
+
+    const existing = await this.agentCapabilityCache.get(
+      session.agentType,
+      version,
+    );
+    await this.agentCapabilityCache.set(session.agentType, version, {
+      capabilities: { ...existing?.capabilities, sessionModes: modes },
+      probedAt: new Date().toISOString(),
+    });
   }
 
   async saveProviderModel(model: ProviderModelRecord) {

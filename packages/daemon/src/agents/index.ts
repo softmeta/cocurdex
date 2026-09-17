@@ -1,1 +1,4 @@
-export { discoverInstalledAgentCapabilities } from "./agent-capability-discovery";
+export {
+  discoverAgentSessionModes,
+  discoverInstalledAgentCapabilities,
+} from "./agent-capability-discovery";

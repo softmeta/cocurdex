@@ -27,7 +27,13 @@ export function isPlanUsageAgentId(id: AgentId): id is PlanUsageAgentId {
 
 export type SessionStatus = "idle" | "running" | "error" | "exited";
 export type WriteMode = "read-only" | "native-write";
-export type CollaborationModeKind = "default" | "plan";
+
+export const PLAN_MODE_ID = "plan";
+
+export function isPlanModeId(modeId: string | null | undefined) {
+  return modeId === PLAN_MODE_ID;
+}
+
 export type AgentAvailability =
   | "available"
   | "missing"
@@ -208,7 +214,7 @@ export type SessionTitleStrategy =
   | "app-generated";
 
 export interface AgentCapabilities {
-  collaborationModes: CollaborationModeKind[];
+  sessionModes: AgentSessionMode[];
   permissionModes: AgentPermissionModeOption[];
   writeModes: WriteMode[];
   supportsSteering: boolean;
@@ -281,7 +287,7 @@ export interface SessionRecord {
   parentToolCallId?: string | null;
   status: SessionStatus;
   writeMode: WriteMode;
-  collaborationMode: CollaborationModeKind;
+  sessionModeId: string | null;
   permissionMode?: AgentPermissionMode;
   agentRoleId?: string | null;
   createdAt: string;
@@ -651,6 +657,12 @@ export interface AgentPermissionOption {
   id: string;
   kind: AgentPermissionOptionKind;
   label: string;
+  labelSource: "generic" | "provider";
+}
+
+export interface AgentPermissionResolution {
+  decision: AgentPermissionDecision;
+  optionId: string | null;
 }
 export type AgentPermissionStatus = "pending" | "allowed" | "denied";
 

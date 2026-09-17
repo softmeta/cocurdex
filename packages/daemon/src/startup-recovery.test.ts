@@ -51,7 +51,7 @@ async function seedActiveWork(
     agentType: "pi",
     status: "running",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: timestamp,
     updatedAt: timestamp,
     lastMessageAt: null,

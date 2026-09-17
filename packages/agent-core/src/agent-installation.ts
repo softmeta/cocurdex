@@ -20,7 +20,9 @@ function cloneDescriptor(descriptor: AgentDescriptor): AgentDescriptor {
     ...descriptor,
     capabilities: {
       ...descriptor.capabilities,
-      collaborationModes: [...descriptor.capabilities.collaborationModes],
+      sessionModes: descriptor.capabilities.sessionModes.map((mode) => ({
+        ...mode,
+      })),
       permissionModes: descriptor.capabilities.permissionModes.map((mode) => ({
         ...mode,
       })),

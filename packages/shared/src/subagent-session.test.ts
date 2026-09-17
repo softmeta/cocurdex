@@ -15,7 +15,7 @@ function parentSession(agentType: AgentId): SessionRecord {
     parentSessionId: null,
     status: "running",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-08-31T00:00:00.000Z",
     updatedAt: "2026-08-31T00:00:00.000Z",
     lastMessageAt: "2026-08-31T00:00:00.000Z",

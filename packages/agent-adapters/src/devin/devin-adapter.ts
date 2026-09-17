@@ -15,7 +15,7 @@ const descriptor: AgentDescriptor = {
   label: "Devin",
   availability: "available",
   capabilities: {
-    collaborationModes: ["default"],
+    sessionModes: [],
     permissionModes: getFallbackAgentPermissionModes("devin"),
     writeModes: ["native-write"],
     supportsSteering: false,

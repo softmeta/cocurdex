@@ -12,7 +12,7 @@ function session(
 ): SessionRecord {
   return {
     agentType: "grok-build",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-08-31T00:00:00.000Z",
     lastMessageAt: null,
     parentSessionId: null,

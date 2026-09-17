@@ -1,10 +1,19 @@
 import {
   type AgentDescriptor,
   type AgentId,
+  type AgentSessionMode,
   agentRuntimeAxisCapabilities,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
+  PLAN_MODE_ID,
 } from "@cocurdex/shared";
+
+function planSessionModes(): AgentSessionMode[] {
+  return [
+    { id: "default", name: "Default" },
+    { id: PLAN_MODE_ID, name: "Plan" },
+  ];
+}
 
 // Display order: Pi → Grok Build → Cursor → Devin → Codex → Claude Agent → OpenCode.
 export const agentOptions = [
@@ -71,10 +80,10 @@ export const defaultAgentDescriptors = agentOptions.map((agent) => ({
   label: agent.name,
   availability: "available",
   capabilities: {
-    collaborationModes:
+    sessionModes:
       agent.id === "pi" || agent.id === "cursor" || agent.id === "devin"
-        ? ["default"]
-        : ["default", "plan"],
+        ? []
+        : planSessionModes(),
     permissionModes: getFallbackAgentPermissionModes(agent.id),
     writeModes: [...getWriteModes(agent.id)],
     supportsSteering: ["claude-agent", "codex", "pi"].includes(agent.id),

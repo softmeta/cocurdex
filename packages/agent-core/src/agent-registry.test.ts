@@ -13,7 +13,10 @@ describe("createAgentRegistry", () => {
       "native-write",
     ]);
     expect(claude.capabilities.supportsSteering).toBe(true);
-    expect(claude.capabilities.collaborationModes).toEqual(["default", "plan"]);
+    expect(claude.capabilities.sessionModes).toEqual([
+      { id: "default", name: "Default" },
+      { id: "plan", name: "Plan" },
+    ]);
     expect(claude.capabilities.permissionModes).toEqual([
       { id: "claude-default", risk: "normal" },
       { id: "claude-accept-edits", risk: "elevated" },

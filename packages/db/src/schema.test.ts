@@ -11,7 +11,8 @@ describe("createSchemaSql", () => {
     );
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS sessions");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS session_attention");
-    expect(sql).toContain("collaboration_mode TEXT NOT NULL DEFAULT 'default'");
+    expect(sql).toContain("session_mode_id TEXT");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS agent_capability_cache");
     expect(sql).toContain("permission_mode TEXT");
     expect(sql).toContain("agent_role_id TEXT");
     expect(sql).toContain("session_kind TEXT NOT NULL DEFAULT 'main'");

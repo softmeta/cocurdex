@@ -882,7 +882,7 @@ function createSessionPayload(
       agentType: "claude-agent",
       status: "idle",
       writeMode: "native-write",
-      collaborationMode: "default",
+      sessionModeId: null,
       permissionMode: "claude-default",
       createdAt: "2026-07-31T00:00:00.000Z",
       updatedAt: "2026-07-31T00:00:00.000Z",

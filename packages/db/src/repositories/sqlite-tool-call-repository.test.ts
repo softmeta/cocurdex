@@ -35,7 +35,7 @@ async function seedSession(database: Database, sessionId: string) {
     agentType: "grok-build",
     status: "idle",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,

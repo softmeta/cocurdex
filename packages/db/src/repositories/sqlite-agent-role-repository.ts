@@ -28,7 +28,7 @@ export function createSqliteAgentRoleRepository(
         .prepare(
           `INSERT INTO agent_roles (
              id, name, agent_id, provider_id, model_id, model_name,
-             permission_mode, collaboration_mode, reasoning_effort,
+             permission_mode, session_mode_id, reasoning_effort,
              service_tier, fast_mode, thinking_level, opencode_agent,
              opencode_variant, instructions, skill_ids_json, created_at,
              updated_at
@@ -40,7 +40,7 @@ export function createSqliteAgentRoleRepository(
              model_id = excluded.model_id,
              model_name = excluded.model_name,
              permission_mode = excluded.permission_mode,
-             collaboration_mode = excluded.collaboration_mode,
+             session_mode_id = excluded.session_mode_id,
              reasoning_effort = excluded.reasoning_effort,
              service_tier = excluded.service_tier,
              fast_mode = excluded.fast_mode,
@@ -59,7 +59,7 @@ export function createSqliteAgentRoleRepository(
           role.modelId,
           role.modelName,
           role.permissionMode,
-          role.collaborationMode,
+          role.sessionModeId,
           role.reasoningEffort,
           role.serviceTier,
           role.fastMode === null ? null : role.fastMode ? 1 : 0,

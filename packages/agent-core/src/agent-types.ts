@@ -3,9 +3,9 @@ import type {
   AgentDescriptor,
   AgentEvent,
   AgentInputDelivery,
-  AgentPermissionDecision,
   AgentPermissionMode,
   AgentPermissionRequestPayload,
+  AgentPermissionResolution,
   AgentPlanApprovalDecision,
   AgentPlanApprovalRequestPayload,
   AgentProviderSessionRecord,
@@ -13,12 +13,12 @@ import type {
   AgentQuestionRequestPayload,
   AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
+  AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
   AgentToolCatalog,
   AgentToolsBinding,
   AgentWorkspaceChangeCapabilities,
-  CollaborationModeKind,
   MessageAttachment,
   MessageRecord,
   NativeWorkspaceChangeEvidence,
@@ -63,7 +63,7 @@ export interface CreateAgentSessionPayload {
   ): void;
   requestPermission?(
     request: AgentPermissionRequestPayload,
-  ): Promise<AgentPermissionDecision>;
+  ): Promise<AgentPermissionResolution>;
   requestQuestion?(
     request: AgentQuestionRequestPayload,
   ): Promise<string | null>;
@@ -78,7 +78,7 @@ export interface SendAgentMessagePayload {
   attachments?: MessageAttachment[];
   history: MessageRecord[];
   thinkingLevel?: AgentThinkingLevel;
-  collaborationMode?: CollaborationModeKind;
+  sessionModeId?: string | null;
   // Carried per turn (not just at session creation) so adapters that can switch
   // it live — e.g. Grok Build over ACP — see the user's latest choice.
   permissionMode?: AgentPermissionMode | null;
@@ -128,6 +128,14 @@ export interface AgentAdapter {
   discoverCapabilities?(
     payload: DiscoverAgentCapabilitiesPayload,
   ): Promise<DiscoveredAgentCapabilities>;
+  /**
+   * Modes the agent offers, learned by talking to it. ACP agents only reveal
+   * their list once a session is opened, so this is asked for on demand rather
+   * than during the agent listing every client waits on.
+   */
+  discoverSessionModes?(
+    payload: DiscoverAgentCapabilitiesPayload,
+  ): Promise<AgentSessionMode[]>;
   createSession(
     payload: CreateAgentSessionPayload,
     onEvent: (event: AgentEvent) => void,

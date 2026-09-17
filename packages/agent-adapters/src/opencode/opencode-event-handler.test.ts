@@ -29,7 +29,7 @@ function createHandler(
       agentType: "opencode",
       status: "running",
       writeMode: "read-only",
-      collaborationMode: "default",
+      sessionModeId: null,
       createdAt: "2026-05-20T00:00:00.000Z",
       updatedAt: "2026-05-20T00:00:00.000Z",
       lastMessageAt: null,

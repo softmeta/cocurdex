@@ -107,7 +107,7 @@ async function createAgentSession(
     parentToolCallId: null,
     status: "idle",
     writeMode: requester.writeMode,
-    collaborationMode: role?.collaborationMode ?? "default",
+    sessionModeId: role?.sessionModeId ?? null,
     permissionMode: role?.permissionMode ?? requester.permissionMode,
     agentRoleId: role?.id ?? null,
     providerSnapshot:

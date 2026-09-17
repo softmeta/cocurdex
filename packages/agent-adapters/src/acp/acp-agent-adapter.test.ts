@@ -21,7 +21,10 @@ const descriptor: AgentDescriptor = {
   label: "Grok Build",
   availability: "available",
   capabilities: {
-    collaborationModes: ["default", "plan"],
+    sessionModes: [
+      { id: "default", name: "Default" },
+      { id: "plan", name: "Plan" },
+    ],
     permissionModes: [],
     writeModes: ["read-only", "native-write"],
     supportsSteering: false,
@@ -70,6 +73,40 @@ function createAcpConnection(
     ...overrides,
   };
 }
+
+describe("AcpAgentAdapter discoverSessionModes", () => {
+  it("opens a throwaway session to read the mode list and closes it", async () => {
+    const close = vi.fn(async () => {});
+    const newSession = vi.fn(async () => ({
+      sessionId: "probe-session",
+      modes: {
+        currentModeId: "normal",
+        availableModes: [
+          { id: "normal", name: "Code", description: "Write and edit code" },
+          { id: "bypass", name: "Bypass Permissions" },
+        ],
+      },
+    }));
+    const adapter = new AcpAgentAdapter(
+      { args: ["acp"], command: "devin", descriptor },
+      async () =>
+        createAcpConnection({
+          close,
+          newSession: newSession as AcpConnection["newSession"],
+        }),
+    );
+
+    const modes = await adapter.discoverSessionModes({
+      executablePath: "/usr/local/bin/devin",
+    });
+
+    expect(modes).toEqual([
+      { id: "normal", name: "Code", description: "Write and edit code" },
+      { id: "bypass", name: "Bypass Permissions", description: null },
+    ]);
+    expect(close).toHaveBeenCalled();
+  });
+});
 
 describe("AcpAgentAdapter", () => {
   it("negotiates ACP, creates a provider session, and maps a prompt turn", async () => {
@@ -165,7 +202,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "plan",
+          sessionModeId: "plan",
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,
@@ -316,7 +353,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,
@@ -367,7 +404,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,
@@ -430,7 +467,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           permissionMode: "grok-ask",
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
@@ -476,7 +513,7 @@ describe("AcpAgentAdapter", () => {
     );
   });
 
-  it("maps Cocurdex permission decisions to the ACP option selected by kind", async () => {
+  it("maps the chosen Cocurdex permission option to the ACP option", async () => {
     let handlers: Parameters<AcpConnectionFactory>[0]["handlers"] | undefined;
     const connectionFactory: AcpConnectionFactory = vi.fn(async (options) => {
       handlers = options.handlers;
@@ -506,6 +543,10 @@ describe("AcpAgentAdapter", () => {
       },
       connectionFactory,
     );
+    const requestPermission = vi.fn(async () => ({
+      decision: "allow_always" as const,
+      optionId: "always",
+    }));
     adapter.createSession(
       {
         session: {
@@ -515,13 +556,13 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,
         },
         workspaceRootPath: "/workspace",
-        requestPermission: vi.fn(async () => "allow_always" as const),
+        requestPermission,
       },
       () => undefined,
     );
@@ -559,6 +600,27 @@ describe("AcpAgentAdapter", () => {
         optionId: "always",
       },
     });
+    expect(requestPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: [
+          expect.objectContaining({
+            id: "once",
+            label: "Allow once",
+            labelSource: "provider",
+          }),
+          expect.objectContaining({
+            id: "always",
+            label: "Always allow",
+            labelSource: "provider",
+          }),
+          expect.objectContaining({
+            id: "reject",
+            label: "Reject",
+            labelSource: "provider",
+          }),
+        ],
+      }),
+    );
   });
 
   it("fails before sending when the saved ACP session cannot be loaded", async () => {
@@ -602,7 +664,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,
@@ -689,7 +751,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,
@@ -861,7 +923,7 @@ describe("AcpAgentAdapter", () => {
           agentType: "grok-build",
           status: "idle",
           writeMode: "native-write",
-          collaborationMode: "default",
+          sessionModeId: null,
           createdAt: "2026-07-24T00:00:00.000Z",
           updatedAt: "2026-07-24T00:00:00.000Z",
           lastMessageAt: null,

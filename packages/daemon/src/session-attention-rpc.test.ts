@@ -48,7 +48,7 @@ async function seedSession(service: CocurdexDaemonService) {
     agentType: "codex",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,

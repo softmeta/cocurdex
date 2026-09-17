@@ -8,7 +8,7 @@ import {
   findPendingPlanApproval,
   planApprovalsBySessionAtom,
 } from "@/features/agent/plan/plan-approval-store";
-import { getActiveCollaborationMode } from "@/features/agent/runtime/runtime-collaboration-mode";
+import { getActiveSessionModeId } from "@/features/agent/runtime/runtime-collaboration-mode";
 
 function makeApproval(
   overrides: Partial<AgentPlanApprovalRecord> = {},
@@ -64,7 +64,7 @@ describe("plan approval store", () => {
   });
 });
 
-describe("getActiveCollaborationMode", () => {
+describe("getActiveSessionModeId", () => {
   const runtime = (currentModeId: string | null) => ({
     capabilities: null,
     commands: null,
@@ -75,28 +75,22 @@ describe("getActiveCollaborationMode", () => {
 
   it("falls back to the stored session mode before the agent reports one", () => {
     expect(
-      getActiveCollaborationMode({ collaborationMode: "plan" }, runtime(null)),
+      getActiveSessionModeId({ sessionModeId: "plan" }, runtime(null)),
     ).toBe("plan");
-    expect(getActiveCollaborationMode(null, null)).toBe("default");
+    expect(getActiveSessionModeId(null, null)).toBeNull();
   });
 
   it("follows the agent once it reports a mode", () => {
     expect(
-      getActiveCollaborationMode(
-        { collaborationMode: "plan" },
-        runtime("plan"),
-      ),
+      getActiveSessionModeId({ sessionModeId: "plan" }, runtime("plan")),
     ).toBe("plan");
     // Approving or abandoning a plan drops the agent back to default; the
     // composer toggle must not keep claiming plan mode.
     expect(
-      getActiveCollaborationMode(
-        { collaborationMode: "plan" },
-        runtime("default"),
-      ),
+      getActiveSessionModeId({ sessionModeId: "plan" }, runtime("default")),
     ).toBe("default");
     expect(
-      getActiveCollaborationMode({ collaborationMode: "plan" }, runtime("ask")),
-    ).toBe("default");
+      getActiveSessionModeId({ sessionModeId: "plan" }, runtime("ask")),
+    ).toBe("ask");
   });
 });

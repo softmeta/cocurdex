@@ -6,11 +6,12 @@ import {
   type AgentRoleRecord,
   type AgentThinkingLevel,
   type CodexReasoningEffort,
-  type CollaborationModeKind,
   type CompatibleProviderModel,
   isAgentPermissionModeSupportedForModel,
   normalizeWorkspaceRootPaths,
+  PLAN_MODE_ID,
 } from "@cocurdex/shared";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -25,7 +26,6 @@ import {
   resolvePreferredPermissionMode,
   updateAgentRuntimePreferences,
 } from "../agent-runtime-preferences";
-import { supportsPlanMode } from "../collaboration-mode";
 import {
   getCachedProviderModelEntry,
   getDefaultProviderModelValue,
@@ -46,8 +46,10 @@ import {
   resolveOpenCodeRuntimeValue,
 } from "../provider-model/opencode-runtime-options";
 import {
+  applyAgentSessionModesAtom,
   getDefaultPermissionMode,
   getPermissionModeOptions,
+  getSessionModeOptions,
 } from "../session-store";
 import type { UseNewSessionCardProps } from "./new-session-card.types";
 import {
@@ -76,12 +78,13 @@ export function useNewSessionCard({
   activeWorkspaceId,
   workspaces = [],
   agentType,
-  collaborationMode = "default",
+  sessionModeId = null,
   workspaceRootPath,
   onSelectAgent,
-  onSelectCollaborationMode,
+  onSelectSessionMode,
 }: UseNewSessionCardProps) {
   const { t } = useTranslation("sessions");
+  const applyAgentSessionModes = useSetAtom(applyAgentSessionModesAtom);
   const initialAgentType = agentType ?? "pi";
   const [initialRuntimePreferences] = useState(() =>
     getAgentRuntimePreferences(initialAgentType),
@@ -93,8 +96,9 @@ export function useNewSessionCard({
     () => agentType ?? "pi",
   );
   const selectedAgent = agentType ?? uncontrolledAgent;
-  const [selectedCollaborationMode, setSelectedCollaborationMode] =
-    useState<CollaborationModeKind>(collaborationMode);
+  const [selectedSessionModeId, setSelectedSessionModeId] = useState<
+    string | null
+  >(sessionModeId);
   const [selectedPermissionMode, setSelectedPermissionMode] =
     useState<AgentPermissionMode | null>(() =>
       permissionModeForAgent(initialAgentType, agents),
@@ -155,6 +159,15 @@ export function useNewSessionCard({
     : (selectableAgentOptions[0]?.id ??
       availableAgents[0]?.id ??
       selectedAgent);
+  const sessionModeOptions = getSessionModeOptions(
+    agents,
+    effectiveSelectedAgent,
+  );
+  const resolvedSessionModeId =
+    selectedSessionModeId &&
+    sessionModeOptions.some((mode) => mode.id === selectedSessionModeId)
+      ? selectedSessionModeId
+      : null;
   const permissionModeOptions = getPermissionModeOptions(
     agents,
     effectiveSelectedAgent,
@@ -399,6 +412,42 @@ export function useNewSessionCard({
     showCatalogForAgent,
   ]);
 
+  // ACP agents only reveal their mode list once a session is opened, so the
+  // list is asked for the first time an agent without one is selected. The
+  // daemon caches the answer; later cards read it straight off the descriptor.
+  useEffect(() => {
+    const agent = agents.find((item) => item.id === effectiveSelectedAgent);
+    if (
+      agent?.capabilities.transport !== "acp" ||
+      agent.capabilities.sessionModes.length > 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    void desktopApi
+      .readAgentSessionModes(effectiveSelectedAgent)
+      .then((sessionModes) => {
+        if (cancelled || sessionModes.length === 0) {
+          return;
+        }
+        applyAgentSessionModes({
+          agentId: effectiveSelectedAgent,
+          sessionModes,
+        });
+      })
+      .catch((error: unknown) => {
+        logRendererDiagnostic("debug", "[SessionMode] discovery failed", {
+          agentId: effectiveSelectedAgent,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [agents, applyAgentSessionModes, effectiveSelectedAgent]);
+
   if (selectedPermissionMode !== resolvedPermissionMode) {
     setSelectedPermissionMode(resolvedPermissionMode);
   }
@@ -437,9 +486,9 @@ export function useNewSessionCard({
     });
   };
 
-  const handleSelectCollaborationMode = (nextMode: CollaborationModeKind) => {
-    setSelectedCollaborationMode(nextMode);
-    onSelectCollaborationMode?.(nextMode);
+  const handleSelectSessionMode = (nextModeId: string) => {
+    setSelectedSessionModeId(nextModeId);
+    onSelectSessionMode?.(nextModeId);
   };
 
   const handleSelectOpenCodeAgent = (value: string) => {
@@ -447,9 +496,9 @@ export function useNewSessionCard({
     updateAgentRuntimePreferences(effectiveSelectedAgent, {
       openCodeAgent: value || null,
     });
-    // OpenCode's agent list doubles as its collaboration axis, so picking
-    // "plan" has to start the session in plan mode.
-    handleSelectCollaborationMode(value === "plan" ? "plan" : "default");
+    // OpenCode's agent list doubles as its mode axis, so picking "plan" has to
+    // start the session in plan mode.
+    handleSelectSessionMode(value === "plan" ? PLAN_MODE_ID : "default");
   };
 
   const handleSelectOpenCodeVariant = (value: string) => {
@@ -465,7 +514,7 @@ export function useNewSessionCard({
     modelId: selectedCompatibleProvider?.model.modelId ?? null,
     modelName: selectedCompatibleProvider?.model.name ?? null,
     permissionMode: resolvedPermissionMode,
-    collaborationMode: selectedCollaborationMode,
+    sessionModeId: resolvedSessionModeId,
     reasoningEffort: selectedCodexReasoningEffort
       ? (selectedCodexReasoningEffort as CodexReasoningEffort)
       : null,
@@ -479,11 +528,13 @@ export function useNewSessionCard({
 
   const handleSelectAgent = (nextAgent: AgentId) => {
     if (
-      !supportsPlanMode(nextAgent) &&
-      selectedCollaborationMode !== "default"
+      selectedSessionModeId &&
+      !getSessionModeOptions(agents, nextAgent).some(
+        (mode) => mode.id === selectedSessionModeId,
+      )
     ) {
-      setSelectedCollaborationMode("default");
-      onSelectCollaborationMode?.("default");
+      setSelectedSessionModeId(null);
+      onSelectSessionMode?.("");
     }
     setUncontrolledAgent(nextAgent);
     const hadCatalog = showCatalogForAgent(nextAgent);
@@ -516,10 +567,13 @@ export function useNewSessionCard({
       openCodeAgent: role.openCodeAgent,
       openCodeVariant: role.openCodeVariant,
     });
-    handleSelectCollaborationMode(
-      role.collaborationMode === "plan" && supportsPlanMode(role.agentId)
-        ? "plan"
-        : "default",
+    handleSelectSessionMode(
+      role.sessionModeId &&
+        getSessionModeOptions(agents, role.agentId).some(
+          (mode) => mode.id === role.sessionModeId,
+        )
+        ? role.sessionModeId
+        : "",
     );
     if (role.agentId === effectiveSelectedAgent) {
       setSelectedPermissionMode(
@@ -601,7 +655,8 @@ export function useNewSessionCard({
   };
 
   return {
-    selectedCollaborationMode,
+    selectedSessionModeId: resolvedSessionModeId,
+    sessionModeOptions,
     selectedPermissionMode: resolvedPermissionMode,
     permissionModeOptions,
     setSelectedPermissionMode: handleSelectPermissionMode,
@@ -657,7 +712,7 @@ export function useNewSessionCard({
     currentRoleDraft,
     handleSelectAgent,
     handleApplyRole,
-    handleSelectCollaborationMode,
+    handleSelectSessionMode,
     handleSelectProviderModel,
   };
 }

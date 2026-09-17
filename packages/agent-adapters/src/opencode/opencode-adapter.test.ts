@@ -99,7 +99,7 @@ function createSession(id: string): SessionRecord {
     agentType: "opencode",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     providerSnapshot: {
       providerId: "native-provider",
       providerName: "Native provider",

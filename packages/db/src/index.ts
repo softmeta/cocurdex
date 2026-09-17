@@ -1,3 +1,4 @@
+export * from "./agents";
 export * from "./issues";
 export * from "./notes";
 export * from "./repositories";

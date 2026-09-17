@@ -1,5 +1,4 @@
 import {
-  type AgentPermissionDecision,
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
   type AgentUsageRecord,
@@ -754,7 +753,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   ): Promise<void> | void;
   onResolvePermission?(
     requestId: string,
-    decision: AgentPermissionDecision,
+    optionId: string,
   ): Promise<void> | void;
   setUserMessageRef(id: string, element: HTMLDivElement | null): void;
   showMessageActions?: boolean;

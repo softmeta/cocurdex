@@ -3,7 +3,7 @@ import {
   type AgentPermissionMode,
   type AgentRateLimitsRecord,
   type AgentThinkingLevel,
-  type CollaborationModeKind,
+  PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
   sessionConfiguration,
@@ -19,6 +19,7 @@ import {
   agentLabels,
   agentsAtom,
   getProviderModelCacheVersion,
+  getSessionModeOptions,
   getSessionPermissionMode,
   loadProviderModelOptions,
   providerConfigsAtom,
@@ -27,9 +28,10 @@ import {
   sessionsAtom,
   subscribeProviderModelCache,
   updateAgentRuntimePreferences,
-  updateSessionCollaborationModeAtom,
+  updateSessionModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
+  useSessionModeLabels,
 } from "@/features/sessions";
 import { usesAdapterOwnedModelCatalog } from "@/features/sessions/provider-model/adapter-owned-catalog";
 import {
@@ -210,6 +212,7 @@ export function ContextWindowIndicator({
   sessionId?: string | null;
 }) {
   const { t } = useTranslation("sessions");
+  const { label: sessionModeLabel } = useSessionModeLabels();
   const resolvedSessionId = resolveComposerSessionId(sessionId);
   const agents = useAtomValue(agentsAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -226,9 +229,7 @@ export function ContextWindowIndicator({
   const updateSessionPermissionMode = useSetAtom(
     updateSessionPermissionModeAtom,
   );
-  const updateSessionCollaborationMode = useSetAtom(
-    updateSessionCollaborationModeAtom,
-  );
+  const updateSessionMode = useSetAtom(updateSessionModeAtom);
   const providerModelCacheVersion = useSyncExternalStore(
     subscribeProviderModelCache,
     getProviderModelCacheVersion,
@@ -282,12 +283,9 @@ export function ContextWindowIndicator({
     persistSession(updatedSession);
   };
 
-  const changeCollaborationMode = (
-    sessionId: string,
-    collaborationMode: CollaborationModeKind,
-  ) => {
+  const changeSessionMode = (sessionId: string, sessionModeId: string) => {
     persistSession(
-      updateSessionCollaborationMode({ sessionId, collaborationMode }),
+      updateSessionMode({ sessionId, sessionModeId: sessionModeId || null }),
     );
   };
 
@@ -405,25 +403,29 @@ export function ContextWindowIndicator({
   const sessionRuntime = agentRuntimeBySession[session.id];
   const runtimeMode = sessionRuntime?.mode;
   const sessionConfigOptions = sessionRuntime?.configOptions ?? [];
-  const collaborationModeLabel = (() => {
-    if (runtimeMode && runtimeMode.currentModeId !== "default") {
-      return (
-        runtimeMode.availableModes.find(
-          (option) => option.id === runtimeMode.currentModeId,
-        )?.name ?? runtimeMode.currentModeId
-      );
+  const sessionModeChip = (() => {
+    const runtimeModes = runtimeMode?.availableModes ?? [];
+    const currentModeId =
+      runtimeModes.length > 0
+        ? runtimeMode?.currentModeId
+        : session.sessionModeId;
+    if (!currentModeId || currentModeId === "default") {
+      return null;
     }
 
-    return session.collaborationMode === "plan"
-      ? t("collaborationMode.plan")
-      : null;
+    const modes =
+      runtimeModes.length > 0
+        ? runtimeModes
+        : getSessionModeOptions(agents, session.agentType);
+    const mode = modes.find((option) => option.id === currentModeId);
+    return mode ? sessionModeLabel(session.agentType, mode) : currentModeId;
   })();
-  // Match new-session trigger chips: collaboration, thinking and permission.
+  // Match new-session trigger chips: mode, thinking and permission.
   // ProviderModelCompoundMenu owns the other active axes, so the model label
   // below must remain model-only to avoid rendering any value twice.
   const menuTriggerValues: string[] = [];
-  if (collaborationModeLabel) {
-    menuTriggerValues.push(collaborationModeLabel);
+  if (sessionModeChip) {
+    menuTriggerValues.push(sessionModeChip);
   }
   if (session.agentType !== "codex" && effortLabel) {
     menuTriggerValues.push(effortLabel);
@@ -469,9 +471,9 @@ export function ContextWindowIndicator({
       }
       onOpenCodeAgentChange={(openCodeAgent) => {
         updateProviderRuntime({ sessionId: session.id, openCodeAgent });
-        changeCollaborationMode(
+        changeSessionMode(
           session.id,
-          openCodeAgent === "plan" ? "plan" : "default",
+          openCodeAgent === "plan" ? PLAN_MODE_ID : "default",
         );
       }}
       onOpenCodeVariantChange={(openCodeVariant) =>

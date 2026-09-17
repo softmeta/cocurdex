@@ -14,8 +14,8 @@ export function exposeTaskApi() {
       ipcRenderer.invoke("task:configure", input),
     sendMessage: (input) => ipcRenderer.invoke("task:send", input),
     stopSession: (sessionId) => ipcRenderer.invoke("session:stop", sessionId),
-    resolvePermission: (id, decision) =>
-      ipcRenderer.invoke("permission:resolve", id, decision),
+    resolvePermission: (id, optionId) =>
+      ipcRenderer.invoke("permission:resolve", id, optionId),
     resolveQuestion: (id, answer) =>
       ipcRenderer.invoke("question:resolve", id, answer),
     resolvePlanApproval: (id, decision) =>

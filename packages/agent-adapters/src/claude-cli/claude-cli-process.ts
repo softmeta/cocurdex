@@ -1,7 +1,4 @@
-import type {
-  AgentPermissionMode,
-  CollaborationModeKind,
-} from "@cocurdex/shared";
+import type { AgentPermissionMode } from "@cocurdex/shared";
 import { isAgentPermissionModeSupportedForModel } from "@cocurdex/shared";
 import { getClaudePermissionMode } from "../claude-shared";
 import { buildChildProcessEnv } from "../shared";
@@ -33,13 +30,10 @@ export function buildClaudeCliEnv(env: NodeJS.ProcessEnv = process.env) {
 
 export function getClaudeCliPermissionMode(
   permissionMode: AgentPermissionMode | undefined,
-  collaborationMode: CollaborationModeKind,
+  sessionModeId: string | null | undefined,
   modelId?: string | null,
 ) {
-  const runtimeMode = getClaudePermissionMode(
-    permissionMode,
-    collaborationMode,
-  );
+  const runtimeMode = getClaudePermissionMode(permissionMode, sessionModeId);
 
   if (
     permissionMode &&

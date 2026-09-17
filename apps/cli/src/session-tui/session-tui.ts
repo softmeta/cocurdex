@@ -1,6 +1,6 @@
 import type {
   AgentEvent,
-  AgentPermissionDecision,
+  AgentPermissionOptionKind,
   AgentPlanApprovalDecision,
   MessageRecord,
   SessionObservationSnapshot,
@@ -39,10 +39,7 @@ export interface SessionTuiController {
     delivery: "start-new-run" | "queue-after-run",
   ): Promise<MessageRecord>;
   stop(): Promise<void>;
-  resolvePermission(
-    requestId: string,
-    decision: AgentPermissionDecision,
-  ): Promise<void>;
+  resolvePermission(requestId: string, optionId: string): Promise<void>;
   answerQuestion(questionId: string, answer: string): Promise<void>;
   resolvePlanApproval(
     approvalId: string,
@@ -219,27 +216,27 @@ class SessionTuiApp {
 
   private async handleInteractionCommand(input: string) {
     const permission = this.state.interactions.permissions[0];
-    const permissionCommands: Record<string, AgentPermissionDecision> = {
+    const permissionCommands: Record<string, AgentPermissionOptionKind> = {
       "/allow": "allow_once",
       "/always": "allow_always",
       "/deny": "reject_once",
       "/deny-always": "reject_always",
     };
-    const permissionDecision = permissionCommands[input];
-    if (permissionDecision) {
+    const permissionKind = permissionCommands[input];
+    if (permissionKind) {
       if (!permission) {
         this.setNotice("No permission request is pending.");
         return true;
       }
-      const offered = permission.options.some(
-        (option) => option.kind === permissionDecision,
+      const option = permission.options.find(
+        (candidate) => candidate.kind === permissionKind,
       );
-      if (!offered) {
+      if (!option) {
         this.setNotice("That decision is not offered by this agent.");
         return true;
       }
       await this.perform("Resolving permission", () =>
-        this.controller.resolvePermission(permission.id, permissionDecision),
+        this.controller.resolvePermission(permission.id, option.id),
       );
       return true;
     }

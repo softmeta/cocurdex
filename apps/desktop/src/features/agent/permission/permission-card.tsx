@@ -1,5 +1,4 @@
 import type {
-  AgentPermissionDecision,
   AgentPermissionOption,
   AgentPermissionRequestRecord,
 } from "@cocurdex/shared";
@@ -123,10 +122,7 @@ export function PermissionCard({
   permission,
   variant = "inline",
 }: {
-  onResolve?(
-    requestId: string,
-    decision: AgentPermissionDecision,
-  ): Promise<void> | void;
+  onResolve?(requestId: string, optionId: string): Promise<void> | void;
   permission: AgentPermissionRequestRecord;
   variant?: PermissionCardVariant;
 }) {
@@ -163,14 +159,14 @@ export function PermissionCard({
     permission.providerId !== "claude-agent";
   const isDock = variant === "dock";
 
-  const handleResolve = async (decision: AgentPermissionDecision) => {
+  const handleResolve = async (optionId: string) => {
     if (!isPending || isResolving) {
       return;
     }
 
     setIsResolving(true);
     try {
-      await onResolve?.(permission.id, decision);
+      await onResolve?.(permission.id, optionId);
     } finally {
       setIsResolving(false);
     }
@@ -262,18 +258,20 @@ export function PermissionCard({
           )}
         >
           {permission.options.map((option) => {
-            const label = {
+            const genericLabel = {
               allow_always: t("permissions.alwaysAllow"),
               allow_once: t("permissions.allowOnce"),
               reject_always: t("permissions.rejectAlways"),
               reject_once: t("permissions.deny"),
             }[option.kind];
+            const label =
+              option.labelSource === "provider" ? option.label : genericLabel;
 
             return (
               <Button
                 disabled={isResolving}
                 key={option.id}
-                onClick={() => void handleResolve(option.kind)}
+                onClick={() => void handleResolve(option.id)}
                 size="sm"
                 type="button"
                 variant={getPermissionOptionVariant(option)}

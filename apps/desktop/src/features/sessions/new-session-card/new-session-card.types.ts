@@ -4,7 +4,6 @@ import type {
   AgentPermissionMode,
   AgentProviderSnapshot,
   AgentThinkingLevel,
-  CollaborationModeKind,
   GitWorktreeInfo,
   MessageAttachment,
   WorkspaceRecord,
@@ -24,7 +23,7 @@ export interface NewSessionCardProps {
   selectedWorktreePath?: string | null;
   sessionTitle?: string;
   agentType?: AgentId;
-  collaborationMode?: CollaborationModeKind;
+  sessionModeId?: string | null;
   attachment?: MessageAttachment;
   composerRef?: Ref<ChatComposerHandle>;
   workspaceRootPath?: string | null;
@@ -35,10 +34,10 @@ export interface NewSessionCardProps {
   onSelectBranch?(branch: string): Promise<void> | void;
   onSelectWorktree?(path: string | null): void;
   onSelectAgent?(agentType: AgentId): void;
-  onSelectCollaborationMode?(mode: CollaborationModeKind): void;
+  onSelectSessionMode?(modeId: string): void;
   onStartSession?: (payload: {
     agentType: AgentId;
-    collaborationMode: CollaborationModeKind;
+    sessionModeId: string | null;
     permissionMode?: AgentPermissionMode | null;
     message: string;
     attachments?: MessageAttachment[];

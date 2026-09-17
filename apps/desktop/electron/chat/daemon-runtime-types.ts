@@ -1,6 +1,5 @@
 import type {
   AgentId,
-  AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentSessionConfigOption,
   AgentSlashCommand,
@@ -60,10 +59,7 @@ export interface DaemonRuntimeClient {
     workspaceRootPath: string,
   ): Promise<AgentSlashCommand[]>;
   restart(): Promise<DaemonRuntimeStatus>;
-  resolvePermission(
-    requestId: string,
-    decision: AgentPermissionDecision,
-  ): Promise<boolean>;
+  resolvePermission(requestId: string, optionId: string): Promise<boolean>;
   resolveQuestion(questionId: string, answer: string): Promise<boolean>;
   resolvePlanApproval(
     approvalId: string,

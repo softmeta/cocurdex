@@ -2,7 +2,6 @@ import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { getAgentInputDelivery } from "@/features/agent/follow-up-behavior/follow-up-behavior-types";
-import { supportsPlanMode } from "@/features/sessions/collaboration-mode";
 import {
   focusedPaneIdAtom,
   focusSessionPaneAtom,
@@ -34,8 +33,9 @@ import {
   sessionsAtom,
   supportsLivePermissionMode,
   supportsPermissionMode,
+  supportsPlanMode,
   toggleSessionCollapsedAtom,
-  updateSessionCollaborationModeAtom,
+  updateSessionModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
   updateSessionTitleAtom,
@@ -59,7 +59,7 @@ const baseSession: SessionRecord = {
   agentType: "codex",
   status: "idle",
   writeMode: "read-only",
-  collaborationMode: "default",
+  sessionModeId: null,
   createdAt: "2026-05-07T00:00:00.000Z",
   updatedAt: "2026-05-07T00:00:00.000Z",
   lastMessageAt: null,
@@ -143,7 +143,7 @@ describe("updateSessionPermissionModeAtom", () => {
     store.set(bootstrapSessionsAtom, [
       {
         ...baseSession,
-        collaborationMode: "plan",
+        sessionModeId: "plan",
         permissionMode: "codex-read-only",
       },
     ]);
@@ -154,7 +154,7 @@ describe("updateSessionPermissionModeAtom", () => {
     });
 
     expect(store.get(sessionsAtom)[0]).toMatchObject({
-      collaborationMode: "plan",
+      sessionModeId: "plan",
       permissionMode: "codex-auto",
     });
   });
@@ -399,7 +399,8 @@ describe("permission mode helpers", () => {
       supportsPermissionMode(agents, session.agentType, session.permissionMode),
     ).toBe(true);
     expect(getSessionPermissionMode(agents, session)).toBe("codex-auto");
-    expect(supportsPlanMode(session.agentType)).toBe(false);
+    // Unknown ids normalize to Codex everywhere, so the mode axis follows.
+    expect(supportsPlanMode(agents, session.agentType)).toBe(true);
   });
 
   it("falls back from persisted Claude auto mode when the model is Haiku", () => {
@@ -438,26 +439,26 @@ describe("permission mode helpers", () => {
   });
 });
 
-describe("updateSessionCollaborationModeAtom", () => {
+describe("updateSessionModeAtom", () => {
   it("clears legacy Claude plan permission when plan mode turns off", () => {
     const store = createStore();
     store.set(bootstrapSessionsAtom, [
       {
         ...baseSession,
         agentType: "claude-agent",
-        collaborationMode: "plan",
+        sessionModeId: "plan",
         permissionMode: "claude-plan",
         writeMode: "native-write",
       },
     ]);
 
-    store.set(updateSessionCollaborationModeAtom, {
+    store.set(updateSessionModeAtom, {
       sessionId: baseSession.id,
-      collaborationMode: "default",
+      sessionModeId: null,
     });
 
     expect(store.get(sessionsAtom)[0]).toMatchObject({
-      collaborationMode: "default",
+      sessionModeId: null,
       permissionMode: "claude-default",
     });
   });

@@ -44,7 +44,7 @@ function createEphemeralSession(
     agentType: agentId,
     status: "idle",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,
@@ -116,8 +116,10 @@ export async function generateAgentCommitMessage(params: {
       session,
       workspaceRootPath: params.workspaceRootPath,
       providerConfig: params.providerConfig,
-      requestPermission: async (request) =>
-        resolveCommitMessagePermission(request.kind),
+      requestPermission: async (request) => ({
+        decision: resolveCommitMessagePermission(request.kind),
+        optionId: null,
+      }),
       requestQuestion: async () => null,
       requestPlanApproval: async () => ({ outcome: "abandoned" }),
     },
@@ -159,7 +161,7 @@ export async function generateAgentCommitMessage(params: {
       runtime.sendMessage({
         content: buildAgentCommitMessagePrompt(params.changeSummary),
         history: [],
-        collaborationMode: "default",
+        sessionModeId: null,
         providerSnapshot: params.providerSnapshot,
         providerConfig: params.providerConfig,
       }),

@@ -190,8 +190,8 @@ export function createClaudeCanUseTool(
           : []),
       ]),
     };
-    const decision =
-      (await payload.requestPermission?.(permissionRequest)) ?? "reject_once";
+    const resolution = await payload.requestPermission?.(permissionRequest);
+    const decision = resolution?.decision ?? "reject_once";
 
     if (decision === "allow_always") {
       return {

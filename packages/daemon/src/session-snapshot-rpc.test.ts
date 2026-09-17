@@ -43,7 +43,7 @@ async function createService() {
     agentType: "codex",
     status: "running",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,
@@ -72,7 +72,14 @@ describe("session snapshot RPC", () => {
       kind: "command",
       title: "Run tests",
       locations: [],
-      options: [{ id: "allow", kind: "allow_once", label: "Allow once" }],
+      options: [
+        {
+          id: "allow",
+          kind: "allow_once",
+          label: "Allow once",
+          labelSource: "generic",
+        },
+      ],
     });
 
     const request = {
@@ -131,7 +138,14 @@ describe("app resync RPC", () => {
       kind: "command",
       title: "Run tests",
       locations: [],
-      options: [{ id: "allow", kind: "allow_once", label: "Allow once" }],
+      options: [
+        {
+          id: "allow",
+          kind: "allow_once",
+          label: "Allow once",
+          labelSource: "generic",
+        },
+      ],
     });
     service.bindEventSeqProvider(() => 41);
 

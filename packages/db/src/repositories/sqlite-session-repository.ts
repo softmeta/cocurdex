@@ -76,7 +76,7 @@ export function createSqliteSessionRepository(
           `INSERT INTO sessions (
              id, workspace_id, title, agent_type, session_kind,
              parent_session_id, parent_tool_call_id, status, write_mode,
-             collaboration_mode, permission_mode, agent_role_id,
+             session_mode_id, permission_mode, agent_role_id,
              provider_snapshot_json,
              created_at, updated_at, last_message_at, archived_at,
              worktree_path, peer_inbound
@@ -90,7 +90,7 @@ export function createSqliteSessionRepository(
              parent_tool_call_id = excluded.parent_tool_call_id,
              status = excluded.status,
              write_mode = excluded.write_mode,
-             collaboration_mode = excluded.collaboration_mode,
+             session_mode_id = excluded.session_mode_id,
              permission_mode = excluded.permission_mode,
              agent_role_id = excluded.agent_role_id,
              provider_snapshot_json = excluded.provider_snapshot_json,
@@ -111,7 +111,7 @@ export function createSqliteSessionRepository(
           session.parentToolCallId ?? null,
           session.status,
           session.writeMode,
-          session.collaborationMode,
+          session.sessionModeId,
           session.permissionMode ?? null,
           session.agentRoleId ?? null,
           session.providerSnapshot

@@ -44,7 +44,7 @@ async function fixture() {
     title: "Task",
     agentType: "pi",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
   });
   return { service, root };
 }
@@ -180,7 +180,7 @@ describe("authoritative task commands", () => {
       title: "Other",
       agentType: "pi",
       writeMode: "read-only",
-      collaborationMode: "default",
+      sessionModeId: null,
     });
     const existing: MessageRecord = {
       id: "message-1",

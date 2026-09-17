@@ -27,6 +27,7 @@ describe("permission store", () => {
             id: "allow-once",
             kind: "allow_once",
             label: "Allow once",
+            labelSource: "generic",
           },
         ],
         status: "pending",

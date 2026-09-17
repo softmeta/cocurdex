@@ -19,7 +19,7 @@ function session(overrides: Partial<SessionRecord>): SessionRecord {
     agentType: "codex",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     permissionMode: "codex-auto",
     createdAt: "",
     updatedAt: "",

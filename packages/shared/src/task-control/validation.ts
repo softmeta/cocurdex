@@ -123,7 +123,7 @@ export function validateSessionConfiguration(
     "title",
     "agentType",
     "writeMode",
-    "collaborationMode",
+    "sessionModeId",
     "permissionMode",
     "agentRoleId",
     "providerSnapshot",
@@ -143,11 +143,7 @@ export function validateSessionConfiguration(
     throw new Error("Invalid agent type");
   if (value.writeMode !== "read-only" && value.writeMode !== "native-write")
     throw new Error("Invalid write mode");
-  if (
-    value.collaborationMode !== "default" &&
-    value.collaborationMode !== "plan"
-  )
-    throw new Error("Invalid collaboration mode");
+  optionalText(value.sessionModeId, "session mode");
   for (const name of ["permissionMode", "agentRoleId", "worktreePath"])
     optionalText(value[name], name);
   provider(value.providerSnapshot);

@@ -1,6 +1,5 @@
 import type {
   AgentId,
-  AgentPermissionDecision,
   AgentPermissionMode,
   AgentPermissionRequestRecord,
   AgentPlanApprovalDecision,
@@ -9,7 +8,6 @@ import type {
   AgentQuestionRequestRecord,
   AgentThinkingLevel,
   AgentToolCallRecord,
-  CollaborationModeKind,
   MessageAttachment,
   MessageRecord,
   SessionStatus,
@@ -46,7 +44,7 @@ export interface ChatViewProps {
   attachment?: MessageAttachment;
   agentLabel?: string;
   agentType?: AgentId;
-  collaborationMode?: CollaborationModeKind;
+  sessionModeId?: string | null;
   permissionMode?: AgentPermissionMode | null;
   providerSnapshot?: AgentProviderSnapshot | null;
   thinkingLevel?: AgentThinkingLevel | null;
@@ -68,7 +66,7 @@ export interface ChatViewProps {
     question: AgentQuestionRequestRecord,
     answer: string,
   ): Promise<void> | void;
-  onSelectCollaborationMode?(mode: CollaborationModeKind): void;
+  onSelectSessionMode?(modeId: string): void;
   onSelectPermissionMode?(mode: AgentPermissionMode): void;
   onSelectThinkingLevel?(level: AgentThinkingLevel): void;
   onSelectRuntimeMode?(modeId: string): void;
@@ -96,7 +94,7 @@ export interface ChatViewProps {
   onOpenToolLocation?(location: ToolCallPreviewLocation): void;
   onResolvePermission?(
     requestId: string,
-    decision: AgentPermissionDecision,
+    optionId: string,
   ): Promise<void> | void;
   onResolvePlanApproval?(
     approvalId: string,

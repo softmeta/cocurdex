@@ -15,7 +15,7 @@ function role(overrides: Partial<AgentRoleRecord> = {}): AgentRoleRecord {
     modelId: "gpt-5.4",
     modelName: "GPT-5.4",
     permissionMode: "codex-read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     reasoningEffort: "high",
     serviceTier: null,
     fastMode: null,
@@ -79,7 +79,7 @@ describe("projectAgentRoleToExecutorBinding", () => {
       permissionProfile: "read_only",
       runtime: {
         permissionMode: "codex-read-only",
-        collaborationMode: "default",
+        sessionModeId: null,
         reasoningEffort: "high",
       },
     });
@@ -92,11 +92,11 @@ describe("projectAgentRoleToExecutorBinding", () => {
 
   it("ignores plan collaboration mode when projecting into a workflow binding", () => {
     const binding = projectAgentRoleToExecutorBinding(
-      role({ collaborationMode: "plan" }),
+      role({ sessionModeId: "plan" }),
       "reviewer",
     );
 
-    expect(binding.runtime).toMatchObject({ collaborationMode: "default" });
+    expect(binding.runtime).toMatchObject({ sessionModeId: null });
   });
 
   it("rejects a read-only role for the implementer slot", () => {
@@ -126,7 +126,7 @@ describe("agentRoleMatchesDraft", () => {
         modelId: "gpt-5.4",
         modelName: "GPT-5.4",
         permissionMode: "codex-read-only",
-        collaborationMode: "default",
+        sessionModeId: null,
         reasoningEffort: "high",
         serviceTier: "",
         fastMode: false,

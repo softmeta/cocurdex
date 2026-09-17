@@ -41,7 +41,7 @@ async function configureRequester(daemon: DaemonProcess) {
     title: "Requester",
     agentType: agent.id,
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
   };
   await requestDaemon("session.configure", requester, daemon.options);
   return true;

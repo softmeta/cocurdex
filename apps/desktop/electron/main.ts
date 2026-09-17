@@ -3,7 +3,6 @@ import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
   AgentId,
-  AgentPermissionDecision,
   ArchiveSessionPayload,
   BrowserAnnotation,
   DeleteSessionPayload,
@@ -69,6 +68,7 @@ import {
   listToolCallsBySessionId,
   listWorkspaces,
   readAdapterRateLimits,
+  readAgentSessionModes,
   registerChatHandlers,
   restoreSession,
   saveAgentRole,
@@ -1095,10 +1095,10 @@ function registerSessionHandlers() {
     ipcMain,
     "permission:resolve",
     schemas.permissionResolve,
-    async (_event, requestId, decision) => {
+    async (_event, requestId, optionId) => {
       return requireDaemonRuntimeClient().resolvePermission(
         requestId,
-        decision as AgentPermissionDecision,
+        optionId,
       );
     },
   );
@@ -1564,6 +1564,9 @@ app
       "agent:readRateLimits",
       async (_event, agentIds: AgentId[]) =>
         readAdapterRateLimits(Array.isArray(agentIds) ? agentIds : []),
+    );
+    ipcMain.handle("agent:readSessionModes", async (_event, agentId: AgentId) =>
+      readAgentSessionModes(agentId),
     );
     ipcMain.handle("dialog:openDirectory", async () =>
       dialog.showOpenDialog({ properties: ["openDirectory"] }),

@@ -4,7 +4,6 @@ import type {
   AgentPermissionMode,
   AgentProviderSnapshot,
   AgentThinkingLevel,
-  CollaborationModeKind,
   ReasoningEffort,
 } from "./contracts";
 import type {
@@ -46,7 +45,7 @@ export interface AgentRoleDraft {
   modelId: string | null;
   modelName: string | null;
   permissionMode: AgentPermissionMode | null;
-  collaborationMode: CollaborationModeKind;
+  sessionModeId: string | null;
   reasoningEffort: ReasoningEffort | null;
   serviceTier: string | null;
   fastMode: boolean | null;
@@ -125,7 +124,7 @@ export function projectAgentRoleToExecutorBinding(
     providerSnapshot: providerSnapshotForAgentRole(role),
     runtime: {
       permissionMode: role.permissionMode,
-      collaborationMode: "default",
+      sessionModeId: null,
       reasoningEffort: role.reasoningEffort,
       thinkingLevel: role.thinkingLevel,
       serviceTier: role.serviceTier,
@@ -145,8 +144,7 @@ export function agentRoleMatchesDraft(
     sameOptional(role.providerId, draft.providerId) &&
     sameOptional(role.modelId, draft.modelId) &&
     sameOptional(role.permissionMode, draft.permissionMode) &&
-    (role.collaborationMode ?? "default") ===
-      (draft.collaborationMode ?? "default") &&
+    sameOptional(role.sessionModeId, draft.sessionModeId) &&
     sameOptional(role.reasoningEffort, draft.reasoningEffort) &&
     sameOptional(role.serviceTier, draft.serviceTier) &&
     Boolean(role.fastMode) === Boolean(draft.fastMode) &&

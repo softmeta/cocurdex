@@ -22,12 +22,12 @@ describe("task client connection boundary", () => {
     const second = vi.fn().mockResolvedValue(false);
     window.taskApi = { resolvePermission: first } as unknown as TaskApi;
     await expect(
-      taskApi.resolvePermission("approval-1", "reject_once"),
+      taskApi.resolvePermission("permission-1", "reject-once"),
     ).resolves.toBe(true);
     window.taskApi = { resolvePermission: second } as unknown as TaskApi;
     await expect(
-      taskApi.resolvePermission("approval-1", "reject_once"),
+      taskApi.resolvePermission("permission-1", "reject-once"),
     ).resolves.toBe(false);
-    expect(second).toHaveBeenCalledWith("approval-1", "reject_once");
+    expect(second).toHaveBeenCalledWith("permission-1", "reject-once");
   });
 });

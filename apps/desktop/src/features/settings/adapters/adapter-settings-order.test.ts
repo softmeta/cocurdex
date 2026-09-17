@@ -9,7 +9,7 @@ function descriptor(
     label: patch.id,
     availability: "available",
     capabilities: {
-      collaborationModes: ["default"],
+      sessionModes: [],
       permissionModes: [],
       writeModes: ["read-only"],
       supportsSteering: false,

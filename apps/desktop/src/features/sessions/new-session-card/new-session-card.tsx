@@ -30,10 +30,11 @@ import {
   subscribeAgentRoles,
 } from "../agent-role";
 import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
-import { CollaborationModeSubmenu } from "../collaboration-mode-control";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import { ProviderModelMenu } from "../provider-model";
 import { shouldShowProviderGroupLabels } from "../provider-model/provider-model-label";
+import { SessionModeSubmenu } from "../session-mode-control";
+import { useSessionModeLabels } from "../session-mode-label";
 import { agentLabels } from "../session-store";
 import type { NewSessionCardProps } from "./new-session-card.types";
 import { defaultAgentDescriptors } from "./new-session-card-config";
@@ -59,7 +60,7 @@ export function NewSessionCard({
   selectedWorktreePath = null,
   sessionTitle,
   agentType,
-  collaborationMode = "default",
+  sessionModeId = null,
   attachment,
   composerRef,
   workspaceRootPath,
@@ -70,10 +71,11 @@ export function NewSessionCard({
   onSelectBranch,
   onSelectWorktree,
   onSelectAgent,
-  onSelectCollaborationMode,
+  onSelectSessionMode,
   onStartSession,
 }: NewSessionCardProps) {
   const { t } = useTranslation(["common", "sessions", "settings"]);
+  const { label: sessionModeLabel } = useSessionModeLabels();
   const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
   const [saveRoleOpen, setSaveRoleOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
@@ -86,7 +88,8 @@ export function NewSessionCard({
     persistAgentRoleId(roleId);
   };
   const {
-    selectedCollaborationMode,
+    selectedSessionModeId,
+    sessionModeOptions,
     selectedPermissionMode,
     permissionModeOptions,
     setSelectedPermissionMode,
@@ -124,7 +127,7 @@ export function NewSessionCard({
     currentRoleDraft,
     handleSelectAgent,
     handleApplyRole,
-    handleSelectCollaborationMode,
+    handleSelectSessionMode,
     handleSelectProviderModel,
   } = useNewSessionCard({
     workspaceName,
@@ -132,12 +135,12 @@ export function NewSessionCard({
     activeWorkspaceId,
     workspaces,
     agentType,
-    collaborationMode,
+    sessionModeId,
     attachment,
     workspaceRootPath,
     onClearAttachment,
     onSelectAgent,
-    onSelectCollaborationMode,
+    onSelectSessionMode,
     onStartSession,
   });
 
@@ -152,7 +155,7 @@ export function NewSessionCard({
     onStartSession?.({
       agentType: effectiveSelectedAgent,
       attachments: attachments.length > 0 ? attachments : undefined,
-      collaborationMode: selectedCollaborationMode,
+      sessionModeId: selectedSessionModeId,
       permissionMode: selectedPermissionMode,
       message: text,
       providerSnapshot,
@@ -164,9 +167,13 @@ export function NewSessionCard({
   const selectedPermissionModeOption = permissionModeOptions.find(
     (option) => option.id === selectedPermissionMode,
   );
+  const selectedSessionMode = sessionModeOptions.find(
+    (mode) => mode.id === selectedSessionModeId,
+  );
   const triggerValues = [
-    ...(selectedCollaborationMode === "plan"
-      ? [t("sessions:collaborationMode.plan")]
+    // Nothing to show on the trigger while the agent default is in play.
+    ...(selectedSessionMode && selectedSessionMode.id !== "default"
+      ? [sessionModeLabel(effectiveSelectedAgent, selectedSessionMode)]
       : []),
     // Nothing to show on the trigger while the axis is unset.
     ...(thinkingLevelOptions.length > 1 && selectedThinkingLevel
@@ -227,10 +234,11 @@ export function NewSessionCard({
       compatibleProviders={compatibleProviders}
       footer={
         <>
-          <CollaborationModeSubmenu
+          <SessionModeSubmenu
             agentType={effectiveSelectedAgent}
-            mode={selectedCollaborationMode}
-            onChange={handleSelectCollaborationMode}
+            modeId={selectedSessionModeId}
+            modes={sessionModeOptions}
+            onChange={handleSelectSessionMode}
           />
           <ThinkingLevelSubmenu
             level={selectedThinkingLevel}
@@ -452,11 +460,11 @@ export function NewSessionCard({
         sessionId={null}
         draftKey={newSessionComposerDraftKey(activeWorkspaceId)}
         agentType={effectiveSelectedAgent}
-        collaborationMode={selectedCollaborationMode}
+        sessionModeId={selectedSessionModeId}
         mentionMenuPlacement="bottom"
         attachment={attachment}
         onClearAttachment={onClearAttachment}
-        onSelectCollaborationMode={handleSelectCollaborationMode}
+        onSelectSessionMode={handleSelectSessionMode}
         workspaceRootPath={contextWorkspaceRootPath}
         workspaceRootPaths={contextWorkspaceRootPaths}
         placeholderOverride={t("sessions:composer.placeholder")}

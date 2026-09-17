@@ -18,7 +18,7 @@ function createSessionRecord(): SessionRecord {
     title: "Test",
     status: "idle",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-07-24T00:00:00.000Z",
     lastMessageAt: null,
     updatedAt: "2026-07-24T00:00:00.000Z",
@@ -51,6 +51,14 @@ function createAdapter(session: AgentSession): AgentAdapter {
     createSession() {
       return session;
     },
+  };
+}
+
+function runtimeSessionStub(): AgentSession {
+  return {
+    dispose: vi.fn(),
+    sendMessage: vi.fn(),
+    stop: vi.fn(),
   };
 }
 
@@ -609,6 +617,71 @@ describe("AgentRuntimeManager", () => {
     expect(runtimeSession.stop).toHaveBeenCalledTimes(1);
     expect(runtimeSession.dispose).not.toHaveBeenCalled();
     expect(createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves the exact option chosen when several share one kind", async () => {
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: vi.fn(),
+      createAdapter: () => createAdapter(runtimeSessionStub()),
+    });
+    const pending = manager.requestAgentPermission({
+      sessionId: "session-1",
+      providerId: "devin",
+      kind: "execute",
+      title: "Run command",
+      locations: [],
+      options: [
+        {
+          id: "allow-session",
+          kind: "allow_always",
+          label: "This session",
+          labelSource: "provider",
+        },
+        {
+          id: "allow-all-projects",
+          kind: "allow_always",
+          label: "All projects",
+          labelSource: "provider",
+        },
+      ],
+    });
+    const requestId = manager.getPendingInteractions().permissions[0]?.id ?? "";
+
+    expect(
+      manager.resolveAgentPermission(requestId, "allow-all-projects"),
+    ).toBe(true);
+    await expect(pending).resolves.toEqual({
+      decision: "allow_always",
+      optionId: "allow-all-projects",
+    });
+  });
+
+  it("refuses to resolve a permission with an unknown option id", () => {
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: vi.fn(),
+      createAdapter: () => createAdapter(runtimeSessionStub()),
+    });
+    void manager.requestAgentPermission({
+      sessionId: "session-1",
+      providerId: "devin",
+      kind: "execute",
+      title: "Run command",
+      locations: [],
+      options: [
+        {
+          id: "allow-session",
+          kind: "allow_always",
+          label: "This session",
+          labelSource: "provider",
+        },
+      ],
+    });
+    const requestId = manager.getPendingInteractions().permissions[0]?.id ?? "";
+
+    expect(manager.resolveAgentPermission(requestId, "missing-option")).toBe(
+      false,
+    );
+    expect(manager.getPendingInteractions().permissions).toHaveLength(1);
   });
 });
 

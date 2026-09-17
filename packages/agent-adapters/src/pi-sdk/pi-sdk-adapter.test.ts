@@ -62,7 +62,7 @@ function createSessionPayload(
         agentType: "pi",
         status: "idle",
         writeMode: "read-only",
-        collaborationMode: "default",
+        sessionModeId: null,
         createdAt: "2026-06-10T00:00:00.000Z",
         updatedAt: "2026-06-10T00:00:00.000Z",
         lastMessageAt: null,

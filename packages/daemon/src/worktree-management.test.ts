@@ -126,7 +126,7 @@ describe("worktree daemon RPC", () => {
       title: "Uses worktree",
       agentType: "pi",
       writeMode: "read-only",
-      collaborationMode: "default",
+      sessionModeId: null,
       worktreePath: created.path,
     });
 

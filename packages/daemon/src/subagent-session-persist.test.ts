@@ -41,7 +41,7 @@ async function createService() {
     agentType: "claude-agent",
     status: "running",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: now,

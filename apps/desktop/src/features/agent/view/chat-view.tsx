@@ -1,5 +1,4 @@
 import type {
-  AgentPermissionDecision,
   AgentQuestionRequestRecord,
   MessageAttachment,
   MessageRecord,
@@ -69,7 +68,7 @@ export function ChatView({
   attachment,
   agentLabel = "Claude Agent",
   agentType,
-  collaborationMode = "default",
+  sessionModeId = null,
   permissionMode,
   providerSnapshot,
   thinkingLevel,
@@ -88,7 +87,7 @@ export function ChatView({
   queuedInputs = [],
   onClearAttachment,
   onAnswerQuestion,
-  onSelectCollaborationMode,
+  onSelectSessionMode,
   onSelectPermissionMode,
   onSelectThinkingLevel,
   onSelectRuntimeMode,
@@ -208,8 +207,8 @@ export function ChatView({
     [],
   );
   const stableOnResolvePermission = useCallback(
-    (requestId: string, decision: AgentPermissionDecision) =>
-      callbacksRef.current.onResolvePermission?.(requestId, decision),
+    (requestId: string, optionId: string) =>
+      callbacksRef.current.onResolvePermission?.(requestId, optionId),
     [],
   );
   const stableOnOpenToolLocation = useCallback(
@@ -520,7 +519,7 @@ export function ChatView({
                 draftKey={
                   sessionId ? sessionComposerDraftKey(sessionId) : undefined
                 }
-                collaborationMode={collaborationMode}
+                sessionModeId={sessionModeId}
                 composerRef={composerRef}
                 permissionMode={permissionMode}
                 providerSnapshot={providerSnapshot}
@@ -531,7 +530,7 @@ export function ChatView({
                 runtimeCommands={runtime?.commands}
                 runtimeMode={runtime?.mode}
                 onClearAttachment={onClearAttachment}
-                onSelectCollaborationMode={onSelectCollaborationMode}
+                onSelectSessionMode={onSelectSessionMode}
                 onSelectPermissionMode={onSelectPermissionMode}
                 onSelectThinkingLevel={onSelectThinkingLevel}
                 onSelectRuntimeMode={onSelectRuntimeMode}
@@ -645,7 +644,7 @@ export function ChatView({
           agentType={agentType}
           attachment={attachment}
           draftKey={sessionId ? sessionComposerDraftKey(sessionId) : undefined}
-          collaborationMode={collaborationMode}
+          sessionModeId={sessionModeId}
           composerRef={composerRef}
           permissionMode={permissionMode}
           providerSnapshot={providerSnapshot}
@@ -658,7 +657,7 @@ export function ChatView({
           queuedInputs={queuedInputs}
           supportsSteering={supportsSteering}
           onClearAttachment={onClearAttachment}
-          onSelectCollaborationMode={onSelectCollaborationMode}
+          onSelectSessionMode={onSelectSessionMode}
           onSelectPermissionMode={onSelectPermissionMode}
           onSelectThinkingLevel={onSelectThinkingLevel}
           onSelectRuntimeMode={onSelectRuntimeMode}

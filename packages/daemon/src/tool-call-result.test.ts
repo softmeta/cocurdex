@@ -39,7 +39,7 @@ it("reads tool results through the named RPC and rejects invalid IDs", async () 
       agentType: "pi",
       status: "idle",
       writeMode: "read-only",
-      collaborationMode: "default",
+      sessionModeId: null,
       createdAt: timestamp,
       updatedAt: timestamp,
       lastMessageAt: null,

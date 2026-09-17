@@ -24,12 +24,6 @@
     "searchPlaceholder": "搜索分支",
     "switchFailed": "无法切换到 {{branch}}。请检查工作区状态后重试。"
   },
-  "collaborationMode": {
-    "default": "默认",
-    "label": "协作模式",
-    "plan": "计划",
-    "planMode": "计划模式"
-  },
   "composer": {
     "agentStatus": {
       "detecting": "检测中",
@@ -128,6 +122,61 @@
     "opencode-ask": "询问",
     "opencode-deny": "拒绝",
     "unavailableForModel": "{{model}} 不支持此模式。"
+  },
+  "sessionMode": {
+    "claude-agent": {
+      "default": "默认",
+      "plan": "计划"
+    },
+    "codex": {
+      "default": "默认",
+      "plan": "计划"
+    },
+    "descriptions": {
+      "claude-agent": {
+        "default": "编写和修改代码",
+        "plan": "先给出计划再实施"
+      },
+      "codex": {
+        "default": "编写和修改代码",
+        "plan": "先给出计划再实施"
+      },
+      "devin": {
+        "accept-edits": "自动应用文件编辑",
+        "ask": "只回答问题，不改代码",
+        "autonomous": "沙箱内的自主执行",
+        "bypass": "自动批准所有工具调用",
+        "normal": "编写和修改代码",
+        "plan": "先给出计划再实施",
+        "smart": "由模型判断哪些操作可以安全地自动批准"
+      },
+      "grok-build": {
+        "default": "编写和修改代码",
+        "plan": "先给出计划再实施"
+      },
+      "opencode": {
+        "default": "编写和修改代码",
+        "plan": "先给出计划再实施"
+      }
+    },
+    "devin": {
+      "accept-edits": "自动接受编辑",
+      "ask": "询问",
+      "autonomous": "自主",
+      "bypass": "跳过权限确认",
+      "normal": "代码",
+      "plan": "计划",
+      "smart": "Smart"
+    },
+    "grok-build": {
+      "default": "默认",
+      "plan": "计划"
+    },
+    "label": "模式",
+    "opencode": {
+      "default": "默认",
+      "plan": "计划"
+    }
   },
   "sidebar": {
     "addProject": "添加项目",
