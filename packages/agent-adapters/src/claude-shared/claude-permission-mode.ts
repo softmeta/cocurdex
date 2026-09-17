@@ -1,13 +1,10 @@
-import type {
-  AgentPermissionMode,
-  CollaborationModeKind,
-} from "@cocurdex/shared";
+import { type AgentPermissionMode, isPlanModeId } from "@cocurdex/shared";
 
 export function getClaudePermissionMode(
   permissionMode: AgentPermissionMode | undefined,
-  collaborationMode: CollaborationModeKind,
+  sessionModeId: string | null | undefined,
 ) {
-  if (collaborationMode === "plan") {
+  if (isPlanModeId(sessionModeId)) {
     return "plan";
   }
 

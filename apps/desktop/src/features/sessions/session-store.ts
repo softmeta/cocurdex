@@ -4,15 +4,17 @@ import {
   type AgentPermissionMode,
   type AgentPermissionModeOption,
   type AgentProviderSnapshot,
+  type AgentSessionMode,
   type AgentThinkingLevel,
   type AgentToolCallRecord,
   agentRuntimeAxisCapabilities,
-  type CollaborationModeKind,
   childSessionFromSubagentToolCall,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   isAgentPermissionModeSupportedForModel,
+  isPlanModeId,
   mergeProjectedSubagentSession,
+  PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
   supportsInSessionRuntimeAxis,
@@ -20,6 +22,7 @@ import {
 import { atom, type Getter, type Setter } from "jotai";
 import { i18n } from "@/i18n";
 import { resources } from "@/i18n/resources";
+import { agentRuntimeBySessionAtom } from "../agent/runtime/agent-runtime-store";
 import {
   activeWorkspaceIdAtom,
   selectWorkspaceAtom,
@@ -82,16 +85,12 @@ export const agentLabels: Record<AgentId, string> = {
   pi: "Pi",
 };
 
-export const agentCollaborationModes: Record<AgentId, CollaborationModeKind[]> =
-  {
-    "claude-agent": ["default", "plan"],
-    codex: ["default", "plan"],
-    cursor: ["default"],
-    devin: ["default"],
-    "grok-build": ["default", "plan"],
-    opencode: ["default", "plan"],
-    pi: ["default"],
-  };
+function planSessionModes(): AgentSessionMode[] {
+  return [
+    { id: "default", name: "Default" },
+    { id: PLAN_MODE_ID, name: "Plan" },
+  ];
+}
 
 // CLI 适配器启动时没有 installation 记录，选择器显示「检测中」；
 // listAgents 返回前不要把这个空窗当成已经装好。
@@ -101,7 +100,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "Claude Agent",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default", "plan"],
+      sessionModes: planSessionModes(),
       permissionModes: getFallbackAgentPermissionModes("claude-agent"),
       writeModes: ["read-only", "native-write"],
       supportsSteering: true,
@@ -117,7 +116,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "Codex",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default", "plan"],
+      sessionModes: planSessionModes(),
       permissionModes: getFallbackAgentPermissionModes("codex"),
       writeModes: ["read-only"],
       supportsSteering: true,
@@ -133,7 +132,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "Cursor",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default"],
+      sessionModes: [],
       permissionModes: getFallbackAgentPermissionModes("cursor"),
       writeModes: ["native-write"],
       supportsSteering: false,
@@ -149,7 +148,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "Devin",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default"],
+      sessionModes: [],
       permissionModes: getFallbackAgentPermissionModes("devin"),
       writeModes: ["native-write"],
       supportsSteering: false,
@@ -165,7 +164,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "Grok Build",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default", "plan"],
+      sessionModes: planSessionModes(),
       permissionModes: getFallbackAgentPermissionModes("grok-build"),
       writeModes: ["native-write"],
       supportsSteering: false,
@@ -181,7 +180,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "OpenCode",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default", "plan"],
+      sessionModes: planSessionModes(),
       permissionModes: getFallbackAgentPermissionModes("opencode"),
       writeModes: ["read-only", "native-write"],
       supportsSteering: false,
@@ -197,7 +196,7 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     label: "Pi",
     availability: "available",
     capabilities: {
-      collaborationModes: ["default"],
+      sessionModes: [],
       permissionModes: getFallbackAgentPermissionModes("pi"),
       writeModes: ["read-only"],
       supportsSteering: true,
@@ -218,6 +217,30 @@ export const bootstrapAgentsAtom = atom(
   null,
   (_get, set, agents: AgentDescriptor[]) => {
     set(agentsAtom, agents);
+  },
+);
+
+export const applyAgentSessionModesAtom = atom(
+  null,
+  (
+    get,
+    set,
+    payload: { agentId: AgentId; sessionModes: AgentSessionMode[] },
+  ) => {
+    set(
+      agentsAtom,
+      get(agentsAtom).map((agent) =>
+        agent.id === payload.agentId
+          ? {
+              ...agent,
+              capabilities: {
+                ...agent.capabilities,
+                sessionModes: payload.sessionModes,
+              },
+            }
+          : agent,
+      ),
+    );
   },
 );
 
@@ -294,11 +317,36 @@ export function getDefaultPermissionMode(
   return getPermissionModeOptions(agents, agentType)[0]?.id ?? null;
 }
 
-function supportsCollaborationMode(
+export function getSessionModeOptions(
+  agents: AgentDescriptor[],
   agentType: unknown,
-  mode: CollaborationModeKind,
+): AgentSessionMode[] {
+  return (
+    agents.find((agent) => agent.id === normalizeAgentId(agentType))
+      ?.capabilities.sessionModes ?? []
+  );
+}
+
+export function supportsSessionMode(
+  agents: AgentDescriptor[],
+  agentType: unknown,
+  modeId: string | null | undefined,
 ) {
-  return agentCollaborationModes[normalizeAgentId(agentType)].includes(mode);
+  return Boolean(
+    modeId &&
+      getSessionModeOptions(agents, agentType).some(
+        (mode) => mode.id === modeId,
+      ),
+  );
+}
+
+export function supportsPlanMode(
+  agents: AgentDescriptor[],
+  agentType: unknown,
+) {
+  return getSessionModeOptions(agents, agentType).some((mode) =>
+    isPlanModeId(mode.id),
+  );
 }
 
 // Adapters that honor permission changes after session creation. The current
@@ -550,7 +598,7 @@ export const createDraftSessionAtom = atom(
     payload: {
       workspaceId: string;
       agentType?: AgentId;
-      collaborationMode?: CollaborationModeKind;
+      sessionModeId?: string | null;
       permissionMode?: AgentPermissionMode | null;
       agentRoleId?: string | null;
       providerSnapshot?: AgentProviderSnapshot | null;
@@ -559,7 +607,7 @@ export const createDraftSessionAtom = atom(
   ) => {
     const agentType = payload.agentType ?? get(lastSelectedAgentAtom);
     const agents = get(agentsAtom);
-    const requestedMode = payload.collaborationMode ?? "default";
+    const requestedModeId = payload.sessionModeId ?? null;
     const requestedPermissionMode =
       payload.permissionMode ?? getDefaultPermissionMode(agents, agentType);
     const now = new Date().toISOString();
@@ -573,9 +621,9 @@ export const createDraftSessionAtom = atom(
       parentToolCallId: null,
       status: "idle",
       writeMode: getDefaultWriteMode(agentType),
-      collaborationMode: supportsCollaborationMode(agentType, requestedMode)
-        ? requestedMode
-        : "default",
+      sessionModeId: supportsSessionMode(agents, agentType, requestedModeId)
+        ? requestedModeId
+        : null,
       permissionMode:
         supportsPermissionMode(agents, agentType, requestedPermissionMode) &&
         requestedPermissionMode &&
@@ -620,12 +668,13 @@ export const updateSessionAgentAtom = atom(
               title: getDefaultSessionTitle(payload.agentType),
               updatedAt: new Date().toISOString(),
               writeMode: getDefaultWriteMode(payload.agentType),
-              collaborationMode: supportsCollaborationMode(
+              sessionModeId: supportsSessionMode(
+                get(agentsAtom),
                 payload.agentType,
-                session.collaborationMode,
+                session.sessionModeId,
               )
-                ? session.collaborationMode
-                : "default",
+                ? session.sessionModeId
+                : null,
               permissionMode:
                 getDefaultPermissionMode(get(agentsAtom), payload.agentType) ??
                 undefined,
@@ -637,36 +686,45 @@ export const updateSessionAgentAtom = atom(
   },
 );
 
-export const updateSessionCollaborationModeAtom = atom(
+export const updateSessionModeAtom = atom(
   null,
   (
     get,
     set,
     payload: {
       sessionId: string;
-      collaborationMode: CollaborationModeKind;
+      sessionModeId: string | null;
     },
   ) => {
     let updatedSession: SessionRecord | null = null;
+    const agents = get(agentsAtom);
+    const runtimeModes =
+      get(agentRuntimeBySessionAtom)[payload.sessionId]?.mode?.availableModes ??
+      [];
 
     set(
       sessionsAtom,
       get(sessionsAtom).map((session) => {
-        if (
-          session.id !== payload.sessionId ||
-          !supportsCollaborationMode(
+        if (session.id !== payload.sessionId) {
+          return session;
+        }
+        const known =
+          payload.sessionModeId === null ||
+          supportsSessionMode(
+            agents,
             session.agentType,
-            payload.collaborationMode,
-          )
-        ) {
+            payload.sessionModeId,
+          ) ||
+          runtimeModes.some((mode) => mode.id === payload.sessionModeId);
+        if (!known) {
           return session;
         }
 
         updatedSession = {
           ...session,
-          collaborationMode: payload.collaborationMode,
+          sessionModeId: payload.sessionModeId,
           permissionMode:
-            payload.collaborationMode === "default" &&
+            !isPlanModeId(payload.sessionModeId) &&
             session.permissionMode === "claude-plan"
               ? "claude-default"
               : session.permissionMode,

@@ -15,8 +15,8 @@ export const taskApi: Omit<TaskApi, "onAgentEvent"> = {
   async stopSession(sessionId) {
     await requestDaemon("session.stop", { sessionId });
   },
-  resolvePermission: (requestId, decision) =>
-    requestDaemon("permission.resolve", { requestId, decision }),
+  resolvePermission: (requestId, optionId) =>
+    requestDaemon("permission.resolve", { requestId, optionId }),
   resolveQuestion: (questionId, answer) =>
     requestDaemon("question.resolve", { questionId, answer }),
   resolvePlanApproval: (approvalId, decision) =>

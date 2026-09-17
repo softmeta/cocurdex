@@ -58,15 +58,18 @@ export const TREE_STYLE: TreeStyle = {
 };
 
 // Workspace explorer only: the host panel supplies horizontal inset (ps-2 pe-2)
-// for search, the synthetic root row, and Pierre rows together. Zero Pierre list
-// insets / item margins so root hover and file-row hover share the same edges.
-// Keep scrollbar-gutter token at 6px for thumb drawing; INTERACTIVE_SCROLLBAR_CSS
-// uses `scrollbar-gutter: auto` so layout does not reserve a stable column that
-// would shrink only Pierre rows and break edge alignment with the root chip.
+// for the search field and the synthetic workspace-root row. Pierre rows are
+// that root's children, so the list carries one extra nesting level of padding
+// (~the 10px Pierre spends per level) — at zero inset the root chip and its
+// direct children share one indent and the tree reads flat. Item margins stay
+// zero; the scroll container's asymmetric padding formula cancels the scrollbar
+// gutter, so rows keep equal left/right insets. Keep scrollbar-gutter token at
+// 6px for thumb drawing; INTERACTIVE_SCROLLBAR_CSS uses `scrollbar-gutter: auto`
+// so layout does not reserve a stable column that would shrink only Pierre rows.
 export const FILE_TREE_STYLE: TreeStyle = {
   ...TREE_STYLE,
   "--trees-item-margin-x-override": "0px",
-  "--trees-padding-inline-override": "0px",
+  "--trees-padding-inline-override": "10px",
 };
 
 // Lucide Folder / FolderOpen paths as CSS masks so Pierre directory rows match

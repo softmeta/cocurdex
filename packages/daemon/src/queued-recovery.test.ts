@@ -74,7 +74,7 @@ async function seed(archived = false) {
     title: "Task",
     agentType: "pi",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     status: "idle",
     createdAt: timestamp,
     updatedAt: timestamp,

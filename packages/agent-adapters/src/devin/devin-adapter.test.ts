@@ -22,7 +22,7 @@ function createSessionRecord(): SessionRecord {
     agentType: "devin",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-09-16T00:00:00.000Z",
     updatedAt: "2026-09-16T00:00:00.000Z",
     lastMessageAt: null,

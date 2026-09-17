@@ -6,6 +6,7 @@ import type {
 } from "@cocurdex/agent-core";
 import { getAgentDescriptor } from "@cocurdex/agent-core";
 import type { AgentEvent, MessageRecord } from "@cocurdex/shared";
+import { isPlanModeId } from "@cocurdex/shared";
 import type { Event as OpenCodeEvent, OpencodeClient } from "@opencode-ai/sdk";
 import type { OpencodeClient as OpenCodeV2Client } from "@opencode-ai/sdk/v2";
 import {
@@ -310,13 +311,17 @@ export function createOpencodeAdapter(): AgentAdapter {
               payload,
               permission,
             );
+            const requested =
+              activePermissionMode === "opencode-allow" ||
+              activePermissionMode === "opencode-deny"
+                ? null
+                : await payload.requestPermission?.(request);
             const decision =
               activePermissionMode === "opencode-allow"
                 ? "allow_once"
                 : activePermissionMode === "opencode-deny"
                   ? "reject_once"
-                  : ((await payload.requestPermission?.(request)) ??
-                    "reject_once");
+                  : (requested?.decision ?? "reject_once");
 
             await expectOpenCodeSuccess(
               client.postSessionIdPermissionsPermissionId({
@@ -676,7 +681,7 @@ export function createOpencodeAdapter(): AgentAdapter {
                   // the tools blacklist stays as defense for older opencode
                   // binaries. The agent persists on the session, so non-plan
                   // prompts must explicitly switch back to "build".
-                  ...(payload.session.collaborationMode === "plan"
+                  ...(isPlanModeId(payload.session.sessionModeId)
                     ? {
                         agent: "plan",
                         system: OPENCODE_PLAN_SYSTEM,

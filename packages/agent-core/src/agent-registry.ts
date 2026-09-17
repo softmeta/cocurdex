@@ -1,9 +1,18 @@
 import {
+  type AgentSessionMode,
   agentRuntimeAxisCapabilities,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
+  PLAN_MODE_ID,
 } from "@cocurdex/shared";
 import type { AgentDescriptor } from "./agent-types";
+
+function planSessionModes(): AgentSessionMode[] {
+  return [
+    { id: "default", name: "Default" },
+    { id: PLAN_MODE_ID, name: "Plan" },
+  ];
+}
 
 export type AgentRuntimeOwnership =
   | { kind: "builtin" }
@@ -22,7 +31,7 @@ const definitions: AgentDefinition[] = [
       label: "Claude Agent",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default", "plan"],
+        sessionModes: planSessionModes(),
         permissionModes: getFallbackAgentPermissionModes("claude-agent"),
         writeModes: ["read-only", "native-write"],
         supportsSteering: true,
@@ -41,7 +50,7 @@ const definitions: AgentDefinition[] = [
       label: "Codex",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default", "plan"],
+        sessionModes: planSessionModes(),
         permissionModes: getFallbackAgentPermissionModes("codex"),
         writeModes: ["read-only", "native-write"],
         supportsSteering: true,
@@ -60,7 +69,7 @@ const definitions: AgentDefinition[] = [
       label: "OpenCode",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default", "plan"],
+        sessionModes: planSessionModes(),
         permissionModes: getFallbackAgentPermissionModes("opencode"),
         writeModes: ["read-only", "native-write"],
         supportsSteering: false,
@@ -79,7 +88,7 @@ const definitions: AgentDefinition[] = [
       label: "Cursor",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default"],
+        sessionModes: [],
         permissionModes: getFallbackAgentPermissionModes("cursor"),
         writeModes: ["native-write"],
         supportsSteering: false,
@@ -98,7 +107,7 @@ const definitions: AgentDefinition[] = [
       label: "Devin",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default"],
+        sessionModes: [],
         permissionModes: getFallbackAgentPermissionModes("devin"),
         writeModes: ["native-write"],
         supportsSteering: false,
@@ -117,7 +126,7 @@ const definitions: AgentDefinition[] = [
       label: "Grok Build",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default", "plan"],
+        sessionModes: planSessionModes(),
         permissionModes: getFallbackAgentPermissionModes("grok-build"),
         writeModes: ["native-write"],
         supportsSteering: true,
@@ -136,7 +145,7 @@ const definitions: AgentDefinition[] = [
       label: "Pi",
       availability: "available",
       capabilities: {
-        collaborationModes: ["default"],
+        sessionModes: [],
         permissionModes: getFallbackAgentPermissionModes("pi"),
         writeModes: ["read-only"],
         supportsSteering: true,
@@ -155,7 +164,9 @@ function cloneDescriptor(descriptor: AgentDescriptor): AgentDescriptor {
     ...descriptor,
     capabilities: {
       ...descriptor.capabilities,
-      collaborationModes: [...descriptor.capabilities.collaborationModes],
+      sessionModes: descriptor.capabilities.sessionModes.map((mode) => ({
+        ...mode,
+      })),
       permissionModes: descriptor.capabilities.permissionModes.map((mode) => ({
         ...mode,
       })),

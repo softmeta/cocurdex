@@ -1,7 +1,6 @@
 import type {
   AgentEvent,
   AgentInputDelivery,
-  AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentThinkingLevel,
   MessageAttachment,
@@ -19,7 +18,7 @@ export type SessionConfiguration = Pick<
   | "title"
   | "agentType"
   | "writeMode"
-  | "collaborationMode"
+  | "sessionModeId"
   | "permissionMode"
   | "agentRoleId"
   | "providerSnapshot"
@@ -61,10 +60,7 @@ export interface TaskApi {
   saveSessionConfiguration(input: SessionConfiguration): Promise<SessionRecord>;
   sendMessage(input: SendSessionCommand): Promise<MessageRecord>;
   stopSession(sessionId: string): Promise<void>;
-  resolvePermission(
-    requestId: string,
-    decision: AgentPermissionDecision,
-  ): Promise<boolean>;
+  resolvePermission(requestId: string, optionId: string): Promise<boolean>;
   resolveQuestion(questionId: string, answer: string): Promise<boolean>;
   resolvePlanApproval(
     approvalId: string,

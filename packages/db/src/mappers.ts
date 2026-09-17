@@ -6,7 +6,6 @@ import {
   type AgentRoleRecord,
   type AgentThinkingLevel,
   type AgentToolCallRecord,
-  type CollaborationModeKind,
   type ConversationContentPart,
   type ConversationMessageRecord,
   type ConversationRecord,
@@ -32,8 +31,8 @@ import {
   toNullableString,
 } from "./sqlite-types";
 
-function isCollaborationMode(value: unknown): value is CollaborationModeKind {
-  return value === "default" || value === "plan";
+function toSessionModeId(value: unknown): string | null {
+  return toNullableString(value) ?? null;
 }
 
 export function mapWorkspace(row: SqliteRow): WorkspaceRecord {
@@ -67,9 +66,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
     parentToolCallId: toNullableString(row.parent_tool_call_id),
     status: row.status as SessionRecord["status"],
     writeMode: row.write_mode as SessionRecord["writeMode"],
-    collaborationMode: isCollaborationMode(row.collaboration_mode)
-      ? row.collaboration_mode
-      : "default",
+    sessionModeId: toSessionModeId(row.session_mode_id),
     permissionMode:
       typeof row.permission_mode === "string" && row.permission_mode
         ? (row.permission_mode as SessionRecord["permissionMode"])
@@ -290,9 +287,7 @@ export function mapAgentRole(row: SqliteRow): AgentRoleRecord {
     modelName: toNullableString(row.model_name),
     permissionMode: (toNullableString(row.permission_mode) ??
       null) as AgentPermissionMode | null,
-    collaborationMode: isCollaborationMode(row.collaboration_mode)
-      ? row.collaboration_mode
-      : "default",
+    sessionModeId: toSessionModeId(row.session_mode_id),
     reasoningEffort: (toNullableString(row.reasoning_effort) ??
       null) as ReasoningEffort | null,
     serviceTier: toNullableString(row.service_tier),

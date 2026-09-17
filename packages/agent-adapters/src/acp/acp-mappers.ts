@@ -7,7 +7,7 @@ import type {
 } from "@agentclientprotocol/sdk";
 import type {
   AgentNegotiatedCapabilities,
-  AgentPermissionDecision,
+  AgentPermissionResolution,
   MessageAttachment,
 } from "@cocurdex/shared";
 import {
@@ -39,12 +39,20 @@ export function mapNegotiatedCapabilities(
 
 export function mapPermissionDecision(
   request: RequestPermissionRequest,
-  decision: AgentPermissionDecision,
+  resolution: AgentPermissionResolution,
 ): RequestPermissionResponse {
-  const option =
-    decision === "cancelled"
-      ? undefined
-      : request.options.find((candidate) => candidate.kind === decision);
+  if (resolution.decision === "cancelled") {
+    return { outcome: { outcome: "cancelled" } };
+  }
+
+  const option = resolution.optionId
+    ? request.options.find(
+        (candidate) => candidate.optionId === resolution.optionId,
+      )
+    : request.options.find(
+        (candidate) => candidate.kind === resolution.decision,
+      );
+
   return option
     ? {
         outcome: {
@@ -58,7 +66,10 @@ export function mapPermissionDecision(
 export function rejectPermission(
   request: RequestPermissionRequest,
 ): RequestPermissionResponse {
-  return mapPermissionDecision(request, "reject_once");
+  return mapPermissionDecision(request, {
+    decision: "reject_once",
+    optionId: null,
+  });
 }
 
 export async function buildAcpPrompt(

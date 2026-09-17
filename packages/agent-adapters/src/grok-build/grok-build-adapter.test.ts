@@ -20,7 +20,7 @@ function createSessionRecord(): SessionRecord {
     agentType: "grok-build",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-08-02T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
     lastMessageAt: null,

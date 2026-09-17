@@ -33,7 +33,7 @@ function createSession(): SessionRecord {
     agentType: "pi",
     status: "idle",
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-08-02T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
     lastMessageAt: null,

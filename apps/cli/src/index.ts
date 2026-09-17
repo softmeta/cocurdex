@@ -197,10 +197,10 @@ async function main(rawArgs: string[]) {
       stop: async () => {
         await requestDaemon("session.stop", { sessionId: session.id });
       },
-      resolvePermission: async (requestId, decision) => {
+      resolvePermission: async (requestId, optionId) => {
         const resolved = await requestDaemon("permission.resolve", {
           requestId,
-          decision,
+          optionId,
         });
         if (!resolved)
           throw new Error("Permission request is no longer pending.");
@@ -527,7 +527,7 @@ async function createSession(parsed: ParsedArgs) {
     agentType,
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,

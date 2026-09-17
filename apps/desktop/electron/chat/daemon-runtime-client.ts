@@ -64,11 +64,11 @@ export function createDaemonRuntimeClient(
         requestOptions(),
       );
     },
-    async resolvePermission(requestId, decision) {
+    async resolvePermission(requestId, optionId) {
       await ensureDaemon();
       return requestDaemon(
         "permission.resolve",
-        { requestId, decision },
+        { requestId, optionId },
         requestOptions(),
       );
     },

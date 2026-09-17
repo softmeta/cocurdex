@@ -69,6 +69,10 @@ export async function handleDaemonRequest(
       return service.bootstrap();
     case "agent.list":
       return service.listAgents();
+    case "agent.sessionModes.read":
+      return service.readAgentSessionModes(request.params.agentId);
+    case "agent.login":
+      return service.providerService.loginAgent(request.params.agentId);
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":
@@ -416,7 +420,7 @@ export async function handleDaemonRequest(
     case "permission.resolve":
       return service.resolvePermission(
         request.params.requestId,
-        request.params.decision,
+        request.params.optionId,
       );
     case "question.resolve":
       return service.resolveQuestion(

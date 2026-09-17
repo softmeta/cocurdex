@@ -1,7 +1,6 @@
 import type {
   AgentDescriptor,
   AgentId,
-  AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentProviderSelection,
   AgentProviderSnapshot,
@@ -9,6 +8,7 @@ import type {
   AgentRoleRecord,
   AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
+  AgentSessionMode,
   AgentSlashCommand,
   AgentToolCallResult,
   AppBootstrapData,
@@ -195,6 +195,8 @@ export type DaemonRequestPayloadByMethod = {
   "app.bootstrap": undefined;
   "app.resync": { sessionIds: string[] };
   "agent.list": undefined;
+  "agent.sessionModes.read": { agentId: AgentId };
+  "agent.login": { agentId: AgentId };
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
@@ -363,7 +365,7 @@ export type DaemonRequestPayloadByMethod = {
   "workflow.cancel": { workflowRunId: string };
   "permission.resolve": {
     requestId: string;
-    decision: AgentPermissionDecision;
+    optionId: string;
   };
   "question.resolve": { questionId: string; answer: string };
   "planApproval.resolve": {
@@ -416,6 +418,8 @@ export type DaemonResultByMethod = {
   "app.bootstrap": AppBootstrapData;
   "app.resync": AppResyncSnapshot;
   "agent.list": AgentDescriptor[];
+  "agent.sessionModes.read": AgentSessionMode[];
+  "agent.login": null;
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];

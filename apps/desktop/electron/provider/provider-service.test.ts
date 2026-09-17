@@ -68,7 +68,7 @@ const model = {
 const codexSession = {
   agentType: "codex",
   archivedAt: null,
-  collaborationMode: "default",
+  sessionModeId: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   id: "session-codex-title",
   lastMessageAt: null,
@@ -91,7 +91,7 @@ const codexSession = {
 const claudeSession = {
   agentType: "claude-agent",
   archivedAt: null,
-  collaborationMode: "default",
+  sessionModeId: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   id: "session-claude-title",
   lastMessageAt: null,

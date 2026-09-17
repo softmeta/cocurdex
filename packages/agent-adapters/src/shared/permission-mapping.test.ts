@@ -17,7 +17,7 @@ function session(agentType: SessionRecord["agentType"]): SessionRecord {
     agentType,
     status: "running",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-05-01T12:00:00.000Z",
     updatedAt: "2026-05-01T12:00:00.000Z",
     lastMessageAt: null,
@@ -36,7 +36,7 @@ function payload(
   return {
     session: session(agentType),
     workspaceRootPath: "/tmp/repo",
-    requestPermission: vi.fn(async () => decision),
+    requestPermission: vi.fn(async () => ({ decision, optionId: null })),
     requestQuestion: vi.fn(async () => "Use src/app.tsx"),
     requestPlanApproval: vi.fn(async () => ({ outcome: "approved" as const })),
   };

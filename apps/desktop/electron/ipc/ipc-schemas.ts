@@ -326,7 +326,14 @@ export const schemas = {
     // an edit only when the message ends up with neither text nor attachments.
     content: z.string().max(200_000),
   }),
-  permissionResolve: z.tuple([idSchema, decisionSchema]),
+  permissionResolve: z.tuple([
+    idSchema,
+    z
+      .string()
+      .min(1)
+      .max(256)
+      .refine(noNullByte, "option ID contains null byte"),
+  ]),
   questionResolve: z.tuple([idSchema, z.string().max(64_000)]),
   planApprovalResolve: z.tuple([
     idSchema,

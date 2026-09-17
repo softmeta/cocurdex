@@ -6,7 +6,6 @@ import {
   type AgentQuestionRequestRecord,
   type AgentThinkingLevel,
   type BrowserAnnotation,
-  type CollaborationModeKind,
   type MessageAttachment,
   type MessageRecord,
   normalizeWorkspaceRootPaths,
@@ -32,7 +31,7 @@ import {
   dismissPlanForSessionAtom,
   findPendingPlanApproval,
   followUpBehaviorAtom,
-  getActiveCollaborationMode,
+  getActiveSessionModeId,
   getAgentInputDelivery,
   messagesLoadedBySessionAtom,
   permissionsBySessionAtom,
@@ -95,7 +94,7 @@ import {
   selectSessionAtom,
   sessionsAtom,
   updateAgentRuntimePreferences,
-  updateSessionCollaborationModeAtom,
+  updateSessionModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
   updateSessionStatusAtom,
@@ -270,9 +269,7 @@ export function CenterPanel({
   const setDraftWorktreePath = useSetAtom(draftWorktreePathAtom);
   const setLastSelectedAgent = useSetAtom(lastSelectedAgentAtom);
   const markSessionMessage = useSetAtom(markSessionMessageAtom);
-  const updateSessionCollaborationMode = useSetAtom(
-    updateSessionCollaborationModeAtom,
-  );
+  const updateSessionMode = useSetAtom(updateSessionModeAtom);
   const updateSessionPermissionMode = useSetAtom(
     updateSessionPermissionModeAtom,
   );
@@ -356,7 +353,7 @@ export function CenterPanel({
   // is approved or abandoned and report the new mode over ACP. Deriving the
   // composer toggle from that report keeps the two from drifting apart; the
   // stored session value is the source of truth only until the agent speaks.
-  const activeCollaborationMode = getActiveCollaborationMode(
+  const activeSessionModeId = getActiveSessionModeId(
     activeSession,
     activeAgentRuntime,
   );
@@ -653,7 +650,7 @@ export function CenterPanel({
       const nextAttachments = [...attachments, ...annotationAttachments];
       logRendererDiagnostic("info", "[AgentSession] send payload", {
         attachments: nextAttachments.map(summarizeAttachmentForLog),
-        collaborationMode: nextSession.collaborationMode,
+        sessionModeId: nextSession.sessionModeId,
         content: userMessage.content,
         createdAt: userMessage.createdAt,
         messageId: userMessage.id,
@@ -974,7 +971,7 @@ export function CenterPanel({
 
   const handleStartSession = async ({
     agentType,
-    collaborationMode,
+    sessionModeId,
     permissionMode,
     attachments,
     message,
@@ -983,7 +980,7 @@ export function CenterPanel({
     agentRoleId,
   }: {
     agentType: AgentId;
-    collaborationMode: CollaborationModeKind;
+    sessionModeId: string | null;
     permissionMode?: AgentPermissionMode | null;
     attachments?: MessageAttachment[];
     message: string;
@@ -998,7 +995,7 @@ export function CenterPanel({
     const session = createDraftSession({
       workspaceId: activeWorkspace.id,
       agentType,
-      collaborationMode,
+      sessionModeId,
       permissionMode,
       agentRoleId: agentRoleId ?? null,
       providerSnapshot: providerSnapshot ?? null,
@@ -1056,7 +1053,7 @@ export function CenterPanel({
         "[AgentSession] start session send payload",
         {
           attachments: nextAttachments.map(summarizeAttachmentForLog),
-          collaborationMode: titledSession.collaborationMode,
+          sessionModeId: titledSession.sessionModeId,
           content: userMessage.content,
           createdAt: userMessage.createdAt,
           messageId: userMessage.id,
@@ -1127,13 +1124,10 @@ export function CenterPanel({
     void taskApi.saveSessionConfiguration(sessionConfiguration(session));
   };
 
-  const handleSelectCollaborationMode = (
-    mode: CollaborationModeKind,
-    sessionId: string,
-  ) => {
-    const updatedSession = updateSessionCollaborationMode({
+  const handleSelectSessionMode = (modeId: string, sessionId: string) => {
+    const updatedSession = updateSessionMode({
       sessionId,
-      collaborationMode: mode,
+      sessionModeId: modeId || null,
     });
 
     if (updatedSession) {
@@ -1144,8 +1138,11 @@ export function CenterPanel({
     // on the next prompt. Push the switch now so it also applies mid-turn;
     // agents without runtime modes keep picking it up from the session record.
     const runtimeModes = agentRuntimeBySession[sessionId]?.mode;
-    if (runtimeModes?.availableModes.some(({ id }) => id === mode)) {
-      void desktopApi.setSessionRuntimeMode(sessionId, mode);
+    if (
+      modeId &&
+      runtimeModes?.availableModes.some(({ id }) => id === modeId)
+    ) {
+      void desktopApi.setSessionRuntimeMode(sessionId, modeId);
     }
   };
 
@@ -1207,7 +1204,7 @@ export function CenterPanel({
           agents={agents}
           agentType={lastSelectedAgent}
           attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
-          collaborationMode="default"
+          sessionModeId={null}
           composerRef={composerRef}
           onClearAttachment={clearChatComposerAttachment}
           onOpenWorkspace={handleOpenWorkspace}
@@ -1257,7 +1254,7 @@ export function CenterPanel({
             attachment={
               isFocused ? (composerAttachment ?? undefined) : undefined
             }
-            collaborationMode={activeCollaborationMode}
+            sessionModeId={activeSessionModeId}
             composerRef={composerRef}
             permissionMode={activePermissionMode}
             providerSnapshot={activeSession.providerSnapshot}
@@ -1274,11 +1271,11 @@ export function CenterPanel({
             onClearAttachment={clearChatComposerAttachment}
             onAnswerQuestion={handleAnswerQuestion}
             onOpenToolLocation={openFilePreview}
-            onResolvePermission={async (requestId, decision) => {
-              await taskApi.resolvePermission(requestId, decision);
+            onResolvePermission={async (requestId, optionId) => {
+              await taskApi.resolvePermission(requestId, optionId);
             }}
-            onSelectCollaborationMode={(mode) =>
-              handleSelectCollaborationMode(mode, activeSession.id)
+            onSelectSessionMode={(modeId) =>
+              handleSelectSessionMode(modeId, activeSession.id)
             }
             onSelectPermissionMode={
               activeDisplayStatus !== "running"

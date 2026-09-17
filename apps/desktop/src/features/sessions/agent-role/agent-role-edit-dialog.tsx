@@ -4,7 +4,6 @@ import type {
   AgentRoleRecord,
   AgentThinkingLevel,
   CodexReasoningEffort,
-  CollaborationModeKind,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { type FormEvent, useState, useSyncExternalStore } from "react";
@@ -20,7 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useMountEffect } from "@/lib";
-import { supportsPlanMode } from "../collaboration-mode";
 import {
   getCachedProviderModelEntry,
   getDefaultProviderModelValue,
@@ -31,7 +29,12 @@ import {
   providerModelCache,
   subscribeProviderModelCache,
 } from "../provider-model";
-import { agentsAtom, getDefaultPermissionMode } from "../session-store";
+import {
+  agentsAtom,
+  getDefaultPermissionMode,
+  getSessionModeOptions,
+  supportsSessionMode,
+} from "../session-store";
 import { AgentRoleRuntimeFields } from "./agent-role-runtime-fields";
 import { saveAgentRoleRecord } from "./agent-role-store";
 
@@ -83,8 +86,9 @@ function AgentRoleEditForm({
   );
   const [permissionMode, setPermissionMode] =
     useState<AgentPermissionMode | null>(role.permissionMode);
-  const [collaborationMode, setCollaborationMode] =
-    useState<CollaborationModeKind>(role.collaborationMode);
+  const [sessionModeId, setSessionModeId] = useState<string | null>(
+    role.sessionModeId,
+  );
   const [reasoningEffort, setReasoningEffort] = useState(
     role.reasoningEffort ?? "",
   );
@@ -159,8 +163,12 @@ function AgentRoleEditForm({
       setIsLoading(true);
     }
     setPermissionMode(getDefaultPermissionMode(agents, nextAgentId));
-    setCollaborationMode(
-      supportsPlanMode(nextAgentId) ? collaborationMode : "default",
+    setSessionModeId(
+      getSessionModeOptions(agents, nextAgentId).some(
+        (mode) => mode.id === sessionModeId,
+      )
+        ? sessionModeId
+        : null,
     );
     setReasoningEffort("");
     setServiceTier("");
@@ -202,10 +210,9 @@ function AgentRoleEditForm({
         modelId: parsed?.modelId ?? null,
         modelName: selectedProviderModel?.model.name ?? role.modelName,
         permissionMode,
-        collaborationMode:
-          collaborationMode === "plan" && supportsPlanMode(agentId)
-            ? "plan"
-            : "default",
+        sessionModeId: supportsSessionMode(agents, agentId, sessionModeId)
+          ? sessionModeId
+          : null,
         reasoningEffort: reasoningEffort
           ? (reasoningEffort as CodexReasoningEffort)
           : null,
@@ -249,7 +256,7 @@ function AgentRoleEditForm({
               <AgentRoleRuntimeFields
                 agentId={agentId}
                 agents={agents}
-                collaborationMode={collaborationMode}
+                sessionModeId={sessionModeId}
                 compatibleProviders={compatibleProviders}
                 fastMode={fastMode}
                 isLoading={isLoading}
@@ -261,7 +268,7 @@ function AgentRoleEditForm({
                 serviceTier={serviceTier}
                 thinkingLevel={thinkingLevel}
                 onAgentChange={(next) => void handleSelectAgent(next)}
-                onCollaborationModeChange={setCollaborationMode}
+                onSessionModeChange={setSessionModeId}
                 onFastModeChange={setFastMode}
                 onModelChange={setModelValue}
                 onOpenCodeAgentChange={setOpenCodeAgent}

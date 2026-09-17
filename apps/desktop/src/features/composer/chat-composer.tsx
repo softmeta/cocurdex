@@ -5,7 +5,6 @@ import type {
   AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
-  CollaborationModeKind,
   MessageAttachment,
 } from "@cocurdex/shared";
 import {
@@ -37,8 +36,8 @@ import {
   agentLabels,
   agentsAtom,
   buildAgentSelectOptions,
-  CollaborationModeSubmenu,
-  supportsPlanMode,
+  getSessionModeOptions,
+  SessionModeSubmenu,
 } from "@/features/sessions";
 import { cn } from "@/lib";
 import { composerFooterControlClassName } from "./chat-composer-layout";
@@ -95,7 +94,7 @@ interface ChatComposerProps {
   agentType?: AgentId;
   agentLabel?: string;
   isRunning?: boolean;
-  collaborationMode?: CollaborationModeKind;
+  sessionModeId?: string | null;
   permissionMode?: AgentPermissionMode | null;
   providerSnapshot?: AgentProviderSnapshot | null;
   variant?: "panel" | "pill";
@@ -121,7 +120,7 @@ interface ChatComposerProps {
   placeholderOverride?: string;
   mentionMenuPlacement?: "top" | "bottom";
   onClearAttachment?(): void;
-  onSelectCollaborationMode?(mode: CollaborationModeKind): void;
+  onSelectSessionMode?(modeId: string): void;
   onSelectPermissionMode?(mode: AgentPermissionMode): void;
   onSelectAgent?(agentType: AgentId): void;
   onSelectThinkingLevel?(level: AgentThinkingLevel): void;
@@ -145,7 +144,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       agentType,
       agentLabel = "Codex",
       isRunning = false,
-      collaborationMode = "default",
+      sessionModeId = null,
       variant = "panel",
       workspaceRootPath,
       workspaceRootPaths,
@@ -163,7 +162,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       placeholderOverride,
       mentionMenuPlacement = "top",
       onClearAttachment,
-      onSelectCollaborationMode,
+      onSelectSessionMode,
       onSelectAgent,
       onSelectThinkingLevel,
       onSelectRuntimeMode,
@@ -300,8 +299,13 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const canSelectAgent = Boolean(onSelectAgent) && !isRunning;
 
     const handleSelectAgent = (nextAgent: AgentId) => {
-      if (!supportsPlanMode(nextAgent) && collaborationMode !== "default") {
-        onSelectCollaborationMode?.("default");
+      if (
+        sessionModeId &&
+        !getSessionModeOptions(agents, nextAgent).some(
+          (mode) => mode.id === sessionModeId,
+        )
+      ) {
+        onSelectSessionMode?.("");
       }
       onSelectAgent?.(nextAgent);
     };
@@ -485,11 +489,12 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     // and permission instead of inside the add-attachment menu.
     const runtimeMenuExtras = isAgentMode ? (
       <>
-        <CollaborationModeSubmenu
+        <SessionModeSubmenu
           agentType={selectedAgent}
-          mode={collaborationMode}
+          modeId={sessionModeId}
+          modes={getSessionModeOptions(agents, selectedAgent)}
           runtimeMode={runtimeMode}
-          onChange={onSelectCollaborationMode}
+          onChange={onSelectSessionMode}
           onRuntimeModeChange={onSelectRuntimeMode}
         />
         {supportsInSessionRuntimeAxis(selectedAgent, "thinking") &&

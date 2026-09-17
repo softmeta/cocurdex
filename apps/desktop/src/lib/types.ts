@@ -5,6 +5,7 @@ import type {
   AgentRateLimitsReadResult,
   AgentRoleRecord,
   AgentSessionConfigOption,
+  AgentSessionMode,
   AgentSlashCommand,
   AgentToolCallRecord,
   AgentToolCallResult,
@@ -302,6 +303,7 @@ export interface ProductApi {
   readAdapterRateLimits(
     agentIds: AgentId[],
   ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;
+  readAgentSessionModes(agentId: AgentId): Promise<AgentSessionMode[]>;
   listWorkspaces(): Promise<WorkspaceRecord[]>;
   saveWorkspace(workspace: WorkspaceRecord): Promise<WorkspaceRecord>;
   deleteWorkspace(workspaceId: string): Promise<void>;
@@ -432,6 +434,7 @@ export interface ProductApi {
     agentId: AgentId,
     options?: { forceRefresh?: boolean },
   ): Promise<CompatibleProviderModel[]>;
+  loginAgent(agentId: AgentId): Promise<void>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
     agentId: AgentId,

@@ -16,7 +16,6 @@ import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
   AgentEvent,
   AgentId,
-  AgentPermissionDecision,
   AgentPlanApprovalDecision,
   AgentRoleRecord,
   AgentRuntimeProviderConfig,
@@ -68,7 +67,10 @@ import {
   registerScriptRunTools,
   registerTeamTools,
 } from "./agent-tools";
-import { discoverInstalledAgentCapabilities } from "./agents";
+import {
+  discoverAgentSessionModes,
+  discoverInstalledAgentCapabilities,
+} from "./agents";
 import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
@@ -336,6 +338,12 @@ export class CocurdexDaemonService {
     this.runtime.configureAgentEventPersistence(async (event) => {
       await this.state.persistAgentEvent(event);
       await this.state.sessionAttention.applyEvent(event);
+      if (event.type === "session.mode.updated" && event.availableModes) {
+        await this.state.cacheSessionModes(
+          event.sessionId,
+          event.availableModes,
+        );
+      }
       if (event.type === "tool.started") {
         if (toolMayMutateWorkspace(event.toolCall)) {
           this.workspaceChanges.markToolActivity(event.sessionId);
@@ -483,7 +491,19 @@ export class CocurdexDaemonService {
 
   async listAgents() {
     const agents = await detectAgentInstallations(createAgentRegistry().list());
-    return discoverInstalledAgentCapabilities(agents);
+    this.state.recordAgentVersions(agents);
+    return discoverInstalledAgentCapabilities(agents, {
+      cache: this.state.agentCapabilityCache,
+    });
+  }
+
+  async readAgentSessionModes(agentId: AgentId) {
+    const agents = await detectAgentInstallations(createAgentRegistry().list());
+    this.state.recordAgentVersions(agents);
+    return discoverAgentSessionModes(agents, {
+      agentId,
+      cache: this.state.agentCapabilityCache,
+    });
   }
 
   readAdapterRateLimits(agentIds: AgentId[]) {
@@ -881,7 +901,7 @@ export class CocurdexDaemonService {
       modelId: payload.modelId,
       modelName: payload.modelName,
       permissionMode: payload.permissionMode,
-      collaborationMode: payload.collaborationMode ?? "default",
+      sessionModeId: payload.sessionModeId ?? null,
       reasoningEffort: payload.reasoningEffort,
       serviceTier: payload.serviceTier,
       fastMode: payload.fastMode,
@@ -1701,8 +1721,8 @@ export class CocurdexDaemonService {
     return pendingTurn;
   }
 
-  resolvePermission(requestId: string, decision: AgentPermissionDecision) {
-    return this.runtime.resolveAgentPermission(requestId, decision);
+  resolvePermission(requestId: string, optionId: string) {
+    return this.runtime.resolveAgentPermission(requestId, optionId);
   }
 
   private async ensureAgentAvailable(agentId: AgentId) {

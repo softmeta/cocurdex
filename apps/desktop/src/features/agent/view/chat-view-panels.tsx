@@ -1,6 +1,5 @@
 import type {
   AgentId,
-  AgentPermissionDecision,
   AgentPermissionMode,
   AgentPermissionRequestRecord,
   AgentPlanApprovalDecision,
@@ -10,7 +9,6 @@ import type {
   AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
-  CollaborationModeKind,
   MessageAttachment,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -45,7 +43,7 @@ interface ChatComposerControls {
   agentType?: AgentId;
   attachment?: MessageAttachment;
   draftKey?: string;
-  collaborationMode: CollaborationModeKind;
+  sessionModeId: string | null;
   permissionMode?: AgentPermissionMode | null;
   providerSnapshot?: AgentProviderSnapshot | null;
   thinkingLevel?: AgentThinkingLevel | null;
@@ -68,7 +66,7 @@ interface ChatComposerControls {
   workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
   onClearAttachment?(): void;
-  onSelectCollaborationMode?(mode: CollaborationModeKind): void;
+  onSelectSessionMode?(modeId: string): void;
   onSelectPermissionMode?(mode: AgentPermissionMode): void;
   onSelectThinkingLevel?(level: AgentThinkingLevel): void;
   onSelectRuntimeMode?(modeId: string): void;
@@ -87,7 +85,7 @@ interface ChatComposerControls {
   ): Promise<void>;
   onResolvePermission?(
     requestId: string,
-    decision: AgentPermissionDecision,
+    optionId: string,
   ): Promise<void> | void;
   onResolvePlanApproval?(
     approvalId: string,

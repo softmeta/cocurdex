@@ -164,7 +164,8 @@
     infinite;
 }
 
-.group\/list-row:is(:hover, :focus-within) .sidebar-activity-dot {
+.group\/list-row:is(:hover, :focus-within)
+  .sidebar-activity-dot--hover-handoff {
   animation: none;
   opacity: 0;
 }
@@ -174,7 +175,8 @@
     animation: none;
   }
 
-  .group\/list-row:is(:hover, :focus-within) .sidebar-activity-dot {
+  .group\/list-row:is(:hover, :focus-within)
+    .sidebar-activity-dot--hover-handoff {
     opacity: 0;
   }
 }

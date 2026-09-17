@@ -10,7 +10,7 @@ export function sessionConfiguration(
     title,
     agentType,
     writeMode,
-    collaborationMode,
+    sessionModeId,
     permissionMode,
     agentRoleId,
     providerSnapshot,
@@ -23,7 +23,7 @@ export function sessionConfiguration(
     title,
     agentType,
     writeMode,
-    collaborationMode,
+    sessionModeId,
     permissionMode,
     agentRoleId,
     providerSnapshot,
@@ -58,8 +58,8 @@ export function createTaskClient(resolveApi: () => TaskApi): TaskApi {
     async stopSession(id) {
       await resolveApi().stopSession(id);
     },
-    async resolvePermission(id, decision) {
-      return resolveApi().resolvePermission(id, decision);
+    async resolvePermission(id, optionId) {
+      return resolveApi().resolvePermission(id, optionId);
     },
     async resolveQuestion(id, answer) {
       return resolveApi().resolveQuestion(id, answer);

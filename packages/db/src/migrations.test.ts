@@ -14,7 +14,7 @@ describe("initializeDatabase", () => {
         session_kind TEXT NOT NULL DEFAULT 'main',
         status TEXT NOT NULL,
         write_mode TEXT NOT NULL,
-        collaboration_mode TEXT NOT NULL DEFAULT 'default',
+        session_mode_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -39,7 +39,7 @@ describe("initializeDatabase", () => {
         session_kind TEXT NOT NULL DEFAULT 'main',
         status TEXT NOT NULL,
         write_mode TEXT NOT NULL,
-        collaboration_mode TEXT NOT NULL DEFAULT 'default',
+        session_mode_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -87,7 +87,7 @@ describe("initializeDatabase", () => {
         session_kind TEXT NOT NULL DEFAULT 'main',
         status TEXT NOT NULL,
         write_mode TEXT NOT NULL,
-        collaboration_mode TEXT NOT NULL DEFAULT 'default',
+        session_mode_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

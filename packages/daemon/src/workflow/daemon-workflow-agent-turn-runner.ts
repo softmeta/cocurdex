@@ -2,7 +2,6 @@ import type {
   AgentId,
   AgentPermissionMode,
   AgentProviderSnapshot,
-  CollaborationModeKind,
   MessageRecord,
   SessionRecord,
   WorkflowAttemptRecord,
@@ -45,13 +44,9 @@ function permissionMode(attempt: WorkflowAttemptRecord) {
   )?.id;
 }
 
-function collaborationMode(
-  attempt: WorkflowAttemptRecord,
-): CollaborationModeKind {
-  const runtimeMode = attempt.executorBinding.runtime?.collaborationMode;
-  return runtimeMode === "plan" || runtimeMode === "default"
-    ? runtimeMode
-    : "default";
+function sessionModeId(attempt: WorkflowAttemptRecord) {
+  const modeId = attempt.executorBinding.runtime?.sessionModeId;
+  return typeof modeId === "string" && modeId ? modeId : null;
 }
 
 function modelSnapshot(
@@ -102,7 +97,7 @@ function createSession(
     sessionKind: "subagent",
     status: "running",
     writeMode,
-    collaborationMode: collaborationMode(attempt),
+    sessionModeId: sessionModeId(attempt),
     permissionMode: permissionMode(attempt),
     providerSnapshot: modelSnapshot(attempt),
     createdAt: now,

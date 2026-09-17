@@ -70,6 +70,11 @@ export async function listAgents(): Promise<AgentDescriptor[]> {
   return requestDaemon("agent.list", daemonOptions());
 }
 
+export async function readAgentSessionModes(agentId: AgentId) {
+  await daemonReady;
+  return requestDaemon("agent.sessionModes.read", { agentId }, daemonOptions());
+}
+
 export async function readAdapterRateLimits(agentIds: AgentId[]) {
   await daemonReady;
   return requestDaemon("agent.rateLimits.read", { agentIds }, daemonOptions());

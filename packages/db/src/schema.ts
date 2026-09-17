@@ -1,3 +1,4 @@
+import { createAgentCapabilityCacheSchemaSql } from "./agents/schema";
 import { createScriptRunSchemaSql } from "./script-run/schema";
 import { createTeamSchemaSql } from "./team/schema";
 import { createWorkflowSchemaSql } from "./workflow/schema";
@@ -32,7 +33,7 @@ export function createSchemaSql() {
       parent_tool_call_id TEXT,
       status TEXT NOT NULL,
       write_mode TEXT NOT NULL,
-      collaboration_mode TEXT NOT NULL DEFAULT 'default',
+      session_mode_id TEXT,
       permission_mode TEXT,
       agent_role_id TEXT,
       provider_snapshot_json TEXT,
@@ -226,7 +227,7 @@ export function createSchemaSql() {
       model_id TEXT,
       model_name TEXT,
       permission_mode TEXT,
-      collaboration_mode TEXT NOT NULL DEFAULT 'default',
+      session_mode_id TEXT,
       reasoning_effort TEXT,
       service_tier TEXT,
       fast_mode INTEGER,
@@ -449,5 +450,7 @@ export function createSchemaSql() {
     ${createTeamSchemaSql()}
 
     ${createScriptRunSchemaSql()}
+
+    ${createAgentCapabilityCacheSchemaSql()}
   `;
 }

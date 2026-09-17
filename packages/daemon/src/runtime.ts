@@ -7,9 +7,9 @@ import type {
 import {
   type AgentEvent,
   type AgentId,
-  type AgentPermissionDecision,
   type AgentPermissionRequestPayload,
   type AgentPermissionRequestRecord,
+  type AgentPermissionResolution,
   type AgentPlanApprovalDecision,
   type AgentPlanApprovalRecord,
   type AgentPlanApprovalRequestPayload,
@@ -45,7 +45,7 @@ interface SessionRuntime {
 
 interface PendingPermission {
   request: AgentPermissionRequestRecord;
-  resolve(decision: AgentPermissionDecision): void;
+  resolve(resolution: AgentPermissionResolution): void;
 }
 
 interface PendingQuestion {
@@ -212,7 +212,7 @@ export class AgentRuntimeManager {
 
   requestAgentPermission(
     request: AgentPermissionRequestPayload,
-  ): Promise<AgentPermissionDecision> {
+  ): Promise<AgentPermissionResolution> {
     const record = this.createPermissionRecord(request);
 
     return new Promise((resolve) => {
@@ -225,8 +225,20 @@ export class AgentRuntimeManager {
     });
   }
 
-  resolveAgentPermission(requestId: string, decision: AgentPermissionDecision) {
-    return this.resolvePendingPermission(requestId, decision);
+  resolveAgentPermission(requestId: string, optionId: string) {
+    const pending = this.pendingPermissions.get(requestId);
+    const option = pending?.request.options.find(
+      (item) => item.id === optionId,
+    );
+
+    if (!option) {
+      return false;
+    }
+
+    return this.resolvePendingPermission(requestId, {
+      decision: option.kind,
+      optionId: option.id,
+    });
   }
 
   requestAgentPlanApproval(
@@ -456,7 +468,7 @@ export class AgentRuntimeManager {
         attachments: payload.attachments,
         history: options.history,
         thinkingLevel: payload.thinkingLevel,
-        collaborationMode: payload.session.collaborationMode,
+        sessionModeId: payload.session.sessionModeId,
         permissionMode: payload.session.permissionMode,
         providerSnapshot: payload.session.providerSnapshot,
         providerConfig: options.providerConfig,
@@ -498,7 +510,7 @@ export class AgentRuntimeManager {
         attachments: payload.attachments,
         history: options.history,
         thinkingLevel: payload.thinkingLevel,
-        collaborationMode: payload.session.collaborationMode,
+        sessionModeId: payload.session.sessionModeId,
         // Read off the incoming session, not the runtime's captured copy, so a
         // mid-session permission switch reaches the adapter.
         permissionMode: payload.session.permissionMode,
@@ -748,7 +760,7 @@ export class AgentRuntimeManager {
 
   private resolvePendingPermission(
     requestId: string,
-    decision: AgentPermissionDecision,
+    resolution: AgentPermissionResolution,
   ) {
     const pending = this.pendingPermissions.get(requestId);
 
@@ -760,7 +772,7 @@ export class AgentRuntimeManager {
     const now = new Date().toISOString();
     const resolvedRequest: AgentPermissionRequestRecord = {
       ...pending.request,
-      status: decision.startsWith("allow") ? "allowed" : "denied",
+      status: resolution.decision.startsWith("allow") ? "allowed" : "denied",
       updatedAt: now,
     };
 
@@ -768,9 +780,9 @@ export class AgentRuntimeManager {
       type: "permission.resolved",
       sessionId: resolvedRequest.sessionId,
       request: resolvedRequest,
-      decision,
+      decision: resolution.decision,
     });
-    pending.resolve(decision);
+    pending.resolve(resolution);
     return true;
   }
 
@@ -780,7 +792,10 @@ export class AgentRuntimeManager {
       .map((pending) => pending.request.id);
 
     for (const requestId of requestIds) {
-      this.resolvePendingPermission(requestId, "reject_once");
+      this.resolvePendingPermission(requestId, {
+        decision: "reject_once",
+        optionId: null,
+      });
     }
   }
 

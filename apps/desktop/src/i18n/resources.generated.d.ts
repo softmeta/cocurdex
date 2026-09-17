@@ -1017,11 +1017,60 @@ export default interface Resources {
       searchPlaceholder: "Search branches";
       switchFailed: "Could not switch to {{branch}}. Check the working tree and try again.";
     };
-    collaborationMode: {
-      default: "Default";
-      label: "Collaboration mode";
-      plan: "Plan";
-      planMode: "Plan mode";
+    sessionMode: {
+      "claude-agent": {
+        default: "Default";
+        plan: "Plan";
+      };
+      codex: {
+        default: "Default";
+        plan: "Plan";
+      };
+      descriptions: {
+        "claude-agent": {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+        codex: {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+        devin: {
+          "accept-edits": "Applies file edits automatically";
+          ask: "Answers questions without code changes";
+          autonomous: "Sandbox-enforced autonomous agent";
+          bypass: "Auto-approves every tool call";
+          normal: "Writes and edits code";
+          plan: "Plans changes before implementing";
+          smart: "Auto-approves the actions the model judges safe";
+        };
+        "grok-build": {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+        opencode: {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+      };
+      devin: {
+        "accept-edits": "Accept Edits";
+        ask: "Ask";
+        autonomous: "Autonomous";
+        bypass: "Bypass Permissions";
+        normal: "Code";
+        plan: "Plan";
+        smart: "Smart";
+      };
+      "grok-build": {
+        default: "Default";
+        plan: "Plan";
+      };
+      label: "Mode";
+      opencode: {
+        default: "Default";
+        plan: "Plan";
+      };
     };
     composer: {
       agentStatus: {
@@ -1081,6 +1130,9 @@ export default interface Resources {
       searchPlaceholder: "Search models...";
       selectModel: "Select model";
       serviceTierStandard: "Standard";
+      signIn: "Sign in to {{agent}}";
+      signInFailed: "Sign-in to {{agent}} failed: {{message}}";
+      signInWaiting: "Finish sign-in in the browser…";
       speed: "Speed";
       triggerLabel: "Model";
     };

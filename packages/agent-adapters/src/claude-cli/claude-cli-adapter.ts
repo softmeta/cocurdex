@@ -633,7 +633,7 @@ export function createClaudeCliAdapter(
           messagePayload.permissionMode === undefined
             ? payload.session.permissionMode
             : (messagePayload.permissionMode ?? undefined),
-          messagePayload.collaborationMode ?? payload.session.collaborationMode,
+          messagePayload.sessionModeId ?? payload.session.sessionModeId,
           getModelId(payload, messagePayload),
         );
         const modelId = getModelId(payload, messagePayload);
@@ -688,7 +688,7 @@ export function createClaudeCliAdapter(
           messagePayload.permissionMode === undefined
             ? payload.session.permissionMode
             : (messagePayload.permissionMode ?? undefined),
-          messagePayload.collaborationMode ?? payload.session.collaborationMode,
+          messagePayload.sessionModeId ?? payload.session.sessionModeId,
           getModelId(payload, messagePayload),
         );
         const modelId = getModelId(payload, messagePayload);

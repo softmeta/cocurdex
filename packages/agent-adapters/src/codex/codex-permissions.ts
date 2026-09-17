@@ -170,8 +170,8 @@ export async function requestCodexPermission(
         : ["reject_once", "allow_always", "allow_once"],
     ),
   };
-  const decision =
-    (await payload.requestPermission?.(permissionRequest)) ?? "reject_once";
+  const resolution = await payload.requestPermission?.(permissionRequest);
+  const decision = resolution?.decision ?? "reject_once";
 
   if (request.method === "item/permissions/requestApproval") {
     return mapCodexPermissionsProfileDecision(request.params, decision);

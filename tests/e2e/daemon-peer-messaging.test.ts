@@ -31,7 +31,7 @@ function sessionConfiguration(
     title: `Session ${id}`,
     agentType,
     writeMode: "read-only",
-    collaborationMode: "default",
+    sessionModeId: null,
   };
 }
 

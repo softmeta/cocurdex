@@ -8,13 +8,14 @@ import type { AcpConnectionFactory } from "../acp/acp-connection";
 
 export const DEVIN_ACP_COMMAND = "devin";
 export const DEVIN_ACP_ARGS = ["acp"];
+export const DEVIN_ACP_AUTH_METHOD = "devin-browser";
 
 const descriptor: AgentDescriptor = {
   id: "devin",
   label: "Devin",
   availability: "available",
   capabilities: {
-    collaborationModes: ["default"],
+    sessionModes: [],
     permissionModes: getFallbackAgentPermissionModes("devin"),
     writeModes: ["native-write"],
     supportsSteering: false,

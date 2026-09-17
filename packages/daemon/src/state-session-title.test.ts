@@ -41,7 +41,7 @@ async function createService() {
     agentType: "opencode",
     status: "running",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,

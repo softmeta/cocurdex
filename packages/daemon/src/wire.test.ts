@@ -259,7 +259,7 @@ describe("startDaemonServer", () => {
         agentType: "pi",
         status: "idle",
         writeMode: "read-only",
-        collaborationMode: "default",
+        sessionModeId: null,
         createdAt: timestamp,
         updatedAt: timestamp,
         lastMessageAt: null,

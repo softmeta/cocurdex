@@ -3,7 +3,6 @@ import type {
   AgentId,
   AgentPermissionMode,
   AgentThinkingLevel,
-  CollaborationModeKind,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
@@ -14,7 +13,6 @@ import {
   ThinkingLevelSubmenu,
 } from "@/features/composer";
 import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
-import { CollaborationModeSubmenu } from "../collaboration-mode-control";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import {
   getDefaultOpenCodeAgent,
@@ -24,12 +22,17 @@ import {
   resolveOpenCodeRuntimeValue,
   shouldShowProviderGroupLabels,
 } from "../provider-model";
-import { getPermissionModeOptions } from "../session-store";
+import { SessionModeSubmenu } from "../session-mode-control";
+import { useSessionModeLabels } from "../session-mode-label";
+import {
+  getPermissionModeOptions,
+  getSessionModeOptions,
+} from "../session-store";
 
 export function AgentRoleRuntimeFields({
   agentId,
   agents,
-  collaborationMode,
+  sessionModeId,
   compatibleProviders,
   fastMode,
   isLoading,
@@ -41,7 +44,7 @@ export function AgentRoleRuntimeFields({
   serviceTier,
   thinkingLevel,
   onAgentChange,
-  onCollaborationModeChange,
+  onSessionModeChange,
   onFastModeChange,
   onModelChange,
   onOpenCodeAgentChange,
@@ -53,7 +56,7 @@ export function AgentRoleRuntimeFields({
 }: {
   agentId: AgentId;
   agents: AgentDescriptor[];
-  collaborationMode: CollaborationModeKind;
+  sessionModeId: string | null;
   compatibleProviders: CompatibleProviderModel[];
   fastMode: boolean;
   isLoading: boolean;
@@ -65,7 +68,7 @@ export function AgentRoleRuntimeFields({
   serviceTier: string;
   thinkingLevel: AgentThinkingLevel;
   onAgentChange(agentId: AgentId): void;
-  onCollaborationModeChange(mode: CollaborationModeKind): void;
+  onSessionModeChange(modeId: string): void;
   onFastModeChange(value: boolean): void;
   onModelChange(value: string): void;
   onOpenCodeAgentChange(value: string): void;
@@ -76,6 +79,8 @@ export function AgentRoleRuntimeFields({
   onThinkingLevelChange(level: AgentThinkingLevel): void;
 }) {
   const { t } = useTranslation("sessions");
+  const { label: sessionModeLabel } = useSessionModeLabels();
+  const sessionModeOptions = getSessionModeOptions(agents, agentId);
   const selectedProviderModel = compatibleProviders.find(
     ({ provider, model }) =>
       getProviderModelValue(provider.id, model.modelId) === modelValue,
@@ -139,8 +144,13 @@ export function AgentRoleRuntimeFields({
     openCodeVariant,
     openCodeRuntimeOptions.variants,
   );
+  const selectedSessionMode = sessionModeOptions.find(
+    (mode) => mode.id === sessionModeId,
+  );
   const triggerValues = [
-    ...(collaborationMode === "plan" ? [t("collaborationMode.plan")] : []),
+    ...(selectedSessionMode && selectedSessionMode.id !== "default"
+      ? [sessionModeLabel(agentId, selectedSessionMode)]
+      : []),
     ...(thinkingLevelOptions.length > 1 && selectedThinkingLevel
       ? [
           getThinkingLevelLabel(thinkingLevelOptions, selectedThinkingLevel) ??
@@ -171,10 +181,11 @@ export function AgentRoleRuntimeFields({
         fastModeValue={fastMode ? "on" : "off"}
         footer={
           <>
-            <CollaborationModeSubmenu
+            <SessionModeSubmenu
               agentType={agentId}
-              mode={collaborationMode}
-              onChange={onCollaborationModeChange}
+              modeId={sessionModeId}
+              modes={sessionModeOptions}
+              onChange={onSessionModeChange}
             />
             <ThinkingLevelSubmenu
               level={selectedThinkingLevel}

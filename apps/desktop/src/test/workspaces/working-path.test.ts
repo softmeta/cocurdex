@@ -28,7 +28,7 @@ function session(worktreePath?: string | null): SessionRecord {
     agentType: "claude-agent",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: "2026-09-07T00:00:00.000Z",
     updatedAt: "2026-09-07T00:00:00.000Z",
     lastMessageAt: null,

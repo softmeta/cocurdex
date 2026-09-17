@@ -136,7 +136,7 @@ export function WorkspaceSidebarItem({
                 {isRunning || needsAttention ? (
                   <span
                     className={cn(
-                      "sidebar-activity-dot size-1.5 rounded-full",
+                      "sidebar-activity-dot sidebar-activity-dot--hover-handoff size-1.5 rounded-full",
                       needsAttention
                         ? "text-chat-status-pending-fg"
                         : "text-sidebar-thinking-dot",

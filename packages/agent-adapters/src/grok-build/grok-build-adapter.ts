@@ -2,6 +2,7 @@ import {
   type AgentDescriptor,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
+  PLAN_MODE_ID,
 } from "@cocurdex/shared";
 import { AcpAgentAdapter } from "../acp/acp-agent-adapter";
 import type { AcpConnectionFactory } from "../acp/acp-connection";
@@ -43,7 +44,10 @@ const descriptor: AgentDescriptor = {
   label: "Grok Build",
   availability: "available",
   capabilities: {
-    collaborationModes: ["default", "plan"],
+    sessionModes: [
+      { id: "default", name: "Default" },
+      { id: PLAN_MODE_ID, name: "Plan" },
+    ],
     permissionModes: getFallbackAgentPermissionModes("grok-build"),
     writeModes: ["native-write"],
     supportsSteering: true,

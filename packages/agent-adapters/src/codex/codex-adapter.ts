@@ -14,6 +14,7 @@ import {
   type CodexReasoningEffort,
   type CompatibleProviderModel,
   codexBuiltInProviderModel,
+  isPlanModeId,
   isReasoningEffort,
   type MessageRecord,
 } from "@cocurdex/shared";
@@ -874,7 +875,7 @@ export function createCodexAdapter(
               // Plan mode only exists as the experimental collaborationMode
               // param; the default mode uses the stable model/effort fields
               // to keep the experimental surface minimal.
-              ...(payload.session.collaborationMode === "plan"
+              ...(isPlanModeId(payload.session.sessionModeId)
                 ? {
                     collaborationMode: createCodexCollaborationMode(
                       "plan",

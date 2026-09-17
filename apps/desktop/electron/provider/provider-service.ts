@@ -652,6 +652,13 @@ export function registerProviderHandlers() {
   ipcMain.handle("provider:listAllModels", async () =>
     requestDaemon("provider.listAllModels", {}, await chatDaemonOptions()),
   );
+  registerHandler(
+    ipcMain,
+    "agent:login",
+    schemas.agentId,
+    async (_event, agentId) =>
+      requestDaemon("agent.login", { agentId }, await chatDaemonOptions()),
+  );
   registerHandlerArgs(
     ipcMain,
     "provider:listCompatibleForAgent",

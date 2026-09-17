@@ -15,7 +15,7 @@ const descriptor: AgentDescriptor = {
   label: "Cursor",
   availability: "available",
   capabilities: {
-    collaborationModes: ["default"],
+    sessionModes: [],
     permissionModes: getFallbackAgentPermissionModes("cursor"),
     writeModes: ["native-write"],
     supportsSteering: false,

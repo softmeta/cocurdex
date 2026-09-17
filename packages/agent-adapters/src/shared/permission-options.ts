@@ -17,5 +17,6 @@ export function createPermissionOptions(
     id: kind,
     kind,
     label: optionLabels[kind],
+    labelSource: "generic" as const,
   }));
 }

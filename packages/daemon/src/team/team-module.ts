@@ -252,7 +252,7 @@ export class TeamModule {
       parentToolCallId: null,
       status: "idle",
       writeMode: lead.writeMode,
-      collaborationMode: role?.collaborationMode ?? "default",
+      sessionModeId: role?.sessionModeId ?? null,
       permissionMode: role?.permissionMode ?? lead.permissionMode,
       agentRoleId: role?.id ?? null,
       providerSnapshot:

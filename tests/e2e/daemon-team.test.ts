@@ -58,7 +58,7 @@ describe("daemon team RPC over the real socket", () => {
         title: "Lead",
         agentType: agent.id,
         writeMode: "read-only",
-        collaborationMode: "default",
+        sessionModeId: null,
       };
       await requestDaemon("session.configure", lead, daemon.options);
       await expect(

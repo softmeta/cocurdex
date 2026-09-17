@@ -50,6 +50,38 @@ interface SessionSidebarItemProps {
   session: SessionRecord;
 }
 
+function SessionStatusIndicator({
+  needsAttention,
+  isRunning,
+}: {
+  isRunning: boolean;
+  needsAttention: boolean;
+}) {
+  const { t } = useTranslation("sessions");
+
+  if (!(needsAttention || isRunning)) {
+    return null;
+  }
+
+  return (
+    <span className="flex size-4 shrink-0 items-center justify-center">
+      {needsAttention ? (
+        <span
+          className="sidebar-activity-dot size-1.5 rounded-full text-chat-status-pending-fg"
+          role="img"
+          aria-label={t("sidebar.pendingAttention")}
+        />
+      ) : (
+        <Spinner
+          aria-label={t("sidebar.running")}
+          className="text-sidebar-thinking-fg"
+          size="xs"
+        />
+      )}
+    </span>
+  );
+}
+
 export function SessionSidebarItem({
   depth = 0,
   hasChildren = false,
@@ -269,38 +301,18 @@ export function SessionSidebarItem({
                 onClick={onSelect}
               >
                 <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-                {needsAttention ? (
-                  <span
-                    className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
-                    role="img"
-                    aria-label={t("sidebar.pendingAttention")}
-                  />
-                ) : null}
-                {isRunning ? (
-                  <Spinner
-                    aria-label={t("sidebar.running")}
-                    className="shrink-0 text-sidebar-thinking-fg"
-                    size="xs"
-                  />
-                ) : null}
+                <SessionStatusIndicator
+                  isRunning={isRunning}
+                  needsAttention={needsAttention}
+                />
               </button>
             ) : (
               <>
                 <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-                {needsAttention ? (
-                  <span
-                    className="size-1.5 shrink-0 rounded-full bg-chat-status-pending-fg"
-                    role="img"
-                    aria-label={t("sidebar.pendingAttention")}
-                  />
-                ) : null}
-                {isRunning ? (
-                  <Spinner
-                    aria-label={t("sidebar.running")}
-                    className="shrink-0 text-sidebar-thinking-fg"
-                    size="xs"
-                  />
-                ) : null}
+                <SessionStatusIndicator
+                  isRunning={isRunning}
+                  needsAttention={needsAttention}
+                />
               </>
             )}
           </SidebarListRow>

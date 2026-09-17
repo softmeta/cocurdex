@@ -316,7 +316,7 @@ export class OpenCodeEventHandler {
       parentToolCallId: toolCall.id,
       status: mapSessionStatus(toolCall.status),
       writeMode: parent.writeMode,
-      collaborationMode: parent.collaborationMode,
+      sessionModeId: parent.sessionModeId,
       permissionMode: parent.permissionMode,
       providerSnapshot: parent.providerSnapshot ?? null,
       createdAt: toolCall.startedAt,

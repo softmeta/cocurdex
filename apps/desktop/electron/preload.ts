@@ -120,6 +120,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("workflow:deleteDefinition", { definitionId }),
   readAdapterRateLimits: (agentIds: AgentId[]) =>
     ipcRenderer.invoke("agent:readRateLimits", agentIds),
+  readAgentSessionModes: (agentId: AgentId) =>
+    ipcRenderer.invoke("agent:readSessionModes", agentId),
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),
   saveWorkspace: (workspace: import("@cocurdex/shared").WorkspaceRecord) =>
     ipcRenderer.invoke("workspace:save", workspace),
@@ -342,6 +344,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     options?: { forceRefresh?: boolean },
   ): Promise<CompatibleProviderModel[]> =>
     ipcRenderer.invoke("provider:listCompatibleForAgent", agentId, options),
+  loginAgent: (agentId: AgentId): Promise<void> =>
+    ipcRenderer.invoke("agent:login", agentId),
   listAgentProviderDefaults: (): Promise<AgentProviderSelection[]> =>
     ipcRenderer.invoke("provider:listDefaults"),
   getAgentProviderDefault: (agentId: AgentId) =>

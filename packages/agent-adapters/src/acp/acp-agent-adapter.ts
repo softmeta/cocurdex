@@ -1,3 +1,4 @@
+import { tmpdir } from "node:os";
 import {
   type ContentBlock,
   RequestError,
@@ -7,6 +8,7 @@ import type {
   AgentAdapter,
   AgentSession,
   CreateAgentSessionPayload,
+  DiscoverAgentCapabilitiesPayload,
   SendAgentMessagePayload,
 } from "@cocurdex/agent-core";
 import { AgentSteeringUnavailableError } from "@cocurdex/agent-core";
@@ -16,6 +18,7 @@ import type {
   AgentNegotiatedCapabilities,
   AgentPermissionMode,
   AgentRateLimitsRecord,
+  AgentSessionMode,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
@@ -124,6 +127,27 @@ export interface AcpAgentAdapterOptions {
 // notification. Coalesce them into a single catalog re-read.
 const MCP_CHANGE_DEBOUNCE_MS = 300;
 
+function buildAcpInitializeRequest(
+  initializeMeta: Record<string, unknown> | undefined,
+) {
+  return {
+    protocolVersion: 1,
+    clientCapabilities: {
+      fs: {
+        readTextFile: false,
+        writeTextFile: false,
+      },
+      terminal: false,
+    },
+    clientInfo: {
+      name: "Cocurdex",
+      title: "Cocurdex",
+      version: "0.0.0",
+    },
+    _meta: initializeMeta,
+  };
+}
+
 export class AcpAgentAdapter implements AgentAdapter {
   constructor(
     private readonly options: AcpAgentAdapterOptions,
@@ -132,6 +156,36 @@ export class AcpAgentAdapter implements AgentAdapter {
 
   getDescriptor() {
     return this.options.descriptor;
+  }
+
+  async discoverSessionModes(
+    _payload: DiscoverAgentCapabilitiesPayload,
+  ): Promise<AgentSessionMode[]> {
+    const cwd = tmpdir();
+    const connection = await this.connectionFactory({
+      args: this.options.args,
+      command: this.options.command,
+      cwd,
+      handlers: {
+        onSessionUpdate() {},
+        requestPermission: async (request) => rejectPermission(request),
+      },
+    });
+
+    try {
+      const response = await connection.initialize(
+        buildAcpInitializeRequest(this.options.initializeMeta),
+      );
+      await this.maybeAuthenticate(connection, response.authMethods);
+      const session = await connection.newSession({ cwd, mcpServers: [] });
+      return (session.modes?.availableModes ?? []).map((mode) => ({
+        id: mode.id,
+        name: mode.name,
+        description: mode.description ?? null,
+      }));
+    } finally {
+      await connection.close();
+    }
   }
 
   createSession(
@@ -196,22 +250,8 @@ export class AcpAgentAdapter implements AgentAdapter {
     const requestPlanApproval = payload.requestPlanApproval;
     const mcpChangeNotificationMethods =
       this.options.mcpServersRequest?.changeNotifications ?? [];
-    const buildInitializeRequest = () => ({
-      protocolVersion: 1,
-      clientCapabilities: {
-        fs: {
-          readTextFile: false,
-          writeTextFile: false,
-        },
-        terminal: false,
-      },
-      clientInfo: {
-        name: "Cocurdex",
-        title: "Cocurdex",
-        version: "0.0.0",
-      },
-      _meta: this.options.initializeMeta,
-    });
+    const buildInitializeRequest = () =>
+      buildAcpInitializeRequest(this.options.initializeMeta);
     let suppressSessionUpdates = false;
     const routeSessionUpdate = (notification: SessionNotification) => {
       if (suppressSessionUpdates) {
@@ -285,7 +325,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             return { outcome: { outcome: "cancelled" } };
           }
 
-          const decision = await payload.requestPermission({
+          const resolution = await payload.requestPermission({
             id: request.toolCall.toolCallId,
             sessionId: payload.session.id,
             providerId: payload.session.agentType,
@@ -306,9 +346,10 @@ export class AcpAgentAdapter implements AgentAdapter {
               id: option.optionId,
               kind: option.kind,
               label: option.name,
+              labelSource: "provider" as const,
             })),
           });
-          return mapPermissionDecision(request, decision);
+          return mapPermissionDecision(request, resolution);
         },
         exitPlanMode: requestPlanApproval
           ? async (request) => {
@@ -578,8 +619,9 @@ export class AcpAgentAdapter implements AgentAdapter {
         });
         const { providerSessionId } = providerSession;
         let modes = providerSession.modes;
-        const requestedModeId = payload.session.collaborationMode;
+        const requestedModeId = payload.session.sessionModeId;
         if (
+          requestedModeId &&
           modes &&
           modes.currentModeId !== requestedModeId &&
           modes.availableModes.some((mode) => mode.id === requestedModeId)

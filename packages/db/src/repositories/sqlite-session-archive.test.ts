@@ -31,7 +31,7 @@ async function setup() {
     agentType: "grok-build",
     status: "idle",
     writeMode: "native-write",
-    collaborationMode: "default",
+    sessionModeId: null,
     createdAt: earlier,
     updatedAt: earlier,
     lastMessageAt: earlier,
