@@ -194,8 +194,8 @@ export function PermissionCard({
           <ShieldAlert className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <span className="text-meta font-medium text-chat-fg-muted">
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-meta font-medium text-chat-fg-muted">
               {t("permissions.title")}
             </span>
             <span
