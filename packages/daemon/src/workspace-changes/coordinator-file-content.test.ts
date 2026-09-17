@@ -1,6 +1,9 @@
-import type { TurnChangeSet } from "@cocurdex/shared";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { createUnifiedDiff, type TurnChangeSet } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import type { HostCheckpointAdapter } from "./checkpoint";
+import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import {
   readTurnChangeDiff,
   readTurnChangeFileContent,
@@ -48,6 +51,41 @@ function unusedAdapter(): HostCheckpointAdapter {
   };
 }
 
+async function createWorkspaceFile(content: string) {
+  const root = await mkdtemp(path.join(tmpdir(), "cocurdex-turn-content-"));
+  await writeFile(path.join(root, "notes.md"), content, "utf8");
+  return root;
+}
+
+function partialChangeSet(files: TurnChangeSet["files"]): TurnChangeSet {
+  return changeSet({
+    hostBeforeCheckpointRef: "before",
+    hostBeforeCheckpointKind: "filesystem-checkpoint",
+    hostAfterCheckpointRef: null,
+    status: "partial",
+    files,
+  });
+}
+
+function beforeAdapter(beforeText: string): HostCheckpointAdapter {
+  return {
+    ...unusedAdapter(),
+    readFile: async () => Buffer.from(beforeText, "utf8"),
+  };
+}
+
+const beforeCheckpoints = new Map<string, HostCheckpoint>([
+  [
+    "before",
+    {
+      id: "before",
+      kind: "filesystem-checkpoint",
+      ref: "before",
+      workspaceRootPath: "/tmp",
+    },
+  ],
+]);
+
 describe("readTurnChangeDiff", () => {
   it("returns expired when both checkpoint refs are missing", async () => {
     await expect(
@@ -63,19 +101,145 @@ describe("readTurnChangeDiff", () => {
     ).resolves.toEqual({ status: "expired", files: [] });
   });
 
-  it("returns missing when only one checkpoint ref exists", async () => {
+  it("returns missing when the before checkpoint ref is missing", async () => {
     await expect(
       readTurnChangeDiff(
         changeSet({
-          hostBeforeCheckpointRef: "before",
-          hostBeforeCheckpointKind: "filesystem-checkpoint",
-          hostAfterCheckpointRef: null,
+          hostBeforeCheckpointRef: null,
+          hostAfterCheckpointRef: "after",
+          hostAfterCheckpointKind: "filesystem-checkpoint",
         }),
         { workspaceRootPath: "/tmp" },
         unusedAdapter(),
         new Map(),
       ),
     ).resolves.toEqual({ status: "missing", files: [] });
+  });
+
+  it("reads the after side from the working tree when its patch still matches", async () => {
+    const workspaceRootPath = await createWorkspaceFile("two\n");
+    const patch = createUnifiedDiff("notes.md", "one\n", "two\n").patch;
+    await expect(
+      readTurnChangeDiff(
+        partialChangeSet([
+          {
+            path: "notes.md",
+            operation: "modify",
+            reviewKind: "text",
+            patch,
+          },
+        ]),
+        { workspaceRootPath },
+        beforeAdapter("one\n"),
+        beforeCheckpoints,
+      ),
+    ).resolves.toEqual({
+      status: "ok",
+      files: [
+        {
+          path: "notes.md",
+          changeType: "modified",
+          oldContents: "one\n",
+          newContents: "two\n",
+          omittedReason: null,
+        },
+      ],
+    });
+  });
+
+  it("accepts the working tree when the recorded after hash matches", async () => {
+    const workspaceRootPath = await createWorkspaceFile("two\n");
+    const adapter: HostCheckpointAdapter = {
+      ...beforeAdapter("one\n"),
+      hashWorkingTreeFile: async () => "after-hash",
+    };
+    await expect(
+      readTurnChangeDiff(
+        partialChangeSet([
+          {
+            path: "notes.md",
+            operation: "modify",
+            reviewKind: "text",
+            afterHash: "after-hash",
+          },
+        ]),
+        { workspaceRootPath },
+        adapter,
+        beforeCheckpoints,
+      ),
+    ).resolves.toEqual({
+      status: "ok",
+      files: [
+        {
+          path: "notes.md",
+          changeType: "modified",
+          oldContents: "one\n",
+          newContents: "two\n",
+          omittedReason: null,
+        },
+      ],
+    });
+  });
+
+  it("marks the after side unavailable when the file changed after the turn", async () => {
+    const workspaceRootPath = await createWorkspaceFile("three\n");
+    const patch = createUnifiedDiff("notes.md", "one\n", "two\n").patch;
+    await expect(
+      readTurnChangeDiff(
+        partialChangeSet([
+          {
+            path: "notes.md",
+            operation: "modify",
+            reviewKind: "text",
+            patch,
+          },
+        ]),
+        { workspaceRootPath },
+        beforeAdapter("one\n"),
+        beforeCheckpoints,
+      ),
+    ).resolves.toEqual({
+      status: "ok",
+      files: [
+        {
+          path: "notes.md",
+          changeType: "modified",
+          oldContents: "",
+          newContents: "",
+          omittedReason: "unavailable",
+        },
+      ],
+    });
+  });
+
+  it("keeps a deleted file readable when its after checkpoint is missing", async () => {
+    const workspaceRootPath = await createWorkspaceFile("two\n");
+    await expect(
+      readTurnChangeDiff(
+        partialChangeSet([
+          {
+            path: "notes.md",
+            operation: "delete",
+            reviewKind: "text",
+            beforeHash: "before-hash",
+          },
+        ]),
+        { workspaceRootPath },
+        beforeAdapter("one\n"),
+        beforeCheckpoints,
+      ),
+    ).resolves.toEqual({
+      status: "ok",
+      files: [
+        {
+          path: "notes.md",
+          changeType: "deleted",
+          oldContents: "one\n",
+          newContents: "",
+          omittedReason: null,
+        },
+      ],
+    });
   });
 });
 

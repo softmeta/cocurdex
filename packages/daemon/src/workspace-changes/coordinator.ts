@@ -14,6 +14,7 @@ import type {
   UndoTurnChangesResult,
 } from "@cocurdex/shared";
 import { collectTurnFilePaths, sumFileStats } from "@cocurdex/shared";
+import { logDaemonDiagnostic } from "../diagnostics";
 import { createCheckpointBlobStore } from "./blob-store";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import {
@@ -23,6 +24,7 @@ import {
 import {
   type ActiveTurn,
   completeActiveTurn,
+  logCaptureFailure,
   type WorkspaceTurnClaim,
 } from "./complete-turn";
 import {
@@ -182,7 +184,17 @@ export function createWorkspaceChangeCoordinator(
           refs,
           workspaceRootPath: active.workspaceRootPath,
         })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          logDaemonDiagnostic(
+            "warn",
+            "workspace-changes.discardCleanupFailed",
+            {
+              sessionId: active.changeSet.sessionId,
+              refs,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          );
+        });
     }
     const emptyChangeSet: TurnChangeSet = {
       ...active.changeSet,
@@ -325,8 +337,15 @@ export function createWorkspaceChangeCoordinator(
             phase: "before",
           });
           rememberCheckpoint(before);
-        } catch {
+        } catch (error) {
           before = null;
+          logCaptureFailure({
+            phase: "before",
+            sessionId: input.sessionId,
+            userMessageId: input.userMessageId,
+            workspaceRootPath: input.workspaceRootPath,
+            error,
+          });
         }
         const changeSet: TurnChangeSet = {
           id: createId(),
@@ -523,7 +542,14 @@ export function createWorkspaceChangeCoordinator(
           input.workspaceRootPath,
         );
         return await readTurnChangeDiff(changeSet, input, adapter, checkpoints);
-      } catch {
+      } catch (error) {
+        logDaemonDiagnostic("warn", "workspace-changes.turnDiffFailed", {
+          sessionId: input.sessionId,
+          messageId: input.messageId,
+          changeSetId: changeSet.id,
+          status: changeSet.status,
+          error: error instanceof Error ? error.message : String(error),
+        });
         return { status: "error", files: [] };
       }
     },
