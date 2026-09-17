@@ -1,4 +1,8 @@
-import type { AgentEvent, AgentPlanUpdatedEvent } from "@cocurdex/shared";
+import type {
+  AgentEvent,
+  AgentPlanStep,
+  AgentPlanUpdatedEvent,
+} from "@cocurdex/shared";
 import { atom } from "jotai";
 
 export type SessionPlan = AgentPlanUpdatedEvent["plan"];
@@ -66,6 +70,13 @@ export const dismissPlanForSessionAtom = atom(
     });
   },
 );
+
+export function resolvePlanStepStatus(
+  status: AgentPlanStep["status"],
+  isRunning: boolean,
+): AgentPlanStep["status"] {
+  return status === "in_progress" && !isRunning ? "pending" : status;
+}
 
 // The task list outlives a single turn: an agent can carry the same checklist
 // across several prompts, so it is only dropped once every step is done or

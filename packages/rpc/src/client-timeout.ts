@@ -14,6 +14,7 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "session.undoTurnChanges": 5 * 60_000,
   "session.send": 2 * 60_000,
   "session.resumeQueued": 2 * 60_000,
+  "session.sendQueuedNow": 2 * 60_000,
 };
 
 export function daemonRequestTimeout(method: DaemonMethod, override?: number) {

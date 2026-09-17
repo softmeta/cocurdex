@@ -226,6 +226,60 @@ describe("workspace file markdown links", () => {
       startLine: 42,
     });
   });
+
+  it("rewrites absolute file:// links", () => {
+    const input =
+      "菜单见 [queued-input-shelf.tsx:196-216](file:///Users/dev/apps/desktop/src/features/agent/queued-input/queued-input-shelf.tsx)，" +
+      "RPC 见 [service.ts:1544-1572](file:///Users/dev/packages/daemon/src/service.ts)。";
+    const out = rewriteMarkdownLocalFileLinks(input);
+    expect(out).not.toContain("file://");
+    const hrefs = [
+      ...out.matchAll(/\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/g),
+    ].map((match) => match[1]);
+    expect(hrefs).toHaveLength(2);
+    expect(parseWorkspaceFileHref(hrefs[0])).toEqual({
+      path: "/Users/dev/apps/desktop/src/features/agent/queued-input/queued-input-shelf.tsx",
+    });
+    expect(parseWorkspaceFileHref(hrefs[1])).toEqual({
+      path: "/Users/dev/packages/daemon/src/service.ts",
+    });
+    expect(out).toContain(
+      "[queued-input-shelf.tsx:196-216](https://cocurdex.workspace/",
+    );
+  });
+
+  it("decodes escaped characters in file:// links", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "[a.ts](file:///Users/dev/My%20Docs/a.ts)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/My Docs/a.ts",
+    });
+  });
+
+  it("rewrites Windows drive-letter file:// links", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "[main.ts](file:///C:/dev/app/src/main.ts)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "C:/dev/app/src/main.ts",
+    });
+  });
+
+  it("leaves non-file and remote-host file:// links alone", () => {
+    const input = [
+      "[share](file://server/share/a.ts)",
+      "[empty](file://)",
+      "[dir](file:///Users/dev/apps/)",
+    ].join("\n");
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
 });
 
 describe("splitWorkspaceLinkLabel", () => {

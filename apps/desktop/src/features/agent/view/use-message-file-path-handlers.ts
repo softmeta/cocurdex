@@ -6,10 +6,13 @@ import { fileTreeVisibleAtom, openFilePreviewAtom } from "@/features/editor";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
 
+const WINDOWS_ABSOLUTE_PATH = /^[A-Za-z]:[\\/]/;
+
 function toAbsolutePath(path: string, rootPath: string | null): string | null {
-  // POSIX absolute paths are used as-is; everything else is resolved against the
-  // active workspace root. (macOS/Linux first per platform priority.)
-  if (path.startsWith("/")) {
+  // Absolute paths (POSIX or Windows drive) are used as-is; everything else is
+  // resolved against the active workspace root. (macOS/Linux first per platform
+  // priority.)
+  if (path.startsWith("/") || WINDOWS_ABSOLUTE_PATH.test(path)) {
     return path;
   }
   if (!rootPath) {

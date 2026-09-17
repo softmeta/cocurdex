@@ -77,6 +77,10 @@ export interface DaemonRuntimeClient {
     sessionId: string,
     messageId: string,
   ): Promise<MessageRecord>;
+  sendQueuedInputNow(
+    sessionId: string,
+    messageId: string,
+  ): Promise<MessageRecord>;
   setConfig(
     sessionId: string,
     configId: string,

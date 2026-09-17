@@ -3,7 +3,7 @@ import { Check, ChevronDown, Circle, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
-import type { SessionPlan } from "./plan-store";
+import { resolvePlanStepStatus, type SessionPlan } from "./plan-store";
 
 const statusIcon: Record<
   AgentPlanStep["status"],
@@ -23,11 +23,13 @@ const statusIcon: Record<
 // entirely until the agent pushes the next plan update.
 export function PlanPanel({
   plan,
+  isRunning = false,
   collapsed = false,
   onToggleCollapsed,
   onDismiss,
 }: {
   plan: SessionPlan;
+  isRunning?: boolean;
   collapsed?: boolean;
   onToggleCollapsed?(): void;
   onDismiss?(): void;
@@ -43,6 +45,9 @@ export function PlanPanel({
   ).length;
   const totalCount = plan.steps.length;
   const activeStep = plan.steps.find((step) => step.status === "in_progress");
+  const activeStepStatus = activeStep
+    ? resolvePlanStepStatus(activeStep.status, isRunning)
+    : null;
   const progressLabel =
     totalCount > 0
       ? t("plan.progress", {
@@ -74,13 +79,17 @@ export function PlanPanel({
           <span className="shrink-0 text-meta font-medium uppercase tracking-[0.18em] text-chat-fg-muted">
             {t("plan.label")}
           </span>
-          {collapsed && activeStep ? (
+          {collapsed && activeStep && activeStepStatus ? (
             <span className="flex min-w-0 flex-1 items-center gap-1.5 text-meta text-chat-fg">
-              <Loader2
-                aria-label={t("toolCalls.running")}
-                className="size-3.5 shrink-0 animate-spin"
-                role="status"
-              />
+              {activeStepStatus === "in_progress" ? (
+                <Loader2
+                  aria-label={t("toolCalls.running")}
+                  className="size-3.5 shrink-0 animate-spin"
+                  role="status"
+                />
+              ) : (
+                <Circle className="size-3.5 shrink-0 text-chat-fg-muted" />
+              )}
               <span className="min-w-0 truncate">{activeStep.step}</span>
             </span>
           ) : (
@@ -110,12 +119,18 @@ export function PlanPanel({
           <X className="size-3.5" />
         </Button>
       </div>
-      {collapsed ? null : <PlanBody plan={plan} />}
+      {collapsed ? null : <PlanBody isRunning={isRunning} plan={plan} />}
     </section>
   );
 }
 
-function PlanBody({ plan }: { plan: SessionPlan }) {
+function PlanBody({
+  plan,
+  isRunning,
+}: {
+  plan: SessionPlan;
+  isRunning: boolean;
+}) {
   return (
     <>
       {plan.explanation ? (
@@ -126,7 +141,8 @@ function PlanBody({ plan }: { plan: SessionPlan }) {
       {/* Cap height so a long todo list does not shove the composer off-screen. */}
       <ol className="max-h-40 space-y-1 overflow-y-auto overscroll-contain">
         {plan.steps.map((step, index) => {
-          const Icon = statusIcon[step.status];
+          const status = resolvePlanStepStatus(step.status, isRunning);
+          const Icon = statusIcon[status];
 
           return (
             <li
@@ -137,13 +153,13 @@ function PlanBody({ plan }: { plan: SessionPlan }) {
               <Icon
                 className={cn(
                   "mt-0.5 size-3.5 shrink-0 text-chat-fg-muted",
-                  step.status === "in_progress" && "animate-spin text-chat-fg",
+                  status === "in_progress" && "animate-spin text-chat-fg",
                 )}
               />
               <span
                 className={cn(
                   "min-w-0",
-                  step.status === "completed"
+                  status === "completed"
                     ? "text-chat-fg-muted line-through"
                     : "text-chat-fg-secondary",
                 )}

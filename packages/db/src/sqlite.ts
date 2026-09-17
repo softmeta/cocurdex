@@ -1,4 +1,6 @@
-import { rmSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, readdirSync, renameSync, rmSync } from "node:fs";
+import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
   type AgentCapabilityCacheRepository,
@@ -8,7 +10,11 @@ import {
   createSqliteIssueTrackerRepository,
   type IssueTrackerRepository,
 } from "./issues";
-import { initializeDatabase, shouldRecreateDatabase } from "./migrations";
+import {
+  hasPendingMigration,
+  initializeDatabase,
+  shouldRecreateDatabase,
+} from "./migrations";
 import { createSqliteNotesRepository, type NotesRepository } from "./notes";
 import { createProviderRepositories } from "./provider-repositories";
 import type {
@@ -104,18 +110,56 @@ export interface CocurdexDatabase {
   close(): void;
 }
 
-function removePreReleaseDatabase(databasePath: string): void {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    rmSync(`${databasePath}${suffix}`, { force: true });
+const PRE_MIGRATION_SNAPSHOT_PREFIX = ".pre-migration-";
+const PRE_MIGRATION_SNAPSHOT_LIMIT = 3;
+
+function snapshotSuffix() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${timestamp}-${randomBytes(3).toString("hex")}`;
+}
+
+function backUpPreReleaseDatabase(databasePath: string): void {
+  const suffix = `.bak-${snapshotSuffix()}`;
+  for (const part of ["", "-wal", "-shm"]) {
+    const source = `${databasePath}${part}`;
+    if (existsSync(source)) {
+      renameSync(source, `${source}${suffix}`);
+    }
   }
+}
+
+function prunePreMigrationSnapshots(databasePath: string): void {
+  const directory = path.dirname(databasePath);
+  const prefix = `${path.basename(databasePath)}${PRE_MIGRATION_SNAPSHOT_PREFIX}`;
+  const stale = readdirSync(directory)
+    .filter((name) => name.startsWith(prefix))
+    .sort()
+    .reverse()
+    .slice(PRE_MIGRATION_SNAPSHOT_LIMIT);
+  for (const name of stale) {
+    rmSync(path.join(directory, name), { force: true });
+  }
+}
+
+function snapshotBeforeMigration(
+  database: DatabaseSync,
+  databasePath: string,
+): void {
+  database
+    .prepare("VACUUM INTO ?")
+    .run(`${databasePath}${PRE_MIGRATION_SNAPSHOT_PREFIX}${snapshotSuffix()}`);
+  prunePreMigrationSnapshots(databasePath);
 }
 
 function openDatabase(databasePath: string): DatabaseSync {
   let database = new DatabaseSync(databasePath);
   if (shouldRecreateDatabase(database)) {
     database.close();
-    removePreReleaseDatabase(databasePath);
+    backUpPreReleaseDatabase(databasePath);
     database = new DatabaseSync(databasePath);
+  }
+  if (hasPendingMigration(database)) {
+    snapshotBeforeMigration(database, databasePath);
   }
   return database;
 }

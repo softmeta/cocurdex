@@ -206,13 +206,21 @@ export class AcpAgentAdapter implements AgentAdapter {
       payload.providerSession ? null : payload.session.title,
       (toolCall) =>
         subagentBridge ? subagentBridge.transform(toolCall) : toolCall,
+      payload.workspaceRootPath,
     );
     const createChildMapper = (session: SessionRecord) => {
       const existing = childMappers.get(session.id);
       if (existing) {
         return existing;
       }
-      const childMapper = new AcpEventMapper(session.id, onEvent);
+      const childMapper = new AcpEventMapper(
+        session.id,
+        onEvent,
+        undefined,
+        null,
+        undefined,
+        payload.workspaceRootPath,
+      );
       childMappers.set(session.id, childMapper);
       return childMapper;
     };

@@ -168,6 +168,7 @@ export default interface Resources {
       label: "Queued follow-ups";
       moreActions: "More queue actions";
       save: "Save";
+      sendNow: "Send now";
       status: "Queued";
       steer: "Steer";
     };

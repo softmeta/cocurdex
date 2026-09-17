@@ -291,6 +291,7 @@ export type DaemonRequestPayloadByMethod = {
   };
   "session.deleteQueued": { sessionId: string; messageId: string };
   "session.steerQueued": { sessionId: string; messageId: string };
+  "session.sendQueuedNow": { sessionId: string; messageId: string };
   "session.setConfig": {
     sessionId: string;
     configId: string;
@@ -489,6 +490,7 @@ export type DaemonResultByMethod = {
   "session.updateQueued": MessageRecord;
   "session.deleteQueued": null;
   "session.steerQueued": MessageRecord;
+  "session.sendQueuedNow": MessageRecord;
   "session.setConfig": AgentSessionConfigOption[];
   "session.setMode": null;
   "session.stop": null;

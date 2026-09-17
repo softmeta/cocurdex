@@ -97,6 +97,7 @@ export function ChatView({
   onCheckPreviousMessageCheckpoint,
   onStop,
   onDeleteQueuedInput,
+  onSendNowQueuedInput,
   onSteerQueuedInput,
   onUpdateQueuedInput,
   onOpenToolLocation,
@@ -665,6 +666,7 @@ export function ChatView({
           onSend={stableOnSend}
           onStop={onStop}
           onDeleteQueuedInput={onDeleteQueuedInput}
+          onSendNowQueuedInput={onSendNowQueuedInput}
           onSteerQueuedInput={onSteerQueuedInput}
           onUpdateQueuedInput={onUpdateQueuedInput}
           onResolvePermission={onResolvePermission}

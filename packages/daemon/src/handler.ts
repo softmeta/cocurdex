@@ -370,6 +370,11 @@ export async function handleDaemonRequest(
         request.params.sessionId,
         request.params.messageId,
       );
+    case "session.sendQueuedNow":
+      return service.sendQueuedAgentInputNow(
+        request.params.sessionId,
+        request.params.messageId,
+      );
     case "session.setConfig":
       return service.setSessionRuntimeConfigOption(
         request.params.sessionId,

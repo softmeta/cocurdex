@@ -24,7 +24,7 @@ fingerprint and wire protocol version. All launchers must enter through
 
 - Never delete, rotate, migrate or replace `daemon-owner.sqlite`. Its stable file
   identity is the lock. It is separate from `cocurdex.sqlite`, so product writes
-  and pre-release schema recreation do not release ownership.
+  and pre-release schema migration do not release ownership.
 - Keep the ownership connection open throughout service shutdown and endpoint
   cleanup. A failed contender must not initialize service state.
 - SQLite releases the transaction when its connection closes; the operating

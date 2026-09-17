@@ -347,6 +347,49 @@ function decodeHrefCandidate(href: string): string {
   }
 }
 
+const FILE_URL_PREFIX = "file:";
+const LEADING_DRIVE_SLASH = /^\/[A-Za-z]:\//;
+const WINDOWS_ABSOLUTE_PATH = /^[A-Za-z]:[\\/]/;
+
+function isLocalFileHost(hostname: string): boolean {
+  return hostname === "" || hostname === "localhost";
+}
+
+function isAbsoluteFilePath(path: string): boolean {
+  if (!path.startsWith("/") && !WINDOWS_ABSOLUTE_PATH.test(path)) {
+    return false;
+  }
+  return path.slice(path.lastIndexOf("/") + 1).length > 0;
+}
+
+function parseFileUrlCandidate(href: string): FilePathCandidate | null {
+  if (!href.toLowerCase().startsWith(FILE_URL_PREFIX)) {
+    return null;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "file:" || !isLocalFileHost(url.hostname)) {
+    return null;
+  }
+
+  let path: string;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+  if (LEADING_DRIVE_SLASH.test(path)) {
+    path = path.slice(1);
+  }
+
+  return isAbsoluteFilePath(path) ? { path } : null;
+}
+
 // Match `[label](href)` / `[label](<href>)` / `[label](href "title")`.
 // Labels often wrap the path in backticks: [`path`](path). Captures keep the
 // original label (including backticks) so we only rewrite the href.
@@ -368,7 +411,9 @@ function rewriteLinksInProse(segment: string): string {
         return match;
       }
 
-      const candidate = parseFilePathCandidate(decodeHrefCandidate(href));
+      const candidate =
+        parseFileUrlCandidate(href) ??
+        parseFilePathCandidate(decodeHrefCandidate(href));
       if (!candidate) {
         return match;
       }

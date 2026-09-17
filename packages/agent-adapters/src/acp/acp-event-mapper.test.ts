@@ -69,6 +69,49 @@ describe("AcpEventMapper", () => {
     ]);
   });
 
+  it("reports native evidence paths relative to the session workspace", () => {
+    const events: AgentEvent[] = [];
+    const mapper = new AcpEventMapper(
+      "app-session-1",
+      (event) => events.push(event),
+      () => "2026-07-24T00:00:00.000Z",
+      null,
+      (toolCall) => toolCall,
+      "/workspace",
+    );
+
+    mapper.beginTurn("user-1");
+    mapper.handle({
+      sessionId: "provider-session-1",
+      update: {
+        sessionUpdate: "tool_call_update",
+        toolCallId: "tool-1",
+        status: "completed",
+        content: [
+          {
+            type: "diff",
+            path: "/workspace/src/a.ts",
+            oldText: "before",
+            newText: "after",
+          },
+          {
+            type: "diff",
+            path: "/outside/b.ts",
+            oldText: "before",
+            newText: "after",
+          },
+        ],
+      },
+    });
+
+    const evidence = events.flatMap((event) =>
+      event.type === "workspace.native-evidence" ? [event.evidence] : [],
+    );
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]?.source).toBe("acp-tool-diff");
+    expect(evidence[0]?.files.map((file) => file.path)).toEqual(["src/a.ts"]);
+  });
+
   it("settles unfinished tool calls when the turn is cancelled", () => {
     const events: AgentEvent[] = [];
     const mapper = new AcpEventMapper(

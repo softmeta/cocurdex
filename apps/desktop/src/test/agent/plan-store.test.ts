@@ -9,6 +9,7 @@ import {
   dismissedPlansBySessionAtom,
   dismissPlanForSessionAtom,
   plansBySessionAtom,
+  resolvePlanStepStatus,
   selectVisiblePlan,
   togglePlanCollapsedForSessionAtom,
 } from "@/features/agent/plan/plan-store";
@@ -76,5 +77,12 @@ describe("plan store", () => {
     expect(selectVisiblePlan(updateEvent.plan, true)).toBeNull();
     expect(selectVisiblePlan(finishedPlan, false)).toBeNull();
     expect(selectVisiblePlan(undefined, false)).toBeNull();
+  });
+
+  it("only reports a step as in progress while the agent is running", () => {
+    expect(resolvePlanStepStatus("in_progress", true)).toBe("in_progress");
+    expect(resolvePlanStepStatus("in_progress", false)).toBe("pending");
+    expect(resolvePlanStepStatus("pending", false)).toBe("pending");
+    expect(resolvePlanStepStatus("completed", false)).toBe("completed");
   });
 });
