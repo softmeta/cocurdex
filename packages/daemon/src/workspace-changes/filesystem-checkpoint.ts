@@ -5,7 +5,11 @@ import {
   type CheckpointBlobStore,
   getTurnWorkspaceChangesRoot,
 } from "./blob-store";
-import type { HostCheckpointAdapter, RestorePathResult } from "./checkpoint";
+import type {
+  CheckpointCleanupInput,
+  HostCheckpointAdapter,
+  RestorePathResult,
+} from "./checkpoint";
 import {
   diffManifests,
   type FilesystemManifest,
@@ -18,6 +22,22 @@ import {
   resolveWorkspacePath,
   UnsafeWorkspacePathError,
 } from "./path-safety";
+
+function shouldDeleteManifest(
+  input: CheckpointCleanupInput,
+  manifest: FilesystemManifest,
+  refs: ReadonlySet<string>,
+  keep: ReadonlySet<string>,
+) {
+  switch (input.mode) {
+    case "refs":
+      return refs.has(manifest.id);
+    case "session":
+      return manifest.sessionId === input.sessionId;
+    case "prune":
+      return !keep.has(manifest.id);
+  }
+}
 
 export function createFilesystemCheckpointAdapter(
   blobStore: CheckpointBlobStore,
@@ -209,12 +229,10 @@ export function createFilesystemCheckpointAdapter(
     },
     async cleanup(input) {
       const manifests = await listManifests();
-      const refs = new Set(input.refs);
+      const refs = new Set(input.mode === "refs" ? input.refs : []);
+      const keep = new Set(input.mode === "prune" ? input.keep : []);
       for (const manifest of manifests) {
-        const shouldDelete = input.pruneUnreferenced
-          ? !refs.has(manifest.id)
-          : refs.has(manifest.id) ||
-            (input.sessionId != null && manifest.sessionId === input.sessionId);
+        const shouldDelete = shouldDeleteManifest(input, manifest, refs, keep);
         if (!shouldDelete) {
           continue;
         }

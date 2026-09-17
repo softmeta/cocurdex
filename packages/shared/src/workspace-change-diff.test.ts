@@ -408,6 +408,8 @@ function side(
 }
 
 describe("buildTurnChangeDiffFile", () => {
+  const REVIEW_LIMIT = 1_000_000;
+
   it("maps add/delete/rename operations to git change types", () => {
     expect(turnFileChangeType("add")).toBe("added");
     expect(turnFileChangeType("delete")).toBe("deleted");
@@ -421,6 +423,7 @@ describe("buildTurnChangeDiffFile", () => {
         file("src/a.ts"),
         side("src/a.ts", { text: "old\n" }),
         side("src/a.ts", { side: "after", text: "new\n" }),
+        REVIEW_LIMIT,
       ),
     ).toEqual({
       path: "src/a.ts",
@@ -431,32 +434,52 @@ describe("buildTurnChangeDiffFile", () => {
     });
   });
 
-  it("omits non-text files and oversized text", () => {
+  it("omits non-text files as binary", () => {
     expect(
       buildTurnChangeDiffFile(
         file("shot.png", { reviewKind: "image", operation: "add" }),
         side("shot.png", { exists: false, text: null }),
         side("shot.png", { side: "after", exists: true, text: null }),
+        REVIEW_LIMIT,
       ).omittedReason,
     ).toBe("binary");
+  });
+
+  it("does not omit a side that is legitimately absent", () => {
+    expect(
+      buildTurnChangeDiffFile(
+        file("src/a.ts", { operation: "add" }),
+        side("src/a.ts", { exists: false, sizeBytes: null, text: null }),
+        side("src/a.ts", { side: "after", text: "new\n" }),
+        REVIEW_LIMIT,
+      ).omittedReason,
+    ).toBeNull();
+  });
+
+  it("separates a side over the review limit from one that is unreadable", () => {
     expect(
       buildTurnChangeDiffFile(
         file("src/a.ts"),
-        side("src/a.ts", { exists: true, text: null }),
-        side("src/a.ts", { side: "after", exists: true, text: "new\n" }),
+        side("src/a.ts", { sizeBytes: REVIEW_LIMIT + 1, text: null }),
+        side("src/a.ts", { side: "after", text: "new\n" }),
+        REVIEW_LIMIT,
       ).omittedReason,
     ).toBe("too-large");
     expect(
       buildTurnChangeDiffFile(
-        file("notes.txt", { beforeSize: 12_000_000, afterSize: 12_000_000 }),
-        side("notes.txt", { exists: true, text: null, sizeBytes: 12_000_000 }),
-        side("notes.txt", {
-          side: "after",
-          exists: true,
-          text: null,
-          sizeBytes: 12_000_000,
-        }),
+        file("src/a.ts"),
+        side("src/a.ts", { sizeBytes: 14_546, text: null }),
+        side("src/a.ts", { side: "after", text: "new\n" }),
+        REVIEW_LIMIT,
       ).omittedReason,
-    ).toBe("too-large");
+    ).toBe("unavailable");
+    expect(
+      buildTurnChangeDiffFile(
+        file("src/a.ts"),
+        side("src/a.ts", { text: "old\n" }),
+        side("src/a.ts", { side: "after", sizeBytes: null, text: null }),
+        REVIEW_LIMIT,
+      ).omittedReason,
+    ).toBe("unavailable");
   });
 });

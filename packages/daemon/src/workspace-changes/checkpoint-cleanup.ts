@@ -116,29 +116,14 @@ export async function deleteSessionCheckpoints(input: {
   gitAdapter: HostCheckpointAdapter;
   blobStore: CheckpointBlobStore;
 }) {
-  const changeSets = Object.values(
-    await input.repository.listBySessionId(input.sessionId),
-  );
-  const filesystemRefs: string[] = [];
-  const gitRefs: string[] = [];
-  for (const changeSet of changeSets) {
-    const refs = checkpointRefs(changeSet);
-    const kind =
-      changeSet.hostBeforeCheckpointKind ?? changeSet.hostAfterCheckpointKind;
-    if (kind === "git-checkpoint") {
-      gitRefs.push(...refs);
-    } else {
-      filesystemRefs.push(...refs);
-    }
-  }
   await input.filesystemAdapter.cleanup({
-    refs: filesystemRefs,
+    mode: "session",
     sessionId: input.sessionId,
   });
   await input.gitAdapter.cleanup({
-    refs: gitRefs,
-    workspaceRootPath: input.workspaceRootPath,
+    mode: "session",
     sessionId: input.sessionId,
+    workspaceRootPath: input.workspaceRootPath,
   });
   const remaining = await collectLiveFilesystemRefs(
     input.repository,
@@ -160,14 +145,14 @@ export async function reconcileCheckpoints(input: {
     input.filesystemAdapter,
   );
   await input.filesystemAdapter.cleanup({
-    refs: live.filesystemRefs,
-    pruneUnreferenced: true,
+    mode: "prune",
+    keep: live.filesystemRefs,
   });
   for (const workspaceRootPath of input.workspaceRootPaths ?? []) {
     await input.gitAdapter.cleanup({
-      refs: [...live.gitRefs],
+      mode: "prune",
+      keep: [...live.gitRefs],
       workspaceRootPath,
-      pruneUnreferenced: true,
     });
   }
   const remaining = await collectLiveFilesystemRefs(

@@ -571,6 +571,7 @@ export default interface Resources {
         modified: "Modified";
       };
       changeTypeFilter: "Filter by change type";
+      checkpointUnavailable: "Turn contents are no longer available";
       collapseAll: "Collapse all files";
       commit: "Commit";
       commitAndPush: "Commit and push";
@@ -1018,61 +1019,6 @@ export default interface Resources {
       searchPlaceholder: "Search branches";
       switchFailed: "Could not switch to {{branch}}. Check the working tree and try again.";
     };
-    sessionMode: {
-      "claude-agent": {
-        default: "Default";
-        plan: "Plan";
-      };
-      codex: {
-        default: "Default";
-        plan: "Plan";
-      };
-      descriptions: {
-        "claude-agent": {
-          default: "Writes and edits code";
-          plan: "Plans changes before implementing";
-        };
-        codex: {
-          default: "Writes and edits code";
-          plan: "Plans changes before implementing";
-        };
-        devin: {
-          "accept-edits": "Applies file edits automatically";
-          ask: "Answers questions without code changes";
-          autonomous: "Sandbox-enforced autonomous agent";
-          bypass: "Auto-approves every tool call";
-          normal: "Writes and edits code";
-          plan: "Plans changes before implementing";
-          smart: "Auto-approves the actions the model judges safe";
-        };
-        "grok-build": {
-          default: "Writes and edits code";
-          plan: "Plans changes before implementing";
-        };
-        opencode: {
-          default: "Writes and edits code";
-          plan: "Plans changes before implementing";
-        };
-      };
-      devin: {
-        "accept-edits": "Accept Edits";
-        ask: "Ask";
-        autonomous: "Autonomous";
-        bypass: "Bypass Permissions";
-        normal: "Code";
-        plan: "Plan";
-        smart: "Smart";
-      };
-      "grok-build": {
-        default: "Default";
-        plan: "Plan";
-      };
-      label: "Mode";
-      opencode: {
-        default: "Default";
-        plan: "Plan";
-      };
-    };
     composer: {
       agentStatus: {
         detecting: "Checking…";
@@ -1171,6 +1117,61 @@ export default interface Resources {
       "opencode-ask": "Ask";
       "opencode-deny": "Deny";
       unavailableForModel: "{{model}} does not support this mode.";
+    };
+    sessionMode: {
+      "claude-agent": {
+        default: "Default";
+        plan: "Plan";
+      };
+      codex: {
+        default: "Default";
+        plan: "Plan";
+      };
+      descriptions: {
+        "claude-agent": {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+        codex: {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+        devin: {
+          "accept-edits": "Applies file edits automatically";
+          ask: "Answers questions without code changes";
+          autonomous: "Sandbox-enforced autonomous agent";
+          bypass: "Auto-approves every tool call";
+          normal: "Writes and edits code";
+          plan: "Plans changes before implementing";
+          smart: "Auto-approves the actions the model judges safe";
+        };
+        "grok-build": {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+        opencode: {
+          default: "Writes and edits code";
+          plan: "Plans changes before implementing";
+        };
+      };
+      devin: {
+        "accept-edits": "Accept Edits";
+        ask: "Ask";
+        autonomous: "Autonomous";
+        bypass: "Bypass Permissions";
+        normal: "Code";
+        plan: "Plan";
+        smart: "Smart";
+      };
+      "grok-build": {
+        default: "Default";
+        plan: "Plan";
+      };
+      label: "Mode";
+      opencode: {
+        default: "Default";
+        plan: "Plan";
+      };
     };
     sidebar: {
       addProject: "Add project";

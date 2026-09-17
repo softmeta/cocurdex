@@ -60,6 +60,7 @@
       "modified": "Modified"
     },
     "changeTypeFilter": "Filter by change type",
+    "checkpointUnavailable": "Turn contents are no longer available",
     "collapseAll": "Collapse all files",
     "commit": "Commit",
     "commitAndPush": "Commit and push",

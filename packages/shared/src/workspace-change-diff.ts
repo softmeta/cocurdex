@@ -27,6 +27,7 @@ export function buildTurnChangeDiffFile(
   file: TurnFileChange,
   before: TurnChangeFileContent,
   after: TurnChangeFileContent,
+  maxReviewTextBytes: number,
 ): TurnChangeDiffFile {
   const changeType = turnFileChangeType(file.operation);
   if (file.reviewKind !== "text") {
@@ -38,15 +39,16 @@ export function buildTurnChangeDiffFile(
       omittedReason: "binary",
     };
   }
-  const beforeTooLarge = before.exists && before.text == null;
-  const afterTooLarge = after.exists && after.text == null;
-  if (beforeTooLarge || afterTooLarge) {
+  const omission =
+    omittedSideReason(before, maxReviewTextBytes) ??
+    omittedSideReason(after, maxReviewTextBytes);
+  if (omission) {
     return {
       path: file.path,
       changeType,
       oldContents: "",
       newContents: "",
-      omittedReason: "too-large",
+      omittedReason: omission,
     };
   }
   return {
@@ -56,6 +58,18 @@ export function buildTurnChangeDiffFile(
     newContents: changeType === "deleted" ? "" : (after.text ?? ""),
     omittedReason: null,
   };
+}
+
+function omittedSideReason(
+  side: TurnChangeFileContent,
+  maxReviewTextBytes: number,
+): TurnChangeDiffFile["omittedReason"] {
+  if (!side.exists || side.text != null) {
+    return null;
+  }
+  const sizeExceedsReviewLimit =
+    side.sizeBytes != null && side.sizeBytes > maxReviewTextBytes;
+  return sizeExceedsReviewLimit ? "too-large" : "unavailable";
 }
 
 export function createUnifiedDiff(

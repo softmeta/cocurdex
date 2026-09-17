@@ -32,12 +32,25 @@ function sanitizeRefPart(value: string) {
   return value.replace(/[^A-Za-z0-9._-]/g, "_");
 }
 
+const checkpointRefRoot = "refs/cocurdex/checkpoints";
+
 export function gitCheckpointRef(
   sessionId: string,
   userMessageId: string,
   phase: string,
 ) {
-  return `refs/cocurdex/checkpoints/${sanitizeRefPart(sessionId)}/turn/${sanitizeRefPart(userMessageId)}/${sanitizeRefPart(phase)}`;
+  return `${checkpointRefRoot}/${sanitizeRefPart(sessionId)}/turn/${sanitizeRefPart(userMessageId)}/${sanitizeRefPart(phase)}`;
+}
+
+async function listCheckpointRefs(workspaceRootPath: string) {
+  const listed = await runGit(
+    ["for-each-ref", "--format=%(refname)", checkpointRefRoot],
+    { cwd: workspaceRootPath, allowFailure: true },
+  );
+  return listed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 export function createGitCheckpointAdapter(
@@ -132,54 +145,34 @@ export function createGitCheckpointAdapter(
       if (!cwd) {
         return [];
       }
-      const listed = await runGit(
-        ["for-each-ref", "--format=%(refname)", "refs/cocurdex/checkpoints"],
-        { cwd, allowFailure: true },
-      );
-      return listed
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((ref) => ({
-          ref,
-          workspaceRootPath: cwd,
-        }));
+      const refs = await listCheckpointRefs(cwd);
+      return refs.map((ref) => ({
+        ref,
+        workspaceRootPath: cwd,
+      }));
     },
     async cleanup(input) {
       const cwd = input.workspaceRootPath;
       if (!cwd) {
         return;
       }
-      const existing = await runGit(
-        ["for-each-ref", "--format=%(refname)", "refs/cocurdex/checkpoints"],
-        { cwd, allowFailure: true },
-      );
-      const current = existing
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-      const keep = new Set(input.refs.filter((ref) => ref.startsWith("refs/")));
-      const deleteRefs = new Set<string>();
-      if (input.pruneUnreferenced) {
-        for (const ref of current) {
-          if (!keep.has(ref)) {
-            deleteRefs.add(ref);
-          }
+      const refs =
+        input.mode === "refs" ? input.refs : await listCheckpointRefs(cwd);
+      const keep = input.mode === "prune" ? new Set(input.keep) : null;
+      const sessionPrefix =
+        input.mode === "session"
+          ? `${checkpointRefRoot}/${sanitizeRefPart(input.sessionId)}`
+          : null;
+      const doomed = refs.filter((ref) => {
+        if (keep) {
+          return !keep.has(ref);
         }
-      } else {
-        for (const ref of keep) {
-          deleteRefs.add(ref);
+        if (sessionPrefix) {
+          return ref === sessionPrefix || ref.startsWith(`${sessionPrefix}/`);
         }
-        if (input.sessionId) {
-          const prefix = `refs/cocurdex/checkpoints/${sanitizeRefPart(input.sessionId)}`;
-          for (const ref of current) {
-            if (ref.startsWith(`${prefix}/`) || ref === prefix) {
-              deleteRefs.add(ref);
-            }
-          }
-        }
-      }
-      for (const ref of deleteRefs) {
+        return true;
+      });
+      for (const ref of doomed) {
         await runGit(["update-ref", "-d", ref], {
           cwd,
           allowFailure: true,

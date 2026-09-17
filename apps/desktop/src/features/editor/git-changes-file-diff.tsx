@@ -147,6 +147,7 @@ function OmittedFileRow({
   const reasonLabels = {
     binary: t("git.binaryFile"),
     "too-large": t("git.fileTooLarge"),
+    unavailable: t("git.checkpointUnavailable"),
     unsupported: t("git.diffUnavailable"),
   } as const;
   return (
