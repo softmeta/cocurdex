@@ -16,6 +16,7 @@ import {
   AppDropdownContent,
   AppDropdownItem,
   CollapsibleUserMessageBody,
+  LinkifiedText,
   MarkdownRenderer,
 } from "@/components";
 import {
@@ -343,7 +344,7 @@ function UserPromptBody({
     return (
       <CollapsibleUserMessageBody key={message.id} text={message.content}>
         <div className="whitespace-pre-wrap break-words text-left text-body leading-6">
-          {message.content}
+          <LinkifiedText text={message.content} />
         </div>
       </CollapsibleUserMessageBody>
     );

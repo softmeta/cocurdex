@@ -36,6 +36,29 @@ describe("parseFilePathCandidate", () => {
     });
   });
 
+  it("parses a trailing :start-end range suffix", () => {
+    expect(parseFilePathCandidate("service.ts:1544-1572")).toEqual({
+      path: "service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
+  });
+
+  it("parses a range separated by an en dash", () => {
+    expect(parseFilePathCandidate("src/service.ts:1544–1572")).toEqual({
+      path: "src/service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
+  });
+
+  it("collapses a reversed range to its start line", () => {
+    expect(parseFilePathCandidate("service.ts:1572-1544")).toEqual({
+      path: "service.ts",
+      startLine: 1572,
+    });
+  });
+
   it("accepts an absolute path", () => {
     expect(parseFilePathCandidate("/Users/x/app/main.ts")).toEqual({
       path: "/Users/x/app/main.ts",
@@ -50,6 +73,8 @@ describe("parseFilePathCandidate", () => {
     "useEffect",
     "v1.2.3",
     "1.5",
+    "12:30-13:00",
+    "v1.2.3-rc1",
     "$SHELL",
     "--output-format",
   ])("rejects non-path inline code: %s", (raw) => {
@@ -82,6 +107,14 @@ describe("scanFilePathCandidates", () => {
       "core/src/session/handlers.rs:619",
       { path: "core/src/session/handlers.rs", startLine: 619 },
     );
+  });
+
+  it("finds a path with a line range inside a Chinese sentence", () => {
+    expectSingle("补丁落在 service.ts:1544-1572 附近", "service.ts:1544-1572", {
+      path: "service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
   });
 
   it("finds a bare path without a line number", () => {
@@ -152,6 +185,27 @@ describe("workspace file markdown links", () => {
       startLine: 12,
       column: 3,
     });
+  });
+
+  it("round-trips a line range through the private href", () => {
+    const href = buildWorkspaceFileHref({
+      path: "packages/daemon/src/service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
+    expect(parseWorkspaceFileHref(href)).toEqual({
+      path: "packages/daemon/src/service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
+  });
+
+  it("drops a range that ends before it starts", () => {
+    expect(
+      parseWorkspaceFileHref(
+        "https://cocurdex.workspace/open?path=a.ts&line=20&end=10",
+      ),
+    ).toEqual({ path: "a.ts", startLine: 20 });
   });
 
   it("rejects ordinary https links", () => {
@@ -248,6 +302,20 @@ describe("workspace file markdown links", () => {
     );
   });
 
+  it("peels a line range off an absolute file:// path", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "[a.ts:12-20](file:///Users/dev/apps/desktop/src/a.ts:12-20)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/apps/desktop/src/a.ts",
+      startLine: 12,
+      endLine: 20,
+    });
+  });
+
   it("decodes escaped characters in file:// links", () => {
     const out = rewriteMarkdownLocalFileLinks(
       "[a.ts](file:///Users/dev/My%20Docs/a.ts)",
@@ -291,6 +359,17 @@ describe("splitWorkspaceLinkLabel", () => {
     expect(splitWorkspaceLinkLabel("headless.rs:1240 起")).toEqual([
       { kind: "path", text: "headless.rs:1240", startLine: 1240 },
       { kind: "text", text: " 起" },
+    ]);
+  });
+
+  it("keeps a line range in the path chip", () => {
+    expect(splitWorkspaceLinkLabel("service.ts:1544-1572")).toEqual([
+      {
+        kind: "path",
+        text: "service.ts:1544-1572",
+        startLine: 1544,
+        endLine: 1572,
+      },
     ]);
   });
 

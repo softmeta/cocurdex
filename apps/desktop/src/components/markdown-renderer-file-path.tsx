@@ -207,11 +207,13 @@ export function MarkdownWorkspaceFileLink({
           return <span key={key}>{part.text}</span>;
         }
 
-        // Open the real workspace path from the href; prefer :line from the
-        // label when the model put it there (`headless.rs:846`).
+        // Open the real workspace path from the href; prefer the location from
+        // the label when the model put it there (`headless.rs:846`,
+        // `service.ts:1544-1572`).
         const openCandidate: FilePathCandidate = {
           path: candidate.path,
           startLine: part.startLine ?? candidate.startLine,
+          endLine: part.endLine ?? candidate.endLine,
           column: part.column ?? candidate.column,
         };
         return (

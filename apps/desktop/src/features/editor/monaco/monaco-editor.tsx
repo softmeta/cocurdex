@@ -39,7 +39,7 @@ import {
 } from "./monaco-theme";
 import {
   getEditorLanguage,
-  revealPreviewLine,
+  revealPreviewRange,
   syncPreviewRange,
 } from "./monaco-utils";
 
@@ -49,6 +49,11 @@ interface MonacoEditorProps {
 }
 
 const ADD_TO_CHAT_SHORTCUT_LABEL = "⌘L";
+
+interface PreviewRevealTarget {
+  startLine: number;
+  endLine: number | null;
+}
 
 interface MonacoTextEditorProps {
   activeFile: string;
@@ -100,11 +105,13 @@ function MonacoTextEditor({
   const languageStatus = useMonacoLoaderStatus(language);
   const decorationCollectionRef =
     useRef<MonacoEditorNamespace.IEditorDecorationsCollection | null>(null);
-  const { content, hasCachedContent, hasReadError } = useMountedFileContent(
-    activeFile,
-    cachedContent,
-    onContentLoaded,
-  );
+  // A citation reveal that has not landed yet. It stays pending while the
+  // viewport is too small to show the range — the editor mounts before the
+  // right panel has its final height — and is replayed on the next layout
+  // change so the citation ends up centered instead of glued to the top edge.
+  const pendingRevealRef = useRef<PreviewRevealTarget | null>(null);
+  const { content, hasCachedContent, hasReadError, isContentLoaded } =
+    useMountedFileContent(activeFile, cachedContent, onContentLoaded);
   const editorOptions = useMemo(
     () => ({
       ...MONACO_EDITOR_OPTIONS,
@@ -125,6 +132,24 @@ function MonacoTextEditor({
     editorThemeName,
     themePreset,
   ].join(":");
+
+  const applyPendingReveal = useCallback(
+    (editor: MonacoEditorNamespace.IStandaloneCodeEditor) => {
+      const pending = pendingRevealRef.current;
+      if (!pending) {
+        return;
+      }
+
+      if (
+        revealPreviewRange(editor, pending.startLine, pending.endLine) === null
+      ) {
+        return;
+      }
+
+      pendingRevealRef.current = null;
+    },
+    [],
+  );
 
   const applyAvailableThemes = useCallback((monaco: Monaco) => {
     const highlighter = getEditorHighlighter();
@@ -157,8 +182,11 @@ function MonacoTextEditor({
           activePreviewLocation.startLine,
           activePreviewLocation.endLine,
         );
-        const startLine = activePreviewLocation.startLine;
-        requestAnimationFrame(() => revealPreviewLine(editor, startLine));
+        pendingRevealRef.current = {
+          startLine: activePreviewLocation.startLine,
+          endLine: activePreviewLocation.endLine ?? null,
+        };
+        requestAnimationFrame(() => applyPendingReveal(editor));
       }
 
       const selectionSubscription = editor.onDidChangeCursorSelection(() => {
@@ -174,6 +202,7 @@ function MonacoTextEditor({
         syncSelectionUiRef.current?.();
       });
       const layoutSubscription = editor.onDidLayoutChange(() => {
+        applyPendingReveal(editor);
         syncSelectionUiRef.current?.();
       });
       const blurSubscription = editor.onDidBlurEditorText(() => {
@@ -198,6 +227,7 @@ function MonacoTextEditor({
     [
       activePreviewLocation,
       applyAvailableThemes,
+      applyPendingReveal,
       editorRef,
       editorThemeName,
       handleEditorMouseDown,
@@ -227,6 +257,13 @@ function MonacoTextEditor({
     return readErrorFallback;
   }
   if (languageStatus !== "ready") {
+    return null;
+  }
+  // Mount Monaco only once the text is in hand. Opening an uncached file would
+  // otherwise create the model from the empty placeholder, and the preview
+  // reveal below would clamp the target line away — the citation then lands at
+  // line 1 and only scrolls on a second click, when the content is cached.
+  if (!isContentLoaded) {
     return null;
   }
 

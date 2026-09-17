@@ -3,38 +3,90 @@ import { describe, expect, it, vi } from "vitest";
 import {
   EDITOR_SHIKI_LANGUAGES,
   getEditorLanguage,
-  revealPreviewLine,
+  revealPreviewRange,
 } from "./monaco-utils";
 
-function createEditorStub(lineCount: number) {
+const LINE_HEIGHT = 20;
+
+function createEditorStub(lineCount: number, viewportHeight = 1000) {
   const revealLineInCenter = vi.fn();
+  const revealLinesInCenter = vi.fn();
   const editor = {
+    getBottomForLineNumber: (lineNumber: number) => lineNumber * LINE_HEIGHT,
+    getLayoutInfo: () => ({ height: viewportHeight }),
     getModel: () => (lineCount > 0 ? { getLineCount: () => lineCount } : null),
+    getTopForLineNumber: (lineNumber: number) => (lineNumber - 1) * LINE_HEIGHT,
     revealLineInCenter,
+    revealLinesInCenter,
   } as unknown as MonacoEditorNamespace.IStandaloneCodeEditor;
-  return { editor, revealLineInCenter };
+  return { editor, revealLineInCenter, revealLinesInCenter };
 }
 
-describe("revealPreviewLine", () => {
+describe("revealPreviewRange", () => {
   it("reveals the requested line centered", () => {
     const { editor, revealLineInCenter } = createEditorStub(5000);
-    expect(revealPreviewLine(editor, 3081)).toBe(3081);
+    expect(revealPreviewRange(editor, 3081)).toBe(3081);
     expect(revealLineInCenter).toHaveBeenCalledWith(3081);
   });
 
   it("clamps a line beyond the file to the last line", () => {
     const { editor, revealLineInCenter } = createEditorStub(120);
-    expect(revealPreviewLine(editor, 3081)).toBe(120);
+    expect(revealPreviewRange(editor, 3081)).toBe(120);
     expect(revealLineInCenter).toHaveBeenCalledWith(120);
+  });
+
+  it("reveals a line range as a whole", () => {
+    const { editor, revealLineInCenter, revealLinesInCenter } =
+      createEditorStub(5000);
+    expect(revealPreviewRange(editor, 1544, 1572)).toBe(1544);
+    expect(revealLinesInCenter).toHaveBeenCalledWith(1544, 1572);
+    expect(revealLineInCenter).not.toHaveBeenCalled();
+  });
+
+  it("clamps a range end beyond the file to the last line", () => {
+    const { editor, revealLinesInCenter } = createEditorStub(1560);
+    expect(revealPreviewRange(editor, 1544, 1572)).toBe(1544);
+    expect(revealLinesInCenter).toHaveBeenCalledWith(1544, 1560);
+  });
+
+  it("centers a single line when the range is empty or reversed", () => {
+    const sameLine = createEditorStub(5000);
+    expect(revealPreviewRange(sameLine.editor, 1544, 1544)).toBe(1544);
+    expect(sameLine.revealLineInCenter).toHaveBeenCalledWith(1544);
+    expect(sameLine.revealLinesInCenter).not.toHaveBeenCalled();
+
+    const reversed = createEditorStub(5000);
+    expect(revealPreviewRange(reversed.editor, 1544, 12)).toBe(1544);
+    expect(reversed.revealLineInCenter).toHaveBeenCalledWith(1544);
+    expect(reversed.revealLinesInCenter).not.toHaveBeenCalled();
+  });
+
+  it("reports an unlaid-out viewport as unrevealed", () => {
+    // Opening the panel mounts Monaco before its container has a height;
+    // Monaco floors that measurement, so the range is parked at the top edge
+    // and the caller has to replay the reveal once the layout lands.
+    const { editor, revealLinesInCenter } = createEditorStub(5000, 5);
+    expect(revealPreviewRange(editor, 1544, 1572)).toBeNull();
+    expect(revealLinesInCenter).toHaveBeenCalledWith(1544, 1572);
+  });
+
+  it("reports a range taller than the viewport as unrevealed", () => {
+    const { editor } = createEditorStub(5000, 400);
+    expect(revealPreviewRange(editor, 1544, 1572)).toBeNull();
+  });
+
+  it("reveals a range that exactly fills the viewport", () => {
+    const { editor } = createEditorStub(5000, 29 * LINE_HEIGHT);
+    expect(revealPreviewRange(editor, 1544, 1572)).toBe(1544);
   });
 
   it("does nothing without a start line or model", () => {
     const withModel = createEditorStub(100);
-    expect(revealPreviewLine(withModel.editor, null)).toBeNull();
+    expect(revealPreviewRange(withModel.editor, null)).toBeNull();
     expect(withModel.revealLineInCenter).not.toHaveBeenCalled();
 
     const noModel = createEditorStub(0);
-    expect(revealPreviewLine(noModel.editor, 10)).toBeNull();
+    expect(revealPreviewRange(noModel.editor, 10)).toBeNull();
     expect(noModel.revealLineInCenter).not.toHaveBeenCalled();
   });
 });
