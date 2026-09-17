@@ -1523,6 +1523,7 @@ app
     startAppUpdater({
       currentVersion: app.getVersion(),
       packaged: app.isPackaged,
+      userDataPath,
       whenReadyToCheck: proxyReady,
       broadcast(state) {
         for (const window of BrowserWindow.getAllWindows()) {

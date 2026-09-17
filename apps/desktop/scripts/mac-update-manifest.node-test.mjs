@@ -6,8 +6,15 @@ import path from "node:path";
 import { test } from "node:test";
 import {
   createMacManifest,
+  macUpdateChannelFileName,
   mergeMacManifests,
 } from "./mac-update-manifest.mjs";
+
+test("names the Mac updater feed after the prerelease identifier", () => {
+  assert.equal(macUpdateChannelFileName("1.2.3"), "latest-mac.yml");
+  assert.equal(macUpdateChannelFileName("1.2.3-beta.1"), "beta-mac.yml");
+  assert.equal(macUpdateChannelFileName("1.2.3-test.2"), "test-mac.yml");
+});
 
 test("publishes both architectures with hashes of the actual artifacts", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "mac-manifest-"));

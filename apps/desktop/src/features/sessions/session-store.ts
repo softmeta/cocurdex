@@ -65,6 +65,8 @@ const LAST_SELECTED_AGENT_STORAGE_KEY = "agents.desktop.last-selected-agent";
 const agentFallbackOrder: AgentId[] = [
   "pi",
   "grok-build",
+  "cursor",
+  "devin",
   "codex",
   "claude-agent",
   "opencode",
@@ -73,6 +75,8 @@ const agentFallbackOrder: AgentId[] = [
 export const agentLabels: Record<AgentId, string> = {
   "claude-agent": "Claude Agent",
   codex: "Codex",
+  cursor: "Cursor",
+  devin: "Devin",
   "grok-build": "Grok Build",
   opencode: "OpenCode",
   pi: "Pi",
@@ -82,6 +86,8 @@ export const agentCollaborationModes: Record<AgentId, CollaborationModeKind[]> =
   {
     "claude-agent": ["default", "plan"],
     codex: ["default", "plan"],
+    cursor: ["default"],
+    devin: ["default"],
     "grok-build": ["default", "plan"],
     opencode: ["default", "plan"],
     pi: ["default"],
@@ -120,6 +126,38 @@ export const agentsAtom = atom<AgentDescriptor[]>([
       sessionTitleStrategy: getAgentSessionTitleStrategy("codex"),
       transport: "native",
       runtimeAxes: agentRuntimeAxisCapabilities.codex,
+    },
+  },
+  {
+    id: "cursor",
+    label: "Cursor",
+    availability: "available",
+    capabilities: {
+      collaborationModes: ["default"],
+      permissionModes: getFallbackAgentPermissionModes("cursor"),
+      writeModes: ["native-write"],
+      supportsSteering: false,
+      supportsStreaming: true,
+      supportsSelections: true,
+      sessionTitleStrategy: getAgentSessionTitleStrategy("cursor"),
+      transport: "acp",
+      runtimeAxes: agentRuntimeAxisCapabilities.cursor,
+    },
+  },
+  {
+    id: "devin",
+    label: "Devin",
+    availability: "available",
+    capabilities: {
+      collaborationModes: ["default"],
+      permissionModes: getFallbackAgentPermissionModes("devin"),
+      writeModes: ["native-write"],
+      supportsSteering: false,
+      supportsStreaming: true,
+      supportsSelections: true,
+      sessionTitleStrategy: getAgentSessionTitleStrategy("devin"),
+      transport: "acp",
+      runtimeAxes: agentRuntimeAxisCapabilities.devin,
     },
   },
   {
@@ -232,6 +270,8 @@ export function isDefaultSessionTitle(title: string, agentType: AgentId) {
 function getDefaultWriteMode(agentType: unknown): SessionRecord["writeMode"] {
   const normalizedAgentType = normalizeAgentId(agentType);
   return normalizedAgentType === "claude-agent" ||
+    normalizedAgentType === "cursor" ||
+    normalizedAgentType === "devin" ||
     normalizedAgentType === "grok-build"
     ? "native-write"
     : "read-only";

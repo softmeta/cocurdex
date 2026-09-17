@@ -766,6 +766,15 @@
       "later": "Later",
       "title": "Update available"
     },
+    "channel": {
+      "ariaLabel": "Update channel",
+      "description": "Test builds can be unstable. Switching back to Stable may install an older version.",
+      "options": {
+        "stable": "Stable",
+        "test": "Test"
+      },
+      "title": "Update channel"
+    },
     "description": "Installed version {{version}}.",
     "groupTitle": "App",
     "status": {

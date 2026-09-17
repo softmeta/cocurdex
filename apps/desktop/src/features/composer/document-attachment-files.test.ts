@@ -8,6 +8,8 @@ describe("document attachment adapter support", () => {
     ["grok-build", true],
     ["opencode", true],
     ["codex", false],
+    ["cursor", false],
+    ["devin", false],
     ["pi", false],
   ] satisfies Array<
     [AgentId, boolean]

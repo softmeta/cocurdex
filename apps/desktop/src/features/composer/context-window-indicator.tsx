@@ -199,7 +199,6 @@ export function ContextUsageMeter({
 // with "—" for tokens until the first `usage.updated` arrives.
 export function ContextWindowIndicator({
   footer,
-  isRunning = false,
   layout = "inline",
   afterModel,
   sessionId,
@@ -453,8 +452,6 @@ export function ContextWindowIndicator({
       fastMode={fastMode}
       mcpServers={sessionRuntime?.runtime?.mcpServers ?? null}
       configOptions={sessionConfigOptions}
-      isRunning={isRunning}
-      readOnly
       thinkingLevel={snapshot?.thinkingLevel ?? null}
       triggerValues={menuTriggerValues}
       onPermissionModeChange={(permissionMode) =>

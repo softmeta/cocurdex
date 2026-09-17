@@ -52,7 +52,6 @@ export function SessionRuntimeMenu({
   fastMode,
   mcpServers,
   configOptions = [],
-  isRunning = false,
   thinkingLevel,
   triggerValues,
   onPermissionModeChange,
@@ -80,7 +79,6 @@ export function SessionRuntimeMenu({
   fastMode: boolean;
   mcpServers: readonly AgentMcpServerRuntime[] | null;
   configOptions?: readonly AgentSessionConfigOption[] | null;
-  isRunning?: boolean;
   thinkingLevel?: string | null;
   /** Extra trigger chips (thinking / permission), matching new-session card. */
   triggerValues?: readonly string[];
@@ -192,7 +190,7 @@ export function SessionRuntimeMenu({
       {mcpServers !== null ? <McpRuntimeSubmenu servers={mcpServers} /> : null}
       <AgentRuntimeConfigItems
         configOptions={sessionConfigOptions}
-        disabled={isRunning || readOnly}
+        disabled={readOnly}
         inspectOnly={readOnly}
         onChange={onConfigOptionChange}
       />
@@ -211,6 +209,7 @@ export function SessionRuntimeMenu({
 
   return (
     <ProviderModelMenu
+      agentId={agentType}
       appearance="ghost"
       compatibleProviders={compatibleProviders}
       readOnly={readOnly}

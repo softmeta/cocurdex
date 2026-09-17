@@ -6,6 +6,8 @@ describe("provider model menu display rules", () => {
     ["grok-build", false],
     ["claude-agent", false],
     ["codex", true],
+    ["cursor", false],
+    ["devin", false],
     ["opencode", true],
     ["pi", true],
   ] as const)("showProviderGroupLabels for %s is %s", (agentId, expected) => {

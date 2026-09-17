@@ -7,6 +7,8 @@ import type {
 export type AgentId =
   | "claude-agent"
   | "codex"
+  | "cursor"
+  | "devin"
   | "grok-build"
   | "pi"
   | "opencode";

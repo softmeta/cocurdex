@@ -15,6 +15,8 @@ const PROVIDER_MODEL_VALUE_SEPARATOR = "::";
 const providerModelCacheAgentIds = new Set<AgentId>([
   "claude-agent",
   "codex",
+  "cursor",
+  "devin",
   "grok-build",
   "opencode",
   "pi",

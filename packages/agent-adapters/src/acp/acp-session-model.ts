@@ -108,25 +108,109 @@ function readModelStateField(response: unknown): unknown {
   return (meta as Record<string, unknown>).modelState ?? null;
 }
 
+function readConfigOptionModel(entry: unknown): AcpSessionModel | null {
+  if (typeof entry !== "object" || entry === null) {
+    return null;
+  }
+  const record = entry as Record<string, unknown>;
+  const modelId = readString(record, "value") ?? readString(record, "modelId");
+  if (!modelId) {
+    return null;
+  }
+  return {
+    modelId,
+    name: readString(record, "name") ?? modelId,
+    description: readString(record, "description"),
+    contextWindow: null,
+    defaultReasoningEffort: null,
+    reasoningEfforts: [],
+  };
+}
+
+function isModelConfigOption(record: Record<string, unknown>) {
+  if (readString(record, "type") !== "select") {
+    return false;
+  }
+  const id = readString(record, "id");
+  const category = readString(record, "category");
+  return id === "model" || category === "model";
+}
+
+function readModelStateFromConfigOptions(
+  response: Record<string, unknown>,
+): AcpSessionModelState | null {
+  const configOptions = response.configOptions;
+  if (!Array.isArray(configOptions)) {
+    return null;
+  }
+  for (const option of configOptions) {
+    if (typeof option !== "object" || option === null) {
+      continue;
+    }
+    const record = option as Record<string, unknown>;
+    if (!isModelConfigOption(record) || !Array.isArray(record.options)) {
+      continue;
+    }
+    const models = record.options.flatMap((entry) => {
+      const model = readConfigOptionModel(entry);
+      return model ? [model] : [];
+    });
+    if (models.length === 0) {
+      continue;
+    }
+    return {
+      currentModelId: readString(record, "currentValue"),
+      models,
+    };
+  }
+  return null;
+}
+
+export function readAcpModelConfigOptionId(response: unknown): string | null {
+  if (typeof response !== "object" || response === null) {
+    return null;
+  }
+  const configOptions = (response as Record<string, unknown>).configOptions;
+  if (!Array.isArray(configOptions)) {
+    return null;
+  }
+  for (const option of configOptions) {
+    if (typeof option !== "object" || option === null) {
+      continue;
+    }
+    const record = option as Record<string, unknown>;
+    if (!isModelConfigOption(record)) {
+      continue;
+    }
+    return readString(record, "id");
+  }
+  return null;
+}
+
 export function readAcpSessionModelState(
   response: unknown,
 ): AcpSessionModelState | null {
   const models = readModelStateField(response);
-  if (typeof models !== "object" || models === null) {
-    return null;
-  }
-  const modelsRecord = models as Record<string, unknown>;
-  const available = Array.isArray(modelsRecord.availableModels)
-    ? modelsRecord.availableModels
-    : [];
-
-  return {
-    currentModelId: readString(modelsRecord, "currentModelId"),
-    models: available.flatMap((entry) => {
+  if (typeof models === "object" && models !== null) {
+    const modelsRecord = models as Record<string, unknown>;
+    const available = Array.isArray(modelsRecord.availableModels)
+      ? modelsRecord.availableModels
+      : [];
+    const parsed = available.flatMap((entry) => {
       const model = readModel(entry);
       return model ? [model] : [];
-    }),
-  };
+    });
+    if (parsed.length > 0) {
+      return {
+        currentModelId: readString(modelsRecord, "currentModelId"),
+        models: parsed,
+      };
+    }
+  }
+  if (typeof response === "object" && response !== null) {
+    return readModelStateFromConfigOptions(response as Record<string, unknown>);
+  }
+  return null;
 }
 
 // Only apply a requested model when the agent advertised it in its own ACP

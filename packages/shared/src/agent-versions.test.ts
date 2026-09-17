@@ -43,6 +43,8 @@ describe("getAgentVersionStatus", () => {
 
   it("accepts anything when the adapter has no floor", () => {
     expect(getAgentVersionStatus("codex", "0.1.0")).toBe("ok");
+    expect(getAgentVersionStatus("cursor", null)).toBe("ok");
+    expect(getAgentVersionStatus("devin", "1.0.0")).toBe("ok");
     expect(getAgentVersionStatus("pi", null)).toBe("ok");
   });
 

@@ -1,6 +1,8 @@
 import {
   listClaudeCliProviderModels,
   listCodexProviderModels,
+  listCursorProviderModels,
+  listDevinProviderModels,
   listGrokBuildProviderModels,
   listOpenCodeProviderModels,
   listPiProviderTemplates,
@@ -197,6 +199,14 @@ export class DaemonProviderService {
         }
         return [];
       }
+    }
+
+    if (agentId === "cursor") {
+      return listCursorProviderModels(undefined, options);
+    }
+
+    if (agentId === "devin") {
+      return listDevinProviderModels(undefined, options);
     }
 
     if (agentId === "grok-build") {

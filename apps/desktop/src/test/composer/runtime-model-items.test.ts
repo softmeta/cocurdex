@@ -95,6 +95,8 @@ describe("usesAdapterOwnedModelCatalog", () => {
   it.each([
     ["claude-agent", true],
     ["codex", true],
+    ["cursor", true],
+    ["devin", true],
     ["grok-build", true],
     ["opencode", true],
     ["pi", false],

@@ -46,8 +46,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          package_version="$(node -p "require('./apps/desktop/package.json').version")"
+          prerelease_args=()
+          if node -e 'process.exit(/-.+/.test(process.argv[1]) ? 0 : 1)' "${package_version}"; then
+            prerelease_args+=(--prerelease)
+          fi
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             test "$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft --jq .isDraft)" = "true"
+            if test "${#prerelease_args[@]}" -gt 0; then
+              gh release edit "${GITHUB_REF_NAME}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                "${prerelease_args[@]}"
+            fi
             exit 0
           fi
           gh release create "${GITHUB_REF_NAME}" \
@@ -55,7 +65,8 @@ jobs:
             --title "Cocurdex ${GITHUB_REF_NAME}" \
             --generate-notes \
             --verify-tag \
-            --draft
+            --draft \
+            "${prerelease_args[@]}"
 
   macos:
     name: macOS ${{ matrix.arch }}
@@ -351,14 +362,23 @@ jobs:
           gh release view "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" --json assets > mac-update/assets.json
           node apps/desktop/scripts/mac-update-manifest.mjs merge mac-update "${GITHUB_REF_NAME#v}"
-          gh release upload "${GITHUB_REF_NAME}" mac-update/latest-mac.yml \
+          gh release upload "${GITHUB_REF_NAME}" mac-update/*.yml \
             --repo "${GITHUB_REPOSITORY}" --clobber
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit "${GITHUB_REF_NAME}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "Cocurdex ${GITHUB_REF_NAME}" \
-            --draft=false
+          package_version="$(node -p "require('./apps/desktop/package.json').version")"
+          if node -e 'process.exit(/-.+/.test(process.argv[1]) ? 0 : 1)' "${package_version}"; then
+            gh release edit "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Cocurdex ${GITHUB_REF_NAME}" \
+              --draft=false \
+              --prerelease
+          else
+            gh release edit "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Cocurdex ${GITHUB_REF_NAME}" \
+              --draft=false
+          fi

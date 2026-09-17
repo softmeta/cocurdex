@@ -16,6 +16,8 @@
     "claudeCli": "使用本机已安装并登录的 Claude Agent",
     "claudeCode": "仅使用 cocurdex Provider 的 Anthropic Messages 模型",
     "codex": "快速代码生成",
+    "cursor": "通过 ACP 接入 Cursor CLI",
+    "devin": "通过 ACP 接入 Devin CLI",
     "grokBuild": "通过 ACP 接入 Grok agent 运行时",
     "opencode": "开源替代方案",
     "pi": "内置 agent"
@@ -23,6 +25,8 @@
   "agents": {
     "claudeCli": "Claude Agent",
     "codex": "Codex",
+    "cursor": "Cursor",
+    "devin": "Devin",
     "grokBuild": "Grok Build",
     "opencode": "OpenCode",
     "pi": "Pi"

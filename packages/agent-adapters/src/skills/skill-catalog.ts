@@ -70,7 +70,8 @@ function getSkillInvocation(agentId: AgentId, skillName: string): string {
     case "pi":
       return `/skill:${skillName} `;
     case "claude-agent":
-      return `/${skillName} `;
+    case "cursor":
+    case "devin":
     case "grok-build":
       return `/${skillName} `;
     case "opencode":

@@ -8,6 +8,8 @@ export function shouldPersistProviderDefault(
   // adapter runtime preferences instead of the global provider model store.
   if (
     agentId === "claude-agent" ||
+    agentId === "cursor" ||
+    agentId === "devin" ||
     agentId === "grok-build" ||
     agentId === "opencode"
   ) {

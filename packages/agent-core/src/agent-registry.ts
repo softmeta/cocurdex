@@ -73,6 +73,44 @@ const definitions: AgentDefinition[] = [
     },
   },
   {
+    runtime: { executableName: "cursor-agent", kind: "external" },
+    descriptor: {
+      id: "cursor",
+      label: "Cursor",
+      availability: "available",
+      capabilities: {
+        collaborationModes: ["default"],
+        permissionModes: getFallbackAgentPermissionModes("cursor"),
+        writeModes: ["native-write"],
+        supportsSteering: false,
+        supportsStreaming: true,
+        supportsSelections: true,
+        sessionTitleStrategy: getAgentSessionTitleStrategy("cursor"),
+        transport: "acp",
+        runtimeAxes: agentRuntimeAxisCapabilities.cursor,
+      },
+    },
+  },
+  {
+    runtime: { executableName: "devin", kind: "external" },
+    descriptor: {
+      id: "devin",
+      label: "Devin",
+      availability: "available",
+      capabilities: {
+        collaborationModes: ["default"],
+        permissionModes: getFallbackAgentPermissionModes("devin"),
+        writeModes: ["native-write"],
+        supportsSteering: false,
+        supportsStreaming: true,
+        supportsSelections: true,
+        sessionTitleStrategy: getAgentSessionTitleStrategy("devin"),
+        transport: "acp",
+        runtimeAxes: agentRuntimeAxisCapabilities.devin,
+      },
+    },
+  },
+  {
     runtime: { executableName: "grok", kind: "external" },
     descriptor: {
       id: "grok-build",

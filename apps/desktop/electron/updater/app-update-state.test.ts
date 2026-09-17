@@ -29,6 +29,7 @@ describe("createInitialAppUpdateState", () => {
       }),
     ).toEqual({
       availableVersion: null,
+      channel: "stable",
       currentVersion: "0.1.0",
       dismissedVersion: null,
       downloadPercent: null,
@@ -181,5 +182,45 @@ describe("reduceAppUpdateState", () => {
     expect(
       reduceAppUpdateState(ready, { type: "error", message: "later fail" }),
     ).toBe(ready);
+  });
+
+  it("keeps a channel change on unpackaged builds", () => {
+    const unsupported = createInitialAppUpdateState({
+      currentVersion: "0.1.0",
+      packaged: false,
+    });
+    const next = reduceAppUpdateState(unsupported, {
+      type: "set-channel",
+      channel: "test",
+    });
+    expect(next).toMatchObject({
+      channel: "test",
+      status: "unsupported",
+    });
+  });
+
+  it("clears a downloaded update when the channel changes", () => {
+    const ready = reduceAppUpdateState(packagedState({ channel: "test" }), {
+      type: "downloaded",
+      version: "0.2.0-beta.1",
+      releaseNotesUrl: githubReleaseNotesUrl("0.2.0-beta.1"),
+    });
+    const next = reduceAppUpdateState(ready, {
+      type: "set-channel",
+      channel: "stable",
+    });
+    expect(next).toMatchObject({
+      availableVersion: null,
+      channel: "stable",
+      dismissedVersion: null,
+      status: "idle",
+    });
+  });
+
+  it("ignores a no-op channel change", () => {
+    const state = packagedState();
+    expect(
+      reduceAppUpdateState(state, { type: "set-channel", channel: "stable" }),
+    ).toBe(state);
   });
 });

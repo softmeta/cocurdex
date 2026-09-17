@@ -23,6 +23,14 @@ export const agentRuntimeAxisCapabilities: Readonly<
     permission: inSession,
     speed: inSession,
   },
+  cursor: {
+    model: inSession,
+    thinking: inSession,
+  },
+  devin: {
+    model: inSession,
+    thinking: inSession,
+  },
   "grok-build": {
     model: inSession,
     thinking: inSession,

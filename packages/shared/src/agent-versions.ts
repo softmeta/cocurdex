@@ -9,6 +9,10 @@ export const agentMinimumVersions: Record<AgentId, string | null> = {
   "claude-agent": "2.0.0",
   // No confirmed floor for `codex app-server` yet.
   codex: null,
+  // Cursor CLI ACP (`cursor-agent acp`) has no confirmed version floor yet.
+  cursor: null,
+  // Devin CLI ACP (`devin acp`) has no confirmed version floor yet.
+  devin: null,
   // Grok Build's first stable CLI, where the ACP yolo-mode ext landed.
   "grok-build": "1.0.0",
   // Matches the @opencode-ai/sdk major/minor this repo depends on.
@@ -30,6 +34,14 @@ export const agentInstallHints: Record<AgentId, AgentInstallHint | null> = {
   codex: {
     command: "npm install -g @openai/codex",
     docsUrl: "https://developers.openai.com/codex/cli",
+  },
+  cursor: {
+    command: "curl https://cursor.com/install -fsS | bash",
+    docsUrl: "https://cursor.com/docs/cli/acp",
+  },
+  devin: {
+    command: "curl -fsSL https://cli.devin.ai/install.sh | bash",
+    docsUrl: "https://docs.devin.ai/desktop/acp",
   },
   "grok-build": {
     command: "npm install -g @xai-official/grok",

@@ -3,6 +3,7 @@ import type { AgentId } from "@cocurdex/shared";
 /**
  * Agents whose model picker is filled by adapter discovery
  * (`listClaudeCliProviderModels` / `listGrokBuildProviderModels` /
+ * `listCursorProviderModels` / `listDevinProviderModels` /
  * `listCodexProviderModels` / `listOpenCodeProviderModels`), not by filtering
  * the app-managed provider table.
  *
@@ -14,6 +15,8 @@ export function usesAdapterOwnedModelCatalog(agentId: AgentId) {
   return (
     agentId === "claude-agent" ||
     agentId === "codex" ||
+    agentId === "cursor" ||
+    agentId === "devin" ||
     agentId === "grok-build" ||
     agentId === "opencode"
   );

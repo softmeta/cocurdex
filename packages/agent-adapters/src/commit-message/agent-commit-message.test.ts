@@ -35,6 +35,8 @@ describe("generateAgentCommitMessage", () => {
   it.each<AgentId>([
     "pi",
     "grok-build",
+    "cursor",
+    "devin",
     "codex",
     "claude-agent",
     "opencode",

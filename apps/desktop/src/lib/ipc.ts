@@ -39,6 +39,36 @@ const fallbackAgents: AgentDescriptor[] = [
     },
   },
   {
+    id: "cursor",
+    label: "Cursor",
+    availability: "available",
+    capabilities: {
+      collaborationModes: ["default"],
+      permissionModes: getFallbackAgentPermissionModes("cursor"),
+      writeModes: ["native-write"],
+      supportsSteering: false,
+      supportsStreaming: true,
+      supportsSelections: true,
+      sessionTitleStrategy: getAgentSessionTitleStrategy("cursor"),
+      transport: "acp",
+    },
+  },
+  {
+    id: "devin",
+    label: "Devin",
+    availability: "available",
+    capabilities: {
+      collaborationModes: ["default"],
+      permissionModes: getFallbackAgentPermissionModes("devin"),
+      writeModes: ["native-write"],
+      supportsSteering: false,
+      supportsStreaming: true,
+      supportsSelections: true,
+      sessionTitleStrategy: getAgentSessionTitleStrategy("devin"),
+      transport: "acp",
+    },
+  },
+  {
     id: "grok-build",
     label: "Grok Build",
     availability: "available",
@@ -112,6 +142,7 @@ const fallbackApi: DesktopApi = {
   listFontFamilies: async () => [],
   getAppUpdateState: async () => ({
     availableVersion: null,
+    channel: "stable",
     currentVersion: "0.0.0",
     dismissedVersion: null,
     downloadPercent: null,
@@ -121,6 +152,7 @@ const fallbackApi: DesktopApi = {
   }),
   checkForAppUpdate: async () => fallbackApi.getAppUpdateState(),
   dismissAppUpdate: async () => fallbackApi.getAppUpdateState(),
+  setAppUpdateChannel: async () => fallbackApi.getAppUpdateState(),
   installAppUpdate: async () => {},
   onAppUpdateState: () => () => {},
   getOssLicenses: async () => ({

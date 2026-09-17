@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from "react";
 import { desktopApi } from "@/lib";
-import type { AppUpdateState } from "@/lib/types";
+import type { AppUpdateChannel, AppUpdateState } from "@/lib/types";
 
 const listeners = new Set<() => void>();
 
 const initialState: AppUpdateState = {
   availableVersion: null,
+  channel: "stable",
   currentVersion: "0.0.0",
   dismissedVersion: null,
   downloadPercent: null,
@@ -67,4 +68,12 @@ export async function dismissAppUpdate(): Promise<AppUpdateState> {
 
 export async function installAppUpdate(): Promise<void> {
   await desktopApi.installAppUpdate();
+}
+
+export async function setAppUpdateChannel(
+  channel: AppUpdateChannel,
+): Promise<AppUpdateState> {
+  const next = await desktopApi.setAppUpdateChannel(channel);
+  apply(next);
+  return next;
 }

@@ -51,6 +51,8 @@ describe("getDefaultProviderModelValue", () => {
 describe("shouldPersistProviderDefault", () => {
   it.each([
     ["claude-agent", "claude-agent", false],
+    ["cursor", "cursor", false],
+    ["devin", "devin", false],
     ["grok-build", "grok-build", false],
     ["opencode", "opencode", false],
     ["pi", "openai", true],

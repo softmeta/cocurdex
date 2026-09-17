@@ -1,4 +1,4 @@
-import type { CompatibleProviderModel } from "@cocurdex/shared";
+import type { AgentId, CompatibleProviderModel } from "@cocurdex/shared";
 import { type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,6 +12,7 @@ import { Button, Spinner } from "@/components/ui";
 // @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
+import { usesAdapterOwnedModelCatalog } from "./adapter-owned-catalog";
 import { ProviderModelCompoundMenu } from "./provider-model-compound-menu";
 
 function getProviderModelValue({ model, provider }: CompatibleProviderModel) {
@@ -51,6 +52,7 @@ function getProviderModelGroupLabel(item: CompatibleProviderModel) {
 }
 
 interface ProviderModelMenuProps {
+  agentId?: AgentId;
   align?: "start" | "center" | "end";
   appearance?: AppDropdownTriggerAppearance;
   compatibleProviders: CompatibleProviderModel[];
@@ -96,6 +98,7 @@ interface ProviderModelMenuOption {
 }
 
 export function ProviderModelMenu({
+  agentId,
   align = "start",
   appearance = "outline",
   compatibleProviders,
@@ -197,7 +200,22 @@ export function ProviderModelMenu({
     );
   }
 
-  const opensSettingsDirectly = !hasConfiguredModels;
+  const opensSettingsDirectly =
+    !hasConfiguredModels && !(agentId && usesAdapterOwnedModelCatalog(agentId));
+
+  if (!hasConfiguredModels && !opensSettingsDirectly) {
+    return (
+      <AppDropdownTriggerButton
+        aria-label={t("modelMenu.triggerLabel")}
+        appearance={appearance}
+        className={cn("max-w-[280px]", triggerClassName)}
+        disabled
+        showChevron={false}
+      >
+        {t("modelMenu.selectModel")}
+      </AppDropdownTriggerButton>
+    );
+  }
 
   if (opensSettingsDirectly) {
     return (

@@ -6,6 +6,8 @@ import type { DaemonState } from "../state";
 const listCodexProviderModelsMock = vi.hoisted(() => vi.fn());
 const listOpenCodeProviderModelsMock = vi.hoisted(() => vi.fn());
 const listClaudeCliProviderModelsMock = vi.hoisted(() => vi.fn());
+const listCursorProviderModelsMock = vi.hoisted(() => vi.fn());
+const listDevinProviderModelsMock = vi.hoisted(() => vi.fn());
 const listGrokBuildProviderModelsMock = vi.hoisted(() => vi.fn());
 const listPiProviderModelsMock = vi.hoisted(() => vi.fn());
 const listPiBuiltInProviderIdsMock = vi.hoisted(() => vi.fn());
@@ -16,6 +18,8 @@ vi.mock("@cocurdex/agent-adapters", () => ({
   generatePiConversationTitle: generatePiConversationTitleMock,
   listClaudeCliProviderModels: listClaudeCliProviderModelsMock,
   listCodexProviderModels: listCodexProviderModelsMock,
+  listCursorProviderModels: listCursorProviderModelsMock,
+  listDevinProviderModels: listDevinProviderModelsMock,
   listGrokBuildProviderModels: listGrokBuildProviderModelsMock,
   listOpenCodeProviderModels: listOpenCodeProviderModelsMock,
   listPiBuiltInProviderIds: listPiBuiltInProviderIdsMock,
@@ -111,6 +115,20 @@ describe("DaemonProviderService", () => {
     });
 
     expect(listGrokBuildProviderModelsMock).toHaveBeenCalledWith(undefined, {
+      forceRefresh: true,
+    });
+
+    listCursorProviderModelsMock.mockResolvedValue([]);
+    await service.listCompatibleProviderModels("cursor", {
+      forceRefresh: true,
+    });
+    expect(listCursorProviderModelsMock).toHaveBeenCalledWith(undefined, {
+      forceRefresh: true,
+    });
+
+    listDevinProviderModelsMock.mockResolvedValue([]);
+    await service.listCompatibleProviderModels("devin", { forceRefresh: true });
+    expect(listDevinProviderModelsMock).toHaveBeenCalledWith(undefined, {
       forceRefresh: true,
     });
   });

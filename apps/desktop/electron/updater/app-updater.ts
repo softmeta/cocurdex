@@ -2,6 +2,15 @@ import { app } from "electron";
 import log from "electron-log/main.js";
 import electronUpdater from "electron-updater";
 import {
+  type AppUpdateChannel,
+  isPrereleaseVersion,
+  updaterConfigForChannel,
+} from "./app-update-channel";
+import {
+  loadAppUpdateChannel,
+  saveAppUpdateChannel,
+} from "./app-update-channel-store";
+import {
   type AppUpdateEvent,
   type AppUpdateState,
   createInitialAppUpdateState,
@@ -22,6 +31,9 @@ let state: AppUpdateState = createInitialAppUpdateState({
 });
 let broadcast: AppUpdateBroadcast = () => {};
 let started = false;
+let packaged = false;
+let currentVersion = "0.0.0";
+let userDataPath = "";
 
 function apply(event: AppUpdateEvent) {
   const next = reduceAppUpdateState(state, event);
@@ -60,6 +72,23 @@ export function dismissAppUpdate(): AppUpdateState {
   return state;
 }
 
+export async function setAppUpdateChannel(
+  channel: AppUpdateChannel,
+): Promise<AppUpdateState> {
+  if (channel === state.channel) {
+    return state;
+  }
+  if (userDataPath) {
+    saveAppUpdateChannel(userDataPath, channel);
+  }
+  applyUpdaterConfig(channel, currentVersion);
+  apply({ type: "set-channel", channel });
+  if (packaged) {
+    return runCheck();
+  }
+  return state;
+}
+
 export function installAppUpdate(): void {
   if (state.status !== "ready") {
     return;
@@ -67,10 +96,21 @@ export function installAppUpdate(): void {
   autoUpdater.quitAndInstall();
 }
 
+function applyUpdaterConfig(channel: AppUpdateChannel, version: string): void {
+  if (!packaged) {
+    return;
+  }
+  const config = updaterConfigForChannel(channel, version);
+  autoUpdater.channel = config.feedChannel;
+  autoUpdater.allowPrerelease = config.allowPrerelease;
+  autoUpdater.allowDowngrade = config.allowDowngrade;
+}
+
 export function startAppUpdater(options: {
   broadcast: AppUpdateBroadcast;
   currentVersion: string;
   packaged: boolean;
+  userDataPath: string;
   whenReadyToCheck?: Promise<unknown>;
 }): void {
   if (started) {
@@ -78,7 +118,12 @@ export function startAppUpdater(options: {
   }
   started = true;
   broadcast = options.broadcast;
+  packaged = options.packaged;
+  currentVersion = options.currentVersion;
+  userDataPath = options.userDataPath;
+  const channel = loadAppUpdateChannel(options.userDataPath);
   state = createInitialAppUpdateState({
+    channel,
     currentVersion: options.currentVersion,
     packaged: options.packaged,
   });
@@ -91,6 +136,7 @@ export function startAppUpdater(options: {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = log;
+  applyUpdaterConfig(channel, options.currentVersion);
   const isUpdateSupported = autoUpdater.isUpdateSupported;
   autoUpdater.isUpdateSupported = (info) => {
     assertUpdateArchitecture(info, {
@@ -98,6 +144,9 @@ export function startAppUpdater(options: {
       arch: process.arch,
       translated: app.runningUnderARM64Translation,
     });
+    if (state.channel === "stable" && isPrereleaseVersion(info.version)) {
+      return false;
+    }
     return isUpdateSupported(info);
   };
 
