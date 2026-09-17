@@ -1078,10 +1078,6 @@ export class CocurdexDaemonService {
           worktreePath: session.worktreePath,
         })
       : undefined;
-    await this.workspaceChanges.deleteSessionCheckpoints(
-      sessionId,
-      workspaceRootPath,
-    );
     await this.disposeSessionRuntime(sessionId);
 
     if (
@@ -1098,6 +1094,10 @@ export class CocurdexDaemonService {
     }
 
     await this.state.deleteSession(sessionId);
+    await this.workspaceChanges.deleteSessionCheckpoints(
+      sessionId,
+      workspaceRootPath,
+    );
     await this.releaseSessionWorktree(session, workspace);
   }
 

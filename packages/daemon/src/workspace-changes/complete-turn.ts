@@ -14,6 +14,7 @@ import {
   selectChangeSetSource,
   sumFileStats,
 } from "@cocurdex/shared";
+import { logDaemonDiagnostic } from "../diagnostics";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
 import { resolveWorkspacePath, sanitizeTurnFileChanges } from "./path-safety";
 
@@ -86,7 +87,7 @@ export async function completeActiveTurn(input: {
   }
 
   let after: HostCheckpoint | null = null;
-  let hostFiles: TurnFileChange[] = [];
+  let hostFiles: TurnFileChange[] | null = null;
   if (active.before) {
     try {
       after = await active.adapter.capture({
@@ -96,16 +97,36 @@ export async function completeActiveTurn(input: {
         phase: "after",
       });
       input.rememberCheckpoint(after);
-      hostFiles = sanitizeTurnFileChanges(
-        await active.adapter.diff(active.before, after),
-      );
-    } catch {
+    } catch (error) {
       after = null;
-      hostFiles = [];
+      logCaptureFailure({
+        phase: "after",
+        sessionId: active.changeSet.sessionId,
+        userMessageId: active.changeSet.userMessageId,
+        workspaceRootPath: active.workspaceRootPath,
+        error,
+      });
+    }
+    if (after) {
+      try {
+        hostFiles = sanitizeTurnFileChanges(
+          await active.adapter.diff(active.before, after),
+        );
+      } catch (error) {
+        hostFiles = null;
+        logCaptureFailure({
+          phase: "after-diff",
+          sessionId: active.changeSet.sessionId,
+          userMessageId: active.changeSet.userMessageId,
+          workspaceRootPath: active.workspaceRootPath,
+          error,
+        });
+      }
     }
   }
 
   const hostAvailable = after != null && active.before != null;
+  const hostFilesAvailable = hostFiles != null;
   const files = await fillMissingLineStats({
     adapter: active.adapter,
     after,
@@ -113,8 +134,8 @@ export async function completeActiveTurn(input: {
     files: attributeTurnFiles({
       files: mergeNativeAndHostEvidence(
         active.native?.files,
-        hostFiles,
-        hostAvailable,
+        hostFiles ?? [],
+        hostFilesAvailable,
       ),
       native: active.native?.files,
       siblingPaths: input.siblingPaths,
@@ -146,7 +167,7 @@ export async function completeActiveTurn(input: {
     outcome: input.outcome,
     nativeFiles: active.native?.files ?? null,
     undoable:
-      hostAvailable &&
+      hostFilesAvailable &&
       files.length > 0 &&
       files.every((file) => file.restorable !== false),
     status: hostAvailable ? "ready" : "partial",
@@ -237,4 +258,21 @@ async function readWorkingTreeText(
   } catch {
     return null;
   }
+}
+
+export function logCaptureFailure(input: {
+  phase: "before" | "after" | "after-diff";
+  sessionId: string;
+  userMessageId: string;
+  workspaceRootPath: string;
+  error: unknown;
+}) {
+  logDaemonDiagnostic("warn", "workspace-changes.captureFailed", {
+    phase: input.phase,
+    sessionId: input.sessionId,
+    userMessageId: input.userMessageId,
+    workspaceRootPath: input.workspaceRootPath,
+    error:
+      input.error instanceof Error ? input.error.message : String(input.error),
+  });
 }

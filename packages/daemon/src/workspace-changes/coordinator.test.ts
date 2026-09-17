@@ -200,6 +200,82 @@ describe("workspace change coordinator", () => {
     );
   });
 
+  it("keeps the after checkpoint and reads the turn diff when the host diff fails", async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-ws-"));
+    const userData = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-data-"));
+    await writeFile(path.join(workspace, "notes.md"), "before\n", "utf8");
+    const inner = createFilesystemCheckpointAdapter(
+      createCheckpointBlobStore(userData),
+      userData,
+    );
+    const adapter = {
+      ...inner,
+      async diff(): Promise<never> {
+        throw new Error("host diff failed");
+      },
+    };
+    const coordinator = createWorkspaceChangeCoordinator({
+      userDataPath: userData,
+      repository: createMemoryRepository(),
+      createAdapter: async () => adapter,
+    });
+
+    await coordinator.beginTurn({
+      sessionId: "session-1",
+      userMessageId: "user-1",
+      workspaceRootPath: workspace,
+    });
+    coordinator.markToolActivity("session-1");
+    await coordinator.ingestNativeEvidence({
+      sessionId: "session-1",
+      userMessageId: "user-1",
+      evidence: {
+        source: "acp-tool-diff",
+        coverage: "tool-call",
+        files: [
+          {
+            path: "notes.md",
+            operation: "modify",
+            reviewKind: "text",
+            additions: 1,
+            deletions: 1,
+            patch: "native-patch",
+          },
+        ],
+      },
+    });
+    await writeFile(path.join(workspace, "notes.md"), "after\n", "utf8");
+    const changeSet = await coordinator.finalizeTurn({
+      sessionId: "session-1",
+      messageId: "assistant-1",
+    });
+
+    expect(changeSet?.status).toBe("ready");
+    expect(changeSet?.hostAfterCheckpointRef).toBeTruthy();
+    expect(changeSet?.undoable).toBe(false);
+    expect(changeSet?.files).toEqual([
+      expect.objectContaining({ path: "notes.md", patch: "native-patch" }),
+    ]);
+    await expect(
+      coordinator.getDiff({
+        sessionId: "session-1",
+        messageId: "assistant-1",
+        workspaceRootPath: workspace,
+      }),
+    ).resolves.toEqual({
+      status: "ok",
+      files: [
+        {
+          path: "notes.md",
+          changeType: "modified",
+          oldContents: "before\n",
+          newContents: "after\n",
+          omittedReason: null,
+        },
+      ],
+    });
+  });
+
   it("fills Claude-style path-only native evidence with per-file line stats", async () => {
     const workspace = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-ws-"));
     const userData = await mkdtemp(path.join(tmpdir(), "cocurdex-coord-data-"));
