@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { MarkdownFilePathHandlers } from "@/components/markdown-file-path";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 describe("MarkdownRenderer", () => {
@@ -25,5 +26,29 @@ describe("MarkdownRenderer", () => {
 
       expect(highlightedTokens.length).toBeGreaterThan(0);
     });
+  });
+
+  it("opens file:// links as workspace chips instead of showing [blocked]", async () => {
+    const opened: string[] = [];
+    const handlers: MarkdownFilePathHandlers = {
+      resolve: (candidate) => ({ absolutePath: candidate.path }),
+      checkExists: async () => true,
+      open: (target) => {
+        opened.push(target.absolutePath);
+      },
+      openLabel: "Open file",
+    };
+    const content =
+      "菜单见 [queued-input-shelf.tsx:196-216](file:///Users/dev/apps/desktop/src/queued-input-shelf.tsx)。";
+
+    render(<MarkdownRenderer content={content} filePathHandlers={handlers} />);
+
+    expect(screen.queryByText(/\[blocked\]/)).toBeNull();
+    const chip = await screen.findByRole("link");
+    expect(chip).toHaveTextContent("queued-input-shelf.tsx:196-216");
+    fireEvent.click(chip);
+    expect(opened).toEqual([
+      "/Users/dev/apps/desktop/src/queued-input-shelf.tsx",
+    ]);
   });
 });
