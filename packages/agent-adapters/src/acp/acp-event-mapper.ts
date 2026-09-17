@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import path from "node:path";
 import type {
   ContentBlock,
   PromptResponse,
@@ -43,6 +44,21 @@ function messageSegmentKey(
 ) {
   // NUL keeps the two parts unambiguous — provider ids are opaque strings.
   return `${kind}\u0000${providerMessageId ?? ANONYMOUS_PROVIDER_MESSAGE_ID}`;
+}
+
+function toWorkspaceRelativePath(
+  workspaceRootPath: string | null,
+  filePath: string,
+): string | null {
+  if (!workspaceRootPath) {
+    return filePath;
+  }
+  const root = path.resolve(workspaceRootPath);
+  const relative = path.relative(root, path.resolve(root, filePath));
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    return null;
+  }
+  return relative;
 }
 
 function flattenSelectOptions(option: SessionConfigOption) {
@@ -275,6 +291,7 @@ export class AcpEventMapper {
     private readonly transformToolCall: (
       toolCall: AgentToolCallRecord,
     ) => AgentToolCallRecord | null = (toolCall) => toolCall,
+    private readonly workspaceRootPath: string | null = null,
   ) {
     this.updateNativeSessionTitle = createNativeSessionTitleTracker({
       initialTitle: initialSessionTitle,
@@ -309,9 +326,21 @@ export class AcpEventMapper {
       if (item.type !== "diff") {
         continue;
       }
+      const relativePath = toWorkspaceRelativePath(
+        this.workspaceRootPath,
+        item.path,
+      );
+      if (!relativePath) {
+        logAdapterDiagnostic(
+          "debug",
+          "[AcpEventMapper] ignoring diff outside the session workspace",
+          { sessionId: this.sessionId, path: item.path },
+        );
+        continue;
+      }
       aggregateAcpToolDiffs(
         this.turnDiffs,
-        item.path,
+        relativePath,
         item.oldText,
         item.newText,
       );
