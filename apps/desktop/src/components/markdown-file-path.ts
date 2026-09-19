@@ -492,6 +492,27 @@ export function rewriteMarkdownLocalFileLinks(content: string): string {
 // temporarily hiding inline-code spans from the link regex.
 const INLINE_CODE_MASK = /%%COCURDEX_INLINE_(\d+)%%/g;
 
+const INLINE_CODE_SPAN = /`([^`\n]*)`/g;
+const MARKDOWN_LINK_ONLY = new RegExp(`^${MARKDOWN_LINK.source}$`);
+
+function unwrapPathLabeledFileLinkCodeSpan(span: string): string | null {
+  const inner = span.slice(1, -1);
+  const match = inner.match(MARKDOWN_LINK_ONLY);
+  if (!match) {
+    return null;
+  }
+
+  const href = match[3];
+  if (isReservedMarkdownHref(href) || !parseFilePathCandidate(match[1])) {
+    return null;
+  }
+
+  const candidate =
+    parseFileUrlCandidate(href) ??
+    parseFilePathCandidate(decodeHrefCandidate(href));
+  return candidate ? inner : null;
+}
+
 // Mask whole inline-code spans, rewrite links on the remainder, then restore.
 //
 // - [`path`](path) → mask turns the label into a token so the outer link still
@@ -503,7 +524,11 @@ function rewriteLinksOutsideInlineCode(segment: string): string {
   }
 
   const masks: string[] = [];
-  const masked = segment.replace(/`[^`\n]*`/g, (span) => {
+  const masked = segment.replace(INLINE_CODE_SPAN, (span) => {
+    const unwrapped = unwrapPathLabeledFileLinkCodeSpan(span);
+    if (unwrapped !== null) {
+      return unwrapped;
+    }
     const token = `%%COCURDEX_INLINE_${masks.length}%%`;
     masks.push(span);
     return token;

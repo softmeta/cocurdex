@@ -14,7 +14,9 @@ import {
 import { conversationsAtom } from "@/features/chat";
 import type { ChatComposerHandle } from "@/features/composer";
 import {
+  minSessionPaneSize,
   type SessionPaneBinding,
+  type SessionPaneSize,
   type SessionSplitNode,
   sessionSplitLayoutAtom,
   sessionsAtom,
@@ -23,6 +25,7 @@ import {
 import { CenterPanel } from "../center-panel";
 import { SessionPaneHeader } from "./session-pane-header";
 import { sessionPaneTitle } from "./session-pane-title";
+import { useSessionPaneSize } from "./use-session-pane-size";
 import { useSessionSplitActions } from "./use-session-split-actions";
 
 function assignComposerRef(
@@ -41,16 +44,20 @@ function assignComposerRef(
 
 function SessionPaneFrame({
   children,
+  paneId,
   onActivate,
 }: {
   children: ReactNode;
+  paneId: string;
   onActivate(): void;
 }) {
+  const frameRef = useSessionPaneSize(paneId);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pointer down focuses this pane
     <div
       className="flex h-full min-h-0 min-w-0 flex-col"
       onMouseDown={onActivate}
+      ref={frameRef}
     >
       {children}
     </div>
@@ -141,6 +148,11 @@ export function SessionSplitLayout({
     if (node.type === "split") {
       const firstId = `${node.id}-a`;
       const secondId = `${node.id}-b`;
+      const isHorizontal = node.direction === "right";
+      const firstMin = minSessionPaneSize(node.first);
+      const secondMin = minSessionPaneSize(node.second);
+      const panelMinSize = (size: SessionPaneSize) =>
+        isHorizontal ? size.width : size.height;
       return (
         <ResizablePanelGroup
           className="h-full min-h-0"
@@ -162,33 +174,31 @@ export function SessionSplitLayout({
               });
             }
           }}
-          orientation={node.direction === "right" ? "horizontal" : "vertical"}
+          orientation={isHorizontal ? "horizontal" : "vertical"}
         >
           <ResizablePanel
             className="min-h-0 min-w-0"
-            defaultSize={node.sizes[0]}
             id={firstId}
-            minSize={15}
+            minSize={panelMinSize(firstMin)}
           >
             {renderNode(
               node.first,
               occupiesTitlebar,
-              touchesEnd && node.direction !== "right",
+              touchesEnd && !isHorizontal,
               touchesStart,
             )}
           </ResizablePanel>
           <ResizableHandle />
           <ResizablePanel
             className="min-h-0 min-w-0"
-            defaultSize={node.sizes[1]}
             id={secondId}
-            minSize={15}
+            minSize={panelMinSize(secondMin)}
           >
             {renderNode(
               node.second,
-              occupiesTitlebar && node.direction === "right",
+              occupiesTitlebar && isHorizontal,
               touchesEnd,
-              touchesStart && node.direction !== "right",
+              touchesStart && !isHorizontal,
             )}
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -197,7 +207,11 @@ export function SessionSplitLayout({
 
     const isFocused = node.pane.id === focusedPaneId;
     return (
-      <SessionPaneFrame onActivate={() => handleActivate(node.pane)}>
+      <SessionPaneFrame
+        key={node.pane.id}
+        onActivate={() => handleActivate(node.pane)}
+        paneId={node.pane.id}
+      >
         {showPaneHeader ? (
           <SessionPaneHeader
             endInset={occupiesTitlebar && touchesEnd ? headerEndInset : 0}
@@ -209,6 +223,7 @@ export function SessionSplitLayout({
             canClose={paneCount > 1}
             isFocused={isFocused}
             occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
+            paneId={node.pane.id}
             title={sessionPaneTitle(node.pane, conversations, sessions)}
             onClose={() => handleClose(node.pane.id)}
             onCloseAll={() => handleCloseAll(node.pane.id)}
@@ -233,7 +248,18 @@ export function SessionSplitLayout({
     );
   };
 
+  const paneMinSize = minSessionPaneSize(layout);
   return (
-    <div className="h-full min-h-0 min-w-0">{renderNode(layout, true)}</div>
+    <div className="h-full min-h-0 overflow-auto">
+      <div
+        className="h-full"
+        style={{
+          minWidth: paneMinSize.width,
+          minHeight: paneMinSize.height,
+        }}
+      >
+        {renderNode(layout, true)}
+      </div>
+    </div>
   );
 }

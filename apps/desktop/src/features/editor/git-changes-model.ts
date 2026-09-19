@@ -30,6 +30,39 @@ export interface GitChangeEntry {
 
 export type GitChangeTypeFilter = "all" | GitChangeKind;
 
+// Git's one-letter status vocabulary with the editor's add/delete/modify tints.
+// The letters match the ones the tree's status lane paints (`@pierre/trees`
+// GIT_STATUS_LABEL), so both indexes of the change set read the same way.
+export function gitChangeMarker(changeType: GitChangeKind): {
+  className: string;
+  letter: string;
+} {
+  switch (changeType) {
+    case "added":
+      return { className: "text-editor-git-added", letter: "A" };
+    case "deleted":
+      return { className: "text-editor-git-deleted", letter: "D" };
+    default:
+      return { className: "text-editor-git-modified", letter: "M" };
+  }
+}
+
+// Split a repo-relative path so the directory can truncate while the file name
+// stays visible. The directory keeps its trailing separator.
+export function splitChangePath(path: string): {
+  dir: string;
+  name: string;
+} {
+  const lastSlash = path.lastIndexOf("/");
+  if (lastSlash < 0) {
+    return { dir: "", name: path };
+  }
+  return {
+    dir: path.slice(0, lastSlash + 1),
+    name: path.slice(lastSlash + 1),
+  };
+}
+
 export type GitChangeTypeCounts = Record<GitChangeTypeFilter, number>;
 
 // Turn raw file changes into renderable entries. Non-omitted files are diffed
@@ -199,6 +232,19 @@ export function filterEntriesByChangeType(
 ): GitChangeEntry[] {
   if (filter === "all") return entries;
   return entries.filter((entry) => entry.changeType === filter);
+}
+
+// The flat file index filters on its own; the tree hands the same query to
+// Pierre's search. Both read as "keep only the paths that match".
+export function filterEntriesByPathQuery(
+  entries: GitChangeEntry[],
+  query: string,
+): GitChangeEntry[] {
+  const normalized = query.trim().toLowerCase();
+  if (normalized.length === 0) return entries;
+  return entries.filter((entry) =>
+    entry.path.toLowerCase().includes(normalized),
+  );
 }
 
 export function computeChangeTypeCounts(

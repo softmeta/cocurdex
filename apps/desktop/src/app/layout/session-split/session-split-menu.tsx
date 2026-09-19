@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui";
+import { useCanSplitSessionPane } from "@/features/sessions";
 import { ChatWindowMenuItem } from "../chat-window";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
@@ -25,6 +26,7 @@ import {
 
 interface SessionSplitMenuProps {
   canClose: boolean;
+  paneId: string;
   onClose?(): void;
   onCloseAll?(): void;
   onSplitDown(): void;
@@ -33,6 +35,7 @@ interface SessionSplitMenuProps {
 
 export function SessionSplitMenu({
   canClose,
+  paneId,
   onClose,
   onCloseAll,
   onSplitDown,
@@ -40,6 +43,8 @@ export function SessionSplitMenu({
 }: SessionSplitMenuProps) {
   const { t } = useTranslation("sessions");
   const [open, setOpen] = useState(false);
+  const canSplitDown = useCanSplitSessionPane(paneId, "down");
+  const canSplitRight = useCanSplitSessionPane(paneId, "right");
 
   return (
     <DropdownMenu onOpenChange={setOpen} open={open}>
@@ -58,11 +63,11 @@ export function SessionSplitMenu({
         className={compactDropdownContentClassName}
         side="bottom"
       >
-        <AppDropdownItem onClick={onSplitDown}>
+        <AppDropdownItem disabled={!canSplitDown} onClick={onSplitDown}>
           <SquareSplitHorizontal className="size-4" />
           {t("split.down")}
         </AppDropdownItem>
-        <AppDropdownItem onClick={onSplitRight}>
+        <AppDropdownItem disabled={!canSplitRight} onClick={onSplitRight}>
           <SquareSplitVertical className="size-4" />
           {t("split.right")}
         </AppDropdownItem>

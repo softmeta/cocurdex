@@ -1,10 +1,16 @@
 export {
+  minSessionPaneSize,
+  type SessionPaneSize,
+} from "./session-pane-size";
+export {
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
   clearRemovedPaneConversationsAtom,
   clearRemovedPaneSessionsAtom,
   closeSessionPaneAtom,
   collapseSessionSplitAtom,
+  focusedPaneCanSplitDownAtom,
+  focusedPaneCanSplitRightAtom,
   focusedPaneIdAtom,
   focusedSessionPaneAtom,
   focusPaneForConversationAtom,
@@ -13,8 +19,10 @@ export {
   resetSessionSplitLayoutAtom,
   sessionPaneCountAtom,
   sessionSplitLayoutAtom,
+  setSessionPaneSizeAtom,
   setSessionSplitSizesAtom,
   splitFocusedPaneAtom,
+  useCanSplitSessionPane,
 } from "./session-split-store";
 export {
   closePane,
