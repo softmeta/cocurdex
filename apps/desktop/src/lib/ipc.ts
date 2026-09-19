@@ -7,6 +7,7 @@ import {
   type MessageRecord,
   PLAN_MODE_ID,
 } from "@cocurdex/shared";
+import { chatWindowFallback } from "./chat-window-fallback";
 import type { DesktopApi } from "./types";
 
 function planSessionModes(): AgentSessionMode[] {
@@ -125,6 +126,7 @@ const fallbackAgents: AgentDescriptor[] = [
 ];
 
 const fallbackApi: DesktopApi = {
+  chatWindow: chatWindowFallback,
   capabilities: {
     fileManager: false,
     nativeDirectoryDialog: false,

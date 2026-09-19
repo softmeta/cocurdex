@@ -146,10 +146,11 @@ export function RightEditorPanel({
     },
     [store],
   );
-  // Git panel stays mounted after first activation, like the terminal: parsing
-  // 24 file diffs on every remount made tab switches reload + jank. It's the
-  // default view, so mount it immediately.
-  const [gitEverActive, setGitEverActive] = useState(true);
+  const [gitKeepAlive, setGitKeepAlive] = useState(false);
+  const gitEverActive = gitKeepAlive || activeView === "git";
+  if (gitEverActive && !gitKeepAlive) {
+    setGitKeepAlive(true);
+  }
   const pdfEverActive = hasPdfsOpen || activeView === "pdf";
   // Notes editor stays mounted after first activation so the Tiptap instance
   // (and any unsaved-but-debounced edits) survive view switches.
@@ -319,9 +320,6 @@ export function RightEditorPanel({
           // preview is not the only thing on screen.
           if (value === "editor") {
             setFileTreeVisible(true);
-          }
-          if (value === "git") {
-            setGitEverActive(true);
           }
           if (value === "notes") {
             setNotesKeepAlive(true);

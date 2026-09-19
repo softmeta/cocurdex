@@ -2,7 +2,6 @@ import { normalizeWorkspaceRootPaths } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { isAnnotationModeAtom } from "@/features/browser";
 import { useChatEventBridge } from "@/features/chat";
 import {
@@ -53,6 +52,7 @@ import {
   persistChatLayoutMode,
   shouldOpenDockWhenApplyingLayout,
 } from "../chat-layout-preference";
+import { useChatWindowActions, useMainChatWindow } from "../chat-window";
 import { useAgentEventBridge, useBrowserEventBridge } from "./app-shell-events";
 import { AppShellFrame } from "./app-shell-frame";
 import { resolveRightPanelVisibility } from "./app-shell-layout";
@@ -60,19 +60,15 @@ import { useAppPersistence } from "./app-shell-persistence";
 import {
   persistNotificationSettings,
   syncAppearanceSettings,
-  syncInitialPreferences,
   syncLanguageMode,
   syncThemeMode,
 } from "./app-shell-preferences";
 import {
   LEFT_SIDEBAR_COLLAPSE_WIDTH,
-  RIGHT_PANEL_COLLAPSE_WIDTH,
   useAppShellResize,
 } from "./app-shell-resize";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
 import { useSystemLocale, useSystemPrefersDark } from "./use-system-prefs";
-
-syncInitialPreferences();
 
 export function AppShell() {
   const { t } = useTranslation(["editor", "search"]);
@@ -143,13 +139,11 @@ export function AppShell() {
   const setRightPanelResizing = useSetAtom(rightPanelResizingAtom);
   const {
     contentRowCallbackRef,
+    isRightPanelCompact,
     contentWidth,
-    effectiveLeftWidthRef,
-    effectiveRightWidthRef,
     handleResizeMouseDown,
     leftWidth,
     restoreLeftWidth,
-    restoreRightWidth,
     rightWidth,
   } = useAppShellResize({
     isLeftSidebarOpen,
@@ -161,20 +155,16 @@ export function AppShell() {
   const isAnnotationMode = useAtomValue(isAnnotationModeAtom);
   const setIsAnnotationMode = useSetAtom(isAnnotationModeAtom);
   const canShowLeftSidebar = contentWidth >= LEFT_SIDEBAR_COLLAPSE_WIDTH;
-  const canSplitRightPanel = contentWidth >= RIGHT_PANEL_COLLAPSE_WIDTH;
-  // In global mode the right panel fills the window, so the left sidebar and
-  // its width reservation collapse regardless of its own open state. When the
-  // window is too narrow to split, opening the panel forces global so the
-  // toggle still does something instead of silently rendering nothing.
   const { shouldShow: shouldShowRightPanel, isGlobal: isRightPanelGlobal } =
     resolveRightPanelVisibility({
       isOpen: isRightPanelOpen,
       isMaximized: isRightPanelMaximized,
-      canSplit: canSplitRightPanel,
     });
   const shouldShowLeftSidebar =
-    isLeftSidebarOpen && canShowLeftSidebar && !isRightPanelGlobal;
-  const effectiveLeftWidth = shouldShowLeftSidebar ? leftWidth : 0;
+    isLeftSidebarOpen &&
+    canShowLeftSidebar &&
+    !isRightPanelGlobal &&
+    !isRightPanelCompact;
   const effectiveRightWidth = shouldShowRightPanel ? rightWidth : 0;
   const isRightPanelOpenRef = useRef(isRightPanelOpen);
   const activeWorkspace =
@@ -186,14 +176,22 @@ export function AppShell() {
   ]);
   themeModeRef.current = themeMode;
   languageModeRef.current = languageMode;
-  effectiveLeftWidthRef.current = effectiveLeftWidth;
-  effectiveRightWidthRef.current = effectiveRightWidth;
   isRightPanelOpenRef.current = isRightPanelOpen;
 
-  useAgentEventBridge();
+  const {
+    detached: chatDetached,
+    focus: focusChatWindow,
+    toggleVisibility: toggleChatWindow,
+  } = useChatWindowActions();
+  const synchronizeAgentState = useAgentEventBridge();
   useBrowserEventBridge();
   useChatEventBridge();
   useAppPersistence();
+  useMainChatWindow(() => {
+    setChatDockVisibility("open");
+    persistChatDockVisibility("open");
+    setScreenIndex(0);
+  }, synchronizeAgentState);
   useCompletionNotifier(notificationSettings);
 
   const toggleLeftSidebar = () => {
@@ -202,7 +200,7 @@ export function AppShell() {
       return;
     }
 
-    restoreLeftWidth(effectiveRightWidth);
+    restoreLeftWidth();
     setIsLeftSidebarOpen(true);
   };
 
@@ -232,7 +230,6 @@ export function AppShell() {
       return;
     }
 
-    restoreRightWidth(effectiveLeftWidth);
     setIsRightPanelOpen(true);
   };
 
@@ -253,6 +250,16 @@ export function AppShell() {
       toggleRightPanel,
       toggleEditorFullscreen: toggleRightPanelMaximize,
       toggleChatDock: () => {
+        if (chatDetached) {
+          if (chatDockVisibility === "hidden") {
+            setChatDockVisibility("collapsed");
+            persistChatDockVisibility("collapsed");
+            focusChatWindow();
+          } else {
+            toggleChatWindow();
+          }
+          return;
+        }
         setChatDockVisibility((current) => {
           const next = nextChatDockVisibilityOnToggle(
             current,
@@ -274,8 +281,9 @@ export function AppShell() {
         toggleLeftSidebar: () => activeScreen === "app",
         toggleRightPanel: () => activeScreen === "app",
         toggleEditorFullscreen: () => activeScreen === "app",
-        // Editor fullscreen only — center layout already shows chat as a column.
-        toggleChatDock: () => activeScreen === "app" && isRightPanelMaximized,
+        toggleChatDock: () =>
+          activeScreen === "app" &&
+          (chatDetached || isRightPanelMaximized || isRightPanelCompact),
         toggleDesignMode: () => activeScreen === "app" && shouldShowRightPanel,
       },
       labels: {
@@ -372,7 +380,6 @@ export function AppShell() {
       return;
     }
 
-    restoreRightWidth(effectiveLeftWidth);
     setIsRightPanelOpen(true);
   };
 
@@ -407,6 +414,7 @@ export function AppShell() {
       canGoBack={canGoBack}
       canGoForward={canGoForward}
       contentRowRef={contentRowCallbackRef}
+      isRightPanelCompact={isRightPanelCompact}
       effectiveRightWidth={effectiveRightWidth}
       isLeftSidebarOpen={shouldShowLeftSidebar}
       isLeftSidebarPreferredOpen={isLeftSidebarOpen}

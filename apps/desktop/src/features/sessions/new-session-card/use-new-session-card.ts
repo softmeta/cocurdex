@@ -57,6 +57,7 @@ import {
   defaultAgentDescriptors,
 } from "./new-session-card-config";
 import { shouldPersistProviderDefault } from "./new-session-card-provider-default";
+import { useNewSessionModeDraft } from "./new-session-mode-draft";
 
 function permissionModeForAgent(
   agentId: AgentId,
@@ -96,9 +97,8 @@ export function useNewSessionCard({
     () => agentType ?? "pi",
   );
   const selectedAgent = agentType ?? uncontrolledAgent;
-  const [selectedSessionModeId, setSelectedSessionModeId] = useState<
-    string | null
-  >(sessionModeId);
+  const [selectedSessionModeId, setSelectedSessionModeId] =
+    useNewSessionModeDraft(activeWorkspaceId, sessionModeId);
   const [selectedPermissionMode, setSelectedPermissionMode] =
     useState<AgentPermissionMode | null>(() =>
       permissionModeForAgent(initialAgentType, agents),

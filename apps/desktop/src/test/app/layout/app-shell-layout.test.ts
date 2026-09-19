@@ -23,8 +23,8 @@ describe("app shell layout metrics", () => {
     expect(MAX_LEFT).toBe(400);
     expect(MAX_LEFT).toBeGreaterThan(MIN_LEFT);
     // Plenty of free space would allow ~thousands of px without the absolute cap.
-    expect(clampLeftWidth(800, 2000, 280)).toBe(MAX_LEFT);
-    expect(clampLeftWidth(200, 2000, 280)).toBe(200);
+    expect(clampLeftWidth(800, 2000)).toBe(MAX_LEFT);
+    expect(clampLeftWidth(200, 2000)).toBe(200);
   });
 });
 
@@ -34,17 +34,15 @@ describe("resolveRightPanelVisibility", () => {
       resolveRightPanelVisibility({
         isOpen: false,
         isMaximized: false,
-        canSplit: true,
       }),
     ).toEqual({ shouldShow: false, isGlobal: false });
   });
 
-  it("renders split when open and wide enough", () => {
+  it("opens without taking over the reading area", () => {
     expect(
       resolveRightPanelVisibility({
         isOpen: true,
         isMaximized: false,
-        canSplit: true,
       }),
     ).toEqual({ shouldShow: true, isGlobal: false });
   });
@@ -54,19 +52,6 @@ describe("resolveRightPanelVisibility", () => {
       resolveRightPanelVisibility({
         isOpen: true,
         isMaximized: true,
-        canSplit: true,
-      }),
-    ).toEqual({ shouldShow: true, isGlobal: true });
-  });
-
-  it("forces global when the window is too narrow to split", () => {
-    // Regression: below the split width the toggle flipped state but the panel
-    // never rendered, so clicking the right-panel toggle looked dead.
-    expect(
-      resolveRightPanelVisibility({
-        isOpen: true,
-        isMaximized: false,
-        canSplit: false,
       }),
     ).toEqual({ shouldShow: true, isGlobal: true });
   });

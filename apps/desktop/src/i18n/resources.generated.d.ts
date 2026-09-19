@@ -512,11 +512,13 @@ export default interface Resources {
   editor: {
     actions: {
       addToChat: "Add to Chat";
+      chatDockTemporarilyFloating: "Chat is floating while the window is narrow and will dock again when widened. Click to cancel docking.";
       chatDockTitle: "Chat";
       chatFabHint: "Open chat. Drag to move. Hover and click the close icon to hide this button ({{shortcut}} to show again).";
       closeChat: "Close chat";
       closeChatSessions: "Close session list";
       closeFile: "Close file {{fileName}}";
+      detachedChatFabHint: "Show or hide the independent chat window. Drag to reposition this button. Hover and click × to hide the button; {{shortcut}} restores it.";
       edit: "Edit";
       enterEditorFullscreen: "Enter full screen";
       exitEditorFullscreen: "Exit full screen";
@@ -527,6 +529,7 @@ export default interface Resources {
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
       openChat: "Open chat";
       pinChatDock: "Pin chat to the side";
+      pinChatDockNeedsSpace: "The window is too narrow to dock chat. Widen it and try again.";
       preview: "Preview";
       resizeChat: "Resize chat";
       resizeExplorer: "Resize explorer panel";
@@ -540,6 +543,7 @@ export default interface Resources {
       showTerminal: "Terminal";
       toggleChat: "Toggle chat";
       toggleChatSessions: "Toggle session list";
+      toggleDetachedChat: "Show or hide the chat window";
       toggleEditorPanel: "Toggle editor panel";
       toggleSidebar: "Toggle sidebar";
       unpinChatDock: "Unpin chat";
@@ -1200,6 +1204,13 @@ export default interface Resources {
       menu: "Split session";
       newSession: "New session";
       right: "Split Right";
+    };
+    window: {
+      detach: "Open in a separate window";
+      detached: "Chat is open in a separate window";
+      retry: "Retry";
+      return: "Move back to main window";
+      show: "Show chat window";
     };
     workspace: {
       dropFolderDescription: "Release to open it as a project.";

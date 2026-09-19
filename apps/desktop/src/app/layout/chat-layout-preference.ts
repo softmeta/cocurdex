@@ -4,7 +4,7 @@
  * Three layouts:
  * - center: chat is the main center column (editor as a side panel)
  * - float:  editor fullscreen + floating chat dock card
- * - pinned: editor fullscreen + chat dock pinned as a right rail
+ * - pinned: editor fullscreen + chat dock floating as a right rail
  *
  * Pure UI preference in localStorage (same tier as theme / dock geometry).
  */

@@ -72,10 +72,24 @@ describe("fitFloatingGeometryToWindow", () => {
   });
 
   it("does not grow size when the window expands past the card", () => {
-    const small = { right: 16, bottom: 16, width: 320, height: 360 };
+    const small = {
+      right: 16,
+      bottom: 16,
+      width: CHAT_DOCK_MIN_WIDTH,
+      height: 360,
+    };
     const next = fitFloatingGeometryToWindow(small, 2000, 1400);
     expect(next.width).toBe(small.width);
     expect(next.height).toBe(small.height);
+  });
+
+  it("raises older saved dock widths to preserve 375 px of chat content", () => {
+    const next = fitFloatingGeometryToWindow(
+      { ...base, width: 320 },
+      1000,
+      900,
+    );
+    expect(next.width - 2).toBeGreaterThanOrEqual(375);
   });
 
   it("pulls right/bottom in when the card would overflow", () => {

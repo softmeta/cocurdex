@@ -138,7 +138,11 @@ function SectionPanel({
   }
 
   if (sectionId === "providers") {
-    return <ProviderSettingsPanel />;
+    return (
+      <div className="settings-panel-enter flex min-h-0 flex-1 flex-col">
+        <ProviderSettingsPanel />
+      </div>
+    );
   }
 
   if (sectionId === "adapters") {
@@ -253,7 +257,8 @@ export function SettingsScreen({
   const isFillLayout =
     activeSection === "licenses" ||
     activeSection === "archived" ||
-    activeSection === "workflows";
+    activeSection === "workflows" ||
+    activeSection === "providers";
   const settingsHeading = (
     <header className="shrink-0">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">
@@ -309,8 +314,10 @@ export function SettingsScreen({
                 "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-10 sm:px-6 lg:px-8",
                 activeSection === "workflows" && "max-w-none gap-4",
                 activeSection === "licenses" && "max-w-5xl gap-6",
+                activeSection === "providers" && "max-w-6xl gap-6",
                 activeSection !== "workflows" &&
                   activeSection !== "licenses" &&
+                  activeSection !== "providers" &&
                   "max-w-3xl gap-8",
               )}
             >

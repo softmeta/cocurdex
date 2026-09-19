@@ -158,6 +158,8 @@ export function useAgentEventBridge() {
   // buffered; the snapshot's eventSeq boundary tells which of them it already
   // covers, and only newer ones are applied on top.
   const resyncRef = useRef({ running: false, again: false });
+  const resyncPromiseRef = useRef<Promise<void> | null>(null);
+  const requestedSessionIdsRef = useRef(new Set<string>());
   const resyncBoundaryRef = useRef<{
     epoch: string | null;
     seq: number;
@@ -168,6 +170,7 @@ export function useAgentEventBridge() {
 
   const resyncOnce = async () => {
     const sessionIds = new Set<string>([
+      ...requestedSessionIdsRef.current,
       ...Object.keys(store.get(messagesLoadedBySessionAtom)),
       ...Object.keys(store.get(toolCallsLoadedBySessionAtom)),
     ]);
@@ -246,14 +249,23 @@ export function useAgentEventBridge() {
       } while (resyncRef.current.again);
     } catch (error) {
       console.error("[AgentEvent] resync abandoned after retries", error);
+      throw error;
     } finally {
       resyncRef.current.running = false;
       drainBufferedAgentEvents();
-      if (resyncRef.current.again) {
-        resyncRef.current.running = true;
-        void runResync();
-      }
     }
+  });
+
+  const synchronize = useEffectEvent((sessionIds: string[] = []) => {
+    for (const id of sessionIds) requestedSessionIdsRef.current.add(id);
+    resyncRef.current.again = true;
+    if (!resyncPromiseRef.current) {
+      resyncRef.current.running = true;
+      resyncPromiseRef.current = runResync().finally(() => {
+        resyncPromiseRef.current = null;
+      });
+    }
+    return resyncPromiseRef.current;
   });
 
   const handleAgentEvent = useEffectEvent(
@@ -274,13 +286,11 @@ export function useAgentEventBridge() {
     () =>
       desktopApi.onDataChanged((event) => {
         if (!event.areas.includes("agent")) return;
-        resyncRef.current.again = true;
-        if (resyncRef.current.running) return;
-        resyncRef.current.running = true;
-        void runResync();
+        void synchronize().catch(console.error);
       }),
     [],
   );
+  return synchronize;
 }
 
 export function useBrowserEventBridge() {

@@ -124,6 +124,7 @@ import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerSkillsHandlers } from "./skills";
 import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
+import { registerChatWindowHandlers } from "./window";
 import {
   buildPdfAssetUrl,
   closeAllWorkspaceFilesWatchers,
@@ -263,6 +264,8 @@ function getSurfaceColor() {
   return nativeTheme.shouldUseDarkColors ? "#0f0f11" : "#ffffff";
 }
 
+let chatWindows: ReturnType<typeof registerChatWindowHandlers> | undefined;
+
 function createWindow() {
   const isMac = process.platform === "darwin";
   const window = new BrowserWindow({
@@ -288,6 +291,7 @@ function createWindow() {
       devTools: resolveMainWindowDevTools({ packaged: app.isPackaged }),
     },
   });
+  chatWindows?.setPrimaryWindow(window);
   let didShowWindow = false;
   const showWindowOnce = () => {
     if (didShowWindow || window.isDestroyed()) {
@@ -348,11 +352,12 @@ function createWindow() {
       ["localhost", "127.0.0.1"].includes(url.hostname)
     ) {
       void window.loadURL(rendererUrl);
-      return;
+      return window;
     }
   }
 
   void window.loadFile(rendererHtmlPath);
+  return window;
 }
 
 function registerWorkspaceHandlers() {
@@ -1530,6 +1535,11 @@ app
     registerSkillsHandlers();
     registerAppUpdateHandlers();
     registerOssLicensesHandlers();
+    chatWindows = registerChatWindowHandlers({
+      preloadPath,
+      rendererHtmlPath,
+      createPrimaryWindow: createWindow,
+    });
     startAppUpdater({
       currentVersion: app.getVersion(),
       packaged: app.isPackaged,

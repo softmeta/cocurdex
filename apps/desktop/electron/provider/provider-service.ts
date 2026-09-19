@@ -44,11 +44,18 @@ export async function resolveProviderApiKey(
 }
 
 async function clearStoredProviderApiKey(providerId: string) {
-  return requestDaemon(
-    "provider.apiKey.set",
-    { providerId, apiKey: null },
-    await chatDaemonOptions(),
-  );
+  try {
+    await requestDaemon(
+      "provider.apiKey.set",
+      { providerId, apiKey: null },
+      await chatDaemonOptions(),
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === "Provider not found") {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function buildRuntimeProviderConfig(session: SessionRecord) {

@@ -16,6 +16,7 @@ const FD_TIMEOUT_MS = 5000;
 const IGNORED_DIRECTORY_NAMES = new Set([
   ".git",
   ".next",
+  ".pnpm-store",
   ".turbo",
   "dist",
   "node_modules",
@@ -34,27 +35,39 @@ function getProcessResourcesPath() {
   return (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
 }
 
+function getRepoVendorFdCandidates(target: string, executable: string) {
+  const candidates: string[] = [];
+  let currentPath = __dirname;
+
+  for (let depth = 0; depth < 5; depth++) {
+    currentPath = path.dirname(currentPath);
+    candidates.push(
+      path.join(
+        currentPath,
+        "apps",
+        "desktop",
+        "vendor",
+        "fd",
+        target,
+        executable,
+      ),
+    );
+  }
+
+  return candidates;
+}
+
 async function resolveFdPath() {
   const executable = process.platform === "win32" ? "fd.exe" : "fd";
   const target = getFdTarget();
+  const resourcesPath = getProcessResourcesPath();
   const candidates = [
     // Packaged daemon.cjs sits at <resources>/cli/daemon.cjs, so the vendor
     // directory lands one level above the bundle.
     path.resolve(__dirname, "../vendor/fd", target, executable),
-    // Development repo layout: packages/daemon/src -> repo root.
-    path.resolve(
-      __dirname,
-      "../../../apps/desktop/vendor/fd",
-      target,
-      executable,
-    ),
-    getProcessResourcesPath()
-      ? path.join(
-          getProcessResourcesPath() ?? "",
-          "vendor/fd",
-          target,
-          executable,
-        )
+    ...getRepoVendorFdCandidates(target, executable),
+    resourcesPath
+      ? path.join(resourcesPath, "vendor", "fd", target, executable)
       : null,
   ].filter((candidate): candidate is string => Boolean(candidate));
 
@@ -183,32 +196,22 @@ export async function listWorkspaceEntries(
   });
 }
 
-export async function listWorkspaceFiles(rootPath: string) {
-  if (isBroadFilesystemScanRoot(rootPath, homedir())) {
-    return [];
-  }
-  const fdPath = await resolveFdPath();
-  if (fdPath) {
-    try {
-      return await listWorkspaceFilesWithFd(rootPath, fdPath);
-    } catch {
-      // Keep workspace browsing usable if the packaged binary is missing,
-      // blocked, or incompatible with the host system.
-    }
-  }
-
+async function listWorkspaceFilesBreadthFirst(rootPath: string) {
   const files: WorkspaceFileRecord[] = [];
+  const pendingDirectories = [rootPath];
 
-  async function walk(currentPath: string) {
+  for (let index = 0; index < pendingDirectories.length; index++) {
     if (files.length >= MAX_WORKSPACE_FILE_RESULTS) {
-      return;
+      break;
     }
 
+    const currentPath = pendingDirectories[index];
     const entries = await readdir(currentPath, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
 
     for (const entry of entries) {
       if (files.length >= MAX_WORKSPACE_FILE_RESULTS) {
-        return;
+        break;
       }
 
       const nextPath = path.join(currentPath, entry.name);
@@ -222,7 +225,7 @@ export async function listWorkspaceFiles(rootPath: string) {
             path: nextPath,
             relativePath,
           });
-          await walk(nextPath);
+          pendingDirectories.push(nextPath);
         }
         continue;
       }
@@ -238,8 +241,24 @@ export async function listWorkspaceFiles(rootPath: string) {
     }
   }
 
-  await walk(rootPath);
   return files;
+}
+
+export async function listWorkspaceFiles(rootPath: string) {
+  if (isBroadFilesystemScanRoot(rootPath, homedir())) {
+    return [];
+  }
+  const fdPath = await resolveFdPath();
+  if (fdPath) {
+    try {
+      return await listWorkspaceFilesWithFd(rootPath, fdPath);
+    } catch {
+      // Keep workspace browsing usable if the packaged binary is missing,
+      // blocked, or incompatible with the host system.
+    }
+  }
+
+  return listWorkspaceFilesBreadthFirst(rootPath);
 }
 
 export async function listGitBranches(rootPath: string) {

@@ -3,6 +3,7 @@ import type {
   ProviderModelRecord,
   SessionRecord,
 } from "@cocurdex/shared";
+import { ipcMain } from "electron";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const generateCodexConversationTitleMock = vi.hoisted(() => vi.fn());
@@ -111,6 +112,18 @@ const claudeSession = {
   writeMode: "native-write",
 } satisfies SessionRecord;
 
+type IpcHandler = (
+  event: unknown,
+  ...args: unknown[]
+) => Promise<unknown> | unknown;
+
+function latestIpcHandler(channel: string) {
+  return vi
+    .mocked(ipcMain.handle)
+    .mock.calls.filter((call) => call[0] === channel)
+    .at(-1)?.[1] as IpcHandler | undefined;
+}
+
 describe("registerProviderHandlers", () => {
   it("registers statically bundled Pi OAuth flows for Electron", async () => {
     const { registerProviderHandlers } = await import("./provider-service");
@@ -118,6 +131,31 @@ describe("registerProviderHandlers", () => {
     registerProviderHandlers();
 
     expect(registerBundledPiProviderOAuthFlowsMock).toHaveBeenCalledOnce();
+  });
+
+  it("completes Pi API key login when the provider is not saved yet", async () => {
+    loginPiProviderMock.mockResolvedValue(undefined);
+    requestDaemonMock.mockImplementation(async (method: string) => {
+      if (method === "provider.apiKey.set") {
+        throw new Error("Provider not found");
+      }
+      return null;
+    });
+    const { registerProviderHandlers } = await import("./provider-service");
+    registerProviderHandlers();
+
+    const start = latestIpcHandler("provider:authLoginStart");
+    const next = latestIpcHandler("provider:authLoginNext");
+    if (!start || !next) {
+      throw new Error("Provider auth login handlers were not registered");
+    }
+
+    const started = await start({}, "deepseek", "api_key");
+    expect(started).toEqual(
+      expect.objectContaining({ loginId: expect.any(String) }),
+    );
+    const loginId = (started as { loginId: string }).loginId;
+    await expect(next({}, loginId)).resolves.toEqual({ type: "complete" });
   });
 });
 

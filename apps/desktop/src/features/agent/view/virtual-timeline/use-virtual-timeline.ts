@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { STICK_TO_BOTTOM_RESUME_THRESHOLD } from "@/components/chat";
+import type { ChatReadingPosition } from "@/lib/chat-reading-position";
 import {
   getStickyUserMessageIdForConversationIndex,
   isViewportNearBottom,
@@ -28,6 +29,8 @@ import {
 } from "./virtual-timeline-model";
 
 export interface ChatTimelineScrollHandle {
+  readPosition(): ChatReadingPosition | null;
+  restorePosition(position: ChatReadingPosition): boolean;
   cancelNavigation(): void;
   hasNavigationTarget(): boolean;
   getStickySelection(): StickyUserMessageSelection | null;
@@ -110,6 +113,43 @@ export function useVirtualTimeline({
   useImperativeHandle(
     scrollRef,
     () => ({
+      readPosition() {
+        const viewport = viewportElement;
+        if (!viewport) return null;
+        const item = virtualizer.getVirtualItemForOffset(viewport.scrollTop);
+        return {
+          atBottom: isViewportNearBottom(viewport),
+          scrollTop: viewport.scrollTop,
+          messageId: null,
+          anchorId: item ? groups[item.index]?.id : undefined,
+          anchorFraction:
+            item && item.size > 0
+              ? Math.max(0, (viewport.scrollTop - item.start) / item.size)
+              : 0,
+        };
+      },
+      restorePosition(position) {
+        const viewport = viewportElement;
+        if (!viewport || !groups.length) return false;
+        const index = lookup.byId.get(position.anchorId ?? "");
+        if (index === undefined) {
+          viewport.scrollTop = position.scrollTop;
+          return true;
+        }
+        const node = rootRef.current?.querySelector<HTMLElement>(
+          `[data-index="${index}"]`,
+        );
+        if (!node) {
+          virtualizer.scrollToIndex(index, { align: "start" });
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        viewport.scrollTop +=
+          rect.top -
+          viewport.getBoundingClientRect().top +
+          rect.height * (position.anchorFraction ?? 0);
+        return true;
+      },
       cancelNavigation() {
         targetRef.current = null;
         setTargetId(null);

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  listPiBuiltInProviderIds,
   listPiProviderModels,
   listPiProviderTemplates,
 } from "./pi-provider-catalog";
@@ -22,18 +21,6 @@ describe("Pi provider catalog", () => {
       name: "Google",
       baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     });
-  });
-
-  it("includes Cocurdex-only built-in templates ahead of the Pi catalog", () => {
-    const templates = listPiProviderTemplates();
-    const byId = new Map(templates.map((template) => [template.id, template]));
-
-    expect(byId.get("volcengine-plan")).toMatchObject({
-      name: "火山 Coding Plan",
-      baseUrl: "https://ark.cn-beijing.volces.com/api/coding/v3",
-    });
-    expect(templates[0]?.id).toBe("volcengine-plan");
-    expect(listPiBuiltInProviderIds()).toContain("volcengine-plan");
   });
 
   it("includes OAuth providers whose APIs Cocurdex can drive", () => {
@@ -77,37 +64,6 @@ describe("Pi provider catalog", () => {
     expect(models?.every((item) => item.api === "openai-codex-responses")).toBe(
       true,
     );
-  });
-
-  it("maps Cocurdex built-in Volcengine Coding Plan models", async () => {
-    const models = await listPiProviderModels({ id: "volcengine-plan" });
-
-    expect(models?.length).toBeGreaterThan(0);
-    expect(models?.[0]).toEqual(
-      expect.objectContaining({
-        providerId: "volcengine-plan",
-        api: "openai-responses",
-        source: "api",
-      }),
-    );
-    expect(models?.map((model) => model.modelId)).toEqual(
-      expect.arrayContaining([
-        "ark-code-latest",
-        "doubao-seed-code",
-        "glm-5.2",
-        "deepseek-v4-pro",
-        "kimi-k2.7-code",
-      ]),
-    );
-    const visionModel = models?.find(
-      (model) => model.modelId === "ark-code-latest",
-    );
-    expect(visionModel?.capabilities).toEqual(
-      expect.arrayContaining(["agent", "chat", "vision"]),
-    );
-    const textOnly = models?.find((model) => model.modelId === "glm-5.2");
-    expect(textOnly?.capabilities).toEqual(["agent", "chat"]);
-    expect(textOnly?.contextLimit).toBe(1_024_000);
   });
 
   it("keeps models across every supported api for gateway providers", async () => {
@@ -181,7 +137,6 @@ describe("Pi provider catalog", () => {
 
     expect(listTemplates()).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "volcengine-plan" }),
         expect.objectContaining({
           id: "gateway",
           authMethods: [expect.objectContaining({ type: "api_key" })],

@@ -13,6 +13,7 @@ import {
   conversationComposerDraftKey,
 } from "@/features/composer";
 import { desktopApi, useMountEffect } from "@/lib";
+import { useChatReadingPosition } from "@/lib/use-chat-reading-position";
 import { ConversationContextMeter } from "./chat-context-meter";
 import { rehydrateChatImages } from "./chat-images";
 import { ConversationMessage } from "./chat-message";
@@ -71,6 +72,27 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
     viewportProps,
   } = useStickToBottom(scrollViewportRef);
 
+  useChatReadingPosition(
+    `conversation:${conversation.id}`,
+    () => {
+      const viewport = scrollViewportRef.current;
+      if (!viewport) return null;
+      return {
+        atBottom:
+          viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <
+          40,
+        messageId: null,
+        scrollTop: viewport.scrollTop,
+      };
+    },
+    (position) => {
+      const viewport = scrollViewportRef.current;
+      if (!viewport || !loaded) return false;
+      scrollToTop("auto");
+      viewport.scrollTop = position.scrollTop;
+      return true;
+    },
+  );
   const reloadMessages = () => {
     setLoadError(null);
     void loadMessages(conversation.id).catch((error) =>

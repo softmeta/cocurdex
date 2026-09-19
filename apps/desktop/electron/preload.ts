@@ -67,9 +67,12 @@ import type {
 } from "../src/lib/types";
 import { exposeTaskApi } from "./chat/task-preload";
 
+import { chatWindowApi } from "./window/chat-window-preload";
+
 exposeTaskApi();
 
 contextBridge.exposeInMainWorld("desktopApi", {
+  chatWindow: chatWindowApi,
   capabilities: {
     fileManager: true,
     nativeDirectoryDialog: true,

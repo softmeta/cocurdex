@@ -70,6 +70,16 @@ describe("daemon provider credentials", () => {
     expect(vault.read).not.toHaveBeenCalled();
     expect(resolveAuth).not.toHaveBeenCalled();
   });
+  it("treats clearing a key for an unsaved provider as already cleared", async () => {
+    const { service, vault, state } = fixture();
+    await expect(service.setApiKey("deepseek", null)).resolves.toBeUndefined();
+    expect(vault.remove).not.toHaveBeenCalled();
+    expect(state.setProviderApiKeySecretId).not.toHaveBeenCalled();
+    await expect(service.setApiKey("deepseek", "sk-test")).rejects.toThrow(
+      "Provider not found",
+    );
+  });
+
   it("stores only a credential reference in product state and resolves the current key", async () => {
     const { service, config, secrets, snapshot } = fixture();
     await service.setApiKey(config.id, "first-key");

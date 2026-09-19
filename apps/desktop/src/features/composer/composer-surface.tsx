@@ -41,10 +41,7 @@ export function ComposerSurfaceBody({
   ...props
 }: ComponentProps<"div">) {
   return (
-    <div
-      className={cn("w-[clamp(32rem,64vw,46rem)] max-w-full", className)}
-      {...props}
-    />
+    <div className={cn("w-full min-w-0 max-w-[46rem]", className)} {...props} />
   );
 }
 

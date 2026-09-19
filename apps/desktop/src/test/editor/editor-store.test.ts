@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   activeFileAtom,
   attachEditorSelectionToChatAtom,
-  chatComposerAttachmentAtom,
   closeFileAtom,
   editorDraftViewsByWorkspaceAtom,
   editorPanelOpenAtom,
@@ -18,6 +17,8 @@ import {
   saveEditorViewSnapshotAtom,
   setEditorSelectionAttachmentAtom,
 } from "@/features/editor";
+
+import { outgoingChatContextAtom } from "@/lib/chat-context-store";
 
 describe("editor store", () => {
   it("tracks open files and the active file", () => {
@@ -69,7 +70,7 @@ describe("editor store", () => {
     expect(store.get(editorPanelOpenAtom)).toBe(true);
   });
 
-  it("moves the current editor selection into the composer attachment", () => {
+  it("queues the current editor selection for the active chat window", () => {
     const store = createStore();
 
     store.set(setEditorSelectionAttachmentAtom, {
@@ -82,13 +83,16 @@ describe("editor store", () => {
     });
     store.set(attachEditorSelectionToChatAtom);
 
-    expect(store.get(chatComposerAttachmentAtom)).toEqual({
-      endLine: 27,
-      filePath: "package.json",
-      language: "json",
-      selectedText: '"test": "vitest"',
-      startLine: 25,
-      surroundingContext: '"lint": "biome check",\n"test": "vitest"',
+    expect(store.get(outgoingChatContextAtom)[0]?.input).toEqual({
+      kind: "attachment",
+      attachment: {
+        endLine: 27,
+        filePath: "package.json",
+        language: "json",
+        selectedText: '"test": "vitest"',
+        startLine: 25,
+        surroundingContext: '"lint": "biome check",\n"test": "vitest"',
+      },
     });
   });
 
