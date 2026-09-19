@@ -1,8 +1,8 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import type { MarkdownFilePathHandlers } from "@/components";
-import { fileTreeVisibleAtom, openFilePreviewAtom } from "@/features/editor";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
 
@@ -22,13 +22,13 @@ function toAbsolutePath(path: string, rootPath: string | null): string | null {
 }
 
 // Build the handlers that turn file-path-looking inline code in assistant
-// messages into clickable links opening the editor panel. Memoized so the
+// messages into clickable links. Opening is dispatched as a shell-surface
+// intent so it lands in the window hosting the editor — the same window while
+// chat is attached, the primary window once chat is detached. Memoized so the
 // markdown renderer's component map stays stable across re-renders.
 export function useMessageFilePathHandlers(): MarkdownFilePathHandlers {
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
-  const openFilePreview = useSetAtom(openFilePreviewAtom);
-  const setFileTreeVisible = useSetAtom(fileTreeVisibleAtom);
   const { t } = useTranslation("agent");
 
   const rootPath =
@@ -50,17 +50,22 @@ export function useMessageFilePathHandlers(): MarkdownFilePathHandlers {
       },
       checkExists: (absolutePath) => desktopApi.fileExists(absolutePath),
       open: ({ absolutePath, startLine, endLine }) => {
-        // The chat link already pointed at the file, so collapse the explorer
-        // instead of letting it steal space alongside the opened file.
-        setFileTreeVisible(false);
-        openFilePreview({
-          filePath: absolutePath,
-          startLine: startLine ?? null,
-          endLine: endLine ?? null,
-        });
+        void desktopApi.chatWindow
+          .dispatchIntent({
+            surface: "shell",
+            intent: {
+              kind: "open-file",
+              filePath: absolutePath,
+              startLine: startLine ?? null,
+              endLine: endLine ?? null,
+            },
+          })
+          .catch((error: unknown) => {
+            toast.error(error instanceof Error ? error.message : String(error));
+          });
       },
       openLabel: t("openFile"),
     }),
-    [rootPath, openFilePreview, setFileTreeVisible, t],
+    [rootPath, t],
   );
 }

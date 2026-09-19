@@ -6,7 +6,6 @@
     "ready": "Ready",
     "reasoningCount_one": "{{count}} reasoning step",
     "reasoningCount_other": "{{count}} reasoning steps",
-    "title": "Activity",
     "toolCount_one": "{{count}} tool call",
     "toolCount_other": "{{count}} tool calls",
     "usingTools": "Using tools",

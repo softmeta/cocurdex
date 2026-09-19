@@ -5,6 +5,7 @@ import { selectConversationAtom } from "@/features/chat/chat-store";
 import {
   activeSessionIdAtom,
   bootstrapSessionsAtom,
+  openSessionInSplitAtom,
   selectSessionAtom,
 } from "../session-store";
 import {
@@ -29,6 +30,12 @@ const sessionA: SessionRecord = {
   updatedAt: "2026-01-01T00:00:00.000Z",
   lastMessageAt: null,
   permissionMode: "codex-read-only",
+};
+
+const sessionB: SessionRecord = {
+  ...sessionA,
+  id: "session-b",
+  title: "Session B",
 };
 
 describe("session split store", () => {
@@ -104,6 +111,42 @@ describe("session split store", () => {
       store.get(sessionSplitLayoutAtom),
     ).filter((pane) => pane.conversationId === "conversation-a");
     expect(panesWithConversation).toHaveLength(1);
+  });
+
+  it("opens a session in a new pane when splitting", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [sessionA, sessionB]);
+    store.set(selectSessionAtom, sessionA.id);
+
+    store.set(openSessionInSplitAtom, {
+      sessionId: sessionB.id,
+      direction: "right",
+    });
+
+    const panes = listPanes(store.get(sessionSplitLayoutAtom));
+    expect(panes).toHaveLength(2);
+    expect(panes[0]?.sessionId).toBe(sessionA.id);
+    const focused = findPane(
+      store.get(sessionSplitLayoutAtom),
+      store.get(focusedPaneIdAtom),
+    );
+    expect(focused?.sessionId).toBe(sessionB.id);
+  });
+
+  it("focuses the existing pane instead of splitting an open session", () => {
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [sessionA]);
+    store.set(selectSessionAtom, sessionA.id);
+    store.set(splitFocusedPaneAtom, "right");
+    expect(store.get(focusedPaneIdAtom)).not.toBe(ROOT_PANE_ID);
+
+    store.set(openSessionInSplitAtom, {
+      sessionId: sessionA.id,
+      direction: "down",
+    });
+
+    expect(listPanes(store.get(sessionSplitLayoutAtom))).toHaveLength(2);
+    expect(store.get(focusedPaneIdAtom)).toBe(ROOT_PANE_ID);
   });
 
   it("keeps the current pane when a closed pane finishes binding later", () => {

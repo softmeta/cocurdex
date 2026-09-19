@@ -8,6 +8,7 @@ export * from "./file-tree-lazy";
 // Lazy wrapper, not the view itself: the diff renderer is a large dependency
 // and nothing outside the git tab needs it.
 export * from "./git-changes-lazy";
+export { reviewGitTurnAtom } from "./git-changes-store";
 export * from "./monaco";
 export * from "./search";
 export * from "./selection";

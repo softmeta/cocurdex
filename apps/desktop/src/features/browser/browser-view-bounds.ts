@@ -15,11 +15,35 @@ export function bindBrowserViewBounds(
 
   const synchronize = () => {
     const rect = container.getBoundingClientRect();
+    // The native view paints above all DOM and cannot be clipped by
+    // overflow, so clip the reported rect against ancestor scroll boxes:
+    // a horizontally panned container must not draw over a pinned chat rail
+    // on the trailing edge. The x edge follows the element itself — whatever
+    // slides past a left clip lands off-window and is invisible anyway, which
+    // is what lets horizontal panning reveal the covered side.
+    let top = rect.top;
+    let right = rect.left + rect.width;
+    let bottom = rect.top + rect.height;
+    for (let node = container.parentElement; node; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      const clips = (value: string) =>
+        value === "auto" ||
+        value === "hidden" ||
+        value === "scroll" ||
+        value === "clip";
+      if (!clips(style.overflowX) && !clips(style.overflowY)) {
+        continue;
+      }
+      const clip = node.getBoundingClientRect();
+      top = Math.max(top, clip.top);
+      right = Math.min(right, clip.right);
+      bottom = Math.min(bottom, clip.bottom);
+    }
     const bounds = {
       x: Math.round(rect.left),
-      y: Math.round(rect.top),
-      w: Math.round(rect.width),
-      h: Math.round(rect.height),
+      y: Math.round(top),
+      w: Math.round(Math.max(0, right - rect.left)),
+      h: Math.round(Math.max(0, bottom - top)),
     };
     if (
       !previous ||

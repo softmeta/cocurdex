@@ -25,8 +25,8 @@ import {
 
 interface SessionSplitMenuProps {
   canClose: boolean;
-  onClose(): void;
-  onCloseAll(): void;
+  onClose?(): void;
+  onCloseAll?(): void;
   onSplitDown(): void;
   onSplitRight(): void;
 }
@@ -68,7 +68,7 @@ export function SessionSplitMenu({
         </AppDropdownItem>
         <DropdownMenuSeparator />
         <ChatWindowMenuItem />
-        {canClose ? (
+        {canClose && onClose && onCloseAll ? (
           <>
             <DropdownMenuSeparator />
             <AppDropdownItem onClick={onClose}>

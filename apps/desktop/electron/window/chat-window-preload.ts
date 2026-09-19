@@ -8,12 +8,13 @@ function subscribe<T>(channel: string, listener: (value: T) => void) {
 }
 
 export const chatWindowApi: ChatWindowApi = {
-  addContext: (request) => ipcRenderer.invoke("chatWindow:addContext", request),
-  getPendingContext: () => ipcRenderer.invoke("chatWindow:pendingContext"),
-  acknowledgeContext: (id) =>
-    ipcRenderer.invoke("chatWindow:acknowledgeContext", id),
-  onContextAvailable: (listener) =>
-    subscribe("chatWindow:contextAvailable", listener),
+  dispatchIntent: (request) =>
+    ipcRenderer.invoke("chatWindow:dispatchIntent", request),
+  getPendingIntents: () => ipcRenderer.invoke("chatWindow:pendingIntents"),
+  acknowledgeIntent: (id) =>
+    ipcRenderer.invoke("chatWindow:acknowledgeIntent", id),
+  onIntentAvailable: (listener) =>
+    subscribe("chatWindow:intentAvailable", listener),
   setBrowserContext: (annotations) =>
     ipcRenderer.invoke("chatWindow:setBrowserContext", annotations),
   getBrowserContext: () => ipcRenderer.invoke("chatWindow:browserContext"),

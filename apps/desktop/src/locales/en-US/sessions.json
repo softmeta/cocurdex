@@ -196,7 +196,9 @@
     "renameSession": "Rename {{title}}",
     "revealInFileManager": "Reveal in file manager",
     "running": "Running",
-    "settings": "Settings"
+    "settings": "Settings",
+    "splitDown": "Open Below",
+    "splitRight": "Open to the Right"
   },
   "split": {
     "close": "Close Pane",

@@ -21,9 +21,6 @@ interface GitChangeRowHeaderProps {
   collapsed: boolean;
   onToggle: () => void;
   onOpenFile: (path: string) => void;
-  // Hide the collapse chevron when the diff is rendered always-expanded (e.g.
-  // the tree view's selected-file detail pane).
-  hideToggle?: boolean;
   stagedState: GitFileStagedState;
   actionsEnabled?: boolean;
   onStage: (path: string) => void;
@@ -53,7 +50,6 @@ export function GitChangeRowHeader({
   collapsed,
   onToggle,
   onOpenFile,
-  hideToggle = false,
   stagedState,
   actionsEnabled = true,
   onStage,
@@ -70,20 +66,18 @@ export function GitChangeRowHeader({
 
   return (
     <div className="app-no-drag flex w-full min-w-0 items-center gap-2 rounded-control px-1 py-0.5 transition-colors hover:bg-editor-tab-hover-bg">
-      {hideToggle ? null : (
-        <button
-          aria-expanded={!collapsed}
-          className="flex size-4 shrink-0 items-center justify-center rounded-control text-editor-fg-subtle transition-colors hover:text-editor-fg"
-          onClick={onToggle}
-          type="button"
-        >
-          {collapsed ? (
-            <ChevronRight className="size-3.5" />
-          ) : (
-            <ChevronDown className="size-3.5" />
-          )}
-        </button>
-      )}
+      <button
+        aria-expanded={!collapsed}
+        className="flex size-4 shrink-0 items-center justify-center rounded-control text-editor-fg-subtle transition-colors hover:text-editor-fg"
+        onClick={onToggle}
+        type="button"
+      >
+        {collapsed ? (
+          <ChevronRight className="size-3.5" />
+        ) : (
+          <ChevronDown className="size-3.5" />
+        )}
+      </button>
       <button
         className="group/file flex min-w-0 items-center gap-2 text-start"
         onClick={() => onOpenFile(path)}

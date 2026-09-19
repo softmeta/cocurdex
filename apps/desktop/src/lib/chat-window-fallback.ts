@@ -1,26 +1,32 @@
-import type { ChatContextRequest } from "./chat-context-store";
-import type { ChatWindowApi } from "./chat-window-types";
+import type {
+  ChatWindowApi,
+  ChatWindowIntentRequest,
+} from "./chat-window-types";
 
 async function unavailable(): Promise<never> {
   throw new Error("Independent chat windows require the desktop app");
 }
 
-const contexts = new Map<string, ChatContextRequest>();
-const contextListeners = new Set<() => void>();
+// In environments without the Electron bridge the whole app shares one window,
+// so every surface resolves locally: dispatched intents queue in-memory and are
+// consumed by this window's own intent listeners.
+const intents = new Map<string, ChatWindowIntentRequest>();
+const intentListeners = new Set<() => void>();
 
 export const chatWindowFallback: ChatWindowApi = {
-  addContext: async (request) => {
-    contexts.set(request.id, request);
-    for (const listener of contextListeners) listener();
+  dispatchIntent: async (request) => {
+    const id = request.id ?? crypto.randomUUID();
+    intents.set(id, { id, surface: request.surface, intent: request.intent });
+    for (const listener of intentListeners) listener();
   },
-  getPendingContext: async () => [...contexts.values()],
-  acknowledgeContext: async (id) => {
-    contexts.delete(id);
+  getPendingIntents: async () => [...intents.values()],
+  acknowledgeIntent: async (id) => {
+    intents.delete(id);
   },
-  onContextAvailable: (listener) => {
-    contextListeners.add(listener);
+  onIntentAvailable: (listener) => {
+    intentListeners.add(listener);
     return () => {
-      contextListeners.delete(listener);
+      intentListeners.delete(listener);
     };
   },
   setBrowserContext: async () => {},

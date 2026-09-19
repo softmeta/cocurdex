@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_LEFT,
   MIN_LEFT,
+  resolvePanelFullWidth,
   resolveRightPanelVisibility,
   TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_TOOLBAR_MIN_WIDTH,
@@ -54,5 +55,47 @@ describe("resolveRightPanelVisibility", () => {
         isMaximized: true,
       }),
     ).toEqual({ shouldShow: true, isGlobal: true });
+  });
+});
+
+describe("resolvePanelFullWidth", () => {
+  const inlineLayout = {
+    isPanelOpen: true,
+    isMaximized: false,
+    isCompact: false,
+    isChatDetached: false,
+  };
+
+  it("keeps the editor as a side panel in the default layout", () => {
+    expect(resolvePanelFullWidth(inlineLayout)).toBe(false);
+  });
+
+  it("owns the row when the chat dock maximizes the editor", () => {
+    expect(resolvePanelFullWidth({ ...inlineLayout, isMaximized: true })).toBe(
+      true,
+    );
+  });
+
+  it("owns the row when the narrow window overlays the chat", () => {
+    expect(resolvePanelFullWidth({ ...inlineLayout, isCompact: true })).toBe(
+      true,
+    );
+  });
+
+  it("owns the row when chat lives in its own window", () => {
+    expect(
+      resolvePanelFullWidth({ ...inlineLayout, isChatDetached: true }),
+    ).toBe(true);
+  });
+
+  it("leaves the row to the chat surface when the editor panel is closed", () => {
+    expect(
+      resolvePanelFullWidth({
+        ...inlineLayout,
+        isPanelOpen: false,
+        isChatDetached: true,
+        isMaximized: true,
+      }),
+    ).toBe(false);
   });
 });

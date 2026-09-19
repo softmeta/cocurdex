@@ -38,6 +38,7 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import { PanScrollbar } from "./pan-scrollbar";
 import { PdfReaderView } from "./pdf-reader-view";
 import {
   fileTreeWidthAtom,
@@ -66,6 +67,12 @@ const IssuesView = lazy(() =>
 const MIN_FILE_TREE_WIDTH = 170;
 const MIN_EDITOR_WIDTH = 240;
 const INTERNAL_SEPARATOR_WIDTH = 1;
+// Views without an internal horizontal scroller need the body-level pan to
+// reach content a pinned rail covers — xterm truncates at grid width and
+// pdf.js clips overflow-x. Everything else shrinks instead and relies on its
+// own scrollbar (Monaco, kanban, diff, tab strips) or reflow (notes, browser),
+// which also avoids stacking a second horizontal bar under the view's own.
+const PANNABLE_VIEWS = new Set<RightPanelView>(["pdf", "terminal"]);
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -92,6 +99,10 @@ interface RightEditorPanelProps {
   // In global (fullscreen) mode the panel reaches the window's left edge, so the
   // view switcher must clear the macOS traffic-light buttons.
   reserveTrafficLights?: boolean;
+  // Width a trailing-edge overlay (pinned chat rail) reserves. Enables
+  // horizontal scroll on the body region only — the view switcher and toolbar
+  // rows above it stay put.
+  overlayInset?: number;
   onAddContextToChat?(attachment: MessageAttachment): boolean;
   onInsertTextToChat?(text: string): boolean;
 }
@@ -101,6 +112,7 @@ export function RightEditorPanel({
   appearanceSettings = defaultAppearanceSettings,
   onAddContextToChat,
   onInsertTextToChat,
+  overlayInset = 0,
   reserveTrafficLights = false,
 }: RightEditorPanelProps) {
   const { t } = useTranslation("editor");
@@ -178,6 +190,7 @@ export function RightEditorPanel({
     activeWorkspace?.id ?? NO_WORKSPACE_TERMINAL_SCOPE_ID;
   const terminalCwd = workingPath ?? activeWorkspace?.rootPaths[0] ?? homeDir;
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
   const fileTreeWidthRef = useRef(fileTreeWidth);
   const removeDragListenersRef = useRef<(() => void) | null>(null);
 
@@ -299,6 +312,7 @@ export function RightEditorPanel({
   const sidebarWidth = searchPanelVisible
     ? Math.max(fileTreeWidth, 280)
     : fileTreeWidth;
+  const pannable = overlayInset > 0 && PANNABLE_VIEWS.has(activeView);
 
   return (
     <aside
@@ -362,66 +376,85 @@ export function RightEditorPanel({
         for a frame, which read as a cursor/content flash on view switch.
       */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {activeView === "editor" ? (
+        <div
+          className={cn(
+            "scrollbar-hide relative flex min-h-0 flex-1 flex-col",
+            pannable && "overflow-x-auto overflow-y-hidden",
+          )}
+          ref={bodyScrollRef}
+        >
           <div
-            className="flex min-h-0 flex-1"
-            data-testid="editor-content-row"
-            ref={handleContentRef}
+            className="relative flex min-h-0 flex-1 flex-col"
+            style={
+              pannable
+                ? { minWidth: `calc(100% + ${overlayInset}px)` }
+                : undefined
+            }
           >
-            {sidebarVisible ? (
-              <>
-                <div
-                  className="flex shrink-0 flex-col bg-editor-canvas"
-                  data-testid="editor-sidebar-pane"
-                  style={{ width: sidebarWidth }}
-                >
-                  {searchPanelVisible ? (
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <div className="border-b border-editor-border p-2">
-                        <SearchPanel
-                          rootPath={
-                            workingPath ?? activeWorkspace?.rootPaths[0] ?? null
-                          }
-                        />
-                      </div>
-                      <SearchResultsPane
-                        rootPath={
-                          workingPath ?? activeWorkspace?.rootPaths[0] ?? null
-                        }
-                      />
+            {activeView === "editor" ? (
+              <div
+                className="flex min-h-0 flex-1"
+                data-testid="editor-content-row"
+                ref={handleContentRef}
+              >
+                {sidebarVisible ? (
+                  <>
+                    <div
+                      className="flex shrink-0 flex-col bg-editor-canvas"
+                      data-testid="editor-sidebar-pane"
+                      style={{ width: sidebarWidth }}
+                    >
+                      {searchPanelVisible ? (
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <div className="border-b border-editor-border p-2">
+                            <SearchPanel
+                              rootPath={
+                                workingPath ??
+                                activeWorkspace?.rootPaths[0] ??
+                                null
+                              }
+                            />
+                          </div>
+                          <SearchResultsPane
+                            rootPath={
+                              workingPath ??
+                              activeWorkspace?.rootPaths[0] ??
+                              null
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <FileTree />
+                      )}
                     </div>
-                  ) : (
-                    <FileTree />
-                  )}
+                    <ResizeSeparator
+                      ariaLabel={t("actions.resizeExplorer")}
+                      onMouseDown={handleMouseDown}
+                    />
+                  </>
+                ) : null}
+                <div className="flex min-w-0 flex-1 flex-col bg-editor-canvas">
+                  <EditorBreadcrumb />
+                  <MonacoEditor
+                    appearanceSettings={appearanceSettings}
+                    onAddSelectionToChat={(attachment) => {
+                      if (onAddContextToChat?.(attachment)) {
+                        return;
+                      }
+                      setChatComposerAttachment(attachment);
+                    }}
+                  />
                 </div>
-                <ResizeSeparator
-                  ariaLabel={t("actions.resizeExplorer")}
-                  onMouseDown={handleMouseDown}
-                />
-              </>
+              </div>
             ) : null}
-            <div className="flex min-w-0 flex-1 flex-col bg-editor-canvas">
-              <EditorBreadcrumb />
-              <MonacoEditor
-                appearanceSettings={appearanceSettings}
-                onAddSelectionToChat={(attachment) => {
-                  if (onAddContextToChat?.(attachment)) {
-                    return;
-                  }
-                  setChatComposerAttachment(attachment);
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
 
-        {activeView === "browser" ? (
-          <div className="min-h-0 flex-1">
-            <BrowserPanel onClose={onClose} />
-          </div>
-        ) : null}
+            {activeView === "browser" ? (
+              <div className="min-h-0 flex-1">
+                <BrowserPanel onClose={onClose} />
+              </div>
+            ) : null}
 
-        {/*
+            {/*
           PDF reader kept mounted after first activation, like git/terminal:
           remounting would re-read and re-parse the document (which can be large)
           on every tab switch. Use `hidden` (display:none) rather than
@@ -430,107 +463,114 @@ export function RightEditorPanel({
           layer in the compositor and toolbar icons lagged a frame or two.
           Absolute inset-0 + ResizeObserver re-lays out when shown again.
         */}
-        {pdfEverActive ? (
-          <div
-            className={cn(
-              "absolute inset-0 flex min-h-0 flex-col",
-              activeView === "pdf" ? "visible" : "hidden pointer-events-none",
-            )}
-          >
-            <PdfReaderView
-              isActive={activeView === "pdf"}
-              onInsertTextToChat={onInsertTextToChat}
-            />
-          </div>
-        ) : null}
+            {pdfEverActive ? (
+              <div
+                className={cn(
+                  "absolute inset-0 flex min-h-0 flex-col",
+                  activeView === "pdf"
+                    ? "visible"
+                    : "hidden pointer-events-none",
+                )}
+              >
+                <PdfReaderView
+                  isActive={activeView === "pdf"}
+                  onInsertTextToChat={onInsertTextToChat}
+                />
+              </div>
+            ) : null}
 
-        {/*
+            {/*
           Notes editor kept mounted after first activation (like git/pdf) so the
           Tiptap instance and its debounced autosave survive tab and workspace
           switches. Notes remain app-owned and independent of workspace tabs.
         */}
-        {notesEverActive ? (
-          <div
-            data-testid="right-panel-notes-layer"
-            className={cn(
-              "absolute inset-0 flex min-h-0 flex-col",
-              activeView === "notes" ? "visible" : "hidden pointer-events-none",
-            )}
-          >
-            <Suspense fallback={null}>
-              <NotesView />
-            </Suspense>
-          </div>
-        ) : null}
+            {notesEverActive ? (
+              <div
+                data-testid="right-panel-notes-layer"
+                className={cn(
+                  "absolute inset-0 flex min-h-0 flex-col",
+                  activeView === "notes"
+                    ? "visible"
+                    : "hidden pointer-events-none",
+                )}
+              >
+                <Suspense fallback={null}>
+                  <NotesView />
+                </Suspense>
+              </div>
+            ) : null}
 
-        {issuesEverActive ? (
-          <div
-            data-testid="right-panel-issues-layer"
-            className={cn(
-              "absolute inset-0 flex min-h-0 flex-col",
-              activeView === "issues"
-                ? "visible"
-                : "hidden pointer-events-none",
-            )}
-          >
-            <Suspense fallback={null}>
-              <IssuesView />
-            </Suspense>
-          </div>
-        ) : null}
+            {issuesEverActive ? (
+              <div
+                data-testid="right-panel-issues-layer"
+                className={cn(
+                  "absolute inset-0 flex min-h-0 flex-col",
+                  activeView === "issues"
+                    ? "visible"
+                    : "hidden pointer-events-none",
+                )}
+              >
+                <Suspense fallback={null}>
+                  <IssuesView />
+                </Suspense>
+              </div>
+            ) : null}
 
-        {/*
+            {/*
           Git panel kept mounted across view switches (same rationale as the
           terminal layer below): remounting re-fetched the diff and re-parsed
           every file, which showed a "loading" flash and janked on each switch.
           Hidden via visibility so its layout never collapses.
         */}
-        {gitEverActive ? (
-          <div
-            className={cn(
-              "absolute inset-0 flex min-h-0 flex-col",
-              activeView === "git"
-                ? "visible"
-                : "invisible pointer-events-none",
-            )}
-          >
-            <GitChanges onOpenFile={handleOpenGitFile} />
-          </div>
-        ) : null}
+            {gitEverActive ? (
+              <div
+                className={cn(
+                  "absolute inset-0 flex min-h-0 flex-col",
+                  activeView === "git"
+                    ? "visible"
+                    : "invisible pointer-events-none",
+                )}
+              >
+                <GitChanges onOpenFile={handleOpenGitFile} />
+              </div>
+            ) : null}
 
-        {/*
+            {/*
         Terminal stays mounted across view switches so the xterm scrollback
         buffer and running shell survive when the user toggles back. We hide
         it via CSS rather than unmount; node-pty in main keeps the shell alive
         regardless, but unmounting would drop in-renderer scrollback.
       */}
-        {terminalEverActive && terminalCwd ? (
-          <div
-            data-testid="editor-terminal-pane"
-            className={cn(
-              // Always laid out at full size as an absolute layer so it never
-              // collapses; only visibility/interactivity toggle on view switch.
-              "absolute inset-0 flex",
-              activeView === "terminal"
-                ? "visible"
-                : "invisible pointer-events-none",
-            )}
-          >
-            {/*
+            {terminalEverActive && terminalCwd ? (
+              <div
+                data-testid="editor-terminal-pane"
+                className={cn(
+                  // Always laid out at full size as an absolute layer so it never
+                  // collapses; only visibility/interactivity toggle on view switch.
+                  "absolute inset-0 flex",
+                  activeView === "terminal"
+                    ? "visible"
+                    : "invisible pointer-events-none",
+                )}
+              >
+                {/*
             No `key` here: the panel stays mounted as workspace/scope changes so
             React doesn't tear down xterm just because of a tree-wide remount.
             TerminalPanel handles workspaceId / cwd prop changes via the attach
             effect. Project shells and the no-workspace (home) shell keep
             separate tab state keys.
           */}
-            <TerminalPanel
-              cwd={terminalCwd}
-              isActive={activeView === "terminal"}
-              onEmptied={() => setActiveView(lastNonTerminalView)}
-              workspaceId={terminalWorkspaceId}
-            />
+                <TerminalPanel
+                  cwd={terminalCwd}
+                  isActive={activeView === "terminal"}
+                  onEmptied={() => setActiveView(lastNonTerminalView)}
+                  workspaceId={terminalWorkspaceId}
+                />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
+        {pannable ? <PanScrollbar viewportRef={bodyScrollRef} /> : null}
       </div>
     </aside>
   );

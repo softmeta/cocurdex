@@ -196,7 +196,9 @@
     "renameSession": "重命名 {{title}}",
     "revealInFileManager": "在文件管理器中打开",
     "running": "运行中",
-    "settings": "设置"
+    "settings": "设置",
+    "splitDown": "分屏到下侧",
+    "splitRight": "分屏到右侧"
   },
   "split": {
     "close": "关闭分屏",

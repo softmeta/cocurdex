@@ -1,53 +1,10 @@
-import {
-  type Dispatch,
-  type SetStateAction,
-  startTransition,
-  useEffect,
-  useRef,
-} from "react";
+import { type Dispatch, type SetStateAction, useEffect } from "react";
 import type {
   GitBranchInfo,
   WorkspaceGitDiffStatus,
   WorkspaceGitFileChange,
 } from "@/lib";
 import { desktopApi } from "@/lib";
-import { type GitViewMode, resolveViewModeOnResize } from "./git-view-mode";
-
-export function useGitChangesAutoViewMode(
-  isRightPanelResizing: boolean,
-  setManualViewMode: Dispatch<SetStateAction<GitViewMode | null>>,
-) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const isRightPanelResizingRef = useRef(isRightPanelResizing);
-  isRightPanelResizingRef.current = isRightPanelResizing;
-
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) {
-      return;
-    }
-    const observer = new ResizeObserver((observed) => {
-      const entry = observed[0];
-      if (!entry) {
-        return;
-      }
-      const width = entry.contentRect.width;
-      startTransition(() => {
-        setManualViewMode((current) =>
-          resolveViewModeOnResize({
-            current,
-            width,
-            isUserResizing: isRightPanelResizingRef.current,
-          }),
-        );
-      });
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [setManualViewMode]);
-
-  return containerRef;
-}
 
 export function useSyncWorkspaceGitChanges({
   rootPath,

@@ -3,15 +3,13 @@ import type {
   TurnFileChange,
   UndoTurnChangesResult,
 } from "@cocurdex/shared";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { ChevronDown, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { rightPanelResolvedActiveViewAtom } from "@/app/layout/right-editor-panel-store";
+import { toast } from "sonner";
 import { FileTypeIcon } from "@/components";
 import { Button, Spinner, Text } from "@/components/ui";
-import { editorPanelOpenAtom } from "@/features/editor/editor-store";
-import { reviewGitTurnAtom } from "@/features/editor/git-changes-store";
 import { cn, desktopApi } from "@/lib";
 import {
   compactFilePreview,
@@ -134,9 +132,6 @@ export function TurnChangesCard({
   isStreaming?: boolean;
 }) {
   const { t } = useTranslation("agent");
-  const setPanelOpen = useSetAtom(editorPanelOpenAtom);
-  const setActiveView = useSetAtom(rightPanelResolvedActiveViewAtom);
-  const reviewGitTurn = useSetAtom(reviewGitTurnAtom);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [undoResults, setUndoResults] = useAtom(undoResultsByChangeSetAtom);
@@ -166,17 +161,22 @@ export function TurnChangesCard({
     (file) => file.restorable === false,
   );
   const canUndo = isTurnChangeSetUndoable(changeSet) && !isStreaming;
-  const openGit = () => {
-    setPanelOpen(true);
-    setActiveView("git");
-  };
+  // Reviewing a turn means revealing the shell's git view — dispatch it as an
+  // intent so it also works when this chat lives in the detached window.
   const reviewTurn = (path = "") => {
-    reviewGitTurn({
-      sessionId: changeSet.sessionId,
-      messageId: changeSet.messageId || changeSet.userMessageId,
-      path,
-    });
-    openGit();
+    void desktopApi.chatWindow
+      .dispatchIntent({
+        surface: "shell",
+        intent: {
+          kind: "review-turn",
+          sessionId: changeSet.sessionId,
+          messageId: changeSet.messageId || changeSet.userMessageId,
+          path,
+        },
+      })
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : String(error));
+      });
   };
 
   const handleUndo = async () => {

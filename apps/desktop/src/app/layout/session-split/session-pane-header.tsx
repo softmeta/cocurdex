@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
@@ -13,9 +14,14 @@ interface SessionPaneHeaderProps {
   isFocused: boolean;
   occupiesTitlebar?: boolean;
   endInset?: number;
+  startInset?: number;
   title: string;
-  onClose(): void;
-  onCloseAll(): void;
+  /** Chrome owned by the surrounding shell, rendered inside this row. */
+  leading?: ReactNode;
+  trailing?: ReactNode;
+  className?: string;
+  onClose?(): void;
+  onCloseAll?(): void;
   onSplitDown(): void;
   onSplitRight(): void;
 }
@@ -25,7 +31,11 @@ export function SessionPaneHeader({
   isFocused,
   occupiesTitlebar = false,
   endInset = 0,
+  startInset = 0,
   title,
+  leading,
+  trailing,
+  className,
   onClose,
   onCloseAll,
   onSplitDown,
@@ -41,9 +51,17 @@ export function SessionPaneHeader({
 
   return (
     <div
-      className={cn("flex h-8 shrink-0 items-center gap-1 px-2", surfaceClass)}
-      style={{ paddingInlineEnd: endInset || undefined }}
+      className={cn(
+        "flex h-8 shrink-0 items-center gap-1 ps-2 pe-2",
+        surfaceClass,
+        className,
+      )}
+      style={{
+        paddingInlineStart: startInset || undefined,
+        paddingInlineEnd: endInset || undefined,
+      }}
     >
+      {leading}
       <div
         className={cn(
           "flex items-center gap-1",
@@ -57,7 +75,7 @@ export function SessionPaneHeader({
           onSplitDown={onSplitDown}
           onSplitRight={onSplitRight}
         />
-        {canClose ? (
+        {canClose && onClose ? (
           <TitlebarIconButton
             aria-label={t("split.close")}
             cursor="default"
@@ -67,16 +85,19 @@ export function SessionPaneHeader({
           </TitlebarIconButton>
         ) : null}
       </div>
-      {title ? (
-        <Text
-          className="min-w-0 flex-1 truncate"
-          size="meta"
-          tone={isFocused ? "default" : "muted"}
-          weight={isFocused ? "medium" : "normal"}
-        >
-          {title}
-        </Text>
-      ) : null}
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        {title ? (
+          <Text
+            className="truncate"
+            size="meta"
+            tone={isFocused ? "default" : "muted"}
+            weight={isFocused ? "medium" : "normal"}
+          >
+            {title}
+          </Text>
+        ) : null}
+      </div>
+      {trailing}
     </div>
   );
 }

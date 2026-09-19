@@ -4,33 +4,45 @@ import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  type ChatContextRequest,
+  type ChatContextInput,
   outgoingChatContextAtom,
   requestChatContextAtom,
 } from "@/lib/chat-context-store";
+import type {
+  ChatWindowIntentRequest,
+  ChatWindowSurface,
+} from "@/lib/chat-window-types";
 import { chatWindowStateAtom } from "./chat-window-state";
 import { useChatContext } from "./use-chat-context";
 
 const fixture = vi.hoisted(() => ({
-  pending: [] as ChatContextRequest[],
+  pending: [] as ChatWindowIntentRequest[],
   listeners: new Set<() => void>(),
-  added: [] as ChatContextRequest[],
+  dispatched: [] as {
+    id?: string;
+    surface: ChatWindowSurface;
+    intent: ChatWindowIntentRequest["intent"];
+  }[],
   acknowledgements: [] as string[],
 }));
 vi.mock("@/lib/ipc", () => ({
   desktopApi: {
     chatWindow: {
-      getPendingContext: async () => fixture.pending,
-      addContext: async (request: ChatContextRequest) => {
-        fixture.added.push(request);
+      getPendingIntents: async () => fixture.pending,
+      dispatchIntent: async (request: {
+        id?: string;
+        surface: ChatWindowSurface;
+        intent: ChatWindowIntentRequest["intent"];
+      }) => {
+        fixture.dispatched.push(request);
       },
-      acknowledgeContext: async (id: string) => {
+      acknowledgeIntent: async (id: string) => {
         fixture.acknowledgements.push(id);
         fixture.pending = fixture.pending.filter(
           (request) => request.id !== id,
         );
       },
-      onContextAvailable: (listener: () => void) => {
+      onIntentAvailable: (listener: () => void) => {
         fixture.listeners.add(listener);
         return () => fixture.listeners.delete(listener);
       },
@@ -63,19 +75,29 @@ const folder: ContextFolderAttachment = {
   kind: "context-folder",
   folderPath: "/work/src",
 };
+function composerInput(
+  id: string,
+  input: ChatContextInput,
+): ChatWindowIntentRequest {
+  return {
+    id,
+    surface: "chat",
+    intent: { kind: "composer-input", input },
+  };
+}
 
 beforeEach(() => {
   fixture.pending = [];
   fixture.listeners.clear();
-  fixture.added = [];
+  fixture.dispatched = [];
   fixture.acknowledgements = [];
 });
 
 describe("chat context receiver", () => {
   it("waits for a composer and appends each context once without replacing drafts", async () => {
     fixture.pending = [
-      { id: "file", input: { kind: "attachment", attachment: folder } },
-      { id: "pdf", input: { kind: "text", text: "PDF selection" } },
+      composerInput("file", { kind: "attachment", attachment: folder }),
+      composerInput("pdf", { kind: "text", text: "PDF selection" }),
     ];
     const { result, reveal } = setup();
     await waitFor(() => expect(reveal).toHaveBeenCalled());
@@ -100,6 +122,31 @@ describe("chat context receiver", () => {
     expect(draft).toEqual(["existing draft", folder, "PDF selection"]);
   });
 
+  it("ignores intents addressed at other surfaces", async () => {
+    fixture.pending = [
+      {
+        id: "file-open",
+        surface: "shell",
+        intent: { kind: "open-file", filePath: "/work/example.ts" },
+      },
+    ];
+    const { result, reveal } = setup();
+    const composer = {
+      insertContextMention: vi.fn(() => true),
+      insertText: vi.fn(() => true),
+    };
+    act(() => {
+      result.current(composer);
+      signal();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(reveal).not.toHaveBeenCalled();
+    expect(composer.insertText).not.toHaveBeenCalled();
+    expect(fixture.acknowledgements).toEqual([]);
+  });
+
   it("uses the currently focused composer instead of the source window or an earlier pane", async () => {
     const { result } = setup();
     const first = {
@@ -115,7 +162,7 @@ describe("chat context receiver", () => {
       result.current(focused);
     });
     fixture.pending = [
-      { id: "folder", input: { kind: "attachment", attachment: folder } },
+      composerInput("folder", { kind: "attachment", attachment: folder }),
     ];
     act(signal);
     await waitFor(() =>
@@ -134,7 +181,7 @@ describe("chat context receiver", () => {
       store.set(chatWindowStateAtom, { detached: false, transitioning: true });
       result.current(composer);
       fixture.pending = [
-        { id: "pdf", input: { kind: "text", text: "quoted PDF" } },
+        composerInput("pdf", { kind: "text", text: "quoted PDF" }),
       ];
       signal();
     });
@@ -161,9 +208,20 @@ describe("chat context receiver", () => {
       store.set(requestChatContextAtom, { kind: "text", text: "PDF" });
     });
     await waitFor(() => expect(store.get(outgoingChatContextAtom)).toEqual([]));
-    expect(fixture.added.map((request) => request.input)).toEqual([
-      { kind: "attachment", attachment: folder },
-      { kind: "text", text: "PDF" },
+    expect(
+      fixture.dispatched.map((request) => ({
+        surface: request.surface,
+        input:
+          request.intent.kind === "composer-input"
+            ? request.intent.input
+            : null,
+      })),
+    ).toEqual([
+      {
+        surface: "chat",
+        input: { kind: "attachment", attachment: folder },
+      },
+      { surface: "chat", input: { kind: "text", text: "PDF" } },
     ]);
   });
 });

@@ -222,68 +222,135 @@ describe("independent chat window lifecycle", () => {
   });
 });
 
-describe("chat context delivery", () => {
+describe("chat intent routing", () => {
   const code = {
     id: "00000000-0000-4000-8000-000000000001",
-    input: {
-      kind: "attachment",
-      attachment: {
-        filePath: "/work/example.ts",
-        language: "typescript",
-        startLine: 2,
-        endLine: 3,
-        startColumn: 4,
-        endColumn: 10,
-        selectedText: "const selected = true;",
-        surroundingContext: "before and after",
+    surface: "chat",
+    intent: {
+      kind: "composer-input",
+      input: {
+        kind: "attachment",
+        attachment: {
+          filePath: "/work/example.ts",
+          language: "typescript",
+          startLine: 2,
+          endLine: 3,
+          startColumn: 4,
+          endColumn: 10,
+          selectedText: "const selected = true;",
+          surroundingContext: "before and after",
+        },
       },
     },
   };
   const pdf = {
     id: "00000000-0000-4000-8000-000000000002",
-    input: { kind: "text", text: "Selected PDF paragraph" },
+    surface: "chat",
+    intent: {
+      kind: "composer-input",
+      input: { kind: "text", text: "Selected PDF paragraph" },
+    },
   };
-  it("delivers code and PDF context to hidden detached chat, preserving order and selection", async () => {
+  const file = {
+    id: "00000000-0000-4000-8000-000000000003",
+    surface: "shell",
+    intent: {
+      kind: "open-file",
+      filePath: "/work/example.ts",
+      startLine: 2,
+      endLine: 3,
+    },
+  };
+  it("delivers chat and shell intents to the window owning each surface", async () => {
     const primary = setup();
     const chat = await detach(primary);
     chat.hide();
-    invoke(primary, "addContext", code);
-    invoke(primary, "addContext", pdf);
+    invoke(chat, "dispatchIntent", file);
+    invoke(primary, "dispatchIntent", code);
+    invoke(primary, "dispatchIntent", pdf);
     expect(chat.visible).toBe(true);
-    expect(invoke(primary, "pendingContext")).toEqual([]);
-    expect(invoke(chat, "pendingContext")).toEqual([code, pdf]);
-    invoke(primary, "acknowledgeContext", code.id);
-    expect(invoke(chat, "pendingContext")).toEqual([code, pdf]);
-    invoke(chat, "acknowledgeContext", code.id);
-    expect(invoke(chat, "pendingContext")).toEqual([pdf]);
+    expect(primary.visible).toBe(true);
+    expect(chat.webContents.send).toHaveBeenCalledWith(
+      "chatWindow:intentAvailable",
+    );
+    expect(primary.webContents.send).toHaveBeenCalledWith(
+      "chatWindow:intentAvailable",
+    );
+    expect(invoke(chat, "pendingIntents")).toEqual([code, pdf]);
+    expect(invoke(primary, "pendingIntents")).toEqual([file]);
+    invoke(primary, "acknowledgeIntent", code.id);
+    expect(invoke(chat, "pendingIntents")).toEqual([code, pdf]);
+    invoke(chat, "acknowledgeIntent", code.id);
+    invoke(chat, "acknowledgeIntent", pdf.id);
+    invoke(primary, "acknowledgeIntent", file.id);
+    expect(invoke(chat, "pendingIntents")).toEqual([]);
+    expect(invoke(primary, "pendingIntents")).toEqual([]);
   });
-  it("holds contexts during detach and reattach until the destination is ready", async () => {
+  it("routes show-panel and review-turn intents to the shell window", async () => {
+    const primary = setup();
+    const chat = await detach(primary);
+    const panel = {
+      id: "00000000-0000-4000-8000-000000000004",
+      surface: "shell",
+      intent: { kind: "show-panel", view: "git" },
+    };
+    const review = {
+      id: "00000000-0000-4000-8000-000000000005",
+      surface: "shell",
+      intent: {
+        kind: "review-turn",
+        sessionId: "session-1",
+        messageId: "message-1",
+        path: "src/index.ts",
+      },
+    };
+    invoke(chat, "dispatchIntent", panel);
+    invoke(chat, "dispatchIntent", review);
+    expect(invoke(primary, "pendingIntents")).toEqual([panel, review]);
+    expect(() =>
+      invoke(chat, "dispatchIntent", {
+        ...panel,
+        intent: { kind: "show-panel", view: "menu" },
+      }),
+    ).toThrow();
+  });
+  it("recreates a closed main window when a shell intent arrives", async () => {
+    const primary = setup();
+    const chat = await detach(primary);
+    primary.destroy();
+    invoke(chat, "dispatchIntent", file);
+    const replacement = fixture.windows.at(-1) as WindowStub;
+    expect(replacement).not.toBe(primary);
+    expect(invoke(replacement, "pendingIntents")).toEqual([file]);
+    expect(invoke(chat, "pendingIntents")).toEqual([]);
+  });
+  it("holds intents during detach and reattach until the destination is ready", async () => {
     const primary = setup();
     const opening = invoke(primary, "detach", "draft");
     const chat = fixture.windows[1] as WindowStub;
-    invoke(primary, "addContext", code);
-    expect(invoke(primary, "pendingContext")).toEqual([]);
-    expect(invoke(chat, "pendingContext")).toEqual([]);
+    invoke(primary, "dispatchIntent", code);
+    expect(invoke(primary, "pendingIntents")).toEqual([]);
+    expect(invoke(chat, "pendingIntents")).toEqual([]);
     invoke(chat, "ready", invoke(chat, "bootstrap").id);
     await opening;
-    expect(invoke(chat, "pendingContext")).toEqual([code]);
-    invoke(chat, "acknowledgeContext", code.id);
+    expect(invoke(chat, "pendingIntents")).toEqual([code]);
+    invoke(chat, "acknowledgeIntent", code.id);
     const returning = invoke(chat, "reattach", "draft plus code");
-    invoke(primary, "addContext", pdf);
-    expect(invoke(chat, "pendingContext")).toEqual([]);
+    invoke(primary, "dispatchIntent", pdf);
+    expect(invoke(chat, "pendingIntents")).toEqual([]);
     invoke(primary, "ready", invoke(primary, "bootstrap").id);
     await returning;
-    expect(invoke(primary, "pendingContext")).toEqual([pdf]);
+    expect(invoke(primary, "pendingIntents")).toEqual([pdf]);
   });
-  it("keeps queued contexts in the source when detaching fails", async () => {
+  it("keeps queued intents in the source when detaching fails", async () => {
     const primary = setup();
     const opening = invoke(primary, "detach", "draft");
     const rejected = expect(opening).rejects.toThrow("renderer exited");
     const chat = fixture.windows[1] as WindowStub;
-    invoke(primary, "addContext", code);
+    invoke(primary, "dispatchIntent", code);
     chat.webContents.emit("render-process-gone");
     await rejected;
-    expect(invoke(primary, "pendingContext")).toEqual([code]);
+    expect(invoke(primary, "pendingIntents")).toEqual([code]);
   });
   it("synchronizes browser context captured before detach and later replacements or clears", async () => {
     const primary = setup();
@@ -310,17 +377,20 @@ describe("chat context delivery", () => {
       "main window",
     );
   });
-  it("rejects context from unrelated windows and malformed input", () => {
+  it("rejects intents from unrelated windows and malformed input", () => {
     const primary = setup();
-    expect(() => invoke(new WindowStub(), "addContext", code)).toThrow(
+    expect(() => invoke(new WindowStub(), "dispatchIntent", code)).toThrow(
       "application window",
     );
     expect(() =>
-      invoke(primary, "addContext", {
+      invoke(primary, "dispatchIntent", {
         ...code,
-        input: { kind: "execute", code: "untrusted" },
+        intent: { kind: "execute", code: "untrusted" },
       }),
     ).toThrow();
-    expect(invoke(primary, "pendingContext")).toEqual([]);
+    expect(() =>
+      invoke(primary, "dispatchIntent", { ...code, surface: "menu" }),
+    ).toThrow();
+    expect(invoke(primary, "pendingIntents")).toEqual([]);
   });
 });

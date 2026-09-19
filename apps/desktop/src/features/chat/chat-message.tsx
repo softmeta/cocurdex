@@ -238,7 +238,7 @@ export function ConversationMessage({
         {showCopy || showEdit || showRetry ? (
           <div
             className={cn(
-              "flex h-6 items-center gap-2 text-chat-fg-muted opacity-80 transition-opacity group-hover:opacity-100",
+              "flex h-6 items-center gap-2 text-chat-fg-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
               isUser ? "flex-row-reverse" : "flex-row",
             )}
           >

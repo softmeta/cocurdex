@@ -56,14 +56,6 @@ export function ActivityBlock({
       open={open}
     >
       <CollapsibleTrigger className="mb-1 flex w-full cursor-pointer items-center gap-2 py-0.5 text-sm transition-colors hover:text-chat-fg">
-        <span
-          className={cn(
-            "shrink-0 text-xs font-medium text-chat-fg-muted",
-            busy && "activity-shimmer",
-          )}
-        >
-          {t("activity.title")}
-        </span>
         {counts.length > 0 ? (
           <span
             className={cn(
@@ -86,7 +78,7 @@ export function ActivityBlock({
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "flex flex-col gap-1 ps-0.5",
+          "flex flex-col gap-1",
           // Opacity + slide only (no height): height would force measuring
           // contents on open, conflicting with the deferred mounting that keeps
           // expansion cheap. Pairs with Base UI's data-starting/ending-style.

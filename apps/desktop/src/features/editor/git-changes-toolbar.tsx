@@ -2,10 +2,9 @@ import type { TurnChangeSet } from "@cocurdex/shared";
 import {
   Columns2,
   FileCode,
-  FolderTree,
   FoldVertical,
   Funnel,
-  List,
+  PanelLeft,
   RefreshCw,
   Rows3,
   Undo2,
@@ -58,11 +57,8 @@ import {
 import { GitChangesScopeMenu } from "./git-changes-scope-menu";
 import type { GitDiffScope } from "./git-diff-scope";
 import { isMutableScope } from "./git-diff-scope";
-import type { GitViewMode } from "./git-view-mode";
 
 export type GitDiffStyle = "unified" | "split";
-// Re-exported from git-view-mode so existing toolbar consumers keep their import.
-export type { GitViewMode };
 
 interface GitChangesToolbarProps {
   currentBranch: string | null;
@@ -90,8 +86,9 @@ interface GitChangesToolbarProps {
   onScopeChange: (scope: GitDiffScope) => void;
   onOpenCommits: () => void;
   onOpenTurns: () => void;
-  viewMode: GitViewMode;
-  onViewModeChange: (mode: GitViewMode) => void;
+  // Whether the leading file-index pane is shown beside the diffs.
+  treePanelVisible: boolean;
+  onTreePanelVisibleChange: (visible: boolean) => void;
   wrap: boolean;
   onWrapChange: (wrap: boolean) => void;
   expandUnchanged: boolean;
@@ -172,8 +169,8 @@ export function GitChangesToolbar({
   onScopeChange,
   onOpenCommits,
   onOpenTurns,
-  viewMode,
-  onViewModeChange,
+  treePanelVisible,
+  onTreePanelVisibleChange,
   wrap,
   onWrapChange,
   expandUnchanged,
@@ -227,19 +224,17 @@ export function GitChangesToolbar({
               label={t("git.refresh")}
               onClick={onRefresh}
             />
-            {viewMode === "list" ? (
-              <ToolbarButton
-                icon={
-                  collapsed ? (
-                    <UnfoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
-                  ) : (
-                    <FoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
-                  )
-                }
-                label={collapsed ? t("git.expandAll") : t("git.collapseAll")}
-                onClick={() => onCollapsedChange(!collapsed)}
-              />
-            ) : null}
+            <ToolbarButton
+              icon={
+                collapsed ? (
+                  <UnfoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
+                ) : (
+                  <FoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
+                )
+              }
+              label={collapsed ? t("git.expandAll") : t("git.collapseAll")}
+              onClick={() => onCollapsedChange(!collapsed)}
+            />
             <ToolbarButton
               active={diffStyle === "unified"}
               icon={<Rows3 className={TITLEBAR_ICON_GLYPH_CLASS} />}
@@ -252,22 +247,16 @@ export function GitChangesToolbar({
               label={t("git.splitView")}
               onClick={() => onDiffStyleChange("split")}
             />
-            {/* Single toggle: shows the icon/label for the mode it switches to,
-                so list and tree never occupy two competing buttons. */}
+            {/* The file index is the leading half of the split, so its toggle
+                lives next to the diff controls rather than inside the pane it
+                hides. */}
             <ToolbarButton
-              icon={
-                viewMode === "list" ? (
-                  <FolderTree className={TITLEBAR_ICON_GLYPH_CLASS} />
-                ) : (
-                  <List className={TITLEBAR_ICON_GLYPH_CLASS} />
-                )
-              }
+              active={treePanelVisible}
+              icon={<PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />}
               label={
-                viewMode === "list" ? t("git.treeView") : t("git.listView")
+                treePanelVisible ? t("git.hideFileTree") : t("git.showFileTree")
               }
-              onClick={() =>
-                onViewModeChange(viewMode === "list" ? "tree" : "list")
-              }
+              onClick={() => onTreePanelVisibleChange(!treePanelVisible)}
             />
             <ToolbarButton
               active={expandUnchanged}

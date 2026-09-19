@@ -28,7 +28,7 @@ export function useChatContext(onReveal: () => void) {
 
   useMountEffect(() => {
     const api = desktopApi.chatWindow;
-    if (!api.onContextAvailable) return;
+    if (!api.onIntentAvailable) return;
     let disposed = false;
     const delivered = new Set<string>();
     const forwarding = new Set<string>();
@@ -45,15 +45,20 @@ export function useChatContext(onReveal: () => void) {
       );
     };
     const receive = async () => {
-      const pending = await api.getPendingContext();
-      if (disposed || !canReceive() || pending.length === 0) return;
-      reveal();
+      const pending = await api.getPendingIntents();
+      if (disposed || !canReceive()) return;
+      let revealed = false;
       for (const request of pending) {
+        if (request.intent.kind !== "composer-input") continue;
         if (!canReceive()) return;
+        if (!revealed) {
+          reveal();
+          revealed = true;
+        }
         if (!delivered.has(request.id)) {
           const composer = receiver.current.composer;
           if (!composer) return;
-          const { input } = request;
+          const { input } = request.intent;
           const inserted =
             input.kind === "text"
               ? composer.insertText(input.text)
@@ -61,7 +66,7 @@ export function useChatContext(onReveal: () => void) {
           if (!inserted) return;
           delivered.add(request.id);
         }
-        await api.acknowledgeContext(request.id);
+        await api.acknowledgeIntent(request.id);
       }
     };
     const refresh = () => {
@@ -72,7 +77,11 @@ export function useChatContext(onReveal: () => void) {
         if (forwarding.has(request.id)) continue;
         forwarding.add(request.id);
         void api
-          .addContext(request)
+          .dispatchIntent({
+            id: request.id,
+            surface: "chat",
+            intent: { kind: "composer-input", input: request.input },
+          })
           .then(() => {
             store.set(removeOutgoingChatContextAtom, request.id);
           })
@@ -83,7 +92,7 @@ export function useChatContext(onReveal: () => void) {
       }
     };
     receiver.current.refresh = refresh;
-    const unsubscribeContext = api.onContextAvailable(refresh);
+    const unsubscribeContext = api.onIntentAvailable(refresh);
     const unsubscribeOutgoing = store.sub(outgoingChatContextAtom, forward);
     const unsubscribeState = store.sub(chatWindowStateAtom, refresh);
     const unsubscribeBusy = store.sub(chatWindowBusyAtom, refresh);

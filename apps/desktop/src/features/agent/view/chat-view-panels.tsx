@@ -11,11 +11,11 @@ import type {
   AgentThinkingLevel,
   MessageAttachment,
 } from "@cocurdex/shared";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { Folder } from "lucide-react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { rightPanelResolvedActiveViewAtom } from "@/app/layout/right-editor-panel-store";
+import { toast } from "sonner";
 import { AppGitBranchLabel } from "@/components";
 import { JumpControls } from "@/components/chat";
 import {
@@ -26,8 +26,8 @@ import {
   composerFooterControlClassName,
   type ThinkingLevelOption,
 } from "@/features/composer";
-import { editorPanelOpenAtom } from "@/features/editor";
 import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
+import { desktopApi } from "@/lib";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
 import { QuestionCard, questionsBySessionAtom } from "../question";
@@ -129,8 +129,6 @@ function SessionWorkspaceFooterLabel({
 
 function SessionBranchFooterLabel({ branch }: { branch?: string | null }) {
   const { t } = useTranslation("editor");
-  const setActiveView = useSetAtom(rightPanelResolvedActiveViewAtom);
-  const setPanelOpen = useSetAtom(editorPanelOpenAtom);
 
   if (!branch) {
     return null;
@@ -142,8 +140,14 @@ function SessionBranchFooterLabel({ branch }: { branch?: string | null }) {
       branch={branch}
       className={composerFooterControlClassName("max-w-40 text-chat-fg-muted")}
       onClick={() => {
-        setPanelOpen(true);
-        setActiveView("git");
+        void desktopApi.chatWindow
+          .dispatchIntent({
+            surface: "shell",
+            intent: { kind: "show-panel", view: "git" },
+          })
+          .catch((error: unknown) => {
+            toast.error(error instanceof Error ? error.message : String(error));
+          });
       }}
     />
   );

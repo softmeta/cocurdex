@@ -2,7 +2,7 @@ import {
   type UseFileTreeResult,
   useFileTreeSelection,
 } from "@pierre/trees/react";
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect } from "react";
 import { entriesToGitStatus, type GitChangeEntry } from "./git-changes-model";
 import { toGitTreePath } from "./git-changes-tree-paths";
 
@@ -39,28 +39,62 @@ export function useSyncGitChangesTreeModel(
   }, [entries, model, workspaceName, searchQuery]);
 }
 
-// Mirror the derived selected diff back into the tree so the matching row stays
-// highlighted, including the initial first-file fallback. `selectedTreePath`
-// is already workspace-prefixed.
+// Mirror the derived selected diff back into the tree: the row the reader has
+// scrolled to has to be the tree's selection, not just its focus, because the
+// highlight the reader sees is the selection. `selectedTreePath` is already
+// workspace-prefixed.
+//
+// Pierre scrolls its own viewport only when the tree owns DOM focus, so the
+// index would stop following the diff stack while the reader scrolls it. Bring
+// the row in ourselves; it is normally mounted already, because following the
+// reader moves the target by a row or two at a time.
+function revealRow(model: FileTreeModel, treePath: string): void {
+  const rows = model
+    .getFileTreeContainer()
+    ?.shadowRoot?.querySelectorAll<HTMLElement>("[data-item-path]");
+  for (const row of rows ?? []) {
+    if (row.dataset.itemPath !== treePath) continue;
+    row.scrollIntoView({ block: "nearest" });
+    return;
+  }
+}
+
+// The public model only offers per-item selection, so selecting exactly one row
+// means dropping the other selected rows first.
+function selectOnlyRow(model: FileTreeModel, treePath: string): void {
+  for (const path of model.getSelectedPaths()) {
+    if (path !== treePath) model.getItem(path)?.deselect();
+  }
+  const item = model.getItem(treePath);
+  if (item !== null && !item.isSelected()) item.select();
+  if (model.getFocusedPath() !== treePath) model.focusPath(treePath);
+}
+
 export function useSyncGitChangesTreeSelection(
   model: FileTreeModel,
   selectedTreePath: string | null,
-  revealClock: number,
+  programmaticSelectionRef?: RefObject<boolean>,
 ) {
   const selectedPaths = useFileTreeSelection(model);
-  const appliedRevealClockRef = useRef(revealClock);
 
   useEffect(() => {
     if (!selectedTreePath) {
       return;
     }
-    const alreadyFocused =
+    const alreadySelected =
       selectedPaths.length === 1 && selectedPaths[0] === selectedTreePath;
-    const revealRequested = appliedRevealClockRef.current !== revealClock;
-    appliedRevealClockRef.current = revealClock;
-    if (alreadyFocused && !revealRequested) {
-      return;
+    if (!alreadySelected) {
+      // Pierre notifies selection changes synchronously, so the row it is
+      // selecting on the stack's behalf is silenced before it reaches the
+      // reader as a click.
+      const ref = programmaticSelectionRef;
+      if (ref) ref.current = true;
+      try {
+        selectOnlyRow(model, selectedTreePath);
+      } finally {
+        if (ref) ref.current = false;
+      }
     }
-    model.focusPath(selectedTreePath);
-  }, [selectedTreePath, selectedPaths, revealClock, model]);
+    revealRow(model, selectedTreePath);
+  }, [selectedTreePath, selectedPaths, model, programmaticSelectionRef]);
 }

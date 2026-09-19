@@ -22,6 +22,7 @@ import {
 } from "@/features/sessions";
 import { CenterPanel } from "../center-panel";
 import { SessionPaneHeader } from "./session-pane-header";
+import { sessionPaneTitle } from "./session-pane-title";
 import { useSessionSplitActions } from "./use-session-split-actions";
 
 function assignComposerRef(
@@ -59,13 +60,18 @@ function SessionPaneFrame({
 interface SessionSplitLayoutProps {
   composerRef?: Ref<ChatComposerHandle>;
   hideTitlebarSpacer?: boolean;
+  /** Set when the surrounding shell renders the pane header for a lone pane. */
+  hideSinglePaneHeader?: boolean;
   headerEndInset?: number;
+  headerStartInset?: number;
 }
 
 export function SessionSplitLayout({
   composerRef,
   hideTitlebarSpacer = false,
+  hideSinglePaneHeader = false,
   headerEndInset = 0,
+  headerStartInset = 0,
 }: SessionSplitLayoutProps) {
   const layout = useAtomValue(sessionSplitLayoutAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -82,24 +88,7 @@ export function SessionSplitLayout({
   const composerByPaneRef = useRef(
     new Map<string, ChatComposerHandle | null>(),
   );
-
-  const paneTitle = (pane: SessionPaneBinding) => {
-    if (pane.conversationId) {
-      const conversation = conversations.find(
-        (item) => item.id === pane.conversationId,
-      );
-      if (conversation?.title) {
-        return conversation.title;
-      }
-    }
-    if (pane.sessionId) {
-      const session = sessions.find((item) => item.id === pane.sessionId);
-      if (session?.title) {
-        return session.title;
-      }
-    }
-    return "";
-  };
+  const showPaneHeader = !(hideSinglePaneHeader && paneCount === 1);
 
   const handleClose = useCallback(
     (paneId: string) => {
@@ -147,6 +136,7 @@ export function SessionSplitLayout({
     node: SessionSplitNode,
     occupiesTitlebar: boolean,
     touchesEnd = true,
+    touchesStart = true,
   ): ReactNode => {
     if (node.type === "split") {
       const firstId = `${node.id}-a`;
@@ -184,6 +174,7 @@ export function SessionSplitLayout({
               node.first,
               occupiesTitlebar,
               touchesEnd && node.direction !== "right",
+              touchesStart,
             )}
           </ResizablePanel>
           <ResizableHandle />
@@ -197,6 +188,7 @@ export function SessionSplitLayout({
               node.second,
               occupiesTitlebar && node.direction === "right",
               touchesEnd,
+              touchesStart && node.direction !== "right",
             )}
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -206,17 +198,24 @@ export function SessionSplitLayout({
     const isFocused = node.pane.id === focusedPaneId;
     return (
       <SessionPaneFrame onActivate={() => handleActivate(node.pane)}>
-        <SessionPaneHeader
-          endInset={occupiesTitlebar && touchesEnd ? headerEndInset : 0}
-          canClose={paneCount > 1}
-          isFocused={isFocused}
-          occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
-          title={paneTitle(node.pane)}
-          onClose={() => handleClose(node.pane.id)}
-          onCloseAll={() => handleCloseAll(node.pane.id)}
-          onSplitDown={() => splitPaneById(node.pane.id, "down")}
-          onSplitRight={() => splitPaneById(node.pane.id, "right")}
-        />
+        {showPaneHeader ? (
+          <SessionPaneHeader
+            endInset={occupiesTitlebar && touchesEnd ? headerEndInset : 0}
+            startInset={
+              occupiesTitlebar && !hideTitlebarSpacer && touchesStart
+                ? headerStartInset
+                : 0
+            }
+            canClose={paneCount > 1}
+            isFocused={isFocused}
+            occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
+            title={sessionPaneTitle(node.pane, conversations, sessions)}
+            onClose={() => handleClose(node.pane.id)}
+            onCloseAll={() => handleCloseAll(node.pane.id)}
+            onSplitDown={() => splitPaneById(node.pane.id, "down")}
+            onSplitRight={() => splitPaneById(node.pane.id, "right")}
+          />
+        ) : null}
         <div className="min-h-0 flex-1 overflow-hidden">
           <CenterPanel
             composerRef={(handle) => {

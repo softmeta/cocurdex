@@ -451,7 +451,7 @@ const UserPrompt = memo(function UserPrompt({
           </article>
         ) : null}
         {!isEditing && showActions ? (
-          <div className="flex h-6 items-center justify-end gap-2 pr-1 text-chat-fg-muted opacity-80 transition-opacity group-hover:opacity-100">
+          <div className="flex h-6 items-center justify-end gap-2 pr-1 text-chat-fg-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <time
               className="text-xs tabular-nums opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
               dateTime={message.createdAt}
@@ -530,7 +530,12 @@ const AssistantMessageActions = memo(function AssistantMessageActions({
   };
 
   return (
-    <div className="mt-2 flex h-6 items-center gap-2 text-chat-fg-muted opacity-80 transition-opacity group-hover:opacity-100">
+    <div
+      className={cn(
+        "mt-2 flex h-6 items-center gap-2 text-chat-fg-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+        copyMenuOpen && "opacity-100",
+      )}
+    >
       <DropdownMenu onOpenChange={setCopyMenuOpen} open={copyMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
@@ -736,6 +741,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   setUserMessageRef,
   showMessageActions = true,
   promptVariant = "chat",
+  runStartedAt,
 }: {
   // History conversation items don't render an ActivityLine (only the latest
   // conversation does, gated by isLatestConversation && isRunning). Marking
@@ -759,6 +765,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   setUserMessageRef(id: string, element: HTMLDivElement | null): void;
   showMessageActions?: boolean;
   promptVariant?: "chat" | "context";
+  runStartedAt?: number;
 }) {
   const renderStartedAt = isPerfEnabled() ? performance.now() : 0;
   const perfSessionId = getConversationSessionId(conversationGroup);
@@ -882,7 +889,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
             );
           })}
           {showActivity && activity ? (
-            <ActivityLine activity={activity} />
+            <ActivityLine activity={activity} runStartedAt={runStartedAt} />
           ) : null}
         </div>
       ) : null}

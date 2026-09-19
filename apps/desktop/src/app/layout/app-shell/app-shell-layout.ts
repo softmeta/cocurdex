@@ -50,6 +50,14 @@ export const TITLEBAR_EDITOR_TOGGLE_WIDTH =
   TITLEBAR_EDITOR_TOGGLE_COUNT * TITLEBAR_EDITOR_TOGGLE_BUTTON_SIZE +
   (TITLEBAR_EDITOR_TOGGLE_COUNT - 1) * TITLEBAR_EDITOR_TOGGLE_GAP;
 
+/**
+ * Leading inset for a pane header that shares the titlebar row while the
+ * left rail is hidden: the toolbar box still owns the leading edge, so pane
+ * chrome starts one pill-gap after it.
+ */
+export const TITLEBAR_PANE_HEADER_START_INSET =
+  TITLEBAR_TOOLBAR_MIN_WIDTH + TITLEBAR_ICON_BUTTON_GAP;
+
 /** Minimum sidebar width; never narrower than the titlebar toolbar. */
 export const MIN_LEFT = TITLEBAR_TOOLBAR_MIN_WIDTH;
 
@@ -72,4 +80,16 @@ export function resolveRightPanelVisibility(params: {
   const shouldShow = params.isOpen;
   const isGlobal = shouldShow && params.isMaximized;
   return { shouldShow, isGlobal };
+}
+
+export function resolvePanelFullWidth(params: {
+  isPanelOpen: boolean;
+  isMaximized: boolean;
+  isCompact: boolean;
+  isChatDetached: boolean;
+}): boolean {
+  if (!params.isPanelOpen) {
+    return false;
+  }
+  return params.isMaximized || params.isCompact || params.isChatDetached;
 }

@@ -25,7 +25,11 @@ export function ToolCallStatusIcon({
     (session) =>
       session.id === toolCall.sessionId && session.status === "running",
   );
-  const baseClass = cn("size-3", getToolCallStatusClasses(toolCall), className);
+  const baseClass = cn(
+    "size-3.5",
+    getToolCallStatusClasses(toolCall),
+    className,
+  );
 
   if (toolCall.status === "completed") {
     return <CheckCircle2 aria-label={label} className={baseClass} />;

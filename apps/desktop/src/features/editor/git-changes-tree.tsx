@@ -1,20 +1,24 @@
 import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react";
-import { useAtom, useAtomValue } from "jotai";
-import { FileDiff, Search } from "lucide-react";
-import type { CSSProperties } from "react";
-import { useCallback, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { Search } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { EmptyState, Input } from "@/components/ui";
+import { Input } from "@/components/ui";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
-import { GitChangeFileDiff } from "./git-changes-file-diff";
-import type { GitChangeEntry } from "./git-changes-model";
-import { gitRevealClockAtom, gitSelectedPathAtom } from "./git-changes-store";
-import type { GitDiffStyle } from "./git-changes-toolbar";
+import {
+  GitChangesDiffStack,
+  type GitChangesDiffStackProps,
+} from "./git-changes-diff-stack";
+import {
+  gitRevealAtom,
+  gitSelectedPathAtom,
+  revealGitFileAtom,
+} from "./git-changes-store";
 import { fromGitTreePath, toGitTreePath } from "./git-changes-tree-paths";
 import {
   useSyncGitChangesTreeModel,
@@ -22,67 +26,54 @@ import {
 } from "./git-changes-tree-sync";
 import { TREE_STYLE, TREES_UNSAFE_CSS } from "./tree-style";
 
-interface GitChangesTreeProps {
-  entries: GitChangeEntry[];
+interface GitChangesTreeProps extends GitChangesDiffStackProps {
   // Display name for the synthetic top-level folder (workspace root).
   workspaceName: string;
-  diffStyle: GitDiffStyle;
-  wrap: boolean;
-  expandUnchanged: boolean;
-  actionsEnabled: boolean;
-  onStage: (path: string) => void;
-  onUnstage: (path: string) => void;
-  onDiscard: (path: string) => void;
-  onOpenFile: (path: string) => void;
-  diffThemeType: "light" | "dark";
+  showTreePanel: boolean;
 }
 
-const noop = () => undefined;
-
-// Master-detail git changes view: a virtualized file tree on the leading edge
-// drives a single expanded diff on the trailing pane.
+// The tree is an index beside the shared diff stack: picking a row scrolls the
+// stack to that file, and scrolling the stack moves the tree's focus along, so
+// the two never drift apart.
 export function GitChangesTree({
   entries,
   workspaceName,
-  diffStyle,
-  wrap,
-  expandUnchanged,
-  actionsEnabled,
-  onStage,
-  onUnstage,
-  onDiscard,
-  onOpenFile,
-  diffThemeType,
+  showTreePanel,
+  ...stackProps
 }: GitChangesTreeProps) {
   const { t } = useTranslation("editor");
-  const [selectedPath, setSelectedPath] = useAtom(gitSelectedPathAtom);
-  const revealClock = useAtomValue(gitRevealClockAtom);
+  const selectedPath = useAtomValue(gitSelectedPathAtom);
+  const revealFile = useSetAtom(revealGitFileAtom);
+  const reveal = useAtomValue(gitRevealAtom);
   const [searchQuery, setSearchQuery] = useState("");
-  const [appliedRevealClock, setAppliedRevealClock] = useState(0);
+  const [appliedRevealToken, setAppliedRevealToken] = useState(0);
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
+  const programmaticSelectionRef = useRef(false);
 
-  if (revealClock !== appliedRevealClock) {
-    setAppliedRevealClock(revealClock);
+  // A reveal target must not stay hidden behind the tree's own search filter.
+  if (reveal && reveal.token !== appliedRevealToken) {
+    setAppliedRevealToken(reveal.token);
     if (searchQuery.length > 0) {
       setSearchQuery("");
     }
   }
 
-  // Derive the shown entry instead of mirroring it into state: a stale
-  // selection (after refresh/discard) gracefully falls back to the first file.
-  const selectedEntry =
-    entries.find((entry) => entry.path === selectedPath) ?? entries[0] ?? null;
-
   const handleSelectionChange = useCallback(
     (selectedPaths: readonly string[]) => {
+      // Selecting a row on the diff stack's behalf is not the reader picking a
+      // file: turning that echo into a reveal would drag the stack back to a
+      // file the reader has already scrolled past.
+      if (programmaticSelectionRef.current) return;
       const next = selectedPaths[0];
       // Directory rows end with "/"; only files map to a diff.
       if (!next || next.endsWith("/")) return;
       const relative = fromGitTreePath(workspaceName, next);
-      if (!relative) return;
-      setSelectedPath(relative);
+      if (!relative || relative === selectedPath) return;
+      // Picking a file is an explicit jump, not just a selection write: the
+      // reveal is what makes the stack scroll to the file and open it.
+      revealFile(relative);
     },
-    [setSelectedPath, workspaceName],
+    [revealFile, selectedPath, workspaceName],
   );
 
   const { model } = useFileTree({
@@ -100,79 +91,61 @@ export function GitChangesTree({
   useSyncGitChangesTreeModel(model, entries, workspaceName, searchQuery);
   useSyncGitChangesTreeSelection(
     model,
-    selectedEntry ? toGitTreePath(workspaceName, selectedEntry.path) : null,
-    revealClock,
+    selectedPath ? toGitTreePath(workspaceName, selectedPath) : null,
+    programmaticSelectionRef,
   );
 
   return (
-    // Draggable split between the file tree and the selected-file diff.
+    // Draggable split between the file index and the diffs it points at.
     <ResizablePanelGroup className="min-h-0 flex-1" orientation="horizontal">
-      <ResizablePanel
-        className="flex flex-col overflow-hidden"
-        defaultSize="28%"
-        maxSize="50%"
-        minSize="15%"
-      >
-        {/* Top padding separates the tree chrome from the scope/filter toolbar
-            above; the search field and rows share the same horizontal inset. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-2 pt-2">
-          <div className="relative shrink-0">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute start-2 top-1/2 size-3.5 -translate-y-1/2 text-editor-fg-subtle"
-            />
-            <Input
-              aria-label={t("git.treeSearch")}
-              className={cn(
-                "h-7 rounded-control border-editor-border bg-editor-canvas ps-7 pe-2 text-body",
-                "placeholder:text-editor-fg-subtle",
-              )}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t("git.treeSearchPlaceholder")}
-              value={searchQuery}
-            />
-          </div>
-          <div
-            className="flex min-h-0 flex-1 flex-col"
-            onPointerEnter={() => setIsScrollbarVisible(true)}
-            onPointerLeave={() => setIsScrollbarVisible(false)}
+      {showTreePanel ? (
+        <>
+          <ResizablePanel
+            className="flex flex-col overflow-hidden"
+            defaultSize="28%"
+            maxSize="50%"
+            minSize="15%"
           >
-            <PierreFileTree
-              data-scrollbar-visible={isScrollbarVisible ? "true" : undefined}
-              model={model}
-              style={TREE_STYLE}
-            />
-          </div>
-        </div>
-      </ResizablePanel>
-      <ResizableHandle />
-      <ResizablePanel
-        className="min-w-0 overflow-auto px-3 py-2"
-        style={{ "--diffs-gap-block": "2px" } as CSSProperties}
-      >
-        {selectedEntry ? (
-          <GitChangeFileDiff
-            actionsEnabled={actionsEnabled}
-            collapsed={false}
-            diffStyle={diffStyle}
-            diffThemeType={diffThemeType}
-            entry={selectedEntry}
-            expandUnchanged={expandUnchanged}
-            hideToggle
-            onDiscard={onDiscard}
-            onOpenFile={onOpenFile}
-            onStage={onStage}
-            onToggle={noop}
-            onUnstage={onUnstage}
-            wrap={wrap}
-          />
-        ) : (
-          <EmptyState
-            description={t("git.treeNoSelectionDescription")}
-            icon={<FileDiff />}
-            title={t("git.treeNoSelectionTitle")}
-          />
-        )}
+            {/* Top padding separates the tree chrome from the scope/filter
+                toolbar above; the search field and rows share the same
+                horizontal inset. */}
+            <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-2 pt-2">
+              <div className="relative shrink-0">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute start-2 top-1/2 size-3.5 -translate-y-1/2 text-editor-fg-subtle"
+                />
+                <Input
+                  aria-label={t("git.treeSearch")}
+                  className={cn(
+                    "h-7 rounded-control border-editor-border bg-editor-canvas ps-7 pe-2 text-body",
+                    "placeholder:text-editor-fg-subtle",
+                  )}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t("git.treeSearchPlaceholder")}
+                  value={searchQuery}
+                />
+              </div>
+              <div
+                className="flex min-h-0 flex-1 flex-col"
+                onPointerEnter={() => setIsScrollbarVisible(true)}
+                onPointerLeave={() => setIsScrollbarVisible(false)}
+              >
+                <PierreFileTree
+                  data-scrollbar-visible={
+                    isScrollbarVisible ? "true" : undefined
+                  }
+                  model={model}
+                  style={TREE_STYLE}
+                />
+              </div>
+            </div>
+          </ResizablePanel>
+          <ResizableHandle />
+        </>
+      ) : null}
+      <ResizablePanel className="flex min-w-0 flex-col overflow-hidden">
+        <GitChangesDiffStack entries={entries} {...stackProps} />
       </ResizablePanel>
     </ResizablePanelGroup>
   );

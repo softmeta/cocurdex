@@ -36,11 +36,17 @@ import {
   focusSessionPaneAtom,
   resetSessionSplitLayoutAtom,
   sessionSplitLayoutAtom,
+  splitFocusedPaneAtom,
 } from "./session-split/session-split-store";
-import { findPane } from "./session-split/session-split-tree";
+import {
+  findPane,
+  findPaneIdBySessionId,
+  type SessionSplitDirection,
+} from "./session-split/session-split-tree";
 import { collectSessionSubtreeIds, sessionAncestorIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
+export const sessionRunStartedAtAtom = atom<Record<string, number>>({});
 export const activeSessionIdAtom = atom((get) => {
   return (
     findPane(get(sessionSplitLayoutAtom), get(focusedPaneIdAtom))?.sessionId ??
@@ -590,6 +596,22 @@ export const selectSessionAtom = atom(
   },
 );
 
+export const openSessionInSplitAtom = atom(
+  null,
+  (
+    get,
+    set,
+    payload: { sessionId: string; direction: SessionSplitDirection },
+  ) => {
+    if (
+      !findPaneIdBySessionId(get(sessionSplitLayoutAtom), payload.sessionId)
+    ) {
+      set(splitFocusedPaneAtom, payload.direction);
+    }
+    set(selectSessionAtom, payload.sessionId);
+  },
+);
+
 export const createDraftSessionAtom = atom(
   null,
   (
@@ -983,6 +1005,9 @@ export const updateSessionStatusAtom = atom(
     set,
     payload: { sessionId: string; status: SessionRecord["status"] },
   ) => {
+    const current = get(sessionsAtom).find(
+      (session) => session.id === payload.sessionId,
+    );
     set(
       sessionsAtom,
       get(sessionsAtom).map((session) =>
@@ -995,6 +1020,22 @@ export const updateSessionStatusAtom = atom(
           : session,
       ),
     );
+
+    if (!current || current.status === payload.status) {
+      return;
+    }
+    if (payload.status === "running") {
+      set(sessionRunStartedAtAtom, (previous) => ({
+        ...previous,
+        [payload.sessionId]: Date.now(),
+      }));
+    } else if (current.status === "running") {
+      set(sessionRunStartedAtAtom, (previous) => {
+        const next = { ...previous };
+        delete next[payload.sessionId];
+        return next;
+      });
+    }
   },
 );
 
@@ -1009,6 +1050,13 @@ function removeSessionSubtree(get: Getter, set: Setter, sessionId: string) {
 
   set(sessionsAtom, nextSessions);
   set(clearRemovedPaneSessionsAtom, removedIds);
+  set(sessionRunStartedAtAtom, (previous) => {
+    const next = { ...previous };
+    for (const id of removedIds) {
+      delete next[id];
+    }
+    return next;
+  });
 
   if (activeSessionId && removedIds.has(activeSessionId)) {
     const nextId = getNextActiveSessionId(nextSessions, removed);
