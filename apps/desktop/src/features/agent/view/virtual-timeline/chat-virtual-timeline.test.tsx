@@ -146,6 +146,7 @@ describe("virtual conversation rendering", () => {
       let restored = false;
       act(() => {
         restored = target.scrollRef.current?.restorePosition(position) ?? false;
+        fireEvent.scroll(target.viewport);
       });
       expect(restored).toBe(true);
     });

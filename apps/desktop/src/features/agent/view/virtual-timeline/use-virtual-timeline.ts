@@ -140,7 +140,8 @@ export function useVirtualTimeline({
           `[data-index="${index}"]`,
         );
         if (!node) {
-          virtualizer.scrollToIndex(index, { align: "start" });
+          const offset = virtualizer.getOffsetForIndex(index, "start");
+          if (offset) viewport.scrollTop = offset[0];
           return false;
         }
         const rect = node.getBoundingClientRect();
