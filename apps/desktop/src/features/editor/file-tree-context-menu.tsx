@@ -5,13 +5,10 @@ import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import { buildContextFileAttachment } from "./context-file-attachment";
 import { setChatComposerAttachmentAtom } from "./editor-store";
-
-// A single file-tree row that was right-clicked. Paths are relative to the
-// workspace root; directories carry a trailing slash from the tree model.
-export interface FileTreeContextTarget {
-  relativePath: string;
-  isDirectory: boolean;
-}
+import {
+  type FileTreeContextTarget,
+  resolveFileTreeTargetPaths,
+} from "./file-tree-context-target";
 
 function FileTreeContextMenuItem({
   children,
@@ -39,9 +36,10 @@ export function FileTreeContextMenuItems({
   const { t } = useTranslation("editor");
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
 
-  // Strip the directory trailing slash so paths copy/reveal cleanly.
-  const relativePath = target.relativePath.replace(/\/$/, "");
-  const absolutePath = `${rootPath}/${relativePath}`;
+  const { relativePath, absolutePath } = resolveFileTreeTargetPaths(
+    rootPath,
+    target.relativePath,
+  );
 
   const handleAddToChat = () => {
     if (target.isDirectory) {
@@ -82,9 +80,11 @@ export function FileTreeContextMenuItems({
       <FileTreeContextMenuItem onClick={handleCopyPath}>
         {t("contextMenu.copyPath")}
       </FileTreeContextMenuItem>
-      <FileTreeContextMenuItem onClick={handleCopyRelativePath}>
-        {t("contextMenu.copyRelativePath")}
-      </FileTreeContextMenuItem>
+      {relativePath ? (
+        <FileTreeContextMenuItem onClick={handleCopyRelativePath}>
+          {t("contextMenu.copyRelativePath")}
+        </FileTreeContextMenuItem>
+      ) : null}
     </>
   );
 }

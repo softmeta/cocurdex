@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
 import type { BrowserAnnotation } from "@cocurdex/shared";
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { z } from "zod";
-import type { ChatContextRequest } from "../../src/lib/chat-context-store";
+import type {
+  ChatWindowIntentRequest,
+  ChatWindowSurface,
+} from "../../src/lib/chat-window-types";
 
 const text = z.string().max(8 * 1024 * 1024);
 const attachment = z.union([
@@ -22,12 +26,41 @@ const attachment = z.union([
     contentOmitted: z.boolean().optional(),
   }),
 ]);
-const requestSchema = z.object({
-  id: z.string().uuid(),
-  input: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("attachment"), attachment }),
-    z.object({ kind: z.literal("text"), text }),
-  ]),
+const composerInput = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("attachment"), attachment }),
+  z.object({ kind: z.literal("text"), text }),
+]);
+const intentSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("composer-input"), input: composerInput }),
+  z.object({
+    kind: z.literal("open-file"),
+    filePath: text,
+    startLine: z.number().int().positive().nullish(),
+    endLine: z.number().int().positive().nullish(),
+  }),
+  z.object({
+    kind: z.literal("show-panel"),
+    view: z.enum([
+      "editor",
+      "notes",
+      "issues",
+      "git",
+      "browser",
+      "pdf",
+      "terminal",
+    ]),
+  }),
+  z.object({
+    kind: z.literal("review-turn"),
+    sessionId: text,
+    messageId: text,
+    path: text,
+  }),
+]);
+const dispatchSchema = z.object({
+  id: z.string().uuid().optional(),
+  surface: z.enum(["shell", "chat"]),
+  intent: intentSchema,
 });
 const annotationsSchema = z.array(
   z.object({
@@ -53,37 +86,62 @@ export function registerChatWindowContext({
   sender,
   owner,
   primary,
+  ensurePrimary,
   focus,
 }: {
   sender(event: IpcMainInvokeEvent): BrowserWindow;
   owner(): BrowserWindow | null;
   primary(): BrowserWindow | null;
+  ensurePrimary(): BrowserWindow;
   focus(window: BrowserWindow): void;
 }) {
-  const pending = new Map<string, ChatContextRequest>();
+  const pending = new Map<string, ChatWindowIntentRequest>();
   let annotations: BrowserAnnotation[] = [];
+  // Resolve a logical surface to the window currently hosting it. Returns null
+  // while a surface has no live window (mid-handoff), leaving intents queued
+  // until ownership settles.
+  const surfaceWindow = (surface: ChatWindowSurface) =>
+    surface === "chat" ? owner() : primary();
   const publish = () => {
-    const target = owner();
-    if (!target || target.isDestroyed()) return;
-    if (target !== primary())
-      target.webContents.send("chatWindow:browserContext", annotations);
-    if (pending.size === 0) return;
-    focus(target);
-    target.webContents.send("chatWindow:contextAvailable");
+    const ownerWindow = owner();
+    if (
+      ownerWindow &&
+      !ownerWindow.isDestroyed() &&
+      ownerWindow !== primary()
+    ) {
+      ownerWindow.webContents.send("chatWindow:browserContext", annotations);
+    }
+    const notified = new Set<BrowserWindow>();
+    for (const request of pending.values()) {
+      const target = surfaceWindow(request.surface);
+      if (!target || target.isDestroyed() || notified.has(target)) continue;
+      notified.add(target);
+      focus(target);
+      target.webContents.send("chatWindow:intentAvailable");
+    }
   };
-  ipcMain.handle("chatWindow:addContext", (event, value: unknown) => {
+  ipcMain.handle("chatWindow:dispatchIntent", (event, value: unknown) => {
     sender(event);
-    const request = requestSchema.parse(value);
-    pending.set(request.id, request);
+    const parsed = dispatchSchema.parse(value);
+    // A shell intent implies the user wants the workspace surface back — bring
+    // the primary window up rather than queueing behind a destroyed one.
+    if (parsed.surface === "shell") ensurePrimary();
+    const id = parsed.id ?? randomUUID();
+    pending.set(id, { id, surface: parsed.surface, intent: parsed.intent });
     publish();
   });
-  ipcMain.handle("chatWindow:pendingContext", (event) => {
-    if (sender(event) !== owner()) return [];
-    return [...pending.values()];
+  ipcMain.handle("chatWindow:pendingIntents", (event) => {
+    const window = sender(event);
+    return [...pending.values()].filter(
+      (request) => surfaceWindow(request.surface) === window,
+    );
   });
-  ipcMain.handle("chatWindow:acknowledgeContext", (event, id: unknown) => {
-    if (sender(event) !== owner()) return;
-    pending.delete(z.string().parse(id));
+  ipcMain.handle("chatWindow:acknowledgeIntent", (event, id: unknown) => {
+    const window = sender(event);
+    const request = pending.get(z.string().uuid().parse(id));
+    if (request && surfaceWindow(request.surface) === window) {
+      pending.delete(request.id);
+    }
   });
   ipcMain.handle("chatWindow:setBrowserContext", (event, value: unknown) => {
     if (sender(event) !== primary())

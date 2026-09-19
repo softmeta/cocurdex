@@ -58,15 +58,29 @@ class ResizeObserverMock implements ResizeObserver {
         target instanceof HTMLElement && target.clientWidth > 0
           ? target.clientWidth
           : window.innerWidth;
+      const height =
+        target instanceof HTMLElement && target.offsetHeight > 0
+          ? target.offsetHeight
+          : 0;
+      const box = { blockSize: height, inlineSize: width };
 
       this.callback(
         [
           {
+            borderBoxSize: [box],
+            contentBoxSize: [box],
             contentRect: {
+              bottom: height,
+              height,
+              left: 0,
+              right: width,
+              top: 0,
               width,
+              x: 0,
+              y: 0,
             } as DOMRectReadOnly,
             target,
-          } as ResizeObserverEntry,
+          } as unknown as ResizeObserverEntry,
         ],
         this,
       );

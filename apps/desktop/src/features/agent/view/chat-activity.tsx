@@ -112,28 +112,32 @@ export function formatElapsed(elapsedMs: number): string {
   return `${Math.floor(totalSeconds / 60)}:${String(seconds).padStart(2, "0")}`;
 }
 
-// ActivityLine only mounts while the run is active (`isRunning &&
-// isLatestConversation`), so mount time is the start of the current run.
-function useElapsedLabel() {
-  const [startedAt] = useState(() => Date.now());
-  const [now, setNow] = useState(startedAt);
+function useElapsedLabel(runStartedAt?: number) {
+  const [mountedAt] = useState(() => Date.now());
+  const [now, setNow] = useState(mountedAt);
 
   useMountEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   });
 
-  return formatElapsed(now - startedAt);
+  return formatElapsed(now - (runStartedAt ?? mountedAt));
 }
 
-export function ActivityLine({ activity }: { activity: ActivityState }) {
+export function ActivityLine({
+  activity,
+  runStartedAt,
+}: {
+  activity: ActivityState;
+  runStartedAt?: number;
+}) {
   const { t } = useTranslation("agent");
-  const elapsedLabel = useElapsedLabel();
+  const elapsedLabel = useElapsedLabel(runStartedAt);
 
   const isRunning = activity.tone === "running";
 
   return (
-    <div className="flex max-w-fit items-center gap-2 self-start py-1 text-meta font-medium text-chat-fg-muted">
+    <div className="flex max-w-fit items-center gap-2 self-start px-1.5 py-1 text-meta font-medium text-chat-fg-muted">
       {/* While running the label's own shimmer signals progress, so the row
           drops the spinner instead of animating two things at once. */}
       {isRunning ? null : <ActivityIcon activity={activity} />}

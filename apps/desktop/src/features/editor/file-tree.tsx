@@ -27,10 +27,11 @@ import {
   openFileAtom,
   openPreviewFileAtom,
 } from "./editor-store";
+import { FileTreeContextMenuItems } from "./file-tree-context-menu";
 import {
-  FileTreeContextMenuItems,
   type FileTreeContextTarget,
-} from "./file-tree-context-menu";
+  resolveFileTreeContextTarget,
+} from "./file-tree-context-target";
 import {
   getFileTreeRootExpanded,
   setFileTreeRootExpanded,
@@ -189,10 +190,7 @@ export function FileTree() {
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      const relativePath = findTreeRowPath(event);
-      const target = relativePath
-        ? { relativePath, isDirectory: relativePath.endsWith("/") }
-        : null;
+      const target = resolveFileTreeContextTarget(findTreeRowPath(event));
       // Ref drives the synchronous open guard; state drives menu rendering.
       menuTargetRef.current = target;
       setMenuTarget(target);
@@ -254,33 +252,23 @@ export function FileTree() {
       );
     }
     return (
-      <ContextMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
-        <ContextMenuTrigger asChild>
-          {/* Keyboard navigation/activation is owned by the embedded
-              PierreFileTree; this wrapper's pointer handlers only augment it
-              (PDF routing, double-click pin, context menu). */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handling is delegated to PierreFileTree */}
-          <div
-            aria-label={activeWorkspace.name}
-            className="h-full"
-            onClick={handleClick}
-            onContextMenu={handleContextMenu}
-            onDoubleClick={handleDoubleClick}
-            role="tree"
-          >
-            <PierreFileTree
-              data-scrollbar-visible={isScrollbarVisible ? "true" : undefined}
-              model={model}
-              style={FILE_TREE_STYLE}
-            />
-          </div>
-        </ContextMenuTrigger>
-        {menuTarget && rootPath ? (
-          <ContextMenuContent className="min-w-36">
-            <FileTreeContextMenuItems rootPath={rootPath} target={menuTarget} />
-          </ContextMenuContent>
-        ) : null}
-      </ContextMenu>
+      // Keyboard navigation/activation is owned by the embedded
+      // PierreFileTree; this wrapper's pointer handlers only augment it
+      // (PDF routing, double-click pin, context menu).
+      // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handling is delegated to PierreFileTree
+      <div
+        aria-label={activeWorkspace.name}
+        className="h-full"
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        role="tree"
+      >
+        <PierreFileTree
+          data-scrollbar-visible={isScrollbarVisible ? "true" : undefined}
+          model={model}
+          style={FILE_TREE_STYLE}
+        />
+      </div>
     );
   }
 
@@ -317,34 +305,54 @@ export function FileTree() {
         </div>
       ) : null}
 
-      {/* Synthetic workspace root: same content width as Pierre rows below
-          (parent pe-2/ps-2 + FILE_TREE_STYLE zero list insets). */}
-      <button
-        aria-expanded={rootExpanded}
-        aria-label={
-          rootExpanded ? t("fileTree.collapseTree") : t("fileTree.expandTree")
-        }
-        className={cn(
-          "flex w-full min-w-0 shrink-0 items-center gap-0.5 rounded-control px-0.5 py-1 text-start text-body text-editor-fg",
-          "hover:bg-editor-tab-hover-bg",
-        )}
-        disabled={!activeWorkspace}
-        onClick={handleRootToggle}
-        type="button"
-      >
-        {rootExpanded ? (
-          <FolderOpen className="size-3.5 shrink-0 text-editor-fg-subtle" />
-        ) : (
-          <Folder className="size-3.5 shrink-0 text-editor-fg-subtle" />
-        )}
-        <span className="truncate">
-          {activeWorkspace?.name ?? t("states.noWorkspace")}
-        </span>
-      </button>
+      <ContextMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
+        <ContextMenuTrigger asChild>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: context menu trigger for the root row and the tree below it */}
+          <div
+            className="flex min-h-0 flex-1 flex-col"
+            onContextMenu={handleContextMenu}
+          >
+            {/* Synthetic workspace root: same content width as Pierre rows below
+                (parent pe-2/ps-2 + FILE_TREE_STYLE zero list insets). */}
+            <button
+              aria-expanded={rootExpanded}
+              aria-label={
+                rootExpanded
+                  ? t("fileTree.collapseTree")
+                  : t("fileTree.expandTree")
+              }
+              className={cn(
+                "flex w-full min-w-0 shrink-0 items-center gap-0.5 rounded-control px-0.5 py-1 text-start text-body text-editor-fg",
+                "hover:bg-editor-tab-hover-bg",
+              )}
+              data-item-path=""
+              disabled={!activeWorkspace}
+              onClick={handleRootToggle}
+              type="button"
+            >
+              {rootExpanded ? (
+                <FolderOpen className="size-3.5 shrink-0 text-editor-fg-subtle" />
+              ) : (
+                <Folder className="size-3.5 shrink-0 text-editor-fg-subtle" />
+              )}
+              <span className="truncate">
+                {activeWorkspace?.name ?? t("states.noWorkspace")}
+              </span>
+            </button>
 
-      {rootExpanded ? (
-        <div className="min-h-0 flex-1 overflow-hidden">{renderTreeBody()}</div>
-      ) : null}
+            {rootExpanded ? (
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {renderTreeBody()}
+              </div>
+            ) : null}
+          </div>
+        </ContextMenuTrigger>
+        {menuTarget && rootPath ? (
+          <ContextMenuContent className="min-w-36">
+            <FileTreeContextMenuItems rootPath={rootPath} target={menuTarget} />
+          </ContextMenuContent>
+        ) : null}
+      </ContextMenu>
     </div>
   );
 }

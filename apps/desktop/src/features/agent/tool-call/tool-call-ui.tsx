@@ -166,7 +166,7 @@ function ToolCallItem({
       <button
         aria-label={accessibleName}
         className={cn(
-          "flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-control px-2 py-1 text-left text-meta whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "flex min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-meta whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           getSubagentChipSurfaceClasses(toolCall),
         )}
         onClick={() => {
@@ -191,7 +191,7 @@ function ToolCallItem({
       <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-meta transition-colors hover:bg-chat-surface-row-hover">
         <ToolCallTriggerRow toolCall={toolCall} />
       </CollapsibleTrigger>
-      <CollapsibleContent className="ms-5.5 pt-1">
+      <CollapsibleContent className="ms-7 pt-1">
         <div className="pb-1 text-chat-fg-secondary text-sm">
           <ToolCallDetailBody
             onOpenToolLocation={onOpenToolLocation}

@@ -180,17 +180,19 @@ export function ReasoningMarkdown({
   // state: full (expanded) mode opens by default but still exposes a collapse
   // toggle, while collapsed mode starts behind a click-to-expand trigger.
   //
-  // The expansion aligns with the trigger's label (brain icon): chevron (14) +
-  // gap-2 (8) = 22px. No guide line, matching the tool-call detail.
+  // Row geometry is shared with the tool-call rows (px-1.5 py-1 gap-2, text-meta,
+  // size-3.5 icon) so every icon in the activity log sits in one column. The
+  // expansion aligns with the trigger's label: padding (6) + brain (14) +
+  // gap-2 (8) = 28px. No guide line, matching the tool-call detail.
   return (
     <Collapsible
       className="flex w-full flex-col gap-1.5"
       defaultOpen={mode === "full"}
     >
-      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-2 rounded-control py-1 text-left font-medium text-chat-fg-muted text-sm">
+      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-meta">
         <ReasoningTriggerRow isStreaming={isStreaming} label={label} />
       </CollapsibleTrigger>
-      <CollapsibleContent className="ms-5.5 text-chat-fg-secondary">
+      <CollapsibleContent className="ms-7 text-chat-fg-secondary">
         {body}
       </CollapsibleContent>
     </Collapsible>

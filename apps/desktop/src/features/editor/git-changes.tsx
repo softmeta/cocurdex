@@ -1,6 +1,6 @@
 import type { TurnChangeSet } from "@cocurdex/shared";
 import { useAtom, useAtomValue } from "jotai";
-import { startTransition, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSessionMessages } from "@/features/agent/view/use-session-messages";
@@ -21,7 +21,6 @@ import type {
   WorkspaceGitFileChange,
 } from "@/lib";
 import { desktopApi, useResolvedTheme } from "@/lib";
-import { rightPanelResizingAtom } from "./editor-store";
 import { GitChangesBody } from "./git-changes-body";
 import {
   buildEntries,
@@ -32,15 +31,8 @@ import {
   type GitChangeTypeFilter,
   toGitFileChangesFromTurn,
 } from "./git-changes-model";
-import {
-  gitDiffScopeAtom,
-  gitRevealClockAtom,
-  gitSelectedPathAtom,
-} from "./git-changes-store";
-import {
-  useGitChangesAutoViewMode,
-  useSyncWorkspaceGitChanges,
-} from "./git-changes-sync";
+import { gitDiffScopeAtom, gitRevealAtom } from "./git-changes-store";
+import { useSyncWorkspaceGitChanges } from "./git-changes-sync";
 import { GitChangesToolbar, type GitDiffStyle } from "./git-changes-toolbar";
 import {
   type GitDiffScope,
@@ -53,7 +45,6 @@ import {
   turnChangeSetKey,
 } from "./git-diff-scope";
 import { turnListTitle } from "./git-turn-label";
-import { GIT_DEFAULT_VIEW_MODE, type GitViewMode } from "./git-view-mode";
 import { useGitCommitActions } from "./use-git-commit-actions";
 
 export interface GitChangesProps {
@@ -98,56 +89,21 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     "none" | "expired" | "missing" | null
   >(null);
   const [diffStyle, setDiffStyle] = useState<GitDiffStyle>("unified");
-  // The committed view: `null` until the user chooses one (toolbar toggle or a
-  // deliberate panel-divider drag), at which point it pins. Render falls back to
-  // the default list while still null.
-  const [manualViewMode, setManualViewMode] = useState<GitViewMode | null>(
-    null,
-  );
-  // True only while the user actively drags the right panel's outer divider, so
-  // the width-driven switch below ignores maximize / fullscreen / window resize.
-  const isRightPanelResizing = useAtomValue(rightPanelResizingAtom);
-  // Panel width is synced from the DOM (external system) via a ResizeObserver.
-  // On each change we only re-pick list/tree when the change came from a user
-  // drag; otherwise the current view is preserved.
-  const containerRef = useGitChangesAutoViewMode(
-    isRightPanelResizing,
-    setManualViewMode,
-  );
-  const viewMode = manualViewMode ?? GIT_DEFAULT_VIEW_MODE;
   const [changeTypeFilter, setChangeTypeFilter] =
     useState<GitChangeTypeFilter>("all");
-  // Switching views remounts every per-file diff (list) or the Pierre tree
-  // host (tree), which is heavy on the main thread. Mark it as a transition so
-  // the toggle button stays responsive while the new view renders in the
-  // background instead of blocking the click.
-  const handleViewModeChange = useCallback((mode: GitViewMode) => {
-    startTransition(() => setManualViewMode(mode));
-  }, []);
   const [wrap, setWrap] = useState(false);
   // When on, pierre paints every unchanged line so the diff is read as a full
   // file with changes highlighted (not just hunks + expandable gaps).
   const [expandUnchanged, setExpandUnchanged] = useState(false);
   // Per-file collapse state, keyed by file path. A file is collapsed when its
-  // path is present in the set; the toolbar fills/clears the whole set.
+  // path is present in the set; a collapse is explicit intent and survives
+  // reloads and viewport-driven mounting.
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
-  const selectedPath = useAtomValue(gitSelectedPathAtom);
-  const revealClock = useAtomValue(gitRevealClockAtom);
-  const [appliedRevealClock, setAppliedRevealClock] = useState(0);
+  // The file index is collapsible so the diffs can take the full panel width.
+  const [treePanelVisible, setTreePanelVisible] = useState(true);
+  const reveal = useAtomValue(gitRevealAtom);
+  const [appliedRevealToken, setAppliedRevealToken] = useState(0);
 
-  if (revealClock !== appliedRevealClock) {
-    setAppliedRevealClock(revealClock);
-    if (selectedPath) {
-      if (changeTypeFilter !== "all") {
-        setChangeTypeFilter("all");
-      }
-      if (folded.has(selectedPath)) {
-        const next = new Set(folded);
-        next.delete(selectedPath);
-        setFolded(next);
-      }
-    }
-  }
   // Build full-file diffs so pierre owns every line and can expand unchanged
   // context on demand (a partial patch leaves separators inert).
   const entries = useMemo(() => buildEntries(fileChanges), [fileChanges]);
@@ -159,6 +115,19 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     () => filterEntriesByChangeType(entries, changeTypeFilter),
     [entries, changeTypeFilter],
   );
+
+  // A reveal target the change-type filter hides must still be reachable. The
+  // rest of the reveal — unfolding, scrolling, mounting — belongs to the diff
+  // stack, which consumes the request.
+  if (reveal && reveal.token !== appliedRevealToken) {
+    setAppliedRevealToken(reveal.token);
+    const filteredOut = !filteredEntries.some(
+      (entry) => entry.path === reveal.path,
+    );
+    if (changeTypeFilter !== "all" && filteredOut) {
+      setChangeTypeFilter("all");
+    }
+  }
   const stats = useMemo(
     () => computeDiffStats(filteredEntries),
     [filteredEntries],
@@ -201,33 +170,32 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     [filteredEntries],
   );
 
-  // Header chevron toggle: flip a single file's collapse state.
-  const handleToggleFile = useCallback((key: string) => {
+  // Header chevron toggle: a folded file opens, an open file shuts, and a file
+  // the stack has not mounted yet just opens.
+  const handleFoldFile = useCallback((path: string) => {
+    setFolded((prev) => (prev.has(path) ? prev : new Set(prev).add(path)));
+  }, []);
+
+  const handleUnfoldFile = useCallback((path: string) => {
     setFolded((prev) => {
+      if (!prev.has(path)) return prev;
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+      next.delete(path);
       return next;
     });
   }, []);
+
   const resolvedTheme = useResolvedTheme();
   const diffThemeType = resolvedTheme === "light" ? "light" : "dark";
 
-  // Paths present in the last applied diff, so a reload can tell new files
-  // (default collapsed) apart from known ones (keep the user's fold state).
-  const knownPathsRef = useRef<ReadonlySet<string>>(new Set());
   // Monotonic sequence guarding against out-of-order responses when watcher
   // notifications, manual refreshes, and post-mutation reloads overlap: only
   // the most recently issued request may apply its result.
   const diffRequestSeqRef = useRef(0);
+  const loadingDiffCountRef = useRef(0);
   const branchRequestSeqRef = useRef(0);
   const commitRequestSeqRef = useRef(0);
   const turnRequestSeqRef = useRef(0);
-  const selectedPathRef = useRef(selectedPath);
-  selectedPathRef.current = selectedPath;
   const scopeRef = useRef(activeScope);
   scopeRef.current = activeScope;
 
@@ -243,12 +211,14 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           setDiffStatus("ok");
           setTurnEmptyReason("none");
           setFolded(new Set());
-          knownPathsRef.current = new Set();
           if (showLoading) setIsLoading(false);
           return;
         }
         const seq = ++diffRequestSeqRef.current;
-        if (showLoading) setIsLoading(true);
+        if (showLoading) {
+          loadingDiffCountRef.current += 1;
+          setIsLoading(true);
+        }
         try {
           const [result, nextTurns] = await Promise.all([
             desktopApi.getTurnChangeDiff({
@@ -269,32 +239,25 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           } else {
             setTurnEmptyReason(null);
           }
-          const known = knownPathsRef.current;
-          const revealedPath = selectedPathRef.current;
+          // Read state survives a reload for files still in the list.
           setFolded(
             (prev) =>
               new Set(
                 changes
-                  .filter((change) => {
-                    if (revealedPath && change.path === revealedPath) {
-                      return false;
-                    }
-                    return !known.has(change.path) || prev.has(change.path);
-                  })
+                  .filter((change) => prev.has(change.path))
                   .map((change) => change.path),
               ),
           );
-          knownPathsRef.current = new Set(changes.map((change) => change.path));
         } catch {
           if (seq !== diffRequestSeqRef.current) return;
           setDiffStatus("error");
           setFileChanges([]);
           setTurnEmptyReason(null);
           setFolded(new Set());
-          knownPathsRef.current = new Set();
         } finally {
-          if (showLoading && seq === diffRequestSeqRef.current) {
-            setIsLoading(false);
+          if (showLoading) {
+            loadingDiffCountRef.current -= 1;
+            if (loadingDiffCountRef.current === 0) setIsLoading(false);
           }
         }
         return;
@@ -310,7 +273,10 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
         return;
       }
       const seq = ++diffRequestSeqRef.current;
-      if (showLoading) setIsLoading(true);
+      if (showLoading) {
+        loadingDiffCountRef.current += 1;
+        setIsLoading(true);
+      }
       try {
         const result = await desktopApi.getWorkspaceGitDiff(path, query);
         if (seq !== diffRequestSeqRef.current) return;
@@ -318,29 +284,25 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
         setDiffStatus(result.status);
         setTurnEmptyReason(null);
         setFileChanges(changes);
-        // Preserve fold state across reloads: files already in the list keep
-        // whatever the user set; files that just appeared start collapsed.
-        const known = knownPathsRef.current;
+        // Preserve read state across reloads: files already in the list keep
+        // whatever the user set.
         setFolded(
           (prev) =>
             new Set(
               changes
-                .filter(
-                  (change) => !known.has(change.path) || prev.has(change.path),
-                )
+                .filter((change) => prev.has(change.path))
                 .map((change) => change.path),
             ),
         );
-        knownPathsRef.current = new Set(changes.map((change) => change.path));
       } catch {
         if (seq !== diffRequestSeqRef.current) return;
         setDiffStatus("error");
         setFileChanges([]);
         setFolded(new Set());
-        knownPathsRef.current = new Set();
       } finally {
-        if (showLoading && seq === diffRequestSeqRef.current) {
-          setIsLoading(false);
+        if (showLoading) {
+          loadingDiffCountRef.current -= 1;
+          if (loadingDiffCountRef.current === 0) setIsLoading(false);
         }
       }
     },
@@ -541,10 +503,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
 
   return (
     <TooltipProvider>
-      <div
-        className="flex min-h-0 flex-1 flex-col bg-editor-monaco-bg"
-        ref={containerRef}
-      >
+      <div className="flex min-h-0 flex-1 flex-col bg-editor-monaco-bg">
         <GitChangesToolbar
           additions={stats.additions}
           branches={branches}
@@ -574,7 +533,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           onCommitAction={handleCommitAction}
           onGenerateCommitMessage={handleGenerateCommitMessage}
           onExpandUnchangedChange={setExpandUnchanged}
-          onViewModeChange={handleViewModeChange}
+          onTreePanelVisibleChange={setTreePanelVisible}
           onWrapChange={setWrap}
           expandUnchanged={expandUnchanged}
           scope={activeScope}
@@ -582,7 +541,7 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           turnLabels={turnLabels}
           turns={turns}
           turnsLoading={turnsLoading}
-          viewMode={viewMode}
+          treePanelVisible={treePanelVisible}
           wrap={wrap}
         />
         <GitChangesBody
@@ -596,13 +555,15 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           isFiltered={changeTypeFilter !== "all"}
           isLoading={isLoading}
           onDiscard={handleDiscard}
+          onFold={handleFoldFile}
           onOpenFile={onOpenFile}
           onStage={handleStage}
-          onToggleFile={handleToggleFile}
+          onUnfold={handleUnfoldFile}
           onUnstage={handleUnstage}
+          reveal={reveal}
           turnEmptyReason={turnEmptyReason}
           scopeMode={activeScope.mode}
-          viewMode={viewMode}
+          treePanelVisible={treePanelVisible}
           workspaceName={activeWorkspace.name}
           wrap={wrap}
         />

@@ -11,6 +11,7 @@ import {
 } from "./app-shell-layout";
 
 interface AppShellTitlebarActionsProps {
+  isChatDetached: boolean;
   isRightPanelOpen: boolean;
   isRightPanelMaximized: boolean;
   onToggleRightPanel(): void;
@@ -19,6 +20,7 @@ interface AppShellTitlebarActionsProps {
 }
 
 export function AppShellTitlebarActions({
+  isChatDetached,
   isRightPanelOpen,
   isRightPanelMaximized,
   onToggleRightPanel,
@@ -36,7 +38,7 @@ export function AppShellTitlebarActions({
         width: TITLEBAR_EDITOR_TOGGLE_WIDTH,
       }}
     >
-      {isRightPanelOpen ? (
+      {isRightPanelOpen && !isChatDetached ? (
         <TitlebarIconButton
           active={isRightPanelMaximized}
           aria-label={
@@ -55,14 +57,16 @@ export function AppShellTitlebarActions({
         </TitlebarIconButton>
       ) : null}
       <NetworkProxyStatusButton />
-      <TitlebarIconButton
-        active={isRightPanelOpen}
-        aria-label={t("editor:actions.toggleEditorPanel")}
-        cursor="default"
-        onClick={onToggleRightPanel}
-      >
-        <PanelRight className={TITLEBAR_ICON_GLYPH_CLASS} />
-      </TitlebarIconButton>
+      {isChatDetached ? null : (
+        <TitlebarIconButton
+          active={isRightPanelOpen}
+          aria-label={t("editor:actions.toggleEditorPanel")}
+          cursor="default"
+          onClick={onToggleRightPanel}
+        >
+          <PanelRight className={TITLEBAR_ICON_GLYPH_CLASS} />
+        </TitlebarIconButton>
+      )}
       <TitlebarIconButton
         aria-label={t("sessions:sidebar.settings")}
         cursor="default"

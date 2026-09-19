@@ -1,33 +1,18 @@
 import { FileDiff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WorkspaceGitDiffStatus } from "@/lib";
-import { GitChangesList } from "./git-changes-list";
-import type { GitChangeEntry } from "./git-changes-model";
-import type { GitDiffStyle } from "./git-changes-toolbar";
+import type { GitChangesDiffStackProps } from "./git-changes-diff-stack";
 import { GitChangesTree } from "./git-changes-tree";
 import type { GitDiffScope } from "./git-diff-scope";
-import type { GitViewMode } from "./git-view-mode";
 
-interface GitChangesBodyProps {
+interface GitChangesBodyProps extends GitChangesDiffStackProps {
   isLoading: boolean;
   isFiltered: boolean;
   diffStatus: WorkspaceGitDiffStatus;
-  entries: GitChangeEntry[];
   workspaceName: string;
-  diffStyle: GitDiffStyle;
-  viewMode: GitViewMode;
-  wrap: boolean;
-  expandUnchanged: boolean;
-  folded: ReadonlySet<string>;
-  actionsEnabled: boolean;
+  treePanelVisible: boolean;
   scopeMode: GitDiffScope["mode"];
   turnEmptyReason?: "none" | "expired" | "missing" | null;
-  onToggleFile: (key: string) => void;
-  onOpenFile: (path: string) => void;
-  onStage: (path: string) => void;
-  onUnstage: (path: string) => void;
-  onDiscard: (path: string) => void;
-  diffThemeType: "light" | "dark";
 }
 
 // Pick the empty-state copy for the panel: git failures and non-repo folders
@@ -105,28 +90,18 @@ function resolveEmptyStateCopy(
   };
 }
 
-// Dispatch between the loading / empty placeholders and the two change views
-// (stacked list vs. master-detail tree).
+// Dispatch between the loading / empty placeholders and the change view: the
+// diffs always stack the same way, with the file index optionally beside them.
 export function GitChangesBody({
   isLoading,
   isFiltered,
   diffStatus,
   entries,
   workspaceName,
-  diffStyle,
-  viewMode,
-  wrap,
-  expandUnchanged,
-  folded,
-  actionsEnabled,
+  treePanelVisible,
   scopeMode,
   turnEmptyReason = null,
-  onToggleFile,
-  onOpenFile,
-  onStage,
-  onUnstage,
-  onDiscard,
-  diffThemeType,
+  ...stackProps
 }: GitChangesBodyProps) {
   const { t } = useTranslation("editor");
 
@@ -163,38 +138,12 @@ export function GitChangesBody({
     );
   }
 
-  if (viewMode === "tree") {
-    return (
-      <GitChangesTree
-        actionsEnabled={actionsEnabled}
-        diffStyle={diffStyle}
-        diffThemeType={diffThemeType}
-        entries={entries}
-        expandUnchanged={expandUnchanged}
-        onDiscard={onDiscard}
-        onOpenFile={onOpenFile}
-        onStage={onStage}
-        onUnstage={onUnstage}
-        workspaceName={workspaceName}
-        wrap={wrap}
-      />
-    );
-  }
-
   return (
-    <GitChangesList
-      actionsEnabled={actionsEnabled}
-      diffStyle={diffStyle}
-      diffThemeType={diffThemeType}
+    <GitChangesTree
       entries={entries}
-      expandUnchanged={expandUnchanged}
-      folded={folded}
-      onDiscard={onDiscard}
-      onOpenFile={onOpenFile}
-      onStage={onStage}
-      onToggleFile={onToggleFile}
-      onUnstage={onUnstage}
-      wrap={wrap}
+      showTreePanel={treePanelVisible}
+      workspaceName={workspaceName}
+      {...stackProps}
     />
   );
 }

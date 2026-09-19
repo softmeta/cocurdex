@@ -31,7 +31,6 @@ import type { LanguageMode } from "@/i18n/language";
 import type { WorkspaceFileEntry } from "@/lib";
 import { cn } from "@/lib";
 import { requestChatContextAtom } from "@/lib/chat-context-store";
-import { CenterPanel } from "../center-panel";
 import { CHAT_DOCK_ACTIONS_INSET } from "../chat-dock-actions";
 import type { ChatDockVisibility } from "../chat-dock-geometry";
 import type { ChatLayoutMode } from "../chat-layout-preference";
@@ -49,6 +48,7 @@ import { AppShellContent } from "./app-shell-content";
 import {
   TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_HEIGHT,
+  TITLEBAR_PANE_HEADER_START_INSET,
   TITLEBAR_TRAFFIC_LIGHT_RESERVE,
 } from "./app-shell-layout";
 import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
@@ -73,6 +73,8 @@ interface AppShellFrameProps {
   isLeftSidebarPreferredOpen: boolean;
   isRightPanelOpen: boolean;
   isRightPanelMaximized: boolean;
+  isPanelFullWidth: boolean;
+  isChatDetached: boolean;
   isRightPanelCompact: boolean;
   chatDockVisibility: ChatDockVisibility;
   isChatDockPinned: boolean;
@@ -120,6 +122,8 @@ export function AppShellFrame({
   isLeftSidebarPreferredOpen,
   isRightPanelOpen,
   isRightPanelMaximized,
+  isPanelFullWidth,
+  isChatDetached,
   isRightPanelCompact,
   chatDockVisibility,
   isChatDockPinned,
@@ -214,17 +218,10 @@ export function AppShellFrame({
     handleOpenDroppedWorkspace(rootPath);
   }, [handleOpenDroppedWorkspace, pickHostDirectory]);
 
-  // Single CenterPanel instance shared between the center column and the
-  // floating dock. Only one mount point renders it at a time (center when
-  // split, dock when the editor is fullscreen), so chat state and composerRef
-  // survive the switch. In the dock it drops the titlebar spacer.
-  const isPanelFullWidth = isRightPanelMaximized || isRightPanelCompact;
-  const chatNode = (
-    <CenterPanel
-      composerRef={composerRef}
-      hideTitlebarSpacer={isRightPanelMaximized}
-    />
-  );
+  // One chat node shared by the center column and the floating dock. Only one
+  // mount point renders it at a time (center when side by side, dock when the
+  // editor is fullscreen), so chat state and composerRef survive the switch.
+  // The dock drops the titlebar spacer but keeps the session pane header.
   const splitChatNode = (
     <SessionSplitLayout
       headerEndInset={
@@ -232,8 +229,14 @@ export function AppShellFrame({
           ? CHAT_DOCK_ACTIONS_INSET
           : 0
       }
+      headerStartInset={
+        !isLeftSidebarOpen && !isRightPanelCompact
+          ? TITLEBAR_PANE_HEADER_START_INSET
+          : 0
+      }
       composerRef={composerRef}
       hideTitlebarSpacer={isRightPanelMaximized}
+      hideSinglePaneHeader={isRightPanelMaximized}
     />
   );
 
@@ -349,6 +352,7 @@ export function AppShellFrame({
           </header>
 
           <AppShellTitlebarActions
+            isChatDetached={isChatDetached}
             isRightPanelOpen={isRightPanelOpen}
             isRightPanelMaximized={isRightPanelMaximized}
             onToggleRightPanel={onToggleRightPanel}
@@ -363,9 +367,9 @@ export function AppShellFrame({
             leftWidth={leftWidth}
             isRightPanelOpen={isRightPanelOpen}
             isRightPanelMaximized={isRightPanelMaximized}
+            isPanelFullWidth={isPanelFullWidth}
             rightWidth={rightWidth}
             appearanceSettings={appearanceSettings}
-            chatNode={chatNode}
             splitChatNode={splitChatNode}
             chatDockVisibility={chatDockVisibility}
             isChatDockPinned={isChatDockPinned}

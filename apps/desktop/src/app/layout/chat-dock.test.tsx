@@ -3,13 +3,17 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChatDock } from "./chat-dock";
 import { ChatDockActions } from "./chat-dock-actions";
+import { useDockGeometry } from "./chat-dock-geometry";
 
 const fixture = vi.hoisted(() => ({ info: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { info: fixture.info } }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("./chat-window", () => ({ ChatWindowButton: () => null }));
+vi.mock("./chat-window", () => ({
+  ChatWindowButton: () => null,
+  ChatWindowMenuItem: () => null,
+}));
 vi.mock("./sidebar", () => ({ LeftSidebar: () => null }));
 
 const initialWidth = window.innerWidth;
@@ -30,10 +34,12 @@ afterEach(() => {
 
 function DockFixture() {
   const [pinned, setPinned] = useState(false);
+  const dock = useDockGeometry();
   return (
     <ChatDock
       visibility="open"
       pinned={pinned}
+      dock={dock}
       onPinnedChange={setPinned}
       onOpen={() => {}}
       onClose={() => {}}

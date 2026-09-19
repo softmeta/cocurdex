@@ -59,9 +59,13 @@ Use TDD for critical pure functions and similarly stable logic. UI, feature flow
 
 ## Development and UI verification
 
-Do not start `pnpm --filter @cocurdex/desktop dev`; ask the user to start it if needed. Do not reuse processes, attach CDP, open browsers, take screenshots, or click through the app to verify appearance or interaction unless the user explicitly requests UI inspection.
+Do not start `pnpm --filter @cocurdex/desktop dev`; ask the user to start it if needed. Do not reuse processes, open browsers, or click through the app unless the user explicitly requests it.
 
-The user verifies UI/UX changes locally. After implementation and required checks, briefly state what changed and which screen to inspect. Diagnose runtime errors, console exceptions, and reproducible functional failures through code and logs; visual acceptance is not an agent requirement.
+You may attach to a running desktop app over Chrome DevTools Protocol yourself to debug, without asking first: read the renderer console, evaluate JavaScript, inspect the DOM, measure layout, and take screenshots. Start the app with `COCURDEX_REMOTE_DEBUGGING_PORT` (or `pnpm run dev:inspect`) when the port is closed, and treat the session as read-only unless the user asks for interaction. Keep the attach disposable: detach when the investigation is done, and never leave the app in a modified state.
+
+Prefer measuring over guessing. When a symptom involves rendering, layout, timing, or third-party behavior and a CDP session can answer it, attach and measure before proposing a cause or a fix; state the measurement that settled it. Do not stack hypotheses, batch speculative fixes, or ask the user to re-verify round after round when the running app can be inspected directly.
+
+The user verifies UI/UX changes locally. After implementation and required checks, briefly state what changed and which screen to inspect. Diagnose runtime errors, console exceptions, and reproducible functional failures through code, logs, and a CDP session; visual acceptance is not an agent requirement.
 
 ## Code structure and imports
 

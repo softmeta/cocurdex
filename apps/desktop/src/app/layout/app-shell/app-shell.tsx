@@ -55,7 +55,10 @@ import {
 import { useChatWindowActions, useMainChatWindow } from "../chat-window";
 import { useAgentEventBridge, useBrowserEventBridge } from "./app-shell-events";
 import { AppShellFrame } from "./app-shell-frame";
-import { resolveRightPanelVisibility } from "./app-shell-layout";
+import {
+  resolvePanelFullWidth,
+  resolveRightPanelVisibility,
+} from "./app-shell-layout";
 import { useAppPersistence } from "./app-shell-persistence";
 import {
   persistNotificationSettings,
@@ -68,6 +71,7 @@ import {
   useAppShellResize,
 } from "./app-shell-resize";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
+import { useShellIntents } from "./shell-intents";
 import { useSystemLocale, useSystemPrefersDark } from "./use-system-prefs";
 
 export function AppShell() {
@@ -183,9 +187,16 @@ export function AppShell() {
     focus: focusChatWindow,
     toggleVisibility: toggleChatWindow,
   } = useChatWindowActions();
+  const isPanelFullWidth = resolvePanelFullWidth({
+    isPanelOpen: shouldShowRightPanel,
+    isMaximized: isRightPanelMaximized,
+    isCompact: isRightPanelCompact,
+    isChatDetached: chatDetached,
+  });
   const synchronizeAgentState = useAgentEventBridge();
   useBrowserEventBridge();
   useChatEventBridge();
+  useShellIntents();
   useAppPersistence();
   useMainChatWindow(() => {
     setChatDockVisibility("open");
@@ -280,7 +291,7 @@ export function AppShell() {
         fileSearch: () => activeScreen === "app",
         toggleLeftSidebar: () => activeScreen === "app",
         toggleRightPanel: () => activeScreen === "app",
-        toggleEditorFullscreen: () => activeScreen === "app",
+        toggleEditorFullscreen: () => activeScreen === "app" && !chatDetached,
         toggleChatDock: () =>
           activeScreen === "app" &&
           (chatDetached || isRightPanelMaximized || isRightPanelCompact),
@@ -420,6 +431,8 @@ export function AppShell() {
       isLeftSidebarPreferredOpen={isLeftSidebarOpen}
       isRightPanelOpen={shouldShowRightPanel}
       isRightPanelMaximized={isRightPanelGlobal}
+      isPanelFullWidth={isPanelFullWidth}
+      isChatDetached={chatDetached}
       chatDockVisibility={chatDockVisibility}
       isChatDockPinned={isChatDockPinned}
       isSearchOpen={isSearchOpen}

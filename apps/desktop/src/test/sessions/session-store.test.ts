@@ -1,6 +1,6 @@
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAgentInputDelivery } from "@/features/agent/follow-up-behavior/follow-up-behavior-types";
 import {
   focusedPaneIdAtom,
@@ -30,6 +30,7 @@ import {
   projectSubagentSessionFromToolCallAtom,
   removeSessionsByWorkspaceAtom,
   selectSessionAtom,
+  sessionRunStartedAtAtom,
   sessionsAtom,
   supportsLivePermissionMode,
   supportsPermissionMode,
@@ -38,6 +39,7 @@ import {
   updateSessionModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
+  updateSessionStatusAtom,
   updateSessionTitleAtom,
   upsertSessionAtom,
 } from "@/features/sessions/session-store";
@@ -65,6 +67,66 @@ const baseSession: SessionRecord = {
   lastMessageAt: null,
   permissionMode: "codex-read-only",
 };
+
+describe("updateSessionStatusAtom run timer", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("records the run start when a session begins running", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-07T00:00:05.000Z"));
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession]);
+
+    store.set(updateSessionStatusAtom, {
+      sessionId: baseSession.id,
+      status: "running",
+    });
+
+    expect(store.get(sessionRunStartedAtAtom)).toEqual({
+      [baseSession.id]: Date.parse("2026-05-07T00:00:05.000Z"),
+    });
+  });
+
+  it("keeps the original run start across repeated running updates", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-07T00:00:05.000Z"));
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession]);
+    store.set(updateSessionStatusAtom, {
+      sessionId: baseSession.id,
+      status: "running",
+    });
+
+    vi.setSystemTime(new Date("2026-05-07T00:01:05.000Z"));
+    store.set(updateSessionStatusAtom, {
+      sessionId: baseSession.id,
+      status: "running",
+    });
+
+    expect(store.get(sessionRunStartedAtAtom)[baseSession.id]).toBe(
+      Date.parse("2026-05-07T00:00:05.000Z"),
+    );
+  });
+
+  it("clears the run start when the session stops running", () => {
+    vi.useFakeTimers();
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession]);
+    store.set(updateSessionStatusAtom, {
+      sessionId: baseSession.id,
+      status: "running",
+    });
+
+    store.set(updateSessionStatusAtom, {
+      sessionId: baseSession.id,
+      status: "idle",
+    });
+
+    expect(store.get(sessionRunStartedAtAtom)).toEqual({});
+  });
+});
 
 describe("updateSessionTitleAtom", () => {
   it("updates the matching session title", () => {

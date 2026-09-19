@@ -1,17 +1,25 @@
+import { useAtomValue } from "jotai";
 import { PanelLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
+import { conversationsAtom } from "@/features/chat";
+import { focusedSessionPaneAtom, sessionsAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 import { ChatDockActions } from "./chat-dock-actions";
 import {
   type ChatDockVisibility,
-  useDockGeometry,
+  type useDockGeometry,
   useSessionListWidth,
 } from "./chat-dock-geometry";
 import { ChatDockLauncher } from "./chat-dock-launcher";
 import { resolveChatDockPinLayout } from "./chat-dock-sizing";
+import {
+  SessionPaneHeader,
+  sessionPaneTitle,
+  useSessionSplitActions,
+} from "./session-split";
 import { LeftSidebar } from "./sidebar";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
@@ -24,6 +32,8 @@ interface ChatDockProps {
   visibility: ChatDockVisibility;
   /** Controlled pin state from the shell layout preference. */
   pinned: boolean;
+  /** Geometry hoisted to the shell so it can reserve the pinned rail width. */
+  dock: ReturnType<typeof useDockGeometry>;
   onOpen(): void;
   onClose(): void;
   onHideFab(): void;
@@ -43,10 +53,11 @@ interface ChatDockProps {
  * - Open + pinned: full-height overlay rail flush to the trailing edge; it
  *   floats above the editor instead of shrinking it.
  *
- * Pinned top row mirrors ViewSwitcherTabs (fixed TITLEBAR_HEIGHT + border-b)
- * so the chrome rule reads the same as the editor chrome it floats over.
- * Actions sit on the row below that rule — same size-6 chrome icons and py-1
- * in float mode.
+ * The rail's top row is the session pane header: session-list toggle, the
+ * session menu, the title, then the rail actions (same size-6 chrome icons and
+ * 32px row as every other pane header, so titles and menus sit in one place
+ * whichever layout the chat is in). With a split, the panes own their headers
+ * and this row falls back to rail chrome only.
  *
  * Session list is a full-height left drawer (toggle row + list, one bg column)
  * with a drag handle on its trailing edge for width.
@@ -57,6 +68,7 @@ interface ChatDockProps {
 export function ChatDock({
   visibility,
   pinned: pinRequested,
+  dock,
   onOpen,
   onClose,
   onHideFab,
@@ -64,8 +76,7 @@ export function ChatDock({
   children,
 }: ChatDockProps) {
   const { t } = useTranslation("editor");
-  const { geometry, beginDrag, beginResize, beginPinnedResize } =
-    useDockGeometry();
+  const { geometry, beginDrag, beginResize, beginPinnedResize } = dock;
   const { width: sessionListWidth, beginResize: beginSessionListResize } =
     useSessionListWidth(geometry.width);
   const [sessionListOpen, setSessionListOpen] = useState(false);
@@ -73,6 +84,12 @@ export function ChatDock({
   const viewportWidth = useChatDockViewportWidth();
   const pinLayout = resolveChatDockPinLayout(viewportWidth, geometry.width);
   const pinned = pinRequested && pinLayout.canPin;
+  const { paneCount, focusedPaneId, splitPaneById } = useSessionSplitActions();
+  const focusedPane = useAtomValue(focusedSessionPaneAtom);
+  const conversations = useAtomValue(conversationsAtom);
+  const sessions = useAtomValue(sessionsAtom);
+  const paneTitle = sessionPaneTitle(focusedPane, conversations, sessions);
+  const singlePane = paneCount === 1;
 
   if (visibility === "hidden") {
     return null;
@@ -82,9 +99,8 @@ export function ChatDock({
     return <ChatDockLauncher onOpen={onOpen} onHideFab={onHideFab} />;
   }
 
-  // Float and pinned share one action row: TitlebarIconButton (size-6) + py-1.
   // Session toggle must stay the same size as pin/close so opening the drawer
-  // (toggle leaves the row for a width spacer) does not change header height.
+  // (toggle leaves the row for a width spacer) does not change row height.
   const sessionToggle = (
     <TitlebarIconButton
       active={sessionListOpen}
@@ -137,52 +153,88 @@ export function ChatDock({
     </>
   ) : null;
 
-  const actionHeader = (options?: { draggable?: boolean }) => (
-    // biome-ignore lint/a11y/noStaticElementInteractions: floating dock drag handle
-    <div
-      className={cn(
-        // pe-3 when pinned aligns close with the titlebar settings pill above.
-        "relative z-30 flex shrink-0 items-center py-1 pe-3",
-        // Drawer open: parent pe-none so the left strip does not steal hits from
-        // the session toggle / outside catcher underneath. Drag + pin/close
-        // re-enable pe on their own nodes (pe-none child does not punch a hole
-        // through a pe-auto parent).
-        sessionListOpen && "pointer-events-none",
-        options?.draggable && !sessionListOpen && "cursor-move",
-      )}
-      onMouseDown={
-        options?.draggable && !sessionListOpen ? beginDrag : undefined
+  const actionHeader = (options?: { draggable?: boolean }) => {
+    const drawerOpen = sessionListOpen;
+    const canDrag = !!options?.draggable && !drawerOpen;
+    const leading = drawerOpen ? (
+      <div
+        aria-hidden
+        className="shrink-0"
+        style={{ width: sessionListWidth }}
+      />
+    ) : (
+      <div className="flex shrink-0 items-center">{sessionToggle}</div>
+    );
+    const handleRowMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!canDrag || (event.target as HTMLElement).closest("button")) {
+        return;
       }
-    >
-      {sessionListOpen ? (
+      beginDrag(event);
+    };
+
+    if (singlePane) {
+      return (
+        // biome-ignore lint/a11y/noStaticElementInteractions: floating dock drag handle
         <div
-          aria-hidden
-          className="shrink-0"
-          style={{ width: sessionListWidth }}
-        />
-      ) : (
-        <div className="flex shrink-0 items-center ps-2">{sessionToggle}</div>
-      )}
-      {/*
-        biome-ignore lint/a11y/noStaticElementInteractions: drag strip while
-        the drawer is open (parent is pe-none, so this must own beginDrag).
-      */}
+          className={cn(
+            "relative z-30 shrink-0",
+            // Drawer open: parent pe-none so the left strip does not steal hits
+            // from the session toggle / outside catcher underneath, while the
+            // row's own buttons stay clickable.
+            drawerOpen && "pointer-events-none [&_button]:pointer-events-auto",
+            canDrag && "cursor-move",
+          )}
+          onMouseDown={handleRowMouseDown}
+        >
+          <SessionPaneHeader
+            canClose={false}
+            // pe-3 aligns the rail actions with the titlebar pills above;
+            // transparent keeps the session drawer's own header row visible.
+            className="bg-transparent pe-3"
+            isFocused
+            leading={leading}
+            title={paneTitle}
+            trailing={headerTrailing}
+            onSplitDown={() => splitPaneById(focusedPaneId, "down")}
+            onSplitRight={() => splitPaneById(focusedPaneId, "right")}
+          />
+        </div>
+      );
+    }
+
+    return (
+      // biome-ignore lint/a11y/noStaticElementInteractions: floating dock drag handle
       <div
         className={cn(
-          "min-w-0 flex-1 self-stretch",
-          sessionListOpen &&
-            options?.draggable &&
-            "pointer-events-auto cursor-move",
+          // pe-3 when pinned aligns close with the titlebar settings pill above.
+          "relative z-30 flex shrink-0 items-center py-1 pe-3",
+          // Drawer open: parent pe-none so the left strip does not steal hits from
+          // the session toggle / outside catcher underneath. Drag + pin/close
+          // re-enable pe on their own nodes (pe-none child does not punch a hole
+          // through a pe-auto parent).
+          drawerOpen && "pointer-events-none",
+          canDrag && "cursor-move",
         )}
-        onMouseDown={
-          sessionListOpen && options?.draggable ? beginDrag : undefined
-        }
-      />
-      <div className={cn(sessionListOpen && "pointer-events-auto")}>
-        {headerTrailing}
+        onMouseDown={handleRowMouseDown}
+      >
+        {leading}
+        {/*
+          biome-ignore lint/a11y/noStaticElementInteractions: drag strip while
+          the drawer is open (parent is pe-none, so this must own beginDrag).
+        */}
+        <div
+          className={cn(
+            "min-w-0 flex-1 self-stretch",
+            drawerOpen && canDrag && "pointer-events-auto cursor-move",
+          )}
+          onMouseDown={drawerOpen && canDrag ? beginDrag : undefined}
+        />
+        <div className={cn(drawerOpen && "pointer-events-auto")}>
+          {headerTrailing}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     // Outer: never a flex item. Pinned → full-height overlay flush to the
@@ -195,20 +247,29 @@ export function ChatDock({
       )}
       style={pinned ? { width: pinLayout.width } : undefined}
     >
+      {pinned ? (
+        // Continues ViewSwitcherTabs' border-b across the rail column while the
+        // chat surface below stays clear of the header band.
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 border-b border-editor-border"
+          style={{ height: VIEW_SWITCHER_ROW_HEIGHT_PX }}
+        />
+      ) : null}
       <div
         className={cn(
           "pointer-events-auto flex flex-col overflow-hidden bg-chat-canvas",
           pinned
-            ? // Full-height floating rail: own surface + leading edge shadow so
-              // it reads as raised over the editor it overlays.
-              "h-full w-full border-s border-editor-border shadow-chat-panel"
+            ? // Docked rail: same canvas plane as the editor, separated by the
+              // leading divider below the header band.
+              "absolute inset-x-0 bottom-0"
             : // Floating card is a self-contained surface (matches CenterPanel
               // canvas; bg-app is a different token in light mode).
               "absolute rounded-panel border border-border shadow-2xl",
         )}
         style={
           pinned
-            ? undefined
+            ? { top: VIEW_SWITCHER_ROW_HEIGHT_PX }
             : {
                 right: geometry.right,
                 bottom: geometry.bottom,
@@ -218,14 +279,11 @@ export function ChatDock({
         }
       >
         {pinned ? (
-          // top offset clears the ViewSwitcher band so no vertical stub sticks
-          // up through the continuous top horizontal rule.
           // z-40: above action header (z-30) and session-list drawer (z-20).
           <ResizeSeparator
             ariaLabel={t("actions.resizeChat")}
             className="z-40"
             position="absolute-start"
-            style={{ top: VIEW_SWITCHER_ROW_HEIGHT_PX }}
             onMouseDown={beginPinnedResize}
           />
         ) : (
@@ -239,11 +297,6 @@ export function ChatDock({
           />
         )}
 
-        <div
-          aria-hidden
-          className={cn("shrink-0 border-editor-border", pinned && "border-b")}
-          style={{ height: pinned ? VIEW_SWITCHER_ROW_HEIGHT_PX : 0 }}
-        />
         <div className="relative flex min-h-0 flex-1 flex-col bg-chat-canvas">
           {actionHeader({ draggable: !pinned })}
           <div className="relative min-h-0 flex-1 overflow-hidden">

@@ -5,6 +5,8 @@ import {
   ChevronDown,
   ChevronRight,
   Pencil,
+  SquareSplitHorizontal,
+  SquareSplitVertical,
   Trash2,
 } from "lucide-react";
 import { useCallback, useState, useSyncExternalStore } from "react";
@@ -25,6 +27,7 @@ import {
   archiveSessionAtom,
   collectSessionSubtreeIds,
   deleteSessionAtom,
+  openSessionInSplitAtom,
   sessionsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
@@ -95,6 +98,7 @@ export function SessionSidebarItem({
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const archiveSession = useSetAtom(archiveSessionAtom);
   const deleteSession = useSetAtom(deleteSessionAtom);
+  const openSessionInSplit = useSetAtom(openSessionInSplitAtom);
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -321,6 +325,28 @@ export function SessionSidebarItem({
       <ContextMenuContent className="min-w-26">
         <SidebarContextMenuItem icon={Pencil} onClick={startRename}>
           {t("sidebar.rename")}
+        </SidebarContextMenuItem>
+        <SidebarContextMenuItem
+          icon={SquareSplitVertical}
+          onClick={() =>
+            openSessionInSplit({
+              sessionId: session.id,
+              direction: "right",
+            })
+          }
+        >
+          {t("sidebar.splitRight")}
+        </SidebarContextMenuItem>
+        <SidebarContextMenuItem
+          icon={SquareSplitHorizontal}
+          onClick={() =>
+            openSessionInSplit({
+              sessionId: session.id,
+              direction: "down",
+            })
+          }
+        >
+          {t("sidebar.splitDown")}
         </SidebarContextMenuItem>
         <SidebarContextMenuItem
           icon={Archive}

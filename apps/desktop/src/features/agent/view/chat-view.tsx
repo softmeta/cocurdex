@@ -3,6 +3,7 @@ import type {
   MessageAttachment,
   MessageRecord,
 } from "@cocurdex/shared";
+import { useAtomValue } from "jotai";
 import {
   useCallback,
   useId,
@@ -27,7 +28,10 @@ import {
   ChatContentColumn,
   sessionComposerDraftKey,
 } from "@/features/composer";
-import { ScriptRunProposals } from "@/features/sessions";
+import {
+  ScriptRunProposals,
+  sessionRunStartedAtAtom,
+} from "@/features/sessions";
 import {
   cn,
   isPerfEnabled,
@@ -119,6 +123,10 @@ export function ChatView({
     useState<PendingPreviousMessageSubmit | null>(null);
   const [isInitialBottomSettled, setIsInitialBottomSettled] = useState(false);
   const perfSessionId = sessionId ?? messages[0]?.sessionId ?? null;
+  const runStartedAtBySession = useAtomValue(sessionRunStartedAtAtom);
+  const runStartedAt = perfSessionId
+    ? runStartedAtBySession[perfSessionId]
+    : undefined;
   // Capture render-start only when perf observability is enabled. In
   // production this is a constant zero so React's effect dep diffing on this
   // value is stable across renders and the layout effects below early-bail.
@@ -568,6 +576,7 @@ export function ChatView({
                   onSubmitPromptEdit={
                     readOnly ? undefined : handleSubmitPromptEdit
                   }
+                  runStartedAt={runStartedAt}
                   scrollRef={timelineScrollRef}
                   setUserMessageRef={setUserMessageRef}
                   showMessageActions={!readOnly}

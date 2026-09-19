@@ -5,11 +5,12 @@ import {
   CHAT_DOCK_MIN_WIDTH,
   resolveChatDockPinLayout,
 } from "./chat-dock-sizing";
-import { ChatWindowButton } from "./chat-window";
 import { TitlebarIconButton } from "./titlebar-icon-button";
 import { useChatDockViewportWidth } from "./use-chat-dock-viewport";
 
-export const CHAT_DOCK_ACTIONS_INSET = 88;
+// Pin + close (size-6 each, gap-1), the overlay offset, and a gap to the
+// trailing pane-header controls. Detaching lives in the session menu.
+export const CHAT_DOCK_ACTIONS_INSET = 60;
 
 export function ChatDockActions({
   pinned,
@@ -31,7 +32,6 @@ export function ChatDockActions({
   if (pinned && !canPin) hint = t("actions.chatDockTemporarilyFloating");
   return (
     <div className="flex items-center gap-1 bg-chat-canvas">
-      <ChatWindowButton />
       <TitlebarIconButton
         active={pinned && canPin}
         aria-label={label}

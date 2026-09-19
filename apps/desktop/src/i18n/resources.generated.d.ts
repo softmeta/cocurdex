@@ -8,7 +8,6 @@ export default interface Resources {
       ready: "Ready";
       reasoningCount_one: "{{count}} reasoning step";
       reasoningCount_other: "{{count}} reasoning steps";
-      title: "Activity";
       toolCount_one: "{{count}} tool call";
       toolCount_other: "{{count}} tool calls";
       usingTools: "Using tools";
@@ -601,8 +600,8 @@ export default interface Resources {
       generateCommitMessage: "Generate commit message";
       generateCommitMessageFailed: "Failed to generate commit message";
       generatingCommitMessage: "Generating commit message…";
+      hideFileTree: "Hide file tree";
       includeUnstaged: "Include unstaged changes";
-      listView: "List view";
       loadingCommits: "Loading commits…";
       loadingTurns: "Loading turns…";
       noBranch: "No branch";
@@ -625,16 +624,14 @@ export default interface Resources {
       searchBranches: "Search branches";
       selectSource: "Source branch";
       selectTarget: "Target branch";
+      showFileTree: "Show file tree";
       splitView: "Split view";
       stageAll: "Stage all";
       stageFile: "Stage file";
       toggleFullFile: "Show full file";
       toggleWrap: "Toggle line wrap";
-      treeNoSelectionDescription: "Select a file in the tree to view its changes.";
-      treeNoSelectionTitle: "No file selected";
       treeSearch: "Filter changed files";
       treeSearchPlaceholder: "Filter files…";
-      treeView: "Tree view";
       turnFiles: "{{count}} files";
       turnFiles_one: "{{count}} file";
       turnFiles_other: "{{count}} files";
@@ -1196,6 +1193,8 @@ export default interface Resources {
       revealInFileManager: "Reveal in file manager";
       running: "Running";
       settings: "Settings";
+      splitDown: "Open Below";
+      splitRight: "Open to the Right";
     };
     split: {
       close: "Close Pane";

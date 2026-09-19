@@ -16,7 +16,10 @@ import { syncInitialPreferences } from "../app-shell/app-shell-preferences";
 import { SessionSplitLayout } from "../session-split";
 import { LeftSidebar } from "../sidebar";
 import { TitlebarIconButton } from "../titlebar-icon-button";
-import { useChatBrowserContext } from "./chat-browser-context";
+import {
+  useChatBrowserContext,
+  useChatBrowserPreviewBridge,
+} from "./chat-browser-context";
 import { ChatWindowButton } from "./chat-window-controls";
 import {
   applyChatSnapshot,
@@ -33,6 +36,7 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const composerRef = useChatContext(() => setSidebarOpen(false));
   useChatBrowserContext();
+  useChatBrowserPreviewBridge();
 
   useMountEffect(() => {
     let frame = requestAnimationFrame(() => {

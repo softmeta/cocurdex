@@ -63,6 +63,12 @@ export function registerChatWindowHandlers(
     sender,
     owner: () => (handoff.busy ? null : detached ? chat : primary),
     primary: () => primary,
+    ensurePrimary: () => {
+      if (!primary || primary.isDestroyed()) {
+        primary = options.createPrimaryWindow();
+      }
+      return primary;
+    },
     focus,
   });
   const setPrimaryWindow = (window: BrowserWindow) => {

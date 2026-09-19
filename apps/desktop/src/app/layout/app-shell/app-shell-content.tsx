@@ -7,12 +7,15 @@ import { ChatDockActions } from "../chat-dock-actions";
 import {
   type ChatDockVisibility,
   closedChatDockVisibility,
+  useDockGeometry,
 } from "../chat-dock-geometry";
 import { ChatDockLauncher } from "../chat-dock-launcher";
+import { resolveChatDockPinLayout } from "../chat-dock-sizing";
 import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
 import { RightEditorPanel } from "../right-editor-panel";
 import { LeftSidebar, ResizableSidebarSlot, ResizeSeparator } from "../sidebar";
-import { MIN_CHAT_WIDTH } from "./panel-geometry";
+import { useChatDockViewportWidth } from "../use-chat-dock-viewport";
+import { MIN_CHAT_WIDTH, PANEL_SEPARATOR_WIDTH } from "./panel-geometry";
 
 interface AppShellContentProps {
   contentRowRef: Ref<HTMLElement>;
@@ -20,10 +23,10 @@ interface AppShellContentProps {
   leftWidth: number;
   isRightPanelOpen: boolean;
   isRightPanelMaximized: boolean;
+  isPanelFullWidth: boolean;
   isRightPanelCompact: boolean;
   rightWidth: number;
   appearanceSettings: AppearanceSettings;
-  chatNode: ReactNode;
   splitChatNode: ReactNode;
   chatDockVisibility: ChatDockVisibility;
   isChatDockPinned: boolean;
@@ -42,10 +45,10 @@ export function AppShellContent({
   leftWidth,
   isRightPanelOpen,
   isRightPanelMaximized,
+  isPanelFullWidth,
   isRightPanelCompact,
   rightWidth,
   appearanceSettings,
-  chatNode,
   splitChatNode,
   chatDockVisibility,
   isChatDockPinned,
@@ -62,9 +65,26 @@ export function AppShellContent({
     transferring: busy,
     toggleVisibility,
   } = useChatWindowActions();
+  const dock = useDockGeometry();
+  const dockViewportWidth = useChatDockViewportWidth();
+  const pinLayout = resolveChatDockPinLayout(
+    dockViewportWidth,
+    dock.geometry.width,
+  );
   const compactChatOpen = chatDockVisibility === "open";
   const isCompact = isRightPanelCompact && !isRightPanelMaximized;
-  const isPanelFullWidth = isRightPanelMaximized || isCompact || detached;
+  const chatOverlayInset =
+    isRightPanelOpen && !isPanelFullWidth
+      ? rightWidth + PANEL_SEPARATOR_WIDTH
+      : 0;
+  const editorOverlayInset =
+    !detached &&
+    isRightPanelMaximized &&
+    compactChatOpen &&
+    isChatDockPinned &&
+    pinLayout.canPin
+      ? pinLayout.width
+      : 0;
   return (
     <main
       className="relative flex min-h-0 flex-1 overflow-hidden bg-app"
@@ -77,9 +97,13 @@ export function AppShellContent({
             "flex min-w-0 overflow-hidden bg-app",
             isPanelFullWidth
               ? "flex-1"
-              : "absolute inset-y-0 end-0 z-40 max-w-full shadow-chat-panel",
+              : "absolute inset-y-0 end-0 z-40 max-w-full",
           )}
-          style={isPanelFullWidth ? undefined : { width: rightWidth + 1 }}
+          style={
+            isPanelFullWidth
+              ? { paddingInlineEnd: editorOverlayInset }
+              : { width: rightWidth + PANEL_SEPARATOR_WIDTH }
+          }
         >
           {isPanelFullWidth ? null : (
             <ResizeSeparator
@@ -93,6 +117,7 @@ export function AppShellContent({
               appearanceSettings={appearanceSettings}
               onAddContextToChat={onAddContextToChat}
               onInsertTextToChat={onInsertTextToChat}
+              overlayInset={editorOverlayInset}
               reserveTrafficLights={isPanelFullWidth}
             />
           </div>
@@ -108,7 +133,10 @@ export function AppShellContent({
           )}
           inert={busy || (isCompact && !compactChatOpen)}
           data-testid="shell-chat-surface"
-          style={{ width: isCompact ? MIN_CHAT_WIDTH + 2 : "100%" }}
+          style={{
+            width: isCompact ? MIN_CHAT_WIDTH + 2 : "100%",
+            paddingInlineEnd: chatOverlayInset,
+          }}
         >
           <ResizableSidebarSlot
             isOpen={isLeftSidebarOpen}
@@ -119,8 +147,17 @@ export function AppShellContent({
           >
             <LeftSidebar />
           </ResizableSidebarSlot>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            {detached ? <DetachedChatPlaceholder /> : splitChatNode}
+          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+            <div
+              className="h-full"
+              style={
+                chatOverlayInset
+                  ? { minWidth: `calc(100% + ${chatOverlayInset}px)` }
+                  : undefined
+              }
+            >
+              {detached ? <DetachedChatPlaceholder /> : splitChatNode}
+            </div>
           </div>
           {isCompact && compactChatOpen ? (
             <div className="absolute top-1 end-1 z-50 bg-chat-canvas">
@@ -154,6 +191,7 @@ export function AppShellContent({
         <ChatDock
           visibility={chatDockVisibility}
           pinned={isChatDockPinned}
+          dock={dock}
           onOpen={() => onChatDockVisibilityChange("open")}
           onClose={() =>
             onChatDockVisibilityChange(
@@ -164,7 +202,7 @@ export function AppShellContent({
           onPinnedChange={onChatDockPinnedChange}
         >
           <div className="h-full" inert={busy}>
-            {chatDockVisibility === "open" ? chatNode : null}
+            {chatDockVisibility === "open" ? splitChatNode : null}
           </div>
         </ChatDock>
       ) : null}
