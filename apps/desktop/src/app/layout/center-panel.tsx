@@ -49,7 +49,6 @@ import {
   updateQueuedInputAtom,
   useSessionMessages,
 } from "@/features/agent";
-import { annotationsAtom } from "@/features/browser";
 import {
   activeConversationIdAtom,
   ConversationDetail,
@@ -122,6 +121,7 @@ import {
   useSessionSwitchMetrics,
 } from "./center-panel-data";
 import { resolvePaneCenterSurface } from "./center-panel-surface";
+import { chatBrowserAnnotationsAtom } from "./chat-window/chat-browser-context";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
 interface CenterPanelProps {
@@ -410,7 +410,7 @@ export function CenterPanel({
       );
     }
   };
-  const annotations = useAtomValue(annotationsAtom);
+  const annotations = useAtomValue(chatBrowserAnnotationsAtom);
 
   useSessionSwitchMetrics(
     activeSession,

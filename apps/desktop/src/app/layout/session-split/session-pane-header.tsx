@@ -12,6 +12,7 @@ interface SessionPaneHeaderProps {
   canClose: boolean;
   isFocused: boolean;
   occupiesTitlebar?: boolean;
+  endInset?: number;
   title: string;
   onClose(): void;
   onCloseAll(): void;
@@ -23,6 +24,7 @@ export function SessionPaneHeader({
   canClose,
   isFocused,
   occupiesTitlebar = false,
+  endInset = 0,
   title,
   onClose,
   onCloseAll,
@@ -40,6 +42,7 @@ export function SessionPaneHeader({
   return (
     <div
       className={cn("flex h-8 shrink-0 items-center gap-1 px-2", surfaceClass)}
+      style={{ paddingInlineEnd: endInset || undefined }}
     >
       <div
         className={cn(

@@ -206,6 +206,13 @@
     "newSession": "New session",
     "right": "Split Right"
   },
+  "window": {
+    "detach": "Open in a separate window",
+    "detached": "Chat is open in a separate window",
+    "retry": "Retry",
+    "return": "Move back to main window",
+    "show": "Show chat window"
+  },
   "workspace": {
     "dropFolderDescription": "Release to open it as a project.",
     "dropFolderTitle": "Drop folder to open",

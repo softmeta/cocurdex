@@ -1,10 +1,8 @@
-import { isContextAttachment, type MessageAttachment } from "@cocurdex/shared";
+import type { MessageAttachment } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Maximize2, Minimize2, PanelRight, Settings } from "lucide-react";
 import type { Ref } from "react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { ChatComposerHandle } from "@/features/composer";
 import { setChatComposerAttachmentAtom } from "@/features/editor";
 import {
   OnboardingView,
@@ -21,7 +19,7 @@ import type {
   NotificationSettings,
   ThemeMode,
 } from "@/features/settings";
-import { NetworkProxyStatusButton, SettingsScreen } from "@/features/settings";
+import { SettingsScreen } from "@/features/settings";
 import {
   openWorkspaceByPathAtom,
   pickHostDirectoryAtom,
@@ -32,34 +30,28 @@ import {
 import type { LanguageMode } from "@/i18n/language";
 import type { WorkspaceFileEntry } from "@/lib";
 import { cn } from "@/lib";
+import { requestChatContextAtom } from "@/lib/chat-context-store";
 import { CenterPanel } from "../center-panel";
-import { ChatDock } from "../chat-dock";
-import {
-  type ChatDockVisibility,
-  closedChatDockVisibility,
-} from "../chat-dock-geometry";
+import { CHAT_DOCK_ACTIONS_INSET } from "../chat-dock-actions";
+import type { ChatDockVisibility } from "../chat-dock-geometry";
 import type { ChatLayoutMode } from "../chat-layout-preference";
-import { RightEditorPanel } from "../right-editor-panel";
+import { useChatBrowserContext } from "../chat-window/chat-browser-context";
+import { useChatContext } from "../chat-window/use-chat-context";
 import { SessionSplitLayout } from "../session-split";
 import {
-  LeftSidebar,
-  ResizableSidebarSlot,
-  ResizeSeparator,
   ScreenNavButtons,
   SearchPalette,
   SidebarToggleButton,
 } from "../sidebar";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "../titlebar-icon-button";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
+import { AppShellContent } from "./app-shell-content";
 import {
   TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_HEIGHT,
   TITLEBAR_TRAFFIC_LIGHT_RESERVE,
 } from "./app-shell-layout";
+import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
 import { BootSplash } from "./boot-splash";
 
@@ -81,6 +73,7 @@ interface AppShellFrameProps {
   isLeftSidebarPreferredOpen: boolean;
   isRightPanelOpen: boolean;
   isRightPanelMaximized: boolean;
+  isRightPanelCompact: boolean;
   chatDockVisibility: ChatDockVisibility;
   isChatDockPinned: boolean;
   isSearchOpen: boolean;
@@ -127,6 +120,7 @@ export function AppShellFrame({
   isLeftSidebarPreferredOpen,
   isRightPanelOpen,
   isRightPanelMaximized,
+  isRightPanelCompact,
   chatDockVisibility,
   isChatDockPinned,
   isSearchOpen,
@@ -179,28 +173,27 @@ export function AppShellFrame({
     onboardingEnteredAtom,
   );
   const setSidebarTab = useSetAtom(sidebarTabAtom);
-  const composerRef = useRef<ChatComposerHandle>(null);
+  const composerRef = useChatContext(() => onChatDockVisibilityChange("open"));
+  useChatBrowserContext();
+  const requestChatContext = useSetAtom(requestChatContextAtom);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const handleAddContextToChat = useCallback(
     (attachment: MessageAttachment) => {
-      if (
-        isContextAttachment(attachment) &&
-        composerRef.current?.insertContextMention(attachment)
-      ) {
-        return true;
-      }
-
       setChatComposerAttachment(attachment);
-      return false;
+      return true;
     },
     [setChatComposerAttachment],
   );
-  const handleInsertTextToChat = useCallback((text: string) => {
-    return composerRef.current?.insertText(text) ?? false;
-  }, []);
+  const handleInsertTextToChat = useCallback(
+    (text: string) => {
+      requestChatContext({ kind: "text", text });
+      return true;
+    },
+    [requestChatContext],
+  );
 
   // Match CLI / "Open Folder": activate project and clear foreign session UI.
   const handleOpenDroppedWorkspace = useCallback(
@@ -225,6 +218,7 @@ export function AppShellFrame({
   // floating dock. Only one mount point renders it at a time (center when
   // split, dock when the editor is fullscreen), so chat state and composerRef
   // survive the switch. In the dock it drops the titlebar spacer.
+  const isPanelFullWidth = isRightPanelMaximized || isRightPanelCompact;
   const chatNode = (
     <CenterPanel
       composerRef={composerRef}
@@ -233,6 +227,11 @@ export function AppShellFrame({
   );
   const splitChatNode = (
     <SessionSplitLayout
+      headerEndInset={
+        isRightPanelCompact && !isRightPanelMaximized
+          ? CHAT_DOCK_ACTIONS_INSET
+          : 0
+      }
       composerRef={composerRef}
       hideTitlebarSpacer={isRightPanelMaximized}
     />
@@ -313,7 +312,7 @@ export function AppShellFrame({
                 className={cn(
                   // Vertically center size-6 pills in TITLEBAR_HEIGHT (no mt).
                   "app-no-drag items-center gap-1",
-                  isRightPanelMaximized ? "hidden" : "flex",
+                  isPanelFullWidth ? "hidden" : "flex",
                 )}
               >
                 <SidebarToggleButton
@@ -349,124 +348,35 @@ export function AppShellFrame({
             />
           </header>
 
-          <div
-            className="app-no-drag absolute top-0 right-0 z-[60] flex items-center justify-end gap-1 px-3"
-            data-testid="titlebar-editor-toggle-region"
-            style={{
-              height: TITLEBAR_HEIGHT,
-              width: TITLEBAR_EDITOR_TOGGLE_WIDTH,
-            }}
-          >
-            <NetworkProxyStatusButton />
-            {isRightPanelOpen ? (
-              <TitlebarIconButton
-                active={isRightPanelMaximized}
-                aria-label={
-                  isRightPanelMaximized
-                    ? t("editor:actions.exitEditorFullscreen")
-                    : t("editor:actions.enterEditorFullscreen")
-                }
-                cursor="default"
-                onClick={onToggleRightPanelMaximize}
-              >
-                {isRightPanelMaximized ? (
-                  <Minimize2 className={TITLEBAR_ICON_GLYPH_CLASS} />
-                ) : (
-                  <Maximize2 className={TITLEBAR_ICON_GLYPH_CLASS} />
-                )}
-              </TitlebarIconButton>
-            ) : null}
-            <TitlebarIconButton
-              active={isRightPanelOpen}
-              aria-label={t("editor:actions.toggleEditorPanel")}
-              cursor="default"
-              onClick={onToggleRightPanel}
-            >
-              <PanelRight className={TITLEBAR_ICON_GLYPH_CLASS} />
-            </TitlebarIconButton>
-            <TitlebarIconButton
-              aria-label={t("sessions:sidebar.settings")}
-              cursor="default"
-              onClick={() => onOpenSettings()}
-            >
-              <Settings className={TITLEBAR_ICON_GLYPH_CLASS} />
-            </TitlebarIconButton>
-          </div>
+          <AppShellTitlebarActions
+            isRightPanelOpen={isRightPanelOpen}
+            isRightPanelMaximized={isRightPanelMaximized}
+            onToggleRightPanel={onToggleRightPanel}
+            onToggleRightPanelMaximize={onToggleRightPanelMaximize}
+            onOpenSettings={onOpenSettings}
+          />
 
-          <main
-            className="relative flex min-h-0 flex-1 overflow-hidden bg-app"
-            ref={contentRowRef}
-          >
-            <ResizableSidebarSlot
-              isOpen={isLeftSidebarOpen}
-              width={leftWidth}
-              onResizeMouseDown={(event) =>
-                onResizeHandleMouseDown("left", event)
-              }
-            >
-              <LeftSidebar />
-            </ResizableSidebarSlot>
-
-            {isRightPanelMaximized ? null : (
-              <div className="flex-1 overflow-hidden">{splitChatNode}</div>
-            )}
-
-            {isRightPanelOpen ? (
-              <>
-                {isRightPanelMaximized ? null : (
-                  <ResizeSeparator
-                    testId="panel-separator"
-                    onMouseDown={(event) =>
-                      onResizeHandleMouseDown("right", event)
-                    }
-                  />
-                )}
-                <div
-                  className={
-                    // min-w-0: allow this flex item to shrink when the pinned
-                    // chat dock grows (default min-width:auto is content-sized
-                    // and Monaco long lines block the drag-left resize).
-                    isRightPanelMaximized
-                      ? "min-w-0 flex-1 overflow-hidden"
-                      : "shrink-0"
-                  }
-                  style={
-                    isRightPanelMaximized ? undefined : { width: rightWidth }
-                  }
-                >
-                  <RightEditorPanel
-                    onClose={onToggleRightPanel}
-                    appearanceSettings={appearanceSettings}
-                    onAddContextToChat={handleAddContextToChat}
-                    onInsertTextToChat={handleInsertTextToChat}
-                    reserveTrafficLights={isRightPanelMaximized}
-                  />
-                </div>
-              </>
-            ) : null}
-
-            {/*
-              Mount inside main so pin mode can join the flex row and squeeze
-              the editor; floating mode still uses absolute positioning within
-              this relative main and does not take flex space.
-            */}
-            {isRightPanelMaximized ? (
-              <ChatDock
-                visibility={chatDockVisibility}
-                pinned={isChatDockPinned}
-                onOpen={() => onChatDockVisibilityChange("open")}
-                onClose={() =>
-                  onChatDockVisibilityChange(
-                    closedChatDockVisibility(hideFabWhenClosed),
-                  )
-                }
-                onHideFab={() => onChatDockVisibilityChange("hidden")}
-                onPinnedChange={onChatDockPinnedChange}
-              >
-                {chatDockVisibility === "open" ? chatNode : null}
-              </ChatDock>
-            ) : null}
-          </main>
+          <AppShellContent
+            isRightPanelCompact={isRightPanelCompact}
+            contentRowRef={contentRowRef}
+            isLeftSidebarOpen={isLeftSidebarOpen}
+            leftWidth={leftWidth}
+            isRightPanelOpen={isRightPanelOpen}
+            isRightPanelMaximized={isRightPanelMaximized}
+            rightWidth={rightWidth}
+            appearanceSettings={appearanceSettings}
+            chatNode={chatNode}
+            splitChatNode={splitChatNode}
+            chatDockVisibility={chatDockVisibility}
+            isChatDockPinned={isChatDockPinned}
+            hideFabWhenClosed={hideFabWhenClosed}
+            onResizeHandleMouseDown={onResizeHandleMouseDown}
+            onToggleRightPanel={onToggleRightPanel}
+            onAddContextToChat={handleAddContextToChat}
+            onInsertTextToChat={handleInsertTextToChat}
+            onChatDockVisibilityChange={onChatDockVisibilityChange}
+            onChatDockPinnedChange={onChatDockPinnedChange}
+          />
         </div>
 
         <SearchPalette

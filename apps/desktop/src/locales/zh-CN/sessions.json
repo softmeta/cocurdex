@@ -206,6 +206,13 @@
     "newSession": "新会话",
     "right": "向右分屏"
   },
+  "window": {
+    "detach": "在独立窗口中打开",
+    "detached": "聊天已在独立窗口中打开",
+    "retry": "重试",
+    "return": "移回主窗口",
+    "show": "显示聊天窗口"
+  },
   "workspace": {
     "dropFolderDescription": "松开即可作为项目打开。",
     "dropFolderTitle": "拖入文件夹以打开",

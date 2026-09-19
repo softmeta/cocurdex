@@ -5,6 +5,7 @@ export {
   activeConversationIdAtom,
   conversationsAtom,
   conversationsLoadedAtom,
+  loadConversationMessagesAtom,
   removeConversationAtom,
   selectConversationAtom,
   upsertConversationAtom,

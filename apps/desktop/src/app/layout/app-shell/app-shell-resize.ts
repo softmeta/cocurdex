@@ -7,18 +7,20 @@ import {
   persistRightWidth,
 } from "../chat-layout-preference";
 import { MAX_LEFT, MIN_LEFT } from "./app-shell-layout";
+import {
+  clampPanelWidth,
+  MIN_CHAT_WIDTH,
+  MIN_RIGHT_WIDTH,
+  PANEL_SEPARATOR_WIDTH,
+  resolveCompactPanel,
+} from "./panel-geometry";
 
-const MIN_CENTER = 380;
-export const MIN_RIGHT = 460;
-const SEPARATOR_COUNT = 2;
-const SEPARATOR_WIDTH = 1;
+export const MIN_RIGHT = MIN_RIGHT_WIDTH;
 
 export const DEFAULT_LEFT = 240;
-export const DEFAULT_RIGHT = 280;
+export const DEFAULT_RIGHT = MIN_RIGHT;
 export const LEFT_SIDEBAR_COLLAPSE_WIDTH =
-  MIN_LEFT + MIN_CENTER + SEPARATOR_WIDTH;
-export const RIGHT_PANEL_COLLAPSE_WIDTH =
-  MIN_LEFT + MIN_CENTER + MIN_RIGHT + SEPARATOR_COUNT * SEPARATOR_WIDTH;
+  MIN_LEFT + MIN_CHAT_WIDTH + PANEL_SEPARATOR_WIDTH;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -30,51 +32,26 @@ export function getContainerWidth(container: HTMLElement | null) {
 
 export function getInitialContentWidth() {
   if (typeof window === "undefined") {
-    return RIGHT_PANEL_COLLAPSE_WIDTH;
+    return 1440;
   }
 
   return window.innerWidth;
 }
 
-function getMaxLeftWidth(totalWidth: number, rightWidth: number) {
-  // Remaining-space max (leave room for center + right), then absolute cap so
-  // a wide window cannot drag the session rail past MAX_LEFT.
+function getMaxLeftWidth(totalWidth: number) {
   const layoutMax = Math.max(
     MIN_LEFT,
-    totalWidth - rightWidth - MIN_CENTER - SEPARATOR_COUNT * SEPARATOR_WIDTH,
+    totalWidth - MIN_CHAT_WIDTH - PANEL_SEPARATOR_WIDTH,
   );
   return Math.min(MAX_LEFT, layoutMax);
 }
 
-function getMaxRightWidth(totalWidth: number, leftWidth: number) {
-  return Math.max(
-    MIN_RIGHT,
-    totalWidth - leftWidth - MIN_CENTER - SEPARATOR_COUNT * SEPARATOR_WIDTH,
-  );
+export function clampLeftWidth(nextLeftWidth: number, totalWidth: number) {
+  return clamp(nextLeftWidth, MIN_LEFT, getMaxLeftWidth(totalWidth));
 }
 
-export function clampLeftWidth(
-  nextLeftWidth: number,
-  totalWidth: number,
-  rightWidth: number,
-) {
-  return clamp(
-    nextLeftWidth,
-    MIN_LEFT,
-    getMaxLeftWidth(totalWidth, rightWidth),
-  );
-}
-
-export function clampRightWidth(
-  nextRightWidth: number,
-  totalWidth: number,
-  leftWidth: number,
-) {
-  return clamp(
-    nextRightWidth,
-    MIN_RIGHT,
-    getMaxRightWidth(totalWidth, leftWidth),
-  );
+export function clampRightWidth(nextRightWidth: number, totalWidth: number) {
+  return clampPanelWidth(nextRightWidth, totalWidth);
 }
 
 interface AppShellResizeOptions {
@@ -104,36 +81,27 @@ export function useAppShellResize({
   isRightPanelOpen,
   setRightPanelResizing,
 }: AppShellResizeOptions) {
-  const [contentWidth, setContentWidth] = useState(getInitialContentWidth);
+  const [viewport, setViewport] = useState(() => {
+    const width = getInitialContentWidth();
+    return { width, compact: resolveCompactPanel(width, false) };
+  });
+  const contentWidth = viewport.width;
   const [leftWidth, setLeftWidth] = useState(getInitialLeftWidth);
   const [rightWidth, setRightWidth] = useState(getInitialRightWidth);
+  const effectiveRightWidth = clampPanelWidth(rightWidth, contentWidth);
+  const effectiveLeftWidth = clampLeftWidth(leftWidth, contentWidth);
   const contentRowRef = useRef<HTMLElement | null>(null);
   const leftWidthRef = useRef(getInitialLeftWidth());
-  const rightWidthRef = useRef(getInitialRightWidth());
-  const effectiveLeftWidthRef = useRef(0);
-  const effectiveRightWidthRef = useRef(0);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
 
-  leftWidthRef.current = leftWidth;
-  rightWidthRef.current = rightWidth;
+  leftWidthRef.current = effectiveLeftWidth;
 
   const syncContentWidth = useCallback((totalWidth: number) => {
-    setContentWidth(totalWidth);
-    setLeftWidth(
-      clampLeftWidth(
-        leftWidthRef.current,
-        totalWidth,
-        effectiveRightWidthRef.current,
-      ),
-    );
-    setRightWidth(
-      clampRightWidth(
-        rightWidthRef.current,
-        totalWidth,
-        effectiveLeftWidthRef.current,
-      ),
-    );
+    setViewport((previous) => ({
+      width: totalWidth,
+      compact: resolveCompactPanel(totalWidth, previous.compact),
+    }));
   }, []);
 
   const contentRowCallbackRef = useCallback(
@@ -176,10 +144,10 @@ export function useAppShellResize({
       const startWidth =
         target === "left"
           ? isLeftSidebarOpen
-            ? leftWidth
+            ? effectiveLeftWidth
             : 0
           : isRightPanelOpen
-            ? rightWidth
+            ? effectiveRightWidth
             : 0;
 
       dragCleanupRef.current = beginColumnResize(event, {
@@ -188,17 +156,9 @@ export function useAppShellResize({
         clamp: (next) => {
           const totalWidth = getContainerWidth(contentRowRef.current);
           if (target === "left") {
-            return clampLeftWidth(
-              next,
-              totalWidth,
-              effectiveRightWidthRef.current,
-            );
+            return clampLeftWidth(next, totalWidth);
           }
-          return clampRightWidth(
-            next,
-            totalWidth,
-            effectiveLeftWidthRef.current,
-          );
+          return clampRightWidth(next, totalWidth);
         },
         onWidthChange: (next) => {
           if (target === "left") {
@@ -227,35 +187,24 @@ export function useAppShellResize({
     [
       isLeftSidebarOpen,
       isRightPanelOpen,
-      leftWidth,
-      rightWidth,
+      effectiveLeftWidth,
+      effectiveRightWidth,
       setRightPanelResizing,
     ],
   );
 
-  const restoreLeftWidth = (effectiveRightWidth: number) => {
+  const restoreLeftWidth = () => {
     const totalWidth = getContainerWidth(contentRowRef.current);
-    setLeftWidth(
-      clampLeftWidth(leftWidthRef.current, totalWidth, effectiveRightWidth),
-    );
-  };
-
-  const restoreRightWidth = (effectiveLeftWidth: number) => {
-    const totalWidth = getContainerWidth(contentRowRef.current);
-    setRightWidth(
-      clampRightWidth(rightWidthRef.current, totalWidth, effectiveLeftWidth),
-    );
+    setLeftWidth(clampLeftWidth(leftWidthRef.current, totalWidth));
   };
 
   return {
     contentRowCallbackRef,
     contentWidth,
-    effectiveLeftWidthRef,
-    effectiveRightWidthRef,
     handleResizeMouseDown,
-    leftWidth,
+    leftWidth: effectiveLeftWidth,
     restoreLeftWidth,
-    restoreRightWidth,
-    rightWidth,
+    rightWidth: effectiveRightWidth,
+    isRightPanelCompact: isRightPanelOpen && viewport.compact,
   };
 }

@@ -34,6 +34,7 @@ import {
   markSessionSwitch,
   measureSessionSwitch,
 } from "@/lib";
+import { useChatReadingPosition } from "@/lib/use-chat-reading-position";
 import type { ToolCallPreviewLocation } from "../tool-call";
 import { getActivityState } from "./chat-activity";
 import { resolveJumpButton } from "./chat-scroll";
@@ -270,6 +271,15 @@ export function ChatView({
     userMessageRefs,
     viewportRef,
   });
+  useChatReadingPosition(
+    `session:${sessionId ?? ""}`,
+    () => timelineScrollRef.current?.readPosition() ?? null,
+    (position) => {
+      if (!timelineScrollRef.current || !isInitialBottomSettled) return false;
+      markUserScrollStart(-1);
+      return timelineScrollRef.current.restorePosition(position);
+    },
+  );
   // Sending a new prompt re-engages the bottom lock and jumps to the end —
   // the user is starting a new turn and expects to see the response, even
   // if they scrolled up to read history. We can't scroll synchronously here
@@ -484,7 +494,7 @@ export function ChatView({
   });
 
   return (
-    <section className="flex h-full flex-col bg-chat-canvas">
+    <section className="@container/chat flex h-full flex-col bg-chat-canvas">
       <div className="relative flex-1 overflow-hidden">
         <UserMessageNavigation
           activeMessageId={activeUserNavigationMessageId}
@@ -493,7 +503,7 @@ export function ChatView({
         />
         <ScrollArea
           className={cn(
-            "h-full px-2 md:px-3 xl:px-6",
+            "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
             !isInitialBottomSettled && "opacity-0",
           )}
           viewportProps={{

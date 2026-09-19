@@ -59,11 +59,13 @@ function SessionPaneFrame({
 interface SessionSplitLayoutProps {
   composerRef?: Ref<ChatComposerHandle>;
   hideTitlebarSpacer?: boolean;
+  headerEndInset?: number;
 }
 
 export function SessionSplitLayout({
   composerRef,
   hideTitlebarSpacer = false,
+  headerEndInset = 0,
 }: SessionSplitLayoutProps) {
   const layout = useAtomValue(sessionSplitLayoutAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -144,6 +146,7 @@ export function SessionSplitLayout({
   const renderNode = (
     node: SessionSplitNode,
     occupiesTitlebar: boolean,
+    touchesEnd = true,
   ): ReactNode => {
     if (node.type === "split") {
       const firstId = `${node.id}-a`;
@@ -177,7 +180,11 @@ export function SessionSplitLayout({
             id={firstId}
             minSize={15}
           >
-            {renderNode(node.first, occupiesTitlebar)}
+            {renderNode(
+              node.first,
+              occupiesTitlebar,
+              touchesEnd && node.direction !== "right",
+            )}
           </ResizablePanel>
           <ResizableHandle />
           <ResizablePanel
@@ -189,6 +196,7 @@ export function SessionSplitLayout({
             {renderNode(
               node.second,
               occupiesTitlebar && node.direction === "right",
+              touchesEnd,
             )}
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -199,6 +207,7 @@ export function SessionSplitLayout({
     return (
       <SessionPaneFrame onActivate={() => handleActivate(node.pane)}>
         <SessionPaneHeader
+          endInset={occupiesTitlebar && touchesEnd ? headerEndInset : 0}
           canClose={paneCount > 1}
           isFocused={isFocused}
           occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}

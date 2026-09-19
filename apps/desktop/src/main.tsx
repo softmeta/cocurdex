@@ -1,15 +1,30 @@
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { TooltipProvider } from "@/components/ui";
 import { i18n } from "@/i18n";
 import { applyPlatformAttribute, desktopApi } from "@/lib";
-import { App } from "./app/App";
+
 import "./styles/globals.css";
 
 // Tag the platform before first paint so platform-conditional styling (e.g.
 // native scrollbar treatment in base.css) applies without a flash.
 applyPlatformAttribute();
+
+const App = lazy(async () => {
+  const { syncInitialPreferences } = await import(
+    "./app/layout/app-shell/app-shell-preferences"
+  );
+  syncInitialPreferences();
+  if (new URLSearchParams(window.location.search).get("window") === "chat") {
+    const { DetachedChatApp } = await import(
+      "./app/layout/chat-window/detached-chat-app"
+    );
+    return { default: DetachedChatApp };
+  }
+  const { App } = await import("./app/App");
+  return { default: App };
+});
 
 const rootElement = document.getElementById("root");
 
@@ -47,7 +62,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
       <TooltipProvider>
-        <App />
+        <Suspense fallback={null}>
+          <App />
+        </Suspense>
       </TooltipProvider>
     </I18nextProvider>
   </StrictMode>,

@@ -1,12 +1,24 @@
 import {
   type EditorViewRecord,
   isContextFileAttachment,
-  type MessageAttachment,
   remapPathUnderRoot,
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { bumpRightPanelRevealAtom } from "@/app/layout/right-panel-reveal";
+import {
+  chatComposerAttachmentAtom,
+  editorSelectionAttachmentAtom,
+} from "./editor-chat-context";
+
+export {
+  attachEditorSelectionToChatAtom,
+  chatComposerAttachmentAtom,
+  clearChatComposerAttachmentAtom,
+  editorSelectionAttachmentAtom,
+  setChatComposerAttachmentAtom,
+  setEditorSelectionAttachmentAtom,
+} from "./editor-chat-context";
 
 export interface EditorPreviewLocation {
   filePath: string;
@@ -21,10 +33,6 @@ export const activeFileAtom = atom<string | null>(null);
 // file tree opens a file here and reuses this one slot, so browsing files does
 // not pile up tabs. A double-click (or any permanent open) promotes it.
 export const previewFileAtom = atom<string | null>(null);
-export const editorSelectionAttachmentAtom = atom<MessageAttachment | null>(
-  null,
-);
-export const chatComposerAttachmentAtom = atom<MessageAttachment | null>(null);
 export const previewLocationsByFileAtom = atom<
   Record<string, EditorPreviewLocation | null>
 >({});
@@ -195,34 +203,6 @@ export const openFilePreviewAtom = atom(
 
 export const setActiveFileAtom = atom(null, (_get, set, filePath: string) => {
   set(activeFileAtom, filePath);
-});
-
-export const setEditorSelectionAttachmentAtom = atom(
-  null,
-  (_get, set, attachment: MessageAttachment | null) => {
-    set(editorSelectionAttachmentAtom, attachment);
-  },
-);
-
-export const setChatComposerAttachmentAtom = atom(
-  null,
-  (_get, set, attachment: MessageAttachment | null) => {
-    set(chatComposerAttachmentAtom, attachment);
-  },
-);
-
-export const attachEditorSelectionToChatAtom = atom(null, (get, set) => {
-  const selectionAttachment = get(editorSelectionAttachmentAtom);
-
-  if (!selectionAttachment) {
-    return;
-  }
-
-  set(chatComposerAttachmentAtom, selectionAttachment);
-});
-
-export const clearChatComposerAttachmentAtom = atom(null, (_get, set) => {
-  set(chatComposerAttachmentAtom, null);
 });
 
 export const bootstrapEditorViewsAtom = atom(

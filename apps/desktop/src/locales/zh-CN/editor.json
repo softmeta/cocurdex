@@ -1,11 +1,13 @@
 {
   "actions": {
     "addToChat": "添加到聊天",
+    "chatDockTemporarilyFloating": "窗口空间不足，聊天暂以浮窗显示，加宽后恢复停靠。点击可取消停靠。",
     "chatDockTitle": "聊天",
     "chatFabHint": "打开聊天。可拖动调整位置。悬停后点击关闭图标可隐藏此按钮（{{shortcut}} 再次打开）。",
     "closeChat": "关闭聊天",
     "closeChatSessions": "关闭会话列表",
     "closeFile": "关闭文件 {{fileName}}",
+    "detachedChatFabHint": "点击显示或隐藏独立聊天窗口。可拖动调整按钮位置。悬停后点击 × 隐藏按钮，{{shortcut}} 可恢复。",
     "edit": "编辑",
     "enterEditorFullscreen": "进入全屏",
     "exitEditorFullscreen": "退出全屏",
@@ -16,6 +18,7 @@
     "hideChatFabHint": "隐藏此按钮。{{shortcut}} 可再次显示。",
     "openChat": "打开聊天",
     "pinChatDock": "钉住聊天到侧边",
+    "pinChatDockNeedsSpace": "窗口太窄，暂时无法停靠聊天。请加宽窗口后重试。",
     "preview": "预览",
     "resizeChat": "调整聊天大小",
     "resizeExplorer": "调整资源管理器面板",
@@ -29,6 +32,7 @@
     "showTerminal": "终端",
     "toggleChat": "切换聊天",
     "toggleChatSessions": "切换会话列表",
+    "toggleDetachedChat": "显示或隐藏独立聊天窗口",
     "toggleEditorPanel": "切换编辑器面板",
     "toggleSidebar": "切换侧边栏",
     "unpinChatDock": "取消钉住聊天"

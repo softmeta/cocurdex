@@ -12,11 +12,6 @@ import {
   builtinProviders,
   getBuiltinProviders,
 } from "@earendil-works/pi-ai/providers/all";
-import {
-  listCocurdexBuiltinProviderIds,
-  listCocurdexBuiltinProviderModels,
-  listCocurdexBuiltinProviderTemplates,
-} from "./cocurdex-builtin-providers";
 
 // Models on any api Cocurdex doesn't drive yet are dropped from the catalog.
 const supportedApis = new Set<ProviderApi>(providerApis);
@@ -122,7 +117,7 @@ function mapPiModelToRecord(
 }
 
 export function listPiProviderTemplates(): ProviderTemplateRecord[] {
-  const piTemplates = builtinProviders()
+  return builtinProviders()
     .filter(isTemplateProvider)
     .map((provider) => ({
       id: provider.id,
@@ -130,24 +125,15 @@ export function listPiProviderTemplates(): ProviderTemplateRecord[] {
       baseUrl: getTemplateBaseUrl(provider),
       authMethods: getProviderAuthMethods(provider),
     }));
-
-  // Cocurdex extras first so product-specific presets stay visible near the
-  // top of the template strip before the long pi-ai catalog.
-  return [...listCocurdexBuiltinProviderTemplates(), ...piTemplates];
 }
 
 export function listPiBuiltInProviderIds(): string[] {
-  return [...listCocurdexBuiltinProviderIds(), ...getBuiltinProviders()];
+  return getBuiltinProviders();
 }
 
 export async function listPiProviderModels(
   config: Pick<ProviderConfigRecord, "id">,
 ): Promise<ProviderModelRecord[] | null> {
-  const cocurdexModels = listCocurdexBuiltinProviderModels(config.id);
-  if (cocurdexModels) {
-    return cocurdexModels;
-  }
-
   const provider = builtinProviders().find((item) => item.id === config.id);
   if (!provider || !isTemplateProvider(provider)) {
     return null;

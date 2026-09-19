@@ -231,7 +231,7 @@ export function ComposerDock({
   );
 
   return (
-    <div className="overflow-visible bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent px-2 pb-2 md:px-3 xl:px-6">
+    <div className="overflow-visible bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent px-2 pb-2 @lg/chat:px-3 @3xl/chat:px-6">
       {/* Composer sits slightly wider than the message column so the follow-up
           input has a bit more breathing room while messages stay readable. */}
       <div className="relative mx-auto flex w-full max-w-[780px] flex-col gap-2 overflow-visible">

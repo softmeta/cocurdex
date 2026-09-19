@@ -127,6 +127,7 @@ import type {
   WorktreeSettings,
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
+import type { ChatWindowApi } from "./chat-window-types";
 
 export type WorkspaceFileEntry = WorkspaceFileRecord;
 export type ProductSkillsStatus = ProductSkillsStatusResult;
@@ -566,6 +567,7 @@ export interface ProductApi {
  * {@link HostApi.capabilities} instead of calling blindly.
  */
 export interface HostApi {
+  readonly chatWindow: ChatWindowApi;
   readonly capabilities: HostCapabilities;
   /** Absolute user home directory (default terminal cwd without a workspace). */
   getHomeDir(): Promise<string>;

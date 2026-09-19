@@ -1,6 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import { beginColumnResize } from "@/components/use-column-resize";
 import { useMountEffect } from "@/lib";
+import {
+  CHAT_DOCK_MIN_WIDTH,
+  resolveChatDockPinLayout,
+} from "./chat-dock-sizing";
+
+export { CHAT_DOCK_MIN_WIDTH } from "./chat-dock-sizing";
 
 /*
  * Chat dock geometry + open/pin preference persistence.
@@ -17,7 +23,7 @@ import { useMountEffect } from "@/lib";
  *
  * When the app window shrinks, floating geometry is clamped so the card stays
  * fully visible (width/height only shrink, never grow back with the window).
- * Pinned mode only uses width and participates in the main flex row.
+ * Pinned mode only uses width and floats as a trailing-edge overlay.
  *
  * The app is always LTR (app-shell-preferences.ts forces dir="ltr"), so
  * physical right/bottom is safe.
@@ -94,7 +100,6 @@ export function nextChatDockVisibilityOnToggle(
   return "open";
 }
 
-export const CHAT_DOCK_MIN_WIDTH = 320;
 export const CHAT_DOCK_MIN_HEIGHT = 360;
 // Dock session-list drawer (floating + pinned). Leave room for chat content.
 export const SESSION_LIST_MIN_WIDTH = 180;
@@ -105,9 +110,6 @@ const SESSION_LIST_CHAT_MIN = 160;
 // Keep the floating card clear of the OS titlebar (top) and window edges.
 const EDGE_MARGIN = 8;
 const TOP_MARGIN = 40;
-// Leave room for the right panel when the dock is pinned.
-// Keep in sync with NotesView: sidebar 220 + editor strip 280.
-const PINNED_EDITOR_MIN = 500;
 // IconButton size="lg" → Button icon-lg → size-9 (36px). Used when measuring
 // the FAB is unavailable (window resize clamp).
 export const CHAT_FAB_SIZE_PX = 36;
@@ -227,13 +229,6 @@ function persistGeometry(next: DockGeometry): void {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
-}
-
-function maxPinnedWidth(): number {
-  return Math.max(
-    CHAT_DOCK_MIN_WIDTH,
-    window.innerWidth - PINNED_EDITOR_MIN - EDGE_MARGIN,
-  );
 }
 
 function geometryEquals(a: DockGeometry, b: DockGeometry): boolean {
@@ -405,9 +400,11 @@ export function useDockGeometry() {
       const start = geometry;
       beginColumnResize(event, {
         edge: "inline-start",
-        startWidth: start.width,
+        startWidth: resolveChatDockPinLayout(window.innerWidth, start.width)
+          .width,
         stopPropagation: true,
-        clamp: (next) => clamp(next, CHAT_DOCK_MIN_WIDTH, maxPinnedWidth()),
+        clamp: (next) =>
+          resolveChatDockPinLayout(window.innerWidth, next).width,
         onWidthChange: (width) => {
           setGeometry({ ...start, width });
         },

@@ -65,21 +65,11 @@ export interface RightPanelVisibility {
   isGlobal: boolean;
 }
 
-/**
- * Derive whether the right editor panel renders and whether it must take over
- * the whole window.
- *
- * Below the split-layout width the panel cannot fit beside the chat/center, so
- * the only way to honor an open toggle is to render it globally. Without this,
- * `shouldShow` was gated on `canSplit` and toggling the panel open on a narrow
- * window flipped the state but rendered nothing, making the toggle look dead.
- */
 export function resolveRightPanelVisibility(params: {
   isOpen: boolean;
   isMaximized: boolean;
-  canSplit: boolean;
 }): RightPanelVisibility {
   const shouldShow = params.isOpen;
-  const isGlobal = shouldShow && (params.isMaximized || !params.canSplit);
+  const isGlobal = shouldShow && params.isMaximized;
   return { shouldShow, isGlobal };
 }

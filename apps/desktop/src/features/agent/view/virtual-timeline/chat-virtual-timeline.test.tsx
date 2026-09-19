@@ -122,6 +122,41 @@ describe("virtual conversation rendering", () => {
     });
   });
 
+  it("restores the same reading anchor after remounting with a different row height", async () => {
+    const source = mountTimeline();
+    act(() => {
+      source.scrollRef.current?.scrollToUserMessage("message-500");
+    });
+    await waitFor(() =>
+      expect(source.userMessageRefs.current["message-500"]).toBeTruthy(),
+    );
+    act(() => {
+      source.scrollRef.current?.cancelNavigation();
+      source.viewport.scrollTop += 100;
+      fireEvent.scroll(source.viewport);
+    });
+    const position = source.scrollRef.current?.readPosition();
+    expect(position?.atBottom).toBe(false);
+    expect(position?.anchorId).toBeTruthy();
+    if (!position?.anchorId) throw new Error("Missing reading anchor");
+    cleanup();
+    layout.heights.set(position.anchorId, 480);
+    const target = mountTimeline();
+    await waitFor(() => {
+      let restored = false;
+      act(() => {
+        restored = target.scrollRef.current?.restorePosition(position) ?? false;
+        fireEvent.scroll(target.viewport);
+      });
+      expect(restored).toBe(true);
+    });
+    const row = getConversationRow(position.anchorId);
+    expect(row.getBoundingClientRect().top).toBeCloseTo(
+      -480 * (position.anchorFraction ?? 0),
+      0,
+    );
+  });
+
   it("handles an empty transcript without a navigation target", () => {
     const { scrollRef } = mountTimeline(0);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

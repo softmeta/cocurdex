@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui";
+import { ChatWindowMenuItem } from "../chat-window";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
   TitlebarIconButton,
@@ -65,6 +66,8 @@ export function SessionSplitMenu({
           <SquareSplitVertical className="size-4" />
           {t("split.right")}
         </AppDropdownItem>
+        <DropdownMenuSeparator />
+        <ChatWindowMenuItem />
         {canClose ? (
           <>
             <DropdownMenuSeparator />
