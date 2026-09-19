@@ -575,7 +575,6 @@ export default interface Resources {
       };
       changeTypeFilter: "Filter by change type";
       checkpointUnavailable: "Turn contents are no longer available";
-      collapseAll: "Collapse all files";
       commit: "Commit";
       commitAndPush: "Commit and push";
       commitAndPushSuccess: "Committed and pushed";
@@ -593,7 +592,6 @@ export default interface Resources {
       discardAllConfirm_other: "Discard changes in {{count}} visible files? This cannot be undone.";
       discardChanges: "Discard changes";
       discardConfirm: "Discard all changes to {{file}}? This cannot be undone.";
-      expandAll: "Expand all files";
       fileCount_one: "{{count}} file";
       fileCount_other: "{{count}} files";
       fileTooLarge: "File too large to diff";
@@ -628,6 +626,8 @@ export default interface Resources {
       splitView: "Split view";
       stageAll: "Stage all";
       stageFile: "Stage file";
+      switchToListView: "Show files as a list";
+      switchToTreeView: "Show files as a tree";
       toggleFullFile: "Show full file";
       toggleWrap: "Toggle line wrap";
       treeSearch: "Filter changed files";

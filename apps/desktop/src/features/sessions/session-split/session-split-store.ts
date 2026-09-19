@@ -1,4 +1,7 @@
-import { atom } from "jotai";
+import { atom, useAtomValue } from "jotai";
+import { selectAtom } from "jotai/utils";
+import { useMemo } from "react";
+import { canSplitPane, type SessionPaneSize } from "./session-pane-size";
 import {
   clearPaneConversations,
   clearPaneSessions,
@@ -21,6 +24,56 @@ import {
 
 export const sessionSplitLayoutAtom = atom<SessionSplitNode>(createRootPane());
 export const focusedPaneIdAtom = atom<string>(ROOT_PANE_ID);
+
+const sessionPaneSizesAtom = atom<ReadonlyMap<string, SessionPaneSize>>(
+  new Map(),
+);
+
+export const setSessionPaneSizeAtom = atom(
+  null,
+  (get, set, payload: { paneId: string; size: SessionPaneSize | null }) => {
+    const sizes = get(sessionPaneSizesAtom);
+    if (payload.size === null) {
+      if (!sizes.has(payload.paneId)) {
+        return;
+      }
+      const next = new Map(sizes);
+      next.delete(payload.paneId);
+      set(sessionPaneSizesAtom, next);
+      return;
+    }
+    const current = sizes.get(payload.paneId);
+    if (
+      current?.width === payload.size.width &&
+      current.height === payload.size.height
+    ) {
+      return;
+    }
+    set(sessionPaneSizesAtom, new Map(sizes).set(payload.paneId, payload.size));
+  },
+);
+
+export const focusedPaneCanSplitRightAtom = atom((get) =>
+  canSplitPane(get(sessionPaneSizesAtom).get(get(focusedPaneIdAtom)), "right"),
+);
+
+export const focusedPaneCanSplitDownAtom = atom((get) =>
+  canSplitPane(get(sessionPaneSizesAtom).get(get(focusedPaneIdAtom)), "down"),
+);
+
+export function useCanSplitSessionPane(
+  paneId: string,
+  direction: SessionSplitDirection,
+) {
+  const paneCanSplitAtom = useMemo(
+    () =>
+      selectAtom(sessionPaneSizesAtom, (sizes) =>
+        canSplitPane(sizes.get(paneId), direction),
+      ),
+    [direction, paneId],
+  );
+  return useAtomValue(paneCanSplitAtom);
+}
 
 export const focusedSessionPaneAtom = atom((get) => {
   return findPane(get(sessionSplitLayoutAtom), get(focusedPaneIdAtom));
@@ -83,6 +136,13 @@ export const focusSessionPaneAtom = atom(null, (_get, set, paneId: string) => {
 export const splitFocusedPaneAtom = atom(
   null,
   (get, set, direction: SessionSplitDirection) => {
+    const canSplit =
+      direction === "down"
+        ? get(focusedPaneCanSplitDownAtom)
+        : get(focusedPaneCanSplitRightAtom);
+    if (!canSplit) {
+      return null;
+    }
     const result = splitPane(
       get(sessionSplitLayoutAtom),
       get(focusedPaneIdAtom),

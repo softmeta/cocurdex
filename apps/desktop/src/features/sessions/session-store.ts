@@ -606,7 +606,10 @@ export const openSessionInSplitAtom = atom(
     if (
       !findPaneIdBySessionId(get(sessionSplitLayoutAtom), payload.sessionId)
     ) {
-      set(splitFocusedPaneAtom, payload.direction);
+      const createdPane = set(splitFocusedPaneAtom, payload.direction);
+      if (!createdPane) {
+        return;
+      }
     }
     set(selectSessionAtom, payload.sessionId);
   },

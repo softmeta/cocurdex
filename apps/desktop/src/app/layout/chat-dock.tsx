@@ -193,6 +193,7 @@ export function ChatDock({
             className="bg-transparent pe-3"
             isFocused
             leading={leading}
+            paneId={focusedPaneId}
             title={paneTitle}
             trailing={headerTrailing}
             onSplitDown={() => splitPaneById(focusedPaneId, "down")}

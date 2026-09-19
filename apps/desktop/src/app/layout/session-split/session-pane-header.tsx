@@ -15,6 +15,7 @@ interface SessionPaneHeaderProps {
   occupiesTitlebar?: boolean;
   endInset?: number;
   startInset?: number;
+  paneId: string;
   title: string;
   /** Chrome owned by the surrounding shell, rendered inside this row. */
   leading?: ReactNode;
@@ -32,6 +33,7 @@ export function SessionPaneHeader({
   occupiesTitlebar = false,
   endInset = 0,
   startInset = 0,
+  paneId,
   title,
   leading,
   trailing,
@@ -70,6 +72,7 @@ export function SessionPaneHeader({
       >
         <SessionSplitMenu
           canClose={canClose}
+          paneId={paneId}
           onClose={onClose}
           onCloseAll={onCloseAll}
           onSplitDown={onSplitDown}

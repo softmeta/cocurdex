@@ -132,9 +132,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     () => computeDiffStats(filteredEntries),
     [filteredEntries],
   );
-  const allCollapsed =
-    filteredEntries.length > 0 &&
-    filteredEntries.every((entry) => folded.has(entry.path));
   const stagedState = useMemo(
     () => computeStagedState(filteredEntries),
     [filteredEntries],
@@ -159,16 +156,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const actionsEnabled = isMutableScope(activeScope);
   const canDiscardAll = actionsEnabled && filteredEntries.length > 0;
   const currentBranch = branches.find((branch) => branch.current)?.name ?? null;
-
-  // Toolbar toggle: collapse or expand every file at once.
-  const handleCollapseAll = useCallback(
-    (next: boolean) => {
-      setFolded(
-        next ? new Set(filteredEntries.map((entry) => entry.path)) : new Set(),
-      );
-    },
-    [filteredEntries],
-  );
 
   // Header chevron toggle: a folded file opens, an open file shuts, and a file
   // the stack has not mounted yet just opens.
@@ -508,7 +495,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           additions={stats.additions}
           branches={branches}
           canDiscardAll={canDiscardAll}
-          collapsed={allCollapsed}
           commits={commits}
           commitsLoading={commitsLoading}
           currentBranch={currentBranch}
@@ -520,7 +506,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           hasChanges={entries.length > 0}
           isLoading={isLoading || isActionPending || isCommitActionPending}
           onChangeTypeFilterChange={setChangeTypeFilter}
-          onCollapsedChange={handleCollapseAll}
           onDiffStyleChange={setDiffStyle}
           onDiscardAll={handleDiscardAll}
           onOpenCommits={handleOpenCommits}

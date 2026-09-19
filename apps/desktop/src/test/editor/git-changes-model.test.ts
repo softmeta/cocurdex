@@ -3,7 +3,9 @@ import {
   buildEntries,
   COLLAPSED_ENTRY_HEIGHT,
   estimateEntryHeight,
+  filterEntriesByPathQuery,
   type GitChangeEntry,
+  gitChangeMarker,
 } from "@/features/editor/git-changes-model";
 
 const CARD_CHROME = COLLAPSED_ENTRY_HEIGHT;
@@ -128,5 +130,57 @@ describe("estimateEntryHeight", () => {
     expect(estimated(entry)).toBeLessThan(
       estimated(entry, { expandUnchanged: true }) / 5,
     );
+  });
+});
+
+describe("gitChangeMarker", () => {
+  it("maps each change kind to git's letter and the matching tint", () => {
+    expect(gitChangeMarker("added")).toEqual({
+      className: "text-editor-git-added",
+      letter: "A",
+    });
+    expect(gitChangeMarker("deleted")).toEqual({
+      className: "text-editor-git-deleted",
+      letter: "D",
+    });
+    expect(gitChangeMarker("modified")).toEqual({
+      className: "text-editor-git-modified",
+      letter: "M",
+    });
+  });
+});
+
+describe("filterEntriesByPathQuery", () => {
+  const entries = buildEntries([
+    {
+      path: "src/Editor/Tabs.tsx",
+      changeType: "modified",
+      oldContents: "a\n",
+      newContents: "b\n",
+      omittedReason: null,
+      stagedState: "unstaged",
+    },
+    {
+      path: "src/notes.md",
+      changeType: "modified",
+      oldContents: "a\n",
+      newContents: "b\n",
+      omittedReason: null,
+      stagedState: "unstaged",
+    },
+  ]);
+
+  it("keeps every file while the query is blank", () => {
+    expect(filterEntriesByPathQuery(entries, "")).toHaveLength(2);
+    expect(filterEntriesByPathQuery(entries, "   ")).toHaveLength(2);
+  });
+
+  it("matches a path fragment case-insensitively", () => {
+    expect(
+      filterEntriesByPathQuery(entries, "editor/tabs").map((e) => e.path),
+    ).toEqual(["src/Editor/Tabs.tsx"]);
+    expect(
+      filterEntriesByPathQuery(entries, "NOTES").map((e) => e.path),
+    ).toEqual(["src/notes.md"]);
   });
 });

@@ -615,8 +615,11 @@ const MessageArticle = memo(function MessageArticle({
   const turnChangeSet = useTurnChangeSet(message.id);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const articleClassName = getMessageArticleClassName(message);
+  const hasAssistantBody =
+    message.content.trim().length > 0 || message.attachments.length > 0;
   const showAssistantActions =
     showActions &&
+    hasAssistantBody &&
     message.role === "assistant" &&
     !isReasoning &&
     !(isRunning && isStreamingLatest);

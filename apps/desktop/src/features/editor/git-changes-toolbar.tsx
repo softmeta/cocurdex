@@ -2,13 +2,11 @@ import type { TurnChangeSet } from "@cocurdex/shared";
 import {
   Columns2,
   FileCode,
-  FoldVertical,
   Funnel,
   PanelLeft,
   RefreshCw,
   Rows3,
   Undo2,
-  UnfoldVertical,
   WrapText,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -93,8 +91,6 @@ interface GitChangesToolbarProps {
   onWrapChange: (wrap: boolean) => void;
   expandUnchanged: boolean;
   onExpandUnchangedChange: (expandUnchanged: boolean) => void;
-  collapsed: boolean;
-  onCollapsedChange: (collapsed: boolean) => void;
   onRefresh: () => void;
   onStageAll: () => void;
   onUnstageAll: () => void;
@@ -175,8 +171,6 @@ export function GitChangesToolbar({
   onWrapChange,
   expandUnchanged,
   onExpandUnchangedChange,
-  collapsed,
-  onCollapsedChange,
   onRefresh,
   onStageAll,
   onUnstageAll,
@@ -223,17 +217,6 @@ export function GitChangesToolbar({
               }
               label={t("git.refresh")}
               onClick={onRefresh}
-            />
-            <ToolbarButton
-              icon={
-                collapsed ? (
-                  <UnfoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
-                ) : (
-                  <FoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
-                )
-              }
-              label={collapsed ? t("git.expandAll") : t("git.collapseAll")}
-              onClick={() => onCollapsedChange(!collapsed)}
             />
             <ToolbarButton
               active={diffStyle === "unified"}

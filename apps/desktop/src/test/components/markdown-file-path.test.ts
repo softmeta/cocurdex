@@ -268,6 +268,45 @@ describe("workspace file markdown links", () => {
     );
   });
 
+  it("unwraps a path-labeled file link that an agent wrapped in backticks", () => {
+    const input =
+      "- 新增 `[session-pane-size.ts](file:///Users/dev/apps/desktop/src/session-pane-size.ts)`：最小宽度。";
+    const out = rewriteMarkdownLocalFileLinks(input);
+    expect(out).not.toContain("`[");
+    expect(out).not.toContain("file://");
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/apps/desktop/src/session-pane-size.ts",
+    });
+    expect(out).toContain("[session-pane-size.ts](https://cocurdex.workspace/");
+  });
+
+  it("unwraps a backticked file link with a line range on both label and href", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "`[a.ts:12-20](file:///Users/dev/src/a.ts:12-20)`",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/src/a.ts",
+      startLine: 12,
+      endLine: 20,
+    });
+  });
+
+  it("keeps a backticked link whose label is prose", () => {
+    const input = "文档示例：`[local](src/a.ts)`，保持代码样式。";
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
+  it("keeps a backticked link to a non-file target", () => {
+    const input = "`[session-pane-size.ts](https://example.com/a.ts)`";
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
   it("rewrites paths with :line suffixes", () => {
     const out = rewriteMarkdownLocalFileLinks(
       "jump [here](apps/desktop/src/index.ts:42)",

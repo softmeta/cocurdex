@@ -11,6 +11,7 @@ import { Text } from "@/components/ui/text";
 import type { GitChangeKind, GitFileStagedState } from "@/lib";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "./copy-button";
+import { splitChangePath } from "./git-changes-model";
 import { GitChangeRowActions } from "./git-changes-row-actions";
 
 interface GitChangeRowHeaderProps {
@@ -59,10 +60,7 @@ export function GitChangeRowHeader({
   const { t } = useTranslation("editor");
   const { icon: ChangeIcon, className: iconClassName } =
     CHANGE_ICONS[changeType];
-  // Split so the directory can truncate while the filename stays visible.
-  const lastSlash = path.lastIndexOf("/");
-  const dir = lastSlash >= 0 ? path.slice(0, lastSlash + 1) : "";
-  const name = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+  const { dir, name } = splitChangePath(path);
 
   return (
     <div className="app-no-drag flex w-full min-w-0 items-center gap-2 rounded-control px-1 py-0.5 transition-colors hover:bg-editor-tab-hover-bg">

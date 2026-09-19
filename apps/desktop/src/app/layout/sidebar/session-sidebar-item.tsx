@@ -27,6 +27,8 @@ import {
   archiveSessionAtom,
   collectSessionSubtreeIds,
   deleteSessionAtom,
+  focusedPaneCanSplitDownAtom,
+  focusedPaneCanSplitRightAtom,
   openSessionInSplitAtom,
   sessionsAtom,
   updateSessionTitleAtom,
@@ -102,6 +104,8 @@ export function SessionSidebarItem({
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessions = useAtomValue(sessionsAtom);
+  const canSplitRight = useAtomValue(focusedPaneCanSplitRightAtom);
+  const canSplitDown = useAtomValue(focusedPaneCanSplitDownAtom);
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
   const selectedRole = session.agentRoleId
     ? (roles.find((role) => role.id === session.agentRoleId) ?? null)
@@ -327,6 +331,7 @@ export function SessionSidebarItem({
           {t("sidebar.rename")}
         </SidebarContextMenuItem>
         <SidebarContextMenuItem
+          disabled={!canSplitRight}
           icon={SquareSplitVertical}
           onClick={() =>
             openSessionInSplit({
@@ -338,6 +343,7 @@ export function SessionSidebarItem({
           {t("sidebar.splitRight")}
         </SidebarContextMenuItem>
         <SidebarContextMenuItem
+          disabled={!canSplitDown}
           icon={SquareSplitHorizontal}
           onClick={() =>
             openSessionInSplit({
