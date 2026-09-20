@@ -23,16 +23,13 @@ import { desktopApi, useResolvedTheme } from "@/lib";
 import { GitChangesBody } from "./git-changes-body";
 import {
   buildEntries,
-  computeChangeTypeCounts,
-  computeDiffStats,
   computeStagedState,
-  filterEntriesByChangeType,
-  type GitChangeTypeFilter,
+  type GitDiffStyle,
   toGitFileChangesFromTurn,
 } from "./git-changes-model";
 import { gitDiffScopeAtom, gitRevealAtom } from "./git-changes-store";
 import { useSyncWorkspaceGitChanges } from "./git-changes-sync";
-import { GitChangesToolbar, type GitDiffStyle } from "./git-changes-toolbar";
+import { GitChangesToolbar } from "./git-changes-toolbar";
 import {
   type GitDiffScope,
   isMutableScope,
@@ -88,8 +85,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     "none" | "expired" | "missing" | null
   >(null);
   const [diffStyle, setDiffStyle] = useState<GitDiffStyle>("unified");
-  const [changeTypeFilter, setChangeTypeFilter] =
-    useState<GitChangeTypeFilter>("all");
   const [wrap, setWrap] = useState(false);
   // When on, pierre paints every unchanged line so the diff is read as a full
   // file with changes highlighted (not just hunks + expandable gaps).
@@ -101,40 +96,11 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   // The file index is collapsible so the diffs can take the full panel width.
   const [treePanelVisible, setTreePanelVisible] = useState(true);
   const reveal = useAtomValue(gitRevealAtom);
-  const [appliedRevealToken, setAppliedRevealToken] = useState(0);
 
   // Build full-file diffs so pierre owns every line and can expand unchanged
   // context on demand (a partial patch leaves separators inert).
   const entries = useMemo(() => buildEntries(fileChanges), [fileChanges]);
-  const changeTypeCounts = useMemo(
-    () => computeChangeTypeCounts(entries),
-    [entries],
-  );
-  const filteredEntries = useMemo(
-    () => filterEntriesByChangeType(entries, changeTypeFilter),
-    [entries, changeTypeFilter],
-  );
-
-  // A reveal target the change-type filter hides must still be reachable. The
-  // rest of the reveal — unfolding, scrolling, mounting — belongs to the diff
-  // stack, which consumes the request.
-  if (reveal && reveal.token !== appliedRevealToken) {
-    setAppliedRevealToken(reveal.token);
-    const filteredOut = !filteredEntries.some(
-      (entry) => entry.path === reveal.path,
-    );
-    if (changeTypeFilter !== "all" && filteredOut) {
-      setChangeTypeFilter("all");
-    }
-  }
-  const stats = useMemo(
-    () => computeDiffStats(filteredEntries),
-    [filteredEntries],
-  );
-  const stagedState = useMemo(
-    () => computeStagedState(filteredEntries),
-    [filteredEntries],
-  );
+  const stagedState = useMemo(() => computeStagedState(entries), [entries]);
   const turnLabels = useMemo(() => {
     const prompts = new Map<string, string>();
     for (const message of sessionMessages) {
@@ -153,7 +119,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   }, [sessionMessages, turns]);
 
   const actionsEnabled = isMutableScope(activeScope);
-  const canDiscardAll = actionsEnabled && filteredEntries.length > 0;
   const currentBranch = branches.find((branch) => branch.current)?.name ?? null;
 
   // Header chevron toggle: a folded file opens, an open file shuts, and a file
@@ -417,25 +382,25 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   );
 
   const handleStageAll = useCallback(() => {
-    const paths = filteredEntries
+    const paths = entries
       .filter((entry) => entry.stagedState !== "staged")
       .map((entry) => entry.path);
     void runFileMutation(desktopApi.stageGitFiles, paths);
-  }, [filteredEntries, runFileMutation]);
+  }, [entries, runFileMutation]);
 
   const handleUnstageAll = useCallback(() => {
-    const paths = filteredEntries
+    const paths = entries
       .filter((entry) => entry.stagedState !== "unstaged")
       .map((entry) => entry.path);
     void runFileMutation(desktopApi.unstageGitFiles, paths);
-  }, [filteredEntries, runFileMutation]);
+  }, [entries, runFileMutation]);
 
   const handleDiscardAll = useCallback(() => {
     void runFileMutation(
       desktopApi.discardGitFiles,
-      filteredEntries.map((entry) => entry.path),
+      entries.map((entry) => entry.path),
     );
-  }, [filteredEntries, runFileMutation]);
+  }, [entries, runFileMutation]);
 
   const handleScopeChange = useCallback(
     (next: GitDiffScope) => {
@@ -490,60 +455,52 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-editor-monaco-bg">
       <GitChangesToolbar
-        additions={stats.additions}
         branches={branches}
-        canDiscardAll={canDiscardAll}
         commits={commits}
         commitsLoading={commitsLoading}
-        currentBranch={currentBranch}
-        changeTypeCounts={changeTypeCounts}
-        changeTypeFilter={changeTypeFilter}
-        deletions={stats.deletions}
         diffStyle={diffStyle}
-        fileCount={filteredEntries.length}
-        hasChanges={entries.length > 0}
+        expandUnchanged={expandUnchanged}
         isLoading={isLoading || isActionPending || isCommitActionPending}
-        onChangeTypeFilterChange={setChangeTypeFilter}
         onDiffStyleChange={setDiffStyle}
-        onDiscardAll={handleDiscardAll}
+        onExpandUnchangedChange={setExpandUnchanged}
         onOpenCommits={handleOpenCommits}
         sessionId={activeSessionId}
         onOpenTurns={handleOpenTurns}
         onRefresh={handleRefresh}
         onScopeChange={handleScopeChange}
-        onStageAll={handleStageAll}
-        onUnstageAll={handleUnstageAll}
-        onCommitAction={handleCommitAction}
-        onGenerateCommitMessage={handleGenerateCommitMessage}
-        onExpandUnchangedChange={setExpandUnchanged}
-        onTreePanelVisibleChange={setTreePanelVisible}
         onWrapChange={setWrap}
-        expandUnchanged={expandUnchanged}
+        wrap={wrap}
         scope={activeScope}
-        stagedState={stagedState}
         turnLabels={turnLabels}
         turns={turns}
         turnsLoading={turnsLoading}
-        treePanelVisible={treePanelVisible}
-        wrap={wrap}
       />
       <GitChangesBody
+        actionsBusy={isActionPending || isCommitActionPending}
         actionsEnabled={actionsEnabled}
+        currentBranch={currentBranch}
         diffStatus={diffStatus}
         diffStyle={diffStyle}
         diffThemeType={diffThemeType}
-        entries={filteredEntries}
+        entries={entries}
         expandUnchanged={expandUnchanged}
         folded={folded}
-        isFiltered={changeTypeFilter !== "all"}
+        hasChanges={entries.length > 0}
         isLoading={isLoading}
+        onCommitAction={handleCommitAction}
         onDiscard={handleDiscard}
+        onDiscardAll={handleDiscardAll}
         onFold={handleFoldFile}
+        onGenerateCommitMessage={handleGenerateCommitMessage}
         onOpenFile={onOpenFile}
         onStage={handleStage}
+        onStageAll={handleStageAll}
+        onTreePanelVisibleChange={setTreePanelVisible}
         onUnfold={handleUnfoldFile}
         onUnstage={handleUnstage}
+        onUnstageAll={handleUnstageAll}
         reveal={reveal}
+        stagedState={stagedState}
         turnEmptyReason={turnEmptyReason}
         scopeMode={activeScope.mode}
         treePanelVisible={treePanelVisible}

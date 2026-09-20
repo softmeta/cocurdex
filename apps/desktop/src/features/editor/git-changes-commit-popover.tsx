@@ -6,10 +6,6 @@ import {
 } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  AppDropdownTriggerButton,
-  AppDropdownTriggerLabel,
-} from "@/components";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IconButton } from "@/components/ui/icon-button";
@@ -131,23 +127,34 @@ export function GitChangesCommitPopover({
       }}
       open={popoverOpen}
     >
-      <PopoverTrigger asChild>
-        <AppDropdownTriggerButton
-          appearance="ghost"
-          aria-label={t("git.commitOrPush")}
-          className="app-no-drag h-7 max-w-52 gap-1.5 px-2"
-          // Never disable the trigger while open: a disabled anchor can drop
-          // the popover mid-flight when parentBusy flips on action start.
-          disabled={!open && (!hasChanges || parentBusy)}
-        >
-          {actionPending ? (
-            <Spinner className="size-3.5 shrink-0 text-muted-foreground" />
-          ) : null}
-          <AppDropdownTriggerLabel>
-            {t("git.commitOrPush")}
-          </AppDropdownTriggerLabel>
-        </AppDropdownTriggerButton>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <IconButton
+                  aria-label={t("git.commitOrPush")}
+                  className="app-no-drag text-editor-fg-subtle hover:text-editor-fg data-[state=open]:text-editor-fg"
+                  // Never disable the trigger while open: a disabled anchor
+                  // can drop the popover mid-flight when parentBusy flips on
+                  // action start.
+                  disabled={!open && (!hasChanges || parentBusy)}
+                  size="sm"
+                >
+                  {actionPending ? (
+                    <Spinner className="size-3.5" />
+                  ) : (
+                    <GitCommitHorizontal className="size-3.5" />
+                  )}
+                </IconButton>
+              }
+            />
+          }
+        />
+        <TooltipContent side="top" sideOffset={6}>
+          {t("git.commitOrPush")}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent
         align="end"
         aria-busy={inFlight || undefined}

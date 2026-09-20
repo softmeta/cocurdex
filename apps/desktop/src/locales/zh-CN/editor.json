@@ -59,11 +59,9 @@
     "cancel": "取消",
     "changeType": {
       "added": "新增",
-      "all": "全部变更",
       "deleted": "删除",
       "modified": "修改"
     },
-    "changeTypeFilter": "按变更类型筛选",
     "checkpointUnavailable": "该回合的内容已不可用",
     "commit": "提交",
     "commitAndPush": "提交并推送",
@@ -73,9 +71,9 @@
     "commitMessagePlaceholder": "提交说明（或点按钮用模型生成）…",
     "commitOrPush": "提交或推送",
     "commitSuccess": "已提交",
-    "copyBranch": "复制分支名",
     "copyPath": "复制路径",
     "diffUnavailable": "无法渲染差异",
+    "diffViewSettings": "Diff 视图设置",
     "discard": "丢弃",
     "discardAll": "全部丢弃",
     "discardAllConfirm_other": "丢弃 {{count}} 个可见文件的更改？此操作不可撤销。",
@@ -91,7 +89,6 @@
     "includeUnstaged": "包含未暂存的更改",
     "loadingCommits": "正在加载提交…",
     "loadingTurns": "正在加载回合…",
-    "noBranch": "无分支",
     "noCommits": "暂无提交",
     "noMatchingBranches": "没有匹配的分支",
     "noTurns": "没有带文件变更的回合",
@@ -101,11 +98,11 @@
     "refresh": "刷新变更",
     "scope": {
       "branch": "分支",
-      "commit": "提交",
+      "commit": "已提交",
       "staged": "已暂存",
       "turn": "回合",
       "unstaged": "未暂存",
-      "working": "工作区全部"
+      "working": "未提交"
     },
     "scopeMenu": "Diff 来源",
     "searchBranches": "搜索分支",
@@ -124,7 +121,7 @@
     "turnFiles": "{{count}} 个文件",
     "turnFiles_other": "{{count}} 个文件",
     "unifiedView": "统一视图",
-    "unstageAll": "取消暂存",
+    "unstageAll": "全部取消暂存",
     "unstageFile": "取消暂存"
   },
   "pdf": {
@@ -209,8 +206,6 @@
     "gitEmptyUnstagedTitle": "没有未暂存变更",
     "gitErrorDescription": "Git 无法读取当前工作区。请确认已安装 git 且仓库完好，然后刷新。",
     "gitErrorTitle": "无法加载 Git 变更",
-    "gitFilterEmptyDescription": "没有文件匹配当前选择的变更类型。",
-    "gitFilterEmptyTitle": "没有匹配的变更",
     "gitNotRepoDescription": "当前工作区文件夹不在 Git 仓库内。",
     "gitNotRepoTitle": "不是 Git 仓库",
     "loadingFile": "正在加载文件...",

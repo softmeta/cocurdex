@@ -1,65 +1,29 @@
 import type { TurnChangeSet } from "@cocurdex/shared";
-import {
-  Columns2,
-  FileCode,
-  Minus,
-  PanelLeft,
-  Plus,
-  RefreshCw,
-  Rows3,
-  Undo2,
-  WrapText,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
-import { AppSelect } from "@/components";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { IconButton } from "@/components/ui/icon-button";
-import { Text } from "@/components/ui/text";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { GitBranchInfo, GitCommitInfo, GitFileStagedState } from "@/lib";
+import type { GitBranchInfo, GitCommitInfo } from "@/lib";
 import { cn } from "@/lib/utils";
-import {
-  GitChangesCommitPopover,
-  type GitCommitAction,
-  type GitCommitActionResult,
-} from "./git-changes-commit-popover";
-import type {
-  GitChangeTypeCounts,
-  GitChangeTypeFilter,
-} from "./git-changes-model";
+import type { GitDiffStyle } from "./git-changes-model";
 import {
   GitBranchRefSelectors,
   GitCommitScopeChip,
-  GitCurrentBranchChip,
   GitTurnScopeChip,
 } from "./git-changes-ref-selectors";
 import { GitChangesScopeMenu } from "./git-changes-scope-menu";
+import { GitChangesViewMenu } from "./git-changes-view-menu";
 import type { GitDiffScope } from "./git-diff-scope";
-import { isMutableScope } from "./git-diff-scope";
-
-export type GitDiffStyle = "unified" | "split";
 
 interface GitChangesToolbarProps {
-  currentBranch: string | null;
   scope: GitDiffScope;
   branches: readonly GitBranchInfo[];
   commits: readonly GitCommitInfo[];
@@ -69,39 +33,16 @@ interface GitChangesToolbarProps {
   turns: readonly TurnChangeSet[];
   turnsLoading: boolean;
   isLoading: boolean;
-  fileCount: number;
-  // Unfiltered working-tree change count > 0. Used to disable commit/push when clean.
-  hasChanges: boolean;
-  additions: number;
-  deletions: number;
-  changeTypeFilter: GitChangeTypeFilter;
-  changeTypeCounts: GitChangeTypeCounts;
-  stagedState: GitFileStagedState;
-  canDiscardAll: boolean;
   diffStyle: GitDiffStyle;
+  expandUnchanged: boolean;
+  wrap: boolean;
   onDiffStyleChange: (style: GitDiffStyle) => void;
-  onChangeTypeFilterChange: (filter: GitChangeTypeFilter) => void;
+  onExpandUnchangedChange: (expandUnchanged: boolean) => void;
+  onWrapChange: (wrap: boolean) => void;
   onScopeChange: (scope: GitDiffScope) => void;
   onOpenCommits: () => void;
   onOpenTurns: () => void;
-  // Whether the leading file-index pane is shown beside the diffs.
-  treePanelVisible: boolean;
-  onTreePanelVisibleChange: (visible: boolean) => void;
-  wrap: boolean;
-  onWrapChange: (wrap: boolean) => void;
-  expandUnchanged: boolean;
-  onExpandUnchangedChange: (expandUnchanged: boolean) => void;
   onRefresh: () => void;
-  onStageAll: () => void;
-  onUnstageAll: () => void;
-  onDiscardAll: () => void;
-  onCommitAction: (
-    action: GitCommitAction,
-    options: { message: string; includeUnstaged: boolean },
-  ) => Promise<GitCommitActionResult> | GitCommitActionResult;
-  onGenerateCommitMessage: (options: {
-    includeUnstaged: boolean;
-  }) => Promise<string | null>;
 }
 
 interface ToolbarButtonProps {
@@ -112,7 +53,7 @@ interface ToolbarButtonProps {
   onClick: () => void;
 }
 
-function ToolbarButton({
+export function ToolbarButton({
   label,
   icon,
   active = false,
@@ -141,7 +82,6 @@ function ToolbarButton({
 }
 
 export function GitChangesToolbar({
-  currentBranch,
   scope,
   branches,
   commits,
@@ -151,130 +91,42 @@ export function GitChangesToolbar({
   turns,
   turnsLoading,
   isLoading,
-  fileCount,
-  hasChanges,
-  additions,
-  deletions,
-  changeTypeFilter,
-  changeTypeCounts,
-  stagedState,
-  canDiscardAll,
   diffStyle,
+  expandUnchanged,
+  wrap,
   onDiffStyleChange,
-  onChangeTypeFilterChange,
+  onExpandUnchangedChange,
+  onWrapChange,
   onScopeChange,
   onOpenCommits,
   onOpenTurns,
-  treePanelVisible,
-  onTreePanelVisibleChange,
-  wrap,
-  onWrapChange,
-  expandUnchanged,
-  onExpandUnchangedChange,
   onRefresh,
-  onStageAll,
-  onUnstageAll,
-  onDiscardAll,
-  onCommitAction,
-  onGenerateCommitMessage,
 }: GitChangesToolbarProps) {
-  const { t } = useTranslation("editor");
-  const mutable = isMutableScope(scope);
-
   return (
     <div
       className="border-b border-editor-border"
       data-testid="git-changes-toolbar"
     >
-      <div className="flex items-center gap-1 px-3 py-1">
-        {mutable ? (
-          <GitCurrentBranchChip currentBranch={currentBranch} />
-        ) : null}
-
-        <div className="mx-1 flex items-center gap-2">
-          <Text tone="muted">{t("git.fileCount", { count: fileCount })}</Text>
-          <Text className="text-editor-git-added">+{additions}</Text>
-          <Text className="text-editor-git-deleted">−{deletions}</Text>
-        </div>
-
-        <div className="ms-auto flex items-center gap-1">
-          <ToolbarButton
-            disabled={isLoading}
-            icon={
-              <RefreshCw
-                className={cn(
-                  TITLEBAR_ICON_GLYPH_CLASS,
-                  isLoading && "animate-spin",
-                )}
-              />
-            }
-            label={t("git.refresh")}
-            onClick={onRefresh}
-          />
-          <ToolbarButton
-            active={diffStyle === "unified"}
-            icon={<Rows3 className={TITLEBAR_ICON_GLYPH_CLASS} />}
-            label={t("git.unifiedView")}
-            onClick={() => onDiffStyleChange("unified")}
-          />
-          <ToolbarButton
-            active={diffStyle === "split"}
-            icon={<Columns2 className={TITLEBAR_ICON_GLYPH_CLASS} />}
-            label={t("git.splitView")}
-            onClick={() => onDiffStyleChange("split")}
-          />
-          {/* The file index is the leading half of the split, so its toggle
-                lives next to the diff controls rather than inside the pane it
-                hides. */}
-          <ToolbarButton
-            active={treePanelVisible}
-            icon={<PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />}
-            label={
-              treePanelVisible ? t("git.hideFileTree") : t("git.showFileTree")
-            }
-            onClick={() => onTreePanelVisibleChange(!treePanelVisible)}
-          />
-          <ToolbarButton
-            active={expandUnchanged}
-            icon={<FileCode className={TITLEBAR_ICON_GLYPH_CLASS} />}
-            label={t("git.toggleFullFile")}
-            onClick={() => onExpandUnchangedChange(!expandUnchanged)}
-          />
-          <ToolbarButton
-            active={wrap}
-            icon={<WrapText className={TITLEBAR_ICON_GLYPH_CLASS} />}
-            label={t("git.toggleWrap")}
-            onClick={() => onWrapChange(!wrap)}
-          />
-        </div>
-      </div>
       <BulkActionsRow
         branches={branches}
-        canDiscardAll={canDiscardAll}
-        changeTypeCounts={changeTypeCounts}
-        changeTypeFilter={changeTypeFilter}
         commits={commits}
         commitsLoading={commitsLoading}
-        currentBranch={currentBranch}
+        diffStyle={diffStyle}
+        expandUnchanged={expandUnchanged}
         sessionId={sessionId}
         turnLabels={turnLabels}
         turns={turns}
         turnsLoading={turnsLoading}
+        wrap={wrap}
         disabled={isLoading}
-        fileCount={fileCount}
-        hasChanges={hasChanges}
-        mutable={mutable}
-        onChangeTypeFilterChange={onChangeTypeFilterChange}
-        onCommitAction={onCommitAction}
-        onDiscardAll={onDiscardAll}
-        onGenerateCommitMessage={onGenerateCommitMessage}
+        onDiffStyleChange={onDiffStyleChange}
+        onExpandUnchangedChange={onExpandUnchangedChange}
         onOpenCommits={onOpenCommits}
         onOpenTurns={onOpenTurns}
+        onRefresh={onRefresh}
         onScopeChange={onScopeChange}
-        onStageAll={onStageAll}
-        onUnstageAll={onUnstageAll}
+        onWrapChange={onWrapChange}
         scope={scope}
-        stagedState={stagedState}
       />
     </div>
   );
@@ -282,235 +134,107 @@ export function GitChangesToolbar({
 
 function BulkActionsRow({
   branches,
-  canDiscardAll,
-  changeTypeFilter,
-  changeTypeCounts,
   commits,
   commitsLoading,
-  currentBranch,
   disabled,
-  fileCount,
-  hasChanges,
-  mutable,
-  onChangeTypeFilterChange,
-  onCommitAction,
-  onGenerateCommitMessage,
+  diffStyle,
+  expandUnchanged,
+  wrap,
+  onDiffStyleChange,
+  onExpandUnchangedChange,
   onOpenCommits,
   onOpenTurns,
+  onRefresh,
   onScopeChange,
-  onStageAll,
-  onUnstageAll,
-  onDiscardAll,
+  onWrapChange,
   scope,
   sessionId,
-  stagedState,
   turnLabels,
   turns,
   turnsLoading,
 }: {
   branches: readonly GitBranchInfo[];
-  canDiscardAll: boolean;
-  changeTypeFilter: GitChangeTypeFilter;
-  changeTypeCounts: GitChangeTypeCounts;
   commits: readonly GitCommitInfo[];
   commitsLoading: boolean;
-  currentBranch: string | null;
   disabled: boolean;
-  fileCount: number;
-  hasChanges: boolean;
-  mutable: boolean;
-  onChangeTypeFilterChange: (filter: GitChangeTypeFilter) => void;
-  onCommitAction: (
-    action: GitCommitAction,
-    options: { message: string; includeUnstaged: boolean },
-  ) => Promise<GitCommitActionResult> | GitCommitActionResult;
-  onGenerateCommitMessage: (options: {
-    includeUnstaged: boolean;
-  }) => Promise<string | null>;
+  diffStyle: GitDiffStyle;
+  expandUnchanged: boolean;
+  wrap: boolean;
+  onDiffStyleChange: (style: GitDiffStyle) => void;
+  onExpandUnchangedChange: (expandUnchanged: boolean) => void;
+  onWrapChange: (wrap: boolean) => void;
   onOpenCommits: () => void;
   onOpenTurns: () => void;
+  onRefresh: () => void;
   onScopeChange: (scope: GitDiffScope) => void;
-  onStageAll: () => void;
-  onUnstageAll: () => void;
-  onDiscardAll: () => void;
   scope: GitDiffScope;
   sessionId: string | null;
-  stagedState: GitFileStagedState;
   turnLabels: Record<string, string>;
   turns: readonly TurnChangeSet[];
   turnsLoading: boolean;
 }) {
   const { t } = useTranslation("editor");
-  const [discardOpen, setDiscardOpen] = useState(false);
-  // Explicit action, not a "select all" checkbox: when everything is already
-  // staged, the affordance flips to unstage; otherwise stage the remainder.
-  const fullyStaged = stagedState === "staged";
-  const stageAllLabel = fullyStaged ? t("git.unstageAll") : t("git.stageAll");
-  const onStageAllAction = fullyStaged ? onUnstageAll : onStageAll;
-
   return (
     <div className="group flex min-h-9 items-center gap-2 ps-3 pe-4 py-1">
-      <GitChangesScopeMenu
-        commits={commits}
-        commitsLoading={commitsLoading}
-        disabled={disabled}
-        onOpenCommits={onOpenCommits}
-        onOpenTurns={onOpenTurns}
-        onScopeChange={onScopeChange}
-        scope={scope}
-        sessionId={sessionId}
-        turnLabels={turnLabels}
-        turns={turns}
-        turnsLoading={turnsLoading}
-      />
-      {scope.mode === "branch" ? (
-        <GitBranchRefSelectors
+      <div className="flex min-w-0 items-center">
+        <GitChangesScopeMenu
+          commits={commits}
+          commitsLoading={commitsLoading}
           disabled={disabled}
-          onChange={({ source, target }) =>
-            onScopeChange({ mode: "branch", source, target })
-          }
-          refs={branches}
-          source={scope.source}
-          target={scope.target}
+          onOpenCommits={onOpenCommits}
+          onOpenTurns={onOpenTurns}
+          onScopeChange={onScopeChange}
+          scope={scope}
+          sessionId={sessionId}
+          turnLabels={turnLabels}
+          turns={turns}
+          turnsLoading={turnsLoading}
         />
-      ) : null}
-      {scope.mode === "commit" ? (
-        <GitCommitScopeChip commits={commits} scope={scope} />
-      ) : null}
-      {scope.mode === "turn" ? (
-        <GitTurnScopeChip scope={scope} turnLabels={turnLabels} turns={turns} />
-      ) : null}
-      <ChangeTypeFilterSelect
-        counts={changeTypeCounts}
-        disabled={disabled}
-        onValueChange={onChangeTypeFilterChange}
-        value={changeTypeFilter}
-      />
-      {mutable ? (
-        <div className="app-no-drag ms-auto flex items-center gap-1">
-          {canDiscardAll ? (
-            <>
-              <Tooltip>
-                <TooltipTrigger
-                  aria-label={t("git.discardAll")}
-                  render={
-                    <IconButton
-                      aria-label={t("git.discardAll")}
-                      className="text-editor-fg-subtle hover:text-editor-fg"
-                      disabled={disabled}
-                      onClick={() => setDiscardOpen(true)}
-                      size="sm"
-                    >
-                      <Undo2 className="size-3.5" />
-                    </IconButton>
-                  }
-                />
-                <TooltipContent side="top" sideOffset={6}>
-                  {t("git.discardAll")}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger
-                  aria-label={stageAllLabel}
-                  render={
-                    <IconButton
-                      aria-label={stageAllLabel}
-                      className="text-editor-fg-subtle hover:text-editor-fg"
-                      disabled={disabled}
-                      onClick={onStageAllAction}
-                      size="sm"
-                    >
-                      {fullyStaged ? (
-                        <Minus className="size-3.5" />
-                      ) : (
-                        <Plus className="size-3.5" />
-                      )}
-                    </IconButton>
-                  }
-                />
-                <TooltipContent side="top" sideOffset={6}>
-                  {stageAllLabel}
-                </TooltipContent>
-              </Tooltip>
-            </>
-          ) : null}
-          <GitChangesCommitPopover
-            currentBranch={currentBranch}
-            hasChanges={hasChanges}
-            onAction={onCommitAction}
-            onGenerateMessage={onGenerateCommitMessage}
-            parentBusy={disabled}
+        {scope.mode === "branch" ? (
+          <GitBranchRefSelectors
+            disabled={disabled}
+            onChange={({ source, target }) =>
+              onScopeChange({ mode: "branch", source, target })
+            }
+            refs={branches}
+            source={scope.source}
+            target={scope.target}
           />
-        </div>
-      ) : null}
-      <Dialog onOpenChange={setDiscardOpen} open={discardOpen}>
-        <DialogContent size="compact">
-          <DialogHeader>
-            <DialogTitle>{t("git.discardAll")}</DialogTitle>
-            <DialogDescription>
-              {t("git.discardAllConfirm", { count: fileCount })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose
-              render={<Button variant="ghost">{t("git.cancel")}</Button>}
+        ) : null}
+        {scope.mode === "commit" ? (
+          <GitCommitScopeChip commits={commits} scope={scope} />
+        ) : null}
+        {scope.mode === "turn" ? (
+          <GitTurnScopeChip
+            scope={scope}
+            turnLabels={turnLabels}
+            turns={turns}
+          />
+        ) : null}
+      </div>
+      <div className="app-no-drag ms-auto flex items-center gap-1">
+        <ToolbarButton
+          disabled={disabled}
+          icon={
+            <RefreshCw
+              className={cn(
+                TITLEBAR_ICON_GLYPH_CLASS,
+                disabled && "animate-spin",
+              )}
             />
-            <Button
-              onClick={() => {
-                onDiscardAll();
-                setDiscardOpen(false);
-              }}
-              variant="destructive"
-            >
-              {t("git.discard")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          }
+          label={t("git.refresh")}
+          onClick={onRefresh}
+        />
+        <GitChangesViewMenu
+          diffStyle={diffStyle}
+          expandUnchanged={expandUnchanged}
+          wrap={wrap}
+          onDiffStyleChange={onDiffStyleChange}
+          onExpandUnchangedChange={onExpandUnchangedChange}
+          onWrapChange={onWrapChange}
+        />
+      </div>
     </div>
-  );
-}
-
-const changeTypeFilterOptions = [
-  "all",
-  "modified",
-  "added",
-  "deleted",
-] as const satisfies readonly GitChangeTypeFilter[];
-
-export function ChangeTypeFilterSelect({
-  counts,
-  disabled,
-  value,
-  onValueChange,
-}: {
-  counts: GitChangeTypeCounts;
-  disabled: boolean;
-  value: GitChangeTypeFilter;
-  onValueChange: (value: GitChangeTypeFilter) => void;
-}) {
-  const { t } = useTranslation("editor");
-
-  return (
-    <AppSelect
-      appearance="ghost"
-      contentClassName="min-w-40"
-      disabled={disabled}
-      options={changeTypeFilterOptions.map((option) => ({
-        value: option,
-        label: t(`git.changeType.${option}`),
-        disabled: option !== "all" && counts[option] === 0,
-        trailing: (
-          <span className="text-muted-foreground">{counts[option]}</span>
-        ),
-      }))}
-      triggerAriaLabel={t("git.changeTypeFilter")}
-      triggerClassName="app-no-drag h-7"
-      triggerLabel={
-        <span className="min-w-0 truncate">{t(`git.changeType.${value}`)}</span>
-      }
-      value={value}
-      onValueChange={(next) => onValueChange(next as GitChangeTypeFilter)}
-    />
   );
 }

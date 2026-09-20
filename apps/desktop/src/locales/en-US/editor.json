@@ -59,11 +59,9 @@
     "cancel": "Cancel",
     "changeType": {
       "added": "Added",
-      "all": "All changes",
       "deleted": "Deleted",
       "modified": "Modified"
     },
-    "changeTypeFilter": "Filter by change type",
     "checkpointUnavailable": "Turn contents are no longer available",
     "commit": "Commit",
     "commitAndPush": "Commit and push",
@@ -73,9 +71,9 @@
     "commitMessagePlaceholder": "Commit message (or generate with the button)…",
     "commitOrPush": "Commit or push",
     "commitSuccess": "Committed",
-    "copyBranch": "Copy branch name",
     "copyPath": "Copy path",
     "diffUnavailable": "Diff could not be rendered",
+    "diffViewSettings": "Diff view settings",
     "discard": "Discard",
     "discardAll": "Discard all",
     "discardAllConfirm_one": "Discard changes in {{count}} visible file? This cannot be undone.",
@@ -92,7 +90,6 @@
     "includeUnstaged": "Include unstaged changes",
     "loadingCommits": "Loading commits…",
     "loadingTurns": "Loading turns…",
-    "noBranch": "No branch",
     "noCommits": "No commits yet",
     "noMatchingBranches": "No matching branches",
     "noTurns": "No turns with file changes",
@@ -102,11 +99,11 @@
     "refresh": "Refresh changes",
     "scope": {
       "branch": "Branch",
-      "commit": "Commit",
+      "commit": "Committed",
       "staged": "Staged",
       "turn": "Turn",
       "unstaged": "Unstaged",
-      "working": "Working tree"
+      "working": "Uncommitted"
     },
     "scopeMenu": "Diff source",
     "searchBranches": "Search branches",
@@ -211,8 +208,6 @@
     "gitEmptyUnstagedTitle": "No unstaged changes",
     "gitErrorDescription": "Git could not read this workspace. Check that git is installed and the repository is intact, then refresh.",
     "gitErrorTitle": "Unable to load git changes",
-    "gitFilterEmptyDescription": "No files match the selected change type.",
-    "gitFilterEmptyTitle": "No matching changes",
     "gitNotRepoDescription": "The current workspace folder is not inside a git repository.",
     "gitNotRepoTitle": "Not a git repository",
     "loadingFile": "Loading file...",

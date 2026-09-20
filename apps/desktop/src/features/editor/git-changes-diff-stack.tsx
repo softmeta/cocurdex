@@ -17,13 +17,13 @@ import {
   entryItemKey,
   estimateEntryHeight,
   type GitChangeEntry,
+  type GitDiffStyle,
 } from "./git-changes-model";
 import {
   consumeGitRevealAtom,
   type GitFileReveal,
   gitSelectedPathAtom,
 } from "./git-changes-store";
-import type { GitDiffStyle } from "./git-changes-toolbar";
 
 // The pinned row owns the top edge of the scrollport. Cards sit in rows whose gap
 // is below the card (`pb-2`), so a row whose top is within that empty band of

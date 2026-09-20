@@ -28,8 +28,6 @@ export interface GitChangeEntry {
   deletions: number;
 }
 
-export type GitChangeTypeFilter = "all" | GitChangeKind;
-
 // Git's one-letter status vocabulary with the editor's add/delete/modify tints.
 // The letters match the ones the tree's status lane paints (`@pierre/trees`
 // GIT_STATUS_LABEL), so both indexes of the change set read the same way.
@@ -62,8 +60,6 @@ export function splitChangePath(path: string): {
     name: path.slice(lastSlash + 1),
   };
 }
-
-export type GitChangeTypeCounts = Record<GitChangeTypeFilter, number>;
 
 // Turn raw file changes into renderable entries. Non-omitted files are diffed
 // from their full old/new contents so the result is non-partial (expandable).
@@ -138,7 +134,7 @@ export function entryItemKey(
   entry: GitChangeEntry,
   options: {
     folded: boolean;
-    diffStyle: GitDiffStyleName;
+    diffStyle: GitDiffStyle;
     wrap: boolean;
     expandUnchanged: boolean;
   },
@@ -219,21 +215,6 @@ function sumHunks(diff: FileDiffMetadata): {
   return { additions, deletions };
 }
 
-const EMPTY_CHANGE_TYPE_COUNTS: GitChangeTypeCounts = {
-  all: 0,
-  added: 0,
-  modified: 0,
-  deleted: 0,
-};
-
-export function filterEntriesByChangeType(
-  entries: GitChangeEntry[],
-  filter: GitChangeTypeFilter,
-): GitChangeEntry[] {
-  if (filter === "all") return entries;
-  return entries.filter((entry) => entry.changeType === filter);
-}
-
 // The flat file index filters on its own; the tree hands the same query to
 // Pierre's search. Both read as "keep only the paths that match".
 export function filterEntriesByPathQuery(
@@ -247,18 +228,6 @@ export function filterEntriesByPathQuery(
   );
 }
 
-export function computeChangeTypeCounts(
-  entries: GitChangeEntry[],
-): GitChangeTypeCounts {
-  const counts = { ...EMPTY_CHANGE_TYPE_COUNTS };
-  for (const entry of entries) {
-    counts.all += 1;
-    counts[entry.changeType] += 1;
-  }
-  return counts;
-}
-
-// Aggregate the per-file counts for the toolbar's overall summary.
 export function computeDiffStats(entries: GitChangeEntry[]): {
   additions: number;
   deletions: number;
@@ -312,7 +281,7 @@ export function entryLanguage(entry: GitChangeEntry): SupportedLanguages {
 // unchanged gap wider than one line into a fixed 32px `line-info-basic`
 // separator, and pads a header-less diff body by `--diffs-gap-block`, which
 // this app sets to 2px.
-type GitDiffStyleName = "unified" | "split";
+export type GitDiffStyle = "unified" | "split";
 
 export const DIFF_GAP_BLOCK = 2;
 
@@ -320,7 +289,7 @@ const DIFF_LINE_HEIGHT = 20;
 const HUNK_SEPARATOR_HEIGHT = 32;
 const COLLAPSED_CONTEXT_THRESHOLD = 1;
 
-function hunkLineCount(hunk: Hunk, diffStyle: GitDiffStyleName): number {
+function hunkLineCount(hunk: Hunk, diffStyle: GitDiffStyle): number {
   return diffStyle === "split" ? hunk.splitLineCount : hunk.unifiedLineCount;
 }
 
@@ -352,7 +321,7 @@ function trailingGapLines(diff: FileDiffMetadata): number {
   return Math.min(additions, deletions);
 }
 
-function noNewlineRows(hunk: Hunk, diffStyle: GitDiffStyleName): number {
+function noNewlineRows(hunk: Hunk, diffStyle: GitDiffStyle): number {
   if (!hunk.noEOFCRAdditions && !hunk.noEOFCRDeletions) return 0;
   const last = hunk.hunkContent.at(-1);
   if (last == null) return 0;
@@ -372,7 +341,7 @@ export function estimateEntryHeight(
   options: {
     collapsed: boolean;
     expandUnchanged: boolean;
-    diffStyle: GitDiffStyleName;
+    diffStyle: GitDiffStyle;
   },
 ): number {
   const { diff } = entry;
