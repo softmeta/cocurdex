@@ -14,6 +14,8 @@ Never change code or commit on `main`. Create a branch before the first edit or 
 
 When the checkout is already on a branch other than `main`, reuse that branch instead of creating or switching to a new one. Switching branches interrupts other tasks sharing the checkout, and a shared worktree cannot check out the same branch twice. Only create or switch branches when explicitly asked.
 
+Land changes through a branch and a pull request: push, open the PR, watch its checks and review threads, then merge with `gh pr merge --merge`. Clear every review thread first — fix it, or reply with a reason and then resolve it. Docs, skills, and tooling changes take this path with no version bump and no tag; only an explicit release request bumps `apps/desktop/package.json` and pushes a `v<version>` tag. See `.agents/skills/desktop-release`.
+
 ## Architecture: daemon, host, and clients
 
 Reusable product capabilities belong in `packages/daemon`, exposed through `@cocurdex/rpc`. Ask: would a browser client need this capability through the daemon? If yes, use daemon RPC; desktop-only host APIs use Electron IPC.
