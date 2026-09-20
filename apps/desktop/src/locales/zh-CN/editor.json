@@ -6,6 +6,7 @@
     "chatFabHint": "打开聊天。可拖动调整位置。悬停后点击关闭图标可隐藏此按钮（{{shortcut}} 再次打开）。",
     "closeChat": "关闭聊天",
     "closeChatSessions": "关闭会话列表",
+    "closeEditorPanel": "关闭功能区",
     "closeFile": "关闭文件 {{fileName}}",
     "detachedChatFabHint": "点击显示或隐藏独立聊天窗口。可拖动调整按钮位置。悬停后点击 × 隐藏按钮，{{shortcut}} 可恢复。",
     "edit": "编辑",
@@ -17,6 +18,7 @@
     "hideChatFab": "隐藏聊天按钮",
     "hideChatFabHint": "隐藏此按钮。{{shortcut}} 可再次显示。",
     "openChat": "打开聊天",
+    "openEditorPanel": "打开功能区",
     "pinChatDock": "钉住聊天到侧边",
     "pinChatDockNeedsSpace": "窗口太窄，暂时无法停靠聊天。请加宽窗口后重试。",
     "preview": "预览",
@@ -33,7 +35,6 @@
     "toggleChat": "切换聊天",
     "toggleChatSessions": "切换会话列表",
     "toggleDetachedChat": "显示或隐藏独立聊天窗口",
-    "toggleEditorPanel": "切换编辑器面板",
     "toggleSidebar": "切换侧边栏",
     "unpinChatDock": "取消钉住聊天"
   },
@@ -59,11 +60,9 @@
     "cancel": "取消",
     "changeType": {
       "added": "新增",
-      "all": "全部变更",
       "deleted": "删除",
       "modified": "修改"
     },
-    "changeTypeFilter": "按变更类型筛选",
     "checkpointUnavailable": "该回合的内容已不可用",
     "commit": "提交",
     "commitAndPush": "提交并推送",
@@ -73,9 +72,9 @@
     "commitMessagePlaceholder": "提交说明（或点按钮用模型生成）…",
     "commitOrPush": "提交或推送",
     "commitSuccess": "已提交",
-    "copyBranch": "复制分支名",
     "copyPath": "复制路径",
     "diffUnavailable": "无法渲染差异",
+    "diffViewSettings": "Diff 视图设置",
     "discard": "丢弃",
     "discardAll": "全部丢弃",
     "discardAllConfirm_other": "丢弃 {{count}} 个可见文件的更改？此操作不可撤销。",
@@ -91,7 +90,6 @@
     "includeUnstaged": "包含未暂存的更改",
     "loadingCommits": "正在加载提交…",
     "loadingTurns": "正在加载回合…",
-    "noBranch": "无分支",
     "noCommits": "暂无提交",
     "noMatchingBranches": "没有匹配的分支",
     "noTurns": "没有带文件变更的回合",
@@ -101,11 +99,11 @@
     "refresh": "刷新变更",
     "scope": {
       "branch": "分支",
-      "commit": "提交",
+      "commit": "已提交",
       "staged": "已暂存",
       "turn": "回合",
       "unstaged": "未暂存",
-      "working": "工作区全部"
+      "working": "未提交"
     },
     "scopeMenu": "Diff 来源",
     "searchBranches": "搜索分支",
@@ -124,7 +122,7 @@
     "turnFiles": "{{count}} 个文件",
     "turnFiles_other": "{{count}} 个文件",
     "unifiedView": "统一视图",
-    "unstageAll": "取消暂存",
+    "unstageAll": "全部取消暂存",
     "unstageFile": "取消暂存"
   },
   "pdf": {
@@ -209,8 +207,6 @@
     "gitEmptyUnstagedTitle": "没有未暂存变更",
     "gitErrorDescription": "Git 无法读取当前工作区。请确认已安装 git 且仓库完好，然后刷新。",
     "gitErrorTitle": "无法加载 Git 变更",
-    "gitFilterEmptyDescription": "没有文件匹配当前选择的变更类型。",
-    "gitFilterEmptyTitle": "没有匹配的变更",
     "gitNotRepoDescription": "当前工作区文件夹不在 Git 仓库内。",
     "gitNotRepoTitle": "不是 Git 仓库",
     "loadingFile": "正在加载文件...",

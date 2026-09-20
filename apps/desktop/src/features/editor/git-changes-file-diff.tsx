@@ -16,10 +16,10 @@ import {
   GIT_DIFF_THEME_NAMES,
   GIT_DIFF_THEMES,
   type GitChangeEntry,
+  type GitDiffStyle,
 } from "./git-changes-model";
 import { GitChangeRowActions } from "./git-changes-row-actions";
 import { GitChangeRowHeader } from "./git-changes-row-header";
-import type { GitDiffStyle } from "./git-changes-toolbar";
 
 interface GitChangeFileDiffProps {
   entry: GitChangeEntry;

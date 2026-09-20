@@ -36,6 +36,7 @@ export function ScreenNavButtons({
       <TitlebarIconButton
         aria-label={backLabel}
         disabled={!canGoBack}
+        tooltip={backLabel}
         onClick={onGoBack}
       >
         <ArrowLeft
@@ -45,6 +46,7 @@ export function ScreenNavButtons({
       <TitlebarIconButton
         aria-label={forwardLabel}
         disabled={!canGoForward}
+        tooltip={forwardLabel}
         onClick={onGoForward}
       >
         <ArrowRight
@@ -68,6 +70,7 @@ export function SidebarToggleButton({
     <TitlebarIconButton
       aria-label={ariaLabel}
       className={className}
+      tooltip={ariaLabel}
       onClick={onToggle}
     >
       <PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />

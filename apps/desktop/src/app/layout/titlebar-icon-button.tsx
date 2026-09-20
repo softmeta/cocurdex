@@ -1,4 +1,9 @@
 import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib";
 
 /**
@@ -38,6 +43,8 @@ export type TitlebarIconButtonProps = Omit<
   cursor?: "pointer" | "default";
   /** Selected / pressed chrome (e.g. maximized, active toggle). */
   active?: boolean;
+  /** Hover hint; titlebar chrome sits at the window top so it opens downward. */
+  tooltip?: ReactNode;
 };
 
 export const TitlebarIconButton = forwardRef<
@@ -51,6 +58,7 @@ export const TitlebarIconButton = forwardRef<
     cursor = "pointer",
     disabled = false,
     active = false,
+    tooltip,
     type = "button",
     ...props
   },
@@ -61,7 +69,7 @@ export const TitlebarIconButton = forwardRef<
   const cursorClass =
     cursor === "default" ? "cursor-default" : !disabled && "cursor-pointer";
 
-  return (
+  const button = (
     <button
       ref={ref}
       aria-label={ariaLabel}
@@ -78,6 +86,18 @@ export const TitlebarIconButton = forwardRef<
     >
       {children}
     </button>
+  );
+
+  if (tooltip == null) {
+    return button;
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger render={button} />
+      <TooltipContent side="bottom" sideOffset={6}>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 });
 

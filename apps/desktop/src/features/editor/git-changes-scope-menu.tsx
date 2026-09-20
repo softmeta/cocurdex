@@ -5,6 +5,7 @@ import {
   AppDropdownRadioList,
   AppDropdownTriggerButton,
   AppDropdownTriggerLabel,
+  appPopupContentWidthClassName,
 } from "@/components";
 import {
   DropdownMenu,
@@ -20,9 +21,9 @@ import type { GitCommitInfo } from "@/lib";
 import { type GitDiffScope, turnChangeSetKey } from "./git-diff-scope";
 
 const TOP_LEVEL_MODES = [
+  "working",
   "unstaged",
   "staged",
-  "working",
   "branch",
 ] as const satisfies readonly Exclude<
   GitDiffScope["mode"],
@@ -89,7 +90,10 @@ export function GitChangesScopeMenu({
           <AppDropdownTriggerLabel>{triggerLabel}</AppDropdownTriggerLabel>
         </AppDropdownTriggerButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-44">
+      <DropdownMenuContent
+        align="start"
+        className={appPopupContentWidthClassName}
+      >
         <AppDropdownRadioList
           value={modeValue}
           onValueChange={(mode) => {
