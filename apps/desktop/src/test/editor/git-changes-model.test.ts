@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEntries,
+  CARD_CHROME_HEIGHT,
   COLLAPSED_ENTRY_HEIGHT,
   estimateEntryHeight,
   filterEntriesByPathQuery,
@@ -8,7 +9,7 @@ import {
   gitChangeMarker,
 } from "@/features/editor/git-changes-model";
 
-const CARD_CHROME = COLLAPSED_ENTRY_HEIGHT;
+const CARD_CHROME = CARD_CHROME_HEIGHT;
 const BODY_PADDING = 4;
 const LINE = 20;
 const SEPARATOR = 32;
@@ -50,7 +51,7 @@ const estimated = (
   });
 
 describe("estimateEntryHeight", () => {
-  it("falls back to the card chrome for folded or unparsed files", () => {
+  it("falls back to the folded height for collapsed or unparsed files", () => {
     const entry = entryFor("a\nb\nc", "a\nB\nc");
 
     expect(
@@ -59,8 +60,8 @@ describe("estimateEntryHeight", () => {
         expandUnchanged: false,
         diffStyle: "unified",
       }),
-    ).toBe(CARD_CHROME);
-    expect(estimated({ ...entry, diff: null })).toBe(CARD_CHROME);
+    ).toBe(COLLAPSED_ENTRY_HEIGHT);
+    expect(estimated({ ...entry, diff: null })).toBe(COLLAPSED_ENTRY_HEIGHT);
   });
 
   it("reserves pierre's collapsed layout instead of the whole file", () => {

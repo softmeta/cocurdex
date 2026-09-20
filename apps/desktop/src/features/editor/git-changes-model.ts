@@ -282,9 +282,14 @@ export function computeStagedState(
     : "partial";
 }
 
-// Height of one stacked file card before it has ever been painted: the card's
+// The chrome every stacked card carries besides its diff body: the card's
 // borders, the header band, and the gap that separates it from the next card.
-export const COLLAPSED_ENTRY_HEIGHT = 42;
+export const CARD_CHROME_HEIGHT = 42;
+
+// Height of one stacked file card before it has ever been painted. A folded
+// card is its header band alone; the band pads symmetrically there, so a
+// collapsed card is the shared chrome plus that bottom spacing.
+export const COLLAPSED_ENTRY_HEIGHT = CARD_CHROME_HEIGHT + 8;
 
 export const GIT_DIFF_THEMES = {
   dark: "pierre-dark",
@@ -381,7 +386,7 @@ export function estimateEntryHeight(
     content += noNewlineRows(hunk, diffStyle) * DIFF_LINE_HEIGHT;
   }
   content += gapHeight(trailingGapLines(diff), gapsExpanded);
-  return COLLAPSED_ENTRY_HEIGHT + content;
+  return CARD_CHROME_HEIGHT + content;
 }
 
 export function entriesToGitStatus(

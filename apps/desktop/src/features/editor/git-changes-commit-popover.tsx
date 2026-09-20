@@ -135,7 +135,7 @@ export function GitChangesCommitPopover({
         <AppDropdownTriggerButton
           appearance="ghost"
           aria-label={t("git.commitOrPush")}
-          className="app-no-drag h-7 max-w-52 gap-1.5 px-2 text-meta"
+          className="app-no-drag h-7 max-w-52 gap-1.5 px-2"
           // Never disable the trigger while open: a disabled anchor can drop
           // the popover mid-flight when parentBusy flips on action start.
           disabled={!open && (!hasChanges || parentBusy)}

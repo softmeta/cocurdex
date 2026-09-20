@@ -37,9 +37,7 @@ export function GitBranchRefSelectors({
         refs={refs}
         value={source}
       />
-      <Text className="shrink-0 text-editor-fg-muted" size="meta">
-        →
-      </Text>
+      <Text className="shrink-0 text-editor-fg-muted">→</Text>
       <RefSelect
         ariaLabel={t("git.selectTarget")}
         disabled={disabled}
@@ -104,14 +102,10 @@ export function GitCommitScopeChip({
   const { shortHash, subject } = formatCommitChip(commits, scope.commit);
   return (
     <div className="flex min-w-0 max-w-56 items-center gap-1.5 px-1">
-      <Text className="shrink-0 font-mono" size="meta" tone="muted">
+      <Text className="shrink-0 font-mono" tone="muted">
         {shortHash}
       </Text>
-      {subject ? (
-        <Text size="meta" truncate>
-          {subject}
-        </Text>
-      ) : null}
+      {subject ? <Text truncate>{subject}</Text> : null}
     </div>
   );
 }
@@ -134,9 +128,7 @@ export function GitTurnScopeChip({
   }
   return (
     <div className="flex min-w-0 max-w-56 items-center gap-1.5 px-1">
-      <Text size="meta" truncate>
-        {label}
-      </Text>
+      <Text truncate>{label}</Text>
     </div>
   );
 }
@@ -153,7 +145,7 @@ export function GitCurrentBranchChip({
   const { t } = useTranslation("editor");
   return (
     <div className="group flex max-w-44 min-w-0 shrink-0 items-center gap-1 px-1">
-      <Text size="meta" tone="muted" truncate>
+      <Text tone="muted" truncate>
         {currentBranch ?? t("git.noBranch")}
       </Text>
       {currentBranch ? (
