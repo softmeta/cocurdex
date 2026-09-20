@@ -34,6 +34,44 @@ describe("schemas.toolCallId", () => {
   });
 });
 
+describe("provider-minted request IDs", () => {
+  // Devin's ACP toolCallId embeds a "#" separator; Claude echoes toolUseID and
+  // OpenCode echoes its permission id. All are opaque provider strings that
+  // must round-trip through the resolve channels.
+  const devinToolCallId =
+    "call_1f058c81523341fe8833b328#47d6d5e5cdff43fd81380990458824d7";
+
+  it("accepts provider request IDs on permission:resolve", () => {
+    expect(
+      schemas.permissionResolve.safeParse([devinToolCallId, "allow"]).success,
+    ).toBe(true);
+  });
+
+  it("accepts provider request IDs on question:resolve", () => {
+    expect(
+      schemas.questionResolve.safeParse([devinToolCallId, "answer"]).success,
+    ).toBe(true);
+  });
+
+  it("accepts provider request IDs on planApproval:resolve", () => {
+    expect(
+      schemas.planApprovalResolve.safeParse([
+        devinToolCallId,
+        { outcome: "approved" },
+      ]).success,
+    ).toBe(true);
+  });
+
+  it("still rejects malformed request IDs", () => {
+    expect(
+      schemas.permissionResolve.safeParse(["bad\nid", "allow"]).success,
+    ).toBe(false);
+    expect(schemas.permissionResolve.safeParse(["", "allow"]).success).toBe(
+      false,
+    );
+  });
+});
+
 describe("httpUrlSchema", () => {
   it("accepts http and https URLs", () => {
     expect(httpUrlSchema.safeParse("http://localhost:3000/").success).toBe(

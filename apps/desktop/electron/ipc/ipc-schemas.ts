@@ -39,6 +39,14 @@ export function isBroadFilesystemScanRoot(rootPath: string): boolean {
 
 const noNullByte = (value: string) => !value.includes("\0");
 
+// Permission/question/plan-approval request IDs are minted by the agent
+// provider and echoed back verbatim (ACP toolCallId, Claude toolUseID,
+// OpenCode permission id), so they follow provider tool call ID rules rather
+// than the app-generated idSchema — e.g. Devin emits "call_<hex>#<hex>".
+const providerRequestIdSchema = z
+  .string()
+  .refine(isToolCallId, "Invalid provider request ID");
+
 const providerIdSchema = z
   .string()
   .min(1)
@@ -327,16 +335,16 @@ export const schemas = {
     content: z.string().max(200_000),
   }),
   permissionResolve: z.tuple([
-    idSchema,
+    providerRequestIdSchema,
     z
       .string()
       .min(1)
       .max(256)
       .refine(noNullByte, "option ID contains null byte"),
   ]),
-  questionResolve: z.tuple([idSchema, z.string().max(64_000)]),
+  questionResolve: z.tuple([providerRequestIdSchema, z.string().max(64_000)]),
   planApprovalResolve: z.tuple([
-    idSchema,
+    providerRequestIdSchema,
     z.object({
       outcome: z.enum(["approved", "cancelled", "abandoned"]),
       feedback: z.string().max(64_000).nullish(),
