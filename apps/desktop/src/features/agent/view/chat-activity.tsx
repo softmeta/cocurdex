@@ -137,7 +137,12 @@ export function ActivityLine({
   const isRunning = activity.tone === "running";
 
   return (
-    <div className="flex max-w-fit items-center gap-2 self-start px-1.5 py-1 text-meta font-medium text-chat-fg-muted">
+    <div
+      className={cn(
+        "flex max-w-fit items-center gap-2 self-start py-1 pe-1.5 text-meta font-medium text-chat-fg-muted",
+        !isRunning && "ps-1.5",
+      )}
+    >
       {/* While running the label's own shimmer signals progress, so the row
           drops the spinner instead of animating two things at once. */}
       {isRunning ? null : <ActivityIcon activity={activity} />}
