@@ -18,6 +18,22 @@ that starts the build; `workflow_dispatch` is not used for releases.
 - Merge with a merge commit (`gh pr merge --merge`). History is merge commits, and the tag goes on that merge commit.
 - Never bypass a required CI check. Fix the failure; do not weaken a test to make it pass.
 
+## Beta vs stable
+
+Both run the identical pipeline. The version suffix is the only difference, and it decides
+who receives the build — not just how it is labelled.
+
+| | beta, e.g. `0.1.42-beta.10` | stable, e.g. `0.1.42` |
+| --- | --- | --- |
+| `bump` kind | `bump beta` | `bump release` |
+| GitHub release | prerelease | full release |
+| macOS feed files | `latest-mac.yml` + `beta-mac.yml` | `latest-mac.yml` |
+| Who gets the update | apps on the `test` update channel | apps on the default `stable` channel |
+
+The desktop app's channel setting lives in `app-update-channel.json`; `stable` is the default and
+refuses prereleases, so a beta only reaches users who switched to `test`. Promote a beta with
+`bump release` on the same line — never by editing or re-pointing a tag.
+
 ## Process
 
 ### 1. Land the work
