@@ -2,7 +2,6 @@ import type { TurnChangeSet } from "@cocurdex/shared";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSessionMessages } from "@/features/agent/view/use-session-messages";
 import {
   activeSessionIdAtom,
@@ -489,70 +488,68 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   }
 
   return (
-    <TooltipProvider>
-      <div className="flex min-h-0 flex-1 flex-col bg-editor-monaco-bg">
-        <GitChangesToolbar
-          additions={stats.additions}
-          branches={branches}
-          canDiscardAll={canDiscardAll}
-          commits={commits}
-          commitsLoading={commitsLoading}
-          currentBranch={currentBranch}
-          changeTypeCounts={changeTypeCounts}
-          changeTypeFilter={changeTypeFilter}
-          deletions={stats.deletions}
-          diffStyle={diffStyle}
-          fileCount={filteredEntries.length}
-          hasChanges={entries.length > 0}
-          isLoading={isLoading || isActionPending || isCommitActionPending}
-          onChangeTypeFilterChange={setChangeTypeFilter}
-          onDiffStyleChange={setDiffStyle}
-          onDiscardAll={handleDiscardAll}
-          onOpenCommits={handleOpenCommits}
-          sessionId={activeSessionId}
-          onOpenTurns={handleOpenTurns}
-          onRefresh={handleRefresh}
-          onScopeChange={handleScopeChange}
-          onStageAll={handleStageAll}
-          onUnstageAll={handleUnstageAll}
-          onCommitAction={handleCommitAction}
-          onGenerateCommitMessage={handleGenerateCommitMessage}
-          onExpandUnchangedChange={setExpandUnchanged}
-          onTreePanelVisibleChange={setTreePanelVisible}
-          onWrapChange={setWrap}
-          expandUnchanged={expandUnchanged}
-          scope={activeScope}
-          stagedState={stagedState}
-          turnLabels={turnLabels}
-          turns={turns}
-          turnsLoading={turnsLoading}
-          treePanelVisible={treePanelVisible}
-          wrap={wrap}
-        />
-        <GitChangesBody
-          actionsEnabled={actionsEnabled}
-          diffStatus={diffStatus}
-          diffStyle={diffStyle}
-          diffThemeType={diffThemeType}
-          entries={filteredEntries}
-          expandUnchanged={expandUnchanged}
-          folded={folded}
-          isFiltered={changeTypeFilter !== "all"}
-          isLoading={isLoading}
-          onDiscard={handleDiscard}
-          onFold={handleFoldFile}
-          onOpenFile={onOpenFile}
-          onStage={handleStage}
-          onUnfold={handleUnfoldFile}
-          onUnstage={handleUnstage}
-          reveal={reveal}
-          turnEmptyReason={turnEmptyReason}
-          scopeMode={activeScope.mode}
-          treePanelVisible={treePanelVisible}
-          workspaceName={activeWorkspace.name}
-          wrap={wrap}
-        />
-      </div>
-    </TooltipProvider>
+    <div className="flex min-h-0 flex-1 flex-col bg-editor-monaco-bg">
+      <GitChangesToolbar
+        additions={stats.additions}
+        branches={branches}
+        canDiscardAll={canDiscardAll}
+        commits={commits}
+        commitsLoading={commitsLoading}
+        currentBranch={currentBranch}
+        changeTypeCounts={changeTypeCounts}
+        changeTypeFilter={changeTypeFilter}
+        deletions={stats.deletions}
+        diffStyle={diffStyle}
+        fileCount={filteredEntries.length}
+        hasChanges={entries.length > 0}
+        isLoading={isLoading || isActionPending || isCommitActionPending}
+        onChangeTypeFilterChange={setChangeTypeFilter}
+        onDiffStyleChange={setDiffStyle}
+        onDiscardAll={handleDiscardAll}
+        onOpenCommits={handleOpenCommits}
+        sessionId={activeSessionId}
+        onOpenTurns={handleOpenTurns}
+        onRefresh={handleRefresh}
+        onScopeChange={handleScopeChange}
+        onStageAll={handleStageAll}
+        onUnstageAll={handleUnstageAll}
+        onCommitAction={handleCommitAction}
+        onGenerateCommitMessage={handleGenerateCommitMessage}
+        onExpandUnchangedChange={setExpandUnchanged}
+        onTreePanelVisibleChange={setTreePanelVisible}
+        onWrapChange={setWrap}
+        expandUnchanged={expandUnchanged}
+        scope={activeScope}
+        stagedState={stagedState}
+        turnLabels={turnLabels}
+        turns={turns}
+        turnsLoading={turnsLoading}
+        treePanelVisible={treePanelVisible}
+        wrap={wrap}
+      />
+      <GitChangesBody
+        actionsEnabled={actionsEnabled}
+        diffStatus={diffStatus}
+        diffStyle={diffStyle}
+        diffThemeType={diffThemeType}
+        entries={filteredEntries}
+        expandUnchanged={expandUnchanged}
+        folded={folded}
+        isFiltered={changeTypeFilter !== "all"}
+        isLoading={isLoading}
+        onDiscard={handleDiscard}
+        onFold={handleFoldFile}
+        onOpenFile={onOpenFile}
+        onStage={handleStage}
+        onUnfold={handleUnfoldFile}
+        onUnstage={handleUnstage}
+        reveal={reveal}
+        turnEmptyReason={turnEmptyReason}
+        scopeMode={activeScope.mode}
+        treePanelVisible={treePanelVisible}
+        workspaceName={activeWorkspace.name}
+        wrap={wrap}
+      />
+    </div>
   );
 }

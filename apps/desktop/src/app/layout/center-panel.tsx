@@ -20,6 +20,7 @@ import {
   agentRuntimeBySessionAtom,
   appendMessageAtom,
   appendQueuedInputAtom,
+  autoCollapsedPlansBySessionAtom,
   ChatView,
   clearPermissionsForSessionAtom,
   clearPlanApprovalsForSessionAtom,
@@ -237,6 +238,9 @@ export function CenterPanel({
   const plansBySession = useAtomValue(plansBySessionAtom);
   const dismissedPlansBySession = useAtomValue(dismissedPlansBySessionAtom);
   const collapsedPlansBySession = useAtomValue(collapsedPlansBySessionAtom);
+  const autoCollapsedPlansBySession = useAtomValue(
+    autoCollapsedPlansBySessionAtom,
+  );
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const toolCallsBySession = useAtomValue(toolCallsBySessionAtom);
   const toolCallsLoadedBySession = useAtomValue(toolCallsLoadedBySessionAtom);
@@ -344,7 +348,10 @@ export function CenterPanel({
       )
     : null;
   const isActivePlanCollapsed = activeSession
-    ? Boolean(collapsedPlansBySession[activeSession.id])
+    ? Boolean(
+        collapsedPlansBySession[activeSession.id] ||
+          autoCollapsedPlansBySession[activeSession.id],
+      )
     : false;
   const activeAgentRuntime = activeSession
     ? (agentRuntimeBySession[activeSession.id] ?? null)

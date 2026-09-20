@@ -98,6 +98,7 @@ describe("agent state during a window handoff", () => {
             turnStats: {},
             turnChangeSets: {},
             toolCalls: [],
+            plan: null,
           },
         },
       });

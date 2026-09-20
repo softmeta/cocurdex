@@ -2,8 +2,9 @@ import type { TurnChangeSet } from "@cocurdex/shared";
 import {
   Columns2,
   FileCode,
-  Funnel,
+  Minus,
   PanelLeft,
+  Plus,
   RefreshCw,
   Rows3,
   Undo2,
@@ -32,7 +33,6 @@ import { Text } from "@/components/ui/text";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { GitBranchInfo, GitCommitInfo, GitFileStagedState } from "@/lib";
@@ -182,109 +182,101 @@ export function GitChangesToolbar({
   const mutable = isMutableScope(scope);
 
   return (
-    <TooltipProvider>
-      <div
-        className="border-b border-editor-border"
-        data-testid="git-changes-toolbar"
-      >
-        <div className="flex items-center gap-1 px-3 py-1">
-          {mutable ? (
-            <GitCurrentBranchChip currentBranch={currentBranch} />
-          ) : null}
+    <div
+      className="border-b border-editor-border"
+      data-testid="git-changes-toolbar"
+    >
+      <div className="flex items-center gap-1 px-3 py-1">
+        {mutable ? (
+          <GitCurrentBranchChip currentBranch={currentBranch} />
+        ) : null}
 
-          <div className="mx-1 flex items-center gap-2">
-            <Text size="meta" tone="muted">
-              {t("git.fileCount", { count: fileCount })}
-            </Text>
-            <Text className="text-editor-git-added" size="meta">
-              +{additions}
-            </Text>
-            <Text className="text-editor-git-deleted" size="meta">
-              −{deletions}
-            </Text>
-          </div>
+        <div className="mx-1 flex items-center gap-2">
+          <Text tone="muted">{t("git.fileCount", { count: fileCount })}</Text>
+          <Text className="text-editor-git-added">+{additions}</Text>
+          <Text className="text-editor-git-deleted">−{deletions}</Text>
+        </div>
 
-          <div className="ms-auto flex items-center gap-1">
-            <ToolbarButton
-              disabled={isLoading}
-              icon={
-                <RefreshCw
-                  className={cn(
-                    TITLEBAR_ICON_GLYPH_CLASS,
-                    isLoading && "animate-spin",
-                  )}
-                />
-              }
-              label={t("git.refresh")}
-              onClick={onRefresh}
-            />
-            <ToolbarButton
-              active={diffStyle === "unified"}
-              icon={<Rows3 className={TITLEBAR_ICON_GLYPH_CLASS} />}
-              label={t("git.unifiedView")}
-              onClick={() => onDiffStyleChange("unified")}
-            />
-            <ToolbarButton
-              active={diffStyle === "split"}
-              icon={<Columns2 className={TITLEBAR_ICON_GLYPH_CLASS} />}
-              label={t("git.splitView")}
-              onClick={() => onDiffStyleChange("split")}
-            />
-            {/* The file index is the leading half of the split, so its toggle
+        <div className="ms-auto flex items-center gap-1">
+          <ToolbarButton
+            disabled={isLoading}
+            icon={
+              <RefreshCw
+                className={cn(
+                  TITLEBAR_ICON_GLYPH_CLASS,
+                  isLoading && "animate-spin",
+                )}
+              />
+            }
+            label={t("git.refresh")}
+            onClick={onRefresh}
+          />
+          <ToolbarButton
+            active={diffStyle === "unified"}
+            icon={<Rows3 className={TITLEBAR_ICON_GLYPH_CLASS} />}
+            label={t("git.unifiedView")}
+            onClick={() => onDiffStyleChange("unified")}
+          />
+          <ToolbarButton
+            active={diffStyle === "split"}
+            icon={<Columns2 className={TITLEBAR_ICON_GLYPH_CLASS} />}
+            label={t("git.splitView")}
+            onClick={() => onDiffStyleChange("split")}
+          />
+          {/* The file index is the leading half of the split, so its toggle
                 lives next to the diff controls rather than inside the pane it
                 hides. */}
-            <ToolbarButton
-              active={treePanelVisible}
-              icon={<PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />}
-              label={
-                treePanelVisible ? t("git.hideFileTree") : t("git.showFileTree")
-              }
-              onClick={() => onTreePanelVisibleChange(!treePanelVisible)}
-            />
-            <ToolbarButton
-              active={expandUnchanged}
-              icon={<FileCode className={TITLEBAR_ICON_GLYPH_CLASS} />}
-              label={t("git.toggleFullFile")}
-              onClick={() => onExpandUnchangedChange(!expandUnchanged)}
-            />
-            <ToolbarButton
-              active={wrap}
-              icon={<WrapText className={TITLEBAR_ICON_GLYPH_CLASS} />}
-              label={t("git.toggleWrap")}
-              onClick={() => onWrapChange(!wrap)}
-            />
-          </div>
+          <ToolbarButton
+            active={treePanelVisible}
+            icon={<PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />}
+            label={
+              treePanelVisible ? t("git.hideFileTree") : t("git.showFileTree")
+            }
+            onClick={() => onTreePanelVisibleChange(!treePanelVisible)}
+          />
+          <ToolbarButton
+            active={expandUnchanged}
+            icon={<FileCode className={TITLEBAR_ICON_GLYPH_CLASS} />}
+            label={t("git.toggleFullFile")}
+            onClick={() => onExpandUnchangedChange(!expandUnchanged)}
+          />
+          <ToolbarButton
+            active={wrap}
+            icon={<WrapText className={TITLEBAR_ICON_GLYPH_CLASS} />}
+            label={t("git.toggleWrap")}
+            onClick={() => onWrapChange(!wrap)}
+          />
         </div>
-        <BulkActionsRow
-          branches={branches}
-          canDiscardAll={canDiscardAll}
-          changeTypeCounts={changeTypeCounts}
-          changeTypeFilter={changeTypeFilter}
-          commits={commits}
-          commitsLoading={commitsLoading}
-          currentBranch={currentBranch}
-          sessionId={sessionId}
-          turnLabels={turnLabels}
-          turns={turns}
-          turnsLoading={turnsLoading}
-          disabled={isLoading}
-          fileCount={fileCount}
-          hasChanges={hasChanges}
-          mutable={mutable}
-          onChangeTypeFilterChange={onChangeTypeFilterChange}
-          onCommitAction={onCommitAction}
-          onDiscardAll={onDiscardAll}
-          onGenerateCommitMessage={onGenerateCommitMessage}
-          onOpenCommits={onOpenCommits}
-          onOpenTurns={onOpenTurns}
-          onScopeChange={onScopeChange}
-          onStageAll={onStageAll}
-          onUnstageAll={onUnstageAll}
-          scope={scope}
-          stagedState={stagedState}
-        />
       </div>
-    </TooltipProvider>
+      <BulkActionsRow
+        branches={branches}
+        canDiscardAll={canDiscardAll}
+        changeTypeCounts={changeTypeCounts}
+        changeTypeFilter={changeTypeFilter}
+        commits={commits}
+        commitsLoading={commitsLoading}
+        currentBranch={currentBranch}
+        sessionId={sessionId}
+        turnLabels={turnLabels}
+        turns={turns}
+        turnsLoading={turnsLoading}
+        disabled={isLoading}
+        fileCount={fileCount}
+        hasChanges={hasChanges}
+        mutable={mutable}
+        onChangeTypeFilterChange={onChangeTypeFilterChange}
+        onCommitAction={onCommitAction}
+        onDiscardAll={onDiscardAll}
+        onGenerateCommitMessage={onGenerateCommitMessage}
+        onOpenCommits={onOpenCommits}
+        onOpenTurns={onOpenTurns}
+        onScopeChange={onScopeChange}
+        onStageAll={onStageAll}
+        onUnstageAll={onUnstageAll}
+        scope={scope}
+        stagedState={stagedState}
+      />
+    </div>
   );
 }
 
@@ -407,7 +399,7 @@ function BulkActionsRow({
                       className="text-editor-fg-subtle hover:text-editor-fg"
                       disabled={disabled}
                       onClick={() => setDiscardOpen(true)}
-                      size="xs"
+                      size="sm"
                     >
                       <Undo2 className="size-3.5" />
                     </IconButton>
@@ -417,15 +409,29 @@ function BulkActionsRow({
                   {t("git.discardAll")}
                 </TooltipContent>
               </Tooltip>
-              <Button
-                className="text-editor-fg-subtle hover:text-editor-fg"
-                disabled={disabled}
-                onClick={onStageAllAction}
-                size="xs"
-                variant="ghost"
-              >
-                {stageAllLabel}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  aria-label={stageAllLabel}
+                  render={
+                    <IconButton
+                      aria-label={stageAllLabel}
+                      className="text-editor-fg-subtle hover:text-editor-fg"
+                      disabled={disabled}
+                      onClick={onStageAllAction}
+                      size="sm"
+                    >
+                      {fullyStaged ? (
+                        <Minus className="size-3.5" />
+                      ) : (
+                        <Plus className="size-3.5" />
+                      )}
+                    </IconButton>
+                  }
+                />
+                <TooltipContent side="top" sideOffset={6}>
+                  {stageAllLabel}
+                </TooltipContent>
+              </Tooltip>
             </>
           ) : null}
           <GitChangesCommitPopover
@@ -501,12 +507,7 @@ export function ChangeTypeFilterSelect({
       triggerAriaLabel={t("git.changeTypeFilter")}
       triggerClassName="app-no-drag h-7"
       triggerLabel={
-        <>
-          <Funnel className="size-3.5 shrink-0" />
-          <span className="min-w-0 truncate">
-            {t(`git.changeType.${value}`)}
-          </span>
-        </>
+        <span className="min-w-0 truncate">{t(`git.changeType.${value}`)}</span>
       }
       value={value}
       onValueChange={(next) => onValueChange(next as GitChangeTypeFilter)}

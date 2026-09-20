@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 // the app shell and its browser-only preference bootstrap.
 import {
   applyPlanEventAtom,
+  autoCollapsedPlansBySessionAtom,
   collapsedPlansBySessionAtom,
   dismissedPlansBySessionAtom,
   dismissPlanForSessionAtom,
+  loadSessionPlanAtom,
   plansBySessionAtom,
   resolvePlanStepStatus,
   selectVisiblePlan,
@@ -68,6 +70,95 @@ describe("plan store", () => {
     store.set(togglePlanCollapsedForSessionAtom, "session-1");
 
     expect(store.get(collapsedPlansBySessionAtom)["session-1"]).toBeUndefined();
+  });
+
+  it("auto-collapses an unfinished plan when the turn ends", () => {
+    const store = createStore();
+    const idle: AgentEvent = {
+      type: "state.changed",
+      sessionId: "session-1",
+      status: "idle",
+    };
+
+    store.set(applyPlanEventAtom, updateEvent);
+    store.set(applyPlanEventAtom, idle);
+
+    expect(store.get(autoCollapsedPlansBySessionAtom)["session-1"]).toBe(true);
+  });
+
+  it("does not auto-collapse finished plans or a running turn", () => {
+    const store = createStore();
+
+    store.set(applyPlanEventAtom, {
+      ...updateEvent,
+      plan: finishedPlan,
+    });
+    store.set(applyPlanEventAtom, {
+      type: "state.changed",
+      sessionId: "session-1",
+      status: "idle",
+    });
+    store.set(applyPlanEventAtom, {
+      ...updateEvent,
+      sessionId: "session-2",
+    });
+    store.set(applyPlanEventAtom, {
+      type: "state.changed",
+      sessionId: "session-2",
+      status: "running",
+    });
+
+    const autoCollapsed = store.get(autoCollapsedPlansBySessionAtom);
+    expect(autoCollapsed["session-1"]).toBeUndefined();
+    expect(autoCollapsed["session-2"]).toBeUndefined();
+  });
+
+  it("re-expands an auto-collapsed plan on the next update", () => {
+    const store = createStore();
+
+    store.set(applyPlanEventAtom, updateEvent);
+    store.set(applyPlanEventAtom, {
+      type: "state.changed",
+      sessionId: "session-1",
+      status: "idle",
+    });
+    store.set(applyPlanEventAtom, updateEvent);
+
+    expect(
+      store.get(autoCollapsedPlansBySessionAtom)["session-1"],
+    ).toBeUndefined();
+  });
+
+  it("lets the user expand an auto-collapsed plan without latching", () => {
+    const store = createStore();
+
+    store.set(applyPlanEventAtom, updateEvent);
+    store.set(applyPlanEventAtom, {
+      type: "state.changed",
+      sessionId: "session-1",
+      status: "idle",
+    });
+    store.set(togglePlanCollapsedForSessionAtom, "session-1");
+
+    expect(
+      store.get(autoCollapsedPlansBySessionAtom)["session-1"],
+    ).toBeUndefined();
+    expect(store.get(collapsedPlansBySessionAtom)["session-1"]).toBeUndefined();
+  });
+
+  it("hydrates and clears plans from a resync snapshot", () => {
+    const store = createStore();
+
+    store.set(loadSessionPlanAtom, {
+      sessionId: "session-1",
+      plan: updateEvent.plan,
+    });
+    expect(store.get(plansBySessionAtom)["session-1"]).toEqual(
+      updateEvent.plan,
+    );
+
+    store.set(loadSessionPlanAtom, { sessionId: "session-1", plan: null });
+    expect(store.get(plansBySessionAtom)["session-1"]).toBeUndefined();
   });
 
   it("hides finished, dismissed, and missing plans", () => {

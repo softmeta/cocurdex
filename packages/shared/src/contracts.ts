@@ -960,14 +960,16 @@ export interface AgentPlanStep {
   status: "pending" | "in_progress" | "completed";
 }
 
+export interface AgentSessionPlan {
+  explanation?: string | null;
+  steps: AgentPlanStep[];
+  updatedAt: string;
+}
+
 export interface AgentPlanUpdatedEvent {
   type: "plan.updated";
   sessionId: string;
-  plan: {
-    explanation?: string | null;
-    steps: AgentPlanStep[];
-    updatedAt: string;
-  };
+  plan: AgentSessionPlan;
 }
 
 // Snapshot of token usage for one agent run / turn. Field names mirror the

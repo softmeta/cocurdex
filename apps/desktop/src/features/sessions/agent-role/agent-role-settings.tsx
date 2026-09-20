@@ -5,18 +5,18 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components";
 import { EmptyState, IconButton, Text } from "@/components/ui";
-import { agentLabels } from "../session-store";
 import { AgentRoleEditDialog } from "./agent-role-edit-dialog";
 import {
   deleteAgentRoleRecord,
   getAgentRoles,
   subscribeAgentRoles,
 } from "./agent-role-store";
-import { formatAgentRoleRecordSummary } from "./agent-role-summary";
+import { useAgentRoleSummary } from "./use-agent-role-summary";
 
 export function AgentRoleSettingsPanel() {
   const { t } = useTranslation(["settings", "sessions"]);
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
+  const formatRoleSummary = useAgentRoleSummary();
   const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<AgentRoleRecord | null>(
     null,
@@ -56,15 +56,7 @@ export function AgentRoleSettingsPanel() {
                   {role.name}
                 </Text>
                 <Text size="meta" tone="muted" truncate>
-                  {formatAgentRoleRecordSummary(role, {
-                    agentLabel: agentLabels[role.agentId],
-                    permissionLabel: role.permissionMode
-                      ? t(`sessions:permissionMode.${role.permissionMode}`)
-                      : null,
-                    thinkingLabelFor: (level) =>
-                      t(`sessions:composer.thinkingLevels.${level}`),
-                    fastModeOn: t("sessions:modelMenu.fastModeOn"),
-                  })}
+                  {formatRoleSummary(role)}
                 </Text>
               </div>
               <div className="flex shrink-0 items-center gap-1">

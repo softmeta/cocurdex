@@ -137,7 +137,7 @@ export function GitChangesTree({
             {/* Top padding separates the tree chrome from the scope/filter
                 toolbar above; the search field, the layout toggle, and the rows
                 share the same horizontal inset. */}
-            <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-2 pt-2">
+            <div className="flex min-h-0 flex-1 flex-col px-2 pt-2">
               <div className="flex shrink-0 items-center gap-1">
                 <div className="relative min-w-0 flex-1">
                   <Search

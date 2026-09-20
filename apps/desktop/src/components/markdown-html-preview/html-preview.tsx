@@ -9,6 +9,11 @@ import {
 import { IconButton } from "@/components/ui/icon-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { htmlPreviewLocationAtom, openHtmlPreviewInBrowser } from "@/lib";
 import { HtmlCode } from "./html-code";
 import { useBrowserPreview } from "./use-browser-preview";
@@ -65,15 +70,23 @@ export function HtmlPreview(props: CustomRendererProps) {
           </TabsTrigger>
         </TabsList>
         <div className="flex items-center" data-streamdown="code-block-actions">
-          <IconButton
-            aria-label={t("htmlPreview.openInBrowser")}
-            disabled={isIncomplete}
-            onClick={() => openHtmlPreviewInBrowser(code)}
-            size="xs"
-            title={t("htmlPreview.openInBrowser")}
-          >
-            <Globe className="size-4" />
-          </IconButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={t("htmlPreview.openInBrowser")}
+                  disabled={isIncomplete}
+                  onClick={() => openHtmlPreviewInBrowser(code)}
+                  size="xs"
+                >
+                  <Globe className="size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent side="top" sideOffset={6}>
+              {t("htmlPreview.openInBrowser")}
+            </TooltipContent>
+          </Tooltip>
           <CodeBlockDownloadButton
             aria-label={t("htmlPreview.download")}
             code={code}

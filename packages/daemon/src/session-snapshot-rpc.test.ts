@@ -81,6 +81,14 @@ describe("session snapshot RPC", () => {
         },
       ],
     });
+    service.runtime.emitAgentEvent({
+      type: "plan.updated",
+      sessionId: "session-1",
+      plan: {
+        steps: [{ step: "Inspect files", status: "in_progress" }],
+        updatedAt: now,
+      },
+    });
 
     const request = {
       id: "1",
@@ -99,6 +107,7 @@ describe("session snapshot RPC", () => {
       interactions: {
         permissions: [{ id: "permission-1" }],
       },
+      plan: { steps: [{ step: "Inspect files" }] },
     });
     service.runtime.resolveAgentPermission("permission-1", "cancelled");
     await service.shutdown();
@@ -147,6 +156,14 @@ describe("app resync RPC", () => {
         },
       ],
     });
+    service.runtime.emitAgentEvent({
+      type: "plan.updated",
+      sessionId: "session-1",
+      plan: {
+        steps: [{ step: "Inspect files", status: "in_progress" }],
+        updatedAt: now,
+      },
+    });
     service.bindEventSeqProvider(() => 41);
 
     const snapshot = await handleDaemonRequest<"app.resync">(service, {
@@ -166,6 +183,7 @@ describe("app resync RPC", () => {
       transcripts: {
         "session-1": {
           activeMessages: [{ id: "assistant-1", content: "Streaming" }],
+          plan: { steps: [{ step: "Inspect files" }] },
         },
       },
     });

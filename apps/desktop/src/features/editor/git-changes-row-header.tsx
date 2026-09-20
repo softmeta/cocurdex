@@ -63,7 +63,7 @@ export function GitChangeRowHeader({
   const { dir, name } = splitChangePath(path);
 
   return (
-    <div className="app-no-drag flex w-full min-w-0 items-center gap-2 rounded-control px-1 py-0.5 transition-colors hover:bg-editor-tab-hover-bg">
+    <div className="app-no-drag flex w-full min-w-0 items-center gap-2 px-1 py-0.5">
       <button
         aria-expanded={!collapsed}
         className="flex size-4 shrink-0 items-center justify-center rounded-control text-editor-fg-subtle transition-colors hover:text-editor-fg"

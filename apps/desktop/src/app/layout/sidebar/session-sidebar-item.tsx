@@ -34,9 +34,9 @@ import {
   updateSessionTitleAtom,
 } from "@/features/sessions";
 import {
-  formatAgentRoleRecordSummary,
   getAgentRoles,
   subscribeAgentRoles,
+  useAgentRoleSummary,
 } from "@/features/sessions/agent-role";
 import { openSettings } from "@/features/settings";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
@@ -107,19 +107,11 @@ export function SessionSidebarItem({
   const canSplitRight = useAtomValue(focusedPaneCanSplitRightAtom);
   const canSplitDown = useAtomValue(focusedPaneCanSplitDownAtom);
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
+  const formatRoleSummary = useAgentRoleSummary();
   const selectedRole = session.agentRoleId
     ? (roles.find((role) => role.id === session.agentRoleId) ?? null)
     : null;
-  const roleSummary = selectedRole
-    ? formatAgentRoleRecordSummary(selectedRole, {
-        agentLabel: agentLabels[selectedRole.agentId],
-        permissionLabel: selectedRole.permissionMode
-          ? t(`permissionMode.${selectedRole.permissionMode}`)
-          : null,
-        thinkingLabelFor: (level) => t(`composer.thinkingLevels.${level}`),
-        fastModeOn: t("modelMenu.fastModeOn"),
-      })
-    : null;
+  const roleSummary = selectedRole ? formatRoleSummary(selectedRole) : null;
   const [isRenaming, setIsRenaming] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);

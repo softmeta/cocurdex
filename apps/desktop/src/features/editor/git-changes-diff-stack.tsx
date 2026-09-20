@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { GitChangeFileDiff } from "./git-changes-file-diff";
 import {
+  CARD_CHROME_HEIGHT,
   COLLAPSED_ENTRY_HEIGHT,
   DIFF_GAP_BLOCK,
   entryItemKey,
@@ -418,7 +419,7 @@ export function GitChangesDiffStack({
           // deferred row as a placeholder, an open row until pierre paints it —
           // so the stack's geometry is right before the real diff mounts.
           const reservedHeight = Math.max(
-            estimateSize(item.index) - COLLAPSED_ENTRY_HEIGHT,
+            estimateSize(item.index) - CARD_CHROME_HEIGHT,
             0,
           );
           return (

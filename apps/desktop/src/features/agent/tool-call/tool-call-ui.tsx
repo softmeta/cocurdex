@@ -39,20 +39,14 @@ function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
   // header already carries the shared time range — so a finished row is just
   // "icon + title + target". Only non-completed states (failed / pending /
   // running) still surface a text label, keeping problems and in-flight work
-  // visible. A succeeded check is muted to neutral so red failures are the only
-  // colored status in the timeline.
+  // visible.
   const showStatusLabel = !isCompleted;
 
   return (
     <>
       <ToolCallStatusIcon
         toolCall={toolCall}
-        className={cn(
-          "shrink-0",
-          isCompleted
-            ? "text-chat-fg-subtle"
-            : getToolCallStatusClasses(toolCall),
-        )}
+        className={cn("shrink-0", getToolCallStatusClasses(toolCall))}
       />
       <span
         className={cn(
