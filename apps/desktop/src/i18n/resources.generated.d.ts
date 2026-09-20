@@ -502,8 +502,6 @@ export default interface Resources {
       gitEmptyUnstagedTitle: "";
       gitErrorDescription: "";
       gitErrorTitle: "";
-      gitFilterEmptyDescription: "";
-      gitFilterEmptyTitle: "";
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
@@ -516,6 +514,7 @@ export default interface Resources {
       chatFabHint: "Open chat. Drag to move. Hover and click the close icon to hide this button ({{shortcut}} to show again).";
       closeChat: "Close chat";
       closeChatSessions: "Close session list";
+      closeEditorPanel: "Close editor panel";
       closeFile: "Close file {{fileName}}";
       detachedChatFabHint: "Show or hide the independent chat window. Drag to reposition this button. Hover and click × to hide the button; {{shortcut}} restores it.";
       edit: "Edit";
@@ -527,6 +526,7 @@ export default interface Resources {
       hideChatFab: "Hide chat button";
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
       openChat: "Open chat";
+      openEditorPanel: "Open editor panel";
       pinChatDock: "Pin chat to the side";
       pinChatDockNeedsSpace: "The window is too narrow to dock chat. Widen it and try again.";
       preview: "Preview";
@@ -543,7 +543,6 @@ export default interface Resources {
       toggleChat: "Toggle chat";
       toggleChatSessions: "Toggle session list";
       toggleDetachedChat: "Show or hide the chat window";
-      toggleEditorPanel: "Toggle editor panel";
       toggleSidebar: "Toggle sidebar";
       unpinChatDock: "Unpin chat";
     };
@@ -569,11 +568,9 @@ export default interface Resources {
       cancel: "Cancel";
       changeType: {
         added: "Added";
-        all: "All changes";
         deleted: "Deleted";
         modified: "Modified";
       };
-      changeTypeFilter: "Filter by change type";
       checkpointUnavailable: "Turn contents are no longer available";
       commit: "Commit";
       commitAndPush: "Commit and push";
@@ -583,9 +580,9 @@ export default interface Resources {
       commitMessagePlaceholder: "Commit message (or generate with the button)…";
       commitOrPush: "Commit or push";
       commitSuccess: "Committed";
-      copyBranch: "Copy branch name";
       copyPath: "Copy path";
       diffUnavailable: "Diff could not be rendered";
+      diffViewSettings: "Diff view settings";
       discard: "Discard";
       discardAll: "Discard all";
       discardAllConfirm_one: "Discard changes in {{count}} visible file? This cannot be undone.";
@@ -602,7 +599,6 @@ export default interface Resources {
       includeUnstaged: "Include unstaged changes";
       loadingCommits: "Loading commits…";
       loadingTurns: "Loading turns…";
-      noBranch: "No branch";
       noCommits: "No commits yet";
       noMatchingBranches: "No matching branches";
       noTurns: "No turns with file changes";
@@ -612,11 +608,11 @@ export default interface Resources {
       refresh: "Refresh changes";
       scope: {
         branch: "Branch";
-        commit: "Commit";
+        commit: "Committed";
         staged: "Staged";
         turn: "Turn";
         unstaged: "Unstaged";
-        working: "Working tree";
+        working: "Uncommitted";
       };
       scopeMenu: "Diff source";
       searchBranches: "Search branches";
@@ -721,8 +717,6 @@ export default interface Resources {
       gitEmptyUnstagedTitle: "No unstaged changes";
       gitErrorDescription: "Git could not read this workspace. Check that git is installed and the repository is intact, then refresh.";
       gitErrorTitle: "Unable to load git changes";
-      gitFilterEmptyDescription: "No files match the selected change type.";
-      gitFilterEmptyTitle: "No matching changes";
       gitNotRepoDescription: "The current workspace folder is not inside a git repository.";
       gitNotRepoTitle: "Not a git repository";
       loadingFile: "Loading file...";
