@@ -8,6 +8,22 @@ description: Ship a Cocurdex desktop release end to end — bump the apps/deskto
 A release is four moves: bump → PR → merge → tag. Pushing the tag is the only thing
 that starts the build; `workflow_dispatch` is not used for releases.
 
+## Not every change is a release
+
+Most changes — skills, docs, tooling, ordinary fixes — still ship through a PR, but they must not
+bump the version or push a tag: that would publish a build nobody asked for.
+
+| | routine change | release |
+| --- | --- | --- |
+| bump `apps/desktop/package.json` | no | yes |
+| push the branch, open the PR | yes | yes |
+| clear review threads, wait for green checks | yes | yes |
+| merge (`gh pr merge --merge`) | yes | yes |
+| push the `v<version>` tag | no | yes |
+
+The gate before merging is identical either way. Cut a release only when the user asks for one
+(发版 / 发测试版 / 发正式版 / 出个 beta) or when the change has to reach users through the updater.
+
 ## Invariants
 
 - The version lives in exactly one place: `apps/desktop/package.json`.
