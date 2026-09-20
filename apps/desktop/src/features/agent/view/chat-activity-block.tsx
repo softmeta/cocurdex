@@ -55,11 +55,11 @@ export function ActivityBlock({
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger className="mb-1 flex w-full cursor-pointer items-center gap-2 py-0.5 text-sm transition-colors hover:text-chat-fg">
+      <CollapsibleTrigger className="mb-1 flex w-full cursor-pointer items-center gap-2 py-0.5 text-meta transition-colors hover:text-chat-fg-secondary">
         {counts.length > 0 ? (
           <span
             className={cn(
-              "min-w-0 truncate text-sm font-medium text-chat-fg",
+              "min-w-0 truncate font-medium text-chat-fg-muted",
               busy && "activity-shimmer",
             )}
           >
