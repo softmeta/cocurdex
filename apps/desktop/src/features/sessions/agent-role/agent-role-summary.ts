@@ -1,4 +1,8 @@
-import type { AgentRoleDraft, AgentThinkingLevel } from "@cocurdex/shared";
+import type {
+  AgentId,
+  AgentRoleDraft,
+  AgentThinkingLevel,
+} from "@cocurdex/shared";
 import {
   getCachedProviderModelEntry,
   providerModelCache,
@@ -82,6 +86,7 @@ export function resolveAgentRoleSpeedLabel(
 export function formatAgentRoleSummary(parts: {
   agentLabel: string;
   modelLabel: string | null;
+  sessionModeLabel?: string | null;
   thinkingLabel?: string | null;
   speedLabel?: string | null;
   permissionLabel: string | null;
@@ -89,6 +94,7 @@ export function formatAgentRoleSummary(parts: {
   return [
     parts.agentLabel,
     parts.modelLabel,
+    parts.sessionModeLabel,
     parts.thinkingLabel,
     parts.speedLabel,
     parts.permissionLabel,
@@ -102,6 +108,7 @@ export function formatAgentRoleRecordSummary(
   labels: {
     agentLabel: string;
     permissionLabel: string | null;
+    sessionModeLabelFor(agentId: AgentId, modeId: string): string | null;
     thinkingLabelFor(level: AgentThinkingLevel): string;
     fastModeOn: string;
   },
@@ -110,6 +117,9 @@ export function formatAgentRoleRecordSummary(
   return formatAgentRoleSummary({
     agentLabel: labels.agentLabel,
     modelLabel: resolveAgentRoleModelLabel(role),
+    sessionModeLabel: role.sessionModeId
+      ? labels.sessionModeLabelFor(role.agentId, role.sessionModeId)
+      : null,
     thinkingLabel: thinkingLevel
       ? labels.thinkingLabelFor(thinkingLevel)
       : null,

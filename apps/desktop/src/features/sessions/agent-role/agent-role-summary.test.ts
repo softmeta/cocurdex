@@ -17,16 +17,17 @@ describe("shortModelDisplayName", () => {
 });
 
 describe("formatAgentRoleSummary", () => {
-  it("joins agent, model, thinking, speed, and permission in that order", () => {
+  it("joins agent, model, mode, thinking, speed, and permission in that order", () => {
     expect(
       formatAgentRoleSummary({
         agentLabel: "Claude Agent",
         modelLabel: "Opus 5",
+        sessionModeLabel: "计划",
         thinkingLabel: "中",
         speedLabel: "开启",
         permissionLabel: "自动模式",
       }),
-    ).toBe("Claude Agent · Opus 5 · 中 · 开启 · 自动模式");
+    ).toBe("Claude Agent · Opus 5 · 计划 · 中 · 开启 · 自动模式");
   });
 
   it("omits missing runtime axes", () => {
