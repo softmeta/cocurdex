@@ -40,8 +40,11 @@ not be touched. It validates the built changes; it does not update their window.
    await build(resolved.config.preload);
    ```
 
-3. Launch the installed Electron binary with a temporary `.mjs` entry. Set
-   `COCURDEX_REMOTE_DEBUGGING_PORT` and `ELECTRON_RENDERER_URL` for that process.
+3. Launch the installed Electron binary with a temporary `.mjs` entry. When
+   `out/` is already current, `cdp.mjs launch` automates this step (entry
+   generation, free-port selection, renderer-URL reuse, temp userData). For a
+   manual launch, set `COCURDEX_REMOTE_DEBUGGING_PORT`,
+   `COCURDEX_USER_DATA_PATH`, and `ELECTRON_RENDERER_URL` for that process.
    The entry must set the temporary userData path **before** importing main;
    keep the real app path so packaged resources and preload paths resolve:
 
