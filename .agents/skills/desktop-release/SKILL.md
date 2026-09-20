@@ -17,6 +17,7 @@ that starts the build; `workflow_dispatch` is not used for releases.
 - Tags are lightweight (`git tag <name> <commit>`), matching every existing release tag.
 - Merge with a merge commit (`gh pr merge --merge`). History is merge commits, and the tag goes on that merge commit.
 - Never bypass a required CI check. Fix the failure; do not weaken a test to make it pass.
+- Every review thread is resolved before the merge: fixed, or answered with a reason and then resolved.
 
 ## Beta vs stable
 
@@ -56,16 +57,50 @@ git push origin <branch>
 gh pr create --base main --head <branch> --title "..." --body-file <file>
 ```
 
-### 4. Wait for CI, fix failures, merge
+### 4. Clear review, wait for CI, merge
+
+Review comes before the merge. Read every thread, then either fix it or resolve it with a reason.
+A PR is not ready to merge while any thread is open.
+
+```bash
+gh api graphql -f query='
+query($owner:String!,$repo:String!,$pr:Int!){
+  repository(owner:$owner,name:$repo){
+    pullRequest(number:$pr){
+      reviewDecision
+      reviewThreads(first:100){nodes{id isResolved isOutdated path line
+        comments(first:20){nodes{databaseId author{login} body}}}}
+    }
+  }
+}' -F owner=<owner> -F repo=<repo> -F pr=<n>
+```
+
+For each unresolved thread:
+
+- **Fixable** → fix it, push, and resolve the thread once the fix is in.
+- **Not fixable or deliberately declined** → reply with the reason, then resolve it. Never resolve a
+  thread you have not answered.
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<n>/comments/<commentId>/replies -f body="<reason>"
+gh api graphql -f query='
+mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<threadId>
+```
+
+`isOutdated: true` means the diff moved past the comment; check whether the fix already landed
+before resolving. Re-run the query until every thread reports `isResolved: true`.
+
+Then wait for CI and merge:
 
 ```bash
 gh pr checks <n> --watch --interval 30
-gh pr view <n> --json mergeable,mergeStateStatus
+gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision
 gh pr merge <n> --merge
 ```
 
 CI runs the full workspace suite (`pnpm test`), not just the packages you touched. Run the
 affected packages' tests locally before pushing, but expect the whole suite to be the gate.
+Merge only when every review thread is resolved and every required check is green.
 
 ### 5. Tag
 
