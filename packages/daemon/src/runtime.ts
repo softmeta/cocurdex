@@ -13,6 +13,7 @@ import {
   type AgentPlanApprovalDecision,
   type AgentPlanApprovalRecord,
   type AgentPlanApprovalRequestPayload,
+  type AgentPlanUpdatedEvent,
   type AgentProviderSessionRecord,
   type AgentQuestionRequestPayload,
   type AgentQuestionRequestRecord,
@@ -88,6 +89,12 @@ export class AgentRuntimeManager {
   >();
   private readonly pendingQuestions = new Map<string, PendingQuestion>();
   private readonly sessionRuntimes = new Map<string, SessionRuntime>();
+  // Latest plan each session's agent pushed. Plans are not persisted, so this
+  // cache is what resync snapshots serve after a replay gap.
+  private readonly sessionPlans = new Map<
+    string,
+    AgentPlanUpdatedEvent["plan"]
+  >();
   private persistAgentEventHandler:
     | ((event: AgentEvent) => Promise<void> | void)
     | null = null;
@@ -136,6 +143,9 @@ export class AgentRuntimeManager {
         tracker.messageId = event.message.id;
       }
     }
+    if (event.type === "plan.updated") {
+      this.sessionPlans.set(event.sessionId, event.plan);
+    }
 
     const handler = this.persistAgentEventHandler;
     if (!handler) {
@@ -176,6 +186,14 @@ export class AgentRuntimeManager {
       () => undefined,
     );
     return job;
+  }
+
+  getSessionPlan(sessionId: string) {
+    return this.sessionPlans.get(sessionId) ?? null;
+  }
+
+  clearSessionPlan(sessionId: string) {
+    this.sessionPlans.delete(sessionId);
   }
 
   getPendingInteractions() {

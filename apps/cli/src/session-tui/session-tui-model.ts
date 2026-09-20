@@ -64,7 +64,7 @@ export function createSessionTuiState(
     queuedAgentInputs: snapshot.queuedAgentInputs,
     usage: snapshot.usage,
     interactions: snapshot.interactions,
-    plan: null,
+    plan: snapshot.plan,
     rateLimits: null,
     lastError: null,
   };

@@ -811,6 +811,7 @@ export class CocurdexDaemonService {
                 turnStats: messages.turnStats,
                 turnChangeSets: messages.turnChangeSets,
                 toolCalls,
+                plan: this.runtime.getSessionPlan(sessionId),
               },
             ] as const;
           }),
@@ -861,6 +862,7 @@ export class CocurdexDaemonService {
       usage,
       turnChangeSets,
       interactions: this.runtime.getSessionInteractions(sessionId),
+      plan: this.runtime.getSessionPlan(sessionId),
     };
   }
 
@@ -1079,6 +1081,7 @@ export class CocurdexDaemonService {
         })
       : undefined;
     await this.disposeSessionRuntime(sessionId);
+    this.runtime.clearSessionPlan(sessionId);
 
     if (
       session.agentType === "opencode" &&
@@ -1270,6 +1273,7 @@ export class CocurdexDaemonService {
       );
     }
     this.queuedFollowUps.delete(message.sessionId);
+    this.runtime.clearSessionPlan(message.sessionId);
     await this.state.rewindSessionMessages(message);
     await this.state.deleteQueuedAgentInput(message.id);
   }
