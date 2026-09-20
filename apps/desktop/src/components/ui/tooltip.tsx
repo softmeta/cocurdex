@@ -4,8 +4,10 @@ import type * as React from "react";
 import { asChildToRender } from "@/components/ui/_as-child-render";
 import { cn } from "@/lib/utils";
 
+const TOOLTIP_DELAY_MS = 500;
+
 function TooltipProvider({
-  delay = 0,
+  delay = TOOLTIP_DELAY_MS,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider> & {
   /** Backwards-compatible alias for Base UI's `delay`. */

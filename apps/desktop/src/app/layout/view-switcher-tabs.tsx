@@ -35,9 +35,6 @@ import {
   titlebarIconButtonClassName,
 } from "./titlebar-icon-button";
 
-/** Delay before tab tooltips open so quick sweeps over the row stay quiet. */
-const TAB_TOOLTIP_DELAY_MS = 500;
-
 type ViewTabLabelKey =
   | "actions.showGitChanges"
   | "actions.showEditor"
@@ -255,7 +252,7 @@ export function ViewSwitcherTabs({
   };
 
   return (
-    <TooltipProvider delay={TAB_TOOLTIP_DELAY_MS}>
+    <TooltipProvider>
       {/*
         Full-width row so border-b runs edge to edge. Do NOT put app-drag on
         the whole row: Electron's -webkit-app-region:drag on a full-width

@@ -2,6 +2,11 @@ import { Pin, PinOff, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   CHAT_DOCK_MIN_WIDTH,
   resolveChatDockPinLayout,
 } from "./chat-dock-sizing";
@@ -32,35 +37,51 @@ export function ChatDockActions({
   if (pinned && !canPin) hint = t("actions.chatDockTemporarilyFloating");
   return (
     <div className="flex items-center gap-1 bg-chat-canvas">
-      <TitlebarIconButton
-        active={pinned && canPin}
-        aria-label={label}
-        aria-disabled={unavailable}
-        title={hint}
-        className="aria-disabled:cursor-default aria-disabled:text-muted-foreground"
-        onMouseDown={(event) => event.stopPropagation()}
-        onClick={() => {
-          if (unavailable) {
-            toast.info(hint);
-            return;
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <TitlebarIconButton
+              active={pinned && canPin}
+              aria-label={label}
+              aria-disabled={unavailable}
+              className="aria-disabled:cursor-default aria-disabled:text-muted-foreground"
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                if (unavailable) {
+                  toast.info(hint);
+                  return;
+                }
+                onPinnedChange(!pinned);
+              }}
+            >
+              {pinned ? (
+                <PinOff className="size-3.5" />
+              ) : (
+                <Pin className="size-3.5" />
+              )}
+            </TitlebarIconButton>
           }
-          onPinnedChange(!pinned);
-        }}
-      >
-        {pinned ? (
-          <PinOff className="size-3.5" />
-        ) : (
-          <Pin className="size-3.5" />
-        )}
-      </TitlebarIconButton>
-      <TitlebarIconButton
-        aria-label={t("actions.closeChat")}
-        title={t("actions.closeChat")}
-        onMouseDown={(event) => event.stopPropagation()}
-        onClick={onClose}
-      >
-        <X className="size-3.5" />
-      </TitlebarIconButton>
+        />
+        <TooltipContent side="bottom" sideOffset={6}>
+          {hint}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <TitlebarIconButton
+              aria-label={t("actions.closeChat")}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={onClose}
+            >
+              <X className="size-3.5" />
+            </TitlebarIconButton>
+          }
+        />
+        <TooltipContent side="bottom" sideOffset={6}>
+          {t("actions.closeChat")}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

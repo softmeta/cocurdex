@@ -27,9 +27,6 @@ import {
 import { cn } from "@/lib";
 import { PdfPageJumpInput } from "./pdf-page-jump-input";
 
-// Match top tab tooltips: delay so sweeping the toolbar does not flash tips.
-const PDF_TOOLBAR_TOOLTIP_DELAY_MS = 500;
-
 interface PdfToolbarProps {
   currentPage: number;
   totalPages: number;
@@ -119,7 +116,7 @@ export function PdfToolbar({
   const resetZoomLabel = t("pdf.resetZoom");
 
   return (
-    <TooltipProvider delay={PDF_TOOLBAR_TOOLTIP_DELAY_MS}>
+    <TooltipProvider>
       <div className="flex items-center justify-between gap-2 border-b border-editor-border px-2 py-1">
         <div className="flex items-center gap-1">
           {hasOutline ? (

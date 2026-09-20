@@ -17,8 +17,9 @@ import {
 import { useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
 import { useMemo, useState } from "react";
-import { ScrollArea, SidebarMenu, TooltipProvider } from "@/components/ui";
+import { SidebarMenu, TooltipProvider } from "@/components/ui";
 import { EditProjectDialog, updateWorkspaceAtom } from "@/features/workspaces";
+import { SidebarScrollArea } from "./sidebar-scroll-area";
 import { WorkspaceSidebarItem } from "./workspace-sidebar-item";
 
 interface ProjectsPanelProps {
@@ -93,14 +94,14 @@ export function ProjectsPanel({
   };
 
   return (
-    <TooltipProvider closeDelay={80} delay={400}>
+    <TooltipProvider closeDelay={80}>
       <DndContext
         onDragCancel={() => setActiveId(null)}
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
         sensors={sensors}
       >
-        <ScrollArea
+        <SidebarScrollArea
           className="min-h-0 flex-1"
           viewportProps={{
             className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
@@ -131,7 +132,7 @@ export function ProjectsPanel({
               ))}
             </SortableContext>
           </SidebarMenu>
-        </ScrollArea>
+        </SidebarScrollArea>
         <DragOverlay>
           {activeWorkspace ? (
             <div className="flex h-7 max-w-56 items-center gap-1.5 rounded-control bg-sidebar px-1 text-body text-sidebar-fg shadow-sm">

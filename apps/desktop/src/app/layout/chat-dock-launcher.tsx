@@ -1,6 +1,11 @@
 import { MessageSquare, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "@/components/ui/icon-button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useResolvedShortcutLabel } from "@/features/shortcuts";
 import { useFabPosition } from "./chat-dock-geometry";
 
@@ -33,39 +38,49 @@ export function ChatDockLauncher({
       className="app-no-drag group/fab absolute z-50"
       style={{ right: fabPosition.right, bottom: fabPosition.bottom }}
     >
-      <IconButton
-        aria-label={label}
-        className="cursor-grab rounded-full shadow-lg active:cursor-grabbing"
-        onClick={() => {
-          if (consumeFabDragClick()) {
-            return;
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              aria-label={label}
+              className="cursor-grab rounded-full shadow-lg active:cursor-grabbing"
+              onClick={() => {
+                if (consumeFabDragClick()) {
+                  return;
+                }
+                onOpen();
+              }}
+              onMouseDown={beginFabDrag}
+              size="lg"
+              variant="default"
+            >
+              <MessageSquare className="size-4" />
+            </IconButton>
           }
-          onOpen();
-        }}
-        onMouseDown={beginFabDrag}
-        size="lg"
-        title={toggleChatShortcut ? hint : label}
-        variant="default"
-      >
-        <MessageSquare className="size-4" />
-      </IconButton>
+        />
+        <TooltipContent side="top" sideOffset={6}>
+          {toggleChatShortcut ? hint : label}
+        </TooltipContent>
+      </Tooltip>
       {onHideFab ? (
-        <button
-          aria-label={t("actions.hideChatFab")}
-          className="absolute -end-1 -top-1 z-10 flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm outline-none transition-opacity pointer-events-none hover:text-foreground focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 group-hover/fab:pointer-events-auto group-hover/fab:opacity-100"
-          onClick={(event) => {
-            event.stopPropagation();
-            onHideFab();
-          }}
-          title={
-            toggleChatShortcut
+        <Tooltip>
+          <TooltipTrigger
+            aria-label={t("actions.hideChatFab")}
+            className="absolute -end-1 -top-1 z-10 flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm outline-none transition-opacity pointer-events-none hover:text-foreground focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 group-hover/fab:pointer-events-auto group-hover/fab:opacity-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              onHideFab();
+            }}
+            type="button"
+          >
+            <X className="size-3" />
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6}>
+            {toggleChatShortcut
               ? t("actions.hideChatFabHint", { shortcut: toggleChatShortcut })
-              : t("actions.hideChatFab")
-          }
-          type="button"
-        >
-          <X className="size-3" />
-        </button>
+              : t("actions.hideChatFab")}
+          </TooltipContent>
+        </Tooltip>
       ) : null}
     </div>
   );

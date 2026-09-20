@@ -38,7 +38,6 @@ import {
 const MIN_PREVIEW_ZOOM = 0.5;
 const MAX_PREVIEW_ZOOM = 3;
 const PREVIEW_ZOOM_STEP = 0.25;
-const PREVIEW_TOOLBAR_TOOLTIP_DELAY_MS = 500;
 
 function PreviewToolbarIconButton({
   label,
@@ -223,7 +222,7 @@ export function ImageAttachmentPreview({
               })}`
             : attachment.name}
         </DialogTitle>
-        <TooltipProvider delay={PREVIEW_TOOLBAR_TOOLTIP_DELAY_MS}>
+        <TooltipProvider>
           <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-chat-border/40 border-b px-3">
             <div className="flex min-w-0 items-center gap-2">
               <Text className="block truncate text-chat-fg" size="body">
