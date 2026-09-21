@@ -22,7 +22,6 @@ import {
   type AppDropdownTriggerAppearance,
   AppDropdownTriggerButton,
   AppDropdownTriggerLabel,
-  appPopupContentWidthClassName,
 } from "./dropdown";
 
 /** One row in a searchable single-select list. */
@@ -223,11 +222,7 @@ export function AppSearchableSelect({
       </ComboboxTrigger>
       <ComboboxContent
         align={align}
-        className={cn(
-          appPopupContentWidthClassName,
-          "rounded-control!",
-          contentClassName,
-        )}
+        className={cn("rounded-control!", contentClassName)}
         side={side}
       >
         <ComboboxInput

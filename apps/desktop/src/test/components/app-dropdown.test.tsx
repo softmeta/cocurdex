@@ -4,7 +4,6 @@ import {
   AppDropdownContent,
   AppDropdownItem,
   appDropdownContentClassName,
-  appPopupContentWidthClassName,
 } from "@/components";
 import {
   DropdownMenu,
@@ -22,12 +21,22 @@ describe("appDropdownContentClassName", () => {
     );
   });
 
-  it("grows with labels instead of locking to the trigger width", () => {
-    expect(appPopupContentWidthClassName).toContain("w-max");
-    expect(appPopupContentWidthClassName).toContain(
-      "min-w-[var(--anchor-width)]",
+  it("hugs the longest row but never goes below the trigger width", () => {
+    render(
+      <DropdownMenu defaultOpen>
+        <DropdownMenuTrigger>open</DropdownMenuTrigger>
+        <AppDropdownContent>
+          <AppDropdownItem>First</AppDropdownItem>
+        </AppDropdownContent>
+      </DropdownMenu>,
     );
-    expect(appDropdownContentClassName).toContain("w-max");
+
+    const classes = screen.getByRole("menu").className.split(" ");
+    expect(classes).not.toContain("w-(--anchor-width)");
+    expect(classes).toContain("min-w-(--anchor-width)");
+    expect(classes).toContain(
+      "max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
+    );
   });
 
   it("carries the gap class on the rendered content for any consumer", () => {

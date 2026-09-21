@@ -27,7 +27,6 @@ export function LanguagePicker({ value, onChange }: LanguagePickerProps) {
   return (
     <SettingsSelect
       ariaLabel={t("language.title")}
-      compact
       options={options}
       value={value}
       onChange={(next) => onChange(next as LanguageMode)}

@@ -1667,7 +1667,7 @@ export default interface Resources {
         clearKey: "Clear key";
         delete: "Delete";
         importJson: "Import JSON";
-        newProvider: "New provider";
+        newProvider: "New";
         refresh: "Refresh";
         save: "Save";
       };

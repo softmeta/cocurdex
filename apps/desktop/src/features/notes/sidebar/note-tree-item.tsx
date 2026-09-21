@@ -220,7 +220,7 @@ export function NoteTreeItem({
               <FolderInput className="size-3.5" />
               {t("sidebar.moveTo")}
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="min-w-40">
+            <ContextMenuSubContent>
               {moveDestinations.map((dest) => (
                 <ContextMenuItem
                   key={dest.parentId ?? "__root__"}
