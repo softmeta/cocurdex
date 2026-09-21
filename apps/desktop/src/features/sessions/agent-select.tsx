@@ -275,7 +275,7 @@ function AgentRoleSubmenu({
           {t("agentRole.menuLabel")}
         </span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="min-w-56 max-w-80">
+      <DropdownMenuSubContent className="[--popup-max-width:20rem]">
         {roles.length === 0 ? (
           <AppDropdownItem disabled>
             <span className="text-muted-foreground">

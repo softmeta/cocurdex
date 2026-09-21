@@ -683,8 +683,8 @@ export function ProviderSettingsPanel() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 gap-6">
       <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3">
-        <div className="flex shrink-0 flex-col gap-2">
-          <div className="relative min-w-0">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/65" />
             <Input
               className="h-8 rounded-control border-border/70 bg-background/60 ps-9 pe-3 text-body shadow-none placeholder:text-muted-foreground/70 focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20"
@@ -694,8 +694,7 @@ export function ProviderSettingsPanel() {
             />
           </div>
           <Button
-            className="w-full"
-            size="sm"
+            className="shrink-0"
             type="button"
             variant="secondary"
             onClick={startNewProvider}
