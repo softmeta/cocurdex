@@ -26,14 +26,10 @@ const dropdownTriggerRadiusClassNames = {
   full: "rounded-full",
 } satisfies Record<AppDropdownTriggerRadius, string>;
 
-// Shared by AppDropdown and AppSearchableSelect: grow with the longest
-// label, stay at least as wide as the (often truncated) trigger, and cap
-// so an 80-char ref cannot stretch across the window.
-export const appPopupContentWidthClassName =
-  "w-max min-w-[var(--anchor-width)] max-w-[min(420px,calc(100vw-2rem))]";
-
+// Popup width (hug the longest row, at least the trigger width, capped) now
+// lives on the ui primitives via `popupContentWidthClassName`; this class only
+// carries the app-level chrome and row spacing.
 export const appDropdownContentClassName = cn(
-  appPopupContentWidthClassName,
   "rounded-control! border-border/70 bg-popover p-1 text-popover-foreground shadow-lg shadow-black/20",
   // Keep a hair of space between consecutive rows so an adjacent selected +
   // hovered pair reads as two filled rows, not one merged block.
@@ -104,7 +100,7 @@ export function AppDropdownTriggerButton({
       {showChevron ? (
         <ChevronDown
           className={cn(
-            "size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-accent-foreground",
+            "size-3.5 shrink-0 translate-y-px text-muted-foreground transition-colors group-hover:text-accent-foreground",
             chevronClassName,
           )}
         />

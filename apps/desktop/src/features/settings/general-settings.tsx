@@ -87,7 +87,6 @@ export function GeneralPanel({
         >
           <SettingsSelect
             ariaLabel={t("chatDisplay.layout.title")}
-            compact
             options={layoutOptions}
             value={chatLayoutMode}
             onChange={(value) => {
@@ -118,7 +117,6 @@ export function GeneralPanel({
         >
           <SettingsSelect
             ariaLabel={t("chatDisplay.activity.title")}
-            compact
             options={activityOptions}
             value={chatDisplay.activityDisplay}
             onChange={(value) =>
@@ -135,7 +133,6 @@ export function GeneralPanel({
         >
           <SettingsSelect
             ariaLabel={t("chatDisplay.htmlPreview.title")}
-            compact
             value={htmlLocation}
             options={[
               {
@@ -162,7 +159,6 @@ export function GeneralPanel({
         >
           <SettingsSelect
             ariaLabel={t("sendShortcut.title")}
-            compact
             options={sendShortcutOptions}
             value={sendShortcut}
             onChange={(value) => {
@@ -178,7 +174,6 @@ export function GeneralPanel({
         >
           <SettingsSelect
             ariaLabel={t("followUp.title")}
-            compact
             options={followUpOptions}
             value={followUpBehavior}
             onChange={(value) => {

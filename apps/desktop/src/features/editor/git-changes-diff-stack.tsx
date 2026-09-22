@@ -11,18 +11,19 @@ import {
 import { cn } from "@/lib/utils";
 import { GitChangeFileDiff } from "./git-changes-file-diff";
 import {
+  CARD_CHROME_HEIGHT,
   COLLAPSED_ENTRY_HEIGHT,
   DIFF_GAP_BLOCK,
   entryItemKey,
   estimateEntryHeight,
   type GitChangeEntry,
+  type GitDiffStyle,
 } from "./git-changes-model";
 import {
   consumeGitRevealAtom,
   type GitFileReveal,
   gitSelectedPathAtom,
 } from "./git-changes-store";
-import type { GitDiffStyle } from "./git-changes-toolbar";
 
 // The pinned row owns the top edge of the scrollport. Cards sit in rows whose gap
 // is below the card (`pb-2`), so a row whose top is within that empty band of
@@ -418,7 +419,7 @@ export function GitChangesDiffStack({
           // deferred row as a placeholder, an open row until pierre paints it —
           // so the stack's geometry is right before the real diff mounts.
           const reservedHeight = Math.max(
-            estimateSize(item.index) - COLLAPSED_ENTRY_HEIGHT,
+            estimateSize(item.index) - CARD_CHROME_HEIGHT,
             0,
           );
           return (

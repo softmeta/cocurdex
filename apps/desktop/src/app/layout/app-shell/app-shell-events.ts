@@ -17,6 +17,7 @@ import {
   hydratePendingPlanApprovalsAtom,
   hydratePendingQuestionsAtom,
   loadSessionMessagesAtom,
+  loadSessionPlanAtom,
   loadSessionToolCallsAtom,
   loadTurnStatsAtom,
   messagesLoadedBySessionAtom,
@@ -76,6 +77,7 @@ export function useAgentEventBridge() {
   );
   const appendMessage = useSetAtom(appendMessageAtom);
   const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
+  const loadSessionPlan = useSetAtom(loadSessionPlanAtom);
   const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
   const loadTurnStats = useSetAtom(loadTurnStatsAtom);
   const loadTurnChangeSets = useSetAtom(loadTurnChangeSetsAtom);
@@ -204,6 +206,7 @@ export function useAgentEventBridge() {
         sessionId,
       });
       loadSessionToolCalls({ sessionId, toolCalls: transcript.toolCalls });
+      loadSessionPlan({ sessionId, plan: transcript.plan });
     }
     resyncBoundaryRef.current = {
       epoch: snapshot.epoch,

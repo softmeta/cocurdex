@@ -30,8 +30,10 @@ association remain explicit unknowns. Exit 0 means the requested methods exist
 and the daemon reports a matching running runtime, not that all code is current.
 
 `dev:inspect` enables CDP; it does not
-by itself prove that main/preload watch mode is enabled. Per AGENTS.md, do not
-start the desktop dev server yourself when it is absent.
+by itself prove that main/preload watch mode is enabled. Per AGENTS.md, you may
+start `pnpm --filter @cocurdex/desktop dev:inspect` yourself for simple
+verification when no debuggable app is running; do not restart or take over a
+development process that is already in use.
 
 | Changed boundary | Evidence needed before testing |
 | --- | --- |
@@ -74,6 +76,40 @@ and includes exception details and stack traces on failure. Use `eval ACTION
 or condition wait, defaults to 10 seconds, and is capped at 60 seconds. A timeout
 does not roll back an action or cancel application work; inspect before retrying.
 Connection loss and evaluation errors stop the wait without replaying actions.
+
+## Concurrent instances
+
+When the default CDP port (9222) is already used by another session — a
+user-run app or another agent — start your own isolated instance instead of
+sharing its connection:
+
+```bash
+rtk node .agents/skills/debug-desktop/scripts/cdp.mjs launch
+rtk node .agents/skills/debug-desktop/scripts/cdp.mjs targets --port 9223
+rtk node .agents/skills/debug-desktop/scripts/cdp.mjs stop --user-data /tmp/cocurdex-debug-XXXX
+```
+
+`launch` picks a free port (9223+ by default, `--port` to pin), creates a
+temporary userData profile, copies the renderer URL from the sibling instance
+on `--from-port` (or `--renderer-url`), and spawns Electron against the
+existing `out/main/main.js` bundle. It returns `{ pid, port, userDataPath, ... }`
+once CDP is accepting connections; pass that port via `--port` on every
+subsequent command. `stop` SIGTERMs the recorded pid and removes the profile —
+it refuses directories without the `debug-instance.json` marker, so it cannot
+delete the user's real profile.
+
+A distinct `COCURDEX_USER_DATA_PATH` is mandatory, not optional: the
+single-instance lock and `daemon.sock` both live under the userData profile, so
+a second instance sharing `Cocurdex-dev` exits immediately. The isolated
+profile means an empty database, no sessions, and no provider auth — use it to
+verify rendering, layout, and IPC on seeded or empty state. To inspect the
+user's live session data you still attach to their instance read-only.
+
+Requires `apps/desktop/out/main/main.js` (produced by `electron-vite dev` or
+`build`). Cap concurrent debug instances at 5 and always `stop` the ones you
+started; `mkdtemp` profiles pile up otherwise. For the full manual procedure
+(main/preload rebuild + env details), see
+[references/process-verification.md](references/process-verification.md).
 
 For DOM/UI checks, query inside the expression (`innerText`,
 `querySelector(...).getBoundingClientRect()`, etc.). Read captured images back

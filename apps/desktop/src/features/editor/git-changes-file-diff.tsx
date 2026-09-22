@@ -16,10 +16,10 @@ import {
   GIT_DIFF_THEME_NAMES,
   GIT_DIFF_THEMES,
   type GitChangeEntry,
+  type GitDiffStyle,
 } from "./git-changes-model";
 import { GitChangeRowActions } from "./git-changes-row-actions";
 import { GitChangeRowHeader } from "./git-changes-row-header";
-import type { GitDiffStyle } from "./git-changes-toolbar";
 
 interface GitChangeFileDiffProps {
   entry: GitChangeEntry;
@@ -220,7 +220,10 @@ export function GitChangeFileDiff({
 
   return (
     // One changed file is one card; the stack spaces consecutive cards apart.
-    <div className="rounded-card border border-editor-border">
+    // `clip` rather than `hidden`: clipping keeps the diff body off the card's
+    // rounded corners, and — unlike `hidden` — does not create a scroll
+    // container, so the header band still sticks to the outer scrollport.
+    <div className="overflow-clip rounded-card border border-editor-border">
       <div className="group min-w-full text-body leading-5">
         {/* Sticky lives on a wrapper, not the header row: the row's rounded
             corners would otherwise let the scrolled diff show through behind
@@ -228,9 +231,9 @@ export function GitChangeFileDiff({
             of the sticky box would leave a transparent strip above it. */}
         <div
           className={cn(
-            "pt-2",
-            stickyHeader &&
-              "sticky top-0 z-10 rounded-t-card bg-editor-monaco-bg",
+            "rounded-t-card pt-2 transition-colors hover:bg-editor-tab-hover-bg",
+            state === "folded" && "rounded-b-card pb-2",
+            stickyHeader && "sticky top-0 z-10 bg-editor-monaco-bg",
           )}
         >
           <GitChangeRowHeader

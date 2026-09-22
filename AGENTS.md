@@ -14,6 +14,8 @@ Never change code or commit on `main`. Create a branch before the first edit or 
 
 When the checkout is already on a branch other than `main`, reuse that branch instead of creating or switching to a new one. Switching branches interrupts other tasks sharing the checkout, and a shared worktree cannot check out the same branch twice. Only create or switch branches when explicitly asked.
 
+Land changes through a branch and a pull request: push, open the PR, watch its checks and review threads, then merge with `gh pr merge --merge`. Clear every review thread first — fix it, or reply with a reason and then resolve it. Docs, skills, and tooling changes take this path with no version bump and no tag; only an explicit release request bumps `apps/desktop/package.json` and pushes a `v<version>` tag. See `.agents/skills/desktop-release`.
+
 ## Architecture: daemon, host, and clients
 
 Reusable product capabilities belong in `packages/daemon`, exposed through `@cocurdex/rpc`. Ask: would a browser client need this capability through the daemon? If yes, use daemon RPC; desktop-only host APIs use Electron IPC.
@@ -61,7 +63,9 @@ Use TDD for critical pure functions and similarly stable logic. UI, feature flow
 
 Do not start `pnpm --filter @cocurdex/desktop dev`; ask the user to start it if needed. Do not reuse processes, open browsers, or click through the app unless the user explicitly requests it.
 
-You may attach to a running desktop app over Chrome DevTools Protocol yourself to debug, without asking first: read the renderer console, evaluate JavaScript, inspect the DOM, measure layout, and take screenshots. Start the app with `COCURDEX_REMOTE_DEBUGGING_PORT` (or `pnpm run dev:inspect`) when the port is closed, and treat the session as read-only unless the user asks for interaction. Keep the attach disposable: detach when the investigation is done, and never leave the app in a modified state.
+You may attach to a running desktop app over Chrome DevTools Protocol yourself to debug, without asking first: read the renderer console, evaluate JavaScript, inspect the DOM, measure layout, and take screenshots. For simple verification you may start `pnpm --filter @cocurdex/desktop dev:inspect` (or set `COCURDEX_REMOTE_DEBUGGING_PORT` on `dev`) yourself when no debuggable app is running; treat the session as read-only unless the user asks for interaction. Keep the attach disposable: detach when the investigation is done, and never leave the app in a modified state.
+
+When the running app is occupied by another session, start an additional instance instead of competing for it. Each instance needs a unique `COCURDEX_REMOTE_DEBUGGING_PORT` and a unique `COCURDEX_USER_DATA_PATH` — the single-instance lock and the daemon socket are scoped to the userData profile, so a second instance on the same profile exits immediately. Reuse the already-running renderer dev server through `ELECTRON_RENDERER_URL` rather than a second `electron-vite dev`; `cdp.mjs launch` in the debug-desktop skill automates this. Run at most 5 concurrent debug instances, and kill only the ones you started.
 
 Prefer measuring over guessing. When a symptom involves rendering, layout, timing, or third-party behavior and a CDP session can answer it, attach and measure before proposing a cause or a fix; state the measurement that settled it. Do not stack hypotheses, batch speculative fixes, or ask the user to re-verify round after round when the running app can be inspected directly.
 

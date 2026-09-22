@@ -63,7 +63,6 @@ describe("chat dock pin controls", () => {
     );
     const pin = screen.getByRole("button", { name: "actions.pinChatDock" });
     expect(pin.getAttribute("aria-disabled")).toBe("true");
-    expect(pin.getAttribute("title")).toBe("actions.pinChatDockNeedsSpace");
     fireEvent.click(pin);
     expect(fixture.info).toHaveBeenCalledWith("actions.pinChatDockNeedsSpace");
     expect(change).not.toHaveBeenCalled();
@@ -90,8 +89,8 @@ describe("chat dock pin controls", () => {
     expect(
       screen
         .getByRole("button", { name: "actions.unpinChatDock" })
-        .getAttribute("title"),
-    ).toBe("actions.chatDockTemporarilyFloating");
+        .getAttribute("aria-pressed"),
+    ).toBeNull();
     expect(
       (screen.getByRole("textbox", { name: "Draft" }) as HTMLInputElement)
         .value,

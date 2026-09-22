@@ -4,13 +4,13 @@ import { MessagesSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   EmptyState,
-  ScrollArea,
   SidebarMenu,
   SidebarMenuItem,
   TooltipProvider,
 } from "@/components/ui";
 import { conversationsLoadedAtom } from "@/features/chat";
 import { ConversationSidebarItem } from "./conversation-sidebar-item";
+import { SidebarScrollArea } from "./sidebar-scroll-area";
 
 interface ConversationsPanelProps {
   activeConversationId: string | null;
@@ -40,8 +40,8 @@ export function ConversationsPanel({
   }
 
   return (
-    <TooltipProvider closeDelay={80} delay={400}>
-      <ScrollArea
+    <TooltipProvider closeDelay={80}>
+      <SidebarScrollArea
         className="min-h-0 flex-1"
         viewportProps={{
           className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
@@ -58,7 +58,7 @@ export function ConversationsPanel({
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-      </ScrollArea>
+      </SidebarScrollArea>
     </TooltipProvider>
   );
 }

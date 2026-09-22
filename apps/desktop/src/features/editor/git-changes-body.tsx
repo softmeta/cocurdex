@@ -1,17 +1,35 @@
 import { FileDiff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { WorkspaceGitDiffStatus } from "@/lib";
+import type { GitFileStagedState, WorkspaceGitDiffStatus } from "@/lib";
+import type {
+  GitCommitAction,
+  GitCommitActionResult,
+} from "./git-changes-commit-popover";
 import type { GitChangesDiffStackProps } from "./git-changes-diff-stack";
 import { GitChangesTree } from "./git-changes-tree";
 import type { GitDiffScope } from "./git-diff-scope";
 
 interface GitChangesBodyProps extends GitChangesDiffStackProps {
   isLoading: boolean;
-  isFiltered: boolean;
+  actionsBusy: boolean;
   diffStatus: WorkspaceGitDiffStatus;
   workspaceName: string;
   treePanelVisible: boolean;
   scopeMode: GitDiffScope["mode"];
+  stagedState: GitFileStagedState;
+  currentBranch: string | null;
+  hasChanges: boolean;
+  onDiscardAll: () => void;
+  onCommitAction: (
+    action: GitCommitAction,
+    options: { message: string; includeUnstaged: boolean },
+  ) => Promise<GitCommitActionResult> | GitCommitActionResult;
+  onGenerateCommitMessage: (options: {
+    includeUnstaged: boolean;
+  }) => Promise<string | null>;
+  onTreePanelVisibleChange: (visible: boolean) => void;
+  onStageAll: () => void;
+  onUnstageAll: () => void;
   turnEmptyReason?: "none" | "expired" | "missing" | null;
 }
 
@@ -20,7 +38,6 @@ interface GitChangesBodyProps extends GitChangesDiffStackProps {
 function resolveEmptyStateCopy(
   t: ReturnType<typeof useTranslation<"editor">>["t"],
   diffStatus: WorkspaceGitDiffStatus,
-  isFiltered: boolean,
   scopeMode: GitDiffScope["mode"],
   turnEmptyReason?: "none" | "expired" | "missing" | null,
 ): { title: string; description: string } {
@@ -34,12 +51,6 @@ function resolveEmptyStateCopy(
     return {
       title: t("states.gitErrorTitle"),
       description: t("states.gitErrorDescription"),
-    };
-  }
-  if (isFiltered) {
-    return {
-      title: t("states.gitFilterEmptyTitle"),
-      description: t("states.gitFilterEmptyDescription"),
     };
   }
   if (scopeMode === "unstaged") {
@@ -94,12 +105,21 @@ function resolveEmptyStateCopy(
 // diffs always stack the same way, with the file index optionally beside them.
 export function GitChangesBody({
   isLoading,
-  isFiltered,
+  actionsBusy,
   diffStatus,
   entries,
   workspaceName,
   treePanelVisible,
   scopeMode,
+  stagedState,
+  currentBranch,
+  hasChanges,
+  onDiscardAll,
+  onCommitAction,
+  onGenerateCommitMessage,
+  onTreePanelVisibleChange,
+  onStageAll,
+  onUnstageAll,
   turnEmptyReason = null,
   ...stackProps
 }: GitChangesBodyProps) {
@@ -119,7 +139,6 @@ export function GitChangesBody({
     const { title, description } = resolveEmptyStateCopy(
       t,
       diffStatus,
-      isFiltered,
       scopeMode,
       turnEmptyReason,
     );
@@ -140,9 +159,19 @@ export function GitChangesBody({
 
   return (
     <GitChangesTree
+      actionsBusy={actionsBusy}
       entries={entries}
       showTreePanel={treePanelVisible}
+      stagedState={stagedState}
       workspaceName={workspaceName}
+      currentBranch={currentBranch}
+      hasChanges={hasChanges}
+      onCommitAction={onCommitAction}
+      onDiscardAll={onDiscardAll}
+      onGenerateCommitMessage={onGenerateCommitMessage}
+      onStageAll={onStageAll}
+      onTreePanelVisibleChange={onTreePanelVisibleChange}
+      onUnstageAll={onUnstageAll}
       {...stackProps}
     />
   );

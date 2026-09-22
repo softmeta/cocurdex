@@ -54,6 +54,7 @@ function createSnapshot(): SessionObservationSnapshot {
       questions: [],
       planApprovals: [],
     },
+    plan: null,
   };
 }
 

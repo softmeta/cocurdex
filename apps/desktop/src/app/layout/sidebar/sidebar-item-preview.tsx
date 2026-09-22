@@ -6,6 +6,7 @@ import {
   type CompactRelativeTime,
   getCompactRelativeTime,
 } from "./compact-relative-time";
+import { useSidebarScrolling } from "./sidebar-scroll-area";
 
 interface SidebarItemPreviewProps {
   agentLabel?: string;
@@ -88,8 +89,10 @@ export function SidebarItemTooltip({
   timestamp,
   title,
 }: SidebarItemTooltipProps) {
+  const scrolling = useSidebarScrolling();
+
   return (
-    <Tooltip disableHoverablePopup>
+    <Tooltip disableHoverablePopup disabled={scrolling}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent
         align="center"
@@ -121,8 +124,10 @@ export function WorkspaceItemTooltip({
   paths,
   title,
 }: WorkspaceItemTooltipProps) {
+  const scrolling = useSidebarScrolling();
+
   return (
-    <Tooltip disableHoverablePopup>
+    <Tooltip disableHoverablePopup disabled={scrolling}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent
         align="center"

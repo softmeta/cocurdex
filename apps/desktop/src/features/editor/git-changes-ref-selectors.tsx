@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { AppSearchableSelect } from "@/components";
 import { Text } from "@/components/ui/text";
 import type { GitBranchInfo, GitCommitInfo } from "@/lib";
-import { CopyButton } from "./copy-button";
 import { formatCommitChip, formatTurnChip } from "./git-changes-scope-menu";
 import type { GitDiffScope } from "./git-diff-scope";
 
@@ -37,9 +36,7 @@ export function GitBranchRefSelectors({
         refs={refs}
         value={source}
       />
-      <Text className="shrink-0 text-editor-fg-muted" size="meta">
-        →
-      </Text>
+      <Text className="shrink-0 text-editor-fg-muted">→</Text>
       <RefSelect
         ariaLabel={t("git.selectTarget")}
         disabled={disabled}
@@ -104,14 +101,10 @@ export function GitCommitScopeChip({
   const { shortHash, subject } = formatCommitChip(commits, scope.commit);
   return (
     <div className="flex min-w-0 max-w-56 items-center gap-1.5 px-1">
-      <Text className="shrink-0 font-mono" size="meta" tone="muted">
+      <Text className="shrink-0 font-mono" tone="muted">
         {shortHash}
       </Text>
-      {subject ? (
-        <Text size="meta" truncate>
-          {subject}
-        </Text>
-      ) : null}
+      {subject ? <Text truncate>{subject}</Text> : null}
     </div>
   );
 }
@@ -134,35 +127,7 @@ export function GitTurnScopeChip({
   }
   return (
     <div className="flex min-w-0 max-w-56 items-center gap-1.5 px-1">
-      <Text size="meta" truncate>
-        {label}
-      </Text>
-    </div>
-  );
-}
-
-interface GitCurrentBranchChipProps {
-  currentBranch: string | null;
-}
-
-// Shown next to worktree scopes so the user still sees which branch the
-// working tree is on (the mode menu no longer doubles as the branch label).
-export function GitCurrentBranchChip({
-  currentBranch,
-}: GitCurrentBranchChipProps) {
-  const { t } = useTranslation("editor");
-  return (
-    <div className="group flex max-w-44 min-w-0 shrink-0 items-center gap-1 px-1">
-      <Text size="meta" tone="muted" truncate>
-        {currentBranch ?? t("git.noBranch")}
-      </Text>
-      {currentBranch ? (
-        <CopyButton
-          label={t("git.copyBranch")}
-          showTooltip={false}
-          value={currentBranch}
-        />
-      ) : null}
+      <Text truncate>{label}</Text>
     </div>
   );
 }

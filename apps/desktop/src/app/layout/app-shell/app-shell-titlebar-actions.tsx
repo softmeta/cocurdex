@@ -28,6 +28,12 @@ export function AppShellTitlebarActions({
   onOpenSettings,
 }: AppShellTitlebarActionsProps) {
   const { t } = useTranslation(["editor", "sessions"]);
+  const maximizeLabel = isRightPanelMaximized
+    ? t("editor:actions.exitEditorFullscreen")
+    : t("editor:actions.enterEditorFullscreen");
+  const panelLabel = isRightPanelOpen
+    ? t("editor:actions.closeEditorPanel")
+    : t("editor:actions.openEditorPanel");
 
   return (
     <div
@@ -41,12 +47,9 @@ export function AppShellTitlebarActions({
       {isRightPanelOpen && !isChatDetached ? (
         <TitlebarIconButton
           active={isRightPanelMaximized}
-          aria-label={
-            isRightPanelMaximized
-              ? t("editor:actions.exitEditorFullscreen")
-              : t("editor:actions.enterEditorFullscreen")
-          }
+          aria-label={maximizeLabel}
           cursor="default"
+          tooltip={maximizeLabel}
           onClick={onToggleRightPanelMaximize}
         >
           {isRightPanelMaximized ? (
@@ -60,8 +63,9 @@ export function AppShellTitlebarActions({
       {isChatDetached ? null : (
         <TitlebarIconButton
           active={isRightPanelOpen}
-          aria-label={t("editor:actions.toggleEditorPanel")}
+          aria-label={panelLabel}
           cursor="default"
+          tooltip={panelLabel}
           onClick={onToggleRightPanel}
         >
           <PanelRight className={TITLEBAR_ICON_GLYPH_CLASS} />
@@ -70,6 +74,7 @@ export function AppShellTitlebarActions({
       <TitlebarIconButton
         aria-label={t("sessions:sidebar.settings")}
         cursor="default"
+        tooltip={t("sessions:sidebar.settings")}
         onClick={onOpenSettings}
       >
         <Settings className={TITLEBAR_ICON_GLYPH_CLASS} />

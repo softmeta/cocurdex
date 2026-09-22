@@ -27,7 +27,7 @@ describe("AppShellTitlebarActions", () => {
       screen.getByRole("button", { name: "Enter full screen" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Toggle editor panel" }),
+      screen.getByRole("button", { name: "Close editor panel" }),
     ).toBeVisible();
   });
 
@@ -46,7 +46,7 @@ describe("AppShellTitlebarActions", () => {
       screen.queryByRole("button", { name: "Enter full screen" }),
     ).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Toggle editor panel" }),
+      screen.getByRole("button", { name: "Open editor panel" }),
     ).toBeVisible();
   });
 
@@ -60,7 +60,7 @@ describe("AppShellTitlebarActions", () => {
       screen.queryByRole("button", { name: "Enter full screen" }),
     ).toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Toggle editor panel" }),
+      screen.queryByRole("button", { name: "Open editor panel" }),
     ).toBeNull();
     expect(screen.getByRole("button", { name: "Settings" })).toBeVisible();
   });

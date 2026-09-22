@@ -1,6 +1,14 @@
 import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { List, ListTree, Search } from "lucide-react";
+import {
+  List,
+  ListTree,
+  Minus,
+  PanelLeft,
+  Plus,
+  Search,
+  Undo2,
+} from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -8,28 +16,49 @@ import {
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
 import { Input } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { Text } from "@/components/ui/text";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { GitFileStagedState } from "@/lib";
 import { cn } from "@/lib/utils";
+import {
+  GitChangesCommitPopover,
+  type GitCommitAction,
+  type GitCommitActionResult,
+} from "./git-changes-commit-popover";
 import {
   GitChangesDiffStack,
   type GitChangesDiffStackProps,
 } from "./git-changes-diff-stack";
 import { GitChangesFileList } from "./git-changes-file-list";
-import { filterEntriesByPathQuery } from "./git-changes-model";
+import {
+  computeDiffStats,
+  filterEntriesByPathQuery,
+} from "./git-changes-model";
 import {
   gitRevealAtom,
   gitSelectedPathAtom,
   revealGitFileAtom,
 } from "./git-changes-store";
+import { ToolbarButton } from "./git-changes-toolbar";
 import { fromGitTreePath, toGitTreePath } from "./git-changes-tree-paths";
 import {
   useSyncGitChangesTreeModel,
@@ -45,6 +74,21 @@ interface GitChangesTreeProps extends GitChangesDiffStackProps {
   // Display name for the synthetic top-level folder (workspace root).
   workspaceName: string;
   showTreePanel: boolean;
+  stagedState: GitFileStagedState;
+  actionsBusy: boolean;
+  currentBranch: string | null;
+  hasChanges: boolean;
+  onDiscardAll: () => void;
+  onCommitAction: (
+    action: GitCommitAction,
+    options: { message: string; includeUnstaged: boolean },
+  ) => Promise<GitCommitActionResult> | GitCommitActionResult;
+  onGenerateCommitMessage: (options: {
+    includeUnstaged: boolean;
+  }) => Promise<string | null>;
+  onStageAll: () => void;
+  onUnstageAll: () => void;
+  onTreePanelVisibleChange: (visible: boolean) => void;
 }
 
 // The tree is an index beside the shared diff stack: picking a row scrolls the
@@ -54,6 +98,17 @@ export function GitChangesTree({
   entries,
   workspaceName,
   showTreePanel,
+  actionsEnabled,
+  stagedState,
+  actionsBusy,
+  currentBranch,
+  hasChanges,
+  onDiscardAll,
+  onCommitAction,
+  onGenerateCommitMessage,
+  onStageAll,
+  onUnstageAll,
+  onTreePanelVisibleChange,
   ...stackProps
 }: GitChangesTreeProps) {
   const { t } = useTranslation("editor");
@@ -69,6 +124,7 @@ export function GitChangesTree({
     () => filterEntriesByPathQuery(entries, searchQuery),
     [entries, searchQuery],
   );
+  const stats = useMemo(() => computeDiffStats(entries), [entries]);
 
   // A reveal target must not stay hidden behind the tree's own search filter.
   if (reveal && reveal.token !== appliedRevealToken) {
@@ -137,7 +193,7 @@ export function GitChangesTree({
             {/* Top padding separates the tree chrome from the scope/filter
                 toolbar above; the search field, the layout toggle, and the rows
                 share the same horizontal inset. */}
-            <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-2 pt-2">
+            <div className="flex min-h-0 flex-1 flex-col px-2 pt-2">
               <div className="flex shrink-0 items-center gap-1">
                 <div className="relative min-w-0 flex-1">
                   <Search
@@ -213,8 +269,145 @@ export function GitChangesTree({
         </>
       ) : null}
       <ResizablePanel className="flex min-w-0 flex-col overflow-hidden">
-        <GitChangesDiffStack entries={entries} {...stackProps} />
+        <DiffActionsStrip
+          actionsBusy={actionsBusy}
+          actionsEnabled={actionsEnabled}
+          additions={stats.additions}
+          currentBranch={currentBranch}
+          deletions={stats.deletions}
+          fileCount={entries.length}
+          hasChanges={hasChanges}
+          showTreePanel={showTreePanel}
+          stagedState={stagedState}
+          onCommitAction={onCommitAction}
+          onDiscardAll={onDiscardAll}
+          onGenerateCommitMessage={onGenerateCommitMessage}
+          onStageAll={onStageAll}
+          onTreePanelVisibleChange={onTreePanelVisibleChange}
+          onUnstageAll={onUnstageAll}
+        />
+        <GitChangesDiffStack
+          actionsEnabled={actionsEnabled}
+          entries={entries}
+          {...stackProps}
+        />
       </ResizablePanel>
     </ResizablePanelGroup>
+  );
+}
+
+function DiffActionsStrip({
+  actionsEnabled,
+  stagedState,
+  actionsBusy,
+  additions,
+  currentBranch,
+  deletions,
+  fileCount,
+  hasChanges,
+  showTreePanel,
+  onCommitAction,
+  onDiscardAll,
+  onGenerateCommitMessage,
+  onStageAll,
+  onUnstageAll,
+  onTreePanelVisibleChange,
+}: {
+  actionsEnabled: boolean;
+  stagedState: GitFileStagedState;
+  actionsBusy: boolean;
+  additions: number;
+  currentBranch: string | null;
+  deletions: number;
+  fileCount: number;
+  hasChanges: boolean;
+  showTreePanel: boolean;
+  onCommitAction: (
+    action: GitCommitAction,
+    options: { message: string; includeUnstaged: boolean },
+  ) => Promise<GitCommitActionResult> | GitCommitActionResult;
+  onDiscardAll: () => void;
+  onGenerateCommitMessage: (options: {
+    includeUnstaged: boolean;
+  }) => Promise<string | null>;
+  onStageAll: () => void;
+  onUnstageAll: () => void;
+  onTreePanelVisibleChange: (visible: boolean) => void;
+}) {
+  const { t } = useTranslation("editor");
+  const [discardOpen, setDiscardOpen] = useState(false);
+  return (
+    <div className="shrink-0 px-2 pt-2">
+      <div className="flex h-7 items-center gap-1">
+        <ToolbarButton
+          active={showTreePanel}
+          icon={<PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />}
+          label={showTreePanel ? t("git.hideFileTree") : t("git.showFileTree")}
+          onClick={() => onTreePanelVisibleChange(!showTreePanel)}
+        />
+        <div className="mx-1 flex min-w-0 items-center gap-2">
+          <Text tone="muted" className="truncate">
+            {t("git.fileCount", { count: fileCount })}
+          </Text>
+          <Text className="shrink-0 text-editor-git-added">+{additions}</Text>
+          <Text className="shrink-0 text-editor-git-deleted">−{deletions}</Text>
+        </div>
+        <div className="ms-auto flex items-center gap-1">
+          {actionsEnabled ? (
+            <>
+              <ToolbarButton
+                disabled={actionsBusy}
+                icon={<Undo2 className={TITLEBAR_ICON_GLYPH_CLASS} />}
+                label={t("git.discardAll")}
+                onClick={() => setDiscardOpen(true)}
+              />
+              <ToolbarButton
+                disabled={actionsBusy || stagedState === "staged"}
+                icon={<Plus className={TITLEBAR_ICON_GLYPH_CLASS} />}
+                label={t("git.stageAll")}
+                onClick={onStageAll}
+              />
+              <ToolbarButton
+                disabled={actionsBusy || stagedState === "unstaged"}
+                icon={<Minus className={TITLEBAR_ICON_GLYPH_CLASS} />}
+                label={t("git.unstageAll")}
+                onClick={onUnstageAll}
+              />
+              <GitChangesCommitPopover
+                currentBranch={currentBranch}
+                hasChanges={hasChanges}
+                onAction={onCommitAction}
+                onGenerateMessage={onGenerateCommitMessage}
+                parentBusy={actionsBusy}
+              />
+            </>
+          ) : null}
+        </div>
+      </div>
+      <Dialog onOpenChange={setDiscardOpen} open={discardOpen}>
+        <DialogContent size="compact">
+          <DialogHeader>
+            <DialogTitle>{t("git.discardAll")}</DialogTitle>
+            <DialogDescription>
+              {t("git.discardAllConfirm", { count: fileCount })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose
+              render={<Button variant="ghost">{t("git.cancel")}</Button>}
+            />
+            <Button
+              onClick={() => {
+                onDiscardAll();
+                setDiscardOpen(false);
+              }}
+              variant="destructive"
+            >
+              {t("git.discard")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

@@ -2,6 +2,7 @@ import type {
   AgentPermissionRequestRecord,
   AgentPlanApprovalRecord,
   AgentQuestionRequestRecord,
+  AgentSessionPlan,
   AgentToolCallRecord,
   AgentTurnCompletedEvent,
   AgentUsageRecord,
@@ -26,6 +27,7 @@ export interface SessionObservationSnapshot {
   usage: AgentUsageRecord | null;
   turnChangeSets: Record<string, TurnChangeSet>;
   interactions: SessionInteractionSnapshot;
+  plan: AgentSessionPlan | null;
 }
 
 export interface SessionTranscriptSnapshot {
@@ -34,6 +36,9 @@ export interface SessionTranscriptSnapshot {
   turnStats: Record<string, AgentTurnCompletedEvent>;
   turnChangeSets: Record<string, TurnChangeSet>;
   toolCalls: AgentToolCallRecord[];
+  // Latest plan the agent pushed (`todo_write` / ACP plan). Ephemeral like the
+  // journal — a daemon restart drops it and the next plan update repopulates.
+  plan: AgentSessionPlan | null;
 }
 
 // Authoritative resync payload after an event replay gap. eventSeq is the

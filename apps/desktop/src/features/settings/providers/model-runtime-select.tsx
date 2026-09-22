@@ -27,7 +27,6 @@ export function ModelRuntimeSelect({
     <AppSelect
       align="start"
       appearance="outline"
-      contentClassName="w-[var(--anchor-width)]"
       disabled={disabled}
       options={options}
       triggerAriaLabel={ariaLabel}

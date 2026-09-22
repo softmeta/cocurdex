@@ -21,13 +21,13 @@ import {
 import { cn } from "@/lib";
 import {
   AgentRoleEditDialog,
-  formatAgentRoleRecordSummary,
   getAgentRoles,
   getStoredAgentRoleId,
   persistAgentRoleId,
   SaveAgentRoleDialog,
   saveAgentRoleRecord,
   subscribeAgentRoles,
+  useAgentRoleSummary,
 } from "../agent-role";
 import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
@@ -83,6 +83,7 @@ export function NewSessionCard({
     getStoredAgentRoleId,
   );
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
+  const formatRoleSummary = useAgentRoleSummary();
   const setChosenRoleId = (roleId: string | null) => {
     setChosenRoleIdState(roleId);
     persistAgentRoleId(roleId);
@@ -197,29 +198,14 @@ export function NewSessionCard({
     return {
       id: role.id,
       name: role.name,
-      summary: formatAgentRoleRecordSummary(role, {
-        agentLabel: agentLabels[role.agentId],
-        permissionLabel: role.permissionMode
-          ? t(`sessions:permissionMode.${role.permissionMode}`)
-          : null,
-        thinkingLabelFor: (level) =>
-          t(`sessions:composer.thinkingLevels.${level}`),
-        fastModeOn: t("sessions:modelMenu.fastModeOn"),
-      }),
+      summary: formatRoleSummary(role),
       selectable: agentOption?.selectable !== false,
       statusKind: agentOption?.statusKind,
     };
   });
   const selectedRole =
     roleOptions.find((role) => role.id === chosenRoleId) ?? null;
-  const saveRoleSummary = formatAgentRoleRecordSummary(currentRoleDraft, {
-    agentLabel: agentLabels[currentRoleDraft.agentId],
-    permissionLabel: currentRoleDraft.permissionMode
-      ? t(`sessions:permissionMode.${currentRoleDraft.permissionMode}`)
-      : null,
-    thinkingLabelFor: (level) => t(`sessions:composer.thinkingLevels.${level}`),
-    fastModeOn: t("sessions:modelMenu.fastModeOn"),
-  });
+  const saveRoleSummary = formatRoleSummary(currentRoleDraft);
   let agentTriggerLabel: string = t("sessions:composer.noInstalledAgent");
   if (selectedRole) {
     agentTriggerLabel = selectedRole.name;
