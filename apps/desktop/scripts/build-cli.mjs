@@ -124,6 +124,12 @@ await build({
     rollupOptions: {
       output: {
         entryFileNames: "daemon.cjs",
+        // Node 24 exposes enumerable EventEmitter methods on `node:stream`'s
+        // prototype. Rollup's live-binding namespace helper reads
+        // getOwnPropertyDescriptor and throws on those inherited names
+        // (`reading 'get'`), so the bundled daemon exits before it can
+        // publish daemon.json. Node builtins do not mutate exports after load.
+        externalLiveBindings: false,
         inlineDynamicImports: true,
       },
     },
