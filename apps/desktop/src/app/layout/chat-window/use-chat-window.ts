@@ -2,6 +2,7 @@ import { useAtomValue, useStore } from "jotai";
 import { useEffectEvent } from "react";
 import { toast } from "sonner";
 import { composerPendingOperationsAtom } from "@/features/composer";
+import { editorPanelOpenAtom } from "@/features/editor";
 import { desktopApi, useMountEffect } from "@/lib";
 import type { ChatWindowTransfer } from "@/lib/chat-window-types";
 import { appBootstrappedAtom } from "../app-shell/app-bootstrap-store";
@@ -22,8 +23,11 @@ export function useChatWindowActions() {
   const transferring = useAtomValue(chatWindowBusyAtom) || state.transitioning;
   const pendingOperations = useAtomValue(composerPendingOperationsAtom);
   const busy = transferring || pendingOperations > 0;
+  const editorPanelOpen = useAtomValue(editorPanelOpenAtom);
+  const canMove = isDetachedChatWindow || editorPanelOpen;
   const move = async () => {
     if (
+      !canMove ||
       store.get(chatWindowBusyAtom) ||
       store.get(composerPendingOperationsAtom) > 0
     )
@@ -51,6 +55,7 @@ export function useChatWindowActions() {
   };
   return {
     busy,
+    canMove,
     transferring,
     detached: state.detached,
     move,

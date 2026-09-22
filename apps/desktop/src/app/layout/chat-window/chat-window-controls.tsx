@@ -7,10 +7,10 @@ import { useChatWindowActions } from "./use-chat-window";
 
 export function ChatWindowMenuItem() {
   const { t } = useTranslation("sessions");
-  const { busy, move, isDetachedChatWindow } = useChatWindowActions();
+  const { busy, canMove, move, isDetachedChatWindow } = useChatWindowActions();
   if (!window.desktopApi?.chatWindow) return null;
   return (
-    <AppDropdownItem disabled={busy} onClick={() => void move()}>
+    <AppDropdownItem disabled={busy || !canMove} onClick={() => void move()}>
       <ExternalLink className="size-4" />
       {isDetachedChatWindow ? t("window.return") : t("window.detach")}
     </AppDropdownItem>
@@ -19,14 +19,14 @@ export function ChatWindowMenuItem() {
 
 export function ChatWindowButton() {
   const { t } = useTranslation("sessions");
-  const { busy, move, isDetachedChatWindow } = useChatWindowActions();
+  const { busy, canMove, move, isDetachedChatWindow } = useChatWindowActions();
   if (!window.desktopApi?.chatWindow) return null;
   return (
     <TitlebarIconButton
       aria-label={
         isDetachedChatWindow ? t("window.return") : t("window.detach")
       }
-      disabled={busy}
+      disabled={busy || !canMove}
       onClick={() => void move()}
       onMouseDown={(event) => event.stopPropagation()}
     >
