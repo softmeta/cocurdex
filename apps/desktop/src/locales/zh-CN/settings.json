@@ -207,6 +207,11 @@
       "restartFailed": "无法重启 daemon"
     }
   },
+  "diagnostics": {
+    "actions": {
+      "export": "导出诊断日志…"
+    }
+  },
   "editor": {
     "minimap": {
       "description": "在编辑器边缘显示当前文件的缩略预览。",

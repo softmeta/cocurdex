@@ -1469,6 +1469,11 @@ export default interface Resources {
         restarted: "Daemon restarted";
       };
     };
+    diagnostics: {
+      actions: {
+        export: "Export Diagnostics…";
+      };
+    };
     editor: {
       minimap: {
         description: "Show a miniature overview of the current file along the editor edge.";
