@@ -1,5 +1,7 @@
 # Cocurdex
 
+English · [简体中文](README.zh-CN.md)
+
 Cocurdex is a desktop-first multi-agent development workspace. Chat, terminal,
 editor, and browser preview stay in one shell so you can run several AI coding
 agents without losing track of which session needs you.
@@ -13,9 +15,23 @@ Pre-release. macOS is the primary platform; Windows and Linux follow.
 
 Report bugs and feature proposals through GitHub Issues (see
 [SUPPORT.md](SUPPORT.md)). For informal questions and discussion, join the
-Feishu group:
+[Discord server](https://discord.gg/JuRyyv5bv) or the Feishu group:
 
 <img src="docs/assets/feishu-feedback-group-qr.png" alt="Feishu group QR code" width="240" />
+
+### Hit a problem?
+
+The website and documentation are still catching up with the code, so some
+answers are not written down yet. If something breaks while you use Cocurdex,
+you do not have to wait for us:
+
+1. Clone this repository and [run Cocurdex from source](#run-from-source).
+2. Point any AI coding agent you already use at the checkout and let it debug
+   the problem. The repository is structured for agent navigation; start the
+   agent in the project root and it will find its way around.
+3. Open a pull request with the fix, or an issue with the agent's diagnosis if
+   the fix is unclear. Maintainers review the change, adjust it when needed,
+   and ship it in the next release.
 
 ## License
 
