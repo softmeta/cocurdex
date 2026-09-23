@@ -10,8 +10,12 @@ import {
   RotateCw,
   X,
 } from "lucide-react";
-import type { KeyboardEvent, ReactNode, WheelEvent } from "react";
-import { useState } from "react";
+import type {
+  KeyboardEvent,
+  ReactNode,
+  PointerEvent as ReactPointerEvent,
+} from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
@@ -25,7 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib";
+import { cn, useMountEffect } from "@/lib";
 import {
   useImageDataUrl,
   useTemporaryImageCopyStatus,
@@ -34,6 +38,11 @@ import {
   imagePreviewNeighbor,
   resolveImagePreviewGallery,
 } from "./image-preview-gallery";
+import {
+  clampImagePreviewPan,
+  type ImagePreviewPanOffset,
+  imagePreviewContentSize,
+} from "./image-preview-pan";
 
 const MIN_PREVIEW_ZOOM = 0.5;
 const MAX_PREVIEW_ZOOM = 3;
@@ -115,6 +124,18 @@ export function ImageAttachmentPreview({
   const dataUrl = useImageDataUrl(attachment);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [pan, setPan] = useState<ImagePreviewPanOffset>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const viewRef = useRef({ rotation: 0, zoom: 1 });
+  const dragRef = useRef<{
+    originX: number;
+    originY: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
   const [copyStatus, showCopyStatus] = useTemporaryImageCopyStatus(1800);
   const zoomPercent = Math.round(zoom * 100);
   const canZoomOut = zoom > MIN_PREVIEW_ZOOM;
@@ -125,16 +146,56 @@ export function ImageAttachmentPreview({
     resolveImagePreviewGallery(attachment, gallery);
   const showNav = canNavigate && Boolean(onSelect);
 
+  const clampPan = (
+    offset: ImagePreviewPanOffset,
+    zoomLevel = viewRef.current.zoom,
+  ) => {
+    const viewport = viewportRef.current;
+    const image = imageRef.current;
+    if (!viewport || !image) {
+      return { x: 0, y: 0 };
+    }
+    const content = imagePreviewContentSize(
+      { height: image.offsetHeight, width: image.offsetWidth },
+      zoomLevel,
+      viewRef.current.rotation,
+    );
+    return clampImagePreviewPan(
+      offset,
+      { height: viewport.clientHeight, width: viewport.clientWidth },
+      content,
+    );
+  };
+
   const updateZoom = (nextZoom: number) => {
-    setZoom(Math.min(MAX_PREVIEW_ZOOM, Math.max(MIN_PREVIEW_ZOOM, nextZoom)));
+    const clamped = Math.min(
+      MAX_PREVIEW_ZOOM,
+      Math.max(MIN_PREVIEW_ZOOM, nextZoom),
+    );
+    viewRef.current.zoom = clamped;
+    setZoom(clamped);
+    setPan((current) => clampPan(current, clamped));
+  };
+
+  const resetView = () => {
+    viewRef.current = { rotation: 0, zoom: 1 };
+    setZoom(1);
+    setRotation(0);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleRotate = () => {
+    const next = (viewRef.current.rotation + 90) % 360;
+    viewRef.current.rotation = next;
+    setRotation(next);
+    setPan({ x: 0, y: 0 });
   };
 
   const showAttachment = (nextAttachment: ImageAttachment) => {
     if (!onSelect) {
       return;
     }
-    setZoom(1);
-    setRotation(0);
+    resetView();
     onSelect(nextAttachment);
   };
 
@@ -166,14 +227,71 @@ export function ImageAttachmentPreview({
     link.click();
   };
 
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!(event.metaKey || event.ctrlKey)) {
+  const handleViewportWheel = (event: globalThis.WheelEvent) => {
+    event.preventDefault();
+    if (event.metaKey || event.ctrlKey) {
+      const direction = event.deltaY > 0 ? -1 : 1;
+      updateZoom(viewRef.current.zoom + direction * PREVIEW_ZOOM_STEP);
       return;
     }
 
-    event.preventDefault();
-    const direction = event.deltaY > 0 ? -1 : 1;
-    updateZoom(zoom + direction * PREVIEW_ZOOM_STEP);
+    setPan((current) =>
+      clampPan({
+        x: current.x - event.deltaX,
+        y: current.y - event.deltaY,
+      }),
+    );
+  };
+
+  useMountEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
+    viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", handleViewportWheel);
+  });
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !event.isPrimary || !imageRef.current) {
+      return;
+    }
+    if (event.target instanceof HTMLElement && event.target.closest("button")) {
+      return;
+    }
+
+    dragRef.current = {
+      originX: pan.x,
+      originY: pan.y,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    setPan(
+      clampPan({
+        x: drag.originX + event.clientX - drag.startX,
+        y: drag.originY + event.clientY - drag.startY,
+      }),
+    );
+  };
+
+  const handlePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    dragRef.current = null;
+    setIsDragging(false);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -295,7 +413,7 @@ export function ImageAttachmentPreview({
               </PreviewToolbarIconButton>
               <PreviewToolbarIconButton
                 label={t("imagePreview.rotate")}
-                onClick={() => setRotation((current) => (current + 90) % 360)}
+                onClick={handleRotate}
               >
                 <RotateCw className={TITLEBAR_ICON_GLYPH_CLASS} />
               </PreviewToolbarIconButton>
@@ -323,8 +441,16 @@ export function ImageAttachmentPreview({
           </div>
         </TooltipProvider>
         <div
-          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4"
-          onWheel={handleWheel}
+          className={cn(
+            "relative flex min-h-0 flex-1 select-none items-center justify-center overflow-hidden p-4",
+            dataUrl && "cursor-grab touch-none",
+            isDragging && "cursor-grabbing",
+          )}
+          onPointerCancel={handlePointerEnd}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerEnd}
+          ref={viewportRef}
         >
           {showNav ? (
             <>
@@ -353,9 +479,18 @@ export function ImageAttachmentPreview({
           {dataUrl ? (
             <img
               alt={attachment.name}
-              className="max-h-full max-w-full origin-center object-contain transition-transform duration-100"
+              className={cn(
+                "max-h-full max-w-full origin-center object-contain",
+                isDragging
+                  ? "transition-none"
+                  : "transition-transform duration-100",
+              )}
+              draggable={false}
+              ref={imageRef}
               src={dataUrl}
-              style={{ transform: `rotate(${rotation}deg) scale(${zoom})` }}
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${zoom})`,
+              }}
             />
           ) : (
             <Image className="size-8 text-chat-fg-muted" />
