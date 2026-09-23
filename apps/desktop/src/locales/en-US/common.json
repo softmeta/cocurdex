@@ -31,6 +31,10 @@
     "opencode": "OpenCode",
     "pi": "Pi"
   },
+  "git": {
+    "turnFiles_one": "{{count}} file",
+    "turnFiles_other": "{{count}} files"
+  },
   "htmlPreview": {
     "browserLocation": "HTML previews open in the sidebar browser. Use the globe button to open this preview.",
     "code": "Code",

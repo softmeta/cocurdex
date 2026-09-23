@@ -21,6 +21,7 @@ import { cn } from "@/lib";
 import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
 import { ArchivedSessionsPanel } from "./archived-sessions";
+import { DiagnosticsSettingsPanel } from "./diagnostics-settings";
 import { EditorSettingsPanel } from "./editor-settings";
 import { GeneralPanel } from "./general-settings";
 import { GitSettingsPanel } from "./git-settings";
@@ -114,6 +115,14 @@ function SectionPanel({
     return (
       <div className="settings-panel-enter flex min-h-0 flex-1 flex-col">
         <ArchivedSessionsPanel />
+      </div>
+    );
+  }
+
+  if (sectionId === "diagnostics") {
+    return (
+      <div className="settings-panel-enter flex flex-col gap-8">
+        <DiagnosticsSettingsPanel />
       </div>
     );
   }

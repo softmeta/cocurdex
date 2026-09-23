@@ -21,4 +21,5 @@ export type SettingsSectionId =
   | "projects"
   | "computer"
   | "archived"
+  | "diagnostics"
   | "usage";
