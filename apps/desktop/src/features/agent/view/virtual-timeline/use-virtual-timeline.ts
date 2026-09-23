@@ -48,6 +48,7 @@ export function useVirtualTimeline({
   userMessageRefs: RefObject<Record<string, HTMLDivElement | null>>;
   viewportElement: HTMLDivElement | null;
 }) {
+  "use no memo";
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const [targetId, setTargetId] = useState<string | null>(null);
@@ -246,6 +247,7 @@ export function useVirtualTimeline({
     items,
     rootRef,
     scrollMargin,
+    totalSize: virtualizer.getTotalSize(),
     updateFocus,
     virtualizer,
   };
