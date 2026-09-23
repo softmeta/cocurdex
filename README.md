@@ -9,6 +9,14 @@ Pre-release. macOS is the primary platform; Windows and Linux follow.
 [Documentation](https://cocurdex.com/docs/) ·
 [Getting started](https://cocurdex.com/docs/getting-started/)
 
+## Feedback
+
+Report bugs and feature proposals through GitHub Issues (see
+[SUPPORT.md](SUPPORT.md)). For informal questions and discussion, join the
+Feishu group:
+
+<img src="docs/assets/feishu-feedback-group-qr.png" alt="Feishu group QR code" width="240" />
+
 ## License
 
 Cocurdex is **source-available** under the
