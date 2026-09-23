@@ -97,7 +97,8 @@ export function UserMessageNavigation({
       }}
       onMouseDown={(event) => startDrag(event.clientY)}
     >
-      {/* Keep expanded rail inset in sync with JumpControls (start-2). */}
+      {/* The collapsed tab hugs the rail edge; the expanded pill keeps an
+          inset so it floats clear of it. */}
       <div className={cn("transition-all", isExpanded && "ms-2")}>
         {isExpanded ? (
           <div className={panelClassName}>
