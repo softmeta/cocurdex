@@ -4,15 +4,36 @@ import {
   dialog,
   Menu,
   type MenuItemConstructorOptions,
+  shell,
 } from "electron";
 import enSettings from "@/locales/en-US/settings.json";
 import zhSettings from "@/locales/zh-CN/settings.json";
+import { exportDiagnostics } from "./logging";
 import { describeAppUpdateCheckDialog } from "./updater/app-update-check-dialog";
 import { checkForAppUpdate, installAppUpdate } from "./updater/app-updater";
 
 function updatesCopy() {
   const locale = app.getLocale().toLowerCase();
   return locale.startsWith("zh") ? zhSettings.updates : enSettings.updates;
+}
+
+function diagnosticsCopy() {
+  const locale = app.getLocale().toLowerCase();
+  return locale.startsWith("zh")
+    ? zhSettings.diagnostics
+    : enSettings.diagnostics;
+}
+
+async function handleExportDiagnostics() {
+  try {
+    const { outputPath } = await exportDiagnostics();
+    shell.showItemInFolder(outputPath);
+  } catch (error) {
+    dialog.showErrorBox(
+      diagnosticsCopy().actions.export,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
 
 async function showUpdateDialog(
@@ -54,6 +75,12 @@ export function registerApplicationMenu() {
     },
     label: updatesCopy().actions.check,
   };
+  const exportItem = {
+    click: () => {
+      void handleExportDiagnostics();
+    },
+    label: diagnosticsCopy().actions.export,
+  };
   const isMac = process.platform === "darwin";
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
@@ -79,14 +106,13 @@ export function registerApplicationMenu() {
     { role: "editMenu" },
     { role: "viewMenu" },
     { role: "windowMenu" },
-    ...(isMac
-      ? []
-      : [
-          {
-            role: "help" as const,
-            submenu: [checkItem],
-          },
-        ]),
+    {
+      role: "help" as const,
+      submenu: [
+        ...(isMac ? [] : [checkItem, { type: "separator" as const }]),
+        exportItem,
+      ],
+    },
   ];
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
