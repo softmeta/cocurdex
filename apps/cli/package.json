@@ -21,6 +21,6 @@
   "devDependencies": {
     "@types/node": "^24.13.6",
     "tsx": "^4.8.1",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }
