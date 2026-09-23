@@ -210,7 +210,14 @@
   "diagnostics": {
     "actions": {
       "export": "导出诊断日志…"
-    }
+    },
+    "description": "打包应用日志与运行信息用于排查问题。日志可能包含敏感信息，分享前请先检查。",
+    "group": "日志",
+    "status": {
+      "exported": "已导出到 {{path}}",
+      "failed": "导出失败：{{message}}"
+    },
+    "title": "导出诊断日志"
   },
   "editor": {
     "minimap": {
@@ -597,6 +604,7 @@
     "appearance": "外观",
     "archived": "已归档会话",
     "computer": "电脑使用",
+    "diagnostics": "诊断",
     "editor": "编辑器",
     "environment": "网络",
     "general": "常规",

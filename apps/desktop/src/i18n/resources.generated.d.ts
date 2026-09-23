@@ -450,6 +450,10 @@ export default interface Resources {
       opencode: "OpenCode";
       pi: "Pi";
     };
+    git: {
+      turnFiles_one: "";
+      turnFiles_other: "";
+    };
     htmlPreview: {
       browserLocation: "HTML previews open in the sidebar browser. Use the globe button to open this preview.";
       code: "Code";
@@ -1473,6 +1477,13 @@ export default interface Resources {
       actions: {
         export: "Export Diagnostics…";
       };
+      description: "Bundle app logs and metadata for troubleshooting. Logs may contain sensitive information — review them before sharing.";
+      group: "Logs";
+      status: {
+        exported: "Exported to {{path}}";
+        failed: "Export failed: {{message}}";
+      };
+      title: "Export diagnostics";
     };
     editor: {
       minimap: {
@@ -1862,6 +1873,7 @@ export default interface Resources {
       appearance: "Appearance";
       archived: "Archived sessions";
       computer: "Computer use";
+      diagnostics: "Diagnostics";
       editor: "Editor";
       environment: "Network";
       general: "General";
