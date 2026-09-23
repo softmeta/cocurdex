@@ -41,10 +41,15 @@ describe("getAgentVersionStatus", () => {
     );
   });
 
+  it("flags devin installs older than the first ACP-capable release", () => {
+    expect(getAgentVersionStatus("devin", "v2026.4.8-0")).toBe("outdated");
+    expect(getAgentVersionStatus("devin", "v2026.4.9-0")).toBe("ok");
+    expect(getAgentVersionStatus("devin", "v3000.10.31")).toBe("ok");
+  });
+
   it("accepts anything when the adapter has no floor", () => {
     expect(getAgentVersionStatus("codex", "0.1.0")).toBe("ok");
     expect(getAgentVersionStatus("cursor", null)).toBe("ok");
-    expect(getAgentVersionStatus("devin", "1.0.0")).toBe("ok");
     expect(getAgentVersionStatus("pi", null)).toBe("ok");
   });
 
