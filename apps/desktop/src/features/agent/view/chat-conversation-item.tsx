@@ -43,23 +43,27 @@ import { QuestionCard } from "../question";
 // detail view, which renders this component.
 import { ToolCallGroup } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
-import { useTranscriptState } from "../transcript-state";
-import type { ActivityState } from "./chat-activity";
-import { ActivityLine, isActivityHeaderBusy } from "./chat-activity";
+import { useTranscriptState } from "../use-transcript-state";
+import { ActivityLine } from "./chat-activity";
 import { ActivityBlock } from "./chat-activity-block";
 import {
-  isReasoningMessage,
+  type ActivityState,
+  isActivityHeaderBusy,
+} from "./chat-activity-state";
+import {
   MessageAttachments,
   ReasoningMarkdown,
   UserMessageContent,
 } from "./chat-message";
+import { isReasoningMessage } from "./chat-message-utils";
 import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
 import {
   getVisibleConversationItems,
   segmentConversationItems,
 } from "./chat-timeline";
+import { messageOriginLabel } from "./message-origin-label";
 import { turnStatsByMessageAtom } from "./message-store";
-import { messageOriginLabel, PeerPrompt } from "./peer-prompt";
+import { PeerPrompt } from "./peer-prompt";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
 function getMessageArticleClassName(message: MessageRecord) {

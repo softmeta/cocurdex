@@ -1,4 +1,4 @@
-import type { AgentDescriptor, AgentId } from "@cocurdex/shared";
+import type { AgentId } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
@@ -27,20 +27,8 @@ import {
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
-import {
-  type AdapterStatusKind,
-  getAdapterStatus,
-  isAdapterSelectable,
-} from "./adapter-status";
-import { agentOptions } from "./new-session-card/new-session-card-config";
-import { agentLabels } from "./session-store";
-
-export interface AgentSelectOption {
-  label: ReactNode;
-  selectable?: boolean;
-  statusKind?: AdapterStatusKind;
-  value: AgentId;
-}
+import type { AdapterStatusKind } from "./adapter-status";
+import type { AgentSelectOption } from "./agent-select-options";
 
 export interface AgentRoleSelectOption {
   id: string;
@@ -72,25 +60,6 @@ interface AgentSelectProps {
 
 function openAdapterSettings() {
   openSettings("adapters");
-}
-
-export function buildAgentSelectOptions(
-  agents: readonly AgentDescriptor[],
-): AgentSelectOption[] {
-  const byId = new Map(agents.map((agent) => [agent.id, agent]));
-
-  return agentOptions.map((option) => {
-    const agent = byId.get(option.id);
-    const status = agent ? getAdapterStatus(agent) : null;
-    const kind = status?.kind ?? "detecting";
-
-    return {
-      value: option.id,
-      label: agentLabels[option.id],
-      selectable: isAdapterSelectable(kind),
-      statusKind: kind,
-    };
-  });
 }
 
 export function AgentSelect({

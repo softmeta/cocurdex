@@ -29,7 +29,8 @@ import {
   subscribeAgentRoles,
   useAgentRoleSummary,
 } from "../agent-role";
-import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
+import { AgentSelect } from "../agent-select";
+import { buildAgentSelectOptions } from "../agent-select-options";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import { ProviderModelMenu } from "../provider-model";
 import { shouldShowProviderGroupLabels } from "../provider-model/provider-model-label";

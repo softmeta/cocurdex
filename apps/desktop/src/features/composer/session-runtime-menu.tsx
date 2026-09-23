@@ -22,14 +22,14 @@ import {
   resolveOpenCodeRuntimeValue,
 } from "@/features/sessions/provider-model/opencode-runtime-options";
 import { shouldShowProviderGroupLabels } from "@/features/sessions/provider-model/provider-model-label";
+import { AgentRuntimeConfigItems } from "./agent-runtime-controls";
+import { composerFooterControlClassName } from "./chat-composer-layout";
+import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
 import {
-  AgentRuntimeConfigItems,
   getComposerSessionConfigOptions,
   getSessionConfigTriggerValues,
   type OccupiedSessionConfigAxis,
-} from "./agent-runtime-controls";
-import { composerFooterControlClassName } from "./chat-composer-layout";
-import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
+} from "./session-config-options";
 
 const DEFAULT_VALUE = "";
 

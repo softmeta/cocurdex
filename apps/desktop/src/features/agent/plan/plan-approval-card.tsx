@@ -83,63 +83,75 @@ export function PlanApprovalCard({
     }
   };
 
-  // One line: title + pending chip. The plan body carries the real content.
+  // One line: fixed title + pending chip. The plan body carries the real
+  // content.
   const header = (
-    <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5">
+    <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
       <div className="flex size-6 shrink-0 items-center justify-center rounded-control bg-chat-status-pending-bg text-chat-status-pending-fg">
         <ClipboardList className="size-3.5" />
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="truncate text-body font-medium text-chat-fg">
-          {planContent
-            ? t("planApproval.heading")
-            : t("planApproval.emptyHeading")}
-        </span>
-        <span className="shrink-0 rounded-full bg-chat-status-pending-bg px-1.5 py-px text-meta font-medium text-chat-status-pending-fg">
-          {t("planApproval.pending")}
-        </span>
-      </div>
+      <h3 className="min-w-0 flex-1 truncate text-body font-semibold text-chat-fg">
+        {t("planApproval.title")}
+      </h3>
+      <span className="shrink-0 rounded-full bg-chat-status-pending-bg px-1.5 py-px text-meta font-medium text-chat-status-pending-fg">
+        {t("planApproval.pending")}
+      </span>
     </div>
   );
 
-  const planBody = (expanded: boolean) =>
-    planContent ? (
-      <div className="px-3 pb-2">
-        <div
-          className={cn(
-            "overflow-y-auto overscroll-contain rounded-control bg-chat-surface-subtle px-2.5 py-2",
-            expanded ? PLAN_BODY_EXPANDED_CLASS : PLAN_BODY_COLLAPSED_CLASS,
-          )}
-          // Only the in-flow (collapsed) shell is measured for overflow.
-          ref={expanded ? undefined : measureBody}
-        >
-          <MarkdownRenderer content={planContent} tone="assistant" />
-        </div>
-        {showExpandToggle ? (
-          <div className="mt-1.5 flex justify-center">
-            <Button
-              className="h-7 gap-1 text-meta text-chat-fg-muted"
-              onClick={() => setIsExpanded((value) => !value)}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              {isExpanded ? (
-                <>
-                  <ChevronUp className="size-3.5" />
-                  {t("planApproval.collapse")}
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="size-3.5" />
-                  {t("planApproval.expandMore")}
-                </>
-              )}
-            </Button>
-          </div>
-        ) : null}
+  const planBody = (expanded: boolean) => (
+    <div className="space-y-2.5 px-3 pt-2.5 pb-5">
+      <div className="space-y-0.5">
+        <p className="break-words text-body text-chat-fg">
+          {planContent
+            ? t("planApproval.heading")
+            : t("planApproval.emptyHeading")}
+        </p>
+        <p className="text-meta text-chat-fg-muted">
+          {planContent
+            ? t("planApproval.subtitle")
+            : t("planApproval.emptySubtitle")}
+        </p>
       </div>
-    ) : null;
+      {planContent ? (
+        <div>
+          <div
+            className={cn(
+              "overflow-y-auto overscroll-contain rounded-control bg-chat-surface-subtle px-2.5 py-2",
+              expanded ? PLAN_BODY_EXPANDED_CLASS : PLAN_BODY_COLLAPSED_CLASS,
+            )}
+            // Only the in-flow (collapsed) shell is measured for overflow.
+            ref={expanded ? undefined : measureBody}
+          >
+            <MarkdownRenderer content={planContent} tone="assistant" />
+          </div>
+          {showExpandToggle ? (
+            <div className="mt-1.5 flex justify-center">
+              <Button
+                className="h-7 gap-1 text-meta text-chat-fg-muted"
+                onClick={() => setIsExpanded((value) => !value)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="size-3.5" />
+                    {t("planApproval.collapse")}
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="size-3.5" />
+                    {t("planApproval.expandMore")}
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 
   const footer = isRequestingChanges ? (
     <PlanApprovalFeedback

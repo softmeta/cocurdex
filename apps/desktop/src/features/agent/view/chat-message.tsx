@@ -14,13 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui";
-import {
-  isAssistantEchoOfPrompt,
-  isReasoningMessage,
-  splitContentByMentions,
-} from "./chat-message-utils";
-
-export { isAssistantEchoOfPrompt, isReasoningMessage };
+import { splitContentByMentions } from "./chat-message-utils";
 
 function getContextAttachmentLabel(
   attachment: ContextFileAttachment | ContextFolderAttachment,

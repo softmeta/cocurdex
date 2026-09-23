@@ -12,7 +12,8 @@ import {
   resolveThinkingLevel,
   ThinkingLevelSubmenu,
 } from "@/features/composer";
-import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
+import { AgentSelect } from "../agent-select";
+import { buildAgentSelectOptions } from "../agent-select-options";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import {
   getDefaultOpenCodeAgent,

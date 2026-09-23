@@ -207,6 +207,7 @@ function useMountWindow({
   onUnfold,
   correctingIndexRef,
 }: MountWindowOptions): MountWindow {
+  "use no memo";
   const [mounted, setMounted] = useState<ReadonlySet<string>>(new Set());
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

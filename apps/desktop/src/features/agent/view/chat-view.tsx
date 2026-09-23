@@ -40,7 +40,7 @@ import {
 } from "@/lib";
 import { useChatReadingPosition } from "@/lib/use-chat-reading-position";
 import type { ToolCallPreviewLocation } from "../tool-call";
-import { getActivityState } from "./chat-activity";
+import { getActivityState } from "./chat-activity-state";
 import { resolveJumpButton } from "./chat-scroll";
 import { getCachedTranscriptModel } from "./chat-transcript-model";
 import {
