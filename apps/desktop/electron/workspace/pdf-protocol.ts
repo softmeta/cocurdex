@@ -29,8 +29,8 @@ export function registerPdfProtocol(
       // Wrap Node readable stream into a Web ReadableStream for the Response.
       const readable = new ReadableStream({
         start(controller) {
-          stream.on("data", (chunk: Buffer) => {
-            controller.enqueue(new Uint8Array(chunk));
+          stream.on("data", (chunk: string | Buffer) => {
+            controller.enqueue(new Uint8Array(chunk as Buffer));
           });
           stream.on("end", () => controller.close());
           stream.on("error", (err) => controller.error(err));

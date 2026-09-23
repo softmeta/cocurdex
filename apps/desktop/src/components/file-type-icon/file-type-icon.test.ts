@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getFileTypeIconAttributes } from "./file-type-icon";
+import { getFileTypeIconAttributes } from "./file-type-icon-markup";
 
 describe("getFileTypeIconAttributes", () => {
   it("reuses the file tree's brand glyph for .astro files", () => {

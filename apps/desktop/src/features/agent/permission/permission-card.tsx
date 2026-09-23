@@ -5,9 +5,11 @@ import type {
 import { Check, ShieldAlert, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AppSelect } from "@/components";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
 import {
+  filterDetailsCoveredByText,
   formatRawInput,
   getClaudePermissionDetails,
   getReadablePermissionDetails,
@@ -117,6 +119,95 @@ function PermissionDetailPanel({ detail }: { detail: PermissionDetail }) {
   );
 }
 
+function PermissionCardActions({
+  isDock,
+  isResolving,
+  onResolve,
+  permission,
+}: {
+  isDock: boolean;
+  isResolving: boolean;
+  onResolve(optionId: string): Promise<void> | void;
+  permission: AgentPermissionRequestRecord;
+}) {
+  const { t } = useTranslation("agent");
+  const allowOptions = permission.options.filter((option) =>
+    option.kind.startsWith("allow"),
+  );
+  const trailingOptions = permission.options.filter(
+    (option) => !option.kind.startsWith("allow"),
+  );
+  const defaultAllowOption = allowOptions[0];
+
+  const getOptionLabel = (option: AgentPermissionOption) => {
+    const genericLabel = {
+      allow_always: t("permissions.alwaysAllow"),
+      allow_once: t("permissions.allowOnce"),
+      reject_always: t("permissions.rejectAlways"),
+      reject_once: t("permissions.deny"),
+    }[option.kind];
+    return option.labelSource === "provider" ? option.label : genericLabel;
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-end gap-1.5 border-chat-border-soft border-t",
+        isDock ? "px-3 py-2" : "px-4 py-3",
+      )}
+    >
+      {defaultAllowOption ? (
+        allowOptions.length > 1 ? (
+          <AppSelect
+            disabled={isResolving}
+            onValueChange={(optionId) => void onResolve(optionId)}
+            options={allowOptions.map((option) => ({
+              label: getOptionLabel(option),
+              value: option.id,
+            }))}
+            position="item-aligned"
+            triggerAriaLabel={getOptionLabel(defaultAllowOption)}
+            triggerClassName="max-w-full"
+            triggerLabel={
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Check className="size-3.5 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {getOptionLabel(defaultAllowOption)}
+                </span>
+              </span>
+            }
+            value={defaultAllowOption.id}
+          />
+        ) : (
+          <Button
+            disabled={isResolving}
+            onClick={() => void onResolve(defaultAllowOption.id)}
+            size="sm"
+            type="button"
+            variant={getPermissionOptionVariant(defaultAllowOption)}
+          >
+            <PermissionOptionIcon option={defaultAllowOption} />
+            {getOptionLabel(defaultAllowOption)}
+          </Button>
+        )
+      ) : null}
+      {trailingOptions.map((option) => (
+        <Button
+          disabled={isResolving}
+          key={option.id}
+          onClick={() => void onResolve(option.id)}
+          size="sm"
+          type="button"
+          variant={getPermissionOptionVariant(option)}
+        >
+          <PermissionOptionIcon option={option} />
+          {getOptionLabel(option)}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function PermissionCard({
   onResolve,
   permission,
@@ -142,21 +233,35 @@ export function PermissionCard({
   const hasCommand = readableDetails.some(
     (detail) => detail.label === "Command",
   );
-  let displayTitle = permission.title;
+  let requestSummary = permission.title;
   if (claudeDetails) {
-    displayTitle = t("permissions.claudeAction", {
+    requestSummary = t("permissions.claudeAction", {
       action: t(`permissions.actions.${claudeDetails.action}`),
       target: claudeDetails.target,
     });
   }
   if (hasCommand) {
-    displayTitle = t("permissions.runCommand");
+    requestSummary = t("permissions.runCommand");
   }
   const displayDescription = hasCommand ? null : sourceDescription;
+  const visibleDescription =
+    displayDescription !== null &&
+    !requestSummary.includes(displayDescription.trim())
+      ? displayDescription
+      : null;
+  const visibleDetails = filterDetailsCoveredByText(readableDetails, [
+    requestSummary,
+    displayDescription,
+  ]);
   const shouldShowRawInput =
     rawInput &&
     readableDetails.length === 0 &&
     permission.providerId !== "claude-agent";
+  const hasBody =
+    requestSummary.length > 0 ||
+    visibleDescription !== null ||
+    visibleDetails.length > 0 ||
+    Boolean(shouldShowRawInput);
   const isDock = variant === "dock";
 
   const handleResolve = async (optionId: string) => {
@@ -181,107 +286,76 @@ export function PermissionCard({
     >
       <div
         className={cn(
-          "flex items-start gap-2.5",
+          "flex items-center gap-2.5",
           isDock ? "px-3 pt-3 pb-2" : "px-4 pt-4 pb-3",
         )}
       >
         <div
           className={cn(
-            "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-control",
+            "flex size-6 shrink-0 items-center justify-center rounded-control",
             getStatusClasses(permission),
           )}
         >
           <ShieldAlert className="size-3.5" />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-meta font-medium text-chat-fg-muted">
-              {t("permissions.title")}
-            </span>
-            <span
-              className={cn(
-                "shrink-0 rounded-full px-1.5 py-px text-meta font-medium",
-                getStatusClasses(permission),
-              )}
-            >
-              {getStatusLabel(permission, t)}
-            </span>
-          </div>
-          <h3
-            className={cn(
-              "mt-0.5 break-words font-semibold text-chat-fg",
-              isDock ? "text-body" : "text-display",
-            )}
-          >
-            {displayTitle}
-          </h3>
-          {displayDescription ? (
-            <p className="mt-0.5 line-clamp-2 text-body text-chat-fg-muted">
-              {displayDescription}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {readableDetails.length > 0 ? (
-        <div
+        <h3
           className={cn(
-            "space-y-2",
-            isDock ? "px-3 pb-2.5" : "px-4 pb-3",
-            // Indent details under the header text column on roomy layouts.
-            !isDock && "ps-[3.25rem]",
+            "min-w-0 flex-1 truncate font-semibold text-chat-fg",
+            isDock ? "text-body" : "text-display",
           )}
         >
-          {readableDetails.map((detail) => (
+          {t("permissions.title")}
+        </h3>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-1.5 py-px text-meta font-medium",
+            getStatusClasses(permission),
+          )}
+        >
+          {getStatusLabel(permission, t)}
+        </span>
+      </div>
+
+      {hasBody ? (
+        <div
+          className={cn(
+            "space-y-2.5",
+            isDock ? "px-3 pt-2.5 pb-5" : "px-4 pt-2.5 pb-6",
+            // Indent body under the header text column on roomy layouts.
+            !isDock && "ps-[3.125rem]",
+          )}
+        >
+          {requestSummary.length > 0 ? (
+            <p className="break-words text-body text-chat-fg">
+              {requestSummary}
+            </p>
+          ) : null}
+          {visibleDescription ? (
+            <p className="line-clamp-2 text-body text-chat-fg-muted">
+              {visibleDescription}
+            </p>
+          ) : null}
+          {visibleDetails.map((detail) => (
             <PermissionDetailPanel
               detail={detail}
               key={`${detail.label}:${detail.value}`}
             />
           ))}
+          {shouldShowRawInput ? (
+            <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words rounded-control bg-chat-code-panel px-2.5 py-2 font-mono text-meta text-chat-fg-secondary [font-variant-ligatures:none]">
+              {rawInput}
+            </pre>
+          ) : null}
         </div>
-      ) : shouldShowRawInput ? (
-        <pre
-          className={cn(
-            "mb-2.5 max-h-36 overflow-auto whitespace-pre-wrap break-words rounded-control bg-chat-code-panel px-2.5 py-2 font-mono text-meta text-chat-fg-secondary [font-variant-ligatures:none]",
-            isDock ? "mx-3" : "mx-4 ms-[3.25rem]",
-          )}
-        >
-          {rawInput}
-        </pre>
       ) : null}
 
       {isPending ? (
-        <div
-          className={cn(
-            "flex flex-wrap items-center justify-end gap-1.5 border-chat-border-soft border-t",
-            isDock ? "px-3 py-2" : "px-4 py-3",
-          )}
-        >
-          {permission.options.map((option) => {
-            const genericLabel = {
-              allow_always: t("permissions.alwaysAllow"),
-              allow_once: t("permissions.allowOnce"),
-              reject_always: t("permissions.rejectAlways"),
-              reject_once: t("permissions.deny"),
-            }[option.kind];
-            const label =
-              option.labelSource === "provider" ? option.label : genericLabel;
-
-            return (
-              <Button
-                disabled={isResolving}
-                key={option.id}
-                onClick={() => void handleResolve(option.id)}
-                size="sm"
-                type="button"
-                variant={getPermissionOptionVariant(option)}
-              >
-                <PermissionOptionIcon option={option} />
-                {label}
-              </Button>
-            );
-          })}
-        </div>
+        <PermissionCardActions
+          isDock={isDock}
+          isResolving={isResolving}
+          onResolve={handleResolve}
+          permission={permission}
+        />
       ) : null}
     </article>
   );

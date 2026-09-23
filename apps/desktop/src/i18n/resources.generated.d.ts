@@ -99,7 +99,7 @@ export default interface Resources {
       runCommand: "Run this command?";
       showLess: "Show less";
       showMore: "Show full command";
-      title: "Permission request";
+      title: "Permission approval";
       url: "URL";
     };
     plan: {

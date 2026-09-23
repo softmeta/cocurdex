@@ -3,22 +3,12 @@ import {
   type MessageRecord,
   stripPeerEnvelope,
 } from "@cocurdex/shared";
-import type { TFunction } from "i18next";
 import { useSetAtom } from "jotai";
 import { ArrowUpRight, Bot, Workflow } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleUserMessageBody, MarkdownRenderer } from "@/components";
 import { selectSessionAtom } from "@/features/sessions";
-
-export function messageOriginLabel(
-  t: TFunction<"agent">,
-  origin: MessageOrigin,
-) {
-  if (origin.kind === "scriptRun") {
-    return t("peerMessage.fromScriptRun", { name: origin.runName });
-  }
-  return t("peerMessage.from", { title: origin.sessionTitle });
-}
+import { messageOriginLabel } from "./message-origin-label";
 
 function PeerOriginHeader({ origin }: { origin: MessageOrigin }) {
   const { t } = useTranslation("agent");

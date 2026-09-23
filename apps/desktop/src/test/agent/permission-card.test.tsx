@@ -70,6 +70,16 @@ const scopedPermission = {
   status: "pending",
 } satisfies AgentPermissionRequestRecord;
 
+const pathPermission = {
+  ...permission,
+  title: "Requested read access to /Users/richard/Documents",
+  rawInput: {
+    input: {
+      path: "/Users/richard/Documents",
+    },
+  },
+} satisfies AgentPermissionRequestRecord;
+
 describe("PermissionCard", () => {
   it("renders only the permission choices offered by the agent", () => {
     const onResolve = vi.fn();
@@ -84,33 +94,58 @@ describe("PermissionCard", () => {
     expect(onResolve).toHaveBeenCalledWith(permission.id, "reject-always");
   });
 
-  it("keeps same-kind provider choices distinguishable and resolves the chosen one", () => {
+  it("keeps same-kind provider choices distinguishable and resolves the chosen one", async () => {
     const onResolve = vi.fn();
 
     render(
       <PermissionCard onResolve={onResolve} permission={scopedPermission} />,
     );
 
+    // Multiple allow choices collapse into a select; only the default
+    // choice stays visible on the trigger.
     expect(
-      screen.getByRole("button", {
-        name: "Yes, allow `devin` commands (this session)",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
+      screen.queryByRole("button", {
         name: "Yes, always allow `devin` commands in `cocurdex`",
       }),
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", {
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
         name: "Yes, always allow `devin` commands in all projects",
       }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("combobox", {
+        name: "Yes, allow `devin` commands (this session)",
+      }),
     );
+
+    const option = await screen.findByRole("option", {
+      name: "Yes, always allow `devin` commands in all projects",
+    });
+    // Base UI only commits mouse selection when the press started on the item.
+    fireEvent.pointerDown(option);
+    fireEvent.click(option);
 
     expect(onResolve).toHaveBeenCalledWith(
       scopedPermission.id,
       "allow-all-projects",
     );
+  });
+
+  it("hides detail rows already covered by the request summary", () => {
+    render(<PermissionCard permission={pathPermission} />);
+
+    expect(
+      screen.getByText("Requested read access to /Users/richard/Documents"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Path")).not.toBeInTheDocument();
+  });
+
+  it("keeps detail rows that add information beyond the summary", () => {
+    render(<PermissionCard permission={permission} />);
+
+    expect(screen.getByText("Command")).toBeInTheDocument();
+    expect(screen.getByText(command)).toBeInTheDocument();
   });
 });

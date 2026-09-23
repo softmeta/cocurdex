@@ -95,7 +95,7 @@
     "runCommand": "运行这条命令？",
     "showLess": "收起",
     "showMore": "查看完整命令",
-    "title": "权限请求",
+    "title": "权限审批",
     "url": "URL"
   },
   "plan": {

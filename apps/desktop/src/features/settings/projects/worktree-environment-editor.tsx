@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button, Spinner, Text, Textarea } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
-import { SettingsGroup } from "../settings-fields";
 
 const SETUP_PROBE_FILES = [
   "pnpm-lock.yaml",
@@ -124,7 +123,7 @@ export function WorktreeEnvironmentEditor({
     suggestedSetup.length > 0 && setupScript.trim().length === 0;
 
   return (
-    <SettingsGroup>
+    <div className="flex flex-col">
       <ScriptField
         action={
           showSetupSuggestion ? (
@@ -164,7 +163,7 @@ export function WorktreeEnvironmentEditor({
           {t("worktrees.save")}
         </Button>
       </div>
-    </SettingsGroup>
+    </div>
   );
 }
 

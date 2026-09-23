@@ -1,9 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import {
-  TranscriptStateProvider,
-  useTranscriptState,
-} from "./transcript-state";
+import { TranscriptStateProvider } from "./transcript-state";
+import { useTranscriptState } from "./use-transcript-state";
 
 function Draft({ messageId }: { messageId: string }) {
   const [draft, setDraft] = useTranscriptState(`draft:${messageId}`, "");

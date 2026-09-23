@@ -54,10 +54,7 @@ import {
 } from "./session-usage-store";
 import { getEffectiveThinkingLevel } from "./thinking-level";
 
-export function formatModelLabel(
-  modelName: string,
-  providerName?: string | null,
-) {
+function formatModelLabel(modelName: string, providerName?: string | null) {
   const trimmedProviderName = providerName?.trim();
   return trimmedProviderName
     ? `${trimmedProviderName} / ${modelName}`

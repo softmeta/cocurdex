@@ -188,7 +188,7 @@ function decodeTitleModelValue(value: string): TitleModelSelection | null {
   };
 }
 
-export function mergeProviderModels(
+function mergeProviderModels(
   models: ProviderModelRecord[],
   providerId: string,
   providerModels: ProviderModelRecord[],

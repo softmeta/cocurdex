@@ -1,4 +1,5 @@
 export * from "./chat-activity";
+export * from "./chat-activity-state";
 export * from "./chat-conversation-item";
 export * from "./chat-message";
 export * from "./chat-scroll";

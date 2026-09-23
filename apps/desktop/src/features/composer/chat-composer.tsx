@@ -48,11 +48,6 @@ import {
   setComposerDraftAtom,
 } from "./composer-draft-store";
 import {
-  getContextAttachmentMentionLabel,
-  getContextAttachmentSerializedText,
-  useContextFileMentions,
-} from "./context-file-mentions";
-import {
   DOCUMENT_ATTACHMENT_ACCEPT,
   getDocumentAttachmentValidationError,
   importDocumentFiles,
@@ -65,7 +60,7 @@ import {
   getImageAttachmentLimitError,
   getImageAttachmentValidationError,
   importImageFiles,
-} from "./image-attachments";
+} from "./image-attachment-import";
 import type {
   EditorContentNode,
   MentionAnchor,
@@ -77,10 +72,15 @@ import { PanelComposer } from "./panel-composer";
 import { PillComposer } from "./pill-composer";
 import { sendShortcutAtom } from "./send-shortcut";
 import { SessionRoleName } from "./session-role-name";
-import { useSlashCommands } from "./slash-command-menu";
 import type { ThinkingLevelOption } from "./thinking-level";
 import { ThinkingLevelSubmenu } from "./thinking-level-submenu";
 import { useComposerSubmission } from "./use-composer-submission";
+import {
+  getContextAttachmentMentionLabel,
+  getContextAttachmentSerializedText,
+  useContextFileMentions,
+} from "./use-context-file-mentions";
+import { useSlashCommands } from "./use-slash-commands";
 
 export interface ChatComposerHandle {
   insertContextMention(attachment: MessageAttachment): boolean;

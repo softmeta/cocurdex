@@ -6,7 +6,7 @@ import type {
 import { isContextAttachment } from "@cocurdex/shared";
 import { FileText, X } from "lucide-react";
 import { cn } from "@/lib";
-import { getContextAttachmentMentionLabel } from "./context-file-mentions";
+import { getContextAttachmentMentionLabel } from "./use-context-file-mentions";
 
 type ContextAttachment = ContextFileAttachment | ContextFolderAttachment;
 

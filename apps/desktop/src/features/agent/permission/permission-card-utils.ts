@@ -90,6 +90,18 @@ function isDuplicateDetail(
   );
 }
 
+export function filterDetailsCoveredByText(
+  details: PermissionDetail[],
+  coverTexts: ReadonlyArray<string | null | undefined>,
+) {
+  const texts = coverTexts.filter(
+    (text): text is string => typeof text === "string" && text.length > 0,
+  );
+  return details.filter(
+    (detail) => !texts.some((text) => text.includes(detail.value.trim())),
+  );
+}
+
 export function getReadablePermissionDetails({
   displayDescription,
   permission,

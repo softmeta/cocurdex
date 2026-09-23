@@ -158,6 +158,16 @@ Extend `AppSearchableSelect` or `AppSelect` props first. Extend primitives only 
 - Effects are only for synchronizing external systems such as DOM, network, timers, subscriptions, browser APIs, or non-React components. Before adding `useEffect`, explain the external system and why render calculations, event handlers, stable `key` resets, lifted state, or memoization cannot replace it.
 - Derive values during render; use `useMemo` only for measured expensive computations. Avoid mirrored state, effect chains, and effect-based parent notifications. Handle user actions and related state updates in their originating event; use controlled components or lifted state when appropriate.
 
+### Fast Refresh exports
+
+A `.tsx` module that exports a component is a Vite Fast Refresh boundary. `@vitejs/plugin-react` accepts the update only when every runtime export is a component, or a string, number, or boolean that stays `===` to the previous value. A plain function, hook, atom, array, or object is a new value when the module re-executes, so the plugin invalidates importers. `export *` barrels repeat that walk across the shell until `main.tsx` fully reloads, which is the long `hmr invalidate` / `hmr update` burst in the dev server log.
+
+- Keep helpers, hooks, and atoms in a sibling `.ts` module that exports no components. Callers import them from that module.
+- Do not re-export those values from the component module. A barrel may export them from the `.ts` module.
+- `export type` is erased and may stay beside components.
+- Do not register ignored refresh exports to keep a mixed module. Importers would keep the previous function.
+- Leave `components/ui` upstream exports such as `buttonVariants` in place. Do not split primitives only to satisfy this rule.
+
 References: [Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warning), [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect), and Tailwind CSS's *Styling with utility classes - Managing duplication*.
 
 ## Product knowledge and skills

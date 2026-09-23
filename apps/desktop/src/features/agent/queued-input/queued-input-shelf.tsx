@@ -196,7 +196,7 @@ function QueuedInputRow({
               <MoreHorizontal className="size-4" />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 rounded-card">
+          <DropdownMenuContent align="end" className="w-max rounded-card">
             <DropdownMenuItem
               onClick={() => {
                 void runAction("sendNow", () => onSendNow(item));
