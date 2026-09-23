@@ -7,16 +7,21 @@ fingerprint and wire protocol version. All launchers must enter through
 ## Lifetime
 
 1. Create and resolve the data directory, then acquire an exclusive transaction
-   on `daemon-owner.sqlite` using `daemon-ownership.ts`.
+   on `daemon-owner.sqlite` using `daemon-ownership.ts`. A contender waits out a
+   few seconds of in-progress incumbent teardown instead of failing on contact.
 2. Probe the canonical endpoint before touching the product database. A live
    endpoint prevents startup; only ENOENT or ECONNREFUSED allows stale endpoint
    recovery. Other failures, including timeout, abort startup.
 3. Bind the listener. On Unix, bind a private name and publish its inode with an
    exclusive hard link to the canonical name; then remove the private name.
-   Windows uses its named pipe directly. Requests remain gated during recovery.
+   Windows uses its named pipe directly. With ownership held and no live
+   endpoint, any metadata file on disk belongs to a dead daemon and is removed.
+   Requests remain gated during recovery.
 4. Initialize the service and complete the one-time session, tool-call and chat
    recovery. `bootstrap()` reads current state and never repeats recovery.
-5. Enable requests and publish metadata using a same-directory atomic rename.
+5. Publish metadata using a same-directory atomic rename, then enable
+   requests. Clients holding stale metadata meet a closed connection instead of
+   a token mismatch from a daemon that has not published its own token yet.
 6. On shutdown or failed startup, close connections and the service, clean up
    owned endpoint and metadata, and release ownership last.
 

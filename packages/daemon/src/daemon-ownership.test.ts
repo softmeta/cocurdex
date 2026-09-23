@@ -63,7 +63,7 @@ describe("daemon ownership", () => {
     owner.release();
     await expect(acquireDaemonOwnership(userDataPath)).rejects.toThrow();
     successor.release();
-  });
+  }, 30_000);
 
   it("releases ownership after the holding process is killed", async () => {
     const userDataPath = await directory();
@@ -111,7 +111,7 @@ describe("daemon ownership", () => {
     }
     const successor = await acquireDaemonOwnership(userDataPath);
     successor.release();
-  });
+  }, 20_000);
 
   it("allows independent data directories", async () => {
     const first = await acquireDaemonOwnership(await directory());

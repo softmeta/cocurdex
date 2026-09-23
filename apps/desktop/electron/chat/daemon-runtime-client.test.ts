@@ -170,18 +170,97 @@ describe("daemon runtime replacement", () => {
     expect(process.kill).not.toHaveBeenCalled();
   });
 
-  it.each([
-    "TIMEOUT",
-    "UNAUTHORIZED",
-    "INVALID_RESPONSE",
-  ])("preserves the incumbent when status fails with %s", async (code) => {
-    const { client } = await fixture();
-    vi.mocked(requestDaemon).mockRejectedValue(
-      Object.assign(new Error(code), { code }),
-    );
-    await expect(client.initialize()).rejects.toThrow(code);
+  it.each(["TIMEOUT", "UNAUTHORIZED", "INVALID_RESPONSE"])(
+    "preserves the incumbent when status fails with %s",
+    async (code) => {
+      const { client } = await fixture();
+      vi.mocked(requestDaemon).mockRejectedValue(
+        Object.assign(new Error(code), { code }),
+      );
+      await expect(client.initialize()).rejects.toThrow(code);
+      expect(spawnOwnedDaemonProcess).not.toHaveBeenCalled();
+      expect(process.kill).not.toHaveBeenCalled();
+    },
+  );
+
+  it("absorbs a settling initial probe before deciding the daemon is absent", async () => {
+    const { client, current } = await fixture();
+    let probes = 0;
+    vi.mocked(requestDaemon).mockImplementation(async () => {
+      probes += 1;
+      if (probes === 1)
+        throw Object.assign(new Error("Invalid daemon token"), {
+          code: "UNAUTHORIZED",
+        });
+      return current;
+    });
+    await client.initialize();
+    expect(probes).toBe(2);
     expect(spawnOwnedDaemonProcess).not.toHaveBeenCalled();
-    expect(process.kill).not.toHaveBeenCalled();
+  });
+
+  it("keeps polling while a spawned daemon publishes its token", async () => {
+    const { client, current, shutdown } = await fixture();
+    let spawned = false;
+    const settling = ["UNAUTHORIZED", "DISCONNECTED", "TIMEOUT"];
+    vi.mocked(requestDaemon).mockImplementation(async () => {
+      if (!spawned)
+        throw Object.assign(new Error("not listening"), {
+          code: "ECONNREFUSED",
+        });
+      const code = settling.shift();
+      if (code) throw Object.assign(new Error(code), { code });
+      return current;
+    });
+    vi.mocked(spawnOwnedDaemonProcess).mockImplementation(() => {
+      spawned = true;
+      return { pid: current.pid, shutdown };
+    });
+    await client.initialize();
+    expect(settling).toHaveLength(0);
+    expect(spawnOwnedDaemonProcess).toHaveBeenCalledOnce();
+  });
+
+  it("waits out transient disconnects while the incumbent shuts down", async () => {
+    const { client, current, shutdown } = await fixture();
+    const incumbent = {
+      ...current,
+      pid: 123,
+      runtimeFingerprint: "old",
+      startedAt: "old",
+    };
+    let stopping = false;
+    let spawned = false;
+    const settling = ["DISCONNECTED", "UNAUTHORIZED"];
+    vi.mocked(requestDaemon).mockImplementation(async (method) => {
+      if (method === "daemon.shutdownIfIdle") {
+        stopping = true;
+        return {
+          status: "accepted",
+          activeRequests: 0,
+          activeWork: {
+            agentTurns: 0,
+            queuedInputs: 0,
+            chatOperations: 0,
+            workflowActive: false,
+          },
+        };
+      }
+      if (spawned) return current;
+      if (!stopping) return incumbent;
+      const code = settling.shift();
+      if (code) throw Object.assign(new Error(code), { code });
+      throw Object.assign(new Error("not listening"), {
+        code: "ECONNREFUSED",
+      });
+    });
+    vi.mocked(spawnOwnedDaemonProcess).mockImplementation(() => {
+      spawned = true;
+      return { pid: current.pid, shutdown };
+    });
+    await client.initialize();
+    expect(settling).toHaveLength(0);
+    expect(spawnOwnedDaemonProcess).toHaveBeenCalledOnce();
   });
 
   it("does not force replacement when safe shutdown is unsupported", async () => {

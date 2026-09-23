@@ -324,6 +324,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       });
     });
     endpoint.publish();
+    await rm(getDaemonMetadataPath(userDataPath), { force: true });
     const httpHost = await listenHttp(options.webSocketPort ?? 0);
     const agentToolsUrl = `http://${httpHost}${AGENT_TOOL_HTTP_PATH}`;
     let webSocketUrl: string | undefined;
@@ -349,8 +350,6 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     });
     service.bindEventSeqProvider(() => eventJournal.currentSeq());
     await service.state.waitForStartupRecovery();
-    ready = true;
-    metadataPublished = true;
     await writeDaemonMetadata(
       {
         pid: process.pid,
@@ -364,6 +363,8 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       },
       userDataPath,
     );
+    metadataPublished = true;
+    ready = true;
     service.startBackgroundRecovery();
     return { close, server, service, webSocketUrl };
   } catch (error) {

@@ -49,6 +49,13 @@ function unavailable(error: unknown) {
   return code === "ENOENT" || code === "ECONNREFUSED";
 }
 
+function settlingDaemon(error: unknown) {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  return (
+    code === "UNAUTHORIZED" || code === "DISCONNECTED" || code === "TIMEOUT"
+  );
+}
+
 function matches(status: DaemonStatus, fingerprint: string) {
   return (
     status.protocolVersion === DAEMON_PROTOCOL_VERSION &&
@@ -130,6 +137,7 @@ export function createDaemonRuntimeLifecycle(
         )
           return true;
       } catch (error) {
+        if (settlingDaemon(error)) continue;
         if (!unavailable(error)) throw error;
         if (ownedDaemonProcess?.pid === status.pid) {
           const previous = ownedDaemonProcess;
@@ -149,12 +157,18 @@ export function createDaemonRuntimeLifecycle(
     const runtimeFingerprint = await fingerprint();
     assertActive();
     let status: DaemonStatus | null = null;
-    try {
-      status = await requestDaemon("daemon.status", requestOptions());
-    } catch (error) {
-      if (!unavailable(error)) throw error;
+    const probeDeadline = Date.now() + 2_000;
+    for (;;) {
+      try {
+        status = await requestDaemon("daemon.status", requestOptions());
+        break;
+      } catch (error) {
+        if (unavailable(error)) break;
+        if (!settlingDaemon(error) || Date.now() >= probeDeadline) throw error;
+        await delay(100);
+        assertActive();
+      }
     }
-    assertActive();
     if (status) {
       if (matches(status, runtimeFingerprint)) return;
       if (!(await shutdownIfIdle(status))) {
@@ -182,7 +196,7 @@ export function createDaemonRuntimeLifecycle(
           "A different daemon owns the data directory; it was preserved",
         );
       } catch (error) {
-        if (!unavailable(error)) throw error;
+        if (!unavailable(error) && !settlingDaemon(error)) throw error;
       }
     }
     throw new Error("Timed out waiting for the Cocurdex daemon");
