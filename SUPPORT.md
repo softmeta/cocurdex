@@ -9,8 +9,9 @@ Include the Cocurdex commit or version, operating system, architecture, agent
 runtime, reproduction steps, and sanitized logs when relevant. Do not attach
 credentials, private source code, personal data, or user and agent transcripts.
 
-For informal questions, usage discussion, and quick feedback, join the Feishu
-group by scanning this QR code:
+For informal questions, usage discussion, and quick feedback, join the
+[Discord server](https://discord.gg/JuRyyv5bv) or scan this QR code for the
+Feishu group:
 
 <img src="docs/assets/feishu-feedback-group-qr.png" alt="Feishu group QR code" width="240" />
 
