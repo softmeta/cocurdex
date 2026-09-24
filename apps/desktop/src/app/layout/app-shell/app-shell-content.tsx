@@ -7,7 +7,7 @@ import { ChatDockActions } from "../chat-dock-actions";
 import {
   type ChatDockVisibility,
   closedChatDockVisibility,
-  useDockGeometry,
+  type useDockGeometry,
 } from "../chat-dock-geometry";
 import { ChatDockLauncher } from "../chat-dock-launcher";
 import { resolveChatDockPinLayout } from "../chat-dock-sizing";
@@ -19,6 +19,7 @@ import { MIN_CHAT_WIDTH, PANEL_SEPARATOR_WIDTH } from "./panel-geometry";
 
 interface AppShellContentProps {
   contentRowRef: Ref<HTMLElement>;
+  dock: ReturnType<typeof useDockGeometry>;
   isLeftSidebarOpen: boolean;
   leftWidth: number;
   isRightPanelOpen: boolean;
@@ -41,6 +42,7 @@ interface AppShellContentProps {
 
 export function AppShellContent({
   contentRowRef,
+  dock,
   isLeftSidebarOpen,
   leftWidth,
   isRightPanelOpen,
@@ -65,7 +67,6 @@ export function AppShellContent({
     transferring: busy,
     toggleVisibility,
   } = useChatWindowActions();
-  const dock = useDockGeometry();
   const dockViewportWidth = useChatDockViewportWidth();
   const pinLayout = resolveChatDockPinLayout(
     dockViewportWidth,

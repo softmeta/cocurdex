@@ -23,6 +23,7 @@ import type {
   AppBootstrapData,
   AppResyncSnapshot,
   CocurdexDaemonEvent,
+  CommitMessageModelSelection,
   CreateWorkflowPayload,
   GetToolCallResultInput,
   GitCommitResult,
@@ -47,8 +48,10 @@ import {
   emptyWorktreeEnvironment,
   getNetworkProxySettings,
   isAgentId,
+  isAssistantSessionId,
   isToolCallId,
   isWorkspaceSearchDaemonEvent,
+  newAssistantSessionId,
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
@@ -65,7 +68,10 @@ import {
   AgentToolBridge,
   registerMessagingTools,
   registerScriptRunTools,
+  registerSettingsTools,
   registerTeamTools,
+  requireCatalogEntry,
+  WORKTREE_ENVIRONMENT_KEY,
 } from "./agent-tools";
 import {
   discoverAgentSessionModes,
@@ -150,6 +156,7 @@ interface QueuedFollowUp {
 
 /** How often checkpoint retention runs on a daemon that never restarts. */
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
 
 function isExistingDirectory(directoryPath: string) {
   try {
@@ -308,6 +315,15 @@ export class CocurdexDaemonService {
       createId: () => crypto.randomUUID(),
     });
     registerScriptRunTools(this.agentTools.registry, this.scriptRuns);
+    registerSettingsTools(this.agentTools.registry, {
+      getWorktreeEnvironment: (workspaceId) =>
+        this.getWorktreeEnvironment(workspaceId),
+      proposeWorktreeEnvironment: (input) =>
+        this.proposeWorktreeEnvironment(input),
+      getSettingValue: (key, workspaceId) =>
+        this.getSettingValue(key, workspaceId),
+      setSettingValue: (input) => this.setSettingValue(input),
+    });
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);
@@ -673,9 +689,239 @@ export class CocurdexDaemonService {
       setupScript: environment.setupScript,
       cleanupScript: environment.cleanupScript,
       updatedAt: new Date().toISOString(),
+      proposal: null,
     };
     await this.state.saveWorktreeEnvironment(next);
     return next;
+  }
+
+  private broadcastWorkspaceChanged() {
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["workspace"],
+    });
+  }
+
+  async proposeWorktreeEnvironment(input: {
+    workspaceId: string;
+    setupScript: string;
+    cleanupScript: string;
+    rationale?: string | null;
+  }): Promise<WorkspaceWorktreeEnvironment> {
+    const workspace = (await this.state.listWorkspaces()).find(
+      (candidate) => candidate.id === input.workspaceId,
+    );
+    if (!workspace) {
+      throw new Error(`Workspace ${input.workspaceId} not found`);
+    }
+    await this.state.saveWorktreeEnvironmentProposal(input.workspaceId, {
+      setupScript: input.setupScript,
+      cleanupScript: input.cleanupScript,
+      rationale: input.rationale?.trim() ? input.rationale.trim() : null,
+      proposedAt: new Date().toISOString(),
+    });
+    this.broadcastWorkspaceChanged();
+    return this.getWorktreeEnvironment(input.workspaceId);
+  }
+
+  private broadcastSettingsChanged() {
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["settings"],
+    });
+  }
+
+  private async readDaemonSetting(key: string): Promise<unknown> {
+    if (key === "git.commitMessageModel") {
+      return this.commitMessageService.getModelSetting();
+    }
+    throw new Error(`Settings key '${key}' is not readable yet`);
+  }
+
+  private async writeDaemonSetting(key: string, value: unknown): Promise<void> {
+    if (key === "git.commitMessageModel") {
+      await this.commitMessageService.setModelSetting(
+        value as CommitMessageModelSelection | null,
+      );
+      return;
+    }
+    throw new Error(`Settings key '${key}' is not writable yet`);
+  }
+
+  private async readReportedSettingValues(): Promise<Record<string, unknown>> {
+    try {
+      const raw = await this.state.getAppSetting(REPORTED_SETTING_VALUES_KEY);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  async reportSettingValues(values: Record<string, unknown>) {
+    const mirror = await this.readReportedSettingValues();
+    await this.state.setAppSetting(
+      REPORTED_SETTING_VALUES_KEY,
+      JSON.stringify({ ...mirror, ...values }),
+    );
+  }
+
+  async getSettingValue(key: string, workspaceId: string) {
+    const entry = requireCatalogEntry(key);
+    if (entry.key === WORKTREE_ENVIRONMENT_KEY) {
+      const environment = await this.getWorktreeEnvironment(workspaceId);
+      return {
+        value: {
+          setupScript: environment.setupScript,
+          cleanupScript: environment.cleanupScript,
+        },
+        pending: environment.proposal,
+      };
+    }
+    if (entry.storage === "daemon") {
+      return { value: await this.readDaemonSetting(entry.key), pending: null };
+    }
+    const mirror = await this.readReportedSettingValues();
+    return { value: mirror[entry.key] ?? null, pending: null };
+  }
+
+  async setSettingValue(input: {
+    key: string;
+    value: unknown;
+    workspaceId: string;
+  }): Promise<{ status: "applied" | "queued" }> {
+    const entry = requireCatalogEntry(input.key);
+    if (entry.tier !== "write") {
+      throw new Error(
+        `Settings key '${entry.key}' cannot be set directly (tier=${entry.tier}); use settings_propose`,
+      );
+    }
+    const value = entry.validate ? entry.validate(input.value) : input.value;
+    if (entry.storage === "daemon") {
+      await this.writeDaemonSetting(entry.key, value);
+      this.broadcastSettingsChanged();
+      return { status: "applied" };
+    }
+    await this.state.addPendingSettingsChange({
+      id: crypto.randomUUID(),
+      key: entry.key,
+      value,
+      createdAt: new Date().toISOString(),
+    });
+    this.broadcastSettingsChanged();
+    return { status: "queued" };
+  }
+
+  listPendingSettingsChanges() {
+    return this.state.listPendingSettingsChanges();
+  }
+
+  async acknowledgeSettingsChange(id: string) {
+    await this.state.deletePendingSettingsChange(id);
+  }
+
+  async getOrCreateAssistantSession(input: { workspaceId: string }) {
+    const existing = await this.mostRecentAssistantSession(input.workspaceId);
+    if (!existing) {
+      return this.createAssistantSession(input.workspaceId);
+    }
+    const snapshotSource = await this.assistantSnapshotSource(
+      input.workspaceId,
+      existing.agentType,
+    );
+    if (!existing.providerSnapshot && snapshotSource) {
+      const updated: SessionRecord = {
+        ...existing,
+        providerSnapshot: snapshotSource,
+        updatedAt: new Date().toISOString(),
+      };
+      await this.state.saveSession(updated);
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
+      return updated;
+    }
+    return existing;
+  }
+
+  async createAssistantSession(workspaceId: string) {
+    const agentType =
+      (await this.mostRecentAssistantSession(workspaceId))?.agentType ??
+      (await this.recentSessionAgentType(workspaceId)) ??
+      (await this.defaultAssistantAgentId());
+    return this.saveSessionConfiguration({
+      id: newAssistantSessionId(),
+      workspaceId,
+      title: "Assistant",
+      agentType,
+      writeMode: "read-only",
+      sessionModeId: null,
+      permissionMode: undefined,
+      agentRoleId: null,
+      providerSnapshot: await this.assistantSnapshotSource(
+        workspaceId,
+        agentType,
+      ),
+      worktreePath: null,
+      peerInbound: "refuse",
+    });
+  }
+
+  private async mostRecentAssistantSession(
+    workspaceId: string,
+  ): Promise<SessionRecord | null> {
+    const workspace = (await this.state.listWorkspaces()).find(
+      (candidate) => candidate.id === workspaceId,
+    );
+    if (!workspace) {
+      throw new Error(`Workspace ${workspaceId} not found`);
+    }
+    const sessions = await this.state.listSessions();
+    return (
+      sessions.find(
+        (session) =>
+          session.workspaceId === workspaceId &&
+          isAssistantSessionId(session.id),
+      ) ?? null
+    );
+  }
+
+  private async recentSessionAgentType(
+    workspaceId: string,
+  ): Promise<AgentId | null> {
+    const sessions = await this.state.listSessions();
+    return (
+      sessions.find((session) => session.workspaceId === workspaceId)
+        ?.agentType ?? null
+    );
+  }
+
+  private async assistantSnapshotSource(
+    workspaceId: string,
+    agentType: AgentId,
+  ) {
+    const sessions = await this.state.listSessions();
+    return (
+      sessions.find(
+        (session) =>
+          session.workspaceId === workspaceId &&
+          session.agentType === agentType &&
+          session.providerSnapshot,
+      )?.providerSnapshot ?? null
+    );
+  }
+
+  private async defaultAssistantAgentId(): Promise<AgentId> {
+    const agent = (await this.listAgents()).find(
+      (item) => item.availability === "available",
+    );
+    if (!agent) {
+      throw new Error("No agent is available on this machine.");
+    }
+    return agent.id;
   }
 
   async runWorktreeSetup(input: {
@@ -1354,6 +1600,10 @@ export class CocurdexDaemonService {
         },
       });
       this.queuedFollowUps.set(payload.session.id, queued);
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
       return userMessage;
     }
 
@@ -2052,6 +2302,10 @@ export class CocurdexDaemonService {
       ),
     );
     this.queuedFollowUps.set(payload.session.id, queued);
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent"],
+    });
     if (!this.pendingTurns.has(payload.session.id)) {
       void this.startNextQueuedFollowUp(payload.session.id);
     }

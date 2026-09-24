@@ -7,6 +7,7 @@ import {
   Image,
   Minus,
   Plus,
+  RotateCcw,
   RotateCw,
   X,
 } from "lucide-react";
@@ -141,6 +142,8 @@ export function ImageAttachmentPreview({
   const canZoomOut = zoom > MIN_PREVIEW_ZOOM;
   const canZoomIn = zoom < MAX_PREVIEW_ZOOM;
   const isAtDefaultZoom = Math.abs(zoom - 1) < 0.005;
+  const isAtDefaultView =
+    isAtDefaultZoom && rotation === 0 && pan.x === 0 && pan.y === 0;
   const resetZoomLabel = t("imagePreview.resetZoom");
   const { canNavigate, index, next, previous, total } =
     resolveImagePreviewGallery(attachment, gallery);
@@ -416,6 +419,13 @@ export function ImageAttachmentPreview({
                 onClick={handleRotate}
               >
                 <RotateCw className={TITLEBAR_ICON_GLYPH_CLASS} />
+              </PreviewToolbarIconButton>
+              <PreviewToolbarIconButton
+                disabled={isAtDefaultView}
+                label={t("imagePreview.resetView")}
+                onClick={resetView}
+              >
+                <RotateCcw className={TITLEBAR_ICON_GLYPH_CLASS} />
               </PreviewToolbarIconButton>
               <PreviewToolbarIconButton
                 disabled={!dataUrl}

@@ -10,6 +10,7 @@ export const PRODUCT_SKILL_NAMES = [
   "cocurdex-link",
   "cocurdex-note",
   "cocurdex-prd",
+  "cocurdex-settings",
   "cocurdex-ship",
   "cocurdex-spec",
   "cocurdex-team",
@@ -22,7 +23,7 @@ export type ProductSkillName = (typeof PRODUCT_SKILL_NAMES)[number];
 export const MANAGED_MARKER_FILENAME = ".cocurdex-skills.json";
 
 /** Keep in sync with packages/product-skills/package.json version. */
-export const PRODUCT_SKILLS_PACK_VERSION = "0.1.0";
+export const PRODUCT_SKILLS_PACK_VERSION = "0.1.1";
 
 export type SkillScope = "project" | "global";
 

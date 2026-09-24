@@ -87,7 +87,7 @@ interface ChatComposerControls {
   onResolvePermission?(
     requestId: string,
     optionId: string,
-  ): Promise<void> | void;
+  ): Promise<boolean | undefined> | undefined;
   onResolvePlanApproval?(
     approvalId: string,
     decision: AgentPlanApprovalDecision,
@@ -224,9 +224,6 @@ export function ComposerDock({
   ...composerProps
 }: ChatComposerControls) {
   const { t } = useTranslation("agent");
-  const hasBlockingCard = Boolean(
-    pendingPlanApproval || pendingPermissionRequest,
-  );
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const pendingPromptBySession = collectPendingPrompts(
@@ -239,14 +236,14 @@ export function ComposerDock({
       {/* Composer sits slightly wider than the message column so the follow-up
           input has a bit more breathing room while messages stay readable. */}
       <div className="relative mx-auto flex w-full max-w-[780px] flex-col gap-2 overflow-visible">
-        {/* The task list floats out of flow above the dock: it appears and
-            disappears on its own (every `todo_write`), and taking dock height
-            would shove the whole transcript up and down each time. It paints
-            over the tail of the transcript instead — opaque surface, and the
-            user can collapse or dismiss it. Blocking cards stay in flow: they
-            need the reading space and they resolve on user action. */}
-        {plan && !hideComposer ? (
-          <div className="absolute inset-x-0 bottom-full z-10 mb-2 flex min-w-0 flex-col gap-2">
+        {/* Every panel above the composer floats out of flow: the task list,
+            status panels, queued inputs, and prompt cards appear, expand, and
+            resolve on their own, and taking dock height would shove the
+            transcript up and down each time. They paint over the tail of the
+            transcript on opaque surfaces instead, and the cap keeps a tall
+            stack from reaching the window chrome. */}
+        <div className="absolute inset-x-0 bottom-full z-10 -mx-1 -mt-1 mb-1 flex max-h-[75dvh] min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain p-1">
+          {plan && !hideComposer ? (
             <PlanPanel
               collapsed={planCollapsed}
               isRunning={isRunning}
@@ -254,60 +251,56 @@ export function ComposerDock({
               onToggleCollapsed={onTogglePlanCollapsed}
               plan={plan}
             />
-          </div>
-        ) : null}
-        {composerProps.sessionId && !hideComposer ? (
-          <ScriptRunPanel
-            key={`script-runs:${composerProps.sessionId}`}
-            sessionId={composerProps.sessionId}
-          />
-        ) : null}
-        {composerProps.sessionId && !hideComposer ? (
-          <TeamPanel
-            key={composerProps.sessionId}
-            pendingPromptBySession={pendingPromptBySession}
-            sessionId={composerProps.sessionId}
-          />
-        ) : null}
-        {hasBlockingCard ? (
-          <div className="flex min-w-0 flex-col gap-2 overflow-visible">
-            {pendingPlanApproval ? (
-              <PlanApprovalCard
-                approval={pendingPlanApproval}
-                onResolve={onResolvePlanApproval}
-              />
-            ) : null}
-            {pendingPermissionRequest ? (
-              <PermissionCard
-                onResolve={onResolvePermission}
-                permission={pendingPermissionRequest}
-                variant="dock"
-              />
-            ) : null}
-          </div>
-        ) : null}
-        {pendingQuestion ? (
-          <QuestionCard
-            onAnswer={onAnswerQuestion}
-            question={pendingQuestion}
-            variant="dock"
-          />
-        ) : null}
-        {queuedInputs.length > 0 &&
-        !hideComposer &&
-        onDeleteQueuedInput &&
-        onSendNowQueuedInput &&
-        onSteerQueuedInput &&
-        onUpdateQueuedInput ? (
-          <QueuedInputShelf
-            items={queuedInputs}
-            onDelete={onDeleteQueuedInput}
-            onSendNow={onSendNowQueuedInput}
-            onSteer={onSteerQueuedInput}
-            onUpdate={onUpdateQueuedInput}
-            supportsSteering={supportsSteering}
-          />
-        ) : null}
+          ) : null}
+          {composerProps.sessionId && !hideComposer ? (
+            <ScriptRunPanel
+              key={`script-runs:${composerProps.sessionId}`}
+              sessionId={composerProps.sessionId}
+            />
+          ) : null}
+          {composerProps.sessionId && !hideComposer ? (
+            <TeamPanel
+              key={composerProps.sessionId}
+              pendingPromptBySession={pendingPromptBySession}
+              sessionId={composerProps.sessionId}
+            />
+          ) : null}
+          {queuedInputs.length > 0 &&
+          !hideComposer &&
+          onDeleteQueuedInput &&
+          onSendNowQueuedInput &&
+          onSteerQueuedInput &&
+          onUpdateQueuedInput ? (
+            <QueuedInputShelf
+              items={queuedInputs}
+              onDelete={onDeleteQueuedInput}
+              onSendNow={onSendNowQueuedInput}
+              onSteer={onSteerQueuedInput}
+              onUpdate={onUpdateQueuedInput}
+              supportsSteering={supportsSteering}
+            />
+          ) : null}
+          {pendingPlanApproval ? (
+            <PlanApprovalCard
+              approval={pendingPlanApproval}
+              onResolve={onResolvePlanApproval}
+            />
+          ) : null}
+          {pendingPermissionRequest ? (
+            <PermissionCard
+              onResolve={onResolvePermission}
+              permission={pendingPermissionRequest}
+              variant="dock"
+            />
+          ) : null}
+          {pendingQuestion ? (
+            <QuestionCard
+              onAnswer={onAnswerQuestion}
+              question={pendingQuestion}
+              variant="dock"
+            />
+          ) : null}
+        </div>
         {hideComposer ? (
           <div className="flex min-w-0 items-center gap-2 rounded-control border border-chat-border-soft bg-chat-surface-raised px-3 py-2">
             <span className="min-w-0 flex-1 truncate text-meta text-chat-fg-muted">

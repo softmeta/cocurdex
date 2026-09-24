@@ -98,8 +98,8 @@ export function NewSessionCard({
     codexReasoningDefaultValue,
     selectedCodexReasoningEffort,
     setSelectedCodexReasoningEffort,
-    selectedCodexServiceTier,
-    setSelectedCodexServiceTier,
+    selectedServiceTier,
+    setSelectedServiceTier,
     selectedThinkingLevel,
     setSelectedThinkingLevel,
     openCodeAgentOptions,
@@ -119,7 +119,7 @@ export function NewSessionCard({
     canStartSession,
     canStartWithSelectedAgent,
     codexReasoningOptions,
-    codexServiceTierOptions,
+    serviceTierOptions,
     claudeFastModeOptions,
     selectedClaudeFastMode,
     setSelectedClaudeFastMode,
@@ -249,8 +249,8 @@ export function NewSessionCard({
       }
       fastModeOptions={claudeFastModeOptions}
       fastModeValue={selectedClaudeFastMode ? "on" : "off"}
-      serviceTierOptions={codexServiceTierOptions}
-      serviceTierValue={selectedCodexServiceTier}
+      serviceTierOptions={serviceTierOptions}
+      serviceTierValue={selectedServiceTier}
       openCodeAgentOptions={openCodeAgentOptions}
       openCodeAgentDefaultValue={openCodeAgentDefaultValue}
       openCodeAgentValue={openCodeAgentValue}
@@ -268,7 +268,7 @@ export function NewSessionCard({
       onFastModeChange={setSelectedClaudeFastMode}
       onOpenCodeAgentChange={setSelectedOpenCodeAgent}
       onOpenCodeVariantChange={setSelectedOpenCodeVariant}
-      onServiceTierChange={setSelectedCodexServiceTier}
+      onServiceTierChange={setSelectedServiceTier}
       onSaveAsRole={() => setSaveRoleOpen(true)}
     />
   );

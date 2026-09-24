@@ -5,7 +5,10 @@ import type {
 } from "@cocurdex/shared";
 import { CODEX_BUILT_IN_PROVIDER_ID } from "@cocurdex/shared";
 import { desktopApi } from "@/lib";
-import { usesAdapterOwnedModelCatalog } from "./adapter-owned-catalog";
+import {
+  usesAdapterOwnedModelCatalog,
+  usesLazyModelAxesProbe,
+} from "./adapter-owned-catalog";
 
 const PROVIDER_MODEL_CACHE_STALE_MS = 60_000;
 const PROVIDER_MODEL_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -78,6 +81,7 @@ export function clearNewSessionProviderModelCacheForTest() {
 export function resetNewSessionProviderModelMemoryCacheForTest() {
   providerModelCache.clear();
   hasHydratedProviderModelCache = false;
+  probedModelAxesKeys.clear();
 }
 
 function getProviderModelCacheStorage() {
@@ -321,6 +325,59 @@ export function loadProviderModelOptions(
   });
 
   return promise;
+}
+
+// Agents whose catalog ships without per-model axes (Devin) reveal them on
+// demand: each picked model is probed once per renderer runtime and merged
+// into the cached catalog entry so every picker repaints. The daemon dedupes
+// per model too, so a cleared renderer key only costs a cheap RPC.
+const probedModelAxesKeys = new Set<string>();
+
+export function probeProviderModelAxes(
+  cache: ProviderModelCache,
+  agentId: AgentId,
+  providerId: string,
+  modelId: string,
+) {
+  if (!usesLazyModelAxesProbe(agentId) || !modelId) {
+    return;
+  }
+  const key = `${agentId}::${providerId}::${modelId}`;
+  if (probedModelAxesKeys.has(key)) {
+    return;
+  }
+  probedModelAxesKeys.add(key);
+
+  void desktopApi
+    .probeProviderModelAxes(agentId, modelId)
+    .then((axes) => {
+      const entry = cache.get(agentId);
+      if (!axes || !entry?.result) {
+        return;
+      }
+      entry.result = {
+        ...entry.result,
+        items: entry.result.items.map((item) =>
+          item.provider.id === providerId && item.model.modelId === modelId
+            ? {
+                ...item,
+                model: {
+                  ...item.model,
+                  reasoning: axes.supportedReasoningEfforts.length > 0,
+                  defaultReasoningEffort: axes.defaultReasoningEffort,
+                  supportedReasoningEfforts: axes.supportedReasoningEfforts,
+                  serviceTiers: axes.serviceTiers,
+                },
+              }
+            : item,
+        ),
+      };
+      persistProviderModelCache();
+      notifyProviderModelCacheListeners();
+    })
+    .catch(() => {
+      probedModelAxesKeys.delete(key);
+    });
 }
 
 export function getProviderModelValue(providerId: string, modelId: string) {

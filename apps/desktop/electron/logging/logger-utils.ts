@@ -1,3 +1,4 @@
+import os from "node:os";
 import type {
   DesktopLogDetails,
   DesktopLogLevel,
@@ -8,16 +9,40 @@ const SENSITIVE_KEY_PATTERNS = [
   "apikey",
   "api_key",
   "authorization",
+  "body",
+  "command",
   "content",
+  "cookie",
+  "credential",
+  "cwd",
   "delta",
+  "email",
+  "env",
+  "filename",
+  "filepath",
+  "folder",
+  "header",
   "password",
+  "prompt",
   "rawinput",
   "rawoutput",
+  "rootpath",
   "secret",
   "selectedtext",
+  "snippet",
+  "stderr",
+  "stdin",
+  "stdout",
   "surroundingcontext",
+  "title",
   "token",
+  "transcript",
+  "url",
+  "username",
+  "workspaceroot",
 ];
+const METADATA_KEY_SUFFIXES =
+  /(?:Length|Count|Hash|Bytes|Size|DurationMs|Chars|Lines|Depth|Width|Height)$/;
 const MAX_STRING_LENGTH = 500;
 const MAX_DEPTH = 5;
 const REDACTED = "[redacted]";
@@ -57,16 +82,66 @@ function normalizeKey(key: string) {
 }
 
 function shouldRedactKey(key: string) {
+  if (METADATA_KEY_SUFFIXES.test(key)) {
+    return false;
+  }
   const normalizedKey = normalizeKey(key);
   return SENSITIVE_KEY_PATTERNS.some((pattern) =>
     normalizedKey.includes(pattern),
   );
 }
 
-function redactSensitiveText(value: string) {
-  return value
-    .replace(/(authorization:\s*bearer\s+)[^\s]+/gi, "$1[redacted]")
-    .replace(/([?&](?:api_key|token|key|secret)=)[^&\s]+/gi, "$1[redacted]");
+const SENSITIVE_TEXT_REPLACEMENTS: [RegExp, string][] = [
+  [/(authorization:\s*bearer\s+)[^\s]+/gi, `$1${REDACTED}`],
+  [/([?&](?:api_key|token|key|secret)=)[^&\s]+/gi, `$1${REDACTED}`],
+  [/(\w[\w+.-]*:\/\/)[^\s/@]+@/g, `$1${REDACTED}@`],
+  [/\/(?:Users|home)\/[^/\s"'\\:]+/g, "~"],
+  [/[A-Za-z]:\\+Users\\+[^\\\s"']+/g, "~"],
+  [
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+    REDACTED,
+  ],
+  [
+    /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
+    REDACTED,
+  ],
+  [/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, REDACTED],
+  [/\bAIza[0-9A-Za-z_-]{35}\b/g, REDACTED],
+  [/\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, REDACTED],
+  [/\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, REDACTED],
+  [/\bglpat-[A-Za-z0-9_-]{20,}\b/g, REDACTED],
+  [/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, REDACTED],
+  [/\bsk-[A-Za-z0-9_-]{16,}\b/g, REDACTED],
+];
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function homeDirectoryPatterns(homeDir: string) {
+  const trimmed = homeDir.trim().replace(/[/\\]+$/, "");
+  if (trimmed.length < 2) {
+    return [];
+  }
+  const variants = new Set([
+    trimmed,
+    trimmed.replace(/\\/g, "/"),
+    trimmed.replace(/\\/g, "\\\\"),
+  ]);
+  return [...variants].map(
+    (variant) => new RegExp(escapeRegExp(variant), "gi"),
+  );
+}
+
+export function redactSensitiveText(value: string, homeDir = os.homedir()) {
+  let result = value;
+  for (const pattern of homeDirectoryPatterns(homeDir)) {
+    result = result.replace(pattern, "~");
+  }
+  for (const [pattern, replacement] of SENSITIVE_TEXT_REPLACEMENTS) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
 }
 
 function truncateString(value: string) {

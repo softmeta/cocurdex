@@ -768,7 +768,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   onResolvePermission?(
     requestId: string,
     optionId: string,
-  ): Promise<void> | void;
+  ): Promise<boolean | undefined> | undefined;
   setUserMessageRef(id: string, element: HTMLDivElement | null): void;
   showMessageActions?: boolean;
   promptVariant?: "chat" | "context";

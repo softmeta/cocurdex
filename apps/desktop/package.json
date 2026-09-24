@@ -16,6 +16,7 @@
     "dist:mac": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac",
     "dist:mac:arm64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-arm64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --publish never",
     "dist:mac:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --mac --x64 --publish never",
+    "dist:mac:unsigned": "pnpm run prepare:licenses && pnpm run prepare:fd && pnpm run prepare:cli && electron-vite build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never -c.mac.notarize=false -c.mac.target=zip",
     "dist:mac:ci": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --x64 --publish never",
     "dist:mac:ci:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target darwin-universal && pnpm run prepare:cli && electron-vite build && electron-builder --mac --arm64 --x64 --publish always",
     "dist:win": "pnpm run dist:win:x64",

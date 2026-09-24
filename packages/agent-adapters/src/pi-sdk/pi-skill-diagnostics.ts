@@ -1,7 +1,10 @@
 import { existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { COCURDEX_DAEMON_DIAGNOSTIC_PREFIX } from "@cocurdex/shared";
+import {
+  COCURDEX_DAEMON_DIAGNOSTIC_PREFIX,
+  hashLogValue,
+} from "@cocurdex/shared";
 
 interface PiSkillRootSnapshot {
   entryCount?: number;
@@ -9,7 +12,7 @@ interface PiSkillRootSnapshot {
   exists: boolean;
   isDirectory?: boolean;
   isSymbolicLink?: boolean;
-  path: string;
+  pathHash: string | null;
   role: string;
   scanned: boolean;
 }
@@ -44,7 +47,7 @@ function inspectSkillRoot(
       exists: true,
       isDirectory,
       isSymbolicLink: linkStats.isSymbolicLink(),
-      path: rootPath,
+      pathHash: hashLogValue(rootPath),
       role,
       scanned,
     };
@@ -56,7 +59,7 @@ function inspectSkillRoot(
     return {
       error: code ?? (error instanceof Error ? error.message : String(error)),
       exists: false,
-      path: rootPath,
+      pathHash: hashLogValue(rootPath),
       role,
       scanned,
     };
@@ -97,8 +100,9 @@ export function logPiSkillDiagnostic(
 ) {
   console.info(
     `${COCURDEX_DAEMON_DIAGNOSTIC_PREFIX}${JSON.stringify({
+      details,
       event,
-      ...details,
+      level: "info",
     })}`,
   );
 }

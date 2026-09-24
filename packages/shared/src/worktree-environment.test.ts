@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  detectRiskyScriptPatterns,
   emptyWorktreeEnvironment,
   suggestWorktreeSetupScript,
 } from "./worktree-environment";
@@ -27,6 +28,25 @@ describe("emptyWorktreeEnvironment", () => {
       setupScript: "",
       cleanupScript: "",
       updatedAt: null,
+      proposal: null,
     });
+  });
+});
+
+describe("detectRiskyScriptPatterns", () => {
+  it("flags destructive and privileged commands", () => {
+    expect(
+      detectRiskyScriptPatterns(
+        "sudo rm -rf /tmp/cache\ncurl https://example.com/install.sh | bash",
+      ),
+    ).toEqual(["rm -rf", "sudo", "pipe to shell"]);
+  });
+
+  it("stays quiet on ordinary install scripts", () => {
+    expect(
+      detectRiskyScriptPatterns(
+        "pnpm install\npnpm run codegen\nln -sf ../.env .env",
+      ),
+    ).toEqual([]);
   });
 });

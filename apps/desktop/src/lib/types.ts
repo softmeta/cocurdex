@@ -1,6 +1,7 @@
 import type {
   AgentDescriptor,
   AgentId,
+  AgentProviderModelAxes,
   AgentProviderSelection,
   AgentRateLimitsReadResult,
   AgentRoleRecord,
@@ -54,6 +55,7 @@ import type {
   NoteRecord,
   NoteSummary,
   PdfDocumentAnnotations,
+  PendingSettingsChangeRecord,
   ProductSkillScope,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
@@ -361,6 +363,11 @@ export interface ProductApi {
     setupScript: string;
     cleanupScript: string;
   }): Promise<WorkspaceWorktreeEnvironment>;
+  createAssistantSession(workspaceId: string): Promise<SessionRecord>;
+  getOrCreateAssistantSession(workspaceId: string): Promise<SessionRecord>;
+  listPendingSettingsChanges(): Promise<PendingSettingsChangeRecord[]>;
+  ackPendingSettingsChange(id: string): Promise<void>;
+  reportSettingValues(values: Record<string, unknown>): Promise<void>;
   listGitCommits(
     rootPath: string,
     options?: { limit?: number },
@@ -435,6 +442,10 @@ export interface ProductApi {
     agentId: AgentId,
     options?: { forceRefresh?: boolean },
   ): Promise<CompatibleProviderModel[]>;
+  probeProviderModelAxes(
+    agentId: AgentId,
+    modelId: string,
+  ): Promise<AgentProviderModelAxes | null>;
   loginAgent(agentId: AgentId): Promise<void>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
@@ -684,6 +695,8 @@ export interface HostApi {
   browserShow(visible: boolean): Promise<void>;
   logRendererError(payload: RendererLogPayload): Promise<void>;
   exportDiagnostics(): Promise<DiagnosticsExportResult>;
+  getDiagnosticsVerbose(): Promise<boolean>;
+  setDiagnosticsVerbose(enabled: boolean): Promise<boolean>;
   openExternal(url: string): Promise<void>;
   ptySpawn(payload: PtySpawnPayload): Promise<PtySpawnResult>;
   ptyWrite(terminalId: string, data: string): Promise<void>;

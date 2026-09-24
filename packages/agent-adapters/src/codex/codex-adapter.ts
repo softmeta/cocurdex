@@ -14,6 +14,7 @@ import {
   type CodexReasoningEffort,
   type CompatibleProviderModel,
   codexBuiltInProviderModel,
+  hashLogValue,
   isPlanModeId,
   isReasoningEffort,
   type MessageRecord,
@@ -680,7 +681,7 @@ export function createCodexAdapter(
           providerSessionId: threadId,
           sessionAction: "new",
           sessionId,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
       }
 
@@ -714,7 +715,7 @@ export function createCodexAdapter(
           providerSessionId: threadId,
           sessionAction: "resume",
           sessionId,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
         return true;
       }
@@ -815,7 +816,7 @@ export function createCodexAdapter(
                         error instanceof Error ? error.message : String(error),
                       providerSessionId: threadId,
                       sessionId,
-                      workspaceRootPath: payload.workspaceRootPath,
+                      workspaceHash: hashLogValue(payload.workspaceRootPath),
                     },
                   );
                   appServerLease.unsubscribeThread(threadId);
@@ -832,7 +833,7 @@ export function createCodexAdapter(
                       providerSessionId: threadId,
                       resumable: shouldResume,
                       sessionId,
-                      workspaceRootPath: payload.workspaceRootPath,
+                      workspaceHash: hashLogValue(payload.workspaceRootPath),
                     },
                   );
                   throw createNativeSessionRecoveryError("Codex");

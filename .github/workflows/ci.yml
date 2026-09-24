@@ -76,6 +76,17 @@ jobs:
         run: pnpm lint:theme-parity
       - name: Check desktop translations
         run: pnpm --filter @cocurdex/desktop i18n:lint
+      - name: Check i18n generated files are up to date
+        run: |
+          pnpm --filter @cocurdex/desktop i18n:extract
+          pnpm --filter @cocurdex/desktop i18n:types
+          pnpm exec biome check --write apps/desktop/src/locales apps/desktop/src/i18n
+          if [[ -n "$(git status --porcelain -- apps/desktop/src/locales apps/desktop/src/i18n)" ]]; then
+            git status --short -- apps/desktop/src/locales apps/desktop/src/i18n
+            git diff -- apps/desktop/src/locales apps/desktop/src/i18n | head -200
+            echo "::error::i18n generated files are stale. Run 'pnpm --filter @cocurdex/desktop i18n:extract' and 'i18n:types', then 'pnpm exec biome check --write apps/desktop/src/locales apps/desktop/src/i18n', and commit the result."
+            exit 1
+          fi
       - name: Check desktop dependency cycles
         run: pnpm --filter @cocurdex/desktop lint:cycles
 

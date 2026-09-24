@@ -25,6 +25,7 @@ import type {
   EditorViewRepository,
   MessageRepository,
   MessageTurnStatsRepository,
+  PendingSettingsChangeRepository,
   ProviderSessionRepository,
   QueuedAgentInputRepository,
   SessionAttentionRepository,
@@ -43,6 +44,7 @@ import {
   createSqliteEditorViewRepository,
   createSqliteMessageRepository,
   createSqliteMessageTurnStatsRepository,
+  createSqlitePendingSettingsChangeRepository,
   createSqliteProviderSessionRepository,
   createSqliteQueuedAgentInputRepository,
   createSqliteSessionAttentionRepository,
@@ -86,6 +88,7 @@ export interface CocurdexDatabase {
   conversations: ConversationRepository;
   conversationMessages: ConversationMessageRepository;
   appSettings: AppSettingsRepository;
+  pendingSettingsChanges: PendingSettingsChangeRepository;
   providerConfigs: ReturnType<
     typeof createProviderRepositories
   >["providerConfigs"];
@@ -198,6 +201,8 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     conversations: createSqliteConversationRepository(database),
     conversationMessages: createSqliteConversationMessageRepository(database),
     appSettings: createSqliteAppSettingsRepository(database),
+    pendingSettingsChanges:
+      createSqlitePendingSettingsChangeRepository(database),
     agentRoles: createSqliteAgentRoleRepository(database),
     agentCapabilityCache: createSqliteAgentCapabilityCacheRepository(database),
     ...createProviderRepositories(database),

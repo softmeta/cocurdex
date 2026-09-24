@@ -1,14 +1,23 @@
 import {
+  detectRiskyScriptPatterns,
   primaryWorkspaceRootPath,
   suggestWorktreeSetupScript,
   type WorkspaceRecord,
+  type WorkspaceWorktreeEnvironment,
 } from "@cocurdex/shared";
 
-import { type ReactNode, useState } from "react";
+import { useSetAtom } from "jotai";
+import { Sparkles, TriangleAlert } from "lucide-react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, Spinner, Text, Textarea } from "@/components/ui";
+import { CodeTextarea } from "@/components/code-textarea";
+import { Button, Spinner, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import {
+  openAssistantSessionAtom,
+  sendAssistantMessageAtom,
+} from "../assistant";
 
 const SETUP_PROBE_FILES = [
   "pnpm-lock.yaml",
@@ -48,11 +57,35 @@ export function WorktreeEnvironmentEditor({
   workspace: WorkspaceRecord;
 }) {
   const { t } = useTranslation("settings");
+  const openAssistantSession = useSetAtom(openAssistantSessionAtom);
+  const sendAssistantMessage = useSetAtom(sendAssistantMessageAtom);
   const [setupScript, setSetupScript] = useState("");
   const [cleanupScript, setCleanupScript] = useState("");
   const [suggestedSetup, setSuggestedSetup] = useState("");
+  const filledProposalAt = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAskingAgent, setIsAskingAgent] = useState(false);
+
+  const hydrate = (
+    environment: WorkspaceWorktreeEnvironment,
+    resetFields: boolean,
+  ) => {
+    const proposal = environment.proposal;
+    if (proposal) {
+      if (proposal.proposedAt !== filledProposalAt.current) {
+        filledProposalAt.current = proposal.proposedAt;
+        setSetupScript(proposal.setupScript);
+        setCleanupScript(proposal.cleanupScript);
+      }
+      return;
+    }
+    filledProposalAt.current = null;
+    if (resetFields) {
+      setSetupScript(environment.setupScript);
+      setCleanupScript(environment.cleanupScript);
+    }
+  };
 
   useMountEffect(() => {
     let cancelled = false;
@@ -64,8 +97,7 @@ export function WorktreeEnvironmentEditor({
         if (cancelled) {
           return;
         }
-        setSetupScript(environment.setupScript);
-        setCleanupScript(environment.cleanupScript);
+        hydrate(environment, true);
         const primaryRootPath = primaryWorkspaceRootPath(workspace);
         if (primaryRootPath) {
           const suggestion = await probeSetupScript(primaryRootPath);
@@ -83,8 +115,22 @@ export function WorktreeEnvironmentEditor({
         }
       }
     })();
+    const unsubscribe = desktopApi.onDataChanged((event) => {
+      if (!event.areas.includes("workspace") || cancelled) {
+        return;
+      }
+      void desktopApi
+        .getWorktreeEnvironment(workspace.id)
+        .then((environment) => {
+          if (!cancelled) {
+            hydrate(environment, false);
+          }
+        })
+        .catch(() => {});
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   });
 
@@ -98,6 +144,7 @@ export function WorktreeEnvironmentEditor({
       });
       setSetupScript(saved.setupScript);
       setCleanupScript(saved.cleanupScript);
+      filledProposalAt.current = null;
       toast.success(t("worktrees.saved"));
     } catch (error) {
       toast.error(
@@ -110,6 +157,22 @@ export function WorktreeEnvironmentEditor({
     }
   };
 
+  const handleAskAgent = async () => {
+    setIsAskingAgent(true);
+    try {
+      const session = await openAssistantSession(workspace.id);
+      void sendAssistantMessage({
+        session,
+        workspace,
+        content: t("assistant.worktreeKickoff"),
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsAskingAgent(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -119,25 +182,9 @@ export function WorktreeEnvironmentEditor({
     );
   }
 
-  const showSetupSuggestion =
-    suggestedSetup.length > 0 && setupScript.trim().length === 0;
-
   return (
     <div className="flex flex-col">
       <ScriptField
-        action={
-          showSetupSuggestion ? (
-            <Button
-              className="shrink-0"
-              size="sm"
-              type="button"
-              variant="outline"
-              onClick={() => setSetupScript(suggestedSetup)}
-            >
-              {t("worktrees.insertSuggestion")}
-            </Button>
-          ) : null
-        }
         description={t("worktrees.setupDescription")}
         placeholder={suggestedSetup || t("worktrees.setupPlaceholder")}
         tall
@@ -152,7 +199,17 @@ export function WorktreeEnvironmentEditor({
         value={cleanupScript}
         onChange={setCleanupScript}
       />
-      <div className="flex justify-end py-3">
+      <div className="flex items-center justify-between py-3">
+        <Button
+          disabled={isAskingAgent}
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={() => void handleAskAgent()}
+        >
+          {isAskingAgent ? <Spinner /> : <Sparkles className="size-3.5" />}
+          {t("worktrees.askAgent")}
+        </Button>
         <Button
           disabled={isSaving}
           size="sm"
@@ -168,7 +225,6 @@ export function WorktreeEnvironmentEditor({
 }
 
 function ScriptField({
-  action,
   description,
   onChange,
   placeholder,
@@ -176,7 +232,6 @@ function ScriptField({
   title,
   value,
 }: {
-  action?: ReactNode;
   description: string;
   onChange(value: string): void;
   placeholder: string;
@@ -184,6 +239,8 @@ function ScriptField({
   title: string;
   value: string;
 }) {
+  const { t } = useTranslation("settings");
+  const risks = detectRiskyScriptPatterns(value);
   return (
     <div className="flex flex-col gap-2 py-3.5">
       <div className="flex items-start justify-between gap-3">
@@ -195,17 +252,21 @@ function ScriptField({
             {description}
           </Text>
         </div>
-        {action}
       </div>
-      <Textarea
-        className={cn(
-          "resize-y rounded-control border-border/70 bg-background/60 font-mono text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20",
-          tall ? "min-h-24" : "min-h-20",
-        )}
+      <CodeTextarea
+        className={cn("max-h-64", tall ? "min-h-24" : "min-h-20")}
         placeholder={placeholder}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={onChange}
       />
+      {risks.length > 0 ? (
+        <div className="flex items-start gap-1.5">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+          <Text as="p" size="meta" tone="destructive">
+            {t("worktrees.riskyPatterns", { patterns: risks.join(", ") })}
+          </Text>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { tmpdir } from "node:os";
 import {
   type ContentBlock,
   RequestError,
+  type SessionConfigOption,
   type SessionNotification,
 } from "@agentclientprotocol/sdk";
 import type {
@@ -22,6 +23,7 @@ import type {
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
+import { hashLogValue } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
 import {
   logOutgoingPromptForDiagnostics,
@@ -49,10 +51,15 @@ import {
 } from "./acp-mappers";
 import {
   type AcpSessionModelState,
+  type AcpSessionSelectConfig,
+  baselineAcpSpeedValue,
   readAcpModelConfigOptionId,
+  readAcpSessionEffortConfig,
   readAcpSessionModelState,
+  readAcpSessionSpeedConfig,
   resolveAcpModelId,
   resolveAcpReasoningEffort,
+  toAcpReasoningEffort,
 } from "./acp-session-model";
 import {
   AcpSubagentBridge,
@@ -456,9 +463,27 @@ export class AcpAgentAdapter implements AgentAdapter {
     let activeProviderSessionId: string | undefined;
     let modelState: AcpSessionModelState | null = null;
     let modelConfigOptionId: string | null = null;
+    let effortConfig: AcpSessionSelectConfig | null = null;
+    let speedConfig: AcpSessionSelectConfig | null = null;
     let appliedModelId: string | null = null;
     let appliedReasoningEffort: string | null = null;
     let appliedPermissionMode: AgentPermissionMode | null = null;
+    // A set_config_option response carries the session's whole option list:
+    // refresh the tracked axes (they come and go with the selected model) and
+    // forward them so the composer repaints.
+    const syncSessionAxes = (response: unknown) => {
+      const configOptions =
+        typeof response === "object" && response !== null
+          ? (response as { configOptions?: SessionConfigOption[] })
+              .configOptions
+          : undefined;
+      if (!Array.isArray(configOptions)) {
+        return;
+      }
+      effortConfig = readAcpSessionEffortConfig(response);
+      speedConfig = readAcpSessionSpeedConfig(response);
+      mapper.initializeSessionState({ configOptions });
+    };
     const permissionModeNotification = this.options.permissionModeNotification;
     const steeringRequest = this.options.steeringRequest;
     const rateLimitsRequest = this.options.rateLimitsRequest;
@@ -650,6 +675,8 @@ export class AcpAgentAdapter implements AgentAdapter {
         }
         modelState = providerSession.modelState;
         modelConfigOptionId = readAcpModelConfigOptionId(providerSession);
+        effortConfig = readAcpSessionEffortConfig(providerSession);
+        speedConfig = readAcpSessionSpeedConfig(providerSession);
         appliedModelId = modelState?.currentModelId ?? null;
         const currentModel = modelState?.models.find(
           (model) => model.modelId === modelState?.currentModelId,
@@ -781,6 +808,18 @@ export class AcpAgentAdapter implements AgentAdapter {
             currentModelId,
             messagePayload.thinkingLevel,
           );
+          // Requested axes resolve against the session's live config options
+          // (refreshed after every model switch) rather than stale snapshot
+          // metadata — Devin only accepts levels the current model offers.
+          const requestedEffort =
+            messagePayload.thinkingLevel &&
+            messagePayload.thinkingLevel !== "default"
+              ? toAcpReasoningEffort(messagePayload.thinkingLevel)
+              : null;
+          const serviceTier =
+            providerSnapshot && providerSnapshot.providerId === modelProviderId
+              ? (providerSnapshot.serviceTier ?? null)
+              : null;
           const modelChanged =
             currentModelId !== null && currentModelId !== appliedModelId;
           const reasoningEffortChanged =
@@ -788,11 +827,14 @@ export class AcpAgentAdapter implements AgentAdapter {
             reasoningEffort !== appliedReasoningEffort;
           if (currentModelId && (modelChanged || reasoningEffortChanged)) {
             if (modelConfigOptionId) {
-              await connection.setSessionConfigOption({
-                sessionId: providerSessionId,
-                configId: modelConfigOptionId,
-                value: currentModelId,
-              });
+              if (modelChanged) {
+                const modelResponse = await connection.setSessionConfigOption({
+                  sessionId: providerSessionId,
+                  configId: modelConfigOptionId,
+                  value: currentModelId,
+                });
+                syncSessionAxes(modelResponse);
+              }
             } else {
               await connection.setSessionModel({
                 sessionId: providerSessionId,
@@ -802,6 +844,42 @@ export class AcpAgentAdapter implements AgentAdapter {
             }
             appliedModelId = currentModelId;
             appliedReasoningEffort = reasoningEffort;
+          }
+          // Agents that expose effort or speed as their own config option
+          // (Devin's thought_level/speed) receive the change there; the model
+          // paths above only reach agents that read effort off set_model.
+          if (
+            effortConfig &&
+            requestedEffort &&
+            requestedEffort !== effortConfig.currentValue &&
+            effortConfig.options.some(
+              (option) => option.value === requestedEffort,
+            )
+          ) {
+            const effortResponse = await connection.setSessionConfigOption({
+              sessionId: providerSessionId,
+              configId: effortConfig.configId,
+              value: requestedEffort,
+            });
+            syncSessionAxes(effortResponse);
+          }
+          if (speedConfig) {
+            // An unset tier follows the baseline (Devin's "standard") — the
+            // same value the picker shows for an empty selection.
+            const targetSpeed =
+              serviceTier ?? baselineAcpSpeedValue(speedConfig);
+            if (
+              targetSpeed &&
+              targetSpeed !== speedConfig.currentValue &&
+              speedConfig.options.some((option) => option.value === targetSpeed)
+            ) {
+              const speedResponse = await connection.setSessionConfigOption({
+                sessionId: providerSessionId,
+                configId: speedConfig.configId,
+                value: targetSpeed,
+              });
+              syncSessionAxes(speedResponse);
+            }
           }
           logOutgoingPromptForDiagnostics({
             agentId: payload.session.agentType,
@@ -977,7 +1055,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           providerSessionId,
           sessionAction: "resume",
           sessionId: payload.session.id,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
         return {
           providerSessionId,
@@ -995,7 +1073,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             error: error instanceof Error ? error.message : String(error),
             providerSessionId,
             sessionId: payload.session.id,
-            workspaceRootPath: payload.workspaceRootPath,
+            workspaceHash: hashLogValue(payload.workspaceRootPath),
           },
         );
         if (!capabilities.loadSession) {
@@ -1021,7 +1099,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           providerSessionId,
           sessionAction: "load",
           sessionId: payload.session.id,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
         return {
           providerSessionId,
@@ -1036,7 +1114,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           error: error instanceof Error ? error.message : String(error),
           providerSessionId,
           sessionId: payload.session.id,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
         throw createNativeSessionRecoveryError(this.options.descriptor.label);
       } finally {
@@ -1053,7 +1131,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           historyMessageCount: history.length,
           providerSessionId: providerSessionId ?? null,
           sessionId: payload.session.id,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         },
       );
       throw createNativeSessionRecoveryError(this.options.descriptor.label);
@@ -1068,7 +1146,7 @@ export class AcpAgentAdapter implements AgentAdapter {
       providerSessionId: response.sessionId,
       sessionAction: "new",
       sessionId: payload.session.id,
-      workspaceRootPath: payload.workspaceRootPath,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
     });
     return {
       providerSessionId: response.sessionId,
