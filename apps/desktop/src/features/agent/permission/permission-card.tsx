@@ -166,7 +166,7 @@ function PermissionCardActions({
               label: getOptionLabel(option),
               value: option.id,
             }))}
-            position="item-aligned"
+            align="end"
             triggerAriaLabel={getOptionLabel(defaultAllowOption)}
             triggerClassName="max-w-full"
             triggerLabel={
