@@ -58,6 +58,7 @@ export default interface Resources {
       imagePosition: "{{current}} / {{total}}";
       nextImage: "Next image";
       previousImage: "Previous image";
+      resetView: "Reset view";
       resetZoom: "Reset zoom";
       rotate: "Rotate clockwise";
       zoomIn: "Zoom in";
@@ -96,6 +97,7 @@ export default interface Resources {
       pending: "Pending";
       query: "Query";
       rejectAlways: "Reject always";
+      resolveFailed: "This request is no longer active.";
       runCommand: "Run this command?";
       showLess: "Show less";
       showMore: "Show full command";
@@ -451,8 +453,8 @@ export default interface Resources {
       pi: "Pi";
     };
     git: {
-      turnFiles_one: "";
-      turnFiles_other: "";
+      turnFiles_one: "{{count}} file";
+      turnFiles_other: "{{count}} files";
     };
     htmlPreview: {
       browserLocation: "HTML previews open in the sidebar browser. Use the globe button to open this preview.";
@@ -1389,6 +1391,30 @@ export default interface Resources {
       retry: "Retry";
       search: "Search by session, project, or agent";
     };
+    assistant: {
+      close: "Close assistant";
+      loading: "Starting assistant…";
+      newSession: "New assistant session";
+      noWorkspace: "Add a project to chat with the assistant.";
+      open: "Open assistant";
+      prompts: {
+        chatDisplay: "Show me the chat display options and help me pick one using the settings tools.";
+        explore: "List the Cocurdex settings you can inspect or change with the settings tools, and briefly tell me what you can help with.";
+        language: "Help me switch the interface language using the settings tools.";
+        notifications: "Review my notification settings and adjust them using the settings tools.";
+        theme: "Switch the app theme to dark mode using the settings tools.";
+      };
+      suggestions: {
+        chatDisplay: "Change chat display";
+        explore: "What can you change?";
+        language: "Switch language";
+        notifications: "Adjust notifications";
+        theme: "Switch to dark theme";
+        worktree: "Suggest worktree scripts";
+      };
+      title: "Assistant";
+      worktreeKickoff: "Inspect this repository and propose worktree setup and cleanup scripts for it. Suggest both and leave neither empty: setup installs dependencies and generates code, cleanup removes build caches, temp directories, or processes before the worktree is recycled. Review the project files, then submit your recommendation with the settings_propose tool so I can approve it.";
+    };
     chatDisplay: {
       activity: {
         description: "How reasoning and tool calls show up before each answer. Collapsed per turn by default; expand for details.";
@@ -1477,13 +1503,17 @@ export default interface Resources {
       actions: {
         export: "Export Diagnostics…";
       };
-      description: "Bundle app logs and metadata for troubleshooting. Logs may contain sensitive information — review them before sharing.";
+      description: "Bundle sanitized app logs and runtime info for troubleshooting.";
       group: "Logs";
       status: {
         exported: "Exported to {{path}}";
         failed: "Export failed: {{message}}";
       };
       title: "Export diagnostics";
+      verbose: {
+        description: "Record verbose diagnostic details in app logs. Logs stay sanitized either way.";
+        title: "Verbose diagnostics";
+      };
     };
     editor: {
       minimap: {
@@ -2140,6 +2170,7 @@ export default interface Resources {
     };
     worktrees: {
       archivedSession: "{{title}} (archived)";
+      askAgent: "Ask agent";
       browse: "Browse";
       cleanupDescription: "Runs in the worktree directory before Cocurdex removes an unused checkout.";
       cleanupPlaceholder: "Optional. Example: rm -rf .turbo";
@@ -2151,13 +2182,13 @@ export default interface Resources {
       fetchDescription: "Fetch remotes before creating a new worktree so the start point is current.";
       fetchTitle: "Always fetch upstream before creating worktrees";
       groupTitle: "Managed worktrees";
-      insertSuggestion: "Insert suggested setup";
       inventoryDescription: "Checkouts Cocurdex created for sessions. Setup and cleanup scripts stay in project settings.";
       loading: "Loading…";
       newSession: "New session in this worktree";
       noSessions: "No sessions are using this worktree.";
       projectGroup: "Worktrees";
       refresh: "Refresh";
+      riskyPatterns: "Review carefully — contains: {{patterns}}";
       rootDescription: "Directory where Cocurdex creates managed worktrees. Leave blank to use the default location.";
       rootTitle: "Worktree root";
       save: "Save";

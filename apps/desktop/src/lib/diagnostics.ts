@@ -1,3 +1,5 @@
+import { desktopApi } from "./ipc";
+
 const RENDERER_DIAGNOSTICS_STORAGE_KEY = "cocurdex.diagnostics";
 
 type RendererDiagnosticLevel = "debug" | "info";
@@ -25,9 +27,15 @@ export function logRendererDiagnostic(
   message: string,
   details?: Record<string, unknown>,
 ) {
-  if (!isRendererDiagnosticsEnabled()) {
+  if (level === "debug" && !isRendererDiagnosticsEnabled()) {
     return;
   }
 
   console[level](message, details);
+  void desktopApi.logRendererError({
+    details,
+    event: message,
+    level,
+    scope: "renderer",
+  });
 }

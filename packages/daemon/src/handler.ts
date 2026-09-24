@@ -189,6 +189,18 @@ export async function handleDaemonRequest(
       return service.getWorktreeEnvironment(request.params.workspaceId);
     case "workspace.worktreeEnvironment.save":
       return service.saveWorktreeEnvironment(request.params);
+    case "assistant.session.create":
+      return service.createAssistantSession(request.params.workspaceId);
+    case "assistant.session.getOrCreate":
+      return service.getOrCreateAssistantSession(request.params);
+    case "settings.pendingChanges.list":
+      return service.listPendingSettingsChanges();
+    case "settings.pendingChanges.ack":
+      await service.acknowledgeSettingsChange(request.params.id);
+      return null;
+    case "settings.values.report":
+      await service.reportSettingValues(request.params.values);
+      return null;
     case "workspace.runWorktreeSetup":
       return service.runWorktreeSetup(request.params);
     case "worktree.settings.get":
@@ -481,6 +493,11 @@ export async function handleDaemonRequest(
       return service.providerService.listCompatibleProviderModels(
         request.params.agentId,
         { forceRefresh: request.params.forceRefresh },
+      );
+    case "provider.modelAxes.probe":
+      return service.providerService.probeAgentModelAxes(
+        request.params.agentId,
+        request.params.modelId,
       );
     case "provider.listDefaults":
       return service.providerService.listAgentProviderDefaults();

@@ -96,7 +96,7 @@ export interface ChatViewProps {
   onResolvePermission?(
     requestId: string,
     optionId: string,
-  ): Promise<void> | void;
+  ): Promise<boolean | undefined> | undefined;
   onResolvePlanApproval?(
     approvalId: string,
     decision: AgentPlanApprovalDecision,

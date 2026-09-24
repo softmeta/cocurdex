@@ -20,6 +20,7 @@ import type {
   SessionRecord,
   TitleModelProbeResult,
 } from "@cocurdex/shared";
+import { errorKindForLog, hostForLog } from "@cocurdex/shared";
 import { app, ipcMain } from "electron";
 import { chatDaemonOptions } from "../chat";
 import {
@@ -174,7 +175,7 @@ export async function resolveDedicatedTitleModel(): Promise<TitleModelRecords | 
   const apiKey = await resolveProviderApiKey(provider);
   titleLogger.debug("titleGeneration.dedicatedModelResolved", {
     api: model.api,
-    baseUrl: model.baseUrl ?? provider.baseUrl,
+    endpointHost: hostForLog(model.baseUrl ?? provider.baseUrl),
     hasApiKey: Boolean(apiKey),
     modelId: model.modelId,
     providerId: provider.id,
@@ -190,7 +191,7 @@ async function resolveSessionTitleModel(
 
   if (!runtime?.baseUrl || !runtime.modelId) {
     titleLogger.debug("titleGeneration.unavailable", {
-      hasBaseUrl: Boolean(runtime?.baseUrl),
+      hasEndpoint: Boolean(runtime?.baseUrl),
       hasModelId: Boolean(runtime?.modelId),
       sessionId: session.id,
     });
@@ -220,7 +221,7 @@ async function resolveSessionTitleModel(
 
   titleLogger.debug("titleGeneration.sessionModelResolved", {
     api: model.api,
-    baseUrl: model.baseUrl ?? provider.baseUrl,
+    endpointHost: hostForLog(model.baseUrl ?? provider.baseUrl),
     configured: Boolean(configuredProvider && configuredModel),
     hasApiKey: Boolean(runtime.apiKey),
     modelId: model.modelId,
@@ -293,6 +294,7 @@ export async function generateProviderSessionTitle(
     titleLogger.info("titleGeneration.skipped", {
       durationMs: Date.now() - startedAt,
       error: error instanceof Error ? error.message : "Unknown error",
+      errorKind: errorKindForLog(error),
       sessionId: session.id,
     });
 
@@ -677,6 +679,17 @@ export function registerProviderHandlers() {
           agentId,
           forceRefresh: options?.forceRefresh,
         },
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandlerArgs(
+    ipcMain,
+    "provider:probeModelAxes",
+    schemas.providerModelAxesProbe,
+    async (_event, agentId, modelId) =>
+      requestDaemon(
+        "provider.modelAxes.probe",
+        { agentId, modelId },
         await chatDaemonOptions(),
       ),
   );

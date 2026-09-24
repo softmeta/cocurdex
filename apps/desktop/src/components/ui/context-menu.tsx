@@ -95,7 +95,7 @@ function ContextMenuContent({
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
-        className="outline-none"
+        className="z-50 outline-none"
       >
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
@@ -164,7 +164,7 @@ function ContextMenuSubContent({
 }: React.ComponentProps<typeof ContextMenuPrimitive.Popup>) {
   return (
     <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Positioner className="outline-none">
+      <ContextMenuPrimitive.Positioner className="z-50 outline-none">
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-sub-content"
           className={cn(

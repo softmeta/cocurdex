@@ -1,6 +1,6 @@
 import { app } from "electron";
-import log from "electron-log/main.js";
 import electronUpdater from "electron-updater";
+import { createUpstreamLogger } from "../logging";
 import {
   type AppUpdateChannel,
   isPrereleaseVersion,
@@ -135,7 +135,7 @@ export function startAppUpdater(options: {
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.logger = log;
+  autoUpdater.logger = createUpstreamLogger("updater");
   applyUpdaterConfig(channel, options.currentVersion);
   const isUpdateSupported = autoUpdater.isUpdateSupported;
   autoUpdater.isUpdateSupported = (info) => {

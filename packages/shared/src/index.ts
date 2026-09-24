@@ -4,6 +4,7 @@ export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-tools";
 export * from "./agent-versions";
+export * from "./assistant-session";
 export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
 export * from "./chat-events";
 export * from "./codex-models";
@@ -32,6 +33,7 @@ export * from "./script-run";
 export * from "./search";
 export * from "./session-attention";
 export * from "./session-observation";
+export * from "./settings-changes";
 export * from "./skills";
 export * from "./subagent-session";
 export type {

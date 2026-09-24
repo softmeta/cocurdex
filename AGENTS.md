@@ -45,7 +45,7 @@ Persisted user data outlives any single release. Never delete, recreate, or rewr
 
 After edits, run applicable checks in this order and fix reported issues:
 
-1. For new `t("...")` calls, run `pnpm --filter @cocurdex/desktop i18n:extract`, complete en-US and zh-CN translations, then run `pnpm --filter @cocurdex/desktop i18n:types`.
+1. For new `t("...")` calls, run `pnpm --filter @cocurdex/desktop i18n:extract`, complete en-US and zh-CN translations, then run `pnpm --filter @cocurdex/desktop i18n:types` and `pnpm exec biome check --write apps/desktop/src/i18n` (biome normalizes the generated `.d.ts`; CI fails on stale output). `src/locales/*.json` and `src/i18n/*.generated.d.ts` are generated artifacts: resolve merge conflicts by rerunning this chain, never by hand-editing them.
 2. Run the affected packages' TypeScript checks, scoped to changed TypeScript source files.
 3. Run `pnpm exec biome check --write <changed-files>` for supported files. For Markdown-only changes, run `git diff --check`; no TypeScript check is needed.
 

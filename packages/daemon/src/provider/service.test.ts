@@ -13,6 +13,7 @@ const listPiProviderModelsMock = vi.hoisted(() => vi.fn());
 const listPiBuiltInProviderIdsMock = vi.hoisted(() => vi.fn());
 const listPiProviderTemplatesMock = vi.hoisted(() => vi.fn());
 const generatePiConversationTitleMock = vi.hoisted(() => vi.fn());
+const probeDevinProviderModelAxesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@cocurdex/agent-adapters", () => ({
   generatePiConversationTitle: generatePiConversationTitleMock,
@@ -25,6 +26,7 @@ vi.mock("@cocurdex/agent-adapters", () => ({
   listPiBuiltInProviderIds: listPiBuiltInProviderIdsMock,
   listPiProviderModels: listPiProviderModelsMock,
   listPiProviderTemplates: listPiProviderTemplatesMock,
+  probeDevinProviderModelAxes: probeDevinProviderModelAxesMock,
 }));
 
 import { DaemonProviderService } from "./service";
@@ -131,6 +133,46 @@ describe("DaemonProviderService", () => {
     expect(listDevinProviderModelsMock).toHaveBeenCalledWith(undefined, {
       forceRefresh: true,
     });
+  });
+
+  it("probes Devin's per-model axes on demand and not for other agents", async () => {
+    const axes = {
+      defaultReasoningEffort: "high",
+      supportedReasoningEfforts: [],
+      serviceTiers: [{ id: "fast", name: "Fast", description: "" }],
+    };
+    probeDevinProviderModelAxesMock.mockResolvedValue(axes);
+    const service = new DaemonProviderService(
+      createState(),
+      createCredentials(),
+    );
+
+    await expect(
+      service.probeAgentModelAxes("devin", "claude-opus-5-5-medium"),
+    ).resolves.toBe(axes);
+    expect(probeDevinProviderModelAxesMock).toHaveBeenCalledWith(
+      "claude-opus-5-5-medium",
+    );
+
+    probeDevinProviderModelAxesMock.mockReset();
+    await expect(
+      service.probeAgentModelAxes("codex", "gpt-5.5"),
+    ).resolves.toBeNull();
+    expect(probeDevinProviderModelAxesMock).not.toHaveBeenCalled();
+  });
+
+  it("swallows probe failures so the picker keeps working without axes", async () => {
+    probeDevinProviderModelAxesMock.mockRejectedValue(
+      new Error("spawn failed"),
+    );
+    const service = new DaemonProviderService(
+      createState(),
+      createCredentials(),
+    );
+
+    await expect(
+      service.probeAgentModelAxes("devin", "swe-2-high"),
+    ).resolves.toBeNull();
   });
 
   it("validates the persisted model before saving an agent default", async () => {

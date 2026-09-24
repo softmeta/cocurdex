@@ -8,7 +8,7 @@ import {
 } from "electron";
 import enSettings from "@/locales/en-US/settings.json";
 import zhSettings from "@/locales/zh-CN/settings.json";
-import { exportDiagnostics } from "./logging";
+import { exportDiagnostics, listCrashDumps } from "./logging";
 import { describeAppUpdateCheckDialog } from "./updater/app-update-check-dialog";
 import { checkForAppUpdate, installAppUpdate } from "./updater/app-updater";
 
@@ -26,7 +26,9 @@ function diagnosticsCopy() {
 
 async function handleExportDiagnostics() {
   try {
-    const { outputPath } = await exportDiagnostics();
+    const { outputPath } = await exportDiagnostics({
+      crashReports: await listCrashDumps(app.getPath("crashDumps")),
+    });
     shell.showItemInFolder(outputPath);
   } catch (error) {
     dialog.showErrorBox(

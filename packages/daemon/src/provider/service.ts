@@ -8,9 +8,11 @@ import {
   listPiProviderTemplates,
   loginCursorProvider,
   loginDevinProvider,
+  probeDevinProviderModelAxes,
 } from "@cocurdex/agent-adapters";
 import type {
   AgentId,
+  AgentProviderModelAxes,
   CompatibleProviderModel,
   ProviderAuthState,
   ProviderConfigRecord,
@@ -275,6 +277,27 @@ export class DaemonProviderService {
 
     const codexModels = await listCodexProviderModels(options);
     return [...codexModels, ...compatibleItems];
+  }
+
+  // Axes an agent only exposes inside a live session (Devin's per-model
+  // `thought_level`/`speed`) are probed per picked model. Best effort: a
+  // failed probe just leaves the picker's axes hidden.
+  async probeAgentModelAxes(
+    agentId: AgentId,
+    modelId: string,
+  ): Promise<AgentProviderModelAxes | null> {
+    if (agentId !== "devin") {
+      return null;
+    }
+    try {
+      return await probeDevinProviderModelAxes(modelId);
+    } catch (error) {
+      logDaemonDiagnostic("warn", "providerModels.devin.axesProbeFailed", {
+        modelId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      return null;
+    }
   }
 
   private createProviderDefaultModel(

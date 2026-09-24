@@ -5,6 +5,7 @@ import type {
 import { Check, ShieldAlert, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { AppSelect } from "@/components";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
@@ -165,7 +166,7 @@ function PermissionCardActions({
               label: getOptionLabel(option),
               value: option.id,
             }))}
-            position="item-aligned"
+            align="end"
             triggerAriaLabel={getOptionLabel(defaultAllowOption)}
             triggerClassName="max-w-full"
             triggerLabel={
@@ -213,7 +214,10 @@ export function PermissionCard({
   permission,
   variant = "inline",
 }: {
-  onResolve?(requestId: string, optionId: string): Promise<void> | void;
+  onResolve?(
+    requestId: string,
+    optionId: string,
+  ): Promise<boolean | undefined> | undefined;
   permission: AgentPermissionRequestRecord;
   variant?: PermissionCardVariant;
 }) {
@@ -271,7 +275,10 @@ export function PermissionCard({
 
     setIsResolving(true);
     try {
-      await onResolve?.(permission.id, optionId);
+      const resolved = await onResolve?.(permission.id, optionId);
+      if (resolved === false) {
+        toast.error(t("permissions.resolveFailed"));
+      }
     } finally {
       setIsResolving(false);
     }

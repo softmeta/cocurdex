@@ -1,5 +1,6 @@
 import type {
   AgentId,
+  AgentProviderModelAxes,
   AgentProviderSelection,
   AgentRoleRecord,
   ArchiveSessionPayload,
@@ -233,6 +234,16 @@ contextBridge.exposeInMainWorld("desktopApi", {
     setupScript: string;
     cleanupScript: string;
   }) => ipcRenderer.invoke("workspace:saveWorktreeEnvironment", payload),
+  createAssistantSession: (workspaceId: string) =>
+    ipcRenderer.invoke("assistant:createSession", workspaceId),
+  getOrCreateAssistantSession: (workspaceId: string) =>
+    ipcRenderer.invoke("assistant:getOrCreateSession", workspaceId),
+  listPendingSettingsChanges: () =>
+    ipcRenderer.invoke("settings:listPendingChanges"),
+  ackPendingSettingsChange: (id: string) =>
+    ipcRenderer.invoke("settings:ackPendingChange", { id }),
+  reportSettingValues: (values: Record<string, unknown>) =>
+    ipcRenderer.invoke("settings:reportValues", { values }),
   listGitCommits: (rootPath: string, options?: { limit?: number }) =>
     ipcRenderer.invoke("git:listCommits", {
       rootPath,
@@ -347,6 +358,11 @@ contextBridge.exposeInMainWorld("desktopApi", {
     options?: { forceRefresh?: boolean },
   ): Promise<CompatibleProviderModel[]> =>
     ipcRenderer.invoke("provider:listCompatibleForAgent", agentId, options),
+  probeProviderModelAxes: (
+    agentId: AgentId,
+    modelId: string,
+  ): Promise<AgentProviderModelAxes | null> =>
+    ipcRenderer.invoke("provider:probeModelAxes", agentId, modelId),
   loginAgent: (agentId: AgentId): Promise<void> =>
     ipcRenderer.invoke("agent:login", agentId),
   listAgentProviderDefaults: (): Promise<AgentProviderSelection[]> =>
@@ -520,6 +536,9 @@ contextBridge.exposeInMainWorld("desktopApi", {
   logRendererError: (payload: RendererLogPayload) =>
     ipcRenderer.invoke("log:rendererError", payload),
   exportDiagnostics: () => ipcRenderer.invoke("diagnostics:export"),
+  getDiagnosticsVerbose: () => ipcRenderer.invoke("diagnostics:getVerbose"),
+  setDiagnosticsVerbose: (enabled: boolean) =>
+    ipcRenderer.invoke("diagnostics:setVerbose", enabled),
   openExternal: (url: string) => ipcRenderer.invoke("shell:openExternal", url),
   ptySpawn: (payload: PtySpawnPayload): Promise<PtySpawnResult> =>
     ipcRenderer.invoke("pty:spawn", payload),

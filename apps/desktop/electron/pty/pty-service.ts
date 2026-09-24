@@ -5,6 +5,7 @@ import type {
   PtySpawnPayload,
   PtySpawnResult,
 } from "@cocurdex/shared";
+import { hashLogValue } from "@cocurdex/shared";
 import type { BrowserWindow } from "electron";
 import type { IPty } from "node-pty";
 import { spawn as ptySpawn } from "node-pty";
@@ -210,7 +211,7 @@ export class PtyService {
       workspaceId: payload.workspaceId,
       pid: pty.pid,
       shell,
-      cwd: payload.cwd,
+      workingDirHash: hashLogValue(payload.cwd),
       platform: os.platform(),
     });
 

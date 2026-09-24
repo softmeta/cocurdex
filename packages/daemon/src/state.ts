@@ -18,6 +18,7 @@ import type {
   AppBootstrapData,
   EditorViewRecord,
   MessageRecord,
+  PendingSettingsChangeRecord,
   ProviderConfigRecord,
   ProviderModelRecord,
   QueuedAgentInputRecord,
@@ -25,6 +26,7 @@ import type {
   SessionStatus,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
+  WorktreeEnvironmentProposal,
 } from "@cocurdex/shared";
 import {
   childSessionFromSubagentToolCall,
@@ -153,6 +155,28 @@ export class DaemonState {
 
   saveWorktreeEnvironment(environment: WorkspaceWorktreeEnvironment) {
     return this.database.worktreeEnvironments.upsert(environment);
+  }
+
+  saveWorktreeEnvironmentProposal(
+    workspaceId: string,
+    proposal: WorktreeEnvironmentProposal,
+  ) {
+    return this.database.worktreeEnvironments.saveProposal(
+      workspaceId,
+      proposal,
+    );
+  }
+
+  listPendingSettingsChanges() {
+    return this.database.pendingSettingsChanges.list();
+  }
+
+  addPendingSettingsChange(change: PendingSettingsChangeRecord) {
+    return this.database.pendingSettingsChanges.add(change);
+  }
+
+  deletePendingSettingsChange(id: string) {
+    return this.database.pendingSettingsChanges.delete(id);
   }
 
   getAppSetting(key: string) {

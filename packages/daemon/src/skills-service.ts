@@ -11,6 +11,7 @@ import type {
   ProductSkillsRequestPayload,
   ProductSkillsStatusResult,
 } from "@cocurdex/shared";
+import { hashLogValue } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "./diagnostics";
 
 export class DaemonSkillsService {
@@ -78,7 +79,7 @@ export class DaemonSkillsService {
     logDaemonDiagnostic("info", "skills.install", {
       scope: payload.scope,
       action: result.action,
-      workspaceRootPath: payload.workspaceRootPath ?? null,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
       packVersion: result.packVersion,
     });
     return {
@@ -100,7 +101,7 @@ export class DaemonSkillsService {
     logDaemonDiagnostic("info", "skills.remove", {
       scope: payload.scope,
       removed: result.removed,
-      workspaceRootPath: payload.workspaceRootPath ?? null,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
     });
     return result;
   }

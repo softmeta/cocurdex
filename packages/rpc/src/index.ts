@@ -2,6 +2,7 @@ import type {
   AgentDescriptor,
   AgentId,
   AgentPlanApprovalDecision,
+  AgentProviderModelAxes,
   AgentProviderSelection,
   AgentProviderSnapshot,
   AgentRateLimitsReadResult,
@@ -59,6 +60,7 @@ import type {
   PdfDocumentAnnotations,
   PeerInboundPolicy,
   PeerSessionSummary,
+  PendingSettingsChangeRecord,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
@@ -204,6 +206,11 @@ export type DaemonRequestPayloadByMethod = {
   "workspace.save": { workspace: WorkspaceRecord };
   "workspace.worktreeEnvironment.get": { workspaceId: string };
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
+  "assistant.session.create": { workspaceId: string };
+  "assistant.session.getOrCreate": { workspaceId: string };
+  "settings.pendingChanges.list": undefined;
+  "settings.pendingChanges.ack": { id: string };
+  "settings.values.report": { values: Record<string, unknown> };
   "workspace.runWorktreeSetup": {
     workspaceId: string;
     worktreePath: string;
@@ -396,6 +403,7 @@ export type DaemonRequestPayloadByMethod = {
     agentId: AgentId;
     forceRefresh?: boolean;
   };
+  "provider.modelAxes.probe": { agentId: AgentId; modelId: string };
   "provider.listDefaults": undefined;
   "agentRole.list": undefined;
   "agentRole.get": { id: string };
@@ -428,6 +436,11 @@ export type DaemonResultByMethod = {
   "workspace.save": WorkspaceRecord;
   "workspace.worktreeEnvironment.get": WorkspaceWorktreeEnvironment;
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
+  "assistant.session.create": SessionRecord;
+  "assistant.session.getOrCreate": SessionRecord;
+  "settings.pendingChanges.list": PendingSettingsChangeRecord[];
+  "settings.pendingChanges.ack": null;
+  "settings.values.report": null;
   "workspace.runWorktreeSetup": { ran: boolean };
   "worktree.settings.get": WorktreeSettingsSnapshot;
   "worktree.settings.save": WorktreeSettingsSnapshot;
@@ -571,6 +584,7 @@ export type DaemonResultByMethod = {
   "git.push": GitPushResult;
   "provider.listModels": ProviderListModelsResult;
   "provider.listCompatibleForAgent": CompatibleProviderModel[];
+  "provider.modelAxes.probe": AgentProviderModelAxes | null;
   "provider.listDefaults": AgentProviderSelection[];
   "agentRole.list": AgentRoleRecord[];
   "agentRole.get": AgentRoleRecord | null;
@@ -614,6 +628,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "agentRole.list": true,
   "session.list": true,
   "session.listArchived": true,
+  "settings.pendingChanges.list": true,
   "workflow.list": true,
   "workflow.listDefinitions": true,
   "workspace.list": true,

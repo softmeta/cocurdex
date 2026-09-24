@@ -34,6 +34,7 @@ import {
   useSessionModeLabels,
 } from "@/features/sessions";
 import { usesAdapterOwnedModelCatalog } from "@/features/sessions/provider-model/adapter-owned-catalog";
+import { probeProviderModelAxes } from "@/features/sessions/provider-model/provider-model-cache";
 import {
   createProviderSnapshotForModel,
   getProviderModelSelectionValue,
@@ -341,6 +342,7 @@ export function ContextWindowIndicator({
   const ownsModelCatalog =
     session.agentType === "claude-agent" ||
     session.agentType === "grok-build" ||
+    session.agentType === "devin" ||
     session.agentType === "codex";
   const usage = resolvedSessionId ? sessionUsage[resolvedSessionId] : undefined;
   const model = resolveRuntimeProviderModel(
@@ -357,6 +359,12 @@ export function ContextWindowIndicator({
       return;
     }
 
+    probeProviderModelAxes(
+      providerModelCache,
+      session.agentType,
+      selectedItem.provider.id,
+      selectedItem.model.modelId,
+    );
     const updatedSession = updateSessionProviderRuntime({
       sessionId: session.id,
       providerSnapshot: createProviderSnapshotForModel(selectedItem),

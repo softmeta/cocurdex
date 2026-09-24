@@ -140,6 +140,27 @@ const DEFAULT_FAB_POSITION: FabPosition = {
   bottom: 16,
 };
 
+let chatDockVisibilityHandler:
+  | ((visibility: ChatDockVisibility) => void)
+  | null = null;
+
+// Features (e.g. the settings assistant) ask the shell to open/close the dock
+// through this bridge — same registration pattern as settings navigation.
+export function registerChatDockVisibilityHandler(
+  handler: (visibility: ChatDockVisibility) => void,
+) {
+  chatDockVisibilityHandler = handler;
+  return () => {
+    if (chatDockVisibilityHandler === handler) {
+      chatDockVisibilityHandler = null;
+    }
+  };
+}
+
+export function requestChatDockVisibility(visibility: ChatDockVisibility) {
+  chatDockVisibilityHandler?.(visibility);
+}
+
 export function getStoredChatDockVisibility(): ChatDockVisibility {
   if (typeof window === "undefined") {
     return "collapsed";
