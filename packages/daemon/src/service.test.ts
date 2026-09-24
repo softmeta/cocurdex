@@ -320,6 +320,36 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
+  it("broadcasts a data change when a follow-up queues behind an active turn", async () => {
+    const service = await createService();
+    const events: unknown[] = [];
+    service.events.on("daemon.event", (event) => events.push(event));
+    let completeActiveTurn: (() => void) | undefined;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      completeActiveTurn = () => resolve(createRuntimeMessage("First turn"));
+    });
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockImplementationOnce(() => activeTurn)
+      .mockResolvedValue(createRuntimeMessage("Queued follow-up"));
+
+    await service.sendSessionMessage(
+      createPayload("First turn", "start-new-run"),
+    );
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await service.sendSessionMessage(
+      createPayload("Peer update", "queue-after-run"),
+    );
+
+    expect(events).toContainEqual({
+      type: "data.changed",
+      areas: ["agent"],
+    });
+
+    completeActiveTurn?.();
+    await service.shutdown();
+  });
+
   it("edits, deletes, and steers durable queued inputs", async () => {
     const service = await createService();
     let completeActiveTurn!: () => void;

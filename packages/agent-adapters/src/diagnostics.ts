@@ -14,7 +14,7 @@ export function logAdapterDiagnostic(
   details?: Record<string, unknown>,
   enabled = isAdapterDiagnosticsEnabled(),
 ) {
-  if (!enabled) {
+  if (level === "debug" && !enabled) {
     return;
   }
 

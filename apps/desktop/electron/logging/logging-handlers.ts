@@ -1,6 +1,12 @@
 import type { RendererLogPayload } from "@cocurdex/shared";
-import { ipcMain } from "electron";
-import { exportDiagnostics, logRendererPayload } from "./logger";
+import { app, ipcMain } from "electron";
+import { listCrashDumps } from "./crash-reporter";
+import {
+  exportDiagnostics,
+  isDiagnosticsVerbose,
+  logRendererPayload,
+  setDiagnosticsVerbose,
+} from "./logger";
 
 export function registerLoggingHandlers() {
   ipcMain.handle(
@@ -10,5 +16,16 @@ export function registerLoggingHandlers() {
     },
   );
 
-  ipcMain.handle("diagnostics:export", async () => exportDiagnostics());
+  ipcMain.handle("diagnostics:export", async () =>
+    exportDiagnostics({
+      crashReports: await listCrashDumps(app.getPath("crashDumps")),
+    }),
+  );
+
+  ipcMain.handle("diagnostics:getVerbose", async () => isDiagnosticsVerbose());
+
+  ipcMain.handle("diagnostics:setVerbose", async (_event, enabled: unknown) => {
+    setDiagnosticsVerbose(enabled === true);
+    return isDiagnosticsVerbose();
+  });
 }

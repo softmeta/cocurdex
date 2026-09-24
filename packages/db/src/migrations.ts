@@ -4,7 +4,7 @@ import { createSchemaSql } from "./schema";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -120,9 +120,37 @@ function migrateCollaborationModeToSessionModeId(database: DatabaseSync): void {
   }
 }
 
+function migrateWorktreeEnvironmentProposals(database: DatabaseSync): void {
+  for (const column of [
+    "proposed_setup_script",
+    "proposed_cleanup_script",
+    "proposed_rationale",
+    "proposed_at",
+  ]) {
+    if (!hasColumn(database, "workspace_worktree_environments", column)) {
+      database.exec(
+        `ALTER TABLE workspace_worktree_environments ADD COLUMN ${column} TEXT`,
+      );
+    }
+  }
+}
+
+function migratePendingSettingsChanges(database: DatabaseSync): void {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS pending_settings_changes (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL,
+      value_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
+  [7, migrateWorktreeEnvironmentProposals],
+  [8, migratePendingSettingsChanges],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {
@@ -207,6 +235,18 @@ export function initializeDatabase(database: DatabaseSync): void {
   }
   if (!hasColumn(database, "issues", "assignee_session_id")) {
     database.exec("ALTER TABLE issues ADD COLUMN assignee_session_id TEXT");
+  }
+  for (const column of [
+    "proposed_setup_script",
+    "proposed_cleanup_script",
+    "proposed_rationale",
+    "proposed_at",
+  ]) {
+    if (!hasColumn(database, "workspace_worktree_environments", column)) {
+      database.exec(
+        `ALTER TABLE workspace_worktree_environments ADD COLUMN ${column} TEXT`,
+      );
+    }
   }
   if (!hasColumn(database, "workspaces", "sort_order")) {
     database.exec(

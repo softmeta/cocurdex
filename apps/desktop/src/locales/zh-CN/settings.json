@@ -123,6 +123,30 @@
     "retry": "重试",
     "search": "搜索会话、项目或 Agent"
   },
+  "assistant": {
+    "close": "关闭助手",
+    "loading": "正在启动助手…",
+    "newSession": "新开助手会话",
+    "noWorkspace": "添加项目后即可与助手对话。",
+    "open": "打开助手",
+    "prompts": {
+      "chatDisplay": "展示聊天显示方式的选项，并用设置工具帮我选一个。",
+      "explore": "列出你可以通过设置工具查看或修改的 Cocurdex 设置，简单说说你能帮我做什么。",
+      "language": "用设置工具帮我切换界面语言。",
+      "notifications": "检查我的通知设置，并用设置工具帮我调整。",
+      "theme": "用设置工具把应用主题切换成深色模式。"
+    },
+    "suggestions": {
+      "chatDisplay": "调整聊天显示",
+      "explore": "你能改什么？",
+      "language": "切换语言",
+      "notifications": "调整通知",
+      "theme": "切换为深色主题",
+      "worktree": "推荐 worktree 脚本"
+    },
+    "title": "助手",
+    "worktreeKickoff": "分析这个仓库，为 worktree 推荐初始化脚本和清理脚本。两个脚本都要给出建议、都不要留空：初始化脚本负责装依赖和生成代码，清理脚本负责在回收前清掉构建缓存、临时目录或进程。先查看项目文件，然后用 settings_propose 工具提交你的建议，我会进行确认。"
+  },
   "chatDisplay": {
     "activity": {
       "description": "回答前的推理和工具调用在对话里怎么显示。默认按整轮折叠，点开才看细节。",
@@ -211,13 +235,17 @@
     "actions": {
       "export": "导出诊断日志…"
     },
-    "description": "打包应用日志与运行信息用于排查问题。日志可能包含敏感信息，分享前请先检查。",
+    "description": "打包已脱敏的应用日志与运行信息用于排查问题。",
     "group": "日志",
     "status": {
       "exported": "已导出到 {{path}}",
       "failed": "导出失败：{{message}}"
     },
-    "title": "导出诊断日志"
+    "title": "导出诊断日志",
+    "verbose": {
+      "description": "在应用日志中记录更详细的诊断信息，日志仍会做脱敏处理。",
+      "title": "详细诊断日志"
+    }
   },
   "editor": {
     "minimap": {
@@ -871,6 +899,7 @@
   },
   "worktrees": {
     "archivedSession": "{{title}}（已归档）",
+    "askAgent": "让 Agent 分析",
     "browse": "选择",
     "cleanupDescription": "在 Cocurdex 回收不再使用的 worktree 之前，于该目录中执行。",
     "cleanupPlaceholder": "可选。例如：rm -rf .turbo",
@@ -882,13 +911,13 @@
     "fetchDescription": "创建新工作树前先 fetch 远程，让起始点保持最新。",
     "fetchTitle": "创建工作树前始终 fetch upstream",
     "groupTitle": "托管工作树",
-    "insertSuggestion": "填入建议的初始化命令",
     "inventoryDescription": "Cocurdex 为会话创建的检出。初始化和清理脚本仍在项目设置里。",
     "loading": "加载中…",
     "newSession": "在此工作树新建会话",
     "noSessions": "没有会话正在使用这棵工作树。",
     "projectGroup": "工作树",
     "refresh": "刷新",
+    "riskyPatterns": "请仔细检查 —— 包含：{{patterns}}",
     "rootDescription": "Cocurdex 创建托管工作树的目录。留空则使用默认位置。",
     "rootTitle": "工作树根目录",
     "save": "保存",

@@ -252,9 +252,11 @@ export function createDaemonRuntimeLifecycle(
         } else if (diagnostic.level === "debug") {
           log = options.logger.debug;
         }
+        const sessionId = diagnostic.details?.sessionId;
         log("daemon.diagnostic", {
           ...(diagnostic.details ? { details: diagnostic.details } : {}),
           message: diagnostic.event,
+          ...(typeof sessionId === "string" ? { sessionId } : {}),
           stream,
         });
       },

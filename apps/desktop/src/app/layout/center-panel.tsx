@@ -4,8 +4,11 @@ import {
   type AgentPlanApprovalDecision,
   type AgentProviderSnapshot,
   type AgentQuestionRequestRecord,
+  type AgentSessionConfigOption,
   type AgentThinkingLevel,
   type BrowserAnnotation,
+  hashLogValue,
+  hostForLog,
   type MessageAttachment,
   type MessageRecord,
   normalizeWorkspaceRootPaths,
@@ -13,6 +16,7 @@ import {
   resolveSessionWorkingPath,
   type SessionRecord,
   sessionConfiguration,
+  supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -62,6 +66,7 @@ import {
 import {
   type ChatComposerHandle,
   ComposerSurface,
+  getConfigOptionThinkingLevels,
   getThinkingLevelOptions,
   importImageDataUrl,
   resolveThinkingLevel,
@@ -135,25 +140,33 @@ interface CenterPanelProps {
 function getSessionThinkingLevelOptions(
   agentType: AgentId,
   snapshot: AgentProviderSnapshot | null | undefined,
+  configOptions: readonly AgentSessionConfigOption[] | null,
 ): ThinkingLevelOption[] {
-  return getThinkingLevelOptions({
+  const options = getThinkingLevelOptions({
     agentType,
     supportsReasoning: snapshot?.supportsReasoning,
     thinkingLevelMapJson: snapshot?.modelThinkingLevelMapJson,
     supportedReasoningEfforts: snapshot?.supportedReasoningEfforts,
     defaultReasoningEffort: snapshot?.modelDefaultReasoningEffort ?? null,
   });
+  // Sessions persisted before the agent reported effort metadata fall back
+  // to the live session config option (Devin's `thought_level`).
+  if (
+    options.length > 0 ||
+    !supportsInSessionRuntimeAxis(agentType, "thinking")
+  ) {
+    return options;
+  }
+  return getConfigOptionThinkingLevels(configOptions);
 }
 
 function summarizeAttachmentForLog(attachment: MessageAttachment) {
   if (attachment.kind === "image") {
     return {
-      filePath: attachment.filePath,
       height: attachment.height,
       id: attachment.id,
       kind: attachment.kind,
       mimeType: attachment.mimeType,
-      name: attachment.name,
       sizeBytes: attachment.sizeBytes,
       width: attachment.width,
     };
@@ -161,25 +174,21 @@ function summarizeAttachmentForLog(attachment: MessageAttachment) {
 
   if (attachment.kind === "context-folder") {
     return {
-      folderPath: attachment.folderPath,
       kind: attachment.kind,
     };
   }
 
   if (attachment.kind === "document") {
     return {
-      filePath: attachment.filePath,
       id: attachment.id,
       kind: attachment.kind,
       mimeType: attachment.mimeType,
-      name: attachment.name,
       sizeBytes: attachment.sizeBytes,
     };
   }
 
   return {
     endLine: attachment.endLine,
-    filePath: attachment.filePath,
     kind: attachment.kind ?? "context-file",
     language: attachment.language,
     selectedTextLength: attachment.selectedText.length,
@@ -197,8 +206,8 @@ function summarizeProviderSnapshotForLog(
 
   return {
     api: snapshot.api,
-    baseUrl: snapshot.baseUrl,
-    modelBaseUrl: snapshot.modelBaseUrl ?? null,
+    endpointHost: hostForLog(snapshot.baseUrl),
+    modelEndpointHost: hostForLog(snapshot.modelBaseUrl),
     modelId: snapshot.modelId,
     modelName: snapshot.modelName,
     providerId: snapshot.providerId,
@@ -394,6 +403,7 @@ export function CenterPanel({
     ? getSessionThinkingLevelOptions(
         activeSession.agentType,
         activeSession.providerSnapshot,
+        activeAgentRuntime?.configOptions ?? null,
       )
     : [];
   const selectedThinkingLevel = resolveThinkingLevel(
@@ -491,22 +501,13 @@ export function CenterPanel({
       "debug",
       "[SessionTitle] local generation evaluated",
       {
-        sessionId: session.id,
-        fallbackTitle,
-        generatedTitle: title,
+        changed: title !== fallbackTitle,
         messageLength: message.length,
+        sessionId: session.id,
       },
     );
 
     if (title === fallbackTitle) {
-      logRendererDiagnostic(
-        "debug",
-        "[SessionTitle] local generation kept fallback",
-        {
-          sessionId: session.id,
-          fallbackTitle,
-        },
-      );
       return session;
     }
 
@@ -523,8 +524,6 @@ export function CenterPanel({
       "[SessionTitle] local title update applied",
       {
         sessionId: session.id,
-        fallbackTitle,
-        generatedTitle: title,
         updated: Boolean(updatedSession),
       },
     );
@@ -541,10 +540,8 @@ export function CenterPanel({
       "debug",
       "[SessionTitle] provider refinement requested",
       {
-        sessionId: session.id,
-        expectedTitle,
-        fallbackTitle: session.title,
         messageLength: message.length,
+        sessionId: session.id,
       },
     );
 
@@ -561,8 +558,6 @@ export function CenterPanel({
           "[SessionTitle] provider refinement completed",
           {
             sessionId: session.id,
-            expectedTitle,
-            returnedTitle: updatedSession?.title ?? null,
             updated: Boolean(
               updatedSession && updatedSession.title !== expectedTitle,
             ),
@@ -581,9 +576,8 @@ export function CenterPanel({
           "debug",
           "[SessionTitle] provider refinement failed",
           {
-            sessionId: session.id,
-            expectedTitle,
             error: error instanceof Error ? error.message : "Unknown error",
+            sessionId: session.id,
           },
         );
       });
@@ -618,8 +612,9 @@ export function CenterPanel({
       requestId,
       agentType: activeSession.agentType,
       sessionId: activeSession.id,
-      workspaceRootPath:
+      workspaceHash: hashLogValue(
         workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+      ),
       contentLength: message.length,
       attachmentCount: attachments.length,
     });
@@ -658,7 +653,7 @@ export function CenterPanel({
       logRendererDiagnostic("info", "[AgentSession] send payload", {
         attachments: nextAttachments.map(summarizeAttachmentForLog),
         sessionModeId: nextSession.sessionModeId,
-        content: userMessage.content,
+        contentLength: userMessage.content.length,
         createdAt: userMessage.createdAt,
         messageId: userMessage.id,
         permissionMode: nextSession.permissionMode ?? null,
@@ -668,13 +663,13 @@ export function CenterPanel({
         session: {
           agentType: nextSession.agentType,
           id: nextSession.id,
-          title: nextSession.title,
           workspaceId: nextSession.workspaceId,
         },
         thinkingLevel:
           thinkingLevelOptions.length > 0 ? selectedThinkingLevel : undefined,
-        workspaceRootPath:
+        workspaceHash: hashLogValue(
           workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+        ),
       });
       if (nextSession.title !== activeSession.title) {
         await desktopApi.updateSessionTitle({
@@ -1029,8 +1024,9 @@ export function CenterPanel({
       requestId,
       agentType,
       sessionId: titledSession.id,
-      workspaceRootPath:
+      workspaceHash: hashLogValue(
         workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+      ),
       contentLength: message.length,
       attachmentCount: attachments?.length ?? 0,
     });
@@ -1068,7 +1064,7 @@ export function CenterPanel({
         {
           attachments: nextAttachments.map(summarizeAttachmentForLog),
           sessionModeId: titledSession.sessionModeId,
-          content: userMessage.content,
+          contentLength: userMessage.content.length,
           createdAt: userMessage.createdAt,
           messageId: userMessage.id,
           permissionMode: titledSession.permissionMode ?? null,
@@ -1078,12 +1074,12 @@ export function CenterPanel({
           session: {
             agentType: titledSession.agentType,
             id: titledSession.id,
-            title: titledSession.title,
             workspaceId: titledSession.workspaceId,
           },
           thinkingLevel,
-          workspaceRootPath:
+          workspaceHash: hashLogValue(
             workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+          ),
         },
       );
       await taskApi.sendMessage({
@@ -1286,7 +1282,7 @@ export function CenterPanel({
             onAnswerQuestion={handleAnswerQuestion}
             onOpenToolLocation={openFilePreview}
             onResolvePermission={async (requestId, optionId) => {
-              await taskApi.resolvePermission(requestId, optionId);
+              return taskApi.resolvePermission(requestId, optionId);
             }}
             onSelectSessionMode={(modeId) =>
               handleSelectSessionMode(modeId, activeSession.id)

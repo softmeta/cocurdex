@@ -334,7 +334,7 @@ export class AcpEventMapper {
         logAdapterDiagnostic(
           "debug",
           "[AcpEventMapper] ignoring diff outside the session workspace",
-          { sessionId: this.sessionId, path: item.path },
+          { sessionId: this.sessionId },
         );
         continue;
       }

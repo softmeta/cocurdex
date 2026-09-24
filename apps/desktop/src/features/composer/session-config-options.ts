@@ -17,6 +17,7 @@ const CONFIG_AXIS_ALIASES: Record<
   thinking: [
     "thinking",
     "thinking_level",
+    "thought_level",
     "reasoning",
     "reasoning_effort",
     "effort",
@@ -41,6 +42,19 @@ function configOptionKeys(option: AgentSessionConfigOption) {
     .map(normalizeConfigKey);
 }
 
+export function findSessionConfigOption(
+  options: readonly AgentSessionConfigOption[],
+  axis: OccupiedSessionConfigAxis,
+): AgentSessionConfigOption | null {
+  return (
+    options.find((option) =>
+      CONFIG_AXIS_ALIASES[axis].some((alias) =>
+        configOptionKeys(option).includes(alias),
+      ),
+    ) ?? null
+  );
+}
+
 export function getComposerSessionConfigOptions(
   options: readonly AgentSessionConfigOption[],
   occupiedAxes: readonly OccupiedSessionConfigAxis[],
@@ -51,6 +65,31 @@ export function getComposerSessionConfigOptions(
       CONFIG_AXIS_ALIASES[axis].some((alias) => keys.includes(alias)),
     );
   });
+}
+
+const BASELINE_SPEED_VALUES = new Set(["default", "normal", "standard"]);
+
+// The rung a session speed option rests at by default (Devin's "standard")
+// maps to the picker's built-in standard row, not a named tier.
+export function isBaselineSpeedOptionValue(
+  value: string | null | undefined,
+): boolean {
+  return value ? BASELINE_SPEED_VALUES.has(normalizeConfigKey(value)) : false;
+}
+
+export function getConfigOptionSpeedTiers(
+  option: AgentSessionConfigOption | null | undefined,
+): { description: string; id: string; name: string }[] {
+  if (option?.type !== "select") {
+    return [];
+  }
+  return (option.options ?? [])
+    .filter((item) => !isBaselineSpeedOptionValue(item.value))
+    .map((item) => ({
+      description: item.description ?? "",
+      id: item.value,
+      name: item.name ?? item.value,
+    }));
 }
 
 export function getSessionConfigTriggerValues(

@@ -5,6 +5,7 @@ import type {
   AgentThinkingLevel,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
+import { supportsInSessionRuntimeAxis } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import {
   getThinkingLevelLabel,
@@ -120,8 +121,8 @@ export function AgentRoleRuntimeFields({
       : [];
   const codexReasoningDefaultValue =
     selectedProviderModel?.model.defaultReasoningEffort ?? "";
-  const codexServiceTierOptions =
-    agentId === "codex" && selectedProviderModel
+  const serviceTierOptions =
+    supportsInSessionRuntimeAxis(agentId, "speed") && selectedProviderModel
       ? [
           { label: t("modelMenu.serviceTierStandard"), value: "" },
           ...(selectedProviderModel.model.serviceTiers ?? []).map((tier) => ({
@@ -218,7 +219,7 @@ export function AgentRoleRuntimeFields({
         reasoningEffortDefaultValue={codexReasoningDefaultValue}
         reasoningEffortOptions={codexReasoningOptions}
         reasoningEffortValue={reasoningEffort || codexReasoningDefaultValue}
-        serviceTierOptions={codexServiceTierOptions}
+        serviceTierOptions={serviceTierOptions}
         serviceTierValue={serviceTier}
         showProviderGroupLabels={shouldShowProviderGroupLabels(agentId)}
         thinkingLevelValue={thinkingLevel === "default" ? "" : thinkingLevel}

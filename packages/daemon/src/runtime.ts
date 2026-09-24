@@ -20,6 +20,10 @@ import {
   type AgentSessionConfigOption,
   type AgentSlashCommand,
   type AgentUsageRecord,
+  agentToolNameFromPermissionTitle,
+  hashLogValue,
+  hostForLog,
+  isAssistantSessionId,
   type MessageAttachment,
   type MessageRecord,
   mergeUsageRecords,
@@ -231,6 +235,17 @@ export class AgentRuntimeManager {
   requestAgentPermission(
     request: AgentPermissionRequestPayload,
   ): Promise<AgentPermissionResolution> {
+    // The assistant session exists to operate the app, so its calls to
+    // Cocurdex's own agent tools skip the per-call approval card — the tool
+    // catalog already gates availability, and mutating tools carry their own
+    // confirm flow (e.g. settings_propose). Approval stays for every other
+    // session and every non-Cocurdex tool.
+    if (
+      isAssistantSessionId(request.sessionId) &&
+      agentToolNameFromPermissionTitle(request.title) !== null
+    ) {
+      return Promise.resolve({ decision: "allow_once", optionId: null });
+    }
     const record = this.createPermissionRecord(request);
 
     return new Promise((resolve) => {
@@ -516,7 +531,7 @@ export class AgentRuntimeManager {
       providerSessionId: options.providerSession?.providerSessionId ?? null,
       sessionId: payload.session.id,
       thinkingLevel: payload.thinkingLevel ?? null,
-      workspaceRootPath: payload.workspaceRootPath,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
     });
     this.activeTurnTrackers.set(payload.session.id, turnTracker);
 
@@ -849,12 +864,10 @@ export class AgentRuntimeManager {
   private summarizeAttachmentForLog(attachment: MessageAttachment) {
     if (attachment.kind === "image") {
       return {
-        filePath: attachment.filePath,
         height: attachment.height,
         id: attachment.id,
         kind: attachment.kind,
         mimeType: attachment.mimeType,
-        name: attachment.name,
         sizeBytes: attachment.sizeBytes,
         width: attachment.width,
       };
@@ -862,25 +875,21 @@ export class AgentRuntimeManager {
 
     if (attachment.kind === "context-folder") {
       return {
-        folderPath: attachment.folderPath,
         kind: attachment.kind,
       };
     }
 
     if (attachment.kind === "document") {
       return {
-        filePath: attachment.filePath,
         id: attachment.id,
         kind: attachment.kind,
         mimeType: attachment.mimeType,
-        name: attachment.name,
         sizeBytes: attachment.sizeBytes,
       };
     }
 
     return {
       endLine: attachment.endLine,
-      filePath: attachment.filePath,
       kind: attachment.kind ?? "context-file",
       language: attachment.language,
       selectedTextLength: attachment.selectedText.length,
@@ -898,9 +907,9 @@ export class AgentRuntimeManager {
 
     return {
       api: providerConfig.api,
-      baseUrl: providerConfig.baseUrl,
+      endpointHost: hostForLog(providerConfig.baseUrl),
       hasApiKey: Boolean(providerConfig.apiKey),
-      modelBaseUrl: providerConfig.modelBaseUrl ?? null,
+      modelEndpointHost: hostForLog(providerConfig.modelBaseUrl),
       modelId: providerConfig.modelId,
       modelName: providerConfig.modelName,
       providerId: providerConfig.providerId,

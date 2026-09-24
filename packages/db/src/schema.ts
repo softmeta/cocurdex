@@ -20,7 +20,18 @@ export function createSchemaSql() {
       setup_script TEXT NOT NULL DEFAULT '',
       cleanup_script TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL,
+      proposed_setup_script TEXT,
+      proposed_cleanup_script TEXT,
+      proposed_rationale TEXT,
+      proposed_at TEXT,
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pending_settings_changes (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL,
+      value_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS sessions (

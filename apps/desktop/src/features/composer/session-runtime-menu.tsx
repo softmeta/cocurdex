@@ -26,8 +26,11 @@ import { AgentRuntimeConfigItems } from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
 import {
+  findSessionConfigOption,
   getComposerSessionConfigOptions,
+  getConfigOptionSpeedTiers,
   getSessionConfigTriggerValues,
+  isBaselineSpeedOptionValue,
   type OccupiedSessionConfigAxis,
 } from "./session-config-options";
 
@@ -108,9 +111,21 @@ export function SessionRuntimeMenu({
   // No "inherit" row on this axis: an unset session runs at the model's own
   // default effort, so that level is what the menu preselects.
   const defaultReasoningEffort = model?.defaultReasoningEffort ?? DEFAULT_VALUE;
+  // Older sessions predate catalog tiers; derive the same rows from the
+  // session's live speed option (Devin's `speed`) when one exists.
+  const liveSpeedOption = supportsRuntimeAxis("speed")
+    ? findSessionConfigOption(configOptions ?? [], "speed")
+    : null;
   const tierOptions = supportsRuntimeAxis("speed")
-    ? (model?.serviceTiers ?? [])
+    ? (model?.serviceTiers?.length ?? 0) > 0
+      ? (model?.serviceTiers ?? [])
+      : getConfigOptionSpeedTiers(liveSpeedOption)
     : [];
+  const liveSpeedValue =
+    typeof liveSpeedOption?.currentValue === "string" &&
+    !isBaselineSpeedOptionValue(liveSpeedOption.currentValue)
+      ? liveSpeedOption.currentValue
+      : null;
   const fastModeOptions =
     supportsRuntimeAxis("speed") && model?.supportsFastMode
       ? [
@@ -237,7 +252,7 @@ export function SessionRuntimeMenu({
           value: tier.id,
         })),
       ]}
-      serviceTierValue={serviceTier ?? DEFAULT_VALUE}
+      serviceTierValue={serviceTier ?? liveSpeedValue ?? DEFAULT_VALUE}
       thinkingLevelValue={thinkingLevel ?? DEFAULT_VALUE}
       showProviderGroupLabels={shouldShowProviderGroupLabels(agentType)}
       triggerClassName={composerFooterControlClassName("min-w-0 max-w-[280px]")}

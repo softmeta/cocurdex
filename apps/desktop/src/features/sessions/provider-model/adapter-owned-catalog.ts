@@ -21,3 +21,10 @@ export function usesAdapterOwnedModelCatalog(agentId: AgentId) {
     agentId === "opencode"
   );
 }
+
+// Agents that reveal a model's runtime axes (effort ladder, speed tiers) only
+// inside a session running that model. Their catalog ships without axes and
+// the picker probes the selected model on demand.
+export function usesLazyModelAxesProbe(agentId: AgentId) {
+  return agentId === "devin";
+}

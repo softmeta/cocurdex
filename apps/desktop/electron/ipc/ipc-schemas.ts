@@ -205,6 +205,10 @@ export const schemas = {
     setupScript: z.string().max(100_000),
     cleanupScript: z.string().max(100_000),
   }),
+  settingsChangeAck: z.object({ id: idSchema }),
+  settingsValuesReport: z.object({
+    values: z.record(z.string().max(256), z.unknown()),
+  }),
   worktreeSettingsSave: z.object({
     fetchBeforeCreate: z.boolean(),
     rootPath: z
@@ -557,6 +561,10 @@ export const schemas = {
   providerCompatibleForAgent: z.tuple([
     agentIdSchema,
     z.object({ forceRefresh: z.boolean().optional() }).optional(),
+  ]),
+  providerModelAxesProbe: z.tuple([
+    agentIdSchema,
+    providerModelSelectionSchema,
   ]),
   providerTitleModelSet: titleModelSelectionSchema.nullable(),
   providerTitleModelProbe: titleModelSelectionSchema,

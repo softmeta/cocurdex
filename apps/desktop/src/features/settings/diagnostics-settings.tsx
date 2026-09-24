@@ -1,14 +1,28 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Spinner, Text } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { Button, Spinner, Switch, Text } from "@/components/ui";
+import { desktopApi, useMountEffect } from "@/lib";
 import { SettingRow, SettingsGroup } from "./settings-fields";
 
 export function DiagnosticsSettingsPanel() {
   const { t } = useTranslation("settings");
   const [busy, setBusy] = useState(false);
+  const [verbose, setVerbose] = useState<boolean | null>(null);
   const [exportedPath, setExportedPath] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useMountEffect(() => {
+    void desktopApi.getDiagnosticsVerbose().then(setVerbose);
+  });
+
+  const onVerboseChange = async (enabled: boolean) => {
+    setVerbose(enabled);
+    try {
+      await desktopApi.setDiagnosticsVerbose(enabled);
+    } catch {
+      setVerbose(!enabled);
+    }
+  };
 
   const runExport = async () => {
     setBusy(true);
@@ -27,6 +41,18 @@ export function DiagnosticsSettingsPanel() {
 
   return (
     <SettingsGroup title={t("diagnostics.group")}>
+      <SettingRow
+        description={t("diagnostics.verbose.description")}
+        title={t("diagnostics.verbose.title")}
+      >
+        <Switch
+          checked={verbose ?? false}
+          disabled={verbose === null}
+          onCheckedChange={(enabled) => {
+            void onVerboseChange(enabled);
+          }}
+        />
+      </SettingRow>
       <SettingRow
         description={t("diagnostics.description")}
         title={t("diagnostics.title")}

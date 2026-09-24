@@ -1,0 +1,9 @@
+/* base.css resets form controls with an unlayered `font: inherit`, which
+ * outranks Tailwind's layered font utilities, and <pre> keeps the UA monospace
+ * font. Both layers inherit the wrapper's typography so their glyphs stay in
+ * sync, whatever font utility the caller puts on the wrapper. */
+.code-textarea-layer {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
