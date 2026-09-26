@@ -35,6 +35,11 @@ describe("shouldHandleAsOpen", () => {
     expect(shouldHandleAsOpen("role")).toBe(false);
     expect(shouldHandleAsOpen("workflow")).toBe(false);
   });
+
+  it("routes team and script-run to handlers instead of open-desktop", () => {
+    expect(shouldHandleAsOpen("team")).toBe(false);
+    expect(shouldHandleAsOpen("script-run")).toBe(false);
+  });
 });
 
 describe("resolveOpenFolderArg", () => {
