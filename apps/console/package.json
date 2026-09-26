@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*",
-    "next": "^15.5.2",
+    "next": "^16.3.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
