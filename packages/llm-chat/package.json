@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*",
-    "@earendil-works/pi-ai": "0.85.1"
+    "@earendil-works/pi-ai": "0.87.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",
