@@ -44,18 +44,18 @@ function PreviewTocRail({ activeKey, headings }: PreviewTocProps) {
   return (
     <nav
       aria-label={t("preview.toc")}
-      className="mt-6 max-h-[60%] w-56 shrink-0 self-start overflow-y-auto pe-4"
+      className="mt-6 flex max-h-[60%] w-56 shrink-0 flex-col self-start pe-4"
     >
       <Text
         as="div"
         size="meta"
         tone="muted"
         weight="medium"
-        className="mb-2 ps-3"
+        className="mb-2 shrink-0 ps-3"
       >
         {t("preview.toc")}
       </Text>
-      <ul className="border-s border-border/70">
+      <ul className="min-h-0 overflow-y-auto border-s border-border/70">
         {headings.map((heading) => (
           <li key={heading.key}>
             <button
