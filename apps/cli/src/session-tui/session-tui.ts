@@ -118,7 +118,7 @@ class SessionTuiApp {
       follow: "end",
       primary: true,
       scrollbar: "auto",
-      scrollbarStyle: sessionTuiStyles.dim,
+      scrollbarTrackStyle: sessionTuiStyles.dim,
     });
     const root = new VStack(
       [
