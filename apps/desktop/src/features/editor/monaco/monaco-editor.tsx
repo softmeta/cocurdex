@@ -5,7 +5,6 @@ import { ArrowUpLeft, FileText } from "lucide-react";
 import type { editor as MonacoEditorNamespace } from "monaco-editor";
 import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MarkdownRenderer } from "@/components";
 import { Button } from "@/components/ui";
 // Leaf imports (not the pdf-reader barrel) to avoid an editor ↔ pdf-reader
 // barrel cycle: the barrel re-exports PdfViewer, which imports the editor barrel.
@@ -22,6 +21,7 @@ import {
   previewLocationsByFileAtom,
   rightPanelResizingAtom,
 } from "../editor-store";
+import { MarkdownPreview } from "./markdown-preview";
 import "./monaco-editor.css";
 import { cn, useResolvedTheme } from "@/lib";
 import { useSelectionBubble } from "../selection";
@@ -242,15 +242,7 @@ function MonacoTextEditor({
   }
 
   if (isPreviewMode) {
-    return (
-      <div className="h-full overflow-auto p-6">
-        <MarkdownRenderer
-          content={content}
-          tone="editor"
-          className="space-y-4"
-        />
-      </div>
-    );
+    return <MarkdownPreview content={content} />;
   }
 
   if (languageStatus === "error") {
