@@ -4,18 +4,19 @@ import type {
   AgentPlanApprovalDecision,
   AgentProviderModelAxes,
   AgentProviderSelection,
-  AgentProviderSnapshot,
   AgentRateLimitsReadResult,
   AgentRoleRecord,
-  AgentRuntimeProviderConfig,
   AgentSessionConfigOption,
   AgentSessionMode,
   AgentSlashCommand,
+  AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
   AppResyncSnapshot,
   CocurdexDaemonEvent,
   CodexAccountState,
+  CodexLoginOutcome,
+  CodexLoginStartResult,
   CommitMessageModelSelection,
   CompatibleProviderModel,
   ConversationMessageRecord,
@@ -32,7 +33,9 @@ import type {
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteViewPayload,
+  DocumentAttachment,
   EditConversationMessagePayload,
+  EditorViewRecord,
   GenerateGitCommitMessagePayload,
   GetIssuePayload,
   GetNotePayload,
@@ -43,6 +46,9 @@ import type {
   GitPushResult,
   GitWorktreeInfo,
   HostDirectoryListing,
+  ImageAttachment,
+  ImportDocumentAttachmentPayload,
+  ImportImageAttachmentPayload,
   IssueRecord,
   LoadViewPayload,
   ManagedWorktree,
@@ -51,6 +57,7 @@ import type {
   MoveColumnPayload,
   MoveIssuePayload,
   MoveNotePayload,
+  NetworkProxySettings,
   NetworkProxyTestResult,
   NoteBacklinksPayload,
   NoteLink,
@@ -74,6 +81,7 @@ import type {
   ProviderListModelsResult,
   ProviderModelRecord,
   ProviderTemplateRecord,
+  RefineSessionTitlePayload,
   ResolvedCommitMessageModel,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
@@ -90,6 +98,7 @@ import type {
   SendSessionCommand,
   SessionAttentionSnapshot,
   SessionConfiguration,
+  SessionMessagesResult,
   SessionObservationSnapshot,
   SessionRecord,
   SpawnTeammatePayload,
@@ -135,7 +144,7 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 24;
+export const DAEMON_PROTOCOL_VERSION = 25;
 
 export interface DaemonMetadata {
   pid: number;
@@ -183,19 +192,9 @@ export type DaemonRequestPayloadByMethod = {
   "chat.archive": { conversationId: string };
   "chat.delete": { conversationId: string };
   "chat.stop": { conversationId: string };
-  "chat.send": {
-    message: SendConversationMessagePayload;
-    providerConfig: AgentRuntimeProviderConfig;
-    titleProviderConfig?: AgentRuntimeProviderConfig | null;
-  };
-  "chat.retry": {
-    message: RetryConversationMessagePayload;
-    providerConfig: AgentRuntimeProviderConfig;
-  };
-  "chat.edit": {
-    message: EditConversationMessagePayload;
-    providerConfig: AgentRuntimeProviderConfig;
-  };
+  "chat.send": SendConversationMessagePayload;
+  "chat.retry": RetryConversationMessagePayload;
+  "chat.edit": EditConversationMessagePayload;
   "daemon.status": undefined;
   "daemon.shutdownIfIdle": { pid: number; startedAt: string };
   "app.bootstrap": undefined;
@@ -208,6 +207,9 @@ export type DaemonRequestPayloadByMethod = {
   "workspace.listEntries": { rootPath: string };
   "workspace.listFiles": { rootPath: string };
   "workspace.save": { workspace: WorkspaceRecord };
+  "workspace.delete": { workspaceId: string };
+  "workspace.resolveOpenPath": { path: string; allowFile: boolean };
+  "editorView.save": { view: EditorViewRecord };
   "workspace.worktreeEnvironment.get": { workspaceId: string };
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
   "assistant.session.create": { workspaceId: string };
@@ -259,8 +261,6 @@ export type DaemonRequestPayloadByMethod = {
   "session.restore": { sessionId: string };
   "session.listArchived": undefined;
   "provider.apiKey.set": { providerId: string; apiKey: string | null };
-  "provider.apiKey.read": { providerId: string };
-  "provider.resolveSnapshot": { snapshot: AgentProviderSnapshot };
   "provider.listTemplates": undefined;
   "provider.config.get": { providerId: string };
   "provider.config.save": { config: ProviderConfigRecord };
@@ -298,8 +298,13 @@ export type DaemonRequestPayloadByMethod = {
   "provider.exportJson": undefined;
   "codex.account.read": undefined;
   "codex.logout": undefined;
+  "codex.login.start": undefined;
+  "codex.login.wait": { loginId: string };
+  "codex.login.cancel": { loginId: string };
   "session.updateTitle": UpdateSessionTitlePayload;
-  "session.generateTitle": { sessionId: string; message: string };
+  "session.refineTitle": RefineSessionTitlePayload;
+  "session.listMessages": { sessionId: string };
+  "session.listToolCalls": { sessionId: string };
   "session.listSlashCommands": {
     agentType: AgentId;
     workspaceRootPath: string;
@@ -329,10 +334,14 @@ export type DaemonRequestPayloadByMethod = {
   "session.getTurnChangeDiff": TurnChangeDiffRequest;
   "session.getToolCallResult": GetToolCallResultInput;
   "daemon.subscribe": { afterSeq?: number; epoch?: string };
-  "network.proxy.test": undefined;
+  "network.proxy.test": { settings?: NetworkProxySettings };
+  "network.proxy.get": undefined;
+  "network.proxy.set": { settings: NetworkProxySettings };
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
-  "storage.call": { operation: string; args: unknown[] };
+  "attachment.importImage": ImportImageAttachmentPayload;
+  "attachment.importDocument": ImportDocumentAttachmentPayload;
+  "attachment.readImageDataUrl": { filePath: string };
   "file.readText": { filePath: string };
   "file.exists": { filePath: string };
   "fs.listDirectories": { path?: string };
@@ -451,6 +460,9 @@ export type DaemonResultByMethod = {
   "workspace.listEntries": WorkspaceEntry[];
   "workspace.listFiles": WorkspaceFileRecord[];
   "workspace.save": WorkspaceRecord;
+  "workspace.delete": null;
+  "workspace.resolveOpenPath": string | null;
+  "editorView.save": null;
   "workspace.worktreeEnvironment.get": WorkspaceWorktreeEnvironment;
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
   "assistant.session.create": SessionRecord;
@@ -491,8 +503,6 @@ export type DaemonResultByMethod = {
   "session.restore": SessionRecord[];
   "session.listArchived": SessionRecord[];
   "provider.apiKey.set": null;
-  "provider.apiKey.read": string | null;
-  "provider.resolveSnapshot": AgentRuntimeProviderConfig;
   "provider.listTemplates": ProviderTemplateRecord[];
   "provider.config.get": ProviderConfigRecord | null;
   "provider.config.save": ProviderConfigRecord;
@@ -516,8 +526,13 @@ export type DaemonResultByMethod = {
   "provider.exportJson": PiModelsJson;
   "codex.account.read": CodexAccountState;
   "codex.logout": null;
+  "codex.login.start": CodexLoginStartResult;
+  "codex.login.wait": CodexLoginOutcome;
+  "codex.login.cancel": null;
   "session.updateTitle": SessionRecord | null;
-  "session.generateTitle": string | null;
+  "session.refineTitle": SessionRecord | null;
+  "session.listMessages": SessionMessagesResult;
+  "session.listToolCalls": AgentToolCallRecord[];
   "session.listSlashCommands": AgentSlashCommand[];
   "session.resubmit": MessageRecord;
   "session.checkpointStatus": { available: boolean };
@@ -537,9 +552,13 @@ export type DaemonResultByMethod = {
   "session.getToolCallResult": AgentToolCallResult | null;
   "daemon.subscribe": DaemonSubscribeResult;
   "network.proxy.test": NetworkProxyTestResult;
+  "network.proxy.get": NetworkProxySettings;
+  "network.proxy.set": NetworkProxySettings;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
-  "storage.call": unknown;
+  "attachment.importImage": ImageAttachment;
+  "attachment.importDocument": DocumentAttachment;
+  "attachment.readImageDataUrl": string;
   "file.readText": string;
   "file.exists": boolean;
   "fs.listDirectories": HostDirectoryListing;
@@ -638,13 +657,14 @@ export const DAEMON_NO_PARAM_METHODS = {
   "teamTemplate.list": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,
-  "network.proxy.test": true,
   "note.list": true,
   "provider.listConfigs": true,
   "provider.listTemplates": true,
   "provider.titleModel.get": true,
   "codex.account.read": true,
   "codex.logout": true,
+  "codex.login.start": true,
+  "network.proxy.get": true,
   "git.commitMessageModel.get": true,
   "git.commitMessageModel.resolve": true,
   "provider.listDefaults": true,

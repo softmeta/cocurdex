@@ -1,134 +1,9 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
-import {
-  type AgentRuntimeProviderConfig,
-  type CreateConversationPayload,
-  createProviderSnapshotForModel,
-  type EditConversationMessagePayload,
-  isChatCapableModel,
-  isChatSupportedApi,
-  type RetryConversationMessagePayload,
-  type SendConversationMessagePayload,
-  type UpdateConversationPayload,
-} from "@cocurdex/shared";
-import type { IpcMain, IpcMainInvokeEvent } from "electron";
+import type { SendConversationMessagePayload } from "@cocurdex/shared";
+import type { IpcMain } from "electron";
 import { z } from "zod";
 import { idSchema, registerHandler } from "../ipc";
 import { chatDaemonOptions } from "./app-state";
-
-async function resolveChatProvider(
-  providerId: string,
-  modelId: string,
-): Promise<AgentRuntimeProviderConfig> {
-  const daemonOptions = await chatDaemonOptions();
-  const provider = await requestDaemon(
-    "provider.config.get",
-    { providerId },
-    daemonOptions,
-  );
-  if (!provider?.enabled)
-    throw new Error("Provider is unavailable or disabled");
-  const model = (
-    await requestDaemon(
-      "provider.listAllModels",
-      { providerIds: [providerId] },
-      daemonOptions,
-    )
-  ).find(
-    (candidate) =>
-      candidate.providerId === providerId && candidate.modelId === modelId,
-  );
-  if (
-    !model?.enabled ||
-    !isChatSupportedApi(model.api) ||
-    !isChatCapableModel(model.capabilities)
-  ) {
-    throw new Error("The selected model is unavailable for chat");
-  }
-  return requestDaemon(
-    "provider.resolveSnapshot",
-    { snapshot: createProviderSnapshotForModel({ provider, model }) },
-    daemonOptions,
-  );
-}
-
-async function resolveConversationProvider(conversationId: string) {
-  const snapshot = await getConversationDetail(conversationId);
-  if (!snapshot) throw new Error("Conversation not found");
-  return resolveChatProvider(
-    snapshot.conversation.providerId,
-    snapshot.conversation.modelId,
-  );
-}
-
-async function getConversationDetail(conversationId: string) {
-  return requestDaemon(
-    "chat.get",
-    { conversationId },
-    await chatDaemonOptions(),
-  );
-}
-
-async function createConversation(payload: CreateConversationPayload) {
-  await resolveChatProvider(payload.providerId, payload.modelId);
-  return requestDaemon("chat.create", payload, await chatDaemonOptions());
-}
-
-async function updateConversation(payload: UpdateConversationPayload) {
-  return requestDaemon("chat.update", payload, await chatDaemonOptions());
-}
-
-async function sendConversationMessage(
-  payload: SendConversationMessagePayload,
-) {
-  const providerConfig = await resolveConversationProvider(
-    payload.conversationId,
-  );
-  let titleProviderConfig: AgentRuntimeProviderConfig | null = null;
-  try {
-    const selection = await requestDaemon(
-      "provider.titleModel.get",
-      await chatDaemonOptions(),
-    );
-    if (selection)
-      titleProviderConfig = await resolveChatProvider(
-        selection.providerId,
-        selection.modelId,
-      );
-  } catch (error) {
-    console.warn("[Chat] Dedicated title model unavailable", error);
-  }
-  return requestDaemon(
-    "chat.send",
-    { message: payload, providerConfig, titleProviderConfig },
-    await chatDaemonOptions(),
-  );
-}
-
-async function retryConversationMessage(
-  payload: RetryConversationMessagePayload,
-) {
-  const providerConfig = await resolveConversationProvider(
-    payload.conversationId,
-  );
-  return requestDaemon(
-    "chat.retry",
-    { message: payload, providerConfig },
-    await chatDaemonOptions(),
-  );
-}
-
-async function editConversationMessage(
-  payload: EditConversationMessagePayload,
-) {
-  const providerConfig = await resolveConversationProvider(
-    payload.conversationId,
-  );
-  return requestDaemon(
-    "chat.edit",
-    { message: payload, providerConfig },
-    await chatDaemonOptions(),
-  );
-}
 
 const imageInputSchema = z.object({
   id: z.string().min(1).max(256),
@@ -189,22 +64,24 @@ export function registerChatHandlers(ipc: IpcMain) {
     ipc,
     "chat:get",
     conversationIdPayloadSchema,
-    async (_event: IpcMainInvokeEvent, payload) =>
-      getConversationDetail(payload.conversationId),
+    async (_event, payload) =>
+      requestDaemon("chat.get", payload, await chatDaemonOptions()),
   );
 
   registerHandler(
     ipc,
     "chat:create",
     createPayloadSchema,
-    async (_event, payload) => createConversation(payload),
+    async (_event, payload) =>
+      requestDaemon("chat.create", payload, await chatDaemonOptions()),
   );
 
   registerHandler(
     ipc,
     "chat:update",
     updatePayloadSchema,
-    async (_event, payload) => updateConversation(payload),
+    async (_event, payload) =>
+      requestDaemon("chat.update", payload, await chatDaemonOptions()),
   );
 
   registerHandler(
@@ -229,7 +106,11 @@ export function registerChatHandlers(ipc: IpcMain) {
     "chat:sendMessage",
     sendMessagePayloadSchema,
     async (_event, payload) =>
-      sendConversationMessage(payload as SendConversationMessagePayload),
+      requestDaemon(
+        "chat.send",
+        payload as SendConversationMessagePayload,
+        await chatDaemonOptions(),
+      ),
   );
 
   registerHandler(
@@ -237,7 +118,7 @@ export function registerChatHandlers(ipc: IpcMain) {
     "chat:retryMessage",
     retryMessagePayloadSchema,
     async (_event, payload) =>
-      retryConversationMessage(payload as RetryConversationMessagePayload),
+      requestDaemon("chat.retry", payload, await chatDaemonOptions()),
   );
 
   registerHandler(
@@ -245,7 +126,7 @@ export function registerChatHandlers(ipc: IpcMain) {
     "chat:editMessage",
     editMessagePayloadSchema,
     async (_event, payload) =>
-      editConversationMessage(payload as EditConversationMessagePayload),
+      requestDaemon("chat.edit", payload, await chatDaemonOptions()),
   );
 
   registerHandler(

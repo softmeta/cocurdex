@@ -7,6 +7,8 @@ import type {
   BrowserAnnotation,
   DeleteSessionPayload,
   EditorViewRecord,
+  ImportDocumentAttachmentPayload,
+  ImportImageAttachmentPayload,
   RefineSessionTitlePayload,
   SendSessionCommand,
   SessionConfiguration,
@@ -32,14 +34,6 @@ import {
 import { registerApplicationMenu } from "./app-menu";
 import { resolveElectronEntryPath, resolveUserDataPath } from "./app-paths";
 import {
-  type ImportDocumentAttachmentPayload,
-  type ImportImageAttachmentPayload,
-  importDocumentAttachment,
-  importImageAttachment,
-  initializeAttachmentStorage,
-  readImageAttachmentDataUrl,
-} from "./attachment";
-import {
   activateBrowserTab,
   attachBrowserHost,
   browserNavigationSchema,
@@ -59,8 +53,6 @@ import {
   chatDaemonOptions,
   deleteAgentRole,
   deleteWorkspace,
-  generateSessionTitle,
-  getSession,
   getToolCallResult,
   initializeAppState,
   listAgentRoles,
@@ -104,7 +96,7 @@ import {
 import { registerMcpHandlers } from "./mcp";
 import {
   initializeNetworkProxyRuntime,
-  loadAndApplyNetworkProxyFromStorage,
+  loadAndApplyNetworkProxyFromDaemon,
   registerNetworkProxyHandlers,
 } from "./network";
 import {
@@ -113,13 +105,9 @@ import {
   extractOpenFolderFromProcess,
   focusMainWindow,
   queueOpenFolder,
-  resolveDroppedOpenPath,
 } from "./open-folder";
 import { registerOssLicensesHandlers } from "./oss-licenses";
-import {
-  generateProviderSessionTitle,
-  registerProviderHandlers,
-} from "./provider";
+import { registerProviderHandlers } from "./provider";
 import { getPtyService } from "./pty";
 import { registerScriptRunHandlers } from "./script-run";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
@@ -129,10 +117,6 @@ import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
 import { registerChatWindowHandlers } from "./window";
 import {
   buildPdfAssetUrl,
-  closeAllWorkspaceFilesWatchers,
-  configureWorkspaceFilesChangedBroadcast,
-  configureWorkspaceGitStateChangedBroadcast,
-  ensureWorkspaceFilesWatcher,
   registerPdfProtocol,
   resolveAuthorizedPdfReadPath,
 } from "./workspace";
@@ -227,11 +211,15 @@ async function handleCliOpenFolder(
   folderPath: string,
   options?: { broadcast?: boolean },
 ): Promise<void> {
-  const workspaces = await listWorkspaces();
-  await queueOpenFolder(folderPath, {
-    broadcast: options?.broadcast,
-    existingRootPaths: workspaces.flatMap((workspace) => workspace.rootPaths),
-  });
+  const rootPath = await requestDaemon(
+    "workspace.resolveOpenPath",
+    { path: folderPath, allowFile: false },
+    await chatDaemonOptions(),
+  );
+  if (!rootPath) {
+    throw new Error("Open folder path is not a directory");
+  }
+  queueOpenFolder(rootPath, { broadcast: options?.broadcast });
 }
 
 // Restore the user's login-shell environment so packaged builds launched from
@@ -435,7 +423,6 @@ function registerWorkspaceHandlers() {
     "workspace:listFiles",
     schemas.rootPath,
     async (_event, rootPath) => {
-      await ensureWorkspaceFilesWatcher(rootPath);
       return requestDaemon(
         "workspace.listFiles",
         { rootPath },
@@ -448,9 +435,6 @@ function registerWorkspaceHandlers() {
     "git:listBranches",
     schemas.rootPath,
     async (_event, rootPath) => {
-      // Branch consumers also need external HEAD/refs updates even when the
-      // file tree and git diff panel have not initialized this root yet.
-      await ensureWorkspaceFilesWatcher(rootPath);
       return requestDaemon(
         "git.listBranches",
         { rootPath },
@@ -474,7 +458,6 @@ function registerWorkspaceHandlers() {
     "git:listWorktrees",
     schemas.rootPath,
     async (_event, rootPath) => {
-      await ensureWorkspaceFilesWatcher(rootPath);
       return requestDaemon(
         "git.listWorktrees",
         { rootPath },
@@ -488,7 +471,7 @@ function registerWorkspaceHandlers() {
     schemas.gitWorktreeAdd,
     async (_event, payload) => {
       const userDataPath = app.getPath("userData");
-      const created = await requestDaemon(
+      return requestDaemon(
         "worktree.create",
         {
           workspaceId: payload.workspaceId,
@@ -497,8 +480,6 @@ function registerWorkspaceHandlers() {
         },
         { userDataPath },
       );
-      await ensureWorkspaceFilesWatcher(created.path);
-      return created;
     },
   );
   ipcMain.handle("worktree:getSettings", async () =>
@@ -669,7 +650,6 @@ function registerWorkspaceHandlers() {
     "git:listCommits",
     schemas.gitCommitsQuery,
     async (_event, { rootPath, limit }) => {
-      await ensureWorkspaceFilesWatcher(rootPath);
       return requestDaemon(
         "git.listCommits",
         { rootPath, limit },
@@ -682,9 +662,6 @@ function registerWorkspaceHandlers() {
     "git:getWorkspaceDiff",
     schemas.gitDiffQuery,
     async (_event, { rootPath, query }) => {
-      // The git panel may query a root before any file listing does; make sure
-      // it gets a watcher so external edits push change notifications.
-      await ensureWorkspaceFilesWatcher(rootPath);
       return requestDaemon(
         "git.diff",
         { rootPath, query },
@@ -697,7 +674,6 @@ function registerWorkspaceHandlers() {
     "git:getWorkspaceStatus",
     schemas.rootPath,
     async (_event, rootPath) => {
-      await ensureWorkspaceFilesWatcher(rootPath);
       return requestDaemon(
         "git.status",
         { rootPath },
@@ -786,8 +762,10 @@ function registerWorkspaceHandlers() {
     "attachment:importDocument",
     schemas.importDocument,
     async (_event, payload) =>
-      importDocumentAttachment(
+      requestDaemon(
+        "attachment.importDocument",
         payload as unknown as ImportDocumentAttachmentPayload,
+        await chatDaemonOptions(),
       ),
   );
   registerHandler(
@@ -795,13 +773,22 @@ function registerWorkspaceHandlers() {
     "attachment:importImage",
     schemas.importImage,
     async (_event, payload) =>
-      importImageAttachment(payload as unknown as ImportImageAttachmentPayload),
+      requestDaemon(
+        "attachment.importImage",
+        payload as unknown as ImportImageAttachmentPayload,
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "attachment:readImageDataUrl",
     schemas.filePath,
-    async (_event, filePath) => readImageAttachmentDataUrl(filePath),
+    async (_event, filePath) =>
+      requestDaemon(
+        "attachment.readImageDataUrl",
+        { filePath },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
@@ -1037,65 +1024,12 @@ function registerSessionHandlers() {
     ipcMain,
     "session:refineTitle",
     schemas.refineTitle,
-    async (_event, raw) => {
-      const payload = raw as unknown as RefineSessionTitlePayload;
-      sessionLogger.debug("session.titleRefinementReceived", {
-        sessionId: payload.sessionId,
-        expectedTitleLength: payload.expectedTitle.length,
-        fallbackTitleLength: payload.fallbackTitle.length,
-        messageLength: payload.message.length,
-      });
-
-      const currentSession = await getSession(payload.sessionId);
-
-      if (!currentSession || currentSession.title !== payload.expectedTitle) {
-        sessionLogger.debug("session.titleRefinementSkipped", {
-          sessionId: payload.sessionId,
-          currentTitleLength: currentSession?.title.length ?? null,
-          expectedTitleLength: payload.expectedTitle.length,
-          reason: currentSession ? "title-mismatch" : "missing-session",
-        });
-
-        return currentSession;
-      }
-
-      let title: string | null = null;
-      if (currentSession.agentType === "claude-agent") {
-        try {
-          title = await generateSessionTitle(
-            payload.sessionId,
-            payload.message,
-          );
-        } catch (error) {
-          sessionLogger.info("session.titleRefinementGenerationFailed", {
-            error: error instanceof Error ? error.message : String(error),
-            sessionId: payload.sessionId,
-          });
-        }
-      } else {
-        title = await generateProviderSessionTitle(currentSession, payload);
-      }
-
-      if (!title || title === payload.expectedTitle) {
-        sessionLogger.debug("session.titleRefinementKeptCurrent", {
-          sessionId: payload.sessionId,
-          expectedTitleLength: payload.expectedTitle.length,
-          generatedTitleLength: title?.length ?? null,
-        });
-
-        return currentSession;
-      }
-
-      sessionLogger.debug("session.titleRefinementUpdatingTitle", {
-        sessionId: payload.sessionId,
-        expectedTitleLength: payload.expectedTitle.length,
-        generatedTitleLength: title.length,
-      });
-
-      return updateSessionTitle(payload.sessionId, title, {
-        expectedTitle: payload.expectedTitle,
-      });
-    },
+    async (_event, raw) =>
+      requestDaemon(
+        "session.refineTitle",
+        raw as unknown as RefineSessionTitlePayload,
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
@@ -1395,11 +1329,6 @@ async function shutdownAppResources() {
   } catch (error) {
     appLogger.error("app.ptyShutdownFailed", { error });
   }
-  try {
-    closeAllWorkspaceFilesWatchers();
-  } catch (error) {
-    appLogger.error("app.workspaceWatcherShutdownFailed", { error });
-  }
 
   const runtimeClient = daemonRuntimeClient;
   daemonRuntimeClient = null;
@@ -1502,7 +1431,6 @@ app
       crashDumpsDirectory: app.getPath("crashDumps"),
     });
     initializeAppState(userDataPath);
-    initializeAttachmentStorage(userDataPath);
     daemonRuntimeClient = createDaemonRuntimeClient({
       daemonEntryPath: getBundledDaemonEntryPath(),
       logger: daemonLogger,
@@ -1529,6 +1457,14 @@ app
             window.webContents.send("search:error", {
               message: event.message,
               searchId: event.searchId,
+            });
+          } else if (event.type === "workspace.filesChanged") {
+            window.webContents.send("workspace:filesChanged", {
+              rootPath: event.rootPath,
+            });
+          } else if (event.type === "workspace.gitStateChanged") {
+            window.webContents.send("workspace:gitStateChanged", {
+              rootPath: event.rootPath,
             });
           } else if ("conversationId" in event) {
             window.webContents.send("chat:event", event);
@@ -1557,23 +1493,13 @@ app
     // to main process.env + Chromium session (daemon applied its own on boot).
     // Nothing paints before this lands — the renderer's first outbound request
     // is user-triggered, long after startup.
-    const proxyReady = loadAndApplyNetworkProxyFromStorage().catch(
+    const proxyReady = loadAndApplyNetworkProxyFromDaemon().catch(
       (error: unknown) => {
         appLogger.warn("networkProxy.loadFailed", {
           message: error instanceof Error ? error.message : String(error),
         });
       },
     );
-    configureWorkspaceFilesChangedBroadcast((rootPath) => {
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send("workspace:filesChanged", { rootPath });
-      }
-    });
-    configureWorkspaceGitStateChangedBroadcast((rootPath) => {
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send("workspace:gitStateChanged", { rootPath });
-      }
-    });
     registerPdfProtocol(listWorkspaceRootPaths);
     registerWorkspaceHandlers();
     registerSessionHandlers();
@@ -1685,10 +1611,10 @@ app
       "workspace:resolveOpenPath",
       schemas.rootPath,
       async (_event, folderPath) => {
-        const workspaces = await listWorkspaces();
-        const rootPath = await resolveDroppedOpenPath(
-          folderPath,
-          workspaces.flatMap((workspace) => workspace.rootPaths),
+        const rootPath = await requestDaemon(
+          "workspace.resolveOpenPath",
+          { path: folderPath, allowFile: true },
+          await chatDaemonOptions(),
         );
         return rootPath ? { rootPath } : null;
       },

@@ -5,6 +5,7 @@ import type {
   DaemonResultByMethod,
 } from "@cocurdex/rpc";
 import type { ProviderAuthMethod } from "@cocurdex/shared";
+import { validateSessionId } from "@cocurdex/shared";
 import {
   checkoutGitBranch,
   discardGitFiles,
@@ -37,7 +38,7 @@ export async function handleDaemonRequest(
     case "chat.get":
       return service.chatService.get(request.params.conversationId);
     case "chat.create":
-      return service.chatService.create(request.params);
+      return service.createConversation(request.params);
     case "chat.update":
       return service.chatService.update(request.params);
     case "chat.archive":
@@ -47,21 +48,11 @@ export async function handleDaemonRequest(
     case "chat.stop":
       return service.chatService.stop(request.params.conversationId);
     case "chat.send":
-      return service.chatService.send(
-        request.params.message,
-        request.params.providerConfig,
-        request.params.titleProviderConfig,
-      );
+      return service.sendConversationMessage(request.params);
     case "chat.retry":
-      return service.chatService.retry(
-        request.params.message,
-        request.params.providerConfig,
-      );
+      return service.retryConversationMessage(request.params);
     case "chat.edit":
-      return service.chatService.edit(
-        request.params.message,
-        request.params.providerConfig,
-      );
+      return service.editConversationMessage(request.params);
     case "daemon.status":
       return service.status();
     case "daemon.shutdownIfIdle":
@@ -85,21 +76,21 @@ export async function handleDaemonRequest(
         "daemon.subscribe is intercepted before request dispatch",
       );
     case "network.proxy.test":
-      return service.testNetworkProxy();
+      return service.testNetworkProxy(request.params.settings);
+    case "network.proxy.get":
+      return service.getNetworkProxySettings();
+    case "network.proxy.set":
+      return service.setNetworkProxySettings(request.params.settings);
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":
       return service.updateSessionAttention(request.params);
-    case "storage.call": {
-      const result = await service.state.callStorage(
-        request.params.operation,
-        request.params.args,
-      );
-      if (request.params.operation === "workspace.delete") {
-        service.invalidateScanRoots();
-      }
-      return result;
-    }
+    case "attachment.importImage":
+      return service.attachments.importImage(request.params);
+    case "attachment.importDocument":
+      return service.attachments.importDocument(request.params);
+    case "attachment.readImageDataUrl":
+      return service.attachments.readImageDataUrl(request.params.filePath);
     case "note.list":
       return service.dataService.listNotes();
     case "note.get":
@@ -190,6 +181,17 @@ export async function handleDaemonRequest(
       return null;
     case "workspace.save":
       return service.saveWorkspace(request.params.workspace);
+    case "workspace.delete":
+      await service.deleteWorkspace(request.params.workspaceId);
+      return null;
+    case "workspace.resolveOpenPath":
+      return service.resolveWorkspaceOpenPath(
+        request.params.path,
+        request.params.allowFile,
+      );
+    case "editorView.save":
+      await service.state.saveEditorView(request.params.view);
+      return null;
     case "workspace.worktreeEnvironment.get":
       return service.getWorktreeEnvironment(request.params.workspaceId);
     case "workspace.worktreeEnvironment.save":
@@ -279,12 +281,6 @@ export async function handleDaemonRequest(
         request.params.apiKey,
       );
       return null;
-    case "provider.apiKey.read":
-      return service.providerCredentials.readApiKey(request.params.providerId);
-    case "provider.resolveSnapshot":
-      return service.providerCredentials.resolveSnapshot(
-        request.params.snapshot,
-      );
     case "provider.listTemplates":
       return service.providerService.listTemplates();
     case "provider.config.get":
@@ -359,6 +355,13 @@ export async function handleDaemonRequest(
       return null;
     case "codex.account.read":
       return readCodexAccount();
+    case "codex.login.start":
+      return service.codexLogins.start();
+    case "codex.login.wait":
+      return service.codexLogins.wait(request.params.loginId);
+    case "codex.login.cancel":
+      await service.codexLogins.cancel(request.params.loginId);
+      return null;
     case "codex.logout":
       await logoutCodex();
       return null;
@@ -373,11 +376,14 @@ export async function handleDaemonRequest(
       return null;
     case "session.updateTitle":
       return service.updateSessionTitle(request.params);
-    case "session.generateTitle":
-      return service.generateSessionTitle(
-        request.params.sessionId,
-        request.params.message,
-      );
+    case "session.refineTitle":
+      return service.refineSessionTitle(request.params);
+    case "session.listMessages":
+      validateSessionId(request.params.sessionId);
+      return service.state.listSessionMessages(request.params.sessionId);
+    case "session.listToolCalls":
+      validateSessionId(request.params.sessionId);
+      return service.state.listToolCallSummaries(request.params.sessionId);
     case "session.listSlashCommands":
       return service.listSessionSlashCommands(
         request.params.agentType,
@@ -491,18 +497,23 @@ export async function handleDaemonRequest(
     case "git.generateCommitMessage":
       return service.commitMessageService.generate(request.params);
     case "git.listBranches":
+      await service.watchWorkspace(request.params.rootPath);
       return listGitBranches(request.params.rootPath);
     case "git.checkoutBranch":
       return checkoutGitBranch(request.params.rootPath, request.params.branch);
     case "git.listWorktrees":
+      await service.watchWorkspace(request.params.rootPath);
       return listGitWorktrees(request.params.rootPath);
     case "git.listCommits":
+      await service.watchWorkspace(request.params.rootPath);
       return listGitCommits(request.params.rootPath, {
         limit: request.params.limit,
       });
     case "git.status":
+      await service.watchWorkspace(request.params.rootPath);
       return getWorkspaceGitStatus(request.params.rootPath);
     case "git.diff":
+      await service.watchWorkspace(request.params.rootPath);
       return getWorkspaceDiff(request.params.rootPath, request.params.query);
     case "git.stageFiles":
       return stageGitFiles(request.params.rootPath, request.params.filePaths);

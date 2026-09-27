@@ -1,6 +1,5 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type {
-  AgentRuntimeProviderConfig,
   ChatEvent,
   CocurdexDaemonEvent,
   ConversationMessageRecord,
@@ -13,21 +12,42 @@ import {
 } from "./helpers/daemon-process";
 import { type StubLlmServer, startStubLlmServer } from "./helpers/llm-stub";
 
-function providerConfig(stub: StubLlmServer): AgentRuntimeProviderConfig {
-  return {
-    providerId: "e2e-stub",
-    providerName: "E2E Stub",
-    modelId: "e2e-model",
-    modelName: "E2E Model",
-    api: "openai-completions",
-    baseUrl: stub.baseUrl,
-    apiKey: "e2e-key",
-    modelCapabilities: ["chat"],
-  };
-}
-
-async function createConversation(daemon: DaemonProcess) {
-  const conversation = await requestDaemon(
+async function createConversation(daemon: DaemonProcess, stub: StubLlmServer) {
+  const now = new Date().toISOString();
+  await requestDaemon(
+    "provider.config.save",
+    {
+      config: {
+        id: "e2e-stub",
+        name: "E2E Stub",
+        baseUrl: stub.baseUrl,
+        enabled: true,
+        apiKeySecretId: null,
+        headersJson: JSON.stringify({ Authorization: "Bearer e2e-key" }),
+        createdAt: now,
+        updatedAt: now,
+      },
+    },
+    daemon.options,
+  );
+  await requestDaemon(
+    "provider.model.save",
+    {
+      model: {
+        providerId: "e2e-stub",
+        modelId: "e2e-model",
+        name: "E2E Model",
+        api: "openai-completions",
+        enabled: true,
+        source: "manual",
+        capabilities: ["chat"],
+        createdAt: now,
+        updatedAt: now,
+      },
+    },
+    daemon.options,
+  );
+  return requestDaemon(
     "chat.create",
     {
       providerId: "e2e-stub",
@@ -36,7 +56,6 @@ async function createConversation(daemon: DaemonProcess) {
     },
     daemon.options,
   );
-  return conversation;
 }
 
 function chatEvents(events: CocurdexDaemonEvent[]): ChatEvent[] {
@@ -66,15 +85,12 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
         (event) => events.push(event),
         daemon.options,
       );
-      const conversation = await createConversation(daemon);
+      const conversation = await createConversation(daemon, stub);
       stub.plan = { kind: "stream", chunks: ["Hello", " from", " stub"] };
 
       const user = await requestDaemon(
         "chat.send",
-        {
-          message: { conversationId: conversation.id, text: "hi there" },
-          providerConfig: providerConfig(stub),
-        },
+        { conversationId: conversation.id, text: "hi there" },
         daemon.options,
       );
       expect(user.role).toBe("user");
@@ -121,15 +137,12 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
         (event) => events.push(event),
         daemon.options,
       );
-      const conversation = await createConversation(daemon);
+      const conversation = await createConversation(daemon, stub);
       stub.plan = { kind: "hang" };
 
       await requestDaemon(
         "chat.send",
-        {
-          message: { conversationId: conversation.id, text: "wait" },
-          providerConfig: providerConfig(stub),
-        },
+        { conversationId: conversation.id, text: "wait" },
         daemon.options,
       );
       const llmRequest = await stub.nextRequest();
@@ -160,7 +173,7 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
         (event) => events.push(event),
         daemon.options,
       );
-      const conversation = await createConversation(daemon);
+      const conversation = await createConversation(daemon, stub);
       stub.plan = {
         kind: "fail",
         status: 500,
@@ -169,10 +182,7 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
 
       await requestDaemon(
         "chat.send",
-        {
-          message: { conversationId: conversation.id, text: "boom" },
-          providerConfig: providerConfig(stub),
-        },
+        { conversationId: conversation.id, text: "boom" },
         daemon.options,
       );
       await waitFor(() => completedAssistant(events) !== undefined);
