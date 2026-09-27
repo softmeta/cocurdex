@@ -1,28 +1,40 @@
 {
+  "categories": {
+    "all": "All",
+    "files": "Files",
+    "issues": "Issues",
+    "notes": "Notes",
+    "sessions": "Sessions"
+  },
+  "categoriesLabel": "Search categories",
   "empty": {
+    "documentsError": {
+      "title": "Search failed",
+      "description": "Notes and issues could not be searched."
+    },
     "error": {
       "description": "ripgrep could not list files for this workspace.",
       "title": "Unable to index files"
     },
     "loading": {
-      "description": "Indexing the workspace with ripgrep.",
-      "title": "Loading files..."
+      "title": "Searching...",
+      "description": "Results will appear in a moment."
     },
     "noFiles": {
       "description": "The workspace did not return any searchable files.",
       "title": "No files found"
     },
     "noMatches": {
-      "description": "Try a different filename or path.",
-      "title": "No matching files"
+      "title": "No results",
+      "description": "Try a different keyword or category."
     },
     "noWorkspace": {
       "description": "Open a workspace before searching files.",
       "title": "No workspace selected"
     },
     "typeToSearch": {
-      "description": "",
-      "title": "Type to search for files"
+      "title": "Type to search",
+      "description": "Search notes and issues by title or content."
     }
   },
   "files": "Files",
@@ -57,10 +69,17 @@
   "headings": {
     "all": "All files",
     "recent": "Recently opened",
+    "recentSessions": "Recent sessions",
     "results": "Results"
+  },
+  "hints": {
+    "changeCategory": "⌘[ ⌘] Change category",
+    "open": "↵ Open",
+    "select": "↑↓ Select"
   },
   "more": "More",
   "openSearch": "Open search",
-  "placeholder": "Search files by name or path...",
-  "searchFiles": "Search files"
+  "placeholder": "Search sessions, files, notes, issues...",
+  "searchFiles": "Search files",
+  "title": "Search"
 }

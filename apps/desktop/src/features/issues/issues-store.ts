@@ -300,12 +300,6 @@ export const deleteIssueAtom = atom(null, async (get, set, issueId: string) => {
   }
 });
 
-export const getIssueAtom = atom(
-  null,
-  async (get, _set, id: string): Promise<IssueRecord | null> =>
-    issuesIpc.getIssue({ id, viewId: get(activeViewIdAtom) }),
-);
-
 function toViewSummary(view: ViewFull["view"]): ViewSummary {
   const { createdAt: _createdAt, updatedAt: _updatedAt, ...summary } = view;
   return summary;
