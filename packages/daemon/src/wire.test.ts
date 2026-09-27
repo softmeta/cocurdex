@@ -271,12 +271,8 @@ describe("startDaemonServer", () => {
         selections: [],
       };
       await expect(
-        requestDaemon(
-          "storage.call",
-          { operation: "editorView.save", args: [view] },
-          { userDataPath },
-        ),
-      ).resolves.toBeUndefined();
+        requestDaemon("editorView.save", { view }, { userDataPath }),
+      ).resolves.toBeNull();
       expect((await daemon.service.bootstrap()).editorViews).toContainEqual(
         view,
       );

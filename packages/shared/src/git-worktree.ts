@@ -130,7 +130,7 @@ export function suggestWorktreeBranchName(id: string): string {
   return `cocurdex/${slug}`;
 }
 
-function stripTrailingPathSeparators(value: string) {
+export function stripTrailingPathSeparators(value: string) {
   let end = value.length;
   while (end > 0) {
     const char = value[end - 1];

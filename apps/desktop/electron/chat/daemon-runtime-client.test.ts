@@ -75,6 +75,7 @@ async function fixture() {
           queuedInputs: 0,
           chatOperations: 0,
           workflowActive: false,
+          workspaceSearches: 0,
         },
       };
     }
@@ -243,6 +244,7 @@ describe("daemon runtime replacement", () => {
             queuedInputs: 0,
             chatOperations: 0,
             workflowActive: false,
+            workspaceSearches: 0,
           },
         };
       }

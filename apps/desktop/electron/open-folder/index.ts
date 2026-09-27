@@ -10,7 +10,4 @@ export {
   OPEN_FROM_CLI_CHANNEL,
   type OpenFolderAdditionalData,
   queueOpenFolder,
-  resolveDroppedOpenPath,
-  resolveWorkspaceRootPathForOpen,
-  validateOpenFolderPath,
 } from "./open-folder";

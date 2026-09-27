@@ -1,12 +1,9 @@
-import { mkdtemp, realpath, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   extractOpenFolderFromAdditionalData,
   extractOpenFolderFromArgv,
   OPEN_FOLDER_FLAG,
-  resolveDroppedOpenPath,
 } from "./open-folder";
 
 describe("extractOpenFolderFromArgv", () => {
@@ -56,36 +53,5 @@ describe("extractOpenFolderFromAdditionalData", () => {
     expect(extractOpenFolderFromAdditionalData(null)).toBeNull();
     expect(extractOpenFolderFromAdditionalData({})).toBeNull();
     expect(extractOpenFolderFromAdditionalData({ openFolder: 1 })).toBeNull();
-  });
-});
-
-describe("resolveDroppedOpenPath", () => {
-  it("returns the directory itself when a folder is dropped", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-drop-dir-"));
-    const result = await resolveDroppedOpenPath(dir);
-    // macOS realpath maps /var → /private/var; compare canonical forms.
-    expect(result).toBe(await realpath(dir));
-  });
-
-  it("opens the parent directory when a file is dropped", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-drop-file-"));
-    const filePath = path.join(dir, "readme.md");
-    await writeFile(filePath, "hi");
-    const result = await resolveDroppedOpenPath(filePath);
-    expect(result).toBe(await realpath(dir));
-  });
-
-  it("returns null for a missing path", async () => {
-    const result = await resolveDroppedOpenPath(
-      path.join(tmpdir(), "cocurdex-drop-missing", "nope"),
-    );
-    expect(result).toBeNull();
-  });
-
-  it("reuses an existing workspace rootPath when paths match", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-drop-reuse-"));
-    const stored = `${dir}${path.sep}`;
-    const result = await resolveDroppedOpenPath(dir, [stored]);
-    expect(result).toBe(stored);
   });
 });

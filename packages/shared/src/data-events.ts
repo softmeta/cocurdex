@@ -4,6 +4,7 @@ import type { PeerMessageEvent } from "./peer-messaging";
 import type { ScriptRunChangedEvent } from "./script-run";
 import type { TeamChangedEvent } from "./team";
 import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
+import type { WorkspaceWatchDaemonEvent } from "./workspace-watch";
 
 // `agent` marks agent/session runtime state (sessions, pending interactions,
 // transcripts) as unsynchronized; emitted synthetically on event-replay gaps
@@ -38,4 +39,5 @@ export type CocurdexDaemonEvent =
   | PeerMessageEvent
   | ScriptRunChangedEvent
   | TeamChangedEvent
-  | WorkspaceSearchDaemonEvent;
+  | WorkspaceSearchDaemonEvent
+  | WorkspaceWatchDaemonEvent;

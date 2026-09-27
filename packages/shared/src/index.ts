@@ -60,5 +60,6 @@ export * from "./workspace-change-tools";
 export * from "./workspace-changes";
 export * from "./workspace-roots";
 export * from "./workspace-search";
+export * from "./workspace-watch";
 export * from "./worktree-environment";
 export * from "./worktree-settings";

@@ -225,27 +225,9 @@ describe("daemon-owned queue recovery", () => {
     await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
   });
 
-  it("rejects legacy storage mutations and externally supplied runtime credentials", async () => {
+  it("rejects externally supplied runtime credentials", async () => {
     const root = await seed(true);
     const daemon = await start(root);
-    for (const operation of [
-      "session.save",
-      "session.archive",
-      "session.restore",
-      "session.updateTitle",
-      "providerSecret.get",
-      "providerSecret.save",
-      "providerSecret.delete",
-      "providerConfig.setSecret",
-    ]) {
-      await expect(
-        requestDaemon(
-          "storage.call",
-          { operation, args: [{ id: "session", status: "running" }] },
-          { userDataPath: root },
-        ),
-      ).rejects.toThrow("Unsupported storage operation");
-    }
     await expect(
       requestDaemon(
         "session.send",

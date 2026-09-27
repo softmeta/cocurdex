@@ -7,8 +7,6 @@ import type {
   AgentToolCallResult,
   AppBootstrapData,
   EditorViewRecord,
-  MessageRecord,
-  NetworkProxyTestResult,
   SaveAgentRolePayload,
   SessionMessagesResult,
   SessionRecord,
@@ -30,18 +28,6 @@ function daemonOptions() {
   return { userDataPath: daemonUserDataPath };
 }
 
-async function callStorage<T>(
-  operation: string,
-  ...args: unknown[]
-): Promise<T> {
-  await daemonReady;
-  return requestDaemon(
-    "storage.call",
-    { operation, args },
-    daemonOptions(),
-  ) as Promise<T>;
-}
-
 export async function chatDaemonOptions() {
   await daemonReady;
   return daemonOptions();
@@ -53,11 +39,6 @@ export function initializeAppState(userDataPath: string) {
 
 export function setDaemonReady(ready: Promise<unknown>) {
   daemonReady = ready.catch(() => undefined);
-}
-
-export async function testNetworkProxy(): Promise<NetworkProxyTestResult> {
-  await daemonReady;
-  return requestDaemon("network.proxy.test", daemonOptions());
 }
 
 export async function bootstrapAppState(): Promise<AppBootstrapData> {
@@ -92,8 +73,12 @@ export async function listWorkspaces(): Promise<WorkspaceRecord[]> {
   return requestDaemon("workspace.list", daemonOptions());
 }
 
-export function deleteWorkspace(workspaceId: string): Promise<void> {
-  return callStorage("workspace.delete", workspaceId);
+export async function deleteWorkspace(workspaceId: string) {
+  await requestDaemon(
+    "workspace.delete",
+    { workspaceId },
+    await chatDaemonOptions(),
+  );
 }
 
 export async function archiveSession(
@@ -144,28 +129,24 @@ export async function updateSessionTitle(
   );
 }
 
-export async function generateSessionTitle(
+export async function listMessagesBySessionId(
   sessionId: string,
-  message: string,
-): Promise<string | null> {
-  await daemonReady;
+): Promise<SessionMessagesResult> {
   return requestDaemon(
-    "session.generateTitle",
-    { sessionId, message },
-    daemonOptions(),
+    "session.listMessages",
+    { sessionId },
+    await chatDaemonOptions(),
   );
 }
 
-export function listMessagesBySessionId(
-  sessionId: string,
-): Promise<SessionMessagesResult> {
-  return callStorage("message.listBySession", sessionId);
-}
-
-export function listToolCallsBySessionId(
+export async function listToolCallsBySessionId(
   sessionId: string,
 ): Promise<AgentToolCallRecord[]> {
-  return callStorage("toolCall.listBySession", sessionId);
+  return requestDaemon(
+    "session.listToolCalls",
+    { sessionId },
+    await chatDaemonOptions(),
+  );
 }
 
 export async function getToolCallResult(
@@ -178,22 +159,8 @@ export async function getToolCallResult(
   );
 }
 
-export function getMessageById(
-  messageId: string,
-): Promise<MessageRecord | null> {
-  return callStorage("message.get", messageId);
-}
-
-export function saveEditorView(view: EditorViewRecord): Promise<void> {
-  return callStorage("editorView.save", view);
-}
-
-export function getNetworkProxySetting(): Promise<string | null> {
-  return callStorage<string | null>("appSetting.get", "network.proxy");
-}
-
-export function setNetworkProxySetting(valueJson: string): Promise<void> {
-  return callStorage("appSetting.set", "network.proxy", valueJson);
+export async function saveEditorView(view: EditorViewRecord) {
+  await requestDaemon("editorView.save", { view }, await chatDaemonOptions());
 }
 
 export async function listAgentRoles(): Promise<AgentRoleRecord[]> {

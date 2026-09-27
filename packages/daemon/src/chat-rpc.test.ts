@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { AgentRuntimeProviderConfig, ChatEvent } from "@cocurdex/shared";
+import type { ChatEvent } from "@cocurdex/shared";
 import { expect, it, vi } from "vitest";
 import { handleDaemonRequest } from "./handler";
 import { CocurdexDaemonService } from "./service";
 
-it("streams a real Pi provider request through daemon RPC and persists its result", async () => {
+it("resolves the configured provider in the daemon, streams it, and persists the result", async () => {
   const requests: {
     url: string;
     authorization?: string;
@@ -69,34 +69,44 @@ it("streams a real Pi provider request through daemon RPC and persists its resul
     service.events.on("daemon.event", (event) => {
       if ("conversationId" in event) events.push(event);
     });
+    const now = new Date().toISOString();
+    await service.providerService.saveProviderConfig({
+      id: "custom",
+      name: "Custom",
+      baseUrl: `http://127.0.0.1:${address.port}/v1`,
+      enabled: true,
+      apiKeySecretId: null,
+      headersJson: '{"X-Chat-Test":"present"}',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await service.providerService.saveProviderModel({
+      providerId: "custom",
+      modelId: "test",
+      name: "Test",
+      api: "openai-completions",
+      enabled: true,
+      source: "manual",
+      capabilities: ["chat"],
+      outputLimit: 128,
+      costJson: '{"input":1,"output":2,"cacheRead":0.5,"cacheWrite":1}',
+      createdAt: now,
+      updatedAt: now,
+    });
+    vi.spyOn(service.providerCredentials, "resolveSnapshot").mockImplementation(
+      async (snapshot) => ({ ...snapshot, apiKey: "test-key" }),
+    );
     const conversation = await handleDaemonRequest<"chat.create">(service, {
       id: "create",
       token: "test",
       method: "chat.create",
       params: { providerId: "custom", modelId: "test", title: "Integration" },
     });
-    const config: AgentRuntimeProviderConfig = {
-      providerId: "custom",
-      providerName: "Custom",
-      modelId: "test",
-      modelName: "Test",
-      api: "openai-completions",
-      apiKey: "test-key",
-      baseUrl: "http://localhost:1/incorrect",
-      modelBaseUrl: `http://127.0.0.1:${address.port}/v1`,
-      headersJson: '{"X-Chat-Test":"present"}',
-      modelCapabilities: ["chat"],
-      modelMaxTokens: 128,
-      modelCostJson: '{"input":1,"output":2,"cacheRead":0.5,"cacheWrite":1}',
-    };
     await handleDaemonRequest(service, {
       id: "send",
       token: "test",
       method: "chat.send",
-      params: {
-        message: { conversationId: conversation.id, text: "Hello" },
-        providerConfig: config,
-      },
+      params: { conversationId: conversation.id, text: "Hello" },
     });
     await vi.waitFor(() =>
       expect(events.at(-1)?.type).toBe("conversation.message.completed"),
