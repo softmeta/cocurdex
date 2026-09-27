@@ -4,6 +4,7 @@ import {
   buildVisibleSessionTree,
   collectSessionSubtreeIds,
   isSubagentSession,
+  limitSessionTreeRoots,
   sessionAncestorIds,
 } from "./session-tree";
 
@@ -195,5 +196,48 @@ describe("isSubagentSession", () => {
     expect(isSubagentSession({ sessionKind: "subagent" })).toBe(true);
     expect(isSubagentSession({ sessionKind: "teammate" })).toBe(false);
     expect(isSubagentSession({ sessionKind: "main" })).toBe(false);
+  });
+});
+
+describe("limitSessionTreeRoots", () => {
+  const sessions = [
+    session({ id: "a", lastMessageAt: "2026-08-31T05:00:00.000Z" }),
+    session({
+      createdAt: "2026-08-31T05:01:00.000Z",
+      id: "a-child",
+      parentSessionId: "a",
+    }),
+    session({ id: "b", lastMessageAt: "2026-08-31T04:00:00.000Z" }),
+    session({ id: "c", lastMessageAt: "2026-08-31T03:00:00.000Z" }),
+    session({
+      createdAt: "2026-08-31T03:01:00.000Z",
+      id: "c-child",
+      parentSessionId: "c",
+    }),
+    session({ id: "d", lastMessageAt: "2026-08-31T02:00:00.000Z" }),
+  ];
+  const tree = buildVisibleSessionTree(sessions);
+  const ids = (nodes: { session: SessionRecord }[]) =>
+    nodes.map((node) => node.session.id);
+
+  it("keeps the most recent roots with their children and counts the rest", () => {
+    const limited = limitSessionTreeRoots(tree, sessions, 2, []);
+
+    expect(ids(limited.nodes)).toEqual(["a", "a-child", "b"]);
+    expect(limited.hiddenRootCount).toBe(2);
+  });
+
+  it("keeps a hidden root visible when it or a descendant must stay visible", () => {
+    const limited = limitSessionTreeRoots(tree, sessions, 1, ["c-child", "d"]);
+
+    expect(ids(limited.nodes)).toEqual(["a", "a-child", "c", "c-child", "d"]);
+    expect(limited.hiddenRootCount).toBe(1);
+  });
+
+  it("hides nothing when the limit covers every root", () => {
+    const limited = limitSessionTreeRoots(tree, sessions, 10, []);
+
+    expect(limited.nodes).toEqual(tree);
+    expect(limited.hiddenRootCount).toBe(0);
   });
 });

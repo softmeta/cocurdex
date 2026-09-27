@@ -180,6 +180,12 @@
   },
   "sidebar": {
     "addProject": "添加项目",
+    "ageDays_other": "{{count}} 天",
+    "ageHours_other": "{{count}} 小时",
+    "ageMinutes_other": "{{count}} 分钟",
+    "ageMonths_other": "{{count}} 个月",
+    "ageNow": "刚刚",
+    "ageYears_other": "{{count}} 年",
     "archive": "归档",
     "collapseChildren": "折叠子会话",
     "delete": "删除",
@@ -197,6 +203,8 @@
     "revealInFileManager": "在文件管理器中打开",
     "running": "运行中",
     "settings": "设置",
+    "showLess": "收起",
+    "showMore_other": "显示更多（剩余 {{count}}）",
     "splitDown": "分屏到下侧",
     "splitRight": "分屏到右侧"
   },
