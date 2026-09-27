@@ -19,6 +19,7 @@ import {
   ContextMenuTrigger,
   SidebarListRow,
   Spinner,
+  Text,
 } from "@/components/ui";
 import { permissionsBySessionAtom } from "@/features/agent/permission";
 import { questionsBySessionAtom } from "@/features/agent/question";
@@ -40,6 +41,7 @@ import {
 } from "@/features/sessions/agent-role";
 import { openSettings } from "@/features/settings";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
+import { getCompactRelativeTime } from "./compact-relative-time";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { SidebarItemTooltip } from "./sidebar-item-preview";
 import { SidebarOverflowTitle } from "./sidebar-overflow-title";
@@ -85,6 +87,45 @@ function SessionStatusIndicator({
       )}
     </span>
   );
+}
+
+function SessionAgeLabel({ timestamp }: { timestamp: string }) {
+  const { t } = useTranslation("sessions");
+  const { count, unit } = getCompactRelativeTime(timestamp);
+  const labels = {
+    now: t("sidebar.ageNow"),
+    m: t("sidebar.ageMinutes", { count }),
+    h: t("sidebar.ageHours", { count }),
+    d: t("sidebar.ageDays", { count }),
+    mo: t("sidebar.ageMonths", { count }),
+    y: t("sidebar.ageYears", { count }),
+  };
+
+  return (
+    <Text size="meta" className="shrink-0 text-sidebar-fg-subtle tabular-nums">
+      {labels[unit]}
+    </Text>
+  );
+}
+
+function SessionTrailing({
+  isRunning,
+  needsAttention,
+  timestamp,
+}: {
+  isRunning: boolean;
+  needsAttention: boolean;
+  timestamp: string;
+}) {
+  if (needsAttention || isRunning) {
+    return (
+      <SessionStatusIndicator
+        isRunning={isRunning}
+        needsAttention={needsAttention}
+      />
+    );
+  }
+  return <SessionAgeLabel timestamp={timestamp} />;
 }
 
 export function SessionSidebarItem({
@@ -136,6 +177,7 @@ export function SessionSidebarItem({
       ),
   );
   const isChild = Boolean(session.parentSessionId);
+  const activityAt = session.lastMessageAt ?? session.updatedAt;
   const startPaddingPx = 24 + depth * 12 - (hasChildren ? 20 : 0);
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();
@@ -254,7 +296,7 @@ export function SessionSidebarItem({
         agentLabel={agentLabels[session.agentType]}
         roleName={selectedRole?.name}
         roleSummary={roleSummary ?? undefined}
-        timestamp={session.lastMessageAt ?? session.updatedAt}
+        timestamp={activityAt}
         title={session.title}
       >
         <ContextMenuTrigger asChild>
@@ -301,17 +343,19 @@ export function SessionSidebarItem({
                 onClick={onSelect}
               >
                 <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-                <SessionStatusIndicator
+                <SessionTrailing
                   isRunning={isRunning}
                   needsAttention={needsAttention}
+                  timestamp={activityAt}
                 />
               </button>
             ) : (
               <>
                 <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-                <SessionStatusIndicator
+                <SessionTrailing
                   isRunning={isRunning}
                   needsAttention={needsAttention}
+                  timestamp={activityAt}
                 />
               </>
             )}

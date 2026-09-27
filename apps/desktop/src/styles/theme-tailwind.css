@@ -5,6 +5,7 @@
   --color-app: var(--app-bg);
   --color-app-foreground: var(--app-fg);
   --color-app-overlay: var(--app-overlay);
+  --color-modal-scrim: var(--modal-scrim);
   --color-brand-mark: var(--brand-mark);
   --color-status-success: var(--status-success);
   --color-status-warning: var(--status-warning);

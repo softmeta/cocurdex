@@ -6,7 +6,7 @@ import type {
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ListTodo } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppConfirmDialog,
@@ -20,13 +20,17 @@ import { useMountEffect } from "@/lib";
 import { IssuesBoard, ViewDisplayMenu, ViewFilterMenu } from "./board";
 import { CardDetailDialog, type IssueComposeDraft } from "./dialogs";
 import {
+  closeIssueDetailAtom,
+  issueDetailAtom,
+  openIssueDetailAtom,
+} from "./issue-detail-store";
+import {
   activeViewAtom,
   activeViewIdAtom,
   createIssueAtom,
   createViewAtom,
   deleteIssueAtom,
   deleteViewAtom,
-  getIssueAtom,
   issueLoadingAtom,
   issueViewsAtom,
   loadIssuesAtom,
@@ -57,7 +61,9 @@ export function IssuesView() {
   const createIssue = useSetAtom(createIssueAtom);
   const deleteIssue = useSetAtom(deleteIssueAtom);
   const updateIssue = useSetAtom(updateIssueAtom);
-  const getIssue = useSetAtom(getIssueAtom);
+  const issueDetail = useAtomValue(issueDetailAtom);
+  const openIssueDetail = useSetAtom(openIssueDetailAtom);
+  const closeIssueDetail = useSetAtom(closeIssueDetailAtom);
   const moveIssue = useSetAtom(moveIssueAtom);
   const moveIssueLocal = useSetAtom(moveIssueLocalAtom);
   const moveColumn = useSetAtom(moveColumnAtom);
@@ -66,14 +72,9 @@ export function IssuesView() {
   const createView = useSetAtom(createViewAtom);
   const deleteView = useSetAtom(deleteViewAtom);
 
-  const [editingCard, setEditingCard] = useState<IssueRecord | null>(null);
   const [composeDraft, setComposeDraft] = useState<IssueComposeDraft | null>(
     null,
   );
-  /** Bumps when full markdown arrives so the body editor remounts once. */
-  const [bodyEpoch, setBodyEpoch] = useState(0);
-  /** Invalidate in-flight getIssue when closing or opening another card. */
-  const editRequestRef = useRef(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pendingDeleteBoardId, setPendingDeleteBoardId] = useState<
     string | null
@@ -108,7 +109,7 @@ export function IssuesView() {
       ) {
         defaultWorkspaceId = activeWorkspaceId;
       }
-      setEditingCard(null);
+      closeIssueDetail();
       setComposeDraft({
         columnId,
         status: groupBy === "status" ? columnId : "backlog",
@@ -116,7 +117,7 @@ export function IssuesView() {
         workspaceId: defaultWorkspaceId,
       });
     },
-    [activeBoard, activeWorkspaceId, workspaces],
+    [activeBoard, activeWorkspaceId, closeIssueDetail, workspaces],
   );
 
   const handleRenameColumn = useCallback(
@@ -186,37 +187,16 @@ export function IssuesView() {
   );
 
   const closeIssueDialog = useCallback(() => {
-    editRequestRef.current += 1;
-    setEditingCard(null);
+    closeIssueDetail();
     setComposeDraft(null);
-    setBodyEpoch(0);
-  }, []);
+  }, [closeIssueDetail]);
 
-  /**
-   * Open the dialog immediately (same as create) so the Dialog backdrop does
-   * not flash after a separate loading overlay. Board/list rows only have an
-   * excerpt — upgrade to full markdown in the background.
-   */
   const handleEditCard = useCallback(
     (card: IssueRecord) => {
-      const requestId = editRequestRef.current + 1;
-      editRequestRef.current = requestId;
       setComposeDraft(null);
-      setBodyEpoch(0);
-      setEditingCard(card);
-      void (async () => {
-        try {
-          const full = await getIssue(card.id);
-          if (editRequestRef.current !== requestId || !full) return;
-          setEditingCard(full);
-          // Remount body editor once full markdown is available.
-          setBodyEpoch(1);
-        } catch {
-          // Keep list-shaped card already shown.
-        }
-      })();
+      void openIssueDetail(card);
     },
-    [getIssue],
+    [openIssueDetail],
   );
 
   // Prefer the selected view's summary so layout/groupBy never stick to the
@@ -344,10 +324,10 @@ export function IssuesView() {
               />
             )}
             <CardDetailDialog
-              card={editingCard}
+              card={issueDetail?.card ?? null}
               composeDraft={composeDraft}
-              bodyEpoch={bodyEpoch}
-              open={editingCard !== null || composeDraft !== null}
+              bodyEpoch={issueDetail?.bodyEpoch ?? 0}
+              open={issueDetail !== null || composeDraft !== null}
               viewTitle={viewBoard.view.title}
               statusOptions={viewBoard.statusOptions}
               priorityOptions={viewBoard.priorityOptions}

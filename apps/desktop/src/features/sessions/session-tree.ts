@@ -171,3 +171,57 @@ export function buildVisibleSessionTree(
 
   return result;
 }
+
+function rootSessionId(
+  sessionId: string,
+  byId: ReadonlyMap<string, SessionRecord>,
+) {
+  let currentId = sessionId;
+  const visited = new Set<string>();
+  while (!visited.has(currentId)) {
+    visited.add(currentId);
+    const parentId = byId.get(currentId)?.parentSessionId;
+    if (!parentId || !byId.has(parentId)) {
+      break;
+    }
+    currentId = parentId;
+  }
+  return currentId;
+}
+
+export interface LimitedSessionTree {
+  hiddenRootCount: number;
+  nodes: FlatSessionNode[];
+}
+
+export function limitSessionTreeRoots(
+  nodes: FlatSessionNode[],
+  sessions: SessionRecord[],
+  rootLimit: number,
+  keepVisibleIds: Iterable<string>,
+): LimitedSessionTree {
+  const byId = new Map(sessions.map((session) => [session.id, session]));
+  const keptRootIds = new Set(
+    [...keepVisibleIds].map((id) => rootSessionId(id, byId)),
+  );
+  const result: FlatSessionNode[] = [];
+  let rootIndex = -1;
+  let hiddenRootCount = 0;
+  let keepCurrentRoot = false;
+
+  for (const node of nodes) {
+    if (node.depth === 0) {
+      rootIndex += 1;
+      keepCurrentRoot =
+        rootIndex < rootLimit || keptRootIds.has(node.session.id);
+      if (!keepCurrentRoot) {
+        hiddenRootCount += 1;
+      }
+    }
+    if (keepCurrentRoot) {
+      result.push(node);
+    }
+  }
+
+  return { hiddenRootCount, nodes: result };
+}
