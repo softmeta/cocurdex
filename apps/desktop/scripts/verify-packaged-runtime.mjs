@@ -21,7 +21,6 @@ const FORBIDDEN_ASAR_PATHS = [
   "scripts",
   "src",
   "node_modules/pi-mcp-adapter/banner.png",
-  "node_modules/@mariozechner/clipboard-darwin-universal",
 ];
 
 const FORBIDDEN_ASAR_PACKAGE_PREFIXES = [
@@ -131,7 +130,6 @@ async function inspectAsar(asarPath) {
       }
       function collectWrongArchNatives(rootPath) {
         const scopes = [
-          ["@mariozechner", "clipboard-"],
           ["@napi-rs", "keyring-"],
           ["@vscode", "ripgrep-"],
         ];
@@ -213,23 +211,6 @@ async function inspectAsar(asarPath) {
       const daemonKeyring = mainRequire("@napi-rs/keyring");
       if (typeof daemonKeyring.AsyncEntry !== "function") {
         throw new Error("Packaged daemon keyring native module did not load");
-      }
-      if (process.platform === "darwin") {
-        const clipboardNative = path.join(
-          asarPath,
-          "node_modules",
-          "@mariozechner",
-          "clipboard-darwin-" + process.arch,
-        );
-        if (!fs.existsSync(clipboardNative)) {
-          throw new Error(
-            "Packaged clipboard native module missing for " + process.arch,
-          );
-        }
-        const clipboard = mainRequire("@mariozechner/clipboard");
-        if (typeof clipboard.getText !== "function") {
-          throw new Error("Packaged clipboard native module did not load");
-        }
       }
       const piPackageDir = path.join(
         asarPath,
