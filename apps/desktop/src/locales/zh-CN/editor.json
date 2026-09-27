@@ -186,6 +186,9 @@
     "zoomIn": "放大",
     "zoomOut": "缩小"
   },
+  "preview": {
+    "toc": "目录"
+  },
   "states": {
     "fileReadError": "无法在编辑器预览中读取这个文件。",
     "filesLoadError": "工作区文件加载失败。",
