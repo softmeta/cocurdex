@@ -22,10 +22,17 @@ import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   buildVisibleSessionTree,
   collapsedSessionIdsAtom,
+  limitSessionTreeRoots,
   toggleSessionCollapsedAtom,
 } from "@/features/sessions";
 import { compactWorkspacePath } from "@/features/workspaces";
 import { cn, desktopApi } from "@/lib";
+import {
+  resetSessionRootLimitAtom,
+  SIDEBAR_SESSION_ROOT_LIMIT,
+  sessionRootLimitsAtom,
+  showMoreSessionsAtom,
+} from "./session-list-expansion-store";
 import { SessionSidebarItem } from "./session-sidebar-item";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { WorkspaceItemTooltip } from "./sidebar-item-preview";
@@ -66,23 +73,42 @@ export function WorkspaceSidebarItem({
   const toggleSessionCollapsed = useSetAtom(toggleSessionCollapsedAtom);
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
+  const hasPendingRequest = (sessionId: string) =>
+    Boolean(
+      permissionsBySession[sessionId]?.some(
+        (permission) => permission.status === "pending",
+      ) ||
+        questionsBySession[sessionId]?.some(
+          (question) => question.status === "pending",
+        ),
+    );
+  const sessionRootLimits = useAtomValue(sessionRootLimitsAtom);
+  const showMoreSessions = useSetAtom(showMoreSessionsAtom);
+  const resetSessionRootLimit = useSetAtom(resetSessionRootLimitAtom);
   const sessionTree = useMemo(
     () => buildVisibleSessionTree(sessions, collapsedSessionIds),
     [sessions, collapsedSessionIds],
   );
+  const sessionRootLimit =
+    sessionRootLimits[workspace.id] ?? SIDEBAR_SESSION_ROOT_LIMIT;
+  const limitedTree = limitSessionTreeRoots(
+    sessionTree,
+    sessions,
+    sessionRootLimit,
+    sessions
+      .filter(
+        (session) =>
+          session.status === "running" ||
+          session.id === optimisticActiveSessionId ||
+          hasPendingRequest(session.id),
+      )
+      .map((session) => session.id),
+  );
+  const canShowLess = sessionRootLimit > SIDEBAR_SESSION_ROOT_LIMIT;
   const isRunning =
     !expanded && sessions.some((session) => session.status === "running");
   const needsAttention =
-    !expanded &&
-    sessions.some(
-      (session) =>
-        permissionsBySession[session.id]?.some(
-          (permission) => permission.status === "pending",
-        ) ||
-        questionsBySession[session.id]?.some(
-          (question) => question.status === "pending",
-        ),
-    );
+    !expanded && sessions.some((session) => hasPendingRequest(session.id));
   const {
     attributes,
     listeners,
@@ -207,7 +233,7 @@ export function WorkspaceSidebarItem({
               {t("sidebar.noAgentsYet")}
             </div>
           ) : (
-            sessionTree.map((node) => (
+            limitedTree.nodes.map((node) => (
               <SidebarMenuSubItem key={node.session.id}>
                 <SessionSidebarItem
                   depth={node.depth}
@@ -226,6 +252,32 @@ export function WorkspaceSidebarItem({
               </SidebarMenuSubItem>
             ))
           )}
+          {limitedTree.hiddenRootCount > 0 || canShowLess ? (
+            <SidebarMenuSubItem>
+              <SidebarListRow className="gap-3 ps-6 text-sidebar-fg-subtle">
+                {limitedTree.hiddenRootCount > 0 ? (
+                  <button
+                    type="button"
+                    className="hover:text-sidebar-fg"
+                    onClick={() => showMoreSessions(workspace.id)}
+                  >
+                    {t("sidebar.showMore", {
+                      count: limitedTree.hiddenRootCount,
+                    })}
+                  </button>
+                ) : null}
+                {canShowLess ? (
+                  <button
+                    type="button"
+                    className="hover:text-sidebar-fg"
+                    onClick={() => resetSessionRootLimit(workspace.id)}
+                  >
+                    {t("sidebar.showLess")}
+                  </button>
+                ) : null}
+              </SidebarListRow>
+            </SidebarMenuSubItem>
+          ) : null}
         </SidebarMenuSub>
       ) : null}
     </SidebarMenuItem>

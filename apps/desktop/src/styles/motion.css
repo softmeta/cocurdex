@@ -51,7 +51,8 @@
   max-width: none;
   overflow: visible;
   text-overflow: clip;
-  animation: sidebar-overflow-marquee 4s linear 400ms 1 forwards;
+  animation: sidebar-overflow-marquee var(--sidebar-marquee-duration, 4s) linear
+    400ms 1 forwards;
 }
 
 :dir(rtl)

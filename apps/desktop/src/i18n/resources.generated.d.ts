@@ -1195,6 +1195,17 @@ export default interface Resources {
     };
     sidebar: {
       addProject: "Add project";
+      ageDays_one: "{{count}}d";
+      ageDays_other: "{{count}}d";
+      ageHours_one: "{{count}}h";
+      ageHours_other: "{{count}}h";
+      ageMinutes_one: "{{count}}m";
+      ageMinutes_other: "{{count}}m";
+      ageMonths_one: "{{count}}mo";
+      ageMonths_other: "{{count}}mo";
+      ageNow: "now";
+      ageYears_one: "{{count}}y";
+      ageYears_other: "{{count}}y";
       archive: "Archive";
       collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
@@ -1212,6 +1223,9 @@ export default interface Resources {
       revealInFileManager: "Reveal in file manager";
       running: "Running";
       settings: "Settings";
+      showLess: "Show less";
+      showMore_one: "Show more ({{count}} left)";
+      showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
     };
