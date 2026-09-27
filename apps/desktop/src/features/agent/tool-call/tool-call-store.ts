@@ -155,6 +155,18 @@ function selectToolCall(
   existingToolCall: AgentToolCallRecord,
   nextToolCall: AgentToolCallRecord,
 ) {
+  const selected = selectNewerToolCall(existingToolCall, nextToolCall);
+  const seq = selected.seq ?? existingToolCall.seq ?? nextToolCall.seq;
+  if (seq === selected.seq) {
+    return selected;
+  }
+  return { ...selected, seq };
+}
+
+function selectNewerToolCall(
+  existingToolCall: AgentToolCallRecord,
+  nextToolCall: AgentToolCallRecord,
+) {
   const timestampOrder = existingToolCall.updatedAt.localeCompare(
     nextToolCall.updatedAt,
   );

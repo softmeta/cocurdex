@@ -3,6 +3,7 @@ import type {
   AgentEvent,
   AgentProviderSessionRecord,
   AgentRuntimeProviderConfig,
+  AgentToolCallRecord,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
@@ -100,7 +101,9 @@ describe("AgentRuntimeManager", () => {
           stop: vi.fn(),
         }),
     });
-    manager.configureAgentEventPersistence(() => persistence);
+    manager.configureAgentEventPersistence((event) =>
+      persistence.then(() => event),
+    );
     const event: AgentEvent = {
       type: "state.changed",
       sessionId: "session-1",
@@ -113,6 +116,48 @@ describe("AgentRuntimeManager", () => {
     releasePersistence();
     await vi.waitFor(() =>
       expect(broadcastAgentEvent).toHaveBeenCalledWith(event),
+    );
+  });
+
+  it("publishes the event persistence returns", async () => {
+    const broadcastAgentEvent = vi.fn();
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent,
+      createAdapter: () =>
+        createAdapter({
+          dispose: vi.fn(),
+          sendMessage: vi.fn(),
+          stop: vi.fn(),
+        }),
+    });
+    const toolCall = {
+      id: "tool-1",
+      sessionId: "session-1",
+      title: "read",
+      status: "completed",
+      content: [],
+      locations: [],
+      startedAt: "2026-09-27T00:00:00.000Z",
+      updatedAt: "2026-09-27T00:00:00.000Z",
+    } satisfies AgentToolCallRecord;
+    manager.configureAgentEventPersistence((event) =>
+      event.type === "tool.started"
+        ? { ...event, toolCall: { ...event.toolCall, seq: 7 } }
+        : event,
+    );
+
+    manager.emitAgentEvent({
+      type: "tool.started",
+      sessionId: "session-1",
+      toolCall,
+    });
+
+    await vi.waitFor(() =>
+      expect(broadcastAgentEvent).toHaveBeenCalledWith({
+        type: "tool.started",
+        sessionId: "session-1",
+        toolCall: { ...toolCall, seq: 7 },
+      }),
     );
   });
 

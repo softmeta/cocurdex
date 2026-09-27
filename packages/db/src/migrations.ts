@@ -1,10 +1,11 @@
 import type { DatabaseSync } from "node:sqlite";
 import { createSchemaSql } from "./schema";
+import { ensureTimelineSequence } from "./timeline-sequence";
 
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -151,6 +152,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [6, migrateCollaborationModeToSessionModeId],
   [7, migrateWorktreeEnvironmentProposals],
   [8, migratePendingSettingsChanges],
+  [9, ensureTimelineSequence],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {
@@ -266,6 +268,7 @@ export function initializeDatabase(database: DatabaseSync): void {
   }
 
   migrateDatabase(database, state);
+  runMigrationStep(database, ensureTimelineSequence);
 
   database.exec(`PRAGMA application_id = ${COCURDEX_APPLICATION_ID}`);
   database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`);

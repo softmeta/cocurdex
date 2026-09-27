@@ -83,6 +83,10 @@ export function mapSession(row: SqliteRow): SessionRecord {
     ),
     worktreePath: toNullableString(row.worktree_path),
     peerInbound: row.peer_inbound === "refuse" ? "refuse" : "deliver",
+    importedProviderSessionId: toNullableString(
+      row.imported_provider_session_id,
+    ),
+    importedAt: toNullableString(row.imported_at),
   };
 }
 
@@ -98,6 +102,7 @@ export function mapMessage(row: SqliteRow): MessageRecord {
     content: String(row.content),
     attachments: parseJson(row.attachments_json, []),
     createdAt: String(row.created_at),
+    ...(typeof row.seq === "number" ? { seq: row.seq } : {}),
     ...(typeof row.origin_json === "string" && row.origin_json
       ? { origin: parseJson<MessageRecord["origin"]>(row.origin_json, null) }
       : {}),
@@ -124,6 +129,7 @@ export function mapToolCall(row: SqliteRow): AgentToolCallRecord {
     ),
     startedAt: String(row.started_at),
     updatedAt: String(row.updated_at),
+    ...(typeof row.seq === "number" ? { seq: row.seq } : {}),
   };
 }
 
@@ -150,6 +156,7 @@ export function mapToolCallSummary(row: SqliteRow): AgentToolCallRecord {
     ),
     startedAt: String(row.started_at),
     updatedAt: String(row.updated_at),
+    ...(typeof row.seq === "number" ? { seq: row.seq } : {}),
   };
 }
 

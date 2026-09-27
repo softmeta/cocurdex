@@ -67,13 +67,20 @@ export const rewindMessagesAtom = atom(
     set(messagesBySessionAtom, {
       ...current,
       [payload.message.sessionId]: sessionMessages
-        .filter((message) => message.createdAt <= payload.message.createdAt)
+        .filter((message) => isAtOrBefore(message, payload.message))
         .map((message) =>
           message.id === payload.message.id ? payload.message : message,
         ),
     });
   },
 );
+
+function isAtOrBefore(message: MessageRecord, target: MessageRecord) {
+  if (message.seq !== undefined && target.seq !== undefined) {
+    return message.seq <= target.seq;
+  }
+  return message.createdAt <= target.createdAt;
+}
 
 export const loadTurnStatsAtom = atom(
   null,
@@ -155,6 +162,7 @@ function createDeltaMessage(
         ...existingMessage,
         content: `${existingMessage.content}${event.delta}`,
         kind: event.kind ?? existingMessage.kind,
+        seq: existingMessage.seq ?? event.seq,
       }
     : {
         id: event.messageId,
@@ -164,6 +172,7 @@ function createDeltaMessage(
         content: event.delta,
         attachments: [],
         createdAt: event.createdAt,
+        seq: event.seq,
       };
 
   return nextMessage;
@@ -215,6 +224,7 @@ function enqueueDelta(get: Getter, set: Setter, event: MessageDeltaEvent) {
     role: event.role,
     kind: event.kind ?? pending?.kind,
     createdAt: pending?.createdAt ?? event.createdAt,
+    seq: pending?.seq ?? event.seq,
     delta: `${pending?.delta ?? ""}${event.delta}`,
   });
 
@@ -241,7 +251,7 @@ export const applyAgentEventAtom = atom(null, (get, set, event: AgentEvent) => {
   }
 
   if (event.type === "error") {
-    const errorMessage: MessageRecord = {
+    const errorMessage: MessageRecord = event.systemMessage ?? {
       id: crypto.randomUUID(),
       sessionId: event.sessionId,
       role: "system",
@@ -250,6 +260,7 @@ export const applyAgentEventAtom = atom(null, (get, set, event: AgentEvent) => {
       createdAt: new Date().toISOString(),
     };
 
+    flushPendingDeltas(get, set);
     set(appendMessageAtom, errorMessage);
     return;
   }

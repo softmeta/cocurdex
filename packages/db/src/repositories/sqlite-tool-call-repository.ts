@@ -1,13 +1,14 @@
 import type { DatabaseSync } from "node:sqlite";
 import { mapToolCall, mapToolCallSummary } from "../mappers";
 import { parseJson, type SqliteRow } from "../sqlite-types";
+import { allocateTimelineSeq } from "../timeline-sequence";
 import type { ToolCallRepository } from "./tool-call-repository";
 
 // Columns required to render the tool-call trigger row and group header. Notably
 // excludes the result columns — those fields are fetched lazily when the user
 // opens the detail popover/sheet (see getResultById).
 const SUMMARY_COLUMNS =
-  "id, session_id, title, kind, status, subagent_json, raw_input_json, locations_json, started_at, updated_at";
+  "id, session_id, title, kind, status, subagent_json, raw_input_json, locations_json, started_at, updated_at, seq";
 
 export function createSqliteToolCallRepository(
   database: DatabaseSync,
@@ -27,7 +28,7 @@ export function createSqliteToolCallRepository(
         .prepare(
           `SELECT * FROM tool_calls
            WHERE session_id = ?
-           ORDER BY started_at ASC`,
+           ORDER BY seq ASC`,
         )
         .all(sessionId) as SqliteRow[];
       return rows.map(mapToolCall);
@@ -37,7 +38,7 @@ export function createSqliteToolCallRepository(
         .prepare(
           `SELECT ${SUMMARY_COLUMNS} FROM tool_calls
            WHERE session_id = ?
-           ORDER BY started_at ASC`,
+           ORDER BY seq ASC`,
         )
         .all(sessionId) as SqliteRow[];
       return rows.map(mapToolCallSummary);
@@ -57,12 +58,19 @@ export function createSqliteToolCallRepository(
       };
     },
     async upsert(toolCall) {
+      const existing = database
+        .prepare("SELECT seq FROM tool_calls WHERE id = ?")
+        .get(toolCall.id) as { seq?: number | null } | undefined;
+      const seq = existing
+        ? null
+        : (toolCall.seq ?? allocateTimelineSeq(database, toolCall.sessionId));
       database
         .prepare(
           `INSERT INTO tool_calls (
              id, session_id, title, kind, status, subagent_json, content_json,
-             raw_input_json, raw_output_json, locations_json, started_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             raw_input_json, raw_output_json, locations_json, started_at, updated_at,
+             seq
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              session_id = excluded.session_id,
              title = excluded.title,
@@ -89,15 +97,18 @@ export function createSqliteToolCallRepository(
           JSON.stringify(toolCall.locations),
           toolCall.startedAt,
           toolCall.updatedAt,
+          seq,
         );
+      return existing ? (existing.seq ?? null) : seq;
     },
-    async deleteAfter(sessionId, startedAt) {
+    async deleteAfter(sessionId, messageId) {
       database
         .prepare(
           `DELETE FROM tool_calls
-           WHERE session_id = ? AND started_at > ?`,
+           WHERE session_id = ?
+             AND seq > (SELECT seq FROM messages WHERE id = ?)`,
         )
-        .run(sessionId, startedAt);
+        .run(sessionId, messageId);
     },
     async clearBySessionId(sessionId) {
       database

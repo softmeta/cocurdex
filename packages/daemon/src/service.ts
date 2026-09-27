@@ -352,7 +352,7 @@ export class CocurdexDaemonService {
     );
     this.checkpointReconcileTimer.unref?.();
     this.runtime.configureAgentEventPersistence(async (event) => {
-      await this.state.persistAgentEvent(event);
+      const persisted = await this.state.persistAgentEvent(event);
       await this.state.sessionAttention.applyEvent(event);
       if (event.type === "session.mode.updated" && event.availableModes) {
         await this.state.cacheSessionModes(
@@ -393,6 +393,7 @@ export class CocurdexDaemonService {
       if (event.type === "state.changed" && event.status === "error") {
         await this.workspaceChanges.failTurn(event.sessionId, "failed");
       }
+      return persisted;
     });
     const workflowExecutor = new RuntimeWorkflowActionExecutor(
       new DaemonWorkflowAgentTurnRunner(
@@ -1570,9 +1571,9 @@ export class CocurdexDaemonService {
         );
       }
       payload = await this.refreshSessionWorkingPath(payload);
-      const userMessage = this.createUserMessage(payload);
-      await this.captureSessionCheckpoint(payload, userMessage);
-      await this.state.saveUserMessage(userMessage);
+      const createdMessage = this.createUserMessage(payload);
+      await this.captureSessionCheckpoint(payload, createdMessage);
+      const userMessage = await this.state.saveUserMessage(createdMessage);
       void this.trackBackgroundSend(
         this.dispatchSteeringMessage(payload, userMessage, providerConfig),
       );
@@ -1582,14 +1583,17 @@ export class CocurdexDaemonService {
     if (isQueuedFollowUp && hasActiveTurn) {
       await this.ensureAgentAvailable(payload.session.agentType);
       payload = await this.refreshSessionWorkingPath(payload);
-      const userMessage = this.createUserMessage(payload);
-      await this.state.saveQueuedUserMessage(userMessage, {
-        messageId: userMessage.id,
-        sessionId: userMessage.sessionId,
-        workspaceRootPath: payload.workspaceRootPath,
-        thinkingLevel: payload.thinkingLevel,
-        createdAt: userMessage.createdAt,
-      });
+      const createdMessage = this.createUserMessage(payload);
+      const userMessage = await this.state.saveQueuedUserMessage(
+        createdMessage,
+        {
+          messageId: createdMessage.id,
+          sessionId: createdMessage.sessionId,
+          workspaceRootPath: payload.workspaceRootPath,
+          thinkingLevel: payload.thinkingLevel,
+          createdAt: createdMessage.createdAt,
+        },
+      );
       const queued = this.queuedFollowUps.get(payload.session.id) ?? [];
       queued.push({
         payload: {
@@ -1614,9 +1618,9 @@ export class CocurdexDaemonService {
     try {
       await this.ensureAgentAvailable(payload.session.agentType);
       payload = await this.refreshSessionWorkingPath(payload);
-      userMessage = this.createUserMessage(payload);
-      await this.captureSessionCheckpoint(payload, userMessage);
-      await this.state.saveUserMessage(userMessage);
+      const createdMessage = this.createUserMessage(payload);
+      await this.captureSessionCheckpoint(payload, createdMessage);
+      userMessage = await this.state.saveUserMessage(createdMessage);
       persistence = {
         ...(await this.createRuntimePersistence(payload.session.id)),
         providerConfig,

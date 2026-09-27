@@ -40,6 +40,7 @@ import { SessionAttentionProjection } from "./attention";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { createMessageDeltaBuffer } from "./message-delta-buffer";
 import { getDatabasePath } from "./paths";
+import { withMessageSeq, withTimelineSeq } from "./timeline-seq-event";
 
 type CocurdexDatabase = ReturnType<typeof createCocurdexDatabase>;
 const TERMINAL_STATUSES = new Set<SessionStatus>(["idle", "error", "exited"]);
@@ -390,10 +391,11 @@ export class DaemonState {
     await this.database.editorViews.upsert(view);
   }
 
-  async saveUserMessage(message: MessageRecord) {
+  async saveUserMessage(message: MessageRecord): Promise<MessageRecord> {
     const session = await this.database.sessions.getById(message.sessionId);
+    let stored: Promise<number | null> = Promise.resolve(null);
     this.database.transaction(() => {
-      void this.database.messages.append(message);
+      stored = this.database.messages.append(message);
       if (session) {
         void this.database.sessions.upsert({
           ...session,
@@ -402,15 +404,17 @@ export class DaemonState {
         });
       }
     });
+    return withMessageSeq(message, await stored);
   }
 
   async saveQueuedUserMessage(
     message: MessageRecord,
     input: QueuedAgentInputRecord,
-  ) {
+  ): Promise<MessageRecord> {
     const session = await this.database.sessions.getById(message.sessionId);
+    let stored: Promise<number | null> = Promise.resolve(null);
     this.database.transaction(() => {
-      void this.database.messages.append(message);
+      stored = this.database.messages.append(message);
       void this.database.queuedAgentInputs.enqueue(input);
       if (session) {
         void this.database.sessions.upsert({
@@ -420,6 +424,7 @@ export class DaemonState {
         });
       }
     });
+    return withMessageSeq(message, await stored);
   }
 
   listAllQueuedAgentInputs() {
@@ -482,14 +487,8 @@ export class DaemonState {
     }
 
     this.database.transaction(() => {
-      void this.database.messages.deleteAfter(
-        message.sessionId,
-        message.createdAt,
-      );
-      void this.database.toolCalls.deleteAfter(
-        message.sessionId,
-        message.createdAt,
-      );
+      void this.database.toolCalls.deleteAfter(message.sessionId, message.id);
+      void this.database.messages.deleteAfter(message.sessionId, message.id);
       void this.database.messages.update(message);
       void this.database.providerSessions.clear(message.sessionId);
       void this.database.sessions.upsert({
@@ -620,7 +619,7 @@ export class DaemonState {
     await this.database.agentRoles.delete(id);
   }
 
-  async persistAgentEvent(event: AgentEvent) {
+  async persistAgentEvent(event: AgentEvent): Promise<AgentEvent> {
     const eventTimestamp = new Date().toISOString();
 
     if (event.type === "state.changed") {
@@ -628,12 +627,12 @@ export class DaemonState {
         await this.flushBufferedMessages(event.sessionId);
       }
       await this.database.sessions.updateStatus(event.sessionId, event.status);
-      return;
+      return event;
     }
 
     if (event.type === "session.upserted") {
       await this.database.sessions.upsert(event.session);
-      return;
+      return event;
     }
 
     if (event.type === "session.title.updated") {
@@ -641,30 +640,33 @@ export class DaemonState {
         expectedTitle: event.expectedTitle,
         updatedAt: event.updatedAt,
       });
-      return;
+      return event;
     }
 
     if (event.type === "message.completed") {
-      this.deltaBuffer.release(event.message.id);
-      await this.database.messages.append(event.message);
+      const buffered = this.deltaBuffer.release(event.message.id);
+      const seq = await this.database.messages.append({
+        ...event.message,
+        seq: event.message.seq ?? buffered?.seq,
+      });
       const session = await this.database.sessions.getById(event.sessionId);
 
-      if (!session) {
-        return;
+      if (session) {
+        await this.database.sessions.upsert({
+          ...session,
+          status: "idle",
+          updatedAt: event.message.createdAt,
+          lastMessageAt: event.message.createdAt,
+        });
       }
-
-      await this.database.sessions.upsert({
-        ...session,
-        status: "idle",
-        updatedAt: event.message.createdAt,
-        lastMessageAt: event.message.createdAt,
-      });
-      return;
+      return withTimelineSeq(event, seq);
     }
 
     if (event.type === "message.delta") {
-      this.deltaBuffer.append(event);
-      return;
+      const seq = this.deltaBuffer.has(event.messageId)
+        ? null
+        : await this.reserveTimelineSeq(event.sessionId, event.messageId);
+      return withTimelineSeq(event, this.deltaBuffer.append(event, seq).seq);
     }
 
     if (
@@ -672,9 +674,9 @@ export class DaemonState {
       event.type === "tool.updated" ||
       event.type === "tool.finished"
     ) {
-      await this.database.toolCalls.upsert(event.toolCall);
+      const seq = await this.database.toolCalls.upsert(event.toolCall);
       await this.persistSubagentChildSession(event.toolCall);
-      return;
+      return withTimelineSeq(event, seq);
     }
 
     if (event.type === "usage.updated") {
@@ -684,7 +686,7 @@ export class DaemonState {
         event.usage,
         event.receivedAt,
       );
-      return;
+      return event;
     }
 
     if (event.type === "turn.completed") {
@@ -700,31 +702,31 @@ export class DaemonState {
           sessionId: event.sessionId,
         });
       }
-      return;
+      return event;
     }
 
     if (event.type === "error") {
       await this.flushBufferedMessages(event.sessionId);
-      await this.database.messages.append(
-        this.createSystemMessage(
-          event.sessionId,
-          event.message,
-          eventTimestamp,
-        ),
+      const systemMessage = this.createSystemMessage(
+        event.sessionId,
+        event.message,
+        eventTimestamp,
       );
+      const seq = await this.database.messages.append(systemMessage);
       const session = await this.database.sessions.getById(event.sessionId);
 
-      if (!session) {
-        return;
+      if (session) {
+        await this.database.sessions.upsert({
+          ...session,
+          status: "error",
+          updatedAt: eventTimestamp,
+          lastMessageAt: eventTimestamp,
+        });
       }
-
-      await this.database.sessions.upsert({
-        ...session,
-        status: "error",
-        updatedAt: eventTimestamp,
-        lastMessageAt: eventTimestamp,
-      });
+      return { ...event, systemMessage: withMessageSeq(systemMessage, seq) };
     }
+
+    return event;
   }
 
   private async persistSubagentChildSession(toolCall: AgentToolCallRecord) {
@@ -740,6 +742,14 @@ export class DaemonState {
     await this.database.sessions.upsert(
       mergeProjectedSubagentSession(existing ?? undefined, child),
     );
+  }
+
+  private async reserveTimelineSeq(sessionId: string, messageId: string) {
+    const persisted = await this.database.messages.getById(messageId);
+    if (persisted) {
+      return persisted.seq ?? null;
+    }
+    return this.database.sessions.allocateTimelineSeq(sessionId);
   }
 
   private async flushBufferedMessages(sessionId: string) {
