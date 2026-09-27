@@ -76,8 +76,13 @@ function resolveSourceRoot(options?: ProductSkillsIoOptions): string {
   return options?.sourceRoot ?? getDefaultSkillsSourceRoot();
 }
 
-function resolvePackVersion(options?: ProductSkillsIoOptions): string {
-  return options?.packVersion ?? getProductSkillsPackVersion();
+async function resolvePackVersion(
+  options?: ProductSkillsIoOptions,
+): Promise<string> {
+  return (
+    options?.packVersion ??
+    (await getProductSkillsPackVersion(resolveSourceRoot(options)))
+  );
 }
 
 function markerPath(agentsSkillsDir: string): string {
@@ -158,7 +163,7 @@ export async function getProductSkillsStatus(
   options?: ProductSkillsIoOptions,
 ): Promise<ProductSkillsStatus> {
   const home = resolveHome(options);
-  const packVersion = resolvePackVersion(options);
+  const packVersion = await resolvePackVersion(options);
   const agentsSkillsDir = resolveAgentsSkillsDir(scope, {
     workspaceRoot,
     home,
@@ -241,7 +246,7 @@ export async function installProductSkills(
   options?: ProductSkillsIoOptions,
 ): Promise<InstallProductSkillsResult> {
   const home = resolveHome(options);
-  const packVersion = resolvePackVersion(options);
+  const packVersion = await resolvePackVersion(options);
   const sourceRoot = resolveSourceRoot(options);
   const agentsSkillsDir = resolveAgentsSkillsDir(scope, {
     workspaceRoot,

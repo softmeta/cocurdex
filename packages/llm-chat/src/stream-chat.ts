@@ -3,10 +3,11 @@ import type {
   ConversationMessageRecord,
   ConversationUsage,
 } from "@cocurdex/shared";
-import type {
-  AssistantMessage,
-  Context,
-  ProviderStreams,
+import {
+  type AssistantMessage,
+  type Context,
+  normalizeContext,
+  type ProviderStreams,
 } from "@earendil-works/pi-ai";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
 import { googleGenerativeAIApi } from "@earendil-works/pi-ai/api/google-generative-ai.lazy";
@@ -47,11 +48,15 @@ export function createChatStreamRunner(
   return async (params: StreamChatParams): Promise<StreamChatResult> => {
     const model = resolveChatModel(params.providerConfig);
     const context = toChatContext(params.messages, model, params.system);
-    const stream = resolveApi(model.api).streamSimple(model, context, {
-      apiKey: params.providerConfig.apiKey ?? undefined,
-      headers: model.headers,
-      signal: params.abortSignal,
-    });
+    const stream = resolveApi(model.api).streamSimple(
+      model,
+      normalizeContext(context),
+      {
+        apiKey: params.providerConfig.apiKey ?? undefined,
+        headers: model.headers,
+        signal: params.abortSignal,
+      },
+    );
     for await (const event of stream) {
       if (event.type === "text_delta") params.onDelta(event.delta);
     }
@@ -121,12 +126,16 @@ export async function generateChatTitle(
       "Summarize the user's message as a concise title. Maximum 6 words. Use the user's language. Reply with the title only, without quotes or punctuation at the end.",
     messages: [{ role: "user", content: text, timestamp: Date.now() }],
   };
-  const stream = resolveApi(model.api).streamSimple(model, context, {
-    apiKey: providerConfig.apiKey ?? undefined,
-    headers: model.headers,
-    maxTokens: 512,
-    signal,
-  });
+  const stream = resolveApi(model.api).streamSimple(
+    model,
+    normalizeContext(context),
+    {
+      apiKey: providerConfig.apiKey ?? undefined,
+      headers: model.headers,
+      maxTokens: 512,
+      signal,
+    },
+  );
   const result = await stream.result();
   if (result.stopReason === "error" || result.stopReason === "aborted")
     return null;
