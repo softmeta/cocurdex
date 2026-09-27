@@ -18,13 +18,6 @@ export {
   normalizeGeneratedCommitMessage,
 } from "./pi-sdk/pi-commit-message";
 export {
-  loginPiProvider,
-  logoutPiProvider,
-  readPiProviderAuthState,
-  registerBundledPiProviderOAuthFlows,
-  resolvePiProviderAuth,
-} from "./pi-sdk/pi-provider-auth";
-export {
   listPiBuiltInProviderIds,
   listPiProviderModels,
   listPiProviderTemplates,

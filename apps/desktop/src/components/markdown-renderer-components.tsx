@@ -12,8 +12,8 @@ import {
   parseFilePathCandidate,
   parseWorkspaceFileHref,
 } from "./markdown-file-path";
+import { linkifyFilePaths } from "./markdown-file-path-linkify";
 import {
-  linkifyFilePaths,
   MarkdownFilePathCode,
   MarkdownWorkspaceFileLink,
 } from "./markdown-renderer-file-path";

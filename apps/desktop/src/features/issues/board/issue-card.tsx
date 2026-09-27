@@ -166,7 +166,7 @@ export function IssueCard({
               <Circle className="size-3.5" strokeWidth={2.25} />
               {t("cardMenu.status")}
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="min-w-40">
+            <ContextMenuSubContent>
               {statusOptions.map((opt) => {
                 const selected = opt.id === card.status;
                 return (
@@ -193,7 +193,7 @@ export function IssueCard({
               <Flag className="size-3.5" />
               {t("cardMenu.priority")}
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="min-w-40">
+            <ContextMenuSubContent>
               {priorityOptions.map((opt) => {
                 const selected = opt.id === (card.priority || "none");
                 return (

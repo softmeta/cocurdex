@@ -21,6 +21,7 @@ import type {
   AgentProviderRuntimeSnapshot,
   MessageRecord,
 } from "@cocurdex/shared";
+import { errorKindForLog, hashLogValue } from "@cocurdex/shared";
 import {
   buildClaudeUserContent,
   createClaudeCanUseTool,
@@ -252,6 +253,7 @@ export function createClaudeCliAdapter(
       let activeConfigDir: string | null = null;
       let activePermissionMode: string | null = null;
       let activeModelId: string | null = null;
+      let activeUserMessageId: string | null = null;
       let finishActiveTurn: (() => void) | null = null;
       const queryWaiters = new Set<ClaudeQueryWaiter>();
       const promptQueue = new ClaudeQueryPromptQueue();
@@ -360,6 +362,11 @@ export function createClaudeCliAdapter(
       }
 
       function emitTurnError(message: string) {
+        logAdapterDiagnostic("info", "[ClaudeAgentSdkAdapter] turn failed", {
+          errorKind: errorKindForLog(message),
+          messageId: activeUserMessageId,
+          sessionId,
+        });
         onEvent({ type: "error", sessionId, message });
         onEvent({ type: "state.changed", sessionId, status: "error" });
       }
@@ -525,9 +532,9 @@ export function createClaudeCliAdapter(
           });
           logAdapterDiagnostic("info", "[ClaudeAgentSdkAdapter] init", {
             ...runtime,
-            configDir: activeConfigDir,
-            executablePath: activeBinaryPath,
-            runtimeFingerprint,
+            configDirHash: hashLogValue(activeConfigDir),
+            executablePathHash: hashLogValue(activeBinaryPath),
+            runtimeFingerprintHash: hashLogValue(runtimeFingerprint),
             sessionId,
           });
         }
@@ -710,11 +717,13 @@ export function createClaudeCliAdapter(
             "info",
             "[ClaudeAgentSdkAdapter] runtime fingerprint mismatch",
             {
-              currentRuntimeFingerprint,
-              previousRuntimeFingerprint: runtimeFingerprint,
+              currentRuntimeFingerprintHash: hashLogValue(
+                currentRuntimeFingerprint,
+              ),
+              previousRuntimeFingerprintHash: hashLogValue(runtimeFingerprint),
               providerSessionId: resumeSessionId,
               sessionId,
-              workspaceRootPath: payload.workspaceRootPath,
+              workspaceHash: hashLogValue(payload.workspaceRootPath),
             },
           );
           emitTurnError(error.message);
@@ -764,17 +773,18 @@ export function createClaudeCliAdapter(
         };
 
         logAdapterDiagnostic("info", "[ClaudeAgentSdkAdapter] start query", {
-          binaryPath,
-          configDir: activeConfigDir,
+          binaryPathHash: hashLogValue(binaryPath),
+          configDirHash: hashLogValue(activeConfigDir),
           effort: effort ?? null,
+          messageId: messagePayload.messageId ?? null,
           modelId,
           permissionMode,
           resumeSessionAt: resumeSessionAt ?? null,
           resumeSessionId,
           sessionAction: resumeSessionId ? "resume" : "new",
           sessionId,
-          workspaceRootPath: payload.workspaceRootPath,
-          runtimeFingerprint,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
+          runtimeFingerprintHash: hashLogValue(runtimeFingerprint),
         });
 
         try {
@@ -821,6 +831,7 @@ export function createClaudeCliAdapter(
             attachments: messagePayload.attachments ?? [],
             createdAt: new Date().toISOString(),
           };
+          activeUserMessageId = userMessage.id;
 
           if (messagePayload.delivery === "steer-active-run") {
             if (!query) {
@@ -859,7 +870,7 @@ export function createClaudeCliAdapter(
                 historyMessageCount: messagePayload.history.length,
                 providerSessionId: null,
                 sessionId,
-                workspaceRootPath: payload.workspaceRootPath,
+                workspaceHash: hashLogValue(payload.workspaceRootPath),
               },
             );
             emitTurnError(error.message);

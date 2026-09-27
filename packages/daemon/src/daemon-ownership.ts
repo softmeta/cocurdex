@@ -9,7 +9,7 @@ export async function acquireDaemonOwnership(userDataPath: string) {
     path.join(directory, "daemon-owner.sqlite"),
   );
   try {
-    database.exec("PRAGMA busy_timeout = 0");
+    database.exec("PRAGMA busy_timeout = 3000");
     database.exec("BEGIN EXCLUSIVE");
   } catch (cause) {
     database.close();

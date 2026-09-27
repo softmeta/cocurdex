@@ -2,6 +2,7 @@ import type {
   AgentDescriptor,
   AgentId,
   AgentPlanApprovalDecision,
+  AgentProviderModelAxes,
   AgentProviderSelection,
   AgentProviderSnapshot,
   AgentRateLimitsReadResult,
@@ -59,12 +60,17 @@ import type {
   PdfDocumentAnnotations,
   PeerInboundPolicy,
   PeerSessionSummary,
+  PendingSettingsChangeRecord,
+  PiModelsJson,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
   ProductSkillsStatusResult,
+  ProviderAuthLoginUpdate,
+  ProviderAuthMethod,
   ProviderAuthState,
   ProviderConfigRecord,
+  ProviderImportResult,
   ProviderListModelsResult,
   ProviderModelRecord,
   ProviderTemplateRecord,
@@ -204,6 +210,11 @@ export type DaemonRequestPayloadByMethod = {
   "workspace.save": { workspace: WorkspaceRecord };
   "workspace.worktreeEnvironment.get": { workspaceId: string };
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
+  "assistant.session.create": { workspaceId: string };
+  "assistant.session.getOrCreate": { workspaceId: string };
+  "settings.pendingChanges.list": undefined;
+  "settings.pendingChanges.ack": { id: string };
+  "settings.values.report": { values: Record<string, unknown> };
   "workspace.runWorktreeSetup": {
     workspaceId: string;
     worktreePath: string;
@@ -272,6 +283,19 @@ export type DaemonRequestPayloadByMethod = {
   "provider.titleModel.probe": { selection: TitleModelSelection };
   "provider.auth.read": { providerId: string };
   "provider.auth.logout": { providerId: string };
+  "provider.auth.login.start": {
+    providerId: string;
+    method: ProviderAuthMethod;
+  };
+  "provider.auth.login.next": { loginId: string };
+  "provider.auth.login.respond": {
+    loginId: string;
+    promptId: string;
+    value: string;
+  };
+  "provider.auth.login.cancel": { loginId: string };
+  "provider.importJson": { json: string };
+  "provider.exportJson": undefined;
   "codex.account.read": undefined;
   "codex.logout": undefined;
   "session.updateTitle": UpdateSessionTitlePayload;
@@ -396,6 +420,7 @@ export type DaemonRequestPayloadByMethod = {
     agentId: AgentId;
     forceRefresh?: boolean;
   };
+  "provider.modelAxes.probe": { agentId: AgentId; modelId: string };
   "provider.listDefaults": undefined;
   "agentRole.list": undefined;
   "agentRole.get": { id: string };
@@ -428,6 +453,11 @@ export type DaemonResultByMethod = {
   "workspace.save": WorkspaceRecord;
   "workspace.worktreeEnvironment.get": WorkspaceWorktreeEnvironment;
   "workspace.worktreeEnvironment.save": WorkspaceWorktreeEnvironment;
+  "assistant.session.create": SessionRecord;
+  "assistant.session.getOrCreate": SessionRecord;
+  "settings.pendingChanges.list": PendingSettingsChangeRecord[];
+  "settings.pendingChanges.ack": null;
+  "settings.values.report": null;
   "workspace.runWorktreeSetup": { ran: boolean };
   "worktree.settings.get": WorktreeSettingsSnapshot;
   "worktree.settings.save": WorktreeSettingsSnapshot;
@@ -478,6 +508,12 @@ export type DaemonResultByMethod = {
   "provider.titleModel.probe": TitleModelProbeResult;
   "provider.auth.read": ProviderAuthState;
   "provider.auth.logout": null;
+  "provider.auth.login.start": { loginId: string };
+  "provider.auth.login.next": ProviderAuthLoginUpdate;
+  "provider.auth.login.respond": null;
+  "provider.auth.login.cancel": null;
+  "provider.importJson": ProviderImportResult;
+  "provider.exportJson": PiModelsJson;
   "codex.account.read": CodexAccountState;
   "codex.logout": null;
   "session.updateTitle": SessionRecord | null;
@@ -571,6 +607,7 @@ export type DaemonResultByMethod = {
   "git.push": GitPushResult;
   "provider.listModels": ProviderListModelsResult;
   "provider.listCompatibleForAgent": CompatibleProviderModel[];
+  "provider.modelAxes.probe": AgentProviderModelAxes | null;
   "provider.listDefaults": AgentProviderSelection[];
   "agentRole.list": AgentRoleRecord[];
   "agentRole.get": AgentRoleRecord | null;
@@ -611,9 +648,11 @@ export const DAEMON_NO_PARAM_METHODS = {
   "git.commitMessageModel.get": true,
   "git.commitMessageModel.resolve": true,
   "provider.listDefaults": true,
+  "provider.exportJson": true,
   "agentRole.list": true,
   "session.list": true,
   "session.listArchived": true,
+  "settings.pendingChanges.list": true,
   "workflow.list": true,
   "workflow.listDefinitions": true,
   "workspace.list": true,

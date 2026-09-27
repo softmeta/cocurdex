@@ -4,9 +4,7 @@ import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
-  type AgentProviderSnapshot,
-  type ProviderConfigRecord,
-  type ProviderModelRecord,
+  createProviderSnapshotForModel,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type SessionRecord,
@@ -34,6 +32,7 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
+import { handleProviderCommand, providerUsageLines } from "./provider-commands";
 import {
   handleScriptRunCommand,
   scriptRunUsageLines,
@@ -291,21 +290,11 @@ async function main(rawArgs: string[]) {
     return;
   }
 
-  if (resource === "provider" && action === "list") {
-    const providers = await withDaemon(() =>
-      requestDaemon("provider.listConfigs"),
-    );
-    printRows(providers, ["id", "name", "baseUrl", "enabled"], parsed);
-    return;
-  }
-
-  if (resource === "provider" && action === "models") {
-    const [providerId] = args;
-    const result = await withDaemon(() =>
-      requestDaemon("provider.listModels", { providerId }),
-    );
-    printRows(result.models, ["providerId", "modelId", "name", "api"], parsed);
-    return;
+  if (resource === "provider") {
+    const handled = await handleProviderCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
   }
 
   if (resource === "role" && (action === "list" || action === undefined)) {
@@ -468,8 +457,7 @@ function printUsage() {
       "  cocurdex session stop <session-id>",
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
-      "  cocurdex provider list",
-      "  cocurdex provider models <provider>",
+      ...providerUsageLines(),
       "  cocurdex workflow list",
       "  cocurdex workflow definitions",
       "  cocurdex workflow tui [run-id]",
@@ -531,7 +519,7 @@ async function createSession(parsed: ParsedArgs) {
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,
-    providerSnapshot: createProviderSnapshot(provider, model),
+    providerSnapshot: createProviderSnapshotForModel({ provider, model }),
   };
 
   return withDaemon(async () => {
@@ -724,22 +712,6 @@ function createWorkspaceFromPath(
     updatedAt: now,
     lastOpenedAt: now,
     sortOrder,
-  };
-}
-
-function createProviderSnapshot(
-  provider: ProviderConfigRecord,
-  model: ProviderModelRecord,
-): AgentProviderSnapshot {
-  return {
-    providerId: provider.id,
-    providerName: provider.name,
-    modelId: model.modelId,
-    modelName: model.name,
-    api: model.api,
-    baseUrl: provider.baseUrl,
-    headersJson: provider.headersJson,
-    reasoningEffort: model.defaultReasoningEffort,
   };
 }
 

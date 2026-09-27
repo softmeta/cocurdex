@@ -45,7 +45,7 @@ Persisted user data outlives any single release. Never delete, recreate, or rewr
 
 After edits, run applicable checks in this order and fix reported issues:
 
-1. For new `t("...")` calls, run `pnpm --filter @cocurdex/desktop i18n:extract`, complete en-US and zh-CN translations, then run `pnpm --filter @cocurdex/desktop i18n:types`.
+1. For new `t("...")` calls, run `pnpm --filter @cocurdex/desktop i18n:extract`, complete en-US and zh-CN translations, then run `pnpm --filter @cocurdex/desktop i18n:types` and `pnpm exec biome check --write apps/desktop/src/i18n` (biome normalizes the generated `.d.ts`; CI fails on stale output). `src/locales/*.json` and `src/i18n/*.generated.d.ts` are generated artifacts: resolve merge conflicts by rerunning this chain, never by hand-editing them.
 2. Run the affected packages' TypeScript checks, scoped to changed TypeScript source files.
 3. Run `pnpm exec biome check --write <changed-files>` for supported files. For Markdown-only changes, run `git diff --check`; no TypeScript check is needed.
 
@@ -158,12 +158,23 @@ Extend `AppSearchableSelect` or `AppSelect` props first. Extend primitives only 
 - Effects are only for synchronizing external systems such as DOM, network, timers, subscriptions, browser APIs, or non-React components. Before adding `useEffect`, explain the external system and why render calculations, event handlers, stable `key` resets, lifted state, or memoization cannot replace it.
 - Derive values during render; use `useMemo` only for measured expensive computations. Avoid mirrored state, effect chains, and effect-based parent notifications. Handle user actions and related state updates in their originating event; use controlled components or lifted state when appropriate.
 
+### Fast Refresh exports
+
+A `.tsx` module that exports a component is a Vite Fast Refresh boundary. `@vitejs/plugin-react` accepts the update only when every runtime export is a component, or a string, number, or boolean that stays `===` to the previous value. A plain function, hook, atom, array, or object is a new value when the module re-executes, so the plugin invalidates importers. `export *` barrels repeat that walk across the shell until `main.tsx` fully reloads, which is the long `hmr invalidate` / `hmr update` burst in the dev server log.
+
+- Keep helpers, hooks, and atoms in a sibling `.ts` module that exports no components. Callers import them from that module.
+- Do not re-export those values from the component module. A barrel may export them from the `.ts` module.
+- `export type` is erased and may stay beside components.
+- Do not register ignored refresh exports to keep a mixed module. Importers would keep the previous function.
+- Leave `components/ui` upstream exports such as `buttonVariants` in place. Do not split primitives only to satisfy this rule.
+
 References: [Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warning), [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect), and Tailwind CSS's *Styling with utility classes - Managing duplication*.
 
 ## Product knowledge and skills
 
 - PRDs, specs, notes, and issues are private in app-owned storage by default. Publish to workspace `.cocurdex/` only on explicit user request. See `docs/agents/issue-tracker.md` and `docs/agents/cocurdex-layout.md`.
-- Use namespaced skills: `/cocurdex-grill` -> `/cocurdex-prd` -> optional `/cocurdex-spec` -> `/cocurdex-issue` -> `/cocurdex-ship`. Router: `/cocurdex-ask`; notes: `/cocurdex-note`; links: `/cocurdex-link`; parallel teammate agents: `/cocurdex-team`. Todo and ticket mean issue in the selected private or explicitly published pool.
+- Use namespaced skills: `/cocurdex-grill` -> `/cocurdex-prd` -> optional `/cocurdex-spec` -> `/cocurdex-issue` -> `/cocurdex-ship`. Router: `/cocurdex-ask`; notes: `/cocurdex-note`; links: `/cocurdex-link`; parallel teammate agents: `/cocurdex-team`; app settings: `/cocurdex-settings`. Todo and ticket mean issue in the selected private or explicitly published pool.
 - Manage issue structure (init, list, create, move, validate) through `@cocurdex/cli` using `cocurdex issue ...`. Never invent IDs or manually rewrite status.
-- Distribute skills from `packages/product-skills` through Settings > Skills or `cocurdex skills install --scope project|global`; do not auto-install.
+- Distribute skills from `packages/product-skills` through Settings > Skills or `cocurdex skills install --scope project|global`; do not auto-install. This repository symlinks `.agents/skills/cocurdex-*` and `.claude/skills/cocurdex-*` to that source; never commit installed copies.
+- Product skills and `docs/agents/*` are part of the CLI contract. When a change adds, renames, or removes a `cocurdex` CLI command, flag, output field, or the daemon capability behind it, update the affected `packages/product-skills/skills/cocurdex-*` and `docs/agents/*` in the same PR. When adding a daemon capability agents should use, decide whether it needs a CLI command and skill coverage.
 - Use the single-context domain documentation layout described in `docs/agents/domain.md`.

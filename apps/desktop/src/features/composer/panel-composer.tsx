@@ -15,10 +15,7 @@ import {
   composerStopGlyphClassName,
 } from "./chat-composer-layout";
 import { ContextAttachmentChips } from "./context-attachment-chips";
-import {
-  ContextFileMentionMenu,
-  type ContextFileMentionsState,
-} from "./context-file-mentions";
+import { ContextFileMentionMenu } from "./context-file-mentions";
 import { ContextWindowIndicator } from "./context-window-indicator";
 import { DocumentAttachmentChips } from "./document-attachment-chips";
 import {
@@ -33,10 +30,9 @@ import type {
 } from "./mention-editor";
 import { MentionEditor } from "./mention-editor";
 import type { SendShortcut } from "./send-shortcut";
-import {
-  SlashCommandMenu,
-  type SlashCommandsState,
-} from "./slash-command-menu";
+import { SlashCommandMenu } from "./slash-command-menu";
+import type { ContextFileMentionsState } from "./use-context-file-mentions";
+import type { SlashCommandsState } from "./use-slash-commands";
 
 interface PanelComposerProps {
   composerAttachments: MessageAttachment[];

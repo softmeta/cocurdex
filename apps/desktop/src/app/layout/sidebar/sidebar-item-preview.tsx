@@ -6,7 +6,7 @@ import {
   type CompactRelativeTime,
   getCompactRelativeTime,
 } from "./compact-relative-time";
-import { useSidebarScrolling } from "./sidebar-scroll-area";
+import { useSidebarScrolling } from "./sidebar-scrolling";
 
 interface SidebarItemPreviewProps {
   agentLabel?: string;

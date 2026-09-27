@@ -20,6 +20,10 @@ import {
   type AgentSessionConfigOption,
   type AgentSlashCommand,
   type AgentUsageRecord,
+  agentToolNameFromPermissionTitle,
+  hashLogValue,
+  hostForLog,
+  isAssistantSessionId,
   type MessageAttachment,
   type MessageRecord,
   mergeUsageRecords,
@@ -96,7 +100,7 @@ export class AgentRuntimeManager {
     AgentPlanUpdatedEvent["plan"]
   >();
   private persistAgentEventHandler:
-    | ((event: AgentEvent) => Promise<void> | void)
+    | ((event: AgentEvent) => Promise<AgentEvent> | AgentEvent)
     | null = null;
   // Serialize persistence so events are written in emission order. Without
   // this queue, async writes can interleave and the DB sees out-of-order rows.
@@ -115,7 +119,7 @@ export class AgentRuntimeManager {
   }
 
   configureAgentEventPersistence(
-    handler: (event: AgentEvent) => Promise<void> | void,
+    handler: (event: AgentEvent) => Promise<AgentEvent> | AgentEvent,
   ) {
     this.persistAgentEventHandler = handler;
   }
@@ -154,11 +158,14 @@ export class AgentRuntimeManager {
     }
 
     const persistence = this.persistQueue.then(() => handler(event));
-    this.persistQueue = persistence.catch((error) => {
-      console.error("[AgentRuntimeManager] Failed to persist event", error);
-    });
+    this.persistQueue = persistence.then(
+      () => undefined,
+      (error) => {
+        console.error("[AgentRuntimeManager] Failed to persist event", error);
+      },
+    );
     void persistence.then(
-      () => this.broadcastCoalescer.push(event),
+      (persisted) => this.broadcastCoalescer.push(persisted),
       () => undefined,
     );
   }
@@ -231,6 +238,17 @@ export class AgentRuntimeManager {
   requestAgentPermission(
     request: AgentPermissionRequestPayload,
   ): Promise<AgentPermissionResolution> {
+    // The assistant session exists to operate the app, so its calls to
+    // Cocurdex's own agent tools skip the per-call approval card — the tool
+    // catalog already gates availability, and mutating tools carry their own
+    // confirm flow (e.g. settings_propose). Approval stays for every other
+    // session and every non-Cocurdex tool.
+    if (
+      isAssistantSessionId(request.sessionId) &&
+      agentToolNameFromPermissionTitle(request.title) !== null
+    ) {
+      return Promise.resolve({ decision: "allow_once", optionId: null });
+    }
     const record = this.createPermissionRecord(request);
 
     return new Promise((resolve) => {
@@ -516,7 +534,7 @@ export class AgentRuntimeManager {
       providerSessionId: options.providerSession?.providerSessionId ?? null,
       sessionId: payload.session.id,
       thinkingLevel: payload.thinkingLevel ?? null,
-      workspaceRootPath: payload.workspaceRootPath,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
     });
     this.activeTurnTrackers.set(payload.session.id, turnTracker);
 
@@ -849,12 +867,10 @@ export class AgentRuntimeManager {
   private summarizeAttachmentForLog(attachment: MessageAttachment) {
     if (attachment.kind === "image") {
       return {
-        filePath: attachment.filePath,
         height: attachment.height,
         id: attachment.id,
         kind: attachment.kind,
         mimeType: attachment.mimeType,
-        name: attachment.name,
         sizeBytes: attachment.sizeBytes,
         width: attachment.width,
       };
@@ -862,25 +878,21 @@ export class AgentRuntimeManager {
 
     if (attachment.kind === "context-folder") {
       return {
-        folderPath: attachment.folderPath,
         kind: attachment.kind,
       };
     }
 
     if (attachment.kind === "document") {
       return {
-        filePath: attachment.filePath,
         id: attachment.id,
         kind: attachment.kind,
         mimeType: attachment.mimeType,
-        name: attachment.name,
         sizeBytes: attachment.sizeBytes,
       };
     }
 
     return {
       endLine: attachment.endLine,
-      filePath: attachment.filePath,
       kind: attachment.kind ?? "context-file",
       language: attachment.language,
       selectedTextLength: attachment.selectedText.length,
@@ -898,9 +910,9 @@ export class AgentRuntimeManager {
 
     return {
       api: providerConfig.api,
-      baseUrl: providerConfig.baseUrl,
+      endpointHost: hostForLog(providerConfig.baseUrl),
       hasApiKey: Boolean(providerConfig.apiKey),
-      modelBaseUrl: providerConfig.modelBaseUrl ?? null,
+      modelEndpointHost: hostForLog(providerConfig.modelBaseUrl),
       modelId: providerConfig.modelId,
       modelName: providerConfig.modelName,
       providerId: providerConfig.providerId,

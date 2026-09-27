@@ -1,6 +1,7 @@
 export * from "./adapter-status";
 export * from "./agent-runtime-preferences";
 export * from "./agent-select";
+export * from "./agent-select-options";
 export * from "./collaboration-mode";
 export * from "./new-session-card";
 export * from "./permission-mode-submenu";

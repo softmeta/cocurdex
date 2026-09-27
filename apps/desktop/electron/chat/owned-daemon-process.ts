@@ -41,11 +41,14 @@ export function parseDaemonOutputLine(
     };
   }
 
-  if (stream === "stderr" && line.trim()) {
-    return { message: line, source: "stderr" };
+  if (!line.trim()) {
+    return null;
   }
 
-  return null;
+  return {
+    message: line,
+    source: stream === "stderr" ? "stderr" : "diagnostic",
+  };
 }
 
 function captureDiagnostics(

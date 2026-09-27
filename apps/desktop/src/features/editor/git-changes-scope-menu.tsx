@@ -5,7 +5,6 @@ import {
   AppDropdownRadioList,
   AppDropdownTriggerButton,
   AppDropdownTriggerLabel,
-  appPopupContentWidthClassName,
 } from "@/components";
 import {
   DropdownMenu,
@@ -90,10 +89,7 @@ export function GitChangesScopeMenu({
           <AppDropdownTriggerLabel>{triggerLabel}</AppDropdownTriggerLabel>
         </AppDropdownTriggerButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className={appPopupContentWidthClassName}
-      >
+      <DropdownMenuContent align="start">
         <AppDropdownRadioList
           value={modeValue}
           onValueChange={(mode) => {
@@ -124,7 +120,7 @@ export function GitChangesScopeMenu({
           <DropdownMenuSubTrigger>
             <span className="truncate">{t("git.scope.commit")}</span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-72 min-w-64 max-w-96">
+          <DropdownMenuSubContent className="max-h-72 [--popup-max-width:24rem]">
             {commitsLoading && commits.length === 0 ? (
               <div className="px-2 py-1.5 text-xs text-muted-foreground">
                 {t("git.loadingCommits")}
@@ -167,7 +163,7 @@ export function GitChangesScopeMenu({
           <DropdownMenuSubTrigger>
             <span className="truncate">{t("git.scope.turn")}</span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-72 min-w-64 max-w-96">
+          <DropdownMenuSubContent className="max-h-72 [--popup-max-width:24rem]">
             {turnsLoading && turns.length === 0 ? (
               <div className="px-2 py-1.5 text-xs text-muted-foreground">
                 {t("git.loadingTurns")}
@@ -214,38 +210,6 @@ export function GitChangesScopeMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-// Narrow helper so the toolbar can render the scope chip without importing
-// translation keys elsewhere.
-export function formatCommitChip(
-  commits: readonly GitCommitInfo[],
-  commit: string,
-): { shortHash: string; subject: string } {
-  const match = commits.find(
-    (entry) => entry.hash === commit || entry.shortHash === commit,
-  );
-  if (match) {
-    return { shortHash: match.shortHash, subject: match.subject };
-  }
-  return {
-    shortHash: commit.length > 7 ? commit.slice(0, 7) : commit,
-    subject: "",
-  };
-}
-
-export function formatTurnChip(
-  turns: readonly TurnChangeSet[],
-  messageId: string,
-  turnLabels: Record<string, string>,
-  t: (key: "git.turnFiles", options: { count: number }) => string,
-): string {
-  const match = turns.find((turn) => turnChangeSetKey(turn) === messageId);
-  if (!match) {
-    return turnLabels[messageId] ?? "";
-  }
-  const key = turnChangeSetKey(match);
-  return turnLabels[key] || t("git.turnFiles", { count: match.files.length });
 }
 
 export function ScopeAccessory({ children }: { children: ReactNode }) {

@@ -1,10 +1,7 @@
-import { randomUUID } from "node:crypto";
 import {
   cancelCodexLogin,
   generateCodexConversationTitle,
   generatePiConversationTitle,
-  loginPiProvider,
-  registerBundledPiProviderOAuthFlows,
   startCodexChatGptLogin,
 } from "@cocurdex/agent-adapters/desktop-provider";
 import { requestDaemon } from "@cocurdex/daemon/client";
@@ -12,15 +9,14 @@ import type {
   AgentProviderSnapshot,
   CodexLoginOutcome,
   ProviderAuthLoginUpdate,
-  ProviderAuthMethod,
-  ProviderAuthPrompt,
   ProviderConfigRecord,
   ProviderModelRecord,
   RefineSessionTitlePayload,
   SessionRecord,
   TitleModelProbeResult,
 } from "@cocurdex/shared";
-import { app, ipcMain } from "electron";
+import { errorKindForLog, hostForLog } from "@cocurdex/shared";
+import { ipcMain } from "electron";
 import { chatDaemonOptions } from "../chat";
 import {
   idSchema,
@@ -41,21 +37,6 @@ export async function resolveProviderApiKey(
     { providerId: config.id },
     await chatDaemonOptions(),
   );
-}
-
-async function clearStoredProviderApiKey(providerId: string) {
-  try {
-    await requestDaemon(
-      "provider.apiKey.set",
-      { providerId, apiKey: null },
-      await chatDaemonOptions(),
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message === "Provider not found") {
-      return;
-    }
-    throw error;
-  }
 }
 
 export async function buildRuntimeProviderConfig(session: SessionRecord) {
@@ -174,7 +155,7 @@ export async function resolveDedicatedTitleModel(): Promise<TitleModelRecords | 
   const apiKey = await resolveProviderApiKey(provider);
   titleLogger.debug("titleGeneration.dedicatedModelResolved", {
     api: model.api,
-    baseUrl: model.baseUrl ?? provider.baseUrl,
+    endpointHost: hostForLog(model.baseUrl ?? provider.baseUrl),
     hasApiKey: Boolean(apiKey),
     modelId: model.modelId,
     providerId: provider.id,
@@ -190,7 +171,7 @@ async function resolveSessionTitleModel(
 
   if (!runtime?.baseUrl || !runtime.modelId) {
     titleLogger.debug("titleGeneration.unavailable", {
-      hasBaseUrl: Boolean(runtime?.baseUrl),
+      hasEndpoint: Boolean(runtime?.baseUrl),
       hasModelId: Boolean(runtime?.modelId),
       sessionId: session.id,
     });
@@ -220,7 +201,7 @@ async function resolveSessionTitleModel(
 
   titleLogger.debug("titleGeneration.sessionModelResolved", {
     api: model.api,
-    baseUrl: model.baseUrl ?? provider.baseUrl,
+    endpointHost: hostForLog(model.baseUrl ?? provider.baseUrl),
     configured: Boolean(configuredProvider && configuredModel),
     hasApiKey: Boolean(runtime.apiKey),
     modelId: model.modelId,
@@ -293,6 +274,7 @@ export async function generateProviderSessionTitle(
     titleLogger.info("titleGeneration.skipped", {
       durationMs: Date.now() - startedAt,
       error: error instanceof Error ? error.message : "Unknown error",
+      errorKind: errorKindForLog(error),
       sessionId: session.id,
     });
 
@@ -307,219 +289,50 @@ export async function generateProviderSessionTitle(
 // authUrl externally, then awaits codex:loginWait for the outcome.
 const pendingCodexLogins = new Map<string, Promise<CodexLoginOutcome>>();
 
-interface PendingProviderAuthLogin {
-  controller: AbortController;
-  prompts: Map<
-    string,
-    { resolve(value: string): void; reject(error: Error): void }
-  >;
-  queue: ProviderAuthLoginUpdate[];
-  waiters: Array<(update: ProviderAuthLoginUpdate) => void>;
-}
-
-const pendingProviderAuthLogins = new Map<string, PendingProviderAuthLogin>();
-const PROVIDER_AUTH_LOGIN_RETENTION_MS = 5 * 60 * 1000;
-
-function pushProviderAuthLoginUpdate(
-  login: PendingProviderAuthLogin,
-  update: ProviderAuthLoginUpdate,
-) {
-  const waiter = login.waiters.shift();
-  if (waiter) {
-    waiter(update);
-    return;
-  }
-  login.queue.push(update);
-}
-
-function finishProviderAuthLogin(
-  loginId: string,
-  login: PendingProviderAuthLogin,
-  update: ProviderAuthLoginUpdate,
-) {
-  pushProviderAuthLoginUpdate(login, update);
-  const cleanup = setTimeout(() => {
-    if (pendingProviderAuthLogins.get(loginId) === login) {
-      pendingProviderAuthLogins.delete(loginId);
-    }
-  }, PROVIDER_AUTH_LOGIN_RETENTION_MS);
-  cleanup.unref();
-}
-
-function normalizeProviderAuthPrompt(
-  promptId: string,
-  prompt: Parameters<Parameters<typeof loginPiProvider>[3]["prompt"]>[0],
-): ProviderAuthPrompt {
-  if (prompt.type === "select") {
-    return {
-      id: promptId,
-      type: "select",
-      message: prompt.message,
-      options: prompt.options.map((option) => ({
-        id: option.id,
-        label: option.label,
-        description: option.description ?? null,
-      })),
-    };
-  }
-  return {
-    id: promptId,
-    type: prompt.type,
-    message: prompt.message,
-    placeholder: prompt.placeholder ?? null,
-  };
-}
-
-function startProviderAuthLogin(
-  providerId: string,
-  method: ProviderAuthMethod,
-) {
-  const loginId = randomUUID();
-  const controller = new AbortController();
-  const login: PendingProviderAuthLogin = {
-    controller,
-    prompts: new Map(),
-    queue: [],
-    waiters: [],
-  };
-  pendingProviderAuthLogins.set(loginId, login);
-
-  void loginPiProvider(app.getPath("userData"), providerId, method, {
-    signal: controller.signal,
-    prompt: (prompt) => {
-      const promptId = randomUUID();
-      return new Promise<string>((resolve, reject) => {
-        const rejectPrompt = () => {
-          login.prompts.delete(promptId);
-          reject(new Error("Login cancelled"));
-          pushProviderAuthLoginUpdate(login, {
-            type: "prompt_cancelled",
-            promptId,
-          });
-        };
-        if (prompt.signal?.aborted || controller.signal.aborted) {
-          rejectPrompt();
-          return;
-        }
-        const abortSignal = prompt.signal ?? controller.signal;
-        abortSignal.addEventListener("abort", rejectPrompt, { once: true });
-        login.prompts.set(promptId, {
-          resolve: (value) => {
-            abortSignal.removeEventListener("abort", rejectPrompt);
-            resolve(value);
-          },
-          reject,
-        });
-        pushProviderAuthLoginUpdate(login, {
-          type: "prompt",
-          prompt: normalizeProviderAuthPrompt(promptId, prompt),
-        });
-      });
-    },
-    notify: (event) => {
-      if (event.type === "info" || event.type === "progress") {
-        pushProviderAuthLoginUpdate(login, {
-          type: event.type,
-          message: event.message,
-        });
-        return;
-      }
-      if (event.type === "auth_url") {
-        pushProviderAuthLoginUpdate(login, {
-          type: "auth_url",
-          url: event.url,
-          instructions: event.instructions ?? null,
-        });
-        return;
-      }
-      pushProviderAuthLoginUpdate(login, {
-        type: "device_code",
-        userCode: event.userCode,
-        verificationUri: event.verificationUri,
-      });
-    },
-  })
-    .then(async () => {
-      await clearStoredProviderApiKey(providerId);
-      finishProviderAuthLogin(loginId, login, { type: "complete" });
-    })
-    .catch((error) => {
-      finishProviderAuthLogin(loginId, login, {
-        type: "error",
-        error: error instanceof Error ? error.message : "Provider login failed",
-      });
-    });
-
-  return { loginId };
-}
-
 function registerProviderAuthHandlers() {
   registerHandlerArgs(
     ipcMain,
     "provider:authLoginStart",
     schemas.providerAuthLoginStart,
     async (_event, providerId, method) =>
-      startProviderAuthLogin(providerId, method),
+      requestDaemon(
+        "provider.auth.login.start",
+        { providerId, method },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "provider:authLoginNext",
     idSchema,
-    async (_event, loginId): Promise<ProviderAuthLoginUpdate> => {
-      const login = pendingProviderAuthLogins.get(loginId);
-      if (!login) {
-        return { type: "error", error: "Unknown login attempt" };
-      }
-      const queued = login.queue.shift();
-      if (queued) {
-        if (queued.type === "complete" || queued.type === "error") {
-          pendingProviderAuthLogins.delete(loginId);
-        }
-        return queued;
-      }
-      const update = await new Promise<ProviderAuthLoginUpdate>((resolve) => {
-        login.waiters.push(resolve);
-      });
-      if (update.type === "complete" || update.type === "error") {
-        pendingProviderAuthLogins.delete(loginId);
-      }
-      return update;
-    },
+    async (_event, loginId): Promise<ProviderAuthLoginUpdate> =>
+      requestDaemon(
+        "provider.auth.login.next",
+        { loginId },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandlerArgs(
     ipcMain,
     "provider:authLoginRespond",
     schemas.providerAuthLoginRespond,
-    async (_event, loginId, promptId, value) => {
-      const login = pendingProviderAuthLogins.get(loginId);
-      const prompt = login?.prompts.get(promptId);
-      if (!login || !prompt) {
-        throw new Error("Login prompt is no longer active");
-      }
-      login.prompts.delete(promptId);
-      prompt.resolve(value);
-    },
+    async (_event, loginId, promptId, value) =>
+      requestDaemon(
+        "provider.auth.login.respond",
+        { loginId, promptId, value },
+        await chatDaemonOptions(),
+      ),
   );
   registerHandler(
     ipcMain,
     "provider:authLoginCancel",
     idSchema,
-    async (_event, loginId) => {
-      const login = pendingProviderAuthLogins.get(loginId);
-      if (!login) {
-        return;
-      }
-      login.controller.abort();
-      for (const prompt of login.prompts.values()) {
-        prompt.reject(new Error("Login cancelled"));
-      }
-      login.prompts.clear();
-      pushProviderAuthLoginUpdate(login, {
-        type: "error",
-        error: "Login cancelled",
-      });
-      pendingProviderAuthLogins.delete(loginId);
-    },
+    async (_event, loginId) =>
+      requestDaemon(
+        "provider.auth.login.cancel",
+        { loginId },
+        await chatDaemonOptions(),
+      ),
   );
 }
 
@@ -570,7 +383,6 @@ function registerCodexAccountHandlers() {
 }
 
 export function registerProviderHandlers() {
-  registerBundledPiProviderOAuthFlows();
   registerCodexAccountHandlers();
   registerProviderAuthHandlers();
   ipcMain.handle("provider:listTemplates", async () =>
@@ -622,6 +434,13 @@ export function registerProviderHandlers() {
         { providerId, apiKey: null },
         await chatDaemonOptions(),
       ),
+  );
+  registerHandler(
+    ipcMain,
+    "provider:importJson",
+    schemas.providerImportJson,
+    async (_event, json) =>
+      requestDaemon("provider.importJson", { json }, await chatDaemonOptions()),
   );
   registerHandler(
     ipcMain,
@@ -677,6 +496,17 @@ export function registerProviderHandlers() {
           agentId,
           forceRefresh: options?.forceRefresh,
         },
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandlerArgs(
+    ipcMain,
+    "provider:probeModelAxes",
+    schemas.providerModelAxesProbe,
+    async (_event, agentId, modelId) =>
+      requestDaemon(
+        "provider.modelAxes.probe",
+        { agentId, modelId },
         await chatDaemonOptions(),
       ),
   );

@@ -208,7 +208,10 @@ describe("authoritative task commands", () => {
       }),
     ).rejects.toThrow("Previous user message not found");
     expect(stop).not.toHaveBeenCalled();
-    expect(await service.state.getMessageById(existing.id)).toEqual(existing);
+    expect(await service.state.getMessageById(existing.id)).toEqual({
+      ...existing,
+      seq: 1,
+    });
   });
 
   it("resubmits with the stored message identity and timestamp", async () => {
@@ -229,6 +232,6 @@ describe("authoritative task commands", () => {
       content: " Revised ",
       revertWorkspace: false,
     });
-    expect(result).toEqual({ ...existing, content: "Revised" });
+    expect(result).toEqual({ ...existing, content: "Revised", seq: 1 });
   });
 });

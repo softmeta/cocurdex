@@ -234,4 +234,92 @@ describe("message store", () => {
       },
     ]);
   });
+
+  it("keeps the seq of a streamed message through completion", () => {
+    vi.useFakeTimers();
+    const store = createStore();
+    store.set(applyAgentEventAtom, {
+      type: "message.delta",
+      sessionId: "session-1",
+      messageId: "assistant-1",
+      role: "assistant",
+      delta: "Hel",
+      createdAt: "2026-09-27T00:00:00.000Z",
+      seq: 4,
+    });
+    vi.runOnlyPendingTimers();
+    store.set(applyAgentEventAtom, {
+      type: "message.completed",
+      sessionId: "session-1",
+      message: {
+        id: "assistant-1",
+        sessionId: "session-1",
+        role: "assistant",
+        content: "Hello",
+        attachments: [],
+        createdAt: "2026-09-27T00:00:00.000Z",
+      },
+    });
+
+    expect(store.get(messagesBySessionAtom)["session-1"]).toEqual([
+      expect.objectContaining({ content: "Hello", seq: 4 }),
+    ]);
+  });
+
+  it("rewinds by seq when timestamps disagree with the recorded order", () => {
+    const store = createStore();
+    const base = { sessionId: "session-1", attachments: [] };
+    const prompt: MessageRecord = {
+      ...base,
+      id: "user-1",
+      role: "user",
+      content: "prompt",
+      createdAt: "2026-09-27T00:00:05.000Z",
+      seq: 1,
+    };
+    const answer: MessageRecord = {
+      ...base,
+      id: "assistant-1",
+      role: "assistant",
+      content: "answer",
+      createdAt: "2026-09-27T00:00:01.000Z",
+      seq: 2,
+    };
+    store.set(loadSessionMessagesAtom, {
+      sessionId: "session-1",
+      messages: [prompt, answer],
+    });
+
+    store.set(rewindMessagesAtom, {
+      message: { ...prompt, content: "edited" },
+    });
+
+    expect(store.get(messagesBySessionAtom)["session-1"]).toEqual([
+      { ...prompt, content: "edited" },
+    ]);
+  });
+
+  it("appends the daemon's persisted system message for an error", () => {
+    const store = createStore();
+    const systemMessage: MessageRecord = {
+      id: "system-1",
+      sessionId: "session-1",
+      role: "system",
+      content: "Provider failed",
+      attachments: [],
+      createdAt: "2026-09-27T00:00:00.000Z",
+      seq: 9,
+    };
+
+    store.set(applyAgentEventAtom, {
+      type: "error",
+      sessionId: "session-1",
+      message: "Provider failed",
+      systemMessage,
+    });
+
+    expect(store.get(messagesBySessionAtom)["session-1"]).toEqual([
+      systemMessage,
+    ]);
+  });
 });

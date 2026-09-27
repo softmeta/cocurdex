@@ -5,10 +5,7 @@ import {
   TITLEBAR_ICON_GLYPH_CLASS,
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
-import {
-  AppDropdownRadioList,
-  appPopupContentWidthClassName,
-} from "@/components";
+import { AppDropdownRadioList } from "@/components";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -65,10 +62,7 @@ export function GitChangesViewMenu({
           {t("git.diffViewSettings")}
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent
-        align="end"
-        className={appPopupContentWidthClassName}
-      >
+      <DropdownMenuContent align="end">
         <AppDropdownRadioList
           closeOnClick={false}
           value={diffStyle}

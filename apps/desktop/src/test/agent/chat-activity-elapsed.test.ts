@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatElapsed,
   isActivityHeaderBusy,
-} from "@/features/agent/view/chat-activity";
+} from "@/features/agent/view/chat-activity-state";
 
 describe("formatElapsed", () => {
   it("pads seconds and keeps counting minutes past an hour", () => {

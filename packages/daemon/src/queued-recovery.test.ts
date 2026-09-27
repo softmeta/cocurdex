@@ -173,9 +173,10 @@ describe("daemon-owned queue recovery", () => {
     expect(await second.service.state.listQueuedAgentInputs("session")).toEqual(
       [expect.objectContaining({ messageId: message.id })],
     );
-    expect(await second.service.state.getMessageById(message.id)).toEqual(
-      message,
-    );
+    expect(await second.service.state.getMessageById(message.id)).toEqual({
+      ...message,
+      seq: 1,
+    });
     await expect(
       requestDaemon(
         "session.resumeQueued",

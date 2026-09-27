@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getComposerSessionConfigOptions,
   getSessionConfigTriggerValues,
-} from "@/features/composer/agent-runtime-controls";
+} from "@/features/composer/session-config-options";
 
 const grokOccupied = ["model", "thinking", "mode", "permission"] as const;
 

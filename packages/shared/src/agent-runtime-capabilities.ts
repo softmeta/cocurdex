@@ -30,6 +30,7 @@ export const agentRuntimeAxisCapabilities: Readonly<
   devin: {
     model: inSession,
     thinking: inSession,
+    speed: inSession,
   },
   "grok-build": {
     model: inSession,

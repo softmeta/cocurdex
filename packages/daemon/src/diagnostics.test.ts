@@ -23,12 +23,24 @@ describe("logDaemonDiagnostic", () => {
     );
   });
 
-  it("does not emit when diagnostics are disabled", () => {
+  it("emits info and warn diagnostics without the opt-in flag", () => {
     vi.stubEnv("COCURDEX_DIAGNOSTICS", "0");
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     logDaemonDiagnostic("info", "daemon.ready");
+    logDaemonDiagnostic("warn", "daemon.degraded");
 
-    expect(info).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it("keeps debug-level diagnostics gated behind the opt-in flag", () => {
+    vi.stubEnv("COCURDEX_DIAGNOSTICS", "0");
+    const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+    logDaemonDiagnostic("debug", "daemon.trace");
+
+    expect(debug).not.toHaveBeenCalled();
   });
 });

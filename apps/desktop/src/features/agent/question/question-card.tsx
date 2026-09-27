@@ -132,8 +132,8 @@ export function QuestionCard({
     >
       <div
         className={cn(
-          "flex items-center gap-2",
-          isDock ? "px-3 pt-2.5 pb-1.5" : "px-4 pt-3 pb-2",
+          "flex items-center gap-2.5",
+          isDock ? "px-3 pt-3 pb-2" : "px-4 pt-4 pb-3",
         )}
       >
         <div className="flex size-6 shrink-0 items-center justify-center rounded-control bg-chat-status-pending-bg text-chat-status-pending-fg">
@@ -141,41 +141,48 @@ export function QuestionCard({
         </div>
         <h3
           className={cn(
-            "min-w-0 flex-1 truncate font-medium text-chat-fg",
+            "min-w-0 flex-1 truncate font-semibold text-chat-fg",
             isDock ? "text-body" : "text-display",
           )}
         >
-          {question.question}
+          {t("questions.title")}
         </h3>
         <span className="shrink-0 rounded-full bg-chat-status-pending-bg px-1.5 py-px text-meta font-medium text-chat-status-pending-fg">
           {t("questions.pending")}
         </span>
       </div>
 
-      {question.options?.length || question.header ? (
-        <div className={cn("space-y-2", isDock ? "px-3 pb-2.5" : "px-4 pb-3")}>
-          {question.header ? (
-            <div className="text-meta font-medium text-chat-fg-muted">
-              {question.header}
-            </div>
-          ) : null}
-          {question.options?.length ? (
-            <div className="grid gap-1.5">
-              {question.options.map((option) => (
-                <QuestionOptionRow
-                  description={option.description}
-                  disabled={isSubmitting}
-                  isSelected={selectedOptions.includes(option.label)}
-                  key={option.label}
-                  label={option.label}
-                  multiSelect={Boolean(question.multiSelect)}
-                  onSelect={() => toggleOption(option.label)}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <div
+        className={cn(
+          "space-y-2.5",
+          isDock ? "px-3 pt-2.5 pb-5" : "px-4 pt-2.5 pb-6",
+          !isDock && "ps-[3.125rem]",
+        )}
+      >
+        <p className="break-words text-body text-chat-fg">
+          {question.question}
+        </p>
+        {question.header ? (
+          <div className="text-meta font-medium text-chat-fg-muted">
+            {question.header}
+          </div>
+        ) : null}
+        {question.options?.length ? (
+          <div className="grid gap-1.5">
+            {question.options.map((option) => (
+              <QuestionOptionRow
+                description={option.description}
+                disabled={isSubmitting}
+                isSelected={selectedOptions.includes(option.label)}
+                key={option.label}
+                label={option.label}
+                multiSelect={Boolean(question.multiSelect)}
+                onSelect={() => toggleOption(option.label)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div
         className={cn(

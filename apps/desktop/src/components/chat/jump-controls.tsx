@@ -53,13 +53,14 @@ export function JumpControls({
       };
   const { Icon, label, onJump } = jumpControl;
 
-  // Same start inset as expanded UserMessageNavigation (ms-2). Icon is
-  // start-aligned so the glyph lines up with the rail panel edge, not
-  // optically shifted by a centered hit box.
+  // Flush with the rail edge (start-0), matching the collapsed
+  // UserMessageNavigation tab, so the glyph clears the message column on its
+  // right. Icon is start-aligned so it sits at the edge, not optically
+  // shifted by a centered hit box.
   return (
     <div
       ref={rootRef}
-      className="pointer-events-auto absolute start-2 bottom-6 z-20"
+      className="pointer-events-auto absolute start-0 bottom-6 z-20"
       style={{ transform: `translateY(${offsetY}px)` }}
     >
       <button

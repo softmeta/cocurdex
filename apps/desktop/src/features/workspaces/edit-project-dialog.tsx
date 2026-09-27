@@ -17,7 +17,7 @@ import {
   Label,
   Text,
 } from "@/components/ui";
-import { pickHostDirectoryAtom } from "./host-directory-picker";
+import { pickHostDirectoryAtom } from "./host-directory-pick-atom";
 import { compactWorkspacePath } from "./workspace-path";
 
 interface EditProjectDialogProps {

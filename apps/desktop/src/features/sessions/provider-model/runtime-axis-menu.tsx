@@ -93,7 +93,7 @@ export function RuntimeAxisSubmenu({
           {currentLabel}
         </span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="flex max-h-80 min-w-52 max-w-72 flex-col overflow-hidden">
+      <DropdownMenuSubContent className="flex max-h-80 [--popup-max-width:18rem] flex-col overflow-hidden">
         {hasSearch ? (
           <Input
             autoFocus

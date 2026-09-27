@@ -1,8 +1,12 @@
-import type { CompatibleProviderModel } from "@cocurdex/shared";
+import type {
+  AgentProviderModelAxes,
+  CompatibleProviderModel,
+} from "@cocurdex/shared";
 import type { AcpConnectionFactory } from "../acp/acp-connection";
 import {
   listAcpProviderModels,
   loginAcpProvider,
+  probeAcpProviderModelAxes,
   resetAcpProviderModelsCache,
 } from "../acp/acp-model-catalog";
 import {
@@ -26,6 +30,17 @@ export function listDevinProviderModels(
   options: { forceRefresh?: boolean; timeoutMs?: number } = {},
 ): Promise<CompatibleProviderModel[]> {
   return listAcpProviderModels(spec, connectionFactory, options);
+}
+
+// Devin reveals `thought_level`/`speed` only inside a session running the
+// model, so they are probed on demand — one probe session per picked model —
+// rather than fanning out over the whole catalog.
+export function probeDevinProviderModelAxes(
+  modelId: string,
+  connectionFactory?: AcpConnectionFactory,
+  options: { timeoutMs?: number } = {},
+): Promise<AgentProviderModelAxes | null> {
+  return probeAcpProviderModelAxes(spec, modelId, connectionFactory, options);
 }
 
 export function resetDevinProviderModelsCache() {

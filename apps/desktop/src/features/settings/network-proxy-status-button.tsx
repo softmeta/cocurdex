@@ -1,6 +1,6 @@
 import { formatProxyEgressDetail, redactProxyUrl } from "@cocurdex/shared";
 import { Cable, Unplug } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
@@ -54,8 +54,11 @@ export function NetworkProxyStatusButton() {
     });
   });
 
-  const handleOpenChange = useCallback((next: boolean) => {
+  const handleOpenChange = useCallback<
+    NonNullable<ComponentProps<typeof Popover>["onOpenChange"]>
+  >((next, eventDetails) => {
     if (next && suppressHoverOpenRef.current) {
+      eventDetails.cancel();
       return;
     }
     setOpen(next);

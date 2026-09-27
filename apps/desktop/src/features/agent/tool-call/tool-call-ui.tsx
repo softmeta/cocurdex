@@ -12,7 +12,7 @@ import { selectSessionAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 
 import { chatDisplaySettingsAtom } from "../chat-display";
-import { useTranscriptState } from "../transcript-state";
+import { useTranscriptState } from "../use-transcript-state";
 import { ToolCallDetailBody } from "./tool-call-detail";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {

@@ -8,12 +8,13 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }

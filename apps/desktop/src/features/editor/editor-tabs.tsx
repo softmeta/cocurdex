@@ -139,32 +139,13 @@ export function EditorTabs() {
         ))}
       </div>
       {isMarkdownFile ? (
-        <div className="app-no-drag flex shrink-0 items-center gap-1 pe-2">
-          <button
-            type="button"
-            onClick={() => setIsPreviewMode(false)}
-            className={cn(
-              "rounded-control px-2 py-0.5 text-meta transition-colors",
-              !isPreviewMode
-                ? "bg-editor-tab-active-bg text-editor-fg"
-                : "text-editor-fg-muted hover:text-editor-fg-subtle",
-            )}
-          >
-            {t("actions.edit")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsPreviewMode(true)}
-            className={cn(
-              "rounded-control px-2 py-0.5 text-meta transition-colors",
-              isPreviewMode
-                ? "bg-editor-tab-active-bg text-editor-fg"
-                : "text-editor-fg-muted hover:text-editor-fg-subtle",
-            )}
-          >
-            {t("actions.preview")}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsPreviewMode(!isPreviewMode)}
+          className="app-no-drag me-2 shrink-0 rounded-control px-2 py-0.5 text-meta text-editor-fg-muted transition-colors hover:text-editor-fg-subtle"
+        >
+          {isPreviewMode ? t("actions.edit") : t("actions.preview")}
+        </button>
       ) : null}
     </div>
   );

@@ -22,7 +22,6 @@ interface SettingsSelectProps {
   ariaLabel: string;
   appearance?: AppDropdownTriggerAppearance;
   className?: string;
-  compact?: boolean;
   disabled?: boolean;
   groups?: SettingsSelectGroup[];
   options?: SettingsSelectOption[];
@@ -41,7 +40,6 @@ export function SettingsSelect({
   ariaLabel,
   appearance = "ghost",
   className,
-  compact = false,
   disabled = false,
   groups,
   options,
@@ -65,10 +63,7 @@ export function SettingsSelect({
     <AppSelect
       align="end"
       appearance={appearance}
-      contentClassName={cn(
-        "max-h-72 min-w-[var(--anchor-width)]",
-        compact && "min-w-40",
-      )}
+      contentClassName="max-h-72"
       disabled={disabled}
       options={options?.map((option) => ({
         value: option.value,

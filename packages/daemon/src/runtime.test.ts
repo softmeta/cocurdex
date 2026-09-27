@@ -3,6 +3,7 @@ import type {
   AgentEvent,
   AgentProviderSessionRecord,
   AgentRuntimeProviderConfig,
+  AgentToolCallRecord,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
@@ -100,7 +101,9 @@ describe("AgentRuntimeManager", () => {
           stop: vi.fn(),
         }),
     });
-    manager.configureAgentEventPersistence(() => persistence);
+    manager.configureAgentEventPersistence((event) =>
+      persistence.then(() => event),
+    );
     const event: AgentEvent = {
       type: "state.changed",
       sessionId: "session-1",
@@ -113,6 +116,48 @@ describe("AgentRuntimeManager", () => {
     releasePersistence();
     await vi.waitFor(() =>
       expect(broadcastAgentEvent).toHaveBeenCalledWith(event),
+    );
+  });
+
+  it("publishes the event persistence returns", async () => {
+    const broadcastAgentEvent = vi.fn();
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent,
+      createAdapter: () =>
+        createAdapter({
+          dispose: vi.fn(),
+          sendMessage: vi.fn(),
+          stop: vi.fn(),
+        }),
+    });
+    const toolCall = {
+      id: "tool-1",
+      sessionId: "session-1",
+      title: "read",
+      status: "completed",
+      content: [],
+      locations: [],
+      startedAt: "2026-09-27T00:00:00.000Z",
+      updatedAt: "2026-09-27T00:00:00.000Z",
+    } satisfies AgentToolCallRecord;
+    manager.configureAgentEventPersistence((event) =>
+      event.type === "tool.started"
+        ? { ...event, toolCall: { ...event.toolCall, seq: 7 } }
+        : event,
+    );
+
+    manager.emitAgentEvent({
+      type: "tool.started",
+      sessionId: "session-1",
+      toolCall,
+    });
+
+    await vi.waitFor(() =>
+      expect(broadcastAgentEvent).toHaveBeenCalledWith({
+        type: "tool.started",
+        sessionId: "session-1",
+        toolCall: { ...toolCall, seq: 7 },
+      }),
     );
   });
 
@@ -654,6 +699,81 @@ describe("AgentRuntimeManager", () => {
       decision: "allow_always",
       optionId: "allow-all-projects",
     });
+  });
+
+  it("auto-approves Cocurdex tool calls from the assistant session", async () => {
+    const broadcast = vi.fn();
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: broadcast,
+      createAdapter: () => createAdapter(runtimeSessionStub()),
+    });
+    const resolution = await manager.requestAgentPermission({
+      sessionId: "assistant-ws-1",
+      providerId: "devin",
+      kind: "other",
+      title: "Calling settings_get from cocurdex",
+      locations: [],
+      options: [
+        {
+          id: "allow_once",
+          kind: "allow_once",
+          label: "Allow",
+          labelSource: "provider",
+        },
+      ],
+    });
+
+    expect(resolution).toEqual({ decision: "allow_once", optionId: null });
+    expect(manager.getPendingInteractions().permissions).toHaveLength(0);
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
+  it("keeps the approval card for Cocurdex tool calls from other sessions", () => {
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: vi.fn(),
+      createAdapter: () => createAdapter(runtimeSessionStub()),
+    });
+    void manager.requestAgentPermission({
+      sessionId: "session-1",
+      providerId: "devin",
+      kind: "other",
+      title: "Calling settings_get from cocurdex",
+      locations: [],
+      options: [
+        {
+          id: "allow_once",
+          kind: "allow_once",
+          label: "Allow",
+          labelSource: "provider",
+        },
+      ],
+    });
+
+    expect(manager.getPendingInteractions().permissions).toHaveLength(1);
+  });
+
+  it("keeps the approval card for non-Cocurdex tools in the assistant session", () => {
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: vi.fn(),
+      createAdapter: () => createAdapter(runtimeSessionStub()),
+    });
+    void manager.requestAgentPermission({
+      sessionId: "assistant-ws-1",
+      providerId: "devin",
+      kind: "execute",
+      title: "Run command",
+      locations: [],
+      options: [
+        {
+          id: "allow_once",
+          kind: "allow_once",
+          label: "Allow",
+          labelSource: "provider",
+        },
+      ],
+    });
+
+    expect(manager.getPendingInteractions().permissions).toHaveLength(1);
   });
 
   it("refuses to resolve a permission with an unknown option id", () => {

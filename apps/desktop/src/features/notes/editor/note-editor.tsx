@@ -187,7 +187,7 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
             </div>
           </DragHandle>
         ) : null}
-        <EditorContent editor={editor} className="flex-1" />
+        <EditorContent editor={editor} className="relative flex-1" />
       </div>
     </div>
   );

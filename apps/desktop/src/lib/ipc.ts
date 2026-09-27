@@ -346,11 +346,22 @@ const fallbackApi: DesktopApi = {
     setupScript: "",
     cleanupScript: "",
     updatedAt: null,
+    proposal: null,
   }),
   saveWorktreeEnvironment: async (payload) => ({
     ...payload,
     updatedAt: new Date().toISOString(),
+    proposal: null,
   }),
+  createAssistantSession: async () => {
+    throw new Error("Assistant session requires the desktop app");
+  },
+  getOrCreateAssistantSession: async () => {
+    throw new Error("Assistant session requires the desktop app");
+  },
+  listPendingSettingsChanges: async () => [],
+  ackPendingSettingsChange: async () => {},
+  reportSettingValues: async () => {},
   listGitCommits: async () => [],
   getWorkspaceGitDiff: async () => ({ status: "ok", changes: [] }),
   getWorkspaceGitStatus: async () => ({ status: "ok", entries: [] }),
@@ -405,6 +416,11 @@ const fallbackApi: DesktopApi = {
   deleteProviderConfig: async () => {},
   setProviderApiKey: async () => {},
   clearProviderApiKey: async () => {},
+  importProviderJson: async () => ({
+    providerIds: [],
+    modelCount: 0,
+    warnings: [],
+  }),
   readProviderAuth: async (providerId) => ({
     providerId,
     type: null,
@@ -423,6 +439,7 @@ const fallbackApi: DesktopApi = {
   saveProviderModel: async (model) => model,
   deleteProviderModel: async () => {},
   listCompatibleProvidersForAgent: async () => [],
+  probeProviderModelAxes: async () => null,
   loginAgent: async () => {},
   listAgentProviderDefaults: async () => [],
   getAgentProviderDefault: async () => null,
@@ -541,6 +558,8 @@ const fallbackApi: DesktopApi = {
   browserShow: async () => {},
   logRendererError: async () => {},
   exportDiagnostics: async () => ({ fileCount: 0, outputPath: "" }),
+  getDiagnosticsVerbose: async () => false,
+  setDiagnosticsVerbose: async () => false,
   openExternal: async () => {},
   ptySpawn: async (payload) => ({
     terminalId: payload.terminalId,

@@ -1,5 +1,6 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
+import { hostForLog } from "@cocurdex/shared";
 import { protocol } from "electron";
 import { createLogger } from "../logging";
 import {
@@ -29,8 +30,8 @@ export function registerPdfProtocol(
       // Wrap Node readable stream into a Web ReadableStream for the Response.
       const readable = new ReadableStream({
         start(controller) {
-          stream.on("data", (chunk: Buffer) => {
-            controller.enqueue(new Uint8Array(chunk));
+          stream.on("data", (chunk: string | Buffer) => {
+            controller.enqueue(new Uint8Array(chunk as Buffer));
           });
           stream.on("end", () => controller.close());
           stream.on("error", (err) => controller.error(err));
@@ -52,7 +53,7 @@ export function registerPdfProtocol(
       });
     } catch (error) {
       logger.warn("pdf-asset.requestRejected", {
-        url: request.url,
+        host: hostForLog(request.url),
         error: error instanceof Error ? error.message : String(error),
       });
       return new Response("Not Found", {

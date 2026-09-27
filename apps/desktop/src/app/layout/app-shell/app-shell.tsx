@@ -40,6 +40,7 @@ import {
   nextChatDockVisibilityOnToggle,
   persistChatDockVisibility,
   persistHideFabWhenClosed,
+  registerChatDockVisibilityHandler,
   resolveChatDockVisibilityAfterHideFabChange,
 } from "../chat-dock-geometry";
 import {
@@ -70,6 +71,11 @@ import {
   LEFT_SIDEBAR_COLLAPSE_WIDTH,
   useAppShellResize,
 } from "./app-shell-resize";
+import {
+  type RendererSettingAppliers,
+  reportRendererSettingValue,
+  useSettingsChangeBridge,
+} from "./app-shell-settings-bridge";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
 import { useShellIntents } from "./shell-intents";
 import { useSystemLocale, useSystemPrefersDark } from "./use-system-prefs";
@@ -196,6 +202,8 @@ export function AppShell() {
   const synchronizeAgentState = useAgentEventBridge();
   useBrowserEventBridge();
   useChatEventBridge();
+  const rendererSettingAppliersRef = useRef<RendererSettingAppliers>({});
+  useSettingsChangeBridge(rendererSettingAppliersRef);
   useShellIntents();
   useAppPersistence();
   useMainChatWindow(() => {
@@ -308,6 +316,13 @@ export function AppShell() {
     setChatDockVisibility(visibility);
     persistChatDockVisibility(visibility);
   };
+  const chatDockVisibilityRef = useRef(handleChatDockVisibilityChange);
+  chatDockVisibilityRef.current = handleChatDockVisibilityChange;
+  useMountEffect(() =>
+    registerChatDockVisibilityHandler((visibility) =>
+      chatDockVisibilityRef.current(visibility),
+    ),
+  );
 
   const handleHideFabWhenClosedChange = (hide: boolean) => {
     setHideFabWhenClosed(hide);
@@ -397,16 +412,19 @@ export function AppShell() {
   const handleThemeModeChange = (nextThemeMode: ThemeMode) => {
     setThemeMode(nextThemeMode);
     syncThemeMode(nextThemeMode, prefersDark);
+    reportRendererSettingValue("app.theme", nextThemeMode);
   };
 
   const handleAppearanceSettingsChange = (nextSettings: AppearanceSettings) => {
     setAppearanceSettings(nextSettings);
     syncAppearanceSettings(nextSettings);
+    reportRendererSettingValue("app.appearance", nextSettings);
   };
 
   const handleLanguageModeChange = (nextLanguageMode: LanguageMode) => {
     setLanguageMode(nextLanguageMode);
     syncLanguageMode(nextLanguageMode, systemLocale);
+    reportRendererSettingValue("app.language", nextLanguageMode);
   };
 
   const handleNotificationSettingsChange = (
@@ -414,6 +432,28 @@ export function AppShell() {
   ) => {
     setNotificationSettings(nextSettings);
     persistNotificationSettings(nextSettings);
+    reportRendererSettingValue("app.notifications", nextSettings);
+  };
+
+  rendererSettingAppliersRef.current = {
+    "app.theme": {
+      apply: (value) => handleThemeModeChange(value as ThemeMode),
+      read: getStoredThemeMode,
+    },
+    "app.appearance": {
+      apply: (value) =>
+        handleAppearanceSettingsChange(value as AppearanceSettings),
+      read: getStoredAppearanceSettings,
+    },
+    "app.language": {
+      apply: (value) => handleLanguageModeChange(value as LanguageMode),
+      read: getStoredLanguageMode,
+    },
+    "app.notifications": {
+      apply: (value) =>
+        handleNotificationSettingsChange(value as NotificationSettings),
+      read: getStoredNotificationSettings,
+    },
   };
 
   return (

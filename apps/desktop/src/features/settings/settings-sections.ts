@@ -17,6 +17,7 @@ import {
   Server,
   Settings,
   SlidersHorizontal,
+  Stethoscope,
   UserCog,
   Users,
 } from "lucide-react";
@@ -67,6 +68,12 @@ export const settingsSections = [
   { id: "about", labelKey: "about", icon: Info, group: "core" },
   { id: "computer", labelKey: "computer", icon: Monitor, group: "advanced" },
   { id: "archived", labelKey: "archived", icon: Archive, group: "core" },
+  {
+    id: "diagnostics",
+    labelKey: "diagnostics",
+    icon: Stethoscope,
+    group: "core",
+  },
   { id: "usage", labelKey: "usage", icon: Gauge, group: "advanced" },
 ] satisfies Array<{
   group: "advanced" | "core" | "workspace";

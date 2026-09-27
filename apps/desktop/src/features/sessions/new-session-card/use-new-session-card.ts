@@ -10,6 +10,7 @@ import {
   isAgentPermissionModeSupportedForModel,
   normalizeWorkspaceRootPaths,
   PLAN_MODE_ID,
+  supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
@@ -35,6 +36,7 @@ import {
   loadProviderModelOptions,
   type ProviderModelCacheResult,
   parseProviderModelValue,
+  probeProviderModelAxes,
   providerModelCache,
   shouldRevalidateProviderModels,
   subscribeProviderModelCache,
@@ -110,7 +112,7 @@ export function useNewSessionCard({
   const [selectedProviderModel, setSelectedProviderModel] = useState("");
   const [selectedCodexReasoningEffort, setSelectedCodexReasoningEffort] =
     useState(() => initialRuntimePreferences.reasoningEffort ?? "");
-  const [selectedCodexServiceTier, setSelectedCodexServiceTier] = useState(
+  const [selectedServiceTier, setSelectedServiceTier] = useState(
     () => initialRuntimePreferences.serviceTier ?? "",
   );
   const [selectedClaudeFastMode, setSelectedClaudeFastMode] = useState(
@@ -268,8 +270,10 @@ export function useNewSessionCard({
                 reasoningEffort: selectedCodexReasoningEffort
                   ? (selectedCodexReasoningEffort as CodexReasoningEffort)
                   : null,
-                serviceTier: selectedCodexServiceTier || null,
               }
+            : {}),
+          ...(supportsInSessionRuntimeAxis(effectiveSelectedAgent, "speed")
+            ? { serviceTier: selectedServiceTier || null }
             : {}),
           ...(effectiveSelectedAgent === "opencode"
             ? {
@@ -295,8 +299,9 @@ export function useNewSessionCard({
   const codexReasoningDefaultValue =
     selectedCompatibleProvider?.model.defaultReasoningEffort ?? "";
 
-  const codexServiceTierOptions =
-    effectiveSelectedAgent === "codex" && selectedCompatibleProvider
+  const serviceTierOptions =
+    supportsInSessionRuntimeAxis(effectiveSelectedAgent, "speed") &&
+    selectedCompatibleProvider
       ? [
           { label: t("modelMenu.serviceTierStandard"), value: "" },
           ...(selectedCompatibleProvider.model.serviceTiers ?? []).map(
@@ -323,7 +328,7 @@ export function useNewSessionCard({
       setIsProviderModelLoading(false);
       const preferences = getAgentRuntimePreferences(agentId);
       setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
-      setSelectedCodexServiceTier(preferences.serviceTier ?? "");
+      setSelectedServiceTier(preferences.serviceTier ?? "");
       setSelectedClaudeFastMode(preferences.fastMode ?? false);
       setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
       setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
@@ -466,8 +471,8 @@ export function useNewSessionCard({
     });
   };
 
-  const handleSelectCodexServiceTier = (value: string) => {
-    setSelectedCodexServiceTier(value);
+  const handleSelectServiceTier = (value: string) => {
+    setSelectedServiceTier(value);
     updateAgentRuntimePreferences(effectiveSelectedAgent, {
       serviceTier: value || null,
     });
@@ -518,7 +523,7 @@ export function useNewSessionCard({
     reasoningEffort: selectedCodexReasoningEffort
       ? (selectedCodexReasoningEffort as CodexReasoningEffort)
       : null,
-    serviceTier: selectedCodexServiceTier || null,
+    serviceTier: selectedServiceTier || null,
     fastMode: isClaudeAgent ? selectedClaudeFastMode : null,
     thinkingLevel:
       rawSelectedThinkingLevel === "default" ? null : rawSelectedThinkingLevel,
@@ -542,7 +547,7 @@ export function useNewSessionCard({
     if (!hadCatalog) {
       const preferences = getAgentRuntimePreferences(nextAgent);
       setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
-      setSelectedCodexServiceTier(preferences.serviceTier ?? "");
+      setSelectedServiceTier(preferences.serviceTier ?? "");
       setSelectedClaudeFastMode(preferences.fastMode ?? false);
       setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
       setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
@@ -580,7 +585,7 @@ export function useNewSessionCard({
         role.permissionMode ?? permissionModeForAgent(role.agentId, agents),
       );
       setSelectedCodexReasoningEffort(role.reasoningEffort ?? "");
-      setSelectedCodexServiceTier(role.serviceTier ?? "");
+      setSelectedServiceTier(role.serviceTier ?? "");
       setSelectedClaudeFastMode(role.fastMode ?? false);
       setSelectedThinkingLevel(role.thinkingLevel ?? "default");
       setSelectedOpenCodeAgent(role.openCodeAgent ?? "");
@@ -604,7 +609,7 @@ export function useNewSessionCard({
 
     setSelectedProviderModel(nextProviderModel);
     handleSelectCodexReasoningEffort("");
-    handleSelectCodexServiceTier("");
+    handleSelectServiceTier("");
 
     if (!parsedProviderModel) {
       return;
@@ -633,6 +638,12 @@ export function useNewSessionCard({
     }
 
     const { modelId, providerId } = parsedProviderModel;
+    probeProviderModelAxes(
+      providerModelCache,
+      effectiveSelectedAgent,
+      providerId,
+      modelId,
+    );
     updateAgentRuntimePreferences(effectiveSelectedAgent, {
       providerSelection: { modelId, providerId },
     });
@@ -662,8 +673,8 @@ export function useNewSessionCard({
     setSelectedPermissionMode: handleSelectPermissionMode,
     selectedCodexReasoningEffort,
     setSelectedCodexReasoningEffort: handleSelectCodexReasoningEffort,
-    selectedCodexServiceTier,
-    setSelectedCodexServiceTier: handleSelectCodexServiceTier,
+    selectedServiceTier,
+    setSelectedServiceTier: handleSelectServiceTier,
     selectedClaudeFastMode,
     claudeFastModeOptions,
     setSelectedClaudeFastMode: handleSelectClaudeFastMode,
@@ -679,7 +690,7 @@ export function useNewSessionCard({
     canStartWithSelectedAgent,
     codexReasoningOptions,
     codexReasoningDefaultValue,
-    codexServiceTierOptions,
+    serviceTierOptions,
     thinkingLevelOptions,
     // Raw preference, not the resolved level: "reset" is only meaningful when
     // the user actually overrode the agent default.

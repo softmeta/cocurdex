@@ -31,6 +31,9 @@
     "opencode": "OpenCode",
     "pi": "Pi"
   },
+  "git": {
+    "turnFiles_other": "{{count}} 个文件"
+  },
   "htmlPreview": {
     "browserLocation": "HTML 在右侧浏览器中预览。点击地球按钮可打开此预览。",
     "code": "代码",

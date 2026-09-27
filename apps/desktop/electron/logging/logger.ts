@@ -8,11 +8,17 @@ import type {
   RendererLogPayload,
 } from "@cocurdex/shared";
 import log from "electron-log/main.js";
+import type { CrashDumpDescriptor } from "./crash-reporter";
+import {
+  readDiagnosticsPreferences,
+  writeDiagnosticsPreferences,
+} from "./diagnostics-preferences";
 import { buildArchiveLogFileName } from "./log-paths";
 import { pruneLogFiles } from "./log-retention";
 import {
   formatErrorForLog,
   formatReadableLogLine,
+  redactSensitiveText,
   sanitizeLogDetails,
   sanitizeRendererLogPayload,
 } from "./logger-utils";
@@ -33,8 +39,12 @@ const SESSION_LOG_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 let logDirectory = "";
 let sessionLogDirectory = "";
 let diagnosticsDirectory = "";
+let diagnosticsPreferencesPath = "";
 let appVersion = "unknown";
 let retentionDays = DEFAULT_RETENTION_DAYS;
+let baselineVerbose = false;
+let verbosePreference = false;
+let envDiagnosticsRequested = false;
 let consoleInstalled = false;
 
 const originalConsole = {
@@ -231,6 +241,7 @@ function archiveMainLog(oldLogFilePath: string) {
 export function configureLogging(paths: {
   appVersion: string;
   diagnosticsDirectory: string;
+  diagnosticsPreferencesPath: string;
   logDirectory: string;
   sessionLogDirectory: string;
   // Human-readable main log output is only for local development. Packaged
@@ -245,10 +256,20 @@ export function configureLogging(paths: {
   logDirectory = paths.logDirectory;
   sessionLogDirectory = paths.sessionLogDirectory;
   diagnosticsDirectory = paths.diagnosticsDirectory;
+  diagnosticsPreferencesPath = paths.diagnosticsPreferencesPath;
   retentionDays = paths.retentionDays ?? DEFAULT_RETENTION_DAYS;
+  baselineVerbose = paths.verbose;
+  envDiagnosticsRequested = process.env.COCURDEX_DIAGNOSTICS === "1";
+  verbosePreference = readDiagnosticsPreferences(
+    diagnosticsPreferencesPath,
+  ).verbose;
+  if (verbosePreference) {
+    process.env.COCURDEX_DIAGNOSTICS = "1";
+  }
 
   log.transports.file.fileName = LOG_FILE_NAME;
-  log.transports.file.level = paths.verbose ? "debug" : "info";
+  log.transports.file.level =
+    baselineVerbose || verbosePreference ? "debug" : "info";
   log.transports.file.maxSize = FILE_TRANSPORT_MAX_SIZE;
   log.transports.file.format = paths.pretty
     ? ({ data, message }) => {
@@ -300,7 +321,34 @@ export function configureLogging(paths: {
     logDirectory,
     sessionLogDirectory: paths.sessionLogDirectory,
     verbose: paths.verbose,
+    verbosePreference,
   });
+}
+
+export function isDiagnosticsVerbose() {
+  return verbosePreference;
+}
+
+export function setDiagnosticsVerbose(enabled: boolean) {
+  verbosePreference = enabled;
+  if (diagnosticsPreferencesPath) {
+    try {
+      writeDiagnosticsPreferences(diagnosticsPreferencesPath, {
+        verbose: enabled,
+      });
+    } catch (error) {
+      createLogger("diagnostics").warn("diagnostics.preferencesWriteFailed", {
+        error: formatErrorForLog(error),
+      });
+    }
+  }
+  // Picked up by the next daemon spawn (env inherits process.env).
+  if (enabled || envDiagnosticsRequested) {
+    process.env.COCURDEX_DIAGNOSTICS = "1";
+  } else {
+    delete process.env.COCURDEX_DIAGNOSTICS;
+  }
+  log.transports.file.level = enabled || baselineVerbose ? "debug" : "info";
 }
 
 // Flush and release per-session file streams during app shutdown.
@@ -314,6 +362,18 @@ export function createLogger(scope: string): ScopedLogger {
     error: (event, details) => writeLog("error", scope, event, details),
     info: (event, details) => writeLog("info", scope, event, details),
     warn: (event, details) => writeLog("warn", scope, event, details),
+  };
+}
+
+export function createUpstreamLogger(scope: string) {
+  const scoped = createLogger(scope);
+  const forward = (level: DesktopLogLevel) => (message?: unknown) =>
+    scoped[level]("upstream.log", { message });
+  return {
+    debug: forward("debug"),
+    error: forward("error"),
+    info: forward("info"),
+    warn: forward("warn"),
   };
 }
 
@@ -332,7 +392,104 @@ export function logProcessError(event: string, error: unknown) {
   createLogger("process").error(event, { error: formatErrorForLog(error) });
 }
 
-export async function exportDiagnostics(): Promise<DiagnosticsExportResult> {
+async function redactExportedFiles(filePaths: string[]) {
+  const kept: string[] = [];
+  for (const filePath of filePaths) {
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      const sanitized = redactSensitiveText(content);
+      if (sanitized !== content) {
+        await fs.writeFile(filePath, sanitized);
+      }
+      kept.push(filePath);
+    } catch (error) {
+      await fs.rm(filePath, { force: true });
+      createLogger("diagnostics").warn("diagnostics.fileDropped", {
+        error: formatErrorForLog(error),
+        fileName: path.basename(filePath),
+      });
+    }
+  }
+  return kept;
+}
+
+const SUMMARY_EVENT_LIMIT = 100;
+const SUMMARY_PROBLEM_LIMIT = 50;
+
+async function buildExportSummary(
+  targetDirectory: string,
+  filePaths: string[],
+) {
+  const eventCounts = new Map<string, number>();
+  const levelCounts = new Map<string, number>();
+  const recentProblems: Record<string, unknown>[] = [];
+  const files: { name: string; lines: number }[] = [];
+
+  for (const filePath of filePaths) {
+    if (!filePath.endsWith(".log")) {
+      continue;
+    }
+    const name = path.relative(targetDirectory, filePath);
+    let lines = 0;
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("{")) {
+          continue;
+        }
+        lines += 1;
+        let entry: Record<string, unknown>;
+        try {
+          entry = JSON.parse(trimmed) as Record<string, unknown>;
+        } catch {
+          continue;
+        }
+        if (typeof entry.event === "string") {
+          eventCounts.set(entry.event, (eventCounts.get(entry.event) ?? 0) + 1);
+        }
+        if (typeof entry.level === "string") {
+          levelCounts.set(entry.level, (levelCounts.get(entry.level) ?? 0) + 1);
+          if (entry.level === "warn" || entry.level === "error") {
+            recentProblems.push({
+              timestamp: entry.timestamp,
+              level: entry.level,
+              scope: entry.scope,
+              event: entry.event,
+            });
+            if (recentProblems.length > SUMMARY_PROBLEM_LIMIT) {
+              recentProblems.shift();
+            }
+          }
+        }
+      }
+    } catch {
+      continue;
+    }
+    files.push({ name, lines });
+  }
+
+  return {
+    eventCounts: [...eventCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, SUMMARY_EVENT_LIMIT)
+      .map(([event, count]) => ({ event, count })),
+    files,
+    levelCounts: Object.fromEntries(levelCounts),
+    recentProblems,
+    sessions: files
+      .filter((file) => file.name.startsWith(`sessions${path.sep}`))
+      .map((file) => file.name),
+  };
+}
+
+export interface DiagnosticsExportOptions {
+  crashReports?: CrashDumpDescriptor[];
+}
+
+export async function exportDiagnostics(
+  options: DiagnosticsExportOptions = {},
+): Promise<DiagnosticsExportResult> {
   const createdAt = new Date().toISOString();
   const safeTimestamp = createdAt.replace(/[:.]/g, "-");
   const targetDirectory = path.join(
@@ -346,10 +503,15 @@ export async function exportDiagnostics(): Promise<DiagnosticsExportResult> {
   const metadataPath = path.join(targetDirectory, "metadata.json");
   const metadata = {
     appVersion,
+    arch: process.arch,
+    crashReports: options.crashReports ?? [],
     createdAt,
     logDirectory,
-    processType: process.type,
+    memoryRssBytes: process.memoryUsage().rss,
     platform: process.platform,
+    processType: process.type,
+    uptimeSeconds: Math.round(process.uptime()),
+    verboseLogging: log.transports.file.level,
     versions: process.versions,
   };
 
@@ -359,13 +521,26 @@ export async function exportDiagnostics(): Promise<DiagnosticsExportResult> {
   );
   copiedFiles.push(metadataPath);
 
+  const exportedFiles = await redactExportedFiles(copiedFiles);
+
+  const summaryPath = path.join(targetDirectory, "summary.json");
+  try {
+    const summary = await buildExportSummary(targetDirectory, exportedFiles);
+    await fs.writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
+    exportedFiles.push(summaryPath);
+  } catch (error) {
+    createLogger("diagnostics").warn("diagnostics.summaryFailed", {
+      error: formatErrorForLog(error),
+    });
+  }
+
   createLogger("diagnostics").info("diagnostics.exported", {
-    fileCount: copiedFiles.length,
+    fileCount: exportedFiles.length,
     outputPath: targetDirectory,
   });
 
   return {
-    fileCount: copiedFiles.length,
+    fileCount: exportedFiles.length,
     outputPath: targetDirectory,
   };
 }

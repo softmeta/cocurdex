@@ -1,21 +1,9 @@
-import {
-  type ComponentProps,
-  createContext,
-  useCallback,
-  useContext,
-  useRef,
-  useState,
-} from "react";
+import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui";
 import { useMountEffect } from "@/lib";
+import { SidebarScrollingContext } from "./sidebar-scrolling";
 
 const SCROLL_IDLE_MS = 150;
-
-const SidebarScrollingContext = createContext(false);
-
-export function useSidebarScrolling() {
-  return useContext(SidebarScrollingContext);
-}
 
 type SidebarScrollAreaProps = ComponentProps<typeof ScrollArea>;
 

@@ -11,7 +11,7 @@ export function logDaemonDiagnostic(
   message: string,
   details?: Record<string, unknown>,
 ) {
-  if (!isDaemonDiagnosticsEnabled()) {
+  if (level === "debug" && !isDaemonDiagnosticsEnabled()) {
     return;
   }
 

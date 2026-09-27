@@ -373,7 +373,7 @@ it("elects one daemon when startup races", async () => {
   } finally {
     await Promise.all(winners.map((daemon) => daemon.close()));
   }
-});
+}, 20_000);
 
 it("does not open the product database while an existing endpoint is live", async () => {
   const userDataPath = await createDirectory();

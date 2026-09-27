@@ -158,7 +158,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
       expect(listToolCalls).not.toHaveBeenCalled();
       expect(
         await service.state.listMessagesBySessionId(message.sessionId),
-      ).toEqual([message]);
+      ).toEqual([{ ...message, seq: 1 }]);
       expect(
         await service.state.listToolCallsBySessionId(message.sessionId),
       ).toEqual([expect.objectContaining(toolCall)]);
@@ -317,6 +317,36 @@ describe("CocurdexDaemonService follow-up queue", () => {
       delivery: "start-new-run",
     });
 
+    await service.shutdown();
+  });
+
+  it("broadcasts a data change when a follow-up queues behind an active turn", async () => {
+    const service = await createService();
+    const events: unknown[] = [];
+    service.events.on("daemon.event", (event) => events.push(event));
+    let completeActiveTurn: (() => void) | undefined;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      completeActiveTurn = () => resolve(createRuntimeMessage("First turn"));
+    });
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockImplementationOnce(() => activeTurn)
+      .mockResolvedValue(createRuntimeMessage("Queued follow-up"));
+
+    await service.sendSessionMessage(
+      createPayload("First turn", "start-new-run"),
+    );
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await service.sendSessionMessage(
+      createPayload("Peer update", "queue-after-run"),
+    );
+
+    expect(events).toContainEqual({
+      type: "data.changed",
+      areas: ["agent"],
+    });
+
+    completeActiveTurn?.();
     await service.shutdown();
   });
 

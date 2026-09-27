@@ -98,7 +98,7 @@ export function McpRuntimeSubmenu({
           {summary}
         </span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="max-h-80 min-w-64 overflow-y-auto">
+      <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
         <DropdownMenuGroup>
           <DropdownMenuLabel>{t("modelMenu.mcpServers")}</DropdownMenuLabel>
           {servers.length === 0 ? (

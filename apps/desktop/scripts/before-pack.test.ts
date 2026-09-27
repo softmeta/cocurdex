@@ -15,80 +15,82 @@ const { getMainFileMatchers, getNodeModuleFileMatcher } = builderRequire(
   "app-builder-lib/out/fileMatcher.js",
 );
 
-it.each([
-  "linux",
-  "mac",
-  "win",
-])("keeps the normalized %s app whitelist", (platform) => {
-  const { build } = JSON.parse(
-    readFileSync(
-      path.join(
-        path.dirname(fileURLToPath(import.meta.url)),
-        "../package.json",
+it.each(["linux", "mac", "win"])(
+  "keeps the normalized %s app whitelist",
+  (platform) => {
+    const { build } = JSON.parse(
+      readFileSync(
+        path.join(
+          path.dirname(fileURLToPath(import.meta.url)),
+          "../package.json",
+        ),
+        "utf8",
       ),
-      "utf8",
-    ),
-  );
-  const config = doMergeConfigs([build]);
-  beforePack({
-    packager: { config },
-    arch: x64,
-    electronPlatformName: { linux: "linux", mac: "darwin", win: "win32" }[
-      platform
-    ],
-  });
-  const appDir = path.resolve("fixture-app");
-  const matchers = getMainFileMatchers(
-    appDir,
-    path.join(appDir, "destination"),
-    (value: string) => value,
-    config[platform],
-    {
-      info: {
-        config,
-        projectDir: appDir,
-        buildResourcesDir: "build-assets",
-        debugLogger: { isEnabled: false },
-      },
-      getNodeDependencyInfo: () => null,
-    },
-    path.join(appDir, "release"),
-    false,
-  );
-  const accepts = (file: string) =>
-    matchers.some(
-      (matcher: {
-        createFilter: () => (
-          file: string,
-          stat: { isDirectory: () => boolean },
-        ) => boolean;
-      }) =>
-        matcher.createFilter()(path.join(appDir, file), {
-          isDirectory: () => false,
-        }),
     );
-  expect(accepts("out/main/main.js")).toBe(true);
-  expect(accepts("src/main.tsx")).toBe(false);
-  expect(accepts("electron/main.ts")).toBe(false);
-  expect(accepts("scripts/before-pack.mjs")).toBe(false);
-  expect(accepts("electron.vite.config.ts")).toBe(false);
-  const dependencyMatcher = getNodeModuleFileMatcher(
-    appDir,
-    path.join(appDir, "destination"),
-    (value: string) => value,
-    config[platform],
-    { config, debugLogger: { isEnabled: false } },
-  );
-  const acceptsDependency = (file: string) =>
-    dependencyMatcher.createFilter()(path.join(appDir, "node_modules", file), {
-      isDirectory: () => false,
+    const config = doMergeConfigs([build]);
+    beforePack({
+      packager: { config },
+      arch: x64,
+      electronPlatformName: { linux: "linux", mac: "darwin", win: "win32" }[
+        platform
+      ],
     });
-  expect(acceptsDependency("pi-mcp-adapter/index.ts")).toBe(true);
-  expect(acceptsDependency("pi-mcp-adapter/proxy-modes.ts")).toBe(true);
-  expect(acceptsDependency("pi-mcp-adapter/banner.png")).toBe(false);
-  expect(acceptsDependency("pi-mcp-adapter/index.ts.map")).toBe(false);
-  expect(acceptsDependency("other-package/index.ts")).toBe(false);
-});
+    const appDir = path.resolve("fixture-app");
+    const matchers = getMainFileMatchers(
+      appDir,
+      path.join(appDir, "destination"),
+      (value: string) => value,
+      config[platform],
+      {
+        info: {
+          config,
+          projectDir: appDir,
+          buildResourcesDir: "build-assets",
+          debugLogger: { isEnabled: false },
+        },
+        getNodeDependencyInfo: () => null,
+      },
+      path.join(appDir, "release"),
+      false,
+    );
+    const accepts = (file: string) =>
+      matchers.some(
+        (matcher: {
+          createFilter: () => (
+            file: string,
+            stat: { isDirectory: () => boolean },
+          ) => boolean;
+        }) =>
+          matcher.createFilter()(path.join(appDir, file), {
+            isDirectory: () => false,
+          }),
+      );
+    expect(accepts("out/main/main.js")).toBe(true);
+    expect(accepts("src/main.tsx")).toBe(false);
+    expect(accepts("electron/main.ts")).toBe(false);
+    expect(accepts("scripts/before-pack.mjs")).toBe(false);
+    expect(accepts("electron.vite.config.ts")).toBe(false);
+    const dependencyMatcher = getNodeModuleFileMatcher(
+      appDir,
+      path.join(appDir, "destination"),
+      (value: string) => value,
+      config[platform],
+      { config, debugLogger: { isEnabled: false } },
+    );
+    const acceptsDependency = (file: string) =>
+      dependencyMatcher.createFilter()(
+        path.join(appDir, "node_modules", file),
+        {
+          isDirectory: () => false,
+        },
+      );
+    expect(acceptsDependency("pi-mcp-adapter/index.ts")).toBe(true);
+    expect(acceptsDependency("pi-mcp-adapter/proxy-modes.ts")).toBe(true);
+    expect(acceptsDependency("pi-mcp-adapter/banner.png")).toBe(false);
+    expect(acceptsDependency("pi-mcp-adapter/index.ts.map")).toBe(false);
+    expect(acceptsDependency("other-package/index.ts")).toBe(false);
+  },
+);
 
 const x64 = 1;
 const arm64 = 3;
@@ -149,10 +151,10 @@ describe("beforePack", () => {
 
     expect(config.mac.files?.[0].filter).toContain("out/**");
     expect(config.mac.files?.[0].filter).toContain(
-      "!**/node_modules/@mariozechner/clipboard-darwin-arm64/**/*",
+      "!**/node_modules/@napi-rs/keyring-darwin-arm64/**/*",
     );
     expect(config.mac.files?.[0].filter).not.toContain(
-      "!**/node_modules/@mariozechner/clipboard-darwin-x64/**/*",
+      "!**/node_modules/@napi-rs/keyring-darwin-x64/**/*",
     );
   });
 });

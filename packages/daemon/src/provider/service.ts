@@ -8,9 +8,11 @@ import {
   listPiProviderTemplates,
   loginCursorProvider,
   loginDevinProvider,
+  probeDevinProviderModelAxes,
 } from "@cocurdex/agent-adapters";
 import type {
   AgentId,
+  AgentProviderModelAxes,
   CompatibleProviderModel,
   ProviderAuthState,
   ProviderConfigRecord,
@@ -27,6 +29,10 @@ import {
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { ProviderCredentials } from "../provider-credentials/service";
 import type { DaemonState } from "../state";
+import {
+  exportConfiguredProviderJson,
+  importProviderJson,
+} from "./json-transfer";
 import { fetchProviderModels, listConfiguredProviderModels } from "./models";
 import {
   getTitleModelSetting,
@@ -68,6 +74,18 @@ export class DaemonProviderService {
     // the same provider id is re-created later.
     await this.state.deleteProviderModelsByProvider(providerId);
     await this.state.deleteProviderConfig(providerId);
+  }
+
+  importJson(json: string) {
+    return importProviderJson(
+      this.state,
+      (providerId, apiKey) => this.credentials.setApiKey(providerId, apiKey),
+      json,
+    );
+  }
+
+  exportJson() {
+    return exportConfiguredProviderJson(this.state);
   }
 
   async listProviderModels(
@@ -275,6 +293,27 @@ export class DaemonProviderService {
 
     const codexModels = await listCodexProviderModels(options);
     return [...codexModels, ...compatibleItems];
+  }
+
+  // Axes an agent only exposes inside a live session (Devin's per-model
+  // `thought_level`/`speed`) are probed per picked model. Best effort: a
+  // failed probe just leaves the picker's axes hidden.
+  async probeAgentModelAxes(
+    agentId: AgentId,
+    modelId: string,
+  ): Promise<AgentProviderModelAxes | null> {
+    if (agentId !== "devin") {
+      return null;
+    }
+    try {
+      return await probeDevinProviderModelAxes(modelId);
+    } catch (error) {
+      logDaemonDiagnostic("warn", "providerModels.devin.axesProbeFailed", {
+        modelId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      return null;
+    }
   }
 
   private createProviderDefaultModel(

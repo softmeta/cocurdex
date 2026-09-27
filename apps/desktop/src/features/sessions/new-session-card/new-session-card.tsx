@@ -29,7 +29,8 @@ import {
   subscribeAgentRoles,
   useAgentRoleSummary,
 } from "../agent-role";
-import { AgentSelect, buildAgentSelectOptions } from "../agent-select";
+import { AgentSelect } from "../agent-select";
+import { buildAgentSelectOptions } from "../agent-select-options";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import { ProviderModelMenu } from "../provider-model";
 import { shouldShowProviderGroupLabels } from "../provider-model/provider-model-label";
@@ -97,8 +98,8 @@ export function NewSessionCard({
     codexReasoningDefaultValue,
     selectedCodexReasoningEffort,
     setSelectedCodexReasoningEffort,
-    selectedCodexServiceTier,
-    setSelectedCodexServiceTier,
+    selectedServiceTier,
+    setSelectedServiceTier,
     selectedThinkingLevel,
     setSelectedThinkingLevel,
     openCodeAgentOptions,
@@ -118,7 +119,7 @@ export function NewSessionCard({
     canStartSession,
     canStartWithSelectedAgent,
     codexReasoningOptions,
-    codexServiceTierOptions,
+    serviceTierOptions,
     claudeFastModeOptions,
     selectedClaudeFastMode,
     setSelectedClaudeFastMode,
@@ -248,8 +249,8 @@ export function NewSessionCard({
       }
       fastModeOptions={claudeFastModeOptions}
       fastModeValue={selectedClaudeFastMode ? "on" : "off"}
-      serviceTierOptions={codexServiceTierOptions}
-      serviceTierValue={selectedCodexServiceTier}
+      serviceTierOptions={serviceTierOptions}
+      serviceTierValue={selectedServiceTier}
       openCodeAgentOptions={openCodeAgentOptions}
       openCodeAgentDefaultValue={openCodeAgentDefaultValue}
       openCodeAgentValue={openCodeAgentValue}
@@ -267,7 +268,7 @@ export function NewSessionCard({
       onFastModeChange={setSelectedClaudeFastMode}
       onOpenCodeAgentChange={setSelectedOpenCodeAgent}
       onOpenCodeVariantChange={setSelectedOpenCodeVariant}
-      onServiceTierChange={setSelectedCodexServiceTier}
+      onServiceTierChange={setSelectedServiceTier}
       onSaveAsRole={() => setSaveRoleOpen(true)}
     />
   );

@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { mapSession } from "../mappers";
 import type { SqliteRow } from "../sqlite-types";
+import { allocateTimelineSeq } from "../timeline-sequence";
 import type { SessionRepository } from "./session-repository";
 
 export function createSqliteSessionRepository(
@@ -79,8 +80,9 @@ export function createSqliteSessionRepository(
              session_mode_id, permission_mode, agent_role_id,
              provider_snapshot_json,
              created_at, updated_at, last_message_at, archived_at,
-             worktree_path, peer_inbound
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             worktree_path, peer_inbound, imported_provider_session_id,
+             imported_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              workspace_id = excluded.workspace_id,
              title = excluded.title,
@@ -99,7 +101,12 @@ export function createSqliteSessionRepository(
              last_message_at = excluded.last_message_at,
              archived_at = excluded.archived_at,
              worktree_path = excluded.worktree_path,
-             peer_inbound = excluded.peer_inbound`,
+             peer_inbound = excluded.peer_inbound,
+             imported_provider_session_id = COALESCE(
+               excluded.imported_provider_session_id,
+               sessions.imported_provider_session_id
+             ),
+             imported_at = COALESCE(excluded.imported_at, sessions.imported_at)`,
         )
         .run(
           session.id,
@@ -123,7 +130,12 @@ export function createSqliteSessionRepository(
           session.archivedAt ?? null,
           session.worktreePath ?? null,
           session.peerInbound ?? "deliver",
+          session.importedProviderSessionId ?? null,
+          session.importedAt ?? null,
         );
+    },
+    async allocateTimelineSeq(sessionId) {
+      return allocateTimelineSeq(database, sessionId);
     },
     async updateTitle(sessionId, title, updatedAt, expectedTitle) {
       const nextUpdatedAt = updatedAt ?? new Date().toISOString();

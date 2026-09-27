@@ -37,9 +37,9 @@ window.addEventListener("error", (event) => {
     details: {
       colno: event.colno,
       error: event.error,
-      filename: event.filename,
       lineno: event.lineno,
       message: event.message,
+      script: event.filename,
     },
     event: "renderer.windowError",
     level: "error",

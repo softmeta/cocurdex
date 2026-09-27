@@ -107,6 +107,7 @@ function startDaemonProcess() {
     .then((daemon) => {
       closeServer = daemon.close;
       console.log("Cocurdex daemon started");
+      void daemon.service.skillsService.refreshManagedGlobalInstall();
       if (shutdownRequested) {
         requestShutdown({ forceProcessTree: forceOwnedProcessTree });
       }

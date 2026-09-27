@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AppSearchableSelect } from "@/components";
 import { Text } from "@/components/ui/text";
 import type { GitBranchInfo, GitCommitInfo } from "@/lib";
-import { formatCommitChip, formatTurnChip } from "./git-changes-scope-menu";
+import { formatCommitChip, formatTurnChip } from "./git-changes-scope-chip";
 import type { GitDiffScope } from "./git-diff-scope";
 
 interface GitBranchRefSelectorsProps {

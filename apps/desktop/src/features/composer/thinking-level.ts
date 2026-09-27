@@ -1,10 +1,16 @@
 import type {
   AgentId,
+  AgentSessionConfigOption,
   AgentThinkingLevel,
   ReasoningEffort,
   ReasoningEffortOption,
 } from "@cocurdex/shared";
-import { piThinkingLevels, reasoningEfforts } from "@cocurdex/shared";
+import {
+  isReasoningEffort,
+  piThinkingLevels,
+  reasoningEfforts,
+} from "@cocurdex/shared";
+import { findSessionConfigOption } from "./session-config-options";
 
 // Model metadata the thinking-level picker needs, normalized so both the
 // new-session card (provider model record) and an active session (provider
@@ -28,7 +34,7 @@ export interface ThinkingLevelSource {
   thinkingLevelMapJson?: string | null;
   supportedReasoningEfforts?: ReasoningEffortOption[];
   /** Null when the agent publishes no default; nothing is preselected then. */
-  defaultReasoningEffort?: ReasoningEffort | null;
+  defaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
 }
 
 function getPiThinkingLevels(
@@ -60,8 +66,9 @@ function getPiThinkingLevels(
     .map((level) => ({ level }));
 }
 
-// Agents that report their own reasoning-effort menu (Grok Build over ACP)
-// drive the picker straight from that list — no pi-style thinkingLevelMap.
+// Agents that report their own reasoning-effort menu (Grok Build, Devin,
+// Claude Agent — all over ACP) drive the picker straight from that list —
+// no pi-style thinkingLevelMap.
 function getReportedThinkingLevels(
   source: ThinkingLevelSource,
 ): ThinkingLevelOption[] {
@@ -105,11 +112,33 @@ export function getThinkingLevelOptions(
   }
   if (
     source.agentType === "grok-build" ||
-    source.agentType === "claude-agent"
+    source.agentType === "claude-agent" ||
+    source.agentType === "devin"
   ) {
     return getReportedThinkingLevels(source);
   }
   return [];
+}
+
+// Sessions persisted before an agent started reporting effort metadata (or
+// agents that only expose the axis live, like Devin's `thought_level`
+// config option) still get a picker built from the session's own option.
+export function getConfigOptionThinkingLevels(
+  configOptions: readonly AgentSessionConfigOption[] | null | undefined,
+): ThinkingLevelOption[] {
+  const option = findSessionConfigOption(configOptions ?? [], "thinking");
+  if (option?.type !== "select") {
+    return [];
+  }
+  return (option.options ?? [])
+    .filter((item) => isReasoningEffort(item.value) || item.value === "none")
+    .map((item) => ({
+      // ACP agents spell "no thinking" as `none`; the picker calls it `off`.
+      level: (item.value === "none" ? "off" : item.value) as AgentThinkingLevel,
+      label: item.name,
+      description: item.description,
+      isDefault: item.value === option.currentValue,
+    }));
 }
 
 /**

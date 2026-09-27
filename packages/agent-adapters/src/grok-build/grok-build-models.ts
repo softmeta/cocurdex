@@ -103,6 +103,8 @@ function fallbackModels(now: string): CompatibleProviderModel[] {
           label: null,
           description: null,
         })),
+        defaultSpeed: null,
+        speedOptions: [],
       },
       GROK_BUILD_DEFAULT_MODEL_ID,
       now,

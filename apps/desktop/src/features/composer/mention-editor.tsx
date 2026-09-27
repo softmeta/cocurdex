@@ -23,7 +23,6 @@ import {
 } from "./mention-editor-dom";
 
 export type { EditorContentNode, MentionAnchor, MentionableAttachment };
-export { getMentionRegistryKey };
 
 import { getComposerEnterAction, type SendShortcut } from "./send-shortcut";
 

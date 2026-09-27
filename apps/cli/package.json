@@ -9,18 +9,20 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "node --import tsx src/index.ts",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "@earendil-works/pi-tui": "^0.84.1"
+    "@earendil-works/pi-coding-agent": "0.87.1",
+    "@earendil-works/pi-tui": "^0.87.1"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "tsx": "^4.8.1",
-    "vitest": "^3.2.7"
+    "@types/node": "^24.13.6",
+    "tsx": "^4.23.15",
+    "vitest": "^4.1.11"
   }
 }

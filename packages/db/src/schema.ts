@@ -20,7 +20,18 @@ export function createSchemaSql() {
       setup_script TEXT NOT NULL DEFAULT '',
       cleanup_script TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL,
+      proposed_setup_script TEXT,
+      proposed_cleanup_script TEXT,
+      proposed_rationale TEXT,
+      proposed_at TEXT,
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pending_settings_changes (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL,
+      value_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -43,6 +54,9 @@ export function createSchemaSql() {
       archived_at TEXT,
       worktree_path TEXT,
       peer_inbound TEXT NOT NULL DEFAULT 'deliver',
+      timeline_seq INTEGER NOT NULL DEFAULT 0,
+      imported_provider_session_id TEXT,
+      imported_at TEXT,
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
       FOREIGN KEY (parent_session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
@@ -56,6 +70,7 @@ export function createSchemaSql() {
       attachments_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
       origin_json TEXT,
+      seq INTEGER,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 
@@ -98,6 +113,7 @@ export function createSchemaSql() {
       locations_json TEXT NOT NULL,
       started_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      seq INTEGER,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 

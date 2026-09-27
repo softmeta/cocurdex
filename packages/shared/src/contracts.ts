@@ -120,7 +120,9 @@ export function isReasoningEffort(value: string): value is ReasoningEffort {
 }
 
 export interface ReasoningEffortOption {
-  reasoningEffort: ReasoningEffort;
+  // Thinking-level vocabulary: agents that offer an explicit "no thinking"
+  // rung (Devin's `none`) surface it here as `off`.
+  reasoningEffort: Exclude<AgentThinkingLevel, "default">;
   description: string;
   /** The agent's own name for this level, when it publishes one. */
   label?: string | null;
@@ -130,6 +132,15 @@ export interface CodexServiceTierOption {
   id: string;
   name: string;
   description: string;
+}
+
+// Runtime axes a provider model advertises, resolved on demand by agents that
+// only reveal them inside a session (Devin's per-model `thought_level` /
+// `speed`). Probed lazily per selected model and merged into the catalog.
+export interface AgentProviderModelAxes {
+  defaultReasoningEffort: Exclude<AgentThinkingLevel, "default"> | null;
+  supportedReasoningEfforts: ReasoningEffortOption[];
+  serviceTiers: CodexServiceTierOption[];
 }
 
 // Runtime controls are exposed only when the adapter can apply them without
@@ -195,7 +206,7 @@ export interface AgentProviderSnapshot {
   supportedReasoningEfforts?: ReasoningEffortOption[];
   // Effort the model runs at when the session sets none. Null when the agent
   // publishes no default, in which case the picker shows no selection.
-  modelDefaultReasoningEffort?: ReasoningEffort | null;
+  modelDefaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
   supportsReasoning?: boolean;
   serviceTier?: string | null;
   fastMode?: boolean | null;
@@ -297,6 +308,8 @@ export interface SessionRecord {
   providerSnapshot?: AgentProviderSnapshot | null;
   worktreePath?: string | null;
   peerInbound?: "deliver" | "refuse";
+  importedProviderSessionId?: string | null;
+  importedAt?: string | null;
 }
 
 export interface ProviderConfigRecord {
@@ -382,7 +395,7 @@ export interface ProviderModelRecord {
   thinkingLevelMapJson?: string | null;
   costJson?: string | null;
   compatJson?: string | null;
-  defaultReasoningEffort?: ReasoningEffort | null;
+  defaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
   supportedReasoningEfforts?: ReasoningEffortOption[];
   serviceTiers?: CodexServiceTierOption[];
   supportsFastMode?: boolean;
@@ -588,6 +601,7 @@ export interface MessageRecord {
   content: string;
   attachments: MessageAttachment[];
   createdAt: string;
+  seq?: number;
   origin?: MessageOrigin | null;
 }
 
@@ -641,6 +655,7 @@ export interface AgentToolCallRecord {
   locations: AgentToolCallLocation[];
   startedAt: string;
   updatedAt: string;
+  seq?: number;
 }
 
 export type AgentPermissionDecision =
@@ -701,6 +716,7 @@ export interface AgentMessageDeltaEvent {
   kind?: "reasoning" | "response";
   delta: string;
   createdAt: string;
+  seq?: number;
 }
 
 export interface AgentMessageCompletedEvent {
@@ -838,6 +854,7 @@ export interface AgentErrorEvent {
   type: "error";
   sessionId: string;
   message: string;
+  systemMessage?: MessageRecord;
 }
 
 export interface AgentPermissionRequestedEvent {

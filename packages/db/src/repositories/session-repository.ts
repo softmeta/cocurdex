@@ -7,6 +7,7 @@ export interface SessionRepository {
   listByWorkspaceId(workspaceId: string): Promise<SessionRecord[]>;
   getById(sessionId: string): Promise<SessionRecord | null>;
   upsert(session: SessionRecord): Promise<void>;
+  allocateTimelineSeq(sessionId: string): Promise<number | null>;
   updateTitle(
     sessionId: string,
     title: string,

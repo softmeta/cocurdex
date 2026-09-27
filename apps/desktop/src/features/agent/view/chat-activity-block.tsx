@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import { useTranscriptState } from "../transcript-state";
+import { useTranscriptState } from "../use-transcript-state";
 
 export function ActivityBlock({
   busy = false,

@@ -1,13 +1,22 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { CompatibleProviderModel } from "@cocurdex/shared";
+import type {
+  AgentProviderModelAxes,
+  CodexServiceTierOption,
+  CompatibleProviderModel,
+  ReasoningEffortOption,
+} from "@cocurdex/shared";
 import { isReasoningEffort } from "@cocurdex/shared";
-import type { AcpConnectionFactory } from "./acp-connection";
+import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
 import {
   type AcpSessionModel,
   type AcpSessionModelState,
+  isBaselineAcpSpeedValue,
+  readAcpModelConfigOptionId,
+  readAcpSessionEffortConfig,
   readAcpSessionModelState,
+  readAcpSessionSpeedConfig,
 } from "./acp-session-model";
 import { createSdkAcpConnection } from "./sdk-acp-connection";
 
@@ -31,7 +40,63 @@ const inFlightProbes = new Map<
   string,
   Promise<CompatibleProviderModel[] | null>
 >();
+// Keyed `providerId::modelId`; one axes probe session per model per process —
+// each probe costs a real (empty) agent session, so resolved results stick.
+const modelAxesProbes = new Map<
+  string,
+  Promise<AgentProviderModelAxes | null>
+>();
 const inFlightLogins = new Map<string, Promise<void>>();
+
+// ACP agents spell "no thinking" as `none`; the picker's vocabulary calls it
+// `off` (and the adapter maps it back on the way out).
+function toThinkingLevel(
+  value: string,
+): ReasoningEffortOption["reasoningEffort"] | null {
+  if (value === "none") {
+    return "off";
+  }
+  return isReasoningEffort(value) ? value : null;
+}
+
+function toSupportedReasoningEfforts(
+  model: AcpSessionModel,
+): ReasoningEffortOption[] {
+  return model.reasoningEfforts.flatMap((effort) => {
+    const level = toThinkingLevel(effort.value);
+    return level
+      ? [
+          {
+            reasoningEffort: level,
+            description: effort.description ?? effort.label ?? effort.value,
+            label: effort.label,
+          },
+        ]
+      : [];
+  });
+}
+
+// The baseline rung (Devin's "standard") is the picker's built-in default
+// row; only the named tiers become options.
+function toServiceTiers(model: AcpSessionModel): CodexServiceTierOption[] {
+  return model.speedOptions
+    .filter((option) => !isBaselineAcpSpeedValue(option.value))
+    .map((option) => ({
+      id: option.value,
+      name: option.label ?? option.value,
+      description: option.description ?? "",
+    }));
+}
+
+function toModelAxes(model: AcpSessionModel): AgentProviderModelAxes {
+  return {
+    defaultReasoningEffort: model.defaultReasoningEffort
+      ? toThinkingLevel(model.defaultReasoningEffort)
+      : null,
+    supportedReasoningEfforts: toSupportedReasoningEfforts(model),
+    serviceTiers: toServiceTiers(model),
+  };
+}
 
 function toCompatibleModel(
   spec: AcpModelCatalogSpec,
@@ -39,17 +104,10 @@ function toCompatibleModel(
   defaultModelId: string | null,
   now: string,
 ): CompatibleProviderModel {
-  const supportedReasoningEfforts = model.reasoningEfforts.flatMap((effort) =>
-    isReasoningEffort(effort.value)
-      ? [
-          {
-            reasoningEffort: effort.value,
-            description: effort.description ?? effort.label ?? effort.value,
-            label: effort.label,
-          },
-        ]
-      : [],
-  );
+  const axes = toModelAxes(model);
+  const serviceTiers = axes.serviceTiers;
+  const supportedReasoningEfforts = axes.supportedReasoningEfforts;
+  const defaultEffort = axes.defaultReasoningEffort;
 
   return {
     provider: {
@@ -73,12 +131,9 @@ function toCompatibleModel(
       outputLimit: null,
       capabilities: ["agent", "chat"],
       reasoning: model.reasoningEfforts.length > 0,
-      defaultReasoningEffort:
-        model.defaultReasoningEffort &&
-        isReasoningEffort(model.defaultReasoningEffort)
-          ? model.defaultReasoningEffort
-          : null,
+      defaultReasoningEffort: defaultEffort,
       supportedReasoningEfforts,
+      ...(serviceTiers.length > 0 ? { serviceTiers } : {}),
       isDefault: model.modelId === defaultModelId,
       createdAt: now,
       updatedAt: now,
@@ -180,6 +235,126 @@ const silentProbeHandlers = {
   },
 };
 
+// Devin attaches effort/speed to the session's *current* model: switching the
+// probe session to a model reveals which config options that model supports.
+// When the session already runs the requested model its new-session response
+// carries the axes directly and no switch is needed.
+async function readModelAxesFromSession(
+  connection: AcpConnection,
+  session: { sessionId?: string },
+  state: AcpSessionModelState,
+  modelId: string,
+): Promise<AgentProviderModelAxes | null> {
+  const model = state.models.find((item) => item.modelId === modelId);
+  if (!model) {
+    return null;
+  }
+  if (state.currentModelId !== modelId) {
+    const configId = readAcpModelConfigOptionId(session);
+    const sessionId = session.sessionId;
+    if (!configId || typeof sessionId !== "string") {
+      return null;
+    }
+    try {
+      const response = await connection.setSessionConfigOption({
+        sessionId,
+        configId,
+        value: modelId,
+      });
+      const effort = readAcpSessionEffortConfig(response);
+      const speed = readAcpSessionSpeedConfig(response);
+      model.reasoningEfforts = effort?.options ?? [];
+      model.defaultReasoningEffort = effort?.currentValue ?? null;
+      model.speedOptions = speed?.options ?? [];
+      model.defaultSpeed = speed?.currentValue ?? null;
+    } catch {
+      return null;
+    }
+  }
+  return toModelAxes(model);
+}
+
+function mergeProbedModelAxes(
+  providerId: string,
+  modelId: string,
+  axes: AgentProviderModelAxes,
+) {
+  const items = catalogCache.get(providerId);
+  if (!items) {
+    return;
+  }
+  catalogCache.set(
+    providerId,
+    items.map((item) =>
+      item.model.modelId === modelId
+        ? {
+            ...item,
+            model: {
+              ...item.model,
+              reasoning: axes.supportedReasoningEfforts.length > 0,
+              defaultReasoningEffort: axes.defaultReasoningEffort,
+              supportedReasoningEfforts: axes.supportedReasoningEfforts,
+              serviceTiers:
+                axes.serviceTiers.length > 0 ? axes.serviceTiers : undefined,
+            },
+          }
+        : item,
+    ),
+  );
+}
+
+export async function probeAcpProviderModelAxes(
+  spec: AcpModelCatalogSpec,
+  modelId: string,
+  connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
+  options: { timeoutMs?: number } = {},
+): Promise<AgentProviderModelAxes | null> {
+  const key = `${spec.providerId}::${modelId}`;
+  let probe = modelAxesProbes.get(key);
+  if (!probe) {
+    probe = (async () => {
+      try {
+        return await withProbeCwd(async (cwd) => {
+          const connection = await connectionFactory({
+            args: spec.args,
+            command: spec.command,
+            cwd,
+            handlers: silentProbeHandlers,
+          });
+          try {
+            return await withProbeTimeout(async () => {
+              await connection.initialize(buildProbeInitializeRequest(spec));
+              const session = await connection.newSession({
+                cwd,
+                mcpServers: [],
+              });
+              const state = readAcpSessionModelState(session);
+              return state
+                ? readModelAxesFromSession(connection, session, state, modelId)
+                : null;
+            }, options.timeoutMs ?? ACP_MODEL_PROBE_TIMEOUT_MS);
+          } finally {
+            await connection.close();
+          }
+        });
+      } catch {
+        return null;
+      }
+    })();
+    modelAxesProbes.set(key, probe);
+  }
+  const axes = await probe;
+  if (!axes) {
+    // Failed probes are retried on the next selection; a probe that resolves
+    // to "no axes" (model legitimately has none) stays cached via the same
+    // entry only when the agent answered — a null here means it did not.
+    modelAxesProbes.delete(key);
+    return null;
+  }
+  mergeProbedModelAxes(spec.providerId, modelId, axes);
+  return axes;
+}
+
 async function probeCatalog(
   spec: AcpModelCatalogSpec,
   connectionFactory: AcpConnectionFactory,
@@ -209,7 +384,8 @@ async function probeCatalog(
         cwd,
         mcpServers: [],
       });
-      return mapCatalog(spec, readAcpSessionModelState(session));
+      const state = readAcpSessionModelState(session);
+      return mapCatalog(spec, state);
     }, timeoutMs);
   } finally {
     await connection.close();
@@ -259,10 +435,16 @@ export function resetAcpProviderModelsCache(providerId?: string) {
   if (providerId) {
     catalogCache.delete(providerId);
     inFlightProbes.delete(providerId);
+    for (const key of modelAxesProbes.keys()) {
+      if (key.startsWith(`${providerId}::`)) {
+        modelAxesProbes.delete(key);
+      }
+    }
     return;
   }
   catalogCache.clear();
   inFlightProbes.clear();
+  modelAxesProbes.clear();
 }
 
 export function loginAcpProvider(

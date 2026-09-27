@@ -18,6 +18,9 @@ export interface AcpSessionModel {
   contextWindow: number | null;
   defaultReasoningEffort: string | null;
   reasoningEfforts: AcpReasoningEffort[];
+  /** Session "speed" axis values (Devin's `standard`/`fast`), per model. */
+  defaultSpeed: string | null;
+  speedOptions: AcpReasoningEffort[];
 }
 
 export interface AcpSessionModelState {
@@ -30,6 +33,33 @@ function readString(record: Record<string, unknown>, key: string) {
   return typeof value === "string" ? value : null;
 }
 
+function readEffortEntry(
+  entry: unknown,
+  seen: Set<string>,
+): AcpReasoningEffort[] {
+  if (typeof entry !== "object" || entry === null) {
+    return [];
+  }
+  const record = entry as Record<string, unknown>;
+  const value = readString(record, "value");
+
+  if (!value || seen.has(value)) {
+    return [];
+  }
+
+  seen.add(value);
+  // Label and description are the agent's own copy; keep them so the picker
+  // can show its vocabulary instead of ours. Config-option choices spell the
+  // label `name` while model metadata spells it `label`.
+  return [
+    {
+      value,
+      label: readString(record, "label") ?? readString(record, "name"),
+      description: readString(record, "description"),
+    },
+  ];
+}
+
 function readEfforts(meta: Record<string, unknown>): AcpReasoningEffort[] {
   if (meta.supportsReasoningEffort !== true) {
     return [];
@@ -40,28 +70,7 @@ function readEfforts(meta: Record<string, unknown>): AcpReasoningEffort[] {
   }
   const seen = new Set<string>();
 
-  return raw.flatMap((entry) => {
-    if (typeof entry !== "object" || entry === null) {
-      return [];
-    }
-    const record = entry as Record<string, unknown>;
-    const value = readString(record, "value");
-
-    if (!value || seen.has(value)) {
-      return [];
-    }
-
-    seen.add(value);
-    // Label and description are the agent's own copy; keep them so the picker
-    // can show its vocabulary instead of ours.
-    return [
-      {
-        value,
-        label: readString(record, "label"),
-        description: readString(record, "description"),
-      },
-    ];
-  });
+  return raw.flatMap((entry) => readEffortEntry(entry, seen));
 }
 
 function readModel(entry: unknown): AcpSessionModel | null {
@@ -86,6 +95,8 @@ function readModel(entry: unknown): AcpSessionModel | null {
     contextWindow: typeof contextWindow === "number" ? contextWindow : null,
     defaultReasoningEffort: readString(meta, "reasoningEffort"),
     reasoningEfforts: readEfforts(meta),
+    defaultSpeed: null,
+    speedOptions: [],
   };
 }
 
@@ -124,6 +135,8 @@ function readConfigOptionModel(entry: unknown): AcpSessionModel | null {
     contextWindow: null,
     defaultReasoningEffort: null,
     reasoningEfforts: [],
+    defaultSpeed: null,
+    speedOptions: [],
   };
 }
 
@@ -136,6 +149,131 @@ function isModelConfigOption(record: Record<string, unknown>) {
   return id === "model" || category === "model";
 }
 
+// Agents that keep effort or speed off the model metadata expose each as a
+// session config option instead (Devin's `thought_level`, `speed`). The keys
+// normalize the id/category spellings agents use for those axes.
+const EFFORT_CONFIG_OPTION_KEYS = new Set([
+  "effort",
+  "reasoning",
+  "reasoning_effort",
+  "thinking",
+  "thinking_level",
+  "thought_level",
+]);
+
+const SPEED_CONFIG_OPTION_KEYS = new Set([
+  "speed",
+  "service_tier",
+  "fast_mode",
+  "fastmode",
+]);
+
+export interface AcpSessionSelectConfig {
+  configId: string;
+  currentValue: string | null;
+  options: AcpReasoningEffort[];
+}
+
+function normalizeConfigKey(value: string | null) {
+  return (
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_") ?? ""
+  );
+}
+
+function isSelectConfigOption(
+  record: Record<string, unknown>,
+  keys: ReadonlySet<string>,
+) {
+  if (readString(record, "type") !== "select") {
+    return false;
+  }
+  return (
+    keys.has(normalizeConfigKey(readString(record, "id"))) ||
+    keys.has(normalizeConfigKey(readString(record, "category")))
+  );
+}
+
+function readEffortConfigOptions(raw: unknown): AcpReasoningEffort[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  // Config options may nest their choices under a `group` entry's options.
+  const entries = raw.flatMap((entry) => {
+    if (typeof entry !== "object" || entry === null) {
+      return [];
+    }
+    const record = entry as Record<string, unknown>;
+    return Array.isArray(record.options) ? record.options : [entry];
+  });
+  const seen = new Set<string>();
+  return entries.flatMap((entry) => readEffortEntry(entry, seen));
+}
+
+function readSessionSelectConfig(
+  response: unknown,
+  keys: ReadonlySet<string>,
+): AcpSessionSelectConfig | null {
+  if (typeof response !== "object" || response === null) {
+    return null;
+  }
+  const configOptions = (response as Record<string, unknown>).configOptions;
+  if (!Array.isArray(configOptions)) {
+    return null;
+  }
+  for (const option of configOptions) {
+    if (typeof option !== "object" || option === null) {
+      continue;
+    }
+    const record = option as Record<string, unknown>;
+    if (!isSelectConfigOption(record, keys)) {
+      continue;
+    }
+    const configId = readString(record, "id");
+    const options = readEffortConfigOptions(record.options);
+    if (!configId || options.length === 0) {
+      continue;
+    }
+    return {
+      configId,
+      currentValue: readString(record, "currentValue"),
+      options,
+    };
+  }
+  return null;
+}
+
+export function readAcpSessionEffortConfig(
+  response: unknown,
+): AcpSessionSelectConfig | null {
+  return readSessionSelectConfig(response, EFFORT_CONFIG_OPTION_KEYS);
+}
+
+export function readAcpSessionSpeedConfig(
+  response: unknown,
+): AcpSessionSelectConfig | null {
+  return readSessionSelectConfig(response, SPEED_CONFIG_OPTION_KEYS);
+}
+
+const BASELINE_SPEED_VALUES = new Set(["default", "normal", "standard"]);
+
+export function isBaselineAcpSpeedValue(value: string): boolean {
+  return BASELINE_SPEED_VALUES.has(normalizeConfigKey(value));
+}
+
+// The value a speed option rests at when nothing is selected — Devin's
+// "standard". Everything else becomes a named tier in the picker.
+export function baselineAcpSpeedValue(
+  config: AcpSessionSelectConfig,
+): string | null {
+  const baseline = config.options.find((option) =>
+    isBaselineAcpSpeedValue(option.value),
+  );
+  return baseline?.value ?? config.options[0]?.value ?? null;
+}
+
 function readModelStateFromConfigOptions(
   response: Record<string, unknown>,
 ): AcpSessionModelState | null {
@@ -143,6 +281,11 @@ function readModelStateFromConfigOptions(
   if (!Array.isArray(configOptions)) {
     return null;
   }
+  // Session-scoped effort/speed options describe only the session's current
+  // model — Devin adds and removes them as the model changes, so they must
+  // not be merged onto every advertised model.
+  const effort = readAcpSessionEffortConfig(response);
+  const speed = readAcpSessionSpeedConfig(response);
   for (const option of configOptions) {
     if (typeof option !== "object" || option === null) {
       continue;
@@ -158,9 +301,20 @@ function readModelStateFromConfigOptions(
     if (models.length === 0) {
       continue;
     }
+    const currentModelId = readString(record, "currentValue");
     return {
-      currentModelId: readString(record, "currentValue"),
-      models,
+      currentModelId,
+      models: models.map((model) =>
+        model.modelId === currentModelId
+          ? {
+              ...model,
+              defaultReasoningEffort: effort?.currentValue ?? null,
+              reasoningEfforts: effort?.options ?? [],
+              defaultSpeed: speed?.currentValue ?? null,
+              speedOptions: speed?.options ?? [],
+            }
+          : model,
+      ),
     };
   }
   return null;

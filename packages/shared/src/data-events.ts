@@ -8,7 +8,13 @@ import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 // `agent` marks agent/session runtime state (sessions, pending interactions,
 // transcripts) as unsynchronized; emitted synthetically on event-replay gaps
 // so clients resync from authoritative snapshots.
-export const cocurdexDataAreas = ["notes", "issues", "agent"] as const;
+export const cocurdexDataAreas = [
+  "notes",
+  "issues",
+  "agent",
+  "workspace",
+  "settings",
+] as const;
 
 export type CocurdexDataArea = (typeof cocurdexDataAreas)[number];
 

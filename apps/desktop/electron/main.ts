@@ -15,6 +15,8 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import {
+  hashLogValue,
+  hostForLog,
   validateSendSessionCommand,
   validateSubmitPreviousMessageCommand,
 } from "@cocurdex/shared";
@@ -167,7 +169,7 @@ function configureRemoteDebugging() {
   const port = Number(rawPort);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     console.warn("[perf] remote debugging disabled: invalid port", {
-      env: REMOTE_DEBUGGING_PORT_ENV,
+      variable: REMOTE_DEBUGGING_PORT_ENV,
       value: rawPort,
     });
     return;
@@ -211,7 +213,7 @@ if (!gotTheLock) {
       if (folder) {
         void handleCliOpenFolder(folder, { broadcast: true }).catch((error) => {
           appLogger.error("openFolder.secondInstanceFailed", {
-            folder,
+            targetDirHash: hashLogValue(folder),
             message: error instanceof Error ? error.message : String(error),
           });
         });
@@ -311,7 +313,7 @@ function createWindow() {
       appLogger.error("window.loadFailed", {
         errorCode,
         errorDescription,
-        url: validatedURL,
+        host: hostForLog(validatedURL),
       });
       showWindowOnce();
     },
@@ -608,7 +610,57 @@ function registerWorkspaceHandlers() {
           setupScript: payload.setupScript,
           cleanupScript: payload.cleanupScript,
           updatedAt: null,
+          proposal: null,
         },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "assistant:createSession",
+    schemas.workspaceId,
+    async (_event, workspaceId) =>
+      requestDaemon(
+        "assistant.session.create",
+        { workspaceId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "assistant:getOrCreateSession",
+    schemas.workspaceId,
+    async (_event, workspaceId) =>
+      requestDaemon(
+        "assistant.session.getOrCreate",
+        { workspaceId },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  ipcMain.handle("settings:listPendingChanges", async () =>
+    requestDaemon("settings.pendingChanges.list", {
+      userDataPath: app.getPath("userData"),
+    }),
+  );
+  registerHandler(
+    ipcMain,
+    "settings:ackPendingChange",
+    schemas.settingsChangeAck,
+    async (_event, payload) =>
+      requestDaemon(
+        "settings.pendingChanges.ack",
+        { id: payload.id },
+        { userDataPath: app.getPath("userData") },
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "settings:reportValues",
+    schemas.settingsValuesReport,
+    async (_event, payload) =>
+      requestDaemon(
+        "settings.values.report",
+        { values: payload.values },
         { userDataPath: app.getPath("userData") },
       ),
   );
@@ -1075,14 +1127,14 @@ function registerSessionHandlers() {
         sessionLogger.info("session.slashCommandsListed", {
           agentType: payload.agentType,
           count: commands.length,
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
         return commands;
       } catch (error) {
         sessionLogger.error("session.slashCommandsFailed", {
           agentType: payload.agentType,
           message: error instanceof Error ? error.message : String(error),
-          workspaceRootPath: payload.workspaceRootPath,
+          workspaceHash: hashLogValue(payload.workspaceRootPath),
         });
         throw error;
       }
@@ -1436,6 +1488,10 @@ app
     configureLogging({
       appVersion: app.getVersion(),
       diagnosticsDirectory: path.join(userDataPath, "diagnostics"),
+      diagnosticsPreferencesPath: path.join(
+        userDataPath,
+        "diagnostics-preferences.json",
+      ),
       logDirectory: logsPath,
       sessionLogDirectory: path.join(logsPath, "sessions"),
       pretty: !app.isPackaged,
@@ -1649,7 +1705,7 @@ app
       void handleCliOpenFolder(initialFolder, { broadcast: false }).catch(
         (error) => {
           appLogger.error("openFolder.initialFailed", {
-            folder: initialFolder,
+            targetDirHash: hashLogValue(initialFolder),
             message: error instanceof Error ? error.message : String(error),
           });
         },

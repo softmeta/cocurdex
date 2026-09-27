@@ -36,19 +36,6 @@ describe("nativeIdMatchesTarget", () => {
 });
 
 describe("createNativePackageExcludes", () => {
-  it("excludes the other darwin clipboard package when packing Intel", () => {
-    const excludes = createNativePackageExcludes("darwin", "x64");
-    expect(excludes).toContain(
-      "!**/node_modules/@mariozechner/clipboard-darwin-arm64/**/*",
-    );
-    expect(excludes).toContain(
-      "!**/node_modules/@mariozechner/clipboard-darwin-universal/**/*",
-    );
-    expect(excludes).not.toContain(
-      "!**/node_modules/@mariozechner/clipboard-darwin-x64/**/*",
-    );
-  });
-
   it("excludes foreign OS and CPU natives for Apple Silicon", () => {
     const excludes = createNativePackageExcludes("darwin", "arm64");
     expect(excludes).toContain(

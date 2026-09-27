@@ -25,7 +25,7 @@ export function ChatVirtualTimeline({
   viewportElement,
   ...conversationProps
 }: ChatVirtualTimelineProps) {
-  const { items, rootRef, scrollMargin, updateFocus, virtualizer } =
+  const { items, rootRef, scrollMargin, totalSize, updateFocus, virtualizer } =
     useVirtualTimeline({
       groups,
       scrollRef,
@@ -36,7 +36,6 @@ export function ChatVirtualTimeline({
     index: item.index,
     top: item.start - scrollMargin,
   }));
-
   return (
     <TranscriptStateProvider>
       <div
@@ -45,7 +44,7 @@ export function ChatVirtualTimeline({
         onBlurCapture={(event) => updateFocus(event.relatedTarget)}
         onFocusCapture={(event) => updateFocus(event.target)}
         ref={rootRef}
-        style={{ height: virtualizer.getTotalSize() }}
+        style={{ height: totalSize }}
       >
         {rows.map(({ index, top }) => {
           const group = groups[index];

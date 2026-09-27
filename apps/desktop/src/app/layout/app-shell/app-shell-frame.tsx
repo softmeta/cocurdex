@@ -19,7 +19,7 @@ import type {
   NotificationSettings,
   ThemeMode,
 } from "@/features/settings";
-import { SettingsScreen } from "@/features/settings";
+import { AssistantSuggestionBar, SettingsScreen } from "@/features/settings";
 import {
   openWorkspaceByPathAtom,
   pickHostDirectoryAtom,
@@ -31,8 +31,13 @@ import type { LanguageMode } from "@/i18n/language";
 import type { WorkspaceFileEntry } from "@/lib";
 import { cn } from "@/lib";
 import { requestChatContextAtom } from "@/lib/chat-context-store";
+import { ChatDock } from "../chat-dock";
 import { CHAT_DOCK_ACTIONS_INSET } from "../chat-dock-actions";
-import type { ChatDockVisibility } from "../chat-dock-geometry";
+import {
+  type ChatDockVisibility,
+  closedChatDockVisibility,
+  useDockGeometry,
+} from "../chat-dock-geometry";
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
@@ -179,6 +184,7 @@ export function AppShellFrame({
   const setSidebarTab = useSetAtom(sidebarTabAtom);
   const composerRef = useChatContext(() => onChatDockVisibilityChange("open"));
   useChatBrowserContext();
+  const dock = useDockGeometry();
   const requestChatContext = useSetAtom(requestChatContextAtom);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
@@ -222,13 +228,15 @@ export function AppShellFrame({
   // mount point renders it at a time (center when side by side, dock when the
   // editor is fullscreen), so chat state and composerRef survive the switch.
   // The dock drops the titlebar spacer but keeps the session pane header.
+  let paneHeaderEndInset = 0;
+  if (isRightPanelCompact && !isRightPanelMaximized) {
+    paneHeaderEndInset = CHAT_DOCK_ACTIONS_INSET;
+  } else if (!isRightPanelOpen) {
+    paneHeaderEndInset = TITLEBAR_EDITOR_TOGGLE_WIDTH;
+  }
   const splitChatNode = (
     <SessionSplitLayout
-      headerEndInset={
-        isRightPanelCompact && !isRightPanelMaximized
-          ? CHAT_DOCK_ACTIONS_INSET
-          : 0
-      }
+      headerEndInset={paneHeaderEndInset}
       headerStartInset={
         !isLeftSidebarOpen && !isRightPanelCompact
           ? TITLEBAR_PANE_HEADER_START_INSET
@@ -363,6 +371,7 @@ export function AppShellFrame({
           <AppShellContent
             isRightPanelCompact={isRightPanelCompact}
             contentRowRef={contentRowRef}
+            dock={dock}
             isLeftSidebarOpen={isLeftSidebarOpen}
             leftWidth={leftWidth}
             isRightPanelOpen={isRightPanelOpen}
@@ -370,7 +379,7 @@ export function AppShellFrame({
             isPanelFullWidth={isPanelFullWidth}
             rightWidth={rightWidth}
             appearanceSettings={appearanceSettings}
-            splitChatNode={splitChatNode}
+            splitChatNode={activeScreen === "settings" ? null : splitChatNode}
             chatDockVisibility={chatDockVisibility}
             isChatDockPinned={isChatDockPinned}
             hideFabWhenClosed={hideFabWhenClosed}
@@ -418,6 +427,35 @@ export function AppShellFrame({
             themeMode={themeMode}
           />
         </div>
+      ) : null}
+      {activeScreen === "settings" && !isChatDetached ? (
+        <ChatDock
+          visibility={chatDockVisibility}
+          pinned={false}
+          pinnable={false}
+          dock={dock}
+          onOpen={() => onChatDockVisibilityChange("open")}
+          onClose={() =>
+            onChatDockVisibilityChange(
+              closedChatDockVisibility(hideFabWhenClosed),
+            )
+          }
+          onHideFab={() => onChatDockVisibilityChange("hidden")}
+          onPinnedChange={onChatDockPinnedChange}
+        >
+          <div className="flex h-full flex-col">
+            <AssistantSuggestionBar section={activeSettingsSection} />
+            <div className="min-h-0 flex-1">
+              {chatDockVisibility === "open" ? (
+                <SessionSplitLayout
+                  composerRef={composerRef}
+                  hideTitlebarSpacer
+                  hideSinglePaneHeader
+                />
+              ) : null}
+            </div>
+          </div>
+        </ChatDock>
       ) : null}
     </div>
   );

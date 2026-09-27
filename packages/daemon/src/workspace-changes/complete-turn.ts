@@ -9,6 +9,7 @@ import type {
 import {
   applyContentLineStats,
   attributeTurnFiles,
+  hashLogValue,
   mergeNativeAndHostEvidence,
   selectChangeSetCoverage,
   selectChangeSetSource,
@@ -271,7 +272,7 @@ export function logCaptureFailure(input: {
     phase: input.phase,
     sessionId: input.sessionId,
     userMessageId: input.userMessageId,
-    workspaceRootPath: input.workspaceRootPath,
+    workspaceHash: hashLogValue(input.workspaceRootPath),
     error:
       input.error instanceof Error ? input.error.message : String(input.error),
   });

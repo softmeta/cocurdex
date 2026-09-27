@@ -4,6 +4,7 @@ import type {
   DaemonRequest,
   DaemonResultByMethod,
 } from "@cocurdex/rpc";
+import type { ProviderAuthMethod } from "@cocurdex/shared";
 import {
   checkoutGitBranch,
   discardGitFiles,
@@ -17,6 +18,10 @@ import {
   unstageGitFiles,
 } from "./git";
 import type { CocurdexDaemonService } from "./service";
+
+function isProviderAuthMethod(value: unknown): value is ProviderAuthMethod {
+  return value === "oauth" || value === "api_key";
+}
 
 export function handleDaemonRequest<M extends DaemonMethod>(
   service: CocurdexDaemonService,
@@ -189,6 +194,18 @@ export async function handleDaemonRequest(
       return service.getWorktreeEnvironment(request.params.workspaceId);
     case "workspace.worktreeEnvironment.save":
       return service.saveWorktreeEnvironment(request.params);
+    case "assistant.session.create":
+      return service.createAssistantSession(request.params.workspaceId);
+    case "assistant.session.getOrCreate":
+      return service.getOrCreateAssistantSession(request.params);
+    case "settings.pendingChanges.list":
+      return service.listPendingSettingsChanges();
+    case "settings.pendingChanges.ack":
+      await service.acknowledgeSettingsChange(request.params.id);
+      return null;
+    case "settings.values.report":
+      await service.reportSettingValues(request.params.values);
+      return null;
     case "workspace.runWorktreeSetup":
       return service.runWorktreeSetup(request.params);
     case "worktree.settings.get":
@@ -315,6 +332,30 @@ export async function handleDaemonRequest(
       return service.providerService.readAuthState(request.params.providerId);
     case "provider.auth.logout":
       await service.providerService.authLogout(request.params.providerId);
+      return null;
+    case "provider.auth.login.start":
+      if (!isProviderAuthMethod(request.params.method)) {
+        throw new Error("Invalid provider auth method");
+      }
+      return service.providerLogins.start(
+        request.params.providerId,
+        request.params.method,
+      );
+    case "provider.auth.login.next":
+      return service.providerLogins.next(request.params.loginId);
+    case "provider.auth.login.respond":
+      service.providerLogins.respond(
+        request.params.loginId,
+        request.params.promptId,
+        request.params.value,
+      );
+      return null;
+    case "provider.importJson":
+      return service.providerService.importJson(request.params.json);
+    case "provider.exportJson":
+      return service.providerService.exportJson();
+    case "provider.auth.login.cancel":
+      service.providerLogins.cancel(request.params.loginId);
       return null;
     case "codex.account.read":
       return readCodexAccount();
@@ -481,6 +522,11 @@ export async function handleDaemonRequest(
       return service.providerService.listCompatibleProviderModels(
         request.params.agentId,
         { forceRefresh: request.params.forceRefresh },
+      );
+    case "provider.modelAxes.probe":
+      return service.providerService.probeAgentModelAxes(
+        request.params.agentId,
+        request.params.modelId,
       );
     case "provider.listDefaults":
       return service.providerService.listAgentProviderDefaults();

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AgentToolRegistry } from "../tool-registry";
 import { registerMessagingTools } from "./messaging";
 import { registerScriptRunTools } from "./script-run";
+import { registerSettingsTools } from "./settings";
 import { registerTeamTools, type TeamToolDependencies } from "./team";
 
 function registry() {
@@ -16,6 +17,12 @@ function registry() {
     new Proxy({}, { get: () => unused }) as TeamToolDependencies,
   );
   registerScriptRunTools(tools, { create: unused });
+  registerSettingsTools(tools, {
+    getWorktreeEnvironment: unused,
+    proposeWorktreeEnvironment: unused,
+    getSettingValue: unused,
+    setSettingValue: unused,
+  });
   return tools;
 }
 
@@ -34,5 +41,19 @@ describe("agent tool visibility", () => {
     expect(toolNames("main")).toContain("script_run_propose");
     expect(toolNames("teammate")).not.toContain("script_run_propose");
     expect(toolNames("teammate")).toContain("messaging_send_message");
+  });
+
+  it("lets only main sessions inspect and propose settings", () => {
+    expect(toolNames("main")).toEqual(
+      expect.arrayContaining([
+        "settings_list",
+        "settings_get",
+        "settings_propose",
+        "settings_set",
+      ]),
+    );
+    expect(toolNames("teammate")).not.toContain("settings_propose");
+    expect(toolNames("teammate")).not.toContain("settings_get");
+    expect(toolNames("subagent")).not.toContain("settings_list");
   });
 });

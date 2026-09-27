@@ -11,6 +11,7 @@ import type {
   ProductSkillsRequestPayload,
   ProductSkillsStatusResult,
 } from "@cocurdex/shared";
+import { hashLogValue } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "./diagnostics";
 
 export class DaemonSkillsService {
@@ -78,7 +79,7 @@ export class DaemonSkillsService {
     logDaemonDiagnostic("info", "skills.install", {
       scope: payload.scope,
       action: result.action,
-      workspaceRootPath: payload.workspaceRootPath ?? null,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
       packVersion: result.packVersion,
     });
     return {
@@ -86,6 +87,28 @@ export class DaemonSkillsService {
       sourceAvailable: await this.sourceIsAvailable(),
       sourceRoot: this.sourceRoot,
     };
+  }
+
+  async refreshManagedGlobalInstall(): Promise<void> {
+    try {
+      const status = await getProductSkillsStatus("global", undefined, {
+        sourceRoot: this.sourceRoot,
+      });
+      if (!status.updateAvailable || !(await this.sourceIsAvailable())) {
+        return;
+      }
+      const result = await installProductSkills("global", undefined, {
+        sourceRoot: this.sourceRoot,
+        packVersion: status.packVersion,
+      });
+      logDaemonDiagnostic("info", "skills.autoUpdate", {
+        action: result.action,
+        fromVersion: status.installedVersion,
+        packVersion: result.packVersion,
+      });
+    } catch {
+      logDaemonDiagnostic("warn", "skills.autoUpdateFailed");
+    }
   }
 
   async remove(
@@ -100,7 +123,7 @@ export class DaemonSkillsService {
     logDaemonDiagnostic("info", "skills.remove", {
       scope: payload.scope,
       removed: result.removed,
-      workspaceRootPath: payload.workspaceRootPath ?? null,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
     });
     return result;
   }

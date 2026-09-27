@@ -32,7 +32,7 @@ export async function handleSkillsCommand(
 
   if (action === "list") {
     const payload = {
-      packVersion: getProductSkillsPackVersion(),
+      packVersion: await getProductSkillsPackVersion(),
       skills: [...PRODUCT_SKILL_NAMES],
     };
     if (parsed.flags.has("json")) {

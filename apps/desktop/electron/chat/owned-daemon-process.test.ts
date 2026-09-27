@@ -75,7 +75,11 @@ describe("spawnOwnedDaemonProcess", () => {
       message: '{"event":"daemon.ready"}',
       source: "diagnostic",
     });
-    expect(parseDaemonOutputLine("ordinary stdout", "stdout")).toBeNull();
+    expect(parseDaemonOutputLine("ordinary stdout", "stdout")).toEqual({
+      message: "ordinary stdout",
+      source: "diagnostic",
+    });
+    expect(parseDaemonOutputLine("   ", "stdout")).toBeNull();
     expect(parseDaemonOutputLine("uncaught exception", "stderr")).toEqual({
       message: "uncaught exception",
       source: "stderr",

@@ -32,6 +32,8 @@ interface ChatDockProps {
   visibility: ChatDockVisibility;
   /** Controlled pin state from the shell layout preference. */
   pinned: boolean;
+  /** False on surfaces that do not offer pinning (settings overlay). */
+  pinnable?: boolean;
   /** Geometry hoisted to the shell so it can reserve the pinned rail width. */
   dock: ReturnType<typeof useDockGeometry>;
   onOpen(): void;
@@ -68,6 +70,7 @@ interface ChatDockProps {
 export function ChatDock({
   visibility,
   pinned: pinRequested,
+  pinnable = true,
   dock,
   onOpen,
   onClose,
@@ -83,7 +86,7 @@ export function ChatDock({
 
   const viewportWidth = useChatDockViewportWidth();
   const pinLayout = resolveChatDockPinLayout(viewportWidth, geometry.width);
-  const pinned = pinRequested && pinLayout.canPin;
+  const pinned = pinnable && pinRequested && pinLayout.canPin;
   const { paneCount, focusedPaneId, splitPaneById } = useSessionSplitActions();
   const focusedPane = useAtomValue(focusedSessionPaneAtom);
   const conversations = useAtomValue(conversationsAtom);
@@ -114,6 +117,7 @@ export function ChatDock({
 
   const headerTrailing = (
     <ChatDockActions
+      pinnable={pinnable}
       pinned={pinRequested}
       onPinnedChange={onPinnedChange}
       onClose={onClose}

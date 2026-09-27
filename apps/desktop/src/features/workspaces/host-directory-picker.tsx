@@ -1,5 +1,5 @@
 import type { HostDirectoryListing } from "@cocurdex/shared";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import { ArrowUp, Eye, EyeOff, Folder } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,28 +18,7 @@ import {
   Text,
 } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
-
-interface HostDirectoryPickRequest {
-  resolve(path: string | null): void;
-}
-
-const hostDirectoryPickRequestAtom = atom<HostDirectoryPickRequest | null>(
-  null,
-);
-
-// Picks a directory on the daemon host. Hosts with a native directory dialog
-// keep using it; other clients browse through the daemon `fs.listDirectories`
-// RPC via the mounted HostDirectoryPickerHost.
-export const pickHostDirectoryAtom = atom(null, async (get, set) => {
-  if (desktopApi.capabilities.nativeDirectoryDialog) {
-    const result = await desktopApi.openWorkspace();
-    return result.canceled ? null : (result.filePaths[0] ?? null);
-  }
-  get(hostDirectoryPickRequestAtom)?.resolve(null);
-  return new Promise<string | null>((resolve) => {
-    set(hostDirectoryPickRequestAtom, { resolve });
-  });
-});
+import { hostDirectoryPickRequestAtom } from "./host-directory-pick-atom";
 
 export function HostDirectoryPickerHost() {
   const [request, setRequest] = useAtom(hostDirectoryPickRequestAtom);

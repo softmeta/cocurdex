@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
@@ -25,6 +24,9 @@ import type {
 import {
   aggregateTurnFileChanges,
   createUnifiedDiff,
+  errorKindForLog,
+  hashLogValue,
+  hostForLog,
   piThinkingLevels,
 } from "@cocurdex/shared";
 import {
@@ -237,14 +239,13 @@ async function listPiSlashCommands(
     await loader.reload();
   } catch (error) {
     logPiSkillDiagnostic("pi.skills.reloadFailed", {
-      agentDir,
+      agentDirHash: hashLogValue(agentDir),
       error: error instanceof Error ? error.message : String(error),
-      home: homedir(),
       roots: getPiSkillRootSnapshots({
         agentDir,
         workspaceRootPath: payload.workspaceRootPath,
       }),
-      workspaceRootPath: payload.workspaceRootPath,
+      workspaceHash: hashLogValue(payload.workspaceRootPath),
     });
     logAdapterDiagnostic("info", "pi: listSlashCommands failed", {
       message: error instanceof Error ? error.message : String(error),
@@ -254,23 +255,17 @@ async function listPiSlashCommands(
 
   const skillResult = loader.getSkills();
   logPiSkillDiagnostic("pi.skills.scanned", {
-    additionalSkillPaths,
-    agentDir,
-    diagnostics: skillResult.diagnostics,
-    home: homedir(),
+    agentDirHash: hashLogValue(agentDir),
     roots: getPiSkillRootSnapshots({
       agentDir,
       workspaceRootPath: payload.workspaceRootPath,
     }),
     skillCount: skillResult.skills.length,
-    skillNames: skillResult.skills.map((skill) => skill.name),
-    workspaceRootPath: payload.workspaceRootPath,
+    workspaceHash: hashLogValue(payload.workspaceRootPath),
   });
   logAdapterDiagnostic("info", "pi: listSlashCommands scanned", {
-    additionalSkillPaths,
-    agentDir,
-    cwd: payload.workspaceRootPath,
-    home: homedir(),
+    agentDirHash: hashLogValue(agentDir),
+    workspaceHash: hashLogValue(payload.workspaceRootPath),
   });
 
   const skills: AgentSlashCommand[] = skillResult.skills.map((skill) => ({
@@ -318,8 +313,8 @@ async function registerRuntimeProvider(
     providerId: providerConfig.providerId,
     modelId: providerConfig.modelId,
     api,
-    baseUrl: resolvedBaseUrl,
-    usedModelBaseUrl: Boolean(providerConfig.modelBaseUrl),
+    endpointHost: hostForLog(resolvedBaseUrl),
+    modelEndpointOverride: Boolean(providerConfig.modelBaseUrl),
   });
 
   modelRuntime.registerProvider(providerConfig.providerId, {
@@ -716,7 +711,9 @@ export function createPiSdkAdapter(
               : "Model request failed");
           logAdapterDiagnostic("info", "pi: assistant message failed", {
             sessionId,
+            messageId: lastUserMessageId,
             stopReason,
+            errorKind: errorKindForLog(lastTurnError),
             errorMessage: lastTurnError,
           });
         } else {
@@ -801,6 +798,8 @@ export function createPiSdkAdapter(
                 "Model request failed after retries";
               logAdapterDiagnostic("info", "pi: auto retry exhausted", {
                 sessionId,
+                messageId: lastUserMessageId,
+                errorKind: errorKindForLog(lastTurnError),
                 finalError: lastTurnError,
                 attempt: event.attempt,
               });
@@ -880,9 +879,9 @@ export function createPiSdkAdapter(
           logAdapterDiagnostic("info", "[PiSdkAdapter] session opened", {
             providerSessionId: state.providerSessionId,
             sessionAction,
-            sessionFile: persistedSessionFile,
+            sessionFileHash: hashLogValue(persistedSessionFile),
             sessionId,
-            workspaceRootPath: payload.workspaceRootPath,
+            workspaceHash: hashLogValue(payload.workspaceRootPath),
           });
           payload.onProviderSessionUpdate?.({
             sessionId,
@@ -966,7 +965,7 @@ export function createPiSdkAdapter(
                   providerSessionId:
                     payload.providerSession?.providerSessionId ?? null,
                   sessionId,
-                  workspaceRootPath: payload.workspaceRootPath,
+                  workspaceHash: hashLogValue(payload.workspaceRootPath),
                 },
               );
               throw createNativeSessionRecoveryError("Pi");
@@ -1019,6 +1018,9 @@ export function createPiSdkAdapter(
               const errorMessage = lastTurnError;
               lastTurnError = null;
               logAdapterDiagnostic("info", "pi: turn failed", {
+                sessionId,
+                messageId: lastUserMessageId,
+                errorKind: errorKindForLog(errorMessage),
                 message: errorMessage,
                 via: "stopReason",
               });
@@ -1034,6 +1036,9 @@ export function createPiSdkAdapter(
             // emitError only surfaces the message; log the full shape so opaque
             // failures (network, wrong endpoint, empty stream) are debuggable.
             logAdapterDiagnostic("info", "pi: turn failed", {
+              sessionId,
+              messageId: lastUserMessageId,
+              errorKind: errorKindForLog(error),
               message,
               name: error instanceof Error ? error.name : undefined,
               cause: error instanceof Error ? error.cause : undefined,

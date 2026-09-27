@@ -1,4 +1,8 @@
-import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
+import type {
+  AgentPermissionRequestRecord,
+  AgentToolCallRecord,
+  MessageRecord,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
   coalesceAdjacentSubagentGroups,
@@ -153,6 +157,54 @@ describe("createTimelineGroups", () => {
     );
 
     expect(toolKinds(groups)).toEqual([["read", "grep"], "message", ["bash"]]);
+  });
+
+  it("drops whitespace-only assistant messages so they do not split tool runs", () => {
+    const groups = createTimelineGroups(
+      [{ ...assistantMessage("3"), content: "\n\n" } as MessageRecord],
+      [toolCall("1", "read"), toolCall("2", "grep"), toolCall("5", "bash")],
+    );
+
+    expect(toolKinds(groups)).toEqual([["read", "grep", "bash"]]);
+  });
+
+  it("orders persisted records by seq even when timestamps disagree", () => {
+    const groups = createTimelineGroups(
+      [{ ...assistantMessage("5"), seq: 1 }],
+      [
+        { ...toolCall("1", "read"), seq: 2 },
+        { ...toolCall("3", "grep"), seq: 3 },
+      ],
+    );
+
+    expect(toolKinds(groups)).toEqual(["message", ["read", "grep"]]);
+  });
+
+  it("places records without seq by timestamp around the sequenced ones", () => {
+    const permission = {
+      id: "permission-1",
+      sessionId: "session-1",
+      providerId: "codex",
+      kind: "edit",
+      title: "Edit file",
+      locations: [],
+      options: [],
+      status: "pending",
+      createdAt: "2026-05-20T00:00:04.000Z",
+      updatedAt: "2026-05-20T00:00:04.000Z",
+    } satisfies AgentPermissionRequestRecord;
+    const groups = createTimelineGroups(
+      [{ ...assistantMessage("2"), seq: 1 }, assistantMessage("6")],
+      [{ ...toolCall("3", "read"), seq: 2 }],
+      [permission],
+    );
+
+    expect(toolKinds(groups)).toEqual([
+      "message",
+      ["read"],
+      "permission",
+      "message",
+    ]);
   });
 });
 

@@ -11,8 +11,9 @@ export const agentMinimumVersions: Record<AgentId, string | null> = {
   codex: null,
   // Cursor CLI ACP (`cursor-agent acp`) has no confirmed version floor yet.
   cursor: null,
-  // Devin CLI ACP (`devin acp`) has no confirmed version floor yet.
-  devin: null,
+  // `devin acp` reached stable in v2026.4.9-0, the first release able to
+  // serve ACP clients.
+  devin: "2026.4.9",
   // Grok Build's first stable CLI, where the ACP yolo-mode ext landed.
   "grok-build": "1.0.0",
   // Matches the @opencode-ai/sdk major/minor this repo depends on.

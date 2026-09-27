@@ -53,7 +53,12 @@ export function upsertMessages(
       continue;
     }
     firstChangedIndex = Math.min(firstChangedIndex, index);
-    next[index] = { ...message, createdAt: next[index].createdAt };
+    const seq = message.seq ?? next[index].seq;
+    next[index] = {
+      ...message,
+      createdAt: next[index].createdAt,
+      ...(seq === undefined ? {} : { seq }),
+    };
   }
 
   indexes.set(next, {

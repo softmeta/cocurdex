@@ -1,3 +1,5 @@
+import { COCURDEX_DAEMON_DIAGNOSTIC_PREFIX } from "@cocurdex/shared";
+
 type AdapterDiagnosticLevel = "debug" | "info";
 
 export function isAdapterDiagnosticsEnabled(
@@ -12,9 +14,24 @@ export function logAdapterDiagnostic(
   details?: Record<string, unknown>,
   enabled = isAdapterDiagnosticsEnabled(),
 ) {
-  if (!enabled) {
+  if (level === "debug" && !enabled) {
     return;
   }
 
-  console[level](message, details);
+  let payload: string;
+  try {
+    payload = JSON.stringify({
+      details,
+      event: message,
+      level,
+    });
+  } catch {
+    payload = JSON.stringify({
+      details: "[unserializable]",
+      event: message,
+      level,
+    });
+  }
+
+  console[level](`${COCURDEX_DAEMON_DIAGNOSTIC_PREFIX}${payload}`);
 }

@@ -19,10 +19,12 @@ export const CHAT_DOCK_ACTIONS_INSET = 60;
 
 export function ChatDockActions({
   pinned,
+  pinnable = true,
   onPinnedChange,
   onClose,
 }: {
   pinned: boolean;
+  pinnable?: boolean;
   onPinnedChange(pinned: boolean): void;
   onClose(): void;
 }) {
@@ -37,35 +39,37 @@ export function ChatDockActions({
   if (pinned && !canPin) hint = t("actions.chatDockTemporarilyFloating");
   return (
     <div className="flex items-center gap-1 bg-chat-canvas">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <TitlebarIconButton
-              active={pinned && canPin}
-              aria-label={label}
-              aria-disabled={unavailable}
-              className="aria-disabled:cursor-default aria-disabled:text-muted-foreground"
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={() => {
-                if (unavailable) {
-                  toast.info(hint);
-                  return;
-                }
-                onPinnedChange(!pinned);
-              }}
-            >
-              {pinned ? (
-                <PinOff className="size-3.5" />
-              ) : (
-                <Pin className="size-3.5" />
-              )}
-            </TitlebarIconButton>
-          }
-        />
-        <TooltipContent side="bottom" sideOffset={6}>
-          {hint}
-        </TooltipContent>
-      </Tooltip>
+      {pinnable ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <TitlebarIconButton
+                active={pinned && canPin}
+                aria-label={label}
+                aria-disabled={unavailable}
+                className="aria-disabled:cursor-default aria-disabled:text-muted-foreground"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  if (unavailable) {
+                    toast.info(hint);
+                    return;
+                  }
+                  onPinnedChange(!pinned);
+                }}
+              >
+                {pinned ? (
+                  <PinOff className="size-3.5" />
+                ) : (
+                  <Pin className="size-3.5" />
+                )}
+              </TitlebarIconButton>
+            }
+          />
+          <TooltipContent side="bottom" sideOffset={6}>
+            {hint}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
       <Tooltip>
         <TooltipTrigger
           render={

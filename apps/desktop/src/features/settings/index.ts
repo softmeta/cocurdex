@@ -1,4 +1,5 @@
 export * from "./adapters";
+export * from "./assistant";
 export { NetworkProxyStatusButton } from "./network-proxy-status-button";
 export * from "./notifications";
 export * from "./notify";

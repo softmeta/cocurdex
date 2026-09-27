@@ -1,8 +1,16 @@
+export interface WorktreeEnvironmentProposal {
+  setupScript: string;
+  cleanupScript: string;
+  rationale: string | null;
+  proposedAt: string;
+}
+
 export interface WorkspaceWorktreeEnvironment {
   workspaceId: string;
   setupScript: string;
   cleanupScript: string;
   updatedAt: string | null;
+  proposal: WorktreeEnvironmentProposal | null;
 }
 
 export function emptyWorktreeEnvironment(
@@ -13,7 +21,39 @@ export function emptyWorktreeEnvironment(
     setupScript: "",
     cleanupScript: "",
     updatedAt: null,
+    proposal: null,
   };
+}
+
+// Proposed scripts run unattended in a login shell on every worktree create /
+// recycle, so the review UI flags commands that warrant a closer look. This is
+// a review aid, not a sandbox — matched labels are shown to the user verbatim.
+const RISKY_SCRIPT_PATTERNS: ReadonlyArray<{
+  pattern: RegExp;
+  label: string;
+}> = [
+  {
+    pattern: /\brm\s+(?:-[a-zA-Z-]+\s+)*-[a-zA-Z-]*[rf][a-zA-Z-]*/,
+    label: "rm -rf",
+  },
+  { pattern: /\bsudo\b/, label: "sudo" },
+  {
+    pattern: /(?:curl|wget)[^\n|]*\|\s*(?:sudo\s+)?[a-z]*sh\b/,
+    label: "pipe to shell",
+  },
+  { pattern: /\bchmod\s+(?:-R\s+)?777\b/, label: "chmod 777" },
+  { pattern: /\bdd\s+if=/, label: "dd" },
+  { pattern: /\bmkfs(?:\.[a-z0-9]+)?\b/, label: "mkfs" },
+];
+
+export function detectRiskyScriptPatterns(script: string): string[] {
+  const matches = new Set<string>();
+  for (const { pattern, label } of RISKY_SCRIPT_PATTERNS) {
+    if (pattern.test(script)) {
+      matches.add(label);
+    }
+  }
+  return [...matches];
 }
 
 export function suggestWorktreeSetupScript(

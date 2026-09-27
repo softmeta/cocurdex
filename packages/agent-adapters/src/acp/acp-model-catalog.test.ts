@@ -3,6 +3,7 @@ import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
 import {
   listAcpProviderModels,
   loginAcpProvider,
+  probeAcpProviderModelAxes,
   resetAcpProviderModelsCache,
 } from "./acp-model-catalog";
 
@@ -22,6 +23,46 @@ const spec = {
   args: ["acp"],
   providerId: "cursor",
   providerName: "Cursor",
+};
+
+const devinSpec = {
+  command: "devin",
+  args: ["acp"],
+  providerId: "devin",
+  providerName: "Devin",
+};
+
+const devinModelOption = (currentValue: string) => ({
+  id: "model",
+  name: "Model",
+  category: "model",
+  type: "select" as const,
+  currentValue,
+  options: [
+    { value: "swe-2-high", name: "SWE-2 High" },
+    { value: "claude-opus-5-5-medium", name: "Claude Opus 5.5 Medium" },
+  ],
+});
+
+const devinThoughtLevel = (options: { value: string; name: string }[]) => ({
+  id: "thought_level",
+  name: "Thinking",
+  category: "thought_level",
+  type: "select" as const,
+  currentValue: options[1]?.value ?? options[0]?.value,
+  options,
+});
+
+const devinSpeed = {
+  id: "speed",
+  name: "Speed",
+  category: "model_config",
+  type: "select" as const,
+  currentValue: "standard",
+  options: [
+    { value: "standard", name: "Standard" },
+    { value: "fast", name: "Fast" },
+  ],
 };
 
 function createFactory(overrides: Partial<AcpConnection> = {}) {
@@ -142,6 +183,31 @@ describe("listAcpProviderModels", () => {
     });
   });
 
+  it("does not probe per-model axes during catalog listing", async () => {
+    const setSessionConfigOption = vi.fn();
+    const { factory } = createFactory({
+      initialize: vi.fn(async () => ({
+        protocolVersion: 1,
+        authMethods: [],
+      })),
+      newSession: vi.fn(async () => ({
+        sessionId: "probe-session",
+        configOptions: [devinModelOption("swe-2-high")],
+      })),
+      setSessionConfigOption:
+        setSessionConfigOption as unknown as AcpConnection["setSessionConfigOption"],
+    });
+
+    const items = await listAcpProviderModels(devinSpec, factory);
+
+    expect(setSessionConfigOption).not.toHaveBeenCalled();
+    expect(items.map(({ model }) => model.modelId)).toEqual([
+      "swe-2-high",
+      "claude-opus-5-5-medium",
+    ]);
+    expect(items[1]?.model.supportedReasoningEfforts).toEqual([]);
+  });
+
   it("returns an empty catalog when the probe fails", async () => {
     const { factory } = createFactory({
       initialize: vi.fn(async () => {
@@ -159,6 +225,140 @@ describe("listAcpProviderModels", () => {
     await listAcpProviderModels(spec, factory);
 
     expect(factory).toHaveBeenCalledOnce();
+  });
+});
+
+describe("probeAcpProviderModelAxes", () => {
+  beforeEach(() => {
+    resetAcpProviderModelsCache();
+  });
+
+  function createDevinProbeFactory() {
+    return createFactory({
+      initialize: vi.fn(async () => ({
+        protocolVersion: 1,
+        authMethods: [],
+      })),
+      newSession: vi.fn(async () => ({
+        sessionId: "probe-session",
+        configOptions: [
+          devinModelOption("swe-2-high"),
+          devinThoughtLevel([
+            { value: "medium", name: "Medium" },
+            { value: "high", name: "High" },
+            { value: "max", name: "Max" },
+          ]),
+        ],
+      })),
+      setSessionConfigOption: vi.fn(async ({ value }: { value: string }) => ({
+        configOptions: [
+          devinModelOption(value),
+          devinThoughtLevel([
+            { value: "none", name: "None" },
+            { value: "low", name: "Low" },
+            { value: "medium", name: "Medium" },
+            { value: "high", name: "High" },
+            { value: "max", name: "Max" },
+          ]),
+          devinSpeed,
+        ],
+      })) as unknown as AcpConnection["setSessionConfigOption"],
+    });
+  }
+
+  it("switches the probe session to the requested model and reads its axes", async () => {
+    const { factory, connection, close } = createDevinProbeFactory();
+
+    const axes = await probeAcpProviderModelAxes(
+      devinSpec,
+      "claude-opus-5-5-medium",
+      factory,
+    );
+
+    expect(connection.setSessionConfigOption).toHaveBeenCalledWith({
+      sessionId: "probe-session",
+      configId: "model",
+      value: "claude-opus-5-5-medium",
+    });
+    // Devin's "none" rung reads as our "off"; the baseline speed is folded
+    // into the picker's built-in row and only "fast" remains a named tier.
+    expect(
+      axes?.supportedReasoningEfforts.map((e) => e.reasoningEffort),
+    ).toEqual(["off", "low", "medium", "high", "max"]);
+    expect(axes?.defaultReasoningEffort).toBe("low");
+    expect(axes?.serviceTiers).toEqual([
+      { id: "fast", name: "Fast", description: "" },
+    ]);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("reads axes from session/new when the session already runs the model", async () => {
+    const { factory, connection } = createDevinProbeFactory();
+
+    const axes = await probeAcpProviderModelAxes(
+      devinSpec,
+      "swe-2-high",
+      factory,
+    );
+
+    expect(connection.setSessionConfigOption).not.toHaveBeenCalled();
+    expect(
+      axes?.supportedReasoningEfforts.map((e) => e.reasoningEffort),
+    ).toEqual(["medium", "high", "max"]);
+    expect(axes?.serviceTiers).toEqual([]);
+  });
+
+  it("returns null for a model the agent did not advertise", async () => {
+    const { factory } = createDevinProbeFactory();
+
+    await expect(
+      probeAcpProviderModelAxes(devinSpec, "gpt-99", factory),
+    ).resolves.toBeNull();
+  });
+
+  it("shares one probe across concurrent and later calls", async () => {
+    const { factory } = createDevinProbeFactory();
+
+    const [first, second] = await Promise.all([
+      probeAcpProviderModelAxes(devinSpec, "claude-opus-5-5-medium", factory),
+      probeAcpProviderModelAxes(devinSpec, "claude-opus-5-5-medium", factory),
+    ]);
+    const third = await probeAcpProviderModelAxes(
+      devinSpec,
+      "claude-opus-5-5-medium",
+      factory,
+    );
+
+    expect(first).toEqual(second);
+    expect(third).toEqual(first);
+    expect(factory).toHaveBeenCalledOnce();
+  });
+
+  it("merges probed axes into the cached catalog", async () => {
+    const { factory } = createDevinProbeFactory();
+
+    const listed = await listAcpProviderModels(devinSpec, factory);
+    expect(
+      listed.find(({ model }) => model.modelId === "claude-opus-5-5-medium")
+        ?.model.supportedReasoningEfforts,
+    ).toEqual([]);
+
+    await probeAcpProviderModelAxes(
+      devinSpec,
+      "claude-opus-5-5-medium",
+      factory,
+    );
+    const merged = await listAcpProviderModels(devinSpec, factory);
+
+    const opus = merged.find(
+      ({ model }) => model.modelId === "claude-opus-5-5-medium",
+    );
+    expect(
+      opus?.model.supportedReasoningEfforts?.map((e) => e.reasoningEffort),
+    ).toEqual(["off", "low", "medium", "high", "max"]);
+    expect(opus?.model.serviceTiers).toEqual([
+      { id: "fast", name: "Fast", description: "" },
+    ]);
   });
 });
 

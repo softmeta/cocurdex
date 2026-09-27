@@ -54,23 +54,26 @@ describe("childSessionFromSubagentToolCall", () => {
     ["codex", "codex-subagent:parent:child-thread", "Review changes"],
     ["grok-build", "acp-subagent:parent:task-1", "Standards review"],
     ["opencode", "opencode-subagent:parent:child-1", "Explore source"],
-  ] as const)("projects a %s child session under its parent", (agentType, sessionId, description) => {
-    expect(
-      childSessionFromSubagentToolCall(
-        parentSession(agentType),
-        toolCall(agentType, sessionId, description),
-      ),
-    ).toMatchObject({
-      id: sessionId,
-      agentType,
-      parentSessionId: "parent",
-      parentToolCallId: `${agentType}-spawn`,
-      sessionKind: "subagent",
-      status: "running",
-      title: description,
-      workspaceId: "workspace-1",
-    });
-  });
+  ] as const)(
+    "projects a %s child session under its parent",
+    (agentType, sessionId, description) => {
+      expect(
+        childSessionFromSubagentToolCall(
+          parentSession(agentType),
+          toolCall(agentType, sessionId, description),
+        ),
+      ).toMatchObject({
+        id: sessionId,
+        agentType,
+        parentSessionId: "parent",
+        parentToolCallId: `${agentType}-spawn`,
+        sessionKind: "subagent",
+        status: "running",
+        title: description,
+        workspaceId: "workspace-1",
+      });
+    },
+  );
 
   it("returns null when the tool call is not a subagent", () => {
     expect(

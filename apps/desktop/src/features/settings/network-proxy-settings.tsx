@@ -301,7 +301,6 @@ export function NetworkProxySettingsPanel() {
         >
           <SettingsSelect
             ariaLabel={t("network.proxy.modeTitle")}
-            compact
             options={modeOptions}
             value={settings.mode}
             onChange={(value) => {

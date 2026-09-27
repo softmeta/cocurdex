@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractSlashQuery } from "@/features/composer/slash-command-menu";
+import { extractSlashQuery } from "@/features/composer/use-slash-commands";
 
 describe("extractSlashQuery", () => {
   it("opens on a bare leading-slash token", () => {

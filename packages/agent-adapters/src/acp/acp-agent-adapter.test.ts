@@ -2,6 +2,7 @@ import type {
   InitializeResponse,
   PromptResponse,
   RequestPermissionRequest,
+  SetSessionConfigOptionRequest,
 } from "@agentclientprotocol/sdk";
 import type {
   AgentDescriptor,
@@ -1106,5 +1107,367 @@ describe("AcpAgentAdapter", () => {
           event.sessionId === "acp-subagent:app-parent:spawn-1",
       ),
     ).toHaveLength(1);
+  });
+
+  it("applies the thinking level through an effort session config option", async () => {
+    const setSessionConfigOption = vi.fn(async () => ({ configOptions: [] }));
+    const setSessionModel = vi.fn(async () => ({}));
+    const connection = createAcpConnection({
+      newSession: async () => ({
+        sessionId: "devin-session-1",
+        configOptions: [
+          {
+            id: "model",
+            name: "Model",
+            category: "model",
+            type: "select" as const,
+            currentValue: "swe-2-high",
+            options: [
+              { value: "swe-2-high", name: "SWE-2" },
+              { value: "adaptive", name: "Adaptive" },
+            ],
+          },
+          {
+            id: "thought_level",
+            name: "Thinking",
+            category: "thought_level",
+            type: "select" as const,
+            currentValue: "high",
+            options: [
+              { value: "medium", name: "Medium" },
+              { value: "high", name: "High" },
+              { value: "max", name: "Max" },
+            ],
+          },
+        ],
+      }),
+      setSessionConfigOption,
+      setSessionModel,
+    });
+    const session = new AcpAgentAdapter(
+      {
+        args: ["acp"],
+        command: "devin",
+        descriptor,
+        modelProviderId: "devin",
+      },
+      async () => connection,
+    ).createSession(
+      {
+        session: {
+          id: "devin-effort-session",
+          workspaceId: "workspace-1",
+          title: "Devin effort",
+          agentType: "devin",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      () => {},
+    );
+
+    const providerSnapshot = {
+      providerId: "devin",
+      providerName: "Devin",
+      modelId: "swe-2-high",
+      modelName: "SWE-2",
+      api: "openai-responses" as const,
+      baseUrl: "",
+    };
+    await session.sendMessage({
+      content: "Build it",
+      history: [],
+      thinkingLevel: "max",
+      providerSnapshot,
+    });
+    // A second send at the same level must not re-apply the option.
+    await session.sendMessage({
+      content: "Keep going",
+      history: [],
+      thinkingLevel: "max",
+      providerSnapshot,
+    });
+
+    expect(setSessionConfigOption).toHaveBeenCalledTimes(1);
+    expect(setSessionConfigOption).toHaveBeenCalledWith({
+      sessionId: "devin-session-1",
+      configId: "thought_level",
+      value: "max",
+    });
+    expect(setSessionModel).not.toHaveBeenCalled();
+  });
+
+  it("does not send an effort the session config option does not advertise", async () => {
+    const setSessionConfigOption = vi.fn(async () => ({ configOptions: [] }));
+    const connection = createAcpConnection({
+      newSession: async () => ({
+        sessionId: "devin-session-1",
+        configOptions: [
+          {
+            id: "model",
+            name: "Model",
+            category: "model",
+            type: "select" as const,
+            currentValue: "swe-2-high",
+            options: [{ value: "swe-2-high", name: "SWE-2" }],
+          },
+          {
+            id: "thought_level",
+            name: "Thinking",
+            category: "thought_level",
+            type: "select" as const,
+            currentValue: "high",
+            options: [
+              { value: "medium", name: "Medium" },
+              { value: "high", name: "High" },
+            ],
+          },
+        ],
+      }),
+      setSessionConfigOption,
+    });
+    const session = new AcpAgentAdapter(
+      {
+        args: ["acp"],
+        command: "devin",
+        descriptor,
+        modelProviderId: "devin",
+      },
+      async () => connection,
+    ).createSession(
+      {
+        session: {
+          id: "devin-effort-drop",
+          workspaceId: "workspace-1",
+          title: "Devin effort drop",
+          agentType: "devin",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      () => {},
+    );
+
+    await session.sendMessage({
+      content: "Build it",
+      history: [],
+      thinkingLevel: "max",
+      providerSnapshot: {
+        providerId: "devin",
+        providerName: "Devin",
+        modelId: "swe-2-high",
+        modelName: "SWE-2",
+        api: "openai-responses",
+        baseUrl: "",
+      },
+    });
+
+    expect(setSessionConfigOption).not.toHaveBeenCalled();
+  });
+
+  it("applies the service tier through the speed option a model switch reveals", async () => {
+    const modelOption = (currentValue: string) => ({
+      id: "model",
+      name: "Model",
+      category: "model",
+      type: "select" as const,
+      currentValue,
+      options: [
+        { value: "swe-2-high", name: "SWE-2" },
+        { value: "claude-opus-5-5-medium", name: "Claude Opus 5.5 Medium" },
+      ],
+    });
+    // Devin only attaches `speed` once the session runs a model that
+    // supports it, so the option shows up in the model switch response.
+    const setSessionConfigOption = vi.fn(
+      async (request: SetSessionConfigOptionRequest) => ({
+        configOptions: [
+          modelOption(
+            request.configId === "model"
+              ? String(request.value)
+              : "claude-opus-5-5-medium",
+          ),
+          ...(request.value === "claude-opus-5-5-medium" ||
+          request.configId === "speed"
+            ? [
+                {
+                  id: "speed",
+                  name: "Speed",
+                  category: "model_config",
+                  type: "select" as const,
+                  currentValue:
+                    request.configId === "speed"
+                      ? String(request.value)
+                      : "standard",
+                  options: [
+                    { value: "standard", name: "Standard" },
+                    { value: "fast", name: "Fast" },
+                  ],
+                },
+              ]
+            : []),
+        ],
+      }),
+    );
+    const connection = createAcpConnection({
+      newSession: async () => ({
+        sessionId: "devin-session-1",
+        configOptions: [modelOption("swe-2-high")],
+      }),
+      setSessionConfigOption,
+    });
+    const session = new AcpAgentAdapter(
+      {
+        args: ["acp"],
+        command: "devin",
+        descriptor,
+        modelProviderId: "devin",
+      },
+      async () => connection,
+    ).createSession(
+      {
+        session: {
+          id: "devin-speed-session",
+          workspaceId: "workspace-1",
+          title: "Devin speed",
+          agentType: "devin",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      () => {},
+    );
+
+    const providerSnapshot = {
+      providerId: "devin",
+      providerName: "Devin",
+      modelId: "claude-opus-5-5-medium",
+      modelName: "Claude Opus 5.5 Medium",
+      api: "openai-responses" as const,
+      baseUrl: "",
+      serviceTier: "fast",
+    };
+    await session.sendMessage({
+      content: "Build it",
+      history: [],
+      providerSnapshot,
+    });
+    await session.sendMessage({
+      content: "Keep going",
+      history: [],
+      providerSnapshot,
+    });
+
+    expect(setSessionConfigOption).toHaveBeenNthCalledWith(1, {
+      sessionId: "devin-session-1",
+      configId: "model",
+      value: "claude-opus-5-5-medium",
+    });
+    expect(setSessionConfigOption).toHaveBeenNthCalledWith(2, {
+      sessionId: "devin-session-1",
+      configId: "speed",
+      value: "fast",
+    });
+    // The second send re-applies nothing: model and speed already match.
+    expect(setSessionConfigOption).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores the baseline speed when the tier selection is cleared", async () => {
+    const modelOption = {
+      id: "model",
+      name: "Model",
+      category: "model",
+      type: "select" as const,
+      currentValue: "claude-opus-5-5-medium",
+      options: [
+        { value: "claude-opus-5-5-medium", name: "Claude Opus 5.5 Medium" },
+      ],
+    };
+    const speedOption = (currentValue: string) => ({
+      id: "speed",
+      name: "Speed",
+      category: "model_config",
+      type: "select" as const,
+      currentValue,
+      options: [
+        { value: "standard", name: "Standard" },
+        { value: "fast", name: "Fast" },
+      ],
+    });
+    const setSessionConfigOption = vi.fn(
+      async (request: SetSessionConfigOptionRequest) => ({
+        configOptions: [modelOption, speedOption(String(request.value))],
+      }),
+    );
+    const connection = createAcpConnection({
+      newSession: async () => ({
+        sessionId: "devin-session-1",
+        configOptions: [modelOption, speedOption("fast")],
+      }),
+      setSessionConfigOption,
+    });
+    const session = new AcpAgentAdapter(
+      {
+        args: ["acp"],
+        command: "devin",
+        descriptor,
+        modelProviderId: "devin",
+      },
+      async () => connection,
+    ).createSession(
+      {
+        session: {
+          id: "devin-speed-reset",
+          workspaceId: "workspace-1",
+          title: "Devin speed reset",
+          agentType: "devin",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      () => {},
+    );
+
+    // A loaded session already on fast with no explicit tier selection falls
+    // back to the baseline the picker displays (standard).
+    await session.sendMessage({
+      content: "Build it",
+      history: [],
+      providerSnapshot: {
+        providerId: "devin",
+        providerName: "Devin",
+        modelId: "claude-opus-5-5-medium",
+        modelName: "Claude Opus 5.5 Medium",
+        api: "openai-responses",
+        baseUrl: "",
+        serviceTier: null,
+      },
+    });
+
+    expect(setSessionConfigOption).toHaveBeenCalledWith({
+      sessionId: "devin-session-1",
+      configId: "speed",
+      value: "standard",
+    });
   });
 });
