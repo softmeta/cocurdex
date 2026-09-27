@@ -9,32 +9,32 @@
   "categoriesLabel": "搜索分类",
   "empty": {
     "documentsError": {
-      "title": "搜索失败",
-      "description": "无法搜索笔记和 Issue。"
+      "description": "无法搜索笔记和 Issue。",
+      "title": "搜索失败"
     },
     "error": {
       "description": "ripgrep 无法列出这个工作区的文件。",
       "title": "无法索引文件"
     },
     "loading": {
-      "title": "正在搜索...",
-      "description": "结果马上出现。"
+      "description": "结果马上出现。",
+      "title": "正在搜索..."
     },
     "noFiles": {
       "description": "工作区没有返回可搜索文件。",
       "title": "未找到文件"
     },
     "noMatches": {
-      "title": "没有结果",
-      "description": "换个关键词或分类试试。"
+      "description": "换个关键词或分类试试。",
+      "title": "没有结果"
     },
     "noWorkspace": {
       "description": "先打开一个工作区再搜索文件。",
       "title": "未选择工作区"
     },
     "typeToSearch": {
-      "title": "输入以搜索",
-      "description": "按标题或内容搜索笔记和 Issue。"
+      "description": "按标题或内容搜索笔记和 Issue。",
+      "title": "输入以搜索"
     }
   },
   "files": "文件",

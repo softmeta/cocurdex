@@ -9,32 +9,32 @@
   "categoriesLabel": "Search categories",
   "empty": {
     "documentsError": {
-      "title": "Search failed",
-      "description": "Notes and issues could not be searched."
+      "description": "Notes and issues could not be searched.",
+      "title": "Search failed"
     },
     "error": {
       "description": "ripgrep could not list files for this workspace.",
       "title": "Unable to index files"
     },
     "loading": {
-      "title": "Searching...",
-      "description": "Results will appear in a moment."
+      "description": "Results will appear in a moment.",
+      "title": "Searching..."
     },
     "noFiles": {
       "description": "The workspace did not return any searchable files.",
       "title": "No files found"
     },
     "noMatches": {
-      "title": "No results",
-      "description": "Try a different keyword or category."
+      "description": "Try a different keyword or category.",
+      "title": "No results"
     },
     "noWorkspace": {
       "description": "Open a workspace before searching files.",
       "title": "No workspace selected"
     },
     "typeToSearch": {
-      "title": "Type to search",
-      "description": "Search notes and issues by title or content."
+      "description": "Search notes and issues by title or content.",
+      "title": "Type to search"
     }
   },
   "files": "Files",
