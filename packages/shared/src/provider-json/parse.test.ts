@@ -36,6 +36,10 @@ describe("stripJsonComments", () => {
       url: "https://example.com//v1",
     });
   });
+  it("keeps an unterminated string intact in linear time", () => {
+    const raw = `"${'\\"'.repeat(50_000)}`;
+    expect(stripJsonComments(raw)).toBe(raw);
+  });
 });
 
 describe("resolveImportApiKey", () => {

@@ -52,11 +52,11 @@ function isProviderApi(value: unknown): value is ProviderApi {
 /** Strip `//` line comments and trailing commas, leaving string literals intact. */
 export function stripJsonComments(input: string): string {
   return input
-    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\n]*/g, (match) =>
+    .replace(/"(?:\\.|[^"\\])*"?|\/\/[^\n]*/g, (match) =>
       match[0] === '"' ? match : "",
     )
     .replace(
-      /"(?:\\.|[^"\\])*"|,(\s*[}\]])/g,
+      /"(?:\\.|[^"\\])*"?|,(\s*[}\]])/g,
       (match, tail: string | undefined) =>
         tail ?? (match[0] === '"' ? match : ""),
     );
