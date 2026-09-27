@@ -189,8 +189,7 @@
     "zoomOut": "Zoom out"
   },
   "preview": {
-    "toc": "Table of contents",
-    "tocEmpty": "No headings"
+    "toc": "Table of contents"
   },
   "states": {
     "fileReadError": "Unable to read this file in the editor preview.",

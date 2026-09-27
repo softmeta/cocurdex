@@ -704,7 +704,6 @@ export default interface Resources {
     };
     preview: {
       toc: "Table of contents";
-      tocEmpty: "No headings";
     };
     states: {
       fileReadError: "Unable to read this file in the editor preview.";

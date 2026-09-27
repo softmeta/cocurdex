@@ -187,8 +187,7 @@
     "zoomOut": "缩小"
   },
   "preview": {
-    "toc": "目录",
-    "tocEmpty": "没有标题"
+    "toc": "目录"
   },
   "states": {
     "fileReadError": "无法在编辑器预览中读取这个文件。",
