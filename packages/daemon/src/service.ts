@@ -6,6 +6,7 @@ import {
   deleteOpenCodeSession,
   readAdapterRateLimits as probeAdapterRateLimits,
 } from "@cocurdex/agent-adapters";
+import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import {
   AgentSteeringUnavailableError,
   createAgentRegistry,
@@ -89,7 +90,10 @@ import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
-import { ProviderCredentials } from "./provider-credentials";
+import {
+  ProviderCredentials,
+  ProviderLoginSessions,
+} from "./provider-credentials";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
 import { ScriptRunModule } from "./script-run";
@@ -176,6 +180,7 @@ export class CocurdexDaemonService {
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
   readonly providerCredentials: ProviderCredentials;
+  readonly providerLogins: ProviderLoginSessions;
   private startupRecovery: Promise<void> | null = null;
   private stopping = false;
   readonly commitMessageService: DaemonCommitMessageService;
@@ -221,6 +226,11 @@ export class CocurdexDaemonService {
     this.providerCredentials = new ProviderCredentials(
       this.state,
       options.userDataPath,
+    );
+    this.providerLogins = new ProviderLoginSessions(
+      (providerId, method, interaction) =>
+        loginPiProvider(options.userDataPath, providerId, method, interaction),
+      (providerId) => this.providerCredentials.setApiKey(providerId, null),
     );
     this.providerService = new DaemonProviderService(
       this.state,

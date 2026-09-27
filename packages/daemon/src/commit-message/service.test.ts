@@ -99,35 +99,35 @@ describe("daemon commit message generation", () => {
     expect(await git(rootPath, "rev-parse", "HEAD")).toBe(headBefore);
   });
 
-  it.each([
-    false,
-    true,
-  ])("keeps the real index intact after generation failure=%s", async (fail) => {
-    const rootPath = await repository();
-    await writeFile(path.join(rootPath, "file.txt"), "staged-content\n");
-    await git(rootPath, "add", ".");
-    await writeFile(path.join(rootPath, "file.txt"), "worktree-content\n");
-    await writeFile(path.join(rootPath, "new.txt"), "new-content\n");
-    const indexTree = await git(rootPath, "write-tree");
-    const staged = await git(rootPath, "diff", "--cached");
-    if (fail) generate.mockRejectedValueOnce(new Error("Model failed"));
+  it.each([false, true])(
+    "keeps the real index intact after generation failure=%s",
+    async (fail) => {
+      const rootPath = await repository();
+      await writeFile(path.join(rootPath, "file.txt"), "staged-content\n");
+      await git(rootPath, "add", ".");
+      await writeFile(path.join(rootPath, "file.txt"), "worktree-content\n");
+      await writeFile(path.join(rootPath, "new.txt"), "new-content\n");
+      const indexTree = await git(rootPath, "write-tree");
+      const staged = await git(rootPath, "diff", "--cached");
+      if (fail) generate.mockRejectedValueOnce(new Error("Model failed"));
 
-    const result = service().generate({
-      workspaceRootPath: rootPath,
-      includeUnstaged: true,
-      agentId: "pi",
-      providerConfig,
-    });
-    if (fail) await expect(result).rejects.toThrow("Model failed");
-    else await expect(result).resolves.toBe("feat: draft");
+      const result = service().generate({
+        workspaceRootPath: rootPath,
+        includeUnstaged: true,
+        agentId: "pi",
+        providerConfig,
+      });
+      if (fail) await expect(result).rejects.toThrow("Model failed");
+      else await expect(result).resolves.toBe("feat: draft");
 
-    expect(generate.mock.calls[0][0].changeSummary).toContain(
-      "+worktree-content",
-    );
-    expect(generate.mock.calls[0][0].changeSummary).toContain("+new-content");
-    expect(await git(rootPath, "write-tree")).toBe(indexTree);
-    expect(await git(rootPath, "diff", "--cached")).toBe(staged);
-  });
+      expect(generate.mock.calls[0][0].changeSummary).toContain(
+        "+worktree-content",
+      );
+      expect(generate.mock.calls[0][0].changeSummary).toContain("+new-content");
+      expect(await git(rootPath, "write-tree")).toBe(indexTree);
+      expect(await git(rootPath, "diff", "--cached")).toBe(staged);
+    },
+  );
 
   it("rejects an empty index without calling the model", async () => {
     const rootPath = await repository();

@@ -59,16 +59,15 @@ describe("daemon request transport", () => {
     ).rejects.toMatchObject({ code: "TIMEOUT" });
     await vi.waitFor(() => expect(sockets.size).toBe(0));
   });
-  it.each([
-    "not-json\n",
-    "null\n",
-    "[]\n",
-  ])("rejects malformed wire data %s", async (data) => {
-    const { metadata } = await serve((socket) => socket.write(data));
-    await expect(
-      requestDaemon("daemon.status", { metadata }),
-    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
-  });
+  it.each(["not-json\n", "null\n", "[]\n"])(
+    "rejects malformed wire data %s",
+    async (data) => {
+      const { metadata } = await serve((socket) => socket.write(data));
+      await expect(
+        requestDaemon("daemon.status", { metadata }),
+      ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    },
+  );
   it("keeps framing and request identity when responses are fragmented", async () => {
     const { metadata } = await serve((socket, request) => {
       socket.write(`${JSON.stringify({ id: "other", result: "wrong" })}\n`);

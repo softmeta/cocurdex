@@ -17,6 +17,8 @@ apps/desktop/release/
 AuthKey_*.p8
 apps/desktop/vendor/fd/*/
 apps/desktop/resources/cli/cli.mjs
+apps/desktop/resources/cli/cli-*.mjs
+apps/desktop/resources/cli/pi-package/
 apps/desktop/resources/cli/cli.mjs.map
 apps/desktop/resources/cli/daemon.cjs
 apps/desktop/resources/cli/daemon.mjs

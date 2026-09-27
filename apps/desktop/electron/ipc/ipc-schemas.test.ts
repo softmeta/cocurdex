@@ -16,16 +16,12 @@ describe("schemas.toolCallId", () => {
     expect(schemas.toolCallId.parse(id)).toBe(id);
   });
 
-  it.each([
-    "",
-    "tool\u0000id",
-    "tool\nid",
-    "a".repeat(4097),
-    42,
-    null,
-  ])("rejects malformed tool call ID %j", (id) => {
-    expect(schemas.toolCallId.safeParse(id).success).toBe(false);
-  });
+  it.each(["", "tool\u0000id", "tool\nid", "a".repeat(4097), 42, null])(
+    "rejects malformed tool call ID %j",
+    (id) => {
+      expect(schemas.toolCallId.safeParse(id).success).toBe(false);
+    },
+  );
 
   it("keeps session IDs restricted", () => {
     expect(schemas.sessionId.safeParse("call_example|fc_example").success).toBe(

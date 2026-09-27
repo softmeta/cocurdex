@@ -64,6 +64,7 @@ import type {
   ProviderAuthMethod,
   ProviderAuthState,
   ProviderConfigRecord,
+  ProviderImportResult,
   ProviderListModelsResult,
   ProviderModelRecord,
   ProviderTemplateRecord,
@@ -432,6 +433,7 @@ export interface ProductApi {
   deleteProviderConfig(providerId: string): Promise<void>;
   setProviderApiKey(providerId: string, apiKey: string): Promise<void>;
   clearProviderApiKey(providerId: string): Promise<void>;
+  importProviderJson(json: string): Promise<ProviderImportResult>;
   readProviderAuth(providerId: string): Promise<ProviderAuthState>;
   logoutProviderAuth(providerId: string): Promise<void>;
   listProviderModels(providerId: string): Promise<ProviderListModelsResult>;

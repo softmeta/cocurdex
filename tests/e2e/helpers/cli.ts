@@ -16,6 +16,7 @@ export interface CliResult {
 export interface RunCliOptions {
   userDataPath: string;
   env?: NodeJS.ProcessEnv;
+  input?: string;
 }
 
 export async function runCli(
@@ -31,8 +32,9 @@ export async function runCli(
       NO_COLOR: "1",
       TZ: "UTC",
     },
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
   });
+  child.stdin.end(options.input);
   const stdoutChunks: Buffer[] = [];
   const stderrChunks: Buffer[] = [];
   child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));

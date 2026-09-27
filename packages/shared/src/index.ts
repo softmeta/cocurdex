@@ -28,6 +28,7 @@ export * from "./orchestration";
 export * from "./pdf-annotations";
 export * from "./peer-messaging";
 export * from "./provider-compatibility";
+export * from "./provider-json";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
 export * from "./script-run";
 export * from "./search";

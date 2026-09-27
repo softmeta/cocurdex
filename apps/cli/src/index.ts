@@ -32,6 +32,7 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
+import { handleProviderCommand, providerUsageLines } from "./provider-commands";
 import {
   handleScriptRunCommand,
   scriptRunUsageLines,
@@ -289,21 +290,11 @@ async function main(rawArgs: string[]) {
     return;
   }
 
-  if (resource === "provider" && action === "list") {
-    const providers = await withDaemon(() =>
-      requestDaemon("provider.listConfigs"),
-    );
-    printRows(providers, ["id", "name", "baseUrl", "enabled"], parsed);
-    return;
-  }
-
-  if (resource === "provider" && action === "models") {
-    const [providerId] = args;
-    const result = await withDaemon(() =>
-      requestDaemon("provider.listModels", { providerId }),
-    );
-    printRows(result.models, ["providerId", "modelId", "name", "api"], parsed);
-    return;
+  if (resource === "provider") {
+    const handled = await handleProviderCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
   }
 
   if (resource === "role" && (action === "list" || action === undefined)) {
@@ -466,8 +457,7 @@ function printUsage() {
       "  cocurdex session stop <session-id>",
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
-      "  cocurdex provider list",
-      "  cocurdex provider models <provider>",
+      ...providerUsageLines(),
       "  cocurdex workflow list",
       "  cocurdex workflow definitions",
       "  cocurdex workflow tui [run-id]",

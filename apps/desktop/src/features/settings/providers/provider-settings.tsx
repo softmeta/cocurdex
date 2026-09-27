@@ -18,10 +18,7 @@ import {
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { SettingsSearchableSelect } from "../settings-select";
 import { ImportProviderJsonDialog } from "./import-provider-json-dialog";
-import type {
-  ParsedProviderImport,
-  ProviderImportWarning,
-} from "./parse-provider-json";
+import { providerImportWarningMessage } from "./import-warning-message";
 import { ProviderEditor } from "./provider-editor";
 import { resolveProviderSettingsSurface } from "./provider-settings-surface";
 import { applyProviderTemplate } from "./provider-templates";
@@ -520,76 +517,27 @@ export function ProviderSettingsPanel() {
     await reload();
   }
 
-  async function importProvidersFromJson(entries: ParsedProviderImport[]) {
-    const now = new Date().toISOString();
-    const allWarnings: ProviderImportWarning[] = [];
-
+  async function importProvidersFromJson(json: string) {
+    let result: Awaited<ReturnType<typeof desktopApi.importProviderJson>>;
     try {
-      for (const entry of entries) {
-        allWarnings.push(...entry.warnings);
-        const existing = providers.find(
-          (provider) => provider.id === entry.provider.id,
-        );
-        const provider: ProviderConfigRecord = {
-          ...entry.provider,
-          // Keep an existing secret link when the import has no literal key.
-          apiKeySecretId: existing?.apiKeySecretId ?? null,
-          createdAt: existing?.createdAt ?? entry.provider.createdAt ?? now,
-          updatedAt: now,
-          headersJson:
-            entry.provider.headersJson ?? existing?.headersJson ?? null,
-          compatJson: entry.provider.compatJson ?? existing?.compatJson ?? null,
-        };
-
-        await desktopApi.saveProviderConfig(provider);
-
-        if (entry.apiKey) {
-          await desktopApi.setProviderApiKey(provider.id, entry.apiKey);
-        }
-
-        for (const model of entry.models) {
-          const existingModel = models.find(
-            (item) =>
-              item.providerId === model.providerId &&
-              item.modelId === model.modelId,
-          );
-          await desktopApi.saveProviderModel({
-            ...model,
-            createdAt: existingModel?.createdAt ?? model.createdAt ?? now,
-            updatedAt: now,
-          });
-        }
-      }
+      result = await desktopApi.importProviderJson(json);
     } catch (error) {
       console.error("Failed to import providers:", error);
       toast.error(t("providers.status.importFailed"));
       throw error;
     }
 
-    const firstId = entries[0]?.provider.id ?? null;
-    setSelectedProviderId(firstId);
+    setSelectedProviderId(result.providerIds[0] ?? null);
     setIsCreatingProvider(false);
     setPendingTemplateId("");
 
     toast.success(
-      t("providers.status.importSucceeded", { count: entries.length }),
+      t("providers.status.importSucceeded", {
+        count: result.providerIds.length,
+      }),
     );
-    for (const warning of allWarnings) {
-      const messageByCode = {
-        authHeaderNoKey: t("providers.importJson.warnings.authHeaderNoKey", {
-          id: warning.providerId,
-        }),
-        commandApiKey: t("providers.importJson.warnings.commandApiKey", {
-          id: warning.providerId,
-        }),
-        envApiKey: t("providers.importJson.warnings.envApiKey", {
-          id: warning.providerId,
-        }),
-        oauthIgnored: t("providers.importJson.warnings.oauthIgnored", {
-          id: warning.providerId,
-        }),
-      } as const;
-      toast.warning(messageByCode[warning.code]);
+    for (const warning of result.warnings) {
+      toast.warning(providerImportWarningMessage(t, warning));
     }
 
     await reload();

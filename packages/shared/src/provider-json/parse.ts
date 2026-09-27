@@ -4,7 +4,7 @@ import {
   type ProviderModelCapability,
   type ProviderModelRecord,
   providerApis,
-} from "@cocurdex/shared";
+} from "../contracts";
 
 // Pi `~/.pi/agent/models.json` shape (coding-agent docs/models.md).
 // Supports the full file `{ "providers": { ... } }` or a bare providers map.
@@ -49,23 +49,14 @@ function isProviderApi(value: unknown): value is ProviderApi {
   return typeof value === "string" && SUPPORTED_APIS.has(value);
 }
 
-export function isJsonImportFile(file: Pick<File, "name" | "type">): boolean {
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".json") || name.endsWith(".txt")) {
-    return true;
-  }
-  const type = file.type.toLowerCase();
-  return type === "" || type === "application/json" || type.startsWith("text/");
-}
-
 /** Strip `//` line comments and trailing commas, leaving string literals intact. */
 export function stripJsonComments(input: string): string {
   return input
-    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\n]*/g, (match) =>
+    .replace(/"(?:\\.|[^"\\])*"?|\/\/[^\n]*/g, (match) =>
       match[0] === '"' ? match : "",
     )
     .replace(
-      /"(?:\\.|[^"\\])*"|,(\s*[}\]])/g,
+      /"(?:\\.|[^"\\])*"?|,(\s*[}\]])/g,
       (match, tail: string | undefined) =>
         tail ?? (match[0] === '"' ? match : ""),
     );
