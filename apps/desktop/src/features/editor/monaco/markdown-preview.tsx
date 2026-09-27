@@ -44,7 +44,7 @@ function PreviewTocRail({ activeKey, headings }: PreviewTocProps) {
   return (
     <nav
       aria-label={t("preview.toc")}
-      className="w-56 shrink-0 overflow-y-auto py-6 pe-4"
+      className="mt-6 max-h-[60%] w-56 shrink-0 self-start overflow-y-auto pe-4"
     >
       <Text
         as="div"
@@ -60,7 +60,7 @@ function PreviewTocRail({ activeKey, headings }: PreviewTocProps) {
           <li key={heading.key}>
             <button
               className={cn(
-                "-ms-px block w-full truncate border-s-2 border-transparent py-1 pe-2 text-start text-meta text-muted-foreground transition-colors hover:text-foreground",
+                "-ms-px block w-full truncate border-s-2 border-transparent py-0.5 pe-2 text-start text-meta text-muted-foreground transition-colors hover:text-foreground",
                 HEADING_INDENT_CLASS_NAMES[heading.level],
                 heading.key === activeKey && "border-primary text-foreground",
               )}
