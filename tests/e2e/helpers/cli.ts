@@ -32,9 +32,9 @@ export async function runCli(
       NO_COLOR: "1",
       TZ: "UTC",
     },
-    stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
   });
-  child.stdin?.end(options.input);
+  child.stdin.end(options.input);
   const stdoutChunks: Buffer[] = [];
   const stderrChunks: Buffer[] = [];
   child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
