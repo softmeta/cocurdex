@@ -89,6 +89,28 @@ export class DaemonSkillsService {
     };
   }
 
+  async refreshManagedGlobalInstall(): Promise<void> {
+    try {
+      const status = await getProductSkillsStatus("global", undefined, {
+        sourceRoot: this.sourceRoot,
+      });
+      if (!status.updateAvailable || !(await this.sourceIsAvailable())) {
+        return;
+      }
+      const result = await installProductSkills("global", undefined, {
+        sourceRoot: this.sourceRoot,
+        packVersion: status.packVersion,
+      });
+      logDaemonDiagnostic("info", "skills.autoUpdate", {
+        action: result.action,
+        fromVersion: status.installedVersion,
+        packVersion: result.packVersion,
+      });
+    } catch {
+      logDaemonDiagnostic("warn", "skills.autoUpdateFailed");
+    }
+  }
+
   async remove(
     payload: ProductSkillsRequestPayload,
   ): Promise<ProductSkillsRemoveResult> {

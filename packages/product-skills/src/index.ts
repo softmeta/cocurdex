@@ -4,7 +4,6 @@ export {
   MANAGED_MARKER_FILENAME,
   type ManagedSkillsMarker,
   PRODUCT_SKILL_NAMES,
-  PRODUCT_SKILLS_PACK_VERSION,
   type ProductSkillName,
   type SkillScope,
 } from "./manifest";
