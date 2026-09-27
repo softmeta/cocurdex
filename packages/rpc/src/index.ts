@@ -65,6 +65,8 @@ import type {
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
   ProductSkillsStatusResult,
+  ProviderAuthLoginUpdate,
+  ProviderAuthMethod,
   ProviderAuthState,
   ProviderConfigRecord,
   ProviderListModelsResult,
@@ -279,6 +281,17 @@ export type DaemonRequestPayloadByMethod = {
   "provider.titleModel.probe": { selection: TitleModelSelection };
   "provider.auth.read": { providerId: string };
   "provider.auth.logout": { providerId: string };
+  "provider.auth.login.start": {
+    providerId: string;
+    method: ProviderAuthMethod;
+  };
+  "provider.auth.login.next": { loginId: string };
+  "provider.auth.login.respond": {
+    loginId: string;
+    promptId: string;
+    value: string;
+  };
+  "provider.auth.login.cancel": { loginId: string };
   "codex.account.read": undefined;
   "codex.logout": undefined;
   "session.updateTitle": UpdateSessionTitlePayload;
@@ -491,6 +504,10 @@ export type DaemonResultByMethod = {
   "provider.titleModel.probe": TitleModelProbeResult;
   "provider.auth.read": ProviderAuthState;
   "provider.auth.logout": null;
+  "provider.auth.login.start": { loginId: string };
+  "provider.auth.login.next": ProviderAuthLoginUpdate;
+  "provider.auth.login.respond": null;
+  "provider.auth.login.cancel": null;
   "codex.account.read": CodexAccountState;
   "codex.logout": null;
   "session.updateTitle": SessionRecord | null;

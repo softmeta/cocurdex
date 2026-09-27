@@ -7,6 +7,7 @@ import {
   chmod,
   copyFile,
   mkdir,
+  readdir,
   readFile,
   realpath,
   rm,
@@ -68,6 +69,11 @@ const alias = {
 
 await mkdir(outDir, { recursive: true });
 await rm(path.join(outDir, "daemon.mjs"), { force: true });
+for (const file of await readdir(outDir)) {
+  if (/^cli-.+\.mjs$/.test(file)) {
+    await rm(path.join(outDir, file), { force: true });
+  }
+}
 
 await build({
   configFile: false,
@@ -93,7 +99,7 @@ await build({
     rollupOptions: {
       output: {
         entryFileNames: "cli.mjs",
-        inlineDynamicImports: true,
+        chunkFileNames: "cli-[name]-[hash].mjs",
       },
     },
   },
@@ -103,6 +109,18 @@ await build({
   },
 });
 await copyFile(photonWasmPath, path.join(outDir, "photon_rs_bg.wasm"));
+const piThemeSource = path.join(piPackagePath, "dist/modes/interactive/theme");
+const piThemeTarget = path.join(
+  outDir,
+  "pi-package/dist/modes/interactive/theme",
+);
+await mkdir(piThemeTarget, { recursive: true });
+for (const theme of ["dark.json", "light.json"]) {
+  await copyFile(
+    path.join(piThemeSource, theme),
+    path.join(piThemeTarget, theme),
+  );
+}
 
 await build({
   configFile: false,

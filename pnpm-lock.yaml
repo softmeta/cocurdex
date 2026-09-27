@@ -236,6 +236,9 @@ importers:
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@earendil-works/pi-coding-agent':
+        specifier: 0.87.1
+        version: 0.87.1(@modelcontextprotocol/sdk@1.30.1(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5)
       '@earendil-works/pi-tui':
         specifier: ^0.87.1
         version: 0.87.1
