@@ -1,8 +1,9 @@
 import { realpath, stat } from "node:fs/promises";
 import path from "node:path";
+import { stripTrailingPathSeparators } from "@cocurdex/shared";
 
 function normalizeForCompare(rootPath: string): string {
-  const trimmed = rootPath.replace(/[\\/]+$/, "") || rootPath;
+  const trimmed = stripTrailingPathSeparators(rootPath) || rootPath;
   return process.platform === "win32" ? trimmed.toLowerCase() : trimmed;
 }
 
