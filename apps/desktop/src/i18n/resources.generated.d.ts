@@ -702,6 +702,10 @@ export default interface Resources {
       zoomIn: "Zoom in";
       zoomOut: "Zoom out";
     };
+    preview: {
+      toc: "Table of contents";
+      tocEmpty: "No headings";
+    };
     states: {
       fileReadError: "Unable to read this file in the editor preview.";
       filesLoadError: "Failed to load workspace files.";
