@@ -4,9 +4,7 @@ import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
-  type AgentProviderSnapshot,
-  type ProviderConfigRecord,
-  type ProviderModelRecord,
+  createProviderSnapshotForModel,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type SessionRecord,
@@ -531,7 +529,7 @@ async function createSession(parsed: ParsedArgs) {
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,
-    providerSnapshot: createProviderSnapshot(provider, model),
+    providerSnapshot: createProviderSnapshotForModel({ provider, model }),
   };
 
   return withDaemon(async () => {
@@ -724,22 +722,6 @@ function createWorkspaceFromPath(
     updatedAt: now,
     lastOpenedAt: now,
     sortOrder,
-  };
-}
-
-function createProviderSnapshot(
-  provider: ProviderConfigRecord,
-  model: ProviderModelRecord,
-): AgentProviderSnapshot {
-  return {
-    providerId: provider.id,
-    providerName: provider.name,
-    modelId: model.modelId,
-    modelName: model.name,
-    api: model.api,
-    baseUrl: provider.baseUrl,
-    headersJson: provider.headersJson,
-    reasoningEffort: model.defaultReasoningEffort,
   };
 }
 

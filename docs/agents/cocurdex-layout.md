@@ -20,3 +20,8 @@ Skills remain manually installable through Settings or:
 cocurdex skills install --scope project
 cocurdex skills install --scope global
 ```
+
+The pack version is a hash of the packaged skill files. At startup the daemon
+updates an existing Cocurdex-managed global install when that hash changes. It
+never performs a first install, and it leaves project installs and unmanaged
+same-named skills untouched.

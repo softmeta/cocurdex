@@ -33,6 +33,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       setupScript: "pnpm install",
       cleanupScript: "rm -rf node_modules",
       updatedAt: now,
+      proposal: null,
     });
 
     expect(await environments.getByWorkspaceId("workspace-1")).toEqual({
