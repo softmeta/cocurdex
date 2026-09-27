@@ -25,7 +25,6 @@ export const PACKAGED_NATIVE_PACKAGE_IDS = [
 ];
 
 export const PACKAGED_NATIVE_PACKAGE_SCOPES = [
-  "@mariozechner/clipboard",
   "@napi-rs/keyring",
   "@vscode/ripgrep",
 ];
