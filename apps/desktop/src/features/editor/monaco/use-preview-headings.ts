@@ -85,3 +85,24 @@ export function usePreviewHeadings(
 
   return { activeKey, headings };
 }
+
+export function useIsWiderThan(
+  elementRef: RefObject<HTMLElement | null>,
+  minWidthPx: number,
+) {
+  const [isWider, setIsWider] = useState(false);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) =>
+      setIsWider((entry?.contentRect.width ?? 0) >= minWidthPx),
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [elementRef, minWidthPx]);
+
+  return isWider;
+}

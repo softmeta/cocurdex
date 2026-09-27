@@ -16,8 +16,11 @@ import {
 import { cn } from "@/lib";
 import {
   type PreviewHeading,
+  useIsWiderThan,
   usePreviewHeadings,
 } from "./use-preview-headings";
+
+const WIDE_PREVIEW_MIN_WIDTH_PX = 896;
 
 const HEADING_INDENT_CLASS_NAMES: Record<number, string> = {
   1: "ps-3",
@@ -41,7 +44,7 @@ function PreviewTocRail({ activeKey, headings }: PreviewTocProps) {
   return (
     <nav
       aria-label={t("preview.toc")}
-      className="hidden w-56 shrink-0 overflow-y-auto py-6 pe-4 @4xl/preview:block"
+      className="w-56 shrink-0 overflow-y-auto py-6 pe-4"
     >
       <Text
         as="div"
@@ -83,7 +86,7 @@ function PreviewTocMenu({ activeKey, headings }: PreviewTocProps) {
         render={
           <Button
             aria-label={t("preview.toc")}
-            className="absolute end-4 top-4 bg-background/80 text-muted-foreground @4xl/preview:hidden"
+            className="absolute end-4 top-4 bg-background/80 text-muted-foreground"
             size="icon-sm"
             title={t("preview.toc")}
             variant="ghost"
@@ -94,7 +97,10 @@ function PreviewTocMenu({ activeKey, headings }: PreviewTocProps) {
       </DropdownMenuTrigger>
       <AppDropdownContent
         align="end"
-        className={cn("max-w-72", compactDropdownContentClassName)}
+        className={cn(
+          "max-h-[min(24rem,var(--available-height))]! max-w-72",
+          compactDropdownContentClassName,
+        )}
       >
         {headings.map((heading) => (
           <AppDropdownItem
@@ -114,15 +120,17 @@ function PreviewTocMenu({ activeKey, headings }: PreviewTocProps) {
 export function MarkdownPreview({ content }: { content: string }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { activeKey, headings } = usePreviewHeadings(scrollerRef, contentRef);
   const hasToc = headings.length > 1;
+  const isWide = useIsWiderThan(containerRef, WIDE_PREVIEW_MIN_WIDTH_PX);
 
   return (
-    <div className="@container/preview relative flex h-full">
+    <div className="relative flex h-full" ref={containerRef}>
       <div
         className={cn(
           "h-full min-w-0 flex-1 overflow-auto p-6",
-          hasToc && "pe-12 @4xl/preview:pe-6",
+          hasToc && !isWide && "pe-12",
         )}
         ref={scrollerRef}
       >
@@ -134,11 +142,11 @@ export function MarkdownPreview({ content }: { content: string }) {
           />
         </div>
       </div>
-      {hasToc ? (
-        <>
-          <PreviewTocRail activeKey={activeKey} headings={headings} />
-          <PreviewTocMenu activeKey={activeKey} headings={headings} />
-        </>
+      {hasToc && isWide ? (
+        <PreviewTocRail activeKey={activeKey} headings={headings} />
+      ) : null}
+      {hasToc && !isWide ? (
+        <PreviewTocMenu activeKey={activeKey} headings={headings} />
       ) : null}
     </div>
   );
