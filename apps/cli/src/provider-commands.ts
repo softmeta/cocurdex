@@ -18,11 +18,16 @@ import {
   stringFlag,
 } from "./parse-args";
 import {
+  handleProviderExport,
+  handleProviderImport,
+} from "./provider-json-commands";
+import {
   createTextLoginUi,
   createTuiLoginUi,
   type ProviderLoginClient,
   runProviderLogin,
 } from "./provider-login";
+import { readStdin } from "./read-stdin";
 
 export function providerUsageLines() {
   return [
@@ -40,6 +45,8 @@ export function providerUsageLines() {
     "  cocurdex provider model add <id> <model-id> --api <api> [--name <name>]",
     "  cocurdex provider model remove <id> <model-id>",
     "  cocurdex provider default [--agent <agent>] [--provider <id> --model <model-id>] [--json]",
+    "  cocurdex provider import <file|->   (pi models.json format)",
+    "  cocurdex provider export [--output <file>]",
   ];
 }
 
@@ -128,14 +135,6 @@ async function readSecretFromTerminal(query: string) {
     process.stdout.write("\n");
     readline.close();
   }
-}
-
-async function readStdin() {
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks).toString("utf8");
 }
 
 async function readApiKey() {
@@ -397,6 +396,12 @@ export async function handleProviderCommand(
       return true;
     case "model":
       await handleModelCommand(args, parsed);
+      return true;
+    case "import":
+      await handleProviderImport(providerId, parsed);
+      return true;
+    case "export":
+      await handleProviderExport(parsed);
       return true;
     case "default":
       await handleDefaultCommand(parsed);

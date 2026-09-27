@@ -437,6 +437,13 @@ export function registerProviderHandlers() {
   );
   registerHandler(
     ipcMain,
+    "provider:importJson",
+    schemas.providerImportJson,
+    async (_event, json) =>
+      requestDaemon("provider.importJson", { json }, await chatDaemonOptions()),
+  );
+  registerHandler(
+    ipcMain,
     "provider:listModels",
     schemas.providerId,
     async (_event, providerId) =>

@@ -45,4 +45,5 @@ Model providers are configured through the `cocurdex provider` CLI (or Settings 
 
 - Inspect: `cocurdex provider list`, `cocurdex provider templates`, `cocurdex provider models <id> [--refresh]`, `cocurdex provider status <id>`, `cocurdex provider default`. Add `--json` for machine-readable output.
 - Configure: `cocurdex provider add <id> --template <template-id>` for a built-in provider, or `--name <name> --base-url <url>` for a custom endpoint. `cocurdex provider update <id>`, `cocurdex provider remove <id>`, `cocurdex provider model add|remove`, and `cocurdex provider default --agent <agent> --provider <id> --model <model-id>` change the rest.
+- Move configs in bulk with pi's `models.json` format: `cocurdex provider import <file|->` upserts providers and models, and `cocurdex provider export [--output <file>]` writes them out. Exports never include stored API keys or OAuth logins, but custom `headers` are exported as-is.
 - Credentials are the user's step. `cocurdex provider login <id>` runs OAuth or API-key login interactively, and `cocurdex provider key set <id>` reads a key from stdin. Suggest the command; never run them with a secret you were given.

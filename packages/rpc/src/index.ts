@@ -61,6 +61,7 @@ import type {
   PeerInboundPolicy,
   PeerSessionSummary,
   PendingSettingsChangeRecord,
+  PiModelsJson,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
@@ -69,6 +70,7 @@ import type {
   ProviderAuthMethod,
   ProviderAuthState,
   ProviderConfigRecord,
+  ProviderImportResult,
   ProviderListModelsResult,
   ProviderModelRecord,
   ProviderTemplateRecord,
@@ -292,6 +294,8 @@ export type DaemonRequestPayloadByMethod = {
     value: string;
   };
   "provider.auth.login.cancel": { loginId: string };
+  "provider.importJson": { json: string };
+  "provider.exportJson": undefined;
   "codex.account.read": undefined;
   "codex.logout": undefined;
   "session.updateTitle": UpdateSessionTitlePayload;
@@ -508,6 +512,8 @@ export type DaemonResultByMethod = {
   "provider.auth.login.next": ProviderAuthLoginUpdate;
   "provider.auth.login.respond": null;
   "provider.auth.login.cancel": null;
+  "provider.importJson": ProviderImportResult;
+  "provider.exportJson": PiModelsJson;
   "codex.account.read": CodexAccountState;
   "codex.logout": null;
   "session.updateTitle": SessionRecord | null;
@@ -642,6 +648,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "git.commitMessageModel.get": true,
   "git.commitMessageModel.resolve": true,
   "provider.listDefaults": true,
+  "provider.exportJson": true,
   "agentRole.list": true,
   "session.list": true,
   "session.listArchived": true,

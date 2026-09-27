@@ -553,6 +553,7 @@ export const schemas = {
     z.string().max(16_384).refine(noNullByte, "null byte"),
   ]),
   providerDeleteModel: z.tuple([providerIdSchema, providerIdSchema]),
+  providerImportJson: z.string().max(4_194_304).refine(noNullByte, "null byte"),
   providerSetDefault: z.tuple([
     agentIdSchema,
     providerIdSchema,

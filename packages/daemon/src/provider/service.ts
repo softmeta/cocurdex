@@ -29,6 +29,10 @@ import {
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { ProviderCredentials } from "../provider-credentials/service";
 import type { DaemonState } from "../state";
+import {
+  exportConfiguredProviderJson,
+  importProviderJson,
+} from "./json-transfer";
 import { fetchProviderModels, listConfiguredProviderModels } from "./models";
 import {
   getTitleModelSetting,
@@ -70,6 +74,18 @@ export class DaemonProviderService {
     // the same provider id is re-created later.
     await this.state.deleteProviderModelsByProvider(providerId);
     await this.state.deleteProviderConfig(providerId);
+  }
+
+  importJson(json: string) {
+    return importProviderJson(
+      this.state,
+      (providerId, apiKey) => this.credentials.setApiKey(providerId, apiKey),
+      json,
+    );
+  }
+
+  exportJson() {
+    return exportConfiguredProviderJson(this.state);
   }
 
   async listProviderModels(

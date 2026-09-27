@@ -1,3 +1,8 @@
+import {
+  type ParsedProviderImport,
+  type ProviderImportWarning,
+  parseProviderJson,
+} from "@cocurdex/shared";
 import { FileUp } from "lucide-react";
 import { type DragEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,12 +18,8 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import {
-  isJsonImportFile,
-  type ParsedProviderImport,
-  type ProviderImportWarning,
-  parseProviderJson,
-} from "./parse-provider-json";
+import { isJsonImportFile } from "./import-json-file";
+import { providerImportWarningMessage } from "./import-warning-message";
 
 function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) {
@@ -28,10 +29,11 @@ function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
 }
 
 interface ImportProviderJsonDialogProps {
-  onImport(providers: ParsedProviderImport[]): Promise<void>;
+  onImport(json: string): Promise<void>;
 }
 
 interface ImportPreview {
+  json: string;
   providers: ParsedProviderImport[];
   warnings: ProviderImportWarning[];
 }
@@ -52,24 +54,6 @@ export function ImportProviderJsonDialog({
     ? preview.providers.reduce((total, entry) => total + entry.models.length, 0)
     : 0;
 
-  function warningMessage(warning: ProviderImportWarning): string {
-    const messageByCode = {
-      authHeaderNoKey: t("providers.importJson.warnings.authHeaderNoKey", {
-        id: warning.providerId,
-      }),
-      commandApiKey: t("providers.importJson.warnings.commandApiKey", {
-        id: warning.providerId,
-      }),
-      envApiKey: t("providers.importJson.warnings.envApiKey", {
-        id: warning.providerId,
-      }),
-      oauthIgnored: t("providers.importJson.warnings.oauthIgnored", {
-        id: warning.providerId,
-      }),
-    } as const;
-    return messageByCode[warning.code];
-  }
-
   function closePreview() {
     fileSelectionRef.current += 1;
     setPreview(null);
@@ -89,7 +73,8 @@ export function ImportProviderJsonDialog({
       return;
     }
 
-    const parsed = parseProviderJson(await file.text());
+    const json = await file.text();
+    const parsed = parseProviderJson(json);
     if (selection !== fileSelectionRef.current) {
       return;
     }
@@ -100,6 +85,7 @@ export function ImportProviderJsonDialog({
 
     setError("");
     setPreview({
+      json,
       providers: parsed.providers,
       warnings: parsed.warnings,
     });
@@ -162,7 +148,7 @@ export function ImportProviderJsonDialog({
     setError("");
     setIsImporting(true);
     try {
-      await onImport(preview.providers);
+      await onImport(preview.json);
       closePreview();
     } catch (importError) {
       const message =
@@ -268,7 +254,7 @@ export function ImportProviderJsonDialog({
                   {preview.warnings.map((warning) => (
                     <li key={`${warning.code}:${warning.providerId}`}>
                       <Text size="meta" tone="muted">
-                        {warningMessage(warning)}
+                        {providerImportWarningMessage(t, warning)}
                       </Text>
                     </li>
                   ))}

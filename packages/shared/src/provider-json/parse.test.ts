@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  isJsonImportFile,
   parseProviderJson,
   resolveImportApiKey,
   stripJsonComments,
-} from "./parse-provider-json";
+} from "./parse";
 
 const NOW = "2026-01-15T00:00:00.000Z";
 
@@ -36,21 +35,6 @@ describe("stripJsonComments", () => {
     expect(JSON.parse(stripJsonComments(raw))).toEqual({
       url: "https://example.com//v1",
     });
-  });
-});
-
-describe("isJsonImportFile", () => {
-  it("accepts json and text files", () => {
-    expect(isJsonImportFile({ name: "models.json", type: "" })).toBe(true);
-    expect(isJsonImportFile({ name: "blob", type: "application/json" })).toBe(
-      true,
-    );
-    expect(isJsonImportFile({ name: "notes.txt", type: "text/plain" })).toBe(
-      true,
-    );
-    expect(isJsonImportFile({ name: "photo.png", type: "image/png" })).toBe(
-      false,
-    );
   });
 });
 

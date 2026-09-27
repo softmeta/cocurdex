@@ -29,6 +29,7 @@ import type {
   ProviderAuthMethod,
   ProviderAuthState,
   ProviderConfigRecord,
+  ProviderImportResult,
   ProviderListModelsResult,
   ProviderModelRecord,
   PtyActivityEvent,
@@ -320,6 +321,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("provider:deleteConfig", providerId),
   setProviderApiKey: (providerId: string, apiKey: string) =>
     ipcRenderer.invoke("provider:setApiKey", providerId, apiKey),
+  importProviderJson: (json: string): Promise<ProviderImportResult> =>
+    ipcRenderer.invoke("provider:importJson", json),
   clearProviderApiKey: (providerId: string) =>
     ipcRenderer.invoke("provider:clearApiKey", providerId),
   readProviderAuth: (providerId: string): Promise<ProviderAuthState> =>

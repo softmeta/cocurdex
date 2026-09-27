@@ -350,6 +350,10 @@ export async function handleDaemonRequest(
         request.params.value,
       );
       return null;
+    case "provider.importJson":
+      return service.providerService.importJson(request.params.json);
+    case "provider.exportJson":
+      return service.providerService.exportJson();
     case "provider.auth.login.cancel":
       service.providerLogins.cancel(request.params.loginId);
       return null;

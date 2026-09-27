@@ -95,6 +95,41 @@ describe("cocurdex provider CLI", () => {
     expect(JSON.parse(listed.stdout)).toEqual([]);
   });
 
+  it("imports and exports pi models.json", async () => {
+    const modelsJson = JSON.stringify({
+      providers: {
+        ollama: {
+          baseUrl: "http://localhost:11434/v1",
+          api: "openai-completions",
+          apiKey: "$OLLAMA_API_KEY",
+          models: [{ id: "llama3.1:8b" }, { id: "qwen3", reasoning: true }],
+        },
+      },
+    });
+
+    const imported = await cli(["provider", "import", "-"], modelsJson);
+    expect(imported.code).toBe(0);
+    expect(imported.stdout).toContain("Imported 1 provider(s) and 2 model(s)");
+    expect(imported.stderr).toContain("warning: ollama:");
+
+    const exported = await cli(["provider", "export"]);
+    expect(exported.code).toBe(0);
+    expect(JSON.parse(exported.stdout)).toEqual({
+      providers: {
+        ollama: {
+          baseUrl: "http://localhost:11434/v1",
+          models: [
+            expect.objectContaining({ id: "llama3.1:8b" }),
+            expect.objectContaining({ id: "qwen3", reasoning: true }),
+          ],
+        },
+      },
+    });
+    expect(exported.stdout).not.toContain("OLLAMA_API_KEY");
+
+    await cli(["provider", "remove", "ollama"]);
+  });
+
   it("logs in to a template provider through daemon-driven prompts", async () => {
     const providerId = "cloudflare-workers-ai";
     const added = await cli([

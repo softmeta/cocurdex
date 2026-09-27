@@ -416,6 +416,11 @@ const fallbackApi: DesktopApi = {
   deleteProviderConfig: async () => {},
   setProviderApiKey: async () => {},
   clearProviderApiKey: async () => {},
+  importProviderJson: async () => ({
+    providerIds: [],
+    modelCount: 0,
+    warnings: [],
+  }),
   readProviderAuth: async (providerId) => ({
     providerId,
     type: null,

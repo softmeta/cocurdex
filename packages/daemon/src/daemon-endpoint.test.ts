@@ -17,17 +17,16 @@ describe("daemon endpoint evidence", () => {
     expect(socket.destroyed).toBe(true);
   });
 
-  it.each([
-    "EPERM",
-    "EACCES",
-    "EMFILE",
-  ])("does not turn %s into permission to replace", async (code) => {
-    const socket = new net.Socket();
-    vi.spyOn(net, "connect").mockReturnValue(socket);
-    const result = probeDaemonEndpoint("unused");
-    socket.emit("error", Object.assign(new Error(code), { code }));
-    await expect(result).rejects.toMatchObject({ code });
-  });
+  it.each(["EPERM", "EACCES", "EMFILE"])(
+    "does not turn %s into permission to replace",
+    async (code) => {
+      const socket = new net.Socket();
+      vi.spyOn(net, "connect").mockReturnValue(socket);
+      const result = probeDaemonEndpoint("unused");
+      socket.emit("error", Object.assign(new Error(code), { code }));
+      await expect(result).rejects.toMatchObject({ code });
+    },
+  );
 
   it("rejects an inconclusive timeout and closes the probe", async () => {
     vi.useFakeTimers();
