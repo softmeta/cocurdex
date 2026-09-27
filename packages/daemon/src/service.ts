@@ -20,20 +20,24 @@ import type {
   AgentPlanApprovalDecision,
   AgentRoleRecord,
   AgentRuntimeProviderConfig,
-  AgentToolCallRecord,
   AppBootstrapData,
   AppResyncSnapshot,
   CocurdexDaemonEvent,
   CommitMessageModelSelection,
+  CreateConversationPayload,
   CreateWorkflowPayload,
+  EditConversationMessagePayload,
   GetToolCallResultInput,
   GitCommitResult,
   MessageRecord,
+  NetworkProxySettings,
+  RefineSessionTitlePayload,
+  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
+  SendConversationMessagePayload,
   SendSessionCommand,
   SessionConfiguration,
-  SessionMessagesResult,
   SessionRecord,
   SubmitPreviousMessageCommand,
   TurnChangeDiffRequest,
@@ -52,6 +56,7 @@ import {
   isAssistantSessionId,
   isToolCallId,
   isWorkspaceSearchDaemonEvent,
+  isWorkspaceWatchDaemonEvent,
   newAssistantSessionId,
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
@@ -78,6 +83,7 @@ import {
   discoverAgentSessionModes,
   discoverInstalledAgentCapabilities,
 } from "./agents";
+import { DaemonAttachmentStore } from "./attachment-store";
 import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
@@ -86,10 +92,21 @@ import { listHostDirectories } from "./fs-browse";
 import { commitGitChanges } from "./git";
 import { DaemonMcpConfigService } from "./mcp-config";
 import { probeNetworkProxy } from "./network-proxy-probe";
+import {
+  assertTestableNetworkProxySettings,
+  readNetworkProxySettings,
+  saveNetworkProxySettings,
+} from "./network-proxy-settings";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
+import {
+  resolveChatProvider,
+  resolveTitleChatProvider,
+} from "./provider/chat-provider";
+import { CodexLoginSessions } from "./provider/codex-login";
+import { generateProviderSessionTitle } from "./provider/session-title";
 import {
   ProviderCredentials,
   ProviderLoginSessions,
@@ -121,12 +138,14 @@ import {
   createWorkspaceChangeCoordinator,
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
+import { resolveWorkspaceOpenPath } from "./workspace-open-path";
 import {
   fileExists,
   listWorkspaceEntries as listWorkspaceEntriesOnDisk,
   listWorkspaceFiles as listWorkspaceFilesOnDisk,
   readTextFile,
 } from "./workspace-service";
+import { WorkspaceWatchService } from "./workspace-watch";
 import {
   createManagedWorktree,
   listManagedWorktrees,
@@ -186,6 +205,9 @@ export class CocurdexDaemonService {
   readonly commitMessageService: DaemonCommitMessageService;
   readonly mcpConfigService: DaemonMcpConfigService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
+  readonly attachments: DaemonAttachmentStore;
+  readonly codexLogins = new CodexLoginSessions();
+  private readonly workspaceWatch: WorkspaceWatchService;
   readonly runtime: AgentRuntimeManager;
   readonly searchService: DaemonSearchService;
   readonly skillsService: DaemonSkillsService;
@@ -246,6 +268,10 @@ export class CocurdexDaemonService {
       canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
     });
     this.mcpConfigService = new DaemonMcpConfigService(options.userDataPath);
+    this.attachments = new DaemonAttachmentStore(options.userDataPath);
+    this.workspaceWatch = new WorkspaceWatchService((event) =>
+      this.events.emit("daemon.event", event),
+    );
     this.skillsService = new DaemonSkillsService(undefined, (rootPath) =>
       this.scanPolicy.canScan(rootPath),
     );
@@ -537,8 +563,20 @@ export class CocurdexDaemonService {
     return probeAdapterRateLimits(agentIds);
   }
 
-  testNetworkProxy() {
+  async testNetworkProxy(settings?: NetworkProxySettings) {
+    if (settings) {
+      assertTestableNetworkProxySettings(settings);
+      await saveNetworkProxySettings(this.state, settings);
+    }
     return probeNetworkProxy(getNetworkProxySettings());
+  }
+
+  getNetworkProxySettings() {
+    return readNetworkProxySettings(this.state);
+  }
+
+  setNetworkProxySettings(settings: NetworkProxySettings) {
+    return saveNetworkProxySettings(this.state, settings);
   }
 
   listSessionAttention() {
@@ -570,11 +608,28 @@ export class CocurdexDaemonService {
     if (!(await this.scanPolicy.canScan(rootPath))) {
       return [];
     }
+    await this.workspaceWatch.ensure(rootPath);
     return listWorkspaceFilesOnDisk(rootPath);
   }
 
-  invalidateScanRoots() {
+  async watchWorkspace(rootPath: string) {
+    if (await this.scanPolicy.canScan(rootPath)) {
+      await this.workspaceWatch.ensure(rootPath);
+    }
+  }
+
+  async deleteWorkspace(workspaceId: string) {
+    await this.state.deleteWorkspace(workspaceId);
     this.scanPolicy.invalidate();
+  }
+
+  async resolveWorkspaceOpenPath(inputPath: string, allowFile: boolean) {
+    const workspaces = await this.state.listWorkspaces();
+    return resolveWorkspaceOpenPath(
+      inputPath,
+      workspaces.flatMap((workspace) => workspace.rootPaths),
+      { allowFile },
+    );
   }
 
   // file.* RPCs are reachable by any daemon client, so reads are confined to
@@ -1051,14 +1106,8 @@ export class CocurdexDaemonService {
       const transcripts = Object.fromEntries(
         await Promise.all(
           sessionIds.map(async (sessionId) => {
-            const messages = (await this.state.callStorage(
-              "message.listBySession",
-              [sessionId],
-            )) as SessionMessagesResult;
-            const toolCalls = (await this.state.callStorage(
-              "toolCall.listBySession",
-              [sessionId],
-            )) as AgentToolCallRecord[];
+            const messages = await this.state.listSessionMessages(sessionId);
+            const toolCalls = await this.state.listToolCallSummaries(sessionId);
             return [
               sessionId,
               {
@@ -1385,8 +1434,103 @@ export class CocurdexDaemonService {
     return updatedSession;
   }
 
-  generateSessionTitle(sessionId: string, message: string) {
-    return this.runtime.generateSessionTitle(sessionId, message);
+  // Only replaces a title the user has not changed since the request was
+  // made: expectedTitle guards against overwriting a manual rename.
+  async refineSessionTitle(
+    payload: RefineSessionTitlePayload,
+  ): Promise<SessionRecord | null> {
+    const session = await this.getSession(payload.sessionId);
+    if (!session || session.title !== payload.expectedTitle) {
+      return session;
+    }
+    const title = await this.generateSessionTitle(session, payload);
+    if (!title || title === payload.expectedTitle) {
+      return session;
+    }
+    return this.updateSessionTitle({
+      sessionId: payload.sessionId,
+      title,
+      expectedTitle: payload.expectedTitle,
+    });
+  }
+
+  private async generateSessionTitle(
+    session: SessionRecord,
+    payload: RefineSessionTitlePayload,
+  ) {
+    if (session.agentType !== "claude-agent") {
+      return generateProviderSessionTitle(
+        {
+          state: this.state,
+          readApiKey: (providerId) =>
+            this.providerCredentials.readApiKey(providerId),
+          resolveSessionProvider: (target) =>
+            this.providerCredentials.forSession(target),
+        },
+        session,
+        payload,
+      );
+    }
+    try {
+      return await this.runtime.generateSessionTitle(
+        session.id,
+        payload.message,
+      );
+    } catch (error) {
+      logDaemonDiagnostic("info", "titleGeneration.skipped", {
+        error: error instanceof Error ? error.message : String(error),
+        sessionId: session.id,
+      });
+      return null;
+    }
+  }
+
+  private resolveChatProvider(providerId: string, modelId: string) {
+    return resolveChatProvider(
+      this.state,
+      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
+      providerId,
+      modelId,
+    );
+  }
+
+  private async resolveConversationProvider(conversationId: string) {
+    const snapshot = await this.chatService.get(conversationId);
+    if (!snapshot) throw new Error("Conversation not found");
+    return this.resolveChatProvider(
+      snapshot.conversation.providerId,
+      snapshot.conversation.modelId,
+    );
+  }
+
+  async createConversation(payload: CreateConversationPayload) {
+    await this.resolveChatProvider(payload.providerId, payload.modelId);
+    return this.chatService.create(payload);
+  }
+
+  async sendConversationMessage(payload: SendConversationMessagePayload) {
+    const providerConfig = await this.resolveConversationProvider(
+      payload.conversationId,
+    );
+    const titleProviderConfig = await resolveTitleChatProvider(
+      this.state,
+      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
+    );
+    return this.chatService.send(payload, providerConfig, titleProviderConfig);
+  }
+
+  async retryConversationMessage(payload: RetryConversationMessagePayload) {
+    return this.chatService.retry(
+      payload,
+      await this.resolveConversationProvider(payload.conversationId),
+    );
+  }
+
+  async editConversationMessage(payload: EditConversationMessagePayload) {
+    return this.chatService.edit(
+      payload,
+      await this.resolveConversationProvider(payload.conversationId),
+    );
   }
 
   listSessionSlashCommands(agentType: AgentId, workspaceRootPath: string) {
@@ -2094,6 +2238,7 @@ export class CocurdexDaemonService {
         this.runtime.shutdown(),
         schedulerClose,
         Promise.resolve().then(() => this.searchService.dispose()),
+        Promise.resolve().then(() => this.workspaceWatch.close()),
       ]);
       await Promise.allSettled([...this.backgroundSends]);
       await this.runtime.flushEvents();
@@ -2337,6 +2482,7 @@ export function onAgentEvent(
       event.type !== "team.changed" &&
       event.type !== "scriptRun.changed" &&
       !isWorkspaceSearchDaemonEvent(event) &&
+      !isWorkspaceWatchDaemonEvent(event) &&
       !("conversationId" in event)
     ) {
       listener(event);

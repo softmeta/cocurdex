@@ -1,3 +1,5 @@
+import { stripTrailingPathSeparators } from "./git-worktree";
+
 export const WORKTREE_SETTING_KEY = "worktree";
 
 export interface WorktreeSettings {
@@ -70,18 +72,6 @@ function isWindowsDriveRoot(value: string) {
   }
   const sep = value[2];
   return sep === "/" || sep === "\\";
-}
-
-function stripTrailingPathSeparators(value: string) {
-  let end = value.length;
-  while (end > 0) {
-    const char = value[end - 1];
-    if (char !== "/" && char !== "\\") {
-      break;
-    }
-    end -= 1;
-  }
-  return value.slice(0, end);
 }
 
 export function normalizeWorktreeSettings(input: {

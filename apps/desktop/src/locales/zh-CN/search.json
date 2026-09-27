@@ -1,28 +1,40 @@
 {
+  "categories": {
+    "all": "全部",
+    "files": "文件",
+    "issues": "Issue",
+    "notes": "笔记",
+    "sessions": "会话"
+  },
+  "categoriesLabel": "搜索分类",
   "empty": {
+    "documentsError": {
+      "description": "无法搜索笔记和 Issue。",
+      "title": "搜索失败"
+    },
     "error": {
       "description": "ripgrep 无法列出这个工作区的文件。",
       "title": "无法索引文件"
     },
     "loading": {
-      "description": "正在用 ripgrep 索引工作区。",
-      "title": "正在加载文件..."
+      "description": "结果马上出现。",
+      "title": "正在搜索..."
     },
     "noFiles": {
       "description": "工作区没有返回可搜索文件。",
       "title": "未找到文件"
     },
     "noMatches": {
-      "description": "试试其他文件名或路径。",
-      "title": "没有匹配文件"
+      "description": "换个关键词或分类试试。",
+      "title": "没有结果"
     },
     "noWorkspace": {
       "description": "先打开一个工作区再搜索文件。",
       "title": "未选择工作区"
     },
     "typeToSearch": {
-      "description": "",
-      "title": "输入关键词搜索文件"
+      "description": "按标题或内容搜索笔记和 Issue。",
+      "title": "输入以搜索"
     }
   },
   "files": "文件",
@@ -57,10 +69,17 @@
   "headings": {
     "all": "全部文件",
     "recent": "最近打开",
+    "recentSessions": "最近会话",
     "results": "搜索结果"
+  },
+  "hints": {
+    "changeCategory": "⌘[ ⌘] 切换分类",
+    "open": "↵ 打开",
+    "select": "↑↓ 选择"
   },
   "more": "更多",
   "openSearch": "打开搜索",
-  "placeholder": "按名称或路径搜索文件...",
-  "searchFiles": "搜索文件"
+  "placeholder": "搜索会话、文件、笔记、Issue...",
+  "searchFiles": "搜索文件",
+  "title": "搜索"
 }

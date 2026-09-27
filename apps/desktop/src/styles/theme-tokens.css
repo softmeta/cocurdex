@@ -12,6 +12,7 @@
   --app-bg: var(--background);
   --app-fg: var(--foreground);
   --app-overlay: color-mix(in srgb, var(--background) 90%, transparent);
+  --modal-scrim: rgb(0 0 0 / 0.12);
   --selection-bg: color-mix(in srgb, var(--primary) 18%, transparent);
   --selection-fg: var(--foreground);
   --scrollbar-thumb: color-mix(in srgb, var(--foreground) 9%, transparent);
@@ -364,6 +365,7 @@
  * Preset ties --sidebar and --card both to 0.205; without an explicit sidebar
  * step the chat dock session drawer and chat body paint as one slab. */
 .dark {
+  --modal-scrim: rgb(0 0 0 / 0.4);
   /* Half step from shell toward card — separates nav from the shared canvas. */
   --sidebar: color-mix(in srgb, var(--background) 50%, var(--card));
   /* Dark canvas swallows borders and shadows, so the input plane separates by

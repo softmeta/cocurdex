@@ -1,5 +1,5 @@
 export {
   initializeNetworkProxyRuntime,
-  loadAndApplyNetworkProxyFromStorage,
+  loadAndApplyNetworkProxyFromDaemon,
   registerNetworkProxyHandlers,
 } from "./network-proxy-service";

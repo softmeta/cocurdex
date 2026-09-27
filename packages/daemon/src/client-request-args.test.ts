@@ -3,7 +3,7 @@ import { resolveDaemonRequestArgs } from "./client.ts";
 
 describe("resolveDaemonRequestArgs", () => {
   it("keeps client options out of the payload for no-param methods", () => {
-    const resolved = resolveDaemonRequestArgs("network.proxy.test", [
+    const resolved = resolveDaemonRequestArgs("network.proxy.get", [
       { userDataPath: "/tmp/cocurdex-dev" },
     ]);
     expect(resolved.params).toBeUndefined();

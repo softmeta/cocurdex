@@ -41,12 +41,9 @@ import {
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
+import { SearchPalette } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
-import {
-  ScreenNavButtons,
-  SearchPalette,
-  SidebarToggleButton,
-} from "../sidebar";
+import { ScreenNavButtons, SidebarToggleButton } from "../sidebar";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
 import { AppShellContent } from "./app-shell-content";

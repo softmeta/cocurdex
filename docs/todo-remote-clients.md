@@ -35,8 +35,22 @@ transport-neutral client work.
   `provider.default.*`, `provider.titleModel.*`, `provider.auth.read`/
   `provider.auth.logout`, `provider.listModels`/`provider.listConfigs`/
   `provider.listCompatibleForAgent`/`provider.listDefaults`. Daemon modules
-  live under `packages/daemon/src/provider/`; Electron keeps interactive
-  OAuth/Codex login and session-title generation only.
+  live under `packages/daemon/src/provider/`.
+- Remaining Electron product logic moved into the daemon on protocol 25:
+  session-title refinement (`session.refineTitle`, replacing
+  `session.generateTitle`); chat provider resolution (`chat.send`/`retry`/
+  `edit` take only the message payload and the daemon resolves the
+  conversation's provider and title model); Codex ChatGPT login state
+  (`codex.login.start`/`wait`/`cancel`); attachment storage
+  (`attachment.importImage`/`importDocument`/`readImageDataUrl`); network
+  proxy persistence and validation (`network.proxy.get`/`set`, and
+  `network.proxy.test` with optional settings); workspace file and git-state
+  watching (`workspace.filesChanged`/`workspace.gitStateChanged` daemon
+  events, started by listing or git RPCs on a scannable root); open-path
+  resolution (`workspace.resolveOpenPath`). The generic `storage.call` RPC is
+  gone in favor of `workspace.delete`, `session.listMessages`,
+  `session.listToolCalls` and `editorView.save`, and the secret-returning
+  `provider.apiKey.read`/`provider.resolveSnapshot` RPCs were removed.
 - Reconnect and idempotency on protocol 24: daemon events carry sequence
   numbers from a bounded in-memory journal (`event-journal.ts`);
   `daemon.subscribe` accepts `afterSeq` and replays before going live; the rpc
@@ -74,18 +88,18 @@ listener leaves loopback:
 
 ### 3. Move `provider:*` and `codex:*` into the daemon
 
-Partially done on protocol 24 — see Done. Remaining Electron-only pieces are
-the interactive login flows: `provider:authLogin*` (OAuth browser flow) and
-the `codex:*` login channels. They stay host-side until a future topology
-decision defines the OAuth callback URL for non-local clients.
+Done on protocols 24 and 25 — see Done. OAuth callbacks still assume the
+daemon and the browser share a machine; a future topology decision must define
+the callback URL for non-local clients.
 
 ### 4. Remaining host-only product logic
 
 Done on protocol 23 — see Done. `pdf:read-data` (pdf-asset:// URL) stays in
 Electron since serving the file is a host capability; annotation persistence
 is daemon-side. Stays in Electron: `window`, `dialog`, `shell`, `app:update`,
-`cli`, `browser` (BrowserView), `pty`, `fonts`, `editorView`, `log`, file
-watching (`workspace-watch-service.ts`, which keeps its own `git-client.ts`).
+`cli`, `browser` (BrowserView), `pty`, `fonts`, `log`, and applying the
+daemon's proxy setting to the Chromium session. File watching moved to the
+daemon on protocol 25.
 
 ### 5. Split the renderer `desktopApi` surface
 
@@ -93,8 +107,7 @@ Partially done. `DesktopApi` in `apps/desktop/src/lib/types.ts` is now
 `ProductApi` (daemon-RPC contract shared by all clients) + `HostApi`
 (Electron-only: native dialogs, file-manager reveal, local attachment/PDF
 file reads, PTY, BrowserView, fonts, updates, CLI install, renderer logging,
-daemon process management, workspace file watching, interactive provider
-login). Call sites still use one flat `desktopApi` proxy. Remaining:
+daemon process management). Call sites still use one flat `desktopApi` proxy. Remaining:
 
 - Expose the split at the proxy boundary (e.g. `desktopApi.product` /
   `desktopApi.host` or two bridges) and update renderer call sites; treat

@@ -569,13 +569,40 @@ export interface ProductApi {
   onDataChanged(
     listener: (event: CocurdexDataChangedEvent) => void,
   ): () => void;
+  // Fires (debounced) when anything inside a watched workspace root changes on
+  // disk, so cached file listings can be invalidated and refreshed.
+  onWorkspaceFilesChanged(
+    listener: (event: WorkspaceFilesChangedEvent) => void,
+  ): () => void;
+  // Fires (debounced) when git metadata (HEAD, index, refs) changes on disk —
+  // commits, stages, or branch switches done outside the app.
+  onWorkspaceGitStateChanged(
+    listener: (event: WorkspaceFilesChangedEvent) => void,
+  ): () => void;
+  importImageAttachment(
+    payload: ImportImageAttachmentPayload,
+  ): Promise<ImageAttachment>;
+  importDocumentAttachment(
+    payload: ImportDocumentAttachmentPayload,
+  ): Promise<DocumentAttachment>;
+  readImageAttachmentDataUrl(filePath: string): Promise<string>;
+  startProviderAuthLogin(
+    providerId: string,
+    method: ProviderAuthMethod,
+  ): Promise<{ loginId: string }>;
+  nextProviderAuthLogin(loginId: string): Promise<ProviderAuthLoginUpdate>;
+  respondProviderAuthLogin(
+    loginId: string,
+    promptId: string,
+    value: string,
+  ): Promise<void>;
+  cancelProviderAuthLogin(loginId: string): Promise<void>;
 }
 
 /**
  * Host-only surface (Electron): OS integration the daemon contract does not
- * cover — native dialogs, file-manager reveal, local file import, PTY,
- * BrowserView, fonts, updates, CLI install, renderer logging, daemon process
- * management, file watching, and the interactive provider login flows. Absent
+ * cover — native dialogs, file-manager reveal, PTY, BrowserView, fonts,
+ * updates, CLI install, renderer logging, and daemon process management. Absent
  * on clients without a local host; gate features on
  * {@link HostApi.capabilities} instead of calling blindly.
  */
@@ -606,35 +633,7 @@ export interface HostApi {
   // Reveal a specific file or directory in the OS file manager, highlighting it
   // within its parent folder (vs. openWorkspaceInFileManager which opens a dir).
   revealPathInFileManager(targetPath: string): Promise<void>;
-  // Fires (debounced) when anything inside a watched workspace root changes on
-  // disk, so cached file listings can be invalidated and refreshed.
-  onWorkspaceFilesChanged(
-    listener: (event: WorkspaceFilesChangedEvent) => void,
-  ): () => void;
-  // Fires (debounced) when git metadata (HEAD, index, refs) changes on disk —
-  // commits, stages, or branch switches done outside the app.
-  onWorkspaceGitStateChanged(
-    listener: (event: WorkspaceFilesChangedEvent) => void,
-  ): () => void;
-  importImageAttachment(
-    payload: ImportImageAttachmentPayload,
-  ): Promise<ImageAttachment>;
-  importDocumentAttachment(
-    payload: ImportDocumentAttachmentPayload,
-  ): Promise<DocumentAttachment>;
-  readImageAttachmentDataUrl(filePath: string): Promise<string>;
   readPdfData(payload: { filePath: string }): Promise<string>;
-  startProviderAuthLogin(
-    providerId: string,
-    method: ProviderAuthMethod,
-  ): Promise<{ loginId: string }>;
-  nextProviderAuthLogin(loginId: string): Promise<ProviderAuthLoginUpdate>;
-  respondProviderAuthLogin(
-    loginId: string,
-    promptId: string,
-    value: string,
-  ): Promise<void>;
-  cancelProviderAuthLogin(loginId: string): Promise<void>;
   openWorkspace(): Promise<{
     canceled: boolean;
     filePaths: string[];

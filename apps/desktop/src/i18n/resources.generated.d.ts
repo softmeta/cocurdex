@@ -932,30 +932,42 @@ export default interface Resources {
     title: "Welcome to cocurdex";
   };
   search: {
+    categories: {
+      all: "All";
+      files: "Files";
+      issues: "Issues";
+      notes: "Notes";
+      sessions: "Sessions";
+    };
+    categoriesLabel: "Search categories";
     empty: {
+      documentsError: {
+        description: "Notes and issues could not be searched.";
+        title: "Search failed";
+      };
       error: {
         description: "ripgrep could not list files for this workspace.";
         title: "Unable to index files";
       };
       loading: {
-        description: "Indexing the workspace with ripgrep.";
-        title: "Loading files...";
+        description: "Results will appear in a moment.";
+        title: "Searching...";
       };
       noFiles: {
         description: "The workspace did not return any searchable files.";
         title: "No files found";
       };
       noMatches: {
-        description: "Try a different filename or path.";
-        title: "No matching files";
+        description: "Try a different keyword or category.";
+        title: "No results";
       };
       noWorkspace: {
         description: "Open a workspace before searching files.";
         title: "No workspace selected";
       };
       typeToSearch: {
-        description: "";
-        title: "Type to search for files";
+        description: "Search notes and issues by title or content.";
+        title: "Type to search";
       };
     };
     files: "Files";
@@ -990,12 +1002,19 @@ export default interface Resources {
     headings: {
       all: "All files";
       recent: "Recently opened";
+      recentSessions: "Recent sessions";
       results: "Results";
+    };
+    hints: {
+      changeCategory: "⌘[ ⌘] Change category";
+      open: "↵ Open";
+      select: "↑↓ Select";
     };
     more: "More";
     openSearch: "Open search";
-    placeholder: "Search files by name or path...";
+    placeholder: "Search sessions, files, notes, issues...";
     searchFiles: "Search files";
+    title: "Search";
   };
   sessions: {
     agentRole: {

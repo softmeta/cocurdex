@@ -65,10 +65,6 @@ it("reads tool results through the named RPC and rejects invalid IDs", async () 
       await expect(request(id)).rejects.toThrow("Invalid tool call ID");
     }
     expect(lookup).not.toHaveBeenCalled();
-
-    await expect(
-      service.state.callStorage("toolCall.getResult", [toolCallId]),
-    ).rejects.toThrow("Unsupported storage operation: toolCall.getResult");
   } finally {
     await service.shutdown();
     await rm(userDataPath, { recursive: true, force: true });

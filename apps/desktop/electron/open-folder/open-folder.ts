@@ -1,4 +1,3 @@
-import { access, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { BrowserWindow } from "electron";
 
@@ -58,110 +57,14 @@ export function extractOpenFolderFromAdditionalData(
   return path.resolve(value);
 }
 
-export async function validateOpenFolderPath(
-  folderPath: string,
-): Promise<string> {
-  const resolved = path.resolve(folderPath);
-  await access(resolved);
-  const stats = await stat(resolved);
-  if (!stats.isDirectory()) {
-    throw new Error(`Not a directory: ${resolved}`);
-  }
-  // realpath so symlink ///private/var forms match an existing workspace.
-  try {
-    return await realpath(resolved);
-  } catch {
-    return resolved;
-  }
-}
-
-/**
- * Resolve a path dropped onto the window (or otherwise supplied as a local
- * FS path) into a workspace root. Directories open as-is; files open their
- * parent directory so dragging a file from Finder still lands in that project.
- * Returns null when the path is missing or not a usable directory.
- */
-export async function resolveDroppedOpenPath(
-  inputPath: string,
-  existingRootPaths: string[] = [],
-): Promise<string | null> {
-  const resolved = path.resolve(inputPath);
-  try {
-    const stats = await stat(resolved);
-    if (stats.isDirectory()) {
-      return resolveWorkspaceRootPathForOpen(resolved, existingRootPaths);
-    }
-    if (stats.isFile()) {
-      return resolveWorkspaceRootPathForOpen(
-        path.dirname(resolved),
-        existingRootPaths,
-      );
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function normalizeForCompare(rootPath: string): string {
-  const trimmed = rootPath.replace(/[\\/]+$/, "") || rootPath;
-  return process.platform === "win32" ? trimmed.toLowerCase() : trimmed;
-}
-
-/**
- * Map a CLI path onto an existing workspace's stored rootPath when they are
- * the same directory (including symlink / realpath differences). Keeps the
- * renderer from creating a duplicate project and failing to check the
- * WorkspacePicker row.
- */
-export async function resolveWorkspaceRootPathForOpen(
-  folderPath: string,
-  existingRootPaths: string[],
-): Promise<string> {
-  const resolved = await validateOpenFolderPath(folderPath);
-  const resolvedKey = normalizeForCompare(resolved);
-
-  for (const rootPath of existingRootPaths) {
-    if (normalizeForCompare(rootPath) === resolvedKey) {
-      return rootPath;
-    }
-  }
-
-  for (const rootPath of existingRootPaths) {
-    try {
-      const real = await realpath(path.resolve(rootPath));
-      if (normalizeForCompare(real) === resolvedKey) {
-        return rootPath;
-      }
-    } catch {
-      // skip missing / unreadable roots
-    }
-  }
-
-  return resolved;
-}
-
-/**
- * Queue a folder open. Set `broadcast` false on cold start so the renderer
- * applies the path after bootstrap (avoids racing bootstrapWorkspaces).
- * Second-instance opens leave broadcast on (default) for live windows.
- *
- * `existingRootPaths` lets us reopen the same project identity the picker uses.
- */
-export async function queueOpenFolder(
-  folderPath: string,
-  options?: { broadcast?: boolean; existingRootPaths?: string[] },
-): Promise<string> {
-  const rootPath = await resolveWorkspaceRootPathForOpen(
-    folderPath,
-    options?.existingRootPaths ?? [],
-  );
+export function queueOpenFolder(
+  rootPath: string,
+  options?: { broadcast?: boolean },
+): void {
   pendingOpenFolder = rootPath;
-  if (options?.broadcast === false) {
-    return rootPath;
+  if (options?.broadcast !== false) {
+    broadcastOpenFolder(rootPath);
   }
-  broadcastOpenFolder(rootPath);
-  return rootPath;
 }
 
 export function getPendingOpenFolder(): string | null {

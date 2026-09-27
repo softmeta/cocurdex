@@ -4,9 +4,3 @@ export {
   resolveAuthorizedPdfReadPath,
   resolvePdfReadPath,
 } from "./pdf-read-service";
-export {
-  closeAllWorkspaceFilesWatchers,
-  configureWorkspaceFilesChangedBroadcast,
-  configureWorkspaceGitStateChangedBroadcast,
-  ensureWorkspaceFilesWatcher,
-} from "./workspace-watch-service";

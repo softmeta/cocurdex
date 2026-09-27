@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isGitStateMetadataPath } from "./workspace-watch-service";
+import { isGitStateMetadataPath } from "./workspace-watch";
 
 describe("isGitStateMetadataPath", () => {
   it.each([

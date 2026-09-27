@@ -1,26 +1,15 @@
+import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   applyNetworkProxySettings,
   buildElectronProxyConfig,
   captureSystemProxySnapshot,
   getManualProxyCredentials,
   getNetworkProxySettings,
-  isManualProxyIncomplete,
-  isValidProxyUrl,
-  loadNetworkProxySettingsFromJson,
-  NETWORK_PROXY_SETTING_KEY,
   type NetworkProxySettings,
-  normalizeNetworkProxySettings,
-  parseNetworkProxySettings,
-  serializeNetworkProxySettings,
 } from "@cocurdex/shared";
 import { app, ipcMain, session } from "electron";
-import {
-  getNetworkProxySetting,
-  setNetworkProxySetting,
-  testNetworkProxy as testDaemonNetworkProxy,
-} from "../chat/app-state";
+import { chatDaemonOptions } from "../chat/app-state";
 
-let applied = false;
 let applyQueue: Promise<void> = Promise.resolve();
 
 /**
@@ -31,7 +20,6 @@ export function initializeNetworkProxyRuntime() {
   captureSystemProxySnapshot(process.env);
   // Enable Node env-proxy for main-process fetch even before settings load.
   process.env.NODE_USE_ENV_PROXY = "1";
-
   // Chromium's proxyRules grammar has no userinfo slot, so credentials from a
   // manual proxy URL only reach it through this auth challenge. Non-proxy
   // (site) challenges are left to the default handling.
@@ -48,77 +36,62 @@ export function initializeNetworkProxyRuntime() {
   });
 }
 
-export async function loadAndApplyNetworkProxyFromStorage() {
-  const raw = await getNetworkProxySetting();
-  const settings = loadNetworkProxySettingsFromJson(raw, process.env);
-  await applyElectronNetworkProxy(settings);
-  applied = true;
-  return settings;
-}
-
-export async function saveAndApplyNetworkProxySettings(
-  input: NetworkProxySettings,
-): Promise<NetworkProxySettings> {
-  const settings = normalizeNetworkProxySettings(input);
+// The daemon owns the stored setting; the host mirrors it onto its own
+// process.env and the Chromium session so renderer and main-process traffic
+// follow the same policy.
+function applyHostNetworkProxy(settings: NetworkProxySettings) {
   const operation = applyQueue.then(async () => {
-    await setNetworkProxySetting(serializeNetworkProxySettings(settings));
-    // Daemon also re-applies via appSetting.set side effect; keep main in sync.
     applyNetworkProxySettings(settings, process.env);
-    await applyElectronNetworkProxy(settings);
-    applied = true;
+    const config = buildElectronProxyConfig(settings);
+    await session.defaultSession.setProxy({
+      mode: config.mode,
+      proxyRules: config.proxyRules,
+      proxyBypassRules: config.proxyBypassRules,
+    });
   });
   applyQueue = operation.catch(() => undefined);
-  await operation;
-  return settings;
+  return operation;
 }
 
-async function applyElectronNetworkProxy(settings: NetworkProxySettings) {
-  const config = buildElectronProxyConfig(settings);
-  await session.defaultSession.setProxy({
-    mode: config.mode,
-    proxyRules: config.proxyRules,
-    proxyBypassRules: config.proxyBypassRules,
-  });
+async function readDaemonNetworkProxySettings() {
+  return requestDaemon("network.proxy.get", await chatDaemonOptions());
+}
+
+export async function loadAndApplyNetworkProxyFromDaemon() {
+  const settings = await readDaemonNetworkProxySettings();
+  await applyHostNetworkProxy(settings);
+  return settings;
 }
 
 export function registerNetworkProxyHandlers() {
   ipcMain.handle(
     "network:testProxy",
-    async (_event, input: NetworkProxySettings) => {
-      const settings = normalizeNetworkProxySettings(input);
-      if (isManualProxyIncomplete(settings)) {
-        throw new Error("Manual proxy mode requires at least one proxy URL");
-      }
-      const invalidProxy = [
-        settings.httpProxy,
-        settings.httpsProxy,
-        settings.allProxy,
-      ].find((value) => !isValidProxyUrl(value));
-      if (invalidProxy) {
-        throw new Error(`Invalid proxy URL: ${invalidProxy}`);
-      }
-      await saveAndApplyNetworkProxySettings(settings);
-      return testDaemonNetworkProxy();
+    async (_event, settings: NetworkProxySettings) => {
+      const result = await requestDaemon(
+        "network.proxy.test",
+        { settings },
+        await chatDaemonOptions(),
+      );
+      await loadAndApplyNetworkProxyFromDaemon();
+      return result;
     },
   );
-  ipcMain.handle("network:testCurrentProxy", async () => {
-    if (!applied) {
-      await loadAndApplyNetworkProxyFromStorage();
-    }
-    return testDaemonNetworkProxy();
-  });
-  ipcMain.handle("network:getProxySettings", async () => {
-    if (applied) {
-      return getNetworkProxySettings();
-    }
-    const raw = await getNetworkProxySetting();
-    return parseNetworkProxySettings(raw);
-  });
+  ipcMain.handle("network:testCurrentProxy", async () =>
+    requestDaemon("network.proxy.test", {}, await chatDaemonOptions()),
+  );
+  ipcMain.handle("network:getProxySettings", () =>
+    readDaemonNetworkProxySettings(),
+  );
   ipcMain.handle(
     "network:setProxySettings",
-    async (_event, settings: NetworkProxySettings) =>
-      saveAndApplyNetworkProxySettings(settings),
+    async (_event, input: NetworkProxySettings) => {
+      const settings = await requestDaemon(
+        "network.proxy.set",
+        { settings: input },
+        await chatDaemonOptions(),
+      );
+      await applyHostNetworkProxy(settings);
+      return settings;
+    },
   );
 }
-
-export { NETWORK_PROXY_SETTING_KEY };

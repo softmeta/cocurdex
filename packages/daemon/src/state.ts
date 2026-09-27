@@ -22,6 +22,7 @@ import type {
   ProviderConfigRecord,
   ProviderModelRecord,
   QueuedAgentInputRecord,
+  SessionMessagesResult,
   SessionRecord,
   SessionStatus,
   WorkspaceRecord,
@@ -188,129 +189,32 @@ export class DaemonState {
     return this.database.appSettings.set(key, valueJson);
   }
 
-  async callStorage(operation: string, args: unknown[]): Promise<unknown> {
-    if (
-      operation === "appSetting.set" &&
-      args[0] === NETWORK_PROXY_SETTING_KEY
-    ) {
-      await this.networkProxyReady;
-    }
-    if (operation.startsWith("conversation")) {
-      // The renderer lists conversations outside app.bootstrap, so the stale
-      // stream sweep has to be awaited here or the first read can still return
-      // a message stuck in `streaming`.
-      await this.staleChatStreamsSwept;
-    }
-    switch (operation) {
-      case "workspace.delete":
-        return this.database.workspaces.delete(args[0] as string);
-      case "message.listBySession":
-        return {
-          messages: await this.database.messages.listBySessionId(
-            args[0] as string,
-          ),
-          turnStats: await this.database.messageTurnStats.listBySessionId(
-            args[0] as string,
-          ),
-          turnChangeSets: await this.database.turnChangeSets.listBySessionId(
-            args[0] as string,
-          ),
-        };
-      case "message.get":
-        return this.database.messages.getById(args[0] as string);
-      case "toolCall.listBySession":
-        return this.database.toolCalls.listSummariesBySessionId(
-          args[0] as string,
-        );
-      case "editorView.save":
-        return this.database.editorViews.upsert(args[0] as EditorViewRecord);
-      case "providerConfig.list":
-        return this.database.providerConfigs.list();
-      case "providerConfig.get":
-        return this.database.providerConfigs.getById(args[0] as string);
-      case "providerConfig.save":
-        return this.database.providerConfigs.upsert(
-          args[0] as ProviderConfigRecord,
-        );
-      case "providerConfig.delete":
-        return this.database.providerConfigs.delete(args[0] as string);
-      case "providerModel.list":
-        return this.database.providerModels.list(args[0] as string | undefined);
-      case "providerModel.get":
-        return this.database.providerModels.get(
-          args[0] as string,
-          args[1] as string,
-        );
-      case "providerModel.save":
-        return this.database.providerModels.upsert(
-          args[0] as ProviderModelRecord,
-        );
-      case "providerModel.delete":
-        return this.database.providerModels.delete(
-          args[0] as string,
-          args[1] as string,
-        );
-      case "providerModel.deleteByProvider":
-        return this.database.providerModels.deleteByProvider(args[0] as string);
-      case "conversation.list":
-        return this.database.conversations.list();
-      case "conversation.get":
-        return this.database.conversations.getById(args[0] as string);
-      case "conversation.save":
-        return this.database.conversations.upsert(args[0] as never);
-      case "conversation.updateTitle":
-        return this.database.conversations.updateTitle(
-          args[0] as string,
-          args[1] as string,
-        );
-      case "conversation.archive":
-        return this.database.conversations.archive(args[0] as string);
-      case "conversation.delete":
-        return this.database.conversations.delete(args[0] as string);
-      case "conversation.updateLastMessageAt":
-        return this.database.conversations.updateLastMessageAt(
-          args[0] as string,
-          args[1] as string | null,
-        );
-      case "conversationMessage.list":
-        return this.database.conversationMessages.listByConversationId(
-          args[0] as string,
-        );
-      case "conversationMessage.get":
-        return this.database.conversationMessages.getById(args[0] as string);
-      case "conversationMessage.save":
-        return this.database.conversationMessages.upsert(args[0] as never);
-      case "conversationMessage.patch":
-        return this.database.conversationMessages.patch(
-          args[0] as string,
-          args[1] as never,
-        );
-      case "conversationMessage.delete":
-        return this.database.conversationMessages.deleteById(args[0] as string);
-      case "appSetting.get":
-        return this.database.appSettings.get(args[0] as string);
-      case "appSetting.set": {
-        const key = args[0] as string;
-        const valueJson = args[1] as string;
-        await this.database.appSettings.set(key, valueJson);
-        if (key === NETWORK_PROXY_SETTING_KEY) {
-          loadNetworkProxySettingsFromJson(valueJson, process.env);
-        }
-        return;
-      }
-      case "agentProviderDefault.list":
-        return this.database.agentProviderDefaults.list();
-      case "agentProviderDefault.get":
-        return this.database.agentProviderDefaults.getByAgentId(
-          args[0] as AgentId,
-        );
-      case "agentProviderDefault.save":
-        return this.database.agentProviderDefaults.upsert(
-          args[0] as AgentProviderSelection,
-        );
-      default:
-        throw new Error(`Unsupported storage operation: ${operation}`);
-    }
+  deleteWorkspace(workspaceId: string) {
+    return this.database.workspaces.delete(workspaceId);
+  }
+
+  async listSessionMessages(sessionId: string): Promise<SessionMessagesResult> {
+    const [messages, turnStats, turnChangeSets] = await Promise.all([
+      this.database.messages.listBySessionId(sessionId),
+      this.database.messageTurnStats.listBySessionId(sessionId),
+      this.database.turnChangeSets.listBySessionId(sessionId),
+    ]);
+    return { messages, turnStats, turnChangeSets };
+  }
+
+  listToolCallSummaries(sessionId: string): Promise<AgentToolCallRecord[]> {
+    return this.database.toolCalls.listSummariesBySessionId(sessionId);
+  }
+
+  async getNetworkProxySettingJson() {
+    await this.networkProxyReady;
+    return this.database.appSettings.get(NETWORK_PROXY_SETTING_KEY);
+  }
+
+  async setNetworkProxySettingJson(valueJson: string) {
+    await this.networkProxyReady;
+    await this.database.appSettings.set(NETWORK_PROXY_SETTING_KEY, valueJson);
+    loadNetworkProxySettingsFromJson(valueJson, process.env);
   }
 
   get data() {
