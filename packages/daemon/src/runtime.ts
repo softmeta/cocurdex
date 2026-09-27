@@ -100,7 +100,7 @@ export class AgentRuntimeManager {
     AgentPlanUpdatedEvent["plan"]
   >();
   private persistAgentEventHandler:
-    | ((event: AgentEvent) => Promise<void> | void)
+    | ((event: AgentEvent) => Promise<AgentEvent> | AgentEvent)
     | null = null;
   // Serialize persistence so events are written in emission order. Without
   // this queue, async writes can interleave and the DB sees out-of-order rows.
@@ -119,7 +119,7 @@ export class AgentRuntimeManager {
   }
 
   configureAgentEventPersistence(
-    handler: (event: AgentEvent) => Promise<void> | void,
+    handler: (event: AgentEvent) => Promise<AgentEvent> | AgentEvent,
   ) {
     this.persistAgentEventHandler = handler;
   }
@@ -158,11 +158,14 @@ export class AgentRuntimeManager {
     }
 
     const persistence = this.persistQueue.then(() => handler(event));
-    this.persistQueue = persistence.catch((error) => {
-      console.error("[AgentRuntimeManager] Failed to persist event", error);
-    });
+    this.persistQueue = persistence.then(
+      () => undefined,
+      (error) => {
+        console.error("[AgentRuntimeManager] Failed to persist event", error);
+      },
+    );
     void persistence.then(
-      () => this.broadcastCoalescer.push(event),
+      (persisted) => this.broadcastCoalescer.push(persisted),
       () => undefined,
     );
   }

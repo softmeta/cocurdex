@@ -149,11 +149,11 @@
   },
   "chatDisplay": {
     "activity": {
-      "description": "回答前的推理和工具调用在对话里怎么显示。默认按整轮折叠，点开才看细节。",
+      "description": "推理和工具调用在对话中的显示方式。",
       "options": {
-        "condensed": "按整轮折叠",
-        "expanded": "全部展开",
-        "hidden": "完全隐藏"
+        "condensed": "折叠",
+        "expanded": "展开",
+        "hidden": "隐藏"
       },
       "title": "过程展示"
     },

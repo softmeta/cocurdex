@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { mapMessage } from "../mappers";
 import type { SqliteRow } from "../sqlite-types";
+import { allocateTimelineSeq } from "../timeline-sequence";
 import type { MessageRepository } from "./message-repository";
 
 export function createSqliteMessageRepository(
@@ -21,7 +22,7 @@ export function createSqliteMessageRepository(
         .prepare(
           `SELECT * FROM messages
            WHERE session_id = ?
-           ORDER BY created_at ASC`,
+           ORDER BY seq ASC`,
         )
         .all(sessionId) as SqliteRow[];
       return rows.map(mapMessage);
@@ -36,12 +37,26 @@ export function createSqliteMessageRepository(
       return row ? mapMessage(row) : null;
     },
     async append(message) {
+      const existing = database
+        .prepare("SELECT seq FROM messages WHERE id = ?")
+        .get(message.id) as { seq?: number | null } | undefined;
+      const seq = existing
+        ? null
+        : (message.seq ?? allocateTimelineSeq(database, message.sessionId));
       database
         .prepare(
-          `INSERT OR REPLACE INTO messages (
+          `INSERT INTO messages (
              id, session_id, role, kind, content, attachments_json, created_at,
-             origin_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             origin_json, seq
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             session_id = excluded.session_id,
+             role = excluded.role,
+             kind = excluded.kind,
+             content = excluded.content,
+             attachments_json = excluded.attachments_json,
+             created_at = excluded.created_at,
+             origin_json = excluded.origin_json`,
         )
         .run(
           message.id,
@@ -52,7 +67,9 @@ export function createSqliteMessageRepository(
           JSON.stringify(message.attachments),
           message.createdAt,
           message.origin ? JSON.stringify(message.origin) : null,
+          seq,
         );
+      return existing ? (existing.seq ?? null) : seq;
     },
     async update(message) {
       database
@@ -73,13 +90,14 @@ export function createSqliteMessageRepository(
     async delete(messageId) {
       database.prepare("DELETE FROM messages WHERE id = ?").run(messageId);
     },
-    async deleteAfter(sessionId, createdAt) {
+    async deleteAfter(sessionId, messageId) {
       database
         .prepare(
           `DELETE FROM messages
-           WHERE session_id = ? AND created_at > ?`,
+           WHERE session_id = ?
+             AND seq > (SELECT seq FROM messages WHERE id = ?)`,
         )
-        .run(sessionId, createdAt);
+        .run(sessionId, messageId);
     },
   };
 }

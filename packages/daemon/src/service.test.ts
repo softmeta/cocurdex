@@ -158,7 +158,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
       expect(listToolCalls).not.toHaveBeenCalled();
       expect(
         await service.state.listMessagesBySessionId(message.sessionId),
-      ).toEqual([message]);
+      ).toEqual([{ ...message, seq: 1 }]);
       expect(
         await service.state.listToolCallsBySessionId(message.sessionId),
       ).toEqual([expect.objectContaining(toolCall)]);

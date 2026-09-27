@@ -3,7 +3,7 @@ import type {
   AgentPermissionRequestRecord,
 } from "@cocurdex/shared";
 import { Check, ShieldAlert, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppSelect } from "@/components";
@@ -75,7 +75,20 @@ function getStatusClasses(permission: AgentPermissionRequestRecord) {
 function PermissionDetailPanel({ detail }: { detail: PermissionDetail }) {
   const { t } = useTranslation("agent");
   const [expanded, setExpanded] = useState(false);
-  const canExpand = detail.value.length > 160;
+  const [isClamped, setIsClamped] = useState(false);
+  const measureClamp = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node || expanded) {
+        return;
+      }
+      const observer = new ResizeObserver(() => {
+        setIsClamped(node.scrollHeight > node.clientHeight + 1);
+      });
+      observer.observe(node);
+      return () => observer.disconnect();
+    },
+    [expanded],
+  );
   const label = {
     Command: t("permissions.command"),
     Path: t("permissions.path"),
@@ -92,7 +105,7 @@ function PermissionDetailPanel({ detail }: { detail: PermissionDetail }) {
         <span className="text-meta font-medium text-chat-fg-muted">
           {label}
         </span>
-        {canExpand ? (
+        {expanded || isClamped ? (
           <Button
             className="h-5 px-1 text-meta text-chat-fg-muted"
             onClick={() => setExpanded((value) => !value)}
@@ -106,13 +119,12 @@ function PermissionDetailPanel({ detail }: { detail: PermissionDetail }) {
       </div>
       <div
         className={cn(
-          "rounded-control bg-chat-code-panel px-2.5 py-2 text-body leading-5 text-chat-fg-secondary",
+          "whitespace-pre-wrap break-words rounded-control bg-chat-code-panel px-2.5 py-2 text-body leading-5 text-chat-fg-secondary",
           detail.monospace &&
             "font-mono text-meta [font-variant-ligatures:none]",
-          canExpand && !expanded
-            ? "line-clamp-3 break-all"
-            : "max-h-40 overflow-auto whitespace-pre-wrap break-words",
+          expanded ? "max-h-80 overflow-auto" : "line-clamp-3",
         )}
+        ref={measureClamp}
       >
         {detail.value}
       </div>

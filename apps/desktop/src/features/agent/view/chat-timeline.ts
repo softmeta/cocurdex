@@ -13,37 +13,31 @@ type TimelineItem =
   | {
       id: string;
       sortAt: string;
-      order: number;
       kind: "message";
       message: MessageRecord;
     }
   | {
       id: string;
       sortAt: string;
-      order: number;
       kind: "toolCall";
       toolCall: AgentToolCallRecord;
     }
   | {
       id: string;
       sortAt: string;
-      order: number;
       kind: "permission";
       permission: AgentPermissionRequestRecord;
     }
   | {
       id: string;
       sortAt: string;
-      order: number;
       kind: "question";
       question: AgentQuestionRequestRecord;
     };
 
-type TimelineCursor = {
+type TimelineLane = {
   index: number;
-  kind: TimelineItem["kind"];
-  priority: number;
-  length: number;
+  items: TimelineItem[];
 };
 
 const HIDDEN_TOOL_KINDS = new Set(["todowrite"]);
@@ -76,93 +70,103 @@ export type ConversationGroup = {
   prompt?: MessageRecord;
 };
 
-function getTimelineCursorItem(
-  cursor: TimelineCursor,
-  messages: MessageRecord[],
-  toolCalls: AgentToolCallRecord[],
-  permissions: AgentPermissionRequestRecord[],
-  questions: AgentQuestionRequestRecord[],
-): TimelineItem {
-  if (cursor.kind === "message") {
-    const message = messages[cursor.index];
-    return {
-      id: message.id,
-      kind: "message",
-      sortAt: message.createdAt,
-      order: cursor.index,
-      message,
-    };
-  }
+function messageItem(message: MessageRecord): TimelineItem {
+  return {
+    id: message.id,
+    kind: "message",
+    sortAt: message.createdAt,
+    message,
+  };
+}
 
-  if (cursor.kind === "toolCall") {
-    const toolCall = toolCalls[cursor.index];
-    return {
-      id: toolCall.id,
-      kind: "toolCall",
-      sortAt: toolCall.startedAt,
-      order: cursor.index,
-      toolCall,
-    };
-  }
+function toolCallItem(toolCall: AgentToolCallRecord): TimelineItem {
+  return {
+    id: toolCall.id,
+    kind: "toolCall",
+    sortAt: toolCall.startedAt,
+    toolCall,
+  };
+}
 
-  if (cursor.kind === "permission") {
-    const permission = permissions[cursor.index];
-    return {
-      id: permission.id,
-      kind: "permission",
-      sortAt: permission.createdAt,
-      order: cursor.index,
-      permission,
-    };
-  }
+function permissionItem(permission: AgentPermissionRequestRecord) {
+  return {
+    id: permission.id,
+    kind: "permission",
+    sortAt: permission.createdAt,
+    permission,
+  } satisfies TimelineItem;
+}
 
-  const question = questions[cursor.index];
+function questionItem(question: AgentQuestionRequestRecord) {
   return {
     id: question.id,
     kind: "question",
     sortAt: question.createdAt,
-    order: cursor.index,
     question,
-  };
+  } satisfies TimelineItem;
 }
 
-function getNextTimelineCursor(
-  cursors: TimelineCursor[],
+function hasSeq<T extends { seq?: number }>(
+  record: T,
+): record is T & { seq: number } {
+  return record.seq !== undefined;
+}
+
+function createSequencedLane(
+  messages: MessageRecord[],
+  toolCalls: AgentToolCallRecord[],
+) {
+  const sequenced = [
+    ...messages
+      .filter(hasSeq)
+      .map((message) => ({ seq: message.seq, item: messageItem(message) })),
+    ...toolCalls
+      .filter(hasSeq)
+      .map((toolCall) => ({ seq: toolCall.seq, item: toolCallItem(toolCall) })),
+  ];
+  return sequenced
+    .sort((left, right) => left.seq - right.seq)
+    .map((entry) => entry.item);
+}
+
+function createTimelineLanes(
   messages: MessageRecord[],
   toolCalls: AgentToolCallRecord[],
   permissions: AgentPermissionRequestRecord[],
   questions: AgentQuestionRequestRecord[],
-) {
-  let nextCursor: TimelineCursor | null = null;
-  let nextItem: TimelineItem | null = null;
+): TimelineLane[] {
+  const unsequencedMessages = messages.filter((message) => !hasSeq(message));
+  const unsequencedToolCalls = toolCalls.filter(
+    (toolCall) => !hasSeq(toolCall),
+  );
+  return [
+    createSequencedLane(messages, toolCalls),
+    unsequencedMessages.map(messageItem),
+    unsequencedToolCalls.map(toolCallItem),
+    permissions.map(permissionItem),
+    questions.map(questionItem),
+  ].map((items) => ({ index: 0, items }));
+}
 
-  for (const cursor of cursors) {
-    if (cursor.index >= cursor.length) {
+function takeNextTimelineItem(lanes: TimelineLane[]) {
+  let nextLane: TimelineLane | null = null;
+
+  for (const lane of lanes) {
+    const item = lane.items[lane.index];
+    if (!item) {
       continue;
     }
-
-    const item = getTimelineCursorItem(
-      cursor,
-      messages,
-      toolCalls,
-      permissions,
-      questions,
-    );
-
-    if (
-      !nextItem ||
-      item.sortAt < nextItem.sortAt ||
-      (item.sortAt === nextItem.sortAt &&
-        (cursor.priority < (nextCursor?.priority ?? Number.MAX_SAFE_INTEGER) ||
-          (cursor.priority === nextCursor?.priority &&
-            item.order < nextItem.order)))
-    ) {
-      nextCursor = cursor;
-      nextItem = item;
+    if (!nextLane || item.sortAt < nextLane.items[nextLane.index].sortAt) {
+      nextLane = lane;
     }
   }
 
-  return nextCursor && nextItem ? { cursor: nextCursor, item: nextItem } : null;
+  if (!nextLane) {
+    return null;
+  }
+  const item = nextLane.items[nextLane.index];
+  nextLane.index += 1;
+  return item;
 }
 
 function isSubagentTimelineCall(toolCall: AgentToolCallRecord) {
@@ -185,6 +189,10 @@ function canMergeToolCall(
 
 function appendTimelineItem(groups: TimelineGroup[], item: TimelineItem) {
   if (item.kind === "message") {
+    if (item.message.role === "assistant" && !item.message.content.trim()) {
+      return;
+    }
+
     groups.push({
       id: item.id,
       kind: "message",
@@ -235,29 +243,20 @@ export function createTimelineGroups(
   permissions: AgentPermissionRequestRecord[] = [],
   questions: AgentQuestionRequestRecord[] = [],
 ): TimelineGroup[] {
-  const cursors: TimelineCursor[] = [
-    { index: 0, kind: "message", length: messages.length, priority: 0 },
-    { index: 0, kind: "toolCall", length: toolCalls.length, priority: 1 },
-    { index: 0, kind: "permission", length: permissions.length, priority: 2 },
-    { index: 0, kind: "question", length: questions.length, priority: 3 },
-  ];
+  const lanes = createTimelineLanes(
+    messages,
+    toolCalls,
+    permissions,
+    questions,
+  );
   const groups: TimelineGroup[] = [];
 
-  while (true) {
-    const next = getNextTimelineCursor(
-      cursors,
-      messages,
-      toolCalls,
-      permissions,
-      questions,
-    );
-
-    if (!next) {
-      break;
-    }
-
-    appendTimelineItem(groups, next.item);
-    next.cursor.index += 1;
+  for (
+    let item = takeNextTimelineItem(lanes);
+    item;
+    item = takeNextTimelineItem(lanes)
+  ) {
+    appendTimelineItem(groups, item);
   }
 
   return coalesceAdjacentSubagentGroups(groups);

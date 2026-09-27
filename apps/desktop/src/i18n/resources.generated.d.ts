@@ -1417,11 +1417,11 @@ export default interface Resources {
     };
     chatDisplay: {
       activity: {
-        description: "How reasoning and tool calls show up before each answer. Collapsed per turn by default; expand for details.";
+        description: "How reasoning and tool calls appear in the conversation.";
         options: {
-          condensed: "Collapse by turn";
-          expanded: "Expand everything";
-          hidden: "Hide completely";
+          condensed: "Collapsed";
+          expanded: "Expanded";
+          hidden: "Hidden";
         };
         title: "Process display";
       };

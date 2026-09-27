@@ -308,6 +308,8 @@ export interface SessionRecord {
   providerSnapshot?: AgentProviderSnapshot | null;
   worktreePath?: string | null;
   peerInbound?: "deliver" | "refuse";
+  importedProviderSessionId?: string | null;
+  importedAt?: string | null;
 }
 
 export interface ProviderConfigRecord {
@@ -599,6 +601,7 @@ export interface MessageRecord {
   content: string;
   attachments: MessageAttachment[];
   createdAt: string;
+  seq?: number;
   origin?: MessageOrigin | null;
 }
 
@@ -652,6 +655,7 @@ export interface AgentToolCallRecord {
   locations: AgentToolCallLocation[];
   startedAt: string;
   updatedAt: string;
+  seq?: number;
 }
 
 export type AgentPermissionDecision =
@@ -712,6 +716,7 @@ export interface AgentMessageDeltaEvent {
   kind?: "reasoning" | "response";
   delta: string;
   createdAt: string;
+  seq?: number;
 }
 
 export interface AgentMessageCompletedEvent {
@@ -849,6 +854,7 @@ export interface AgentErrorEvent {
   type: "error";
   sessionId: string;
   message: string;
+  systemMessage?: MessageRecord;
 }
 
 export interface AgentPermissionRequestedEvent {
