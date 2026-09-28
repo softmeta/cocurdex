@@ -451,6 +451,7 @@
     },
     "auth": {
       "accountDescription": "通过 Pi OAuth 使用服务商账户或订阅。",
+      "addProvider": "添加服务商",
       "apiKeyDescription": "使用由 Pi 管理的 API Key。",
       "cancel": "取消",
       "connected": "已连接",

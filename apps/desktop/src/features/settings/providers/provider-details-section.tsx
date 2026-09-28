@@ -62,17 +62,19 @@ export function ProviderDetailsSection({
           <Text size="body" weight="semibold">
             {t("providers.sections.provider")}
           </Text>
-          <Label
-            className="flex shrink-0 items-center gap-2"
-            htmlFor={enabledSwitchId}
-          >
-            <Text size="body">{t("providers.state.enabled")}</Text>
-            <Switch
-              checked={draftProvider.enabled}
-              id={enabledSwitchId}
-              onCheckedChange={onEnabledChange}
-            />
-          </Label>
+          {selectedProvider ? (
+            <Label
+              className="flex shrink-0 items-center gap-2"
+              htmlFor={enabledSwitchId}
+            >
+              <Text size="body">{t("providers.state.enabled")}</Text>
+              <Switch
+                checked={draftProvider.enabled}
+                id={enabledSwitchId}
+                onCheckedChange={onEnabledChange}
+              />
+            </Label>
+          ) : null}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">

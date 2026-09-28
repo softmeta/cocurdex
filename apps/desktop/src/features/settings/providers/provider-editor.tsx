@@ -150,6 +150,7 @@ export function ProviderEditor({
 
       {authMethods.length > 0 ? (
         <ProviderAuthSection
+          isDraft={!selectedProvider}
           methods={authMethods}
           providerId={draftProvider.id}
           onAuthChange={async () => {
@@ -164,20 +165,22 @@ export function ProviderEditor({
         />
       ) : null}
 
-      <SettingsGroup>
-        <ProviderModelsSection
-          draftModel={draftModel}
-          draftProvider={draftProvider}
-          isRefreshing={isRefreshingModels}
-          readOnly={isPresetProvider}
-          refreshStatus={modelRefreshStatus}
-          selectedModels={selectedModels}
-          onDraftModelChange={setDraftModel}
-          onRefreshModels={handleRefreshModels}
-          onReload={onReload}
-          onSaveModel={handleSaveModel}
-        />
-      </SettingsGroup>
+      {selectedProvider ? (
+        <SettingsGroup>
+          <ProviderModelsSection
+            draftModel={draftModel}
+            draftProvider={draftProvider}
+            isRefreshing={isRefreshingModels}
+            readOnly={isPresetProvider}
+            refreshStatus={modelRefreshStatus}
+            selectedModels={selectedModels}
+            onDraftModelChange={setDraftModel}
+            onRefreshModels={handleRefreshModels}
+            onReload={onReload}
+            onSaveModel={handleSaveModel}
+          />
+        </SettingsGroup>
+      ) : null}
     </>
   );
 }

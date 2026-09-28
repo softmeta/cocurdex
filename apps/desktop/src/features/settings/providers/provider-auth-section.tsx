@@ -4,7 +4,7 @@ import type {
   ProviderAuthPrompt,
   ProviderAuthState,
 } from "@cocurdex/shared";
-import { Check, KeyRound, LogIn, LogOut, X } from "lucide-react";
+import { Check, KeyRound, LogIn, LogOut, Plus, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Input, Spinner, Text } from "@/components/ui";
@@ -21,10 +21,12 @@ function AuthMethodIcon({ method }: { method: ProviderAuthMethod }) {
 }
 
 export function ProviderAuthSection({
+  isDraft,
   methods,
   providerId,
   onAuthChange,
 }: {
+  isDraft: boolean;
   methods: ProviderAuthMethodRecord[];
   providerId: string;
   onAuthChange(): Promise<void>;
@@ -151,6 +153,16 @@ export function ProviderAuthSection({
     }
   }
 
+  async function handleAddProvider() {
+    setError(null);
+    setIsBusy(true);
+    try {
+      await onAuthChange();
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function handleLogout() {
     setError(null);
     setIsBusy(true);
@@ -197,16 +209,33 @@ export function ProviderAuthSection({
                 <Text size="meta" tone="muted">
                   {auth.source ?? t("providers.auth.connected")}
                 </Text>
-                <Button
-                  disabled={isBusy}
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void handleLogout()}
-                >
-                  <LogOut className="size-4" />
-                  {t("providers.auth.signOut")}
-                </Button>
+                {isDraft ? (
+                  <Button
+                    disabled={isBusy}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void handleAddProvider()}
+                  >
+                    {isBusy ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      <Plus className="size-4" />
+                    )}
+                    {t("providers.auth.addProvider")}
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={isBusy}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void handleLogout()}
+                  >
+                    <LogOut className="size-4" />
+                    {t("providers.auth.signOut")}
+                  </Button>
+                )}
               </div>
             ) : (
               <Button

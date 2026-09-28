@@ -1755,6 +1755,7 @@ export default interface Resources {
       };
       auth: {
         accountDescription: "Use a provider account or subscription through Pi OAuth.";
+        addProvider: "Add provider";
         apiKeyDescription: "Use an API key managed by Pi.";
         cancel: "Cancel";
         connected: "Connected";
