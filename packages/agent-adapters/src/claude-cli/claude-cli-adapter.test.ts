@@ -507,6 +507,19 @@ describe("createClaudeCliAdapter", () => {
     await harness.nextPrompt();
     harness.emit(createResultMessage("result-2"));
     await secondTurn;
+
+    const thirdTurn = session.sendMessage({
+      content: "Again",
+      history: [],
+      providerSnapshot: {
+        ...providerSnapshot,
+        fastMode: false,
+      },
+    });
+    await harness.nextPrompt();
+    harness.emit(createResultMessage("result-3"));
+    await thirdTurn;
+    expect(harness.query.applyFlagSettings).toHaveBeenCalledOnce();
     session.dispose();
   });
 
