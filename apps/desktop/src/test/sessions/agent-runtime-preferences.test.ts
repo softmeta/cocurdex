@@ -27,6 +27,9 @@ describe("agent runtime preferences", () => {
       openCodeAgent: "build",
       openCodeVariant: "high",
     });
+    updateAgentRuntimePreferences("devin", {
+      sessionModeId: "smart",
+    });
 
     expect(getAgentRuntimePreferences("claude-agent")).toMatchObject({
       providerSelection: { providerId: "claude", modelId: "opus" },
@@ -42,6 +45,16 @@ describe("agent runtime preferences", () => {
       openCodeAgent: "build",
       openCodeVariant: "high",
     });
+    expect(getAgentRuntimePreferences("devin")).toMatchObject({
+      sessionModeId: "smart",
+    });
+  });
+
+  it("clears a remembered session mode with null", () => {
+    updateAgentRuntimePreferences("devin", { sessionModeId: "smart" });
+    updateAgentRuntimePreferences("devin", { sessionModeId: null });
+
+    expect(getAgentRuntimePreferences("devin").sessionModeId).toBeNull();
   });
 
   it("ignores malformed stored values", () => {

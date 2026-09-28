@@ -11,6 +11,7 @@ export interface AgentRuntimePreferences {
     providerId: string;
     modelId: string;
   };
+  sessionModeId?: string | null;
   permissionMode?: AgentPermissionMode | null;
   reasoningEffort?: ReasoningEffort | null;
   serviceTier?: string | null;
@@ -72,6 +73,11 @@ function parsePreference(value: unknown): AgentRuntimePreferences | null {
       providerId: value.providerSelection.providerId,
       modelId: value.providerSelection.modelId,
     };
+  }
+
+  const sessionModeId = readNullableString(value.sessionModeId);
+  if (sessionModeId !== undefined) {
+    preference.sessionModeId = sessionModeId;
   }
 
   const permissionMode = readNullableString(value.permissionMode);

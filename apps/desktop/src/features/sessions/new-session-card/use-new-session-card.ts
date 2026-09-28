@@ -59,7 +59,10 @@ import {
   defaultAgentDescriptors,
 } from "./new-session-card-config";
 import { shouldPersistProviderDefault } from "./new-session-card-provider-default";
-import { useNewSessionModeDraft } from "./new-session-mode-draft";
+import {
+  resolveNewSessionModeId,
+  useNewSessionModeDraft,
+} from "./new-session-mode-draft";
 
 function permissionModeForAgent(
   agentId: AgentId,
@@ -100,7 +103,12 @@ export function useNewSessionCard({
   );
   const selectedAgent = agentType ?? uncontrolledAgent;
   const [selectedSessionModeId, setSelectedSessionModeId] =
-    useNewSessionModeDraft(activeWorkspaceId, sessionModeId);
+    useNewSessionModeDraft(
+      activeWorkspaceId,
+      sessionModeId ??
+        getAgentRuntimePreferences(selectedAgent).sessionModeId ??
+        null,
+    );
   const [selectedPermissionMode, setSelectedPermissionMode] =
     useState<AgentPermissionMode | null>(() =>
       permissionModeForAgent(initialAgentType, agents),
@@ -165,11 +173,12 @@ export function useNewSessionCard({
     agents,
     effectiveSelectedAgent,
   );
-  const resolvedSessionModeId =
-    selectedSessionModeId &&
-    sessionModeOptions.some((mode) => mode.id === selectedSessionModeId)
-      ? selectedSessionModeId
-      : null;
+  const resolvedSessionModeId = resolveNewSessionModeId(
+    selectedSessionModeId,
+    sessionModeOptions,
+    agents.find((agent) => agent.id === effectiveSelectedAgent)?.capabilities
+      .transport,
+  );
   const permissionModeOptions = getPermissionModeOptions(
     agents,
     effectiveSelectedAgent,
@@ -251,6 +260,8 @@ export function useNewSessionCard({
             selectedCompatibleProvider.model.thinkingLevelMapJson ?? undefined,
           supportedReasoningEfforts:
             selectedCompatibleProvider.model.supportedReasoningEfforts,
+          modelDefaultReasoningEffort:
+            selectedCompatibleProvider.model.defaultReasoningEffort ?? null,
           modelCostJson: selectedCompatibleProvider.model.costJson ?? undefined,
           modelCompatJson:
             selectedCompatibleProvider.model.compatJson ?? undefined,
@@ -493,6 +504,9 @@ export function useNewSessionCard({
 
   const handleSelectSessionMode = (nextModeId: string) => {
     setSelectedSessionModeId(nextModeId);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      sessionModeId: nextModeId || null,
+    });
     onSelectSessionMode?.(nextModeId);
   };
 
@@ -564,6 +578,7 @@ export function useNewSessionCard({
         role.providerId && role.modelId
           ? { providerId: role.providerId, modelId: role.modelId }
           : undefined,
+      sessionModeId: role.sessionModeId,
       permissionMode: role.permissionMode,
       reasoningEffort: role.reasoningEffort,
       serviceTier: role.serviceTier,
@@ -572,14 +587,11 @@ export function useNewSessionCard({
       openCodeAgent: role.openCodeAgent,
       openCodeVariant: role.openCodeVariant,
     });
-    handleSelectSessionMode(
-      role.sessionModeId &&
-        getSessionModeOptions(agents, role.agentId).some(
-          (mode) => mode.id === role.sessionModeId,
-        )
-        ? role.sessionModeId
-        : "",
-    );
+    if (role.agentId !== effectiveSelectedAgent) {
+      handleSelectAgent(role.agentId);
+    }
+    setSelectedSessionModeId(role.sessionModeId);
+    onSelectSessionMode?.(role.sessionModeId ?? "");
     if (role.agentId === effectiveSelectedAgent) {
       setSelectedPermissionMode(
         role.permissionMode ?? permissionModeForAgent(role.agentId, agents),
@@ -595,9 +607,7 @@ export function useNewSessionCard({
           getProviderModelValue(role.providerId, role.modelId),
         );
       }
-      return;
     }
-    handleSelectAgent(role.agentId);
   };
 
   const handleSelectProviderModel = (nextProviderModel: string) => {

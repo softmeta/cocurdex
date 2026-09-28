@@ -149,15 +149,26 @@ function getSessionThinkingLevelOptions(
     supportedReasoningEfforts: snapshot?.supportedReasoningEfforts,
     defaultReasoningEffort: snapshot?.modelDefaultReasoningEffort ?? null,
   });
-  // Sessions persisted before the agent reported effort metadata fall back
-  // to the live session config option (Devin's `thought_level`).
-  if (
-    options.length > 0 ||
-    !supportsInSessionRuntimeAxis(agentType, "thinking")
-  ) {
+  if (!supportsInSessionRuntimeAxis(agentType, "thinking")) {
     return options;
   }
-  return getConfigOptionThinkingLevels(configOptions);
+  // Sessions persisted before the agent reported effort metadata fall back
+  // to the live session config option (Devin's `thought_level`).
+  const liveLevels = getConfigOptionThinkingLevels(configOptions);
+  if (options.length === 0) {
+    return liveLevels;
+  }
+  if (options.some((option) => option.isDefault)) {
+    return options;
+  }
+  const liveDefault = liveLevels.find((level) => level.isDefault)?.level;
+  if (!liveDefault) {
+    return options;
+  }
+  return options.map((option) => ({
+    ...option,
+    isDefault: option.level === liveDefault,
+  }));
 }
 
 function summarizeAttachmentForLog(attachment: MessageAttachment) {
