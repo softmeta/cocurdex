@@ -87,16 +87,18 @@ export function SettingsSidebar({
             <div className={index > 0 ? "mt-5" : undefined} key={cluster.id}>
               <button
                 aria-expanded={!isCollapsed}
-                className="group flex w-full items-center gap-1.5 px-2 pb-1.5 font-medium text-meta text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+                className="group flex w-full cursor-default items-center gap-1.5 rounded-control px-2 py-1 font-medium text-meta text-muted-foreground/60 transition-colors hover:text-muted-foreground"
                 type="button"
                 onClick={() => toggleClusterCollapsed(cluster.id)}
               >
+                <span className="min-w-0 flex-1 truncate text-start">
+                  {t(`groups.${cluster.id}`)}
+                </span>
                 {isCollapsed ? (
                   <ChevronRight className="size-3 shrink-0 rtl:-scale-x-100" />
                 ) : (
                   <ChevronDown className="size-3 shrink-0" />
                 )}
-                <span className="truncate">{t(`groups.${cluster.id}`)}</span>
               </button>
               {isCollapsed ? null : (
                 <SettingsSidebarSection
