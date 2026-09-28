@@ -15,6 +15,7 @@ import type {
   RestorePathPlan,
   RestorePathResult,
 } from "./checkpoint";
+import { pathsChangedByHeadMove } from "./git-head-scope";
 import { runGit, runGitWithInput } from "./git-run";
 import {
   MAX_CHECKPOINT_FILE_BYTES,
@@ -261,15 +262,15 @@ export function captureGitCommit(workspaceRootPath: string) {
   return withScratchIndex(workspaceRootPath, async (env, cold) => {
     // A cold index starts from HEAD so files that are tracked but also
     // gitignored stay in the tree; later captures reuse the stat cache.
-    if (cold) {
-      const head = await runGit(["rev-parse", "--verify", "HEAD"], {
+    const head = (
+      await runGit(["rev-parse", "--verify", "HEAD"], {
         cwd: workspaceRootPath,
         env,
         allowFailure: true,
-      });
-      if (head.trim()) {
-        await runGit(["read-tree", "HEAD"], { cwd: workspaceRootPath, env });
-      }
+      })
+    ).trim();
+    if (cold && head) {
+      await runGit(["read-tree", "HEAD"], { cwd: workspaceRootPath, env });
     }
     await runGit(["add", "-A", "--", "."], { cwd: workspaceRootPath, env });
     const tree = (
@@ -277,7 +278,13 @@ export function captureGitCommit(workspaceRootPath: string) {
     ).trim();
     return (
       await runGit(
-        ["commit-tree", tree, "-m", "cocurdex workspace checkpoint"],
+        [
+          "commit-tree",
+          tree,
+          ...(head ? ["-p", head] : []),
+          "-m",
+          "cocurdex workspace checkpoint",
+        ],
         { cwd: workspaceRootPath, env },
       )
     ).trim();
@@ -308,8 +315,11 @@ async function diffGitCheckpoints(
     { cwd },
   );
   const stats = parseNumstat(numstat);
+  const headMovePaths = await pathsChangedByHeadMove(cwd, beforeRef, afterRef);
   const entries = parseRawDiff(raw).filter(
-    (entry) => !isIgnoredWorkspacePath(entry.path),
+    (entry) =>
+      !isIgnoredWorkspacePath(entry.path) &&
+      !isHeadMoveEntry(entry, headMovePaths),
   );
   const beforeSizes = await readBlobSizes(
     cwd,
@@ -351,6 +361,16 @@ async function diffGitCheckpoints(
     } satisfies TurnFileChange;
   });
   return files;
+}
+
+function isHeadMoveEntry(
+  entry: { path: string; previousPath: string | null },
+  headMovePaths: Set<string>,
+) {
+  return (
+    headMovePaths.has(entry.path) &&
+    (entry.previousPath == null || headMovePaths.has(entry.previousPath))
+  );
 }
 
 /** One `cat-file --batch-check` instead of a `cat-file -s` per file. */

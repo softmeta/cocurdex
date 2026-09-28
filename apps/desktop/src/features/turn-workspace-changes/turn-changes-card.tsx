@@ -137,7 +137,7 @@ export function TurnChangesCard({
   const [undoResults, setUndoResults] = useAtom(undoResultsByChangeSetAtom);
   const undoResult = undoResults[changeSet.id] ?? null;
   const setUndoResult = (result: UndoTurnChangesResult) => {
-    setUndoResults({ ...undoResults, [changeSet.id]: result });
+    setUndoResults((current) => ({ ...current, [changeSet.id]: result }));
   };
 
   // Only surface the card once the turn is done and actually touched files:
@@ -194,7 +194,7 @@ export function TurnChangesCard({
         files: [],
         recoveryCheckpointRef: null,
       });
-      void error;
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setUndoing(false);
     }
