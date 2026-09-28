@@ -5,6 +5,7 @@ import {
   listDevinProviderModels,
   listGrokBuildProviderModels,
   listOpenCodeProviderModels,
+  listPiBuiltInProviderIds,
   listPiProviderTemplates,
   loginCursorProvider,
   loginDevinProvider,
@@ -111,6 +112,9 @@ export class DaemonProviderService {
     if (!config) {
       return { models: [], error: "Provider not found" };
     }
+    if (await this.isSignedOutBuiltInProvider(config.id)) {
+      return { models: [], error: null };
+    }
 
     return fetchProviderModels(
       this.state,
@@ -119,8 +123,43 @@ export class DaemonProviderService {
     );
   }
 
-  listAllModels(options: { providerIds?: string[]; forceRefresh?: boolean }) {
-    return listConfiguredProviderModels(this.state, options);
+  async listAllModels(options: {
+    providerIds?: string[];
+    forceRefresh?: boolean;
+  }) {
+    const [models, signedOut] = await Promise.all([
+      listConfiguredProviderModels(this.state, options),
+      this.listSignedOutBuiltInProviderIds(),
+    ]);
+    return models.filter((model) => !signedOut.has(model.providerId));
+  }
+
+  private async isSignedOutBuiltInProvider(providerId: string) {
+    if (!listPiBuiltInProviderIds().includes(providerId)) {
+      return false;
+    }
+    try {
+      const auth = await this.credentials.readAuthState(providerId);
+      return auth.type === null;
+    } catch (error) {
+      logDaemonDiagnostic("warn", "providerModels.authStateReadFailed", {
+        providerId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      return true;
+    }
+  }
+
+  private async listSignedOutBuiltInProviderIds() {
+    const providers = await this.state.listProviderConfigs();
+    const signedOut = await Promise.all(
+      providers.map(async (provider) =>
+        (await this.isSignedOutBuiltInProvider(provider.id))
+          ? provider.id
+          : null,
+      ),
+    );
+    return new Set(signedOut.filter((id): id is string => id !== null));
   }
 
   listTemplates(): ProviderTemplateRecord[] {
@@ -245,10 +284,19 @@ export class DaemonProviderService {
       return listGrokBuildProviderModels(undefined, options);
     }
 
-    const providers = await this.state.listProviderConfigs();
-    const models = await listConfiguredProviderModels(this.state, {
-      forceRefresh: options.forceRefresh,
-    });
+    const [allProviders, allModels, signedOut] = await Promise.all([
+      this.state.listProviderConfigs(),
+      listConfiguredProviderModels(this.state, {
+        forceRefresh: options.forceRefresh,
+      }),
+      this.listSignedOutBuiltInProviderIds(),
+    ]);
+    const providers = allProviders.filter(
+      (provider) => !signedOut.has(provider.id),
+    );
+    const models = allModels.filter(
+      (model) => !signedOut.has(model.providerId),
+    );
     const providerById = new Map(
       providers.map((provider) => [provider.id, provider]),
     );

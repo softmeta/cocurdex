@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   loginPiProvider,
   logoutPiProvider,
@@ -30,7 +30,12 @@ describe("Pi provider auth", () => {
     await expect(
       readPiProviderAuthState(userDataPath, "openai"),
     ).resolves.toEqual(
-      expect.objectContaining({ providerId: "openai", type: "api_key" }),
+      expect.objectContaining({
+        providerId: "openai",
+        type: "api_key",
+        origin: "stored",
+        source: null,
+      }),
     );
     await expect(
       resolvePiProviderAuth(userDataPath, "openai"),
@@ -46,5 +51,24 @@ describe("Pi provider auth", () => {
     ).resolves.toEqual(
       expect.objectContaining({ providerId: "openai", type: null }),
     );
+  });
+
+  it("reports an environment API key as an ambient source", async () => {
+    const userDataPath = mkdtempSync(path.join(tmpdir(), "cocurdex-pi-auth-"));
+    temporaryPaths.push(userDataPath);
+    vi.stubEnv("OPENAI_API_KEY", "sk-env");
+
+    try {
+      await expect(
+        readPiProviderAuthState(userDataPath, "openai"),
+      ).resolves.toEqual({
+        providerId: "openai",
+        type: "api_key",
+        origin: "ambient",
+        source: "OPENAI_API_KEY",
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
