@@ -23,63 +23,88 @@ import {
 } from "lucide-react";
 import type { SettingsSectionId } from "@/app/layout";
 
+export const settingsClusters = [
+  "interface",
+  "agent",
+  "workspace",
+  "system",
+] as const;
+
+export type SettingsClusterId = (typeof settingsClusters)[number];
+
 // Owned by a leaf module so the screen and the sidebar can both read the
 // section list without importing each other.
 export const settingsSections = [
-  { id: "general", labelKey: "general", icon: Settings, group: "core" },
-  { id: "appearance", labelKey: "appearance", icon: Palette, group: "core" },
-  { id: "editor", labelKey: "editor", icon: Code2, group: "core" },
-  { id: "shortcuts", labelKey: "shortcuts", icon: Keyboard, group: "core" },
-  { id: "providers", labelKey: "providers", icon: KeyRound, group: "core" },
-  { id: "adapters", labelKey: "adapters", icon: Blocks, group: "core" },
-  { id: "agentRoles", labelKey: "agentRoles", icon: UserCog, group: "core" },
-  { id: "teams", labelKey: "teams", icon: Users, group: "core" },
+  { id: "general", labelKey: "general", icon: Settings, cluster: "interface" },
   {
-    id: "personalization",
-    labelKey: "personalization",
-    icon: SlidersHorizontal,
-    group: "workspace",
+    id: "appearance",
+    labelKey: "appearance",
+    icon: Palette,
+    cluster: "interface",
   },
-  { id: "mcp", labelKey: "mcp", icon: Server, group: "core" },
-  { id: "skills", labelKey: "skills", icon: BookOpen, group: "core" },
-  // Network proxy lives in core so the sidebar surfaces it (only core is listed).
+  { id: "editor", labelKey: "editor", icon: Code2, cluster: "interface" },
   {
-    id: "environment",
-    labelKey: "environment",
-    icon: Network,
-    group: "core",
+    id: "shortcuts",
+    labelKey: "shortcuts",
+    icon: Keyboard,
+    cluster: "interface",
   },
-  // Git settings (commit-message model, etc.) must be core so the sidebar
-  // lists the section — only the core group is rendered.
-  { id: "git", labelKey: "git", icon: GitBranch, group: "core" },
+  { id: "providers", labelKey: "providers", icon: KeyRound, cluster: "agent" },
+  { id: "adapters", labelKey: "adapters", icon: Blocks, cluster: "agent" },
+  { id: "agentRoles", labelKey: "agentRoles", icon: UserCog, cluster: "agent" },
+  { id: "teams", labelKey: "teams", icon: Users, cluster: "agent" },
+  { id: "mcp", labelKey: "mcp", icon: Server, cluster: "agent" },
+  { id: "skills", labelKey: "skills", icon: BookOpen, cluster: "agent" },
+  { id: "git", labelKey: "git", icon: GitBranch, cluster: "workspace" },
   {
     id: "worktrees",
     labelKey: "worktrees",
     icon: GitFork,
-    group: "core",
+    cluster: "workspace",
   },
+  { id: "projects", labelKey: "projects", icon: Folder, cluster: "workspace" },
   {
-    id: "projects",
-    labelKey: "projects",
-    icon: Folder,
-    group: "core",
+    id: "environment",
+    labelKey: "environment",
+    icon: Network,
+    cluster: "system",
   },
-  { id: "licenses", labelKey: "licenses", icon: Scale, group: "core" },
-  { id: "about", labelKey: "about", icon: Info, group: "core" },
-  { id: "computer", labelKey: "computer", icon: Monitor, group: "advanced" },
-  { id: "archived", labelKey: "archived", icon: Archive, group: "core" },
+  { id: "licenses", labelKey: "licenses", icon: Scale, cluster: "system" },
+  { id: "about", labelKey: "about", icon: Info, cluster: "system" },
+  { id: "archived", labelKey: "archived", icon: Archive, cluster: "system" },
   {
     id: "diagnostics",
     labelKey: "diagnostics",
     icon: Stethoscope,
-    group: "core",
+    cluster: "system",
   },
-  { id: "usage", labelKey: "usage", icon: Gauge, group: "advanced" },
+  {
+    id: "personalization",
+    labelKey: "personalization",
+    icon: SlidersHorizontal,
+    cluster: "hidden",
+  },
+  { id: "computer", labelKey: "computer", icon: Monitor, cluster: "hidden" },
+  { id: "usage", labelKey: "usage", icon: Gauge, cluster: "hidden" },
 ] satisfies Array<{
-  group: "advanced" | "core" | "workspace";
+  cluster: SettingsClusterId | "hidden";
   icon: typeof Settings;
   id: SettingsSectionId;
   labelKey: SettingsSectionId;
 }>;
 
 export type SettingsSectionItem = (typeof settingsSections)[number];
+
+export type SettingsClusterGroup = {
+  id: SettingsClusterId;
+  items: SettingsSectionItem[];
+};
+
+export function groupSettingsSectionsByCluster(): SettingsClusterGroup[] {
+  return settingsClusters
+    .map((id) => ({
+      id,
+      items: settingsSections.filter((section) => section.cluster === id),
+    }))
+    .filter((group) => group.items.length > 0);
+}

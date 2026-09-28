@@ -32,7 +32,10 @@ import { OssLicensesSettingsPanel } from "./oss-licenses";
 import { ProjectSettingsPanel } from "./projects";
 import { ProviderSettingsPanel } from "./providers";
 import { SettingRow, SettingsGroup } from "./settings-fields";
-import { settingsSections } from "./settings-sections";
+import {
+  groupSettingsSectionsByCluster,
+  settingsSections,
+} from "./settings-sections";
 import { SettingsSidebar } from "./settings-sidebar";
 import { SkillsSettingsPanel } from "./skills-settings";
 import type { AppearanceSettings, ThemeMode } from "./theme";
@@ -257,9 +260,7 @@ export function SettingsScreen({
   themeMode,
 }: SettingsScreenProps) {
   const { t } = useTranslation(["editor", "settings"]);
-  const coreSections = settingsSections.filter(
-    (section) => section.group === "core",
-  );
+  const sidebarClusters = groupSettingsSectionsByCluster();
   const activeSectionMeta =
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];
@@ -304,7 +305,7 @@ export function SettingsScreen({
         >
           <SettingsSidebar
             activeSection={activeSection}
-            coreSections={coreSections}
+            clusters={sidebarClusters}
             sidebarWidth={sidebarWidth}
             onSectionChange={onSectionChange}
           />

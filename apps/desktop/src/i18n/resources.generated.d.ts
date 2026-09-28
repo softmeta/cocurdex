@@ -1580,9 +1580,10 @@ export default interface Resources {
       };
     };
     groups: {
-      advanced: "Other";
-      core: "Basic";
-      workspace: "Workflow";
+      agent: "Agent";
+      interface: "Interface";
+      system: "System";
+      workspace: "Workspace";
     };
     language: {
       description: "Choose the interface language used by product UI.";

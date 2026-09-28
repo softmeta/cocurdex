@@ -99,6 +99,40 @@ describe("git checkpoint adapter", () => {
     expect(await captureGitCommit(workspace)).toMatch(/^[0-9a-f]{40}$/);
   });
 
+  it("leaves out files a branch switch changed during the turn", async () => {
+    const workspace = await createGitWorkspace();
+    const past = { GIT_COMMITTER_DATE: "2020-01-01T00:00:00Z" };
+    await runGit(["checkout", "-b", "feature"], { cwd: workspace });
+    await writeFile(path.join(workspace, "provider.md"), "feature\n", "utf8");
+    await runGit(["add", "provider.md"], { cwd: workspace });
+    await runGit(["commit", "-m", "feature"], { cwd: workspace, env: past });
+    const adapter = createGitCheckpointAdapter();
+    const before = await adapter.capture({
+      workspaceRootPath: workspace,
+      sessionId: "session-1",
+      userMessageId: "user-1",
+      phase: "before",
+    });
+    await runGit(["checkout", "-b", "settings", "main"], { cwd: workspace });
+    await writeFile(path.join(workspace, "settings.md"), "grouped\n", "utf8");
+    await runGit(["add", "settings.md"], { cwd: workspace });
+    await runGit(["commit", "-m", "settings"], { cwd: workspace });
+    await writeFile(path.join(workspace, "readme.md"), "draft\n", "utf8");
+    const after = await adapter.capture({
+      workspaceRootPath: workspace,
+      sessionId: "session-1",
+      userMessageId: "user-1",
+      phase: "after",
+    });
+
+    const files = await adapter.diff(before, after);
+
+    expect(files.map((file) => file.path).sort()).toEqual([
+      "readme.md",
+      "settings.md",
+    ]);
+  });
+
   it("refuses a checkpoint whose changed content exceeds the Git budget", async () => {
     const workspace = await createGitWorkspace();
     await writeFile(path.join(workspace, "readme.md"), "too much content\n");
