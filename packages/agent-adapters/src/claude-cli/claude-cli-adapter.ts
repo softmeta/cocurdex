@@ -193,6 +193,13 @@ function getFastMode(
     : null;
 }
 
+function getFlagSettingsKey(
+  effort: string | undefined,
+  fastMode: boolean | null,
+) {
+  return JSON.stringify([effort ?? null, fastMode]);
+}
+
 function formatClaudeError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return isAuthenticationFailureText(message)
@@ -253,6 +260,7 @@ export function createClaudeCliAdapter(
       let activeConfigDir: string | null = null;
       let activePermissionMode: string | null = null;
       let activeModelId: string | null = null;
+      let activeFlagSettingsKey: string | null = null;
       let activeUserMessageId: string | null = null;
       let finishActiveTurn: (() => void) | null = null;
       const queryWaiters = new Set<ClaudeQueryWaiter>();
@@ -655,10 +663,15 @@ export function createClaudeCliAdapter(
 
         const effort = getClaudeReasoningEffort(messagePayload.thinkingLevel);
         const fastMode = getFastMode(payload, messagePayload);
+        const flagSettingsKey = getFlagSettingsKey(effort, fastMode);
+        if (flagSettingsKey === activeFlagSettingsKey) {
+          return;
+        }
         await query.applyFlagSettings({
           effortLevel: effort ?? null,
           ...(fastMode !== null ? { fastMode } : {}),
         });
+        activeFlagSettingsKey = flagSettingsKey;
       }
 
       async function ensureQuery(messagePayload: SendAgentMessagePayload) {
@@ -800,6 +813,7 @@ export function createClaudeCliAdapter(
 
         activePermissionMode = permissionMode;
         activeModelId = modelId;
+        activeFlagSettingsKey = getFlagSettingsKey(effort, fastMode);
         void consumeQuery(query);
         return true;
       }
