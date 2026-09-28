@@ -340,9 +340,12 @@ export interface ProviderAuthMethodRecord {
   isSubscription: boolean;
 }
 
+export type ProviderAuthOrigin = "stored" | "ambient";
+
 export interface ProviderAuthState {
   providerId: string;
   type: ProviderAuthMethod | null;
+  origin: ProviderAuthOrigin | null;
   source: string | null;
 }
 

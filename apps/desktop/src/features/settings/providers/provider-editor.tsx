@@ -5,6 +5,7 @@ import type {
 } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { ProviderAuthSection } from "./provider-auth-section";
 import { ProviderDetailsSection } from "./provider-details-section";
 import { ProviderModelsSection } from "./provider-models-section";
@@ -76,9 +77,6 @@ export function ProviderEditor({
   const [apiKey, setApiKey] = useState("");
   const [isUpdatingEnabled, setIsUpdatingEnabled] = useState(false);
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
-  const [modelRefreshStatus, setModelRefreshStatus] = useState<string | null>(
-    null,
-  );
   const isPresetProvider = presetProviderIds.has(draftProvider.id);
 
   async function handleSaveProvider() {
@@ -104,14 +102,15 @@ export function ProviderEditor({
 
   async function handleRefreshModels() {
     setIsRefreshingModels(true);
-    setModelRefreshStatus(t("providers.status.refreshingModels"));
     try {
       const result = await onRefreshModels(draftProvider.id);
-      setModelRefreshStatus(
-        result.error ?? t("providers.status.modelsRefreshed"),
-      );
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(t("providers.status.modelsRefreshed"));
+      }
     } catch (error) {
-      setModelRefreshStatus(
+      toast.error(
         error instanceof Error
           ? error.message
           : t("providers.status.modelsRefreshFailed"),
@@ -150,6 +149,7 @@ export function ProviderEditor({
 
       {authMethods.length > 0 ? (
         <ProviderAuthSection
+          isDraft={!selectedProvider}
           methods={authMethods}
           providerId={draftProvider.id}
           onAuthChange={async () => {
@@ -164,20 +164,21 @@ export function ProviderEditor({
         />
       ) : null}
 
-      <SettingsGroup>
-        <ProviderModelsSection
-          draftModel={draftModel}
-          draftProvider={draftProvider}
-          isRefreshing={isRefreshingModels}
-          readOnly={isPresetProvider}
-          refreshStatus={modelRefreshStatus}
-          selectedModels={selectedModels}
-          onDraftModelChange={setDraftModel}
-          onRefreshModels={handleRefreshModels}
-          onReload={onReload}
-          onSaveModel={handleSaveModel}
-        />
-      </SettingsGroup>
+      {selectedProvider ? (
+        <SettingsGroup>
+          <ProviderModelsSection
+            draftModel={draftModel}
+            draftProvider={draftProvider}
+            isRefreshing={isRefreshingModels}
+            readOnly={isPresetProvider}
+            selectedModels={selectedModels}
+            onDraftModelChange={setDraftModel}
+            onRefreshModels={handleRefreshModels}
+            onReload={onReload}
+            onSaveModel={handleSaveModel}
+          />
+        </SettingsGroup>
+      ) : null}
     </>
   );
 }

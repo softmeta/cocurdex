@@ -451,18 +451,28 @@
     },
     "auth": {
       "accountDescription": "通过 Pi OAuth 使用服务商账户或订阅。",
+      "addProvider": "添加服务商",
       "apiKeyDescription": "使用由 Pi 管理的 API Key。",
       "cancel": "取消",
+      "codeCopied": "代码已复制",
       "connected": "已连接",
       "continue": "继续",
-      "deviceCode": "请在浏览器中输入代码 {{code}}。",
+      "copyCode": "复制代码",
+      "deviceCodeHint": "在浏览器中输入以下代码完成登录",
       "loginFailed": "无法完成服务商认证",
       "logoutFailed": "无法退出登录",
+      "openBrowser": "打开浏览器",
       "readFailed": "无法读取服务商认证状态",
+      "setApiKey": "设置 API Key",
+      "signIn": "登录",
       "signOut": "退出登录",
+      "source": {
+        "ambient": "来自 {{source}}",
+        "oauth": "OAuth",
+        "stored": "已保存的密钥"
+      },
       "starting": "正在开始认证…",
       "title": "认证",
-      "useMethod": "使用",
       "waitingForBrowser": "等待浏览器…"
     },
     "deleteConfirm": {
@@ -551,6 +561,7 @@
     "models": {
       "addTitle": "添加模型",
       "advanced": "高级",
+      "authenticateToLoad": "完成上方认证后即可获取模型。",
       "columns": {
         "capabilities": "能力",
         "compat": "兼容配置",
