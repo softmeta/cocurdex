@@ -73,7 +73,7 @@ export class ProviderCredentials {
     }
     const config = await this.state.getProviderConfig(providerId);
     return config?.apiKeySecretId
-      ? { providerId, type: "api_key", source: "Cocurdex API key" }
+      ? { providerId, type: "api_key", origin: "stored", source: null }
       : auth;
   }
 

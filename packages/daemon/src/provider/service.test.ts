@@ -229,6 +229,7 @@ describe("DaemonProviderService", () => {
         async (providerId) => ({
           providerId,
           type: providerId === "anthropic" ? "oauth" : null,
+          origin: providerId === "anthropic" ? "stored" : null,
           source: null,
         }),
       );

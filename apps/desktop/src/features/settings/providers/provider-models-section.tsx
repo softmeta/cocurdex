@@ -107,7 +107,6 @@ interface ProviderModelsSectionProps {
   draftProvider: ProviderConfigRecord;
   isRefreshing: boolean;
   readOnly?: boolean;
-  refreshStatus: string | null;
   selectedModels: ProviderModelRecord[];
   onDraftModelChange(model: ProviderModelRecord): void;
   onRefreshModels(): Promise<void>;
@@ -120,7 +119,6 @@ export function ProviderModelsSection({
   draftProvider,
   isRefreshing,
   readOnly = false,
-  refreshStatus,
   selectedModels,
   onDraftModelChange,
   onRefreshModels,
@@ -149,12 +147,6 @@ export function ProviderModelsSection({
 
   return (
     <div className="flex min-w-0 flex-col gap-4 py-4">
-      {refreshStatus ? (
-        <div className="rounded-control bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-          {refreshStatus}
-        </div>
-      ) : null}
-
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />

@@ -24,10 +24,18 @@ export async function readPiProviderAuthState(
 ): Promise<ProviderAuthState> {
   const runtime = await createProviderAuthRuntime(userDataPath);
   const auth = await runtime.checkAuth(providerId);
+  if (!auth) {
+    return { providerId, type: null, origin: null, source: null };
+  }
+  const credentials = await runtime.listCredentials();
+  const isStored = credentials.some(
+    (credential) => credential.providerId === providerId,
+  );
   return {
     providerId,
-    type: auth?.type ?? null,
-    source: auth?.source ?? null,
+    type: auth.type,
+    origin: isStored ? "stored" : "ambient",
+    source: isStored ? null : (auth.source ?? null),
   };
 }
 

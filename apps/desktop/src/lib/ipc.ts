@@ -424,6 +424,7 @@ const fallbackApi: DesktopApi = {
   readProviderAuth: async (providerId) => ({
     providerId,
     type: null,
+    origin: null,
     source: null,
   }),
   startProviderAuthLogin: async () => ({ loginId: "" }),
