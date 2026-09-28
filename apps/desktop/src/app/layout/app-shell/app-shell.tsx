@@ -11,6 +11,7 @@ import {
 } from "@/features/editor";
 import {
   type AppearanceSettings,
+  expandSettingsClusterForSectionAtom,
   getStoredAppearanceSettings,
   getStoredNotificationSettings,
   getStoredThemeMode,
@@ -148,6 +149,9 @@ export function AppShell() {
   const [isSearchOpen, setIsSearchOpen] = useAtom(searchPaletteOpenAtom);
   const openFile = useSetAtom(openFileAtom);
   const setRightPanelResizing = useSetAtom(rightPanelResizingAtom);
+  const expandSettingsClusterForSection = useSetAtom(
+    expandSettingsClusterForSectionAtom,
+  );
   const {
     contentRowCallbackRef,
     isRightPanelCompact,
@@ -369,6 +373,7 @@ export function AppShell() {
   const openSettings = (section?: SettingsSectionId) => {
     setIsSearchOpen(false);
     if (typeof section === "string") {
+      expandSettingsClusterForSection(section);
       setActiveSettingsSection(section);
     }
     navigateToScreen("settings");

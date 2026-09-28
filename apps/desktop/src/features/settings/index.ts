@@ -4,6 +4,7 @@ export { NetworkProxyStatusButton } from "./network-proxy-status-button";
 export * from "./notifications";
 export * from "./notify";
 export * from "./providers";
+export { expandSettingsClusterForSectionAtom } from "./settings-cluster-store";
 export * from "./settings-navigation";
 export * from "./settings-screen";
 export * from "./settings-select";

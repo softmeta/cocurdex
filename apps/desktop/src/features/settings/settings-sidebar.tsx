@@ -1,3 +1,5 @@
+import { useAtomValue, useSetAtom } from "jotai";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout";
 import {
@@ -7,6 +9,10 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui";
+import {
+  collapsedSettingsClusterIdsAtom,
+  toggleSettingsClusterCollapsedAtom,
+} from "./settings-cluster-store";
 import type {
   SettingsClusterGroup,
   SettingsSectionItem,
@@ -62,6 +68,8 @@ export function SettingsSidebar({
   onSectionChange,
 }: SettingsSidebarProps) {
   const { t } = useTranslation("settings");
+  const collapsedClusterIds = useAtomValue(collapsedSettingsClusterIdsAtom);
+  const toggleClusterCollapsed = useSetAtom(toggleSettingsClusterCollapsedAtom);
 
   return (
     <aside
@@ -73,18 +81,33 @@ export function SettingsSidebar({
       <div className="app-drag h-9 shrink-0" />
 
       <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
-        {clusters.map((cluster, index) => (
-          <div className={index > 0 ? "mt-5" : undefined} key={cluster.id}>
-            <div className="px-2 pb-1.5 font-medium text-meta text-muted-foreground/60">
-              {t(`groups.${cluster.id}`)}
+        {clusters.map((cluster, index) => {
+          const isCollapsed = collapsedClusterIds.includes(cluster.id);
+          return (
+            <div className={index > 0 ? "mt-5" : undefined} key={cluster.id}>
+              <button
+                aria-expanded={!isCollapsed}
+                className="group flex w-full items-center gap-1.5 px-2 pb-1.5 font-medium text-meta text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+                type="button"
+                onClick={() => toggleClusterCollapsed(cluster.id)}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="size-3 shrink-0 rtl:-scale-x-100" />
+                ) : (
+                  <ChevronDown className="size-3 shrink-0" />
+                )}
+                <span className="truncate">{t(`groups.${cluster.id}`)}</span>
+              </button>
+              {isCollapsed ? null : (
+                <SettingsSidebarSection
+                  activeSection={activeSection}
+                  items={cluster.items}
+                  onSectionChange={onSectionChange}
+                />
+              )}
             </div>
-            <SettingsSidebarSection
-              activeSection={activeSection}
-              items={cluster.items}
-              onSectionChange={onSectionChange}
-            />
-          </div>
-        ))}
+          );
+        })}
       </ScrollArea>
     </aside>
   );
