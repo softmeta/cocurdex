@@ -1764,10 +1764,11 @@ export default interface Resources {
         loginFailed: "Unable to authenticate with this provider";
         logoutFailed: "Unable to sign out";
         readFailed: "Unable to read provider authentication";
+        setApiKey: "Set API key";
+        signIn: "Sign in";
         signOut: "Sign out";
         starting: "Starting authentication…";
         title: "Authentication";
-        useMethod: "Use";
         waitingForBrowser: "Waiting for browser…";
       };
       deleteConfirm: {
@@ -1857,6 +1858,7 @@ export default interface Resources {
       models: {
         addTitle: "Add model";
         advanced: "Advanced";
+        authenticateToLoad: "Authenticate above to load this provider's models.";
         columns: {
           capabilities: "Capabilities";
           compat: "Compat";

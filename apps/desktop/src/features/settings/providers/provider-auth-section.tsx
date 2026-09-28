@@ -250,7 +250,9 @@ export function ProviderAuthSection({
                 ) : (
                   <AuthMethodIcon method={method.type} />
                 )}
-                {t("providers.auth.useMethod")}
+                {method.type === "oauth"
+                  ? t("providers.auth.signIn")
+                  : t("providers.auth.setApiKey")}
               </Button>
             )}
           </div>

@@ -1,4 +1,7 @@
-import type { CompatibleProviderModel } from "@cocurdex/shared";
+import type {
+  CompatibleProviderModel,
+  ProviderModelRecord,
+} from "@cocurdex/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProviderCredentials } from "../provider-credentials/service";
 import type { DaemonState } from "../state";
@@ -186,6 +189,95 @@ describe("DaemonProviderService", () => {
       service.setAgentProviderDefault("pi", "missing", "model-x"),
     ).rejects.toThrow("Provider model not found");
     expect(saveAgentProviderDefault).not.toHaveBeenCalled();
+  });
+
+  describe("signed-out built-in providers", () => {
+    const now = "2026-01-01T00:00:00.000Z";
+    const providerConfig = (id: string) => ({
+      id,
+      name: id,
+      baseUrl: "https://example.test",
+      enabled: true,
+      apiKeySecretId: null,
+      headersJson: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const providerModel = (providerId: string): ProviderModelRecord => ({
+      providerId,
+      modelId: `${providerId}-model`,
+      name: `${providerId}-model`,
+      api: "openai-completions",
+      enabled: true,
+      source: "api",
+      contextLimit: null,
+      outputLimit: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    function createService() {
+      listPiBuiltInProviderIdsMock.mockReturnValue([
+        "openai-codex",
+        "anthropic",
+      ]);
+      listPiProviderModelsMock.mockImplementation(
+        async (provider: { id: string }) => [providerModel(provider.id)],
+      );
+      const credentials = createCredentials();
+      vi.mocked(credentials.readAuthState).mockImplementation(
+        async (providerId) => ({
+          providerId,
+          type: providerId === "anthropic" ? "oauth" : null,
+          source: null,
+        }),
+      );
+      const state = createState({
+        listProviderConfigs: vi.fn(async () => [
+          providerConfig("openai-codex"),
+          providerConfig("anthropic"),
+          providerConfig("custom"),
+        ]),
+        getProviderConfig: vi.fn(async (id: string) => providerConfig(id)),
+        listProviderModels: vi.fn(async (providerId?: string) =>
+          providerId && providerId !== "custom"
+            ? []
+            : [providerModel("custom")],
+        ),
+      });
+      return new DaemonProviderService(state, credentials);
+    }
+
+    it("hides their models from the configured model list", async () => {
+      const models = await createService().listAllModels({
+        forceRefresh: true,
+      });
+
+      expect(models.map((model) => model.providerId).sort()).toEqual([
+        "anthropic",
+        "custom",
+      ]);
+    });
+
+    it("leaves them out of an agent's model picker entirely", async () => {
+      const items = await createService().listCompatibleProviderModels("pi", {
+        forceRefresh: true,
+      });
+
+      expect(items.map((item) => item.provider.id).sort()).toEqual([
+        "anthropic",
+        "custom",
+      ]);
+    });
+
+    it("returns no catalog models when refreshing them", async () => {
+      await expect(
+        createService().fetchModels("openai-codex"),
+      ).resolves.toEqual({
+        models: [],
+        error: null,
+      });
+    });
   });
 
   it("rejects malformed title model selections", async () => {

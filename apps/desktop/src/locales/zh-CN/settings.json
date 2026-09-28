@@ -460,10 +460,11 @@
       "loginFailed": "无法完成服务商认证",
       "logoutFailed": "无法退出登录",
       "readFailed": "无法读取服务商认证状态",
+      "setApiKey": "设置 API Key",
+      "signIn": "登录",
       "signOut": "退出登录",
       "starting": "正在开始认证…",
       "title": "认证",
-      "useMethod": "使用",
       "waitingForBrowser": "等待浏览器…"
     },
     "deleteConfirm": {
@@ -552,6 +553,7 @@
     "models": {
       "addTitle": "添加模型",
       "advanced": "高级",
+      "authenticateToLoad": "完成上方认证后即可获取模型。",
       "columns": {
         "capabilities": "能力",
         "compat": "兼容配置",

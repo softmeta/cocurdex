@@ -197,7 +197,9 @@ export function ProviderModelsSection({
       <div className="overflow-hidden rounded-control border border-border/40 bg-muted">
         {visibleModels.length === 0 ? (
           <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
-            {t("providers.models.empty", { provider: draftProvider.name })}
+            {readOnly
+              ? t("providers.models.authenticateToLoad")
+              : t("providers.models.empty", { provider: draftProvider.name })}
           </div>
         ) : (
           <Table
