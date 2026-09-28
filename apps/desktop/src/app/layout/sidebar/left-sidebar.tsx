@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { FolderPlus, Plus } from "lucide-react";
+import { FolderPlus, Plus, Search } from "lucide-react";
 import { type ReactNode, startTransition, useMemo, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -40,6 +40,8 @@ import {
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
+import { isDetachedChatWindow } from "../chat-window/chat-window-state";
+import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ConversationsPanel } from "./conversations-panel";
 import { ProjectsPanel } from "./projects-panel";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
@@ -100,7 +102,7 @@ export function LeftSidebar({
   hideTitlebarSpacer,
   onAfterNavigate,
 }: LeftSidebarProps) {
-  const { t } = useTranslation(["sessions", "chat"]);
+  const { t } = useTranslation(["sessions", "chat", "search"]);
   const workspaces = useAtomValue(workspacesAtom);
   const sessions = useAtomValue(sessionsAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
@@ -124,6 +126,7 @@ export function LeftSidebar({
   // lists: only one list competes for the sidebar height at a time. The center
   // panel reads the same atom so its empty state matches the visible tab.
   const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
+  const openSearchPalette = useSetAtom(searchPaletteOpenAtom);
 
   const sessionsByWorkspace = useMemo(
     () =>
@@ -224,6 +227,7 @@ export function LeftSidebar({
   const addProjectLabel = t("sessions:sidebar.addProject", {
     defaultValue: "Add project",
   });
+  const searchLabel = t("search:openSearch");
 
   return (
     <SidebarShell>
@@ -271,6 +275,24 @@ export function LeftSidebar({
               <Plus />
               <SidebarListRowLabel>{createActionLabel}</SidebarListRowLabel>
             </SidebarListRow>
+            {isDetachedChatWindow ? null : (
+              <Tooltip>
+                <TooltipTrigger
+                  aria-label={searchLabel}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
+                  onClick={() => {
+                    openSearchPalette(true);
+                    onAfterNavigate?.();
+                  }}
+                  type="button"
+                >
+                  <Search className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  {searchLabel}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {isProjectsTab ? (
               <Tooltip>
                 <TooltipTrigger

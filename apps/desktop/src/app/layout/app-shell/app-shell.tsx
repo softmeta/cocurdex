@@ -54,6 +54,7 @@ import {
   shouldOpenDockWhenApplyingLayout,
 } from "../chat-layout-preference";
 import { useChatWindowActions, useMainChatWindow } from "../chat-window";
+import { searchPaletteOpenAtom } from "../search-palette";
 import { useAgentEventBridge, useBrowserEventBridge } from "./app-shell-events";
 import { AppShellFrame } from "./app-shell-frame";
 import {
@@ -144,7 +145,7 @@ export function AppShell() {
       setIsRightPanelOpen(true);
     }
   });
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useAtom(searchPaletteOpenAtom);
   const openFile = useSetAtom(openFileAtom);
   const setRightPanelResizing = useSetAtom(rightPanelResizingAtom);
   const {
