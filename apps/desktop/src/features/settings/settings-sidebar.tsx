@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout";
 import {
@@ -8,7 +8,9 @@ import {
   SidebarListRowLabel,
   SidebarMenu,
   SidebarMenuItem,
+  Text,
 } from "@/components/ui";
+import { cn } from "@/lib";
 import {
   collapsedSettingsClusterIdsAtom,
   toggleSettingsClusterCollapsedAtom,
@@ -84,21 +86,25 @@ export function SettingsSidebar({
         {clusters.map((cluster, index) => {
           const isCollapsed = collapsedClusterIds.includes(cluster.id);
           return (
-            <div className={index > 0 ? "mt-5" : undefined} key={cluster.id}>
+            <div
+              className={cn("flex flex-col", index > 0 && "mt-3")}
+              key={cluster.id}
+            >
               <button
                 aria-expanded={!isCollapsed}
-                className="group flex w-full cursor-default items-center gap-1.5 rounded-control px-2 py-1 font-medium text-meta text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+                className="flex h-7 w-full cursor-default items-center gap-1 rounded-control px-2 text-muted-foreground/70 transition-colors hover:text-foreground"
                 type="button"
                 onClick={() => toggleClusterCollapsed(cluster.id)}
               >
-                <span className="min-w-0 flex-1 truncate text-start">
+                <Text size="meta" truncate weight="medium">
                   {t(`groups.${cluster.id}`)}
-                </span>
-                {isCollapsed ? (
-                  <ChevronRight className="size-3 shrink-0 rtl:-scale-x-100" />
-                ) : (
-                  <ChevronDown className="size-3 shrink-0" />
-                )}
+                </Text>
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 shrink-0 transition-transform",
+                    isCollapsed && "-rotate-90 rtl:rotate-90",
+                  )}
+                />
               </button>
               {isCollapsed ? null : (
                 <SettingsSidebarSection
