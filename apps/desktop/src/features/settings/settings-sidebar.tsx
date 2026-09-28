@@ -7,7 +7,10 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui";
-import type { SettingsSectionItem } from "./settings-sections";
+import type {
+  SettingsClusterGroup,
+  SettingsSectionItem,
+} from "./settings-sections";
 
 function SettingsSidebarSection({
   activeSection,
@@ -47,17 +50,19 @@ function SettingsSidebarSection({
 
 interface SettingsSidebarProps {
   activeSection: SettingsSectionId;
-  coreSections: SettingsSectionItem[];
+  clusters: SettingsClusterGroup[];
   sidebarWidth?: number;
   onSectionChange(sectionId: SettingsSectionId): void;
 }
 
 export function SettingsSidebar({
   activeSection,
-  coreSections,
+  clusters,
   sidebarWidth,
   onSectionChange,
 }: SettingsSidebarProps) {
+  const { t } = useTranslation("settings");
+
   return (
     <aside
       className="flex h-full min-h-0 shrink-0 flex-col bg-sidebar text-sidebar-fg"
@@ -68,11 +73,18 @@ export function SettingsSidebar({
       <div className="app-drag h-9 shrink-0" />
 
       <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
-        <SettingsSidebarSection
-          activeSection={activeSection}
-          items={coreSections}
-          onSectionChange={onSectionChange}
-        />
+        {clusters.map((cluster, index) => (
+          <div className={index > 0 ? "mt-5" : undefined} key={cluster.id}>
+            <div className="px-2 pb-1.5 font-medium text-meta text-muted-foreground/60">
+              {t(`groups.${cluster.id}`)}
+            </div>
+            <SettingsSidebarSection
+              activeSection={activeSection}
+              items={cluster.items}
+              onSectionChange={onSectionChange}
+            />
+          </div>
+        ))}
       </ScrollArea>
     </aside>
   );

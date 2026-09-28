@@ -276,9 +276,10 @@
     }
   },
   "groups": {
-    "advanced": "其他",
-    "core": "基础",
-    "workspace": "工作流"
+    "agent": "Agent",
+    "interface": "界面",
+    "system": "系统",
+    "workspace": "工作区"
   },
   "language": {
     "description": "选择产品界面使用的语言。",
