@@ -41,12 +41,12 @@ import type { NewSessionCardProps } from "./new-session-card.types";
 import { defaultAgentDescriptors } from "./new-session-card-config";
 import { useNewSessionCard } from "./use-new-session-card";
 
-// Composer footer + session context pickers: shadcn ghost Button trigger
+// Composer footer pickers: shadcn ghost Button trigger
 // (via AppDropdownTriggerButton appearance="ghost") — resting transparent,
 // hover/open use ghost muted fill + control radius. Keep dense padding only.
 const compactGhostTriggerClassName = cn("h-7 gap-1 px-1");
 const composerContextTriggerClassName = cn(
-  compactGhostTriggerClassName,
+  "h-7 gap-1.5 rounded-control px-2 text-muted-foreground hover:text-foreground aria-expanded:text-foreground",
   composerContextTriggerHoverClassName,
 );
 
@@ -336,9 +336,10 @@ export function NewSessionCard({
   // Workspace and branch remain editable until the session starts. Branch
   // selection performs a real checkout; active sessions render it read-only.
   const header = (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1.5">
       <WorkspacePicker
-        appearance="ghost"
+        appearance="outline"
+        showChevron={false}
         triggerClassName={cn("max-w-60", composerContextTriggerClassName)}
         activeWorkspaceId={activeWorkspaceId}
         workspaceName={workspaceName}
@@ -350,7 +351,8 @@ export function NewSessionCard({
 
       {hasWorkspace && activeWorkspaceId ? (
         <WorktreePicker
-          appearance="ghost"
+          appearance="outline"
+          showChevron={false}
           branches={activeBranches}
           currentBranch={activeBranch}
           selectedPath={selectedWorktreePath}
@@ -367,7 +369,8 @@ export function NewSessionCard({
 
       {hasWorkspace ? (
         <AppSearchableSelect
-          appearance="ghost"
+          appearance="outline"
+          showChevron={false}
           disabled={isSwitchingBranch || branchOptions.length === 0}
           emptyText={t("sessions:branch.empty")}
           options={branchOptions}

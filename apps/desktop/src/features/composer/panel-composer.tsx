@@ -109,6 +109,9 @@ export function PanelComposer({
           onSelect={setPreviewAttachment}
         />
       ) : null}
+      {header ? (
+        <div className="-mb-1.5 flex items-center px-1">{header}</div>
+      ) : null}
       <div
         className={cn(
           "overflow-hidden rounded-panel border",
@@ -117,18 +120,6 @@ export function PanelComposer({
             : "border-chat-border bg-chat-surface-input",
         )}
       >
-        {header ? (
-          <div
-            className={cn(
-              "flex items-center border-b px-2 py-1",
-              tone === "welcome"
-                ? "border-welcome-border bg-welcome-surface-strong"
-                : "border-chat-border bg-chat-surface-raised",
-            )}
-          >
-            {header}
-          </div>
-        ) : null}
         <div className="p-3">
           {composerAttachments.some((a) => a.kind === "image") ? (
             <div className="mb-3">
