@@ -83,7 +83,6 @@ export function SessionSplitMenu({
           <SquareSplitVertical className="size-4" />
           {t("split.right")}
         </AppDropdownItem>
-        <DropdownMenuSeparator />
         <ChatWindowMenuItem />
         {canClose && onClose && onCloseAll ? (
           <>
