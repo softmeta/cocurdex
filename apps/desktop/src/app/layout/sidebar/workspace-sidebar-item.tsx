@@ -229,7 +229,7 @@ export function WorkspaceSidebarItem({
         // (workspace row is ps-1 + size-3.5 icon + gap-1.5 → session ps-6).
         <SidebarMenuSub className="ms-0 ps-0">
           {sessions.length === 0 ? (
-            <div className="ps-6 pe-2 py-1 text-xs text-sidebar-fg-subtle">
+            <div className="ps-6 pe-2 py-1 text-meta text-sidebar-fg-subtle">
               {t("sidebar.noAgentsYet")}
             </div>
           ) : (
@@ -254,7 +254,7 @@ export function WorkspaceSidebarItem({
           )}
           {limitedTree.hiddenRootCount > 0 || canShowLess ? (
             <SidebarMenuSubItem>
-              <SidebarListRow className="gap-3 ps-6 text-sidebar-fg-subtle">
+              <SidebarListRow className="gap-3 ps-6 text-meta text-sidebar-fg-subtle">
                 {limitedTree.hiddenRootCount > 0 ? (
                   <button
                     type="button"
