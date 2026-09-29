@@ -10,7 +10,7 @@ export function EditorSettingsPanel() {
   return (
     <div className="settings-panel-enter flex flex-col gap-8">
       <div className="flex flex-col">
-        <div className="rounded-card border border-border/70 bg-card/45 px-4">
+        <div className="rounded-card border border-border/70 bg-settings-surface px-4">
           <div className="flex flex-col divide-y divide-border/60">
             <div className="flex items-center justify-between gap-6 py-3.5">
               <div className="min-w-0 flex-1">

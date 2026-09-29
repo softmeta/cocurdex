@@ -34,7 +34,7 @@ function SettingsGroup({
           {title}
         </div>
       ) : null}
-      <div className="rounded-card border border-border/70 bg-card/45 px-4">
+      <div className="rounded-card border border-border/70 bg-settings-surface px-4">
         <div className="flex flex-col divide-y divide-border/60">
           {children}
         </div>

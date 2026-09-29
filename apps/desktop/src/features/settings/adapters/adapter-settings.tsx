@@ -397,7 +397,7 @@ export function AdapterSettingsPanel() {
           {t("adapters.action.refresh")}
         </Button>
       </div>
-      <div className="rounded-card border border-border/70 bg-card/45 px-4">
+      <div className="rounded-card border border-border/70 bg-settings-surface px-4">
         <div className="flex flex-col divide-y divide-border/60">
           {sortedAgents.map((agent) => (
             <AdapterRow

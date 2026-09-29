@@ -72,7 +72,7 @@ function ProjectSettingsList({
               title={t("projects.noResults")}
             />
           ) : (
-            <ul className="overflow-hidden rounded-card border border-border/70 bg-card/45">
+            <ul className="overflow-hidden rounded-card border border-border/70 bg-settings-surface">
               {visible.map((workspace) => {
                 const isCurrent = workspace.id === activeWorkspaceId;
                 return (

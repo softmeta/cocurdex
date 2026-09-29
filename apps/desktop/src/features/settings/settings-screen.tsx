@@ -309,7 +309,7 @@ export function SettingsScreen({
   );
 
   return (
-    <main className="relative flex h-screen overflow-hidden bg-background text-foreground">
+    <main className="relative flex h-screen overflow-hidden bg-app text-foreground">
       {isSidebarOpen ? (
         <ResizableSidebarSlot
           isOpen={isSidebarOpen}
@@ -326,7 +326,7 @@ export function SettingsScreen({
         </ResizableSidebarSlot>
       ) : null}
 
-      <section className="min-w-0 flex-1 overflow-hidden bg-background">
+      <section className="min-w-0 flex-1 overflow-hidden bg-app">
         <div className="flex h-8 shrink-0">
           <div className="w-32 shrink-0" />
           <div className="app-drag min-w-0 flex-1" />
@@ -353,7 +353,7 @@ export function SettingsScreen({
           <div className="h-[calc(100vh-2rem)] pb-8">
             <ScrollArea className="h-full">
               <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pb-10 sm:px-6 lg:px-8">
-                <div className="sticky top-0 z-10 flex h-20 shrink-0 items-end bg-background pb-3">
+                <div className="sticky top-0 z-10 flex h-20 shrink-0 items-end bg-app pb-3">
                   {settingsHeading}
                 </div>
                 {settingsPanel}
