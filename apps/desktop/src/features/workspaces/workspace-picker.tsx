@@ -32,6 +32,7 @@ interface WorkspacePickerProps {
   triggerAriaLabel?: string;
   triggerClassName?: string;
   triggerLabel?: ReactNode;
+  showChevron?: boolean;
   onSelectWorkspace?(workspaceId: string): void;
   onOpenWorkspace?(): void;
   onRelocateWorkspace?(workspaceId: string): void;
@@ -48,6 +49,7 @@ export function WorkspacePicker({
   triggerAriaLabel,
   triggerClassName,
   triggerLabel,
+  showChevron,
   onSelectWorkspace,
   onOpenWorkspace,
   onRelocateWorkspace,
@@ -134,6 +136,7 @@ export function WorkspacePicker({
       trigger={trigger}
       triggerAriaLabel={triggerAriaLabel ?? t("workspace.workspace")}
       triggerClassName={triggerClass}
+      showChevron={showChevron}
       triggerLabel={
         triggerLabel ?? (
           <span className="flex min-w-0 items-center gap-1.5">
