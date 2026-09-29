@@ -19,6 +19,7 @@ interface WorktreePickerProps {
   currentBranch?: string | null;
   selectedPath: string | null;
   triggerClassName?: string;
+  showChevron?: boolean;
   workspaceId: string;
   workspaceRootPath: string;
   worktrees: GitWorktreeInfo[];
@@ -44,6 +45,7 @@ export function WorktreePicker({
   currentBranch,
   selectedPath,
   triggerClassName,
+  showChevron,
   workspaceId,
   workspaceRootPath,
   worktrees,
@@ -154,6 +156,7 @@ export function WorktreePicker({
         side="top"
         triggerAriaLabel={t("worktree.label")}
         triggerClassName={cn("max-w-45", triggerClassName)}
+        showChevron={showChevron}
         triggerLabel={
           <span className="flex min-w-0 items-center gap-1.5">
             <GitFork className="size-3.5 shrink-0" />

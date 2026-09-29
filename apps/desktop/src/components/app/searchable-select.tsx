@@ -55,6 +55,7 @@ export interface AppSearchableSelectProps {
   appearance?: AppDropdownTriggerAppearance;
   disabled?: boolean;
   triggerClassName?: string;
+  showChevron?: boolean;
   contentClassName?: string;
   align?: "start" | "center" | "end";
   side?: ComponentProps<typeof ComboboxContent>["side"];
@@ -141,6 +142,7 @@ export function AppSearchableSelect({
   appearance = "outline",
   disabled = false,
   triggerClassName,
+  showChevron,
   contentClassName,
   align = "start",
   side,
@@ -193,6 +195,7 @@ export function AppSearchableSelect({
     >
       <ComboboxTrigger
         aria-label={triggerAriaLabel}
+        showChevron={showChevron}
         disabled={disabled}
         render={
           trigger ?? (
