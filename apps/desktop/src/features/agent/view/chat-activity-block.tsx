@@ -54,7 +54,7 @@ export function ActivityBlock({
 
   return (
     <Collapsible
-      className="group/activity w-full min-w-0 max-w-3xl"
+      className="group/activity w-full min-w-0 max-w-3xl not-first:mt-3"
       onOpenChange={setOpen}
       open={open}
     >
