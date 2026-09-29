@@ -910,6 +910,14 @@
     }
   },
   "worktrees": {
+    "actionName": "Action 名称",
+    "actionNamePlaceholder": "名称，例如：开发服务器",
+    "actionPlatforms": "平台",
+    "actionScriptPlaceholder": "npm run dev",
+    "actionsDescription": "显示在会话的「…」菜单中，点击后在新的终端标签中运行。",
+    "actionsTitle": "Actions",
+    "addAction": "添加 Action",
+    "allPlatforms": "所有平台",
     "archivedSession": "{{title}}（已归档）",
     "askAgent": "让 Agent 分析",
     "browse": "选择",
@@ -929,6 +937,7 @@
     "noSessions": "没有会话正在使用这棵工作树。",
     "projectGroup": "工作树",
     "refresh": "刷新",
+    "removeAction": "删除 Action",
     "riskyPatterns": "请仔细检查 —— 包含：{{patterns}}",
     "rootDescription": "Cocurdex 创建托管工作树的目录。留空则使用默认位置。",
     "rootTitle": "工作树根目录",

@@ -374,4 +374,49 @@ describe("initializeDatabase", () => {
       { id: "later", sort_order: 2000 },
     ]);
   });
+
+  it("adds actions_json while keeping worktree scripts from version 10", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      ALTER TABLE workspace_worktree_environments DROP COLUMN actions_json;
+      INSERT INTO workspaces (
+        id, name, root_paths, created_at, updated_at, last_opened_at
+      ) VALUES (
+        'workspace-1', 'repo', '["/tmp/repo"]', '2026-09-01T00:00:00.000Z',
+        '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z'
+      );
+      INSERT INTO workspace_worktree_environments (
+        workspace_id, setup_script, cleanup_script, updated_at
+      ) VALUES (
+        'workspace-1', 'pnpm install', 'rm -rf .turbo',
+        '2026-09-01T00:00:00.000Z'
+      );
+      PRAGMA user_version = 10;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT workspace_id, setup_script, cleanup_script, actions_json FROM workspace_worktree_environments",
+        )
+        .all()
+        .map((row) => ({ ...row })),
+    ).toEqual([
+      {
+        workspace_id: "workspace-1",
+        setup_script: "pnpm install",
+        cleanup_script: "rm -rf .turbo",
+        actions_json: "[]",
+      },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id FROM workspaces")
+        .all()
+        .map((row) => row.id),
+    ).toEqual(["workspace-1"]);
+  });
 });

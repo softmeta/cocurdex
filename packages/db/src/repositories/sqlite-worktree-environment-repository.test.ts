@@ -14,7 +14,7 @@ function createDatabase() {
 const now = "2026-09-07T00:00:00.000Z";
 
 describe("createSqliteWorktreeEnvironmentRepository", () => {
-  it("round-trips setup and cleanup scripts for a workspace", async () => {
+  it("round-trips setup, cleanup, and action scripts for a workspace", async () => {
     const database = createDatabase();
     const workspaces = createSqliteWorkspaceRepository(database);
     const environments = createSqliteWorktreeEnvironmentRepository(database);
@@ -32,6 +32,9 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "pnpm install",
       cleanupScript: "rm -rf node_modules",
+      actions: [
+        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
+      ],
       updatedAt: now,
       proposal: null,
     });
@@ -40,6 +43,9 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "pnpm install",
       cleanupScript: "rm -rf node_modules",
+      actions: [
+        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
+      ],
       updatedAt: now,
       proposal: null,
     });
@@ -63,6 +69,9 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "npm install",
       cleanupScript: "",
+      actions: [
+        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
+      ],
       updatedAt: now,
       proposal: null,
     });
@@ -78,6 +87,9 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "npm install",
       cleanupScript: "",
+      actions: [
+        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
+      ],
       updatedAt: now,
       proposal: {
         setupScript: "pnpm install",
@@ -91,6 +103,9 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "npm install",
       cleanupScript: "",
+      actions: [
+        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
+      ],
       updatedAt: now,
       proposal: null,
     });

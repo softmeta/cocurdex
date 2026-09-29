@@ -215,6 +215,7 @@
     "splitRight": "Open to the Right"
   },
   "split": {
+    "actions": "Actions",
     "close": "Close Pane",
     "closeAll": "Close All",
     "down": "Split Down",

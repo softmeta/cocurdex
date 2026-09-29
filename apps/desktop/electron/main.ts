@@ -590,6 +590,7 @@ function registerWorkspaceHandlers() {
           workspaceId: payload.workspaceId,
           setupScript: payload.setupScript,
           cleanupScript: payload.cleanupScript,
+          actions: payload.actions,
           updatedAt: null,
           proposal: null,
         },

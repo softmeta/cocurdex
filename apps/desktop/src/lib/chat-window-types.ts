@@ -40,6 +40,7 @@ export type ChatWindowIntent =
       endLine?: number | null;
     }
   | { kind: "show-panel"; view: ChatWindowPanelView }
+  | { kind: "run-terminal-command"; command: string }
   | { kind: "review-turn"; sessionId: string; messageId: string; path: string };
 
 export interface ChatWindowIntentRequest {

@@ -1,7 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
-import type {
-  WorkspaceWorktreeEnvironment,
-  WorktreeEnvironmentProposal,
+import {
+  parseWorkspaceActionsJson,
+  type WorkspaceWorktreeEnvironment,
+  type WorktreeEnvironmentProposal,
 } from "@cocurdex/shared";
 import type { SqliteRow } from "../sqlite-types";
 import { toNullableString } from "../sqlite-types";
@@ -13,6 +14,7 @@ function mapWorktreeEnvironment(row: SqliteRow): WorkspaceWorktreeEnvironment {
     workspaceId: String(row.workspace_id),
     setupScript: String(row.setup_script ?? ""),
     cleanupScript: String(row.cleanup_script ?? ""),
+    actions: parseWorkspaceActionsJson(toNullableString(row.actions_json)),
     updatedAt: toNullableString(row.updated_at),
     proposal: proposedAt
       ? {
@@ -41,13 +43,14 @@ export function createSqliteWorktreeEnvironmentRepository(
       database
         .prepare(
           `INSERT INTO workspace_worktree_environments (
-             workspace_id, setup_script, cleanup_script, updated_at,
-             proposed_setup_script, proposed_cleanup_script,
+             workspace_id, setup_script, cleanup_script, actions_json,
+             updated_at, proposed_setup_script, proposed_cleanup_script,
              proposed_rationale, proposed_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(workspace_id) DO UPDATE SET
              setup_script = excluded.setup_script,
              cleanup_script = excluded.cleanup_script,
+             actions_json = excluded.actions_json,
              updated_at = excluded.updated_at,
              proposed_setup_script = excluded.proposed_setup_script,
              proposed_cleanup_script = excluded.proposed_cleanup_script,
@@ -58,6 +61,7 @@ export function createSqliteWorktreeEnvironmentRepository(
           environment.workspaceId,
           environment.setupScript,
           environment.cleanupScript,
+          JSON.stringify(environment.actions),
           environment.updatedAt ?? new Date().toISOString(),
           environment.proposal?.setupScript ?? null,
           environment.proposal?.cleanupScript ?? null,

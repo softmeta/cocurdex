@@ -1233,6 +1233,7 @@ export default interface Resources {
       splitRight: "Open to the Right";
     };
     split: {
+      actions: "Actions";
       close: "Close Pane";
       closeAll: "Close All";
       down: "Split Down";
@@ -2217,6 +2218,14 @@ export default interface Resources {
       };
     };
     worktrees: {
+      actionName: "Action name";
+      actionNamePlaceholder: "Name, e.g. Dev server";
+      actionPlatforms: "Platforms";
+      actionScriptPlaceholder: "npm run dev";
+      actionsDescription: 'Shown in the session "…" menu; each runs in a new terminal tab.';
+      actionsTitle: "Actions";
+      addAction: "Add action";
+      allPlatforms: "All platforms";
       archivedSession: "{{title}} (archived)";
       askAgent: "Ask agent";
       browse: "Browse";
@@ -2236,6 +2245,7 @@ export default interface Resources {
       noSessions: "No sessions are using this worktree.";
       projectGroup: "Worktrees";
       refresh: "Refresh";
+      removeAction: "Remove action";
       riskyPatterns: "Review carefully — contains: {{patterns}}";
       rootDescription: "Directory where Cocurdex creates managed worktrees. Leave blank to use the default location.";
       rootTitle: "Worktree root";

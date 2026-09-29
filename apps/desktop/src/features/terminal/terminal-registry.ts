@@ -21,6 +21,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { type IDisposable, Terminal } from "@xterm/xterm";
 import { desktopApi, onThemeChanged, readCssVarPx } from "@/lib";
 import "@xterm/xterm/css/xterm.css";
+import { takeQueuedTerminalCommand } from "./terminal-store";
 import { buildTerminalTheme } from "./terminal-theme";
 
 const DEFAULT_TERMINAL_FONT_FAMILY =
@@ -341,6 +342,10 @@ async function bootPty(entry: Entry) {
       rows: entry.term.rows,
     });
     setStatus(entry, { kind: "ready", shell: shellLabel(result.shell) });
+    const queued = takeQueuedTerminalCommand(entry.terminalId);
+    if (queued) {
+      void desktopApi.ptyWrite(entry.terminalId, queued);
+    }
     entry.term.focus();
   } catch (error) {
     setStatus(entry, {

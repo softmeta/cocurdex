@@ -5,10 +5,27 @@ export interface WorktreeEnvironmentProposal {
   proposedAt: string;
 }
 
+export const WORKSPACE_ACTION_PLATFORMS = [
+  "macos",
+  "linux",
+  "windows",
+] as const;
+
+export type WorkspaceActionPlatform =
+  (typeof WORKSPACE_ACTION_PLATFORMS)[number];
+
+export interface WorkspaceAction {
+  id: string;
+  name: string;
+  script: string;
+  platform: WorkspaceActionPlatform | null;
+}
+
 export interface WorkspaceWorktreeEnvironment {
   workspaceId: string;
   setupScript: string;
   cleanupScript: string;
+  actions: WorkspaceAction[];
   updatedAt: string | null;
   proposal: WorktreeEnvironmentProposal | null;
 }
@@ -20,9 +37,71 @@ export function emptyWorktreeEnvironment(
     workspaceId,
     setupScript: "",
     cleanupScript: "",
+    actions: [],
     updatedAt: null,
     proposal: null,
   };
+}
+
+function isActionPlatform(value: unknown): value is WorkspaceActionPlatform {
+  return (WORKSPACE_ACTION_PLATFORMS as readonly unknown[]).includes(value);
+}
+
+function normalizeWorkspaceAction(raw: unknown): WorkspaceAction | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const record = raw as Record<string, unknown>;
+  const script = typeof record.script === "string" ? record.script : "";
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  if (!id || !script.trim()) {
+    return null;
+  }
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  return {
+    id,
+    name: name || script.trim().split("\n")[0],
+    script,
+    platform: isActionPlatform(record.platform) ? record.platform : null,
+  };
+}
+
+export function normalizeWorkspaceActions(raw: unknown): WorkspaceAction[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const actions: WorkspaceAction[] = [];
+  for (const item of raw) {
+    const action = normalizeWorkspaceAction(item);
+    if (action && !seen.has(action.id)) {
+      seen.add(action.id);
+      actions.push(action);
+    }
+  }
+  return actions;
+}
+
+export function parseWorkspaceActionsJson(
+  json: string | null,
+): WorkspaceAction[] {
+  if (!json) {
+    return [];
+  }
+  try {
+    return normalizeWorkspaceActions(JSON.parse(json));
+  } catch {
+    return [];
+  }
+}
+
+export function workspaceActionsForPlatform(
+  actions: readonly WorkspaceAction[],
+  platform: WorkspaceActionPlatform,
+): WorkspaceAction[] {
+  return actions.filter(
+    (action) => action.platform === null || action.platform === platform,
+  );
 }
 
 // Proposed scripts run unattended in a login shell on every worktree create /

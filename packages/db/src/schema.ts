@@ -24,6 +24,7 @@ export function createSchemaSql() {
       proposed_cleanup_script TEXT,
       proposed_rationale TEXT,
       proposed_at TEXT,
+      actions_json TEXT NOT NULL DEFAULT '[]',
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
     );
 

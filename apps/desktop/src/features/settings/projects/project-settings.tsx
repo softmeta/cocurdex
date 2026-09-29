@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import { ChevronLeft, ChevronRight, Folder } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { EmptyState, Input, Text } from "@/components/ui";
+import { Button, EmptyState, Input, Text } from "@/components/ui";
 import {
   activeWorkspaceIdAtom,
   sortWorkspacesBySortOrder,
@@ -129,35 +129,42 @@ function ProjectBackButton({
   onBack(): void;
 }) {
   return (
-    <button
-      className="flex items-center gap-1 self-start text-body text-muted-foreground transition-colors hover:text-foreground"
+    <Button
+      className="-ms-2 self-start text-muted-foreground"
+      size="sm"
       type="button"
+      variant="ghost"
       onClick={onBack}
     >
-      <ChevronLeft className="size-4 rtl:rotate-180" />
+      <ChevronLeft className="size-3.5 rtl:rotate-180" />
       {label}
-    </button>
+    </Button>
   );
 }
 
 function ProjectIdentity({ workspace }: { workspace: WorkspaceRecord }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <Text as="p" truncate weight="medium">
-        {workspace.name}
-      </Text>
-      {workspace.rootPaths.map((rootPath) => (
-        <Text
-          as="p"
-          key={rootPath}
-          size="meta"
-          title={rootPath}
-          tone="muted"
-          truncate
-        >
-          {rootPath}
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-control border border-border/70 bg-card/45 text-muted-foreground">
+        <Folder className="size-4" />
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <Text as="p" truncate weight="medium">
+          {workspace.name}
         </Text>
-      ))}
+        {workspace.rootPaths.map((rootPath) => (
+          <Text
+            as="p"
+            key={rootPath}
+            size="meta"
+            title={rootPath}
+            tone="muted"
+            truncate
+          >
+            {rootPath}
+          </Text>
+        ))}
+      </div>
     </div>
   );
 }
@@ -173,7 +180,7 @@ function ProjectWorktreeSettings({
 
   return (
     <div className="settings-panel-enter flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3">
         <ProjectBackButton label={t("projects.back")} onBack={onBack} />
         <ProjectIdentity workspace={workspace} />
       </div>

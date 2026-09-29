@@ -59,6 +59,7 @@ import {
   isWorkspaceWatchDaemonEvent,
   newAssistantSessionId,
   normalizeAgentRoleName,
+  normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
   primaryWorkspaceRootPath,
@@ -754,6 +755,7 @@ export class CocurdexDaemonService {
       workspaceId: environment.workspaceId,
       setupScript: environment.setupScript,
       cleanupScript: environment.cleanupScript,
+      actions: normalizeWorkspaceActions(environment.actions),
       updatedAt: new Date().toISOString(),
       proposal: null,
     };

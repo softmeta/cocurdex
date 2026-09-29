@@ -2,6 +2,7 @@ import {
   type AgentDescriptor,
   type AgentSessionMode,
   DEFAULT_SCRIPT_RUN_SETTINGS,
+  emptyWorktreeEnvironment,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   type MessageRecord,
@@ -341,13 +342,8 @@ const fallbackApi: DesktopApi = {
     updatedAt: new Date().toISOString(),
   }),
   deleteTeamTemplate: async () => {},
-  getWorktreeEnvironment: async (workspaceId) => ({
-    workspaceId,
-    setupScript: "",
-    cleanupScript: "",
-    updatedAt: null,
-    proposal: null,
-  }),
+  getWorktreeEnvironment: async (workspaceId) =>
+    emptyWorktreeEnvironment(workspaceId),
   saveWorktreeEnvironment: async (payload) => ({
     ...payload,
     updatedAt: new Date().toISOString(),

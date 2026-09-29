@@ -114,6 +114,7 @@ import type {
   ViewFull,
   ViewSummary,
   WorkflowDefinitionRecord,
+  WorkspaceAction,
   WorkspaceEntry,
   WorkspaceFileRecord,
   WorkspaceGitDiffQuery,
@@ -363,6 +364,7 @@ export interface ProductApi {
     workspaceId: string;
     setupScript: string;
     cleanupScript: string;
+    actions: WorkspaceAction[];
   }): Promise<WorkspaceWorktreeEnvironment>;
   createAssistantSession(workspaceId: string): Promise<SessionRecord>;
   getOrCreateAssistantSession(workspaceId: string): Promise<SessionRecord>;
