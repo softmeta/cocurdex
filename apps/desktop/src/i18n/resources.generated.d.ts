@@ -1736,7 +1736,6 @@ export default interface Resources {
       title: "{{section}} placeholder";
     };
     projects: {
-      back: "Back to projects";
       current: "Current";
       description: "Choose a project to manage its settings.";
       emptyDescription: "Add a project from the Work group in the sidebar, then come back to configure it.";

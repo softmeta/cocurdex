@@ -431,7 +431,6 @@
     "title": "{{section}} 占位区"
   },
   "projects": {
-    "back": "返回项目列表",
     "current": "当前",
     "description": "选择一个项目，管理它的项目级设置。",
     "emptyDescription": "先在侧栏「工作」中添加项目，再回来为它配置。",

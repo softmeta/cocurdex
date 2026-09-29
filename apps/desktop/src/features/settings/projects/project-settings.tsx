@@ -1,29 +1,25 @@
 import type { WorkspaceRecord } from "@cocurdex/shared";
-import { useAtomValue } from "jotai";
-import { ChevronLeft, ChevronRight, Folder } from "lucide-react";
+import { useAtom, useAtomValue } from "jotai";
+import { ChevronRight, Folder } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, EmptyState, Input, Text } from "@/components/ui";
+import { EmptyState, Input, Text } from "@/components/ui";
 import {
   activeWorkspaceIdAtom,
   sortWorkspacesBySortOrder,
   workspacesAtom,
 } from "@/features/workspaces";
+import { selectedSettingsProjectIdAtom } from "./project-settings-store";
 import { WorktreeEnvironmentEditor } from "./worktree-environment-editor";
 
 export function ProjectSettingsPanel() {
   const workspaces = useAtomValue(workspacesAtom);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useAtom(selectedSettingsProjectIdAtom);
   const selected =
     workspaces.find((workspace) => workspace.id === selectedId) ?? null;
 
   if (selected) {
-    return (
-      <ProjectWorktreeSettings
-        workspace={selected}
-        onBack={() => setSelectedId(null)}
-      />
-    );
+    return <ProjectWorktreeSettings workspace={selected} />;
   }
 
   return (
@@ -121,70 +117,32 @@ function ProjectSettingsList({
   );
 }
 
-function ProjectBackButton({
-  label,
-  onBack,
-}: {
-  label: string;
-  onBack(): void;
-}) {
+function ProjectRootPaths({ workspace }: { workspace: WorkspaceRecord }) {
   return (
-    <Button
-      className="-ms-2 self-start text-muted-foreground"
-      size="sm"
-      type="button"
-      variant="ghost"
-      onClick={onBack}
-    >
-      <ChevronLeft className="size-3.5 rtl:rotate-180" />
-      {label}
-    </Button>
-  );
-}
-
-function ProjectIdentity({ workspace }: { workspace: WorkspaceRecord }) {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-control border border-border/70 bg-card/45 text-muted-foreground">
-        <Folder className="size-4" />
-      </div>
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <Text as="p" truncate weight="medium">
-          {workspace.name}
-        </Text>
-        {workspace.rootPaths.map((rootPath) => (
-          <Text
-            as="p"
-            key={rootPath}
-            size="meta"
-            title={rootPath}
-            tone="muted"
-            truncate
-          >
+    <div className="flex min-w-0 flex-col gap-0.5">
+      {workspace.rootPaths.map((rootPath) => (
+        <div className="flex min-w-0 items-center gap-1.5" key={rootPath}>
+          <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+          <Text size="meta" title={rootPath} tone="muted" truncate>
             {rootPath}
           </Text>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 function ProjectWorktreeSettings({
-  onBack,
   workspace,
 }: {
-  onBack(): void;
   workspace: WorkspaceRecord;
 }) {
   const { t } = useTranslation("settings");
 
   return (
-    <div className="settings-panel-enter flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <ProjectBackButton label={t("projects.back")} onBack={onBack} />
-        <ProjectIdentity workspace={workspace} />
-      </div>
-      <section className="flex flex-col gap-5 border-border/60 border-t pt-5">
+    <div className="settings-panel-enter flex flex-col gap-6">
+      <ProjectRootPaths workspace={workspace} />
+      <section className="flex flex-col gap-4">
         <div className="sticky top-[var(--settings-sticky-offset)] z-[5] min-w-0 bg-background pb-2">
           <Text as="h3" size="base" weight="semibold">
             {t("projects.environmentTitle")}
