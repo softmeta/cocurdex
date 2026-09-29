@@ -40,6 +40,7 @@ import {
   SessionModeSubmenu,
 } from "@/features/sessions";
 import { cn } from "@/lib";
+import { AttachContextSubmenus } from "./attach-context-submenus";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import {
   type ComposerDraft,
@@ -531,6 +532,11 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
               {t("common:actions.attach")}
             </span>
           </AppDropdownItem>
+          <AttachContextSubmenus
+            loadSkills={slashCommands.fetchCommands}
+            onInsertContext={insertContextMention}
+            onSelectSkill={slashCommands.selectCommand}
+          />
         </DropdownMenuGroup>
         {attachMenuExtras ? (
           <>

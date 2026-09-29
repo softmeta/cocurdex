@@ -41,7 +41,7 @@ import {
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
-import { SearchPalette } from "../search-palette";
+import { SearchPalette, useOpenContextItemBridge } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
 import { ScreenNavButtons, SidebarToggleButton } from "../sidebar";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
@@ -181,6 +181,7 @@ export function AppShellFrame({
   const setSidebarTab = useSetAtom(sidebarTabAtom);
   const composerRef = useChatContext(() => onChatDockVisibilityChange("open"));
   useChatBrowserContext();
+  useOpenContextItemBridge();
   const dock = useDockGeometry();
   const requestChatContext = useSetAtom(requestChatContextAtom);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);

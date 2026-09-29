@@ -1,16 +1,15 @@
-import type { ContextFileAttachment } from "@cocurdex/shared";
 import {
-  type ContextFolderAttachment,
+  type ContextAttachment,
+  getContextAttachmentKey,
   isContextFolderAttachment,
+  isContextItemAttachment,
 } from "@cocurdex/shared";
 import { renderFileTypeIconHtml } from "@/components";
 import { cn } from "@/lib";
 
 // Mention identity/types live in this leaf module so the editor component can
 // depend on the DOM helpers without a cycle.
-export type MentionableAttachment =
-  | ContextFileAttachment
-  | ContextFolderAttachment;
+export type MentionableAttachment = ContextAttachment;
 
 export interface MentionAnchor {
   left: number;
@@ -18,11 +17,23 @@ export interface MentionAnchor {
   bottom: number;
 }
 
-export function getMentionRegistryKey(attachment: MentionableAttachment) {
-  if (isContextFolderAttachment(attachment)) {
-    return `folder:${attachment.folderPath}`;
+export const getMentionRegistryKey = getContextAttachmentKey;
+
+const CONTEXT_ITEM_ICON_PATHS = {
+  issue:
+    '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/>',
+  note: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+} as const;
+
+function renderMentionIconHtml(attachment: MentionableAttachment) {
+  if (isContextItemAttachment(attachment)) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em">${CONTEXT_ITEM_ICON_PATHS[attachment.itemKind]}</svg>`;
   }
-  return `file:${attachment.filePath}:${attachment.startLine}:${attachment.endLine}`;
+  const isFolder = isContextFolderAttachment(attachment);
+  return renderFileTypeIconHtml(
+    isFolder ? attachment.folderPath : attachment.filePath,
+    { isFolder },
+  );
 }
 
 export const MENTION_KEY_ATTR = "data-mention-key";
@@ -61,13 +72,7 @@ export function pillElementFromAttachment(
   span.className = MENTION_PILL_CLASSNAME;
   span.contentEditable = "false";
 
-  const path = isContextFolderAttachment(attachment)
-    ? attachment.folderPath
-    : (attachment as Exclude<MentionableAttachment, ContextFolderAttachment>)
-        .filePath;
-  const iconHtml = renderFileTypeIconHtml(path, {
-    isFolder: isContextFolderAttachment(attachment),
-  });
+  const iconHtml = renderMentionIconHtml(attachment);
   if (iconHtml) {
     const icon = document.createElement("span");
     icon.className = MENTION_ICON_CLASSNAME;

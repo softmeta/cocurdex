@@ -1,14 +1,8 @@
-import type {
-  ContextFileAttachment,
-  ContextFolderAttachment,
-  MessageAttachment,
-} from "@cocurdex/shared";
+import type { ContextAttachment, MessageAttachment } from "@cocurdex/shared";
 import { isContextAttachment } from "@cocurdex/shared";
 import { FileText, X } from "lucide-react";
 import { cn } from "@/lib";
 import { getContextAttachmentMentionLabel } from "./use-context-file-mentions";
-
-type ContextAttachment = ContextFileAttachment | ContextFolderAttachment;
 
 export function ContextAttachmentChips({
   attachments,

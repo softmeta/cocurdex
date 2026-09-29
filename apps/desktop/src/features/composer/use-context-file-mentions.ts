@@ -1,8 +1,10 @@
 import {
-  type ContextFileAttachment,
   type ContextFolderAttachment,
   formatContextFileChipLabel,
+  getContextItemRef,
   isContextFolderAttachment,
+  isContextItemAttachment,
+  type ContextAttachment as MentionAttachment,
 } from "@cocurdex/shared";
 import type { KeyboardEvent, RefObject } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -22,8 +24,6 @@ import { isMenuRowSidecarEventTarget } from "./menu-row-sidecar-target";
 
 const CONTEXT_FILE_RESULT_LIMIT = 20;
 
-type ContextAttachment = ContextFileAttachment | ContextFolderAttachment;
-
 interface UseContextFileMentionsOptions {
   attachments: MentionableAttachment[];
   editorRef: RefObject<MentionEditorHandle | null>;
@@ -31,7 +31,10 @@ interface UseContextFileMentionsOptions {
   workspaceRootPaths?: string[];
 }
 
-function getContextAttachmentPath(attachment: ContextAttachment) {
+function getContextAttachmentPath(attachment: MentionAttachment) {
+  if (isContextItemAttachment(attachment)) {
+    return getContextItemRef(attachment);
+  }
   return isContextFolderAttachment(attachment)
     ? attachment.folderPath
     : attachment.filePath;
@@ -246,8 +249,11 @@ export type ContextFileMentionsState = ReturnType<
 // their line range so a partial span reads as "ipc.ts L12-13"; whole files
 // and folders fall back to their base name like a typed @-mention.
 export function getContextAttachmentMentionLabel(
-  attachment: ContextFileAttachment | ContextFolderAttachment,
+  attachment: MentionAttachment,
 ) {
+  if (isContextItemAttachment(attachment)) {
+    return attachment.title;
+  }
   if (isContextFolderAttachment(attachment)) {
     const folderName = attachment.folderPath.split("/").pop();
     return folderName || attachment.folderPath;
@@ -258,9 +264,12 @@ export function getContextAttachmentMentionLabel(
 // Serialized form written into the outgoing message body for an externally
 // provided context attachment, mirroring typed @-mentions (`@relative/path`).
 export function getContextAttachmentSerializedText(
-  attachment: ContextFileAttachment | ContextFolderAttachment,
+  attachment: MentionAttachment,
   workspaceRootPaths?: readonly string[] | null,
 ) {
+  if (isContextItemAttachment(attachment)) {
+    return `@${getContextItemRef(attachment)}`;
+  }
   const absolutePath = isContextFolderAttachment(attachment)
     ? attachment.folderPath
     : attachment.filePath;

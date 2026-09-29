@@ -47,19 +47,24 @@ export function useSlashCommands({
 
   // Fetch commands lazily the first time the user opens the menu for a given
   // agent + workspace, driven from the composer's change event (no effect).
-  const loadCommands = useCallback(() => {
-    if (runtimeCommandList) {
-      return;
+  const fetchCommands = useCallback(async () => {
+    if (commands) {
+      return commands;
     }
     if (!agentSupportsSlashCommands(agentType) || !workspaceRootPath) {
-      setCache({ key: cacheKey, commands: [] });
-      return;
+      return [];
     }
-    void desktopApi
-      .listSlashCommands(agentType as AgentId, workspaceRootPath)
-      .then((result) => setCache({ key: cacheKey, commands: result }))
-      .catch(() => setCache({ key: cacheKey, commands: [] }));
-  }, [agentType, cacheKey, runtimeCommandList, workspaceRootPath]);
+    const result = await desktopApi.listSlashCommands(
+      agentType as AgentId,
+      workspaceRootPath,
+    );
+    setCache({ key: cacheKey, commands: result });
+    return result;
+  }, [agentType, cacheKey, commands, workspaceRootPath]);
+
+  const loadCommands = useCallback(() => {
+    fetchCommands().catch(() => setCache({ key: cacheKey, commands: [] }));
+  }, [cacheKey, fetchCommands]);
 
   const handleSlashQueryChange = useCallback(
     (nextQuery: string | null) => {
@@ -168,6 +173,7 @@ export function useSlashCommands({
   };
 
   return {
+    fetchCommands,
     handleKeyDown,
     highlightedIndex,
     isOpen,

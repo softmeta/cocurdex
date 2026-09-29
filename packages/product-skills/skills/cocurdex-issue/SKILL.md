@@ -19,6 +19,10 @@ cocurdex issue delete <id> --json
 cocurdex issue views --json
 ```
 
+If the prompt already contains an attached `<issue … complete="true">` block,
+treat it as the full issue and do not run `cocurdex issue show` for it. Use the
+CLI only to change the issue, or when the user asks for its current state.
+
 Use `--view <id>` when the user names a non-default view. Treat `todo` and
 `ticket` as aliases for the same Issue domain. Report stable ids returned by the
 CLI. Repository publication is a separate explicit export action.

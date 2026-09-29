@@ -3,14 +3,17 @@ import path from "node:path";
 import type {
   ContextFileAttachment,
   ContextFolderAttachment,
+  ContextItemAttachment,
   DocumentAttachment,
   ImageAttachment,
   MessageAttachment,
   MessageRecord,
 } from "@cocurdex/shared";
 import {
+  getContextItemRef,
   isContextFileAttachment,
   isContextFolderAttachment,
+  isContextItemAttachment,
   isDocumentAttachment,
   isImageAttachment,
 } from "@cocurdex/shared";
@@ -20,6 +23,7 @@ export function splitAttachments(attachments: MessageAttachment[]) {
   return {
     contextFiles: attachments.filter(isContextFileAttachment),
     contextFolders: attachments.filter(isContextFolderAttachment),
+    contextItems: attachments.filter(isContextItemAttachment),
     documents: attachments.filter(isDocumentAttachment),
     images: attachments.filter(isImageAttachment),
   };
@@ -137,6 +141,28 @@ export function formatContextFolderAttachments(
     .join("");
 }
 
+export function formatContextItemAttachments(
+  attachments: ContextItemAttachment[],
+) {
+  return attachments
+    .map((attachment) =>
+      [
+        "",
+        `@${getContextItemRef(attachment)}`,
+        `The user attached this ${attachment.itemKind}. Its full content is below; do not fetch it again.`,
+        `<${attachment.itemKind} id="${escapeXmlAttribute(
+          attachment.id,
+        )}" title="${escapeXmlAttribute(attachment.title)}" complete="true">`,
+        "<![CDATA[",
+        escapeCdata(attachment.body),
+        "]]>",
+        `</${attachment.itemKind}>`,
+        "",
+      ].join("\n"),
+    )
+    .join("");
+}
+
 // Only reached when the agent cannot take images natively (see
 // `includeImageSummaries`), and then the path is the sole way it can get at the
 // bytes at all — without it the agent knows an image exists and goes hunting
@@ -157,9 +183,10 @@ export function buildTextWithContextAttachments(
   attachments: MessageAttachment[],
   options: { includeImageSummaries?: boolean } = {},
 ) {
-  const { contextFiles, contextFolders, images } =
+  const { contextFiles, contextFolders, contextItems, images } =
     splitAttachments(attachments);
   const text = content.trim();
+  const itemText = formatContextItemAttachments(contextItems);
   const contextText = formatContextFileAttachments(contextFiles);
   const folderText = formatContextFolderAttachments(contextFolders);
   const imageSummaries =
@@ -172,7 +199,7 @@ export function buildTextWithContextAttachments(
           )
           .join("");
 
-  return [contextText, folderText, imageSummaries, text]
+  return [contextText, folderText, itemText, imageSummaries, text]
     .filter(Boolean)
     .join("\n");
 }

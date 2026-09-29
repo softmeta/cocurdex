@@ -56,8 +56,39 @@ describe("task message command validation", () => {
     { sessionId: "../escape", content: "Run" },
     { sessionId: "task-1", content: "Run", delivery: "invalid" },
     { sessionId: "task-1", content: "Run", attachments: {} },
+    {
+      sessionId: "task-1",
+      content: "Run",
+      attachments: [
+        {
+          kind: "context-item",
+          itemKind: "doc",
+          id: "n1",
+          title: "",
+          body: "",
+        },
+      ],
+    },
   ])("rejects malformed commands: %j", (input) => {
     expect(() => validateSendSessionCommand(input)).toThrow();
+  });
+
+  it("accepts a note-only message", () => {
+    expect(() =>
+      validateSendSessionCommand({
+        sessionId: "task-1",
+        content: "",
+        attachments: [
+          {
+            kind: "context-item",
+            itemKind: "note",
+            id: "n1",
+            title: "Plan",
+            body: "# Goal",
+          },
+        ],
+      }),
+    ).not.toThrow();
   });
 
   it("accepts an image-only message and the complete reasoning effort ladder", () => {

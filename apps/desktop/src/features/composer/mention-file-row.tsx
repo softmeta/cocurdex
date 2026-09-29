@@ -21,9 +21,7 @@ export function MentionFileRow({
         isFolder={file.kind === "directory"}
         path={file.path}
       />
-      <span className="min-w-0 flex-1 truncate text-body font-medium">
-        {label}
-      </span>
+      <span className="min-w-0 flex-1 truncate text-body">{label}</span>
       {directory ? (
         <span
           className={cn(

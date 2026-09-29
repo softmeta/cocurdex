@@ -17,5 +17,9 @@ cocurdex note backlinks <id> --json
 cocurdex note tags [<id>] --json
 ```
 
+If the prompt already contains an attached `<note … complete="true">` block,
+treat it as the full note and do not run `cocurdex note show` for it. Use the
+CLI only to change the note, or when the user asks for its current state.
+
 Markdown is the note body format at the API boundary, not an on-disk source of
 truth. Publishing a note to a repository requires an explicit export flow.

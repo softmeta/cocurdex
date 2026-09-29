@@ -4,6 +4,7 @@ import {
   buildTextWithContextAttachments,
   formatContextFileAttachments,
   formatContextFolderAttachments,
+  formatContextItemAttachments,
   formatImageAttachmentSummary,
 } from "./attachment-utils";
 
@@ -112,6 +113,28 @@ describe("formatContextFileAttachments", () => {
       '<context_file path="/repo/testdata.json" language="json" omitted="true" />',
     );
     expect(text).not.toContain("<![CDATA[");
+  });
+});
+
+describe("formatContextItemAttachments", () => {
+  it("inlines note bodies under a ref marker the message body can point to", () => {
+    const text = formatContextItemAttachments([
+      {
+        kind: "context-item",
+        itemKind: "note",
+        id: "n1",
+        title: 'Plan "A" <draft>',
+        body: "# Goal\nShip ]]> safely",
+      },
+    ]);
+
+    expect(text).toContain("@note:n1");
+    expect(text).toContain("do not fetch it again");
+    expect(text).toContain(
+      '<note id="n1" title="Plan &quot;A&quot; &lt;draft&gt;" complete="true">',
+    );
+    expect(text).toContain("# Goal\nShip ]]]]><![CDATA[> safely");
+    expect(text).toContain("</note>");
   });
 });
 

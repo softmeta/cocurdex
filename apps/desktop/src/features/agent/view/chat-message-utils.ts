@@ -1,17 +1,18 @@
-import type {
-  ContextFileAttachment,
-  ContextFolderAttachment,
-  MessageRecord,
+import type { ContextAttachment, MessageRecord } from "@cocurdex/shared";
+import {
+  getContextItemRef,
+  isContextFolderAttachment,
+  isContextItemAttachment,
 } from "@cocurdex/shared";
-import { isContextFolderAttachment } from "@cocurdex/shared";
-
-type ContextAttachment = ContextFileAttachment | ContextFolderAttachment;
 
 export type MentionContentSegment =
   | { kind: "text"; text: string }
   | { kind: "mention"; attachment: ContextAttachment };
 
 function getAttachmentPath(attachment: ContextAttachment) {
+  if (isContextItemAttachment(attachment)) {
+    return getContextItemRef(attachment);
+  }
   return isContextFolderAttachment(attachment)
     ? attachment.folderPath
     : attachment.filePath;
