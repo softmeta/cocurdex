@@ -54,11 +54,16 @@ export function ActivityBlock({
 
   return (
     <Collapsible
-      className="group/activity w-full min-w-0 max-w-3xl not-first:mt-3"
+      className="group/activity w-full min-w-0 max-w-3xl"
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger className="mb-1 flex w-full cursor-pointer items-center gap-2 py-0.5 text-meta transition-colors hover:text-chat-fg-secondary">
+      <CollapsibleTrigger
+        className={cn(
+          "flex w-full cursor-pointer items-center gap-2 py-0.5 text-meta transition-colors hover:text-chat-fg-secondary",
+          open && "mb-1",
+        )}
+      >
         {counts.length > 0 ? (
           <span
             className={cn(

@@ -56,6 +56,10 @@ import {
   UserMessageContent,
 } from "./chat-message";
 import { isReasoningMessage } from "./chat-message-utils";
+import {
+  getSegmentKey,
+  groupActivityWithFollowingItem,
+} from "./chat-segment-groups";
 import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
 import {
   getTurnEndMessageId,
@@ -883,31 +887,40 @@ export const ChatConversationItem = memo(function ChatConversationItem({
       ) : null}
 
       {visibleItems.length > 0 || showActivity ? (
-        <div className="flex flex-col gap-1">
-          {segments.map((segment, index) => {
-            if (segment.kind === "item") {
-              return renderTimelineItem(segment.item);
-            }
+        <div className="flex flex-col gap-5">
+          {groupActivityWithFollowingItem(segments).map((group) => (
+            <div
+              className="flex flex-col gap-0.5"
+              key={getSegmentKey(group[0])}
+            >
+              {group.map((segment) => {
+                if (segment.kind === "item") {
+                  return renderTimelineItem(segment.item);
+                }
 
-            const summary = getActivitySegmentSummary(segment.items);
+                const summary = getActivitySegmentSummary(segment.items);
 
-            return (
-              <ActivityBlock
-                busy={isActivityHeaderBusy({
-                  hasActiveToolCall: summary.isBusy,
-                  isLastSegment: index === segments.length - 1,
-                  isLiveConversation: showActivity,
-                })}
-                key={segment.items[0]?.id ?? "activity"}
-                stateKey={`activity:${segment.items[0]?.id}`}
-                reasoningCount={summary.reasoningCount}
-                replyCount={summary.replyCount}
-                toolCount={summary.toolCount}
-              >
-                {segment.items.map((item) => renderTimelineItem(item, true))}
-              </ActivityBlock>
-            );
-          })}
+                return (
+                  <ActivityBlock
+                    busy={isActivityHeaderBusy({
+                      hasActiveToolCall: summary.isBusy,
+                      isLastSegment: segment === segments.at(-1),
+                      isLiveConversation: showActivity,
+                    })}
+                    key={getSegmentKey(segment)}
+                    stateKey={`activity:${segment.items[0]?.id}`}
+                    reasoningCount={summary.reasoningCount}
+                    replyCount={summary.replyCount}
+                    toolCount={summary.toolCount}
+                  >
+                    {segment.items.map((item) =>
+                      renderTimelineItem(item, true),
+                    )}
+                  </ActivityBlock>
+                );
+              })}
+            </div>
+          ))}
           {showActivity && activity ? (
             <ActivityLine activity={activity} runStartedAt={runStartedAt} />
           ) : null}
