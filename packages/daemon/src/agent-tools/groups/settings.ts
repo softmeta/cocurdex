@@ -210,7 +210,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "renderer",
     description:
-      "How reasoning and tool calls render in chat transcripts: 'expanded' shows every cluster inline, 'condensed' folds each run of reasoning and tool calls into a collapsible block, 'hidden' shows answers only.",
+      "Transcript view: how reasoning, tool calls, and interim replies render in chat. 'hidden' (Concise) shows final replies only, 'condensed' (Standard) folds each finished turn's process into one collapsible block, 'expanded' (Verbose) shows everything inline.",
     valueSchema: {
       type: "object",
       properties: {

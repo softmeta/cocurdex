@@ -13,12 +13,14 @@ export function ActivityBlock({
   busy = false,
   children,
   reasoningCount,
+  replyCount,
   stateKey,
   toolCount,
 }: {
   busy?: boolean;
   children: ReactNode;
   reasoningCount: number;
+  replyCount: number;
   stateKey: string;
   toolCount: number;
 }) {
@@ -47,6 +49,7 @@ export function ActivityBlock({
     reasoningCount > 0
       ? t("activity.reasoningCount", { count: reasoningCount })
       : null,
+    replyCount > 0 ? t("activity.replyCount", { count: replyCount }) : null,
   ].filter(Boolean);
 
   return (

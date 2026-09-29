@@ -1,16 +1,16 @@
 export const activityDisplayModes = [
-  "expanded",
-  "condensed",
   "hidden",
+  "condensed",
+  "expanded",
 ] as const;
 export type ActivityDisplayMode = (typeof activityDisplayModes)[number];
 
 export interface ChatDisplaySettings {
-  // How the pre-answer process (reasoning + tool calls) renders, from most to
-  // least detail:
-  // - expanded: every cluster open inline
+  // How the process (reasoning, tool calls, interim replies) renders, from
+  // least to most detail:
+  // - hidden: process removed, only final replies remain
   // - condensed: the whole turn's process folds into one activity block (default)
-  // - hidden: process removed, only answers remain
+  // - expanded: every cluster open inline
   activityDisplay: ActivityDisplayMode;
 }
 

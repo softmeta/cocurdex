@@ -58,8 +58,10 @@ import {
 import { isReasoningMessage } from "./chat-message-utils";
 import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
 import {
+  getTurnEndMessageId,
   getVisibleConversationItems,
   segmentConversationItems,
+  withoutInterimReplies,
 } from "./chat-timeline";
 import { messageOriginLabel } from "./message-origin-label";
 import { turnStatsByMessageAtom } from "./message-store";
@@ -721,9 +723,10 @@ function getActivitySegmentSummary(items: TimelineGroup[]) {
   const toolCalls = items.flatMap((item) =>
     item.kind === "toolCalls" ? item.toolCalls : [],
   );
-  const reasoningCount = items.filter(
-    (item) => item.kind === "message" && isReasoningMessage(item.message),
-  ).length;
+  const messages = items.flatMap((item) =>
+    item.kind === "message" ? [item.message] : [],
+  );
+  const reasoningCount = messages.filter(isReasoningMessage).length;
 
   return {
     isBusy: toolCalls.some(
@@ -731,6 +734,7 @@ function getActivitySegmentSummary(items: TimelineGroup[]) {
         toolCall.status === "pending" || toolCall.status === "in_progress",
     ),
     reasoningCount,
+    replyCount: messages.length - reasoningCount,
     toolCount: toolCalls.length,
   };
 }
@@ -776,13 +780,19 @@ export const ChatConversationItem = memo(function ChatConversationItem({
 }) {
   const renderStartedAt = isPerfEnabled() ? performance.now() : 0;
   const perfSessionId = getConversationSessionId(conversationGroup);
-  const visibleItems = getVisibleConversationItems(conversationGroup);
   const showActivity = isRunning && isLatestConversation;
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
+  const conversationItems = getVisibleConversationItems(conversationGroup);
+  const visibleItems =
+    activityDisplay === "hidden" && !showActivity
+      ? withoutInterimReplies(conversationItems)
+      : conversationItems;
   const segments = segmentConversationItems(
     visibleItems,
     activityDisplay === "condensed",
+    !showActivity,
   );
+  const turnEndMessageId = getTurnEndMessageId(visibleItems);
 
   const renderTimelineItem = (group: TimelineGroup, nested = false) => {
     if (group.kind === "toolCalls") {
@@ -826,7 +836,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
         isStreamingLatest={group.message.id === latestMessageId}
         key={group.id}
         message={group.message}
-        showActions={showMessageActions}
+        showActions={showMessageActions && group.id === turnEndMessageId}
       />
     );
   };
@@ -889,6 +899,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
                 key={segment.items[0]?.id ?? "activity"}
                 stateKey={`activity:${segment.items[0]?.id}`}
                 reasoningCount={summary.reasoningCount}
+                replyCount={summary.replyCount}
                 toolCount={summary.toolCount}
               >
                 {segment.items.map((item) => renderTimelineItem(item, true))}
