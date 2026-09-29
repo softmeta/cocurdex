@@ -1,5 +1,11 @@
 import type { ContextFolderAttachment } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
+import {
+  Copy,
+  FolderOpen,
+  type LucideIcon,
+  MessageSquarePlus,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui";
 import { desktopApi } from "@/lib";
@@ -12,13 +18,16 @@ import {
 
 function FileTreeContextMenuItem({
   children,
+  icon: Icon,
   onClick,
 }: {
   children: string;
+  icon: LucideIcon;
   onClick(): void;
 }) {
   return (
-    <ContextMenuItem className="px-2 py-1 text-meta" onClick={onClick}>
+    <ContextMenuItem onClick={onClick}>
+      <Icon className="size-3.5" />
       {children}
     </ContextMenuItem>
   );
@@ -68,20 +77,23 @@ export function FileTreeContextMenuItems({
 
   return (
     <>
-      <FileTreeContextMenuItem onClick={handleAddToChat}>
+      <FileTreeContextMenuItem
+        icon={MessageSquarePlus}
+        onClick={handleAddToChat}
+      >
         {t("actions.addToChat")}
       </FileTreeContextMenuItem>
       {desktopApi.capabilities.fileManager ? (
-        <FileTreeContextMenuItem onClick={handleReveal}>
+        <FileTreeContextMenuItem icon={FolderOpen} onClick={handleReveal}>
           {t("contextMenu.revealInFinder")}
         </FileTreeContextMenuItem>
       ) : null}
       <ContextMenuSeparator />
-      <FileTreeContextMenuItem onClick={handleCopyPath}>
+      <FileTreeContextMenuItem icon={Copy} onClick={handleCopyPath}>
         {t("contextMenu.copyPath")}
       </FileTreeContextMenuItem>
       {relativePath ? (
-        <FileTreeContextMenuItem onClick={handleCopyRelativePath}>
+        <FileTreeContextMenuItem icon={Copy} onClick={handleCopyRelativePath}>
           {t("contextMenu.copyRelativePath")}
         </FileTreeContextMenuItem>
       ) : null}

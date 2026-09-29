@@ -34,7 +34,7 @@
   /* Base radius tracks control (6px). Semantic scale lives in theme-tailwind;
    * shadcn rounded-sm/md/lg utilities are remapped there onto that scale. */
   --radius: 6px;
-  --sidebar: oklch(0.965 0 0);
+  --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.6 0.118 184.704);
   --sidebar-primary-foreground: oklch(0.984 0.014 180.72);

@@ -361,13 +361,13 @@
 
 /* Dark surface ramp (mirrors light: sunk nav < content canvas < raised card):
  *   chat + editor  --background 0.145 (shared canvas)
- *   session/nav    --sidebar     ~0.175  (raised above canvas)
+ *   session/nav    --sidebar     ~0.21   (raised above canvas)
  * Preset ties --sidebar and --card both to 0.205; without an explicit sidebar
  * step the chat dock session drawer and chat body paint as one slab. */
 .dark {
   --modal-scrim: rgb(0 0 0 / 0.4);
-  /* Half step from shell toward card — separates nav from the shared canvas. */
-  --sidebar: color-mix(in srgb, var(--background) 50%, var(--card));
+  /* Lifted off the near-black canvas enough to read as a separate plane. */
+  --sidebar: color-mix(in srgb, var(--foreground) 7%, var(--background));
   /* Dark canvas swallows borders and shadows, so the input plane separates by
    * lifting its fill instead (light does the opposite — see :root). */
   --chat-surface-input: color-mix(
