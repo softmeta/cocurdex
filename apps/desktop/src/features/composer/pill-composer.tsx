@@ -198,7 +198,7 @@ export function PillComposer({
         <div
           ref={pillComposerRef}
           className={cn(
-            "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 border border-chat-border bg-chat-surface-input px-3 shadow-chat-soft",
+            "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 border border-chat-border bg-chat-surface-input px-3",
             getPillComposerShapeClassName(isExpanded),
             isExpanded && "min-h-12 py-2",
             !isExpanded && "h-12",

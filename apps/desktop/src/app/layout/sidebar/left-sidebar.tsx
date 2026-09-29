@@ -68,7 +68,7 @@ function SidebarTabTrigger({
 }) {
   return (
     <TabsTrigger
-      className="h-6 flex-1 rounded-control px-2 text-body font-medium text-sidebar-fg-subtle hover:text-sidebar-fg-muted dark:text-sidebar-fg-subtle dark:hover:text-sidebar-fg-muted data-active:bg-background data-active:text-sidebar-fg data-active:shadow-sm dark:data-active:bg-background dark:data-active:text-sidebar-fg"
+      className="h-6 flex-1 rounded-control px-2 text-body font-medium text-sidebar-fg-subtle hover:text-sidebar-fg-muted dark:text-sidebar-fg-subtle dark:hover:text-sidebar-fg-muted data-active:bg-background data-active:text-sidebar-fg data-active:shadow-sm dark:data-active:bg-sidebar-accent dark:data-active:text-sidebar-fg"
       value={value}
     >
       {children}
@@ -78,7 +78,7 @@ function SidebarTabTrigger({
 
 function SidebarShell({ children }: { children?: ReactNode }) {
   return (
-    <aside className="sidebar-scrollbar @container/sidebar flex h-full min-w-0 flex-col border-r border-sidebar-border bg-sidebar">
+    <aside className="sidebar-scrollbar @container/sidebar flex h-full min-w-0 flex-col bg-sidebar">
       {children}
     </aside>
   );
@@ -249,7 +249,7 @@ export function LeftSidebar({
               gutter as the list rows below, whose inset comes from the
               scroll area's pe-3 padding. */}
           <div className="shrink-0 pe-3">
-            <TabsList className="h-7 w-full gap-0.5 rounded-control bg-sidebar-surface-active p-0.5">
+            <TabsList className="h-7 w-full gap-0.5 rounded-control bg-sidebar-surface-active p-0.5 dark:bg-background">
               <SidebarTabTrigger value="projects">
                 {t("sessions:sidebar.projectsGroup", {
                   defaultValue: "Work",

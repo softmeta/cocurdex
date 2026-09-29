@@ -316,7 +316,7 @@ export function RightEditorPanel({
 
   return (
     <aside
-      className="flex h-full min-w-0 flex-col overflow-hidden border-l border-editor-border bg-editor-shell"
+      className="flex h-full min-w-0 flex-col overflow-hidden bg-editor-shell"
       ref={handlePanelRef}
     >
       <ViewSwitcherTabs
