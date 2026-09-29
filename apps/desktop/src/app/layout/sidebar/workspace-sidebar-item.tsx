@@ -258,7 +258,7 @@ export function WorkspaceSidebarItem({
                 {limitedTree.hiddenRootCount > 0 ? (
                   <button
                     type="button"
-                    className="hover:text-sidebar-fg"
+                    className="min-w-0 truncate text-start hover:text-sidebar-fg"
                     onClick={() => showMoreSessions(workspace.id)}
                   >
                     {t("sidebar.showMore", {
@@ -269,7 +269,7 @@ export function WorkspaceSidebarItem({
                 {canShowLess ? (
                   <button
                     type="button"
-                    className="hover:text-sidebar-fg"
+                    className="min-w-0 truncate text-start hover:text-sidebar-fg"
                     onClick={() => resetSessionRootLimit(workspace.id)}
                   >
                     {t("sidebar.showLess")}
