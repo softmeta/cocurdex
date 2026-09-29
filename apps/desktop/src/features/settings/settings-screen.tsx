@@ -1,3 +1,4 @@
+import { useSetAtom } from "jotai";
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout";
@@ -29,7 +30,11 @@ import { McpSettingsPanel } from "./mcp";
 import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
 import { OssLicensesSettingsPanel } from "./oss-licenses";
-import { ProjectSettingsPanel } from "./projects";
+import {
+  ProjectSettingsHeading,
+  ProjectSettingsPanel,
+  selectedSettingsProjectIdAtom,
+} from "./projects";
 import { ProviderSettingsPanel } from "./providers";
 import { SettingRow, SettingsGroup } from "./settings-fields";
 import {
@@ -261,6 +266,7 @@ export function SettingsScreen({
 }: SettingsScreenProps) {
   const { t } = useTranslation(["editor", "settings"]);
   const sidebarClusters = groupSettingsSectionsByCluster();
+  const setSelectedProjectId = useSetAtom(selectedSettingsProjectIdAtom);
   const activeSectionMeta =
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];
@@ -270,12 +276,20 @@ export function SettingsScreen({
     activeSection === "workflows" ||
     activeSection === "providers";
   const settingsHeading = (
-    <header className="shrink-0">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">
-        {t(`settings:sections.${activeSectionMeta.labelKey}`)}
-      </h1>
+    <header className="min-w-0 shrink-0">
+      {activeSection === "projects" ? (
+        <ProjectSettingsHeading />
+      ) : (
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          {t(`settings:sections.${activeSectionMeta.labelKey}`)}
+        </h1>
+      )}
     </header>
   );
+  const handleSectionChange = (sectionId: SettingsSectionId) => {
+    setSelectedProjectId(null);
+    onSectionChange(sectionId);
+  };
   const settingsPanel = (
     <SectionPanel
       appearanceSettings={appearanceSettings}
@@ -307,7 +321,7 @@ export function SettingsScreen({
             activeSection={activeSection}
             clusters={sidebarClusters}
             sidebarWidth={sidebarWidth}
-            onSectionChange={onSectionChange}
+            onSectionChange={handleSectionChange}
           />
         </ResizableSidebarSlot>
       ) : null}
@@ -338,8 +352,10 @@ export function SettingsScreen({
         ) : (
           <div className="h-[calc(100vh-2rem)] pb-8">
             <ScrollArea className="h-full">
-              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-8 px-4 pt-10 pb-10 sm:px-6 lg:px-8">
-                {settingsHeading}
+              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pb-10 sm:px-6 lg:px-8">
+                <div className="sticky top-0 z-10 flex h-20 shrink-0 items-end bg-background pb-3">
+                  {settingsHeading}
+                </div>
                 {settingsPanel}
               </div>
             </ScrollArea>

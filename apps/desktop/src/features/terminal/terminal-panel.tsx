@@ -1,4 +1,4 @@
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Plus, RotateCcw, TerminalSquare } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,7 +19,7 @@ import {
 } from "./terminal-registry";
 import { TerminalSearchOverlay } from "./terminal-search-overlay";
 import {
-  createTerminalTab,
+  openTerminalTabAtom,
   primaryTerminalTabId,
   type TerminalTab,
   workspaceTerminalStatesAtom,
@@ -97,26 +97,10 @@ export function TerminalPanel({
     void restartTerminal(activeTabId);
   }, [activeTabId]);
 
+  const openTerminalTab = useSetAtom(openTerminalTabAtom);
   const handleAddTab = useCallback(() => {
-    setWorkspaceStates((current) => {
-      // Append a single tab on top of whatever exists. When nothing is stored
-      // yet the panel is showing the implicit primary tab, so materialize it
-      // here before adding the new one — otherwise the primary would vanish.
-      const stored = current[workspaceId]?.tabs;
-      const tabs =
-        stored && stored.length > 0
-          ? stored
-          : [{ id: primaryTerminalTabId(workspaceId) }];
-      const nextTab = createTerminalTab();
-      return {
-        ...current,
-        [workspaceId]: {
-          tabs: [...tabs, nextTab],
-          activeTabId: nextTab.id,
-        },
-      };
-    });
-  }, [workspaceId, setWorkspaceStates]);
+    openTerminalTab({ scopeId: workspaceId });
+  }, [workspaceId, openTerminalTab]);
 
   const handleSelectTab = useCallback(
     (tabId: string) => {

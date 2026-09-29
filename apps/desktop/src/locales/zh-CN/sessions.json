@@ -209,6 +209,7 @@
     "splitRight": "分屏到右侧"
   },
   "split": {
+    "actions": "Actions",
     "close": "关闭分屏",
     "closeAll": "关闭所有",
     "down": "向下分屏",

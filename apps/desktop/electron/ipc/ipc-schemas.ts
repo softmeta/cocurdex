@@ -204,6 +204,15 @@ export const schemas = {
     workspaceId: idSchema,
     setupScript: z.string().max(100_000),
     cleanupScript: z.string().max(100_000),
+    actions: z
+      .array(
+        z.object({
+          id: idSchema,
+          name: z.string().max(200),
+          script: z.string().max(100_000),
+        }),
+      )
+      .max(50),
   }),
   settingsChangeAck: z.object({ id: idSchema }),
   settingsValuesReport: z.object({

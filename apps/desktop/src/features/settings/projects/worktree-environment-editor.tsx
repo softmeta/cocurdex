@@ -2,6 +2,7 @@ import {
   detectRiskyScriptPatterns,
   primaryWorkspaceRootPath,
   suggestWorktreeSetupScript,
+  type WorkspaceAction,
   type WorkspaceRecord,
   type WorkspaceWorktreeEnvironment,
 } from "@cocurdex/shared";
@@ -18,6 +19,7 @@ import {
   openAssistantSessionAtom,
   sendAssistantMessageAtom,
 } from "../assistant";
+import { WorkspaceActionsEditor } from "./workspace-actions-editor";
 
 const SETUP_PROBE_FILES = [
   "pnpm-lock.yaml",
@@ -61,6 +63,7 @@ export function WorktreeEnvironmentEditor({
   const sendAssistantMessage = useSetAtom(sendAssistantMessageAtom);
   const [setupScript, setSetupScript] = useState("");
   const [cleanupScript, setCleanupScript] = useState("");
+  const [actions, setActions] = useState<WorkspaceAction[]>([]);
   const [suggestedSetup, setSuggestedSetup] = useState("");
   const filledProposalAt = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +74,9 @@ export function WorktreeEnvironmentEditor({
     environment: WorkspaceWorktreeEnvironment,
     resetFields: boolean,
   ) => {
+    if (resetFields) {
+      setActions(environment.actions);
+    }
     const proposal = environment.proposal;
     if (proposal) {
       if (proposal.proposedAt !== filledProposalAt.current) {
@@ -141,9 +147,11 @@ export function WorktreeEnvironmentEditor({
         workspaceId: workspace.id,
         setupScript,
         cleanupScript,
+        actions,
       });
       setSetupScript(saved.setupScript);
       setCleanupScript(saved.cleanupScript);
+      setActions(saved.actions);
       filledProposalAt.current = null;
       toast.success(t("worktrees.saved"));
     } catch (error) {
@@ -183,7 +191,7 @@ export function WorktreeEnvironmentEditor({
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-6">
       <ScriptField
         description={t("worktrees.setupDescription")}
         placeholder={suggestedSetup || t("worktrees.setupPlaceholder")}
@@ -199,7 +207,8 @@ export function WorktreeEnvironmentEditor({
         value={cleanupScript}
         onChange={setCleanupScript}
       />
-      <div className="flex items-center justify-between py-3">
+      <WorkspaceActionsEditor actions={actions} onChange={setActions} />
+      <div className="flex items-center justify-between">
         <Button
           disabled={isAskingAgent}
           size="sm"
@@ -216,7 +225,6 @@ export function WorktreeEnvironmentEditor({
           type="button"
           onClick={() => void handleSave()}
         >
-          {isSaving ? <Spinner /> : null}
           {t("worktrees.save")}
         </Button>
       </div>
@@ -242,16 +250,14 @@ function ScriptField({
   const { t } = useTranslation("settings");
   const risks = detectRiskyScriptPatterns(value);
   return (
-    <div className="flex flex-col gap-2 py-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Text as="p" weight="medium">
-            {title}
-          </Text>
-          <Text as="p" className="mt-0.5" size="meta" tone="muted">
-            {description}
-          </Text>
-        </div>
+    <div className="flex flex-col gap-2">
+      <div className="min-w-0">
+        <Text as="p" weight="medium">
+          {title}
+        </Text>
+        <Text as="p" className="mt-0.5" size="meta" tone="muted">
+          {description}
+        </Text>
       </div>
       <CodeTextarea
         className={cn("max-h-64", tall ? "min-h-24" : "min-h-20")}

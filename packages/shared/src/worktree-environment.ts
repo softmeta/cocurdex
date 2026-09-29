@@ -5,10 +5,17 @@ export interface WorktreeEnvironmentProposal {
   proposedAt: string;
 }
 
+export interface WorkspaceAction {
+  id: string;
+  name: string;
+  script: string;
+}
+
 export interface WorkspaceWorktreeEnvironment {
   workspaceId: string;
   setupScript: string;
   cleanupScript: string;
+  actions: WorkspaceAction[];
   updatedAt: string | null;
   proposal: WorktreeEnvironmentProposal | null;
 }
@@ -20,9 +27,57 @@ export function emptyWorktreeEnvironment(
     workspaceId,
     setupScript: "",
     cleanupScript: "",
+    actions: [],
     updatedAt: null,
     proposal: null,
   };
+}
+
+function normalizeWorkspaceAction(raw: unknown): WorkspaceAction | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const record = raw as Record<string, unknown>;
+  const script = typeof record.script === "string" ? record.script : "";
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  if (!id || !script.trim()) {
+    return null;
+  }
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  return {
+    id,
+    name: name || script.trim().split("\n")[0],
+    script,
+  };
+}
+
+export function normalizeWorkspaceActions(raw: unknown): WorkspaceAction[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const actions: WorkspaceAction[] = [];
+  for (const item of raw) {
+    const action = normalizeWorkspaceAction(item);
+    if (action && !seen.has(action.id)) {
+      seen.add(action.id);
+      actions.push(action);
+    }
+  }
+  return actions;
+}
+
+export function parseWorkspaceActionsJson(
+  json: string | null,
+): WorkspaceAction[] {
+  if (!json) {
+    return [];
+  }
+  try {
+    return normalizeWorkspaceActions(JSON.parse(json));
+  } catch {
+    return [];
+  }
 }
 
 // Proposed scripts run unattended in a login shell on every worktree create /

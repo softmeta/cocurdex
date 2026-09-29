@@ -57,6 +57,7 @@ import type {
   UpdateQueuedAgentInputPayload,
   UpdateSessionTitlePayload,
   UpdateViewPayload,
+  WorkspaceAction,
 } from "@cocurdex/shared";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
@@ -234,6 +235,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
     workspaceId: string;
     setupScript: string;
     cleanupScript: string;
+    actions: WorkspaceAction[];
   }) => ipcRenderer.invoke("workspace:saveWorktreeEnvironment", payload),
   createAssistantSession: (workspaceId: string) =>
     ipcRenderer.invoke("assistant:createSession", workspaceId),

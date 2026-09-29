@@ -1,6 +1,6 @@
 import type { WorkspaceRecord } from "@cocurdex/shared";
-import { useAtomValue } from "jotai";
-import { ChevronLeft, ChevronRight, Folder } from "lucide-react";
+import { useAtom, useAtomValue } from "jotai";
+import { ChevronRight, Folder } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, Input, Text } from "@/components/ui";
@@ -9,21 +9,17 @@ import {
   sortWorkspacesBySortOrder,
   workspacesAtom,
 } from "@/features/workspaces";
+import { selectedSettingsProjectIdAtom } from "./project-settings-store";
 import { WorktreeEnvironmentEditor } from "./worktree-environment-editor";
 
 export function ProjectSettingsPanel() {
   const workspaces = useAtomValue(workspacesAtom);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useAtom(selectedSettingsProjectIdAtom);
   const selected =
     workspaces.find((workspace) => workspace.id === selectedId) ?? null;
 
   if (selected) {
-    return (
-      <ProjectWorktreeSettings
-        workspace={selected}
-        onBack={() => setSelectedId(null)}
-      />
-    );
+    return <ProjectWorktreeSettings workspace={selected} />;
   }
 
   return (
@@ -121,63 +117,42 @@ function ProjectSettingsList({
   );
 }
 
-function ProjectBackButton({
-  label,
-  onBack,
-}: {
-  label: string;
-  onBack(): void;
-}) {
-  return (
-    <button
-      className="flex items-center gap-1 self-start text-body text-muted-foreground transition-colors hover:text-foreground"
-      type="button"
-      onClick={onBack}
-    >
-      <ChevronLeft className="size-4 rtl:rotate-180" />
-      {label}
-    </button>
-  );
-}
-
-function ProjectIdentity({ workspace }: { workspace: WorkspaceRecord }) {
+function ProjectRootPaths({ workspace }: { workspace: WorkspaceRecord }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <Text as="p" truncate weight="medium">
-        {workspace.name}
-      </Text>
       {workspace.rootPaths.map((rootPath) => (
-        <Text
-          as="p"
-          key={rootPath}
-          size="meta"
-          title={rootPath}
-          tone="muted"
-          truncate
-        >
-          {rootPath}
-        </Text>
+        <div className="flex min-w-0 items-center gap-1.5" key={rootPath}>
+          <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+          <Text size="meta" title={rootPath} tone="muted" truncate>
+            {rootPath}
+          </Text>
+        </div>
       ))}
     </div>
   );
 }
 
 function ProjectWorktreeSettings({
-  onBack,
   workspace,
 }: {
-  onBack(): void;
   workspace: WorkspaceRecord;
 }) {
   const { t } = useTranslation("settings");
 
   return (
-    <div className="settings-panel-enter flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <ProjectBackButton label={t("projects.back")} onBack={onBack} />
-        <ProjectIdentity workspace={workspace} />
-      </div>
-      <WorktreeEnvironmentEditor key={workspace.id} workspace={workspace} />
+    <div className="settings-panel-enter flex flex-col gap-6">
+      <ProjectRootPaths workspace={workspace} />
+      <section className="flex flex-col gap-4">
+        <div className="min-w-0">
+          <Text as="h3" size="base" weight="semibold">
+            {t("projects.environmentTitle")}
+          </Text>
+          <Text as="p" className="mt-0.5" size="meta" tone="muted">
+            {t("projects.environmentDescription")}
+          </Text>
+        </div>
+        <WorktreeEnvironmentEditor key={workspace.id} workspace={workspace} />
+      </section>
     </div>
   );
 }

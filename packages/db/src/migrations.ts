@@ -5,7 +5,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -147,12 +147,21 @@ function migratePendingSettingsChanges(database: DatabaseSync): void {
   `);
 }
 
+function migrateWorkspaceActions(database: DatabaseSync): void {
+  if (!hasColumn(database, "workspace_worktree_environments", "actions_json")) {
+    database.exec(
+      "ALTER TABLE workspace_worktree_environments ADD COLUMN actions_json TEXT NOT NULL DEFAULT '[]'",
+    );
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
   [7, migrateWorktreeEnvironmentProposals],
   [8, migratePendingSettingsChanges],
   [9, ensureTimelineSequence],
+  [10, migrateWorkspaceActions],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

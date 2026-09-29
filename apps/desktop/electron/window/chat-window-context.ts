@@ -51,6 +51,10 @@ const intentSchema = z.discriminatedUnion("kind", [
     ]),
   }),
   z.object({
+    kind: z.literal("run-terminal-command"),
+    command: z.string().min(1).max(100_000),
+  }),
+  z.object({
     kind: z.literal("review-turn"),
     sessionId: text,
     messageId: text,
