@@ -345,26 +345,56 @@ export function getVisibleConversationItems(
 }
 
 // A render segment is either a single timeline item rendered as-is, or an
-// `activity` run — a contiguous stretch of pre-answer process (tool-call groups
-// and reasoning) folded into one collapsible block for the "condensed" mode.
+// `activity` run — a contiguous stretch of process (tool calls, reasoning and
+// interim replies) folded into one collapsible block for the "condensed" mode.
 export type ConversationRenderSegment =
   | { kind: "item"; item: TimelineGroup }
   | { kind: "activity"; items: TimelineGroup[] };
 
-// Process items are the turn's "working" steps — tool calls and reasoning.
-// Answers, permissions and questions stay outside the activity block: answers
-// are the payload, and permission/question cards are interactive.
-function isProcessItem(item: TimelineGroup) {
+// Process items are the turn's "working" steps — tool calls, reasoning and
+// interim replies. Final answers, permissions and questions stay outside:
+// answers are the payload, and permission/question cards are interactive.
+function isProcessItem(item: TimelineGroup, turnEndMessageId?: string) {
   if (item.kind === "toolCalls") {
     return true;
   }
 
-  return item.kind === "message" && isReasoningMessage(item.message);
+  return (
+    item.kind === "message" &&
+    (isReasoningMessage(item.message) || isInterimReply(item, turnEndMessageId))
+  );
+}
+
+function isAssistantReply(item: TimelineGroup) {
+  return (
+    item.kind === "message" &&
+    item.message.role === "assistant" &&
+    !isReasoningMessage(item.message) &&
+    item.message.content.trim().length > 0
+  );
+}
+
+function isInterimReply(item: TimelineGroup, turnEndMessageId?: string) {
+  return (
+    turnEndMessageId !== undefined &&
+    item.id !== turnEndMessageId &&
+    isAssistantReply(item)
+  );
+}
+
+export function getTurnEndMessageId(items: TimelineGroup[]) {
+  return items.findLast(isAssistantReply)?.id;
+}
+
+export function withoutInterimReplies(items: TimelineGroup[]) {
+  const turnEndMessageId = getTurnEndMessageId(items);
+  return items.filter((item) => !isInterimReply(item, turnEndMessageId));
 }
 
 export function segmentConversationItems(
   items: TimelineGroup[],
   condensed: boolean,
+  foldInterimReplies = false,
 ): ConversationRenderSegment[] {
   const timelineItems = coalesceAdjacentSubagentGroups(items);
 
@@ -372,6 +402,9 @@ export function segmentConversationItems(
     return timelineItems.map((item) => ({ kind: "item", item }));
   }
 
+  const turnEndMessageId = foldInterimReplies
+    ? getTurnEndMessageId(timelineItems)
+    : undefined;
   const segments: ConversationRenderSegment[] = [];
   let run: TimelineGroup[] = [];
 
@@ -385,7 +418,7 @@ export function segmentConversationItems(
   };
 
   for (const item of timelineItems) {
-    if (isProcessItem(item)) {
+    if (isProcessItem(item, turnEndMessageId)) {
       run.push(item);
       continue;
     }

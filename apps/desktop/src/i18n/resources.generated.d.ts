@@ -8,6 +8,8 @@ export default interface Resources {
       ready: "Ready";
       reasoningCount_one: "{{count}} reasoning step";
       reasoningCount_other: "{{count}} reasoning steps";
+      replyCount_one: "{{count}} interim reply";
+      replyCount_other: "{{count}} interim replies";
       toolCount_one: "{{count}} tool call";
       toolCount_other: "{{count}} tool calls";
       usingTools: "Using tools";
@@ -1454,13 +1456,13 @@ export default interface Resources {
     };
     chatDisplay: {
       activity: {
-        description: "How reasoning and tool calls appear in the conversation.";
+        description: "Concise shows only final replies; Standard folds reasoning, tool calls, and interim replies into a summary; Verbose expands everything.";
         options: {
-          condensed: "Collapsed";
-          expanded: "Expanded";
-          hidden: "Hidden";
+          condensed: "Standard";
+          expanded: "Verbose";
+          hidden: "Concise";
         };
-        title: "Process display";
+        title: "Transcript view";
       };
       groupTitle: "Conversation display";
       hideFab: {

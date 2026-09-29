@@ -149,13 +149,13 @@
   },
   "chatDisplay": {
     "activity": {
-      "description": "推理和工具调用在对话中的显示方式。",
+      "description": "简洁只显示最终回复；标准将推理、工具调用和中间回复折叠为摘要；详细全部展开。",
       "options": {
-        "condensed": "折叠",
-        "expanded": "展开",
-        "hidden": "隐藏"
+        "condensed": "标准",
+        "expanded": "详细",
+        "hidden": "简洁"
       },
-      "title": "过程展示"
+      "title": "对话视图"
     },
     "groupTitle": "会话显示",
     "hideFab": {
