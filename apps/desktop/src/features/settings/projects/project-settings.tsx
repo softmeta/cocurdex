@@ -185,7 +185,7 @@ function ProjectWorktreeSettings({
         <ProjectIdentity workspace={workspace} />
       </div>
       <section className="flex flex-col gap-5 border-border/60 border-t pt-5">
-        <div className="min-w-0">
+        <div className="sticky top-[var(--settings-sticky-offset)] z-[5] min-w-0 bg-background pb-2">
           <Text as="h3" size="base" weight="semibold">
             {t("projects.environmentTitle")}
           </Text>
