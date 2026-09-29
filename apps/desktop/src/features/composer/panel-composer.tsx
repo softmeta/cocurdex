@@ -116,8 +116,8 @@ export function PanelComposer({
         className={cn(
           "overflow-hidden rounded-panel border",
           tone === "welcome"
-            ? "border-welcome-border bg-welcome-surface"
-            : "border-chat-border bg-chat-surface-input",
+            ? "border-welcome-border/70 bg-welcome-surface"
+            : "border-chat-border-soft bg-chat-surface-input",
         )}
       >
         <div className="p-3">
