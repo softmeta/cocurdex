@@ -40,17 +40,15 @@ export function useSlashCommands({
     commands: AgentSlashCommand[];
   } | null>(null);
   const queriedCommands = cache?.key === cacheKey ? cache.commands : null;
-  const runtimeSkills = runtimeCommands?.filter(
-    (command) => command.source === "skill",
-  );
-  const commands = runtimeSkills?.length ? runtimeSkills : queriedCommands;
+  const runtimeCommandList = runtimeCommands?.length ? runtimeCommands : null;
+  const commands = runtimeCommandList ?? queriedCommands;
   const [query, setQuery] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
   // Fetch commands lazily the first time the user opens the menu for a given
   // agent + workspace, driven from the composer's change event (no effect).
   const loadCommands = useCallback(() => {
-    if (runtimeSkills?.length) {
+    if (runtimeCommandList) {
       return;
     }
     if (!agentSupportsSlashCommands(agentType) || !workspaceRootPath) {
@@ -61,7 +59,7 @@ export function useSlashCommands({
       .listSlashCommands(agentType as AgentId, workspaceRootPath)
       .then((result) => setCache({ key: cacheKey, commands: result }))
       .catch(() => setCache({ key: cacheKey, commands: [] }));
-  }, [agentType, cacheKey, runtimeSkills?.length, workspaceRootPath]);
+  }, [agentType, cacheKey, runtimeCommandList, workspaceRootPath]);
 
   const handleSlashQueryChange = useCallback(
     (nextQuery: string | null) => {
