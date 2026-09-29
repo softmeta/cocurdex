@@ -1741,6 +1741,8 @@ export default interface Resources {
       description: "Choose a project to manage its settings.";
       emptyDescription: "Add a project from the Work group in the sidebar, then come back to configure it.";
       emptyTitle: "No projects";
+      environmentDescription: "Scripts and actions for worktrees Cocurdex creates for this project.";
+      environmentTitle: "Environment";
       noResults: "No matching projects";
       search: "Search projects";
       worktreeSettings: "Worktree settings";

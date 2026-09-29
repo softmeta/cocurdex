@@ -184,7 +184,17 @@ function ProjectWorktreeSettings({
         <ProjectBackButton label={t("projects.back")} onBack={onBack} />
         <ProjectIdentity workspace={workspace} />
       </div>
-      <WorktreeEnvironmentEditor key={workspace.id} workspace={workspace} />
+      <section className="flex flex-col gap-5 border-border/60 border-t pt-5">
+        <div className="min-w-0">
+          <Text as="h3" size="base" weight="semibold">
+            {t("projects.environmentTitle")}
+          </Text>
+          <Text as="p" className="mt-0.5" size="meta" tone="muted">
+            {t("projects.environmentDescription")}
+          </Text>
+        </div>
+        <WorktreeEnvironmentEditor key={workspace.id} workspace={workspace} />
+      </section>
     </div>
   );
 }

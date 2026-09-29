@@ -436,6 +436,8 @@
     "description": "选择一个项目，管理它的项目级设置。",
     "emptyDescription": "先在侧栏「工作」中添加项目，再回来为它配置。",
     "emptyTitle": "还没有项目",
+    "environmentDescription": "Cocurdex 为此项目创建的 worktree 所使用的脚本和 Actions。",
+    "environmentTitle": "环境",
     "noResults": "没有匹配的项目",
     "search": "搜索项目",
     "worktreeSettings": "工作树设置"
