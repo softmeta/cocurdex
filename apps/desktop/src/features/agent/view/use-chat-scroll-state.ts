@@ -15,6 +15,7 @@ import type { UserMessageAnchor } from "./chat-user-navigation";
 import type { ChatTimelineScrollHandle } from "./virtual-timeline";
 
 const USER_SCROLL_INTENT_WINDOW_MS = 600;
+const DISCLOSURE_HOLD_MS = 400;
 
 function getMountedUserMessageTop(
   element: HTMLDivElement,
@@ -342,6 +343,11 @@ export function useChatScrollState({
     ],
   );
 
+  const holdForDisclosure = useCallback(() => {
+    shouldStickToBottomRef.current = false;
+    timelineScrollRef?.current?.holdScrollPosition(DISCLOSURE_HOLD_MS);
+  }, [timelineScrollRef]);
+
   const stickToBottomIfLocked = useCallback(() => {
     const viewport = viewportRef.current;
     if (
@@ -351,11 +357,15 @@ export function useChatScrollState({
         suppressFollow: autoScrollTargetRef.current === "top",
       })
     ) {
+      if (viewport) {
+        setNearBottomState(isViewportNearBottom(viewport));
+        setIsNearTop(isViewportNearTop(viewport));
+      }
       return;
     }
 
     scrollToLatest("auto");
-  }, [scrollToLatest, viewportRef]);
+  }, [scrollToLatest, setNearBottomState, viewportRef]);
 
   return {
     activeUserMessageId: pendingUserMessageId ?? stickyUserMessageId,
@@ -366,6 +376,7 @@ export function useChatScrollState({
     scrollDirection,
     markUserScrollIntent,
     markUserScrollStart,
+    holdForDisclosure,
     stickToBottomIfLocked,
     scrollToLatest,
     scrollToTop,

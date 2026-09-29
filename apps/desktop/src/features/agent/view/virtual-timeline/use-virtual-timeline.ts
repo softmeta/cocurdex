@@ -1,4 +1,8 @@
-import { type Range, useVirtualizer } from "@tanstack/react-virtual";
+import {
+  elementScroll,
+  type Range,
+  useVirtualizer,
+} from "@tanstack/react-virtual";
 import {
   type RefObject,
   useCallback,
@@ -33,6 +37,7 @@ export interface ChatTimelineScrollHandle {
   restorePosition(position: ChatReadingPosition): boolean;
   cancelNavigation(): void;
   hasNavigationTarget(): boolean;
+  holdScrollPosition(durationMs: number): void;
   getStickySelection(): StickyUserMessageSelection | null;
   scrollToUserMessage(messageId: string): boolean;
 }
@@ -53,6 +58,7 @@ export function useVirtualTimeline({
   const [scrollMargin, setScrollMargin] = useState(0);
   const [targetId, setTargetId] = useState<string | null>(null);
   const targetRef = useRef<string | null>(null);
+  const holdUntilRef = useRef(0);
   const lookup = useMemo(() => createConversationLookup(groups), [groups]);
   const { focusedId, selectedIds, updateFocus } =
     usePinnedConversations(rootRef);
@@ -77,7 +83,7 @@ export function useVirtualTimeline({
     [focusedId, groups.length, lookup, selectedIds, targetId],
   );
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    anchorTo: "end",
+    anchorTo: performance.now() < holdUntilRef.current ? "start" : "end",
     count: groups.length,
     estimateSize: () => CONVERSATION_ESTIMATED_HEIGHT,
     followOnAppend: true,
@@ -88,6 +94,10 @@ export function useVirtualTimeline({
     scrollEndThreshold: STICK_TO_BOTTOM_RESUME_THRESHOLD,
     scrollMargin,
     scrollPaddingStart: MESSAGE_SCROLL_INSET,
+    scrollToFn: (offset, options, instance) => {
+      if (performance.now() < holdUntilRef.current) return;
+      elementScroll(offset, options, instance);
+    },
   });
   virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item) =>
     item.end <= (viewportElement?.scrollTop ?? 0);
@@ -157,6 +167,15 @@ export function useVirtualTimeline({
         setTargetId(null);
       },
       hasNavigationTarget: () => targetRef.current !== null,
+      holdScrollPosition(durationMs) {
+        holdUntilRef.current = performance.now() + durationMs;
+        virtualizer.options.anchorTo = "start";
+        setTimeout(() => {
+          if (performance.now() >= holdUntilRef.current) {
+            virtualizer.options.anchorTo = "end";
+          }
+        }, durationMs);
+      },
       getStickySelection() {
         const viewport = viewportElement;
         if (!viewport) return null;

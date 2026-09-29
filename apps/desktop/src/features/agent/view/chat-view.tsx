@@ -41,7 +41,7 @@ import {
 import { useChatReadingPosition } from "@/lib/use-chat-reading-position";
 import type { ToolCallPreviewLocation } from "../tool-call";
 import { getActivityState } from "./chat-activity-state";
-import { resolveJumpButton } from "./chat-scroll";
+import { isDisclosureToggle, resolveJumpButton } from "./chat-scroll";
 import { getCachedTranscriptModel } from "./chat-transcript-model";
 import {
   type UserMessageAnchor,
@@ -269,6 +269,7 @@ export function ChatView({
     scrollDirection,
     markUserScrollIntent,
     markUserScrollStart,
+    holdForDisclosure,
     stickToBottomIfLocked,
     scrollToLatest,
     scrollToTop,
@@ -516,6 +517,11 @@ export function ChatView({
           )}
           viewportProps={{
             className: "[overflow-anchor:none]",
+            onClickCapture: (event) => {
+              if (isDisclosureToggle(event.target)) {
+                holdForDisclosure();
+              }
+            },
             onKeyDownCapture: () => handleUserScrollIntent(),
             onPointerDown: markUserScrollIntent,
             onPointerDownCapture: markUserScrollIntent,

@@ -192,3 +192,10 @@ export function animateViewportScroll({
   applyScroll(startTime + SCROLL_INITIAL_LEAD_MS);
   return requestAnimationFrame(step);
 }
+
+export function isDisclosureToggle(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    target.closest('[data-slot="collapsible-trigger"]') !== null
+  );
+}
