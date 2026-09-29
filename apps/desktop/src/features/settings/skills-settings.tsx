@@ -198,7 +198,7 @@ export function SkillsSettingsPanel() {
         <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
           {t("skills.groupTitle")}
         </div>
-        <div className="rounded-card border border-border/70 bg-card/45 px-4">
+        <div className="rounded-card border border-border/70 bg-settings-surface px-4">
           <div className="flex flex-col divide-y divide-border/60">
             <ScopeCard
               key={activeWorkspace?.rootPaths[0] ?? "no-project"}

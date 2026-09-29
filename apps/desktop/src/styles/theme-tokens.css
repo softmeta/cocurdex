@@ -9,7 +9,7 @@
   --app-ui-font-size: 13px;
   --app-code-font-size: 13px;
 
-  --app-bg: var(--background);
+  --app-bg: var(--editor-canvas);
   --app-fg: var(--foreground);
   --app-overlay: color-mix(in srgb, var(--background) 90%, transparent);
   --modal-scrim: rgb(0 0 0 / 0.12);
@@ -49,9 +49,8 @@
   --chat-surface-raised: var(--popover);
   --chat-surface-strong: var(--muted);
   /* Chat and editor share one canvas, so the input plane needs its own
-   * separation. Light keeps a clean white fill and floats on border + shadow;
-   * tinting it grey here reads as haze on a white canvas (see .dark for the
-   * lifted-fill variant, which only works on a dark canvas). */
+   * separation. Light sets it as the only pure-white plane on an off-white
+   * canvas (see .dark for the lifted-fill variant). */
   --chat-surface-input: var(--background);
   /* User bubbles are small, so a tinted fill reads as a distinct message
    * instead of haze — the opposite of the full-width composer plane. */
@@ -239,10 +238,10 @@
   --sidebar-thinking-dot: var(--sidebar-primary);
   --sidebar-thinking-text: var(--sidebar-primary);
 
-  --editor-shell: var(--background);
+  --editor-shell: var(--editor-canvas);
   --editor-chrome: var(--card);
   --editor-pane: var(--popover);
-  --editor-canvas: var(--background);
+  --editor-canvas: color-mix(in srgb, var(--foreground) 1%, var(--background));
   --editor-border: var(--border);
   --editor-text: var(--foreground);
   --editor-text-muted: var(--muted-foreground);
@@ -357,6 +356,8 @@
   );
 
   --control-thumb: var(--background);
+  --sidebar: color-mix(in srgb, var(--foreground) 6%, var(--background));
+  --settings-surface: var(--card);
 }
 
 /* Dark surface ramp (mirrors light: sunk nav < content canvas < raised card):
@@ -368,6 +369,8 @@
   --modal-scrim: rgb(0 0 0 / 0.4);
   /* Lifted off the near-black canvas enough to read as a separate plane. */
   --sidebar: color-mix(in srgb, var(--foreground) 7%, var(--background));
+  --editor-canvas: var(--background);
+  --settings-surface: color-mix(in srgb, var(--card) 45%, transparent);
   /* Dark canvas swallows borders and shadows, so the input plane separates by
    * lifting its fill instead (light does the opposite — see :root). */
   --chat-surface-input: color-mix(

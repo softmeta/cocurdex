@@ -792,7 +792,9 @@ export const ChatConversationItem = memo(function ChatConversationItem({
     activityDisplay === "condensed",
     !showActivity,
   );
-  const turnEndMessageId = getTurnEndMessageId(visibleItems);
+  const turnEndMessageId = showActivity
+    ? undefined
+    : getTurnEndMessageId(visibleItems);
 
   const renderTimelineItem = (group: TimelineGroup, nested = false) => {
     if (group.kind === "toolCalls") {

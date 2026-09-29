@@ -254,7 +254,7 @@ export function GitSettingsPanel() {
         <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
           {t("git.commitMessageModel.group")}
         </div>
-        <div className="rounded-card border border-border/70 bg-card/45 px-4">
+        <div className="rounded-card border border-border/70 bg-settings-surface px-4">
           <div className="flex flex-col divide-y divide-border/60">
             <div className="flex items-center justify-between gap-4 py-3">
               <div className="min-w-0 flex-1">
