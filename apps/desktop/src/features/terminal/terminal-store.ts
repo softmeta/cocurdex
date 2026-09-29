@@ -37,6 +37,15 @@ export const workspaceTerminalStatesAtom = atom<
 >({});
 
 const queuedCommands = new Map<string, string>();
+const liveTerminalIds = new Set<string>();
+
+export function markTerminalLive(terminalId: string, live: boolean) {
+  if (live) {
+    liveTerminalIds.add(terminalId);
+  } else {
+    liveTerminalIds.delete(terminalId);
+  }
+}
 
 export function takeQueuedTerminalCommand(terminalId: string) {
   const command = queuedCommands.get(terminalId);
@@ -48,11 +57,12 @@ export const openTerminalTabAtom = atom(
   null,
   (get, set, input: { scopeId: string; command?: string }) => {
     const current = get(workspaceTerminalStatesAtom);
-    const stored = current[input.scopeId]?.tabs;
-    const tabs =
-      stored && stored.length > 0
-        ? stored
-        : [{ id: primaryTerminalTabId(input.scopeId) }];
+    const stored = current[input.scopeId]?.tabs ?? [];
+    const primaryId = primaryTerminalTabId(input.scopeId);
+    let tabs = stored;
+    if (stored.length === 0 && liveTerminalIds.has(primaryId)) {
+      tabs = [{ id: primaryId }];
+    }
     const nextTab = createTerminalTab();
     if (input.command) {
       queuedCommands.set(

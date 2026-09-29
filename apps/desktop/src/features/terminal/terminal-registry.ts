@@ -21,7 +21,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { type IDisposable, Terminal } from "@xterm/xterm";
 import { desktopApi, onThemeChanged, readCssVarPx } from "@/lib";
 import "@xterm/xterm/css/xterm.css";
-import { takeQueuedTerminalCommand } from "./terminal-store";
+import { markTerminalLive, takeQueuedTerminalCommand } from "./terminal-store";
 import { buildTerminalTheme } from "./terminal-theme";
 
 const DEFAULT_TERMINAL_FONT_FAMILY =
@@ -438,6 +438,7 @@ export function attachTerminal(
   } else {
     entry = createEntry(terminalId, workspaceId, cwd);
     entries.set(terminalId, entry);
+    markTerminalLive(terminalId, true);
     // Hand any listeners that subscribed before this entry existed to the
     // live entry so they receive every subsequent status transition.
     const pending = pendingStatusListeners.get(terminalId);
@@ -587,6 +588,7 @@ export async function disposeTerminal(terminalId: string): Promise<void> {
     return;
   }
   entries.delete(terminalId);
+  markTerminalLive(terminalId, false);
   activityState.delete(terminalId);
   pendingStatusListeners.delete(terminalId);
   for (const unsub of entry.unsubscribers) {
