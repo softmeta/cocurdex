@@ -352,8 +352,8 @@ export function SettingsScreen({
         ) : (
           <div className="h-[calc(100vh-2rem)] pb-8">
             <ScrollArea className="h-full">
-              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pb-10 [--settings-sticky-offset:5rem] sm:px-6 lg:px-8">
-                <div className="sticky top-0 z-10 flex h-[var(--settings-sticky-offset)] shrink-0 items-end bg-background pb-3">
+              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pb-10 sm:px-6 lg:px-8">
+                <div className="sticky top-0 z-10 flex h-20 shrink-0 items-end bg-background pb-3">
                   {settingsHeading}
                 </div>
                 {settingsPanel}
