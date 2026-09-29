@@ -6,13 +6,8 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CodeTextarea } from "@/components/code-textarea";
-import {
-  Button,
-  Input,
-  Text,
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui";
+import { Button, Input, Text } from "@/components/ui";
+import { SettingsSelect } from "../settings-select";
 
 const ALL_PLATFORMS = "all";
 
@@ -72,16 +67,18 @@ export function WorkspaceActionsEditor({
           {t("worktrees.addAction")}
         </Button>
       </div>
-      {actions.map((action) => (
-        <WorkspaceActionItem
-          action={action}
-          key={action.id}
-          onChange={(patch) => updateAction(action.id, patch)}
-          onRemove={() =>
-            onChange(actions.filter((item) => item.id !== action.id))
-          }
-        />
-      ))}
+      <div className="flex flex-col divide-y divide-border/60">
+        {actions.map((action) => (
+          <WorkspaceActionItem
+            action={action}
+            key={action.id}
+            onChange={(patch) => updateAction(action.id, patch)}
+            onRemove={() =>
+              onChange(actions.filter((item) => item.id !== action.id))
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -97,8 +94,16 @@ function WorkspaceActionItem({
 }) {
   const { t } = useTranslation("settings");
 
+  const platformOptions = [
+    { label: t("worktrees.allPlatforms"), value: ALL_PLATFORMS },
+    ...WORKSPACE_ACTION_PLATFORMS.map((platform) => ({
+      label: PLATFORM_LABELS[platform],
+      value: platform,
+    })),
+  ];
+
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-border/70 p-3">
+    <div className="flex flex-col gap-2 py-3">
       <div className="flex items-center gap-2">
         <Input
           aria-label={t("worktrees.actionName")}
@@ -106,6 +111,15 @@ function WorkspaceActionItem({
           placeholder={t("worktrees.actionNamePlaceholder")}
           value={action.name}
           onChange={(event) => onChange({ name: event.target.value })}
+        />
+        <SettingsSelect
+          ariaLabel={t("worktrees.actionPlatforms")}
+          className="shrink-0"
+          options={platformOptions}
+          value={action.platform ?? ALL_PLATFORMS}
+          onChange={(next) =>
+            onChange({ platform: isActionPlatform(next) ? next : null })
+          }
         />
         <Button
           aria-label={t("worktrees.removeAction")}
@@ -124,28 +138,6 @@ function WorkspaceActionItem({
         value={action.script}
         onChange={(script) => onChange({ script })}
       />
-      <ToggleGroup
-        aria-label={t("worktrees.actionPlatforms")}
-        className="w-fit"
-        spacing={0.5}
-        type="single"
-        value={action.platform ?? ALL_PLATFORMS}
-        variant="segmented"
-        onValueChange={(next) => {
-          if (next) {
-            onChange({ platform: isActionPlatform(next) ? next : null });
-          }
-        }}
-      >
-        <ToggleGroupItem value={ALL_PLATFORMS}>
-          {t("worktrees.allPlatforms")}
-        </ToggleGroupItem>
-        {WORKSPACE_ACTION_PLATFORMS.map((platform) => (
-          <ToggleGroupItem key={platform} value={platform}>
-            {PLATFORM_LABELS[platform]}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
     </div>
   );
 }
