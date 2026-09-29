@@ -58,32 +58,21 @@ describe("normalizeWorkspaceActions", () => {
   it("keeps valid actions and drops blank or duplicate ones", () => {
     expect(
       normalizeWorkspaceActions([
-        { id: "a", name: " Dev ", script: "pnpm dev", platform: "macos" },
-        { id: "a", name: "Dup", script: "echo dup", platform: null },
-        { id: "b", name: "Empty", script: "   ", platform: null },
-        { id: "", name: "No id", script: "echo", platform: null },
+        { id: "a", name: " Dev ", script: "pnpm dev" },
+        { id: "a", name: "Dup", script: "echo dup" },
+        { id: "b", name: "Empty", script: "   " },
+        { id: "", name: "No id", script: "echo" },
         "garbage",
       ]),
-    ).toEqual([
-      { id: "a", name: "Dev", script: "pnpm dev", platform: "macos" },
-    ]);
+    ).toEqual([{ id: "a", name: "Dev", script: "pnpm dev" }]);
   });
 
   it("falls back to the first script line when the name is blank", () => {
     expect(
       normalizeWorkspaceActions([
-        { id: "a", name: "", script: "pnpm test\npnpm lint", platform: null },
+        { id: "a", name: "", script: "pnpm test\npnpm lint" },
       ])[0]?.name,
     ).toBe("pnpm test");
-  });
-
-  it("treats an unknown platform as all platforms", () => {
-    expect(
-      normalizeWorkspaceActions([
-        { id: "a", name: "A", script: "x", platform: "linux" },
-        { id: "b", name: "B", script: "x", platform: "beos" },
-      ]).map((action) => action.platform),
-    ).toEqual(["linux", null]);
   });
 
   it("reads malformed stored JSON as no actions", () => {

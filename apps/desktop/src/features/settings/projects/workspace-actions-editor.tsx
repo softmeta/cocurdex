@@ -1,25 +1,8 @@
-import {
-  WORKSPACE_ACTION_PLATFORMS,
-  type WorkspaceAction,
-  type WorkspaceActionPlatform,
-} from "@cocurdex/shared";
+import type { WorkspaceAction } from "@cocurdex/shared";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CodeTextarea } from "@/components/code-textarea";
 import { Button, Input, Text } from "@/components/ui";
-import { SettingsSelect } from "../settings-select";
-
-const ALL_PLATFORMS = "all";
-
-function isActionPlatform(value: string): value is WorkspaceActionPlatform {
-  return (WORKSPACE_ACTION_PLATFORMS as readonly string[]).includes(value);
-}
-
-const PLATFORM_LABELS: Record<WorkspaceActionPlatform, string> = {
-  macos: "macOS",
-  linux: "Linux",
-  windows: "Windows",
-};
 
 export function WorkspaceActionsEditor({
   actions,
@@ -39,10 +22,7 @@ export function WorkspaceActionsEditor({
   };
 
   const addAction = () => {
-    onChange([
-      ...actions,
-      { id: crypto.randomUUID(), name: "", script: "", platform: null },
-    ]);
+    onChange([...actions, { id: crypto.randomUUID(), name: "", script: "" }]);
   };
 
   return (
@@ -94,14 +74,6 @@ function WorkspaceActionItem({
 }) {
   const { t } = useTranslation("settings");
 
-  const platformOptions = [
-    { label: t("worktrees.allPlatforms"), value: ALL_PLATFORMS },
-    ...WORKSPACE_ACTION_PLATFORMS.map((platform) => ({
-      label: PLATFORM_LABELS[platform],
-      value: platform,
-    })),
-  ];
-
   return (
     <div className="flex flex-col gap-2 py-3">
       <div className="flex items-center gap-2">
@@ -111,15 +83,6 @@ function WorkspaceActionItem({
           placeholder={t("worktrees.actionNamePlaceholder")}
           value={action.name}
           onChange={(event) => onChange({ name: event.target.value })}
-        />
-        <SettingsSelect
-          ariaLabel={t("worktrees.actionPlatforms")}
-          className="shrink-0"
-          options={platformOptions}
-          value={action.platform ?? ALL_PLATFORMS}
-          onChange={(next) =>
-            onChange({ platform: isActionPlatform(next) ? next : null })
-          }
         />
         <Button
           aria-label={t("worktrees.removeAction")}

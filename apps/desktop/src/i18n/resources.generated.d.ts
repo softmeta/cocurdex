@@ -2221,12 +2221,10 @@ export default interface Resources {
     worktrees: {
       actionName: "Action name";
       actionNamePlaceholder: "Name, e.g. Dev server";
-      actionPlatforms: "Platforms";
       actionScriptPlaceholder: "npm run dev";
       actionsDescription: 'Shown in the session "…" menu; each runs in a new terminal tab.';
       actionsTitle: "Actions";
       addAction: "Add action";
-      allPlatforms: "All platforms";
       archivedSession: "{{title}} (archived)";
       askAgent: "Ask agent";
       browse: "Browse";

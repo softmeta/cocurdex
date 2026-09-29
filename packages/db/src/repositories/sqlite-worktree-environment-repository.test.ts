@@ -32,9 +32,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "pnpm install",
       cleanupScript: "rm -rf node_modules",
-      actions: [
-        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
-      ],
+      actions: [{ id: "dev", name: "Dev", script: "pnpm dev" }],
       updatedAt: now,
       proposal: null,
     });
@@ -43,9 +41,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "pnpm install",
       cleanupScript: "rm -rf node_modules",
-      actions: [
-        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
-      ],
+      actions: [{ id: "dev", name: "Dev", script: "pnpm dev" }],
       updatedAt: now,
       proposal: null,
     });
@@ -69,9 +65,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "npm install",
       cleanupScript: "",
-      actions: [
-        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
-      ],
+      actions: [{ id: "dev", name: "Dev", script: "pnpm dev" }],
       updatedAt: now,
       proposal: null,
     });
@@ -87,9 +81,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "npm install",
       cleanupScript: "",
-      actions: [
-        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
-      ],
+      actions: [{ id: "dev", name: "Dev", script: "pnpm dev" }],
       updatedAt: now,
       proposal: {
         setupScript: "pnpm install",
@@ -103,9 +95,7 @@ describe("createSqliteWorktreeEnvironmentRepository", () => {
       workspaceId: "workspace-1",
       setupScript: "npm install",
       cleanupScript: "",
-      actions: [
-        { id: "dev", name: "Dev", script: "pnpm dev", platform: "macos" },
-      ],
+      actions: [{ id: "dev", name: "Dev", script: "pnpm dev" }],
       updatedAt: now,
       proposal: null,
     });

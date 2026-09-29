@@ -5,20 +5,10 @@ export interface WorktreeEnvironmentProposal {
   proposedAt: string;
 }
 
-export const WORKSPACE_ACTION_PLATFORMS = [
-  "macos",
-  "linux",
-  "windows",
-] as const;
-
-export type WorkspaceActionPlatform =
-  (typeof WORKSPACE_ACTION_PLATFORMS)[number];
-
 export interface WorkspaceAction {
   id: string;
   name: string;
   script: string;
-  platform: WorkspaceActionPlatform | null;
 }
 
 export interface WorkspaceWorktreeEnvironment {
@@ -43,10 +33,6 @@ export function emptyWorktreeEnvironment(
   };
 }
 
-function isActionPlatform(value: unknown): value is WorkspaceActionPlatform {
-  return (WORKSPACE_ACTION_PLATFORMS as readonly unknown[]).includes(value);
-}
-
 function normalizeWorkspaceAction(raw: unknown): WorkspaceAction | null {
   if (!raw || typeof raw !== "object") {
     return null;
@@ -62,7 +48,6 @@ function normalizeWorkspaceAction(raw: unknown): WorkspaceAction | null {
     id,
     name: name || script.trim().split("\n")[0],
     script,
-    platform: isActionPlatform(record.platform) ? record.platform : null,
   };
 }
 
@@ -93,15 +78,6 @@ export function parseWorkspaceActionsJson(
   } catch {
     return [];
   }
-}
-
-export function workspaceActionsForPlatform(
-  actions: readonly WorkspaceAction[],
-  platform: WorkspaceActionPlatform,
-): WorkspaceAction[] {
-  return actions.filter(
-    (action) => action.platform === null || action.platform === platform,
-  );
 }
 
 // Proposed scripts run unattended in a login shell on every worktree create /

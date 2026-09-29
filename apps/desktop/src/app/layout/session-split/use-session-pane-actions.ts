@@ -1,8 +1,4 @@
-import {
-  type WorkspaceAction,
-  type WorkspaceActionPlatform,
-  workspaceActionsForPlatform,
-} from "@cocurdex/shared";
+import type { WorkspaceAction } from "@cocurdex/shared";
 import { useStore } from "jotai";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -11,16 +7,7 @@ import {
   sessionSplitLayoutAtom,
   sessionsAtom,
 } from "@/features/sessions";
-import { desktopApi, isMacPlatform } from "@/lib";
-
-function currentActionPlatform(): WorkspaceActionPlatform {
-  if (isMacPlatform()) {
-    return "macos";
-  }
-  return navigator.platform.toLowerCase().startsWith("win")
-    ? "windows"
-    : "linux";
-}
+import { desktopApi } from "@/lib";
 
 export function useSessionPaneActions(paneId: string) {
   const store = useStore();
@@ -40,14 +27,7 @@ export function useSessionPaneActions(paneId: string) {
     }
     void desktopApi
       .getWorktreeEnvironment(workspaceId)
-      .then((environment) =>
-        setActions(
-          workspaceActionsForPlatform(
-            environment.actions,
-            currentActionPlatform(),
-          ),
-        ),
-      )
+      .then((environment) => setActions(environment.actions))
       .catch(() => setActions([]));
   };
 

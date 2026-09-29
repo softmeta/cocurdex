@@ -94,15 +94,15 @@ describe("worktree environment proposals", () => {
       setupScript: "yarn install",
       cleanupScript: "",
       actions: [
-        { id: "dev", name: " Dev ", script: "yarn dev", platform: null },
-        { id: "blank", name: "Blank", script: " ", platform: null },
+        { id: "dev", name: " Dev ", script: "yarn dev" },
+        { id: "blank", name: "Blank", script: " " },
       ],
       updatedAt: null,
       proposal: null,
     });
     expect(saved.proposal).toBeNull();
     expect(saved.actions).toEqual([
-      { id: "dev", name: "Dev", script: "yarn dev", platform: null },
+      { id: "dev", name: "Dev", script: "yarn dev" },
     ]);
   });
 });

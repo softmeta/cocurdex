@@ -6,7 +6,6 @@ import {
   isToolCallId,
   providerApis,
   reasoningEfforts,
-  WORKSPACE_ACTION_PLATFORMS,
 } from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
@@ -211,7 +210,6 @@ export const schemas = {
           id: idSchema,
           name: z.string().max(200),
           script: z.string().max(100_000),
-          platform: z.enum(WORKSPACE_ACTION_PLATFORMS).nullable(),
         }),
       )
       .max(50),
