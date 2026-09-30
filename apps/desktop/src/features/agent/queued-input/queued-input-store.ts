@@ -4,6 +4,7 @@ import type {
   QueuedAgentInputRecord,
 } from "@cocurdex/shared";
 import { atom } from "jotai";
+import { messagesBySessionAtom } from "../view/message-store";
 
 export interface QueuedAgentInputItem extends QueuedAgentInputRecord {
   message: MessageRecord;
@@ -105,6 +106,31 @@ export const removeQueuedInputAtom = atom(
     set(queuedInputsBySessionAtom, {
       ...current,
       [payload.sessionId]: nextSessionInputs,
+    });
+  },
+);
+
+export const discardQueuedInputAtom = atom(
+  null,
+  (
+    get,
+    set,
+    payload: {
+      sessionId: string;
+      messageId: string;
+    },
+  ) => {
+    set(removeQueuedInputAtom, payload);
+    const current = get(messagesBySessionAtom);
+    const sessionMessages = current[payload.sessionId];
+    if (!sessionMessages?.some((message) => message.id === payload.messageId)) {
+      return;
+    }
+    set(messagesBySessionAtom, {
+      ...current,
+      [payload.sessionId]: sessionMessages.filter(
+        (message) => message.id !== payload.messageId,
+      ),
     });
   },
 );

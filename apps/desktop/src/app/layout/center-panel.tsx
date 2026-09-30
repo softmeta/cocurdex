@@ -32,6 +32,7 @@ import {
   clearQuestionsForSessionAtom,
   clearToolCallsForSessionAtom,
   collapsedPlansBySessionAtom,
+  discardQueuedInputAtom,
   dismissedPlansBySessionAtom,
   dismissPlanForSessionAtom,
   findPendingPlanApproval,
@@ -279,6 +280,7 @@ export function CenterPanel({
   const appendQueuedInput = useSetAtom(appendQueuedInputAtom);
   const updateQueuedInput = useSetAtom(updateQueuedInputAtom);
   const removeQueuedInput = useSetAtom(removeQueuedInputAtom);
+  const discardQueuedInput = useSetAtom(discardQueuedInputAtom);
   const rewindMessages = useSetAtom(rewindMessagesAtom);
   const clearToolCallsForSession = useSetAtom(clearToolCallsForSessionAtom);
   const clearPermissionsForSession = useSetAtom(clearPermissionsForSessionAtom);
@@ -796,7 +798,7 @@ export function CenterPanel({
       sessionId: item.sessionId,
       messageId: item.messageId,
     });
-    removeQueuedInput({
+    discardQueuedInput({
       sessionId: item.sessionId,
       messageId: item.messageId,
     });
