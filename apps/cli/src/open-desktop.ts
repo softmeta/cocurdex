@@ -20,6 +20,8 @@ const KNOWN_COMMANDS = new Set([
   "provider",
   "role",
   "workflow",
+  "team",
+  "script-run",
   "open",
   "help",
   "version",
