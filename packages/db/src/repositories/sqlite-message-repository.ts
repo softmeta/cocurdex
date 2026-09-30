@@ -71,6 +71,13 @@ export function createSqliteMessageRepository(
         );
       return existing ? (existing.seq ?? null) : seq;
     },
+    async moveToEnd(messageId, sessionId) {
+      const seq = allocateTimelineSeq(database, sessionId);
+      database
+        .prepare("UPDATE messages SET seq = ? WHERE id = ? AND session_id = ?")
+        .run(seq, messageId, sessionId);
+      return seq;
+    },
     async update(message) {
       database
         .prepare(

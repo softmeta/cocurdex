@@ -312,6 +312,10 @@ export class DaemonState {
     return withMessageSeq(message, await stored);
   }
 
+  moveMessageToEnd(messageId: string, sessionId: string) {
+    return this.database.messages.moveToEnd(messageId, sessionId);
+  }
+
   async saveQueuedUserMessage(
     message: MessageRecord,
     input: QueuedAgentInputRecord,

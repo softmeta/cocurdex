@@ -1693,7 +1693,10 @@ export class CocurdexDaemonService {
     });
   }
 
-  private async acceptSessionMessage(command: SendSessionCommand) {
+  private async acceptSessionMessage(
+    command: SendSessionCommand,
+    { dequeued = false } = {},
+  ) {
     let payload: SessionRuntimeMessage = {
       ...command,
       ...(await this.getSessionExecutionContext(command.sessionId)),
@@ -1772,6 +1775,12 @@ export class CocurdexDaemonService {
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
       await this.captureSessionCheckpoint(payload, createdMessage);
+      if (dequeued) {
+        await this.state.moveMessageToEnd(
+          createdMessage.id,
+          payload.session.id,
+        );
+      }
       userMessage = await this.state.saveUserMessage(createdMessage);
       persistence = {
         ...(await this.createRuntimePersistence(payload.session.id)),
@@ -2080,16 +2089,19 @@ export class CocurdexDaemonService {
     }
 
     try {
-      const userMessage = await this.acceptSessionMessage({
-        sessionId,
-        messageId: next.payload.messageId,
-        createdAt: next.payload.createdAt,
-        content: next.payload.content,
-        attachments: next.payload.attachments,
-        thinkingLevel: next.payload.thinkingLevel,
-        delivery: next.payload.delivery,
-        origin: next.payload.origin,
-      });
+      const userMessage = await this.acceptSessionMessage(
+        {
+          sessionId,
+          messageId: next.payload.messageId,
+          createdAt: next.payload.createdAt,
+          content: next.payload.content,
+          attachments: next.payload.attachments,
+          thinkingLevel: next.payload.thinkingLevel,
+          delivery: next.payload.delivery,
+          origin: next.payload.origin,
+        },
+        { dequeued: true },
+      );
       await this.state.deleteQueuedAgentInput(next.payload.messageId);
       this.runtime.emitAgentEvent({
         type: "message.completed",
