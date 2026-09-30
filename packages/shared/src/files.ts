@@ -16,3 +16,7 @@ export interface McpConfigFile {
   path: string;
   content: string;
 }
+
+export function isValidMcpServerName(name: string) {
+  return /^[A-Za-z0-9_-]+$/.test(name);
+}

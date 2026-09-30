@@ -33,11 +33,30 @@ const photonWasmPath = path.resolve(
   "../..",
   "@silvia-odwyer/photon-node/photon_rs_bg.wasm",
 );
+const quickjsWasmPath = path.resolve(
+  piPackagePath,
+  "../../quickjs-wasi/quickjs.wasm",
+);
+const codemodeWorkerEntry = path.resolve(
+  piPackagePath,
+  "../pi-codemode/dist/runtime/worker.js",
+);
 const cliPackageJson = JSON.parse(
   await readFile(path.join(repoRoot, "apps/cli/package.json"), "utf8"),
 );
 const cliVersion =
   typeof cliPackageJson.version === "string" ? cliPackageJson.version : "0.0.0";
+
+// electron-builder drops node_modules from extraResources, so the bundled
+// daemon resolves the QuickJS wasm beside itself instead of as a package.
+const quickjsWasmBesideDaemon = {
+  name: "cocurdex-quickjs-wasm-beside-daemon",
+  transform(code) {
+    const specifier = '"quickjs-wasi/quickjs.wasm"';
+    if (!code.includes(specifier)) return null;
+    return { code: code.replaceAll(specifier, '"./quickjs.wasm"'), map: null };
+  },
+};
 
 const alias = {
   // Subpath exports must be listed before the package root alias, otherwise
@@ -69,6 +88,7 @@ const alias = {
 
 await mkdir(outDir, { recursive: true });
 await rm(path.join(outDir, "daemon.mjs"), { force: true });
+await rm(path.join(outDir, "node_modules"), { force: true, recursive: true });
 for (const file of await readdir(outDir)) {
   if (/^cli-.+\.mjs$/.test(file)) {
     await rm(path.join(outDir, file), { force: true });
@@ -126,6 +146,7 @@ await build({
   configFile: false,
   logLevel: "warn",
   resolve: { alias },
+  plugins: [quickjsWasmBesideDaemon],
   esbuild: { keepNames: true },
   build: {
     outDir,
@@ -158,6 +179,30 @@ await build({
   },
 });
 
+// pi-codemode starts its sandbox from `./worker.js` beside the bundled daemon.
+await build({
+  configFile: false,
+  logLevel: "warn",
+  build: {
+    outDir,
+    emptyOutDir: false,
+    target: "node20",
+    minify: "esbuild",
+    sourcemap: false,
+    ssr: true,
+    lib: {
+      entry: codemodeWorkerEntry,
+      formats: ["es"],
+      fileName: () => "worker.js",
+    },
+    rollupOptions: {
+      output: { entryFileNames: "worker.js", inlineDynamicImports: true },
+    },
+  },
+  ssr: { noExternal: true },
+});
+await copyFile(quickjsWasmPath, path.join(outDir, "quickjs.wasm"));
+
 const posixLauncher = path.join(outDir, "cocurdex");
 try {
   await chmod(posixLauncher, 0o755);
@@ -167,3 +212,4 @@ try {
 
 console.info(`[build-cli] wrote ${path.join(outDir, "cli.mjs")}`);
 console.info(`[build-cli] wrote ${path.join(outDir, "daemon.cjs")}`);
+console.info(`[build-cli] wrote ${path.join(outDir, "worker.js")}`);

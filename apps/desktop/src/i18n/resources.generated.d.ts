@@ -1627,7 +1627,7 @@ export default interface Resources {
       view: "View";
     };
     mcp: {
-      description: "Configure the MCP servers available to the built-in Pi agent. Servers connect only when Pi uses one of their tools.";
+      description: 'Configure the MCP servers available to the built-in Pi agent. Pi connects to them when a session starts. Server names may contain only letters, digits, "_", and "-".';
       editorLabel: "MCP server configuration";
       form: {
         add: "Add server";

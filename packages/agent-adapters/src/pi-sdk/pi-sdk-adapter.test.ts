@@ -1,16 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import type { AgentEvent } from "@cocurdex/shared";
-import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createPiSdkAdapter,
-  findPiMcpAdapterPackageJson,
-  getPiMcpAdapterPath,
-  resolvePiMcpAdapterPackageJson,
-} from "./pi-sdk-adapter";
+import { createPiSdkAdapter } from "./pi-sdk-adapter";
 
 type RegisteredProvider = {
   providerId: string;
@@ -33,6 +23,8 @@ function createSessionPayload(
       setModel?: unknown;
       setThinkingLevel?: unknown;
       steer?: unknown[];
+      boundExtensions?: boolean;
+      extensionEvents?: unknown[];
     };
   } = {},
 ) {
@@ -50,7 +42,6 @@ function createSessionPayload(
 
   const adapter = createPiSdkAdapter({
     sdk: createFakeSdk(options.capture, options.piEvents),
-    resolveMcpAdapterPath: () => "/tmp/node_modules/pi-mcp-adapter/index.ts",
   });
 
   return adapter.createSession(
@@ -98,6 +89,8 @@ function createFakeSdk(
     setModel?: unknown;
     setThinkingLevel?: unknown;
     steer?: unknown[];
+    boundExtensions?: boolean;
+    extensionEvents?: unknown[];
   },
   piEvents?: Record<string, unknown>[],
 ) {
@@ -158,6 +151,16 @@ function createFakeSdk(
 
   const fakeSession = {
     sessionId: "pi-session-1",
+    bindExtensions: vi.fn(async () => {
+      if (capture) capture.boundExtensions = true;
+    }),
+    extensionRunner: {
+      emit: vi.fn(async (event: unknown) => {
+        if (capture) {
+          capture.extensionEvents = [...(capture.extensionEvents ?? []), event];
+        }
+      }),
+    },
     sessionManager: {
       getSessionFile: () => "/tmp/cocurdex-user-data/pi-agent/sessions/s.jsonl",
     },
@@ -214,57 +217,6 @@ function createFakeSdk(
 }
 
 describe("createPiSdkAdapter", () => {
-  it("lists skills without resolving the MCP extension", async () => {
-    const adapter = createPiSdkAdapter({
-      resolveMcpAdapterPath: () => {
-        throw new Error("MCP extension must not load while listing skills");
-      },
-    });
-
-    await expect(
-      adapter.listSlashCommands?.({
-        workspaceRootPath: "/tmp/cocurdex-empty-workspace",
-        userDataPath: "/tmp/cocurdex-empty-user-data",
-      }),
-    ).resolves.toBeDefined();
-  });
-
-  it("resolves pi-mcp-adapter from packaged Electron resources", () => {
-    const fixtureRoot = mkdtempSync(
-      path.join(tmpdir(), "cocurdex-packaged-pi-"),
-    );
-
-    try {
-      const resourcesPath = path.join(
-        fixtureRoot,
-        "Cocurdex.app",
-        "Contents",
-        "Resources",
-      );
-      const packageJson = path.join(
-        resourcesPath,
-        "app.asar",
-        "node_modules",
-        "pi-mcp-adapter",
-        "package.json",
-      );
-      mkdirSync(path.dirname(packageJson), { recursive: true });
-      writeFileSync(packageJson, "{}");
-
-      expect(
-        resolvePiMcpAdapterPackageJson({
-          cwd: fixtureRoot,
-          moduleUrl: pathToFileURL(
-            path.join(resourcesPath, "cli", "daemon.cjs"),
-          ).href,
-          resourcesPath,
-        }),
-      ).toBe(packageJson);
-    } finally {
-      rmSync(fixtureRoot, { force: true, recursive: true });
-    }
-  });
-
   it("maps steer delivery to the Pi mid-turn input API", async () => {
     const events: AgentEvent[] = [];
     const capture: { steer?: unknown[] } = {};
@@ -279,28 +231,23 @@ describe("createPiSdkAdapter", () => {
     expect(capture.steer).toEqual(["Check the failing test first"]);
   });
 
-  it("finds pi-mcp-adapter by walking up from a bundled main path", () => {
-    // Electron main bundles this file into out/main/main.js — createRequire
-    // from that URL cannot see workspace-only deps. The directory walk must
-    // still locate packages/agent-adapters/node_modules/pi-mcp-adapter.
-    const packageJson = findPiMcpAdapterPackageJson([
-      path.join(process.cwd(), "apps", "desktop", "out", "main"),
-    ]);
-    expect(packageJson).toContain(`${path.sep}pi-mcp-adapter${path.sep}`);
-    expect(packageJson?.endsWith(`${path.sep}package.json`)).toBe(true);
-  });
+  it("starts extensions on open and shuts them down on dispose", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      boundExtensions?: boolean;
+      extensionEvents?: unknown[];
+    } = {};
+    const session = createSessionPayload(events, { capture });
 
-  it("loads the published MCP extension", async () => {
-    const loader = new DefaultResourceLoader({
-      cwd: "/tmp/repo",
-      agentDir: "/tmp/cocurdex-mcp-loader-check",
-      additionalExtensionPaths: [getPiMcpAdapterPath()],
-    });
+    await session.sendMessage({ content: "hello", history: [] });
+    expect(capture.boundExtensions).toBe(true);
 
-    await loader.reload();
-
-    expect(loader.getExtensions().errors).toEqual([]);
-    expect(loader.getExtensions().extensions).toHaveLength(1);
+    session.dispose();
+    await vi.waitFor(() =>
+      expect(capture.extensionEvents).toEqual([
+        { type: "session_shutdown", reason: "quit" },
+      ]),
+    );
   });
 
   it("uses Cocurdex userData for Pi auth, models, and sessions", async () => {
@@ -396,7 +343,7 @@ describe("createPiSdkAdapter", () => {
     );
   });
 
-  it("loads the MCP adapter from Cocurdex-owned Pi state", async () => {
+  it("loads Pi resources from Cocurdex-owned Pi state", async () => {
     const events: AgentEvent[] = [];
     const capture: {
       createAgentSessionOptions?: Record<string, unknown>;
@@ -410,8 +357,14 @@ describe("createPiSdkAdapter", () => {
       cwd: "/tmp/repo",
       agentDir: "/tmp/cocurdex-user-data/pi-agent",
     });
-    expect(capture.resourceLoaderOptions?.additionalExtensionPaths).toEqual([
-      expect.stringContaining("pi-mcp-adapter"),
+    const extensionFactories = capture.resourceLoaderOptions
+      ?.extensionFactories as { name: string; builtin?: boolean }[];
+    expect(
+      extensionFactories.map(({ name, builtin }) => ({ name, builtin })),
+    ).toEqual([
+      { name: "codemode", builtin: true },
+      { name: "tool-search", builtin: true },
+      { name: "mcp", builtin: true },
     ]);
     expect(capture.createAgentSessionOptions?.resourceLoader).toBeDefined();
     expect(process.env.PI_CODING_AGENT_DIR).toBe(
@@ -441,7 +394,7 @@ describe("createPiSdkAdapter", () => {
 
     const config = capture.provider?.config;
     expect(config?.api).toBe("anthropic-messages");
-    const model = (config?.models as Record<string, unknown>[])[0];
+    const [model] = (config?.models ?? []) as Record<string, unknown>[];
     expect(model.api).toBe("anthropic-messages");
     expect(model.contextWindow).toBe(200000);
     expect(model.maxTokens).toBe(64000);
@@ -508,9 +461,10 @@ describe("createPiSdkAdapter", () => {
 
     await session.sendMessage({ content: "hello", history: [] });
 
-    const model = (
-      capture.provider?.config.models as Record<string, unknown>[]
-    )[0];
+    const [model] = (capture.provider?.config.models ?? []) as Record<
+      string,
+      unknown
+    >[];
     expect(model.input).toEqual(["text"]);
   });
 
