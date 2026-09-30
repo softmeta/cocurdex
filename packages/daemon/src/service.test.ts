@@ -320,6 +320,45 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
+  it("places a queued follow-up after the reply it waited for", async () => {
+    const service = await createService();
+    let completeActiveTurn: (() => void) | undefined;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      completeActiveTurn = () => resolve(createRuntimeMessage("First turn"));
+    });
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockImplementationOnce(() => activeTurn)
+      .mockResolvedValue(createRuntimeMessage("Queued follow-up"));
+
+    await service.sendSessionMessage(
+      createPayload("First turn", "start-new-run"),
+    );
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    const queued = await service.sendSessionMessage(
+      createPayload("Queued follow-up", "queue-after-run"),
+    );
+    await service.state.persistAgentEvent({
+      type: "message.completed",
+      sessionId: "session-1",
+      message: {
+        ...createRuntimeMessage("First reply"),
+        role: "assistant",
+      },
+    });
+
+    completeActiveTurn?.();
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+
+    const contents = (
+      await service.state.listMessagesBySessionId("session-1")
+    ).map((message) => message.content);
+    expect(contents).toEqual(["First turn", "First reply", "Queued follow-up"]);
+    expect(queued.content).toBe("Queued follow-up");
+
+    await service.shutdown();
+  });
+
   it("broadcasts a data change when a follow-up queues behind an active turn", async () => {
     const service = await createService();
     const events: unknown[] = [];

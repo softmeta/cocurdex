@@ -12,6 +12,7 @@ import {
   followUpBehaviorAtom,
   getAgentInputDelivery,
   messagesBySessionAtom,
+  removeQueuedInputAtom,
 } from "@/features/agent";
 import {
   agentsAtom,
@@ -61,14 +62,25 @@ export const sendAssistantMessageAtom = atom(
       createdAt: new Date().toISOString(),
     };
     const isQueuedFollowUp = delivery === "queue-after-run";
-    if (!isQueuedFollowUp) {
+    const queuedInputBase = {
+      sessionId: record.id,
+      workspaceRootPath: primaryWorkspaceRootPath(workspace),
+    };
+    if (isQueuedFollowUp) {
+      set(appendQueuedInputAtom, {
+        ...queuedInputBase,
+        messageId: userMessage.id,
+        createdAt: userMessage.createdAt,
+        message: userMessage,
+      });
+    } else {
       set(updateSessionStatusAtom, { sessionId: record.id, status: "running" });
       set(appendMessageAtom, userMessage);
-      set(markSessionMessageAtom, {
-        sessionId: record.id,
-        createdAt: userMessage.createdAt,
-      });
     }
+    set(markSessionMessageAtom, {
+      sessionId: record.id,
+      createdAt: userMessage.createdAt,
+    });
     try {
       const savedMessage = await taskApi.sendMessage({
         sessionId: record.id,
@@ -80,19 +92,19 @@ export const sendAssistantMessageAtom = atom(
       });
       if (isQueuedFollowUp) {
         set(appendQueuedInputAtom, {
+          ...queuedInputBase,
           messageId: savedMessage.id,
-          sessionId: record.id,
-          workspaceRootPath: primaryWorkspaceRootPath(workspace),
           createdAt: savedMessage.createdAt,
           message: savedMessage,
         });
-        set(markSessionMessageAtom, {
-          sessionId: record.id,
-          createdAt: savedMessage.createdAt,
-        });
       }
     } catch (error) {
-      if (!isQueuedFollowUp) {
+      if (isQueuedFollowUp) {
+        set(removeQueuedInputAtom, {
+          sessionId: record.id,
+          messageId: userMessage.id,
+        });
+      } else {
         set(updateSessionStatusAtom, { sessionId: record.id, status: "error" });
       }
       set(appendMessageAtom, {
