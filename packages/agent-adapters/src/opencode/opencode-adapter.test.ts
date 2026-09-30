@@ -460,7 +460,9 @@ describe("createOpencodeAdapter", () => {
   });
 
   it("rejects a model removed from the live OpenCode catalog before sending", async () => {
-    const { client } = createClient({ models: [] });
+    const { client } = createClient({
+      models: [{ providerID: "other", id: "other-model", enabled: true }],
+    });
     const events: AgentEvent[] = [];
     const session = startAdapter({ client, events, sessionId: "app-model" });
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertOpenCodeModelAvailable,
   getOpenCodePrimaryAgentIds,
+  listOpenCodeModelsWhenReady,
   listOpenCodeProviderModels,
 } from "./opencode-models";
 
@@ -138,5 +139,25 @@ describe("OpenCode model catalog", () => {
         modelId: "off",
       }),
     ).toThrow("is no longer available");
+  });
+});
+
+describe("listOpenCodeModelsWhenReady", () => {
+  it("waits for a directory catalog that is still loading", async () => {
+    vi.useFakeTimers();
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValue({ data: [model({ id: "ready" })] });
+
+    const result = listOpenCodeModelsWhenReady(
+      { model: { list } } as never,
+      "/repo",
+    );
+    await vi.runAllTimersAsync();
+
+    expect((await result).map((item) => item.id)).toEqual(["ready"]);
+    expect(list).toHaveBeenCalledWith({ location: { directory: "/repo" } });
+    vi.useRealTimers();
   });
 });

@@ -1,5 +1,10 @@
 import type { CompatibleProviderModel, ProviderApi } from "@cocurdex/shared";
-import type { AgentInfo, ModelInfo, ProviderInfo } from "@opencode/client";
+import type {
+  AgentInfo,
+  ModelInfo,
+  OpenCodeClient,
+  ProviderInfo,
+} from "@opencode/client";
 import {
   connectOpenCode,
   formatOpenCodeError,
@@ -23,6 +28,25 @@ export function assertOpenCodeModelAvailable(
   throw new Error(
     `OpenCode model ${selection.providerId}/${selection.modelId} is no longer available. Refresh the model list and select another model.`,
   );
+}
+
+const MODEL_CATALOG_READY_ATTEMPTS = 10;
+const MODEL_CATALOG_READY_DELAY_MS = 200;
+
+export async function listOpenCodeModelsWhenReady(
+  client: Pick<OpenCodeClient, "model">,
+  directory?: string,
+): Promise<ModelInfo[]> {
+  const request = directory ? { location: { directory } } : undefined;
+  for (let attempt = 1; ; attempt++) {
+    const models = await client.model.list(request);
+    if (models.data.length > 0 || attempt >= MODEL_CATALOG_READY_ATTEMPTS) {
+      return models.data;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, MODEL_CATALOG_READY_DELAY_MS),
+    );
+  }
 }
 
 function getModelCompatJson(model: ModelInfo, agents: string[]): string | null {
@@ -76,7 +100,7 @@ async function probeOpenCodeProviderModels(): Promise<
   try {
     const client = await connectOpenCode();
     const [models, defaultModel, providers, agents] = await Promise.all([
-      client.model.list(),
+      listOpenCodeModelsWhenReady(client),
       client.model.default(),
       client.provider.list(),
       client.agent.list(),
@@ -87,7 +111,7 @@ async function probeOpenCodeProviderModels(): Promise<
       providers.data.map((provider) => [provider.id, provider]),
     );
 
-    return models.data
+    return models
       .filter((model) => model.enabled)
       .map((model) => {
         const provider = providersById.get(model.providerID);

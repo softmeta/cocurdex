@@ -24,7 +24,10 @@ import {
 } from "./opencode-event-handler";
 import { buildPrompt, buildPromptInput } from "./opencode-events";
 import { createOpenCodeMessageId } from "./opencode-message-id";
-import { assertOpenCodeModelAvailable } from "./opencode-models";
+import {
+  assertOpenCodeModelAvailable,
+  listOpenCodeModelsWhenReady,
+} from "./opencode-models";
 import { replyOpenCodePermission } from "./opencode-permissions";
 import { resolveOpenCodeForm } from "./opencode-questions";
 import {
@@ -191,10 +194,11 @@ export function createOpencodeAdapter(): AgentAdapter {
         const snapshot =
           messagePayload.providerSnapshot ?? payload.session.providerSnapshot;
         if (snapshot) {
-          const models = await openCodeClient.model.list({
-            location: { directory: payload.workspaceRootPath },
-          });
-          assertOpenCodeModelAvailable(models.data, snapshot);
+          const models = await listOpenCodeModelsWhenReady(
+            openCodeClient,
+            payload.workspaceRootPath,
+          );
+          assertOpenCodeModelAvailable(models, snapshot);
         }
 
         const selection = getSessionSelection(
