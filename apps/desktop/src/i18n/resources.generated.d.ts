@@ -252,8 +252,10 @@ export default interface Resources {
       readFile: "Read {{fileName}}{{range}}";
       readFiles: "Read files";
       running: "Running";
+      search: "Search";
       showLess: "Show less";
       showMore: "Show more";
+      skill: "Use skill";
       subagent: "Using subagent";
       subagentCompleted: "Subagent completed";
       subagentEmpty: "No subagent messages yet.";

@@ -16,6 +16,7 @@ import { useTranscriptState } from "../use-transcript-state";
 import { ToolCallDetailBody } from "./tool-call-detail";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
+  getSingleReadLocation,
   getSubagentChildSessionId,
   getSubagentDescription,
   getSubagentType,
@@ -172,6 +173,19 @@ function ToolCallItem({
         type="button"
       >
         <SubagentTriggerCard toolCall={toolCall} />
+      </button>
+    );
+  }
+
+  const readLocation = getSingleReadLocation(toolCall);
+  if (readLocation && onOpenToolLocation && toolCall.status === "completed") {
+    return (
+      <button
+        className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-meta transition-colors hover:bg-chat-surface-row-hover"
+        onClick={() => onOpenToolLocation(readLocation)}
+        type="button"
+      >
+        <ToolCallTriggerRow toolCall={toolCall} />
       </button>
     );
   }
