@@ -59,6 +59,8 @@ Use TDD for critical pure functions and similarly stable logic. UI, feature flow
 
 `tests/e2e` (`pnpm --filter @cocurdex/e2e test`) runs deterministic process-level e2e: it spawns the real daemon binary and CLI against an isolated `COCURDEX_USER_DATA_PATH`, then drives production clients over the real socket. `desktop-smoke.test.ts` additionally launches the built Electron app (`pnpm --filter @cocurdex/desktop exec electron-vite build` first) and verifies the window, the spawned daemon, and a clean renderer; it skips when `out/` is absent. Keep e2e free of LLM providers, network, keychain, and UI assertions.
 
+Startup performance has a baseline. CI fails when the renderer's startup chunks exceed `apps/desktop/startup-budget.json` (`pnpm --filter @cocurdex/desktop check:startup-bundle` after a build) or when desktop code imports `lazy`/`Suspense` from `react`. Raise the budget with `check:startup-bundle --update` only for intended growth, and justify it in the PR. When a change touches startup (entry imports, app shell, bootstrap, main-process `whenReady`), compare `pnpm --filter @cocurdex/desktop perf:startup` on builds before and after; add `--onboarding` for the first-run screen. Reference on Apple Silicon (2026-09-30): returning user FCP about 70–90 ms and LCP about 100 ms.
+
 ## Development and UI verification
 
 Do not start `pnpm --filter @cocurdex/desktop dev`; ask the user to start it if needed. Do not reuse processes, open browsers, or click through the app unless the user explicitly requests it.

@@ -104,6 +104,8 @@ jobs:
           fi
       - name: Check desktop dependency cycles
         run: pnpm --filter @cocurdex/desktop lint:cycles
+      - name: Lint lazy-loading pattern
+        run: pnpm exec biome lint --only=style/noRestrictedImports apps/desktop/src
 
   desktop:
     name: Desktop (${{ matrix.os }})
@@ -147,3 +149,6 @@ jobs:
         run: pnpm --filter @cocurdex/desktop build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+      - name: Check startup bundle budget
+        if: needs.changes.outputs.run_desktop == 'true'
+        run: pnpm --filter @cocurdex/desktop check:startup-bundle

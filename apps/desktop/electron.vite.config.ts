@@ -152,6 +152,7 @@ export default defineConfig(({ command }) => ({
     },
     build: {
       minify: command === "build" ? "esbuild" : false,
+      manifest: true,
       rollupOptions: {
         input: {
           index: "index.html",
