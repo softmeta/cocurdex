@@ -54,8 +54,10 @@ async function connect() {
   const pending = new Map();
   socket.onmessage = (message) => {
     const data = JSON.parse(message.data);
-    pending.get(data.id)?.(data);
+    const resolve = pending.get(data.id);
+    if (typeof resolve !== "function") return;
     pending.delete(data.id);
+    resolve(data);
   };
   const send = (method, params = {}) =>
     new Promise((resolve) => {
