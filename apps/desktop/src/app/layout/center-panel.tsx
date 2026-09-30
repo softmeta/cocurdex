@@ -638,6 +638,7 @@ export function CenterPanel({
       attachmentCount: attachments.length,
     });
 
+    let optimisticQueuedMessageId: string | null = null;
     try {
       const nextSession = prepareAutoSessionTitle(
         activeSession,
@@ -655,15 +656,29 @@ export function CenterPanel({
         createdAt: new Date().toISOString(),
       };
       const isQueuedFollowUp = delivery === "queue-after-run";
+      const queuedInputBase = {
+        sessionId: nextSession.id,
+        workspaceRootPath:
+          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+        thinkingLevel: selectedThinkingLevel ?? undefined,
+      };
 
-      if (!isQueuedFollowUp) {
+      if (isQueuedFollowUp) {
+        optimisticQueuedMessageId = userMessage.id;
+        appendQueuedInput({
+          ...queuedInputBase,
+          messageId: userMessage.id,
+          createdAt: userMessage.createdAt,
+          message: userMessage,
+        });
+      } else {
         updateSessionStatus({ sessionId: nextSession.id, status: "running" });
         appendMessage(userMessage);
-        markSessionMessage({
-          sessionId: nextSession.id,
-          createdAt: userMessage.createdAt,
-        });
       }
+      markSessionMessage({
+        sessionId: nextSession.id,
+        createdAt: userMessage.createdAt,
+      });
       clearChatComposerAttachment();
 
       const annotationAttachments =
@@ -709,17 +724,10 @@ export function CenterPanel({
 
       if (isQueuedFollowUp) {
         appendQueuedInput({
+          ...queuedInputBase,
           messageId: savedMessage.id,
-          sessionId: savedMessage.sessionId,
-          workspaceRootPath:
-            workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-          thinkingLevel: selectedThinkingLevel ?? undefined,
           createdAt: savedMessage.createdAt,
           message: savedMessage,
-        });
-        markSessionMessage({
-          sessionId: savedMessage.sessionId,
-          createdAt: savedMessage.createdAt,
         });
       }
 
@@ -744,7 +752,12 @@ export function CenterPanel({
         refineAutoSessionTitle(nextSession, message, nextSession.title);
       }
     } catch (error) {
-      if (delivery !== "queue-after-run") {
+      if (optimisticQueuedMessageId) {
+        removeQueuedInput({
+          sessionId: activeSession.id,
+          messageId: optimisticQueuedMessageId,
+        });
+      } else {
         updateSessionStatus({ sessionId: activeSession.id, status: "error" });
       }
       console.error("[AgentSession] send failed", {
