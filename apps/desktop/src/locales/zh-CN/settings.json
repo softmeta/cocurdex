@@ -313,7 +313,7 @@
     "view": "查看"
   },
   "mcp": {
-    "description": "配置内置 Pi agent 可用的 MCP 服务器。只有 Pi 使用相关工具时，服务器才会连接。",
+    "description": "配置内置 Pi agent 可用的 MCP 服务器。Pi 会在会话启动时连接这些服务器。服务器名称只能包含字母、数字、“_”和“-”。",
     "editorLabel": "MCP 服务器配置",
     "form": {
       "add": "添加服务器",

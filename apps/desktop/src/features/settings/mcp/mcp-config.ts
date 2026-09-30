@@ -1,3 +1,5 @@
+import { isValidMcpServerName } from "@cocurdex/shared";
+
 export type McpServerForm = {
   args: string;
   env: string;
@@ -77,6 +79,11 @@ export function serializeServerForms(
   const names = forms.map((form) => form.name.trim());
   if (names.some((name) => !name)) {
     throw new Error("Every MCP server needs a name");
+  }
+  if (names.some((name) => !isValidMcpServerName(name))) {
+    throw new Error(
+      'MCP server names may only contain letters, digits, "_", and "-"',
+    );
   }
   if (new Set(names).size !== names.length) {
     throw new Error("MCP server names must be unique");

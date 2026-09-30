@@ -2,7 +2,7 @@ import path from "node:path";
 import type { ProviderAuthMethod, ProviderAuthState } from "@cocurdex/shared";
 import type { AuthInteraction, AuthResult } from "@earendil-works/pi-ai";
 import { registerBunOAuthFlows as registerBundledPiOAuthFlows } from "@earendil-works/pi-ai/bun-oauth";
-import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { getPiAgentDir } from "./pi-paths";
 
 export function registerBundledPiProviderOAuthFlows() {
@@ -54,7 +54,15 @@ export async function loginPiProvider(
   interaction: AuthInteraction,
 ) {
   const runtime = await createProviderAuthRuntime(userDataPath);
-  await runtime.login(providerId, method, interaction);
+  const agentDir = getPiAgentDir(userDataPath);
+  const settings = SettingsManager.create(agentDir, agentDir);
+  try {
+    await runtime.login(providerId, method, interaction, {
+      getDeviceId: () => settings.getOrCreateDeviceId(),
+    });
+  } finally {
+    await settings.flush();
+  }
 }
 
 export async function logoutPiProvider(

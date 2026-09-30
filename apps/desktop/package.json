@@ -42,14 +42,13 @@
   "dependencies": {
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
-    "@earendil-works/pi-coding-agent": "0.87.1",
+    "@earendil-works/pi-coding-agent": "0.99.1",
     "@napi-rs/keyring": "2.1.0",
     "@vscode/ripgrep": "^1.18.0",
     "electron-log": "^5.4.3",
     "electron-updater": "6.8.9",
     "font-list": "^2.1.0",
     "node-pty": "^1.1.0",
-    "pi-mcp-adapter": "2.37.0",
     "zod": "^4.0.0"
   },
   "optionalDependencies": {
@@ -156,9 +155,6 @@
       "out/**",
       "!node_modules/**/*.map",
       "!node_modules/**/*.{ts,tsx,cts,mts}",
-      "node_modules/pi-mcp-adapter/**/*",
-      "!node_modules/pi-mcp-adapter/**/*.map",
-      "!node_modules/pi-mcp-adapter/banner.png",
       "!node_modules/**/{demo,demos,docs,example,examples,test,tests,__tests__}/**/*",
       "!node_modules/**/*.{md,markdown}",
       "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",

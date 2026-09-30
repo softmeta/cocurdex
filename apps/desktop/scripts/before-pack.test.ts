@@ -84,10 +84,8 @@ it.each(["linux", "mac", "win"])(
           isDirectory: () => false,
         },
       );
-    expect(acceptsDependency("pi-mcp-adapter/index.ts")).toBe(true);
-    expect(acceptsDependency("pi-mcp-adapter/proxy-modes.ts")).toBe(true);
-    expect(acceptsDependency("pi-mcp-adapter/banner.png")).toBe(false);
-    expect(acceptsDependency("pi-mcp-adapter/index.ts.map")).toBe(false);
+    expect(acceptsDependency("quickjs-wasi/quickjs.wasm")).toBe(true);
+    expect(acceptsDependency("other-package/index.js.map")).toBe(false);
     expect(acceptsDependency("other-package/index.ts")).toBe(false);
   },
 );

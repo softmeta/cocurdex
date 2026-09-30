@@ -26,6 +26,15 @@ describe("MCP configuration", () => {
     expect(() => validateMcpConfig("{}")).toThrow('"mcpServers" object');
   });
 
+  it("rejects server names Pi cannot turn into tool names", () => {
+    expect(() =>
+      validateMcpConfig('{"mcpServers":{"my server":{"command":"npx"}}}'),
+    ).toThrow('"my server"');
+    expect(
+      validateMcpConfig('{"mcpServers":{"git_hub-2":{"command":"npx"}}}'),
+    ).toContain("git_hub-2");
+  });
+
   it("keeps concurrent saves intact and in request order", async () => {
     const userDataPath = await mkdtemp(path.join(tmpdir(), "cocurdex-mcp-"));
     const service = new DaemonMcpConfigService(userDataPath);

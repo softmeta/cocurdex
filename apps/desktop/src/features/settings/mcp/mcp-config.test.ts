@@ -10,12 +10,12 @@ describe("MCP form configuration", () => {
   it("round-trips advanced fields while editing common fields", () => {
     const config = parseMcpConfig(
       JSON.stringify({
-        settings: { toolPrefix: "short" },
+        imports: ["cursor"],
         mcpServers: {
           github: {
             command: "npx",
             args: ["-y", "server"],
-            directTools: true,
+            exposure: "direct",
           },
         },
       }),
@@ -24,11 +24,30 @@ describe("MCP form configuration", () => {
     forms[0].target = "pnpm";
 
     const result = JSON.parse(serializeServerForms(config, forms));
-    expect(result.settings).toEqual({ toolPrefix: "short" });
+    expect(result.imports).toEqual(["cursor"]);
     expect(result.mcpServers.github).toMatchObject({
       command: "pnpm",
-      directTools: true,
+      exposure: "direct",
     });
+  });
+
+  it("rejects names Pi cannot turn into tool names", () => {
+    const config = parseMcpConfig('{"mcpServers":{}}');
+    const forms = [
+      {
+        args: "",
+        env: "",
+        id: "a",
+        name: "my.server",
+        raw: {},
+        target: "npx",
+        transport: "stdio" as const,
+      },
+    ];
+
+    expect(() => serializeServerForms(config, forms)).toThrow(
+      "letters, digits",
+    );
   });
 
   it("rejects duplicate names and creates a free default name", () => {

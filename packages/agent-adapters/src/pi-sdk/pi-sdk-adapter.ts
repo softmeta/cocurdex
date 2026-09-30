@@ -1,8 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type {
   AgentAdapter,
   AgentSession,
@@ -35,7 +32,11 @@ import {
 } from "@earendil-works/pi-ai";
 import {
   createAgentSession,
+  createCodemodeExtension,
+  createMcpExtension,
+  createToolSearchExtension,
   DefaultResourceLoader,
+  type InlineExtension,
   ModelRuntime,
   type PromptOptions,
   SessionManager,
@@ -74,6 +75,18 @@ import {
 
 const PI_PROVIDER_VERSION = "pi-sdk";
 
+function createPiBuiltinExtensions(): InlineExtension[] {
+  return [
+    { name: "codemode", factory: createCodemodeExtension(), builtin: true },
+    {
+      name: "tool-search",
+      factory: createToolSearchExtension(),
+      builtin: true,
+    },
+    { name: "mcp", factory: createMcpExtension(), builtin: true },
+  ];
+}
+
 function isPiThinkingLevel(
   value: SendAgentMessagePayload["thinkingLevel"],
 ): value is PiThinkingLevel {
@@ -90,14 +103,35 @@ type PiSessionLike = {
   sessionFile?: string;
   sessionId: string;
   prompt(text: string, options?: PromptOptions): Promise<void>;
-  steer(text: string, images?: ImageContent[]): Promise<void>;
+  steer(text: string, images?: ImageContent[]): Promise<unknown>;
   setModel?(model: PiModel): Promise<void>;
   setThinkingLevel?(level: PiThinkingLevel): void;
   abort(): Promise<void>;
   dispose(): void;
   subscribe(listener: (event: Record<string, unknown>) => void): () => void;
+  bindExtensions(bindings: {
+    onError?: (error: { extensionPath: string; error: string }) => void;
+  }): Promise<void>;
+  extensionRunner: {
+    emit(event: { type: "session_shutdown"; reason: "quit" }): Promise<unknown>;
+  };
   sessionManager?: { getSessionFile(): string | undefined };
 };
+
+async function shutdownPiSession(session: PiSessionLike) {
+  try {
+    await session.extensionRunner.emit({
+      type: "session_shutdown",
+      reason: "quit",
+    });
+  } catch (error) {
+    logAdapterDiagnostic("info", "[PiSdkAdapter] session shutdown failed", {
+      errorKind: errorKindForLog(error),
+    });
+  } finally {
+    session.dispose();
+  }
+}
 
 type PiSdkResult = { session: PiSessionLike };
 
@@ -106,105 +140,6 @@ interface PiSdkDependencies {
   ModelRuntime: typeof ModelRuntime;
   SessionManager: typeof SessionManager;
   createAgentSession(options?: Record<string, unknown>): Promise<PiSdkResult>;
-}
-
-interface ResolvePiMcpAdapterOptions {
-  cwd?: string;
-  moduleUrl?: string;
-  resourcesPath?: string;
-}
-
-// Directory walk used when createRequire(import.meta.url) fails — i.e. when
-// this module is bundled into Electron main (`out/main/main.js`) and the
-// package only exists under packages/agent-adapters or a desktop direct dep.
-export function findPiMcpAdapterPackageJson(
-  startDirs: string[],
-): string | null {
-  for (const startDir of startDirs) {
-    let dir = path.resolve(startDir);
-    for (let depth = 0; depth < 12; depth += 1) {
-      const candidates = [
-        path.join(dir, "node_modules", "pi-mcp-adapter", "package.json"),
-        path.join(
-          dir,
-          "packages",
-          "agent-adapters",
-          "node_modules",
-          "pi-mcp-adapter",
-          "package.json",
-        ),
-      ];
-      for (const candidate of candidates) {
-        if (existsSync(candidate)) {
-          return candidate;
-        }
-      }
-      const parent = path.dirname(dir);
-      if (parent === dir) {
-        break;
-      }
-      dir = parent;
-    }
-  }
-  return null;
-}
-
-function getElectronResourcesPath() {
-  return (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
-}
-
-export function resolvePiMcpAdapterPackageJson(
-  options: ResolvePiMcpAdapterOptions = {},
-): string {
-  const moduleUrl = options.moduleUrl ?? import.meta.url;
-  const resourcesPath = options.resourcesPath ?? getElectronResourcesPath();
-  if (resourcesPath) {
-    const packagedCandidates = [
-      path.join(
-        resourcesPath,
-        "app.asar",
-        "node_modules",
-        "pi-mcp-adapter",
-        "package.json",
-      ),
-      path.join(
-        resourcesPath,
-        "app.asar.unpacked",
-        "node_modules",
-        "pi-mcp-adapter",
-        "package.json",
-      ),
-    ];
-    const packagedPackageJson = packagedCandidates.find((candidate) =>
-      existsSync(candidate),
-    );
-    if (packagedPackageJson) {
-      return packagedPackageJson;
-    }
-  }
-
-  try {
-    return createRequire(moduleUrl).resolve("pi-mcp-adapter/package.json");
-  } catch {
-    // The packaged daemon lives outside app.asar, so Node resolution cannot
-    // reach dependencies bundled inside the archive.
-  }
-
-  const found = findPiMcpAdapterPackageJson([
-    path.dirname(fileURLToPath(moduleUrl)),
-    options.cwd ?? process.cwd(),
-  ]);
-  if (found) {
-    return found;
-  }
-
-  throw new Error(
-    'Cannot resolve "pi-mcp-adapter". Ensure it is installed for the desktop app or agent-adapters package.',
-  );
-}
-
-export function getPiMcpAdapterPath() {
-  return path.join(path.dirname(resolvePiMcpAdapterPackageJson()), "index.ts");
 }
 
 interface ActiveMessageRecord {
@@ -407,10 +342,7 @@ function getProviderState(session: PiSessionLike) {
 }
 
 export function createPiSdkAdapter(
-  options: {
-    resolveMcpAdapterPath?: () => string;
-    sdk?: PiSdkDependencies;
-  } = {},
+  options: { sdk?: PiSdkDependencies } = {},
 ): AgentAdapter {
   const descriptor = getAgentDescriptor("pi");
   const sdk = options.sdk ?? {
@@ -419,8 +351,6 @@ export function createPiSdkAdapter(
     SessionManager,
     createAgentSession,
   };
-  const resolveMcpAdapterPath =
-    options.resolveMcpAdapterPath ?? getPiMcpAdapterPath;
 
   return {
     getDescriptor() {
@@ -855,10 +785,10 @@ export function createPiSdkAdapter(
           const resourceLoader = new sdk.DefaultResourceLoader({
             cwd: payload.workspaceRootPath,
             agentDir,
-            additionalExtensionPaths: [resolveMcpAdapterPath()],
             additionalSkillPaths: resolveAdditionalSkillPaths(
               payload.workspaceRootPath,
             ),
+            extensionFactories: createPiBuiltinExtensions(),
           });
           await resourceLoader.reload();
           const result = await sdk.createAgentSession({
@@ -875,6 +805,13 @@ export function createPiSdkAdapter(
           });
           piSession = result.session;
           unsubscribe = piSession.subscribe(handlePiEvent);
+          await piSession.bindExtensions({
+            onError: ({ extensionPath, error }) =>
+              logAdapterDiagnostic("info", "[PiSdkAdapter] extension error", {
+                errorKind: errorKindForLog(error),
+                extensionPathHash: hashLogValue(extensionPath),
+              }),
+          });
           const state = getProviderState(piSession);
           logAdapterDiagnostic("info", "[PiSdkAdapter] session opened", {
             providerSessionId: state.providerSessionId,
@@ -1075,7 +1012,7 @@ export function createPiSdkAdapter(
           disposed = true;
           unsubscribe?.();
           unsubscribe = null;
-          piSession?.dispose();
+          if (piSession) void shutdownPiSession(piSession);
         },
       };
     },
