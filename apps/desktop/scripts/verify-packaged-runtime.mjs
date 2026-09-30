@@ -5,10 +5,9 @@ import electronPath from "electron";
 import { nativeIdMatchesTarget } from "./packaging-native-filters.mjs";
 
 const REQUIRED_ASAR_PATHS = [
-  "node_modules/pi-mcp-adapter/package.json",
-  "node_modules/pi-mcp-adapter/index.ts",
   "node_modules/jiti/lib/jiti-static.mjs",
   "node_modules/@earendil-works/pi-coding-agent/package.json",
+  "node_modules/@earendil-works/pi-codemode/package.json",
   "out/main/main.js",
 ];
 
@@ -20,7 +19,6 @@ const FORBIDDEN_ASAR_PATHS = [
   "electron.vite.config.ts",
   "scripts",
   "src",
-  "node_modules/pi-mcp-adapter/banner.png",
 ];
 
 const FORBIDDEN_ASAR_PACKAGE_PREFIXES = [
@@ -231,68 +229,42 @@ async function inspectAsar(asarPath) {
       if (typeof ModelRuntime?.create !== "function") {
         throw new Error("Packaged Pi SDK has no ModelRuntime.create");
       }
-      const extensionPath = path.join(
-        asarPath,
-        "node_modules",
-        "pi-mcp-adapter",
-        "index.ts",
+      const daemonPath = path.join(expectedResourcesPath, "cli", "daemon.cjs");
+      const quickjsWasmPath = createRequire(daemonPath).resolve(
+        "./quickjs.wasm",
       );
-      const jitiPath = path.join(
-        asarPath,
-        "node_modules",
-        "jiti",
-        "lib",
-        "jiti-static.mjs",
+      if (fs.readFileSync(daemonPath, "utf8").includes("quickjs-wasi/quickjs.wasm")) {
+        throw new Error("Packaged daemon resolves QuickJS wasm as a package");
+      }
+      const codemode = await import(
+        pathToFileURL(
+          path.join(
+            asarPath,
+            "node_modules",
+            "@earendil-works",
+            "pi-codemode",
+            "dist",
+            "index.js",
+          ),
+        ).href
       );
-      const { createJiti } = await import(pathToFileURL(jitiPath).href);
-      const jiti = createJiti(pathToFileURL(mainEntryPath).href, {
-        moduleCache: false,
-        tryNative: false,
+      const sandbox = new codemode.CodemodeSandbox({
+        wasm: codemode.loadQuickJSWasm(quickjsWasmPath),
+        workerUrl: new URL("./worker.js", pathToFileURL(daemonPath)),
+        tools: [{
+          name: "add",
+          description: "Add two numbers",
+          execute: async ({ x, y }) => x + y,
+        }],
       });
-      const extension = await jiti.import(extensionPath, { default: true });
-      if (typeof extension !== "function") {
-        throw new Error("Packaged pi-mcp-adapter has no default factory");
-      }
-
-      const mcpRoot = path.dirname(extensionPath);
-      const mcpRequire = createRequire(extensionPath);
-      const keyring = mcpRequire("@napi-rs/keyring");
-      if (typeof keyring.Entry !== "function") {
-        throw new Error("Packaged MCP keyring native module did not load");
-      }
-      function checkSourceMaps(directory) {
-        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-          const entryPath = path.join(directory, entry.name);
-          if (entry.isDirectory()) checkSourceMaps(entryPath);
-          else if (entry.name.endsWith(".map")) {
-            throw new Error("Unexpected MCP source map: " + entryPath);
-          }
-        }
-      }
-      checkSourceMaps(mcpRoot);
-      const { executeSearch } = await jiti.import(path.join(mcpRoot, "proxy-modes.ts"));
-      const searchState = {
-        config: { mcpServers: { fixture: { command: "fixture" } } },
-        manager: { getConnection: () => ({ status: "connected" }) },
-        toolMetadata: new Map([["fixture", [{
-          name: "read_file", description: "Read a file", inputSchema: {},
-        }]]]),
-      };
-      const safe = executeSearch(searchState, "^read_file$", true);
-      if (safe.details.count !== 1) {
-        throw new Error("Packaged MCP regex search failed: " + JSON.stringify(safe.details));
-      }
-      const unsafe = executeSearch(searchState, "(a+)+$", true);
-      if (unsafe.details.error !== "unsafe_pattern") {
-        throw new Error("Packaged MCP search accepted an unsafe regex");
-      }
-      const invalid = executeSearch(searchState, "[", true);
-      if (invalid.details.error !== "invalid_pattern") {
-        throw new Error("Packaged MCP search accepted an invalid regex");
-      }
-      const oversized = executeSearch(searchState, "a".repeat(257), true);
-      if (oversized.details.error !== "query_too_long") {
-        throw new Error("Packaged MCP search lost its regex length limit");
+      const codemodeResult = await sandbox.execute(
+        "text(String(await tools.add({ x: 2, y: 3 })));",
+      );
+      await sandbox.close();
+      if (!codemodeResult.ok || codemodeResult.output[0]?.text !== "5") {
+        throw new Error(
+          "Packaged codemode sandbox failed: " + JSON.stringify(codemodeResult),
+        );
       }
 
       process.stdout.write(JSON.stringify({ missing, unexpected }));

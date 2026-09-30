@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { McpConfigFile } from "@cocurdex/shared";
+import { isValidMcpServerName, type McpConfigFile } from "@cocurdex/shared";
 
 const DEFAULT_MCP_CONFIG = '{\n  "mcpServers": {}\n}\n';
 
@@ -18,6 +18,14 @@ export function validateMcpConfig(content: string) {
   const servers = (parsed as Record<string, unknown>).mcpServers;
   if (!servers || typeof servers !== "object" || Array.isArray(servers)) {
     throw new Error('MCP configuration must contain an "mcpServers" object');
+  }
+  const invalidName = Object.keys(servers).find(
+    (name) => !isValidMcpServerName(name),
+  );
+  if (invalidName !== undefined) {
+    throw new Error(
+      `MCP server name "${invalidName}" may only contain letters, digits, "_", and "-"`,
+    );
   }
 
   return `${JSON.stringify(parsed, null, 2)}\n`;

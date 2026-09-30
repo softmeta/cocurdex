@@ -100,7 +100,7 @@
 | `@modelcontextprotocol/sdk` 已是 `@cocurdex/agent-adapters` 依赖 | `packages/agent-adapters/package.json` |
 | Claude adapter 通过 `@anthropic-ai/claude-agent-sdk` 的 `query()` 启动，可传 `mcpServers` 选项 | `packages/agent-adapters/src/claude-cli/claude-cli-adapter.ts` |
 | Codex adapter 以 `spawn("codex", ["app-server"])` 启动，再 `thread/start` | `packages/agent-adapters/src/codex/codex-app-server-client.ts` |
-| Grok Build 已有 MCP 相关文件，OpenCode 以本地 server 启动，Pi 通过 `pi-mcp-adapter` 加载用户 MCP | `packages/agent-adapters/src/{grok-build,opencode,pi-sdk}` |
+| Grok Build 已有 MCP 相关文件，OpenCode 以本地 server 启动，Pi 通过内置 MCP 扩展（`createMcpExtension`）加载用户 MCP | `packages/agent-adapters/src/{grok-build,opencode,pi-sdk}` |
 | `session.send` 已支持三种投递：`start-new-run`、`steer-active-run`、`queue-after-run` | `packages/daemon/src/service.ts` `acceptSessionMessage` |
 | `SessionRecord` 已有 `sessionKind: "main" \| "subagent"`、`parentSessionId`、`parentToolCallId` | `packages/shared/src/contracts.ts` |
 | provider 自带的子 agent 已被投影为子 session | `packages/shared/src/subagent-session.ts`、`packages/agent-adapters/src/*/…-subagent-*.ts` |
