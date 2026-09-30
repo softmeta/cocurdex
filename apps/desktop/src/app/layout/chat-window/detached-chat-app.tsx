@@ -11,7 +11,7 @@ import { sessionSplitLayoutAtom } from "@/features/sessions";
 import { HostDirectoryPickerHost } from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
 import type { ChatWindowTransfer } from "@/lib/chat-window-types";
-import { useAgentEventBridge } from "../app-shell/app-shell-events";
+import { synchronizeAgentState } from "../app-shell/agent-event-bridge";
 import { syncInitialPreferences } from "../app-shell/app-shell-preferences";
 import { SessionSplitLayout } from "../session-split";
 import { LeftSidebar } from "../sidebar";
@@ -113,7 +113,6 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
 }
 
 export function DetachedChatApp() {
-  const synchronizeAgentState = useAgentEventBridge();
   useChatEventBridge();
   const store = useStore();
   const { t } = useTranslation("sessions");

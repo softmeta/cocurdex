@@ -1,5 +1,6 @@
 import { useSetAtom, useStore } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
+import { useMountEffect } from "@/lib";
 import { noteSaveStatusAtom, renameNoteAtom } from "../notes-store";
 
 const TITLE_DEBOUNCE_MS = 500;
@@ -43,9 +44,7 @@ export function useDebouncedNoteRename({
       .catch(() => setSaveStatus("error"));
   });
 
-  useEffect(() => {
-    return () => flush.current();
-  }, []);
+  useMountEffect(() => () => flush.current());
 
   return useCallback((title: string) => {
     pendingRef.current = title;

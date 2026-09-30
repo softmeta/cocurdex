@@ -1395,12 +1395,8 @@ export class CocurdexDaemonService {
       session.agentType === "opencode" &&
       providerSession?.providerSessionId
     ) {
-      if (!workspaceRootPath) {
-        throw new Error(`Workspace ${session.workspaceId} not found`);
-      }
       await deleteOpenCodeSession({
         providerSessionId: providerSession.providerSessionId,
-        workspaceRootPath,
       });
     }
 

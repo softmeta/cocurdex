@@ -1,6 +1,7 @@
 import { useSetAtom } from "jotai";
 import type { editor as MonacoEditorNamespace } from "monaco-editor";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useMountEffect } from "@/lib";
 import { setEditorSelectionAttachmentAtom } from "../editor-store";
 import {
   getSelectionAttachment,
@@ -42,7 +43,7 @@ export function useSelectionBubble() {
   }, []);
 
   // Sync: window mouseup to finalize pointer selection
-  useEffect(() => {
+  useMountEffect(() => {
     const handleWindowMouseUp = () => {
       if (!isPointerSelectingRef.current) {
         return;
@@ -56,15 +57,10 @@ export function useSelectionBubble() {
     return () => {
       window.removeEventListener("mouseup", handleWindowMouseUp);
     };
-  }, []);
+  });
 
   // Cleanup timer on unmount
-  useEffect(
-    () => () => {
-      clearSelectionBubbleTimer();
-    },
-    [clearSelectionBubbleTimer],
-  );
+  useMountEffect(() => clearSelectionBubbleTimer);
 
   const syncSelectionUi = useCallback(() => {
     const editor = editorRef.current;

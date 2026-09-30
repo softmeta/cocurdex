@@ -1,70 +1,82 @@
 import type { CreateAgentSessionPayload } from "@cocurdex/agent-core";
-import type { QuestionRequest } from "@opencode-ai/sdk/v2";
-import {
-  expectOpenCodeSuccess,
-  formatOpenCodeError,
-  logOpenCode,
-  type OpenCodeRuntime,
-} from "./opencode-runtime";
+import type { FormCreated, OpenCodeClient } from "@opencode/client";
+import { formatOpenCodeError, logOpenCode } from "./opencode-runtime";
 
-export async function resolveOpenCodeQuestion(
+type OpenCodeForm = FormCreated["data"]["form"];
+type OpenCodeFormField = OpenCodeForm["fields"][number];
+type OpenCodeQuestionField = Extract<
+  OpenCodeFormField,
+  { type: "multiselect" | "string" }
+>;
+
+function isQuestionField(
+  field: OpenCodeFormField,
+): field is OpenCodeQuestionField {
+  return field.type === "string" || field.type === "multiselect";
+}
+
+export async function resolveOpenCodeForm(
   payload: CreateAgentSessionPayload,
-  runtime: OpenCodeRuntime,
-  request: QuestionRequest,
+  client: OpenCodeClient,
+  form: OpenCodeForm,
 ) {
-  if (!payload.requestQuestion) {
-    await rejectOpenCodeQuestion(payload, runtime, request);
+  const requestQuestion = payload.requestQuestion;
+  const fields = form.fields.filter(isQuestionField);
+  if (
+    !requestQuestion ||
+    form.metadata?.kind !== "question" ||
+    fields.length !== form.fields.length
+  ) {
+    await cancelOpenCodeForm(payload, client, form);
     return;
   }
 
-  const answers: string[][] = [];
-  for (const [index, question] of request.questions.entries()) {
-    const answer = await payload.requestQuestion({
-      id: `${request.id}:${index}`,
+  const answer: Record<string, string | string[]> = {};
+  for (const [index, field] of fields.entries()) {
+    const multiSelect = field.type === "multiselect";
+    const response = await requestQuestion({
+      id: `${form.id}:${index}`,
       sessionId: payload.session.id,
       providerId: "opencode",
-      question: question.question,
-      header: question.header,
-      options: question.options,
-      multiSelect: question.multiple,
+      question: field.description ?? field.title ?? form.title,
+      header: field.title,
+      options: (field.options ?? []).map((option) => ({
+        label: option.label,
+        description: option.description ?? "",
+      })),
+      multiSelect,
     });
 
-    if (!answer) {
-      await rejectOpenCodeQuestion(payload, runtime, request);
+    if (!response) {
+      await cancelOpenCodeForm(payload, client, form);
       return;
     }
 
-    answers.push([answer]);
+    answer[field.key] = multiSelect ? response.split(", ") : response;
   }
 
-  await expectOpenCodeSuccess(
-    runtime.clientV2.question.reply({
-      requestID: request.id,
-      directory: payload.workspaceRootPath,
-      answers,
-    }),
-    "resolve question",
-  );
+  await client.session.form.reply({
+    sessionID: form.sessionID,
+    formID: form.id,
+    answer,
+  });
 }
 
-async function rejectOpenCodeQuestion(
+async function cancelOpenCodeForm(
   payload: CreateAgentSessionPayload,
-  runtime: OpenCodeRuntime,
-  request: QuestionRequest,
+  client: OpenCodeClient,
+  form: OpenCodeForm,
 ) {
   try {
-    await expectOpenCodeSuccess(
-      runtime.clientV2.question.reject({
-        requestID: request.id,
-        directory: payload.workspaceRootPath,
-      }),
-      "reject question",
-    );
+    await client.session.form.cancel({
+      sessionID: form.sessionID,
+      formID: form.id,
+    });
   } catch (error) {
-    logOpenCode("error", "Question rejection failed", {
+    logOpenCode("error", "Form cancellation failed", {
       appSessionId: payload.session.id,
-      openCodeSessionId: request.sessionID,
-      requestId: request.id,
+      openCodeSessionId: form.sessionID,
+      formId: form.id,
       error: formatOpenCodeError(error),
     });
   }

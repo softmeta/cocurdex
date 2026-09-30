@@ -116,17 +116,17 @@ export function PillComposer({
   const [isPillExpanded, setIsPillExpanded] = useState(false);
   const [previewAttachment, setPreviewAttachment] =
     useState<ImageAttachment | null>(null);
+  const hasContent = text.length > 0 || mentions.length > 0;
+  if (!hasContent && isPillExpanded) {
+    setIsPillExpanded(false);
+  }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: text re-measures wrapping that does not resize any observed box
   useLayoutEffect(() => {
     const container = editorContainerRef.current;
     const composer = pillComposerRef.current;
     const actionGroup = pillActionGroupRef.current;
-    if (!container || !composer || !actionGroup) return;
-
-    if (text.length === 0 && mentions.length === 0) {
-      setIsPillExpanded(false);
-      return;
-    }
+    if (!container || !composer || !actionGroup || !hasContent) return;
 
     const updateExpandedState = () => {
       const editorEl = container.querySelector(
@@ -165,7 +165,7 @@ export function PillComposer({
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [mentions.length, text]);
+  }, [hasContent, text]);
 
   const hasComposerExtras =
     Boolean(attachmentError) ||

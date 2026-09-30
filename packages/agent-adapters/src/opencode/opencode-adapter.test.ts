@@ -1,22 +1,20 @@
 import type {
   AgentEvent,
+  AgentPermissionRequestPayload,
+  AgentPermissionResolution,
   AgentProviderSessionRecord,
   AgentQuestionRequestPayload,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
-import type { Event as OpenCodeEvent, OpencodeClient } from "@opencode-ai/sdk";
-import type { OpencodeClient as OpenCodeV2Client } from "@opencode-ai/sdk/v2";
+import type { OpenCodeEvent } from "@opencode/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createOpencodeAdapter,
   deleteOpenCodeSession,
 } from "./opencode-adapter";
 
-const runtimeMocks = vi.hoisted(() => ({
-  acquire: vi.fn(),
-  release: vi.fn(),
-}));
+const runtimeMocks = vi.hoisted(() => ({ connect: vi.fn() }));
 
 vi.mock("./opencode-runtime", async () => {
   const actual =
@@ -25,73 +23,159 @@ vi.mock("./opencode-runtime", async () => {
     );
   return {
     ...actual,
-    acquireOpenCodeRuntime: runtimeMocks.acquire,
+    connectOpenCode: runtimeMocks.connect,
     logOpenCode: vi.fn(),
-    releaseOpenCodeRuntime: runtimeMocks.release,
   };
 });
 
-interface TestEventStream {
-  close(): void;
-  push(event: OpenCodeEvent): void;
-  stream: AsyncIterable<OpenCodeEvent>;
+const NATIVE_MODEL = {
+  providerID: "native-provider",
+  id: "native-provider/native-model",
+};
+
+function notFound() {
+  return Object.assign(new Error("Session not found"), {
+    name: "SessionNotFoundError",
+  });
 }
 
-type OpenCodeCreateResult = Awaited<
-  ReturnType<OpencodeClient["session"]["create"]>
->;
+let sequence = 0;
 
-function createEventStream(): TestEventStream {
-  const queued: OpenCodeEvent[] = [];
-  let closed = false;
-  let pending:
-    | ((result: IteratorResult<OpenCodeEvent, undefined>) => void)
-    | null = null;
-
+function event(type: string, data: Record<string, unknown>): OpenCodeEvent {
+  sequence += 1;
   return {
-    close() {
-      closed = true;
+    id: `evt_${sequence}`,
+    created: 1_790_000_000_000 + sequence,
+    type,
+    data,
+  } as unknown as OpenCodeEvent;
+}
+
+function createEventHub() {
+  const subscribers = new Set<(event: OpenCodeEvent | null) => void>();
+
+  function subscribe(options?: { signal?: AbortSignal }) {
+    const queued: Array<OpenCodeEvent | null> = [
+      { type: "server.connected", data: {} } as unknown as OpenCodeEvent,
+    ];
+    let pending: ((value: OpenCodeEvent | null) => void) | null = null;
+    const push = (value: OpenCodeEvent | null) => {
       if (pending) {
         const resolve = pending;
         pending = null;
-        resolve({ done: true, value: undefined });
-      }
-    },
-    push(event) {
-      if (pending) {
-        const resolve = pending;
-        pending = null;
-        resolve({ done: false, value: event });
+        resolve(value);
         return;
       }
-      queued.push(event);
-    },
-    stream: {
+      queued.push(value);
+    };
+    subscribers.add(push);
+    options?.signal?.addEventListener("abort", () => push(null));
+    const close = () => subscribers.delete(push);
+
+    return {
       [Symbol.asyncIterator]() {
         return {
-          next() {
-            if (closed) {
-              return Promise.resolve({ done: true as const, value: undefined });
+          async next(): Promise<IteratorResult<OpenCodeEvent>> {
+            const value =
+              queued.length > 0
+                ? queued.shift()
+                : await new Promise<OpenCodeEvent | null>((resolve) => {
+                    pending = resolve;
+                  });
+            if (!value) {
+              close();
+              return { done: true, value: undefined };
             }
-            const event = queued.shift();
-            if (event) {
-              return Promise.resolve({ done: false as const, value: event });
-            }
-            return new Promise<IteratorResult<OpenCodeEvent, undefined>>(
-              (resolve) => {
-                pending = resolve;
-              },
-            );
+            return { done: false, value };
+          },
+          async return(): Promise<IteratorResult<OpenCodeEvent>> {
+            close();
+            return { done: true, value: undefined };
           },
         };
       },
+    };
+  }
+
+  return {
+    emit(value: OpenCodeEvent) {
+      for (const push of [...subscribers]) push(value);
     },
+    subscribe,
   };
 }
 
-const clientV2ByRootClient = new WeakMap<OpencodeClient, OpenCodeV2Client>();
+function createClient(
+  options: {
+    autoComplete?: boolean;
+    createIds?: string[];
+    getSession?: (id: string) => Promise<unknown>;
+    models?: Array<{ providerID: string; id: string; enabled: boolean }>;
+  } = {},
+) {
+  const hub = createEventHub();
+  const createIds = [...(options.createIds ?? ["ses_new"])];
+  const deliver = (sessionID: string, inboxID: string) =>
+    hub.emit(event("session.inbox.delivered", { sessionID, inboxID }));
+  const client = {
+    event: { subscribe: vi.fn(hub.subscribe) },
+    model: {
+      list: vi.fn(async () => ({
+        data: options.models ?? [
+          { ...NATIVE_MODEL, enabled: true },
+          { providerID: "latest-provider", id: "latest-model", enabled: true },
+        ],
+      })),
+    },
+    permission: { reply: vi.fn(async () => undefined) },
+    session: {
+      create: vi.fn(async () => ({ id: createIds.shift() })),
+      diff: vi.fn(async () => []),
+      form: {
+        cancel: vi.fn(async () => undefined),
+        reply: vi.fn(async () => undefined),
+      },
+      get: vi.fn(async ({ sessionID }: { sessionID: string }) =>
+        options.getSession
+          ? options.getSession(sessionID)
+          : { id: sessionID, agent: "build", model: NATIVE_MODEL },
+      ),
+      interrupt: vi.fn(async ({ sessionID }: { sessionID: string }) => {
+        hub.emit(
+          event("session.execution.interrupted", {
+            sessionID,
+            reason: "user",
+          }),
+        );
+        return { interrupted: true };
+      }),
+      prompt: vi.fn(async (input: { sessionID: string; id: string }) => {
+        if (options.autoComplete !== false) {
+          setTimeout(() => {
+            deliver(input.sessionID, input.id);
+            hub.emit(
+              event("session.execution.succeeded", {
+                sessionID: input.sessionID,
+              }),
+            );
+          }, 0);
+        }
+        return { id: input.id };
+      }),
+      remove: vi.fn(async () => undefined),
+      switchAgent: vi.fn(async () => undefined),
+      switchModel: vi.fn(async () => undefined),
+    },
+  };
+  return { client, deliver, hub };
+}
 
-function createSession(id: string): SessionRecord {
+type FakeClient = ReturnType<typeof createClient>["client"];
+
+function createSession(
+  id: string,
+  overrides: Partial<SessionRecord> = {},
+): SessionRecord {
   return {
     id,
     workspaceId: "workspace-1",
@@ -108,10 +192,11 @@ function createSession(id: string): SessionRecord {
       api: "openai-completions",
       baseUrl: "https://must-not-be-injected.example.com",
     },
-    createdAt: "2026-07-18T00:00:00.000Z",
-    updatedAt: "2026-07-18T00:00:00.000Z",
+    createdAt: "2026-09-30T00:00:00.000Z",
+    updatedAt: "2026-09-30T00:00:00.000Z",
     lastMessageAt: null,
     archivedAt: null,
+    ...overrides,
   };
 }
 
@@ -125,7 +210,7 @@ function providerSession(
     providerStateJson: "{}",
     providerVersion: "opencode",
     resumable: true,
-    updatedAt: "2026-07-18T00:00:00.000Z",
+    updatedAt: "2026-09-30T00:00:00.000Z",
   };
 }
 
@@ -137,7 +222,7 @@ function history(sessionId: string): MessageRecord[] {
       role: "user",
       content: "Earlier question",
       attachments: [],
-      createdAt: "2026-07-18T00:00:00.000Z",
+      createdAt: "2026-09-30T00:00:00.000Z",
     },
     {
       id: "message-2",
@@ -145,134 +230,41 @@ function history(sessionId: string): MessageRecord[] {
       role: "assistant",
       content: "Earlier answer",
       attachments: [],
-      createdAt: "2026-07-18T00:00:01.000Z",
+      createdAt: "2026-09-30T00:00:01.000Z",
     },
   ];
-}
-
-function createClient(options: {
-  autoIdle?: boolean;
-  createIds?: string[];
-  getSession?: (id: string) => Promise<unknown>;
-  providerCatalog?: {
-    all: Array<{ id: string; models: Record<string, { id: string }> }>;
-    connected: string[];
-    default: Record<string, string>;
-  };
-}) {
-  const eventStream = createEventStream();
-  const createIds = [...(options.createIds ?? ["native-new"])];
-  const client = {
-    event: {
-      subscribe: vi.fn(async () => ({ stream: eventStream.stream })),
-    },
-    session: {
-      abort: vi.fn(async () => ({ data: true })),
-      create: vi.fn(async () => ({ data: { id: createIds.shift() } })),
-      delete: vi.fn(async () => ({ data: true, response: new Response() })),
-      diff: vi.fn(async () => ({ data: [] })),
-      get: vi.fn(async ({ path }: { path: { id: string } }) =>
-        options.getSession
-          ? options.getSession(path.id)
-          : Promise.resolve({ data: { id: path.id, title: path.id } }),
-      ),
-      message: vi.fn(),
-      messages: vi.fn(),
-      promptAsync: vi.fn(async ({ sessionID }: { sessionID: string }) => {
-        if (options.autoIdle !== false) {
-          setTimeout(() => {
-            eventStream.push({
-              type: "session.idle",
-              properties: { sessionID },
-            } as OpenCodeEvent);
-          }, 0);
-        }
-        return { data: true };
-      }),
-    },
-    postSessionIdPermissionsPermissionId: vi.fn(async () => ({ data: true })),
-  };
-  const clientV2 = {
-    provider: {
-      list: vi.fn(async () => ({
-        data: options.providerCatalog ?? {
-          all: [
-            {
-              id: "native-provider",
-              models: {
-                "native-provider/native-model": {
-                  id: "native-provider/native-model",
-                },
-              },
-            },
-            {
-              id: "latest-provider",
-              models: { "latest-model": { id: "latest-model" } },
-            },
-          ],
-          connected: ["native-provider", "latest-provider"],
-          default: {},
-        },
-      })),
-    },
-    session: {
-      abort: client.session.abort,
-      promptAsync: client.session.promptAsync,
-    },
-    question: {
-      reject: vi.fn(async () => ({ data: true })),
-      reply: vi.fn(async () => ({ data: true })),
-    },
-  };
-  const rootClient = client as unknown as OpencodeClient;
-  const v2Client = clientV2 as unknown as OpenCodeV2Client;
-  clientV2ByRootClient.set(rootClient, v2Client);
-  return {
-    client: rootClient,
-    clientV2: v2Client,
-    eventStream,
-  };
 }
 
 const activeSessions: Array<{ dispose(): void }> = [];
 
 function startAdapter(options: {
-  client: OpencodeClient;
-  providerSession?: AgentProviderSessionRecord | null;
+  client: FakeClient;
   sessionId: string;
-  updates: AgentProviderSessionRecord[];
+  session?: Partial<SessionRecord>;
+  providerSession?: AgentProviderSessionRecord | null;
+  updates?: AgentProviderSessionRecord[];
   events?: AgentEvent[];
-  clientV2?: OpenCodeV2Client;
+  requestPermission?: (
+    request: AgentPermissionRequestPayload,
+  ) => Promise<AgentPermissionResolution>;
   requestQuestion?: (
     request: AgentQuestionRequestPayload,
   ) => Promise<string | null>;
 }) {
-  runtimeMocks.acquire.mockResolvedValue({
-    cacheKey: "test",
-    client: options.client,
-    clientV2: options.clientV2 ?? clientV2ByRootClient.get(options.client),
-    refCount: 1,
-    server: { close: vi.fn(), url: "http://127.0.0.1:12345" },
-  });
-  const sessionRecord = createSession(options.sessionId);
-  if (!sessionRecord.providerSnapshot) {
-    throw new Error("Test session requires a provider snapshot");
-  }
+  runtimeMocks.connect.mockResolvedValue(options.client);
+  const session = createSession(options.sessionId, options.session);
   const adapterSession = createOpencodeAdapter().createSession(
     {
-      session: sessionRecord,
+      session,
       workspaceRootPath: "/workspace",
       providerSession: options.providerSession,
-      providerConfig: {
-        ...sessionRecord.providerSnapshot,
-        apiKey: "must-not-be-injected",
-      },
       onProviderSessionUpdate(update) {
-        if (update) options.updates.push(update);
+        if (update) options.updates?.push(update);
       },
+      requestPermission: options.requestPermission,
       requestQuestion: options.requestQuestion,
     },
-    (event) => options.events?.push(event),
+    (agentEvent) => options.events?.push(agentEvent),
   );
   activeSessions.push(adapterSession);
   return adapterSession;
@@ -280,8 +272,7 @@ function startAdapter(options: {
 
 describe("createOpencodeAdapter", () => {
   beforeEach(() => {
-    runtimeMocks.acquire.mockReset();
-    runtimeMocks.release.mockReset();
+    runtimeMocks.connect.mockReset();
   });
 
   afterEach(() => {
@@ -289,709 +280,439 @@ describe("createOpencodeAdapter", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps a normal send active until the native OpenCode turn is idle", async () => {
-    const { client, eventStream } = createClient({ autoIdle: false });
-    const session = startAdapter({
-      client,
-      sessionId: "app-turn-lifecycle",
-      updates: [],
-    });
+  it("keeps a send active until the OpenCode execution finishes", async () => {
+    const { client, deliver, hub } = createClient({ autoComplete: false });
+    const session = startAdapter({ client, sessionId: "app-turn" });
 
-    let sendResolved = false;
+    let resolved = false;
     const sending = session
       .sendMessage({ content: "Start", history: [] })
       .then(() => {
-        sendResolved = true;
+        resolved = true;
       });
+    await vi.waitFor(() => expect(client.session.prompt).toHaveBeenCalled());
+    const prompt = client.session.prompt.mock.calls[0]?.[0];
+    if (!prompt) throw new Error("Prompt was not sent");
 
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
+    deliver("ses_new", prompt.id);
     await Promise.resolve();
-    expect(sendResolved).toBe(false);
+    expect(resolved).toBe(false);
 
-    eventStream.push({
-      type: "session.idle",
-      properties: { sessionID: "native-new" },
-    } as OpenCodeEvent);
-
+    hub.emit(event("session.execution.succeeded", { sessionID: "ses_new" }));
     await sending;
-    expect(sendResolved).toBe(true);
-  });
-
-  it("keeps the turn running while OpenCode is retrying", async () => {
-    const { client, eventStream } = createClient({ autoIdle: false });
-    const events: AgentEvent[] = [];
-    const session = startAdapter({
-      client,
-      events,
-      sessionId: "app-turn-retry",
-      updates: [],
-    });
-
-    const sending = session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-    eventStream.push({
-      type: "session.status",
-      properties: {
-        sessionID: "native-new",
-        status: { type: "retry" },
-      },
-    } as OpenCodeEvent);
-
-    await vi.waitFor(() =>
-      expect(events).toContainEqual(
-        expect.objectContaining({ status: "running", type: "state.changed" }),
-      ),
-    );
-    expect(events).not.toContainEqual(
-      expect.objectContaining({ status: "idle", type: "state.changed" }),
-    );
-
-    eventStream.push({
-      type: "session.idle",
-      properties: { sessionID: "native-new" },
-    } as OpenCodeEvent);
-    await sending;
-  });
-
-  it("settles an active send when the OpenCode event stream ends", async () => {
-    const { client, eventStream } = createClient({ autoIdle: false });
-    const events: AgentEvent[] = [];
-    const session = startAdapter({
-      client,
-      events,
-      sessionId: "app-stream-ended",
-      updates: [],
-    });
-
-    let sendResolved = false;
-    const sending = session
-      .sendMessage({ content: "Start", history: [] })
-      .then(() => {
-        sendResolved = true;
-      });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-
-    eventStream.close();
-
-    await vi.waitFor(() => expect(sendResolved).toBe(true));
-    await sending;
-    expect(events).toContainEqual(
-      expect.objectContaining({ status: "error", type: "state.changed" }),
-    );
+    expect(resolved).toBe(true);
   });
 
   it("creates and persists a native session without injecting Cocurdex provider config", async () => {
-    const { client, eventStream } = createClient({ createIds: ["native-1"] });
+    const { client } = createClient();
     const updates: AgentProviderSessionRecord[] = [];
-    const events: AgentEvent[] = [];
-    const session = startAdapter({
-      client,
-      events,
-      sessionId: "app-1",
-      updates,
-    });
+    const session = startAdapter({ client, sessionId: "app-create", updates });
 
-    await session.sendMessage({
-      content: "Use the native model",
-      history: [],
-    });
-    await vi.waitFor(() => expect(updates).toHaveLength(1));
-    expect(updates[0]).toMatchObject({
-      sessionId: "app-1",
-      providerSessionId: "native-1",
-      resumable: true,
-    });
-    expect(runtimeMocks.acquire).toHaveBeenCalledWith();
+    await session.sendMessage({ content: "Hello", history: [] });
+
     expect(client.session.create).toHaveBeenCalledWith({
-      query: { directory: "/workspace" },
+      location: { directory: "/workspace" },
+      agent: "build",
+      model: NATIVE_MODEL,
     });
-
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-    expect(
-      vi.mocked(client.session.promptAsync).mock.calls[0]?.[0],
-    ).toMatchObject({
-      messageID: expect.any(String),
-      sessionID: "native-1",
-      model: {
-        providerID: "native-provider",
-        modelID: "native-provider/native-model",
-      },
+    expect(client.session.prompt).toHaveBeenCalledWith({
+      sessionID: "ses_new",
+      id: expect.stringMatching(/^msg_[0-9a-f]{12}[0-9A-Za-z]{14}$/),
+      text: "Hello",
+      files: [],
+      delivery: "steer",
     });
-
-    eventStream.push({
-      type: "session.updated",
-      properties: {
-        info: { id: "native-1", title: "Native OpenCode title" },
-      },
-    } as OpenCodeEvent);
-    await vi.waitFor(() =>
-      expect(events).toContainEqual(
-        expect.objectContaining({
-          type: "session.title.updated",
-          sessionId: "app-1",
-          title: "Native OpenCode title",
-          expectedTitle: "app-1",
-        }),
-      ),
-    );
+    expect(updates.map((update) => update.providerSessionId)).toEqual([
+      "ses_new",
+    ]);
   });
 
-  it("ignores a delayed provider user message from the previous turn", async () => {
-    const { client, eventStream } = createClient({ createIds: ["native-1"] });
-    const session = startAdapter({
-      client,
-      sessionId: "app-1",
-      updates: [],
-    });
+  it("uses the prompt id as the turn boundary for native diffs", async () => {
+    const { client } = createClient();
+    const session = startAdapter({ client, sessionId: "app-diff" });
 
-    await session.sendMessage({ content: "first", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledTimes(1),
-    );
-    const firstRequest = vi.mocked(client.session.promptAsync).mock
-      .calls[0]?.[0] as unknown as { messageID?: string };
-    const firstProviderMessageId = firstRequest?.messageID;
-    await session.sendMessage({ content: "second", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledTimes(2),
-    );
-    const secondRequest = vi.mocked(client.session.promptAsync).mock
-      .calls[1]?.[0] as unknown as { messageID?: string };
-    const secondProviderMessageId = secondRequest?.messageID;
-    expect(firstProviderMessageId).not.toBe(secondProviderMessageId);
-
-    eventStream.push({
-      type: "message.updated",
-      properties: {
-        info: { id: firstProviderMessageId, role: "user" },
-      },
-    } as OpenCodeEvent);
+    await session.sendMessage({ content: "Edit", history: [] });
     await session.collectNativeWorkspaceChanges?.({
-      userMessageId: "app-user-2",
+      providerTurnId: null,
+      userMessageId: "message-1",
     });
 
-    expect(client.session.diff).toHaveBeenLastCalledWith({
-      path: { id: "native-1" },
-      query: {
-        directory: "/workspace",
-        messageID: secondProviderMessageId,
-      },
-    });
-  });
-
-  it("uses an OpenCode-native message identifier for prompt and diff", async () => {
-    const { client } = createClient({ createIds: ["native-1"] });
-    const session = startAdapter({
-      client,
-      sessionId: "app-native-message-id",
-      updates: [],
-    });
-
-    await session.sendMessage({ content: "hello", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-    const promptRequest = vi.mocked(client.session.promptAsync).mock
-      .calls[0]?.[0] as unknown as { messageID?: string };
-
-    expect(promptRequest.messageID).toMatch(
-      /^msg_[0-9a-f]{12}[0-9A-Za-z]{14}$/,
-    );
-
-    await session.collectNativeWorkspaceChanges?.({
-      userMessageId: "app-user-1",
-    });
-    expect(client.session.diff).toHaveBeenLastCalledWith({
-      path: { id: "native-1" },
-      query: {
-        directory: "/workspace",
-        messageID: promptRequest.messageID,
-      },
+    const promptId = client.session.prompt.mock.calls[0]?.[0].id;
+    expect(client.session.diff).toHaveBeenCalledWith({
+      sessionID: "ses_new",
+      from: promptId,
     });
   });
 
-  it("validates and resumes the saved native session without replaying SQLite history", async () => {
-    const { client } = createClient({});
-    const updates: AgentProviderSessionRecord[] = [];
+  it("resumes the saved native session without replaying history", async () => {
+    const { client } = createClient();
     const session = startAdapter({
       client,
-      providerSession: providerSession("app-resume", "native-existing"),
       sessionId: "app-resume",
-      updates,
+      providerSession: providerSession("app-resume", "ses_saved"),
     });
 
     await session.sendMessage({
       content: "Continue",
       history: history("app-resume"),
     });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
 
-    expect(client.session.get).toHaveBeenCalledWith({
-      path: { id: "native-existing" },
-      query: { directory: "/workspace" },
-    });
+    expect(client.session.get).toHaveBeenCalledWith({ sessionID: "ses_saved" });
     expect(client.session.create).not.toHaveBeenCalled();
-    const request = vi.mocked(client.session.promptAsync).mock
-      .calls[0]?.[0] as unknown as {
-      parts?: Array<{ text?: string }>;
-      sessionID?: string;
-    };
-    expect(request?.sessionID).toBe("native-existing");
-    expect(request?.parts?.[0]?.text).toBe("Continue");
-  });
-
-  it("fails before sending when the saved native session is invalid", async () => {
-    const { client } = createClient({
-      createIds: ["native-replacement"],
-      getSession: async () => ({ error: { message: "not found" } }),
-    });
-    const updates: AgentProviderSessionRecord[] = [];
-    const events: AgentEvent[] = [];
-    const session = startAdapter({
-      client,
-      events,
-      providerSession: providerSession("app-invalid", "native-missing"),
-      sessionId: "app-invalid",
-      updates,
-    });
-
-    await session.sendMessage({
-      content: "Continue",
-      history: history("app-invalid"),
-    });
-    await vi.waitFor(() =>
-      expect(events).toContainEqual(
-        expect.objectContaining({
-          type: "error",
-          message: expect.stringContaining(
-            "could not restore its native session",
-          ),
-        }),
-      ),
+    expect(client.session.switchModel).not.toHaveBeenCalled();
+    expect(client.session.prompt).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionID: "ses_saved", text: "Continue" }),
     );
-
-    expect(updates).toHaveLength(0);
-    expect(client.session.create).not.toHaveBeenCalled();
-    expect(client.session.promptAsync).not.toHaveBeenCalled();
   });
 
   it("creates a fresh native session when the saved session was deleted", async () => {
     const { client } = createClient({
-      createIds: ["native-replacement"],
-      getSession: async () => ({
-        error: { message: "not found" },
-        response: { status: 404 } as Response,
-      }),
+      getSession: () => Promise.reject(notFound()),
     });
-    const updates: AgentProviderSessionRecord[] = [];
     const session = startAdapter({
       client,
-      providerSession: providerSession("app-deleted", "native-missing"),
       sessionId: "app-deleted",
-      updates,
+      providerSession: providerSession("app-deleted", "ses_gone"),
     });
 
-    await session.sendMessage({ content: "Start over", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
+    await session.sendMessage({ content: "Again", history: [] });
 
     expect(client.session.create).toHaveBeenCalledOnce();
-    expect(updates[0]?.providerSessionId).toBe("native-replacement");
+    expect(client.session.prompt).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionID: "ses_new" }),
+    );
   });
 
-  it("uses the latest model snapshot and forwards OpenCode prompt options", async () => {
-    const { client } = createClient({});
-    const updates: AgentProviderSessionRecord[] = [];
-    const baseSnapshot = createSession("app-options").providerSnapshot;
-    if (!baseSnapshot) throw new Error("Test session requires a snapshot");
+  it("fails before sending when the saved native session cannot be verified", async () => {
+    const { client } = createClient({
+      getSession: () => Promise.reject(new Error("database is locked")),
+    });
+    const events: AgentEvent[] = [];
     const session = startAdapter({
       client,
-      sessionId: "app-options",
-      updates,
+      events,
+      sessionId: "app-invalid",
+      providerSession: providerSession("app-invalid", "ses_saved"),
+    });
+
+    await session.sendMessage({ content: "Continue", history: [] });
+
+    expect(client.session.prompt).not.toHaveBeenCalled();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "could not restore its native session",
+        ),
+      }),
+    );
+  });
+
+  it("does not create a native session when existing history has no mapping", async () => {
+    const { client } = createClient();
+    const events: AgentEvent[] = [];
+    const session = startAdapter({ client, events, sessionId: "app-orphan" });
+
+    await session.sendMessage({
+      content: "Continue",
+      history: history("app-orphan"),
+    });
+
+    expect(client.session.create).not.toHaveBeenCalled();
+    expect(events.at(-1)).toMatchObject({ status: "error" });
+  });
+
+  it("switches the native model and agent when the selection changes", async () => {
+    const { client } = createClient();
+    const session = startAdapter({
+      client,
+      sessionId: "app-switch",
+      session: { sessionModeId: "plan" },
+      providerSession: providerSession("app-switch", "ses_saved"),
     });
 
     await session.sendMessage({
-      content: "Use the selected runtime",
+      content: "Plan it",
       history: [],
       providerSnapshot: {
-        ...baseSnapshot,
         providerId: "latest-provider",
         providerName: "Latest provider",
         modelId: "latest-model",
         modelName: "Latest model",
-        modelCompatJson: JSON.stringify({
-          opencode: { agent: "general", variant: "high" },
-        }),
+        api: "openai-completions",
+        baseUrl: "",
+        openCodeVariant: "high",
       },
     });
 
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-    expect(
-      vi.mocked(client.session.promptAsync).mock.calls[0]?.[0],
-    ).toMatchObject({
+    expect(client.session.switchAgent).toHaveBeenCalledWith({
+      sessionID: "ses_saved",
+      agent: "plan",
+    });
+    expect(client.session.switchModel).toHaveBeenCalledWith({
+      sessionID: "ses_saved",
       model: {
         providerID: "latest-provider",
-        modelID: "latest-model",
+        id: "latest-model",
+        variant: "high",
       },
-      agent: "general",
-      variant: "high",
     });
   });
 
   it("rejects a model removed from the live OpenCode catalog before sending", async () => {
     const { client } = createClient({
-      providerCatalog: {
-        all: [{ id: "native-provider", models: {} }],
-        connected: ["native-provider"],
-        default: {},
-      },
+      models: [{ providerID: "other", id: "other-model", enabled: true }],
     });
     const events: AgentEvent[] = [];
-    const session = startAdapter({
-      client,
-      events,
-      sessionId: "app-removed-model",
-      updates: [],
-    });
+    const session = startAdapter({ client, events, sessionId: "app-model" });
 
-    await session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() =>
-      expect(events).toContainEqual(
-        expect.objectContaining({
-          type: "error",
-          message: expect.stringContaining("no longer available"),
-        }),
-      ),
+    await session.sendMessage({ content: "Hello", history: [] });
+
+    expect(client.session.prompt).not.toHaveBeenCalled();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("is no longer available"),
+      }),
     );
-
-    expect(client.session.create).not.toHaveBeenCalled();
-    expect(client.session.promptAsync).not.toHaveBeenCalled();
   });
 
-  it("fails the turn when an accepted prompt produces no OpenCode events", async () => {
-    const watchdogs: Array<() => void> = [];
-    const realSetTimeout = globalThis.setTimeout;
-    vi.spyOn(globalThis, "setTimeout").mockImplementation(
-      (callback, delay, ...args) => {
-        if (delay === 10_000) {
-          watchdogs.push(callback);
-          return 1 as unknown as ReturnType<typeof setTimeout>;
-        }
-        return realSetTimeout(callback, delay, ...args);
-      },
-    );
-    const { client } = createClient({ autoIdle: false });
-    const events: AgentEvent[] = [];
+  it("answers permissions through the daemon unless a native mode decides", async () => {
+    const { client, deliver, hub } = createClient({ autoComplete: false });
+    const requestPermission = vi.fn(async () => ({
+      decision: "allow_always" as const,
+      optionId: null,
+    }));
     const session = startAdapter({
       client,
-      events,
-      sessionId: "app-no-events",
-      updates: [],
+      requestPermission,
+      sessionId: "app-permission",
     });
 
-    const sending = session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
+    const sending = session.sendMessage({ content: "Edit", history: [] });
+    await vi.waitFor(() => expect(client.session.prompt).toHaveBeenCalled());
+    deliver("ses_new", client.session.prompt.mock.calls[0]?.[0].id ?? "");
+    hub.emit(
+      event("permission.asked", {
+        id: "per_1",
+        sessionID: "ses_new",
+        action: "edit",
+        resources: ["src/a.ts"],
+        metadata: { files: [{ file: "src/a.ts" }] },
+      }),
     );
-    const watchdog = watchdogs.at(-1);
-    expect(watchdog).toBeDefined();
+    await vi.waitFor(() =>
+      expect(client.permission.reply).toHaveBeenCalledWith({
+        sessionID: "ses_new",
+        requestID: "per_1",
+        decision: "always",
+      }),
+    );
+    expect(requestPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "edit",
+        locations: [{ path: "src/a.ts" }],
+      }),
+    );
 
-    watchdog?.();
-
+    hub.emit(event("session.execution.succeeded", { sessionID: "ses_new" }));
     await sending;
 
-    await vi.waitFor(() =>
-      expect(events).toContainEqual(
-        expect.objectContaining({
-          type: "error",
-          message: expect.stringContaining("did not respond"),
-        }),
-      ),
-    );
-    expect(client.session.abort).toHaveBeenCalledOnce();
-  });
-
-  it("uses the latest permission mode for an existing OpenCode session", async () => {
-    const { client, eventStream } = createClient({});
-    const session = startAdapter({
-      client,
-      sessionId: "app-permissions",
-      updates: [],
-    });
-
-    await session.sendMessage({
-      content: "Start",
+    const denying = session.sendMessage({
+      content: "Edit again",
       history: [],
       permissionMode: "opencode-deny",
     });
     await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
+      expect(client.session.prompt).toHaveBeenCalledTimes(2),
     );
-
-    eventStream.push({
-      type: "permission.updated",
-      properties: {
-        id: "permission-1",
-        sessionID: "native-new",
-        messageID: "message-1",
-        type: "file",
-        title: "Read file",
-        metadata: { path: "/workspace/file.txt" },
-        time: { created: Date.now() },
-      },
-    } as unknown as OpenCodeEvent);
-
-    await vi.waitFor(() =>
-      expect(client.postSessionIdPermissionsPermissionId).toHaveBeenCalledWith(
-        expect.objectContaining({
-          path: { id: "native-new", permissionID: "permission-1" },
-          body: { response: "reject" },
-        }),
-      ),
-    );
-  });
-
-  it("answers OpenCode question requests through the daemon question callback", async () => {
-    const { client, clientV2, eventStream } = createClient({});
-    const requestQuestion = vi.fn(async () => "Keep the existing API");
-    const session = startAdapter({
-      client,
-      clientV2,
-      requestQuestion,
-      sessionId: "app-question",
-      updates: [],
-    });
-
-    await session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-    eventStream.push({
-      type: "question.asked",
-      properties: {
-        id: "question-1",
-        sessionID: "native-new",
-        questions: [
-          {
-            header: "Migration",
-            question: "Which approach should I use?",
-            options: [
-              { label: "Keep the existing API", description: "No migration" },
-            ],
-          },
-        ],
-      },
-    } as unknown as OpenCodeEvent);
-
-    await vi.waitFor(() => expect(requestQuestion).toHaveBeenCalledOnce());
-    await vi.waitFor(() =>
-      expect(vi.mocked(clientV2.question.reply)).toHaveBeenCalledWith({
-        requestID: "question-1",
-        directory: "/workspace",
-        answers: [["Keep the existing API"]],
+    deliver("ses_new", client.session.prompt.mock.calls[1]?.[0].id ?? "");
+    hub.emit(
+      event("permission.asked", {
+        id: "per_2",
+        sessionID: "ses_new",
+        action: "bash",
+        resources: ["rm -rf build"],
       }),
     );
+    await vi.waitFor(() =>
+      expect(client.permission.reply).toHaveBeenLastCalledWith({
+        sessionID: "ses_new",
+        requestID: "per_2",
+        decision: "reject",
+      }),
+    );
+    expect(requestPermission).toHaveBeenCalledOnce();
+    hub.emit(event("session.execution.succeeded", { sessionID: "ses_new" }));
+    await denying;
   });
 
-  it("waits for the OpenCode abort request before stop resolves", async () => {
-    const { client } = createClient({ autoIdle: false });
-    type AbortResult = { error?: unknown; response?: Response };
-    let resolveAbort: (result: AbortResult) => void = () => {
-      throw new Error("Abort resolver was not initialized");
-    };
-    const abortResult = new Promise<AbortResult>((resolve) => {
-      resolveAbort = resolve;
-    });
-    vi.mocked(client.session.abort).mockImplementationOnce(
-      () => abortResult as ReturnType<typeof client.session.abort>,
-    );
+  it("answers OpenCode question forms through the daemon question callback", async () => {
+    const { client, deliver, hub } = createClient({ autoComplete: false });
+    const requestQuestion = vi.fn(async () => "Beta, Gamma");
     const session = startAdapter({
       client,
-      sessionId: "app-stop",
-      updates: [],
+      requestQuestion,
+      sessionId: "app-question",
     });
 
-    const sending = session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
+    const sending = session.sendMessage({ content: "Ask me", history: [] });
+    await vi.waitFor(() => expect(client.session.prompt).toHaveBeenCalled());
+    deliver("ses_new", client.session.prompt.mock.calls[0]?.[0].id ?? "");
+    hub.emit(
+      event("form.created", {
+        form: {
+          id: "frm_1",
+          sessionID: "ses_new",
+          title: "Questions",
+          metadata: { kind: "question" },
+          fields: [
+            {
+              key: "q0",
+              type: "multiselect",
+              title: "Pick",
+              description: "Which ones?",
+              options: [
+                { value: "Beta", label: "Beta", description: "B" },
+                { value: "Gamma", label: "Gamma" },
+              ],
+            },
+          ],
+        },
+      }),
     );
 
-    let stopResolved = false;
-    const stopping = Promise.resolve(session.stop()).then(() => {
-      stopResolved = true;
+    await vi.waitFor(() =>
+      expect(client.session.form.reply).toHaveBeenCalledWith({
+        sessionID: "ses_new",
+        formID: "frm_1",
+        answer: { q0: ["Beta", "Gamma"] },
+      }),
+    );
+    expect(requestQuestion).toHaveBeenCalledWith({
+      id: "frm_1:0",
+      sessionId: "app-question",
+      providerId: "opencode",
+      question: "Which ones?",
+      header: "Pick",
+      options: [
+        { label: "Beta", description: "B" },
+        { label: "Gamma", description: "" },
+      ],
+      multiSelect: true,
     });
-    await vi.waitFor(() => expect(client.session.abort).toHaveBeenCalledOnce());
-    await Promise.resolve();
-    expect(stopResolved).toBe(false);
-
-    resolveAbort({});
-    await Promise.all([sending, stopping]);
-    expect(stopResolved).toBe(true);
-    expect(client.session.abort).toHaveBeenCalledWith({
-      sessionID: "native-new",
-      directory: "/workspace",
-    });
+    hub.emit(event("session.execution.succeeded", { sessionID: "ses_new" }));
+    await sending;
   });
 
-  it("does not create a native session when existing history has no mapping", async () => {
-    const { client } = createClient({ createIds: ["unused-session"] });
+  it("interrupts a running execution when stopped", async () => {
+    const { client, deliver } = createClient({ autoComplete: false });
+    const events: AgentEvent[] = [];
+    const session = startAdapter({ client, events, sessionId: "app-stop" });
+
+    const sending = session.sendMessage({ content: "Long task", history: [] });
+    await vi.waitFor(() => expect(client.session.prompt).toHaveBeenCalled());
+    deliver("ses_new", client.session.prompt.mock.calls[0]?.[0].id ?? "");
+    await Promise.resolve();
+
+    await session.stop();
+    await sending;
+
+    expect(client.session.interrupt).toHaveBeenCalledWith({
+      sessionID: "ses_new",
+    });
+    expect(events.filter((agentEvent) => agentEvent.type === "error")).toEqual(
+      [],
+    );
+    expect(events.at(-1)).toMatchObject({ status: "idle" });
+  });
+
+  it("stops a turn whose prompt was never delivered", async () => {
+    const { client } = createClient({ autoComplete: false });
+    client.session.interrupt.mockResolvedValue({ interrupted: false });
     const events: AgentEvent[] = [];
     const session = startAdapter({
       client,
       events,
-      sessionId: "app-unmapped",
-      updates: [],
+      sessionId: "app-stop-early",
     });
 
-    await session.sendMessage({
-      content: "Continue",
-      history: history("app-unmapped"),
-    });
-    await vi.waitFor(() =>
-      expect(events.some((event) => event.type === "error")).toBe(true),
-    );
+    const sending = session.sendMessage({ content: "Queued", history: [] });
+    await vi.waitFor(() => expect(client.session.prompt).toHaveBeenCalled());
 
-    expect(client.session.create).not.toHaveBeenCalled();
-    expect(client.session.promptAsync).not.toHaveBeenCalled();
+    await session.stop();
+    await sending;
+
+    expect(events.at(-1)).toMatchObject({ status: "idle" });
   });
 
   it("does not let concurrent Cocurdex sessions claim the same native session", async () => {
-    const { client } = createClient({ createIds: ["native-second"] });
-    const firstUpdates: AgentProviderSessionRecord[] = [];
-    const secondUpdates: AgentProviderSessionRecord[] = [];
-    const secondEvents: AgentEvent[] = [];
-    startAdapter({
+    const { client } = createClient();
+    const first = startAdapter({
       client,
-      providerSession: providerSession("app-first", "native-shared"),
       sessionId: "app-first",
-      updates: firstUpdates,
+      providerSession: providerSession("app-first", "ses_shared"),
     });
-    await vi.waitFor(() => expect(firstUpdates).toHaveLength(1));
+    await first.sendMessage({ content: "One", history: [] });
 
-    const secondSession = startAdapter({
+    const events: AgentEvent[] = [];
+    const second = startAdapter({
       client,
-      events: secondEvents,
-      providerSession: providerSession("app-second", "native-shared"),
+      events,
       sessionId: "app-second",
-      updates: secondUpdates,
+      providerSession: providerSession("app-second", "ses_shared"),
     });
-    await secondSession.sendMessage({
-      content: "Continue",
-      history: history("app-second"),
-    });
-    await vi.waitFor(() =>
-      expect(secondEvents.some((event) => event.type === "error")).toBe(true),
-    );
+    await second.sendMessage({ content: "Two", history: [] });
 
-    expect(firstUpdates[0]?.providerSessionId).toBe("native-shared");
-    expect(secondUpdates).toHaveLength(0);
-    expect(client.session.create).not.toHaveBeenCalled();
-  });
-
-  it("persists a session ID adopted from the OpenCode event stream", async () => {
-    const { client, eventStream } = createClient({
-      autoIdle: false,
-      createIds: ["native-main"],
-    });
-    const updates: AgentProviderSessionRecord[] = [];
-    const session = startAdapter({
-      client,
-      sessionId: "app-adopt",
-      updates,
-    });
-
-    const sending = session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() => expect(updates).toHaveLength(1));
-    await vi.waitFor(() =>
-      expect(client.session.promptAsync).toHaveBeenCalledOnce(),
-    );
-    eventStream.push({
-      type: "session.status",
-      properties: {
-        sessionID: "native-adopted",
-        status: { type: "busy" },
-      },
-    } as OpenCodeEvent);
-
-    await vi.waitFor(() =>
-      expect(updates.at(-1)?.providerSessionId).toBe("native-adopted"),
-    );
-    eventStream.push({
-      type: "session.idle",
-      properties: { sessionID: "native-adopted" },
-    } as OpenCodeEvent);
-    await sending;
-  });
-
-  it("deletes a native session created while its Cocurdex runtime is being disposed", async () => {
-    const { client } = createClient({});
-    let resolveCreate: ((result: OpenCodeCreateResult) => void) | undefined;
-    const createPromise = new Promise<OpenCodeCreateResult>((resolve) => {
-      resolveCreate = resolve;
-    });
-    vi.mocked(client.session.create).mockReturnValueOnce(
-      createPromise as ReturnType<OpencodeClient["session"]["create"]>,
-    );
-    const session = startAdapter({
-      client,
-      sessionId: "app-disposed",
-      updates: [],
-    });
-    const sending = session.sendMessage({ content: "Start", history: [] });
-    await vi.waitFor(() =>
-      expect(client.session.create).toHaveBeenCalledOnce(),
-    );
-
-    session.dispose();
-    resolveCreate?.({
-      data: { id: "native-late" },
-    } as OpenCodeCreateResult);
-
-    await sending;
-
-    await vi.waitFor(() =>
-      expect(client.session.delete).toHaveBeenCalledWith({
-        path: { id: "native-late" },
-        query: { directory: "/workspace" },
+    expect(client.session.prompt).toHaveBeenCalledOnce();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "could not restore its native session",
+        ),
       }),
     );
+  });
+
+  it("removes a native session created while its runtime is being disposed", async () => {
+    const { client } = createClient();
+    let releaseCreate: (value: { id: string }) => void = () => {};
+    client.session.create.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseCreate = resolve;
+        }),
+    );
+    const session = startAdapter({ client, sessionId: "app-dispose" });
+
+    const sending = session.sendMessage({ content: "Hello", history: [] });
+    await vi.waitFor(() => expect(client.session.create).toHaveBeenCalled());
+    session.dispose();
+    releaseCreate({ id: "ses_orphan" });
+    await sending;
+
+    expect(client.session.remove).toHaveBeenCalledWith({
+      sessionID: "ses_orphan",
+    });
+    expect(client.session.prompt).not.toHaveBeenCalled();
   });
 });
 
 describe("deleteOpenCodeSession", () => {
-  it("deletes the native session through a Cocurdex-owned server process", async () => {
-    runtimeMocks.acquire.mockReset();
-    runtimeMocks.release.mockReset();
-    const { client } = createClient({});
-    runtimeMocks.acquire.mockResolvedValue({
-      cacheKey: "test",
-      client,
-      refCount: 1,
-      server: { close: vi.fn(), url: "http://127.0.0.1:12345" },
-    });
+  it("deletes the native session and tolerates one that is already gone", async () => {
+    const { client } = createClient();
+    runtimeMocks.connect.mockResolvedValue(client);
 
-    await deleteOpenCodeSession({
-      providerSessionId: "native-delete",
-      workspaceRootPath: "/workspace",
-    });
+    await deleteOpenCodeSession({ providerSessionId: "ses_old" });
+    client.session.remove.mockRejectedValueOnce(notFound());
+    await deleteOpenCodeSession({ providerSessionId: "ses_gone" });
 
-    expect(client.session.delete).toHaveBeenCalledWith({
-      path: { id: "native-delete" },
-      query: { directory: "/workspace" },
+    expect(client.session.remove).toHaveBeenCalledWith({
+      sessionID: "ses_old",
     });
-    expect(runtimeMocks.release).toHaveBeenCalledOnce();
+    expect(client.session.remove).toHaveBeenCalledWith({
+      sessionID: "ses_gone",
+    });
   });
 });

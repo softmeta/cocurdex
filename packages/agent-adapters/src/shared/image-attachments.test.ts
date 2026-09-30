@@ -5,7 +5,7 @@ import type { ImageAttachment } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { buildClaudeUserContent } from "../claude-shared/claude-user-content";
 import { buildInput } from "../codex/codex-app-server-events";
-import { buildPromptParts } from "../opencode/opencode-events";
+import { buildPromptInput } from "../opencode/opencode-events";
 
 function createImageAttachment(): ImageAttachment {
   const directory = path.join(tmpdir(), "cocurdex-test-images");
@@ -41,23 +41,20 @@ describe("native image attachments", () => {
     ]);
   });
 
-  it("maps images to OpenCode file parts with data URLs", () => {
+  it("maps images to OpenCode prompt files with data URLs", () => {
     const image = createImageAttachment();
 
-    expect(buildPromptParts("What is this?", [image])).toEqual([
-      {
-        text: expect.stringContaining("What is this?"),
-        type: "text",
-      },
-      {
-        filename: "pixel.png",
-        mime: "image/png",
-        type: "file",
-        url: `data:image/png;base64,${Buffer.from("image-bytes").toString(
-          "base64",
-        )}`,
-      },
-    ]);
+    expect(buildPromptInput("What is this?", [image])).toEqual({
+      text: expect.stringContaining("What is this?"),
+      files: [
+        {
+          name: "pixel.png",
+          uri: `data:image/png;base64,${Buffer.from("image-bytes").toString(
+            "base64",
+          )}`,
+        },
+      ],
+    });
   });
 
   it("maps images to Claude base64 image blocks", () => {

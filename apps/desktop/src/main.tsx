@@ -16,6 +16,10 @@ const App = lazy(async () => {
     "./app/layout/app-shell/app-shell-preferences"
   );
   syncInitialPreferences();
+  const { startAgentEventBridge } = await import(
+    "./app/layout/app-shell/agent-event-bridge"
+  );
+  startAgentEventBridge();
   if (new URLSearchParams(window.location.search).get("window") === "chat") {
     const { DetachedChatApp } = await import(
       "./app/layout/chat-window/detached-chat-app"

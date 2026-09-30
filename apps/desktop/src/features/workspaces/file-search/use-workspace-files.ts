@@ -174,11 +174,15 @@ export function useWorkspaceFiles(
   const [state, setState] = useState<WorkspaceFilesState>(() =>
     initialMergedState(rootsKey ? rootsKey.split("\n") : []),
   );
+  const [stateRootsKey, setStateRootsKey] = useState(rootsKey);
+  if (stateRootsKey !== rootsKey) {
+    setStateRootsKey(rootsKey);
+    setState(initialMergedState(rootsKey ? rootsKey.split("\n") : []));
+  }
 
   useEffect(() => {
     const roots = rootsKey ? rootsKey.split("\n") : [];
     if (roots.length === 0) {
-      setState({ files: [], status: "idle" });
       return;
     }
 

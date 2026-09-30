@@ -4,31 +4,26 @@ import type {
   AgentPermissionRequestPayload,
   AgentToolCallLocation,
 } from "@cocurdex/shared";
+import type {
+  OpenCodeClient,
+  PermissionAsked,
+  PermissionReply,
+} from "@opencode/client";
 import { createPermissionOptions } from "../shared";
 
-export interface OpenCodePermission {
-  id: string;
-  type: string;
-  pattern?: string | string[];
-  sessionID: string;
-  messageID: string;
-  callID?: string;
-  title: string;
-  metadata: Record<string, unknown>;
-  time: {
-    created: number;
-  };
-}
+export type OpenCodePermission = PermissionAsked["data"];
 
 function getLocations(permission: OpenCodePermission): AgentToolCallLocation[] {
-  const path =
-    typeof permission.metadata.path === "string"
-      ? permission.metadata.path
-      : typeof permission.metadata.file === "string"
-        ? permission.metadata.file
-        : null;
+  const files = permission.metadata?.files;
+  if (!Array.isArray(files)) {
+    return [];
+  }
 
-  return path ? [{ path }] : [];
+  return files.flatMap((file) =>
+    file && typeof file === "object" && typeof file.file === "string"
+      ? [{ path: file.file }]
+      : [],
+  );
 }
 
 export function createOpenCodePermissionRequest(
@@ -39,11 +34,12 @@ export function createOpenCodePermissionRequest(
     id: permission.id,
     sessionId: payload.session.id,
     providerId: payload.session.agentType,
-    kind: permission.type,
-    title: permission.title,
-    description: permission.pattern
-      ? `Pattern: ${Array.isArray(permission.pattern) ? permission.pattern.join(", ") : permission.pattern}`
-      : null,
+    kind: permission.action,
+    title: permission.message ?? permission.action,
+    description:
+      permission.resources.length > 0
+        ? `Resources: ${permission.resources.join(", ")}`
+        : null,
     rawInput: permission,
     locations: getLocations(permission),
     options: createPermissionOptions([
@@ -54,10 +50,50 @@ export function createOpenCodePermissionRequest(
   };
 }
 
-export function mapOpenCodeDecision(decision: AgentPermissionDecision) {
-  return !decision.startsWith("allow")
-    ? "reject"
-    : decision === "allow_always"
-      ? "always"
-      : "once";
+export function mapOpenCodeDecision(
+  decision: AgentPermissionDecision,
+): PermissionReply {
+  if (!decision.startsWith("allow")) return "reject";
+  return decision === "allow_always" ? "always" : "once";
+}
+
+export function mapOpenCodeReply(
+  reply: PermissionReply,
+): AgentPermissionDecision {
+  if (reply === "reject") return "reject_once";
+  return reply === "always" ? "allow_always" : "allow_once";
+}
+
+type PermissionMode = CreateAgentSessionPayload["session"]["permissionMode"];
+
+async function decideOpenCodePermission(
+  payload: CreateAgentSessionPayload,
+  permission: OpenCodePermission,
+  permissionMode: PermissionMode,
+): Promise<AgentPermissionDecision> {
+  if (permissionMode === "opencode-allow") return "allow_once";
+  if (permissionMode === "opencode-deny") return "reject_once";
+
+  const resolution = await payload.requestPermission?.(
+    createOpenCodePermissionRequest(payload, permission),
+  );
+  return resolution?.decision ?? "reject_once";
+}
+
+export async function replyOpenCodePermission(
+  payload: CreateAgentSessionPayload,
+  client: OpenCodeClient,
+  permission: OpenCodePermission,
+  permissionMode: PermissionMode,
+) {
+  const decision = await decideOpenCodePermission(
+    payload,
+    permission,
+    permissionMode,
+  );
+  await client.permission.reply({
+    sessionID: permission.sessionID,
+    requestID: permission.id,
+    decision: mapOpenCodeDecision(decision),
+  });
 }

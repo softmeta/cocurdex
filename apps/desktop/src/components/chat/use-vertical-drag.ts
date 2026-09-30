@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 const DRAG_THRESHOLD_PX = 3;
 const DRAG_EDGE_MARGIN_PX = 8;
@@ -30,13 +30,6 @@ export function useVerticalDrag<T extends HTMLElement>() {
   const [offsetY, setOffsetY] = useState(0);
   const offsetYRef = useRef(0);
   const rootRef = useRef<T | null>(null);
-  const dragState = useRef<{
-    startY: number;
-    startOffsetY: number;
-    containerHeight: number;
-    panelHeight: number;
-    panelTop: number;
-  } | null>(null);
   const isDraggingRef = useRef(false);
 
   const applyOffset = useCallback((next: number) => {
@@ -55,71 +48,56 @@ export function useVerticalDrag<T extends HTMLElement>() {
     return true;
   }, []);
 
-  const startDrag = useCallback((clientY: number) => {
-    const root = rootRef.current;
-    const container = root?.parentElement;
-    if (!root || !container) {
-      return;
-    }
-
-    dragState.current = {
-      startY: clientY,
-      startOffsetY: offsetYRef.current,
-      containerHeight: container.clientHeight,
-      panelHeight: root.clientHeight,
-      // Natural top within the container, ignoring the drag transform. Drives
-      // an asymmetric clamp so a bottom-anchored panel can't be dragged off
-      // the bottom edge.
-      panelTop: root.offsetTop,
-    };
-    isDraggingRef.current = false;
-    document.body.style.userSelect = "none";
-  }, []);
-
-  useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!dragState.current) {
+  const startDrag = useCallback(
+    (clientY: number) => {
+      const root = rootRef.current;
+      const container = root?.parentElement;
+      if (!root || !container) {
         return;
       }
 
-      const { startY, startOffsetY, containerHeight, panelHeight, panelTop } =
-        dragState.current;
-      const deltaY = event.clientY - startY;
+      const startOffsetY = offsetYRef.current;
+      const containerHeight = container.clientHeight;
+      const panelHeight = root.clientHeight;
+      // Natural top within the container, ignoring the drag transform. Drives
+      // an asymmetric clamp so a bottom-anchored panel can't be dragged off
+      // the bottom edge.
+      const panelTop = root.offsetTop;
+      isDraggingRef.current = false;
+      document.body.style.userSelect = "none";
 
-      if (Math.abs(deltaY) > DRAG_THRESHOLD_PX) {
-        isDraggingRef.current = true;
-      }
+      const handleMouseMove = (event: MouseEvent) => {
+        const deltaY = event.clientY - clientY;
+        if (Math.abs(deltaY) > DRAG_THRESHOLD_PX) {
+          isDraggingRef.current = true;
+        }
+        applyOffset(
+          clampOffset(
+            startOffsetY + deltaY,
+            containerHeight,
+            panelHeight,
+            panelTop,
+          ),
+        );
+      };
 
-      applyOffset(
-        clampOffset(
-          startOffsetY + deltaY,
-          containerHeight,
-          panelHeight,
-          panelTop,
-        ),
-      );
-    };
+      const handleMouseUp = () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+        document.body.style.userSelect = "";
+        if (isDraggingRef.current) {
+          // Defer clearing so the trailing click can read the drag flag first.
+          window.setTimeout(() => {
+            isDraggingRef.current = false;
+          }, 0);
+        }
+      };
 
-    const handleMouseUp = () => {
-      const wasDragging = isDraggingRef.current;
-      dragState.current = null;
-      document.body.style.userSelect = "";
-
-      if (wasDragging) {
-        // Defer clearing so the trailing click can read the drag flag first.
-        window.setTimeout(() => {
-          isDraggingRef.current = false;
-        }, 0);
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [applyOffset]);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    },
+    [applyOffset],
+  );
 
   return { offsetY, rootRef, startDrag, consumeDragClick };
 }

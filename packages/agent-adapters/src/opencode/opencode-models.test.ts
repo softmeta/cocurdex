@@ -1,14 +1,13 @@
-import type { Agent } from "@opencode-ai/sdk/v2";
+import type { AgentInfo, ModelInfo } from "@opencode/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  getOpenCodePrimaryAgentNames,
+  assertOpenCodeModelAvailable,
+  getOpenCodePrimaryAgentIds,
+  listOpenCodeModelsWhenReady,
   listOpenCodeProviderModels,
 } from "./opencode-models";
 
-const runtimeMocks = vi.hoisted(() => ({
-  acquire: vi.fn(),
-  release: vi.fn(),
-}));
+const runtimeMocks = vi.hoisted(() => ({ connect: vi.fn() }));
 
 vi.mock("./opencode-runtime", async () => {
   const actual =
@@ -17,39 +16,148 @@ vi.mock("./opencode-runtime", async () => {
     );
   return {
     ...actual,
-    acquireOpenCodeRuntime: runtimeMocks.acquire,
+    connectOpenCode: runtimeMocks.connect,
     logOpenCode: vi.fn(),
-    releaseOpenCodeRuntime: runtimeMocks.release,
   };
 });
 
-describe("OpenCode agent catalog", () => {
+function model(overrides: Partial<ModelInfo>): ModelInfo {
+  return {
+    id: "claude-sonnet",
+    modelID: "claude-sonnet",
+    providerID: "anthropic",
+    name: "Claude Sonnet",
+    package: "@ai-sdk/anthropic",
+    capabilities: { tools: true, input: ["text"], output: ["text"] },
+    variants: [],
+    time: { released: 0 },
+    cost: [],
+    status: "active",
+    enabled: true,
+    limit: { context: 200_000, output: 64_000 },
+    ...overrides,
+  };
+}
+
+describe("OpenCode model catalog", () => {
   beforeEach(() => {
-    runtimeMocks.acquire.mockReset();
-    runtimeMocks.release.mockReset();
+    runtimeMocks.connect.mockReset();
   });
 
   it("only exposes visible primary and all-mode agents", () => {
     const agents = [
-      { name: "build", hidden: false, mode: "primary" },
-      { name: "plan", hidden: false, mode: "primary" },
-      { name: "compaction", hidden: true, mode: "all" },
-      { name: "summary", hidden: true, mode: "all" },
-      { name: "title", hidden: true, mode: "primary" },
-      { name: "explore", hidden: false, mode: "subagent" },
-    ] as Agent[];
+      { id: "build", hidden: false, mode: "primary" },
+      { id: "plan", hidden: false, mode: "primary" },
+      { id: "compaction", hidden: true, mode: "primary" },
+      { id: "helper", hidden: false, mode: "all" },
+      { id: "explore", hidden: false, mode: "subagent" },
+    ] as AgentInfo[];
 
-    expect(getOpenCodePrimaryAgentNames(agents)).toEqual(["build", "plan"]);
+    expect(getOpenCodePrimaryAgentIds(agents)).toEqual([
+      "build",
+      "plan",
+      "helper",
+    ]);
+  });
+
+  it("maps enabled models with their provider, default, variants, and agents", async () => {
+    runtimeMocks.connect.mockResolvedValue({
+      model: {
+        list: async () => ({
+          data: [
+            model({ variants: [{ id: "high" }, { id: "max" }] }),
+            model({ id: "disabled", enabled: false }),
+          ],
+        }),
+        default: async () => ({
+          data: model({}),
+        }),
+      },
+      provider: {
+        list: async () => ({
+          data: [{ id: "anthropic", name: "Anthropic", package: "" }],
+        }),
+      },
+      agent: {
+        list: async () => ({
+          data: [{ id: "build", hidden: false, mode: "primary" }],
+        }),
+      },
+    });
+
+    const catalog = await listOpenCodeProviderModels({ forceRefresh: true });
+
+    expect(catalog).toHaveLength(1);
+    expect(catalog[0]).toMatchObject({
+      provider: { id: "anthropic", name: "Anthropic" },
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet",
+        api: "anthropic-messages",
+        contextLimit: 200_000,
+        outputLimit: 64_000,
+        isDefault: true,
+        compatJson: JSON.stringify({
+          opencode: { agents: ["build"], variants: ["high", "max"] },
+        }),
+      },
+    });
   });
 
   it("rejects when the live catalog cannot be loaded", async () => {
-    runtimeMocks.acquire.mockRejectedValueOnce(
-      new Error("OpenCode server unavailable"),
+    runtimeMocks.connect.mockRejectedValueOnce(
+      new Error("OpenCode service unavailable"),
     );
 
-    await expect(listOpenCodeProviderModels()).rejects.toThrow(
-      "OpenCode server unavailable",
+    await expect(
+      listOpenCodeProviderModels({ forceRefresh: true }),
+    ).rejects.toThrow("OpenCode service unavailable");
+  });
+
+  it("only accepts an enabled model from the selected provider", () => {
+    const models = [
+      model({}),
+      model({ providerID: "other", id: "shared-id" }),
+      model({ id: "off", enabled: false }),
+    ];
+
+    expect(() =>
+      assertOpenCodeModelAvailable(models, {
+        providerId: "anthropic",
+        modelId: "claude-sonnet",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertOpenCodeModelAvailable(models, {
+        providerId: "anthropic",
+        modelId: "shared-id",
+      }),
+    ).toThrow("is no longer available");
+    expect(() =>
+      assertOpenCodeModelAvailable(models, {
+        providerId: "anthropic",
+        modelId: "off",
+      }),
+    ).toThrow("is no longer available");
+  });
+});
+
+describe("listOpenCodeModelsWhenReady", () => {
+  it("waits for a directory catalog that is still loading", async () => {
+    vi.useFakeTimers();
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValue({ data: [model({ id: "ready" })] });
+
+    const result = listOpenCodeModelsWhenReady(
+      { model: { list } } as never,
+      "/repo",
     );
-    expect(runtimeMocks.release).toHaveBeenCalledWith(null);
+    await vi.runAllTimersAsync();
+
+    expect((await result).map((item) => item.id)).toEqual(["ready"]);
+    expect(list).toHaveBeenCalledWith({ location: { directory: "/repo" } });
+    vi.useRealTimers();
   });
 });

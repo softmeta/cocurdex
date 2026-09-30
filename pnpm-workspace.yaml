@@ -50,6 +50,7 @@ allowBuilds:
   esbuild: true
   koffi: false
   lefthook: true
+  msgpackr-extract: false
   msw: true
   node-pty: true
   protobufjs: false
@@ -73,3 +74,6 @@ minimumReleaseAgeExclude:
   - '@earendil-works/pi-mcp@0.99.1'
   - '@earendil-works/pi-telemetry@0.99.1'
   - '@earendil-works/pi-tui@0.99.1'
+  - '@opencode/client@2.0.20'
+  - '@opencode/protocol@2.0.20'
+  - '@opencode/schema@2.0.20'

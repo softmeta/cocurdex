@@ -22,5 +22,4 @@ export * from "./session-usage-store";
 export * from "./thinking-level";
 export * from "./thinking-level-submenu";
 export * from "./use-context-file-mentions";
-export * from "./use-media-query";
 export * from "./use-slash-commands";

@@ -274,18 +274,18 @@ describe("permission mapping", () => {
     const requestPayload = payload("opencode", "allow_once");
     const request = createOpenCodePermissionRequest(requestPayload, {
       id: "permission-1",
-      type: "bash",
-      pattern: "pnpm *",
       sessionID: "opencode-session-1",
-      messageID: "message-1",
-      title: "Run command",
-      metadata: { path: "/tmp/repo/package.json" },
-      time: { created: Date.now() },
+      action: "edit",
+      resources: ["package.json"],
+      message: "Edit package.json",
+      metadata: { files: [{ file: "/tmp/repo/package.json" }] },
     });
 
     expect(request).toMatchObject({
       id: "permission-1",
-      kind: "bash",
+      kind: "edit",
+      title: "Edit package.json",
+      description: "Resources: package.json",
       providerId: "opencode",
       locations: [{ path: "/tmp/repo/package.json" }],
     });

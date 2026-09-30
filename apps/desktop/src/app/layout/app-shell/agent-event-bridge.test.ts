@@ -3,12 +3,13 @@ import type {
   AppResyncSnapshot,
   DaemonEventMeta,
 } from "@cocurdex/shared";
-import { act, cleanup, renderHook } from "@testing-library/react";
-import { createStore, Provider } from "jotai";
-import type { ReactNode } from "react";
+import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { messagesBySessionAtom } from "@/features/agent/view/message-store";
-import { useAgentEventBridge } from "./app-shell-events";
+import {
+  createAgentEventBridge,
+  startAgentEventBridge,
+} from "./agent-event-bridge";
 
 const host = vi.hoisted(() => ({
   listener: null as
@@ -16,13 +17,16 @@ const host = vi.hoisted(() => ({
     | null,
   resyncApp: vi.fn<(ids: string[]) => Promise<AppResyncSnapshot>>(),
   onDataChanged: vi.fn(() => () => {}),
+  activeListeners: 0,
 }));
 vi.mock("@/lib/ipc", () => ({ desktopApi: host }));
 vi.mock("@/lib/task-client", () => ({
   taskApi: {
     onAgentEvent: (listener: typeof host.listener) => {
       host.listener = listener;
+      host.activeListeners += 1;
       return () => {
+        host.activeListeners -= 1;
         host.listener = null;
       };
     },
@@ -30,7 +34,6 @@ vi.mock("@/lib/task-client", () => ({
 }));
 
 afterEach(() => {
-  cleanup();
   vi.useRealTimers();
   vi.clearAllMocks();
 });
@@ -46,15 +49,9 @@ describe("agent state during a window handoff", () => {
         }),
     );
     const store = createStore();
-    const { result } = renderHook(() => useAgentEventBridge(), {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <Provider store={store}>{children}</Provider>
-      ),
-    });
-    let synchronization: Promise<void> = Promise.resolve();
-    act(() => {
-      synchronization = result.current(["session"]);
-    });
+    const bridge = createAgentEventBridge(store);
+    const stop = bridge.start();
+    const synchronization = bridge.synchronize(["session"]);
     expect(host.resyncApp).toHaveBeenCalledWith(["session"]);
     const delta = (content: string, seq: number) =>
       host.listener?.(
@@ -68,45 +65,50 @@ describe("agent state during a window handoff", () => {
         },
         { epoch: "epoch", seq },
       );
-    act(() => {
-      delta("already covered", 10);
-      delta(" world", 11);
-    });
+    delta("already covered", 10);
+    delta(" world", 11);
     expect(store.get(messagesBySessionAtom).session).toBeUndefined();
-    await act(async () => {
-      resolveSnapshot({
-        epoch: "epoch",
-        eventSeq: 10,
-        sessions: [],
-        queuedAgentInputs: [],
-        queuedMessages: [],
-        sessionUsage: {},
-        interactions: { permissions: [], questions: [], planApprovals: [] },
-        transcripts: {
-          session: {
-            messages: [],
-            activeMessages: [
-              {
-                id: "answer",
-                sessionId: "session",
-                role: "assistant",
-                content: "Hello",
-                attachments: [],
-                createdAt: "2026-09-18T00:00:00Z",
-              },
-            ],
-            turnStats: {},
-            turnChangeSets: {},
-            toolCalls: [],
-            plan: null,
-          },
+    resolveSnapshot({
+      epoch: "epoch",
+      eventSeq: 10,
+      sessions: [],
+      queuedAgentInputs: [],
+      queuedMessages: [],
+      sessionUsage: {},
+      interactions: { permissions: [], questions: [], planApprovals: [] },
+      transcripts: {
+        session: {
+          messages: [],
+          activeMessages: [
+            {
+              id: "answer",
+              sessionId: "session",
+              role: "assistant",
+              content: "Hello",
+              attachments: [],
+              createdAt: "2026-09-18T00:00:00Z",
+            },
+          ],
+          turnStats: {},
+          turnChangeSets: {},
+          toolCalls: [],
+          plan: null,
         },
-      });
-      await synchronization;
-      await vi.runOnlyPendingTimersAsync();
+      },
     });
+    await synchronization;
+    await vi.runOnlyPendingTimersAsync();
     expect(store.get(messagesBySessionAtom).session[0].content).toBe(
       "Hello world",
     );
+    stop();
+  });
+});
+
+describe("agent event bridge lifetime", () => {
+  it("keeps one agent event listener however often it is started", () => {
+    startAgentEventBridge();
+    startAgentEventBridge();
+    expect(host.activeListeners).toBe(1);
   });
 });

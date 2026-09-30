@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useEffect } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import type {
   GitBranchInfo,
   WorkspaceGitDiffStatus,
@@ -27,29 +27,25 @@ export function useSyncWorkspaceGitChanges({
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   setIsActionPending: Dispatch<SetStateAction<boolean>>;
 }) {
-  useEffect(() => {
-    void scopeKey;
+  const [syncedRootPath, setSyncedRootPath] = useState(rootPath);
+  if (syncedRootPath !== rootPath) {
+    setSyncedRootPath(rootPath);
     if (!rootPath) {
       setFileChanges([]);
       setBranches([]);
       setDiffStatus("ok");
       setIsLoading(false);
       setIsActionPending(false);
-      return;
     }
-    void loadDiff(rootPath);
-    void loadBranches(rootPath);
-  }, [
-    rootPath,
-    scopeKey,
-    loadDiff,
-    loadBranches,
-    setFileChanges,
-    setBranches,
-    setDiffStatus,
-    setIsLoading,
-    setIsActionPending,
-  ]);
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadDiff reads the scope from a ref; scopeKey is the reload trigger
+  useEffect(() => {
+    if (rootPath) {
+      void loadDiff(rootPath);
+      void loadBranches(rootPath);
+    }
+  }, [rootPath, scopeKey, loadDiff, loadBranches]);
 
   // External system sync: the main process pushes debounced notifications for
   // worktree edits (files-changed) and git metadata updates such as commits,

@@ -1,6 +1,6 @@
 import type { ImageAttachment } from "@cocurdex/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { desktopApi } from "@/lib";
+import { desktopApi, useMountEffect } from "@/lib";
 
 export type ImageCopyStatus = "copied" | "failed";
 
@@ -11,7 +11,10 @@ export type ImageCopyStatus = "copied" | "failed";
 export function useImageDataUrl(attachment: ImageAttachment) {
   const { filePath } = attachment;
   const inlineDataUrl = filePath.startsWith("data:") ? filePath : null;
-  const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
+  const [fetched, setFetched] = useState<{
+    path: string;
+    url: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (inlineDataUrl) {
@@ -19,17 +22,16 @@ export function useImageDataUrl(attachment: ImageAttachment) {
     }
 
     let cancelled = false;
-    setFetchedUrl(null);
     desktopApi
       .readImageAttachmentDataUrl(filePath)
       .then((url) => {
         if (!cancelled) {
-          setFetchedUrl(url);
+          setFetched({ path: filePath, url });
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setFetchedUrl(null);
+          setFetched({ path: filePath, url: null });
         }
       });
     return () => {
@@ -37,6 +39,7 @@ export function useImageDataUrl(attachment: ImageAttachment) {
     };
   }, [filePath, inlineDataUrl]);
 
+  const fetchedUrl = fetched?.path === filePath ? fetched.url : null;
   return inlineDataUrl ?? fetchedUrl;
 }
 
@@ -58,13 +61,11 @@ export function useTemporaryImageCopyStatus(durationMs: number) {
     [durationMs],
   );
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
+  useMountEffect(() => () => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+  });
 
   return [copyStatus, showCopyStatus] as const;
 }

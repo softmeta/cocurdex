@@ -16,9 +16,12 @@ export function useHighlightedMenuRow({
     null,
   );
 
+  const highlightedValue = items[highlightedIndex];
+  const isActive =
+    isOpen && listNode !== null && highlightedValue !== undefined;
+
   useLayoutEffect(() => {
-    if (!isOpen || !listNode || items[highlightedIndex] === undefined) {
-      setHighlightedItem(null);
+    if (!isOpen || !listNode || highlightedValue === undefined) {
       return;
     }
 
@@ -50,7 +53,11 @@ export function useHighlightedMenuRow({
 
     listNode.addEventListener("scroll", sync, { passive: true });
     return () => listNode.removeEventListener("scroll", sync);
-  }, [highlightedIndex, isOpen, itemAttribute, items, listNode]);
+  }, [highlightedIndex, highlightedValue, isOpen, itemAttribute, listNode]);
 
-  return { highlightedItem, setListNode };
+  return {
+    highlightedItem:
+      isActive && highlightedItem?.isConnected ? highlightedItem : null,
+    setListNode,
+  };
 }

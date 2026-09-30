@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildAcpPrompt } from "../acp/acp-mappers";
 import { buildClaudeUserContent } from "../claude-shared/claude-user-content";
 import { buildInput } from "../codex/codex-app-server-events";
-import { buildPromptParts } from "../opencode/opencode-events";
+import { buildPromptInput } from "../opencode/opencode-events";
 
 function createDocumentAttachment(): DocumentAttachment {
   const directory = path.join(tmpdir(), "cocurdex-test-documents");
@@ -57,20 +57,20 @@ describe("native document attachments", () => {
     ]);
   });
 
-  it("maps PDFs to OpenCode file parts", () => {
+  it("maps PDFs to OpenCode prompt files", () => {
     const document = createDocumentAttachment();
 
-    expect(buildPromptParts("Summarize this PDF", [document])).toEqual([
-      { text: "Summarize this PDF", type: "text" },
-      {
-        filename: "sample.pdf",
-        mime: "application/pdf",
-        type: "file",
-        url: `data:application/pdf;base64,${Buffer.from(
-          "%PDF-1.7\ntest-document",
-        ).toString("base64")}`,
-      },
-    ]);
+    expect(buildPromptInput("Summarize this PDF", [document])).toEqual({
+      text: "Summarize this PDF",
+      files: [
+        {
+          name: "sample.pdf",
+          uri: `data:application/pdf;base64,${Buffer.from(
+            "%PDF-1.7\ntest-document",
+          ).toString("base64")}`,
+        },
+      ],
+    });
   });
 
   it("embeds PDFs in ACP prompts when embedded context is negotiated", async () => {

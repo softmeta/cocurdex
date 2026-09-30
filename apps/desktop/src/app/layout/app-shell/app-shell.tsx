@@ -56,7 +56,8 @@ import {
 } from "../chat-layout-preference";
 import { useChatWindowActions, useMainChatWindow } from "../chat-window";
 import { searchPaletteOpenAtom } from "../search-palette";
-import { useAgentEventBridge, useBrowserEventBridge } from "./app-shell-events";
+import { synchronizeAgentState } from "./agent-event-bridge";
+import { useBrowserEventBridge } from "./app-shell-events";
 import { AppShellFrame } from "./app-shell-frame";
 import {
   resolvePanelFullWidth,
@@ -204,7 +205,6 @@ export function AppShell() {
     isCompact: isRightPanelCompact,
     isChatDetached: chatDetached,
   });
-  const synchronizeAgentState = useAgentEventBridge();
   useBrowserEventBridge();
   useChatEventBridge();
   const rendererSettingAppliersRef = useRef<RendererSettingAppliers>({});

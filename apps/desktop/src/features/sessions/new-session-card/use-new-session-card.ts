@@ -348,22 +348,27 @@ export function useNewSessionCard({
     [],
   );
 
-  const showCatalogForAgent = useCallback(
-    (agentId: AgentId) => {
-      const cachedResult =
-        getCachedProviderModelEntry(providerModelCache, agentId)?.result ??
-        null;
-      if (cachedResult) {
-        applyCatalogResult(agentId, cachedResult);
-        return true;
-      }
+  const [catalogAgent, setCatalogAgent] = useState<AgentId | null>(null);
+  if (catalogAgent !== effectiveSelectedAgent) {
+    setCatalogAgent(effectiveSelectedAgent);
+    const cachedResult =
+      getCachedProviderModelEntry(providerModelCache, effectiveSelectedAgent)
+        ?.result ?? null;
+    if (cachedResult) {
+      applyCatalogResult(effectiveSelectedAgent, cachedResult);
+    } else {
       setCompatibleProviders([]);
       setSelectedProviderModel("");
       setIsProviderModelLoading(true);
-      return false;
-    },
-    [applyCatalogResult],
-  );
+      const preferences = getAgentRuntimePreferences(effectiveSelectedAgent);
+      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
+      setSelectedServiceTier(preferences.serviceTier ?? "");
+      setSelectedClaudeFastMode(preferences.fastMode ?? false);
+      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -380,8 +385,6 @@ export function useNewSessionCard({
       isProviderModelCacheFresh(cachedEntry),
       cachedEntry?.runtimeValidated ?? false,
     );
-
-    showCatalogForAgent(effectiveSelectedAgent);
 
     async function loadCompatibleProviders() {
       if (cachedResult && !shouldRefreshCache) {
@@ -421,12 +424,7 @@ export function useNewSessionCard({
     return () => {
       cancelled = true;
     };
-  }, [
-    applyCatalogResult,
-    effectiveSelectedAgent,
-    providerModelCacheVersion,
-    showCatalogForAgent,
-  ]);
+  }, [applyCatalogResult, effectiveSelectedAgent, providerModelCacheVersion]);
 
   // ACP agents only reveal their mode list once a session is opened, so the
   // list is asked for the first time an agent without one is selected. The
@@ -556,17 +554,7 @@ export function useNewSessionCard({
       onSelectSessionMode?.("");
     }
     setUncontrolledAgent(nextAgent);
-    const hadCatalog = showCatalogForAgent(nextAgent);
     setSelectedPermissionMode(permissionModeForAgent(nextAgent, agents));
-    if (!hadCatalog) {
-      const preferences = getAgentRuntimePreferences(nextAgent);
-      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
-      setSelectedServiceTier(preferences.serviceTier ?? "");
-      setSelectedClaudeFastMode(preferences.fastMode ?? false);
-      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
-      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
-      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
-    }
     // Parent (lastSelectedAgentAtom) persists to localStorage so the choice
     // is restored the next time this card opens, including after restart.
     onSelectAgent?.(nextAgent);
