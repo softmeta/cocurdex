@@ -1,5 +1,5 @@
 import { app } from "electron";
-import electronUpdater from "electron-updater";
+import type { AppUpdater } from "electron-updater";
 import { createUpstreamLogger } from "../logging";
 import {
   type AppUpdateChannel,
@@ -19,7 +19,7 @@ import {
 } from "./app-update-state";
 import { assertUpdateArchitecture } from "./update-architecture";
 
-const { autoUpdater } = electronUpdater;
+let autoUpdater: AppUpdater | null = null;
 
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
@@ -46,6 +46,9 @@ function apply(event: AppUpdateEvent) {
 
 async function runCheck() {
   if (state.status === "unsupported") {
+    return state;
+  }
+  if (!autoUpdater) {
     return state;
   }
   try {
@@ -93,11 +96,11 @@ export function installAppUpdate(): void {
   if (state.status !== "ready") {
     return;
   }
-  autoUpdater.quitAndInstall();
+  autoUpdater?.quitAndInstall();
 }
 
 function applyUpdaterConfig(channel: AppUpdateChannel, version: string): void {
-  if (!packaged) {
+  if (!autoUpdater) {
     return;
   }
   const config = updaterConfigForChannel(channel, version);
@@ -106,13 +109,13 @@ function applyUpdaterConfig(channel: AppUpdateChannel, version: string): void {
   autoUpdater.allowDowngrade = config.allowDowngrade;
 }
 
-export function startAppUpdater(options: {
+export async function startAppUpdater(options: {
   broadcast: AppUpdateBroadcast;
   currentVersion: string;
   packaged: boolean;
   userDataPath: string;
   whenReadyToCheck?: Promise<unknown>;
-}): void {
+}): Promise<void> {
   if (started) {
     return;
   }
@@ -133,12 +136,14 @@ export function startAppUpdater(options: {
     return;
   }
 
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.logger = createUpstreamLogger("updater");
-  applyUpdaterConfig(channel, options.currentVersion);
-  const isUpdateSupported = autoUpdater.isUpdateSupported;
-  autoUpdater.isUpdateSupported = (info) => {
+  const updater = (await import("electron-updater")).default.autoUpdater;
+  autoUpdater = updater;
+  updater.autoDownload = true;
+  updater.autoInstallOnAppQuit = true;
+  updater.logger = createUpstreamLogger("updater");
+  applyUpdaterConfig(state.channel, options.currentVersion);
+  const isUpdateSupported = updater.isUpdateSupported;
+  updater.isUpdateSupported = (info) => {
     assertUpdateArchitecture(info, {
       platform: process.platform,
       arch: process.arch,
@@ -150,30 +155,30 @@ export function startAppUpdater(options: {
     return isUpdateSupported(info);
   };
 
-  autoUpdater.on("checking-for-update", () => {
+  updater.on("checking-for-update", () => {
     apply({ type: "checking" });
   });
-  autoUpdater.on("update-available", (info) => {
+  updater.on("update-available", (info) => {
     apply({
       type: "available",
       version: info.version,
       releaseNotesUrl: githubReleaseNotesUrl(info.version),
     });
   });
-  autoUpdater.on("update-not-available", () => {
+  updater.on("update-not-available", () => {
     apply({ type: "not-available" });
   });
-  autoUpdater.on("download-progress", (info) => {
+  updater.on("download-progress", (info) => {
     apply({ percent: info.percent, type: "progress" });
   });
-  autoUpdater.on("update-downloaded", (info) => {
+  updater.on("update-downloaded", (info) => {
     apply({
       type: "downloaded",
       version: info.version,
       releaseNotesUrl: githubReleaseNotesUrl(info.version),
     });
   });
-  autoUpdater.on("error", (error) => {
+  updater.on("error", (error) => {
     apply({
       type: "error",
       message: error instanceof Error ? error.message : String(error),

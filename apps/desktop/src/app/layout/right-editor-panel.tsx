@@ -4,7 +4,7 @@ import {
 } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { PanelLeft, Search } from "lucide-react";
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
 import { beginColumnResize } from "@/components/use-column-resize";
@@ -15,13 +15,15 @@ import {
   FileTree,
   fileTreeVisibleAtom,
   GitChanges,
-  MonacoEditor,
   openFileAtom,
   rightPanelResizingAtom,
   SearchPanel,
   SearchResultsPane,
   setChatComposerAttachmentAtom,
 } from "@/features/editor";
+import { MonacoEditor } from "@/features/editor/monaco";
+import { IssuesView } from "@/features/issues";
+import { NotesView } from "@/features/notes";
 import { openPdfsAtom } from "@/features/pdf-reader";
 import {
   type AppearanceSettings,
@@ -54,16 +56,6 @@ import {
 } from "./titlebar-icon-button";
 import { ViewSwitcherTabs } from "./view-switcher-tabs";
 
-// Notes pulls in Tiptap/ProseMirror (~200-300 KB gzip); defer that chunk until
-// the user first activates the tab.
-const NotesView = lazy(() =>
-  import("@/features/notes").then((m) => ({ default: m.NotesView })),
-);
-
-const IssuesView = lazy(() =>
-  import("@/features/issues").then((m) => ({ default: m.IssuesView })),
-);
-
 const MIN_FILE_TREE_WIDTH = 170;
 const MIN_EDITOR_WIDTH = 240;
 const INTERNAL_SEPARATOR_WIDTH = 1;
@@ -93,7 +85,7 @@ function clampFileTreeWidth(nextWidth: number, totalWidth: number) {
   return clamp(nextWidth, MIN_FILE_TREE_WIDTH, getMaxFileTreeWidth(totalWidth));
 }
 
-interface RightEditorPanelProps {
+export interface RightEditorPanelProps {
   onClose(): void;
   appearanceSettings?: AppearanceSettings;
   // In global (fullscreen) mode the panel reaches the window's left edge, so the
@@ -494,9 +486,7 @@ export function RightEditorPanel({
                     : "hidden pointer-events-none",
                 )}
               >
-                <Suspense fallback={null}>
-                  <NotesView />
-                </Suspense>
+                <NotesView />
               </div>
             ) : null}
 
@@ -510,9 +500,7 @@ export function RightEditorPanel({
                     : "hidden pointer-events-none",
                 )}
               >
-                <Suspense fallback={null}>
-                  <IssuesView />
-                </Suspense>
+                <IssuesView />
               </div>
             ) : null}
 

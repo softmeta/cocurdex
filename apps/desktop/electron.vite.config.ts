@@ -123,12 +123,16 @@ export default defineConfig(({ command }) => ({
       viteStaticCopy({
         targets: [
           {
-            src: path.join(pdfjsDistRoot, "cmaps").replace(/\\/g, "/"),
-            dest: "",
+            src: path.join(pdfjsDistRoot, "cmaps/*").replace(/\\/g, "/"),
+            dest: "cmaps",
+            rename: { stripBase: true },
           },
           {
-            src: path.join(pdfjsDistRoot, "standard_fonts").replace(/\\/g, "/"),
-            dest: "",
+            src: path
+              .join(pdfjsDistRoot, "standard_fonts/*")
+              .replace(/\\/g, "/"),
+            dest: "standard_fonts",
+            rename: { stripBase: true },
           },
         ],
       }),

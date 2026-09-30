@@ -8,7 +8,6 @@ import type {
 import { hashLogValue } from "@cocurdex/shared";
 import type { BrowserWindow } from "electron";
 import type { IPty } from "node-pty";
-import { spawn as ptySpawn } from "node-pty";
 import { createLogger } from "../logging";
 import { terminateProcessTree } from "../process";
 import { resolveDefaultShell } from "./default-shell";
@@ -130,7 +129,8 @@ export class PtyService {
     }
   }
 
-  spawn(payload: PtySpawnPayload): PtySpawnResult {
+  async spawn(payload: PtySpawnPayload): Promise<PtySpawnResult> {
+    const { spawn: ptySpawn } = await import("node-pty");
     const existing = this.sessions.get(payload.terminalId);
     if (existing) {
       // Re-attach: caller (renderer) likely remounted xterm. Resize to whatever

@@ -12,7 +12,7 @@ import {
 import { ChatDockLauncher } from "../chat-dock-launcher";
 import { resolveChatDockPinLayout } from "../chat-dock-sizing";
 import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
-import { RightEditorPanel } from "../right-editor-panel";
+import { RightEditorPanel } from "../right-editor-panel-lazy";
 import { LeftSidebar, ResizableSidebarSlot, ResizeSeparator } from "../sidebar";
 import { useChatDockViewportWidth } from "../use-chat-dock-viewport";
 import { MIN_CHAT_WIDTH, PANEL_SEPARATOR_WIDTH } from "./panel-geometry";

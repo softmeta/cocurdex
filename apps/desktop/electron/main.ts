@@ -114,7 +114,13 @@ import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerSkillsHandlers } from "./skills";
 import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
-import { registerChatWindowHandlers } from "./window";
+import {
+  migrateLegacyRendererStorage,
+  registerChatWindowHandlers,
+  registerRendererProtocol,
+  rendererPageUrl,
+  rendererScheme,
+} from "./window";
 import {
   buildPdfAssetUrl,
   registerPdfProtocol,
@@ -134,9 +140,9 @@ const preloadPath = resolveElectronEntryPath(
   import.meta.url,
   "../preload/preload.cjs",
 );
-const rendererHtmlPath = resolveElectronEntryPath(
+const rendererRootDir = resolveElectronEntryPath(
   import.meta.url,
-  "../renderer/index.html",
+  "../renderer",
 );
 
 // Capture native crashes (renderer/GPU/utility/main) as on-disk minidumps.
@@ -332,21 +338,7 @@ function createWindow() {
     getPtyService().dispose();
   });
 
-  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
-
-  if (rendererUrl) {
-    const url = new URL(rendererUrl);
-
-    if (
-      url.protocol === "http:" &&
-      ["localhost", "127.0.0.1"].includes(url.hostname)
-    ) {
-      void window.loadURL(rendererUrl);
-      return window;
-    }
-  }
-
-  void window.loadFile(rendererHtmlPath);
+  void window.loadURL(rendererPageUrl());
   return window;
 }
 
@@ -1394,6 +1386,7 @@ process.on("unhandledRejection", (reason) => {
 // surface as "Cross origin requests are only supported for protocol schemes:
 // chrome, chrome-extension, …, http, https" and every PDF fails to open.
 protocol.registerSchemesAsPrivileged([
+  rendererScheme,
   {
     scheme: "pdf-asset",
     privileges: {
@@ -1501,6 +1494,7 @@ app
         });
       },
     );
+    registerRendererProtocol(rendererRootDir);
     registerPdfProtocol(listWorkspaceRootPaths);
     registerWorkspaceHandlers();
     registerSessionHandlers();
@@ -1520,7 +1514,6 @@ app
     registerOssLicensesHandlers();
     chatWindows = registerChatWindowHandlers({
       preloadPath,
-      rendererHtmlPath,
       createPrimaryWindow: createWindow,
     });
     startAppUpdater({
@@ -1533,6 +1526,10 @@ app
           window.webContents.send("app:updateState", state);
         }
       },
+    }).catch((error: unknown) => {
+      appLogger.error("updater.startFailed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
     });
     registerApplicationMenu();
     ipcMain.handle("daemon:getStatus", async () =>
@@ -1621,6 +1618,14 @@ app
       },
     );
 
+    await migrateLegacyRendererStorage({
+      rootDir: rendererRootDir,
+      userDataPath,
+    }).catch((error: unknown) => {
+      appLogger.error("rendererStorage.migrationFailed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
     createWindow();
 
     const initialFolder =

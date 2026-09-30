@@ -12,6 +12,7 @@ export * from "./css-length";
 export * from "./diagnostics";
 export { htmlPreviewLocationAtom } from "./html-preview-preference";
 export * from "./ipc";
+export { lazyComponent } from "./lazy-component";
 export * from "./performance";
 export * from "./platform";
 export * from "./react-hooks";

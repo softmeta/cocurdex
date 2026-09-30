@@ -158,7 +158,7 @@ export function registerChatWindowHandlers(
       if (detached && !quitting) target.webContents.reload();
     });
     publish();
-    void loadChatWindow(target, options).catch((error: unknown) => {
+    void loadChatWindow(target).catch((error: unknown) => {
       handoff.cancel(error instanceof Error ? error : new Error(String(error)));
     });
     try {

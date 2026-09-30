@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib";
 import { onboardingDismissedAtom } from "./onboarding-store";
 
-interface OnboardingViewProps {
+export interface OnboardingViewProps {
   // Owned by the app shell so this screen reserves the same draggable strip as
   // the main frame without reaching into layout constants.
   titlebarHeight: number;

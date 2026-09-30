@@ -87,7 +87,7 @@ Barrels are external interfaces, never an internal bus. Files within the same do
 
 - Prefer named re-exports; use `export *` sparingly. Keep executable code, side effects, initialization, tests, stories, and CSS out of barrels. Main, preload, and renderer must not share a barrel.
 - Keep heavy editors, terminals, diff/tree renderers, highlighters, charts, and PDF dependencies out of broad barrels. Use feature subentries such as `@/components/markdown-body-editor`.
-- For UI-gated heavy components, expose a feature-local `*-lazy.tsx` wrapper using `lazy` and `Suspense`. Split lightweight constants and pure functions from heavy modules before exporting them.
+- For UI-gated heavy components, expose a feature-local `*-lazy.tsx` wrapper built with `lazyComponent` from `@/lib`, and export the wrapper from the barrel. Do not use `React.lazy` with `Suspense` for this: React throttles the first reveal after a committed fallback by 300 ms, which delays startup and first-open views. Split lightweight constants and pure functions from heavy modules before exporting them.
 - Keep heavy modules out of startup calls. Invert dependencies through events and subscribe after the heavy module loads; see `lib/theme-events.ts`. Verify entry chunk size rather than guessing.
 - Move cross-feature coordination into `app/layout` instead of creating bidirectional feature imports. Run `pnpm --filter @cocurdex/desktop lint:cycles` when changing dependency structure and fix new cycles. Only structural recursion may be considered for `ALLOWED_CYCLES` in `scripts/check-cycles.mjs`, with a recorded rationale.
 

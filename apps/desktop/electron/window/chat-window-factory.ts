@@ -1,9 +1,9 @@
 import { app, BrowserWindow, nativeTheme, screen } from "electron";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "../security";
+import { rendererPageUrl } from "./renderer-page";
 
 export interface ChatWindowFactoryOptions {
   preloadPath: string;
-  rendererHtmlPath: string;
 }
 
 export function createChatWindow(
@@ -52,23 +52,6 @@ export function createChatWindow(
   return window;
 }
 
-export async function loadChatWindow(
-  window: BrowserWindow,
-  options: ChatWindowFactoryOptions,
-) {
-  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
-  if (rendererUrl) {
-    const url = new URL(rendererUrl);
-    if (
-      url.protocol === "http:" &&
-      ["localhost", "127.0.0.1"].includes(url.hostname)
-    ) {
-      url.searchParams.set("window", "chat");
-      await window.loadURL(url.toString());
-      return;
-    }
-  }
-  await window.loadFile(options.rendererHtmlPath, {
-    query: { window: "chat" },
-  });
+export async function loadChatWindow(window: BrowserWindow) {
+  await window.loadURL(rendererPageUrl({ window: "chat" }));
 }
