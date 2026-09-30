@@ -388,6 +388,7 @@ export function useNewSessionCard({
 
     async function loadCompatibleProviders() {
       if (cachedResult && !shouldRefreshCache) {
+        applyCatalogResult(effectiveSelectedAgent, cachedResult);
         return;
       }
 
