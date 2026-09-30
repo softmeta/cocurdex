@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useMountEffect } from "@/lib";
 import { cn } from "@/lib/utils";
 import { GitChangeFileDiff } from "./git-changes-file-diff";
 import {
@@ -160,14 +161,11 @@ function useRevealScroll(
     correctUntilStable(index);
   }, [reveal, entries, virtualizer, scrollElementRef, onUnfold, consumeReveal]);
 
-  useEffect(
-    () => () => {
-      if (correctionTimerRef.current !== null) {
-        clearTimeout(correctionTimerRef.current);
-      }
-    },
-    [],
-  );
+  useMountEffect(() => () => {
+    if (correctionTimerRef.current !== null) {
+      clearTimeout(correctionTimerRef.current);
+    }
+  });
 
   return correctingIndexRef;
 }
@@ -271,12 +269,9 @@ function useMountWindow({
     mountBand();
   }, [virtualItems, entries, mountBand, virtualizer]);
 
-  useEffect(
-    () => () => {
-      if (settleTimerRef.current !== null) clearTimeout(settleTimerRef.current);
-    },
-    [],
-  );
+  useMountEffect(() => () => {
+    if (settleTimerRef.current !== null) clearTimeout(settleTimerRef.current);
+  });
 
   const toggleRow = useCallback(
     (path: string) => {

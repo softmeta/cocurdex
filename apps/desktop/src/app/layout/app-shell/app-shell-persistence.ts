@@ -1,31 +1,21 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useSetAtom, useStore } from "jotai";
+import { useEffectEvent } from "react";
 import { bootstrapQueuedInputsAtom } from "@/features/agent";
 import { bootstrapSessionUsageAtom } from "@/features/composer";
+import { bootstrapEditorViewsAtom } from "@/features/editor";
 import {
-  activeFileAtom,
-  bootstrapEditorViewsAtom,
-  openFilesAtom,
-  restoreEditorDraftForWorkspaceAtom,
-  restoreEditorViewForSessionAtom,
-  saveEditorDraftForWorkspaceAtom,
-  saveEditorViewSnapshotAtom,
-} from "@/features/editor";
-import {
-  activeSessionIdAtom,
   bootstrapAgentsAtom,
   bootstrapProviderModelsAtom,
   bootstrapSessionsAtom,
   selectSessionAtom,
 } from "@/features/sessions";
 import {
-  activeWorkspaceIdAtom,
   bootstrapWorkspacesAtom,
   openWorkspaceByPathAtom,
 } from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
-import { freezeRightPanelViewAtom } from "../right-editor-panel-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
+import { startEditorContextSync } from "./editor-context-sync";
 
 export function useAppPersistence() {
   const setAppBootstrapped = useSetAtom(appBootstrappedAtom);
@@ -38,26 +28,7 @@ export function useAppPersistence() {
   const bootstrapEditorViews = useSetAtom(bootstrapEditorViewsAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const restoreEditorViewForSession = useSetAtom(
-    restoreEditorViewForSessionAtom,
-  );
-  const restoreEditorDraftForWorkspace = useSetAtom(
-    restoreEditorDraftForWorkspaceAtom,
-  );
-  const saveEditorDraftForWorkspace = useSetAtom(
-    saveEditorDraftForWorkspaceAtom,
-  );
-  const freezeRightPanelView = useSetAtom(freezeRightPanelViewAtom);
-  const saveEditorViewSnapshot = useSetAtom(saveEditorViewSnapshotAtom);
-  const activeSessionId = useAtomValue(activeSessionIdAtom);
-  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
-  const openFiles = useAtomValue(openFilesAtom);
-  const activeFile = useAtomValue(activeFileAtom);
-
-  // Workspace that the current openFiles "belong" to while on a draft. Prevents
-  // the continuous draft-save effect from writing the previous project's tabs
-  // into the next workspace's bucket during a cross-workspace switch.
-  const draftOwnerWorkspaceIdRef = useRef<string | null>(null);
+  const store = useStore();
 
   // CLI open folder: select project everywhere that reads activeWorkspaceId
   // (WorkspacePicker trigger/check, sidebar projects list). Always clear the
@@ -144,104 +115,11 @@ export function useAppPersistence() {
   });
 
   // Live `cocurdex .` while the app is already running (second-instance).
-  // External Electron IPC subscription — not derived state.
-  useEffect(() => {
-    return desktopApi.onOpenWorkspaceFromCli(({ rootPath }) => {
+  useMountEffect(() =>
+    desktopApi.onOpenWorkspaceFromCli(({ rootPath }) => {
       activateWorkspaceFromPath(rootPath);
-    });
-  }, []);
+    }),
+  );
 
-  // Cross-feature sync: editor tabs follow the active session, and draft tabs
-  // (null session) are scoped per workspace. Coordination stays in app-shell
-  // so sessions/editor/workspaces do not form a barrel cycle.
-  useEffect(() => {
-    if (activeSessionId) {
-      restoreEditorViewForSession(activeSessionId);
-      // Session tabs are for the session's workspace; treat that as the owner
-      // so a later session→draft handoff on the same workspace keeps tabs.
-      draftOwnerWorkspaceIdRef.current = activeWorkspaceId;
-    } else {
-      const owner = draftOwnerWorkspaceIdRef.current;
-
-      if (owner != null && owner !== activeWorkspaceId) {
-        // Cross-workspace while openFiles still belong to `owner`: snapshot
-        // them into that workspace's draft, then load the target draft.
-        saveEditorDraftForWorkspace(owner);
-        restoreEditorDraftForWorkspace(activeWorkspaceId);
-        draftOwnerWorkspaceIdRef.current = activeWorkspaceId;
-      } else if (owner !== activeWorkspaceId) {
-        // First draft entry for this workspace (or leaving pure-chat null).
-        restoreEditorDraftForWorkspace(activeWorkspaceId);
-        draftOwnerWorkspaceIdRef.current = activeWorkspaceId;
-      } else if (activeWorkspaceId) {
-        // Same-workspace session→draft (or draft stay): keep current tabs so
-        // a new chat inherits what the user was viewing, and refresh the draft
-        // bucket from those tabs.
-        saveEditorDraftForWorkspace(activeWorkspaceId);
-        draftOwnerWorkspaceIdRef.current = activeWorkspaceId;
-      } else {
-        restoreEditorDraftForWorkspace(null);
-        draftOwnerWorkspaceIdRef.current = null;
-      }
-    }
-
-    // Restore sets openFiles for the new context; freeze the view switcher
-    // right after so it stops re-deriving the default from openFiles and the
-    // active tab no longer flips (editor -> git) across session switches.
-    freezeRightPanelView();
-  }, [
-    activeSessionId,
-    activeWorkspaceId,
-    restoreEditorViewForSession,
-    restoreEditorDraftForWorkspace,
-    saveEditorDraftForWorkspace,
-    freezeRightPanelView,
-  ]);
-
-  // Persist the active session's editor view (open tabs / active file) whenever
-  // it changes. Same cross-feature constraint as above: it reads editor state
-  // and the sessions-owned activeSessionId, so it stays in the app-shell layer.
-  useEffect(() => {
-    if (!activeSessionId) {
-      return;
-    }
-
-    saveEditorViewSnapshot(activeSessionId);
-    void desktopApi
-      .saveEditorView({
-        sessionId: activeSessionId,
-        openFiles,
-        activeFile,
-        selections: [],
-      })
-      .catch((error) => {
-        console.error("[AppPersistence] saveEditorView failed", error);
-      });
-  }, [activeFile, activeSessionId, openFiles, saveEditorViewSnapshot]);
-
-  // Keep the workspace draft bucket in sync while the user opens/closes files
-  // on the new-session surface. Only re-run on tab changes — not on
-  // session/workspace identity changes — so a cross-workspace switch cannot
-  // write the previous project's still-mounted openFiles into the new bucket
-  // before restore replaces them.
-  const activeSessionIdRef = useRef(activeSessionId);
-  const activeWorkspaceIdRef = useRef(activeWorkspaceId);
-  activeSessionIdRef.current = activeSessionId;
-  activeWorkspaceIdRef.current = activeWorkspaceId;
-
-  useEffect(() => {
-    const sessionId = activeSessionIdRef.current;
-    const workspaceId = activeWorkspaceIdRef.current;
-    if (sessionId || !workspaceId) {
-      return;
-    }
-    if (draftOwnerWorkspaceIdRef.current !== workspaceId) {
-      return;
-    }
-
-    // Tab identity is the trigger; the write atom reads latest openFiles/activeFile.
-    void openFiles;
-    void activeFile;
-    saveEditorDraftForWorkspace(workspaceId);
-  }, [activeFile, openFiles, saveEditorDraftForWorkspace]);
+  useMountEffect(() => startEditorContextSync(store));
 }

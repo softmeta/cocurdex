@@ -291,12 +291,8 @@ export function ChatView({
   );
   // Sending a new prompt re-engages the bottom lock and jumps to the end —
   // the user is starting a new turn and expects to see the response, even
-  // if they scrolled up to read history. We can't scroll synchronously here
-  // because the new user message hasn't rendered yet (viewport.scrollHeight
-  // is still the pre-send value). Instead we bump a counter; the layout
-  // effect below runs after React commits the appended message and the
-  // viewport now reflects the new height.
-  const [scrollToBottomEpoch, setScrollToBottomEpoch] = useState(0);
+  // if they scrolled up to read history. The appended message has not
+  // rendered yet; the content ResizeObserver below follows it once it does.
   const stableOnSend = useCallback(
     (
       message: string,
@@ -308,16 +304,10 @@ export function ChatView({
         attachments,
         useOppositeFollowUpBehavior,
       );
-      setScrollToBottomEpoch((value) => value + 1);
+      scrollToLatest("auto");
     },
-    [],
+    [scrollToLatest],
   );
-  useLayoutEffect(() => {
-    if (scrollToBottomEpoch === 0) {
-      return;
-    }
-    scrollToLatest("auto");
-  }, [scrollToBottomEpoch, scrollToLatest]);
   const activeUserNavigationMessageId =
     activeUserMessageId ?? stickyUserMessages.at(-1)?.id ?? null;
   // One mutually-exclusive jump button. At the edges it points to the opposite
@@ -425,9 +415,11 @@ export function ChatView({
     },
     [],
   );
+  if (timelineGroups.length === 0 && !isInitialBottomSettled) {
+    setIsInitialBottomSettled(true);
+  }
   useLayoutEffect(() => {
     if (timelineGroups.length === 0) {
-      setIsInitialBottomSettled(true);
       return;
     }
 
@@ -447,13 +439,13 @@ export function ChatView({
   // false (activity line removal swaps inline indicators) and `status`
   // transitions. Keying on content length / updatedAt was the hot path
   // during streaming and is intentionally dropped.
-  const stickStateTrigger = `${isRunning ? "run" : "idle"}:${status ?? ""}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: isRunning and status are the re-stick triggers
   useLayoutEffect(() => {
-    if (stickStateTrigger.length === 0 || timelineGroups.length === 0) {
+    if (timelineGroups.length === 0) {
       return;
     }
     stickToBottomIfLocked();
-  }, [stickStateTrigger, stickToBottomIfLocked, timelineGroups.length]);
+  }, [isRunning, status, stickToBottomIfLocked, timelineGroups.length]);
 
   useLayoutEffect(() => {
     syncScrollState(stickyUserMessages);
