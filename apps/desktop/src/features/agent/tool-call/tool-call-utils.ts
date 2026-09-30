@@ -48,6 +48,9 @@ export function formatToolCallOutput(
     }
 
     if (item.type === "data") {
+      if (getResourceLinkPath(item.value)) {
+        return [];
+      }
       const formatted = formatToolCallData(item.value);
       return formatted ? [formatted] : [];
     }
@@ -56,6 +59,42 @@ export function formatToolCallOutput(
   });
 
   return text?.join("\n") || formatToolCallData(rawOutput);
+}
+
+function getResourceLinkPath(value: unknown) {
+  const record = asObjectRecord(value);
+  if (record?.type !== "resource_link" || typeof record.uri !== "string") {
+    return null;
+  }
+  if (!record.uri.startsWith("file://")) {
+    return null;
+  }
+
+  try {
+    const pathname = decodeURIComponent(new URL(record.uri).pathname);
+    return /^\/[A-Za-z]:/.test(pathname) ? pathname.slice(1) : pathname;
+  } catch {
+    return null;
+  }
+}
+
+export function getToolCallResourceLinks(
+  content: AgentToolCallContent[] | undefined,
+): ToolCallPreviewLocation[] {
+  return (content ?? []).flatMap((item) => {
+    const filePath =
+      item.type === "data" ? getResourceLinkPath(item.value) : null;
+    return filePath ? [{ filePath }] : [];
+  });
+}
+
+export function getUniqueToolCallLocations(toolCall: AgentToolCallRecord) {
+  const inputValues = new Set(
+    (getToolCallInputEntries(toolCall) ?? []).map((entry) => entry.value),
+  );
+  return toolCall.locations.filter(
+    (location) => !inputValues.has(location.path),
+  );
 }
 
 function asObjectRecord(value: unknown): Record<string, unknown> | null {
@@ -262,7 +301,7 @@ export function getToolCallStatusLabel(toolCall: AgentToolCallRecord) {
 
 export function getToolCallStatusClasses(toolCall: AgentToolCallRecord) {
   if (toolCall.status === "completed") {
-    return "text-chat-status-completed-fg";
+    return "text-chat-fg-muted";
   }
 
   if (toolCall.status === "failed") {
@@ -422,7 +461,7 @@ export function getToolCallSummary(toolCall: AgentToolCallRecord) {
     parts.push(toolCall.kind);
   }
 
-  if (toolCall.locations.length > 0) {
+  if (toolCall.locations.length > 1) {
     parts.push(
       i18n.t("agent:toolCalls.files", { count: toolCall.locations.length }),
     );
@@ -444,13 +483,40 @@ export function getToolCallSecondarySummary(toolCall: AgentToolCallRecord) {
     : summary;
 }
 
-export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
-  const title = getToolCallTitle(toolCall);
-  const isCommand =
-    ["exec", "execute", "run_terminal_command"].includes(toolCall.kind ?? "") ||
-    /^(execute|run)\b/i.test(title);
+export function getSingleReadLocation(toolCall: AgentToolCallRecord) {
+  const locations = getToolCallPreviewLocations(toolCall);
+  return locations.length === 1 ? locations[0] : null;
+}
 
-  if (isCommand) {
+function getParentPath(filePath: string) {
+  return filePath.slice(
+    0,
+    Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\")),
+  );
+}
+
+export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
+  const skill = asObjectRecord(toolCall.rawInput)?.skill;
+  if (typeof skill === "string" && skill.length > 0) {
+    return { title: i18n.t("agent:toolCalls.skill"), secondary: skill };
+  }
+
+  const query = asObjectRecord(toolCall.rawInput)?.query;
+  if (toolCall.kind === "search" && typeof query === "string" && query) {
+    return { title: i18n.t("agent:toolCalls.search"), secondary: query };
+  }
+
+  const readLocation = getSingleReadLocation(toolCall);
+  if (readLocation) {
+    return {
+      title: getToolPreviewTitle(readLocation),
+      secondary: getParentPath(readLocation.filePath) || null,
+    };
+  }
+
+  const title = getToolCallTitle(toolCall);
+
+  if (isCommandToolCall(toolCall)) {
     const titleCommand = title.replace(/^(execute|run)\s*/i, "").trim();
     return {
       title: i18n.t("agent:toolCalls.execute"),
@@ -463,6 +529,30 @@ export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
   return {
     title,
     secondary: getToolCallSecondarySummary(toolCall),
+  };
+}
+
+export function isCommandToolCall(toolCall: AgentToolCallRecord) {
+  return (
+    ["exec", "execute", "run_terminal_command"].includes(toolCall.kind ?? "") ||
+    /^(execute|run)\b/i.test(getToolCallTitle(toolCall))
+  );
+}
+
+const COMMAND_INPUT_KEYS = ["command", "cmd"];
+
+export function getToolCallCommandInput(toolCall: AgentToolCallRecord) {
+  const record = asObjectRecord(toolCall.rawInput);
+  const key = COMMAND_INPUT_KEYS.find((candidate) => record?.[candidate]);
+  if (!key || !isCommandToolCall(toolCall)) {
+    return null;
+  }
+
+  return {
+    command: stringifyEntryValue(record?.[key]),
+    otherEntries: (getToolCallInputEntries(toolCall) ?? []).filter(
+      (entry) => !COMMAND_INPUT_KEYS.includes(entry.key),
+    ),
   };
 }
 

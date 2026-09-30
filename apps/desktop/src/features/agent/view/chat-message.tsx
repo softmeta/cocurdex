@@ -143,12 +143,22 @@ export function UserMessageContent({ message }: { message: MessageRecord }) {
   );
 }
 
+function getReasoningPreview(content: string) {
+  return content
+    .slice(0, 240)
+    .replace(/[`*_#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function ReasoningTriggerRow({
   isStreaming,
   label,
+  preview,
 }: {
   isStreaming: boolean;
   label: string;
+  preview: string;
 }) {
   return (
     <>
@@ -157,7 +167,12 @@ function ReasoningTriggerRow({
       ) : (
         <Brain className="size-3.5 shrink-0 text-chat-fg-muted" />
       )}
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="shrink-0">{label}</span>
+      {preview ? (
+        <span className="min-w-0 truncate font-normal text-chat-fg-muted group-data-[panel-open]/reasoning:hidden">
+          {preview}
+        </span>
+      ) : null}
     </>
   );
 }
@@ -171,7 +186,7 @@ function ReasoningDetailBody({
 }) {
   return (
     <MarkdownRenderer
-      className="space-y-2"
+      className="space-y-1.5 [&_li]:text-meta [&_li]:text-chat-fg-muted [&_p]:text-meta [&_p]:text-chat-fg-muted"
       content={message.content}
       perfMessageId={message.id}
       perfSessionId={message.sessionId}
@@ -211,8 +226,12 @@ export function ReasoningMarkdown({
       className="flex w-full flex-col gap-1.5"
       defaultOpen={mode === "full"}
     >
-      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-meta">
-        <ReasoningTriggerRow isStreaming={isStreaming} label={label} />
+      <CollapsibleTrigger className="group/reasoning flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-meta">
+        <ReasoningTriggerRow
+          isStreaming={isStreaming}
+          label={label}
+          preview={getReasoningPreview(message.content)}
+        />
       </CollapsibleTrigger>
       <CollapsibleContent className="ms-7 text-chat-fg-secondary">
         {body}
