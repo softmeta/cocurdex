@@ -29,6 +29,35 @@ export const PACKAGED_NATIVE_PACKAGE_SCOPES = [
   "@vscode/ripgrep",
 ];
 
+export const ESBUILD_PACKAGE_IDS = [
+  "aix-ppc64",
+  "android-arm",
+  "android-arm64",
+  "android-x64",
+  "darwin-arm64",
+  "darwin-x64",
+  "freebsd-arm64",
+  "freebsd-x64",
+  "linux-arm",
+  "linux-arm64",
+  "linux-ia32",
+  "linux-loong64",
+  "linux-mips64el",
+  "linux-ppc64",
+  "linux-riscv64",
+  "linux-s390x",
+  "linux-x64",
+  "netbsd-arm64",
+  "netbsd-x64",
+  "openbsd-arm64",
+  "openbsd-x64",
+  "openharmony-arm64",
+  "sunos-x64",
+  "win32-arm64",
+  "win32-ia32",
+  "win32-x64",
+];
+
 export const NODE_PTY_PREBUILD_IDS = [
   "darwin-arm64",
   "darwin-x64",
@@ -60,6 +89,11 @@ export function nativeIdMatchesTarget(id, platform, arch) {
 
 export function createNativePackageExcludes(platform, arch) {
   const excludes = [];
+  for (const id of ESBUILD_PACKAGE_IDS) {
+    if (!nativeIdMatchesTarget(id, platform, arch)) {
+      excludes.push(`!**/node_modules/@esbuild/${id}/**/*`);
+    }
+  }
   for (const pkg of PACKAGED_NATIVE_PACKAGE_SCOPES) {
     for (const id of PACKAGED_NATIVE_PACKAGE_IDS) {
       if (nativeIdMatchesTarget(id, platform, arch)) {

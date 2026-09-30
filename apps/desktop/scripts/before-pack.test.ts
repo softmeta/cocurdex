@@ -85,6 +85,21 @@ it.each(["linux", "mac", "win"])(
         },
       );
     expect(acceptsDependency("quickjs-wasi/quickjs.wasm")).toBe(true);
+    expect(acceptsDependency("esbuild/lib/main.js")).toBe(true);
+    const esbuildPlatform = { mac: "darwin", win: "win32", linux: "linux" }[
+      platform
+    ];
+    expect(
+      acceptsDependency(`@esbuild/${esbuildPlatform}-x64/bin/esbuild`),
+    ).toBe(true);
+    expect(acceptsDependency("esbuild/bin/esbuild")).toBe(false);
+    expect(acceptsDependency("@esbuild/darwin-arm64/bin/esbuild")).toBe(false);
+    expect(
+      acceptsDependency("@earendil-works/pi-coding-agent/dist/bundle/cli.js"),
+    ).toBe(false);
+    expect(
+      acceptsDependency("@earendil-works/pi-coding-agent/dist/index.js"),
+    ).toBe(true);
     expect(acceptsDependency("other-package/index.js.map")).toBe(false);
     expect(acceptsDependency("other-package/index.ts")).toBe(false);
   },
