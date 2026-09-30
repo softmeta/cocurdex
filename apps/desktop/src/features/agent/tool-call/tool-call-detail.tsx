@@ -7,6 +7,8 @@ import { Spinner } from "@/components/ui";
 import { cn, useMountEffect } from "@/lib";
 
 import { ReadonlySubagentSession } from "./subagent-session-detail";
+import { ToolCallCommandDetail } from "./tool-call-command-detail";
+import { ToolCallResourceLinkList } from "./tool-call-resource-link-list";
 import {
   observeToolCallResultAtom,
   toolCallResultCacheAtom,
@@ -19,14 +21,17 @@ import {
   getSubagentChildSessionId,
   getSubagentDescription,
   getSubagentType,
+  getToolCallCommandInput,
   getToolCallDetailLabel,
   getToolCallInputEntries,
   getToolCallPreviewLocations,
+  getToolCallResourceLinks,
   getToolCallStatusClasses,
   getToolCallStatusLabel,
   getToolCallTimestamp,
   getToolCallTitle,
   getToolPreviewTitle,
+  getUniqueToolCallLocations,
   isMultilineInputField,
   isSubagentToolCall,
   type ToolCallPreviewLocation,
@@ -93,6 +98,8 @@ export function ToolCallDetailBody({
     resultValue !== undefined
       ? formatToolCallOutput(resultValue?.content, resultValue?.rawOutput)
       : "";
+  const resourceLinks = getToolCallResourceLinks(resultValue?.content);
+  const uniqueLocations = getUniqueToolCallLocations(toolCall);
   const childSessionId = getSubagentChildSessionId(toolCall);
   let outputLoadStatus: "ready" | "loading" | "error" = "ready";
   if (shouldLoadOutput && cacheEntry?.status !== "loaded") {
@@ -104,22 +111,41 @@ export function ToolCallDetailBody({
     !isSubagent &&
     !shouldHideRawOutput &&
     (outputLoadStatus !== "ready" || Boolean(output));
+  const showResourceLinks =
+    showOutputBlock || (!isSubagent && resourceLinks.length > 0);
   const detailLabel = getToolCallDetailLabel(toolCall);
   const inputEntries = getToolCallInputEntries(toolCall);
   const inputFallback = inputEntries
     ? null
     : formatToolCallData(toolCall.rawInput);
   const showInputBlock = !isSubagent;
+  const commandInput = getToolCallCommandInput(toolCall);
+  const resultSubscription = shouldLoadOutput ? (
+    <ToolCallResultSubscription
+      key={toolCall.id}
+      sessionId={toolCall.sessionId}
+      toolCallId={toolCall.id}
+    />
+  ) : null;
+
+  if (commandInput) {
+    return (
+      <>
+        {resultSubscription}
+        <ToolCallCommandDetail
+          command={commandInput.command}
+          otherEntries={commandInput.otherEntries}
+          output={output}
+          outputErrorMessage={outputErrorMessage}
+          outputLoadStatus={outputLoadStatus}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 text-sm text-chat-fg-secondary">
-      {shouldLoadOutput ? (
-        <ToolCallResultSubscription
-          key={toolCall.id}
-          sessionId={toolCall.sessionId}
-          toolCallId={toolCall.id}
-        />
-      ) : null}
+      {resultSubscription}
       {previewLocations.length > 0 ? (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
@@ -152,14 +178,14 @@ export function ToolCallDetailBody({
             })}
           </div>
         </div>
-      ) : toolCall.locations.length > 0 ? (
+      ) : uniqueLocations.length > 0 ? (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
             <FileText className="size-3" />
-            {t("toolCalls.files", { count: toolCall.locations.length })}
+            {t("toolCalls.files", { count: uniqueLocations.length })}
           </div>
           <ul className="flex flex-col gap-0.5 text-sm text-chat-fg-subtle">
-            {toolCall.locations.map((location) => (
+            {uniqueLocations.map((location) => (
               <li
                 className="flex items-center gap-2 px-2 py-1"
                 key={`${location.path}:${location.line ?? ""}`}
@@ -229,12 +255,18 @@ export function ToolCallDetailBody({
       {isSubagent ? (
         <ReadonlySubagentSession sessionId={childSessionId ?? null} />
       ) : null}
-      {showOutputBlock ? (
+      {showResourceLinks ? (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
             <ScrollText className="size-3" />
             {t("toolCalls.output")}
           </div>
+          {resourceLinks.length > 0 ? (
+            <ToolCallResourceLinkList
+              links={resourceLinks}
+              onOpenToolLocation={onOpenToolLocation}
+            />
+          ) : null}
           {outputLoadStatus === "loading" ? (
             <div className="flex items-center gap-2 rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
               <Spinner size="xs" />
@@ -244,7 +276,7 @@ export function ToolCallDetailBody({
             <div className="rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
               {t("toolCalls.outputLoadError", { message: outputErrorMessage })}
             </div>
-          ) : (
+          ) : output ? (
             <pre
               className={cn(
                 "max-h-[40vh] overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-xs leading-5 whitespace-pre text-chat-fg-secondary [font-variant-ligatures:none]",
@@ -252,7 +284,7 @@ export function ToolCallDetailBody({
             >
               {output}
             </pre>
-          )}
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -32,8 +32,3 @@
     transform: translateY(0) scale(1);
   }
 }
-
-.monaco-editor-resizing .monaco-editor .minimap,
-.monaco-editor-resizing .monaco-editor .minimap-shadow-visible {
-  visibility: hidden;
-}

@@ -58,12 +58,7 @@ export function ActivityBlock({
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger
-        className={cn(
-          "flex w-full cursor-pointer items-center gap-2 py-0.5 text-meta transition-colors hover:text-chat-fg-secondary",
-          open && "mb-1",
-        )}
-      >
+      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-0.5 text-meta transition-colors hover:text-chat-fg-secondary">
         {counts.length > 0 ? (
           <span
             className={cn(
@@ -86,11 +81,12 @@ export function ActivityBlock({
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "flex flex-col gap-1",
-          // Opacity + slide only (no height): height would force measuring
-          // contents on open, conflicting with the deferred mounting that keeps
-          // expansion cheap. Pairs with Base UI's data-starting/ending-style.
-          "transition-[opacity,transform] duration-150 ease-out data-starting-style:-translate-y-1 data-starting-style:opacity-0 data-ending-style:duration-100 data-ending-style:opacity-0",
+          "ms-[7px] mt-1 flex flex-col gap-1 overflow-hidden border-chat-border-soft border-s ps-2",
+          // Height/margin interpolate between 0 and `auto` (interpolate-size)
+          // in both directions so surrounding content glides instead of
+          // snapping. `auto` resolves at layout time, so rows mounted late by
+          // the deferred reveal still grow smoothly.
+          "transition-[opacity,transform,height,margin] duration-200 ease-[cubic-bezier(0.2,0,0,1)] [interpolate-size:allow-keywords] data-ending-style:duration-150 data-starting-style:mt-0 data-starting-style:h-0 data-starting-style:-translate-y-1 data-starting-style:opacity-0 data-ending-style:mt-0 data-ending-style:h-0 data-ending-style:opacity-0",
         )}
         keepMounted={keepMounted}
       >
