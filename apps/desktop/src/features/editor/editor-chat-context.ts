@@ -1,4 +1,8 @@
-import { isContextAttachment, type MessageAttachment } from "@cocurdex/shared";
+import {
+  isContextFileAttachment,
+  isContextFolderAttachment,
+  type MessageAttachment,
+} from "@cocurdex/shared";
 import { atom } from "jotai";
 import { requestChatContextAtom } from "@/lib/chat-context-store";
 
@@ -15,7 +19,11 @@ export const setEditorSelectionAttachmentAtom = atom(
 export const setChatComposerAttachmentAtom = atom(
   null,
   (_get, set, attachment: MessageAttachment | null) => {
-    if (attachment && isContextAttachment(attachment)) {
+    if (
+      attachment &&
+      (isContextFileAttachment(attachment) ||
+        isContextFolderAttachment(attachment))
+    ) {
       set(requestChatContextAtom, { kind: "attachment", attachment });
       return;
     }

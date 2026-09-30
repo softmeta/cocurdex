@@ -73,7 +73,7 @@ export function SlashCommandMenu({
       >
         <Command
           className={cn(
-            "h-auto max-h-[var(--available-height)] rounded-card border p-1.5 shadow-chat-soft",
+            "h-auto max-h-[var(--available-height)] rounded-card border p-1 shadow-chat-soft",
             menuClassName,
           )}
           autoHighlight={false}
@@ -89,7 +89,7 @@ export function SlashCommandMenu({
                 return (
                   <CommandItem
                     className={cn(
-                      "h-8 min-w-0 items-center rounded-control px-2 text-current",
+                      "min-w-0 items-center rounded-control px-1.5 text-current",
                       isSelected ? selectedClassName : hoverClassName,
                     )}
                     data-slash-index={index}
@@ -99,12 +99,7 @@ export function SlashCommandMenu({
                     onSelect={() => onSelect(command)}
                     value={command.name}
                   >
-                    <Text
-                      className="min-w-0 flex-1"
-                      size="body"
-                      truncate
-                      weight="medium"
-                    >
+                    <Text className="min-w-0 flex-1" size="body" truncate>
                       {command.name}
                     </Text>
                   </CommandItem>

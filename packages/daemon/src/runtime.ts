@@ -891,6 +891,14 @@ export class AgentRuntimeManager {
       };
     }
 
+    if (attachment.kind === "context-item") {
+      return {
+        bodyLength: attachment.body.length,
+        itemKind: attachment.itemKind,
+        kind: attachment.kind,
+      };
+    }
+
     return {
       endLine: attachment.endLine,
       kind: attachment.kind ?? "context-file",

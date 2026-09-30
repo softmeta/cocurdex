@@ -20,7 +20,7 @@ export function MenuRowSidecar({ children, reference }: MenuRowSidecarProps) {
         <Popover.Positioner
           align="start"
           anchor={reference}
-          className="z-50 hidden md:block"
+          className="z-50 hidden data-anchor-hidden:invisible md:block"
           collisionPadding={VIEWPORT_PADDING}
           side="inline-end"
           sideOffset={SIDECAR_GAP}

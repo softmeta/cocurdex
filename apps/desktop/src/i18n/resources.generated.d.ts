@@ -1051,6 +1051,13 @@ export default interface Resources {
         notInstalled: "Not installed";
         updateRequired: "Update required";
       };
+      attachMenu: {
+        empty: "No matches";
+        issues: "Issue";
+        notes: "Note";
+        search: "Search…";
+        skills: "Skill";
+      };
       contextFileTooLarge: "File is too large. Select a smaller file or attach a selection.";
       noInstalledAgent: "No agent installed";
       placeholder: "Plan, Build, / for skills, @ for context";

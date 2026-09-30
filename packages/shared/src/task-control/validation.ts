@@ -207,7 +207,13 @@ export function validateSendSessionCommand(
       record(attachment);
       if (attachment.kind === "context-folder")
         text(attachment.folderPath, "folder path");
-      else {
+      else if (attachment.kind === "context-item") {
+        if (attachment.itemKind !== "note" && attachment.itemKind !== "issue")
+          throw new Error("Invalid context item kind");
+        text(attachment.id, "context item ID", 256);
+        text(attachment.title, "context item title", 4096, true);
+        text(attachment.body, "context item body", 200_000, true);
+      } else {
         text(attachment.filePath, "attachment path");
         if (attachment.kind === "image" || attachment.kind === "document") {
           text(attachment.id, "attachment ID", 256);

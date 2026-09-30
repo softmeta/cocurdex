@@ -3,6 +3,11 @@ export {
   onOpenHtmlPreview,
   openHtmlPreviewInBrowser,
 } from "./browser-preview-events";
+export {
+  type ContextItemTarget,
+  onOpenContextItem,
+  openContextItem,
+} from "./context-item-events";
 export * from "./css-length";
 export * from "./diagnostics";
 export { htmlPreviewLocationAtom } from "./html-preview-preference";

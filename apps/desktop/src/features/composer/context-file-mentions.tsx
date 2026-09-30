@@ -72,7 +72,7 @@ export function ContextFileMentionMenu({
         <Command
           ref={menuRef}
           className={cn(
-            "h-auto max-h-[var(--available-height)] rounded-card border p-1.5 shadow-chat-soft",
+            "h-auto max-h-[var(--available-height)] rounded-card border p-1 shadow-chat-soft",
             menuClassName,
           )}
           autoHighlight={false}
@@ -89,7 +89,7 @@ export function ContextFileMentionMenu({
                 return (
                   <CommandItem
                     className={cn(
-                      "h-8 min-w-0 items-center gap-2 rounded-control px-2 text-current",
+                      "min-w-0 items-center gap-1.5 rounded-control px-1.5 text-current",
                       isSelected ? selectedClassName : hoverClassName,
                     )}
                     data-mention-index={index}

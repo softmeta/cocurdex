@@ -31,6 +31,13 @@
       "notInstalled": "未安装",
       "updateRequired": "需更新"
     },
+    "attachMenu": {
+      "empty": "无匹配项",
+      "issues": "Issue",
+      "notes": "笔记",
+      "search": "搜索…",
+      "skills": "Skill"
+    },
     "contextFileTooLarge": "文件过大。请选择更小的文件或附加选区。",
     "noInstalledAgent": "尚未安装 Agent",
     "placeholder": "计划、构建，输入 / 使用 Skill，输入 @ 添加上下文",

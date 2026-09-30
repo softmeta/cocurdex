@@ -1,12 +1,13 @@
 import {
-  type ContextFileAttachment,
-  type ContextFolderAttachment,
+  type ContextAttachment,
   formatContextFileChipLabel,
+  getContextAttachmentKey,
   isContextAttachment,
   isContextFolderAttachment,
+  isContextItemAttachment,
   type MessageRecord,
 } from "@cocurdex/shared";
-import { Brain, Loader2 } from "lucide-react";
+import { Brain, FileText, ListTodo, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FileTypeIcon, LinkifiedText, MarkdownRenderer } from "@/components";
 import {
@@ -14,11 +15,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui";
+import { openContextItem } from "@/lib";
 import { splitContentByMentions } from "./chat-message-utils";
 
-function getContextAttachmentLabel(
-  attachment: ContextFileAttachment | ContextFolderAttachment,
-) {
+function getContextAttachmentLabel(attachment: ContextAttachment) {
+  if (isContextItemAttachment(attachment)) {
+    return attachment.title;
+  }
   if (isContextFolderAttachment(attachment)) {
     return attachment.folderPath.split("/").pop() ?? attachment.folderPath;
   }
@@ -26,41 +29,66 @@ function getContextAttachmentLabel(
   return formatContextFileChipLabel(attachment);
 }
 
-function getContextAttachmentKey(
-  attachment: ContextFileAttachment | ContextFolderAttachment,
-) {
-  if (isContextFolderAttachment(attachment)) {
-    return `folder:${attachment.folderPath}`;
-  }
-
-  return `file:${attachment.filePath}:${attachment.startLine}:${attachment.endLine}`;
-}
-
 // Match the composer's inline mention pill: coloured file-type icon and
 // link-toned label, no border/background box. `min-h-[1lh]` matches the
 // surrounding `text-sm` line box so the icon, filename, and adjacent text
 // share one vertical center.
-function renderAttachmentChip(
-  attachment: ContextFileAttachment | ContextFolderAttachment,
-) {
+function ContextAttachmentIcon({
+  attachment,
+}: {
+  attachment: ContextAttachment;
+}) {
+  if (isContextItemAttachment(attachment)) {
+    const Icon = attachment.itemKind === "issue" ? ListTodo : FileText;
+    return <Icon className="block size-full" />;
+  }
   const isFolder = isContextFolderAttachment(attachment);
-  const path = isFolder ? attachment.folderPath : attachment.filePath;
-
   return (
-    <span
-      className="mention-pill inline-flex min-h-[1lh] max-w-full items-center gap-1 text-chat-link"
-      key={getContextAttachmentKey(attachment)}
-    >
+    <FileTypeIcon
+      className="block size-full"
+      isFolder={isFolder}
+      path={isFolder ? attachment.folderPath : attachment.filePath}
+    />
+  );
+}
+
+function ContextAttachmentChipContent({
+  attachment,
+}: {
+  attachment: ContextAttachment;
+}) {
+  return (
+    <>
       <span className="inline-flex size-[1em] shrink-0 items-center justify-center">
-        <FileTypeIcon
-          className="block size-full"
-          isFolder={isFolder}
-          path={path}
-        />
+        <ContextAttachmentIcon attachment={attachment} />
       </span>
       <span className="min-w-0 truncate leading-none">
         {getContextAttachmentLabel(attachment)}
       </span>
+    </>
+  );
+}
+
+function renderAttachmentChip(attachment: ContextAttachment) {
+  const key = getContextAttachmentKey(attachment);
+  if (isContextItemAttachment(attachment)) {
+    return (
+      <button
+        className="mention-pill inline-flex min-h-[1lh] max-w-full cursor-pointer items-center gap-1 text-chat-link hover:text-chat-link-hover hover:underline"
+        key={key}
+        onClick={() => openContextItem(attachment)}
+        type="button"
+      >
+        <ContextAttachmentChipContent attachment={attachment} />
+      </button>
+    );
+  }
+  return (
+    <span
+      className="mention-pill inline-flex min-h-[1lh] max-w-full items-center gap-1 text-chat-link"
+      key={key}
+    >
+      <ContextAttachmentChipContent attachment={attachment} />
     </span>
   );
 }

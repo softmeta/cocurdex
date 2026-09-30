@@ -1,5 +1,6 @@
 import {
   isContextFolderAttachment,
+  isContextItemAttachment,
   isImageAttachment,
   type MessageAttachment,
 } from "@cocurdex/shared";
@@ -29,6 +30,10 @@ function getAnchorPreview(message: UserMessageAnchor) {
       const folderName =
         attachment.folderPath.split("/").pop() ?? "Attached folder";
       return `Attached ${folderName}`;
+    }
+
+    if (attachment && isContextItemAttachment(attachment)) {
+      return `Attached ${attachment.title}`;
     }
 
     if (attachment && !isImageAttachment(attachment)) {

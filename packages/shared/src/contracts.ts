@@ -489,6 +489,14 @@ export interface ContextFolderAttachment {
   folderPath: string;
 }
 
+export interface ContextItemAttachment {
+  kind: "context-item";
+  itemKind: "note" | "issue";
+  id: string;
+  title: string;
+  body: string;
+}
+
 export interface ImageAttachment {
   kind: "image";
   id: string;
@@ -528,6 +536,7 @@ export interface DocumentAttachment {
 export type MessageAttachment =
   | ContextFileAttachment
   | ContextFolderAttachment
+  | ContextItemAttachment
   | ImageAttachment
   | DocumentAttachment;
 
@@ -555,11 +564,38 @@ export function isContextFolderAttachment(
   return attachment.kind === "context-folder";
 }
 
+export function isContextItemAttachment(
+  attachment: MessageAttachment,
+): attachment is ContextItemAttachment {
+  return attachment.kind === "context-item";
+}
+
+export function getContextItemRef(attachment: ContextItemAttachment) {
+  return `${attachment.itemKind}:${attachment.id}`;
+}
+
+export type ContextAttachment =
+  | ContextFileAttachment
+  | ContextFolderAttachment
+  | ContextItemAttachment;
+
+export function getContextAttachmentKey(attachment: ContextAttachment) {
+  if (isContextItemAttachment(attachment)) {
+    return getContextItemRef(attachment);
+  }
+  if (isContextFolderAttachment(attachment)) {
+    return `folder:${attachment.folderPath}`;
+  }
+  return `file:${attachment.filePath}:${attachment.startLine}:${attachment.endLine}`;
+}
+
 export function isContextAttachment(
   attachment: MessageAttachment,
-): attachment is ContextFileAttachment | ContextFolderAttachment {
+): attachment is ContextAttachment {
   return (
-    isContextFileAttachment(attachment) || isContextFolderAttachment(attachment)
+    isContextFileAttachment(attachment) ||
+    isContextFolderAttachment(attachment) ||
+    isContextItemAttachment(attachment)
   );
 }
 
