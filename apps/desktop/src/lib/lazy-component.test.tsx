@@ -3,6 +3,9 @@ import { Component, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { lazyComponent } from "./lazy-component";
 
+const LOADING = "loading";
+const FAILED = "failed";
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;
@@ -14,7 +17,7 @@ function deferred<T>() {
 }
 
 function Greeting({ name }: { name: string }) {
-  return <p>hello {name}</p>;
+  return <p>{`hello ${name}`}</p>;
 }
 
 class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
@@ -25,17 +28,17 @@ class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
   }
 
   render() {
-    return this.state.error ? <p>failed</p> : this.props.children;
+    return this.state.error ? <p>{FAILED}</p> : this.props.children;
   }
 }
 
 describe("lazyComponent", () => {
   it("renders the fallback until the module loads, then the component", async () => {
     const module = deferred<typeof Greeting>();
-    const LazyGreeting = lazyComponent(() => module.promise, <p>loading</p>);
+    const LazyGreeting = lazyComponent(() => module.promise, <p>{LOADING}</p>);
 
     render(<LazyGreeting name="ada" />);
-    expect(screen.getByText("loading")).toBeTruthy();
+    expect(screen.getByText(LOADING)).toBeTruthy();
 
     module.resolve(Greeting);
     expect(await screen.findByText("hello ada")).toBeTruthy();
@@ -67,6 +70,6 @@ describe("lazyComponent", () => {
       </Boundary>,
     );
     module.reject(new Error("chunk failed"));
-    expect(await screen.findByText("failed")).toBeTruthy();
+    expect(await screen.findByText(FAILED)).toBeTruthy();
   });
 });
