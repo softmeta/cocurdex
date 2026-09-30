@@ -1,6 +1,15 @@
-import { Maximize2, Minimize2, PanelRight, Settings } from "lucide-react";
+import { useAtom } from "jotai";
+import {
+  Maximize2,
+  Minimize2,
+  PanelRight,
+  Pin,
+  PinOff,
+  Settings,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NetworkProxyStatusButton } from "@/features/settings";
+import { rightPanelDockedAtom } from "../right-editor-panel-store";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
   TitlebarIconButton,
@@ -31,6 +40,11 @@ export function AppShellTitlebarActions({
   const maximizeLabel = isRightPanelMaximized
     ? t("editor:actions.exitEditorFullscreen")
     : t("editor:actions.enterEditorFullscreen");
+  const [isRightPanelDocked, setRightPanelDocked] =
+    useAtom(rightPanelDockedAtom);
+  const dockLabel = isRightPanelDocked
+    ? t("editor:actions.floatEditorPanel")
+    : t("editor:actions.dockEditorPanel");
   const panelLabel = isRightPanelOpen
     ? t("editor:actions.closeEditorPanel")
     : t("editor:actions.openEditorPanel");
@@ -44,6 +58,21 @@ export function AppShellTitlebarActions({
         width: TITLEBAR_EDITOR_TOGGLE_WIDTH,
       }}
     >
+      {isRightPanelOpen && !isChatDetached && !isRightPanelMaximized ? (
+        <TitlebarIconButton
+          active={isRightPanelDocked}
+          aria-label={dockLabel}
+          cursor="default"
+          tooltip={dockLabel}
+          onClick={() => setRightPanelDocked(!isRightPanelDocked)}
+        >
+          {isRightPanelDocked ? (
+            <PinOff className={TITLEBAR_ICON_GLYPH_CLASS} />
+          ) : (
+            <Pin className={TITLEBAR_ICON_GLYPH_CLASS} />
+          )}
+        </TitlebarIconButton>
+      ) : null}
       {isRightPanelOpen && !isChatDetached ? (
         <TitlebarIconButton
           active={isRightPanelMaximized}
