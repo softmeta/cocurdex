@@ -9,6 +9,6 @@ export * from "./file-tree-lazy";
 // and nothing outside the git tab needs it.
 export * from "./git-changes-lazy";
 export { reviewGitTurnAtom } from "./git-changes-store";
-export * from "./monaco";
+export { getEditorLanguage, getRelativePath } from "./monaco/monaco-utils";
 export * from "./search";
 export * from "./selection";

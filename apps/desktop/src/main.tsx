@@ -1,4 +1,4 @@
-import { lazy, StrictMode, Suspense } from "react";
+import { type ComponentType, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { TooltipProvider } from "@/components/ui";
@@ -11,7 +11,7 @@ import "./styles/globals.css";
 // native scrollbar treatment in base.css) applies without a flash.
 applyPlatformAttribute();
 
-const App = lazy(async () => {
+async function loadApp(): Promise<ComponentType> {
   const { syncInitialPreferences } = await import(
     "./app/layout/app-shell/app-shell-preferences"
   );
@@ -24,11 +24,11 @@ const App = lazy(async () => {
     const { DetachedChatApp } = await import(
       "./app/layout/chat-window/detached-chat-app"
     );
-    return { default: DetachedChatApp };
+    return DetachedChatApp;
   }
   const { App } = await import("./app/App");
-  return { default: App };
-});
+  return App;
+}
 
 const rootElement = document.getElementById("root");
 
@@ -62,14 +62,14 @@ window.addEventListener("unhandledrejection", (event) => {
   });
 });
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <I18nextProvider i18n={i18n}>
-      <TooltipProvider>
-        <Suspense fallback={null}>
+void loadApp().then((App) => {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <I18nextProvider i18n={i18n}>
+        <TooltipProvider>
           <App />
-        </Suspense>
-      </TooltipProvider>
-    </I18nextProvider>
-  </StrictMode>,
-);
+        </TooltipProvider>
+      </I18nextProvider>
+    </StrictMode>,
+  );
+});

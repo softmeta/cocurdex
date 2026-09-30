@@ -1,23 +1,13 @@
-import { type ComponentProps, lazy, Suspense } from "react";
+import type { ComponentProps } from "react";
 import { Spinner } from "@/components/ui";
+import { lazyComponent } from "@/lib";
+import type { WorkflowCanvas } from "./workflow-canvas";
 
-const WorkflowCanvasImpl = lazy(async () => {
-  const module = await import("./workflow-canvas");
-  return { default: module.WorkflowCanvas };
-});
-
-export function WorkflowCanvasLazy(
-  props: ComponentProps<typeof WorkflowCanvasImpl>,
-) {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex h-full items-center justify-center">
-          <Spinner />
-        </div>
-      }
-    >
-      <WorkflowCanvasImpl {...props} />
-    </Suspense>
-  );
-}
+export const WorkflowCanvasLazy = lazyComponent<
+  ComponentProps<typeof WorkflowCanvas>
+>(
+  async () => (await import("./workflow-canvas")).WorkflowCanvas,
+  <div className="flex h-full items-center justify-center">
+    <Spinner />
+  </div>,
+);

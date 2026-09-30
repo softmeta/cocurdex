@@ -23,5 +23,27 @@
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/desktop/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": {
+                    "importNames": ["lazy", "Suspense"],
+                    "message": "Use lazyComponent from @/lib: React delays the first reveal after a Suspense fallback by 300 ms."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

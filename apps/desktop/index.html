@@ -4,9 +4,62 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cocurdex Desktop</title>
+    <style>
+      .boot-splash-static {
+        -webkit-app-region: drag;
+        display: flex;
+        height: 100vh;
+        align-items: center;
+        justify-content: center;
+        color: oklch(0.6 0.105 183);
+      }
+      @media (prefers-color-scheme: dark) {
+        .boot-splash-static {
+          color: oklch(0.72 0.11 183);
+        }
+      }
+      .boot-splash-static svg {
+        width: 80px;
+        height: 80px;
+        animation: boot-splash-static-breathe 1.8s ease-in-out infinite;
+      }
+      @keyframes boot-splash-static-breathe {
+        0%,
+        100% {
+          opacity: 0.45;
+          transform: scale(0.94);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash-static svg {
+          animation: none;
+          opacity: 0.8;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-splash-static">
+        <svg
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-width="2.75"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M16 7.25h-5.25A3.25 3.25 0 0 0 7.5 10.5v3.25a3.25 3.25 0 0 0 3.25 3.25h.5"
+          />
+          <path d="M14.25 13.5h2.25" />
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

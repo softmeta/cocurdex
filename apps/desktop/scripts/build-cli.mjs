@@ -97,6 +97,7 @@ for (const file of await readdir(outDir)) {
 
 await build({
   configFile: false,
+  publicDir: false,
   logLevel: "warn",
   resolve: { alias },
   esbuild: { keepNames: true },
@@ -144,6 +145,7 @@ for (const theme of ["dark.json", "light.json"]) {
 
 await build({
   configFile: false,
+  publicDir: false,
   logLevel: "warn",
   resolve: { alias },
   plugins: [quickjsWasmBesideDaemon],
@@ -182,6 +184,7 @@ await build({
 // pi-codemode starts its sandbox from `./worker.js` beside the bundled daemon.
 await build({
   configFile: false,
+  publicDir: false,
   logLevel: "warn",
   build: {
     outDir,

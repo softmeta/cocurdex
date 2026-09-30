@@ -47,7 +47,7 @@ import type { AppearanceSettings, ThemeMode } from "./theme";
 import { WorkflowSettingsPanel } from "./workflows";
 import { WorktreeSettingsPanel } from "./worktrees";
 
-interface SettingsScreenProps {
+export interface SettingsScreenProps {
   activeSection: SettingsSectionId;
   appearanceSettings: AppearanceSettings;
   canGoBack: boolean;

@@ -88,7 +88,6 @@ function setup() {
   const primary = new WindowStub();
   const manager = registerChatWindowHandlers({
     preloadPath: "preload.cjs",
-    rendererHtmlPath: "index.html",
     createPrimaryWindow: () => {
       const window = new WindowStub();
       manager.setPrimaryWindow(window as unknown as BrowserWindow);

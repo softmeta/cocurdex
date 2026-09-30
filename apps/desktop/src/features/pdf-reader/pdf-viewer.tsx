@@ -1,11 +1,11 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { FileWarning } from "lucide-react";
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/ui";
 import { insertMarkdownIntoActiveNoteAtom } from "@/features/notes/note-body-insert";
-import { useDocumentEvent, useMountEffect } from "@/lib";
+import { lazyComponent, useDocumentEvent, useMountEffect } from "@/lib";
 import {
   findBookmarkForPage,
   getDocumentAnnotations,
@@ -42,8 +42,8 @@ import { usePdfSelection } from "./use-pdf-selection";
 // when a PDF is actually opened. This keeps it out of the main renderer chunk
 // and out of jsdom test runs, where pdf.js's reliance on DOMMatrix/canvas would
 // otherwise throw at import time.
-const PdfJsViewer = lazy(() =>
-  import("./renderer").then((module) => ({ default: module.PdfJsViewer })),
+const PdfJsViewer = lazyComponent(
+  async () => (await import("./renderer")).PdfJsViewer,
 );
 
 const SCALE_EPSILON = 0.01;
@@ -460,22 +460,20 @@ function PdfViewerContent({
 
         <div className="absolute inset-0">
           {url ? (
-            <Suspense fallback={null}>
-              <PdfJsViewer
-                ref={viewerHandleRef}
-                url={url}
-                initialPosition={initialPosition}
-                highlights={documentAnnotations.highlights}
-                scrollContainerRef={scrollRef}
-                onReady={handleReady}
-                onError={handleError}
-                onOutlineLoaded={setOutline}
-                onPageChange={handlePageChange}
-                onPositionChange={handlePositionChange}
-                onScaleChange={setScale}
-                onFindMatchesChange={setFindMatches}
-              />
-            </Suspense>
+            <PdfJsViewer
+              ref={viewerHandleRef}
+              url={url}
+              initialPosition={initialPosition}
+              highlights={documentAnnotations.highlights}
+              scrollContainerRef={scrollRef}
+              onReady={handleReady}
+              onError={handleError}
+              onOutlineLoaded={setOutline}
+              onPageChange={handlePageChange}
+              onPositionChange={handlePositionChange}
+              onScaleChange={setScale}
+              onFindMatchesChange={setFindMatches}
+            />
           ) : null}
 
           {isSearchOpen ? (
