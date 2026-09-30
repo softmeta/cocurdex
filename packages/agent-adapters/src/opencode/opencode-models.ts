@@ -1,31 +1,22 @@
 import type { CompatibleProviderModel, ProviderApi } from "@cocurdex/shared";
-import type { Agent, ProviderListResponse } from "@opencode-ai/sdk/v2";
+import type { AgentInfo, ModelInfo, ProviderInfo } from "@opencode/client";
 import {
-  acquireOpenCodeRuntime,
-  expectOpenCodeData,
+  connectOpenCode,
   formatOpenCodeError,
   logOpenCode,
-  releaseOpenCodeRuntime,
 } from "./opencode-runtime";
 
-type OpenCodeProvider = ProviderListResponse["all"][number];
-type OpenCodeModel = OpenCodeProvider["models"][string];
-
 export function assertOpenCodeModelAvailable(
-  catalog: ProviderListResponse,
+  models: ReadonlyArray<ModelInfo>,
   selection: { modelId: string; providerId: string },
 ) {
-  const provider = catalog.all.find(
-    (candidate) => candidate.id === selection.providerId,
+  const available = models.some(
+    (model) =>
+      model.enabled &&
+      model.providerID === selection.providerId &&
+      model.id === selection.modelId,
   );
-  const isConnected = catalog.connected.includes(selection.providerId);
-  const hasModel = provider
-    ? Object.values(provider.models).some(
-        (model) => model.id === selection.modelId,
-      )
-    : false;
-
-  if (isConnected && hasModel) {
+  if (available) {
     return;
   }
 
@@ -34,11 +25,8 @@ export function assertOpenCodeModelAvailable(
   );
 }
 
-function getModelCompatJson(
-  model: OpenCodeModel,
-  agents: string[],
-): string | null {
-  const variants = model.variants ? Object.keys(model.variants) : [];
+function getModelCompatJson(model: ModelInfo, agents: string[]): string | null {
+  const variants = model.variants.map((variant) => variant.id);
   if (variants.length === 0 && agents.length === 0) return null;
 
   return JSON.stringify({
@@ -50,37 +38,33 @@ function getModelCompatJson(
 }
 
 function getProviderApi(
-  provider: OpenCodeProvider,
-  model: OpenCodeModel,
+  model: ModelInfo,
+  provider: ProviderInfo | undefined,
 ): ProviderApi {
-  const npm = model.api.npm.toLowerCase();
+  const npm = (model.package ?? provider?.package ?? "").toLowerCase();
 
   if (npm.includes("anthropic")) {
     return "anthropic-messages";
   }
 
-  if (provider.id === "openai" && npm === "@ai-sdk/openai") {
+  if (model.providerID === "openai" && npm === "@ai-sdk/openai") {
     return "openai-responses";
   }
 
   return "openai-completions";
 }
 
-function getContextLimit(model: OpenCodeModel) {
-  return Number.isFinite(model.limit.context) ? model.limit.context : null;
+function getFiniteLimit(value: number) {
+  return Number.isFinite(value) ? value : null;
 }
 
-function getOutputLimit(model: OpenCodeModel) {
-  return Number.isFinite(model.limit.output) ? model.limit.output : null;
-}
-
-export function getOpenCodePrimaryAgentNames(agents: ReadonlyArray<Agent>) {
+export function getOpenCodePrimaryAgentIds(agents: ReadonlyArray<AgentInfo>) {
   return agents
     .filter(
       (agent) =>
         !agent.hidden && (agent.mode === "primary" || agent.mode === "all"),
     )
-    .map((agent) => agent.name);
+    .map((agent) => agent.id);
 }
 
 let cachedOpenCodeCatalog: CompatibleProviderModel[] | null = null;
@@ -89,31 +73,28 @@ let inFlightOpenCodeCatalog: Promise<CompatibleProviderModel[]> | null = null;
 async function probeOpenCodeProviderModels(): Promise<
   CompatibleProviderModel[]
 > {
-  let runtime = null;
-
   try {
-    runtime = await acquireOpenCodeRuntime();
-    const [result, agents] = await Promise.all([
-      expectOpenCodeData(runtime.clientV2.provider.list(), "list providers"),
-      expectOpenCodeData(runtime.clientV2.app.agents(), "list agents"),
+    const client = await connectOpenCode();
+    const [models, defaultModel, providers, agents] = await Promise.all([
+      client.model.list(),
+      client.model.default(),
+      client.provider.list(),
+      client.agent.list(),
     ]);
     const now = new Date().toISOString();
-    const primaryAgents = getOpenCodePrimaryAgentNames(agents);
+    const primaryAgents = getOpenCodePrimaryAgentIds(agents.data);
+    const providersById = new Map(
+      providers.data.map((provider) => [provider.id, provider]),
+    );
 
-    const connectedProviderIds = new Set(result.connected);
-    return result.all.flatMap((provider) => {
-      if (!connectedProviderIds.has(provider.id)) {
-        return [];
-      }
-
-      const defaultModelId = result.default[provider.id] ?? null;
-
-      return Object.values(provider.models).map((model) => {
-        const api = getProviderApi(provider, model);
+    return models.data
+      .filter((model) => model.enabled)
+      .map((model) => {
+        const provider = providersById.get(model.providerID);
         return {
           provider: {
-            id: provider.id,
-            name: provider.name,
+            id: model.providerID,
+            name: provider?.name ?? model.providerID,
             baseUrl: "",
             enabled: true,
             apiKeySecretId: null,
@@ -121,29 +102,28 @@ async function probeOpenCodeProviderModels(): Promise<
             updatedAt: now,
           },
           model: {
-            providerId: provider.id,
+            providerId: model.providerID,
             modelId: model.id,
             name: model.name || model.id,
-            api,
+            api: getProviderApi(model, provider),
             enabled: true,
             source: "api" as const,
-            contextLimit: getContextLimit(model),
-            outputLimit: getOutputLimit(model),
+            contextLimit: getFiniteLimit(model.limit.context),
+            outputLimit: getFiniteLimit(model.limit.output),
             compatJson: getModelCompatJson(model, primaryAgents),
-            isDefault: model.id === defaultModelId,
+            isDefault:
+              defaultModel.data?.providerID === model.providerID &&
+              defaultModel.data.id === model.id,
             createdAt: now,
             updatedAt: now,
           },
         };
       });
-    });
   } catch (error) {
     logOpenCode("warn", "Failed to list OpenCode provider models", {
       error: formatOpenCodeError(error),
     });
     throw error;
-  } finally {
-    releaseOpenCodeRuntime(runtime);
   }
 }
 
@@ -166,10 +146,5 @@ export async function listOpenCodeProviderModels(
     return cachedOpenCodeCatalog;
   }
 
-  const probe = startOpenCodeCatalogProbe();
-  if (!options.forceRefresh && cachedOpenCodeCatalog) {
-    return cachedOpenCodeCatalog;
-  }
-
-  return probe;
+  return startOpenCodeCatalogProbe();
 }

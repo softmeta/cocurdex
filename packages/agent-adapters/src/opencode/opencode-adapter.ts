@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises";
 import type {
   AgentAdapter,
   AgentSession,
@@ -6,9 +7,7 @@ import type {
 } from "@cocurdex/agent-core";
 import { getAgentDescriptor } from "@cocurdex/agent-core";
 import type { AgentEvent, MessageRecord } from "@cocurdex/shared";
-import { isPlanModeId } from "@cocurdex/shared";
-import type { Event as OpenCodeEvent, OpencodeClient } from "@opencode-ai/sdk";
-import type { OpencodeClient as OpenCodeV2Client } from "@opencode-ai/sdk/v2";
+import type { OpenCodeEvent } from "@opencode/client";
 import {
   logOutgoingPromptForDiagnostics,
   serializeProviderSessionState,
@@ -18,81 +17,60 @@ import {
   createNativeSessionRecoveryError,
   requiresNativeSessionRecovery,
 } from "../shared/session-recovery";
+import { openCodeDiffsToEvidence } from "../workspace-changes/native-evidence";
 import {
-  emitNativeWorkspaceEvidence,
-  openCodeDiffsToEvidence,
-} from "../workspace-changes/native-evidence";
-import { OpenCodeEventHandler } from "./opencode-event-handler";
-import { buildPrompt, buildPromptParts } from "./opencode-events";
+  OpenCodeTurn,
+  type OpenCodeTurnOutcome,
+} from "./opencode-event-handler";
+import { buildPrompt, buildPromptInput } from "./opencode-events";
 import { createOpenCodeMessageId } from "./opencode-message-id";
 import { assertOpenCodeModelAvailable } from "./opencode-models";
+import { replyOpenCodePermission } from "./opencode-permissions";
+import { resolveOpenCodeForm } from "./opencode-questions";
 import {
-  createOpenCodePermissionRequest,
-  mapOpenCodeDecision,
-} from "./opencode-permissions";
-import { resolveOpenCodeQuestion } from "./opencode-questions";
-import {
-  acquireOpenCodeRuntime,
-  expectOpenCodeData,
-  expectOpenCodeSuccess,
+  connectOpenCode,
   formatOpenCodeError,
-  formatOpenCodeUserFacingError,
-  isOpenCodeNotFound,
+  isOpenCodeSessionNotFound,
   logOpenCode,
-  type OpenCodeRuntime,
-  releaseOpenCodeRuntime,
+  type OpenCodeClient,
 } from "./opencode-runtime";
-import { getOpenCodePromptSelection } from "./opencode-selection";
-import { OpenCodeTurnCompletion } from "./opencode-turn-completion";
+import {
+  getSessionSelection,
+  isSameModel,
+  OPENCODE_BUILD_AGENT,
+  type OpenCodeSessionSelection,
+} from "./opencode-selection";
 
 const descriptor = getAgentDescriptor("opencode");
 
-const OPENCODE_PLAN_SYSTEM = [
-  "You are in Plan Mode inside Cocurdex.",
-  "Plan the work before making changes.",
-  "Do not edit files, run write commands, or change external systems.",
-  "Ask concise clarification questions when a safe implementation plan depends on missing information.",
-  "Return a concrete plan with ordered steps and call out risks or checks.",
-].join("\n");
-
-const OPENCODE_PLAN_TOOLS: Record<string, boolean> = {
-  bash: false,
-  edit: false,
-  patch: false,
-  todowrite: true,
-  write: false,
-};
-
 // OpenCode session IDs currently owned by a live adapter instance in this
-// process. Session adoption must never steal a session that another
-// concurrent Cocurdex session (or its subagent tree) already owns.
+// process. A saved session must never be resumed by two Cocurdex sessions.
 const claimedOpenCodeSessionIds = new Set<string>();
 const OPENCODE_PROVIDER_VERSION = "opencode";
-const OPENCODE_FIRST_EVENT_TIMEOUT_MS = 10_000;
 
 export interface DeleteOpenCodeSessionPayload {
   providerSessionId: string;
-  workspaceRootPath: string;
 }
 
 export async function deleteOpenCodeSession(
   payload: DeleteOpenCodeSessionPayload,
 ) {
-  const runtime = await acquireOpenCodeRuntime();
-
+  const client = await connectOpenCode();
   try {
-    const result = await runtime.client.session.delete({
-      path: { id: payload.providerSessionId },
-      query: { directory: payload.workspaceRootPath },
-    });
-    if (result.error && result.response.status !== 404) {
-      throw new Error(
-        `OpenCode delete session failed: ${formatOpenCodeError(result.error)}`,
-      );
-    }
-  } finally {
-    releaseOpenCodeRuntime(runtime);
+    await client.session.remove({ sessionID: payload.providerSessionId });
+  } catch (error) {
+    if (!isOpenCodeSessionNotFound(error)) throw error;
   }
+}
+
+function resolveSnapshotCapableDirectory(directory: string) {
+  return realpath(directory).catch(() => directory);
+}
+
+interface ActiveTurn {
+  stream: AbortController;
+  turn: OpenCodeTurn | null;
+  stopRequested: boolean;
 }
 
 export function createOpencodeAdapter(): AgentAdapter {
@@ -105,41 +83,16 @@ export function createOpencodeAdapter(): AgentAdapter {
       onEvent: (event: AgentEvent) => void,
     ): AgentSession {
       let disposed = false;
-      let client: OpencodeClient | null = null;
-      let clientV2: OpenCodeV2Client | null = null;
-      let runtime: OpenCodeRuntime | null = null;
-      let initializationFinished = false;
+      let client: OpenCodeClient | null = null;
       let initializationError: unknown = null;
       let activeSessionId: string | null = null;
-      let eventAbortController: AbortController | null = null;
-      let promptEventSessionAdoptionEnabled = false;
-      let acceptedOpenCodeEventForPrompt = false;
-      let activePromptRequestId: string | null = null;
-      let promptWatchdog: ReturnType<typeof setTimeout> | null = null;
+      let sessionSelection: OpenCodeSessionSelection | null = null;
+      let activeTurn: ActiveTurn | null = null;
       let activeTurnPromise: Promise<void> | null = null;
-      const turnCompletion = new OpenCodeTurnCompletion();
       let activePermissionMode = payload.session.permissionMode;
-      let lastUserMessageId: string | null = null;
       let lastProviderUserMessageId: string | null = null;
       let lastNativeDiff: ReturnType<typeof openCodeDiffsToEvidence> | null =
         null;
-      const clearPromptWatchdog = () => {
-        if (promptWatchdog) {
-          clearTimeout(promptWatchdog);
-          promptWatchdog = null;
-        }
-      };
-      const forwardEvent = (event: AgentEvent) => {
-        if (
-          event.type === "state.changed" &&
-          (event.status === "idle" || event.status === "error")
-        ) {
-          promptEventSessionAdoptionEnabled = false;
-          activePromptRequestId = null;
-          clearPromptWatchdog();
-        }
-        onEvent(event);
-      };
       const sessionId = payload.session.id;
       const updateNativeSessionTitle = createNativeSessionTitleTracker({
         initialTitle: payload.providerSession ? null : payload.session.title,
@@ -148,7 +101,16 @@ export function createOpencodeAdapter(): AgentAdapter {
         sessionId,
       });
 
-      function persistActiveSession(nextSessionId: string) {
+      function claimSession(
+        nextSessionId: string,
+        selection: OpenCodeSessionSelection,
+      ) {
+        if (activeSessionId) {
+          claimedOpenCodeSessionIds.delete(activeSessionId);
+        }
+        activeSessionId = nextSessionId;
+        sessionSelection = selection;
+        claimedOpenCodeSessionIds.add(nextSessionId);
         payload.onProviderSessionUpdate?.({
           sessionId,
           providerSessionId: nextSessionId,
@@ -161,402 +123,239 @@ export function createOpencodeAdapter(): AgentAdapter {
         });
       }
 
-      function claimSession(nextSessionId: string) {
-        if (activeSessionId === nextSessionId) return;
+      async function resumeSavedSession(openCodeClient: OpenCodeClient) {
+        const savedSessionId =
+          payload.providerSession?.resumable === false
+            ? null
+            : (payload.providerSession?.providerSessionId ?? null);
+        if (!savedSessionId) return;
 
-        if (activeSessionId) {
-          claimedOpenCodeSessionIds.delete(activeSessionId);
-        }
-        activeSessionId = nextSessionId;
-        claimedOpenCodeSessionIds.add(nextSessionId);
-        persistActiveSession(nextSessionId);
-      }
-
-      async function createFreshSession(runtimeClient: OpencodeClient) {
-        const sessionData = await expectOpenCodeData(
-          runtimeClient.session.create({
-            query: {
-              directory: payload.workspaceRootPath,
-            },
-          }),
-          "create session",
-        );
-        if (!sessionData.id) {
-          throw new Error("OpenCode create session returned no session id");
-        }
-        if (disposed) {
-          await runtimeClient.session.delete({
-            path: { id: sessionData.id },
-            query: { directory: payload.workspaceRootPath },
+        if (claimedOpenCodeSessionIds.has(savedSessionId)) {
+          logOpenCode("warn", "Saved OpenCode session is already claimed", {
+            appSessionId: sessionId,
+            openCodeSessionId: savedSessionId,
           });
-          throw new Error("OpenCode session was disposed during creation");
+          throw createNativeSessionRecoveryError("OpenCode");
         }
-        claimSession(sessionData.id);
-        logOpenCode("info", "OpenCode session created", {
-          appSessionId: sessionId,
-          openCodeSessionId: activeSessionId,
-        });
-      }
-
-      const eventHandler = new OpenCodeEventHandler({
-        sessionId,
-        parentSession: payload.session,
-        isDisposed: () => disposed,
-        getOpenCodeSessionId: () => activeSessionId,
-        shouldAdoptOpenCodeSession(eventSessionId, eventType, parentSessionId) {
-          return (
-            promptEventSessionAdoptionEnabled &&
-            !acceptedOpenCodeEventForPrompt &&
-            (eventType.startsWith("message.") ||
-              eventType === "session.status" ||
-              eventType === "session.diff" ||
-              eventType === "session.idle") &&
-            eventSessionId !== activeSessionId &&
-            !claimedOpenCodeSessionIds.has(eventSessionId) &&
-            (!parentSessionId ||
-              !claimedOpenCodeSessionIds.has(parentSessionId))
-          );
-        },
-        onOpenCodeSessionAdopted(eventSessionId) {
-          claimSession(eventSessionId);
-          acceptedOpenCodeEventForPrompt = true;
-          clearPromptWatchdog();
-        },
-        onOpenCodeSessionEvent() {
-          if (promptEventSessionAdoptionEnabled) {
-            acceptedOpenCodeEventForPrompt = true;
-            clearPromptWatchdog();
-          }
-        },
-        onOpenCodeTurnSettled() {
-          turnCompletion.settle();
-        },
-        onEvent: forwardEvent,
-        async resolveMessage(messageId) {
-          if (!client || !activeSessionId) {
-            return null;
-          }
-
-          const message = await expectOpenCodeData(
-            client.session.message({
-              path: {
-                id: activeSessionId,
-                messageID: messageId,
-              },
-              query: {
-                directory: payload.workspaceRootPath,
-              },
-            }),
-            "resolve message snapshot",
-          );
-
-          return {
-            info: message?.info,
-            parts: message?.parts ?? [],
-          };
-        },
-        async resolveSession(openCodeSessionId) {
-          if (!client) {
-            return null;
-          }
-
-          const messages = await expectOpenCodeData(
-            client.session.messages({
-              path: {
-                id: openCodeSessionId,
-              },
-              query: {
-                directory: payload.workspaceRootPath,
-                limit: 100,
-              },
-            }),
-            "resolve session snapshot",
-          );
-
-          return {
-            sessionID: openCodeSessionId,
-            messages: messages ?? [],
-          };
-        },
-        async resolveSessionInfo(openCodeSessionId) {
-          if (!client) {
-            return null;
-          }
-
-          const info = await expectOpenCodeData(
-            client.session.get({
-              path: {
-                id: openCodeSessionId,
-              },
-              query: {
-                directory: payload.workspaceRootPath,
-              },
-            }),
-            "resolve session info",
-          );
-
-          return {
-            id: info.id,
-            parentID: info.parentID,
-            title: info.title,
-          };
-        },
-        onPermissionUpdated(permission) {
-          void (async () => {
-            if (!client || !activeSessionId) {
-              return;
-            }
-
-            const request = createOpenCodePermissionRequest(
-              payload,
-              permission,
-            );
-            const requested =
-              activePermissionMode === "opencode-allow" ||
-              activePermissionMode === "opencode-deny"
-                ? null
-                : await payload.requestPermission?.(request);
-            const decision =
-              activePermissionMode === "opencode-allow"
-                ? "allow_once"
-                : activePermissionMode === "opencode-deny"
-                  ? "reject_once"
-                  : (requested?.decision ?? "reject_once");
-
-            await expectOpenCodeSuccess(
-              client.postSessionIdPermissionsPermissionId({
-                path: {
-                  id: activeSessionId,
-                  permissionID: permission.id,
-                },
-                query: {
-                  directory: payload.workspaceRootPath,
-                },
-                body: {
-                  response: mapOpenCodeDecision(decision),
-                },
-              }),
-              "resolve permission",
-            );
-          })().catch((error) => {
-            logOpenCode("error", "Permission request failed", {
-              appSessionId: sessionId,
-              openCodeSessionId: activeSessionId,
-              error: formatOpenCodeError(error),
-            });
-          });
-        },
-        onQuestionAsked(question) {
-          void (async () => {
-            const currentRuntime = runtime;
-            if (disposed || !currentRuntime) {
-              return;
-            }
-
-            await resolveOpenCodeQuestion(payload, currentRuntime, question);
-          })().catch((error) => {
-            logOpenCode("error", "Question request failed", {
-              appSessionId: sessionId,
-              openCodeSessionId: activeSessionId,
-              requestId: question.id,
-              error: formatOpenCodeError(error),
-            });
-          });
-        },
-      });
-
-      const initPromise = (async () => {
-        logOpenCode("info", "Initializing session", {
-          appSessionId: sessionId,
-          title: payload.session.title,
-          workspaceRootPath: payload.workspaceRootPath,
-        });
 
         try {
-          runtime = await acquireOpenCodeRuntime();
-          const runtimeClient = runtime.client;
-          client = runtimeClient;
-          clientV2 = runtime.clientV2;
+          const saved = await openCodeClient.session.get({
+            sessionID: savedSessionId,
+          });
+          if (disposed) {
+            throw new Error("OpenCode session was disposed during resume");
+          }
+          claimSession(saved.id, {
+            agent: saved.agent ?? OPENCODE_BUILD_AGENT,
+            model: saved.model ?? null,
+          });
+          logOpenCode("info", "OpenCode session resumed", {
+            appSessionId: sessionId,
+            openCodeSessionId: saved.id,
+          });
+        } catch (error) {
+          logOpenCode("warn", "Saved OpenCode session is unavailable", {
+            appSessionId: sessionId,
+            openCodeSessionId: savedSessionId,
+            error: formatOpenCodeError(error),
+          });
+          if (!isOpenCodeSessionNotFound(error)) {
+            throw createNativeSessionRecoveryError("OpenCode");
+          }
+        }
+      }
+
+      const initPromise = (async () => {
+        try {
+          const openCodeClient = await connectOpenCode();
           if (disposed) {
             throw new Error("OpenCode session was disposed during startup");
           }
-
-          const savedSessionId =
-            payload.providerSession?.resumable === false
-              ? null
-              : (payload.providerSession?.providerSessionId ?? null);
-          if (
-            savedSessionId &&
-            !claimedOpenCodeSessionIds.has(savedSessionId)
-          ) {
-            try {
-              const savedSession = await expectOpenCodeData(
-                runtimeClient.session.get({
-                  path: { id: savedSessionId },
-                  query: { directory: payload.workspaceRootPath },
-                }),
-                "resume session",
-              );
-              if (savedSession.id !== savedSessionId) {
-                throw new Error(
-                  `OpenCode returned session ${savedSession.id} for ${savedSessionId}`,
-                );
-              }
-              if (disposed) {
-                throw new Error("OpenCode session was disposed during resume");
-              }
-              claimSession(savedSessionId);
-              logOpenCode("info", "OpenCode session resumed", {
-                appSessionId: sessionId,
-                openCodeSessionId: savedSessionId,
-              });
-            } catch (error) {
-              logOpenCode("warn", "Saved OpenCode session is unavailable", {
-                appSessionId: sessionId,
-                openCodeSessionId: savedSessionId,
-                error: formatOpenCodeError(error),
-              });
-              if (!isOpenCodeNotFound(error)) {
-                throw createNativeSessionRecoveryError("OpenCode");
-              }
-            }
-          } else if (savedSessionId) {
-            logOpenCode("warn", "Saved OpenCode session is already claimed", {
-              appSessionId: sessionId,
-              openCodeSessionId: savedSessionId,
-            });
-            throw createNativeSessionRecoveryError("OpenCode");
-          }
-
-          eventAbortController = new AbortController();
-          logOpenCode("debug", "Subscribing to event stream", {
-            appSessionId: sessionId,
-            openCodeSessionId: activeSessionId,
-            workspaceRootPath: payload.workspaceRootPath,
-          });
-          const eventStream = await runtimeClient.event.subscribe({
-            query: {
-              directory: payload.workspaceRootPath,
-            },
-            signal: eventAbortController.signal,
-          });
-          if (disposed) {
-            throw new Error(
-              "OpenCode session was disposed during subscription",
-            );
-          }
-          logOpenCode("info", "Event stream subscribed", {
-            appSessionId: sessionId,
-            openCodeSessionId: activeSessionId,
-          });
-          initializationFinished = true;
-
-          (async () => {
-            try {
-              for await (const raw of eventStream.stream) {
-                if (disposed) break;
-                if (
-                  raw.type === "session.updated" &&
-                  raw.properties.info.id === activeSessionId
-                ) {
-                  updateNativeSessionTitle(raw.properties.info.title);
-                }
-                if (raw.type === "message.updated") {
-                  const info = (
-                    raw as {
-                      properties?: { info?: { id?: string; role?: string } };
-                    }
-                  ).properties?.info;
-                  if (
-                    info?.role === "user" &&
-                    info.id === lastProviderUserMessageId
-                  ) {
-                    lastProviderUserMessageId = info.id;
-                  }
-                }
-                if (raw.type === "session.diff" && lastProviderUserMessageId) {
-                  const diffs = raw.properties.diff ?? [];
-                  lastNativeDiff = {
-                    ...openCodeDiffsToEvidence(diffs),
-                    providerTurnId: lastProviderUserMessageId,
-                  };
-                  emitNativeWorkspaceEvidence(
-                    onEvent,
-                    sessionId,
-                    lastUserMessageId,
-                    lastNativeDiff,
-                  );
-                }
-                eventHandler.handleEvent(raw as OpenCodeEvent);
-              }
-              logOpenCode("warn", "Event stream ended", {
-                appSessionId: sessionId,
-                openCodeSessionId: activeSessionId,
-              });
-              if (!disposed) {
-                onEvent({
-                  type: "error",
-                  sessionId,
-                  message: "OpenCode event stream ended unexpectedly.",
-                });
-                forwardEvent({
-                  type: "state.changed",
-                  sessionId,
-                  status: "error",
-                });
-                turnCompletion.settle();
-              }
-            } catch (error) {
-              if (disposed || eventAbortController?.signal.aborted) return;
-
-              logOpenCode("error", "Event stream failed", {
-                appSessionId: sessionId,
-                openCodeSessionId: activeSessionId,
-                error: formatOpenCodeError(error),
-              });
-
-              onEvent({
-                type: "error",
-                sessionId,
-                message: formatOpenCodeUserFacingError(error),
-              });
-
-              onEvent({
-                type: "state.changed",
-                sessionId,
-                status: "error",
-              });
-              turnCompletion.settle();
-            }
-          })();
+          client = openCodeClient;
+          await resumeSavedSession(openCodeClient);
         } catch (error) {
           if (!disposed) {
             logOpenCode("error", "Session initialization failed", {
               appSessionId: sessionId,
-              workspaceRootPath: payload.workspaceRootPath,
               error: formatOpenCodeError(error),
             });
           }
-          if (activeSessionId) {
-            claimedOpenCodeSessionIds.delete(activeSessionId);
-            activeSessionId = null;
-          }
-          eventAbortController?.abort();
-          eventAbortController = null;
-          client = null;
-          clientV2 = null;
-          releaseOpenCodeRuntime(runtime);
-          runtime = null;
-          initializationFinished = true;
           initializationError = error;
         }
       })();
+
+      async function prepareSession(
+        openCodeClient: OpenCodeClient,
+        messagePayload: SendAgentMessagePayload,
+      ) {
+        const snapshot =
+          messagePayload.providerSnapshot ?? payload.session.providerSnapshot;
+        if (snapshot) {
+          const models = await openCodeClient.model.list({
+            location: { directory: payload.workspaceRootPath },
+          });
+          assertOpenCodeModelAvailable(models.data, snapshot);
+        }
+
+        const selection = getSessionSelection(
+          payload.session.sessionModeId,
+          snapshot,
+        );
+        if (!activeSessionId) {
+          if (requiresNativeSessionRecovery(messagePayload.history)) {
+            throw createNativeSessionRecoveryError("OpenCode");
+          }
+          const created = await openCodeClient.session.create({
+            location: {
+              directory: await resolveSnapshotCapableDirectory(
+                payload.workspaceRootPath,
+              ),
+            },
+            agent: selection.agent,
+            ...(selection.model ? { model: selection.model } : {}),
+          });
+          if (disposed) {
+            await openCodeClient.session.remove({ sessionID: created.id });
+            throw new Error("OpenCode session was disposed during creation");
+          }
+          claimSession(created.id, selection);
+          logOpenCode("info", "OpenCode session created", {
+            appSessionId: sessionId,
+            openCodeSessionId: created.id,
+          });
+          return created.id;
+        }
+
+        const openCodeSessionId = activeSessionId;
+        if (sessionSelection?.agent !== selection.agent) {
+          await openCodeClient.session.switchAgent({
+            sessionID: openCodeSessionId,
+            agent: selection.agent,
+          });
+        }
+        if (
+          selection.model &&
+          !isSameModel(sessionSelection?.model ?? null, selection.model)
+        ) {
+          await openCodeClient.session.switchModel({
+            sessionID: openCodeSessionId,
+            model: selection.model,
+          });
+        }
+        sessionSelection = {
+          agent: selection.agent,
+          model: selection.model ?? sessionSelection?.model ?? null,
+        };
+        return openCodeSessionId;
+      }
+
+      async function runTurn(
+        turnState: ActiveTurn,
+        messagePayload: SendAgentMessagePayload,
+        providerUserMessageId: string,
+      ): Promise<OpenCodeTurnOutcome | null> {
+        await initPromise;
+        if (initializationError) throw initializationError;
+        const openCodeClient = client;
+        if (!openCodeClient) throw new Error("OpenCode client not initialized");
+
+        const openCodeSessionId = await prepareSession(
+          openCodeClient,
+          messagePayload,
+        );
+        const attachments = messagePayload.attachments ?? [];
+        logOutgoingPromptForDiagnostics({
+          agentId: "opencode",
+          attachments,
+          history: messagePayload.history,
+          prompt: buildPrompt(messagePayload.content, attachments),
+          sessionId,
+        });
+
+        const turn = new OpenCodeTurn({
+          sessionId,
+          parentSession: payload.session,
+          openCodeSessionId,
+          promptId: providerUserMessageId,
+          onEvent,
+          onPermissionAsked(permission) {
+            void replyOpenCodePermission(
+              payload,
+              openCodeClient,
+              permission,
+              activePermissionMode,
+            ).catch((error) => {
+              logOpenCode("error", "Permission request failed", {
+                appSessionId: sessionId,
+                openCodeSessionId: permission.sessionID,
+                error: formatOpenCodeError(error),
+              });
+            });
+          },
+          onFormCreated(form) {
+            void resolveOpenCodeForm(payload, openCodeClient, form).catch(
+              (error) => {
+                logOpenCode("error", "Form request failed", {
+                  appSessionId: sessionId,
+                  formId: form.id,
+                  error: formatOpenCodeError(error),
+                });
+              },
+            );
+          },
+          onTitle: updateNativeSessionTitle,
+        });
+        turnState.turn = turn;
+
+        const events = openCodeClient.event
+          .subscribe({ signal: turnState.stream.signal })
+          [Symbol.asyncIterator]();
+        let outcome: OpenCodeTurnOutcome | null;
+        try {
+          const connected = await events.next();
+          if (connected.done) {
+            throw new Error("OpenCode event stream closed before the prompt");
+          }
+          const consumed = (async () => {
+            while (true) {
+              const next: IteratorResult<OpenCodeEvent> = await events.next();
+              if (next.done) {
+                if (turnState.stopRequested) return null;
+                throw new Error("OpenCode event stream ended unexpectedly.");
+              }
+              const result = turn.handle(next.value);
+              if (result) return result;
+            }
+          })();
+          void consumed.catch(() => undefined);
+
+          await openCodeClient.session.prompt({
+            sessionID: openCodeSessionId,
+            id: providerUserMessageId,
+            ...buildPromptInput(messagePayload.content, attachments),
+            delivery: "steer",
+          });
+          logOpenCode("info", "Prompt admitted", {
+            appSessionId: sessionId,
+            openCodeSessionId,
+          });
+          outcome = await consumed;
+        } finally {
+          turnState.stream.abort();
+          await events.return?.();
+        }
+
+        const info = await openCodeClient.session
+          .get({ sessionID: openCodeSessionId })
+          .catch(() => null);
+        if (info?.title) updateNativeSessionTitle(info.title);
+        return outcome;
+      }
 
       return {
         async sendMessage(
           messagePayload: SendAgentMessagePayload,
         ): Promise<MessageRecord> {
-          const requestId = crypto.randomUUID();
           const providerUserMessageId = createOpenCodeMessageId();
           const userMessage: MessageRecord = {
             id: messagePayload.messageId ?? crypto.randomUUID(),
@@ -566,257 +365,79 @@ export function createOpencodeAdapter(): AgentAdapter {
             attachments: messagePayload.attachments ?? [],
             createdAt: new Date().toISOString(),
           };
-          lastUserMessageId = userMessage.id;
           lastProviderUserMessageId = providerUserMessageId;
           lastNativeDiff = null;
-
           if (messagePayload.permissionMode !== undefined) {
             activePermissionMode = messagePayload.permissionMode ?? undefined;
           }
 
-          logOpenCode("info", "sendMessage called", {
-            requestId,
-            appSessionId: sessionId,
-            contentLength: messagePayload.content.length,
-            attachmentCount: messagePayload.attachments?.length ?? 0,
-          });
+          onEvent({ type: "state.changed", sessionId, status: "running" });
 
-          eventHandler.resetForMessage();
-
-          onEvent({
-            type: "state.changed",
-            sessionId,
-            status: "running",
-          });
-
-          const turnPromise = (async () => {
-            const startedAt = performance.now();
-            const terminal = turnCompletion.begin(requestId);
-            try {
-              await initPromise;
-
-              if (initializationError) {
-                throw initializationError;
+          const turnState: ActiveTurn = {
+            stream: new AbortController(),
+            turn: null,
+            stopRequested: false,
+          };
+          activeTurn = turnState;
+          const turnPromise = runTurn(
+            turnState,
+            messagePayload,
+            providerUserMessageId,
+          )
+            .then((outcome) => {
+              if (!outcome && !disposed) {
+                onEvent({ type: "state.changed", sessionId, status: "idle" });
               }
-
-              if (!client) {
-                logOpenCode("error", "sendMessage missing initialized client", {
-                  requestId,
-                  appSessionId: sessionId,
-                  hasClient: client !== null,
-                  openCodeSessionId: activeSessionId,
-                });
-                throw new Error("OpenCode client not initialized");
-              }
-
-              const selectedModel =
-                messagePayload.providerSnapshot ??
-                payload.session.providerSnapshot;
-              const promptClient = clientV2;
-              if (!promptClient) {
-                throw new Error("OpenCode v2 client not initialized");
-              }
-              if (selectedModel) {
-                const catalog = await expectOpenCodeData(
-                  promptClient.provider.list(),
-                  "validate selected model",
-                );
-                assertOpenCodeModelAvailable(catalog, selectedModel);
-              }
-
-              if (!activeSessionId) {
-                if (requiresNativeSessionRecovery(messagePayload.history)) {
-                  throw createNativeSessionRecoveryError("OpenCode");
-                }
-                await createFreshSession(client);
-              }
-              if (!activeSessionId) {
-                throw new Error("OpenCode session not initialized");
-              }
-              const prompt = buildPrompt(
-                messagePayload.content,
-                messagePayload.attachments ?? [],
-              );
-              logOutgoingPromptForDiagnostics({
-                agentId: "opencode",
-                attachments: messagePayload.attachments ?? [],
-                history: messagePayload.history,
-                prompt,
-                sessionId,
-              });
-              const parts = buildPromptParts(
-                messagePayload.content,
-                messagePayload.attachments ?? [],
-              );
-              const promptSelection = getOpenCodePromptSelection(selectedModel);
-
-              logOpenCode("info", "Prompt request starting", {
-                requestId,
-                appSessionId: sessionId,
-                openCodeSessionId: activeSessionId,
-                providerId: selectedModel?.providerId ?? null,
-                modelId: selectedModel?.modelId ?? null,
-                promptLength: prompt.length,
-              });
-              const promptStartedAt = Date.now();
-              promptEventSessionAdoptionEnabled = true;
-              acceptedOpenCodeEventForPrompt = false;
-              activePromptRequestId = requestId;
-              clearPromptWatchdog();
-
-              await expectOpenCodeSuccess(
-                promptClient.session.promptAsync({
-                  sessionID: activeSessionId,
-                  directory: payload.workspaceRootPath,
-                  messageID: providerUserMessageId,
-                  ...(selectedModel
-                    ? {
-                        model: {
-                          providerID: selectedModel.providerId,
-                          modelID: selectedModel.modelId,
-                        },
-                      }
-                    : {}),
-                  // Built-in plan agent enforces edit denial server-side;
-                  // the tools blacklist stays as defense for older opencode
-                  // binaries. The agent persists on the session, so non-plan
-                  // prompts must explicitly switch back to "build".
-                  ...(isPlanModeId(payload.session.sessionModeId)
-                    ? {
-                        agent: "plan",
-                        system: OPENCODE_PLAN_SYSTEM,
-                        tools: OPENCODE_PLAN_TOOLS,
-                      }
-                    : { agent: promptSelection.agent ?? "build" }),
-                  ...(promptSelection.variant
-                    ? { variant: promptSelection.variant }
-                    : {}),
-                  parts,
-                }),
-                "send message",
-              );
-              logOpenCode("info", "Prompt request accepted", {
-                requestId,
-                appSessionId: sessionId,
-                openCodeSessionId: activeSessionId,
-                durationMs: Math.round(performance.now() - startedAt),
-              });
-              promptWatchdog = setTimeout(() => {
-                promptWatchdog = null;
-                if (
-                  disposed ||
-                  activePromptRequestId !== requestId ||
-                  acceptedOpenCodeEventForPrompt ||
-                  !activeSessionId ||
-                  eventHandler.lastEventAt >= promptStartedAt
-                ) {
-                  return;
-                }
-
-                const timedOutSessionId = activeSessionId;
-                promptEventSessionAdoptionEnabled = false;
-                activePromptRequestId = null;
-                logOpenCode("error", "No OpenCode events after prompt start", {
-                  requestId,
-                  appSessionId: sessionId,
-                  openCodeSessionId: timedOutSessionId,
-                  elapsedMs: Date.now() - promptStartedAt,
-                });
-                onEvent({
-                  type: "error",
-                  sessionId,
-                  message:
-                    "OpenCode accepted the prompt but did not respond. Retry after refreshing the model list.",
-                });
-                onEvent({
-                  type: "state.changed",
-                  sessionId,
-                  status: "error",
-                });
-                turnCompletion.settle(requestId);
-                void expectOpenCodeSuccess(
-                  promptClient.session.abort({
-                    sessionID: timedOutSessionId,
-                    directory: payload.workspaceRootPath,
-                  }),
-                  "abort unresponsive session",
-                ).catch((error) => {
-                  logOpenCode("error", "Unresponsive session abort failed", {
-                    requestId,
-                    appSessionId: sessionId,
-                    openCodeSessionId: timedOutSessionId,
-                    error: formatOpenCodeError(error),
-                  });
-                });
-              }, OPENCODE_FIRST_EVENT_TIMEOUT_MS);
-              await terminal;
-            } catch (error) {
-              promptEventSessionAdoptionEnabled = false;
-              if (activePromptRequestId === requestId) {
-                activePromptRequestId = null;
-                clearPromptWatchdog();
-              }
+            })
+            .catch((error) => {
               logOpenCode("error", "Prompt request failed", {
-                requestId,
                 appSessionId: sessionId,
                 openCodeSessionId: activeSessionId,
-                durationMs: Math.round(performance.now() - startedAt),
                 error: formatOpenCodeError(error),
               });
               if (disposed) return;
+              if (turnState.stopRequested) {
+                onEvent({ type: "state.changed", sessionId, status: "idle" });
+                return;
+              }
               onEvent({
                 type: "error",
                 sessionId,
-                message: formatOpenCodeUserFacingError(error),
+                message: formatOpenCodeError(error),
               });
-              onEvent({
-                type: "state.changed",
-                sessionId,
-                status: "error",
-              });
-            } finally {
-              turnCompletion.settle(requestId);
-            }
-          })();
+              onEvent({ type: "state.changed", sessionId, status: "error" });
+            })
+            .finally(() => {
+              if (activeTurn === turnState) activeTurn = null;
+            });
           activeTurnPromise = turnPromise;
-          void turnPromise.finally(() => {
-            if (activeTurnPromise === turnPromise) {
-              activeTurnPromise = null;
-            }
-          });
 
           await turnPromise;
           return userMessage;
         },
         async stop() {
-          logOpenCode("info", "Stop requested", {
-            appSessionId: sessionId,
-            openCodeSessionId: activeSessionId,
-            hasClient: client !== null,
-          });
-          activePromptRequestId = null;
-          clearPromptWatchdog();
+          const turnState = activeTurn;
+          const openCodeClient = client;
+          const openCodeSessionId = activeSessionId;
+          if (!turnState) return;
 
-          const currentClientV2 = clientV2;
-          const currentSessionId = activeSessionId;
-          if (!disposed && currentClientV2 && currentSessionId) {
+          turnState.stopRequested = true;
+          if (openCodeClient && openCodeSessionId) {
             try {
-              await expectOpenCodeSuccess(
-                currentClientV2.session.abort({
-                  sessionID: currentSessionId,
-                  directory: payload.workspaceRootPath,
-                }),
-                "abort session",
-              );
+              await openCodeClient.session.interrupt({
+                sessionID: openCodeSessionId,
+              });
             } catch (error) {
-              logOpenCode("error", "Abort request failed", {
+              logOpenCode("error", "Interrupt request failed", {
                 appSessionId: sessionId,
-                openCodeSessionId: currentSessionId,
+                openCodeSessionId,
                 error: formatOpenCodeError(error),
               });
             }
           }
-          turnCompletion.settle();
+          if (!turnState.turn?.hasStarted) {
+            turnState.stream.abort();
+          }
           await activeTurnPromise;
         },
         getWorkspaceChangeCapabilities() {
@@ -830,56 +451,35 @@ export function createOpencodeAdapter(): AgentAdapter {
         async collectNativeWorkspaceChanges(input) {
           const providerMessageId =
             lastProviderUserMessageId ?? input.providerTurnId ?? null;
-          if (
-            lastNativeDiff?.providerTurnId &&
-            providerMessageId &&
-            lastNativeDiff.providerTurnId !== providerMessageId
-          ) {
-            lastNativeDiff = null;
+          if (!client || !activeSessionId || !providerMessageId) {
+            return lastNativeDiff;
           }
-          if (client && activeSessionId && providerMessageId) {
-            try {
-              const diffs = await expectOpenCodeData(
-                client.session.diff({
-                  path: { id: activeSessionId },
-                  query: {
-                    directory: payload.workspaceRootPath,
-                    messageID: providerMessageId,
-                  },
-                }),
-                "session diff",
-              );
-              lastNativeDiff = {
-                ...openCodeDiffsToEvidence(diffs ?? []),
-                providerTurnId: providerMessageId,
-              };
-              return lastNativeDiff;
-            } catch {
-              return lastNativeDiff;
-            }
+
+          try {
+            const diffs = await client.session.diff({
+              sessionID: activeSessionId,
+              from: providerMessageId,
+            });
+            lastNativeDiff = {
+              ...openCodeDiffsToEvidence(diffs),
+              providerTurnId: providerMessageId,
+            };
+          } catch (error) {
+            logOpenCode("warn", "Session diff failed", {
+              appSessionId: sessionId,
+              error: formatOpenCodeError(error),
+            });
           }
           return lastNativeDiff;
         },
         dispose() {
-          logOpenCode("info", "Disposing session", {
-            appSessionId: sessionId,
-            openCodeSessionId: activeSessionId,
-          });
           disposed = true;
-          turnCompletion.settle();
-          activePromptRequestId = null;
-          clearPromptWatchdog();
+          activeTurn?.stream.abort();
+          activeTurn = null;
           if (activeSessionId) {
             claimedOpenCodeSessionIds.delete(activeSessionId);
           }
-          eventAbortController?.abort();
-          eventAbortController = null;
           client = null;
-          clientV2 = null;
-          if (initializationFinished) {
-            releaseOpenCodeRuntime(runtime);
-            runtime = null;
-          }
         },
       };
     },

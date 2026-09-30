@@ -1,4 +1,9 @@
 import type { AgentProviderSnapshot } from "@cocurdex/shared";
+import { isPlanModeId } from "@cocurdex/shared";
+import type { ModelRef } from "@opencode/client";
+
+export const OPENCODE_BUILD_AGENT = "build";
+const OPENCODE_PLAN_AGENT = "plan";
 
 export interface OpenCodePromptSelection {
   agent?: string;
@@ -47,4 +52,38 @@ export function getOpenCodePromptSelection(
       getNonEmptyString(snapshot?.openCodeVariant) ??
       getNonEmptyString(compat?.variant),
   };
+}
+
+export interface OpenCodeSessionSelection {
+  agent: string;
+  model: ModelRef | null;
+}
+
+export function getSessionSelection(
+  sessionModeId: string | null | undefined,
+  snapshot: AgentProviderSnapshot | null | undefined,
+): OpenCodeSessionSelection {
+  const promptSelection = getOpenCodePromptSelection(snapshot);
+  return {
+    agent: isPlanModeId(sessionModeId)
+      ? OPENCODE_PLAN_AGENT
+      : (promptSelection.agent ?? OPENCODE_BUILD_AGENT),
+    model: snapshot
+      ? {
+          providerID: snapshot.providerId,
+          id: snapshot.modelId,
+          ...(promptSelection.variant
+            ? { variant: promptSelection.variant }
+            : {}),
+        }
+      : null,
+  };
+}
+
+export function isSameModel(left: ModelRef | null, right: ModelRef | null) {
+  return (
+    left?.providerID === right?.providerID &&
+    left?.id === right?.id &&
+    left?.variant === right?.variant
+  );
 }

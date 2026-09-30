@@ -16,8 +16,8 @@ export const agentMinimumVersions: Record<AgentId, string | null> = {
   devin: "2026.4.9",
   // Grok Build's first stable CLI, where the ACP yolo-mode ext landed.
   "grok-build": "1.0.0",
-  // Matches the @opencode-ai/sdk major/minor this repo depends on.
-  opencode: "1.14.0",
+  // Matches the @opencode/client version this repo pins.
+  opencode: "2.0.20",
   // Built in, ships with the app.
   pi: null,
 };
@@ -49,7 +49,7 @@ export const agentInstallHints: Record<AgentId, AgentInstallHint | null> = {
     docsUrl: "https://docs.x.ai/build/overview",
   },
   opencode: {
-    command: "npm install -g opencode-ai",
+    command: "curl -fsSL https://opencode.ai/install | bash",
     docsUrl: "https://opencode.ai/docs",
   },
   pi: null,

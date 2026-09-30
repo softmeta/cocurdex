@@ -1,112 +1,75 @@
-import { createOpencodeClient } from "@opencode-ai/sdk";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  acquireOpenCodeRuntime,
-  expectOpenCodeData,
-  isOpenCodeVersionSupported,
-  releaseOpenCodeRuntime,
-} from "./opencode-runtime";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const serverMocks = vi.hoisted(() => ({
-  start: vi.fn(),
-}));
-const v2Mocks = vi.hoisted(() => ({
-  create: vi.fn(),
-  health: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  ensure: vi.fn(),
+  make: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
-vi.mock("@opencode-ai/sdk", () => ({
-  createOpencodeClient: vi.fn((options) => options),
+vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: mocks.make } }));
+vi.mock("@opencode/client/service", () => ({
+  Service: {
+    ensure: mocks.ensure,
+    headers: (endpoint: { auth?: { username: string; password: string } }) =>
+      endpoint.auth
+        ? {
+            authorization: `Basic ${Buffer.from(
+              `${endpoint.auth.username}:${endpoint.auth.password}`,
+            ).toString("base64")}`,
+          }
+        : undefined,
+  },
 }));
 
-vi.mock("@opencode-ai/sdk/v2", () => ({
-  createOpencodeClient: v2Mocks.create,
-}));
+async function loadRuntime() {
+  vi.resetModules();
+  return import("./opencode-runtime");
+}
 
-vi.mock("./opencode-server", () => ({
-  startOpenCodeServer: serverMocks.start,
-}));
-
-describe("acquireOpenCodeRuntime", () => {
+describe("connectOpenCode", () => {
   beforeEach(() => {
-    v2Mocks.health.mockResolvedValue({
-      data: { healthy: true, version: "1.18.12" },
+    mocks.ensure.mockReset();
+    mocks.make.mockReset();
+    mocks.spawnSync.mockReset();
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+
+  it("connects to the shared background service with its credentials", async () => {
+    mocks.spawnSync.mockReturnValue({ stdout: "opencode v2.0.20\n" });
+    mocks.ensure.mockResolvedValue({
+      url: "http://127.0.0.1:49374",
+      auth: { type: "basic", username: "opencode", password: "secret" },
     });
-    v2Mocks.create.mockImplementation((options) => ({
-      ...options,
-      global: { health: v2Mocks.health },
-    }));
-    serverMocks.start.mockImplementation(
-      async ({ workspaceRootPath }: { workspaceRootPath: string }) => ({
-        url: `http://127.0.0.1:${workspaceRootPath.endsWith("-b") ? "12346" : "12345"}`,
-        close: vi.fn(),
-      }),
-    );
-  });
+    mocks.make.mockReturnValue({ client: true });
+    const { connectOpenCode } = await loadRuntime();
 
-  afterEach(() => {
-    vi.clearAllMocks();
-    vi.unstubAllEnvs();
-  });
+    await expect(connectOpenCode()).resolves.toEqual({ client: true });
 
-  it("starts one managed server in an app-owned temporary workspace", async () => {
-    const runtime = await acquireOpenCodeRuntime();
-
-    expect(serverMocks.start).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hostname: "127.0.0.1",
-        onLaunch: expect.any(Function),
-        onOutput: expect.any(Function),
-        workspaceRootPath: expect.stringContaining("cocurdex-opencode-managed"),
-      }),
-    );
-    expect(createOpencodeClient).toHaveBeenCalledWith({
-      baseUrl: "http://127.0.0.1:12345",
-      directory: expect.stringContaining("cocurdex-opencode-managed"),
+    expect(mocks.make).toHaveBeenCalledWith({
+      baseUrl: "http://127.0.0.1:49374",
+      headers: {
+        authorization: `Basic ${Buffer.from("opencode:secret").toString("base64")}`,
+      },
     });
-
-    releaseOpenCodeRuntime(runtime);
   });
 
-  it("reuses the managed server across workspace requests", async () => {
-    const firstRuntime = await acquireOpenCodeRuntime();
-    const secondRuntime = await acquireOpenCodeRuntime();
+  it("rejects an installed OpenCode below the supported version", async () => {
+    mocks.spawnSync.mockReturnValue({ stdout: "1.18.33\n" });
+    const { connectOpenCode } = await loadRuntime();
 
-    expect(serverMocks.start).toHaveBeenCalledOnce();
-    expect(firstRuntime).toBe(secondRuntime);
-
-    releaseOpenCodeRuntime(firstRuntime);
-    releaseOpenCodeRuntime(secondRuntime);
-  });
-
-  it("rejects a server below the supported version", async () => {
-    v2Mocks.health.mockResolvedValue({
-      data: { healthy: true, version: "1.14.28" },
-    });
-
-    await expect(acquireOpenCodeRuntime()).rejects.toThrow(
-      "Upgrade OpenCode to 1.14.29 or newer",
+    await expect(connectOpenCode()).rejects.toThrow(
+      "OpenCode 1.18.33 is too old for Cocurdex",
     );
+    expect(mocks.ensure).not.toHaveBeenCalled();
   });
 
-  it("explains OpenCode database schema failures with a repair action", async () => {
-    await expect(
-      expectOpenCodeData(
-        Promise.resolve({
-          error: { message: "SQLiteError: no such column: replacement_seq" },
-        }),
-        "send prompt",
-      ),
-    ).rejects.toThrow(
-      "OpenCode's local database schema is incompatible with this OpenCode server",
+  it("explains a missing OpenCode CLI", async () => {
+    mocks.spawnSync.mockReturnValue({ error: new Error("spawn ENOENT") });
+    const { connectOpenCode } = await loadRuntime();
+
+    await expect(connectOpenCode()).rejects.toThrow(
+      "OpenCode CLI was not found on PATH",
     );
-  });
-});
-
-describe("OpenCode version compatibility", () => {
-  it("supports newer patch and minor versions without requiring exact SDK equality", () => {
-    expect(isOpenCodeVersionSupported("1.14.29")).toBe(true);
-    expect(isOpenCodeVersionSupported("1.18.12")).toBe(true);
-    expect(isOpenCodeVersionSupported("1.14.28")).toBe(false);
   });
 });
