@@ -42,6 +42,7 @@ import { logDaemonDiagnostic } from "./diagnostics";
 import { createMessageDeltaBuffer } from "./message-delta-buffer";
 import { getDatabasePath } from "./paths";
 import { withMessageSeq, withTimelineSeq } from "./timeline-seq-event";
+import { capToolCallOutput, withoutToolCallOutput } from "./tool-call-output";
 
 type CocurdexDatabase = ReturnType<typeof createCocurdexDatabase>;
 const TERMINAL_STATUSES = new Set<SessionStatus>(["idle", "error", "exited"]);
@@ -578,9 +579,13 @@ export class DaemonState {
       event.type === "tool.updated" ||
       event.type === "tool.finished"
     ) {
-      const seq = await this.database.toolCalls.upsert(event.toolCall);
-      await this.persistSubagentChildSession(event.toolCall);
-      return withTimelineSeq(event, seq);
+      const toolCall = capToolCallOutput(event.toolCall);
+      const seq = await this.database.toolCalls.upsert(toolCall);
+      await this.persistSubagentChildSession(toolCall);
+      return withTimelineSeq(
+        { ...event, toolCall: withoutToolCallOutput(toolCall) },
+        seq,
+      );
     }
 
     if (event.type === "usage.updated") {
