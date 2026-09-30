@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run_desktop: ${{ steps.scope.outputs.run_desktop }}
+      version_only: ${{ steps.scope.outputs.version_only }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -38,6 +39,18 @@ jobs:
             exit 0
           fi
 
+          changed_files="$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")"
+          non_version_lines=""
+          if [[ "${changed_files}" == "apps/desktop/package.json" ]]; then
+            non_version_lines="$(git diff -U0 "${BASE_SHA}" "${HEAD_SHA}" -- apps/desktop/package.json |
+              grep '^[+-] ' | grep -v '"version":' || true)"
+          fi
+          if [[ "${changed_files}" == "apps/desktop/package.json" && -z "${non_version_lines}" ]]; then
+            echo "run_desktop=false" >> "${GITHUB_OUTPUT}"
+            echo "version_only=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
           run_desktop=false
           while IFS= read -r changed_path; do
             case "${changed_path}" in
@@ -46,12 +59,14 @@ jobs:
                 break
                 ;;
             esac
-          done < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          done <<< "${changed_files}"
 
           echo "run_desktop=${run_desktop}" >> "${GITHUB_OUTPUT}"
 
   workspace:
     name: Workspace quality
+    needs: changes
+    if: needs.changes.outputs.version_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
