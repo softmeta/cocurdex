@@ -1,6 +1,12 @@
 import { useAtomValue } from "jotai";
 import { ArrowLeft, ArrowRight, Globe, RefreshCw, X } from "lucide-react";
-import { type KeyboardEvent, useCallback, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
@@ -30,7 +36,7 @@ function withDefaultScheme(url: string): string {
   return isLocal ? `http://${url}` : `https://${url}`;
 }
 
-export function BrowserUrlBar() {
+export function BrowserUrlBar({ actions }: { actions?: ReactNode }) {
   const { t } = useTranslation("browser");
   const url = useAtomValue(browserUrlAtom);
   const title = useAtomValue(browserTitleAtom);
@@ -102,6 +108,7 @@ export function BrowserUrlBar() {
           type="text"
           value={displayUrl}
           readOnly={isHtmlPreview}
+          autoFocus={!url}
           aria-label={t("tabs.address")}
           onChange={(e) => setUrlInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -110,6 +117,7 @@ export function BrowserUrlBar() {
           spellCheck={false}
         />
       </div>
+      {actions}
     </div>
   );
 }

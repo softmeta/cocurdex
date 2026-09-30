@@ -69,7 +69,6 @@ import {
   ComposerSurface,
   getConfigOptionThinkingLevels,
   getThinkingLevelOptions,
-  importImageDataUrl,
   resolveThinkingLevel,
   type ThinkingLevelOption,
 } from "@/features/composer";
@@ -128,7 +127,14 @@ import {
   useSessionSwitchMetrics,
 } from "./center-panel-data";
 import { resolvePaneCenterSurface } from "./center-panel-surface";
-import { chatBrowserAnnotationsAtom } from "./chat-window/chat-browser-context";
+import { buildBrowserAnnotationAttachments } from "./chat-window/browser-annotation-attachments";
+import { BrowserAnnotationChips } from "./chat-window/browser-annotation-chips";
+import { withBrowserAnnotations } from "./chat-window/browser-annotation-message";
+import {
+  chatBrowserAnnotationsAtom,
+  consumeBrowserAnnotations,
+  useBrowserAnnotationSender,
+} from "./chat-window/chat-browser-context";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
 interface CenterPanelProps {
@@ -464,41 +470,9 @@ export function CenterPanel({
   useGitBranches(workingPath ?? undefined);
   useGitWorktrees(activeWorkspace?.rootPaths[0]);
 
-  function formatAnnotationsContext(anns: BrowserAnnotation[]): string {
-    if (anns.length === 0) return "";
-    const lines = anns.map((a) => {
-      if (a.type === "element") {
-        const parts: string[] = [];
-        if (a.tagName) parts.push(a.tagName);
-        if (a.selector) parts.push(a.selector);
-        const label = parts.join(" ") || "element";
-        const text = a.textContent ? ` "${a.textContent}"` : "";
-        const bounds = ` (${a.boundingBox.x}, ${a.boundingBox.y}) ${a.boundingBox.width}×${a.boundingBox.height}`;
-        return `- Element: ${label}${text}${bounds}`;
-      }
-      return `- Region: (${a.boundingBox.x}, ${a.boundingBox.y}) ${a.boundingBox.width}×${a.boundingBox.height}`;
-    });
-    return `\n\n[Browser Annotations]\n${lines.join("\n")}`;
-  }
-
-  async function buildAnnotationAttachments(anns: BrowserAnnotation[]) {
-    const screenshotAnnotations = anns.filter(
-      (annotation) => annotation.regionScreenshot,
-    );
-
-    if (screenshotAnnotations.length === 0) {
-      return [];
-    }
-
-    return Promise.all(
-      screenshotAnnotations.map((annotation, index) =>
-        importImageDataUrl(
-          annotation.regionScreenshot ?? "",
-          `browser-screenshot-${index + 1}.png`,
-        ),
-      ),
-    );
-  }
+  useBrowserAnnotationSender((sent) => {
+    void handleSend("", [], false, sent);
+  });
 
   const prepareAutoSessionTitle = (
     session: SessionRecord,
@@ -610,6 +584,7 @@ export function CenterPanel({
       ? [composerAttachment]
       : [],
     useOppositeFollowUpBehavior = false,
+    sentAnnotations: BrowserAnnotation[] = annotations,
   ) => {
     if (
       !activeSession ||
@@ -648,12 +623,11 @@ export function CenterPanel({
         activeMessages.length === 0 &&
           isDefaultSessionTitle(activeSession.title, activeSession.agentType),
       );
-      const annotationContext = formatAnnotationsContext(annotations);
       const userMessage: MessageRecord = {
         id: crypto.randomUUID(),
         sessionId: nextSession.id,
         role: "user",
-        content: message + annotationContext,
+        content: withBrowserAnnotations(message, sentAnnotations),
         attachments,
         createdAt: new Date().toISOString(),
       };
@@ -682,9 +656,10 @@ export function CenterPanel({
         createdAt: userMessage.createdAt,
       });
       clearChatComposerAttachment();
+      consumeBrowserAnnotations(sentAnnotations);
 
       const annotationAttachments =
-        await buildAnnotationAttachments(annotations);
+        await buildBrowserAnnotationAttachments(sentAnnotations);
       const nextAttachments = [...attachments, ...annotationAttachments];
       logRendererDiagnostic("info", "[AgentSession] send payload", {
         attachments: nextAttachments.map(summarizeAttachmentForLog),
@@ -1066,13 +1041,12 @@ export function CenterPanel({
     });
 
     try {
-      const annotationContext = formatAnnotationsContext(annotations);
       const initialAttachments = attachments ?? [];
       const userMessage: MessageRecord = {
         id: crypto.randomUUID(),
         sessionId: titledSession.id,
         role: "user",
-        content: message + annotationContext,
+        content: withBrowserAnnotations(message, annotations),
         attachments: initialAttachments,
         createdAt: new Date().toISOString(),
       };
@@ -1084,13 +1058,14 @@ export function CenterPanel({
         createdAt: userMessage.createdAt,
       });
       clearChatComposerAttachment();
+      consumeBrowserAnnotations(annotations);
 
       await taskApi.saveSessionConfiguration(
         sessionConfiguration(titledSession),
       );
 
       const annotationAttachments =
-        await buildAnnotationAttachments(annotations);
+        await buildBrowserAnnotationAttachments(annotations);
       const nextAttachments = [...initialAttachments, ...annotationAttachments];
       logRendererDiagnostic(
         "info",
@@ -1237,6 +1212,11 @@ export function CenterPanel({
     );
   }
 
+  const annotationChips =
+    annotations.length > 0 ? (
+      <BrowserAnnotationChips annotations={annotations} />
+    ) : undefined;
+
   let newSessionSurface: ReactNode = null;
   if (centerSurface === "new-session") {
     newSessionSurface = (
@@ -1248,6 +1228,7 @@ export function CenterPanel({
           agents={agents}
           agentType={lastSelectedAgent}
           attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
+          composerContextChips={annotationChips}
           sessionModeId={null}
           composerRef={composerRef}
           onClearAttachment={clearChatComposerAttachment}
@@ -1298,6 +1279,7 @@ export function CenterPanel({
             attachment={
               isFocused ? (composerAttachment ?? undefined) : undefined
             }
+            composerContextChips={annotationChips}
             sessionModeId={activeSessionModeId}
             composerRef={composerRef}
             permissionMode={activePermissionMode}

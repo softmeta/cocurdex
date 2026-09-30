@@ -53,6 +53,7 @@ function pillGridRowClassName(row: 1 | 2 | 3) {
 interface PillComposerProps {
   composerAttachments: MessageAttachment[];
   contextAttachments: MessageAttachment[];
+  contextChips?: ReactNode;
   attachmentError: string | null;
   isRunning: boolean;
   canSend: boolean;
@@ -83,6 +84,7 @@ interface PillComposerProps {
 export function PillComposer({
   composerAttachments,
   contextAttachments,
+  contextChips,
   attachmentError,
   isRunning,
   canSend,
@@ -169,6 +171,7 @@ export function PillComposer({
 
   const hasComposerExtras =
     Boolean(attachmentError) ||
+    Boolean(contextChips) ||
     contextAttachments.length > 0 ||
     composerAttachments.some(
       (attachment) =>
@@ -225,6 +228,7 @@ export function PillComposer({
                   )}
                 />
               ) : null}
+              {contextChips}
               {attachmentError ? (
                 <div className="text-xs text-destructive">
                   {attachmentError}

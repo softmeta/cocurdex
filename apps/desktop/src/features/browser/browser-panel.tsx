@@ -2,9 +2,8 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   AlertTriangle,
   Camera,
-  Crosshair,
   Monitor,
-  MonitorOff,
+  SquareDashedMousePointer,
 } from "lucide-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,16 +14,12 @@ import {
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { desktopApi } from "@/lib";
-import { AnnotationList } from "./annotation-list";
 import {
   addAnnotationAtom,
   browserErrorAtom,
   browserTabsAtom,
-  browserTitleAtom,
   browserUrlAtom,
   isAnnotationModeAtom,
-  isBrowserLoadingAtom,
-  isBrowserStreamingAtom,
 } from "./browser-store";
 import { BrowserTabs } from "./browser-tabs";
 import { bindBrowserViewBounds } from "./browser-view-bounds";
@@ -42,12 +37,6 @@ export function BrowserPanel({ onClose }: { onClose: () => void }) {
   const [isAnnotationMode, setIsAnnotationMode] = useAtom(isAnnotationModeAtom);
   const browserUrl = useAtomValue(browserUrlAtom);
   const browserError = useAtomValue(browserErrorAtom);
-  const browserTitle = useAtomValue(browserTitleAtom);
-  const isLoading = useAtomValue(isBrowserLoadingAtom);
-  const streaming = useAtomValue(isBrowserStreamingAtom);
-  let pageLabel = browserTitle || browserUrl;
-  if (streaming) pageLabel = t("states.generating");
-  else if (isLoading) pageLabel = t("states.loading");
   const addAnnotation = useSetAtom(addAnnotationAtom);
 
   const toggleAnnotation = useCallback(() => {
@@ -72,6 +61,30 @@ export function BrowserPanel({ onClose }: { onClose: () => void }) {
   }, [addAnnotation, browserUrl, snapshot.activeId]);
 
   const showPlaceholder = !browserUrl;
+  const annotationLabel = isAnnotationMode
+    ? t("actions.exitDesignMode")
+    : t("actions.enterDesignMode");
+  const pageActions = !browserError && !showPlaceholder && (
+    <>
+      <TitlebarIconButton
+        aria-label={t("actions.captureScreenshot")}
+        tooltip={t("actions.captureScreenshot")}
+        tooltipSide="top"
+        onClick={captureScreenshot}
+      >
+        <Camera className={TITLEBAR_ICON_GLYPH_CLASS} />
+      </TitlebarIconButton>
+      <TitlebarIconButton
+        active={isAnnotationMode}
+        aria-label={annotationLabel}
+        tooltip={annotationLabel}
+        tooltipSide="top"
+        onClick={toggleAnnotation}
+      >
+        <SquareDashedMousePointer className={TITLEBAR_ICON_GLYPH_CLASS} />
+      </TitlebarIconButton>
+    </>
+  );
 
   return (
     <Tabs
@@ -86,7 +99,10 @@ export function BrowserPanel({ onClose }: { onClose: () => void }) {
         value={snapshot.activeId ?? "empty"}
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <BrowserUrlBar key={snapshot.activeId + browserUrl} />
+        <BrowserUrlBar
+          key={snapshot.activeId + browserUrl}
+          actions={pageActions}
+        />
         {previewError && (
           <Text
             role="alert"
@@ -120,43 +136,10 @@ export function BrowserPanel({ onClose }: { onClose: () => void }) {
             </p>
           </div>
         ) : (
-          <>
-            <div className="flex items-center justify-between border-b border-editor-border px-3 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-meta text-editor-fg-subtle">
-                {pageLabel}
-              </span>
-              <div className="flex items-center gap-0.5">
-                <TitlebarIconButton
-                  aria-label={t("actions.captureScreenshot")}
-                  onClick={captureScreenshot}
-                >
-                  <Camera className={TITLEBAR_ICON_GLYPH_CLASS} />
-                </TitlebarIconButton>
-                <TitlebarIconButton
-                  active={isAnnotationMode}
-                  aria-label={
-                    isAnnotationMode
-                      ? t("actions.exitDesignMode")
-                      : t("actions.enterDesignMode")
-                  }
-                  onClick={toggleAnnotation}
-                >
-                  {isAnnotationMode ? (
-                    <MonitorOff className={TITLEBAR_ICON_GLYPH_CLASS} />
-                  ) : (
-                    <Crosshair className={TITLEBAR_ICON_GLYPH_CLASS} />
-                  )}
-                </TitlebarIconButton>
-              </div>
-            </div>
-
-            <div
-              ref={containerRef}
-              className="relative min-h-0 flex-1 bg-white"
-            />
-
-            <AnnotationList />
-          </>
+          <div
+            ref={containerRef}
+            className="relative min-h-0 flex-1 bg-white"
+          />
         )}
       </TabsContent>
     </Tabs>

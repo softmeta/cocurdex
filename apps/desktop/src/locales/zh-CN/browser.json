@@ -7,6 +7,7 @@
     "enterDesignMode": "进入设计模式",
     "exitDesignMode": "退出设计模式",
     "forward": "前进",
+    "newTab": "新建标签页",
     "reload": "重新加载",
     "removeAnnotation": "移除标注",
     "stop": "停止加载"

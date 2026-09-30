@@ -1,7 +1,10 @@
-import { useSetAtom } from "jotai";
+import { useSetAtom, useStore } from "jotai";
 import { useEffectEvent } from "react";
 import { toast } from "sonner";
-import { addAnnotationAtom, receiveBrowserTabsAtom } from "@/features/browser";
+import {
+  bindBrowserAnnotationEvents,
+  receiveBrowserTabsAtom,
+} from "@/features/browser";
 import { editorPanelOpenAtom } from "@/features/editor";
 import { desktopApi, onOpenHtmlPreview, useMountEffect } from "@/lib";
 import { bumpRightPanelRevealAtom } from "../right-panel-reveal";
@@ -10,7 +13,7 @@ export function useBrowserEventBridge() {
   const setEditorPanelOpen = useSetAtom(editorPanelOpenAtom);
   const revealPanel = useSetAtom(bumpRightPanelRevealAtom);
   const receiveTabs = useSetAtom(receiveBrowserTabsAtom);
-  const addAnnotation = useSetAtom(addAnnotationAtom);
+  const store = useStore();
   const open = useEffectEvent(
     (
       html: string,
@@ -43,9 +46,7 @@ export function useBrowserEventBridge() {
       (html, resolve, sourceId, streaming) =>
         open(html, resolve, sourceId, streaming),
     );
-    const unsubscribeAnnotation = desktopApi.onBrowserAnnotation(
-      ({ tabId, annotation }) => addAnnotation(annotation, tabId),
-    );
+    const unsubscribeAnnotation = bindBrowserAnnotationEvents(store);
     return () => {
       disposed = true;
       unsubscribeTabs();

@@ -38,11 +38,14 @@ import {
   attachBrowserHost,
   browserNavigationSchema,
   browserTabIdForContents,
+  captureAnnotation,
   closeBrowserTab,
   getBrowserTabs,
   getBrowserView,
   navigateBrowser,
+  newBrowserTab,
   registerBrowserHtmlHandlers,
+  setBrowserAnnotationMarkers,
   setBrowserBounds,
   setBrowserVisible,
   toggleBrowserAnnotationMode,
@@ -1120,6 +1123,7 @@ function registerSessionHandlers() {
 function registerBrowserHandlers() {
   registerBrowserHtmlHandlers(ipcMain);
   ipcMain.handle("browser:listTabs", () => getBrowserTabs());
+  ipcMain.handle("browser:newTab", () => newBrowserTab());
   registerHandler(
     ipcMain,
     "browser:activateTab",
@@ -1182,38 +1186,72 @@ function registerBrowserHandlers() {
 
   // Annotations come from arbitrary web pages via the browser view's preload
   // bridge — validate before rebroadcasting to the trusted main renderer.
-  ipcMain.on("browser:annotation", (event, annotation: unknown) => {
-    const tabId = browserTabIdForContents(event.sender.id);
-    if (!tabId) return;
-    const parsed = schemas.browserAnnotation.safeParse(annotation);
-    if (!parsed.success) {
-      appLogger.warn("browser.annotationRejected", {
-        issues: parsed.error.issues.map(
-          (issue) => `${issue.path.join(".")} ${issue.message}`,
-        ),
-      });
-      return;
-    }
-    const validated: BrowserAnnotation = parsed.data;
+  const broadcast = (channel: string, payload: unknown) => {
     for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("browser:annotation", {
+      window.webContents.send(channel, payload);
+    }
+  };
+
+  ipcMain.on(
+    "browser:annotation",
+    async (event, annotation: unknown, submit: unknown) => {
+      const tabId = browserTabIdForContents(event.sender.id);
+      if (!tabId) return;
+      const parsed = schemas.browserAnnotation.safeParse(annotation);
+      if (!parsed.success) {
+        appLogger.warn("browser.annotationRejected", {
+          issues: parsed.error.issues.map(
+            (issue) => `${issue.path.join(".")} ${issue.message}`,
+          ),
+        });
+        return;
+      }
+      const validated: BrowserAnnotation = {
+        ...parsed.data,
+        regionScreenshot: await captureAnnotation(
+          event.sender,
+          parsed.data.boundingBox,
+        ),
+      };
+      broadcast("browser:annotation", {
         tabId,
         annotation: validated,
+        submit: submit === true,
       });
-    }
+    },
+  );
+
+  ipcMain.on("browser:annotation:action", (event, action: unknown) => {
+    const tabId = browserTabIdForContents(event.sender.id);
+    const parsed = schemas.browserAnnotationAction.safeParse(action);
+    if (!tabId || !parsed.success) return;
+    broadcast("browser:annotation:action", { tabId, action: parsed.data });
   });
+
+  registerHandlerArgs(
+    ipcMain,
+    "browser:setAnnotationMarkers",
+    schemas.browserAnnotationMarkers,
+    async (_event, tabId, ids) => {
+      setBrowserAnnotationMarkers(tabId, ids);
+    },
+  );
 
   registerHandler(
     ipcMain,
     "browser:setBounds",
     schemas.bounds,
     async (_event, bounds) => {
-      setBrowserBounds({
-        x: Math.round(bounds.x),
-        y: Math.round(bounds.y),
-        width: Math.round(bounds.w),
-        height: Math.round(bounds.h),
-      });
+      setBrowserBounds(
+        {
+          x: Math.round(bounds.x),
+          y: Math.round(bounds.y),
+          width: Math.round(bounds.w),
+          height: Math.round(bounds.h),
+        },
+        { width: bounds.viewportWidth, height: bounds.viewportHeight },
+        { x: bounds.anchorX, y: bounds.anchorY },
+      );
     },
   );
 

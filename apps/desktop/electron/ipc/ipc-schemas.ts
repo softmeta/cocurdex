@@ -124,6 +124,18 @@ const browserAnnotationSchema = z
       .optional(),
     pageUrl: z.string().max(4096),
     note: z.string().max(20_000).optional(),
+    styleChanges: z
+      .array(
+        z
+          .object({
+            property: z.string().max(64),
+            from: z.string().max(512),
+            to: z.string().max(512),
+          })
+          .strict(),
+      )
+      .max(32)
+      .optional(),
     capturedAt: z.string().max(64),
   })
   .strict();
@@ -141,6 +153,10 @@ const boundsSchema = z.object({
   y: z.number().finite(),
   w: z.number().finite().nonnegative(),
   h: z.number().finite().nonnegative(),
+  viewportWidth: z.number().finite().nonnegative(),
+  viewportHeight: z.number().finite().nonnegative(),
+  anchorX: z.enum(["start", "end", "stretch"]).optional(),
+  anchorY: z.enum(["start", "end", "stretch"]).optional(),
 });
 
 // Loose object schemas: handlers downstream rely on TypeScript types from
@@ -302,6 +318,11 @@ export const schemas = {
   answer: z.string().max(64_000),
   url: httpUrlSchema,
   browserAnnotation: browserAnnotationSchema,
+  browserAnnotationAction: z.enum(["send", "clear", "exit"]),
+  browserAnnotationMarkers: z.tuple([
+    z.string().min(1).max(256),
+    z.array(z.string().min(1).max(256)).max(1000),
+  ]),
   bounds: boundsSchema,
   visible: z.boolean(),
   enabled: z.boolean(),

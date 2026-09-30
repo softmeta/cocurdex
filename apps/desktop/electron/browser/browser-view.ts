@@ -4,6 +4,14 @@ import { resolveElectronEntryPath } from "../app-paths";
 import { getAnnotationScript } from "./annotation-script";
 import { registerBrowserHtmlProtocol } from "./html-preview-protocol";
 
+const PAGE_BACKGROUND_SCRIPT = `(() => {
+  const opaque = (color) => color && color !== "transparent" && !/,\\s*0\\)$/.test(color);
+  const root = getComputedStyle(document.documentElement).backgroundColor;
+  if (opaque(root)) return root;
+  const body = document.body && getComputedStyle(document.body).backgroundColor;
+  return opaque(body) ? body : null;
+})()`;
+
 export function createBrowserView(state: BrowserTab, changed: () => void) {
   const view = new WebContentsView({
     webPreferences: {
@@ -57,8 +65,22 @@ export function createBrowserView(state: BrowserTab, changed: () => void) {
       view.webContents.send("browser:annotation:toggle", enabled);
     }
   };
+  let backgroundSyncedAt = 0;
+  const syncBackground = async () => {
+    backgroundSyncedAt = Date.now();
+    const color = await view.webContents
+      .executeJavaScriptInIsolatedWorld(999, [{ code: PAGE_BACKGROUND_SCRIPT }])
+      .catch(() => null);
+    if (typeof color === "string" && !view.webContents.isDestroyed())
+      view.setBackgroundColor(color);
+  };
+  const syncBackgroundBeforeResize = () => {
+    if (Date.now() - backgroundSyncedAt > 500) void syncBackground();
+  };
   view.webContents.on("did-finish-load", () => {
+    void syncBackground();
     if (annotationMode) void toggleAnnotation(true).catch(() => {});
   });
-  return { view, toggleAnnotation };
+  view.webContents.on("did-navigate-in-page", () => void syncBackground());
+  return { view, toggleAnnotation, syncBackgroundBeforeResize };
 }

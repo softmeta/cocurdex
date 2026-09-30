@@ -1,4 +1,9 @@
-import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
+import {
+  type ButtonHTMLAttributes,
+  type ComponentProps,
+  forwardRef,
+  type ReactNode,
+} from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -45,6 +50,7 @@ export type TitlebarIconButtonProps = Omit<
   active?: boolean;
   /** Hover hint; titlebar chrome sits at the window top so it opens downward. */
   tooltip?: ReactNode;
+  tooltipSide?: ComponentProps<typeof TooltipContent>["side"];
 };
 
 export const TitlebarIconButton = forwardRef<
@@ -59,6 +65,7 @@ export const TitlebarIconButton = forwardRef<
     disabled = false,
     active = false,
     tooltip,
+    tooltipSide = "bottom",
     type = "button",
     ...props
   },
@@ -94,7 +101,7 @@ export const TitlebarIconButton = forwardRef<
   return (
     <Tooltip>
       <TooltipTrigger render={button} />
-      <TooltipContent side="bottom" sideOffset={6}>
+      <TooltipContent side={tooltipSide} sideOffset={6}>
         {tooltip}
       </TooltipContent>
     </Tooltip>
