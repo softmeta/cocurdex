@@ -5,7 +5,6 @@ import type {
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 import {
-  applyToolCallResultAtom,
   clearToolCallResultsForSessionAtom,
   refreshToolCallResultAtom,
   toolCallResultCacheAtom,
@@ -223,5 +222,5 @@ export const applyToolEventAtom = atom(null, (get, set, event: AgentEvent) => {
       toToolCallSummary(event.toolCall),
     ),
   });
-  set(applyToolCallResultAtom, event.toolCall);
+  void set(refreshToolCallResultAtom, event.toolCall.id);
 });

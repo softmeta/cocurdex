@@ -1,8 +1,5 @@
-import type {
-  AgentToolCallRecord,
-  AgentToolCallResult,
-} from "@cocurdex/shared";
-import { atom } from "jotai";
+import type { AgentToolCallResult } from "@cocurdex/shared";
+import { atom, type Getter, type Setter } from "jotai";
 import { desktopApi } from "@/lib";
 
 export type ToolCallResultCacheEntry =
@@ -10,43 +7,63 @@ export type ToolCallResultCacheEntry =
   | { status: "loaded"; value: AgentToolCallResult | null }
   | { status: "error"; message: string };
 
-type ResultLease = { sessionId: string; consumers: number };
+type ResultLease = {
+  sessionId: string;
+  consumers: number;
+  request: object | null;
+  stale: boolean;
+};
 
 export const toolCallResultCacheAtom = atom<
   Record<string, ToolCallResultCacheEntry>
 >({});
 const resultLeasesAtom = atom(() => new Map<string, ResultLease>());
 
+function setResultEntry(
+  get: Getter,
+  set: Setter,
+  toolCallId: string,
+  entry: ToolCallResultCacheEntry,
+) {
+  set(toolCallResultCacheAtom, {
+    ...get(toolCallResultCacheAtom),
+    [toolCallId]: entry,
+  });
+}
+
 export const refreshToolCallResultAtom = atom(
   null,
   async (get, set, toolCallId: string) => {
     const lease = get(resultLeasesAtom).get(toolCallId);
     if (!lease) return;
-    const pending: ToolCallResultCacheEntry = { status: "loading" };
-    set(toolCallResultCacheAtom, {
-      ...get(toolCallResultCacheAtom),
-      [toolCallId]: pending,
-    });
+    if (lease.request) {
+      lease.stale = true;
+      return;
+    }
+    const request = {};
+    lease.request = request;
+    if (get(toolCallResultCacheAtom)[toolCallId]?.status !== "loaded") {
+      setResultEntry(get, set, toolCallId, { status: "loading" });
+    }
     const isCurrent = () =>
       get(resultLeasesAtom).get(toolCallId) === lease &&
-      get(toolCallResultCacheAtom)[toolCallId] === pending;
-    try {
-      const value = await desktopApi.getToolCallResult(toolCallId);
-      if (!isCurrent()) return;
-      set(toolCallResultCacheAtom, {
-        ...get(toolCallResultCacheAtom),
-        [toolCallId]: { status: "loaded", value },
-      });
-    } catch (error) {
-      if (!isCurrent()) return;
-      set(toolCallResultCacheAtom, {
-        ...get(toolCallResultCacheAtom),
-        [toolCallId]: {
+      lease.request === request;
+    do {
+      lease.stale = false;
+      let entry: ToolCallResultCacheEntry;
+      try {
+        const value = await desktopApi.getToolCallResult(toolCallId);
+        entry = { status: "loaded", value };
+      } catch (error) {
+        entry = {
           status: "error",
           message: error instanceof Error ? error.message : String(error),
-        },
-      });
-    }
+        };
+      }
+      if (!isCurrent()) return;
+      setResultEntry(get, set, toolCallId, entry);
+    } while (lease.stale);
+    lease.request = null;
   },
 );
 
@@ -58,7 +75,12 @@ export const observeToolCallResultAtom = atom(
     { toolCallId, sessionId }: { toolCallId: string; sessionId: string },
   ) => {
     const leases = get(resultLeasesAtom);
-    const lease = leases.get(toolCallId) ?? { sessionId, consumers: 0 };
+    const lease = leases.get(toolCallId) ?? {
+      sessionId,
+      consumers: 0,
+      request: null,
+      stale: false,
+    };
     lease.consumers += 1;
     leases.set(toolCallId, lease);
     const entry = get(toolCallResultCacheAtom)[toolCallId];
@@ -77,25 +99,6 @@ export const observeToolCallResultAtom = atom(
       );
       set(toolCallResultCacheAtom, remaining);
     };
-  },
-);
-
-export const applyToolCallResultAtom = atom(
-  null,
-  (get, set, toolCall: AgentToolCallRecord) => {
-    if (!get(resultLeasesAtom).has(toolCall.id)) return;
-    if (toolCall.content === undefined && toolCall.rawOutput === undefined)
-      return;
-    set(toolCallResultCacheAtom, {
-      ...get(toolCallResultCacheAtom),
-      [toolCall.id]: {
-        status: "loaded",
-        value: {
-          content: toolCall.content ?? [],
-          rawOutput: toolCall.rawOutput,
-        },
-      },
-    });
   },
 );
 

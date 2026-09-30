@@ -41,6 +41,10 @@ const result: AgentToolCallResult = {
   content: [{ type: "text", text: "Fetched output" }],
   rawOutput: null,
 };
+const latestResult: AgentToolCallResult = {
+  content: [{ type: "text", text: "Latest output" }],
+  rawOutput: null,
+};
 const subscription = { toolCallId: "tool-1", sessionId: "session-1" };
 
 function pendingResult() {
@@ -84,19 +88,32 @@ describe("tool result lifetime", () => {
     releaseAgain();
   });
 
-  it("ignores a request failure after a live result has arrived", async () => {
+  it("refetches an open result when a live event arrives", async () => {
     const store = createStore();
-    const pending = pendingResult();
-    vi.spyOn(desktopApi, "getToolCallResult").mockReturnValue(pending.promise);
+    const fetch = vi
+      .spyOn(desktopApi, "getToolCallResult")
+      .mockResolvedValueOnce(result)
+      .mockResolvedValue(latestResult);
     const release = store.set(observeToolCallResultAtom, subscription);
+    await vi.waitFor(() =>
+      expect(store.get(toolCallResultCacheAtom)["tool-1"]).toEqual({
+        status: "loaded",
+        value: result,
+      }),
+    );
     store.set(applyToolEventAtom, {
       type: "tool.finished",
       sessionId: "session-1",
       toolCall: toolCall(),
     });
-    pending.reject(new Error("Old request failed"));
-    await pending.promise.catch(() => {});
     expect(store.get(toolCallResultCacheAtom)["tool-1"]?.status).toBe("loaded");
+    await vi.waitFor(() =>
+      expect(store.get(toolCallResultCacheAtom)["tool-1"]).toEqual({
+        status: "loaded",
+        value: latestResult,
+      }),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
     release();
   });
 
@@ -152,28 +169,32 @@ describe("tool result lifetime", () => {
     expect(store.get(toolCallResultCacheAtom)).toEqual({});
   });
 
-  it("keeps a live result when an older request or event arrives later", async () => {
+  it("coalesces live events during a request into one follow-up fetch", async () => {
     const store = createStore();
     const pending = pendingResult();
-    vi.spyOn(desktopApi, "getToolCallResult").mockReturnValue(pending.promise);
+    const fetch = vi
+      .spyOn(desktopApi, "getToolCallResult")
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValue(latestResult);
     const release = store.set(observeToolCallResultAtom, subscription);
-    const latest = toolCall({ updatedAt: "2026-09-09T00:00:02.000Z" });
-    store.set(applyToolEventAtom, {
-      type: "tool.finished",
-      sessionId: "session-1",
-      toolCall: latest,
-    });
-    store.set(applyToolEventAtom, {
-      type: "tool.updated",
-      sessionId: "session-1",
-      toolCall: toolCall({ status: "in_progress", content: [] }),
-    });
+    for (const status of ["in_progress", "completed"] as const) {
+      store.set(applyToolEventAtom, {
+        type: "tool.updated",
+        sessionId: "session-1",
+        toolCall: toolCall({
+          status,
+          updatedAt: `2026-09-09T00:00:0${status === "completed" ? 3 : 2}.000Z`,
+        }),
+      });
+    }
     pending.resolve(result);
-    await pending.promise;
-    expect(store.get(toolCallResultCacheAtom)["tool-1"]).toEqual({
-      status: "loaded",
-      value: { content: latest.content, rawOutput: latest.rawOutput },
-    });
+    await vi.waitFor(() =>
+      expect(store.get(toolCallResultCacheAtom)["tool-1"]).toEqual({
+        status: "loaded",
+        value: latestResult,
+      }),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
     release();
   });
 
