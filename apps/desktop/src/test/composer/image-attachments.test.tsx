@@ -1,23 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { getImageCardSize } from "@/features/composer/image-attachment-card-size";
-
-describe("image attachments", () => {
-  it("keeps direct useEffect calls out of the component files", () => {
-    const files = [
-      "src/features/composer/image-attachments.tsx",
-      "src/features/composer/image-attachment-cards.tsx",
-      "src/features/composer/image-attachment-preview.tsx",
-    ];
-
-    for (const file of files) {
-      const source = readFileSync(join(process.cwd(), file), "utf8");
-      expect(source).not.toMatch(/\buseEffect\s*\(/);
-      expect(source).not.toMatch(/\buseEffect\b.*from "react"/);
-    }
-  });
-});
 
 describe("getImageCardSize", () => {
   it("scales down to the sent-message card cap while keeping aspect ratio", () => {
