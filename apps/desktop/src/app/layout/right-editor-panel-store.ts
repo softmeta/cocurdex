@@ -44,6 +44,13 @@ function normalizeTabOrder(stored: RightPanelView[]): RightPanelView[] {
   return result;
 }
 
+export const rightPanelDockedAtom = atomWithStorage(
+  "cocurdex.right-panel-docked",
+  false,
+  undefined,
+  { getOnInit: true },
+);
+
 export const RIGHT_PANEL_TAB_ORDER_KEY = "cocurdex.right-panel-tab-order";
 export const RIGHT_PANEL_ACTIVE_VIEW_KEY = "cocurdex.right-panel-active-view";
 

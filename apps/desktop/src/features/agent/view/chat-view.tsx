@@ -71,6 +71,7 @@ export function ChatView({
   toolCalls = [],
   plan = null,
   attachment,
+  composerContextChips,
   agentLabel = "Claude Agent",
   agentType,
   sessionModeId = null,
@@ -533,6 +534,7 @@ export function ChatView({
                 agentLabel={agentLabel}
                 agentType={agentType}
                 attachment={attachment}
+                composerContextChips={composerContextChips}
                 draftKey={
                   sessionId ? sessionComposerDraftKey(sessionId) : undefined
                 }
@@ -661,6 +663,7 @@ export function ChatView({
           agentLabel={agentLabel}
           agentType={agentType}
           attachment={attachment}
+          composerContextChips={composerContextChips}
           draftKey={sessionId ? sessionComposerDraftKey(sessionId) : undefined}
           sessionModeId={sessionModeId}
           composerRef={composerRef}

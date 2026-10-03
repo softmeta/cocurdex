@@ -47,6 +47,8 @@ describe("native browser geometry", () => {
     rect.top += 8;
     vi.advanceTimersToNextFrame();
     expect(bridge.setBrowserBounds).toHaveBeenLastCalledWith({
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
       x: 816,
       y: 108,
       w: 400,
@@ -63,6 +65,8 @@ describe("native browser geometry", () => {
     rect.height = 450;
     vi.advanceTimersToNextFrame();
     expect(bridge.setBrowserBounds).toHaveBeenLastCalledWith({
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
       x: 800,
       y: 100,
       w: 500,

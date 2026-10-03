@@ -63,6 +63,7 @@ export function NewSessionCard({
   agentType,
   sessionModeId = null,
   attachment,
+  composerContextChips,
   composerRef,
   workspaceRootPath,
   onClearAttachment,
@@ -453,6 +454,7 @@ export function NewSessionCard({
         sessionModeId={selectedSessionModeId}
         mentionMenuPlacement="bottom"
         attachment={attachment}
+        contextChips={composerContextChips}
         onClearAttachment={onClearAttachment}
         onSelectSessionMode={handleSelectSessionMode}
         workspaceRootPath={contextWorkspaceRootPath}

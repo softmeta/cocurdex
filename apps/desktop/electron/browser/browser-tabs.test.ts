@@ -35,7 +35,11 @@ vi.mock("./browser-view", () => ({
       },
     };
     views.push(view);
-    return { view, toggleAnnotation: vi.fn() };
+    return {
+      view,
+      toggleAnnotation: vi.fn(),
+      syncBackgroundBeforeResize: vi.fn(),
+    };
   },
 }));
 vi.mock("./html-preview-protocol", async () => {
@@ -47,9 +51,18 @@ async function setup() {
   const manager = await import("./browser-tabs");
   const callbacks = new Map<string, () => void>();
   const host = {
+    contentSize: [1280, 760],
+    getContentSize: () => host.contentSize,
+    getBounds: () => ({
+      x: 0,
+      y: 0,
+      width: host.contentSize[0],
+      height: host.contentSize[1] + 28,
+    }),
     isDestroyed: () => false,
     webContents: { send: vi.fn() },
     contentView: { addChildView: vi.fn(), removeChildView: vi.fn() },
+    on: (event: string, callback: () => void) => callbacks.set(event, callback),
     once: (event: string, callback: () => void) =>
       callbacks.set(event, callback),
   };
@@ -64,6 +77,44 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("browser tab lifecycle", () => {
+  it("places the view for the size a user drag is about to apply", async () => {
+    const browser = await setup();
+    await browser.openBrowserHtml("A", "A");
+    browser.setBrowserBounds(
+      { x: 820, y: 106, width: 460, height: 453 },
+      { width: 1280, height: 760 },
+      { x: "end", y: "stretch" },
+    );
+    const willResize = browser.callbacks.get("will-resize") as unknown as (
+      event: unknown,
+      next: { x: number; y: number; width: number; height: number },
+    ) => void;
+    willResize({}, { x: -100, y: -40, width: 1380, height: 828 });
+    expect(views[0].setBounds).toHaveBeenLastCalledWith({
+      x: 920,
+      y: 106,
+      width: 460,
+      height: 493,
+    });
+  });
+
+  it("moves the active view with the window before the renderer reports", async () => {
+    const browser = await setup();
+    await browser.openBrowserHtml("A", "A");
+    browser.setBrowserBounds(
+      { x: 820, y: 106, width: 460, height: 453 },
+      { width: 1280, height: 760 },
+    );
+    browser.host.contentSize = [1380, 760];
+    browser.callbacks.get("resize")?.();
+    expect(views[0].setBounds).toHaveBeenLastCalledWith({
+      x: 920,
+      y: 106,
+      width: 460,
+      height: 453,
+    });
+  });
+
   it("keeps the old view until preparation finishes and does not reveal a background tab", async () => {
     const browser = await setup();
     const url = await browser.openBrowserHtml("A", "A", true);

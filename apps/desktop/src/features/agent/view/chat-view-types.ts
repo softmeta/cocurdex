@@ -12,7 +12,7 @@ import type {
   MessageRecord,
   SessionStatus,
 } from "@cocurdex/shared";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import type {
   ChatComposerHandle,
   ThinkingLevelOption,
@@ -42,6 +42,7 @@ export interface ChatViewProps {
   // approval/permission cards — not inlined in the message stream.
   plan?: SessionPlan | null;
   attachment?: MessageAttachment;
+  composerContextChips?: ReactNode;
   agentLabel?: string;
   agentType?: AgentId;
   sessionModeId?: string | null;

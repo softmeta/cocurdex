@@ -1,4 +1,5 @@
 import type { MessageAttachment } from "@cocurdex/shared";
+import { useAtomValue } from "jotai";
 import type { MouseEvent, ReactNode, Ref } from "react";
 import type { AppearanceSettings } from "@/features/settings";
 import { cn } from "@/lib";
@@ -13,6 +14,7 @@ import { ChatDockLauncher } from "../chat-dock-launcher";
 import { resolveChatDockPinLayout } from "../chat-dock-sizing";
 import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
 import { RightEditorPanel } from "../right-editor-panel-lazy";
+import { rightPanelDockedAtom } from "../right-editor-panel-store";
 import { LeftSidebar, ResizableSidebarSlot, ResizeSeparator } from "../sidebar";
 import { useChatDockViewportWidth } from "../use-chat-dock-viewport";
 import { MIN_CHAT_WIDTH, PANEL_SEPARATOR_WIDTH } from "./panel-geometry";
@@ -74,6 +76,7 @@ export function AppShellContent({
   );
   const compactChatOpen = chatDockVisibility === "open";
   const isCompact = isRightPanelCompact && !isRightPanelMaximized;
+  const isRightPanelDocked = useAtomValue(rightPanelDockedAtom);
   const chatOverlayInset =
     isRightPanelOpen && !isPanelFullWidth
       ? rightWidth + PANEL_SEPARATOR_WIDTH
@@ -152,7 +155,7 @@ export function AppShellContent({
             <div
               className="h-full"
               style={
-                chatOverlayInset
+                chatOverlayInset && !isRightPanelDocked
                   ? { minWidth: `calc(100% + ${chatOverlayInset}px)` }
                   : undefined
               }

@@ -90,6 +90,7 @@ export interface ChatComposerHandle {
 
 interface ChatComposerProps {
   attachment?: MessageAttachment;
+  contextChips?: ReactNode;
   draftKey?: string;
   sessionId?: string | null;
   agentType?: AgentId;
@@ -140,6 +141,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
   function ChatComposerBound(
     {
       attachment,
+      contextChips,
       draftKey,
       sessionId,
       agentType,
@@ -292,7 +294,10 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       ? `${agentLabels[selectedAgent]} does not support PDF attachments.`
       : null;
     const attachmentError = attachmentImportError ?? documentCapabilityError;
-    const hasContent = text.trim().length > 0 || composerAttachments.length > 0;
+    const hasContent =
+      text.trim().length > 0 ||
+      composerAttachments.length > 0 ||
+      Boolean(contextChips);
     const externalAllowSend = canSubmit ?? true;
     const canSend = hasContent && externalAllowSend && !hasUnsupportedDocument;
     const canSubmitNow =
@@ -575,6 +580,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             canSend={canSubmitNow}
             composerAttachments={composerAttachments}
             contextAttachments={contextAttachments}
+            contextChips={contextChips}
             contextFileMentions={contextFileMentions}
             editorRef={editorRef}
             footerLeading={footerLeading}
@@ -605,6 +611,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             canSend={canSubmitNow}
             composerAttachments={composerAttachments}
             contextAttachments={contextAttachments}
+            contextChips={contextChips}
             contextFileMentions={contextFileMentions}
             editorRef={editorRef}
             footerLeading={footerLeading}

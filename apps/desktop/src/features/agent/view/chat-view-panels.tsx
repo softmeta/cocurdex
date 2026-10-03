@@ -13,7 +13,7 @@ import type {
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { Folder } from "lucide-react";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppGitBranchLabel } from "@/components";
@@ -42,6 +42,7 @@ interface ChatComposerControls {
   sessionId?: string;
   agentType?: AgentId;
   attachment?: MessageAttachment;
+  composerContextChips?: ReactNode;
   draftKey?: string;
   sessionModeId: string | null;
   permissionMode?: AgentPermissionMode | null;
@@ -156,6 +157,7 @@ function SessionBranchFooterLabel({ branch }: { branch?: string | null }) {
 export function EmptyChatState({
   activeBranch,
   composerRef,
+  composerContextChips,
   onAnswerQuestion: _onAnswerQuestion,
   pendingQuestion: _pendingQuestion,
   workspaceName,
@@ -168,6 +170,7 @@ export function EmptyChatState({
         <ChatComposer
           {...composerProps}
           ref={composerRef}
+          contextChips={composerContextChips}
           variant="panel"
           tone="welcome"
           mentionMenuPlacement="bottom"
@@ -221,6 +224,7 @@ export function ComposerDock({
   hideComposer = false,
   parentSessionTitle,
   onOpenParentSession,
+  composerContextChips,
   ...composerProps
 }: ChatComposerControls) {
   const { t } = useTranslation("agent");
@@ -325,6 +329,7 @@ export function ComposerDock({
             {...composerProps}
             isRunning={isRunning}
             ref={composerRef}
+            contextChips={composerContextChips}
             variant="pill"
             footerLeading={
               <SessionWorkspaceFooterLabel workspaceName={workspaceName} />

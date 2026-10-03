@@ -41,7 +41,9 @@ export type ChatWindowIntent =
     }
   | { kind: "show-panel"; view: ChatWindowPanelView }
   | { kind: "run-terminal-command"; command: string }
-  | { kind: "review-turn"; sessionId: string; messageId: string; path: string };
+  | { kind: "review-turn"; sessionId: string; messageId: string; path: string }
+  | { kind: "send-browser-annotations"; annotations: BrowserAnnotation[] }
+  | { kind: "remove-browser-annotations"; ids: string[] };
 
 export interface ChatWindowIntentRequest {
   id: string;

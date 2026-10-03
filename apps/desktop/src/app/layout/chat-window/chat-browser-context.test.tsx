@@ -5,8 +5,8 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addAnnotationAtom,
-  clearAnnotationsAtom,
   receiveBrowserTabsAtom,
+  removeAnnotationsAtom,
 } from "@/features/browser/browser-store";
 import {
   chatBrowserAnnotationsAtom,
@@ -117,7 +117,7 @@ describe("browser context across chat windows", () => {
       expect(fixture.publish).toHaveBeenLastCalledWith([annotation]),
     );
     act(() => {
-      store.set(clearAnnotationsAtom);
+      store.set(removeAnnotationsAtom, [annotation.id]);
     });
     await waitFor(() => expect(fixture.publish).toHaveBeenLastCalledWith([]));
   });

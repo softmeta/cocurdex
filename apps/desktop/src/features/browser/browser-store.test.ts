@@ -7,6 +7,7 @@ import {
   browserTitleAtom,
   isAnnotationModeAtom,
   receiveBrowserTabsAtom,
+  removeAnnotationsAtom,
 } from "./browser-store";
 
 const tabs = [
@@ -51,5 +52,21 @@ describe("per-tab browser state", () => {
     store.set(receiveBrowserTabsAtom, { tabs: [tabs[1]], activeId: "b" });
     store.set(receiveBrowserTabsAtom, { tabs, activeId: "a" });
     expect(store.get(isAnnotationModeAtom)).toBe(false);
+  });
+
+  it("drops only the sent annotations from the tab that owns them", () => {
+    const store = createStore();
+    store.set(receiveBrowserTabsAtom, { tabs, activeId: "a" });
+    const annotation = (id: string) => ({
+      id,
+      type: "region" as const,
+      boundingBox: { x: 0, y: 0, width: 1, height: 1 },
+      pageUrl: tabs[0].url,
+      capturedAt: new Date().toISOString(),
+    });
+    store.set(addAnnotationAtom, annotation("sent"), "a");
+    store.set(addAnnotationAtom, annotation("kept"), "a");
+    store.set(removeAnnotationsAtom, ["sent"]);
+    expect(store.get(annotationsAtom).map((a) => a.id)).toEqual(["kept"]);
   });
 });

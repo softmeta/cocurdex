@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserTab, BrowserTabsSnapshot } from "@cocurdex/shared";
-import type { BrowserWindow, Rectangle } from "electron";
+import type { BrowserWindow, Rectangle, Size } from "electron";
 import { createBrowserView } from "./browser-view";
+import {
+  type BrowserViewAnchors,
+  predictBrowserBounds,
+} from "./browser-view-resize";
 import { browserHtmlPreviews } from "./html-preview-protocol";
 import { preparePreview } from "./prepare-preview";
 import { previewScrollPosition, updatePreviewDom } from "./preview-dom";
@@ -20,6 +24,28 @@ let activeId: string | null = null;
 let host: BrowserWindow | null = null;
 let visible = false;
 let bounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
+let reported: {
+  bounds: Rectangle;
+  viewport: Size;
+  anchors: BrowserViewAnchors;
+} = { bounds, viewport: { width: 0, height: 0 }, anchors: {} };
+
+function currentContentSize(): Size | null {
+  if (!host || host.isDestroyed()) return null;
+  const [width, height] = host.getContentSize();
+  return { width, height };
+}
+
+function applyPredictedBounds(contentSize = currentContentSize()) {
+  if (contentSize)
+    bounds = predictBrowserBounds(
+      reported.bounds,
+      reported.viewport,
+      contentSize,
+      reported.anchors,
+    );
+  getBrowserView()?.setBounds(bounds);
+}
 
 export function getBrowserTabs(): BrowserTabsSnapshot {
   return {
@@ -35,6 +61,17 @@ function changed() {
 
 export function attachBrowserHost(window: BrowserWindow) {
   host = window;
+  window.on("will-resize", (_event, next) => {
+    const frame = window.getBounds();
+    const content = currentContentSize();
+    if (activeId) tabs.get(activeId)?.syncBackgroundBeforeResize();
+    if (!content) return;
+    applyPredictedBounds({
+      width: next.width - (frame.width - content.width),
+      height: next.height - (frame.height - content.height),
+    });
+  });
+  window.on("resize", () => applyPredictedBounds());
   window.once("closed", () => {
     host = null;
     for (const id of tabs.keys()) closeBrowserTab(id);
@@ -51,9 +88,14 @@ export function setBrowserVisible(next: boolean) {
   for (const [id, tab] of tabs) tab.view.setVisible(visible && id === activeId);
 }
 
-export function setBrowserBounds(next: Rectangle) {
+export function setBrowserBounds(
+  next: Rectangle,
+  viewport: Size,
+  anchors: BrowserViewAnchors = {},
+) {
+  reported = { bounds: next, viewport, anchors };
   bounds = next;
-  getBrowserView()?.setBounds(bounds);
+  applyPredictedBounds();
 }
 
 export function activateBrowserTab(id: string) {
@@ -148,6 +190,7 @@ async function finalizePreview(tab: TabEntry, url: string, html: string) {
     candidate.view.setBounds(bounds);
     tab.view = candidate.view;
     tab.toggleAnnotation = candidate.toggleAnnotation;
+    tab.syncBackgroundBeforeResize = candidate.syncBackgroundBeforeResize;
     tab.state = state;
     committed = true;
     candidate.view.setVisible(visible && activeId === state.id);
@@ -167,6 +210,11 @@ async function finalizePreview(tab: TabEntry, url: string, html: string) {
     }
     if (tab.preparation === controller) tab.preparation = undefined;
   }
+}
+
+export function newBrowserTab() {
+  visible = false;
+  createTab("");
 }
 
 export async function navigateBrowser(url: string) {
@@ -264,6 +312,12 @@ export async function toggleBrowserAnnotationMode(enabled: boolean) {
     tab.annotationMode = enabled;
     await tab.toggleAnnotation(enabled);
   }
+}
+
+export function setBrowserAnnotationMarkers(tabId: string, ids: string[]) {
+  const contents = tabs.get(tabId)?.view.webContents;
+  if (contents && !contents.isDestroyed())
+    contents.send("browser:annotation:markers", ids);
 }
 
 export function browserTabIdForContents(id: number) {
