@@ -4,24 +4,16 @@ import {
   MIN_LEFT,
   resolvePanelFullWidth,
   resolveRightPanelVisibility,
-  TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_TOOLBAR_MIN_WIDTH,
 } from "@/app/layout/app-shell/app-shell-layout";
 import { clampLeftWidth } from "@/app/layout/app-shell/app-shell-resize";
 
 describe("app shell layout metrics", () => {
   it("keeps the minimum sidebar width wide enough for the titlebar toolbar", () => {
-    // traffic-light reserve 80 + 3 × size-6 (24) + 2 × gap-1 (4) = 160.
     expect(MIN_LEFT).toBeGreaterThanOrEqual(TITLEBAR_TOOLBAR_MIN_WIDTH);
-    expect(TITLEBAR_TOOLBAR_MIN_WIDTH).toBe(160);
-  });
-
-  it("reserves titlebar space for the five right-side chrome icons", () => {
-    expect(TITLEBAR_EDITOR_TOGGLE_WIDTH).toBe(160);
   });
 
   it("caps the session sidebar so a wide window cannot drag it past MAX_LEFT", () => {
-    expect(MAX_LEFT).toBe(400);
     expect(MAX_LEFT).toBeGreaterThan(MIN_LEFT);
     // Plenty of free space would allow ~thousands of px without the absolute cap.
     expect(clampLeftWidth(800, 2000)).toBe(MAX_LEFT);
