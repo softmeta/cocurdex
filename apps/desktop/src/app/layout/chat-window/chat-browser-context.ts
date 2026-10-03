@@ -1,5 +1,6 @@
 import type { BrowserAnnotation } from "@cocurdex/shared";
 import { atom, useStore } from "jotai";
+import { useEffectEvent } from "react";
 import { toast } from "sonner";
 import { annotationsAtom } from "@/features/browser";
 import { onOpenHtmlPreview } from "@/lib/browser-preview-events";
@@ -11,6 +12,41 @@ const detachedAnnotationsAtom = atom<BrowserAnnotation[]>([]);
 export const chatBrowserAnnotationsAtom = atom((get) =>
   get(isDetachedChatWindow ? detachedAnnotationsAtom : annotationsAtom),
 );
+
+let annotationSender: ((annotations: BrowserAnnotation[]) => void) | null =
+  null;
+
+export function sendBrowserAnnotations(annotations: BrowserAnnotation[]) {
+  if (!annotationSender) return false;
+  annotationSender(annotations);
+  return true;
+}
+
+export function useBrowserAnnotationSender(
+  send: (annotations: BrowserAnnotation[]) => void,
+) {
+  const sendEvent = useEffectEvent(send);
+  useMountEffect(() => {
+    const sender = (annotations: BrowserAnnotation[]) => sendEvent(annotations);
+    annotationSender = sender;
+    return () => {
+      if (annotationSender === sender) annotationSender = null;
+    };
+  });
+}
+
+export function consumeBrowserAnnotations(annotations: BrowserAnnotation[]) {
+  if (annotations.length === 0) return;
+  void desktopApi.chatWindow
+    .dispatchIntent({
+      surface: "shell",
+      intent: {
+        kind: "remove-browser-annotations",
+        ids: annotations.map((annotation) => annotation.id),
+      },
+    })
+    .catch(console.error);
+}
 
 export function useChatBrowserContext() {
   const store = useStore();

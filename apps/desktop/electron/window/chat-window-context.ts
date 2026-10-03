@@ -26,6 +26,29 @@ const attachment = z.union([
     contentOmitted: z.boolean().optional(),
   }),
 ]);
+const annotationsSchema = z.array(
+  z.object({
+    id: text,
+    type: z.enum(["element", "region"]),
+    selector: text.optional(),
+    tagName: text.optional(),
+    textContent: text.optional(),
+    boundingBox: z.object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+      height: z.number(),
+    }),
+    regionScreenshot: text.optional(),
+    pageUrl: text,
+    note: text.optional(),
+    styleChanges: z
+      .array(z.object({ property: text, from: text, to: text }))
+      .optional(),
+    capturedAt: text,
+  }),
+);
+
 const composerInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("attachment"), attachment }),
   z.object({ kind: z.literal("text"), text }),
@@ -60,32 +83,20 @@ const intentSchema = z.discriminatedUnion("kind", [
     messageId: text,
     path: text,
   }),
+  z.object({
+    kind: z.literal("send-browser-annotations"),
+    annotations: annotationsSchema,
+  }),
+  z.object({
+    kind: z.literal("remove-browser-annotations"),
+    ids: z.array(z.string().min(1).max(256)).max(1000),
+  }),
 ]);
 const dispatchSchema = z.object({
   id: z.string().uuid().optional(),
   surface: z.enum(["shell", "chat"]),
   intent: intentSchema,
 });
-const annotationsSchema = z.array(
-  z.object({
-    id: text,
-    type: z.enum(["element", "region"]),
-    selector: text.optional(),
-    tagName: text.optional(),
-    textContent: text.optional(),
-    boundingBox: z.object({
-      x: z.number(),
-      y: z.number(),
-      width: z.number(),
-      height: z.number(),
-    }),
-    regionScreenshot: text.optional(),
-    pageUrl: text,
-    note: text.optional(),
-    capturedAt: text,
-  }),
-);
-
 export function registerChatWindowContext({
   sender,
   owner,

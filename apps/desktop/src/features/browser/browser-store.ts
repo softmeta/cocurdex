@@ -21,6 +21,7 @@ export const isBrowserStreamingAtom = atom(
   (get) => get(activeTabAtom)?.streaming ?? false,
 );
 const tabAnnotationsAtom = atom<Record<string, BrowserAnnotation[]>>({});
+export const annotationsByTabAtom = atom((get) => get(tabAnnotationsAtom));
 const annotationModesAtom = atom<Record<string, boolean>>({});
 export const annotationsAtom = atom((get) => {
   const id = get(browserTabsAtom).activeId;
@@ -37,7 +38,6 @@ export const isAnnotationModeAtom = atom(
       set(annotationModesAtom, { ...get(annotationModesAtom), [id]: enabled });
   },
 );
-export const annotationCountAtom = atom((get) => get(annotationsAtom).length);
 
 export const receiveBrowserTabsAtom = atom(
   null,
@@ -68,18 +68,18 @@ export const addAnnotationAtom = atom(
     set(tabAnnotationsAtom, { ...all, [id]: [...(all[id] ?? []), annotation] });
   },
 );
-export const removeAnnotationAtom = atom(
+export const removeAnnotationsAtom = atom(
   null,
-  (get, set, annotationId: string) => {
-    const id = get(browserTabsAtom).activeId;
-    if (!id) return;
-    set(tabAnnotationsAtom, {
-      ...get(tabAnnotationsAtom),
-      [id]: get(annotationsAtom).filter((a) => a.id !== annotationId),
-    });
+  (get, set, annotationIds: string[]) => {
+    const ids = new Set(annotationIds);
+    set(
+      tabAnnotationsAtom,
+      Object.fromEntries(
+        Object.entries(get(tabAnnotationsAtom)).map(([tabId, list]) => [
+          tabId,
+          list.filter((annotation) => !ids.has(annotation.id)),
+        ]),
+      ),
+    );
   },
 );
-export const clearAnnotationsAtom = atom(null, (get, set) => {
-  const id = get(browserTabsAtom).activeId;
-  if (id) set(tabAnnotationsAtom, { ...get(tabAnnotationsAtom), [id]: [] });
-});

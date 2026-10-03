@@ -311,6 +311,7 @@ export default interface Resources {
       enterDesignMode: "Enter Design Mode";
       exitDesignMode: "Exit Design Mode";
       forward: "Forward";
+      newTab: "New tab";
       reload: "Reload";
       removeAnnotation: "Remove annotation";
       stop: "Stop loading";
@@ -527,10 +528,12 @@ export default interface Resources {
       closeEditorPanel: "Close editor panel";
       closeFile: "Close file {{fileName}}";
       detachedChatFabHint: "Show or hide the independent chat window. Drag to reposition this button. Hover and click × to hide the button; {{shortcut}} restores it.";
+      dockEditorPanel: "Place panel beside chat";
       edit: "Edit";
       enterEditorFullscreen: "Enter full screen";
       exitEditorFullscreen: "Exit full screen";
       explorer: "Explorer";
+      floatEditorPanel: "Float panel over chat";
       goBack: "Go back";
       goForward: "Go forward";
       hideChatFab: "Hide chat button";

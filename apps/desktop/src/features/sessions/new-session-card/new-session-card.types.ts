@@ -8,7 +8,7 @@ import type {
   MessageAttachment,
   WorkspaceRecord,
 } from "@cocurdex/shared";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import type { ChatComposerHandle } from "@/features/composer";
 import type { GitBranchInfo } from "@/lib";
 
@@ -25,6 +25,7 @@ export interface NewSessionCardProps {
   agentType?: AgentId;
   sessionModeId?: string | null;
   attachment?: MessageAttachment;
+  composerContextChips?: ReactNode;
   composerRef?: Ref<ChatComposerHandle>;
   workspaceRootPath?: string | null;
   onClearAttachment?(): void;

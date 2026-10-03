@@ -149,6 +149,30 @@ export type {
   WorkspaceSearchStartPayload,
 };
 
+export interface BrowserAnnotationEvent {
+  tabId: string;
+  annotation: BrowserAnnotation;
+  submit: boolean;
+}
+
+export interface BrowserAnnotationActionEvent {
+  tabId: string;
+  action: "send" | "clear" | "exit";
+}
+
+export type BrowserViewAnchor = "start" | "end" | "stretch";
+
+export interface BrowserViewBounds {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  anchorX?: BrowserViewAnchor;
+  anchorY?: BrowserViewAnchor;
+}
+
 export interface WorkspaceFilesChangedEvent {
   rootPath: string;
   changedPaths?: string[];
@@ -680,21 +704,18 @@ export interface HostApi {
   browserToggleAnnotationMode(enabled: boolean): Promise<void>;
   browserCaptureScreenshot(): Promise<string>;
   browserListTabs(): Promise<BrowserTabsSnapshot>;
+  browserNewTab(): Promise<void>;
   browserActivateTab(id: string): Promise<void>;
   browserCloseTab(id: string): Promise<BrowserTabsSnapshot>;
   onBrowserTabs(listener: (snapshot: BrowserTabsSnapshot) => void): () => void;
   onBrowserAnnotation(
-    listener: (payload: {
-      tabId: string;
-      annotation: BrowserAnnotation;
-    }) => void,
+    listener: (payload: BrowserAnnotationEvent) => void,
   ): () => void;
-  setBrowserBounds(bounds: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  }): Promise<void>;
+  onBrowserAnnotationAction(
+    listener: (payload: BrowserAnnotationActionEvent) => void,
+  ): () => void;
+  browserSetAnnotationMarkers(tabId: string, ids: string[]): Promise<void>;
+  setBrowserBounds(bounds: BrowserViewBounds): Promise<void>;
   browserShow(visible: boolean): Promise<void>;
   logRendererError(payload: RendererLogPayload): Promise<void>;
   exportDiagnostics(): Promise<DiagnosticsExportResult>;

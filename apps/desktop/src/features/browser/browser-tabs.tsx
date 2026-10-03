@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,7 +53,7 @@ export function BrowserTabs({ onEmpty }: { onEmpty(): void }) {
     if (next.tabs.length === 0) onEmpty();
   };
   return (
-    <div className="shrink-0 overflow-x-auto border-b border-editor-border px-2">
+    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-editor-border px-2">
       <TabsList aria-label={t("tabs.label")} variant="line">
         {snapshot.tabs.map((tab) => (
           <BrowserTabItem
@@ -71,6 +71,13 @@ export function BrowserTabs({ onEmpty }: { onEmpty(): void }) {
           />
         ))}
       </TabsList>
+      <TitlebarIconButton
+        aria-label={t("actions.newTab")}
+        title={t("actions.newTab")}
+        onClick={() => void desktopApi.browserNewTab()}
+      >
+        <Plus className="size-3.5" />
+      </TitlebarIconButton>
     </div>
   );
 }

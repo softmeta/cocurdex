@@ -63,6 +63,9 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   AppUpdateChannel,
   AppUpdateState,
+  BrowserAnnotationActionEvent,
+  BrowserAnnotationEvent,
+  BrowserViewBounds,
   WorkspaceSearchDoneEvent,
   WorkspaceSearchErrorEvent,
   WorkspaceSearchResultEvent,
@@ -499,6 +502,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
   browserCaptureScreenshot: () =>
     ipcRenderer.invoke("browser:captureScreenshot"),
   browserListTabs: () => ipcRenderer.invoke("browser:listTabs"),
+  browserNewTab: () => ipcRenderer.invoke("browser:newTab"),
   browserActivateTab: (id: string) =>
     ipcRenderer.invoke("browser:activateTab", id),
   browserCloseTab: (id: string) => ipcRenderer.invoke("browser:closeTab", id),
@@ -517,24 +521,32 @@ contextBridge.exposeInMainWorld("desktopApi", {
     };
   },
   onBrowserAnnotation: (
-    listener: (payload: {
-      tabId: string;
-      annotation: import("@cocurdex/shared").BrowserAnnotation;
-    }) => void,
+    listener: (payload: BrowserAnnotationEvent) => void,
   ) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      payload: {
-        tabId: string;
-        annotation: import("@cocurdex/shared").BrowserAnnotation;
-      },
+      payload: BrowserAnnotationEvent,
     ) => listener(payload);
     ipcRenderer.on("browser:annotation", handler);
     return () => {
       ipcRenderer.removeListener("browser:annotation", handler);
     };
   },
-  setBrowserBounds: (bounds: { x: number; y: number; w: number; h: number }) =>
+  onBrowserAnnotationAction: (
+    listener: (payload: BrowserAnnotationActionEvent) => void,
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      payload: BrowserAnnotationActionEvent,
+    ) => listener(payload);
+    ipcRenderer.on("browser:annotation:action", handler);
+    return () => {
+      ipcRenderer.removeListener("browser:annotation:action", handler);
+    };
+  },
+  browserSetAnnotationMarkers: (tabId: string, ids: string[]) =>
+    ipcRenderer.invoke("browser:setAnnotationMarkers", tabId, ids),
+  setBrowserBounds: (bounds: BrowserViewBounds) =>
     ipcRenderer.invoke("browser:setBounds", bounds),
   browserShow: (visible: boolean) =>
     ipcRenderer.invoke("browser:show", visible),

@@ -1,3 +1,4 @@
+export { captureAnnotation } from "./annotation-capture";
 export {
   activateBrowserTab,
   attachBrowserHost,
@@ -6,6 +7,8 @@ export {
   getBrowserTabs,
   getBrowserView,
   navigateBrowser,
+  newBrowserTab,
+  setBrowserAnnotationMarkers,
   setBrowserBounds,
   setBrowserVisible,
   toggleBrowserAnnotationMode,

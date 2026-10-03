@@ -37,6 +37,7 @@ import type { SlashCommandsState } from "./use-slash-commands";
 interface PanelComposerProps {
   composerAttachments: MessageAttachment[];
   contextAttachments: MessageAttachment[];
+  contextChips?: ReactNode;
   attachmentError: string | null;
   isRunning: boolean;
   canSend: boolean;
@@ -68,6 +69,7 @@ interface PanelComposerProps {
 export function PanelComposer({
   composerAttachments,
   contextAttachments,
+  contextChips,
   attachmentError,
   isRunning,
   canSend,
@@ -151,6 +153,7 @@ export function PanelComposer({
               />
             </div>
           ) : null}
+          {contextChips ? <div className="mb-3">{contextChips}</div> : null}
           {attachmentError ? (
             <div className="mb-3 text-xs text-destructive">
               {attachmentError}

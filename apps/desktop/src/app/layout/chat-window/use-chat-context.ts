@@ -8,6 +8,7 @@ import {
 } from "@/lib/chat-context-store";
 import { desktopApi } from "@/lib/ipc";
 import { useMountEffect } from "@/lib/react-hooks";
+import { sendBrowserAnnotations } from "./chat-browser-context";
 import {
   chatWindowBusyAtom,
   chatWindowStateAtom,
@@ -49,6 +50,17 @@ export function useChatContext(onReveal: () => void) {
       if (disposed || !canReceive()) return;
       let revealed = false;
       for (const request of pending) {
+        if (request.intent.kind === "send-browser-annotations") {
+          if (!canReceive()) return;
+          reveal();
+          revealed = true;
+          if (!delivered.has(request.id)) {
+            sendBrowserAnnotations(request.intent.annotations);
+            delivered.add(request.id);
+          }
+          await api.acknowledgeIntent(request.id);
+          continue;
+        }
         if (request.intent.kind !== "composer-input") continue;
         if (!canReceive()) return;
         if (!revealed) {

@@ -1321,7 +1321,14 @@ export interface BrowserAnnotation {
   regionScreenshot?: string;
   pageUrl: string;
   note?: string;
+  styleChanges?: BrowserAnnotationStyleChange[];
   capturedAt: string;
+}
+
+export interface BrowserAnnotationStyleChange {
+  property: string;
+  from: string;
+  to: string;
 }
 
 export interface EditorViewRecord {

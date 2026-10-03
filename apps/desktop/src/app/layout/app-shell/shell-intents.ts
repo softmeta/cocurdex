@@ -1,4 +1,5 @@
 import { useStore } from "jotai";
+import { removeAnnotationsAtom } from "@/features/browser";
 import {
   editorPanelOpenAtom,
   fileTreeVisibleAtom,
@@ -63,6 +64,10 @@ export function useShellIntents() {
         });
         store.set(editorPanelOpenAtom, true);
         store.set(rightPanelResolvedActiveViewAtom, "git");
+        return true;
+      }
+      case "remove-browser-annotations": {
+        store.set(removeAnnotationsAtom, intent.ids);
         return true;
       }
       default:

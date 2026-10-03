@@ -1,7 +1,8 @@
-type BrowserBounds = { x: number; y: number; w: number; h: number };
+import type { BrowserViewAnchor, BrowserViewBounds } from "@/lib/types";
+import { learnBrowserViewAnchor } from "./browser-view-anchor";
 
 type BrowserViewBridge = {
-  setBrowserBounds: (bounds: BrowserBounds) => Promise<void>;
+  setBrowserBounds: (bounds: BrowserViewBounds) => Promise<void>;
   browserShow: (visible: boolean) => Promise<void>;
 };
 
@@ -9,8 +10,10 @@ export function bindBrowserViewBounds(
   container: HTMLElement,
   bridge: BrowserViewBridge,
 ) {
-  let previous: BrowserBounds | undefined;
+  let previous: BrowserViewBounds | undefined;
   let previousVisible: boolean | undefined;
+  let anchorX: BrowserViewAnchor | undefined;
+  let anchorY: BrowserViewAnchor | undefined;
   let frame = 0;
 
   const synchronize = () => {
@@ -39,18 +42,42 @@ export function bindBrowserViewBounds(
       right = Math.min(right, clip.right);
       bottom = Math.min(bottom, clip.bottom);
     }
-    const bounds = {
-      x: Math.round(rect.left),
-      y: Math.round(top),
-      w: Math.round(Math.max(0, right - rect.left)),
-      h: Math.round(Math.max(0, bottom - top)),
+    const x = Math.round(rect.left);
+    const y = Math.round(top);
+    const w = Math.round(Math.max(0, right - rect.left));
+    const h = Math.round(Math.max(0, bottom - top));
+    if (previous) {
+      anchorX = learnBrowserViewAnchor(
+        { start: previous.x, size: previous.w },
+        { start: x, size: w },
+        window.innerWidth - previous.viewportWidth,
+        anchorX,
+      );
+      anchorY = learnBrowserViewAnchor(
+        { start: previous.y, size: previous.h },
+        { start: y, size: h },
+        window.innerHeight - previous.viewportHeight,
+        anchorY,
+      );
+    }
+    const bounds: BrowserViewBounds = {
+      x,
+      y,
+      w,
+      h,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      anchorX,
+      anchorY,
     };
     if (
       !previous ||
       bounds.x !== previous.x ||
       bounds.y !== previous.y ||
       bounds.w !== previous.w ||
-      bounds.h !== previous.h
+      bounds.h !== previous.h ||
+      bounds.viewportWidth !== previous.viewportWidth ||
+      bounds.viewportHeight !== previous.viewportHeight
     ) {
       previous = bounds;
       void bridge.setBrowserBounds(bounds);
