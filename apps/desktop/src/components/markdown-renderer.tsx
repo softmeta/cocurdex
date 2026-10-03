@@ -2,20 +2,18 @@ import type { ReactNode } from "react";
 import {
   memo,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
 import type { Components } from "streamdown";
 import { Streamdown } from "streamdown";
-import { cn, isPerfEnabled, logSessionSwitchPerf } from "@/lib";
+import { cn } from "@/lib";
 import { normalizeMarkdownCodeFenceLanguages } from "./markdown-code-fence";
 import type { MarkdownFilePathHandlers } from "./markdown-file-path";
 import { rewriteMarkdownLocalFileLinks } from "./markdown-file-path";
 import type { HeavyPluginKind } from "./markdown-heavy-plugins";
 import {
-  areHeavyPluginsLoaded,
   getStreamdownPlugins,
   LIGHT_STREAMDOWN_PLUGINS,
   loadHeavyPlugins,
@@ -32,8 +30,6 @@ interface MarkdownRendererProps {
   tone?: MarkdownRendererTone;
   className?: string;
   streaming?: boolean;
-  perfMessageId?: string;
-  perfSessionId?: string;
   // When provided, inline-code tokens that look like existing files become
   // clickable, opening the file in the editor panel.
   filePathHandlers?: MarkdownFilePathHandlers;
@@ -181,18 +177,32 @@ function normalizeMathDelimiters(content: string): string {
     .join("");
 }
 
+function useStreamdownPlugins(neededPlugins: HeavyPluginKind[]) {
+  const loadedPlugins = useSyncExternalStore(
+    subscribeStreamdownPlugins,
+    getStreamdownPlugins,
+  );
+
+  // Fetching the plugin bundle is external work, and which content needs it is
+  // only known once a message has been rendered.
+  useEffect(() => {
+    if (neededPlugins.length > 0) {
+      loadHeavyPlugins(neededPlugins);
+    }
+  }, [neededPlugins]);
+
+  return neededPlugins.length > 0 ? loadedPlugins : LIGHT_STREAMDOWN_PLUGINS;
+}
+
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   tone = "assistant",
   className,
   streaming = false,
-  perfMessageId,
-  perfSessionId,
   filePathHandlers,
 }: MarkdownRendererProps): ReactNode {
   const [hasStreamed, setHasStreamed] = useState(streaming);
   if (streaming && !hasStreamed) setHasStreamed(true);
-  const renderStartedAt = isPerfEnabled() ? performance.now() : 0;
   const components = useMemo<Components>(
     () =>
       createMarkdownComponents(tone, {
@@ -213,44 +223,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     () => neededHeavyPlugins(normalizedContent),
     [normalizedContent],
   );
-  const wantsHeavyPlugins = neededPlugins.length > 0;
-  const loadedPlugins = useSyncExternalStore(
-    subscribeStreamdownPlugins,
-    getStreamdownPlugins,
-  );
-  const plugins = wantsHeavyPlugins ? loadedPlugins : LIGHT_STREAMDOWN_PLUGINS;
-
-  // Fetching the plugin bundle is external work, and which content needs it is
-  // only known once a message has been rendered.
-  useEffect(() => {
-    if (neededPlugins.length > 0) {
-      loadHeavyPlugins(neededPlugins);
-    }
-  }, [neededPlugins]);
-
-  useLayoutEffect(() => {
-    if (!isPerfEnabled() || !perfSessionId) {
-      return;
-    }
-
-    logSessionSwitchPerf(perfSessionId, "markdown-renderer-commit", {
-      contentLength: normalizedContent.length,
-      heavyPlugins: wantsHeavyPlugins && areHeavyPluginsLoaded(neededPlugins),
-      messageId: perfMessageId ?? null,
-      renderToCommitMs: Math.round(performance.now() - renderStartedAt),
-      streaming,
-      tone,
-    });
-  }, [
-    neededPlugins,
-    normalizedContent.length,
-    perfMessageId,
-    perfSessionId,
-    renderStartedAt,
-    streaming,
-    tone,
-    wantsHeavyPlugins,
-  ]);
+  const plugins = useStreamdownPlugins(neededPlugins);
 
   return (
     <Streamdown

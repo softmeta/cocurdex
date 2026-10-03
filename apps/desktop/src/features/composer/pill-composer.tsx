@@ -81,44 +81,11 @@ interface PillComposerProps {
   sendShortcut: SendShortcut;
 }
 
-export function PillComposer({
-  composerAttachments,
-  contextAttachments,
-  contextChips,
-  attachmentError,
-  isRunning,
-  canSend,
-  isAgentMode,
-  footerLeading,
-  footerTrailing,
-  runtimeMenuExtras,
-  sessionId,
-  mentionAnchor,
-  placeholderOverride,
-  resolvedControls,
-  attachMenuContent,
-  contextFileMentions,
-  slashCommands,
-  text,
-  mentions,
-  editorRef,
-  initialEditorContent,
-  onEditorChange,
-  onMentionAnchorChange,
-  onPaste,
-  onSubmit,
-  onRemoveAttachment,
-  onStop,
-  sendShortcut,
-}: PillComposerProps) {
-  const { t } = useTranslation(["common", "sessions"]);
+function usePillExpanded(hasContent: boolean, text: string) {
   const pillComposerRef = useRef<HTMLDivElement | null>(null);
   const pillActionGroupRef = useRef<HTMLDivElement | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const [isPillExpanded, setIsPillExpanded] = useState(false);
-  const [previewAttachment, setPreviewAttachment] =
-    useState<ImageAttachment | null>(null);
-  const hasContent = text.length > 0 || mentions.length > 0;
   if (!hasContent && isPillExpanded) {
     setIsPillExpanded(false);
   }
@@ -168,6 +135,55 @@ export function PillComposer({
 
     return () => resizeObserver.disconnect();
   }, [hasContent, text]);
+
+  return {
+    editorContainerRef,
+    isPillExpanded,
+    pillActionGroupRef,
+    pillComposerRef,
+  };
+}
+
+export function PillComposer({
+  composerAttachments,
+  contextAttachments,
+  contextChips,
+  attachmentError,
+  isRunning,
+  canSend,
+  isAgentMode,
+  footerLeading,
+  footerTrailing,
+  runtimeMenuExtras,
+  sessionId,
+  mentionAnchor,
+  placeholderOverride,
+  resolvedControls,
+  attachMenuContent,
+  contextFileMentions,
+  slashCommands,
+  text,
+  mentions,
+  editorRef,
+  initialEditorContent,
+  onEditorChange,
+  onMentionAnchorChange,
+  onPaste,
+  onSubmit,
+  onRemoveAttachment,
+  onStop,
+  sendShortcut,
+}: PillComposerProps) {
+  const { t } = useTranslation(["common", "sessions"]);
+  const [previewAttachment, setPreviewAttachment] =
+    useState<ImageAttachment | null>(null);
+  const hasContent = text.length > 0 || mentions.length > 0;
+  const {
+    editorContainerRef,
+    isPillExpanded,
+    pillActionGroupRef,
+    pillComposerRef,
+  } = usePillExpanded(hasContent, text);
 
   const hasComposerExtras =
     Boolean(attachmentError) ||

@@ -10,7 +10,7 @@ import {
 import { useAtomValue } from "jotai";
 import { Check, Copy, Pencil, X } from "lucide-react";
 import type { RefObject } from "react";
-import { memo, useLayoutEffect, useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppDropdownContent,
@@ -35,7 +35,7 @@ import {
 } from "@/features/composer";
 import { useTurnChangeSet } from "@/features/turn-workspace-changes";
 import { TurnChangesCard } from "@/features/turn-workspace-changes/turn-changes-card";
-import { cn, isPerfEnabled, logSessionSwitchPerf } from "@/lib";
+import { cn } from "@/lib";
 import { chatDisplaySettingsAtom } from "../chat-display";
 import { PermissionCard } from "../permission";
 import { QuestionCard } from "../question";
@@ -246,32 +246,6 @@ function createClipboardHtml(element: HTMLElement) {
     html: clone.innerHTML,
     text: (element.innerText ?? element.textContent ?? "").trim(),
   };
-}
-
-function getConversationSessionId(conversationGroup: ConversationGroup) {
-  if (conversationGroup.prompt) {
-    return conversationGroup.prompt.sessionId;
-  }
-
-  for (const item of conversationGroup.items) {
-    if (item.kind === "message") {
-      return item.message.sessionId;
-    }
-
-    if (item.kind === "toolCalls") {
-      return item.toolCalls[0]?.sessionId ?? null;
-    }
-
-    if (item.kind === "permission") {
-      return item.permission.sessionId;
-    }
-
-    if (item.kind === "question") {
-      return item.question.sessionId;
-    }
-  }
-
-  return null;
 }
 
 async function copyRenderedMessage(
@@ -612,7 +586,6 @@ const MessageArticle = memo(function MessageArticle({
   message: MessageRecord;
   showActions?: boolean;
 }) {
-  const renderStartedAt = performance.now();
   const { t } = useTranslation("agent");
   const filePathHandlers = useMessageFilePathHandlers();
   const isSystem = message.role === "system";
@@ -637,25 +610,6 @@ const MessageArticle = memo(function MessageArticle({
     "flex w-full min-w-0",
     message.role === "user" ? "justify-end" : "justify-start",
   );
-
-  useLayoutEffect(() => {
-    logSessionSwitchPerf(message.sessionId, "message-article-commit", {
-      contentLength: message.content.length,
-      isStreamingLatest,
-      kind: message.kind ?? null,
-      messageId: message.id,
-      renderToCommitMs: Math.round(performance.now() - renderStartedAt),
-      role: message.role,
-    });
-  }, [
-    isStreamingLatest,
-    message.content.length,
-    message.id,
-    message.kind,
-    message.role,
-    message.sessionId,
-    renderStartedAt,
-  ]);
 
   if (isReasoning && activityDisplay === "hidden") {
     return null;
@@ -693,8 +647,6 @@ const MessageArticle = memo(function MessageArticle({
                 filePathHandlers={
                   message.role === "assistant" ? filePathHandlers : undefined
                 }
-                perfMessageId={message.id}
-                perfSessionId={message.sessionId}
                 streaming={
                   message.role === "assistant" && isRunning && isStreamingLatest
                 }
@@ -782,8 +734,6 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   promptVariant?: "chat" | "context";
   runStartedAt?: number;
 }) {
-  const renderStartedAt = isPerfEnabled() ? performance.now() : 0;
-  const perfSessionId = getConversationSessionId(conversationGroup);
   const showActivity = isRunning && isLatestConversation;
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
   const conversationItems = getVisibleConversationItems(conversationGroup);
@@ -846,27 +796,6 @@ export const ChatConversationItem = memo(function ChatConversationItem({
       />
     );
   };
-
-  useLayoutEffect(() => {
-    if (!isPerfEnabled() || !perfSessionId) {
-      return;
-    }
-
-    logSessionSwitchPerf(perfSessionId, "conversation-item-commit", {
-      conversationId: conversationGroup.id,
-      hasPrompt: Boolean(conversationGroup.prompt),
-      isLatestConversation,
-      renderToCommitMs: Math.round(performance.now() - renderStartedAt),
-      visibleItemCount: visibleItems.length,
-    });
-  }, [
-    conversationGroup.id,
-    conversationGroup.prompt,
-    isLatestConversation,
-    perfSessionId,
-    renderStartedAt,
-    visibleItems.length,
-  ]);
 
   return (
     <div className="flex flex-col gap-1.5 pb-4 px-2">

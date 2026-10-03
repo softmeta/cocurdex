@@ -1,0 +1,29 @@
+language js
+
+or {
+  or {
+    `useEffect($args)`,
+    `useLayoutEffect($args)`,
+    `useInsertionEffect($args)`,
+    `React.useEffect($args)`,
+    `React.useLayoutEffect($args)`,
+    `React.useInsertionEffect($args)`
+  } as $call where {
+    not $call <: within or {
+      JsFunctionDeclaration(id=$name) where { $name <: r"^use[A-Z0-9].*" },
+      JsVariableDeclarator(id=$name) where { $name <: r"^use[A-Z0-9].*" }
+    } ,
+    register_diagnostic(span=$call, message="Call effect hooks only inside a custom hook (a function named use*). See AGENTS.md, React hooks and effects.")
+  },
+  JsNamedImportSpecifier(name=$imported) as $spec where {
+    $imported <: or {
+      r"^useEffect$",
+      r"^useLayoutEffect$",
+      r"^useInsertionEffect$"
+    },
+    $spec <: within JsImport() as $import where {
+      $import <: contains `"react"`
+    } ,
+    register_diagnostic(span=$spec, message="Import React effect hooks under their own names; the effect placement rule matches them by name.")
+  }
+}

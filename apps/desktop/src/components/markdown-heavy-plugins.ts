@@ -49,10 +49,6 @@ export function subscribeStreamdownPlugins(listener: () => void) {
   };
 }
 
-export function areHeavyPluginsLoaded(kinds: readonly HeavyPluginKind[]) {
-  return kinds.every((kind) => loaded.has(kind));
-}
-
 export function loadHeavyPlugins(kinds: readonly HeavyPluginKind[]) {
   for (const kind of kinds) {
     if (loaded.has(kind) || inFlight.has(kind)) {
