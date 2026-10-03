@@ -60,6 +60,23 @@ describe("lazyComponent", () => {
     expect(loads).toBe(1);
   });
 
+  it("renders the component on first mount after preload", async () => {
+    let loads = 0;
+    const LazyGreeting = lazyComponent(
+      async () => {
+        loads += 1;
+        return Greeting;
+      },
+      <p>{LOADING}</p>,
+    );
+
+    await Promise.all([LazyGreeting.preload(), LazyGreeting.preload()]);
+
+    render(<LazyGreeting name="ada" />);
+    expect(screen.getByText("hello ada")).toBeTruthy();
+    expect(loads).toBe(1);
+  });
+
   it("surfaces a failed load to the nearest error boundary", async () => {
     const module = deferred<typeof Greeting>();
     const LazyGreeting = lazyComponent(() => module.promise);
