@@ -1,6 +1,26 @@
-export * from "./app";
-export * from "./chat";
-export * from "./file-type-icon";
+export {
+  AppConfirmDialog,
+  AppDropdownContent,
+  AppDropdownItem,
+  AppDropdownRadioList,
+  type AppDropdownRadioSection,
+  type AppDropdownTriggerAppearance,
+  AppDropdownTriggerButton,
+  AppDropdownTriggerLabel,
+  AppGitBranchLabel,
+  AppSearchableSelect,
+  type AppSearchableSelectOption,
+  AppSelect,
+  appDropdownContentClassName,
+  appDropdownSeparatorClassName,
+  compactDropdownContentClassName,
+} from "./app";
+export { CollapsibleUserMessageBody, LinkifiedText } from "./chat";
+export {
+  FileTypeIcon,
+  FileTypeIconSprite,
+  renderFileTypeIconHtml,
+} from "./file-type-icon";
 // markdown-body-editor is deliberately absent: it pulls in TipTap/ProseMirror,
 // and re-exporting it here would drag that into every `@/components` import —
 // i.e. the startup path. Import it from "@/components/markdown-body-editor".
@@ -9,8 +29,9 @@ export type {
   MarkdownFilePathHandlers,
   ResolvedFilePath,
 } from "./markdown-file-path";
-export * from "./markdown-renderer";
-export * from "./resizable-sidebar";
-export * from "./resize-separator";
-export * from "./sidebar-panel-toggle";
-export * from "./use-column-resize";
+export { MarkdownRenderer } from "./markdown-renderer";
+export { ResizableSidebar } from "./resizable-sidebar";
+export {
+  SidebarCollapsedRail,
+  SidebarPanelToggle,
+} from "./sidebar-panel-toggle";
