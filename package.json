@@ -27,8 +27,8 @@
     "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
-    "lefthook": "2.1.14",
+    "@biomejs/biome": "2.5.15",
+    "lefthook": "2.1.15",
     "typescript": "6.0.3"
   }
 }
