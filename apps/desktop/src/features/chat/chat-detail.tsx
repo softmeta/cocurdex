@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { JumpControls, useStickToBottom } from "@/components/chat";
-import { Button, EmptyState, ScrollArea, Spinner } from "@/components/ui";
+import { Button, EmptyState, ScrollArea } from "@/components/ui";
 import {
   ChatComposer,
   ChatContentColumn,
@@ -221,11 +221,7 @@ function ConversationDetailContent({ conversation }: ConversationDetailProps) {
     );
   }
   if (!loaded && !hasMessages) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner className="size-5" />
-      </div>
-    );
+    return <div className="h-full" />;
   }
   if (!hasMessages) {
     return (

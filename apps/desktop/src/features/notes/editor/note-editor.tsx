@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { buildMarkdownBodyExtensions } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
-import { EmptyState, Spinner, Text } from "@/components/ui";
+import { EmptyState, Text } from "@/components/ui";
 import { parsePdfNoteCitationHref } from "@/features/pdf-reader/pdf-note-citation";
 import { openPdfAtPageAtom } from "@/features/pdf-reader/pdf-reader-store";
 import { cn } from "@/lib";
@@ -55,13 +55,9 @@ export function NoteEditor() {
   }
   // While the newly selected note is loading, the previous note's record is
   // still in the atom. Rendering it would let the user type into the old
-  // document while autosave targets the new note id — show a spinner instead.
+  // document while autosave targets the new note id — render blank instead.
   if (!activeNote || activeNote.id !== activeNoteId) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <div className="flex-1" />;
   }
   // Keyed by note id + content epoch so external disk reloads remount Tiptap
   // with the new body without leaking undo history across notes.
