@@ -12,7 +12,7 @@ Interview until the plan is sharp enough for `/cocurdex-prd`, `/cocurdex-spec`, 
 
 ### 1. Context
 
-- With a codebase: skim `CONTEXT.md`, ADRs, linked `.cocurdex` notes. Look up **facts**; put **decisions** to the user.
+- With a codebase: skim `CONTEXT.md`, ADRs, linked Cocurdex notes. Look up **facts**; put **decisions** to the user.
 
 ### 2. Interview loop
 

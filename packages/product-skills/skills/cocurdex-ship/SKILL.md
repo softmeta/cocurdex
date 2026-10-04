@@ -1,6 +1,6 @@
 ---
 name: cocurdex-ship
-description: Implement a `.cocurdex` issue (or PRD/spec path), verify with project checks, update issue status, optional commit.
+description: Implement a Cocurdex issue (or PRD/spec note), verify with project checks, update issue status, optional commit.
 disable-model-invocation: true
 ---
 
@@ -8,12 +8,12 @@ disable-model-invocation: true
 
 ## Preconditions
 
-1. cocurdex-layout STORAGE + LAYOUT; issue storage is private unless it was explicitly published
+1. Follow `/cocurdex-layout`: issues are app-owned and accessed only through the CLI
 2. Resolve issue: `cocurdex issue show <id> --json` (or PRD/spec path); load What to build + criteria + `blockedBy`
 3. Stop if any blocker is not `done`
 4. If the issue lacks shippable contract (What to build / acceptance criteria), stop and run **`/cocurdex-issue refine`** first
 
-CLI invoke (private default):
+CLI invoke:
 
 ```bash
 cocurdex issue show <id> --json
