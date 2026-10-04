@@ -15,7 +15,7 @@ import {
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, Input, Spinner, Text } from "@/components/ui";
+import { Button, Input, Text } from "@/components/ui";
 import {
   getAgentRoles,
   subscribeAgentRoles,
@@ -191,11 +191,7 @@ export function WorkflowSettingsPanel() {
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <div className="flex-1" />;
   }
 
   const readOnly = Boolean(draft?.builtin);

@@ -3,7 +3,7 @@ import { Scale } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, EmptyState, Input, Spinner, Text } from "@/components/ui";
+import { Button, EmptyState, Input, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import type { OssLicensesPayload } from "@/lib/types";
 import {
@@ -82,14 +82,7 @@ function OssLicensesBrowser({
       })
     : t("licenses.packageCount", { total: String(rows.length) });
 
-  let body = (
-    <div className="flex min-h-0 flex-1 items-center justify-center gap-2">
-      <Spinner size="md" />
-      <Text size="body" tone="muted">
-        {t("licenses.loading")}
-      </Text>
-    </div>
-  );
+  let body = <div className="min-h-0 flex-1" />;
   if (loadError || (!loading && !payload)) {
     body = (
       <EmptyState

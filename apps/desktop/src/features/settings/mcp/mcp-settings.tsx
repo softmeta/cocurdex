@@ -137,11 +137,7 @@ export function McpSettingsPanel() {
   };
 
   if (isLoading) {
-    return (
-      <div className="settings-panel-enter flex min-h-40 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <div className="min-h-40" />;
   }
 
   let saveIcon = <Save className="size-4" />;

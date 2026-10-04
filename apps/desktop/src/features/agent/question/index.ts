@@ -1,2 +1,7 @@
-export * from "./question-card";
-export * from "./question-store";
+export { QuestionCard } from "./question-card";
+export {
+  applyQuestionEventAtom,
+  clearQuestionsForSessionAtom,
+  hydratePendingQuestionsAtom,
+  questionsBySessionAtom,
+} from "./question-store";

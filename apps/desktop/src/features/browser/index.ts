@@ -1,3 +1,8 @@
 export { bindBrowserAnnotationEvents } from "./browser-annotation-events";
-export * from "./browser-panel";
-export * from "./browser-store";
+export { BrowserPanel } from "./browser-panel";
+export {
+  annotationsAtom,
+  isAnnotationModeAtom,
+  receiveBrowserTabsAtom,
+  removeAnnotationsAtom,
+} from "./browser-store";

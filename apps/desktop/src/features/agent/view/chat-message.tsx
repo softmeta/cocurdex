@@ -188,8 +188,6 @@ function ReasoningDetailBody({
     <MarkdownRenderer
       className="space-y-1.5 [&_li]:text-meta [&_li]:text-chat-fg-muted [&_p]:text-meta [&_p]:text-chat-fg-muted"
       content={message.content}
-      perfMessageId={message.id}
-      perfSessionId={message.sessionId}
       streaming={streaming}
       tone="editor"
     />

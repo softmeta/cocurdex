@@ -13,7 +13,7 @@ import {
   ResizableSidebar,
   SidebarCollapsedRail,
 } from "@/components";
-import { EmptyState, Spinner } from "@/components/ui";
+import { EmptyState } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { useMountEffect } from "@/lib";
@@ -358,9 +358,7 @@ export function IssuesView() {
           </>
         ) : boards.length > 0 ? (
           // Selected view id changed; full board payload still loading.
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner />
-          </div>
+          <div className="flex-1" />
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <EmptyState

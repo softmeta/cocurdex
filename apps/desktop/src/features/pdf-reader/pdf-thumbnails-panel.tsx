@@ -26,48 +26,23 @@ interface PdfThumbnailsPanelProps {
   ): Promise<string | null>;
 }
 
-export function PdfThumbnailsPanel({
-  totalPages,
+function useThumbnailScroll({
   currentPage,
-  panelWidth,
-  onSelectPage,
-  renderThumbnail,
-}: PdfThumbnailsPanelProps) {
-  const { t } = useTranslation("editor");
+  rowHeight,
+  totalPages,
+}: {
+  currentPage: number;
+  rowHeight: number;
+  totalPages: number;
+}) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const cacheRef = useRef(new Map<string, string>());
   const anchorIndexRef = useRef(0);
   const prevRowHeightRef = useRef<number | null>(null);
   const prevCurrentPageRef = useRef(currentPage);
   const rowHeightRef = useRef(0);
-
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
-
-  const contentWidth = pdfThumbnailContentWidth(panelWidth);
-  const imageHeight = pdfThumbnailImageHeight(contentWidth);
-  const rowHeight = estimatePdfThumbnailRowHeight(panelWidth);
-  const renderEdge = pdfThumbnailRenderEdge(
-    panelWidth,
-    typeof window !== "undefined" ? window.devicePixelRatio : 1,
-  );
   rowHeightRef.current = rowHeight;
-
-  const loadThumbnail = useCallback(
-    async (pageNumber: number): Promise<string | null> => {
-      const cacheKey = `${pageNumber}@${renderEdge}`;
-      const cached = cacheRef.current.get(cacheKey);
-      if (cached) {
-        return cached;
-      }
-      const url = await renderThumbnail(pageNumber, renderEdge);
-      if (url) {
-        cacheRef.current.set(cacheKey, url);
-      }
-      return url;
-    },
-    [renderThumbnail, renderEdge],
-  );
 
   // Track viewport height so the visible window stays correct after rail resize.
   useMountEffect(() => {
@@ -150,6 +125,45 @@ export function PdfThumbnailsPanel({
       setScrollTop(nextTop);
     }
   }, [currentPage]);
+
+  return { handleScroll, scrollRef, scrollTop, viewportHeight };
+}
+
+export function PdfThumbnailsPanel({
+  totalPages,
+  currentPage,
+  panelWidth,
+  onSelectPage,
+  renderThumbnail,
+}: PdfThumbnailsPanelProps) {
+  const { t } = useTranslation("editor");
+  const cacheRef = useRef(new Map<string, string>());
+
+  const contentWidth = pdfThumbnailContentWidth(panelWidth);
+  const imageHeight = pdfThumbnailImageHeight(contentWidth);
+  const rowHeight = estimatePdfThumbnailRowHeight(panelWidth);
+  const renderEdge = pdfThumbnailRenderEdge(
+    panelWidth,
+    typeof window !== "undefined" ? window.devicePixelRatio : 1,
+  );
+  const { handleScroll, scrollRef, scrollTop, viewportHeight } =
+    useThumbnailScroll({ currentPage, rowHeight, totalPages });
+
+  const loadThumbnail = useCallback(
+    async (pageNumber: number): Promise<string | null> => {
+      const cacheKey = `${pageNumber}@${renderEdge}`;
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+      const url = await renderThumbnail(pageNumber, renderEdge);
+      if (url) {
+        cacheRef.current.set(cacheKey, url);
+      }
+      return url;
+    },
+    [renderThumbnail, renderEdge],
+  );
 
   if (totalPages < 1) {
     return null;
