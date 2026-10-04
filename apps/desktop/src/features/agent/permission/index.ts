@@ -1,2 +1,7 @@
-export * from "./permission-card";
-export * from "./permission-store";
+export { PermissionCard } from "./permission-card";
+export {
+  applyPermissionEventAtom,
+  clearPermissionsForSessionAtom,
+  hydratePendingPermissionsAtom,
+  permissionsBySessionAtom,
+} from "./permission-store";

@@ -157,6 +157,17 @@ export const PdfJsViewer = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
   },
 );
 
+// Sync external highlight list into page DOM. Legitimate layout effect:
+// pdf.js owns the page nodes; React cannot declare the overlays in JSX.
+function usePaintedPdfHighlights(
+  viewerElementRef: React.RefObject<HTMLDivElement | null>,
+  highlights: readonly PdfHighlight[],
+) {
+  useLayoutEffect(() => {
+    paintPdfHighlights(viewerElementRef.current, highlights);
+  }, [highlights, viewerElementRef]);
+}
+
 const PdfJsViewerContent = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
   function PdfJsViewer(
     {
@@ -497,11 +508,7 @@ const PdfJsViewerContent = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
       };
     });
 
-    // Sync external highlight list into page DOM. Legitimate layout effect:
-    // pdf.js owns the page nodes; React cannot declare the overlays in JSX.
-    useLayoutEffect(() => {
-      paintPdfHighlights(viewerElementRef.current, highlights);
-    }, [highlights]);
+    usePaintedPdfHighlights(viewerElementRef, highlights);
 
     return (
       <div

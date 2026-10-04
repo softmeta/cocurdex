@@ -8,18 +8,8 @@ interface PanScrollbarProps {
   className?: string;
 }
 
-// Custom horizontal scrollbar for the overlay-pan body region. macOS hides all
-// native scrollbars (see base.css), and the native BrowserView swallows wheel
-// gestures above it anyway, so panning needs a visible, draggable DOM thumb.
-export function PanScrollbar({ viewportRef, className }: PanScrollbarProps) {
+function usePanThumb(viewportRef: React.RefObject<HTMLDivElement | null>) {
   const [thumb, setThumb] = useState({ start: 0, length: 0 });
-  const dragRef = useRef<{
-    grabOffset: number;
-    scale: number;
-    trackStart: number;
-    rtl: boolean;
-  } | null>(null);
-
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) {
@@ -57,6 +47,20 @@ export function PanScrollbar({ viewportRef, className }: PanScrollbarProps) {
       observer.disconnect();
     };
   }, [viewportRef]);
+  return thumb;
+}
+
+// Custom horizontal scrollbar for the overlay-pan body region. macOS hides all
+// native scrollbars (see base.css), and the native BrowserView swallows wheel
+// gestures above it anyway, so panning needs a visible, draggable DOM thumb.
+export function PanScrollbar({ viewportRef, className }: PanScrollbarProps) {
+  const thumb = usePanThumb(viewportRef);
+  const dragRef = useRef<{
+    grabOffset: number;
+    scale: number;
+    trackStart: number;
+    rtl: boolean;
+  } | null>(null);
 
   const scrollFromClientX = useCallback(
     (clientX: number) => {

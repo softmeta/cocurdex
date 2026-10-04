@@ -4,14 +4,7 @@ import type {
   MessageRecord,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import {
-  useCallback,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -53,6 +46,7 @@ import type {
   PendingPreviousMessageSubmit,
   PreviousMessageRevertPreference,
 } from "./chat-view-types";
+import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
 import {
@@ -419,68 +413,17 @@ export function ChatView({
   if (timelineGroups.length === 0 && !isInitialBottomSettled) {
     setIsInitialBottomSettled(true);
   }
-  useLayoutEffect(() => {
-    if (timelineGroups.length === 0) {
-      return;
-    }
-
-    stickToBottomIfLocked();
-    const frameId = requestAnimationFrame(() => {
-      stickToBottomIfLocked();
-      setIsInitialBottomSettled(true);
-    });
-
-    return () => cancelAnimationFrame(frameId);
-  }, [stickToBottomIfLocked, timelineGroups.length]);
-
-  // Content-size growth (streaming deltas, new messages, tool calls, plan
-  // panel updates) is handled by the ResizeObserver attached to chatContent
-  // below. We only re-stick on transitions that flip layout-relevant state
-  // *without* a corresponding box-size change — namely `isRunning` going
-  // false (activity line removal swaps inline indicators) and `status`
-  // transitions. Keying on content length / updatedAt was the hot path
-  // during streaming and is intentionally dropped.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isRunning and status are the re-stick triggers
-  useLayoutEffect(() => {
-    if (timelineGroups.length === 0) {
-      return;
-    }
-    stickToBottomIfLocked();
-  }, [isRunning, status, stickToBottomIfLocked, timelineGroups.length]);
-
-  useLayoutEffect(() => {
-    syncScrollState(stickyUserMessages);
-  }, [stickyUserMessages, syncScrollState]);
-
-  useLayoutEffect(() => {
-    const chatContent = chatContentRef.current;
-    const viewport = viewportRef.current;
-    if (!chatContent || !viewport || typeof ResizeObserver === "undefined") {
-      return;
-    }
-
-    // Scroll synchronously inside the observer callback. ResizeObserver
-    // callbacks fire after layout but before paint, so adjusting scrollTop
-    // here is invisible to the user. Deferring to RAF caused the browser to
-    // paint one frame with stale scrollTop against new content height, which
-    // showed up as a visible jump — most pronounced when the last message
-    // contained a tall code block. viewport.scrollTo does not resize either
-    // observed box, so this cannot loop.
-    const observer = new ResizeObserver(() => {
-      stickToBottomIfLocked();
-    });
-
-    // chatContent covers content growth (streaming deltas, new messages).
-    // The viewport covers the opposite case: content stays put while the box
-    // shrinks or grows around it — the composer dock changing height (task
-    // panel appearing, collapsing, dismissed; permission cards; multi-line
-    // input) or the window being resized.
-    observer.observe(chatContent);
-    observer.observe(viewport);
-    return () => {
-      observer.disconnect();
-    };
-  }, [stickToBottomIfLocked]);
+  useChatBottomStick({
+    chatContentRef,
+    isRunning,
+    setInitialBottomSettled: setIsInitialBottomSettled,
+    status,
+    stickToBottomIfLocked,
+    stickyUserMessages,
+    syncScrollState,
+    timelineGroupCount: timelineGroups.length,
+    viewportRef,
+  });
 
   useChatViewPerfMarkers({
     perfSessionId,

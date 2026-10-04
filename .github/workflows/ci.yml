@@ -104,8 +104,8 @@ jobs:
           fi
       - name: Check desktop dependency cycles
         run: pnpm --filter @cocurdex/desktop lint:cycles
-      - name: Lint lazy-loading pattern
-        run: pnpm exec biome lint --only=style/noRestrictedImports apps/desktop/src
+      - name: Lint renderer structure rules
+        run: pnpm exec biome lint --only=style/noRestrictedImports --only=performance/noReExportAll --only=plugin apps/desktop/src
 
   desktop:
     name: Desktop (${{ matrix.os }})

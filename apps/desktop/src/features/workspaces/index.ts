@@ -14,7 +14,7 @@ export {
 export { pickHostDirectoryAtom } from "./host-directory-pick-atom";
 export { HostDirectoryPickerHost } from "./host-directory-picker";
 export { useWorkspaceFolderDrop } from "./use-workspace-folder-drop";
-export * from "./working-path";
+export { activeWorkingPathAtom } from "./working-path";
 export { WorkspaceFolderDropOverlay } from "./workspace-folder-drop-overlay";
 export { sortWorkspacesBySortOrder } from "./workspace-order";
 export { compactWorkspacePath } from "./workspace-path";
@@ -22,5 +22,24 @@ export {
   composerContextTriggerHoverClassName,
   WorkspacePicker,
 } from "./workspace-picker";
-export * from "./workspace-store";
+export {
+  activeBranchAtom,
+  activeBranchesAtom,
+  activeWorkspaceIdAtom,
+  activeWorktreesAtom,
+  addWorkspaceAtom,
+  bootstrapWorkspacesAtom,
+  COLLAPSED_WORKSPACE_IDS_STORAGE_KEY,
+  collapsedWorkspaceIdsAtom,
+  draftWorktreePathAtom,
+  lastSelectedWorkspaceIdAtom,
+  normalizeCollapsedWorkspaceIds,
+  openWorkspaceByPathAtom,
+  relocateWorkspaceAtom,
+  removeWorkspaceAtom,
+  reorderWorkspacesAtom,
+  selectWorkspaceAtom,
+  updateWorkspaceAtom,
+  workspacesAtom,
+} from "./workspace-store";
 export { WorktreePicker } from "./worktree-picker";

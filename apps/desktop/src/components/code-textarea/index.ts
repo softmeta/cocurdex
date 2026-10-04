@@ -1,1 +1,1 @@
-export * from "./code-textarea";
+export { CodeTextarea } from "./code-textarea";

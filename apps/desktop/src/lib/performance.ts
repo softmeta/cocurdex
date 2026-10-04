@@ -52,7 +52,7 @@ function getLatestPerformanceEntry(name: string) {
   return performance.getEntriesByName(name).at(-1);
 }
 
-export function logSessionSwitchPerf(
+function logSessionSwitchPerf(
   sessionId: string,
   label: string,
   metadata?: Record<string, unknown>,

@@ -8,16 +8,49 @@ export {
   onOpenContextItem,
   openContextItem,
 } from "./context-item-events";
-export * from "./css-length";
-export * from "./diagnostics";
+export { readCssVarPx } from "./css-length";
+export { logRendererDiagnostic } from "./diagnostics";
 export { htmlPreviewLocationAtom } from "./html-preview-preference";
-export * from "./ipc";
+export { desktopApi } from "./ipc";
 export { lazyComponent } from "./lazy-component";
-export * from "./performance";
-export * from "./platform";
-export * from "./react-hooks";
-export * from "./shortcuts";
+export {
+  isPerfEnabled,
+  markSessionSwitch,
+  measureSessionSwitch,
+  startSessionSwitchLongTaskObserver,
+} from "./performance";
+export { applyPlatformAttribute } from "./platform";
+export {
+  useDocumentEvent,
+  useMountEffect,
+  useResolvedTheme,
+  useScrollIntoViewWhenActive,
+} from "./react-hooks";
+export {
+  formatShortcut,
+  formatShortcutLabel,
+  isModifierOnlyKey,
+  parseShortcutCombo,
+  type ShortcutCombo,
+  type ShortcutDescriptor,
+  shortcutComboFromKeyboardEvent,
+  shortcutCombosEqual,
+  useGlobalShortcuts,
+} from "./shortcuts";
 export { taskApi } from "./task-client";
-export * from "./theme-events";
-export * from "./types";
-export * from "./utils";
+export { emitThemeChanged, onThemeChanged } from "./theme-events";
+export type {
+  GitBranchInfo,
+  GitChangeKind,
+  GitCommitInfo,
+  GitContentsOmittedReason,
+  GitFileStagedState,
+  ImportDocumentAttachmentPayload,
+  ImportImageAttachmentPayload,
+  WorkspaceFileEntry,
+  WorkspaceGitDiffQuery,
+  WorkspaceGitDiffStatus,
+  WorkspaceGitFileChange,
+  WorkspaceGitStatusEntry,
+} from "./types";
+export { cn } from "./utils";

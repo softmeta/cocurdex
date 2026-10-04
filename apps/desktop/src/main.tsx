@@ -26,7 +26,11 @@ async function loadApp(): Promise<ComponentType> {
     );
     return DetachedChatApp;
   }
-  const { App } = await import("./app/App");
+  const [{ App }, { preloadScreensWhenIdle }] = await Promise.all([
+    import("./app/App"),
+    import("./app/layout/app-shell/idle-preload"),
+  ]);
+  preloadScreensWhenIdle();
   return App;
 }
 

@@ -19,7 +19,7 @@ import {
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
 import { AppConfirmDialog, SidebarPanelToggle } from "@/components";
-import { EmptyState, ScrollArea, Spinner, Text } from "@/components/ui";
+import { EmptyState, ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
 import {
   activeNoteIdAtom,
@@ -237,9 +237,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
       </div>
 
       {loading && summaries.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Spinner />
-        </div>
+        <div className="flex-1" />
       ) : nodes.length === 0 ? (
         <EmptyState
           icon={<NotebookPen />}

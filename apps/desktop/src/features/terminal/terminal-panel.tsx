@@ -6,7 +6,7 @@ import {
   TITLEBAR_ICON_GLYPH_CLASS,
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
-import { Button, EmptyState, Spinner } from "@/components/ui";
+import { Button, EmptyState } from "@/components/ui";
 import {
   useActiveTerminalStatus,
   useFocusTerminalWhenActive,
@@ -206,11 +206,6 @@ export function TerminalPanel({
           query={searchQuery}
           terminalId={activeTabId}
         />
-      ) : null}
-      {status.kind === "spawning" ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-editor-canvas/80">
-          <Spinner aria-label={t("terminal.starting")} size="md" />
-        </div>
       ) : null}
       {status.kind === "error" ? (
         <div className="absolute inset-0 flex items-center justify-center bg-editor-canvas">

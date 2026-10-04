@@ -8,7 +8,6 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
   Input,
-  Spinner,
 } from "@/components/ui";
 // Imported from leaf modules rather than the pdf-reader barrel: the barrel also
 // exports PdfViewer, which imports the editor barrel — pulling it from here
@@ -245,11 +244,7 @@ export function FileTree() {
       );
     }
     if (isLoading) {
-      return (
-        <div className="flex justify-center py-4">
-          <Spinner size="sm" className="text-editor-fg-muted" />
-        </div>
-      );
+      return null;
     }
     return (
       // Keyboard navigation/activation is owned by the embedded
