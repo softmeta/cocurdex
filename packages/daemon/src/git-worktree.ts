@@ -1,7 +1,7 @@
-import { mkdir, realpath } from "node:fs/promises";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { type GitWorktreeInfo, parseGitWorktreeList } from "@cocurdex/shared";
-import { createSessionWorktreePath } from "./paths";
+import { createSessionWorktreePath, getWorktreeBasePath } from "./paths";
 import { runGit } from "./workspace-changes/git-run";
 
 export async function listGitWorktrees(
@@ -32,13 +32,15 @@ export async function fetchGitUpstreams(rootPath: string) {
 
 export async function addGitWorktree(input: {
   repoRootPath: string;
-  branch: string;
+  branch?: string;
   startPoint?: string;
   userDataPath: string;
   worktreeRootPath?: string | null;
   fetchBeforeCreate?: boolean;
 }): Promise<GitWorktreeInfo> {
-  await runGit(["check-ref-format", "--branch", input.branch], {
+  const worktreeId = crypto.randomUUID().replaceAll("-", "").slice(0, 8);
+  const branch = input.branch?.trim() || `cocurdex/${worktreeId}`;
+  await runGit(["check-ref-format", "--branch", branch], {
     cwd: input.repoRootPath,
   });
 
@@ -46,7 +48,6 @@ export async function addGitWorktree(input: {
     await fetchGitUpstreams(input.repoRootPath);
   }
 
-  const worktreeId = crypto.randomUUID();
   const worktreePath = createSessionWorktreePath({
     repoRootPath: input.repoRootPath,
     worktreeId,
@@ -54,12 +55,20 @@ export async function addGitWorktree(input: {
     worktreeRootPath: input.worktreeRootPath,
   });
   await mkdir(path.dirname(worktreePath), { recursive: true });
+  if (process.platform === "darwin") {
+    await writeFile(
+      path.join(
+        getWorktreeBasePath(input.userDataPath, input.worktreeRootPath),
+        ".metadata_never_index",
+      ),
+      "",
+    );
+  }
 
   const startPoint = input.startPoint?.trim() || "HEAD";
-  await runGit(
-    ["worktree", "add", "-b", input.branch, worktreePath, startPoint],
-    { cwd: input.repoRootPath },
-  );
+  await runGit(["worktree", "add", "-b", branch, worktreePath, startPoint], {
+    cwd: input.repoRootPath,
+  });
 
   const worktrees = await listGitWorktrees(input.repoRootPath);
   try {
@@ -82,7 +91,7 @@ export async function addGitWorktree(input: {
   return {
     path: worktreePath,
     head: "",
-    branch: input.branch,
+    branch,
     detached: false,
     locked: false,
     prunable: false,

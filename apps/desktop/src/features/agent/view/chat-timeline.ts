@@ -1,8 +1,9 @@
-import type {
-  AgentPermissionRequestRecord,
-  AgentQuestionRequestRecord,
-  AgentToolCallRecord,
-  MessageRecord,
+import {
+  type AgentPermissionRequestRecord,
+  type AgentQuestionRequestRecord,
+  type AgentToolCallRecord,
+  type MessageRecord,
+  WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import {
   isAssistantEchoOfPrompt,
@@ -52,6 +53,11 @@ export type TimelineGroup =
       id: string;
       kind: "toolCalls";
       toolCalls: AgentToolCallRecord[];
+    }
+  | {
+      id: string;
+      kind: "worktreeSetup";
+      toolCall: AgentToolCallRecord;
     }
   | {
       id: string;
@@ -220,6 +226,15 @@ function appendTimelineItem(groups: TimelineGroup[], item: TimelineItem) {
   }
 
   if (item.toolCall.kind && HIDDEN_TOOL_KINDS.has(item.toolCall.kind)) {
+    return;
+  }
+
+  if (item.toolCall.kind === WORKTREE_SETUP_TOOL_KIND) {
+    groups.push({
+      id: `worktree-setup-${item.id}`,
+      kind: "worktreeSetup",
+      toolCall: item.toolCall,
+    });
     return;
   }
 

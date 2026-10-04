@@ -87,6 +87,7 @@ export function createSessionWorktreePath(input: {
     getWorktreeBasePath(input.userDataPath, input.worktreeRootPath),
     hashRepoPath(input.repoRootPath),
     input.worktreeId,
+    path.basename(path.resolve(input.repoRootPath)) || "repository",
   );
 }
 

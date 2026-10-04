@@ -262,7 +262,8 @@
     "subagentReadOnly": "This subagent session is read-only.",
     "subagentResponse": "Subagent response",
     "subagentSession": "Subagent session",
-    "title": "Tool calls"
+    "title": "Tool calls",
+    "worktreeSetup": "Prepare worktree"
   },
   "turnChanges": {
     "added": "added",

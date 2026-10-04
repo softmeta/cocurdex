@@ -34,6 +34,7 @@ export interface NewSessionCardProps {
   onRelocateWorkspace?(workspaceId: string): void;
   onSelectBranch?(branch: string): Promise<void> | void;
   onSelectWorktree?(path: string | null): void;
+  onCreateWorktree?(): Promise<string>;
   onSelectAgent?(agentType: AgentId): void;
   onSelectSessionMode?(modeId: string): void;
   onStartSession?: (payload: {
@@ -45,6 +46,7 @@ export interface NewSessionCardProps {
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
     agentRoleId?: string | null;
+    worktreePath?: string;
   }) => void;
 }
 
@@ -60,6 +62,7 @@ export type UseNewSessionCardProps = Omit<
   | "onRelocateWorkspace"
   | "onSelectBranch"
   | "onSelectWorktree"
+  | "onCreateWorktree"
   | "selectedWorktreePath"
   | "worktrees"
 >;

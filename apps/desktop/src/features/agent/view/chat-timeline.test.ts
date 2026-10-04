@@ -1,6 +1,11 @@
-import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
+import {
+  type AgentToolCallRecord,
+  type MessageRecord,
+  WORKTREE_SETUP_TOOL_KIND,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
+  createTimelineGroups,
   segmentConversationItems,
   type TimelineGroup,
   withoutInterimReplies,
@@ -87,6 +92,46 @@ describe("withoutInterimReplies", () => {
       "think",
       "tools",
       "final",
+    ]);
+  });
+});
+
+describe("worktree setup in the timeline", () => {
+  function toolCall(
+    id: string,
+    seq: number,
+    kind: string | null,
+  ): AgentToolCallRecord {
+    return {
+      content: [],
+      id,
+      kind,
+      locations: [],
+      seq,
+      sessionId: "session",
+      startedAt: "2026-10-04T00:00:00.000Z",
+      status: "completed",
+      title: id,
+      updatedAt: "2026-10-04T00:00:00.000Z",
+    };
+  }
+
+  it("stands apart from the agent's tool calls and activity block", () => {
+    const groups = createTimelineGroups(
+      [],
+      [
+        toolCall("setup", 1, WORKTREE_SETUP_TOOL_KIND),
+        toolCall("read", 2, "read"),
+      ],
+    );
+
+    expect(groups.map((group) => group.kind)).toEqual([
+      "worktreeSetup",
+      "toolCalls",
+    ]);
+    expect(segmentIds(groups, true)).toEqual([
+      "worktree-setup-setup",
+      ["tool-group-read"],
     ]);
   });
 });

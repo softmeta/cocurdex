@@ -1,10 +1,10 @@
 import type { AgentRoleRecord, MessageAttachment } from "@cocurdex/shared";
 import { FolderOpen, GitBranch } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppDropdownTriggerLabel, AppSearchableSelect } from "@/components";
-import { Button } from "@/components/ui";
+import { Button, Checkbox } from "@/components/ui";
 import {
   ChatComposer,
   ComposerSurfaceBody,
@@ -72,6 +72,7 @@ export function NewSessionCard({
   onRelocateWorkspace,
   onSelectBranch,
   onSelectWorktree,
+  onCreateWorktree,
   onSelectAgent,
   onSelectSessionMode,
   onStartSession,
@@ -79,6 +80,8 @@ export function NewSessionCard({
   const { t } = useTranslation(["common", "sessions", "settings"]);
   const { label: sessionModeLabel } = useSessionModeLabels();
   const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
+  const [createWorktree, setCreateWorktree] = useState(false);
+  const createWorktreeId = useId();
   const [saveRoleOpen, setSaveRoleOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
   const [chosenRoleId, setChosenRoleIdState] = useState<string | null>(
@@ -155,6 +158,27 @@ export function NewSessionCard({
     text: string,
     attachments: MessageAttachment[],
   ) => {
+    if (!createWorktree || !onCreateWorktree) {
+      startSession(text, attachments);
+      return;
+    }
+    return onCreateWorktree().then(
+      (worktreePath) => {
+        setCreateWorktree(false);
+        startSession(text, attachments, worktreePath);
+      },
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(t("sessions:worktree.createFailed", { message }));
+      },
+    );
+  };
+
+  const startSession = (
+    text: string,
+    attachments: MessageAttachment[],
+    worktreePath?: string,
+  ) => {
     onStartSession?.({
       agentType: effectiveSelectedAgent,
       attachments: attachments.length > 0 ? attachments : undefined,
@@ -164,6 +188,7 @@ export function NewSessionCard({
       providerSnapshot,
       thinkingLevel: selectedThinkingLevel ?? undefined,
       agentRoleId: chosenRoleId,
+      worktreePath,
     });
   };
 
@@ -350,15 +375,13 @@ export function NewSessionCard({
         onRelocateWorkspace={onRelocateWorkspace}
       />
 
-      {hasWorkspace && activeWorkspaceId ? (
+      {hasWorkspace ? (
         <WorktreePicker
           appearance="outline"
+          disabled={createWorktree}
           showChevron={false}
-          branches={activeBranches}
-          currentBranch={activeBranch}
           selectedPath={selectedWorktreePath}
           triggerClassName={composerContextTriggerClassName}
-          workspaceId={activeWorkspaceId}
           workspaceRootPath={
             workspaces.find((workspace) => workspace.id === activeWorkspaceId)
               ?.rootPaths[0] ?? ""
@@ -389,6 +412,29 @@ export function NewSessionCard({
           value={activeBranch ?? ""}
           onValueChange={(branch) => void handleSelectBranch(branch)}
         />
+      ) : null}
+
+      {hasWorkspace && onCreateWorktree ? (
+        <label
+          className={cn(
+            "flex cursor-pointer items-center",
+            composerContextTriggerClassName,
+          )}
+          htmlFor={createWorktreeId}
+        >
+          <Checkbox
+            checked={createWorktree}
+            className="bg-background"
+            id={createWorktreeId}
+            onCheckedChange={(checked) => {
+              setCreateWorktree(checked);
+              if (checked) {
+                onSelectWorktree?.(null);
+              }
+            }}
+          />
+          {t("sessions:worktree.label")}
+        </label>
       ) : null}
     </div>
   );

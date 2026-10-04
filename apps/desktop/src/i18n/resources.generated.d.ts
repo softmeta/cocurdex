@@ -265,6 +265,7 @@ export default interface Resources {
       subagentResponse: "Subagent response";
       subagentSession: "Subagent session";
       title: "Tool calls";
+      worktreeSetup: "Prepare worktree";
     };
     turnChanges: {
       added: "added";
@@ -1309,19 +1310,11 @@ export default interface Resources {
       workspace: "Workspace";
     };
     worktree: {
-      branchName: "Branch name";
-      cancel: "Cancel";
-      create: "Create worktree";
-      createAction: "Create";
-      createDescription: "Create an isolated checkout of this repository on a new branch.";
       createFailed: "Could not create worktree. {{message}}";
-      createTitle: "Create worktree";
       empty: "No matching worktrees.";
       label: "Worktree";
       main: "Main";
       searchPlaceholder: "Search worktrees";
-      startPoint: "Based on";
-      startPointHead: "Current HEAD";
       worktrees: "Worktrees";
     };
   };

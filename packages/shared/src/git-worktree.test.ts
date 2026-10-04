@@ -3,7 +3,6 @@ import {
   parseGitWorktreeList,
   remapPathUnderRoot,
   resolveSessionWorkingPath,
-  suggestWorktreeBranchName,
 } from "./git-worktree";
 
 describe("parseGitWorktreeList", () => {
@@ -131,18 +130,6 @@ describe("resolveSessionWorkingPath", () => {
         worktreePath: "/tmp/worktrees/feature",
       }),
     ).toBe("/tmp/worktrees/feature");
-  });
-});
-
-describe("suggestWorktreeBranchName", () => {
-  it("builds a cocurdex-prefixed slug from an id", () => {
-    expect(
-      suggestWorktreeBranchName("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
-    ).toBe("cocurdex/a1b2c3d4");
-  });
-
-  it("falls back when the id has no alphanumeric characters", () => {
-    expect(suggestWorktreeBranchName("---")).toBe("cocurdex/worktree");
   });
 });
 

@@ -8,26 +8,27 @@ export async function runWorktreeLifecycleScript(input: {
   script: string;
   cwd: string;
   timeoutMs?: number;
-}): Promise<void> {
+}): Promise<string> {
   const script = input.script.trim();
   if (!script) {
-    return;
+    return "";
   }
 
   const timeout = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (process.platform === "win32") {
     const shell = process.env.ComSpec || "cmd.exe";
-    await execFileAsync(shell, ["/d", "/s", "/c", script], {
-      cwd: input.cwd,
-      timeout,
-      windowsHide: true,
-    });
-    return;
+    const { stdout, stderr } = await execFileAsync(
+      shell,
+      ["/d", "/s", "/c", script],
+      { cwd: input.cwd, timeout, windowsHide: true },
+    );
+    return `${stdout}${stderr}`;
   }
 
   const shell = process.env.SHELL || "/bin/zsh";
-  await execFileAsync(shell, ["-lc", script], {
+  const { stdout, stderr } = await execFileAsync(shell, ["-lc", script], {
     cwd: input.cwd,
     timeout,
   });
+  return `${stdout}${stderr}`;
 }

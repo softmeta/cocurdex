@@ -468,11 +468,7 @@ function registerWorkspaceHandlers() {
       const userDataPath = app.getPath("userData");
       return requestDaemon(
         "worktree.create",
-        {
-          workspaceId: payload.workspaceId,
-          branch: payload.branch,
-          startPoint: payload.startPoint,
-        },
+        { workspaceId: payload.workspaceId },
         { userDataPath },
       );
     },

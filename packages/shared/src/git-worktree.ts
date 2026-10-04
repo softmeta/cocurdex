@@ -119,16 +119,7 @@ export function resolveSessionWorkingPath(input: {
   return worktreePath;
 }
 
-export function suggestWorktreeBranchName(id: string): string {
-  const slug = id
-    .replace(/[^A-Za-z0-9]/g, "")
-    .slice(0, 8)
-    .toLowerCase();
-  if (!slug) {
-    return "cocurdex/worktree";
-  }
-  return `cocurdex/${slug}`;
-}
+export const WORKTREE_SETUP_TOOL_KIND = "worktree_setup";
 
 export function stripTrailingPathSeparators(value: string) {
   let end = value.length;

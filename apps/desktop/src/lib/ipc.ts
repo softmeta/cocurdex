@@ -294,10 +294,10 @@ const fallbackApi: DesktopApi = {
   listGitBranches: async () => [],
   checkoutGitBranch: async () => {},
   listGitWorktrees: async () => [],
-  addGitWorktree: async ({ branch }) => ({
+  addGitWorktree: async () => ({
     path: "",
     head: "",
-    branch,
+    branch: null,
     detached: false,
     locked: false,
     prunable: false,

@@ -138,15 +138,20 @@ function SubagentTriggerCard({ toolCall }: { toolCall: AgentToolCallRecord }) {
   );
 }
 
-function ToolCallItem({
+export function ToolCallItem({
+  defaultOpen = false,
   toolCall,
   onOpenToolLocation,
 }: {
+  defaultOpen?: boolean;
   toolCall: AgentToolCallRecord;
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
 }) {
   const selectSession = useSetAtom(selectSessionAtom);
-  const [open, setOpen] = useTranscriptState(`tool:${toolCall.id}`, false);
+  const [open, setOpen] = useTranscriptState(
+    `tool:${toolCall.id}`,
+    defaultOpen,
+  );
 
   if (isSubagentToolCall(toolCall)) {
     const description = getSubagentDescription(toolCall);

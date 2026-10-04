@@ -20,7 +20,7 @@ describe("runWorktreeLifecycleScript", () => {
     temporaryDirectories.push(cwd);
     await expect(
       runWorktreeLifecycleScript({ script: "  \n", cwd }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe("");
   });
 
   it("runs the script in the given working directory", async () => {

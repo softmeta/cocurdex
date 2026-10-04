@@ -72,8 +72,8 @@ describe("session worktree paths", () => {
 
     expect(first.startsWith("/tmp/cocurdex-data")).toBe(true);
     expect(first).toContain("worktrees");
-    expect(first.endsWith(path.join("wt-1"))).toBe(true);
-    expect(first.split(path.sep).at(-2)).toBe(second.split(path.sep).at(-2));
+    expect(first.endsWith(path.join("wt-1", "project"))).toBe(true);
+    expect(first.split(path.sep).at(-3)).toBe(second.split(path.sep).at(-3));
     expect(first.startsWith("/Users/example/project")).toBe(false);
   });
 
