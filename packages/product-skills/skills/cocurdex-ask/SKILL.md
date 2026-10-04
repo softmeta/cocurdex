@@ -11,8 +11,7 @@ All product-knowledge skills use the **`cocurdex-`** prefix to avoid clashing wi
 ## Main flow
 
 ```text
-/cocurdex-grill
-  → /cocurdex-prd
+/cocurdex-prd
   → /cocurdex-spec?
   → /cocurdex-issue (slice | create | refine | start)
   → /cocurdex-ship
@@ -20,7 +19,6 @@ All product-knowledge skills use the **`cocurdex-`** prefix to avoid clashing wi
 
 | Step | Skill | Writes |
 |------|-------|--------|
-| Align | **`/cocurdex-grill`** | conversation (+ optional CONTEXT/ADR) |
 | Product reqs | **`/cocurdex-prd`** | private `notes/prds/` by default |
 | Design | **`/cocurdex-spec`** | private `notes/specs/` by default |
 | Free-form note | **`/cocurdex-note`** | private `notes/` by default |

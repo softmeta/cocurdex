@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 /** Product skill directories shipped with Cocurdex (namespaced cocurdex-*). */
 export const PRODUCT_SKILL_NAMES = [
   "cocurdex-ask",
-  "cocurdex-grill",
   "cocurdex-issue",
   "cocurdex-layout",
   "cocurdex-link",
