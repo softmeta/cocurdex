@@ -34,6 +34,16 @@ function catalogFor(sessionId: string): AgentToolCatalog {
         description: `List peers of ${sessionId}`,
         inputSchema: { type: "object", properties: {} },
       },
+      ...(sessionId === "s-lead"
+        ? [
+            {
+              group: "team" as const,
+              name: "spawn_teammate",
+              description: "Spawn a teammate",
+              inputSchema: { type: "object" as const, properties: {} },
+            },
+          ]
+        : []),
     ],
   };
 }
@@ -41,6 +51,7 @@ function catalogFor(sessionId: string): AgentToolCatalog {
 const sessionsByToken = new Map([
   ["token-a", "s-a"],
   ["token-b", "s-b"],
+  ["token-lead", "s-lead"],
 ]);
 
 const bridge: AgentToolHttpBridge = {
@@ -122,6 +133,18 @@ describe("agent tool HTTP endpoint", () => {
       expect(result.isError).toBe(true);
     } finally {
       await client.close();
+    }
+  });
+
+  it("sends delegation guidance only to sessions that can delegate", async () => {
+    const url = await listen();
+    const lead = await connect(url, { Authorization: "Bearer token-lead" });
+    const peer = await connect(url, { Authorization: "Bearer token-a" });
+    try {
+      expect(lead.getInstructions()).toMatch(/team_spawn_teammate/);
+      expect(peer.getInstructions()).toBeUndefined();
+    } finally {
+      await Promise.all([lead.close(), peer.close()]);
     }
   });
 

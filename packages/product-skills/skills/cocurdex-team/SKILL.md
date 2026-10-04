@@ -15,7 +15,8 @@ Use a team only when the work splits into pieces that are independent of each ot
 
 Do not use a team when:
 
-- Steps depend on each other (design, then implement, then test). The task list has no dependencies and teammates do not wait for each other. Do the steps yourself, or spawn the next teammate only after the previous report arrives.
+- The work is a strict chain (design, then implement, then test) with nothing to run in parallel. Do the steps yourself.
+- Only the result matters and your own provider can do it: use your native subagent tool (for example Claude's Agent tool) instead; it is cheaper than a teammate.
 - A human must approve mid-way. Teammates do not pause for approval.
 - The work is small enough to finish in one turn yourself.
 
@@ -23,7 +24,7 @@ Teammates cannot spawn their own teammates. A team holds at most 8 members.
 
 ## 2. Plan the split
 
-1. Write the pieces first: one `team_task_create` per piece, with a title and a description that names the files or scope. Keep pieces disjoint.
+1. Write the pieces first: one `team_task_create` per piece, with a title and a description that names the files or scope. Keep pieces disjoint. When a piece needs another finished first, pass `blockedBy` with the prerequisite task ids; a blocked task cannot be claimed until every prerequisite is `done`.
 2. Decide the file-write policy before spawning:
    - Teammates that edit files in the same workspace must not touch overlapping files. If overlap is unavoidable, spawn with `isolateWorktree: true`; each such teammate then works on its own branch and you merge afterwards.
    - Read-only teammates (review, research) never need isolation.
@@ -35,7 +36,7 @@ One `team_spawn_teammate` per piece. Names are lowercase slugs (`security-review
 
 The prompt must contain everything the teammate needs; it does not see your conversation:
 
-- The goal and the exact task ids it owns (from step 2). Tell it to claim each with `team_task_update({ taskId, status: "doing", assignee: "me" })` and move it to `review` or `done` when finished.
+- The goal and the exact task ids it owns (from step 2). Tell it to claim each with `team_task_update({ taskId, status: "doing", assignee: "me" })` and, when finished, move it to `review` with `evidence` (commands run and their results). A teammate cannot mark its own task `done`.
 - Scope limits: which files or directories it may edit, and that it must not edit others.
 - What the final reply must contain: the format you will merge (a list of findings with file:line, a summary of changes, a JSON block). Say the reply is delivered to you automatically.
 - Whether to ask you questions through `messaging_send_message` or to decide alone.
@@ -48,6 +49,7 @@ Each report arrives as a separate message and may arrive in any order.
 
 - On `finished`: record the outcome, check `team_task_list` for tasks still in `backlog` or `doing`, and reassign or take them yourself if a teammate stopped early.
 - On `failed`: read the error, decide whether to respawn with a corrected prompt or do the piece yourself.
+- Check each task in `review` against its evidence and move it to `done` with `team_task_update`, or send the teammate what is missing.
 - When every task is `review` or `done`, write the merged result for the user and state which teammates contributed what.
 - If teammates used isolated worktrees, list the branches for the user to merge; do not merge branches yourself unless asked.
 
