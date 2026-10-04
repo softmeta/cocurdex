@@ -25,7 +25,7 @@ If these files do not exist, proceed silently. Domain-modeling skills create the
 
 When output names a domain concept, use the term defined in `CONTEXT.md`. Do not drift to synonyms the glossary explicitly avoids.
 
-If a needed concept is missing, reconsider whether it belongs to the domain language or note the gap for `/domain-modeling`.
+If a needed concept is missing, reconsider whether it belongs to the domain language or note the gap in `CONTEXT.md`.
 
 ## Flag ADR conflicts
 

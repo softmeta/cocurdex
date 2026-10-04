@@ -60,7 +60,7 @@ Prefer **`/cocurdex-issue`** in docs and agent reasoning; accept todo/ticket whe
 
 ## Other (not namespaced)
 
-`tdd`, `diagnosing-bugs`, `code-review`, `domain-modeling`, `debug-desktop`, `shadcn`, …
+`debug-desktop`, `shadcn`, …
 
 ## Rules
 
