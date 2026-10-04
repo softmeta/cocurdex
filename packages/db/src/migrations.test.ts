@@ -92,7 +92,97 @@ function tableShape(database: DatabaseSync, table: string) {
   };
 }
 
+function seedVersionElevenIssueDatabase() {
+  const database = new DatabaseSync(":memory:");
+  initializeDatabase(database);
+  const now = "2026-09-01T00:00:00.000Z";
+  database.exec(`
+    DROP TABLE issue_columns;
+    CREATE TABLE issue_view_columns (
+      view_id TEXT NOT NULL,
+      field TEXT NOT NULL,
+      id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      color TEXT,
+      sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (view_id, field, id)
+    );
+    INSERT INTO issue_views (
+      id, title, group_by, layout, created_at, updated_at
+    ) VALUES
+      ('project', 'Project view', 'status', 'board', '${now}', '${now}'),
+      ('sprint', 'Sprint', 'status', 'board', '${now}', '${now}');
+    INSERT INTO issue_view_columns VALUES
+      ('project', 'status', 'backlog', 'Inbox', NULL, 0, '${now}', '${now}'),
+      ('project', 'status', 'done', 'Done', NULL, 1000, '${now}', '${now}'),
+      ('project', 'priority', 'none', 'No priority', NULL, 0, '${now}', '${now}'),
+      ('sprint', 'status', 'backlog', 'Backlog', NULL, 0, '${now}', '${now}'),
+      ('sprint', 'status', 'col-blocked', 'Blocked', NULL, 500, '${now}', '${now}');
+    INSERT INTO issues (
+      id, title, status, priority, created_at, updated_at
+    ) VALUES
+      ('issue-blocked', 'Blocked work', 'col-blocked', 'none', '${now}', '${now}'),
+      ('issue-orphan', 'Deleted column', 'col-gone', 'urgent', '${now}', '${now}'),
+      ('issue-done', 'Shipped', 'done', 'none', '${now}', '${now}');
+    INSERT INTO notes (
+      id, kind, title, body_markdown, sort_order, created_at, updated_at
+    ) VALUES ('note-1', 'note', 'Kept', 'Body', 0, '${now}', '${now}');
+    PRAGMA user_version = 11;
+  `);
+  return database;
+}
+
 describe("initializeDatabase", () => {
+  it("merges per-view issue columns into one global set", () => {
+    const database = seedVersionElevenIssueDatabase();
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT field, id, title FROM issue_columns ORDER BY field, sort_order",
+        )
+        .all(),
+    ).toEqual([
+      { field: "priority", id: "none", title: "No priority" },
+      { field: "status", id: "backlog", title: "Inbox" },
+      { field: "status", id: "done", title: "Done" },
+      { field: "status", id: "col-blocked", title: "Blocked" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id, title, status, priority FROM issues ORDER BY id")
+        .all(),
+    ).toEqual([
+      {
+        id: "issue-blocked",
+        title: "Blocked work",
+        status: "col-blocked",
+        priority: "none",
+      },
+      { id: "issue-done", title: "Shipped", status: "done", priority: "none" },
+      {
+        id: "issue-orphan",
+        title: "Deleted column",
+        status: "backlog",
+        priority: "none",
+      },
+    ]);
+    expect(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE name = 'issue_view_columns'",
+        )
+        .get(),
+    ).toBeUndefined();
+    expect(
+      database.prepare("SELECT id, body_markdown FROM notes").all(),
+    ).toEqual([{ id: "note-1", body_markdown: "Body" }]);
+  });
+
   it("keeps workspaces and sessions when upgrading a version 5 database", () => {
     const database = seedVersionFiveDatabase();
 

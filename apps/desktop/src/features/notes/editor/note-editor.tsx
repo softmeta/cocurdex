@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { buildMarkdownBodyExtensions } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
-import { EmptyState, Text } from "@/components/ui";
+import { Button, EmptyState, Text } from "@/components/ui";
 import { parsePdfNoteCitationHref } from "@/features/pdf-reader/pdf-note-citation";
 import { openPdfAtPageAtom } from "@/features/pdf-reader/pdf-reader-store";
 import { cn } from "@/lib";
@@ -18,11 +18,13 @@ import {
   noteBodyInsertHandlerAtom,
   pendingNoteBodyInsertAtom,
 } from "../note-body-insert";
+import { resolveNoteConflictAtom } from "../note-save-store";
 import {
   activeNoteAtom,
   activeNoteIdAtom,
   type NoteSaveStatus,
   noteContentEpochAtom,
+  noteSaveConflictsAtom,
   noteSaveStatusAtom,
 } from "../notes-store";
 import {
@@ -152,7 +154,7 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
     },
   });
 
-  useNoteAutosave(editor, note.id, note.revision);
+  useNoteAutosave(editor, note.id);
   // DragHandle freezes its floating coords until the hovered node changes;
   // hide on editor-chrome resize so it re-anchors after sidebar/panel drags.
   const editorChromeRef = useHideDragHandleOnLayoutShift(editor);
@@ -165,7 +167,7 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 py-8">
         <NoteTitleInput noteId={note.id} initialTitle={note.title} />
         <div className="mt-1 mb-4 h-4">
-          <SaveIndicator status={saveStatus} />
+          <SaveIndicator noteId={note.id} status={saveStatus} />
         </div>
         {editor ? (
           <DragHandle
@@ -195,7 +197,7 @@ interface NoteTitleInputProps {
 }
 
 // Title lives outside the Tiptap document as a controlled input, debounced into
-// notes:rename (frontmatter). File path stays stable so links remain valid.
+// the note's save queue.
 function NoteTitleInput({ noteId, initialTitle }: NoteTitleInputProps) {
   const { t } = useTranslation("notes");
   const [value, setValue] = useState(initialTitle);
@@ -274,9 +276,46 @@ function FolderPlaceholder({ note }: { note: NoteRecord }) {
   );
 }
 
-function SaveIndicator({ status }: { status: NoteSaveStatus }) {
+function SaveIndicator({
+  noteId,
+  status,
+}: {
+  noteId: string;
+  status: NoteSaveStatus;
+}) {
   const { t } = useTranslation("notes");
-  if (status === "idle") {
+  const conflict = useAtomValue(noteSaveConflictsAtom)[noteId];
+  const resolveConflict = useSetAtom(resolveNoteConflictAtom);
+  if (conflict) {
+    return (
+      <div className="flex items-center gap-2">
+        <Text size="meta" tone="destructive">
+          {t("editor.save.conflict")}
+        </Text>
+        <Button
+          variant="link"
+          size="xs"
+          className="h-4 px-0"
+          onClick={() => {
+            void resolveConflict({ noteId, choice: "keep-mine" });
+          }}
+        >
+          {t("editor.save.keepMine")}
+        </Button>
+        <Button
+          variant="link"
+          size="xs"
+          className="h-4 px-0"
+          onClick={() => {
+            void resolveConflict({ noteId, choice: "use-remote" });
+          }}
+        >
+          {t("editor.save.useRemote")}
+        </Button>
+      </div>
+    );
+  }
+  if (status === "idle" || status === "conflict") {
     return null;
   }
   if (status === "saving") {

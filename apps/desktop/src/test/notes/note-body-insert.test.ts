@@ -6,6 +6,7 @@ import {
   insertMarkdownIntoActiveNoteAtom,
   noteBodyInsertHandlerAtom,
 } from "@/features/notes/note-body-insert";
+import { resetNoteSaveStateForTests } from "@/features/notes/note-save-store";
 import { activeNoteAtom } from "@/features/notes/notes-store";
 
 const ipcMock = vi.hoisted(() => ({
@@ -14,7 +15,6 @@ const ipcMock = vi.hoisted(() => ({
   create: vi.fn(),
   get: vi.fn(),
   update: vi.fn(),
-  rename: vi.fn(),
   move: vi.fn(),
   delete: vi.fn(),
 }));
@@ -44,6 +44,7 @@ function makeRecord(
 }
 
 beforeEach(() => {
+  resetNoteSaveStateForTests();
   ipcMock.create.mockReset();
   ipcMock.update.mockReset();
   ipcMock.list.mockResolvedValue([]);

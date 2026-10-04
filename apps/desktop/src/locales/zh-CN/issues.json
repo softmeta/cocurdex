@@ -40,6 +40,7 @@
     "createIssue": "创建 Issue",
     "descriptionPlaceholder": "添加描述…",
     "editCard": "编辑 Issue",
+    "loadFailed": "无法加载完整描述，请关闭后重新打开再编辑。",
     "newIssue": "新建 Issue",
     "noProject": "无项目",
     "priority": "优先级",
@@ -52,6 +53,10 @@
   "empty": {
     "description": "新建卡片或列以开始整理工作。",
     "title": "还没有视图"
+  },
+  "errors": {
+    "conflict": "该 issue 已在别处被修改，看板已刷新，请重新修改。",
+    "saveFailed": "issue 修改未能保存，看板已刷新。"
   },
   "filter": {
     "allProjects": "全部项目",

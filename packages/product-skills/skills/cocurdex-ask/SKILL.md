@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # /cocurdex-ask — Which skill?
 
-All product-knowledge skills use the **`cocurdex-`** prefix to avoid clashing with global user skills. Artifacts are private drafts unless the user explicitly requests publishing to a workspace.
+All product-knowledge skills use the **`cocurdex-`** prefix to avoid clashing with global user skills. Artifacts live in app-owned storage, never in the workspace.
 
 ## Main flow
 
@@ -60,11 +60,10 @@ Prefer **`/cocurdex-issue`** in docs and agent reasoning; accept todo/ticket whe
 
 ## Other (not namespaced)
 
-`tdd`, `diagnosing-bugs`, `code-review`, `domain-modeling`, `debug-desktop`, `shadcn`, …
+`debug-desktop`, `shadcn`, …
 
 ## Rules
 
-- **Private by default:** current repo context never implies permission to write there. Read `cocurdex-layout/STORAGE.md`.
-- **One selected tracker:** use the resolved `.cocurdex/`; never create new work under `.scratch/`.
+- **App-owned storage only:** never write notes or issues into the repo (`.cocurdex/`, `.scratch/`); see `/cocurdex-layout`.
 - Prefer repo facts over asking the user.
 - **Issue structure** (list / create / move) → `cocurdex issue …` as required by `/cocurdex-issue`; do not invent issue ids by hand.

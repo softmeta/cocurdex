@@ -17,6 +17,7 @@ import type {
   ViewFull,
   ViewSummary,
 } from "@cocurdex/shared";
+import { ISSUE_CONFLICT_MESSAGE } from "@cocurdex/shared";
 
 export interface IssueTrackerRepository {
   listViews(): Promise<ViewSummary[]>;
@@ -48,7 +49,7 @@ export class IssueConflictError extends Error {
   readonly code = "ISSUE_REVISION_CONFLICT";
 
   constructor() {
-    super("Issue was modified");
+    super(ISSUE_CONFLICT_MESSAGE);
     this.name = "IssueConflictError";
   }
 }

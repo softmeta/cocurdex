@@ -52,7 +52,6 @@ describe("data commands", () => {
     await handleIssueCommand("create", [], parsed);
     expect(requestMock).toHaveBeenCalledWith("issue.create", {
       viewId: "project",
-      columnId: "doing",
       title: "SQLite ownership",
       description: undefined,
       status: "doing",

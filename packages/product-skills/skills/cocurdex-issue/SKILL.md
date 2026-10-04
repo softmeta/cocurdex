@@ -23,6 +23,8 @@ If the prompt already contains an attached `<issue … complete="true">` block,
 treat it as the full issue and do not run `cocurdex issue show` for it. Use the
 CLI only to change the issue, or when the user asks for its current state.
 
+Status and priority ids are shared by every view; an unknown id is rejected
+with the valid ids in the error. Omit `--status` to use the first status.
 Use `--view <id>` when the user names a non-default view. Treat `todo` and
 `ticket` as aliases for the same Issue domain. Report stable ids returned by the
 CLI. Repository publication is a separate explicit export action.

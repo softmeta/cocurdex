@@ -1,12 +1,12 @@
 import { useSetAtom, useStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { useMountEffect } from "@/lib";
-import { noteSaveStatusAtom, renameNoteAtom } from "../notes-store";
+import { renameNoteAtom } from "../notes-store";
 
 const TITLE_DEBOUNCE_MS = 500;
 
-// Debounced title rename for file notes (frontmatter only — path stays stable).
-// Pending title is flushed on unmount so switching notes cannot lose the edit.
+// Debounced title rename. Pending title is flushed on unmount so switching
+// notes cannot lose the edit; saves share the note's ordered save queue.
 export function useDebouncedNoteRename({
   noteId,
   onRenamed,
@@ -14,7 +14,6 @@ export function useDebouncedNoteRename({
   noteId: string;
   onRenamed?: (title: string) => void;
 }) {
-  const setSaveStatus = useSetAtom(noteSaveStatusAtom);
   const store = useStore();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<string | null>(null);
@@ -35,13 +34,8 @@ export function useDebouncedNoteRename({
     pendingRef.current = null;
     void store
       .set(renameNoteAtom, { id: noteIdRef.current, title })
-      .then((record) => {
-        if (record) {
-          noteIdRef.current = record.id;
-          onRenamedRef.current?.(record.title);
-        }
-      })
-      .catch(() => setSaveStatus("error"));
+      .then((record) => onRenamedRef.current?.(record.title))
+      .catch(() => undefined);
   });
 
   useMountEffect(() => () => flush.current());
@@ -55,12 +49,8 @@ export function useDebouncedNoteRename({
   }, []);
 }
 
-/**
- * Folder renames rewrite the directory path. Commit on blur/Enter only so
- * intermediate keystrokes do not thrash the filesystem (or descendant ids).
- */
+// Folder renames commit on blur/Enter only.
 export function useCommitFolderRename(noteId: string) {
-  const setSaveStatus = useSetAtom(noteSaveStatusAtom);
   const renameNote = useSetAtom(renameNoteAtom);
   const noteIdRef = useRef(noteId);
   noteIdRef.current = noteId;
@@ -77,16 +67,11 @@ export function useCommitFolderRename(noteId: string) {
           id: noteIdRef.current,
           title: next,
         });
-        if (record) {
-          noteIdRef.current = record.id;
-          return record.title;
-        }
-        return committedTitle;
+        return record.title;
       } catch {
-        setSaveStatus("error");
         return committedTitle;
       }
     },
-    [renameNote, setSaveStatus],
+    [renameNote],
   );
 }

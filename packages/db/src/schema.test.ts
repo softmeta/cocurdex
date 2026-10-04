@@ -51,7 +51,7 @@ describe("createSchemaSql", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS notes");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS issues");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS issue_views");
-    expect(sql).toContain("CREATE TABLE IF NOT EXISTS issue_view_columns");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS issue_columns");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS tags");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS note_tags");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS note_links");

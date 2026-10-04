@@ -1,5 +1,13 @@
 export type NoteKind = "note" | "folder";
 
+export const NOTE_CONFLICT_MESSAGE = "Note was modified";
+
+export function isNoteConflictError(error: unknown): boolean {
+  return (
+    error instanceof Error && error.message.includes(NOTE_CONFLICT_MESSAGE)
+  );
+}
+
 /** Lightweight tree projection. Note bodies are loaded separately. */
 export interface NoteSummary {
   id: string;
@@ -33,12 +41,6 @@ export interface UpdateNotePayload {
   title?: string;
   icon?: string | null;
   workspaceId?: string | null;
-  expectedRevision?: number;
-}
-
-export interface RenameNotePayload {
-  id: string;
-  title: string;
   expectedRevision?: number;
 }
 

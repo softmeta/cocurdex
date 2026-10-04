@@ -3,6 +3,7 @@ import {
   forwardRef,
   type ReactNode,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 import { cn } from "@/lib";
@@ -11,6 +12,7 @@ import "./markdown-body-editor.css";
 
 export interface MarkdownBodyEditorHandle {
   getMarkdown: () => string;
+  isDirty: () => boolean;
 }
 
 interface MarkdownBodyEditorProps {
@@ -41,6 +43,7 @@ export const MarkdownBodyEditor = forwardRef<
 ): ReactNode {
   // Capture once per mount so parent re-renders do not reset the document.
   const [content] = useState(() => initialMarkdown);
+  const dirtyRef = useRef(false);
 
   const editor = useEditor({
     extensions: buildMarkdownBodyExtensions(placeholder),
@@ -48,6 +51,9 @@ export const MarkdownBodyEditor = forwardRef<
     contentType: "markdown",
     // Required: avoids "can't access DOM" errors under jsdom / non-DOM render.
     immediatelyRender: false,
+    onUpdate: () => {
+      dirtyRef.current = true;
+    },
     editorProps: {
       attributes: {
         class: cn(
@@ -62,6 +68,7 @@ export const MarkdownBodyEditor = forwardRef<
     ref,
     () => ({
       getMarkdown: () => (editor ? readMarkdown(editor) : content),
+      isDirty: () => dirtyRef.current,
     }),
     [editor, content],
   );

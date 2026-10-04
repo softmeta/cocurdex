@@ -801,6 +801,7 @@ export default interface Resources {
       createIssue: "Create issue";
       descriptionPlaceholder: "Add description…";
       editCard: "Edit issue";
+      loadFailed: "Couldn't load the full description. Close and reopen the issue to edit it.";
       newIssue: "New issue";
       noProject: "No project";
       priority: "Priority";
@@ -813,6 +814,10 @@ export default interface Resources {
     empty: {
       description: "Create a card or column to start organizing work.";
       title: "No view yet";
+    };
+    errors: {
+      conflict: "This issue changed elsewhere. The board has been refreshed; please reapply your edit.";
+      saveFailed: "Couldn't save the issue change. The board has been refreshed.";
     };
     filter: {
       allProjects: "All projects";
@@ -864,9 +869,12 @@ export default interface Resources {
       };
       placeholder: 'Start writing, or press "/" for commands…';
       save: {
+        conflict: "Changed elsewhere";
         error: "Save failed";
+        keepMine: "Keep mine";
         saved: "Saved";
         saving: "Saving…";
+        useRemote: "Load latest";
       };
       untitledPlaceholder: "Untitled";
     };

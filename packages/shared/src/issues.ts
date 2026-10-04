@@ -1,4 +1,12 @@
 export type ViewGroupBy = "status" | "priority";
+
+export const ISSUE_CONFLICT_MESSAGE = "Issue was modified";
+
+export function isIssueConflictError(error: unknown): boolean {
+  return (
+    error instanceof Error && error.message.includes(ISSUE_CONFLICT_MESSAGE)
+  );
+}
 export type ViewLayout = "board" | "list";
 export type ViewFilterField = "workspaceId";
 export type ViewFilterOp = "eq" | "is_null";
@@ -95,7 +103,7 @@ export interface ViewSummary {
 
 export interface ViewColumnRecord {
   id: string;
-  viewId: string;
+  field: ViewGroupBy;
   title: string;
   color: string | null;
   sortOrder: number;
@@ -168,34 +176,34 @@ export interface UpdateViewPayload {
 }
 
 export interface CreateColumnPayload {
-  viewId: string;
+  field: ViewGroupBy;
   title?: string;
   color?: string | null;
   sortOrder?: number;
 }
 
 export interface UpdateColumnPayload {
-  viewId: string;
+  field: ViewGroupBy;
   id: string;
   title?: string;
   color?: string | null;
 }
 
 export interface MoveColumnPayload {
-  viewId: string;
+  field: ViewGroupBy;
   id: string;
   sortOrder: number;
 }
 
 export interface DeleteColumnPayload {
-  viewId: string;
+  field: ViewGroupBy;
   id: string;
 }
 
 export interface CreateIssuePayload {
   viewId: string;
-  /** Column id under the view's current groupBy. */
-  columnId: string;
+  /** Column id under the view's current groupBy; defaults from status/priority. */
+  columnId?: string;
   title?: string;
   description?: string | null;
   color?: string | null;

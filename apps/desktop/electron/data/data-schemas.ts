@@ -13,7 +13,6 @@ import type {
   MoveColumnPayload,
   MoveIssuePayload,
   MoveNotePayload,
-  RenameNotePayload,
   SaveWorkflowDefinitionPayload,
   SearchDocumentsPayload,
   UpdateColumnPayload,
@@ -26,6 +25,7 @@ import { z } from "zod";
 const idSchema = z.uuid();
 const viewIdSchema = z.union([z.literal("project"), idSchema]);
 const columnIdSchema = z.string().min(1).max(128);
+const issueFieldSchema = z.enum(["status", "priority"]);
 const titleSchema = z.string().max(512);
 const revisionSchema = z.number().int().positive().optional();
 
@@ -50,12 +50,6 @@ export const updateNotePayloadSchema = z.object({
   workspaceId: idSchema.nullable().optional(),
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<UpdateNotePayload>;
-
-export const renameNotePayloadSchema = z.object({
-  id: idSchema,
-  title: titleSchema,
-  expectedRevision: revisionSchema,
-}) satisfies z.ZodType<RenameNotePayload>;
 
 export const moveNotePayloadSchema = z.object({
   id: idSchema,
@@ -105,33 +99,33 @@ export const updateViewPayloadSchema = z.object({
 }) satisfies z.ZodType<UpdateViewPayload>;
 
 export const createColumnPayloadSchema = z.object({
-  viewId: viewIdSchema,
+  field: issueFieldSchema,
   title: titleSchema.optional(),
   color: z.string().max(64).nullable().optional(),
   sortOrder: z.number().finite().optional(),
 }) satisfies z.ZodType<CreateColumnPayload>;
 
 export const updateColumnPayloadSchema = z.object({
-  viewId: viewIdSchema,
+  field: issueFieldSchema,
   id: columnIdSchema,
   title: titleSchema.optional(),
   color: z.string().max(64).nullable().optional(),
 }) satisfies z.ZodType<UpdateColumnPayload>;
 
 export const moveColumnPayloadSchema = z.object({
-  viewId: viewIdSchema,
+  field: issueFieldSchema,
   id: columnIdSchema,
   sortOrder: z.number().finite(),
 }) satisfies z.ZodType<MoveColumnPayload>;
 
 export const deleteColumnPayloadSchema = z.object({
-  viewId: viewIdSchema,
+  field: issueFieldSchema,
   id: columnIdSchema,
 }) satisfies z.ZodType<DeleteColumnPayload>;
 
 export const createIssuePayloadSchema = z.object({
   viewId: viewIdSchema,
-  columnId: columnIdSchema,
+  columnId: columnIdSchema.optional(),
   title: titleSchema.optional(),
   description: z.string().max(2_000_000).nullable().optional(),
   color: z.string().max(64).nullable().optional(),

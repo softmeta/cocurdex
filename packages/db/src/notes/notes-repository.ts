@@ -7,16 +7,15 @@ import type {
   NoteRecord,
   NoteSummary,
   NoteTag,
-  RenameNotePayload,
   UpdateNotePayload,
 } from "@cocurdex/shared";
+import { NOTE_CONFLICT_MESSAGE } from "@cocurdex/shared";
 
 export interface NotesRepository {
   list(): Promise<NoteSummary[]>;
   get(id: string): Promise<NoteRecord | null>;
   create(payload: CreateNotePayload): Promise<NoteRecord>;
   update(payload: UpdateNotePayload): Promise<NoteRecord>;
-  rename(payload: RenameNotePayload): Promise<NoteRecord>;
   move(payload: MoveNotePayload): Promise<NoteRecord>;
   delete(payload: DeleteNotePayload): Promise<void>;
   listTags(noteId?: string): Promise<NoteTag[]>;
@@ -36,7 +35,7 @@ export class NoteConflictError extends Error {
   readonly code = "NOTE_REVISION_CONFLICT";
 
   constructor() {
-    super("Note was modified");
+    super(NOTE_CONFLICT_MESSAGE);
     this.name = "NoteConflictError";
   }
 }

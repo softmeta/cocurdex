@@ -48,7 +48,6 @@ export interface ViewRow extends SqliteRow {
 }
 
 export interface ColumnRow extends SqliteRow {
-  view_id: string;
   field: ViewGroupBy;
   id: string;
   title: string;
@@ -78,7 +77,7 @@ export function mapViewSummary(row: ViewRow): ViewSummary {
 export function mapColumn(row: ColumnRow): ViewColumnRecord {
   return {
     id: row.id,
-    viewId: row.view_id,
+    field: row.field,
     title: row.title,
     color: row.color,
     sortOrder: row.sort_order,
@@ -130,16 +129,29 @@ export function requireIssue(
 
 export function listColumns(
   database: DatabaseSync,
-  viewId: string,
   field: ViewGroupBy,
 ): ColumnRow[] {
   return database
     .prepare(
-      `SELECT * FROM issue_view_columns
-       WHERE view_id = ? AND field = ?
+      `SELECT * FROM issue_columns
+       WHERE field = ?
        ORDER BY sort_order, id`,
     )
-    .all(viewId, field) as ColumnRow[];
+    .all(field) as ColumnRow[];
+}
+
+export function fallbackColumnId(
+  columns: readonly ColumnRow[],
+  field: ViewGroupBy,
+): string {
+  if (field === "priority") {
+    return (
+      columns.find((column) => column.id === "none")?.id ??
+      columns.at(-1)?.id ??
+      "none"
+    );
+  }
+  return columns[0]?.id ?? "backlog";
 }
 
 function toIssueRecord(
@@ -172,16 +184,12 @@ function toIssueRecord(
 }
 
 export function projectView(database: DatabaseSync, view: ViewRow): ViewFull {
-  const activeColumns = listColumns(database, view.id, view.group_by);
-  const statusColumns = listColumns(database, view.id, "status");
-  const priorityColumns = listColumns(database, view.id, "priority");
+  const statusColumns = listColumns(database, "status");
+  const priorityColumns = listColumns(database, "priority");
+  const activeColumns =
+    view.group_by === "priority" ? priorityColumns : statusColumns;
   const columnIds = new Set(activeColumns.map((column) => column.id));
-  const fallbackColumnId =
-    view.group_by === "priority"
-      ? (activeColumns.find((column) => column.id === "none")?.id ??
-        activeColumns.at(-1)?.id ??
-        "none")
-      : (activeColumns[0]?.id ?? "backlog");
+  const fallback = fallbackColumnId(activeColumns, view.group_by);
   const filters = parseFilters(view.filters_json);
   const issues = (
     database
@@ -196,9 +204,7 @@ export function projectView(database: DatabaseSync, view: ViewRow): ViewFull {
         filters,
       ),
     )
-    .map((issue) =>
-      toIssueRecord(issue, view, columnIds, fallbackColumnId, false),
-    );
+    .map((issue) => toIssueRecord(issue, view, columnIds, fallback, false));
 
   return {
     view: {
@@ -224,15 +230,15 @@ export function projectSingleIssue(
   issue: IssueRow,
   view: ViewRow,
 ): IssueRecord {
-  const columns = listColumns(database, view.id, view.group_by);
+  const columns = listColumns(database, view.group_by);
   const columnIds = new Set(columns.map((column) => column.id));
-  const fallbackColumnId =
-    view.group_by === "priority"
-      ? (columns.find((column) => column.id === "none")?.id ??
-        columns.at(-1)?.id ??
-        "none")
-      : (columns[0]?.id ?? "backlog");
-  return toIssueRecord(issue, view, columnIds, fallbackColumnId, true);
+  return toIssueRecord(
+    issue,
+    view,
+    columnIds,
+    fallbackColumnId(columns, view.group_by),
+    true,
+  );
 }
 
 export function insertDefaultView(database: DatabaseSync): void {
@@ -247,18 +253,19 @@ export function insertDefaultView(database: DatabaseSync): void {
     )
     .run(DEFAULT_VIEW_ID, now, now);
   const insertColumn = database.prepare(
-    `INSERT INTO issue_view_columns (
-       view_id, field, id, title, color, sort_order, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(view_id, field, id) DO NOTHING`,
+    `INSERT INTO issue_columns (
+       field, id, title, color, sort_order, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const [field, columns] of [
     ["status", DEFAULT_STATUS_COLUMNS],
     ["priority", DEFAULT_PRIORITY_COLUMNS],
   ] as const) {
+    if (listColumns(database, field).length > 0) {
+      continue;
+    }
     for (const column of columns) {
       insertColumn.run(
-        DEFAULT_VIEW_ID,
         field,
         column.id,
         column.title,
@@ -286,35 +293,5 @@ export function insertView(
        ) VALUES (?, ?, ?, 'status', 'board', '[]', 1, ?, ?)`,
     )
     .run(id, title, icon, now, now);
-  copyDefaultColumns(database, id, now);
   return requireView(database, id);
-}
-
-function copyDefaultColumns(
-  database: DatabaseSync,
-  viewId: string,
-  now: string,
-): void {
-  const insertColumn = database.prepare(
-    `INSERT INTO issue_view_columns (
-       view_id, field, id, title, color, sort_order, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  for (const [field, columns] of [
-    ["status", DEFAULT_STATUS_COLUMNS],
-    ["priority", DEFAULT_PRIORITY_COLUMNS],
-  ] as const) {
-    for (const column of columns) {
-      insertColumn.run(
-        viewId,
-        field,
-        column.id,
-        column.title,
-        column.color,
-        column.order * 1000,
-        now,
-        now,
-      );
-    }
-  }
 }

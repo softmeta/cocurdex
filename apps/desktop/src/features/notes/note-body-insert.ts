@@ -1,13 +1,15 @@
 import { atom } from "jotai";
-import { notesIpc } from "./notes-ipc";
+import {
+  getLocalNote,
+  hasUnsavedNoteChange,
+  rememberNoteRecord,
+  saveNoteChangeAtom,
+} from "./note-save-store";
 import {
   activeNoteAtom,
   createNoteAtom,
   loadNotesAtom,
   noteContentEpochAtom,
-  noteEditorDirtyAtom,
-  noteSaveStatusAtom,
-  patchActiveNoteRevisionAtom,
 } from "./notes-store";
 
 // Registered by the mounted TipTap note body so other features (e.g. PDF
@@ -117,27 +119,30 @@ export const insertMarkdownIntoActiveNoteAtom = atom(
       }
     }
 
-    // Notes editor not mounted: persist via IPC and keep the in-memory record
+    // Notes editor not mounted: queue the save and keep the in-memory record
     // current so opening Notes later shows the clip without a tab switch now.
-    try {
-      const nextBody = appendMarkdownBodies(note.bodyMarkdown, markdown);
-      const updated = await notesIpc.update({
-        id: note.id,
-        bodyMarkdown: nextBody,
-        expectedRevision: note.revision,
-      });
-      set(activeNoteAtom, updated);
-      set(patchActiveNoteRevisionAtom, updated.revision);
-      set(noteEditorDirtyAtom, false);
-      set(noteSaveStatusAtom, "saved");
-      // If Notes is keep-alive but the insert handler was missing, remount the
-      // body from the updated record without forcing a tab change.
-      if (get(noteBodyInsertHandlerAtom) === null) {
-        set(noteContentEpochAtom, get(noteContentEpochAtom) + 1);
-      }
-      return created ? "created" : "inserted";
-    } catch {
+    if (!getLocalNote(note.id)) {
+      rememberNoteRecord(note);
+    }
+    const nextBody = appendMarkdownBodies(
+      (getLocalNote(note.id) ?? note).bodyMarkdown,
+      markdown,
+    );
+    const noteId = note.id;
+    const active = get(activeNoteAtom);
+    if (active?.id === noteId) {
+      set(activeNoteAtom, { ...active, bodyMarkdown: nextBody });
+    }
+    await set(saveNoteChangeAtom, {
+      noteId,
+      change: { bodyMarkdown: nextBody },
+    });
+    if (hasUnsavedNoteChange(noteId)) {
       return "failed";
     }
+    if (get(noteBodyInsertHandlerAtom) === null) {
+      set(noteContentEpochAtom, get(noteContentEpochAtom) + 1);
+    }
+    return created ? "created" : "inserted";
   },
 );

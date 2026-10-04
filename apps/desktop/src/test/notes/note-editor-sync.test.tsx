@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ipcMock = vi.hoisted(() => ({
-  rename: vi.fn(),
+  update: vi.fn(),
 }));
 
 vi.mock("@/features/notes/notes-ipc", () => ({
@@ -12,6 +12,7 @@ vi.mock("@/features/notes/notes-ipc", () => ({
 }));
 
 import { useDebouncedNoteRename } from "@/features/notes/editor/note-editor-sync";
+import { resetNoteSaveStateForTests } from "@/features/notes/note-save-store";
 
 function wrapStore(store: ReturnType<typeof createStore>) {
   return function Wrapper({ children }: { children: ReactNode }) {
@@ -22,7 +23,8 @@ function wrapStore(store: ReturnType<typeof createStore>) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  ipcMock.rename.mockImplementation(
+  resetNoteSaveStateForTests();
+  ipcMock.update.mockImplementation(
     async ({ id, title }: { id: string; title: string }) => ({
       id,
       title,
@@ -47,13 +49,14 @@ describe("useDebouncedNoteRename", () => {
     result.current("He");
     result.current("Hello");
 
-    expect(ipcMock.rename).not.toHaveBeenCalled();
+    expect(ipcMock.update).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(500);
 
-    expect(ipcMock.rename).toHaveBeenCalledTimes(1);
-    expect(ipcMock.rename).toHaveBeenCalledWith({
+    expect(ipcMock.update).toHaveBeenCalledTimes(1);
+    expect(ipcMock.update).toHaveBeenCalledWith({
       id: "note-1.md",
       title: "Hello",
+      expectedRevision: undefined,
     });
     expect(onRenamed).toHaveBeenCalledWith("Hello");
   });
