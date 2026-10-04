@@ -23,16 +23,9 @@ function roundPercent(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-function clearHighlightLayers(root: ParentNode): void {
-  const existing = root.querySelectorAll(`.${PDF_HIGHLIGHT_LAYER_CLASS}`);
-  for (const node of existing) {
-    node.remove();
-  }
-}
-
 function paintPageHighlights(
   pageElement: HTMLElement,
-  highlights: PdfHighlight[],
+  highlights: readonly PdfHighlight[],
 ): void {
   for (const node of pageElement.querySelectorAll(
     `.${PDF_HIGHLIGHT_LAYER_CLASS}`,
@@ -69,9 +62,34 @@ function paintPageHighlights(
   pageElement.appendChild(layer);
 }
 
-// Paint (or clear) highlight overlays inside a pdf.js viewer root. Safe to call
-// after every `pagerendered` and whenever the highlight list changes — pages
-// that are not in the DOM yet are simply skipped until they render.
+function findPageElement(
+  viewerRoot: HTMLElement,
+  pageNumber: number,
+): HTMLElement | null {
+  return viewerRoot.querySelector<HTMLElement>(
+    `.page[data-page-number="${pageNumber}"]`,
+  );
+}
+
+// pdf.js drops unknown page children when it re-renders a page, so repaint
+// just that page from its `pagerendered` event.
+export function paintPdfPageHighlights(
+  viewerRoot: HTMLElement | null | undefined,
+  pageNumber: number,
+  highlights: readonly PdfHighlight[],
+): void {
+  const page = viewerRoot ? findPageElement(viewerRoot, pageNumber) : null;
+  if (!page) {
+    return;
+  }
+  paintPageHighlights(
+    page,
+    highlights.filter((highlight) => highlight.pageNumber === pageNumber),
+  );
+}
+
+// Repaint after the highlight list changes, touching only pages that have or
+// had highlights instead of every page in the document.
 export function paintPdfHighlights(
   viewerRoot: HTMLElement | null | undefined,
   highlights: readonly PdfHighlight[],
@@ -87,21 +105,15 @@ export function paintPdfHighlights(
     byPage.set(highlight.pageNumber, list);
   }
 
-  const pages = viewerRoot.querySelectorAll<HTMLElement>(
-    ".page[data-page-number]",
-  );
-  if (pages.length === 0) {
-    // Viewer not laid out yet; nothing to paint.
-    return;
+  for (const layer of viewerRoot.querySelectorAll(
+    `.${PDF_HIGHLIGHT_LAYER_CLASS}`,
+  )) {
+    layer.remove();
   }
-
-  // Clear layers on pages that no longer have highlights, then paint the rest.
-  clearHighlightLayers(viewerRoot);
-  for (const page of pages) {
-    const pageNumber = Number.parseInt(page.dataset.pageNumber ?? "", 10);
-    if (!Number.isInteger(pageNumber)) {
-      continue;
+  for (const [pageNumber, pageHighlights] of byPage) {
+    const page = findPageElement(viewerRoot, pageNumber);
+    if (page) {
+      paintPageHighlights(page, pageHighlights);
     }
-    paintPageHighlights(page, byPage.get(pageNumber) ?? []);
   }
 }

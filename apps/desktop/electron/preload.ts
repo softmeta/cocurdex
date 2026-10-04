@@ -300,10 +300,10 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("pdf:read-data", payload) as Promise<string>,
   loadPdfAnnotations: (payload: { filePath: string }) =>
     ipcRenderer.invoke("pdf:load-annotations", payload),
-  savePdfAnnotations: (payload: {
+  updatePdfAnnotations: (payload: {
     filePath: string;
-    annotations: import("../src/lib/types").PdfDocumentAnnotationsDto;
-  }) => ipcRenderer.invoke("pdf:save-annotations", payload),
+    operation: import("../src/lib/types").PdfAnnotationsOperationDto;
+  }) => ipcRenderer.invoke("pdf:update-annotations", payload),
   updateSessionTitle: (payload: UpdateSessionTitlePayload) =>
     ipcRenderer.invoke("session:updateTitle", payload),
   archiveSession: (payload: ArchiveSessionPayload) =>

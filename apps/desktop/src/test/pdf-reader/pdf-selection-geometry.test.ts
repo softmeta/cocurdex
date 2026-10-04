@@ -74,12 +74,16 @@ describe("clientRectToPageQuad", () => {
 });
 
 describe("extractSelectionGeometry", () => {
-  it("returns page + quads for a same-page selection", () => {
+  it("normalizes quads to the page inside its border", () => {
     const page = document.createElement("div");
     page.className = "page";
     page.dataset.pageNumber = "2";
-    Object.defineProperty(page, "getBoundingClientRect", {
-      value: () => makeRect(0, 0, 200, 400),
+    Object.defineProperties(page, {
+      getBoundingClientRect: { value: () => makeRect(-1, -1, 202, 402) },
+      clientLeft: { value: 1 },
+      clientTop: { value: 1 },
+      clientWidth: { value: 200 },
+      clientHeight: { value: 400 },
     });
 
     const text = document.createTextNode("hello world");

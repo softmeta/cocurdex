@@ -19,7 +19,7 @@ transport-neutral client work.
   `search.start`/`search.cancel` (results stream as `search.*` daemon events,
   bridged to `search:result`/`search:done`/`search:error` in the host),
   `mcp.readConfig`/`mcp.saveConfig`, `skills.getStatus`/`skills.install`/
-  `skills.remove`, `pdf.loadAnnotations`/`pdf.saveAnnotations`. Blank
+  `skills.remove`, `pdf.loadAnnotations`/`pdf.updateAnnotations`. Blank
   `git.commit` messages are generated daemon-side from the configured
   commit-message model. Root authorization for listings, search, and PDF
   annotations is daemon-owned (`packages/daemon/src/scan-roots.ts`).

@@ -2,18 +2,22 @@ import { describe, expect, it } from "vitest";
 import {
   addBookmarkToDocument,
   addHighlightToDocument,
+  applyPdfAnnotationsOperation,
   createBookmark,
   createHighlight,
   EMPTY_DOCUMENT_ANNOTATIONS,
   findBookmarkForPage,
   getDocumentAnnotations,
+  mergePdfQuads,
   normalizeAnnotationsByPath,
+  normalizeDocumentAnnotations,
   type PdfDocumentAnnotations,
+  type PdfHighlight,
   removeBookmarkForPage,
   removeBookmarkFromDocument,
   removeHighlightFromDocument,
   setDocumentAnnotations,
-} from "@/features/pdf-reader/pdf-annotations";
+} from "./pdf-annotations";
 
 const sampleQuad = { x1: 0.1, y1: 0.2, x2: 0.5, y2: 0.3 };
 
@@ -287,5 +291,93 @@ describe("setDocumentAnnotations / getDocumentAnnotations", () => {
       highlights: [],
     });
     expect(cleared).toEqual({});
+  });
+});
+
+function highlight(id: string, pageNumber = 1): PdfHighlight {
+  return {
+    id,
+    pageNumber,
+    color: "yellow",
+    selectedText: id,
+    quads: [{ x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.12 }],
+    createdAt: pageNumber,
+  };
+}
+
+const bookmark = { id: "bm", pageNumber: 2, createdAt: 1 };
+
+describe("mergePdfQuads", () => {
+  it("collapses duplicate span and text rects into one box", () => {
+    const span = { x1: 0.2, y1: 0.1, x2: 0.4, y2: 0.12 };
+    expect(mergePdfQuads([span, { ...span }])).toEqual([span]);
+  });
+
+  it("joins adjacent fragments on the same line", () => {
+    expect(
+      mergePdfQuads([
+        { x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.12 },
+        { x1: 0.205, y1: 0.101, x2: 0.4, y2: 0.121 },
+        { x1: 0.4, y1: 0.1, x2: 0.5, y2: 0.12 },
+      ]),
+    ).toEqual([{ x1: 0.1, y1: 0.1, x2: 0.5, y2: 0.121 }]);
+  });
+
+  it("keeps separate lines and distant columns apart", () => {
+    const quads = [
+      { x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.12 },
+      { x1: 0.6, y1: 0.1, x2: 0.9, y2: 0.12 },
+      { x1: 0.1, y1: 0.13, x2: 0.4, y2: 0.15 },
+    ];
+    expect(mergePdfQuads(quads)).toEqual(quads);
+  });
+
+  it("cleans duplicate quads in stored highlights on read", () => {
+    const quad = { x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.12 };
+    const doc = normalizeDocumentAnnotations({
+      highlights: [{ ...highlight("a"), quads: [quad, quad] }],
+    });
+    expect(doc.highlights[0]?.quads).toEqual([quad]);
+  });
+});
+
+describe("applyPdfAnnotationsOperation", () => {
+  const existing: PdfDocumentAnnotations = {
+    bookmarks: [bookmark],
+    highlights: [highlight("a")],
+  };
+
+  it("adds a highlight without dropping existing marks", () => {
+    const next = applyPdfAnnotationsOperation(existing, {
+      type: "addHighlight",
+      highlight: highlight("b", 3),
+    });
+    expect(next.highlights.map((entry) => entry.id)).toEqual(["a", "b"]);
+    expect(next.bookmarks).toEqual([bookmark]);
+  });
+
+  it("toggles a page bookmark off and on", () => {
+    const off = applyPdfAnnotationsOperation(existing, {
+      type: "toggleBookmark",
+      bookmark: { id: "other", pageNumber: 2, createdAt: 5 },
+    });
+    expect(off.bookmarks).toEqual([]);
+    const on = applyPdfAnnotationsOperation(off, {
+      type: "toggleBookmark",
+      bookmark,
+    });
+    expect(on.bookmarks).toEqual([bookmark]);
+  });
+
+  it("merges imported marks while keeping stored ones", () => {
+    const next = applyPdfAnnotationsOperation(existing, {
+      type: "merge",
+      annotations: {
+        bookmarks: [{ id: "dup-page", pageNumber: 2, createdAt: 9 }],
+        highlights: [highlight("a"), highlight("c", 4)],
+      },
+    });
+    expect(next.bookmarks).toEqual([bookmark]);
+    expect(next.highlights.map((entry) => entry.id)).toEqual(["a", "c"]);
   });
 });
