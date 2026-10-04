@@ -280,6 +280,21 @@ export async function installProductSkills(
     ? "updated"
     : "installed";
 
+  const packSkills = new Set<string>(PRODUCT_SKILL_NAMES);
+  const retiredSkills = before.managed
+    ? before.skills.filter((skillName) => !packSkills.has(skillName))
+    : [];
+  for (const skillName of retiredSkills) {
+    await rm(path.join(agentsSkillsDir, skillName), {
+      recursive: true,
+      force: true,
+    });
+    await rm(path.join(claudeSkillsDir, skillName), {
+      recursive: true,
+      force: true,
+    });
+  }
+
   let claudeLinkMode: ClaudeLinkMode = "none";
 
   for (const skillName of PRODUCT_SKILL_NAMES) {
