@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -112,6 +112,48 @@ describe("product skills install", () => {
 
     expect(updated.action).toBe("updated");
     expect(updated.installedVersion).toBe("0.2.0");
+  });
+
+  it("removes managed skills retired from the pack on update", async () => {
+    const home = await makeTempRoot();
+    const workspace = await makeTempRoot();
+    const agentsDir = path.join(workspace, ".agents", "skills");
+    const claudeDir = path.join(workspace, ".claude", "skills");
+
+    await installProductSkills("project", workspace, {
+      home,
+      sourceRoot,
+      packVersion: "0.1.0",
+      preferClaudeCopy: true,
+    });
+    for (const dir of [agentsDir, claudeDir]) {
+      await mkdir(path.join(dir, "cocurdex-retired"), { recursive: true });
+    }
+    await writeFile(
+      path.join(agentsDir, ".cocurdex-skills.json"),
+      JSON.stringify({
+        managedBy: "cocurdex",
+        packVersion: "0.1.0",
+        skills: [...PRODUCT_SKILL_NAMES, "cocurdex-retired"],
+        scope: "project",
+        installedAt: new Date().toISOString(),
+      }),
+      "utf8",
+    );
+
+    const updated = await installProductSkills("project", workspace, {
+      home,
+      sourceRoot,
+      packVersion: "0.2.0",
+      preferClaudeCopy: true,
+    });
+
+    expect(updated.skills).not.toContain("cocurdex-retired");
+    for (const dir of [agentsDir, claudeDir]) {
+      await expect(
+        access(path.join(dir, "cocurdex-retired")),
+      ).rejects.toThrow();
+    }
   });
 
   it("reports conflict and does not overwrite unmanaged skills", async () => {
