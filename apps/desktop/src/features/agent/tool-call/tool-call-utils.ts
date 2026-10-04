@@ -1,6 +1,7 @@
-import type {
-  AgentToolCallContent,
-  AgentToolCallRecord,
+import {
+  type AgentToolCallContent,
+  type AgentToolCallRecord,
+  WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
 
@@ -496,6 +497,13 @@ function getParentPath(filePath: string) {
 }
 
 export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
+  if (toolCall.kind === WORKTREE_SETUP_TOOL_KIND) {
+    return {
+      title: i18n.t("agent:toolCalls.worktreeSetup"),
+      secondary: getToolCallInputSummary(toolCall),
+    };
+  }
+
   const skill = asObjectRecord(toolCall.rawInput)?.skill;
   if (typeof skill === "string" && skill.length > 0) {
     return { title: i18n.t("agent:toolCalls.skill"), secondary: skill };

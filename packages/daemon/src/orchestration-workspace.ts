@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { rmdir } from "node:fs/promises";
 import path from "node:path";
 import {
   decideWorkspaceIsolation,
@@ -69,6 +70,7 @@ export async function removeAppManagedWorktree(input: {
       "remove",
       input.worktreePath,
     ]);
+    await rmdir(path.dirname(input.worktreePath)).catch(() => undefined);
     return true;
   } catch {
     return false;

@@ -350,8 +350,6 @@ export interface ProductApi {
   addGitWorktree(payload: {
     repoRootPath: string;
     workspaceId: string;
-    branch: string;
-    startPoint?: string;
   }): Promise<GitWorktreeInfo>;
   getWorktreeSettings(): Promise<WorktreeSettingsSnapshot>;
   saveWorktreeSettings(

@@ -987,6 +987,18 @@ export function CenterPanel({
     setDraftWorktreePath(path);
   };
 
+  const handleCreateWorktree = async () => {
+    if (!activeWorkspace) {
+      throw new Error("No workspace is open.");
+    }
+    const created = await desktopApi.addGitWorktree({
+      repoRootPath: primaryWorkspaceRootPath(activeWorkspace),
+      workspaceId: activeWorkspace.id,
+    });
+    handleSelectWorktree(created.path);
+    return created.path;
+  };
+
   const handleStartSession = async ({
     agentType,
     sessionModeId,
@@ -996,6 +1008,7 @@ export function CenterPanel({
     providerSnapshot,
     thinkingLevel,
     agentRoleId,
+    worktreePath,
   }: {
     agentType: AgentId;
     sessionModeId: string | null;
@@ -1005,6 +1018,7 @@ export function CenterPanel({
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
     agentRoleId?: string | null;
+    worktreePath?: string;
   }) => {
     if (!activeWorkspace) {
       return;
@@ -1017,7 +1031,7 @@ export function CenterPanel({
       permissionMode,
       agentRoleId: agentRoleId ?? null,
       providerSnapshot: providerSnapshot ?? null,
-      worktreePath: draftWorktreePath,
+      worktreePath: worktreePath ?? draftWorktreePath,
     });
     setDraftWorktreePath(null);
     // Carry the tabs the user was viewing during the draft into the new
@@ -1238,6 +1252,7 @@ export function CenterPanel({
           }
           onSelectBranch={handleSelectBranch}
           onSelectWorktree={handleSelectWorktree}
+          onCreateWorktree={handleCreateWorktree}
           onSelectAgent={setLastSelectedAgent}
           onSelectWorkspace={selectWorkspace}
           onStartSession={handleStartSession}

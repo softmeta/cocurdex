@@ -257,7 +257,8 @@
     "subagentReadOnly": "此子代理会话为只读。",
     "subagentResponse": "子代理回复",
     "subagentSession": "子代理会话",
-    "title": "工具调用"
+    "title": "工具调用",
+    "worktreeSetup": "准备 Worktree 环境"
   },
   "turnChanges": {
     "added": "新增",

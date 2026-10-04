@@ -93,9 +93,9 @@ export async function createManagedWorktree(input: {
   state: DaemonState;
   userDataPath: string;
   workspaceId: string;
-  branch: string;
+  branch?: string;
   startPoint?: string;
-  runSetup(worktreePath: string): Promise<void>;
+  startSetup(worktreePath: string): Promise<void>;
 }): Promise<GitWorktreeInfo> {
   const workspace = await requireWorkspace(input.state, input.workspaceId);
   const settings = await loadWorktreeSettings(input.state, input.userDataPath);
@@ -107,7 +107,7 @@ export async function createManagedWorktree(input: {
     worktreeRootPath: settings.rootPath,
     fetchBeforeCreate: settings.fetchBeforeCreate,
   });
-  await input.runSetup(created.path);
+  await input.startSetup(created.path);
   return created;
 }
 

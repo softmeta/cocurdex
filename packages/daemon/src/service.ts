@@ -156,6 +156,7 @@ import {
   saveWorktreeSettings,
 } from "./worktree-management";
 import { runWorktreeLifecycleScript } from "./worktree-script";
+import { WorktreeSetupRuns, waitForWorktreeSetup } from "./worktree-setup-runs";
 
 export interface CocurdexDaemonServiceOptions {
   runtimeFingerprint: string;
@@ -175,6 +176,16 @@ export interface CocurdexDaemonStatus {
 
 interface QueuedFollowUp {
   payload: SessionRuntimeMessage & { messageId: string };
+}
+
+interface PendingTurn {
+  cancelled: boolean;
+  onCancel?(): void;
+}
+
+function cancelPendingTurn(pendingTurn: PendingTurn) {
+  pendingTurn.cancelled = true;
+  pendingTurn.onCancel?.();
 }
 
 /** How often checkpoint retention runs on a daemon that never restarts. */
@@ -221,7 +232,8 @@ export class CocurdexDaemonService {
   private readonly userDataPath: string;
   private readonly sessionCheckpoints: SessionCheckpointStore;
   private readonly sessionCommands = new SessionCommandQueue();
-  private readonly pendingTurns = new Map<string, { cancelled: boolean }>();
+  private readonly pendingTurns = new Map<string, PendingTurn>();
+  private readonly worktreeSetups = new WorktreeSetupRuns();
   private readonly turnOutcomes = new Map<
     string,
     Promise<SessionTurnOutcome>
@@ -1018,7 +1030,7 @@ export class CocurdexDaemonService {
 
   async createWorktree(input: {
     workspaceId: string;
-    branch: string;
+    branch?: string;
     startPoint?: string;
   }) {
     this.scanPolicy.invalidate();
@@ -1029,11 +1041,16 @@ export class CocurdexDaemonService {
         workspaceId: input.workspaceId,
         branch: input.branch,
         startPoint: input.startPoint,
-        runSetup: async (worktreePath) => {
-          await this.runWorktreeSetup({
-            workspaceId: input.workspaceId,
-            worktreePath,
-          });
+        startSetup: async (worktreePath) => {
+          const environment = await this.getWorktreeEnvironment(
+            input.workspaceId,
+          );
+          const script = environment.setupScript.trim();
+          if (script) {
+            this.worktreeSetups.start(worktreePath, script, () =>
+              runWorktreeLifecycleScript({ script, cwd: worktreePath }),
+            );
+          }
         },
       });
     } finally {
@@ -1760,7 +1777,7 @@ export class CocurdexDaemonService {
       return userMessage;
     }
 
-    const pendingTurn = { cancelled: false };
+    const pendingTurn: PendingTurn = { cancelled: false };
     this.pendingTurns.set(payload.session.id, pendingTurn);
     let userMessage: MessageRecord;
     let persistence: RuntimePersistence;
@@ -2167,7 +2184,7 @@ export class CocurdexDaemonService {
   private clearPendingTurn(sessionId: string) {
     const pendingTurn = this.pendingTurns.get(sessionId);
     if (pendingTurn) {
-      pendingTurn.cancelled = true;
+      cancelPendingTurn(pendingTurn);
       this.pendingTurns.delete(sessionId);
     }
     return pendingTurn;
@@ -2230,7 +2247,7 @@ export class CocurdexDaemonService {
     await this.startupRecovery;
     clearInterval(this.checkpointReconcileTimer);
     for (const pendingTurn of this.pendingTurns.values()) {
-      pendingTurn.cancelled = true;
+      cancelPendingTurn(pendingTurn);
     }
     this.pendingTurns.clear();
     this.queuedFollowUps.clear();
@@ -2360,7 +2377,7 @@ export class CocurdexDaemonService {
   private async dispatchSessionMessage(
     payload: SessionRuntimeMessage,
     userMessage: MessageRecord,
-    pendingTurn: { cancelled: boolean },
+    pendingTurn: PendingTurn,
     persistence: RuntimePersistence,
     providerConfig: AgentRuntimeProviderConfig | null,
   ) {
@@ -2377,6 +2394,22 @@ export class CocurdexDaemonService {
     );
     if (pendingTurn.cancelled) {
       return null;
+    }
+
+    const worktreePath = payload.session.worktreePath?.trim();
+    if (worktreePath) {
+      await waitForWorktreeSetup({
+        runs: this.worktreeSetups,
+        sessionId: payload.session.id,
+        worktreePath,
+        cancelled: new Promise((resolve) => {
+          pendingTurn.onCancel = resolve;
+        }),
+        emit: (event) => this.runtime.emitAgentEvent(event),
+      });
+      if (pendingTurn.cancelled) {
+        return null;
+      }
     }
 
     await this.workspaceChanges.beginTurn({

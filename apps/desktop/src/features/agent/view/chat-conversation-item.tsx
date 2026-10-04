@@ -41,7 +41,7 @@ import { PermissionCard } from "../permission";
 import { QuestionCard } from "../question";
 // Deep imports (not the tool-call barrel): the barrel pulls in the subagent
 // detail view, which renders this component.
-import { ToolCallGroup } from "../tool-call/tool-call-ui";
+import { ToolCallGroup, ToolCallItem } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
 import { useTranscriptState } from "../use-transcript-state";
 import { ActivityLine } from "./chat-activity";
@@ -759,6 +759,20 @@ export const ChatConversationItem = memo(function ChatConversationItem({
           onOpenToolLocation={onOpenToolLocation}
           toolCalls={group.toolCalls as AgentToolCallRecord[]}
         />
+      );
+    }
+
+    if (group.kind === "worktreeSetup") {
+      return (
+        <div
+          className="-mx-1.5 max-w-3xl min-w-0"
+          key={`${group.id}-${group.toolCall.status}`}
+        >
+          <ToolCallItem
+            defaultOpen={group.toolCall.status === "failed"}
+            toolCall={group.toolCall}
+          />
+        </div>
       );
     }
 

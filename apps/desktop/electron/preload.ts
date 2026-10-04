@@ -195,12 +195,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("git:checkoutBranch", { rootPath, branch }),
   listGitWorktrees: (rootPath: string) =>
     ipcRenderer.invoke("git:listWorktrees", rootPath),
-  addGitWorktree: (payload: {
-    repoRootPath: string;
-    workspaceId: string;
-    branch: string;
-    startPoint?: string;
-  }) => ipcRenderer.invoke("git:addWorktree", payload),
+  addGitWorktree: (payload: { repoRootPath: string; workspaceId: string }) =>
+    ipcRenderer.invoke("git:addWorktree", payload),
   getWorktreeSettings: () => ipcRenderer.invoke("worktree:getSettings"),
   saveWorktreeSettings: (payload: {
     fetchBeforeCreate: boolean;

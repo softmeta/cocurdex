@@ -97,6 +97,25 @@ describe("worktree daemon RPC", () => {
     expect(saved.resolvedRootPath).toBe(path.resolve(savedRoot));
   });
 
+  it("names the branch when the caller omits one", async () => {
+    const { service, userDataPath } = await createService();
+    const repositoryPath = await createRepository(userDataPath);
+    await service.saveWorkspace(workspaceFor(repositoryPath));
+
+    const created = await handleDaemonRequest<"worktree.create">(service, {
+      id: "1",
+      method: "worktree.create",
+      params: { workspaceId: "workspace-1" },
+      token: "test",
+    } satisfies DaemonRequest<"worktree.create">);
+
+    expect(created.branch).toMatch(/^cocurdex\/[0-9a-f]{8}$/);
+    expect(path.basename(created.path)).toBe("repository");
+    expect(created.branch).toBe(
+      `cocurdex/${path.basename(path.dirname(created.path))}`,
+    );
+  });
+
   it("creates, lists, and refuses to remove a bound worktree", async () => {
     const { service, userDataPath } = await createService();
     const repositoryPath = await createRepository(userDataPath);

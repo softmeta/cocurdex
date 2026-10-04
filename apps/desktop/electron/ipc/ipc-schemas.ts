@@ -239,17 +239,6 @@ export const schemas = {
   gitWorktreeAdd: z.object({
     repoRootPath: filesystemPathSchema,
     workspaceId: idSchema,
-    branch: z
-      .string()
-      .min(1)
-      .max(256)
-      .refine((value) => !value.includes("\0"), "null byte")
-      .refine((value) => !value.startsWith("-"), "option-like branch"),
-    startPoint: z
-      .string()
-      .max(256)
-      .refine((value) => !value.includes("\0"), "null byte")
-      .optional(),
   }),
   worktreeEnvironmentSave: z.object({
     workspaceId: idSchema,

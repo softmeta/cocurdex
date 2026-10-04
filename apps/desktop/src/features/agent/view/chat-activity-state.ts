@@ -1,7 +1,8 @@
-import type {
-  AgentToolCallRecord,
-  MessageRecord,
-  SessionStatus,
+import {
+  type AgentToolCallRecord,
+  type MessageRecord,
+  type SessionStatus,
+  WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { cn } from "@/lib";
 
@@ -21,11 +22,12 @@ export type ActivityState = {
   tone: "complete" | "error" | "muted" | "running";
 };
 
-function hasActiveToolCall(toolCalls: AgentToolCallRecord[]) {
-  return toolCalls.some(
-    (toolCall) =>
-      toolCall.status === "pending" || toolCall.status === "in_progress",
-  );
+function isActiveToolCall(toolCall: AgentToolCallRecord) {
+  return toolCall.status === "pending" || toolCall.status === "in_progress";
+}
+
+export function isWorktreeSetupToolCall(toolCall: AgentToolCallRecord) {
+  return toolCall.kind === WORKTREE_SETUP_TOOL_KIND;
 }
 
 export function isActivityHeaderBusy(input: {
@@ -55,7 +57,11 @@ export function getActivityState({
     return { icon: "error", kind: "attention", tone: "error" };
   }
 
-  if (isRunning && hasActiveToolCall(toolCalls)) {
+  const usesTools = toolCalls.some(
+    (toolCall) =>
+      isActiveToolCall(toolCall) && !isWorktreeSetupToolCall(toolCall),
+  );
+  if (isRunning && usesTools) {
     return { icon: "wrench", kind: "usingTools", tone: "running" };
   }
 

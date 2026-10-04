@@ -227,7 +227,7 @@ export type DaemonRequestPayloadByMethod = {
   "worktree.list": undefined;
   "worktree.create": {
     workspaceId: string;
-    branch: string;
+    branch?: string;
     startPoint?: string;
   };
   "worktree.remove": {
