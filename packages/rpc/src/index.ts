@@ -64,6 +64,7 @@ import type {
   NoteRecord,
   NoteSummary,
   NoteTag,
+  PdfAnnotationsOperation,
   PdfDocumentAnnotations,
   PeerInboundPolicy,
   PeerSessionSummary,
@@ -353,9 +354,9 @@ export type DaemonRequestPayloadByMethod = {
   "skills.install": ProductSkillsRequestPayload;
   "skills.remove": ProductSkillsRequestPayload;
   "pdf.loadAnnotations": { filePath: string };
-  "pdf.saveAnnotations": {
+  "pdf.updateAnnotations": {
     filePath: string;
-    annotations: PdfDocumentAnnotations;
+    operation: PdfAnnotationsOperation;
   };
   "note.list": undefined;
   "note.get": GetNotePayload;
@@ -570,7 +571,7 @@ export type DaemonResultByMethod = {
   "skills.install": ProductSkillsInstallResult;
   "skills.remove": ProductSkillsRemoveResult;
   "pdf.loadAnnotations": PdfDocumentAnnotations;
-  "pdf.saveAnnotations": null;
+  "pdf.updateAnnotations": PdfDocumentAnnotations;
   "note.list": NoteSummary[];
   "note.get": NoteRecord | null;
   "note.create": NoteRecord;

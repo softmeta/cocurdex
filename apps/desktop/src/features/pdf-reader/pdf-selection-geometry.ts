@@ -35,6 +35,18 @@ export function parsePdfPageNumber(pageElement: HTMLElement): number | null {
   return pageNumber;
 }
 
+// Highlight layers fill the page's padding box, so quads are normalized to it
+// rather than to the border box getBoundingClientRect reports.
+export function pdfPageContentRect(pageElement: HTMLElement): DOMRectReadOnly {
+  const borderBox = pageElement.getBoundingClientRect();
+  return new DOMRect(
+    borderBox.left + pageElement.clientLeft,
+    borderBox.top + pageElement.clientTop,
+    pageElement.clientWidth,
+    pageElement.clientHeight,
+  );
+}
+
 // Convert a client-space rect into page-normalized coordinates (0–1).
 export function clientRectToPageQuad(
   rect: DOMRectReadOnly,
@@ -86,7 +98,7 @@ export function extractSelectionGeometry(
     return null;
   }
 
-  const pageRect = startPage.getBoundingClientRect();
+  const pageRect = pdfPageContentRect(startPage);
   const clientRects = range.getClientRects();
   const quads: PdfQuad[] = [];
   for (let i = 0; i < clientRects.length; i += 1) {
@@ -156,7 +168,7 @@ function hitTestPage(
   if (pageNumber == null) {
     return null;
   }
-  const pageRect = page.getBoundingClientRect();
+  const pageRect = pdfPageContentRect(page);
   if (pageRect.width <= 0 || pageRect.height <= 0) {
     return null;
   }

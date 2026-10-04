@@ -16,7 +16,10 @@ import { useMountEffect } from "@/lib";
 import "pdfjs-dist/web/pdf_viewer.css";
 import "./pdf-viewer-overrides.css";
 import type { PdfHighlight } from "../pdf-annotations";
-import { paintPdfHighlights } from "../pdf-highlight-layer";
+import {
+  paintPdfHighlights,
+  paintPdfPageHighlights,
+} from "../pdf-highlight-layer";
 import { buildPdfOutline, type PdfOutlineNode } from "../pdf-outline";
 import {
   PDF_DOCUMENT_START,
@@ -395,10 +398,12 @@ const PdfJsViewerContent = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
       eventBus.on("updatefindmatchescount", handleFindUpdate);
       eventBus.on("updatefindcontrolstate", handleFindUpdate);
 
-      // Virtualized pages are created on demand; re-paint marks each time a
-      // page enters the DOM so highlights survive scroll-away / scroll-back.
-      const handlePageRendered = () => {
-        paintPdfHighlights(viewerElement, highlightsRef.current);
+      const handlePageRendered = (event: { pageNumber: number }) => {
+        paintPdfPageHighlights(
+          viewerElement,
+          event.pageNumber,
+          highlightsRef.current,
+        );
       };
       eventBus.on("pagerendered", handlePageRendered);
 
