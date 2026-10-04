@@ -26,11 +26,21 @@ function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
 
 describe("choosePeerDelivery", () => {
   it("starts a new run for an idle target", () => {
-    expect(choosePeerDelivery({ hasActiveTurn: false })).toBe("start-new-run");
+    expect(
+      choosePeerDelivery({ hasActiveTurn: false, supportsSteering: true }),
+    ).toBe("start-new-run");
   });
 
-  it("queues behind an active turn", () => {
-    expect(choosePeerDelivery({ hasActiveTurn: true })).toBe("queue-after-run");
+  it("steers an active turn when the target agent supports steering", () => {
+    expect(
+      choosePeerDelivery({ hasActiveTurn: true, supportsSteering: true }),
+    ).toBe("steer-active-run");
+  });
+
+  it("queues behind an active turn when steering is unsupported", () => {
+    expect(
+      choosePeerDelivery({ hasActiveTurn: true, supportsSteering: false }),
+    ).toBe("queue-after-run");
   });
 });
 

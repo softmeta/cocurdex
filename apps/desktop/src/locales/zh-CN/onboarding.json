@@ -3,8 +3,8 @@
     "configureProviders": "配置服务商",
     "dontShowAgain": "不再显示",
     "enterApp": "前往 cocurdex",
-    "openProject": "打开项目文件夹",
-    "openProjectHint": "agent 会在你选择的文件夹里运行，这是 cocurdex 的主要用法。",
+    "openFolder": "打开文件夹",
+    "openFolderHint": "agent 会在你选择的文件夹里运行，这是 cocurdex 的主要用法。",
     "skip": "跳过",
     "startChat": "前往聊天"
   },

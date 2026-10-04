@@ -172,7 +172,7 @@ export function RightEditorPanel({
     () => workspaces.find((w) => w.id === activeWorkspaceId) ?? null,
     [workspaces, activeWorkspaceId],
   );
-  // Terminal works without a project: shell starts in the user home directory.
+  // Terminal works without a workspace: shell starts in the user home directory.
   // Home is resolved in main (sandboxed preload cannot import node:os).
   const [homeDir, setHomeDir] = useState<string | null>(null);
   useMountEffect(() => {
@@ -545,7 +545,7 @@ export function RightEditorPanel({
             No `key` here: the panel stays mounted as workspace/scope changes so
             React doesn't tear down xterm just because of a tree-wide remount.
             TerminalPanel handles workspaceId / cwd prop changes via the attach
-            effect. Project shells and the no-workspace (home) shell keep
+            effect. Workspace shells and the no-workspace (home) shell keep
             separate tab state keys.
           */}
                 <TerminalPanel

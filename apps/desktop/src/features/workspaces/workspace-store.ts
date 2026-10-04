@@ -35,10 +35,10 @@ function workspaceNameFromPath(rootPath: string): string {
 
 export const workspacesAtom = atom<WorkspaceRecord[]>([]);
 export const activeWorkspaceIdAtom = atom<string | null>(null);
-// The most recent project the user actually selected. Unlike
+// The most recent workspace the user actually selected. Unlike
 // activeWorkspaceId, it is NOT cleared when the user drops to chat mode (picks
-// "No project"), so the top-level "new session" entry can re-enter that
-// project by default. Stays null only for users who have never had a project.
+// "No workspace"), so the top-level "new session" entry can re-enter that
+// workspace by default. Stays null only for users who have never had a workspace.
 export const lastSelectedWorkspaceIdAtom = atom<string | null>(null);
 export const COLLAPSED_WORKSPACE_IDS_STORAGE_KEY =
   "cocurdex.sidebar.collapsed-workspace-ids";
@@ -163,25 +163,31 @@ export const addWorkspaceAtom = atom(
 
 export type OpenWorkspaceByPathResult = {
   workspace: WorkspaceRecord;
-  /** True when active project changed (caller should clear foreign session UI). */
-  didSwitchProject: boolean;
+  /** True when active workspace changed (caller should clear foreign session UI). */
+  didSwitchWorkspace: boolean;
 };
 
 /**
  * Open a workspace by absolute directory path (CLI `cocurdex .` / folder dialog).
- * Reuses an existing record containing that root; otherwise creates one.
- * Always activates the project and expands its session list in the sidebar.
+ * Prefers the workspace whose primary folder is that path, then any workspace
+ * containing it; otherwise creates one.
+ * Always activates the workspace and expands its session list in the sidebar.
  */
 export const openWorkspaceByPathAtom = atom(
   null,
   (get, set, rootPath: string): OpenWorkspaceByPathResult => {
     const normalized = normalizeWorkspaceRootPath(rootPath);
     const previousId = get(activeWorkspaceIdAtom);
-    const existing = get(workspacesAtom).find((workspace) =>
-      workspace.rootPaths.some((workspaceRootPath) =>
-        workspacePathsEqual(workspaceRootPath, normalized),
-      ),
-    );
+    const workspaces = get(workspacesAtom);
+    const existing =
+      workspaces.find((workspace) =>
+        workspacePathsEqual(workspace.rootPaths[0], normalized),
+      ) ??
+      workspaces.find((workspace) =>
+        workspace.rootPaths.some((workspaceRootPath) =>
+          workspacePathsEqual(workspaceRootPath, normalized),
+        ),
+      );
 
     let workspace: WorkspaceRecord;
     if (existing) {
@@ -208,7 +214,7 @@ export const openWorkspaceByPathAtom = atom(
 
     return {
       workspace,
-      didSwitchProject: previousId !== workspace.id,
+      didSwitchWorkspace: previousId !== workspace.id,
     };
   },
 );

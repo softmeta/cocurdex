@@ -44,7 +44,7 @@
   "dependencies": {
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
-    "@earendil-works/pi-coding-agent": "0.99.1",
+    "@earendil-works/pi-coding-agent": "1.0.2",
     "@napi-rs/keyring": "2.1.0",
     "@vscode/ripgrep": "^1.18.0",
     "electron-log": "^5.4.3",

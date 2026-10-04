@@ -1,32 +1,39 @@
 /* App-wide browser and Electron shell defaults. Theme values are referenced
  * here but defined in theme-preset.css and theme-tokens.css. */
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-html,
-body,
-#root {
-  height: 100%;
-  overflow: hidden;
-}
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
 
-body {
-  margin: 0;
-  background: var(--app-bg);
-  color: var(--app-fg);
-  font-family: var(--font-ui);
-  font-size: var(--app-ui-font-size, 13px);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    margin: 0;
+    background: var(--app-bg);
+    color: var(--app-fg);
+    font-family: var(--font-ui);
+    font-size: var(--app-ui-font-size, 13px);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-code,
-kbd,
-pre,
-samp {
-  font-family: var(--font-mono);
-  font-size: var(--app-code-font-size, 13px);
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    font-size: var(--app-code-font-size, 13px);
+  }
+
+  ::selection {
+    background: var(--selection-bg);
+    color: var(--selection-fg);
+  }
 }
 
 /* Electron titlebar drag regions must remain globally available because layout
@@ -39,16 +46,6 @@ samp {
 .app-no-drag {
   -webkit-app-region: no-drag;
   app-region: no-drag;
-}
-
-button,
-textarea {
-  font: inherit;
-}
-
-::selection {
-  background: var(--selection-bg);
-  color: var(--selection-fg);
 }
 
 /*

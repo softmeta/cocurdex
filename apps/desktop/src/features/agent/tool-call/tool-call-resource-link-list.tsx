@@ -14,7 +14,7 @@ export function ToolCallResourceLinkList({
       {links.map((link) => (
         <li key={link.filePath}>
           <button
-            className="flex w-full min-w-0 items-center gap-2 rounded-control px-2 py-1 text-left font-mono text-chat-fg-secondary text-xs transition-colors [font-variant-ligatures:none] hover:bg-chat-surface-tint-hover"
+            className="flex w-full min-w-0 items-center gap-2 rounded-control px-2 py-1 text-left font-mono text-chat-fg-secondary text-body transition-colors [font-variant-ligatures:none] hover:bg-chat-surface-tint-hover"
             onClick={() => onOpenToolLocation?.(link)}
             type="button"
           >

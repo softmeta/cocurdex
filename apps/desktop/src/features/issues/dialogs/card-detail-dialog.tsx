@@ -251,11 +251,11 @@ function IssueForm({
     priorityOptions.find((o) => o.id === priority)?.title ?? priority;
   const workspaceLabel = workspaceId
     ? (workspaces.find((w) => w.id === workspaceId)?.name ??
-      t("dialog.unknownProject"))
-    : t("dialog.noProject");
+      t("dialog.unknownWorkspace"))
+    : t("dialog.noWorkspace");
 
   const workspaceOptions: Array<{ id: string; title: string }> = [
-    { id: "", title: t("dialog.noProject") },
+    { id: "", title: t("dialog.noWorkspace") },
     ...workspaces.map((w) => ({ id: w.id, title: w.name })),
   ];
 
@@ -359,7 +359,7 @@ function IssueForm({
           options={workspaceOptions}
           value={workspaceId ?? ""}
           onChange={(id) => setWorkspaceId(id || null)}
-          ariaLabel={t("dialog.project")}
+          ariaLabel={t("dialog.workspace")}
         />
       </div>
 

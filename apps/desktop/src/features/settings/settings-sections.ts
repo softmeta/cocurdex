@@ -62,7 +62,12 @@ export const settingsSections = [
     icon: GitFork,
     cluster: "workspace",
   },
-  { id: "projects", labelKey: "projects", icon: Folder, cluster: "workspace" },
+  {
+    id: "workspaces",
+    labelKey: "workspaces",
+    icon: Folder,
+    cluster: "workspace",
+  },
   {
     id: "environment",
     labelKey: "environment",

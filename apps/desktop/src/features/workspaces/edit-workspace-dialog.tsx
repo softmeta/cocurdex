@@ -20,7 +20,7 @@ import {
 import { pickHostDirectoryAtom } from "./host-directory-pick-atom";
 import { compactWorkspacePath } from "./workspace-path";
 
-interface EditProjectDialogProps {
+interface EditWorkspaceDialogProps {
   open: boolean;
   workspace: WorkspaceRecord;
   onOpenChange(open: boolean): void;
@@ -31,18 +31,18 @@ interface EditProjectDialogProps {
   ): Promise<void>;
 }
 
-export function EditProjectDialog({
+export function EditWorkspaceDialog({
   open,
   workspace,
   onOpenChange,
   onRemoveWorkspace,
   onSave,
-}: EditProjectDialogProps) {
+}: EditWorkspaceDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="default">
         {open ? (
-          <EditProjectForm
+          <EditWorkspaceForm
             onCancel={() => onOpenChange(false)}
             onRemoveWorkspace={onRemoveWorkspace}
             onSave={onSave}
@@ -54,7 +54,7 @@ export function EditProjectDialog({
   );
 }
 
-function EditProjectForm({
+function EditWorkspaceForm({
   workspace,
   onCancel,
   onRemoveWorkspace,
@@ -117,9 +117,9 @@ function EditProjectForm({
       </DialogHeader>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="project-name">{t("workspace.editNameLabel")}</Label>
+          <Label htmlFor="workspace-name">{t("workspace.editNameLabel")}</Label>
           <Input
-            id="project-name"
+            id="workspace-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -195,7 +195,7 @@ function EditProjectForm({
           variant="destructive"
           onClick={() => onRemoveWorkspace(workspace.id)}
         >
-          {t("workspace.editRemoveProject")}
+          {t("workspace.editRemoveWorkspace")}
         </Button>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>

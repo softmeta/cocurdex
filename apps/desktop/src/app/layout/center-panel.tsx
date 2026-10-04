@@ -949,8 +949,8 @@ export function CenterPanel({
   const handleOpenWorkspace = async () => {
     const rootPath = await pickHostDirectory();
     if (!rootPath) return;
-    const { didSwitchProject } = openWorkspaceByPath(rootPath);
-    if (didSwitchProject) {
+    const { didSwitchWorkspace } = openWorkspaceByPath(rootPath);
+    if (didSwitchWorkspace) {
       selectSession(null);
     }
   };

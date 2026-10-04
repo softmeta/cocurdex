@@ -111,14 +111,12 @@ function SegmentPopover({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-1">
-        {isOpen ? (
-          <BreadcrumbDirTree
-            dirPath={dirPath}
-            onPicked={() => onOpenChange(false)}
-            rootPath={rootPath}
-            selectedPath={selectedPath}
-          />
-        ) : null}
+        <BreadcrumbDirTree
+          dirPath={dirPath}
+          onPicked={() => onOpenChange(false)}
+          rootPath={rootPath}
+          selectedPath={selectedPath}
+        />
       </PopoverContent>
     </Popover>
   );

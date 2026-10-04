@@ -19,7 +19,7 @@ interface ConversationsPanelProps {
 }
 
 // Pure chat tab of the sidebar. Conversations are workspace-independent, so
-// this list is flat — no project grouping.
+// this list is flat — no workspace grouping.
 export function ConversationsPanel({
   activeConversationId,
   conversations,

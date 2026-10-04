@@ -1,6 +1,11 @@
 import type { ImageAttachment } from "@cocurdex/shared";
-import { isDocumentAttachment, isImageAttachment } from "@cocurdex/shared";
 import {
+  isDocumentAttachment,
+  isImageAttachment,
+  stripPeerEnvelope,
+} from "@cocurdex/shared";
+import {
+  ChevronDown,
   CornerDownLeft,
   FileText,
   Image as ImageIcon,
@@ -27,6 +32,8 @@ import {
   ImageAttachmentChips,
   ImageAttachmentPreview,
 } from "@/features/composer";
+import { cn } from "@/lib";
+import { messageOriginLabel } from "../view/message-origin-label";
 import type { QueuedAgentInputItem } from "./queued-input-store";
 
 interface QueuedInputShelfProps {
@@ -170,8 +177,19 @@ function QueuedInputRow({
             <Text size="meta">{documentCount}</Text>
           </span>
         ) : null}
+        {item.message.origin ? (
+          <Text
+            className="max-w-48 shrink-0 text-chat-fg-muted"
+            size="meta"
+            truncate
+          >
+            {messageOriginLabel(t, item.message.origin)}
+          </Text>
+        ) : null}
         <Text className="min-w-0 flex-1 text-chat-fg" size="body" truncate>
-          {item.message.content}
+          {item.message.origin
+            ? stripPeerEnvelope(item.message.content)
+            : item.message.content}
         </Text>
         {supportsSteering ? (
           <Button
@@ -241,16 +259,41 @@ export function QueuedInputShelf({
   ...rowProps
 }: QueuedInputShelfProps) {
   const { t } = useTranslation("agent");
+  const [collapsed, setCollapsed] = useState(false);
   if (items.length === 0) return null;
+  const showHeader = items.length > 1;
+  const showRows = !showHeader || !collapsed;
 
   return (
     <section
       aria-label={t("queue.label")}
       className="max-h-44 overflow-y-auto rounded-card border border-chat-border-soft bg-chat-surface-raised shadow-chat-soft divide-y divide-chat-border-soft"
     >
-      {items.map((item) => (
-        <QueuedInputRow key={item.messageId} item={item} {...rowProps} />
-      ))}
+      {showHeader ? (
+        <button
+          aria-expanded={!collapsed}
+          className="group/header flex w-full items-center gap-1.5 px-2 py-1.5 text-start text-chat-fg-subtle"
+          onClick={() => setCollapsed(!collapsed)}
+          type="button"
+        >
+          <ListEnd aria-hidden="true" className="size-4 shrink-0" />
+          <Text size="meta">{t("queue.label")}</Text>
+          <Text className="tabular-nums" size="meta">
+            {items.length}
+          </Text>
+          <ChevronDown
+            className={cn(
+              "size-3.5 shrink-0 transition-transform group-hover/header:text-chat-fg",
+              collapsed && "-rotate-90",
+            )}
+          />
+        </button>
+      ) : null}
+      {showRows
+        ? items.map((item) => (
+            <QueuedInputRow key={item.messageId} item={item} {...rowProps} />
+          ))
+        : null}
     </section>
   );
 }

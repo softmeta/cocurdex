@@ -12,6 +12,14 @@ import { startDaemonServer } from "./wire";
 
 const directories: string[] = [];
 const daemons: Awaited<ReturnType<typeof startDaemonServer>>[] = [];
+
+function resumeQueued(root: string) {
+  return requestDaemon(
+    "session.resumeQueued",
+    { sessionId: "session" },
+    { userDataPath: root },
+  );
+}
 const timestamp = "2026-09-13T00:00:00.000Z";
 const message: MessageRecord = {
   id: "message",
@@ -92,7 +100,21 @@ async function seed(archived = false) {
 }
 
 describe("daemon-owned queue recovery", () => {
-  it("does not start a recovered task when shutdown arrives during credential resolution", async () => {
+  it("keeps persisted inputs paused when the daemon starts", async () => {
+    const root = await seed();
+    const dispatch = vi
+      .spyOn(AgentRuntimeManager.prototype, "sendSessionMessage")
+      .mockResolvedValue(message);
+    const second = await start(root);
+    await requestDaemon("app.bootstrap", { userDataPath: root });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(await second.service.state.listQueuedAgentInputs("session")).toEqual(
+      [expect.objectContaining({ messageId: message.id })],
+    );
+  });
+
+  it("does not start a resumed task when shutdown arrives during credential resolution", async () => {
     const root = await seed();
     let release!: () => void;
     const credentials = vi
@@ -108,6 +130,7 @@ describe("daemon-owned queue recovery", () => {
       .spyOn(AgentRuntimeManager.prototype, "sendSessionMessage")
       .mockResolvedValue(message);
     const second = await start(root);
+    void resumeQueued(root).catch(() => undefined);
     await vi.waitFor(() => expect(credentials).toHaveBeenCalledOnce());
     const closing = second.close();
     await new Promise<void>((resolve) => setImmediate(resolve));
@@ -115,10 +138,11 @@ describe("daemon-owned queue recovery", () => {
     await closing;
     expect(dispatch).not.toHaveBeenCalled();
     await start(root);
+    await resumeQueued(root);
     await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
   });
 
-  it("starts persisted inputs before any client bootstrap and uses current host credentials and paths", async () => {
+  it("resumes persisted inputs with current host credentials and paths", async () => {
     const root = await seed();
     const credentials = vi
       .spyOn(ProviderCredentials.prototype, "forSession")
@@ -135,6 +159,7 @@ describe("daemon-owned queue recovery", () => {
       .spyOn(AgentRuntimeManager.prototype, "sendSessionMessage")
       .mockResolvedValue(message);
     const second = await start(root);
+    await expect(resumeQueued(root)).resolves.toBe(true);
     await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
     expect(credentials).toHaveBeenCalledWith(
       expect.objectContaining({ id: "session" }),
@@ -151,8 +176,7 @@ describe("daemon-owned queue recovery", () => {
         await second.service.state.listQueuedAgentInputs("session"),
       ).toEqual([]),
     );
-    await requestDaemon("app.bootstrap", { userDataPath: root });
-    await requestDaemon("app.bootstrap", { userDataPath: root });
+    await expect(resumeQueued(root)).resolves.toBe(false);
     expect(dispatch).toHaveBeenCalledOnce();
   });
 
@@ -165,10 +189,8 @@ describe("daemon-owned queue recovery", () => {
       .spyOn(AgentRuntimeManager.prototype, "sendSessionMessage")
       .mockResolvedValue(message);
     const second = await start(root);
-    await vi.waitFor(() => expect(credentials).toHaveBeenCalledOnce());
-    await vi.waitFor(() =>
-      expect(second.service.getActiveWork().agentTurns).toBe(0),
-    );
+    await expect(resumeQueued(root)).resolves.toBe(false);
+    expect(credentials).toHaveBeenCalledOnce();
     expect(dispatch).not.toHaveBeenCalled();
     expect(await second.service.state.listQueuedAgentInputs("session")).toEqual(
       [expect.objectContaining({ messageId: message.id })],
@@ -177,24 +199,11 @@ describe("daemon-owned queue recovery", () => {
       ...message,
       seq: 1,
     });
-    await expect(
-      requestDaemon(
-        "session.resumeQueued",
-        { sessionId: "session" },
-        { userDataPath: root },
-      ),
-    ).resolves.toBe(false);
     expect(
       await second.service.state.listQueuedAgentInputs("session"),
     ).toHaveLength(1);
     credentials.mockResolvedValue(null);
-    await expect(
-      requestDaemon(
-        "session.resumeQueued",
-        { sessionId: "session" },
-        { userDataPath: root },
-      ),
-    ).resolves.toBe(true);
+    await expect(resumeQueued(root)).resolves.toBe(true);
     await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
   });
 

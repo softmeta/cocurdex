@@ -37,8 +37,12 @@ export interface TeamToolDependencies {
   stopLeadMember(
     leadSessionId: string,
     sessionId: string,
+    options: { force: boolean },
   ): Promise<TeamMemberRecord>;
-  stopLeadTeam(leadSessionId: string): Promise<TeamRecord>;
+  stopLeadTeam(
+    leadSessionId: string,
+    options: { force: boolean },
+  ): Promise<TeamRecord>;
 }
 
 function isLead(caller: AgentToolCallerContext) {
@@ -49,6 +53,11 @@ function isTeamParticipant(caller: AgentToolCallerContext) {
   return caller.sessionKind === "main" || caller.sessionKind === "teammate";
 }
 
+const FORCE_STOP_PROPERTY = {
+  type: "boolean",
+  description: "Interrupt busy teammates and discard their unread messages",
+};
+
 export function registerTeamTools(
   registry: AgentToolRegistry,
   deps: TeamToolDependencies,
@@ -58,11 +67,15 @@ export function registerTeamTools(
       group: "team",
       name: "spawn_teammate",
       description:
-        "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you. Names are lowercase slugs (a-z, 0-9, dashes).",
+        "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you: injected into your current turn when your agent supports steering, otherwise as a new turn after yours ends. To wait for teammates, end your turn; their reports wake you. Do not poll or stop teammates to finish early. Names are lowercase slugs (a-z, 0-9, dashes) used to address the teammate; title is the human-readable label shown to the user, written in the user's language.",
       inputSchema: {
         type: "object",
         properties: {
           name: { type: "string", description: "Unique teammate name" },
+          title: {
+            type: "string",
+            description: "Short display title; defaults to name",
+          },
           prompt: { type: "string", description: "Initial instructions" },
           agentRoleId: { type: "string", description: "Saved agent role id" },
           agentType: {
@@ -82,6 +95,7 @@ export function registerTeamTools(
     execute: (caller, input) =>
       deps.spawn(caller.sessionId, {
         name: String(input.name),
+        ...(typeof input.title === "string" ? { title: input.title } : {}),
         prompt: String(input.prompt),
         agentRoleId:
           typeof input.agentRoleId === "string" ? input.agentRoleId : null,
@@ -233,11 +247,12 @@ export function registerTeamTools(
       group: "team",
       name: "stop_member",
       description:
-        "Stop one teammate session. Use when a teammate is done or off track.",
+        "Stop one teammate session after it has reported and is idle. Fails with members_busy while it is running or has unread messages; then end your turn and wait for its report. Pass force: true only when it is off track and must be interrupted.",
       inputSchema: {
         type: "object",
         properties: {
           sessionId: { type: "string", description: "Teammate session id" },
+          force: FORCE_STOP_PROPERTY,
         },
         required: ["sessionId"],
         additionalProperties: false,
@@ -245,21 +260,24 @@ export function registerTeamTools(
     },
     isAvailable: isLead,
     execute: (caller, input) =>
-      deps.stopLeadMember(caller.sessionId, String(input.sessionId)),
+      deps.stopLeadMember(caller.sessionId, String(input.sessionId), {
+        force: input.force === true,
+      }),
   });
   registry.register({
     descriptor: {
       group: "team",
       name: "stop",
       description:
-        "Stop every teammate and end the team. Use once all tasks are merged.",
+        "Stop every teammate and end the team once every report is merged. Fails with members_busy while any teammate is running or has unread messages; then end your turn and wait for their reports. Pass force: true only to abandon unfinished work.",
       inputSchema: {
         type: "object",
-        properties: {},
+        properties: { force: FORCE_STOP_PROPERTY },
         additionalProperties: false,
       },
     },
     isAvailable: isLead,
-    execute: (caller) => deps.stopLeadTeam(caller.sessionId),
+    execute: (caller, input) =>
+      deps.stopLeadTeam(caller.sessionId, { force: input.force === true }),
   });
 }

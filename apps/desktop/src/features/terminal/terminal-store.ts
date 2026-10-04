@@ -15,7 +15,7 @@ export function createTerminalTab(): TerminalTab {
   };
 }
 
-// Synthetic scope when no project workspace is selected. Terminals still need a
+// Synthetic scope when no workspace is selected. Terminals still need a
 // stable key for tab state + PTY metadata; the shell cwd is the user home dir.
 export const NO_WORKSPACE_TERMINAL_SCOPE_ID = "no-workspace";
 

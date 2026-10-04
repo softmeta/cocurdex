@@ -121,13 +121,13 @@
     "restoreFailed": "无法恢复此会话，请重试。",
     "restoreNamed": "恢复 {{title}}",
     "retry": "重试",
-    "search": "搜索会话、项目或 Agent"
+    "search": "搜索会话、工作区或 Agent"
   },
   "assistant": {
     "close": "关闭助手",
     "loading": "正在启动助手…",
     "newSession": "新开助手会话",
-    "noWorkspace": "添加项目后即可与助手对话。",
+    "noWorkspace": "添加工作区后即可与助手对话。",
     "open": "打开助手",
     "prompts": {
       "chatDisplay": "展示聊天显示方式的选项，并用设置工具帮我选一个。",
@@ -145,7 +145,7 @@
       "worktree": "推荐 worktree 脚本"
     },
     "title": "助手",
-    "worktreeKickoff": "分析这个仓库，为 worktree 推荐初始化脚本和清理脚本。两个脚本都要给出建议、都不要留空：初始化脚本负责装依赖和生成代码，清理脚本负责在回收前清掉构建缓存、临时目录或进程。先查看项目文件，然后用 settings_propose 工具提交你的建议，我会进行确认。"
+    "worktreeKickoff": "分析这个仓库，为 worktree 推荐初始化脚本和清理脚本。两个脚本都要给出建议、都不要留空：初始化脚本负责装依赖和生成代码，清理脚本负责在回收前清掉构建缓存、临时目录或进程。先查看仓库文件，然后用 settings_propose 工具提交你的建议，我会进行确认。"
   },
   "chatDisplay": {
     "activity": {
@@ -430,17 +430,6 @@
     "description": "这一组先保留为占位骨架。等你确定信息架构后，再把具体字段和交互补进去。",
     "title": "{{section}} 占位区"
   },
-  "projects": {
-    "current": "当前",
-    "description": "选择一个项目，管理它的项目级设置。",
-    "emptyDescription": "先在侧栏「工作」中添加项目，再回来为它配置。",
-    "emptyTitle": "还没有项目",
-    "environmentDescription": "Cocurdex 为此项目创建的 worktree 所使用的脚本和 Actions。",
-    "environmentTitle": "环境",
-    "noResults": "没有匹配的项目",
-    "search": "搜索项目",
-    "worktreeSettings": "工作树设置"
-  },
   "providers": {
     "actions": {
       "add": "添加",
@@ -653,13 +642,13 @@
     "licenses": "开源许可",
     "mcp": "MCP",
     "personalization": "个性化",
-    "projects": "项目",
     "providers": "服务商",
     "shortcuts": "快捷键",
     "skills": "Skills",
     "teams": "团队",
     "usage": "使用情况",
     "workflows": "工作流",
+    "workspaces": "工作区",
     "worktrees": "工作树"
   },
   "sendShortcut": {
@@ -738,19 +727,19 @@
     "loading": "正在检查 Skills 安装状态…",
     "scope": {
       "global": {
-        "description": "安装到本机 ~/.agents/skills 与 ~/.claude/skills，对所有项目生效。",
-        "title": "全局（所有项目）"
+        "description": "安装到本机 ~/.agents/skills 与 ~/.claude/skills，对所有工作区生效。",
+        "title": "全局（所有工作区）"
       },
       "project": {
         "description": "安装到当前工作区（.agents/skills 与 .claude/skills），适合提交到团队仓库。",
-        "title": "当前项目"
+        "title": "当前工作区"
       }
     },
     "status": {
       "conflict": "已存在非托管的 cocurdex skill 目录（{{skills}}）。请先删除或重命名 {{path}} 下的冲突项，再重新安装。",
       "installed": "已安装 v{{version}}，路径 {{path}}",
       "notInstalled": "未安装。将写入 {{path}}",
-      "noWorkspace": "请先选择一个项目工作区，再安装项目级 Skills。",
+      "noWorkspace": "请先选择一个工作区，再安装工作区级 Skills。",
       "updateAvailable": "已安装 v{{installed}}；可用 pack v{{latest}}，路径 {{path}}"
     },
     "toast": {
@@ -762,7 +751,7 @@
       "removeFailed": "移除 Skills 失败",
       "updated": "已更新 cocurdex Skills"
     },
-    "workspaceLabel": "当前项目：{{name}}"
+    "workspaceLabel": "当前工作区：{{name}}"
   },
   "teams": {
     "addMember": "添加成员",
@@ -910,6 +899,17 @@
       "saveFailed": "无法保存此工作流。"
     }
   },
+  "workspaces": {
+    "current": "当前",
+    "description": "选择一个工作区，管理它的设置。",
+    "emptyDescription": "先在侧栏「工作」中添加工作区，再回来为它配置。",
+    "emptyTitle": "还没有工作区",
+    "environmentDescription": "Cocurdex 为此工作区创建的 worktree 所使用的脚本和 Actions。",
+    "environmentTitle": "环境",
+    "noResults": "没有匹配的工作区",
+    "search": "搜索工作区",
+    "worktreeSettings": "工作树设置"
+  },
   "worktrees": {
     "actionName": "Action 名称",
     "actionNamePlaceholder": "名称，例如：开发服务器",
@@ -930,7 +930,7 @@
     "fetchDescription": "创建新工作树前先 fetch 远程，让起始点保持最新。",
     "fetchTitle": "创建工作树前始终 fetch upstream",
     "groupTitle": "托管工作树",
-    "inventoryDescription": "Cocurdex 为会话创建的检出。初始化和清理脚本仍在项目设置里。",
+    "inventoryDescription": "Cocurdex 为会话创建的检出。初始化和清理脚本仍在工作区设置里。",
     "loading": "加载中…",
     "newSession": "在此工作树新建会话",
     "noSessions": "没有会话正在使用这棵工作树。",
@@ -943,7 +943,7 @@
     "save": "保存",
     "saved": "Worktree 环境已保存",
     "saveFailed": "无法保存工作树设置。{{message}}",
-    "setupDescription": "为这个项目创建 Worktree 之后自动执行。",
+    "setupDescription": "为这个工作区创建 Worktree 之后自动执行。",
     "setupPlaceholder": "pnpm install",
     "setupTitle": "初始化脚本"
   }

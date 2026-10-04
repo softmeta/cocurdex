@@ -8,6 +8,7 @@ import { isPdfPath } from "@/features/pdf-reader/is-pdf-path";
 import { openPdfReaderAtom } from "@/features/pdf-reader/pdf-reader-store";
 import { desktopApi, useMountEffect } from "@/lib";
 import {
+  BREADCRUMB_TREE_HOST_CLASS,
   getSubtreePaths,
   resolveBreadcrumbSelectedFilePath,
 } from "./editor-breadcrumb-dir-tree-utils";
@@ -35,7 +36,7 @@ export function BreadcrumbDirTree({
   onPicked,
 }: BreadcrumbDirTreeProps) {
   return (
-    <BreadcrumbDirTreeContent
+    <BreadcrumbDirTreeLoader
       dirPath={dirPath}
       key={`${rootPath}\0${dirPath}\0${selectedPath}`}
       onPicked={onPicked}
@@ -45,12 +46,35 @@ export function BreadcrumbDirTree({
   );
 }
 
+function BreadcrumbDirTreeLoader(props: BreadcrumbDirTreeProps) {
+  const [paths, setPaths] = useState<string[] | null>(null);
+
+  useMountEffect(() => {
+    let isActive = true;
+    void desktopApi
+      .listWorkspaceFiles(props.rootPath)
+      .then((entries) => {
+        if (isActive) setPaths(getSubtreePaths(entries, props.dirPath));
+      })
+      .catch(() => {
+        if (isActive) setPaths([]);
+      });
+    return () => {
+      isActive = false;
+    };
+  });
+
+  if (!paths) return <div className={BREADCRUMB_TREE_HOST_CLASS} />;
+  return <BreadcrumbDirTreeContent {...props} paths={paths} />;
+}
+
 function BreadcrumbDirTreeContent({
   rootPath,
   dirPath,
   selectedPath,
   onPicked,
-}: BreadcrumbDirTreeProps) {
+  paths,
+}: BreadcrumbDirTreeProps & { paths: string[] }) {
   const openPreviewFile = useSetAtom(openPreviewFileAtom);
   const openPdfReader = useSetAtom(openPdfReaderAtom);
   // Same quiet scrollbar host pattern as FileTree / GitChangesTree.
@@ -74,7 +98,8 @@ function BreadcrumbDirTreeContent({
   };
 
   const { model } = useFileTree({
-    paths: [],
+    paths,
+    initialSelectedPaths: [selectedPath],
     initialExpansion: "closed",
     flattenEmptyDirectories: true,
     unsafeCSS: TREES_UNSAFE_CSS,
@@ -109,32 +134,13 @@ function BreadcrumbDirTreeContent({
     [],
   );
 
-  useMountEffect(() => {
-    let isActive = true;
-    void desktopApi
-      .listWorkspaceFiles(rootPath)
-      .then((entries) => {
-        if (!isActive) return;
-        model.resetPaths(getSubtreePaths(entries, dirPath));
-        const selectedItem = model.getItem(selectedPath);
-        selectedItem?.select();
-      })
-      .catch(() => {
-        if (!isActive) return;
-        model.resetPaths([]);
-      });
-    return () => {
-      isActive = false;
-    };
-  });
-
   return (
     // TREE_STYLE sets height:100%, and Pierre virtualizes rows — without a
     // resolved height the list renders zero rows. A fixed height gives it one.
     // ponytail: fixed 18rem; measure content to size-to-fit if the blank space
     // under small directories becomes annoying.
     <div
-      className="h-72 w-64 overflow-hidden"
+      className={BREADCRUMB_TREE_HOST_CLASS}
       onClickCapture={handleClickCapture}
       onPointerEnter={() => setIsScrollbarVisible(true)}
       onPointerLeave={() => setIsScrollbarVisible(false)}

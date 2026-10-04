@@ -31,7 +31,7 @@ Teammates cannot spawn their own teammates. A team holds at most 8 members.
 
 ## 3. Spawn
 
-One `team_spawn_teammate` per piece. Names are lowercase slugs (`security-review`, `module-auth`).
+One `team_spawn_teammate` per piece. Names are lowercase slugs (`security-review`, `module-auth`) used to address the teammate. Also pass a short `title` in the user's language (`安全审查`, `Auth module`); the app shows it to the user and falls back to the name.
 
 The prompt must contain everything the teammate needs; it does not see your conversation:
 
@@ -51,7 +51,11 @@ Each report arrives as a separate message and may arrive in any order.
 - When every task is `review` or `done`, write the merged result for the user and state which teammates contributed what.
 - If teammates used isolated worktrees, list the branches for the user to merge; do not merge branches yourself unless asked.
 
-Once every report is merged, call `team_stop`. Use `team_stop_member` earlier for a single teammate that is done or off track. Stopping or archiving your own session also stops every teammate.
+Once every report is merged, call `team_stop`. Use `team_stop_member` earlier for a single teammate that is done. Stopping or archiving your own session also stops every teammate.
+
+`team_stop` and `team_stop_member` fail with `members_busy` while a teammate is running or holds unread messages. Do not answer that by forcing: end your turn and let the reports wake you. Pass `force: true` only for a teammate that is off track; forcing interrupts it and discards its unread messages.
+
+A `messaging_send_message` to a running teammate is injected into its current turn (`steer-active-run`) or, when its agent cannot be steered, queued until that turn ends (`queue-after-run`). Reports to you follow the same rule, so a lead whose agent cannot be steered sees them only after ending its turn.
 
 ## Completion criterion
 

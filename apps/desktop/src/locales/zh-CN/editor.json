@@ -220,7 +220,7 @@
     "noFileSelected": "未选择文件",
     "noWorkspace": "无工作区",
     "noWorkspaceDescription": "选择一个工作区来查看 Git 变更。",
-    "noWorkspaceEditorDescription": "打开项目文件夹后即可浏览和编辑文件。",
+    "noWorkspaceEditorDescription": "打开工作区后即可浏览和编辑文件。",
     "noWorkspaceFilesDescription": "选择一个工作区来浏览文件。",
     "noWorkspaceTitle": "未选择工作区"
   },

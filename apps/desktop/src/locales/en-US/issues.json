@@ -42,13 +42,13 @@
     "editCard": "Edit issue",
     "loadFailed": "Couldn't load the full description. Close and reopen the issue to edit it.",
     "newIssue": "New issue",
-    "noProject": "No project",
+    "noWorkspace": "No workspace",
     "priority": "Priority",
-    "project": "Project",
     "save": "Save",
     "status": "Status",
     "titlePlaceholder": "Issue title",
-    "unknownProject": "Unknown project"
+    "unknownWorkspace": "Unknown workspace",
+    "workspace": "Workspace"
   },
   "empty": {
     "description": "Create a card or column to start organizing work.",
@@ -59,10 +59,10 @@
     "saveFailed": "Couldn't save the issue change. The board has been refreshed."
   },
   "filter": {
-    "allProjects": "All projects",
+    "allWorkspaces": "All workspaces",
     "ariaLabel": "Filter view",
-    "noProject": "No project",
-    "project": "Project"
+    "noWorkspace": "No workspace",
+    "workspace": "Workspace"
   },
   "list": {
     "collapseGroup": "Collapse {{title}}",
@@ -73,7 +73,7 @@
   "scope": {
     "private": "Private",
     "workspace": "{{name}}",
-    "workspaceFallback": "Project"
+    "workspaceFallback": "Workspace"
   },
   "sidebar": {
     "addBoard": "Add view",

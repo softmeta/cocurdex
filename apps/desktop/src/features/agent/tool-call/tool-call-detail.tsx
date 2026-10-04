@@ -52,7 +52,7 @@ export function ToolCallDetailHeader({
   const showType = Boolean(type && type !== title);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 text-chat-fg-muted text-meta">
+    <div className="flex min-w-0 flex-1 items-center gap-2 text-chat-fg-muted text-body">
       <ToolCallStatusIcon toolCall={toolCall} />
       <span className="min-w-0 flex-1 truncate text-body font-medium text-chat-fg">
         {title}
@@ -148,7 +148,7 @@ export function ToolCallDetailBody({
       {resultSubscription}
       {previewLocations.length > 0 ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
+          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
             <FileText className="size-3" />
             {t("toolCalls.readFiles")}
           </div>
@@ -169,7 +169,7 @@ export function ToolCallDetailBody({
                   <div className="min-w-0 truncate text-sm text-chat-fg-secondary">
                     {getToolPreviewTitle(location)}
                   </div>
-                  <div className="truncate text-xs text-chat-fg-muted">
+                  <div className="truncate text-body text-chat-fg-muted">
                     {location.filePath}
                     {rangeLabel ? ` · ${rangeLabel}` : ""}
                   </div>
@@ -180,7 +180,7 @@ export function ToolCallDetailBody({
         </div>
       ) : uniqueLocations.length > 0 ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
+          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
             <FileText className="size-3" />
             {t("toolCalls.files", { count: uniqueLocations.length })}
           </div>
@@ -202,13 +202,13 @@ export function ToolCallDetailBody({
       ) : null}
       {showInputBlock && inputEntries ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
+          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
             <Terminal className="size-3" />
             {detailLabel}
           </div>
           {/* Each code panel owns its bounded scroll region, with default scroll
               chaining so the surrounding chat keeps scrolling at panel edges. */}
-          <dl className="flex max-h-[40vh] flex-col gap-1.5 overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-xs leading-5">
+          <dl className="flex max-h-[40vh] flex-col gap-1.5 overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-body leading-5">
             {inputEntries.map((entry) => {
               const multiline = isMultilineInputField(entry);
               return (
@@ -243,11 +243,11 @@ export function ToolCallDetailBody({
         </div>
       ) : showInputBlock && inputFallback ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
+          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
             <Terminal className="size-3" />
             {detailLabel}
           </div>
-          <pre className="overflow-x-auto whitespace-pre rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-xs leading-5 text-chat-fg-secondary [font-variant-ligatures:none]">
+          <pre className="overflow-x-auto whitespace-pre rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-body leading-5 text-chat-fg-secondary [font-variant-ligatures:none]">
             {inputFallback}
           </pre>
         </div>
@@ -257,7 +257,7 @@ export function ToolCallDetailBody({
       ) : null}
       {showResourceLinks ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-chat-fg-muted">
+          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
             <ScrollText className="size-3" />
             {t("toolCalls.output")}
           </div>
@@ -268,18 +268,18 @@ export function ToolCallDetailBody({
             />
           ) : null}
           {outputLoadStatus === "loading" ? (
-            <div className="flex items-center gap-2 rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
+            <div className="flex items-center gap-2 rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-body text-chat-fg-muted">
               <Spinner size="xs" />
               <span>{t("toolCalls.outputLoading")}</span>
             </div>
           ) : outputLoadStatus === "error" ? (
-            <div className="rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
+            <div className="rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-body text-chat-fg-muted">
               {t("toolCalls.outputLoadError", { message: outputErrorMessage })}
             </div>
           ) : output ? (
             <pre
               className={cn(
-                "max-h-[40vh] overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-xs leading-5 whitespace-pre text-chat-fg-secondary [font-variant-ligatures:none]",
+                "max-h-[40vh] overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-body leading-5 whitespace-pre text-chat-fg-secondary [font-variant-ligatures:none]",
               )}
             >
               {output}

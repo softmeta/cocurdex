@@ -142,7 +142,7 @@ export function WorkspacePicker({
           <span className="flex min-w-0 items-center gap-1.5">
             <Folder className="size-3.5 shrink-0" />
             <span className="truncate">
-              {workspaceName ?? t("workspace.enterProject")}
+              {workspaceName ?? t("workspace.enterWorkspace")}
             </span>
           </span>
         )

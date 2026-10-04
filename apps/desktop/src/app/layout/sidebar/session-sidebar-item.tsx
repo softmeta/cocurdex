@@ -48,7 +48,6 @@ import { SidebarOverflowTitle } from "./sidebar-overflow-title";
 import { SidebarRenameInput } from "./sidebar-rename-input";
 
 interface SessionSidebarItemProps {
-  depth?: number;
   hasChildren?: boolean;
   isActive: boolean;
   isExpanded?: boolean;
@@ -129,7 +128,6 @@ function SessionTrailing({
 }
 
 export function SessionSidebarItem({
-  depth = 0,
   hasChildren = false,
   isActive,
   isExpanded = true,
@@ -178,7 +176,6 @@ export function SessionSidebarItem({
   );
   const isChild = Boolean(session.parentSessionId);
   const activityAt = session.lastMessageAt ?? session.updatedAt;
-  const startPaddingPx = 24 + depth * 12 - (hasChildren ? 20 : 0);
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();
     node?.select();
@@ -302,17 +299,9 @@ export function SessionSidebarItem({
         <ContextMenuTrigger asChild>
           <SidebarListRow
             isActive={isActive}
-            className={cn(
-              depth === 0 && (hasChildren ? "ps-1" : "ps-6"),
-              isChild && "text-sidebar-fg-muted",
-            )}
+            className={cn(isChild ? "ps-11 text-sidebar-fg-muted" : "ps-6")}
             onClick={hasChildren ? undefined : onSelect}
             render={hasChildren ? undefined : <button type="button" />}
-            style={
-              depth > 0
-                ? { paddingInlineStart: `${startPaddingPx}px` }
-                : undefined
-            }
           >
             {hasChildren ? (
               <button

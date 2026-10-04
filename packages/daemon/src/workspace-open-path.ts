@@ -17,7 +17,7 @@ async function canonicalDirectory(directoryPath: string) {
 
 // Map a directory onto an existing workspace's stored rootPath when they are
 // the same directory (including symlink / realpath differences), so opening
-// it reuses that project instead of creating a duplicate.
+// it reuses that workspace instead of creating a duplicate.
 async function matchExistingRootPath(
   directoryPath: string,
   existingRootPaths: string[],

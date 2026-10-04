@@ -471,9 +471,9 @@ export function NewSessionCard({
           {t("sessions:workspace.startTitleAfter")}
         </WelcomeHeading>
       ) : (
-        // No project yet: the heading states the next step and carries the
+        // No workspace yet: the heading states the next step and carries the
         // action inline, mirroring the workspace picker that replaces it once a
-        // project is open.
+        // workspace is open.
         <WelcomeHeading>
           {t("sessions:workspace.emptyTitle")}
           <Button

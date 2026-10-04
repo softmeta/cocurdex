@@ -17,8 +17,8 @@ import {
   Text,
 } from "@/components/ui";
 
-/** Sentinel for “no project” in the filter menu (maps to is_null). */
-export const FILTER_NO_PROJECT = "__no_project__";
+/** Sentinel for “no workspace” in the filter menu (maps to is_null). */
+export const FILTER_NO_WORKSPACE = "__no_workspace__";
 /** Sentinel for clearing all filters (show every issue). */
 export const FILTER_ALL = "__all__";
 
@@ -29,7 +29,7 @@ interface ViewFilterMenuProps {
 }
 
 /**
- * View-scoped filter control (Linear-style). v1: Project / No project only.
+ * View-scoped filter control (Linear-style). v1: Workspace / No workspace only.
  * Writes filters onto the active view (persisted in view.yml).
  */
 export function ViewFilterMenu({
@@ -43,7 +43,7 @@ export function ViewFilterMenu({
   const selection = useMemo(() => {
     const workspaceFilter = filters.find((f) => f.field === "workspaceId");
     if (!workspaceFilter) return FILTER_ALL;
-    if (workspaceFilter.op === "is_null") return FILTER_NO_PROJECT;
+    if (workspaceFilter.op === "is_null") return FILTER_NO_WORKSPACE;
     if (workspaceFilter.op === "eq" && workspaceFilter.value) {
       return workspaceFilter.value;
     }
@@ -57,7 +57,7 @@ export function ViewFilterMenu({
       onFiltersChange([]);
       return;
     }
-    if (next === FILTER_NO_PROJECT) {
+    if (next === FILTER_NO_WORKSPACE) {
       onFiltersChange([{ field: "workspaceId", op: "is_null" }]);
       return;
     }
@@ -81,7 +81,7 @@ export function ViewFilterMenu({
           <DropdownMenuLabel className="flex items-center gap-1.5 px-2 py-1.5">
             <FolderKanban className="size-3.5 text-editor-fg-subtle" />
             <Text size="meta" weight="medium" className="text-editor-fg-subtle">
-              {t("filter.project")}
+              {t("filter.workspace")}
             </Text>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
@@ -93,8 +93,8 @@ export function ViewFilterMenu({
             setOpen(false);
           }}
           options={[
-            { value: FILTER_ALL, label: t("filter.allProjects") },
-            { value: FILTER_NO_PROJECT, label: t("filter.noProject") },
+            { value: FILTER_ALL, label: t("filter.allWorkspaces") },
+            { value: FILTER_NO_WORKSPACE, label: t("filter.noWorkspace") },
             ...workspaces.map((workspace) => ({
               value: workspace.id,
               label: workspace.name,

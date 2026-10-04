@@ -126,7 +126,7 @@ export interface IssueRecord {
   color: string | null;
   status: string;
   priority: string;
-  /** Linked workspace id, or null when unassigned (no project). */
+  /** Linked workspace id, or null when unassigned (no workspace). */
   workspaceId: string | null;
   sortOrder: number;
   revision: number;
@@ -208,7 +208,7 @@ export interface CreateIssuePayload {
   color?: string | null;
   status?: string;
   priority?: string;
-  /** Null / omit = no project association. */
+  /** Null / omit = no workspace association. */
   workspaceId?: string | null;
   sortOrder?: number;
 }
@@ -221,7 +221,7 @@ export interface UpdateIssuePayload {
   color?: string | null;
   status?: string;
   priority?: string;
-  /** Null clears the association (no project). */
+  /** Null clears the association (no workspace). */
   workspaceId?: string | null;
   expectedRevision?: number;
 }

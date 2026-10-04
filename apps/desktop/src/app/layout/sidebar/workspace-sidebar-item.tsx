@@ -212,7 +212,7 @@ export function WorkspaceSidebarItem({
             icon={Pencil}
             onClick={() => onEditWorkspace(workspace.id)}
           >
-            {t("sidebar.editProject", { defaultValue: "Edit project" })}
+            {t("sidebar.editWorkspace", { defaultValue: "Edit workspace" })}
           </SidebarContextMenuItem>
           <ContextMenuSeparator />
           <SidebarContextMenuItem
@@ -220,13 +220,13 @@ export function WorkspaceSidebarItem({
             icon={Trash2}
             onClick={() => onRemoveWorkspace(workspace.id)}
           >
-            {t("sidebar.removeProject", { defaultValue: "Remove project" })}
+            {t("sidebar.removeWorkspace", { defaultValue: "Remove workspace" })}
           </SidebarContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       {expanded ? (
-        // No sub-tree gutter: session titles align with the workspace name
-        // (workspace row is ps-1 + size-3.5 icon + gap-1.5 → session ps-6).
+        // Session rows start where the workspace name starts: a plain session's
+        // title and a parent session's chevron both align with it (ps-6).
         <SidebarMenuSub className="ms-0 ps-0">
           {sessions.length === 0 ? (
             <div className="ps-6 pe-2 py-1 text-meta text-sidebar-fg-subtle">
@@ -236,7 +236,6 @@ export function WorkspaceSidebarItem({
             limitedTree.nodes.map((node) => (
               <SidebarMenuSubItem key={node.session.id}>
                 <SessionSidebarItem
-                  depth={node.depth}
                   hasChildren={node.hasChildren}
                   isActive={
                     activeConversationId === null &&

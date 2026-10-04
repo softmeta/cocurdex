@@ -166,7 +166,7 @@ export function ToolCallItem({
       <button
         aria-label={accessibleName}
         className={cn(
-          "flex min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-meta whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "flex min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-body whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           getSubagentChipSurfaceClasses(toolCall),
         )}
         onClick={() => {
@@ -186,7 +186,7 @@ export function ToolCallItem({
   if (readLocation && onOpenToolLocation && toolCall.status === "completed") {
     return (
       <button
-        className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-meta transition-colors hover:bg-chat-surface-row-hover"
+        className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-body transition-colors hover:bg-chat-surface-row-hover"
         onClick={() => onOpenToolLocation(readLocation)}
         type="button"
       >
@@ -201,7 +201,7 @@ export function ToolCallItem({
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-meta transition-colors hover:bg-chat-surface-row-hover">
+      <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left text-chat-fg-muted text-body transition-colors hover:bg-chat-surface-row-hover">
         <ToolCallTriggerRow toolCall={toolCall} />
       </CollapsibleTrigger>
       <CollapsibleContent className="ms-7 pt-1">

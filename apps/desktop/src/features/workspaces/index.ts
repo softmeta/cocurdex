@@ -1,4 +1,4 @@
-export { EditProjectDialog } from "./edit-project-dialog";
+export { EditWorkspaceDialog } from "./edit-workspace-dialog";
 export type {
   WorkspaceFilesState,
   WorkspaceFilesStatus,

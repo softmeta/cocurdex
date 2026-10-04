@@ -30,8 +30,8 @@ export function useAppPersistence() {
   const selectSession = useSetAtom(selectSessionAtom);
   const store = useStore();
 
-  // CLI open folder: select project everywhere that reads activeWorkspaceId
-  // (WorkspacePicker trigger/check, sidebar projects list). Always clear the
+  // CLI open folder: select workspace everywhere that reads activeWorkspaceId
+  // (WorkspacePicker trigger/check, sidebar workspaces list). Always clear the
   // active session so the center surface shows NewSessionCard — that is where
   // the workspace dropdown lives and must show the checkmark.
   const activateWorkspaceFromPath = useEffectEvent((rootPath: string) => {
@@ -99,7 +99,7 @@ export function useAppPersistence() {
         }
 
         // Release the empty-state gate only once the restored selection is
-        // settled, so `cocurdex .` never paints the previous project first.
+        // settled, so `cocurdex .` never paints the previous workspace first.
         setAppBootstrapped(true);
       })
       .catch((error) => {

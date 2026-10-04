@@ -72,6 +72,7 @@ import {
   logPiSkillDiagnostic,
   resolveAdditionalSkillPaths,
 } from "./pi-skill-diagnostics";
+import { renderPiWorkspaceRootsPrompt } from "./pi-workspace-roots";
 
 const PI_PROVIDER_VERSION = "pi-sdk";
 
@@ -403,6 +404,7 @@ export function createPiSdkAdapter(
       // Track the latest failed turn so we can surface it after prompt returns
       // instead of treating an empty turn as success.
       let lastTurnError: string | null = null;
+      let stopRequested = false;
 
       function emitError(message: string) {
         if (disposed) return;
@@ -633,7 +635,13 @@ export function createPiSdkAdapter(
         if (getString(message?.role) !== "assistant") return;
 
         const stopReason = getString(message?.stopReason);
-        if (stopReason === "error" || stopReason === "aborted") {
+        if (stopReason === "aborted" && stopRequested) {
+          lastTurnError = null;
+          logAdapterDiagnostic("info", "pi: assistant message stopped", {
+            sessionId,
+            messageId: lastUserMessageId,
+          });
+        } else if (stopReason === "error" || stopReason === "aborted") {
           lastTurnError =
             getString(message?.errorMessage) ??
             (stopReason === "aborted"
@@ -789,6 +797,13 @@ export function createPiSdkAdapter(
               payload.workspaceRootPath,
             ),
             extensionFactories: createPiBuiltinExtensions(),
+            appendSystemPromptOverride: (base) => {
+              const rootsPrompt = renderPiWorkspaceRootsPrompt(
+                payload.workspaceRootPath,
+                payload.workspaceRootPaths,
+              );
+              return rootsPrompt ? [...base, rootsPrompt] : base;
+            },
           });
           await resourceLoader.reload();
           const result = await sdk.createAgentSession({
@@ -885,6 +900,9 @@ export function createPiSdkAdapter(
             createdAt: new Date().toISOString(),
           };
           lastUserMessageId = acceptedInputMessage.id;
+          if (messagePayload.delivery !== "steer-active-run") {
+            stopRequested = false;
+          }
           nativeFiles.clear();
           nativeSnapshots.clear();
           onEvent({ type: "state.changed", sessionId, status: "running" });
@@ -1005,6 +1023,7 @@ export function createPiSdkAdapter(
           };
         },
         stop() {
+          stopRequested = true;
           // Abort the turn only — the session stays alive for the next prompt.
           void piSession?.abort();
         },

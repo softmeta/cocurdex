@@ -48,6 +48,7 @@ export interface TeamSnapshot {
 
 export interface SpawnTeammatePayload {
   name: string;
+  title?: string;
   prompt: string;
   agentRoleId?: string | null;
   agentType?: AgentId;

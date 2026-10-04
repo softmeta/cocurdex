@@ -98,7 +98,7 @@ export function IssuesView() {
       if (!board) return;
       // Open Linear-style compose dialog; only write to disk on create.
       const groupBy = board.view.groupBy;
-      // Prefer the active view's project filter when set; else active workspace.
+      // Prefer the active view's workspace filter when set; else active workspace.
       const workspaceFilter = (board.view.filters ?? []).find(
         (filter) => filter.field === "workspaceId",
       );

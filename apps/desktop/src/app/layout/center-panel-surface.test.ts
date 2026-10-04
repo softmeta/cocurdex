@@ -27,10 +27,10 @@ describe("resolveCenterPanelSurface", () => {
     ).toBe("conversation");
   });
 
-  it("shows the agent composer on the projects tab with no session", () => {
+  it("shows the agent composer on the workspaces tab with no session", () => {
     expect(
       resolveCenterPanelSurface({
-        sidebarTab: "projects",
+        sidebarTab: "workspaces",
         hasConversation: false,
         hasSession: false,
         sessionDataLoaded: false,
@@ -38,10 +38,10 @@ describe("resolveCenterPanelSurface", () => {
     ).toBe("new-session");
   });
 
-  it("does not keep a conversation on the projects tab", () => {
+  it("does not keep a conversation on the workspaces tab", () => {
     expect(
       resolveCenterPanelSurface({
-        sidebarTab: "projects",
+        sidebarTab: "workspaces",
         hasConversation: true,
         hasSession: false,
         sessionDataLoaded: false,
@@ -49,10 +49,10 @@ describe("resolveCenterPanelSurface", () => {
     ).toBe("new-session");
   });
 
-  it("shows the loaded agent session on the projects tab", () => {
+  it("shows the loaded agent session on the workspaces tab", () => {
     expect(
       resolveCenterPanelSurface({
-        sidebarTab: "projects",
+        sidebarTab: "workspaces",
         hasConversation: false,
         hasSession: true,
         sessionDataLoaded: true,
@@ -60,10 +60,10 @@ describe("resolveCenterPanelSurface", () => {
     ).toBe("agent-session");
   });
 
-  it("waits for agent session data on the projects tab", () => {
+  it("waits for agent session data on the workspaces tab", () => {
     expect(
       resolveCenterPanelSurface({
-        sidebarTab: "projects",
+        sidebarTab: "workspaces",
         hasConversation: true,
         hasSession: true,
         sessionDataLoaded: false,
@@ -86,10 +86,10 @@ describe("resolvePaneCenterSurface", () => {
     ).toBe("agent-session");
   });
 
-  it("shows a new session in an empty pane on the projects tab", () => {
+  it("shows a new session in an empty pane on the workspaces tab", () => {
     expect(
       resolvePaneCenterSurface({
-        sidebarTab: "projects",
+        sidebarTab: "workspaces",
         conversationId: null,
         sessionId: null,
         hasConversation: false,

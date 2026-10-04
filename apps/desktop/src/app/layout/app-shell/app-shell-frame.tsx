@@ -163,7 +163,7 @@ export function AppShellFrame({
   const providerModelsLoaded = useAtomValue(providerModelsLoadedAtom);
   const onboardingDismissed = useAtomValue(onboardingDismissedAtom);
   // Decided once, when the snapshot and provider rows are both in: opening a
-  // project from the welcome screen fills the workspace list, and re-deriving
+  // workspace from the welcome screen fills the workspace list, and re-deriving
   // from that would yank the screen away mid-flow.
   const onboardingNeededRef = useRef<boolean | null>(null);
   if (
@@ -203,7 +203,7 @@ export function AppShellFrame({
     [requestChatContext],
   );
 
-  // Match CLI / "Open Folder": activate project and clear foreign session UI.
+  // Match CLI / "Open Folder": activate workspace and clear foreign session UI.
   const handleOpenDroppedWorkspace = useCallback(
     (rootPath: string) => {
       openWorkspaceByPath(rootPath);
@@ -255,7 +255,7 @@ export function AppShellFrame({
     return <BootSplash />;
   }
 
-  // Nothing is set up yet: no project to open and no provider to talk to. The
+  // Nothing is set up yet: no workspace to open and no provider to talk to. The
   // welcome screen replaces the frame entirely — sidebar and panels have
   // nothing to list. Leaving it is always an explicit choice, so setup done
   // inside it never yanks the screen away mid-flow.

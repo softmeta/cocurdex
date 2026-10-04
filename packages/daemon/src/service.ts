@@ -303,6 +303,11 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       listSessions: () => this.state.listSessions(),
       hasActiveTurn: (sessionId) => this.pendingTurns.has(sessionId),
+      supportsSteering: async (session) => {
+        const agents = await this.listAgents();
+        const agent = agents.find((item) => item.id === session.agentType);
+        return agent?.capabilities.supportsSteering ?? false;
+      },
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       broadcast: (event) => this.events.emit("daemon.event", event),
       peerScope: (sessionId) => this.team.peerScope(sessionId),
@@ -318,7 +323,9 @@ export class CocurdexDaemonService {
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       sendPeerMessage: (payload, render) =>
         this.peerMessaging.send(payload, render),
-      stopSession: (sessionId) => this.stopSession(sessionId),
+      stopSession: (sessionId) => this.stopTeammateSession(sessionId),
+      isSessionBusy: (sessionId) =>
+        this.pendingTurns.has(sessionId) || this.queuedFollowUps.has(sessionId),
       getMessage: (messageId) => this.state.getMessageById(messageId),
       createWorktree: (input) => this.createWorktree(input),
       broadcast: (event) => {
@@ -464,27 +471,16 @@ export class CocurdexDaemonService {
   startBackgroundRecovery() {
     if (this.startupRecovery || this.stopping) return;
     this.startupRecovery = this.trackBackgroundSend(
-      this.recoverQueuedSessions(),
+      this.recoverInterruptedWork(),
     );
   }
 
-  private async recoverQueuedSessions() {
+  private async recoverInterruptedWork() {
     try {
       await this.state.waitForStartupRecovery();
       await this.scriptRuns.recoverInterrupted();
-      const inputs = await this.state.listAllQueuedAgentInputs();
-      for (const sessionId of new Set(inputs.map((input) => input.sessionId))) {
-        if (this.stopping) break;
-        try {
-          await this.resumeQueuedSession(sessionId);
-        } catch {
-          logDaemonDiagnostic("warn", "session.queueRecoveryFailed", {
-            sessionId,
-          });
-        }
-      }
     } catch {
-      logDaemonDiagnostic("warn", "session.queueRecoveryUnavailable");
+      logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
     }
   }
 
@@ -704,28 +700,25 @@ export class CocurdexDaemonService {
     const home = homedir();
     if (rootPaths.some((rootPath) => workspacePathsEqual(rootPath, home))) {
       throw new Error(
-        "The home directory cannot be a project folder; choose a subfolder",
+        "The home directory cannot be a workspace folder; choose a subfolder",
       );
     }
     if (rootPaths.some((rootPath) => path.parse(rootPath).root === rootPath)) {
       throw new Error(
-        "A filesystem root cannot be a project folder; choose a subfolder",
+        "A filesystem root cannot be a workspace folder; choose a subfolder",
       );
     }
     const others = (await this.state.listWorkspaces()).filter(
       (candidate) => candidate.id !== workspace.id,
     );
-    for (const rootPath of rootPaths) {
-      const conflict = others.find((candidate) =>
-        candidate.rootPaths.some((owned) =>
-          workspacePathsEqual(owned, rootPath),
-        ),
+    const primaryRootPath = rootPaths[0];
+    const conflict = others.find((candidate) =>
+      workspacePathsEqual(candidate.rootPaths[0], primaryRootPath),
+    );
+    if (conflict) {
+      throw new Error(
+        `Folder ${primaryRootPath} is already the primary folder of workspace "${conflict.name}"`,
       );
-      if (conflict) {
-        throw new Error(
-          `Folder ${rootPath} already belongs to project "${conflict.name}"`,
-        );
-      }
     }
     const normalized = { ...workspace, rootPaths };
     try {
@@ -1717,9 +1710,16 @@ export class CocurdexDaemonService {
       payload.session,
     );
     if (this.stopping) throw new Error("Daemon is shutting down");
+    const hasActiveTurn = this.pendingTurns.has(payload.session.id);
+    if (
+      payload.delivery === "steer-active-run" &&
+      !hasActiveTurn &&
+      payload.origin?.kind === "peer"
+    ) {
+      payload = { ...payload, delivery: "start-new-run" };
+    }
     const isSteering = payload.delivery === "steer-active-run";
     const isQueuedFollowUp = payload.delivery === "queue-after-run";
-    const hasActiveTurn = this.pendingTurns.has(payload.session.id);
     if (hasActiveTurn && !isSteering && !isQueuedFollowUp) {
       throw new Error(
         `Session ${payload.session.id} already has an active turn`,
@@ -1748,6 +1748,7 @@ export class CocurdexDaemonService {
 
     if (isQueuedFollowUp && hasActiveTurn) {
       await this.ensureAgentAvailable(payload.session.agentType);
+      await this.loadQueuedFollowUps(payload.session.id);
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
       const userMessage = await this.state.saveQueuedUserMessage(
@@ -1871,20 +1872,21 @@ export class CocurdexDaemonService {
   }
 
   private async restoreQueuedSession(sessionId: string) {
-    if (
-      this.pendingTurns.has(sessionId) ||
-      this.queuedFollowUps.has(sessionId)
-    ) {
-      return false;
-    }
+    if (this.pendingTurns.has(sessionId) || this.stopping) return false;
+    if (!(await this.loadQueuedFollowUps(sessionId))) return false;
+    return this.dispatchNextQueuedInput(sessionId);
+  }
+
+  private async loadQueuedFollowUps(sessionId: string) {
+    const loaded = this.queuedFollowUps.get(sessionId);
+    if (loaded) return loaded;
 
     const [session, inputs, messages] = await Promise.all([
       this.state.getSession(sessionId),
       this.state.listQueuedAgentInputs(sessionId),
       this.state.listMessagesBySessionId(sessionId),
     ]);
-    if (!session || session.archivedAt || inputs.length === 0 || this.stopping)
-      return false;
+    if (!session || session.archivedAt || inputs.length === 0) return;
 
     const messageById = new Map(
       messages.map((message) => [message.id, message]),
@@ -1907,10 +1909,10 @@ export class CocurdexDaemonService {
         },
       ];
     });
-    if (queued.length === 0) return false;
+    if (queued.length === 0) return;
 
     this.queuedFollowUps.set(sessionId, queued);
-    return this.dispatchNextQueuedInput(sessionId);
+    return queued;
   }
 
   async updateQueuedAgentInput(
@@ -1919,7 +1921,7 @@ export class CocurdexDaemonService {
     content: string,
   ) {
     const trimmedContent = content.trim();
-    const queued = this.queuedFollowUps.get(sessionId);
+    const queued = await this.loadQueuedFollowUps(sessionId);
     const index = queued?.findIndex(
       (item) => item.payload.messageId === messageId,
     );
@@ -1952,7 +1954,7 @@ export class CocurdexDaemonService {
   }
 
   async deleteQueuedAgentInput(sessionId: string, messageId: string) {
-    const queued = this.queuedFollowUps.get(sessionId);
+    const queued = await this.loadQueuedFollowUps(sessionId);
     if (!queued) {
       throw new Error(`Queued message ${messageId} was not found`);
     }
@@ -1973,10 +1975,10 @@ export class CocurdexDaemonService {
 
   async steerQueuedAgentInput(sessionId: string, messageId: string) {
     if (!this.pendingTurns.has(sessionId)) {
-      throw new Error(`Session ${sessionId} has no active turn`);
+      return this.sendQueuedAgentInputNow(sessionId, messageId);
     }
 
-    const queued = this.queuedFollowUps.get(sessionId);
+    const queued = await this.loadQueuedFollowUps(sessionId);
     const index = queued?.findIndex(
       (item) => item.payload.messageId === messageId,
     );
@@ -2046,7 +2048,7 @@ export class CocurdexDaemonService {
   async sendQueuedAgentInputNow(sessionId: string, messageId: string) {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
-      const queued = this.queuedFollowUps.get(sessionId);
+      const queued = await this.loadQueuedFollowUps(sessionId);
       const index = queued?.findIndex(
         (item) => item.payload.messageId === messageId,
       );
@@ -2152,6 +2154,23 @@ export class CocurdexDaemonService {
     return this.sessionCommands.run(sessionId, () =>
       this.stopSessionTurn(sessionId),
     );
+  }
+
+  private async stopTeammateSession(sessionId: string) {
+    await this.stopSession(sessionId);
+    await this.sessionCommands.run(sessionId, async () => {
+      const inputs = await this.state.listQueuedAgentInputs(sessionId);
+      for (const input of inputs) {
+        await this.state.deleteQueuedUserMessage(input.messageId);
+      }
+      this.queuedFollowUps.delete(sessionId);
+      if (inputs.length > 0) {
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["agent"],
+        });
+      }
+    });
   }
 
   private async stopSessionTurn(sessionId: string) {
