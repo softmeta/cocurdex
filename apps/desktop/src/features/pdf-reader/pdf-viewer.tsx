@@ -12,20 +12,22 @@ import {
   type PdfHighlightColor,
 } from "./pdf-annotations";
 import {
+  addPdfHighlightAtom,
+  hydratePdfAnnotationsAtom,
+  pdfAnnotationsAtom,
+  pdfLastHighlightColorAtom,
+  removePdfBookmarkAtom,
+  removePdfHighlightAtom,
+  togglePdfBookmarkForPageAtom,
+} from "./pdf-annotations-store";
+import {
   buildPdfNoteCitationMarkdown,
   noteTitleFromPdfPath,
 } from "./pdf-note-citation";
 import type { PdfOutlineNode } from "./pdf-outline";
 import {
-  addPdfHighlightAtom,
-  hydratePdfAnnotationsAtom,
-  pdfAnnotationsAtom,
-  pdfLastHighlightColorAtom,
   pdfReadingPositionsAtom,
-  removePdfBookmarkAtom,
-  removePdfHighlightAtom,
   setPdfReadingPositionAtom,
-  togglePdfBookmarkForPageAtom,
 } from "./pdf-reader-store";
 import type { PdfReadingPosition } from "./pdf-reading-position";
 import { MAX_SCALE, MIN_SCALE } from "./pdf-scale";

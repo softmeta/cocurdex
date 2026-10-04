@@ -45,7 +45,10 @@ describe("pdf annotations storage", () => {
       ],
     };
 
-    await service.saveAnnotations(filePath, annotations);
+    await service.updateAnnotations(filePath, {
+      type: "merge",
+      annotations,
+    });
 
     const storagePath = path.join(
       userDataPath,
@@ -88,15 +91,24 @@ describe("pdf annotations storage", () => {
     const service = createService(userDataPath, workspaceRootPath);
 
     const filePath = path.join(workspaceRootPath, "doc.pdf");
-    await service.saveAnnotations(filePath, {
-      bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
-      highlights: [],
+    await service.updateAnnotations(filePath, {
+      type: "addBookmark",
+      bookmark: { id: "bm-1", pageNumber: 1, createdAt: 1 },
     });
 
-    await service.saveAnnotations(filePath, {
-      bookmarks: [],
-      highlights: [],
+    await service.updateAnnotations(filePath, {
+      type: "removeBookmark",
+      bookmarkId: "bm-1",
     });
+    await expect(
+      readFile(
+        path.join(
+          userDataPath,
+          "pdf-annotations",
+          `${pdfAnnotationsStorageKey(path.resolve(filePath))}.json`,
+        ),
+      ),
+    ).rejects.toThrow("ENOENT");
 
     await expect(service.loadAnnotations(filePath)).resolves.toEqual({
       bookmarks: [],
@@ -132,7 +144,7 @@ describe("pdf annotations storage", () => {
     ).rejects.toThrow("not a PDF");
   });
 
-  it("serializes overlapping saves so the newest snapshot wins", async () => {
+  it("keeps every concurrent mutation instead of the last snapshot", async () => {
     const userDataPath = await mkdtemp(
       path.join(tmpdir(), "cocurdex-pdf-annotations-"),
     );
@@ -141,25 +153,38 @@ describe("pdf annotations storage", () => {
     );
     const service = createService(userDataPath, workspaceRootPath);
     const filePath = path.join(workspaceRootPath, "doc.pdf");
+    const highlight = (id: string) => ({
+      id,
+      pageNumber: 1,
+      color: "yellow" as const,
+      selectedText: id,
+      quads: [{ x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.12 }],
+      createdAt: 1,
+    });
 
-    const first = service.saveAnnotations(filePath, {
-      bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
-      highlights: [],
+    await service.updateAnnotations(filePath, {
+      type: "addHighlight",
+      highlight: highlight("existing"),
     });
-    const second = service.saveAnnotations(filePath, {
-      bookmarks: [
-        { id: "bm-1", pageNumber: 1, createdAt: 1 },
-        { id: "bm-2", pageNumber: 2, createdAt: 2 },
-      ],
-      highlights: [],
-    });
-    await Promise.all([first, second]);
+    const results = await Promise.all([
+      service.updateAnnotations(filePath, {
+        type: "addHighlight",
+        highlight: highlight("window-a"),
+      }),
+      service.updateAnnotations(filePath, {
+        type: "addBookmark",
+        bookmark: { id: "bm-b", pageNumber: 2, createdAt: 2 },
+      }),
+      service.loadAnnotations(filePath),
+    ]);
 
     const loaded = await service.loadAnnotations(filePath);
-    expect(loaded.bookmarks.map((bookmark) => bookmark.id)).toEqual([
-      "bm-1",
-      "bm-2",
+    expect(loaded.highlights.map((entry) => entry.id)).toEqual([
+      "existing",
+      "window-a",
     ]);
+    expect(loaded.bookmarks.map((entry) => entry.id)).toEqual(["bm-b"]);
+    expect(results[2]).toEqual(loaded);
   });
 
   it("rejects a PDF that reaches outside the workspace via symlink", async () => {
@@ -198,9 +223,9 @@ describe("pdf annotations storage", () => {
     await writeFile(path.join(realRoot, "papers", "paper.pdf"), "%PDF", "utf8");
     const service = createService(userDataPath, linkedRoot);
 
-    await service.saveAnnotations(filePath, {
-      bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],
-      highlights: [],
+    await service.updateAnnotations(filePath, {
+      type: "addBookmark",
+      bookmark: { id: "bm-1", pageNumber: 1, createdAt: 1 },
     });
     await expect(service.loadAnnotations(filePath)).resolves.toEqual({
       bookmarks: [{ id: "bm-1", pageNumber: 1, createdAt: 1 }],

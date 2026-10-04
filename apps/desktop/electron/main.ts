@@ -811,12 +811,12 @@ function registerWorkspaceHandlers() {
   );
   registerHandler(
     ipcMain,
-    "pdf:save-annotations",
-    schemas.savePdfAnnotations,
+    "pdf:update-annotations",
+    schemas.updatePdfAnnotations,
     async (_event, payload) =>
       requestDaemon(
-        "pdf.saveAnnotations",
-        { filePath: payload.filePath, annotations: payload.annotations },
+        "pdf.updateAnnotations",
+        { filePath: payload.filePath, operation: payload.operation },
         await chatDaemonOptions(),
       ),
   );

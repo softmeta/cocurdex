@@ -159,6 +159,41 @@ const boundsSchema = z.object({
   anchorY: z.enum(["start", "end", "stretch"]).optional(),
 });
 
+const pdfMarkIdSchema = z.string().min(1).max(256);
+
+const pdfBookmarkSchema = z
+  .object({
+    id: pdfMarkIdSchema,
+    pageNumber: z.number().int().positive().max(1_000_000),
+    label: z.string().max(2000).optional(),
+    scrollYRatio: z.number().finite().min(0).max(1).optional(),
+    createdAt: z.number().finite(),
+  })
+  .strict();
+
+const pdfHighlightSchema = z
+  .object({
+    id: pdfMarkIdSchema,
+    pageNumber: z.number().int().positive().max(1_000_000),
+    color: z.enum(["yellow", "green", "blue", "pink"]),
+    selectedText: z.string().min(1).max(50_000),
+    quads: z
+      .array(
+        z
+          .object({
+            x1: z.number().finite(),
+            y1: z.number().finite(),
+            x2: z.number().finite(),
+            y2: z.number().finite(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(500),
+    createdAt: z.number().finite(),
+  })
+  .strict();
+
 // Loose object schemas: handlers downstream rely on TypeScript types from
 // @cocurdex/shared. Doing exhaustive deep validation here would couple this
 // file to every record evolution; instead we just guarantee the boundary
@@ -432,51 +467,48 @@ export const schemas = {
   loadPdfAnnotations: z.object({
     filePath: filesystemPathSchema,
   }),
-  savePdfAnnotations: z.object({
+  updatePdfAnnotations: z.object({
     filePath: filesystemPathSchema,
-    annotations: z
-      .object({
-        bookmarks: z
-          .array(
-            z
-              .object({
-                id: z.string().min(1).max(256),
-                pageNumber: z.number().int().positive().max(1_000_000),
-                label: z.string().max(2000).optional(),
-                scrollYRatio: z.number().finite().min(0).max(1).optional(),
-                createdAt: z.number().finite(),
-              })
-              .strict(),
-          )
-          .max(10_000),
-        highlights: z
-          .array(
-            z
-              .object({
-                id: z.string().min(1).max(256),
-                pageNumber: z.number().int().positive().max(1_000_000),
-                color: z.enum(["yellow", "green", "blue", "pink"]),
-                selectedText: z.string().min(1).max(50_000),
-                quads: z
-                  .array(
-                    z
-                      .object({
-                        x1: z.number().finite(),
-                        y1: z.number().finite(),
-                        x2: z.number().finite(),
-                        y2: z.number().finite(),
-                      })
-                      .strict(),
-                  )
-                  .min(1)
-                  .max(500),
-                createdAt: z.number().finite(),
-              })
-              .strict(),
-          )
-          .max(50_000),
-      })
-      .strict(),
+    operation: z.discriminatedUnion("type", [
+      z
+        .object({
+          type: z.literal("addHighlight"),
+          highlight: pdfHighlightSchema,
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal("removeHighlight"),
+          highlightId: pdfMarkIdSchema,
+        })
+        .strict(),
+      z
+        .object({ type: z.literal("addBookmark"), bookmark: pdfBookmarkSchema })
+        .strict(),
+      z
+        .object({
+          type: z.literal("toggleBookmark"),
+          bookmark: pdfBookmarkSchema,
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal("removeBookmark"),
+          bookmarkId: pdfMarkIdSchema,
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal("merge"),
+          annotations: z
+            .object({
+              bookmarks: z.array(pdfBookmarkSchema).max(10_000),
+              highlights: z.array(pdfHighlightSchema).max(50_000),
+            })
+            .strict(),
+        })
+        .strict(),
+    ]),
   }),
   editorView: z.object({ sessionId: idSchema }).passthrough(),
   ptySpawn: z.object({

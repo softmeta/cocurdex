@@ -173,12 +173,11 @@ export async function handleDaemonRequest(
       return service.pdfAnnotationsService.loadAnnotations(
         request.params.filePath,
       );
-    case "pdf.saveAnnotations":
-      await service.pdfAnnotationsService.saveAnnotations(
+    case "pdf.updateAnnotations":
+      return service.pdfAnnotationsService.updateAnnotations(
         request.params.filePath,
-        request.params.annotations,
+        request.params.operation,
       );
-      return null;
     case "workspace.save":
       return service.saveWorkspace(request.params.workspace);
     case "workspace.delete":

@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  applyPdfAnnotationsOperation,
   EMPTY_DOCUMENT_ANNOTATIONS,
   normalizeDocumentAnnotations,
+  type PdfAnnotationsOperation,
   type PdfDocumentAnnotations,
 } from "@cocurdex/shared";
 import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
@@ -52,7 +54,7 @@ function isEnoent(error: unknown): boolean {
 
 export class DaemonPdfAnnotationsService {
   private readonly annotationsRootPath: string;
-  private readonly saveChains = new Map<string, Promise<void>>();
+  private readonly queues = new Map<string, Promise<void>>();
 
   constructor(
     userDataPath: string,
@@ -69,16 +71,46 @@ export class DaemonPdfAnnotationsService {
   }
 
   async loadAnnotations(filePath: string): Promise<PdfDocumentAnnotations> {
-    const resolvedPath = await resolveAuthorizedPdfReadPath(
+    return this.enqueue(filePath, async () =>
+      this.readStoredAnnotations(
+        this.storageFilePathFor(await this.resolvePath(filePath)),
+      ),
+    );
+  }
+
+  // Mutations are applied to the stored document inside a per-path queue, so
+  // concurrent clients never overwrite each other's marks with a stale
+  // snapshot. The queue is entered synchronously: awaiting path resolution
+  // first would let a later request whose awaits settle sooner jump ahead.
+  async updateAnnotations(
+    filePath: string,
+    operation: PdfAnnotationsOperation,
+  ): Promise<PdfDocumentAnnotations> {
+    return this.enqueue(filePath, async () => {
+      const resolvedPath = await this.resolvePath(filePath);
+      const storagePath = this.storageFilePathFor(resolvedPath);
+      const current = await this.readStoredAnnotations(storagePath);
+      const next = normalizeDocumentAnnotations(
+        applyPdfAnnotationsOperation(current, operation),
+      );
+      await this.persistAnnotations(resolvedPath, storagePath, next);
+      return next;
+    });
+  }
+
+  private async resolvePath(filePath: string): Promise<string> {
+    return resolveAuthorizedPdfReadPath(
       filePath,
       await this.listWorkspaceRootPaths(),
     );
-    const storagePath = this.storageFilePathFor(resolvedPath);
+  }
 
+  private async readStoredAnnotations(
+    storagePath: string,
+  ): Promise<PdfDocumentAnnotations> {
     try {
       const text = await readFile(storagePath, "utf8");
-      const parsed = JSON.parse(text) as unknown;
-      return normalizeDocumentAnnotations(parsed);
+      return normalizeDocumentAnnotations(JSON.parse(text) as unknown);
     } catch (error) {
       if (isEnoent(error)) {
         return { ...EMPTY_DOCUMENT_ANNOTATIONS };
@@ -87,38 +119,18 @@ export class DaemonPdfAnnotationsService {
     }
   }
 
-  // Saves arrive as complete snapshots and callers do not await them, so
-  // concurrent saves for one PDF must run in request order or an older
-  // snapshot can overwrite a newer one. The chain is keyed by filePath and
-  // entered synchronously: awaiting path resolution before enqueuing would
-  // let a later save whose awaits settle first jump the queue.
-  async saveAnnotations(
-    filePath: string,
-    annotations: PdfDocumentAnnotations,
-  ): Promise<void> {
-    const run = (this.saveChains.get(filePath) ?? Promise.resolve()).then(
-      async () => {
-        const resolvedPath = await resolveAuthorizedPdfReadPath(
-          filePath,
-          await this.listWorkspaceRootPaths(),
-        );
-        await this.persistAnnotations(
-          resolvedPath,
-          this.storageFilePathFor(resolvedPath),
-          annotations,
-        );
-      },
-    );
+  private async enqueue<T>(filePath: string, task: () => Promise<T>) {
+    const run = (this.queues.get(filePath) ?? Promise.resolve()).then(task);
     const tail = run.then(
       () => undefined,
       () => undefined,
     );
-    this.saveChains.set(filePath, tail);
+    this.queues.set(filePath, tail);
     try {
-      await run;
+      return await run;
     } finally {
-      if (this.saveChains.get(filePath) === tail) {
-        this.saveChains.delete(filePath);
+      if (this.queues.get(filePath) === tail) {
+        this.queues.delete(filePath);
       }
     }
   }
@@ -126,10 +138,8 @@ export class DaemonPdfAnnotationsService {
   private async persistAnnotations(
     resolvedPath: string,
     storagePath: string,
-    annotations: PdfDocumentAnnotations,
+    normalized: PdfDocumentAnnotations,
   ): Promise<void> {
-    const normalized = normalizeDocumentAnnotations(annotations);
-
     if (
       normalized.bookmarks.length === 0 &&
       normalized.highlights.length === 0

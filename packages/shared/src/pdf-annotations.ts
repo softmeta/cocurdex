@@ -56,6 +56,14 @@ export interface PdfDocumentAnnotations {
 
 export type PdfAnnotationsByPath = Record<string, PdfDocumentAnnotations>;
 
+export type PdfAnnotationsOperation =
+  | { type: "addHighlight"; highlight: PdfHighlight }
+  | { type: "removeHighlight"; highlightId: string }
+  | { type: "addBookmark"; bookmark: PdfUserBookmark }
+  | { type: "toggleBookmark"; bookmark: PdfUserBookmark }
+  | { type: "removeBookmark"; bookmarkId: string }
+  | { type: "merge"; annotations: PdfDocumentAnnotations };
+
 export const EMPTY_DOCUMENT_ANNOTATIONS: PdfDocumentAnnotations = {
   bookmarks: [],
   highlights: [],
@@ -100,6 +108,57 @@ function normalizeQuad(value: unknown): PdfQuad | null {
     return null;
   }
   return { x1, y1, x2, y2 };
+}
+
+const QUAD_LINE_OVERLAP_RATIO = 0.5;
+const QUAD_MERGE_GAP = 0.02;
+
+function isSameLine(a: PdfQuad, b: PdfQuad): boolean {
+  const overlap = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+  const minHeight = Math.min(a.y2 - a.y1, b.y2 - b.y1);
+  return overlap >= minHeight * QUAD_LINE_OVERLAP_RATIO;
+}
+
+function canMergeQuads(a: PdfQuad, b: PdfQuad): boolean {
+  const gap = Math.max(a.x1, b.x1) - Math.min(a.x2, b.x2);
+  return gap <= QUAD_MERGE_GAP && isSameLine(a, b);
+}
+
+function unionQuads(a: PdfQuad, b: PdfQuad): PdfQuad {
+  return {
+    x1: Math.min(a.x1, b.x1),
+    y1: Math.min(a.y1, b.y1),
+    x2: Math.max(a.x2, b.x2),
+    y2: Math.max(a.y2, b.y2),
+  };
+}
+
+export function mergePdfQuads(quads: readonly PdfQuad[]): PdfQuad[] {
+  const merged: PdfQuad[] = [];
+  for (const quad of quads) {
+    let current = quad;
+    for (let index = merged.length - 1; index >= 0; index -= 1) {
+      const existing = merged[index];
+      if (existing && canMergeQuads(existing, current)) {
+        current = unionQuads(existing, current);
+        merged.splice(index, 1);
+        index = merged.length;
+      }
+    }
+    merged.push(current);
+  }
+  return merged.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+}
+
+function normalizeQuads(values: readonly unknown[]): PdfQuad[] {
+  const quads: PdfQuad[] = [];
+  for (const entry of values) {
+    const quad = normalizeQuad(entry);
+    if (quad) {
+      quads.push(quad);
+    }
+  }
+  return mergePdfQuads(quads);
 }
 
 function normalizeBookmark(value: unknown): PdfUserBookmark | null {
@@ -153,13 +212,7 @@ function normalizeHighlight(value: unknown): PdfHighlight | null {
   if (!Array.isArray(raw.quads)) {
     return null;
   }
-  const quads: PdfQuad[] = [];
-  for (const entry of raw.quads) {
-    const quad = normalizeQuad(entry);
-    if (quad) {
-      quads.push(quad);
-    }
-  }
+  const quads = normalizeQuads(raw.quads);
   if (quads.length === 0) {
     return null;
   }
@@ -288,13 +341,7 @@ export function createHighlight(input: {
   if (typeof selectedText !== "string" || selectedText.trim().length === 0) {
     return null;
   }
-  const quads: PdfQuad[] = [];
-  for (const entry of input.quads) {
-    const quad = normalizeQuad(entry);
-    if (quad) {
-      quads.push(quad);
-    }
-  }
+  const quads = normalizeQuads(input.quads);
   if (quads.length === 0) {
     return null;
   }
@@ -371,6 +418,52 @@ export function removeHighlightFromDocument(
     ...doc,
     highlights: doc.highlights.filter((entry) => entry.id !== highlightId),
   };
+}
+
+export function toggleBookmarkInDocument(
+  doc: PdfDocumentAnnotations,
+  bookmark: PdfUserBookmark,
+): PdfDocumentAnnotations {
+  if (findBookmarkForPage(doc, bookmark.pageNumber)) {
+    return removeBookmarkForPage(doc, bookmark.pageNumber);
+  }
+  return addBookmarkToDocument(doc, bookmark);
+}
+
+export function mergeDocumentAnnotations(
+  doc: PdfDocumentAnnotations,
+  incoming: PdfDocumentAnnotations,
+): PdfDocumentAnnotations {
+  let next = doc;
+  for (const bookmark of incoming.bookmarks) {
+    if (!findBookmarkForPage(next, bookmark.pageNumber)) {
+      next = addBookmarkToDocument(next, bookmark);
+    }
+  }
+  for (const highlight of incoming.highlights) {
+    next = addHighlightToDocument(next, highlight);
+  }
+  return next;
+}
+
+export function applyPdfAnnotationsOperation(
+  doc: PdfDocumentAnnotations,
+  operation: PdfAnnotationsOperation,
+): PdfDocumentAnnotations {
+  switch (operation.type) {
+    case "addHighlight":
+      return addHighlightToDocument(doc, operation.highlight);
+    case "removeHighlight":
+      return removeHighlightFromDocument(doc, operation.highlightId);
+    case "addBookmark":
+      return addBookmarkToDocument(doc, operation.bookmark);
+    case "toggleBookmark":
+      return toggleBookmarkInDocument(doc, operation.bookmark);
+    case "removeBookmark":
+      return removeBookmarkFromDocument(doc, operation.bookmarkId);
+    case "merge":
+      return mergeDocumentAnnotations(doc, operation.annotations);
+  }
 }
 
 export function setDocumentAnnotations(

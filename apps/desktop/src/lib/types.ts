@@ -54,6 +54,7 @@ import type {
   NetworkProxyTestResult,
   NoteRecord,
   NoteSummary,
+  PdfAnnotationsOperation,
   PdfDocumentAnnotations,
   PendingSettingsChangeRecord,
   ProductSkillScope,
@@ -135,6 +136,7 @@ import type { ChatWindowApi } from "./chat-window-types";
 export type WorkspaceFileEntry = WorkspaceFileRecord;
 export type ProductSkillsStatus = ProductSkillsStatusResult;
 export type PdfDocumentAnnotationsDto = PdfDocumentAnnotations;
+export type PdfAnnotationsOperationDto = PdfAnnotationsOperation;
 export type {
   ProductSkillScope,
   ProductSkillsInstallResult,
@@ -434,10 +436,10 @@ export interface ProductApi {
   loadPdfAnnotations(payload: {
     filePath: string;
   }): Promise<PdfDocumentAnnotationsDto>;
-  savePdfAnnotations(payload: {
+  updatePdfAnnotations(payload: {
     filePath: string;
-    annotations: PdfDocumentAnnotationsDto;
-  }): Promise<void>;
+    operation: PdfAnnotationsOperationDto;
+  }): Promise<PdfDocumentAnnotationsDto>;
   updateSessionTitle(
     payload: UpdateSessionTitlePayload,
   ): Promise<SessionRecord | null>;

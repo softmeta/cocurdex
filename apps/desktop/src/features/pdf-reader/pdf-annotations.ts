@@ -3,6 +3,7 @@
 
 export type {
   PdfAnnotationsByPath,
+  PdfAnnotationsOperation,
   PdfDocumentAnnotations,
   PdfHighlight,
   PdfHighlightColor,
@@ -10,8 +11,7 @@ export type {
   PdfUserBookmark,
 } from "@cocurdex/shared";
 export {
-  addBookmarkToDocument,
-  addHighlightToDocument,
+  applyPdfAnnotationsOperation,
   createBookmark,
   createHighlight,
   EMPTY_DOCUMENT_ANNOTATIONS,
@@ -21,8 +21,5 @@ export {
   normalizeAnnotationsByPath,
   normalizeDocumentAnnotations,
   PDF_HIGHLIGHT_COLORS,
-  removeBookmarkForPage,
-  removeBookmarkFromDocument,
-  removeHighlightFromDocument,
   setDocumentAnnotations,
 } from "@cocurdex/shared";
