@@ -597,11 +597,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("notes:create", payload),
   notesUpdate: (payload: UpdateNotePayload) =>
     ipcRenderer.invoke("notes:update", payload),
-  notesRename: (payload: {
-    id: string;
-    title: string;
-    expectedRevision?: number;
-  }) => ipcRenderer.invoke("notes:rename", payload),
   notesMove: (payload: MoveNotePayload) =>
     ipcRenderer.invoke("notes:move", payload),
   notesDelete: (payload: DeleteNotePayload) =>

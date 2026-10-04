@@ -12,6 +12,7 @@ vi.mock("@/features/notes/notes-ipc", () => ({
 }));
 
 import { useNoteAutosave } from "@/features/notes/editor/use-note-autosave";
+import { resetNoteSaveStateForTests } from "@/features/notes/note-save-store";
 
 // Minimal Tiptap editor stub: captures the update handler so tests can fire it.
 function createFakeEditor() {
@@ -37,6 +38,7 @@ function wrapStore(store: ReturnType<typeof createStore>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetNoteSaveStateForTests();
   vi.useFakeTimers();
   ipcMock.update.mockResolvedValue({
     id: "note-1.md",
@@ -61,7 +63,7 @@ describe("useNoteAutosave", () => {
   it("debounces rapid edits into a single save", async () => {
     const store = createStore();
     const editor = createFakeEditor();
-    renderHook(() => useNoteAutosave(editor as never, "note-1.md", 1), {
+    renderHook(() => useNoteAutosave(editor as never, "note-1.md"), {
       wrapper: wrapStore(store),
     });
 
@@ -76,7 +78,7 @@ describe("useNoteAutosave", () => {
     expect(ipcMock.update).toHaveBeenCalledWith({
       id: "note-1.md",
       bodyMarkdown: "# body\n",
-      expectedRevision: 1,
+      expectedRevision: undefined,
     });
   });
 
@@ -84,7 +86,7 @@ describe("useNoteAutosave", () => {
     const store = createStore();
     const editor = createFakeEditor();
     const { unmount } = renderHook(
-      () => useNoteAutosave(editor as never, "note-1.md", 1),
+      () => useNoteAutosave(editor as never, "note-1.md"),
       { wrapper: wrapStore(store) },
     );
 
@@ -100,7 +102,7 @@ describe("useNoteAutosave", () => {
     const editor = createFakeEditor();
     const { rerender } = renderHook(
       ({ noteId }: { noteId: string }) =>
-        useNoteAutosave(editor as never, noteId, 1),
+        useNoteAutosave(editor as never, noteId),
       {
         initialProps: { noteId: "note-1.md" },
         wrapper: wrapStore(store),
@@ -114,7 +116,7 @@ describe("useNoteAutosave", () => {
     expect(ipcMock.update).toHaveBeenCalledWith({
       id: "note-1.md",
       bodyMarkdown: "# body\n",
-      expectedRevision: 1,
+      expectedRevision: undefined,
     });
   });
 });

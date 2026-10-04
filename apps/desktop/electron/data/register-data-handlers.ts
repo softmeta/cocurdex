@@ -16,7 +16,6 @@ import {
   moveColumnPayloadSchema,
   moveIssuePayloadSchema,
   moveNotePayloadSchema,
-  renameNotePayloadSchema,
   saveWorkflowDefinitionPayloadSchema,
   searchDocumentsPayloadSchema,
   updateColumnPayloadSchema,
@@ -43,12 +42,6 @@ export function registerDataHandlers(ipc: IpcMain, userDataPath: string): void {
     ipc,
     "notes:update",
     updateNotePayloadSchema,
-    (_event, payload) => requestDaemon("note.update", payload, options),
-  );
-  registerHandler(
-    ipc,
-    "notes:rename",
-    renameNotePayloadSchema,
     (_event, payload) => requestDaemon("note.update", payload, options),
   );
   registerHandler(ipc, "notes:move", moveNotePayloadSchema, (_event, payload) =>

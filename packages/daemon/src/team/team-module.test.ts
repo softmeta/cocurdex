@@ -146,12 +146,12 @@ function harness() {
     createIssue: async (payload) => {
       const issue: IssueRecord = {
         id: `issue-${issues.size + 1}`,
-        columnId: payload.columnId,
+        columnId: payload.columnId ?? "backlog",
         viewId: payload.viewId,
         title: payload.title ?? "",
         description: payload.description ?? null,
         color: null,
-        status: payload.columnId,
+        status: payload.columnId ?? "backlog",
         priority: "none",
         workspaceId: payload.workspaceId ?? null,
         assigneeSessionId: null,

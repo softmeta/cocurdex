@@ -5,13 +5,15 @@ import { DEFAULT_VIEW_ID } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { createCocurdexDatabase } from "../sqlite";
 
-function createTestDatabase() {
-  return createCocurdexDatabase(
-    path.join(
-      mkdtempSync(path.join(tmpdir(), "cocurdex-issues-")),
-      "cocurdex.sqlite",
-    ),
+function createTestDatabasePath() {
+  return path.join(
+    mkdtempSync(path.join(tmpdir(), "cocurdex-issues-")),
+    "cocurdex.sqlite",
   );
+}
+
+function createTestDatabase() {
+  return createCocurdexDatabase(createTestDatabasePath());
 }
 
 describe("CocurdexDatabase.issues", () => {
@@ -67,6 +69,87 @@ describe("CocurdexDatabase.issues", () => {
         title: "Move persistence to SQLite",
       }),
     ]);
+    database.close();
+  });
+
+  it("shares columns across views so status values stay valid", async () => {
+    const database = createTestDatabase();
+    const other = await database.issues.createView({ title: "Sprint" });
+    const column = await database.issues.createColumn({
+      field: "status",
+      title: "Blocked",
+    });
+    const issue = await database.issues.createIssue({
+      viewId: other.id,
+      columnId: column.id,
+      title: "Waiting on review",
+    });
+
+    const projectView = await database.issues.loadView({
+      viewId: DEFAULT_VIEW_ID,
+    });
+    expect(projectView?.columns.map((entry) => entry.title)).toContain(
+      "Blocked",
+    );
+    expect(projectView?.issues).toEqual([
+      expect.objectContaining({ id: issue.id, columnId: column.id }),
+    ]);
+    await expect(
+      database.issues.updateIssue({
+        viewId: DEFAULT_VIEW_ID,
+        id: issue.id,
+        status: "not-a-column",
+      }),
+    ).rejects.toThrow("Issue status column not found");
+    database.close();
+  });
+
+  it("moves issues to the fallback column when their column is deleted", async () => {
+    const database = createTestDatabase();
+    const issue = await database.issues.createIssue({
+      viewId: DEFAULT_VIEW_ID,
+      columnId: "doing",
+      title: "In flight",
+    });
+
+    await database.issues.deleteColumn({ field: "status", id: "doing" });
+
+    const moved = await database.issues.getIssue({ id: issue.id });
+    expect(moved?.status).toBe("backlog");
+    expect(moved?.revision).toBe(issue.revision + 1);
+    database.close();
+  });
+
+  it("keeps deleted default columns deleted and refuses the last one", async () => {
+    const databasePath = createTestDatabasePath();
+    const database = createCocurdexDatabase(databasePath);
+    for (const id of ["doing", "review", "done"]) {
+      await database.issues.deleteColumn({ field: "status", id });
+    }
+    await expect(
+      database.issues.deleteColumn({ field: "status", id: "backlog" }),
+    ).rejects.toThrow("Cannot delete the last issue status column");
+    database.close();
+
+    const reopened = createCocurdexDatabase(databasePath);
+    const view = await reopened.issues.loadView({ viewId: DEFAULT_VIEW_ID });
+    expect(view?.columns.map((column) => column.id)).toEqual(["backlog"]);
+    reopened.close();
+  });
+
+  it("derives the column from status when none is given", async () => {
+    const database = createTestDatabase();
+    const doing = await database.issues.createIssue({
+      viewId: DEFAULT_VIEW_ID,
+      title: "From CLI",
+      status: "doing",
+    });
+    const fallback = await database.issues.createIssue({
+      viewId: DEFAULT_VIEW_ID,
+      title: "No status",
+    });
+    expect([doing.status, fallback.status]).toEqual(["doing", "backlog"]);
+    expect(fallback.priority).toBe("none");
     database.close();
   });
 });

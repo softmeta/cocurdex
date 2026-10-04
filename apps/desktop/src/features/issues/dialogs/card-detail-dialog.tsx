@@ -26,6 +26,23 @@ import { cn } from "@/lib";
 /** Null workspace selection in the compose/edit chip. */
 export const WORKSPACE_NONE = null;
 
+export interface IssueFieldValues {
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  workspaceId: string | null;
+}
+
+export type IssueSaveRequest =
+  | { kind: "create"; columnId: string; values: IssueFieldValues }
+  | {
+      kind: "update";
+      id: string;
+      expectedRevision: number;
+      changes: Partial<IssueFieldValues>;
+    };
+
 export interface IssueComposeDraft {
   columnId: string;
   status: string;
@@ -44,6 +61,7 @@ interface CardDetailDialogProps {
    * body editor remounts (title/status local state stay put).
    */
   bodyEpoch?: number;
+  bodyStatus?: "loading" | "ready" | "error";
   open: boolean;
   viewTitle: string;
   statusOptions: Array<{ id: string; title: string }>;
@@ -51,21 +69,14 @@ interface CardDetailDialogProps {
   workspaces: WorkspaceRecord[];
   groupBy: ViewGroupBy;
   onClose: () => void;
-  onSave: (payload: {
-    id?: string;
-    title: string;
-    description: string | null;
-    status: string;
-    priority: string;
-    workspaceId: string | null;
-    columnId?: string;
-  }) => void;
+  onSave: (request: IssueSaveRequest) => Promise<boolean>;
 }
 
 export function CardDetailDialog({
   card,
   composeDraft,
   bodyEpoch = 0,
+  bodyStatus = "loading",
   open,
   viewTitle,
   statusOptions,
@@ -81,6 +92,7 @@ export function CardDetailDialog({
     card: IssueRecord | null;
     composeDraft: IssueComposeDraft | null;
     bodyEpoch: number;
+    bodyStatus: "loading" | "ready" | "error";
     viewTitle: string;
     formKey: string;
     isCreate: boolean;
@@ -91,6 +103,7 @@ export function CardDetailDialog({
       card,
       composeDraft,
       bodyEpoch,
+      bodyStatus,
       viewTitle,
       isCreate: card === null && composeDraft !== null,
       formKey:
@@ -132,6 +145,7 @@ export function CardDetailDialog({
               card={snap.card}
               composeDraft={snap.composeDraft}
               bodyEpoch={snap.bodyEpoch}
+              bodyStatus={snap.bodyStatus}
               statusOptions={statusOptions}
               priorityOptions={priorityOptions}
               workspaces={workspaces}
@@ -164,10 +178,35 @@ function EditTitleLabel({ id }: { id?: string }) {
   );
 }
 
+function changedIssueFields(
+  card: IssueRecord,
+  values: IssueFieldValues,
+  descriptionChanged: boolean,
+): Partial<IssueFieldValues> {
+  const changes: Partial<IssueFieldValues> = {};
+  if (values.title && values.title !== card.title) {
+    changes.title = values.title;
+  }
+  if (descriptionChanged) {
+    changes.description = values.description;
+  }
+  if (values.status !== card.status) {
+    changes.status = values.status;
+  }
+  if (values.priority !== card.priority) {
+    changes.priority = values.priority;
+  }
+  if (values.workspaceId !== card.workspaceId) {
+    changes.workspaceId = values.workspaceId;
+  }
+  return changes;
+}
+
 function IssueForm({
   card,
   composeDraft,
   bodyEpoch,
+  bodyStatus,
   statusOptions,
   priorityOptions,
   workspaces,
@@ -178,6 +217,7 @@ function IssueForm({
   card: IssueRecord | null;
   composeDraft: IssueComposeDraft | null;
   bodyEpoch: number;
+  bodyStatus: "loading" | "ready" | "error";
   statusOptions: Array<{ id: string; title: string }>;
   priorityOptions: Array<{ id: string; title: string }>;
   workspaces: WorkspaceRecord[];
@@ -189,11 +229,16 @@ function IssueForm({
   const [title, setTitle] = useState(card?.title ?? "");
   const descriptionRef = useRef<MarkdownBodyEditorHandle>(null);
   const [status, setStatus] = useState(
-    card?.status ?? composeDraft?.status ?? "backlog",
+    card?.status ?? composeDraft?.status ?? statusOptions[0]?.id ?? "",
   );
   const [priority, setPriority] = useState(
-    card?.priority ?? composeDraft?.priority ?? "none",
+    card?.priority ??
+      composeDraft?.priority ??
+      priorityOptions.at(-1)?.id ??
+      "",
   );
+  const [saving, setSaving] = useState(false);
+  const bodyReady = isCreate || bodyStatus === "ready";
   const [workspaceId, setWorkspaceId] = useState<string | null>(
     card?.workspaceId ?? composeDraft?.workspaceId ?? null,
   );
@@ -214,18 +259,46 @@ function IssueForm({
     ...workspaces.map((w) => ({ id: w.id, title: w.name })),
   ];
 
-  const handleSave = () => {
-    const description = descriptionRef.current?.getMarkdown().trim() || null;
-    onSave({
-      id: card?.id,
+  const handleSave = async () => {
+    if (!bodyReady || saving) {
+      return;
+    }
+    const editor = descriptionRef.current;
+    const values: IssueFieldValues = {
       title: title.trim(),
-      description,
+      description: editor?.getMarkdown().trim() || null,
       status,
       priority,
       workspaceId,
-      columnId: composeDraft?.columnId,
-    });
-    onClose();
+    };
+    let request: IssueSaveRequest | null = null;
+    if (card) {
+      const changes = changedIssueFields(
+        card,
+        values,
+        editor?.isDirty() ?? false,
+      );
+      if (Object.keys(changes).length > 0) {
+        request = {
+          kind: "update",
+          id: card.id,
+          expectedRevision: card.revision,
+          changes,
+        };
+      }
+    } else if (composeDraft) {
+      request = { kind: "create", columnId: composeDraft.columnId, values };
+    }
+    if (!request) {
+      onClose();
+      return;
+    }
+    setSaving(true);
+    const saved = await onSave(request);
+    setSaving(false);
+    if (saved) {
+      onClose();
+    }
   };
 
   return (
@@ -238,18 +311,28 @@ function IssueForm({
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
-              handleSave();
+              void handleSave();
             }
           }}
           className="w-full border-0 bg-transparent text-display font-medium text-editor-fg outline-none placeholder:text-editor-fg-subtle"
         />
-        <MarkdownBodyEditor
-          key={`body-${card?.id ?? "new"}-${bodyEpoch}`}
-          ref={descriptionRef}
-          initialMarkdown={bodyMarkdown}
-          placeholder={t("dialog.descriptionPlaceholder")}
-          className="min-h-28 max-h-80 overflow-y-auto"
-        />
+        {bodyReady ? (
+          <MarkdownBodyEditor
+            key={`body-${card?.id ?? "new"}-${bodyEpoch}`}
+            ref={descriptionRef}
+            initialMarkdown={bodyMarkdown}
+            placeholder={t("dialog.descriptionPlaceholder")}
+            className="min-h-28 max-h-80 overflow-y-auto"
+          />
+        ) : (
+          <div className="min-h-28">
+            {bodyStatus === "error" ? (
+              <Text size="meta" tone="destructive">
+                {t("dialog.loadFailed")}
+              </Text>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Field chips — Linear-style metadata row */}
@@ -284,7 +367,12 @@ function IssueForm({
         <Button variant="ghost" onClick={onClose}>
           {t("dialog.cancel")}
         </Button>
-        <Button onClick={handleSave} disabled={isCreate && !title.trim()}>
+        <Button
+          onClick={() => {
+            void handleSave();
+          }}
+          disabled={!bodyReady || saving || (isCreate && !title.trim())}
+        >
           {isCreate ? t("dialog.createIssue") : t("dialog.save")}
         </Button>
       </div>

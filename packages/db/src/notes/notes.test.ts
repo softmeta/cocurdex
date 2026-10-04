@@ -100,4 +100,56 @@ describe("CocurdexDatabase.notes", () => {
     ]);
     database.close();
   });
+
+  it("re-resolves wikilinks when titles change or notes are deleted", async () => {
+    const database = createTestDatabase();
+    const source = await database.notes.create({ title: "Index" });
+    await database.notes.update({
+      id: source.id,
+      bodyMarkdown: "See [[Plan]].",
+      expectedRevision: source.revision,
+    });
+    const first = await database.notes.create({ title: "Draft" });
+    await database.notes.update({
+      id: first.id,
+      title: "Plan",
+      expectedRevision: first.revision,
+    });
+    const second = await database.notes.create({ title: "Plan" });
+    expect(await database.notes.listBacklinks({ id: first.id })).toHaveLength(
+      1,
+    );
+
+    await database.notes.delete({ id: first.id });
+
+    expect(await database.notes.listBacklinks({ id: second.id })).toEqual([
+      expect.objectContaining({ sourceNoteId: source.id, targetRef: "Plan" }),
+    ]);
+    database.close();
+  });
+
+  it("drops tags that no note uses anymore", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({ title: "Tagged" });
+    const tagged = await database.notes.update({
+      id: note.id,
+      bodyMarkdown: "#keep #drop",
+      expectedRevision: note.revision,
+    });
+    const retagged = await database.notes.update({
+      id: note.id,
+      bodyMarkdown: "#keep",
+      expectedRevision: tagged.revision,
+    });
+    expect((await database.notes.listTags()).map((tag) => tag.name)).toEqual([
+      "keep",
+    ]);
+
+    await database.notes.delete({
+      id: note.id,
+      expectedRevision: retagged.revision,
+    });
+    expect(await database.notes.listTags()).toEqual([]);
+    database.close();
+  });
 });

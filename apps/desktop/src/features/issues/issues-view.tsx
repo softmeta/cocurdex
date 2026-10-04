@@ -18,7 +18,11 @@ import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { useMountEffect } from "@/lib";
 import { IssuesBoard, ViewDisplayMenu, ViewFilterMenu } from "./board";
-import { CardDetailDialog, type IssueComposeDraft } from "./dialogs";
+import {
+  CardDetailDialog,
+  type IssueComposeDraft,
+  type IssueSaveRequest,
+} from "./dialogs";
 import {
   closeIssueDetailAtom,
   issueDetailAtom,
@@ -110,10 +114,15 @@ export function IssuesView() {
         defaultWorkspaceId = activeWorkspaceId;
       }
       closeIssueDetail();
+      const defaultPriority =
+        board.priorityOptions.find((option) => option.id === "none")?.id ??
+        board.priorityOptions.at(-1)?.id ??
+        "";
       setComposeDraft({
         columnId,
-        status: groupBy === "status" ? columnId : "backlog",
-        priority: groupBy === "priority" ? columnId : "none",
+        status:
+          groupBy === "status" ? columnId : (board.statusOptions[0]?.id ?? ""),
+        priority: groupBy === "priority" ? columnId : defaultPriority,
         workspaceId: defaultWorkspaceId,
       });
     },
@@ -149,39 +158,22 @@ export function IssuesView() {
   );
 
   const handleSaveIssue = useCallback(
-    (payload: {
-      id?: string;
-      title: string;
-      description: string | null;
-      status: string;
-      priority: string;
-      workspaceId: string | null;
-      columnId?: string;
-    }) => {
-      if (payload.id) {
-        void updateIssue({
-          id: payload.id,
-          title: payload.title,
-          description: payload.description,
-          status: payload.status,
-          priority: payload.priority,
-          workspaceId: payload.workspaceId,
+    async (request: IssueSaveRequest) => {
+      if (request.kind === "update") {
+        const updated = await updateIssue({
+          id: request.id,
+          expectedRevision: request.expectedRevision,
+          ...request.changes,
         });
-        return;
+        return updated !== null;
       }
-      // Place the card under the column matching the active groupBy field.
+      const { values } = request;
       const columnId =
         activeBoard?.view.groupBy === "priority"
-          ? payload.priority
-          : payload.status;
-      void createIssue({
-        columnId,
-        title: payload.title,
-        description: payload.description,
-        status: payload.status,
-        priority: payload.priority,
-        workspaceId: payload.workspaceId,
-      });
+          ? values.priority
+          : values.status;
+      const created = await createIssue({ columnId, ...values });
+      return created !== null;
     },
     [activeBoard?.view.groupBy, createIssue, updateIssue],
   );
@@ -327,6 +319,7 @@ export function IssuesView() {
               card={issueDetail?.card ?? null}
               composeDraft={composeDraft}
               bodyEpoch={issueDetail?.bodyEpoch ?? 0}
+              bodyStatus={issueDetail?.bodyStatus}
               open={issueDetail !== null || composeDraft !== null}
               viewTitle={viewBoard.view.title}
               statusOptions={viewBoard.statusOptions}

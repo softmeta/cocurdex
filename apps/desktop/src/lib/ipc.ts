@@ -663,22 +663,6 @@ const fallbackApi: DesktopApi = {
       bodyMarkdown: payload.bodyMarkdown ?? "",
     };
   },
-  notesRename: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: payload.id,
-      parentId: null,
-      workspaceId: null,
-      kind: "note" as const,
-      title: payload.title,
-      icon: null,
-      sortOrder: 0,
-      revision: (payload.expectedRevision ?? 0) + 1,
-      createdAt: now,
-      updatedAt: now,
-      bodyMarkdown: "",
-    };
-  },
   notesMove: async (payload) => {
     const now = new Date().toISOString();
     return {
@@ -734,7 +718,7 @@ const fallbackApi: DesktopApi = {
     const now = new Date().toISOString();
     return {
       id: "column",
-      viewId: payload.viewId,
+      field: payload.field,
       title: payload.title ?? "",
       color: payload.color ?? null,
       sortOrder: payload.sortOrder ?? 0,
@@ -746,7 +730,7 @@ const fallbackApi: DesktopApi = {
     const now = new Date().toISOString();
     return {
       id: payload.id,
-      viewId: payload.viewId,
+      field: payload.field,
       title: payload.title ?? "",
       color: payload.color ?? null,
       sortOrder: 0,
@@ -758,7 +742,7 @@ const fallbackApi: DesktopApi = {
     const now = new Date().toISOString();
     return {
       id: payload.id,
-      viewId: payload.viewId,
+      field: payload.field,
       title: "",
       color: null,
       sortOrder: payload.sortOrder,
@@ -771,12 +755,12 @@ const fallbackApi: DesktopApi = {
     const now = new Date().toISOString();
     return {
       id: "001",
-      columnId: payload.columnId,
+      columnId: payload.columnId ?? payload.status ?? "backlog",
       viewId: payload.viewId,
       title: payload.title ?? "",
       description: payload.description ?? null,
       color: payload.color ?? null,
-      status: payload.status ?? payload.columnId,
+      status: payload.status ?? payload.columnId ?? "backlog",
       priority: payload.priority ?? "none",
       workspaceId: payload.workspaceId ?? null,
       assigneeSessionId: null,

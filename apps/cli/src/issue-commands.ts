@@ -41,14 +41,12 @@ export async function handleIssueCommand(
   }
 
   if (action === "create") {
-    const columnId = stringFlag(parsed, "status") ?? "backlog";
     const issue = await withDaemon(() =>
       requestDaemon("issue.create", {
         viewId,
-        columnId,
         title: getRequiredFlag(parsed, "title"),
         description: stringFlag(parsed, "body"),
-        status: columnId,
+        status: stringFlag(parsed, "status"),
         priority: stringFlag(parsed, "priority"),
         workspaceId: stringFlag(parsed, "workspace") ?? null,
       }),

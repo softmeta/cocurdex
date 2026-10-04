@@ -18,4 +18,25 @@ See [[Architecture]] and [Runtime](note://note-123).
       ],
     });
   });
+
+  it("ignores code, link anchors, and numeric hashes", () => {
+    expect(
+      extractNoteMetadata(
+        [
+          "See [intro](#setup), issue #42, and `#inline`.",
+          "```c",
+          "#include <stdio.h>",
+          "[[Not a link]]",
+          "```",
+          "Real #todo",
+        ].join("\n"),
+      ),
+    ).toEqual({ tags: ["todo"], links: [] });
+  });
+
+  it("resolves wikilink aliases and headings to the note title", () => {
+    expect(
+      extractNoteMetadata("[[Paper|the paper]] and [[Paper#Results]]").links,
+    ).toEqual([{ kind: "wikilink", targetRef: "Paper" }]);
+  });
 });

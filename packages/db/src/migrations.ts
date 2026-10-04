@@ -5,7 +5,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -155,6 +155,96 @@ function migrateWorkspaceActions(database: DatabaseSync): void {
   }
 }
 
+function tableExists(database: DatabaseSync, table: string): boolean {
+  return Boolean(
+    database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(table),
+  );
+}
+
+interface LegacyIssueColumnRow {
+  view_id: string;
+  field: string;
+  id: string;
+  title: string;
+  color: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+const DEFAULT_ISSUE_VIEW_ID = "project";
+
+function migrateIssueColumnsToGlobal(database: DatabaseSync): void {
+  if (!tableExists(database, "issue_view_columns")) {
+    return;
+  }
+  const rows = database
+    .prepare(
+      `SELECT c.*
+       FROM issue_view_columns c
+       LEFT JOIN issue_views v ON v.id = c.view_id
+       ORDER BY c.view_id = ? DESC, v.created_at, c.view_id, c.sort_order, c.id`,
+    )
+    .all(DEFAULT_ISSUE_VIEW_ID) as unknown as LegacyIssueColumnRow[];
+  const insert = database.prepare(
+    `INSERT INTO issue_columns (
+       field, id, title, color, sort_order, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(field, id) DO NOTHING`,
+  );
+  const maxOrder = database.prepare(
+    "SELECT COALESCE(MAX(sort_order), -1000) AS sort_order FROM issue_columns WHERE field = ?",
+  );
+  for (const row of rows) {
+    const sortOrder =
+      row.view_id === DEFAULT_ISSUE_VIEW_ID
+        ? row.sort_order
+        : (maxOrder.get(row.field) as { sort_order: number }).sort_order + 1000;
+    insert.run(
+      row.field,
+      row.id,
+      row.title,
+      row.color,
+      sortOrder,
+      row.created_at,
+      row.updated_at,
+    );
+  }
+  database.exec("DROP TABLE issue_view_columns");
+  repointOrphanIssueValues(database);
+}
+
+function repointOrphanIssueValues(database: DatabaseSync): void {
+  for (const [field, fallbackSql] of [
+    [
+      "status",
+      "SELECT id FROM issue_columns WHERE field = 'status' ORDER BY sort_order, id LIMIT 1",
+    ],
+    [
+      "priority",
+      `SELECT id FROM issue_columns WHERE field = 'priority'
+       ORDER BY id = 'none' DESC, sort_order DESC, id LIMIT 1`,
+    ],
+  ] as const) {
+    const fallback = database.prepare(fallbackSql).get() as
+      | { id: string }
+      | undefined;
+    if (!fallback) {
+      continue;
+    }
+    database
+      .prepare(
+        `UPDATE issues SET ${field} = ?
+         WHERE ${field} NOT IN (
+           SELECT id FROM issue_columns WHERE field = '${field}'
+         )`,
+      )
+      .run(fallback.id);
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -162,6 +252,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [8, migratePendingSettingsChanges],
   [9, ensureTimelineSequence],
   [10, migrateWorkspaceActions],
+  [11, migrateIssueColumnsToGlobal],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

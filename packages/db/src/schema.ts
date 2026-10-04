@@ -363,8 +363,7 @@ export function createSchemaSql() {
       updated_at TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS issue_view_columns (
-      view_id TEXT NOT NULL,
+    CREATE TABLE IF NOT EXISTS issue_columns (
       field TEXT NOT NULL CHECK (field IN ('status', 'priority')),
       id TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -372,8 +371,7 @@ export function createSchemaSql() {
       sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      PRIMARY KEY (view_id, field, id),
-      FOREIGN KEY (view_id) REFERENCES issue_views(id) ON DELETE CASCADE
+      PRIMARY KEY (field, id)
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS note_fts USING fts5(
@@ -461,8 +459,8 @@ export function createSchemaSql() {
     CREATE INDEX IF NOT EXISTS idx_issues_workspace
       ON issues(workspace_id);
 
-    CREATE INDEX IF NOT EXISTS idx_issue_view_columns_sort
-      ON issue_view_columns(view_id, field, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_issue_columns_sort
+      ON issue_columns(field, sort_order);
 
     ${createTeamSchemaSql()}
 

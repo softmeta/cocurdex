@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { DEFAULT_VIEW_ID, type ViewGroupBy } from "@cocurdex/shared";
 import {
+  type ColumnRow,
+  fallbackColumnId,
   getIssue,
   getView,
   insertDefaultView,
@@ -32,17 +34,28 @@ function assertRevision(
 
 function requireColumn(
   database: DatabaseSync,
-  viewId: string,
   field: ViewGroupBy,
   columnId: string,
-) {
-  const column = listColumns(database, viewId, field).find(
-    (candidate) => candidate.id === columnId,
-  );
+): ColumnRow {
+  const columns = listColumns(database, field);
+  const column = columns.find((candidate) => candidate.id === columnId);
   if (!column) {
-    throw new Error(`Issue view column not found: ${columnId}`);
+    const validIds = columns.map((candidate) => candidate.id).join(", ");
+    throw new Error(
+      `Issue ${field} column not found: ${columnId} (valid: ${validIds})`,
+    );
   }
   return column;
+}
+
+function assertFieldValue(
+  database: DatabaseSync,
+  field: ViewGroupBy,
+  value: string | undefined,
+): void {
+  if (value !== undefined) {
+    requireColumn(database, field, value);
+  }
 }
 
 function maxIssueOrder(
@@ -61,14 +74,17 @@ function maxIssueOrder(
   return row?.sort_order ?? 0;
 }
 
-function touchView(database: DatabaseSync, viewId: string): void {
-  database
-    .prepare(
-      `UPDATE issue_views
-       SET revision = revision + 1, updated_at = ?
-       WHERE id = ?`,
-    )
-    .run(new Date().toISOString(), viewId);
+function withIssueMutation<T>(database: DatabaseSync, mutation: () => T): T {
+  database.exec("SAVEPOINT issue_mutation");
+  try {
+    const result = mutation();
+    database.exec("RELEASE SAVEPOINT issue_mutation");
+    return result;
+  } catch (error) {
+    database.exec("ROLLBACK TO SAVEPOINT issue_mutation");
+    database.exec("RELEASE SAVEPOINT issue_mutation");
+    throw error;
+  }
 }
 
 export function createSqliteIssueTrackerRepository(
@@ -149,24 +165,20 @@ export function createSqliteIssueTrackerRepository(
       database.prepare("DELETE FROM issue_views WHERE id = ?").run(current.id);
     },
     async createColumn(payload) {
-      const view = requireView(database, payload.viewId);
-      const field = view.group_by;
+      const { field } = payload;
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
-      const existing = listColumns(database, view.id, field);
       const maxOrder = Math.max(
         -1000,
-        ...existing.map((column) => column.sort_order),
+        ...listColumns(database, field).map((column) => column.sort_order),
       );
       database
         .prepare(
-          `INSERT INTO issue_view_columns (
-             view_id, field, id, title, color, sort_order, created_at,
-             updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO issue_columns (
+             field, id, title, color, sort_order, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          view.id,
           field,
           id,
           payload.title?.trim() || "Column",
@@ -175,62 +187,66 @@ export function createSqliteIssueTrackerRepository(
           now,
           now,
         );
-      touchView(database, view.id);
-      return mapColumn(requireColumn(database, view.id, field, id));
+      return mapColumn(requireColumn(database, field, id));
     },
     async updateColumn(payload) {
-      const view = requireView(database, payload.viewId);
-      const field = view.group_by;
-      const current = listColumns(database, view.id, field).find(
-        (column) => column.id === payload.id,
-      );
-      if (!current) {
-        throw new Error(`Issue view column not found: ${payload.id}`);
-      }
-      const now = new Date().toISOString();
+      const current = requireColumn(database, payload.field, payload.id);
       database
         .prepare(
-          `UPDATE issue_view_columns
+          `UPDATE issue_columns
            SET title = ?, color = ?, updated_at = ?
-           WHERE view_id = ? AND field = ? AND id = ?`,
+           WHERE field = ? AND id = ?`,
         )
         .run(
-          payload.title ?? current.title,
+          payload.title?.trim() || current.title,
           payload.color !== undefined ? payload.color : current.color,
-          now,
-          view.id,
-          field,
+          new Date().toISOString(),
+          current.field,
           current.id,
         );
-      touchView(database, view.id);
-      return mapColumn(requireColumn(database, view.id, field, current.id));
+      return mapColumn(requireColumn(database, current.field, current.id));
     },
     async moveColumn(payload) {
-      const view = requireView(database, payload.viewId);
-      const field = view.group_by;
-      const now = new Date().toISOString();
-      const result = database
-        .prepare(
-          `UPDATE issue_view_columns
-           SET sort_order = ?, updated_at = ?
-           WHERE view_id = ? AND field = ? AND id = ?`,
-        )
-        .run(payload.sortOrder, now, view.id, field, payload.id);
-      if (result.changes !== 1) {
-        throw new Error(`Issue view column not found: ${payload.id}`);
-      }
-      touchView(database, view.id);
-      return mapColumn(requireColumn(database, view.id, field, payload.id));
-    },
-    async deleteColumn(payload) {
-      const view = requireView(database, payload.viewId);
+      const current = requireColumn(database, payload.field, payload.id);
       database
         .prepare(
-          `DELETE FROM issue_view_columns
-           WHERE view_id = ? AND field = ? AND id = ?`,
+          `UPDATE issue_columns
+           SET sort_order = ?, updated_at = ?
+           WHERE field = ? AND id = ?`,
         )
-        .run(view.id, view.group_by, payload.id);
-      touchView(database, view.id);
+        .run(
+          payload.sortOrder,
+          new Date().toISOString(),
+          current.field,
+          current.id,
+        );
+      return mapColumn(requireColumn(database, current.field, current.id));
+    },
+    async deleteColumn(payload) {
+      const { field } = payload;
+      return withIssueMutation(database, () => {
+        requireColumn(database, field, payload.id);
+        const remaining = listColumns(database, field).filter(
+          (column) => column.id !== payload.id,
+        );
+        if (remaining.length === 0) {
+          throw new Error(`Cannot delete the last issue ${field} column`);
+        }
+        database
+          .prepare(
+            `UPDATE issues
+             SET ${field} = ?, revision = revision + 1, updated_at = ?
+             WHERE ${field} = ?`,
+          )
+          .run(
+            fallbackColumnId(remaining, field),
+            new Date().toISOString(),
+            payload.id,
+          );
+        database
+          .prepare("DELETE FROM issue_columns WHERE field = ? AND id = ?")
+          .run(field, payload.id);
+      });
     },
     async getIssue(payload) {
       const view = requireView(database, payload.viewId ?? DEFAULT_VIEW_ID);
@@ -239,18 +255,27 @@ export function createSqliteIssueTrackerRepository(
     },
     async createIssue(payload) {
       const view = requireView(database, payload.viewId);
-      const columns = listColumns(database, view.id, view.group_by);
-      if (!columns.some((column) => column.id === payload.columnId)) {
-        throw new Error(`Issue view column not found: ${payload.columnId}`);
-      }
+      assertFieldValue(database, "status", payload.status);
+      assertFieldValue(database, "priority", payload.priority);
+      const groupValue =
+        view.group_by === "status" ? payload.status : payload.priority;
+      const columnId =
+        payload.columnId ??
+        groupValue ??
+        fallbackColumnId(listColumns(database, view.group_by), view.group_by);
+      requireColumn(database, view.group_by, columnId);
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       const status =
         payload.status ??
-        (view.group_by === "status" ? payload.columnId : "backlog");
+        (view.group_by === "status"
+          ? columnId
+          : fallbackColumnId(listColumns(database, "status"), "status"));
       const priority =
         payload.priority ??
-        (view.group_by === "priority" ? payload.columnId : "none");
+        (view.group_by === "priority"
+          ? columnId
+          : fallbackColumnId(listColumns(database, "priority"), "priority"));
       database
         .prepare(
           `INSERT INTO issues (
@@ -268,8 +293,7 @@ export function createSqliteIssueTrackerRepository(
           priority,
           payload.workspaceId ?? null,
           payload.assigneeSessionId ?? null,
-          payload.sortOrder ??
-            maxIssueOrder(database, view.group_by, payload.columnId),
+          payload.sortOrder ?? maxIssueOrder(database, view.group_by, columnId),
           now,
           now,
         );
@@ -283,6 +307,8 @@ export function createSqliteIssueTrackerRepository(
         payload.expectedRevision,
         new IssueConflictError(),
       );
+      assertFieldValue(database, "status", payload.status);
+      assertFieldValue(database, "priority", payload.priority);
       const result = database
         .prepare(
           `UPDATE issues
@@ -292,7 +318,7 @@ export function createSqliteIssueTrackerRepository(
            WHERE id = ? AND revision = ?`,
         )
         .run(
-          payload.title ?? current.title,
+          payload.title?.trim() || current.title,
           payload.description !== undefined
             ? (payload.description ?? "")
             : current.description_markdown,
@@ -326,10 +352,7 @@ export function createSqliteIssueTrackerRepository(
         payload.expectedRevision,
         new IssueConflictError(),
       );
-      const columns = listColumns(database, view.id, view.group_by);
-      if (!columns.some((column) => column.id === payload.columnId)) {
-        throw new Error(`Issue view column not found: ${payload.columnId}`);
-      }
+      requireColumn(database, view.group_by, payload.columnId);
       const status =
         view.group_by === "status" ? payload.columnId : current.status;
       const priority =

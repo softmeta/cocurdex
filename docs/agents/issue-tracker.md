@@ -13,6 +13,9 @@ cocurdex issue delete <id> [--view <id>] [--json]
 cocurdex issue views [--json]
 ```
 
+Status and priority ids are shared by every view. An unknown id is rejected
+with the list of valid ids; `create` without `--status` uses the first status.
+
 Use the namespaced product skills: `/cocurdex-issue`,
 `/cocurdex-ticket`, `/cocurdex-todo`, and `/cocurdex-ship`.
 `todo` and `ticket` are language aliases for the same Issue model.

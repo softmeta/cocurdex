@@ -160,7 +160,7 @@ function updateNote(
        WHERE id = ? AND revision = ?`,
     )
     .run(
-      payload.title ?? current.title,
+      payload.title?.trim() || current.title,
       payload.icon !== undefined ? payload.icon : current.icon,
       payload.bodyMarkdown ?? current.bodyMarkdown,
       payload.workspaceId !== undefined
@@ -174,8 +174,12 @@ function updateNote(
     throw new NoteConflictError();
   }
   syncNoteMetadata(database, current.id);
-  resolveNoteLinkTargets(database);
-  return requireNote(database, current.id);
+  resolveLinksFromSource(database, current.id);
+  const updated = requireNote(database, current.id);
+  if (updated.title !== current.title) {
+    resolveWikilinksToTitles(database, [current.title, updated.title]);
+  }
+  return updated;
 }
 
 function syncNoteMetadata(database: DatabaseSync, noteId: string): void {
@@ -185,6 +189,7 @@ function syncNoteMetadata(database: DatabaseSync, noteId: string): void {
     .prepare("DELETE FROM note_links WHERE source_note_id = ?")
     .run(noteId);
   if (note.kind !== "note") {
+    deleteUnusedTags(database);
     return;
   }
 
@@ -215,28 +220,51 @@ function syncNoteMetadata(database: DatabaseSync, noteId: string): void {
   for (const link of metadata.links) {
     insertLink.run(noteId, link.targetRef, link.kind, now);
   }
+  deleteUnusedTags(database);
 }
 
-function resolveNoteLinkTargets(database: DatabaseSync): void {
-  database.exec(`
-    UPDATE note_links
-    SET target_note_id = CASE
-      WHEN kind = 'markdown' THEN (
-        SELECT notes.id
-        FROM notes
-        WHERE notes.id = note_links.target_ref
-          AND notes.kind = 'note'
-      )
-      ELSE (
-        SELECT notes.id
-        FROM notes
-        WHERE notes.kind = 'note'
-          AND notes.title = note_links.target_ref COLLATE NOCASE
-        ORDER BY notes.created_at, notes.id
-        LIMIT 1
-      )
-    END;
-  `);
+const RESOLVE_LINK_TARGET_SQL = `
+  UPDATE note_links
+  SET target_note_id = CASE
+    WHEN kind = 'markdown' THEN (
+      SELECT notes.id
+      FROM notes
+      WHERE notes.id = note_links.target_ref
+        AND notes.kind = 'note'
+    )
+    ELSE (
+      SELECT notes.id
+      FROM notes
+      WHERE notes.kind = 'note'
+        AND notes.title = note_links.target_ref COLLATE NOCASE
+      ORDER BY notes.created_at, notes.id
+      LIMIT 1
+    )
+  END`;
+
+function resolveLinksFromSource(database: DatabaseSync, noteId: string): void {
+  database
+    .prepare(`${RESOLVE_LINK_TARGET_SQL} WHERE source_note_id = ?`)
+    .run(noteId);
+}
+
+function resolveWikilinksToTitles(
+  database: DatabaseSync,
+  titles: readonly string[],
+): void {
+  const resolve = database.prepare(
+    `${RESOLVE_LINK_TARGET_SQL}
+     WHERE kind = 'wikilink' AND target_ref = ? COLLATE NOCASE`,
+  );
+  for (const title of new Set(titles)) {
+    resolve.run(title);
+  }
+}
+
+function deleteUnusedTags(database: DatabaseSync): void {
+  database.exec(
+    "DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM note_tags)",
+  );
 }
 
 export function createSqliteNotesRepository(
@@ -281,21 +309,13 @@ export function createSqliteNotesRepository(
             now,
             now,
           );
-        resolveNoteLinkTargets(database);
-        return requireNote(database, id);
+        const created = requireNote(database, id);
+        resolveWikilinksToTitles(database, [created.title]);
+        return created;
       });
     },
     async update(payload) {
       return withNoteMutation(database, () => updateNote(database, payload));
-    },
-    async rename(payload) {
-      return withNoteMutation(database, () =>
-        updateNote(database, {
-          id: payload.id,
-          title: payload.title,
-          expectedRevision: payload.expectedRevision,
-        }),
-      );
     },
     async move(payload) {
       return withNoteMutation(database, () => {
@@ -323,19 +343,36 @@ export function createSqliteNotesRepository(
         if (result.changes !== 1) {
           throw new NoteConflictError();
         }
-        resolveNoteLinkTargets(database);
         return requireNote(database, current.id);
       });
     },
     async delete(payload) {
-      const current = requireNote(database, payload.id);
-      assertExpectedRevision(current, payload.expectedRevision);
-      const result = database
-        .prepare("DELETE FROM notes WHERE id = ? AND revision = ?")
-        .run(current.id, current.revision);
-      if (result.changes !== 1) {
-        throw new NoteConflictError();
-      }
+      withNoteMutation(database, () => {
+        const current = requireNote(database, payload.id);
+        assertExpectedRevision(current, payload.expectedRevision);
+        const removedTitles = (
+          database
+            .prepare(
+              `WITH RECURSIVE subtree(id) AS (
+                 SELECT ?
+                 UNION ALL
+                 SELECT notes.id FROM notes
+                 JOIN subtree ON notes.parent_id = subtree.id
+               )
+               SELECT title FROM notes
+               WHERE id IN (SELECT id FROM subtree) AND kind = 'note'`,
+            )
+            .all(current.id) as Array<{ title: string }>
+        ).map((row) => row.title);
+        const result = database
+          .prepare("DELETE FROM notes WHERE id = ? AND revision = ?")
+          .run(current.id, current.revision);
+        if (result.changes !== 1) {
+          throw new NoteConflictError();
+        }
+        resolveWikilinksToTitles(database, removedTitles);
+        deleteUnusedTags(database);
+      });
     },
     async listTags(noteId) {
       const rows = noteId

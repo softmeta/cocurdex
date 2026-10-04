@@ -75,7 +75,6 @@ import type {
   PtySpawnResult,
   QueuedAgentInputActionPayload,
   RefineSessionTitlePayload,
-  RenameNotePayload,
   RendererLogPayload,
   RetryConversationMessagePayload,
   SaveAgentRolePayload,
@@ -570,7 +569,6 @@ export interface ProductApi {
   notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;
   notesCreate(payload: CreateNotePayload): Promise<NoteRecord>;
   notesUpdate(payload: UpdateNotePayload): Promise<NoteRecord>;
-  notesRename(payload: RenameNotePayload): Promise<NoteRecord>;
   notesMove(payload: MoveNotePayload): Promise<NoteRecord>;
   notesDelete(payload: DeleteNotePayload): Promise<void>;
   // === App-owned issues and views ===
