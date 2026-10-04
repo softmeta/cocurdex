@@ -87,4 +87,4 @@ pnpm --filter @cocurdex/desktop dev
 将采用同样的源码可用条款。
 
 面向用户的文档见 [cocurdex.com/docs](https://cocurdex.com/docs/)（站点源码
-位于私有仓库 `cocurdex-sites`）。工程 ADR 在 `docs/adr/`。
+位于私有仓库 `cocurdex-sites`）。

@@ -95,5 +95,4 @@ The desktop works without `apps/api`. Team sync and a self-hosted control plane
 are planned; they will use the same source-available terms.
 
 User-facing docs: [cocurdex.com/docs](https://cocurdex.com/docs/) (site source
-lives in the private `cocurdex-sites` repository). Engineering ADRs live in
-`docs/adr/`.
+lives in the private `cocurdex-sites` repository).
