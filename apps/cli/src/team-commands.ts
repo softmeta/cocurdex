@@ -12,7 +12,7 @@ import {
 export function teamUsageLines() {
   return [
     "  cocurdex team get --lead <session-id> [--json]",
-    "  cocurdex team spawn --lead <session-id> --name <name> --prompt <prompt> [--role <role-id>] [--agent <agent>] [--worktree]",
+    "  cocurdex team spawn --lead <session-id> --name <name> [--title <title>] --prompt <prompt> [--role <role-id>] [--agent <agent>] [--worktree]",
     "  cocurdex team stop --team <team-id>",
     "  cocurdex team stop-member --team <team-id> --session <session-id>",
     "  cocurdex team roles [--json]",
@@ -48,6 +48,7 @@ export async function handleTeamCommand(
       requestDaemon("team.spawn", {
         leadSessionId: getRequiredFlag(parsed, "lead"),
         name: getRequiredFlag(parsed, "name"),
+        title: stringFlag(parsed, "title"),
         prompt: getRequiredFlag(parsed, "prompt"),
         agentRoleId: stringFlag(parsed, "role") ?? null,
         agentType: stringFlag(parsed, "agent") as AgentId | undefined,

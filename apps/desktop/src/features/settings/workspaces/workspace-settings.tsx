@@ -9,25 +9,25 @@ import {
   sortWorkspacesBySortOrder,
   workspacesAtom,
 } from "@/features/workspaces";
-import { selectedSettingsProjectIdAtom } from "./project-settings-store";
+import { selectedSettingsWorkspaceIdAtom } from "./workspace-settings-store";
 import { WorktreeEnvironmentEditor } from "./worktree-environment-editor";
 
-export function ProjectSettingsPanel() {
+export function WorkspaceSettingsPanel() {
   const workspaces = useAtomValue(workspacesAtom);
-  const [selectedId, setSelectedId] = useAtom(selectedSettingsProjectIdAtom);
+  const [selectedId, setSelectedId] = useAtom(selectedSettingsWorkspaceIdAtom);
   const selected =
     workspaces.find((workspace) => workspace.id === selectedId) ?? null;
 
   if (selected) {
-    return <ProjectWorktreeSettings workspace={selected} />;
+    return <WorkspaceWorktreeSettings workspace={selected} />;
   }
 
   return (
-    <ProjectSettingsList workspaces={workspaces} onSelect={setSelectedId} />
+    <WorkspaceSettingsList workspaces={workspaces} onSelect={setSelectedId} />
   );
 }
 
-function ProjectSettingsList({
+function WorkspaceSettingsList({
   onSelect,
   workspaces,
 }: {
@@ -50,26 +50,26 @@ function ProjectSettingsList({
   return (
     <div className="settings-panel-enter flex flex-col gap-4">
       <Text as="p" tone="muted">
-        {t("projects.description")}
+        {t("workspaces.description")}
       </Text>
       {workspaces.length === 0 ? (
         <EmptyState
           icon={<Folder className="size-4" />}
-          title={t("projects.emptyTitle")}
-          description={t("projects.emptyDescription")}
+          title={t("workspaces.emptyTitle")}
+          description={t("workspaces.emptyDescription")}
         />
       ) : (
         <>
           <Input
-            aria-label={t("projects.search")}
-            placeholder={t("projects.search")}
+            aria-label={t("workspaces.search")}
+            placeholder={t("workspaces.search")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
           {visible.length === 0 ? (
             <EmptyState
               icon={<Folder className="size-4" />}
-              title={t("projects.noResults")}
+              title={t("workspaces.noResults")}
             />
           ) : (
             <ul className="overflow-hidden rounded-card border border-border/70 bg-settings-surface">
@@ -93,7 +93,7 @@ function ProjectSettingsList({
                           </Text>
                           {isCurrent ? (
                             <Text className="shrink-0" size="meta" tone="muted">
-                              {t("projects.current")}
+                              {t("workspaces.current")}
                             </Text>
                           ) : null}
                         </div>
@@ -102,7 +102,7 @@ function ProjectSettingsList({
                         </Text>
                       </div>
                       <Text className="shrink-0" size="meta" tone="muted">
-                        {t("projects.worktreeSettings")}
+                        {t("workspaces.worktreeSettings")}
                       </Text>
                       <ChevronRight className="size-4 shrink-0 text-muted-foreground rtl:rotate-180" />
                     </button>
@@ -117,7 +117,7 @@ function ProjectSettingsList({
   );
 }
 
-function ProjectRootPaths({ workspace }: { workspace: WorkspaceRecord }) {
+function WorkspaceRootPathList({ workspace }: { workspace: WorkspaceRecord }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       {workspace.rootPaths.map((rootPath) => (
@@ -132,7 +132,7 @@ function ProjectRootPaths({ workspace }: { workspace: WorkspaceRecord }) {
   );
 }
 
-function ProjectWorktreeSettings({
+function WorkspaceWorktreeSettings({
   workspace,
 }: {
   workspace: WorkspaceRecord;
@@ -141,14 +141,14 @@ function ProjectWorktreeSettings({
 
   return (
     <div className="settings-panel-enter flex flex-col gap-6">
-      <ProjectRootPaths workspace={workspace} />
+      <WorkspaceRootPathList workspace={workspace} />
       <section className="flex flex-col gap-4">
         <div className="min-w-0">
           <Text as="h3" size="base" weight="semibold">
-            {t("projects.environmentTitle")}
+            {t("workspaces.environmentTitle")}
           </Text>
           <Text as="p" className="mt-0.5" size="meta" tone="muted">
-            {t("projects.environmentDescription")}
+            {t("workspaces.environmentDescription")}
           </Text>
         </div>
         <WorktreeEnvironmentEditor key={workspace.id} workspace={workspace} />

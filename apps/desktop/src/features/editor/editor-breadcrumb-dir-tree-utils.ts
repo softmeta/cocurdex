@@ -69,3 +69,4 @@ export function getSubtreePaths(
 
   return paths;
 }
+export const BREADCRUMB_TREE_HOST_CLASS = "h-72 w-64 overflow-hidden";

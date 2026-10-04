@@ -122,7 +122,7 @@ export async function resolveWorktreeRepoRootPath(
     );
     if (!owned) {
       throw new Error(
-        `Folder ${explicitRootPath} does not belong to this project.`,
+        `Folder ${explicitRootPath} does not belong to this workspace.`,
       );
     }
     return owned;

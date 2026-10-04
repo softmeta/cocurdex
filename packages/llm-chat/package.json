@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*",
-    "@earendil-works/pi-ai": "0.99.1"
+    "@earendil-works/pi-ai": "1.0.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",

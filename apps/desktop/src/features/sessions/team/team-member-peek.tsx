@@ -2,6 +2,7 @@ import type { MessageRecord, TeamMemberRecord } from "@cocurdex/shared";
 import { ArrowUpRight, SendHorizontal } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MarkdownRenderer } from "@/components";
 import { Button, Input, Text } from "@/components/ui";
 import { desktopApi, taskApi, useMountEffect } from "@/lib";
 
@@ -63,13 +64,15 @@ export function TeamMemberPeek({
 
   return (
     <div className="mb-1 ms-6 flex flex-col gap-1.5 border-s border-chat-border-soft ps-3 pe-1 pt-0.5 pb-1.5">
-      <Text
-        className="line-clamp-4 whitespace-pre-wrap break-words"
-        size="meta"
-        tone={pendingPrompt ? "default" : "muted"}
-      >
-        {summary ?? t("team.noReply")}
-      </Text>
+      {summary ? (
+        <div className="max-h-60 overflow-y-auto pe-1">
+          <MarkdownRenderer className="space-y-1.5" content={summary} />
+        </div>
+      ) : (
+        <Text size="meta" tone="muted">
+          {t("team.noReply")}
+        </Text>
+      )}
       <div className="flex items-center gap-1.5">
         {canReply ? (
           <form

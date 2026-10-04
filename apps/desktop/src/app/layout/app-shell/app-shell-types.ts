@@ -18,7 +18,7 @@ export type SettingsSectionId =
   | "about"
   | "licenses"
   | "environment"
-  | "projects"
+  | "workspaces"
   | "computer"
   | "archived"
   | "diagnostics"

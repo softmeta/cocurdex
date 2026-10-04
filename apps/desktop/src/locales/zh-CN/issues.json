@@ -42,13 +42,13 @@
     "editCard": "编辑 Issue",
     "loadFailed": "无法加载完整描述，请关闭后重新打开再编辑。",
     "newIssue": "新建 Issue",
-    "noProject": "无项目",
+    "noWorkspace": "无工作区",
     "priority": "优先级",
-    "project": "项目",
     "save": "保存",
     "status": "状态",
     "titlePlaceholder": "Issue 标题",
-    "unknownProject": "未知项目"
+    "unknownWorkspace": "未知工作区",
+    "workspace": "工作区"
   },
   "empty": {
     "description": "新建卡片或列以开始整理工作。",
@@ -59,10 +59,10 @@
     "saveFailed": "issue 修改未能保存，看板已刷新。"
   },
   "filter": {
-    "allProjects": "全部项目",
+    "allWorkspaces": "全部工作区",
     "ariaLabel": "筛选视图",
-    "noProject": "无项目",
-    "project": "项目"
+    "noWorkspace": "无工作区",
+    "workspace": "工作区"
   },
   "list": {
     "collapseGroup": "折叠 {{title}}",
@@ -73,7 +73,7 @@
   "scope": {
     "private": "私人",
     "workspace": "{{name}}",
-    "workspaceFallback": "项目"
+    "workspaceFallback": "工作区"
   },
   "sidebar": {
     "addBoard": "添加视图",

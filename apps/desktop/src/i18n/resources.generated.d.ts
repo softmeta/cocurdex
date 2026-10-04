@@ -214,8 +214,12 @@ export default interface Resources {
     };
     system: "System";
     team: {
+      cancel: "Cancel";
+      dismiss: "Hide team";
+      endTeam: "Stop all teammates";
       handle: "Respond";
       label: "Team";
+      lead: "Lead";
       needsInput: "Needs input";
       noReply: "No reply yet";
       open: "Open session";
@@ -228,7 +232,9 @@ export default interface Resources {
         spawning: "Starting";
         stopped: "Stopped";
       };
-      stopAll: "Stop all";
+      stopAllDescription_one: "This stops the {{count}} teammate session and drops its queued messages. Your main session keeps running.";
+      stopAllDescription_other: "This stops all {{count}} teammate sessions and drops their queued messages. Your main session keeps running.";
+      stopAllTitle: "Stop all teammates?";
       stopMember: "Stop {{name}}";
     };
     thinking: "Thinking";
@@ -742,7 +748,7 @@ export default interface Resources {
       noFileSelected: "No file selected";
       noWorkspace: "No workspace";
       noWorkspaceDescription: "Select a workspace to inspect git changes.";
-      noWorkspaceEditorDescription: "Open a project folder to browse and edit files.";
+      noWorkspaceEditorDescription: "Open a workspace to browse and edit files.";
       noWorkspaceFilesDescription: "Select a workspace to browse files.";
       noWorkspaceTitle: "No workspace selected";
     };
@@ -804,13 +810,13 @@ export default interface Resources {
       editCard: "Edit issue";
       loadFailed: "Couldn't load the full description. Close and reopen the issue to edit it.";
       newIssue: "New issue";
-      noProject: "No project";
+      noWorkspace: "No workspace";
       priority: "Priority";
-      project: "Project";
       save: "Save";
       status: "Status";
       titlePlaceholder: "Issue title";
-      unknownProject: "Unknown project";
+      unknownWorkspace: "Unknown workspace";
+      workspace: "Workspace";
     };
     empty: {
       description: "Create a card or column to start organizing work.";
@@ -821,10 +827,10 @@ export default interface Resources {
       saveFailed: "Couldn't save the issue change. The board has been refreshed.";
     };
     filter: {
-      allProjects: "All projects";
+      allWorkspaces: "All workspaces";
       ariaLabel: "Filter view";
-      noProject: "No project";
-      project: "Project";
+      noWorkspace: "No workspace";
+      workspace: "Workspace";
     };
     list: {
       collapseGroup: "Collapse {{title}}";
@@ -835,7 +841,7 @@ export default interface Resources {
     scope: {
       private: "Private";
       workspace: "{{name}}";
-      workspaceFallback: "Project";
+      workspaceFallback: "Workspace";
     };
     sidebar: {
       addBoard: "Add view";
@@ -882,7 +888,7 @@ export default interface Resources {
     scope: {
       private: "Private";
       workspace: "{{name}}";
-      workspaceFallback: "Project";
+      workspaceFallback: "Workspace";
     };
     sidebar: {
       collapse: "Collapse sidebar";
@@ -935,8 +941,8 @@ export default interface Resources {
       configureProviders: "Configure providers";
       dontShowAgain: "Don't show this again";
       enterApp: "Go to cocurdex";
-      openProject: "Open a project folder";
-      openProjectHint: "Agents run inside the folder you pick. This is the main way to use cocurdex.";
+      openFolder: "Open a folder";
+      openFolderHint: "Agents run inside the folder you pick. This is the main way to use cocurdex.";
       skip: "Skip";
       startChat: "Go to chat";
     };
@@ -1220,7 +1226,7 @@ export default interface Resources {
       };
     };
     sidebar: {
-      addProject: "Add project";
+      addWorkspace: "Add workspace";
       ageDays_one: "{{count}}d";
       ageDays_other: "{{count}}d";
       ageHours_one: "{{count}}h";
@@ -1235,15 +1241,14 @@ export default interface Resources {
       archive: "Archive";
       collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
-      editProject: "Edit project";
+      editWorkspace: "Edit workspace";
       expandChildren: "Expand subagent sessions";
       marketplace: "Marketplace";
       newSession: "New session";
       newSessionInWorkspace: "New session in {{workspaceName}}";
       noAgentsYet: "No sessions yet";
       pendingAttention: "Needs attention";
-      projectsGroup: "Work";
-      removeProject: "Remove";
+      removeWorkspace: "Remove";
       rename: "Rename";
       renameSession: "Rename {{title}}";
       revealInFileManager: "Reveal in file manager";
@@ -1254,6 +1259,7 @@ export default interface Resources {
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
+      workspacesGroup: "Work";
     };
     split: {
       actions: "Actions";
@@ -1272,22 +1278,22 @@ export default interface Resources {
       show: "Show chat window";
     };
     workspace: {
-      dropFolderDescription: "Release to open it as a project.";
+      dropFolderDescription: "Release to open it as a workspace.";
       dropFolderTitle: "Drop folder to open";
       editAddFolder: "Add folder";
       editCancel: "Cancel";
       editFoldersLabel: "Source folders";
       editMakePrimary: "Make primary";
-      editNameLabel: "Project name";
+      editNameLabel: "Workspace name";
       editPrimary: "Primary";
       editRemoveFolder: "Remove folder";
-      editRemoveProject: "Remove project";
+      editRemoveWorkspace: "Remove workspace";
       editSave: "Save";
-      editTitle: "Edit project";
+      editTitle: "Edit workspace";
       empty: "No matching workspaces.";
-      emptyTitle: "Open a project to start";
+      emptyTitle: "Open a workspace to start";
       emptyUnconfigured: "No workspaces yet.";
-      enterProject: "Enter project";
+      enterWorkspace: "Enter workspace";
       home: "Home";
       hostPicker: {
         cancel: "Cancel";
@@ -1441,13 +1447,13 @@ export default interface Resources {
       restoreNamed: "Restore {{title}}";
       restored: "Session restored to the sidebar";
       retry: "Retry";
-      search: "Search by session, project, or agent";
+      search: "Search by session, workspace, or agent";
     };
     assistant: {
       close: "Close assistant";
       loading: "Starting assistant…";
       newSession: "New assistant session";
-      noWorkspace: "Add a project to chat with the assistant.";
+      noWorkspace: "Add a workspace to chat with the assistant.";
       open: "Open assistant";
       prompts: {
         chatDisplay: "Show me the chat display options and help me pick one using the settings tools.";
@@ -1465,7 +1471,7 @@ export default interface Resources {
         worktree: "Suggest worktree scripts";
       };
       title: "Assistant";
-      worktreeKickoff: "Inspect this repository and propose worktree setup and cleanup scripts for it. Suggest both and leave neither empty: setup installs dependencies and generates code, cleanup removes build caches, temp directories, or processes before the worktree is recycled. Review the project files, then submit your recommendation with the settings_propose tool so I can approve it.";
+      worktreeKickoff: "Inspect this repository and propose worktree setup and cleanup scripts for it. Suggest both and leave neither empty: setup installs dependencies and generates code, cleanup removes build caches, temp directories, or processes before the worktree is recycled. Review the repository files, then submit your recommendation with the settings_propose tool so I can approve it.";
     };
     chatDisplay: {
       activity: {
@@ -1750,17 +1756,6 @@ export default interface Resources {
       description: "This group is reserved as a placeholder. Add concrete fields and interactions after the information architecture is settled.";
       title: "{{section}} placeholder";
     };
-    projects: {
-      current: "Current";
-      description: "Choose a project to manage its settings.";
-      emptyDescription: "Add a project from the Work group in the sidebar, then come back to configure it.";
-      emptyTitle: "No projects";
-      environmentDescription: "Scripts and actions for worktrees Cocurdex creates for this project.";
-      environmentTitle: "Environment";
-      noResults: "No matching projects";
-      search: "Search projects";
-      worktreeSettings: "Worktree settings";
-    };
     providers: {
       actions: {
         add: "Add";
@@ -1976,13 +1971,13 @@ export default interface Resources {
       licenses: "Open source licenses";
       mcp: "MCP";
       personalization: "Personalization";
-      projects: "Projects";
       providers: "Providers";
       shortcuts: "Shortcuts";
       skills: "Skills";
       teams: "Teams";
       usage: "Usage";
       workflows: "Workflows";
+      workspaces: "Workspaces";
       worktrees: "Worktrees";
     };
     sendShortcut: {
@@ -2061,18 +2056,18 @@ export default interface Resources {
       loading: "Checking skill install…";
       scope: {
         global: {
-          description: "Install under ~/.agents/skills and ~/.claude/skills for every project on this machine.";
-          title: "Global (all projects)";
+          description: "Install under ~/.agents/skills and ~/.claude/skills for every workspace on this machine.";
+          title: "Global (all workspaces)";
         };
         project: {
           description: "Install into the active workspace (.agents/skills and .claude/skills). Good for team repos you commit.";
-          title: "This project";
+          title: "This workspace";
         };
       };
       status: {
         conflict: "Unmanaged cocurdex skill folders already exist ({{skills}}). Remove or rename them under {{path}}, then install again.";
         installed: "Installed v{{version}} at {{path}}";
-        noWorkspace: "Select a project workspace first to install project-level skills.";
+        noWorkspace: "Select a workspace first to install workspace-level skills.";
         notInstalled: "Not installed. Would write to {{path}}";
         updateAvailable: "Installed v{{installed}}; pack v{{latest}} is available at {{path}}";
       };
@@ -2085,7 +2080,7 @@ export default interface Resources {
         removed: "cocurdex skills removed";
         updated: "cocurdex skills updated";
       };
-      workspaceLabel: "Active project: {{name}}";
+      workspaceLabel: "Active workspace: {{name}}";
     };
     teams: {
       addMember: "Add teammate";
@@ -2233,6 +2228,17 @@ export default interface Resources {
         saved: "Workflow saved";
       };
     };
+    workspaces: {
+      current: "Current";
+      description: "Choose a workspace to manage its settings.";
+      emptyDescription: "Add a workspace from the Work group in the sidebar, then come back to configure it.";
+      emptyTitle: "No workspaces";
+      environmentDescription: "Scripts and actions for worktrees Cocurdex creates for this workspace.";
+      environmentTitle: "Environment";
+      noResults: "No matching workspaces";
+      search: "Search workspaces";
+      worktreeSettings: "Worktree settings";
+    };
     worktrees: {
       actionName: "Action name";
       actionNamePlaceholder: "Name, e.g. Dev server";
@@ -2253,7 +2259,7 @@ export default interface Resources {
       fetchDescription: "Fetch remotes before creating a new worktree so the start point is current.";
       fetchTitle: "Always fetch upstream before creating worktrees";
       groupTitle: "Managed worktrees";
-      inventoryDescription: "Checkouts Cocurdex created for sessions. Setup and cleanup scripts stay in project settings.";
+      inventoryDescription: "Checkouts Cocurdex created for sessions. Setup and cleanup scripts stay in workspace settings.";
       loading: "Loading…";
       newSession: "New session in this worktree";
       noSessions: "No sessions are using this worktree.";
@@ -2266,7 +2272,7 @@ export default interface Resources {
       save: "Save";
       saveFailed: "Could not save worktree settings. {{message}}";
       saved: "Worktree environment saved";
-      setupDescription: "Runs automatically after Cocurdex creates a worktree for this project.";
+      setupDescription: "Runs automatically after Cocurdex creates a worktree for this workspace.";
       setupPlaceholder: "pnpm install";
       setupTitle: "Setup script";
     };

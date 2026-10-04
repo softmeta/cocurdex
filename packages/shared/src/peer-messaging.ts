@@ -8,7 +8,7 @@ import type {
 export type PeerInboundPolicy = "deliver" | "refuse";
 export type PeerMessageDelivery = Extract<
   AgentInputDelivery,
-  "start-new-run" | "queue-after-run"
+  "start-new-run" | "queue-after-run" | "steer-active-run"
 >;
 export type PeerMessageOutcome = PeerMessageDelivery | "refused" | "loop_limit";
 
@@ -43,8 +43,10 @@ export interface PeerMessageEvent {
 
 export function choosePeerDelivery(target: {
   hasActiveTurn: boolean;
+  supportsSteering: boolean;
 }): PeerMessageDelivery {
-  return target.hasActiveTurn ? "queue-after-run" : "start-new-run";
+  if (!target.hasActiveTurn) return "start-new-run";
+  return target.supportsSteering ? "steer-active-run" : "queue-after-run";
 }
 
 export function renderPeerEnvelope(origin: PeerMessageOrigin, content: string) {

@@ -108,7 +108,7 @@ function OnboardingWelcome({
           ) : (
             <Button onClick={onOpenWorkspace} type="button">
               <FolderOpen className="size-4" />
-              {t("action.openProject")}
+              {t("action.openFolder")}
             </Button>
           )}
           <Button
@@ -122,7 +122,7 @@ function OnboardingWelcome({
           </Button>
         </div>
         <Text size="meta" tone="muted">
-          {t("action.openProjectHint")}
+          {t("action.openFolderHint")}
         </Text>
       </div>
 
@@ -169,7 +169,7 @@ function OnboardingWelcome({
 
 /**
  * First-run welcome screen, shown instead of the app frame: panel chrome around
- * an app with no projects reads as broken. It answers "what can this app do on
+ * an app with no workspaces reads as broken. It answers "what can this app do on
  * my machine, and what do I do next" — the adapter panel reports which agent
  * CLIs are installed, and each action is a complete way in. Provider setup runs
  * inline rather than in the settings screen, so the flow is never handed off to

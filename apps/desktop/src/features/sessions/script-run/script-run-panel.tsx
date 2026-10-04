@@ -4,11 +4,18 @@ import type {
   ScriptRunSnapshot,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
-import { AlertCircle, Check, Loader2, Workflow, X } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Loader2,
+  Workflow,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Text } from "@/components/ui";
-import { desktopApi, useMountEffect } from "@/lib";
+import { cn, desktopApi, useMountEffect } from "@/lib";
 import { selectSessionAtom } from "../session-store";
 import { useScriptRuns } from "./use-script-runs";
 
@@ -89,6 +96,7 @@ export function ScriptRunPanel({ sessionId }: { sessionId: string }) {
     (run) => run.status === "running",
   );
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   if (runs.length === 0) return null;
 
@@ -97,13 +105,27 @@ export function ScriptRunPanel({ sessionId }: { sessionId: string }) {
       aria-label={t("scriptRun.panelLabel")}
       className="w-full rounded-panel border border-chat-border bg-chat-surface-raised px-3 py-2 text-chat-fg shadow-chat-soft"
     >
-      <div className="mb-1 flex h-6 items-center gap-2">
+      <button
+        aria-expanded={!collapsed}
+        className="group/header flex h-6 w-full items-center gap-2 text-start"
+        onClick={() => setCollapsed(!collapsed)}
+        type="button"
+      >
         <Workflow className="size-3.5 shrink-0 text-chat-fg-muted" />
         <span className="shrink-0 text-meta font-medium uppercase tracking-[0.18em] text-chat-fg-muted">
           {t("scriptRun.panelLabel")}
         </span>
-      </div>
-      <ul className="flex flex-col">
+        <span className="shrink-0 text-meta tabular-nums text-chat-fg-muted">
+          {runs.length}
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-3.5 shrink-0 text-chat-fg-muted transition-transform group-hover/header:text-chat-fg",
+            collapsed && "-rotate-90",
+          )}
+        />
+      </button>
+      <ul className={cn("mt-1 flex flex-col", collapsed && "hidden")}>
         {runs.map((run) => {
           const expanded = expandedId === run.id;
           return (

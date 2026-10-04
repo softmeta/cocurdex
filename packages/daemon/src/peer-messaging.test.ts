@@ -27,6 +27,7 @@ function session(overrides: Partial<SessionRecord>): SessionRecord {
 function harness(options: {
   sessions: SessionRecord[];
   activeTurns?: string[];
+  steerable?: boolean;
 }) {
   const sent: SendSessionCommand[] = [];
   const events: PeerMessageEvent[] = [];
@@ -35,6 +36,7 @@ function harness(options: {
       options.sessions.find((item) => item.id === id) ?? null,
     listSessions: async () => options.sessions,
     hasActiveTurn: (id) => options.activeTurns?.includes(id) ?? false,
+    supportsSteering: async () => options.steerable ?? false,
     sendSessionMessage: async (command) => {
       sent.push(command);
       const message: MessageRecord = {
@@ -83,6 +85,20 @@ describe("PeerMessagingService", () => {
       type: "peer.message",
       delivery: "start-new-run",
     });
+  });
+
+  it("steers an active turn of an agent that supports steering", async () => {
+    const { service } = harness({
+      sessions: [alpha, beta],
+      activeTurns: ["b"],
+      steerable: true,
+    });
+    const result = await service.send({
+      fromSessionId: "a",
+      toSessionId: "b",
+      content: "wrap up",
+    });
+    expect(result.delivery).toBe("steer-active-run");
   });
 
   it("queues behind an active turn", async () => {

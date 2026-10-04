@@ -12,6 +12,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { orchestrationInstructions } from "./orchestration-instructions";
 
 export interface AgentToolHttpBridge {
   catalog(token: string): Promise<AgentToolCatalog>;
@@ -27,10 +28,14 @@ function resultText(result: unknown) {
   return JSON.stringify(result ?? null, null, 2);
 }
 
-function createMcpServer(bridge: AgentToolHttpBridge, token: string) {
+async function createMcpServer(bridge: AgentToolHttpBridge, token: string) {
+  const catalog = await bridge.catalog(token).catch(() => null);
   const server = new Server(
     { name: AGENT_TOOL_SERVER_NAME, version: "1" },
-    { capabilities: { tools: {} } },
+    {
+      capabilities: { tools: {} },
+      instructions: catalog ? orchestrationInstructions(catalog) : undefined,
+    },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const catalog = await bridge.catalog(token);
@@ -81,7 +86,7 @@ export function createAgentToolHttpHandler(bridge: AgentToolHttpBridge) {
       );
       return;
     }
-    const server = createMcpServer(bridge, token);
+    const server = await createMcpServer(bridge, token);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

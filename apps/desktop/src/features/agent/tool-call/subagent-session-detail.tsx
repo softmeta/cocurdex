@@ -34,7 +34,7 @@ export function ReadonlySubagentSession({
 
   if (!sessionId) {
     return (
-      <div className="rounded-control bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
+      <div className="rounded-control bg-chat-code-panel p-3 text-body text-chat-fg-muted">
         {t("toolCalls.subagentEmpty")}
       </div>
     );
@@ -109,7 +109,7 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
 
   if (!messagesLoaded || !toolCallsLoaded) {
     return (
-      <div className="flex items-center gap-2 rounded-control bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
+      <div className="flex items-center gap-2 rounded-control bg-chat-code-panel p-3 text-body text-chat-fg-muted">
         <Spinner size="xs" />
         <span>{t("toolCalls.outputLoading")}</span>
       </div>
@@ -118,7 +118,7 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
 
   if (conversationGroups.length === 0) {
     return (
-      <div className="rounded-control bg-chat-code-panel p-3 text-xs text-chat-fg-muted">
+      <div className="rounded-control bg-chat-code-panel p-3 text-body text-chat-fg-muted">
         {t("toolCalls.subagentEmpty")}
       </div>
     );

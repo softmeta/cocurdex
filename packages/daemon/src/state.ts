@@ -336,10 +336,6 @@ export class DaemonState {
     return withMessageSeq(message, await stored);
   }
 
-  listAllQueuedAgentInputs() {
-    return this.database.queuedAgentInputs.list();
-  }
-
   restoreSession(sessionId: string) {
     return this.database.sessions.restore(sessionId);
   }

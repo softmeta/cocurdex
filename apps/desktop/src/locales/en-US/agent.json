@@ -212,8 +212,12 @@
   },
   "system": "System",
   "team": {
+    "cancel": "Cancel",
+    "dismiss": "Hide team",
+    "endTeam": "Stop all teammates",
     "handle": "Respond",
     "label": "Team",
+    "lead": "Lead",
     "needsInput": "Needs input",
     "noReply": "No reply yet",
     "open": "Open session",
@@ -226,7 +230,9 @@
       "spawning": "Starting",
       "stopped": "Stopped"
     },
-    "stopAll": "Stop all",
+    "stopAllDescription_one": "This stops the {{count}} teammate session and drops its queued messages. Your main session keeps running.",
+    "stopAllDescription_other": "This stops all {{count}} teammate sessions and drops their queued messages. Your main session keeps running.",
+    "stopAllTitle": "Stop all teammates?",
     "stopMember": "Stop {{name}}"
   },
   "thinking": "Thinking",

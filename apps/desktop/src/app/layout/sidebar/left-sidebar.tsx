@@ -43,8 +43,8 @@ import {
 import { isDetachedChatWindow } from "../chat-window/chat-window-state";
 import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ConversationsPanel } from "./conversations-panel";
-import { ProjectsPanel } from "./projects-panel";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
+import { WorkspacesPanel } from "./workspaces-panel";
 
 interface LeftSidebarProps {
   // Dock reuse: drop the titlebar spacer (the dock has its own header) and
@@ -122,7 +122,7 @@ export function LeftSidebar({
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
     collapsedWorkspaceIdsAtom,
   );
-  // Projects and chat are alternate views of the same rail, not two stacked
+  // Workspaces and chat are alternate views of the same rail, not two stacked
   // lists: only one list competes for the sidebar height at a time. The center
   // panel reads the same atom so its empty state matches the visible tab.
   const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
@@ -146,8 +146,8 @@ export function LeftSidebar({
   const handleOpenWorkspace = async () => {
     const rootPath = await pickHostDirectory();
     if (!rootPath) return;
-    const { didSwitchProject } = openWorkspaceByPath(rootPath);
-    if (didSwitchProject) {
+    const { didSwitchWorkspace } = openWorkspaceByPath(rootPath);
+    if (didSwitchWorkspace) {
       selectSession(null);
     }
   };
@@ -215,17 +215,17 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  const isProjectsTab = activeTab === "projects";
-  const createActionLabel = isProjectsTab
+  const isWorkspacesTab = activeTab === "workspaces";
+  const createActionLabel = isWorkspacesTab
     ? t("sessions:sidebar.newSession", {
         defaultValue: "New session",
       })
     : t("chat:list.new", { defaultValue: "New chat" });
-  const onCreateAction = isProjectsTab
+  const onCreateAction = isWorkspacesTab
     ? () => handleCreateAgent()
     : handleCreateConversation;
-  const addProjectLabel = t("sessions:sidebar.addProject", {
-    defaultValue: "Add project",
+  const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
+    defaultValue: "Add workspace",
   });
   const searchLabel = t("search:openSearch");
 
@@ -250,8 +250,8 @@ export function LeftSidebar({
               scroll area's pe-3 padding. */}
           <div className="shrink-0 pe-3">
             <TabsList className="h-7 w-full gap-0.5 rounded-control bg-sidebar-surface-active p-0.5 dark:bg-background">
-              <SidebarTabTrigger value="projects">
-                {t("sessions:sidebar.projectsGroup", {
+              <SidebarTabTrigger value="workspaces">
+                {t("sessions:sidebar.workspacesGroup", {
                   defaultValue: "Work",
                 })}
               </SidebarTabTrigger>
@@ -293,10 +293,10 @@ export function LeftSidebar({
                 </TooltipContent>
               </Tooltip>
             )}
-            {isProjectsTab ? (
+            {isWorkspacesTab ? (
               <Tooltip>
                 <TooltipTrigger
-                  aria-label={addProjectLabel}
+                  aria-label={addWorkspaceLabel}
                   className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
                   onClick={() => {
                     void handleOpenWorkspace();
@@ -306,7 +306,7 @@ export function LeftSidebar({
                   <FolderPlus className="size-3.5" />
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
-                  {addProjectLabel}
+                  {addWorkspaceLabel}
                 </TooltipContent>
               </Tooltip>
             ) : null}
@@ -314,9 +314,9 @@ export function LeftSidebar({
 
           <TabsContent
             className="flex min-h-0 flex-1 flex-col"
-            value="projects"
+            value="workspaces"
           >
-            <ProjectsPanel
+            <WorkspacesPanel
               activeConversationId={activeConversationId}
               activeWorkspaceId={activeWorkspaceId}
               collapsedWorkspaceIds={collapsedWorkspaceIds}

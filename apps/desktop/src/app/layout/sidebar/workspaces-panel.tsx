@@ -18,11 +18,14 @@ import { useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
-import { EditProjectDialog, updateWorkspaceAtom } from "@/features/workspaces";
+import {
+  EditWorkspaceDialog,
+  updateWorkspaceAtom,
+} from "@/features/workspaces";
 import { SidebarScrollArea } from "./sidebar-scroll-area";
 import { WorkspaceSidebarItem } from "./workspace-sidebar-item";
 
-interface ProjectsPanelProps {
+interface WorkspacesPanelProps {
   activeConversationId: string | null;
   activeWorkspaceId: string | null;
   collapsedWorkspaceIds: string[];
@@ -38,7 +41,7 @@ interface ProjectsPanelProps {
   onToggleWorkspace(workspaceId: string): void;
 }
 
-export function ProjectsPanel({
+export function WorkspacesPanel({
   activeConversationId,
   activeWorkspaceId,
   collapsedWorkspaceIds,
@@ -52,7 +55,7 @@ export function ProjectsPanel({
   onSelectSession,
   onSelectWorkspace,
   onToggleWorkspace,
-}: ProjectsPanelProps) {
+}: WorkspacesPanelProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(
     null,
@@ -143,7 +146,7 @@ export function ProjectsPanel({
         </DragOverlay>
       </DndContext>
       {editingWorkspace ? (
-        <EditProjectDialog
+        <EditWorkspaceDialog
           onOpenChange={(isOpen) => {
             if (!isOpen) {
               setEditingWorkspaceId(null);

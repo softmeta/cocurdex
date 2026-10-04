@@ -37,8 +37,8 @@ interface NewConversationCardProps {
 // Chat-mode counterpart of NewSessionCard: the surface behind the chat tab. It
 // reuses the welcome-toned ChatComposer so it lines up pixel-for-pixel with the
 // agent card, and the model picker stands in for the agent toolbar.
-// Deliberately offers no workspace entry: projects belong to the
-// projects tab, and chat runs without one.
+// Deliberately offers no workspace entry: workspaces belong to the
+// workspaces tab, and chat runs without one.
 export function NewConversationCard({
   onStartConversation,
 }: NewConversationCardProps) {

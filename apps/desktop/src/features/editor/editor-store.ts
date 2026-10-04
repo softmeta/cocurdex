@@ -64,7 +64,7 @@ export const editorViewsBySessionAtom = atom<Record<string, EditorViewRecord>>(
 // In-memory draft editor tabs keyed by workspace. Used while sessionId is null
 // (new-session surface). Same-workspace drafts inherit tabs; cross-workspace
 // switches restore the target workspace's draft (or empty) instead of leaking
-// the previous project's open files. Not persisted — session views still are.
+// the previous workspace's open files. Not persisted — session views still are.
 export interface EditorDraftView {
   openFiles: string[];
   activeFile: string | null;
@@ -224,7 +224,7 @@ export const restoreEditorViewForSessionAtom = atom(
     // Draft (null session) restore is workspace-scoped and lives in
     // restoreEditorDraftForWorkspaceAtom — coordinated by app-shell so
     // same-workspace new chats still inherit tabs while cross-workspace
-    // switches do not leak the previous project's open files.
+    // switches do not leak the previous workspace's open files.
     if (!sessionId) {
       return;
     }

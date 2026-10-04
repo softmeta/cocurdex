@@ -46,14 +46,15 @@ export type TeamErrorCode =
   | "TASK_NOT_FOUND"
   | "invalid_status"
   | "template_not_found"
-  | "invalid_template";
+  | "invalid_template"
+  | "members_busy";
 
 export class TeamError extends Error {
   override readonly name = "TeamError";
 
   constructor(
     readonly code: TeamErrorCode,
-    message = code,
+    message: string = code,
   ) {
     super(message);
   }
@@ -73,6 +74,7 @@ export interface TeamModuleDependencies {
     renderEnvelope: (origin: unknown, content: string) => string,
   ): Promise<SendPeerMessageResult>;
   stopSession(sessionId: string): Promise<unknown>;
+  isSessionBusy(sessionId: string): boolean;
   getMessage(messageId: string): Promise<MessageRecord | null>;
   createWorktree?(input: {
     workspaceId: string;
@@ -237,7 +239,7 @@ export class TeamModule {
     const session: SessionRecord = {
       id: this.createId(),
       workspaceId: lead.workspaceId,
-      title: payload.name,
+      title: payload.title?.trim() || payload.name,
       agentType,
       sessionKind: "teammate",
       parentSessionId: lead.id,
@@ -275,6 +277,7 @@ export class TeamModule {
         prompt: payload.prompt,
       }),
       delivery: "start-new-run",
+      origin: { kind: "peer", sessionId: lead.id, sessionTitle: lead.title },
     });
     return member;
   }
@@ -290,14 +293,38 @@ export class TeamModule {
     return stopped;
   }
 
-  async stopLeadMember(leadSessionId: string, sessionId: string) {
+  async stopLeadMember(
+    leadSessionId: string,
+    sessionId: string,
+    { force = false } = {},
+  ) {
     const snapshot = await this.requireLeadTeam(leadSessionId);
+    if (!force) {
+      this.assertMembersIdle(
+        snapshot.members.filter((member) => member.sessionId === sessionId),
+      );
+    }
     return this.stopMember(snapshot.team.id, sessionId);
   }
 
-  async stopLeadTeam(leadSessionId: string) {
+  async stopLeadTeam(leadSessionId: string, { force = false } = {}) {
     const snapshot = await this.requireLeadTeam(leadSessionId);
+    if (!force) this.assertMembersIdle(snapshot.members);
     return this.stop(snapshot.team.id);
+  }
+
+  private assertMembersIdle(members: TeamMemberRecord[]) {
+    const busy = members.filter(
+      (member) =>
+        member.status !== "stopped" &&
+        this.deps.isSessionBusy(member.sessionId),
+    );
+    if (busy.length === 0) return;
+    const names = busy.map((member) => member.name).join(", ");
+    throw new TeamError(
+      "members_busy",
+      `Teammates still working or holding unread messages: ${names}. End your turn instead; each teammate's report wakes you when it finishes. Pass force: true only to interrupt them and discard their unread messages.`,
+    );
   }
 
   async stop(teamId: string) {

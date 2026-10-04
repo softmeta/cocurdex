@@ -3,8 +3,8 @@
     "configureProviders": "Configure providers",
     "dontShowAgain": "Don't show this again",
     "enterApp": "Go to cocurdex",
-    "openProject": "Open a project folder",
-    "openProjectHint": "Agents run inside the folder you pick. This is the main way to use cocurdex.",
+    "openFolder": "Open a folder",
+    "openFolderHint": "Agents run inside the folder you pick. This is the main way to use cocurdex.",
     "skip": "Skip",
     "startChat": "Go to chat"
   },

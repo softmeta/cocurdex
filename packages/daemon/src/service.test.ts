@@ -96,7 +96,7 @@ async function createService(existingUserDataPath?: string) {
 }
 
 describe("CocurdexDaemonService workspace roots", () => {
-  it("rejects the home directory as a project folder", async () => {
+  it("rejects the home directory as a workspace folder", async () => {
     const service = await createService();
     try {
       const home = homedir();
@@ -117,6 +117,29 @@ describe("CocurdexDaemonService workspace roots", () => {
           rootPaths: [path.parse(home).root],
         }),
       ).rejects.toThrow(/filesystem root/);
+    } finally {
+      await service.shutdown();
+    }
+  });
+
+  it("shares secondary folders but keeps primary folders unique", async () => {
+    const service = await createService();
+    try {
+      const shared = createWorkspace().rootPaths[0];
+      await expect(
+        service.saveWorkspace({
+          ...createWorkspace(),
+          id: "workspace-multi",
+          rootPaths: ["/tmp/other-project", shared],
+        }),
+      ).resolves.toMatchObject({ id: "workspace-multi" });
+      await expect(
+        service.saveWorkspace({
+          ...createWorkspace(),
+          id: "workspace-duplicate",
+          rootPaths: [shared],
+        }),
+      ).rejects.toThrow(/primary folder of workspace "Queue test"/);
     } finally {
       await service.shutdown();
     }
@@ -320,6 +343,75 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
+  it("starts a new run for a peer steer that arrives after the turn ended", async () => {
+    const service = await createService();
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockResolvedValue(createRuntimeMessage("Reply"));
+
+    await service.sendSessionMessage({
+      ...createPayload("Wrap up", "steer-active-run"),
+      origin: { kind: "peer", sessionId: "lead", sessionTitle: "Lead" },
+    });
+
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    expect(send.mock.calls[0]?.[0]).toMatchObject({
+      content: "Wrap up",
+      delivery: "start-new-run",
+    });
+
+    await service.shutdown();
+  });
+
+  it("discards a stopped teammate's queued follow-ups", async () => {
+    const service = await createService();
+    let finishActiveTurn: (() => void) | undefined;
+    const activeTurn = new Promise<MessageRecord>((resolve) => {
+      finishActiveTurn = () => resolve(createRuntimeMessage("Stopped"));
+    });
+    const send = vi
+      .spyOn(service.runtime, "sendSessionMessage")
+      .mockImplementationOnce(() => activeTurn);
+    const now = "2026-08-02T00:00:00.000Z";
+    await service.state.saveSession({ ...createSession(), id: "lead-session" });
+    await service.state.teams.saveTeam({
+      id: "team-1",
+      leadSessionId: "lead-session",
+      workspaceId: createWorkspace().id,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    });
+    await service.state.teams.saveMember({
+      teamId: "team-1",
+      sessionId: "session-1",
+      name: "researcher",
+      agentRoleId: null,
+      status: "running",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await service.sendSessionMessage(
+      createPayload("First turn", "start-new-run"),
+    );
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await service.sendSessionMessage(
+      createPayload("Lead follow-up", "queue-after-run"),
+    );
+
+    await service.team.stopMember("team-1", "session-1");
+    finishActiveTurn?.();
+
+    expect(service.getActiveWork()).toMatchObject({ queuedInputs: 0 });
+    await expect(
+      service.state.listQueuedAgentInputs("session-1"),
+    ).resolves.toEqual([]);
+    expect(send).toHaveBeenCalledOnce();
+
+    await service.shutdown();
+  });
+
   it("places a queued follow-up after the reply it waited for", async () => {
     const service = await createService();
     let completeActiveTurn: (() => void) | undefined;
@@ -508,7 +600,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
-  it("persists accepted follow-ups across daemon restarts", async () => {
+  it("keeps follow-ups paused across daemon restarts until sent", async () => {
     const userDataPath = await mkdtemp(
       path.join(tmpdir(), "cocurdex-queue-restart-"),
     );
@@ -552,8 +644,13 @@ describe("CocurdexDaemonService follow-up queue", () => {
     const resumedSend = vi
       .spyOn(restarted.runtime, "sendSessionMessage")
       .mockResolvedValue(createRuntimeMessage("Survive restart"));
-    await expect(restarted.resumeQueuedSession("session-1")).resolves.toBe(
-      true,
+    restarted.startBackgroundRecovery();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(resumedSend).not.toHaveBeenCalled();
+
+    await restarted.sendQueuedAgentInputNow(
+      "session-1",
+      bootstrap.queuedAgentInputs[0]?.messageId ?? "",
     );
     await vi.waitFor(() => expect(resumedSend).toHaveBeenCalledOnce());
     expect(resumedSend.mock.calls[0]?.[0]).toMatchObject({

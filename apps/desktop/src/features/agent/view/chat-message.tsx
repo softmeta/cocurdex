@@ -186,7 +186,7 @@ function ReasoningDetailBody({
 }) {
   return (
     <MarkdownRenderer
-      className="space-y-1.5 [&_li]:text-meta [&_li]:text-chat-fg-muted [&_p]:text-meta [&_p]:text-chat-fg-muted"
+      className="space-y-1.5 [&_li]:text-body [&_li]:text-chat-fg-muted [&_p]:text-body [&_p]:text-chat-fg-muted"
       content={message.content}
       streaming={streaming}
       tone="editor"
@@ -215,7 +215,7 @@ export function ReasoningMarkdown({
   // state: full (expanded) mode opens by default but still exposes a collapse
   // toggle, while collapsed mode starts behind a click-to-expand trigger.
   //
-  // Row geometry is shared with the tool-call rows (px-1.5 py-1 gap-2, text-meta,
+  // Row geometry is shared with the tool-call rows (px-1.5 py-1 gap-2, text-body,
   // size-3.5 icon) so every icon in the activity log sits in one column. The
   // expansion aligns with the trigger's label: padding (6) + brain (14) +
   // gap-2 (8) = 28px. No guide line, matching the tool-call detail.
@@ -224,7 +224,7 @@ export function ReasoningMarkdown({
       className="flex w-full flex-col gap-1.5"
       defaultOpen={mode === "full"}
     >
-      <CollapsibleTrigger className="group/reasoning flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-meta">
+      <CollapsibleTrigger className="group/reasoning flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-body">
         <ReasoningTriggerRow
           isStreaming={isStreaming}
           label={label}

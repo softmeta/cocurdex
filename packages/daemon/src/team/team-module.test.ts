@@ -98,7 +98,7 @@ const role: AgentRoleRecord = {
   updatedAt: "",
 };
 
-function harness() {
+function harness({ busy = new Set<string>() } = {}) {
   const settings = new Map<string, string>();
   const sessions = new Map<string, SessionRecord>([
     ["lead", session({ id: "lead" })],
@@ -141,6 +141,7 @@ function harness() {
     stopSession: async (id) => {
       stopped.push(id);
     },
+    isSessionBusy: (id) => busy.has(id),
     getMessage: async (id) => ({
       id,
       sessionId: "x",
@@ -172,6 +173,7 @@ describe("TeamModule", () => {
       agentType: "codex",
     });
     expect(sent[0]).toMatchObject({
+      origin: { kind: "peer", sessionId: "lead" },
       sessionId: member.sessionId,
       delivery: "start-new-run",
     });
@@ -180,6 +182,23 @@ describe("TeamModule", () => {
     expect(events[0]).toMatchObject({ type: "team.changed" });
     const snapshot = await module.get("lead");
     expect(snapshot?.members).toHaveLength(1);
+  });
+
+  it("titles the teammate session with its display title, keeping the name as identifier", async () => {
+    const { module, sessions } = harness();
+    const titled = await module.spawn("lead", {
+      name: "alpha",
+      title: " 认证审查 ",
+      prompt: "go",
+    });
+    const blank = await module.spawn("lead", {
+      name: "beta",
+      title: "  ",
+      prompt: "go",
+    });
+    expect(titled.name).toBe("alpha");
+    expect(sessions.get(titled.sessionId)?.title).toBe("认证审查");
+    expect(sessions.get(blank.sessionId)?.title).toBe("beta");
   });
 
   it("rejects nested teams and duplicate names", async () => {
@@ -423,6 +442,25 @@ describe("TeamModule", () => {
     ).rejects.toMatchObject({ code: "team_not_found" });
     const team = await module.stopLeadTeam("lead");
     expect(team.status).toBe("stopped");
+  });
+
+  it("refuses a lead stop while a teammate is busy unless forced", async () => {
+    const busy = new Set<string>();
+    const { module, stopped } = harness({ busy });
+    const member = await module.spawn("lead", { name: "alpha", prompt: "go" });
+    busy.add(member.sessionId);
+
+    await expect(module.stopLeadTeam("lead")).rejects.toMatchObject({
+      code: "members_busy",
+    });
+    await expect(
+      module.stopLeadMember("lead", member.sessionId),
+    ).rejects.toMatchObject({ code: "members_busy" });
+    expect(stopped).toEqual([]);
+
+    const team = await module.stopLeadTeam("lead", { force: true });
+    expect(team.status).toBe("stopped");
+    expect(stopped).toEqual([member.sessionId]);
   });
 
   it("keeps OpenCode out of agent teams", async () => {

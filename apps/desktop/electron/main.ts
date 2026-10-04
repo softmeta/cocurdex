@@ -1263,7 +1263,7 @@ function registerBrowserHandlers() {
 
 // PTY spawn accepts a cwd path from the renderer. Tighten that boundary so a
 // compromised renderer can't drop the user into a shell rooted at /private,
-// `~/.ssh`, or anywhere outside: (1) a project the user has opened, or
+// `~/.ssh`, or anywhere outside: (1) a workspace the user has opened, or
 // (2) the user home directory (no-workspace / chat-only terminal).
 async function assertCwdIsAllowedTerminalRoot(cwd: string): Promise<void> {
   const workspaces = await listWorkspaces();

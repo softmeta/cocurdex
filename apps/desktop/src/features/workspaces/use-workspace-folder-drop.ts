@@ -18,7 +18,7 @@ export interface WorkspaceFolderDropHandlers {
 
 /**
  * Window-level OS folder drag-and-drop. Dropping a directory (or a file from
- * inside one) opens that path as a project workspace — same outcome as the
+ * inside one) opens that path as a workspace — same outcome as the
  * "Open Folder" picker and CLI `cocurdex .`.
  */
 export function useWorkspaceFolderDrop(

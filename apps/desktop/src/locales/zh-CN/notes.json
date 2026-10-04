@@ -23,7 +23,7 @@
   "scope": {
     "private": "私人",
     "workspace": "{{name}}",
-    "workspaceFallback": "项目"
+    "workspaceFallback": "工作区"
   },
   "sidebar": {
     "collapse": "折叠侧栏",

@@ -87,7 +87,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
   resyncApp: (sessionIds: string[]) =>
     ipcRenderer.invoke("app:resync", sessionIds),
   // Sandboxed preload cannot import node:os — resolve home in main.
-  // Default terminal cwd when no project workspace is open.
+  // Default terminal cwd when no workspace is open.
   getHomeDir: () => ipcRenderer.invoke("app:getHomeDir") as Promise<string>,
   listFontFamilies: () =>
     ipcRenderer.invoke("app:listFontFamilies") as Promise<string[]>,

@@ -30,11 +30,6 @@ import { McpSettingsPanel } from "./mcp";
 import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
 import { OssLicensesSettingsPanel } from "./oss-licenses";
-import {
-  ProjectSettingsHeading,
-  ProjectSettingsPanel,
-  selectedSettingsProjectIdAtom,
-} from "./projects";
 import { ProviderSettingsPanel } from "./providers";
 import { SettingRow, SettingsGroup } from "./settings-fields";
 import {
@@ -45,6 +40,11 @@ import { SettingsSidebar } from "./settings-sidebar";
 import { SkillsSettingsPanel } from "./skills-settings";
 import type { AppearanceSettings, ThemeMode } from "./theme";
 import { WorkflowSettingsPanel } from "./workflows";
+import {
+  selectedSettingsWorkspaceIdAtom,
+  WorkspaceSettingsHeading,
+  WorkspaceSettingsPanel,
+} from "./workspaces";
 import { WorktreeSettingsPanel } from "./worktrees";
 
 export interface SettingsScreenProps {
@@ -202,8 +202,8 @@ function SectionPanel({
     return <WorktreeSettingsPanel />;
   }
 
-  if (sectionId === "projects") {
-    return <ProjectSettingsPanel />;
+  if (sectionId === "workspaces") {
+    return <WorkspaceSettingsPanel />;
   }
 
   if (sectionId === "about") {
@@ -266,7 +266,7 @@ export function SettingsScreen({
 }: SettingsScreenProps) {
   const { t } = useTranslation(["editor", "settings"]);
   const sidebarClusters = groupSettingsSectionsByCluster();
-  const setSelectedProjectId = useSetAtom(selectedSettingsProjectIdAtom);
+  const setSelectedWorkspaceId = useSetAtom(selectedSettingsWorkspaceIdAtom);
   const activeSectionMeta =
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];
@@ -277,8 +277,8 @@ export function SettingsScreen({
     activeSection === "providers";
   const settingsHeading = (
     <header className="min-w-0 shrink-0">
-      {activeSection === "projects" ? (
-        <ProjectSettingsHeading />
+      {activeSection === "workspaces" ? (
+        <WorkspaceSettingsHeading />
       ) : (
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           {t(`settings:sections.${activeSectionMeta.labelKey}`)}
@@ -287,7 +287,7 @@ export function SettingsScreen({
     </header>
   );
   const handleSectionChange = (sectionId: SettingsSectionId) => {
-    setSelectedProjectId(null);
+    setSelectedWorkspaceId(null);
     onSectionChange(sectionId);
   };
   const settingsPanel = (

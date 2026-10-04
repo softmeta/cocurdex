@@ -207,8 +207,12 @@
   },
   "system": "系统",
   "team": {
+    "cancel": "取消",
+    "dismiss": "隐藏团队",
+    "endTeam": "停止所有队友",
     "handle": "去处理",
     "label": "团队",
+    "lead": "主会话",
     "needsInput": "等待处理",
     "noReply": "暂无回复",
     "open": "打开会话",
@@ -221,7 +225,8 @@
       "spawning": "启动中",
       "stopped": "已停止"
     },
-    "stopAll": "全部停止",
+    "stopAllDescription_other": "将停止全部 {{count}} 个队友会话，并丢弃它们排队中的消息。主会话不受影响。",
+    "stopAllTitle": "停止所有队友？",
     "stopMember": "停止 {{name}}"
   },
   "thinking": "思考中",

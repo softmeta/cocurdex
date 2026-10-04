@@ -47,7 +47,7 @@ const SECTION_SUGGESTIONS: Partial<
   appearance: ["theme", "explore"],
   general: ["language", "notifications", "explore"],
   personalization: ["chatDisplay", "explore"],
-  projects: ["worktree", "explore"],
+  workspaces: ["worktree", "explore"],
   worktrees: ["worktree", "explore"],
 };
 

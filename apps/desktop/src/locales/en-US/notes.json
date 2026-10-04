@@ -23,7 +23,7 @@
   "scope": {
     "private": "Private",
     "workspace": "{{name}}",
-    "workspaceFallback": "Project"
+    "workspaceFallback": "Workspace"
   },
   "sidebar": {
     "collapse": "Collapse sidebar",

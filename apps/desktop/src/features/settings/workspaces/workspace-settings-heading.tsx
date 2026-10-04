@@ -2,14 +2,14 @@ import { useAtom, useAtomValue } from "jotai";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { workspacesAtom } from "@/features/workspaces";
-import { selectedSettingsProjectIdAtom } from "./project-settings-store";
+import { selectedSettingsWorkspaceIdAtom } from "./workspace-settings-store";
 
-export function ProjectSettingsHeading() {
+export function WorkspaceSettingsHeading() {
   const { t } = useTranslation("settings");
   const workspaces = useAtomValue(workspacesAtom);
-  const [selectedId, setSelectedId] = useAtom(selectedSettingsProjectIdAtom);
+  const [selectedId, setSelectedId] = useAtom(selectedSettingsWorkspaceIdAtom);
   const selected = workspaces.find((workspace) => workspace.id === selectedId);
-  const sectionLabel = t("sections.projects");
+  const sectionLabel = t("sections.workspaces");
 
   if (!selected) {
     return (

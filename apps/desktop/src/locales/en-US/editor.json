@@ -222,7 +222,7 @@
     "noFileSelected": "No file selected",
     "noWorkspace": "No workspace",
     "noWorkspaceDescription": "Select a workspace to inspect git changes.",
-    "noWorkspaceEditorDescription": "Open a project folder to browse and edit files.",
+    "noWorkspaceEditorDescription": "Open a workspace to browse and edit files.",
     "noWorkspaceFilesDescription": "Select a workspace to browse files.",
     "noWorkspaceTitle": "No workspace selected"
   },

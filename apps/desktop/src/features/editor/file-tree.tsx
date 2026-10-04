@@ -90,6 +90,7 @@ export function FileTree() {
   const rootPath = workingPath
     ? workingPath.replace(/[\\/]+$/, "") || "/"
     : null;
+  const rootFolderName = rootPath?.split(/[\\/]/).pop() || rootPath;
   // Synthetic workspace root row (outside Pierre). Open by default; session-
   // keyed so tab remounts keep the last open/closed choice. Adjust state when
   // the workspace root changes (React-recommended props→state sync).
@@ -252,7 +253,7 @@ export function FileTree() {
       // (PDF routing, double-click pin, context menu).
       // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handling is delegated to PierreFileTree
       <div
-        aria-label={activeWorkspace.name}
+        aria-label={rootFolderName ?? activeWorkspace.name}
         className="h-full"
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -331,7 +332,7 @@ export function FileTree() {
                 <Folder className="size-3.5 shrink-0 text-editor-fg-subtle" />
               )}
               <span className="truncate">
-                {activeWorkspace?.name ?? t("states.noWorkspace")}
+                {activeWorkspace ? rootFolderName : t("states.noWorkspace")}
               </span>
             </button>
 

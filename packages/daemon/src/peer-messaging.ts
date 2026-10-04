@@ -18,6 +18,7 @@ export interface PeerMessagingDependencies {
   getSession(sessionId: string): Promise<SessionRecord | null>;
   listSessions(): Promise<SessionRecord[]>;
   hasActiveTurn(sessionId: string): boolean;
+  supportsSteering(session: SessionRecord): Promise<boolean>;
   sendSessionMessage(command: SendSessionCommand): Promise<MessageRecord>;
   broadcast(event: PeerMessageEvent): void;
   peerScope?(sessionId: string): Promise<ReadonlySet<string> | null>;
@@ -85,6 +86,7 @@ export class PeerMessagingService {
     this.exchanges.set(key, exchanges + 1);
     const delivery = choosePeerDelivery({
       hasActiveTurn: this.deps.hasActiveTurn(target.id),
+      supportsSteering: await this.deps.supportsSteering(target),
     });
     const message = await this.deps.sendSessionMessage({
       sessionId: target.id,

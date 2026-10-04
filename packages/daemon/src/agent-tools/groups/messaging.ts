@@ -40,7 +40,7 @@ export function registerMessagingTools(
       group: "messaging",
       name: "send_message",
       description:
-        "Send a text message to another Cocurdex agent session by its session id. The message is delivered as a new turn when that session is idle, or queued after its current turn. Every message starts a turn for the receiver, so do not send pure acknowledgements or thanks. Delivery loop_limit means the two sessions exchanged too many messages without user input; stop messaging and summarize for the user instead.",
+        "Send a text message to another Cocurdex agent session by its session id. The message starts a new turn when that session is idle; while it is running, the message is injected into its current turn (delivery steer-active-run) or, for agents that cannot be steered, queued until that turn ends (delivery queue-after-run). Every message starts a turn for the receiver, so do not send pure acknowledgements or thanks. Delivery loop_limit means the two sessions exchanged too many messages without user input; stop messaging and summarize for the user instead.",
       inputSchema: {
         type: "object",
         properties: {

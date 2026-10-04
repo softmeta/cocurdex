@@ -616,6 +616,67 @@ describe("createPiSdkAdapter", () => {
     ).toBe(false);
   });
 
+  it("treats an abort caused by stop as a cancellation, not an error", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "aborted",
+            errorMessage:
+              "OpenAI Responses stream ended before a terminal response event",
+            content: [],
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    const pending = session.sendMessage({ content: "hello", history: [] });
+    session.stop();
+    await pending;
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === "error" && event.message.includes("stream ended"),
+      ),
+    ).toBe(false);
+    expect(
+      events.some(
+        (event) => event.type === "state.changed" && event.status === "error",
+      ),
+    ).toBe(false);
+  });
+
+  it("still reports an abort that was not requested by stop", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "aborted",
+            errorMessage: "stream dropped",
+            content: [],
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    expect(
+      events.some(
+        (event) => event.type === "error" && event.message === "stream dropped",
+      ),
+    ).toBe(true);
+  });
+
   it("does not keep a stopReason error after a later successful assistant turn", async () => {
     const events: AgentEvent[] = [];
     const session = createSessionPayload(events, {

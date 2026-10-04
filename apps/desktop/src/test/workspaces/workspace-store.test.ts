@@ -173,7 +173,7 @@ describe("openWorkspaceByPathAtom", () => {
     const result = store.set(openWorkspaceByPathAtom, "/ws/a");
 
     expect(result.workspace.id).toBe("a");
-    expect(result.didSwitchProject).toBe(true);
+    expect(result.didSwitchWorkspace).toBe(true);
     expect(store.get(activeWorkspaceIdAtom)).toBe("a");
     expect(store.get(workspacesAtom)).toHaveLength(1);
     expect(saveWorkspace).toHaveBeenCalledTimes(1);
@@ -186,7 +186,7 @@ describe("openWorkspaceByPathAtom", () => {
 
     expect(result.workspace.rootPaths).toEqual(["/tmp/new-project"]);
     expect(result.workspace.name).toBe("new-project");
-    expect(result.didSwitchProject).toBe(true);
+    expect(result.didSwitchWorkspace).toBe(true);
     expect(store.get(activeWorkspaceIdAtom)).toBe(result.workspace.id);
     expect(store.get(workspacesAtom)).toHaveLength(1);
     expect(saveWorkspace).toHaveBeenCalledTimes(1);
@@ -221,7 +221,7 @@ describe("openWorkspaceByPathAtom", () => {
 
     const result = store.set(openWorkspaceByPathAtom, "/ws/b");
 
-    expect(result.didSwitchProject).toBe(true);
+    expect(result.didSwitchWorkspace).toBe(true);
     expect(store.get(activeWorkspaceIdAtom)).toBe("b");
     expect(store.get(workspacesAtom).map((w) => w.id)).toEqual(["a", "b"]);
     expect(store.get(collapsedWorkspaceIdsAtom)).toEqual([]);
@@ -244,7 +244,19 @@ describe("openWorkspaceByPathAtom", () => {
     ]);
   });
 
-  it("reports didSwitchProject false when reopening the active project", () => {
+  it("prefers the project whose primary folder matches the path", () => {
+    const store = createStore();
+    const multi = {
+      ...makeWorkspace("multi", "2024-01-01T00:00:00.000Z"),
+      rootPaths: ["/ws/multi", "/ws/a"],
+    };
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [multi, a]);
+
+    expect(store.set(openWorkspaceByPathAtom, "/ws/a").workspace.id).toBe("a");
+  });
+
+  it("reports didSwitchWorkspace false when reopening the active project", () => {
     const store = createStore();
     const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
     store.set(workspacesAtom, [a]);
@@ -252,7 +264,7 @@ describe("openWorkspaceByPathAtom", () => {
 
     const result = store.set(openWorkspaceByPathAtom, "/ws/a");
 
-    expect(result.didSwitchProject).toBe(false);
+    expect(result.didSwitchWorkspace).toBe(false);
     expect(store.get(activeWorkspaceIdAtom)).toBe("a");
   });
 });

@@ -20,7 +20,7 @@ export function useSearchPaletteActions(onClose: () => void) {
   return {
     openSession(session: SessionRecord) {
       onClose();
-      setSidebarTab("projects");
+      setSidebarTab("workspaces");
       selectWorkspace(session.workspaceId);
       selectSession(session.id);
     },
