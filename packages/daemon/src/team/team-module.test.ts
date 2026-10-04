@@ -1,13 +1,12 @@
 import type { TeamRepository } from "@cocurdex/db";
 import type {
   AgentRoleRecord,
-  IssueRecord,
   SendSessionCommand,
   SessionRecord,
   TeamChangedEvent,
   TeamMemberRecord,
   TeamRecord,
-  TeamTaskLinks,
+  TeamTaskRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { TeamModule } from "./team-module";
@@ -31,7 +30,7 @@ function session(overrides: Partial<SessionRecord>): SessionRecord {
 function memoryRepository(): TeamRepository {
   const teams = new Map<string, TeamRecord>();
   const members = new Map<string, TeamMemberRecord>();
-  const taskLinks = new Map<string, TeamTaskLinks>();
+  const tasks = new Map<string, TeamTaskRecord>();
   const snapshot = (team: TeamRecord | undefined) =>
     team
       ? {
@@ -64,11 +63,16 @@ function memoryRepository(): TeamRepository {
     async saveMember(member) {
       members.set(`${member.teamId}:${member.sessionId}`, member);
     },
-    async listTaskLinks(teamId) {
-      return [...taskLinks.values()].filter((item) => item.teamId === teamId);
+    async listTasks(teamId) {
+      return [...tasks.values()].filter((task) => task.teamId === teamId);
     },
-    async saveTaskLinks(links) {
-      taskLinks.set(`${links.teamId}:${links.issueId}`, links);
+    async insertTask(task) {
+      tasks.set(task.id, task);
+    },
+    async updateTask(task, expectedRevision) {
+      if (tasks.get(task.id)?.revision !== expectedRevision) return false;
+      tasks.set(task.id, { ...task, revision: expectedRevision + 1 });
+      return true;
     },
   };
 }
@@ -99,7 +103,6 @@ function harness() {
   const sessions = new Map<string, SessionRecord>([
     ["lead", session({ id: "lead" })],
   ]);
-  const issues = new Map<string, IssueRecord>();
   const sent: SendSessionCommand[] = [];
   const reports: { to: string; content: string }[] = [];
   const stopped: string[] = [];
@@ -117,75 +120,6 @@ function harness() {
     setSetting: async (key, value) => {
       settings.set(key, value);
     },
-    createIssueView: async ({ title }) => ({
-      id: `view:${title}`,
-      title,
-      icon: null,
-      groupBy: "status",
-      layout: "board",
-      filters: [],
-      revision: 1,
-    }),
-    loadIssueView: async (viewId) => ({
-      view: {
-        id: viewId,
-        title: viewId,
-        icon: null,
-        groupBy: "status",
-        layout: "board",
-        filters: [],
-        revision: 1,
-        createdAt: "",
-        updatedAt: "",
-      },
-      columns: [],
-      statusOptions: [],
-      priorityOptions: [],
-      issues: [...issues.values()].filter((issue) => issue.viewId === viewId),
-    }),
-    createIssue: async (payload) => {
-      const issue: IssueRecord = {
-        id: `issue-${issues.size + 1}`,
-        columnId: payload.columnId ?? "backlog",
-        viewId: payload.viewId,
-        title: payload.title ?? "",
-        description: payload.description ?? null,
-        color: null,
-        status: payload.columnId ?? "backlog",
-        priority: "none",
-        workspaceId: payload.workspaceId ?? null,
-        assigneeSessionId: null,
-        sortOrder: 0,
-        revision: 1,
-        createdAt: "",
-        updatedAt: "",
-      };
-      issues.set(issue.id, issue);
-      return issue;
-    },
-    updateIssue: async (payload) => {
-      const current = issues.get(payload.id);
-      if (!current) throw new Error("missing");
-      if (
-        payload.expectedRevision !== undefined &&
-        payload.expectedRevision !== current.revision
-      ) {
-        throw Object.assign(new Error("conflict"), { conflict: true });
-      }
-      const next: IssueRecord = {
-        ...current,
-        status: payload.status ?? current.status,
-        assigneeSessionId:
-          payload.assigneeSessionId !== undefined
-            ? payload.assigneeSessionId
-            : current.assigneeSessionId,
-        revision: current.revision + 1,
-      };
-      issues.set(next.id, next);
-      return next;
-    },
-    isIssueConflict: (error) =>
-      typeof error === "object" && error !== null && "conflict" in error,
     sendSessionMessage: async (command) => {
       sent.push(command);
       return {
@@ -245,7 +179,6 @@ describe("TeamModule", () => {
     expect(sent[0]?.content).toContain("Review the auth module");
     expect(events[0]).toMatchObject({ type: "team.changed" });
     const snapshot = await module.get("lead");
-    expect(snapshot?.team.issueViewId).toBe("view:team:lead");
     expect(snapshot?.members).toHaveLength(1);
   });
 
@@ -366,7 +299,7 @@ describe("TeamModule", () => {
     const task = await module.taskCreate("lead", { title: "Audit" });
     expect(await module.taskList(a.sessionId)).toHaveLength(1);
     const claimed = await module.taskUpdate(a.sessionId, {
-      issueId: task.id,
+      taskId: task.id,
       status: "doing",
       assignee: "me",
     });
@@ -375,11 +308,31 @@ describe("TeamModule", () => {
       assigneeSessionId: a.sessionId,
     });
     await expect(
-      module.taskUpdate(b.sessionId, { issueId: task.id, assignee: "me" }),
+      module.taskUpdate(b.sessionId, { taskId: task.id, assignee: "me" }),
     ).rejects.toMatchObject({ code: "TASK_CONFLICT" });
     await expect(
-      module.taskUpdate(a.sessionId, { issueId: "nope", status: "done" }),
+      module.taskUpdate(a.sessionId, { taskId: "nope", status: "done" }),
     ).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+  });
+
+  it("rejects a concurrent claim of the same task", async () => {
+    const { module } = harness();
+    const a = await module.spawn("lead", { name: "a", prompt: "go" });
+    const b = await module.spawn("lead", { name: "b", prompt: "go" });
+    const task = await module.taskCreate("lead", { title: "Audit" });
+    const results = await Promise.allSettled(
+      [a, b].map((member) =>
+        module.taskUpdate(member.sessionId, {
+          taskId: task.id,
+          status: "doing",
+          assignee: "me",
+        }),
+      ),
+    );
+    expect(results.map((result) => result.status).sort()).toEqual([
+      "fulfilled",
+      "rejected",
+    ]);
   });
 
   it("runs dependent tasks in order and requires an independent review", async () => {
@@ -400,25 +353,25 @@ describe("TeamModule", () => {
     ).toMatchObject({ blockedBy: [design.id], blocked: true });
     await expect(
       module.taskUpdate(builder.sessionId, {
-        issueId: build.id,
+        taskId: build.id,
         status: "doing",
         assignee: "me",
       }),
     ).rejects.toMatchObject({ code: "TASK_BLOCKED" });
 
     await module.taskUpdate(builder.sessionId, {
-      issueId: design.id,
+      taskId: design.id,
       status: "doing",
       assignee: "me",
     });
     await expect(
       module.taskUpdate(builder.sessionId, {
-        issueId: design.id,
+        taskId: design.id,
         status: "review",
       }),
     ).rejects.toMatchObject({ code: "EVIDENCE_REQUIRED" });
     const reviewed = await module.taskUpdate(builder.sessionId, {
-      issueId: design.id,
+      taskId: design.id,
       status: "review",
       evidence: "docs/design.md written; lint clean",
     });
@@ -428,15 +381,15 @@ describe("TeamModule", () => {
     });
     await expect(
       module.taskUpdate(builder.sessionId, {
-        issueId: design.id,
+        taskId: design.id,
         status: "done",
       }),
     ).rejects.toMatchObject({ code: "SELF_APPROVAL" });
-    await module.taskUpdate("lead", { issueId: design.id, status: "done" });
+    await module.taskUpdate("lead", { taskId: design.id, status: "done" });
 
     expect(
       await module.taskUpdate(builder.sessionId, {
-        issueId: build.id,
+        taskId: build.id,
         status: "doing",
         assignee: "me",
       }),

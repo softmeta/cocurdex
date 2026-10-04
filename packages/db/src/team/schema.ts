@@ -4,7 +4,6 @@ export function createTeamSchemaSql(): string {
       id TEXT PRIMARY KEY,
       lead_session_id TEXT NOT NULL UNIQUE,
       workspace_id TEXT NOT NULL,
-      issue_view_id TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
@@ -27,12 +26,17 @@ export function createTeamSchemaSql(): string {
     );
 
     CREATE TABLE IF NOT EXISTS team_tasks (
+      id TEXT PRIMARY KEY,
       team_id TEXT NOT NULL,
-      issue_id TEXT NOT NULL,
-      blocked_by_json TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL,
+      assignee_session_id TEXT,
+      blocked_by_json TEXT NOT NULL DEFAULT '[]',
       evidence TEXT,
+      revision INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      PRIMARY KEY (team_id, issue_id),
       FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
     );
 

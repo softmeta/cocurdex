@@ -2,7 +2,7 @@ import type {
   TeamMemberRecord,
   TeamRecord,
   TeamSnapshot,
-  TeamTaskLinks,
+  TeamTaskRecord,
 } from "@cocurdex/shared";
 
 export interface TeamRepository {
@@ -11,6 +11,7 @@ export interface TeamRepository {
   findBySession(sessionId: string): Promise<TeamSnapshot | null>;
   saveTeam(team: TeamRecord): Promise<void>;
   saveMember(member: TeamMemberRecord): Promise<void>;
-  listTaskLinks(teamId: string): Promise<TeamTaskLinks[]>;
-  saveTaskLinks(links: TeamTaskLinks): Promise<void>;
+  listTasks(teamId: string): Promise<TeamTaskRecord[]>;
+  insertTask(task: TeamTaskRecord): Promise<void>;
+  updateTask(task: TeamTaskRecord, expectedRevision: number): Promise<boolean>;
 }

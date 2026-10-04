@@ -78,7 +78,6 @@ describe("SQLite-backed issues store", () => {
       status: "backlog",
       priority: "none",
       workspaceId: null,
-      assigneeSessionId: null,
       sortOrder: 0,
       revision: 2,
       createdAt: now,

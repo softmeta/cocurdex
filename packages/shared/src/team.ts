@@ -12,7 +12,6 @@ export interface TeamRecord {
   id: string;
   leadSessionId: string;
   workspaceId: string;
-  issueViewId: string;
   status: TeamStatus;
   createdAt: string;
   updatedAt: string;
@@ -28,11 +27,17 @@ export interface TeamMemberRecord {
   updatedAt: string;
 }
 
-export interface TeamTaskLinks {
+export interface TeamTaskRecord {
+  id: string;
   teamId: string;
-  issueId: string;
+  title: string;
+  description: string | null;
+  status: TeamTaskStatus;
+  assigneeSessionId: string | null;
   blockedBy: string[];
   evidence: string | null;
+  revision: number;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -190,7 +195,7 @@ export function renderTeammateBriefing(input: {
 }) {
   return [
     `You are teammate "${input.name}" in a Cocurdex agent team led by session ${input.leadSessionId}.`,
-    'Use team_task_list, team_task_create, and team_task_update to coordinate on the shared task list; claim a task with team_task_update({ issueId, status: "doing", assignee: "me" }). Blocked tasks wait for their prerequisites. When you finish, move the task to "review" with evidence (commands run and results); you cannot mark your own task done.',
+    'Use team_task_list, team_task_create, and team_task_update to coordinate on the shared task list; claim a task with team_task_update({ taskId, status: "doing", assignee: "me" }). Blocked tasks wait for their prerequisites. When you finish, move the task to "review" with evidence (commands run and results); you cannot mark your own task done.',
     "Use messaging_send_message to talk to the lead or other teammates. Your final reply for each turn is delivered to the lead automatically.",
     "Every message starts a new turn for its receiver, so never reply to acknowledgements or send thanks; message only when you have new information or a request.",
     "",

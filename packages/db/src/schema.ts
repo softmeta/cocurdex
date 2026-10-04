@@ -343,7 +343,6 @@ export function createSchemaSql() {
       status TEXT NOT NULL DEFAULT 'backlog',
       priority TEXT NOT NULL DEFAULT 'none',
       workspace_id TEXT,
-      assignee_session_id TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,

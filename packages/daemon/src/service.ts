@@ -12,7 +12,6 @@ import {
   createAgentRegistry,
   detectAgentInstallations,
 } from "@cocurdex/agent-core";
-import { IssueConflictError } from "@cocurdex/db";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
   AgentEvent,
@@ -304,11 +303,6 @@ export class CocurdexDaemonService {
       listAgentRoles: () => this.state.listAgentRoles(),
       getSetting: (key) => this.state.getAppSetting(key),
       setSetting: (key, value) => this.state.setAppSetting(key, value),
-      createIssueView: (input) => this.dataService.createIssueView(input),
-      loadIssueView: (viewId) => this.dataService.loadIssueView({ viewId }),
-      createIssue: (payload) => this.dataService.createIssue(payload),
-      updateIssue: (payload) => this.dataService.updateIssue(payload),
-      isIssueConflict: (error) => error instanceof IssueConflictError,
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       sendPeerMessage: (payload, render) =>
         this.peerMessaging.send(payload, render),

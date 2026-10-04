@@ -201,7 +201,7 @@ export function registerTeamTools(
       inputSchema: {
         type: "object",
         properties: {
-          issueId: { type: "string" },
+          taskId: { type: "string" },
           status: { type: "string", enum: [...TEAM_TASK_STATUSES] },
           assignee: { type: ["string", "null"], enum: ["me", null] },
           evidence: {
@@ -209,14 +209,14 @@ export function registerTeamTools(
             description: "Required when moving to review",
           },
         },
-        required: ["issueId"],
+        required: ["taskId"],
         additionalProperties: false,
       },
     },
     isAvailable: isTeamParticipant,
     execute: (caller, input) =>
       deps.taskUpdate(caller.sessionId, {
-        issueId: String(input.issueId),
+        taskId: String(input.taskId),
         ...(typeof input.status === "string"
           ? { status: input.status as TeamTaskUpdateInput["status"] }
           : {}),

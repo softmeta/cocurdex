@@ -134,7 +134,119 @@ function seedVersionElevenIssueDatabase() {
   return database;
 }
 
+function seedVersionTwelveTeamDatabase() {
+  const database = new DatabaseSync(":memory:");
+  initializeDatabase(database);
+  const now = "2026-10-01T00:00:00.000Z";
+  database.exec(`
+    ALTER TABLE issues ADD COLUMN assignee_session_id TEXT;
+    ALTER TABLE teams ADD COLUMN issue_view_id TEXT NOT NULL DEFAULT '';
+    DROP TABLE team_tasks;
+    CREATE TABLE team_tasks (
+      team_id TEXT NOT NULL,
+      issue_id TEXT NOT NULL,
+      blocked_by_json TEXT NOT NULL,
+      evidence TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (team_id, issue_id)
+    );
+    INSERT INTO workspaces (
+      id, name, root_paths, created_at, updated_at, last_opened_at
+    ) VALUES ('w-1', 'repo', '["/tmp/repo"]', '${now}', '${now}', '${now}');
+    INSERT INTO sessions (
+      id, workspace_id, title, agent_type, status, write_mode, created_at,
+      updated_at
+    ) VALUES (
+      'lead', 'w-1', 'Lead', 'codex', 'idle', 'native-write', '${now}', '${now}'
+    );
+    INSERT INTO issue_views (
+      id, title, group_by, layout, created_at, updated_at
+    ) VALUES
+      ('project', 'Project view', 'status', 'board', '${now}', '${now}'),
+      ('view-team', 'team:lead', 'status', 'board', '${now}', '${now}');
+    INSERT INTO teams (
+      id, lead_session_id, workspace_id, issue_view_id, status, created_at,
+      updated_at
+    ) VALUES ('team-1', 'lead', 'w-1', 'view-team', 'active', '${now}', '${now}');
+    INSERT INTO issues (
+      id, title, description_markdown, status, priority, assignee_session_id,
+      created_at, updated_at
+    ) VALUES
+      ('task-design', 'Design', 'Write it down', 'review', 'none', 'lead',
+       '${now}', '${now}'),
+      ('task-build', 'Build', '', 'backlog', 'none', NULL, '${now}', '${now}'),
+      ('user-issue', 'Ship billing', '', 'backlog', 'none', NULL,
+       '${now}', '${now}');
+    INSERT INTO team_tasks VALUES
+      ('team-1', 'task-design', '[]', 'tests pass', '${now}'),
+      ('team-1', 'task-build', '["task-design"]', NULL, '${now}');
+    INSERT INTO notes (
+      id, kind, title, body_markdown, sort_order, created_at, updated_at
+    ) VALUES ('note-1', 'note', 'Kept', 'Body', 0, '${now}', '${now}');
+    PRAGMA user_version = 12;
+  `);
+  return database;
+}
+
 describe("initializeDatabase", () => {
+  it("moves agent team tasks out of issues and keeps user data", () => {
+    const database = seedVersionTwelveTeamDatabase();
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          `SELECT id, team_id, title, description, status,
+             assignee_session_id, blocked_by_json, evidence
+           FROM team_tasks ORDER BY id`,
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "task-build",
+        team_id: "team-1",
+        title: "Build",
+        description: null,
+        status: "backlog",
+        assignee_session_id: null,
+        blocked_by_json: '["task-design"]',
+        evidence: null,
+      },
+      {
+        id: "task-design",
+        team_id: "team-1",
+        title: "Design",
+        description: "Write it down",
+        status: "review",
+        assignee_session_id: "lead",
+        blocked_by_json: "[]",
+        evidence: "tests pass",
+      },
+    ]);
+    expect(database.prepare("SELECT id FROM issues ORDER BY id").all()).toEqual(
+      [{ id: "task-build" }, { id: "task-design" }, { id: "user-issue" }],
+    );
+    expect(
+      database.prepare("SELECT id FROM issue_views ORDER BY id").all(),
+    ).toEqual([{ id: "project" }]);
+    expect(database.prepare("SELECT id, status FROM teams").all()).toEqual([
+      { id: "team-1", status: "active" },
+    ]);
+    expect(
+      database.prepare("SELECT id, body_markdown FROM notes").all(),
+    ).toEqual([{ id: "note-1", body_markdown: "Body" }]);
+    expect(database.prepare("SELECT id FROM sessions").all()).toEqual([
+      { id: "lead" },
+    ]);
+    expect(
+      tableShape(database, "issues").columns.map((c) => c.name),
+    ).not.toContain("assignee_session_id");
+    expect(
+      tableShape(database, "teams").columns.map((c) => c.name),
+    ).not.toContain("issue_view_id");
+  });
+
   it("merges per-view issue columns into one global set", () => {
     const database = seedVersionElevenIssueDatabase();
 
