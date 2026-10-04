@@ -35,7 +35,7 @@ One `team_spawn_teammate` per piece. Names are lowercase slugs (`security-review
 
 The prompt must contain everything the teammate needs; it does not see your conversation:
 
-- The goal and the exact task ids it owns (from step 2). Tell it to claim each with `team_task_update({ issueId, status: "doing", assignee: "me" })` and move it to `review` or `done` when finished.
+- The goal and the exact task ids it owns (from step 2). Tell it to claim each with `team_task_update({ taskId, status: "doing", assignee: "me" })` and move it to `review` or `done` when finished.
 - Scope limits: which files or directories it may edit, and that it must not edit others.
 - What the final reply must contain: the format you will merge (a list of findings with file:line, a summary of changes, a JSON block). Say the reply is delivered to you automatically.
 - Whether to ask you questions through `messaging_send_message` or to decide alone.

@@ -1,11 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
 import { createSchemaSql } from "./schema";
+import { createTeamSchemaSql } from "./team/schema";
 import { ensureTimelineSequence } from "./timeline-sequence";
 
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -245,6 +246,42 @@ function repointOrphanIssueValues(database: DatabaseSync): void {
   }
 }
 
+function migrateTeamTasksOffIssues(database: DatabaseSync): void {
+  if (hasColumn(database, "team_tasks", "issue_id")) {
+    const assignee = hasColumn(database, "issues", "assignee_session_id")
+      ? "i.assignee_session_id"
+      : "NULL";
+    database.exec("ALTER TABLE team_tasks RENAME TO team_tasks_legacy");
+    database.exec(createTeamSchemaSql());
+    database.exec(
+      `INSERT OR IGNORE INTO team_tasks (
+         id, team_id, title, description, status, assignee_session_id,
+         blocked_by_json, evidence, revision, created_at, updated_at
+       )
+       SELECT i.id, l.team_id, i.title, NULLIF(i.description_markdown, ''),
+         CASE WHEN i.status IN ('backlog', 'doing', 'review', 'done')
+           THEN i.status ELSE 'backlog' END,
+         ${assignee}, l.blocked_by_json, l.evidence, 1, i.created_at,
+         l.updated_at
+       FROM team_tasks_legacy l
+       JOIN issues i ON i.id = l.issue_id`,
+    );
+    database.exec("DROP TABLE team_tasks_legacy");
+  }
+  if (hasColumn(database, "teams", "issue_view_id")) {
+    database
+      .prepare(
+        `DELETE FROM issue_views
+         WHERE id != ? AND id IN (SELECT issue_view_id FROM teams)`,
+      )
+      .run(DEFAULT_ISSUE_VIEW_ID);
+    database.exec("ALTER TABLE teams DROP COLUMN issue_view_id");
+  }
+  if (hasColumn(database, "issues", "assignee_session_id")) {
+    database.exec("ALTER TABLE issues DROP COLUMN assignee_session_id");
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -253,6 +290,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [9, ensureTimelineSequence],
   [10, migrateWorkspaceActions],
   [11, migrateIssueColumnsToGlobal],
+  [12, migrateTeamTasksOffIssues],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {
@@ -334,9 +372,6 @@ export function initializeDatabase(database: DatabaseSync): void {
   }
   if (!hasColumn(database, "messages", "origin_json")) {
     database.exec("ALTER TABLE messages ADD COLUMN origin_json TEXT");
-  }
-  if (!hasColumn(database, "issues", "assignee_session_id")) {
-    database.exec("ALTER TABLE issues ADD COLUMN assignee_session_id TEXT");
   }
   for (const column of [
     "proposed_setup_script",

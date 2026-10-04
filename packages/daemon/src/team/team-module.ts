@@ -3,10 +3,8 @@ import type { TeamRepository } from "@cocurdex/db";
 import {
   type AgentEvent,
   type AgentRoleRecord,
-  type CreateIssuePayload,
   canSpawnTeammate,
   checkTeamTaskUpdate,
-  type IssueRecord,
   type MessageRecord,
   renderTeammateBriefing,
   renderTeammateReport,
@@ -27,15 +25,12 @@ import {
   type TeamMemberRecord,
   type TeamRecord,
   type TeamSnapshot,
-  type TeamTaskLinks,
+  type TeamTaskRecord,
   type TeamTaskRejection,
   type TeamTaskStatus,
   type TeamTemplateRecord,
   teamMemberEventFromSessionStatus,
   transitionTeamMember,
-  type UpdateIssuePayload,
-  type ViewFull,
-  type ViewSummary,
   validateSessionId,
 } from "@cocurdex/shared";
 
@@ -72,11 +67,6 @@ export interface TeamModuleDependencies {
   listAgentRoles(): Promise<AgentRoleRecord[]>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, valueJson: string): Promise<void>;
-  createIssueView(input: { title: string }): Promise<ViewSummary>;
-  loadIssueView(viewId: string): Promise<ViewFull | null>;
-  createIssue(payload: CreateIssuePayload): Promise<IssueRecord>;
-  updateIssue(payload: UpdateIssuePayload): Promise<IssueRecord>;
-  isIssueConflict(error: unknown): boolean;
   sendSessionMessage(command: SendSessionCommand): Promise<MessageRecord>;
   sendPeerMessage(
     payload: SendPeerMessagePayload,
@@ -112,7 +102,7 @@ export interface TeamTaskCreateInput {
 }
 
 export interface TeamTaskUpdateInput {
-  issueId: string;
+  taskId: string;
   status?: TeamTaskStatus;
   assignee?: "me" | null;
   evidence?: string;
@@ -122,26 +112,28 @@ function isTeamTaskStatus(value: string): value is TeamTaskStatus {
   return (TEAM_TASK_STATUSES as readonly string[]).includes(value);
 }
 
-function summarizeTasks(
-  issues: IssueRecord[],
-  links: TeamTaskLinks[],
-): TeamTaskSummary[] {
-  const statusById = new Map(issues.map((issue) => [issue.id, issue.status]));
-  const linksById = new Map(links.map((item) => [item.issueId, item]));
-  return issues.map((issue) => {
-    const blockedBy = linksById.get(issue.id)?.blockedBy ?? [];
-    return {
-      id: issue.id,
-      title: issue.title,
-      description: issue.description,
-      status: issue.status,
-      assigneeSessionId: issue.assigneeSessionId,
-      revision: issue.revision,
-      blockedBy,
-      blocked: blockedBy.some((id) => statusById.get(id) !== "done"),
-      evidence: linksById.get(issue.id)?.evidence ?? null,
-    };
-  });
+function nextAssignee(
+  task: TeamTaskRecord,
+  assignee: TeamTaskUpdateInput["assignee"],
+  sessionId: string,
+) {
+  if (assignee === undefined) return task.assigneeSessionId;
+  return assignee === "me" ? sessionId : null;
+}
+
+function summarizeTasks(tasks: TeamTaskRecord[]): TeamTaskSummary[] {
+  const statusById = new Map(tasks.map((task) => [task.id, task.status]));
+  return tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    assigneeSessionId: task.assigneeSessionId,
+    revision: task.revision,
+    blockedBy: task.blockedBy,
+    blocked: task.blockedBy.some((id) => statusById.get(id) !== "done"),
+    evidence: task.evidence,
+  }));
 }
 
 export interface TeamRoleSummary {
@@ -362,35 +354,36 @@ export class TeamModule {
     const team = await this.teamForTaskCreate(sessionId);
     const blockedBy = [...new Set(input.blockedBy ?? [])];
     if (blockedBy.length > 0) {
-      const view = await this.deps.loadIssueView(team.issueViewId);
-      const known = new Set(view?.issues.map((issue) => issue.id));
+      const tasks = await this.deps.repository.listTasks(team.id);
+      const known = new Set(tasks.map((task) => task.id));
       if (blockedBy.some((id) => !known.has(id))) {
         throw new TeamError("TASK_NOT_FOUND");
       }
     }
-    const issue = await this.deps.createIssue({
-      viewId: team.issueViewId,
-      columnId: "backlog",
+    const now = this.now();
+    const task: TeamTaskRecord = {
+      id: this.createId(),
+      teamId: team.id,
       title: input.title,
       description: input.description ?? null,
-      workspaceId: team.workspaceId,
-    });
-    if (blockedBy.length > 0) {
-      await this.deps.repository.saveTaskLinks({
-        teamId: team.id,
-        issueId: issue.id,
-        blockedBy,
-        evidence: null,
-        updatedAt: this.now(),
-      });
-    }
-    return this.describeTask(team, issue.id);
+      status: "backlog",
+      assigneeSessionId: null,
+      blockedBy,
+      evidence: null,
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await this.deps.repository.insertTask(task);
+    return this.describeTask(team, task.id);
   }
 
   async taskList(sessionId: string) {
     const snapshot = await this.findForSession(sessionId);
     if (!snapshot) return [];
-    return this.loadTasks(snapshot.team);
+    return summarizeTasks(
+      await this.deps.repository.listTasks(snapshot.team.id),
+    );
   }
 
   async taskUpdate(sessionId: string, input: TeamTaskUpdateInput) {
@@ -398,8 +391,8 @@ export class TeamModule {
     if (input.status !== undefined && !isTeamTaskStatus(input.status)) {
       throw new TeamError("invalid_status");
     }
-    const view = await this.deps.loadIssueView(snapshot.team.issueViewId);
-    const current = view?.issues.find((issue) => issue.id === input.issueId);
+    const tasks = await this.deps.repository.listTasks(snapshot.team.id);
+    const current = tasks.find((task) => task.id === input.taskId);
     if (!current) throw new TeamError("TASK_NOT_FOUND");
     if (
       input.assignee === "me" &&
@@ -408,58 +401,33 @@ export class TeamModule {
     ) {
       throw new TeamError("TASK_CONFLICT");
     }
-    const links = (
-      await this.deps.repository.listTaskLinks(snapshot.team.id)
-    ).find((item) => item.issueId === current.id);
-    const blockerIds = new Set(links?.blockedBy ?? []);
+    const blockerIds = new Set(current.blockedBy);
     const verdict = checkTeamTaskUpdate({
       task: current,
-      blockers: (view?.issues ?? []).filter((issue) =>
-        blockerIds.has(issue.id),
-      ),
+      blockers: tasks.filter((task) => blockerIds.has(task.id)),
       callerSessionId: sessionId,
       update: input,
     });
     if (!verdict.ok) throw new TeamError(verdict.reason);
-    try {
-      await this.deps.updateIssue({
-        viewId: snapshot.team.issueViewId,
-        id: input.issueId,
-        ...(input.status ? { status: input.status } : {}),
-        ...(input.assignee !== undefined
-          ? { assigneeSessionId: input.assignee === "me" ? sessionId : null }
-          : {}),
-        expectedRevision: current.revision,
-      });
-    } catch (error) {
-      if (this.deps.isIssueConflict(error))
-        throw new TeamError("TASK_CONFLICT");
-      throw error;
-    }
-    if (input.status === "review") {
-      await this.deps.repository.saveTaskLinks({
-        teamId: snapshot.team.id,
-        issueId: current.id,
-        blockedBy: links?.blockedBy ?? [],
-        evidence: input.evidence?.trim() ?? null,
-        updatedAt: this.now(),
-      });
-    }
+    const next: TeamTaskRecord = {
+      ...current,
+      status: input.status ?? current.status,
+      assigneeSessionId: nextAssignee(current, input.assignee, sessionId),
+      evidence:
+        input.status === "review"
+          ? (input.evidence?.trim() ?? null)
+          : current.evidence,
+      updatedAt: this.now(),
+    };
+    const saved = await this.deps.repository.updateTask(next, current.revision);
+    if (!saved) throw new TeamError("TASK_CONFLICT");
     return this.describeTask(snapshot.team, current.id);
   }
 
-  private async loadTasks(team: TeamRecord) {
-    const [view, links] = await Promise.all([
-      this.deps.loadIssueView(team.issueViewId),
-      this.deps.repository.listTaskLinks(team.id),
-    ]);
-    return summarizeTasks(view?.issues ?? [], links);
-  }
-
-  private async describeTask(team: TeamRecord, issueId: string) {
-    const task = (await this.loadTasks(team)).find(
-      (item) => item.id === issueId,
-    );
+  private async describeTask(team: TeamRecord, taskId: string) {
+    const task = summarizeTasks(
+      await this.deps.repository.listTasks(team.id),
+    ).find((item) => item.id === taskId);
     if (!task) throw new TeamError("TASK_NOT_FOUND");
     return task;
   }
@@ -561,12 +529,10 @@ export class TeamModule {
   }
 
   private async createTeam(lead: SessionRecord, now: string) {
-    const view = await this.deps.createIssueView({ title: `team:${lead.id}` });
     const team: TeamRecord = {
       id: this.createId(),
       leadSessionId: lead.id,
       workspaceId: lead.workspaceId,
-      issueViewId: view.id,
       status: "active",
       createdAt: now,
       updatedAt: now,
