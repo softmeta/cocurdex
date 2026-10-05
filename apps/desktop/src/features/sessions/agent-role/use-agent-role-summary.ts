@@ -3,8 +3,8 @@ import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
 import { useSessionModeLabels } from "../session-mode-label";
 import {
-  agentLabels,
   agentsAtom,
+  getAgentDisplayLabel,
   getSessionModeOptions,
 } from "../session-store";
 import { formatAgentRoleRecordSummary } from "./agent-role-summary";
@@ -28,7 +28,7 @@ export function useAgentRoleSummary() {
 
   return (role: AgentRoleDraft) =>
     formatAgentRoleRecordSummary(role, {
-      agentLabel: agentLabels[role.agentId],
+      agentLabel: getAgentDisplayLabel(role.agentId),
       permissionLabel: role.permissionMode
         ? t(`sessions:permissionMode.${role.permissionMode}`)
         : null,

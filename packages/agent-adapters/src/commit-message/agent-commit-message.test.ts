@@ -34,9 +34,9 @@ describe("generateAgentCommitMessage", () => {
 
   it.each<AgentId>([
     "pi",
-    "grok-build",
-    "cursor",
-    "devin",
+    "acp:grok-build",
+    "acp:cursor",
+    "acp:devin",
     "codex",
     "claude-agent",
     "opencode",
@@ -160,24 +160,17 @@ describe("generateAgentCommitMessage", () => {
 });
 
 describe("resolveCommitMessagePermission", () => {
-  it.each([
-    "Read",
-    "Glob",
-    "Grep",
-    "list",
-    "search",
-  ])("allows the read-only %s tool once", (kind) => {
-    expect(resolveCommitMessagePermission(kind)).toBe("allow_once");
-  });
+  it.each(["Read", "Glob", "Grep", "list", "search"])(
+    "allows the read-only %s tool once",
+    (kind) => {
+      expect(resolveCommitMessagePermission(kind)).toBe("allow_once");
+    },
+  );
 
-  it.each([
-    "edit",
-    "delete",
-    "move",
-    "command",
-    "execute",
-    "other",
-  ])("rejects the side-effecting or unknown %s tool", (kind) => {
-    expect(resolveCommitMessagePermission(kind)).toBe("reject_always");
-  });
+  it.each(["edit", "delete", "move", "command", "execute", "other"])(
+    "rejects the side-effecting or unknown %s tool",
+    (kind) => {
+      expect(resolveCommitMessagePermission(kind)).toBe("reject_always");
+    },
+  );
 });

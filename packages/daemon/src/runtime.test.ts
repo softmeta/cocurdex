@@ -15,7 +15,7 @@ function createSessionRecord(): SessionRecord {
     id: "session-1",
     workspaceId: "workspace-1",
     parentSessionId: null,
-    agentType: "grok-build",
+    agentType: "acp:grok-build",
     title: "Test",
     status: "idle",
     writeMode: "read-only",
@@ -704,7 +704,7 @@ describe("AgentRuntimeManager", () => {
     });
     const pending = manager.requestAgentPermission({
       sessionId: "session-1",
-      providerId: "devin",
+      providerId: "acp:devin",
       kind: "execute",
       title: "Run command",
       locations: [],
@@ -742,7 +742,7 @@ describe("AgentRuntimeManager", () => {
     });
     const resolution = await manager.requestAgentPermission({
       sessionId: "assistant-ws-1",
-      providerId: "devin",
+      providerId: "acp:devin",
       kind: "other",
       title: "Calling settings_get from cocurdex",
       locations: [],
@@ -768,7 +768,7 @@ describe("AgentRuntimeManager", () => {
     });
     void manager.requestAgentPermission({
       sessionId: "session-1",
-      providerId: "devin",
+      providerId: "acp:devin",
       kind: "other",
       title: "Calling settings_get from cocurdex",
       locations: [],
@@ -792,7 +792,7 @@ describe("AgentRuntimeManager", () => {
     });
     void manager.requestAgentPermission({
       sessionId: "assistant-ws-1",
-      providerId: "devin",
+      providerId: "acp:devin",
       kind: "execute",
       title: "Run command",
       locations: [],
@@ -816,7 +816,7 @@ describe("AgentRuntimeManager", () => {
     });
     void manager.requestAgentPermission({
       sessionId: "session-1",
-      providerId: "devin",
+      providerId: "acp:devin",
       kind: "execute",
       title: "Run command",
       locations: [],

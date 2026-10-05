@@ -9,7 +9,7 @@ const command =
 const permission = {
   id: "permission-1",
   sessionId: "session-1",
-  providerId: "grok-build",
+  providerId: "acp:grok-build",
   kind: "execute",
   title: "Execute command",
   description: null,
@@ -40,7 +40,7 @@ const permission = {
 
 const scopedPermission = {
   ...permission,
-  providerId: "devin",
+  providerId: "acp:devin",
   options: [
     {
       id: "allow-session",

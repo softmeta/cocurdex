@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { access, constants } from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
 import { type AgentDescriptor, parseAgentVersion } from "@cocurdex/shared";
 import { getAgentRuntimeOwnership } from "./agent-registry";
@@ -43,6 +45,12 @@ function createLookupArgs(command: string) {
 export async function lookupExecutable(
   command: string,
 ): Promise<string | null> {
+  if (path.isAbsolute(command)) {
+    return access(command, constants.X_OK).then(
+      () => command,
+      () => null,
+    );
+  }
   const lookup = createLookupArgs(command);
 
   try {
@@ -97,7 +105,7 @@ export async function detectAgentInstallations(
         };
       }
 
-      const { executableName } = runtime;
+      const { executableName, version: knownVersion } = runtime;
 
       try {
         const executablePath = await lookupCommand(executableName);
@@ -108,7 +116,10 @@ export async function detectAgentInstallations(
           installation: {
             executableName,
             executablePath,
-            version: executablePath ? await readVersion(executablePath) : null,
+            version:
+              executablePath && !knownVersion
+                ? await readVersion(executablePath)
+                : (knownVersion ?? null),
           },
         };
       } catch (error) {

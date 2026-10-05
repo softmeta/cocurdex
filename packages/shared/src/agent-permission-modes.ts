@@ -1,7 +1,10 @@
-import type {
-  AgentId,
-  AgentPermissionMode,
-  AgentPermissionModeOption,
+import { getAcpAgentProfile } from "./acp-agent-profiles";
+import {
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentPermissionModeOption,
+  type BuiltInAgentId,
+  isAcpRegistryAgentId,
 } from "./contracts";
 
 function isClaudeHaikuModel(value: string | null | undefined) {
@@ -22,7 +25,7 @@ export function isAgentPermissionModeSupportedForModel(
 }
 
 const fallbackAgentPermissionModes: Record<
-  AgentId,
+  BuiltInAgentId,
   AgentPermissionModeOption[]
 > = {
   "claude-agent": [
@@ -35,13 +38,6 @@ const fallbackAgentPermissionModes: Record<
     { id: "codex-auto", risk: "elevated" },
     { id: "codex-full-access", risk: "dangerous" },
   ],
-  cursor: [],
-  devin: [],
-  "grok-build": [
-    { id: "grok-ask", risk: "normal" },
-    { id: "grok-auto", risk: "elevated" },
-    { id: "grok-always-approve", risk: "dangerous" },
-  ],
   opencode: [
     { id: "opencode-ask", risk: "normal" },
     { id: "opencode-allow", risk: "elevated" },
@@ -51,5 +47,10 @@ const fallbackAgentPermissionModes: Record<
 };
 
 export function getFallbackAgentPermissionModes(agentId: AgentId) {
+  if (isAcpRegistryAgentId(agentId)) {
+    return (getAcpAgentProfile(agentId).permissionModes ?? []).map((mode) => ({
+      ...mode,
+    }));
+  }
   return fallbackAgentPermissionModes[agentId].map((mode) => ({ ...mode }));
 }

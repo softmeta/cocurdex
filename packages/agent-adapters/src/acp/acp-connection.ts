@@ -91,10 +91,17 @@ export interface AcpConnectionHandlers {
   ): Promise<AcpExitPlanModeResponse>;
 }
 
+export interface AcpLaunch {
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
 export interface AcpConnectionFactoryOptions {
   args: string[];
   command: string;
   cwd: string;
+  env?: Record<string, string>;
   extNotificationMethods?: string[];
   handlers: AcpConnectionHandlers;
 }

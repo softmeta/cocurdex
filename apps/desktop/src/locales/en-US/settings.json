@@ -26,11 +26,29 @@
       "timedOut": "Usage check timed out. Try refreshing.",
       "unknownError": "Unknown error"
     },
+    "registry": {
+      "builtIn": "Built in",
+      "description": "Install coding agents published to the official ACP Registry. They are third-party code: review an agent's source and license before installing it.",
+      "install": "Install",
+      "installed": "Installed",
+      "installFailed": "Installation failed",
+      "installSucceeded": "Installed {{name}}",
+      "loadFailed": "Could not load the ACP Registry",
+      "noResults": "No matching agents",
+      "open": "Add from ACP Registry",
+      "remove": "Remove",
+      "removeFailed": "Could not remove the agent",
+      "removeSucceeded": "Removed {{name}}",
+      "retry": "Retry",
+      "search": "Search agents",
+      "title": "ACP Registry",
+      "unsupported": "Not available for this platform"
+    },
     "status": {
       "builtin": "Built in — ships with cocurdex, nothing to install.",
       "detecting": "Checking installation…",
       "error": "Detection failed.",
-      "missing": "Not installed — `{{executable}}` was not found on PATH.",
+      "missing": "Not installed — {{executable}} was not found on PATH.",
       "outdated": "Installed {{installed}} is below the required {{minimum}}.",
       "outdatedHint": "Still usable. Some capabilities may not work until you update.",
       "ready": "Installed and ready."

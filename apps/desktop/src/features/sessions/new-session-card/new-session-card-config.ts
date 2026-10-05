@@ -15,24 +15,9 @@ function planSessionModes(): AgentSessionMode[] {
   ];
 }
 
-// Display order: Pi → Grok Build → Cursor → Devin → Codex → Claude Agent → OpenCode.
+// Display order: Pi → Codex → Claude Agent → OpenCode; installed registry agents follow.
 export const agentOptions = [
   { id: "pi", name: "Pi", descKey: "pi" },
-  {
-    id: "grok-build",
-    name: "Grok Build",
-    descKey: "grokBuild",
-  },
-  {
-    id: "cursor",
-    name: "Cursor",
-    descKey: "cursor",
-  },
-  {
-    id: "devin",
-    name: "Devin",
-    descKey: "devin",
-  },
   {
     id: "codex",
     name: "Codex",
@@ -49,14 +34,7 @@ export const agentOptions = [
     descKey: "opencode",
   },
 ] satisfies {
-  descKey:
-    | "claudeCli"
-    | "codex"
-    | "cursor"
-    | "devin"
-    | "grokBuild"
-    | "opencode"
-    | "pi";
+  descKey: "claudeCli" | "codex" | "opencode" | "pi";
   id: AgentId;
   name: string;
 }[];
@@ -64,10 +42,6 @@ export const agentOptions = [
 export const selectableAgentOptions = agentOptions;
 
 function getWriteModes(agentId: AgentId) {
-  if (agentId === "cursor" || agentId === "devin" || agentId === "grok-build") {
-    return ["native-write"] as const;
-  }
-
   if (agentId === "codex" || agentId === "pi") {
     return ["read-only"] as const;
   }
@@ -80,20 +54,14 @@ export const defaultAgentDescriptors = agentOptions.map((agent) => ({
   label: agent.name,
   availability: "available",
   capabilities: {
-    sessionModes:
-      agent.id === "pi" || agent.id === "cursor" || agent.id === "devin"
-        ? []
-        : planSessionModes(),
+    sessionModes: agent.id === "pi" ? [] : planSessionModes(),
     permissionModes: getFallbackAgentPermissionModes(agent.id),
     writeModes: [...getWriteModes(agent.id)],
     supportsSteering: ["claude-agent", "codex", "pi"].includes(agent.id),
     supportsStreaming: true,
     supportsSelections: true,
     sessionTitleStrategy: getAgentSessionTitleStrategy(agent.id),
-    transport:
-      agent.id === "cursor" || agent.id === "devin" || agent.id === "grok-build"
-        ? "acp"
-        : "native",
+    transport: "native",
     runtimeAxes: agentRuntimeAxisCapabilities[agent.id],
   },
 })) satisfies AgentDescriptor[];

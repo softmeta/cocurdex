@@ -81,13 +81,13 @@ import {
 } from "@/features/editor";
 import {
   activeSessionIdAtom,
-  agentLabels,
   agentsAtom,
   applyRefinedSessionTitleAtom,
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
   createDraftSessionAtom,
   generateLocalSessionTitle,
+  getAgentDisplayLabel,
   getDisplaySessionStatus,
   getSessionPermissionMode,
   isDefaultSessionTitle,
@@ -1303,7 +1303,7 @@ export function CenterPanel({
             key={activeSession.id}
             activeBranch={activeBranch}
             workspaceName={activeWorkspace?.name}
-            agentLabel={agentLabels[activeSession.agentType]}
+            agentLabel={getAgentDisplayLabel(activeSession.agentType)}
             agentType={activeSession.agentType}
             attachment={
               isFocused ? (composerAttachment ?? undefined) : undefined

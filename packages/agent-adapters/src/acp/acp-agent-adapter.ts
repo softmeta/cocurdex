@@ -73,6 +73,7 @@ export interface AcpAgentAdapterOptions {
   args: string[];
   authMethodPriority?: string[];
   command: string;
+  env?: Record<string, string>;
   descriptor: AgentDescriptor;
   initializeMeta?: Record<string, unknown>;
   // Provider ID whose catalog-backed model selection this ACP adapter owns.
@@ -172,6 +173,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     const connection = await this.connectionFactory({
       args: this.options.args,
       command: this.options.command,
+      env: this.options.env,
       cwd,
       handlers: {
         onSessionUpdate() {},
@@ -296,6 +298,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     const connectionOptions: Parameters<AcpConnectionFactory>[0] = {
       args: this.options.args,
       command: this.options.command,
+      env: this.options.env,
       cwd: payload.workspaceRootPath,
       extNotificationMethods: [
         ...(this.options.mcpServersRequest?.changeNotifications ?? []),

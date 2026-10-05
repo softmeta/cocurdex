@@ -12,12 +12,14 @@ import type {
 } from "../acp/acp-connection";
 import { createGrokBuildAdapter } from "./grok-build-adapter";
 
+const TEST_GROK_LAUNCH = { command: "grok", args: ["agent", "stdio"] };
+
 function createSessionRecord(): SessionRecord {
   return {
     id: "app-session-1",
     workspaceId: "workspace-1",
     title: "Grok steering",
-    agentType: "grok-build",
+    agentType: "acp:grok-build",
     status: "idle",
     writeMode: "native-write",
     sessionModeId: null,
@@ -53,7 +55,10 @@ describe("GrokBuildAdapter steering", () => {
       cancel: vi.fn(async () => undefined),
       close: vi.fn(),
     } satisfies AcpConnection;
-    const adapter = createGrokBuildAdapter(async () => connection);
+    const adapter = createGrokBuildAdapter(
+      TEST_GROK_LAUNCH,
+      async () => connection,
+    );
     const session = adapter.createSession(
       {
         session: createSessionRecord(),
@@ -132,6 +137,7 @@ describe("GrokBuildAdapter steering", () => {
       close: vi.fn(),
     } satisfies AcpConnection;
     const session = createGrokBuildAdapter(
+      TEST_GROK_LAUNCH,
       async () => connection,
     ).createSession(
       {
@@ -191,6 +197,7 @@ describe("GrokBuildAdapter steering", () => {
       close: vi.fn(),
     } satisfies AcpConnection;
     const session = createGrokBuildAdapter(
+      TEST_GROK_LAUNCH,
       async () => connection,
     ).createSession(
       {
@@ -249,6 +256,7 @@ describe("GrokBuildAdapter steering", () => {
       close: vi.fn(),
     } satisfies AcpConnection;
     const session = createGrokBuildAdapter(
+      TEST_GROK_LAUNCH,
       async () => connection,
     ).createSession(
       {
@@ -273,7 +281,7 @@ describe("GrokBuildAdapter steering", () => {
       expect.objectContaining({
         type: "provider.runtime.updated",
         runtime: expect.objectContaining({
-          providerId: "grok-build",
+          providerId: "acp:grok-build",
           mcpServers: [{ name: "context7", status: "connected" }],
         }),
       }),
@@ -328,18 +336,21 @@ describe("GrokBuildAdapter steering", () => {
       cancel: vi.fn(async () => undefined),
       close: vi.fn(),
     } satisfies AcpConnection;
-    const session = createGrokBuildAdapter(async (options) => {
-      expect(options.extNotificationMethods).toContain(
-        "x.ai/mcp/server_status",
-      );
-      expect(options.extNotificationMethods).toContain("x.ai/session/update");
-      expect(options.extNotificationMethods).toContain(
-        "x.ai/session_notification",
-      );
-      notifyExt = (method) =>
-        options.handlers.onExtNotification?.(method, undefined);
-      return connection;
-    }).createSession(
+    const session = createGrokBuildAdapter(
+      TEST_GROK_LAUNCH,
+      async (options) => {
+        expect(options.extNotificationMethods).toContain(
+          "x.ai/mcp/server_status",
+        );
+        expect(options.extNotificationMethods).toContain("x.ai/session/update");
+        expect(options.extNotificationMethods).toContain(
+          "x.ai/session_notification",
+        );
+        notifyExt = (method) =>
+          options.handlers.onExtNotification?.(method, undefined);
+        return connection;
+      },
+    ).createSession(
       {
         session: createSessionRecord(),
         workspaceRootPath: "/workspace",
@@ -440,10 +451,13 @@ describe("GrokBuildAdapter subagents", () => {
       cancel: vi.fn(async () => undefined),
       close: vi.fn(),
     } satisfies AcpConnection;
-    const session = createGrokBuildAdapter(async (options) => {
-      handlers = options.handlers;
-      return connection;
-    }).createSession(
+    const session = createGrokBuildAdapter(
+      TEST_GROK_LAUNCH,
+      async (options) => {
+        handlers = options.handlers;
+        return connection;
+      },
+    ).createSession(
       {
         session: createSessionRecord(),
         workspaceRootPath: "/workspace",

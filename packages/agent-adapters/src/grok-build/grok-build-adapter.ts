@@ -1,26 +1,22 @@
-import {
-  type AgentDescriptor,
-  getAgentSessionTitleStrategy,
-  getFallbackAgentPermissionModes,
-  PLAN_MODE_ID,
-} from "@cocurdex/shared";
+import { getAgentDescriptor } from "@cocurdex/agent-core";
 import { AcpAgentAdapter } from "../acp/acp-agent-adapter";
-import type { AcpConnectionFactory } from "../acp/acp-connection";
+import type { AcpConnectionFactory, AcpLaunch } from "../acp/acp-connection";
 import {
   buildGrokMcpListParams,
   GROK_MCP_CHANGE_NOTIFICATION_METHODS,
   GROK_MCP_LIST_METHOD,
   parseGrokBuildMcpServers,
 } from "./grok-build-mcp";
-import { fetchGrokBuildModelCatalog } from "./grok-build-models";
+import {
+  fetchGrokBuildModelCatalog,
+  GROK_BUILD_PROVIDER_ID,
+} from "./grok-build-models";
 import {
   buildGrokPermissionParams,
   GROK_PERMISSION_NOTIFICATION_METHOD,
 } from "./grok-build-permission-mode";
 import { GROK_INLINE_PLAN_TOOL_TITLES } from "./grok-build-plan-approval";
 import {
-  GROK_BUILD_ARGS,
-  GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
   getGrokBuildAuthMethodPriority,
 } from "./grok-build-process";
@@ -39,34 +35,15 @@ import {
 } from "./grok-build-steering";
 import { grokBuildSubagentProtocol } from "./grok-build-subagents";
 
-const descriptor: AgentDescriptor = {
-  id: "grok-build",
-  label: "Grok Build",
-  availability: "available",
-  capabilities: {
-    sessionModes: [
-      { id: "default", name: "Default" },
-      { id: PLAN_MODE_ID, name: "Plan" },
-    ],
-    permissionModes: getFallbackAgentPermissionModes("grok-build"),
-    writeModes: ["native-write"],
-    supportsSteering: true,
-    supportsStreaming: true,
-    supportsSelections: true,
-    sessionTitleStrategy: getAgentSessionTitleStrategy("grok-build"),
-    transport: "acp",
-  },
-};
-
 export function createGrokBuildAdapter(
+  launch: AcpLaunch,
   connectionFactory?: AcpConnectionFactory,
 ) {
   return new AcpAgentAdapter(
     {
-      command: GROK_BUILD_COMMAND,
-      args: GROK_BUILD_ARGS,
-      descriptor,
-      modelProviderId: descriptor.id,
+      ...launch,
+      descriptor: getAgentDescriptor(GROK_BUILD_PROVIDER_ID),
+      modelProviderId: GROK_BUILD_PROVIDER_ID,
       authMethodPriority: getGrokBuildAuthMethodPriority(),
       initializeMeta: GROK_BUILD_INITIALIZE_META,
       async afterInitialize(connection) {

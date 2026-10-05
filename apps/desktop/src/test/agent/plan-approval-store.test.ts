@@ -16,7 +16,7 @@ function makeApproval(
   return {
     id: "call-1",
     sessionId: "session-1",
-    providerId: "grok-build",
+    providerId: "acp:grok-build",
     planContent: "# Plan\n\n1. Do the thing",
     source: "file-backed",
     status: "pending",

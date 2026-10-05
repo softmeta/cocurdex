@@ -1,5 +1,5 @@
 import type { AgentAdapter } from "@cocurdex/agent-core";
-import { createAgentRegistry } from "@cocurdex/agent-core";
+import { createAgentRegistry, getAgentDescriptor } from "@cocurdex/agent-core";
 import type { AgentCapabilityCacheRepository } from "@cocurdex/db";
 import type { AgentDescriptor } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -36,14 +36,9 @@ function memoryCache(): AgentCapabilityCacheRepository {
 function installedAgent(
   overrides: Partial<AgentDescriptor> = {},
 ): AgentDescriptor {
-  const descriptor = createAgentRegistry()
-    .list()
-    .find((agent) => agent.id === "devin");
-  if (!descriptor) {
-    throw new Error("Devin descriptor is missing");
-  }
   return {
-    ...descriptor,
+    ...getAgentDescriptor("acp:devin"),
+    availability: "available",
     installation: {
       executableName: "devin",
       executablePath: "/usr/local/bin/devin",
@@ -161,7 +156,7 @@ describe("discoverInstalledAgentCapabilities", () => {
 
   it("re-probes once the cached answer outlives its TTL", async () => {
     const cache = memoryCache();
-    await cache.set("devin", "3000.10.31", {
+    await cache.set("acp:devin", "3000.10.31", {
       capabilities: { sessionModes: [{ id: "stale", name: "Stale" }] },
       probedAt: new Date(
         Date.parse("2026-09-17T00:00:00.000Z") -
@@ -199,7 +194,7 @@ describe("discoverAgentSessionModes", () => {
     ]);
 
     const sessionModes = await discoverAgentSessionModes([installedAgent()], {
-      agentId: "devin",
+      agentId: "acp:devin",
       cache,
       createAdapter: () =>
         ({ discoverSessionModes }) as unknown as AgentAdapter,
@@ -213,20 +208,20 @@ describe("discoverAgentSessionModes", () => {
       { id: "bypass", name: "Bypass Permissions" },
     ]);
     expect(
-      (await cache.get("devin", "3000.10.31"))?.capabilities.sessionModes,
+      (await cache.get("acp:devin", "3000.10.31"))?.capabilities.sessionModes,
     ).toEqual(sessionModes);
   });
 
   it("serves a fresh cached list without opening another session", async () => {
     const cache = memoryCache();
-    await cache.set("devin", "3000.10.31", {
+    await cache.set("acp:devin", "3000.10.31", {
       capabilities: { sessionModes: [{ id: "smart", name: "Smart" }] },
       probedAt: "2026-09-16T00:00:00.000Z",
     });
     const discoverSessionModes = vi.fn();
 
     const sessionModes = await discoverAgentSessionModes([installedAgent()], {
-      agentId: "devin",
+      agentId: "acp:devin",
       cache,
       createAdapter: () =>
         ({ discoverSessionModes }) as unknown as AgentAdapter,
@@ -239,7 +234,7 @@ describe("discoverAgentSessionModes", () => {
 
   it("keeps cached capabilities the mode probe does not own", async () => {
     const cache = memoryCache();
-    await cache.set("devin", "3000.10.31", {
+    await cache.set("acp:devin", "3000.10.31", {
       capabilities: {
         permissionModes: [{ id: "claude-default", risk: "normal" }],
       },
@@ -247,7 +242,7 @@ describe("discoverAgentSessionModes", () => {
     });
 
     await discoverAgentSessionModes([installedAgent()], {
-      agentId: "devin",
+      agentId: "acp:devin",
       cache,
       createAdapter: () =>
         ({
@@ -256,7 +251,7 @@ describe("discoverAgentSessionModes", () => {
       now: () => Date.parse("2026-09-17T00:00:00.000Z"),
     });
 
-    const cached = await cache.get("devin", "3000.10.31");
+    const cached = await cache.get("acp:devin", "3000.10.31");
     expect(cached?.capabilities.sessionModes).toEqual([
       { id: "normal", name: "Code" },
     ]);

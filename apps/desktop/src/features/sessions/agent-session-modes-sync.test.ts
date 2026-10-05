@@ -34,8 +34,8 @@ const currentModes = [
 describe("applyRuntimeSessionModesAtom", () => {
   it("replaces a stale ACP agent mode list with the one its session reports", () => {
     const store = createStore();
-    store.set(agentsAtom, [agent("devin", "acp")]);
-    store.set(sessionsAtom, [session("s1", "devin")]);
+    store.set(agentsAtom, [agent("acp:devin", "acp")]);
+    store.set(sessionsAtom, [session("s1", "acp:devin")]);
 
     store.set(applyRuntimeSessionModesAtom, {
       type: "session.mode.updated",

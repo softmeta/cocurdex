@@ -1,17 +1,19 @@
-import type { AgentId, DocumentAttachment } from "@cocurdex/shared";
+import {
+  type AgentId,
+  type DocumentAttachment,
+  getAcpAgentProfile,
+} from "@cocurdex/shared";
 import type { ImportDocumentAttachmentPayload } from "@/lib";
 import { desktopApi } from "@/lib";
 
 export const DOCUMENT_ATTACHMENT_ACCEPT = "application/pdf";
 const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
-const DOCUMENT_ATTACHMENT_AGENT_IDS = new Set<AgentId>([
-  "claude-agent",
-  "grok-build",
-  "opencode",
-]);
-
 export function supportsDocumentAttachments(agentId: AgentId) {
-  return DOCUMENT_ATTACHMENT_AGENT_IDS.has(agentId);
+  return (
+    agentId === "claude-agent" ||
+    agentId === "opencode" ||
+    getAcpAgentProfile(agentId).documentAttachments === true
+  );
 }
 
 export function isSupportedDocumentFile(file: File) {

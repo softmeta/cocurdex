@@ -36,7 +36,7 @@ import { ProviderModelMenu } from "../provider-model";
 import { shouldShowProviderGroupLabels } from "../provider-model/provider-model-label";
 import { SessionModeSubmenu } from "../session-mode-control";
 import { useSessionModeLabels } from "../session-mode-label";
-import { agentLabels } from "../session-store";
+import { getAgentDisplayLabel } from "../session-store";
 import type { NewSessionCardProps } from "./new-session-card.types";
 import { defaultAgentDescriptors } from "./new-session-card-config";
 import { useNewSessionCard } from "./use-new-session-card";
@@ -237,7 +237,7 @@ export function NewSessionCard({
   if (selectedRole) {
     agentTriggerLabel = selectedRole.name;
   } else if (canStartWithSelectedAgent) {
-    agentTriggerLabel = agentLabels[effectiveSelectedAgent];
+    agentTriggerLabel = getAgentDisplayLabel(effectiveSelectedAgent);
   }
 
   const modelMenu = selectedRole ? null : (

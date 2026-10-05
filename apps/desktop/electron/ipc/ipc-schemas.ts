@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import path from "node:path";
 import {
+  isAcpRegistryAgentId,
   isAgentId,
   isBroadFilesystemScanRoot as isBroadFilesystemScanRootPath,
   isToolCallId,
@@ -56,7 +57,7 @@ const providerIdSchema = z
 const agentIdSchema = z
   .string()
   .min(1)
-  .max(64)
+  .max(80)
   .refine(isAgentId, "unknown agent");
 
 const providerJsonFieldSchema = z.string().max(131_072).nullish();
@@ -547,6 +548,16 @@ export const schemas = {
     .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/),
   providerId: providerIdSchema,
   agentId: agentIdSchema,
+  acpRegistryCatalog: z
+    .object({ forceRefresh: z.boolean().optional() })
+    .optional(),
+  acpRegistryId: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9._-]{0,63}$/i, "invalid registry id"),
+  acpRegistryAgentId: agentIdSchema.refine(
+    isAcpRegistryAgentId,
+    "not a registry agent",
+  ),
   providerConfigSave: z.object({
     id: providerIdSchema,
     name: z.string().min(1).max(256),

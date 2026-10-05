@@ -5,15 +5,16 @@ import { supportsDocumentAttachments } from "./document-attachment-files";
 describe("document attachment adapter support", () => {
   it.each([
     ["claude-agent", true],
-    ["grok-build", true],
+    ["acp:grok-build", true],
     ["opencode", true],
     ["codex", false],
-    ["cursor", false],
-    ["devin", false],
+    ["acp:cursor", false],
+    ["acp:devin", false],
     ["pi", false],
-  ] satisfies Array<
-    [AgentId, boolean]
-  >)("%s support is %s", (agentId, expected) => {
-    expect(supportsDocumentAttachments(agentId)).toBe(expected);
-  });
+  ] satisfies Array<[AgentId, boolean]>)(
+    "%s support is %s",
+    (agentId, expected) => {
+      expect(supportsDocumentAttachments(agentId)).toBe(expected);
+    },
+  );
 });

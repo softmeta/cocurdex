@@ -3,11 +3,11 @@ import { shouldShowProviderGroupLabels } from "@/features/sessions/provider-mode
 
 describe("provider model menu display rules", () => {
   it.each([
-    ["grok-build", false],
+    ["acp:grok-build", false],
     ["claude-agent", false],
     ["codex", true],
-    ["cursor", false],
-    ["devin", false],
+    ["acp:cursor", false],
+    ["acp:devin", false],
     ["opencode", true],
     ["pi", true],
   ] as const)("showProviderGroupLabels for %s is %s", (agentId, expected) => {

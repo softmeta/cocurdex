@@ -32,6 +32,7 @@ export async function handleDaemonRequest(
   service: CocurdexDaemonService,
   request: DaemonRequest,
 ) {
+  await service.acpRegistry.ready;
   switch (request.method) {
     case "chat.list":
       return service.chatService.list();
@@ -69,6 +70,12 @@ export async function handleDaemonRequest(
       return service.readAgentSessionModes(request.params.agentId);
     case "agent.login":
       return service.providerService.loginAgent(request.params.agentId);
+    case "acpRegistry.catalog":
+      return service.acpRegistry.listCatalog(request.params);
+    case "acpRegistry.install":
+      return service.installAcpRegistryAgent(request.params.registryId);
+    case "acpRegistry.uninstall":
+      return service.uninstallAcpRegistryAgent(request.params.agentId);
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":

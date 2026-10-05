@@ -1,4 +1,8 @@
-import { type AgentId, CODEX_BUILT_IN_PROVIDER_ID } from "@cocurdex/shared";
+import {
+  type AgentId,
+  CODEX_BUILT_IN_PROVIDER_ID,
+  isAcpRegistryAgentId,
+} from "@cocurdex/shared";
 
 export function shouldPersistProviderDefault(
   agentId: AgentId,
@@ -7,10 +11,8 @@ export function shouldPersistProviderDefault(
   // These adapters own their model catalogs; persist their selection in the
   // adapter runtime preferences instead of the global provider model store.
   if (
+    isAcpRegistryAgentId(agentId) ||
     agentId === "claude-agent" ||
-    agentId === "cursor" ||
-    agentId === "devin" ||
-    agentId === "grok-build" ||
     agentId === "opencode"
   ) {
     return false;

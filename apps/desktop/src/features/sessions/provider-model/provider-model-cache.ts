@@ -3,7 +3,7 @@ import type {
   AgentProviderSelection,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
-import { CODEX_BUILT_IN_PROVIDER_ID } from "@cocurdex/shared";
+import { CODEX_BUILT_IN_PROVIDER_ID, isAgentId } from "@cocurdex/shared";
 import { desktopApi } from "@/lib";
 import {
   usesAdapterOwnedModelCatalog,
@@ -15,16 +15,6 @@ const PROVIDER_MODEL_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const PROVIDER_MODEL_CACHE_STORAGE_KEY =
   "cocurdex:new-session-provider-model-cache:v2";
 const PROVIDER_MODEL_VALUE_SEPARATOR = "::";
-const providerModelCacheAgentIds = new Set<AgentId>([
-  "claude-agent",
-  "codex",
-  "cursor",
-  "devin",
-  "grok-build",
-  "opencode",
-  "pi",
-]);
-
 export interface ProviderModelCacheResult {
   defaultSelection: AgentProviderSelection | null;
   items: CompatibleProviderModel[];
@@ -166,7 +156,7 @@ function hydrateProviderModelCache() {
 
     const now = Date.now();
     for (const [agentId, entry] of Object.entries(parsed.entries)) {
-      if (!providerModelCacheAgentIds.has(agentId as AgentId)) {
+      if (!isAgentId(agentId)) {
         continue;
       }
 
@@ -203,7 +193,7 @@ function persistProviderModelCache() {
   const entries = Object.fromEntries(
     [...providerModelCache.entries()].flatMap(([agentId, entry]) => {
       if (
-        !providerModelCacheAgentIds.has(agentId) ||
+        !isAgentId(agentId) ||
         !entry.result ||
         now - entry.updatedAt >= PROVIDER_MODEL_CACHE_MAX_AGE_MS
       ) {

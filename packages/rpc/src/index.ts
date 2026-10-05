@@ -1,4 +1,7 @@
 import type {
+  AcpRegistryAgentId,
+  AcpRegistryCatalogAgent,
+  AcpRegistryInstalledAgent,
   AgentDescriptor,
   AgentId,
   AgentPlanApprovalDecision,
@@ -204,6 +207,9 @@ export type DaemonRequestPayloadByMethod = {
   "agent.sessionModes.read": { agentId: AgentId };
   "agent.login": { agentId: AgentId };
   "agent.rateLimits.read": { agentIds: AgentId[] };
+  "acpRegistry.catalog": { forceRefresh?: boolean };
+  "acpRegistry.install": { registryId: string };
+  "acpRegistry.uninstall": { agentId: AcpRegistryAgentId };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
   "workspace.listFiles": { rootPath: string };
@@ -457,6 +463,9 @@ export type DaemonResultByMethod = {
   "agent.sessionModes.read": AgentSessionMode[];
   "agent.login": null;
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
+  "acpRegistry.catalog": AcpRegistryCatalogAgent[];
+  "acpRegistry.install": AcpRegistryInstalledAgent;
+  "acpRegistry.uninstall": null;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];
   "workspace.listFiles": WorkspaceFileRecord[];

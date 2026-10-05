@@ -31,7 +31,7 @@ describe("getDefaultProviderModelValue", () => {
     const items = [
       {
         provider: {
-          id: "grok-build",
+          id: "acp:grok-build",
           name: "Grok Build",
         },
         model: {
@@ -42,8 +42,8 @@ describe("getDefaultProviderModelValue", () => {
       },
     ] as CompatibleProviderModel[];
 
-    expect(getDefaultProviderModelValue("grok-build", items, null)).toBe(
-      getProviderModelValue("grok-build", "grok-4.5"),
+    expect(getDefaultProviderModelValue("acp:grok-build", items, null)).toBe(
+      getProviderModelValue("acp:grok-build", "grok-4.5"),
     );
   });
 });
@@ -51,9 +51,9 @@ describe("getDefaultProviderModelValue", () => {
 describe("shouldPersistProviderDefault", () => {
   it.each([
     ["claude-agent", "claude-agent", false],
-    ["cursor", "cursor", false],
-    ["devin", "devin", false],
-    ["grok-build", "grok-build", false],
+    ["acp:cursor", "acp:cursor", false],
+    ["acp:devin", "acp:devin", false],
+    ["acp:grok-build", "acp:grok-build", false],
     ["opencode", "opencode", false],
     ["pi", "openai", true],
     ["codex", CODEX_BUILT_IN_PROVIDER_ID, false],

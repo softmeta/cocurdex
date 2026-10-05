@@ -367,6 +367,74 @@ describe("initializeDatabase", () => {
     ).not.toThrow();
   });
 
+  it("moves built-in ACP agent ids onto their registry ids and keeps the rows", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-05T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, provider_snapshot_json, created_at, updated_at)
+      VALUES
+        ('s-grok', 'w1', 'Grok work', 'grok-build', 'idle', 'native-write',
+         '{"providerId":"grok-build","modelId":"grok-4.6"}', '${now}', '${now}'),
+        ('s-codex', 'w1', 'Codex work', 'codex', 'idle', 'read-only',
+         '{"providerId":"codex","modelId":"gpt-5.5"}', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's-grok', 'user', 'hello', '[]', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, provider_id, created_at, updated_at)
+      VALUES ('r1', 'Reviewer', 'devin', 'devin', '${now}', '${now}');
+      INSERT INTO agent_provider_defaults (agent_id, provider_id, model_id, created_at, updated_at)
+      VALUES ('cursor', 'cursor', 'auto', '${now}', '${now}');
+      INSERT INTO app_settings (key, value_json, updated_at)
+      VALUES ('commitMessageModel', '{"agentId":"grok-build","providerId":"grok-build","modelId":"grok-4.6"}', '${now}');
+    `);
+    database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION - 1}`);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, agent_type, json_extract(provider_snapshot_json, '$.providerId') AS provider FROM sessions ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      { id: "s-codex", agent_type: "codex", provider: "codex" },
+      {
+        id: "s-grok",
+        agent_type: "acp:grok-build",
+        provider: "acp:grok-build",
+      },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(
+      database.prepare("SELECT agent_id, provider_id FROM agent_roles").get(),
+    ).toEqual({ agent_id: "acp:devin", provider_id: "acp:devin" });
+    expect(
+      database
+        .prepare("SELECT agent_id, provider_id FROM agent_provider_defaults")
+        .get(),
+    ).toEqual({ agent_id: "acp:cursor", provider_id: "acp:cursor" });
+    expect(
+      JSON.parse(
+        (
+          database
+            .prepare(
+              "SELECT value_json FROM app_settings WHERE key = 'commitMessageModel'",
+            )
+            .get() as { value_json: string }
+        ).value_json,
+      ),
+    ).toEqual({
+      agentId: "acp:grok-build",
+      providerId: "acp:grok-build",
+      modelId: "grok-4.6",
+    });
+  });
+
   it("keeps an up-to-date database that carries a stale version marker", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

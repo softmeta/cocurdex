@@ -1,18 +1,17 @@
 import {
   type AgentId,
+  type BuiltInAgentId,
   type CompatibleProviderModel,
+  isAcpRegistryAgentId,
   type ProviderApi,
   providerApis,
 } from "./contracts";
 
-const agentApiCompatibility: Record<AgentId, ProviderApi[]> = {
+const agentApiCompatibility: Record<BuiltInAgentId, ProviderApi[]> = {
   // Claude Agent runs the user's own `claude` binary with its own auth; it never
   // consumes an app-managed provider, so no api is compatible by design.
   "claude-agent": [],
   codex: ["openai-responses"],
-  cursor: [],
-  devin: [],
-  "grok-build": [],
   opencode: ["openai-completions", "openai-responses", "anthropic-messages"],
   // Pi is Cocurdex's built-in agent — it drives every api Cocurdex supports.
   pi: [...providerApis],
@@ -22,6 +21,9 @@ const agentApiCompatibility: Record<AgentId, ProviderApi[]> = {
 // names (renamed, removed, or written by a newer build). Treat those as "no
 // compatible api" rather than letting the lookup miss reach callers.
 export function getCompatibleProviderApis(agentId: AgentId): ProviderApi[] {
+  if (isAcpRegistryAgentId(agentId)) {
+    return [];
+  }
   return agentApiCompatibility[agentId] ?? [];
 }
 

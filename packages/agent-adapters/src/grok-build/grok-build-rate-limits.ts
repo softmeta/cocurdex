@@ -1,5 +1,5 @@
 import type { AgentRateLimitsRecord } from "@cocurdex/shared";
-import type { AcpConnectionFactory } from "../acp/acp-connection";
+import type { AcpConnectionFactory, AcpLaunch } from "../acp/acp-connection";
 import { createSdkAcpConnection } from "../acp/sdk-acp-connection";
 import { logAdapterDiagnostic } from "../diagnostics";
 import {
@@ -7,8 +7,6 @@ import {
   createRateLimitWindow,
 } from "../shared/rate-limits";
 import {
-  GROK_BUILD_ARGS,
-  GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
   GROK_BUILD_PROBE_TIMEOUT_MS,
   getGrokBuildAuthMethodPriority,
@@ -60,22 +58,23 @@ function selectGrokAuthMethod(available: string[]) {
 }
 
 async function probeGrokBuildRateLimits(
+  launch: AcpLaunch,
   connectionFactory: AcpConnectionFactory,
   timeoutMs: number,
 ): Promise<AgentRateLimitsRecord | null> {
   return withGrokBuildProbeCwd((cwd) =>
-    probeGrokBuildRateLimitsIn(connectionFactory, cwd, timeoutMs),
+    probeGrokBuildRateLimitsIn(launch, connectionFactory, cwd, timeoutMs),
   );
 }
 
 async function probeGrokBuildRateLimitsIn(
+  launch: AcpLaunch,
   connectionFactory: AcpConnectionFactory,
   cwd: string,
   timeoutMs: number,
 ): Promise<AgentRateLimitsRecord | null> {
   const connection = await connectionFactory({
-    args: GROK_BUILD_ARGS,
-    command: GROK_BUILD_COMMAND,
+    ...launch,
     cwd,
     handlers: {
       onSessionUpdate() {},
@@ -112,11 +111,13 @@ async function probeGrokBuildRateLimitsIn(
 }
 
 export async function readGrokBuildRateLimits(
+  launch: AcpLaunch,
   connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
   options: { timeoutMs?: number } = {},
 ): Promise<AgentRateLimitsRecord | null> {
   try {
     return await probeGrokBuildRateLimits(
+      launch,
       connectionFactory,
       options.timeoutMs ?? GROK_BUILD_PROBE_TIMEOUT_MS,
     );

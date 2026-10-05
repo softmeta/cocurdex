@@ -18,7 +18,7 @@ import { getRuntimeModelItems } from "@/features/sessions/provider-model/runtime
 const now = "2026-05-10T00:00:00.000Z";
 
 const grokSnapshot = {
-  providerId: "grok-build",
+  providerId: "acp:grok-build",
   providerName: "Grok Build",
   modelId: "grok-4.5",
   modelName: "Grok 4.5",
@@ -84,7 +84,7 @@ function makeCachedItem(
 }
 
 const grokCachedItem = makeCachedItem(
-  "grok-build",
+  "acp:grok-build",
   "Grok Build",
   "grok-4.5",
   "Grok 4.5",
@@ -95,9 +95,9 @@ describe("usesAdapterOwnedModelCatalog", () => {
   it.each([
     ["claude-agent", true],
     ["codex", true],
-    ["cursor", true],
-    ["devin", true],
-    ["grok-build", true],
+    ["acp:cursor", true],
+    ["acp:devin", true],
+    ["acp:grok-build", true],
     ["opencode", true],
     ["pi", false],
   ] as const)("%s is adapter-owned=%s", (agentId: AgentId, expected) => {
@@ -113,7 +113,7 @@ describe("getRuntimeModelItems", () => {
 
   it("keeps Grok snapshot models even though the agent has no app-managed APIs", () => {
     const items = getRuntimeModelItems(
-      "grok-build",
+      "acp:grok-build",
       [] as ProviderModelRecord[],
       [] as ProviderConfigRecord[],
       grokSnapshot,
@@ -125,7 +125,7 @@ describe("getRuntimeModelItems", () => {
   });
 
   it("surfaces the Grok adapter catalog from cache for active sessions", () => {
-    providerModelCache.set("grok-build", {
+    providerModelCache.set("acp:grok-build", {
       result: {
         defaultSelection: null,
         items: [grokCachedItem],
@@ -134,7 +134,7 @@ describe("getRuntimeModelItems", () => {
     });
 
     const items = getRuntimeModelItems(
-      "grok-build",
+      "acp:grok-build",
       [] as ProviderModelRecord[],
       [] as ProviderConfigRecord[],
       null,
@@ -143,39 +143,37 @@ describe("getRuntimeModelItems", () => {
     expect(items).toEqual([grokCachedItem]);
   });
 
-  it.each([
-    "grok-build",
-    "claude-agent",
-    "opencode",
-    "codex",
-  ] as const)("does not mix global provider-table models into the %s catalog", (agentId) => {
-    const cachedItem = makeCachedItem(
-      agentId === "codex" ? CODEX_BUILT_IN_PROVIDER_ID : agentId,
-      agentId,
-      `${agentId}-model`,
-      `${agentId} model`,
-      agentId === "claude-agent" ? "anthropic-messages" : "openai-responses",
-    );
-    providerModelCache.set(agentId, {
-      result: {
-        defaultSelection: null,
-        items: [cachedItem],
-      },
-      updatedAt: Date.now(),
-    });
+  it.each(["acp:grok-build", "claude-agent", "opencode", "codex"] as const)(
+    "does not mix global provider-table models into the %s catalog",
+    (agentId) => {
+      const cachedItem = makeCachedItem(
+        agentId === "codex" ? CODEX_BUILT_IN_PROVIDER_ID : agentId,
+        agentId,
+        `${agentId}-model`,
+        `${agentId} model`,
+        agentId === "claude-agent" ? "anthropic-messages" : "openai-responses",
+      );
+      providerModelCache.set(agentId, {
+        result: {
+          defaultSelection: null,
+          items: [cachedItem],
+        },
+        updatedAt: Date.now(),
+      });
 
-    const items = getRuntimeModelItems(
-      agentId,
-      [globalModel],
-      [globalProvider],
-      null,
-    );
+      const items = getRuntimeModelItems(
+        agentId,
+        [globalModel],
+        [globalProvider],
+        null,
+      );
 
-    expect(items).toEqual([cachedItem]);
-    expect(items.some((item) => item.model.name === "DeepSeek V4 Flash")).toBe(
-      false,
-    );
-  });
+      expect(items).toEqual([cachedItem]);
+      expect(
+        items.some((item) => item.model.name === "DeepSeek V4 Flash"),
+      ).toBe(false);
+    },
+  );
 
   it("keeps Claude Agent snapshot models without app-managed API filtering", () => {
     const items = getRuntimeModelItems(

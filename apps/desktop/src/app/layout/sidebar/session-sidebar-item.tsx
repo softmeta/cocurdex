@@ -24,12 +24,12 @@ import {
 import { permissionsBySessionAtom } from "@/features/agent/permission";
 import { questionsBySessionAtom } from "@/features/agent/question";
 import {
-  agentLabels,
   archiveSessionAtom,
   collectSessionSubtreeIds,
   deleteSessionAtom,
   focusedPaneCanSplitDownAtom,
   focusedPaneCanSplitRightAtom,
+  getAgentDisplayLabel,
   openSessionInSplitAtom,
   sessionsAtom,
   updateSessionTitleAtom,
@@ -290,7 +290,8 @@ export function SessionSidebarItem({
   return (
     <ContextMenu>
       <SidebarItemTooltip
-        agentLabel={agentLabels[session.agentType]}
+        agentId={session.agentType}
+        agentLabel={getAgentDisplayLabel(session.agentType)}
         roleName={selectedRole?.name}
         roleSummary={roleSummary ?? undefined}
         timestamp={activityAt}

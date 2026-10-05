@@ -20,7 +20,7 @@ describe("provider model cache revalidation", () => {
 
   it("revalidates every persisted adapter-owned catalog once per runtime", () => {
     expect(shouldRevalidateProviderModels("codex", true, false)).toBe(true);
-    expect(shouldRevalidateProviderModels("grok-build", true, false)).toBe(
+    expect(shouldRevalidateProviderModels("acp:grok-build", true, false)).toBe(
       true,
     );
     expect(shouldRevalidateProviderModels("pi", true, false)).toBe(false);
@@ -34,7 +34,7 @@ describe("provider model cache revalidation", () => {
 describe("shouldForceRefreshAdapterCatalog", () => {
   it("force-refreshes adapter catalogs only while stale cached models are already shown", () => {
     expect(shouldForceRefreshAdapterCatalog("claude-agent", false)).toBe(false);
-    expect(shouldForceRefreshAdapterCatalog("grok-build", true)).toBe(true);
+    expect(shouldForceRefreshAdapterCatalog("acp:grok-build", true)).toBe(true);
     expect(shouldForceRefreshAdapterCatalog("codex", true)).toBe(true);
     expect(shouldForceRefreshAdapterCatalog("opencode", true)).toBe(true);
     expect(shouldForceRefreshAdapterCatalog("pi", true)).toBe(false);
@@ -43,7 +43,7 @@ describe("shouldForceRefreshAdapterCatalog", () => {
 
 const devinCachedItem = {
   provider: {
-    id: "devin",
+    id: "acp:devin",
     name: "Devin",
     baseUrl: "",
     enabled: true,
@@ -53,7 +53,7 @@ const devinCachedItem = {
     updatedAt: "2026-05-10T00:00:00.000Z",
   },
   model: {
-    providerId: "devin",
+    providerId: "acp:devin",
     modelId: "claude-opus-5-5-medium",
     name: "Claude Opus 5.5 Medium",
     api: "openai-responses",
@@ -88,7 +88,7 @@ describe("probeProviderModelAxes", () => {
       value: { probeProviderModelAxes: probeApi },
       writable: true,
     });
-    providerModelCache.set("devin", {
+    providerModelCache.set("acp:devin", {
       result: { defaultSelection: null, items: [devinCachedItem] },
       updatedAt: Date.now(),
     });
@@ -103,26 +103,30 @@ describe("probeProviderModelAxes", () => {
 
     probeProviderModelAxes(
       providerModelCache,
-      "devin",
-      "devin",
+      "acp:devin",
+      "acp:devin",
       "claude-opus-5-5-medium",
     );
     probeProviderModelAxes(
       providerModelCache,
-      "devin",
-      "devin",
+      "acp:devin",
+      "acp:devin",
       "claude-opus-5-5-medium",
     );
 
     await vi.waitFor(() => {
       expect(
-        providerModelCache.get("devin")?.result?.items[0]?.model.serviceTiers,
+        providerModelCache.get("acp:devin")?.result?.items[0]?.model
+          .serviceTiers,
       ).toEqual(devinAxes.serviceTiers);
     });
 
     expect(probeApi).toHaveBeenCalledOnce();
-    expect(probeApi).toHaveBeenCalledWith("devin", "claude-opus-5-5-medium");
-    const model = providerModelCache.get("devin")?.result?.items[0]?.model;
+    expect(probeApi).toHaveBeenCalledWith(
+      "acp:devin",
+      "claude-opus-5-5-medium",
+    );
+    const model = providerModelCache.get("acp:devin")?.result?.items[0]?.model;
     expect(model?.supportedReasoningEfforts).toEqual(
       devinAxes.supportedReasoningEfforts,
     );
@@ -142,8 +146,8 @@ describe("probeProviderModelAxes", () => {
 
     probeProviderModelAxes(
       providerModelCache,
-      "devin",
-      "devin",
+      "acp:devin",
+      "acp:devin",
       "claude-opus-5-5-medium",
     );
     // A macrotask turn lets the rejection's catch clear the dedupe key.
@@ -151,8 +155,8 @@ describe("probeProviderModelAxes", () => {
 
     probeProviderModelAxes(
       providerModelCache,
-      "devin",
-      "devin",
+      "acp:devin",
+      "acp:devin",
       "claude-opus-5-5-medium",
     );
     expect(probeApi).toHaveBeenCalledTimes(2);

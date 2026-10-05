@@ -1,21 +1,18 @@
-import type { AgentId } from "./contracts";
+import {
+  type AgentId,
+  type BuiltInAgentId,
+  isAcpRegistryAgentId,
+} from "./contracts";
 
 /**
  * Minimum external CLI version each adapter is verified against. `null` means
  * the adapter has no confirmed floor yet, so any installed version is accepted.
  */
-export const agentMinimumVersions: Record<AgentId, string | null> = {
+export const agentMinimumVersions: Record<BuiltInAgentId, string | null> = {
   // Claude Agent SDK 0.3.x drives the Claude Code 2.x CLI protocol.
   "claude-agent": "2.0.0",
   // No confirmed floor for `codex app-server` yet.
   codex: null,
-  // Cursor CLI ACP (`cursor-agent acp`) has no confirmed version floor yet.
-  cursor: null,
-  // `devin acp` reached stable in v2026.4.9-0, the first release able to
-  // serve ACP clients.
-  devin: "2026.4.9",
-  // Grok Build's first stable CLI, where the ACP yolo-mode ext landed.
-  "grok-build": "1.0.0",
   // Matches the @opencode/client version this repo pins.
   opencode: "2.0.20",
   // Built in, ships with the app.
@@ -27,7 +24,10 @@ export interface AgentInstallHint {
   docsUrl: string;
 }
 
-export const agentInstallHints: Record<AgentId, AgentInstallHint | null> = {
+export const agentInstallHints: Record<
+  BuiltInAgentId,
+  AgentInstallHint | null
+> = {
   "claude-agent": {
     command: "npm install -g @anthropic-ai/claude-code",
     docsUrl: "https://docs.claude.com/en/docs/claude-code/setup",
@@ -35,18 +35,6 @@ export const agentInstallHints: Record<AgentId, AgentInstallHint | null> = {
   codex: {
     command: "npm install -g @openai/codex",
     docsUrl: "https://developers.openai.com/codex/cli",
-  },
-  cursor: {
-    command: "curl https://cursor.com/install -fsS | bash",
-    docsUrl: "https://cursor.com/docs/cli/acp",
-  },
-  devin: {
-    command: "curl -fsSL https://cli.devin.ai/install.sh | bash",
-    docsUrl: "https://docs.devin.ai/desktop/acp",
-  },
-  "grok-build": {
-    command: "npm install -g @xai-official/grok",
-    docsUrl: "https://docs.x.ai/build/overview",
   },
   opencode: {
     command: "curl -fsSL https://opencode.ai/install | bash",
@@ -92,7 +80,9 @@ export function getAgentVersionStatus(
   agentId: AgentId,
   version: string | null | undefined,
 ): AgentVersionStatus {
-  const minimum = agentMinimumVersions[agentId];
+  const minimum = isAcpRegistryAgentId(agentId)
+    ? null
+    : agentMinimumVersions[agentId];
   const parsed = parseAgentVersion(version);
 
   if (!minimum) {

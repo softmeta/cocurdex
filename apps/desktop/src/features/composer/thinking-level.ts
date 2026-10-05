@@ -6,6 +6,7 @@ import type {
   ReasoningEffortOption,
 } from "@cocurdex/shared";
 import {
+  isAcpRegistryAgentId,
   isReasoningEffort,
   piThinkingLevels,
   reasoningEfforts,
@@ -111,9 +112,8 @@ export function getThinkingLevelOptions(
     return getPiThinkingLevels(source);
   }
   if (
-    source.agentType === "grok-build" ||
-    source.agentType === "claude-agent" ||
-    source.agentType === "devin"
+    isAcpRegistryAgentId(source.agentType) ||
+    source.agentType === "claude-agent"
   ) {
     return getReportedThinkingLevels(source);
   }

@@ -6,7 +6,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 13;
+export const CURRENT_SCHEMA_VERSION = 14;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -282,6 +282,61 @@ function migrateTeamTasksOffIssues(database: DatabaseSync): void {
   }
 }
 
+const ACP_AGENT_IDS_MOVED_TO_REGISTRY = ["cursor", "devin", "grok-build"];
+
+function hasTable(database: DatabaseSync, table: string) {
+  return Boolean(
+    database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(table),
+  );
+}
+
+function migrateAcpAgentIdsToRegistry(database: DatabaseSync): void {
+  const ids = ACP_AGENT_IDS_MOVED_TO_REGISTRY.map((id) => `'${id}'`).join(", ");
+  const renameColumn = (table: string, column: string) => {
+    if (hasTable(database, table) && hasColumn(database, table, column)) {
+      database.exec(
+        `UPDATE ${table} SET ${column} = 'acp:' || ${column} WHERE ${column} IN (${ids})`,
+      );
+    }
+  };
+  const renameJsonField = (table: string, column: string, field: string) => {
+    if (!hasTable(database, table) || !hasColumn(database, table, column)) {
+      return;
+    }
+    database.exec(
+      `UPDATE ${table}
+       SET ${column} = json_set(${column}, '$.${field}', 'acp:' || json_extract(${column}, '$.${field}'))
+       WHERE json_valid(${column}) AND json_extract(${column}, '$.${field}') IN (${ids})`,
+    );
+  };
+
+  renameColumn("sessions", "agent_type");
+  renameJsonField("sessions", "provider_snapshot_json", "providerId");
+  renameColumn("agent_roles", "agent_id");
+  renameColumn("agent_roles", "provider_id");
+  renameColumn("agent_provider_defaults", "agent_id");
+  renameColumn("agent_provider_defaults", "provider_id");
+  renameJsonField("workflow_attempts", "executor_binding_json", "agentId");
+  for (const field of ["agentId", "providerId"]) {
+    if (hasTable(database, "app_settings")) {
+      database.exec(
+        `UPDATE app_settings
+         SET value_json = json_set(value_json, '$.${field}', 'acp:' || json_extract(value_json, '$.${field}'))
+         WHERE key IN ('commitMessageModel', 'titleModel')
+           AND json_valid(value_json)
+           AND json_extract(value_json, '$.${field}') IN (${ids})`,
+      );
+    }
+  }
+  if (hasTable(database, "agent_capability_cache")) {
+    database.exec(
+      `DELETE FROM agent_capability_cache WHERE agent_id IN (${ids})`,
+    );
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -291,6 +346,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [10, migrateWorkspaceActions],
   [11, migrateIssueColumnsToGlobal],
   [12, migrateTeamTasksOffIssues],
+  [13, migrateAcpAgentIdsToRegistry],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

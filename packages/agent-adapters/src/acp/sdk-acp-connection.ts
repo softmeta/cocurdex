@@ -65,12 +65,13 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
   args,
   command,
   cwd,
+  env,
   extNotificationMethods,
   handlers,
 }) => {
   const child = spawn(command, args, {
     cwd,
-    env: buildChildProcessEnv(),
+    env: buildChildProcessEnv(process.env, { extraEnv: env }),
     stdio: ["pipe", "pipe", "inherit"],
   });
   if (!child.stdin || !child.stdout) {

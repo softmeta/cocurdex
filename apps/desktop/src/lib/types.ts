@@ -1,4 +1,7 @@
 import type {
+  AcpRegistryAgentId,
+  AcpRegistryCatalogAgent,
+  AcpRegistryInstalledAgent,
   AgentDescriptor,
   AgentId,
   AgentProviderModelAxes,
@@ -474,6 +477,13 @@ export interface ProductApi {
     modelId: string,
   ): Promise<AgentProviderModelAxes | null>;
   loginAgent(agentId: AgentId): Promise<void>;
+  listAcpRegistryCatalog(options?: {
+    forceRefresh?: boolean;
+  }): Promise<AcpRegistryCatalogAgent[]>;
+  installAcpRegistryAgent(
+    registryId: string,
+  ): Promise<AcpRegistryInstalledAgent>;
+  uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId): Promise<void>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
     agentId: AgentId,

@@ -18,7 +18,7 @@ import {
 } from "./acp-agent-adapter";
 
 const descriptor: AgentDescriptor = {
-  id: "grok-build",
+  id: "acp:grok-build",
   label: "Grok Build",
   availability: "available",
   capabilities: {
@@ -89,7 +89,7 @@ describe("AcpAgentAdapter discoverSessionModes", () => {
       },
     }));
     const adapter = new AcpAgentAdapter(
-      { args: ["acp"], command: "devin", descriptor },
+      { args: ["acp"], command: "acp:devin", descriptor },
       async () =>
         createAcpConnection({
           close,
@@ -200,7 +200,7 @@ describe("AcpAgentAdapter", () => {
           id: sessionId,
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: "plan",
@@ -223,7 +223,7 @@ describe("AcpAgentAdapter", () => {
       attachments: [],
       history: createHistory(sessionId),
       providerSnapshot: {
-        providerId: "grok-build",
+        providerId: "acp:grok-build",
         providerName: "Grok Build",
         modelId: "grok-mini",
         modelName: "Grok Mini",
@@ -351,7 +351,7 @@ describe("AcpAgentAdapter", () => {
           id: "non-resumable-session",
           workspaceId: "workspace-1",
           title: "Non-resumable",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -402,7 +402,7 @@ describe("AcpAgentAdapter", () => {
           id: "retry-session",
           workspaceId: "workspace-1",
           title: "Retry",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -465,7 +465,7 @@ describe("AcpAgentAdapter", () => {
           id: sessionId,
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -554,7 +554,7 @@ describe("AcpAgentAdapter", () => {
           id: "app-session-1",
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -633,7 +633,7 @@ describe("AcpAgentAdapter", () => {
     const adapter = new AcpAgentAdapter(
       {
         args: ["agent", "stdio"],
-        command: "devin",
+        command: "acp:devin",
         descriptor,
       },
       connectionFactory,
@@ -648,7 +648,7 @@ describe("AcpAgentAdapter", () => {
           id: "app-session-1",
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -706,7 +706,7 @@ describe("AcpAgentAdapter", () => {
     const adapter = new AcpAgentAdapter(
       {
         args: ["agent", "stdio"],
-        command: "devin",
+        command: "acp:devin",
         descriptor,
       },
       connectionFactory,
@@ -721,7 +721,7 @@ describe("AcpAgentAdapter", () => {
           id: "app-session-1",
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "read-only",
           sessionModeId: null,
@@ -799,7 +799,7 @@ describe("AcpAgentAdapter", () => {
           id: "app-session-1",
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -886,7 +886,7 @@ describe("AcpAgentAdapter", () => {
           id: "app-session-1",
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -1058,7 +1058,7 @@ describe("AcpAgentAdapter", () => {
           id: "app-parent",
           workspaceId: "workspace-1",
           title: "Test",
-          agentType: "grok-build",
+          agentType: "acp:grok-build",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -1147,9 +1147,9 @@ describe("AcpAgentAdapter", () => {
     const session = new AcpAgentAdapter(
       {
         args: ["acp"],
-        command: "devin",
+        command: "acp:devin",
         descriptor,
-        modelProviderId: "devin",
+        modelProviderId: "acp:devin",
       },
       async () => connection,
     ).createSession(
@@ -1158,7 +1158,7 @@ describe("AcpAgentAdapter", () => {
           id: "devin-effort-session",
           workspaceId: "workspace-1",
           title: "Devin effort",
-          agentType: "devin",
+          agentType: "acp:devin",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -1172,7 +1172,7 @@ describe("AcpAgentAdapter", () => {
     );
 
     const providerSnapshot = {
-      providerId: "devin",
+      providerId: "acp:devin",
       providerName: "Devin",
       modelId: "swe-2-high",
       modelName: "SWE-2",
@@ -1234,9 +1234,9 @@ describe("AcpAgentAdapter", () => {
     const session = new AcpAgentAdapter(
       {
         args: ["acp"],
-        command: "devin",
+        command: "acp:devin",
         descriptor,
-        modelProviderId: "devin",
+        modelProviderId: "acp:devin",
       },
       async () => connection,
     ).createSession(
@@ -1245,7 +1245,7 @@ describe("AcpAgentAdapter", () => {
           id: "devin-effort-drop",
           workspaceId: "workspace-1",
           title: "Devin effort drop",
-          agentType: "devin",
+          agentType: "acp:devin",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -1263,7 +1263,7 @@ describe("AcpAgentAdapter", () => {
       history: [],
       thinkingLevel: "max",
       providerSnapshot: {
-        providerId: "devin",
+        providerId: "acp:devin",
         providerName: "Devin",
         modelId: "swe-2-high",
         modelName: "SWE-2",
@@ -1329,9 +1329,9 @@ describe("AcpAgentAdapter", () => {
     const session = new AcpAgentAdapter(
       {
         args: ["acp"],
-        command: "devin",
+        command: "acp:devin",
         descriptor,
-        modelProviderId: "devin",
+        modelProviderId: "acp:devin",
       },
       async () => connection,
     ).createSession(
@@ -1340,7 +1340,7 @@ describe("AcpAgentAdapter", () => {
           id: "devin-speed-session",
           workspaceId: "workspace-1",
           title: "Devin speed",
-          agentType: "devin",
+          agentType: "acp:devin",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -1354,7 +1354,7 @@ describe("AcpAgentAdapter", () => {
     );
 
     const providerSnapshot = {
-      providerId: "devin",
+      providerId: "acp:devin",
       providerName: "Devin",
       modelId: "claude-opus-5-5-medium",
       modelName: "Claude Opus 5.5 Medium",
@@ -1424,9 +1424,9 @@ describe("AcpAgentAdapter", () => {
     const session = new AcpAgentAdapter(
       {
         args: ["acp"],
-        command: "devin",
+        command: "acp:devin",
         descriptor,
-        modelProviderId: "devin",
+        modelProviderId: "acp:devin",
       },
       async () => connection,
     ).createSession(
@@ -1435,7 +1435,7 @@ describe("AcpAgentAdapter", () => {
           id: "devin-speed-reset",
           workspaceId: "workspace-1",
           title: "Devin speed reset",
-          agentType: "devin",
+          agentType: "acp:devin",
           status: "idle",
           writeMode: "native-write",
           sessionModeId: null,
@@ -1454,7 +1454,7 @@ describe("AcpAgentAdapter", () => {
       content: "Build it",
       history: [],
       providerSnapshot: {
-        providerId: "devin",
+        providerId: "acp:devin",
         providerName: "Devin",
         modelId: "claude-opus-5-5-medium",
         modelName: "Claude Opus 5.5 Medium",

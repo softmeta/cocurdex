@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   deleteOpenCodeSession,
   readAdapterRateLimits as probeAdapterRateLimits,
+  resetAcpProviderModelsCache,
 } from "@cocurdex/agent-adapters";
 import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
+  AcpRegistryAgentId,
   AgentEvent,
   AgentId,
   AgentPlanApprovalDecision,
@@ -70,6 +72,7 @@ import {
   validateSubmitPreviousMessageCommand,
   workspacePathsEqual,
 } from "@cocurdex/shared";
+import { AcpRegistryService } from "./acp-registry";
 import {
   AgentToolBridge,
   registerMessagingTools,
@@ -209,6 +212,7 @@ export class CocurdexDaemonService {
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly providerService: DaemonProviderService;
+  readonly acpRegistry: AcpRegistryService;
   readonly providerCredentials: ProviderCredentials;
   readonly providerLogins: ProviderLoginSessions;
   private startupRecovery: Promise<void> | null = null;
@@ -266,6 +270,7 @@ export class CocurdexDaemonService {
         loginPiProvider(options.userDataPath, providerId, method, interaction),
       (providerId) => this.providerCredentials.setApiKey(providerId, null),
     );
+    this.acpRegistry = new AcpRegistryService(this.state, options.userDataPath);
     this.providerService = new DaemonProviderService(
       this.state,
       this.providerCredentials,
@@ -551,6 +556,19 @@ export class CocurdexDaemonService {
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
     });
+  }
+
+  installAcpRegistryAgent(registryId: string) {
+    return this.acpRegistry.install(registryId).then((agent) => {
+      resetAcpProviderModelsCache(agent.agentId);
+      return agent;
+    });
+  }
+
+  async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
+    await this.acpRegistry.uninstall(agentId);
+    resetAcpProviderModelsCache(agentId);
+    return null;
   }
 
   async readAgentSessionModes(agentId: AgentId) {
@@ -2277,6 +2295,7 @@ export class CocurdexDaemonService {
         this.chatService.shutdown(),
         this.runtime.shutdown(),
         schedulerClose,
+        this.acpRegistry.ready,
         Promise.resolve().then(() => this.searchService.dispose()),
         Promise.resolve().then(() => this.workspaceWatch.close()),
       ]);

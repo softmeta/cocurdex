@@ -69,16 +69,13 @@ function getSkillInvocation(agentId: AgentId, skillName: string): string {
       return `$${skillName} `;
     case "pi":
       return `/skill:${skillName} `;
-    case "claude-agent":
-    case "cursor":
-    case "devin":
-    case "grok-build":
-      return `/${skillName} `;
     case "opencode":
       // OpenCode v1 exposes skills through its model-facing skill tool rather
       // than a server command, so an explicit instruction works across v1 and
       // the newer slash-capable runtime.
       return `Use the \`${skillName}\` skill. `;
+    default:
+      return `/${skillName} `;
   }
 }
 

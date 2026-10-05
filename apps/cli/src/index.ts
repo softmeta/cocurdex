@@ -655,7 +655,7 @@ async function resolveWorkflowBindings(
     implementer: await resolveWorkflowRoleBinding(
       parsed,
       "implementer",
-      "grok-build",
+      "acp:grok-build",
       "workspace_write",
     ),
     reviewer: await resolveWorkflowRoleBinding(

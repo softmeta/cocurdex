@@ -1,9 +1,7 @@
 import {
+  listAcpRegistryProviderModels,
   listClaudeCliProviderModels,
   listCodexProviderModels,
-  listCursorProviderModels,
-  listDevinProviderModels,
-  listGrokBuildProviderModels,
   listOpenCodeProviderModels,
   listPiProviderModels,
 } from "@cocurdex/agent-adapters";
@@ -13,6 +11,7 @@ import {
   createProviderSnapshotForModel,
   filterCompatibleProviderModels,
   getCompatibleProviderApis,
+  isAcpRegistryAgentId,
   type ProviderConfigRecord,
   type ProviderModelRecord,
   type ResolvedCommitMessageModel,
@@ -84,18 +83,12 @@ export async function resolveCommitMessageModel(
 ): Promise<ResolvedCommitMessageModel> {
   if (!selection) throw new Error(NO_MODEL_ERROR);
   let native: CompatibleProviderModel[] = [];
+  if (isAcpRegistryAgentId(selection.agentId)) {
+    native = await listAcpRegistryProviderModels(selection.agentId);
+  }
   switch (selection.agentId) {
     case "claude-agent":
       native = await listClaudeCliProviderModels();
-      break;
-    case "cursor":
-      native = await listCursorProviderModels();
-      break;
-    case "devin":
-      native = await listDevinProviderModels();
-      break;
-    case "grok-build":
-      native = await listGrokBuildProviderModels();
       break;
     case "opencode":
       native = await listOpenCodeProviderModels();

@@ -9,6 +9,8 @@ import {
   resetGrokBuildProviderModelsCache,
 } from "./grok-build-models";
 
+const TEST_GROK_LAUNCH = { command: "grok", args: ["agent", "stdio"] };
+
 const grok45 = {
   modelId: "grok-4.5",
   name: "Grok 4.5",
@@ -92,7 +94,7 @@ describe("listGrokBuildProviderModels", () => {
   it("builds the catalog from x.ai/models/list after initialize", async () => {
     const { factory, close, connection } = createFactory();
 
-    const items = await listGrokBuildProviderModels(factory);
+    const items = await listGrokBuildProviderModels(TEST_GROK_LAUNCH, factory);
 
     expect(connection.extRequest).toHaveBeenCalledWith("x.ai/models/list", {});
     expect(items).toHaveLength(2);
@@ -127,7 +129,7 @@ describe("listGrokBuildProviderModels", () => {
       }) as unknown as AcpConnection["extRequest"],
     });
 
-    const items = await listGrokBuildProviderModels(factory);
+    const items = await listGrokBuildProviderModels(TEST_GROK_LAUNCH, factory);
 
     expect(items).toHaveLength(1);
     expect(items[0]?.model.modelId).toBe("grok-4.5");
@@ -137,8 +139,8 @@ describe("listGrokBuildProviderModels", () => {
   it("probes once and reuses the resolved catalog", async () => {
     const { factory } = createFactory();
 
-    await listGrokBuildProviderModels(factory);
-    await listGrokBuildProviderModels(factory);
+    await listGrokBuildProviderModels(TEST_GROK_LAUNCH, factory);
+    await listGrokBuildProviderModels(TEST_GROK_LAUNCH, factory);
 
     expect(factory).toHaveBeenCalledOnce();
   });
@@ -161,10 +163,14 @@ describe("listGrokBuildProviderModels", () => {
       })) as unknown as AcpConnection["extRequest"],
     });
 
-    await listGrokBuildProviderModels(first.factory);
-    const items = await listGrokBuildProviderModels(refreshed.factory, {
-      forceRefresh: true,
-    });
+    await listGrokBuildProviderModels(TEST_GROK_LAUNCH, first.factory);
+    const items = await listGrokBuildProviderModels(
+      TEST_GROK_LAUNCH,
+      refreshed.factory,
+      {
+        forceRefresh: true,
+      },
+    );
 
     expect(refreshed.factory).toHaveBeenCalledOnce();
     expect(items.map(({ model }) => model.modelId)).toEqual(["grok-4.6"]);
@@ -177,7 +183,7 @@ describe("listGrokBuildProviderModels", () => {
       }) as unknown as AcpConnection["initialize"],
     });
 
-    const items = await listGrokBuildProviderModels(factory);
+    const items = await listGrokBuildProviderModels(TEST_GROK_LAUNCH, factory);
 
     expect(items).toHaveLength(1);
     expect(items[0]?.model.modelId).toBe("grok-4.6");
@@ -190,10 +196,13 @@ describe("listGrokBuildProviderModels", () => {
         throw new Error("grok not installed");
       }) as unknown as AcpConnection["initialize"],
     });
-    await listGrokBuildProviderModels(failing.factory);
+    await listGrokBuildProviderModels(TEST_GROK_LAUNCH, failing.factory);
 
     const healthy = createFactory();
-    const items = await listGrokBuildProviderModels(healthy.factory);
+    const items = await listGrokBuildProviderModels(
+      TEST_GROK_LAUNCH,
+      healthy.factory,
+    );
 
     expect(healthy.factory).toHaveBeenCalledOnce();
     expect(items[0]?.model.contextLimit).toBe(500_000);
@@ -214,7 +223,9 @@ describe("listGrokBuildProviderModels", () => {
       close,
     });
 
-    const pending = listGrokBuildProviderModels(factory, { timeoutMs: 20 });
+    const pending = listGrokBuildProviderModels(TEST_GROK_LAUNCH, factory, {
+      timeoutMs: 20,
+    });
     await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
     const cwd = vi.mocked(factory).mock.calls[0]?.[0]?.cwd;
     let settled = false;

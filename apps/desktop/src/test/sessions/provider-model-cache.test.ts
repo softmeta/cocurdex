@@ -22,7 +22,7 @@ vi.mock("../../lib/ipc", () => ({
 
 const PI_AGENT: AgentId = "pi";
 const CODEX_AGENT: AgentId = "codex";
-const GROK_AGENT: AgentId = "grok-build";
+const GROK_AGENT: AgentId = "acp:grok-build";
 
 const piItems: CompatibleProviderModel[] = [
   {

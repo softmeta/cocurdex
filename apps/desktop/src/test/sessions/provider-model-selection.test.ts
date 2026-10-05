@@ -61,12 +61,12 @@ describe("provider model selection", () => {
     const runtimeItem = {
       provider: {
         ...item.provider,
-        id: "grok-build",
+        id: "acp:grok-build",
         name: "Grok Build",
       },
       model: {
         ...item.model,
-        providerId: "grok-build",
+        providerId: "acp:grok-build",
         modelId: "grok-4.5",
         name: "Grok 4.5",
         supportedReasoningEfforts: [
@@ -75,12 +75,17 @@ describe("provider model selection", () => {
       },
     } as CompatibleProviderModel;
     const snapshot = {
-      providerId: "grok-build",
+      providerId: "acp:grok-build",
       modelId: "grok-4.5",
     } as AgentProviderSnapshot;
 
     expect(
-      resolveRuntimeProviderModel("grok-build", [runtimeItem], [], snapshot),
+      resolveRuntimeProviderModel(
+        "acp:grok-build",
+        [runtimeItem],
+        [],
+        snapshot,
+      ),
     ).toBe(runtimeItem.model);
   });
 

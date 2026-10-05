@@ -14,8 +14,8 @@ import {
   Text,
 } from "@/components/ui";
 import {
-  agentLabels,
   deleteSessionAtom,
+  getAgentDisplayLabel,
   upsertSessionAtom,
 } from "@/features/sessions";
 import { workspacesAtom } from "@/features/workspaces";
@@ -115,7 +115,7 @@ export function ArchivedSessionsPanel() {
     return [
       session.title,
       workspace?.name,
-      agentLabels[session.agentType],
+      getAgentDisplayLabel(session.agentType),
     ].some((value) => value?.toLocaleLowerCase().includes(search));
   });
   const dateFormat = new Intl.DateTimeFormat(i18n.language, {
@@ -157,7 +157,7 @@ export function ArchivedSessionsPanel() {
                     {session.title}
                   </Text>
                   <Text size="meta" tone="muted" truncate>
-                    {[workspace?.name, agentLabels[session.agentType]]
+                    {[workspace?.name, getAgentDisplayLabel(session.agentType)]
                       .filter(Boolean)
                       .join(" · ")}
                   </Text>
