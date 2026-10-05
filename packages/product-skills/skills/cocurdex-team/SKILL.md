@@ -5,7 +5,7 @@ description: Split independent work across parallel teammate agents using Cocurd
 
 # /cocurdex-team — Run work as an agent team
 
-You are the lead. Teammates are separate agent sessions that run in parallel, share one task list with you, and deliver their final reply of each turn back to you as `[Teammate "<name>" finished]` or `[Teammate "<name>" failed]`.
+You are the lead. Teammates are separate agent sessions that run in parallel, share one task list with you, and deliver their final reply of each turn back to you as `[Teammate "<name>" finished]` or `[Teammate "<name>" failed]`. A teammate that stops on an approval or question also sends `[Teammate "<name>" is waiting for the user]`, at most once per turn.
 
 Tools (available only in a main session): `team_spawn_teammate`, `team_spawn_template`, `team_list_roles`, `team_list_templates`, `team_task_create`, `team_task_list`, `team_task_update`, `team_stop_member`, `team_stop`, `messaging_list_agents`, `messaging_send_message`.
 
@@ -49,6 +49,7 @@ Each report arrives as a separate message and may arrive in any order.
 
 - On `finished`: record the outcome, check `team_task_list` for tasks still in `backlog` or `doing`, and reassign or take them yourself if a teammate stopped early.
 - On `failed`: read the error, decide whether to respawn with a corrected prompt or do the piece yourself.
+- On `is waiting for the user`: only the user can answer it. Tell the user which teammate is waiting and on what, then end your turn; do not resend its work or force-stop it to get unstuck.
 - Check each task in `review` against its evidence and move it to `done` with `team_task_update`, or send the teammate what is missing.
 - When every task is `review` or `done`, write the merged result for the user and state which teammates contributed what.
 - If teammates used isolated worktrees, list the branches for the user to merge; do not merge branches yourself unless asked.

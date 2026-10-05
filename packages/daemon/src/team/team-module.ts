@@ -23,6 +23,7 @@ import {
   TEAM_TEMPLATES_SETTING_KEY,
   type TeamChangedEvent,
   type TeamMemberRecord,
+  type TeammateReportOutcome,
   type TeamRecord,
   type TeamSnapshot,
   type TeamTaskRecord,
@@ -169,6 +170,7 @@ function parseTemplates(raw: string | null): TeamTemplateRecord[] {
 export class TeamModule {
   private readonly now: () => string;
   private readonly createId: () => string;
+  private readonly waitingReported = new Set<string>();
 
   constructor(private readonly deps: TeamModuleDependencies) {
     this.now = deps.now ?? (() => new Date().toISOString());
@@ -350,6 +352,11 @@ export class TeamModule {
   }
 
   async onAgentEvent(event: AgentEvent) {
+    const waitingOn = userWaitSummary(event);
+    if (waitingOn !== null) {
+      await this.reportWaiting(event.sessionId, waitingOn);
+      return;
+    }
     const memberEvent =
       event.type === "turn.completed"
         ? { type: "turn.completed" as const }
@@ -362,6 +369,7 @@ export class TeamModule {
       (item) => item.sessionId === event.sessionId,
     );
     if (!snapshot || !member || member.status === "stopped") return;
+    this.waitingReported.delete(member.sessionId);
     const next = transitionTeamMember(member, memberEvent, this.now());
     if (next === member) return;
     await this.deps.repository.saveMember(next);
@@ -580,10 +588,21 @@ export class TeamModule {
     return stopped;
   }
 
+  private async reportWaiting(sessionId: string, summary: string) {
+    if (this.waitingReported.has(sessionId)) return;
+    const snapshot = await this.deps.repository.findBySession(sessionId);
+    const member = snapshot?.members.find(
+      (item) => item.sessionId === sessionId,
+    );
+    if (!snapshot || !member || member.status === "stopped") return;
+    this.waitingReported.add(sessionId);
+    await this.report(snapshot.team, member, "waiting", summary);
+  }
+
   private async report(
     team: TeamRecord,
     member: TeamMemberRecord,
-    outcome: "finished" | "failed",
+    outcome: TeammateReportOutcome,
     content = "",
   ) {
     await this.deps.sendPeerMessage(
@@ -632,4 +651,10 @@ export class TeamModule {
       leadSessionId: team.leadSessionId,
     });
   }
+}
+
+function userWaitSummary(event: AgentEvent) {
+  if (event.type === "permission.requested") return event.request.title;
+  if (event.type === "question.requested") return event.question.question;
+  return null;
 }

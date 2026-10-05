@@ -234,6 +234,71 @@ describe("TeamModule", () => {
     ]);
   });
 
+  it("tells the lead once per turn when a teammate waits on the user", async () => {
+    const { module, reports } = harness();
+    const member = await module.spawn("lead", { name: "alpha", prompt: "go" });
+    const permission = (id: string) => ({
+      type: "permission.requested" as const,
+      sessionId: member.sessionId,
+      request: {
+        id,
+        sessionId: member.sessionId,
+        providerId: "codex" as const,
+        kind: "execute",
+        title: `Run ${id}`,
+        locations: [],
+        options: [],
+        status: "pending" as const,
+        createdAt: "",
+        updatedAt: "",
+      },
+    });
+    await module.onAgentEvent({
+      type: "state.changed",
+      sessionId: member.sessionId,
+      status: "running",
+    });
+    await module.onAgentEvent(permission("first"));
+    await module.onAgentEvent(permission("second"));
+    expect(reports).toEqual([
+      {
+        to: "lead",
+        content: expect.stringMatching(
+          /^\[Teammate "alpha" is waiting for the user\]\nRun first/,
+        ),
+      },
+    ]);
+
+    await module.onAgentEvent({
+      type: "turn.completed",
+      sessionId: member.sessionId,
+      messageId: "m-final",
+      durationMs: 1,
+      completedAt: "",
+    });
+    await module.onAgentEvent({
+      type: "state.changed",
+      sessionId: member.sessionId,
+      status: "running",
+    });
+    await module.onAgentEvent({
+      type: "question.requested",
+      sessionId: member.sessionId,
+      question: {
+        id: "q",
+        sessionId: member.sessionId,
+        providerId: "codex",
+        question: "Which branch?",
+        status: "pending",
+        createdAt: "",
+        updatedAt: "",
+      },
+    });
+    expect(reports.at(-1)?.content).toMatch(
+      /^\[Teammate "alpha" is waiting for the user\]\nWhich branch\?/,
+    );
+  });
+
   it("cascades a lead stop to every member and blocks further spawns", async () => {
     const { module, stopped } = harness();
     const a = await module.spawn("lead", { name: "a", prompt: "go" });
