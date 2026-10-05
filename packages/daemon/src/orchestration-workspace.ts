@@ -6,6 +6,7 @@ import {
   type WorkspaceIsolationDecision,
   type WorkspaceIsolationInput,
 } from "@cocurdex/shared";
+import { APP_WORKTREE_BRANCH_PREFIX } from "./git-worktree";
 import {
   getWorktreeBasePath,
   hashRepoPath,
@@ -64,6 +65,7 @@ export async function removeAppManagedWorktree(input: {
     return false;
   }
 
+  const branch = await readWorktreeBranch(input.worktreePath);
   try {
     await execGit(input.repoRootPath, [
       "worktree",
@@ -71,9 +73,28 @@ export async function removeAppManagedWorktree(input: {
       input.worktreePath,
     ]);
     await rmdir(path.dirname(input.worktreePath)).catch(() => undefined);
-    return true;
   } catch {
     return false;
+  }
+  if (branch?.startsWith(APP_WORKTREE_BRANCH_PREFIX)) {
+    await execGit(input.repoRootPath, ["branch", "-d", branch]).catch(
+      () => undefined,
+    );
+  }
+  return true;
+}
+
+async function readWorktreeBranch(worktreePath: string) {
+  try {
+    const output = await execGit(worktreePath, [
+      "symbolic-ref",
+      "--short",
+      "-q",
+      "HEAD",
+    ]);
+    return output.trim() || undefined;
+  } catch {
+    return undefined;
   }
 }
 

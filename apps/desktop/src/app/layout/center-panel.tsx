@@ -118,7 +118,12 @@ import {
   selectWorkspaceAtom,
   workspacesAtom,
 } from "@/features/workspaces";
-import { desktopApi, logRendererDiagnostic, taskApi } from "@/lib";
+import {
+  desktopApi,
+  logRendererDiagnostic,
+  taskApi,
+  toAbsolutePath,
+} from "@/lib";
 import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
 import {
   useActiveSessionTranscript,
@@ -891,6 +896,15 @@ export function CenterPanel({
     await taskApi.stopSession(activeSession.id);
   };
 
+  const openToolLocation = (
+    location: Parameters<typeof openFilePreview>[0],
+  ) => {
+    const filePath = toAbsolutePath(location.filePath, workingPath);
+    if (filePath) {
+      openFilePreview({ ...location, filePath });
+    }
+  };
+
   const handleAnswerQuestion = async (
     question: AgentQuestionRequestRecord,
     answer: string,
@@ -1311,7 +1325,7 @@ export function CenterPanel({
             // propagate through ChatView's children for no behavioral gain.
             onClearAttachment={clearChatComposerAttachment}
             onAnswerQuestion={handleAnswerQuestion}
-            onOpenToolLocation={openFilePreview}
+            onOpenToolLocation={openToolLocation}
             onResolvePermission={async (requestId, optionId) => {
               return taskApi.resolvePermission(requestId, optionId);
             }}

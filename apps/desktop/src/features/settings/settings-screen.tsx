@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import type { MouseEvent } from "react";
+import { type MouseEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout";
 import {
@@ -275,17 +275,17 @@ export function SettingsScreen({
     activeSection === "archived" ||
     activeSection === "workflows" ||
     activeSection === "providers";
-  const settingsHeading = (
-    <header className="min-w-0 shrink-0">
-      {activeSection === "workspaces" ? (
-        <WorkspaceSettingsHeading />
-      ) : (
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          {t(`settings:sections.${activeSectionMeta.labelKey}`)}
-        </h1>
-      )}
-    </header>
-  );
+  const [scrolledSection, setScrolledSection] =
+    useState<SettingsSectionId | null>(null);
+  const isContentScrolled = scrolledSection === activeSection;
+  const settingsHeading =
+    activeSection === "workspaces" ? (
+      <WorkspaceSettingsHeading />
+    ) : (
+      <h1 className="truncate text-body font-semibold text-foreground">
+        {t(`settings:sections.${activeSectionMeta.labelKey}`)}
+      </h1>
+    );
   const handleSectionChange = (sectionId: SettingsSectionId) => {
     setSelectedWorkspaceId(null);
     onSectionChange(sectionId);
@@ -327,35 +327,41 @@ export function SettingsScreen({
       ) : null}
 
       <section className="min-w-0 flex-1 overflow-hidden bg-app">
-        <div className="flex h-8 shrink-0">
-          <div className="w-32 shrink-0" />
-          <div className="app-drag min-w-0 flex-1" />
-        </div>
+        <header
+          className={cn(
+            "app-drag flex h-8 min-w-0 shrink-0 items-center border-b pe-4 transition-colors",
+            isSidebarOpen ? "ps-5" : "ps-44",
+            isContentScrolled ? "border-border/60" : "border-transparent",
+          )}
+        >
+          {settingsHeading}
+        </header>
         {isFillLayout ? (
           <div className="flex h-[calc(100vh-2rem)] min-h-0 flex-col pb-8">
             <div
               className={cn(
-                "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-10 sm:px-6 lg:px-8",
+                "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-6 sm:px-6 lg:px-8",
                 activeSection === "workflows" && "max-w-none gap-4",
                 activeSection === "licenses" && "max-w-5xl gap-6",
                 activeSection === "providers" && "max-w-6xl gap-6",
-                activeSection !== "workflows" &&
-                  activeSection !== "licenses" &&
-                  activeSection !== "providers" &&
-                  "max-w-3xl gap-8",
+                activeSection === "archived" && "max-w-3xl gap-8",
               )}
             >
-              {settingsHeading}
               {settingsPanel}
             </div>
           </div>
         ) : (
           <div className="h-[calc(100vh-2rem)] pb-8">
-            <ScrollArea className="h-full">
-              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pb-10 sm:px-6 lg:px-8">
-                <div className="sticky top-0 z-10 flex h-20 shrink-0 items-end bg-app pb-3">
-                  {settingsHeading}
-                </div>
+            <ScrollArea
+              className="h-full"
+              viewportProps={{
+                onScroll: (event) =>
+                  setScrolledSection(
+                    event.currentTarget.scrollTop > 0 ? activeSection : null,
+                  ),
+              }}
+            >
+              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pt-6 pb-10 sm:px-6 lg:px-8">
                 {settingsPanel}
               </div>
             </ScrollArea>

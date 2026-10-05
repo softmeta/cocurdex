@@ -232,4 +232,44 @@ describe("createSqliteSessionRepository", () => {
       archivedAt: "2026-08-31T12:00:00.000Z",
     });
   });
+
+  it("marks sessions left running by a previous process as failed", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    for (const [id, status] of [
+      ["running", "running"],
+      ["idle", "idle"],
+    ] as const) {
+      await sessions.upsert({
+        id,
+        workspaceId: "workspace-1",
+        title: id,
+        agentType: "grok-build",
+        status,
+        writeMode: "native-write",
+        sessionModeId: null,
+        createdAt: now,
+        updatedAt: now,
+        lastMessageAt: null,
+        archivedAt: null,
+      });
+    }
+
+    expect(await sessions.failRunning()).toEqual(["running"]);
+    expect(await sessions.getById("running")).toMatchObject({
+      status: "error",
+    });
+    expect(await sessions.getById("idle")).toMatchObject({ status: "idle" });
+  });
 });

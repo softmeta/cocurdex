@@ -46,8 +46,8 @@ describe("product skills pack version", () => {
     });
 
     await writeFile(
-      path.join(source, "cocurdex-ask", "SKILL.md"),
-      "---\nname: cocurdex-ask\n---\nchanged\n",
+      path.join(source, "cocurdex-note", "SKILL.md"),
+      "---\nname: cocurdex-note\n---\nchanged\n",
     );
 
     const status = await getProductSkillsStatus("global", undefined, {

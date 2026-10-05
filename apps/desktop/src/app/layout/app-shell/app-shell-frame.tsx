@@ -288,10 +288,10 @@ export function AppShellFrame({
       <div
         aria-hidden={activeScreen !== "app"}
         className={cn(
-          "absolute inset-0 transition-all duration-300 ease-out",
+          "absolute inset-0",
           activeScreen === "app"
-            ? "pointer-events-auto translate-x-0 opacity-100"
-            : "pointer-events-none -translate-x-4 opacity-0",
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0",
         )}
       >
         <div className="relative flex h-screen flex-col overflow-hidden bg-app text-app-foreground">

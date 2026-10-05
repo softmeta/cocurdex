@@ -204,13 +204,18 @@ export function renderTeammateBriefing(input: {
   ].join("\n");
 }
 
+export type TeammateReportOutcome = "finished" | "failed" | "waiting";
+
+const TEAMMATE_REPORT_HEADERS: Record<TeammateReportOutcome, string> = {
+  finished: "finished",
+  failed: "failed",
+  waiting: "is waiting for the user",
+};
+
 export function renderTeammateReport(
-  input: { name: string; outcome: "finished" | "failed" },
+  input: { name: string; outcome: TeammateReportOutcome },
   content: string,
 ) {
-  const header =
-    input.outcome === "finished"
-      ? `[Teammate "${input.name}" finished]`
-      : `[Teammate "${input.name}" failed]`;
+  const header = `[Teammate "${input.name}" ${TEAMMATE_REPORT_HEADERS[input.outcome]}]`;
   return `${header}\n${content}`;
 }

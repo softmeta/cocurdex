@@ -46,6 +46,8 @@ import { capToolCallOutput, withoutToolCallOutput } from "./tool-call-output";
 
 type CocurdexDatabase = ReturnType<typeof createCocurdexDatabase>;
 const TERMINAL_STATUSES = new Set<SessionStatus>(["idle", "error", "exited"]);
+const INTERRUPTED_BY_RESTART_MESSAGE =
+  "The agent was interrupted because Cocurdex restarted before this turn finished. Send a message to continue.";
 
 export class DaemonState {
   readonly sessionAttention: SessionAttentionProjection;
@@ -77,7 +79,7 @@ export class DaemonState {
     this.networkProxyReady = this.loadAndApplyNetworkProxy();
     // Runs once per daemon process, before any agent can start a turn: at this
     // point a non-terminal tool call can only be debris from a previous run.
-    this.staleSessionsSwept = this.database.sessions.normalizeRunningToIdle();
+    this.staleSessionsSwept = this.failInterruptedSessions();
     this.staleToolCallsSwept = this.database.toolCalls.failNonTerminal();
     // Same reasoning for pure-chat turns: an assistant message still marked
     // `streaming` when this process starts can have no stream behind it.
@@ -722,6 +724,21 @@ export class DaemonState {
       sessionTokens,
       totalCostUsd: event.usage.totalCostUsd ?? null,
     });
+  }
+
+  private async failInterruptedSessions() {
+    const sessionIds = await this.database.sessions.failRunning();
+    await this.database.teams.failActiveMembers();
+    const createdAt = new Date().toISOString();
+    for (const sessionId of sessionIds) {
+      await this.database.messages.append(
+        this.createSystemMessage(
+          sessionId,
+          INTERRUPTED_BY_RESTART_MESSAGE,
+          createdAt,
+        ),
+      );
+    }
   }
 
   private createSystemMessage(

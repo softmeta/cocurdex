@@ -555,7 +555,7 @@ export class AgentRuntimeManager {
         delivery: payload.delivery,
       });
 
-      if (!turnTracker.cancelled && message.content.trim().length > 0) {
+      if (!turnTracker.cancelled) {
         this.emitAgentEvent({
           type: "turn.completed",
           sessionId: payload.session.id,

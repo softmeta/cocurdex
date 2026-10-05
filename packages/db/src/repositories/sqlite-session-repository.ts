@@ -193,15 +193,17 @@ export function createSqliteSessionRepository(
       // rows are removed by the ON DELETE CASCADE chain declared in the schema.
       database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
     },
-    async normalizeRunningToIdle() {
+    async failRunning() {
       const now = new Date().toISOString();
-      database
+      const rows = database
         .prepare(
           `UPDATE sessions
-           SET status = 'idle', updated_at = ?
-           WHERE status = 'running'`,
+           SET status = 'error', updated_at = ?
+           WHERE status = 'running'
+           RETURNING id`,
         )
-        .run(now);
+        .all(now) as Array<{ id: string }>;
+      return rows.map((row) => row.id);
     },
   };
 }

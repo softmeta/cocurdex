@@ -159,7 +159,12 @@ describe("product skills install", () => {
   it("reports conflict and does not overwrite unmanaged skills", async () => {
     const home = await makeTempRoot();
     const workspace = await makeTempRoot();
-    const unmanaged = path.join(workspace, ".agents", "skills", "cocurdex-prd");
+    const unmanaged = path.join(
+      workspace,
+      ".agents",
+      "skills",
+      "cocurdex-note",
+    );
     await mkdir(unmanaged, { recursive: true });
     await writeFile(path.join(unmanaged, "SKILL.md"), "# hand-made\n", "utf8");
 
@@ -172,7 +177,7 @@ describe("product skills install", () => {
 
     expect(result.action).toBe("conflict");
     expect(result.conflict).toBe(true);
-    expect(result.conflictSkills).toContain("cocurdex-prd");
+    expect(result.conflictSkills).toContain("cocurdex-note");
   });
 
   it("removes managed skills", async () => {
