@@ -105,8 +105,16 @@ describe("daemon startup recovery", () => {
     await first.close();
     const { daemon: second } = await start(userDataPath);
     expect(await second.service.state.getSession("session")).toMatchObject({
-      status: "idle",
+      status: "error",
     });
+    const { messages } =
+      await second.service.state.listSessionMessages("session");
+    expect(messages).toEqual([
+      expect.objectContaining({
+        role: "system",
+        content: expect.stringContaining("restarted"),
+      }),
+    ]);
     expect(
       await second.service.state.listToolCallsBySessionId("session"),
     ).toEqual([expect.objectContaining({ id: "tool", status: "failed" })]);
