@@ -63,6 +63,7 @@ function memoryRepository(): TeamRepository {
     async saveMember(member) {
       members.set(`${member.teamId}:${member.sessionId}`, member);
     },
+    async failActiveMembers() {},
     async listTasks(teamId) {
       return [...tasks.values()].filter((task) => task.teamId === teamId);
     },

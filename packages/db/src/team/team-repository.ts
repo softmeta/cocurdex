@@ -11,6 +11,7 @@ export interface TeamRepository {
   findBySession(sessionId: string): Promise<TeamSnapshot | null>;
   saveTeam(team: TeamRecord): Promise<void>;
   saveMember(member: TeamMemberRecord): Promise<void>;
+  failActiveMembers(): Promise<void>;
   listTasks(teamId: string): Promise<TeamTaskRecord[]>;
   insertTask(task: TeamTaskRecord): Promise<void>;
   updateTask(task: TeamTaskRecord, expectedRevision: number): Promise<boolean>;

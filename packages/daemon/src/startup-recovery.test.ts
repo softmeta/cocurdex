@@ -56,6 +56,37 @@ async function seedActiveWork(
     updatedAt: timestamp,
     lastMessageAt: null,
   });
+  await database.sessions.upsert({
+    id: "teammate",
+    workspaceId: "workspace",
+    parentSessionId: "session",
+    sessionKind: "teammate",
+    title: "Teammate",
+    agentType: "pi",
+    status: "running",
+    writeMode: "read-only",
+    sessionModeId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastMessageAt: null,
+  });
+  await database.teams.saveTeam({
+    id: "team",
+    leadSessionId: "session",
+    workspaceId: "workspace",
+    status: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  await database.teams.saveMember({
+    teamId: "team",
+    sessionId: "teammate",
+    name: "alpha",
+    agentRoleId: null,
+    status: "running",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
   await database.toolCalls.upsert({
     id: "tool",
     sessionId: "session",
@@ -75,9 +106,9 @@ describe("daemon startup recovery", () => {
     await seedActiveWork(daemon);
     for (let index = 0; index < 2; index += 1) {
       const snapshot = await daemon.service.bootstrap();
-      expect(snapshot.sessions).toEqual([
+      expect(snapshot.sessions).toContainEqual(
         expect.objectContaining({ id: "session", status: "running" }),
-      ]);
+      );
     }
   });
 
@@ -114,6 +145,12 @@ describe("daemon startup recovery", () => {
         role: "system",
         content: expect.stringContaining("restarted"),
       }),
+    ]);
+    const team = await (
+      await second.service.state.getChatDatabase()
+    ).teams.getByLead("session");
+    expect(team?.members).toEqual([
+      expect.objectContaining({ sessionId: "teammate", status: "error" }),
     ]);
     expect(
       await second.service.state.listToolCallsBySessionId("session"),

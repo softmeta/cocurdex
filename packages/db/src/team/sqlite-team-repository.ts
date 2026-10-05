@@ -224,5 +224,14 @@ export function createSqliteTeamRepository(
           member.updatedAt,
         );
     },
+    async failActiveMembers() {
+      database
+        .prepare(
+          `UPDATE team_members
+           SET status = 'error', updated_at = ?
+           WHERE status IN ('spawning', 'running')`,
+        )
+        .run(new Date().toISOString());
+    },
   };
 }

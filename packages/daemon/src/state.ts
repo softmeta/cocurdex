@@ -728,6 +728,7 @@ export class DaemonState {
 
   private async failInterruptedSessions() {
     const sessionIds = await this.database.sessions.failRunning();
+    await this.database.teams.failActiveMembers();
     const createdAt = new Date().toISOString();
     for (const sessionId of sessionIds) {
       await this.database.messages.append(
