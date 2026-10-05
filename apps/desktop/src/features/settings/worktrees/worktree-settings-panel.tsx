@@ -5,6 +5,7 @@ import {
   type WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
+import { FolderOpen } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -149,21 +150,24 @@ export function WorktreeSettingsPanel() {
           description={t("worktrees.rootDescription")}
           title={t("worktrees.rootTitle")}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Input
-              className="h-8 w-56"
+              className="h-8 w-72 text-body"
               placeholder={settings?.resolvedRootPath}
+              title={rootDraft || settings?.resolvedRootPath}
               value={rootDraft}
               onBlur={() => void handleRootBlur()}
               onChange={(event) => setRootDraft(event.target.value)}
             />
             <Button
-              size="sm"
+              aria-label={t("worktrees.browse")}
+              size="icon"
+              title={t("worktrees.browse")}
               type="button"
               variant="outline"
               onClick={() => void handleBrowseRoot()}
             >
-              {t("worktrees.browse")}
+              <FolderOpen />
             </Button>
           </div>
         </SettingRow>
