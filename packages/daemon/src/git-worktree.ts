@@ -4,6 +4,8 @@ import { type GitWorktreeInfo, parseGitWorktreeList } from "@cocurdex/shared";
 import { createSessionWorktreePath, getWorktreeBasePath } from "./paths";
 import { runGit } from "./workspace-changes/git-run";
 
+export const APP_WORKTREE_BRANCH_PREFIX = "cocurdex/";
+
 export async function listGitWorktrees(
   rootPath: string,
 ): Promise<GitWorktreeInfo[]> {
@@ -39,7 +41,8 @@ export async function addGitWorktree(input: {
   fetchBeforeCreate?: boolean;
 }): Promise<GitWorktreeInfo> {
   const worktreeId = crypto.randomUUID().replaceAll("-", "").slice(0, 8);
-  const branch = input.branch?.trim() || `cocurdex/${worktreeId}`;
+  const branch =
+    input.branch?.trim() || `${APP_WORKTREE_BRANCH_PREFIX}${worktreeId}`;
   await runGit(["check-ref-format", "--branch", branch], {
     cwd: input.repoRootPath,
   });
