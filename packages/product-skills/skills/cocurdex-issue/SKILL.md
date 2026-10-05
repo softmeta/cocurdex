@@ -1,6 +1,6 @@
 ---
 name: cocurdex-issue
-description: Create and manage app-owned Cocurdex issues through the CLI.
+description: Create and manage app-owned Cocurdex issues through the CLI. Use when the user mentions an issue, todo, ticket, backlog item, or asks to remember work for later.
 ---
 
 # Cocurdex Issue

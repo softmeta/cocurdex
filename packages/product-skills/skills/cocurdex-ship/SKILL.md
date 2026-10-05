@@ -1,53 +1,54 @@
 ---
 name: cocurdex-ship
-description: Implement a Cocurdex issue (or PRD/spec note), verify with project checks, update issue status, optional commit.
+description: Implement a Cocurdex issue or spec note, verify with project checks, and move the issue through its status columns.
 disable-model-invocation: true
 ---
 
 # /cocurdex-ship — Implement an issue
 
-## Preconditions
+Issues and notes live in the app-owned Cocurdex database. Read and change them
+only through the `cocurdex` CLI.
 
-1. Follow `/cocurdex-layout`: issues are app-owned and accessed only through the CLI
-2. Resolve issue: `cocurdex issue show <id> --json` (or PRD/spec path); load What to build + criteria + `blockedBy`
-3. Stop if any blocker is not `done`
-4. If the issue lacks shippable contract (What to build / acceptance criteria), stop and run **`/cocurdex-issue refine`** first
-
-CLI invoke:
+## 1. Load
 
 ```bash
 cocurdex issue show <id> --json
-# monorepo:
-pnpm --filter @cocurdex/cli exec node --import tsx src/index.ts issue show <id> --json
 ```
 
-## Process
+Skip this when the prompt already contains the issue as a complete
+`<issue … complete="true">` block. For a spec, use `cocurdex note show <id> --json`.
 
-### 1. Claim
+Stop and ask the user when the issue has no clear scope or acceptance criteria.
 
-If status is `backlog` → `cocurdex issue move <id> doing --json` (same as `/cocurdex-issue start`). Do not hand-edit `status`.
+## 2. Claim
 
-### 2. Plan
+Move the issue to the in-progress column (`doing` by default):
 
-Restate criteria; note seams; use **tdd** for critical pure logic.
+```bash
+cocurdex issue move <id> doing --json
+```
 
-### 3. Implement
+Column ids can be customized; when a move is rejected, use the ids listed in the
+error or in `cocurdex issue views --json`.
 
-- Follow the repository's contributor guidance and validation commands
-- i18n extract/types when adding `t("...")`
+## 3. Implement
 
-### 4. Verify
+Restate the acceptance criteria, then implement following the repository's
+contributor guidance. Use TDD for critical pure logic.
 
-- Relevant tests; tick acceptance criteria on the issue body (Write)
-- Large change → optional **code-review**
+## 4. Verify
 
-### 5. Status
+Run the repository's relevant tests, type checks, and linters for the touched
+files. Fix what they report.
 
-- All criteria met → `cocurdex issue move <id> review --json` or `… move <id> done --json`
-- Optional Write `## Completion`
-- Summarise files, verify steps, issue path + status
-- Commit only if user asks
+## 5. Finish
 
-## Completion criterion
+Move the issue to `review` (or `done` when the user does not review) once every
+criterion is met:
 
-Criteria satisfied as claimed; status updated via CLI; typecheck/biome clean for touched files.
+```bash
+cocurdex issue move <id> review --json
+```
+
+Summarize the changed files, the checks you ran, and the issue's new status.
+Commit only when the user asks.

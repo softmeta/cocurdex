@@ -5,18 +5,11 @@ import { fileURLToPath } from "node:url";
 
 /** Product skill directories shipped with Cocurdex (namespaced cocurdex-*). */
 export const PRODUCT_SKILL_NAMES = [
-  "cocurdex-ask",
   "cocurdex-issue",
-  "cocurdex-layout",
-  "cocurdex-link",
   "cocurdex-note",
-  "cocurdex-prd",
   "cocurdex-settings",
   "cocurdex-ship",
-  "cocurdex-spec",
   "cocurdex-team",
-  "cocurdex-ticket",
-  "cocurdex-todo",
 ] as const;
 
 export type ProductSkillName = (typeof PRODUCT_SKILL_NAMES)[number];
