@@ -1,10 +1,5 @@
-import type { AgentId } from "@cocurdex/shared";
+import { type AgentId, isAcpRegistryAgentId } from "@cocurdex/shared";
 
 export function shouldShowProviderGroupLabels(agentId: AgentId) {
-  return (
-    agentId !== "claude-agent" &&
-    agentId !== "cursor" &&
-    agentId !== "devin" &&
-    agentId !== "grok-build"
-  );
+  return !isAcpRegistryAgentId(agentId) && agentId !== "claude-agent";
 }

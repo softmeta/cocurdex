@@ -449,18 +449,12 @@ export default interface Resources {
       claudeCli: "Uses the Claude Agent installed and signed in on this computer";
       claudeCode: "Only uses Anthropic Messages models from cocurdex Providers";
       codex: "Fast code generation";
-      cursor: "Cursor CLI over ACP";
-      devin: "Devin CLI over ACP";
-      grokBuild: "Grok's agent runtime over ACP";
       opencode: "Open-source alternative";
       pi: "Built-in agent";
     };
     agents: {
       claudeCli: "Claude Agent";
       codex: "Codex";
-      cursor: "Cursor";
-      devin: "Devin";
-      grokBuild: "Grok Build";
       opencode: "OpenCode";
       pi: "Pi";
     };
@@ -1352,11 +1346,29 @@ export default interface Resources {
         timedOut: "Usage check timed out. Try refreshing.";
         unknownError: "Unknown error";
       };
+      registry: {
+        builtIn: "Built in";
+        description: "Install coding agents published to the official ACP Registry. They are third-party code: review an agent's source and license before installing it.";
+        install: "Install";
+        installFailed: "Installation failed";
+        installSucceeded: "Installed {{name}}";
+        installed: "Installed";
+        loadFailed: "Could not load the ACP Registry";
+        noResults: "No matching agents";
+        open: "Add from ACP Registry";
+        remove: "Remove";
+        removeFailed: "Could not remove the agent";
+        removeSucceeded: "Removed {{name}}";
+        retry: "Retry";
+        search: "Search agents";
+        title: "ACP Registry";
+        unsupported: "Not available for this platform";
+      };
       status: {
         builtin: "Built in — ships with cocurdex, nothing to install.";
         detecting: "Checking installation…";
         error: "Detection failed.";
-        missing: "Not installed — `{{executable}}` was not found on PATH.";
+        missing: "Not installed — {{executable}} was not found on PATH.";
         outdated: "Installed {{installed}} is below the required {{minimum}}.";
         outdatedHint: "Still usable. Some capabilities may not work until you update.";
         ready: "Installed and ready.";

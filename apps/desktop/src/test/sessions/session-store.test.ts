@@ -332,11 +332,11 @@ describe("updateSessionProviderRuntimeAtom", () => {
     const store = createStore();
     const legacyGrokSession = {
       ...baseSession,
-      agentType: "grok-build" as const,
+      agentType: "acp:grok-build" as const,
       providerSnapshot: null,
     };
     const grokSnapshot = {
-      providerId: "grok-build",
+      providerId: "acp:grok-build",
       providerName: "Grok Build",
       modelId: "grok-4.5",
       modelName: "Grok 4.5",
@@ -373,27 +373,30 @@ describe("permission mode helpers", () => {
     window.localStorage.removeItem(storageKey);
 
     const store = createStore();
-    store.set(lastSelectedAgentAtom, "grok-build");
+    store.set(lastSelectedAgentAtom, "acp:grok-build");
 
-    expect(window.localStorage.getItem(storageKey)).toBe("grok-build");
+    expect(window.localStorage.getItem(storageKey)).toBe("acp:grok-build");
     expect(store.get(lastSelectedAgentAtom)).toBe("pi");
 
-    store.set(
-      bootstrapAgentsAtom,
-      store.get(agentsAtom).map((agent) =>
-        agent.id === "grok-build"
-          ? {
-              ...agent,
-              installation: {
-                executableName: "grok",
-                executablePath: "/usr/bin/grok",
-                version: "1.0.0",
-              },
-            }
-          : agent,
-      ),
-    );
-    expect(store.get(lastSelectedAgentAtom)).toBe("grok-build");
+    const codex = store.get(agentsAtom).find((agent) => agent.id === "codex");
+    if (!codex) {
+      throw new Error("missing codex descriptor");
+    }
+    store.set(bootstrapAgentsAtom, [
+      ...store.get(agentsAtom),
+      {
+        ...codex,
+        id: "acp:grok-build",
+        label: "Grok Build",
+        capabilities: { ...codex.capabilities, transport: "acp" },
+        installation: {
+          executableName: "grok",
+          executablePath: "/usr/bin/grok",
+          version: "1.0.0",
+        },
+      },
+    ]);
+    expect(store.get(lastSelectedAgentAtom)).toBe("acp:grok-build");
 
     // A later set (e.g. user switches back to built-in cocurdex) overwrites.
     store.set(lastSelectedAgentAtom, "pi");

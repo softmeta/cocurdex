@@ -1,4 +1,8 @@
-import type { AgentDescriptor, AgentId } from "@cocurdex/shared";
+import {
+  type AgentDescriptor,
+  type AgentId,
+  isAcpRegistryAgentId,
+} from "@cocurdex/shared";
 import type { ReactNode } from "react";
 import {
   type AdapterStatusKind,
@@ -6,7 +10,7 @@ import {
   isAdapterSelectable,
 } from "./adapter-status";
 import { agentOptions } from "./new-session-card/new-session-card-config";
-import { agentLabels } from "./session-store";
+import { getAgentDisplayLabel } from "./session-store";
 
 export interface AgentSelectOption {
   label: ReactNode;
@@ -20,16 +24,21 @@ export function buildAgentSelectOptions(
 ): AgentSelectOption[] {
   const byId = new Map(agents.map((agent) => [agent.id, agent]));
 
-  return agentOptions.map((option) => {
-    const agent = byId.get(option.id);
-    const status = agent ? getAdapterStatus(agent) : null;
-    const kind = status?.kind ?? "detecting";
+  const registryAgentIds = agents
+    .map((agent) => agent.id)
+    .filter(isAcpRegistryAgentId);
+  return [...agentOptions.map((option) => option.id), ...registryAgentIds].map(
+    (agentId) => {
+      const agent = byId.get(agentId);
+      const status = agent ? getAdapterStatus(agent) : null;
+      const kind = status?.kind ?? "detecting";
 
-    return {
-      value: option.id,
-      label: agentLabels[option.id],
-      selectable: isAdapterSelectable(kind),
-      statusKind: kind,
-    };
-  });
+      return {
+        value: agentId,
+        label: getAgentDisplayLabel(agentId),
+        selectable: isAdapterSelectable(kind),
+        statusKind: kind,
+      };
+    },
+  );
 }

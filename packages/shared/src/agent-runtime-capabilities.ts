@@ -1,7 +1,10 @@
-import type {
-  AgentId,
-  AgentRuntimeAxis,
-  AgentRuntimeAxisCapabilities,
+import { getAcpAgentProfile } from "./acp-agent-profiles";
+import {
+  type AgentId,
+  type AgentRuntimeAxis,
+  type AgentRuntimeAxisCapabilities,
+  type BuiltInAgentId,
+  isAcpRegistryAgentId,
 } from "./contracts";
 
 const inSession = "in-session" as const;
@@ -9,7 +12,7 @@ const inSession = "in-session" as const;
 // This is a transport-level allowlist. Dynamic model catalogs still decide
 // whether a particular selected model exposes an axis at runtime.
 export const agentRuntimeAxisCapabilities: Readonly<
-  Record<AgentId, AgentRuntimeAxisCapabilities>
+  Record<BuiltInAgentId, AgentRuntimeAxisCapabilities>
 > = {
   "claude-agent": {
     model: inSession,
@@ -23,20 +26,6 @@ export const agentRuntimeAxisCapabilities: Readonly<
     permission: inSession,
     speed: inSession,
   },
-  cursor: {
-    model: inSession,
-    thinking: inSession,
-  },
-  devin: {
-    model: inSession,
-    thinking: inSession,
-    speed: inSession,
-  },
-  "grok-build": {
-    model: inSession,
-    thinking: inSession,
-    permission: inSession,
-  },
   opencode: {
     model: inSession,
     agent: inSession,
@@ -49,9 +38,24 @@ export const agentRuntimeAxisCapabilities: Readonly<
   },
 };
 
+const acpRegistryAgentRuntimeAxisCapabilities: AgentRuntimeAxisCapabilities = {
+  model: inSession,
+  thinking: inSession,
+  speed: inSession,
+};
+
+export function getAgentRuntimeAxisCapabilities(
+  agentId: AgentId,
+): AgentRuntimeAxisCapabilities {
+  return isAcpRegistryAgentId(agentId)
+    ? (getAcpAgentProfile(agentId).runtimeAxes ??
+        acpRegistryAgentRuntimeAxisCapabilities)
+    : agentRuntimeAxisCapabilities[agentId];
+}
+
 export function supportsInSessionRuntimeAxis(
   agentId: AgentId,
   axis: AgentRuntimeAxis,
 ) {
-  return agentRuntimeAxisCapabilities[agentId]?.[axis] === inSession;
+  return getAgentRuntimeAxisCapabilities(agentId)?.[axis] === inSession;
 }

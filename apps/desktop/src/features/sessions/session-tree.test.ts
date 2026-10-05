@@ -12,7 +12,7 @@ function session(
   partial: Pick<SessionRecord, "id"> & Partial<SessionRecord>,
 ): SessionRecord {
   return {
-    agentType: "grok-build",
+    agentType: "acp:grok-build",
     sessionModeId: null,
     createdAt: "2026-08-31T00:00:00.000Z",
     lastMessageAt: null,

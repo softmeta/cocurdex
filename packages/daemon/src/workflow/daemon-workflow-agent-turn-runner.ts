@@ -1,3 +1,4 @@
+import { getAgentDescriptor } from "@cocurdex/agent-core";
 import type {
   AgentId,
   AgentPermissionMode,
@@ -19,16 +20,6 @@ import type {
   WorkflowAgentTurnResult,
   WorkflowAgentTurnRunner,
 } from "./runtime-workflow-action-executor";
-
-const agentNames: Record<AgentId, string> = {
-  "claude-agent": "Claude Agent",
-  codex: "Codex",
-  cursor: "Cursor",
-  devin: "Devin",
-  "grok-build": "Grok Build",
-  opencode: "OpenCode",
-  pi: "Pi",
-};
 
 function permissionMode(attempt: WorkflowAttemptRecord) {
   const runtimeMode = attempt.executorBinding.runtime?.permissionMode;
@@ -65,12 +56,11 @@ function modelSnapshot(
   const apiByAgent: Partial<Record<AgentId, AgentProviderSnapshot["api"]>> = {
     "claude-agent": "anthropic-messages",
     codex: "openai-responses",
-    "grok-build": "openai-responses",
     opencode: "openai-completions",
   };
   return {
     providerId: attempt.executorBinding.agentId,
-    providerName: agentNames[attempt.executorBinding.agentId],
+    providerName: getAgentDescriptor(attempt.executorBinding.agentId).label,
     modelId: model,
     modelName: model,
     api: apiByAgent[attempt.executorBinding.agentId] ?? "openai-responses",

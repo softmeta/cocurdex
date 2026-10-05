@@ -6,10 +6,10 @@ import {
   PLAN_USAGE_AGENT_IDS,
   type PlanUsageAgentId,
 } from "@cocurdex/shared";
+import { readAcpRegistryRateLimits } from "./acp-registry";
 import { AdapterRateLimitsProbeError } from "./adapter-rate-limits-error";
 import { readClaudePlanUsage } from "./claude-cli/claude-plan-usage-probe";
 import { readCodexRateLimits } from "./codex/codex-rate-limits";
-import { readGrokBuildRateLimits } from "./grok-build/grok-build-rate-limits";
 
 export type AdapterRateLimitsMap = Partial<
   Record<AgentId, AgentRateLimitsReadResult>
@@ -23,7 +23,7 @@ export type AdapterRateLimitProbes = Record<
 const defaultProbes: AdapterRateLimitProbes = {
   "claude-agent": readClaudePlanUsage,
   codex: readCodexRateLimits,
-  "grok-build": readGrokBuildRateLimits,
+  "acp:grok-build": () => readAcpRegistryRateLimits("acp:grok-build"),
 };
 
 function toProbeError(error: unknown): AgentRateLimitsReadResult {
@@ -64,5 +64,5 @@ export async function readAdapterRateLimits(
       }
     }),
   );
-  return Object.fromEntries(entries);
+  return Object.fromEntries(entries) as AdapterRateLimitsMap;
 }

@@ -3,6 +3,7 @@ import {
   type AgentPermissionMode,
   type AgentRateLimitsRecord,
   type AgentThinkingLevel,
+  isAcpRegistryAgentId,
   PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
@@ -16,8 +17,8 @@ import { useTranslation } from "react-i18next";
 import { CircularProgress, Popover, PopoverTrigger } from "@/components/ui";
 import { agentRuntimeBySessionAtom } from "@/features/agent/runtime";
 import {
-  agentLabels,
   agentsAtom,
+  getAgentDisplayLabel,
   getProviderModelCacheVersion,
   getSessionModeOptions,
   getSessionPermissionMode,
@@ -340,9 +341,8 @@ export function ContextWindowIndicator({
   // Single-provider adapter catalogs hide the provider name; multi-provider
   // ones (OpenCode) keep it so "anthropic / opus" stays readable.
   const ownsModelCatalog =
+    isAcpRegistryAgentId(session.agentType) ||
     session.agentType === "claude-agent" ||
-    session.agentType === "grok-build" ||
-    session.agentType === "devin" ||
     session.agentType === "codex";
   const usage = resolvedSessionId ? sessionUsage[resolvedSessionId] : undefined;
   const model = resolveRuntimeProviderModel(
@@ -443,7 +443,7 @@ export function ContextWindowIndicator({
         snapshot.modelName,
         ownsModelCatalog ? null : snapshot.providerName,
       )
-    : agentLabels[session.agentType];
+    : getAgentDisplayLabel(session.agentType);
   const runtimeMenu = (
     <SessionRuntimeMenu
       agentType={session.agentType}

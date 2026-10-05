@@ -1,9 +1,10 @@
-import type {
-  AgentId,
-  AgentPermissionMode,
-  AgentPermissionModeOption,
-  AgentThinkingLevel,
-  ReasoningEffort,
+import {
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentPermissionModeOption,
+  type AgentThinkingLevel,
+  isAgentId,
+  type ReasoningEffort,
 } from "@cocurdex/shared";
 
 export interface AgentRuntimePreferences {
@@ -24,16 +25,6 @@ export interface AgentRuntimePreferences {
 export const AGENT_RUNTIME_PREFERENCES_STORAGE_KEY =
   "cocurdex:agent-runtime-preferences:v1";
 
-const agentIds = new Set<AgentId>([
-  "claude-agent",
-  "codex",
-  "cursor",
-  "devin",
-  "grok-build",
-  "opencode",
-  "pi",
-]);
-
 function getStorage(): Storage | null {
   if (typeof window === "undefined") {
     return null;
@@ -48,10 +39,6 @@ function getStorage(): Storage | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function isAgentId(value: string): value is AgentId {
-  return agentIds.has(value as AgentId);
 }
 
 function readNullableString(value: unknown): string | null | undefined {

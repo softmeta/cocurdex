@@ -52,7 +52,7 @@ describe("childSessionFromSubagentToolCall", () => {
   it.each([
     ["claude-agent", "claude-subagent:parent:task-1", "Review changes"],
     ["codex", "codex-subagent:parent:child-thread", "Review changes"],
-    ["grok-build", "acp-subagent:parent:task-1", "Standards review"],
+    ["acp:grok-build", "acp-subagent:parent:task-1", "Standards review"],
     ["opencode", "opencode-subagent:parent:child-1", "Explore source"],
   ] as const)(
     "projects a %s child session under its parent",
@@ -97,9 +97,9 @@ describe("childSessionFromSubagentToolCall", () => {
 describe("mergeProjectedSubagentSession", () => {
   it("does not reopen an idle child from an in-progress spawn tool", () => {
     const incoming = childSessionFromSubagentToolCall(
-      parentSession("grok-build"),
+      parentSession("acp:grok-build"),
       toolCall(
-        "grok-build",
+        "acp:grok-build",
         "acp-subagent:parent:task-1",
         "Explore Codex review",
       ),

@@ -3,6 +3,7 @@ import { isReasoningEffort } from "@cocurdex/shared";
 import type {
   AcpConnection,
   AcpConnectionFactory,
+  AcpLaunch,
 } from "../acp/acp-connection";
 import {
   type AcpSessionModel,
@@ -11,15 +12,13 @@ import {
 } from "../acp/acp-session-model";
 import { createSdkAcpConnection } from "../acp/sdk-acp-connection";
 import {
-  GROK_BUILD_ARGS,
-  GROK_BUILD_COMMAND,
   GROK_BUILD_INITIALIZE_META,
   GROK_BUILD_PROBE_TIMEOUT_MS,
   withGrokBuildProbeCwd,
   withGrokBuildProbeTimeout,
 } from "./grok-build-process";
 
-export const GROK_BUILD_PROVIDER_ID = "grok-build";
+export const GROK_BUILD_PROVIDER_ID = "acp:grok-build";
 export const GROK_BUILD_DEFAULT_MODEL_ID = "grok-4.6";
 export const GROK_BUILD_MODELS_LIST_METHOD = "x.ai/models/list";
 
@@ -139,22 +138,23 @@ export async function fetchGrokBuildModelCatalog(connection: AcpConnection) {
 }
 
 async function probeGrokBuildModels(
+  launch: AcpLaunch,
   connectionFactory: AcpConnectionFactory,
   timeoutMs: number,
 ): Promise<CompatibleProviderModel[] | null> {
   return withGrokBuildProbeCwd((cwd) =>
-    probeGrokBuildModelsIn(connectionFactory, cwd, timeoutMs),
+    probeGrokBuildModelsIn(launch, connectionFactory, cwd, timeoutMs),
   );
 }
 
 async function probeGrokBuildModelsIn(
+  launch: AcpLaunch,
   connectionFactory: AcpConnectionFactory,
   cwd: string,
   timeoutMs: number,
 ): Promise<CompatibleProviderModel[] | null> {
   const connection = await connectionFactory({
-    args: GROK_BUILD_ARGS,
-    command: GROK_BUILD_COMMAND,
+    ...launch,
     cwd,
     handlers: {
       onSessionUpdate() {},
@@ -200,6 +200,7 @@ let cachedCatalog: CompatibleProviderModel[] | null = null;
 let inFlightProbe: Promise<CompatibleProviderModel[] | null> | null = null;
 
 export async function listGrokBuildProviderModels(
+  launch: AcpLaunch,
   connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
   options: { forceRefresh?: boolean; timeoutMs?: number } = {},
 ): Promise<CompatibleProviderModel[]> {
@@ -210,7 +211,7 @@ export async function listGrokBuildProviderModels(
   const timeoutMs = options.timeoutMs ?? GROK_BUILD_PROBE_TIMEOUT_MS;
   inFlightProbe ??= (async () => {
     try {
-      return await probeGrokBuildModels(connectionFactory, timeoutMs);
+      return await probeGrokBuildModels(launch, connectionFactory, timeoutMs);
     } catch {
       return null;
     }

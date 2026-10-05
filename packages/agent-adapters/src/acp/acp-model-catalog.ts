@@ -23,6 +23,7 @@ import { createSdkAcpConnection } from "./sdk-acp-connection";
 export interface AcpModelCatalogSpec {
   args: string[];
   command: string;
+  env?: Record<string, string>;
   initializeMeta?: Record<string, unknown>;
   providerId: string;
   providerName: string;
@@ -318,6 +319,7 @@ export async function probeAcpProviderModelAxes(
           const connection = await connectionFactory({
             args: spec.args,
             command: spec.command,
+            env: spec.env,
             cwd,
             handlers: silentProbeHandlers,
           });
@@ -364,6 +366,7 @@ async function probeCatalog(
   const connection = await connectionFactory({
     args: spec.args,
     command: spec.command,
+    env: spec.env,
     cwd,
     handlers: silentProbeHandlers,
   });
@@ -462,6 +465,7 @@ export function loginAcpProvider(
     const connection = await connectionFactory({
       args: spec.args,
       command: spec.command,
+      env: spec.env,
       cwd,
       handlers: silentProbeHandlers,
     });

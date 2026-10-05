@@ -1,4 +1,5 @@
 import {
+  ACP_REGISTRY_AGENT_ID_PREFIX,
   type AgentDescriptor,
   type AgentId,
   type AgentPermissionMode,
@@ -8,9 +9,12 @@ import {
   type AgentThinkingLevel,
   type AgentToolCallRecord,
   agentRuntimeAxisCapabilities,
+  type BuiltInAgentId,
   childSessionFromSubagentToolCall,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
+  isAcpRegistryAgentId,
+  isAgentId,
   isAgentPermissionModeSupportedForModel,
   isPlanModeId,
   mergeProjectedSubagentSession,
@@ -73,20 +77,14 @@ const LAST_SELECTED_AGENT_STORAGE_KEY = "agents.desktop.last-selected-agent";
 // Prefer the same order as the new-session agent picker.
 const agentFallbackOrder: AgentId[] = [
   "pi",
-  "grok-build",
-  "cursor",
-  "devin",
   "codex",
   "claude-agent",
   "opencode",
 ];
 
-export const agentLabels: Record<AgentId, string> = {
+export const agentLabels: Record<BuiltInAgentId, string> = {
   "claude-agent": "Claude Agent",
   codex: "Codex",
-  cursor: "Cursor",
-  devin: "Devin",
-  "grok-build": "Grok Build",
   opencode: "OpenCode",
   pi: "Pi",
 };
@@ -134,54 +132,6 @@ export const agentsAtom = atom<AgentDescriptor[]>([
     },
   },
   {
-    id: "cursor",
-    label: "Cursor",
-    availability: "available",
-    capabilities: {
-      sessionModes: [],
-      permissionModes: getFallbackAgentPermissionModes("cursor"),
-      writeModes: ["native-write"],
-      supportsSteering: false,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("cursor"),
-      transport: "acp",
-      runtimeAxes: agentRuntimeAxisCapabilities.cursor,
-    },
-  },
-  {
-    id: "devin",
-    label: "Devin",
-    availability: "available",
-    capabilities: {
-      sessionModes: [],
-      permissionModes: getFallbackAgentPermissionModes("devin"),
-      writeModes: ["native-write"],
-      supportsSteering: false,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("devin"),
-      transport: "acp",
-      runtimeAxes: agentRuntimeAxisCapabilities.devin,
-    },
-  },
-  {
-    id: "grok-build",
-    label: "Grok Build",
-    availability: "available",
-    capabilities: {
-      sessionModes: planSessionModes(),
-      permissionModes: getFallbackAgentPermissionModes("grok-build"),
-      writeModes: ["native-write"],
-      supportsSteering: false,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("grok-build"),
-      transport: "acp",
-      runtimeAxes: agentRuntimeAxisCapabilities["grok-build"],
-    },
-  },
-  {
     id: "opencode",
     label: "OpenCode",
     availability: "available",
@@ -219,9 +169,26 @@ export const availableAgentsAtom = atom((get) =>
   get(agentsAtom).filter(isAgentReadyToStart),
 );
 
+const registryAgentLabels = new Map<AgentId, string>();
+
+export function getAgentDisplayLabel(agentId: AgentId) {
+  if (isAcpRegistryAgentId(agentId)) {
+    return (
+      registryAgentLabels.get(agentId) ??
+      agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)
+    );
+  }
+  return agentLabels[agentId];
+}
+
 export const bootstrapAgentsAtom = atom(
   null,
   (_get, set, agents: AgentDescriptor[]) => {
+    for (const agent of agents) {
+      if (isAcpRegistryAgentId(agent.id)) {
+        registryAgentLabels.set(agent.id, agent.label);
+      }
+    }
     set(agentsAtom, agents);
   },
 );
@@ -250,27 +217,22 @@ export const applyAgentSessionModesAtom = atom(
   },
 );
 
-function isAgentId(value: unknown): value is AgentId {
-  return typeof value === "string" && value in agentLabels;
-}
-
 function normalizeAgentId(agentType: unknown): AgentId {
-  return isAgentId(agentType) ? agentType : "codex";
+  return typeof agentType === "string" && isAgentId(agentType)
+    ? agentType
+    : "codex";
 }
 
 function getAgentLabel(agentType: unknown) {
-  return i18n.t(`common:agents.${agentTypeToKey(agentType)}`);
+  const agentId = normalizeAgentId(agentType);
+  return isAcpRegistryAgentId(agentId)
+    ? getAgentDisplayLabel(agentId)
+    : i18n.t(`common:agents.${agentTypeToKey(agentId)}`);
 }
 
-function agentTypeToKey(agentType: unknown) {
-  const normalizedAgentType = normalizeAgentId(agentType);
-
+function agentTypeToKey(normalizedAgentType: BuiltInAgentId) {
   if (normalizedAgentType === "claude-agent") {
     return "claudeCli";
-  }
-
-  if (normalizedAgentType === "grok-build") {
-    return "grokBuild";
   }
 
   return normalizedAgentType;
@@ -284,6 +246,9 @@ export function getDefaultSessionTitle(agentType: unknown) {
 
 export function isDefaultSessionTitle(title: string, agentType: AgentId) {
   const normalizedTitle = title.trim();
+  if (isAcpRegistryAgentId(agentType)) {
+    return normalizedTitle === getDefaultSessionTitle(agentType);
+  }
   const agentKey = agentTypeToKey(agentType);
   const localizedDefaultTitles = Object.values(resources).map(
     ({ common, sessions }) =>
@@ -298,10 +263,8 @@ export function isDefaultSessionTitle(title: string, agentType: AgentId) {
 
 function getDefaultWriteMode(agentType: unknown): SessionRecord["writeMode"] {
   const normalizedAgentType = normalizeAgentId(agentType);
-  return normalizedAgentType === "claude-agent" ||
-    normalizedAgentType === "cursor" ||
-    normalizedAgentType === "devin" ||
-    normalizedAgentType === "grok-build"
+  return isAcpRegistryAgentId(normalizedAgentType) ||
+    normalizedAgentType === "claude-agent"
     ? "native-write"
     : "read-only";
 }
@@ -452,7 +415,9 @@ function getStoredLastSelectedAgent(): AgentId {
 
   try {
     const storedAgent = storage.getItem(LAST_SELECTED_AGENT_STORAGE_KEY);
-    return isAgentId(storedAgent) ? storedAgent : DEFAULT_LAST_SELECTED_AGENT;
+    return storedAgent && isAgentId(storedAgent)
+      ? storedAgent
+      : DEFAULT_LAST_SELECTED_AGENT;
   } catch {
     return DEFAULT_LAST_SELECTED_AGENT;
   }

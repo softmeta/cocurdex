@@ -1,11 +1,13 @@
 import {
+  ACP_REGISTRY_AGENT_ID_PREFIX,
   type AgentDescriptor,
   type AgentId,
   type AgentRateLimitsReadResult,
+  isAcpRegistryAgentId,
   isPlanUsageAgentId,
 } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Check, Copy, ExternalLink, RotateCw } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,15 +16,21 @@ import { Badge, Button, Spinner, Text } from "@/components/ui";
 import {
   type AdapterStatus,
   type AdapterStatusKind,
+  AgentIcon,
   agentsAtom,
   bootstrapAgentsAtom,
   getAdapterStatus,
 } from "@/features/sessions";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import {
+  AcpRegistryDialog,
+  AcpRegistryRemoveButton,
+} from "./acp-registry-dialog";
+import {
   AdapterRateLimits,
   AdapterRateLimitsLoading,
 } from "./adapter-rate-limits";
+import { adapterRateLimitsCacheAtom } from "./adapter-rate-limits-cache";
 import { sortAdaptersForSettings } from "./adapter-settings-order";
 
 const statusDotClassName: Record<AdapterStatusKind, string> = {
@@ -32,15 +40,6 @@ const statusDotClassName: Record<AdapterStatusKind, string> = {
   outdated: "bg-status-warning",
   missing: "bg-muted-foreground/40",
   error: "bg-destructive",
-};
-
-const kindLabelTone: Record<AdapterStatusKind, "muted" | "destructive"> = {
-  builtin: "muted",
-  detecting: "muted",
-  ready: "muted",
-  outdated: "muted",
-  missing: "muted",
-  error: "destructive",
 };
 
 function adapterKindLabel(kind: AdapterStatusKind, t: TFunction<"settings">) {
@@ -116,7 +115,7 @@ function AdapterExecutablePath({ path }: { path: string }) {
   return (
     <Button
       aria-label={t("adapters.action.copyPath")}
-      className="mt-0.5 h-auto max-w-full min-w-0 justify-start px-1.5 font-normal"
+      className="relative -start-1.5 mt-0.5 h-auto max-w-full min-w-0 justify-start px-1.5 font-normal"
       size="xs"
       type="button"
       variant="ghost"
@@ -154,10 +153,12 @@ function planUsageAgentIds(agents: AgentDescriptor[]) {
 
 function AdapterRow({
   agent,
+  onChanged,
   rateLimitsLoading,
   rateLimitsResult,
 }: {
   agent: AgentDescriptor;
+  onChanged(): Promise<void>;
   rateLimitsLoading: boolean;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
 }) {
@@ -212,13 +213,17 @@ function AdapterRow({
     <div className="flex items-start justify-between gap-4 py-3">
       <div className="flex min-w-0 flex-1 gap-2.5">
         <span
+          aria-label={adapterKindLabel(status.kind, t)}
           className={cn(
             "mt-1.5 size-2 shrink-0 rounded-full",
             statusDotClassName[status.kind],
           )}
+          role="img"
+          title={adapterKindLabel(status.kind, t)}
         />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
+            <AgentIcon agentId={agent.id} />
             <Text className="font-medium" size="body">
               {agent.label}
             </Text>
@@ -247,16 +252,24 @@ function AdapterRow({
           ) : null}
           {rateLimitsContent}
           {needsAction && installHint ? (
-            <Text className="mt-1 block font-mono" size="meta" tone="muted">
+            <Text
+              className="mt-2 block rounded-control bg-muted px-2.5 py-2 font-mono break-all select-text"
+              size="meta"
+              tone="muted"
+            >
               {installHint.command}
             </Text>
           ) : null}
         </div>
       </div>
-      <div className="mt-0.5 flex shrink-0 items-center gap-1">
-        <Text size="meta" tone={kindLabelTone[status.kind]}>
-          {adapterKindLabel(status.kind, t)}
-        </Text>
+      <div className="-mt-0.5 flex shrink-0 items-center gap-1">
+        {isAcpRegistryAgentId(agent.id) ? (
+          <AcpRegistryRemoveButton
+            agentId={agent.id}
+            label={agent.label}
+            onRemoved={onChanged}
+          />
+        ) : null}
         {needsAction && installHint ? (
           <>
             <Button
@@ -289,15 +302,23 @@ export function AdapterSettingsPanel() {
   const agents = useAtomValue(agentsAtom);
   const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
   const [refreshing, setRefreshing] = useState(false);
-  const [rateLimitsByAgent, setRateLimitsByAgent] = useState<
-    Partial<Record<AgentId, AgentRateLimitsReadResult>>
-  >({});
+  const [rateLimitsByAgent, setRateLimitsByAgent] = useAtom(
+    adapterRateLimitsCacheAtom,
+  );
   const [loadingAgentIds, setLoadingAgentIds] = useState<AgentId[]>(() =>
-    planUsageAgentIds(agents),
+    planUsageAgentIds(agents).filter(
+      (agentId) => rateLimitsByAgent[agentId] === undefined,
+    ),
   );
   const rateLimitsByAgentRef = useRef(rateLimitsByAgent);
   rateLimitsByAgentRef.current = rateLimitsByAgent;
   const sortedAgents = sortAdaptersForSettings(agents);
+  const installedRegistryIds = new Set(
+    agents
+      .map((agent) => agent.id)
+      .filter(isAcpRegistryAgentId)
+      .map((agentId) => agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)),
+  );
 
   const loadRateLimits = async (
     agentsToProbe: AgentDescriptor[],
@@ -382,20 +403,26 @@ export function AdapterSettingsPanel() {
         <Text size="meta" tone="muted">
           {t("adapters.description")}
         </Text>
-        <Button
-          disabled={refreshing}
-          onClick={() => void refresh()}
-          size="xs"
-          type="button"
-          variant="ghost"
-        >
-          {refreshing ? (
-            <Spinner size="xs" />
-          ) : (
-            <RotateCw className="size-3.5" />
-          )}
-          {t("adapters.action.refresh")}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <AcpRegistryDialog
+            installedRegistryIds={installedRegistryIds}
+            onInstalled={() => refresh(true)}
+          />
+          <Button
+            disabled={refreshing}
+            onClick={() => void refresh()}
+            size="xs"
+            type="button"
+            variant="ghost"
+          >
+            {refreshing ? (
+              <Spinner size="xs" />
+            ) : (
+              <RotateCw className="size-3.5" />
+            )}
+            {t("adapters.action.refresh")}
+          </Button>
+        </div>
       </div>
       <div className="rounded-card border border-border/70 bg-settings-surface px-4">
         <div className="flex flex-col divide-y divide-border/60">
@@ -403,6 +430,7 @@ export function AdapterSettingsPanel() {
             <AdapterRow
               agent={agent}
               key={agent.id}
+              onChanged={() => refresh(true)}
               rateLimitsLoading={loadingAgentIds.includes(agent.id)}
               rateLimitsResult={rateLimitsByAgent[agent.id]}
             />

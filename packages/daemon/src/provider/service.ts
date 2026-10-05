@@ -1,15 +1,12 @@
 import {
+  listAcpRegistryProviderModels,
   listClaudeCliProviderModels,
   listCodexProviderModels,
-  listCursorProviderModels,
-  listDevinProviderModels,
-  listGrokBuildProviderModels,
   listOpenCodeProviderModels,
   listPiBuiltInProviderIds,
   listPiProviderTemplates,
-  loginCursorProvider,
-  loginDevinProvider,
-  probeDevinProviderModelAxes,
+  loginAcpRegistryProvider,
+  probeAcpRegistryProviderModelAxes,
 } from "@cocurdex/agent-adapters";
 import type {
   AgentId,
@@ -25,7 +22,9 @@ import type {
 } from "@cocurdex/shared";
 import {
   filterCompatibleProviderModels,
+  getAcpAgentProfile,
   getCompatibleProviderApis,
+  isAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { ProviderCredentials } from "../provider-credentials/service";
@@ -239,12 +238,8 @@ export class DaemonProviderService {
   }
 
   async loginAgent(agentId: AgentId) {
-    if (agentId === "cursor") {
-      await loginCursorProvider();
-      return null;
-    }
-    if (agentId === "devin") {
-      await loginDevinProvider();
+    if (isAcpRegistryAgentId(agentId)) {
+      await loginAcpRegistryProvider(agentId);
       return null;
     }
     throw new Error(`Agent ${agentId} does not support login`);
@@ -272,16 +267,8 @@ export class DaemonProviderService {
       }
     }
 
-    if (agentId === "cursor") {
-      return listCursorProviderModels(undefined, options);
-    }
-
-    if (agentId === "devin") {
-      return listDevinProviderModels(undefined, options);
-    }
-
-    if (agentId === "grok-build") {
-      return listGrokBuildProviderModels(undefined, options);
+    if (isAcpRegistryAgentId(agentId)) {
+      return listAcpRegistryProviderModels(agentId, options);
     }
 
     const [allProviders, allModels, signedOut] = await Promise.all([
@@ -350,13 +337,17 @@ export class DaemonProviderService {
     agentId: AgentId,
     modelId: string,
   ): Promise<AgentProviderModelAxes | null> {
-    if (agentId !== "devin") {
+    if (
+      !isAcpRegistryAgentId(agentId) ||
+      !getAcpAgentProfile(agentId).lazyModelAxes
+    ) {
       return null;
     }
     try {
-      return await probeDevinProviderModelAxes(modelId);
+      return await probeAcpRegistryProviderModelAxes(agentId, modelId);
     } catch (error) {
-      logDaemonDiagnostic("warn", "providerModels.devin.axesProbeFailed", {
+      logDaemonDiagnostic("warn", "providerModels.acp.axesProbeFailed", {
+        agentId,
         modelId,
         error: error instanceof Error ? error.message : "Unknown error",
       });

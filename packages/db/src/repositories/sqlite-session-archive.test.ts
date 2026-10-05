@@ -28,7 +28,7 @@ async function setup() {
     id: "parent",
     workspaceId: "workspace",
     title: "Parent session",
-    agentType: "grok-build",
+    agentType: "acp:grok-build",
     status: "idle",
     writeMode: "native-write",
     sessionModeId: null,

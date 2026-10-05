@@ -1,8 +1,10 @@
-import type { AgentDescriptor } from "@cocurdex/shared";
 import {
+  type AgentDescriptor,
+  type AgentInstallHint,
   agentInstallHints,
   agentMinimumVersions,
   getAgentVersionStatus,
+  isAcpRegistryAgentId,
 } from "@cocurdex/shared";
 
 export type AdapterStatusKind =
@@ -18,7 +20,7 @@ export interface AdapterStatus {
   version: string | null;
   minimumVersion: string | null;
   executablePath: string | null;
-  installHint: (typeof agentInstallHints)[keyof typeof agentInstallHints];
+  installHint: AgentInstallHint | null;
   error: string | null;
 }
 
@@ -26,20 +28,24 @@ export interface AdapterStatus {
  * 把可用性、已装版本和适配器校验下限收成设置页 / 选择器共用的一种状态。
  */
 export function getAdapterStatus(agent: AgentDescriptor): AdapterStatus {
-  const minimumVersion = agentMinimumVersions[agent.id];
+  const isRegistryAgent = isAcpRegistryAgentId(agent.id);
   const version = agent.installation?.version ?? null;
   const base = {
     version,
-    minimumVersion,
+    minimumVersion: isAcpRegistryAgentId(agent.id)
+      ? null
+      : agentMinimumVersions[agent.id],
     executablePath: agent.installation?.executablePath ?? null,
-    installHint: agentInstallHints[agent.id],
+    installHint: isAcpRegistryAgentId(agent.id)
+      ? null
+      : agentInstallHints[agent.id],
     error: agent.installation?.error ?? null,
   };
 
   // installHint 为 null 表示随应用内置（目前只有 pi）。
   // 其余适配器都是用户安装的 CLI：没有 installation 记录代表检测还没返回，
   // 绝不是内置。
-  if (!base.installHint) {
+  if (!base.installHint && !isRegistryAgent) {
     return { ...base, kind: "builtin" };
   }
   if (!agent.installation) {

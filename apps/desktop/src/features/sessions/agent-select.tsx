@@ -28,6 +28,7 @@ import {
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
 import type { AdapterStatusKind } from "./adapter-status";
+import { AgentIcon } from "./agent-icon";
 import type { AgentSelectOption } from "./agent-select-options";
 
 export interface AgentRoleSelectOption {
@@ -108,6 +109,8 @@ export function AgentSelect({
   const selectedRole =
     roles?.find((role) => role.id === selectedRoleId) ?? null;
   const showRoleHover = Boolean(selectedRole) && !open;
+  const showTriggerIcon =
+    !selectedRole && selectableOptions.some((option) => option.value === value);
 
   return (
     <DropdownMenu
@@ -141,6 +144,7 @@ export function AgentSelect({
               disabled={isDisabled}
               showChevron={showChevron}
             >
+              {showTriggerIcon ? <AgentIcon agentId={value} /> : null}
               {triggerLabel}
             </AppDropdownTriggerButton>
           </DropdownMenuTrigger>
@@ -317,6 +321,7 @@ function AgentSelectRow({
         onSelect(option);
       }}
     >
+      <AgentIcon agentId={option.value} />
       <span className="min-w-0 flex-1 truncate">{option.label}</span>
       {statusLabel ? (
         <span className="shrink-0 text-meta text-muted-foreground">

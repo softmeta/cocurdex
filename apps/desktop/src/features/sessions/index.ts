@@ -3,6 +3,7 @@ export {
   type AdapterStatusKind,
   getAdapterStatus,
 } from "./adapter-status";
+export { AgentIcon } from "./agent-icon";
 export {
   getAgentRuntimePreferences,
   updateAgentRuntimePreferences,
@@ -72,6 +73,7 @@ export {
   collapsedSessionIdsAtom,
   createDraftSessionAtom,
   deleteSessionAtom,
+  getAgentDisplayLabel,
   getSessionModeOptions,
   getSessionPermissionMode,
   isDefaultSessionTitle,

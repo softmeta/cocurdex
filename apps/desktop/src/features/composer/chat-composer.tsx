@@ -33,9 +33,9 @@ import {
 import { DropdownMenuGroup, DropdownMenuSeparator } from "@/components/ui";
 import {
   AgentSelect,
-  agentLabels,
   agentsAtom,
   buildAgentSelectOptions,
+  getAgentDisplayLabel,
   getSessionModeOptions,
   SessionModeSubmenu,
 } from "@/features/sessions";
@@ -291,7 +291,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const hasUnsupportedDocument =
       !canAttachDocuments && managedAttachments.some(isDocumentAttachment);
     const documentCapabilityError = hasUnsupportedDocument
-      ? `${agentLabels[selectedAgent]} does not support PDF attachments.`
+      ? `${getAgentDisplayLabel(selectedAgent)} does not support PDF attachments.`
       : null;
     const attachmentError = attachmentImportError ?? documentCapabilityError;
     const hasContent =
@@ -346,7 +346,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       if (invalidFile) {
         let message = getImageAttachmentValidationError(invalidFile);
         if (invalidFile.type === DOCUMENT_ATTACHMENT_ACCEPT) {
-          message = `${agentLabels[selectedAgent]} does not support PDF attachments.`;
+          message = `${getAgentDisplayLabel(selectedAgent)} does not support PDF attachments.`;
         } else if (canAttachDocuments) {
           message = "Only PNG, JPEG, GIF, WebP, or PDF files are supported.";
         }

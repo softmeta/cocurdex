@@ -9,6 +9,8 @@ import {
   readGrokBuildRateLimits,
 } from "./grok-build-rate-limits";
 
+const TEST_GROK_LAUNCH = { command: "grok", args: ["agent", "stdio"] };
+
 describe("parseGrokBuildRateLimits", () => {
   it("maps the current weekly Grok credit period", () => {
     expect(
@@ -66,7 +68,7 @@ describe("readGrokBuildRateLimits", () => {
       async () => connection,
     ) as unknown as AcpConnectionFactory;
 
-    const record = await readGrokBuildRateLimits(factory);
+    const record = await readGrokBuildRateLimits(TEST_GROK_LAUNCH, factory);
 
     expect(connection.authenticate).toHaveBeenCalledWith({
       methodId: expect.stringMatching(/^(cached_token|xai\.api_key)$/),
@@ -93,7 +95,7 @@ describe("readGrokBuildRateLimits", () => {
     } as unknown as AcpConnection;
 
     await expect(
-      readGrokBuildRateLimits(async () => connection),
+      readGrokBuildRateLimits(TEST_GROK_LAUNCH, async () => connection),
     ).resolves.toBeNull();
     expect(connection.close).toHaveBeenCalledOnce();
   });
@@ -111,9 +113,13 @@ describe("readGrokBuildRateLimits", () => {
       close,
     } as unknown as AcpConnection;
 
-    const pending = readGrokBuildRateLimits(async () => connection, {
-      timeoutMs: 20,
-    });
+    const pending = readGrokBuildRateLimits(
+      TEST_GROK_LAUNCH,
+      async () => connection,
+      {
+        timeoutMs: 20,
+      },
+    );
     await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
     let settled = false;
     void pending.then(() => {

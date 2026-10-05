@@ -18,7 +18,7 @@ describe("readAdapterRateLimits", () => {
     const result = await readAdapterRateLimits(["claude-agent", "codex"], {
       "claude-agent": claude,
       codex,
-      "grok-build": grok,
+      "acp:grok-build": grok,
     });
 
     expect(claude).toHaveBeenCalledOnce();
@@ -36,12 +36,12 @@ describe("readAdapterRateLimits", () => {
         windows: [expect.objectContaining({ usedPercent: 20 })],
       }),
     });
-    expect(result["grok-build"]).toBeUndefined();
+    expect(result["acp:grok-build"]).toBeUndefined();
   });
 
   it("isolates a failing probe so the others still return", async () => {
     const result = await readAdapterRateLimits(
-      ["claude-agent", "codex", "grok-build"],
+      ["claude-agent", "codex", "acp:grok-build"],
       {
         "claude-agent": async () => {
           throw new Error("sdk down");
@@ -50,7 +50,7 @@ describe("readAdapterRateLimits", () => {
           windows: [{ kind: "five-hour", usedPercent: 5 }],
           updatedAt: "2026-09-04T00:00:00.000Z",
         }),
-        "grok-build": async () => null,
+        "acp:grok-build": async () => null,
       },
     );
 
@@ -65,6 +65,6 @@ describe("readAdapterRateLimits", () => {
         windows: [expect.objectContaining({ kind: "five-hour" })],
       }),
     });
-    expect(result["grok-build"]).toEqual({ status: "unavailable" });
+    expect(result["acp:grok-build"]).toEqual({ status: "unavailable" });
   });
 });

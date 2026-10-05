@@ -1,4 +1,7 @@
 import type {
+  AcpRegistryAgentId,
+  AcpRegistryCatalogAgent,
+  AcpRegistryInstalledAgent,
   AgentId,
   AgentProviderModelAxes,
   AgentProviderSelection,
@@ -369,6 +372,16 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("provider:probeModelAxes", agentId, modelId),
   loginAgent: (agentId: AgentId): Promise<void> =>
     ipcRenderer.invoke("agent:login", agentId),
+  listAcpRegistryCatalog: (options?: {
+    forceRefresh?: boolean;
+  }): Promise<AcpRegistryCatalogAgent[]> =>
+    ipcRenderer.invoke("acpRegistry:catalog", options),
+  installAcpRegistryAgent: (
+    registryId: string,
+  ): Promise<AcpRegistryInstalledAgent> =>
+    ipcRenderer.invoke("acpRegistry:install", registryId),
+  uninstallAcpRegistryAgent: (agentId: AcpRegistryAgentId): Promise<void> =>
+    ipcRenderer.invoke("acpRegistry:uninstall", agentId),
   listAgentProviderDefaults: (): Promise<AgentProviderSelection[]> =>
     ipcRenderer.invoke("provider:listDefaults"),
   getAgentProviderDefault: (agentId: AgentId) =>

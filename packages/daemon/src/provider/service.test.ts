@@ -9,27 +9,23 @@ import type { DaemonState } from "../state";
 const listCodexProviderModelsMock = vi.hoisted(() => vi.fn());
 const listOpenCodeProviderModelsMock = vi.hoisted(() => vi.fn());
 const listClaudeCliProviderModelsMock = vi.hoisted(() => vi.fn());
-const listCursorProviderModelsMock = vi.hoisted(() => vi.fn());
-const listDevinProviderModelsMock = vi.hoisted(() => vi.fn());
-const listGrokBuildProviderModelsMock = vi.hoisted(() => vi.fn());
+const listAcpRegistryProviderModelsMock = vi.hoisted(() => vi.fn());
 const listPiProviderModelsMock = vi.hoisted(() => vi.fn());
 const listPiBuiltInProviderIdsMock = vi.hoisted(() => vi.fn());
 const listPiProviderTemplatesMock = vi.hoisted(() => vi.fn());
 const generatePiConversationTitleMock = vi.hoisted(() => vi.fn());
-const probeDevinProviderModelAxesMock = vi.hoisted(() => vi.fn());
+const probeAcpRegistryProviderModelAxesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@cocurdex/agent-adapters", () => ({
   generatePiConversationTitle: generatePiConversationTitleMock,
   listClaudeCliProviderModels: listClaudeCliProviderModelsMock,
   listCodexProviderModels: listCodexProviderModelsMock,
-  listCursorProviderModels: listCursorProviderModelsMock,
-  listDevinProviderModels: listDevinProviderModelsMock,
-  listGrokBuildProviderModels: listGrokBuildProviderModelsMock,
+  listAcpRegistryProviderModels: listAcpRegistryProviderModelsMock,
   listOpenCodeProviderModels: listOpenCodeProviderModelsMock,
   listPiBuiltInProviderIds: listPiBuiltInProviderIdsMock,
   listPiProviderModels: listPiProviderModelsMock,
   listPiProviderTemplates: listPiProviderTemplatesMock,
-  probeDevinProviderModelAxes: probeDevinProviderModelAxesMock,
+  probeAcpRegistryProviderModelAxes: probeAcpRegistryProviderModelAxesMock,
 }));
 
 import { DaemonProviderService } from "./service";
@@ -108,34 +104,21 @@ describe("DaemonProviderService", () => {
     expect(state.listProviderConfigs).not.toHaveBeenCalled();
   });
 
-  it("forwards forced refreshes to adapter-owned catalogs", async () => {
-    listGrokBuildProviderModelsMock.mockResolvedValue([]);
+  it("forwards forced refreshes to registry agent catalogs", async () => {
+    listAcpRegistryProviderModelsMock.mockResolvedValue([]);
     const service = new DaemonProviderService(
       createState(),
       createCredentials(),
     );
 
-    await service.listCompatibleProviderModels("grok-build", {
+    await service.listCompatibleProviderModels("acp:grok-build", {
       forceRefresh: true,
     });
 
-    expect(listGrokBuildProviderModelsMock).toHaveBeenCalledWith(undefined, {
-      forceRefresh: true,
-    });
-
-    listCursorProviderModelsMock.mockResolvedValue([]);
-    await service.listCompatibleProviderModels("cursor", {
-      forceRefresh: true,
-    });
-    expect(listCursorProviderModelsMock).toHaveBeenCalledWith(undefined, {
-      forceRefresh: true,
-    });
-
-    listDevinProviderModelsMock.mockResolvedValue([]);
-    await service.listCompatibleProviderModels("devin", { forceRefresh: true });
-    expect(listDevinProviderModelsMock).toHaveBeenCalledWith(undefined, {
-      forceRefresh: true,
-    });
+    expect(listAcpRegistryProviderModelsMock).toHaveBeenCalledWith(
+      "acp:grok-build",
+      { forceRefresh: true },
+    );
   });
 
   it("probes Devin's per-model axes on demand and not for other agents", async () => {
@@ -144,28 +127,32 @@ describe("DaemonProviderService", () => {
       supportedReasoningEfforts: [],
       serviceTiers: [{ id: "fast", name: "Fast", description: "" }],
     };
-    probeDevinProviderModelAxesMock.mockResolvedValue(axes);
+    probeAcpRegistryProviderModelAxesMock.mockResolvedValue(axes);
     const service = new DaemonProviderService(
       createState(),
       createCredentials(),
     );
 
     await expect(
-      service.probeAgentModelAxes("devin", "claude-opus-5-5-medium"),
+      service.probeAgentModelAxes("acp:devin", "claude-opus-5-5-medium"),
     ).resolves.toBe(axes);
-    expect(probeDevinProviderModelAxesMock).toHaveBeenCalledWith(
+    expect(probeAcpRegistryProviderModelAxesMock).toHaveBeenCalledWith(
+      "acp:devin",
       "claude-opus-5-5-medium",
     );
 
-    probeDevinProviderModelAxesMock.mockReset();
+    probeAcpRegistryProviderModelAxesMock.mockReset();
     await expect(
       service.probeAgentModelAxes("codex", "gpt-5.5"),
     ).resolves.toBeNull();
-    expect(probeDevinProviderModelAxesMock).not.toHaveBeenCalled();
+    await expect(
+      service.probeAgentModelAxes("acp:grok-build", "grok-4.6"),
+    ).resolves.toBeNull();
+    expect(probeAcpRegistryProviderModelAxesMock).not.toHaveBeenCalled();
   });
 
   it("swallows probe failures so the picker keeps working without axes", async () => {
-    probeDevinProviderModelAxesMock.mockRejectedValue(
+    probeAcpRegistryProviderModelAxesMock.mockRejectedValue(
       new Error("spawn failed"),
     );
     const service = new DaemonProviderService(
@@ -174,7 +161,7 @@ describe("DaemonProviderService", () => {
     );
 
     await expect(
-      service.probeAgentModelAxes("devin", "swe-2-high"),
+      service.probeAgentModelAxes("acp:devin", "swe-2-high"),
     ).resolves.toBeNull();
   });
 

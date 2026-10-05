@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getFallbackAgentPermissionModes } from "./agent-permission-modes";
 import {
   agentRuntimeAxisCapabilities,
   supportsInSessionRuntimeAxis,
@@ -21,15 +22,28 @@ describe("agent runtime capabilities", () => {
     expect(supportsInSessionRuntimeAxis("codex", "permission")).toBe(true);
     expect(supportsInSessionRuntimeAxis("opencode", "variant")).toBe(true);
     expect(supportsInSessionRuntimeAxis("opencode", "permission")).toBe(true);
-    expect(supportsInSessionRuntimeAxis("cursor", "model")).toBe(true);
-    expect(supportsInSessionRuntimeAxis("cursor", "permission")).toBe(false);
-    expect(supportsInSessionRuntimeAxis("devin", "model")).toBe(true);
-    expect(supportsInSessionRuntimeAxis("devin", "permission")).toBe(false);
+    expect(supportsInSessionRuntimeAxis("acp:cursor", "model")).toBe(true);
+    expect(supportsInSessionRuntimeAxis("acp:cursor", "permission")).toBe(
+      false,
+    );
+    expect(supportsInSessionRuntimeAxis("acp:devin", "model")).toBe(true);
+    expect(supportsInSessionRuntimeAxis("acp:devin", "permission")).toBe(false);
   });
 
   it("fails closed for an unknown runtime agent", () => {
     expect(
       supportsInSessionRuntimeAxis("unknown-agent" as AgentId, "thinking"),
     ).toBe(false);
+  });
+});
+
+describe("ACP registry agent profiles", () => {
+  it("applies a vendor profile and falls back for unknown registry agents", () => {
+    expect(supportsInSessionRuntimeAxis("acp:grok-build", "permission")).toBe(
+      true,
+    );
+    expect(getFallbackAgentPermissionModes("acp:grok-build")).toHaveLength(3);
+    expect(supportsInSessionRuntimeAxis("acp:goose", "speed")).toBe(true);
+    expect(getFallbackAgentPermissionModes("acp:goose")).toEqual([]);
   });
 });

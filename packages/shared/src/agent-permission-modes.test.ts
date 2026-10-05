@@ -41,7 +41,7 @@ describe("isAgentPermissionModeSupportedForModel", () => {
     ).toBe(true);
     expect(
       isAgentPermissionModeSupportedForModel(
-        "grok-build",
+        "acp:grok-build",
         "grok-auto",
         "haiku",
       ),

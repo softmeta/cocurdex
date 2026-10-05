@@ -6,6 +6,7 @@ import type {
 import {
   CODEX_BUILT_IN_PROVIDER_ID,
   CODEX_DEFAULT_MODEL_ID,
+  isAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import { getProviderModelValue } from "./provider-model-cache";
 
@@ -50,11 +51,9 @@ export function getDefaultProviderModelValue(
   }
 
   if (
+    isAcpRegistryAgentId(agentId) ||
     agentId === "opencode" ||
-    agentId === "grok-build" ||
-    agentId === "claude-agent" ||
-    agentId === "cursor" ||
-    agentId === "devin"
+    agentId === "claude-agent"
   ) {
     return getItemValue(items.find(({ model }) => model.isDefault) ?? items[0]);
   }

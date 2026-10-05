@@ -21,14 +21,14 @@ const sonnet = {
 const spec = {
   command: "cursor-agent",
   args: ["acp"],
-  providerId: "cursor",
+  providerId: "acp:cursor",
   providerName: "Cursor",
 };
 
 const devinSpec = {
-  command: "devin",
+  command: "acp:devin",
   args: ["acp"],
-  providerId: "devin",
+  providerId: "acp:devin",
   providerName: "Devin",
 };
 
@@ -119,7 +119,7 @@ describe("listAcpProviderModels", () => {
       isDefault: true,
       contextLimit: 200_000,
     });
-    expect(items[0]?.provider.id).toBe("cursor");
+    expect(items[0]?.provider.id).toBe("acp:cursor");
   });
 
   it("falls back to session/new when initialize has no models", async () => {
@@ -164,9 +164,9 @@ describe("listAcpProviderModels", () => {
 
     const items = await listAcpProviderModels(
       {
-        command: "devin",
+        command: "acp:devin",
         args: ["acp"],
-        providerId: "devin",
+        providerId: "acp:devin",
         providerName: "Devin",
       },
       factory,

@@ -1,10 +1,12 @@
 import { getFallbackAgentPermissionModes } from "./agent-permission-modes";
-import type {
-  AgentId,
-  AgentPermissionMode,
-  AgentProviderSnapshot,
-  AgentThinkingLevel,
-  ReasoningEffort,
+import {
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentProviderSnapshot,
+  type AgentThinkingLevel,
+  type BuiltInAgentId,
+  isAcpRegistryAgentId,
+  type ReasoningEffort,
 } from "./contracts";
 import type {
   WorkflowExecutorBinding,
@@ -14,12 +16,9 @@ import type {
 
 export const AGENT_ROLE_NAME_MAX_LENGTH = 80;
 
-const AGENT_IDS: readonly AgentId[] = [
+const BUILT_IN_AGENT_IDS: readonly BuiltInAgentId[] = [
   "claude-agent",
   "codex",
-  "cursor",
-  "devin",
-  "grok-build",
   "opencode",
   "pi",
 ];
@@ -27,7 +26,6 @@ const AGENT_IDS: readonly AgentId[] = [
 const API_BY_AGENT: Partial<Record<AgentId, AgentProviderSnapshot["api"]>> = {
   "claude-agent": "anthropic-messages",
   codex: "openai-responses",
-  "grok-build": "openai-responses",
   opencode: "openai-completions",
   pi: "openai-completions",
 };
@@ -71,7 +69,10 @@ export interface SaveAgentRolePayload extends AgentRoleDraft {
 }
 
 export function isAgentId(value: string): value is AgentId {
-  return AGENT_IDS.includes(value as AgentId);
+  return (
+    BUILT_IN_AGENT_IDS.includes(value as BuiltInAgentId) ||
+    isAcpRegistryAgentId(value)
+  );
 }
 
 export function normalizeAgentRoleName(name: string) {

@@ -50,7 +50,7 @@ describe("agent-owned level names", () => {
   it("keeps the label the agent reports for its own effort levels", () => {
     expect(
       getThinkingLevelOptions({
-        agentType: "grok-build",
+        agentType: "acp:grok-build",
         supportedReasoningEfforts: [
           {
             reasoningEffort: "high",
@@ -71,11 +71,11 @@ describe("agent-owned level names", () => {
   });
 });
 
-describe("devin", () => {
+describe("acp:devin", () => {
   it("drives the picker from the reported effort list", () => {
     expect(
       getThinkingLevelOptions({
-        agentType: "devin",
+        agentType: "acp:devin",
         supportedReasoningEfforts: [
           { reasoningEffort: "medium", description: "Medium", label: "Medium" },
           { reasoningEffort: "high", description: "High", label: "High" },
@@ -137,12 +137,14 @@ describe("getConfigOptionThinkingLevels", () => {
 
 describe("getEffectiveThinkingLevel", () => {
   it("prefers the explicit thinking level for Grok over the legacy effort field", () => {
-    expect(getEffectiveThinkingLevel("grok-build", "high", "xhigh")).toBe(
+    expect(getEffectiveThinkingLevel("acp:grok-build", "high", "xhigh")).toBe(
       "xhigh",
     );
   });
 
   it("falls back to the effort field for older non-Codex sessions", () => {
-    expect(getEffectiveThinkingLevel("grok-build", "high", null)).toBe("high");
+    expect(getEffectiveThinkingLevel("acp:grok-build", "high", null)).toBe(
+      "high",
+    );
   });
 });

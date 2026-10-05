@@ -1,24 +1,26 @@
-import type {
-  CreateColumnPayload,
-  CreateIssuePayload,
-  CreateNotePayload,
-  CreateViewPayload,
-  DeleteColumnPayload,
-  DeleteIssuePayload,
-  DeleteNotePayload,
-  DeleteViewPayload,
-  GetIssuePayload,
-  GetNotePayload,
-  LoadViewPayload,
-  MoveColumnPayload,
-  MoveIssuePayload,
-  MoveNotePayload,
-  SaveWorkflowDefinitionPayload,
-  SearchDocumentsPayload,
-  UpdateColumnPayload,
-  UpdateIssuePayload,
-  UpdateNotePayload,
-  UpdateViewPayload,
+import {
+  type AgentId,
+  type CreateColumnPayload,
+  type CreateIssuePayload,
+  type CreateNotePayload,
+  type CreateViewPayload,
+  type DeleteColumnPayload,
+  type DeleteIssuePayload,
+  type DeleteNotePayload,
+  type DeleteViewPayload,
+  type GetIssuePayload,
+  type GetNotePayload,
+  isAgentId,
+  type LoadViewPayload,
+  type MoveColumnPayload,
+  type MoveIssuePayload,
+  type MoveNotePayload,
+  type SaveWorkflowDefinitionPayload,
+  type SearchDocumentsPayload,
+  type UpdateColumnPayload,
+  type UpdateIssuePayload,
+  type UpdateNotePayload,
+  type UpdateViewPayload,
 } from "@cocurdex/shared";
 import { z } from "zod";
 
@@ -211,15 +213,11 @@ const workflowTransitionSchema = z.object({
 });
 
 const workflowExecutorBindingSchema = z.object({
-  agentId: z.enum([
-    "claude-agent",
-    "codex",
-    "cursor",
-    "devin",
-    "grok-build",
-    "pi",
-    "opencode",
-  ]),
+  agentId: z
+    .string()
+    .max(80)
+    .refine(isAgentId, "unknown agent")
+    .transform((value) => value as AgentId),
   agentRoleId: z.string().min(1).max(128).optional(),
   model: z.string().max(256).optional(),
   permissionProfile: z.enum(["read_only", "workspace_write", "validation"]),

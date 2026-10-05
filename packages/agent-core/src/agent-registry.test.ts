@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { detectAgentInstallations } from "./agent-installation";
-import { createAgentRegistry } from "./agent-registry";
+import {
+  createAgentRegistry,
+  getAgentDescriptor,
+  setInstalledAcpRegistryAgents,
+} from "./agent-registry";
 
 describe("createAgentRegistry", () => {
   it("returns Claude Agent metadata first with native-write capability", () => {
@@ -33,10 +37,7 @@ describe("createAgentRegistry", () => {
     expect(supportsSteering).toEqual({
       "claude-agent": true,
       codex: true,
-      cursor: false,
-      devin: false,
       opencode: false,
-      "grok-build": true,
       pi: true,
     });
   });
@@ -53,10 +54,7 @@ describe("createAgentRegistry", () => {
     expect(sessionTitleStrategies).toEqual({
       "claude-agent": "adapter-generated",
       codex: "adapter-generated",
-      cursor: "native",
-      devin: "native",
       opencode: "native",
-      "grok-build": "native",
       pi: "app-generated",
     });
   });
@@ -89,40 +87,6 @@ describe("createAgentRegistry", () => {
         executablePath: null,
       },
     });
-    expect(agents.find((agent) => agent.id === "cursor")).toMatchObject({
-      availability: "missing",
-      capabilities: {
-        transport: "acp",
-      },
-      installation: {
-        executableName: "cursor-agent",
-        executablePath: null,
-      },
-    });
-    expect(agents.find((agent) => agent.id === "devin")).toMatchObject({
-      availability: "missing",
-      capabilities: {
-        transport: "acp",
-      },
-      installation: {
-        executableName: "devin",
-        executablePath: null,
-      },
-    });
-    expect(agents.find((agent) => agent.id === "grok-build")).toMatchObject({
-      availability: "missing",
-      capabilities: {
-        transport: "acp",
-      },
-      installation: {
-        executableName: "grok",
-        executablePath: null,
-      },
-    });
-    expect(agents.find((agent) => agent.id === "pi")).toMatchObject({
-      availability: "available",
-      installation: null,
-    });
   });
 
   it("keeps built-in Pi available without probing a local pi command", async () => {
@@ -144,5 +108,41 @@ describe("createAgentRegistry", () => {
       },
       installation: null,
     });
+  });
+
+  it("builds registry agent descriptors from the installed record and vendor profile", () => {
+    setInstalledAcpRegistryAgents([
+      {
+        agentId: "acp:grok-build",
+        registryId: "grok-build",
+        name: "Grok Build",
+        version: "1.0.49",
+        description: null,
+        distribution: "npx",
+        command: "npx",
+        args: ["-y", "@xai-official/grok@1.0.49", "agent", "stdio"],
+        env: {},
+        installedAt: "2026-10-05T00:00:00.000Z",
+      },
+    ]);
+    try {
+      expect(getAgentDescriptor("acp:grok-build")).toMatchObject({
+        label: "Grok Build",
+        availability: "available",
+        capabilities: {
+          supportsSteering: true,
+          transport: "acp",
+          sessionModes: [{ id: "default" }, { id: "plan" }],
+          permissionModes: [
+            { id: "grok-ask" },
+            { id: "grok-auto" },
+            { id: "grok-always-approve" },
+          ],
+        },
+      });
+      expect(getAgentDescriptor("acp:goose").availability).toBe("missing");
+    } finally {
+      setInstalledAcpRegistryAgents([]);
+    }
   });
 });

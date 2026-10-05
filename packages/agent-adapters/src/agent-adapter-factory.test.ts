@@ -1,17 +1,39 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { setInstalledAcpRegistryAgents } from "@cocurdex/agent-core";
+import { toAcpRegistryAgentId } from "@cocurdex/shared";
+import { afterEach, describe, expect, it } from "vitest";
 import { createAgentAdapter } from "./agent-adapter-factory";
 
+function installRegistryAgents(registryIds: string[]) {
+  setInstalledAcpRegistryAgents(
+    registryIds.map((registryId) => ({
+      agentId: toAcpRegistryAgentId(registryId),
+      registryId,
+      name: registryId,
+      version: "1.0.0",
+      description: null,
+      distribution: "binary",
+      command: registryId,
+      args: ["acp"],
+      env: {},
+      installedAt: "2026-10-05T00:00:00.000Z",
+    })),
+  );
+}
+
 describe("createAgentAdapter", () => {
+  afterEach(() => setInstalledAcpRegistryAgents([]));
+
   it("provides standard skill discovery for every registered agent", async () => {
+    installRegistryAgents(["cursor", "devin", "grok-build"]);
     const agentIds = [
       "claude-agent",
       "codex",
-      "cursor",
-      "devin",
-      "grok-build",
+      "acp:cursor",
+      "acp:devin",
+      "acp:grok-build",
       "opencode",
       "pi",
     ] as const;

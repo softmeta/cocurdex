@@ -67,7 +67,7 @@ describe("sortAdaptersForSettings", () => {
 
   it("keeps the original order among adapters in the same status", () => {
     const grok = descriptor({
-      id: "grok-build",
+      id: "acp:grok-build",
       installation: {
         executableName: "grok",
         executablePath: "/usr/bin/grok",
@@ -85,6 +85,6 @@ describe("sortAdaptersForSettings", () => {
 
     expect(
       sortAdaptersForSettings([grok, codex]).map((agent) => agent.id),
-    ).toEqual(["grok-build", "codex"]);
+    ).toEqual(["acp:grok-build", "codex"]);
   });
 });

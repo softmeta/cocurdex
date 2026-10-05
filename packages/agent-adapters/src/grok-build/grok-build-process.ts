@@ -2,11 +2,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-// Shared spawn contract for `grok agent stdio`, used by both the session
-// adapter and the model-catalog probe so they always talk to the same process
-// shape (and the same startup hints).
-export const GROK_BUILD_COMMAND = "grok";
-
 export const GROK_BUILD_PROBE_TIMEOUT_MS = 20_000;
 
 export async function withGrokBuildProbeCwd<T>(

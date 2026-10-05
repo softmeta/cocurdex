@@ -27,7 +27,7 @@ describe("agent runtime preferences", () => {
       openCodeAgent: "build",
       openCodeVariant: "high",
     });
-    updateAgentRuntimePreferences("devin", {
+    updateAgentRuntimePreferences("acp:devin", {
       sessionModeId: "smart",
     });
 
@@ -45,16 +45,16 @@ describe("agent runtime preferences", () => {
       openCodeAgent: "build",
       openCodeVariant: "high",
     });
-    expect(getAgentRuntimePreferences("devin")).toMatchObject({
+    expect(getAgentRuntimePreferences("acp:devin")).toMatchObject({
       sessionModeId: "smart",
     });
   });
 
   it("clears a remembered session mode with null", () => {
-    updateAgentRuntimePreferences("devin", { sessionModeId: "smart" });
-    updateAgentRuntimePreferences("devin", { sessionModeId: null });
+    updateAgentRuntimePreferences("acp:devin", { sessionModeId: "smart" });
+    updateAgentRuntimePreferences("acp:devin", { sessionModeId: null });
 
-    expect(getAgentRuntimePreferences("devin").sessionModeId).toBeNull();
+    expect(getAgentRuntimePreferences("acp:devin").sessionModeId).toBeNull();
   });
 
   it("ignores malformed stored values", () => {
@@ -74,34 +74,34 @@ describe("agent runtime preferences", () => {
 });
 
 describe("resolvePreferredPermissionMode", () => {
-  const grokModes = getFallbackAgentPermissionModes("grok-build");
+  const grokModes = getFallbackAgentPermissionModes("acp:grok-build");
 
   beforeEach(() => {
     window.localStorage.removeItem(AGENT_RUNTIME_PREFERENCES_STORAGE_KEY);
   });
 
   it("restores the cached permission mode when it is still valid for the agent", () => {
-    updateAgentRuntimePreferences("grok-build", {
+    updateAgentRuntimePreferences("acp:grok-build", {
       permissionMode: "grok-auto",
     });
 
-    expect(resolvePreferredPermissionMode("grok-build", grokModes)).toBe(
+    expect(resolvePreferredPermissionMode("acp:grok-build", grokModes)).toBe(
       "grok-auto",
     );
   });
 
   it("falls back to the agent's default mode when nothing is cached", () => {
-    expect(resolvePreferredPermissionMode("grok-build", grokModes)).toBe(
+    expect(resolvePreferredPermissionMode("acp:grok-build", grokModes)).toBe(
       "grok-ask",
     );
   });
 
   it("falls back to the agent's default mode when the cache is not in the current options", () => {
-    updateAgentRuntimePreferences("grok-build", {
+    updateAgentRuntimePreferences("acp:grok-build", {
       permissionMode: "claude-bypass-permissions",
     });
 
-    expect(resolvePreferredPermissionMode("grok-build", grokModes)).toBe(
+    expect(resolvePreferredPermissionMode("acp:grok-build", grokModes)).toBe(
       "grok-ask",
     );
   });

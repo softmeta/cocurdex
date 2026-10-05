@@ -21,7 +21,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
-import { agentLabels, selectSessionAtom, sessionsAtom } from "../session-store";
+import {
+  getAgentDisplayLabel,
+  selectSessionAtom,
+  sessionsAtom,
+} from "../session-store";
 import { TeamMemberPeek } from "./team-member-peek";
 import { dismissedTeamIdsAtom, dismissTeamAtom } from "./team-panel-store";
 
@@ -99,7 +103,7 @@ export function TeamPanel({
     sessions.find((session) => session.id === memberSessionId);
   const agentLabelOf = (memberSessionId: string) => {
     const agentType = sessionOf(memberSessionId)?.agentType;
-    return agentType ? agentLabels[agentType] : null;
+    return agentType ? getAgentDisplayLabel(agentType) : null;
   };
   const active = team.status === "active";
   const collapsed = collapsedOverride ?? !active;

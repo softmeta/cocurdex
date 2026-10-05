@@ -1,10 +1,8 @@
 import type { AgentAdapter } from "@cocurdex/agent-core";
-import type { AgentId } from "@cocurdex/shared";
+import { type AgentId, isAcpRegistryAgentId } from "@cocurdex/shared";
+import { createAcpRegistryAdapter } from "./acp-registry";
 import { createClaudeCliAdapter } from "./claude-cli";
 import { createCodexAdapter } from "./codex";
-import { createCursorAdapter } from "./cursor";
-import { createDevinAdapter } from "./devin";
-import { createGrokBuildAdapter } from "./grok-build";
 import { createOpencodeAdapter } from "./opencode";
 import { createPiSdkAdapter } from "./pi-sdk";
 import { listAgentSkills } from "./skills";
@@ -29,6 +27,9 @@ function withSkillSupport(
 }
 
 export function createAgentAdapter(agentId: AgentId): AgentAdapter {
+  if (isAcpRegistryAgentId(agentId)) {
+    return withSkillSupport(agentId, createAcpRegistryAdapter(agentId));
+  }
   let adapter: AgentAdapter;
   switch (agentId) {
     case "claude-agent":
@@ -36,15 +37,6 @@ export function createAgentAdapter(agentId: AgentId): AgentAdapter {
       break;
     case "codex":
       adapter = createCodexAdapter();
-      break;
-    case "cursor":
-      adapter = createCursorAdapter();
-      break;
-    case "devin":
-      adapter = createDevinAdapter();
-      break;
-    case "grok-build":
-      adapter = createGrokBuildAdapter();
       break;
     case "opencode":
       adapter = createOpencodeAdapter();

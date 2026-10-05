@@ -187,6 +187,39 @@ export function registerProviderHandlers() {
   );
   registerHandler(
     ipcMain,
+    "acpRegistry:catalog",
+    schemas.acpRegistryCatalog,
+    async (_event, options) =>
+      requestDaemon(
+        "acpRegistry.catalog",
+        options ?? {},
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "acpRegistry:install",
+    schemas.acpRegistryId,
+    async (_event, registryId) =>
+      requestDaemon(
+        "acpRegistry.install",
+        { registryId },
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandler(
+    ipcMain,
+    "acpRegistry:uninstall",
+    schemas.acpRegistryAgentId,
+    async (_event, agentId) =>
+      requestDaemon(
+        "acpRegistry.uninstall",
+        { agentId },
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandler(
+    ipcMain,
     "agent:login",
     schemas.agentId,
     async (_event, agentId) =>

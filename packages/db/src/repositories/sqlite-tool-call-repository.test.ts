@@ -32,7 +32,7 @@ async function seedSession(database: Database, sessionId: string) {
     id: sessionId,
     workspaceId,
     title: "session",
-    agentType: "grok-build",
+    agentType: "acp:grok-build",
     status: "idle",
     writeMode: "read-only",
     sessionModeId: null,
