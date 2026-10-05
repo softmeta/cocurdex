@@ -10,6 +10,7 @@ export {
 } from "./context-item-events";
 export { readCssVarPx } from "./css-length";
 export { logRendererDiagnostic } from "./diagnostics";
+export { toAbsolutePath } from "./file-path";
 export { htmlPreviewLocationAtom } from "./html-preview-preference";
 export { desktopApi } from "./ipc";
 export { lazyComponent } from "./lazy-component";

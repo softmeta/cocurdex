@@ -4,22 +4,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import type { MarkdownFilePathHandlers } from "@/components";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
-import { desktopApi } from "@/lib";
-
-const WINDOWS_ABSOLUTE_PATH = /^[A-Za-z]:[\\/]/;
-
-function toAbsolutePath(path: string, rootPath: string | null): string | null {
-  // Absolute paths (POSIX or Windows drive) are used as-is; everything else is
-  // resolved against the active workspace root. (macOS/Linux first per platform
-  // priority.)
-  if (path.startsWith("/") || WINDOWS_ABSOLUTE_PATH.test(path)) {
-    return path;
-  }
-  if (!rootPath) {
-    return null;
-  }
-  return `${rootPath}/${path}`;
-}
+import { desktopApi, toAbsolutePath } from "@/lib";
 
 // Build the handlers that turn file-path-looking inline code in assistant
 // messages into clickable links. Opening is dispatched as a shell-surface
