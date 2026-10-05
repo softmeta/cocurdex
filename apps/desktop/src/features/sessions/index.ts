@@ -9,6 +9,7 @@ export {
 } from "./agent-runtime-preferences";
 export { AgentSelect } from "./agent-select";
 export { buildAgentSelectOptions } from "./agent-select-options";
+export { applyRuntimeSessionModesAtom } from "./agent-session-modes-sync";
 export { NewSessionCard, newSessionModesAtom } from "./new-session-card";
 export { PermissionModeSubmenu } from "./permission-mode-submenu";
 export {

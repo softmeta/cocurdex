@@ -29,6 +29,7 @@ import {
 } from "@/features/composer";
 import {
   activeSessionIdAtom,
+  applyRuntimeSessionModesAtom,
   markSessionMessageAtom,
   projectSubagentSessionFromToolCallAtom,
   reconcileSessionsAtom,
@@ -48,6 +49,7 @@ const EVENT_APPLIERS = [
   applyAgentEventAtom,
   applyQueuedInputEventAtom,
   applyAgentRuntimeEventAtom,
+  applyRuntimeSessionModesAtom,
   applyPermissionEventAtom,
   applyPlanApprovalEventAtom,
   applyPlanEventAtom,
