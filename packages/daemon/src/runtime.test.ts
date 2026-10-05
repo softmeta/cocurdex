@@ -437,6 +437,39 @@ describe("AgentRuntimeManager", () => {
     );
   });
 
+  it("completes a turn that produced no assistant text", async () => {
+    const runtimeSession: AgentSession = {
+      ...runtimeSessionStub(),
+      sendMessage: vi.fn(async () => ({
+        id: "assistant-1",
+        sessionId: "session-1",
+        role: "assistant" as const,
+        content: "  ",
+        attachments: [],
+        createdAt: "2026-07-24T00:00:01.000Z",
+      })),
+    };
+    const events: AgentEvent[] = [];
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: (event) => {
+        events.push(event);
+      },
+      createAdapter: () => createAdapter(runtimeSession),
+    });
+
+    await manager.sendSessionMessage(createPayload(), {
+      ...createPersistence(),
+      history: [],
+    });
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "turn.completed",
+        sessionId: "session-1",
+      }),
+    );
+  });
+
   it("delivers steering input without replacing the active turn tracker", async () => {
     let resolveActiveTurn: (message: MessageRecord) => void = () => undefined;
     const activeResponse: MessageRecord = {
