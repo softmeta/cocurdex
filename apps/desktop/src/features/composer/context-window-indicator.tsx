@@ -19,6 +19,7 @@ import { agentRuntimeBySessionAtom } from "@/features/agent/runtime";
 import {
   agentsAtom,
   getAgentDisplayLabel,
+  getEffectiveThinkingLevel,
   getProviderModelCacheVersion,
   getSessionModeOptions,
   getSessionPermissionMode,
@@ -54,7 +55,6 @@ import {
   getSessionContextTokens,
   sessionUsageAtom,
 } from "./session-usage-store";
-import { getEffectiveThinkingLevel } from "./thinking-level";
 
 function formatModelLabel(modelName: string, providerName?: string | null) {
   const trimmedProviderName = providerName?.trim();

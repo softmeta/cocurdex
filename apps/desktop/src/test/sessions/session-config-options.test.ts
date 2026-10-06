@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getComposerSessionConfigOptions,
   getSessionConfigTriggerValues,
-} from "@/features/composer/session-config-options";
+} from "@/features/sessions/session-config-options";
 
 const grokOccupied = ["model", "thinking", "mode", "permission"] as const;
 

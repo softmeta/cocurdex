@@ -38,7 +38,17 @@ function runMadge() {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(
       "pnpm",
-      ["dlx", "madge", "--circular", "--json", "--extensions", "ts,tsx", "src"],
+      [
+        "dlx",
+        "madge",
+        "--circular",
+        "--json",
+        "--extensions",
+        "ts,tsx",
+        "--ts-config",
+        "tsconfig.json",
+        "src",
+      ],
       { cwd: DESKTOP_ROOT, stdio: ["ignore", "pipe", "pipe"] },
     );
 

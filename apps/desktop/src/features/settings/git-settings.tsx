@@ -9,12 +9,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui";
 import {
-  getThinkingLevelLabel,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-  ThinkingLevelSubmenu,
-} from "@/features/composer";
-import {
   AgentSelect,
   agentsAtom,
   buildAgentSelectOptions,
@@ -23,13 +17,17 @@ import {
   getDefaultProviderModelValue,
   getOpenCodeRuntimeOptions,
   getProviderModelCacheVersion,
+  getThinkingLevelLabel,
+  getThinkingLevelOptions,
   loadProviderModelOptions,
   ProviderModelMenu,
   parseProviderModelValue,
   providerModelCache,
   resolveOpenCodeRuntimeValue,
+  resolveThinkingLevel,
   shouldShowProviderGroupLabels,
   subscribeProviderModelCache,
+  ThinkingLevelSubmenu,
 } from "@/features/sessions";
 import { desktopApi, useMountEffect } from "@/lib";
 import {

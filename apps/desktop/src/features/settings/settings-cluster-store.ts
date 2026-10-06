@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import type { SettingsSectionId } from "@/app/layout";
+import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import {
   type SettingsClusterId,
   settingsClusters,

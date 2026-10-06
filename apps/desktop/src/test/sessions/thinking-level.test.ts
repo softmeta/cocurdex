@@ -3,7 +3,7 @@ import {
   getConfigOptionThinkingLevels,
   getEffectiveThinkingLevel,
   getThinkingLevelOptions,
-} from "@/features/composer/thinking-level";
+} from "@/features/sessions/thinking-level";
 
 const claudeEfforts = [
   { reasoningEffort: "low", description: "low" },
