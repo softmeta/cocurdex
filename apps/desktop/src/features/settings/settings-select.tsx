@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type AppDropdownTriggerAppearance,
+  AppDropdownTriggerLabel,
   AppSearchableSelect,
   type AppSearchableSelectOption,
   AppSelect,
@@ -9,6 +10,7 @@ import {
 import { cn } from "@/lib";
 
 export interface SettingsSelectOption {
+  icon?: ReactNode;
   label: string;
   value: string;
 }
@@ -56,8 +58,16 @@ export function SettingsSelect({
     ...(groups?.flatMap((group) => group.options) ?? []),
   ];
   const selectedOption = flatOptions.find((option) => option.value === value);
-  const displayLabel =
+  const displayText =
     selectedOption?.label ?? placeholder ?? t("providers.select");
+  const displayLabel = selectedOption?.icon ? (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {selectedOption.icon}
+      <AppDropdownTriggerLabel>{displayText}</AppDropdownTriggerLabel>
+    </span>
+  ) : (
+    displayText
+  );
 
   return (
     <AppSelect
@@ -66,12 +76,14 @@ export function SettingsSelect({
       contentClassName="max-h-72"
       disabled={disabled}
       options={options?.map((option) => ({
+        icon: option.icon,
         value: option.value,
         label: option.label,
       }))}
       sections={groups?.map((group) => ({
         label: group.label,
         options: group.options.map((option) => ({
+          icon: option.icon,
           value: option.value,
           label: option.label,
         })),

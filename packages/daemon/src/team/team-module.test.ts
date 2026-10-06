@@ -93,8 +93,10 @@ const role: AgentRoleRecord = {
   thinkingLevel: null,
   openCodeAgent: null,
   openCodeVariant: null,
+  description: null,
   instructions: null,
   skillIds: null,
+  avatar: null,
   createdAt: "",
   updatedAt: "",
 };
@@ -333,6 +335,7 @@ describe("TeamModule", () => {
       {
         id: "role-1",
         name: "Reviewer",
+        description: null,
         agentType: "claude-agent",
         model: "Sonnet",
         permissionMode: null,

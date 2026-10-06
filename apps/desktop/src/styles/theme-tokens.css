@@ -277,6 +277,15 @@
   --editor-git-added: oklch(0.596 0.145 163.225); /* emerald-600 */
   --editor-git-deleted: oklch(0.586 0.253 17.585); /* rose-600 */
   --editor-git-modified: oklch(0.588 0.158 241.966); /* sky-600 */
+  --role-avatar-gray: oklch(0.551 0.027 264.364);
+  --role-avatar-red: oklch(0.577 0.245 27.325);
+  --role-avatar-orange: oklch(0.646 0.222 41.116);
+  --role-avatar-amber: oklch(0.666 0.179 58.318);
+  --role-avatar-green: oklch(0.627 0.194 149.214);
+  --role-avatar-teal: oklch(0.6 0.118 184.704);
+  --role-avatar-blue: oklch(0.546 0.245 262.881);
+  --role-avatar-violet: oklch(0.541 0.281 293.009);
+  --role-avatar-pink: oklch(0.592 0.249 0.584);
   --editor-monaco-bg: var(--editor-canvas);
   --editor-monaco-line-highlight: color-mix(
     in srgb,
@@ -410,6 +419,15 @@
   --editor-git-added: oklch(0.845 0.143 164.978); /* emerald-300 */
   --editor-git-deleted: oklch(0.81 0.117 11.638); /* rose-300 */
   --editor-git-modified: oklch(0.746 0.16 232.661); /* sky-400 */
+  --role-avatar-gray: oklch(0.707 0.022 261.325);
+  --role-avatar-red: oklch(0.704 0.191 22.216);
+  --role-avatar-orange: oklch(0.75 0.183 55.934);
+  --role-avatar-amber: oklch(0.828 0.189 84.429);
+  --role-avatar-green: oklch(0.792 0.209 151.711);
+  --role-avatar-teal: oklch(0.777 0.152 181.912);
+  --role-avatar-blue: oklch(0.707 0.165 254.624);
+  --role-avatar-violet: oklch(0.702 0.183 293.541);
+  --role-avatar-pink: oklch(0.718 0.202 349.761);
   --welcome-surface-strong-hover: color-mix(
     in srgb,
     var(--foreground) 14%,

@@ -199,8 +199,10 @@ const fallbackApi: DesktopApi = {
     thinkingLevel: payload.thinkingLevel,
     openCodeAgent: payload.openCodeAgent,
     openCodeVariant: payload.openCodeVariant,
+    description: payload.description ?? null,
     instructions: payload.instructions ?? null,
     skillIds: payload.skillIds ?? null,
+    avatar: payload.avatar ?? null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }),
@@ -395,6 +397,9 @@ const fallbackApi: DesktopApi = {
   loginAgent: async () => {},
   listAcpRegistryCatalog: async () => [],
   installAcpRegistryAgent: async () => {
+    throw new Error("ACP Registry needs the desktop app");
+  },
+  installAcpRegistryCommand: async () => {
     throw new Error("ACP Registry needs the desktop app");
   },
   uninstallAcpRegistryAgent: async () => {},

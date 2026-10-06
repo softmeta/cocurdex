@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useSyncExternalStore } from "react";
-import { sessionsAtom } from "@/features/sessions";
+import { AgentRoleAvatar, sessionsAtom } from "@/features/sessions";
 import {
   getAgentRoles,
   subscribeAgentRoles,
@@ -24,7 +24,12 @@ export function SessionRoleName({ sessionId }: { sessionId?: string | null }) {
   }
 
   return (
-    <span className={composerFooterControlClassName("inline-flex max-w-32")}>
+    <span
+      className={composerFooterControlClassName(
+        "inline-flex max-w-36 items-center gap-1.5",
+      )}
+    >
+      <AgentRoleAvatar role={selectedRole} showAgent={false} />
       <span className="truncate font-medium">{selectedRole.name}</span>
     </span>
   );

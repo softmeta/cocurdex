@@ -1,6 +1,21 @@
 {
   "agentRole": {
+    "avatar": {
+      "change": "Change avatar",
+      "color": "Color",
+      "custom": "Custom emoji",
+      "customPlaceholder": "Paste or type any emoji",
+      "groups": {
+        "animals": "Animals",
+        "people": "People",
+        "symbols": "Symbols",
+        "work": "Work"
+      },
+      "reset": "Use initial"
+    },
     "cancel": "Cancel",
+    "description": "Description",
+    "descriptionPlaceholder": "What this role does and what it is good at. Team leads use it to pick teammates.",
     "empty": "No saved roles",
     "menuLabel": "Roles",
     "name": "Name",

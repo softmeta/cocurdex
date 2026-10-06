@@ -1,6 +1,6 @@
 import type { AgentId } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
-import { Check } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,6 @@ import {
   compactDropdownContentClassName,
 } from "@/components";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuSeparator,
@@ -23,17 +22,20 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
+  IconButton,
   Text,
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
 import type { AdapterStatusKind } from "./adapter-status";
-import { AgentIcon } from "./agent-icon";
+import { AgentIcon, AgentIconLabel } from "./agent-icon";
+import {
+  AgentRoleAvatar,
+  type AgentRoleAvatarSource,
+} from "./agent-role/agent-role-avatar";
 import type { AgentSelectOption } from "./agent-select-options";
 
-export interface AgentRoleSelectOption {
-  id: string;
-  name: string;
+export interface AgentRoleSelectOption extends AgentRoleAvatarSource {
   summary: string;
   selectable?: boolean;
   statusKind?: AdapterStatusKind;
@@ -109,8 +111,9 @@ export function AgentSelect({
   const selectedRole =
     roles?.find((role) => role.id === selectedRoleId) ?? null;
   const showRoleHover = Boolean(selectedRole) && !open;
-  const showTriggerIcon =
-    !selectedRole && selectableOptions.some((option) => option.value === value);
+  const showAgentTriggerIcon = selectableOptions.some(
+    (option) => option.value === value,
+  );
 
   return (
     <DropdownMenu
@@ -144,7 +147,10 @@ export function AgentSelect({
               disabled={isDisabled}
               showChevron={showChevron}
             >
-              {showTriggerIcon ? <AgentIcon agentId={value} /> : null}
+              {selectedRole ? <AgentRoleAvatar role={selectedRole} /> : null}
+              {!selectedRole && showAgentTriggerIcon ? (
+                <AgentIcon agentId={value} />
+              ) : null}
               {triggerLabel}
             </AppDropdownTriggerButton>
           </DropdownMenuTrigger>
@@ -152,25 +158,27 @@ export function AgentSelect({
         {selectedRole ? (
           <HoverCardContent
             align="start"
-            className="w-max max-w-72"
+            className="w-max max-w-80 py-1.5 ps-3 pe-1.5"
             side="bottom"
           >
-            <div className="flex flex-col gap-2">
-              <Text size="meta" tone="muted">
-                {selectedRole.summary}
+            <div className="flex items-center gap-2">
+              <Text size="meta" tone="muted" className="min-w-0 flex-1">
+                <AgentIconLabel agentId={selectedRole.agentId}>
+                  {selectedRole.summary}
+                </AgentIconLabel>
               </Text>
               {onEditRole ? (
-                <Button
-                  className="h-auto self-start px-0"
-                  size="sm"
-                  variant="ghost"
+                <IconButton
+                  aria-label={t("settings:agentRoles.edit")}
+                  size="xs"
+                  title={t("settings:agentRoles.edit")}
                   onClick={() => {
                     setHoverOpen(false);
                     onEditRole(selectedRole.id);
                   }}
                 >
-                  {t("settings:agentRoles.edit")}
-                </Button>
+                  <Pencil />
+                </IconButton>
               ) : null}
             </div>
           </HoverCardContent>
@@ -271,6 +279,7 @@ function AgentRoleSubmenu({
                   onSelectRole(role.id);
                 }}
               >
+                <AgentRoleAvatar role={role} size="md" />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate">{role.name}</span>
                   <span className="truncate text-meta text-muted-foreground">

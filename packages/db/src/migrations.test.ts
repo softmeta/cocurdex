@@ -389,7 +389,7 @@ describe("initializeDatabase", () => {
       INSERT INTO app_settings (key, value_json, updated_at)
       VALUES ('commitMessageModel', '{"agentId":"grok-build","providerId":"grok-build","modelId":"grok-4.6"}', '${now}');
     `);
-    database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION - 1}`);
+    database.exec(`PRAGMA user_version = 13`);
 
     initializeDatabase(database);
 
@@ -433,6 +433,110 @@ describe("initializeDatabase", () => {
       providerId: "acp:grok-build",
       modelId: "grok-4.6",
     });
+  });
+
+  it("adds avatar_json to agent roles from version 14 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE agent_roles DROP COLUMN avatar_json");
+    const now = "2026-10-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, agent_role_id, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Role work', 'pi', 'idle', 'read-only', 'r1', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Ship avatars', 'w1', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, model_id, skill_ids_json, created_at, updated_at)
+      VALUES ('r1', 'Reviewer', 'pi', 'deepseek', '["review"]', '${now}', '${now}');
+      PRAGMA user_version = 14;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, name, model_id, skill_ids_json, avatar_json FROM agent_roles",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "r1",
+        name: "Reviewer",
+        model_id: "deepseek",
+        skill_ids_json: '["review"]',
+        avatar_json: null,
+      },
+    ]);
+    expect(
+      database.prepare("SELECT id, agent_role_id FROM sessions").all(),
+    ).toEqual([{ id: "s1", agent_role_id: "r1" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Ship avatars" },
+    ]);
+    expect(database.prepare("SELECT name FROM workspaces").all()).toEqual([
+      { name: "Repo" },
+    ]);
+  });
+
+  it("adds description to agent roles from version 15 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE agent_roles DROP COLUMN description");
+    const now = "2026-10-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, agent_role_id, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Role work', 'pi', 'idle', 'read-only', 'r1', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Describe roles', 'w1', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, model_id, avatar_json, created_at, updated_at)
+      VALUES ('r1', 'Reviewer', 'pi', 'deepseek', '{"kind":"initial","color":"red"}', '${now}', '${now}');
+      PRAGMA user_version = 15;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare("SELECT id, name, avatar_json, description FROM agent_roles")
+        .all(),
+    ).toEqual([
+      {
+        id: "r1",
+        name: "Reviewer",
+        avatar_json: '{"kind":"initial","color":"red"}',
+        description: null,
+      },
+    ]);
+    expect(
+      database.prepare("SELECT id, agent_role_id FROM sessions").all(),
+    ).toEqual([{ id: "s1", agent_role_id: "r1" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Describe roles" },
+    ]);
   });
 
   it("keeps an up-to-date database that carries a stale version marker", () => {

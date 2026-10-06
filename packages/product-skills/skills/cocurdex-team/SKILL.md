@@ -28,7 +28,7 @@ Teammates cannot spawn their own teammates. A team holds at most 8 members.
 2. Decide the file-write policy before spawning:
    - Teammates that edit files in the same workspace must not touch overlapping files. If overlap is unavoidable, spawn with `isolateWorktree: true`; each such teammate then works on its own branch and you merge afterwards.
    - Read-only teammates (review, research) never need isolation.
-3. If a saved template matches (`team_list_templates`), prefer `team_spawn_template` with the task as `prompt`. Otherwise pick roles with `team_list_roles` when a saved role fits.
+3. If a saved template matches (`team_list_templates`), prefer `team_spawn_template` with the task as `prompt`. Otherwise pick roles with `team_list_roles` when a saved role fits; match the task against each role's `description`.
 
 ## 3. Spawn
 

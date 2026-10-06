@@ -1,15 +1,23 @@
-import type {
-  AgentId,
-  AgentPermissionMode,
-  AgentRoleRecord,
-  AgentThinkingLevel,
-  CodexReasoningEffort,
+import {
+  AGENT_ROLE_DESCRIPTION_MAX_LENGTH,
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentRoleRecord,
+  type AgentThinkingLevel,
+  type CodexReasoningEffort,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, Field, FieldGroup, FieldLabel, Input } from "@/components/ui";
+import {
+  Button,
+  Field,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Textarea,
+} from "@/components/ui";
 import {
   Dialog,
   DialogClose,
@@ -35,6 +43,7 @@ import {
   getSessionModeOptions,
   supportsSessionMode,
 } from "../session-store";
+import { AgentRoleAvatarPicker } from "./agent-role-avatar-picker";
 import { AgentRoleRuntimeFields } from "./agent-role-runtime-fields";
 import { saveAgentRoleRecord } from "./agent-role-store";
 
@@ -78,6 +87,8 @@ function AgentRoleEditForm({
   const { t } = useTranslation(["settings", "sessions"]);
   const agents = useAtomValue(agentsAtom);
   const [name, setName] = useState(role.name);
+  const [avatar, setAvatar] = useState(role.avatar);
+  const [description, setDescription] = useState(role.description ?? "");
   const [agentId, setAgentId] = useState<AgentId>(role.agentId);
   const [modelValue, setModelValue] = useState(() =>
     role.providerId && role.modelId
@@ -205,6 +216,7 @@ function AgentRoleEditForm({
       const saved = await saveAgentRoleRecord({
         id: role.id,
         name: trimmed,
+        description: description.trim() || null,
         agentId,
         providerId: parsed?.providerId ?? null,
         modelId: parsed?.modelId ?? null,
@@ -221,6 +233,7 @@ function AgentRoleEditForm({
         thinkingLevel: thinkingLevel === "default" ? null : thinkingLevel,
         openCodeAgent: openCodeAgent || null,
         openCodeVariant: openCodeVariant || null,
+        avatar,
       });
       toast.success(t("settings:agentRoles.saved"));
       onSaved?.(saved);
@@ -233,7 +246,7 @@ function AgentRoleEditForm({
 
   return (
     <Dialog disablePointerDismissal open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="default">
+      <DialogContent size="compact">
         <DialogHeader>
           <DialogTitle>{t("settings:agentRoles.editTitle")}</DialogTitle>
         </DialogHeader>
@@ -243,16 +256,38 @@ function AgentRoleEditForm({
               <FieldLabel htmlFor="agent-role-name">
                 {t("settings:agentRoles.name")}
               </FieldLabel>
-              <Input
-                autoFocus
-                id="agent-role-name"
-                maxLength={80}
-                placeholder={t("settings:agentRoles.namePlaceholder")}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+              <div className="flex items-center gap-2">
+                <AgentRoleAvatarPicker
+                  role={{ id: role.id, name, agentId, avatar }}
+                  onChange={setAvatar}
+                />
+                <Input
+                  autoFocus
+                  id="agent-role-name"
+                  maxLength={80}
+                  placeholder={t("settings:agentRoles.namePlaceholder")}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="agent-role-description">
+                {t("settings:agentRoles.roleDescription")}
+              </FieldLabel>
+              <Textarea
+                id="agent-role-description"
+                className="max-h-40 min-h-20"
+                maxLength={AGENT_ROLE_DESCRIPTION_MAX_LENGTH}
+                placeholder={t(
+                  "settings:agentRoles.roleDescriptionPlaceholder",
+                )}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
               />
             </Field>
             <Field>
+              <FieldLabel>{t("settings:agentRoles.runtime")}</FieldLabel>
               <AgentRoleRuntimeFields
                 agentId={agentId}
                 agents={agents}

@@ -484,17 +484,17 @@ export default interface Resources {
       pending: "";
     };
     relativeTime: {
-      lastActiveDays_one: "Last active {{count}} day ago";
-      lastActiveDays_other: "Last active {{count}} days ago";
-      lastActiveHours_one: "Last active {{count}} hour ago";
-      lastActiveHours_other: "Last active {{count}} hours ago";
-      lastActiveMinutes_one: "Last active {{count}} minute ago";
-      lastActiveMinutes_other: "Last active {{count}} minutes ago";
-      lastActiveMonths_one: "Last active {{count}} month ago";
-      lastActiveMonths_other: "Last active {{count}} months ago";
+      lastActiveDays_one: "{{count}} day ago";
+      lastActiveDays_other: "{{count}} days ago";
+      lastActiveHours_one: "{{count}} hour ago";
+      lastActiveHours_other: "{{count}} hours ago";
+      lastActiveMinutes_one: "{{count}} minute ago";
+      lastActiveMinutes_other: "{{count}} minutes ago";
+      lastActiveMonths_one: "{{count}} month ago";
+      lastActiveMonths_other: "{{count}} months ago";
       lastActiveNow: "Just now";
-      lastActiveYears_one: "Last active {{count}} year ago";
-      lastActiveYears_other: "Last active {{count}} years ago";
+      lastActiveYears_one: "{{count}} year ago";
+      lastActiveYears_other: "{{count}} years ago";
     };
     states: {
       gitEmptyBranchDescription: "";
@@ -943,7 +943,7 @@ export default interface Resources {
     };
     description: "cocurdex runs coding agents against a local folder. Here is what is available on this machine.";
     providers: {
-      description: "Add a provider and enable the models you want. The built-in pi agent needs one; the other adapters bring their own.";
+      description: "Add a provider and enable the models you want. The built-in pi agent needs one; the other agent CLIs bring their own.";
       title: "Configure a model provider";
     };
     title: "Welcome to cocurdex";
@@ -1035,7 +1035,22 @@ export default interface Resources {
   };
   sessions: {
     agentRole: {
+      avatar: {
+        change: "Change avatar";
+        color: "Color";
+        custom: "Custom emoji";
+        customPlaceholder: "Paste or type any emoji";
+        groups: {
+          animals: "Animals";
+          people: "People";
+          symbols: "Symbols";
+          work: "Work";
+        };
+        reset: "Use initial";
+      };
       cancel: "Cancel";
+      description: "Description";
+      descriptionPlaceholder: "What this role does and what it is good at. Team leads use it to pick teammates.";
       empty: "No saved roles";
       menuLabel: "Roles";
       name: "Name";
@@ -1331,7 +1346,7 @@ export default interface Resources {
         builtin: "Built in";
         updateRequired: "Update required";
       };
-      description: "cocurdex runs these agent CLIs on this machine. Install or update the ones you want to pick for new sessions.";
+      description: "Pick any of these agent CLIs when starting a session. cocurdex detects the versions installed on this machine; add more from the ACP Registry.";
       kind: {
         builtin: "Built-in";
         detecting: "Checking…";
@@ -1355,8 +1370,29 @@ export default interface Resources {
         installSucceeded: "Installed {{name}}";
         installed: "Installed";
         loadFailed: "Could not load the ACP Registry";
+        manual: {
+          args: "Arguments";
+          back: "Back";
+          command: "Command";
+          description: "Install the agent yourself first, then enter its executable name or absolute path and the arguments that start ACP mode.";
+          open: "Use my own command";
+          save: "Save";
+        };
         noResults: "No matching agents";
         open: "Add from ACP Registry";
+        plan: {
+          cancel: "Cancel";
+          confirm: "Install";
+          copied: "Command copied";
+          copy: "Copy command";
+          directory: "Install to";
+          download: "Download";
+          launch: "Launch command";
+          localNote: "Found this CLI on your machine. Nothing will be downloaded; the agent runs it directly.";
+          noChecksum: "The registry provides no checksum, so the download cannot be verified.";
+          packageNote: "Installing runs {{runner}} once to download this pinned package version into its local cache. Later starts reuse the cache.";
+          prefetch: "Runs during install";
+        };
         remove: "Remove";
         removeFailed: "Could not remove the agent";
         removeSucceeded: "Removed {{name}}";
@@ -1377,7 +1413,7 @@ export default interface Resources {
       toast: {
         commandCopied: "Install command copied";
         pathCopied: "Path copied";
-        refreshFailed: "Could not refresh adapters";
+        refreshFailed: "Could not refresh agent CLIs";
       };
     };
     agentRoles: {
@@ -1394,6 +1430,9 @@ export default interface Resources {
       emptyDescription: "Open the model menu in a new session and choose Save as role.";
       name: "Name";
       namePlaceholder: "Role name";
+      roleDescription: "Description";
+      roleDescriptionPlaceholder: "What this role does and what it is good at. Team leads use it to pick teammates.";
+      runtime: "Agent and model";
       save: "Save";
       saveFailed: "Could not save this role.";
       saved: "Role updated";
@@ -1971,7 +2010,7 @@ export default interface Resources {
     };
     sections: {
       about: "About";
-      adapters: "Adapters";
+      adapters: "Agent CLIs";
       agentRoles: "Roles";
       appearance: "Appearance";
       archived: "Archived sessions";

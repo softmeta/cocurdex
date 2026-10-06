@@ -146,6 +146,57 @@ describe("CocurdexDaemonService workspace roots", () => {
   });
 });
 
+describe("CocurdexDaemonService agent role avatars", () => {
+  it("persists an avatar, keeps it on edits that omit it, and clears it on null", async () => {
+    const userDataPath = await mkdtemp(path.join(tmpdir(), "cocurdex-role-"));
+    temporaryDirectories.push(userDataPath);
+    const draft = {
+      name: "Reviewer",
+      agentId: "pi" as const,
+      providerId: null,
+      modelId: null,
+      modelName: null,
+      permissionMode: null,
+      sessionModeId: null,
+      reasoningEffort: null,
+      serviceTier: null,
+      fastMode: null,
+      thinkingLevel: null,
+      openCodeAgent: null,
+      openCodeVariant: null,
+    };
+    const service = await createService(userDataPath);
+    let roleId: string;
+    try {
+      const created = await service.saveAgentRole({
+        ...draft,
+        avatar: { kind: "emoji", emoji: "🦊", color: "teal" },
+      });
+      roleId = created.id;
+      await service.saveAgentRole({ ...draft, id: roleId, name: "Renamed" });
+    } finally {
+      await service.shutdown();
+    }
+
+    const reopened = await createService(userDataPath);
+    try {
+      expect((await reopened.getAgentRole(roleId))?.avatar).toEqual({
+        kind: "emoji",
+        emoji: "🦊",
+        color: "teal",
+      });
+      const cleared = await reopened.saveAgentRole({
+        ...draft,
+        id: roleId,
+        avatar: null,
+      });
+      expect(cleared.avatar).toBeNull();
+    } finally {
+      await reopened.shutdown();
+    }
+  });
+});
+
 describe("CocurdexDaemonService follow-up queue", () => {
   it("bootstraps without reading message history or tool results", async () => {
     const service = await createService();

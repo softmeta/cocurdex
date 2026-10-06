@@ -14,6 +14,7 @@ import {
   type EditorViewRecord,
   isAgentId,
   type MessageRecord,
+  normalizeAgentRoleAvatar,
   type ProviderApi,
   type ProviderConfigRecord,
   type ProviderModelCapability,
@@ -306,8 +307,10 @@ export function mapAgentRole(row: SqliteRow): AgentRoleRecord {
       null) as AgentThinkingLevel | null,
     openCodeAgent: toNullableString(row.opencode_agent),
     openCodeVariant: toNullableString(row.opencode_variant),
+    description: toNullableString(row.description),
     instructions: toNullableString(row.instructions),
     skillIds: parseJson<string[] | null>(row.skill_ids_json, null),
+    avatar: normalizeAgentRoleAvatar(parseJson(row.avatar_json, null)),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

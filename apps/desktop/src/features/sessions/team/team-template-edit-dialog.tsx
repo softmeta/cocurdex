@@ -9,7 +9,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppSelect } from "@/components";
+import { AppDropdownTriggerLabel, AppSelect } from "@/components";
 import {
   Button,
   Field,
@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
+import { AgentRoleAvatar } from "../agent-role/agent-role-avatar";
 import { saveTeamTemplateRecord } from "./team-template-store";
 
 const NO_ROLE = "__none__";
@@ -111,8 +112,24 @@ function TeamTemplateForm({
     { value: NO_ROLE, label: t("teams.inheritRole") },
     ...roles
       .filter((role) => supportsAgentTeam(role.agentId))
-      .map((role) => ({ value: role.id, label: role.name })),
+      .map((role) => ({
+        icon: <AgentRoleAvatar role={role} showAgent={false} />,
+        value: role.id,
+        label: role.name,
+      })),
   ];
+  const roleTriggerLabel = (roleId: string | null) => {
+    const role = roles.find((item) => item.id === roleId);
+    if (!role) {
+      return undefined;
+    }
+    return (
+      <span className="flex min-w-0 items-center gap-1.5">
+        <AgentRoleAvatar role={role} showAgent={false} />
+        <AppDropdownTriggerLabel>{role.name}</AppDropdownTriggerLabel>
+      </span>
+    );
+  };
 
   return (
     <Dialog disablePointerDismissal onOpenChange={onOpenChange} open>
@@ -166,6 +183,7 @@ function TeamTemplateForm({
                         }
                         options={roleOptions}
                         triggerAriaLabel={t("teams.role")}
+                        triggerLabel={roleTriggerLabel(member.agentRoleId)}
                         value={member.agentRoleId ?? NO_ROLE}
                       />
                       <IconButton

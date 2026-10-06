@@ -110,7 +110,7 @@ export function registerTeamTools(
       group: "team",
       name: "list_roles",
       description:
-        "List saved agent roles (id, name, agent type, model, permission mode) you can pass as agentRoleId when spawning a teammate.",
+        "List saved agent roles (id, name, description of what the role is good at, agent type, model, permission mode) you can pass as agentRoleId when spawning a teammate.",
       inputSchema: {
         type: "object",
         properties: {},

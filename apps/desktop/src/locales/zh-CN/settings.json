@@ -10,7 +10,7 @@
       "builtin": "内置",
       "updateRequired": "需要升级"
     },
-    "description": "cocurdex 通过本机上的这些 agent CLI 工作。安装或升级你要在新会话里选用的适配器。",
+    "description": "新建会话时可以选用下面这些 agent CLI。cocurdex 会自动检测本机已安装的版本，也可以从 ACP Registry 添加更多。",
     "kind": {
       "builtin": "内置",
       "detecting": "检测中…",
@@ -34,8 +34,29 @@
       "installFailed": "安装失败",
       "installSucceeded": "已安装 {{name}}",
       "loadFailed": "无法加载 ACP Registry",
+      "manual": {
+        "args": "参数",
+        "back": "返回",
+        "command": "命令",
+        "description": "先自行安装这个 agent，再填写它的可执行文件名或绝对路径，以及进入 ACP 模式所需的参数。",
+        "open": "使用自己的命令",
+        "save": "保存"
+      },
       "noResults": "没有匹配的 agent",
       "open": "从 ACP Registry 添加",
+      "plan": {
+        "cancel": "取消",
+        "confirm": "安装",
+        "copied": "已复制命令",
+        "copy": "复制命令",
+        "directory": "安装到",
+        "download": "下载",
+        "launch": "启动命令",
+        "localNote": "已在本机找到这个 CLI。不会下载任何内容，agent 会直接运行它。",
+        "noChecksum": "Registry 没有提供校验和，无法校验下载内容。",
+        "packageNote": "安装时会运行一次 {{runner}}，把这个锁定版本的包下载到本地缓存，之后启动直接使用缓存。",
+        "prefetch": "安装时运行"
+      },
       "remove": "移除",
       "removeFailed": "无法移除该 agent",
       "removeSucceeded": "已移除 {{name}}",
@@ -56,7 +77,7 @@
     "toast": {
       "commandCopied": "已复制安装命令",
       "pathCopied": "已复制路径",
-      "refreshFailed": "刷新适配器失败"
+      "refreshFailed": "刷新 Agent CLI 失败"
     }
   },
   "agentRoles": {
@@ -73,6 +94,9 @@
     "emptyDescription": "在新建会话的模型菜单中选择「保存为角色」。",
     "name": "名称",
     "namePlaceholder": "角色名称",
+    "roleDescription": "描述",
+    "roleDescriptionPlaceholder": "这个角色负责什么、擅长什么。团队协作时 lead agent 会据此挑选队友。",
+    "runtime": "Agent 与模型",
     "save": "保存",
     "saved": "角色已更新",
     "saveFailed": "无法保存这个角色。"
@@ -647,7 +671,7 @@
   },
   "sections": {
     "about": "关于",
-    "adapters": "适配器",
+    "adapters": "Agent CLI",
     "agentRoles": "角色",
     "appearance": "外观",
     "archived": "已归档会话",

@@ -3,7 +3,11 @@ import type { TFunction } from "i18next";
 import type { ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui";
-import { AgentIcon } from "@/features/sessions";
+import {
+  AgentIcon,
+  AgentRoleAvatar,
+  type AgentRoleAvatarSource,
+} from "@/features/sessions";
 import {
   type CompactRelativeTime,
   getCompactRelativeTime,
@@ -13,7 +17,7 @@ import { useSidebarScrolling } from "./sidebar-scrolling";
 interface SidebarItemPreviewProps {
   agentId?: AgentId;
   agentLabel?: string;
-  roleName?: string;
+  role?: AgentRoleAvatarSource;
   roleSummary?: string;
   timestamp: string;
   title: string;
@@ -42,50 +46,57 @@ function relativeTimeLabel(
 export function SidebarItemPreview({
   agentId,
   agentLabel,
-  roleName,
+  role,
   roleSummary,
   timestamp,
   title,
 }: SidebarItemPreviewProps) {
   const { t } = useTranslation("common");
   const relativeLabel = relativeTimeLabel(getCompactRelativeTime(timestamp), t);
-  const runtimeLabel = roleSummary ?? agentLabel;
+  const identityLabel = [role?.name, agentLabel].filter(Boolean).join(" · ");
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-1">
-      <Text size="body" className="min-w-0 whitespace-normal">
-        {title}
-      </Text>
-      <Text size="meta" tone="muted">
-        {relativeLabel}
-      </Text>
-      {roleName ? (
-        <Text size="meta" tone="muted" weight="medium">
-          {roleName}
+      <div className="flex min-w-0 items-baseline gap-3">
+        <Text
+          size="body"
+          weight="medium"
+          className="min-w-0 flex-1 whitespace-normal"
+        >
+          {title}
         </Text>
-      ) : null}
-      {runtimeLabel ? (
+        <Text size="meta" tone="muted" className="shrink-0">
+          {relativeLabel}
+        </Text>
+      </div>
+      {identityLabel ? (
         <div className="flex min-w-0 items-center gap-1.5">
-          {agentId ? (
+          {role ? <AgentRoleAvatar role={role} /> : null}
+          {!role && agentId ? (
             <AgentIcon agentId={agentId} className="size-3.5" />
           ) : null}
-          <Text size="meta" tone="muted" className="min-w-0">
-            {runtimeLabel}
+          <Text size="meta" className="min-w-0 truncate">
+            {identityLabel}
           </Text>
         </div>
+      ) : null}
+      {roleSummary ? (
+        <Text size="meta" tone="muted" className="min-w-0">
+          {roleSummary}
+        </Text>
       ) : null}
     </div>
   );
 }
 
 const sidebarItemTooltipContentClassName =
-  "min-w-0 max-w-64 flex-col items-stretch gap-1 rounded-card bg-popover px-3 py-2 text-start text-body text-popover-foreground shadow-md ring-1 ring-foreground/10";
+  "min-w-0 max-w-72 flex-col items-stretch gap-1 rounded-card bg-popover px-3 py-2 text-start text-body text-popover-foreground shadow-md ring-1 ring-foreground/10";
 
 interface SidebarItemTooltipProps {
   agentId?: AgentId;
   agentLabel?: string;
   children: ReactElement;
-  roleName?: string;
+  role?: AgentRoleAvatarSource;
   roleSummary?: string;
   timestamp: string;
   title: string;
@@ -95,7 +106,7 @@ export function SidebarItemTooltip({
   agentId,
   agentLabel,
   children,
-  roleName,
+  role,
   roleSummary,
   timestamp,
   title,
@@ -115,7 +126,7 @@ export function SidebarItemTooltip({
         <SidebarItemPreview
           agentId={agentId}
           agentLabel={agentLabel}
-          roleName={roleName}
+          role={role}
           roleSummary={roleSummary}
           timestamp={timestamp}
           title={title}

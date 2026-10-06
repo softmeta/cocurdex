@@ -224,6 +224,8 @@ export function NewSessionCard({
     );
     return {
       id: role.id,
+      agentId: role.agentId,
+      avatar: role.avatar,
       name: role.name,
       summary: formatRoleSummary(role),
       selectable: agentOption?.selectable !== false,
@@ -404,9 +406,11 @@ export function NewSessionCard({
           triggerLabel={
             <span className="flex min-w-0 items-center gap-1.5">
               <GitBranch className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {activeBranch ?? t("sessions:branch.noBranch")}
-              </span>
+              {activeBranch === undefined ? null : (
+                <span className="truncate">
+                  {activeBranch ?? t("sessions:branch.noBranch")}
+                </span>
+              )}
             </span>
           }
           value={activeBranch ?? ""}
@@ -514,11 +518,12 @@ export function NewSessionCard({
       <SaveAgentRoleDialog
         open={saveRoleOpen}
         onOpenChange={setSaveRoleOpen}
+        agentId={currentRoleDraft.agentId}
         summary={saveRoleSummary}
-        onSave={async (name) => {
+        onSave={async (role) => {
           const saved = await saveAgentRoleRecord({
             ...currentRoleDraft,
-            name,
+            ...role,
           });
           setChosenRoleId(saved.id);
           toast.success(t("sessions:agentRole.saved"));

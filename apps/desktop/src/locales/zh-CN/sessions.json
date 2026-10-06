@@ -1,6 +1,21 @@
 {
   "agentRole": {
+    "avatar": {
+      "change": "更换头像",
+      "color": "颜色",
+      "custom": "自定义 emoji",
+      "customPlaceholder": "粘贴或输入任意 emoji",
+      "groups": {
+        "animals": "动物",
+        "people": "人物",
+        "symbols": "符号",
+        "work": "工作"
+      },
+      "reset": "使用首字母"
+    },
     "cancel": "取消",
+    "description": "描述",
+    "descriptionPlaceholder": "这个角色负责什么、擅长什么。团队协作时 lead agent 会据此挑选队友。",
     "empty": "还没有保存的角色",
     "menuLabel": "角色",
     "name": "名称",

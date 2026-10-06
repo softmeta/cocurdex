@@ -50,17 +50,17 @@
     "pending": ""
   },
   "relativeTime": {
-    "lastActiveDays_one": "Last active {{count}} day ago",
-    "lastActiveDays_other": "Last active {{count}} days ago",
-    "lastActiveHours_one": "Last active {{count}} hour ago",
-    "lastActiveHours_other": "Last active {{count}} hours ago",
-    "lastActiveMinutes_one": "Last active {{count}} minute ago",
-    "lastActiveMinutes_other": "Last active {{count}} minutes ago",
-    "lastActiveMonths_one": "Last active {{count}} month ago",
-    "lastActiveMonths_other": "Last active {{count}} months ago",
+    "lastActiveDays_one": "{{count}} day ago",
+    "lastActiveDays_other": "{{count}} days ago",
+    "lastActiveHours_one": "{{count}} hour ago",
+    "lastActiveHours_other": "{{count}} hours ago",
+    "lastActiveMinutes_one": "{{count}} minute ago",
+    "lastActiveMinutes_other": "{{count}} minutes ago",
+    "lastActiveMonths_one": "{{count}} month ago",
+    "lastActiveMonths_other": "{{count}} months ago",
     "lastActiveNow": "Just now",
-    "lastActiveYears_one": "Last active {{count}} year ago",
-    "lastActiveYears_other": "Last active {{count}} years ago"
+    "lastActiveYears_one": "{{count}} year ago",
+    "lastActiveYears_other": "{{count}} years ago"
   },
   "states": {
     "gitEmptyBranchDescription": "",

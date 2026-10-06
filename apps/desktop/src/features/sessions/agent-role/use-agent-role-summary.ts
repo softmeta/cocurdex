@@ -26,15 +26,20 @@ export function useAgentRoleSummary() {
     return mode ? sessionModeLabel(agentId, mode) : null;
   };
 
-  return (role: AgentRoleDraft) =>
+  return (role: AgentRoleDraft, options?: { includeAgent?: boolean }) =>
     formatAgentRoleRecordSummary(role, {
-      agentLabel: getAgentDisplayLabel(role.agentId),
+      agentLabel:
+        options?.includeAgent === false
+          ? null
+          : getAgentDisplayLabel(role.agentId),
       permissionLabel: role.permissionMode
         ? t(`sessions:permissionMode.${role.permissionMode}`)
         : null,
       sessionModeLabelFor,
       thinkingLabelFor: (level) =>
-        t(`sessions:composer.thinkingLevels.${level}`),
+        t("sessions:composer.thinkingLevelWithValue", {
+          level: t(`sessions:composer.thinkingLevels.${level}`),
+        }),
       fastModeOn: t("sessions:modelMenu.fastModeOn"),
     });
 }

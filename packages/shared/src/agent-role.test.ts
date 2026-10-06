@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentRoleRecord } from "./agent-role";
 import {
   agentRoleMatchesDraft,
+  normalizeAgentRoleAvatar,
   projectAgentRoleToExecutorBinding,
   workflowPermissionProfileForAgentRole,
 } from "./agent-role";
@@ -22,8 +23,10 @@ function role(overrides: Partial<AgentRoleRecord> = {}): AgentRoleRecord {
     thinkingLevel: null,
     openCodeAgent: null,
     openCodeVariant: null,
+    description: null,
     instructions: null,
     skillIds: null,
+    avatar: null,
     createdAt: "2026-09-06T00:00:00.000Z",
     updatedAt: "2026-09-06T00:00:00.000Z",
     ...overrides,
@@ -144,5 +147,52 @@ describe("agentRoleMatchesDraft", () => {
         permissionMode: "codex-auto",
       }),
     ).toBe(false);
+  });
+});
+
+describe("normalizeAgentRoleAvatar", () => {
+  it("keeps a single emoji with a palette color", () => {
+    expect(
+      normalizeAgentRoleAvatar({ kind: "emoji", emoji: " 🦊 ", color: "teal" }),
+    ).toEqual({ kind: "emoji", emoji: "🦊", color: "teal" });
+  });
+
+  it("keeps only the first grapheme, including joined emoji", () => {
+    expect(
+      normalizeAgentRoleAvatar({
+        kind: "emoji",
+        emoji: "👩‍💻🚀",
+        color: "blue",
+      }),
+    ).toEqual({ kind: "emoji", emoji: "👩‍💻", color: "blue" });
+  });
+
+  it("falls back to gray for an unknown color", () => {
+    expect(
+      normalizeAgentRoleAvatar({
+        kind: "emoji",
+        emoji: "🔥",
+        color: "#ff0000",
+      }),
+    ).toEqual({ kind: "emoji", emoji: "🔥", color: "gray" });
+  });
+
+  it("keeps an initial avatar that only carries a color", () => {
+    expect(
+      normalizeAgentRoleAvatar({ kind: "initial", color: "amber" }),
+    ).toEqual({ kind: "initial", color: "amber" });
+  });
+
+  it("rejects text, empty values, and unknown shapes", () => {
+    expect(
+      normalizeAgentRoleAvatar({ kind: "emoji", emoji: "ab", color: "red" }),
+    ).toBeNull();
+    expect(
+      normalizeAgentRoleAvatar({ kind: "emoji", emoji: "  ", color: "red" }),
+    ).toBeNull();
+    expect(
+      normalizeAgentRoleAvatar({ kind: "image", url: "x", color: "red" }),
+    ).toBeNull();
+    expect(normalizeAgentRoleAvatar(null)).toBeNull();
   });
 });
