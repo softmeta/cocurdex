@@ -50,8 +50,9 @@ import { AppShellContent } from "./app-shell-content";
 import {
   TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_HEIGHT,
+  TITLEBAR_LEADING_RESERVE,
   TITLEBAR_PANE_HEADER_START_INSET,
-  TITLEBAR_TRAFFIC_LIGHT_RESERVE,
+  withTitlebarControlsInset,
 } from "./app-shell-layout";
 import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
@@ -226,11 +227,13 @@ export function AppShellFrame({
   // mount point renders it at a time (center when side by side, dock when the
   // editor is fullscreen), so chat state and composerRef survive the switch.
   // The dock drops the titlebar spacer but keeps the session pane header.
-  let paneHeaderEndInset = 0;
+  let paneHeaderEndInset: number | string = 0;
   if (isRightPanelCompact && !isRightPanelMaximized) {
     paneHeaderEndInset = CHAT_DOCK_ACTIONS_INSET;
   } else if (!isRightPanelOpen) {
-    paneHeaderEndInset = TITLEBAR_EDITOR_TOGGLE_WIDTH;
+    paneHeaderEndInset = withTitlebarControlsInset(
+      TITLEBAR_EDITOR_TOGGLE_WIDTH,
+    );
   }
   const splitChatNode = (
     <SessionSplitLayout
@@ -309,7 +312,7 @@ export function AppShellFrame({
               className="app-drag flex h-full shrink-0 items-center"
               style={{
                 width: isLeftSidebarOpen ? leftWidth : undefined,
-                paddingInlineStart: TITLEBAR_TRAFFIC_LIGHT_RESERVE,
+                paddingInlineStart: TITLEBAR_LEADING_RESERVE,
               }}
             >
               {/*

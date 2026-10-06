@@ -1014,7 +1014,7 @@ export default interface Resources {
       results: "Results";
     };
     hints: {
-      changeCategory: "⌘[ ⌘] Change category";
+      changeCategory: "{{previous}} {{next}} Change category";
       open: "↵ Open";
       select: "↑↓ Select";
     };

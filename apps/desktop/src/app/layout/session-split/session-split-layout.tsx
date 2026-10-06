@@ -69,7 +69,7 @@ interface SessionSplitLayoutProps {
   hideTitlebarSpacer?: boolean;
   /** Set when the surrounding shell renders the pane header for a lone pane. */
   hideSinglePaneHeader?: boolean;
-  headerEndInset?: number;
+  headerEndInset?: number | string;
   headerStartInset?: number;
 }
 

@@ -1,6 +1,7 @@
 import {
   type AgentToolCallContent,
   type AgentToolCallRecord,
+  pathBaseName,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
@@ -214,7 +215,7 @@ function getPositiveNumber(value: unknown) {
 }
 
 function getFileLabel(filePath: string) {
-  return filePath.split("/").pop() ?? filePath;
+  return pathBaseName(filePath);
 }
 
 export function getLineRangeLabel(

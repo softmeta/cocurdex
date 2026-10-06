@@ -3,6 +3,7 @@ import {
   isContextItemAttachment,
   isImageAttachment,
   type MessageAttachment,
+  pathBaseName,
 } from "@cocurdex/shared";
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -28,7 +29,7 @@ function getAnchorPreview(message: UserMessageAnchor) {
     const attachment = message.attachments[0];
     if (attachment && isContextFolderAttachment(attachment)) {
       const folderName =
-        attachment.folderPath.split("/").pop() ?? "Attached folder";
+        pathBaseName(attachment.folderPath) || "Attached folder";
       return `Attached ${folderName}`;
     }
 
@@ -37,7 +38,7 @@ function getAnchorPreview(message: UserMessageAnchor) {
     }
 
     if (attachment && !isImageAttachment(attachment)) {
-      const fileName = attachment.filePath.split("/").pop() ?? "Attached file";
+      const fileName = pathBaseName(attachment.filePath) || "Attached file";
       return `Attached ${fileName}`;
     }
 

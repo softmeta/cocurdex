@@ -1,3 +1,5 @@
+import { isMacPlatform } from "@/lib/platform";
+
 /**
  * Shared layout metrics for the app shell.
  *
@@ -9,7 +11,8 @@
  */
 
 // Keep electron `trafficLightPosition.y` centered in this height:
-// y ≈ (TITLEBAR_HEIGHT - 14) / 2 = 9 for ~14px macOS lights (see main.ts).
+// y ≈ (TITLEBAR_HEIGHT - 14) / 2 = 9 for ~14px macOS lights
+// (see electron/window/title-bar-chrome.ts).
 export const TITLEBAR_HEIGHT = 32;
 
 /**
@@ -22,7 +25,12 @@ export const TITLEBAR_ICON_BUTTON_GAP = 4;
 // Left padding reserved for the macOS traffic lights. Lights end ~59px from
 // the edge at trafficLightPosition.x:12; 80px leaves a comfortable gap before
 // the first size-6 pill (matches the former settings `left-20` spacing).
-export const TITLEBAR_TRAFFIC_LIGHT_RESERVE = 80;
+// Windows and Linux draw their window controls on the right instead.
+export const TITLEBAR_LEADING_RESERVE = isMacPlatform() ? 80 : 12;
+
+export function withTitlebarControlsInset(px: number): string {
+  return `calc(${px}px + var(--titlebar-controls-inset))`;
+}
 // Number of square controls in the titlebar toolbar: toggle, back, forward.
 export const TITLEBAR_CONTROL_COUNT = 3;
 export const TITLEBAR_CONTROL_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
@@ -32,7 +40,7 @@ export const TITLEBAR_RIGHT_PADDING = 0;
 
 /** Intrinsic width the titlebar toolbar needs to render without overflow. */
 export const TITLEBAR_TOOLBAR_MIN_WIDTH =
-  TITLEBAR_TRAFFIC_LIGHT_RESERVE +
+  TITLEBAR_LEADING_RESERVE +
   TITLEBAR_CONTROL_COUNT * TITLEBAR_CONTROL_SIZE +
   (TITLEBAR_CONTROL_COUNT - 1) * TITLEBAR_ICON_BUTTON_GAP +
   TITLEBAR_RIGHT_PADDING;

@@ -25,6 +25,8 @@ import {
   TITLEBAR_HEIGHT,
   TITLEBAR_ICON_BUTTON_GAP,
   TITLEBAR_ICON_BUTTON_SIZE,
+  TITLEBAR_LEADING_RESERVE,
+  withTitlebarControlsInset,
 } from "./app-shell/app-shell-layout";
 import {
   type RightPanelView,
@@ -261,12 +263,14 @@ export function ViewSwitcherTabs({
         Split into: tabs (drag) | middle filler (drag) | toggle reserve (no-drag).
       */}
       <div
-        className={cn(
-          "relative z-40 flex w-full shrink-0 items-center border-b border-editor-border",
-          reserveTrafficLights && "ps-20",
-        )}
+        className="relative z-40 flex w-full shrink-0 items-center border-b border-editor-border"
         data-testid="editor-panel-view-switcher"
-        style={{ height: VIEW_SWITCHER_ROW_HEIGHT_PX }}
+        style={{
+          height: VIEW_SWITCHER_ROW_HEIGHT_PX,
+          paddingInlineStart: reserveTrafficLights
+            ? TITLEBAR_LEADING_RESERVE
+            : undefined,
+        }}
       >
         <ToggleGroup
           // Non-zero spacing avoids the connected segmented styles (rounded-none
@@ -320,7 +324,9 @@ export function ViewSwitcherTabs({
         <div
           aria-hidden
           className="app-no-drag shrink-0 self-stretch"
-          style={{ width: TITLEBAR_EDITOR_TOGGLE_WIDTH }}
+          style={{
+            width: withTitlebarControlsInset(TITLEBAR_EDITOR_TOGGLE_WIDTH),
+          }}
         />
       </div>
     </TooltipProvider>

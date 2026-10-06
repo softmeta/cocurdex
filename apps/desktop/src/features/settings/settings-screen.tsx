@@ -3,7 +3,8 @@ import { type MouseEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_HEIGHT,
-  TITLEBAR_TRAFFIC_LIGHT_RESERVE,
+  TITLEBAR_LEADING_RESERVE,
+  TITLEBAR_TOOLBAR_MIN_WIDTH,
 } from "@/app/layout/app-shell/app-shell-layout";
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import type { ChatLayoutMode } from "@/app/layout/chat-layout-preference";
@@ -46,6 +47,8 @@ import {
   WorkspaceSettingsPanel,
 } from "./workspaces";
 import { WorktreeSettingsPanel } from "./worktrees";
+
+const SETTINGS_HEADING_GAP = 16;
 
 export interface SettingsScreenProps {
   activeSection: SettingsSectionId;
@@ -330,9 +333,14 @@ export function SettingsScreen({
         <header
           className={cn(
             "app-drag flex h-8 min-w-0 shrink-0 items-center border-b pe-4 transition-colors",
-            isSidebarOpen ? "ps-5" : "ps-44",
+            isSidebarOpen && "ps-5",
             isContentScrolled ? "border-border/60" : "border-transparent",
           )}
+          style={{
+            paddingInlineStart: isSidebarOpen
+              ? undefined
+              : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP,
+          }}
         >
           {settingsHeading}
         </header>
@@ -370,7 +378,7 @@ export function SettingsScreen({
       </section>
 
       {/*
-        Mirror app-shell left titlebar: same TITLEBAR_HEIGHT, traffic-light
+        Mirror app-shell left titlebar: same TITLEBAR_HEIGHT, leading
         reserve, and gap-1 size-6 pills so controls do not jump when leaving
         settings.
       */}
@@ -378,7 +386,7 @@ export function SettingsScreen({
         className="absolute top-0 start-0 z-[100] flex items-center"
         style={{
           height: TITLEBAR_HEIGHT,
-          paddingInlineStart: TITLEBAR_TRAFFIC_LIGHT_RESERVE,
+          paddingInlineStart: TITLEBAR_LEADING_RESERVE,
         }}
       >
         <div className="app-no-drag flex items-center gap-1">

@@ -1,3 +1,4 @@
+import { pathBaseName } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { X } from "lucide-react";
@@ -16,7 +17,7 @@ import {
 } from "./editor-store";
 
 function getDisplayPath(filePath: string) {
-  return filePath.split("/").pop() ?? filePath;
+  return pathBaseName(filePath);
 }
 
 interface EditorTabItemProps {

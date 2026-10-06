@@ -20,3 +20,8 @@ export interface McpConfigFile {
 export function isValidMcpServerName(name: string) {
   return /^[A-Za-z0-9_-]+$/.test(name);
 }
+
+export function pathBaseName(value: string): string {
+  const segments = value.split(/[\\/]+/).filter(Boolean);
+  return segments.at(-1) ?? value;
+}
