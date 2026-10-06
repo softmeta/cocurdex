@@ -38,6 +38,8 @@ import {
   getAgentDisplayLabel,
   getSessionModeOptions,
   SessionModeSubmenu,
+  type ThinkingLevelOption,
+  ThinkingLevelSubmenu,
 } from "@/features/sessions";
 import { cn } from "@/lib";
 import { AttachContextSubmenus } from "./attach-context-submenus";
@@ -73,8 +75,6 @@ import { PanelComposer } from "./panel-composer";
 import { PillComposer } from "./pill-composer";
 import { sendShortcutAtom } from "./send-shortcut";
 import { SessionRoleName } from "./session-role-name";
-import type { ThinkingLevelOption } from "./thinking-level";
-import { ThinkingLevelSubmenu } from "./thinking-level-submenu";
 import { useComposerSubmission } from "./use-composer-submission";
 import {
   getContextAttachmentMentionLabel,

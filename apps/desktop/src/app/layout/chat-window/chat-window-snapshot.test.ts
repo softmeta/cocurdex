@@ -2,7 +2,7 @@ import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { composerDraftsAtom } from "@/features/composer/composer-draft-store";
 import { chatComposerAttachmentAtom } from "@/features/editor/editor-store";
-import { newSessionModesAtom } from "@/features/sessions/new-session-card/new-session-mode-draft";
+import { newSessionModesAtom } from "@/features/new-session/new-session-mode-draft";
 import {
   focusedPaneIdAtom,
   sessionSplitLayoutAtom,

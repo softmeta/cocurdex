@@ -1,6 +1,6 @@
 import type { AgentSessionMode } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import { resolveNewSessionModeId } from "@/features/sessions/new-session-card/new-session-mode-draft";
+import { resolveNewSessionModeId } from "@/features/new-session/new-session-mode-draft";
 
 const devinModes: AgentSessionMode[] = [
   { id: "accept-edits", name: "Code", description: null },

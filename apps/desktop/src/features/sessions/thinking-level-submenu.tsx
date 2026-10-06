@@ -1,6 +1,6 @@
 import type { AgentThinkingLevel } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
-import { RuntimeAxisSubmenu } from "@/features/sessions";
+import { RuntimeAxisSubmenu } from "./provider-model";
 import type { ThinkingLevelOption } from "./thinking-level";
 
 /**

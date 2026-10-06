@@ -64,14 +64,7 @@ import {
   type StartConversationPayload,
   upsertConversationAtom,
 } from "@/features/chat";
-import {
-  type ChatComposerHandle,
-  ComposerSurface,
-  getConfigOptionThinkingLevels,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-  type ThinkingLevelOption,
-} from "@/features/composer";
+import { type ChatComposerHandle, ComposerSurface } from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
   clearChatComposerAttachmentAtom,
@@ -79,6 +72,7 @@ import {
   remapEditorRootAtom,
   saveEditorViewSnapshotAtom,
 } from "@/features/editor";
+import { NewSessionCard } from "@/features/new-session";
 import {
   activeSessionIdAtom,
   agentsAtom,
@@ -88,16 +82,19 @@ import {
   createDraftSessionAtom,
   generateLocalSessionTitle,
   getAgentDisplayLabel,
+  getConfigOptionThinkingLevels,
   getDisplaySessionStatus,
   getSessionPermissionMode,
+  getThinkingLevelOptions,
   isDefaultSessionTitle,
   isSubagentSession,
   lastSelectedAgentAtom,
   markSessionMessageAtom,
-  NewSessionCard,
+  resolveThinkingLevel,
   type SessionPaneBinding,
   selectSessionAtom,
   sessionsAtom,
+  type ThinkingLevelOption,
   updateAgentRuntimePreferences,
   updateSessionModeAtom,
   updateSessionPermissionModeAtom,

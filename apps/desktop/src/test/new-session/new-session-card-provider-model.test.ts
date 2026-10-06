@@ -3,7 +3,7 @@ import {
   type CompatibleProviderModel,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import { shouldPersistProviderDefault } from "@/features/sessions/new-session-card/new-session-card-provider-default";
+import { shouldPersistProviderDefault } from "@/features/new-session/new-session-card-provider-default";
 import { getDefaultProviderModelValue } from "@/features/sessions/provider-model/default-provider-model";
 import { getProviderModelValue } from "@/features/sessions/provider-model/provider-model-cache";
 

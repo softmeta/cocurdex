@@ -12,6 +12,12 @@ import { supportsInSessionRuntimeAxis } from "@cocurdex/shared";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  findSessionConfigOption,
+  getComposerSessionConfigOptions,
+  getConfigOptionSpeedTiers,
+  getSessionConfigTriggerValues,
+  isBaselineSpeedOptionValue,
+  type OccupiedSessionConfigAxis,
   PermissionModeSubmenu,
   ProviderModelMenu,
   supportsLivePermissionMode,
@@ -25,14 +31,6 @@ import { shouldShowProviderGroupLabels } from "@/features/sessions/provider-mode
 import { AgentRuntimeConfigItems } from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
-import {
-  findSessionConfigOption,
-  getComposerSessionConfigOptions,
-  getConfigOptionSpeedTiers,
-  getSessionConfigTriggerValues,
-  isBaselineSpeedOptionValue,
-  type OccupiedSessionConfigAxis,
-} from "./session-config-options";
 
 const DEFAULT_VALUE = "";
 

@@ -8,17 +8,22 @@ import { Button, Checkbox } from "@/components/ui";
 import {
   ChatComposer,
   ComposerSurfaceBody,
-  getThinkingLevelLabel,
   newSessionComposerDraftKey,
-  ThinkingLevelSubmenu,
   WelcomeHeading,
 } from "@/features/composer";
 import {
-  composerContextTriggerHoverClassName,
-  WorkspacePicker,
-  WorktreePicker,
-} from "@/features/workspaces";
-import { cn } from "@/lib";
+  AgentSelect,
+  buildAgentSelectOptions,
+  defaultAgentDescriptors,
+  getAgentDisplayLabel,
+  getThinkingLevelLabel,
+  PermissionModeSubmenu,
+  ProviderModelMenu,
+  SessionModeSubmenu,
+  shouldShowProviderGroupLabels,
+  ThinkingLevelSubmenu,
+  useSessionModeLabels,
+} from "@/features/sessions";
 import {
   AgentRoleEditDialog,
   getAgentRoles,
@@ -28,17 +33,14 @@ import {
   saveAgentRoleRecord,
   subscribeAgentRoles,
   useAgentRoleSummary,
-} from "../agent-role";
-import { AgentSelect } from "../agent-select";
-import { buildAgentSelectOptions } from "../agent-select-options";
-import { PermissionModeSubmenu } from "../permission-mode-submenu";
-import { ProviderModelMenu } from "../provider-model";
-import { shouldShowProviderGroupLabels } from "../provider-model/provider-model-label";
-import { SessionModeSubmenu } from "../session-mode-control";
-import { useSessionModeLabels } from "../session-mode-label";
-import { getAgentDisplayLabel } from "../session-store";
+} from "@/features/sessions/agent-role";
+import {
+  composerContextTriggerHoverClassName,
+  WorkspacePicker,
+  WorktreePicker,
+} from "@/features/workspaces";
+import { cn } from "@/lib";
 import type { NewSessionCardProps } from "./new-session-card.types";
-import { defaultAgentDescriptors } from "./new-session-card-config";
 import { useNewSessionCard } from "./use-new-session-card";
 
 // Composer footer pickers: shadcn ghost Button trigger
