@@ -21,7 +21,7 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
-import type { SettingsSectionId } from "@/app/layout";
+import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 
 export const settingsClusters = [
   "interface",

@@ -17,47 +17,39 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-} from "@/features/composer";
-import { desktopApi, logRendererDiagnostic } from "@/lib";
-import { isAgentReadyToStart } from "../adapter-status";
-import {
+  selectableAgentOptions as agentDropdownOptions,
+  applyAgentSessionModesAtom,
+  defaultAgentDescriptors,
   getAgentRuntimePreferences,
-  resolvePreferredPermissionMode,
-  updateAgentRuntimePreferences,
-} from "../agent-runtime-preferences";
-import {
   getCachedProviderModelEntry,
+  getDefaultOpenCodeAgent,
+  getDefaultPermissionMode,
   getDefaultProviderModelValue,
+  getOpenCodeRuntimeOptions,
+  getPermissionModeOptions,
   getProviderModelCacheVersion,
+  getSessionModeOptions,
+  getThinkingLevelOptions,
+  isAgentReadyToStart,
+  loadProviderModelOptions,
+  parseProviderModelValue,
+  providerModelCache,
+  resolveOpenCodeRuntimeValue,
+  resolvePreferredPermissionMode,
+  resolveThinkingLevel,
+  subscribeProviderModelCache,
+  updateAgentRuntimePreferences,
+} from "@/features/sessions";
+import {
   getProviderModelValue,
   isProviderModelCacheFresh,
-  loadProviderModelOptions,
   type ProviderModelCacheResult,
-  parseProviderModelValue,
   probeProviderModelAxes,
-  providerModelCache,
   shouldRevalidateProviderModels,
-  subscribeProviderModelCache,
   updateCachedProviderDefault,
-} from "../provider-model";
-import {
-  getDefaultOpenCodeAgent,
-  getOpenCodeRuntimeOptions,
-  resolveOpenCodeRuntimeValue,
-} from "../provider-model/opencode-runtime-options";
-import {
-  applyAgentSessionModesAtom,
-  getDefaultPermissionMode,
-  getPermissionModeOptions,
-  getSessionModeOptions,
-} from "../session-store";
+} from "@/features/sessions/provider-model";
+import { desktopApi, logRendererDiagnostic } from "@/lib";
 import type { UseNewSessionCardProps } from "./new-session-card.types";
-import {
-  selectableAgentOptions as agentDropdownOptions,
-  defaultAgentDescriptors,
-} from "./new-session-card-config";
 import { shouldPersistProviderDefault } from "./new-session-card-provider-default";
 import {
   resolveNewSessionModeId,

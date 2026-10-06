@@ -24,9 +24,12 @@ import {
   ComposerSurface,
   ComposerSurfaceBody,
   composerFooterControlClassName,
-  type ThinkingLevelOption,
 } from "@/features/composer";
-import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
+import {
+  ScriptRunPanel,
+  TeamPanel,
+  type ThinkingLevelOption,
+} from "@/features/sessions";
 import { desktopApi } from "@/lib";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";

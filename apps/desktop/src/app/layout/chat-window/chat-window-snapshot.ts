@@ -9,13 +9,13 @@ import {
   composerDraftsAtom,
 } from "@/features/composer";
 import { chatComposerAttachmentAtom } from "@/features/editor";
+import { newSessionModesAtom } from "@/features/new-session";
 import {
   agentsAtom,
   bootstrapProviderModelsAtom,
   focusedPaneIdAtom,
   lastSelectedAgentAtom,
   listPanes,
-  newSessionModesAtom,
   sessionSplitLayoutAtom,
   sessionsAtom,
 } from "@/features/sessions";

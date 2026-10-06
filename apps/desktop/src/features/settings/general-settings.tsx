@@ -1,6 +1,9 @@
 import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
-import { type ChatLayoutMode, chatLayoutModes } from "@/app/layout";
+import {
+  type ChatLayoutMode,
+  chatLayoutModes,
+} from "@/app/layout/chat-layout-preference";
 import { Switch } from "@/components/ui";
 import {
   type ActivityDisplayMode,

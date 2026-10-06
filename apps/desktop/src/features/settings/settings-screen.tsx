@@ -1,17 +1,17 @@
 import { useSetAtom } from "jotai";
 import { type MouseEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SettingsSectionId } from "@/app/layout";
-import {
-  type ChatLayoutMode,
-  ResizableSidebarSlot,
-  ScreenNavButtons,
-  SidebarToggleButton,
-} from "@/app/layout";
 import {
   TITLEBAR_HEIGHT,
   TITLEBAR_TRAFFIC_LIGHT_RESERVE,
 } from "@/app/layout/app-shell/app-shell-layout";
+import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
+import type { ChatLayoutMode } from "@/app/layout/chat-layout-preference";
+import {
+  ResizableSidebarSlot,
+  ScreenNavButtons,
+  SidebarToggleButton,
+} from "@/app/layout/sidebar/sidebar-frame";
 import { ScrollArea } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";

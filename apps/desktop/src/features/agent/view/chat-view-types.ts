@@ -13,10 +13,8 @@ import type {
   SessionStatus,
 } from "@cocurdex/shared";
 import type { ReactNode, Ref } from "react";
-import type {
-  ChatComposerHandle,
-  ThinkingLevelOption,
-} from "@/features/composer";
+import type { ChatComposerHandle } from "@/features/composer";
+import type { ThinkingLevelOption } from "@/features/sessions";
 import type { SessionPlan } from "../plan";
 import type { QueuedAgentInputItem } from "../queued-input";
 import type { AgentSessionRuntimeState } from "../runtime";
