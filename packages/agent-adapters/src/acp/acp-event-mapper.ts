@@ -273,7 +273,6 @@ export class AcpEventMapper {
   private lastContextWindowSize: number | null = null;
   private lastReportedCostUsd: number | null = null;
   private lastTurnUsage: AgentUsageRecord | null = null;
-  private providerSessionId: string | null = null;
   private readonly messages = new Map<string, MessageBuffer>();
   private readonly tools = new Map<string, AgentToolCallRecord>();
   private readonly turnDiffs = new Map<
@@ -381,14 +380,11 @@ export class AcpEventMapper {
       Number.isFinite(contextWindowSize) &&
       contextWindowSize > 0
     ) {
-      this.emitUsage(
-        {
-          inputTokens: 0,
-          outputTokens: 0,
-          contextWindowSize: Math.floor(contextWindowSize),
-        },
-        "session initialization",
-      );
+      this.emitUsage({
+        inputTokens: 0,
+        outputTokens: 0,
+        contextWindowSize: Math.floor(contextWindowSize),
+      });
     }
   }
 
@@ -400,49 +396,18 @@ export class AcpEventMapper {
    */
   applyContextUsage({ contextTokensUsed, contextWindowSize }: AcpContextUsage) {
     const windowSize = contextWindowSize ?? this.lastContextWindowSize;
-    this.emitUsage(
-      {
-        inputTokens: 0,
-        outputTokens: 0,
-        ...(contextTokensUsed != null ? { contextTokensUsed } : {}),
-        ...(windowSize != null ? { contextWindowSize: windowSize } : {}),
-      },
-      "session info",
-    );
+    this.emitUsage({
+      inputTokens: 0,
+      outputTokens: 0,
+      ...(contextTokensUsed != null ? { contextTokensUsed } : {}),
+      ...(windowSize != null ? { contextWindowSize: windowSize } : {}),
+    });
   }
 
   handle(notification: SessionNotification) {
-    this.providerSessionId = notification.sessionId;
-
     // Grok (and similar agents) stamp context fill on every notification's
     // `_meta.totalTokens` instead of sending a dedicated `usage_update`.
-    const meta = readMetaRecord(notification._meta);
-    const totalTokens = readTotalTokensFromMeta(meta);
-    if (totalTokens != null) {
-      logAdapterDiagnostic(
-        "info",
-        "[DEBUG-grok-context] notification received",
-        {
-          appSessionId: this.sessionId,
-          providerSessionId: notification.sessionId,
-          updateType: notification.update.sessionUpdate,
-          totalTokens,
-          previousContextTokens: this.lastContextTokensUsed,
-          isReplay: typeof meta?.isReplay === "boolean" ? meta.isReplay : null,
-          eventId:
-            typeof meta?.eventId === "string" ||
-            typeof meta?.eventId === "number"
-              ? meta.eventId
-              : null,
-          agentTimestampMs:
-            typeof meta?.agentTimestampMs === "number"
-              ? meta.agentTimestampMs
-              : null,
-          receivedAt: this.now(),
-        },
-      );
-    }
-    this.emitContextFromMeta(meta);
+    this.emitContextFromMeta(readMetaRecord(notification._meta));
 
     const { update } = notification;
     switch (update.sessionUpdate) {
@@ -563,29 +528,13 @@ export class AcpEventMapper {
           );
           this.lastReportedCostUsd = cumulativeCostUsd;
         }
-        logAdapterDiagnostic(
-          "info",
-          "[DEBUG-grok-context] usage_update received",
-          {
-            appSessionId: this.sessionId,
-            providerSessionId: notification.sessionId,
-            used,
-            size,
-            cumulativeCostUsd,
-            previousContextTokens: this.lastContextTokensUsed,
-            receivedAt: this.now(),
-          },
-        );
-        this.emitUsage(
-          {
-            inputTokens: 0,
-            outputTokens: 0,
-            ...(used != null ? { contextTokensUsed: used } : {}),
-            ...(size != null ? { contextWindowSize: size } : {}),
-            ...(totalCostUsd != null ? { totalCostUsd } : {}),
-          },
-          "usage_update",
-        );
+        this.emitUsage({
+          inputTokens: 0,
+          outputTokens: 0,
+          ...(used != null ? { contextTokensUsed: used } : {}),
+          ...(size != null ? { contextWindowSize: size } : {}),
+          ...(totalCostUsd != null ? { totalCostUsd } : {}),
+        });
         return;
       }
       case "plan_removed":
@@ -622,24 +571,8 @@ export class AcpEventMapper {
   ): MessageRecord {
     const promptUsage = mapAcpPromptUsage(promptResponse);
     if (promptUsage) {
-      logAdapterDiagnostic(
-        "info",
-        "[DEBUG-grok-context] prompt response received",
-        {
-          appSessionId: this.sessionId,
-          providerSessionId: this.providerSessionId,
-          contextTokensUsed: promptUsage.contextTokensUsed ?? null,
-          inputTokens: promptUsage.inputTokens,
-          outputTokens: promptUsage.outputTokens,
-          cacheReadInputTokens: promptUsage.cacheReadInputTokens ?? null,
-          cacheCreationInputTokens:
-            promptUsage.cacheCreationInputTokens ?? null,
-          previousContextTokens: this.lastContextTokensUsed,
-          receivedAt: this.now(),
-        },
-      );
       this.lastTurnUsage = promptUsage;
-      this.emitUsage(promptUsage, "session/prompt response");
+      this.emitUsage(promptUsage);
     }
 
     let lastResponse: MessageRecord | undefined;
@@ -713,21 +646,18 @@ export class AcpEventMapper {
     if (totalTokens == null) {
       return;
     }
-    this.emitUsage(
-      {
-        inputTokens: 0,
-        outputTokens: 0,
-        contextTokensUsed: totalTokens,
-        // Keep stamping the seeded window so absolute merges stay complete.
-        ...(this.lastContextWindowSize != null
-          ? { contextWindowSize: this.lastContextWindowSize }
-          : {}),
-      },
-      "notification._meta.totalTokens",
-    );
+    this.emitUsage({
+      inputTokens: 0,
+      outputTokens: 0,
+      contextTokensUsed: totalTokens,
+      // Keep stamping the seeded window so absolute merges stay complete.
+      ...(this.lastContextWindowSize != null
+        ? { contextWindowSize: this.lastContextWindowSize }
+        : {}),
+    });
   }
 
-  private emitUsage(usage: AgentUsageRecord, source: string) {
+  private emitUsage(usage: AgentUsageRecord) {
     const nextUsed = usage.contextTokensUsed ?? null;
     const nextSize = usage.contextWindowSize ?? null;
     const hasBilling =
@@ -739,20 +669,6 @@ export class AcpEventMapper {
     const contextUnchanged =
       (nextUsed == null || nextUsed === this.lastContextTokensUsed) &&
       (nextSize == null || nextSize === this.lastContextWindowSize);
-
-    if (nextUsed != null || nextSize != null) {
-      logAdapterDiagnostic("info", "[DEBUG-grok-context] usage transition", {
-        appSessionId: this.sessionId,
-        providerSessionId: this.providerSessionId,
-        source,
-        previousContextTokens: this.lastContextTokensUsed,
-        nextContextTokens: nextUsed,
-        previousContextWindowSize: this.lastContextWindowSize,
-        nextContextWindowSize: nextSize,
-        accepted: !contextUnchanged || hasBilling,
-        receivedAt: this.now(),
-      });
-    }
 
     // Skip pure context-only updates that do not change the window fill.
     if (contextUnchanged && !hasBilling) {

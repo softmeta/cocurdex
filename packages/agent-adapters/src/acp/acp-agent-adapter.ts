@@ -39,6 +39,11 @@ import {
 } from "../shared/session-recovery";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
 import {
+  createAcpConnectionLostError,
+  createAcpSignInRequiredError,
+  isAcpAuthRequiredError,
+} from "./acp-errors";
+import {
   type AcpContextUsage,
   AcpEventMapper,
   mapSessionConfigOptions,
@@ -113,10 +118,9 @@ export interface AcpAgentAdapterOptions {
     // after a turn ends, so the whole first turn shows stale statuses.
     changeNotifications?: string[];
   };
-  // Tool-call titles whose plan body travels inline with the call rather than
-  // living in the agent's own plan file. Drives the reference format the user's
-  // review feedback has to use, nothing else.
-  inlinePlanToolTitles?: string[];
+  planApprovalRequest?: AcpPlanApprovalRequest;
+  loadSessionMeta?: Record<string, unknown>;
+  setModelMeta?(reasoningEffort: string): Record<string, unknown>;
   steeringRequest?: {
     method: string;
     buildParams(input: {
@@ -129,6 +133,24 @@ export interface AcpAgentAdapterOptions {
   // Runs after initialize + auth and before session/new. Grok Build uses this
   // to wait for the remote model catalog so session/new advertises every model.
   afterInitialize?(connection: AcpConnection): Promise<void>;
+}
+
+export interface AcpPlanApprovalRequest {
+  method: string;
+  parseParams(params: unknown): {
+    toolCallId: string;
+    planContent: string | null;
+  };
+  // Tool-call titles whose plan body travels inline with the call rather than
+  // living in the agent's own plan file. Drives the reference format the user's
+  // review feedback has to use, nothing else.
+  inlinePlanToolTitles: string[];
+}
+
+function readResumableProviderSessionId(payload: CreateAgentSessionPayload) {
+  return payload.providerSession?.resumable === false
+    ? undefined
+    : payload.providerSession?.providerSessionId;
 }
 
 // Servers finish handshaking in a burst, and each one pushes its own status
@@ -261,9 +283,9 @@ export class AcpAgentAdapter implements AgentAdapter {
     }
     let disposed = false;
     let mcpRefreshTimer: ReturnType<typeof setTimeout> | undefined;
-    const inlinePlanToolTitles = new Set(
-      this.options.inlinePlanToolTitles ?? [],
-    );
+    const planApprovalRequest = payload.requestPlanApproval
+      ? this.options.planApprovalRequest
+      : undefined;
     const requestPlanApproval = payload.requestPlanApproval;
     const mcpChangeNotificationMethods =
       this.options.mcpServersRequest?.changeNotifications ?? [];
@@ -304,6 +326,9 @@ export class AcpAgentAdapter implements AgentAdapter {
         ...(this.options.mcpServersRequest?.changeNotifications ?? []),
         ...(this.options.subagentProtocol?.notificationMethods ?? []),
       ],
+      extRequestMethods: planApprovalRequest
+        ? [planApprovalRequest.method]
+        : [],
       handlers: {
         onSessionUpdate(notification) {
           routeSessionUpdate(notification);
@@ -377,38 +402,65 @@ export class AcpAgentAdapter implements AgentAdapter {
           });
           return mapPermissionDecision(request, resolution);
         },
-        exitPlanMode: requestPlanApproval
-          ? async (request) => {
-              const planContent = request.planContent?.trim()
-                ? request.planContent
-                : null;
-              const title = mapper.getToolCallTitle(request.toolCallId);
-              const source =
-                title && inlinePlanToolTitles.has(title)
-                  ? "inline"
-                  : "file-backed";
-              const decision = await requestPlanApproval({
-                id: request.toolCallId,
-                sessionId: payload.session.id,
-                providerId: payload.session.agentType,
-                planContent,
-                source,
-              });
+        async onExtRequest(method, params) {
+          if (
+            !planApprovalRequest ||
+            !requestPlanApproval ||
+            method !== planApprovalRequest.method
+          ) {
+            throw RequestError.methodNotFound(method);
+          }
+          const request = planApprovalRequest.parseParams(params);
+          const planContent = request.planContent?.trim()
+            ? request.planContent
+            : null;
+          const title = mapper.getToolCallTitle(request.toolCallId);
+          const source =
+            title && planApprovalRequest.inlinePlanToolTitles.includes(title)
+              ? "inline"
+              : "file-backed";
+          const decision = await requestPlanApproval({
+            id: request.toolCallId,
+            sessionId: payload.session.id,
+            providerId: payload.session.agentType,
+            planContent,
+            source,
+          });
 
-              return {
-                outcome: decision.outcome,
-                ...(decision.feedback ? { feedback: decision.feedback } : {}),
-              };
-            }
-          : undefined,
+          return {
+            outcome: decision.outcome,
+            ...(decision.feedback ? { feedback: decision.feedback } : {}),
+          };
+        },
       },
     };
-    let connectionPromise: Promise<AcpConnection> | undefined =
-      this.connectionFactory(connectionOptions);
-    const getConnection = () => {
-      connectionPromise ??= this.connectionFactory(connectionOptions);
-      return connectionPromise;
+    const openConnection = (): Promise<AcpConnection> => {
+      const opened = this.connectionFactory({
+        ...connectionOptions,
+        handlers: {
+          ...connectionOptions.handlers,
+          onClose() {
+            if (disposed || connectionPromise !== opened) {
+              return;
+            }
+            logAdapterDiagnostic(
+              "info",
+              "[AcpAgentAdapter] agent connection lost",
+              {
+                agentId: payload.session.agentType,
+                providerSessionId: activeProviderSessionId ?? null,
+                sessionId: payload.session.id,
+              },
+            );
+            connectionPromise = undefined;
+            initialized = undefined;
+          },
+        },
+      });
+      return opened;
     };
+    let connectionPromise: Promise<AcpConnection> | undefined =
+      openConnection();
     replayLinkedSession = (providerSessionId) => {
       if (
         !this.options.subagentProtocol?.replayLinkedSession ||
@@ -494,6 +546,20 @@ export class AcpAgentAdapter implements AgentAdapter {
     const mcpServersRequest = this.options.mcpServersRequest;
     const agentLabel = this.options.descriptor.label;
     const modelProviderId = this.options.modelProviderId;
+    const setModelMeta = this.options.setModelMeta;
+
+    const mapTurnError = (
+      error: unknown,
+      turnConnection: Promise<AcpConnection> | undefined,
+    ) => {
+      if (isAcpAuthRequiredError(error)) {
+        return createAcpSignInRequiredError(agentLabel, error);
+      }
+      if (turnConnection && connectionPromise !== turnConnection && !disposed) {
+        return createAcpConnectionLostError(agentLabel, error);
+      }
+      return error;
+    };
 
     const refreshRateLimits = async (connection: AcpConnection) => {
       if (!rateLimitsRequest || disposed) {
@@ -583,8 +649,8 @@ export class AcpAgentAdapter implements AgentAdapter {
         if (disposed || !providerSessionId) {
           return;
         }
-        void getConnection()
-          .then((connection) =>
+        void connectionPromise
+          ?.then((connection) =>
             refreshMcpServers(connection, providerSessionId),
           )
           .catch(() => {
@@ -634,7 +700,10 @@ export class AcpAgentAdapter implements AgentAdapter {
       }
 
       const startup = (async () => {
-        const connection = await getConnection();
+        connectionPromise ??= openConnection();
+        const connection = await connectionPromise;
+        appliedPermissionMode = null;
+        appliedReasoningEffort = null;
         const response = await connection.initialize(buildInitializeRequest());
         const capabilities = mapNegotiatedCapabilities(response);
         onEvent({
@@ -651,6 +720,8 @@ export class AcpAgentAdapter implements AgentAdapter {
         const providerSession = await this.openProviderSession({
           capabilities,
           connection,
+          providerSessionId:
+            activeProviderSessionId ?? readResumableProviderSessionId(payload),
           mcpServers: acpAgentToolsMcpServers(
             payload.agentTools,
             response.agentCapabilities?.mcpCapabilities,
@@ -733,9 +804,11 @@ export class AcpAgentAdapter implements AgentAdapter {
         const startedAt = Date.now();
         const userMessageId = messagePayload.messageId ?? crypto.randomUUID();
         mapper.beginTurn(userMessageId);
+        let turnConnection: Promise<AcpConnection> | undefined;
         try {
           const { capabilities, connection, providerSessionId } =
             await ensureInitialized(messagePayload.history);
+          turnConnection = connectionPromise;
           if (messagePayload.delivery === "steer-active-run") {
             if (!steeringRequest) {
               throw new Error(
@@ -806,11 +879,13 @@ export class AcpAgentAdapter implements AgentAdapter {
               : null;
           const currentModelId =
             selectedModelId ?? modelState?.currentModelId ?? null;
-          const reasoningEffort = resolveAcpReasoningEffort(
-            modelState,
-            currentModelId,
-            messagePayload.thinkingLevel,
-          );
+          const reasoningEffort = setModelMeta
+            ? resolveAcpReasoningEffort(
+                modelState,
+                currentModelId,
+                messagePayload.thinkingLevel,
+              )
+            : null;
           // Requested axes resolve against the session's live config options
           // (refreshed after every model switch) rather than stale snapshot
           // metadata — Devin only accepts levels the current model offers.
@@ -842,7 +917,9 @@ export class AcpAgentAdapter implements AgentAdapter {
               await connection.setSessionModel({
                 sessionId: providerSessionId,
                 modelId: currentModelId,
-                ...(reasoningEffort ? { _meta: { reasoningEffort } } : {}),
+                ...(reasoningEffort && setModelMeta
+                  ? { _meta: setModelMeta(reasoningEffort) }
+                  : {}),
               });
             }
             appliedModelId = currentModelId;
@@ -912,7 +989,8 @@ export class AcpAgentAdapter implements AgentAdapter {
             status: "idle",
           });
           return message;
-        } catch (error) {
+        } catch (caught) {
+          const error = mapTurnError(caught, turnConnection);
           const message =
             error instanceof Error ? error.message : "ACP prompt failed";
           onEvent({
@@ -980,9 +1058,9 @@ export class AcpAgentAdapter implements AgentAdapter {
         // Awaited so the notification is on the wire before any caller-side
         // teardown: `session/cancel` is fire-and-forget, and a connection that
         // closes first leaves the agent running the turn it was told to drop.
-        const connection = await getConnection();
         try {
-          await connection.cancel({
+          const connection = await connectionPromise;
+          await connection?.cancel({
             sessionId: providerSessionId,
             _meta: { cancelTrigger: "client_stop" },
           });
@@ -1030,6 +1108,7 @@ export class AcpAgentAdapter implements AgentAdapter {
   private async openProviderSession({
     capabilities,
     connection,
+    providerSessionId,
     mcpServers,
     history,
     payload,
@@ -1037,15 +1116,12 @@ export class AcpAgentAdapter implements AgentAdapter {
   }: {
     capabilities: AgentNegotiatedCapabilities;
     connection: AcpConnection;
+    providerSessionId: string | null | undefined;
     mcpServers: AcpHttpMcpServer[];
     history: SendAgentMessagePayload["history"];
     payload: CreateAgentSessionPayload;
     suppressUpdates(value: boolean): void;
   }) {
-    const providerSessionId =
-      payload.providerSession?.resumable === false
-        ? undefined
-        : payload.providerSession?.providerSessionId;
     if (providerSessionId && capabilities.resumeSession) {
       try {
         const response = await connection.resumeSession({
@@ -1092,10 +1168,9 @@ export class AcpAgentAdapter implements AgentAdapter {
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
           mcpServers,
-          // The app transcript is authoritative, so the agent's replay of every
-          // past session update would be deserialized, streamed and dropped.
-          // Grok Build reads `noReplay` to skip loading those updates entirely.
-          _meta: { noReplay: true },
+          ...(this.options.loadSessionMeta
+            ? { _meta: this.options.loadSessionMeta }
+            : {}),
         });
         logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
           agentId: payload.session.agentType,

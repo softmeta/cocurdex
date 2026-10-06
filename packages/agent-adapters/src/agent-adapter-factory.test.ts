@@ -68,4 +68,12 @@ describe("createAgentAdapter", () => {
       );
     }
   });
+
+  it("keeps on-demand session mode discovery for ACP registry agents", () => {
+    installRegistryAgents(["devin"]);
+
+    expect(createAgentAdapter("acp:devin").discoverSessionModes).toBeTypeOf(
+      "function",
+    );
+  });
 });

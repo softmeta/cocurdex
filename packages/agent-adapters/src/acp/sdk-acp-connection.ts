@@ -2,13 +2,8 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import { client, methods, ndJsonStream } from "@agentclientprotocol/sdk";
 import { buildChildProcessEnv } from "../shared/process-env";
-import type {
-  AcpConnection,
-  AcpConnectionFactory,
-  AcpExitPlanModeRequest,
-} from "./acp-connection";
-
-const EXIT_PLAN_MODE_METHOD = "x.ai/exit_plan_mode";
+import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
+import { traceAcpStreams } from "./acp-trace";
 
 // Teardown budget per connection. ACP agents run their tool commands in their
 // own detached process groups (Grok Build wraps them in process-wrap's
@@ -43,30 +38,13 @@ function waitForExit(child: ChildProcess, timeoutMs: number) {
   });
 }
 
-function parseExitPlanModeParams(params: unknown): AcpExitPlanModeRequest {
-  const raw = (params ?? {}) as Record<string, unknown>;
-  const sessionId = typeof raw.sessionId === "string" ? raw.sessionId : "";
-  const toolCallId = typeof raw.toolCallId === "string" ? raw.toolCallId : "";
-
-  if (!sessionId || !toolCallId) {
-    throw new Error(
-      `${EXIT_PLAN_MODE_METHOD} requires sessionId and toolCallId`,
-    );
-  }
-
-  return {
-    sessionId,
-    toolCallId,
-    planContent: typeof raw.planContent === "string" ? raw.planContent : null,
-  };
-}
-
 export const createSdkAcpConnection: AcpConnectionFactory = async ({
   args,
   command,
   cwd,
   env,
   extNotificationMethods,
+  extRequestMethods,
   handlers,
 }) => {
   const child = spawn(command, args, {
@@ -79,10 +57,12 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     throw new Error(`Failed to open ACP stdio pipes for ${command}`);
   }
 
-  const stream = ndJsonStream(
+  const traced = traceAcpStreams(
     Writable.toWeb(child.stdin) as unknown as WritableStream<Uint8Array>,
     Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>,
+    command,
   );
+  const stream = ndJsonStream(traced.input, traced.output);
   const app = client({ name: "cocurdex" })
     .onRequest(methods.client.session.requestPermission, ({ params }) =>
       handlers.requestPermission(params),
@@ -90,16 +70,20 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     .onNotification(methods.client.session.update, ({ params }) =>
       handlers.onSessionUpdate(params),
     );
-  const exitPlanMode = handlers.exitPlanMode;
-  if (exitPlanMode) {
+  const onExtRequest = handlers.onExtRequest;
+  if (onExtRequest) {
     // Registered under both names: extension methods travel with a leading
     // underscore, and peers differ on whether they strip it before dispatch.
     // An unregistered method answers -32601, which the agent reports as a
-    // failed `exit_plan_mode` tool call with no approval UI anywhere.
-    for (const method of [EXIT_PLAN_MODE_METHOD, `_${EXIT_PLAN_MODE_METHOD}`]) {
-      app.onRequest(method, parseExitPlanModeParams, ({ params }) =>
-        exitPlanMode(params),
-      );
+    // failed tool call with no UI anywhere.
+    for (const method of extRequestMethods ?? []) {
+      for (const wireMethod of [method, `_${method}`]) {
+        app.onRequest(
+          wireMethod,
+          (params) => params,
+          ({ params }) => onExtRequest(method, params),
+        );
+      }
     }
   }
   const onExtNotification = handlers.onExtNotification;
@@ -117,6 +101,12 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     }
   }
   const connection = app.connect(stream);
+  const onClose = handlers.onClose;
+  if (onClose) {
+    connection.signal.addEventListener("abort", () => onClose(), {
+      once: true,
+    });
+  }
   child.once("error", (error) => connection.close(error));
   child.once("exit", (code, signal) => {
     if (code !== 0 && !connection.signal.aborted) {

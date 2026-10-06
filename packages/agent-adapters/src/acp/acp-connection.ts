@@ -21,8 +21,7 @@ import type {
 } from "@agentclientprotocol/sdk";
 
 // `session/set_model` is not in the ACP TypeScript SDK's typed method map yet,
-// so the request/response shape lives here. `_meta.reasoningEffort` is how
-// Grok Build takes a thinking level for the session.
+// so the request/response shape lives here.
 export interface SetSessionModelRequest {
   sessionId: string;
   modelId: string;
@@ -61,20 +60,6 @@ export interface AcpConnection {
   close(): Promise<void>;
 }
 
-// Wire types for Grok Build's `x.ai/exit_plan_mode` reverse-request. See
-// xai-grok-tools `implementations/grok_build/exit_plan_mode/types.rs` — the
-// agent serializes camelCase and reads `outcome` back as a bare string.
-export interface AcpExitPlanModeRequest {
-  sessionId: string;
-  toolCallId: string;
-  planContent?: string | null;
-}
-
-export interface AcpExitPlanModeResponse {
-  outcome: string;
-  feedback?: string;
-}
-
 export interface AcpConnectionHandlers {
   onSessionUpdate(notification: SessionNotification): Promise<void> | void;
   // Vendor extension notifications the agent pushes on its own (Grok Build's
@@ -83,12 +68,8 @@ export interface AcpConnectionHandlers {
   requestPermission(
     request: RequestPermissionRequest,
   ): Promise<RequestPermissionResponse>;
-  // Only agents that park plan approval on the client implement this. Leaving
-  // it unhandled makes the agent's tool call fail, so the adapter always wires
-  // it when the agent can enter plan mode.
-  exitPlanMode?(
-    request: AcpExitPlanModeRequest,
-  ): Promise<AcpExitPlanModeResponse>;
+  onClose?(): void;
+  onExtRequest?(method: string, params: unknown): Promise<unknown>;
 }
 
 export interface AcpLaunch {
@@ -103,6 +84,7 @@ export interface AcpConnectionFactoryOptions {
   cwd: string;
   env?: Record<string, string>;
   extNotificationMethods?: string[];
+  extRequestMethods?: string[];
   handlers: AcpConnectionHandlers;
 }
 
