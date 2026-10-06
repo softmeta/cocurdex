@@ -235,6 +235,7 @@
   "toolCalls": {
     "command": "命令",
     "completed": "已完成",
+    "copyOutput": "复制输出",
     "count_one": "{{count}} 次调用",
     "count_other": "{{count}} 次调用",
     "execute": "执行",
@@ -265,6 +266,8 @@
     "subagentResponse": "子代理回复",
     "subagentSession": "子代理会话",
     "title": "工具调用",
+    "viewRendered": "查看渲染",
+    "viewSource": "查看源码",
     "worktreeSetup": "准备 Worktree 环境"
   },
   "turnChanges": {

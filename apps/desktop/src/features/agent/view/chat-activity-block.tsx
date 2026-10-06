@@ -88,12 +88,12 @@ export function ActivityBlock({
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "mt-1 flex flex-col gap-1 overflow-hidden",
+          "mt-1 mb-3 flex flex-col gap-1 overflow-hidden",
           // Height/margin interpolate between 0 and `auto` (interpolate-size)
           // in both directions so surrounding content glides instead of
           // snapping. `auto` resolves at layout time, so rows mounted late by
           // the deferred reveal still grow smoothly.
-          "transition-[opacity,transform,height,margin] duration-200 ease-[cubic-bezier(0.2,0,0,1)] [interpolate-size:allow-keywords] data-ending-style:duration-150 data-starting-style:mt-0 data-starting-style:h-0 data-starting-style:-translate-y-1 data-starting-style:opacity-0 data-ending-style:mt-0 data-ending-style:h-0 data-ending-style:opacity-0",
+          "transition-[opacity,transform,height,margin] duration-200 ease-[cubic-bezier(0.2,0,0,1)] [interpolate-size:allow-keywords] data-ending-style:duration-150 data-starting-style:mt-0 data-starting-style:mb-0 data-starting-style:h-0 data-starting-style:-translate-y-1 data-starting-style:opacity-0 data-ending-style:mt-0 data-ending-style:mb-0 data-ending-style:h-0 data-ending-style:opacity-0",
         )}
         keepMounted={keepMounted}
       >

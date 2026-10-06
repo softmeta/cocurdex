@@ -429,10 +429,10 @@ export function createMarkdownComponents(
     },
     hr() {
       return (
-        <div
+        <hr
           className={cn(
-            "h-px",
-            tone === "editor" ? "bg-editor-border" : "bg-chat-border-soft",
+            "my-5 border-0 border-t border-dashed",
+            tone === "editor" ? "border-editor-border" : "border-chat-border",
           )}
         />
       );
