@@ -6,7 +6,11 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { Components } from "streamdown";
+import type {
+  Components,
+  MermaidErrorComponentProps,
+  MermaidOptions,
+} from "streamdown";
 import { Streamdown } from "streamdown";
 import { cn } from "@/lib";
 import { normalizeMarkdownCodeFenceLanguages } from "./markdown-code-fence";
@@ -194,6 +198,30 @@ function useStreamdownPlugins(neededPlugins: HeavyPluginKind[]) {
   return neededPlugins.length > 0 ? loadedPlugins : LIGHT_STREAMDOWN_PLUGINS;
 }
 
+function StreamingMermaidError({ chart }: MermaidErrorComponentProps) {
+  return (
+    <pre className="overflow-x-auto p-4 font-mono text-muted-foreground text-xs">
+      {chart}
+    </pre>
+  );
+}
+
+function SettledMermaidError({ chart, error }: MermaidErrorComponentProps) {
+  return (
+    <div className="space-y-2 p-4 font-mono text-xs">
+      <p className="text-destructive">{error}</p>
+      <pre className="overflow-x-auto text-muted-foreground">{chart}</pre>
+    </div>
+  );
+}
+
+const STREAMING_MERMAID: MermaidOptions = {
+  errorComponent: StreamingMermaidError,
+};
+const SETTLED_MERMAID: MermaidOptions = {
+  errorComponent: SettledMermaidError,
+};
+
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   tone = "assistant",
@@ -231,6 +259,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       components={components}
       isAnimating={streaming}
       lineNumbers={false}
+      mermaid={streaming ? STREAMING_MERMAID : SETTLED_MERMAID}
       mode={hasStreamed || streaming ? "streaming" : "static"}
       parseIncompleteMarkdown={streaming}
       plugins={plugins}

@@ -10,7 +10,7 @@ import {
 import { useAtomValue } from "jotai";
 import { Check, Copy, Pencil, X } from "lucide-react";
 import type { RefObject } from "react";
-import { memo, useRef, useState } from "react";
+import { Fragment, memo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppDropdownContent,
@@ -116,8 +116,14 @@ function formatTokenCount(value: number) {
   return value.toString();
 }
 
-function formatExactTokenCount(value: number) {
-  return new Intl.NumberFormat().format(value);
+function formatDetailedTokenCount(value: number) {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
+  }
+  return value.toString();
 }
 
 function getTurnTokenCounts(usage: AgentUsageRecord | undefined) {
@@ -159,9 +165,38 @@ function TurnTokenUsage({ usage }: { usage: AgentUsageRecord | undefined }) {
     compactParts.push(`↓${formatTokenCount(counts.outputTokens)}`);
   }
 
+  const cacheHitPercent =
+    counts.processedInputTokens > 0
+      ? Math.round(
+          (counts.cacheReadInputTokens / counts.processedInputTokens) * 100,
+        )
+      : 0;
+  const rows = [
+    {
+      label: t("assistantMessage.turnUsage.input"),
+      value: counts.processedInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.newInput"),
+      value: counts.newInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.cacheRead"),
+      value: counts.cacheReadInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.cacheWrite"),
+      value: counts.cacheCreationInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.output"),
+      value: counts.outputTokens,
+    },
+  ].filter((row) => row.value > 0);
+
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
+      <TooltipTrigger asChild delay={150}>
         <button
           aria-label={t("assistantMessage.turnUsage.ariaLabel")}
           className="cursor-help rounded-control px-0.5 transition-colors hover:bg-chat-surface-row-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -171,44 +206,25 @@ function TurnTokenUsage({ usage }: { usage: AgentUsageRecord | undefined }) {
         </button>
       </TooltipTrigger>
       <TooltipContent
-        className="flex max-w-xs flex-col items-start gap-1.5 whitespace-normal py-2 text-start"
+        className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 py-2 tabular-nums"
         side="top"
         sideOffset={6}
       >
-        {counts.processedInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipInput", {
-              tokens: formatExactTokenCount(counts.processedInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.newInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipNewInput", {
-              tokens: formatExactTokenCount(counts.newInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.cacheReadInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipCacheRead", {
-              tokens: formatExactTokenCount(counts.cacheReadInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.cacheCreationInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipCacheCreation", {
-              tokens: formatExactTokenCount(counts.cacheCreationInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.outputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipOutput", {
-              tokens: formatExactTokenCount(counts.outputTokens),
-            })}
-          </p>
+        {rows.map((row) => (
+          <Fragment key={row.label}>
+            <span className="opacity-70">{row.label}</span>
+            <span className="text-end">
+              {formatDetailedTokenCount(row.value)}
+            </span>
+          </Fragment>
+        ))}
+        {cacheHitPercent > 0 ? (
+          <>
+            <span className="opacity-70">
+              {t("assistantMessage.turnUsage.cacheHitRate")}
+            </span>
+            <span className="text-end">{cacheHitPercent}%</span>
+          </>
         ) : null}
       </TooltipContent>
     </Tooltip>
@@ -698,7 +714,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   // conversation does, gated by isLatestConversation && isRunning). Marking
   // this optional lets the parent skip passing the unstable activity object,
   // which would otherwise defeat React.memo on every streaming token.
-  activity?: ActivityState;
+  activity?: ActivityState | null;
   conversationGroup: ConversationGroup;
   isLatestConversation: boolean;
   isRunning: boolean;

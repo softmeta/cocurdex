@@ -1,6 +1,8 @@
+import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
   formatElapsed,
+  getActivityState,
   isActivityHeaderBusy,
 } from "@/features/agent/view/chat-activity-state";
 
@@ -53,5 +55,52 @@ describe("isActivityHeaderBusy", () => {
         isLiveConversation: true,
       }),
     ).toBe(false);
+  });
+});
+
+function assistant(seq: number, overrides: Partial<MessageRecord> = {}) {
+  return {
+    id: `m${seq}`,
+    sessionId: "s",
+    role: "assistant",
+    kind: "response",
+    content: "text",
+    attachments: [],
+    createdAt: "2026-10-06T00:00:00.000Z",
+    seq,
+    ...overrides,
+  } satisfies MessageRecord;
+}
+
+function finishedTool(seq: number) {
+  return {
+    seq,
+    status: "completed",
+    startedAt: "2026-10-06T00:00:01.000Z",
+  } as AgentToolCallRecord;
+}
+
+function runningKind(
+  messages: MessageRecord[],
+  toolCalls: AgentToolCallRecord[] = [],
+) {
+  return getActivityState({ isRunning: true, messages, toolCalls })?.kind;
+}
+
+describe("getActivityState", () => {
+  it("reports thinking while the latest assistant output is reasoning", () => {
+    expect(runningKind([assistant(1, { kind: "reasoning" })])).toBe("thinking");
+  });
+
+  it("hides the activity line while a response is streaming", () => {
+    expect(runningKind([assistant(1)])).toBeUndefined();
+  });
+
+  it("reports thinking after a tool finished past the latest response", () => {
+    expect(runningKind([assistant(1)], [finishedTool(2)])).toBe("thinking");
+  });
+
+  it("reports thinking while the response is still empty", () => {
+    expect(runningKind([assistant(1, { content: " " })])).toBe("thinking");
   });
 });

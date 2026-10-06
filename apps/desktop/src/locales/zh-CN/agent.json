@@ -6,21 +6,22 @@
     "ready": "就绪",
     "reasoningCount_other": "{{count}} 段推理",
     "replyCount_other": "{{count}} 条中间回复",
+    "thinking": "思考中",
     "toolCount_other": "{{count}} 次工具调用",
     "usingTools": "工具调用中",
-    "workedFor": "工作了 {{duration}}",
-    "writing": "回复中"
+    "workedFor": "工作了 {{duration}}"
   },
   "assistantMessage": {
     "copy": "复制回复",
     "copyRichText": "复制富文本",
     "turnUsage": {
       "ariaLabel": "本轮 token 用量",
-      "tooltipCacheCreation": "缓存写入（{{tokens}}）：本轮新增到提示缓存的 token。",
-      "tooltipCacheRead": "缓存读取（{{tokens}}）：本轮从提示缓存复用的 token。",
-      "tooltipInput": "处理输入（{{tokens}}）：本轮处理的输入总量，包含缓存 token。",
-      "tooltipNewInput": "未缓存输入（{{tokens}}）：本轮未命中缓存的输入 token。",
-      "tooltipOutput": "输出（{{tokens}}）：本轮模型写出的内容。"
+      "cacheHitRate": "缓存命中率",
+      "cacheRead": "缓存读取",
+      "cacheWrite": "缓存写入",
+      "input": "输入总量",
+      "newInput": "未缓存输入",
+      "output": "输出"
     }
   },
   "contextBreakdown": {

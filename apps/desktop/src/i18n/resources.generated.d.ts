@@ -10,22 +10,23 @@ export default interface Resources {
       reasoningCount_other: "{{count}} reasoning steps";
       replyCount_one: "{{count}} interim reply";
       replyCount_other: "{{count}} interim replies";
+      thinking: "Thinking";
       toolCount_one: "{{count}} tool call";
       toolCount_other: "{{count}} tool calls";
       usingTools: "Using tools";
       workedFor: "Worked for {{duration}}";
-      writing: "Responding";
     };
     assistantMessage: {
       copy: "Copy response";
       copyRichText: "Copy Rich Text";
       turnUsage: {
         ariaLabel: "Token usage this turn";
-        tooltipCacheCreation: "Cache write ({{tokens}}): tokens added to the prompt cache.";
-        tooltipCacheRead: "Cache read ({{tokens}}): tokens reused from the prompt cache.";
-        tooltipInput: "Processed input ({{tokens}}): total input handled this turn, including cached tokens.";
-        tooltipNewInput: "Uncached input ({{tokens}}): input processed without a cache hit.";
-        tooltipOutput: "Output ({{tokens}}): tokens the model generated this turn.";
+        cacheHitRate: "Cache hit rate";
+        cacheRead: "Cache read";
+        cacheWrite: "Cache write";
+        input: "Total input";
+        newInput: "Uncached input";
+        output: "Output";
       };
     };
     contextBreakdown: {
@@ -482,19 +483,6 @@ export default interface Resources {
       allowed: "";
       denied: "";
       pending: "";
-    };
-    relativeTime: {
-      lastActiveDays_one: "{{count}} day ago";
-      lastActiveDays_other: "{{count}} days ago";
-      lastActiveHours_one: "{{count}} hour ago";
-      lastActiveHours_other: "{{count}} hours ago";
-      lastActiveMinutes_one: "{{count}} minute ago";
-      lastActiveMinutes_other: "{{count}} minutes ago";
-      lastActiveMonths_one: "{{count}} month ago";
-      lastActiveMonths_other: "{{count}} months ago";
-      lastActiveNow: "Just now";
-      lastActiveYears_one: "{{count}} year ago";
-      lastActiveYears_other: "{{count}} years ago";
     };
     states: {
       gitEmptyBranchDescription: "";
@@ -1317,6 +1305,7 @@ export default interface Resources {
       };
       missing: "Folder missing — click to relocate";
       openFolder: "Open Folder";
+      openedExisting: "Opened existing workspace “{{name}}”";
       recents: "Recents";
       removeFailed: "Could not remove this workspace. Try again.";
       startDescription: "Pick a model, describe the task, and keep the first prompt scoped.";

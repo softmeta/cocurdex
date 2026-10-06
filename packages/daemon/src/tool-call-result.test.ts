@@ -61,7 +61,7 @@ it("reads tool results through the named RPC and rejects invalid IDs", async () 
     await expect(request("missing-tool")).resolves.toBeNull();
 
     const lookup = vi.spyOn(database.toolCalls, "getResultById");
-    for (const id of ["", "tool\n", "tool\0", "a".repeat(4097), null, 42]) {
+    for (const id of ["", "tool\r", "tool\0", "a".repeat(4097), null, 42]) {
       await expect(request(id)).rejects.toThrow("Invalid tool call ID");
     }
     expect(lookup).not.toHaveBeenCalled();

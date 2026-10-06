@@ -49,19 +49,6 @@
     "denied": "",
     "pending": ""
   },
-  "relativeTime": {
-    "lastActiveDays_one": "{{count}} day ago",
-    "lastActiveDays_other": "{{count}} days ago",
-    "lastActiveHours_one": "{{count}} hour ago",
-    "lastActiveHours_other": "{{count}} hours ago",
-    "lastActiveMinutes_one": "{{count}} minute ago",
-    "lastActiveMinutes_other": "{{count}} minutes ago",
-    "lastActiveMonths_one": "{{count}} month ago",
-    "lastActiveMonths_other": "{{count}} months ago",
-    "lastActiveNow": "Just now",
-    "lastActiveYears_one": "{{count}} year ago",
-    "lastActiveYears_other": "{{count}} years ago"
-  },
   "states": {
     "gitEmptyBranchDescription": "",
     "gitEmptyBranchTitle": "",

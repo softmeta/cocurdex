@@ -65,7 +65,7 @@ export function ActivityBlock({
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-0.5 text-body transition-colors hover:text-chat-fg-secondary">
+      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 border-chat-border-soft mb-3 border-b pt-0.5 pb-2 text-body transition-colors hover:text-chat-fg-secondary">
         {label ? (
           <span
             className={cn(
@@ -88,7 +88,7 @@ export function ActivityBlock({
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "ms-[7px] mt-1 flex flex-col gap-1 overflow-hidden border-chat-border-soft border-s ps-2",
+          "mt-1 flex flex-col gap-1 overflow-hidden",
           // Height/margin interpolate between 0 and `auto` (interpolate-size)
           // in both directions so surrounding content glides instead of
           // snapping. `auto` resolves at layout time, so rows mounted late by

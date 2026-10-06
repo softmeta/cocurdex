@@ -256,6 +256,37 @@ describe("openWorkspaceByPathAtom", () => {
     expect(store.set(openWorkspaceByPathAtom, "/ws/a").workspace.id).toBe("a");
   });
 
+  it("creates a separate project when the path is only a secondary folder", () => {
+    const store = createStore();
+    const multi = {
+      ...makeWorkspace("multi", "2024-01-01T00:00:00.000Z"),
+      rootPaths: ["/ws/multi", "/ws/b"],
+    };
+    store.set(workspacesAtom, [multi]);
+
+    const result = store.set(openWorkspaceByPathAtom, "/ws/b");
+
+    expect(result.workspace.id).not.toBe("multi");
+    expect(result.workspace.rootPaths).toEqual(["/ws/b"]);
+    expect(store.get(workspacesAtom)).toHaveLength(2);
+  });
+
+  it("flags reuse of a project whose name differs from the folder", () => {
+    const store = createStore();
+    const renamed = {
+      ...makeWorkspace("a", "2024-01-01T00:00:00.000Z"),
+      name: "Research",
+    };
+    store.set(workspacesAtom, [renamed]);
+
+    expect(
+      store.set(openWorkspaceByPathAtom, "/ws/a").reusedUnderDifferentName,
+    ).toBe(true);
+    expect(
+      store.set(openWorkspaceByPathAtom, "/tmp/new").reusedUnderDifferentName,
+    ).toBe(false);
+  });
+
   it("reports didSwitchWorkspace false when reopening the active project", () => {
     const store = createStore();
     const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");

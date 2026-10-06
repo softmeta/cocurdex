@@ -1,18 +1,13 @@
 import type { AgentId } from "@cocurdex/shared";
-import type { TFunction } from "i18next";
 import type { ReactElement } from "react";
-import { useTranslation } from "react-i18next";
 import { Text, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui";
 import {
   AgentIcon,
   AgentRoleAvatar,
   type AgentRoleAvatarSource,
 } from "@/features/sessions";
-import {
-  type CompactRelativeTime,
-  getCompactRelativeTime,
-} from "./compact-relative-time";
 import { useSidebarScrolling } from "./sidebar-scrolling";
+import { useCompactAgeLabel } from "./use-compact-age-label";
 
 interface SidebarItemPreviewProps {
   agentId?: AgentId;
@@ -23,26 +18,6 @@ interface SidebarItemPreviewProps {
   title: string;
 }
 
-function relativeTimeLabel(
-  relative: CompactRelativeTime,
-  t: TFunction<"common">,
-) {
-  switch (relative.unit) {
-    case "now":
-      return t("relativeTime.lastActiveNow");
-    case "m":
-      return t("relativeTime.lastActiveMinutes", { count: relative.count });
-    case "h":
-      return t("relativeTime.lastActiveHours", { count: relative.count });
-    case "d":
-      return t("relativeTime.lastActiveDays", { count: relative.count });
-    case "mo":
-      return t("relativeTime.lastActiveMonths", { count: relative.count });
-    case "y":
-      return t("relativeTime.lastActiveYears", { count: relative.count });
-  }
-}
-
 export function SidebarItemPreview({
   agentId,
   agentLabel,
@@ -51,8 +26,7 @@ export function SidebarItemPreview({
   timestamp,
   title,
 }: SidebarItemPreviewProps) {
-  const { t } = useTranslation("common");
-  const relativeLabel = relativeTimeLabel(getCompactRelativeTime(timestamp), t);
+  const relativeLabel = useCompactAgeLabel(timestamp);
   const identityLabel = [role?.name, agentLabel].filter(Boolean).join(" · ");
 
   return (

@@ -48,19 +48,6 @@
     "denied": "",
     "pending": ""
   },
-  "relativeTime": {
-    "lastActiveDays_one": "{{count}} 天前",
-    "lastActiveDays_other": "{{count}} 天前",
-    "lastActiveHours_one": "{{count}} 小时前",
-    "lastActiveHours_other": "{{count}} 小时前",
-    "lastActiveMinutes_one": "{{count}} 分钟前",
-    "lastActiveMinutes_other": "{{count}} 分钟前",
-    "lastActiveMonths_one": "{{count}} 个月前",
-    "lastActiveMonths_other": "{{count}} 个月前",
-    "lastActiveNow": "刚刚",
-    "lastActiveYears_one": "{{count}} 年前",
-    "lastActiveYears_other": "{{count}} 年前"
-  },
   "states": {
     "gitEmptyBranchDescription": "",
     "gitEmptyBranchTitle": "",

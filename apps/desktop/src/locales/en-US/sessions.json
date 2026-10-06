@@ -281,6 +281,7 @@
       "up": "Go to parent folder"
     },
     "missing": "Folder missing — click to relocate",
+    "openedExisting": "Opened existing workspace “{{name}}”",
     "openFolder": "Open Folder",
     "recents": "Recents",
     "removeFailed": "Could not remove this workspace. Try again.",
