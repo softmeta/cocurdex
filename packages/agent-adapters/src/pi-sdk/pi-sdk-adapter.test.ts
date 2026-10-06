@@ -369,7 +369,7 @@ describe("createPiSdkAdapter", () => {
     ]);
     expect(capture.createAgentSessionOptions?.resourceLoader).toBeDefined();
     expect(process.env.PI_CODING_AGENT_DIR).toBe(
-      "/tmp/cocurdex-user-data/pi-agent",
+      path.join("/tmp/cocurdex-user-data", "pi-agent"),
     );
   });
 
