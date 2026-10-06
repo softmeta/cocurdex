@@ -71,6 +71,200 @@
   display: block;
 }
 
+[data-streamdown="mermaid-block"] {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--chat-border-soft);
+  border-radius: var(--radius-card);
+  background: var(--chat-code-block);
+  padding: 0;
+}
+
+[data-streamdown="mermaid-block"] > div:first-child {
+  height: 28px;
+  padding: 0 10px;
+  font-size: calc(var(--app-ui-font-size, 13px) * 11 / 13);
+  color: var(--chat-fg-muted);
+}
+
+[data-streamdown="mermaid-block"] > div:first-child > span {
+  margin-left: 0;
+}
+
+[data-streamdown="mermaid-block"]
+  > div:has(> [data-streamdown="mermaid-block-actions"]) {
+  inset-block-start: 3px;
+  inset-inline-end: 8px;
+  height: 22px;
+}
+
+[data-streamdown="mermaid-block-actions"] {
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+[data-streamdown="mermaid-block-actions"] > button {
+  height: 22px;
+  width: 22px;
+  border-radius: 6px;
+}
+
+[data-streamdown="mermaid-block"] > div:last-child {
+  border: 0;
+  border-top: 1px solid var(--chat-border-soft);
+  border-radius: 0;
+  background: var(--chat-code-panel);
+}
+
+[data-streamdown="mermaid-block"]
+  [data-streamdown="mermaid"]
+  div:has(> button) {
+  inset: auto 10px 10px auto;
+  flex-direction: row;
+  gap: 2px;
+  border: 1px solid var(--chat-border-soft);
+  border-radius: 8px;
+  background: var(--chat-surface-raised);
+  padding: 2px;
+  backdrop-filter: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+[data-streamdown="mermaid-block"]:hover
+  [data-streamdown="mermaid"]
+  div:has(> button),
+[data-streamdown="mermaid-block"]:focus-within
+  [data-streamdown="mermaid"]
+  div:has(> button) {
+  opacity: 1;
+}
+
+[data-streamdown="mermaid"] div:has(> button) > button,
+[data-streamdown="mermaid-fullscreen"] > div:first-child button {
+  height: 24px;
+  width: 24px;
+  border-radius: var(--radius-control);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-streamdown="mermaid-fullscreen"] {
+  --mermaid-preview-width: min(56rem, calc(100% - 2rem));
+  --mermaid-preview-height: min(85dvh, 40rem);
+  --mermaid-preview-header: 40px;
+  --mermaid-preview-toolbar: 80px;
+  background: var(--modal-scrim);
+  backdrop-filter: none;
+}
+
+[data-streamdown="mermaid-fullscreen"] > div:last-child {
+  position: relative;
+  width: var(--mermaid-preview-width);
+  height: var(--mermaid-preview-height);
+  overflow: hidden;
+  border: 1px solid var(--chat-border);
+  border-radius: var(--radius-panel);
+  background: var(--chat-surface);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  padding: calc(var(--mermaid-preview-header) + 1rem) 1rem 1rem;
+}
+
+[data-streamdown="mermaid-fullscreen"] > div:last-child::before {
+  content: "Mermaid";
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: var(--mermaid-preview-header);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--chat-border) 40%, transparent);
+  padding-inline: 12px;
+  font-size: var(--app-ui-font-size, 13px);
+  color: var(--color-chat-fg);
+}
+
+[data-streamdown="mermaid-fullscreen"] > div:first-child {
+  inset-block-start: calc(50% - var(--mermaid-preview-height) / 2 + 8px);
+  inset-inline-start: auto;
+  inset-inline-end: calc(50% - var(--mermaid-preview-width) / 2 + 12px);
+  gap: 4px;
+}
+
+[data-streamdown="mermaid-fullscreen"] [data-streamdown="mermaid"] > div {
+  position: static;
+}
+
+[data-streamdown="mermaid-fullscreen"]
+  [data-streamdown="mermaid"]
+  div:has(> button) {
+  inset-block-start: 7px;
+  inset-inline-start: auto;
+  inset-inline-end: calc(11px + var(--mermaid-preview-toolbar) + 4px);
+  flex-direction: row;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+[data-streamdown="mermaid-fullscreen"] button {
+  color: var(--color-editor-fg-subtle);
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+
+[data-streamdown="mermaid-fullscreen"] button:hover {
+  background: var(--color-editor-tab-hover-bg);
+  color: var(--color-editor-fg);
+}
+
+[data-streamdown="mermaid-fullscreen"] button svg {
+  width: 14px;
+  height: 14px;
+}
+
+[data-streamdown="mermaid-fullscreen"]
+  [data-streamdown="mermaid"]
+  > div
+  > div:last-child
+  svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+[data-streamdown="mermaid"] > div > div:last-child {
+  transition: none;
+}
+
+[data-streamdown="mermaid-block"] {
+  --mermaid-inline-height: min(60vh, 30rem);
+  --mermaid-inline-diagram-height: calc(var(--mermaid-inline-height) - 24px);
+}
+
+[data-streamdown="mermaid-block"] > div:last-child {
+  box-sizing: border-box;
+  height: var(--mermaid-inline-height);
+  padding-block: 12px;
+}
+
+[data-streamdown="mermaid-block"] [data-streamdown="mermaid"],
+[data-streamdown="mermaid-block"] [data-streamdown="mermaid"] > div {
+  max-height: var(--mermaid-inline-diagram-height);
+}
+
+[data-streamdown="mermaid-block"] [data-streamdown="mermaid"] > div {
+  /* biome-ignore lint/complexity/noImportantStyles: overrides streamdown's inline auto-fit height */
+  height: var(--mermaid-inline-diagram-height) !important;
+}
+
 .markdown-html-source [data-streamdown="code-block"] {
   margin: 0;
   border: 0;
