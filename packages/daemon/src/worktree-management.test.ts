@@ -9,8 +9,10 @@ import { CocurdexDaemonService } from "./service";
 import { runGit } from "./workspace-changes/git-run";
 
 const temporaryDirectories: string[] = [];
+const services: CocurdexDaemonService[] = [];
 
 afterEach(async () => {
+  await Promise.all(services.splice(0).map((service) => service.shutdown()));
   await Promise.all(
     temporaryDirectories.splice(0).map((directory) =>
       rm(directory, {
@@ -28,13 +30,12 @@ async function createService() {
     path.join(tmpdir(), "cocurdex-worktree-mgmt-"),
   );
   temporaryDirectories.push(userDataPath);
-  return {
+  const service = new CocurdexDaemonService({
+    runtimeFingerprint: "test-runtime",
     userDataPath,
-    service: new CocurdexDaemonService({
-      runtimeFingerprint: "test-runtime",
-      userDataPath,
-    }),
-  };
+  });
+  services.push(service);
+  return { userDataPath, service };
 }
 
 async function createRepository(parent: string) {

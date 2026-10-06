@@ -8,8 +8,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CocurdexDaemonService } from "./service";
 
 const temporaryDirectories: string[] = [];
+const services: CocurdexDaemonService[] = [];
 
 afterEach(async () => {
+  await Promise.all(services.splice(0).map((service) => service.shutdown()));
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -51,6 +53,7 @@ async function createService() {
     runtimeFingerprint: "test",
     userDataPath,
   });
+  services.push(service);
   const pi = createAgentRegistry()
     .list()
     .find((agent) => agent.id === "pi");

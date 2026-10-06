@@ -33,7 +33,7 @@ describe("workspace path safety", () => {
   it("resolves a nested relative path inside the workspace", () => {
     const resolved = resolveWorkspacePath("/tmp/workspace", "src/a.ts");
     expect(resolved.relative).toBe("src/a.ts");
-    expect(resolved.absolute).toBe("/tmp/workspace/src/a.ts");
+    expect(resolved.absolute).toBe(path.resolve("/tmp/workspace/src/a.ts"));
   });
 
   it("rejects a missing file whose parent was replaced with an external symlink", async () => {

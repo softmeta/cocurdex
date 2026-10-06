@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   unlink,
   writeFile,
@@ -336,7 +337,9 @@ describe("startDaemonServer", () => {
 });
 
 async function createDirectory() {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "cd-wire-"));
+  const directory = await realpath(
+    await mkdtemp(path.join(os.tmpdir(), "cd-wire-")),
+  );
   temporaryDirectories.push(directory);
   return directory;
 }
