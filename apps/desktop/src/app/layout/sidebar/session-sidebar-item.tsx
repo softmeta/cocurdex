@@ -41,11 +41,11 @@ import {
 } from "@/features/sessions/agent-role";
 import { openSettings } from "@/features/settings";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
-import { getCompactRelativeTime } from "./compact-relative-time";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { SidebarItemTooltip } from "./sidebar-item-preview";
 import { SidebarOverflowTitle } from "./sidebar-overflow-title";
 import { SidebarRenameInput } from "./sidebar-rename-input";
+import { useCompactAgeLabel } from "./use-compact-age-label";
 
 interface SessionSidebarItemProps {
   hasChildren?: boolean;
@@ -89,20 +89,13 @@ function SessionStatusIndicator({
 }
 
 function SessionAgeLabel({ timestamp }: { timestamp: string }) {
-  const { t } = useTranslation("sessions");
-  const { count, unit } = getCompactRelativeTime(timestamp);
-  const labels = {
-    now: t("sidebar.ageNow"),
-    m: t("sidebar.ageMinutes", { count }),
-    h: t("sidebar.ageHours", { count }),
-    d: t("sidebar.ageDays", { count }),
-    mo: t("sidebar.ageMonths", { count }),
-    y: t("sidebar.ageYears", { count }),
-  };
-
+  const label = useCompactAgeLabel(timestamp);
   return (
-    <Text size="meta" className="shrink-0 text-sidebar-fg-subtle tabular-nums">
-      {labels[unit]}
+    <Text
+      size="meta"
+      className="shrink-0 text-sidebar-fg-subtle tabular-nums @max-[13rem]/sidebar:hidden"
+    >
+      {label}
     </Text>
   );
 }
