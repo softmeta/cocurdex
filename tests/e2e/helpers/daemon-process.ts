@@ -38,6 +38,19 @@ export async function waitFor(
   throw new Error("Timed out waiting for condition");
 }
 
+export async function requestDaemonShutdown(metadata: DaemonMetadata) {
+  try {
+    const result = await requestDaemon(
+      "daemon.shutdownIfIdle",
+      { pid: metadata.pid, startedAt: metadata.startedAt },
+      { metadata },
+    );
+    return result.status === "accepted";
+  } catch {
+    return false;
+  }
+}
+
 function waitForExit(child: ChildProcess) {
   return new Promise<number | null>((resolve) => {
     if (child.exitCode !== null) {
@@ -117,9 +130,12 @@ export async function spawnDaemon(
     );
   }
 
+  const readyMetadata = metadata;
   const stop = async () => {
     if (child.exitCode !== null) return child.exitCode;
-    child.kill("SIGTERM");
+    if (!(await requestDaemonShutdown(readyMetadata))) {
+      child.kill("SIGTERM");
+    }
     const code = await Promise.race([
       exit,
       sleep(SHUTDOWN_TIMEOUT_MS).then(() => "timeout" as const),
@@ -135,8 +151,8 @@ export async function spawnDaemon(
   return {
     child,
     userDataPath,
-    metadata,
-    options: { metadata },
+    metadata: readyMetadata,
+    options: { metadata: readyMetadata },
     exit,
     stderr,
     stop,

@@ -1,3 +1,4 @@
+import { pathBaseName } from "./files";
 import type {
   AgentNativeWorkspaceEvidenceEvent,
   AgentTurnChangesUpdatedEvent,
@@ -633,7 +634,7 @@ export function formatContextFileChipLabel(
     | "endColumn"
   >,
 ): string {
-  const fileName = attachment.filePath.split("/").pop() ?? attachment.filePath;
+  const fileName = pathBaseName(attachment.filePath);
   if (attachment.contentOmitted) {
     return fileName;
   }

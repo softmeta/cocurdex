@@ -79,4 +79,10 @@ describe("formatShortcutLabel", () => {
   it("returns empty for unbound", () => {
     expect(formatShortcutLabel(null)).toBe("");
   });
+
+  it("joins Windows and Linux modifiers with plus signs", () => {
+    expect(formatShortcutLabel({ primary: true, shift: true, key: "f" })).toBe(
+      "Ctrl+Shift+F",
+    );
+  });
 });

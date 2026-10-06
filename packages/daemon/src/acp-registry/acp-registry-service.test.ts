@@ -361,7 +361,7 @@ describe("resolveInstalledCommand", () => {
       resolveInstalledCommand("/agents/demo", "../../bin/sh"),
     ).toThrow();
     expect(resolveInstalledCommand("/agents/demo", "./demo")).toBe(
-      "/agents/demo/demo",
+      path.resolve("/agents/demo/demo"),
     );
   });
 });

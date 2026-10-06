@@ -1,6 +1,9 @@
 import { tmpdir } from "node:os";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createCredentialVault } from "./vault";
+import {
+  createCredentialVault,
+  credentialStoreUnavailableMessage,
+} from "./vault";
 
 const read = vi.hoisted(() => vi.fn());
 const write = vi.hoisted(() => vi.fn());
@@ -27,7 +30,7 @@ describe("system credential vault", () => {
       .mockRejectedValueOnce(new Error("Native error with sensitive details"));
     await expect(vault.read("test")).resolves.toBeNull();
     await expect(vault.read("test")).rejects.toThrow(
-      "System credential store is unavailable",
+      credentialStoreUnavailableMessage(),
     );
   });
 
@@ -35,11 +38,19 @@ describe("system credential vault", () => {
     const vault = createCredentialVault(tmpdir());
     write.mockRejectedValueOnce(new Error("sensitive details"));
     remove.mockRejectedValueOnce(new Error("sensitive details"));
+    const unavailable = new Error(credentialStoreUnavailableMessage());
     await expect(vault.write("test", "test-value")).rejects.toThrow(
-      /^System credential store is unavailable$/,
+      unavailable,
     );
-    await expect(vault.remove("test")).rejects.toThrow(
-      /^System credential store is unavailable$/,
+    await expect(vault.remove("test")).rejects.toThrow(unavailable);
+  });
+
+  it("tells Linux users which Secret Service providers can back the store", () => {
+    expect(credentialStoreUnavailableMessage("linux")).toContain(
+      "GNOME Keyring or KWallet",
+    );
+    expect(credentialStoreUnavailableMessage("darwin")).toBe(
+      "System credential store is unavailable",
     );
   });
 });

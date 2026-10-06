@@ -79,7 +79,12 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
       className="flex h-screen min-w-0 flex-col overflow-hidden bg-chat-canvas"
       inert={busy}
     >
-      <div className="app-drag flex h-8 shrink-0 items-center justify-end gap-1 border-b border-border px-2">
+      <div
+        className="app-drag flex h-8 shrink-0 items-center justify-end gap-1 border-b border-border px-2"
+        style={{
+          paddingRight: "calc(0.5rem + var(--titlebar-controls-inset))",
+        }}
+      >
         <TitlebarIconButton
           active={sidebarOpen}
           aria-label={t("actions.toggleChatSessions")}

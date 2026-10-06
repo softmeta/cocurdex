@@ -237,7 +237,7 @@ const RESOLVE_LINK_TARGET_SQL = `
       FROM notes
       WHERE notes.kind = 'note'
         AND notes.title = note_links.target_ref COLLATE NOCASE
-      ORDER BY notes.created_at, notes.id
+      ORDER BY notes.created_at, notes.rowid
       LIMIT 1
     )
   END`;

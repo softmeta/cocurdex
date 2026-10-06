@@ -25,7 +25,7 @@ export function getDefaultUserDataPath(
 
   return path.join(
     env.XDG_CONFIG_HOME ?? path.join(home, ".config"),
-    "cocurdex",
+    "Cocurdex",
   );
 }
 
@@ -48,7 +48,7 @@ export function getDaemonSocketPath(
     return `\\\\.\\pipe\\cocurdex-daemon-${profileId}`;
   }
 
-  return path.join(userDataPath, "daemon.sock");
+  return path.posix.join(userDataPath, "daemon.sock");
 }
 
 export function getDaemonMetadataPath(userDataPath = getDefaultUserDataPath()) {
@@ -91,9 +91,9 @@ export function createSessionWorktreePath(input: {
   );
 }
 
-function resolveExistingPath(value: string) {
+export function resolveExistingPath(value: string) {
   try {
-    return realpathSync(value);
+    return realpathSync.native(value);
   } catch {
     return path.resolve(value);
   }

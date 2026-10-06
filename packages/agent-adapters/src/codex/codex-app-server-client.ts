@@ -1,8 +1,12 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { tmpdir } from "node:os";
 import { createInterface, type Interface } from "node:readline";
 import { logAdapterDiagnostic } from "../diagnostics";
-import { buildChildProcessEnv } from "../shared";
+import {
+  buildChildProcessEnv,
+  spawnCommand,
+  stopChildProcess,
+} from "../shared";
 
 type RequestId = number;
 
@@ -114,11 +118,11 @@ export class CodexAppServerClient {
 
   constructor(options: CodexAppServerClientOptions) {
     this.#options = options;
-    this.#process = spawn("codex", ["app-server"], {
+    this.#process = spawnCommand("codex", ["app-server"], {
       cwd: tmpdir(),
       env: buildChildProcessEnv(process.env),
       stdio: ["pipe", "pipe", "pipe"],
-    });
+    }) as ChildProcessWithoutNullStreams;
     this.#readline = createInterface({ input: this.#process.stdout });
     this.#bindProcessEvents();
     this.#ready = this.#initialize();
@@ -202,7 +206,7 @@ export class CodexAppServerClient {
 
     this.#closed = true;
     this.#readline.close();
-    this.#process.kill();
+    stopChildProcess(this.#process);
     this.#rejectPending(new Error("Codex app-server client disposed"));
   }
 

@@ -5,6 +5,7 @@ import {
   isContextFolderAttachment,
   isContextItemAttachment,
   type ContextAttachment as MentionAttachment,
+  pathBaseName,
 } from "@cocurdex/shared";
 import type { KeyboardEvent, RefObject } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -255,7 +256,7 @@ export function getContextAttachmentMentionLabel(
     return attachment.title;
   }
   if (isContextFolderAttachment(attachment)) {
-    const folderName = attachment.folderPath.split("/").pop();
+    const folderName = pathBaseName(attachment.folderPath);
     return folderName || attachment.folderPath;
   }
   return formatContextFileChipLabel(attachment);

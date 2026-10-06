@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { access, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -82,6 +83,7 @@ export async function openDesktopApp(folderPath?: string): Promise<void> {
   const { binary, args } = await resolveLaunch(folderPath);
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
+  delete env.COCURDEX_APPIMAGE;
 
   const child = spawn(binary, args, {
     detached: true,
@@ -133,7 +135,9 @@ export function isPackagedAppBinary(execPath: string): boolean {
   }
 
   // Packaged product: Cocurdex / Cocurdex.exe (and case variants).
-  return base === "cocurdex" || base === "cocurdex.exe";
+  return (
+    base === "cocurdex" || base === "cocurdex.exe" || base.endsWith(".appimage")
+  );
 }
 
 async function resolveElectronBinary(): Promise<string> {
@@ -141,6 +145,12 @@ async function resolveElectronBinary(): Promise<string> {
   if (fromEnv) {
     await access(fromEnv);
     return fromEnv;
+  }
+
+  const appImage = process.env.COCURDEX_APPIMAGE;
+  if (appImage) {
+    await access(appImage);
+    return appImage;
   }
 
   // Packaged / Electron-as-Node CLI: execPath is the app or Electron binary.
@@ -210,10 +220,7 @@ async function listElectronCandidates(): Promise<string[]> {
   if (process.platform === "darwin") {
     candidates.push(
       "/Applications/Cocurdex.app/Contents/MacOS/Cocurdex",
-      path.join(
-        process.env.HOME ?? "",
-        "Applications/Cocurdex.app/Contents/MacOS/Cocurdex",
-      ),
+      path.join(homedir(), "Applications/Cocurdex.app/Contents/MacOS/Cocurdex"),
     );
   }
 

@@ -24,8 +24,8 @@
     "dist:win:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target win32-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --win nsis --x64 --publish never",
     "dist:win:x64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target win32-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --win nsis --x64 --publish always",
     "dist:linux": "pnpm run dist:linux:x64",
-    "dist:linux:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target linux-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --linux AppImage --x64 --publish never",
-    "dist:linux:x64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target linux-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --linux AppImage --x64 --publish always",
+    "dist:linux:x64": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target linux-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --linux AppImage deb --x64 --publish never",
+    "dist:linux:x64:release": "pnpm run prepare:licenses && pnpm run prepare:fd -- --target linux-x64 && pnpm run prepare:cli && electron-vite build && electron-builder --linux AppImage deb --x64 --publish always",
     "i18n:extract": "i18next-cli extract --config ./i18next.config.ts",
     "i18n:lint": "node ./scripts/lint-i18n.mjs",
     "lint:cycles": "node ./scripts/check-cycles.mjs",
@@ -236,7 +236,8 @@
       ]
     },
     "nsis": {
-      "artifactName": "Cocurdex-win-${arch}.${ext}"
+      "artifactName": "Cocurdex-win-${arch}.${ext}",
+      "include": "build-assets/installer.nsh"
     },
     "linux": {
       "extraResources": [
@@ -252,9 +253,14 @@
       "artifactName": "Cocurdex-linux-x64.${ext}",
       "category": "Development",
       "executableName": "Cocurdex",
+      "maintainer": "softmeta LLC",
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb"
       ]
+    },
+    "deb": {
+      "packageName": "cocurdex"
     }
   }
 }

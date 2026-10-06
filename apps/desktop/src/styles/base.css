@@ -48,6 +48,14 @@
   app-region: no-drag;
 }
 
+:root {
+  --titlebar-controls-inset: calc(
+    100vw -
+    env(titlebar-area-x, 0px) -
+    env(titlebar-area-width, 100vw)
+  );
+}
+
 /*
  * macOS renders native scrollbars through AppKit, and they flash on top of the
  * window whenever it changes focus state -- e.g. the cmd+shift screenshot

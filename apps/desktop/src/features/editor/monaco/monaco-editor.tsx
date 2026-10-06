@@ -22,7 +22,7 @@ import {
 } from "../editor-store";
 import { MarkdownPreview } from "./markdown-preview";
 import "./monaco-editor.css";
-import { useResolvedTheme } from "@/lib";
+import { formatShortcutLabel, useResolvedTheme } from "@/lib";
 import { useSelectionBubble } from "../selection";
 import { MONACO_EDITOR_OPTIONS } from "./monaco-editor-config";
 import {
@@ -47,7 +47,10 @@ interface MonacoEditorProps {
   onAddSelectionToChat?(attachment: MessageAttachment): void;
 }
 
-const ADD_TO_CHAT_SHORTCUT_LABEL = "⌘L";
+const ADD_TO_CHAT_SHORTCUT_LABEL = formatShortcutLabel({
+  primary: true,
+  key: "l",
+});
 
 interface PreviewRevealTarget {
   startLine: number;

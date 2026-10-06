@@ -84,6 +84,15 @@ describe("sessionsUsingWorktreePath", () => {
       { id: "b", title: "Old", archived: true },
     ]);
   });
+
+  it("matches Windows paths regardless of separator and case", () => {
+    const bound = sessionsUsingWorktreePath(
+      [{ id: "a", title: "Live", worktreePath: "c:/Worktrees/One/" }],
+      "C:\\worktrees\\one",
+    );
+
+    expect(bound).toEqual([{ id: "a", title: "Live", archived: false }]);
+  });
 });
 
 describe("groupManagedWorktrees", () => {

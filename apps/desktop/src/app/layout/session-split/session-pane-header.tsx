@@ -13,7 +13,7 @@ interface SessionPaneHeaderProps {
   canClose: boolean;
   isFocused: boolean;
   occupiesTitlebar?: boolean;
-  endInset?: number;
+  endInset?: number | string;
   startInset?: number;
   paneId: string;
   title: string;

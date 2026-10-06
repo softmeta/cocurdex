@@ -5,3 +5,8 @@ export {
   rendererPageUrl,
   rendererScheme,
 } from "./renderer-page";
+export {
+  hasTitleBarOverlay,
+  titleBarChromeOptions,
+  titleBarOverlayFor,
+} from "./title-bar-chrome";

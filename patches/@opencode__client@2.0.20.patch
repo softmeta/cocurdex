@@ -1,0 +1,12 @@
+diff --git a/dist/chunks/shared-events-txckps9j.js b/dist/chunks/shared-events-txckps9j.js
+index 405e492803897fac3314f90e2fee6d11fc091cfd..871deb96bbca94ee04f78a8332daccdfeeda91c2 100644
+--- a/dist/chunks/shared-events-txckps9j.js
++++ b/dist/chunks/shared-events-txckps9j.js
+@@ -4,6 +4,7 @@ var stderrLimit = 8 * 1024;
+ function spawnServiceContender2(command, args, env) {
+   const child = spawn(command, args, {
+     detached: true,
++    windowsHide: true,
+     stdio: ["ignore", "ignore", "pipe"],
+     env: { ...process.env, ...env }
+   });

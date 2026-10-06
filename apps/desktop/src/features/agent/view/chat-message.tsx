@@ -6,6 +6,7 @@ import {
   isContextFolderAttachment,
   isContextItemAttachment,
   type MessageRecord,
+  pathBaseName,
 } from "@cocurdex/shared";
 import { Brain, FileText, ListTodo, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +24,7 @@ function getContextAttachmentLabel(attachment: ContextAttachment) {
     return attachment.title;
   }
   if (isContextFolderAttachment(attachment)) {
-    return attachment.folderPath.split("/").pop() ?? attachment.folderPath;
+    return pathBaseName(attachment.folderPath);
   }
 
   return formatContextFileChipLabel(attachment);

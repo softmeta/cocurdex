@@ -77,3 +77,5 @@ minimumReleaseAgeExclude:
   - '@opencode/client@2.0.20'
   - '@opencode/protocol@2.0.20'
   - '@opencode/schema@2.0.20'
+patchedDependencies:
+  '@opencode/client@2.0.20': patches/@opencode__client@2.0.20.patch

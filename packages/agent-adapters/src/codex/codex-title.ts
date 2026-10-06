@@ -1,8 +1,13 @@
-import { spawn } from "node:child_process";
+import type { ChildProcessByStdio } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildChildProcessEnv } from "../shared";
+import type { Readable, Writable } from "node:stream";
+import {
+  buildChildProcessEnv,
+  spawnCommand,
+  stopChildProcess,
+} from "../shared";
 
 const TITLE_PROMPT = `Generate a concise title for the user's first message.
 
@@ -93,11 +98,11 @@ const defaultRunner: CodexTitleCommandRunner = {
         outputPath,
         "-",
       ];
-      const child = spawn("codex", args, {
+      const child = spawnCommand("codex", args, {
         cwd: params.cwd ?? tempDirectory,
         env: buildChildProcessEnv(process.env),
         stdio: ["pipe", "ignore", "pipe"],
-      });
+      }) as ChildProcessByStdio<Writable, null, Readable>;
       let stderr = "";
       child.stderr.setEncoding("utf8");
       child.stderr.on("data", (chunk: string) => {
@@ -105,7 +110,7 @@ const defaultRunner: CodexTitleCommandRunner = {
       });
       child.stdin.on("error", () => undefined);
 
-      const abort = () => child.kill();
+      const abort = () => stopChildProcess(child);
       params.signal?.addEventListener("abort", abort, { once: true });
       child.stdin.end(`${TITLE_PROMPT}\n\nUser message:\n${params.message}`);
 

@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import {
   agentMinimumVersions,
   getAgentVersionStatus,
@@ -6,6 +5,7 @@ import {
 } from "@cocurdex/shared";
 import { OpenCode, type OpenCodeClient } from "@opencode/client";
 import { Service } from "@opencode/client/service";
+import crossSpawn from "cross-spawn";
 
 export type { OpenCodeClient };
 
@@ -59,9 +59,8 @@ let verifiedCliVersion: string | null = null;
 function assertSupportedOpenCodeCli() {
   if (verifiedCliVersion) return;
 
-  const result = spawnSync("opencode", ["--version"], {
+  const result = crossSpawn.sync("opencode", ["--version"], {
     encoding: "utf8",
-    shell: process.platform === "win32",
     windowsHide: true,
   });
   if (result.error) {
@@ -80,9 +79,21 @@ function assertSupportedOpenCodeCli() {
   verifiedCliVersion = version ?? "unknown";
 }
 
+function openCodeServiceCommand(
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+): string[] {
+  const serviceArgs = ["opencode", "serve", "--service"];
+  if (platform !== "win32") {
+    return serviceArgs;
+  }
+  return [env.ComSpec || "cmd.exe", "/d", "/s", "/c", ...serviceArgs];
+}
+
 export async function connectOpenCode(): Promise<OpenCodeClient> {
   assertSupportedOpenCodeCli();
   const endpoint = await Service.ensure({
+    command: openCodeServiceCommand(process.platform, process.env),
     onStart(reason, previousVersion) {
       logOpenCode("info", "Starting OpenCode background service", {
         previousVersion: previousVersion ?? null,

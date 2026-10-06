@@ -10,7 +10,7 @@ import type { BrowserWindow } from "electron";
 import type { IPty } from "node-pty";
 import { createLogger } from "../logging";
 import { terminateProcessTree } from "../process";
-import { resolveDefaultShell } from "./default-shell";
+import { defaultShellArgs, resolveDefaultShell } from "./default-shell";
 import { inspectSessions, type PtyActivity } from "./process-inspector";
 import { createPtyDataBuffer } from "./pty-data-buffer";
 
@@ -160,8 +160,8 @@ export class PtyService {
     // PATH bootstrapping live. Without it the GUI-launched Electron PATH
     // (which omits /opt/homebrew/bin, ~/.cargo/bin, etc.) propagates to the
     // shell and `git` / `node` / `brew` can be missing. PowerShell rejects
-    // `-l`, so we keep an empty arg list on Windows.
-    const args = process.platform === "win32" ? [] : ["-l"];
+    // `-l`, so Windows shells get their own arguments.
+    const args = defaultShellArgs(process.platform, shell);
     const pty = ptySpawn(shell, args, {
       name: "xterm-256color",
       cols: payload.cols,

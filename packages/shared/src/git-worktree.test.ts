@@ -105,6 +105,13 @@ describe("parseGitWorktreeList", () => {
     expect(parseGitWorktreeList("")).toEqual([]);
     expect(parseGitWorktreeList("   \n")).toEqual([]);
   });
+
+  it("reports Windows checkouts with native separators", () => {
+    const [worktree] = parseGitWorktreeList(
+      "worktree C:/Users/dev/project\r\nHEAD abc\r\nbranch refs/heads/main\r\n",
+    );
+    expect(worktree?.path).toBe("C:\\Users\\dev\\project");
+  });
 });
 
 describe("resolveSessionWorkingPath", () => {

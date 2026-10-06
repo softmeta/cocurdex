@@ -1,7 +1,11 @@
-import { mkdir, realpath, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { type GitWorktreeInfo, parseGitWorktreeList } from "@cocurdex/shared";
-import { createSessionWorktreePath, getWorktreeBasePath } from "./paths";
+import {
+  createSessionWorktreePath,
+  getWorktreeBasePath,
+  resolveExistingPath,
+} from "./paths";
 import { runGit } from "./workspace-changes/git-run";
 
 export const APP_WORKTREE_BRANCH_PREFIX = "cocurdex/";
@@ -74,21 +78,12 @@ export async function addGitWorktree(input: {
   });
 
   const worktrees = await listGitWorktrees(input.repoRootPath);
-  try {
-    const resolvedPath = await realpath(worktreePath);
-    const created = worktrees.find(
-      (worktree) => worktree.path === resolvedPath,
-    );
-    if (created) {
-      return created;
-    }
-  } catch {
-    const created = worktrees.find(
-      (worktree) => worktree.path === worktreePath,
-    );
-    if (created) {
-      return created;
-    }
+  const resolvedPath = resolveExistingPath(worktreePath);
+  const created = worktrees.find(
+    (worktree) => resolveExistingPath(worktree.path) === resolvedPath,
+  );
+  if (created) {
+    return created;
   }
 
   return {

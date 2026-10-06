@@ -1,21 +1,18 @@
 import {
   ChildProcess,
   type ChildProcessWithoutNullStreams,
-  spawn,
 } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { PassThrough } from "node:stream";
+import spawn from "cross-spawn";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   listClaudeCliProviderModels,
   resetClaudeCliProviderModelsCache,
 } from "./claude-cli-models";
 
-vi.mock("node:child_process", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("node:child_process")>()),
-  spawn: vi.fn(),
-}));
+vi.mock("cross-spawn", () => ({ default: vi.fn() }));
 
 const model = {
   value: "sonnet",

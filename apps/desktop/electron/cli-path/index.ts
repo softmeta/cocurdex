@@ -1,10 +1,13 @@
+import { cp, readdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, ipcMain } from "electron";
 import { createLogger } from "../logging";
+import { buildAppImageCliLauncher } from "./appimage-launcher";
 import {
   type CliPathStatus,
   installCliOnPath as installCliOnPathImpl,
+  pathExists,
   readCliPathStatus,
   resolveBundledCliLauncherPath,
   uninstallCliFromPath as uninstallCliFromPathImpl,
@@ -39,20 +42,79 @@ export function getBundledDaemonEntryPath(): string {
   return path.join(path.dirname(getBundledCliLauncherPath()), "daemon.cjs");
 }
 
+interface AppImageCliInstall {
+  appImagePath: string;
+  runtimeRoot: string;
+  runtimeDir: string;
+  cliScriptPath: string;
+}
+
+function resolveAppImageCliInstall(): AppImageCliInstall | null {
+  const appImagePath = process.env.APPIMAGE;
+  if (process.platform !== "linux" || !app.isPackaged || !appImagePath) {
+    return null;
+  }
+  const runtimeRoot = path.join(app.getPath("userData"), "cli-runtime");
+  const runtimeDir = path.join(runtimeRoot, app.getVersion());
+  return {
+    appImagePath,
+    runtimeRoot,
+    runtimeDir,
+    cliScriptPath: path.join(runtimeDir, "cli.mjs"),
+  };
+}
+
+async function prepareAppImageCliRuntime(install: AppImageCliInstall) {
+  if (!(await pathExists(install.cliScriptPath))) {
+    const staging = `${install.runtimeDir}.staging-${process.pid}`;
+    await rm(staging, { recursive: true, force: true });
+    await cp(path.dirname(getBundledCliLauncherPath()), staging, {
+      recursive: true,
+    });
+    await rm(install.runtimeDir, { recursive: true, force: true });
+    await rename(staging, install.runtimeDir);
+  }
+  const currentVersion = path.basename(install.runtimeDir);
+  for (const entry of await readdir(install.runtimeRoot)) {
+    if (entry !== currentVersion) {
+      await rm(path.join(install.runtimeRoot, entry), {
+        recursive: true,
+        force: true,
+      });
+    }
+  }
+}
+
+function resolveInstallSource(): {
+  sourcePath: string;
+  scriptLauncher?: string;
+} {
+  const appImage = resolveAppImageCliInstall();
+  if (!appImage) {
+    return { sourcePath: getBundledCliLauncherPath() };
+  }
+  return {
+    sourcePath: appImage.cliScriptPath,
+    scriptLauncher: buildAppImageCliLauncher(appImage),
+  };
+}
+
 export async function getCliPathStatus(): Promise<CliPathStatus> {
-  const sourcePath = getBundledCliLauncherPath();
   return readCliPathStatus({
     platform: process.platform,
-    sourcePath,
+    ...resolveInstallSource(),
     pathEnv: process.env.PATH,
   });
 }
 
 export async function installCliOnPath(): Promise<CliPathStatus> {
-  const sourcePath = getBundledCliLauncherPath();
+  const appImage = resolveAppImageCliInstall();
+  if (appImage) {
+    await prepareAppImageCliRuntime(appImage);
+  }
   const status = await installCliOnPathImpl({
     platform: process.platform,
-    sourcePath,
+    ...resolveInstallSource(),
   });
   logger.info("cli.install", {
     installPath: status.installPath,
@@ -64,10 +126,9 @@ export async function installCliOnPath(): Promise<CliPathStatus> {
 }
 
 export async function uninstallCliFromPath(): Promise<CliPathStatus> {
-  const sourcePath = getBundledCliLauncherPath();
   const status = await uninstallCliFromPathImpl({
     platform: process.platform,
-    sourcePath,
+    ...resolveInstallSource(),
   });
   logger.info("cli.uninstall", {
     installPath: status.installPath,
@@ -83,6 +144,10 @@ export async function ensureCliOnPathBestEffort(): Promise<void> {
   }
 
   try {
+    const appImage = resolveAppImageCliInstall();
+    if (appImage) {
+      await prepareAppImageCliRuntime(appImage);
+    }
     const before = await getCliPathStatus();
     if (!before.available) {
       logger.warn("cli.ensure.skipped", { reason: "launcher-missing" });

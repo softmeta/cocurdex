@@ -215,7 +215,10 @@ async function listWorkspaceFilesBreadthFirst(rootPath: string) {
       }
 
       const nextPath = path.join(currentPath, entry.name);
-      const relativePath = path.relative(rootPath, nextPath);
+      const relativePath = path
+        .relative(rootPath, nextPath)
+        .split(path.sep)
+        .join(path.posix.sep);
 
       if (entry.isDirectory()) {
         if (!IGNORED_DIRECTORY_NAMES.has(entry.name)) {

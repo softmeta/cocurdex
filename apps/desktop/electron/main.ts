@@ -118,11 +118,14 @@ import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerSkillsHandlers } from "./skills";
 import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
 import {
+  hasTitleBarOverlay,
   migrateLegacyRendererStorage,
   registerChatWindowHandlers,
   registerRendererProtocol,
   rendererPageUrl,
   rendererScheme,
+  titleBarChromeOptions,
+  titleBarOverlayFor,
 } from "./window";
 import {
   buildPdfAssetUrl,
@@ -266,19 +269,15 @@ function getSurfaceColor() {
 let chatWindows: ReturnType<typeof registerChatWindowHandlers> | undefined;
 
 function createWindow() {
-  const isMac = process.platform === "darwin";
+  const surfaceColor = getSurfaceColor();
   const window = new BrowserWindow({
     width: 1440,
     height: 960,
     minWidth: MIN_WINDOW_WIDTH,
     minHeight: MIN_WINDOW_HEIGHT,
-    backgroundColor: getSurfaceColor(),
+    backgroundColor: surfaceColor,
     show: false,
-    titleBarStyle: isMac ? "hidden" : undefined,
-    // Keep y in sync with renderer TITLEBAR_HEIGHT (32). Real traffic-light
-    // diameter is ~14px (not 12), so y = (32 - 14) / 2 = 9 for true vertical
-    // center. x:12 pairs with TITLEBAR_TRAFFIC_LIGHT_RESERVE (80).
-    trafficLightPosition: isMac ? { x: 12, y: 9 } : undefined,
+    ...titleBarChromeOptions(process.platform, surfaceColor),
     webPreferences: {
       preload: preloadPath,
       // Keep painting at full rate when the window is occluded/resizing so
@@ -1616,6 +1615,9 @@ app
       async (event, color) => {
         const window = BrowserWindow.fromWebContents(event.sender);
         window?.setBackgroundColor(color);
+        if (window && hasTitleBarOverlay(process.platform)) {
+          window.setTitleBarOverlay(titleBarOverlayFor(color));
+        }
         getBrowserView()?.setBackgroundColor(color);
       },
     );
