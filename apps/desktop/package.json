@@ -4,6 +4,7 @@
   "version": "0.1.60",
   "description": "Cocurdex desktop app",
   "author": "softmeta LLC",
+  "homepage": "https://cocurdex.com",
   "private": true,
   "type": "module",
   "main": "out/main/main.js",
