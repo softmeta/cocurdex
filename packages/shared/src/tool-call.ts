@@ -7,6 +7,6 @@ export function isToolCallId(value: unknown): value is string {
     typeof value === "string" &&
     value.length > 0 &&
     value.length <= 4096 &&
-    /^[^\p{Cc}]+$/u.test(value)
+    /^[^\p{Cc}]+$/u.test(value.replaceAll("\n", " "))
   );
 }

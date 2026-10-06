@@ -16,7 +16,7 @@ describe("schemas.toolCallId", () => {
     expect(schemas.toolCallId.parse(id)).toBe(id);
   });
 
-  it.each(["", "tool\u0000id", "tool\nid", "a".repeat(4097), 42, null])(
+  it.each(["", "tool\u0000id", "tool\rid", "a".repeat(4097), 42, null])(
     "rejects malformed tool call ID %j",
     (id) => {
       expect(schemas.toolCallId.safeParse(id).success).toBe(false);
@@ -43,6 +43,20 @@ describe("provider-minted request IDs", () => {
     ).toBe(true);
   });
 
+  it("accepts Cursor's newline-joined request IDs on permission:resolve", () => {
+    const cursorToolCallId =
+      "call-2b8ed068-77e4-4be6-b234-07a445e8315b-11\nfc_39066401-957d-9733-8e74-4d8b0515686b_3";
+    expect(
+      schemas.permissionResolve.safeParse([cursorToolCallId, "allow"]).success,
+    ).toBe(true);
+  });
+
+  it("rejects other control characters in provider request IDs", () => {
+    expect(
+      schemas.permissionResolve.safeParse(["call\u0000x", "allow"]).success,
+    ).toBe(false);
+  });
+
   it("accepts provider request IDs on question:resolve", () => {
     expect(
       schemas.questionResolve.safeParse([devinToolCallId, "answer"]).success,
@@ -60,7 +74,7 @@ describe("provider-minted request IDs", () => {
 
   it("still rejects malformed request IDs", () => {
     expect(
-      schemas.permissionResolve.safeParse(["bad\nid", "allow"]).success,
+      schemas.permissionResolve.safeParse(["bad\rid", "allow"]).success,
     ).toBe(false);
     expect(schemas.permissionResolve.safeParse(["", "allow"]).success).toBe(
       false,
