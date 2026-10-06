@@ -121,8 +121,9 @@ export function spawnOwnedDaemonProcess(
   child.unref();
   child.once("error", options.onError);
   let exitCleanupPromise: Promise<void> = Promise.resolve();
+  const canReapProcessGroupAfterExit = process.platform !== "win32";
   child.once("exit", (code, signal) => {
-    if (child.pid) {
+    if (child.pid && canReapProcessGroupAfterExit) {
       exitCleanupPromise = terminateProcessTree(child.pid).catch(
         options.onError,
       );

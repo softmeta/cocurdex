@@ -80,3 +80,15 @@ export async function killProcessTree(
     killQuietly(descendant);
   }
 }
+
+export function stopChildProcess(
+  child: ChildProcess,
+  signal: NodeJS.Signals = "SIGTERM",
+  platform: NodeJS.Platform = process.platform,
+) {
+  if (platform === "win32" && child.pid !== undefined) {
+    void killProcessTree(child.pid, platform);
+    return;
+  }
+  child.kill(signal);
+}

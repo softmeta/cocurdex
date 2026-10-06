@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import path from "node:path";
 import { readDaemonMetadata, requestDaemon } from "@cocurdex/daemon/client";
 import { findMonorepoRoot } from "./open-desktop";
 
@@ -19,11 +20,17 @@ async function startDaemon() {
     );
   }
 
-  const child = spawn("pnpm", ["--filter", "@cocurdex/daemon", "daemon"], {
-    cwd: monorepoRoot,
-    detached: true,
-    stdio: "ignore",
-  });
+  const daemonRoot = path.join(monorepoRoot, "packages", "daemon");
+  const child = spawn(
+    process.execPath,
+    ["--import", "tsx", path.join("src", "bin.ts")],
+    {
+      cwd: daemonRoot,
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    },
+  );
   child.unref();
 
   const startedAt = Date.now();

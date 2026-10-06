@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   spawnSync: vi.fn(),
 }));
 
-vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }));
+vi.mock("cross-spawn", () => ({ default: { sync: mocks.spawnSync } }));
 vi.mock("@opencode/client", () => ({ OpenCode: { make: mocks.make } }));
 vi.mock("@opencode/client/service", () => ({
   Service: {

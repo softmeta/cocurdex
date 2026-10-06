@@ -111,14 +111,54 @@ async function downloadVerified(
   }
 }
 
-async function extract(format: ArchiveFormat, file: string, directory: string) {
-  if (format === "zip" && process.platform === "linux") {
-    await execFileAsync("unzip", ["-q", "-o", file, "-d", directory]);
-    return;
+type ExtractCommand = { command: string; args: string[] };
+
+export function listExtractCommands(
+  format: ArchiveFormat,
+  file: string,
+  directory: string,
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): ExtractCommand[] {
+  const tarArgs = ["-xf", file, "-C", directory];
+  if (platform === "win32") {
+    const systemRoot = env.SystemRoot || env.windir || "C:\\Windows";
+    return [
+      {
+        command: path.win32.join(systemRoot, "System32", "tar.exe"),
+        args: tarArgs,
+      },
+    ];
   }
-  await execFileAsync("tar", ["-xf", file, "-C", directory], {
-    windowsHide: true,
-  });
+  if (format === "zip" && platform === "linux") {
+    return [
+      { command: "unzip", args: ["-q", "-o", file, "-d", directory] },
+      { command: "bsdtar", args: tarArgs },
+      { command: "python3", args: ["-m", "zipfile", "-e", file, directory] },
+    ];
+  }
+  return [{ command: "tar", args: tarArgs }];
+}
+
+async function extract(format: ArchiveFormat, file: string, directory: string) {
+  const candidates = listExtractCommands(format, file, directory);
+  for (const [index, candidate] of candidates.entries()) {
+    try {
+      await execFileAsync(candidate.command, candidate.args, {
+        windowsHide: true,
+      });
+      return;
+    } catch (error) {
+      const missing = (error as NodeJS.ErrnoException).code === "ENOENT";
+      if (!missing || index === candidates.length - 1) {
+        throw missing
+          ? new Error(
+              `Cannot extract ${path.basename(file)}: install unzip and retry`,
+            )
+          : error;
+      }
+    }
+  }
 }
 
 async function installBinary(
