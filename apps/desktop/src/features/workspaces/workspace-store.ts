@@ -166,12 +166,13 @@ export type OpenWorkspaceByPathResult = {
   workspace: WorkspaceRecord;
   /** True when active workspace changed (caller should clear foreign session UI). */
   didSwitchWorkspace: boolean;
+  reusedUnderDifferentName: boolean;
 };
 
 /**
  * Open a workspace by absolute directory path (CLI `cocurdex .` / folder dialog).
- * Prefers the workspace whose primary folder is that path, then any workspace
- * containing it; otherwise creates one.
+ * Reuses the workspace whose primary folder is that path; otherwise creates one,
+ * even when another workspace lists the path as a secondary folder.
  * Always activates the workspace and expands its session list in the sidebar.
  */
 export const openWorkspaceByPathAtom = atom(
@@ -180,15 +181,9 @@ export const openWorkspaceByPathAtom = atom(
     const normalized = normalizeWorkspaceRootPath(rootPath);
     const previousId = get(activeWorkspaceIdAtom);
     const workspaces = get(workspacesAtom);
-    const existing =
-      workspaces.find((workspace) =>
-        workspacePathsEqual(workspace.rootPaths[0], normalized),
-      ) ??
-      workspaces.find((workspace) =>
-        workspace.rootPaths.some((workspaceRootPath) =>
-          workspacePathsEqual(workspaceRootPath, normalized),
-        ),
-      );
+    const existing = workspaces.find((workspace) =>
+      workspacePathsEqual(workspace.rootPaths[0], normalized),
+    );
 
     let workspace: WorkspaceRecord;
     if (existing) {
@@ -216,6 +211,9 @@ export const openWorkspaceByPathAtom = atom(
     return {
       workspace,
       didSwitchWorkspace: previousId !== workspace.id,
+      reusedUnderDifferentName:
+        existing !== undefined &&
+        existing.name !== workspaceNameFromPath(normalized),
     };
   },
 );

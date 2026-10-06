@@ -146,7 +146,11 @@ export function LeftSidebar({
   const handleOpenWorkspace = async () => {
     const rootPath = await pickHostDirectory();
     if (!rootPath) return;
-    const { didSwitchWorkspace } = openWorkspaceByPath(rootPath);
+    const { workspace, didSwitchWorkspace, reusedUnderDifferentName } =
+      openWorkspaceByPath(rootPath);
+    if (reusedUnderDifferentName) {
+      toast(t("sessions:workspace.openedExisting", { name: workspace.name }));
+    }
     if (didSwitchWorkspace) {
       selectSession(null);
     }
