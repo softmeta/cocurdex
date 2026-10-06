@@ -223,6 +223,124 @@ describe("AcpRegistryService", () => {
     await expect(service.install("codex-acp")).rejects.toThrow(/built in/);
   });
 
+  it("describes the exact download and launch that install performs", async () => {
+    const service = new AcpRegistryService(
+      memorySettings(),
+      userDataPath,
+      async () => [binaryEntry(archiveUrl, archiveSha)],
+      noLocalCli,
+    );
+
+    const [agent] = await service.listCatalog();
+    const installed = await service.install("demo");
+
+    expect(agent?.installPlan).toEqual({
+      launch: {
+        command: installed.command,
+        args: installed.args,
+        env: installed.env,
+      },
+      download: {
+        url: archiveUrl,
+        sha256: archiveSha,
+        directory: path.join(userDataPath, "acp-agents", "demo", "1.0.0"),
+      },
+      prefetch: null,
+    });
+  });
+
+  it("plans no download when a local CLI will be adopted", async () => {
+    const service = new AcpRegistryService(
+      memorySettings(),
+      userDataPath,
+      async () => [
+        {
+          ...binaryEntry(archiveUrl, archiveSha),
+          agent: {
+            ...binaryEntry(archiveUrl, archiveSha).agent,
+            registryId: "grok-build",
+          },
+        },
+      ],
+      localGrok,
+    );
+
+    const [agent] = await service.listCatalog();
+
+    expect(agent?.installPlan).toEqual({
+      launch: {
+        command: "/usr/local/bin/grok",
+        args: ["agent", "stdio"],
+        env: {},
+      },
+      download: null,
+      prefetch: null,
+    });
+  });
+
+  it("prefetches an npx package at install time and records only on success", async () => {
+    const entry: AcpRegistryEntry = {
+      agent: { ...binaryEntry(archiveUrl, null).agent, distribution: "npx" },
+      launch: {
+        kind: "npx",
+        target: { package: "demo-acp@1.0.0", args: ["--acp"], env: {} },
+      },
+    };
+    const prefetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("npx could not download the package"))
+      .mockResolvedValue(undefined);
+    const service = new AcpRegistryService(
+      memorySettings(),
+      userDataPath,
+      async () => [entry],
+      noLocalCli,
+      undefined,
+      prefetch,
+    );
+
+    const [agent] = await service.listCatalog();
+    expect(agent?.installPlan?.prefetch).toEqual({
+      command: "npx",
+      args: ["-y", "-p", "demo-acp@1.0.0", "-c", "exit 0"],
+      env: {},
+    });
+
+    await expect(service.install("demo")).rejects.toThrow(/could not download/);
+    expect(service.listInstalled()).toEqual([]);
+
+    await expect(service.install("demo")).resolves.toMatchObject({
+      command: "npx",
+      args: ["-y", "demo-acp@1.0.0", "--acp"],
+    });
+    expect(prefetch).toHaveBeenLastCalledWith(agent?.installPlan?.prefetch);
+  });
+
+  it("uses a command the user installed instead of downloading", async () => {
+    const settings = memorySettings();
+    const service = new AcpRegistryService(
+      settings,
+      userDataPath,
+      async () => [binaryEntry(archiveUrl, archiveSha)],
+      noLocalCli,
+      async (command) => (command === "demo" ? "/opt/bin/demo" : null),
+    );
+
+    await expect(service.installCommand("demo", "missing", [])).rejects.toThrow(
+      /Command not found/,
+    );
+    await expect(
+      service.installCommand("demo", "demo", ["--acp"]),
+    ).resolves.toMatchObject({
+      agentId: "acp:demo",
+      distribution: "local",
+      command: "/opt/bin/demo",
+      args: ["--acp"],
+      env: { DEMO_MODE: "1" },
+    });
+    expect(service.listInstalled()).toHaveLength(1);
+  });
+
   it("ignores corrupt persisted state", async () => {
     const settings = memorySettings();
     settings.values.set(ACP_REGISTRY_AGENTS_SETTING_KEY, "{not json");

@@ -6,8 +6,11 @@ import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
+import { buildChildProcessEnv } from "@cocurdex/agent-adapters";
 import {
   type AcpRegistryInstalledAgent,
+  type AcpRegistryInstallPlan,
+  type AcpRegistryLaunchCommand,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import {
@@ -18,6 +21,30 @@ import {
 
 const execFileAsync = promisify(execFile);
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
+const PREFETCH_ERROR_TAIL_LENGTH = 600;
+
+export type RunPrefetch = (command: AcpRegistryLaunchCommand) => Promise<void>;
+
+export async function runPrefetch({
+  command,
+  args,
+  env,
+}: AcpRegistryLaunchCommand) {
+  try {
+    await execFileAsync(command, args, {
+      env: buildChildProcessEnv(process.env, { extraEnv: env }),
+      maxBuffer: 16 * 1024 * 1024,
+      timeout: DOWNLOAD_TIMEOUT_MS,
+      windowsHide: true,
+    });
+  } catch (error) {
+    const stderr = (error as { stderr?: string }).stderr?.trim();
+    const detail = stderr
+      ? stderr.slice(-PREFETCH_ERROR_TAIL_LENGTH)
+      : (error as Error).message;
+    throw new Error(`${command} could not download the package: ${detail}`);
+  }
+}
 
 export function getAcpRegistryAgentsRoot(userDataPath: string) {
   return path.join(userDataPath, "acp-agents");
@@ -109,7 +136,6 @@ async function installBinary(
     }
     await rm(directory, { recursive: true, force: true });
     await rename(staging, directory);
-    return resolveInstalledCommand(directory, target.cmd);
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
     throw error;
@@ -122,36 +148,66 @@ function packageLaunch(kind: "npx" | "uvx", pkg: string, args: string[]) {
     : { command: "uvx", args: [pkg, ...args] };
 }
 
+function packagePrefetch(kind: "npx" | "uvx", pkg: string) {
+  return kind === "npx"
+    ? { command: "npx", args: ["-y", "-p", pkg, "-c", "exit 0"] }
+    : { command: "uvx", args: ["--from", pkg, "python", "-c", ""] };
+}
+
+export function planAcpRegistryInstall(
+  entry: AcpRegistryEntry,
+  userDataPath: string,
+): AcpRegistryInstallPlan | null {
+  const { agent, launch } = entry;
+  if (!launch) {
+    return null;
+  }
+  if (launch.kind !== "binary") {
+    const { package: pkg, args, env } = launch.target;
+    return {
+      launch: { ...packageLaunch(launch.kind, pkg, args), env },
+      download: null,
+      prefetch: { ...packagePrefetch(launch.kind, pkg), env },
+    };
+  }
+  const { archive, cmd, args, env, sha256 } = launch.target;
+  const directory = path.join(
+    getAcpRegistryAgentsRoot(userDataPath),
+    agent.registryId,
+    agent.version,
+  );
+  return {
+    launch: { command: resolveInstalledCommand(directory, cmd), args, env },
+    download: { url: archive, sha256, directory },
+    prefetch: null,
+  };
+}
+
 export async function installAcpRegistryAgent(
   entry: AcpRegistryEntry,
   userDataPath: string,
+  prefetch: RunPrefetch = runPrefetch,
   now = () => new Date(),
 ): Promise<AcpRegistryInstalledAgent> {
   const { agent, launch } = entry;
-  if (!launch) {
+  const plan = planAcpRegistryInstall(entry, userDataPath);
+  if (!launch || !plan) {
     throw new Error(`${agent.name} has no distribution for this platform`);
   }
-  const base = {
+  if (launch.kind === "binary" && plan.download) {
+    await installBinary(launch.target, plan.download.directory);
+  }
+  if (plan.prefetch) {
+    await prefetch(plan.prefetch);
+  }
+  return {
     agentId: toAcpRegistryAgentId(agent.registryId),
     registryId: agent.registryId,
     name: agent.name,
     version: agent.version,
     description: agent.description,
     distribution: launch.kind,
-    env: launch.target.env,
+    ...plan.launch,
     installedAt: now().toISOString(),
   };
-  if (launch.kind !== "binary") {
-    return {
-      ...base,
-      ...packageLaunch(launch.kind, launch.target.package, launch.target.args),
-    };
-  }
-  const directory = path.join(
-    getAcpRegistryAgentsRoot(userDataPath),
-    agent.registryId,
-    agent.version,
-  );
-  const command = await installBinary(launch.target, directory);
-  return { ...base, command, args: launch.target.args };
 }

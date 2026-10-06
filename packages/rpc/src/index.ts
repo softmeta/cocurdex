@@ -209,6 +209,11 @@ export type DaemonRequestPayloadByMethod = {
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "acpRegistry.catalog": { forceRefresh?: boolean };
   "acpRegistry.install": { registryId: string };
+  "acpRegistry.installCommand": {
+    registryId: string;
+    command: string;
+    args: string[];
+  };
   "acpRegistry.uninstall": { agentId: AcpRegistryAgentId };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
@@ -465,6 +470,7 @@ export type DaemonResultByMethod = {
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "acpRegistry.catalog": AcpRegistryCatalogAgent[];
   "acpRegistry.install": AcpRegistryInstalledAgent;
+  "acpRegistry.installCommand": AcpRegistryInstalledAgent;
   "acpRegistry.uninstall": null;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];

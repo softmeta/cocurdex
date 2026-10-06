@@ -380,6 +380,12 @@ contextBridge.exposeInMainWorld("desktopApi", {
     registryId: string,
   ): Promise<AcpRegistryInstalledAgent> =>
     ipcRenderer.invoke("acpRegistry:install", registryId),
+  installAcpRegistryCommand: (params: {
+    registryId: string;
+    command: string;
+    args: string[];
+  }): Promise<AcpRegistryInstalledAgent> =>
+    ipcRenderer.invoke("acpRegistry:installCommand", params),
   uninstallAcpRegistryAgent: (agentId: AcpRegistryAgentId): Promise<void> =>
     ipcRenderer.invoke("acpRegistry:uninstall", agentId),
   listAgentProviderDefaults: (): Promise<AgentProviderSelection[]> =>

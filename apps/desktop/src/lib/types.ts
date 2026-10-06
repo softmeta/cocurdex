@@ -483,6 +483,11 @@ export interface ProductApi {
   installAcpRegistryAgent(
     registryId: string,
   ): Promise<AcpRegistryInstalledAgent>;
+  installAcpRegistryCommand(params: {
+    registryId: string;
+    command: string;
+    args: string[];
+  }): Promise<AcpRegistryInstalledAgent>;
   uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId): Promise<void>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
