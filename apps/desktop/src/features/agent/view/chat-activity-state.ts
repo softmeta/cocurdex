@@ -96,3 +96,20 @@ export function formatElapsed(elapsedMs: number): string {
   const seconds = totalSeconds % 60;
   return `${Math.floor(totalSeconds / 60)}:${String(seconds).padStart(2, "0")}`;
 }
+
+export function formatDurationMs(durationMs: number) {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) {
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}

@@ -8,10 +8,12 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { useTranscriptState } from "../use-transcript-state";
+import { formatDurationMs } from "./chat-activity-state";
 
 export function ActivityBlock({
   busy = false,
   children,
+  durationMs,
   reasoningCount,
   replyCount,
   stateKey,
@@ -19,6 +21,7 @@ export function ActivityBlock({
 }: {
   busy?: boolean;
   children: ReactNode;
+  durationMs?: number;
   reasoningCount: number;
   replyCount: number;
   stateKey: string;
@@ -51,6 +54,10 @@ export function ActivityBlock({
       : null,
     replyCount > 0 ? t("activity.replyCount", { count: replyCount }) : null,
   ].filter(Boolean);
+  const label =
+    durationMs === undefined
+      ? counts.join(" · ")
+      : t("activity.workedFor", { duration: formatDurationMs(durationMs) });
 
   return (
     <Collapsible
@@ -59,14 +66,14 @@ export function ActivityBlock({
       open={open}
     >
       <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-0.5 text-body transition-colors hover:text-chat-fg-secondary">
-        {counts.length > 0 ? (
+        {label ? (
           <span
             className={cn(
               "min-w-0 truncate font-medium text-chat-fg-muted",
               busy && "activity-shimmer",
             )}
           >
-            {counts.join(" · ")}
+            {label}
           </span>
         ) : null}
         {/* The panel grows downward: chevron down means "opens", up means

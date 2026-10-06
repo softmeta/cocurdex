@@ -8,6 +8,7 @@
     "replyCount_other": "{{count}} 条中间回复",
     "toolCount_other": "{{count}} 次工具调用",
     "usingTools": "工具调用中",
+    "workedFor": "工作了 {{duration}}",
     "writing": "回复中"
   },
   "assistantMessage": {

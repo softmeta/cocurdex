@@ -406,20 +406,54 @@ export function withoutInterimReplies(items: TimelineGroup[]) {
   return items.filter((item) => !isInterimReply(item, turnEndMessageId));
 }
 
+function isFoldableTrailingItem(item: TimelineGroup) {
+  if (item.kind === "toolCalls") {
+    return item.toolCalls.every((toolCall) => toolCall.status === "completed");
+  }
+  return item.kind === "message" && isReasoningMessage(item.message);
+}
+
+function moveTrailingWorkBeforeTurnEnd(
+  items: TimelineGroup[],
+  turnEndMessageId: string | undefined,
+) {
+  const turnEndIndex = items.findIndex((item) => item.id === turnEndMessageId);
+  if (turnEndIndex < 0) {
+    return items;
+  }
+
+  const trailingItems = items.slice(turnEndIndex + 1);
+  const foldedItems = trailingItems.filter(isFoldableTrailingItem);
+  if (foldedItems.length === 0) {
+    return items;
+  }
+
+  return [
+    ...items.slice(0, turnEndIndex),
+    ...foldedItems,
+    items[turnEndIndex],
+    ...trailingItems.filter((item) => !isFoldableTrailingItem(item)),
+  ];
+}
+
 export function segmentConversationItems(
   items: TimelineGroup[],
   condensed: boolean,
   foldInterimReplies = false,
 ): ConversationRenderSegment[] {
-  const timelineItems = coalesceAdjacentSubagentGroups(items);
+  const coalescedItems = coalesceAdjacentSubagentGroups(items);
 
   if (!condensed) {
-    return timelineItems.map((item) => ({ kind: "item", item }));
+    return coalescedItems.map((item) => ({ kind: "item", item }));
   }
 
   const turnEndMessageId = foldInterimReplies
-    ? getTurnEndMessageId(timelineItems)
+    ? getTurnEndMessageId(coalescedItems)
     : undefined;
+  const timelineItems = moveTrailingWorkBeforeTurnEnd(
+    coalescedItems,
+    turnEndMessageId,
+  );
   const segments: ConversationRenderSegment[] = [];
   let run: TimelineGroup[] = [];
 

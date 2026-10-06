@@ -13,6 +13,7 @@ export default interface Resources {
       toolCount_one: "{{count}} tool call";
       toolCount_other: "{{count}} tool calls";
       usingTools: "Using tools";
+      workedFor: "Worked for {{duration}}";
       writing: "Responding";
     };
     assistantMessage: {
