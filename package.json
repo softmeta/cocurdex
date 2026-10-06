@@ -9,7 +9,7 @@
   "packageManager": "pnpm@12.5.1",
   "engines": {
     "node": ">=24 <25",
-    "pnpm": ">=11 <12"
+    "pnpm": ">=12 <13"
   },
   "repository": {
     "type": "git",
