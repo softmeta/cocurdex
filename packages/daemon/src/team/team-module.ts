@@ -142,6 +142,7 @@ function summarizeTasks(tasks: TeamTaskRecord[]): TeamTaskSummary[] {
 export interface TeamRoleSummary {
   id: string;
   name: string;
+  description: string | null;
   agentType: AgentRoleRecord["agentId"];
   model: string | null;
   permissionMode: AgentRoleRecord["permissionMode"];
@@ -151,6 +152,7 @@ function summarizeRole(role: AgentRoleRecord): TeamRoleSummary {
   return {
     id: role.id,
     name: role.name,
+    description: role.description,
     agentType: role.agentId,
     model: role.modelName ?? role.modelId,
     permissionMode: role.permissionMode,

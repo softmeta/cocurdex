@@ -1,11 +1,16 @@
 import { readdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { setInstalledAcpRegistryAgents } from "@cocurdex/agent-core";
+import {
+  lookupExecutable,
+  setInstalledAcpRegistryAgents,
+} from "@cocurdex/agent-core";
 import {
   type AcpRegistryAgentId,
   type AcpRegistryCatalogAgent,
   type AcpRegistryInstalledAgent,
+  type AcpRegistryInstallPlan,
   isAcpRegistryAgentId,
+  toAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
 import {
@@ -15,6 +20,9 @@ import {
 import {
   getAcpRegistryAgentsRoot,
   installAcpRegistryAgent,
+  planAcpRegistryInstall,
+  type RunPrefetch,
+  runPrefetch,
 } from "./acp-registry-install";
 import {
   findLocalCliAgent,
@@ -86,6 +94,8 @@ export class AcpRegistryService {
     private readonly userDataPath: string,
     private readonly fetchCatalog = fetchAcpRegistry,
     private readonly findLocal = findLocalCliAgent,
+    private readonly lookup = lookupExecutable,
+    private readonly prefetch: RunPrefetch = runPrefetch,
   ) {
     this.ready = this.load();
   }
@@ -156,9 +166,30 @@ export class AcpRegistryService {
   async listCatalog(
     options: { forceRefresh?: boolean } = {},
   ): Promise<AcpRegistryCatalogAgent[]> {
-    return (await this.entries(options.forceRefresh ?? false)).map(
-      (entry) => entry.agent,
+    const entries = await this.entries(options.forceRefresh ?? false);
+    return Promise.all(
+      entries.map(async (entry) => ({
+        ...entry.agent,
+        installPlan: await this.planInstall(entry),
+      })),
     );
+  }
+
+  private async planInstall(
+    entry: AcpRegistryEntry,
+  ): Promise<AcpRegistryInstallPlan | null> {
+    const local = LOCAL_CLI_REGISTRY_IDS.includes(entry.agent.registryId)
+      ? await this.findLocal(entry.agent.registryId)
+      : null;
+    if (local) {
+      const { command, args, env } = local;
+      return { launch: { command, args, env }, download: null, prefetch: null };
+    }
+    try {
+      return planAcpRegistryInstall(entry, this.userDataPath);
+    } catch {
+      return null;
+    }
   }
 
   listInstalled() {
@@ -166,15 +197,53 @@ export class AcpRegistryService {
   }
 
   install(registryId: string): Promise<AcpRegistryInstalledAgent> {
+    return this.save(
+      registryId,
+      async () =>
+        (await this.findLocal(registryId)) ??
+        (await this.installFromCatalog(registryId)),
+    );
+  }
+
+  installCommand(
+    registryId: string,
+    command: string,
+    args: string[],
+  ): Promise<AcpRegistryInstalledAgent> {
+    return this.save(registryId, async () => {
+      const { agent, launch } = await this.findInstallableEntry(registryId);
+      const resolved = command.trim()
+        ? await this.lookup(command.trim())
+        : null;
+      if (!resolved) {
+        throw new Error(`Command not found: ${command}`);
+      }
+      return {
+        agentId: toAcpRegistryAgentId(registryId),
+        registryId,
+        name: agent.name,
+        version: "",
+        description: agent.description,
+        distribution: "local",
+        command: resolved,
+        args,
+        env: launch?.target.env ?? {},
+        installedAt: new Date().toISOString(),
+      };
+    });
+  }
+
+  private save(
+    registryId: string,
+    resolveAgent: () => Promise<AcpRegistryInstalledAgent>,
+  ): Promise<AcpRegistryInstalledAgent> {
     const pending = this.installing.get(registryId);
     if (pending) {
       return pending;
     }
     const install = (async () => {
       await this.ready;
-      const agent =
-        (await this.findLocal(registryId)) ??
-        (await this.installFromCatalog(registryId));
+      const agent = await resolveAgent();
       await this.persist([
         ...this.installed.filter((item) => item.registryId !== registryId),
         agent,
@@ -186,7 +255,7 @@ export class AcpRegistryService {
     return install;
   }
 
-  private async installFromCatalog(registryId: string) {
+  private async findInstallableEntry(registryId: string) {
     const entry = (await this.entries(false)).find(
       (candidate) => candidate.agent.registryId === registryId,
     );
@@ -198,7 +267,15 @@ export class AcpRegistryService {
         `${entry.agent.name} is already built in as ${entry.agent.builtInAgentId}`,
       );
     }
-    return installAcpRegistryAgent(entry, this.userDataPath);
+    return entry;
+  }
+
+  private async installFromCatalog(registryId: string) {
+    return installAcpRegistryAgent(
+      await this.findInstallableEntry(registryId),
+      this.userDataPath,
+      this.prefetch,
+    );
   }
 
   async uninstall(agentId: AcpRegistryAgentId) {

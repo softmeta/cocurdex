@@ -23,8 +23,6 @@ export {
   WorkspacePicker,
 } from "./workspace-picker";
 export {
-  activeBranchAtom,
-  activeBranchesAtom,
   activeWorkspaceIdAtom,
   activeWorktreesAtom,
   addWorkspaceAtom,
@@ -32,6 +30,7 @@ export {
   COLLAPSED_WORKSPACE_IDS_STORAGE_KEY,
   collapsedWorkspaceIdsAtom,
   draftWorktreePathAtom,
+  gitBranchesByRootAtom,
   lastSelectedWorkspaceIdAtom,
   normalizeCollapsedWorkspaceIds,
   openWorkspaceByPathAtom,

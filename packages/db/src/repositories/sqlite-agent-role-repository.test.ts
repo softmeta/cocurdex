@@ -31,8 +31,10 @@ describe("createSqliteAgentRoleRepository", () => {
       thinkingLevel: null,
       openCodeAgent: null,
       openCodeVariant: null,
+      description: "Reviews diffs for regressions",
       instructions: null,
       skillIds: null,
+      avatar: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -51,20 +53,24 @@ describe("createSqliteAgentRoleRepository", () => {
       thinkingLevel: null,
       openCodeAgent: null,
       openCodeVariant: null,
+      description: null,
       instructions: null,
       skillIds: ["ship"],
+      avatar: { kind: "emoji", emoji: "🚀", color: "violet" },
       createdAt: now,
       updatedAt: "2026-09-06T01:00:00.000Z",
     });
 
     const listed = await repository.list();
     expect(listed.map((item) => item.id)).toEqual(["newer", "older"]);
+    expect(listed[1]?.description).toBe("Reviews diffs for regressions");
     expect(listed[0]).toMatchObject({
       name: "Implement",
       modelName: "GPT-5.4",
       permissionMode: "codex-auto",
       fastMode: false,
       skillIds: ["ship"],
+      avatar: { kind: "emoji", emoji: "🚀", color: "violet" },
     });
 
     await repository.delete("newer");

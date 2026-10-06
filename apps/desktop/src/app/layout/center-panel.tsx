@@ -106,8 +106,6 @@ import {
   updateSessionTitleAtom,
 } from "@/features/sessions";
 import {
-  activeBranchAtom,
-  activeBranchesAtom,
   activeWorkingPathAtom,
   activeWorkspaceIdAtom,
   activeWorktreesAtom,
@@ -326,8 +324,6 @@ export function CenterPanel({
   const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const relocateWorkspace = useSetAtom(relocateWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const activeBranches = useAtomValue(activeBranchesAtom);
-  const activeBranch = useAtomValue(activeBranchAtom);
   const activeWorktrees = useAtomValue(activeWorktreesAtom);
   const draftWorktreePath = useAtomValue(draftWorktreePathAtom);
   const globalWorkingPath = useAtomValue(activeWorkingPathAtom);
@@ -472,7 +468,9 @@ export function CenterPanel({
     activeMessages.length,
     activeToolCalls,
   );
-  useGitBranches(workingPath ?? undefined);
+  const { activeBranches, activeBranch } = useGitBranches(
+    workingPath ?? undefined,
+  );
   useGitWorktrees(activeWorkspace?.rootPaths[0]);
 
   useBrowserAnnotationSender((sent) => {

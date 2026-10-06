@@ -48,6 +48,7 @@ import { ActivityLine } from "./chat-activity";
 import { ActivityBlock } from "./chat-activity-block";
 import {
   type ActivityState,
+  formatDurationMs,
   isActivityHeaderBusy,
 } from "./chat-activity-state";
 import {
@@ -100,23 +101,6 @@ function formatMessageTime(value: string) {
     minute: "2-digit",
     hourCycle: "h23",
   }).format(new Date(value));
-}
-
-function formatDurationMs(durationMs: number) {
-  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
-  }
-
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
 function formatTokenCount(value: number) {
@@ -749,6 +733,16 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   const turnEndMessageId = showActivity
     ? undefined
     : getTurnEndMessageId(visibleItems);
+  const turnDurationMs = useAtomValue(turnStatsByMessageAtom)[
+    turnEndMessageId ?? ""
+  ]?.durationMs;
+  const turnWorkSegment =
+    segments[
+      segments.findIndex(
+        (segment) =>
+          segment.kind === "item" && segment.item.id === turnEndMessageId,
+      ) - 1
+    ];
 
   const renderTimelineItem = (group: TimelineGroup, nested = false) => {
     if (group.kind === "toolCalls") {
@@ -845,6 +839,9 @@ export const ChatConversationItem = memo(function ChatConversationItem({
 
                 return (
                   <ActivityBlock
+                    durationMs={
+                      segment === turnWorkSegment ? turnDurationMs : undefined
+                    }
                     busy={isActivityHeaderBusy({
                       hasActiveToolCall: summary.isBusy,
                       isLastSegment: segment === segments.at(-1),

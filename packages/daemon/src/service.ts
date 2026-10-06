@@ -59,6 +59,8 @@ import {
   isWorkspaceSearchDaemonEvent,
   isWorkspaceWatchDaemonEvent,
   newAssistantSessionId,
+  normalizeAgentRoleAvatar,
+  normalizeAgentRoleDescription,
   normalizeAgentRoleName,
   normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
@@ -563,6 +565,19 @@ export class CocurdexDaemonService {
       resetAcpProviderModelsCache(agent.agentId);
       return agent;
     });
+  }
+
+  installAcpRegistryCommand(params: {
+    registryId: string;
+    command: string;
+    args: string[];
+  }) {
+    return this.acpRegistry
+      .installCommand(params.registryId, params.command, params.args)
+      .then((agent) => {
+        resetAcpProviderModelsCache(agent.agentId);
+        return agent;
+      });
   }
 
   async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
@@ -1240,8 +1255,16 @@ export class CocurdexDaemonService {
       thinkingLevel: payload.thinkingLevel,
       openCodeAgent: payload.openCodeAgent,
       openCodeVariant: payload.openCodeVariant,
+      description:
+        payload.description === undefined
+          ? (existing?.description ?? null)
+          : normalizeAgentRoleDescription(payload.description),
       instructions: payload.instructions ?? null,
       skillIds: payload.skillIds ?? null,
+      avatar:
+        payload.avatar === undefined
+          ? (existing?.avatar ?? null)
+          : normalizeAgentRoleAvatar(payload.avatar),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

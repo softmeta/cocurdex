@@ -1,4 +1,4 @@
-import type { TeamTemplateRecord } from "@cocurdex/shared";
+import type { AgentRoleRecord, TeamTemplateRecord } from "@cocurdex/shared";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components";
 import { Button, EmptyState, IconButton, Text } from "@/components/ui";
 import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
+import { AgentRoleAvatar } from "../agent-role/agent-role-avatar";
 import { ScriptRunSettingsSection } from "../script-run";
 import { TeamTemplateEditDialog } from "./team-template-edit-dialog";
 import {
@@ -25,8 +26,8 @@ export function TeamSettingsPanel() {
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<TeamTemplateRecord | null>(null);
 
-  const roleName = (id: string | null) =>
-    roles.find((role) => role.id === id)?.name ?? t("teams.inheritRole");
+  const roleOf = (id: string | null) =>
+    roles.find((role) => role.id === id) ?? null;
 
   const handleDelete = async () => {
     if (!toDelete) return;
@@ -70,14 +71,16 @@ export function TeamSettingsPanel() {
                 <Text truncate weight="medium">
                   {template.name}
                 </Text>
-                <Text size="meta" tone="muted" truncate>
-                  {template.members
-                    .map(
-                      (member) =>
-                        `${member.name} · ${roleName(member.agentRoleId)}`,
-                    )
-                    .join(", ")}
-                </Text>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                  {template.members.map((member) => (
+                    <TeamMemberRole
+                      key={member.name}
+                      memberName={member.name}
+                      role={roleOf(member.agentRoleId)}
+                      inheritLabel={t("teams.inheritRole")}
+                    />
+                  ))}
+                </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <IconButton
@@ -125,5 +128,27 @@ export function TeamSettingsPanel() {
         variant="destructive"
       />
     </div>
+  );
+}
+
+function TeamMemberRole({
+  inheritLabel,
+  memberName,
+  role,
+}: {
+  inheritLabel: string;
+  memberName: string;
+  role: AgentRoleRecord | null;
+}) {
+  return (
+    <Text
+      size="meta"
+      tone="muted"
+      className="inline-flex min-w-0 items-center gap-1.5"
+    >
+      <span className="truncate">{memberName} ·</span>
+      {role ? <AgentRoleAvatar role={role} showAgent={false} /> : null}
+      <span className="truncate">{role?.name ?? inheritLabel}</span>
+    </Text>
   );
 }

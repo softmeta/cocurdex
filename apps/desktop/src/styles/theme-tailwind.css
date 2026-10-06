@@ -96,6 +96,15 @@
   --color-editor-git-added: var(--editor-git-added);
   --color-editor-git-deleted: var(--editor-git-deleted);
   --color-editor-git-modified: var(--editor-git-modified);
+  --color-role-avatar-gray: var(--role-avatar-gray);
+  --color-role-avatar-red: var(--role-avatar-red);
+  --color-role-avatar-orange: var(--role-avatar-orange);
+  --color-role-avatar-amber: var(--role-avatar-amber);
+  --color-role-avatar-green: var(--role-avatar-green);
+  --color-role-avatar-teal: var(--role-avatar-teal);
+  --color-role-avatar-blue: var(--role-avatar-blue);
+  --color-role-avatar-violet: var(--role-avatar-violet);
+  --color-role-avatar-pink: var(--role-avatar-pink);
   --color-editor-monaco-bg: var(--editor-monaco-bg);
   --color-editor-monaco-line-highlight: var(--editor-monaco-line-highlight);
   --color-editor-monaco-selection: var(--editor-monaco-selection);
@@ -176,6 +185,12 @@
   );
 
   /* Pivot: Appearance UI size / shadcn control text. */
+  --text-avatar-emoji-sm: 0.8125rem;
+  --text-avatar-emoji-sm--line-height: 1;
+  --text-avatar-emoji-md: 1.0625rem;
+  --text-avatar-emoji-md--line-height: 1;
+  --text-avatar-emoji-lg: 1.375rem;
+  --text-avatar-emoji-lg--line-height: 1;
   --text-sm: var(--app-ui-font-size);
   --text-sm--line-height: round(calc(var(--app-ui-font-size) * 18 / 13), 1px);
   /* Default Tailwind ratios vs text-sm (12/14, 16/14, 18/14, 20/14). */

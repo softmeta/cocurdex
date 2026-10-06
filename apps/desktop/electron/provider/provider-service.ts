@@ -209,6 +209,17 @@ export function registerProviderHandlers() {
   );
   registerHandler(
     ipcMain,
+    "acpRegistry:installCommand",
+    schemas.acpRegistryCommand,
+    async (_event, params) =>
+      requestDaemon(
+        "acpRegistry.installCommand",
+        params,
+        await chatDaemonOptions(),
+      ),
+  );
+  registerHandler(
+    ipcMain,
     "acpRegistry:uninstall",
     schemas.acpRegistryAgentId,
     async (_event, agentId) =>

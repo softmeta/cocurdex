@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components";
 import { EmptyState, IconButton, Text } from "@/components/ui";
+import { AgentIconLabel } from "../agent-icon";
+import { AgentRoleAvatar } from "./agent-role-avatar";
 import { AgentRoleEditDialog } from "./agent-role-edit-dialog";
 import {
   deleteAgentRoleRecord,
@@ -50,13 +52,16 @@ export function AgentRoleSettingsPanel() {
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {roles.map((role) => (
-            <li key={role.id} className="flex items-center gap-4 py-4">
+            <li key={role.id} className="flex items-center gap-3 py-4">
+              <AgentRoleAvatar role={role} size="lg" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <Text truncate weight="medium">
                   {role.name}
                 </Text>
                 <Text size="meta" tone="muted" truncate>
-                  {formatRoleSummary(role)}
+                  <AgentIconLabel agentId={role.agentId}>
+                    {formatRoleSummary(role)}
+                  </AgentIconLabel>
                 </Text>
               </div>
               <div className="flex shrink-0 items-center gap-1">

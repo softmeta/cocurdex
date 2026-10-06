@@ -10,7 +10,7 @@
       "builtin": "Built in",
       "updateRequired": "Update required"
     },
-    "description": "cocurdex runs these agent CLIs on this machine. Install or update the ones you want to pick for new sessions.",
+    "description": "Pick any of these agent CLIs when starting a session. cocurdex detects the versions installed on this machine; add more from the ACP Registry.",
     "kind": {
       "builtin": "Built-in",
       "detecting": "Checking…",
@@ -34,8 +34,29 @@
       "installFailed": "Installation failed",
       "installSucceeded": "Installed {{name}}",
       "loadFailed": "Could not load the ACP Registry",
+      "manual": {
+        "args": "Arguments",
+        "back": "Back",
+        "command": "Command",
+        "description": "Install the agent yourself first, then enter its executable name or absolute path and the arguments that start ACP mode.",
+        "open": "Use my own command",
+        "save": "Save"
+      },
       "noResults": "No matching agents",
       "open": "Add from ACP Registry",
+      "plan": {
+        "cancel": "Cancel",
+        "confirm": "Install",
+        "copied": "Command copied",
+        "copy": "Copy command",
+        "directory": "Install to",
+        "download": "Download",
+        "launch": "Launch command",
+        "localNote": "Found this CLI on your machine. Nothing will be downloaded; the agent runs it directly.",
+        "noChecksum": "The registry provides no checksum, so the download cannot be verified.",
+        "packageNote": "Installing runs {{runner}} once to download this pinned package version into its local cache. Later starts reuse the cache.",
+        "prefetch": "Runs during install"
+      },
       "remove": "Remove",
       "removeFailed": "Could not remove the agent",
       "removeSucceeded": "Removed {{name}}",
@@ -56,7 +77,7 @@
     "toast": {
       "commandCopied": "Install command copied",
       "pathCopied": "Path copied",
-      "refreshFailed": "Could not refresh adapters"
+      "refreshFailed": "Could not refresh agent CLIs"
     }
   },
   "agentRoles": {
@@ -73,6 +94,9 @@
     "emptyDescription": "Open the model menu in a new session and choose Save as role.",
     "name": "Name",
     "namePlaceholder": "Role name",
+    "roleDescription": "Description",
+    "roleDescriptionPlaceholder": "What this role does and what it is good at. Team leads use it to pick teammates.",
+    "runtime": "Agent and model",
     "save": "Save",
     "saved": "Role updated",
     "saveFailed": "Could not save this role."
@@ -650,7 +674,7 @@
   },
   "sections": {
     "about": "About",
-    "adapters": "Adapters",
+    "adapters": "Agent CLIs",
     "agentRoles": "Roles",
     "appearance": "Appearance",
     "archived": "Archived sessions",

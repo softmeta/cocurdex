@@ -6,7 +6,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 16;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -337,6 +337,24 @@ function migrateAcpAgentIdsToRegistry(database: DatabaseSync): void {
   }
 }
 
+function migrateAgentRoleAvatars(database: DatabaseSync): void {
+  if (
+    hasTable(database, "agent_roles") &&
+    !hasColumn(database, "agent_roles", "avatar_json")
+  ) {
+    database.exec("ALTER TABLE agent_roles ADD COLUMN avatar_json TEXT");
+  }
+}
+
+function migrateAgentRoleDescriptions(database: DatabaseSync): void {
+  if (
+    hasTable(database, "agent_roles") &&
+    !hasColumn(database, "agent_roles", "description")
+  ) {
+    database.exec("ALTER TABLE agent_roles ADD COLUMN description TEXT");
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -347,6 +365,8 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [11, migrateIssueColumnsToGlobal],
   [12, migrateTeamTasksOffIssues],
   [13, migrateAcpAgentIdsToRegistry],
+  [14, migrateAgentRoleAvatars],
+  [15, migrateAgentRoleDescriptions],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

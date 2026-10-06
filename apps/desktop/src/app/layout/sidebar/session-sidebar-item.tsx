@@ -150,7 +150,9 @@ export function SessionSidebarItem({
   const selectedRole = session.agentRoleId
     ? (roles.find((role) => role.id === session.agentRoleId) ?? null)
     : null;
-  const roleSummary = selectedRole ? formatRoleSummary(selectedRole) : null;
+  const roleSummary = selectedRole
+    ? formatRoleSummary(selectedRole, { includeAgent: false })
+    : null;
   const [isRenaming, setIsRenaming] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [draftTitle, setDraftTitle] = useState(session.title);
@@ -292,7 +294,7 @@ export function SessionSidebarItem({
       <SidebarItemTooltip
         agentId={session.agentType}
         agentLabel={getAgentDisplayLabel(session.agentType)}
-        roleName={selectedRole?.name}
+        role={selectedRole ?? undefined}
         roleSummary={roleSummary ?? undefined}
         timestamp={activityAt}
         title={session.title}

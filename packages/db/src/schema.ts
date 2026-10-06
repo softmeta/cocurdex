@@ -252,7 +252,9 @@ export function createSchemaSql() {
       opencode_agent TEXT,
       opencode_variant TEXT,
       instructions TEXT,
+      description TEXT,
       skill_ids_json TEXT,
+      avatar_json TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

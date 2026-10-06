@@ -3,7 +3,11 @@ export {
   type AdapterStatusKind,
   getAdapterStatus,
 } from "./adapter-status";
-export { AgentIcon } from "./agent-icon";
+export { AgentIcon, AgentIconLabel } from "./agent-icon";
+export {
+  AgentRoleAvatar,
+  type AgentRoleAvatarSource,
+} from "./agent-role/agent-role-avatar";
 export {
   getAgentRuntimePreferences,
   updateAgentRuntimePreferences,

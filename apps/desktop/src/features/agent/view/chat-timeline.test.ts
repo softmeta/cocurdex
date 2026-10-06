@@ -27,11 +27,14 @@ function reply(id: string, kind?: MessageRecord["kind"]): TimelineGroup {
   };
 }
 
-function tools(id: string): TimelineGroup {
+function tools(
+  id: string,
+  status: AgentToolCallRecord["status"] = "completed",
+): TimelineGroup {
   return {
     id,
     kind: "toolCalls",
-    toolCalls: [{ id, status: "completed" } as AgentToolCallRecord],
+    toolCalls: [{ id, status } as AgentToolCallRecord],
   };
 }
 
@@ -72,10 +75,24 @@ describe("segmentConversationItems", () => {
     ]);
   });
 
-  it("treats the last reply as final even when tool calls follow it", () => {
+  it("folds completed tool calls after the final reply into the turn's work", () => {
     expect(
       segmentIds([reply("a"), tools("t"), reply("b"), tools("u")], true),
-    ).toEqual([["a", "t"], "b", ["u"]]);
+    ).toEqual([["a", "t", "u"], "b"]);
+  });
+
+  it("keeps failed tool calls after the final reply visible", () => {
+    expect(
+      segmentIds([tools("t"), reply("b"), tools("u", "failed")], true),
+    ).toEqual([["t"], "b", ["u"]]);
+  });
+
+  it("leaves trailing tool calls in place while the turn is live", () => {
+    expect(segmentIds([tools("t"), reply("b"), tools("u")], false)).toEqual([
+      ["t"],
+      "b",
+      ["u"],
+    ]);
   });
 });
 

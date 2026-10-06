@@ -554,6 +554,11 @@ export const schemas = {
   acpRegistryId: z
     .string()
     .regex(/^[a-z0-9][a-z0-9._-]{0,63}$/i, "invalid registry id"),
+  acpRegistryCommand: z.object({
+    registryId: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/i),
+    command: z.string().trim().min(1).max(4096),
+    args: z.array(z.string().max(4096)).max(64),
+  }),
   acpRegistryAgentId: agentIdSchema.refine(
     isAcpRegistryAgentId,
     "not a registry agent",

@@ -6,6 +6,7 @@ import type {
 import { projectAgentRoleToExecutorBinding } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
+import { AgentRoleAvatar } from "@/features/sessions";
 import { SettingsSelect } from "../settings-select";
 
 const ROLES: WorkflowRole[] = ["planner", "implementer", "reviewer"];
@@ -27,7 +28,13 @@ export function WorkflowBindingsEditor({
     return roles.flatMap((record) => {
       try {
         projectAgentRoleToExecutorBinding(record, role);
-        return [{ value: record.id, label: record.name }];
+        return [
+          {
+            icon: <AgentRoleAvatar role={record} showAgent={false} />,
+            value: record.id,
+            label: record.name,
+          },
+        ];
       } catch {
         return [];
       }

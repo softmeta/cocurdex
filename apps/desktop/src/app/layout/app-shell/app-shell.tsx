@@ -306,8 +306,9 @@ export function AppShell() {
         toggleRightPanel: () => activeScreen === "app",
         toggleEditorFullscreen: () => activeScreen === "app" && !chatDetached,
         toggleChatDock: () =>
-          activeScreen === "app" &&
-          (chatDetached || isRightPanelMaximized || isRightPanelCompact),
+          activeScreen === "settings" ||
+          (activeScreen === "app" &&
+            (chatDetached || isRightPanelMaximized || isRightPanelCompact)),
         toggleDesignMode: () => activeScreen === "app" && shouldShowRightPanel,
       },
       labels: {

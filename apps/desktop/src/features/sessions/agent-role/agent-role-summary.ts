@@ -84,7 +84,7 @@ export function resolveAgentRoleSpeedLabel(
 }
 
 export function formatAgentRoleSummary(parts: {
-  agentLabel: string;
+  agentLabel: string | null;
   modelLabel: string | null;
   sessionModeLabel?: string | null;
   thinkingLabel?: string | null;
@@ -106,7 +106,7 @@ export function formatAgentRoleSummary(parts: {
 export function formatAgentRoleRecordSummary(
   role: AgentRoleDraft,
   labels: {
-    agentLabel: string;
+    agentLabel: string | null;
     permissionLabel: string | null;
     sessionModeLabelFor(agentId: AgentId, modeId: string): string | null;
     thinkingLabelFor(level: AgentThinkingLevel): string;

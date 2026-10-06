@@ -14,6 +14,7 @@ import {
   Text,
 } from "@/components/ui";
 import {
+  AgentIconLabel,
   deleteSessionAtom,
   getAgentDisplayLabel,
   upsertSessionAtom,
@@ -156,10 +157,19 @@ export function ArchivedSessionsPanel() {
                   <Text weight="medium" truncate title={session.title}>
                     {session.title}
                   </Text>
-                  <Text size="meta" tone="muted" truncate>
-                    {[workspace?.name, getAgentDisplayLabel(session.agentType)]
-                      .filter(Boolean)
-                      .join(" · ")}
+                  <Text
+                    size="meta"
+                    tone="muted"
+                    className="flex min-w-0 items-center gap-1"
+                  >
+                    {workspace?.name ? (
+                      <span className="shrink truncate">
+                        {workspace.name} ·
+                      </span>
+                    ) : null}
+                    <AgentIconLabel agentId={session.agentType}>
+                      {getAgentDisplayLabel(session.agentType)}
+                    </AgentIconLabel>
                   </Text>
                   <Text size="meta" tone="muted">
                     {t("archive.archivedOn", {

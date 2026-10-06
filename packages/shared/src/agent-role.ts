@@ -15,6 +15,25 @@ import type {
 } from "./workflow/types";
 
 export const AGENT_ROLE_NAME_MAX_LENGTH = 80;
+export const AGENT_ROLE_DESCRIPTION_MAX_LENGTH = 500;
+
+export const AGENT_ROLE_AVATAR_COLORS = [
+  "gray",
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "violet",
+  "pink",
+] as const;
+
+export type AgentRoleAvatarColor = (typeof AGENT_ROLE_AVATAR_COLORS)[number];
+
+export type AgentRoleAvatar =
+  | { kind: "emoji"; emoji: string; color: AgentRoleAvatarColor }
+  | { kind: "initial"; color: AgentRoleAvatarColor };
 
 const BUILT_IN_AGENT_IDS: readonly BuiltInAgentId[] = [
   "claude-agent",
@@ -55,8 +74,10 @@ export interface AgentRoleDraft {
 export interface AgentRoleRecord extends AgentRoleDraft {
   id: string;
   name: string;
+  description: string | null;
   instructions: string | null;
   skillIds: string[] | null;
+  avatar: AgentRoleAvatar | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,8 +85,10 @@ export interface AgentRoleRecord extends AgentRoleDraft {
 export interface SaveAgentRolePayload extends AgentRoleDraft {
   id?: string;
   name: string;
+  description?: string | null;
   instructions?: string | null;
   skillIds?: string[] | null;
+  avatar?: AgentRoleAvatar | null;
 }
 
 export function isAgentId(value: string): value is AgentId {
@@ -77,6 +100,43 @@ export function isAgentId(value: string): value is AgentId {
 
 export function normalizeAgentRoleName(name: string) {
   return name.trim().slice(0, AGENT_ROLE_NAME_MAX_LENGTH);
+}
+
+export function normalizeAgentRoleDescription(
+  description: string | null | undefined,
+) {
+  const trimmed = description
+    ?.trim()
+    .slice(0, AGENT_ROLE_DESCRIPTION_MAX_LENGTH);
+  return trimmed || null;
+}
+
+export function normalizeAgentRoleAvatar(
+  value: unknown,
+): AgentRoleAvatar | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const { kind, emoji, color: rawColor } = value as Record<string, unknown>;
+  const color = AGENT_ROLE_AVATAR_COLORS.includes(
+    rawColor as AgentRoleAvatarColor,
+  )
+    ? (rawColor as AgentRoleAvatarColor)
+    : "gray";
+  if (kind === "initial") {
+    return { kind, color };
+  }
+  if (kind !== "emoji" || typeof emoji !== "string") {
+    return null;
+  }
+  const firstGrapheme = new Intl.Segmenter()
+    .segment(emoji.trim())
+    [Symbol.iterator]()
+    .next().value?.segment;
+  if (!firstGrapheme || /^[\p{L}\p{N}\p{P}\s]/u.test(firstGrapheme)) {
+    return null;
+  }
+  return { kind, emoji: firstGrapheme, color };
 }
 
 export function workflowPermissionProfileForAgentRole(

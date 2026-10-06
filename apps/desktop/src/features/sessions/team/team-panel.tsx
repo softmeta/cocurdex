@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import { AgentIconLabel } from "../agent-icon";
 import {
   getAgentDisplayLabel,
   selectSessionAtom,
@@ -103,7 +104,11 @@ export function TeamPanel({
     sessions.find((session) => session.id === memberSessionId);
   const agentLabelOf = (memberSessionId: string) => {
     const agentType = sessionOf(memberSessionId)?.agentType;
-    return agentType ? getAgentDisplayLabel(agentType) : null;
+    return agentType ? (
+      <AgentIconLabel agentId={agentType}>
+        {getAgentDisplayLabel(agentType)}
+      </AgentIconLabel>
+    ) : null;
   };
   const active = team.status === "active";
   const collapsed = collapsedOverride ?? !active;

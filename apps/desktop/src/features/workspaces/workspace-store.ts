@@ -79,8 +79,9 @@ export const collapsedWorkspaceIdsAtom = atom(
   },
 );
 
-export const activeBranchesAtom = atom<GitBranchInfo[]>([]);
-export const activeBranchAtom = atom<string | null>(null);
+export const gitBranchesByRootAtom = atom<
+  Readonly<Record<string, GitBranchInfo[]>>
+>({});
 export const draftWorktreePathAtom = atom<string | null>(null);
 export const activeWorktreesAtom = atom<GitWorktreeInfo[]>([]);
 

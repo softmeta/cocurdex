@@ -11,11 +11,15 @@ import {
 } from "@/features/agent";
 import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
 import {
-  activeBranchAtom,
-  activeBranchesAtom,
   activeWorktreesAtom,
+  gitBranchesByRootAtom,
 } from "@/features/workspaces";
-import { desktopApi, markSessionSwitch, measureSessionSwitch } from "@/lib";
+import {
+  desktopApi,
+  type GitBranchInfo,
+  markSessionSwitch,
+  measureSessionSwitch,
+} from "@/lib";
 
 // Records a perf mark + measurement whenever the active session (or its loaded
 // transcript counts) changes. Pure telemetry against the performance API — no
@@ -180,34 +184,32 @@ export function useActiveSessionTranscript(
 }
 
 export function useGitBranches(rootPath: string | undefined) {
-  const setActiveBranches = useSetAtom(activeBranchesAtom);
-  const setActiveBranch = useSetAtom(activeBranchAtom);
+  const branchesByRoot = useAtomValue(gitBranchesByRootAtom);
+  const setBranchesByRoot = useSetAtom(gitBranchesByRootAtom);
 
   useEffect(() => {
     if (!rootPath) {
-      setActiveBranches([]);
-      setActiveBranch(null);
       return;
     }
 
     let cancelled = false;
     let requestSequence = 0;
+    const storeBranches = (branches: GitBranchInfo[]) =>
+      setBranchesByRoot((current) => ({ ...current, [rootPath]: branches }));
 
     const loadBranches = async () => {
       const request = ++requestSequence;
       try {
         const branches = await desktopApi.listGitBranches(rootPath);
         if (cancelled || request !== requestSequence) return;
-        const localBranches = branches.filter(
-          (branch) => branch.kind === "local" || branch.kind === "detached",
+        storeBranches(
+          branches.filter(
+            (branch) => branch.kind === "local" || branch.kind === "detached",
+          ),
         );
-        setActiveBranches(localBranches);
-        const current = localBranches.find((branch) => branch.current);
-        setActiveBranch(current?.name ?? null);
       } catch {
         if (cancelled || request !== requestSequence) return;
-        setActiveBranches([]);
-        setActiveBranch(null);
+        storeBranches([]);
       }
     };
 
@@ -222,7 +224,13 @@ export function useGitBranches(rootPath: string | undefined) {
       cancelled = true;
       unsubscribeGit();
     };
-  }, [rootPath, setActiveBranch, setActiveBranches]);
+  }, [rootPath, setBranchesByRoot]);
+
+  const activeBranches = rootPath ? branchesByRoot[rootPath] : [];
+  const activeBranch = activeBranches
+    ? (activeBranches.find((branch) => branch.current)?.name ?? null)
+    : undefined;
+  return { activeBranches: activeBranches ?? [], activeBranch };
 }
 
 export function useGitWorktrees(workspaceRootPath: string | undefined) {

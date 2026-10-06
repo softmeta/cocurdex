@@ -104,23 +104,24 @@ function getConversationRow(id: string) {
 }
 
 describe("virtual conversation rendering", () => {
-  it.each([
-    1, 3,
-  ])("renders and navigates a short transcript with %i conversations", async (count) => {
-    const { viewport, scrollRef, userMessageRefs } = mountTimeline(count);
-    await screen.findByRole("button", { name: `Prompt ${count - 1}` });
-    expect(screen.getAllByRole("button")).toHaveLength(count);
-    act(() => {
-      expect(scrollRef.current?.scrollToUserMessage("message-0")).toBe(true);
-    });
-    fireEvent.scroll(viewport);
-    expect(
-      userMessageRefs.current["message-0"]?.getBoundingClientRect().top,
-    ).toBeGreaterThanOrEqual(0);
-    expect(scrollRef.current?.getStickySelection()).toEqual({
-      id: "message-0",
-    });
-  });
+  it.each([1, 3])(
+    "renders and navigates a short transcript with %i conversations",
+    async (count) => {
+      const { viewport, scrollRef, userMessageRefs } = mountTimeline(count);
+      await screen.findByRole("button", { name: `Prompt ${count - 1}` });
+      expect(screen.getAllByRole("button")).toHaveLength(count);
+      act(() => {
+        expect(scrollRef.current?.scrollToUserMessage("message-0")).toBe(true);
+      });
+      fireEvent.scroll(viewport);
+      expect(
+        userMessageRefs.current["message-0"]?.getBoundingClientRect().top,
+      ).toBeGreaterThanOrEqual(0);
+      expect(scrollRef.current?.getStickySelection()).toEqual({
+        id: "message-0",
+      });
+    },
+  );
 
   it("restores the same reading anchor after remounting with a different row height", async () => {
     const source = mountTimeline();
