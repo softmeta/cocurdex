@@ -58,7 +58,7 @@ function toWorkspaceRelativePath(
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
   }
-  return relative;
+  return relative.split(path.sep).join(path.posix.sep);
 }
 
 function flattenSelectOptions(option: SessionConfigOption) {

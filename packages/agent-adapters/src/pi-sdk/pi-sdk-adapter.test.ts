@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { AgentEvent } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createPiSdkAdapter } from "./pi-sdk-adapter";
@@ -355,7 +356,7 @@ describe("createPiSdkAdapter", () => {
 
     expect(capture.resourceLoaderOptions).toMatchObject({
       cwd: "/tmp/repo",
-      agentDir: "/tmp/cocurdex-user-data/pi-agent",
+      agentDir: path.join("/tmp/cocurdex-user-data", "pi-agent"),
     });
     const extensionFactories = capture.resourceLoaderOptions
       ?.extensionFactories as { name: string; builtin?: boolean }[];

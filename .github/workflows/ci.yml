@@ -146,7 +146,7 @@ jobs:
         run: pnpm --filter @cocurdex/desktop test
       - name: Test all packages including e2e
         if: needs.changes.outputs.run_desktop == 'true' && runner.os != 'Linux'
-        run: pnpm test
+        run: pnpm -r --no-bail --if-present test
       - name: Build desktop
         if: needs.changes.outputs.run_desktop == 'true'
         run: pnpm --filter @cocurdex/desktop build
