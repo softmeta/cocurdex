@@ -1,9 +1,20 @@
 import { existsSync, realpathSync } from "node:fs";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import type { ManagedWorktree, WorkspaceRecord } from "@cocurdex/shared";
+import {
+  type ManagedWorktree,
+  parseGitWorktreeList,
+  type WorkspaceRecord,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { spawnDaemon } from "./helpers/daemon-process";
 import { createGitRepository, runGit } from "./helpers/git-repository";
+
+function gitWorktreePaths(repoPath: string) {
+  const porcelain = runGit(repoPath, ["worktree", "list", "--porcelain"]);
+  return parseGitWorktreeList(porcelain).map((worktree) =>
+    realpathSync.native(worktree.path),
+  );
+}
 
 function workspaceRecord(rootPath: string): WorkspaceRecord {
   const now = new Date().toISOString();
@@ -35,13 +46,11 @@ describe("daemon managed worktree lifecycle", () => {
         daemon.options,
       );
       expect(created.branch).toBe("e2e-worktree");
+      const createdPath = realpathSync.native(created.path);
       expect(
-        realpathSync(created.path).startsWith(
-          realpathSync(daemon.userDataPath),
-        ),
+        createdPath.startsWith(realpathSync.native(daemon.userDataPath)),
       ).toBe(true);
-      expect(existsSync(created.path)).toBe(true);
-      expect(runGit(repo.path, ["worktree", "list"])).toContain(created.path);
+      expect(gitWorktreePaths(repo.path)).toContain(createdPath);
 
       const listed = await requestDaemon("worktree.list", daemon.options);
       const managed = listed.find(
@@ -59,9 +68,7 @@ describe("daemon managed worktree lifecycle", () => {
       );
       expect(removed).toEqual({ removed: true });
       expect(existsSync(created.path)).toBe(false);
-      expect(runGit(repo.path, ["worktree", "list"])).not.toContain(
-        created.path,
-      );
+      expect(gitWorktreePaths(repo.path)).not.toContain(createdPath);
     } finally {
       await daemon.dispose();
       await repo.dispose();

@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
 import {
   type DaemonProcess,
+  requestDaemonShutdown,
   spawnDaemon,
   waitFor,
 } from "./helpers/daemon-process";
@@ -168,7 +169,7 @@ describe("cocurdex CLI daemon auto-start", () => {
         readFileSync(getDaemonMetadataPath(userDataPath), "utf8"),
       ) as DaemonMetadata;
       expect(metadata.pid).toBe(status.pid);
-      process.kill(metadata.pid, "SIGTERM");
+      expect(await requestDaemonShutdown(metadata)).toBe(true);
       await waitFor(
         () => !existsSync(getDaemonMetadataPath(userDataPath)),
         15_000,
