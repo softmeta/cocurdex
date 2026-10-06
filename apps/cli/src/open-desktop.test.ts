@@ -83,4 +83,10 @@ describe("isPackagedAppBinary", () => {
       ),
     ).toBe(true);
   });
+
+  it("accepts the Linux AppImage file instead of its transient mount", () => {
+    expect(
+      isPackagedAppBinary("/home/me/Applications/Cocurdex-linux-x64.AppImage"),
+    ).toBe(true);
+  });
 });

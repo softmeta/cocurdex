@@ -25,7 +25,7 @@ export async function runWorktreeLifecycleScript(input: {
     return `${stdout}${stderr}`;
   }
 
-  const shell = process.env.SHELL || "/bin/zsh";
+  const shell = process.env.SHELL || "/bin/sh";
   const { stdout, stderr } = await execFileAsync(shell, ["-lc", script], {
     cwd: input.cwd,
     timeout,

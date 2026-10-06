@@ -25,7 +25,7 @@ export function getDefaultUserDataPath(
 
   return path.join(
     env.XDG_CONFIG_HOME ?? path.join(home, ".config"),
-    "cocurdex",
+    "Cocurdex",
   );
 }
 

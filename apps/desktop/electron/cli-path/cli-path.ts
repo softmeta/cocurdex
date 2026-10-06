@@ -13,6 +13,7 @@ import {
 import { homedir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { isAppImageCliLauncher } from "./appimage-launcher";
 
 const execFileAsync = promisify(execFile);
 
@@ -96,7 +97,11 @@ export function buildPathHint(
     return `Add "${binDir}" to your user PATH, then open a new terminal.`;
   }
 
-  return `Add this line to your shell profile (~/.zprofile or ~/.zshrc):\nexport PATH="${binDir}:$PATH"`;
+  const profile =
+    platform === "darwin"
+      ? "~/.zprofile or ~/.zshrc"
+      : "~/.profile or ~/.bashrc";
+  return `Add this line to your shell profile (${profile}):\nexport PATH="${binDir}:$PATH"`;
 }
 
 /**
@@ -146,6 +151,7 @@ export async function resolveSymlinkTarget(
 export async function readCliPathStatus(options: {
   platform: CliPathPlatform;
   sourcePath: string | null;
+  scriptLauncher?: string;
   pathEnv?: string;
   home?: string;
   env?: NodeJS.ProcessEnv;
@@ -160,7 +166,10 @@ export async function readCliPathStatus(options: {
 
   let pointsToCurrentApp = false;
   if (installed && available && sourcePath) {
-    if (options.platform === "win32") {
+    if (options.scriptLauncher !== undefined) {
+      pointsToCurrentApp =
+        (await readTextIfPresent(installPath)) === options.scriptLauncher;
+    } else if (options.platform === "win32") {
       pointsToCurrentApp = await windowsInstallPointsToSource(
         installPath,
         sourcePath,
@@ -198,6 +207,7 @@ export async function readCliPathStatus(options: {
 export async function installCliOnPath(options: {
   platform: CliPathPlatform;
   sourcePath: string;
+  scriptLauncher?: string;
   home?: string;
   env?: NodeJS.ProcessEnv;
   ensureWindowsUserPath?: (binDir: string) => Promise<void>;
@@ -211,6 +221,7 @@ export async function installCliOnPath(options: {
     return readCliPathStatus({
       platform: options.platform,
       sourcePath: options.sourcePath,
+      scriptLauncher: options.scriptLauncher,
       home,
       env,
     });
@@ -219,7 +230,14 @@ export async function installCliOnPath(options: {
   await mkdir(binDir, { recursive: true });
   await removePathIfPresent(installPath);
 
-  if (options.platform === "win32") {
+  if (options.scriptLauncher !== undefined) {
+    const tempPath = `${installPath}.${process.pid}.tmp`;
+    await writeFile(tempPath, options.scriptLauncher, {
+      encoding: "utf8",
+      mode: 0o755,
+    });
+    await rename(tempPath, installPath);
+  } else if (options.platform === "win32") {
     // Small shim so updates to the app path only require reinstall when the
     // install location moves; the shim calls the absolute packaged launcher.
     const shim = `@echo off\r\n"${options.sourcePath}" %*\r\n`;
@@ -236,6 +254,7 @@ export async function installCliOnPath(options: {
   return readCliPathStatus({
     platform: options.platform,
     sourcePath: options.sourcePath,
+    scriptLauncher: options.scriptLauncher,
     home,
     env,
   });
@@ -244,6 +263,7 @@ export async function installCliOnPath(options: {
 export async function uninstallCliFromPath(options: {
   platform: CliPathPlatform;
   sourcePath: string | null;
+  scriptLauncher?: string;
   home?: string;
   env?: NodeJS.ProcessEnv;
 }): Promise<CliPathStatus> {
@@ -253,7 +273,10 @@ export async function uninstallCliFromPath(options: {
 
   // Only remove our install: correct symlink, or a shim we wrote on Windows.
   if (await pathExists(installPath)) {
-    if (options.platform === "win32") {
+    const installedText = await readTextIfPresent(installPath);
+    if (installedText !== null && isAppImageCliLauncher(installedText)) {
+      await removePathIfPresent(installPath);
+    } else if (options.platform === "win32") {
       if (
         options.sourcePath &&
         (await windowsInstallPointsToSource(installPath, options.sourcePath))
@@ -275,6 +298,7 @@ export async function uninstallCliFromPath(options: {
   return readCliPathStatus({
     platform: options.platform,
     sourcePath: options.sourcePath,
+    scriptLauncher: options.scriptLauncher,
     home,
     env,
   });
@@ -341,5 +365,17 @@ async function windowsInstallPointsToSource(
     return content.includes(sourcePath);
   } catch {
     return false;
+  }
+}
+
+async function readTextIfPresent(filePath: string): Promise<string | null> {
+  try {
+    const stats = await lstat(filePath);
+    if (!stats.isFile()) {
+      return null;
+    }
+    return await readFile(filePath, "utf8");
+  } catch {
+    return null;
   }
 }

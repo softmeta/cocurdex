@@ -9,6 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { buildAppImageCliLauncher } from "./appimage-launcher";
 import {
   buildPathHint,
   getCliInstallBinDir,
@@ -214,5 +215,74 @@ describe("cli-path helpers", () => {
     });
     // Foreign install left alone.
     expect(afterUninstall.installed).toBe(true);
+  });
+});
+
+describe("AppImage script launcher", () => {
+  it("installs a launcher script that survives the AppImage mount going away", async () => {
+    const home = await makeTempDir();
+    const runtimeDir = path.join(home, ".config", "Cocurdex", "cli-runtime");
+    const cliScriptPath = path.join(runtimeDir, "cli.mjs");
+    await writeFileWithDirs(cliScriptPath, "");
+    const scriptLauncher = buildAppImageCliLauncher({
+      appImagePath: "/home/me/Apps/Cocurdex's.AppImage",
+      cliScriptPath,
+    });
+
+    const status = await installCliOnPath({
+      platform: "linux",
+      sourcePath: cliScriptPath,
+      scriptLauncher,
+      home,
+      env: {},
+    });
+
+    expect(status.installed).toBe(true);
+    expect(status.pointsToCurrentApp).toBe(true);
+    const installed = await readFile(status.installPath, "utf8");
+    expect(installed).toBe(scriptLauncher);
+    expect(installed).toContain(
+      "COCURDEX_APPIMAGE='/home/me/Apps/Cocurdex'\\''s.AppImage'",
+    );
+  });
+
+  it("reports a stale launcher after the AppImage moves, then uninstalls it", async () => {
+    const home = await makeTempDir();
+    const cliScriptPath = path.join(home, "runtime", "cli.mjs");
+    await writeFileWithDirs(cliScriptPath, "");
+    const oldLauncher = buildAppImageCliLauncher({
+      appImagePath: "/old/Cocurdex.AppImage",
+      cliScriptPath,
+    });
+    const newLauncher = buildAppImageCliLauncher({
+      appImagePath: "/new/Cocurdex.AppImage",
+      cliScriptPath,
+    });
+    await installCliOnPath({
+      platform: "linux",
+      sourcePath: cliScriptPath,
+      scriptLauncher: oldLauncher,
+      home,
+      env: {},
+    });
+
+    const status = await readCliPathStatus({
+      platform: "linux",
+      sourcePath: cliScriptPath,
+      scriptLauncher: newLauncher,
+      home,
+      env: {},
+    });
+    expect(status.installed).toBe(true);
+    expect(status.pointsToCurrentApp).toBe(false);
+
+    const removed = await uninstallCliFromPath({
+      platform: "linux",
+      sourcePath: cliScriptPath,
+      scriptLauncher: newLauncher,
+      home,
+      env: {},
+    });
+    expect(removed.installed).toBe(false);
   });
 });

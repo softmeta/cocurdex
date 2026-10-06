@@ -307,7 +307,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build AppImage
+      - name: Build AppImage and deb
         run: |
           pnpm --filter @cocurdex/desktop \
             ${{ github.ref_type == 'tag' && 'dist:linux:x64:release' || 'dist:linux:x64' }}
@@ -325,8 +325,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           node ./scripts/write-artifact-sha256.mjs release/Cocurdex-linux-x64.AppImage
+          node ./scripts/write-artifact-sha256.mjs release/Cocurdex-linux-x64.deb
           gh release upload "${GITHUB_REF_NAME}" \
             "release/Cocurdex-linux-x64.AppImage.sha256" \
+            "release/Cocurdex-linux-x64.deb.sha256" \
             --repo "${GITHUB_REPOSITORY}" \
             --clobber
 

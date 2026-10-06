@@ -8,7 +8,7 @@ import {
 } from "./paths";
 
 describe("getDefaultUserDataPath", () => {
-  it("keeps the published per-platform location", () => {
+  it("matches the Electron userData directory named after productName", () => {
     expect(getDefaultUserDataPath("darwin", {}, "/Users/example")).toBe(
       path.join("/Users/example", "Library", "Application Support", "Cocurdex"),
     );
@@ -16,7 +16,7 @@ describe("getDefaultUserDataPath", () => {
       path.join("C:\\Users\\example", "AppData", "Roaming", "Cocurdex"),
     );
     expect(getDefaultUserDataPath("linux", {}, "/home/example")).toBe(
-      path.join("/home/example", ".config", "cocurdex"),
+      path.join("/home/example", ".config", "Cocurdex"),
     );
   });
 
@@ -34,7 +34,7 @@ describe("getDefaultUserDataPath", () => {
         { XDG_CONFIG_HOME: "/etc/cocurdex" },
         "/home/example",
       ),
-    ).toBe(path.join("/etc/cocurdex", "cocurdex"));
+    ).toBe(path.join("/etc/cocurdex", "Cocurdex"));
   });
 });
 
