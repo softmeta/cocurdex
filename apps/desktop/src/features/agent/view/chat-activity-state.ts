@@ -13,8 +13,8 @@ export type ActivityKind =
   | "completed"
   | "planning"
   | "ready"
-  | "usingTools"
-  | "writing";
+  | "thinking"
+  | "usingTools";
 
 export type ActivityState = {
   icon: "check" | "error" | "loader" | "wrench";
@@ -40,6 +40,24 @@ export function isActivityHeaderBusy(input: {
   );
 }
 
+function startedAfter(toolCall: AgentToolCallRecord, message: MessageRecord) {
+  if (toolCall.seq !== undefined && message.seq !== undefined) {
+    return toolCall.seq > message.seq;
+  }
+  return Date.parse(toolCall.startedAt) > Date.parse(message.createdAt);
+}
+
+function isStreamingResponse(
+  message: MessageRecord,
+  toolCalls: AgentToolCallRecord[],
+) {
+  return (
+    message.kind !== "reasoning" &&
+    message.content.trim().length > 0 &&
+    !toolCalls.some((toolCall) => startedAfter(toolCall, message))
+  );
+}
+
 export function getActivityState({
   isRunning,
   messages,
@@ -50,7 +68,7 @@ export function getActivityState({
   messages: MessageRecord[];
   status?: SessionStatus;
   toolCalls: AgentToolCallRecord[];
-}): ActivityState {
+}): ActivityState | null {
   const latestMessage = messages.at(-1);
 
   if (status === "error") {
@@ -66,7 +84,9 @@ export function getActivityState({
   }
 
   if (isRunning && latestMessage?.role === "assistant") {
-    return { icon: "loader", kind: "writing", tone: "running" };
+    return isStreamingResponse(latestMessage, toolCalls)
+      ? null
+      : { icon: "loader", kind: "thinking", tone: "running" };
   }
 
   if (isRunning) {

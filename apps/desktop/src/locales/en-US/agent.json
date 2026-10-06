@@ -8,22 +8,23 @@
     "reasoningCount_other": "{{count}} reasoning steps",
     "replyCount_one": "{{count}} interim reply",
     "replyCount_other": "{{count}} interim replies",
+    "thinking": "Thinking",
     "toolCount_one": "{{count}} tool call",
     "toolCount_other": "{{count}} tool calls",
     "usingTools": "Using tools",
-    "workedFor": "Worked for {{duration}}",
-    "writing": "Responding"
+    "workedFor": "Worked for {{duration}}"
   },
   "assistantMessage": {
     "copy": "Copy response",
     "copyRichText": "Copy Rich Text",
     "turnUsage": {
       "ariaLabel": "Token usage this turn",
-      "tooltipCacheCreation": "Cache write ({{tokens}}): tokens added to the prompt cache.",
-      "tooltipCacheRead": "Cache read ({{tokens}}): tokens reused from the prompt cache.",
-      "tooltipInput": "Processed input ({{tokens}}): total input handled this turn, including cached tokens.",
-      "tooltipNewInput": "Uncached input ({{tokens}}): input processed without a cache hit.",
-      "tooltipOutput": "Output ({{tokens}}): tokens the model generated this turn."
+      "cacheHitRate": "Cache hit rate",
+      "cacheRead": "Cache read",
+      "cacheWrite": "Cache write",
+      "input": "Total input",
+      "newInput": "Uncached input",
+      "output": "Output"
     }
   },
   "contextBreakdown": {
