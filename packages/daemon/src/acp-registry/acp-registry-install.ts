@@ -6,7 +6,7 @@ import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
-import { buildChildProcessEnv } from "@cocurdex/agent-adapters";
+import { buildChildProcessEnv, spawnCommand } from "@cocurdex/agent-adapters";
 import {
   type AcpRegistryInstalledAgent,
   type AcpRegistryInstallPlan,
@@ -30,18 +30,29 @@ export async function runPrefetch({
   args,
   env,
 }: AcpRegistryLaunchCommand) {
+  let stderr = "";
   try {
-    await execFileAsync(command, args, {
-      env: buildChildProcessEnv(process.env, { extraEnv: env }),
-      maxBuffer: 16 * 1024 * 1024,
-      timeout: DOWNLOAD_TIMEOUT_MS,
-      windowsHide: true,
+    await new Promise<void>((resolve, reject) => {
+      const child = spawnCommand(command, args, {
+        env: buildChildProcessEnv(process.env, { extraEnv: env }),
+        stdio: ["ignore", "ignore", "pipe"],
+        timeout: DOWNLOAD_TIMEOUT_MS,
+      });
+      child.stderr?.setEncoding("utf8");
+      child.stderr?.on("data", (chunk: string) => {
+        stderr = (stderr + chunk).slice(-PREFETCH_ERROR_TAIL_LENGTH);
+      });
+      child.once("error", reject);
+      child.once("close", (code, signal) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(`exited with ${signal ?? `code ${code}`}`));
+      });
     });
   } catch (error) {
-    const stderr = (error as { stderr?: string }).stderr?.trim();
-    const detail = stderr
-      ? stderr.slice(-PREFETCH_ERROR_TAIL_LENGTH)
-      : (error as Error).message;
+    const detail = stderr.trim() || (error as Error).message;
     throw new Error(`${command} could not download the package: ${detail}`);
   }
 }

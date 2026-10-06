@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import {
   type ContentBlock,
+  type PromptResponse,
   RequestError,
   type SessionConfigOption,
   type SessionNotification,
@@ -133,6 +134,7 @@ export interface AcpAgentAdapterOptions {
   // Runs after initialize + auth and before session/new. Grok Build uses this
   // to wait for the remote model catalog so session/new advertises every model.
   afterInitialize?(connection: AcpConnection): Promise<void>;
+  cancelTimeoutMs?: number;
 }
 
 export interface AcpPlanApprovalRequest {
@@ -156,6 +158,21 @@ function readResumableProviderSessionId(payload: CreateAgentSessionPayload) {
 // Servers finish handshaking in a burst, and each one pushes its own status
 // notification. Coalesce them into a single catalog re-read.
 const MCP_CHANGE_DEBOUNCE_MS = 300;
+const DEFAULT_CANCEL_TIMEOUT_MS = 15_000;
+
+function settlesWithin(promise: Promise<unknown>, timeoutMs: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  return Promise.race([
+    promise.then(
+      () => true,
+      () => true,
+    ),
+    timeout,
+  ]).finally(() => clearTimeout(timer));
+}
 
 function buildAcpInitializeRequest(
   initializeMeta: Record<string, unknown> | undefined,
@@ -516,6 +533,8 @@ export class AcpAgentAdapter implements AgentAdapter {
         }>
       | undefined;
     let activeProviderSessionId: string | undefined;
+    let activePrompt: Promise<PromptResponse> | null = null;
+    let retiredPrompt: Promise<PromptResponse> | null = null;
     let modelState: AcpSessionModelState | null = null;
     let modelConfigOptionId: string | null = null;
     let effortConfig: AcpSessionSelectConfig | null = null;
@@ -547,6 +566,8 @@ export class AcpAgentAdapter implements AgentAdapter {
     const agentLabel = this.options.descriptor.label;
     const modelProviderId = this.options.modelProviderId;
     const setModelMeta = this.options.setModelMeta;
+    const cancelTimeoutMs =
+      this.options.cancelTimeoutMs ?? DEFAULT_CANCEL_TIMEOUT_MS;
 
     const mapTurnError = (
       error: unknown,
@@ -805,6 +826,7 @@ export class AcpAgentAdapter implements AgentAdapter {
         const userMessageId = messagePayload.messageId ?? crypto.randomUUID();
         mapper.beginTurn(userMessageId);
         let turnConnection: Promise<AcpConnection> | undefined;
+        let prompt: Promise<PromptResponse> | undefined;
         try {
           const { capabilities, connection, providerSessionId } =
             await ensureInitialized(messagePayload.history);
@@ -968,13 +990,19 @@ export class AcpAgentAdapter implements AgentAdapter {
             prompt: messagePayload.content,
             sessionId: payload.session.id,
           });
-          const response = await connection.prompt({
+          prompt = connection.prompt({
             sessionId: providerSessionId,
             prompt: await buildAcpPrompt(
               messagePayload.content,
               messagePayload.attachments ?? [],
               capabilities,
             ),
+          });
+          activePrompt = prompt;
+          const response = await prompt.finally(() => {
+            if (activePrompt === prompt) {
+              activePrompt = null;
+            }
           });
           void refreshRateLimits(connection);
           void refreshMcpServers(connection, providerSessionId);
@@ -990,6 +1018,18 @@ export class AcpAgentAdapter implements AgentAdapter {
           });
           return message;
         } catch (caught) {
+          if (prompt && prompt === retiredPrompt) {
+            const message = mapper.complete(
+              "cancelled",
+              Date.now() - startedAt,
+            );
+            onEvent({
+              type: "state.changed",
+              sessionId: payload.session.id,
+              status: "idle",
+            });
+            return message;
+          }
           const error = mapTurnError(caught, turnConnection);
           const message =
             error instanceof Error ? error.message : "ACP prompt failed";
@@ -1067,6 +1107,26 @@ export class AcpAgentAdapter implements AgentAdapter {
         } catch {
           // A closed transport means the turn is already over; nothing to cancel.
         }
+        const prompt = activePrompt;
+        if (!prompt || (await settlesWithin(prompt, cancelTimeoutMs))) {
+          return;
+        }
+        logAdapterDiagnostic(
+          "info",
+          "[AcpAgentAdapter] agent ignored cancel; stopping its process",
+          {
+            agentId: payload.session.agentType,
+            providerSessionId,
+            sessionId: payload.session.id,
+          },
+        );
+        retiredPrompt = prompt;
+        const stuckConnection = connectionPromise;
+        connectionPromise = undefined;
+        initialized = undefined;
+        void stuckConnection
+          ?.then((connection) => connection.close())
+          .catch(() => {});
       },
       async dispose() {
         disposed = true;

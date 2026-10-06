@@ -3,10 +3,20 @@
 ## Working principles
 
 - Use English for code, documentation, and commit messages.
-- Prioritize macOS, then Windows, then Linux in design, implementation, verification, and debugging.
-- Before the first stable release, fix root causes in the design, data model, API, or control flow. Remove obsolete paths; add compatibility layers only when explicitly requested.
+- macOS, Windows, and Linux are equally supported release platforms. Design, implement, and verify every change for all three; see [Cross-platform](#cross-platform).
+- Fix root causes in the design, data model, API, or control flow, and remove obsolete internal paths. Released contracts — persisted data, settings, and the `cocurdex` CLI commands, flags, and output that scripts and product skills depend on — change only additively or with a migration. Add other compatibility layers only when explicitly requested.
 - Prefer the latest stable dependencies. Use prerelease or deprecated versions only when explicitly requested or required for compatibility.
 - Verify current information, versions, API behavior, platform limits, troubleshooting, configuration, and third-party tooling against official documentation, repositories, release notes, or standards before drawing conclusions or changing code. Prefer current official sources when sources conflict and explain the choice. If verification is unavailable, state the uncertainty and limit conclusions to local evidence. Verify advice with cost, risk, or long-term maintenance implications.
+
+## Cross-platform
+
+Assume nothing POSIX-only. When a change touches processes, shells, signals, paths, file permissions, line endings, or packaging, handle each platform explicitly.
+
+- Spawn third-party executables through `spawnCommand` from `@cocurdex/agent-adapters` (cross-spawn). A plain `spawn`/`execFile` cannot launch Windows `.cmd`/`.bat` shims such as `npx` or npm-installed CLIs, and does not apply `PATHEXT`. Pass arguments as an array; never build a shell string.
+- Stop process trees, not single processes. Windows has no signals: `child.kill()` is an immediate `TerminateProcess` that orphans grandchildren, so use `taskkill /T /F` (see `killProcessTree`). On POSIX, escalate from a graceful stop to SIGTERM to a tree kill.
+- Build paths with `node:path`, compare them with platform-aware helpers (Windows and default macOS volumes are case-insensitive), and never hardcode `/`, `~`, `HOME`, or `/tmp`; use `os.homedir()`, `os.tmpdir()`, and the app's user-data path.
+- Do not depend on tools a platform may lack (`which`, `ps`, `unzip`, `bash`, GNU flags) without a fallback for the others. Write files with explicit encodings and tolerate `\r\n` when parsing tool output.
+- Verify on the platforms you can run and state which ones were not verified. Prefer pure functions that take `platform` as a parameter so Windows and Linux branches are covered by unit tests on any host.
 
 ## Git and branches
 

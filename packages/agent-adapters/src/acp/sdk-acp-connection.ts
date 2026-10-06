@@ -1,18 +1,21 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import { client, methods, ndJsonStream } from "@agentclientprotocol/sdk";
 import { buildChildProcessEnv } from "../shared/process-env";
+import { killProcessTree, spawnCommand } from "../shared/process-tree";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
+import { AcpProcessExitError } from "./acp-errors";
+import { appendStderrTail, sanitizeStderrExcerpt } from "./acp-stderr";
 import { traceAcpStreams } from "./acp-trace";
 
 // Teardown budget per connection. ACP agents run their tool commands in their
 // own detached process groups (Grok Build wraps them in process-wrap's
-// `ProcessSession`, i.e. setsid), so those grandchildren are unreachable from
-// here: only the agent itself can reap them, and only while it is still alive
-// to run its own teardown. Killing the agent outright orphans whatever command
+// `ProcessSession`, i.e. setsid), so a process-group kill cannot reach those
+// grandchildren: the agent reaps them best, and only while it is still alive
+// to run its own teardown. Killing the agent alone orphans whatever command
 // it was running — which then keeps holding files and raising OS permission
 // prompts long after the app is gone. So close in stages: stdin EOF for a
-// clean exit, then SIGTERM, then SIGKILL as a last resort.
+// clean exit, then SIGTERM, then a process-tree kill as a last resort.
 const EOF_GRACE_MS = 3_000;
 const SIGTERM_GRACE_MS = 1_500;
 
@@ -47,19 +50,47 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
   extRequestMethods,
   handlers,
 }) => {
-  const child = spawn(command, args, {
+  const child = spawnCommand(command, args, {
     cwd,
     env: buildChildProcessEnv(process.env, { extraEnv: env }),
-    stdio: ["pipe", "pipe", "inherit"],
+    stdio: ["pipe", "pipe", "pipe"],
   });
-  if (!child.stdin || !child.stdout) {
+  if (!child.stdin || !child.stdout || !child.stderr) {
     child.kill();
     throw new Error(`Failed to open ACP stdio pipes for ${command}`);
   }
 
+  let stderrTail = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk: string) => {
+    process.stderr.write(chunk);
+    stderrTail = appendStderrTail(stderrTail, chunk);
+  });
+  const processGone = new Promise<void>((resolve) => {
+    child.once("error", () => resolve());
+    child.once("close", (code, signal) => {
+      if (!connection.signal.aborted) {
+        connection.close(
+          new AcpProcessExitError(
+            command,
+            code,
+            signal,
+            sanitizeStderrExcerpt(stderrTail),
+          ),
+        );
+      }
+      resolve();
+    });
+  });
+  const stdout = (
+    Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>
+  ).pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({ flush: () => processGone }),
+  );
+
   const traced = traceAcpStreams(
     Writable.toWeb(child.stdin) as unknown as WritableStream<Uint8Array>,
-    Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>,
+    stdout,
     command,
   );
   const stream = ndJsonStream(traced.input, traced.output);
@@ -108,15 +139,6 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     });
   }
   child.once("error", (error) => connection.close(error));
-  child.once("exit", (code, signal) => {
-    if (code !== 0 && !connection.signal.aborted) {
-      connection.close(
-        new Error(
-          `${command} ACP process exited with ${signal ? `signal ${signal}` : `code ${code}`}`,
-        ),
-      );
-    }
-  });
 
   return {
     initialize: (request) =>
@@ -163,11 +185,17 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
       if (await waitForExit(child, EOF_GRACE_MS)) {
         return;
       }
-      child.kill("SIGTERM");
-      if (await waitForExit(child, SIGTERM_GRACE_MS)) {
+      if (process.platform !== "win32") {
+        child.kill("SIGTERM");
+        if (await waitForExit(child, SIGTERM_GRACE_MS)) {
+          return;
+        }
+      }
+      if (child.pid === undefined) {
+        child.kill("SIGKILL");
         return;
       }
-      child.kill("SIGKILL");
+      await killProcessTree(child.pid);
     },
   } satisfies AcpConnection;
 };

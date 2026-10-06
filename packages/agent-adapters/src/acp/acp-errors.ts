@@ -1,3 +1,4 @@
+import path from "node:path";
 import { RequestError } from "@agentclientprotocol/sdk";
 
 const ACP_AUTH_REQUIRED_CODE = -32000;
@@ -12,12 +13,41 @@ export function isAcpAuthRequiredError(error: unknown) {
   );
 }
 
+export class AcpProcessExitError extends Error {
+  constructor(
+    command: string,
+    readonly exitCode: number | null,
+    readonly signal: NodeJS.Signals | null,
+    readonly stderrExcerpt: string,
+  ) {
+    const status = signal ? `signal ${signal}` : `code ${exitCode}`;
+    super(
+      appendAgentOutput(
+        `${path.basename(command)} ACP process exited with ${status}.`,
+        stderrExcerpt,
+      ),
+    );
+    this.name = "AcpProcessExitError";
+  }
+}
+
+function appendAgentOutput(message: string, stderrExcerpt: string) {
+  return stderrExcerpt
+    ? `${message}\n\nAgent output:\n${stderrExcerpt}`
+    : message;
+}
+
 export function createAcpConnectionLostError(
   agentLabel: string,
   cause: unknown,
 ) {
+  const stderrExcerpt =
+    cause instanceof AcpProcessExitError ? cause.stderrExcerpt : "";
   return new Error(
-    `${agentLabel} stopped unexpectedly. Send your message again to continue.`,
+    appendAgentOutput(
+      `${agentLabel} stopped unexpectedly. Send your message again to continue.`,
+      stderrExcerpt,
+    ),
     { cause },
   );
 }

@@ -38,6 +38,7 @@ afterEach(async () => {
 
 function startSession(
   options: {
+    cancelTimeoutMs?: number;
     requestPlanApproval?: Parameters<
       AcpAgentAdapter["createSession"]
     >[0]["requestPlanApproval"];
@@ -49,6 +50,7 @@ function startSession(
     args: [FAKE_AGENT_PATH],
     descriptor,
     planApprovalRequest: grokBuildPlanApprovalRequest,
+    cancelTimeoutMs: options.cancelTimeoutMs,
   }).createSession(
     {
       session: {
@@ -71,7 +73,7 @@ function startSession(
   sessions.push(session);
   const send = (content: string) =>
     session.sendMessage({ content, history: [] });
-  return { events, send };
+  return { events, send, stop: () => session.stop() };
 }
 
 describe("AcpAgentAdapter over a real agent process", () => {
@@ -84,6 +86,35 @@ describe("AcpAgentAdapter over a real agent process", () => {
     await expect(send("crash")).rejects.toThrow(
       "Fake Agent stopped unexpectedly",
     );
+    await expect(send("again")).resolves.toMatchObject({
+      content: "resume fake-session: again",
+    });
+  });
+
+  it("shows the agent's redacted stderr when it crashes", async () => {
+    const { send } = startSession();
+
+    await send("hello");
+    const failure = send("crash-loud").catch((error: Error) => error);
+
+    await expect(failure).resolves.toMatchObject({
+      message: expect.stringContaining(
+        "Agent output:\nfatal: token [redacted] rejected",
+      ),
+    });
+  });
+
+  it("stops an agent that ignores cancel and resumes in a fresh process", async () => {
+    const { events, send, stop } = startSession({ cancelTimeoutMs: 200 });
+
+    await send("hello");
+    const hung = send("hang");
+    await vi.waitFor(() =>
+      expect(events.at(-1)).toMatchObject({ status: "running" }),
+    );
+    await stop();
+
+    await expect(hung).resolves.toMatchObject({ role: "assistant" });
     await expect(send("again")).resolves.toMatchObject({
       content: "resume fake-session: again",
     });

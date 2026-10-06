@@ -37,6 +37,12 @@ async function prompt(params) {
     case "exit-clean":
       process.exit(0);
       return;
+    case "crash-loud":
+      process.stderr.write("fatal: token sk-live-ABCDEFGHIJKLMNOP rejected\n");
+      process.exit(3);
+      return;
+    case "hang":
+      return new Promise(() => {});
     case "auth":
       throw { code: -32000, message: "Authentication required" };
     case "plan": {
