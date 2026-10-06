@@ -243,6 +243,7 @@ export default interface Resources {
     toolCalls: {
       command: "Command";
       completed: "Completed";
+      copyOutput: "Copy output";
       count_one: "{{count}} call";
       count_other: "{{count}} calls";
       execute: "Run";
@@ -273,6 +274,8 @@ export default interface Resources {
       subagentResponse: "Subagent response";
       subagentSession: "Subagent session";
       title: "Tool calls";
+      viewRendered: "View rendered";
+      viewSource: "View source";
       worktreeSetup: "Prepare worktree";
     };
     turnChanges: {

@@ -1,13 +1,17 @@
 import type { AgentToolCallRecord } from "@cocurdex/shared";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { FileText, ScrollText, Terminal } from "lucide-react";
-import { useMemo } from "react";
+import { FileText, Terminal } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui";
 import { cn, useMountEffect } from "@/lib";
 
 import { ReadonlySubagentSession } from "./subagent-session-detail";
 import { ToolCallCommandDetail } from "./tool-call-command-detail";
+import {
+  ToolCallOutputContent,
+  ToolCallOutputHeader,
+} from "./tool-call-output";
 import { ToolCallResourceLinkList } from "./tool-call-resource-link-list";
 import {
   observeToolCallResultAtom,
@@ -82,6 +86,7 @@ export function ToolCallDetailBody({
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
 }) {
   const { t } = useTranslation("agent");
+  const [showOutputSource, setShowOutputSource] = useState(false);
   const previewLocations = getToolCallPreviewLocations(toolCall);
   const shouldHideRawOutput =
     toolCall.kind === "read" && previewLocations.length > 0;
@@ -120,6 +125,9 @@ export function ToolCallDetailBody({
     : formatToolCallData(toolCall.rawInput);
   const showInputBlock = !isSubagent;
   const commandInput = getToolCallCommandInput(toolCall);
+  const readyOutput = outputLoadStatus === "ready" && output ? output : "";
+  const isMarkdownOutput =
+    toolCall.kind === "search" || toolCall.kind === "fetch";
   const resultSubscription = shouldLoadOutput ? (
     <ToolCallResultSubscription
       key={toolCall.id}
@@ -257,10 +265,12 @@ export function ToolCallDetailBody({
       ) : null}
       {showResourceLinks ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
-            <ScrollText className="size-3" />
-            {t("toolCalls.output")}
-          </div>
+          <ToolCallOutputHeader
+            isMarkdown={isMarkdownOutput}
+            onToggleSource={() => setShowOutputSource((value) => !value)}
+            output={readyOutput}
+            showSource={showOutputSource}
+          />
           {resourceLinks.length > 0 ? (
             <ToolCallResourceLinkList
               links={resourceLinks}
@@ -277,13 +287,10 @@ export function ToolCallDetailBody({
               {t("toolCalls.outputLoadError", { message: outputErrorMessage })}
             </div>
           ) : output ? (
-            <pre
-              className={cn(
-                "max-h-[40vh] overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-body leading-5 whitespace-pre text-chat-fg-secondary [font-variant-ligatures:none]",
-              )}
-            >
-              {output}
-            </pre>
+            <ToolCallOutputContent
+              output={output}
+              renderMarkdown={isMarkdownOutput && !showOutputSource}
+            />
           ) : null}
         </div>
       ) : null}

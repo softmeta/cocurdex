@@ -19,6 +19,7 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "session.resumeQueued": 2 * 60_000,
   "session.sendQueuedNow": 2 * 60_000,
   "provider.auth.login.next": 30 * 60_000,
+  "acpRegistry.install": 30 * 60_000,
 };
 
 export function daemonRequestTimeout(method: DaemonMethod, override?: number) {
