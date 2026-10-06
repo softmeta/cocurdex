@@ -480,3 +480,70 @@ describe("GrokBuildAdapter subagents", () => {
     });
   });
 });
+
+describe("GrokBuildAdapter plan approval", () => {
+  it("answers the exit_plan_mode reverse-request with the user's decision", async () => {
+    let factoryOptions: Parameters<AcpConnectionFactory>[0] | undefined;
+    const connection = {
+      initialize: vi.fn(
+        async (): Promise<InitializeResponse> => ({
+          protocolVersion: 1,
+          agentCapabilities: {},
+        }),
+      ),
+      authenticate: vi.fn(async () => ({})),
+      newSession: vi.fn(async () => ({ sessionId: "grok-session-1" })),
+      loadSession: vi.fn(async () => ({})),
+      resumeSession: vi.fn(async () => ({})),
+      setSessionMode: vi.fn(async () => ({})),
+      setSessionConfigOption: vi.fn(async () => ({ configOptions: [] })),
+      setSessionModel: vi.fn(async () => ({})),
+      extNotification: vi.fn(async () => undefined),
+      extRequest: vi.fn(async () => ({})),
+      prompt: vi.fn(
+        async (): Promise<PromptResponse> => ({ stopReason: "end_turn" }),
+      ),
+      cancel: vi.fn(async () => undefined),
+      close: vi.fn(),
+    } satisfies AcpConnection;
+    const requestPlanApproval = vi.fn(async () => ({
+      outcome: "cancelled" as const,
+      feedback: "Split the migration",
+    }));
+    createGrokBuildAdapter(TEST_GROK_LAUNCH, async (options) => {
+      factoryOptions = options;
+      return connection;
+    }).createSession(
+      {
+        session: createSessionRecord(),
+        workspaceRootPath: "/workspace",
+        requestPlanApproval,
+      },
+      vi.fn(),
+    );
+    await vi.waitFor(() => expect(factoryOptions).toBeDefined());
+
+    expect(factoryOptions?.extRequestMethods).toEqual(["x.ai/exit_plan_mode"]);
+    const response = await factoryOptions?.handlers.onExtRequest?.(
+      "x.ai/exit_plan_mode",
+      {
+        sessionId: "grok-session-1",
+        toolCallId: "tool-1",
+        planContent: "Plan",
+      },
+    );
+
+    expect(requestPlanApproval).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "tool-1",
+        sessionId: "app-session-1",
+        planContent: "Plan",
+        source: "file-backed",
+      }),
+    );
+    expect(response).toEqual({
+      outcome: "cancelled",
+      feedback: "Split the migration",
+    });
+  });
+});

@@ -320,6 +320,26 @@ describe("workspace file markdown links", () => {
     });
   });
 
+  it("rewrites GitHub-style #L line anchors", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "核心规则位于 [`skills/ponytail/SKILL.md:32`](skills/ponytail/SKILL.md#L32)，" +
+        "见 [range](src/a.ts#L10-L20) 与 [abs](file:///Users/dev/b.ts#L7)。",
+    );
+    const hrefs = [
+      ...out.matchAll(/\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/g),
+    ].map((match) => parseWorkspaceFileHref(match[1]));
+    expect(hrefs).toEqual([
+      { path: "skills/ponytail/SKILL.md", startLine: 32 },
+      { path: "src/a.ts", startLine: 10, endLine: 20 },
+      { path: "/Users/dev/b.ts", startLine: 7 },
+    ]);
+  });
+
+  it("leaves links with non-line fragments alone", () => {
+    const input = "[guide](docs/guide.md#install)";
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
   it("rewrites absolute file:// links", () => {
     const input =
       "菜单见 [queued-input-shelf.tsx:196-216](file:///Users/dev/apps/desktop/src/features/agent/queued-input/queued-input-shelf.tsx)，" +

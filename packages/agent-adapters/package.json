@@ -21,9 +21,11 @@
     "@earendil-works/pi-coding-agent": "1.0.2",
     "@modelcontextprotocol/sdk": "1.31.0",
     "@opencode/client": "2.0.20",
+    "cross-spawn": "^7.0.6",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
     "@types/node": "^24.13.6",
     "vitest": "^4.1.11"
   }

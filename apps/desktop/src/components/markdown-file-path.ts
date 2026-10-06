@@ -431,6 +431,26 @@ function parseFileUrlCandidate(href: string): FilePathCandidate | null {
   return location ? { ...location, path } : { path };
 }
 
+const LINE_ANCHOR = /^(.+)#L(\d+)(?:C\d+)?(?:-L?(\d+)(?:C\d+)?)?$/;
+
+function parseLocalFileHref(href: string): FilePathCandidate | null {
+  const anchor = href.match(LINE_ANCHOR);
+  const target = anchor ? anchor[1] : href;
+  const candidate =
+    parseFileUrlCandidate(target) ??
+    parseFilePathCandidate(decodeHrefCandidate(target));
+  if (!candidate || !anchor || candidate.startLine !== undefined) {
+    return candidate;
+  }
+
+  const startLine = Number(anchor[2]);
+  const endLine = anchor[3] === undefined ? undefined : Number(anchor[3]);
+  if (endLine !== undefined && endLine > startLine) {
+    return { ...candidate, startLine, endLine };
+  }
+  return { ...candidate, startLine };
+}
+
 // Match `[label](href)` / `[label](<href>)` / `[label](href "title")`.
 // Labels often wrap the path in backticks: [`path`](path). Captures keep the
 // original label (including backticks) so we only rewrite the href.
@@ -452,9 +472,7 @@ function rewriteLinksInProse(segment: string): string {
         return match;
       }
 
-      const candidate =
-        parseFileUrlCandidate(href) ??
-        parseFilePathCandidate(decodeHrefCandidate(href));
+      const candidate = parseLocalFileHref(href);
       if (!candidate) {
         return match;
       }
@@ -507,10 +525,7 @@ function unwrapPathLabeledFileLinkCodeSpan(span: string): string | null {
     return null;
   }
 
-  const candidate =
-    parseFileUrlCandidate(href) ??
-    parseFilePathCandidate(decodeHrefCandidate(href));
-  return candidate ? inner : null;
+  return parseLocalFileHref(href) ? inner : null;
 }
 
 // Mask whole inline-code spans, rewrite links on the remainder, then restore.

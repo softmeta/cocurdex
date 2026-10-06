@@ -1,23 +1,21 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import { client, methods, ndJsonStream } from "@agentclientprotocol/sdk";
 import { buildChildProcessEnv } from "../shared/process-env";
-import type {
-  AcpConnection,
-  AcpConnectionFactory,
-  AcpExitPlanModeRequest,
-} from "./acp-connection";
-
-const EXIT_PLAN_MODE_METHOD = "x.ai/exit_plan_mode";
+import { killProcessTree, spawnCommand } from "../shared/process-tree";
+import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
+import { AcpProcessExitError } from "./acp-errors";
+import { appendStderrTail, sanitizeStderrExcerpt } from "./acp-stderr";
+import { traceAcpStreams } from "./acp-trace";
 
 // Teardown budget per connection. ACP agents run their tool commands in their
 // own detached process groups (Grok Build wraps them in process-wrap's
-// `ProcessSession`, i.e. setsid), so those grandchildren are unreachable from
-// here: only the agent itself can reap them, and only while it is still alive
-// to run its own teardown. Killing the agent outright orphans whatever command
+// `ProcessSession`, i.e. setsid), so a process-group kill cannot reach those
+// grandchildren: the agent reaps them best, and only while it is still alive
+// to run its own teardown. Killing the agent alone orphans whatever command
 // it was running — which then keeps holding files and raising OS permission
 // prompts long after the app is gone. So close in stages: stdin EOF for a
-// clean exit, then SIGTERM, then SIGKILL as a last resort.
+// clean exit, then SIGTERM, then a process-tree kill as a last resort.
 const EOF_GRACE_MS = 3_000;
 const SIGTERM_GRACE_MS = 1_500;
 
@@ -43,46 +41,59 @@ function waitForExit(child: ChildProcess, timeoutMs: number) {
   });
 }
 
-function parseExitPlanModeParams(params: unknown): AcpExitPlanModeRequest {
-  const raw = (params ?? {}) as Record<string, unknown>;
-  const sessionId = typeof raw.sessionId === "string" ? raw.sessionId : "";
-  const toolCallId = typeof raw.toolCallId === "string" ? raw.toolCallId : "";
-
-  if (!sessionId || !toolCallId) {
-    throw new Error(
-      `${EXIT_PLAN_MODE_METHOD} requires sessionId and toolCallId`,
-    );
-  }
-
-  return {
-    sessionId,
-    toolCallId,
-    planContent: typeof raw.planContent === "string" ? raw.planContent : null,
-  };
-}
-
 export const createSdkAcpConnection: AcpConnectionFactory = async ({
   args,
   command,
   cwd,
   env,
   extNotificationMethods,
+  extRequestMethods,
   handlers,
 }) => {
-  const child = spawn(command, args, {
+  const child = spawnCommand(command, args, {
     cwd,
     env: buildChildProcessEnv(process.env, { extraEnv: env }),
-    stdio: ["pipe", "pipe", "inherit"],
+    stdio: ["pipe", "pipe", "pipe"],
   });
-  if (!child.stdin || !child.stdout) {
+  if (!child.stdin || !child.stdout || !child.stderr) {
     child.kill();
     throw new Error(`Failed to open ACP stdio pipes for ${command}`);
   }
 
-  const stream = ndJsonStream(
-    Writable.toWeb(child.stdin) as unknown as WritableStream<Uint8Array>,
-    Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>,
+  let stderrTail = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk: string) => {
+    process.stderr.write(chunk);
+    stderrTail = appendStderrTail(stderrTail, chunk);
+  });
+  const processGone = new Promise<void>((resolve) => {
+    child.once("error", () => resolve());
+    child.once("close", (code, signal) => {
+      if (!connection.signal.aborted) {
+        connection.close(
+          new AcpProcessExitError(
+            command,
+            code,
+            signal,
+            sanitizeStderrExcerpt(stderrTail),
+          ),
+        );
+      }
+      resolve();
+    });
+  });
+  const stdout = (
+    Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>
+  ).pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({ flush: () => processGone }),
   );
+
+  const traced = traceAcpStreams(
+    Writable.toWeb(child.stdin) as unknown as WritableStream<Uint8Array>,
+    stdout,
+    command,
+  );
+  const stream = ndJsonStream(traced.input, traced.output);
   const app = client({ name: "cocurdex" })
     .onRequest(methods.client.session.requestPermission, ({ params }) =>
       handlers.requestPermission(params),
@@ -90,16 +101,20 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     .onNotification(methods.client.session.update, ({ params }) =>
       handlers.onSessionUpdate(params),
     );
-  const exitPlanMode = handlers.exitPlanMode;
-  if (exitPlanMode) {
+  const onExtRequest = handlers.onExtRequest;
+  if (onExtRequest) {
     // Registered under both names: extension methods travel with a leading
     // underscore, and peers differ on whether they strip it before dispatch.
     // An unregistered method answers -32601, which the agent reports as a
-    // failed `exit_plan_mode` tool call with no approval UI anywhere.
-    for (const method of [EXIT_PLAN_MODE_METHOD, `_${EXIT_PLAN_MODE_METHOD}`]) {
-      app.onRequest(method, parseExitPlanModeParams, ({ params }) =>
-        exitPlanMode(params),
-      );
+    // failed tool call with no UI anywhere.
+    for (const method of extRequestMethods ?? []) {
+      for (const wireMethod of [method, `_${method}`]) {
+        app.onRequest(
+          wireMethod,
+          (params) => params,
+          ({ params }) => onExtRequest(method, params),
+        );
+      }
     }
   }
   const onExtNotification = handlers.onExtNotification;
@@ -117,16 +132,13 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     }
   }
   const connection = app.connect(stream);
+  const onClose = handlers.onClose;
+  if (onClose) {
+    connection.signal.addEventListener("abort", () => onClose(), {
+      once: true,
+    });
+  }
   child.once("error", (error) => connection.close(error));
-  child.once("exit", (code, signal) => {
-    if (code !== 0 && !connection.signal.aborted) {
-      connection.close(
-        new Error(
-          `${command} ACP process exited with ${signal ? `signal ${signal}` : `code ${code}`}`,
-        ),
-      );
-    }
-  });
 
   return {
     initialize: (request) =>
@@ -173,11 +185,17 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
       if (await waitForExit(child, EOF_GRACE_MS)) {
         return;
       }
-      child.kill("SIGTERM");
-      if (await waitForExit(child, SIGTERM_GRACE_MS)) {
+      if (process.platform !== "win32") {
+        child.kill("SIGTERM");
+        if (await waitForExit(child, SIGTERM_GRACE_MS)) {
+          return;
+        }
+      }
+      if (child.pid === undefined) {
+        child.kill("SIGKILL");
         return;
       }
-      child.kill("SIGKILL");
+      await killProcessTree(child.pid);
     },
   } satisfies AcpConnection;
 };

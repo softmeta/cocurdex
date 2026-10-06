@@ -3,6 +3,7 @@ export * from "./attachment-utils";
 export * from "./permission-options";
 export * from "./pi-models-env";
 export * from "./process-env";
+export * from "./process-tree";
 export {
   PROVIDER_SESSION_STATE_SCHEMA_VERSION,
   serializeProviderSessionState,

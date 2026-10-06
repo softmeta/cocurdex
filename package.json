@@ -20,6 +20,7 @@
     "url": "https://github.com/softmeta/cocurdex/issues"
   },
   "scripts": {
+    "acp:probe": "node ./scripts/acp-probe.mjs",
     "prepare": "lefthook install",
     "lint:design-tokens": "node ./scripts/lint-design-tokens.mjs",
     "lint:theme-parity": "node ./scripts/lint-theme-parity.mjs",

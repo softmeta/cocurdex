@@ -1,8 +1,9 @@
-import type {
-  InitializeResponse,
-  PromptResponse,
-  RequestPermissionRequest,
-  SetSessionConfigOptionRequest,
+import {
+  type InitializeResponse,
+  type PromptResponse,
+  RequestError,
+  type RequestPermissionRequest,
+  type SetSessionConfigOptionRequest,
 } from "@agentclientprotocol/sdk";
 import type {
   AgentDescriptor,
@@ -422,6 +423,106 @@ describe("AcpAgentAdapter", () => {
 
     expect(connectionFactory).toHaveBeenCalledTimes(2);
     expect(initialize).toHaveBeenCalledTimes(2);
+  });
+
+  it("respawns the agent and resumes its session after the connection is lost", async () => {
+    const closeHandlers: Array<() => void> = [];
+    const resumeSession = vi.fn(async () => ({}));
+    const newSession = vi.fn(async () => ({ sessionId: "live-session" }));
+    const prompts: string[] = [];
+    const connectionFactory = vi.fn<AcpConnectionFactory>(
+      async ({ handlers }) => {
+        const connectionIndex = closeHandlers.length;
+        closeHandlers.push(() => handlers.onClose?.());
+        return createAcpConnection({
+          initialize: async () => ({
+            protocolVersion: 1,
+            agentCapabilities: { sessionCapabilities: { resume: {} } },
+          }),
+          newSession,
+          resumeSession,
+          prompt: async () => {
+            prompts.push(`connection-${connectionIndex}`);
+            return { stopReason: "end_turn" };
+          },
+        });
+      },
+    );
+    const session = new AcpAgentAdapter(
+      { args: ["agent", "stdio"], command: "grok", descriptor },
+      connectionFactory,
+    ).createSession(
+      {
+        session: {
+          id: "reconnect-session",
+          workspaceId: "workspace-1",
+          title: "Reconnect",
+          agentType: "acp:grok-build",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      () => undefined,
+    );
+
+    await session.sendMessage({ content: "First", history: [] });
+    closeHandlers[0]?.();
+    await session.sendMessage({
+      content: "After crash",
+      history: createHistory("reconnect-session"),
+    });
+
+    expect(connectionFactory).toHaveBeenCalledTimes(2);
+    expect(newSession).toHaveBeenCalledOnce();
+    expect(resumeSession).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "live-session" }),
+    );
+    expect(prompts).toEqual(["connection-0", "connection-1"]);
+  });
+
+  it("turns an ACP auth-required failure into a sign-in instruction", async () => {
+    const events: AgentEvent[] = [];
+    const session = new AcpAgentAdapter(
+      { args: ["agent", "stdio"], command: "grok", descriptor },
+      async () =>
+        createAcpConnection({
+          prompt: async () => {
+            throw RequestError.authRequired();
+          },
+        }),
+    ).createSession(
+      {
+        session: {
+          id: "auth-session",
+          workspaceId: "workspace-1",
+          title: "Auth",
+          agentType: "acp:grok-build",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      (event) => events.push(event),
+    );
+
+    await expect(
+      session.sendMessage({ content: "Hi", history: [] }),
+    ).rejects.toThrow("Grok Build needs you to sign in");
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("Sign in from the model menu"),
+      }),
+    );
   });
 
   it("pushes the permission mode as an ext notification, once per change", async () => {
@@ -877,6 +978,7 @@ describe("AcpAgentAdapter", () => {
         args: ["agent", "stdio"],
         command: "grok",
         descriptor,
+        loadSessionMeta: { noReplay: true },
       },
       async () => connection,
     );

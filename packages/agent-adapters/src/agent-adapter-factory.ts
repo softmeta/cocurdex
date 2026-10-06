@@ -12,9 +12,11 @@ function withSkillSupport(
   adapter: AgentAdapter,
 ): AgentAdapter {
   const discoverCapabilities = adapter.discoverCapabilities?.bind(adapter);
+  const discoverSessionModes = adapter.discoverSessionModes?.bind(adapter);
   return {
     getDescriptor: () => adapter.getDescriptor(),
     ...(discoverCapabilities ? { discoverCapabilities } : {}),
+    ...(discoverSessionModes ? { discoverSessionModes } : {}),
     createSession: (payload, onEvent) =>
       adapter.createSession(payload, onEvent),
     listSlashCommands: (payload) => {

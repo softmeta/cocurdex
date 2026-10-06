@@ -9,4 +9,5 @@ export * from "./commit-message";
 export * from "./opencode";
 export * from "./pi-sdk";
 export { buildChildProcessEnv } from "./shared/process-env";
+export { spawnCommand } from "./shared/process-tree";
 export * from "./skills";
