@@ -55,6 +55,40 @@ describe("getActivityState", () => {
 
     expect(activity).toEqual({ kind: "planning", tone: "running" });
   });
+
+  it("excludes previous-turn tools and worktree setup from motion", () => {
+    const activity = getActivityState({
+      isRunning: true,
+      messages: [
+        {
+          attachments: [],
+          content: "Continue",
+          createdAt: "2026-10-07T00:00:01.000Z",
+          id: "user",
+          role: "user",
+          seq: 2,
+          sessionId: "session-1",
+        },
+      ],
+      toolCalls: [
+        { ...toolCall("old", "completed"), seq: 1 },
+        {
+          ...toolCall("setup", "completed", WORKTREE_SETUP_TOOL_KIND),
+          seq: 3,
+        },
+      ],
+    });
+    expect(activity.toolActivityId).toBeUndefined();
+  });
+
+  it("reports completed tools from this turn even without an active snapshot", () => {
+    const activity = getActivityState({
+      isRunning: true,
+      messages: [],
+      toolCalls: [toolCall("fast-read", "completed")],
+    });
+    expect(activity.toolActivityId).toBe("fast-read");
+  });
 });
 
 describe("getShownToolCallChangeDelay", () => {
@@ -125,7 +159,11 @@ describe("getActivityState while replying", () => {
       toolCalls: [toolCall("done", "completed")],
     });
 
-    expect(activity).toEqual({ kind: "responding", tone: "running" });
+    expect(activity).toEqual({
+      kind: "responding",
+      tone: "running",
+      toolActivityId: "done",
+    });
   });
 
   it.each([
@@ -153,7 +191,7 @@ describe("getActivityState while replying", () => {
           },
         ],
       }),
-    ).toEqual({ kind: "thinking", tone: "running" });
+    ).toEqual({ kind: "thinking", tone: "running", toolActivityId: "done" });
   });
 
   it("uses event sequence when reply and tool timestamps match", () => {
@@ -169,7 +207,7 @@ describe("getActivityState while replying", () => {
           },
         ],
       }),
-    ).toEqual({ kind: "thinking", tone: "running" });
+    ).toEqual({ kind: "thinking", tone: "running", toolActivityId: "done" });
   });
 
   it("marks the reply complete when the run ends", () => {

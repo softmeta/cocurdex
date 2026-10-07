@@ -10,20 +10,17 @@ import {
   type ActivityState,
   formatElapsed,
 } from "./chat-activity-state";
+import { useActivityMotion } from "./use-activity-motion";
 import { useSteadyToolCall } from "./use-steady-tool-call";
 
-function ActivityGlyph({
-  activity,
-  isUsingTool,
-}: {
-  activity: ActivityState;
-  isUsingTool: boolean;
-}) {
+function ActivityGlyph({ activity }: { activity: ActivityState }) {
+  const { completeWorkingCycle, motion } = useActivityMotion(activity);
   if (activity.tone === "running") {
     return (
       <CocurdexMark
         className="-ms-1 size-4 shrink-0"
-        motion={isUsingTool ? "working" : "thinking"}
+        motion={motion}
+        onWorkingCycleComplete={completeWorkingCycle}
       />
     );
   }
@@ -94,7 +91,7 @@ export function ActivityLine({
 
   return (
     <div className="flex min-w-0 max-w-full items-center gap-2 self-start py-1 pe-1.5 text-meta font-medium text-chat-fg-muted">
-      <ActivityGlyph activity={activity} isUsingTool={!!steadyToolCall} />
+      <ActivityGlyph activity={activity} />
       {steadyToolCall ? (
         <ToolCallLabel
           otherCount={otherToolCallCount}

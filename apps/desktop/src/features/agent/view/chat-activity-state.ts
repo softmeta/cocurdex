@@ -20,6 +20,7 @@ export type ActivityState = {
   activeToolCalls?: AgentToolCallRecord[];
   kind: ActivityKind;
   tone: "complete" | "error" | "muted" | "running";
+  toolActivityId?: string;
 };
 
 function isActiveToolCall(toolCall: AgentToolCallRecord) {
@@ -75,6 +76,18 @@ export function getActivityState({
     return { kind: "attention", tone: "error" };
   }
 
+  const latestUserMessage = messages.findLast(
+    (message) => message.role === "user",
+  );
+  const latestToolCall = toolCalls.findLast(
+    (toolCall) =>
+      !isWorktreeSetupToolCall(toolCall) &&
+      (!latestUserMessage || startedAfter(toolCall, latestUserMessage)),
+  );
+  const runningState = {
+    tone: "running" as const,
+    toolActivityId: latestToolCall?.id,
+  };
   const activeToolCalls = toolCalls.filter(
     (toolCall) =>
       isActiveToolCall(toolCall) && !isWorktreeSetupToolCall(toolCall),
@@ -83,18 +96,18 @@ export function getActivityState({
     return {
       activeToolCalls,
       kind: "usingTools",
-      tone: "running",
+      ...runningState,
     };
   }
 
   if (isRunning && latestMessage?.role === "assistant") {
     return isStreamingResponse(latestMessage, toolCalls)
-      ? { kind: "responding", tone: "running" }
-      : { kind: "thinking", tone: "running" };
+      ? { kind: "responding", ...runningState }
+      : { kind: "thinking", ...runningState };
   }
 
   if (isRunning) {
-    return { kind: "planning", tone: "running" };
+    return { kind: "planning", ...runningState };
   }
 
   if (latestMessage?.role === "assistant") {

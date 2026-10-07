@@ -191,6 +191,21 @@
   animation: cocurdex-mark-caret-blink 1s steps(1, end) infinite;
 }
 
+.cocurdex-mark-replying .cocurdex-mark-caret {
+  animation: cocurdex-mark-caret-breathe 1.2s ease-in-out infinite;
+}
+
+@keyframes cocurdex-mark-caret-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.25;
+  }
+}
+
 @keyframes cocurdex-mark-redraw {
   0% {
     stroke-dashoffset: 1;
@@ -266,6 +281,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cocurdex-mark-working .cocurdex-mark-body,
+  .cocurdex-mark-replying .cocurdex-mark-caret,
   .cocurdex-mark-thinking .cocurdex-mark-caret {
     animation: none;
   }
