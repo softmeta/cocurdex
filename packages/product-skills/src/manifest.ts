@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 export const PRODUCT_SKILL_NAMES = [
   "cocurdex-issue",
   "cocurdex-note",
+  "cocurdex-script-run",
   "cocurdex-settings",
-  "cocurdex-ship",
   "cocurdex-team",
 ] as const;
 
