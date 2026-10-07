@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SettingRow, SettingsGroup } from "@/components";
 import { Button, Spinner, Switch, Text } from "@/components/ui";
 import { desktopApi, useMountEffect } from "@/lib";
-import { SettingRow, SettingsGroup } from "./settings-fields";
 
 export function DiagnosticsSettingsPanel() {
   const { t } = useTranslation("settings");

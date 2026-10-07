@@ -2070,6 +2070,7 @@ export default interface Resources {
       addMember: "Add teammate";
       cancel: "Cancel";
       create: "New team";
+      createFirst: "Create one";
       createTitle: "New team";
       delete: "Delete";
       deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
@@ -2079,9 +2080,9 @@ export default interface Resources {
       description: "Save team lineups you use often. Ask the lead agent in a session to start one, or start it from the CLI.";
       edit: "Edit";
       editTitle: "Edit team";
-      empty: "No teams yet";
-      emptyDescription: "Create a team, name each member, and give them a role and standing instructions.";
+      empty: "No teams yet.";
       inheritRole: "Same as lead";
+      listTitle: "Saved teams";
       memberCount: "{{current}}/{{max}}";
       memberName: "Teammate name";
       memberNameHint: "Lowercase letters, digits, and hyphens. The lead addresses teammates by this name.";
@@ -2100,8 +2101,9 @@ export default interface Resources {
         defaultMaxAgents: "Default agent limit";
         defaultMaxAgentsDescription: "Maximum agents one script run may start; you can change it when approving";
         description: "Agents in a session can propose background scripts that orchestrate subagents; they run after you approve them";
-        maxDuration: "Maximum run time (minutes)";
+        maxDuration: "Maximum run time";
         maxDurationDescription: "Cancels the whole run and its subagents when exceeded; leave empty for no limit";
+        minutes: "min";
         saveFailed: "Could not save script run settings";
         schemaMaxAttempts: "Structured reply attempts";
         schemaMaxAttemptsDescription: "How many times an agent may try to reply with JSON matching the script's schema";

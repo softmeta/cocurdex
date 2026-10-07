@@ -13,6 +13,7 @@ import {
   ScreenNavButtons,
   SidebarToggleButton,
 } from "@/app/layout/sidebar/sidebar-frame";
+import { SettingRow, SettingsGroup } from "@/components";
 import { ScrollArea } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
@@ -32,7 +33,6 @@ import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
 import { OssLicensesSettingsPanel } from "./oss-licenses";
 import { ProviderSettingsPanel } from "./providers";
-import { SettingRow, SettingsGroup } from "./settings-fields";
 import {
   groupSettingsSectionsByCluster,
   settingsSections,

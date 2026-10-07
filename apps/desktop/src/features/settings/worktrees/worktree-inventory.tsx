@@ -1,8 +1,8 @@
 import type { ManagedWorktree, ManagedWorktreeGroup } from "@cocurdex/shared";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SettingsGroup } from "@/components";
 import { Button, EmptyState, Spinner, Text } from "@/components/ui";
-import { SettingsGroup } from "../settings-fields";
 
 export function WorktreeInventory({
   groups,

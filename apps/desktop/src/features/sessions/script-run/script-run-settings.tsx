@@ -7,7 +7,14 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Input, Text } from "@/components/ui";
+import { SettingsGroup } from "@/components";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+  Text,
+} from "@/components/ui";
 import { desktopApi, useMountEffect } from "@/lib";
 
 function SettingNumberRow({
@@ -18,6 +25,7 @@ function SettingNumberRow({
   min,
   max,
   placeholder,
+  unit,
   onCommit,
 }: {
   id: string;
@@ -27,6 +35,7 @@ function SettingNumberRow({
   min: number;
   max?: number;
   placeholder?: string;
+  unit?: string;
   onCommit(value: number | null): void;
 }) {
   const [draft, setDraft] = useState(value === null ? "" : String(value));
@@ -40,17 +49,24 @@ function SettingNumberRow({
           {description}
         </Text>
       </label>
-      <Input
-        className="w-24 shrink-0"
-        id={id}
-        max={max}
-        min={min}
-        onBlur={() => onCommit(draft.trim() ? Number(draft) : null)}
-        onChange={(event) => setDraft(event.target.value)}
-        placeholder={placeholder}
-        type="number"
-        value={draft}
-      />
+      <InputGroup className="w-24 shrink-0">
+        <InputGroupInput
+          className="text-end tabular-nums"
+          id={id}
+          max={max}
+          min={min}
+          onBlur={() => onCommit(draft.trim() ? Number(draft) : null)}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={placeholder}
+          type="number"
+          value={draft}
+        />
+        {unit ? (
+          <InputGroupAddon align="inline-end">
+            <InputGroupText>{unit}</InputGroupText>
+          </InputGroupAddon>
+        ) : null}
+      </InputGroup>
     </div>
   );
 }
@@ -82,61 +98,51 @@ export function ScriptRunSettingsSection() {
   };
 
   return (
-    <div className="flex flex-col">
-      <Text
-        as="h3"
-        className="mb-1 px-1"
-        size="meta"
-        tone="muted"
-        weight="medium"
-      >
-        {t("teams.scriptRuns.title")}
-      </Text>
-      <Text as="p" className="mb-2 px-1" tone="muted">
-        {t("teams.scriptRuns.description")}
-      </Text>
-      <div className="flex flex-col divide-y divide-border/60 rounded-card border border-border/70 bg-card/45 px-4">
-        <SettingNumberRow
-          description={t("teams.scriptRuns.defaultMaxAgentsDescription")}
-          id="script-run-default-max-agents"
-          key={`agents-${settings.defaultMaxAgents}`}
-          max={SCRIPT_RUN_HARD_MAX_AGENTS}
-          min={1}
-          onCommit={(value) =>
-            void save({
-              defaultMaxAgents:
-                value ?? DEFAULT_SCRIPT_RUN_SETTINGS.defaultMaxAgents,
-            })
-          }
-          title={t("teams.scriptRuns.defaultMaxAgents")}
-          value={settings.defaultMaxAgents}
-        />
-        <SettingNumberRow
-          description={t("teams.scriptRuns.schemaMaxAttemptsDescription")}
-          id="script-run-schema-attempts"
-          key={`attempts-${settings.schemaMaxAttempts}`}
-          max={SCRIPT_RUN_MAX_SCHEMA_ATTEMPTS}
-          min={1}
-          onCommit={(value) =>
-            void save({
-              schemaMaxAttempts:
-                value ?? DEFAULT_SCRIPT_RUN_SETTINGS.schemaMaxAttempts,
-            })
-          }
-          title={t("teams.scriptRuns.schemaMaxAttempts")}
-          value={settings.schemaMaxAttempts}
-        />
-        <SettingNumberRow
-          description={t("teams.scriptRuns.maxDurationDescription")}
-          id="script-run-max-duration"
-          key={`duration-${settings.maxDurationMinutes}`}
-          min={1}
-          onCommit={(value) => void save({ maxDurationMinutes: value })}
-          placeholder={t("teams.scriptRuns.unlimited")}
-          title={t("teams.scriptRuns.maxDuration")}
-          value={settings.maxDurationMinutes}
-        />
-      </div>
-    </div>
+    <SettingsGroup
+      description={t("teams.scriptRuns.description")}
+      title={t("teams.scriptRuns.title")}
+    >
+      <SettingNumberRow
+        description={t("teams.scriptRuns.defaultMaxAgentsDescription")}
+        id="script-run-default-max-agents"
+        key={`agents-${settings.defaultMaxAgents}`}
+        max={SCRIPT_RUN_HARD_MAX_AGENTS}
+        min={1}
+        onCommit={(value) =>
+          void save({
+            defaultMaxAgents:
+              value ?? DEFAULT_SCRIPT_RUN_SETTINGS.defaultMaxAgents,
+          })
+        }
+        title={t("teams.scriptRuns.defaultMaxAgents")}
+        value={settings.defaultMaxAgents}
+      />
+      <SettingNumberRow
+        description={t("teams.scriptRuns.schemaMaxAttemptsDescription")}
+        id="script-run-schema-attempts"
+        key={`attempts-${settings.schemaMaxAttempts}`}
+        max={SCRIPT_RUN_MAX_SCHEMA_ATTEMPTS}
+        min={1}
+        onCommit={(value) =>
+          void save({
+            schemaMaxAttempts:
+              value ?? DEFAULT_SCRIPT_RUN_SETTINGS.schemaMaxAttempts,
+          })
+        }
+        title={t("teams.scriptRuns.schemaMaxAttempts")}
+        value={settings.schemaMaxAttempts}
+      />
+      <SettingNumberRow
+        description={t("teams.scriptRuns.maxDurationDescription")}
+        id="script-run-max-duration"
+        key={`duration-${settings.maxDurationMinutes}`}
+        min={1}
+        onCommit={(value) => void save({ maxDurationMinutes: value })}
+        placeholder={t("teams.scriptRuns.unlimited")}
+        title={t("teams.scriptRuns.maxDuration")}
+        unit={t("teams.scriptRuns.minutes")}
+        value={settings.maxDurationMinutes}
+      />
+    </SettingsGroup>
   );
 }

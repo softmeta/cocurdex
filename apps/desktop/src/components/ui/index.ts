@@ -111,6 +111,14 @@ export {
 export { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 export { IconButton, type IconButtonProps } from "./icon-button";
 export { Input } from "./input";
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from "./input-group";
 export { Label } from "./label";
 export {
   Popover,

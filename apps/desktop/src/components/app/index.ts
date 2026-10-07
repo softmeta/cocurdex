@@ -24,3 +24,4 @@ export {
   type AppSearchableSelectOption,
 } from "./searchable-select";
 export { AppSelect } from "./select";
+export { SettingRow, SettingsGroup } from "./settings-fields";
