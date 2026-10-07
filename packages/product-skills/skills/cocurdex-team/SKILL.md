@@ -19,6 +19,7 @@ Do not use a team when:
 - Only the result matters and your own provider can do it: use your native subagent tool (for example Claude's Agent tool) instead; it is cheaper than a teammate.
 - A human must approve mid-way. Teammates do not pause for approval.
 - The work is small enough to finish in one turn yourself.
+- The same task runs over many items, or a fixed pipeline needs no conversation with its workers: propose a script run instead (`/cocurdex-script-run`).
 
 Teammates cannot spawn their own teammates. A team holds at most 8 members.
 
