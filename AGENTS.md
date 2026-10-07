@@ -97,7 +97,7 @@ The user verifies UI/UX changes locally. After implementation and required check
 ## Product knowledge and skills
 
 - PRDs, specs, notes, and issues live only in the daemon-owned `cocurdex.sqlite`. Never write them into the workspace or open the database directly; use the `cocurdex` CLI.
-- Use namespaced skills: `/cocurdex-note` for notes, PRDs, specs, and links -> `/cocurdex-issue` -> `/cocurdex-ship`. Parallel teammate agents: `/cocurdex-team`; app settings: `/cocurdex-settings`. Todo and ticket mean issue.
+- Use namespaced skills: `/cocurdex-note` for notes, PRDs, specs, and links -> `/cocurdex-issue` for issues and their status while you implement them. Parallel teammate agents: `/cocurdex-team`; app settings: `/cocurdex-settings`. Todo and ticket mean issue.
 - Manage issues (list, show, create, move, delete, views) through `@cocurdex/cli` using `cocurdex issue ...`. Never invent IDs or manually rewrite status.
 - Distribute skills from `packages/product-skills` through Settings > Skills or `cocurdex skills install --scope project|global`; do not auto-install. This repository symlinks `.agents/skills/cocurdex-*` and `.claude/skills/cocurdex-*` to that source; never commit installed copies.
 - Product skills are part of the CLI contract. When a change adds, renames, or removes a `cocurdex` CLI command, flag, output field, or the daemon capability behind it, update the affected `packages/product-skills/skills/cocurdex-*` in the same PR. When adding a daemon capability agents should use, decide whether it needs a CLI command and skill coverage.

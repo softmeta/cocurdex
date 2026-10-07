@@ -23,6 +23,11 @@ If the prompt already contains an attached `<issue … complete="true">` block,
 treat it as the full issue and do not run `cocurdex issue show` for it. Use the
 CLI only to change the issue, or when the user asks for its current state.
 
+When you implement an issue, move it to the in-progress column (`doing` by
+default) before you start, and to `review` once its acceptance criteria are met
+and the relevant checks pass (`done` when the user does not review). Stop and
+ask when the issue has no clear scope or acceptance criteria.
+
 Status and priority ids are shared by every view; an unknown id is rejected
 with the valid ids in the error. Omit `--status` to use the first status.
 Use `--view <id>` when the user names a non-default view. Treat `todo` and
