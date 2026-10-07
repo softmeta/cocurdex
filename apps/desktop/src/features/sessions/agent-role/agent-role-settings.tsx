@@ -1,10 +1,10 @@
 import type { AgentRoleRecord } from "@cocurdex/shared";
-import { Bookmark, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppConfirmDialog } from "@/components";
-import { EmptyState, IconButton, Text } from "@/components/ui";
+import { AppConfirmDialog, SettingsGroup } from "@/components";
+import { Button, IconButton, Text } from "@/components/ui";
 import { AgentIconLabel } from "../agent-icon";
 import { AgentRoleAvatar } from "./agent-role-avatar";
 import { AgentRoleEditDialog } from "./agent-role-edit-dialog";
@@ -20,6 +20,7 @@ export function AgentRoleSettingsPanel() {
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
   const formatRoleSummary = useAgentRoleSummary();
   const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
+  const [creating, setCreating] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<AgentRoleRecord | null>(
     null,
   );
@@ -39,57 +40,77 @@ export function AgentRoleSettingsPanel() {
   };
 
   return (
-    <div className="settings-panel-enter flex flex-col gap-4">
-      <Text as="p" tone="muted">
-        {t("settings:agentRoles.description")}
-      </Text>
-      {roles.length === 0 ? (
-        <EmptyState
-          description={t("settings:agentRoles.emptyDescription")}
-          icon={<Bookmark />}
-          title={t("settings:agentRoles.empty")}
-        />
-      ) : (
-        <ul className="flex flex-col divide-y divide-border">
-          {roles.map((role) => (
-            <li key={role.id} className="flex items-center gap-3 py-4">
-              <AgentRoleAvatar role={role} size="lg" />
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <Text truncate weight="medium">
-                  {role.name}
-                </Text>
-                <Text size="meta" tone="muted" truncate>
-                  <AgentIconLabel agentId={role.agentId}>
-                    {formatRoleSummary(role)}
-                  </AgentIconLabel>
-                </Text>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <IconButton
-                  aria-label={t("settings:agentRoles.edit")}
-                  size="sm"
-                  onClick={() => setEditingRole(role)}
-                >
-                  <Pencil className="size-4" />
-                </IconButton>
-                <IconButton
-                  aria-label={t("settings:agentRoles.delete")}
-                  size="sm"
-                  onClick={() => setRoleToDelete(role)}
-                >
-                  <Trash2 className="size-4" />
-                </IconButton>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="settings-panel-enter flex flex-col gap-6">
+      <SettingsGroup
+        action={
+          <Button
+            onClick={() => setCreating(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="size-3.5" />
+            {t("settings:agentRoles.create")}
+          </Button>
+        }
+        description={t("settings:agentRoles.description")}
+        title={t("settings:agentRoles.listTitle")}
+      >
+        {roles.length === 0 ? (
+          <div className="flex flex-col gap-0.5 py-3.5">
+            <Text weight="medium">{t("settings:agentRoles.empty")}</Text>
+            <Text tone="muted">
+              {t("settings:agentRoles.emptyDescription")}
+            </Text>
+          </div>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border/60">
+            {roles.map((role) => (
+              <li className="flex items-start gap-3 py-3.5" key={role.id}>
+                <AgentRoleAvatar role={role} size="lg" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <Text truncate weight="medium">
+                    {role.name}
+                  </Text>
+                  <Text size="meta" tone="muted" truncate>
+                    <AgentIconLabel agentId={role.agentId}>
+                      {formatRoleSummary(role)}
+                    </AgentIconLabel>
+                  </Text>
+                  {role.description ? (
+                    <Text as="p" className="line-clamp-2" tone="muted">
+                      {role.description}
+                    </Text>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconButton
+                    aria-label={t("settings:agentRoles.edit")}
+                    size="sm"
+                    onClick={() => setEditingRole(role)}
+                  >
+                    <Pencil className="size-4" />
+                  </IconButton>
+                  <IconButton
+                    aria-label={t("settings:agentRoles.delete")}
+                    size="sm"
+                    onClick={() => setRoleToDelete(role)}
+                  >
+                    <Trash2 className="size-4" />
+                  </IconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SettingsGroup>
       <AgentRoleEditDialog
-        open={Boolean(editingRole)}
+        open={Boolean(editingRole) || creating}
         role={editingRole}
         onOpenChange={(open) => {
           if (!open) {
             setEditingRole(null);
+            setCreating(false);
           }
         }}
       />

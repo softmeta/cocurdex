@@ -46,6 +46,7 @@ export interface NewSessionCardProps {
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
     agentRoleId?: string | null;
+    teamTemplateId?: string | null;
     worktreePath?: string;
   }) => void;
 }

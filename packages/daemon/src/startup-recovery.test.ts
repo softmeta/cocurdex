@@ -75,6 +75,7 @@ async function seedActiveWork(
     leadSessionId: "session",
     workspaceId: "workspace",
     status: "active",
+    roster: null,
     createdAt: timestamp,
     updatedAt: timestamp,
   });

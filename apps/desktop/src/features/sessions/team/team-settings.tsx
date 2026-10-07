@@ -1,9 +1,5 @@
-import type {
-  AgentRoleRecord,
-  TeamTemplateMember,
-  TeamTemplateRecord,
-} from "@cocurdex/shared";
-import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import type { AgentRoleRecord, TeamTemplateRecord } from "@cocurdex/shared";
+import { Crown, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -95,11 +91,11 @@ export function TeamSettingsPanel() {
                     </Text>
                   ) : null}
                   <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-                    {template.members.map((member) => (
+                    {template.members.map((member, index) => (
                       <TeamMemberChip
-                        inheritLabel={t("teams.inheritRole")}
-                        key={member.name}
-                        member={member}
+                        isLead={index === 0}
+                        key={member.agentRoleId}
+                        missingLabel={t("teams.roleMissing")}
                         role={roleOf(member.agentRoleId)}
                       />
                     ))}
@@ -156,23 +152,37 @@ export function TeamSettingsPanel() {
 }
 
 function TeamMemberChip({
-  inheritLabel,
-  member,
+  isLead,
+  missingLabel,
   role,
 }: {
-  inheritLabel: string;
-  member: TeamTemplateMember;
+  isLead: boolean;
+  missingLabel: string;
   role: AgentRoleRecord | null;
 }) {
   return (
     <li className="flex min-w-0 items-center gap-1.5">
-      <TeamMemberAvatar member={member} role={role} />
-      <Text size="meta" truncate>
-        {member.name}
-      </Text>
-      <Text size="meta" tone="muted" truncate>
-        {role?.name ?? inheritLabel}
-      </Text>
+      <TeamMemberAvatar role={role} />
+      {role ? (
+        <Text size="meta" truncate>
+          {role.name}
+        </Text>
+      ) : (
+        <Text size="meta" tone="muted" truncate>
+          {missingLabel}
+        </Text>
+      )}
+      {isLead ? <LeadMark /> : null}
     </li>
+  );
+}
+
+function LeadMark() {
+  const { t } = useTranslation("settings");
+  return (
+    <Crown
+      aria-label={t("teams.lead")}
+      className="size-3.5 shrink-0 text-muted-foreground"
+    />
   );
 }

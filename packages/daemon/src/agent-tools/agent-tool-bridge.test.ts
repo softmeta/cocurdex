@@ -1,4 +1,4 @@
-import type { SessionRecord } from "@cocurdex/shared";
+import type { SessionRecord, TeamRoster } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { AgentToolBridge } from "./agent-tool-bridge";
 
@@ -69,5 +69,34 @@ describe("AgentToolBridge", () => {
       code: "UNAUTHORIZED_AGENT_TOOL",
     });
     await expect(second.invoker.catalog()).resolves.toBeDefined();
+  });
+
+  it("gives a lead the roster of its team as instructions", async () => {
+    const roster: TeamRoster = {
+      templateId: "tpl-1",
+      name: "Review squad",
+      description: null,
+      leadPrompt: "",
+      members: [
+        { name: "reviewer", agentRoleId: "role-1", prompt: "Review PRs." },
+      ],
+    };
+    const instance = new AgentToolBridge({
+      url: "http://127.0.0.1:4000/mcp",
+      getSession: async (sessionId) => (sessionId === "s-1" ? session : null),
+      getTeamId: async () => "team-1",
+      getLeadRoster: async () => roster,
+    });
+    const { invoker } = bind(instance);
+
+    const { instructions } = await invoker.catalog();
+
+    expect(instructions).toContain('Your team is "Review squad"');
+    expect(instructions).toContain("- reviewer: Review PRs.");
+  });
+
+  it("gives no instructions without a roster or delegation tools", async () => {
+    const { invoker } = bind(bridge());
+    expect((await invoker.catalog()).instructions).toBeUndefined();
   });
 });

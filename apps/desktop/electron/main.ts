@@ -514,6 +514,15 @@ function registerWorkspaceHandlers() {
   );
   registerHandler(
     ipcMain,
+    "team:create",
+    schemas.teamCreate,
+    async (_event, payload) =>
+      requestDaemon("team.create", payload, {
+        userDataPath: app.getPath("userData"),
+      }),
+  );
+  registerHandler(
+    ipcMain,
     "team:stop",
     schemas.teamId,
     async (_event, teamId) =>

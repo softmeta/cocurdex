@@ -1,5 +1,4 @@
 import {
-  ACP_REGISTRY_AGENT_ID_PREFIX,
   type AgentDescriptor,
   type AgentId,
   type AgentRateLimitsReadResult,
@@ -8,7 +7,13 @@ import {
 } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Check, Copy, ExternalLink, RotateCw } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  PackageSearch,
+  RotateCw,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -313,12 +318,7 @@ export function AdapterSettingsPanel() {
   const rateLimitsByAgentRef = useRef(rateLimitsByAgent);
   rateLimitsByAgentRef.current = rateLimitsByAgent;
   const sortedAgents = sortAdaptersForSettings(agents);
-  const installedRegistryIds = new Set(
-    agents
-      .map((agent) => agent.id)
-      .filter(isAcpRegistryAgentId)
-      .map((agentId) => agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)),
-  );
+  const [registryOpen, setRegistryOpen] = useState(false);
 
   const loadRateLimits = async (
     agentsToProbe: AgentDescriptor[],
@@ -404,9 +404,18 @@ export function AdapterSettingsPanel() {
           {t("adapters.description")}
         </Text>
         <div className="flex shrink-0 items-center gap-1">
+          <Button
+            onClick={() => setRegistryOpen(true)}
+            size="xs"
+            type="button"
+            variant="ghost"
+          >
+            <PackageSearch className="size-3.5" />
+            {t("adapters.registry.open")}
+          </Button>
           <AcpRegistryDialog
-            installedRegistryIds={installedRegistryIds}
-            onInstalled={() => refresh(true)}
+            open={registryOpen}
+            onOpenChange={setRegistryOpen}
           />
           <Button
             disabled={refreshing}

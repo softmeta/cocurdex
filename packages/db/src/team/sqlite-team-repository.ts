@@ -3,6 +3,7 @@ import type {
   TeamMemberRecord,
   TeamMemberStatus,
   TeamRecord,
+  TeamRoster,
   TeamSnapshot,
   TeamStatus,
   TeamTaskRecord,
@@ -16,6 +17,7 @@ interface TeamRow extends SqliteRow {
   lead_session_id: string;
   workspace_id: string;
   status: TeamStatus;
+  roster_json: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -71,12 +73,44 @@ function mapTask(row: TeamTaskRow): TeamTaskRecord {
   };
 }
 
+function parseRoster(value: string | null): TeamRoster | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<TeamRoster> | null;
+    if (!parsed || !Array.isArray(parsed.members)) return null;
+    return {
+      templateId: String(parsed.templateId ?? ""),
+      name: String(parsed.name ?? ""),
+      description:
+        typeof parsed.description === "string" ? parsed.description : null,
+      leadPrompt:
+        typeof parsed.leadPrompt === "string" ? parsed.leadPrompt : "",
+      members: parsed.members.flatMap((member) =>
+        member &&
+        typeof member.name === "string" &&
+        typeof member.agentRoleId === "string"
+          ? [
+              {
+                name: member.name,
+                agentRoleId: member.agentRoleId,
+                prompt: typeof member.prompt === "string" ? member.prompt : "",
+              },
+            ]
+          : [],
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function mapTeam(row: TeamRow): TeamRecord {
   return {
     id: row.id,
     leadSessionId: row.lead_session_id,
     workspaceId: row.workspace_id,
     status: row.status,
+    roster: parseRoster(row.roster_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -138,9 +172,9 @@ export function createSqliteTeamRepository(
       database
         .prepare(
           `INSERT INTO teams (
-             id, lead_session_id, workspace_id, status, created_at,
-             updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?)
+             id, lead_session_id, workspace_id, status, roster_json,
+             created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              status = excluded.status,
              updated_at = excluded.updated_at`,
@@ -150,6 +184,7 @@ export function createSqliteTeamRepository(
           team.leadSessionId,
           team.workspaceId,
           team.status,
+          team.roster ? JSON.stringify(team.roster) : null,
           team.createdAt,
           team.updatedAt,
         );

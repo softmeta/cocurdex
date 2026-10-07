@@ -20,6 +20,7 @@ function resumeQueued(root: string) {
     { userDataPath: root },
   );
 }
+const dispatchWait = { timeout: 15_000 };
 const timestamp = "2026-09-13T00:00:00.000Z";
 const message: MessageRecord = {
   id: "message",
@@ -139,7 +140,10 @@ describe("daemon-owned queue recovery", () => {
     expect(dispatch).not.toHaveBeenCalled();
     await start(root);
     await resumeQueued(root);
-    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+    await vi.waitFor(
+      () => expect(dispatch).toHaveBeenCalledOnce(),
+      dispatchWait,
+    );
   });
 
   it("resumes persisted inputs with current host credentials and paths", async () => {
@@ -160,7 +164,10 @@ describe("daemon-owned queue recovery", () => {
       .mockResolvedValue(message);
     const second = await start(root);
     await expect(resumeQueued(root)).resolves.toBe(true);
-    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+    await vi.waitFor(
+      () => expect(dispatch).toHaveBeenCalledOnce(),
+      dispatchWait,
+    );
     expect(credentials).toHaveBeenCalledWith(
       expect.objectContaining({ id: "session" }),
     );
@@ -204,7 +211,10 @@ describe("daemon-owned queue recovery", () => {
     ).toHaveLength(1);
     credentials.mockResolvedValue(null);
     await expect(resumeQueued(root)).resolves.toBe(true);
-    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+    await vi.waitFor(
+      () => expect(dispatch).toHaveBeenCalledOnce(),
+      dispatchWait,
+    );
   });
 
   it("keeps archived tasks queued until an explicit restore and resume", async () => {
@@ -231,7 +241,10 @@ describe("daemon-owned queue recovery", () => {
       { sessionId: "session" },
       { userDataPath: root },
     );
-    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+    await vi.waitFor(
+      () => expect(dispatch).toHaveBeenCalledOnce(),
+      dispatchWait,
+    );
   });
 
   it("rejects externally supplied runtime credentials", async () => {

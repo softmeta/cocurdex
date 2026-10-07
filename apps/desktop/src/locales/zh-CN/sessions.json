@@ -17,7 +17,9 @@
     "description": "描述",
     "descriptionPlaceholder": "这个角色负责什么、擅长什么。团队协作时 lead agent 会据此挑选队友。",
     "empty": "还没有保存的角色",
+    "menuCreate": "新建角色",
     "menuLabel": "角色",
+    "menuManage": "管理角色",
     "name": "名称",
     "namePlaceholder": "角色名称",
     "save": "保存为角色",
@@ -26,6 +28,10 @@
     "saveDescription": "为当前的 Agent、模型和运行时选项命名。",
     "saveFailed": "无法保存这个角色。",
     "saveTitle": "保存为角色"
+  },
+  "agentSelect": {
+    "add": "从 ACP Registry 添加",
+    "manage": "管理 Agent CLI"
   },
   "archive": {
     "failed": "无法归档此会话，请重试。",
@@ -238,6 +244,14 @@
     "menu": "分屏",
     "newSession": "新会话",
     "right": "向右分屏"
+  },
+  "team": {
+    "leadMissing": "lead 角色已被删除",
+    "menuCreate": "新建团队",
+    "menuEmpty": "还没有团队",
+    "menuLabel": "团队",
+    "menuManage": "管理团队",
+    "summary_other": "{{lead}} 带领 {{count}} 名队友"
   },
   "window": {
     "detach": "在独立窗口中打开",

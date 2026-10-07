@@ -227,6 +227,8 @@ export async function handleDaemonRequest(
       );
     case "team.get":
       return service.team.get(request.params.leadSessionId);
+    case "team.create":
+      return service.team.create(request.params);
     case "team.spawn": {
       const { leadSessionId, ...payload } = request.params;
       return service.team.spawn(leadSessionId, payload);

@@ -26,6 +26,7 @@ import type {
   CreateIssuePayload,
   CreateNotePayload,
   CreateScriptRunPayload,
+  CreateTeamPayload,
   CreateViewPayload,
   CreateWorkflowPayload,
   DeleteColumnPayload,
@@ -235,6 +236,7 @@ export type DaemonRequestPayloadByMethod = {
   "session.sendPeerMessage": SendPeerMessagePayload;
   "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
   "team.get": { leadSessionId: string };
+  "team.create": CreateTeamPayload;
   "team.spawn": { leadSessionId: string } & SpawnTeammatePayload;
   "team.stopMember": { teamId: string; sessionId: string };
   "team.stop": { teamId: string };
@@ -468,6 +470,7 @@ export type DaemonResultByMethod = {
   "session.sendPeerMessage": SendPeerMessageResult;
   "session.setPeerInbound": SessionRecord;
   "team.get": TeamSnapshot | null;
+  "team.create": TeamRecord;
   "team.spawn": TeamMemberRecord;
   "team.stopMember": TeamMemberRecord;
   "team.stop": TeamRecord;

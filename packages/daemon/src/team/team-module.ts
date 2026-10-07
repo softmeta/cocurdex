@@ -3,10 +3,14 @@ import type { TeamRepository } from "@cocurdex/db";
 import {
   type AgentEvent,
   type AgentRoleRecord,
+  buildTeamRosterMembers,
+  type CreateTeamPayload,
   canSpawnTeammate,
   checkTeamTaskUpdate,
+  findRosterMember,
   type MessageRecord,
   normalizeAgentRoleAvatar,
+  normalizeTeamTemplateMembers,
   renderTeammateBriefing,
   renderTeammateReport,
   type SaveTeamTemplatePayload,
@@ -19,6 +23,7 @@ import {
   type SpawnTeamTemplatePayload,
   supportsAgentTeam,
   TEAM_MAX_MEMBERS,
+  TEAM_MIN_MEMBERS,
   TEAM_NAME_PATTERN,
   TEAM_TASK_STATUSES,
   TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH,
@@ -27,10 +32,12 @@ import {
   type TeamMemberRecord,
   type TeammateReportOutcome,
   type TeamRecord,
+  type TeamRoster,
   type TeamSnapshot,
   type TeamTaskRecord,
   type TeamTaskRejection,
   type TeamTaskStatus,
+  type TeamTemplateMember,
   type TeamTemplateRecord,
   teamMemberEventFromSessionStatus,
   transitionTeamMember,
@@ -50,6 +57,7 @@ export type TeamErrorCode =
   | "invalid_status"
   | "template_not_found"
   | "invalid_template"
+  | "team_exists"
   | "members_busy";
 
 export class TeamError extends Error {
@@ -172,11 +180,21 @@ function parseTemplates(raw: string | null): TeamTemplateRecord[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((template: TeamTemplateRecord) => ({
-      ...template,
-      description: normalizeTemplateDescription(template.description),
-      avatar: normalizeAgentRoleAvatar(template.avatar),
-    }));
+    return parsed.flatMap((template: TeamTemplateRecord) => {
+      const members = normalizeTeamTemplateMembers(template.members);
+      if (members.length < TEAM_MIN_MEMBERS) return [];
+      return [
+        {
+          id: template.id,
+          name: template.name,
+          description: normalizeTemplateDescription(template.description),
+          avatar: normalizeAgentRoleAvatar(template.avatar),
+          members,
+          createdAt: template.createdAt,
+          updatedAt: template.updatedAt,
+        },
+      ];
+    });
   } catch {
     return [];
   }
@@ -219,28 +237,33 @@ export class TeamModule {
     payload: SpawnTeammatePayload,
   ): Promise<TeamMemberRecord> {
     validateSessionId(leadSessionId);
-    const lead = await this.deps.getSession(leadSessionId);
-    if (!lead || lead.archivedAt) throw new TeamError("lead_not_found");
-    if ((lead.sessionKind ?? "main") !== "main") {
-      throw new TeamError("lead_not_main");
-    }
-    if (!supportsAgentTeam(lead.agentType)) {
-      throw new TeamError("unsupported_agent");
-    }
+    const lead = await this.requireLead(leadSessionId);
     const existing = await this.deps.repository.getByLead(leadSessionId);
     const verdict = canSpawnTeammate(
       existing?.team ?? null,
       existing?.members ?? [],
       payload,
     );
-    if (!verdict.ok) throw new TeamError(verdict.reason);
+    if (!verdict.ok) {
+      throw new TeamError(
+        verdict.reason,
+        spawnRejectionMessage(verdict.reason, existing?.team.roster ?? null),
+      );
+    }
 
     const now = this.now();
     const team = existing?.team ?? (await this.createTeam(lead, now));
-    const role = payload.agentRoleId
-      ? await this.deps.getAgentRole(payload.agentRoleId)
+    const rosterMember = existing?.team.roster
+      ? findRosterMember(existing.team.roster, payload.name)
       : null;
+    const roleId = rosterMember
+      ? rosterMember.agentRoleId
+      : payload.agentRoleId;
+    const role = roleId ? await this.deps.getAgentRole(roleId) : null;
     const agentType = role?.agentId ?? payload.agentType ?? lead.agentType;
+    const prompt = rosterMember
+      ? joinPrompts(rosterMember.prompt, payload.prompt)
+      : payload.prompt;
     if (!supportsAgentTeam(agentType)) {
       throw new TeamError("unsupported_agent");
     }
@@ -249,7 +272,7 @@ export class TeamModule {
         ? (
             await this.deps.createWorktree({
               workspaceId: lead.workspaceId,
-              branch: `team/${payload.name}-${this.createId().slice(0, 8)}`,
+              branch: teammateBranch(payload.name, this.createId()),
             })
           ).path
         : null;
@@ -291,12 +314,36 @@ export class TeamModule {
       content: renderTeammateBriefing({
         name: payload.name,
         leadSessionId: lead.id,
-        prompt: payload.prompt,
+        prompt,
       }),
       delivery: "start-new-run",
       origin: { kind: "peer", sessionId: lead.id, sessionTitle: lead.title },
     });
     return member;
+  }
+
+  async create(payload: CreateTeamPayload): Promise<TeamRecord> {
+    validateSessionId(payload.leadSessionId);
+    const lead = await this.requireLead(payload.leadSessionId);
+    const template = await this.requireTemplate(payload.templateId);
+    if (await this.deps.repository.getByLead(lead.id)) {
+      throw new TeamError("team_exists");
+    }
+    const [leadMember, ...teammates] = template.members;
+    const team = await this.createTeam(lead, this.now(), {
+      templateId: template.id,
+      name: template.name,
+      description: template.description,
+      leadPrompt: leadMember?.prompt ?? "",
+      members: await this.resolveRosterMembers(teammates),
+    });
+    this.changed(team);
+    return team;
+  }
+
+  async rosterForLead(sessionId: string) {
+    const snapshot = await this.deps.repository.getByLead(sessionId);
+    return snapshot?.team.roster ?? null;
   }
 
   async stopMember(teamId: string, sessionId: string) {
@@ -496,29 +543,16 @@ export class TeamModule {
 
   async saveTemplate(payload: SaveTeamTemplatePayload) {
     const name = payload.name.trim();
-    const members = payload.members.map((member) => ({
-      name: member.name.trim(),
-      agentRoleId: member.agentRoleId || null,
-      prompt: member.prompt,
-    }));
-    const names = new Set(members.map((member) => member.name));
+    const members = normalizeTeamTemplateMembers(payload.members);
     if (
       !name ||
-      members.length === 0 ||
+      members.length < TEAM_MIN_MEMBERS ||
       members.length > TEAM_MAX_MEMBERS ||
-      names.size !== members.length ||
-      members.some((member) => !TEAM_NAME_PATTERN.test(member.name))
+      members.length !== payload.members.length
     ) {
       throw new TeamError("invalid_template");
     }
-    for (const member of members) {
-      const role = member.agentRoleId
-        ? await this.deps.getAgentRole(member.agentRoleId)
-        : null;
-      if (role && !supportsAgentTeam(role.agentId)) {
-        throw new TeamError("unsupported_agent");
-      }
-    }
+    await this.resolveRosterMembers(members);
     const templates = await this.listTemplates();
     const now = this.now();
     const existing = templates.find((item) => item.id === payload.id);
@@ -553,39 +587,68 @@ export class TeamModule {
     leadSessionId: string,
     payload: SpawnTeamTemplatePayload,
   ) {
-    const template = (await this.listTemplates()).find(
-      (item) => item.id === payload.templateId,
-    );
-    if (!template) throw new TeamError("template_not_found");
-    for (const member of template.members) {
-      const role = member.agentRoleId
-        ? await this.deps.getAgentRole(member.agentRoleId)
-        : null;
-      if (role && !supportsAgentTeam(role.agentId)) {
-        throw new TeamError("unsupported_agent");
-      }
-    }
+    const team = await this.create({
+      leadSessionId,
+      templateId: payload.templateId,
+    });
     const members: TeamMemberRecord[] = [];
-    for (const member of template.members) {
+    for (const member of team.roster?.members ?? []) {
       members.push(
         await this.spawn(leadSessionId, {
           name: member.name,
-          agentRoleId: member.agentRoleId,
-          prompt: payload.prompt
-            ? `${member.prompt}\n\n${payload.prompt}`
-            : member.prompt,
+          prompt: payload.prompt ?? "",
         }),
       );
     }
     return members;
   }
 
-  private async createTeam(lead: SessionRecord, now: string) {
+  private async requireLead(leadSessionId: string) {
+    const lead = await this.deps.getSession(leadSessionId);
+    if (!lead || lead.archivedAt) throw new TeamError("lead_not_found");
+    if ((lead.sessionKind ?? "main") !== "main") {
+      throw new TeamError("lead_not_main");
+    }
+    if (!supportsAgentTeam(lead.agentType)) {
+      throw new TeamError("unsupported_agent");
+    }
+    return lead;
+  }
+
+  private async requireTemplate(templateId: string) {
+    const template = (await this.listTemplates()).find(
+      (item) => item.id === templateId,
+    );
+    if (!template) throw new TeamError("template_not_found");
+    return template;
+  }
+
+  private async resolveRosterMembers(members: readonly TeamTemplateMember[]) {
+    const roles = new Map<string, AgentRoleRecord>();
+    for (const member of members) {
+      const role = await this.deps.getAgentRole(member.agentRoleId);
+      if (!role) throw new TeamError("invalid_template");
+      if (!supportsAgentTeam(role.agentId)) {
+        throw new TeamError("unsupported_agent");
+      }
+      roles.set(role.id, role);
+    }
+    const rosterMembers = buildTeamRosterMembers(members, roles);
+    if (!rosterMembers) throw new TeamError("invalid_template");
+    return rosterMembers;
+  }
+
+  private async createTeam(
+    lead: SessionRecord,
+    now: string,
+    roster: TeamRoster | null = null,
+  ) {
     const team: TeamRecord = {
       id: this.createId(),
       leadSessionId: lead.id,
       workspaceId: lead.workspaceId,
       status: "active",
+      roster,
       createdAt: now,
       updatedAt: now,
     };
@@ -668,6 +731,31 @@ export class TeamModule {
       leadSessionId: team.leadSessionId,
     });
   }
+}
+
+function spawnRejectionMessage(
+  reason: SpawnTeammateRejection,
+  roster: TeamRoster | null,
+) {
+  if (!roster) return reason;
+  const names = roster.members.map((member) => member.name).join(", ");
+  if (reason === "not_in_roster") {
+    return `not_in_roster: this team can only spawn its roster members: ${names}`;
+  }
+  if (reason === "roster_fixes_agent") {
+    return "roster_fixes_agent: roster members keep the role from the team template; omit agentRoleId and agentType";
+  }
+  return reason;
+}
+
+function teammateBranch(name: string, id: string) {
+  const slug = TEAM_NAME_PATTERN.test(name) ? name : "member";
+  return `team/${slug}-${id.slice(0, 8)}`;
+}
+
+function joinPrompts(standing: string, task: string) {
+  const parts = [standing.trim(), task.trim()].filter(Boolean);
+  return parts.join("\n\n");
 }
 
 function userWaitSummary(event: AgentEvent) {

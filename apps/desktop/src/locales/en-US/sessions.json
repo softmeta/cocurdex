@@ -17,7 +17,9 @@
     "description": "Description",
     "descriptionPlaceholder": "What this role does and what it is good at. Team leads use it to pick teammates.",
     "empty": "No saved roles",
+    "menuCreate": "New role",
     "menuLabel": "Roles",
+    "menuManage": "Manage roles",
     "name": "Name",
     "namePlaceholder": "Role name",
     "save": "Save as role",
@@ -26,6 +28,10 @@
     "saveDescription": "Name this combination of agent, model, and runtime options.",
     "saveFailed": "Could not save this role.",
     "saveTitle": "Save as role"
+  },
+  "agentSelect": {
+    "add": "Add from ACP Registry",
+    "manage": "Manage agent CLIs"
   },
   "archive": {
     "failed": "Could not archive this session. Try again.",
@@ -244,6 +250,15 @@
     "menu": "Split session",
     "newSession": "New session",
     "right": "Split Right"
+  },
+  "team": {
+    "leadMissing": "Its lead role was deleted",
+    "menuCreate": "New team",
+    "menuEmpty": "No teams yet",
+    "menuLabel": "Team",
+    "menuManage": "Manage teams",
+    "summary_one": "{{count}} teammate · Led by {{lead}}",
+    "summary_other": "{{count}} teammates · Led by {{lead}}"
   },
   "window": {
     "detach": "Open in a separate window",

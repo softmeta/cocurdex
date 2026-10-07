@@ -1,8 +1,11 @@
 import {
+  ACP_REGISTRY_AGENT_ID_PREFIX,
   type AcpRegistryAgentId,
   type AcpRegistryCatalogAgent,
+  isAcpRegistryAgentId,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Check, Download, PackageSearch, Terminal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,13 +23,17 @@ import {
   Spinner,
   Text,
 } from "@/components/ui";
-import { AgentIcon } from "@/features/sessions";
-import { desktopApi } from "@/lib";
+import {
+  AgentIcon,
+  agentsAtom,
+  bootstrapAgentsAtom,
+} from "@/features/sessions";
+import { desktopApi, useMountEffect } from "@/lib";
 import { AcpRegistryInstallPanel } from "./acp-registry-install-panel";
 
-interface AcpRegistryDialogProps {
-  installedRegistryIds: ReadonlySet<string>;
-  onInstalled(): Promise<void>;
+export interface AcpRegistryDialogProps {
+  open: boolean;
+  onOpenChange(open: boolean): void;
 }
 
 function matchesQuery(agent: AcpRegistryCatalogAgent, query: string) {
@@ -141,11 +148,27 @@ function RegistryAgentRow({
 }
 
 export function AcpRegistryDialog({
-  installedRegistryIds,
-  onInstalled,
+  open,
+  onOpenChange,
 }: AcpRegistryDialogProps) {
+  if (!open) {
+    return null;
+  }
+  return <AcpRegistryCatalog onOpenChange={onOpenChange} />;
+}
+
+function AcpRegistryCatalog({
+  onOpenChange,
+}: Pick<AcpRegistryDialogProps, "onOpenChange">) {
   const { t } = useTranslation("settings");
-  const [open, setOpen] = useState(false);
+  const agents = useAtomValue(agentsAtom);
+  const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
+  const installedRegistryIds = new Set(
+    agents
+      .map((agent) => agent.id)
+      .filter(isAcpRegistryAgentId)
+      .map((agentId) => agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)),
+  );
   const [catalog, setCatalog] = useState<AcpRegistryCatalogAgent[] | null>(
     null,
   );
@@ -163,12 +186,9 @@ export function AcpRegistryDialog({
     }
   };
 
-  const changeOpen = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (nextOpen && !catalog) {
-      void loadCatalog();
-    }
-  };
+  useMountEffect(() => {
+    void loadCatalog();
+  });
 
   const install = async (
     agent: AcpRegistryCatalogAgent,
@@ -177,7 +197,7 @@ export function AcpRegistryDialog({
     setInstallingId(agent.registryId);
     try {
       await run();
-      await onInstalled();
+      bootstrapAgents(await desktopApi.listAgents());
       setExpandedId(null);
       toast.success(
         t("adapters.registry.installSucceeded", { name: agent.name }),
@@ -193,13 +213,14 @@ export function AcpRegistryDialog({
     matchesQuery(agent, query),
   );
   let body = (
-    <div className="flex justify-center py-10">
+    <div className="flex h-full items-center justify-center">
       <Spinner size="sm" />
     </div>
   );
   if (loadError) {
     body = (
       <EmptyState
+        className="h-full"
         action={
           <Button
             onClick={() => void loadCatalog()}
@@ -217,6 +238,7 @@ export function AcpRegistryDialog({
   } else if (catalog && visibleAgents.length === 0) {
     body = (
       <EmptyState
+        className="h-full"
         icon={<PackageSearch />}
         title={t("adapters.registry.noResults")}
       />
@@ -257,33 +279,22 @@ export function AcpRegistryDialog({
   }
 
   return (
-    <>
-      <Button
-        onClick={() => changeOpen(true)}
-        size="xs"
-        type="button"
-        variant="ghost"
-      >
-        <PackageSearch className="size-3.5" />
-        {t("adapters.registry.open")}
-      </Button>
-      <Dialog onOpenChange={changeOpen} open={open}>
-        <DialogContent size="palette">
-          <DialogHeader>
-            <DialogTitle>{t("adapters.registry.title")}</DialogTitle>
-            <DialogDescription>
-              {t("adapters.registry.description")}
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("adapters.registry.search")}
-            value={query}
-          />
-          <div className="max-h-[60vh] overflow-y-auto px-1">{body}</div>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog onOpenChange={onOpenChange} open>
+      <DialogContent size="palette">
+        <DialogHeader>
+          <DialogTitle>{t("adapters.registry.title")}</DialogTitle>
+          <DialogDescription>
+            {t("adapters.registry.description")}
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t("adapters.registry.search")}
+          value={query}
+        />
+        <div className="h-[60vh] overflow-y-auto px-1">{body}</div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

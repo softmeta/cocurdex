@@ -602,6 +602,55 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds roster_json to teams from version 17 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE teams DROP COLUMN roster_json");
+    const now = "2026-10-07T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Roster teams', 'w1', '${now}', '${now}');
+      INSERT INTO teams (id, lead_session_id, workspace_id, status, created_at, updated_at)
+      VALUES ('t1', 's1', 'w1', 'active', '${now}', '${now}');
+      PRAGMA user_version = 17;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare("SELECT id, lead_session_id, status, roster_json FROM teams")
+        .all(),
+    ).toEqual([
+      {
+        id: "t1",
+        lead_session_id: "s1",
+        status: "active",
+        roster_json: null,
+      },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Roster teams" },
+    ]);
+  });
+
   it("keeps an up-to-date database that carries a stale version marker", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

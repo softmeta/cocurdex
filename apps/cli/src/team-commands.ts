@@ -12,6 +12,7 @@ import {
 export function teamUsageLines() {
   return [
     "  cocurdex team get --lead <session-id> [--json]",
+    "  cocurdex team create --lead <session-id> --template <template-id>",
     "  cocurdex team spawn --lead <session-id> --name <name> [--title <title>] --prompt <prompt> [--role <role-id>] [--agent <agent>] [--worktree]",
     "  cocurdex team stop --team <team-id>",
     "  cocurdex team stop-member --team <team-id> --session <session-id>",
@@ -40,6 +41,17 @@ export async function handleTeamCommand(
     }
     printResult(snapshot.team, parsed);
     printRows(snapshot.members, ["sessionId", "name", "status"], parsed);
+    return true;
+  }
+
+  if (action === "create") {
+    const team = await withDaemon(() =>
+      requestDaemon("team.create", {
+        leadSessionId: getRequiredFlag(parsed, "lead"),
+        templateId: getRequiredFlag(parsed, "template"),
+      }),
+    );
+    printResult(team, parsed);
     return true;
   }
 
@@ -85,9 +97,13 @@ export async function handleTeamCommand(
   }
 
   if (action === "templates") {
-    const templates = await withDaemon(() =>
-      requestDaemon("teamTemplate.list"),
+    const [templates, roles] = await withDaemon(() =>
+      Promise.all([
+        requestDaemon("teamTemplate.list"),
+        requestDaemon("agentRole.list"),
+      ]),
     );
+    const roleNames = new Map(roles.map((role) => [role.id, role.name]));
     if (parsed.flags.has("json")) {
       printResult(templates, parsed);
       return true;
@@ -96,7 +112,11 @@ export async function handleTeamCommand(
       templates.map((template) => ({
         id: template.id,
         name: template.name,
-        members: template.members.map((member) => member.name).join(","),
+        members: template.members
+          .map(
+            (member) => roleNames.get(member.agentRoleId) ?? member.agentRoleId,
+          )
+          .join(","),
         description: template.description ?? "",
       })),
       ["id", "name", "members", "description"],

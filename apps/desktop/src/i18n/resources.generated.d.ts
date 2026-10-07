@@ -983,7 +983,9 @@ export default interface Resources {
       description: "Description";
       descriptionPlaceholder: "What this role does and what it is good at. Team leads use it to pick teammates.";
       empty: "No saved roles";
+      menuCreate: "New role";
       menuLabel: "Roles";
+      menuManage: "Manage roles";
       name: "Name";
       namePlaceholder: "Role name";
       save: "Save as role";
@@ -992,6 +994,10 @@ export default interface Resources {
       saveFailed: "Could not save this role.";
       saveTitle: "Save as role";
       saved: "Role saved";
+    };
+    agentSelect: {
+      add: "Add from ACP Registry";
+      manage: "Manage agent CLIs";
     };
     archive: {
       failed: "Could not archive this session. Try again.";
@@ -1211,6 +1217,15 @@ export default interface Resources {
       newSession: "New session";
       right: "Split Right";
     };
+    team: {
+      leadMissing: "Its lead role was deleted";
+      menuCreate: "New team";
+      menuEmpty: "No teams yet";
+      menuLabel: "Team";
+      menuManage: "Manage teams";
+      summary_one: "{{count}} teammate · Led by {{lead}}";
+      summary_other: "{{count}} teammates · Led by {{lead}}";
+    };
     window: {
       detach: "Open in a separate window";
       detached: "Chat is open in a separate window";
@@ -1350,6 +1365,8 @@ export default interface Resources {
     };
     agentRoles: {
       cancel: "Cancel";
+      create: "New role";
+      createTitle: "New role";
       delete: "Delete";
       deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
       deleteFailed: "Could not delete this role.";
@@ -1359,7 +1376,8 @@ export default interface Resources {
       edit: "Edit";
       editTitle: "Edit role";
       empty: "No roles yet";
-      emptyDescription: "Open the model menu in a new session and choose Save as role.";
+      emptyDescription: "Click New role, or choose Save as role from the model menu when starting a session.";
+      listTitle: "Saved roles";
       name: "Name";
       namePlaceholder: "Role name";
       roleDescription: "Description";
@@ -2068,32 +2086,39 @@ export default interface Resources {
     };
     teams: {
       addMember: "Add teammate";
+      backToTeam: "Back to team";
       cancel: "Cancel";
       create: "New team";
       createFirst: "Create one";
+      createRole: "New role";
       createTitle: "New team";
       delete: "Delete";
       deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
       deleteFailed: "Could not delete this team.";
       deleteTitle: "Delete this team?";
       deleted: "Team deleted";
-      description: "Save team lineups you use often. Ask the lead agent in a session to start one, or start it from the CLI.";
+      description: "Save team lineups you use often. Pick a team from the agent menu when starting a session; its lead plans the work and spawns teammates from the lineup.";
       edit: "Edit";
       editTitle: "Edit team";
       empty: "No teams yet.";
-      inheritRole: "Same as lead";
+      lead: "Lead";
+      leadAgents: "Agents";
+      leadPlaceholder: "Choose a lead";
+      leadPromptPlaceholder: "What the lead focuses on while coordinating.";
+      leadRoles: "Roles";
       listTitle: "Saved teams";
+      makeLead: "Make lead";
       memberCount: "{{current}}/{{max}}";
-      memberName: "Teammate name";
-      memberNameHint: "Lowercase letters, digits, and hyphens. The lead addresses teammates by this name.";
-      memberNamePlaceholder: "reviewer";
       memberPrompt: "Standing instructions";
       memberPromptPlaceholder: "What this teammate is responsible for.";
       members: "Teammates";
+      membersHint: "The first member is the lead: it runs the session and dispatches the others.";
       name: "Name";
       namePlaceholder: "Team name";
       removeMember: "Remove teammate";
       role: "Role";
+      roleMissing: "Role was deleted";
+      rolePlaceholder: "Choose a role";
       save: "Save";
       saveFailed: "Could not save this team.";
       saved: "Team saved";

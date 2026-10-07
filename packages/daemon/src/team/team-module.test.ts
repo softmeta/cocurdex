@@ -101,6 +101,38 @@ const role: AgentRoleRecord = {
   updatedAt: "",
 };
 
+const testerRole: AgentRoleRecord = {
+  ...role,
+  id: "role-2",
+  name: "测试员",
+  agentId: "codex",
+  modelId: null,
+  modelName: null,
+};
+
+const leadRole: AgentRoleRecord = {
+  ...testerRole,
+  id: "role-lead",
+  name: "Lead",
+};
+
+const roles = new Map([
+  [role.id, role],
+  [testerRole.id, testerRole],
+  [leadRole.id, leadRole],
+]);
+
+const squadMembers = [
+  { agentRoleId: "role-lead", prompt: "Own the merge." },
+  { agentRoleId: "role-1", prompt: "Review PRs." },
+  { agentRoleId: "role-2", prompt: "Write tests." },
+];
+
+const pairMembers = [
+  { agentRoleId: "role-lead", prompt: "" },
+  { agentRoleId: "role-1", prompt: "go" },
+];
+
 function harness({ busy = new Set<string>() } = {}) {
   const settings = new Map<string, string>();
   const sessions = new Map<string, SessionRecord>([
@@ -117,7 +149,7 @@ function harness({ busy = new Set<string>() } = {}) {
     saveSession: async (record) => {
       sessions.set(record.id, record);
     },
-    getAgentRole: async (id) => (id === "role-1" ? role : null),
+    getAgentRole: async (id) => roles.get(id) ?? null,
     listAgentRoles: async () => [role],
     getSetting: async (key) => settings.get(key) ?? null,
     setSetting: async (key, value) => {
@@ -346,10 +378,7 @@ describe("TeamModule", () => {
     ).rejects.toMatchObject({ code: "invalid_template" });
     const template = await module.saveTemplate({
       name: "Review squad",
-      members: [
-        { name: "reviewer", agentRoleId: "role-1", prompt: "Review PRs." },
-        { name: "tester", agentRoleId: null, prompt: "Write tests." },
-      ],
+      members: squadMembers,
     });
     expect(await module.listTemplates()).toEqual([template]);
     const renamed = await module.saveTemplate({ ...template, name: "Squad" });
@@ -363,8 +392,8 @@ describe("TeamModule", () => {
       prompt: "Focus on the auth module.",
     });
     expect(members.map((member) => member.name)).toEqual([
-      "reviewer",
-      "tester",
+      "Reviewer",
+      "测试员",
     ]);
     expect(sessions.get(members[0]?.sessionId ?? "")?.agentType).toBe(
       "claude-agent",
@@ -380,6 +409,112 @@ describe("TeamModule", () => {
     ).rejects.toMatchObject({ code: "template_not_found" });
   });
 
+  it("binds a template roster to the lead without spawning anyone", async () => {
+    const { module, sent, events } = harness();
+    const template = await module.saveTemplate({
+      name: "Review squad",
+      description: "Reviews and tests changes",
+      members: squadMembers,
+    });
+
+    const team = await module.create({
+      leadSessionId: "lead",
+      templateId: template.id,
+    });
+
+    expect(team.roster).toEqual({
+      templateId: template.id,
+      name: "Review squad",
+      description: "Reviews and tests changes",
+      leadPrompt: "Own the merge.",
+      members: [
+        { name: "Reviewer", agentRoleId: "role-1", prompt: "Review PRs." },
+        { name: "测试员", agentRoleId: "role-2", prompt: "Write tests." },
+      ],
+    });
+    expect((await module.get("lead"))?.members).toEqual([]);
+    expect(sent).toEqual([]);
+    expect(events).toEqual([
+      { type: "team.changed", teamId: team.id, leadSessionId: "lead" },
+    ]);
+    expect(await module.rosterForLead("lead")).toEqual(team.roster);
+    await expect(
+      module.create({ leadSessionId: "lead", templateId: template.id }),
+    ).rejects.toMatchObject({ code: "team_exists" });
+    await expect(
+      module.spawnTemplate("lead", { templateId: template.id }),
+    ).rejects.toMatchObject({ code: "team_exists" });
+  });
+
+  it("rejects a roster from a missing template", async () => {
+    const { module } = harness();
+    await expect(
+      module.create({ leadSessionId: "lead", templateId: "missing" }),
+    ).rejects.toMatchObject({ code: "template_not_found" });
+    expect(await module.get("lead")).toBeNull();
+  });
+
+  it("spawns only roster members and applies their role and standing instructions", async () => {
+    const { module, sessions, sent } = harness();
+    const template = await module.saveTemplate({
+      name: "Review squad",
+      members: squadMembers,
+    });
+    await module.create({ leadSessionId: "lead", templateId: template.id });
+
+    await expect(
+      module.spawn("lead", { name: "stranger", prompt: "Help out" }),
+    ).rejects.toMatchObject({
+      code: "not_in_roster",
+      message: expect.stringContaining("Reviewer, 测试员"),
+    });
+    await expect(
+      module.spawn("lead", {
+        name: "测试员",
+        prompt: "Cover task 1",
+        agentRoleId: "role-1",
+      }),
+    ).rejects.toMatchObject({ code: "roster_fixes_agent" });
+
+    const member = await module.spawn("lead", {
+      name: "Reviewer",
+      prompt: "Own task 1: review the auth module.",
+    });
+
+    expect(member.agentRoleId).toBe("role-1");
+    expect(sessions.get(member.sessionId)?.agentType).toBe("claude-agent");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.content).toContain(
+      "Review PRs.\n\nOwn task 1: review the auth module.",
+    );
+    expect((await module.get("lead"))?.members.map((m) => m.name)).toEqual([
+      "Reviewer",
+    ]);
+  });
+
+  it("keeps the lead out of the roster and rejects a team without teammates", async () => {
+    const { module } = harness();
+    await expect(
+      module.saveTemplate({
+        name: "Solo",
+        members: [{ agentRoleId: "role-lead", prompt: "" }],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_template" });
+    const template = await module.saveTemplate({
+      name: "Pair",
+      members: pairMembers,
+    });
+
+    const team = await module.create({
+      leadSessionId: "lead",
+      templateId: template.id,
+    });
+
+    expect(team.roster?.members.map((member) => member.name)).toEqual([
+      "Reviewer",
+    ]);
+  });
+
   it("reads templates saved before description and avatar existed", async () => {
     const { module, settings } = harness();
     settings.set(
@@ -388,15 +523,47 @@ describe("TeamModule", () => {
         {
           id: "legacy",
           name: "Legacy",
-          members: [{ name: "a", agentRoleId: null, prompt: "go" }],
+          members: pairMembers,
           createdAt: "",
           updatedAt: "",
         },
       ]),
     );
     expect(await module.listTemplates()).toMatchObject([
-      { id: "legacy", description: null, avatar: null },
+      { id: "legacy", description: null, avatar: null, members: pairMembers },
     ]);
+  });
+
+  it("makes every member a distinct saved role", async () => {
+    const { module, settings } = harness();
+    settings.set(
+      "teamTemplates",
+      JSON.stringify([
+        {
+          id: "roleless",
+          name: "Roleless",
+          members: [{ name: "a", agentRoleId: null, prompt: "go" }],
+          createdAt: "",
+          updatedAt: "",
+        },
+      ]),
+    );
+    expect(await module.listTemplates()).toEqual([]);
+    for (const members of [
+      [
+        { agentRoleId: "role-lead", prompt: "" },
+        { agentRoleId: "missing", prompt: "go" },
+      ],
+      [
+        { agentRoleId: "role-lead", prompt: "" },
+        { agentRoleId: "role-1", prompt: "go" },
+        { agentRoleId: "role-1", prompt: "again" },
+      ],
+    ]) {
+      await expect(
+        module.saveTemplate({ name: "Squad", members }),
+      ).rejects.toMatchObject({ code: "invalid_template" });
+    }
   });
 
   it("stores a trimmed description and a normalized avatar", async () => {
@@ -405,7 +572,7 @@ describe("TeamModule", () => {
       name: "Squad",
       description: "  Reviews pull requests  ",
       avatar: { kind: "emoji", emoji: " 🦊 ", color: "teal" },
-      members: [{ name: "a", agentRoleId: null, prompt: "go" }],
+      members: pairMembers,
     });
     expect(template).toMatchObject({
       description: "Reviews pull requests",

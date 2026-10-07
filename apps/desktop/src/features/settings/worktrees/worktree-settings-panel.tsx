@@ -20,44 +20,60 @@ import { desktopApi, useMountEffect } from "@/lib";
 import { closeSettings } from "../settings-navigation";
 import { WorktreeInventory } from "./worktree-inventory";
 
+let lastSettings: WorktreeSettingsSnapshot | null = null;
+let lastGroups: ManagedWorktreeGroup[] | null = null;
+
 export function WorktreeSettingsPanel() {
   const { t } = useTranslation("settings");
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const createDraftSession = useSetAtom(createDraftSessionAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const [settings, setSettings] = useState<WorktreeSettingsSnapshot | null>(
-    null,
-  );
-  const [rootDraft, setRootDraft] = useState("");
-  const [groups, setGroups] = useState<ManagedWorktreeGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [settings, setSettings] = useState(lastSettings);
+  const [rootDraft, setRootDraft] = useState(lastSettings?.rootPath ?? "");
+  const [groups, setGroups] = useState(lastGroups);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
 
+  const applySettings = (next: WorktreeSettingsSnapshot) => {
+    lastSettings = next;
+    setSettings(next);
+    setRootDraft(next.rootPath ?? "");
+  };
+
+  const applyGroups = (listed: ManagedWorktree[]) => {
+    const next = groupManagedWorktrees(listed);
+    lastGroups = next;
+    setGroups(next);
+  };
+
   const loadInventory = async () => {
-    const listed = await desktopApi.listManagedWorktrees();
-    setGroups(groupManagedWorktrees(listed));
+    applyGroups(await desktopApi.listManagedWorktrees());
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await loadInventory();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   useMountEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const nextSettings = await desktopApi.getWorktreeSettings();
-        const listed = await desktopApi.listManagedWorktrees();
+        const [nextSettings, listed] = await Promise.all([
+          desktopApi.getWorktreeSettings(),
+          desktopApi.listManagedWorktrees(),
+        ]);
         if (cancelled) {
           return;
         }
-        setSettings(nextSettings);
-        setRootDraft(nextSettings.rootPath ?? "");
-        setGroups(groupManagedWorktrees(listed));
+        applySettings(nextSettings);
+        applyGroups(listed);
       } catch (error) {
         if (!cancelled) {
           toast.error(error instanceof Error ? error.message : String(error));
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
         }
       }
     })();
@@ -71,9 +87,7 @@ export function WorktreeSettingsPanel() {
     rootPath: string | null;
   }) => {
     try {
-      const saved = await desktopApi.saveWorktreeSettings(next);
-      setSettings(saved);
-      setRootDraft(saved.rootPath ?? "");
+      applySettings(await desktopApi.saveWorktreeSettings(next));
     } catch (error) {
       toast.error(
         t("worktrees.saveFailed", {
@@ -189,12 +203,11 @@ export function WorktreeSettingsPanel() {
       </SettingsGroup>
       <WorktreeInventory
         groups={groups}
-        isLoading={isLoading}
         pendingPath={pendingPath}
         onDelete={(worktree) => void handleDelete(worktree)}
         onNewSession={handleNewSession}
         onOpenSession={handleOpenSession}
-        onRefresh={() => void loadInventory()}
+        onRefresh={() => void handleRefresh()}
       />
     </div>
   );

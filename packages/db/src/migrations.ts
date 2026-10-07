@@ -6,7 +6,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 18;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -360,6 +360,15 @@ function dropStandaloneChatTables(database: DatabaseSync): void {
   database.exec("DROP TABLE IF EXISTS conversations");
 }
 
+function migrateTeamRosters(database: DatabaseSync): void {
+  if (
+    hasTable(database, "teams") &&
+    !hasColumn(database, "teams", "roster_json")
+  ) {
+    database.exec("ALTER TABLE teams ADD COLUMN roster_json TEXT");
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -373,6 +382,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [14, migrateAgentRoleAvatars],
   [15, migrateAgentRoleDescriptions],
   [16, dropStandaloneChatTables],
+  [17, migrateTeamRosters],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

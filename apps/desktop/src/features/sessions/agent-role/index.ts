@@ -1,4 +1,6 @@
+export { blankRoleDraft } from "./agent-role-draft";
 export { AgentRoleEditDialog } from "./agent-role-edit-dialog";
+export { AgentRoleForm } from "./agent-role-form";
 export { AgentRoleSettingsPanel } from "./agent-role-settings";
 export {
   getAgentRoles,

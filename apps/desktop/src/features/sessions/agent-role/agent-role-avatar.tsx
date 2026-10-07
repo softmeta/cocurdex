@@ -2,6 +2,7 @@ import type {
   AgentId,
   AgentRoleAvatar as AgentRoleAvatarValue,
 } from "@cocurdex/shared";
+import { User } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib";
 import { AgentIcon } from "../agent-icon";
@@ -33,6 +34,12 @@ const emojiSizeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "text-avatar-emoji-sm",
   md: "text-avatar-emoji-md",
   lg: "text-avatar-emoji-lg",
+};
+
+const placeholderIconClassName: Record<AgentRoleAvatarSize, string> = {
+  sm: "size-3",
+  md: "size-3.5",
+  lg: "size-4",
 };
 
 const badgeClassName: Record<AgentRoleAvatarSize, string> = {
@@ -67,7 +74,12 @@ export function AgentRoleAvatar({
         className,
       )}
     >
-      <AvatarGlyph placeholder={placeholder} role={role} />
+      <AvatarGlyph
+        placeholder={
+          placeholder ?? <User className={placeholderIconClassName[size]} />
+        }
+        role={role}
+      />
       {showAgent && role.agentId ? (
         <span className="absolute -end-0.5 -bottom-0.5 inline-flex rounded-full bg-popover p-px">
           <AgentIcon
@@ -84,13 +96,13 @@ function AvatarGlyph({
   placeholder,
   role,
 }: {
-  placeholder?: ReactNode;
+  placeholder: ReactNode;
   role: AvatarSource;
 }) {
   if (role.avatar?.kind === "emoji") {
     return role.avatar.emoji;
   }
-  if (placeholder && !role.name.trim()) {
+  if (!role.name.trim()) {
     return placeholder;
   }
   return agentRoleInitial(role.name);
