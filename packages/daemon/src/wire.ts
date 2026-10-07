@@ -15,7 +15,7 @@ import {
   createAgentToolHttpHandler,
   isAgentToolHttpRequest,
 } from "./agent-tools";
-import { prepareDaemonEndpoint } from "./daemon-endpoint";
+import { prepareDaemonEndpoint, probeDaemonEndpoint } from "./daemon-endpoint";
 import { acquireDaemonOwnership } from "./daemon-ownership";
 import { DaemonShutdownGate } from "./daemon-shutdown-gate";
 import {
@@ -124,9 +124,17 @@ export async function writeDaemonMetadata(
   }
 }
 
+async function isIncumbentServing(userDataPath: string) {
+  const state = await probeDaemonEndpoint(
+    getDaemonSocketPath(userDataPath),
+  ).catch(() => "absent" as const);
+  return state === "live";
+}
+
 export async function startDaemonServer(options: StartDaemonServerOptions) {
   const ownership = await acquireDaemonOwnership(
     options.userDataPath ?? getConfiguredUserDataPath(),
+    { isIncumbentServing },
   );
   const userDataPath = ownership.userDataPath;
   const socketPath = getDaemonSocketPath(userDataPath);
