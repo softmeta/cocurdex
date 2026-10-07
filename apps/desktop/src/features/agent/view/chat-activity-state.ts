@@ -12,6 +12,7 @@ export type ActivityKind =
   | "completed"
   | "planning"
   | "ready"
+  | "responding"
   | "thinking"
   | "usingTools";
 
@@ -67,7 +68,7 @@ export function getActivityState({
   messages: MessageRecord[];
   status?: SessionStatus;
   toolCalls: AgentToolCallRecord[];
-}): ActivityState | null {
+}): ActivityState {
   const latestMessage = messages.at(-1);
 
   if (status === "error") {
@@ -88,7 +89,7 @@ export function getActivityState({
 
   if (isRunning && latestMessage?.role === "assistant") {
     return isStreamingResponse(latestMessage, toolCalls)
-      ? null
+      ? { kind: "responding", tone: "running" }
       : { kind: "thinking", tone: "running" };
   }
 

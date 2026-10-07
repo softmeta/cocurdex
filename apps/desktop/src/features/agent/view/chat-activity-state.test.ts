@@ -107,3 +107,78 @@ describe("getShownToolCallChangeDelay", () => {
     ).toBeNull();
   });
 });
+
+describe("getActivityState while replying", () => {
+  const reply = {
+    attachments: [],
+    content: "Reading the orchestrator",
+    createdAt: "2026-10-07T00:00:01.000Z",
+    id: "reply",
+    role: "assistant" as const,
+    sessionId: "session-1",
+  };
+
+  it("keeps a running state while the reply text streams", () => {
+    const activity = getActivityState({
+      isRunning: true,
+      messages: [reply],
+      toolCalls: [toolCall("done", "completed")],
+    });
+
+    expect(activity).toEqual({ kind: "responding", tone: "running" });
+  });
+
+  it.each([
+    { content: "Reasoning", kind: "reasoning" as const },
+    { content: "   " },
+  ])("keeps thinking for a non-response message: %j", (message) => {
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [{ ...reply, ...message }],
+        toolCalls: [],
+      }),
+    ).toEqual({ kind: "thinking", tone: "running" });
+  });
+
+  it("returns to thinking after a tool follows the reply", () => {
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [reply],
+        toolCalls: [
+          {
+            ...toolCall("done", "completed"),
+            startedAt: "2026-10-07T00:00:02.000Z",
+          },
+        ],
+      }),
+    ).toEqual({ kind: "thinking", tone: "running" });
+  });
+
+  it("uses event sequence when reply and tool timestamps match", () => {
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [{ ...reply, seq: 1 }],
+        toolCalls: [
+          {
+            ...toolCall("done", "completed"),
+            seq: 2,
+            startedAt: reply.createdAt,
+          },
+        ],
+      }),
+    ).toEqual({ kind: "thinking", tone: "running" });
+  });
+
+  it("marks the reply complete when the run ends", () => {
+    expect(
+      getActivityState({
+        isRunning: false,
+        messages: [reply],
+        toolCalls: [],
+      }),
+    ).toEqual({ kind: "completed", tone: "complete" });
+  });
+});
