@@ -598,6 +598,8 @@ const MessageArticle = memo(function MessageArticle({
   const turnChangeSet = useTurnChangeSet(message.id);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const articleClassName = getMessageArticleClassName(message);
+  const isAssistantStreaming =
+    message.role === "assistant" && isRunning && isStreamingLatest;
   const hasAssistantBody =
     message.content.trim().length > 0 || message.attachments.length > 0;
   const showAssistantActions =
@@ -640,16 +642,15 @@ const MessageArticle = memo(function MessageArticle({
           ) : (
             <div ref={contentRef}>
               <MarkdownRenderer
-                className={
-                  message.role === "assistant" ? "space-y-2" : "space-y-1.5"
-                }
+                className={cn(
+                  message.role === "assistant" ? "space-y-2" : "space-y-1.5",
+                  isAssistantStreaming && "stream-brand-caret",
+                )}
                 content={message.content}
                 filePathHandlers={
                   message.role === "assistant" ? filePathHandlers : undefined
                 }
-                streaming={
-                  message.role === "assistant" && isRunning && isStreamingLatest
-                }
+                streaming={isAssistantStreaming}
                 tone={
                   message.role === "assistant"
                     ? "assistant"

@@ -1,15 +1,24 @@
 import { cn } from "@/lib";
 
+export type CocurdexMarkMotion = "thinking" | "working";
+
+const MOTION_CLASS_NAMES: Record<CocurdexMarkMotion, string> = {
+  thinking: "cocurdex-mark-thinking",
+  working: "cocurdex-mark-working",
+};
+
 interface CocurdexMarkProps {
   className?: string;
   /** Welcome-surface hover: redraw the C, then blink the prompt caret. */
   interactive?: boolean;
+  motion?: CocurdexMarkMotion;
 }
 
 /** App mark used on the boot splash and the empty-session greeting. */
 export function CocurdexMark({
   className,
   interactive = false,
+  motion,
 }: CocurdexMarkProps) {
   return (
     <svg
@@ -17,6 +26,7 @@ export function CocurdexMark({
       className={cn(
         "text-brand-mark",
         interactive && "cocurdex-mark-live",
+        motion && MOTION_CLASS_NAMES[motion],
         className,
       )}
       fill="none"

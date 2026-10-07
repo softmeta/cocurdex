@@ -12,13 +12,13 @@ import {
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { CocurdexMark } from "@/components/cocurdex-mark";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuSeparator,
   ContextMenuTrigger,
   SidebarListRow,
-  Spinner,
   Text,
 } from "@/components/ui";
 import { permissionsBySessionAtom } from "@/features/agent/permission";
@@ -78,11 +78,9 @@ function SessionStatusIndicator({
           aria-label={t("sidebar.pendingAttention")}
         />
       ) : (
-        <Spinner
-          aria-label={t("sidebar.running")}
-          className="text-sidebar-thinking-fg"
-          size="xs"
-        />
+        <span aria-label={t("sidebar.running")} role="img">
+          <CocurdexMark className="size-4" motion="working" />
+        </span>
       )}
     </span>
   );
