@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { statSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
@@ -25,18 +26,14 @@ import type {
   AppResyncSnapshot,
   CocurdexDaemonEvent,
   CommitMessageModelSelection,
-  CreateConversationPayload,
   CreateWorkflowPayload,
-  EditConversationMessagePayload,
   GetToolCallResultInput,
   GitCommitResult,
   MessageRecord,
   NetworkProxySettings,
   RefineSessionTitlePayload,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
-  SendConversationMessagePayload,
   SendSessionCommand,
   SessionConfiguration,
   SessionRecord,
@@ -51,10 +48,13 @@ import type {
   WorktreeSettings,
 } from "@cocurdex/shared";
 import {
+  CHAT_WORKSPACE_ID,
   emptyWorktreeEnvironment,
   getNetworkProxySettings,
   isAgentId,
   isAssistantSessionId,
+  isChatSession,
+  isChatWorkspaceId,
   isToolCallId,
   isWorkspaceSearchDaemonEvent,
   isWorkspaceWatchDaemonEvent,
@@ -89,7 +89,6 @@ import {
   discoverInstalledAgentCapabilities,
 } from "./agents";
 import { DaemonAttachmentStore } from "./attachment-store";
-import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { logDaemonDiagnostic } from "./diagnostics";
@@ -106,10 +105,6 @@ import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
-import {
-  resolveChatProvider,
-  resolveTitleChatProvider,
-} from "./provider/chat-provider";
 import { CodexLoginSessions } from "./provider/codex-login";
 import { generateProviderSessionTitle } from "./provider/session-title";
 import {
@@ -206,7 +201,6 @@ function isExistingDirectory(directoryPath: string) {
 }
 
 export class CocurdexDaemonService {
-  readonly chatService: DaemonChatService;
   readonly events = new EventEmitter();
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
@@ -257,10 +251,6 @@ export class CocurdexDaemonService {
     this.userDataPath = options.userDataPath;
     this.sessionCheckpoints = new SessionCheckpointStore(options.userDataPath);
     this.state = new DaemonState(options.userDataPath);
-    this.chatService = new DaemonChatService({
-      getDatabase: () => this.state.getChatDatabase(),
-      broadcast: (event) => this.events.emit("daemon.event", event),
-    });
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
     this.providerCredentials = new ProviderCredentials(
@@ -526,7 +516,6 @@ export class CocurdexDaemonService {
         (count, inputs) => count + inputs.length,
         0,
       ),
-      chatOperations: this.chatService.activeOperationCount,
       workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
@@ -1356,6 +1345,9 @@ export class CocurdexDaemonService {
 
   private async configureSession(input: SessionConfiguration) {
     await this.ensureAgentAvailable(input.agentType);
+    if (isChatWorkspaceId(input.workspaceId)) {
+      await this.ensureChatWorkspace();
+    }
     const workspace = (await this.state.listWorkspaces()).find(
       (item) => item.id === input.workspaceId,
     );
@@ -1378,6 +1370,27 @@ export class CocurdexDaemonService {
     );
     await this.state.saveSession(session);
     return session;
+  }
+
+  private async ensureChatWorkspace() {
+    const rootPath = path.join(this.userDataPath, "chat");
+    await mkdir(rootPath, { recursive: true });
+    const existing = (await this.state.listWorkspaces()).find(
+      (workspace) => workspace.id === CHAT_WORKSPACE_ID,
+    );
+    if (existing && workspacePathsEqual(existing.rootPaths[0] ?? "", rootPath))
+      return;
+    const now = new Date().toISOString();
+    await this.state.saveWorkspace({
+      id: CHAT_WORKSPACE_ID,
+      name: "Chat",
+      rootPaths: [rootPath],
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      lastOpenedAt: existing?.lastOpenedAt ?? now,
+      sortOrder: existing?.sortOrder ?? 0,
+    });
+    this.scanPolicy.invalidate();
   }
 
   async getSession(sessionId: string) {
@@ -1528,54 +1541,6 @@ export class CocurdexDaemonService {
     }
   }
 
-  private resolveChatProvider(providerId: string, modelId: string) {
-    return resolveChatProvider(
-      this.state,
-      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
-      providerId,
-      modelId,
-    );
-  }
-
-  private async resolveConversationProvider(conversationId: string) {
-    const snapshot = await this.chatService.get(conversationId);
-    if (!snapshot) throw new Error("Conversation not found");
-    return this.resolveChatProvider(
-      snapshot.conversation.providerId,
-      snapshot.conversation.modelId,
-    );
-  }
-
-  async createConversation(payload: CreateConversationPayload) {
-    await this.resolveChatProvider(payload.providerId, payload.modelId);
-    return this.chatService.create(payload);
-  }
-
-  async sendConversationMessage(payload: SendConversationMessagePayload) {
-    const providerConfig = await this.resolveConversationProvider(
-      payload.conversationId,
-    );
-    const titleProviderConfig = await resolveTitleChatProvider(
-      this.state,
-      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
-    );
-    return this.chatService.send(payload, providerConfig, titleProviderConfig);
-  }
-
-  async retryConversationMessage(payload: RetryConversationMessagePayload) {
-    return this.chatService.retry(
-      payload,
-      await this.resolveConversationProvider(payload.conversationId),
-    );
-  }
-
-  async editConversationMessage(payload: EditConversationMessagePayload) {
-    return this.chatService.edit(
-      payload,
-      await this.resolveConversationProvider(payload.conversationId),
-    );
-  }
-
   listSessionSlashCommands(agentType: AgentId, workspaceRootPath: string) {
     return this.runtime.listSessionSlashCommands(agentType, workspaceRootPath);
   }
@@ -1594,7 +1559,7 @@ export class CocurdexDaemonService {
     if (!isToolCallId(input?.toolCallId)) {
       throw new Error("Invalid tool call ID");
     }
-    const database = await this.state.getChatDatabase();
+    const database = await this.state.getDatabase();
     return database.toolCalls.getResultById(input.toolCallId);
   }
 
@@ -1680,7 +1645,13 @@ export class CocurdexDaemonService {
       content: command.content.trim(),
       attachments: command.attachments ?? [],
     };
-    await this.rewindSession(message);
+    const rewoundNatively = await this.rewindNativeConversation(
+      context,
+      message.id,
+    );
+    await this.rewindSession(message, {
+      keepProviderSession: rewoundNatively,
+    });
     return this.acceptSessionMessage({
       sessionId: command.sessionId,
       messageId: message.id,
@@ -1694,6 +1665,7 @@ export class CocurdexDaemonService {
     payload: SessionRuntimeMessage,
     message: MessageRecord,
   ) {
+    if (isChatSession(payload.session)) return;
     await this.sessionCheckpoints
       .capture({
         sessionId: message.sessionId,
@@ -1710,7 +1682,52 @@ export class CocurdexDaemonService {
       });
   }
 
-  private async rewindSession(message: MessageRecord) {
+  private async rewindNativeConversation(
+    context: SessionExecutionContext,
+    messageId: string,
+  ) {
+    const sessionId = context.session.id;
+    const agent = await this.ensureAgentAvailable(context.session.agentType);
+    if (!agent.capabilities.supportsConversationRewind) {
+      return false;
+    }
+    const userMessageIndex = (
+      await this.state.listMessagesBySessionId(sessionId)
+    )
+      .filter((message) => message.role === "user")
+      .findIndex((message) => message.id === messageId);
+    try {
+      if (userMessageIndex >= 0) {
+        const persistence = {
+          ...(await this.createRuntimePersistence(sessionId)),
+          providerConfig: await this.providerCredentials.forSession(
+            context.session,
+          ),
+        };
+        if (
+          await this.runtime.rewindSessionConversation(
+            context,
+            persistence,
+            userMessageIndex,
+          )
+        ) {
+          return true;
+        }
+      }
+    } catch (error) {
+      logDaemonDiagnostic("warn", "session.conversationRewindFailed", {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    await this.disposeSessionRuntime(sessionId);
+    return false;
+  }
+
+  private async rewindSession(
+    message: MessageRecord,
+    { keepProviderSession = false } = {},
+  ) {
     if (this.pendingTurns.has(message.sessionId)) {
       throw new Error(
         `Session ${message.sessionId} still has an active turn after stop`,
@@ -1718,7 +1735,7 @@ export class CocurdexDaemonService {
     }
     this.queuedFollowUps.delete(message.sessionId);
     this.runtime.clearSessionPlan(message.sessionId);
-    await this.state.rewindSessionMessages(message);
+    await this.state.rewindSessionMessages(message, { keepProviderSession });
     await this.state.deleteQueuedAgentInput(message.id);
   }
 
@@ -2315,7 +2332,6 @@ export class CocurdexDaemonService {
     const schedulerClose = this.workflowWorkerScheduler.close();
     try {
       const results = await Promise.allSettled([
-        this.chatService.shutdown(),
         this.runtime.shutdown(),
         schedulerClose,
         this.acpRegistry.ready,
@@ -2473,11 +2489,13 @@ export class CocurdexDaemonService {
       }
     }
 
-    await this.workspaceChanges.beginTurn({
-      sessionId: payload.session.id,
-      userMessageId: userMessage.id,
-      workspaceRootPath: payload.workspaceRootPath,
-    });
+    if (!isChatSession(payload.session)) {
+      await this.workspaceChanges.beginTurn({
+        sessionId: payload.session.id,
+        userMessageId: userMessage.id,
+        workspaceRootPath: payload.workspaceRootPath,
+      });
+    }
 
     if (pendingTurn.cancelled) {
       await this.workspaceChanges.failTurn(payload.session.id, "interrupted");

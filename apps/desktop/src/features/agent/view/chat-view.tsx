@@ -58,6 +58,7 @@ const PREVIOUS_MESSAGE_REVERT_PREFERENCE_KEY =
   "agents.previousMessageRevertPreference";
 
 export function ChatView({
+  chatComposer,
   messages,
   permissionRequests = [],
   pendingPlanApproval = null,
@@ -384,9 +385,11 @@ export function ChatView({
         return;
       }
 
-      const checkpointStatus = checkCheckpoint
-        ? await checkCheckpoint(message)
-        : { available: false };
+      if (!checkCheckpoint) {
+        await submit(message, content, false);
+        return;
+      }
+      const checkpointStatus = await checkCheckpoint(message);
       const storedPreference = localStorage.getItem(
         PREVIOUS_MESSAGE_REVERT_PREFERENCE_KEY,
       ) as PreviousMessageRevertPreference | null;
@@ -600,6 +603,7 @@ export function ChatView({
       </div>
       {timelineGroups.length > 0 || readOnly ? (
         <ComposerDock
+          chatComposer={chatComposer}
           activeBranch={activeBranch}
           workspaceName={workspaceName}
           sessionId={sessionId}

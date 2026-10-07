@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { FileTypeIconSprite } from "@/components";
 import { Button, Text, Toaster } from "@/components/ui";
-import { useChatEventBridge } from "@/features/chat";
 import { composerDraftsAtom } from "@/features/composer";
 import { sessionSplitLayoutAtom } from "@/features/sessions";
 import { HostDirectoryPickerHost } from "@/features/workspaces";
@@ -118,7 +117,6 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
 }
 
 export function DetachedChatApp() {
-  useChatEventBridge();
   const store = useStore();
   const { t } = useTranslation("sessions");
   const [transfer, setTransfer] = useState<ChatWindowTransfer | null>(null);

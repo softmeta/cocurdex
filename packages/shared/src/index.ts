@@ -8,14 +8,13 @@ export * from "./agent-tools";
 export * from "./agent-versions";
 export * from "./assistant-session";
 export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
-export * from "./chat-events";
+export * from "./chat-session";
 export * from "./codex-models";
 export type {
   GenerateGitCommitMessagePayload,
   ResolvedCommitMessageModel,
 } from "./commit-message";
 export * from "./contracts";
-export * from "./conversation";
 export * from "./data-events";
 export * from "./files";
 export * from "./git";

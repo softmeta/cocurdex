@@ -22,12 +22,8 @@ export function sessionComposerDraftKey(sessionId: string) {
   return `session:${sessionId}`;
 }
 
-export function newConversationComposerDraftKey() {
-  return "new-conversation";
-}
-
-export function conversationComposerDraftKey(conversationId: string) {
-  return `conversation:${conversationId}`;
+export function newChatComposerDraftKey() {
+  return "new-chat";
 }
 
 export function isComposerDraftEmpty(draft: ComposerDraft) {

@@ -11,7 +11,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui";
-import { conversationsAtom } from "@/features/chat";
 import type { ChatComposerHandle } from "@/features/composer";
 import {
   minSessionPaneSize,
@@ -82,7 +81,6 @@ export function SessionSplitLayout({
 }: SessionSplitLayoutProps) {
   const layout = useAtomValue(sessionSplitLayoutAtom);
   const sessions = useAtomValue(sessionsAtom);
-  const conversations = useAtomValue(conversationsAtom);
   const setSplitSizes = useSetAtom(setSessionSplitSizesAtom);
   const {
     closeAllPanes,
@@ -224,7 +222,7 @@ export function SessionSplitLayout({
             isFocused={isFocused}
             occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
             paneId={node.pane.id}
-            title={sessionPaneTitle(node.pane, conversations, sessions)}
+            title={sessionPaneTitle(node.pane, sessions)}
             onClose={() => handleClose(node.pane.id)}
             onCloseAll={() => handleCloseAll(node.pane.id)}
             onSplitDown={() => splitPaneById(node.pane.id, "down")}

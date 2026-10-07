@@ -24,7 +24,7 @@ describe("chat presentation handoff", () => {
     source.set(draftWorktreePathAtom, "/work/project/feature");
     source.set(sessionSplitLayoutAtom, {
       type: "pane",
-      pane: { id: "reading", sessionId: "session-1", conversationId: null },
+      pane: { id: "reading", sessionId: "session-1" },
     });
     source.set(focusedPaneIdAtom, "reading");
     source.set(newSessionModesAtom, { "workspace-1": "plan" });

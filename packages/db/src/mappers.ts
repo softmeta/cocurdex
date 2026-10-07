@@ -6,11 +6,6 @@ import {
   type AgentRoleRecord,
   type AgentThinkingLevel,
   type AgentToolCallRecord,
-  type ConversationContentPart,
-  type ConversationMessageRecord,
-  type ConversationRecord,
-  type ConversationSource,
-  type ConversationUsage,
   type EditorViewRecord,
   isAgentId,
   type MessageRecord,
@@ -60,6 +55,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
     sessionKind:
       row.session_kind === "subagent" ||
       row.session_kind === "teammate" ||
+      row.session_kind === "chat" ||
       row.session_kind === "main"
         ? row.session_kind
         : "main",
@@ -242,39 +238,6 @@ export function mapProviderSecret(row: SqliteRow): ProviderSecretRecord {
   return {
     id: String(row.id),
     encryptedValue: String(row.encrypted_value),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  };
-}
-
-export function mapConversation(row: SqliteRow): ConversationRecord {
-  return {
-    id: String(row.id),
-    title: String(row.title),
-    providerId: String(row.provider_id),
-    modelId: String(row.model_id),
-    systemPrompt: toNullableString(row.system_prompt),
-    presetId: toNullableString(row.preset_id),
-    webSearchEnabled: toBoolean(row.web_search_enabled),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-    lastMessageAt: toNullableString(row.last_message_at),
-    archivedAt: toNullableString(row.archived_at),
-  };
-}
-
-export function mapConversationMessage(
-  row: SqliteRow,
-): ConversationMessageRecord {
-  return {
-    id: String(row.id),
-    conversationId: String(row.conversation_id),
-    role: row.role as ConversationMessageRecord["role"],
-    content: parseJson<ConversationContentPart[]>(row.content_json, []),
-    status: row.status as ConversationMessageRecord["status"],
-    usage: parseJson<ConversationUsage | null>(row.usage_json, null),
-    sources: parseJson<ConversationSource[]>(row.sources_json, []),
-    error: toNullableString(row.error),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

@@ -110,6 +110,7 @@ export interface AgentSession {
   rewindNativeWorkspaceChanges?(
     input: NativeWorkspaceRewindInput,
   ): Promise<NativeWorkspaceRewindResult>;
+  rewindToUserMessage?(userMessageIndex: number): Promise<boolean>;
   // Abandon the in-flight turn without ending the provider session: the next
   // sendMessage must be able to continue the same conversation.
   stop(): void | Promise<void>;

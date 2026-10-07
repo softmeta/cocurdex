@@ -1,4 +1,5 @@
 import type { SessionConfiguration, SessionRecord } from "@cocurdex/shared";
+import { CHAT_WORKSPACE_ID } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { applySessionConfiguration } from "./configuration";
 
@@ -67,5 +68,52 @@ describe("session configuration ownership", () => {
     expect(() =>
       applySessionConfiguration(input, { ...original, archivedAt: now }, now),
     ).toThrow("Restore");
+  });
+
+  describe("chat sessions", () => {
+    const chat: SessionConfiguration = {
+      ...input,
+      workspaceId: CHAT_WORKSPACE_ID,
+      sessionKind: "chat",
+    };
+
+    it("creates a Pi session in the chat workspace", () => {
+      expect(applySessionConfiguration(chat, null, now)).toMatchObject({
+        workspaceId: CHAT_WORKSPACE_ID,
+        sessionKind: "chat",
+        agentType: "pi",
+      });
+    });
+
+    it("keeps the chat kind when later configuration omits it", () => {
+      const created = applySessionConfiguration(chat, null, now);
+      const { sessionKind: _, ...update } = chat;
+      expect(
+        applySessionConfiguration({ ...update, title: "Renamed" }, created, now)
+          .sessionKind,
+      ).toBe("chat");
+    });
+
+    it.each([
+      [{ ...input, sessionKind: "chat" as const }, "chat workspace"],
+      [{ ...input, workspaceId: CHAT_WORKSPACE_ID }, "chat workspace"],
+      [{ ...chat, agentType: "codex" as const }, "Pi agent"],
+      [{ ...chat, worktreePath: "/tmp/tree" }, "worktree"],
+    ])("rejects an invalid chat configuration", (config, message) => {
+      expect(() => applySessionConfiguration(config, null, now)).toThrow(
+        message,
+      );
+    });
+
+    it("rejects changing the kind of an existing session", () => {
+      const created = applySessionConfiguration(input, null, now);
+      expect(() =>
+        applySessionConfiguration(
+          { ...input, sessionKind: "chat" },
+          created,
+          now,
+        ),
+      ).toThrow("cannot change its kind");
+    });
   });
 });

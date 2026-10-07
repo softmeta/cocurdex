@@ -39,6 +39,7 @@ export {
   reorderWorkspacesAtom,
   selectWorkspaceAtom,
   updateWorkspaceAtom,
+  withoutChatWorkspace,
   workspacesAtom,
 } from "./workspace-store";
 export { WorktreePicker } from "./worktree-picker";

@@ -1,8 +1,11 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
-import type {
-  ChatEvent,
-  CocurdexDaemonEvent,
-  ConversationMessageRecord,
+import {
+  CHAT_WORKSPACE_ID,
+  type CocurdexDaemonEvent,
+  createProviderSnapshotForModel,
+  type MessageRecord,
+  type ProviderConfigRecord,
+  type ProviderModelRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
@@ -12,71 +15,83 @@ import {
 } from "./helpers/daemon-process";
 import { type StubLlmServer, startStubLlmServer } from "./helpers/llm-stub";
 
-async function createConversation(daemon: DaemonProcess, stub: StubLlmServer) {
+async function startChatSession(daemon: DaemonProcess, stub: StubLlmServer) {
   const now = new Date().toISOString();
+  const provider: ProviderConfigRecord = {
+    id: "e2e-stub",
+    name: "E2E Stub",
+    baseUrl: stub.baseUrl,
+    enabled: true,
+    apiKeySecretId: null,
+    headersJson: JSON.stringify({ Authorization: "Bearer e2e-key" }),
+    createdAt: now,
+    updatedAt: now,
+  };
+  const model: ProviderModelRecord = {
+    providerId: "e2e-stub",
+    modelId: "e2e-model",
+    name: "E2E Model",
+    api: "openai-completions",
+    enabled: true,
+    source: "manual",
+    capabilities: ["chat"],
+    createdAt: now,
+    updatedAt: now,
+  };
   await requestDaemon(
     "provider.config.save",
-    {
-      config: {
-        id: "e2e-stub",
-        name: "E2E Stub",
-        baseUrl: stub.baseUrl,
-        enabled: true,
-        apiKeySecretId: null,
-        headersJson: JSON.stringify({ Authorization: "Bearer e2e-key" }),
-        createdAt: now,
-        updatedAt: now,
-      },
-    },
+    { config: provider },
     daemon.options,
   );
-  await requestDaemon(
-    "provider.model.save",
-    {
-      model: {
-        providerId: "e2e-stub",
-        modelId: "e2e-model",
-        name: "E2E Model",
-        api: "openai-completions",
-        enabled: true,
-        source: "manual",
-        capabilities: ["chat"],
-        createdAt: now,
-        updatedAt: now,
-      },
-    },
-    daemon.options,
-  );
+  await requestDaemon("provider.model.save", { model }, daemon.options);
   return requestDaemon(
-    "chat.create",
+    "session.configure",
     {
-      providerId: "e2e-stub",
-      modelId: "e2e-model",
-      title: "Pinned e2e title",
+      id: crypto.randomUUID(),
+      workspaceId: CHAT_WORKSPACE_ID,
+      sessionKind: "chat",
+      title: "Chat",
+      agentType: "pi",
+      writeMode: "read-only",
+      sessionModeId: null,
+      providerSnapshot: createProviderSnapshotForModel({ provider, model }),
     },
     daemon.options,
   );
 }
 
-function chatEvents(events: CocurdexDaemonEvent[]): ChatEvent[] {
-  return events.filter(
-    (event): event is ChatEvent => "conversationId" in event,
+function completedResponses(events: CocurdexDaemonEvent[]): MessageRecord[] {
+  return events.flatMap((event) =>
+    event.type === "message.completed" &&
+    event.message.role === "assistant" &&
+    event.message.kind === "response"
+      ? [event.message]
+      : [],
   );
 }
 
-function completedAssistant(
+function hasStatus(
   events: CocurdexDaemonEvent[],
-): ConversationMessageRecord | undefined {
-  const completed = [...chatEvents(events)]
-    .reverse()
-    .find((event) => event.type === "conversation.message.completed");
-  return completed?.type === "conversation.message.completed"
-    ? completed.message
-    : undefined;
+  sessionId: string,
+  status: string,
+) {
+  return events.some(
+    (event) =>
+      event.type === "state.changed" &&
+      event.sessionId === sessionId &&
+      event.status === status,
+  );
 }
 
-describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
-  it("streams a chat turn through the real socket and persists it", async () => {
+function userTurns(body: Record<string, unknown>) {
+  const messages = body.messages as { role: string; content: unknown }[];
+  return messages
+    .filter((message) => message.role === "user")
+    .map((message) => JSON.stringify(message.content));
+}
+
+describe("chat sessions over a stubbed OpenAI-compatible provider", () => {
+  it("answers through Pi without tools or project context", async () => {
     const stub = await startStubLlmServer();
     const daemon = await spawnDaemon();
     try {
@@ -85,42 +100,32 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
         (event) => events.push(event),
         daemon.options,
       );
-      const conversation = await createConversation(daemon, stub);
+      const session = await startChatSession(daemon, stub);
+      expect(session.sessionKind).toBe("chat");
       stub.plan = { kind: "stream", chunks: ["Hello", " from", " stub"] };
 
-      const user = await requestDaemon(
-        "chat.send",
-        { conversationId: conversation.id, text: "hi there" },
+      await requestDaemon(
+        "session.send",
+        { sessionId: session.id, content: "hi there" },
         daemon.options,
       );
-      expect(user.role).toBe("user");
-      expect(user.status).toBe("completed");
 
-      await waitFor(() => completedAssistant(events) !== undefined);
-      const assistant = completedAssistant(events);
-      expect(assistant?.role).toBe("assistant");
-      expect(assistant?.status).toBe("completed");
-      expect(assistant?.error).toBeNull();
-      expect(assistant?.content).toEqual([
-        { type: "text", text: "Hello from stub" },
-      ]);
-      expect(assistant?.usage?.outputTokens).toBe(7);
+      await waitFor(() => completedResponses(events).length > 0);
+      expect(completedResponses(events)[0]?.content).toBe("Hello from stub");
 
-      const snapshot = await requestDaemon(
-        "chat.get",
-        { conversationId: conversation.id },
-        daemon.options,
+      const request = stub.requests[0];
+      expect(request?.path).toBe("/v1/chat/completions");
+      expect(request?.authorization).toBe("Bearer e2e-key");
+      expect(request?.body.tools ?? []).toEqual([]);
+      expect(JSON.stringify(request?.body.messages)).toContain(
+        "helpful assistant",
       );
-      expect(snapshot?.messages.map((message) => message.role)).toEqual([
-        "user",
-        "assistant",
-      ]);
 
-      const llmRequest = stub.requests[0];
-      expect(llmRequest?.path).toBe("/v1/chat/completions");
-      expect(llmRequest?.authorization).toBe("Bearer e2e-key");
-      expect(llmRequest?.body.model).toBe("e2e-model");
-      expect(llmRequest?.body.stream).toBe(true);
+      const workspaces = await requestDaemon("workspace.list", daemon.options);
+      expect(
+        workspaces.find((workspace) => workspace.id === CHAT_WORKSPACE_ID)
+          ?.rootPaths,
+      ).toHaveLength(1);
       subscription.close();
     } finally {
       await daemon.dispose();
@@ -128,7 +133,7 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
     }
   });
 
-  it("cancels an in-flight turn when chat.stop aborts the provider request", async () => {
+  it("replaces later turns in the model context when a message is edited", async () => {
     const stub = await startStubLlmServer();
     const daemon = await spawnDaemon();
     try {
@@ -137,59 +142,83 @@ describe("daemon chat over a stubbed OpenAI-compatible provider", () => {
         (event) => events.push(event),
         daemon.options,
       );
-      const conversation = await createConversation(daemon, stub);
+      const session = await startChatSession(daemon, stub);
+      stub.plan = { kind: "stream", chunks: ["Answer"] };
+
+      for (const content of ["first question", "second question"]) {
+        const before = completedResponses(events).length;
+        await requestDaemon(
+          "session.send",
+          { sessionId: session.id, content },
+          daemon.options,
+        );
+        await waitFor(() => completedResponses(events).length > before);
+        await waitFor(() => hasStatus(events, session.id, "idle"));
+      }
+      const { messages } = await requestDaemon(
+        "session.listMessages",
+        { sessionId: session.id },
+        daemon.options,
+      );
+      const second = messages.find(
+        (message) => message.content === "second question",
+      );
+      if (!second) throw new Error("Missing second user message");
+
+      const before = completedResponses(events).length;
+      await requestDaemon(
+        "session.resubmit",
+        {
+          sessionId: session.id,
+          messageId: second.id,
+          content: "revised question",
+          revertWorkspace: false,
+        },
+        daemon.options,
+      );
+      await waitFor(() => completedResponses(events).length > before);
+
+      const edited = stub.requests.at(-1)?.body;
+      if (!edited) throw new Error("Missing edited request");
+      const turns = userTurns(edited);
+      expect(turns.some((turn) => turn.includes("first question"))).toBe(true);
+      expect(turns.some((turn) => turn.includes("revised question"))).toBe(
+        true,
+      );
+      expect(turns.some((turn) => turn.includes("second question"))).toBe(
+        false,
+      );
+      subscription.close();
+    } finally {
+      await daemon.dispose();
+      await stub.close();
+    }
+  });
+
+  it("stops an in-flight answer", async () => {
+    const stub = await startStubLlmServer();
+    const daemon = await spawnDaemon();
+    try {
+      const events: CocurdexDaemonEvent[] = [];
+      const subscription = await subscribeDaemonEvents(
+        (event) => events.push(event),
+        daemon.options,
+      );
+      const session = await startChatSession(daemon, stub);
       stub.plan = { kind: "hang" };
 
       await requestDaemon(
-        "chat.send",
-        { conversationId: conversation.id, text: "wait" },
+        "session.send",
+        { sessionId: session.id, content: "wait" },
         daemon.options,
       );
-      const llmRequest = await stub.nextRequest();
-      expect(llmRequest.path).toBe("/v1/chat/completions");
-
+      await stub.nextRequest();
       await requestDaemon(
-        "chat.stop",
-        { conversationId: conversation.id },
+        "session.stop",
+        { sessionId: session.id },
         daemon.options,
       );
-      await waitFor(() => completedAssistant(events) !== undefined);
-      const assistant = completedAssistant(events);
-      expect(assistant?.role).toBe("assistant");
-      expect(assistant?.status).toBe("cancelled");
-      subscription.close();
-    } finally {
-      await daemon.dispose();
-      await stub.close();
-    }
-  });
-
-  it("records an errored assistant message when the provider fails", async () => {
-    const stub = await startStubLlmServer();
-    const daemon = await spawnDaemon();
-    try {
-      const events: CocurdexDaemonEvent[] = [];
-      const subscription = await subscribeDaemonEvents(
-        (event) => events.push(event),
-        daemon.options,
-      );
-      const conversation = await createConversation(daemon, stub);
-      stub.plan = {
-        kind: "fail",
-        status: 500,
-        message: "stubbed provider failure",
-      };
-
-      await requestDaemon(
-        "chat.send",
-        { conversationId: conversation.id, text: "boom" },
-        daemon.options,
-      );
-      await waitFor(() => completedAssistant(events) !== undefined);
-      const assistant = completedAssistant(events);
-      expect(assistant?.role).toBe("assistant");
-      expect(assistant?.status).toBe("errored");
-      expect(assistant?.error).toBeTruthy();
+      await waitFor(() => hasStatus(events, session.id, "idle"));
       subscription.close();
     } finally {
       await daemon.dispose();

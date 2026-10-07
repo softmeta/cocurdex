@@ -62,7 +62,6 @@ describe("activeWorkingPathAtom", () => {
     store.set(sessionsAtom, [session("/tmp/worktrees/session")]);
     store.set(bindFocusedPaneContentAtom, {
       sessionId: "session-1",
-      conversationId: null,
     });
 
     expect(store.get(activeWorkingPathAtom)).toBe("/tmp/worktrees/session");
@@ -81,7 +80,6 @@ describe("activeWorkingPathAtom", () => {
     store.set(sessionsAtom, [session("/tmp/worktrees/session")]);
     store.set(bindFocusedPaneContentAtom, {
       sessionId: "session-1",
-      conversationId: null,
     });
 
     expect(store.get(activeWorkingPathAtom)).toBe("/tmp/worktrees/session");

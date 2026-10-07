@@ -1,7 +1,6 @@
 import type { SessionRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
-import { selectConversationAtom } from "@/features/chat/chat-store";
 import {
   activeSessionIdAtom,
   bootstrapSessionsAtom,
@@ -9,7 +8,6 @@ import {
   selectSessionAtom,
 } from "../session-store";
 import {
-  bindFocusedPaneContentAtom,
   bindPaneContentAtom,
   collapseSessionSplitAtom,
   focusedPaneIdAtom,
@@ -82,7 +80,6 @@ describe("session split store", () => {
       {
         id: ROOT_PANE_ID,
         sessionId: sessionA.id,
-        conversationId: null,
       },
     ]);
   });
@@ -95,24 +92,6 @@ describe("session split store", () => {
 
     store.set(splitFocusedPaneAtom, "right");
     expect(store.get(activeSessionIdAtom)).toBeNull();
-  });
-
-  it("focuses the pane that already shows a conversation instead of duplicating it", () => {
-    const store = createStore();
-    store.set(bindFocusedPaneContentAtom, {
-      sessionId: null,
-      conversationId: "conversation-a",
-    });
-    store.set(splitFocusedPaneAtom, "right");
-    expect(store.get(focusedPaneIdAtom)).not.toBe(ROOT_PANE_ID);
-
-    store.set(selectConversationAtom, "conversation-a");
-
-    expect(store.get(focusedPaneIdAtom)).toBe(ROOT_PANE_ID);
-    const panesWithConversation = listPanes(
-      store.get(sessionSplitLayoutAtom),
-    ).filter((pane) => pane.conversationId === "conversation-a");
-    expect(panesWithConversation).toHaveLength(1);
   });
 
   it("opens a session in a new pane when splitting", () => {
@@ -161,14 +140,10 @@ describe("session split store", () => {
 
     store.set(bindPaneContentAtom, {
       paneId: closedPaneId,
-      sessionId: null,
-      conversationId: "conversation-late",
+      sessionId: "session-late",
     });
 
     expect(store.get(focusedPaneIdAtom)).toBe(ROOT_PANE_ID);
-    expect(
-      findPane(store.get(sessionSplitLayoutAtom), ROOT_PANE_ID)?.conversationId,
-    ).toBeNull();
     expect(store.get(activeSessionIdAtom)).toBe(sessionA.id);
   });
 

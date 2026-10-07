@@ -129,8 +129,15 @@ export function validateSessionConfiguration(
     "providerSnapshot",
     "worktreePath",
     "peerInbound",
+    "sessionKind",
   ]);
   validateSessionId(value.id);
+  if (
+    value.sessionKind !== undefined &&
+    value.sessionKind !== "main" &&
+    value.sessionKind !== "chat"
+  )
+    throw new Error("Invalid session kind");
   if (
     value.peerInbound !== undefined &&
     value.peerInbound !== "deliver" &&

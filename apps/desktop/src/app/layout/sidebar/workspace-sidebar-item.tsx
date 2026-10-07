@@ -38,7 +38,6 @@ import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { WorkspaceItemTooltip } from "./sidebar-item-preview";
 
 interface WorkspaceSidebarItemProps {
-  activeConversationId: string | null;
   activeWorkspaceId: string | null;
   expanded: boolean;
   optimisticActiveSessionId: string | null;
@@ -54,7 +53,6 @@ interface WorkspaceSidebarItemProps {
 }
 
 export function WorkspaceSidebarItem({
-  activeConversationId,
   activeWorkspaceId,
   expanded,
   optimisticActiveSessionId,
@@ -237,10 +235,7 @@ export function WorkspaceSidebarItem({
               <SidebarMenuSubItem key={node.session.id}>
                 <SessionSidebarItem
                   hasChildren={node.hasChildren}
-                  isActive={
-                    activeConversationId === null &&
-                    node.session.id === optimisticActiveSessionId
-                  }
+                  isActive={node.session.id === optimisticActiveSessionId}
                   isExpanded={!collapsedSessionIds.has(node.session.id)}
                   onSelect={() =>
                     onSelectSession(workspace.id, node.session.id)

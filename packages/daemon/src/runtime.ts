@@ -357,6 +357,18 @@ export class AgentRuntimeManager {
     });
   }
 
+  async rewindSessionConversation(
+    payload: SessionExecutionContext,
+    persistence: RuntimePersistence,
+    userMessageIndex: number,
+  ) {
+    const sessionRuntime = this.ensureSessionRuntime(payload, persistence);
+    if (!sessionRuntime.runtime.rewindToUserMessage) {
+      return false;
+    }
+    return sessionRuntime.runtime.rewindToUserMessage(userMessageIndex);
+  }
+
   async setSessionRuntimeMode(sessionId: string, modeId: string) {
     const sessionRuntime = this.sessionRuntimes.get(sessionId);
     if (!sessionRuntime?.runtime.setMode) {

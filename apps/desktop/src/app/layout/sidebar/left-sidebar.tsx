@@ -1,3 +1,4 @@
+import { isChatSession } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, Plus, Search } from "lucide-react";
 import { type ReactNode, startTransition, useMemo, useOptimistic } from "react";
@@ -14,11 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
-import {
-  activeConversationIdAtom,
-  conversationsAtom,
-  selectConversationAtom,
-} from "@/features/chat";
+import { chatSessionsAtom } from "@/features/chat";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -42,7 +39,7 @@ import {
 } from "@/lib";
 import { isDetachedChatWindow } from "../chat-window/chat-window-state";
 import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
-import { ConversationsPanel } from "./conversations-panel";
+import { ChatSessionsPanel } from "./chat-sessions-panel";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
 import { WorkspacesPanel } from "./workspaces-panel";
 
@@ -114,9 +111,7 @@ export function LeftSidebar({
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const selectConversation = useSetAtom(selectConversationAtom);
-  const conversations = useAtomValue(conversationsAtom);
-  const activeConversationId = useAtomValue(activeConversationIdAtom);
+  const chatSessions = useAtomValue(chatSessionsAtom);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] =
     useOptimistic(activeSessionId);
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
@@ -132,6 +127,9 @@ export function LeftSidebar({
     () =>
       sessions.reduce<Record<string, typeof sessions>>(
         (accumulator, session) => {
+          if (isChatSession(session)) {
+            return accumulator;
+          }
           if (!accumulator[session.workspaceId]) {
             accumulator[session.workspaceId] = [];
           }
@@ -171,8 +169,8 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  const handleCreateConversation = () => {
-    selectConversation(null);
+  const handleCreateChat = () => {
+    selectSession(null);
     onAfterNavigate?.();
   };
 
@@ -227,7 +225,7 @@ export function LeftSidebar({
     : t("chat:list.new", { defaultValue: "New chat" });
   const onCreateAction = isWorkspacesTab
     ? () => handleCreateAgent()
-    : handleCreateConversation;
+    : handleCreateChat;
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
   });
@@ -321,7 +319,6 @@ export function LeftSidebar({
             value="workspaces"
           >
             <WorkspacesPanel
-              activeConversationId={activeConversationId}
               activeWorkspaceId={activeWorkspaceId}
               collapsedWorkspaceIds={collapsedWorkspaceIds}
               onCreateAgent={handleCreateAgent}
@@ -344,13 +341,16 @@ export function LeftSidebar({
           </TabsContent>
 
           <TabsContent className="flex min-h-0 flex-1 flex-col" value="chat">
-            <ConversationsPanel
-              activeConversationId={activeConversationId}
-              conversations={conversations}
-              onSelectConversation={(conversationId) => {
-                selectConversation(conversationId);
+            <ChatSessionsPanel
+              activeSessionId={optimisticActiveSessionId}
+              onSelectSession={(sessionId) => {
+                startTransition(() => {
+                  setOptimisticActiveSessionId(sessionId);
+                  selectSession(sessionId);
+                });
                 onAfterNavigate?.();
               }}
+              sessions={chatSessions}
             />
           </TabsContent>
         </Tabs>

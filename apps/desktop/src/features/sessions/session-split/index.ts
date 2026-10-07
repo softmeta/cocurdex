@@ -5,7 +5,6 @@ export {
 export {
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
-  clearRemovedPaneConversationsAtom,
   clearRemovedPaneSessionsAtom,
   closeSessionPaneAtom,
   collapseSessionSplitAtom,
@@ -13,7 +12,6 @@ export {
   focusedPaneCanSplitRightAtom,
   focusedPaneIdAtom,
   focusedSessionPaneAtom,
-  focusPaneForConversationAtom,
   focusPaneForSessionAtom,
   focusSessionPaneAtom,
   resetSessionSplitLayoutAtom,

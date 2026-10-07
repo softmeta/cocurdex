@@ -22,11 +22,7 @@ import type {
   CodexLoginStartResult,
   CommitMessageModelSelection,
   CompatibleProviderModel,
-  ConversationMessageRecord,
-  ConversationRecord,
-  ConversationSnapshot,
   CreateColumnPayload,
-  CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateScriptRunPayload,
@@ -37,7 +33,6 @@ import type {
   DeleteNotePayload,
   DeleteViewPayload,
   DocumentAttachment,
-  EditConversationMessagePayload,
   EditorViewRecord,
   GenerateGitCommitMessagePayload,
   GetIssuePayload,
@@ -87,7 +82,6 @@ import type {
   ProviderTemplateRecord,
   RefineSessionTitlePayload,
   ResolvedCommitMessageModel,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
@@ -96,7 +90,6 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
-  SendConversationMessagePayload,
   SendPeerMessagePayload,
   SendPeerMessageResult,
   SendSessionCommand,
@@ -123,7 +116,6 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
-  UpdateConversationPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateSessionAttentionPayload,
@@ -172,7 +164,6 @@ export interface DaemonStatus {
 export interface DaemonActiveWork {
   agentTurns: number;
   queuedInputs: number;
-  chatOperations: number;
   workflowActive: boolean;
   workspaceSearches: number;
 }
@@ -189,16 +180,6 @@ export interface DaemonError {
 }
 
 export type DaemonRequestPayloadByMethod = {
-  "chat.list": undefined;
-  "chat.get": { conversationId: string };
-  "chat.create": CreateConversationPayload;
-  "chat.update": UpdateConversationPayload;
-  "chat.archive": { conversationId: string };
-  "chat.delete": { conversationId: string };
-  "chat.stop": { conversationId: string };
-  "chat.send": SendConversationMessagePayload;
-  "chat.retry": RetryConversationMessagePayload;
-  "chat.edit": EditConversationMessagePayload;
   "daemon.status": undefined;
   "daemon.shutdownIfIdle": { pid: number; startedAt: string };
   "app.bootstrap": undefined;
@@ -450,16 +431,6 @@ export type DaemonRequestPayloadByMethod = {
 };
 
 export type DaemonResultByMethod = {
-  "chat.list": ConversationRecord[];
-  "chat.get": ConversationSnapshot | null;
-  "chat.create": ConversationRecord;
-  "chat.update": ConversationRecord;
-  "chat.archive": ConversationRecord;
-  "chat.delete": null;
-  "chat.stop": null;
-  "chat.send": ConversationMessageRecord;
-  "chat.retry": null;
-  "chat.edit": ConversationMessageRecord;
   "daemon.status": DaemonStatus;
   "daemon.shutdownIfIdle": DaemonShutdownResult;
   "app.bootstrap": AppBootstrapData;
@@ -664,7 +635,6 @@ type DaemonNoParamMethod = {
  * The client uses this to tell `{ userDataPath }` options apart from params.
  */
 export const DAEMON_NO_PARAM_METHODS = {
-  "chat.list": true,
   "agent.list": true,
   "app.bootstrap": true,
   "attention.list": true,

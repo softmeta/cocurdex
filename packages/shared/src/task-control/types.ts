@@ -24,6 +24,7 @@ export type SessionConfiguration = Pick<
   | "providerSnapshot"
   | "worktreePath"
   | "peerInbound"
+  | "sessionKind"
 >;
 
 export interface SendSessionCommand {

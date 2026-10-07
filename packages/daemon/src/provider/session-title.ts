@@ -13,7 +13,7 @@ import { logDaemonDiagnostic } from "../diagnostics";
 import {
   findConfiguredProviderModel,
   type ProviderModelState,
-} from "./chat-provider";
+} from "./configured-model";
 import { getTitleModelSetting } from "./title";
 
 const TITLE_GENERATION_TIMEOUT_MS = 60_000;

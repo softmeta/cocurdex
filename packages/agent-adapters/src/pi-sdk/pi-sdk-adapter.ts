@@ -24,6 +24,7 @@ import {
   errorKindForLog,
   hashLogValue,
   hostForLog,
+  isChatSession,
   piThinkingLevels,
 } from "@cocurdex/shared";
 import {
@@ -60,6 +61,10 @@ import {
 } from "../workspace-changes/native-evidence";
 import { createPiAgentToolDefinitions } from "./pi-agent-tools";
 import {
+  createPiChatResourceLoaderOptions,
+  findPiUserMessageEntry,
+} from "./pi-chat-session";
+import {
   buildModelCost,
   buildModelInput,
   getNumber,
@@ -67,6 +72,7 @@ import {
   parseJsonObject,
 } from "./pi-model-utils";
 import { getPiAgentDir } from "./pi-paths";
+import { listPiBuiltInProviderIds } from "./pi-provider-catalog";
 import {
   getPiSkillRootSnapshots,
   logPiSkillDiagnostic,
@@ -116,7 +122,15 @@ type PiSessionLike = {
   extensionRunner: {
     emit(event: { type: "session_shutdown"; reason: "quit" }): Promise<unknown>;
   };
-  sessionManager?: { getSessionFile(): string | undefined };
+  sessionManager?: {
+    getSessionFile(): string | undefined;
+    getBranch?(): { id: string; type: string; message?: { role?: string } }[];
+  };
+  navigateTree?(
+    targetId: string,
+    options?: { summarize?: boolean },
+  ): Promise<{ cancelled: boolean }>;
+  waitForIdle?(): Promise<void>;
 };
 
 async function shutdownPiSession(session: PiSessionLike) {
@@ -214,6 +228,14 @@ async function listPiSlashCommands(
   return skills;
 }
 
+const KEYLESS_PROVIDER_API_KEY = "cocurdex-keyless";
+
+function keylessProviderApiKey(providerId: string) {
+  return listPiBuiltInProviderIds().includes(providerId)
+    ? null
+    : KEYLESS_PROVIDER_API_KEY;
+}
+
 async function registerRuntimeProvider(
   modelRuntime: ModelRuntime,
   providerConfig: RuntimeProviderConfig,
@@ -223,11 +245,10 @@ async function registerRuntimeProvider(
     return null;
   }
 
-  if (providerConfig.apiKey) {
-    await modelRuntime.setRuntimeApiKey(
-      providerConfig.providerId,
-      providerConfig.apiKey,
-    );
+  const apiKey =
+    providerConfig.apiKey || keylessProviderApiKey(providerConfig.providerId);
+  if (apiKey) {
+    await modelRuntime.setRuntimeApiKey(providerConfig.providerId, apiKey);
   } else {
     await modelRuntime.removeRuntimeApiKey(providerConfig.providerId);
   }
@@ -256,7 +277,7 @@ async function registerRuntimeProvider(
   modelRuntime.registerProvider(providerConfig.providerId, {
     name: providerConfig.providerName,
     baseUrl: providerConfig.baseUrl || undefined,
-    apiKey: providerConfig.apiKey || undefined,
+    apiKey: apiKey || undefined,
     api,
     headers: parseHeaders(providerConfig.headersJson),
     models: [
@@ -790,26 +811,38 @@ export function createPiSdkAdapter(
                 path.join(agentDir, "sessions"),
               );
           const sessionAction = persistedSessionFile ? "resume" : "new";
-          const resourceLoader = new sdk.DefaultResourceLoader({
-            cwd: payload.workspaceRootPath,
-            agentDir,
-            additionalSkillPaths: resolveAdditionalSkillPaths(
-              payload.workspaceRootPath,
-            ),
-            extensionFactories: createPiBuiltinExtensions(),
-            appendSystemPromptOverride: (base) => {
-              const rootsPrompt = renderPiWorkspaceRootsPrompt(
-                payload.workspaceRootPath,
-                payload.workspaceRootPaths,
-              );
-              return rootsPrompt ? [...base, rootsPrompt] : base;
-            },
-          });
+          const chat = isChatSession(payload.session);
+          const resourceLoader = new sdk.DefaultResourceLoader(
+            chat
+              ? createPiChatResourceLoaderOptions(
+                  payload.workspaceRootPath,
+                  agentDir,
+                )
+              : {
+                  cwd: payload.workspaceRootPath,
+                  agentDir,
+                  additionalSkillPaths: resolveAdditionalSkillPaths(
+                    payload.workspaceRootPath,
+                  ),
+                  extensionFactories: createPiBuiltinExtensions(),
+                  appendSystemPromptOverride: (base) => {
+                    const rootsPrompt = renderPiWorkspaceRootsPrompt(
+                      payload.workspaceRootPath,
+                      payload.workspaceRootPaths,
+                    );
+                    return rootsPrompt ? [...base, rootsPrompt] : base;
+                  },
+                },
+          );
           await resourceLoader.reload();
           const result = await sdk.createAgentSession({
-            customTools: await createPiAgentToolDefinitions(
-              payload.agentToolInvoker,
-            ),
+            ...(chat
+              ? { noTools: "all" }
+              : {
+                  customTools: await createPiAgentToolDefinitions(
+                    payload.agentToolInvoker,
+                  ),
+                }),
             cwd: payload.workspaceRootPath,
             agentDir,
             modelRuntime,
@@ -1021,6 +1054,18 @@ export function createPiSdkAdapter(
             coverage: "tool-call" as const,
             files: aggregateTurnFileChanges([...nativeFiles.values()]),
           };
+        },
+        async rewindToUserMessage(userMessageIndex: number) {
+          const session = await getPiSession();
+          const branch = session.sessionManager?.getBranch?.();
+          if (!branch || !session.navigateTree) return false;
+          const target = findPiUserMessageEntry(branch, userMessageIndex);
+          if (!target) return false;
+          await session.waitForIdle?.();
+          const result = await session.navigateTree(target.id, {
+            summarize: false,
+          });
+          return !result.cancelled;
         },
         stop() {
           stopRequested = true;

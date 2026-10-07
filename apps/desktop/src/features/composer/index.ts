@@ -2,8 +2,7 @@ export { ChatComposer, type ChatComposerHandle } from "./chat-composer";
 export { composerFooterControlClassName } from "./chat-composer-layout";
 export {
   composerDraftsAtom,
-  conversationComposerDraftKey,
-  newConversationComposerDraftKey,
+  newChatComposerDraftKey,
   newSessionComposerDraftKey,
   sessionComposerDraftKey,
 } from "./composer-draft-store";
@@ -32,4 +31,6 @@ export { applyRateLimitsEventAtom } from "./session-rate-limits-store";
 export {
   applyUsageEventAtom,
   bootstrapSessionUsageAtom,
+  getSessionContextTokens,
+  sessionUsageAtom,
 } from "./session-usage-store";

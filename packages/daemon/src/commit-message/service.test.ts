@@ -47,7 +47,7 @@ async function repository() {
 
 function service() {
   return new DaemonCommitMessageService({
-    getChatDatabase: vi.fn().mockResolvedValue({}),
+    getDatabase: vi.fn().mockResolvedValue({}),
   } as unknown as DaemonState);
 }
 

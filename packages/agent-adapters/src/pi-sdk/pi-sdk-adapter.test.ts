@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { AgentEvent } from "@cocurdex/shared";
+import type { AgentEvent, SessionRecord } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createPiSdkAdapter } from "./pi-sdk-adapter";
 
@@ -13,7 +13,10 @@ function createSessionPayload(
   options: {
     providerOverride?: Record<string, unknown>;
     piEvents?: Record<string, unknown>[];
+    sessionOverride?: Partial<SessionRecord>;
+    branch?: { id: string; type: string; message?: { role?: string } }[];
     capture?: {
+      navigatedTo?: string;
       createAgentSessionOptions?: Record<string, unknown>;
       createAgentSessionCalls?: number;
       modelRuntimeOptions?: Record<string, unknown>;
@@ -42,7 +45,7 @@ function createSessionPayload(
   };
 
   const adapter = createPiSdkAdapter({
-    sdk: createFakeSdk(options.capture, options.piEvents),
+    sdk: createFakeSdk(options.capture, options.piEvents, options.branch),
   });
 
   return adapter.createSession(
@@ -60,6 +63,7 @@ function createSessionPayload(
         lastMessageAt: null,
         archivedAt: null,
         providerSnapshot: providerConfig,
+        ...options.sessionOverride,
       },
       workspaceRootPath: "/tmp/repo",
       userDataPath: "/tmp/cocurdex-user-data",
@@ -80,6 +84,7 @@ function createSessionPayload(
 
 function createFakeSdk(
   capture?: {
+    navigatedTo?: string;
     createAgentSessionOptions?: Record<string, unknown>;
     createAgentSessionCalls?: number;
     modelRuntimeOptions?: Record<string, unknown>;
@@ -94,6 +99,7 @@ function createFakeSdk(
     extensionEvents?: unknown[];
   },
   piEvents?: Record<string, unknown>[],
+  branch: { id: string; type: string; message?: { role?: string } }[] = [],
 ) {
   let listener: ((event: Record<string, unknown>) => void) | null = null;
 
@@ -164,7 +170,13 @@ function createFakeSdk(
     },
     sessionManager: {
       getSessionFile: () => "/tmp/cocurdex-user-data/pi-agent/sessions/s.jsonl",
+      getBranch: () => branch,
     },
+    navigateTree: vi.fn(async (targetId: string) => {
+      if (capture) capture.navigatedTo = targetId;
+      return { cancelled: false };
+    }),
+    waitForIdle: vi.fn(async () => {}),
     prompt: vi.fn(async () => {
       const script = piEvents ?? [
         {
@@ -371,6 +383,71 @@ describe("createPiSdkAdapter", () => {
     expect(process.env.PI_CODING_AGENT_DIR).toBe(
       path.join("/tmp/cocurdex-user-data", "pi-agent"),
     );
+  });
+
+  it("runs chat sessions without tools or project context", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      createAgentSessionOptions?: Record<string, unknown>;
+      resourceLoaderOptions?: Record<string, unknown>;
+    } = {};
+    const session = createSessionPayload(events, {
+      capture,
+      sessionOverride: { sessionKind: "chat", workspaceId: "chat" },
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    expect(capture.resourceLoaderOptions).toMatchObject({
+      noContextFiles: true,
+      noExtensions: true,
+      noPromptTemplates: true,
+      noSkills: true,
+      systemPrompt: expect.stringContaining("helpful assistant"),
+    });
+    expect(capture.resourceLoaderOptions).not.toHaveProperty(
+      "appendSystemPromptOverride",
+    );
+    expect(capture.createAgentSessionOptions).toMatchObject({
+      noTools: "all",
+    });
+    expect(capture.createAgentSessionOptions).not.toHaveProperty("customTools");
+  });
+
+  it("lets keyless custom providers through while built-ins still need a key", async () => {
+    const custom: { runtimeApiKey?: unknown[] } = {};
+    await createSessionPayload([], {
+      capture: custom,
+      providerOverride: { providerId: "local-llm", apiKey: null },
+    }).sendMessage({ content: "hello", history: [] });
+    expect(custom.runtimeApiKey?.[0]).toBe("local-llm");
+    expect(custom.runtimeApiKey?.[1]).toEqual(expect.any(String));
+
+    const builtIn: { runtimeApiKey?: unknown[] } = {};
+    await createSessionPayload([], {
+      capture: builtIn,
+      providerOverride: { providerId: "anthropic", apiKey: null },
+    }).sendMessage({ content: "hello", history: [] });
+    expect(builtIn.runtimeApiKey).toBeUndefined();
+  });
+
+  it("rewinds the native conversation to a user message by its position", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { navigatedTo?: string } = {};
+    const session = createSessionPayload(events, {
+      capture,
+      branch: [
+        { id: "model", type: "model_change" },
+        { id: "u1", type: "message", message: { role: "user" } },
+        { id: "a1", type: "message", message: { role: "assistant" } },
+        { id: "u2", type: "message", message: { role: "user" } },
+        { id: "a2", type: "message", message: { role: "assistant" } },
+      ],
+    });
+
+    await expect(session.rewindToUserMessage?.(1)).resolves.toBe(true);
+    expect(capture.navigatedTo).toBe("u2");
+    await expect(session.rewindToUserMessage?.(2)).resolves.toBe(false);
   });
 
   it("registers Pi model with provider api and model metadata", async () => {

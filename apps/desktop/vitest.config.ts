@@ -42,10 +42,6 @@ const alias = {
     "../../packages/agent-adapters/src/index.ts",
   ),
   "@cocurdex/db": path.resolve(__dirname, "../../packages/db/src/index.ts"),
-  "@cocurdex/llm-chat": path.resolve(
-    __dirname,
-    "../../packages/llm-chat/src/index.ts",
-  ),
 };
 
 export default defineConfig({

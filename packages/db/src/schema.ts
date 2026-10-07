@@ -259,35 +259,6 @@ export function createSchemaSql() {
       updated_at TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS conversations (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      provider_id TEXT NOT NULL,
-      model_id TEXT NOT NULL,
-      system_prompt TEXT,
-      preset_id TEXT,
-      web_search_enabled INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      last_message_at TEXT,
-      archived_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS conversation_messages (
-      id TEXT PRIMARY KEY,
-      conversation_id TEXT NOT NULL,
-      role TEXT NOT NULL,
-      content_json TEXT NOT NULL,
-      status TEXT NOT NULL,
-      usage_json TEXT,
-      sources_json TEXT,
-      error TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (conversation_id) REFERENCES conversations(id)
-        ON DELETE CASCADE
-    );
-
     ${createWorkflowSchemaSql()}
 
     CREATE TABLE IF NOT EXISTS app_settings (
@@ -438,9 +409,6 @@ export function createSchemaSql() {
 
     CREATE INDEX IF NOT EXISTS idx_tool_calls_session_started
       ON tool_calls(session_id, started_at);
-
-    CREATE INDEX IF NOT EXISTS idx_conv_messages_conv_created
-      ON conversation_messages(conversation_id, created_at);
 
     CREATE INDEX IF NOT EXISTS idx_notes_parent_sort
       ON notes(parent_id, sort_order, title);

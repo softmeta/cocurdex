@@ -26,7 +26,6 @@ import { SidebarScrollArea } from "./sidebar-scroll-area";
 import { WorkspaceSidebarItem } from "./workspace-sidebar-item";
 
 interface WorkspacesPanelProps {
-  activeConversationId: string | null;
   activeWorkspaceId: string | null;
   collapsedWorkspaceIds: string[];
   optimisticActiveSessionId: string | null;
@@ -42,7 +41,6 @@ interface WorkspacesPanelProps {
 }
 
 export function WorkspacesPanel({
-  activeConversationId,
   activeWorkspaceId,
   collapsedWorkspaceIds,
   optimisticActiveSessionId,
@@ -117,7 +115,6 @@ export function WorkspacesPanel({
             >
               {workspaces.map((workspace) => (
                 <WorkspaceSidebarItem
-                  activeConversationId={activeConversationId}
                   activeWorkspaceId={activeWorkspaceId}
                   expanded={!collapsedWorkspaceIds.includes(workspace.id)}
                   key={workspace.id}

@@ -9,6 +9,7 @@ import {
   type BrowserAnnotation,
   hashLogValue,
   hostForLog,
+  isChatSession,
   type MessageAttachment,
   type MessageRecord,
   normalizeWorkspaceRootPaths,
@@ -55,15 +56,7 @@ import {
   updateQueuedInputAtom,
   useSessionMessages,
 } from "@/features/agent";
-import {
-  activeConversationIdAtom,
-  ConversationDetail,
-  conversationsAtom,
-  NewConversationCard,
-  rehydrateChatImages,
-  type StartConversationPayload,
-  upsertConversationAtom,
-} from "@/features/chat";
+import { NewChatCard } from "@/features/chat";
 import { type ChatComposerHandle, ComposerSurface } from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
@@ -77,8 +70,6 @@ import {
   activeSessionIdAtom,
   agentsAtom,
   applyRefinedSessionTitleAtom,
-  bindFocusedPaneContentAtom,
-  bindPaneContentAtom,
   createDraftSessionAtom,
   generateLocalSessionTitle,
   getAgentDisplayLabel,
@@ -126,7 +117,9 @@ import {
   useGitWorktrees,
   useSessionSwitchMetrics,
 } from "./center-panel-data";
-import { resolvePaneCenterSurface } from "./center-panel-surface";
+import { resolveCenterPanelSurface } from "./center-panel-surface";
+import { ChatSessionPanel } from "./chat-session/chat-session-panel";
+import { useChatSessionActions } from "./chat-session/use-chat-session-actions";
 import { buildBrowserAnnotationAttachments } from "./chat-window/browser-annotation-attachments";
 import { BrowserAnnotationChips } from "./chat-window/browser-annotation-chips";
 import { withBrowserAnnotations } from "./chat-window/browser-annotation-message";
@@ -257,14 +250,7 @@ export function CenterPanel({
   const sessions = useAtomValue(sessionsAtom);
   const atomSessionId = useAtomValue(activeSessionIdAtom);
   const activeSessionId = pane ? pane.sessionId : atomSessionId;
-  const atomConversationId = useAtomValue(activeConversationIdAtom);
-  const activeConversationId = pane ? pane.conversationId : atomConversationId;
-  const bindPaneContent = useSetAtom(bindPaneContentAtom);
-  const bindFocusedPaneContent = useSetAtom(bindFocusedPaneContentAtom);
-  const upsertConversation = useSetAtom(upsertConversationAtom);
-  const conversations = useAtomValue(conversationsAtom);
-  const activeConversation =
-    conversations.find((c) => c.id === activeConversationId) ?? null;
+  const chatSessionActions = useChatSessionActions(pane?.id);
   const agents = useAtomValue(agentsAtom);
   const lastSelectedAgent = useAtomValue(lastSelectedAgentAtom);
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
@@ -331,7 +317,7 @@ export function CenterPanel({
     if (session.id !== activeSessionId) {
       return false;
     }
-    if (pane) {
+    if (pane || isChatSession(session)) {
       return true;
     }
     return session.workspaceId === activeWorkspaceId;
@@ -914,47 +900,6 @@ export function CenterPanel({
     await taskApi.resolvePlanApproval(approvalId, decision);
   };
 
-  // Chat-mode "first message": create the conversation with the picked model,
-  // then send the first turn and focus it. Mirrors the agent handleStartSession
-  // seam but routes through the pure-chat IPC + conversation store.
-  const handleStartConversation = async ({
-    providerId,
-    modelId,
-    webSearchEnabled,
-    message,
-    attachments = [],
-  }: StartConversationPayload) => {
-    try {
-      const images = await rehydrateChatImages(attachments);
-      const conversation = await desktopApi.chatCreate({
-        providerId,
-        modelId,
-        webSearchEnabled,
-      });
-      upsertConversation({ conversation });
-      await desktopApi.chatSendMessage({
-        conversationId: conversation.id,
-        text: message,
-        images: images.length > 0 ? images : undefined,
-      });
-      if (pane) {
-        bindPaneContent({
-          paneId: pane.id,
-          sessionId: null,
-          conversationId: conversation.id,
-        });
-      } else {
-        bindFocusedPaneContent({
-          sessionId: null,
-          conversationId: conversation.id,
-        });
-      }
-    } catch (error) {
-      console.error("[Chat] start conversation failed", error);
-      throw error;
-    }
-  };
-
   const handleOpenWorkspace = async () => {
     const rootPath = await pickHostDirectory();
     if (!rootPath) return;
@@ -1210,25 +1155,24 @@ export function CenterPanel({
     }
   };
 
-  const centerSurface = resolvePaneCenterSurface({
+  const centerSurface = resolveCenterPanelSurface({
     sidebarTab,
-    conversationId: activeConversationId,
     sessionId: activeSessionId,
-    hasConversation: Boolean(activeConversation),
-    hasSession: Boolean(activeSession),
+    session: activeSession ?? null,
     sessionDataLoaded: activeSessionDataLoaded,
   });
 
-  if (centerSurface === "conversation" && activeConversation) {
+  if (centerSurface === "chat-session" && activeSession) {
     return (
       <section className="flex h-full flex-col bg-chat-canvas">
         {hideTitlebarSpacer ? null : (
           <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
         )}
         <div className="min-h-0 flex-1 overflow-hidden">
-          <ConversationDetail
-            key={activeConversation.id}
-            conversation={activeConversation}
+          <ChatSessionPanel
+            composerRef={composerRef}
+            paneId={pane?.id}
+            session={activeSession}
           />
         </div>
       </section>
@@ -1274,10 +1218,10 @@ export function CenterPanel({
         />
       </ComposerSurface>
     );
-  } else if (centerSurface === "new-conversation") {
+  } else if (centerSurface === "new-chat") {
     newSessionSurface = (
       <ComposerSurface>
-        <NewConversationCard onStartConversation={handleStartConversation} />
+        <NewChatCard onStartChat={chatSessionActions.start} />
       </ComposerSurface>
     );
   }

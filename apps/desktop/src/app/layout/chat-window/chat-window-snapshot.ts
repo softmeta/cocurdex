@@ -1,10 +1,6 @@
 import type { getDefaultStore } from "jotai";
 import { bootstrapQueuedInputsAtom } from "@/features/agent";
 import {
-  conversationsAtom,
-  loadConversationMessagesAtom,
-} from "@/features/chat";
-import {
   bootstrapSessionUsageAtom,
   composerDraftsAtom,
 } from "@/features/composer";
@@ -23,6 +19,7 @@ import {
   activeWorkspaceIdAtom,
   draftWorktreePathAtom,
   lastSelectedWorkspaceIdAtom,
+  withoutChatWorkspace,
   workspacesAtom,
 } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
@@ -87,13 +84,9 @@ export async function hydrateChatWindow(
 ) {
   const context = JSON.parse(payload) as ReturnType<typeof captureSnapshot>;
   const panes = listPanes(context.layout);
-  const [data, conversations] = await Promise.all([
-    desktopApi.bootstrapApp(),
-    desktopApi.chatList(),
-  ]);
-  store.set(workspacesAtom, data.workspaces);
+  const data = await desktopApi.bootstrapApp();
+  store.set(workspacesAtom, withoutChatWorkspace(data.workspaces));
   store.set(sessionsAtom, data.sessions);
-  store.set(conversationsAtom, conversations);
   store.set(bootstrapQueuedInputsAtom, {
     inputs: data.queuedAgentInputs,
     messages: data.queuedMessages,
@@ -104,10 +97,5 @@ export async function hydrateChatWindow(
       panes.flatMap((pane) => (pane.sessionId ? [pane.sessionId] : [])),
     ),
     store.set(bootstrapProviderModelsAtom),
-    ...panes.flatMap((pane) =>
-      pane.conversationId
-        ? [store.set(loadConversationMessagesAtom, pane.conversationId)]
-        : [],
-    ),
   ]);
 }

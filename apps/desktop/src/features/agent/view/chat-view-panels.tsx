@@ -35,11 +35,13 @@ import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
 import { QuestionCard, questionsBySessionAtom } from "../question";
 import { type QueuedAgentInputItem, QueuedInputShelf } from "../queued-input";
+import type { ChatComposerOverride } from "./chat-view-types";
 
 // Shared with pure chat — re-export so existing agent imports keep working.
 export { JumpControls };
 
 interface ChatComposerControls {
+  chatComposer?: ChatComposerOverride;
   activeBranch?: string | null;
   agentLabel: string;
   sessionId?: string;
@@ -204,6 +206,7 @@ function collectPendingPrompts(
 }
 
 export function ComposerDock({
+  chatComposer,
   activeBranch,
   workspaceName,
   composerRef,
@@ -334,10 +337,22 @@ export function ComposerDock({
             ref={composerRef}
             contextChips={composerContextChips}
             variant="pill"
-            footerLeading={
-              <SessionWorkspaceFooterLabel workspaceName={workspaceName} />
-            }
-            footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
+            {...(chatComposer
+              ? {
+                  mode: "chat" as const,
+                  controls: chatComposer.controls,
+                  footerTrailing: chatComposer.footerTrailing,
+                }
+              : {
+                  footerLeading: (
+                    <SessionWorkspaceFooterLabel
+                      workspaceName={workspaceName}
+                    />
+                  ),
+                  footerTrailing: (
+                    <SessionBranchFooterLabel branch={activeBranch} />
+                  ),
+                })}
           />
         )}
       </div>

@@ -99,6 +99,7 @@ const definitions: AgentDefinition[] = [
         supportsSteering: true,
         supportsStreaming: true,
         supportsSelections: true,
+        supportsConversationRewind: true,
         sessionTitleStrategy: getAgentSessionTitleStrategy("pi"),
         transport: "native",
         runtimeAxes: agentRuntimeAxisCapabilities.pi,
