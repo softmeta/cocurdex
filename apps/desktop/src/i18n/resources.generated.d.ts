@@ -10,7 +10,7 @@ export default interface Resources {
       reasoningCount_other: "{{count}} reasoning steps";
       replyCount_one: "{{count}} interim reply";
       replyCount_other: "{{count}} interim replies";
-      responding: "Responding";
+      responding: "Replying";
       thinking: "Thinking";
       toolCount_one: "{{count}} tool call";
       toolCount_other: "{{count}} tool calls";
