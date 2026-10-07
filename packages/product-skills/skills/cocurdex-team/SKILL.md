@@ -7,7 +7,7 @@ description: Split independent work across parallel teammate agents using Cocurd
 
 You are the lead. Teammates are separate agent sessions that run in parallel, share one task list with you, and deliver their final reply of each turn back to you as `[Teammate "<name>" finished]` or `[Teammate "<name>" failed]`. A teammate that stops on an approval or question also sends `[Teammate "<name>" is waiting for the user]`, at most once per turn.
 
-Tools (available only in a main session): `team_spawn_teammate`, `team_spawn_template`, `team_list_roles`, `team_list_templates`, `team_task_create`, `team_task_list`, `team_task_update`, `team_stop_member`, `team_stop`, `messaging_list_agents`, `messaging_send_message`.
+Tools (available only in a main session): `team_spawn_teammate`, `team_roster`, `team_list_roles`, `team_list_templates`, `team_task_create`, `team_task_list`, `team_task_update`, `team_stop_member`, `team_stop`, `messaging_list_agents`, `messaging_send_message`.
 
 ## 1. Decide
 
@@ -23,17 +23,25 @@ Do not use a team when:
 
 Teammates cannot spawn their own teammates. A team holds at most 8 members.
 
+### Assigned team
+
+When the user assigned a team template to your session, your instructions name the team and its roster (re-read it with `team_roster`). You are its coordinator:
+
+- The user already chose a team, so plan the split in step 2 even for work you could do alone; hand back to the user only if no roster member fits.
+- Only roster members can be spawned, by their roster name. Each one keeps the role and standing instructions from the template; do not pass `agentRoleId` or `agentType`. Your prompt adds only the task.
+- Spawn only the members your plan needs, and only after the tasks exist.
+
 ## 2. Plan the split
 
 1. Write the pieces first: one `team_task_create` per piece, with a title and a description that names the files or scope. Keep pieces disjoint. When a piece needs another finished first, pass `blockedBy` with the prerequisite task ids; a blocked task cannot be claimed until every prerequisite is `done`.
 2. Decide the file-write policy before spawning:
    - Teammates that edit files in the same workspace must not touch overlapping files. If overlap is unavoidable, spawn with `isolateWorktree: true`; each such teammate then works on its own branch and you merge afterwards.
    - Read-only teammates (review, research) never need isolation.
-3. If a saved template matches (`team_list_templates`; match the task against each template's `description`), prefer `team_spawn_template` with the task as `prompt`. Otherwise pick roles with `team_list_roles` when a saved role fits; match the task against each role's `description`.
+3. With an assigned team, pick members from the roster. Otherwise pick roles with `team_list_roles` when a saved role fits; match the task against each role's `description`. `team_list_templates` shows saved teams whose members you can copy as a reference; a template's first member is its lead, not a teammate.
 
 ## 3. Spawn
 
-One `team_spawn_teammate` per piece. Names are lowercase slugs (`security-review`, `module-auth`) used to address the teammate. Also pass a short `title` in the user's language (`安全审查`, `Auth module`); the app shows it to the user and falls back to the name.
+One `team_spawn_teammate` per piece. The name addresses the teammate: a roster member's name is exactly its roster name (the role's name, in any language); without a roster, use a lowercase slug (`security-review`, `module-auth`). Also pass a short `title` in the user's language (`安全审查`, `Auth module`); the app shows it to the user and falls back to the name.
 
 The prompt must contain everything the teammate needs; it does not see your conversation:
 

@@ -45,6 +45,9 @@ function catalogFor(sessionId: string): AgentToolCatalog {
           ]
         : []),
     ],
+    ...(sessionId === "s-lead"
+      ? { instructions: "Use team_spawn_teammate to delegate." }
+      : {}),
   };
 }
 
@@ -136,7 +139,7 @@ describe("agent tool HTTP endpoint", () => {
     }
   });
 
-  it("sends delegation guidance only to sessions that can delegate", async () => {
+  it("sends each caller's catalog instructions as server instructions", async () => {
     const url = await listen();
     const lead = await connect(url, { Authorization: "Bearer token-lead" });
     const peer = await connect(url, { Authorization: "Bearer token-a" });

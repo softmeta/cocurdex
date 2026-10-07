@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTeamRosterMembers,
   canSpawnTeammate,
   checkTeamTaskUpdate,
+  normalizeTeamTemplateMembers,
   TEAM_MAX_MEMBERS,
   type TeamMemberRecord,
   transitionTeamMember,
@@ -88,6 +90,49 @@ describe("canSpawnTeammate", () => {
   });
 });
 
+describe("canSpawnTeammate with a roster", () => {
+  const rostered = {
+    status: "active" as const,
+    roster: {
+      templateId: "tpl-1",
+      name: "Squad",
+      description: null,
+      leadPrompt: "",
+      members: [{ name: "reviewer", agentRoleId: "role-1", prompt: "Review." }],
+    },
+  };
+
+  it("accepts a roster member", () => {
+    expect(canSpawnTeammate(rostered, [], { name: "reviewer" })).toEqual({
+      ok: true,
+    });
+  });
+
+  it("rejects names outside the roster", () => {
+    expect(canSpawnTeammate(rostered, [], { name: "stranger" })).toEqual({
+      ok: false,
+      reason: "not_in_roster",
+    });
+  });
+
+  it("rejects overriding the roster member's agent", () => {
+    for (const override of [
+      { agentRoleId: "role-2" },
+      { agentType: "codex" as const },
+    ]) {
+      expect(
+        canSpawnTeammate(rostered, [], { name: "reviewer", ...override }),
+      ).toEqual({ ok: false, reason: "roster_fixes_agent" });
+    }
+  });
+
+  it("still rejects spawning a roster member twice", () => {
+    expect(
+      canSpawnTeammate(rostered, [{ name: "reviewer" }], { name: "reviewer" }),
+    ).toEqual({ ok: false, reason: "duplicate_name" });
+  });
+});
+
 describe("checkTeamTaskUpdate", () => {
   const task = { status: "backlog", assigneeSessionId: null };
 
@@ -168,5 +213,60 @@ describe("checkTeamTaskUpdate", () => {
         update: { status: "done" },
       }),
     ).toEqual({ ok: true });
+  });
+});
+
+describe("team template members", () => {
+  it("keeps one member per saved role and drops roleless members", () => {
+    expect(
+      normalizeTeamTemplateMembers([
+        { name: "legacy", agentRoleId: null, prompt: "go" },
+        { agentRoleId: "role-1", prompt: "Review." },
+        { agentRoleId: "role-1", prompt: "Again." },
+        { agentRoleId: "role-2" },
+      ]),
+    ).toEqual([
+      { agentRoleId: "role-1", prompt: "Review." },
+      { agentRoleId: "role-2", prompt: "" },
+    ]);
+  });
+
+  it("names roster members after their roles and keeps names unique", () => {
+    const roles = new Map([
+      ["role-1", { name: "审查员" }],
+      ["role-2", { name: "审查员" }],
+    ]);
+    expect(
+      buildTeamRosterMembers(
+        [
+          { agentRoleId: "role-1", prompt: "" },
+          { agentRoleId: "role-2", prompt: "" },
+        ],
+        roles,
+      )?.map((member) => member.name),
+    ).toEqual(["审查员", "审查员 2"]);
+    expect(
+      buildTeamRosterMembers([{ agentRoleId: "gone", prompt: "" }], roles),
+    ).toBeNull();
+  });
+
+  it("spawns a roster member by a role name that is not a slug", () => {
+    const team = {
+      status: "active" as const,
+      roster: {
+        templateId: "tpl-1",
+        name: "Squad",
+        description: null,
+        leadPrompt: "",
+        members: [{ name: "审查员", agentRoleId: "role-1", prompt: "" }],
+      },
+    };
+    expect(canSpawnTeammate(team, [], { name: "审查员" })).toEqual({
+      ok: true,
+    });
+    expect(canSpawnTeammate(null, [], { name: "审查员" })).toEqual({
+      ok: false,
+      reason: "invalid_name",
+    });
   });
 });

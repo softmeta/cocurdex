@@ -1,10 +1,10 @@
 import {
   type AgentToolCallerContext,
   type SpawnTeammatePayload,
-  type SpawnTeamTemplatePayload,
   TEAM_TASK_STATUSES,
   type TeamMemberRecord,
   type TeamRecord,
+  type TeamRoster,
   type TeamTemplateRecord,
 } from "@cocurdex/shared";
 import type {
@@ -19,10 +19,7 @@ export interface TeamToolDependencies {
     leadSessionId: string,
     payload: SpawnTeammatePayload,
   ): Promise<TeamMemberRecord>;
-  spawnTemplate(
-    leadSessionId: string,
-    payload: SpawnTeamTemplatePayload,
-  ): Promise<TeamMemberRecord[]>;
+  rosterForLead(leadSessionId: string): Promise<TeamRoster | null>;
   listRoles(): Promise<TeamRoleSummary[]>;
   listTemplates(): Promise<TeamTemplateRecord[]>;
   taskCreate(
@@ -67,7 +64,7 @@ export function registerTeamTools(
       group: "team",
       name: "spawn_teammate",
       description:
-        "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you: injected into your current turn when your agent supports steering, otherwise as a new turn after yours ends. To wait for teammates, end your turn; their reports wake you. Do not poll or stop teammates to finish early. Names are lowercase slugs (a-z, 0-9, dashes) used to address the teammate; title is the human-readable label shown to the user, written in the user's language.",
+        "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you: injected into your current turn when your agent supports steering, otherwise as a new turn after yours ends. To wait for teammates, end your turn; their reports wake you. Do not poll or stop teammates to finish early. The name addresses the teammate: a roster name exactly as listed, otherwise a lowercase slug (a-z, 0-9, dashes); title is the human-readable label shown to the user, written in the user's language. When your team has a roster (see team_roster), only roster names can be spawned and their role and standing instructions are applied automatically; omit agentRoleId and agentType.",
       inputSchema: {
         type: "object",
         properties: {
@@ -125,7 +122,7 @@ export function registerTeamTools(
       group: "team",
       name: "list_templates",
       description:
-        "List user-defined team templates. Each template has a description of what the team is for and names its teammates, their roles, and their standing instructions.",
+        "List user-defined team templates. Each template has a description of what the team is for and lists its members, their roles, and their standing instructions. The first member is the lead that runs the session; the rest are its teammates.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -138,25 +135,17 @@ export function registerTeamTools(
   registry.register({
     descriptor: {
       group: "team",
-      name: "spawn_template",
+      name: "roster",
       description:
-        "Spawn every teammate defined by a team template. The optional prompt is appended to each teammate's standing instructions.",
+        "Show the roster of the team the user assigned to your session: the team's purpose and each teammate's name, role, and standing instructions. Returns null when no roster is assigned. With a roster you coordinate: plan tasks first, then spawn only the roster members the plan needs.",
       inputSchema: {
         type: "object",
-        properties: {
-          templateId: { type: "string" },
-          prompt: { type: "string", description: "Task for the whole team" },
-        },
-        required: ["templateId"],
+        properties: {},
         additionalProperties: false,
       },
     },
     isAvailable: isLead,
-    execute: (caller, input) =>
-      deps.spawnTemplate(caller.sessionId, {
-        templateId: String(input.templateId),
-        ...(typeof input.prompt === "string" ? { prompt: input.prompt } : {}),
-      }),
+    execute: (caller) => deps.rosterForLead(caller.sessionId),
   });
   registry.register({
     descriptor: {

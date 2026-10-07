@@ -5,6 +5,7 @@ export function createTeamSchemaSql(): string {
       lead_session_id TEXT NOT NULL UNIQUE,
       workspace_id TEXT NOT NULL,
       status TEXT NOT NULL,
+      roster_json TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (lead_session_id) REFERENCES sessions(id) ON DELETE CASCADE,

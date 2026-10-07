@@ -12,6 +12,7 @@ import type {
   CreateColumnPayload,
   CreateIssuePayload,
   CreateNotePayload,
+  CreateTeamPayload,
   CreateViewPayload,
   DeleteColumnPayload,
   DeleteIssuePayload,
@@ -217,6 +218,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("scriptRun:saveSettings", settings),
   getTeam: (leadSessionId: string) =>
     ipcRenderer.invoke("team:get", leadSessionId),
+  createTeam: (payload: CreateTeamPayload) =>
+    ipcRenderer.invoke("team:create", payload),
   stopTeam: (teamId: string) => ipcRenderer.invoke("team:stop", teamId),
   stopTeamMember: (payload: { teamId: string; sessionId: string }) =>
     ipcRenderer.invoke("team:stopMember", payload),

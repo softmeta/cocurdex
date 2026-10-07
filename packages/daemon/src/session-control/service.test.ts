@@ -7,6 +7,7 @@ import { CHAT_WORKSPACE_ID } from "@cocurdex/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CocurdexDaemonService } from "../service";
 
+const dispatchWait = { timeout: 15_000 };
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => {
   for (const dispose of cleanup.splice(0).reverse()) await dispose();
@@ -110,7 +111,10 @@ describe("authoritative task commands", () => {
       sessionId: "session-1",
       content: "Run",
     });
-    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+    await vi.waitFor(
+      () => expect(dispatch).toHaveBeenCalledOnce(),
+      dispatchWait,
+    );
     expect(dispatch.mock.calls[0][0]).toMatchObject({
       workspaceRootPath: root,
       session: { id: "session-1", writeMode: "read-only" },

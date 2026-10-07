@@ -284,6 +284,9 @@ const fallbackApi: DesktopApi = {
   getScriptRunSettings: async () => DEFAULT_SCRIPT_RUN_SETTINGS,
   saveScriptRunSettings: async (settings) => settings,
   getTeam: async () => null,
+  createTeam: async () => {
+    throw new Error("Team control requires the desktop app");
+  },
   stopTeam: async () => {
     throw new Error("Team control requires the desktop app");
   },

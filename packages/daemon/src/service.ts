@@ -295,6 +295,7 @@ export class CocurdexDaemonService {
       url: options.agentToolsUrl ?? null,
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
+      getLeadRoster: (sessionId) => this.team.rosterForLead(sessionId),
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
