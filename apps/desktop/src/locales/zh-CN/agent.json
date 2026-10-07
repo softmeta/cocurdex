@@ -6,6 +6,7 @@
     "ready": "就绪",
     "reasoningCount_other": "{{count}} 段推理",
     "replyCount_other": "{{count}} 条中间回复",
+    "responding": "回复中",
     "thinking": "思考中",
     "toolCount_other": "{{count}} 次工具调用",
     "usingTools": "工具调用中",

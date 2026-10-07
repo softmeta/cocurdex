@@ -3,17 +3,17 @@ import type {
   MessageAttachment,
   TeamTemplateRecord,
 } from "@cocurdex/shared";
-import { FolderOpen, GitBranch } from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppDropdownTriggerLabel, AppSearchableSelect } from "@/components";
-import { Button, Checkbox } from "@/components/ui";
+import { CocurdexMark } from "@/components/cocurdex-mark";
+import { Checkbox } from "@/components/ui";
 import {
   ChatComposer,
   ComposerSurfaceBody,
   newSessionComposerDraftKey,
-  WelcomeHeading,
 } from "@/features/composer";
 import {
   AgentSelect,
@@ -427,7 +427,7 @@ export function NewSessionCard({
   // Workspace and branch remain editable until the session starts. Branch
   // selection performs a real checkout; active sessions render it read-only.
   const header = (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-1 flex-wrap items-center gap-1.5">
       <WorkspacePicker
         appearance="outline"
         showChevron={false}
@@ -503,59 +503,13 @@ export function NewSessionCard({
           {t("sessions:worktree.label")}
         </label>
       ) : null}
+      <CocurdexMark className="ms-auto me-0.5 size-7" interactive />
     </div>
   );
 
   return (
     <ComposerSurfaceBody className="flex flex-col">
       {sessionTitle ? <div className="sr-only">{sessionTitle}</div> : null}
-      {workspaceName ? (
-        <WelcomeHeading>
-          {t("sessions:workspace.startTitleBefore")}
-          <WorkspacePicker
-            align="center"
-            appearance="ghost"
-            activeWorkspaceId={activeWorkspaceId}
-            side="bottom"
-            trigger={
-              <button
-                className="group/ws inline-flex max-w-[16ch] items-baseline rounded-control px-0.5 align-baseline font-medium text-foreground transition-colors hover:bg-muted/50 aria-expanded:bg-muted/50 [&>svg]:hidden"
-                type="button"
-              />
-            }
-            triggerAriaLabel={t("sessions:workspace.workspace")}
-            triggerLabel={
-              <span className="truncate underline decoration-foreground/30 underline-offset-[0.18em] transition-colors group-hover/ws:decoration-foreground group-aria-expanded/ws:decoration-foreground">
-                {workspaceName}
-              </span>
-            }
-            workspaceName={workspaceName}
-            workspaces={workspaces}
-            onOpenWorkspace={onOpenWorkspace}
-            onRelocateWorkspace={onRelocateWorkspace}
-            onSelectWorkspace={onSelectWorkspace}
-          />
-          {t("sessions:workspace.startTitleAfter")}
-        </WelcomeHeading>
-      ) : (
-        // No workspace yet: the heading states the next step and carries the
-        // action inline, mirroring the workspace picker that replaces it once a
-        // workspace is open.
-        <WelcomeHeading>
-          {t("sessions:workspace.emptyTitle")}
-          <Button
-            aria-label={t("sessions:workspace.openFolder")}
-            className="self-center"
-            onClick={onOpenWorkspace}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <FolderOpen className="size-4" />
-          </Button>
-        </WelcomeHeading>
-      )}
-
       <ChatComposer
         ref={composerRef}
         mode="agent"

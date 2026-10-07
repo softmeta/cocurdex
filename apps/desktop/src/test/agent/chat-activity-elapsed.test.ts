@@ -92,8 +92,8 @@ describe("getActivityState", () => {
     expect(runningKind([assistant(1, { kind: "reasoning" })])).toBe("thinking");
   });
 
-  it("hides the activity line while a response is streaming", () => {
-    expect(runningKind([assistant(1)])).toBeUndefined();
+  it("reports responding while a response is streaming", () => {
+    expect(runningKind([assistant(1)])).toBe("responding");
   });
 
   it("reports thinking after a tool finished past the latest response", () => {
