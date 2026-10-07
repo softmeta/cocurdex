@@ -2076,13 +2076,15 @@ export default interface Resources {
       deleteFailed: "Could not delete this team.";
       deleteTitle: "Delete this team?";
       deleted: "Team deleted";
-      description: "Define reusable teams. A lead agent can spawn a whole team with team_spawn_template, or you can spawn one from the CLI.";
+      description: "Save team lineups you use often. Ask the lead agent in a session to start one, or start it from the CLI.";
       edit: "Edit";
       editTitle: "Edit team";
       empty: "No teams yet";
-      emptyDescription: "Create a team, name its teammates, and pick a saved role for each.";
+      emptyDescription: "Create a team, name each member, and give them a role and standing instructions.";
       inheritRole: "Same as lead";
+      memberCount: "{{current}}/{{max}}";
       memberName: "Teammate name";
+      memberNameHint: "Lowercase letters, digits, and hyphens. The lead addresses teammates by this name.";
       memberNamePlaceholder: "reviewer";
       memberPrompt: "Standing instructions";
       memberPromptPlaceholder: "What this teammate is responsible for.";
@@ -2106,6 +2108,8 @@ export default interface Resources {
         title: "Script runs";
         unlimited: "No limit";
       };
+      teamDescription: "Description";
+      teamDescriptionPlaceholder: "What this team is for. The lead agent reads this to decide when to use it.";
     };
     updates: {
       actions: {

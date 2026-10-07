@@ -1,4 +1,8 @@
-import type { AgentRoleRecord, TeamTemplateRecord } from "@cocurdex/shared";
+import type {
+  AgentRoleRecord,
+  TeamTemplateMember,
+  TeamTemplateRecord,
+} from "@cocurdex/shared";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,6 +12,7 @@ import { Button, EmptyState, IconButton, Text } from "@/components/ui";
 import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
 import { AgentRoleAvatar } from "../agent-role/agent-role-avatar";
 import { ScriptRunSettingsSection } from "../script-run";
+import { TeamMemberAvatar } from "./team-member-avatar";
 import { TeamTemplateEditDialog } from "./team-template-edit-dialog";
 import {
   deleteTeamTemplateRecord,
@@ -66,21 +71,31 @@ export function TeamSettingsPanel() {
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {templates.map((template) => (
-            <li className="flex items-center gap-4 py-4" key={template.id}>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <li className="flex items-start gap-3 py-4" key={template.id}>
+              <AgentRoleAvatar
+                placeholder={<Users className="size-4" />}
+                role={template}
+                size="lg"
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <Text truncate weight="medium">
                   {template.name}
                 </Text>
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                {template.description ? (
+                  <Text as="p" className="line-clamp-2" tone="muted">
+                    {template.description}
+                  </Text>
+                ) : null}
+                <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
                   {template.members.map((member) => (
-                    <TeamMemberRole
-                      key={member.name}
-                      memberName={member.name}
-                      role={roleOf(member.agentRoleId)}
+                    <TeamMemberChip
                       inheritLabel={t("teams.inheritRole")}
+                      key={member.name}
+                      member={member}
+                      role={roleOf(member.agentRoleId)}
                     />
                   ))}
-                </div>
+                </ul>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <IconButton
@@ -131,24 +146,24 @@ export function TeamSettingsPanel() {
   );
 }
 
-function TeamMemberRole({
+function TeamMemberChip({
   inheritLabel,
-  memberName,
+  member,
   role,
 }: {
   inheritLabel: string;
-  memberName: string;
+  member: TeamTemplateMember;
   role: AgentRoleRecord | null;
 }) {
   return (
-    <Text
-      size="meta"
-      tone="muted"
-      className="inline-flex min-w-0 items-center gap-1.5"
-    >
-      <span className="truncate">{memberName} ·</span>
-      {role ? <AgentRoleAvatar role={role} showAgent={false} /> : null}
-      <span className="truncate">{role?.name ?? inheritLabel}</span>
-    </Text>
+    <li className="flex min-w-0 items-center gap-1.5">
+      <TeamMemberAvatar member={member} role={role} />
+      <Text size="meta" truncate>
+        {member.name}
+      </Text>
+      <Text size="meta" tone="muted" truncate>
+        {role?.name ?? inheritLabel}
+      </Text>
+    </li>
   );
 }

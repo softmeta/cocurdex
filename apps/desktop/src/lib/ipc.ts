@@ -294,6 +294,8 @@ const fallbackApi: DesktopApi = {
   saveTeamTemplate: async (payload) => ({
     id: payload.id ?? "team-template",
     name: payload.name,
+    description: payload.description ?? null,
+    avatar: payload.avatar ?? null,
     members: payload.members,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

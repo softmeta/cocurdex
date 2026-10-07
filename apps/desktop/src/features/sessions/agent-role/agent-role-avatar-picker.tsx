@@ -4,6 +4,7 @@ import {
   normalizeAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { RotateCcw } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -14,10 +15,7 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import {
-  AgentRoleAvatar,
-  type AgentRoleAvatarSource,
-} from "./agent-role-avatar";
+import { AgentRoleAvatar, type AvatarSource } from "./agent-role-avatar";
 import {
   AGENT_ROLE_AVATAR_EMOJI_GROUPS,
   type AgentRoleAvatarEmojiGroupId,
@@ -26,10 +24,12 @@ import {
 } from "./agent-role-avatar-style";
 
 export function AgentRoleAvatarPicker({
+  placeholder,
   role,
   onChange,
 }: {
-  role: AgentRoleAvatarSource;
+  placeholder?: ReactNode;
+  role: AvatarSource;
   onChange(avatar: AgentRoleAvatarValue | null): void;
 }) {
   const { t } = useTranslation("sessions");
@@ -60,7 +60,7 @@ export function AgentRoleAvatarPicker({
           className="shrink-0 cursor-pointer rounded-full outline-none transition-shadow hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-ring"
           type="button"
         >
-          <AgentRoleAvatar role={role} size="lg" />
+          <AgentRoleAvatar placeholder={placeholder} role={role} size="lg" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto gap-3 rounded-card p-3">

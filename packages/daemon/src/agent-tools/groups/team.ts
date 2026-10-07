@@ -125,7 +125,7 @@ export function registerTeamTools(
       group: "team",
       name: "list_templates",
       description:
-        "List user-defined team templates. Each template names its teammates, their roles, and their standing instructions.",
+        "List user-defined team templates. Each template has a description of what the team is for and names its teammates, their roles, and their standing instructions.",
       inputSchema: {
         type: "object",
         properties: {},
