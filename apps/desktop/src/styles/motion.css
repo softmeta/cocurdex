@@ -206,18 +206,6 @@
   }
 }
 
-.stream-brand-caret > :last-child:not([data-sd-caret-hidden])::after {
-  content: "";
-  display: inline-block;
-  width: 0.55em;
-  height: 0.16em;
-  margin-inline-start: 0.2em;
-  border-radius: 9999px;
-  background-color: var(--brand-mark);
-  vertical-align: baseline;
-  animation: cocurdex-mark-caret-blink 1s steps(1, end) infinite;
-}
-
 /* Welcome mark: hover redraws the C, then the prompt dash blinks. */
 .cocurdex-mark-live {
   overflow: visible;
@@ -278,8 +266,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cocurdex-mark-working .cocurdex-mark-body,
-  .cocurdex-mark-thinking .cocurdex-mark-caret,
-  .stream-brand-caret > :last-child:not([data-sd-caret-hidden])::after {
+  .cocurdex-mark-thinking .cocurdex-mark-caret {
     animation: none;
   }
 
