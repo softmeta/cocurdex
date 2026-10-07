@@ -42,13 +42,13 @@ describe("HTML code fence preview", () => {
     );
     const { rerender } = render(message("live", true));
     await screen.findByRole("region", { name: "Code" });
+    const scrollHeight = vi
+      .spyOn(Element.prototype, "scrollHeight", "get")
+      .mockReturnValue(1400);
     rerender(message("completed", false));
     const region = await screen.findByRole("region", { name: "Code" });
-    Object.defineProperty(region, "scrollHeight", {
-      configurable: true,
-      value: 1400,
-    });
     await waitFor(() => expect(region.scrollTop).toBe(1400));
+    scrollHeight.mockRestore();
     store.set(htmlPreviewLocationAtom, "chat");
   });
   it("keeps the stable code container at the latest line when streaming completes", async () => {
