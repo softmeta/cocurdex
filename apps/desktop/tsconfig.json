@@ -20,7 +20,6 @@
         "../../packages/agent-adapters/src/desktop-provider.ts"
       ],
       "@cocurdex/db": ["../../packages/db/src/index.ts"],
-      "@cocurdex/llm-chat": ["../../packages/llm-chat/src/index.ts"],
       "@cocurdex/product-skills": ["../../packages/product-skills/src/index.ts"]
     }
   },

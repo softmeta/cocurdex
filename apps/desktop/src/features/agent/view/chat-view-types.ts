@@ -28,7 +28,13 @@ export type PendingPreviousMessageSubmit = {
   message: MessageRecord;
 };
 
+export interface ChatComposerOverride {
+  controls: ReactNode;
+  footerTrailing?: ReactNode;
+}
+
 export interface ChatViewProps {
+  chatComposer?: ChatComposerOverride;
   messages: MessageRecord[];
   permissionRequests?: AgentPermissionRequestRecord[];
   questions?: AgentQuestionRequestRecord[];

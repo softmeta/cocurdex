@@ -61,7 +61,6 @@ export class DaemonState {
   private readonly deltaBuffer = createMessageDeltaBuffer();
   private networkProxyReady: Promise<void>;
   private staleToolCallsSwept: Promise<void>;
-  private staleChatStreamsSwept: Promise<void>;
   private staleSessionsSwept: Promise<void>;
 
   constructor(userDataPath: string) {
@@ -81,10 +80,6 @@ export class DaemonState {
     // point a non-terminal tool call can only be debris from a previous run.
     this.staleSessionsSwept = this.failInterruptedSessions();
     this.staleToolCallsSwept = this.database.toolCalls.failNonTerminal();
-    // Same reasoning for pure-chat turns: an assistant message still marked
-    // `streaming` when this process starts can have no stream behind it.
-    this.staleChatStreamsSwept =
-      this.database.conversationMessages.failStreaming();
   }
 
   close() {
@@ -95,9 +90,8 @@ export class DaemonState {
     this.database.close();
   }
 
-  async getChatDatabase() {
+  async getDatabase() {
     await this.networkProxyReady;
-    await this.staleChatStreamsSwept;
     return this.database;
   }
 
@@ -105,7 +99,6 @@ export class DaemonState {
     await Promise.all([
       this.networkProxyReady,
       this.staleToolCallsSwept,
-      this.staleChatStreamsSwept,
       this.staleSessionsSwept,
     ]);
   }
@@ -386,7 +379,10 @@ export class DaemonState {
     });
   }
 
-  async rewindSessionMessages(message: MessageRecord) {
+  async rewindSessionMessages(
+    message: MessageRecord,
+    { keepProviderSession = false } = {},
+  ) {
     const session = await this.database.sessions.getById(message.sessionId);
 
     if (!session) {
@@ -397,7 +393,8 @@ export class DaemonState {
       void this.database.toolCalls.deleteAfter(message.sessionId, message.id);
       void this.database.messages.deleteAfter(message.sessionId, message.id);
       void this.database.messages.update(message);
-      void this.database.providerSessions.clear(message.sessionId);
+      if (!keepProviderSession)
+        void this.database.providerSessions.clear(message.sessionId);
       void this.database.sessions.upsert({
         ...session,
         status: "idle",

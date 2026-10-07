@@ -1,5 +1,6 @@
 import type { GitWorktreeInfo, WorkspaceRecord } from "@cocurdex/shared";
 import {
+  isChatWorkspaceId,
   normalizeWorkspaceRootPath,
   normalizeWorkspaceRootPaths,
   workspacePathsEqual,
@@ -34,6 +35,10 @@ function workspaceNameFromPath(rootPath: string): string {
 }
 
 export const workspacesAtom = atom<WorkspaceRecord[]>([]);
+
+export function withoutChatWorkspace(workspaces: WorkspaceRecord[]) {
+  return workspaces.filter((workspace) => !isChatWorkspaceId(workspace.id));
+}
 export const activeWorkspaceIdAtom = atom<string | null>(null);
 // The most recent workspace the user actually selected. Unlike
 // activeWorkspaceId, it is NOT cleared when the user drops to chat mode (picks
@@ -114,7 +119,7 @@ function ensureWorkspaceExpanded(
 export const bootstrapWorkspacesAtom = atom(
   null,
   (get, set, workspaces: WorkspaceRecord[]) => {
-    const list = sortWorkspacesBySortOrder(workspaces);
+    const list = sortWorkspacesBySortOrder(withoutChatWorkspace(workspaces));
     const active = findMostRecentlyOpenedWorkspace(list);
 
     set(workspacesAtom, list);

@@ -5,6 +5,7 @@ import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
   createProviderSnapshotForModel,
+  isChatWorkspaceId,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type SessionRecord,
@@ -140,10 +141,12 @@ async function main(rawArgs: string[]) {
   if (resource === "workspace" && action === "list") {
     const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
     printRows(
-      workspaces.map((workspace) => ({
-        ...workspace,
-        rootPaths: workspace.rootPaths.join(", "),
-      })),
+      workspaces
+        .filter((workspace) => !isChatWorkspaceId(workspace.id))
+        .map((workspace) => ({
+          ...workspace,
+          rootPaths: workspace.rootPaths.join(", "),
+        })),
       ["id", "name", "rootPaths"],
       parsed,
     );

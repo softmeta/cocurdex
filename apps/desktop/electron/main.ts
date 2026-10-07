@@ -66,7 +66,6 @@ import {
   listWorkspaces,
   readAdapterRateLimits,
   readAgentSessionModes,
-  registerChatHandlers,
   restoreSession,
   saveAgentRole,
   saveEditorView,
@@ -1461,11 +1460,6 @@ app
     daemonRuntimeClient = createDaemonRuntimeClient({
       daemonEntryPath: getBundledDaemonEntryPath(),
       logger: daemonLogger,
-      onConnected() {
-        for (const window of BrowserWindow.getAllWindows()) {
-          window.webContents.send("chat:invalidated");
-        }
-      },
       onEvent(event, meta) {
         for (const window of BrowserWindow.getAllWindows()) {
           if (event.type === "data.changed") {
@@ -1493,8 +1487,6 @@ app
             window.webContents.send("workspace:gitStateChanged", {
               rootPath: event.rootPath,
             });
-          } else if ("conversationId" in event) {
-            window.webContents.send("chat:event", event);
           } else if (event.type === "peer.message") {
             appLogger.info("daemon.peerMessage", { ...event });
           } else if (event.type === "team.changed") {
@@ -1538,7 +1530,6 @@ app
     registerSearchHandlers();
     registerPtyHandlers();
     registerLoggingHandlers();
-    registerChatHandlers(ipcMain);
     registerDataHandlers(ipcMain, userDataPath);
     registerScriptRunHandlers(ipcMain, userDataPath);
     registerCliPathHandlers();

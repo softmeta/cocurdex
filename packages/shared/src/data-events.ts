@@ -1,4 +1,3 @@
-import type { ChatEvent } from "./chat-events";
 import type { AgentEvent } from "./contracts";
 import type { PeerMessageEvent } from "./peer-messaging";
 import type { ScriptRunChangedEvent } from "./script-run";
@@ -35,7 +34,6 @@ export interface DaemonEventMeta {
 export type CocurdexDaemonEvent =
   | AgentEvent
   | CocurdexDataChangedEvent
-  | ChatEvent
   | PeerMessageEvent
   | ScriptRunChangedEvent
   | TeamChangedEvent

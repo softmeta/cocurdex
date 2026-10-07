@@ -4,9 +4,8 @@ import {
   type ComposerDraft,
   clearComposerDraftAtom,
   composerDraftsAtom,
-  conversationComposerDraftKey,
   isComposerDraftEmpty,
-  newConversationComposerDraftKey,
+  newChatComposerDraftKey,
   newSessionComposerDraftKey,
   sessionComposerDraftKey,
   setComposerDraftAtom,
@@ -27,10 +26,9 @@ describe("composer draft keys", () => {
     expect(newSessionComposerDraftKey(null)).toBe("new-session:_");
   });
 
-  it("keeps session, conversation, and new-conversation keys distinct", () => {
+  it("keeps session and new-chat keys distinct", () => {
     expect(sessionComposerDraftKey("s1")).toBe("session:s1");
-    expect(conversationComposerDraftKey("c1")).toBe("conversation:c1");
-    expect(newConversationComposerDraftKey()).toBe("new-conversation");
+    expect(newChatComposerDraftKey()).toBe("new-chat");
   });
 });
 

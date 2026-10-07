@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  clearPaneConversations,
   clearPaneSessions,
   closePane,
   collapseToPane,
@@ -32,7 +31,6 @@ describe("session split tree", () => {
     expect(findPane(root, ROOT_PANE_ID)).toEqual({
       id: ROOT_PANE_ID,
       sessionId: null,
-      conversationId: null,
     });
   });
 
@@ -53,7 +51,6 @@ describe("session split tree", () => {
     expect(findPane(split?.root ?? createRootPane(), "pane-b")).toEqual({
       id: "pane-b",
       sessionId: null,
-      conversationId: null,
     });
     expect(split?.root.type).toBe("split");
     if (split?.root.type === "split") {
@@ -125,7 +122,7 @@ describe("session split tree", () => {
       split?.root ?? createRootPane(),
       "pane-b",
       {
-        conversationId: "conversation-b",
+        sessionId: "session-b",
       },
     );
 
@@ -134,8 +131,7 @@ describe("session split tree", () => {
       type: "pane",
       pane: {
         id: "pane-b",
-        sessionId: null,
-        conversationId: "conversation-b",
+        sessionId: "session-b",
       },
     });
   });
@@ -201,7 +197,6 @@ describe("session split tree", () => {
       "pane-b",
       {
         sessionId: "session-a",
-        conversationId: null,
       },
     );
 
@@ -228,7 +223,6 @@ describe("session split tree", () => {
       "pane-b",
       {
         sessionId: "session-a",
-        conversationId: null,
       },
     );
 
@@ -243,34 +237,9 @@ describe("session split tree", () => {
     ).toBeNull();
   });
 
-  it("focuses the pane that already shows a conversation instead of duplicating it", () => {
-    const split = splitPane(
-      setPaneBinding(createRootPane(), ROOT_PANE_ID, {
-        conversationId: "conversation-a",
-      }),
-      ROOT_PANE_ID,
-      "right",
-      { createId: createIds(["pane-b", "split-1"]) },
-    );
-    const revealed = revealPaneContent(
-      split?.root ?? createRootPane(),
-      "pane-b",
-      {
-        sessionId: null,
-        conversationId: "conversation-a",
-      },
-    );
-
-    expect(revealed?.focusedPaneId).toBe(ROOT_PANE_ID);
-    expect(
-      findPane(revealed?.root ?? createRootPane(), "pane-b")?.conversationId,
-    ).toBeNull();
-  });
-
   it("does not focus a pane that is no longer in the tree", () => {
     const revealed = revealPaneContent(createRootPane(), "missing-pane", {
-      sessionId: null,
-      conversationId: "conversation-late",
+      sessionId: "session-late",
     });
 
     expect(revealed).toBeNull();
@@ -278,25 +247,12 @@ describe("session split tree", () => {
 
   it("does not steal focus from a missing pane even if the content exists elsewhere", () => {
     const root = setPaneBinding(createRootPane(), ROOT_PANE_ID, {
-      conversationId: "conversation-a",
+      sessionId: "session-a",
     });
     const revealed = revealPaneContent(root, "missing-pane", {
-      sessionId: null,
-      conversationId: "conversation-a",
+      sessionId: "session-a",
     });
 
     expect(revealed).toBeNull();
-  });
-
-  it("clears removed conversations without dropping the pane", () => {
-    const root = setPaneBinding(createRootPane(), ROOT_PANE_ID, {
-      conversationId: "conversation-a",
-    });
-    const cleared = clearPaneConversations(root, new Set(["conversation-a"]));
-    expect(findPane(cleared, ROOT_PANE_ID)).toEqual({
-      id: ROOT_PANE_ID,
-      sessionId: null,
-      conversationId: null,
-    });
   });
 });

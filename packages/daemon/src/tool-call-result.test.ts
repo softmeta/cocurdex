@@ -21,7 +21,7 @@ it("reads tool results through the named RPC and rejects invalid IDs", async () 
     } as DaemonRequest<"session.getToolCallResult">);
 
   try {
-    const database = await service.state.getChatDatabase();
+    const database = await service.state.getDatabase();
     const timestamp = "2026-09-09T00:00:00.000Z";
     await database.workspaces.upsert({
       id: "workspace-1",

@@ -3,7 +3,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isAnnotationModeAtom } from "@/features/browser";
-import { useChatEventBridge } from "@/features/chat";
 import {
   editorPanelOpenAtom,
   openFileAtom,
@@ -206,7 +205,6 @@ export function AppShell() {
     isChatDetached: chatDetached,
   });
   useBrowserEventBridge();
-  useChatEventBridge();
   const rendererSettingAppliersRef = useRef<RendererSettingAppliers>({});
   useSettingsChangeBridge(rendererSettingAppliersRef);
   useShellIntents();

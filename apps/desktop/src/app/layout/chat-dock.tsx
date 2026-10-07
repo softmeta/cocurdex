@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
-import { conversationsAtom } from "@/features/chat";
 import { focusedSessionPaneAtom, sessionsAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 import { ChatDockActions } from "./chat-dock-actions";
@@ -89,9 +88,8 @@ export function ChatDock({
   const pinned = pinnable && pinRequested && pinLayout.canPin;
   const { paneCount, focusedPaneId, splitPaneById } = useSessionSplitActions();
   const focusedPane = useAtomValue(focusedSessionPaneAtom);
-  const conversations = useAtomValue(conversationsAtom);
   const sessions = useAtomValue(sessionsAtom);
-  const paneTitle = sessionPaneTitle(focusedPane, conversations, sessions);
+  const paneTitle = sessionPaneTitle(focusedPane, sessions);
   const singlePane = paneCount === 1;
 
   if (visibility === "hidden") {

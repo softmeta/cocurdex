@@ -14,6 +14,8 @@ export {
   appDropdownContentClassName,
   appDropdownSeparatorClassName,
   compactDropdownContentClassName,
+  SettingRow,
+  SettingsGroup,
 } from "./app";
 export { CollapsibleUserMessageBody, LinkifiedText } from "./chat";
 export {

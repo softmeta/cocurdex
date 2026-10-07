@@ -20,7 +20,6 @@ export class DaemonShutdownGate {
       this.activeRequests > 0 ||
       activeWork.agentTurns > 0 ||
       activeWork.queuedInputs > 0 ||
-      activeWork.chatOperations > 0 ||
       activeWork.workflowActive ||
       activeWork.workspaceSearches > 0;
     if (!busy) this.draining = true;

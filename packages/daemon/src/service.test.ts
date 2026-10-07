@@ -219,7 +219,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
         sessionId: message.sessionId,
         toolCall,
       });
-      const database = await service.state.getChatDatabase();
+      const database = await service.state.getDatabase();
       const listMessages = vi.spyOn(database.messages, "list");
       const listToolCalls = vi.spyOn(database.toolCalls, "list");
 

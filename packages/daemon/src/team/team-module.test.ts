@@ -157,7 +157,7 @@ function harness({ busy = new Set<string>() } = {}) {
     now: () => "2026-01-02T00:00:00.000Z",
     createId: () => `id-${++ids}`,
   });
-  return { module, sessions, sent, reports, stopped, events };
+  return { module, sessions, sent, reports, stopped, events, settings };
 }
 
 describe("TeamModule", () => {
@@ -378,6 +378,45 @@ describe("TeamModule", () => {
     await expect(
       module.spawnTemplate("lead", { templateId: template.id }),
     ).rejects.toMatchObject({ code: "template_not_found" });
+  });
+
+  it("reads templates saved before description and avatar existed", async () => {
+    const { module, settings } = harness();
+    settings.set(
+      "teamTemplates",
+      JSON.stringify([
+        {
+          id: "legacy",
+          name: "Legacy",
+          members: [{ name: "a", agentRoleId: null, prompt: "go" }],
+          createdAt: "",
+          updatedAt: "",
+        },
+      ]),
+    );
+    expect(await module.listTemplates()).toMatchObject([
+      { id: "legacy", description: null, avatar: null },
+    ]);
+  });
+
+  it("stores a trimmed description and a normalized avatar", async () => {
+    const { module } = harness();
+    const template = await module.saveTemplate({
+      name: "Squad",
+      description: "  Reviews pull requests  ",
+      avatar: { kind: "emoji", emoji: " 🦊 ", color: "teal" },
+      members: [{ name: "a", agentRoleId: null, prompt: "go" }],
+    });
+    expect(template).toMatchObject({
+      description: "Reviews pull requests",
+      avatar: { kind: "emoji", emoji: "🦊", color: "teal" },
+    });
+    const cleared = await module.saveTemplate({
+      ...template,
+      description: "   ",
+      avatar: null,
+    });
+    expect(cleared).toMatchObject({ description: null, avatar: null });
   });
 
   it("lets only one session claim a task", async () => {

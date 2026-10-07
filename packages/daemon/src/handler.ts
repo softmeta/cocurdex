@@ -34,26 +34,6 @@ export async function handleDaemonRequest(
 ) {
   await service.acpRegistry.ready;
   switch (request.method) {
-    case "chat.list":
-      return service.chatService.list();
-    case "chat.get":
-      return service.chatService.get(request.params.conversationId);
-    case "chat.create":
-      return service.createConversation(request.params);
-    case "chat.update":
-      return service.chatService.update(request.params);
-    case "chat.archive":
-      return service.chatService.archive(request.params.conversationId);
-    case "chat.delete":
-      return service.chatService.delete(request.params.conversationId);
-    case "chat.stop":
-      return service.chatService.stop(request.params.conversationId);
-    case "chat.send":
-      return service.sendConversationMessage(request.params);
-    case "chat.retry":
-      return service.retryConversationMessage(request.params);
-    case "chat.edit":
-      return service.editConversationMessage(request.params);
     case "daemon.status":
       return service.status();
     case "daemon.shutdownIfIdle":

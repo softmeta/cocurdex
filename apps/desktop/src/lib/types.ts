@@ -18,15 +18,10 @@ import type {
   ArchiveSessionPayload,
   BrowserAnnotation,
   BrowserTabsSnapshot,
-  ChatEvent,
   CocurdexDataChangedEvent,
   CommitMessageModelSelection,
   CompatibleProviderModel,
-  ConversationMessageRecord,
-  ConversationRecord,
-  ConversationSnapshot,
   CreateColumnPayload,
-  CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateViewPayload,
@@ -37,7 +32,6 @@ import type {
   DeleteViewPayload,
   DiagnosticsExportResult,
   DocumentAttachment,
-  EditConversationMessagePayload,
   EditorViewRecord,
   GetIssuePayload,
   GetNotePayload,
@@ -80,7 +74,6 @@ import type {
   QueuedAgentInputActionPayload,
   RefineSessionTitlePayload,
   RendererLogPayload,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
@@ -89,7 +82,6 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
-  SendConversationMessagePayload,
   SessionMessagesResult,
   SessionRecord,
   StartScriptRunPayload,
@@ -107,7 +99,6 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
-  UpdateConversationPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
@@ -560,25 +551,6 @@ export interface ProductApi {
   onWorkspaceSearchError(
     listener: (event: WorkspaceSearchErrorEvent) => void,
   ): () => void;
-  // === Pure chat (ChatGPT-style) ===
-  chatList(): Promise<ConversationRecord[]>;
-  chatGet(conversationId: string): Promise<ConversationSnapshot | null>;
-  chatCreate(payload: CreateConversationPayload): Promise<ConversationRecord>;
-  chatUpdate(
-    payload: UpdateConversationPayload,
-  ): Promise<ConversationRecord | null>;
-  chatArchive(conversationId: string): Promise<ConversationRecord | null>;
-  chatDelete(conversationId: string): Promise<void>;
-  chatSendMessage(
-    payload: SendConversationMessagePayload,
-  ): Promise<ConversationMessageRecord>;
-  chatRetryMessage(payload: RetryConversationMessagePayload): Promise<null>;
-  chatEditMessage(
-    payload: EditConversationMessagePayload,
-  ): Promise<ConversationMessageRecord>;
-  chatStopStream(conversationId: string): Promise<void>;
-  onChatEvent(listener: (event: ChatEvent) => void): () => void;
-  onChatInvalidated(listener: () => void): () => void;
   // === App-owned notes ===
   notesList(): Promise<NoteSummary[]>;
   notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;

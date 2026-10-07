@@ -1,3 +1,4 @@
+import type { AgentRoleAvatar } from "./agent-role";
 import type { AgentId, SessionStatus } from "./contracts";
 
 export type TeamStatus = "active" | "stopped";
@@ -64,6 +65,8 @@ export interface TeamTemplateMember {
 export interface TeamTemplateRecord {
   id: string;
   name: string;
+  description: string | null;
+  avatar: AgentRoleAvatar | null;
   members: TeamTemplateMember[];
   createdAt: string;
   updatedAt: string;
@@ -72,6 +75,8 @@ export interface TeamTemplateRecord {
 export interface SaveTeamTemplatePayload {
   id?: string;
   name: string;
+  description?: string | null;
+  avatar?: AgentRoleAvatar | null;
   members: TeamTemplateMember[];
 }
 
@@ -89,6 +94,7 @@ export interface TeamChangedEvent {
 }
 
 export const TEAM_MAX_MEMBERS = 8;
+export const TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH = 500;
 
 const TEAM_UNSUPPORTED_AGENTS: ReadonlySet<AgentId> = new Set(["opencode"]);
 

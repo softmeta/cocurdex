@@ -7,11 +7,9 @@ import type {
   AgentProviderSelection,
   AgentRoleRecord,
   ArchiveSessionPayload,
-  ChatEvent,
   CocurdexDataChangedEvent,
   CompatibleProviderModel,
   CreateColumnPayload,
-  CreateConversationPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateViewPayload,
@@ -20,7 +18,6 @@ import type {
   DeleteNotePayload,
   DeleteSessionPayload,
   DeleteViewPayload,
-  EditConversationMessagePayload,
   GetIssuePayload,
   LoadViewPayload,
   MoveColumnPayload,
@@ -43,18 +40,15 @@ import type {
   QueuedAgentInputActionPayload,
   RefineSessionTitlePayload,
   RendererLogPayload,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
   ScriptRunSettings,
   SearchDocumentsPayload,
-  SendConversationMessagePayload,
   StartScriptRunPayload,
   TitleModelProbeResult,
   TitleModelSelection,
   UpdateColumnPayload,
-  UpdateConversationPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
@@ -584,26 +578,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("search:start", payload),
   cancelWorkspaceSearch: (searchId: string) =>
     ipcRenderer.invoke("search:cancel", { searchId }),
-  // === Pure chat (ChatGPT-style) ===
-  chatList: () => ipcRenderer.invoke("chat:list"),
-  chatGet: (conversationId: string) =>
-    ipcRenderer.invoke("chat:get", { conversationId }),
-  chatCreate: (payload: CreateConversationPayload) =>
-    ipcRenderer.invoke("chat:create", payload),
-  chatUpdate: (payload: UpdateConversationPayload) =>
-    ipcRenderer.invoke("chat:update", payload),
-  chatArchive: (conversationId: string) =>
-    ipcRenderer.invoke("chat:archive", { conversationId }),
-  chatDelete: (conversationId: string) =>
-    ipcRenderer.invoke("chat:delete", { conversationId }),
-  chatSendMessage: (payload: SendConversationMessagePayload) =>
-    ipcRenderer.invoke("chat:sendMessage", payload),
-  chatRetryMessage: (payload: RetryConversationMessagePayload) =>
-    ipcRenderer.invoke("chat:retryMessage", payload),
-  chatEditMessage: (payload: EditConversationMessagePayload) =>
-    ipcRenderer.invoke("chat:editMessage", payload),
-  chatStopStream: (conversationId: string) =>
-    ipcRenderer.invoke("chat:stopStream", { conversationId }),
   // === App-owned notes ===
   notesList: () => ipcRenderer.invoke("notes:list"),
   notesGet: (payload: { id: string }) =>
@@ -646,21 +620,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("issue:delete", payload),
   searchDocuments: (payload: SearchDocumentsPayload) =>
     ipcRenderer.invoke("search:documents", payload),
-  onChatInvalidated: (listener: () => void) => {
-    const handler = () => listener();
-    ipcRenderer.on("chat:invalidated", handler);
-    return () => ipcRenderer.removeListener("chat:invalidated", handler);
-  },
-  onChatEvent: (listener: (event: ChatEvent) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: ChatEvent) => {
-      listener(payload);
-    };
-
-    ipcRenderer.on("chat:event", handler);
-    return () => {
-      ipcRenderer.removeListener("chat:event", handler);
-    };
-  },
   onPtyData: (listener: (event: PtyDataEvent) => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

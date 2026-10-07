@@ -2,6 +2,7 @@ import type {
   AgentId,
   AgentRoleAvatar as AgentRoleAvatarValue,
 } from "@cocurdex/shared";
+import type { ReactNode } from "react";
 import { cn } from "@/lib";
 import { AgentIcon } from "../agent-icon";
 import {
@@ -16,6 +17,9 @@ export interface AgentRoleAvatarSource {
   agentId: AgentId;
   avatar: AgentRoleAvatarValue | null;
 }
+
+export type AvatarSource = Omit<AgentRoleAvatarSource, "agentId"> &
+  Partial<Pick<AgentRoleAvatarSource, "agentId">>;
 
 type AgentRoleAvatarSize = "sm" | "md" | "lg";
 
@@ -39,12 +43,14 @@ const badgeClassName: Record<AgentRoleAvatarSize, string> = {
 
 export function AgentRoleAvatar({
   className,
+  placeholder,
   role,
   showAgent = true,
   size = "sm",
 }: {
   className?: string;
-  role: AgentRoleAvatarSource;
+  placeholder?: ReactNode;
+  role: AvatarSource;
   showAgent?: boolean;
   size?: AgentRoleAvatarSize;
 }) {
@@ -61,10 +67,8 @@ export function AgentRoleAvatar({
         className,
       )}
     >
-      {role.avatar?.kind === "emoji"
-        ? role.avatar.emoji
-        : agentRoleInitial(role.name)}
-      {showAgent ? (
+      <AvatarGlyph placeholder={placeholder} role={role} />
+      {showAgent && role.agentId ? (
         <span className="absolute -end-0.5 -bottom-0.5 inline-flex rounded-full bg-popover p-px">
           <AgentIcon
             agentId={role.agentId}
@@ -74,4 +78,20 @@ export function AgentRoleAvatar({
       ) : null}
     </span>
   );
+}
+
+function AvatarGlyph({
+  placeholder,
+  role,
+}: {
+  placeholder?: ReactNode;
+  role: AvatarSource;
+}) {
+  if (role.avatar?.kind === "emoji") {
+    return role.avatar.emoji;
+  }
+  if (placeholder && !role.name.trim()) {
+    return placeholder;
+  }
+  return agentRoleInitial(role.name);
 }

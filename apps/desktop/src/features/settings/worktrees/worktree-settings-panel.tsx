@@ -9,6 +9,7 @@ import { FolderOpen } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { SettingRow, SettingsGroup } from "@/components";
 import { Button, Input, Switch } from "@/components/ui";
 import { createDraftSessionAtom, selectSessionAtom } from "@/features/sessions";
 import {
@@ -16,7 +17,6 @@ import {
   selectWorkspaceAtom,
 } from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
-import { SettingRow, SettingsGroup } from "../settings-fields";
 import { closeSettings } from "../settings-navigation";
 import { WorktreeInventory } from "./worktree-inventory";
 

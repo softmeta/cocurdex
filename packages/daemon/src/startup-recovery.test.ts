@@ -33,7 +33,7 @@ async function start(userDataPath?: string) {
 async function seedActiveWork(
   daemon: Awaited<ReturnType<typeof startDaemonServer>>,
 ) {
-  const database = await daemon.service.state.getChatDatabase();
+  const database = await daemon.service.state.getDatabase();
   const timestamp = "2026-09-12T00:00:00.000Z";
   await database.workspaces.upsert({
     id: "workspace",
@@ -147,7 +147,7 @@ describe("daemon startup recovery", () => {
       }),
     ]);
     const team = await (
-      await second.service.state.getChatDatabase()
+      await second.service.state.getDatabase()
     ).teams.getByLead("session");
     expect(team?.members).toEqual([
       expect.objectContaining({ sessionId: "teammate", status: "error" }),

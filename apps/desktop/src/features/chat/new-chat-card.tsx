@@ -1,13 +1,18 @@
-import type { MessageAttachment } from "@cocurdex/shared";
+import type {
+  AgentProviderSnapshot,
+  AgentThinkingLevel,
+  MessageAttachment,
+} from "@cocurdex/shared";
+import { createProviderSnapshotForModel } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Settings2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
 import {
   ChatComposer,
   ComposerSurfaceBody,
-  newConversationComposerDraftKey,
+  newChatComposerDraftKey,
   WelcomeHeading,
 } from "@/features/composer";
 import {
@@ -18,114 +23,87 @@ import {
 // @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
 import { useMountEffect } from "@/lib";
-import { chatModelsAtom } from "./chat-models";
-import { conversationsAtom } from "./chat-store";
+import { chatProviderModelsAtom } from "./chat-models";
+import { chatSessionsAtom } from "./chat-sessions";
+import {
+  getChatThinkingLevelOptions,
+  NEW_CHAT_THINKING_LEVEL,
+  resolveChatThinkingLevel,
+} from "./chat-thinking-level";
 import { ModelPicker } from "./model-picker";
 
-export interface StartConversationPayload {
+export interface StartChatPayload {
+  providerSnapshot: AgentProviderSnapshot;
+  thinkingLevel: AgentThinkingLevel | null;
+  text: string;
+  attachments: MessageAttachment[];
+}
+
+interface NewChatCardProps {
+  onStartChat(payload: StartChatPayload): void | Promise<void>;
+}
+
+interface ModelKey {
   providerId: string;
   modelId: string;
-  webSearchEnabled: boolean;
-  message: string;
-  attachments?: MessageAttachment[];
 }
 
-interface NewConversationCardProps {
-  onStartConversation(payload: StartConversationPayload): void | Promise<void>;
+function sameModel(left: ModelKey, right: ModelKey) {
+  return left.providerId === right.providerId && left.modelId === right.modelId;
 }
 
-// Chat-mode counterpart of NewSessionCard: the surface behind the chat tab. It
-// reuses the welcome-toned ChatComposer so it lines up pixel-for-pixel with the
-// agent card, and the model picker stands in for the agent toolbar.
-// Deliberately offers no workspace entry: workspaces belong to the
-// workspaces tab, and chat runs without one.
-export function NewConversationCard({
-  onStartConversation,
-}: NewConversationCardProps) {
+export function NewChatCard({ onStartChat }: NewChatCardProps) {
   const { t } = useTranslation("chat");
   const models = useAtomValue(providerModelsAtom);
-  const conversations = useAtomValue(conversationsAtom);
+  const chatSessions = useAtomValue(chatSessionsAtom);
+  const compatibleModels = useAtomValue(chatProviderModelsAtom);
   const bootstrapProviderModels = useSetAtom(bootstrapProviderModelsAtom);
-  const [picked, setPicked] = useState<{
-    providerId: string;
-    modelId: string;
-  } | null>(null);
+  const [picked, setPicked] = useState<ModelKey | null>(null);
+  const [pickedThinkingLevel, setPickedThinkingLevel] =
+    useState<AgentThinkingLevel | null>(null);
 
-  const enabledModels = useAtomValue(chatModelsAtom);
-
-  // Ensure provider models are available so the picker can offer a default.
-  // Cheap if already cached (mirrors the sidebar's new-chat handler). Mount-only
-  // bootstrap — the store self-dedupes, so no need to re-run on model changes.
   useMountEffect(() => {
     if (models.length === 0) {
       void bootstrapProviderModels();
     }
   });
 
-  // Remember the last-used model across restarts by reading it off the most
-  // recent conversation (persisted in the DB). Honor it only while the model
-  // is still enabled, mirroring the agent card's soft-default validation;
-  // otherwise fall back to the first enabled model.
-  const lastUsedModel = useMemo(() => {
-    const recent = conversations
-      .filter((c) => c.archivedAt == null)
-      .sort((a, b) =>
-        (b.lastMessageAt ?? b.updatedAt).localeCompare(
-          a.lastMessageAt ?? a.updatedAt,
-        ),
-      )[0];
-    if (!recent) {
-      return null;
-    }
-    const stillEnabled = enabledModels.some(
-      (m) => m.providerId === recent.providerId && m.modelId === recent.modelId,
-    );
-    return stillEnabled
-      ? { providerId: recent.providerId, modelId: recent.modelId }
+  const recentSnapshot = chatSessions[0]?.providerSnapshot ?? null;
+  const findCompatible = (key: ModelKey | null) =>
+    key
+      ? (compatibleModels.find(({ model }) => sameModel(model, key)) ?? null)
       : null;
-  }, [conversations, enabledModels]);
-
-  // Default to the last-used (then first enabled) model until the user picks
-  // one explicitly — derived in render so it tracks the list without an effect.
-  const firstEnabled = enabledModels[0];
-  const validPicked =
-    picked &&
-    enabledModels.some(
-      (model) =>
-        model.providerId === picked.providerId &&
-        model.modelId === picked.modelId,
-    )
-      ? picked
-      : null;
-  const selectedModel =
-    validPicked ??
-    lastUsedModel ??
-    (firstEnabled
-      ? { providerId: firstEnabled.providerId, modelId: firstEnabled.modelId }
-      : null);
-
-  // Model sits on the left control row to match agent mode and the in-
-  // conversation composer. No usage yet, so no context ring on the right.
-  const controls = (
-    <ModelPicker
-      providerId={selectedModel?.providerId ?? null}
-      modelId={selectedModel?.modelId ?? null}
-      onChange={(providerId, modelId) => setPicked({ providerId, modelId })}
-    />
+  const selected =
+    findCompatible(picked) ??
+    findCompatible(recentSnapshot) ??
+    compatibleModels[0] ??
+    null;
+  const providerSnapshot = selected
+    ? createProviderSnapshotForModel(selected)
+    : null;
+  const thinkingLevelOptions = getChatThinkingLevelOptions(providerSnapshot);
+  const thinkingLevel = resolveChatThinkingLevel(
+    thinkingLevelOptions,
+    pickedThinkingLevel ?? recentSnapshot?.thinkingLevel,
+    NEW_CHAT_THINKING_LEVEL,
   );
 
-  // Without a provider the composer cannot send, so the heading points at the
-  // one control that unblocks it (the model picker below, which opens
-  // provider settings) instead of inviting a message.
-  const welcomeTitle = selectedModel
-    ? t("detail.empty.title")
-    : t("detail.empty.noProviderTitle");
+  const controls = (
+    <ModelPicker
+      providerId={selected?.provider.id ?? null}
+      modelId={selected?.model.modelId ?? null}
+      onChange={(providerId, modelId) => setPicked({ providerId, modelId })}
+      thinkingLevel={thinkingLevel}
+      thinkingLevelOptions={thinkingLevelOptions}
+      onThinkingLevelChange={setPickedThinkingLevel}
+    />
+  );
 
   return (
     <ComposerSurfaceBody className="flex flex-col">
       <WelcomeHeading>
-        {welcomeTitle}
-        {selectedModel ? null : (
+        {selected ? t("detail.empty.title") : t("detail.empty.noProviderTitle")}
+        {selected ? null : (
           <Button
             aria-label={t("detail.empty.openProviderSettings")}
             className="self-center"
@@ -142,21 +120,20 @@ export function NewConversationCard({
         mode="chat"
         variant="panel"
         tone="welcome"
-        draftKey={newConversationComposerDraftKey()}
+        draftKey={newChatComposerDraftKey()}
         mentionMenuPlacement="bottom"
         controls={controls}
-        canSubmit={Boolean(selectedModel)}
+        canSubmit={Boolean(providerSnapshot)}
         placeholderOverride={t("composer.placeholder", {
           defaultValue: "Ask anything…",
         })}
-        onSend={(message, attachments) => {
-          if (!selectedModel) return;
-          return onStartConversation({
-            providerId: selectedModel.providerId,
-            modelId: selectedModel.modelId,
-            webSearchEnabled: false,
-            message,
-            attachments: attachments.length > 0 ? attachments : undefined,
+        onSend={(text, attachments) => {
+          if (!providerSnapshot) return;
+          return onStartChat({
+            providerSnapshot: { ...providerSnapshot, thinkingLevel },
+            thinkingLevel,
+            text,
+            attachments,
           });
         }}
       />

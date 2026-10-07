@@ -6,6 +6,7 @@ import {
   canSpawnTeammate,
   checkTeamTaskUpdate,
   type MessageRecord,
+  normalizeAgentRoleAvatar,
   renderTeammateBriefing,
   renderTeammateReport,
   type SaveTeamTemplatePayload,
@@ -20,6 +21,7 @@ import {
   TEAM_MAX_MEMBERS,
   TEAM_NAME_PATTERN,
   TEAM_TASK_STATUSES,
+  TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH,
   TEAM_TEMPLATES_SETTING_KEY,
   type TeamChangedEvent,
   type TeamMemberRecord,
@@ -159,11 +161,22 @@ function summarizeRole(role: AgentRoleRecord): TeamRoleSummary {
   };
 }
 
+function normalizeTemplateDescription(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().slice(0, TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH);
+  return trimmed || null;
+}
+
 function parseTemplates(raw: string | null): TeamTemplateRecord[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as TeamTemplateRecord[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((template: TeamTemplateRecord) => ({
+      ...template,
+      description: normalizeTemplateDescription(template.description),
+      avatar: normalizeAgentRoleAvatar(template.avatar),
+    }));
   } catch {
     return [];
   }
@@ -512,6 +525,8 @@ export class TeamModule {
     const record: TeamTemplateRecord = {
       id: existing?.id ?? this.createId(),
       name,
+      description: normalizeTemplateDescription(payload.description),
+      avatar: normalizeAgentRoleAvatar(payload.avatar),
       members,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

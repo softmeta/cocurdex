@@ -536,10 +536,7 @@ export const activateSessionPaneAtom = atom(
 export const selectSessionAtom = atom(
   null,
   (get, set, sessionId: string | null) => {
-    set(bindFocusedPaneContentAtom, {
-      sessionId,
-      conversationId: null,
-    });
+    set(bindFocusedPaneContentAtom, { sessionId });
     if (!sessionId) {
       return;
     }
@@ -634,10 +631,7 @@ export const createDraftSessionAtom = atom(
     };
 
     set(sessionsAtom, [session, ...get(sessionsAtom)]);
-    set(bindFocusedPaneContentAtom, {
-      sessionId: session.id,
-      conversationId: null,
-    });
+    set(bindFocusedPaneContentAtom, { sessionId: session.id });
     activateWorkspaceForSession(get, set, session.id);
     set(lastSelectedAgentAtom, agentType);
 

@@ -352,88 +352,28 @@ export default interface Resources {
     urlPlaceholder: "Enter dev server URL (e.g. http://localhost:3000)";
   };
   chat: {
-    common: {
-      back: "Back";
-      cancel: "Cancel";
-      save: "Save";
-    };
     composer: {
-      attachImage: "Attach image";
       placeholder: "Ask anything…";
-      removeImage: "Remove image";
-      send: "Send";
-      stop: "Stop";
     };
     detail: {
       empty: {
-        description: "Type below. Press Enter to send. Web search and system prompts can be configured per conversation.";
         noProviderTitle: "Add a model provider to start";
         openProviderSettings: "Open provider settings";
         title: "Send a message to start";
       };
-      loadFailed: "Could not load conversation";
-      openSystemPrompt: "Edit system prompt";
-      welcome: {
-        cta: "New chat";
-        description: "Start a free-form conversation with any configured provider. No workspace required.";
-        noProvider: "Configure a provider first";
-        title: "Pure chat";
-      };
     };
     list: {
-      archive: "Archive";
-      delete: "Delete conversation";
       empty: {
         description: "Start a new chat to begin.";
         title: "No conversations yet";
       };
-      heading: "Chats";
       "new": "New chat";
-      rename: "Rename";
-      renameConversation: "Rename conversation {{title}}";
     };
     message: {
-      cancelEdit: "Cancel edit";
-      copy: "Copy";
-      edit: "Edit";
       error: "Request failed";
-      imageAlt: "Attached image";
-      regenerate: "Regenerate";
-      retry: "Retry";
-      stopped: "Response stopped";
-      submitEdit: "Submit edit";
-    };
-    modelPicker: {
-      noModels: "No provider models configured";
-      placeholder: "Select model";
-    };
-    presets: {
-      assistant: {
-        label: "General assistant";
-      };
-      coder: {
-        label: "Coding assistant";
-      };
-      custom: "Custom";
-      researcher: {
-        label: "Research assistant";
-      };
-      translator: {
-        label: "Translator";
-      };
     };
     sidebar: {
       title: "Chat";
-    };
-    sources: {
-      heading: "Sources";
-      heading_one: "Sources";
-      heading_other: "Sources";
-    };
-    systemPrompt: {
-      description: "Pick a built-in role or write a custom system prompt. Applies to all future turns in this conversation.";
-      placeholder: "Optional system prompt…";
-      title: "System prompt";
     };
   };
   common: {
@@ -2130,19 +2070,22 @@ export default interface Resources {
       addMember: "Add teammate";
       cancel: "Cancel";
       create: "New team";
+      createFirst: "Create one";
       createTitle: "New team";
       delete: "Delete";
       deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
       deleteFailed: "Could not delete this team.";
       deleteTitle: "Delete this team?";
       deleted: "Team deleted";
-      description: "Define reusable teams. A lead agent can spawn a whole team with team_spawn_template, or you can spawn one from the CLI.";
+      description: "Save team lineups you use often. Ask the lead agent in a session to start one, or start it from the CLI.";
       edit: "Edit";
       editTitle: "Edit team";
-      empty: "No teams yet";
-      emptyDescription: "Create a team, name its teammates, and pick a saved role for each.";
+      empty: "No teams yet.";
       inheritRole: "Same as lead";
+      listTitle: "Saved teams";
+      memberCount: "{{current}}/{{max}}";
       memberName: "Teammate name";
+      memberNameHint: "Lowercase letters, digits, and hyphens. The lead addresses teammates by this name.";
       memberNamePlaceholder: "reviewer";
       memberPrompt: "Standing instructions";
       memberPromptPlaceholder: "What this teammate is responsible for.";
@@ -2158,14 +2101,17 @@ export default interface Resources {
         defaultMaxAgents: "Default agent limit";
         defaultMaxAgentsDescription: "Maximum agents one script run may start; you can change it when approving";
         description: "Agents in a session can propose background scripts that orchestrate subagents; they run after you approve them";
-        maxDuration: "Maximum run time (minutes)";
+        maxDuration: "Maximum run time";
         maxDurationDescription: "Cancels the whole run and its subagents when exceeded; leave empty for no limit";
+        minutes: "min";
         saveFailed: "Could not save script run settings";
         schemaMaxAttempts: "Structured reply attempts";
         schemaMaxAttemptsDescription: "How many times an agent may try to reply with JSON matching the script's schema";
         title: "Script runs";
         unlimited: "No limit";
       };
+      teamDescription: "Description";
+      teamDescriptionPlaceholder: "What this team is for. The lead agent reads this to decide when to use it.";
     };
     updates: {
       actions: {

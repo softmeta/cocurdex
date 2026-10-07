@@ -117,7 +117,23 @@ function harness(reply: Reply, settings: Record<string, unknown> = {}) {
     throw new Error("run did not finish");
   };
 
-  return { module, sessions, sent, stopped, events, waitForRun };
+  const waitForHangingTurn = async () => {
+    for (let index = 0; index < 200; index += 1) {
+      if (hangs.size > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    throw new Error("agent turn did not start");
+  };
+
+  return {
+    module,
+    sessions,
+    sent,
+    stopped,
+    events,
+    waitForRun,
+    waitForHangingTurn,
+  };
 }
 
 describe("ScriptRunModule", () => {
@@ -244,7 +260,7 @@ describe("ScriptRunModule", () => {
       script: `await agent("wait");`,
     });
     await first.module.start({ runId: draft.id });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await first.waitForHangingTurn();
     await first.module.cancel(draft.id);
     const cancelled = await first.waitForRun(draft.id);
     expect(cancelled.run.status).toBe("cancelled");
@@ -258,7 +274,7 @@ describe("ScriptRunModule", () => {
       script: `await agent("wait");`,
     });
     await second.module.start({ runId: other.id });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await second.waitForHangingTurn();
     await second.module.cancelForRequester("lead");
     expect((await second.waitForRun(other.id)).run.status).toBe("cancelled");
     expect(second.sent.some((command) => command.sessionId === "lead")).toBe(

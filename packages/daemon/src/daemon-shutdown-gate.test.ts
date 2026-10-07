@@ -5,7 +5,6 @@ import { DaemonShutdownGate } from "./daemon-shutdown-gate";
 const idle: DaemonActiveWork = {
   agentTurns: 0,
   queuedInputs: 0,
-  chatOperations: 0,
   workflowActive: false,
   workspaceSearches: 0,
 };
@@ -14,7 +13,6 @@ describe("safe daemon shutdown admission", () => {
   it.each([
     "agentTurns",
     "queuedInputs",
-    "chatOperations",
     "workflowActive",
     "workspaceSearches",
   ] as const)("preserves %s", (kind) => {

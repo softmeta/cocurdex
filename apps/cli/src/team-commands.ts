@@ -97,8 +97,9 @@ export async function handleTeamCommand(
         id: template.id,
         name: template.name,
         members: template.members.map((member) => member.name).join(","),
+        description: template.description ?? "",
       })),
-      ["id", "name", "members"],
+      ["id", "name", "members", "description"],
       parsed,
     );
     return true;

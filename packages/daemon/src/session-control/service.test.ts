@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createAgentRegistry } from "@cocurdex/agent-core";
 import type { MessageRecord, SendSessionCommand } from "@cocurdex/shared";
+import { CHAT_WORKSPACE_ID } from "@cocurdex/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CocurdexDaemonService } from "../service";
 
@@ -233,5 +234,92 @@ describe("authoritative task commands", () => {
       revertWorkspace: false,
     });
     expect(result).toEqual({ ...existing, content: "Revised", seq: 1 });
+  });
+
+  it("creates chat sessions in a hidden workspace under user data", async () => {
+    const { service, root } = await fixture();
+    const session = await service.saveSessionConfiguration({
+      id: "chat-1",
+      workspaceId: CHAT_WORKSPACE_ID,
+      title: "Chat",
+      agentType: "pi",
+      writeMode: "read-only",
+      sessionModeId: null,
+      sessionKind: "chat",
+    });
+    expect(session.sessionKind).toBe("chat");
+    const workspace = (await service.state.listWorkspaces()).find(
+      (item) => item.id === CHAT_WORKSPACE_ID,
+    );
+    expect(workspace?.rootPaths).toEqual([path.join(root, "chat")]);
+  });
+
+  describe("resubmitting a previous message", () => {
+    async function seedTwoTurns(
+      service: Awaited<ReturnType<typeof fixture>>["service"],
+    ) {
+      for (const [id, createdAt] of [
+        ["first", "2026-10-07T00:00:00.000Z"],
+        ["second", "2026-10-07T00:01:00.000Z"],
+      ] as const) {
+        await service.state.saveUserMessage({
+          id,
+          sessionId: "session-1",
+          role: "user",
+          content: id,
+          attachments: [],
+          createdAt,
+        });
+      }
+      await service.state.saveProviderSession(
+        "session-1",
+        "pi-session",
+        { sessionFile: "/tmp/pi.jsonl" },
+        true,
+      );
+      vi.spyOn(service.runtime, "sendSessionMessage").mockImplementation(
+        async (payload) => ({
+          id: payload.messageId ?? "reply",
+          sessionId: payload.session.id,
+          role: "user",
+          content: payload.content,
+          attachments: [],
+          createdAt: new Date().toISOString(),
+        }),
+      );
+    }
+
+    it("keeps the native session when the agent rewinds its conversation", async () => {
+      const { service } = await fixture();
+      await seedTwoTurns(service);
+      const rewind = vi
+        .spyOn(service.runtime, "rewindSessionConversation")
+        .mockResolvedValue(true);
+      await service.submitPreviousMessage({
+        sessionId: "session-1",
+        messageId: "second",
+        content: "Revised",
+        revertWorkspace: false,
+      });
+      expect(rewind.mock.calls[0][2]).toBe(1);
+      expect(await service.state.getProviderSession("session-1")).toMatchObject(
+        { providerSessionId: "pi-session" },
+      );
+    });
+
+    it("drops the native session when the agent cannot rewind", async () => {
+      const { service } = await fixture();
+      await seedTwoTurns(service);
+      vi.spyOn(service.runtime, "rewindSessionConversation").mockResolvedValue(
+        false,
+      );
+      await service.submitPreviousMessage({
+        sessionId: "session-1",
+        messageId: "second",
+        content: "Revised",
+        revertWorkspace: false,
+      });
+      expect(await service.state.getProviderSession("session-1")).toBeNull();
+    });
   });
 });

@@ -1,4 +1,5 @@
 import type { SessionRecord } from "@cocurdex/shared";
+import { isChatSession } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { editorPanelOpenAtom } from "@/features/editor";
 import { openIssueDetailAtom } from "@/features/issues";
@@ -20,8 +21,12 @@ export function useSearchPaletteActions(onClose: () => void) {
   return {
     openSession(session: SessionRecord) {
       onClose();
-      setSidebarTab("workspaces");
-      selectWorkspace(session.workspaceId);
+      if (isChatSession(session)) {
+        setSidebarTab("chat");
+      } else {
+        setSidebarTab("workspaces");
+        selectWorkspace(session.workspaceId);
+      }
       selectSession(session.id);
     },
     openNote(noteId: string) {

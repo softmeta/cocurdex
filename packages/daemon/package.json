@@ -17,7 +17,6 @@
     "@cocurdex/agent-adapters": "workspace:*",
     "@cocurdex/agent-core": "workspace:*",
     "@cocurdex/db": "workspace:*",
-    "@cocurdex/llm-chat": "workspace:*",
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",

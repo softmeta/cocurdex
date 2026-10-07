@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import path from "node:path";
 import {
+  AGENT_ROLE_AVATAR_COLORS,
   isAcpRegistryAgentId,
   isAgentId,
   isBroadFilesystemScanRoot as isBroadFilesystemScanRootPath,
@@ -325,6 +326,21 @@ export const schemas = {
   teamTemplateSave: z.object({
     id: idSchema.optional(),
     name: z.string().min(1).max(80),
+    description: z.string().max(500).nullable().optional(),
+    avatar: z
+      .discriminatedUnion("kind", [
+        z.object({
+          kind: z.literal("emoji"),
+          emoji: z.string().min(1).max(32),
+          color: z.enum(AGENT_ROLE_AVATAR_COLORS),
+        }),
+        z.object({
+          kind: z.literal("initial"),
+          color: z.enum(AGENT_ROLE_AVATAR_COLORS),
+        }),
+      ])
+      .nullable()
+      .optional(),
     members: z
       .array(
         z.object({

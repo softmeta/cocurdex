@@ -238,6 +238,7 @@ export interface AgentCapabilities {
   supportsSteering: boolean;
   supportsStreaming: boolean;
   supportsSelections: boolean;
+  supportsConversationRewind?: boolean;
   sessionTitleStrategy: SessionTitleStrategy;
   transport: "native" | "acp";
   runtimeAxes?: AgentRuntimeAxisCapabilities;
@@ -293,7 +294,7 @@ export interface WorkspaceRecord {
   missingRootPaths?: string[];
 }
 
-export type SessionKind = "main" | "subagent" | "teammate";
+export type SessionKind = "main" | "subagent" | "teammate" | "chat";
 
 export interface SessionRecord {
   id: string;
