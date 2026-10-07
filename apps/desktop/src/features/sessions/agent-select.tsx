@@ -19,6 +19,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
   IconButton,
+  ScrollArea,
   Text,
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
@@ -274,33 +275,43 @@ export function AgentSelect({
           />
         ) : null}
         {teams || roles ? <DropdownMenuSeparator /> : null}
-        <DropdownMenuGroup>
-          {selectableOptions.map((option) => (
-            <AgentSelectRow
-              key={option.value}
-              option={option}
-              selected={option.value === value}
-              statusLabel={agentSelectStatusLabel(option.statusKind, t)}
-              onSelect={handleOptionClick}
-            />
-          ))}
-        </DropdownMenuGroup>
-        {selectableOptions.length > 0 && unavailableOptions.length > 0 ? (
-          <DropdownMenuSeparator />
-        ) : null}
-        {unavailableOptions.length > 0 ? (
-          <DropdownMenuGroup>
-            {unavailableOptions.map((option) => (
-              <AgentSelectRow
-                key={option.value}
-                option={option}
-                selected={false}
-                statusLabel={agentSelectStatusLabel(option.statusKind, t)}
-                onSelect={handleOptionClick}
-              />
-            ))}
-          </DropdownMenuGroup>
-        ) : null}
+        <ScrollArea
+          className="-mx-0.5"
+          viewportProps={{
+            className:
+              "max-h-[calc((var(--text-body--line-height)_+_0.625rem)_*_6)] overscroll-contain",
+          }}
+        >
+          <div className="px-0.5">
+            <DropdownMenuGroup>
+              {selectableOptions.map((option) => (
+                <AgentSelectRow
+                  key={option.value}
+                  option={option}
+                  selected={option.value === value}
+                  statusLabel={agentSelectStatusLabel(option.statusKind, t)}
+                  onSelect={handleOptionClick}
+                />
+              ))}
+            </DropdownMenuGroup>
+            {selectableOptions.length > 0 && unavailableOptions.length > 0 ? (
+              <DropdownMenuSeparator />
+            ) : null}
+            {unavailableOptions.length > 0 ? (
+              <DropdownMenuGroup>
+                {unavailableOptions.map((option) => (
+                  <AgentSelectRow
+                    key={option.value}
+                    option={option}
+                    selected={false}
+                    statusLabel={agentSelectStatusLabel(option.statusKind, t)}
+                    onSelect={handleOptionClick}
+                  />
+                ))}
+              </DropdownMenuGroup>
+            ) : null}
+          </div>
+        </ScrollArea>
         {agentActions.length > 0 ? <DropdownMenuSeparator /> : null}
         {agentActions.map((action) => (
           <AppDropdownItem key={action.label} onClick={() => action.onSelect()}>

@@ -52,7 +52,7 @@ export function AgentPresetSubmenu({
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="[--popup-max-width:20rem]">
         {presets.length === 0 ? (
-          <AppDropdownItem disabled>
+          <AppDropdownItem className="px-2 py-1" disabled>
             <span className="text-muted-foreground">{emptyLabel}</span>
           </AppDropdownItem>
         ) : (
@@ -89,9 +89,15 @@ export function AgentPresetSubmenu({
             );
           })
         )}
-        {actions.length > 0 ? <DropdownMenuSeparator /> : null}
+        {actions.length > 0 ? (
+          <DropdownMenuSeparator className="my-0.5" />
+        ) : null}
         {actions.map((action) => (
-          <AppDropdownItem key={action.label} onClick={() => action.onSelect()}>
+          <AppDropdownItem
+            className="gap-1.5 px-2 py-1"
+            key={action.label}
+            onClick={() => action.onSelect()}
+          >
             {action.icon}
             <span className="min-w-0 flex-1 truncate">{action.label}</span>
           </AppDropdownItem>
