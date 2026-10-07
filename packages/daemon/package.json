@@ -22,9 +22,9 @@
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "1.31.0",
-    "@vscode/ripgrep": "^1.18.0",
     "@napi-rs/keyring": "^2.1.0",
-    "simple-git": "^3.36.0",
+    "@vscode/ripgrep": "^1.18.0",
+    "simple-git": "^4.0.2",
     "undici": "^8.11.2",
     "ws": "^8.22.0"
   },
