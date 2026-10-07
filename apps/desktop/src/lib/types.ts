@@ -24,6 +24,7 @@ import type {
   CreateColumnPayload,
   CreateIssuePayload,
   CreateNotePayload,
+  CreateTeamPayload,
   CreateViewPayload,
   DeleteColumnPayload,
   DeleteIssuePayload,
@@ -364,6 +365,7 @@ export interface ProductApi {
     settings: ScriptRunSettings,
   ): Promise<ScriptRunSettings>;
   getTeam(leadSessionId: string): Promise<TeamSnapshot | null>;
+  createTeam(payload: CreateTeamPayload): Promise<TeamRecord>;
   stopTeam(teamId: string): Promise<TeamRecord>;
   stopTeamMember(payload: {
     teamId: string;

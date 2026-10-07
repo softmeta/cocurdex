@@ -1,6 +1,5 @@
 import type { AgentId } from "@cocurdex/shared";
-import type { TFunction } from "i18next";
-import { Check, Pencil } from "lucide-react";
+import { Check, Pencil, Plus, Settings2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,9 +14,6 @@ import {
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   HoverCard,
   HoverCardContent,
@@ -27,19 +23,15 @@ import {
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
-import type { AdapterStatusKind } from "./adapter-status";
 import { AgentIcon, AgentIconLabel } from "./agent-icon";
 import {
-  AgentRoleAvatar,
-  type AgentRoleAvatarSource,
-} from "./agent-role/agent-role-avatar";
+  type AgentPresetAction,
+  type AgentPresetOption,
+  AgentPresetSubmenu,
+} from "./agent-preset-submenu";
+import { AgentRoleAvatar } from "./agent-role/agent-role-avatar";
 import type { AgentSelectOption } from "./agent-select-options";
-
-export interface AgentRoleSelectOption extends AgentRoleAvatarSource {
-  summary: string;
-  selectable?: boolean;
-  statusKind?: AdapterStatusKind;
-}
+import { agentSelectStatusLabel } from "./agent-select-status";
 
 interface AgentSelectProps {
   align?: "start" | "center" | "end";
@@ -53,10 +45,20 @@ interface AgentSelectProps {
   triggerClassName?: string;
   triggerLabel: ReactNode;
   value: AgentId;
-  roles?: readonly AgentRoleSelectOption[];
+  roles?: readonly AgentPresetOption[];
   selectedRoleId?: string | null;
+  teams?: readonly AgentPresetOption[];
+  selectedTeamId?: string | null;
+  onAddAgent?(): void;
+  onCreateRole?(): void;
+  onCreateTeam?(): void;
   onEditRole?(roleId: string): void;
+  onEditTeam?(teamId: string): void;
+  onManageAgents?(): void;
+  onManageRoles?(): void;
+  onManageTeams?(): void;
   onSelectRole?(roleId: string): void;
+  onSelectTeam?(teamId: string): void;
   onUnavailableClick?(agentId: AgentId): void;
   onValueChange(value: AgentId): void;
 }
@@ -79,8 +81,18 @@ export function AgentSelect({
   value,
   roles,
   selectedRoleId = null,
+  teams,
+  selectedTeamId = null,
+  onAddAgent,
+  onCreateRole,
+  onCreateTeam,
   onEditRole,
+  onEditTeam,
+  onManageAgents,
+  onManageRoles,
+  onManageTeams,
   onSelectRole,
+  onSelectTeam,
   onUnavailableClick = openAdapterSettings,
   onValueChange,
 }: AgentSelectProps) {
@@ -108,9 +120,39 @@ export function AgentSelect({
     onUnavailableClick(option.value);
   };
 
-  const selectedRole =
-    roles?.find((role) => role.id === selectedRoleId) ?? null;
-  const showRoleHover = Boolean(selectedRole) && !open;
+  const selectedTeam =
+    teams?.find((team) => team.id === selectedTeamId) ?? null;
+  const selectedRole = selectedTeam
+    ? null
+    : (roles?.find((role) => role.id === selectedRoleId) ?? null);
+  const selectedPreset = selectedTeam ?? selectedRole;
+  const onEditPreset = selectedTeam ? onEditTeam : onEditRole;
+  const showRoleHover = Boolean(selectedPreset) && !open;
+  const presetActions = (
+    create: { label: string; run?(): void },
+    manage: { label: string; run?(): void },
+  ): AgentPresetAction[] =>
+    [
+      { ...create, icon: <Plus className="size-4" /> },
+      { ...manage, icon: <Settings2 className="size-4" /> },
+    ].flatMap(({ icon, label, run }) =>
+      run
+        ? [
+            {
+              icon,
+              label,
+              onSelect: () => {
+                setOpen(false);
+                run();
+              },
+            },
+          ]
+        : [],
+    );
+  const agentActions = presetActions(
+    { label: t("agentSelect.add"), run: onAddAgent },
+    { label: t("agentSelect.manage"), run: onManageAgents },
+  );
   const showAgentTriggerIcon = selectableOptions.some(
     (option) => option.value === value,
   );
@@ -147,15 +189,17 @@ export function AgentSelect({
               disabled={isDisabled}
               showChevron={showChevron}
             >
-              {selectedRole ? <AgentRoleAvatar role={selectedRole} /> : null}
-              {!selectedRole && showAgentTriggerIcon ? (
+              {selectedPreset ? (
+                <AgentRoleAvatar role={selectedPreset} />
+              ) : null}
+              {!selectedPreset && showAgentTriggerIcon ? (
                 <AgentIcon agentId={value} />
               ) : null}
               {triggerLabel}
             </AppDropdownTriggerButton>
           </DropdownMenuTrigger>
         </HoverCardTrigger>
-        {selectedRole ? (
+        {selectedPreset ? (
           <HoverCardContent
             align="start"
             className="w-max max-w-80 py-1.5 ps-3 pe-1.5"
@@ -163,18 +207,22 @@ export function AgentSelect({
           >
             <div className="flex items-center gap-2">
               <Text size="meta" tone="muted" className="min-w-0 flex-1">
-                <AgentIconLabel agentId={selectedRole.agentId}>
-                  {selectedRole.summary}
-                </AgentIconLabel>
+                {selectedPreset.agentId ? (
+                  <AgentIconLabel agentId={selectedPreset.agentId}>
+                    {selectedPreset.summary}
+                  </AgentIconLabel>
+                ) : (
+                  selectedPreset.summary
+                )}
               </Text>
-              {onEditRole ? (
+              {onEditPreset ? (
                 <IconButton
                   aria-label={t("settings:agentRoles.edit")}
                   size="xs"
                   title={t("settings:agentRoles.edit")}
                   onClick={() => {
                     setHoverOpen(false);
-                    onEditRole(selectedRole.id);
+                    onEditPreset(selectedPreset.id);
                   }}
                 >
                   <Pencil />
@@ -193,19 +241,39 @@ export function AgentSelect({
         )}
         side="bottom"
       >
-        {roles ? (
-          <>
-            <AgentRoleSubmenu
-              roles={roles}
-              selectedRoleId={selectedRoleId}
-              onSelectRole={(roleId) => {
-                setOpen(false);
-                onSelectRole?.(roleId);
-              }}
-            />
-            <DropdownMenuSeparator />
-          </>
+        {teams ? (
+          <AgentPresetSubmenu
+            actions={presetActions(
+              { label: t("team.menuCreate"), run: onCreateTeam },
+              { label: t("team.menuManage"), run: onManageTeams },
+            )}
+            emptyLabel={t("team.menuEmpty")}
+            label={t("team.menuLabel")}
+            presets={teams}
+            selectedId={selectedTeam?.id ?? null}
+            onSelect={(teamId) => {
+              setOpen(false);
+              onSelectTeam?.(teamId);
+            }}
+          />
         ) : null}
+        {roles ? (
+          <AgentPresetSubmenu
+            actions={presetActions(
+              { label: t("agentRole.menuCreate"), run: onCreateRole },
+              { label: t("agentRole.menuManage"), run: onManageRoles },
+            )}
+            emptyLabel={t("agentRole.empty")}
+            label={t("agentRole.menuLabel")}
+            presets={roles}
+            selectedId={selectedRole?.id ?? null}
+            onSelect={(roleId) => {
+              setOpen(false);
+              onSelectRole?.(roleId);
+            }}
+          />
+        ) : null}
+        {teams || roles ? <DropdownMenuSeparator /> : null}
         <DropdownMenuGroup>
           {selectableOptions.map((option) => (
             <AgentSelectRow
@@ -233,73 +301,15 @@ export function AgentSelect({
             ))}
           </DropdownMenuGroup>
         ) : null}
+        {agentActions.length > 0 ? <DropdownMenuSeparator /> : null}
+        {agentActions.map((action) => (
+          <AppDropdownItem key={action.label} onClick={() => action.onSelect()}>
+            {action.icon}
+            <span className="min-w-0 flex-1 truncate">{action.label}</span>
+          </AppDropdownItem>
+        ))}
       </AppDropdownContent>
     </DropdownMenu>
-  );
-}
-
-function AgentRoleSubmenu({
-  roles,
-  selectedRoleId,
-  onSelectRole,
-}: {
-  roles: readonly AgentRoleSelectOption[];
-  selectedRoleId: string | null;
-  onSelectRole(roleId: string): void;
-}) {
-  const { t } = useTranslation("sessions");
-
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <span className="min-w-0 flex-1 truncate">
-          {t("agentRole.menuLabel")}
-        </span>
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="[--popup-max-width:20rem]">
-        {roles.length === 0 ? (
-          <AppDropdownItem disabled>
-            <span className="text-muted-foreground">
-              {t("agentRole.empty")}
-            </span>
-          </AppDropdownItem>
-        ) : (
-          roles.map((role) => {
-            const unavailable = role.selectable === false;
-            return (
-              <AppDropdownItem
-                key={role.id}
-                className={cn(unavailable && "text-muted-foreground")}
-                selected={role.id === selectedRoleId}
-                onClick={(event) => {
-                  if (unavailable) {
-                    event.preventDefault();
-                    return;
-                  }
-                  onSelectRole(role.id);
-                }}
-              >
-                <AgentRoleAvatar role={role} size="md" />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate">{role.name}</span>
-                  <span className="truncate text-meta text-muted-foreground">
-                    {role.summary}
-                  </span>
-                </span>
-                {unavailable ? (
-                  <span className="shrink-0 text-meta text-muted-foreground">
-                    {agentSelectStatusLabel(role.statusKind, t)}
-                  </span>
-                ) : null}
-                {role.id === selectedRoleId ? (
-                  <Check className="size-4 shrink-0" />
-                ) : null}
-              </AppDropdownItem>
-            );
-          })
-        )}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
   );
 }
 
@@ -340,23 +350,4 @@ function AgentSelectRow({
       {selected ? <Check className="size-4 shrink-0" /> : null}
     </AppDropdownItem>
   );
-}
-
-function agentSelectStatusLabel(
-  kind: AdapterStatusKind | undefined,
-  t: TFunction<"sessions">,
-) {
-  if (kind === "detecting") {
-    return t("composer.agentStatus.detecting");
-  }
-  if (kind === "missing") {
-    return t("composer.agentStatus.notInstalled");
-  }
-  if (kind === "outdated") {
-    return t("composer.agentStatus.updateRequired");
-  }
-  if (kind === "error") {
-    return t("composer.agentStatus.error");
-  }
-  return null;
 }

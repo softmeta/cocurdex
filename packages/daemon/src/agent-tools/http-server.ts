@@ -12,7 +12,6 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { orchestrationInstructions } from "./orchestration-instructions";
 
 export interface AgentToolHttpBridge {
   catalog(token: string): Promise<AgentToolCatalog>;
@@ -34,7 +33,7 @@ async function createMcpServer(bridge: AgentToolHttpBridge, token: string) {
     { name: AGENT_TOOL_SERVER_NAME, version: "1" },
     {
       capabilities: { tools: {} },
-      instructions: catalog ? orchestrationInstructions(catalog) : undefined,
+      instructions: catalog?.instructions,
     },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => {

@@ -1,4 +1,8 @@
-import type { AgentRoleRecord, MessageAttachment } from "@cocurdex/shared";
+import type {
+  AgentRoleRecord,
+  MessageAttachment,
+  TeamTemplateRecord,
+} from "@cocurdex/shared";
 import { FolderOpen, GitBranch } from "lucide-react";
 import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,6 +38,9 @@ import {
   subscribeAgentRoles,
   useAgentRoleSummary,
 } from "@/features/sessions/agent-role";
+import { TeamTemplateEditDialog } from "@/features/sessions/team";
+import { AcpRegistryDialog } from "@/features/settings";
+import { openSettings } from "@/features/settings/settings-navigation";
 import {
   composerContextTriggerHoverClassName,
   WorkspacePicker,
@@ -42,6 +49,19 @@ import {
 import { cn } from "@/lib";
 import type { NewSessionCardProps } from "./new-session-card.types";
 import { useNewSessionCard } from "./use-new-session-card";
+import { useNewSessionTeam } from "./use-new-session-team";
+
+function openTeamSettings() {
+  openSettings("teams");
+}
+
+function openAdapterSettings() {
+  openSettings("adapters");
+}
+
+function openRoleSettings() {
+  openSettings("agentRoles");
+}
 
 // Composer footer pickers: shadcn ghost Button trigger
 // (via AppDropdownTriggerButton appearance="ghost") — resting transparent,
@@ -86,6 +106,11 @@ export function NewSessionCard({
   const createWorktreeId = useId();
   const [saveRoleOpen, setSaveRoleOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<AgentRoleRecord | null>(null);
+  const [creatingRole, setCreatingRole] = useState(false);
+  const [registryOpen, setRegistryOpen] = useState(false);
+  const [teamDialog, setTeamDialog] = useState<{
+    template: TeamTemplateRecord | null;
+  } | null>(null);
   const [chosenRoleId, setChosenRoleIdState] = useState<string | null>(
     getStoredAgentRoleId,
   );
@@ -190,6 +215,7 @@ export function NewSessionCard({
       providerSnapshot,
       thinkingLevel: selectedThinkingLevel ?? undefined,
       agentRoleId: chosenRoleId,
+      teamTemplateId: chosenTeamId,
       worktreePath,
     });
   };
@@ -220,6 +246,20 @@ export function NewSessionCard({
   const agentSelectOptions = buildAgentSelectOptions(
     agents ?? defaultAgentDescriptors,
   );
+  const { chosenTeamId, setChosenTeamId, teamOptions, templates, leadOf } =
+    useNewSessionTeam({
+      agentOptions: agentSelectOptions,
+      roles,
+    });
+  const handleSelectTeam = (teamId: string) => {
+    const lead = leadOf(teamId);
+    if (!lead) {
+      return;
+    }
+    setChosenTeamId(teamId);
+    setChosenRoleId(lead.id);
+    handleApplyRole(lead);
+  };
   const roleOptions = roles.map((role) => {
     const agentOption = agentSelectOptions.find(
       (option) => option.value === role.agentId,
@@ -236,9 +276,13 @@ export function NewSessionCard({
   });
   const selectedRole =
     roleOptions.find((role) => role.id === chosenRoleId) ?? null;
+  const selectedTeam =
+    teamOptions.find((team) => team.id === chosenTeamId) ?? null;
   const saveRoleSummary = formatRoleSummary(currentRoleDraft);
   let agentTriggerLabel: string = t("sessions:composer.noInstalledAgent");
-  if (selectedRole) {
+  if (selectedTeam) {
+    agentTriggerLabel = selectedTeam.name;
+  } else if (selectedRole) {
     agentTriggerLabel = selectedRole.name;
   } else if (canStartWithSelectedAgent) {
     agentTriggerLabel = getAgentDisplayLabel(effectiveSelectedAgent);
@@ -310,6 +354,8 @@ export function NewSessionCard({
         options={agentSelectOptions}
         roles={roleOptions}
         selectedRoleId={chosenRoleId}
+        teams={teamOptions}
+        selectedTeamId={chosenTeamId}
         triggerClassName={cn("max-w-40 shrink-0", compactGhostTriggerClassName)}
         triggerLabel={
           <AppDropdownTriggerLabel>{agentTriggerLabel}</AppDropdownTriggerLabel>
@@ -321,14 +367,29 @@ export function NewSessionCard({
             setEditingRole(role);
           }
         }}
+        onAddAgent={() => setRegistryOpen(true)}
+        onCreateRole={() => setCreatingRole(true)}
+        onCreateTeam={() => setTeamDialog({ template: null })}
+        onEditTeam={(teamId) => {
+          const template = templates.find((item) => item.id === teamId);
+          if (template) {
+            setTeamDialog({ template });
+          }
+        }}
+        onManageAgents={openAdapterSettings}
+        onManageRoles={openRoleSettings}
+        onManageTeams={openTeamSettings}
         onSelectRole={(roleId) => {
           const role = roles.find((item) => item.id === roleId);
           if (role) {
+            setChosenTeamId(null);
             setChosenRoleId(role.id);
             handleApplyRole(role);
           }
         }}
+        onSelectTeam={handleSelectTeam}
         onValueChange={(agentId) => {
+          setChosenTeamId(null);
           setChosenRoleId(null);
           handleSelectAgent(agentId);
         }}
@@ -532,15 +593,30 @@ export function NewSessionCard({
         }}
       />
       <AgentRoleEditDialog
-        open={Boolean(editingRole)}
+        open={Boolean(editingRole) || creatingRole}
         role={editingRole}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             setEditingRole(null);
+            setCreatingRole(false);
           }
         }}
         onSaved={(saved) => {
+          if (creatingRole) {
+            setChosenTeamId(null);
+            setChosenRoleId(saved.id);
+          }
           handleApplyRole(saved);
+        }}
+      />
+      <AcpRegistryDialog open={registryOpen} onOpenChange={setRegistryOpen} />
+      <TeamTemplateEditDialog
+        open={teamDialog !== null}
+        template={teamDialog?.template ?? null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setTeamDialog(null);
+          }
         }}
       />
     </ComposerSurfaceBody>

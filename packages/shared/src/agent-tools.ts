@@ -32,6 +32,7 @@ export interface AgentToolCallerContext {
 export interface AgentToolCatalog {
   caller: AgentToolCallerContext;
   tools: AgentToolDescriptor[];
+  instructions?: string;
 }
 
 export interface AgentToolsBinding {

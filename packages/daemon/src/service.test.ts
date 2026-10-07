@@ -430,6 +430,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
       leadSessionId: "lead-session",
       workspaceId: createWorkspace().id,
       status: "active",
+      roster: null,
       createdAt: now,
       updatedAt: now,
     });

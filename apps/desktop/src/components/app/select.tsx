@@ -33,7 +33,7 @@ export interface AppSelectOption {
 }
 
 export interface AppSelectSection {
-  label: ReactNode;
+  label?: ReactNode;
   options: readonly AppSelectOption[];
 }
 
@@ -59,7 +59,12 @@ function AppSelectItemRow({ option }: { option: AppSelectOption }) {
       }
     >
       {option.icon ? (
-        <span className={cn("shrink-0 [&_svg]:size-4", multiLine && "mt-0.5")}>
+        <span
+          className={cn(
+            "shrink-0 [&_svg:not([class*='size-'])]:size-4",
+            multiLine && "mt-0.5",
+          )}
+        >
           {option.icon}
         </span>
       ) : null}
@@ -225,12 +230,16 @@ export function AppSelect({
               </SelectGroup>
             ) : null}
             {sections?.map((section, sectionIndex) => (
-              <Fragment key={String(section.label)}>
+              <Fragment
+                key={section.options[0]?.value ?? String(section.label)}
+              >
                 {sectionIndex > 0 || (options && options.length > 0) ? (
                   <SelectSeparator />
                 ) : null}
                 <SelectGroup>
-                  <SelectLabel>{section.label}</SelectLabel>
+                  {section.label ? (
+                    <SelectLabel>{section.label}</SelectLabel>
+                  ) : null}
                   {section.options.map((option) => (
                     <AppSelectItemRow key={option.value} option={option} />
                   ))}

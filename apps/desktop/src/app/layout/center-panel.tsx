@@ -962,6 +962,7 @@ export function CenterPanel({
     providerSnapshot,
     thinkingLevel,
     agentRoleId,
+    teamTemplateId,
     worktreePath,
   }: {
     agentType: AgentId;
@@ -972,6 +973,7 @@ export function CenterPanel({
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
     agentRoleId?: string | null;
+    teamTemplateId?: string | null;
     worktreePath?: string;
   }) => {
     if (!activeWorkspace) {
@@ -1031,6 +1033,12 @@ export function CenterPanel({
       await taskApi.saveSessionConfiguration(
         sessionConfiguration(titledSession),
       );
+      if (teamTemplateId) {
+        await desktopApi.createTeam({
+          leadSessionId: titledSession.id,
+          templateId: teamTemplateId,
+        });
+      }
 
       const annotationAttachments =
         await buildBrowserAnnotationAttachments(annotations);

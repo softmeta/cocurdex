@@ -8,6 +8,8 @@ import {
   isToolCallId,
   providerApis,
   reasoningEfforts,
+  TEAM_MAX_MEMBERS,
+  TEAM_MIN_MEMBERS,
 } from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
@@ -323,6 +325,7 @@ export const schemas = {
   sessionIds: z.array(idSchema).max(500),
   teamId: idSchema,
   teamMember: z.object({ teamId: idSchema, sessionId: idSchema }),
+  teamCreate: z.object({ leadSessionId: idSchema, templateId: idSchema }),
   teamTemplateSave: z.object({
     id: idSchema.optional(),
     name: z.string().min(1).max(80),
@@ -344,13 +347,12 @@ export const schemas = {
     members: z
       .array(
         z.object({
-          name: z.string().min(1).max(32),
-          agentRoleId: idSchema.nullable(),
+          agentRoleId: idSchema,
           prompt: z.string().max(8000),
         }),
       )
-      .min(1)
-      .max(8),
+      .min(TEAM_MIN_MEMBERS)
+      .max(TEAM_MAX_MEMBERS),
   }),
   messageId: idSchema,
   toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),

@@ -9,11 +9,26 @@ export type TeamMemberStatus =
   | "error"
   | "stopped";
 
+export interface TeamRosterMember {
+  name: string;
+  agentRoleId: string;
+  prompt: string;
+}
+
+export interface TeamRoster {
+  templateId: string;
+  name: string;
+  description: string | null;
+  leadPrompt: string;
+  members: TeamRosterMember[];
+}
+
 export interface TeamRecord {
   id: string;
   leadSessionId: string;
   workspaceId: string;
   status: TeamStatus;
+  roster: TeamRoster | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,8 +72,7 @@ export interface SpawnTeammatePayload {
 }
 
 export interface TeamTemplateMember {
-  name: string;
-  agentRoleId: string | null;
+  agentRoleId: string;
   prompt: string;
 }
 
@@ -85,6 +99,11 @@ export interface SpawnTeamTemplatePayload {
   prompt?: string;
 }
 
+export interface CreateTeamPayload {
+  leadSessionId: string;
+  templateId: string;
+}
+
 export const TEAM_TEMPLATES_SETTING_KEY = "teamTemplates";
 
 export interface TeamChangedEvent {
@@ -94,6 +113,7 @@ export interface TeamChangedEvent {
 }
 
 export const TEAM_MAX_MEMBERS = 8;
+export const TEAM_MIN_MEMBERS = 2;
 export const TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH = 500;
 
 const TEAM_UNSUPPORTED_AGENTS: ReadonlySet<AgentId> = new Set(["opencode"]);
@@ -101,6 +121,44 @@ const TEAM_UNSUPPORTED_AGENTS: ReadonlySet<AgentId> = new Set(["opencode"]);
 export function supportsAgentTeam(agentId: AgentId) {
   return !TEAM_UNSUPPORTED_AGENTS.has(agentId);
 }
+
+export function normalizeTeamTemplateMembers(
+  value: unknown,
+): TeamTemplateMember[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const member = item as Record<string, unknown>;
+    const agentRoleId =
+      typeof member.agentRoleId === "string" ? member.agentRoleId : "";
+    if (!agentRoleId || seen.has(agentRoleId)) return [];
+    seen.add(agentRoleId);
+    const prompt = typeof member.prompt === "string" ? member.prompt : "";
+    return [{ agentRoleId, prompt }];
+  });
+}
+
+export function buildTeamRosterMembers(
+  members: readonly TeamTemplateMember[],
+  roles: ReadonlyMap<string, { name: string }>,
+): TeamRosterMember[] | null {
+  const taken = new Set<string>();
+  const rosterMembers: TeamRosterMember[] = [];
+  for (const member of members) {
+    const role = roles.get(member.agentRoleId);
+    if (!role) return null;
+    const base = role.name.trim();
+    let name = base;
+    for (let suffix = 2; taken.has(name); suffix += 1) {
+      name = `${base} ${suffix}`;
+    }
+    taken.add(name);
+    rosterMembers.push({ ...member, name });
+  }
+  return rosterMembers;
+}
+
 export const TEAM_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
 export const TEAM_TASK_STATUSES = [
   "backlog",
@@ -178,21 +236,50 @@ export type SpawnTeammateRejection =
   | "team_stopped"
   | "member_limit"
   | "duplicate_name"
-  | "invalid_name";
+  | "invalid_name"
+  | "not_in_roster"
+  | "roster_fixes_agent";
 
 export function canSpawnTeammate(
-  team: Pick<TeamRecord, "status"> | null,
+  team: (Pick<TeamRecord, "status"> & { roster?: TeamRoster | null }) | null,
   members: Pick<TeamMemberRecord, "name">[],
-  payload: Pick<SpawnTeammatePayload, "name">,
+  payload: Pick<SpawnTeammatePayload, "name" | "agentRoleId" | "agentType">,
 ): { ok: true } | { ok: false; reason: SpawnTeammateRejection } {
   if (team?.status === "stopped") return { ok: false, reason: "team_stopped" };
-  if (!TEAM_NAME_PATTERN.test(payload.name))
+  if (team?.roster) {
+    if (!findRosterMember(team.roster, payload.name))
+      return { ok: false, reason: "not_in_roster" };
+    if (payload.agentRoleId || payload.agentType)
+      return { ok: false, reason: "roster_fixes_agent" };
+  } else if (!TEAM_NAME_PATTERN.test(payload.name)) {
     return { ok: false, reason: "invalid_name" };
+  }
   if (members.length >= TEAM_MAX_MEMBERS)
     return { ok: false, reason: "member_limit" };
   if (members.some((member) => member.name === payload.name))
     return { ok: false, reason: "duplicate_name" };
   return { ok: true };
+}
+
+export function findRosterMember(roster: TeamRoster, name: string) {
+  return roster.members.find((member) => member.name === name) ?? null;
+}
+
+export function renderTeamRosterInstructions(roster: TeamRoster) {
+  const members = roster.members.map((member) => {
+    const prompt = member.prompt.trim().replace(/\s+/g, " ");
+    return prompt ? `- ${member.name}: ${prompt}` : `- ${member.name}`;
+  });
+  return [
+    `Your team is "${roster.name}". You are its coordinator: plan first, then delegate.`,
+    ...(roster.description ? [roster.description] : []),
+    ...(roster.leadPrompt.trim()
+      ? [`Your own focus: ${roster.leadPrompt.trim()}`]
+      : []),
+    "Roster (only these teammates can be spawned):",
+    ...members,
+    "Split the user's request into tasks with team_task_create (use blockedBy for ordering) before spawning anyone. Then spawn only the roster members the plan needs with team_spawn_teammate, using the roster name and a prompt that assigns their task ids. Their role and standing instructions are applied automatically; do not pass agentRoleId or agentType. Call team_roster to re-read the roster.",
+  ].join("\n");
 }
 
 export function renderTeammateBriefing(input: {
