@@ -1,37 +1,44 @@
-import type {
-  IssueRecord,
-  ViewFilter,
-  ViewGroupBy,
-  ViewLayout,
+import {
+  DEFAULT_VIEW_ID,
+  type IssueRecord,
+  type ViewFilter,
+  type ViewGroupBy,
+  type ViewLayout,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ListTodo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AppConfirmDialog,
   ResizableSidebar,
   SidebarCollapsedRail,
+  WORKBENCH_SIDEBAR_WIDTH_PX,
 } from "@/components";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, Text } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { useMountEffect } from "@/lib";
 import { IssuesBoard, ViewDisplayMenu, ViewFilterMenu } from "./board";
+import { buildComposeDraft } from "./compose-draft";
 import {
   CardDetailDialog,
   type IssueComposeDraft,
+  type IssueDetailActions,
   type IssueSaveRequest,
 } from "./dialogs";
 import {
+  addIssueRelationAtom,
   closeIssueDetailAtom,
+  commentIssueAtom,
   issueDetailAtom,
   openIssueDetailAtom,
+  removeIssueRelationAtom,
 } from "./issue-detail-store";
 import {
   activeViewAtom,
   activeViewIdAtom,
   createIssueAtom,
+  createIssueLabelAtom,
   createViewAtom,
   deleteIssueAtom,
   deleteViewAtom,
@@ -41,17 +48,24 @@ import {
   moveColumnAtom,
   moveIssueAtom,
   moveIssueLocalAtom,
-  selectViewAtom,
   updateColumnAtom,
   updateIssueAtom,
   updateViewAtom,
 } from "./issues-store";
 import { IssuesList } from "./list";
-import { IssuesSidebar } from "./sidebar";
+import {
+  DeleteViewDialog,
+  type IssueNavSession,
+  IssuesSidebar,
+  useIssueNav,
+  useIssueNavTitle,
+} from "./sidebar";
 
-const SIDEBAR_WIDTH_PX = 200;
-
-export function IssuesView() {
+export function IssuesView({
+  sessions,
+}: {
+  sessions: readonly IssueNavSession[];
+}) {
   const { t } = useTranslation("issues");
   const loadIssues = useSetAtom(loadIssuesAtom);
   const loading = useAtomValue(issueLoadingAtom);
@@ -72,9 +86,12 @@ export function IssuesView() {
   const moveIssueLocal = useSetAtom(moveIssueLocalAtom);
   const moveColumn = useSetAtom(moveColumnAtom);
   const updateView = useSetAtom(updateViewAtom);
-  const selectBoard = useSetAtom(selectViewAtom);
   const createView = useSetAtom(createViewAtom);
   const deleteView = useSetAtom(deleteViewAtom);
+  const createIssueLabel = useSetAtom(createIssueLabelAtom);
+  const commentIssue = useSetAtom(commentIssueAtom);
+  const addIssueRelation = useSetAtom(addIssueRelationAtom);
+  const removeIssueRelation = useSetAtom(removeIssueRelationAtom);
 
   const [composeDraft, setComposeDraft] = useState<IssueComposeDraft | null>(
     null,
@@ -93,38 +110,18 @@ export function IssuesView() {
   useDataSync("issues");
 
   const handleAddCard = useCallback(
-    (columnId: string) => {
-      const board = activeBoard;
-      if (!board) return;
-      // Open Linear-style compose dialog; only write to disk on create.
-      const groupBy = board.view.groupBy;
-      // Prefer the active view's workspace filter when set; else active workspace.
-      const workspaceFilter = (board.view.filters ?? []).find(
-        (filter) => filter.field === "workspaceId",
-      );
-      let defaultWorkspaceId: string | null = null;
-      if (workspaceFilter?.op === "eq" && workspaceFilter.value) {
-        defaultWorkspaceId = workspaceFilter.value;
-      } else if (workspaceFilter?.op === "is_null") {
-        defaultWorkspaceId = null;
-      } else if (
-        activeWorkspaceId &&
-        workspaces.some((workspace) => workspace.id === activeWorkspaceId)
-      ) {
-        defaultWorkspaceId = activeWorkspaceId;
-      }
+    (columnId: string, parent: IssueRecord | null = null) => {
+      if (!activeBoard) return;
       closeIssueDetail();
-      const defaultPriority =
-        board.priorityOptions.find((option) => option.id === "none")?.id ??
-        board.priorityOptions.at(-1)?.id ??
-        "";
-      setComposeDraft({
-        columnId,
-        status:
-          groupBy === "status" ? columnId : (board.statusOptions[0]?.id ?? ""),
-        priority: groupBy === "priority" ? columnId : defaultPriority,
-        workspaceId: defaultWorkspaceId,
-      });
+      setComposeDraft(
+        buildComposeDraft({
+          board: activeBoard,
+          columnId,
+          parent,
+          activeWorkspaceId,
+          workspaceIds: workspaces.map((workspace) => workspace.id),
+        }),
+      );
     },
     [activeBoard, activeWorkspaceId, closeIssueDetail, workspaces],
   );
@@ -191,15 +188,40 @@ export function IssuesView() {
     [openIssueDetail],
   );
 
+  const detailActions: IssueDetailActions = {
+    onCreateLabel: createIssueLabel,
+    onOpenIssue: (issueId) => {
+      setComposeDraft(null);
+      void openIssueDetail(issueId);
+    },
+    onAddSubIssue: (parent) => {
+      const groupBy = activeBoard?.view.groupBy ?? "status";
+      handleAddCard(
+        groupBy === "priority" ? parent.priority : parent.status,
+        parent,
+      );
+    },
+    onAddRelation: (change) => {
+      void addIssueRelation(change);
+    },
+    onRemoveRelation: (change) => {
+      void removeIssueRelation(change);
+    },
+    onComment: commentIssue,
+  };
+
   // Prefer the selected view's summary so layout/groupBy never stick to the
   // previously loaded board while selectBoard is in flight.
   const activeSummary = boards.find((b) => b.id === activeBoardId) ?? null;
   const groupBy =
     activeSummary?.groupBy ?? activeBoard?.view.groupBy ?? "status";
   const layout = activeSummary?.layout ?? activeBoard?.view.layout ?? "board";
-  // Full payload must match the selected view; otherwise list/board would
-  // briefly render another view's issues under this view's display settings.
-  const viewBoard = activeBoard?.view.id === activeBoardId ? activeBoard : null;
+  const loadedBoard =
+    activeBoard?.view.id === activeBoardId ? activeBoard : null;
+  const nav = useIssueNav({ board: loadedBoard, sessions });
+  const viewBoard = nav.scopedBoard;
+  const customViews = boards.filter((view) => view.id !== DEFAULT_VIEW_ID);
+  const navTitle = useIssueNavTitle(nav.selection, boards);
 
   const handleGroupBy = useCallback(
     (next: ViewGroupBy) => {
@@ -243,20 +265,19 @@ export function IssuesView() {
         />
       ) : (
         <ResizableSidebar
-          defaultWidth={SIDEBAR_WIDTH_PX}
+          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
           ariaLabel={t("sidebar.resize")}
         >
           <IssuesSidebar
-            boards={boards}
-            activeBoardId={activeBoardId}
-            onSelectBoard={(id) => {
-              void selectBoard(id);
-            }}
-            onCreateBoard={() => {
+            selection={nav.selection}
+            onSelect={nav.select}
+            agentRunningCount={nav.agentRunningCount}
+            views={customViews}
+            onCreateView={() => {
               void createView(t("sidebar.newBoardTitle"));
             }}
-            onDeleteBoard={setPendingDeleteBoardId}
-            onRename={(title) => {
+            onDeleteView={setPendingDeleteBoardId}
+            onRenameView={(title) => {
               void updateView({ title });
             }}
             onCollapse={() => setSidebarCollapsed(true)}
@@ -268,12 +289,20 @@ export function IssuesView() {
             read as settings for the open view, not a panel-wide control. */}
         {boards.length > 0 ? (
           <div
-            className="flex h-8 shrink-0 items-center justify-end gap-1 border-b border-editor-border px-2"
+            className="flex h-8 shrink-0 items-center gap-1 border-b border-editor-border px-2"
             data-testid="issues-view-display-bar"
           >
+            <Text
+              size="body"
+              weight="medium"
+              className="me-auto min-w-0 truncate ps-1"
+            >
+              {navTitle}
+            </Text>
             <ViewFilterMenu
               filters={viewFilters}
               workspaces={workspaces}
+              labels={activeBoard?.labels ?? []}
               onFiltersChange={handleFiltersChange}
             />
             <ViewDisplayMenu
@@ -313,10 +342,14 @@ export function IssuesView() {
                   void updateIssue({ id, ...fields });
                 }}
                 onRenameColumn={handleRenameColumn}
+                onSetColumnCategory={(id, category) => {
+                  void updateColumn({ id, category });
+                }}
               />
             )}
             <CardDetailDialog
               card={issueDetail?.card ?? null}
+              detail={issueDetail?.detail ?? null}
               composeDraft={composeDraft}
               bodyEpoch={issueDetail?.bodyEpoch ?? 0}
               bodyStatus={issueDetail?.bodyStatus}
@@ -325,27 +358,18 @@ export function IssuesView() {
               statusOptions={viewBoard.statusOptions}
               priorityOptions={viewBoard.priorityOptions}
               workspaces={workspaces}
+              labels={viewBoard.labels}
+              issues={loadedBoard?.issues ?? viewBoard.issues}
               groupBy={groupBy}
+              actions={detailActions}
               onClose={closeIssueDialog}
               onSave={handleSaveIssue}
             />
-            <AppConfirmDialog
-              open={pendingDeleteBoard !== null}
-              variant="destructive"
-              title={t("sidebar.deleteViewConfirm.title")}
-              description={t("sidebar.deleteViewConfirm.description", {
-                title: pendingDeleteBoard?.title || t("sidebar.untitledBoard"),
-              })}
-              cancelLabel={t("sidebar.deleteViewConfirm.cancel")}
-              confirmLabel={t("sidebar.deleteViewConfirm.confirm")}
-              onOpenChange={(open) => {
-                if (!open) setPendingDeleteBoardId(null);
-              }}
-              onConfirm={() => {
-                if (pendingDeleteBoardId) {
-                  void deleteView(pendingDeleteBoardId);
-                }
-                setPendingDeleteBoardId(null);
+            <DeleteViewDialog
+              view={pendingDeleteBoard}
+              onClose={() => setPendingDeleteBoardId(null)}
+              onConfirm={(viewId) => {
+                void deleteView(viewId);
               }}
             />
           </>

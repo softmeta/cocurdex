@@ -1,16 +1,25 @@
 import type {
+  CommentIssuePayload,
   CreateColumnPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateViewPayload,
   DeleteColumnPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
   DeleteViewPayload,
+  GetIssueDetailPayload,
   GetIssuePayload,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
+  LinkIssueSessionPayload,
   LoadViewPayload,
   MoveColumnPayload,
   MoveIssuePayload,
   UpdateColumnPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateViewPayload,
   ViewColumnRecord,
@@ -34,6 +43,15 @@ export interface IssueTrackerRepository {
   updateIssue(payload: UpdateIssuePayload): Promise<IssueRecord>;
   moveIssue(payload: MoveIssuePayload): Promise<IssueRecord>;
   deleteIssue(payload: DeleteIssuePayload): Promise<void>;
+  getIssueDetail(payload: GetIssueDetailPayload): Promise<IssueDetail | null>;
+  listLabels(): Promise<IssueLabel[]>;
+  createLabel(payload: CreateIssueLabelPayload): Promise<IssueLabel>;
+  updateLabel(payload: UpdateIssueLabelPayload): Promise<IssueLabel>;
+  deleteLabel(payload: DeleteIssueLabelPayload): Promise<void>;
+  addRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  removeRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  comment(payload: CommentIssuePayload): Promise<IssueDetail>;
+  linkSession(payload: LinkIssueSessionPayload): Promise<boolean>;
 }
 
 export class IssueNotFoundError extends Error {

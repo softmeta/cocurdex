@@ -11,13 +11,26 @@ or write `.cocurdex/issues` files.
 Use only these structural commands:
 
 ```bash
-cocurdex issue list --json
-cocurdex issue show <id> --json
-cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <markdown>] --json
+cocurdex issue list [--status <column>] [--label <name>] [--parent <id>] [--open] --json
+cocurdex issue show <id> [--detail] --json
+cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <markdown>] [--parent <id>] [--labels <a,b>] --json
+cocurdex issue update <id> [--title <title>] [--body <markdown>] [--status <column>] [--priority <id>] [--parent <id>|none] [--labels <a,b>] --json
 cocurdex issue move <id> <column> [--view <id>] --json
+cocurdex issue comment <id> --body <markdown> --json
+cocurdex issue relate|unrelate <id> blocks|related|duplicate <other-id> --json
+cocurdex issue labels --json
+cocurdex issue label create --name <name> [--color <color>] --json
 cocurdex issue delete <id> --json
 cocurdex issue views --json
 ```
+
+Every `<id>` accepts the issue's stable id or its short identifier such as
+`COC-12`. Prefer the identifier when you mention an issue to the user.
+`--labels` replaces the issue's label set and accepts label ids or names;
+create a missing label first. `--parent none` detaches a sub-issue.
+Issue records include `sessionIds`, the agent sessions linked to the issue.
+`show --detail` adds the parent, sub-issues, relations, linked sessions, and
+the activity log.
 
 If the prompt already contains an attached `<issue … complete="true">` block,
 treat it as the full issue and do not run `cocurdex issue show` for it. Use the
@@ -25,8 +38,15 @@ CLI only to change the issue, or when the user asks for its current state.
 
 When you implement an issue, move it to the in-progress column (`doing` by
 default) before you start, and to `review` once its acceptance criteria are met
-and the relevant checks pass (`done` when the user does not review). Stop and
-ask when the issue has no clear scope or acceptance criteria.
+and the relevant checks pass (`done` when the user does not review). Record
+what you verified with `cocurdex issue comment`. Split large work into
+sub-issues with `--parent`, and record ordering constraints with
+`issue relate <id> blocks <other-id>`. Stop and ask when the issue has no clear
+scope or acceptance criteria.
+
+Each status column has a category (`backlog`, `unstarted`, `started`,
+`completed`, `canceled`); `show` reports it as `statusCategory`, and
+`list --open` hides completed and canceled issues.
 
 Status and priority ids are shared by every view; an unknown id is rejected
 with the valid ids in the error. Omit `--status` to use the first status.

@@ -1,8 +1,19 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import {
+  applyMarkdownToNoteDoc,
+  noteDocStateVector,
+  noteDocToMarkdown,
+} from "@cocurdex/note-doc";
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { createCocurdexDatabase } from "../sqlite";
+
+function editorUpdate(state: Uint8Array, markdown: string): Uint8Array {
+  const before = noteDocStateVector(state);
+  return Y.diffUpdate(applyMarkdownToNoteDoc(state, markdown).state, before);
+}
 
 function createTestDatabase() {
   return createCocurdexDatabase(
@@ -62,6 +73,66 @@ describe("CocurdexDatabase.notes", () => {
     });
     expect(moved.id).toBe(note.id);
     expect(moved.parentId).toBeNull();
+    database.close();
+  });
+
+  it("nests pages under pages and keeps a subtree in its root's workspace", async () => {
+    const database = createTestDatabase();
+    const now = "2026-10-08T00:00:00.000Z";
+    for (const id of ["workspace-a", "workspace-b"]) {
+      await database.workspaces.upsert({
+        id,
+        name: id,
+        rootPaths: [path.join(tmpdir(), id)],
+        createdAt: now,
+        updatedAt: now,
+        lastOpenedAt: now,
+        sortOrder: 1000,
+      });
+    }
+    const root = await database.notes.create({
+      workspaceId: "workspace-a",
+      title: "Plan",
+    });
+    const child = await database.notes.create({
+      parentId: root.id,
+      title: "Milestones",
+    });
+    const grandchild = await database.notes.create({
+      parentId: child.id,
+      workspaceId: "workspace-b",
+      title: "M1",
+    });
+    expect(child.workspaceId).toBe("workspace-a");
+    expect(grandchild.workspaceId).toBe("workspace-a");
+
+    const other = await database.notes.create({
+      workspaceId: "workspace-b",
+      title: "Research",
+    });
+    await database.notes.move({ id: child.id, parentId: other.id });
+    const byId = async (id: string) =>
+      (await database.notes.list()).find((note) => note.id === id);
+    expect((await byId(child.id))?.workspaceId).toBe("workspace-b");
+    expect((await byId(grandchild.id))?.workspaceId).toBe("workspace-b");
+
+    await database.notes.move({
+      id: child.id,
+      parentId: null,
+      workspaceId: null,
+    });
+    expect(await byId(child.id)).toMatchObject({
+      parentId: null,
+      workspaceId: null,
+    });
+    expect((await byId(grandchild.id))?.workspaceId).toBeNull();
+
+    await database.notes.update({ id: child.id, workspaceId: "workspace-a" });
+    expect((await byId(grandchild.id))?.workspaceId).toBe("workspace-a");
+
+    await expect(
+      database.notes.move({ id: child.id, parentId: grandchild.id }),
+    ).rejects.toThrow("own descendant");
     database.close();
   });
 
@@ -150,6 +221,84 @@ describe("CocurdexDatabase.notes", () => {
       expectedRevision: retagged.revision,
     });
     expect(await database.notes.listTags()).toEqual([]);
+    database.close();
+  });
+
+  it("creates a note with a body and its collaborative doc in one step", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({
+      title: "Spec",
+      bodyMarkdown: "# Spec\n\nTrack #sync work.",
+    });
+
+    expect(note.bodyMarkdown).toBe("# Spec\n\nTrack #sync work.");
+    const doc = await database.notes.getDoc(note.id);
+    expect(doc?.revision).toBe(note.revision);
+    expect(noteDocToMarkdown(doc?.update as Uint8Array)).toBe(
+      note.bodyMarkdown,
+    );
+    expect((await database.notes.listTags(note.id)).map((t) => t.name)).toEqual(
+      ["sync"],
+    );
+    database.close();
+  });
+
+  it("has no collaborative doc for folders", async () => {
+    const database = createTestDatabase();
+    const folder = await database.notes.create({ kind: "folder" });
+
+    expect(await database.notes.getDoc(folder.id)).toBeNull();
+    database.close();
+  });
+
+  it("applies editor updates without revision checks and projects markdown", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({ bodyMarkdown: "Draft" });
+    const doc = await database.notes.getDoc(note.id);
+    const update = editorUpdate(doc?.update as Uint8Array, "Draft #ready");
+
+    const { note: saved } = await database.notes.applyDocUpdate({
+      id: note.id,
+      update,
+    });
+    const replayed = await database.notes.applyDocUpdate({
+      id: note.id,
+      update,
+    });
+
+    expect(saved.bodyMarkdown).toBe("Draft #ready");
+    expect(saved.revision).toBe(note.revision + 1);
+    expect(replayed).toEqual({ note: saved, changed: false });
+    expect((await database.notes.listTags(note.id)).map((t) => t.name)).toEqual(
+      ["ready"],
+    );
+    database.close();
+  });
+
+  it("merges an agent markdown write into the doc an editor is holding", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({ bodyMarkdown: "One\n\nTwo" });
+    const editorState = (await database.notes.getDoc(note.id))?.update;
+    const editor = new Y.Doc();
+    Y.applyUpdate(editor, editorState as Uint8Array);
+
+    await database.notes.update({
+      id: note.id,
+      bodyMarkdown: "One\n\nTwo, revised by the agent",
+      expectedRevision: note.revision,
+    });
+    const diff = await database.notes.getDoc(
+      note.id,
+      Y.encodeStateVector(editor),
+    );
+    Y.applyUpdate(editor, diff?.update as Uint8Array);
+
+    expect(noteDocToMarkdown(Y.encodeStateAsUpdate(editor))).toBe(
+      "One\n\nTwo, revised by the agent",
+    );
+    expect(diff?.update.byteLength).toBeLessThan(
+      (editorState as Uint8Array).byteLength,
+    );
     database.close();
   });
 });

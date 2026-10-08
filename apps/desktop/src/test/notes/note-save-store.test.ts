@@ -12,12 +12,10 @@ vi.mock("@/features/notes/notes-ipc", () => ({
 
 import {
   resetNoteSaveStateForTests,
-  resolveNoteConflictAtom,
-  saveNoteChangeAtom,
+  saveNoteTitleAtom,
 } from "@/features/notes/note-save-store";
 import {
   activeNoteAtom,
-  noteSaveConflictsAtom,
   noteSaveStatusAtom,
   openNoteAtom,
   renameNoteAtom,
@@ -37,135 +35,55 @@ async function openSeeded(store: ReturnType<typeof createStore>, id: string) {
   await store.set(openNoteAtom, id);
 }
 
-describe("note save queue", () => {
-  it("sends edits made during an in-flight save with the new revision", async () => {
+describe("note title queue", () => {
+  it("saves the latest title typed during an in-flight rename", async () => {
     const store = createStore();
     await openSeeded(store, "a");
 
-    const first = store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "one" },
-    });
-    void store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "two" },
-    });
-    await first;
+    const first = store.set(saveNoteTitleAtom, { noteId: "a", title: "One" });
+    const second = store.set(saveNoteTitleAtom, { noteId: "a", title: "Two" });
+    await Promise.all([first, second]);
 
-    expect(notes.notes.get("a")).toMatchObject({
-      bodyMarkdown: "two",
-      revision: 3,
-    });
+    expect(notes.notes.get("a")?.title).toBe("Two");
+    expect(store.get(activeNoteAtom)?.title).toBe("Two");
     expect(store.get(noteSaveStatusAtom)).toBe("saved");
   });
 
-  it("orders a title rename and a body save without a conflict", async () => {
+  it("renames over a concurrent body edit without a conflict", async () => {
     const store = createStore();
     await openSeeded(store, "a");
+    notes.editBodyExternally("a", "agent text");
 
-    const renamed = store.set(renameNoteAtom, { id: "a", title: "Plan" });
-    const saved = store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "body" },
-    });
-    await Promise.all([renamed, saved]);
+    const saved = await store.set(renameNoteAtom, { id: "a", title: "Plan" });
 
-    expect(notes.notes.get("a")).toMatchObject({
-      title: "Plan",
-      bodyMarkdown: "body",
-    });
-    expect(store.get(noteSaveConflictsAtom)).toEqual({});
+    expect(saved).toMatchObject({ title: "Plan", bodyMarkdown: "agent text" });
   });
 
-  it("does not stamp a finished save onto the next active note", async () => {
+  it("does not stamp a finished rename onto the next active note", async () => {
     const store = createStore();
     await openSeeded(store, "a");
     notes.seed(noteRecord("b", { revision: 7 }));
 
-    const saving = store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "edited" },
-    });
+    const saving = store.set(saveNoteTitleAtom, { noteId: "a", title: "A" });
     await store.set(openNoteAtom, "b");
     await saving;
 
     expect(store.get(activeNoteAtom)).toMatchObject({ id: "b", revision: 7 });
   });
 
-  it("retries automatically when only the title changed elsewhere", async () => {
-    const store = createStore();
-    await openSeeded(store, "a");
-    notes.editExternally("a", { title: "Renamed by agent" });
-
-    await store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "mine" },
-    });
-
-    expect(notes.notes.get("a")).toMatchObject({
-      title: "Renamed by agent",
-      bodyMarkdown: "mine",
-    });
-  });
-
-  it("surfaces a body conflict and keeps later edits until resolved", async () => {
-    const store = createStore();
-    await openSeeded(store, "a");
-    notes.editExternally("a", { bodyMarkdown: "agent text" });
-
-    await store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "mine" },
-    });
-    expect(store.get(noteSaveStatusAtom)).toBe("conflict");
-    expect(store.get(noteSaveConflictsAtom).a?.bodyMarkdown).toBe("agent text");
-
-    await store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "mine, continued" },
-    });
-    expect(notes.notes.get("a")?.bodyMarkdown).toBe("agent text");
-
-    await store.set(resolveNoteConflictAtom, {
-      noteId: "a",
-      choice: "keep-mine",
-    });
-    expect(notes.notes.get("a")?.bodyMarkdown).toBe("mine, continued");
-    expect(store.get(noteSaveConflictsAtom)).toEqual({});
-  });
-
-  it("loads the remote version when the user discards local edits", async () => {
-    const store = createStore();
-    await openSeeded(store, "a");
-    notes.editExternally("a", { bodyMarkdown: "agent text" });
-    await store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "mine" },
-    });
-
-    await store.set(resolveNoteConflictAtom, {
-      noteId: "a",
-      choice: "use-remote",
-    });
-
-    expect(store.get(activeNoteAtom)?.bodyMarkdown).toBe("agent text");
-    expect(notes.notes.get("a")?.bodyMarkdown).toBe("agent text");
-  });
-
-  it("retries a save that failed for a transient reason", async () => {
+  it("retries a rename that failed for a transient reason", async () => {
     vi.useFakeTimers();
     const store = createStore();
     await openSeeded(store, "a");
     notes.ipc.update.mockRejectedValueOnce(new Error("daemon unavailable"));
 
-    await store.set(saveNoteChangeAtom, {
-      noteId: "a",
-      change: { bodyMarkdown: "kept" },
-    });
+    await expect(
+      store.set(saveNoteTitleAtom, { noteId: "a", title: "Kept" }),
+    ).rejects.toThrow("not saved");
     expect(store.get(noteSaveStatusAtom)).toBe("error");
 
     await vi.advanceTimersByTimeAsync(3000);
-    expect(notes.notes.get("a")?.bodyMarkdown).toBe("kept");
+    expect(notes.notes.get("a")?.title).toBe("Kept");
     expect(store.get(noteSaveStatusAtom)).toBe("saved");
   });
 });

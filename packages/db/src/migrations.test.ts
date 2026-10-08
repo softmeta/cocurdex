@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { noteDocToMarkdown } from "@cocurdex/note-doc";
 import { describe, expect, it } from "vitest";
 import {
   COCURDEX_APPLICATION_ID,
@@ -648,6 +649,177 @@ describe("initializeDatabase", () => {
     ]);
     expect(database.prepare("SELECT title FROM issues").all()).toEqual([
       { title: "Roster teams" },
+    ]);
+  });
+
+  it("numbers issues and types status columns from version 18 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-08T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE issue_sessions;
+      DROP TABLE issue_relations;
+      DROP TABLE issue_label_links;
+      DROP TABLE issue_events;
+      DROP TABLE issues;
+      CREATE TABLE issues (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description_markdown TEXT NOT NULL DEFAULT '',
+        color TEXT,
+        status TEXT NOT NULL DEFAULT 'backlog',
+        priority TEXT NOT NULL DEFAULT 'none',
+        workspace_id TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        revision INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL
+      );
+      ALTER TABLE issue_columns DROP COLUMN category;
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issue_columns (field, id, title, color, sort_order, created_at, updated_at)
+      VALUES
+        ('status', 'backlog', 'Backlog', NULL, 0, '${now}', '${now}'),
+        ('status', 'doing', 'Doing', NULL, 1000, '${now}', '${now}'),
+        ('status', 'blocked', 'Blocked', NULL, 1500, '${now}', '${now}'),
+        ('status', 'done', 'Done', NULL, 2000, '${now}', '${now}'),
+        ('priority', 'none', 'No priority', NULL, 0, '${now}', '${now}');
+      INSERT INTO issues (id, title, status, workspace_id, created_at, updated_at)
+      VALUES
+        ('i-late', 'Second', 'doing', 'w1', '2026-10-02T00:00:00.000Z', '${now}'),
+        ('i-early', 'First', 'done', NULL, '2026-10-01T00:00:00.000Z', '2026-10-05T00:00:00.000Z');
+      PRAGMA user_version = 18;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, number, space_id, parent_id, completed_at FROM issues ORDER BY number",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "i-early",
+        number: 1,
+        space_id: "local",
+        parent_id: null,
+        completed_at: "2026-10-05T00:00:00.000Z",
+      },
+      {
+        id: "i-late",
+        number: 2,
+        space_id: "local",
+        parent_id: null,
+        completed_at: null,
+      },
+    ]);
+    expect(
+      database
+        .prepare(
+          "SELECT id, category FROM issue_columns WHERE field = 'status' ORDER BY sort_order",
+        )
+        .all(),
+    ).toEqual([
+      { id: "backlog", category: "backlog" },
+      { id: "doing", category: "started" },
+      { id: "blocked", category: "unstarted" },
+      { id: "done", category: "completed" },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT title, workspace_id FROM issues ORDER BY number")
+        .all(),
+    ).toEqual([
+      { title: "First", workspace_id: null },
+      { title: "Second", workspace_id: "w1" },
+    ]);
+  });
+
+  it("backfills collaborative note docs from version 19 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE notes DROP COLUMN doc_state");
+    database.exec("ALTER TABLE notes DROP COLUMN space_id");
+    const now = "2026-10-08T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Collab notes', 'w1', '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, revision, created_at, updated_at)
+      VALUES
+        ('f1', 'folder', 'Specs', '', 1, '${now}', '${now}'),
+        ('n1', 'note', 'Plan', '# Plan
+
+- [ ] sync', 4, '${now}', '${now}');
+      PRAGMA user_version = 19;
+    `);
+
+    initializeDatabase(database);
+
+    const notes = database
+      .prepare(
+        "SELECT id, title, body_markdown, revision, space_id, doc_state FROM notes ORDER BY id",
+      )
+      .all() as {
+      id: string;
+      title: string;
+      body_markdown: string;
+      revision: number;
+      space_id: string;
+      doc_state: Uint8Array | null;
+    }[];
+    expect(notes.map(({ doc_state: _doc, ...note }) => note)).toEqual([
+      {
+        id: "f1",
+        title: "Specs",
+        body_markdown: "",
+        revision: 1,
+        space_id: "local",
+      },
+      {
+        id: "n1",
+        title: "Plan",
+        body_markdown: "# Plan\n\n- [ ] sync",
+        revision: 4,
+        space_id: "local",
+      },
+    ]);
+    expect(notes[0]?.doc_state).toBeNull();
+    expect(noteDocToMarkdown(notes[1]?.doc_state as Uint8Array)).toBe(
+      "# Plan\n\n- [ ] sync",
+    );
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Collab notes" },
     ]);
   });
 

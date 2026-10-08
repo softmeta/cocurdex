@@ -34,6 +34,11 @@ export type {
 export { MarkdownRenderer } from "./markdown-renderer";
 export { ResizableSidebar } from "./resizable-sidebar";
 export {
+  SidebarPanelHeader,
+  WORKBENCH_SIDEBAR_WIDTH_PX,
+} from "./sidebar-panel-header";
+export {
   SidebarCollapsedRail,
   SidebarPanelToggle,
 } from "./sidebar-panel-toggle";
+export { SidebarSectionHeader } from "./sidebar-section-header";

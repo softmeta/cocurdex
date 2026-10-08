@@ -6,21 +6,20 @@ import {
   DragOverlay,
   type DragStartEvent,
   PointerSensor,
-  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { useAtomValue, useSetAtom } from "jotai";
-import { FolderPlus, NotebookPen, Plus } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { NotebookPen, Plus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_ICON_GLYPH_CLASS,
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
-import { AppConfirmDialog, SidebarPanelToggle } from "@/components";
-import { EmptyState, ScrollArea, Text } from "@/components/ui";
-import { cn } from "@/lib";
+import { SidebarPanelHeader } from "@/components";
+import { EmptyState, ScrollArea } from "@/components/ui";
+import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import {
   activeNoteIdAtom,
   createNoteAtom,
@@ -31,129 +30,104 @@ import {
   openNoteAtom,
   renameNoteAtom,
 } from "../notes-store";
+import { buildVisibleNoteTree } from "./build-note-tree";
+import { NoteDeleteDialog } from "./note-delete-dialog";
 import {
-  ancestorFolderIds,
-  buildVisibleNoteTree,
-  canMoveNoteTo,
   listMoveDestinations,
-  NOTES_ROOT_DROP_ID,
-  resolveDropParentId,
-} from "./build-note-tree";
+  type NoteMoveTarget,
+  resolveDropTarget,
+  sectionDropId,
+} from "./note-moves";
+import { NoteSectionHeader } from "./note-section-header";
+import { groupNoteSections, noteSectionId } from "./note-sections";
 import { NoteTreeDragPreview, NoteTreeItem } from "./note-tree-item";
+import { useNoteTreeExpansion } from "./use-note-tree-expansion";
+
+const PERSONAL_SECTION_KEY = "__personal__";
+
+function sectionKey(workspaceId: string | null): string {
+  return workspaceId ?? PERSONAL_SECTION_KEY;
+}
 
 export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
   const { t } = useTranslation("notes");
   const summaries = useAtomValue(noteSummariesAtom);
   const loading = useAtomValue(notesLoadingAtom);
   const activeNoteId = useAtomValue(activeNoteIdAtom);
+  const workspaces = useAtomValue(workspacesAtom);
+  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const openNote = useSetAtom(openNoteAtom);
   const createNote = useSetAtom(createNoteAtom);
   const moveNote = useSetAtom(moveNoteAtom);
   const renameNote = useSetAtom(renameNoteAtom);
   const deleteNote = useSetAtom(deleteNoteAtom);
-  // Note awaiting delete confirmation; deletion is recursive and permanent.
   const [pendingDelete, setPendingDelete] = useState<NoteSummary | null>(null);
-  // User-collapsed folder ids. Active note ancestors are force-expanded.
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  // Sidebar inline rename target (one row at a time).
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
 
-  // 8px so plain clicks still open / rename without starting a drag.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const forcedExpandedIds = useMemo(() => {
-    if (!activeNoteId) {
-      return new Set<string>();
-    }
-    return new Set(ancestorFolderIds(activeNoteId, summaries));
-  }, [activeNoteId, summaries]);
+  const expansion = useNoteTreeExpansion({
+    summaries,
+    activeNoteId,
+    initiallyCollapsedSections: () =>
+      workspaces
+        .map((workspace) => workspace.id)
+        .filter((id) => id !== activeWorkspaceId),
+  });
 
-  const effectiveCollapsedIds = useMemo(() => {
-    if (forcedExpandedIds.size === 0) {
-      return collapsedIds;
-    }
-    const next = new Set(collapsedIds);
-    for (const id of forcedExpandedIds) {
-      next.delete(id);
-    }
-    return next;
-  }, [collapsedIds, forcedExpandedIds]);
-
-  const nodes = useMemo(
-    () => buildVisibleNoteTree(summaries, effectiveCollapsedIds),
-    [summaries, effectiveCollapsedIds],
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+  const workspaceName = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace.name]),
   );
+  const sectionTitle = (workspaceId: string | null) =>
+    (workspaceId && workspaceName.get(workspaceId)) ||
+    t("sidebar.sections.personal");
+  const sections = groupNoteSections(summaries, workspaces, activeWorkspaceId);
+  const moveSections = [
+    ...workspaces.map((workspace) => ({
+      workspaceId: workspace.id,
+      title: workspace.name,
+    })),
+    { workspaceId: null, title: t("sidebar.sections.personal") },
+  ];
+  const activeNote = summaries.find((note) => note.id === activeNoteId);
+  const activeSectionKey = activeNote
+    ? sectionKey(noteSectionId(activeNote, summaries, workspaceIds))
+    : null;
+  const preferredSection =
+    activeWorkspaceId && workspaceIds.has(activeWorkspaceId)
+      ? activeWorkspaceId
+      : null;
 
-  const rootMoveLabel = t("sidebar.moveToRoot");
-  const activeDragNote = useMemo(
-    () =>
-      activeDragId
-        ? (summaries.find((note) => note.id === activeDragId) ?? null)
-        : null,
-    [activeDragId, summaries],
-  );
+  const dropTarget =
+    activeDragId && overId
+      ? resolveDropTarget(summaries, activeDragId, overId)
+      : undefined;
+  const activeDragNote = activeDragId
+    ? (summaries.find((note) => note.id === activeDragId) ?? null)
+    : null;
 
-  const dropParentForOver = useMemo(() => {
-    if (!activeDragId || !overId) {
-      return undefined;
+  const applyMove = (id: string, target: NoteMoveTarget) => {
+    if (target.parentId === null) {
+      expansion.expandSection(sectionKey(target.workspaceId));
+    } else {
+      expansion.expandNote(target.parentId);
     }
-    return resolveDropParentId(summaries, activeDragId, overId);
-  }, [activeDragId, overId, summaries]);
-
-  const showRootDrop =
-    activeDragId !== null && canMoveNoteTo(summaries, activeDragId, null);
-
-  const toggleExpand = (folderId: string) => {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderId)) {
-        next.delete(folderId);
-      } else {
-        next.add(folderId);
-      }
-      return next;
-    });
+    void moveNote({ id, ...target });
   };
 
-  const expandFolder = useCallback((folderId: string) => {
-    setCollapsedIds((prev) => {
-      if (!prev.has(folderId)) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.delete(folderId);
-      return next;
-    });
-  }, []);
-
-  const handleCreateChild = (parentId: string, kind: "note" | "folder") => {
-    expandFolder(parentId);
-    void createNote({
-      parentId,
-      kind,
-      title: kind === "folder" ? t("sidebar.newFolderDefaultTitle") : undefined,
-    }).then((created) => {
-      if (created?.kind === "folder") {
-        setRenamingId(created.id);
-      }
-    });
+  const handleCreateChild = (parentId: string) => {
+    expansion.expandNote(parentId);
+    void createNote({ parentId });
   };
 
-  const handleCreateRootFolder = () => {
-    void createNote({
-      kind: "folder",
-      title: t("sidebar.newFolderDefaultTitle"),
-    }).then((created) => {
-      if (created) {
-        setRenamingId(created.id);
-      }
-    });
+  const handleCreateInSection = (workspaceId: string | null) => {
+    expansion.expandSection(sectionKey(workspaceId));
+    void createNote({ workspaceId });
   };
 
   const handleCommitRename = async (id: string, title: string) => {
@@ -181,64 +155,95 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const nextOver = event.over ? String(event.over.id) : null;
-    setOverId(nextOver);
+    setOverId(event.over ? String(event.over.id) : null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const fromId = String(event.active.id);
-    const targetOverId = event.over ? String(event.over.id) : null;
-    const parentId = resolveDropParentId(summaries, fromId, targetOverId);
+    const target = resolveDropTarget(
+      summaries,
+      String(event.active.id),
+      event.over ? String(event.over.id) : null,
+    );
     clearDragState();
-
-    if (parentId === undefined) {
-      return;
+    if (target) {
+      applyMove(String(event.active.id), target);
     }
+  };
 
-    if (parentId !== null) {
-      expandFolder(parentId);
-    }
-    void moveNote({ id: fromId, parentId });
+  const renderSection = (section: (typeof sections)[number]) => {
+    const key = sectionKey(section.workspaceId);
+    const collapsed =
+      expansion.isSectionCollapsed(key) && key !== activeSectionKey;
+    const title = sectionTitle(section.workspaceId);
+    const nodes = collapsed
+      ? []
+      : buildVisibleNoteTree(section.notes, expansion.collapsedNoteIds);
+    return (
+      <div key={key} className="flex flex-col gap-0.5">
+        <NoteSectionHeader
+          workspaceId={section.workspaceId}
+          title={title}
+          collapsed={collapsed}
+          isDropTarget={
+            dropTarget !== undefined &&
+            overId === sectionDropId(section.workspaceId)
+          }
+          onToggle={() => expansion.toggleSection(key)}
+          onCreate={() => handleCreateInSection(section.workspaceId)}
+        />
+        {nodes.map(({ note, depth, hasChildren }) => (
+          <NoteTreeItem
+            key={note.id}
+            note={note}
+            depth={depth}
+            isActive={note.id === activeNoteId}
+            isExpanded={!expansion.collapsedNoteIds.has(note.id)}
+            hasChildren={hasChildren}
+            isRenaming={note.id === renamingId}
+            isDropTarget={dropTarget !== undefined && overId === note.id}
+            moveDestinations={listMoveDestinations(
+              summaries,
+              note.id,
+              moveSections,
+            )}
+            onOpen={(id) => {
+              if (renamingId || activeDragId) {
+                return;
+              }
+              void openNote(id);
+            }}
+            onToggleExpand={expansion.toggleNote}
+            onStartRename={setRenamingId}
+            onCancelRename={() => setRenamingId(null)}
+            onCommitRename={handleCommitRename}
+            onCreateChild={handleCreateChild}
+            onMove={applyMove}
+            onDelete={() => setPendingDelete(note)}
+          />
+        ))}
+      </div>
+    );
   };
 
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 p-2">
-      <div className="flex h-6 items-center justify-between gap-1 pe-1">
-        {/* ps-1 + size-3.5 toggle matches depth-0 note row icon column. */}
-        <div className="flex min-w-0 items-center gap-1.5 ps-1">
-          <SidebarPanelToggle
-            onClick={onCollapse}
-            aria-label={t("sidebar.collapse")}
-          />
-          <Text
-            size="meta"
-            weight="medium"
-            className="leading-none text-editor-fg-subtle"
-          >
-            {t("sidebar.title")}
-          </Text>
-        </div>
-        <div className="flex items-center gap-0.5">
-          <TitlebarIconButton
-            aria-label={t("sidebar.newFolder")}
-            onClick={handleCreateRootFolder}
-          >
-            <FolderPlus className={TITLEBAR_ICON_GLYPH_CLASS} />
-          </TitlebarIconButton>
+      <SidebarPanelHeader
+        title={t("sidebar.title")}
+        collapseLabel={t("sidebar.collapse")}
+        onCollapse={onCollapse}
+        action={
           <TitlebarIconButton
             aria-label={t("sidebar.newNote")}
-            onClick={() => {
-              void createNote(null);
-            }}
+            onClick={() => handleCreateInSection(preferredSection)}
           >
             <Plus className={TITLEBAR_ICON_GLYPH_CLASS} />
           </TitlebarIconButton>
-        </div>
-      </div>
+        }
+      />
 
       {loading && summaries.length === 0 ? (
         <div className="flex-1" />
-      ) : nodes.length === 0 ? (
+      ) : summaries.length === 0 ? (
         <EmptyState
           icon={<NotebookPen />}
           title={t("sidebar.empty.title")}
@@ -253,55 +258,8 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
           onDragCancel={clearDragState}
         >
           <ScrollArea className="min-h-0 min-w-0 w-full flex-1">
-            <div className="flex w-full min-w-0 flex-col gap-0.5">
-              {nodes.map(({ note, depth, hasChildren }) => {
-                const isExpanded =
-                  note.kind === "folder" && !effectiveCollapsedIds.has(note.id);
-                const isDropTarget =
-                  overId === note.id &&
-                  dropParentForOver !== undefined &&
-                  activeDragId !== note.id;
-                return (
-                  <NoteTreeItem
-                    key={note.id}
-                    note={note}
-                    depth={depth}
-                    isActive={note.id === activeNoteId}
-                    isExpanded={isExpanded}
-                    hasChildren={hasChildren}
-                    isRenaming={note.id === renamingId}
-                    isDropTarget={isDropTarget}
-                    moveDestinations={listMoveDestinations(
-                      summaries,
-                      note.id,
-                      rootMoveLabel,
-                    )}
-                    onOpen={(id) => {
-                      if (renamingId || activeDragId) {
-                        return;
-                      }
-                      void openNote(id);
-                    }}
-                    onToggleExpand={toggleExpand}
-                    onStartRename={setRenamingId}
-                    onCancelRename={() => setRenamingId(null)}
-                    onCommitRename={handleCommitRename}
-                    onCreateChild={handleCreateChild}
-                    onMove={(id, parentId) => {
-                      void moveNote({ id, parentId });
-                    }}
-                    onDelete={() => setPendingDelete(note)}
-                  />
-                );
-              })}
-              {showRootDrop ? (
-                <RootDropZone
-                  isActive={
-                    overId === NOTES_ROOT_DROP_ID && dropParentForOver === null
-                  }
-                  label={t("sidebar.dropToRoot")}
-                />
-              ) : null}
+            <div className="flex w-full min-w-0 flex-col gap-1">
+              {sections.map(renderSection)}
             </div>
           </ScrollArea>
           <DragOverlay dropAnimation={null}>
@@ -311,57 +269,17 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
           </DragOverlay>
         </DndContext>
       )}
-      <AppConfirmDialog
-        open={pendingDelete !== null}
-        variant="destructive"
-        title={t("sidebar.deleteConfirm.title", {
-          title: pendingDelete?.title || t("sidebar.untitled"),
-        })}
-        description={
-          pendingDelete?.kind === "folder"
-            ? t("sidebar.deleteConfirm.descriptionFolder")
-            : t("sidebar.deleteConfirm.descriptionNote")
+      <NoteDeleteDialog
+        note={pendingDelete}
+        hasChildren={
+          pendingDelete !== null &&
+          summaries.some((note) => note.parentId === pendingDelete.id)
         }
-        cancelLabel={t("sidebar.deleteConfirm.cancel")}
-        confirmLabel={t("sidebar.deleteConfirm.confirm")}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingDelete(null);
-          }
-        }}
-        onConfirm={() => {
-          if (pendingDelete) {
-            void deleteNote(pendingDelete.id);
-          }
-          setPendingDelete(null);
+        onClose={() => setPendingDelete(null)}
+        onConfirm={(id) => {
+          void deleteNote(id);
         }}
       />
-    </div>
-  );
-}
-
-function RootDropZone({
-  isActive,
-  label,
-}: {
-  isActive: boolean;
-  label: string;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: NOTES_ROOT_DROP_ID,
-  });
-  const highlighted = isActive || isOver;
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "mt-1 flex h-8 items-center justify-center rounded-control border border-dashed border-border px-2",
-        "text-meta text-muted-foreground",
-        highlighted && "border-ring bg-accent/40 text-foreground",
-      )}
-    >
-      {label}
     </div>
   );
 }

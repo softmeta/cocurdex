@@ -14,19 +14,23 @@ import type {
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
+  ApplyNoteDocUpdatePayload,
   AppResyncSnapshot,
   ArchiveSessionPayload,
   BrowserAnnotation,
   BrowserTabsSnapshot,
   CocurdexDataChangedEvent,
+  CommentIssuePayload,
   CommitMessageModelSelection,
   CompatibleProviderModel,
   CreateColumnPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateTeamPayload,
   CreateViewPayload,
   DeleteColumnPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteSessionPayload,
@@ -34,14 +38,19 @@ import type {
   DiagnosticsExportResult,
   DocumentAttachment,
   EditorViewRecord,
+  GetIssueDetailPayload,
   GetIssuePayload,
+  GetNoteDocPayload,
   GetNotePayload,
   GitBranchInfo,
   GitCommitInfo,
   GitWorktreeInfo,
   HostDirectoryListing,
   ImageAttachment,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
   LoadViewPayload,
   ManagedWorktree,
   MessageRecord,
@@ -50,6 +59,7 @@ import type {
   MoveNotePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
+  NoteDocSnapshot,
   NoteRecord,
   NoteSummary,
   PdfAnnotationsOperation,
@@ -100,6 +110,7 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
@@ -556,6 +567,8 @@ export interface ProductApi {
   // === App-owned notes ===
   notesList(): Promise<NoteSummary[]>;
   notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;
+  notesGetDoc(payload: GetNoteDocPayload): Promise<NoteDocSnapshot | null>;
+  notesApplyDocUpdate(payload: ApplyNoteDocUpdatePayload): Promise<NoteRecord>;
   notesCreate(payload: CreateNotePayload): Promise<NoteRecord>;
   notesUpdate(payload: UpdateNotePayload): Promise<NoteRecord>;
   notesMove(payload: MoveNotePayload): Promise<NoteRecord>;
@@ -576,6 +589,13 @@ export interface ProductApi {
   issueUpdate(payload: UpdateIssuePayload): Promise<IssueRecord>;
   issueMove(payload: MoveIssuePayload): Promise<IssueRecord>;
   issueDelete(payload: DeleteIssuePayload): Promise<void>;
+  issueGetDetail(payload: GetIssueDetailPayload): Promise<IssueDetail | null>;
+  issueCreateLabel(payload: CreateIssueLabelPayload): Promise<IssueLabel>;
+  issueUpdateLabel(payload: UpdateIssueLabelPayload): Promise<IssueLabel>;
+  issueDeleteLabel(payload: DeleteIssueLabelPayload): Promise<void>;
+  issueAddRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  issueRemoveRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  issueComment(payload: CommentIssuePayload): Promise<IssueDetail>;
   searchDocuments(
     payload: SearchDocumentsPayload,
   ): Promise<SearchDocumentResult[]>;

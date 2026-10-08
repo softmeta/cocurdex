@@ -11,12 +11,9 @@
     },
     "placeholder": "开始写作，或按 “/” 插入块…",
     "save": {
-      "conflict": "已在别处被修改",
       "error": "保存失败",
-      "keepMine": "保留我的版本",
       "saved": "已保存",
-      "saving": "保存中…",
-      "useRemote": "加载最新版本"
+      "saving": "保存中…"
     },
     "untitledPlaceholder": "无标题"
   },
@@ -27,31 +24,30 @@
   },
   "sidebar": {
     "collapse": "折叠侧栏",
-    "collapseFolder": "折叠文件夹",
+    "collapsePage": "收起子页面",
     "delete": "删除",
     "deleteConfirm": {
       "cancel": "取消",
       "confirm": "删除",
-      "descriptionFolder": "此文件夹及其内部的全部内容将被永久删除。",
       "descriptionNote": "此笔记将被永久删除。",
+      "descriptionTree": "此页面及其全部子页面将被永久删除。",
       "title": "删除“{{title}}”？"
     },
-    "dropToRoot": "拖到这里移到顶层",
     "empty": {
       "description": "创建第一篇笔记开始写作。",
       "title": "还没有笔记"
     },
     "expand": "展开侧栏",
-    "expandFolder": "展开文件夹",
+    "expandPage": "展开子页面",
     "moveTo": "移动到",
-    "moveToRoot": "顶层",
-    "newFolder": "新建文件夹",
-    "newFolderDefaultTitle": "新建文件夹",
-    "newFolderInside": "在内部新建文件夹",
     "newNote": "新建笔记",
-    "newNoteInside": "在内部新建笔记",
+    "newPageInSection": "在「{{section}}」中新建页面",
+    "newSubpage": "新建子页面",
     "rename": "重命名",
     "resize": "调整侧栏宽度",
+    "sections": {
+      "personal": "个人"
+    },
     "title": "笔记",
     "untitled": "无标题"
   },

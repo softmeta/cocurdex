@@ -6,7 +6,9 @@ export {
 export {
   type ContextItemTarget,
   onOpenContextItem,
+  onOpenSession,
   openContextItem,
+  openSessionById,
 } from "./context-item-events";
 export { readCssVarPx } from "./css-length";
 export { logRendererDiagnostic } from "./diagnostics";

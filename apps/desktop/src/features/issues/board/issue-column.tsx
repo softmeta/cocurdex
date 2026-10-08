@@ -1,4 +1,8 @@
-import type { IssueRecord, ViewColumnRecord } from "@cocurdex/shared";
+import type {
+  IssueRecord,
+  IssueStatusCategory,
+  ViewColumnRecord,
+} from "@cocurdex/shared";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -18,6 +22,7 @@ import { ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { groupFieldColor } from "../group-field-color";
 import { InlineEdit } from "../inline-edit";
+import { ColumnCategoryMenu } from "./column-category-menu";
 import { IssueCard } from "./issue-card";
 
 interface IssueColumnProps {
@@ -33,6 +38,7 @@ interface IssueColumnProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
+  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssueColumn({
@@ -45,6 +51,7 @@ export function IssueColumn({
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
+  onSetColumnCategory,
 }: IssueColumnProps) {
   const { t } = useTranslation("issues");
   const [editing, setEditing] = useState(false);
@@ -139,6 +146,14 @@ export function IssueColumn({
           >
             <Plus className={TITLEBAR_ICON_GLYPH_CLASS} />
           </TitlebarIconButton>
+          {column.category ? (
+            <ColumnCategoryMenu
+              category={column.category}
+              onCategoryChange={(category) =>
+                onSetColumnCategory(column.id, category)
+              }
+            />
+          ) : null}
         </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">

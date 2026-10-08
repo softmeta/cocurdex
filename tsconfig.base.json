@@ -24,6 +24,8 @@
         "./packages/agent-adapters/src/desktop-provider.ts"
       ],
       "@cocurdex/db": ["./packages/db/src/index.ts"],
+      "@cocurdex/note-doc/bytes": ["./packages/note-doc/src/bytes.ts"],
+      "@cocurdex/note-doc": ["./packages/note-doc/src/index.ts"],
       "@cocurdex/product-skills": ["./packages/product-skills/src/index.ts"],
       "@cocurdex/api": ["./apps/api/src/index.ts"]
     }

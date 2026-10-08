@@ -11,10 +11,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@cocurdex/note-doc": "workspace:*",
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
   }
 }

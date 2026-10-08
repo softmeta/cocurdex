@@ -9,6 +9,7 @@ import {
   PLAN_MODE_ID,
 } from "@cocurdex/shared";
 import { chatWindowFallback } from "./chat-window-fallback";
+import { issueFallbackApi } from "./issue-fallback";
 import type { DesktopApi } from "./types";
 
 function planSessionModes(): AgentSessionMode[] {
@@ -552,6 +553,10 @@ const fallbackApi: DesktopApi = {
   // Data fallbacks used in unit tests and SSR without the preload bridge.
   notesList: async () => [],
   notesGet: async () => null,
+  notesGetDoc: async () => null,
+  notesApplyDocUpdate: async (payload) => {
+    throw new Error(`Note doc sync is unavailable: ${payload.id}`);
+  },
   notesCreate: async (payload) => {
     const kind = payload.kind ?? "note";
     const now = new Date().toISOString();
@@ -602,132 +607,7 @@ const fallbackApi: DesktopApi = {
     };
   },
   notesDelete: async () => {},
-  // Issues fallbacks (shared issues + multi-issue views)
-  issueListViews: async () => [],
-  issueLoad: async () => null,
-  issueGet: async () => null,
-  issueCreateView: async (payload) => ({
-    id: "view",
-    title: payload.title ?? "New view",
-    icon: payload.icon ?? null,
-    groupBy: "status" as const,
-    layout: "board" as const,
-    filters: [],
-    revision: 1,
-  }),
-  issueDeleteView: async () => {},
-  issueUpdateView: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      view: {
-        id: payload.viewId,
-        title: payload.title ?? "Project view",
-        icon: payload.icon ?? null,
-        groupBy: payload.groupBy ?? "status",
-        layout: payload.layout ?? "board",
-        filters: payload.filters ?? [],
-        revision: (payload.expectedRevision ?? 0) + 1,
-        createdAt: now,
-        updatedAt: now,
-      },
-      columns: [],
-      statusOptions: [],
-      priorityOptions: [],
-      issues: [],
-    };
-  },
-  issueCreateColumn: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: "column",
-      field: payload.field,
-      title: payload.title ?? "",
-      color: payload.color ?? null,
-      sortOrder: payload.sortOrder ?? 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  issueUpdateColumn: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: payload.id,
-      field: payload.field,
-      title: payload.title ?? "",
-      color: payload.color ?? null,
-      sortOrder: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  issueMoveColumn: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: payload.id,
-      field: payload.field,
-      title: "",
-      color: null,
-      sortOrder: payload.sortOrder,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  issueDeleteColumn: async () => {},
-  issueCreate: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: "001",
-      columnId: payload.columnId ?? payload.status ?? "backlog",
-      viewId: payload.viewId,
-      title: payload.title ?? "",
-      description: payload.description ?? null,
-      color: payload.color ?? null,
-      status: payload.status ?? payload.columnId ?? "backlog",
-      priority: payload.priority ?? "none",
-      workspaceId: payload.workspaceId ?? null,
-      sortOrder: payload.sortOrder ?? 0,
-      revision: 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  issueUpdate: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: payload.id,
-      columnId: "backlog",
-      viewId: payload.viewId,
-      title: payload.title ?? "",
-      description: payload.description ?? null,
-      color: payload.color ?? null,
-      status: payload.status ?? "backlog",
-      priority: payload.priority ?? "none",
-      workspaceId: payload.workspaceId ?? null,
-      sortOrder: 0,
-      revision: (payload.expectedRevision ?? 0) + 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  issueMove: async (payload) => {
-    const now = new Date().toISOString();
-    return {
-      id: payload.id,
-      columnId: payload.columnId,
-      viewId: payload.viewId,
-      title: "",
-      description: null,
-      color: null,
-      status: payload.columnId,
-      priority: "none",
-      workspaceId: null,
-      sortOrder: payload.sortOrder,
-      revision: (payload.expectedRevision ?? 0) + 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  issueDelete: async () => {},
+  ...issueFallbackApi,
   searchDocuments: async () => [],
   onDataChanged: () => () => {},
 };

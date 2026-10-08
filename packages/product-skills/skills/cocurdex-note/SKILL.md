@@ -11,18 +11,38 @@ write a parallel Markdown tree or open the SQLite file.
 ```bash
 cocurdex note list --json
 cocurdex note show <id> --json
-cocurdex note create --title <title> [--body <markdown>] [--parent <id>] --json
-cocurdex note update <id> [--title <title>] [--body <markdown>] --json
+cocurdex note create --title <title> [--body-file <path>] [--parent <id>] [--workspace <id>] --json
+cocurdex note update <id> [--title <title>] [--body-file <path>] --json
+cocurdex note move <id> --parent <note-id> | --root --json
 cocurdex note backlinks <id> --json
 cocurdex note tags [<id>] --json
 ```
+
+Any note can hold child pages. A child page always belongs to its top-level
+page's workspace: `--workspace` applies only to top-level notes, and moving a
+note under another page moves its whole subtree into that page's workspace.
 
 If the prompt already contains an attached `<note … complete="true">` block,
 treat it as the full note and do not run `cocurdex note show` for it. Use the
 CLI only to change the note, or when the user asks for its current state.
 
 PRDs and specs are ordinary notes: write the Markdown, save it with
-`note create`, and update the returned id with `note update`.
+`note create`, and update the returned id with `note update`. Pass long or
+multi-line bodies with `--body-file <path>` or pipe them with `--body -`;
+`--body <markdown>` is only for short single-line text.
+
+The note body is a collaborative document; the Markdown you send is merged
+into it, and the stored body comes back normalized. Use the `bodyMarkdown`
+returned by the command as the current text. Supported blocks: headings,
+lists, task lists, tables, images, quotes, and code. Unsupported syntax such
+as raw HTML is kept as plain text.
+
+People may edit a note in the app while you work on it. When you rewrite a
+body you read earlier, pass the `revision` from that `note show` as
+`note update <id> --expected-revision <n>`; without it, your Markdown
+replaces edits made after your read. The update fails with "Note was
+modified" when the note changed since that revision: run `note show` again,
+reapply your change to the new body, and retry.
 
 Link notes with Markdown links that use stable note ids, then verify the
 reverse direction with `note backlinks <target-id>`.

@@ -275,6 +275,8 @@ export function createSchemaSql() {
       title TEXT NOT NULL,
       icon TEXT,
       body_markdown TEXT NOT NULL DEFAULT '',
+      doc_state BLOB,
+      space_id TEXT NOT NULL DEFAULT 'local',
       sort_order INTEGER NOT NULL DEFAULT 0,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
@@ -320,6 +322,10 @@ export function createSchemaSql() {
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      space_id TEXT NOT NULL DEFAULT 'local',
+      number INTEGER,
+      parent_id TEXT REFERENCES issues(id) ON DELETE SET NULL,
+      completed_at TEXT,
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL
     );
 
@@ -343,7 +349,54 @@ export function createSchemaSql() {
       sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      category TEXT,
       PRIMARY KEY (field, id)
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_labels (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_label_links (
+      issue_id TEXT NOT NULL,
+      label_id TEXT NOT NULL,
+      PRIMARY KEY (issue_id, label_id),
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (label_id) REFERENCES issue_labels(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_relations (
+      issue_id TEXT NOT NULL,
+      related_issue_id TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('blocks', 'related', 'duplicate')),
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (issue_id, related_issue_id, kind),
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (related_issue_id) REFERENCES issues(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_events (
+      id TEXT PRIMARY KEY,
+      issue_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      actor_kind TEXT NOT NULL,
+      actor_session_id TEXT,
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_sessions (
+      issue_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      linked_at TEXT NOT NULL,
+      PRIMARY KEY (issue_id, session_id),
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS note_fts USING fts5(
@@ -430,6 +483,18 @@ export function createSchemaSql() {
 
     CREATE INDEX IF NOT EXISTS idx_issue_columns_sort
       ON issue_columns(field, sort_order);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_label_links_label
+      ON issue_label_links(label_id);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_relations_related
+      ON issue_relations(related_issue_id);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_events_issue_created
+      ON issue_events(issue_id, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_sessions_session
+      ON issue_sessions(session_id);
 
     ${createTeamSchemaSql()}
 

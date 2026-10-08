@@ -17,6 +17,7 @@
     "@cocurdex/agent-adapters": "workspace:*",
     "@cocurdex/agent-core": "workspace:*",
     "@cocurdex/db": "workspace:*",
+    "@cocurdex/note-doc": "workspace:*",
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
@@ -31,6 +32,7 @@
     "@types/node": "^24.13.6",
     "@types/ws": "^8.18.2",
     "tsx": "^4.23.15",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
   }
 }

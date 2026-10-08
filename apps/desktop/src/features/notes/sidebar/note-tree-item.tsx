@@ -1,13 +1,14 @@
 import type { NoteSummary } from "@cocurdex/shared";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
+  ChevronRight,
   FilePlus,
   FileText,
   Folder,
   FolderInput,
   FolderOpen,
-  FolderPlus,
   Pencil,
+  Plus,
   Trash2,
 } from "lucide-react";
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { useScrollIntoViewWhenActive } from "@/lib/react-hooks";
-import type { MoveDestination } from "./build-note-tree";
+import type { MoveDestination, NoteMoveTarget } from "./note-moves";
 
 export type NoteTreeDragData = {
   type: "note-item";
@@ -42,7 +43,6 @@ interface NoteTreeItemProps {
   isExpanded: boolean;
   hasChildren: boolean;
   isRenaming: boolean;
-  /** True while this row is a valid drop target under the active drag. */
   isDropTarget: boolean;
   moveDestinations: MoveDestination[];
   onOpen: (id: string) => void;
@@ -50,8 +50,8 @@ interface NoteTreeItemProps {
   onStartRename: (id: string) => void;
   onCancelRename: () => void;
   onCommitRename: (id: string, title: string) => Promise<void>;
-  onCreateChild: (parentId: string, kind: "note" | "folder") => void;
-  onMove: (id: string, parentId: string | null) => void;
+  onCreateChild: (parentId: string) => void;
+  onMove: (id: string, target: NoteMoveTarget) => void;
   onDelete: (id: string) => void;
 }
 
@@ -104,17 +104,14 @@ export function NoteTreeItem({
 
   return (
     <ContextMenu>
-      {/* asChild: avoid a non-stretching Trigger wrapper so truncate tracks sidebar width. */}
       <ContextMenuTrigger asChild>
         <SidebarListRow
           ref={setRowRef}
           {...attributes}
           {...(isRenaming ? {} : listeners)}
           isActive={isActive}
-          // Tighter start than default px-2 so the selected fill hugs the icon;
-          // depth adds tree indent from that base. End pe-0.5 leaves room for delete.
           className={cn(
-            "ps-1 pe-0.5",
+            "group/note pe-0.5",
             isDragging && "opacity-40",
             isDropTarget &&
               "bg-accent/40 ring-1 ring-ring ring-inset hover:bg-accent/40 data-active:hover:bg-accent/40",
@@ -122,21 +119,19 @@ export function NoteTreeItem({
           )}
           style={
             depth > 0
-              ? { paddingInlineStart: `${4 + depth * 12}px` }
+              ? { paddingInlineStart: `${8 + depth * 12}px` }
               : undefined
           }
           data-testid="note-tree-item"
           data-note-id={note.id}
         >
-          {isFolder && hasChildren ? (
+          {hasChildren ? (
             <button
               type="button"
               className="flex size-3.5 shrink-0 items-center justify-center text-sidebar-fg-muted hover:text-sidebar-fg"
               aria-expanded={isExpanded}
               aria-label={
-                isExpanded
-                  ? t("sidebar.collapseFolder")
-                  : t("sidebar.expandFolder")
+                isExpanded ? t("sidebar.collapsePage") : t("sidebar.expandPage")
               }
               onPointerDown={(event) => {
                 event.stopPropagation();
@@ -146,7 +141,13 @@ export function NoteTreeItem({
                 onToggleExpand(note.id);
               }}
             >
-              <Icon className="size-3.5" />
+              <Icon className="size-3.5 group-hover/note:hidden" />
+              <ChevronRight
+                className={cn(
+                  "hidden size-3.5 transition-transform group-hover/note:block rtl:rotate-180",
+                  isExpanded && "rotate-90 rtl:rotate-90",
+                )}
+              />
             </button>
           ) : (
             <Icon
@@ -184,6 +185,18 @@ export function NoteTreeItem({
                 size="xs"
                 variant="ghost"
                 className="text-sidebar-fg-muted hover:bg-transparent hover:text-sidebar-fg"
+                aria-label={t("sidebar.newSubpage")}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                }}
+                onClick={() => onCreateChild(note.id)}
+              >
+                <Plus className="size-3.5" />
+              </IconButton>
+              <IconButton
+                size="xs"
+                variant="ghost"
+                className="text-sidebar-fg-muted hover:bg-transparent hover:text-sidebar-fg"
                 aria-label={t("sidebar.delete")}
                 onPointerDown={(event) => {
                   event.stopPropagation();
@@ -197,19 +210,11 @@ export function NoteTreeItem({
         </SidebarListRow>
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-44">
-        {isFolder ? (
-          <>
-            <ContextMenuItem onClick={() => onCreateChild(note.id, "note")}>
-              <FilePlus className="size-3.5" />
-              {t("sidebar.newNoteInside")}
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => onCreateChild(note.id, "folder")}>
-              <FolderPlus className="size-3.5" />
-              {t("sidebar.newFolderInside")}
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </>
-        ) : null}
+        <ContextMenuItem onClick={() => onCreateChild(note.id)}>
+          <FilePlus className="size-3.5" />
+          {t("sidebar.newSubpage")}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onClick={() => onStartRename(note.id)}>
           <Pencil className="size-3.5" />
           {t("sidebar.rename")}
@@ -223,8 +228,11 @@ export function NoteTreeItem({
             <ContextMenuSubContent>
               {moveDestinations.map((dest) => (
                 <ContextMenuItem
-                  key={dest.parentId ?? "__root__"}
-                  onClick={() => onMove(note.id, dest.parentId)}
+                  key={
+                    dest.target.parentId ??
+                    `section:${dest.target.workspaceId ?? ""}`
+                  }
+                  onClick={() => onMove(note.id, dest.target)}
                 >
                   <span className="min-w-0 flex-1 truncate">{dest.title}</span>
                 </ContextMenuItem>
@@ -244,7 +252,6 @@ export function NoteTreeItem({
   );
 }
 
-/** Lightweight row used inside DragOverlay (no dnd hooks). */
 export function NoteTreeDragPreview({ note }: { note: NoteSummary }) {
   const { t } = useTranslation("notes");
   const Icon = note.kind === "folder" ? Folder : FileText;
