@@ -11,12 +11,16 @@ write a parallel Markdown tree or open the SQLite file.
 ```bash
 cocurdex note list --json
 cocurdex note show <id> --json
-cocurdex note create --title <title> [--body-file <path>] [--parent <id>] --json
+cocurdex note create --title <title> [--body-file <path>] [--parent <id>] [--workspace <id>] --json
 cocurdex note update <id> [--title <title>] [--body-file <path>] --json
-cocurdex note move <id> --parent <folder-id> | --root --json
+cocurdex note move <id> --parent <note-id> | --root --json
 cocurdex note backlinks <id> --json
 cocurdex note tags [<id>] --json
 ```
+
+Any note can hold child pages. A child page always belongs to its top-level
+page's workspace: `--workspace` applies only to top-level notes, and moving a
+note under another page moves its whole subtree into that page's workspace.
 
 If the prompt already contains an attached `<note … complete="true">` block,
 treat it as the full note and do not run `cocurdex note show` for it. Use the

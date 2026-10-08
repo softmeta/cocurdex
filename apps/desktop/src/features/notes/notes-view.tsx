@@ -2,7 +2,11 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { NotebookPen } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ResizableSidebar, SidebarCollapsedRail } from "@/components";
+import {
+  ResizableSidebar,
+  SidebarCollapsedRail,
+  WORKBENCH_SIDEBAR_WIDTH_PX,
+} from "@/components";
 import { EmptyState } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { useMountEffect } from "@/lib";
@@ -14,11 +18,11 @@ import {
 } from "./notes-store";
 import { NotesSidebar } from "./sidebar";
 
-const SIDEBAR_WIDTH_PX = 220;
 // Usable note body strip beside the list (mirrors editor min content width).
 const MIN_NOTES_EDITOR_WIDTH_PX = 280;
 // Sidebar + body; pin / panel resize must not collapse either column.
-const MIN_NOTES_VIEW_WIDTH_PX = SIDEBAR_WIDTH_PX + MIN_NOTES_EDITOR_WIDTH_PX;
+const MIN_NOTES_VIEW_WIDTH_PX =
+  WORKBENCH_SIDEBAR_WIDTH_PX + MIN_NOTES_EDITOR_WIDTH_PX;
 
 export function NotesView() {
   const { t } = useTranslation("notes");
@@ -49,7 +53,7 @@ export function NotesView() {
         />
       ) : (
         <ResizableSidebar
-          defaultWidth={SIDEBAR_WIDTH_PX}
+          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
           ariaLabel={t("sidebar.resize")}
         >
           <NotesSidebar onCollapse={() => setSidebarCollapsed(true)} />

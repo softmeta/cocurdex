@@ -79,6 +79,7 @@ export const updateNotePayloadSchema = z.object({
 export const moveNotePayloadSchema = z.object({
   id: idSchema,
   parentId: idSchema.nullable(),
+  workspaceId: idSchema.nullable().optional(),
   sortOrder: z.number().finite().optional(),
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<MoveNotePayload>;

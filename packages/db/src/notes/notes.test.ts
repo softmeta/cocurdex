@@ -76,6 +76,66 @@ describe("CocurdexDatabase.notes", () => {
     database.close();
   });
 
+  it("nests pages under pages and keeps a subtree in its root's workspace", async () => {
+    const database = createTestDatabase();
+    const now = "2026-10-08T00:00:00.000Z";
+    for (const id of ["workspace-a", "workspace-b"]) {
+      await database.workspaces.upsert({
+        id,
+        name: id,
+        rootPaths: [path.join(tmpdir(), id)],
+        createdAt: now,
+        updatedAt: now,
+        lastOpenedAt: now,
+        sortOrder: 1000,
+      });
+    }
+    const root = await database.notes.create({
+      workspaceId: "workspace-a",
+      title: "Plan",
+    });
+    const child = await database.notes.create({
+      parentId: root.id,
+      title: "Milestones",
+    });
+    const grandchild = await database.notes.create({
+      parentId: child.id,
+      workspaceId: "workspace-b",
+      title: "M1",
+    });
+    expect(child.workspaceId).toBe("workspace-a");
+    expect(grandchild.workspaceId).toBe("workspace-a");
+
+    const other = await database.notes.create({
+      workspaceId: "workspace-b",
+      title: "Research",
+    });
+    await database.notes.move({ id: child.id, parentId: other.id });
+    const byId = async (id: string) =>
+      (await database.notes.list()).find((note) => note.id === id);
+    expect((await byId(child.id))?.workspaceId).toBe("workspace-b");
+    expect((await byId(grandchild.id))?.workspaceId).toBe("workspace-b");
+
+    await database.notes.move({
+      id: child.id,
+      parentId: null,
+      workspaceId: null,
+    });
+    expect(await byId(child.id)).toMatchObject({
+      parentId: null,
+      workspaceId: null,
+    });
+    expect((await byId(grandchild.id))?.workspaceId).toBeNull();
+
+    await database.notes.update({ id: child.id, workspaceId: "workspace-a" });
+    expect((await byId(grandchild.id))?.workspaceId).toBe("workspace-a");
+
+    await expect(
+      database.notes.move({ id: child.id, parentId: grandchild.id }),
+    ).rejects.toThrow("own descendant");
+    database.close();
+  });
+
   it("maintains tags and backlinks as transactional projections", async () => {
     const database = createTestDatabase();
     const target = await database.notes.create({ title: "Architecture" });

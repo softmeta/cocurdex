@@ -50,6 +50,7 @@ function fallbackIssue(
     workspaceId: null,
     parentId: null,
     labelIds: [],
+    sessionIds: [],
     completedAt: null,
     sortOrder: 0,
     revision: 1,

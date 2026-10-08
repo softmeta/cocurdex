@@ -48,6 +48,7 @@ export interface UpdateNotePayload {
 export interface MoveNotePayload {
   id: string;
   parentId: string | null;
+  workspaceId?: string | null;
   sortOrder?: number;
   expectedRevision?: number;
 }

@@ -843,6 +843,13 @@ export default interface Resources {
       };
       expand: "Expand sidebar";
       hint: "Issues and views are stored privately by cocurdex.";
+      nav: {
+        active: "Active";
+        agent: "Agent working";
+        all: "All issues";
+        backlog: "Backlog";
+        title: "Issues";
+      };
       newBoardTitle: "New view";
       renameBoard: "Rename view";
       resize: "Resize sidebar";
@@ -877,31 +884,30 @@ export default interface Resources {
     };
     sidebar: {
       collapse: "Collapse sidebar";
-      collapseFolder: "Collapse folder";
+      collapsePage: "Collapse subpages";
       delete: "Delete";
       deleteConfirm: {
         cancel: "Cancel";
         confirm: "Delete";
-        descriptionFolder: "This folder and everything inside it will be permanently deleted.";
         descriptionNote: "This note will be permanently deleted.";
+        descriptionTree: "This page and all of its subpages will be permanently deleted.";
         title: 'Delete "{{title}}"?';
       };
-      dropToRoot: "Drop here for top level";
       empty: {
         description: "Create your first note to start writing.";
         title: "No notes yet";
       };
       expand: "Expand sidebar";
-      expandFolder: "Expand folder";
+      expandPage: "Expand subpages";
       moveTo: "Move to";
-      moveToRoot: "Top level";
-      newFolder: "New folder";
-      newFolderDefaultTitle: "New folder";
-      newFolderInside: "New folder inside";
       newNote: "New note";
-      newNoteInside: "New note inside";
+      newPageInSection: "New page in {{section}}";
+      newSubpage: "New subpage";
       rename: "Rename";
       resize: "Resize sidebar";
+      sections: {
+        personal: "Personal";
+      };
       title: "Notes";
       untitled: "Untitled";
     };

@@ -103,17 +103,28 @@ function assertExpectedRevision(
   }
 }
 
-function assertParentFolder(
+function setSubtreeWorkspace(
   database: DatabaseSync,
-  parentId: string | null | undefined,
+  rootId: string,
+  workspaceId: string | null,
+  updatedAt: string,
 ): void {
-  if (!parentId) {
-    return;
-  }
-  const parent = requireNote(database, parentId);
-  if (parent.kind !== "folder") {
-    throw new Error("Note parent must be a folder");
-  }
+  database
+    .prepare(
+      `WITH RECURSIVE subtree(id) AS (
+         SELECT id FROM notes WHERE parent_id = ?
+         UNION ALL
+         SELECT notes.id FROM notes
+         JOIN subtree ON notes.parent_id = subtree.id
+       )
+       UPDATE notes
+       SET workspace_id = ?,
+           revision = revision + 1,
+           updated_at = ?
+       WHERE id IN (SELECT id FROM subtree)
+         AND workspace_id IS NOT ?`,
+    )
+    .run(rootId, workspaceId, updatedAt, workspaceId);
 }
 
 function nextSortOrder(
@@ -151,7 +162,7 @@ function assertMoveDoesNotCreateCycle(
     )
     .get(id, parentId);
   if (id === parentId || cycle) {
-    throw new Error("Cannot move a folder into its own descendant");
+    throw new Error("Cannot move a note into its own descendant");
   }
 }
 
@@ -225,6 +236,9 @@ function updateNote(
     );
   if (result.changes !== 1) {
     throw new NoteConflictError();
+  }
+  if (payload.workspaceId !== undefined) {
+    setSubtreeWorkspace(database, current.id, payload.workspaceId, updatedAt);
   }
   syncNoteMetadata(database, current.id);
   resolveLinksFromSource(database, current.id);
@@ -386,7 +400,9 @@ export function createSqliteNotesRepository(
     async create(payload: CreateNotePayload) {
       return withNoteMutation(database, () => {
         const parentId = payload.parentId ?? null;
-        assertParentFolder(database, parentId);
+        const workspaceId = parentId
+          ? requireNote(database, parentId).workspaceId
+          : (payload.workspaceId ?? null);
         const kind = payload.kind ?? "note";
         const now = new Date().toISOString();
         const id = crypto.randomUUID();
@@ -404,7 +420,7 @@ export function createSqliteNotesRepository(
           .run(
             id,
             parentId,
-            payload.workspaceId ?? null,
+            workspaceId,
             kind,
             payload.title?.trim() ||
               (kind === "folder" ? "Folder" : "Untitled"),
@@ -429,13 +445,18 @@ export function createSqliteNotesRepository(
       return withNoteMutation(database, () => {
         const current = requireNote(database, payload.id);
         assertExpectedRevision(current, payload.expectedRevision);
-        assertParentFolder(database, payload.parentId);
         assertMoveDoesNotCreateCycle(database, payload.id, payload.parentId);
+        const workspaceId = payload.parentId
+          ? requireNote(database, payload.parentId).workspaceId
+          : payload.workspaceId !== undefined
+            ? payload.workspaceId
+            : current.workspaceId;
         const updatedAt = new Date().toISOString();
         const result = database
           .prepare(
             `UPDATE notes
              SET parent_id = ?,
+                 workspace_id = ?,
                  sort_order = ?,
                  revision = revision + 1,
                  updated_at = ?
@@ -443,6 +464,7 @@ export function createSqliteNotesRepository(
           )
           .run(
             payload.parentId,
+            workspaceId,
             payload.sortOrder ?? nextSortOrder(database, payload.parentId),
             updatedAt,
             current.id,
@@ -451,6 +473,7 @@ export function createSqliteNotesRepository(
         if (result.changes !== 1) {
           throw new NoteConflictError();
         }
+        setSubtreeWorkspace(database, current.id, workspaceId, updatedAt);
         return requireNote(database, current.id);
       });
     },

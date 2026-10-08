@@ -28,6 +28,7 @@ Every `<id>` accepts the issue's stable id or its short identifier such as
 `COC-12`. Prefer the identifier when you mention an issue to the user.
 `--labels` replaces the issue's label set and accepts label ids or names;
 create a missing label first. `--parent none` detaches a sub-issue.
+Issue records include `sessionIds`, the agent sessions linked to the issue.
 `show --detail` adds the parent, sub-issues, relations, linked sessions, and
 the activity log.
 

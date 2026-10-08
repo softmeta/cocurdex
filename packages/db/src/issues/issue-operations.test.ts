@@ -289,6 +289,13 @@ describe("issue operations", () => {
       kind: "session_linked",
       actor: { kind: "session", sessionId: "session-1" },
     });
+    const view = await database.issues.loadView({ viewId: DEFAULT_VIEW_ID });
+    expect(
+      view?.issues.find((candidate) => candidate.id === issue.id)?.sessionIds,
+    ).toEqual(["session-1"]);
+    expect(
+      (await database.issues.getIssue({ id: issue.id }))?.sessionIds,
+    ).toEqual(["session-1"]);
     database.close();
   });
 });

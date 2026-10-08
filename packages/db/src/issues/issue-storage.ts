@@ -222,6 +222,37 @@ export function listIssueLabelIds(
   return byIssue;
 }
 
+export function listIssueSessionIds(
+  database: DatabaseSync,
+  issueId?: string,
+): Map<string, string[]> {
+  const rows = (
+    issueId
+      ? database
+          .prepare(
+            `SELECT l.issue_id, l.session_id FROM issue_sessions l
+             JOIN sessions s ON s.id = l.session_id
+             WHERE l.issue_id = ?
+             ORDER BY l.linked_at, l.session_id`,
+          )
+          .all(issueId)
+      : database
+          .prepare(
+            `SELECT l.issue_id, l.session_id FROM issue_sessions l
+             JOIN sessions s ON s.id = l.session_id
+             ORDER BY l.linked_at, l.session_id`,
+          )
+          .all()
+  ) as { issue_id: string; session_id: string }[];
+  const byIssue = new Map<string, string[]>();
+  for (const row of rows) {
+    const ids = byIssue.get(row.issue_id) ?? [];
+    ids.push(row.session_id);
+    byIssue.set(row.issue_id, ids);
+  }
+  return byIssue;
+}
+
 export function statusCategories(
   database: DatabaseSync,
 ): Map<string, IssueStatusCategory | null> {
@@ -252,6 +283,7 @@ interface IssueProjection {
   fallbackColumnId: string;
   categories: Map<string, IssueStatusCategory | null>;
   labelIds: Map<string, string[]>;
+  sessionIds: Map<string, string[]>;
 }
 
 function toIssueRecord(
@@ -281,6 +313,7 @@ function toIssueRecord(
     workspaceId: issue.workspace_id,
     parentId: issue.parent_id,
     labelIds: projection.labelIds.get(issue.id) ?? [],
+    sessionIds: projection.sessionIds.get(issue.id) ?? [],
     completedAt: issue.completed_at,
     sortOrder: issue.sort_order,
     revision: issue.revision,
@@ -310,6 +343,7 @@ export function projectView(database: DatabaseSync, view: ViewRow): ViewFull {
       statusColumns.map((column) => [column.id, column.category]),
     ),
     labelIds: listIssueLabelIds(database),
+    sessionIds: listIssueSessionIds(database),
   };
   const filters = parseFilters(view.filters_json);
   const issues = (
@@ -348,6 +382,7 @@ export function projectSingleIssue(
       fallbackColumnId: fallbackColumnId(columns, view.group_by),
       categories: statusCategories(database),
       labelIds: listIssueLabelIds(database, issue.id),
+      sessionIds: listIssueSessionIds(database, issue.id),
     },
     true,
   );

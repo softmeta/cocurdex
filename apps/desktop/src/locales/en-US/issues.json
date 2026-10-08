@@ -148,6 +148,13 @@
     },
     "expand": "Expand sidebar",
     "hint": "Issues and views are stored privately by cocurdex.",
+    "nav": {
+      "active": "Active",
+      "agent": "Agent working",
+      "all": "All issues",
+      "backlog": "Backlog",
+      "title": "Issues"
+    },
     "newBoardTitle": "New view",
     "renameBoard": "Rename view",
     "resize": "Resize sidebar",

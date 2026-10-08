@@ -70,7 +70,7 @@ export async function handleNoteCommand(
       : stringFlag(parsed, "parent");
     if (parentId === undefined) {
       throw new Error(
-        "Usage: cocurdex note move <id> --parent <folder-id> | --root",
+        "Usage: cocurdex note move <id> --parent <note-id> | --root",
       );
     }
     const current = await withDaemon(() => requestDaemon("note.get", { id }));

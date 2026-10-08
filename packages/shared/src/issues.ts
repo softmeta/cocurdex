@@ -228,6 +228,7 @@ export interface IssueRecord {
   workspaceId: string | null;
   parentId: string | null;
   labelIds: string[];
+  sessionIds: string[];
   completedAt: string | null;
   sortOrder: number;
   revision: number;

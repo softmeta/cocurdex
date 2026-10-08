@@ -1,19 +1,20 @@
-import type {
-  IssueRecord,
-  ViewFilter,
-  ViewGroupBy,
-  ViewLayout,
+import {
+  DEFAULT_VIEW_ID,
+  type IssueRecord,
+  type ViewFilter,
+  type ViewGroupBy,
+  type ViewLayout,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ListTodo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AppConfirmDialog,
   ResizableSidebar,
   SidebarCollapsedRail,
+  WORKBENCH_SIDEBAR_WIDTH_PX,
 } from "@/components";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, Text } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { useMountEffect } from "@/lib";
@@ -47,17 +48,24 @@ import {
   moveColumnAtom,
   moveIssueAtom,
   moveIssueLocalAtom,
-  selectViewAtom,
   updateColumnAtom,
   updateIssueAtom,
   updateViewAtom,
 } from "./issues-store";
 import { IssuesList } from "./list";
-import { IssuesSidebar } from "./sidebar";
+import {
+  DeleteViewDialog,
+  type IssueNavSession,
+  IssuesSidebar,
+  useIssueNav,
+  useIssueNavTitle,
+} from "./sidebar";
 
-const SIDEBAR_WIDTH_PX = 200;
-
-export function IssuesView() {
+export function IssuesView({
+  sessions,
+}: {
+  sessions: readonly IssueNavSession[];
+}) {
   const { t } = useTranslation("issues");
   const loadIssues = useSetAtom(loadIssuesAtom);
   const loading = useAtomValue(issueLoadingAtom);
@@ -78,7 +86,6 @@ export function IssuesView() {
   const moveIssueLocal = useSetAtom(moveIssueLocalAtom);
   const moveColumn = useSetAtom(moveColumnAtom);
   const updateView = useSetAtom(updateViewAtom);
-  const selectBoard = useSetAtom(selectViewAtom);
   const createView = useSetAtom(createViewAtom);
   const deleteView = useSetAtom(deleteViewAtom);
   const createIssueLabel = useSetAtom(createIssueLabelAtom);
@@ -209,9 +216,12 @@ export function IssuesView() {
   const groupBy =
     activeSummary?.groupBy ?? activeBoard?.view.groupBy ?? "status";
   const layout = activeSummary?.layout ?? activeBoard?.view.layout ?? "board";
-  // Full payload must match the selected view; otherwise list/board would
-  // briefly render another view's issues under this view's display settings.
-  const viewBoard = activeBoard?.view.id === activeBoardId ? activeBoard : null;
+  const loadedBoard =
+    activeBoard?.view.id === activeBoardId ? activeBoard : null;
+  const nav = useIssueNav({ board: loadedBoard, sessions });
+  const viewBoard = nav.scopedBoard;
+  const customViews = boards.filter((view) => view.id !== DEFAULT_VIEW_ID);
+  const navTitle = useIssueNavTitle(nav.selection, boards);
 
   const handleGroupBy = useCallback(
     (next: ViewGroupBy) => {
@@ -255,20 +265,19 @@ export function IssuesView() {
         />
       ) : (
         <ResizableSidebar
-          defaultWidth={SIDEBAR_WIDTH_PX}
+          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
           ariaLabel={t("sidebar.resize")}
         >
           <IssuesSidebar
-            boards={boards}
-            activeBoardId={activeBoardId}
-            onSelectBoard={(id) => {
-              void selectBoard(id);
-            }}
-            onCreateBoard={() => {
+            selection={nav.selection}
+            onSelect={nav.select}
+            agentRunningCount={nav.agentRunningCount}
+            views={customViews}
+            onCreateView={() => {
               void createView(t("sidebar.newBoardTitle"));
             }}
-            onDeleteBoard={setPendingDeleteBoardId}
-            onRename={(title) => {
+            onDeleteView={setPendingDeleteBoardId}
+            onRenameView={(title) => {
               void updateView({ title });
             }}
             onCollapse={() => setSidebarCollapsed(true)}
@@ -280,9 +289,16 @@ export function IssuesView() {
             read as settings for the open view, not a panel-wide control. */}
         {boards.length > 0 ? (
           <div
-            className="flex h-8 shrink-0 items-center justify-end gap-1 border-b border-editor-border px-2"
+            className="flex h-8 shrink-0 items-center gap-1 border-b border-editor-border px-2"
             data-testid="issues-view-display-bar"
           >
+            <Text
+              size="body"
+              weight="medium"
+              className="me-auto min-w-0 truncate ps-1"
+            >
+              {navTitle}
+            </Text>
             <ViewFilterMenu
               filters={viewFilters}
               workspaces={workspaces}
@@ -343,29 +359,17 @@ export function IssuesView() {
               priorityOptions={viewBoard.priorityOptions}
               workspaces={workspaces}
               labels={viewBoard.labels}
-              issues={viewBoard.issues}
+              issues={loadedBoard?.issues ?? viewBoard.issues}
               groupBy={groupBy}
               actions={detailActions}
               onClose={closeIssueDialog}
               onSave={handleSaveIssue}
             />
-            <AppConfirmDialog
-              open={pendingDeleteBoard !== null}
-              variant="destructive"
-              title={t("sidebar.deleteViewConfirm.title")}
-              description={t("sidebar.deleteViewConfirm.description", {
-                title: pendingDeleteBoard?.title || t("sidebar.untitledBoard"),
-              })}
-              cancelLabel={t("sidebar.deleteViewConfirm.cancel")}
-              confirmLabel={t("sidebar.deleteViewConfirm.confirm")}
-              onOpenChange={(open) => {
-                if (!open) setPendingDeleteBoardId(null);
-              }}
-              onConfirm={() => {
-                if (pendingDeleteBoardId) {
-                  void deleteView(pendingDeleteBoardId);
-                }
-                setPendingDeleteBoardId(null);
+            <DeleteViewDialog
+              view={pendingDeleteBoard}
+              onClose={() => setPendingDeleteBoardId(null)}
+              onConfirm={(viewId) => {
+                void deleteView(viewId);
               }}
             />
           </>

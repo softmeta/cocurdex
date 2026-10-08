@@ -82,17 +82,19 @@ export type CreateNoteInput =
   | null
   | {
       parentId?: string | null;
+      workspaceId?: string | null;
       title?: string;
       kind?: NoteKind;
     };
 
 function normalizeCreateNoteInput(input: CreateNoteInput = null) {
   if (input === null || typeof input === "string") {
-    return { parentId: input, kind: "note" as const };
+    return { parentId: input, workspaceId: null, kind: "note" as const };
   }
 
   return {
     parentId: input.parentId ?? null,
+    workspaceId: input.workspaceId ?? null,
     title: input.title,
     kind: input.kind ?? "note",
   };
@@ -101,9 +103,11 @@ function normalizeCreateNoteInput(input: CreateNoteInput = null) {
 export const createNoteAtom = atom(
   null,
   async (get, set, input: CreateNoteInput = null) => {
-    const { parentId, title, kind } = normalizeCreateNoteInput(input);
+    const { parentId, workspaceId, title, kind } =
+      normalizeCreateNoteInput(input);
     const note = await notesIpc.create({
       parentId,
+      workspaceId,
       kind,
       title: title?.trim() ? title.trim() : undefined,
     });
@@ -125,7 +129,11 @@ export const moveNoteAtom = atom(
   async (
     get,
     set,
-    payload: { id: string; parentId: string | null },
+    payload: {
+      id: string;
+      parentId: string | null;
+      workspaceId?: string | null;
+    },
   ): Promise<NoteRecord> => {
     await waitForNoteSaves(payload.id);
     const moved = await notesIpc.move(payload);

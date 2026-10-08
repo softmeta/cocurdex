@@ -148,6 +148,13 @@
     },
     "expand": "展开侧栏",
     "hint": "Issue 和视图由 cocurdex 私有存储。",
+    "nav": {
+      "active": "进行中",
+      "agent": "Agent 在做",
+      "all": "全部 Issue",
+      "backlog": "Backlog",
+      "title": "Issue"
+    },
     "newBoardTitle": "新视图",
     "renameBoard": "重命名视图",
     "resize": "调整侧栏宽度",
