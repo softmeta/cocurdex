@@ -2,16 +2,21 @@ import { requestDaemon } from "@cocurdex/daemon/client";
 import type { IpcMain } from "electron";
 import { registerHandler } from "../ipc";
 import {
+  commentIssuePayloadSchema,
   createColumnPayloadSchema,
+  createIssueLabelPayloadSchema,
   createIssuePayloadSchema,
   createNotePayloadSchema,
   createViewPayloadSchema,
   deleteColumnPayloadSchema,
+  deleteIssueLabelPayloadSchema,
   deleteIssuePayloadSchema,
   deleteNotePayloadSchema,
   deleteViewPayloadSchema,
+  getIssueDetailPayloadSchema,
   getIssuePayloadSchema,
   getNotePayloadSchema,
+  issueRelationPayloadSchema,
   loadViewPayloadSchema,
   moveColumnPayloadSchema,
   moveIssuePayloadSchema,
@@ -19,6 +24,7 @@ import {
   saveWorkflowDefinitionPayloadSchema,
   searchDocumentsPayloadSchema,
   updateColumnPayloadSchema,
+  updateIssueLabelPayloadSchema,
   updateIssuePayloadSchema,
   updateNotePayloadSchema,
   updateViewPayloadSchema,
@@ -140,6 +146,53 @@ export function registerDataHandlers(ipc: IpcMain, userDataPath: string): void {
       await requestDaemon("issue.delete", payload, options);
       return null;
     },
+  );
+
+  registerHandler(
+    ipc,
+    "issue:getDetail",
+    getIssueDetailPayloadSchema,
+    (_event, payload) => requestDaemon("issue.getDetail", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "issue:createLabel",
+    createIssueLabelPayloadSchema,
+    (_event, payload) => requestDaemon("issue.createLabel", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "issue:updateLabel",
+    updateIssueLabelPayloadSchema,
+    (_event, payload) => requestDaemon("issue.updateLabel", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "issue:deleteLabel",
+    deleteIssueLabelPayloadSchema,
+    async (_event, payload) => {
+      await requestDaemon("issue.deleteLabel", payload, options);
+      return null;
+    },
+  );
+  registerHandler(
+    ipc,
+    "issue:addRelation",
+    issueRelationPayloadSchema,
+    (_event, payload) => requestDaemon("issue.addRelation", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "issue:removeRelation",
+    issueRelationPayloadSchema,
+    (_event, payload) =>
+      requestDaemon("issue.removeRelation", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "issue:comment",
+    commentIssuePayloadSchema,
+    (_event, payload) => requestDaemon("issue.comment", payload, options),
   );
 
   registerHandler(

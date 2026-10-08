@@ -128,6 +128,25 @@ export async function handleDaemonRequest(
     case "issue.delete":
       await service.dataService.deleteIssue(request.params);
       return null;
+    case "issue.getDetail":
+      return service.dataService.getIssueDetail(request.params);
+    case "issue.listLabels":
+      return service.dataService.listIssueLabels();
+    case "issue.createLabel":
+      return service.dataService.createIssueLabel(request.params);
+    case "issue.updateLabel":
+      return service.dataService.updateIssueLabel(request.params);
+    case "issue.deleteLabel":
+      await service.dataService.deleteIssueLabel(request.params);
+      return null;
+    case "issue.addRelation":
+      return service.dataService.addIssueRelation(request.params);
+    case "issue.removeRelation":
+      return service.dataService.removeIssueRelation(request.params);
+    case "issue.comment":
+      return service.dataService.commentIssue(request.params);
+    case "issue.linkSession":
+      return service.dataService.linkIssueSession(request.params);
     case "search.documents":
       return service.dataService.searchDocuments(request.params);
     case "workspace.list":

@@ -20,9 +20,11 @@ import type {
   CodexAccountState,
   CodexLoginOutcome,
   CodexLoginStartResult,
+  CommentIssuePayload,
   CommitMessageModelSelection,
   CompatibleProviderModel,
   CreateColumnPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateScriptRunPayload,
@@ -30,12 +32,14 @@ import type {
   CreateViewPayload,
   CreateWorkflowPayload,
   DeleteColumnPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteViewPayload,
   DocumentAttachment,
   EditorViewRecord,
   GenerateGitCommitMessagePayload,
+  GetIssueDetailPayload,
   GetIssuePayload,
   GetNotePayload,
   GetToolCallResultInput,
@@ -48,7 +52,11 @@ import type {
   ImageAttachment,
   ImportDocumentAttachmentPayload,
   ImportImageAttachmentPayload,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
+  LinkIssueSessionPayload,
   LoadViewPayload,
   ManagedWorktree,
   McpConfigFile,
@@ -117,6 +125,7 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateSessionAttentionPayload,
@@ -374,6 +383,15 @@ export type DaemonRequestPayloadByMethod = {
   "issue.update": UpdateIssuePayload;
   "issue.move": MoveIssuePayload;
   "issue.delete": DeleteIssuePayload;
+  "issue.getDetail": GetIssueDetailPayload;
+  "issue.listLabels": undefined;
+  "issue.createLabel": CreateIssueLabelPayload;
+  "issue.updateLabel": UpdateIssueLabelPayload;
+  "issue.deleteLabel": DeleteIssueLabelPayload;
+  "issue.addRelation": IssueRelationPayload;
+  "issue.removeRelation": IssueRelationPayload;
+  "issue.comment": CommentIssuePayload;
+  "issue.linkSession": LinkIssueSessionPayload;
   "search.documents": SearchDocumentsPayload;
   "workflow.list": undefined;
   "workflow.get": { workflowRunId: string };
@@ -583,6 +601,15 @@ export type DaemonResultByMethod = {
   "issue.update": IssueRecord;
   "issue.move": IssueRecord;
   "issue.delete": null;
+  "issue.getDetail": IssueDetail | null;
+  "issue.listLabels": IssueLabel[];
+  "issue.createLabel": IssueLabel;
+  "issue.updateLabel": IssueLabel;
+  "issue.deleteLabel": null;
+  "issue.addRelation": IssueDetail;
+  "issue.removeRelation": IssueDetail;
+  "issue.comment": IssueDetail;
+  "issue.linkSession": boolean;
   "search.documents": SearchDocumentResult[];
   "workflow.list": WorkflowRunRecord[];
   "workflow.get": WorkflowAggregate | null;
@@ -643,6 +670,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "attention.list": true,
   "daemon.status": true,
   "issue.listViews": true,
+  "issue.listLabels": true,
   "teamTemplate.list": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,

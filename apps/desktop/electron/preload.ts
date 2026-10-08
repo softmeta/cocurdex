@@ -8,18 +8,23 @@ import type {
   AgentRoleRecord,
   ArchiveSessionPayload,
   CocurdexDataChangedEvent,
+  CommentIssuePayload,
   CompatibleProviderModel,
   CreateColumnPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateTeamPayload,
   CreateViewPayload,
   DeleteColumnPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteSessionPayload,
   DeleteViewPayload,
+  GetIssueDetailPayload,
   GetIssuePayload,
+  IssueRelationPayload,
   LoadViewPayload,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -50,6 +55,7 @@ import type {
   TitleModelProbeResult,
   TitleModelSelection,
   UpdateColumnPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
@@ -621,6 +627,20 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("issue:move", payload),
   issueDelete: (payload: DeleteIssuePayload) =>
     ipcRenderer.invoke("issue:delete", payload),
+  issueGetDetail: (payload: GetIssueDetailPayload) =>
+    ipcRenderer.invoke("issue:getDetail", payload),
+  issueCreateLabel: (payload: CreateIssueLabelPayload) =>
+    ipcRenderer.invoke("issue:createLabel", payload),
+  issueUpdateLabel: (payload: UpdateIssueLabelPayload) =>
+    ipcRenderer.invoke("issue:updateLabel", payload),
+  issueDeleteLabel: (payload: DeleteIssueLabelPayload) =>
+    ipcRenderer.invoke("issue:deleteLabel", payload),
+  issueAddRelation: (payload: IssueRelationPayload) =>
+    ipcRenderer.invoke("issue:addRelation", payload),
+  issueRemoveRelation: (payload: IssueRelationPayload) =>
+    ipcRenderer.invoke("issue:removeRelation", payload),
+  issueComment: (payload: CommentIssuePayload) =>
+    ipcRenderer.invoke("issue:comment", payload),
   searchDocuments: (payload: SearchDocumentsPayload) =>
     ipcRenderer.invoke("search:documents", payload),
   onPtyData: (listener: (event: PtyDataEvent) => void) => {

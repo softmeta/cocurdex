@@ -1,15 +1,22 @@
 import {
   type AgentId,
+  type CommentIssuePayload,
   type CreateColumnPayload,
+  type CreateIssueLabelPayload,
   type CreateIssuePayload,
   type CreateNotePayload,
   type CreateViewPayload,
   type DeleteColumnPayload,
+  type DeleteIssueLabelPayload,
   type DeleteIssuePayload,
   type DeleteNotePayload,
   type DeleteViewPayload,
+  type GetIssueDetailPayload,
   type GetIssuePayload,
   type GetNotePayload,
+  ISSUE_RELATION_KINDS,
+  ISSUE_STATUS_CATEGORIES,
+  type IssueRelationPayload,
   isAgentId,
   type LoadViewPayload,
   type MoveColumnPayload,
@@ -18,6 +25,7 @@ import {
   type SaveWorkflowDefinitionPayload,
   type SearchDocumentsPayload,
   type UpdateColumnPayload,
+  type UpdateIssueLabelPayload,
   type UpdateIssuePayload,
   type UpdateNotePayload,
   type UpdateViewPayload,
@@ -85,8 +93,8 @@ export const deleteViewPayloadSchema = z.object({
 }) satisfies z.ZodType<DeleteViewPayload>;
 
 const viewFilterSchema = z.object({
-  field: z.literal("workspaceId"),
-  op: z.enum(["eq", "is_null"]),
+  field: z.enum(["workspaceId", "labelId", "priority", "statusCategory"]),
+  op: z.enum(["eq", "neq", "is_null"]),
   value: z.string().min(1).max(128).optional(),
 });
 
@@ -100,10 +108,18 @@ export const updateViewPayloadSchema = z.object({
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<UpdateViewPayload>;
 
+const statusCategorySchema = z.enum(ISSUE_STATUS_CATEGORIES);
+const issueActorSchema = z.object({
+  kind: z.enum(["user", "cli", "session"]),
+  sessionId: z.string().min(1).max(128).nullable().optional(),
+});
+const labelIdsSchema = z.array(idSchema).max(64);
+
 export const createColumnPayloadSchema = z.object({
   field: issueFieldSchema,
   title: titleSchema.optional(),
   color: z.string().max(64).nullable().optional(),
+  category: statusCategorySchema.optional(),
   sortOrder: z.number().finite().optional(),
 }) satisfies z.ZodType<CreateColumnPayload>;
 
@@ -112,6 +128,7 @@ export const updateColumnPayloadSchema = z.object({
   id: columnIdSchema,
   title: titleSchema.optional(),
   color: z.string().max(64).nullable().optional(),
+  category: statusCategorySchema.optional(),
 }) satisfies z.ZodType<UpdateColumnPayload>;
 
 export const moveColumnPayloadSchema = z.object({
@@ -134,7 +151,10 @@ export const createIssuePayloadSchema = z.object({
   status: columnIdSchema.optional(),
   priority: columnIdSchema.optional(),
   workspaceId: idSchema.nullable().optional(),
+  parentId: idSchema.nullable().optional(),
+  labelIds: labelIdsSchema.optional(),
   sortOrder: z.number().finite().optional(),
+  actor: issueActorSchema.optional(),
 }) satisfies z.ZodType<CreateIssuePayload>;
 
 export const updateIssuePayloadSchema = z.object({
@@ -146,7 +166,10 @@ export const updateIssuePayloadSchema = z.object({
   status: columnIdSchema.optional(),
   priority: columnIdSchema.optional(),
   workspaceId: idSchema.nullable().optional(),
+  parentId: idSchema.nullable().optional(),
+  labelIds: labelIdsSchema.optional(),
   expectedRevision: revisionSchema,
+  actor: issueActorSchema.optional(),
 }) satisfies z.ZodType<UpdateIssuePayload>;
 
 export const moveIssuePayloadSchema = z.object({
@@ -155,12 +178,49 @@ export const moveIssuePayloadSchema = z.object({
   columnId: columnIdSchema,
   sortOrder: z.number().finite(),
   expectedRevision: revisionSchema,
+  actor: issueActorSchema.optional(),
 }) satisfies z.ZodType<MoveIssuePayload>;
 
 export const deleteIssuePayloadSchema = z.object({
   id: idSchema,
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<DeleteIssuePayload>;
+
+export const getIssueDetailPayloadSchema = z.object({
+  id: idSchema,
+  viewId: viewIdSchema.optional(),
+}) satisfies z.ZodType<GetIssueDetailPayload>;
+
+const labelNameSchema = z.string().trim().min(1).max(64);
+const labelColorSchema = z.string().max(64).nullable().optional();
+
+export const createIssueLabelPayloadSchema = z.object({
+  name: labelNameSchema,
+  color: labelColorSchema,
+}) satisfies z.ZodType<CreateIssueLabelPayload>;
+
+export const updateIssueLabelPayloadSchema = z.object({
+  id: idSchema,
+  name: labelNameSchema.optional(),
+  color: labelColorSchema,
+}) satisfies z.ZodType<UpdateIssueLabelPayload>;
+
+export const deleteIssueLabelPayloadSchema = z.object({
+  id: idSchema,
+}) satisfies z.ZodType<DeleteIssueLabelPayload>;
+
+export const issueRelationPayloadSchema = z.object({
+  id: idSchema,
+  kind: z.enum(ISSUE_RELATION_KINDS),
+  relatedId: idSchema,
+  actor: issueActorSchema.optional(),
+}) satisfies z.ZodType<IssueRelationPayload>;
+
+export const commentIssuePayloadSchema = z.object({
+  id: idSchema,
+  body: z.string().trim().min(1).max(200_000),
+  actor: issueActorSchema.optional(),
+}) satisfies z.ZodType<CommentIssuePayload>;
 
 const workflowDefinitionIdSchema = z
   .string()

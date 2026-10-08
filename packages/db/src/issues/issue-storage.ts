@@ -4,9 +4,15 @@ import {
   DEFAULT_PRIORITY_COLUMNS,
   DEFAULT_STATUS_COLUMNS,
   DEFAULT_VIEW_ID,
+  formatIssueIdentifier,
+  type IssueFieldOption,
+  type IssueLabel,
   type IssueRecord,
+  type IssueStatusCategory,
+  type IssueSummary,
   issueBodyExcerpt,
   issueMatchesFilters,
+  parseIssueNumber,
   type ViewColumnRecord,
   type ViewFilter,
   type ViewFull,
@@ -32,7 +38,13 @@ export interface IssueRow extends SqliteRow {
   revision: number;
   created_at: string;
   updated_at: string;
+  space_id: string;
+  number: number;
+  parent_id: string | null;
+  completed_at: string | null;
 }
+
+export const LOCAL_ISSUE_SPACE_ID = "local";
 
 export interface ViewRow extends SqliteRow {
   id: string;
@@ -54,6 +66,13 @@ export interface ColumnRow extends SqliteRow {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  category: IssueStatusCategory | null;
+}
+
+export interface LabelRow extends SqliteRow {
+  id: string;
+  name: string;
+  color: string | null;
 }
 
 function parseFilters(raw: string): ViewFilter[] {
@@ -79,6 +98,7 @@ export function mapColumn(row: ColumnRow): ViewColumnRecord {
     field: row.field,
     title: row.title,
     color: row.color,
+    category: row.field === "status" ? row.category : null,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -106,12 +126,22 @@ export function requireView(database: DatabaseSync, viewId: string): ViewRow {
 
 export function getIssue(
   database: DatabaseSync,
-  issueId: string,
+  issueRef: string,
 ): IssueRow | null {
+  const byId = database
+    .prepare("SELECT * FROM issues WHERE id = ?")
+    .get(issueRef) as IssueRow | undefined;
+  if (byId) {
+    return byId;
+  }
+  const number = parseIssueNumber(issueRef);
+  if (number === null) {
+    return null;
+  }
   return (
-    (database.prepare("SELECT * FROM issues WHERE id = ?").get(issueId) as
-      | IssueRow
-      | undefined) ?? null
+    (database
+      .prepare("SELECT * FROM issues WHERE space_id = ? AND number = ?")
+      .get(LOCAL_ISSUE_SPACE_ID, number) as IssueRow | undefined) ?? null
   );
 }
 
@@ -153,18 +183,92 @@ export function fallbackColumnId(
   return columns[0]?.id ?? "backlog";
 }
 
+export function listLabels(database: DatabaseSync): IssueLabel[] {
+  return (
+    database
+      .prepare("SELECT id, name, color FROM issue_labels ORDER BY name, id")
+      .all() as LabelRow[]
+  ).map((row) => ({ id: row.id, name: row.name, color: row.color }));
+}
+
+export function listIssueLabelIds(
+  database: DatabaseSync,
+  issueId?: string,
+): Map<string, string[]> {
+  const rows = (
+    issueId
+      ? database
+          .prepare(
+            `SELECT l.issue_id, l.label_id FROM issue_label_links l
+             JOIN issue_labels label ON label.id = l.label_id
+             WHERE l.issue_id = ?
+             ORDER BY label.name, label.id`,
+          )
+          .all(issueId)
+      : database
+          .prepare(
+            `SELECT l.issue_id, l.label_id FROM issue_label_links l
+             JOIN issue_labels label ON label.id = l.label_id
+             ORDER BY label.name, label.id`,
+          )
+          .all()
+  ) as { issue_id: string; label_id: string }[];
+  const byIssue = new Map<string, string[]>();
+  for (const row of rows) {
+    const ids = byIssue.get(row.issue_id) ?? [];
+    ids.push(row.label_id);
+    byIssue.set(row.issue_id, ids);
+  }
+  return byIssue;
+}
+
+export function statusCategories(
+  database: DatabaseSync,
+): Map<string, IssueStatusCategory | null> {
+  return new Map(
+    listColumns(database, "status").map((column) => [
+      column.id,
+      column.category,
+    ]),
+  );
+}
+
+export function toIssueSummary(
+  issue: IssueRow,
+  categories: Map<string, IssueStatusCategory | null>,
+): IssueSummary {
+  return {
+    id: issue.id,
+    identifier: formatIssueIdentifier(issue.number),
+    title: issue.title,
+    status: issue.status,
+    statusCategory: categories.get(issue.status) ?? null,
+  };
+}
+
+interface IssueProjection {
+  view: ViewRow;
+  columnIds: Set<string>;
+  fallbackColumnId: string;
+  categories: Map<string, IssueStatusCategory | null>;
+  labelIds: Map<string, string[]>;
+}
+
 function toIssueRecord(
   issue: IssueRow,
-  view: ViewRow,
-  columnIds: Set<string>,
-  fallbackColumnId: string,
+  projection: IssueProjection,
   fullBody: boolean,
 ): IssueRecord {
+  const { view } = projection;
   const rawColumnId =
     view.group_by === "priority" ? issue.priority : issue.status;
   return {
     id: issue.id,
-    columnId: columnIds.has(rawColumnId) ? rawColumnId : fallbackColumnId,
+    number: issue.number,
+    identifier: formatIssueIdentifier(issue.number),
+    columnId: projection.columnIds.has(rawColumnId)
+      ? rawColumnId
+      : projection.fallbackColumnId,
     viewId: view.id,
     title: issue.title,
     description: fullBody
@@ -172,12 +276,24 @@ function toIssueRecord(
       : issueBodyExcerpt(issue.description_markdown),
     color: issue.color,
     status: issue.status,
+    statusCategory: projection.categories.get(issue.status) ?? null,
     priority: issue.priority,
     workspaceId: issue.workspace_id,
+    parentId: issue.parent_id,
+    labelIds: projection.labelIds.get(issue.id) ?? [],
+    completedAt: issue.completed_at,
     sortOrder: issue.sort_order,
     revision: issue.revision,
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
+  };
+}
+
+function toFieldOption(column: ColumnRow): IssueFieldOption {
+  return {
+    id: column.id,
+    title: column.title,
+    category: column.field === "status" ? column.category : null,
   };
 }
 
@@ -186,23 +302,23 @@ export function projectView(database: DatabaseSync, view: ViewRow): ViewFull {
   const priorityColumns = listColumns(database, "priority");
   const activeColumns =
     view.group_by === "priority" ? priorityColumns : statusColumns;
-  const columnIds = new Set(activeColumns.map((column) => column.id));
-  const fallback = fallbackColumnId(activeColumns, view.group_by);
+  const projection: IssueProjection = {
+    view,
+    columnIds: new Set(activeColumns.map((column) => column.id)),
+    fallbackColumnId: fallbackColumnId(activeColumns, view.group_by),
+    categories: new Map(
+      statusColumns.map((column) => [column.id, column.category]),
+    ),
+    labelIds: listIssueLabelIds(database),
+  };
   const filters = parseFilters(view.filters_json);
   const issues = (
     database
       .prepare("SELECT * FROM issues ORDER BY sort_order, created_at, id")
       .all() as IssueRow[]
   )
-    .filter((issue) =>
-      issueMatchesFilters(
-        {
-          workspaceId: issue.workspace_id,
-        },
-        filters,
-      ),
-    )
-    .map((issue) => toIssueRecord(issue, view, columnIds, fallback, false));
+    .map((issue) => toIssueRecord(issue, projection, false))
+    .filter((issue) => issueMatchesFilters(issue, filters));
 
   return {
     view: {
@@ -211,14 +327,9 @@ export function projectView(database: DatabaseSync, view: ViewRow): ViewFull {
       updatedAt: view.updated_at,
     },
     columns: activeColumns.map(mapColumn),
-    statusOptions: statusColumns.map((column) => ({
-      id: column.id,
-      title: column.title,
-    })),
-    priorityOptions: priorityColumns.map((column) => ({
-      id: column.id,
-      title: column.title,
-    })),
+    statusOptions: statusColumns.map(toFieldOption),
+    priorityOptions: priorityColumns.map(toFieldOption),
+    labels: listLabels(database),
     issues,
   };
 }
@@ -229,12 +340,15 @@ export function projectSingleIssue(
   view: ViewRow,
 ): IssueRecord {
   const columns = listColumns(database, view.group_by);
-  const columnIds = new Set(columns.map((column) => column.id));
   return toIssueRecord(
     issue,
-    view,
-    columnIds,
-    fallbackColumnId(columns, view.group_by),
+    {
+      view,
+      columnIds: new Set(columns.map((column) => column.id)),
+      fallbackColumnId: fallbackColumnId(columns, view.group_by),
+      categories: statusCategories(database),
+      labelIds: listIssueLabelIds(database, issue.id),
+    },
     true,
   );
 }
@@ -252,8 +366,8 @@ export function insertDefaultView(database: DatabaseSync): void {
     .run(DEFAULT_VIEW_ID, now, now);
   const insertColumn = database.prepare(
     `INSERT INTO issue_columns (
-       field, id, title, color, sort_order, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       field, id, title, color, category, sort_order, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const [field, columns] of [
     ["status", DEFAULT_STATUS_COLUMNS],
@@ -268,6 +382,7 @@ export function insertDefaultView(database: DatabaseSync): void {
         column.id,
         column.title,
         column.color,
+        column.category,
         column.order * 1000,
         now,
         now,

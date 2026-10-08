@@ -42,13 +42,15 @@ const full: ViewFull = {
       field: "status",
       title: "Backlog",
       color: null,
+      category: "backlog",
       sortOrder: 0,
       createdAt: now,
       updatedAt: now,
     },
   ],
-  statusOptions: [{ id: "backlog", title: "Backlog" }],
-  priorityOptions: [{ id: "none", title: "No priority" }],
+  statusOptions: [{ id: "backlog", title: "Backlog", category: "backlog" }],
+  priorityOptions: [{ id: "none", title: "No priority", category: null }],
+  labels: [],
   issues: [],
 };
 

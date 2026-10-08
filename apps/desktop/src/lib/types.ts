@@ -19,14 +19,17 @@ import type {
   BrowserAnnotation,
   BrowserTabsSnapshot,
   CocurdexDataChangedEvent,
+  CommentIssuePayload,
   CommitMessageModelSelection,
   CompatibleProviderModel,
   CreateColumnPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateTeamPayload,
   CreateViewPayload,
   DeleteColumnPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteSessionPayload,
@@ -34,6 +37,7 @@ import type {
   DiagnosticsExportResult,
   DocumentAttachment,
   EditorViewRecord,
+  GetIssueDetailPayload,
   GetIssuePayload,
   GetNotePayload,
   GitBranchInfo,
@@ -41,7 +45,10 @@ import type {
   GitWorktreeInfo,
   HostDirectoryListing,
   ImageAttachment,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
   LoadViewPayload,
   ManagedWorktree,
   MessageRecord,
@@ -100,6 +107,7 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
@@ -576,6 +584,13 @@ export interface ProductApi {
   issueUpdate(payload: UpdateIssuePayload): Promise<IssueRecord>;
   issueMove(payload: MoveIssuePayload): Promise<IssueRecord>;
   issueDelete(payload: DeleteIssuePayload): Promise<void>;
+  issueGetDetail(payload: GetIssueDetailPayload): Promise<IssueDetail | null>;
+  issueCreateLabel(payload: CreateIssueLabelPayload): Promise<IssueLabel>;
+  issueUpdateLabel(payload: UpdateIssueLabelPayload): Promise<IssueLabel>;
+  issueDeleteLabel(payload: DeleteIssueLabelPayload): Promise<void>;
+  issueAddRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  issueRemoveRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  issueComment(payload: CommentIssuePayload): Promise<IssueDetail>;
   searchDocuments(
     payload: SearchDocumentsPayload,
   ): Promise<SearchDocumentResult[]>;

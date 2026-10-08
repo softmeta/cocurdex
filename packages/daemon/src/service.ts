@@ -1752,7 +1752,12 @@ export class CocurdexDaemonService {
           "Message ID already exists; use the resubmit command to edit a previous message",
         );
       }
-      return this.acceptSessionMessage(command);
+      const accepted = await this.acceptSessionMessage(command);
+      await this.dataService.linkAttachedIssues(
+        command.sessionId,
+        command.attachments,
+      );
+      return accepted;
     });
   }
 
