@@ -342,20 +342,29 @@ const PdfJsViewerContent = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
       viewerRef.current = pdfViewer;
       eventBusRef.current = eventBus;
 
-      eventBus.on("pagesinit", () => {
+      const applyInitialLayout = (restored: PdfReadingPosition) => {
         // Fit width on first layout; resizing re-applies the preset below.
         pdfViewer.currentScaleValue = "page-width";
         setOverflowForPreset(true);
         // Restore the last reading position after scale is applied so the jump
         // uses final page geometry rather than pre-layout estimates.
-        const restored = resolveRestoredPosition(
-          initialPositionRef.current,
-          pdfViewer.pagesCount,
-        );
         lastPosition = restored;
         if (restored.page > 1 || restored.top !== 0 || restored.left !== 0) {
           scrollToPosition(pdfViewer, restored);
         }
+      };
+      let pendingInitialPosition: PdfReadingPosition | null = null;
+      eventBus.on("pagesinit", () => {
+        const restored = resolveRestoredPosition(
+          initialPositionRef.current,
+          pdfViewer.pagesCount,
+        );
+        if (container.clientHeight === 0) {
+          isCollapsed = true;
+          pendingInitialPosition = restored;
+          return;
+        }
+        applyInitialLayout(restored);
       });
       const handlePageChanging = (event: { pageNumber: number }) =>
         onPageChange?.(event.pageNumber);
@@ -481,6 +490,13 @@ const PdfJsViewerContent = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
       const resizeObserver = new ResizeObserver(() => {
         if (container.clientHeight === 0) {
           isCollapsed = true;
+          return;
+        }
+        if (pendingInitialPosition) {
+          const restored = pendingInitialPosition;
+          pendingInitialPosition = null;
+          applyInitialLayout(restored);
+          isCollapsed = false;
           return;
         }
         const sv = pdfViewer.currentScaleValue;
