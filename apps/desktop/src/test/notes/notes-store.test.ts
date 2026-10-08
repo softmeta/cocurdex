@@ -17,6 +17,7 @@ import {
   loadNotesAtom,
   noteSummariesAtom,
   openNoteAtom,
+  refreshNotesAtom,
 } from "@/features/notes/notes-store";
 
 let notes: ReturnType<typeof createNoteServer>;
@@ -57,5 +58,20 @@ describe("SQLite-backed notes store", () => {
 
     expect(store.get(activeNoteAtom)?.id).toBe(created?.id);
     expect(store.get(activeNoteDocAtom)?.noteId).toBe(created?.id);
+  });
+
+  it("lists a created note once when a refresh lands during creation", async () => {
+    const store = createStore();
+    const getDoc = notes.ipc.getDoc.getMockImplementation();
+    notes.ipc.getDoc.mockImplementationOnce(async (payload) => {
+      await store.set(refreshNotesAtom);
+      return getDoc ? getDoc(payload) : null;
+    });
+
+    const created = await store.set(createNoteAtom, null);
+
+    expect(
+      store.get(noteSummariesAtom).filter((note) => note.id === created?.id),
+    ).toHaveLength(1);
   });
 });

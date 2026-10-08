@@ -10,15 +10,15 @@ export const NOTE_DOC_FIELD = "default";
 export const NOTE_LINK_PROTOCOLS = ["cocurdex-pdf", "note"];
 
 export interface NoteDocExtensionOptions {
-  undoRedo?: boolean;
+  collaborative?: boolean;
 }
 
 export function buildNoteDocExtensions({
-  undoRedo = true,
+  collaborative = false,
 }: NoteDocExtensionOptions = {}): Extensions {
   return [
     StarterKit.configure({
-      ...(undoRedo ? {} : { undoRedo: false }),
+      ...(collaborative ? { undoRedo: false, trailingNode: false } : {}),
       link: {
         openOnClick: false,
         protocols: NOTE_LINK_PROTOCOLS,

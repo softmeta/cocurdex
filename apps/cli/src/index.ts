@@ -444,6 +444,7 @@ function printUsage() {
       "  cocurdex --version | -v | version       Print CLI version",
       "  cocurdex note list|show|create|update|move|delete|backlinks|tags [--json]",
       "  cocurdex note create|update ... [--body <markdown> | --body - | --body-file <path>]",
+      "  cocurdex note update <id> ... [--expected-revision <n>]",
       "  cocurdex issue list|show|create|update|move|delete|comment|views [--view <id>] [--json]",
       "  cocurdex issue relate|unrelate <id> blocks|related|duplicate <id> [--json]",
       "  cocurdex issue labels | label create --name <name> | label delete <id|name> [--json]",

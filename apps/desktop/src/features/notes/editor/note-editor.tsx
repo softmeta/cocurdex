@@ -122,7 +122,7 @@ function NoteEditorBody({
   const editor = useEditor({
     extensions: [
       ...buildMarkdownBodyExtensions(t("editor.placeholder"), {
-        undoRedo: false,
+        collaborative: true,
       }),
       Collaboration.configure({ document: doc, field: NOTE_DOC_FIELD }),
     ],

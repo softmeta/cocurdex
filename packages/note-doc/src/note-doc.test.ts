@@ -137,6 +137,25 @@ describe("note doc state", () => {
     expect(merged.changed).toBe(true);
   });
 
+  it("persists an update that only deletes content", () => {
+    const base = createNoteDocState("Keep this typo");
+    const deletion = editAsPeer(base, "Keep this");
+
+    const result = applyNoteDocUpdate(base, deletion);
+
+    expect(result.changed).toBe(true);
+    expect(noteDocToMarkdown(result.state)).toBe("Keep this");
+  });
+
+  it("persists a markdown rewrite that only deletes content", () => {
+    const base = createNoteDocState("First\n\nSecond");
+
+    const result = applyMarkdownToNoteDoc(base, "First");
+
+    expect(result.changed).toBe(true);
+    expect(noteDocToMarkdown(result.state)).toBe("First");
+  });
+
   it("ignores an update that was already applied", () => {
     const base = createNoteDocState("Hello");
     const update = editAsPeer(base, "Hello world");

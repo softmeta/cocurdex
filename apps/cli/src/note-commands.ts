@@ -48,17 +48,15 @@ export async function handleNoteCommand(
 
   if (action === "update") {
     const id = requiredId(args, "update");
-    const current = await withDaemon(() => requestDaemon("note.get", { id }));
-    if (!current) {
-      throw new Error(`Note not found: ${id}`);
-    }
+    const expectedRevision =
+      expectedRevisionFlag(parsed) ?? (await currentRevision(id));
     const bodyMarkdown = await readBody(parsed);
     const updated = await withDaemon(() =>
       requestDaemon("note.update", {
         id,
         title: stringFlag(parsed, "title"),
         bodyMarkdown,
-        expectedRevision: current.revision,
+        expectedRevision,
       }),
     );
     printResult(updated, parsed);
@@ -145,4 +143,22 @@ function requiredId(args: string[], action: string) {
     throw new Error(`Usage: cocurdex note ${action} <id>`);
   }
   return id;
+}
+
+function expectedRevisionFlag(parsed: ParsedArgs) {
+  const value = stringFlag(parsed, "expected-revision");
+  if (value === undefined) return undefined;
+  const revision = Number(value);
+  if (!Number.isInteger(revision) || revision < 1) {
+    throw new Error("--expected-revision must be a positive integer");
+  }
+  return revision;
+}
+
+async function currentRevision(id: string) {
+  const current = await withDaemon(() => requestDaemon("note.get", { id }));
+  if (!current) {
+    throw new Error(`Note not found: ${id}`);
+  }
+  return current.revision;
 }

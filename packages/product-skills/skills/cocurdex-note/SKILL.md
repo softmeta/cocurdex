@@ -33,9 +33,12 @@ returned by the command as the current text. Supported blocks: headings,
 lists, task lists, tables, images, quotes, and code. Unsupported syntax such
 as raw HTML is kept as plain text.
 
-`note update` fails with "Note was modified" when someone edited the note
-after you read it. Run `note show` again, reapply your change to the new
-body, and retry.
+People may edit a note in the app while you work on it. When you rewrite a
+body you read earlier, pass the `revision` from that `note show` as
+`note update <id> --expected-revision <n>`; without it, your Markdown
+replaces edits made after your read. The update fails with "Note was
+modified" when the note changed since that revision: run `note show` again,
+reapply your change to the new body, and retry.
 
 Link notes with Markdown links that use stable note ids, then verify the
 reverse direction with `note backlinks <target-id>`.

@@ -37,18 +37,13 @@ function readMarkdown(doc: Y.Doc): string {
   return serializeNoteMarkdown(root.toJSON());
 }
 
-function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
-  return (
-    left.byteLength === right.byteLength &&
-    left.every((byte, index) => byte === right[index])
-  );
-}
-
 function changeDoc(state: Uint8Array, mutate: (doc: Y.Doc) => void) {
   const doc = loadDoc(state);
-  const before = Y.encodeStateVector(doc);
+  let changed = false;
+  doc.on("update", () => {
+    changed = true;
+  });
   mutate(doc);
-  const changed = !sameBytes(before, Y.encodeStateVector(doc));
   return {
     state: changed ? Y.encodeStateAsUpdate(doc) : state,
     markdown: readMarkdown(doc),

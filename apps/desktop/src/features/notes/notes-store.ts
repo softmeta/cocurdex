@@ -108,7 +108,10 @@ export const createNoteAtom = atom(
       title: title?.trim() ? title.trim() : undefined,
     });
     const doc = note.kind === "note" ? await fetchNoteDoc(note.id) : null;
-    set(noteSummariesAtom, [...get(noteSummariesAtom), toNoteSummary(note)]);
+    set(noteSummariesAtom, [
+      ...get(noteSummariesAtom).filter((item) => item.id !== note.id),
+      toNoteSummary(note),
+    ]);
     set(activeNoteIdAtom, note.id);
     showNote(set, note, doc);
     set(noteSaveStatusAtom, "idle");

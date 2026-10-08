@@ -68,6 +68,24 @@ describe("data commands", () => {
     });
   });
 
+  it("updates a note against the revision the caller read", async () => {
+    requestMock.mockResolvedValue({ id: "note-id", revision: 5 });
+
+    await handleNoteCommand(
+      "update",
+      ["note-id"],
+      parseArgs(["--body", "edited", "--expected-revision", "3"]),
+    );
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(requestMock).toHaveBeenCalledWith("note.update", {
+      id: "note-id",
+      title: undefined,
+      bodyMarkdown: "edited",
+      expectedRevision: 3,
+    });
+  });
+
   it("rejects a note move without a destination", async () => {
     await expect(
       handleNoteCommand("move", ["note-id"], parseArgs([])),
