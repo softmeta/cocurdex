@@ -89,7 +89,7 @@ describe("data commands", () => {
   it("rejects a note move without a destination", async () => {
     await expect(
       handleNoteCommand("move", ["note-id"], parseArgs([])),
-    ).rejects.toThrow("--parent <folder-id> | --root");
+    ).rejects.toThrow("--parent <note-id> | --root");
     expect(requestMock).not.toHaveBeenCalled();
   });
 
