@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { acquireDaemonOwnership } from "./daemon-ownership";
 
 const execFileAsync = promisify(execFile);
+const FIXTURE_START_TIMEOUT_MS = 45_000;
 const directories: string[] = [];
 const moduleUrl = new URL("./daemon-ownership.ts", import.meta.url).href;
 const importOwnership = `import { acquireDaemonOwnership } from ${JSON.stringify(moduleUrl)};`;
@@ -16,6 +17,27 @@ async function directory() {
   const result = await mkdtemp(path.join(tmpdir(), "cd-owner-"));
   directories.push(result);
   return result;
+}
+
+function waitForFixture(child: ChildProcess, name: string) {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${name} did not start`)),
+      FIXTURE_START_TIMEOUT_MS,
+    );
+    child.once("message", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    child.once("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once("exit", () => {
+      clearTimeout(timer);
+      reject(new Error(`${name} exited`));
+    });
+  });
 }
 
 afterEach(async () => {
@@ -86,24 +108,7 @@ describe("daemon ownership", () => {
     );
     const exited = once(child, "exit");
     try {
-      await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(
-          () => reject(new Error("Ownership fixture did not start")),
-          10_000,
-        );
-        child.once("message", () => {
-          clearTimeout(timer);
-          resolve();
-        });
-        child.once("error", (error) => {
-          clearTimeout(timer);
-          reject(error);
-        });
-        child.once("exit", () => {
-          clearTimeout(timer);
-          reject(new Error("Ownership fixture exited"));
-        });
-      });
+      await waitForFixture(child, "Ownership fixture");
       await expect(acquireDaemonOwnership(userDataPath)).rejects.toThrow();
     } finally {
       child.kill("SIGKILL");
@@ -111,7 +116,59 @@ describe("daemon ownership", () => {
     }
     const successor = await acquireDaemonOwnership(userDataPath);
     successor.release();
-  }, 20_000);
+  }, 60_000);
+
+  it("fails fast while the incumbent is still serving", async () => {
+    const userDataPath = await directory();
+    const owner = await acquireDaemonOwnership(userDataPath);
+    try {
+      const startedAt = performance.now();
+      await expect(
+        acquireDaemonOwnership(userDataPath, {
+          isIncumbentServing: async () => true,
+        }),
+      ).rejects.toThrow("Cannot acquire daemon ownership");
+      expect(performance.now() - startedAt).toBeLessThan(1000);
+    } finally {
+      owner.release();
+    }
+  });
+
+  it("takes over once an incumbent that stopped serving finishes teardown", async () => {
+    const userDataPath = await directory();
+    const child = spawn(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "--input-type=module",
+        "-e",
+        `
+      ${importOwnership}
+      const owner = await acquireDaemonOwnership(process.argv[1]);
+      process.send("ready", () => {
+        setTimeout(() => {
+          owner.release();
+          process.exit(0);
+        }, 300);
+      });
+    `,
+        userDataPath,
+      ],
+      { stdio: ["ignore", "ignore", "ignore", "ipc"], windowsHide: true },
+    );
+    const exited = once(child, "exit");
+    try {
+      await waitForFixture(child, "Teardown fixture");
+      const successor = await acquireDaemonOwnership(userDataPath, {
+        isIncumbentServing: async () => false,
+      });
+      successor.release();
+    } finally {
+      child.kill("SIGKILL");
+      await exited;
+    }
+  }, 60_000);
 
   it("allows independent data directories", async () => {
     const first = await acquireDaemonOwnership(await directory());

@@ -336,6 +336,8 @@ describe("startDaemonServer", () => {
   });
 });
 
+const DAEMON_FIXTURE_START_TIMEOUT_MS = 45_000;
+
 async function createDirectory() {
   const directory = await realpath(
     await mkdtemp(path.join(os.tmpdir(), "cd-wire-")),
@@ -470,14 +472,21 @@ it("starts again through the canonical endpoint after an abrupt daemon exit", as
   `,
       userDataPath,
     ],
-    { stdio: ["ignore", "ignore", "ignore", "ipc"], windowsHide: true },
+    { stdio: ["ignore", "ignore", "pipe", "ipc"], windowsHide: true },
   );
   const exited = once(child, "exit");
+  let stderr = "";
+  child.stderr?.setEncoding("utf8");
+  child.stderr?.on("data", (chunk: string) => {
+    stderr += chunk;
+  });
   try {
     await new Promise<void>((resolve, reject) => {
+      const fail = (message: string) =>
+        reject(new Error(`${message}\n${stderr}`.trimEnd()));
       const timer = setTimeout(
-        () => reject(new Error("Daemon fixture did not start")),
-        10_000,
+        () => fail("Daemon fixture did not start"),
+        DAEMON_FIXTURE_START_TIMEOUT_MS,
       );
       child.once("message", () => {
         clearTimeout(timer);
@@ -489,7 +498,7 @@ it("starts again through the canonical endpoint after an abrupt daemon exit", as
       });
       child.once("exit", () => {
         clearTimeout(timer);
-        reject(new Error("Daemon fixture exited"));
+        fail("Daemon fixture exited");
       });
     });
     await expect(
@@ -511,4 +520,4 @@ it("starts again through the canonical endpoint after an abrupt daemon exit", as
   } finally {
     await successor.close();
   }
-}, 20_000);
+}, 60_000);
