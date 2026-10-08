@@ -103,14 +103,14 @@ export function IssuesView() {
   useDataSync("issues");
 
   const handleAddCard = useCallback(
-    (columnId: string, parentId: string | null = null) => {
+    (columnId: string, parent: IssueRecord | null = null) => {
       if (!activeBoard) return;
       closeIssueDetail();
       setComposeDraft(
         buildComposeDraft({
           board: activeBoard,
           columnId,
-          parentId,
+          parent,
           activeWorkspaceId,
           workspaceIds: workspaces.map((workspace) => workspace.id),
         }),
@@ -191,7 +191,7 @@ export function IssuesView() {
       const groupBy = activeBoard?.view.groupBy ?? "status";
       handleAddCard(
         groupBy === "priority" ? parent.priority : parent.status,
-        parent.id,
+        parent,
       );
     },
     onAddRelation: (change) => {

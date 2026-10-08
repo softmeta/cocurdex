@@ -124,10 +124,7 @@ export function IssueForm({
     ...workspaces.map((w) => ({ id: w.id, title: w.name })),
   ];
 
-  const handleSave = async () => {
-    if (!bodyReady || saving) {
-      return;
-    }
+  const buildSaveRequest = (): IssueSaveRequest | null => {
     const editor = descriptionRef.current;
     const values: IssueFieldValues = {
       title: title.trim(),
@@ -138,33 +135,49 @@ export function IssueForm({
       parentId,
       labelIds,
     };
-    let request: IssueSaveRequest | null = null;
     if (card) {
       const changes = changedIssueFields(
         card,
         values,
         editor?.isDirty() ?? false,
       );
-      if (Object.keys(changes).length > 0) {
-        request = {
-          kind: "update",
-          id: card.id,
-          expectedRevision: card.revision,
-          changes,
-        };
-      }
-    } else if (composeDraft) {
-      request = { kind: "create", columnId: composeDraft.columnId, values };
+      return Object.keys(changes).length > 0
+        ? {
+            kind: "update",
+            id: card.id,
+            expectedRevision: card.revision,
+            changes,
+          }
+        : null;
     }
+    return composeDraft
+      ? { kind: "create", columnId: composeDraft.columnId, values }
+      : null;
+  };
+
+  const persistChanges = async (): Promise<boolean> => {
+    if (saving) {
+      return false;
+    }
+    const request = buildSaveRequest();
     if (!request) {
-      onClose();
-      return;
+      return true;
     }
     setSaving(true);
     const saved = await onSave(request);
     setSaving(false);
-    if (saved) {
+    return saved;
+  };
+
+  const handleSave = async () => {
+    if (bodyReady && (await persistChanges())) {
       onClose();
+    }
+  };
+
+  const leaveAfterSaving = async (navigate: () => void) => {
+    if (await persistChanges()) {
+      navigate();
     }
   };
 
@@ -247,8 +260,12 @@ export function IssueForm({
             <IssueDetailSections
               detail={detail}
               issues={issues}
-              onOpenIssue={actions.onOpenIssue}
-              onAddSubIssue={() => actions.onAddSubIssue(card)}
+              onOpenIssue={(issueId) => {
+                void leaveAfterSaving(() => actions.onOpenIssue(issueId));
+              }}
+              onAddSubIssue={() => {
+                void leaveAfterSaving(() => actions.onAddSubIssue(card));
+              }}
               onAddRelation={actions.onAddRelation}
               onRemoveRelation={actions.onRemoveRelation}
             />

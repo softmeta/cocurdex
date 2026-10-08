@@ -1,6 +1,6 @@
 import type { IssueLabel, IssueRecord, IssueSummary } from "@cocurdex/shared";
 import { GitBranchPlus, Plus, Tag } from "lucide-react";
-import { type ComponentProps, type ReactNode, useState } from "react";
+import { type ComponentProps, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppSearchableSelect } from "@/components/app";
 import {
@@ -92,6 +92,7 @@ export function LabelsChip({
   const { t } = useTranslation("issues");
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState("");
+  const openingDraftRef = useRef(false);
   const selectedNames = labels
     .filter((label) => value.includes(label.id))
     .map((label) => label.name);
@@ -99,6 +100,7 @@ export function LabelsChip({
     selectedNames.length > 0 ? selectedNames.join(", ") : t("dialog.labels");
 
   const submitDraft = async () => {
+    openingDraftRef.current = false;
     const name = draft.trim();
     setCreating(false);
     setDraft("");
@@ -134,6 +136,7 @@ export function LabelsChip({
           if (event.key === "Escape") {
             event.preventDefault();
             event.stopPropagation();
+            openingDraftRef.current = false;
             setDraft("");
             setCreating(false);
           }
@@ -151,7 +154,11 @@ export function LabelsChip({
           label={chipLabel}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-44">
+      <DropdownMenuContent
+        align="start"
+        className="min-w-44"
+        finalFocus={() => !openingDraftRef.current}
+      >
         {labels.map((label) => (
           <DropdownMenuCheckboxItem
             key={label.id}
@@ -163,7 +170,12 @@ export function LabelsChip({
           </DropdownMenuCheckboxItem>
         ))}
         {labels.length > 0 ? <DropdownMenuSeparator /> : null}
-        <DropdownMenuItem onClick={() => setCreating(true)}>
+        <DropdownMenuItem
+          onClick={() => {
+            openingDraftRef.current = true;
+            setCreating(true);
+          }}
+        >
           <Plus className="size-3.5" />
           {t("dialog.newLabel")}
         </DropdownMenuItem>

@@ -1,4 +1,4 @@
-import type { ViewFull } from "@cocurdex/shared";
+import type { IssueRecord, ViewFull } from "@cocurdex/shared";
 import type { IssueComposeDraft } from "./dialogs";
 
 function defaultWorkspaceId(
@@ -23,13 +23,13 @@ function defaultWorkspaceId(
 export function buildComposeDraft({
   board,
   columnId,
-  parentId,
+  parent,
   activeWorkspaceId,
   workspaceIds,
 }: {
   board: ViewFull;
   columnId: string;
-  parentId: string | null;
+  parent: Pick<IssueRecord, "id" | "workspaceId"> | null;
   activeWorkspaceId: string | null;
   workspaceIds: readonly string[];
 }): IssueComposeDraft {
@@ -43,7 +43,9 @@ export function buildComposeDraft({
     status:
       groupBy === "status" ? columnId : (board.statusOptions[0]?.id ?? ""),
     priority: groupBy === "priority" ? columnId : defaultPriority,
-    workspaceId: defaultWorkspaceId(board, activeWorkspaceId, workspaceIds),
-    parentId,
+    workspaceId: parent
+      ? parent.workspaceId
+      : defaultWorkspaceId(board, activeWorkspaceId, workspaceIds),
+    parentId: parent?.id ?? null,
   };
 }
