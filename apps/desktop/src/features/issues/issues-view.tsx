@@ -18,20 +18,26 @@ import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { useMountEffect } from "@/lib";
 import { IssuesBoard, ViewDisplayMenu, ViewFilterMenu } from "./board";
+import { buildComposeDraft } from "./compose-draft";
 import {
   CardDetailDialog,
   type IssueComposeDraft,
+  type IssueDetailActions,
   type IssueSaveRequest,
 } from "./dialogs";
 import {
+  addIssueRelationAtom,
   closeIssueDetailAtom,
+  commentIssueAtom,
   issueDetailAtom,
   openIssueDetailAtom,
+  removeIssueRelationAtom,
 } from "./issue-detail-store";
 import {
   activeViewAtom,
   activeViewIdAtom,
   createIssueAtom,
+  createIssueLabelAtom,
   createViewAtom,
   deleteIssueAtom,
   deleteViewAtom,
@@ -75,6 +81,10 @@ export function IssuesView() {
   const selectBoard = useSetAtom(selectViewAtom);
   const createView = useSetAtom(createViewAtom);
   const deleteView = useSetAtom(deleteViewAtom);
+  const createIssueLabel = useSetAtom(createIssueLabelAtom);
+  const commentIssue = useSetAtom(commentIssueAtom);
+  const addIssueRelation = useSetAtom(addIssueRelationAtom);
+  const removeIssueRelation = useSetAtom(removeIssueRelationAtom);
 
   const [composeDraft, setComposeDraft] = useState<IssueComposeDraft | null>(
     null,
@@ -93,38 +103,18 @@ export function IssuesView() {
   useDataSync("issues");
 
   const handleAddCard = useCallback(
-    (columnId: string) => {
-      const board = activeBoard;
-      if (!board) return;
-      // Open Linear-style compose dialog; only write to disk on create.
-      const groupBy = board.view.groupBy;
-      // Prefer the active view's workspace filter when set; else active workspace.
-      const workspaceFilter = (board.view.filters ?? []).find(
-        (filter) => filter.field === "workspaceId",
-      );
-      let defaultWorkspaceId: string | null = null;
-      if (workspaceFilter?.op === "eq" && workspaceFilter.value) {
-        defaultWorkspaceId = workspaceFilter.value;
-      } else if (workspaceFilter?.op === "is_null") {
-        defaultWorkspaceId = null;
-      } else if (
-        activeWorkspaceId &&
-        workspaces.some((workspace) => workspace.id === activeWorkspaceId)
-      ) {
-        defaultWorkspaceId = activeWorkspaceId;
-      }
+    (columnId: string, parentId: string | null = null) => {
+      if (!activeBoard) return;
       closeIssueDetail();
-      const defaultPriority =
-        board.priorityOptions.find((option) => option.id === "none")?.id ??
-        board.priorityOptions.at(-1)?.id ??
-        "";
-      setComposeDraft({
-        columnId,
-        status:
-          groupBy === "status" ? columnId : (board.statusOptions[0]?.id ?? ""),
-        priority: groupBy === "priority" ? columnId : defaultPriority,
-        workspaceId: defaultWorkspaceId,
-      });
+      setComposeDraft(
+        buildComposeDraft({
+          board: activeBoard,
+          columnId,
+          parentId,
+          activeWorkspaceId,
+          workspaceIds: workspaces.map((workspace) => workspace.id),
+        }),
+      );
     },
     [activeBoard, activeWorkspaceId, closeIssueDetail, workspaces],
   );
@@ -190,6 +180,28 @@ export function IssuesView() {
     },
     [openIssueDetail],
   );
+
+  const detailActions: IssueDetailActions = {
+    onCreateLabel: createIssueLabel,
+    onOpenIssue: (issueId) => {
+      setComposeDraft(null);
+      void openIssueDetail(issueId);
+    },
+    onAddSubIssue: (parent) => {
+      const groupBy = activeBoard?.view.groupBy ?? "status";
+      handleAddCard(
+        groupBy === "priority" ? parent.priority : parent.status,
+        parent.id,
+      );
+    },
+    onAddRelation: (change) => {
+      void addIssueRelation(change);
+    },
+    onRemoveRelation: (change) => {
+      void removeIssueRelation(change);
+    },
+    onComment: commentIssue,
+  };
 
   // Prefer the selected view's summary so layout/groupBy never stick to the
   // previously loaded board while selectBoard is in flight.
@@ -274,6 +286,7 @@ export function IssuesView() {
             <ViewFilterMenu
               filters={viewFilters}
               workspaces={workspaces}
+              labels={activeBoard?.labels ?? []}
               onFiltersChange={handleFiltersChange}
             />
             <ViewDisplayMenu
@@ -313,10 +326,14 @@ export function IssuesView() {
                   void updateIssue({ id, ...fields });
                 }}
                 onRenameColumn={handleRenameColumn}
+                onSetColumnCategory={(id, category) => {
+                  void updateColumn({ id, category });
+                }}
               />
             )}
             <CardDetailDialog
               card={issueDetail?.card ?? null}
+              detail={issueDetail?.detail ?? null}
               composeDraft={composeDraft}
               bodyEpoch={issueDetail?.bodyEpoch ?? 0}
               bodyStatus={issueDetail?.bodyStatus}
@@ -325,7 +342,10 @@ export function IssuesView() {
               statusOptions={viewBoard.statusOptions}
               priorityOptions={viewBoard.priorityOptions}
               workspaces={workspaces}
+              labels={viewBoard.labels}
+              issues={viewBoard.issues}
               groupBy={groupBy}
+              actions={detailActions}
               onClose={closeIssueDialog}
               onSave={handleSaveIssue}
             />

@@ -694,6 +694,33 @@ export default interface Resources {
     };
   };
   issues: {
+    activity: {
+      actor: {
+        cli: "CLI";
+        session: "Agent session";
+        user: "You";
+      };
+      changedField: "changed {{field}}";
+      changedFieldTo: "set {{field}} to {{value}}";
+      comment: "Comment";
+      commentPlaceholder: "Leave a comment…";
+      commented: "commented";
+      created: "created the issue";
+      field: {
+        description: "description";
+        labels: "labels";
+        parent: "parent";
+        priority: "priority";
+        status: "status";
+        title: "title";
+        workspace: "workspace";
+      };
+      none: "none";
+      relationAdded: "linked {{issue}}";
+      relationRemoved: "unlinked {{issue}}";
+      sessionLinked: "linked an agent session";
+      title: "Activity";
+    };
     board: {
       addCard: "Add card";
       addColumn: "Add column";
@@ -730,16 +757,47 @@ export default interface Resources {
       priority: "Priority";
       status: "Status";
     };
+    category: {
+      backlog: "Backlog";
+      canceled: "Canceled";
+      completed: "Completed";
+      started: "Started";
+      title: "Status category";
+      unstarted: "Unstarted";
+    };
+    detail: {
+      addRelation: "Add relation";
+      addSubIssue: "Add sub-issue";
+      relation: {
+        blockedBy: "Blocked by";
+        blocks: "Blocks";
+        duplicateOf: "Duplicate of";
+        duplicatedBy: "Duplicated by";
+        related: "Related to";
+      };
+      relations: "Relations";
+      removeRelation: "Remove relation";
+      sessions: "Agent sessions";
+      subIssues: "Sub-issues";
+      untitledSession: "Untitled session";
+    };
     dialog: {
       cancel: "Cancel";
       createIssue: "Create issue";
       descriptionPlaceholder: "Add description…";
       editCard: "Edit issue";
+      labels: "Labels";
       loadFailed: "Couldn't load the full description. Close and reopen the issue to edit it.";
       newIssue: "New issue";
+      newLabel: "New label";
+      newLabelPlaceholder: "Label name";
+      noMatchingIssues: "No matching issues";
+      noParent: "No parent";
       noWorkspace: "No workspace";
+      parent: "Parent";
       priority: "Priority";
       save: "Save";
+      searchIssues: "Search issues…";
       status: "Status";
       titlePlaceholder: "Issue title";
       unknownWorkspace: "Unknown workspace";
@@ -754,8 +812,11 @@ export default interface Resources {
       saveFailed: "Couldn't save the issue change. The board has been refreshed.";
     };
     filter: {
+      allLabels: "All labels";
       allWorkspaces: "All workspaces";
       ariaLabel: "Filter view";
+      hideClosed: "Hide completed and canceled";
+      label: "Label";
       noWorkspace: "No workspace";
       workspace: "Workspace";
     };

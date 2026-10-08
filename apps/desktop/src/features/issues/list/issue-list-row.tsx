@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { priorityFieldColor, statusFieldColor } from "../group-field-color";
+import { IssueLabelChips } from "../issue-label-chips";
 
 export interface ListFieldOption {
   id: string;
@@ -118,7 +119,7 @@ export function IssueListRow({
         weight="medium"
         className="shrink-0 tabular-nums text-editor-fg-subtle"
       >
-        {card.id}
+        {card.identifier}
       </Text>
       <Text
         as="span"
@@ -127,6 +128,10 @@ export function IssueListRow({
       >
         {card.title || t("board.untitledCard")}
       </Text>
+      <IssueLabelChips
+        labelIds={card.labelIds}
+        className="shrink-0 flex-nowrap"
+      />
       {metaDate ? (
         <Text
           as="span"

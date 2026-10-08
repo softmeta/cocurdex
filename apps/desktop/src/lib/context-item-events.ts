@@ -25,3 +25,24 @@ export function onOpenContextItem(
   window.addEventListener(OPEN_CONTEXT_ITEM_EVENT, handleEvent);
   return () => window.removeEventListener(OPEN_CONTEXT_ITEM_EVENT, handleEvent);
 }
+
+const OPEN_SESSION_EVENT = "cocurdex:open-session";
+
+export function openSessionById(sessionId: string) {
+  window.dispatchEvent(
+    new CustomEvent(OPEN_SESSION_EVENT, { detail: { sessionId } }),
+  );
+}
+
+export function onOpenSession(listener: (sessionId: string) => void) {
+  const handleEvent = (event: Event) => {
+    if (
+      event instanceof CustomEvent &&
+      typeof event.detail?.sessionId === "string"
+    ) {
+      listener(event.detail.sessionId);
+    }
+  };
+  window.addEventListener(OPEN_SESSION_EVENT, handleEvent);
+  return () => window.removeEventListener(OPEN_SESSION_EVENT, handleEvent);
+}
