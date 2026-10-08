@@ -2,6 +2,7 @@ import { requestDaemon } from "@cocurdex/daemon/client";
 import type { IpcMain } from "electron";
 import { registerHandler } from "../ipc";
 import {
+  applyNoteDocUpdatePayloadSchema,
   commentIssuePayloadSchema,
   createColumnPayloadSchema,
   createIssueLabelPayloadSchema,
@@ -15,6 +16,7 @@ import {
   deleteViewPayloadSchema,
   getIssueDetailPayloadSchema,
   getIssuePayloadSchema,
+  getNoteDocPayloadSchema,
   getNotePayloadSchema,
   issueRelationPayloadSchema,
   loadViewPayloadSchema,
@@ -37,6 +39,18 @@ export function registerDataHandlers(ipc: IpcMain, userDataPath: string): void {
   ipc.handle("notes:list", () => requestDaemon("note.list", options));
   registerHandler(ipc, "notes:get", getNotePayloadSchema, (_event, payload) =>
     requestDaemon("note.get", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "notes:getDoc",
+    getNoteDocPayloadSchema,
+    (_event, payload) => requestDaemon("note.getDoc", payload, options),
+  );
+  registerHandler(
+    ipc,
+    "notes:applyDocUpdate",
+    applyNoteDocUpdatePayloadSchema,
+    (_event, payload) => requestDaemon("note.applyDocUpdate", payload, options),
   );
   registerHandler(
     ipc,

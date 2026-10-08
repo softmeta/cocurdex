@@ -44,14 +44,18 @@
   },
   "dependencies": {
     "@cocurdex/daemon": "workspace:*",
+    "@cocurdex/note-doc": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@earendil-works/pi-coding-agent": "1.0.2",
     "@napi-rs/keyring": "2.1.0",
+    "@tiptap/extension-collaboration": "^3.31.4",
+    "@tiptap/y-tiptap": "^3.0.9",
     "@vscode/ripgrep": "^1.18.0",
     "electron-log": "^5.4.3",
     "electron-updater": "6.8.9",
     "font-list": "^2.1.0",
     "node-pty": "^1.1.0",
+    "yjs": "^13.6.33",
     "zod": "^4.0.0"
   },
   "optionalDependencies": {

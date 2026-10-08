@@ -6,6 +6,7 @@ import type {
   AgentProviderModelAxes,
   AgentProviderSelection,
   AgentRoleRecord,
+  ApplyNoteDocUpdatePayload,
   ArchiveSessionPayload,
   CocurdexDataChangedEvent,
   CommentIssuePayload,
@@ -24,6 +25,7 @@ import type {
   DeleteViewPayload,
   GetIssueDetailPayload,
   GetIssuePayload,
+  GetNoteDocPayload,
   IssueRelationPayload,
   LoadViewPayload,
   MoveColumnPayload,
@@ -591,6 +593,10 @@ contextBridge.exposeInMainWorld("desktopApi", {
   notesList: () => ipcRenderer.invoke("notes:list"),
   notesGet: (payload: { id: string }) =>
     ipcRenderer.invoke("notes:get", payload),
+  notesGetDoc: (payload: GetNoteDocPayload) =>
+    ipcRenderer.invoke("notes:getDoc", payload),
+  notesApplyDocUpdate: (payload: ApplyNoteDocUpdatePayload) =>
+    ipcRenderer.invoke("notes:applyDocUpdate", payload),
   notesCreate: (payload: CreateNotePayload) =>
     ipcRenderer.invoke("notes:create", payload),
   notesUpdate: (payload: UpdateNotePayload) =>

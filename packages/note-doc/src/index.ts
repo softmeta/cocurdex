@@ -1,11 +1,10 @@
+export { decodeNoteDocBytes, encodeNoteDocBytes } from "./bytes";
 export { parseNoteMarkdown, serializeNoteMarkdown } from "./markdown";
 export {
   applyMarkdownToNoteDoc,
   applyNoteDocUpdate,
   createNoteDocState,
-  decodeNoteDocBytes,
   diffNoteDoc,
-  encodeNoteDocBytes,
   type NoteDocChange,
   noteDocStateVector,
   noteDocToMarkdown,

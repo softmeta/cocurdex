@@ -56,7 +56,6 @@ describe("useDebouncedNoteRename", () => {
     expect(ipcMock.update).toHaveBeenCalledWith({
       id: "note-1.md",
       title: "Hello",
-      expectedRevision: undefined,
     });
     expect(onRenamed).toHaveBeenCalledWith("Hello");
   });

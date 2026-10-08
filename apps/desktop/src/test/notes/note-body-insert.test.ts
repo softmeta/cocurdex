@@ -1,4 +1,3 @@
-import type { NoteRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -8,46 +7,22 @@ import {
 } from "@/features/notes/note-body-insert";
 import { resetNoteSaveStateForTests } from "@/features/notes/note-save-store";
 import { activeNoteAtom } from "@/features/notes/notes-store";
+import { createNoteServer, noteRecord } from "./note-server-mock";
 
-const ipcMock = vi.hoisted(() => ({
-  status: vi.fn(),
-  list: vi.fn(),
-  create: vi.fn(),
-  get: vi.fn(),
-  update: vi.fn(),
-  move: vi.fn(),
-  delete: vi.fn(),
-}));
+const server = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("@/features/notes/notes-ipc", () => ({
-  notesIpc: ipcMock,
+  get notesIpc() {
+    return (server.current as ReturnType<typeof createNoteServer>).ipc;
+  },
 }));
 
-function makeRecord(
-  id: string,
-  overrides: Partial<NoteRecord> = {},
-): NoteRecord {
-  return {
-    id,
-    parentId: null,
-    workspaceId: null,
-    kind: "note",
-    title: id.replace(/\.md$/, ""),
-    icon: null,
-    bodyMarkdown: "",
-    sortOrder: 0,
-    revision: 1,
-    createdAt: "2026-07-25T00:00:00.000Z",
-    updatedAt: "2026-07-25T00:00:00.000Z",
-    ...overrides,
-  };
-}
+let notes: ReturnType<typeof createNoteServer>;
 
 beforeEach(() => {
   resetNoteSaveStateForTests();
-  ipcMock.create.mockReset();
-  ipcMock.update.mockReset();
-  ipcMock.list.mockResolvedValue([]);
+  notes = createNoteServer();
+  server.current = notes;
 });
 
 describe("flushPendingNoteBodyInsert", () => {
@@ -78,12 +53,11 @@ describe("flushPendingNoteBodyInsert", () => {
 });
 
 describe("insertMarkdownIntoActiveNoteAtom", () => {
-  it("inserts immediately when a file note body is mounted", async () => {
+  it("inserts immediately when a note body is mounted", async () => {
     const store = createStore();
     const insert = vi.fn(() => true);
-    // Jotai treats function values as updaters — wrap to store the handler.
     store.set(noteBodyInsertHandlerAtom, () => insert);
-    store.set(activeNoteAtom, makeRecord("a.md"));
+    store.set(activeNoteAtom, notes.seed(noteRecord("a")));
 
     const result = await store.set(insertMarkdownIntoActiveNoteAtom, {
       markdown: "> clip",
@@ -91,19 +65,11 @@ describe("insertMarkdownIntoActiveNoteAtom", () => {
 
     expect(result).toBe("inserted");
     expect(insert).toHaveBeenCalledWith("> clip");
-    expect(ipcMock.create).not.toHaveBeenCalled();
-    expect(ipcMock.update).not.toHaveBeenCalled();
+    expect(notes.ipc.applyDocUpdate).not.toHaveBeenCalled();
   });
 
-  it("creates a note and writes via IPC without requiring a Notes tab mount", async () => {
+  it("creates a note and writes its doc without a mounted editor", async () => {
     const store = createStore();
-    const created = makeRecord("clip.md", { title: "Guide" });
-    ipcMock.create.mockResolvedValue(created);
-    ipcMock.update.mockResolvedValue({
-      ...created,
-      bodyMarkdown: "> clip",
-      revision: 2,
-    });
 
     const result = await store.set(insertMarkdownIntoActiveNoteAtom, {
       markdown: "> clip",
@@ -111,44 +77,34 @@ describe("insertMarkdownIntoActiveNoteAtom", () => {
     });
 
     expect(result).toBe("created");
-    expect(ipcMock.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Guide",
-      }),
+    expect(notes.ipc.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Guide" }),
     );
-    expect(ipcMock.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "clip.md",
-        bodyMarkdown: "> clip",
-      }),
-    );
-    expect(store.get(activeNoteAtom)?.bodyMarkdown).toBe("> clip");
+    expect(store.get(activeNoteAtom)).toMatchObject({
+      title: "Guide",
+      bodyMarkdown: "> clip",
+    });
   });
 
-  it("appends via IPC when an active note exists but the editor is not mounted", async () => {
+  it("appends to the daemon doc when the editor is not mounted", async () => {
     const store = createStore();
     store.set(
       activeNoteAtom,
-      makeRecord("a.md", { bodyMarkdown: "> first", revision: 3 }),
+      notes.seed(noteRecord("a", { bodyMarkdown: "> first" })),
     );
-    ipcMock.update.mockResolvedValue(
-      makeRecord("a.md", {
-        bodyMarkdown: "> first\n\n> second",
-        revision: 4,
-      }),
-    );
+    notes.editBodyExternally("a", "> first\n\nagent line");
 
     const result = await store.set(insertMarkdownIntoActiveNoteAtom, {
       markdown: "> second",
     });
 
     expect(result).toBe("inserted");
-    expect(ipcMock.create).not.toHaveBeenCalled();
-    expect(ipcMock.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        bodyMarkdown: "> first\n\n> second",
-        expectedRevision: 3,
-      }),
+    expect(notes.ipc.create).not.toHaveBeenCalled();
+    expect(notes.notes.get("a")?.bodyMarkdown).toBe(
+      "> first\n\nagent line\n\n> second",
+    );
+    expect(store.get(activeNoteAtom)?.bodyMarkdown).toBe(
+      "> first\n\nagent line\n\n> second",
     );
   });
 });

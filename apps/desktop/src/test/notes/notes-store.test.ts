@@ -1,69 +1,61 @@
-import type { NoteRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createNoteServer, noteRecord } from "./note-server-mock";
 
-const ipcMock = vi.hoisted(() => ({
-  list: vi.fn(),
-  get: vi.fn(),
-  create: vi.fn(),
-  update: vi.fn(),
-  rename: vi.fn(),
-  move: vi.fn(),
-  delete: vi.fn(),
+const server = vi.hoisted(() => ({ current: null as unknown }));
+
+vi.mock("@/features/notes/notes-ipc", () => ({
+  get notesIpc() {
+    return (server.current as ReturnType<typeof createNoteServer>).ipc;
+  },
 }));
-
-vi.mock("@/features/notes/notes-ipc", () => ({ notesIpc: ipcMock }));
 
 import {
   activeNoteAtom,
+  activeNoteDocAtom,
   createNoteAtom,
   loadNotesAtom,
   noteSummariesAtom,
   openNoteAtom,
 } from "@/features/notes/notes-store";
 
-function note(id: string): NoteRecord {
-  const now = "2026-07-25T00:00:00.000Z";
-  return {
-    id,
-    parentId: null,
-    workspaceId: null,
-    kind: "note",
-    title: id,
-    icon: null,
-    sortOrder: 0,
-    revision: 1,
-    createdAt: now,
-    updatedAt: now,
-    bodyMarkdown: "",
-  };
-}
+let notes: ReturnType<typeof createNoteServer>;
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  ipcMock.list.mockResolvedValue([]);
+  notes = createNoteServer();
+  server.current = notes;
 });
 
 describe("SQLite-backed notes store", () => {
   it("loads summaries without a filesystem root", async () => {
-    ipcMock.list.mockResolvedValue([note("a"), note("b")]);
+    notes.seed(noteRecord("a"));
+    notes.seed(noteRecord("b"));
     const store = createStore();
+
     await store.set(loadNotesAtom);
+
     expect(store.get(noteSummariesAtom).map((item) => item.id)).toEqual([
       "a",
       "b",
     ]);
-    expect(ipcMock.list).toHaveBeenCalledWith();
   });
 
-  it("opens and creates stable-id notes", async () => {
+  it("opens a note together with its collaborative doc", async () => {
+    notes.seed(noteRecord("a", { bodyMarkdown: "Hello" }));
     const store = createStore();
-    ipcMock.get.mockResolvedValue(note("a"));
-    await store.set(openNoteAtom, "a");
-    expect(store.get(activeNoteAtom)?.id).toBe("a");
 
-    ipcMock.create.mockResolvedValue(note("new-id"));
-    await store.set(createNoteAtom, null);
-    expect(store.get(activeNoteAtom)?.id).toBe("new-id");
+    await store.set(openNoteAtom, "a");
+
+    expect(store.get(activeNoteAtom)?.id).toBe("a");
+    expect(store.get(activeNoteDocAtom)?.noteId).toBe("a");
+  });
+
+  it("creates a note and opens its doc", async () => {
+    const store = createStore();
+
+    const created = await store.set(createNoteAtom, null);
+
+    expect(store.get(activeNoteAtom)?.id).toBe(created?.id);
+    expect(store.get(activeNoteDocAtom)?.noteId).toBe(created?.id);
   });
 });

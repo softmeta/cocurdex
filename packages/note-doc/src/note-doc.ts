@@ -2,7 +2,6 @@ import {
   updateYFragment,
   yXmlFragmentToProseMirrorRootNode,
 } from "@tiptap/y-tiptap";
-import { fromBase64, toBase64 } from "lib0/buffer";
 import * as Y from "yjs";
 import { serializeNoteMarkdown } from "./markdown";
 import { noteMarkdownToNode } from "./markdown-to-node";
@@ -90,12 +89,4 @@ export function diffNoteDoc(
 
 export function noteDocStateVector(state: Uint8Array): Uint8Array {
   return Y.encodeStateVectorFromUpdate(state);
-}
-
-export function encodeNoteDocBytes(bytes: Uint8Array): string {
-  return toBase64(bytes);
-}
-
-export function decodeNoteDocBytes(encoded: string): Uint8Array {
-  return fromBase64(encoded);
 }

@@ -1,5 +1,6 @@
 import {
   type AgentId,
+  type ApplyNoteDocUpdatePayload,
   type CommentIssuePayload,
   type CreateColumnPayload,
   type CreateIssueLabelPayload,
@@ -13,6 +14,7 @@ import {
   type DeleteViewPayload,
   type GetIssueDetailPayload,
   type GetIssuePayload,
+  type GetNoteDocPayload,
   type GetNotePayload,
   ISSUE_RELATION_KINDS,
   ISSUE_STATUS_CATEGORIES,
@@ -43,11 +45,24 @@ export const getNotePayloadSchema = z.object({
   id: idSchema,
 }) satisfies z.ZodType<GetNotePayload>;
 
+const noteDocBytesSchema = z.string().max(16_000_000).base64();
+
+export const getNoteDocPayloadSchema = z.object({
+  id: idSchema,
+  stateVector: noteDocBytesSchema.optional(),
+}) satisfies z.ZodType<GetNoteDocPayload>;
+
+export const applyNoteDocUpdatePayloadSchema = z.object({
+  id: idSchema,
+  update: noteDocBytesSchema,
+}) satisfies z.ZodType<ApplyNoteDocUpdatePayload>;
+
 export const createNotePayloadSchema = z.object({
   parentId: idSchema.nullable().optional(),
   workspaceId: idSchema.nullable().optional(),
   kind: z.enum(["note", "folder"]).optional(),
   title: titleSchema.optional(),
+  bodyMarkdown: z.string().max(2_000_000).optional(),
   icon: z.string().max(64).nullable().optional(),
   sortOrder: z.number().finite().optional(),
 }) satisfies z.ZodType<CreateNotePayload>;

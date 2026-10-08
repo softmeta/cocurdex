@@ -1,38 +1,38 @@
-import type { NoteKind, NoteRecord, NoteSummary } from "@cocurdex/shared";
-import { atom } from "jotai";
+import { decodeNoteDocBytes } from "@cocurdex/note-doc/bytes";
+import type { NoteKind, NoteRecord } from "@cocurdex/shared";
+import { atom, type Getter, type Setter } from "jotai";
+import { pullNoteDoc } from "./note-doc-registry";
 import {
+  applySavedNoteRecord,
   forgetNote,
-  getKnownNote,
-  getLocalNote,
   hasPendingNoteSave,
-  hasUnsavedNoteChange,
-  rememberNoteRecord,
-  saveNoteChangeAtom,
+  saveNoteTitleAtom,
+  toNoteSummary,
   waitForNoteSaves,
 } from "./note-save-store";
 import {
   activeNoteAtom,
+  activeNoteDocAtom,
   activeNoteIdAtom,
-  noteContentEpochAtom,
-  noteEditorDirtyAtom,
   noteSaveStatusAtom,
   noteSummariesAtom,
   notesLoadingAtom,
   notesRevealNonceAtom,
+  noteTitleEpochAtom,
 } from "./notes-atoms";
 import { notesIpc } from "./notes-ipc";
 
 export {
+  type ActiveNoteDoc,
   activeNoteAtom,
+  activeNoteDocAtom,
   activeNoteIdAtom,
   type NoteSaveStatus,
-  noteContentEpochAtom,
-  noteEditorDirtyAtom,
-  noteSaveConflictsAtom,
   noteSaveStatusAtom,
   noteSummariesAtom,
   notesLoadingAtom,
   notesRevealNonceAtom,
+  noteTitleEpochAtom,
 } from "./notes-atoms";
 
 export const loadNotesAtom = atom(null, async (_get, set) => {
@@ -44,6 +44,22 @@ export const loadNotesAtom = atom(null, async (_get, set) => {
   }
 });
 
+async function fetchNoteDoc(noteId: string) {
+  const snapshot = await notesIpc.getDoc({ id: noteId });
+  return snapshot
+    ? { noteId, state: decodeNoteDocBytes(snapshot.update) }
+    : null;
+}
+
+function showNote(
+  set: Setter,
+  note: NoteRecord | null,
+  doc: Awaited<ReturnType<typeof fetchNoteDoc>>,
+) {
+  set(activeNoteAtom, note);
+  set(activeNoteDocAtom, doc);
+}
+
 export const openNoteAtom = atom(null, async (get, set, noteId: string) => {
   if (get(activeNoteIdAtom) === noteId) {
     return;
@@ -51,16 +67,13 @@ export const openNoteAtom = atom(null, async (get, set, noteId: string) => {
 
   set(activeNoteIdAtom, noteId);
   set(noteSaveStatusAtom, "idle");
-  set(noteEditorDirtyAtom, false);
   await waitForNoteSaves(noteId);
-  const note = hasUnsavedNoteChange(noteId)
-    ? getLocalNote(noteId)
-    : await notesIpc.get({ id: noteId });
-  if (note) {
-    rememberNoteRecord(note);
-  }
+  const [note, doc] = await Promise.all([
+    notesIpc.get({ id: noteId }),
+    fetchNoteDoc(noteId),
+  ]);
   if (get(activeNoteIdAtom) === noteId) {
-    set(activeNoteAtom, note);
+    showNote(set, note, doc);
   }
 });
 
@@ -94,12 +107,11 @@ export const createNoteAtom = atom(
       kind,
       title: title?.trim() ? title.trim() : undefined,
     });
-    rememberNoteRecord(note);
-    set(noteSummariesAtom, [...get(noteSummariesAtom), toSummary(note)]);
+    const doc = note.kind === "note" ? await fetchNoteDoc(note.id) : null;
+    set(noteSummariesAtom, [...get(noteSummariesAtom), toNoteSummary(note)]);
     set(activeNoteIdAtom, note.id);
-    set(activeNoteAtom, note);
+    showNote(set, note, doc);
     set(noteSaveStatusAtom, "idle");
-    set(noteEditorDirtyAtom, false);
     set(notesRevealNonceAtom, get(notesRevealNonceAtom) + 1);
     return note;
   },
@@ -114,16 +126,20 @@ export const moveNoteAtom = atom(
   ): Promise<NoteRecord> => {
     await waitForNoteSaves(payload.id);
     const moved = await notesIpc.move(payload);
-    rememberNoteRecord(moved);
     set(noteSummariesAtom, await notesIpc.list());
     const current = get(activeNoteAtom);
     if (current?.id === moved.id) {
-      set(activeNoteAtom, { ...moved, bodyMarkdown: current.bodyMarkdown });
+      set(activeNoteAtom, moved);
     }
     set(notesRevealNonceAtom, get(notesRevealNonceAtom) + 1);
     return moved;
   },
 );
+
+function clearActiveNote(set: Setter) {
+  set(activeNoteIdAtom, null);
+  showNote(set, null, null);
+}
 
 export const deleteNoteAtom = atom(null, async (get, set, noteId: string) => {
   await waitForNoteSaves(noteId);
@@ -132,29 +148,45 @@ export const deleteNoteAtom = atom(null, async (get, set, noteId: string) => {
   const summaries = await notesIpc.list();
   set(noteSummariesAtom, summaries);
   if (!summaries.some((note) => note.id === get(activeNoteIdAtom))) {
-    set(activeNoteIdAtom, null);
-    set(activeNoteAtom, null);
+    clearActiveNote(set);
   }
 });
 
 export const renameNoteAtom = atom(
   null,
-  async (
-    _get,
-    set,
-    payload: { id: string; title: string },
-  ): Promise<NoteRecord> => {
-    await set(saveNoteChangeAtom, {
-      noteId: payload.id,
-      change: { title: payload.title },
-    });
-    const known = getKnownNote(payload.id);
-    if (!known || hasUnsavedNoteChange(payload.id)) {
-      throw new Error(`Note rename was not saved: ${payload.id}`);
+  (_get, set, payload: { id: string; title: string }): Promise<NoteRecord> =>
+    set(saveNoteTitleAtom, { noteId: payload.id, title: payload.title }),
+);
+
+export const applyNoteDocSaveAtom = atom(
+  null,
+  (get, set, saved: NoteRecord) => {
+    const active = get(activeNoteAtom);
+    applySavedNoteRecord(get, set, saved);
+    const titleChangedElsewhere =
+      active?.id === saved.id &&
+      active.title !== saved.title &&
+      !hasPendingNoteSave(saved.id);
+    if (titleChangedElsewhere) {
+      set(noteTitleEpochAtom, get(noteTitleEpochAtom) + 1);
     }
-    return known;
   },
 );
+
+async function refreshActiveTitle(get: Getter, set: Setter, noteId: string) {
+  if (hasPendingNoteSave(noteId)) {
+    return;
+  }
+  const fresh = await notesIpc.get({ id: noteId });
+  const current = get(activeNoteAtom);
+  if (!fresh || current?.id !== noteId || hasPendingNoteSave(noteId)) {
+    return;
+  }
+  set(activeNoteAtom, fresh);
+  if (fresh.title !== current.title) {
+    set(noteTitleEpochAtom, get(noteTitleEpochAtom) + 1);
+  }
+}
 
 export const refreshNotesAtom = atom(null, async (get, set) => {
   if (get(notesLoadingAtom)) {
@@ -172,37 +204,16 @@ export const refreshNotesAtom = atom(null, async (get, set) => {
     const summary = summaries.find((note) => note.id === activeId);
     if (!summary) {
       forgetNote(activeId);
-      set(activeNoteIdAtom, null);
-      set(activeNoteAtom, null);
-      set(noteEditorDirtyAtom, false);
+      clearActiveNote(set);
       return;
     }
-
-    const current = get(activeNoteAtom);
-    if (current?.revision === summary.revision) {
-      return;
-    }
-    if (get(noteEditorDirtyAtom) || hasPendingNoteSave(activeId)) {
-      return;
-    }
-
-    const fresh = await notesIpc.get({ id: activeId });
-    if (
-      get(activeNoteIdAtom) === activeId &&
-      fresh &&
-      !get(noteEditorDirtyAtom) &&
-      !hasPendingNoteSave(activeId)
-    ) {
-      rememberNoteRecord(fresh);
-      set(activeNoteAtom, fresh);
-      set(noteContentEpochAtom, get(noteContentEpochAtom) + 1);
-    }
+    const titleMayHaveChanged =
+      get(activeNoteAtom)?.revision !== summary.revision;
+    await Promise.all([
+      pullNoteDoc(activeId),
+      titleMayHaveChanged ? refreshActiveTitle(get, set, activeId) : null,
+    ]);
   } catch {
     // External refresh is best-effort; preserve the current editor state.
   }
 });
-
-function toSummary(note: NoteRecord): NoteSummary {
-  const { bodyMarkdown: _bodyMarkdown, ...summary } = note;
-  return summary;
-}

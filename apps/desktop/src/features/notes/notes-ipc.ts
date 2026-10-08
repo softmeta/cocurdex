@@ -1,8 +1,11 @@
 import type {
+  ApplyNoteDocUpdatePayload,
   CreateNotePayload,
   DeleteNotePayload,
+  GetNoteDocPayload,
   GetNotePayload,
   MoveNotePayload,
+  NoteDocSnapshot,
   NoteRecord,
   NoteSummary,
   UpdateNotePayload,
@@ -13,6 +16,10 @@ export const notesIpc = {
   list: (): Promise<NoteSummary[]> => desktopApi.notesList(),
   get: (payload: GetNotePayload): Promise<NoteRecord | null> =>
     desktopApi.notesGet(payload),
+  getDoc: (payload: GetNoteDocPayload): Promise<NoteDocSnapshot | null> =>
+    desktopApi.notesGetDoc(payload),
+  applyDocUpdate: (payload: ApplyNoteDocUpdatePayload): Promise<NoteRecord> =>
+    desktopApi.notesApplyDocUpdate(payload),
   create: (payload: CreateNotePayload): Promise<NoteRecord> =>
     desktopApi.notesCreate(payload),
   update: (payload: UpdateNotePayload): Promise<NoteRecord> =>

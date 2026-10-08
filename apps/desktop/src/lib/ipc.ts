@@ -553,6 +553,10 @@ const fallbackApi: DesktopApi = {
   // Data fallbacks used in unit tests and SSR without the preload bridge.
   notesList: async () => [],
   notesGet: async () => null,
+  notesGetDoc: async () => null,
+  notesApplyDocUpdate: async (payload) => {
+    throw new Error(`Note doc sync is unavailable: ${payload.id}`);
+  },
   notesCreate: async (payload) => {
     const kind = payload.kind ?? "note";
     const now = new Date().toISOString();

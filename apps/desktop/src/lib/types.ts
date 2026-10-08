@@ -14,6 +14,7 @@ import type {
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
+  ApplyNoteDocUpdatePayload,
   AppResyncSnapshot,
   ArchiveSessionPayload,
   BrowserAnnotation,
@@ -39,6 +40,7 @@ import type {
   EditorViewRecord,
   GetIssueDetailPayload,
   GetIssuePayload,
+  GetNoteDocPayload,
   GetNotePayload,
   GitBranchInfo,
   GitCommitInfo,
@@ -57,6 +59,7 @@ import type {
   MoveNotePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
+  NoteDocSnapshot,
   NoteRecord,
   NoteSummary,
   PdfAnnotationsOperation,
@@ -564,6 +567,8 @@ export interface ProductApi {
   // === App-owned notes ===
   notesList(): Promise<NoteSummary[]>;
   notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;
+  notesGetDoc(payload: GetNoteDocPayload): Promise<NoteDocSnapshot | null>;
+  notesApplyDocUpdate(payload: ApplyNoteDocUpdatePayload): Promise<NoteRecord>;
   notesCreate(payload: CreateNotePayload): Promise<NoteRecord>;
   notesUpdate(payload: UpdateNotePayload): Promise<NoteRecord>;
   notesMove(payload: MoveNotePayload): Promise<NoteRecord>;

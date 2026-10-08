@@ -1,16 +1,11 @@
+import {
+  decodeNoteDocBytes,
+  encodeNoteDocBytes,
+} from "@cocurdex/note-doc/bytes";
 import { atom } from "jotai";
-import {
-  getLocalNote,
-  hasUnsavedNoteChange,
-  rememberNoteRecord,
-  saveNoteChangeAtom,
-} from "./note-save-store";
-import {
-  activeNoteAtom,
-  createNoteAtom,
-  loadNotesAtom,
-  noteContentEpochAtom,
-} from "./notes-store";
+import { applySavedNoteRecord, waitForNoteSaves } from "./note-save-store";
+import { notesIpc } from "./notes-ipc";
+import { activeNoteAtom, createNoteAtom, loadNotesAtom } from "./notes-store";
 
 // Registered by the mounted TipTap note body so other features (e.g. PDF
 // selection → note) can append Markdown without going through IPC and racing
@@ -60,6 +55,31 @@ function appendMarkdownBodies(existing: string, clip: string): string {
     return next;
   }
   return `${base}\n\n${next}`;
+}
+
+async function appendMarkdownThroughDaemon(noteId: string, clip: string) {
+  await waitForNoteSaves(noteId);
+  const snapshot = await notesIpc.getDoc({ id: noteId });
+  if (!snapshot) {
+    return null;
+  }
+  const {
+    applyMarkdownToNoteDoc,
+    diffNoteDoc,
+    noteDocStateVector,
+    noteDocToMarkdown,
+  } = await import("@cocurdex/note-doc");
+  const state = decodeNoteDocBytes(snapshot.update);
+  const next = applyMarkdownToNoteDoc(
+    state,
+    appendMarkdownBodies(noteDocToMarkdown(state), clip),
+  );
+  return notesIpc.applyDocUpdate({
+    id: noteId,
+    update: encodeNoteDocBytes(
+      diffNoteDoc(next.state, noteDocStateVector(state)),
+    ),
+  });
 }
 
 export type InsertMarkdownIntoNoteResult =
@@ -119,29 +139,14 @@ export const insertMarkdownIntoActiveNoteAtom = atom(
       }
     }
 
-    // Notes editor not mounted: queue the save and keep the in-memory record
-    // current so opening Notes later shows the clip without a tab switch now.
-    if (!getLocalNote(note.id)) {
-      rememberNoteRecord(note);
-    }
-    const nextBody = appendMarkdownBodies(
-      (getLocalNote(note.id) ?? note).bodyMarkdown,
-      markdown,
-    );
-    const noteId = note.id;
-    const active = get(activeNoteAtom);
-    if (active?.id === noteId) {
-      set(activeNoteAtom, { ...active, bodyMarkdown: nextBody });
-    }
-    await set(saveNoteChangeAtom, {
-      noteId,
-      change: { bodyMarkdown: nextBody },
-    });
-    if (hasUnsavedNoteChange(noteId)) {
+    try {
+      const saved = await appendMarkdownThroughDaemon(note.id, markdown);
+      if (!saved) {
+        return "failed";
+      }
+      applySavedNoteRecord(get, set, saved);
+    } catch {
       return "failed";
-    }
-    if (get(noteBodyInsertHandlerAtom) === null) {
-      set(noteContentEpochAtom, get(noteContentEpochAtom) + 1);
     }
     return created ? "created" : "inserted";
   },

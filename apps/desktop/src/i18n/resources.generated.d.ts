@@ -864,12 +864,9 @@ export default interface Resources {
       };
       placeholder: 'Start writing, or press "/" for commands…';
       save: {
-        conflict: "Changed elsewhere";
         error: "Save failed";
-        keepMine: "Keep mine";
         saved: "Saved";
         saving: "Saving…";
-        useRemote: "Load latest";
       };
       untitledPlaceholder: "Untitled";
     };
