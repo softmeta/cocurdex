@@ -275,6 +275,8 @@ export function createSchemaSql() {
       title TEXT NOT NULL,
       icon TEXT,
       body_markdown TEXT NOT NULL DEFAULT '',
+      doc_state BLOB,
+      space_id TEXT NOT NULL DEFAULT 'local',
       sort_order INTEGER NOT NULL DEFAULT 0,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,

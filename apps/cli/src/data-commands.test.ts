@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { handleIssueCommand } from "./issue-commands";
 import { handleNoteCommand } from "./note-commands";
@@ -27,6 +30,49 @@ describe("data commands", () => {
     await handleNoteCommand("list", [], parsed);
     expect(requestMock).toHaveBeenCalledWith("note.list");
     expect(console.log).toHaveBeenCalledWith("[]");
+  });
+
+  it("creates a note with a body file in one request", async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "cocurdex-cli-note-"));
+    const bodyFile = path.join(directory, "spec.md");
+    writeFileSync(bodyFile, "# Spec\n\n| a | b |\n", "utf8");
+    requestMock.mockResolvedValue({ id: "note-id", kind: "note" });
+
+    await handleNoteCommand(
+      "create",
+      [],
+      parseArgs(["--title", "Spec", "--body-file", bodyFile, "--json"]),
+    );
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(requestMock).toHaveBeenCalledWith("note.create", {
+      title: "Spec",
+      kind: "note",
+      parentId: null,
+      workspaceId: null,
+      bodyMarkdown: "# Spec\n\n| a | b |\n",
+    });
+  });
+
+  it("moves a note to the root with its current revision", async () => {
+    requestMock
+      .mockResolvedValueOnce({ id: "note-id", revision: 3 })
+      .mockResolvedValueOnce({ id: "note-id", parentId: null });
+
+    await handleNoteCommand("move", ["note-id"], parseArgs(["--root"]));
+
+    expect(requestMock).toHaveBeenLastCalledWith("note.move", {
+      id: "note-id",
+      parentId: null,
+      expectedRevision: 3,
+    });
+  });
+
+  it("rejects a note move without a destination", async () => {
+    await expect(
+      handleNoteCommand("move", ["note-id"], parseArgs([])),
+    ).rejects.toThrow("--parent <folder-id> | --root");
+    expect(requestMock).not.toHaveBeenCalled();
   });
 
   it("lists managed worktrees through the daemon contract", async () => {

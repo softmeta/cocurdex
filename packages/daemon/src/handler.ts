@@ -84,6 +84,10 @@ export async function handleDaemonRequest(
       return service.dataService.listNotes();
     case "note.get":
       return service.dataService.getNote(request.params);
+    case "note.getDoc":
+      return service.dataService.getNoteDoc(request.params);
+    case "note.applyDocUpdate":
+      return service.dataService.applyNoteDocUpdate(request.params);
     case "note.create":
       return service.dataService.createNote(request.params);
     case "note.update":

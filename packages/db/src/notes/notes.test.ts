@@ -1,8 +1,19 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import {
+  applyMarkdownToNoteDoc,
+  noteDocStateVector,
+  noteDocToMarkdown,
+} from "@cocurdex/note-doc";
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { createCocurdexDatabase } from "../sqlite";
+
+function editorUpdate(state: Uint8Array, markdown: string): Uint8Array {
+  const before = noteDocStateVector(state);
+  return Y.diffUpdate(applyMarkdownToNoteDoc(state, markdown).state, before);
+}
 
 function createTestDatabase() {
   return createCocurdexDatabase(
@@ -150,6 +161,84 @@ describe("CocurdexDatabase.notes", () => {
       expectedRevision: retagged.revision,
     });
     expect(await database.notes.listTags()).toEqual([]);
+    database.close();
+  });
+
+  it("creates a note with a body and its collaborative doc in one step", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({
+      title: "Spec",
+      bodyMarkdown: "# Spec\n\nTrack #sync work.",
+    });
+
+    expect(note.bodyMarkdown).toBe("# Spec\n\nTrack #sync work.");
+    const doc = await database.notes.getDoc(note.id);
+    expect(doc?.revision).toBe(note.revision);
+    expect(noteDocToMarkdown(doc?.update as Uint8Array)).toBe(
+      note.bodyMarkdown,
+    );
+    expect((await database.notes.listTags(note.id)).map((t) => t.name)).toEqual(
+      ["sync"],
+    );
+    database.close();
+  });
+
+  it("has no collaborative doc for folders", async () => {
+    const database = createTestDatabase();
+    const folder = await database.notes.create({ kind: "folder" });
+
+    expect(await database.notes.getDoc(folder.id)).toBeNull();
+    database.close();
+  });
+
+  it("applies editor updates without revision checks and projects markdown", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({ bodyMarkdown: "Draft" });
+    const doc = await database.notes.getDoc(note.id);
+    const update = editorUpdate(doc?.update as Uint8Array, "Draft #ready");
+
+    const { note: saved } = await database.notes.applyDocUpdate({
+      id: note.id,
+      update,
+    });
+    const replayed = await database.notes.applyDocUpdate({
+      id: note.id,
+      update,
+    });
+
+    expect(saved.bodyMarkdown).toBe("Draft #ready");
+    expect(saved.revision).toBe(note.revision + 1);
+    expect(replayed).toEqual({ note: saved, changed: false });
+    expect((await database.notes.listTags(note.id)).map((t) => t.name)).toEqual(
+      ["ready"],
+    );
+    database.close();
+  });
+
+  it("merges an agent markdown write into the doc an editor is holding", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({ bodyMarkdown: "One\n\nTwo" });
+    const editorState = (await database.notes.getDoc(note.id))?.update;
+    const editor = new Y.Doc();
+    Y.applyUpdate(editor, editorState as Uint8Array);
+
+    await database.notes.update({
+      id: note.id,
+      bodyMarkdown: "One\n\nTwo, revised by the agent",
+      expectedRevision: note.revision,
+    });
+    const diff = await database.notes.getDoc(
+      note.id,
+      Y.encodeStateVector(editor),
+    );
+    Y.applyUpdate(editor, diff?.update as Uint8Array);
+
+    expect(noteDocToMarkdown(Y.encodeStateAsUpdate(editor))).toBe(
+      "One\n\nTwo, revised by the agent",
+    );
+    expect(diff?.update.byteLength).toBeLessThan(
+      (editorState as Uint8Array).byteLength,
+    );
     database.close();
   });
 });

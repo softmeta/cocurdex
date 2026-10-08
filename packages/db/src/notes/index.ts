@@ -4,7 +4,10 @@ export {
   extractNoteMetadata,
 } from "./note-metadata";
 export {
+  type ApplyNoteDocBytesPayload,
   NoteConflictError,
+  type NoteDocApplyResult,
+  type NoteDocRecord,
   NoteNotFoundError,
   type NotesRepository,
 } from "./notes-repository";

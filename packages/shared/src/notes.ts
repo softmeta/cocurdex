@@ -31,6 +31,7 @@ export interface CreateNotePayload {
   workspaceId?: string | null;
   kind?: NoteKind;
   title?: string;
+  bodyMarkdown?: string;
   icon?: string | null;
   sortOrder?: number;
 }
@@ -58,6 +59,22 @@ export interface DeleteNotePayload {
 
 export interface GetNotePayload {
   id: string;
+}
+
+export interface GetNoteDocPayload {
+  id: string;
+  stateVector?: string;
+}
+
+export interface NoteDocSnapshot {
+  id: string;
+  revision: number;
+  update: string;
+}
+
+export interface ApplyNoteDocUpdatePayload {
+  id: string;
+  update: string;
 }
 
 export interface NoteTag {

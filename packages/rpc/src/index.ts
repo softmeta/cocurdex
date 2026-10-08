@@ -15,6 +15,7 @@ import type {
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
+  ApplyNoteDocUpdatePayload,
   AppResyncSnapshot,
   CocurdexDaemonEvent,
   CodexAccountState,
@@ -41,6 +42,7 @@ import type {
   GenerateGitCommitMessagePayload,
   GetIssueDetailPayload,
   GetIssuePayload,
+  GetNoteDocPayload,
   GetNotePayload,
   GetToolCallResultInput,
   GitBranchInfo,
@@ -67,6 +69,7 @@ import type {
   NetworkProxySettings,
   NetworkProxyTestResult,
   NoteBacklinksPayload,
+  NoteDocSnapshot,
   NoteLink,
   NoteRecord,
   NoteSummary,
@@ -363,6 +366,8 @@ export type DaemonRequestPayloadByMethod = {
   };
   "note.list": undefined;
   "note.get": GetNotePayload;
+  "note.getDoc": GetNoteDocPayload;
+  "note.applyDocUpdate": ApplyNoteDocUpdatePayload;
   "note.create": CreateNotePayload;
   "note.update": UpdateNotePayload;
   "note.move": MoveNotePayload;
@@ -581,6 +586,8 @@ export type DaemonResultByMethod = {
   "pdf.updateAnnotations": PdfDocumentAnnotations;
   "note.list": NoteSummary[];
   "note.get": NoteRecord | null;
+  "note.getDoc": NoteDocSnapshot | null;
+  "note.applyDocUpdate": NoteRecord;
   "note.create": NoteRecord;
   "note.update": NoteRecord;
   "note.move": NoteRecord;

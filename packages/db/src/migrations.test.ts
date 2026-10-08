@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { noteDocToMarkdown } from "@cocurdex/note-doc";
 import { describe, expect, it } from "vitest";
 import {
   COCURDEX_APPLICATION_ID,
@@ -750,6 +751,75 @@ describe("initializeDatabase", () => {
     ).toEqual([
       { title: "First", workspace_id: null },
       { title: "Second", workspace_id: "w1" },
+    ]);
+  });
+
+  it("backfills collaborative note docs from version 19 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE notes DROP COLUMN doc_state");
+    database.exec("ALTER TABLE notes DROP COLUMN space_id");
+    const now = "2026-10-08T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Collab notes', 'w1', '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, revision, created_at, updated_at)
+      VALUES
+        ('f1', 'folder', 'Specs', '', 1, '${now}', '${now}'),
+        ('n1', 'note', 'Plan', '# Plan
+
+- [ ] sync', 4, '${now}', '${now}');
+      PRAGMA user_version = 19;
+    `);
+
+    initializeDatabase(database);
+
+    const notes = database
+      .prepare(
+        "SELECT id, title, body_markdown, revision, space_id, doc_state FROM notes ORDER BY id",
+      )
+      .all() as {
+      id: string;
+      title: string;
+      body_markdown: string;
+      revision: number;
+      space_id: string;
+      doc_state: Uint8Array | null;
+    }[];
+    expect(notes.map(({ doc_state: _doc, ...note }) => note)).toEqual([
+      {
+        id: "f1",
+        title: "Specs",
+        body_markdown: "",
+        revision: 1,
+        space_id: "local",
+      },
+      {
+        id: "n1",
+        title: "Plan",
+        body_markdown: "# Plan\n\n- [ ] sync",
+        revision: 4,
+        space_id: "local",
+      },
+    ]);
+    expect(notes[0]?.doc_state).toBeNull();
+    expect(noteDocToMarkdown(notes[1]?.doc_state as Uint8Array)).toBe(
+      "# Plan\n\n- [ ] sync",
+    );
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Collab notes" },
     ]);
   });
 

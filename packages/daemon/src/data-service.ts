@@ -1,5 +1,7 @@
 import type { EventEmitter } from "node:events";
+import { decodeNoteDocBytes, encodeNoteDocBytes } from "@cocurdex/note-doc";
 import {
+  type ApplyNoteDocUpdatePayload,
   type CommentIssuePayload,
   type CreateColumnPayload,
   type CreateIssueLabelPayload,
@@ -13,6 +15,7 @@ import {
   type DeleteViewPayload,
   type GetIssueDetailPayload,
   type GetIssuePayload,
+  type GetNoteDocPayload,
   type GetNotePayload,
   type IssueRelationPayload,
   isContextItemAttachment,
@@ -23,6 +26,7 @@ import {
   type MoveIssuePayload,
   type MoveNotePayload,
   type NoteBacklinksPayload,
+  type NoteDocSnapshot,
   type SearchDocumentsPayload,
   type UpdateColumnPayload,
   type UpdateIssueLabelPayload,
@@ -44,6 +48,33 @@ export class DaemonDataService {
 
   getNote(payload: GetNotePayload) {
     return this.state.data.notes.get(payload.id);
+  }
+
+  async getNoteDoc(
+    payload: GetNoteDocPayload,
+  ): Promise<NoteDocSnapshot | null> {
+    const doc = await this.state.data.notes.getDoc(
+      payload.id,
+      payload.stateVector ? decodeNoteDocBytes(payload.stateVector) : undefined,
+    );
+    return doc
+      ? {
+          id: doc.id,
+          revision: doc.revision,
+          update: encodeNoteDocBytes(doc.update),
+        }
+      : null;
+  }
+
+  async applyNoteDocUpdate(payload: ApplyNoteDocUpdatePayload) {
+    const { note, changed } = await this.state.data.notes.applyDocUpdate({
+      id: payload.id,
+      update: decodeNoteDocBytes(payload.update),
+    });
+    if (changed) {
+      this.emitChanged("notes");
+    }
+    return note;
   }
 
   async createNote(payload: CreateNotePayload) {
