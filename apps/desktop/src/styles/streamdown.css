@@ -155,8 +155,8 @@
 }
 
 [data-streamdown="mermaid-fullscreen"] {
-  --mermaid-preview-width: min(56rem, calc(100% - 2rem));
-  --mermaid-preview-height: min(85dvh, 40rem);
+  --mermaid-preview-width: calc(100% - 4rem);
+  --mermaid-preview-height: calc(100dvh - 4rem);
   --mermaid-preview-header: 40px;
   --mermaid-preview-toolbar: 80px;
   background: var(--modal-scrim);
@@ -231,17 +231,10 @@
   height: 14px;
 }
 
-[data-streamdown="mermaid-fullscreen"]
-  [data-streamdown="mermaid"]
-  > div
-  > div:last-child
-  svg {
-  max-width: 100%;
-  max-height: 100%;
-}
-
 [data-streamdown="mermaid"] > div > div:last-child {
   transition: none;
+  /* biome-ignore lint/complexity/noImportantStyles: overrides streamdown's inline will-change, which rasterizes the diagram at scale 1 and drops thin lines once zoomed out */
+  will-change: auto !important;
 }
 
 [data-streamdown="mermaid-block"] {
