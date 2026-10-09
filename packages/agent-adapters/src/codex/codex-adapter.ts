@@ -66,6 +66,7 @@ import { CodexSubagentRouter } from "./codex-subagent-router";
 import { createCodexTurnStream } from "./codex-turn-stream";
 
 const descriptor = getAgentDescriptor("codex");
+const CODEX_REASONING_SUMMARY = "auto";
 
 type CodexCollaborationMode = {
   mode: "default" | "plan";
@@ -889,6 +890,7 @@ export function createCodexAdapter(
                     ...(reasoningEffort ? { effort: reasoningEffort } : {}),
                   }),
               ...(serviceTier ? { serviceTier } : {}),
+              summary: CODEX_REASONING_SUMMARY,
               sandboxPolicy: createSandboxPolicy(payload, activePermissionMode),
             });
             activeTurnId = turn.turn.id;

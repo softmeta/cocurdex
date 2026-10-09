@@ -160,6 +160,9 @@ describe("createCodexAdapter", () => {
 
     void session.sendMessage({ content: "Start", history: [] });
     await vi.waitFor(() => expect(client.startTurn).toHaveBeenCalledOnce());
+    expect(client.startTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: "auto" }),
+    );
     expect(client.setThreadName).toHaveBeenCalledWith(
       "thread-title",
       "Local Codex title",
