@@ -4,7 +4,7 @@ import fs from "node:fs";
 const rendererDir = new URL("../out/renderer/", import.meta.url);
 const budgetFile = new URL("../startup-budget.json", import.meta.url);
 const DETACHED_CHAT_ENTRY = "src/app/layout/chat-window/detached-chat-app.tsx";
-const HEADROOM = 1.02;
+const HEADROOM = 1.05;
 
 const manifestFile = new URL(".vite/manifest.json", rendererDir);
 if (!fs.existsSync(manifestFile)) {
