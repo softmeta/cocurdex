@@ -8,6 +8,7 @@ import {
   createTimelineGroups,
   segmentConversationItems,
   type TimelineGroup,
+  type TurnPhase,
   withoutInterimReplies,
 } from "./chat-timeline";
 
@@ -38,12 +39,11 @@ function tools(
   };
 }
 
-function segmentIds(items: TimelineGroup[], foldInterimReplies: boolean) {
-  return segmentConversationItems(items, true, foldInterimReplies).map(
-    (segment) =>
-      segment.kind === "item"
-        ? segment.item.id
-        : segment.items.map((item) => item.id),
+function segmentIds(items: TimelineGroup[], phase: TurnPhase) {
+  return segmentConversationItems(items, true, phase).map((segment) =>
+    segment.kind === "item"
+      ? segment.item.id
+      : segment.items.map((item) => item.id),
   );
 }
 
@@ -58,14 +58,14 @@ describe("segmentConversationItems", () => {
   ];
 
   it("folds interim replies into one activity block before the final reply", () => {
-    expect(segmentIds(turn, true)).toEqual([
+    expect(segmentIds(turn, "completed")).toEqual([
       ["think", "interim-1", "tools-1", "interim-2", "tools-2"],
       "final",
     ]);
   });
 
   it("keeps interim replies between activity blocks when folding is off", () => {
-    expect(segmentIds(turn, false)).toEqual([
+    expect(segmentIds(turn, "live")).toEqual([
       ["think"],
       "interim-1",
       ["tools-1"],
@@ -77,18 +77,34 @@ describe("segmentConversationItems", () => {
 
   it("folds completed tool calls after the final reply into the turn's work", () => {
     expect(
-      segmentIds([reply("a"), tools("t"), reply("b"), tools("u")], true),
+      segmentIds([reply("a"), tools("t"), reply("b"), tools("u")], "completed"),
     ).toEqual([["a", "t", "u"], "b"]);
   });
 
   it("keeps failed tool calls after the final reply visible", () => {
     expect(
-      segmentIds([tools("t"), reply("b"), tools("u", "failed")], true),
+      segmentIds([tools("t"), reply("b"), tools("u", "failed")], "completed"),
     ).toEqual([["t"], "b", ["u"]]);
   });
 
+  it("folds a stopped turn into one block when work ran after its last reply", () => {
+    expect(
+      segmentIds(
+        [reply("plan"), tools("t"), tools("u", "in_progress")],
+        "interrupted",
+      ),
+    ).toEqual([["plan", "t", "u"]]);
+  });
+
+  it("keeps the partial answer of a turn stopped while replying", () => {
+    expect(segmentIds([tools("t"), reply("partial")], "interrupted")).toEqual([
+      ["t"],
+      "partial",
+    ]);
+  });
+
   it("leaves trailing tool calls in place while the turn is live", () => {
-    expect(segmentIds([tools("t"), reply("b"), tools("u")], false)).toEqual([
+    expect(segmentIds([tools("t"), reply("b"), tools("u")], "live")).toEqual([
       ["t"],
       "b",
       ["u"],
@@ -105,11 +121,9 @@ describe("withoutInterimReplies", () => {
       reply("final"),
     ];
 
-    expect(withoutInterimReplies(items).map((item) => item.id)).toEqual([
-      "think",
-      "tools",
-      "final",
-    ]);
+    expect(
+      withoutInterimReplies(items, "completed").map((item) => item.id),
+    ).toEqual(["think", "tools", "final"]);
   });
 });
 
@@ -146,7 +160,7 @@ describe("worktree setup in the timeline", () => {
       "worktreeSetup",
       "toolCalls",
     ]);
-    expect(segmentIds(groups, true)).toEqual([
+    expect(segmentIds(groups, "completed")).toEqual([
       "worktree-setup-setup",
       ["tool-group-read"],
     ]);

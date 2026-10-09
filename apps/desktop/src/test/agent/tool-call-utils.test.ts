@@ -142,6 +142,34 @@ describe("tool call utils", () => {
     });
   });
 
+  it("shows commands and files relative to the session directory", () => {
+    const base = timedToolCall(
+      "2026-05-20T00:00:00.000Z",
+      "2026-05-20T00:00:01.000Z",
+    );
+    const command = getToolCallTriggerParts(
+      {
+        ...base,
+        title: "Run",
+        kind: "execute",
+        rawInput: { command: "/bin/zsh -lc 'cd /repo && git status'" },
+      },
+      "past",
+      "/repo",
+    );
+    const read = getToolCallTriggerParts(
+      {
+        ...base,
+        locations: [{ path: "/repo/crates/core/README.md" }],
+      },
+      "past",
+      "/repo",
+    );
+
+    expect(command.secondary).toBe("git status");
+    expect(read.secondary).toBe("crates/core");
+  });
+
   it("partitions tool calls into timeline-ordered runs", () => {
     const read = statusToolCall("completed");
     const first = subagentToolCall("in_progress");

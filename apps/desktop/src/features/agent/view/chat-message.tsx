@@ -168,7 +168,9 @@ function ReasoningTriggerRow({
       ) : (
         <Brain className="size-3.5 shrink-0 text-chat-fg-muted" />
       )}
-      <span className="shrink-0">{label}</span>
+      {isStreaming || !preview ? (
+        <span className="shrink-0">{label}</span>
+      ) : null}
       {preview ? (
         <span className="min-w-0 truncate font-normal text-chat-fg-muted group-data-[panel-open]/reasoning:hidden">
           {preview}
@@ -222,7 +224,7 @@ export function ReasoningMarkdown({
   // gap-2 (8) = 28px. No guide line, matching the tool-call detail.
   return (
     <Collapsible
-      className="flex w-full flex-col gap-1.5"
+      className="-mx-1.5 flex min-w-0 flex-col gap-1.5"
       defaultOpen={mode === "full"}
     >
       <CollapsibleTrigger className="group/reasoning flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-body">

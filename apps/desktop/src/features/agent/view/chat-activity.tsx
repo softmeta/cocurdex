@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { useMountEffect } from "@/lib";
-import { getToolCallTriggerParts } from "../tool-call/tool-call-utils";
+import { useToolCallTriggerParts } from "../tool-call/use-tool-call-trigger-parts";
 import {
   type ActivityKind,
   type ActivityState,
@@ -41,7 +41,7 @@ function ToolCallLabel({
   otherCount: number;
   toolCall: AgentToolCallRecord;
 }) {
-  const { title, secondary } = getToolCallTriggerParts(toolCall);
+  const { title, secondary } = useToolCallTriggerParts(toolCall);
 
   return (
     <>
@@ -73,7 +73,11 @@ function LatestStepLabel({ step }: { step: ActivityStep }) {
     );
   }
 
-  const { title, secondary } = getToolCallTriggerParts(step.toolCall, "past");
+  return <ToolStepLabel toolCall={step.toolCall} />;
+}
+
+function ToolStepLabel({ toolCall }: { toolCall: AgentToolCallRecord }) {
+  const { title, secondary } = useToolCallTriggerParts(toolCall, "past");
   return (
     <span className="min-w-0 max-w-lg truncate font-normal text-chat-fg-muted/70">
       {secondary ? `${title} ${secondary}` : title}
