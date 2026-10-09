@@ -381,7 +381,7 @@ describe("createClaudeCliAdapter", () => {
     session.dispose();
   });
 
-  it("refreshes context usage on stream deltas and compact boundaries", async () => {
+  it("refreshes a summary on stream deltas and compact boundaries and the full breakdown at turn end", async () => {
     const events: AgentEvent[] = [];
     const harness = createQueryHarness();
     let contextTokens = 40_000;
@@ -444,7 +444,11 @@ describe("createClaudeCliAdapter", () => {
 
     harness.emit(createResultMessage());
     await turn;
-    expect(getContextUsage).toHaveBeenCalledTimes(3);
+    expect(getContextUsage.mock.calls).toEqual([
+      [{ detail: "summary" }],
+      [{ detail: "summary" }],
+      [{ detail: "full" }],
+    ]);
     session.dispose();
   });
 

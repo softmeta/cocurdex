@@ -24,8 +24,10 @@ import type {
 import { errorKindForLog, hashLogValue } from "@cocurdex/shared";
 import {
   buildClaudeUserContent,
+  CLAUDE_SUPPORTED_DIALOG_KINDS,
   createClaudeCanUseTool,
   createClaudeMessageMapper,
+  createClaudeOnUserDialog,
   getClaudeReasoningEffort,
   getClaudeResultError,
   isAuthenticationFailureText,
@@ -392,8 +394,10 @@ export function createClaudeCliAdapter(
 
         try {
           const planUsage = await (
-            getPlanUsage as () => Promise<ClaudePlanUsageResponse>
-          ).call(queryToInspect);
+            getPlanUsage as (opts: {
+              skipBehaviors: boolean;
+            }) => Promise<ClaudePlanUsageResponse>
+          ).call(queryToInspect, { skipBehaviors: true });
           const rateLimits = mapClaudePlanUsage(
             planUsage,
             new Date().toISOString(),
@@ -446,14 +450,19 @@ export function createClaudeCliAdapter(
         }
       }
 
-      async function emitContextUsage(queryToInspect: ClaudeQuery) {
+      async function emitContextUsage(
+        queryToInspect: ClaudeQuery,
+        detail: "summary" | "full",
+      ) {
         const getContextUsage = queryToInspect.getContextUsage;
         if (typeof getContextUsage !== "function") {
           return;
         }
 
         try {
-          const contextUsage = await getContextUsage.call(queryToInspect);
+          const contextUsage = await getContextUsage.call(queryToInspect, {
+            detail,
+          });
           const contextTokensUsed = readContextTokenCount(
             contextUsage?.totalTokens,
             true,
@@ -465,10 +474,13 @@ export function createClaudeCliAdapter(
           // The SDK reports the same composition Claude Code's `/context`
           // prints. Forward it alongside the totals so the footer meter can
           // break the window down instead of only sizing it.
-          const breakdown = mapClaudeContextBreakdown(
-            contextUsage,
-            new Date().toISOString(),
-          );
+          const breakdown =
+            detail === "full"
+              ? mapClaudeContextBreakdown(
+                  contextUsage,
+                  new Date().toISOString(),
+                )
+              : null;
           if (breakdown) {
             onEvent({
               type: "context_breakdown.updated",
@@ -591,8 +603,10 @@ export function createClaudeCliAdapter(
         }
         messageMapper.handleMessage(message);
 
-        if (message.type === "result" || shouldRefreshContextUsage(message)) {
-          await emitContextUsage(queryToConsume);
+        if (message.type === "result") {
+          await emitContextUsage(queryToConsume, "full");
+        } else if (shouldRefreshContextUsage(message)) {
+          await emitContextUsage(queryToConsume, "summary");
         }
 
         // Quota only moves once a turn has been billed, so it rides the result
@@ -776,12 +790,15 @@ export function createClaudeCliAdapter(
           ...(modelId ? { model: modelId } : {}),
           ...(fastMode !== null ? { fastMode } : {}),
           mcpServers: claudeAgentToolsMcpServers(payload.agentTools),
+          onUserDialog: createClaudeOnUserDialog(payload),
           pathToClaudeCodeExecutable: binaryPath,
           permissionMode,
           ...(resumeSessionId ? { resume: resumeSessionId } : {}),
           ...(resumeSessionId && resumeSessionAt ? { resumeSessionAt } : {}),
           ...(newSessionId ? { sessionId: newSessionId } : {}),
+          settings: { showThinkingSummaries: true },
           settingSources: ["user", "project", "local"],
+          supportedDialogKinds: CLAUDE_SUPPORTED_DIALOG_KINDS,
           systemPrompt: { preset: "claude_code", type: "preset" },
         };
 

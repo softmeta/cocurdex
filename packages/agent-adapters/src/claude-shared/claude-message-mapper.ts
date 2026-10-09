@@ -5,6 +5,11 @@ import type {
   SessionRecord,
 } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
+import {
+  createClaudeReasoningStream,
+  extractThinkingDelta,
+  extractThinkingText,
+} from "./claude-reasoning-stream";
 
 // Structural message types for the Claude stream-json protocol. Both the
 // Agent SDK (`SDKMessage`) and the headless CLI (`claude -p --output-format
@@ -177,6 +182,7 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     ReturnType<typeof createClaudeMessageMapper>
   >();
   const childSessions = new Map<string, SessionRecord>();
+  const reasoning = createClaudeReasoningStream({ sessionId, onEvent });
   let latestAssistantModel = "";
 
   function flushAssistantMessage() {
@@ -204,8 +210,15 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
   }
 
   function handleStreamEvent(message: Record<string, unknown>) {
+    const thinkingDelta = extractThinkingDelta(message.event);
+    if (thinkingDelta) {
+      reasoning.append(thinkingDelta);
+      return;
+    }
+
     const delta = extractTextDelta(message.event);
     if (!delta) return;
+    reasoning.complete();
 
     if (!activeAssistantMessageId) {
       activeAssistantMessageId = crypto.randomUUID();
@@ -259,6 +272,11 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
       blocks: contentBlocks.map((block) => asObjectRecord(block)?.type),
       sessionId,
     });
+
+    const thinkingText = extractThinkingText(contentBlocks);
+    if (thinkingText) {
+      reasoning.complete(thinkingText);
+    }
 
     ingestAssistantText(
       contentBlocks
@@ -474,6 +492,7 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     if (attribution === "session-only") {
       return;
     }
+    reasoning.complete();
     flushAssistantMessage();
     onEvent({
       type: "state.changed",
@@ -534,6 +553,7 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
 
   return {
     reset() {
+      reasoning.reset();
       activeAssistantMessageId = "";
       activeAssistantCreatedAt = "";
       activeAssistantContent = "";

@@ -426,3 +426,97 @@ describe("createClaudeMessageMapper subagents", () => {
     );
   });
 });
+
+describe("createClaudeMessageMapper reasoning", () => {
+  function createMapper() {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+    });
+    return { events, mapper };
+  }
+
+  function streamDelta(delta: Record<string, unknown>) {
+    return {
+      type: "stream_event",
+      event: { type: "content_block_delta", index: 0, delta },
+      parent_tool_use_id: null,
+    } as never;
+  }
+
+  function completedMessages(events: AgentEvent[]) {
+    return events.flatMap((event) =>
+      event.type === "message.completed"
+        ? [{ kind: event.message.kind, content: event.message.content }]
+        : [],
+    );
+  }
+
+  it("streams thinking summaries as a reasoning message before the response", () => {
+    const { events, mapper } = createMapper();
+
+    mapper.handleMessage(
+      streamDelta({ type: "thinking_delta", thinking: "Check the " }),
+    );
+    mapper.handleMessage(
+      streamDelta({ type: "thinking_delta", thinking: "config." }),
+    );
+    mapper.handleMessage({
+      type: "assistant",
+      message: {
+        content: [{ type: "thinking", thinking: "Check the config." }],
+      },
+    } as never);
+    mapper.handleMessage(streamDelta({ type: "text_delta", text: "Done" }));
+    mapper.handleMessage({ type: "result" } as never);
+
+    expect(
+      events
+        .filter((event) => event.type === "message.delta")
+        .map((event) => event.kind),
+    ).toEqual(["reasoning", "reasoning", undefined]);
+    expect(completedMessages(events)).toEqual([
+      { kind: "reasoning", content: "Check the config." },
+      { kind: undefined, content: "Done" },
+    ]);
+  });
+
+  it("falls back to the thinking block when no deltas were streamed", () => {
+    const { events, mapper } = createMapper();
+
+    mapper.handleMessage({
+      type: "assistant",
+      message: {
+        content: [
+          { type: "thinking", thinking: "Plan the edit." },
+          { type: "text", text: "Edited." },
+        ],
+      },
+    } as never);
+
+    expect(completedMessages(events)).toEqual([
+      { kind: "reasoning", content: "Plan the edit." },
+      { kind: undefined, content: "Edited." },
+    ]);
+  });
+
+  it("drops omitted thinking blocks", () => {
+    const { events, mapper } = createMapper();
+
+    mapper.handleMessage({
+      type: "assistant",
+      message: {
+        content: [
+          { type: "thinking", thinking: "", signature: "sig" },
+          { type: "text", text: "Done" },
+        ],
+      },
+    } as never);
+
+    expect(completedMessages(events)).toEqual([
+      { kind: undefined, content: "Done" },
+    ]);
+  });
+});

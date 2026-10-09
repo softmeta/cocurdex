@@ -101,7 +101,7 @@ describe("readClaudePlanUsage", () => {
     expect(
       createQuery.mock.calls[0]?.[0].options.persistSession,
     ).toBeUndefined();
-    expect(getUsage).toHaveBeenCalledOnce();
+    expect(getUsage).toHaveBeenCalledExactlyOnceWith({ skipBehaviors: true });
     expect(record).toEqual(
       expect.objectContaining({
         planLabel: "pro",
