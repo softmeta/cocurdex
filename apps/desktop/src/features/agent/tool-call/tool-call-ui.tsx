@@ -14,6 +14,7 @@ import { cn } from "@/lib";
 import { chatDisplaySettingsAtom } from "../chat-display";
 import { useTranscriptState } from "../use-transcript-state";
 import { ToolCallDetailBody } from "./tool-call-detail";
+import { ToolCallRowIcon } from "./tool-call-row-icon";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
   getSingleReadLocation,
@@ -23,19 +24,25 @@ import {
   getToolCallGroupCountLabel,
   getToolCallStatusClasses,
   getToolCallStatusLabel,
-  getToolCallTriggerParts,
   isSubagentToolCall,
   partitionToolCallRuns,
+  type ToolCallDisplayStatus,
   type ToolCallPreviewLocation,
 } from "./tool-call-utils";
+import { useToolCallDisplayStatus } from "./use-tool-call-display-status";
+import { useToolCallTriggerParts } from "./use-tool-call-trigger-parts";
 
 function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
-  const { secondary, title } = getToolCallTriggerParts(toolCall);
+  const status = useToolCallDisplayStatus(toolCall);
+  const { secondary, title } = useToolCallTriggerParts(
+    toolCall,
+    status === "completed" ? "past" : "present",
+  );
   // The target (file path, command, query) is what makes one "read" row
   // distinguishable from the next — without it the rows are interchangeable and
   // force a click to learn anything. Commands keep a short action label and put
   // their content in the truncating secondary slot so they cannot widen chat.
-  const isCompleted = toolCall.status === "completed";
+  const isCompleted = status === "completed";
   // Completed rows lean entirely on the status icon, and the enclosing group
   // header already carries the shared time range — so a finished row is just
   // "icon + title + target". Only non-completed states (failed / pending /
@@ -45,10 +52,7 @@ function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
 
   return (
     <>
-      <ToolCallStatusIcon
-        toolCall={toolCall}
-        className={cn("shrink-0", getToolCallStatusClasses(toolCall))}
-      />
+      <ToolCallRowIcon className="shrink-0" toolCall={toolCall} />
       <span
         className={cn(
           "text-chat-fg-secondary",
@@ -64,70 +68,73 @@ function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
       ) : null}
       {showStatusLabel ? (
         <span
-          className={cn("shrink-0 ml-auto", getToolCallStatusClasses(toolCall))}
+          className={cn("shrink-0 ml-auto", getToolCallStatusClasses(status))}
         >
-          {getToolCallStatusLabel(toolCall)}
+          {getToolCallStatusLabel(status)}
         </span>
       ) : null}
     </>
   );
 }
 
-function getSubagentTypeClasses(toolCall: AgentToolCallRecord) {
-  if (toolCall.status === "failed") {
+function getSubagentTypeClasses(status: ToolCallDisplayStatus) {
+  if (status === "failed") {
     return "text-chat-status-failed-fg";
   }
 
-  if (toolCall.status === "pending") {
+  if (status === "pending") {
     return "text-chat-status-pending-fg";
   }
 
-  if (toolCall.status === "in_progress") {
+  if (status === "in_progress") {
     return "text-chat-status-running-fg";
   }
 
   return "text-chat-link";
 }
 
-function getSubagentChipSurfaceClasses(toolCall: AgentToolCallRecord) {
-  if (toolCall.status === "failed") {
+function getSubagentChipSurfaceClasses(status: ToolCallDisplayStatus) {
+  if (status === "failed") {
     return "bg-chat-status-failed-bg";
   }
 
-  if (toolCall.status === "pending") {
+  if (status === "pending") {
     return "bg-chat-status-pending-bg";
   }
 
-  if (toolCall.status === "in_progress") {
+  if (status === "in_progress") {
     return "bg-chat-status-running-bg";
   }
 
   return "bg-chat-surface-tint-hover";
 }
 
-function SubagentTriggerCard({ toolCall }: { toolCall: AgentToolCallRecord }) {
+function SubagentTriggerCard({
+  status,
+  toolCall,
+}: {
+  status: ToolCallDisplayStatus;
+  toolCall: AgentToolCallRecord;
+}) {
   const type = getSubagentType(toolCall);
   const description = getSubagentDescription(toolCall);
-  const isCompleted = toolCall.status === "completed";
+  const isCompleted = status === "completed";
   const showType = Boolean(type && type !== description);
 
   return (
     <>
-      <ToolCallStatusIcon
-        className={cn("shrink-0", getToolCallStatusClasses(toolCall))}
-        toolCall={toolCall}
-      />
+      <ToolCallStatusIcon className="shrink-0" toolCall={toolCall} />
       <span className="min-w-0 truncate font-medium text-chat-fg">
         {description}
       </span>
       {showType ? (
-        <span className={cn("shrink-0", getSubagentTypeClasses(toolCall))}>
+        <span className={cn("shrink-0", getSubagentTypeClasses(status))}>
           {type}
         </span>
       ) : null}
       {isCompleted ? null : (
-        <span className={cn("shrink-0", getToolCallStatusClasses(toolCall))}>
-          {getToolCallStatusLabel(toolCall)}
+        <span className={cn("shrink-0", getToolCallStatusClasses(status))}>
+          {getToolCallStatusLabel(status)}
         </span>
       )}
       <ChevronRight
@@ -148,6 +155,7 @@ export function ToolCallItem({
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
 }) {
   const selectSession = useSetAtom(selectSessionAtom);
+  const status = useToolCallDisplayStatus(toolCall);
   const [open, setOpen] = useTranscriptState(
     `tool:${toolCall.id}`,
     defaultOpen,
@@ -156,7 +164,7 @@ export function ToolCallItem({
   if (isSubagentToolCall(toolCall)) {
     const description = getSubagentDescription(toolCall);
     const type = getSubagentType(toolCall);
-    const statusLabel = getToolCallStatusLabel(toolCall);
+    const statusLabel = getToolCallStatusLabel(status);
     const accessibleName = [description, type, statusLabel]
       .filter(Boolean)
       .join(", ");
@@ -167,7 +175,7 @@ export function ToolCallItem({
         aria-label={accessibleName}
         className={cn(
           "flex min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-body whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          getSubagentChipSurfaceClasses(toolCall),
+          getSubagentChipSurfaceClasses(status),
         )}
         onClick={() => {
           if (!childSessionId) {
@@ -177,7 +185,7 @@ export function ToolCallItem({
         }}
         type="button"
       >
-        <SubagentTriggerCard toolCall={toolCall} />
+        <SubagentTriggerCard status={status} toolCall={toolCall} />
       </button>
     );
   }
@@ -308,7 +316,7 @@ export function ToolCallGroup({
 
   if (nested) {
     return (
-      <div className="flex w-full min-w-0 flex-col gap-0.5 overflow-hidden">
+      <div className="-mx-1.5 flex min-w-0 flex-col gap-0.5 overflow-hidden">
         {runNodes}
       </div>
     );

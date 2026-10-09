@@ -697,6 +697,123 @@ describe("AgentRuntimeManager", () => {
     expect(createSession).toHaveBeenCalledTimes(1);
   });
 
+  it("records a user-stopped turn as cancelled on its last assistant message", async () => {
+    const interimMessage: MessageRecord = {
+      id: "assistant-1",
+      sessionId: "session-1",
+      role: "assistant",
+      content: "Let me look around first.",
+      attachments: [],
+      createdAt: "2026-07-24T00:00:01.000Z",
+    };
+    let emitFromRuntime: (event: AgentEvent) => void = () => undefined;
+    let finishTurn: () => void = () => undefined;
+    const runtimeSession: AgentSession = {
+      dispose: vi.fn(),
+      sendMessage: vi.fn(
+        () =>
+          new Promise<MessageRecord>((resolve) => {
+            finishTurn = () => resolve(interimMessage);
+          }),
+      ),
+      stop: vi.fn(async () => finishTurn()),
+    };
+    const events: AgentEvent[] = [];
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: (event) => events.push(event),
+      createAdapter: () => ({
+        getDescriptor() {
+          throw new Error("Descriptor is not used by runtime tests");
+        },
+        createSession(_payload, onEvent) {
+          emitFromRuntime = onEvent;
+          return runtimeSession;
+        },
+      }),
+    });
+    const payload = { ...createPayload(), messageId: "user-1" };
+
+    const turn = manager.sendSessionMessage(payload, {
+      ...createPersistence(),
+      history: [],
+    });
+    emitFromRuntime({
+      type: "message.completed",
+      sessionId: payload.session.id,
+      message: interimMessage,
+    });
+    await manager.cancelSessionTurn(payload.session.id);
+    await turn;
+
+    const completions = events.filter(
+      (event) => event.type === "turn.completed",
+    );
+    expect(completions).toEqual([
+      expect.objectContaining({
+        messageId: interimMessage.id,
+        stopReason: "cancelled",
+      }),
+    ]);
+  });
+
+  it("keeps the adapter's own completion for a stopped turn", async () => {
+    let emitFromRuntime: (event: AgentEvent) => void = () => undefined;
+    let finishTurn: () => void = () => undefined;
+    const runtimeSession: AgentSession = {
+      dispose: vi.fn(),
+      sendMessage: vi.fn(
+        () =>
+          new Promise<MessageRecord>((resolve) => {
+            finishTurn = () =>
+              resolve({
+                id: "assistant-1",
+                sessionId: "session-1",
+                role: "assistant",
+                content: "",
+                attachments: [],
+                createdAt: "2026-07-24T00:00:01.000Z",
+              });
+          }),
+      ),
+      stop: vi.fn(async () => {
+        emitFromRuntime({
+          type: "turn.completed",
+          sessionId: "session-1",
+          messageId: "assistant-1",
+          durationMs: 10,
+          stopReason: "cancelled",
+          completedAt: "2026-07-24T00:00:02.000Z",
+        });
+        finishTurn();
+      }),
+    };
+    const events: AgentEvent[] = [];
+    const manager = new AgentRuntimeManager({
+      broadcastAgentEvent: (event) => events.push(event),
+      createAdapter: () => ({
+        getDescriptor() {
+          throw new Error("Descriptor is not used by runtime tests");
+        },
+        createSession(_payload, onEvent) {
+          emitFromRuntime = onEvent;
+          return runtimeSession;
+        },
+      }),
+    });
+    const payload = { ...createPayload(), messageId: "user-1" };
+
+    const turn = manager.sendSessionMessage(payload, {
+      ...createPersistence(),
+      history: [],
+    });
+    await manager.cancelSessionTurn(payload.session.id);
+    await turn;
+
+    expect(
+      events.filter((event) => event.type === "turn.completed"),
+    ).toHaveLength(1);
+  });
+
   it("resolves the exact option chosen when several share one kind", async () => {
     const manager = new AgentRuntimeManager({
       broadcastAgentEvent: vi.fn(),

@@ -72,10 +72,13 @@ export function AgentPresetSubmenu({
                   onSelect(preset.id);
                 }}
               >
-                <AgentRoleAvatar role={preset} size="md" />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate">{preset.name}</span>
-                  <span className="truncate text-meta text-muted-foreground">
+                <AgentRoleAvatar role={preset} />
+                <span
+                  className="flex min-w-0 flex-1 items-baseline gap-2"
+                  title={preset.summary}
+                >
+                  <span className="shrink-0">{preset.name}</span>
+                  <span className="min-w-0 truncate text-meta text-muted-foreground">
                     {preset.summary}
                   </span>
                 </span>

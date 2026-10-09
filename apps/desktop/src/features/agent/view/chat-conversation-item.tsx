@@ -1,6 +1,7 @@
 import {
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
+  type AgentTurnCompletedEvent,
   type AgentUsageRecord,
   isContextAttachment,
   isDocumentAttachment,
@@ -45,12 +46,8 @@ import { ToolCallGroup, ToolCallItem } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
 import { useTranscriptState } from "../use-transcript-state";
 import { ActivityLine } from "./chat-activity";
-import { ActivityBlock } from "./chat-activity-block";
-import {
-  type ActivityState,
-  formatDurationMs,
-  isActivityHeaderBusy,
-} from "./chat-activity-state";
+import { ActivitySegment, TurnStoppedNote } from "./chat-activity-segment";
+import { type ActivityState, formatDurationMs } from "./chat-activity-state";
 import {
   MessageAttachments,
   ReasoningMarkdown,
@@ -63,9 +60,11 @@ import {
 } from "./chat-segment-groups";
 import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
 import {
+  findConversationTurnStats,
   getTurnEndMessageId,
   getVisibleConversationItems,
   segmentConversationItems,
+  type TurnPhase,
   withoutInterimReplies,
 } from "./chat-timeline";
 import { messageOriginLabel } from "./message-origin-label";
@@ -675,24 +674,14 @@ const MessageArticle = memo(function MessageArticle({
   );
 });
 
-function getActivitySegmentSummary(items: TimelineGroup[]) {
-  const toolCalls = items.flatMap((item) =>
-    item.kind === "toolCalls" ? item.toolCalls : [],
-  );
-  const messages = items.flatMap((item) =>
-    item.kind === "message" ? [item.message] : [],
-  );
-  const reasoningCount = messages.filter(isReasoningMessage).length;
-
-  return {
-    isBusy: toolCalls.some(
-      (toolCall) =>
-        toolCall.status === "pending" || toolCall.status === "in_progress",
-    ),
-    reasoningCount,
-    replyCount: messages.length - reasoningCount,
-    toolCount: toolCalls.length,
-  };
+function getTurnPhase(
+  isLive: boolean,
+  turnStats: AgentTurnCompletedEvent | undefined,
+): TurnPhase {
+  if (isLive) {
+    return "live";
+  }
+  return turnStats?.stopReason === "cancelled" ? "interrupted" : "completed";
 }
 
 export const ChatConversationItem = memo(function ChatConversationItem({
@@ -736,29 +725,32 @@ export const ChatConversationItem = memo(function ChatConversationItem({
 }) {
   const showActivity = isRunning && isLatestConversation;
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
+  const turnStats = findConversationTurnStats(
+    conversationGroup,
+    useAtomValue(turnStatsByMessageAtom),
+  );
+  const phase = getTurnPhase(showActivity, turnStats);
   const conversationItems = getVisibleConversationItems(conversationGroup);
   const visibleItems =
-    activityDisplay === "hidden" && !showActivity
-      ? withoutInterimReplies(conversationItems)
+    activityDisplay === "hidden" && phase !== "live"
+      ? withoutInterimReplies(conversationItems, phase)
       : conversationItems;
   const segments = segmentConversationItems(
     visibleItems,
     activityDisplay === "condensed",
-    !showActivity,
+    phase,
   );
-  const turnEndMessageId = showActivity
-    ? undefined
-    : getTurnEndMessageId(visibleItems);
-  const turnDurationMs = useAtomValue(turnStatsByMessageAtom)[
-    turnEndMessageId ?? ""
-  ]?.durationMs;
+  const turnEndMessageId =
+    phase === "live" ? undefined : getTurnEndMessageId(visibleItems, phase);
   const turnWorkSegment =
-    segments[
-      segments.findIndex(
-        (segment) =>
-          segment.kind === "item" && segment.item.id === turnEndMessageId,
-      ) - 1
-    ];
+    turnEndMessageId === null
+      ? segments.at(-1)
+      : segments[
+          segments.findIndex(
+            (segment) =>
+              segment.kind === "item" && segment.item.id === turnEndMessageId,
+          ) - 1
+        ];
 
   const renderTimelineItem = (group: TimelineGroup, nested = false) => {
     if (group.kind === "toolCalls") {
@@ -839,7 +831,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
         />
       ) : null}
 
-      {visibleItems.length > 0 || showActivity ? (
+      {visibleItems.length > 0 || phase !== "completed" ? (
         <div className="flex flex-col gap-5">
           {groupActivityWithFollowingItem(segments).map((group) => (
             <div
@@ -851,28 +843,16 @@ export const ChatConversationItem = memo(function ChatConversationItem({
                   return renderTimelineItem(segment.item);
                 }
 
-                const summary = getActivitySegmentSummary(segment.items);
-
                 return (
-                  <ActivityBlock
-                    durationMs={
-                      segment === turnWorkSegment ? turnDurationMs : undefined
-                    }
-                    busy={isActivityHeaderBusy({
-                      hasActiveToolCall: summary.isBusy,
-                      isLastSegment: segment === segments.at(-1),
-                      isLiveConversation: showActivity,
-                    })}
+                  <ActivitySegment
+                    durationMs={turnStats?.durationMs}
+                    isLastSegment={segment === segments.at(-1)}
+                    isLiveConversation={showActivity}
+                    isTurnWork={segment === turnWorkSegment}
+                    items={segment.items}
                     key={getSegmentKey(segment)}
-                    stateKey={`activity:${segment.items[0]?.id}`}
-                    reasoningCount={summary.reasoningCount}
-                    replyCount={summary.replyCount}
-                    toolCount={summary.toolCount}
-                  >
-                    {segment.items.map((item) =>
-                      renderTimelineItem(item, true),
-                    )}
-                  </ActivityBlock>
+                    renderItem={renderTimelineItem}
+                  />
                 );
               })}
             </div>
@@ -880,6 +860,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
           {showActivity && activity ? (
             <ActivityLine activity={activity} runStartedAt={runStartedAt} />
           ) : null}
+          {phase === "interrupted" ? <TurnStoppedNote /> : null}
         </div>
       ) : null}
     </div>

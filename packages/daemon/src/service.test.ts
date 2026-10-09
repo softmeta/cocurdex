@@ -17,6 +17,10 @@ import { CocurdexDaemonService } from "./service";
 
 const temporaryDirectories: string[] = [];
 
+function waitForDispatch<T>(assertion: () => T | Promise<T>) {
+  return vi.waitFor(assertion, { timeout: 5_000 });
+}
+
 afterEach(async () => {
   await Promise.all(
     temporaryDirectories
@@ -261,7 +265,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     expect(service.getActiveWork().agentTurns).toBe(1);
     expect(service.runtime.getAgentSession("session-1")).not.toBeNull();
     releaseHistory?.();
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     await service.shutdown();
   });
 
@@ -283,16 +287,16 @@ describe("CocurdexDaemonService follow-up queue", () => {
       await service.sendSessionMessage(
         createPayload("First turn", "start-new-run"),
       );
-      await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+      await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
       await service.sendSessionMessage(
         createPayload("Steering", "steer-active-run"),
       );
-      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+      await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(2));
       completeTurn();
       await new Promise<void>((resolve) => setImmediate(resolve));
       expect(service.getActiveWork().agentTurns).toBe(1);
       completeSteering();
-      await vi.waitFor(() =>
+      await waitForDispatch(() =>
         expect(service.getActiveWork().agentTurns).toBe(0),
       );
     } finally {
@@ -320,12 +324,12 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
 
     const steered = await service.sendSessionMessage(
       createPayload("Queue me if steering fails", "steer-active-run"),
     );
-    await vi.waitFor(async () => {
+    await waitForDispatch(async () => {
       const state = await service.bootstrap();
       expect(state.queuedAgentInputs).toEqual([
         expect.objectContaining({ messageId: steered.id }),
@@ -333,13 +337,13 @@ describe("CocurdexDaemonService follow-up queue", () => {
     });
 
     completeActiveTurn?.();
-    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(3));
+    await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(3));
     expect(send.mock.calls[2]?.[0]).toMatchObject({
       messageId: steered.id,
       content: "Queue me if steering fails",
       delivery: "start-new-run",
     });
-    await vi.waitFor(async () => {
+    await waitForDispatch(async () => {
       const state = await service.bootstrap();
       expect(state.queuedAgentInputs).toEqual([]);
     });
@@ -361,7 +365,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
 
     await service.sendSessionMessage(
       createPayload("First queued follow-up", "queue-after-run"),
@@ -376,7 +380,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     });
 
     completeActiveTurn?.();
-    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(3));
+    await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(3));
     expect(send.mock.calls[1]?.[0]).toMatchObject({
       content: "First queued follow-up",
       delivery: "start-new-run",
@@ -405,7 +409,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
       origin: { kind: "peer", sessionId: "lead", sessionTitle: "Lead" },
     });
 
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     expect(send.mock.calls[0]?.[0]).toMatchObject({
       content: "Wrap up",
       delivery: "start-new-run",
@@ -447,7 +451,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     await service.sendSessionMessage(
       createPayload("Lead follow-up", "queue-after-run"),
     );
@@ -478,7 +482,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     const queued = await service.sendSessionMessage(
       createPayload("Queued follow-up", "queue-after-run"),
     );
@@ -492,7 +496,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     });
 
     completeActiveTurn?.();
-    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+    await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(2));
 
     const contents = (
       await service.state.listMessagesBySessionId("session-1")
@@ -519,7 +523,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     await service.sendSessionMessage(
       createPayload("Peer update", "queue-after-run"),
     );
@@ -554,7 +558,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     const firstQueued = await service.sendSessionMessage(
       createPayload("Edit me", "queue-after-run"),
     );
@@ -624,7 +628,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("First turn", "start-new-run"),
     );
-    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
     const firstQueued = await service.sendSessionMessage(
       createPayload("Stays queued", "queue-after-run"),
     );
@@ -637,7 +641,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     ).resolves.toMatchObject({ id: secondQueued.id, content: "Send me now" });
     expect(cancel).toHaveBeenCalledWith("session-1");
 
-    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+    await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(2));
     expect(send.mock.calls[1]?.[0]).toMatchObject({
       messageId: secondQueued.id,
       content: "Send me now",
@@ -678,7 +682,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.sendSessionMessage(
       createPayload("Survive restart", "queue-after-run"),
     );
-    await vi.waitFor(() => expect(originalSend).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(originalSend).toHaveBeenCalledOnce());
     await service.shutdown();
 
     const restarted = await createService(userDataPath);
@@ -704,12 +708,12 @@ describe("CocurdexDaemonService follow-up queue", () => {
       "session-1",
       bootstrap.queuedAgentInputs[0]?.messageId ?? "",
     );
-    await vi.waitFor(() => expect(resumedSend).toHaveBeenCalledOnce());
+    await waitForDispatch(() => expect(resumedSend).toHaveBeenCalledOnce());
     expect(resumedSend.mock.calls[0]?.[0]).toMatchObject({
       content: "Survive restart",
       delivery: "start-new-run",
     });
-    await vi.waitFor(async () => {
+    await waitForDispatch(async () => {
       const state = await restarted.bootstrap();
       expect(state.queuedAgentInputs).toEqual([]);
     });

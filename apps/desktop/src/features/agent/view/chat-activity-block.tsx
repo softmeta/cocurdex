@@ -1,6 +1,5 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { type ReactNode, useDeferredValue, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Collapsible,
   CollapsibleContent,
@@ -8,26 +7,20 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { useTranscriptState } from "../use-transcript-state";
-import { formatDurationMs } from "./chat-activity-state";
 
 export function ActivityBlock({
   busy = false,
   children,
-  durationMs,
-  reasoningCount,
-  replyCount,
+  label,
   stateKey,
-  toolCount,
+  variant,
 }: {
   busy?: boolean;
   children: ReactNode;
-  durationMs?: number;
-  reasoningCount: number;
-  replyCount: number;
+  label: string;
   stateKey: string;
-  toolCount: number;
+  variant: "step" | "turn";
 }) {
-  const { t } = useTranslation("agent");
   const [open, setOpen] = useTranscriptState(stateKey, false);
   // Defer mounting the expanded rows. The click commits the chevron rotation
   // and panel reveal on a fast frame; React then mounts the (often heavy) tool
@@ -47,48 +40,30 @@ export function ActivityBlock({
     setKeepMounted(true);
   }
 
-  const counts = [
-    toolCount > 0 ? t("activity.toolCount", { count: toolCount }) : null,
-    reasoningCount > 0
-      ? t("activity.reasoningCount", { count: reasoningCount })
-      : null,
-    replyCount > 0 ? t("activity.replyCount", { count: replyCount }) : null,
-  ].filter(Boolean);
-  const label =
-    durationMs === undefined
-      ? counts.join(" · ")
-      : t("activity.workedFor", { duration: formatDurationMs(durationMs) });
+  const trigger =
+    variant === "turn" ? (
+      <TurnTrigger busy={busy} label={label} open={open} />
+    ) : (
+      <StepTrigger busy={busy} label={label} open={open} />
+    );
 
   return (
     <Collapsible
-      className="group/activity w-full min-w-0 max-w-3xl"
+      className={cn(
+        "group/activity min-w-0 max-w-3xl",
+        variant === "turn" && "w-full",
+        variant === "step" && "-mx-1.5",
+      )}
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 border-chat-border-soft mb-3 border-b pt-0.5 pb-2 text-body transition-colors hover:text-chat-fg-secondary">
-        {label ? (
-          <span
-            className={cn(
-              "min-w-0 truncate font-medium text-chat-fg-muted",
-              busy && "activity-shimmer",
-            )}
-          >
-            {label}
-          </span>
-        ) : null}
-        {/* The panel grows downward: chevron down means "opens", up means
-            "closes". Vertical-only rotation keeps it direction-neutral in RTL,
-            matching the plan panel's collapse affordance. */}
-        <ChevronDown
-          className={cn(
-            "size-3.5 shrink-0 text-chat-fg-muted transition-transform",
-            open && "rotate-180",
-          )}
-        />
-      </CollapsibleTrigger>
+      {trigger}
       <CollapsibleContent
         className={cn(
-          "mt-1 mb-3 flex flex-col gap-1 overflow-hidden",
+          "flex flex-col gap-1 overflow-hidden",
+          variant === "turn" && "mt-1 mb-3",
+          variant === "step" &&
+            "ms-3 mt-0.5 mb-1 border-s border-chat-border-soft ps-2.5",
           // Height/margin interpolate between 0 and `auto` (interpolate-size)
           // in both directions so surrounding content glides instead of
           // snapping. `auto` resolves at layout time, so rows mounted late by
@@ -100,5 +75,63 @@ export function ActivityBlock({
         {keepMounted || showRows ? children : null}
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+function TurnTrigger({
+  busy,
+  label,
+  open,
+}: {
+  busy: boolean;
+  label: string;
+  open: boolean;
+}) {
+  return (
+    <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 border-chat-border-soft mb-3 border-b pt-0.5 pb-2 text-body transition-colors hover:text-chat-fg-secondary">
+      <span
+        className={cn(
+          "min-w-0 truncate font-medium text-chat-fg-muted",
+          busy && "activity-shimmer",
+        )}
+      >
+        {label}
+      </span>
+      <ChevronDown
+        className={cn(
+          "size-3.5 shrink-0 text-chat-fg-muted transition-transform",
+          open && "rotate-180",
+        )}
+      />
+    </CollapsibleTrigger>
+  );
+}
+
+function StepTrigger({
+  busy,
+  label,
+  open,
+}: {
+  busy: boolean;
+  label: string;
+  open: boolean;
+}) {
+  return (
+    <CollapsibleTrigger className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-body text-chat-fg-muted transition-colors hover:bg-chat-surface-row-hover">
+      <ChevronRight
+        className={cn(
+          "size-3.5 shrink-0 transition-transform rtl:-scale-x-100",
+          open && "rotate-90",
+        )}
+      />
+      <span
+        className={cn(
+          "min-w-0 truncate text-chat-fg-secondary",
+          busy && "activity-shimmer",
+        )}
+      >
+        {label}
+      </span>
+    </CollapsibleTrigger>
   );
 }

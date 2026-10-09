@@ -40,13 +40,15 @@ import {
   isSubagentToolCall,
   type ToolCallPreviewLocation,
 } from "./tool-call-utils";
+import { useToolCallDisplayStatus } from "./use-tool-call-display-status";
 
 export function ToolCallDetailHeader({
   toolCall,
 }: {
   toolCall: AgentToolCallRecord;
 }) {
-  const statusLabel = getToolCallStatusLabel(toolCall);
+  const status = useToolCallDisplayStatus(toolCall);
+  const statusLabel = getToolCallStatusLabel(status);
   const timestamp = getToolCallTimestamp(toolCall);
   const isSubagent = isSubagentToolCall(toolCall);
   const title = isSubagent
@@ -63,9 +65,7 @@ export function ToolCallDetailHeader({
       </span>
       {showType ? <span className="shrink-0">{type}</span> : null}
       <span className="ml-auto flex shrink-0 items-center gap-1.5">
-        <span className={getToolCallStatusClasses(toolCall)}>
-          {statusLabel}
-        </span>
+        <span className={getToolCallStatusClasses(status)}>{statusLabel}</span>
         <span>·</span>
         <span>{timestamp}</span>
       </span>

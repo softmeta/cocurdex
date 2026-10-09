@@ -5,6 +5,11 @@ import {
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
+import {
+  getDisplayDirectory,
+  getWorkspaceRelativePath,
+  withoutWorkspaceCd,
+} from "./tool-call-display-path";
 
 // Lives here (not in tool-call-ui) so the util layer stays a leaf: the UI
 // imports utils, never the other way around.
@@ -293,32 +298,49 @@ export function getToolCallPreviewLocations(
   });
 }
 
-export function getToolCallStatusLabel(toolCall: AgentToolCallRecord) {
-  if (toolCall.status === "completed") {
+export type ToolCallDisplayStatus =
+  | AgentToolCallRecord["status"]
+  | "interrupted";
+
+export function getToolCallDisplayStatus(
+  toolCall: AgentToolCallRecord,
+  isSessionRunning: boolean,
+): ToolCallDisplayStatus {
+  const isUnfinished =
+    toolCall.status === "pending" || toolCall.status === "in_progress";
+  return isUnfinished && !isSessionRunning ? "interrupted" : toolCall.status;
+}
+
+export function getToolCallStatusLabel(status: ToolCallDisplayStatus) {
+  if (status === "completed") {
     return i18n.t("agent:toolCalls.completed");
   }
 
-  if (toolCall.status === "failed") {
+  if (status === "failed") {
     return i18n.t("agent:toolCalls.failed");
   }
 
-  if (toolCall.status === "pending") {
+  if (status === "pending") {
     return i18n.t("agent:toolCalls.pending");
+  }
+
+  if (status === "interrupted") {
+    return i18n.t("agent:toolCalls.interrupted");
   }
 
   return i18n.t("agent:toolCalls.running");
 }
 
-export function getToolCallStatusClasses(toolCall: AgentToolCallRecord) {
-  if (toolCall.status === "completed") {
+export function getToolCallStatusClasses(status: ToolCallDisplayStatus) {
+  if (status === "completed" || status === "interrupted") {
     return "text-chat-fg-muted";
   }
 
-  if (toolCall.status === "failed") {
+  if (status === "failed") {
     return "text-chat-status-failed-fg";
   }
 
-  if (toolCall.status === "pending") {
+  if (status === "pending") {
     return "text-chat-status-pending-fg";
   }
 
@@ -353,10 +375,10 @@ function sanitizeCommand(command: string) {
 function unwrapShellCommand(command: string) {
   const normalized = sanitizeCommand(command);
   const shellMatch = normalized.match(
-    /^\/bin\/(?:zsh|bash|sh)\s+-lc\s+["']([\s\S]+)["']$/,
+    /^(?:\/(?:usr\/)?bin\/)?(?:zsh|bash|sh)\s+-l?c\s+(["'])([\s\S]+)\1$/,
   );
 
-  return shellMatch?.[1] ? sanitizeCommand(shellMatch[1]) : normalized;
+  return shellMatch?.[2] ? sanitizeCommand(shellMatch[2]) : normalized;
 }
 
 function getCommandExecutable(command: string) {
@@ -393,7 +415,10 @@ function getCommandPreview(command: string) {
   return truncateMiddle(`${executable} ${target}`, 88);
 }
 
-function getToolCallInputSummary(toolCall: AgentToolCallRecord) {
+function getToolCallInputSummary(
+  toolCall: AgentToolCallRecord,
+  workspacePath: string | null = null,
+) {
   const rawInput = toolCall.rawInput;
 
   if (typeof rawInput === "string") {
@@ -414,7 +439,9 @@ function getToolCallInputSummary(toolCall: AgentToolCallRecord) {
         : null;
 
   if (command) {
-    return truncateMiddle(unwrapShellCommand(command));
+    return truncateMiddle(
+      withoutWorkspaceCd(unwrapShellCommand(command), workspacePath),
+    );
   }
 
   const path =
@@ -437,6 +464,7 @@ function getToolCallInputSummary(toolCall: AgentToolCallRecord) {
   }
 
   if (path) {
+    const displayPath = getWorkspaceRelativePath(path, workspacePath) || path;
     const startLine =
       getPositiveNumber(inputRecord.offset) ??
       getPositiveNumber(inputRecord.line) ??
@@ -446,7 +474,9 @@ function getToolCallInputSummary(toolCall: AgentToolCallRecord) {
       startLine && limit ? Math.max(startLine, startLine + limit - 1) : null;
     const rangeLabel = getLineRangeLabel(startLine, endLine);
 
-    return truncateMiddle(rangeLabel ? `${path} ${rangeLabel}` : path);
+    return truncateMiddle(
+      rangeLabel ? `${displayPath} ${rangeLabel}` : displayPath,
+    );
   }
 
   if (query) {
@@ -498,22 +528,16 @@ export function getSingleReadLocation(toolCall: AgentToolCallRecord) {
   return locations.length === 1 ? locations[0] : null;
 }
 
-function getParentPath(filePath: string) {
-  return filePath.slice(
-    0,
-    Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\")),
-  );
-}
-
 export function getToolCallTriggerParts(
   toolCall: AgentToolCallRecord,
   tense: ToolCallTense = "present",
+  workspacePath: string | null = null,
 ) {
   const isPast = tense === "past";
   if (toolCall.kind === WORKTREE_SETUP_TOOL_KIND) {
     return {
       title: i18n.t("agent:toolCalls.worktreeSetup"),
-      secondary: getToolCallInputSummary(toolCall),
+      secondary: getToolCallInputSummary(toolCall, workspacePath),
     };
   }
 
@@ -537,7 +561,7 @@ export function getToolCallTriggerParts(
   if (readLocation) {
     return {
       title: getToolPreviewTitle(readLocation, tense),
-      secondary: getParentPath(readLocation.filePath) || null,
+      secondary: getDisplayDirectory(readLocation.filePath, workspacePath),
     };
   }
 
@@ -550,7 +574,7 @@ export function getToolCallTriggerParts(
         ? i18n.t("agent:toolCalls.executeDone")
         : i18n.t("agent:toolCalls.execute"),
       secondary:
-        getToolCallInputSummary(toolCall) ||
+        getToolCallInputSummary(toolCall, workspacePath) ||
         truncateMiddle(sanitizeCommand(titleCommand || title)),
     };
   }

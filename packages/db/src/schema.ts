@@ -130,6 +130,7 @@ export function createSchemaSql() {
       session_id TEXT NOT NULL,
       duration_ms INTEGER NOT NULL,
       usage_json TEXT,
+      stop_reason TEXT,
       completed_at TEXT NOT NULL,
       FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
