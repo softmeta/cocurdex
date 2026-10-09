@@ -75,15 +75,16 @@ interface AgentRuntimeManagerOptions {
   agentTools?: AgentToolsProvider;
 }
 
+type TurnTracker = {
+  cancelled: boolean;
+  completionEmitted: boolean;
+  messageId: string | null;
+  usage: AgentUsageRecord | null;
+};
+
 export class AgentRuntimeManager {
-  private readonly activeTurnTrackers = new Map<
-    string,
-    {
-      cancelled: boolean;
-      messageId: string | null;
-      usage: AgentUsageRecord | null;
-    }
-  >();
+  private readonly activeTurnTrackers = new Map<string, TurnTracker>();
+  private readonly cancelledTurnTrackers = new Map<string, TurnTracker>();
   private readonly broadcastCoalescer;
   private readonly createAdapter;
   private readonly pendingPermissions = new Map<string, PendingPermission>();
@@ -129,23 +130,25 @@ export class AgentRuntimeManager {
   }
 
   emitAgentEvent(event: AgentEvent) {
+    const tracker =
+      this.activeTurnTrackers.get(event.sessionId) ??
+      this.cancelledTurnTrackers.get(event.sessionId);
     if (
+      tracker &&
       event.type === "usage.updated" &&
       event.attribution !== "session-only"
     ) {
-      const tracker = this.activeTurnTrackers.get(event.sessionId);
-      if (tracker) {
-        tracker.usage = this.addUsageRecords(tracker.usage, event.usage);
-      }
+      tracker.usage = this.addUsageRecords(tracker.usage, event.usage);
     }
     if (
+      tracker &&
       event.type === "message.completed" &&
       event.message.role === "assistant"
     ) {
-      const tracker = this.activeTurnTrackers.get(event.sessionId);
-      if (tracker) {
-        tracker.messageId = event.message.id;
-      }
+      tracker.messageId = event.message.id;
+    }
+    if (tracker && event.type === "turn.completed") {
+      tracker.completionEmitted = true;
     }
     if (event.type === "plan.updated") {
       this.sessionPlans.set(event.sessionId, event.plan);
@@ -525,10 +528,11 @@ export class AgentRuntimeManager {
     }
 
     const startedAt = performance.now();
-    const turnTracker = {
+    const turnTracker: TurnTracker = {
       cancelled: false,
-      messageId: null as string | null,
-      usage: null as AgentUsageRecord | null,
+      completionEmitted: false,
+      messageId: null,
+      usage: null,
     };
     console.info("[AgentRuntimeManager] send message payload", {
       agentType: payload.session.agentType,
@@ -583,6 +587,27 @@ export class AgentRuntimeManager {
       if (this.activeTurnTrackers.get(payload.session.id) === turnTracker) {
         this.activeTurnTrackers.delete(payload.session.id);
       }
+      const stoppedByUser =
+        this.cancelledTurnTrackers.get(payload.session.id) === turnTracker;
+      if (stoppedByUser) {
+        this.cancelledTurnTrackers.delete(payload.session.id);
+      }
+      const cancelledMessageId = turnTracker.messageId ?? payload.messageId;
+      if (
+        stoppedByUser &&
+        !turnTracker.completionEmitted &&
+        cancelledMessageId
+      ) {
+        this.emitAgentEvent({
+          type: "turn.completed",
+          sessionId: payload.session.id,
+          messageId: cancelledMessageId,
+          durationMs: Math.round(performance.now() - startedAt),
+          usage: turnTracker.usage ?? undefined,
+          stopReason: "cancelled",
+          completedAt: new Date().toISOString(),
+        });
+      }
     }
   }
 
@@ -593,7 +618,10 @@ export class AgentRuntimeManager {
    * reload on the very next message.
    */
   async cancelSessionTurn(sessionId: string) {
-    this.clearPendingSessionWork(sessionId);
+    const turnTracker = this.clearPendingSessionWork(sessionId);
+    if (turnTracker) {
+      this.cancelledTurnTrackers.set(sessionId, turnTracker);
+    }
     const sessionRuntime = this.sessionRuntimes.get(sessionId);
 
     if (!sessionRuntime) {
@@ -660,6 +688,7 @@ export class AgentRuntimeManager {
     this.denyPendingPermissionsForSession(sessionId);
     this.cancelPendingQuestionsForSession(sessionId);
     this.abandonPendingPlanApprovalsForSession(sessionId);
+    return turnTracker;
   }
 
   async shutdown() {
