@@ -11,6 +11,7 @@ import type {
   MessageAttachment,
   MessageRecord,
   SessionStatus,
+  WorkspaceRecord,
 } from "@cocurdex/shared";
 import type { ReactNode, Ref } from "react";
 import type { ChatComposerHandle } from "@/features/composer";
@@ -55,7 +56,7 @@ export interface ChatViewProps {
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
   activeBranch?: string | null;
-  workspaceName?: string | null;
+  workspace?: Pick<WorkspaceRecord, "name" | "rootPaths"> | null;
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;

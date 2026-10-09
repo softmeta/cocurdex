@@ -93,6 +93,7 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
+  SessionAttentionSnapshot,
   SessionMessagesResult,
   SessionRecord,
   StartScriptRunPayload,
@@ -114,6 +115,7 @@ import type {
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
+  UpdateSessionAttentionPayload,
   UpdateSessionTitlePayload,
   UpdateViewPayload,
   ViewColumnRecord,
@@ -575,6 +577,11 @@ export interface ProductApi {
   notesDelete(payload: DeleteNotePayload): Promise<void>;
   // === App-owned issues and views ===
   issueListViews(): Promise<ViewSummary[]>;
+  issueListLinkedSessionIds(): Promise<string[]>;
+  listSessionAttention(): Promise<SessionAttentionSnapshot[]>;
+  updateSessionAttention(
+    payload: UpdateSessionAttentionPayload,
+  ): Promise<SessionAttentionSnapshot>;
   issueLoad(payload: LoadViewPayload): Promise<ViewFull | null>;
   /** Full markdown body for the issue detail editor. */
   issueGet(payload: GetIssuePayload): Promise<IssueRecord | null>;

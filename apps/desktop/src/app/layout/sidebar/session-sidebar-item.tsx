@@ -4,6 +4,7 @@ import {
   Archive,
   ChevronDown,
   ChevronRight,
+  CircleDot,
   Pencil,
   SquareSplitHorizontal,
   SquareSplitVertical,
@@ -25,13 +26,17 @@ import { permissionsBySessionAtom } from "@/features/agent/permission";
 import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   archiveSessionAtom,
+  canMarkSessionUnread,
   collectSessionSubtreeIds,
   deleteSessionAtom,
   focusedPaneCanSplitDownAtom,
   focusedPaneCanSplitRightAtom,
   getAgentDisplayLabel,
+  markSessionUnreadAtom,
   openSessionInSplitAtom,
+  sessionResultAttentionAtom,
   sessionsAtom,
+  unreadSessionIdsAtom,
   updateSessionTitleAtom,
 } from "@/features/sessions";
 import {
@@ -54,6 +59,8 @@ interface SessionSidebarItemProps {
   onSelect(): void;
   onToggleExpand?(): void;
   session: SessionRecord;
+  showTimestamp?: boolean;
+  workspaceName?: string;
 }
 
 function SessionStatusIndicator({
@@ -98,13 +105,29 @@ function SessionAgeLabel({ timestamp }: { timestamp: string }) {
   );
 }
 
+function SessionUnreadDot() {
+  const { t } = useTranslation("sessions");
+
+  return (
+    <span
+      className="size-1.5 shrink-0 rounded-full bg-sidebar-primary"
+      role="img"
+      aria-label={t("sidebar.unread")}
+    />
+  );
+}
+
 function SessionTrailing({
   isRunning,
+  isUnread,
   needsAttention,
+  showTimestamp,
   timestamp,
 }: {
   isRunning: boolean;
+  isUnread: boolean;
   needsAttention: boolean;
+  showTimestamp: boolean;
   timestamp: string;
 }) {
   if (needsAttention || isRunning) {
@@ -115,7 +138,15 @@ function SessionTrailing({
       />
     );
   }
-  return <SessionAgeLabel timestamp={timestamp} />;
+  if (isUnread) {
+    return (
+      <span className="flex shrink-0 items-center gap-1.5">
+        <SessionUnreadDot />
+        {showTimestamp ? <SessionAgeLabel timestamp={timestamp} /> : null}
+      </span>
+    );
+  }
+  return showTimestamp ? <SessionAgeLabel timestamp={timestamp} /> : null;
 }
 
 export function SessionSidebarItem({
@@ -125,12 +156,17 @@ export function SessionSidebarItem({
   onSelect,
   onToggleExpand,
   session,
+  showTimestamp = true,
+  workspaceName,
 }: SessionSidebarItemProps) {
   const { t } = useTranslation("sessions");
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const archiveSession = useSetAtom(archiveSessionAtom);
   const deleteSession = useSetAtom(deleteSessionAtom);
   const openSessionInSplit = useSetAtom(openSessionInSplitAtom);
+  const markSessionUnread = useSetAtom(markSessionUnreadAtom);
+  const resultAttention = useAtomValue(sessionResultAttentionAtom)[session.id];
+  const isUnread = useAtomValue(unreadSessionIdsAtom).has(session.id);
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -289,6 +325,7 @@ export function SessionSidebarItem({
         roleSummary={roleSummary ?? undefined}
         timestamp={activityAt}
         title={session.title}
+        workspaceName={workspaceName}
       >
         <ContextMenuTrigger asChild>
           <SidebarListRow
@@ -328,7 +365,9 @@ export function SessionSidebarItem({
                 <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
                 <SessionTrailing
                   isRunning={isRunning}
+                  isUnread={isUnread && !isActive}
                   needsAttention={needsAttention}
+                  showTimestamp={showTimestamp}
                   timestamp={activityAt}
                 />
               </button>
@@ -337,7 +376,9 @@ export function SessionSidebarItem({
                 <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
                 <SessionTrailing
                   isRunning={isRunning}
+                  isUnread={isUnread && !isActive}
                   needsAttention={needsAttention}
+                  showTimestamp={showTimestamp}
                   timestamp={activityAt}
                 />
               </>
@@ -373,6 +414,14 @@ export function SessionSidebarItem({
         >
           {t("sidebar.splitDown")}
         </SidebarContextMenuItem>
+        {!isActive && canMarkSessionUnread(resultAttention) ? (
+          <SidebarContextMenuItem
+            icon={CircleDot}
+            onClick={() => markSessionUnread(session.id)}
+          >
+            {t("sidebar.markUnread")}
+          </SidebarContextMenuItem>
+        ) : null}
         <SidebarContextMenuItem
           icon={Archive}
           onClick={handleArchive}

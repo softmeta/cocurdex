@@ -23,6 +23,10 @@ export {
   WorkspacePicker,
 } from "./workspace-picker";
 export {
+  MultiRootWorkspaceTooltip,
+  WorkspaceRootsPreview,
+} from "./workspace-roots-preview";
+export {
   activeWorkspaceIdAtom,
   activeWorktreesAtom,
   addWorkspaceAtom,

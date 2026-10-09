@@ -2,9 +2,16 @@ import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { primaryWorkspaceRootPath } from "@cocurdex/shared";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useAtomValue, useSetAtom } from "jotai";
-import { Folder, FolderOpen, Pencil, SquarePen, Trash2 } from "lucide-react";
-import { type CSSProperties, useMemo } from "react";
+import { useAtomValue } from "jotai";
+import {
+  Folder,
+  FolderOpen,
+  Folders,
+  Pencil,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ContextMenu,
@@ -14,32 +21,18 @@ import {
   SidebarListRow,
   SidebarListRowActions,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
 } from "@/components/ui";
-import { permissionsBySessionAtom } from "@/features/agent/permission";
-import { questionsBySessionAtom } from "@/features/agent/question";
-import {
-  buildVisibleSessionTree,
-  collapsedSessionIdsAtom,
-  limitSessionTreeRoots,
-  toggleSessionCollapsedAtom,
-} from "@/features/sessions";
-import { compactWorkspacePath } from "@/features/workspaces";
 import { cn, desktopApi } from "@/lib";
-import {
-  resetSessionRootLimitAtom,
-  SIDEBAR_SESSION_ROOT_LIMIT,
-  sessionRootLimitsAtom,
-  showMoreSessionsAtom,
-} from "./session-list-expansion-store";
-import { SessionSidebarItem } from "./session-sidebar-item";
+import { FoldersOpen } from "./folders-open-icon";
+import { pendingRequestSessionIdsAtom } from "./pending-request-store";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { WorkspaceItemTooltip } from "./sidebar-item-preview";
+import { SidebarSessionTree } from "./sidebar-session-tree";
 
 interface WorkspaceSidebarItemProps {
   activeWorkspaceId: string | null;
   expanded: boolean;
+  filtered: boolean;
   optimisticActiveSessionId: string | null;
   sessions: SessionRecord[];
   workspace: WorkspaceRecord;
@@ -55,6 +48,7 @@ interface WorkspaceSidebarItemProps {
 export function WorkspaceSidebarItem({
   activeWorkspaceId,
   expanded,
+  filtered,
   optimisticActiveSessionId,
   sessions,
   workspace,
@@ -67,46 +61,12 @@ export function WorkspaceSidebarItem({
   onSelectWorkspace,
 }: WorkspaceSidebarItemProps) {
   const { t } = useTranslation("sessions");
-  const collapsedSessionIds = useAtomValue(collapsedSessionIdsAtom);
-  const toggleSessionCollapsed = useSetAtom(toggleSessionCollapsedAtom);
-  const permissionsBySession = useAtomValue(permissionsBySessionAtom);
-  const questionsBySession = useAtomValue(questionsBySessionAtom);
-  const hasPendingRequest = (sessionId: string) =>
-    Boolean(
-      permissionsBySession[sessionId]?.some(
-        (permission) => permission.status === "pending",
-      ) ||
-        questionsBySession[sessionId]?.some(
-          (question) => question.status === "pending",
-        ),
-    );
-  const sessionRootLimits = useAtomValue(sessionRootLimitsAtom);
-  const showMoreSessions = useSetAtom(showMoreSessionsAtom);
-  const resetSessionRootLimit = useSetAtom(resetSessionRootLimitAtom);
-  const sessionTree = useMemo(
-    () => buildVisibleSessionTree(sessions, collapsedSessionIds),
-    [sessions, collapsedSessionIds],
-  );
-  const sessionRootLimit =
-    sessionRootLimits[workspace.id] ?? SIDEBAR_SESSION_ROOT_LIMIT;
-  const limitedTree = limitSessionTreeRoots(
-    sessionTree,
-    sessions,
-    sessionRootLimit,
-    sessions
-      .filter(
-        (session) =>
-          session.status === "running" ||
-          session.id === optimisticActiveSessionId ||
-          hasPendingRequest(session.id),
-      )
-      .map((session) => session.id),
-  );
-  const canShowLess = sessionRootLimit > SIDEBAR_SESSION_ROOT_LIMIT;
+  const pendingRequestSessionIds = useAtomValue(pendingRequestSessionIdsAtom);
   const isRunning =
     !expanded && sessions.some((session) => session.status === "running");
   const needsAttention =
-    !expanded && sessions.some((session) => hasPendingRequest(session.id));
+    !expanded &&
+    sessions.some((session) => pendingRequestSessionIds.has(session.id));
   const {
     attributes,
     listeners,
@@ -115,6 +75,7 @@ export function WorkspaceSidebarItem({
     transition,
     isDragging,
   } = useSortable({ id: workspace.id });
+  const WorkspaceIcon = workspaceIconFor(workspace, expanded);
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -127,10 +88,7 @@ export function WorkspaceSidebarItem({
       style={style}
     >
       <ContextMenu>
-        <WorkspaceItemTooltip
-          paths={workspace.rootPaths.map(compactWorkspacePath)}
-          title={workspace.name}
-        >
+        <WorkspaceItemTooltip workspace={workspace}>
           <ContextMenuTrigger asChild>
             <SidebarListRow
               isActive={activeWorkspaceId === workspace.id}
@@ -147,11 +105,7 @@ export function WorkspaceSidebarItem({
                   onToggleWorkspace(workspace.id);
                 }}
               >
-                {expanded ? (
-                  <FolderOpen className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
-                ) : (
-                  <Folder className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
-                )}
+                <WorkspaceIcon className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
                 <span className="min-w-0 flex-1 truncate">
                   {workspace.name}
                 </span>
@@ -223,57 +177,23 @@ export function WorkspaceSidebarItem({
         </ContextMenuContent>
       </ContextMenu>
       {expanded ? (
-        // Session rows start where the workspace name starts: a plain session's
-        // title and a parent session's chevron both align with it (ps-6).
-        <SidebarMenuSub className="ms-0 ps-0">
-          {sessions.length === 0 ? (
-            <div className="ps-6 pe-2 py-1 text-meta text-sidebar-fg-subtle">
-              {t("sidebar.noAgentsYet")}
-            </div>
-          ) : (
-            limitedTree.nodes.map((node) => (
-              <SidebarMenuSubItem key={node.session.id}>
-                <SessionSidebarItem
-                  hasChildren={node.hasChildren}
-                  isActive={node.session.id === optimisticActiveSessionId}
-                  isExpanded={!collapsedSessionIds.has(node.session.id)}
-                  onSelect={() =>
-                    onSelectSession(workspace.id, node.session.id)
-                  }
-                  onToggleExpand={() => toggleSessionCollapsed(node.session.id)}
-                  session={node.session}
-                />
-              </SidebarMenuSubItem>
-            ))
-          )}
-          {limitedTree.hiddenRootCount > 0 || canShowLess ? (
-            <SidebarMenuSubItem>
-              <SidebarListRow className="gap-3 ps-6 text-meta text-sidebar-fg-subtle">
-                {limitedTree.hiddenRootCount > 0 ? (
-                  <button
-                    type="button"
-                    className="min-w-0 truncate text-start hover:text-sidebar-fg"
-                    onClick={() => showMoreSessions(workspace.id)}
-                  >
-                    {t("sidebar.showMore", {
-                      count: limitedTree.hiddenRootCount,
-                    })}
-                  </button>
-                ) : null}
-                {canShowLess ? (
-                  <button
-                    type="button"
-                    className="min-w-0 truncate text-start hover:text-sidebar-fg"
-                    onClick={() => resetSessionRootLimit(workspace.id)}
-                  >
-                    {t("sidebar.showLess")}
-                  </button>
-                ) : null}
-              </SidebarListRow>
-            </SidebarMenuSubItem>
-          ) : null}
-        </SidebarMenuSub>
+        <SidebarSessionTree
+          emptyLabel={
+            filtered ? t("sidebar.view.noMatches") : t("sidebar.noAgentsYet")
+          }
+          listKey={workspace.id}
+          onSelectSession={onSelectSession}
+          optimisticActiveSessionId={optimisticActiveSessionId}
+          sessions={sessions}
+        />
       ) : null}
     </SidebarMenuItem>
   );
+}
+
+function workspaceIconFor(workspace: WorkspaceRecord, expanded: boolean) {
+  if (workspace.rootPaths.length > 1) {
+    return expanded ? FoldersOpen : Folders;
+  }
+  return expanded ? FolderOpen : Folder;
 }

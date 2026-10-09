@@ -27,6 +27,14 @@ export function AgentIcon({
     return <RegistryAgentIcon className={className} registryId={registryId} />;
   }
   const Icon = builtInAgentIcons[agentId];
+  if (!Icon) {
+    return (
+      <Bot
+        aria-hidden
+        className={cn("size-4 shrink-0 text-muted-foreground", className)}
+      />
+    );
+  }
   return <Icon className={cn("size-4 shrink-0", className)} />;
 }
 

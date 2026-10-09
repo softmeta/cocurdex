@@ -178,7 +178,7 @@ export function getAgentDisplayLabel(agentId: AgentId) {
       agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)
     );
   }
-  return agentLabels[agentId];
+  return agentLabels[agentId] ?? agentId;
 }
 
 export const bootstrapAgentsAtom = atom(

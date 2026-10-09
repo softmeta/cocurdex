@@ -75,7 +75,7 @@ export function ChatView({
   thinkingLevel,
   thinkingLevelOptions,
   activeBranch,
-  workspaceName,
+  workspace,
   workspaceRootPath,
   workspaceRootPaths,
   composerRef,
@@ -475,7 +475,7 @@ export function ChatView({
             {timelineGroups.length === 0 && !readOnly ? (
               <EmptyChatState
                 activeBranch={activeBranch}
-                workspaceName={workspaceName}
+                workspace={workspace}
                 sessionId={sessionId}
                 agentLabel={agentLabel}
                 agentType={agentType}
@@ -605,7 +605,7 @@ export function ChatView({
         <ComposerDock
           chatComposer={chatComposer}
           activeBranch={activeBranch}
-          workspaceName={workspaceName}
+          workspace={workspace}
           sessionId={sessionId}
           agentLabel={agentLabel}
           agentType={agentType}

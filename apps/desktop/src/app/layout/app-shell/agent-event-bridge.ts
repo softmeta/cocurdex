@@ -30,9 +30,12 @@ import {
 import {
   activeSessionIdAtom,
   applyRuntimeSessionModesAtom,
+  loadSessionAttentionAtom,
   markSessionMessageAtom,
+  markSessionsVisitedAtom,
   projectSubagentSessionFromToolCallAtom,
   reconcileSessionsAtom,
+  recordSessionResultAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
   upsertSessionAtom,
@@ -92,6 +95,9 @@ function applyAgentEventToStore(store: Store, event: AgentEvent) {
       sessionId: event.sessionId,
       createdAt: event.message.createdAt,
     });
+    if (event.message.role === "assistant") {
+      recordSessionResult(store, event.sessionId, event.message.createdAt);
+    }
     return;
   }
 
@@ -120,6 +126,32 @@ function applyAgentEventToStore(store: Store, event: AgentEvent) {
   }
 }
 
+function recordSessionResult(store: Store, sessionId: string, at: string) {
+  store.set(recordSessionResultAtom, { sessionId, at });
+  if (store.get(activeSessionIdAtom) === sessionId) {
+    store.set(markSessionsVisitedAtom, [sessionId]);
+  }
+}
+
+function loadSessionAttention(store: Store) {
+  void store.set(loadSessionAttentionAtom).catch((error: unknown) => {
+    console.error("[AgentEvent] session attention load failed", error);
+  });
+}
+
+function startSessionVisitSync(store: Store) {
+  let visibleSessionId = store.get(activeSessionIdAtom);
+  return store.sub(activeSessionIdAtom, () => {
+    const nextSessionId = store.get(activeSessionIdAtom);
+    if (nextSessionId === visibleSessionId) return;
+    const visitedIds = [visibleSessionId, nextSessionId].filter(
+      (id): id is string => Boolean(id),
+    );
+    visibleSessionId = nextSessionId;
+    store.set(markSessionsVisitedAtom, visitedIds);
+  });
+}
+
 // Replay-gap recovery: a dropped journaled event means event-sourced agent
 // state can be stale, so refetch one authoritative snapshot covering the
 // session list, queued inputs, usage, all pending interactions, and every
@@ -144,6 +176,7 @@ export function createAgentEventBridge(store: Store) {
     const snapshot = await desktopApi.resyncApp([...sessionIds]);
 
     store.set(reconcileSessionsAtom, snapshot.sessions);
+    loadSessionAttention(store);
     store.set(bootstrapQueuedInputsAtom, {
       inputs: snapshot.queuedAgentInputs,
       messages: snapshot.queuedMessages,
@@ -253,9 +286,12 @@ export function createAgentEventBridge(store: Store) {
       if (!event.areas.includes("agent")) return;
       void synchronize().catch(console.error);
     });
+    const unsubscribeVisits = startSessionVisitSync(store);
+    loadSessionAttention(store);
     return () => {
       unsubscribeEvents();
       unsubscribeData();
+      unsubscribeVisits();
     };
   };
 

@@ -30,9 +30,11 @@ import {
   type UpdateIssueLabelPayload,
   type UpdateIssuePayload,
   type UpdateNotePayload,
+  type UpdateSessionAttentionPayload,
   type UpdateViewPayload,
 } from "@cocurdex/shared";
 import { z } from "zod";
+import { idSchema as sessionIdSchema } from "../ipc";
 
 const idSchema = z.uuid();
 const viewIdSchema = z.union([z.literal("project"), idSchema]);
@@ -340,3 +342,9 @@ export const searchDocumentsPayloadSchema = z.object({
   workspaceId: idSchema.nullable().optional(),
   limit: z.number().int().min(1).max(200).optional(),
 }) satisfies z.ZodType<SearchDocumentsPayload>;
+
+export const updateSessionAttentionPayloadSchema = z.object({
+  sessionId: sessionIdSchema,
+  action: z.enum(["visited", "mark-unread", "settle", "unsettle"]),
+  at: z.string().datetime({ offset: true }),
+}) satisfies z.ZodType<UpdateSessionAttentionPayload>;

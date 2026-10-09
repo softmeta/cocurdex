@@ -22,12 +22,14 @@ import {
   EditWorkspaceDialog,
   updateWorkspaceAtom,
 } from "@/features/workspaces";
+import { SessionFilterEmpty } from "./session-filter-empty";
 import { SidebarScrollArea } from "./sidebar-scroll-area";
 import { WorkspaceSidebarItem } from "./workspace-sidebar-item";
 
 interface WorkspacesPanelProps {
   activeWorkspaceId: string | null;
   collapsedWorkspaceIds: string[];
+  filtered: boolean;
   optimisticActiveSessionId: string | null;
   sessionsByWorkspace: Record<string, SessionRecord[]>;
   workspaces: WorkspaceRecord[];
@@ -43,6 +45,7 @@ interface WorkspacesPanelProps {
 export function WorkspacesPanel({
   activeWorkspaceId,
   collapsedWorkspaceIds,
+  filtered,
   optimisticActiveSessionId,
   sessionsByWorkspace,
   workspaces,
@@ -109,6 +112,9 @@ export function WorkspacesPanel({
           }}
         >
           <SidebarMenu className="pe-3">
+            {filtered && workspaces.length === 0 ? (
+              <SessionFilterEmpty className="px-1 py-1 text-meta text-sidebar-fg-subtle" />
+            ) : null}
             <SortableContext
               items={workspaceIds}
               strategy={verticalListSortingStrategy}
@@ -117,6 +123,7 @@ export function WorkspacesPanel({
                 <WorkspaceSidebarItem
                   activeWorkspaceId={activeWorkspaceId}
                   expanded={!collapsedWorkspaceIds.includes(workspace.id)}
+                  filtered={filtered}
                   key={workspace.id}
                   onCreateAgent={onCreateAgent}
                   onEditWorkspace={setEditingWorkspaceId}

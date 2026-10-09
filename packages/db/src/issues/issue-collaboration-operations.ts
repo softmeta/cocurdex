@@ -21,6 +21,7 @@ import { withIssueMutation } from "./issue-mutation-helpers";
 import {
   getIssue,
   type IssueRow,
+  listIssueSessionIds,
   listLabels,
   projectSingleIssue,
   requireIssue,
@@ -42,6 +43,7 @@ type IssueCollaborationOperations = Pick<
   | "removeRelation"
   | "comment"
   | "linkSession"
+  | "listLinkedSessionIds"
 >;
 
 function assertRelationKind(kind: string): asserts kind is IssueRelationKind {
@@ -180,6 +182,9 @@ export function createIssueCollaborationOperations(
         }
         return linked;
       });
+    },
+    async listLinkedSessionIds() {
+      return [...new Set([...listIssueSessionIds(database).values()].flat())];
     },
   };
 }

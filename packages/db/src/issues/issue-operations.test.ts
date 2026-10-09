@@ -296,6 +296,12 @@ describe("issue operations", () => {
     expect(
       (await database.issues.getIssue({ id: issue.id }))?.sessionIds,
     ).toEqual(["session-1"]);
+    const second = await createIssue(database, "Review");
+    await database.issues.linkSession({
+      id: second.id,
+      sessionId: "session-1",
+    });
+    expect(await database.issues.listLinkedSessionIds()).toEqual(["session-1"]);
     database.close();
   });
 });
