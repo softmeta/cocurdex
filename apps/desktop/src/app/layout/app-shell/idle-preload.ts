@@ -2,8 +2,10 @@ import { FileTree, GitChanges } from "@/features/editor";
 import { SettingsScreen } from "@/features/settings";
 import { TerminalPanel } from "@/features/terminal";
 import { RightEditorPanel } from "../right-editor-panel-lazy";
+import { SessionListViewMenuContent } from "../sidebar/session-list-view-menu-content-lazy";
 
 const idlePreloads = [
+  SessionListViewMenuContent,
   SettingsScreen,
   RightEditorPanel,
   FileTree,
