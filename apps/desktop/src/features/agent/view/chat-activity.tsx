@@ -43,7 +43,7 @@ function ToolCallLabel({
 
   return (
     <>
-      <span className="min-w-0 truncate">
+      <span className="min-w-0 max-w-lg truncate">
         {title}
         {secondary ? (
           <span className="ms-1.5 font-normal text-chat-fg-muted/80">

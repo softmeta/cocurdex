@@ -220,6 +220,7 @@
     "editWorkspace": "编辑工作区",
     "expandChildren": "展开子会话",
     "marketplace": "市场",
+    "markUnread": "标为未读",
     "newSession": "新建会话",
     "newSessionInWorkspace": "在 {{workspaceName}} 中新建会话",
     "noAgentsYet": "暂无会话",
@@ -234,6 +235,65 @@
     "showMore_other": "显示更多（剩余 {{count}}）",
     "splitDown": "分屏到下侧",
     "splitRight": "分屏到右侧",
+    "unread": "未读",
+    "view": {
+      "agentFilter": "Agent",
+      "archived": "已归档会话",
+      "clearAllFilters": "清除筛选",
+      "clearFilters_one": "清除筛选",
+      "clearFilters_other": "清除 {{count}} 个筛选",
+      "collapseAll": "全部折叠",
+      "environment": {
+        "local": "本地",
+        "worktree": "Worktree"
+      },
+      "environmentFilter": "环境",
+      "expandAll": "全部展开",
+      "filtersLabel": "筛选",
+      "grouping": {
+        "agent": "Agent",
+        "status": "状态",
+        "updated": "最近更新",
+        "workspace": "工作区"
+      },
+      "groupingLabel": "分组",
+      "markAllRead": "全部标为已读",
+      "menu": "会话分组与筛选",
+      "noMatches": "没有匹配的会话",
+      "ordering": {
+        "activity": "最近活动",
+        "created": "创建时间"
+      },
+      "orderingLabel": "排序",
+      "rootLimit": {
+        "all": "全部",
+        "count_one": "{{count}} 个会话",
+        "count_other": "{{count}} 个会话"
+      },
+      "rootLimitLabel": "每组显示会话数",
+      "showLabel": "显示",
+      "showTimestamps": "显示时间",
+      "source": {
+        "created": "本地新建",
+        "imported": "导入",
+        "issue": "来自 Issue"
+      },
+      "sourceFilter": "来源",
+      "status": {
+        "attention": "需要处理",
+        "error": "出错",
+        "idle": "空闲",
+        "running": "运行中",
+        "unread": "未读"
+      },
+      "statusFilter": "状态",
+      "updated": {
+        "older": "更早",
+        "today": "今天",
+        "week": "近 7 天",
+        "yesterday": "昨天"
+      }
+    },
     "workspacesGroup": "工作"
   },
   "split": {
@@ -293,6 +353,8 @@
     "openFolder": "打开文件夹",
     "recents": "最近",
     "removeFailed": "无法移除该 workspace，请重试。",
+    "rootsAdditional": "附加文件夹",
+    "rootsPrimary": "主文件夹",
     "startDescription": "选择模型，描述任务，并让第一条提示保持聚焦。",
     "startTitle": "接下来在 {{workspaceName}} 做什么？",
     "startTitleAfter": "做什么？",

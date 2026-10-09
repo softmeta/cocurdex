@@ -151,6 +151,8 @@ export async function handleDaemonRequest(
       return service.dataService.commentIssue(request.params);
     case "issue.linkSession":
       return service.dataService.linkIssueSession(request.params);
+    case "issue.listLinkedSessionIds":
+      return service.dataService.listIssueLinkedSessionIds();
     case "search.documents":
       return service.dataService.searchDocuments(request.params);
     case "workspace.list":

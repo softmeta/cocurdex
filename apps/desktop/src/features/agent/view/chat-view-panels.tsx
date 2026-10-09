@@ -10,6 +10,7 @@ import type {
   AgentSlashCommand,
   AgentThinkingLevel,
   MessageAttachment,
+  WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { Folder } from "lucide-react";
@@ -30,6 +31,7 @@ import {
   TeamPanel,
   type ThinkingLevelOption,
 } from "@/features/sessions";
+import { MultiRootWorkspaceTooltip } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
@@ -67,7 +69,7 @@ interface ChatComposerControls {
   supportsSteering?: boolean;
   /** Live ACP task list (todo_write / plan update) — docked above the composer. */
   plan?: SessionPlan | null;
-  workspaceName?: string | null;
+  workspace?: Pick<WorkspaceRecord, "name" | "rootPaths"> | null;
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
@@ -112,24 +114,28 @@ interface ChatComposerControls {
 }
 
 function SessionWorkspaceFooterLabel({
-  workspaceName,
+  workspace,
 }: {
-  workspaceName?: string | null;
+  workspace?: Pick<WorkspaceRecord, "name" | "rootPaths"> | null;
 }) {
-  if (!workspaceName) {
+  if (!workspace) {
     return null;
   }
 
+  const multiRoot = workspace.rootPaths.length > 1;
+
   return (
-    <span
-      className={composerFooterControlClassName(
-        "flex max-w-40 text-chat-fg-muted",
-      )}
-      title={workspaceName}
-    >
-      <Folder className="size-3.5 shrink-0" />
-      <span className="min-w-0 truncate">{workspaceName}</span>
-    </span>
+    <MultiRootWorkspaceTooltip workspace={workspace}>
+      <span
+        className={composerFooterControlClassName(
+          "flex max-w-40 text-chat-fg-muted",
+        )}
+        title={multiRoot ? undefined : workspace.name}
+      >
+        <Folder className="size-3.5 shrink-0" />
+        <span className="min-w-0 truncate">{workspace.name}</span>
+      </span>
+    </MultiRootWorkspaceTooltip>
   );
 }
 
@@ -165,7 +171,7 @@ export function EmptyChatState({
   composerContextChips,
   onAnswerQuestion: _onAnswerQuestion,
   pendingQuestion: _pendingQuestion,
-  workspaceName,
+  workspace,
   ...composerProps
 }: ChatComposerControls) {
   // Workspace leads the footer; branch stays after the agent/runtime controls.
@@ -179,9 +185,7 @@ export function EmptyChatState({
           variant="panel"
           tone="welcome"
           mentionMenuPlacement="bottom"
-          footerLeading={
-            <SessionWorkspaceFooterLabel workspaceName={workspaceName} />
-          }
+          footerLeading={<SessionWorkspaceFooterLabel workspace={workspace} />}
           footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
         />
       </ComposerSurfaceBody>
@@ -208,7 +212,7 @@ function collectPendingPrompts(
 export function ComposerDock({
   chatComposer,
   activeBranch,
-  workspaceName,
+  workspace,
   composerRef,
   isRunning,
   pendingPermissionRequest,
@@ -345,9 +349,7 @@ export function ComposerDock({
                 }
               : {
                   footerLeading: (
-                    <SessionWorkspaceFooterLabel
-                      workspaceName={workspaceName}
-                    />
+                    <SessionWorkspaceFooterLabel workspace={workspace} />
                   ),
                   footerTrailing: (
                     <SessionBranchFooterLabel branch={activeBranch} />

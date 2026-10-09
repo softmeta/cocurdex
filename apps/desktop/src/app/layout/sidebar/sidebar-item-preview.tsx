@@ -1,4 +1,5 @@
-import type { AgentId } from "@cocurdex/shared";
+import type { AgentId, WorkspaceRecord } from "@cocurdex/shared";
+import { Folder } from "lucide-react";
 import type { ReactElement } from "react";
 import { Text, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui";
 import {
@@ -6,6 +7,7 @@ import {
   AgentRoleAvatar,
   type AgentRoleAvatarSource,
 } from "@/features/sessions";
+import { WorkspaceRootsPreview } from "@/features/workspaces";
 import { useSidebarScrolling } from "./sidebar-scrolling";
 import { useCompactAgeLabel } from "./use-compact-age-label";
 
@@ -16,6 +18,7 @@ interface SidebarItemPreviewProps {
   roleSummary?: string;
   timestamp: string;
   title: string;
+  workspaceName?: string;
 }
 
 export function SidebarItemPreview({
@@ -25,6 +28,7 @@ export function SidebarItemPreview({
   roleSummary,
   timestamp,
   title,
+  workspaceName,
 }: SidebarItemPreviewProps) {
   const relativeLabel = useCompactAgeLabel(timestamp);
   const identityLabel = [role?.name, agentLabel].filter(Boolean).join(" · ");
@@ -59,6 +63,14 @@ export function SidebarItemPreview({
           {roleSummary}
         </Text>
       ) : null}
+      {workspaceName ? (
+        <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+          <Folder className="size-3.5 shrink-0" />
+          <Text size="meta" tone="muted" className="min-w-0 truncate">
+            {workspaceName}
+          </Text>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -74,6 +86,7 @@ interface SidebarItemTooltipProps {
   roleSummary?: string;
   timestamp: string;
   title: string;
+  workspaceName?: string;
 }
 
 export function SidebarItemTooltip({
@@ -84,6 +97,7 @@ export function SidebarItemTooltip({
   roleSummary,
   timestamp,
   title,
+  workspaceName,
 }: SidebarItemTooltipProps) {
   const scrolling = useSidebarScrolling();
 
@@ -104,6 +118,7 @@ export function SidebarItemTooltip({
           roleSummary={roleSummary}
           timestamp={timestamp}
           title={title}
+          workspaceName={workspaceName}
         />
       </TooltipContent>
     </Tooltip>
@@ -112,14 +127,12 @@ export function SidebarItemTooltip({
 
 interface WorkspaceItemTooltipProps {
   children: ReactElement;
-  paths: string[];
-  title: string;
+  workspace: Pick<WorkspaceRecord, "name" | "rootPaths">;
 }
 
 export function WorkspaceItemTooltip({
   children,
-  paths,
-  title,
+  workspace,
 }: WorkspaceItemTooltipProps) {
   const scrolling = useSidebarScrolling();
 
@@ -133,21 +146,7 @@ export function WorkspaceItemTooltip({
         sideOffset={8}
         className={sidebarItemTooltipContentClassName}
       >
-        <div className="flex w-full min-w-0 flex-col gap-1">
-          <Text size="body" className="min-w-0 whitespace-normal">
-            {title}
-          </Text>
-          {paths.map((path) => (
-            <Text
-              className="min-w-0 break-all"
-              key={path}
-              size="meta"
-              tone="muted"
-            >
-              {path}
-            </Text>
-          ))}
-        </div>
+        <WorkspaceRootsPreview workspace={workspace} />
       </TooltipContent>
     </Tooltip>
   );

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui";
 import { cn } from "@/lib";
 import { sortWorkspacesByLastOpenedAtDesc } from "./workspace-order";
 import { compactWorkspacePath } from "./workspace-path";
+import { MultiRootWorkspaceTooltip } from "./workspace-roots-preview";
 
 const OPEN_FOLDER_VALUE = "__open_folder__";
 
@@ -125,43 +126,49 @@ export function WorkspacePicker({
     );
   }
 
+  const activeWorkspace = workspaces.find(
+    (workspace) => workspace.id === activeWorkspaceId,
+  );
+
   return (
-    <AppSearchableSelect
-      align={align}
-      appearance={appearance}
-      emptyText={t("workspace.empty")}
-      options={options}
-      searchPlaceholder={t("workspace.workspace")}
-      side={side}
-      trigger={trigger}
-      triggerAriaLabel={triggerAriaLabel ?? t("workspace.workspace")}
-      triggerClassName={triggerClass}
-      showChevron={showChevron}
-      triggerLabel={
-        triggerLabel ?? (
-          <span className="flex min-w-0 items-center gap-1.5">
-            <Folder className="size-3.5 shrink-0" />
-            <span className="truncate">
-              {workspaceName ?? t("workspace.enterWorkspace")}
+    <MultiRootWorkspaceTooltip side="bottom" workspace={activeWorkspace}>
+      <AppSearchableSelect
+        align={align}
+        appearance={appearance}
+        emptyText={t("workspace.empty")}
+        options={options}
+        searchPlaceholder={t("workspace.workspace")}
+        side={side}
+        trigger={trigger}
+        triggerAriaLabel={triggerAriaLabel ?? t("workspace.workspace")}
+        triggerClassName={triggerClass}
+        showChevron={showChevron}
+        triggerLabel={
+          triggerLabel ?? (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Folder className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {workspaceName ?? t("workspace.enterWorkspace")}
+              </span>
             </span>
-          </span>
-        )
-      }
-      value={activeWorkspaceId ?? ""}
-      onValueChange={(next) => {
-        if (next === OPEN_FOLDER_VALUE) {
-          onOpenWorkspace?.();
-          return;
+          )
         }
-        const selected = recentWorkspaces.find(
-          (workspace) => workspace.id === next,
-        );
-        if ((selected?.missingRootPaths?.length ?? 0) > 0) {
-          onRelocateWorkspace?.(next);
-          return;
-        }
-        onSelectWorkspace?.(next);
-      }}
-    />
+        value={activeWorkspaceId ?? ""}
+        onValueChange={(next) => {
+          if (next === OPEN_FOLDER_VALUE) {
+            onOpenWorkspace?.();
+            return;
+          }
+          const selected = recentWorkspaces.find(
+            (workspace) => workspace.id === next,
+          );
+          if ((selected?.missingRootPaths?.length ?? 0) > 0) {
+            onRelocateWorkspace?.(next);
+            return;
+          }
+          onSelectWorkspace?.(next);
+        }}
+      />
+    </MultiRootWorkspaceTooltip>
   );
 }

@@ -29,6 +29,7 @@ import {
   updateIssueLabelPayloadSchema,
   updateIssuePayloadSchema,
   updateNotePayloadSchema,
+  updateSessionAttentionPayloadSchema,
   updateViewPayloadSchema,
   workflowDefinitionIdPayloadSchema,
 } from "./data-schemas";
@@ -75,6 +76,17 @@ export function registerDataHandlers(ipc: IpcMain, userDataPath: string): void {
       await requestDaemon("note.delete", payload, options);
       return null;
     },
+  );
+
+  ipc.handle("issue:listLinkedSessionIds", () =>
+    requestDaemon("issue.listLinkedSessionIds", options),
+  );
+  ipc.handle("attention:list", () => requestDaemon("attention.list", options));
+  registerHandler(
+    ipc,
+    "attention:update",
+    updateSessionAttentionPayloadSchema,
+    (_event, payload) => requestDaemon("attention.update", payload, options),
   );
 
   ipc.handle("issue:listViews", () =>

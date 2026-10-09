@@ -1,5 +1,7 @@
 import type { SessionRecord } from "@cocurdex/shared";
 
+export type SessionRootOrder = "activity" | "created";
+
 export interface FlatSessionNode {
   depth: number;
   hasChildren: boolean;
@@ -14,7 +16,7 @@ function parentIdOf(session: SessionRecord) {
   return session.parentSessionId ?? null;
 }
 
-function groupChildren(sessions: SessionRecord[]) {
+export function groupChildren(sessions: readonly SessionRecord[]) {
   const childrenByParent = new Map<string | null, SessionRecord[]>();
   for (const session of sessions) {
     const parentId = parentIdOf(session);
@@ -25,9 +27,9 @@ function groupChildren(sessions: SessionRecord[]) {
   return childrenByParent;
 }
 
-function subtreeActivityAt(
+export function subtreeActivityAt(
   session: SessionRecord,
-  childrenByParent: Map<string | null, SessionRecord[]>,
+  childrenByParent: ReadonlyMap<string | null, SessionRecord[]>,
 ): string {
   let latest = sessionActivityAt(session);
   for (const child of childrenByParent.get(session.id) ?? []) {
@@ -39,15 +41,26 @@ function subtreeActivityAt(
   return latest;
 }
 
+function rootSortKey(
+  session: SessionRecord,
+  childrenByParent: Map<string | null, SessionRecord[]>,
+  order: SessionRootOrder,
+) {
+  return order === "created"
+    ? session.createdAt
+    : subtreeActivityAt(session, childrenByParent);
+}
+
 function sortRoots(
   sessions: SessionRecord[],
   childrenByParent: Map<string | null, SessionRecord[]>,
+  order: SessionRootOrder,
 ) {
   return [...sessions].sort((left, right) => {
-    const byActivity = subtreeActivityAt(right, childrenByParent).localeCompare(
-      subtreeActivityAt(left, childrenByParent),
+    const byKey = rootSortKey(right, childrenByParent, order).localeCompare(
+      rootSortKey(left, childrenByParent, order),
     );
-    return byActivity !== 0 ? byActivity : right.id.localeCompare(left.id);
+    return byKey !== 0 ? byKey : right.id.localeCompare(left.id);
   });
 }
 
@@ -116,6 +129,7 @@ export function sessionAncestorIds(
 export function buildVisibleSessionTree(
   sessions: SessionRecord[],
   collapsedIds: ReadonlySet<string> = new Set(),
+  order: SessionRootOrder = "activity",
 ): FlatSessionNode[] {
   const byId = new Map(sessions.map((session) => [session.id, session]));
   const childrenByParent = groupChildren(sessions);
@@ -155,6 +169,7 @@ export function buildVisibleSessionTree(
       return !parentId || !byId.has(parentId);
     }),
     childrenByParent,
+    order,
   );
 
   for (const root of roots) {
@@ -164,6 +179,7 @@ export function buildVisibleSessionTree(
   const orphans = sortRoots(
     sessions.filter((session) => !visited.has(session.id)),
     childrenByParent,
+    order,
   );
   for (const orphan of orphans) {
     walk(orphan, 0);
@@ -172,7 +188,7 @@ export function buildVisibleSessionTree(
   return result;
 }
 
-function rootSessionId(
+export function rootSessionId(
   sessionId: string,
   byId: ReadonlyMap<string, SessionRecord>,
 ) {

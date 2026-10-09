@@ -10,6 +10,7 @@ import type { DesktopApi } from "./types";
 type IssueFallbackApi = Pick<
   DesktopApi,
   | "issueListViews"
+  | "issueListLinkedSessionIds"
   | "issueLoad"
   | "issueGet"
   | "issueCreateView"
@@ -88,6 +89,7 @@ function fallbackDetail(id: string): IssueDetail {
 
 export const issueFallbackApi: IssueFallbackApi = {
   issueListViews: async () => [],
+  issueListLinkedSessionIds: async () => [],
   issueLoad: async () => null,
   issueGet: async () => null,
   issueCreateView: async (payload) => ({

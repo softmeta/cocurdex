@@ -1249,7 +1249,7 @@ export function CenterPanel({
             // the new content before the layout effect pulled it to bottom.
             key={activeSession.id}
             activeBranch={activeBranch}
-            workspaceName={activeWorkspace?.name}
+            workspace={activeWorkspace}
             agentLabel={getAgentDisplayLabel(activeSession.agentType)}
             agentType={activeSession.agentType}
             attachment={

@@ -1,7 +1,6 @@
-import { isChatSession } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, Plus, Search } from "lucide-react";
-import { type ReactNode, startTransition, useMemo, useOptimistic } from "react";
+import { type ReactNode, startTransition, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -40,7 +39,10 @@ import {
 import { isDetachedChatWindow } from "../chat-window/chat-window-state";
 import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
+import { SessionGroupsPanel } from "./session-groups-panel";
+import { SessionListViewMenu } from "./session-list-view-menu";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
+import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
 
 interface LeftSidebarProps {
@@ -123,23 +125,7 @@ export function LeftSidebar({
   const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
   const openSearchPalette = useSetAtom(searchPaletteOpenAtom);
 
-  const sessionsByWorkspace = useMemo(
-    () =>
-      sessions.reduce<Record<string, typeof sessions>>(
-        (accumulator, session) => {
-          if (isChatSession(session)) {
-            return accumulator;
-          }
-          if (!accumulator[session.workspaceId]) {
-            accumulator[session.workspaceId] = [];
-          }
-          accumulator[session.workspaceId].push(session);
-          return accumulator;
-        },
-        {},
-      ),
-    [sessions],
-  );
+  const sessionView = useSidebarSessionView(workspaces, sessions);
 
   const handleOpenWorkspace = async () => {
     const rootPath = await pickHostDirectory();
@@ -312,32 +298,53 @@ export function LeftSidebar({
                 </TooltipContent>
               </Tooltip>
             ) : null}
+            {isWorkspacesTab ? (
+              <SessionListViewMenu
+                agentIds={sessionView.agentIds}
+                allCollapsed={sessionView.allCollapsed}
+                onMarkAllRead={sessionView.markAllRead}
+                onToggleCollapseAll={sessionView.toggleCollapseAll}
+                unreadCount={sessionView.unreadCount}
+              />
+            ) : null}
           </div>
 
           <TabsContent
             className="flex min-h-0 flex-1 flex-col"
             value="workspaces"
           >
-            <WorkspacesPanel
-              activeWorkspaceId={activeWorkspaceId}
-              collapsedWorkspaceIds={collapsedWorkspaceIds}
-              onCreateAgent={handleCreateAgent}
-              onRemoveWorkspace={(id) => {
-                void handleRemoveWorkspace(id);
-              }}
-              onReorderWorkspaces={(activeId, overId) => {
-                reorderWorkspaces({ activeId, overId });
-              }}
-              onRevealWorkspace={(rootPath) => {
-                void handleRevealWorkspace(rootPath);
-              }}
-              onSelectSession={handleSelectSession}
-              onSelectWorkspace={selectWorkspace}
-              onToggleWorkspace={toggleWorkspace}
-              optimisticActiveSessionId={optimisticActiveSessionId}
-              sessionsByWorkspace={sessionsByWorkspace}
-              workspaces={workspaces}
-            />
+            {sessionView.grouping === "workspace" ? (
+              <WorkspacesPanel
+                activeWorkspaceId={activeWorkspaceId}
+                collapsedWorkspaceIds={collapsedWorkspaceIds}
+                filtered={sessionView.filtered}
+                onCreateAgent={handleCreateAgent}
+                onRemoveWorkspace={(id) => {
+                  void handleRemoveWorkspace(id);
+                }}
+                onReorderWorkspaces={(activeId, overId) => {
+                  reorderWorkspaces({ activeId, overId });
+                }}
+                onRevealWorkspace={(rootPath) => {
+                  void handleRevealWorkspace(rootPath);
+                }}
+                onSelectSession={handleSelectSession}
+                onSelectWorkspace={selectWorkspace}
+                onToggleWorkspace={toggleWorkspace}
+                optimisticActiveSessionId={optimisticActiveSessionId}
+                sessionsByWorkspace={sessionView.sessionsByWorkspace}
+                workspaces={sessionView.visibleWorkspaces}
+              />
+            ) : (
+              <SessionGroupsPanel
+                filtered={sessionView.filtered}
+                grouping={sessionView.grouping}
+                groups={sessionView.groups}
+                onSelectSession={handleSelectSession}
+                optimisticActiveSessionId={optimisticActiveSessionId}
+                workspaceNames={sessionView.workspaceNames}
+              />
+            )}
           </TabsContent>
 
           <TabsContent className="flex min-h-0 flex-1 flex-col" value="chat">

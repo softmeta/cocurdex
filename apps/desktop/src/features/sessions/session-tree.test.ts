@@ -29,6 +29,27 @@ function session(
 }
 
 describe("buildVisibleSessionTree", () => {
+  it("orders roots by creation time when asked", () => {
+    const older = session({
+      createdAt: "2026-08-30T00:00:00.000Z",
+      id: "older",
+      lastMessageAt: "2026-08-31T05:00:00.000Z",
+    });
+    const newer = session({
+      createdAt: "2026-08-31T00:00:00.000Z",
+      id: "newer",
+    });
+
+    expect(
+      buildVisibleSessionTree([older, newer]).map((node) => node.session.id),
+    ).toEqual(["older", "newer"]);
+    expect(
+      buildVisibleSessionTree([older, newer], new Set(), "created").map(
+        (node) => node.session.id,
+      ),
+    ).toEqual(["newer", "older"]);
+  });
+
   it("nests subagent sessions under their parent in spawn order", () => {
     const parent = session({
       id: "parent",

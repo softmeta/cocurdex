@@ -607,6 +607,12 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.invoke("notes:delete", payload),
   // === App-owned issues and views ===
   issueListViews: () => ipcRenderer.invoke("issue:listViews"),
+  issueListLinkedSessionIds: () =>
+    ipcRenderer.invoke("issue:listLinkedSessionIds"),
+  listSessionAttention: () => ipcRenderer.invoke("attention:list"),
+  updateSessionAttention: (
+    payload: import("@cocurdex/shared").UpdateSessionAttentionPayload,
+  ) => ipcRenderer.invoke("attention:update", payload),
   issueLoad: (payload: LoadViewPayload) =>
     ipcRenderer.invoke("issue:load", payload),
   issueGet: (payload: GetIssuePayload) =>

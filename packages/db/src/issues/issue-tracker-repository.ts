@@ -52,6 +52,7 @@ export interface IssueTrackerRepository {
   removeRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
   comment(payload: CommentIssuePayload): Promise<IssueDetail>;
   linkSession(payload: LinkIssueSessionPayload): Promise<boolean>;
+  listLinkedSessionIds(): Promise<string[]>;
 }
 
 export class IssueNotFoundError extends Error {

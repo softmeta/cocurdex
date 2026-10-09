@@ -1255,6 +1255,7 @@ export default interface Resources {
       delete: "Delete";
       editWorkspace: "Edit workspace";
       expandChildren: "Expand subagent sessions";
+      markUnread: "Mark as unread";
       marketplace: "Marketplace";
       newSession: "New session";
       newSessionInWorkspace: "New session in {{workspaceName}}";
@@ -1271,6 +1272,65 @@ export default interface Resources {
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
+      unread: "Unread";
+      view: {
+        agentFilter: "Agent";
+        archived: "Archived sessions";
+        clearAllFilters: "Clear filters";
+        clearFilters_one: "Clear filter";
+        clearFilters_other: "Clear {{count}} filters";
+        collapseAll: "Collapse all";
+        environment: {
+          local: "Local";
+          worktree: "Worktree";
+        };
+        environmentFilter: "Environment";
+        expandAll: "Expand all";
+        filtersLabel: "Filters";
+        grouping: {
+          agent: "Agent";
+          status: "Status";
+          updated: "Last updated";
+          workspace: "Workspace";
+        };
+        groupingLabel: "Group by";
+        markAllRead: "Mark all as read";
+        menu: "Group and filter sessions";
+        noMatches: "No matching sessions";
+        ordering: {
+          activity: "Recent activity";
+          created: "Created time";
+        };
+        orderingLabel: "Sort by";
+        rootLimit: {
+          all: "All";
+          count_one: "{{count}} session";
+          count_other: "{{count}} sessions";
+        };
+        rootLimitLabel: "Sessions per group";
+        showLabel: "Show";
+        showTimestamps: "Show timestamps";
+        source: {
+          created: "Created here";
+          imported: "Imported";
+          issue: "From issues";
+        };
+        sourceFilter: "Source";
+        status: {
+          attention: "Needs attention";
+          error: "Error";
+          idle: "Idle";
+          running: "Running";
+          unread: "Unread";
+        };
+        statusFilter: "Status";
+        updated: {
+          older: "Older";
+          today: "Today";
+          week: "Past 7 days";
+          yesterday: "Yesterday";
+        };
+      };
       workspacesGroup: "Work";
     };
     split: {
@@ -1331,6 +1391,8 @@ export default interface Resources {
       openedExisting: "Opened existing workspace “{{name}}”";
       recents: "Recents";
       removeFailed: "Could not remove this workspace. Try again.";
+      rootsAdditional: "Additional folders";
+      rootsPrimary: "Primary folder";
       startDescription: "Pick a model, describe the task, and keep the first prompt scoped.";
       startTitle: "What should we do in {{workspaceName}}?";
       startTitleAfter: "?";

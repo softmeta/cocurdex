@@ -823,6 +823,71 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("marks earlier session results as visited from version 20 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-08T00:00:00.000Z";
+    const result = "2026-10-07T12:00:00.000Z";
+    const visit = "2026-10-06T12:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES
+        ('s1', 'w1', 'Never visited', 'codex', 'idle', 'read-only', '${now}', '${now}'),
+        ('s2', 'w1', 'Visited earlier', 'codex', 'idle', 'read-only', '${now}', '${now}'),
+        ('s3', 'w1', 'Marked unread', 'codex', 'idle', 'read-only', '${now}', '${now}'),
+        ('s4', 'w1', 'No result', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO session_attention (session_id, last_visited_at, latest_result_at, result_disposition, updated_at)
+      VALUES
+        ('s1', NULL, '${result}', 'automatic', '${now}'),
+        ('s2', '${visit}', '${result}', 'automatic', '${now}'),
+        ('s3', NULL, '${result}', 'unread', '${now}'),
+        ('s4', NULL, NULL, 'automatic', '${now}');
+      PRAGMA user_version = 20;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT session_id, last_visited_at, result_disposition FROM session_attention ORDER BY session_id",
+        )
+        .all(),
+    ).toEqual([
+      {
+        session_id: "s1",
+        last_visited_at: result,
+        result_disposition: "automatic",
+      },
+      {
+        session_id: "s2",
+        last_visited_at: visit,
+        result_disposition: "automatic",
+      },
+      { session_id: "s3", last_visited_at: null, result_disposition: "unread" },
+      {
+        session_id: "s4",
+        last_visited_at: null,
+        result_disposition: "automatic",
+      },
+    ]);
+    expect(
+      database.prepare("SELECT title FROM sessions ORDER BY id").all(),
+    ).toEqual([
+      { title: "Never visited" },
+      { title: "Visited earlier" },
+      { title: "Marked unread" },
+      { title: "No result" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("keeps an up-to-date database that carries a stale version marker", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

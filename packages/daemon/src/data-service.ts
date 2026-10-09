@@ -234,6 +234,10 @@ export class DaemonDataService {
     return linked;
   }
 
+  listIssueLinkedSessionIds() {
+    return this.state.data.issues.listLinkedSessionIds();
+  }
+
   async linkAttachedIssues(
     sessionId: string,
     attachments: readonly MessageAttachment[] | undefined,

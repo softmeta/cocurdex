@@ -397,6 +397,7 @@ export type DaemonRequestPayloadByMethod = {
   "issue.removeRelation": IssueRelationPayload;
   "issue.comment": CommentIssuePayload;
   "issue.linkSession": LinkIssueSessionPayload;
+  "issue.listLinkedSessionIds": undefined;
   "search.documents": SearchDocumentsPayload;
   "workflow.list": undefined;
   "workflow.get": { workflowRunId: string };
@@ -617,6 +618,7 @@ export type DaemonResultByMethod = {
   "issue.removeRelation": IssueDetail;
   "issue.comment": IssueDetail;
   "issue.linkSession": boolean;
+  "issue.listLinkedSessionIds": string[];
   "search.documents": SearchDocumentResult[];
   "workflow.list": WorkflowRunRecord[];
   "workflow.get": WorkflowAggregate | null;
@@ -678,6 +680,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "daemon.status": true,
   "issue.listViews": true,
   "issue.listLabels": true,
+  "issue.listLinkedSessionIds": true,
   "teamTemplate.list": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,

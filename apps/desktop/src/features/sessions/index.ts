@@ -45,6 +45,15 @@ export {
 } from "./provider-model";
 export { ScriptRunPanel, ScriptRunProposals } from "./script-run";
 export {
+  canMarkSessionUnread,
+  loadSessionAttentionAtom,
+  markSessionsVisitedAtom,
+  markSessionUnreadAtom,
+  recordSessionResultAtom,
+  sessionResultAttentionAtom,
+  unreadSessionIdsAtom,
+} from "./session-attention-store";
+export {
   findSessionConfigOption,
   getComposerSessionConfigOptions,
   getConfigOptionSpeedTiers,
