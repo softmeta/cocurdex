@@ -171,8 +171,10 @@ describe("HTML code fence preview", () => {
         streaming
       />,
     );
+    await waitFor(() => {
+      expect(frame.srcdoc).toContain("script-src 'unsafe-inline'");
+    });
     expect(screen.getByTitle("HTML preview")).toBe(frame);
-    expect(frame.srcdoc).toContain("script-src 'unsafe-inline'");
     expect(frame.srcdoc).toContain(code);
     rerender(<MarkdownRenderer content={`\`\`\`html\n${code}\n\`\`\``} />);
     expect(screen.getByRole("button", { name: "Copy code" })).toBeEnabled();
