@@ -16,9 +16,14 @@ export type ActivityKind =
   | "thinking"
   | "usingTools";
 
+export type ActivityStep =
+  | { headline: string; kind: "reasoning" }
+  | { kind: "toolCall"; toolCall: AgentToolCallRecord };
+
 export type ActivityState = {
   activeToolCalls?: AgentToolCallRecord[];
   kind: ActivityKind;
+  latestStep?: ActivityStep;
   tone: "complete" | "error" | "muted" | "running";
   toolActivityId?: string;
 };
@@ -57,6 +62,67 @@ function isStreamingResponse(
     message.content.trim().length > 0 &&
     !toolCalls.some((toolCall) => startedAfter(toolCall, message))
   );
+}
+
+type ReasoningLine = { isTitle: boolean; text: string };
+
+function parseReasoningLine(line: string): ReasoningLine | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("<!--")) {
+    return null;
+  }
+  const isHeading = trimmed.startsWith("#");
+  const text = trimmed.replace(/^#+/, "").trim();
+  if (!text.startsWith("**")) {
+    return text ? { isTitle: isHeading, text } : null;
+  }
+  const boldEnd = text.indexOf("**", 2);
+  if (boldEnd < 0) {
+    return null;
+  }
+  const title = `${text.slice(2, boldEnd)}${text.slice(boldEnd + 2)}`.trim();
+  return title ? { isTitle: true, text: title } : null;
+}
+
+export function getReasoningHeadline(content: string) {
+  const lines = content
+    .split(/\r?\n/)
+    .map(parseReasoningLine)
+    .filter((line): line is ReasoningLine => line !== null);
+  return (
+    lines.findLast((line) => line.isTitle)?.text ?? lines.at(-1)?.text ?? null
+  );
+}
+
+function getLatestReasoningHeadline(messages: MessageRecord[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!message || message.role === "user") {
+      return null;
+    }
+    const headline =
+      message.kind === "reasoning"
+        ? getReasoningHeadline(message.content)
+        : null;
+    if (headline) {
+      return { headline, message };
+    }
+  }
+  return null;
+}
+
+function getLatestStep(
+  messages: MessageRecord[],
+  latestToolCall: AgentToolCallRecord | undefined,
+): ActivityStep | null {
+  const reasoning = getLatestReasoningHeadline(messages);
+  if (
+    latestToolCall &&
+    (!reasoning || startedAfter(latestToolCall, reasoning.message))
+  ) {
+    return { kind: "toolCall", toolCall: latestToolCall };
+  }
+  return reasoning ? { headline: reasoning.headline, kind: "reasoning" } : null;
 }
 
 export function getActivityState({
@@ -100,28 +166,25 @@ export function getActivityState({
     };
   }
 
-  if (isRunning && latestMessage?.role === "assistant") {
-    return isStreamingResponse(latestMessage, toolCalls)
-      ? { kind: "responding", ...runningState }
-      : { kind: "thinking", ...runningState };
+  if (!isRunning) {
+    return latestMessage?.role === "assistant"
+      ? { kind: "completed", tone: "complete" }
+      : { kind: "ready", tone: "muted" };
   }
 
-  if (isRunning) {
-    return { kind: "planning", ...runningState };
+  if (
+    latestMessage?.role === "assistant" &&
+    isStreamingResponse(latestMessage, toolCalls)
+  ) {
+    return { kind: "responding", ...runningState };
   }
 
-  if (latestMessage?.role === "assistant") {
-    return { kind: "completed", tone: "complete" };
-  }
-
-  return { kind: "ready", tone: "muted" };
-}
-
-/** `m:ss` for a run duration; minutes keep counting past 60 (`72:05`). */
-export function formatElapsed(elapsedMs: number): string {
-  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const seconds = totalSeconds % 60;
-  return `${Math.floor(totalSeconds / 60)}:${String(seconds).padStart(2, "0")}`;
+  const latestStep = getLatestStep(messages, latestToolCall);
+  return {
+    kind: latestMessage?.role === "assistant" ? "thinking" : "planning",
+    ...runningState,
+    ...(latestStep ? { latestStep } : {}),
+  };
 }
 
 export function formatDurationMs(durationMs: number) {
@@ -139,6 +202,10 @@ export function formatDurationMs(durationMs: number) {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+export function formatElapsed(elapsedMs: number) {
+  return formatDurationMs(Math.floor(Math.max(0, elapsedMs) / 1000) * 1000);
 }
 
 const TOOL_CALL_REVEAL_DELAY_MS = 400;
@@ -168,4 +235,32 @@ export function getShownToolCallChangeDelay({
   }
 
   return Math.max(TOOL_CALL_REVEAL_DELAY_MS, remainingVisibleMs);
+}
+
+const STEP_MIN_VISIBLE_MS = 1500;
+
+export type ShownStep = { at: number; key: string; step: ActivityStep };
+
+export function getActivityStepKey(step: ActivityStep) {
+  return step.kind === "reasoning"
+    ? `reasoning:${step.headline}`
+    : `toolCall:${step.toolCall.id}`;
+}
+
+export function getShownStepChangeDelay({
+  activeKey,
+  now,
+  shown,
+}: {
+  activeKey: string | null;
+  now: number;
+  shown: Pick<ShownStep, "at" | "key"> | null;
+}): number | null {
+  if (activeKey === (shown?.key ?? null)) {
+    return null;
+  }
+  if (!shown) {
+    return 0;
+  }
+  return Math.max(0, shown.at + STEP_MIN_VISIBLE_MS - now);
 }

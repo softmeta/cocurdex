@@ -63,6 +63,8 @@ export function formatToolCallOutput(
   return text?.join("\n") || formatToolCallData(rawOutput);
 }
 
+export type ToolCallTense = "past" | "present";
+
 function getResourceLinkPath(value: unknown) {
   const record = asObjectRecord(value);
   if (record?.type !== "resource_link" || typeof record.uri !== "string") {
@@ -233,12 +235,18 @@ export function getLineRangeLabel(
   return `L${startLine ?? endLine}`;
 }
 
-export function getToolPreviewTitle(location: ToolCallPreviewLocation) {
+export function getToolPreviewTitle(
+  location: ToolCallPreviewLocation,
+  tense: ToolCallTense = "present",
+) {
   const rangeLabel = getLineRangeLabel(location.startLine, location.endLine);
-  return i18n.t("agent:toolCalls.readFile", {
+  const values = {
     fileName: getFileLabel(location.filePath),
     range: rangeLabel ? ` ${rangeLabel}` : "",
-  });
+  };
+  return tense === "past"
+    ? i18n.t("agent:toolCalls.readFileDone", values)
+    : i18n.t("agent:toolCalls.readFile", values);
 }
 
 export function getToolCallPreviewLocations(
@@ -497,7 +505,11 @@ function getParentPath(filePath: string) {
   );
 }
 
-export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
+export function getToolCallTriggerParts(
+  toolCall: AgentToolCallRecord,
+  tense: ToolCallTense = "present",
+) {
+  const isPast = tense === "past";
   if (toolCall.kind === WORKTREE_SETUP_TOOL_KIND) {
     return {
       title: i18n.t("agent:toolCalls.worktreeSetup"),
@@ -507,18 +519,24 @@ export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
 
   const skill = asObjectRecord(toolCall.rawInput)?.skill;
   if (typeof skill === "string" && skill.length > 0) {
-    return { title: i18n.t("agent:toolCalls.skill"), secondary: skill };
+    const title = isPast
+      ? i18n.t("agent:toolCalls.skillDone")
+      : i18n.t("agent:toolCalls.skill");
+    return { title, secondary: skill };
   }
 
   const query = asObjectRecord(toolCall.rawInput)?.query;
   if (toolCall.kind === "search" && typeof query === "string" && query) {
-    return { title: i18n.t("agent:toolCalls.search"), secondary: query };
+    const title = isPast
+      ? i18n.t("agent:toolCalls.searchDone")
+      : i18n.t("agent:toolCalls.search");
+    return { title, secondary: query };
   }
 
   const readLocation = getSingleReadLocation(toolCall);
   if (readLocation) {
     return {
-      title: getToolPreviewTitle(readLocation),
+      title: getToolPreviewTitle(readLocation, tense),
       secondary: getParentPath(readLocation.filePath) || null,
     };
   }
@@ -528,7 +546,9 @@ export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
   if (isCommandToolCall(toolCall)) {
     const titleCommand = title.replace(/^(execute|run)\s*/i, "").trim();
     return {
-      title: i18n.t("agent:toolCalls.execute"),
+      title: isPast
+        ? i18n.t("agent:toolCalls.executeDone")
+        : i18n.t("agent:toolCalls.execute"),
       secondary:
         getToolCallInputSummary(toolCall) ||
         truncateMiddle(sanitizeCommand(titleCommand || title)),
