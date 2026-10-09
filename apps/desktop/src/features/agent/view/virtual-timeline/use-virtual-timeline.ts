@@ -83,7 +83,10 @@ export function useVirtualTimeline({
     [focusedId, groups.length, lookup, selectedIds, targetId],
   );
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    anchorTo: performance.now() < holdUntilRef.current ? "start" : "end",
+    anchorTo:
+      targetId !== null || performance.now() < holdUntilRef.current
+        ? "start"
+        : "end",
     count: groups.length,
     estimateSize: () => CONVERSATION_ESTIMATED_HEIGHT,
     followOnAppend: true,
@@ -171,7 +174,10 @@ export function useVirtualTimeline({
         holdUntilRef.current = performance.now() + durationMs;
         virtualizer.options.anchorTo = "start";
         setTimeout(() => {
-          if (performance.now() >= holdUntilRef.current) {
+          if (
+            performance.now() >= holdUntilRef.current &&
+            targetRef.current === null
+          ) {
             virtualizer.options.anchorTo = "end";
           }
         }, durationMs);

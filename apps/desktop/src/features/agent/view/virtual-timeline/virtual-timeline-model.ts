@@ -63,3 +63,12 @@ export function getMessageScrollTop(
     ),
   );
 }
+
+const TIMELINE_BOTTOM_PADDING = 24;
+
+export function getAnchoredConversationMinHeight(viewportHeight: number) {
+  return Math.max(
+    0,
+    viewportHeight - MESSAGE_SCROLL_INSET - TIMELINE_BOTTOM_PADDING,
+  );
+}

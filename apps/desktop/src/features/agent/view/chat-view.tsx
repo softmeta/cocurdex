@@ -49,6 +49,7 @@ import type {
 import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
+import { useSentPromptAnchor } from "./use-sent-prompt-anchor";
 import {
   type ChatTimelineScrollHandle,
   ChatVirtualTimeline,
@@ -285,10 +286,13 @@ export function ChatView({
       return timelineScrollRef.current.restorePosition(position);
     },
   );
-  // Sending a new prompt re-engages the bottom lock and jumps to the end —
-  // the user is starting a new turn and expects to see the response, even
-  // if they scrolled up to read history. The appended message has not
-  // rendered yet; the content ResizeObserver below follows it once it does.
+  // Sending a new prompt pins it to the top of the viewport once it renders;
+  // the response then grows in place below it instead of being followed.
+  const { anchoredPromptId, anchorNextPrompt } = useSentPromptAnchor({
+    awaitingReplyOnMount: isRunning && latestMessage?.role === "user",
+    latestPromptId: stickyUserMessages.at(-1)?.id ?? null,
+    scrollToUserMessage,
+  });
   const stableOnSend = useCallback(
     (
       message: string,
@@ -301,8 +305,9 @@ export function ChatView({
         useOppositeFollowUpBehavior,
       );
       scrollToLatest("auto");
+      anchorNextPrompt();
     },
-    [scrollToLatest],
+    [anchorNextPrompt, scrollToLatest],
   );
   const activeUserNavigationMessageId =
     activeUserMessageId ?? stickyUserMessages.at(-1)?.id ?? null;
@@ -513,6 +518,7 @@ export function ChatView({
               <>
                 <ChatVirtualTimeline
                   activity={activity}
+                  anchoredPromptId={anchoredPromptId}
                   groups={conversationGroups}
                   isRunning={isRunning}
                   latestMessageId={latestMessage?.id ?? null}
