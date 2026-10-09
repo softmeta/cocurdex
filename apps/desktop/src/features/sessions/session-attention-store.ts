@@ -106,12 +106,16 @@ function sendAttentionUpdate(
 export const markSessionsVisitedAtom = atom(
   null,
   (get, set, sessionIds: readonly string[]) => {
-    if (sessionIds.length === 0) {
+    const current = get(sessionResultAttentionAtom);
+    const withResults = sessionIds.filter(
+      (sessionId) => current[sessionId]?.latestResultAt,
+    );
+    if (withResults.length === 0) {
       return;
     }
     const at = new Date().toISOString();
-    const next = { ...get(sessionResultAttentionAtom) };
-    for (const sessionId of sessionIds) {
+    const next = { ...current };
+    for (const sessionId of withResults) {
       next[sessionId] = {
         ...(next[sessionId] ?? EMPTY_RESULT_ATTENTION),
         lastVisitedAt: at,

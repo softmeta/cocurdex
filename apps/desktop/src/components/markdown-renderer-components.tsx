@@ -224,7 +224,7 @@ export function createMarkdownComponents(
                 : "border-chat-border-soft",
           )}
         >
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-sm in-data-streaming:table-fixed">
             {children}
           </table>
         </div>

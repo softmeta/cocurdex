@@ -8,9 +8,11 @@ import { getToolCallTriggerParts } from "../tool-call/tool-call-utils";
 import {
   type ActivityKind,
   type ActivityState,
+  type ActivityStep,
   formatElapsed,
 } from "./chat-activity-state";
 import { useActivityMotion } from "./use-activity-motion";
+import { useSteadyStep } from "./use-steady-step";
 import { useSteadyToolCall } from "./use-steady-tool-call";
 
 function ActivityGlyph({ activity }: { activity: ActivityState }) {
@@ -62,6 +64,37 @@ function getIdleActivityKind(activity: ActivityState): ActivityKind {
   return activity.kind === "usingTools" ? "thinking" : activity.kind;
 }
 
+function LatestStepLabel({ step }: { step: ActivityStep }) {
+  if (step.kind === "reasoning") {
+    return (
+      <span className="min-w-0 max-w-lg truncate font-normal text-chat-fg-muted/70">
+        {step.headline}
+      </span>
+    );
+  }
+
+  const { title, secondary } = getToolCallTriggerParts(step.toolCall, "past");
+  return (
+    <span className="min-w-0 max-w-lg truncate font-normal text-chat-fg-muted/70">
+      {secondary ? `${title} ${secondary}` : title}
+    </span>
+  );
+}
+
+function IdleActivityLabel({ activity }: { activity: ActivityState }) {
+  const { t } = useTranslation("agent");
+  const step = useSteadyStep(activity.latestStep);
+
+  return (
+    <>
+      <span className="shrink-0">
+        {t(`activity.${getIdleActivityKind(activity)}`)}
+      </span>
+      {step ? <LatestStepLabel step={step} /> : null}
+    </>
+  );
+}
+
 function useElapsedLabel(runStartedAt?: number) {
   const [mountedAt] = useState(() => Date.now());
   const [now, setNow] = useState(mountedAt);
@@ -81,7 +114,6 @@ export function ActivityLine({
   activity: ActivityState;
   runStartedAt?: number;
 }) {
-  const { t } = useTranslation("agent");
   const elapsedLabel = useElapsedLabel(runStartedAt);
   const activeToolCalls = activity.activeToolCalls ?? [];
   const steadyToolCall = useSteadyToolCall(activeToolCalls.at(-1));
@@ -92,21 +124,19 @@ export function ActivityLine({
   return (
     <div className="flex min-w-0 max-w-full items-center gap-2 self-start py-1 pe-1.5 text-meta font-medium text-chat-fg-muted">
       <ActivityGlyph activity={activity} />
+      {activity.tone === "running" ? (
+        <span className="shrink-0 tabular-nums text-chat-fg-muted/70">
+          {elapsedLabel}
+        </span>
+      ) : null}
       {steadyToolCall ? (
         <ToolCallLabel
           otherCount={otherToolCallCount}
           toolCall={steadyToolCall}
         />
       ) : (
-        <span className="shrink-0">
-          {t(`activity.${getIdleActivityKind(activity)}`)}
-        </span>
+        <IdleActivityLabel activity={activity} />
       )}
-      {activity.tone === "running" ? (
-        <span className="shrink-0 tabular-nums text-chat-fg-muted/70">
-          {elapsedLabel}
-        </span>
-      ) : null}
     </div>
   );
 }

@@ -16,3 +16,7 @@ export {
   isAuthenticationFailureText,
 } from "./claude-result-error";
 export { buildClaudeUserContent } from "./claude-user-content";
+export {
+  CLAUDE_SUPPORTED_DIALOG_KINDS,
+  createClaudeOnUserDialog,
+} from "./claude-user-dialog";

@@ -7,15 +7,19 @@ import {
 } from "@/features/agent/view/chat-activity-state";
 
 describe("formatElapsed", () => {
-  it("pads seconds and keeps counting minutes past an hour", () => {
-    expect(formatElapsed(0)).toBe("0:00");
-    expect(formatElapsed(7_400)).toBe("0:07");
-    expect(formatElapsed(65_000)).toBe("1:05");
-    expect(formatElapsed(4_325_000)).toBe("72:05");
+  it("uses the completed-duration vocabulary", () => {
+    expect(formatElapsed(0)).toBe("0s");
+    expect(formatElapsed(65_000)).toBe("1m 5s");
+    expect(formatElapsed(4_325_000)).toBe("1h 12m");
+  });
+
+  it("counts whole elapsed seconds without rounding ahead", () => {
+    expect(formatElapsed(7_900)).toBe("7s");
+    expect(formatElapsed(59_999)).toBe("59s");
   });
 
   it("clamps clock skew to zero", () => {
-    expect(formatElapsed(-500)).toBe("0:00");
+    expect(formatElapsed(-500)).toBe("0s");
   });
 });
 

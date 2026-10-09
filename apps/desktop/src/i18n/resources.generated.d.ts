@@ -248,6 +248,7 @@ export default interface Resources {
       count_one: "{{count}} call";
       count_other: "{{count}} calls";
       execute: "Run";
+      executeDone: "Ran";
       failed: "Failed";
       files: "Files";
       files_one: "{{count}} file";
@@ -260,12 +261,15 @@ export default interface Resources {
       outputLoading: "Loading output…";
       pending: "Pending";
       readFile: "Read {{fileName}}{{range}}";
+      readFileDone: "Read {{fileName}}{{range}}";
       readFiles: "Read files";
       running: "Running";
       search: "Search";
+      searchDone: "Searched";
       showLess: "Show less";
       showMore: "Show more";
       skill: "Use skill";
+      skillDone: "Used skill";
       subagent: "Using subagent";
       subagentCompleted: "Subagent completed";
       subagentEmpty: "No subagent messages yet.";

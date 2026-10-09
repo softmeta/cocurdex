@@ -36,6 +36,7 @@ import {
   projectSubagentSessionFromToolCallAtom,
   reconcileSessionsAtom,
   recordSessionResultAtom,
+  sessionsAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
   upsertSessionAtom,
@@ -144,7 +145,13 @@ function startSessionVisitSync(store: Store) {
   return store.sub(activeSessionIdAtom, () => {
     const nextSessionId = store.get(activeSessionIdAtom);
     if (nextSessionId === visibleSessionId) return;
-    const visitedIds = [visibleSessionId, nextSessionId].filter(
+    const sessions = store.get(sessionsAtom);
+    const previousSessionId = sessions.some(
+      (session) => session.id === visibleSessionId,
+    )
+      ? visibleSessionId
+      : null;
+    const visitedIds = [previousSessionId, nextSessionId].filter(
       (id): id is string => Boolean(id),
     );
     visibleSessionId = nextSessionId;

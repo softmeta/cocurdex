@@ -5,6 +5,8 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   getActivityState,
+  getReasoningHeadline,
+  getShownStepChangeDelay,
   getShownToolCallChangeDelay,
 } from "./chat-activity-state";
 
@@ -166,17 +168,93 @@ describe("getActivityState while replying", () => {
     });
   });
 
-  it.each([
-    { content: "Reasoning", kind: "reasoning" as const },
-    { content: "   " },
-  ])("keeps thinking for a non-response message: %j", (message) => {
+  it.each([{ content: "   ", kind: "reasoning" as const }, { content: "   " }])(
+    "keeps thinking for a non-response message: %j",
+    (message) => {
+      expect(
+        getActivityState({
+          isRunning: true,
+          messages: [{ ...reply, ...message }],
+          toolCalls: [],
+        }),
+      ).toEqual({ kind: "thinking", tone: "running" });
+    },
+  );
+
+  it("shows the latest reasoning headline while thinking", () => {
     expect(
       getActivityState({
         isRunning: true,
-        messages: [{ ...reply, ...message }],
+        messages: [
+          {
+            ...reply,
+            content: "**Inspecting events**\n\nThe adapter maps items.",
+            kind: "reasoning",
+          },
+        ],
         toolCalls: [],
       }),
-    ).toEqual({ kind: "thinking", tone: "running" });
+    ).toEqual({
+      kind: "thinking",
+      latestStep: { headline: "Inspecting events", kind: "reasoning" },
+      tone: "running",
+    });
+  });
+
+  it("replaces the reasoning headline with the tool that followed it", () => {
+    const finished = {
+      ...toolCall("read", "completed"),
+      startedAt: "2026-10-07T00:00:02.000Z",
+    };
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [{ ...reply, content: "**Planning**", kind: "reasoning" }],
+        toolCalls: [finished],
+      }),
+    ).toEqual({
+      kind: "thinking",
+      latestStep: { kind: "toolCall", toolCall: finished },
+      tone: "running",
+      toolActivityId: "read",
+    });
+  });
+
+  it("shows reasoning that arrives after the latest tool", () => {
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [
+          {
+            ...reply,
+            content: "**Checking limits**",
+            createdAt: "2026-10-07T00:00:03.000Z",
+            kind: "reasoning",
+          },
+        ],
+        toolCalls: [
+          {
+            ...toolCall("read", "completed"),
+            startedAt: "2026-10-07T00:00:02.000Z",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      latestStep: { headline: "Checking limits", kind: "reasoning" },
+    });
+  });
+
+  it("ignores reasoning from earlier turns", () => {
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [
+          { ...reply, content: "**Old**", kind: "reasoning" },
+          { ...reply, content: "Next", id: "user", role: "user" },
+        ],
+        toolCalls: [],
+      }),
+    ).toEqual({ kind: "planning", tone: "running" });
   });
 
   it("returns to thinking after a tool follows the reply", () => {
@@ -191,7 +269,11 @@ describe("getActivityState while replying", () => {
           },
         ],
       }),
-    ).toEqual({ kind: "thinking", tone: "running", toolActivityId: "done" });
+    ).toMatchObject({
+      kind: "thinking",
+      tone: "running",
+      toolActivityId: "done",
+    });
   });
 
   it("uses event sequence when reply and tool timestamps match", () => {
@@ -207,7 +289,11 @@ describe("getActivityState while replying", () => {
           },
         ],
       }),
-    ).toEqual({ kind: "thinking", tone: "running", toolActivityId: "done" });
+    ).toMatchObject({
+      kind: "thinking",
+      tone: "running",
+      toolActivityId: "done",
+    });
   });
 
   it("marks the reply complete when the run ends", () => {
@@ -218,5 +304,56 @@ describe("getActivityState while replying", () => {
         toolCalls: [],
       }),
     ).toEqual({ kind: "completed", tone: "complete" });
+  });
+});
+
+describe("getReasoningHeadline", () => {
+  it.each([
+    ["**Inspecting events**", "Inspecting events"],
+    ["Intro\n\n## Reading config\n", "Reading config"],
+    ["**Done** with setup", "Done with setup"],
+    ["Checking the adapter.\nThen the view.", "Then the view."],
+    ["**Checking tests**\n\n**Half", "Checking tests"],
+    ["Line\r\n<!-- hidden -->\r\n", "Line"],
+    ["  \n", null],
+  ])("reads %j as %j", (content, headline) => {
+    expect(getReasoningHeadline(content)).toBe(headline);
+  });
+});
+
+describe("getShownStepChangeDelay", () => {
+  const shown = { at: 1_000, key: "reasoning:Inspecting sync" };
+
+  it("shows the first step at once", () => {
+    expect(
+      getShownStepChangeDelay({
+        activeKey: "toolCall:read",
+        now: 1_000,
+        shown: null,
+      }),
+    ).toBe(0);
+  });
+
+  it("keeps the shown step until the active one changes", () => {
+    expect(
+      getShownStepChangeDelay({ activeKey: shown.key, now: 9_000, shown }),
+    ).toBeNull();
+  });
+
+  it("holds a shown step for the minimum duration before replacing it", () => {
+    expect(
+      getShownStepChangeDelay({
+        activeKey: "toolCall:read",
+        now: 1_400,
+        shown,
+      }),
+    ).toBe(1_100);
+    expect(
+      getShownStepChangeDelay({
+        activeKey: "toolCall:read",
+        now: 3_000,
+        shown,
+      }),
+    ).toBe(0);
   });
 });

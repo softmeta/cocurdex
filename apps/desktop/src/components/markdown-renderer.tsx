@@ -3,6 +3,7 @@ import {
   memo,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -24,6 +25,15 @@ import {
   subscribeStreamdownPlugins,
 } from "./markdown-heavy-plugins";
 import { createMarkdownComponents } from "./markdown-renderer-components";
+import { createStreamFadeBlockPlugins } from "./markdown-stream-fade";
+import { StreamFadeBlock } from "./stream-fade-block";
+import { StreamFadeContext } from "./stream-fade-context";
+import { hidePendingTableStart } from "./streaming-table";
+import {
+  useStreamFadeActive,
+  useStreamFadeAnimations,
+} from "./use-stream-fade";
+import { useStreamingReveal } from "./use-streaming-reveal";
 
 export type { MarkdownRendererTone } from "./markdown-renderer-styles";
 
@@ -226,9 +236,13 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   tone = "assistant",
   className,
-  streaming = false,
+  streaming: streamingProp = false,
   filePathHandlers,
 }: MarkdownRendererProps): ReactNode {
+  const { content: revealedContent, live: streaming } = useStreamingReveal(
+    content,
+    streamingProp,
+  );
   const [hasStreamed, setHasStreamed] = useState(streaming);
   if (streaming && !hasStreamed) setHasStreamed(true);
   const components = useMemo<Components>(
@@ -239,33 +253,48 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     [tone, filePathHandlers],
   );
   const normalizedContent = useMemo(() => {
-    const withCodeFenceLanguages = normalizeMarkdownCodeFenceLanguages(content);
+    const withCodeFenceLanguages = normalizeMarkdownCodeFenceLanguages(
+      streaming ? hidePendingTableStart(revealedContent) : revealedContent,
+    );
     const withMath = normalizeMathDelimiters(withCodeFenceLanguages);
     // Only rewrite when the chat surface can open files — otherwise the
     // private https://cocurdex.workspace/... URLs would be unclickable.
     return filePathHandlers
       ? rewriteMarkdownLocalFileLinks(withMath)
       : withMath;
-  }, [content, filePathHandlers]);
+  }, [revealedContent, filePathHandlers, streaming]);
   const neededPlugins = useMemo(
     () => neededHeavyPlugins(normalizedContent),
     [normalizedContent],
   );
   const plugins = useStreamdownPlugins(neededPlugins);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fadeBlockPlugins] = useState(createStreamFadeBlockPlugins);
+  const fading = useStreamFadeActive(streaming);
+  useStreamFadeAnimations(containerRef, fading);
 
   return (
-    <Streamdown
-      className={cn("min-w-0 max-w-full", className)}
-      components={components}
-      isAnimating={streaming}
-      lineNumbers={false}
-      mermaid={streaming ? STREAMING_MERMAID : SETTLED_MERMAID}
-      mode={hasStreamed || streaming ? "streaming" : "static"}
-      parseIncompleteMarkdown={streaming}
-      plugins={plugins}
-      shikiTheme={["github-light", "github-dark"]}
+    <div
+      className="contents"
+      data-streaming={streaming || undefined}
+      ref={containerRef}
     >
-      {normalizedContent}
-    </Streamdown>
+      <StreamFadeContext value={fading ? fadeBlockPlugins : null}>
+        <Streamdown
+          BlockComponent={StreamFadeBlock}
+          className={cn("min-w-0 max-w-full", className)}
+          components={components}
+          isAnimating={streaming}
+          lineNumbers={false}
+          mermaid={streaming ? STREAMING_MERMAID : SETTLED_MERMAID}
+          mode={hasStreamed || streaming ? "streaming" : "static"}
+          parseIncompleteMarkdown={streaming}
+          plugins={plugins}
+          shikiTheme={["github-light", "github-dark"]}
+        >
+          {normalizedContent}
+        </Streamdown>
+      </StreamFadeContext>
+    </div>
   );
 });
