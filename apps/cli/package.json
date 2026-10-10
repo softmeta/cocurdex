@@ -21,7 +21,7 @@
     "@earendil-works/pi-tui": "^1.0.2"
   },
   "devDependencies": {
-    "@types/node": "^24.13.6",
+    "@types/node": "^26.6.4",
     "tsx": "^4.23.15",
     "vitest": "^4.1.11"
   }

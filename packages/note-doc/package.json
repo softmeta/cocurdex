@@ -25,7 +25,7 @@
     "yjs": "^13.6.33"
   },
   "devDependencies": {
-    "@types/node": "^24.13.6",
+    "@types/node": "^26.6.4",
     "vitest": "^4.1.11"
   }
 }
