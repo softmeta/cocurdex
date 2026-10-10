@@ -137,14 +137,15 @@ export function ContextUsageMeter({
                 })}`
               : t("contextWindow.label")
           }
-          className="-m-1 inline-flex cursor-pointer rounded-full bg-transparent p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="-my-1 inline-flex cursor-pointer items-center gap-1 rounded-full bg-transparent px-1.5 py-1 tabular-nums transition-colors hover:text-chat-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           type="button"
         >
           <CircularProgress
             indicatorClassName={getContextRingToneClassName(percent)}
-            trackClassName="text-chat-border-soft"
+            trackClassName="text-chat-border-strong"
             value={percent ?? 0}
           />
+          {percent != null ? <span>{Math.round(percent)}%</span> : null}
         </button>
       </PopoverTrigger>
       <ContextUsagePopoverContent
@@ -157,9 +158,7 @@ export function ContextUsageMeter({
   ) : null;
   const modelLabelContent =
     modelLabel != null ? (
-      <span className="min-w-0 truncate text-chat-fg-secondary">
-        {modelLabel}
-      </span>
+      <span className="flex min-w-0">{modelLabel}</span>
     ) : null;
 
   if (layout === "split") {
@@ -167,7 +166,9 @@ export function ContextUsageMeter({
       <>
         <div className="flex min-w-0 items-center gap-2">
           {modelLabelContent}
-          {afterModel ? <span className="min-w-0">{afterModel}</span> : null}
+          {afterModel ? (
+            <span className="flex min-w-0">{afterModel}</span>
+          ) : null}
         </div>
         {hasUsageContent ? (
           <div

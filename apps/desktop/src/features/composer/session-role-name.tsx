@@ -1,36 +1,32 @@
-import { useAtomValue } from "jotai";
-import { useSyncExternalStore } from "react";
-import { AgentRoleAvatar, sessionsAtom } from "@/features/sessions";
-import {
-  getAgentRoles,
-  subscribeAgentRoles,
-} from "@/features/sessions/agent-role";
+import { AgentRoleAvatar } from "@/features/sessions";
 import { composerFooterControlClassName } from "./chat-composer-layout";
-import { resolveComposerSessionId } from "./composer-session-id";
+import type { SessionRole } from "./use-session-role";
 
-export function SessionRoleName({ sessionId }: { sessionId?: string | null }) {
-  const sessions = useAtomValue(sessionsAtom);
-  const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
-  const resolvedSessionId = resolveComposerSessionId(sessionId);
-  const session = resolvedSessionId
-    ? (sessions.find((item) => item.id === resolvedSessionId) ?? null)
-    : null;
-  const selectedRole = session?.agentRoleId
-    ? (roles.find((role) => role.id === session.agentRoleId) ?? null)
-    : null;
-
-  if (!selectedRole) {
-    return null;
-  }
-
+export function SessionRoleName({
+  agentLabel,
+  role,
+}: {
+  agentLabel?: string;
+  role: SessionRole;
+}) {
   return (
     <span
       className={composerFooterControlClassName(
-        "inline-flex max-w-36 items-center gap-1.5",
+        "inline-flex max-w-56 items-center gap-1.5",
       )}
+      title={agentLabel ? `${role.name} · ${agentLabel}` : undefined}
     >
-      <AgentRoleAvatar role={selectedRole} showAgent={false} />
-      <span className="truncate font-medium">{selectedRole.name}</span>
+      <AgentRoleAvatar
+        className="size-4 text-2xs"
+        role={role}
+        showAgent={Boolean(agentLabel)}
+      />
+      <span className="truncate @max-lg/composer:sr-only">{role.name}</span>
+      {agentLabel ? (
+        <span className="shrink-0 opacity-70 @max-lg/composer:sr-only">
+          · {agentLabel}
+        </span>
+      ) : null}
     </span>
   );
 }

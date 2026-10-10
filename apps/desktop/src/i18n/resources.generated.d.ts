@@ -1087,6 +1087,7 @@ export default interface Resources {
     };
     agentSelect: {
       add: "Add from ACP Registry";
+      editPreset: "Edit {{name}}";
       manage: "Manage agent CLIs";
     };
     archive: {

@@ -31,6 +31,7 @@ export interface AgentPresetAction {
 export function AgentPresetSubmenu({
   actions = [],
   emptyLabel,
+  icon,
   label,
   presets,
   selectedId,
@@ -38,6 +39,7 @@ export function AgentPresetSubmenu({
 }: {
   actions?: readonly AgentPresetAction[];
   emptyLabel: string;
+  icon: ReactNode;
   label: string;
   presets: readonly AgentPresetOption[];
   selectedId: string | null;
@@ -47,7 +49,8 @@ export function AgentPresetSubmenu({
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger className="text-muted-foreground">
+        {icon}
         <span className="min-w-0 flex-1 truncate">{label}</span>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="[--popup-max-width:20rem]">

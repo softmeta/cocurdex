@@ -337,7 +337,7 @@ export function MonacoEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 bg-editor-monaco-bg">
+      <div className="min-h-0 flex-1 bg-editor-monaco-bg ps-3">
         {!activeFile ? (
           <div className="flex h-full items-center justify-center text-center">
             <div className="max-w-sm space-y-2 px-6">

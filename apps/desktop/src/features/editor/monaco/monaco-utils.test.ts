@@ -107,8 +107,27 @@ describe("getEditorLanguage", () => {
     expect(getEditorLanguage("a.cjs")).toBe("javascript");
     expect(getEditorLanguage("a.sh")).toBe("bash");
     expect(getEditorLanguage("a.py")).toBe("python");
+    expect(getEditorLanguage("Cargo.toml")).toBe("toml");
+    expect(getEditorLanguage("App.vue")).toBe("vue");
+    expect(getEditorLanguage("main.cpp")).toBe("cpp");
+    expect(getEditorLanguage("Main.kt")).toBe("kotlin");
     expect(getEditorLanguage("a.md")).toBe("markdown");
     expect(getEditorLanguage("a.swift")).toBe("swift");
+  });
+
+  it("maps extensionless and conventional file names", () => {
+    expect(getEditorLanguage("/repo/Dockerfile")).toBe("docker");
+    expect(getEditorLanguage("/repo/Dockerfile.dev")).toBe("docker");
+    expect(getEditorLanguage("/repo/Makefile")).toBe("make");
+    expect(getEditorLanguage("/repo/CMakeLists.txt")).toBe("cmake");
+    expect(getEditorLanguage("/repo/.env")).toBe("dotenv");
+    expect(getEditorLanguage("/repo/.env.local")).toBe("dotenv");
+    expect(getEditorLanguage("C:\\repo\\Makefile")).toBe("make");
+  });
+
+  it("ignores dots in directory names", () => {
+    expect(getEditorLanguage("/repo/v1.2/README")).toBe("plaintext");
+    expect(getEditorLanguage("C:\\repo.ts\\LICENSE")).toBe("plaintext");
   });
 
   it("falls back to plaintext for unknown or missing files", () => {

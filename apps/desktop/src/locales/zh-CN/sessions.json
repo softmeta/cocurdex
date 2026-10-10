@@ -31,6 +31,7 @@
   },
   "agentSelect": {
     "add": "从 ACP Registry 添加",
+    "editPreset": "编辑「{{name}}」",
     "manage": "管理 Agent CLI"
   },
   "archive": {

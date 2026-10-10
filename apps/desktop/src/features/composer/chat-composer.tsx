@@ -81,6 +81,7 @@ import {
   getContextAttachmentSerializedText,
   useContextFileMentions,
 } from "./use-context-file-mentions";
+import { useSessionRole } from "./use-session-role";
 import { useSlashCommands } from "./use-slash-commands";
 
 export interface ChatComposerHandle {
@@ -303,6 +304,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const canSubmitNow =
       canSend && !submitting && (!isRunning || canSendWhileRunning);
     const canSelectAgent = Boolean(onSelectAgent) && !isRunning;
+    const sessionRole = useSessionRole(sessionId);
 
     const handleSelectAgent = (nextAgent: AgentId) => {
       if (
@@ -453,7 +455,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     if (!canSelectAgent) {
       agentChevronClassName = "hidden";
     } else if (variant === "pill") {
-      agentChevronClassName = "max-[520px]:hidden";
+      agentChevronClassName = "@max-lg/composer:hidden";
     }
 
     const agentMenu = (
@@ -467,7 +469,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
           "max-w-45",
           variant === "pill" &&
             composerFooterControlClassName(
-              "max-[520px]:w-8 max-[520px]:justify-center",
+              "@max-lg/composer:w-8 @max-lg/composer:justify-center",
             ),
         )}
         triggerLabel={
@@ -479,7 +481,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             ) : null}
             <AppDropdownTriggerLabel
               className={cn(
-                variant === "pill" ? "max-[520px]:sr-only" : "font-medium",
+                variant === "pill" ? "@max-lg/composer:sr-only" : "font-medium",
               )}
             >
               {agentLabel}
@@ -514,12 +516,19 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       </>
     ) : null;
 
-    const defaultAgentControls = isAgentMode ? (
-      <>
-        <SessionRoleName sessionId={sessionId} />
-        {agentMenu}
-      </>
-    ) : null;
+    let defaultAgentControls: ReactNode = null;
+    if (isAgentMode && sessionRole && !onSelectAgent) {
+      defaultAgentControls = (
+        <SessionRoleName agentLabel={agentLabel} role={sessionRole} />
+      );
+    } else if (isAgentMode) {
+      defaultAgentControls = (
+        <>
+          {sessionRole ? <SessionRoleName role={sessionRole} /> : null}
+          {agentMenu}
+        </>
+      );
+    }
     const resolvedControls = controls ?? defaultAgentControls;
 
     const attachMenuContent = (
