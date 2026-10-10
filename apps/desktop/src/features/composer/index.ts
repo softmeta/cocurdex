@@ -13,6 +13,7 @@ export {
   ComposerSurfaceBody,
   WelcomeHeading,
 } from "./composer-surface";
+export { formatTokenCount } from "./context-token-format";
 export { ContextUsageMeter } from "./context-window-indicator";
 export { DocumentAttachmentChips } from "./document-attachment-chips";
 export { ImageAttachmentCards } from "./image-attachment-cards";

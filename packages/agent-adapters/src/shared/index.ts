@@ -1,5 +1,6 @@
 export * from "./agent-tools-mcp";
 export * from "./attachment-utils";
+export * from "./context-compaction-tracker";
 export * from "./permission-options";
 export * from "./pi-models-env";
 export * from "./process-env";

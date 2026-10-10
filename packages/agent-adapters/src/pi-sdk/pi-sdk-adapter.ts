@@ -51,6 +51,7 @@ import {
   serializeProviderSessionState,
   splitAttachments,
 } from "../shared";
+import { createContextCompactionTracker } from "../shared/context-compaction-tracker";
 import {
   createNativeSessionRecoveryError,
   requiresNativeSessionRecovery,
@@ -64,6 +65,7 @@ import {
   createPiChatResourceLoaderOptions,
   findPiUserMessageEntry,
 } from "./pi-chat-session";
+import { handlePiCompactionEvent } from "./pi-compaction";
 import {
   buildModelCost,
   buildModelInput,
@@ -426,6 +428,10 @@ export function createPiSdkAdapter(
       // instead of treating an empty turn as success.
       let lastTurnError: string | null = null;
       let stopRequested = false;
+      const compaction = createContextCompactionTracker({
+        sessionId,
+        emit: onEvent,
+      });
 
       function emitError(message: string) {
         if (disposed) return;
@@ -731,6 +737,10 @@ export function createPiSdkAdapter(
             break;
           case "tool_execution_end":
             handleToolExecutionEnd(event);
+            break;
+          case "compaction_start":
+          case "compaction_end":
+            handlePiCompactionEvent(compaction, event);
             break;
           case "agent_end":
             completeMessages();

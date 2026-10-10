@@ -67,6 +67,7 @@ import {
   type TurnPhase,
   withoutInterimReplies,
 } from "./chat-timeline";
+import { ContextCompactionDivider } from "./context-compaction-divider";
 import { messageOriginLabel } from "./message-origin-label";
 import { turnStatsByMessageAtom } from "./message-store";
 import { PeerPrompt } from "./peer-prompt";
@@ -481,9 +482,11 @@ const UserPrompt = memo(function UserPrompt({
 const AssistantMessageActions = memo(function AssistantMessageActions({
   contentRef,
   message,
+  stopped,
 }: {
   contentRef: RefObject<HTMLDivElement | null>;
   message: MessageRecord;
+  stopped: boolean;
 }) {
   const { t } = useTranslation("agent");
   const turnStats = useAtomValue(turnStatsByMessageAtom)[message.id];
@@ -513,63 +516,72 @@ const AssistantMessageActions = memo(function AssistantMessageActions({
   };
 
   return (
-    <div
-      className={cn(
-        "mt-2 flex h-6 items-center gap-2 text-chat-fg-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
-        copyMenuOpen && "opacity-100",
-      )}
-    >
-      <DropdownMenu onOpenChange={setCopyMenuOpen} open={copyMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label={t("assistantMessage.copy")}
-            className="size-6 text-chat-fg-muted hover:bg-transparent hover:text-chat-fg"
-            disabled={!message.content.trim()}
-            onClick={handleCopyMarkdown}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              setCopyMenuOpen(true);
-            }}
-            onPointerDown={(event) => {
-              if (event.button === 0) {
-                event.preventDefault();
-              }
-            }}
-            size="icon-xs"
-            title={t("assistantMessage.copy")}
-            type="button"
-            variant="ghost"
-          >
-            {hasCopied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <AppDropdownContent side="top">
-          <DropdownMenuGroup>
-            <AppDropdownItem className="font-medium" onClick={copyRendered}>
-              {t("assistantMessage.copyRichText")}
-            </AppDropdownItem>
-          </DropdownMenuGroup>
-        </AppDropdownContent>
-      </DropdownMenu>
-      {durationText || hasTokenUsage ? (
-        <span className="flex items-center gap-1 text-xs tabular-nums text-chat-fg-muted">
-          {durationText ? <span>{durationText}</span> : null}
-          {durationText && hasTokenUsage ? (
-            <span aria-hidden="true">·</span>
-          ) : null}
-          <TurnTokenUsage usage={turnStats?.usage} />
-        </span>
+    <div className="mt-2 grid h-6 items-center text-chat-fg-muted">
+      {stopped ? (
+        <div
+          className={cn(
+            "pointer-events-none col-start-1 row-start-1 transition-opacity group-hover:opacity-0 group-focus-within:opacity-0",
+            copyMenuOpen && "opacity-0",
+          )}
+        >
+          <TurnStoppedNote />
+        </div>
       ) : null}
-      <time
-        className="text-xs tabular-nums opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-        dateTime={message.createdAt}
+      <div
+        className={cn(
+          "col-start-1 row-start-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+          copyMenuOpen && "opacity-100",
+        )}
       >
-        {sentAt}
-      </time>
+        <DropdownMenu onOpenChange={setCopyMenuOpen} open={copyMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              aria-label={t("assistantMessage.copy")}
+              className="-ms-1.25 size-6 text-chat-fg-muted hover:bg-transparent hover:text-chat-fg"
+              disabled={!message.content.trim()}
+              onClick={handleCopyMarkdown}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setCopyMenuOpen(true);
+              }}
+              onPointerDown={(event) => {
+                if (event.button === 0) {
+                  event.preventDefault();
+                }
+              }}
+              size="icon-xs"
+              title={t("assistantMessage.copy")}
+              type="button"
+              variant="ghost"
+            >
+              {hasCopied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <AppDropdownContent side="top">
+            <DropdownMenuGroup>
+              <AppDropdownItem className="font-medium" onClick={copyRendered}>
+                {t("assistantMessage.copyRichText")}
+              </AppDropdownItem>
+            </DropdownMenuGroup>
+          </AppDropdownContent>
+        </DropdownMenu>
+        {durationText || hasTokenUsage ? (
+          <span className="flex items-center gap-1 text-xs tabular-nums text-chat-fg-muted">
+            {durationText ? <span>{durationText}</span> : null}
+            {durationText && hasTokenUsage ? (
+              <span aria-hidden="true">·</span>
+            ) : null}
+            <TurnTokenUsage usage={turnStats?.usage} />
+          </span>
+        ) : null}
+        <time className="text-xs tabular-nums" dateTime={message.createdAt}>
+          {sentAt}
+        </time>
+      </div>
     </div>
   );
 });
@@ -579,11 +591,13 @@ const MessageArticle = memo(function MessageArticle({
   isStreamingLatest,
   message,
   showActions = true,
+  stopped = false,
 }: {
   isRunning: boolean;
   isStreamingLatest: boolean;
   message: MessageRecord;
   showActions?: boolean;
+  stopped?: boolean;
 }) {
   const { t } = useTranslation("agent");
   const filePathHandlers = useMessageFilePathHandlers();
@@ -667,7 +681,11 @@ const MessageArticle = memo(function MessageArticle({
           />
         ) : null}
         {showAssistantActions ? (
-          <AssistantMessageActions contentRef={contentRef} message={message} />
+          <AssistantMessageActions
+            contentRef={contentRef}
+            message={message}
+            stopped={stopped}
+          />
         ) : null}
       </div>
     </div>
@@ -742,6 +760,9 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   );
   const turnEndMessageId =
     phase === "live" ? undefined : getTurnEndMessageId(visibleItems, phase);
+  const isStopped = phase === "interrupted";
+  const showStoppedInActions =
+    isStopped && showMessageActions && turnEndMessageId != null;
   const turnWorkSegment =
     turnEndMessageId === null
       ? segments.at(-1)
@@ -778,6 +799,12 @@ export const ChatConversationItem = memo(function ChatConversationItem({
       );
     }
 
+    if (group.kind === "contextCompaction") {
+      return (
+        <ContextCompactionDivider key={group.id} toolCall={group.toolCall} />
+      );
+    }
+
     if (group.kind === "permission") {
       return (
         <PermissionCard
@@ -809,6 +836,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
         key={group.id}
         message={group.message}
         showActions={showMessageActions && group.id === turnEndMessageId}
+        stopped={showStoppedInActions && group.id === turnEndMessageId}
       />
     );
   };
@@ -860,7 +888,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
           {showActivity && activity ? (
             <ActivityLine activity={activity} runStartedAt={runStartedAt} />
           ) : null}
-          {phase === "interrupted" ? <TurnStoppedNote /> : null}
+          {isStopped && !showStoppedInActions ? <TurnStoppedNote /> : null}
         </div>
       ) : null}
     </div>

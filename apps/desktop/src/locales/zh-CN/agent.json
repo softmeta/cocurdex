@@ -50,6 +50,13 @@
     },
     "title": "上下文占用"
   },
+  "contextCompaction": {
+    "completed": "上下文已压缩",
+    "completedFrom": "上下文已压缩（原 {{before}} tokens）",
+    "completedRange": "上下文已压缩 {{before}} → {{after}} tokens",
+    "failed": "上下文压缩失败",
+    "running": "正在压缩上下文"
+  },
   "contextWindow": {
     "cacheReadTokens": "缓存读取：{{tokens}}",
     "cacheWriteTokens": "缓存写入：{{tokens}}",
