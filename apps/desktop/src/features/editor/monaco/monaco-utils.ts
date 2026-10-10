@@ -53,24 +53,121 @@ const EXTENSION_TO_SHIKI_LANGUAGE: Record<string, BundledLanguage> = {
   sql: "sql",
   astro: "astro",
   swift: "swift",
+  toml: "toml",
+  vue: "vue",
+  svelte: "svelte",
+  less: "less",
+  c: "c",
+  h: "cpp",
+  cc: "cpp",
+  cpp: "cpp",
+  cxx: "cpp",
+  hpp: "cpp",
+  m: "objective-c",
+  cs: "csharp",
+  kt: "kotlin",
+  kts: "kotlin",
+  scala: "scala",
+  groovy: "groovy",
+  gradle: "groovy",
+  rb: "ruby",
+  php: "php",
+  lua: "lua",
+  dart: "dart",
+  zig: "zig",
+  ex: "elixir",
+  exs: "elixir",
+  hs: "haskell",
+  r: "r",
+  pl: "perl",
+  zsh: "shellscript",
+  fish: "fish",
+  ps1: "powershell",
+  bat: "bat",
+  cmd: "bat",
+  ini: "ini",
+  cfg: "ini",
+  conf: "ini",
+  properties: "ini",
+  env: "dotenv",
+  jsonc: "jsonc",
+  json5: "json5",
+  graphql: "graphql",
+  gql: "graphql",
+  proto: "proto",
+  prisma: "prisma",
+  tf: "terraform",
+  hcl: "hcl",
+  nix: "nix",
+  cmake: "cmake",
+  mk: "make",
+  dockerfile: "docker",
+  diff: "diff",
+  patch: "diff",
+  svg: "xml",
 };
 
-export const EDITOR_SHIKI_LANGUAGES: BundledLanguage[] = [
-  ...new Set(Object.values(EXTENSION_TO_SHIKI_LANGUAGE)),
+const FILENAME_TO_SHIKI_LANGUAGE: Record<string, BundledLanguage> = {
+  dockerfile: "docker",
+  containerfile: "docker",
+  makefile: "make",
+  gnumakefile: "make",
+  "cmakelists.txt": "cmake",
+  gemfile: "ruby",
+  rakefile: "ruby",
+  podfile: "ruby",
+  ".bashrc": "shellscript",
+  ".zshrc": "shellscript",
+  ".profile": "shellscript",
+  ".env": "dotenv",
+};
+
+const FILENAME_PREFIX_TO_SHIKI_LANGUAGE: [string, BundledLanguage][] = [
+  ["dockerfile.", "docker"],
+  [".env.", "dotenv"],
 ];
+
+export const EDITOR_SHIKI_LANGUAGES: BundledLanguage[] = [
+  ...new Set([
+    ...Object.values(EXTENSION_TO_SHIKI_LANGUAGE),
+    ...Object.values(FILENAME_TO_SHIKI_LANGUAGE),
+    ...FILENAME_PREFIX_TO_SHIKI_LANGUAGE.map(([, language]) => language),
+  ]),
+];
+
+function getFileName(filePath: string) {
+  return filePath.split(/[\\/]/).pop()?.toLowerCase() ?? "";
+}
+
+function getFileNameLanguage(fileName: string) {
+  const exact = FILENAME_TO_SHIKI_LANGUAGE[fileName];
+  if (exact) {
+    return exact;
+  }
+  return FILENAME_PREFIX_TO_SHIKI_LANGUAGE.find(([prefix]) =>
+    fileName.startsWith(prefix),
+  )?.[1];
+}
 
 export function getEditorLanguage(filePath: string | null) {
   if (!filePath) {
     return "plaintext";
   }
 
-  const extension = filePath.split(".").pop()?.toLowerCase();
+  const fileName = getFileName(filePath);
+  const fileNameLanguage = getFileNameLanguage(fileName);
+  if (fileNameLanguage) {
+    return fileNameLanguage;
+  }
 
-  if (!extension) {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex < 0) {
     return "plaintext";
   }
 
-  return EXTENSION_TO_SHIKI_LANGUAGE[extension] ?? "plaintext";
+  return (
+    EXTENSION_TO_SHIKI_LANGUAGE[fileName.slice(dotIndex + 1)] ?? "plaintext"
+  );
 }
 
 export function syncPreviewRange(
