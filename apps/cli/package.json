@@ -17,8 +17,8 @@
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "@earendil-works/pi-coding-agent": "1.0.2",
-    "@earendil-works/pi-tui": "^1.0.2"
+    "@earendil-works/pi-coding-agent": "1.0.4",
+    "@earendil-works/pi-tui": "^1.0.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",

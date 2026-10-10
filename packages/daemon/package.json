@@ -21,7 +21,7 @@
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.31.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@napi-rs/keyring": "^2.1.0",
     "@vscode/ripgrep": "^1.18.0",
     "simple-git": "^4.0.2",
