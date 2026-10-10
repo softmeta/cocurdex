@@ -71,7 +71,7 @@ export function TurnStoppedNote() {
   const { t } = useTranslation("agent");
 
   return (
-    <div className="flex items-center gap-2 px-1.5 text-meta text-chat-fg-muted">
+    <div className="flex items-center gap-2 text-meta text-chat-fg-muted">
       <CircleStop className="size-3.5 shrink-0" />
       <span>{t("activity.stopped")}</span>
     </div>

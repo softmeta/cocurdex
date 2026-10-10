@@ -14,6 +14,7 @@ export type {
   GenerateGitCommitMessagePayload,
   ResolvedCommitMessageModel,
 } from "./commit-message";
+export * from "./context-compaction";
 export * from "./contracts";
 export * from "./data-events";
 export * from "./files";

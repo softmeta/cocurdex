@@ -1,10 +1,12 @@
-import type {
-  AgentEvent,
-  AgentToolCallRecord,
-  AgentUsageUpdatedEvent,
-  SessionRecord,
+import {
+  type AgentEvent,
+  type AgentToolCallRecord,
+  type AgentUsageUpdatedEvent,
+  normalizeCompactionTokenCount,
+  type SessionRecord,
 } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
+import { createContextCompactionTracker } from "../shared/context-compaction-tracker";
 import {
   createClaudeReasoningStream,
   extractThinkingDelta,
@@ -183,6 +185,10 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
   >();
   const childSessions = new Map<string, SessionRecord>();
   const reasoning = createClaudeReasoningStream({ sessionId, onEvent });
+  const compaction = createContextCompactionTracker({
+    sessionId,
+    emit: onEvent,
+  });
   let latestAssistantModel = "";
 
   function flushAssistantMessage() {
@@ -492,6 +498,7 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     if (attribution === "session-only") {
       return;
     }
+    compaction.abandon();
     reasoning.complete();
     flushAssistantMessage();
     onEvent({
@@ -551,8 +558,37 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     });
   }
 
+  function handleStatusMessage(message: Record<string, unknown>) {
+    if (message.status === "compacting") {
+      compaction.start();
+      return;
+    }
+    if (message.compact_result === "failed") {
+      compaction.finish({
+        status: "failed",
+        error:
+          typeof message.compact_error === "string"
+            ? message.compact_error
+            : null,
+      });
+    }
+  }
+
+  function handleCompactBoundary(message: Record<string, unknown>) {
+    const metadata = asObjectRecord(message.compact_metadata);
+    const trigger = metadata?.trigger;
+    compaction.finish({
+      status: "completed",
+      ...(typeof message.uuid === "string" ? { id: message.uuid } : {}),
+      trigger: trigger === "auto" || trigger === "manual" ? trigger : null,
+      tokensBefore: normalizeCompactionTokenCount(metadata?.pre_tokens),
+      tokensAfter: normalizeCompactionTokenCount(metadata?.post_tokens),
+    });
+  }
+
   return {
     reset() {
+      compaction.abandon();
       reasoning.reset();
       activeAssistantMessageId = "";
       activeAssistantCreatedAt = "";
@@ -605,6 +641,10 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
         case "system":
           if (record.subtype === "task_notification") {
             handleTaskNotification(record);
+          } else if (record.subtype === "status") {
+            handleStatusMessage(record);
+          } else if (record.subtype === "compact_boundary") {
+            handleCompactBoundary(record);
           }
           break;
       }

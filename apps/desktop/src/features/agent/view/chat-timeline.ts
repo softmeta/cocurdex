@@ -2,6 +2,7 @@ import {
   type AgentPermissionRequestRecord,
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
+  isContextCompactionToolCall,
   type MessageRecord,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
@@ -57,6 +58,11 @@ export type TimelineGroup =
   | {
       id: string;
       kind: "worktreeSetup";
+      toolCall: AgentToolCallRecord;
+    }
+  | {
+      id: string;
+      kind: "contextCompaction";
       toolCall: AgentToolCallRecord;
     }
   | {
@@ -233,6 +239,15 @@ function appendTimelineItem(groups: TimelineGroup[], item: TimelineItem) {
     groups.push({
       id: `worktree-setup-${item.id}`,
       kind: "worktreeSetup",
+      toolCall: item.toolCall,
+    });
+    return;
+  }
+
+  if (isContextCompactionToolCall(item.toolCall)) {
+    groups.push({
+      id: `context-compaction-${item.id}`,
+      kind: "contextCompaction",
       toolCall: item.toolCall,
     });
     return;

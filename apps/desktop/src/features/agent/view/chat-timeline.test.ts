@@ -1,5 +1,6 @@
 import {
   type AgentToolCallRecord,
+  CONTEXT_COMPACTION_TOOL_KIND,
   type MessageRecord,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
@@ -163,6 +164,23 @@ describe("worktree setup in the timeline", () => {
     expect(segmentIds(groups, "completed")).toEqual([
       "worktree-setup-setup",
       ["tool-group-read"],
+    ]);
+  });
+
+  it("splits the agent's tool calls at a context compaction", () => {
+    const groups = createTimelineGroups(
+      [],
+      [
+        toolCall("before", 1, "read"),
+        toolCall("compact", 2, CONTEXT_COMPACTION_TOOL_KIND),
+        toolCall("after", 3, "read"),
+      ],
+    );
+
+    expect(segmentIds(groups, "completed")).toEqual([
+      ["tool-group-before"],
+      "context-compaction-compact",
+      ["tool-group-after"],
     ]);
   });
 });

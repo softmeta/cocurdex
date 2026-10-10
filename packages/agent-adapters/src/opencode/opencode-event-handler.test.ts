@@ -1,4 +1,8 @@
-import type { AgentEvent, SessionRecord } from "@cocurdex/shared";
+import {
+  type AgentEvent,
+  readContextCompactionDetails,
+  type SessionRecord,
+} from "@cocurdex/shared";
 import type { OpenCodeEvent } from "@opencode/client";
 import { describe, expect, it, vi } from "vitest";
 import { OpenCodeTurn } from "./opencode-event-handler";
@@ -467,5 +471,81 @@ describe("OpenCodeTurn", () => {
         },
       },
     ]);
+  });
+
+  it("records automatic compaction with the context size before it", () => {
+    const { events, turn } = createTurn();
+
+    turn.handle(delivered());
+    turn.handle(
+      event("session.step.ended", {
+        sessionID: ROOT,
+        assistantMessageID: "msg_a",
+        finish: "tool-calls",
+        cost: 0,
+        tokens: {
+          input: 150_000,
+          output: 2_000,
+          reasoning: 0,
+          cache: { read: 0, write: 0 },
+        },
+      }),
+    );
+    turn.handle(
+      event("session.compaction.started", {
+        sessionID: ROOT,
+        reason: "auto",
+        recent: "",
+      }),
+    );
+    turn.handle(
+      event("session.compaction.ended", {
+        sessionID: ROOT,
+        reason: "auto",
+        recent: "",
+        text: "Summary",
+      }),
+    );
+
+    const compactions = events.flatMap((agentEvent) =>
+      agentEvent.type === "tool.started" || agentEvent.type === "tool.finished"
+        ? [agentEvent.toolCall]
+        : [],
+    );
+    expect(compactions.map((toolCall) => toolCall.status)).toEqual([
+      "in_progress",
+      "completed",
+    ]);
+    expect(
+      readContextCompactionDetails({ rawInput: compactions[1]?.rawInput }),
+    ).toMatchObject({
+      trigger: "auto",
+      tokensBefore: 152_000,
+    });
+  });
+
+  it("marks failed compaction with the provider error", () => {
+    const { events, turn } = createTurn();
+
+    turn.handle(delivered());
+    turn.handle(
+      event("session.compaction.started", {
+        sessionID: ROOT,
+        reason: "manual",
+        recent: "",
+      }),
+    );
+    turn.handle(
+      event("session.compaction.failed", {
+        sessionID: ROOT,
+        reason: "manual",
+        error: { type: "provider", message: "context overflow" },
+      }),
+    );
+
+    expect(events.at(-1)).toMatchObject({
+      type: "tool.finished",
+      toolCall: { status: "failed" },
+    });
   });
 });

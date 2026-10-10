@@ -1,4 +1,8 @@
-import type { AgentEvent } from "@cocurdex/shared";
+import {
+  type AgentEvent,
+  CONTEXT_COMPACTION_TOOL_KIND,
+  readContextCompactionDetails,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { createClaudeMessageMapper } from "./claude-message-mapper";
 
@@ -518,5 +522,112 @@ describe("createClaudeMessageMapper reasoning", () => {
     expect(completedMessages(events)).toEqual([
       { kind: undefined, content: "Done" },
     ]);
+  });
+});
+
+describe("createClaudeMessageMapper context compaction", () => {
+  function createMapper() {
+    const events: AgentEvent[] = [];
+    const mapper = createClaudeMessageMapper({
+      sessionId: "session-1",
+      logLabel: "[ClaudeTest]",
+      onEvent: (event) => events.push(event),
+    });
+    const compactionEvents = () =>
+      events.flatMap((event) =>
+        (event.type === "tool.started" || event.type === "tool.finished") &&
+        event.toolCall.kind === CONTEXT_COMPACTION_TOOL_KIND
+          ? [event]
+          : [],
+      );
+    return { compactionEvents, mapper };
+  }
+
+  it("tracks compaction from the compacting status to its boundary", () => {
+    const { compactionEvents, mapper } = createMapper();
+
+    mapper.handleMessage({
+      type: "system",
+      subtype: "status",
+      status: "compacting",
+    } as never);
+    mapper.handleMessage({
+      type: "system",
+      subtype: "compact_boundary",
+      uuid: "boundary-1",
+      compact_metadata: {
+        trigger: "auto",
+        pre_tokens: 180_000,
+        post_tokens: 22_000,
+      },
+    } as never);
+
+    const [started, finished] = compactionEvents();
+    expect(compactionEvents()).toHaveLength(2);
+    expect(started?.toolCall.status).toBe("in_progress");
+    expect(finished?.toolCall.id).toBe(started?.toolCall.id);
+    expect(finished?.toolCall.status).toBe("completed");
+    expect(
+      readContextCompactionDetails({ rawInput: finished?.toolCall.rawInput }),
+    ).toEqual({
+      trigger: "auto",
+      tokensBefore: 180_000,
+      tokensAfter: 22_000,
+      error: null,
+    });
+  });
+
+  it("records a boundary that arrives without a compacting status", () => {
+    const { compactionEvents, mapper } = createMapper();
+
+    mapper.handleMessage({
+      type: "system",
+      subtype: "compact_boundary",
+      uuid: "boundary-1",
+      compact_metadata: { trigger: "manual", pre_tokens: 90_000 },
+    } as never);
+
+    expect(compactionEvents().map((event) => event.toolCall.status)).toEqual([
+      "in_progress",
+      "completed",
+    ]);
+    expect(compactionEvents()[1]?.toolCall.id).toBe("boundary-1");
+  });
+
+  it("fails the compaction when Claude reports a failed result", () => {
+    const { compactionEvents, mapper } = createMapper();
+
+    mapper.handleMessage({
+      type: "system",
+      subtype: "status",
+      status: "compacting",
+    } as never);
+    mapper.handleMessage({
+      type: "system",
+      subtype: "status",
+      status: null,
+      compact_result: "failed",
+      compact_error: "Conversation too long",
+    } as never);
+
+    const finished = compactionEvents().at(-1);
+    expect(finished?.toolCall.status).toBe("failed");
+    expect(
+      readContextCompactionDetails({ rawInput: finished?.toolCall.rawInput })
+        .error,
+    ).toBe("Conversation too long");
+  });
+
+  it("closes an unfinished compaction when the turn ends", () => {
+    const { compactionEvents, mapper } = createMapper();
+
+    mapper.handleMessage({
+      type: "system",
+      subtype: "status",
+      status: "compacting",
+    } as never);
+    mapper.handleMessage({ type: "result" } as never);
+
+    expect(compactionEvents().at(-1)?.toolCall.status).toBe("failed");
   });
 });

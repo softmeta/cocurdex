@@ -19,11 +19,13 @@ function ActivityGlyph({ activity }: { activity: ActivityState }) {
   const { completeWorkingCycle, motion } = useActivityMotion(activity);
   if (activity.tone === "running") {
     return (
-      <CocurdexMark
-        className="-ms-1 size-4 shrink-0"
-        motion={motion}
-        onWorkingCycleComplete={completeWorkingCycle}
-      />
+      <span className="flex size-3.5 shrink-0 items-center justify-center">
+        <CocurdexMark
+          className="size-4 shrink-0"
+          motion={motion}
+          onWorkingCycleComplete={completeWorkingCycle}
+        />
+      </span>
     );
   }
 

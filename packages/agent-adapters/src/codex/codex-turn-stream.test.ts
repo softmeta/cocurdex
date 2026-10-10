@@ -1,4 +1,8 @@
-import type { AgentEvent } from "@cocurdex/shared";
+import {
+  type AgentEvent,
+  CONTEXT_COMPACTION_TOOL_KIND,
+  readContextCompactionDetails,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { createToolCallRecord } from "./codex-app-server-events";
 import { createCodexTurnStream } from "./codex-turn-stream";
@@ -269,5 +273,49 @@ describe("createCodexTurnStream", () => {
     const { stream } = setup();
 
     expect(stream.finishTurn()).toEqual({ messageId: null, usage: null });
+  });
+
+  it("records context compaction items with the context size before compaction", () => {
+    const { events, stream } = setup();
+
+    stream.handleTokenUsage({
+      tokenUsage: {
+        last: { inputTokens: 1, outputTokens: 1, totalTokens: 240_000 },
+      },
+    });
+    stream.handleItem({ id: "compact-1", type: "contextCompaction" }, false);
+    stream.handleTokenUsage({
+      tokenUsage: {
+        last: { inputTokens: 1, outputTokens: 1, totalTokens: 18_000 },
+      },
+    });
+    stream.handleItem({ id: "compact-1", type: "contextCompaction" }, true);
+
+    const compactions = events.flatMap((event) =>
+      (event.type === "tool.started" || event.type === "tool.finished") &&
+      event.toolCall.kind === CONTEXT_COMPACTION_TOOL_KIND
+        ? [event.toolCall]
+        : [],
+    );
+    expect(compactions.map((toolCall) => toolCall.status)).toEqual([
+      "in_progress",
+      "completed",
+    ]);
+    expect(
+      readContextCompactionDetails({ rawInput: compactions[1]?.rawInput })
+        .tokensBefore,
+    ).toBe(240_000);
+  });
+
+  it("closes a compaction that never completes when the turn ends", () => {
+    const { events, stream } = setup();
+
+    stream.handleItem({ id: "compact-1", type: "contextCompaction" }, false);
+    stream.finishTurn();
+
+    expect(events.at(-1)).toMatchObject({
+      type: "tool.finished",
+      toolCall: { id: "compact-1", status: "failed" },
+    });
   });
 });

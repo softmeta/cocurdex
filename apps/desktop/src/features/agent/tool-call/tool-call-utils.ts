@@ -1,10 +1,12 @@
 import {
   type AgentToolCallContent,
   type AgentToolCallRecord,
+  isContextCompactionToolCall,
   pathBaseName,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
+import { getContextCompactionLabel } from "./context-compaction-label";
 import {
   getDisplayDirectory,
   getWorkspaceRelativePath,
@@ -534,6 +536,10 @@ export function getToolCallTriggerParts(
   workspacePath: string | null = null,
 ) {
   const isPast = tense === "past";
+  if (isContextCompactionToolCall(toolCall)) {
+    return { title: getContextCompactionLabel(toolCall), secondary: "" };
+  }
+
   if (toolCall.kind === WORKTREE_SETUP_TOOL_KIND) {
     return {
       title: i18n.t("agent:toolCalls.worktreeSetup"),

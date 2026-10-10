@@ -63,6 +63,13 @@ export default interface Resources {
       };
       title: "Context usage";
     };
+    contextCompaction: {
+      completed: "Context compacted";
+      completedFrom: "Context compacted from {{before}} tokens";
+      completedRange: "Context compacted {{before}} → {{after}} tokens";
+      failed: "Context compaction failed";
+      running: "Compacting context";
+    };
     contextWindow: {
       cacheReadTokens: "Cache read: {{tokens}}";
       cacheWriteTokens: "Cache write: {{tokens}}";
