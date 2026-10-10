@@ -79,8 +79,22 @@ type TurnTracker = {
   cancelled: boolean;
   completionEmitted: boolean;
   messageId: string | null;
+  promptMessageId: string | null;
   usage: AgentUsageRecord | null;
 };
+
+function anchorTurnCompletion(
+  event: AgentEvent,
+  tracker: TurnTracker,
+): AgentEvent {
+  if (event.type !== "turn.completed") {
+    return event;
+  }
+  return {
+    ...event,
+    messageId: tracker.messageId ?? tracker.promptMessageId ?? event.messageId,
+  };
+}
 
 export class AgentRuntimeManager {
   private readonly activeTurnTrackers = new Map<string, TurnTracker>();
@@ -129,10 +143,13 @@ export class AgentRuntimeManager {
     return this.sessionRuntimes.get(sessionId)?.runtime ?? null;
   }
 
-  emitAgentEvent(event: AgentEvent) {
+  emitAgentEvent(sourceEvent: AgentEvent) {
     const tracker =
-      this.activeTurnTrackers.get(event.sessionId) ??
-      this.cancelledTurnTrackers.get(event.sessionId);
+      this.activeTurnTrackers.get(sourceEvent.sessionId) ??
+      this.cancelledTurnTrackers.get(sourceEvent.sessionId);
+    const event = tracker
+      ? anchorTurnCompletion(sourceEvent, tracker)
+      : sourceEvent;
     if (
       tracker &&
       event.type === "usage.updated" &&
@@ -532,6 +549,7 @@ export class AgentRuntimeManager {
       cancelled: false,
       completionEmitted: false,
       messageId: null,
+      promptMessageId: payload.messageId ?? null,
       usage: null,
     };
     console.info("[AgentRuntimeManager] send message payload", {
@@ -592,7 +610,8 @@ export class AgentRuntimeManager {
       if (stoppedByUser) {
         this.cancelledTurnTrackers.delete(payload.session.id);
       }
-      const cancelledMessageId = turnTracker.messageId ?? payload.messageId;
+      const cancelledMessageId =
+        turnTracker.messageId ?? turnTracker.promptMessageId;
       if (
         stoppedByUser &&
         !turnTracker.completionEmitted &&
