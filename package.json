@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "lefthook": "2.1.15",
+    "lefthook": "2.1.17",
     "typescript": "6.0.3"
   }
 }
