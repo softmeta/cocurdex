@@ -1,5 +1,12 @@
 import type { AgentId } from "@cocurdex/shared";
-import { Check, Pencil, Plus, Settings2 } from "lucide-react";
+import {
+  Check,
+  Pencil,
+  Plus,
+  Settings2,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,16 +22,11 @@ import {
   DropdownMenuGroup,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  IconButton,
   ScrollArea,
-  Text,
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
-import { AgentIcon, AgentIconLabel } from "./agent-icon";
+import { AgentIcon } from "./agent-icon";
 import {
   type AgentPresetAction,
   type AgentPresetOption,
@@ -99,7 +101,6 @@ export function AgentSelect({
 }: AgentSelectProps) {
   const { t } = useTranslation(["sessions", "settings"]);
   const [open, setOpen] = useState(false);
-  const [hoverOpen, setHoverOpen] = useState(false);
   const isDisabled = disabled || options.length === 0;
   const selectableOptions = options.filter(
     (option) => option.selectable !== false,
@@ -128,7 +129,6 @@ export function AgentSelect({
     : (roles?.find((role) => role.id === selectedRoleId) ?? null);
   const selectedPreset = selectedTeam ?? selectedRole;
   const onEditPreset = selectedTeam ? onEditTeam : onEditRole;
-  const showRoleHover = Boolean(selectedPreset) && !open;
   const presetActions = (
     create: { label: string; run?(): void },
     manage: { label: string; run?(): void },
@@ -159,80 +159,23 @@ export function AgentSelect({
   );
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (nextOpen) {
-          setHoverOpen(false);
-        }
-      }}
-    >
-      <HoverCard
-        open={showRoleHover && hoverOpen}
-        onOpenChange={(nextOpen) => {
-          if (showRoleHover) {
-            setHoverOpen(nextOpen);
-          }
-        }}
-      >
-        <HoverCardTrigger
-          closeDelay={200}
-          delay={400}
-          render={<span className="inline-flex min-w-0" />}
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <AppDropdownTriggerButton
+          appearance={appearance}
+          aria-label={triggerAriaLabel}
+          chevronClassName={chevronClassName}
+          className={triggerClassName}
+          disabled={isDisabled}
+          showChevron={showChevron}
         >
-          <DropdownMenuTrigger asChild>
-            <AppDropdownTriggerButton
-              appearance={appearance}
-              aria-label={triggerAriaLabel}
-              chevronClassName={chevronClassName}
-              className={triggerClassName}
-              disabled={isDisabled}
-              showChevron={showChevron}
-            >
-              {selectedPreset ? (
-                <AgentRoleAvatar role={selectedPreset} />
-              ) : null}
-              {!selectedPreset && showAgentTriggerIcon ? (
-                <AgentIcon agentId={value} />
-              ) : null}
-              {triggerLabel}
-            </AppDropdownTriggerButton>
-          </DropdownMenuTrigger>
-        </HoverCardTrigger>
-        {selectedPreset ? (
-          <HoverCardContent
-            align="start"
-            className="w-max max-w-80 py-1.5 ps-3 pe-1.5"
-            side="bottom"
-          >
-            <div className="flex items-center gap-2">
-              <Text size="meta" tone="muted" className="min-w-0 flex-1">
-                {selectedPreset.agentId ? (
-                  <AgentIconLabel agentId={selectedPreset.agentId}>
-                    {selectedPreset.summary}
-                  </AgentIconLabel>
-                ) : (
-                  selectedPreset.summary
-                )}
-              </Text>
-              {onEditPreset ? (
-                <IconButton
-                  aria-label={t("settings:agentRoles.edit")}
-                  size="xs"
-                  title={t("settings:agentRoles.edit")}
-                  onClick={() => {
-                    setHoverOpen(false);
-                    onEditPreset(selectedPreset.id);
-                  }}
-                >
-                  <Pencil />
-                </IconButton>
-              ) : null}
-            </div>
-          </HoverCardContent>
-        ) : null}
-      </HoverCard>
+          {selectedPreset ? <AgentRoleAvatar role={selectedPreset} /> : null}
+          {!selectedPreset && showAgentTriggerIcon ? (
+            <AgentIcon agentId={value} />
+          ) : null}
+          {triggerLabel}
+        </AppDropdownTriggerButton>
+      </DropdownMenuTrigger>
       <AppDropdownContent
         align={align}
         className={cn(
@@ -249,6 +192,7 @@ export function AgentSelect({
               { label: t("team.menuManage"), run: onManageTeams },
             )}
             emptyLabel={t("team.menuEmpty")}
+            icon={<UsersRound className="size-4" />}
             label={t("team.menuLabel")}
             presets={teams}
             selectedId={selectedTeam?.id ?? null}
@@ -265,6 +209,7 @@ export function AgentSelect({
               { label: t("agentRole.menuManage"), run: onManageRoles },
             )}
             emptyLabel={t("agentRole.empty")}
+            icon={<UserRound className="size-4" />}
             label={t("agentRole.menuLabel")}
             presets={roles}
             selectedId={selectedRole?.id ?? null}
@@ -319,6 +264,22 @@ export function AgentSelect({
             <span className="min-w-0 flex-1 truncate">{action.label}</span>
           </AppDropdownItem>
         ))}
+        {selectedPreset && onEditPreset ? (
+          <>
+            <DropdownMenuSeparator />
+            <AppDropdownItem
+              onClick={() => {
+                setOpen(false);
+                onEditPreset(selectedPreset.id);
+              }}
+            >
+              <Pencil className="size-4" />
+              <span className="min-w-0 flex-1 truncate">
+                {t("agentSelect.editPreset", { name: selectedPreset.name })}
+              </span>
+            </AppDropdownItem>
+          </>
+        ) : null}
       </AppDropdownContent>
     </DropdownMenu>
   );
@@ -351,7 +312,9 @@ function AgentSelectRow({
         onSelect(option);
       }}
     >
-      <AgentIcon agentId={option.value} />
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        <AgentIcon agentId={option.value} />
+      </span>
       <span className="min-w-0 flex-1 truncate">{option.label}</span>
       {statusLabel ? (
         <span className="shrink-0 text-meta text-muted-foreground">

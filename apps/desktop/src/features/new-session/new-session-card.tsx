@@ -287,10 +287,12 @@ export function NewSessionCard({
   } else if (canStartWithSelectedAgent) {
     agentTriggerLabel = getAgentDisplayLabel(effectiveSelectedAgent);
   }
+  const presetAgentId = (selectedTeam ?? selectedRole)?.agentId;
 
-  const modelMenu = selectedRole ? null : (
+  const modelMenu = (
     <ProviderModelMenu
       agentId={effectiveSelectedAgent}
+      disabled={Boolean(selectedRole)}
       appearance="ghost"
       compatibleProviders={compatibleProviders}
       footer={
@@ -356,9 +358,18 @@ export function NewSessionCard({
         selectedRoleId={chosenRoleId}
         teams={teamOptions}
         selectedTeamId={chosenTeamId}
-        triggerClassName={cn("max-w-40 shrink-0", compactGhostTriggerClassName)}
+        triggerClassName={cn("max-w-56 shrink-0", compactGhostTriggerClassName)}
         triggerLabel={
-          <AppDropdownTriggerLabel>{agentTriggerLabel}</AppDropdownTriggerLabel>
+          <>
+            <AppDropdownTriggerLabel>
+              {agentTriggerLabel}
+            </AppDropdownTriggerLabel>
+            {presetAgentId ? (
+              <span className="shrink-0 opacity-70">
+                · {getAgentDisplayLabel(presetAgentId)}
+              </span>
+            ) : null}
+          </>
         }
         value={effectiveSelectedAgent}
         onEditRole={(roleId) => {
