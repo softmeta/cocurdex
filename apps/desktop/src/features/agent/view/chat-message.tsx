@@ -8,7 +8,7 @@ import {
   type MessageRecord,
   pathBaseName,
 } from "@cocurdex/shared";
-import { Brain, FileText, ListTodo, Loader2 } from "lucide-react";
+import { Brain, FileText, ListTodo, Loader2, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FileTypeIcon, LinkifiedText, MarkdownRenderer } from "@/components";
 import {
@@ -17,7 +17,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui";
 import { openContextItem } from "@/lib";
-import { splitContentByMentions } from "./chat-message-utils";
+import {
+  type MentionContentSegment,
+  splitContentByMentions,
+} from "./chat-message-utils";
 
 function getContextAttachmentLabel(attachment: ContextAttachment) {
   if (isContextItemAttachment(attachment)) {
@@ -122,6 +125,28 @@ function MessageTextRun({ text }: { text: string }) {
   );
 }
 
+function SlashCommandChip({ command }: { command: string }) {
+  return (
+    <span className="mention-pill inline-flex min-h-[1lh] max-w-full items-center gap-1 text-chat-link">
+      <Sparkles className="size-[1em] shrink-0" />
+      <span className="min-w-0 truncate leading-none">{command}</span>
+    </span>
+  );
+}
+
+function renderUserMessageSegment(
+  segment: MentionContentSegment,
+  index: number,
+) {
+  if (segment.kind === "mention") {
+    return renderAttachmentChip(segment.attachment);
+  }
+  if (segment.kind === "command") {
+    return <SlashCommandChip command={segment.command} key="command" />;
+  }
+  return <MessageTextRun key={index} text={segment.text} />;
+}
+
 export function UserMessageContent({ message }: { message: MessageRecord }) {
   const contextAttachments = message.attachments.filter(isContextAttachment);
   const { leadingAttachments, segments } = splitContentByMentions(
@@ -132,14 +157,7 @@ export function UserMessageContent({ message }: { message: MessageRecord }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-start text-sm text-chat-fg">
       {leadingAttachments.map((attachment) => renderAttachmentChip(attachment))}
-      {segments.map((segment, index) =>
-        segment.kind === "mention" ? (
-          renderAttachmentChip(segment.attachment)
-        ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: positional text run
-          <MessageTextRun key={index} text={segment.text} />
-        ),
-      )}
+      {segments.map(renderUserMessageSegment)}
     </div>
   );
 }
