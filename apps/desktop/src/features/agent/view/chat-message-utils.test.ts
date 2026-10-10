@@ -58,3 +58,34 @@ describe("splitContentByMentions", () => {
     expect(segments).toEqual([{ kind: "text", text: "hello" }]);
   });
 });
+
+describe("splitContentByMentions slash commands", () => {
+  it("splits a leading slash command from the prompt", () => {
+    const { segments } = splitContentByMentions(
+      "/desktop-release 发正式版",
+      [],
+    );
+
+    expect(segments).toEqual([
+      { command: "/desktop-release", kind: "command" },
+      { kind: "text", text: " 发正式版" },
+    ]);
+  });
+
+  it("recognizes a namespaced command with no arguments", () => {
+    const { segments } = splitContentByMentions("/code-review:code-review", []);
+
+    expect(segments).toEqual([
+      { command: "/code-review:code-review", kind: "command" },
+    ]);
+  });
+
+  it("leaves paths and mid-sentence slashes as text", () => {
+    expect(splitContentByMentions("/usr/bin is missing", []).segments).toEqual([
+      { kind: "text", text: "/usr/bin is missing" },
+    ]);
+    expect(splitContentByMentions("run /compact later", []).segments).toEqual([
+      { kind: "text", text: "run /compact later" },
+    ]);
+  });
+});

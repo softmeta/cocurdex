@@ -7,7 +7,25 @@ import {
 
 export type MentionContentSegment =
   | { kind: "text"; text: string }
-  | { kind: "mention"; attachment: ContextAttachment };
+  | { kind: "mention"; attachment: ContextAttachment }
+  | { kind: "command"; command: string };
+
+const LEADING_SLASH_COMMAND = /^(\s*)(\/[\w:.-]+)(?=\s|$)/;
+
+function splitLeadingSlashCommand(
+  segment: MentionContentSegment,
+): MentionContentSegment[] {
+  if (segment.kind !== "text") return [segment];
+  const match = segment.text.match(LEADING_SLASH_COMMAND);
+  if (!match?.[2]) return [segment];
+  const rest = segment.text.slice(match[0].length);
+  return rest
+    ? [
+        { kind: "command", command: match[2] },
+        { kind: "text", text: rest },
+      ]
+    : [{ kind: "command", command: match[2] }];
+}
 
 function getAttachmentPath(attachment: ContextAttachment) {
   if (isContextItemAttachment(attachment)) {
@@ -55,7 +73,11 @@ export function splitContentByMentions(
     segments.push({ kind: "text", text: content.slice(cursor) });
   }
 
-  return { leadingAttachments: remaining, segments };
+  const [first, ...others] = segments;
+  return {
+    leadingAttachments: remaining,
+    segments: first ? [...splitLeadingSlashCommand(first), ...others] : [],
+  };
 }
 
 export function isReasoningMessage(message: MessageRecord) {
