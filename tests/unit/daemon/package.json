@@ -16,7 +16,7 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.31.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@napi-rs/keyring": "^2.1.0",
     "@types/node": "^24.13.6",
     "@types/ws": "^8.18.2",
