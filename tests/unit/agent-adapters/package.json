@@ -12,8 +12,8 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
-    "@agentclientprotocol/sdk": "^1.5.1",
-    "@anthropic-ai/claude-agent-sdk": "0.3.286",
+    "@agentclientprotocol/sdk": "^1.8.0",
+    "@anthropic-ai/claude-agent-sdk": "0.3.296",
     "@earendil-works/pi-ai": "1.2.0",
     "@earendil-works/pi-coding-agent": "1.2.0",
     "@opencode/client": "2.0.20",
