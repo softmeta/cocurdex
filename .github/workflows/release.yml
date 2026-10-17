@@ -180,6 +180,15 @@ jobs:
         run: pnpm --filter @cocurdex/e2e test:desktop
         env:
           COCURDEX_DESKTOP_PACKAGED: "1"
+          COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
+
+      - name: Upload desktop startup artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: desktop-startup-macos-${{ matrix.arch }}
+          path: ${{ runner.temp }}/desktop-tests
+          if-no-files-found: ignore
 
       - name: Verify signature and notarization
         working-directory: apps/desktop
@@ -282,6 +291,15 @@ jobs:
         run: pnpm --filter @cocurdex/e2e test:desktop
         env:
           COCURDEX_DESKTOP_PACKAGED: "1"
+          COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
+
+      - name: Upload desktop startup artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: desktop-startup-windows-x64
+          path: ${{ runner.temp }}/desktop-tests
+          if-no-files-found: ignore
 
       - name: Attach checksum
         if: github.ref_type == 'tag'
@@ -338,6 +356,15 @@ jobs:
         run: xvfb-run -a pnpm --filter @cocurdex/e2e test:desktop
         env:
           COCURDEX_DESKTOP_PACKAGED: "1"
+          COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
+
+      - name: Upload desktop startup artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: desktop-startup-linux-x64
+          path: ${{ runner.temp }}/desktop-tests
+          if-no-files-found: ignore
 
       - name: Attach checksum
         if: github.ref_type == 'tag'
