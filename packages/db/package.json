@@ -15,7 +15,7 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "yjs": "^13.6.33"
   }
 }
