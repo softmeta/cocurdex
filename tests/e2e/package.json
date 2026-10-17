@@ -20,7 +20,7 @@
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.31.0",
     "@playwright/test": "^1.52.0",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "tsx": "^4.23.15",
     "vitest": "^4.1.11"
   }
