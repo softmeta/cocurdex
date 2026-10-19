@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { closeSync, openSync } from "node:fs";
+import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import net from "node:net";
 import os from "node:os";
@@ -98,37 +98,22 @@ function killTree(rootPid) {
   }
 }
 
-function waitForRendererUrl(child, logStream) {
-  return new Promise((resolve, reject) => {
-    let buffered = "";
-    const timer = setTimeout(
-      () => reject(new Error("Timed out waiting for the renderer dev server")),
-      STARTUP_TIMEOUT_MS,
-    );
-    let resolved = false;
-    const onData = (chunk) => {
-      logStream.write(chunk);
-      if (resolved) return;
-      buffered += stripVTControlCharacters(chunk.toString("utf8"));
-      const match = RENDERER_URL_PATTERN.exec(buffered);
-      if (match) {
-        resolved = true;
-        clearTimeout(timer);
-        resolve(match[1]);
-      }
-    };
-    child.stdout.on("data", onData);
-    child.stderr.on("data", (chunk) => logStream.write(chunk));
-    child.once("exit", (code) => {
-      if (resolved) return;
-      clearTimeout(timer);
-      reject(new Error(`electron-vite dev exited early with code ${code}`));
-    });
-    child.once("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
+async function waitForRendererUrl(child, logPath) {
+  let exitCode = null;
+  child.once("exit", (code) => {
+    exitCode = code ?? -1;
   });
+  const deadline = Date.now() + STARTUP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const log = stripVTControlCharacters(await readFile(logPath, "utf8"));
+    const match = RENDERER_URL_PATTERN.exec(log);
+    if (match) return match[1];
+    if (exitCode !== null) {
+      throw new Error(`electron-vite dev exited early with code ${exitCode}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+  throw new Error("Timed out waiting for the renderer dev server");
 }
 
 async function waitForTarget(port, url) {
@@ -162,7 +147,7 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
     throw error;
   }
   const logPath = `${userDataPath}.log`;
-  const logStream = createWriteStream(logPath);
+  const logFd = openSync(logPath, "a");
   const child = spawn(process.execPath, [viteBin, "dev"], {
     cwd: DESKTOP_DIR,
     env: {
@@ -170,12 +155,10 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
       COCURDEX_USER_DATA_PATH: userDataPath,
       COCURDEX_REMOTE_DEBUGGING_PORT: String(port),
     },
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", logFd, logFd],
   });
+  closeSync(logFd);
   const stop = async ({ keepLog = false } = {}) => {
-    child.stdout.removeAllListeners("data");
-    child.stderr.removeAllListeners("data");
-    logStream.end();
     await stopIsolatedInstance(child.pid, userDataPath);
     const artifacts = process.env.COCURDEX_TEST_ARTIFACTS_DIR;
     if (keepLog && artifacts) {
@@ -185,7 +168,7 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
     if (!keepLog) await rm(logPath, { force: true });
   };
   try {
-    const url = await waitForRendererUrl(child, logStream);
+    const url = await waitForRendererUrl(child, logPath);
     await waitForTarget(port, url);
     return {
       pid: child.pid,
