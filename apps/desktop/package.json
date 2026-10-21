@@ -123,7 +123,7 @@
     "i18next": "^26.5.3",
     "i18next-cli": "^1.77.0",
     "jotai": "^2.20.3",
-    "katex": "^0.18.10",
+    "katex": "^0.19.0",
     "lucide-react": "^1.60.0",
     "monaco-editor": "^0.57.0",
     "pdfjs-dist": "6.4.299",
