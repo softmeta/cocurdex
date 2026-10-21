@@ -19,8 +19,8 @@
     "@cocurdex/agent-adapters": "workspace:*"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.31.0",
-    "@playwright/test": "^1.52.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^24.19.2",
     "tsx": "^4.23.15",
     "vitest": "^4.1.11"
