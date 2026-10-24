@@ -20,7 +20,7 @@
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
     "@napi-rs/keyring": "^2.1.2",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "@types/ws": "^8.18.2",
     "effect": "4.0.5",
     "simple-git": "^4.0.2",
