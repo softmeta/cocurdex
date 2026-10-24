@@ -1,6 +1,11 @@
 {
   "screens": {
     "computers": "Computers",
-    "pair": "Pair a Computer"
+    "pair": "Pair a Computer",
+    "sessions": "Sessions"
+  },
+  "tabs": {
+    "computers": "Computers",
+    "sessions": "Sessions"
   }
 }

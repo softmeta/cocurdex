@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import {
   getDisplayDirectory,
   getWorkspaceRelativePath,
   withoutWorkspaceCd,
-} from "@/features/agent/tool-call/tool-call-display-path";
+} from "@cocurdex/shared";
+import { describe, expect, it } from "vitest";
 
 const POSIX_ROOT = "/Users/me/repo";
 const WINDOWS_ROOT = "C:\\Users\\me\\repo";
@@ -16,6 +16,7 @@ describe("getWorkspaceRelativePath", () => {
       "crates/core/README.md",
     ],
     ["/Users/me/repo", "/Users/me/repo/", ""],
+    ["/Users/me/repo//", "/Users/me/repo\\/", ""],
     ["/Users/me/repo-other/a.ts", POSIX_ROOT, null],
     ["/Users/me/Repo/a.ts", POSIX_ROOT, null],
     ["/elsewhere/a.ts", POSIX_ROOT, null],
@@ -29,6 +30,13 @@ describe("getWorkspaceRelativePath", () => {
       getWorkspaceRelativePath("c:/users/me/repo\\src\\main.rs", WINDOWS_ROOT),
     ).toBe("src/main.rs");
     expect(getWorkspaceRelativePath("D:\\repo\\a.ts", WINDOWS_ROOT)).toBeNull();
+  });
+
+  it("handles long separator runs in agent-supplied paths in linear time", () => {
+    const hostile = `${"/".repeat(200_000)}x`;
+    const started = performance.now();
+    expect(getWorkspaceRelativePath(hostile, POSIX_ROOT)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 });
 

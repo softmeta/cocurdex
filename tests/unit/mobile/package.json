@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@cocurdex/client-runtime": "workspace:*",
-    "@cocurdex/mobile": "workspace:*"
+    "@cocurdex/mobile": "workspace:*",
+    "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

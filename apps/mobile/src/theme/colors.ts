@@ -1,5 +1,6 @@
 import { useColorScheme } from "react-native";
 import generated from "./colors.generated.json";
+import syntax from "./syntax-colors.generated.json";
 
 export type ThemeName = keyof typeof generated;
 type GeneratedColors = (typeof generated)[ThemeName];
@@ -20,6 +21,16 @@ export const themeColors: Record<ThemeName, ThemeColors> = {
   dark: withTint("dark"),
 };
 
+export type SyntaxColors = (typeof syntax)[ThemeName];
+
+function useThemeName(): ThemeName {
+  return useColorScheme() === "dark" ? "dark" : "light";
+}
+
 export function useThemeColors(): ThemeColors {
-  return themeColors[useColorScheme() === "dark" ? "dark" : "light"];
+  return themeColors[useThemeName()];
+}
+
+export function useSyntaxColors(): SyntaxColors {
+  return syntax[useThemeName()];
 }

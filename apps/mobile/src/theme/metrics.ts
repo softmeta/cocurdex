@@ -14,3 +14,9 @@ export const layout = {
   bubbleMaxWidthRatio: 0.85,
   boardColumnPeek: 90,
 } as const;
+
+export const control = {
+  standard: { height: 40, radius: 8 },
+  compact: { height: 32, radius: 6 },
+  hitArea: 44,
+} as const;

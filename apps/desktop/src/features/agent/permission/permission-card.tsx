@@ -1,6 +1,10 @@
-import type {
-  AgentPermissionOption,
-  AgentPermissionRequestRecord,
+import {
+  type AgentPermissionOption,
+  type AgentPermissionRequestRecord,
+  describePermissionRequest,
+  filterDetailsCoveredByText,
+  type PermissionDetail,
+  type PermissionRequestSummary,
 } from "@cocurdex/shared";
 import { Check, ShieldAlert, X } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -9,13 +13,18 @@ import { toast } from "sonner";
 import { AppSelect } from "@/components";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
-import {
-  filterDetailsCoveredByText,
-  formatRawInput,
-  getClaudePermissionDetails,
-  getReadablePermissionDetails,
-  type PermissionDetail,
-} from "./permission-card-utils";
+
+function usePermissionSummaryText(summary: PermissionRequestSummary) {
+  const { t } = useTranslation("agent");
+  if (summary.kind === "command") return t("permissions.runCommand");
+  if (summary.kind === "file") {
+    return t("permissions.claudeAction", {
+      action: t(`permissions.actions.${summary.action}`),
+      target: summary.target,
+    });
+  }
+  return summary.text;
+}
 
 type PermissionCardVariant = "inline" | "dock";
 
@@ -235,44 +244,20 @@ export function PermissionCard({
 }) {
   const { t } = useTranslation("agent");
   const [isResolving, setIsResolving] = useState(false);
-  const rawInput = formatRawInput(permission.rawInput);
   const isPending = permission.status === "pending";
-  const claudeDetails = getClaudePermissionDetails(permission);
-  const primaryPath = claudeDetails?.path ?? permission.locations[0]?.path;
-  const sourceDescription =
-    claudeDetails?.subtitle ?? permission.description ?? null;
-  const readableDetails = getReadablePermissionDetails({
-    displayDescription: sourceDescription,
-    permission,
-    primaryPath,
-  });
-  const hasCommand = readableDetails.some(
-    (detail) => detail.label === "Command",
-  );
-  let requestSummary = permission.title;
-  if (claudeDetails) {
-    requestSummary = t("permissions.claudeAction", {
-      action: t(`permissions.actions.${claudeDetails.action}`),
-      target: claudeDetails.target,
-    });
-  }
-  if (hasCommand) {
-    requestSummary = t("permissions.runCommand");
-  }
-  const displayDescription = hasCommand ? null : sourceDescription;
+  const display = describePermissionRequest(permission);
+  const requestSummary = usePermissionSummaryText(display.summary);
+  const displayDescription = display.description;
   const visibleDescription =
     displayDescription !== null &&
     !requestSummary.includes(displayDescription.trim())
       ? displayDescription
       : null;
-  const visibleDetails = filterDetailsCoveredByText(readableDetails, [
+  const visibleDetails = filterDetailsCoveredByText(display.details, [
     requestSummary,
     displayDescription,
   ]);
-  const shouldShowRawInput =
-    rawInput &&
-    readableDetails.length === 0 &&
-    permission.providerId !== "claude-agent";
+  const shouldShowRawInput = display.rawInput !== null;
   const hasBody =
     requestSummary.length > 0 ||
     visibleDescription !== null ||
@@ -362,7 +347,7 @@ export function PermissionCard({
           ))}
           {shouldShowRawInput ? (
             <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words rounded-control bg-chat-code-panel px-2.5 py-2 font-mono text-meta text-chat-fg-secondary [font-variant-ligatures:none]">
-              {rawInput}
+              {display.rawInput}
             </pre>
           ) : null}
         </div>

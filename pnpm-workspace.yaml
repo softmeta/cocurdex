@@ -59,6 +59,7 @@ allowBuilds:
   msw: true
   node-pty: true
   protobufjs: false
+  react-native-enriched-markdown: true
   # next/image optimization (apps/console)
   sharp: true
 patchedDependencies:

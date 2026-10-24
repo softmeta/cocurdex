@@ -26,6 +26,7 @@
     "vitest": "^4.1.11"
   },
   "exports": {
+    "./fixture-db/*": "./fixture-db/*.ts",
     "./helpers/*": "./helpers/*.ts"
   }
 }

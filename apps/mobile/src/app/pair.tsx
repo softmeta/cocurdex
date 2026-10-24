@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native";
-import { hosts, type PairFailure, PairToolbar } from "@/hosts";
+import { hosts, type PairFailure, PairToolbar, selectHost } from "@/hosts";
 import { useThemeColors } from "@/theme";
 import { BrandHost, keyboardHidden } from "@/ui";
 
@@ -43,6 +43,7 @@ export default function PairScreen() {
       setFailure(result.failure);
       return;
     }
+    selectHost(result.host.hostId);
     await keyboardHidden();
     router.back();
   };

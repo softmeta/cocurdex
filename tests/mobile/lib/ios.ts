@@ -5,6 +5,7 @@ import { runCommand } from "./command";
 import type { MobileTarget } from "./target";
 
 const PREFERRED_DEVICE_TYPE = "iPhone 16 Pro";
+const IOS_APP_ID = "dev.cocurdex.mobile";
 
 const IOS_LANGUAGES: Record<
   SupportedLocale,
@@ -112,7 +113,6 @@ export async function startIosTarget(mobileDir: string): Promise<MobileTarget> {
     await runCommand("xcrun", ["simctl", "install", udid, appPath]);
     return {
       deviceId: udid,
-      hostAlias: null,
       setAppearance: async (appearance) => {
         await runCommand("xcrun", [
           "simctl",
@@ -148,6 +148,9 @@ export async function startIosTarget(mobileDir: string): Promise<MobileTarget> {
       resetState: async () => {
         await runCommand("xcrun", ["simctl", "keychain", udid, "reset"]);
       },
+      launchApp: async () => {
+        await runCommand("xcrun", ["simctl", "launch", udid, IOS_APP_ID]);
+      },
       diagnostics: async () => {
         const devices = await runCommand("xcrun", [
           "simctl",
@@ -155,7 +158,20 @@ export async function startIosTarget(mobileDir: string): Promise<MobileTarget> {
           "devices",
           udid,
         ]).catch((error: unknown) => String(error));
-        return `Simulator ${udid}:\n${devices.trim()}`;
+        const appLog = await runCommand("xcrun", [
+          "simctl",
+          "spawn",
+          udid,
+          "log",
+          "show",
+          "--last",
+          "5m",
+          "--style",
+          "compact",
+          "--predicate",
+          'process == "Cocurdex"',
+        ]).catch((error: unknown) => String(error));
+        return `Simulator ${udid}:\n${devices.trim()}\nApp log:\n${appLog.trim()}`;
       },
       stop,
     };

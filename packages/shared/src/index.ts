@@ -15,6 +15,7 @@ export type {
   GenerateGitCommitMessagePayload,
   ResolvedCommitMessageModel,
 } from "./commit-message";
+export * from "./compact-relative-time";
 export * from "./context-compaction";
 export * from "./context-handoff";
 export * from "./context-transfer";
@@ -39,6 +40,13 @@ export * from "./notes";
 export * from "./orchestration";
 export * from "./pdf-annotations";
 export * from "./peer-messaging";
+export {
+  describePermissionRequest,
+  filterDetailsCoveredByText,
+  type PermissionDetail,
+  type PermissionRequestDisplay,
+  type PermissionRequestSummary,
+} from "./permission-request-display";
 export * from "./provider-compatibility";
 export * from "./provider-json";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
@@ -69,6 +77,17 @@ export {
   isToolCallId,
   summarizeToolCallDiff,
 } from "./tool-call";
+export {
+  getCommandPreview,
+  getDisplayDirectory,
+  getLineRangeLabel,
+  getToolCallInputSummary,
+  getWorkspaceRelativePath,
+  sanitizeCommand,
+  truncateMiddle,
+  unwrapShellCommand,
+  withoutWorkspaceCd,
+} from "./tool-call-display";
 export * from "./workflow";
 export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";

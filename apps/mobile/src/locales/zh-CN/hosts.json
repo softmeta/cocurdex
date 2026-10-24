@@ -15,5 +15,8 @@
     "hint": "在电脑上打开 设置 › 设备，生成配对码。",
     "linkPlaceholder": "配对链接",
     "pairing": "正在配对…"
+  },
+  "switcher": {
+    "label": "电脑：{{host}}"
   }
 }

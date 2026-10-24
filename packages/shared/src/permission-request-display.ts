@@ -1,4 +1,4 @@
-import type { AgentPermissionRequestRecord } from "@cocurdex/shared";
+import type { AgentPermissionRequestRecord } from "./contracts";
 
 export type PermissionDetail = {
   label: "Command" | "Path" | "Pattern" | "Query" | "URL";
@@ -177,4 +177,56 @@ export function formatRawInput(rawInput: unknown) {
   } catch {
     return String(rawInput);
   }
+}
+
+export type PermissionRequestSummary =
+  | { kind: "command" }
+  | { kind: "file"; action: "edit" | "read" | "use" | "write"; target: string }
+  | { kind: "title"; text: string };
+
+export interface PermissionRequestDisplay {
+  summary: PermissionRequestSummary;
+  description: string | null;
+  details: PermissionDetail[];
+  rawInput: string | null;
+}
+
+export function describePermissionRequest(
+  permission: AgentPermissionRequestRecord,
+): PermissionRequestDisplay {
+  const claudeDetails = getClaudePermissionDetails(permission);
+  const primaryPath = claudeDetails?.path ?? permission.locations[0]?.path;
+  const sourceDescription =
+    claudeDetails?.subtitle ?? permission.description ?? null;
+  const details = getReadablePermissionDetails({
+    displayDescription: sourceDescription,
+    permission,
+    primaryPath,
+  });
+  const hasCommand = details.some((detail) => detail.label === "Command");
+  let summary: PermissionRequestSummary = {
+    kind: "title",
+    text: permission.title,
+  };
+  if (claudeDetails) {
+    summary = {
+      kind: "file",
+      action: claudeDetails.action,
+      target: claudeDetails.target,
+    };
+  }
+  if (hasCommand) {
+    summary = { kind: "command" };
+  }
+  const rawInput = formatRawInput(permission.rawInput);
+  const showRawInput =
+    rawInput !== "" &&
+    details.length === 0 &&
+    permission.providerId !== "claude-agent";
+  return {
+    summary,
+    description: hasCommand ? null : sourceDescription,
+    details,
+    rawInput: showRawInput ? rawInput : null,
+  };
 }

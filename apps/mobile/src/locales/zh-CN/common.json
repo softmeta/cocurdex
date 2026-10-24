@@ -1,6 +1,11 @@
 {
   "screens": {
     "computers": "电脑",
-    "pair": "配对电脑"
+    "pair": "配对电脑",
+    "sessions": "会话"
+  },
+  "tabs": {
+    "computers": "电脑",
+    "sessions": "会话"
   }
 }

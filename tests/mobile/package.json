@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "flows": "node --import tsx run.ts",
+    "preview": "node --import tsx preview.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

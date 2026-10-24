@@ -15,5 +15,8 @@
     "hint": "On your computer, open Settings › Devices and create a pairing code.",
     "linkPlaceholder": "Pairing link",
     "pairing": "Pairing…"
+  },
+  "switcher": {
+    "label": "Computer: {{host}}"
   }
 }

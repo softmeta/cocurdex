@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { formatHex, formatHex8, parse, toGamut } from "culori";
 
 const require = createRequire(import.meta.url);
@@ -11,6 +11,28 @@ const SOURCES = [
 const OUTPUT = fileURLToPath(
   new URL("../src/theme/colors.generated.json", import.meta.url),
 );
+const SYNTAX_OUTPUT = fileURLToPath(
+  new URL("../src/theme/syntax-colors.generated.json", import.meta.url),
+);
+const desktopRequire = createRequire(
+  require.resolve("../../desktop/package.json"),
+);
+const SYNTAX_THEMES = {
+  light: "shiki/themes/github-light-default.mjs",
+  dark: "shiki/themes/github-dark-default.mjs",
+};
+const SYNTAX_SCOPES = {
+  keyword: "keyword",
+  string: "string",
+  number: "constant.numeric",
+  constant: "constant.language",
+  comment: "comment",
+  function: "entity.name.function",
+  type: "entity.name.type",
+  property: "support.type.property-name",
+  tag: "entity.name.tag",
+  attribute: "entity.other.attribute-name",
+};
 const SCOPES = { light: ":root", dark: '[data-theme="dark"]' };
 const toSrgb = toGamut("rgb", "oklch");
 
@@ -159,6 +181,51 @@ function themeColors(css, selectors) {
   return colors;
 }
 
+function selectorDepth(selector, scope) {
+  if (selector.includes(" ")) return -1;
+  return scope === selector || scope.startsWith(`${selector}.`)
+    ? selector.split(".").length
+    : -1;
+}
+
+function scopeColor(tokenColors, scope) {
+  let best = { depth: 0, color: null };
+  for (const { scope: selectors, settings } of tokenColors) {
+    if (!settings?.foreground || !selectors) continue;
+    const list = Array.isArray(selectors) ? selectors : [selectors];
+    for (const selector of list) {
+      const depth = selectorDepth(selector.trim(), scope);
+      if (depth >= best.depth && depth > 0) {
+        best = { depth, color: settings.foreground.toLowerCase() };
+      }
+    }
+  }
+  return best.color;
+}
+
+async function syntaxColors(themeModule) {
+  const url = pathToFileURL(desktopRequire.resolve(themeModule));
+  const { tokenColors } = (await import(url.href)).default;
+  const colors = {};
+  for (const [token, scope] of Object.entries(SYNTAX_SCOPES)) {
+    const color = scopeColor(tokenColors, scope);
+    if (color) colors[token] = color;
+  }
+  return colors;
+}
+
+function writeOrCheck(file, content, label) {
+  if (!process.argv.includes("--check")) {
+    writeFileSync(file, content, "utf8");
+    return true;
+  }
+  if (readFileSync(file, "utf8") === content) return true;
+  process.stderr.write(
+    `apps/mobile/src/theme/${label} is stale; run pnpm --filter @cocurdex/mobile generate:theme-colors\n`,
+  );
+  return false;
+}
+
 const css = SOURCES.map((source) =>
   stripComments(readFileSync(source, "utf8")),
 ).join("\n");
@@ -171,13 +238,17 @@ const output = `${JSON.stringify(
   2,
 )}\n`;
 
-if (process.argv.includes("--check")) {
-  if (readFileSync(OUTPUT, "utf8") !== output) {
-    process.stderr.write(
-      "apps/mobile/src/theme/colors.generated.json is stale; run pnpm --filter @cocurdex/mobile generate:theme-colors\n",
-    );
-    process.exit(1);
-  }
-} else {
-  writeFileSync(OUTPUT, output, "utf8");
-}
+const syntaxOutput = `${JSON.stringify(
+  {
+    light: await syntaxColors(SYNTAX_THEMES.light),
+    dark: await syntaxColors(SYNTAX_THEMES.dark),
+  },
+  null,
+  2,
+)}\n`;
+
+const fresh = [
+  writeOrCheck(OUTPUT, output, "colors.generated.json"),
+  writeOrCheck(SYNTAX_OUTPUT, syntaxOutput, "syntax-colors.generated.json"),
+];
+if (fresh.includes(false)) process.exit(1);

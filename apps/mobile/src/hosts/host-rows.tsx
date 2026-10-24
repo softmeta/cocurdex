@@ -15,6 +15,7 @@ export function HostRows({ rowModifiers }: { rowModifiers?: RowModifiers }) {
           {new URL(host.baseUrl).host}
         </Text>
       }
+      colors={{ containerColor: colors.background }}
       modifiers={rowModifiers}
     >
       <Text>{host.name}</Text>

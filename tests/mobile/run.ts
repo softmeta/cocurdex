@@ -1,13 +1,17 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import {
+  FIXTURE_SESSIONS,
+  FIXTURE_WORKSPACE_NAME,
+} from "@cocurdex/e2e/fixture-db/recipe";
 import type { SupportedLocale } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/shared/testing";
 import { androidSdk, buildAndroidApp, startAndroidTarget } from "./lib/android";
 import { runCommand } from "./lib/command";
 import { startPairingDaemon } from "./lib/daemon";
 import { buildIosApp, startIosTarget } from "./lib/ios";
-import type { Appearance, MobileTarget } from "./lib/target";
+import type { Appearance, MobilePlatform, MobileTarget } from "./lib/target";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const mobileDir = path.join(repoRoot, "apps/mobile");
@@ -26,9 +30,36 @@ function readMessages(locale: SupportedLocale, namespace: string) {
   return JSON.parse(readFileSync(file, "utf8"));
 }
 
+const SEARCHED_SESSION = "fixture-session-discounts";
+const CODE_SESSION = "fixture-session-checkout-audit";
+
+function fixtureSession(id: string) {
+  const session = FIXTURE_SESSIONS.find((candidate) => candidate.id === id);
+  if (!session) throw new Error(`Fixture session ${id} is missing`);
+  return session;
+}
+
+function lastPrompt(id: string) {
+  const prompt = fixtureSession(id).turns.at(-1)?.prompt;
+  if (!prompt) throw new Error(`Fixture session ${id} has no turns`);
+  return prompt;
+}
+
 function flowLabels(locale: SupportedLocale) {
   const hosts = readMessages(locale, "hosts");
+  const common = readMessages(locale, "common");
+  const sessions = readMessages(locale, "sessions");
   return {
+    TAB_COMPUTERS: common.tabs.computers,
+    TAB_SESSIONS: common.tabs.sessions,
+    SEARCH_PLACEHOLDER: sessions.search,
+    WORKSPACE_NAME: FIXTURE_WORKSPACE_NAME,
+    SEARCH_QUERY: "percentage",
+    SEARCHED_SESSION_TITLE: fixtureSession(SEARCHED_SESSION).title,
+    SEARCHED_SESSION_LAST_PROMPT: lastPrompt(SEARCHED_SESSION),
+    OTHER_SESSION_TITLE: fixtureSession("fixture-session-checkout-bug").title,
+    CODE_SESSION_TITLE: fixtureSession(CODE_SESSION).title,
+    CODE_BLOCK_TEXT: "(?s)const fulfillmentSteps = .*",
     EMPTY_TITLE: hosts.empty.title,
     EMPTY_PAIR: hosts.empty.pair,
     PAIR_ACTION: hosts.pair.action,
@@ -47,14 +78,21 @@ const { values } = parseArgs({
   },
 });
 
-const platform =
-  values.platform ?? (process.platform === "darwin" ? "ios" : "android");
-if (platform !== "ios" && platform !== "android") {
-  throw new Error(`--platform must be ios or android, not ${platform}`);
+function parsePlatform(value: string | undefined): MobilePlatform {
+  const requested =
+    value ?? (process.platform === "darwin" ? "ios" : "android");
+  if (requested !== "ios" && requested !== "android") {
+    throw new Error(`--platform must be ios or android, not ${requested}`);
+  }
+  return requested;
 }
+
+const platform = parsePlatform(values.platform);
 if (platform === "ios" && process.platform !== "darwin") {
   throw new Error("iOS runs need macOS with Xcode");
 }
+
+const DRIVER_STARTUP_TIMEOUT_MS = "240000";
 
 async function runFlow(
   target: MobileTarget,
@@ -80,10 +118,11 @@ async function runFlow(
       ],
       {
         inherit: true,
-        env:
-          platform === "android"
-            ? { ...process.env, ANDROID_HOME: androidSdk() }
-            : process.env,
+        env: {
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: DRIVER_STARTUP_TIMEOUT_MS,
+          ...process.env,
+          ...(platform === "android" ? { ANDROID_HOME: androidSdk() } : {}),
+        },
       },
     );
   } catch (error) {
@@ -117,12 +156,20 @@ async function main() {
   }
   const tempDirs = createTempDirs();
   const outputRoot = flowOutputRoot(tempDirs);
-  const target =
-    platform === "ios"
-      ? await startIosTarget(mobileDir)
-      : await startAndroidTarget(mobileDir, values.avd);
+  const daemon = await startPairingDaemon(platform, tempDirs);
+  const openedSessionState = async () =>
+    (await daemon.sessionAttention()).find(
+      (entry) => entry.sessionId === CODE_SESSION,
+    )?.attentionState;
   try {
-    const daemon = await startPairingDaemon(target.hostAlias);
+    const before = await openedSessionState();
+    if (before !== "completed-unread") {
+      throw new Error(`${CODE_SESSION} should start unread, not ${before}`);
+    }
+    const target =
+      platform === "ios"
+        ? await startIosTarget(mobileDir)
+        : await startAndroidTarget(mobileDir, values.avd);
     try {
       for (const { appearance, locale } of RUNS) {
         await target.resetState();
@@ -139,6 +186,10 @@ async function main() {
           path.join(outputRoot, `${appearance}-${locale}`),
         );
       }
+      const after = await openedSessionState();
+      if (after === "completed-unread") {
+        throw new Error(`Opening ${CODE_SESSION} did not mark it visited`);
+      }
       const devices = await daemon.pairedDevices();
       if (devices.length !== RUNS.length) {
         throw new Error(
@@ -146,13 +197,13 @@ async function main() {
         );
       }
     } finally {
-      await daemon.dispose();
+      await target.stop();
     }
     process.stdout.write(
       `${JSON.stringify({ platform, ok: true, screenshots: values.keep ? outputRoot : null })}\n`,
     );
   } finally {
-    await target.stop();
+    await daemon.dispose();
     if (!values.keep) await tempDirs.cleanup();
   }
 }

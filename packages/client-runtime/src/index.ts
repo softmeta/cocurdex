@@ -5,6 +5,7 @@ export {
   HostAccessError,
   type HostAccessFailure,
   pairHost,
+  savedHostEndpoint,
   verifyHostCredential,
 } from "./host-access";
 export {

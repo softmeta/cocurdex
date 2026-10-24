@@ -4,6 +4,7 @@ import {
   type HostAccessSession,
   type HostPairingExchangeResult,
 } from "@cocurdex/shared";
+import type { HostEndpoint } from "./platform";
 import type { SavedHost, SavedHostStore } from "./saved-hosts";
 
 export type HostAccessFailure = "invalid" | "rateLimited" | "unreachable";
@@ -102,4 +103,12 @@ export async function pairHost(
   };
   options.store.save(saved);
   return saved;
+}
+
+export function savedHostEndpoint(
+  host: Pick<SavedHost, "baseUrl" | "token">,
+): HostEndpoint {
+  const { protocol, host: authority } = new URL(host.baseUrl);
+  const scheme = protocol === "https:" ? "wss:" : "ws:";
+  return { webSocketUrl: `${scheme}//${authority}`, token: host.token };
 }

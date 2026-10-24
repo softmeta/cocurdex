@@ -2,6 +2,7 @@ import {
   type FetchLike,
   HostAccessError,
   pairHost,
+  savedHostEndpoint,
   verifyHostCredential,
 } from "@cocurdex/client-runtime/internal/host-access";
 import { createSavedHostStore } from "@cocurdex/client-runtime/internal/saved-hosts";
@@ -108,5 +109,19 @@ describe("verifyHostCredential", () => {
 
     expect(error).toBeInstanceOf(HostAccessError);
     expect(error).toMatchObject({ reason: "unreachable" });
+  });
+});
+
+describe("savedHostEndpoint", () => {
+  it("opens the WebSocket on the paired origin with the device token", () => {
+    expect(
+      savedHostEndpoint({ baseUrl: "http://192.168.1.20:47820", token: "t" }),
+    ).toEqual({ webSocketUrl: "ws://192.168.1.20:47820", token: "t" });
+    expect(
+      savedHostEndpoint({
+        baseUrl: "https://studio.example.invalid",
+        token: "t",
+      }),
+    ).toEqual({ webSocketUrl: "wss://studio.example.invalid", token: "t" });
   });
 });

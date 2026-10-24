@@ -5,12 +5,13 @@ import { killProcessTree, spawnCommand } from "@cocurdex/agent-adapters";
 import { FatalWaitError, runCommand, waitUntil } from "./command";
 import type { MobileTarget } from "./target";
 
-const EMULATOR_HOST_ALIAS = "10.0.2.2";
+export const EMULATOR_HOST_ALIAS = "10.0.2.2";
 const APP_ID = "dev.cocurdex.mobile";
 const BOOT_TIMEOUT_MS = 240_000;
 const FIRST_CONSOLE_PORT = 5554;
 const LAST_CONSOLE_PORT = 5682;
 const EMULATOR_OUTPUT_LIMIT = 16_384;
+const IME_DISABLE_TIMEOUT_MS = 15_000;
 
 function emulatorGpuMode(platform: NodeJS.Platform) {
   return platform === "linux" ? "swiftshader_indirect" : "auto";
@@ -26,6 +27,28 @@ export function defaultAndroidSdk(platform: NodeJS.Platform, home: string) {
   return path.join(home, "Android/Sdk");
 }
 
+function androidStudioJdkCandidates(platform: NodeJS.Platform, home: string) {
+  if (platform === "darwin") {
+    const bundle = "Android Studio.app/Contents/jbr/Contents/Home";
+    return [
+      path.join("/Applications", bundle),
+      path.join(home, "Applications", bundle),
+    ];
+  }
+  if (platform === "win32") {
+    const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
+    return [path.join(programFiles, "Android", "Android Studio", "jbr")];
+  }
+  return ["/opt/android-studio/jbr", path.join(home, "android-studio", "jbr")];
+}
+
+function androidJavaHome() {
+  if (process.env.JAVA_HOME) return process.env.JAVA_HOME;
+  return androidStudioJdkCandidates(process.platform, os.homedir()).find(
+    (candidate) => existsSync(candidate),
+  );
+}
+
 export function androidSdk() {
   return (
     process.env.ANDROID_HOME ??
@@ -39,7 +62,13 @@ function adb(sdk: string) {
 }
 
 export async function buildAndroidApp(mobileDir: string) {
-  const env = { ...process.env, ANDROID_HOME: androidSdk(), CI: "1" };
+  const javaHome = androidJavaHome();
+  const env = {
+    ...process.env,
+    ANDROID_HOME: androidSdk(),
+    CI: "1",
+    ...(javaHome ? { JAVA_HOME: javaHome } : {}),
+  };
   await runCommand(
     "pnpm",
     ["exec", "expo", "prebuild", "--platform", "android"],
@@ -83,6 +112,7 @@ async function freeConsolePort(sdk: string) {
 export async function startAndroidTarget(
   mobileDir: string,
   avdName: string | undefined,
+  options: { visible?: boolean } = {},
 ): Promise<MobileTarget> {
   const apkPath = androidApkPath(mobileDir);
   if (!existsSync(apkPath)) {
@@ -100,7 +130,7 @@ export async function startAndroidTarget(
       "-port",
       String(port),
       "-read-only",
-      "-no-window",
+      ...(options.visible ? [] : ["-no-window"]),
       "-no-audio",
       "-no-boot-anim",
       "-no-snapshot-save",
@@ -140,12 +170,9 @@ export async function startAndroidTarget(
       throw new Error(`${reason}\nEmulator output:\n${emulatorOutput}`);
     });
     await runCommand(adb(sdk), ["-s", serial, "install", "-r", apkPath]);
-    for (const ime of parseLines(await shell("ime", "list", "-s"))) {
-      await shell("ime", "disable", ime);
-    }
+    await disableInputMethods(shell);
     return {
       deviceId: serial,
-      hostAlias: EMULATOR_HOST_ALIAS,
       setAppearance: async (appearance) => {
         await shell(
           "cmd",
@@ -166,6 +193,22 @@ export async function startAndroidTarget(
       },
       resetState: async () => {
         await shell("pm", "clear", APP_ID);
+      },
+      launchApp: async () => {
+        const resolved = await shell(
+          "cmd",
+          "package",
+          "resolve-activity",
+          "--brief",
+          "-c",
+          "android.intent.category.LAUNCHER",
+          APP_ID,
+        );
+        const component = parseLines(resolved).at(-1);
+        if (!component?.includes("/")) {
+          throw new Error(`${APP_ID} has no launcher activity:\n${resolved}`);
+        }
+        await shell("am", "start", "-W", "-n", component);
       },
       diagnostics: async () => {
         const devices = await runCommand(adb(sdk), ["devices", "-l"]).catch(
@@ -189,6 +232,24 @@ class EmulatorExitedError extends FatalWaitError {
   constructor(code: number) {
     super(`Emulator exited with ${code} before booting`);
   }
+}
+
+async function disableInputMethods(
+  shell: (...args: string[]) => Promise<string>,
+) {
+  const listImes = async () => parseLines(await shell("ime", "list", "-s"));
+  for (const ime of await listImes()) {
+    await shell("pm", "disable-user", "--user", "0", imePackage(ime));
+  }
+  await waitUntil(
+    async () => (await listImes()).length === 0,
+    IME_DISABLE_TIMEOUT_MS,
+    "input methods to be disabled",
+  );
+}
+
+function imePackage(ime: string) {
+  return ime.split("/")[0] ?? ime;
 }
 
 function parseLines(output: string) {

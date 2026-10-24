@@ -1,0 +1,85 @@
+{
+  "age": {
+    "days_one": "{{count}}d",
+    "days_other": "{{count}}d",
+    "hours_one": "{{count}}h",
+    "hours_other": "{{count}}h",
+    "minutes_one": "{{count}}m",
+    "minutes_other": "{{count}}m",
+    "months_one": "{{count}}mo",
+    "months_other": "{{count}}mo",
+    "now": "now",
+    "years_one": "{{count}}y",
+    "years_other": "{{count}}y"
+  },
+  "approvalsUnavailable": {
+    "description": "This phone was paired without approval access.",
+    "title": "Approve this on your computer"
+  },
+  "composer": {
+    "placeholder": "Reply to the agent",
+    "send": "Send",
+    "stop": "Stop"
+  },
+  "detail": {
+    "actionFailed": "That didn't go through. Check the connection and try again.",
+    "awaitingInput": "Has a question for you",
+    "completedUnread": "Finished",
+    "connecting": "Connecting…",
+    "failed": "Run failed",
+    "missing": "This session is no longer on the computer.",
+    "monitoring": "Working in the background",
+    "pendingApproval": "Waiting for your approval",
+    "planReady": "Plan ready for review",
+    "working": "Working…"
+  },
+  "empty": {
+    "description": "Sessions you start on {{host}} appear here.",
+    "title": "No Sessions"
+  },
+  "noResults": "No sessions match “{{query}}”",
+  "offline": "Can't reach {{host}}. Showing the last update.",
+  "permission": {
+    "actions": {
+      "edit": "edit",
+      "read": "read",
+      "use": "use",
+      "write": "write"
+    },
+    "detail": {
+      "command": "Command",
+      "path": "Path",
+      "pattern": "Pattern",
+      "query": "Query",
+      "url": "URL"
+    },
+    "fileAction": "Allow the agent to {{action}} {{target}}?",
+    "runCommand": "Run this command?"
+  },
+  "plan": {
+    "approve": "Approve",
+    "keepPlanning": "Keep Planning",
+    "title": "Review the plan"
+  },
+  "question": {
+    "placeholder": "Your answer",
+    "reply": "Reply",
+    "title": "The agent has a question"
+  },
+  "search": "Search sessions",
+  "status": {
+    "needsYou": "Needs you",
+    "running": "Running",
+    "unread": "Unread"
+  },
+  "tool": {
+    "completed": "Done",
+    "failed": "Failed",
+    "running": "Running"
+  },
+  "unavailable": {
+    "description": "Check that the computer is awake and on the same network.",
+    "retry": "Try Again",
+    "title": "Can't reach {{host}}"
+  }
+}
