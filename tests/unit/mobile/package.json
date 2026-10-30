@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@cocurdex/note-doc": "workspace:*",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "i18next": "^26.5.3",
     "vitest": "^4.1.11",
     "yjs": "^13.6.33"

@@ -19,7 +19,7 @@
     "@cocurdex/test-fixtures": "workspace:*",
     "@expo/fingerprint": "~0.21.6",
     "@expo/repack-app": "^0.10.4",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "agent-device": "^0.21.31",
     "tsx": "^4.23.15"
   }
