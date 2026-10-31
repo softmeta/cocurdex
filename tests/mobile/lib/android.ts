@@ -96,7 +96,9 @@ export async function startAndroidTarget(
         if (emulator.exitCode !== null) {
           throw new EmulatorExitedError(emulator.exitCode);
         }
-        return (await shell("getprop", "sys.boot_completed")).trim() === "1";
+        const booted =
+          (await shell("getprop", "sys.boot_completed")).trim() === "1";
+        return booted && (await userUnlocked(shell));
       },
       BOOT_TIMEOUT_MS,
       `${serial} to boot`,
@@ -127,6 +129,10 @@ export async function startAndroidTarget(
           "--locales",
           locale,
         );
+        const applied = await shell("cmd", "locale", "get-app-locales", APP_ID);
+        if (!applied.includes(`[${locale}]`)) {
+          throw new Error(`${APP_ID} did not take ${locale}:\n${applied}`);
+        }
       },
       resetState: async () => {
         await shell("pm", "clear", APP_ID);
@@ -184,6 +190,11 @@ class EmulatorExitedError extends FatalWaitError {
   constructor(code: number) {
     super(`Emulator exited with ${code} before booting`);
   }
+}
+
+async function userUnlocked(shell: (...args: string[]) => Promise<string>) {
+  const state = await shell("am", "get-started-user-state", "0");
+  return state.trim() === "RUNNING_UNLOCKED";
 }
 
 async function disableInputMethods(

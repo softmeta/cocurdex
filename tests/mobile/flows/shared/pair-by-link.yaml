@@ -38,7 +38,12 @@ appId: dev.cocurdex.mobile
       - tapOn:
           text: ${SYSTEM_CONTINUE}
           optional: true
-      - tapOn: ${PAIR_ACTION}
+      - runFlow:
+          when:
+            visible:
+              text: ${PAIR_ACTION}
+          commands:
+            - tapOn: ${PAIR_ACTION}
       - extendedWaitUntil:
           visible: ${WORKSPACE_NAME}
           timeout: 15000
