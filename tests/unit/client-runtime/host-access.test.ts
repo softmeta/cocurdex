@@ -186,6 +186,23 @@ describe("findReachableOrigin", () => {
     expect(reachable?.origin).toBe("http://100.101.1.2:47820");
   });
 
+  it("stays on the current address when it answers, even if another answers first", async () => {
+    const answer = network({
+      "http://192.168.1.20:47820": "host-1",
+      "http://100.101.1.2:47820": "host-1",
+    });
+    const slowCurrent: FetchLike = async (input, init) => {
+      if (new URL(input).origin === host.baseUrl) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      return answer(input, init);
+    };
+
+    const reachable = await findReachableOrigin({ host, fetch: slowCurrent });
+
+    expect(reachable?.origin).toBe("http://192.168.1.20:47820");
+  });
+
   it("ignores a different computer that now answers on a known address", async () => {
     const reachable = await findReachableOrigin({
       host,

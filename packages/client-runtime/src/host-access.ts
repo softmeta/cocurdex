@@ -136,47 +136,66 @@ export function savedHostEndpoint(
 }
 
 const REACHABILITY_TIMEOUT_MS = 5_000;
+const CURRENT_ORIGIN_GRACE_MS = 1_000;
 
 export interface ReachableHostOrigin {
   origin: string;
   session: HostAccessSession;
 }
 
-export function findReachableOrigin(options: {
-  host: Pick<SavedHost, "hostId" | "baseUrl" | "endpoints" | "token">;
+type ProbeHost = Pick<SavedHost, "hostId" | "baseUrl" | "endpoints" | "token">;
+
+async function probeOrigin(
+  host: ProbeHost,
+  origin: string,
+  options: { fetch?: FetchLike; timeoutMs?: number },
+): Promise<ReachableHostOrigin | null> {
+  try {
+    const session = await verifyHostCredential({
+      baseUrl: origin,
+      token: host.token,
+      fetch: options.fetch,
+      timeoutMs: options.timeoutMs ?? REACHABILITY_TIMEOUT_MS,
+    });
+    return session.host.hostId === host.hostId ? { origin, session } : null;
+  } catch {
+    return null;
+  }
+}
+
+function firstFound(probes: Promise<ReachableHostOrigin | null>[]) {
+  return new Promise<ReachableHostOrigin | null>((resolve) => {
+    let pending = probes.length;
+    if (pending === 0) resolve(null);
+    for (const probe of probes) {
+      void probe.then((found) => {
+        pending -= 1;
+        if (found) resolve(found);
+        else if (pending === 0) resolve(null);
+      });
+    }
+  });
+}
+
+function withinGrace<T>(promise: Promise<T>, graceMs: number) {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), graceMs)),
+  ]);
+}
+
+export async function findReachableOrigin(options: {
+  host: ProbeHost;
   fetch?: FetchLike;
   timeoutMs?: number;
 }): Promise<ReachableHostOrigin | null> {
-  const origins = savedHostOrigins(options.host);
-  return new Promise((resolve) => {
-    let pending = origins.length;
-    let settled = false;
-    const finishOne = (found: ReachableHostOrigin | null) => {
-      pending -= 1;
-      if (settled) return;
-      if (found) {
-        settled = true;
-        resolve(found);
-      } else if (pending === 0) {
-        resolve(null);
-      }
-    };
-    if (pending === 0) resolve(null);
-    for (const origin of origins) {
-      verifyHostCredential({
-        baseUrl: origin,
-        token: options.host.token,
-        fetch: options.fetch,
-        timeoutMs: options.timeoutMs ?? REACHABILITY_TIMEOUT_MS,
-      }).then(
-        (session) =>
-          finishOne(
-            session.host.hostId === options.host.hostId
-              ? { origin, session }
-              : null,
-          ),
-        () => finishOne(null),
-      );
-    }
-  });
+  const [current, ...others] = savedHostOrigins(options.host);
+  if (current === undefined) return null;
+  const currentProbe = probeOrigin(options.host, current, options);
+  const otherProbe = firstFound(
+    others.map((origin) => probeOrigin(options.host, origin, options)),
+  );
+  const first = await firstFound([currentProbe, otherProbe]);
+  if (!first || first.origin === current) return first;
+  return (await withinGrace(currentProbe, CURRENT_ORIGIN_GRACE_MS)) ?? first;
 }
