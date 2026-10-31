@@ -1,0 +1,10 @@
+{
+  "name": "@cocurdex/relay",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "go build -o dist/cocurdex-relay ./cmd/cocurdex-relay",
+    "typecheck": "go vet ./...",
+    "test": "go test ./..."
+  }
+}
