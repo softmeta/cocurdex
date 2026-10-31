@@ -1,0 +1,85 @@
+name: Relay release
+
+on:
+  push:
+    tags:
+      - "relay-v*.*.*"
+
+concurrency:
+  group: relay-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Build and publish the relay
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: services/relay
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/relay/go.sum
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build binaries
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${VERSION#relay-}"
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            name="cocurdex-relay-${version}-${os}-${arch}"
+            binary="cocurdex-relay"
+            if [ "$os" = windows ]; then binary="cocurdex-relay.exe"; fi
+            mkdir -p "build/${name}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags="-s -w" \
+              -o "build/${name}/${binary}" ./cmd/cocurdex-relay
+            if [ "$os" = windows ]; then
+              (cd build && zip -qr "../dist/${name}.zip" "${name}")
+            else
+              tar -C build -czf "dist/${name}.tar.gz" "${name}"
+            fi
+          done
+          (cd dist && sha256sum -- * > SHA256SUMS)
+
+      - name: Publish image
+        env:
+          VERSION: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${VERSION#relay-v}"
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cocurdex-relay"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx create --use --name relay-builder
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.version=${version}" \
+            -t "${image}:${version}" -t "${image}:latest" --push .
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release create "$VERSION" dist/* \
+            --title "Relay ${VERSION#relay-}" \
+            --notes "Self-hostable relay for Cocurdex remote access. Image: ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cocurdex-relay:${VERSION#relay-v}" \
+            --latest=false
