@@ -259,7 +259,7 @@ html[data-platform="darwin"] .scrollbar-native-gutter {
    non-overflowing outer ScrollArea hide the scrollbar of a nested, genuinely
    overflowing inner ScrollArea (e.g. the capped workspace list). */
 .scrollbar-interactive:not([data-overflowing-y])
-> [data-slot="scroll-area-scrollbar"]:not([data-orientation="horizontal"]) {
+  > [data-slot="scroll-area-scrollbar"]:not([data-orientation="horizontal"]) {
   display: none;
 }
 

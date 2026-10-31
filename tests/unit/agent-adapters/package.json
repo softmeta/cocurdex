@@ -13,11 +13,11 @@
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "^1.5.1",
-    "@anthropic-ai/claude-agent-sdk": "0.3.304",
+    "@anthropic-ai/claude-agent-sdk": "0.3.306",
     "@cocurdex/test-fixtures": "workspace:*",
     "@earendil-works/pi-ai": "1.3.0",
     "@earendil-works/pi-coding-agent": "1.3.0",
-    "@opencode/client": "2.1.0",
+    "@opencode/client": "2.1.2",
     "@types/cross-spawn": "^6.0.6",
     "@types/node": "^24.19.2",
     "cross-spawn": "^7.0.6",
