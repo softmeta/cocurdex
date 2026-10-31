@@ -19,11 +19,11 @@
   },
   "devDependencies": {
     "@cocurdex/test-fixtures": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@napi-rs/keyring": "^2.1.2",
     "@types/node": "^24.19.2",
     "@types/ws": "^8.18.2",
-    "effect": "4.0.5",
+    "effect": "4.0.7",
     "simple-git": "^4.0.2",
     "tar": "^7.5.22",
     "tsx": "^4.23.15",

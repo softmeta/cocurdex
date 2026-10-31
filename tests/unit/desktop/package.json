@@ -18,7 +18,7 @@
   "devDependencies": {
     "@cocurdex/test-fixtures": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
-    "@pierre/diffs": "^1.6.1",
+    "@pierre/diffs": "^1.6.2",
     "@shikijs/monaco": "^3.23.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.3.0",
