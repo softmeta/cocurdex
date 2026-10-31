@@ -305,7 +305,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.run_mobile == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     continue-on-error: ${{ matrix.platform == 'ios' }}
     permissions:
       actions: write
@@ -352,9 +352,20 @@ jobs:
             --key "mobile-native-" --limit 100 --json id,key \
             --jq ".[] | select(.key != \"${KEEP}\" and (.key | contains(\"-${{ matrix.platform }}-\"))) | .id" |
             while read -r id; do gh cache delete "${id}" --repo "${GITHUB_REPOSITORY}"; done
+      - name: Build native app
+        if: steps.native.outputs.cache-hit != 'true' && matrix.platform == 'android'
+        run: |
+          pnpm --filter @cocurdex/mobile-e2e app -- build --platform android \
+            --out "${PWD}/.mobile-native/android"
+      - name: Save native app
+        if: steps.native.outputs.cache-hit != 'true' && matrix.platform == 'android' && github.event_name != 'merge_group'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .mobile-native/android
+          key: mobile-native-v2-android-${{ steps.fingerprint.outputs.hash }}
       - name: Repack app and bundle daemon
         env:
-          READY: ${{ steps.native.outputs.cache-hit }}
+          READY: ${{ steps.native.outputs.cache-hit == 'true' || matrix.platform == 'android' }}
         run: |
           mkdir -p "${RUNNER_TEMP}/mobile-upload"
           (

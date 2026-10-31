@@ -18,14 +18,16 @@ export interface StubToolCall {
   arguments: Record<string, unknown>;
 }
 
+export type StubChunk = string | PromiseLike<void>;
+
 export interface StubTurn {
-  text?: string[];
+  text?: StubChunk[];
   toolCalls?: StubToolCall[];
   intervalMs?: number;
 }
 
 export type StubLlmPlan =
-  | { kind: "stream"; chunks: string[]; intervalMs?: number }
+  | { kind: "stream"; chunks: StubChunk[]; intervalMs?: number }
   | { kind: "script"; turns: StubTurn[] }
   | { kind: "hang" }
   | { kind: "fail"; status: number; message: string };
@@ -141,6 +143,10 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
     });
     response.write(sseChunk({ role: "assistant", content: "" }, null));
     for (const text of turn.text ?? []) {
+      if (typeof text !== "string") {
+        await text;
+        continue;
+      }
       if (response.destroyed) return;
       response.write(sseChunk({ content: text }, null));
       if (turn.intervalMs) {
@@ -211,8 +217,9 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
       });
     },
     close: () =>
-      new Promise((resolve, reject) =>
-        server.close((error) => (error ? reject(error) : resolve())),
-      ),
+      new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+        server.closeAllConnections();
+      }),
   };
 }
