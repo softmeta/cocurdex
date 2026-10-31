@@ -1,0 +1,16 @@
+{
+  "name": "@cocurdex/unit-secure-channel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/secure-channel": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "vitest": "^4.1.11"
+  }
+}
