@@ -84,14 +84,15 @@ export async function startRelay(
   binary: string,
   dataDir: string,
   extraArgs: string[] = [],
+  port?: number,
 ): Promise<RelayProcess> {
-  const port = await freePort();
+  const listenPort = port ?? (await freePort());
   const child = spawnCommand(
     binary,
     [
       "serve",
       "--listen",
-      `127.0.0.1:${port}`,
+      `127.0.0.1:${listenPort}`,
       "--data-dir",
       dataDir,
       ...extraArgs,
@@ -99,7 +100,7 @@ export async function startRelay(
     { cwd: dataDir, stdio: "ignore" },
   );
   const exited = new Promise<void>((resolve) => child.once("exit", resolve));
-  const url = `http://127.0.0.1:${port}`;
+  const url = `http://127.0.0.1:${listenPort}`;
   try {
     await waitForHealth(url, child);
   } catch (error) {

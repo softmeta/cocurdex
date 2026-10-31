@@ -1,7 +1,9 @@
+import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   connectPairedHost,
+  createRemoteFileClient,
   createSavedHostStore,
   createSecureHostTransport,
   HostAccessError,
@@ -48,12 +50,11 @@ afterEach(async () => {
   for (const relay of relays.splice(0)) await relay.stop();
 });
 
-async function launch(relayArgs: string[] = []) {
-  const relay = await startRelay(
-    relayBinary,
-    tempDirs.createSync("relay-data-"),
-    relayArgs,
-  );
+async function launch(
+  relayArgs: string[] = [],
+  relayData = tempDirs.createSync("relay-data-"),
+) {
+  const relay = await startRelay(relayBinary, relayData, relayArgs);
   relays.push(relay);
   const daemon = await spawnDaemon();
   daemons.push(daemon);
@@ -142,6 +143,69 @@ describe("remote access through the relay", () => {
     );
     expect(refused).toBeInstanceOf(HostAccessError);
     expect(refused).toMatchObject({ reason: "unreachable" });
+  });
+
+  it("reconnects to a restarted relay and streams files through it", async () => {
+    const relayData = tempDirs.createSync("relay-data-");
+    const { relay, daemon } = await launch([], relayData);
+    await requestDaemon("host.relay.set", { url: relay.url }, daemon.options);
+    const status = await waitForRelay(
+      daemon,
+      (next) => next.relay.state === "online",
+    );
+    const endpoint = status.relay.endpoint ?? "";
+    const { code, hostKey } = await requestDaemon(
+      "host.pairing.create",
+      { label: "Phone", scopes: ["read", "files.read", "interact"] },
+      daemon.options,
+    );
+    const paired = await pairHost({
+      baseUrl: endpoint,
+      code,
+      hostKey,
+      label: "Pixel",
+      store: createSavedHostStore(null),
+    });
+
+    await relay.stop();
+    await waitForRelay(daemon, (next) => next.relay.state === "offline");
+    const restarted = await startRelay(
+      relayBinary,
+      relayData,
+      [],
+      Number(new URL(relay.url).port),
+    );
+    relays.push(restarted);
+    await waitForRelay(daemon, (next) => next.relay.state === "online");
+
+    await expect(
+      remoteClient(paired).request("host.session", undefined),
+    ).resolves.toMatchObject({
+      principal: { kind: "device", deviceId: paired.deviceId },
+    });
+
+    const image = Buffer.concat([
+      Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x04, 0x00, 0x05, 0x00]),
+      randomBytes(2 * 1024 * 1024),
+    ]);
+    const files = createRemoteFileClient({
+      endpoint: async () => savedHostEndpoint(paired),
+    });
+    try {
+      const attachment = await files.upload(
+        { kind: "attachmentUpload", upload: "image", name: "large.gif" },
+        image,
+      );
+      const read = await files.read({
+        kind: "imageAttachment",
+        file: path.basename(attachment.filePath),
+      });
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of read.body) chunks.push(chunk);
+      expect(Buffer.concat(chunks).equals(image)).toBe(true);
+    } finally {
+      files.close();
+    }
   });
 
   it("joins an invite-only relay once the CLI installs a credential", async () => {
