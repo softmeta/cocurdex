@@ -126,6 +126,10 @@ import {
   LOCAL_REQUEST_CONTEXT,
   listHostAddresses,
 } from "./host-access";
+import {
+  createHostKeyStore,
+  type HostKeyStore,
+} from "./host-access/host-key-store";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
 import { probeNetworkProxy } from "./network-proxy-probe";
@@ -295,6 +299,7 @@ export class CocurdexDaemonService {
   private readonly socketPath: string;
   private readonly startedAt: string;
   private readonly userDataPath: string;
+  readonly hostKeys: HostKeyStore;
   private readonly sessionCommands = new SessionCommandQueue();
   readonly runs: SessionRunCoordinator;
   private readonly worktreeSetups = new WorktreeSetupRuns();
@@ -311,8 +316,10 @@ export class CocurdexDaemonService {
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.userDataPath = options.userDataPath;
     this.state = new DaemonState(options.userDataPath);
+    this.hostKeys = createHostKeyStore(options.userDataPath);
     this.hostAccess = new HostAccessService({
       localToken: options.localToken ?? crypto.randomUUID(),
+      hostKey: () => this.hostKeys.keys().noisePublicKey,
       repository: this.state.hostAccessStore.repository,
       settings: this.state.hostAccessStore.settings,
       hostName: () => os.hostname(),

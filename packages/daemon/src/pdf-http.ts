@@ -34,7 +34,6 @@ export function parseByteRange(
 }
 
 export interface RangeFileHttpHandlerOptions {
-  remote: boolean;
   isAllowedRequest(request: http.IncomingMessage): boolean;
   resolvePrincipal(token: string | null): HostPrincipal | null;
 }
@@ -94,9 +93,8 @@ export function endWith(
   response.end();
 }
 
-function isAuthorized(principal: HostPrincipal | null, remote: boolean) {
+function isAuthorized(principal: HostPrincipal | null) {
   if (!principal) return false;
-  if (remote && principal.kind === "local") return false;
   return principalHasScope(principal, "files.read");
 }
 
@@ -140,7 +138,7 @@ export function createRangeFileHttpHandler(
       endWith(response, 401, cors);
       return;
     }
-    if (!isAuthorized(principal, options.remote)) {
+    if (!isAuthorized(principal)) {
       endWith(response, 403, cors);
       return;
     }

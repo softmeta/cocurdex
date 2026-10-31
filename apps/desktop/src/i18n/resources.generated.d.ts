@@ -511,17 +511,9 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
-    webPairing: {
-      codeLabel: "Pairing code";
-      hint: "On the computer running cocurdex, open Settings › Devices, create a pairing code, then open its link here or enter the code.";
-      pair: "Pair";
-      reason: {
-        invalid: "This pairing code or device was not accepted. It may have expired, been used already, or been revoked.";
-        missing: "This browser is not paired with this computer yet.";
-        rateLimited: "Too many pairing attempts. Wait a minute and try again.";
-        unreachable: "The computer could not be reached. Check that it is on and that remote access is enabled.";
-      };
-      title: "Pair this browser";
+    webUnlinked: {
+      description: "This page needs a link from the cocurdex desktop app. Open the web client from the app on the computer running cocurdex; remote access from other devices goes through the cocurdex mobile app.";
+      title: "Open cocurdex from your computer";
     };
   };
   decks: {
@@ -2269,10 +2261,11 @@ export default interface Resources {
       };
       copy: "Copy";
       list: {
-        detail: "{{scopes}} · last seen {{time}}";
+        detail: "{{scopes}} · last seen {{time}} · safety code {{code}}";
         editAccess: "Edit access";
         empty: "No devices are paired with this computer yet.";
         groupTitle: "Paired devices";
+        needsRepair: "Paired before encryption. Revoke it and pair again.";
         revoke: "Revoke";
         revokeCancel: "Cancel";
         revokeDescription: "The device is disconnected immediately and must pair again to reconnect.";

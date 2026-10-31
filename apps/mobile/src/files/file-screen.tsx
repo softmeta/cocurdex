@@ -4,13 +4,13 @@ import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import { RemoteImage } from "@/connection";
 import { MarkdownText } from "@/markdown";
 import { layout, space, useThemeColors, useThemeName } from "@/theme";
 import {
@@ -24,7 +24,7 @@ import {
   FileLoadError,
   type FileLoadFailure,
   useFileContent,
-  workspaceFileSource,
+  workspaceFileRequest,
 } from "@/workspace-files";
 import { isMarkdownFile, sourceLanguage } from "./source-language";
 import { SourceView } from "./source-view";
@@ -45,11 +45,12 @@ function ImageFile({ host, filePath }: { host: SavedHost; filePath: string }) {
       centerContent
       contentInsetAdjustmentBehavior="automatic"
     >
-      <Image
+      <RemoteImage
         accessibilityLabel={pathBaseName(filePath)}
         testID="file-image"
         resizeMode="contain"
-        source={workspaceFileSource(host, filePath)}
+        hostId={host.hostId}
+        request={workspaceFileRequest(filePath)}
         style={{ width, height: height * 0.75 }}
         onLoadEnd={() => setLoaded(true)}
       />

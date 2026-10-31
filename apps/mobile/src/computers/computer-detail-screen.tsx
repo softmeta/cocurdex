@@ -1,9 +1,11 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
+import { type SavedHost, savedHostSafetyCode } from "@cocurdex/client-runtime";
 import type { HostAccessScope } from "@cocurdex/shared";
 import { Stack, useRouter } from "expo-router";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   hostAddress,
+  mobileNoiseCrypto,
   selectHost,
   useCurrentHost,
   useSavedHosts,
@@ -66,6 +68,10 @@ function Detail({ host, current }: { host: SavedHost; current: boolean }) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+  const safetyCode = useMemo(
+    () => savedHostSafetyCode(host, mobileNoiseCrypto),
+    [host],
+  );
   const muted = (text: string) => <FormText tone="muted">{text}</FormText>;
   return (
     <>
@@ -87,6 +93,11 @@ function Detail({ host, current }: { host: SavedHost; current: boolean }) {
             {t("detail.address")}
           </FormRow>
           <FormRow trailing={muted(pairedAt)}>{t("detail.pairedAt")}</FormRow>
+        </FormSection>
+        <FormSection footer={t("detail.safetyCodeFooter")}>
+          <FormRow testID="computer-safety-code" trailing={muted(safetyCode)}>
+            {t("detail.safetyCode")}
+          </FormRow>
         </FormSection>
         <FormSection
           title={t("detail.scopes")}

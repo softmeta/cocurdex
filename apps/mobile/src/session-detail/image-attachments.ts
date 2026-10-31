@@ -1,18 +1,11 @@
-import { type SavedHost, savedHostEndpoint } from "@cocurdex/client-runtime";
-import {
-  buildDaemonAttachmentUploadUrl,
-  buildDaemonImageAttachmentUrl,
-  type ImageAttachment,
-} from "@cocurdex/shared";
-import { File, UploadType } from "expo-file-system";
+import { RemoteFileError } from "@cocurdex/client-runtime";
+import { type ImageAttachment, pathBaseName } from "@cocurdex/shared";
 import {
   launchImageLibraryAsync,
   UIImagePickerPreferredAssetRepresentationMode,
 } from "expo-image-picker";
-import {
-  ImageUploadError,
-  parseImageUploadResponse,
-} from "./image-upload-response";
+import { uploadRemoteImage } from "@/connection";
+import { ImageUploadError, imageUploadFailure } from "./image-upload-response";
 
 export const MAX_IMAGE_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export const MAX_IMAGES_PER_MESSAGE = 4;
@@ -44,7 +37,7 @@ export async function pickImages(limit: number): Promise<PickedImage[]> {
 }
 
 export async function uploadImage(
-  host: Pick<SavedHost, "baseUrl" | "token">,
+  hostId: string,
   image: PickedImage,
 ): Promise<ImageAttachment> {
   if (
@@ -53,29 +46,21 @@ export async function uploadImage(
   ) {
     throw new ImageUploadError("tooLarge");
   }
-  const { webSocketUrl, token } = savedHostEndpoint(host);
-  const result = await new File(image.uri).upload(
-    buildDaemonAttachmentUploadUrl(webSocketUrl, "image", image.name),
-    {
-      httpMethod: "POST",
-      uploadType: UploadType.BINARY_CONTENT,
-      mimeType: image.mimeType,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": image.mimeType,
-      },
-    },
-  );
-  return parseImageUploadResponse(result.status, result.body);
+  try {
+    return await uploadRemoteImage(hostId, image);
+  } catch (error) {
+    if (error instanceof RemoteFileError) {
+      throw new ImageUploadError(imageUploadFailure(error.reason));
+    }
+    throw error;
+  }
 }
 
-export function imageAttachmentSource(
-  host: Pick<SavedHost, "baseUrl" | "token">,
+export function imageAttachmentRequest(
   attachment: Pick<ImageAttachment, "filePath">,
 ) {
-  const { webSocketUrl, token } = savedHostEndpoint(host);
   return {
-    uri: buildDaemonImageAttachmentUrl(webSocketUrl, attachment.filePath),
-    headers: { Authorization: `Bearer ${token}` },
-  };
+    kind: "imageAttachment",
+    file: pathBaseName(attachment.filePath),
+  } as const;
 }

@@ -26,7 +26,12 @@ function setup() {
   return repository;
 }
 
-const device = { id: "d1", label: "Pixel", tokenHash: "tok", createdAt: later };
+const device = {
+  id: "d1",
+  label: "Pixel",
+  publicKey: "key1",
+  createdAt: later,
+};
 
 describe("sqlite host access repository", () => {
   it("turns a pending pairing into a device with the pairing's scopes exactly once", () => {
@@ -36,7 +41,7 @@ describe("sqlite host access repository", () => {
     const second = repository.consumePairing("code-hash", later, {
       ...device,
       id: "d2",
-      tokenHash: "tok2",
+      publicKey: "key2",
     });
 
     expect(first).toMatchObject({
@@ -63,13 +68,13 @@ describe("sqlite host access repository", () => {
     expect(repository.listDevices()).toEqual([]);
   });
 
-  it("stops resolving a device token once the device is revoked", () => {
+  it("stops resolving a device key once the device is revoked", () => {
     const repository = setup();
     repository.consumePairing("code-hash", later, device);
 
-    expect(repository.findActiveDeviceByTokenHash("tok")?.id).toBe("d1");
+    expect(repository.findActiveDeviceByPublicKey("key1")?.id).toBe("d1");
     expect(repository.revokeDevice("d1", expired)?.revokedAt).toBe(expired);
-    expect(repository.findActiveDeviceByTokenHash("tok")).toBeNull();
+    expect(repository.findActiveDeviceByPublicKey("key1")).toBeNull();
   });
 
   it("changes the scopes of an active device but not of a revoked one", () => {
@@ -79,7 +84,7 @@ describe("sqlite host access repository", () => {
     expect(
       repository.updateDeviceScopes("d1", ["read", "files.read"])?.scopes,
     ).toEqual(["read", "files.read"]);
-    expect(repository.findActiveDeviceByTokenHash("tok")?.scopes).toEqual([
+    expect(repository.findActiveDeviceByPublicKey("key1")?.scopes).toEqual([
       "read",
       "files.read",
     ]);

@@ -27,7 +27,7 @@ describe("pairing QR code", () => {
     "http://192.168.1.20:47820",
     "http://my-mac.tailnet-1234.ts.net:47820",
   ])("decodes to a pairing link the mobile app accepts (%s)", (origin) => {
-    const link = buildHostPairingLink(origin, "K7Q2-9XZD");
+    const link = buildHostPairingLink(origin, "K7Q2-9XZD", "A".repeat(43));
     const { pixels, width } = rasterize(link);
     const decoded = jsQR(pixels, width, width)?.data;
     expect(decoded).toBe(link);

@@ -113,16 +113,8 @@
     "gitNotRepoDescription": "",
     "gitNotRepoTitle": ""
   },
-  "webPairing": {
-    "codeLabel": "配对码",
-    "hint": "在运行 cocurdex 的电脑上打开 设置 › 设备，生成配对码，然后在这里打开它的链接或输入配对码。",
-    "pair": "配对",
-    "reason": {
-      "invalid": "配对码或设备未被接受，可能已过期、已被使用或已被撤销。",
-      "missing": "此浏览器尚未与这台电脑配对。",
-      "rateLimited": "配对尝试过多，请等一分钟再试。",
-      "unreachable": "无法连接到这台电脑。请确认它已开机并已开启远程访问。"
-    },
-    "title": "配对此浏览器"
+  "webUnlinked": {
+    "description": "此页面需要 cocurdex 桌面应用提供的链接。请在运行 cocurdex 的电脑上从应用中打开 Web 客户端；其他设备请通过 cocurdex 移动应用远程访问。",
+    "title": "请从电脑上的 cocurdex 打开"
   }
 }

@@ -9,6 +9,8 @@
     "address": "地址",
     "name": "名称",
     "pairedAt": "配对时间",
+    "safetyCode": "安全码",
+    "safetyCodeFooter": "应与电脑上 设置 › 设备 中这台手机旁显示的安全码一致；不一致时请移除这台电脑并重新配对。",
     "scopes": "这台手机的权限",
     "scopesFooter": "权限由电脑授予。要调整，在电脑的 设置 › 设备 里修改。"
   },

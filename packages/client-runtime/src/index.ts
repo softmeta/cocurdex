@@ -5,15 +5,15 @@ export {
   SUSPENDED_RECONNECT_AFTER_MS,
 } from "./foreground-wakeup";
 export {
-  exchangeHostPairing,
-  type FetchLike,
+  connectPairedHost,
   findReachableOrigin,
   HostAccessError,
   type HostAccessFailure,
+  type PairHostOptions,
   pairHost,
   type ReachableHostOrigin,
   savedHostEndpoint,
-  verifyHostCredential,
+  savedHostSafetyCode,
 } from "./host-access";
 export {
   createHostConnection,
@@ -27,7 +27,9 @@ export type {
   HostEndpoint,
   HostPlatform,
   LifecycleSignal,
+  LocalHostEndpoint,
   NetworkSignal,
+  PairedHostEndpoint,
   PlatformSignals,
 } from "./platform";
 export {
@@ -35,6 +37,14 @@ export {
   type HostRegistry,
   type HostRemovedListener,
 } from "./registry";
+export {
+  createRemoteFileClient,
+  type RemoteFileClient,
+  RemoteFileError,
+  type RemoteFileRead,
+  type RemoteFileReadRequest,
+  type RemoteFileUploadRequest,
+} from "./remote-files";
 export {
   createSavedHostStore,
   type KeyValueStorage,
@@ -44,6 +54,11 @@ export {
   savedHostOrigins,
   uniqueOrigins,
 } from "./saved-hosts";
+export type {
+  OpenSecureSocket,
+  SecureSocketHandlers,
+} from "./secure-socket";
+export { createSecureHostTransport } from "./secure-transport";
 export {
   type ConnectionState,
   type ConnectionStatus,

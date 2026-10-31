@@ -1,3 +1,5 @@
+import type { RemoteFileFailure } from "@cocurdex/shared";
+
 export const MAX_PREVIEW_BYTES = 512 * 1024;
 
 export type FileContent =
@@ -12,31 +14,20 @@ export class FileLoadError extends Error {
   }
 }
 
-export function fileLoadFailure(status: number): FileLoadFailure {
-  if (status === 403) return "outside";
-  if (status === 404) return "missing";
+export function fileLoadFailure(
+  reason: RemoteFileFailure | "unreachable",
+): FileLoadFailure {
+  if (reason === "forbidden") return "outside";
+  if (reason === "notFound") return "missing";
   return "failed";
 }
 
-function contentRangeTotal(header: string | null) {
-  const total = header ? /\/(\d+)$/.exec(header)?.[1] : undefined;
-  return total === undefined ? null : Number(total);
-}
+const decoder = new TextDecoder();
 
-export function readFileContent(
-  status: number,
-  contentRange: string | null,
-  body: string,
-): FileContent {
-  if (status === 416)
-    return { kind: "text", text: "", lines: [""], truncated: false };
-  if (status !== 200 && status !== 206) {
-    throw new FileLoadError(fileLoadFailure(status));
-  }
-  if (body.includes("\u0000")) return { kind: "binary" };
-  const total = contentRangeTotal(contentRange);
-  const truncated =
-    status === 206 && total !== null && total > MAX_PREVIEW_BYTES;
+export function readFileContent(bytes: Uint8Array, size: number): FileContent {
+  if (bytes.includes(0)) return { kind: "binary" };
+  const truncated = size > bytes.length;
+  const body = decoder.decode(bytes);
   const text = truncated ? body.replace(/�+$/, "") : body;
   const lines = text.split(/\r?\n/);
   if (truncated && lines.length > 1) lines.pop();

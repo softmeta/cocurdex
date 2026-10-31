@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@cocurdex/client-runtime": "workspace:*",
+    "@cocurdex/secure-channel": "workspace:*",
     "@cocurdex/shared": "workspace:*",
     "@expo/ui": "~58.0.22",
     "@formatjs/intl-pluralrules": "^6.3.16",

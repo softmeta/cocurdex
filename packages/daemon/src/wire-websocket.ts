@@ -4,6 +4,7 @@ import { type WebSocket, WebSocketServer } from "ws";
 import { parseWebSocketProtocolHeader } from "./websocket-auth";
 
 export interface DaemonWebSocketOptions {
+  protocol?: string;
   authorize(input: {
     origin: string | undefined;
     protocols: string[];
@@ -16,6 +17,7 @@ export function attachDaemonWebSocketServer(
   server: http.Server,
   options: DaemonWebSocketOptions,
 ) {
+  const protocol = options.protocol ?? DAEMON_WEBSOCKET_PROTOCOL;
   const wss = new WebSocketServer({
     server,
     verifyClient: ({
@@ -33,9 +35,7 @@ export function attachDaemonWebSocketServer(
         request: req,
       }),
     handleProtocols: (protocols) =>
-      protocols.has(DAEMON_WEBSOCKET_PROTOCOL)
-        ? DAEMON_WEBSOCKET_PROTOCOL
-        : false,
+      protocols.has(protocol) ? protocol : false,
   });
   wss.on("connection", (socket, request) => {
     socket.on("error", () => socket.terminate());

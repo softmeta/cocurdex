@@ -1,30 +1,32 @@
-import { type SavedHost, savedHostEndpoint } from "@cocurdex/client-runtime";
-import { buildDaemonFileUrl, workspaceImageMimeType } from "@cocurdex/shared";
+import { RemoteFileError, type SavedHost } from "@cocurdex/client-runtime";
+import { workspaceImageMimeType } from "@cocurdex/shared";
 import useSWR, { preload } from "swr";
+import { readRemoteRange } from "@/connection";
 import { hosts } from "@/hosts";
-import { MAX_PREVIEW_BYTES, readFileContent } from "./file-content";
+import {
+  FileLoadError,
+  fileLoadFailure,
+  MAX_PREVIEW_BYTES,
+  readFileContent,
+} from "./file-content";
 
-export function workspaceFileSource(
-  host: Pick<SavedHost, "baseUrl" | "token">,
-  filePath: string,
-) {
-  const { webSocketUrl, token } = savedHostEndpoint(host);
-  return {
-    uri: buildDaemonFileUrl(webSocketUrl, filePath),
-    headers: { Authorization: `Bearer ${token}` },
-  };
+export function workspaceFileRequest(filePath: string) {
+  return { kind: "workspaceFile", path: filePath } as const;
 }
 
-async function fetchFileContent(host: SavedHost, filePath: string) {
-  const source = workspaceFileSource(host, filePath);
-  const response = await fetch(source.uri, {
-    headers: { ...source.headers, Range: `bytes=0-${MAX_PREVIEW_BYTES - 1}` },
-  });
-  return readFileContent(
-    response.status,
-    response.headers.get("content-range"),
-    await response.text(),
-  );
+async function fetchFileContent(hostId: string, filePath: string) {
+  try {
+    const { size, bytes } = await readRemoteRange(hostId, {
+      ...workspaceFileRequest(filePath),
+      range: { start: 0, end: MAX_PREVIEW_BYTES - 1 },
+    });
+    return readFileContent(bytes, size);
+  } catch (error) {
+    if (error instanceof RemoteFileError) {
+      throw new FileLoadError(fileLoadFailure(error.reason));
+    }
+    throw error;
+  }
 }
 
 function fileContentKey(hostId: string, filePath: string) {
@@ -34,7 +36,7 @@ function fileContentKey(hostId: string, filePath: string) {
 export function useFileContent(host: SavedHost, filePath: string) {
   return useSWR(
     fileContentKey(host.hostId, filePath),
-    () => fetchFileContent(host, filePath),
+    () => fetchFileContent(host.hostId, filePath),
     { dedupingInterval: 0 },
   );
 }
@@ -43,6 +45,6 @@ export function preloadFileContent(hostId: string, filePath: string) {
   const host = hosts.getSnapshot().find((saved) => saved.hostId === hostId);
   if (!host || workspaceImageMimeType(filePath)) return;
   preload(fileContentKey(hostId, filePath), () =>
-    fetchFileContent(host, filePath),
+    fetchFileContent(hostId, filePath),
   ).catch(() => undefined);
 }

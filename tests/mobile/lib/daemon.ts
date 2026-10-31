@@ -8,7 +8,6 @@ import {
   buildDaemonAttachmentUploadUrl,
   buildHostPairingLink,
   entityUri,
-  HOST_PAIRING_HTTP_PATH,
   type ImageAttachment,
 } from "@cocurdex/shared";
 import type { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
@@ -49,49 +48,28 @@ function freePort() {
 }
 
 async function uploadImage(
-  options: Parameters<typeof requestDaemon>[2],
-  origin: string,
+  metadata: { webSocketUrl: string; token: string },
   file: string,
 ) {
-  const { code } = await requestDaemon(
-    "host.pairing.create",
-    { label: "Mobile e2e uploader", scopes: ["read", "interact"] },
-    options,
-  );
-  const exchanged = await fetch(`${origin}${HOST_PAIRING_HTTP_PATH}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code, label: "Mobile e2e uploader" }),
-  });
-  if (!exchanged.ok) throw new Error(`Pairing failed: ${exchanged.status}`);
-  const { token, deviceId } = (await exchanged.json()) as {
-    token: string;
-    deviceId: string;
-  };
-  try {
-    const webSocketUrl = origin.replace(/^http/, "ws");
-    const uploaded = await fetch(
-      buildDaemonAttachmentUploadUrl(
-        webSocketUrl,
-        "image",
-        path.basename(file),
-      ),
-      {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-          "content-type": "image/png",
-        },
-        body: await readFile(file),
+  const uploaded = await fetch(
+    buildDaemonAttachmentUploadUrl(
+      metadata.webSocketUrl,
+      "image",
+      path.basename(file),
+    ),
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${metadata.token}`,
+        "content-type": "image/png",
       },
-    );
-    if (uploaded.status !== 201) {
-      throw new Error(`Image upload failed: ${uploaded.status}`);
-    }
-    return (await uploaded.json()) as ImageAttachment;
-  } finally {
-    await requestDaemon("host.devices.revoke", { deviceId }, options);
+      body: await readFile(file),
+    },
+  );
+  if (uploaded.status !== 201) {
+    throw new Error(`Image upload failed: ${uploaded.status}`);
   }
+  return (await uploaded.json()) as ImageAttachment;
 }
 
 async function pointWorkspacesAtFixtures(
@@ -184,13 +162,12 @@ export async function startPairingDaemon(
       status.addresses.find((candidate) => candidate.kind === "lan") ??
       status.addresses[0];
     if (!address) throw new Error("Remote access reported no address");
-    const localOrigin = new URL(address.url).origin;
     const baseUrl = new URL(address.url);
     if (platform === "android") baseUrl.hostname = EMULATOR_HOST_ALIAS;
     return {
       hostAddress: baseUrl.host,
       async createPairingLink() {
-        const { code } = await requestDaemon(
+        const { code, hostKey } = await requestDaemon(
           "host.pairing.create",
           {
             label: "Mobile e2e",
@@ -198,7 +175,7 @@ export async function startPairingDaemon(
           },
           daemon.options,
         );
-        return buildHostPairingLink(baseUrl.origin, code);
+        return buildHostPairingLink(baseUrl.origin, code, hostKey);
       },
       agentModelName: AGENT_MODEL_NAME,
       agentModelId: AGENT_MODEL_ID,
@@ -233,11 +210,7 @@ export async function startPairingDaemon(
         );
       },
       async createImageSession(title: string, prompt: string, reply: string) {
-        const attachment = await uploadImage(
-          daemon.options,
-          localOrigin,
-          IMAGE_FIXTURE,
-        );
+        const attachment = await uploadImage(daemon.metadata, IMAGE_FIXTURE);
         stub.plan = { kind: "stream", chunks: [reply] };
         const answered = stub.requests.length;
         const session = await requestDaemon(

@@ -56,7 +56,11 @@ function CreatedPairing({
         </Text>
       ) : null}
       {addresses.map((address) => {
-        const link = buildHostPairingLink(address.url, created.code);
+        const link = buildHostPairingLink(
+          address.url,
+          created.code,
+          created.hostKey,
+        );
         return (
           <div
             className="flex min-w-0 flex-col items-center gap-2"

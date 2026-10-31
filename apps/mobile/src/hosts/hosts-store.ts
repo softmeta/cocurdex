@@ -7,6 +7,7 @@ import {
   savedHostOrigins,
   uniqueOrigins,
 } from "@cocurdex/client-runtime";
+import type { NoiseCrypto } from "@cocurdex/secure-channel";
 import type { HostAccessScope } from "@cocurdex/shared";
 import { parseHostPairingLink } from "@cocurdex/shared";
 
@@ -30,7 +31,10 @@ export interface ReportedHostSession {
 
 export type PairFailure = "link" | "invalid" | "rateLimited" | "unreachable";
 
-export function createHostsStore(storage: KeyValueStorage) {
+export function createHostsStore(
+  storage: KeyValueStorage,
+  crypto?: NoiseCrypto,
+) {
   const store = createSavedHostStore(storage);
   const listeners = new Set<() => void>();
   let snapshot: SavedHost[] = store.list();
@@ -51,7 +55,6 @@ export function createHostsStore(storage: KeyValueStorage) {
     async pair(
       link: string,
       label: string,
-      fetchImpl?: typeof fetch,
     ): Promise<{ host: SavedHost } | { failure: PairFailure }> {
       const parsed = parseHostPairingLink(link);
       if (!parsed) return { failure: "link" };
@@ -60,7 +63,7 @@ export function createHostsStore(storage: KeyValueStorage) {
           ...parsed,
           label,
           store,
-          fetch: fetchImpl,
+          crypto,
         });
         publish();
         return { host };

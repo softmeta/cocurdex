@@ -8,7 +8,7 @@ import type {
 export interface NewHostDevice {
   id: string;
   label: string;
-  tokenHash: string;
+  publicKey: string;
   createdAt: string;
 }
 
@@ -25,7 +25,7 @@ export interface HostAccessRepository {
   ): HostPairingConsumeResult;
   listPendingPairings(now: string): HostPairingRecord[];
   deletePendingPairing(pairingId: string): HostPairingRecord | null;
-  findActiveDeviceByTokenHash(tokenHash: string): PairedDeviceRecord | null;
+  findActiveDeviceByPublicKey(publicKey: string): PairedDeviceRecord | null;
   listDevices(): PairedDeviceRecord[];
   revokeDevice(deviceId: string, now: string): PairedDeviceRecord | null;
   updateDeviceScopes(

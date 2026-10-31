@@ -6,5 +6,5 @@ export {
 export {
   preloadFileContent,
   useFileContent,
-  workspaceFileSource,
+  workspaceFileRequest,
 } from "./file-content-queries";

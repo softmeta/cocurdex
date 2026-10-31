@@ -5,7 +5,8 @@ export interface SavedHost {
   name: string;
   baseUrl: string;
   deviceId: string;
-  token: string;
+  hostKey: string;
+  deviceSecretKey: string;
   scopes: HostAccessScope[];
   pairedAt: string;
   endpoints?: string[];
@@ -22,9 +23,15 @@ function isSavedHost(value: unknown): value is SavedHost {
   if (typeof value !== "object" || value === null) return false;
   const host = value as Record<string, unknown>;
   return (
-    ["hostId", "name", "baseUrl", "deviceId", "token", "pairedAt"].every(
-      (key) => typeof host[key] === "string",
-    ) &&
+    [
+      "hostId",
+      "name",
+      "baseUrl",
+      "deviceId",
+      "hostKey",
+      "deviceSecretKey",
+      "pairedAt",
+    ].every((key) => typeof host[key] === "string") &&
     Array.isArray(host.scopes) &&
     host.scopes.every(
       (scope) => typeof scope === "string" && isHostAccessScope(scope),

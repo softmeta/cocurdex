@@ -1,214 +1,242 @@
 import {
-  type FetchLike,
   findReachableOrigin,
-  HostAccessError,
   pairHost,
-  savedHostEndpoint,
-  verifyHostCredential,
+  savedHostSafetyCode,
 } from "@cocurdex/client-runtime/internal/host-access";
 import { createSavedHostStore } from "@cocurdex/client-runtime/internal/saved-hosts";
-import { describe, expect, it, vi } from "vitest";
+import {
+  acceptChannelHello,
+  encodeBase64Url,
+  generateKeyPair,
+  type KeyPair,
+  pairingSafetyCode,
+} from "@cocurdex/secure-channel";
+import type { RemoteChannelReply } from "@cocurdex/shared";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-function respond(status: number, body: unknown = {}): FetchLike {
-  return vi.fn(async () => Response.json(body, { status }));
+interface FakeHost {
+  keys: KeyPair;
+  answer(payload: unknown): RemoteChannelReply | "silent";
+  delayMs?: number;
 }
 
-const exchanged = {
-  host: { hostId: "host-1", name: "Studio" },
+const accepted = (hostId: string): RemoteChannelReply => ({
+  ok: true,
+  host: { hostId, name: "Studio" },
   deviceId: "device-1",
-  token: "cocu_dev_a",
   scopes: ["read", "interact"],
-};
+  endpoints: ["http://100.101.1.2:47820"],
+});
+
+function installNetwork(hosts: Record<string, FakeHost>) {
+  const payloads: unknown[] = [];
+  const deviceKeys: Uint8Array[] = [];
+  class FakeWebSocket extends EventTarget {
+    static readonly OPEN = 1;
+    readyState = 0;
+    binaryType = "blob";
+    private readonly host: FakeHost | undefined;
+
+    constructor(readonly url: string) {
+      super();
+      this.host = hosts[new URL(url).origin.replace(/^ws/, "http")];
+      queueMicrotask(() => {
+        if (!this.host) {
+          this.dispatchEvent(new Event("error"));
+          this.close();
+          return;
+        }
+        this.readyState = FakeWebSocket.OPEN;
+        this.dispatchEvent(new Event("open"));
+      });
+    }
+
+    send(bytes: Uint8Array) {
+      const host = this.host;
+      if (!host) return;
+      let hello: ReturnType<typeof acceptChannelHello>;
+      try {
+        hello = acceptChannelHello({ staticKeyPair: host.keys, hello: bytes });
+      } catch {
+        this.close();
+        return;
+      }
+      payloads.push(hello.payload);
+      deviceKeys.push(hello.remoteStaticKey);
+      const reply = host.answer(hello.payload);
+      if (reply === "silent") return;
+      const { message } = hello.reply(reply);
+      setTimeout(
+        () =>
+          this.dispatchEvent(
+            new MessageEvent("message", { data: message.slice().buffer }),
+          ),
+        host.delayMs ?? 0,
+      );
+    }
+
+    close() {
+      if (this.readyState === 3) return;
+      this.readyState = 3;
+      queueMicrotask(() => this.dispatchEvent(new Event("close")));
+    }
+  }
+  vi.stubGlobal("WebSocket", FakeWebSocket);
+  return { payloads, deviceKeys };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+const hostKeys = generateKeyPair();
+const hostKey = encodeBase64Url(hostKeys.publicKey);
+const lan = "http://192.168.1.20:47820";
+const tailnet = "http://100.101.1.2:47820";
 
 describe("pairHost", () => {
-  it("exchanges the code at the host origin and saves the credential", async () => {
-    const fetch = respond(200, exchanged);
+  it("sends the code inside the handshake and saves the pinned host key", async () => {
+    const { payloads } = installNetwork({
+      [lan]: { keys: hostKeys, answer: () => accepted("host-1") },
+    });
     const store = createSavedHostStore(null);
     const save = vi.spyOn(store, "save");
 
     const saved = await pairHost({
-      baseUrl: "http://192.168.1.20:47820/some/page",
+      baseUrl: `${lan}/some/page`,
       code: "abc",
+      hostKey,
       label: "Laptop",
       store,
-      fetch,
       now: () => new Date("2026-10-12T00:00:00.000Z"),
     });
 
-    expect(fetch).toHaveBeenCalledWith(
-      "http://192.168.1.20:47820/api/pair",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ code: "abc", label: "Laptop" }),
-      }),
-    );
-    expect(saved).toEqual({
+    expect(payloads).toEqual([{ secret: "abc", label: "Laptop" }]);
+    expect(saved).toMatchObject({
       hostId: "host-1",
       name: "Studio",
-      baseUrl: "http://192.168.1.20:47820",
-      endpoints: ["http://192.168.1.20:47820"],
+      baseUrl: lan,
+      endpoints: [lan, tailnet],
       deviceId: "device-1",
-      token: "cocu_dev_a",
+      hostKey,
       scopes: ["read", "interact"],
       pairedAt: "2026-10-12T00:00:00.000Z",
     });
+    expect(saved.deviceSecretKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(save).toHaveBeenCalledWith(saved);
   });
 
+  it("shows the same safety code the host derives from the device key it saw", async () => {
+    const network = installNetwork({
+      [lan]: { keys: hostKeys, answer: () => accepted("host-1") },
+    });
+    const saved = await pairHost({
+      baseUrl: lan,
+      code: "abc",
+      hostKey,
+      store: createSavedHostStore(null),
+    });
+    const [deviceKey] = network.deviceKeys;
+    if (!deviceKey) throw new Error("The host saw no device key");
+
+    expect(savedHostSafetyCode(saved)).toBe(
+      pairingSafetyCode(hostKeys.publicKey, deviceKey),
+    );
+  });
+
   it.each([
-    [401, "invalid"],
-    [429, "rateLimited"],
-    [500, "unreachable"],
+    ["rejected", "invalid"],
+    ["rateLimited", "rateLimited"],
   ] as const)(
-    "maps HTTP %i to %s and saves nothing",
-    async (status, reason) => {
+    "maps a %s reply to %s and saves nothing",
+    async (reason, failure) => {
+      installNetwork({
+        [lan]: { keys: hostKeys, answer: () => ({ ok: false, reason }) },
+      });
       const store = createSavedHostStore(null);
       const save = vi.spyOn(store, "save");
 
       await expect(
-        pairHost({
-          baseUrl: "http://host:47820",
-          code: "abc",
-          store,
-          fetch: respond(status),
-        }),
-      ).rejects.toMatchObject({ reason });
+        pairHost({ baseUrl: lan, code: "abc", hostKey, store }),
+      ).rejects.toMatchObject({ reason: failure });
       expect(save).not.toHaveBeenCalled();
     },
   );
 
-  it("gives up on a host that never answers and reports it unreachable", async () => {
-    vi.useFakeTimers();
-    try {
-      const hanging: FetchLike = (_input, init) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () =>
-            reject(new DOMException("Aborted", "AbortError")),
-          );
-        });
-      const pairing = pairHost({
-        baseUrl: "http://192.168.1.20:47820",
-        code: "abc",
-        store: createSavedHostStore(null),
-        fetch: hanging,
-      }).catch((caught: unknown) => caught);
-
-      await vi.advanceTimersByTimeAsync(15_000);
-
-      await expect(pairing).resolves.toMatchObject({ reason: "unreachable" });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-describe("verifyHostCredential", () => {
-  it("sends the device token as a bearer credential", async () => {
-    const fetch = respond(200, {
-      host: exchanged.host,
-      principal: { kind: "device", deviceId: "device-1", scopes: ["read"] },
+  it("refuses a host that does not hold the pinned key", async () => {
+    installNetwork({
+      [lan]: { keys: generateKeyPair(), answer: () => accepted("host-1") },
     });
+    const store = createSavedHostStore(null);
+    const save = vi.spyOn(store, "save");
 
     await expect(
-      verifyHostCredential({
-        baseUrl: "http://host:47820",
-        token: "cocu_dev_a",
-        fetch,
-      }),
-    ).resolves.toMatchObject({ host: { hostId: "host-1" } });
-    expect(fetch).toHaveBeenCalledWith(
-      "http://host:47820/api/session",
-      expect.objectContaining({
-        headers: { authorization: "Bearer cocu_dev_a" },
-      }),
-    );
+      pairHost({ baseUrl: lan, code: "abc", hostKey, store }),
+    ).rejects.toMatchObject({ reason: "unreachable" });
+    expect(save).not.toHaveBeenCalled();
   });
 
-  it("reports a network failure as unreachable", async () => {
-    const error = await verifyHostCredential({
-      baseUrl: "http://host:47820",
-      token: "t",
-      fetch: async () => {
-        throw new TypeError("Failed to fetch");
-      },
+  it("gives up on a host that never answers and reports it unreachable", async () => {
+    vi.useFakeTimers();
+    installNetwork({ [lan]: { keys: hostKeys, answer: () => "silent" } });
+    const pairing = pairHost({
+      baseUrl: lan,
+      code: "abc",
+      hostKey,
+      store: createSavedHostStore(null),
     }).catch((caught: unknown) => caught);
 
-    expect(error).toBeInstanceOf(HostAccessError);
-    expect(error).toMatchObject({ reason: "unreachable" });
-  });
-});
+    await vi.advanceTimersByTimeAsync(15_000);
 
-describe("savedHostEndpoint", () => {
-  it("opens the WebSocket on the paired origin with the device token", () => {
-    expect(
-      savedHostEndpoint({ baseUrl: "http://192.168.1.20:47820", token: "t" }),
-    ).toEqual({ webSocketUrl: "ws://192.168.1.20:47820", token: "t" });
-    expect(
-      savedHostEndpoint({
-        baseUrl: "https://studio.example.invalid",
-        token: "t",
-      }),
-    ).toEqual({ webSocketUrl: "wss://studio.example.invalid", token: "t" });
+    await expect(pairing).resolves.toMatchObject({ reason: "unreachable" });
   });
 });
 
 describe("findReachableOrigin", () => {
   const host = {
     hostId: "host-1",
-    baseUrl: "http://192.168.1.20:47820",
-    endpoints: [
-      "http://192.168.1.20:47820",
-      "http://100.101.1.2:47820",
-      "http://10.0.0.5:47820",
-    ],
-    token: "cocu_dev_a",
+    baseUrl: lan,
+    endpoints: [lan, tailnet, "http://10.0.0.5:47820"],
+    hostKey,
+    deviceId: "device-1",
+    deviceSecretKey: encodeBase64Url(generateKeyPair().secretKey),
   };
-
-  function network(answers: Record<string, string | null>): FetchLike {
-    return async (input) => {
-      const hostId = answers[new URL(input).origin];
-      if (hostId === undefined || hostId === null) {
-        throw new TypeError("Network request failed");
-      }
-      return Response.json({
-        host: { hostId, name: "Studio" },
-        principal: { kind: "device", deviceId: "device-1", scopes: ["read"] },
-      });
-    };
-  }
+  const answering = (hostId: string, delayMs = 0): FakeHost => ({
+    keys: hostKeys,
+    answer: () => accepted(hostId),
+    delayMs,
+  });
 
   it("switches to the address that answers when the paired LAN address is gone", async () => {
-    const reachable = await findReachableOrigin({
-      host,
-      fetch: network({ "http://100.101.1.2:47820": "host-1" }),
-    });
+    installNetwork({ [tailnet]: answering("host-1") });
 
-    expect(reachable?.origin).toBe("http://100.101.1.2:47820");
+    expect((await findReachableOrigin({ host }))?.origin).toBe(tailnet);
   });
 
   it("stays on the current address when it answers, even if another answers first", async () => {
-    const answer = network({
-      "http://192.168.1.20:47820": "host-1",
-      "http://100.101.1.2:47820": "host-1",
+    installNetwork({
+      [lan]: answering("host-1", 50),
+      [tailnet]: answering("host-1"),
     });
-    const slowCurrent: FetchLike = async (input, init) => {
-      if (new URL(input).origin === host.baseUrl) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-      return answer(input, init);
-    };
 
-    const reachable = await findReachableOrigin({ host, fetch: slowCurrent });
-
-    expect(reachable?.origin).toBe("http://192.168.1.20:47820");
+    expect((await findReachableOrigin({ host }))?.origin).toBe(lan);
   });
 
   it("ignores a different computer that now answers on a known address", async () => {
-    const reachable = await findReachableOrigin({
-      host,
-      fetch: network({ "http://10.0.0.5:47820": "host-2" }),
+    installNetwork({ "http://10.0.0.5:47820": answering("host-2") });
+
+    expect(await findReachableOrigin({ host })).toBeNull();
+  });
+
+  it("ignores an address whose host does not hold the pinned key", async () => {
+    installNetwork({
+      "http://10.0.0.5:47820": {
+        keys: generateKeyPair(),
+        answer: () => accepted("host-1"),
+      },
     });
 
-    expect(reachable).toBeNull();
+    expect(await findReachableOrigin({ host })).toBeNull();
   });
 });

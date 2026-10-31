@@ -1,4 +1,7 @@
+import { execFile } from "node:child_process";
 import net from "node:net";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
@@ -6,6 +9,8 @@ import { clickByRole, waitForNoRole, waitForRole } from "./lib/locate.mjs";
 import { openSettingsSection, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
+const PAIR_TIMEOUT_MS = 30_000;
+const HARNESS_DIR = fileURLToPath(new URL("../harness/", import.meta.url));
 const DEVICE_LABEL = "Scenario Tablet";
 
 const args = readScenarioArgs();
@@ -27,17 +32,29 @@ async function pairDevice(session) {
     enabled: true,
     port,
   });
-  const { code } = await daemonRequest(session, "host.pairing.create", {
-    label: DEVICE_LABEL,
-    scopes: ["read"],
-  });
-  const response = await fetch(`http://127.0.0.1:${port}/api/pair`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code, label: DEVICE_LABEL }),
-  });
-  check(response.ok, "pairing exchange succeeds", { status: response.status });
-  const { deviceId } = await response.json();
+  const { code, hostKey } = await daemonRequest(
+    session,
+    "host.pairing.create",
+    { label: DEVICE_LABEL, scopes: ["read"] },
+  );
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "remote/pair-device.ts",
+      "--url",
+      `http://127.0.0.1:${port}`,
+      "--code",
+      code,
+      "--host-key",
+      hostKey,
+      "--label",
+      DEVICE_LABEL,
+    ],
+    { cwd: HARNESS_DIR, timeout: PAIR_TIMEOUT_MS },
+  );
+  const { deviceId } = JSON.parse(stdout.trim().split(/\r?\n/).pop());
   return { port, deviceId };
 }
 

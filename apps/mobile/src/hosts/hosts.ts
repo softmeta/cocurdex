@@ -5,10 +5,11 @@ import {
   createHostsStore,
   forgetHostsFromPreviousInstall,
 } from "./hosts-store";
+import { mobileNoiseCrypto } from "./noise-crypto";
 
 const CURRENT_HOST_KEY = "cocurdex.currentHost";
 
-export const hosts = createHostsStore(secureStorage);
+export const hosts = createHostsStore(secureStorage, mobileNoiseCrypto);
 forgetHostsFromPreviousInstall(installMarker, hosts);
 
 let selectedHostId = secureStorage.getItem(CURRENT_HOST_KEY);

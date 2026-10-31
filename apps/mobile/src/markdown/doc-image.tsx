@@ -1,8 +1,7 @@
-import { savedHostEndpoint } from "@cocurdex/client-runtime";
-import { buildDaemonImageAttachmentUrl } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Image, Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
+import { RemoteImage } from "@/connection";
 import { useSavedHosts } from "@/hosts";
 import { space, useThemeColors } from "@/theme";
 
@@ -27,7 +26,6 @@ export function DocImage({
   const host = useSavedHosts().find((saved) => saved.hostId === hostId);
   const [aspect, setAspect] = useState<number>(ASPECT.initial);
   if (!host) return null;
-  const { webSocketUrl, token } = savedHostEndpoint(host);
   return (
     <Pressable
       accessibilityRole="imagebutton"
@@ -41,11 +39,9 @@ export function DocImage({
       }
       style={[styles.frame, { aspectRatio: aspect }]}
     >
-      <Image
-        source={{
-          uri: buildDaemonImageAttachmentUrl(webSocketUrl, fileName),
-          headers: { Authorization: `Bearer ${token}` },
-        }}
+      <RemoteImage
+        hostId={hostId}
+        request={{ kind: "imageAttachment", file: fileName }}
         resizeMode="contain"
         onLoad={({ nativeEvent }) =>
           setAspect(

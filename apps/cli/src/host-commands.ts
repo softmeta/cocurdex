@@ -45,10 +45,14 @@ export function parseScopesFlag(value: string | undefined): HostAccessScope[] {
   return scopes as HostAccessScope[];
 }
 
-export function buildPairingLinks(addresses: HostAddress[], code: string) {
+export function buildPairingLinks(
+  addresses: HostAddress[],
+  code: string,
+  hostKey: string,
+) {
   return addresses.map((address) => ({
     kind: address.kind,
-    url: buildHostPairingLink(address.url, code),
+    url: buildHostPairingLink(address.url, code, hostKey),
   }));
 }
 
@@ -94,7 +98,7 @@ async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
     console.log("The desktop app keeps this computer awake while it is on.");
   }
   console.log(
-    "Traffic is not encrypted. Use it on a trusted network or over Tailscale.",
+    "Paired devices connect end-to-end encrypted to this computer's key.",
   );
   for (const address of status.addresses) {
     console.log(`  ${address.kind.padEnd(9)} ${address.url}`);
@@ -111,7 +115,11 @@ async function createPairing(parsed: ParsedArgs) {
     }),
     status: await requestDaemon("host.remoteAccess.get"),
   }));
-  const links = buildPairingLinks(status.addresses, created.code);
+  const links = buildPairingLinks(
+    status.addresses,
+    created.code,
+    created.hostKey,
+  );
   if (parsed.flags.has("json")) {
     printResult({ ...created, links }, parsed);
     return;
@@ -167,7 +175,7 @@ export async function handleHostCommand(
     const devices = await withDaemon(() => requestDaemon("host.devices.list"));
     printRows(
       devices.map((device) => ({ ...device, scopes: device.scopes.join(",") })),
-      ["id", "label", "scopes", "lastSeenAt", "revokedAt"],
+      ["id", "label", "scopes", "safetyCode", "lastSeenAt", "revokedAt"],
       parsed,
     );
     return true;

@@ -17,6 +17,7 @@
       "@cocurdex/rpc/client": ["./packages/rpc/src/client.ts"],
       "@cocurdex/rpc/method-scopes": ["./packages/rpc/src/method-scopes.ts"],
       "@cocurdex/client-runtime": ["./packages/client-runtime/src/index.ts"],
+      "@cocurdex/secure-channel": ["./packages/secure-channel/src/index.ts"],
       "@cocurdex/daemon": ["./packages/daemon/src/index.ts"],
       "@cocurdex/daemon/client": ["./packages/daemon/src/client.ts"],
       "@cocurdex/daemon/paths": ["./packages/daemon/src/paths.ts"],
@@ -49,6 +50,9 @@
         "./packages/product-skills/src/*"
       ],
       "@cocurdex/rpc/internal/*": ["./packages/rpc/src/*"],
+      "@cocurdex/secure-channel/internal/*": [
+        "./packages/secure-channel/src/*"
+      ],
       "@cocurdex/shared/internal/*": ["./packages/shared/src/*"],
       "@cocurdex/cli/internal/*": ["./apps/cli/src/*"],
       "@cocurdex/api/internal/*": ["./apps/api/src/*"]

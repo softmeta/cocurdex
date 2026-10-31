@@ -47,13 +47,9 @@ async function loadRoot(): Promise<ComponentType> {
     const { DeckAudienceApp } = await import("./features/decks/audience");
     return DeckAudienceApp;
   }
-  const access = await webHostAccess;
-  if (access?.kind !== "needsPairing") return loadApp();
-  const { WebPairingScreen } = await import("./features/web-pairing");
-  const { reason } = access;
-  return function PairingRoot() {
-    return <WebPairingScreen reason={reason} />;
-  };
+  if (webHostAccess?.kind !== "unlinked") return loadApp();
+  const { WebUnlinkedScreen } = await import("./features/web-unlinked");
+  return WebUnlinkedScreen;
 }
 
 const rootElement = document.getElementById("root");

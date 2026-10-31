@@ -87,6 +87,7 @@ import type {
   MoveIssuePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
+  PairedDevice,
   PairedDeviceRecord,
   PdfAnnotationsOperation,
   PdfDocumentAnnotations,
@@ -644,7 +645,7 @@ export interface ProductApi {
   ): Promise<CreatedHostPairing>;
   listHostPairings(): Promise<HostPairingRecord[]>;
   cancelHostPairing(pairingId: string): Promise<HostPairingRecord | null>;
-  listHostDevices(): Promise<PairedDeviceRecord[]>;
+  listHostDevices(): Promise<PairedDevice[]>;
   revokeHostDevice(deviceId: string): Promise<PairedDeviceRecord | null>;
   updateHostDeviceScopes(
     deviceId: string,

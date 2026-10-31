@@ -21,7 +21,6 @@ import { readBearerToken } from "./host-access";
 import { corsHeaders, endWith, readRequestUrl } from "./pdf-http";
 
 export interface AttachmentHttpHandlerOptions {
-  remote: boolean;
   isAllowedRequest(request: http.IncomingMessage): boolean;
   resolvePrincipal(token: string | null): HostPrincipal | null;
   store: Pick<
@@ -121,10 +120,7 @@ export function createAttachmentHttpHandler(
       readBearerToken(request.headers.authorization),
     );
     if (!principal) return 401;
-    const allowed =
-      !(options.remote && principal.kind === "local") &&
-      principalHasScope(principal, scope);
-    return allowed ? null : 403;
+    return principalHasScope(principal, scope) ? null : 403;
   };
 
   const upload = async (

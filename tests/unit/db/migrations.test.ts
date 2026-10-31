@@ -1319,6 +1319,46 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds device public keys from version 33 and keeps paired devices", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      DROP INDEX idx_host_devices_public_key;
+      ALTER TABLE host_devices DROP COLUMN public_key;
+    `);
+    const now = "2026-10-31T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO host_devices (id, label, token_hash, scopes_json, created_at)
+      VALUES ('d1', 'Pixel', 'token-hash', '["read"]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Keys', '${now}', '${now}');
+      PRAGMA user_version = 33;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    expect(tableShape(database, "host_devices")).toEqual(
+      tableShape(fresh, "host_devices"),
+    );
+    expect(
+      database
+        .prepare("SELECT id, label, token_hash, public_key FROM host_devices")
+        .all(),
+    ).toEqual([
+      { id: "d1", label: "Pixel", token_hash: "token-hash", public_key: null },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Keys" },
+    ]);
+  });
+
   it("keeps an up-to-date database that carries a stale version marker", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

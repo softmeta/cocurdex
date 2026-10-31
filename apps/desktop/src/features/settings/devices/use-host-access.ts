@@ -2,7 +2,7 @@ import type {
   HostAccessAuditEntry,
   HostPairingRecord,
   HostRemoteAccessStatus,
-  PairedDeviceRecord,
+  PairedDevice,
 } from "@cocurdex/shared";
 import { useCallback, useState } from "react";
 import { desktopApi, useMountEffect } from "@/lib";
@@ -12,7 +12,7 @@ const AUDIT_LIMIT = 20;
 export interface HostAccessSnapshot {
   remote: HostRemoteAccessStatus;
   pairings: HostPairingRecord[];
-  devices: PairedDeviceRecord[];
+  devices: PairedDevice[];
   audit: HostAccessAuditEntry[];
 }
 

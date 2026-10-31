@@ -1,14 +1,16 @@
 import { sourceLanguage } from "@cocurdex/mobile/internal/files/source-language";
 import {
-  FileLoadError,
+  fileLoadFailure,
   MAX_PREVIEW_BYTES,
   readFileContent,
 } from "@cocurdex/mobile/internal/workspace-files/file-content";
 import { describe, expect, it } from "vitest";
 
+const bytes = (text: string) => new TextEncoder().encode(text);
+
 describe("readFileContent", () => {
   it("reads a whole small file", () => {
-    expect(readFileContent(206, "bytes 0-5/6", "a\r\nb\n")).toEqual({
+    expect(readFileContent(bytes("a\r\nb\n"), 5)).toEqual({
       kind: "text",
       text: "a\nb\n",
       lines: ["a", "b", ""],
@@ -17,10 +19,10 @@ describe("readFileContent", () => {
   });
 
   it("drops the partial last line of a truncated file", () => {
+    const head = bytes("one\ntwo\nthr\u00e9");
     const content = readFileContent(
-      206,
-      `bytes 0-${MAX_PREVIEW_BYTES - 1}/${MAX_PREVIEW_BYTES * 3}`,
-      "one\ntwo\nthr\uFFFD",
+      head.subarray(0, -1),
+      MAX_PREVIEW_BYTES * 3,
     );
     expect(content).toEqual({
       kind: "text",
@@ -31,32 +33,22 @@ describe("readFileContent", () => {
   });
 
   it("treats an empty file as empty text", () => {
-    expect(readFileContent(416, "bytes */0", "")).toMatchObject({
+    expect(readFileContent(new Uint8Array(0), 0)).toMatchObject({
       kind: "text",
       lines: [""],
     });
   });
 
   it("recognizes binary content", () => {
-    expect(readFileContent(200, null, "PK\u0003\u0004\u0000")).toEqual({
+    expect(readFileContent(bytes("PK\u0003\u0004\u0000"), 5)).toEqual({
       kind: "binary",
     });
   });
 
   it("maps refusals to their reason", () => {
-    const reason = (status: number) => {
-      try {
-        readFileContent(status, null, "");
-      } catch (error) {
-        return error instanceof FileLoadError ? error.reason : null;
-      }
-      return null;
-    };
-    expect([reason(403), reason(404), reason(500)]).toEqual([
-      "outside",
-      "missing",
-      "failed",
-    ]);
+    expect(
+      (["forbidden", "notFound", "unreachable"] as const).map(fileLoadFailure),
+    ).toEqual(["outside", "missing", "failed"]);
   });
 });
 

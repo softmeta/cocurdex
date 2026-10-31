@@ -54,18 +54,44 @@ export function isConnectionLoss(error: unknown) {
   return typeof code === "string" && CONNECTION_LOSS_CODES.has(code);
 }
 
-function defaultTransport(endpoint: HostEndpoint): DaemonTransport {
+const unsupportedPairedTransport: DaemonTransport = (handlers) => {
+  queueMicrotask(() =>
+    handlers.onError(
+      new DaemonClientError(
+        "This client cannot reach paired hosts",
+        "UNAVAILABLE",
+      ),
+    ),
+  );
+  return { send: () => {}, close: () => {} };
+};
+
+function defaultTransport(
+  endpoint: HostEndpoint,
+  platform: HostPlatform,
+): DaemonTransport {
+  if (endpoint.kind === "paired") {
+    return (
+      platform.openPairedTransport?.(endpoint) ?? unsupportedPairedTransport
+    );
+  }
   return createWebSocketTransport(
     endpoint.webSocketUrl,
     daemonWebSocketProtocols(endpoint.token),
   );
 }
 
+function endpointToken(endpoint: HostEndpoint) {
+  return endpoint.kind === "paired" ? "" : endpoint.token;
+}
+
 export type HostConnection = ReturnType<typeof createHostConnection>;
 
 export function createHostConnection(options: HostConnectionOptions) {
   const { platform } = options;
-  const openTransport = platform.openTransport ?? defaultTransport;
+  const openTransport =
+    platform.openTransport ??
+    ((endpoint: HostEndpoint) => defaultTransport(endpoint, platform));
   const listeners = new Set<HostEventListener>();
   let client: Promise<DaemonRpcClient> | null = null;
 
@@ -96,7 +122,7 @@ export function createHostConnection(options: HostConnectionOptions) {
         },
       }),
     );
-    return createDaemonRpcClient(transport, endpoint.token);
+    return createDaemonRpcClient(transport, endpointToken(endpoint));
   }
 
   function getClient() {
@@ -128,7 +154,7 @@ export function createHostConnection(options: HostConnectionOptions) {
       const endpoint = await resolveEndpoint();
       return createDaemonRpcClient(
         openTransport(endpoint),
-        endpoint.token,
+        endpointToken(endpoint),
       ).subscribe(onEvent, subscribeOptions);
     },
     async probe() {
