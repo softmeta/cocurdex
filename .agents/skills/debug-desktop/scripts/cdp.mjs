@@ -22,6 +22,7 @@ import {
   waitFor,
 } from "./cdp-client.mjs";
 import { preflight } from "./cdp-preflight.mjs";
+import { startScreencast } from "./cdp-screencast.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../../../../", import.meta.url)).replace(
   /[\\/]$/,
@@ -217,6 +218,8 @@ async function main() {
       interval: { type: "string", default: "200" },
       api: { type: "string", multiple: true, default: [] },
       wait: { type: "string" },
+      action: { type: "string" },
+      duration: { type: "string", default: "3000" },
       "from-port": { type: "string", default: "9222" },
       "ready-timeout": { type: "string", default: "30000" },
       "renderer-url": { type: "string" },
@@ -225,7 +228,7 @@ async function main() {
     },
   });
   if (values.help) {
-    console.log(`Usage: node cdp.mjs <targets|preflight|eval EXPR|wait EXPR|shot [PATH]|launch|stop>
+    console.log(`Usage: node cdp.mjs <targets|preflight|eval EXPR|wait EXPR|shot [PATH]|cast DIR|launch|stop>
 Options: --port PORT --target ID --url EXACT_URL --timeout MS --interval MS
 preflight: --api METHOD (repeatable)
 eval: --wait CONDITION (action once, then poll condition)
@@ -234,6 +237,9 @@ launch: starts an isolated extra instance (own port + userData) for
   concurrent debugging. --port PORT to pin, --renderer-url URL to override,
   --from-port PORT to copy the renderer URL from a sibling instance
   (default 9222), --user-data PATH to keep the profile, --ready-timeout MS.
+cast: records every composited frame to DIR as NNNN-<ms>ms.jpg plus
+  frames.json. --action EXPR runs once after recording starts;
+  --duration MS (default 3000, max 60000) is how long to record after it.
 stop: tears down a launch instance. --user-data PATH (required).
 Timeouts bound each connection, request, or condition wait (default 10000ms).
 A timed-out action may still complete in the app; inspect before retrying.`);
@@ -247,6 +253,7 @@ A timed-out action may still complete in the app; inspect before retrying.`);
       "eval",
       "wait",
       "shot",
+      "cast",
       "launch",
       "stop",
     ]).has(command) ||
@@ -255,6 +262,13 @@ A timed-out action may still complete in the app; inspect before retrying.`);
     throw new Error("Invalid command. Use --help for usage.");
   if (["eval", "wait"].includes(command) && !argument)
     throw new Error(`${command} requires an expression`);
+  if (command === "cast" && !argument)
+    throw new Error("cast requires an output directory");
+  const castOnly = process.argv
+    .slice(2)
+    .some((arg) => /^--(action|duration)(=|$)/.test(arg));
+  if (castOnly && command !== "cast")
+    throw new Error("--action and --duration are only supported with cast");
   if (["targets", "preflight", "launch", "stop"].includes(command) && argument)
     throw new Error(`${command} takes no positional argument`);
   if (values.wait && command !== "eval")
@@ -265,6 +279,7 @@ A timed-out action may still complete in the app; inspect before retrying.`);
     ...values,
     timeout: numberOption(values.timeout, "timeout", 1, 60000),
     interval: numberOption(values.interval, "interval", 20, 5000),
+    duration: numberOption(values.duration, "duration", 1, 60000),
     fromPort: numberOption(values["from-port"], "from-port", 1, 65535),
     readyTimeout: numberOption(
       values["ready-timeout"],
@@ -319,6 +334,29 @@ A timed-out action may still complete in the app; inspect before retrying.`);
           2,
         ),
       );
+    } else if (command === "cast") {
+      const recording = await startScreencast(client, { dir: argument });
+      let actionResult;
+      try {
+        if (options.action)
+          actionResult = await evaluate(client, options.action, options.timeout);
+        await delay(options.duration);
+      } finally {
+        const { dir, frames } = await recording.stop();
+        console.log(
+          JSON.stringify(
+            {
+              targetId: target.id,
+              dir,
+              frameCount: frames.length,
+              lastFrameMs: frames.at(-1)?.ms ?? null,
+              actionResult,
+            },
+            null,
+            2,
+          ),
+        );
+      }
     } else if (command === "wait") {
       await waitFor(client, argument, options.timeout, options.interval);
       console.log(JSON.stringify({ targetId: target.id, conditionMet: true }));

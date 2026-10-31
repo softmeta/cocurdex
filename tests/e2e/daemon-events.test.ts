@@ -1,10 +1,11 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
-import { describe, expect, it } from "vitest";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterAll, describe, expect, it } from "vitest";
 import { spawnDaemon, waitFor } from "./helpers/daemon-process";
+
+const tempDirs = createTempDirs();
+afterAll(() => tempDirs.cleanup());
 
 describe("daemon event subscriptions", () => {
   it("streams data.changed events with sequence metadata", async () => {
@@ -58,9 +59,7 @@ describe("daemon event subscriptions", () => {
   });
 
   it("flags replayGap when resuming across a daemon restart", async () => {
-    const userDataPath = mkdtempSync(
-      path.join(tmpdir(), "cocurdex-e2e-epoch-"),
-    );
+    const userDataPath = tempDirs.createSync("cocurdex-e2e-epoch-");
     const first = await spawnDaemon({ userDataPath });
     const initial = await subscribeDaemonEvents(() => {}, {
       ...first.options,

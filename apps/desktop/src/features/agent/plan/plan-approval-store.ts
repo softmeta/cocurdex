@@ -5,16 +5,6 @@ type PlanApprovalsBySession = Record<string, AgentPlanApprovalRecord[]>;
 
 export const planApprovalsBySessionAtom = atom<PlanApprovalsBySession>({});
 
-export const clearPlanApprovalsForSessionAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const current = get(planApprovalsBySessionAtom);
-    const { [sessionId]: _removed, ...next } = current;
-
-    set(planApprovalsBySessionAtom, next);
-  },
-);
-
 function upsertPlanApproval(
   approvals: AgentPlanApprovalRecord[],
   nextApproval: AgentPlanApprovalRecord,

@@ -4,15 +4,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./node": "./src/node.ts"
+    "./build-policy": "./src/build-policy.ts",
+    "./node": "./src/node.ts",
+    "./internal/*": "./src/*.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^24.13.6",
-    "vitest": "^4.1.11"
+    "@types/node": "^24.19.2"
   }
 }

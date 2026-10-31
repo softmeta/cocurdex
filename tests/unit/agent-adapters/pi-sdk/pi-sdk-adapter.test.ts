@@ -1,0 +1,849 @@
+import path from "node:path";
+import { createPiSdkAdapter } from "@cocurdex/agent-adapters/internal/pi-sdk/pi-sdk-adapter";
+import type { AgentEvent, SessionRecord } from "@cocurdex/shared";
+import { describe, expect, it, vi } from "vitest";
+
+type RegisteredProvider = {
+  providerId: string;
+  config: Record<string, unknown>;
+};
+
+function createSessionPayload(
+  events: AgentEvent[],
+  options: {
+    providerOverride?: Record<string, unknown>;
+    piEvents?: Record<string, unknown>[];
+    sessionOverride?: Partial<SessionRecord>;
+    capture?: {
+      createAgentSessionOptions?: Record<string, unknown>;
+      createAgentSessionCalls?: number;
+      modelRuntimeOptions?: Record<string, unknown>;
+      resourceLoaderOptions?: Record<string, unknown>;
+      provider?: RegisteredProvider;
+      runtimeApiKey?: unknown[];
+      runtimeApiKeys?: unknown[][];
+      setModel?: unknown;
+      setThinkingLevel?: unknown;
+      steer?: unknown[];
+      boundExtensions?: boolean;
+      extensionEvents?: unknown[];
+    };
+  } = {},
+) {
+  const providerConfig = {
+    providerId: "openrouter",
+    providerName: "OpenRouter",
+    modelId: "anthropic/claude-sonnet-4.5",
+    modelName: "Claude Sonnet 4.5",
+    api: "openai-completions" as const,
+    baseUrl: "https://openrouter.ai/api/v1",
+    headersJson: JSON.stringify({ "HTTP-Referer": "https://cocurdex.local" }),
+    apiKey: "sk-test",
+    ...options.providerOverride,
+  };
+
+  const adapter = createPiSdkAdapter({
+    sdk: createFakeSdk(options.capture, options.piEvents),
+  });
+
+  return adapter.createSession(
+    {
+      session: {
+        id: "session-1",
+        workspaceId: "workspace-1",
+        title: "Pi session",
+        agentType: "pi",
+        status: "idle",
+        writeMode: "read-only",
+        sessionModeId: null,
+        createdAt: "2026-06-10T00:00:00.000Z",
+        updatedAt: "2026-06-10T00:00:00.000Z",
+        lastMessageAt: null,
+        archivedAt: null,
+        providerSnapshot: providerConfig,
+        ...options.sessionOverride,
+      },
+      workspaceRootPath: "/tmp/repo",
+      userDataPath: "/tmp/cocurdex-user-data",
+      providerConfig,
+      onProviderSessionUpdate: (providerSession) => {
+        if (providerSession) {
+          events.push({
+            type: "error",
+            sessionId: providerSession.sessionId,
+            message: providerSession.providerStateJson,
+          });
+        }
+      },
+    },
+    (event) => events.push(event),
+  );
+}
+
+function createFakeSdk(
+  capture?: {
+    createAgentSessionOptions?: Record<string, unknown>;
+    createAgentSessionCalls?: number;
+    modelRuntimeOptions?: Record<string, unknown>;
+    resourceLoaderOptions?: Record<string, unknown>;
+    provider?: RegisteredProvider;
+    runtimeApiKey?: unknown[];
+    runtimeApiKeys?: unknown[][];
+    setModel?: unknown;
+    setThinkingLevel?: unknown;
+    steer?: unknown[];
+    boundExtensions?: boolean;
+    extensionEvents?: unknown[];
+  },
+  piEvents?: Record<string, unknown>[],
+) {
+  let listener: ((event: Record<string, unknown>) => void) | null = null;
+
+  class FakeModelRuntime {
+    static async create(options: Record<string, unknown>) {
+      if (capture) {
+        capture.modelRuntimeOptions = options;
+      }
+      return new FakeModelRuntime();
+    }
+    setRuntimeApiKey = vi.fn((...args: unknown[]) => {
+      if (capture) {
+        capture.runtimeApiKey = args;
+        capture.runtimeApiKeys = [...(capture.runtimeApiKeys ?? []), args];
+      }
+    });
+    removeRuntimeApiKey = vi.fn();
+
+    registerProvider = vi.fn(
+      (providerId: string, config: Record<string, unknown>) => {
+        if (capture) {
+          capture.provider = { providerId, config };
+        }
+      },
+    );
+
+    getModel = vi.fn(() => ({ provider: "openrouter", id: "model" }));
+  }
+
+  class FakeDefaultResourceLoader {
+    reload = vi.fn();
+
+    constructor(options: Record<string, unknown>) {
+      if (capture) {
+        capture.resourceLoaderOptions = options;
+      }
+    }
+  }
+
+  const FakeSessionManager = {
+    lastSessionDir: undefined as string | undefined,
+    create(_cwd: string, sessionDir: string) {
+      FakeSessionManager.lastSessionDir = sessionDir;
+      return {
+        getSessionFile: () => `${sessionDir}/session.jsonl`,
+      };
+    },
+
+    open(_file: string, sessionDir: string) {
+      FakeSessionManager.lastSessionDir = sessionDir;
+      return {
+        getSessionFile: () => `${sessionDir}/session.jsonl`,
+      };
+    },
+  };
+
+  const fakeSession = {
+    sessionId: "pi-session-1",
+    bindExtensions: vi.fn(async () => {
+      if (capture) capture.boundExtensions = true;
+    }),
+    extensionRunner: {
+      emit: vi.fn(async (event: unknown) => {
+        if (capture) {
+          capture.extensionEvents = [...(capture.extensionEvents ?? []), event];
+        }
+      }),
+    },
+    sessionManager: {
+      getSessionFile: () => "/tmp/cocurdex-user-data/pi-agent/sessions/s.jsonl",
+    },
+    prompt: vi.fn(async () => {
+      const script = piEvents ?? [
+        {
+          type: "message_update",
+          assistantMessageEvent: { type: "text_delta", delta: "hello" },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ];
+      for (const event of script) {
+        listener?.(event);
+      }
+    }),
+    setModel: vi.fn(async (model: unknown) => {
+      if (capture) {
+        capture.setModel = model;
+      }
+    }),
+    setThinkingLevel: vi.fn((level: unknown) => {
+      if (capture) {
+        capture.setThinkingLevel = level;
+      }
+    }),
+    steer: vi.fn(async (...args: unknown[]) => {
+      if (capture) {
+        capture.steer = args;
+      }
+    }),
+    abort: vi.fn(),
+    dispose: vi.fn(),
+    subscribe: vi.fn((nextListener) => {
+      listener = nextListener;
+      return () => {
+        listener = null;
+      };
+    }),
+  };
+
+  return {
+    DefaultResourceLoader: FakeDefaultResourceLoader,
+    ModelRuntime: FakeModelRuntime,
+    SessionManager: FakeSessionManager,
+    createAgentSession: vi.fn(async (options?: Record<string, unknown>) => {
+      if (capture) {
+        capture.createAgentSessionOptions = options;
+        capture.createAgentSessionCalls =
+          (capture.createAgentSessionCalls ?? 0) + 1;
+      }
+      return { session: fakeSession };
+    }),
+  } as never;
+}
+
+describe("createPiSdkAdapter", () => {
+  it("maps steer delivery to the Pi mid-turn input API", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { steer?: unknown[] } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({
+      content: "Check the failing test first",
+      history: [],
+      delivery: "steer-active-run",
+    });
+
+    expect(capture.steer).toEqual(["Check the failing test first"]);
+  });
+
+  it("starts extensions on open and shuts them down on dispose", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      boundExtensions?: boolean;
+      extensionEvents?: unknown[];
+    } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({ content: "hello", history: [] });
+    expect(capture.boundExtensions).toBe(true);
+
+    session.dispose();
+    await vi.waitFor(() =>
+      expect(capture.extensionEvents).toEqual([
+        { type: "session_shutdown", reason: "quit" },
+      ]),
+    );
+  });
+
+  it("uses Cocurdex userData for Pi auth, models, and sessions", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events);
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    const providerState = events.find(
+      (event) =>
+        event.type === "error" && event.message.includes("sessionFile"),
+    );
+    expect(providerState).toBeDefined();
+    expect(JSON.stringify(events)).toContain(
+      "/tmp/cocurdex-user-data/pi-agent",
+    );
+    expect(JSON.stringify(events)).not.toContain(".pi/agent");
+  });
+
+  it("continues a newly created Pi session on a second turn", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events);
+
+    await session.sendMessage({ content: "Start", history: [] });
+    const response = await session.sendMessage({
+      content: "Continue",
+      history: [
+        {
+          id: "user-first",
+          sessionId: "session-1",
+          role: "user",
+          content: "Start",
+          attachments: [],
+          createdAt: "2026-08-03T00:00:00.000Z",
+        },
+        {
+          id: "assistant-first",
+          sessionId: "session-1",
+          role: "assistant",
+          content: "hello",
+          attachments: [],
+          createdAt: "2026-08-03T00:00:01.000Z",
+        },
+      ],
+    });
+
+    expect(response.content).toBe("hello");
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "could not restore its native session",
+        ),
+      }),
+    );
+  });
+
+  it("fails before creating a Pi runtime when history has no native session file", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { createAgentSessionOptions?: Record<string, unknown> } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({
+      content: "Continue",
+      history: [
+        {
+          id: "user-old",
+          sessionId: "session-1",
+          role: "user",
+          content: "Start",
+          attachments: [],
+          createdAt: "2026-08-03T00:00:00.000Z",
+        },
+        {
+          id: "assistant-old",
+          sessionId: "session-1",
+          role: "assistant",
+          content: "Done",
+          attachments: [],
+          createdAt: "2026-08-03T00:00:01.000Z",
+        },
+      ],
+    });
+
+    expect(capture.createAgentSessionOptions).toBeUndefined();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining(
+          "could not restore its native session",
+        ),
+      }),
+    );
+  });
+
+  it("loads Pi resources from Cocurdex-owned Pi state", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      createAgentSessionOptions?: Record<string, unknown>;
+      resourceLoaderOptions?: Record<string, unknown>;
+    } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    expect(capture.resourceLoaderOptions).toMatchObject({
+      cwd: "/tmp/repo",
+      agentDir: path.join("/tmp/cocurdex-user-data", "pi-agent"),
+    });
+    const extensionFactories = capture.resourceLoaderOptions
+      ?.extensionFactories as { name: string; builtin?: boolean }[];
+    expect(
+      extensionFactories.map(({ name, builtin }) => ({ name, builtin })),
+    ).toEqual([
+      { name: "codemode", builtin: true },
+      { name: "tool-search", builtin: true },
+      { name: "mcp", builtin: true },
+    ]);
+    expect(capture.createAgentSessionOptions?.resourceLoader).toBeDefined();
+    expect(process.env.PI_CODING_AGENT_DIR).toBe(
+      path.join("/tmp/cocurdex-user-data", "pi-agent"),
+    );
+  });
+
+  it("runs chat sessions without tools or project context", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      createAgentSessionOptions?: Record<string, unknown>;
+      resourceLoaderOptions?: Record<string, unknown>;
+    } = {};
+    const session = createSessionPayload(events, {
+      capture,
+      sessionOverride: { sessionKind: "chat", workspaceId: "chat" },
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    expect(capture.resourceLoaderOptions).toMatchObject({
+      noContextFiles: true,
+      noExtensions: true,
+      noPromptTemplates: true,
+      noSkills: true,
+      systemPrompt: expect.stringContaining("helpful assistant"),
+    });
+    expect(capture.resourceLoaderOptions).not.toHaveProperty(
+      "appendSystemPromptOverride",
+    );
+    expect(capture.createAgentSessionOptions).toMatchObject({
+      noTools: "all",
+    });
+    expect(capture.createAgentSessionOptions).not.toHaveProperty("customTools");
+  });
+
+  it("lets keyless custom providers through while built-ins still need a key", async () => {
+    const custom: { runtimeApiKey?: unknown[] } = {};
+    await createSessionPayload([], {
+      capture: custom,
+      providerOverride: { providerId: "local-llm", apiKey: null },
+    }).sendMessage({ content: "hello", history: [] });
+    expect(custom.runtimeApiKey?.[0]).toBe("local-llm");
+    expect(custom.runtimeApiKey?.[1]).toEqual(expect.any(String));
+
+    const builtIn: { runtimeApiKey?: unknown[] } = {};
+    await createSessionPayload([], {
+      capture: builtIn,
+      providerOverride: { providerId: "anthropic", apiKey: null },
+    }).sendMessage({ content: "hello", history: [] });
+    expect(builtIn.runtimeApiKey).toBeUndefined();
+  });
+
+  it("registers Pi model with provider api and model metadata", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { provider?: RegisteredProvider } = {};
+    const session = createSessionPayload(events, {
+      capture,
+      providerOverride: {
+        api: "anthropic-messages",
+        providerCompatJson: JSON.stringify({ providerLevel: true }),
+        modelCompatJson: JSON.stringify({ stream: false }),
+        modelCapabilities: ["agent", "chat", "vision", "reasoning"],
+        modelCostJson: JSON.stringify({ input: 3, output: 15, cacheRead: 1 }),
+        modelThinkingLevelMapJson: JSON.stringify({ high: 10000 }),
+        modelContextWindow: 200000,
+        modelMaxTokens: 64000,
+        supportsReasoning: true,
+      },
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    const config = capture.provider?.config;
+    expect(config?.api).toBe("anthropic-messages");
+    const [model] = (config?.models ?? []) as Record<string, unknown>[];
+    expect(model.api).toBe("anthropic-messages");
+    expect(model.contextWindow).toBe(200000);
+    expect(model.maxTokens).toBe(64000);
+    expect(model.reasoning).toBe(true);
+    expect(model.input).toEqual(["text", "image"]);
+    expect(model.cost).toEqual({
+      input: 3,
+      output: 15,
+      cacheRead: 1,
+      cacheWrite: 0,
+    });
+    expect(model.thinkingLevelMap).toEqual({ high: 10000 });
+    expect(model.compat).toEqual({ stream: false });
+  });
+
+  it("injects the Cocurdex API key into Pi runtime auth for the same provider id", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      provider?: RegisteredProvider;
+      runtimeApiKey?: unknown[];
+    } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    expect(capture.runtimeApiKey).toEqual(["openrouter", "sk-test"]);
+    expect(capture.provider?.providerId).toBe("openrouter");
+    expect(capture.provider?.config.apiKey).toBe("sk-test");
+  });
+
+  it("refreshes runtime auth when the selected model does not change", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { runtimeApiKeys?: unknown[][] } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({ content: "first", history: [] });
+    await session.sendMessage({
+      content: "second",
+      history: [],
+      providerConfig: {
+        providerId: "openrouter",
+        providerName: "OpenRouter",
+        modelId: "anthropic/claude-sonnet-4.5",
+        modelName: "Claude Sonnet 4.5",
+        api: "openai-completions",
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKey: "refreshed-access-token",
+      },
+    });
+
+    expect(capture.runtimeApiKeys?.at(-1)).toEqual([
+      "openrouter",
+      "refreshed-access-token",
+    ]);
+  });
+
+  it("omits image input for non-vision models", async () => {
+    const events: AgentEvent[] = [];
+    const capture: { provider?: RegisteredProvider } = {};
+    const session = createSessionPayload(events, {
+      capture,
+      providerOverride: { modelCapabilities: ["agent", "chat"] },
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    const [model] = (capture.provider?.config.models ?? []) as Record<
+      string,
+      unknown
+    >[];
+    expect(model.input).toEqual(["text"]);
+  });
+
+  it("passes the selected thinking level to Pi", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      createAgentSessionOptions?: Record<string, unknown>;
+      setThinkingLevel?: unknown;
+    } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({
+      content: "hello",
+      history: [],
+      thinkingLevel: "medium",
+    });
+
+    expect(capture.createAgentSessionOptions?.thinkingLevel).toBe("medium");
+    expect(capture.setThinkingLevel).toBe("medium");
+  });
+
+  it("changes models through the existing Pi session", async () => {
+    const events: AgentEvent[] = [];
+    const capture: {
+      createAgentSessionCalls?: number;
+      setModel?: unknown;
+    } = {};
+    const session = createSessionPayload(events, { capture });
+
+    await session.sendMessage({
+      content: "first",
+      history: [],
+    });
+    await session.sendMessage({
+      content: "second",
+      history: [],
+      providerConfig: {
+        providerId: "anthropic",
+        providerName: "Anthropic",
+        modelId: "claude-3-7-sonnet",
+        modelName: "Claude 3.7 Sonnet",
+        api: "anthropic-messages",
+        baseUrl: "https://api.anthropic.com",
+        apiKey: "sk-test-2",
+      },
+    });
+
+    expect(capture.createAgentSessionCalls).toBe(1);
+    expect(capture.setModel).toEqual({ provider: "openrouter", id: "model" });
+  });
+
+  it("streams Pi SDK text events into Cocurdex messages", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events);
+
+    const message = await session.sendMessage({
+      content: "hello",
+      history: [],
+    });
+
+    expect(message.content).toBe("hello");
+    expect(events.some((event) => event.type === "message.delta")).toBe(true);
+    expect(events.some((event) => event.type === "message.completed")).toBe(
+      true,
+    );
+  });
+
+  it("emits Pi assistant usage as Cocurdex usage updates", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_update",
+          assistantMessageEvent: { type: "text_delta", delta: "hello" },
+        },
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            usage: {
+              input: 100,
+              output: 25,
+              cacheRead: 50,
+              cacheWrite: 10,
+              totalTokens: 175,
+              cost: { total: 0.0123 },
+            },
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    const usage = events.find(
+      (event): event is Extract<AgentEvent, { type: "usage.updated" }> =>
+        event.type === "usage.updated",
+    );
+    expect(usage?.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 25,
+      cacheReadInputTokens: 50,
+      cacheCreationInputTokens: 10,
+      contextTokensUsed: 175,
+      totalCostUsd: 0.0123,
+    });
+  });
+
+  it("surfaces provider failures from assistant stopReason without throwing", async () => {
+    const events: AgentEvent[] = [];
+    const quotaError =
+      "OpenAI API error (429): 429 You have exceeded the 5-hour usage quota.";
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "error",
+            errorMessage: quotaError,
+            content: [],
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    const message = await session.sendMessage({
+      content: "hello",
+      history: [],
+    });
+
+    expect(message.content).toBe("");
+    expect(
+      events.some(
+        (event) => event.type === "error" && event.message === quotaError,
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) => event.type === "state.changed" && event.status === "error",
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) => event.type === "state.changed" && event.status === "idle",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats an abort caused by stop as a cancellation, not an error", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "aborted",
+            errorMessage:
+              "OpenAI Responses stream ended before a terminal response event",
+            content: [],
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    const pending = session.sendMessage({ content: "hello", history: [] });
+    session.stop();
+    await pending;
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === "error" && event.message.includes("stream ended"),
+      ),
+    ).toBe(false);
+    expect(
+      events.some(
+        (event) => event.type === "state.changed" && event.status === "error",
+      ),
+    ).toBe(false);
+  });
+
+  it("still reports an abort that was not requested by stop", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "aborted",
+            errorMessage: "stream dropped",
+            content: [],
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    await session.sendMessage({ content: "hello", history: [] });
+
+    expect(
+      events.some(
+        (event) => event.type === "error" && event.message === "stream dropped",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not keep a stopReason error after a later successful assistant turn", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "error",
+            errorMessage: "transient 429",
+            content: [],
+          },
+        },
+        {
+          type: "message_update",
+          assistantMessageEvent: { type: "text_delta", delta: "recovered" },
+        },
+        {
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "stop",
+            content: [{ type: "text", text: "recovered" }],
+          },
+        },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    const message = await session.sendMessage({
+      content: "hello",
+      history: [],
+    });
+
+    expect(message.content).toBe("recovered");
+    // onProviderSessionUpdate is wired as type:"error" in the test harness;
+    // assert no turn-level error event was emitted for the recovered turn.
+    expect(
+      events.some(
+        (event) => event.type === "error" && event.message === "transient 429",
+      ),
+    ).toBe(false);
+    expect(
+      events.some(
+        (event) => event.type === "state.changed" && event.status === "error",
+      ),
+    ).toBe(false);
+    expect(
+      events.some(
+        (event) => event.type === "state.changed" && event.status === "idle",
+      ),
+    ).toBe(true);
+  });
+
+  it("completes one message per assistant turn so tool calls interleave", async () => {
+    const events: AgentEvent[] = [];
+    const session = createSessionPayload(events, {
+      piEvents: [
+        { type: "message_end", message: { role: "user" } },
+        {
+          type: "message_update",
+          assistantMessageEvent: { type: "text_delta", delta: "turn one" },
+        },
+        { type: "message_end", message: { role: "assistant" } },
+        {
+          type: "tool_execution_start",
+          toolCallId: "tool-1",
+          toolName: "Read",
+          args: {},
+        },
+        {
+          type: "tool_execution_end",
+          toolCallId: "tool-1",
+          toolName: "Read",
+          result: "ok",
+        },
+        {
+          type: "message_update",
+          assistantMessageEvent: { type: "text_delta", delta: "turn two" },
+        },
+        { type: "message_end", message: { role: "assistant" } },
+        { type: "agent_end", messages: [], willRetry: false },
+      ],
+    });
+
+    const finalMessage = await session.sendMessage({
+      content: "hi",
+      history: [],
+    });
+
+    const completed = events.filter(
+      (event): event is Extract<AgentEvent, { type: "message.completed" }> =>
+        event.type === "message.completed",
+    );
+    expect(completed.map((event) => event.message.content)).toEqual([
+      "turn one",
+      "turn two",
+    ]);
+    expect(new Set(completed.map((event) => event.message.id)).size).toBe(2);
+    expect(finalMessage.content).toBe("turn two");
+
+    // The turn-one message must be completed before its tool call starts,
+    // and turn two must only complete after the tool call finished.
+    const firstCompletedIndex = events.findIndex(
+      (event) => event.type === "message.completed",
+    );
+    const toolStartedIndex = events.findIndex(
+      (event) => event.type === "tool.started",
+    );
+    const toolFinishedIndex = events.findIndex(
+      (event) => event.type === "tool.finished",
+    );
+    const secondCompletedIndex = events.reduce(
+      (last, event, index) =>
+        event.type === "message.completed" ? index : last,
+      -1,
+    );
+    expect(firstCompletedIndex).toBeLessThan(toolStartedIndex);
+    expect(toolFinishedIndex).toBeLessThan(secondCompletedIndex);
+  });
+});

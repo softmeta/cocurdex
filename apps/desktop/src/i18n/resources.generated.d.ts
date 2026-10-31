@@ -6,25 +6,48 @@ export default interface Resources {
       completed: "Completed";
       planning: "Working";
       ready: "Ready";
-      reasoningCount_one: "{{count}} reasoning step";
-      reasoningCount_other: "{{count}} reasoning steps";
       replyCount_one: "{{count}} interim reply";
       replyCount_other: "{{count}} interim replies";
-      toolCount_one: "{{count}} tool call";
-      toolCount_other: "{{count}} tool calls";
+      responding: "Replying";
+      stopped: "Stopped";
+      summary: {
+        command_one: "Ran {{count}} command";
+        command_other: "Ran {{count}} commands";
+        edit_one: "Edited {{count}} file";
+        edit_other: "Edited {{count}} files";
+        fetch_one: "Fetched {{count}} page";
+        fetch_other: "Fetched {{count}} pages";
+        other_one: "Used {{count}} tool";
+        other_other: "Used {{count}} tools";
+        others_one: "{{count}} other action";
+        others_other: "{{count}} other actions";
+        read_one: "Read {{count}} file";
+        read_other: "Read {{count}} files";
+        reasoning_one: "Thought";
+        reasoning_other: "Thought {{count}} times";
+        search_one: "Searched {{count}} time";
+        search_other: "Searched {{count}} times";
+        separator: ", ";
+        skill_one: "Used {{count}} skill";
+        skill_other: "Used {{count}} skills";
+        subagent_one: "Ran {{count}} subagent";
+        subagent_other: "Ran {{count}} subagents";
+      };
+      thinking: "Thinking";
       usingTools: "Using tools";
-      writing: "Responding";
+      workedFor: "Worked for {{duration}}";
     };
     assistantMessage: {
       copy: "Copy response";
       copyRichText: "Copy Rich Text";
       turnUsage: {
         ariaLabel: "Token usage this turn";
-        tooltipCacheCreation: "Cache write ({{tokens}}): tokens added to the prompt cache.";
-        tooltipCacheRead: "Cache read ({{tokens}}): tokens reused from the prompt cache.";
-        tooltipInput: "Processed input ({{tokens}}): total input handled this turn, including cached tokens.";
-        tooltipNewInput: "Uncached input ({{tokens}}): input processed without a cache hit.";
-        tooltipOutput: "Output ({{tokens}}): tokens the model generated this turn.";
+        cacheHitRate: "Cache hit rate";
+        cacheRead: "Cache read";
+        cacheWrite: "Cache write";
+        input: "Total input";
+        newInput: "Uncached input";
+        output: "Output";
       };
     };
     contextBreakdown: {
@@ -40,6 +63,13 @@ export default interface Resources {
       };
       title: "Context usage";
     };
+    contextCompaction: {
+      completed: "Context compacted";
+      completedFrom: "Context compacted from {{before}} tokens";
+      completedRange: "Context compacted {{before}} → {{after}} tokens";
+      failed: "Context compaction failed";
+      running: "Compacting context";
+    };
     contextWindow: {
       cacheReadTokens: "Cache read: {{tokens}}";
       cacheWriteTokens: "Cache write: {{tokens}}";
@@ -52,7 +82,6 @@ export default interface Resources {
       tooltip: "{{percent}}% of context limit";
     };
     imagePreview: {
-      closePreview: "Close image preview";
       copied: "Copied";
       copyFailed: "Copy failed";
       copyImage: "Copy image";
@@ -60,11 +89,6 @@ export default interface Resources {
       imagePosition: "{{current}} / {{total}}";
       nextImage: "Next image";
       previousImage: "Previous image";
-      resetView: "Reset view";
-      resetZoom: "Reset zoom";
-      rotate: "Rotate clockwise";
-      zoomIn: "Zoom in";
-      zoomOut: "Zoom out";
     };
     jumpToLatest: "Jump to latest";
     jumpToTop: "Jump to top";
@@ -143,17 +167,7 @@ export default interface Resources {
       waitingEmpty: "No plan written — approve or request changes";
     };
     previousMessage: {
-      cancel: "Cancel";
-      cancelEdit: "Cancel edit";
       copy: "Copy prompt";
-      dialogDescription: "Submitting from a previous message will clear the messages after this one. Reverting also restores files to their checkpoint before this message.";
-      dialogTitle: "Submit from a previous message?";
-      dontAskAgain: "Don't ask again";
-      dontRevert: "Don't revert";
-      edit: "Edit previous message";
-      revert: "Revert";
-      revertUnavailable: "File revert is unavailable because this message has no git workspace checkpoint.";
-      submitEdit: "Submit edited message";
     };
     questions: {
       answer: "Answer";
@@ -170,6 +184,8 @@ export default interface Resources {
       editLabel: "Edit queued message";
       label: "Queued follow-ups";
       moreActions: "More queue actions";
+      paused: "Queue paused. Nothing runs until you resume it.";
+      resume: "Resume";
       save: "Save";
       sendNow: "Send now";
       status: "Queued";
@@ -241,14 +257,17 @@ export default interface Resources {
     toolCalls: {
       command: "Command";
       completed: "Completed";
+      copyOutput: "Copy output";
       count_one: "{{count}} call";
       count_other: "{{count}} calls";
       execute: "Run";
+      executeDone: "Ran";
       failed: "Failed";
       files: "Files";
       files_one: "{{count}} file";
       files_other: "{{count}} files";
       input: "Input";
+      interrupted: "Interrupted";
       openParentSession: "View parent session";
       openParentSessionNamed: "View {{title}}";
       output: "Output";
@@ -256,12 +275,15 @@ export default interface Resources {
       outputLoading: "Loading output…";
       pending: "Pending";
       readFile: "Read {{fileName}}{{range}}";
+      readFileDone: "Read {{fileName}}{{range}}";
       readFiles: "Read files";
       running: "Running";
       search: "Search";
+      searchDone: "Searched";
       showLess: "Show less";
       showMore: "Show more";
       skill: "Use skill";
+      skillDone: "Used skill";
       subagent: "Using subagent";
       subagentCompleted: "Subagent completed";
       subagentEmpty: "No subagent messages yet.";
@@ -271,6 +293,8 @@ export default interface Resources {
       subagentResponse: "Subagent response";
       subagentSession: "Subagent session";
       title: "Tool calls";
+      viewRendered: "View rendered";
+      viewSource: "View source";
       worktreeSetup: "Prepare worktree";
     };
     turnChanges: {
@@ -347,88 +371,28 @@ export default interface Resources {
     urlPlaceholder: "Enter dev server URL (e.g. http://localhost:3000)";
   };
   chat: {
-    common: {
-      back: "Back";
-      cancel: "Cancel";
-      save: "Save";
-    };
     composer: {
-      attachImage: "Attach image";
       placeholder: "Ask anything…";
-      removeImage: "Remove image";
-      send: "Send";
-      stop: "Stop";
     };
     detail: {
       empty: {
-        description: "Type below. Press Enter to send. Web search and system prompts can be configured per conversation.";
         noProviderTitle: "Add a model provider to start";
         openProviderSettings: "Open provider settings";
         title: "Send a message to start";
       };
-      loadFailed: "Could not load conversation";
-      openSystemPrompt: "Edit system prompt";
-      welcome: {
-        cta: "New chat";
-        description: "Start a free-form conversation with any configured provider. No workspace required.";
-        noProvider: "Configure a provider first";
-        title: "Pure chat";
-      };
     };
     list: {
-      archive: "Archive";
-      delete: "Delete conversation";
       empty: {
         description: "Start a new chat to begin.";
         title: "No conversations yet";
       };
-      heading: "Chats";
       "new": "New chat";
-      rename: "Rename";
-      renameConversation: "Rename conversation {{title}}";
     };
     message: {
-      cancelEdit: "Cancel edit";
-      copy: "Copy";
-      edit: "Edit";
       error: "Request failed";
-      imageAlt: "Attached image";
-      regenerate: "Regenerate";
-      retry: "Retry";
-      stopped: "Response stopped";
-      submitEdit: "Submit edit";
-    };
-    modelPicker: {
-      noModels: "No provider models configured";
-      placeholder: "Select model";
-    };
-    presets: {
-      assistant: {
-        label: "General assistant";
-      };
-      coder: {
-        label: "Coding assistant";
-      };
-      custom: "Custom";
-      researcher: {
-        label: "Research assistant";
-      };
-      translator: {
-        label: "Translator";
-      };
     };
     sidebar: {
       title: "Chat";
-    };
-    sources: {
-      heading: "Sources";
-      heading_one: "Sources";
-      heading_other: "Sources";
-    };
-    systemPrompt: {
-      description: "Pick a built-in role or write a custom system prompt. Applies to all future turns in this conversation.";
-      placeholder: "Optional system prompt…";
-      title: "System prompt";
     };
   };
   common: {
@@ -439,6 +403,7 @@ export default interface Resources {
       close: "Close";
       closeFile: "Close file";
       closeSearch: "Close search";
+      copy: "Copy";
       copyCode: "Copy code";
       decrease: "Decrease";
       increase: "Increase";
@@ -473,6 +438,40 @@ export default interface Resources {
     };
     jumpToLatest: "Jump to latest";
     jumpToTop: "Jump to top";
+    links: {
+      add: "Link an item";
+      copied: "Link copied";
+      copy: "Copy link";
+      empty: "Nothing to link";
+      kind: {
+        deck: "Decks";
+        issue: "Issues";
+        note: "Notes";
+        session: "Sessions";
+      };
+      relation: {
+        "blocked-by": "Blocked by";
+        blocks: "Blocks";
+        child: "Sub-issue";
+        "duplicate-of": "Duplicate of";
+        "duplicated-by": "Duplicated by";
+        "mentioned-by": "Mentioned by";
+        mentions: "Mentions";
+        parent: "Parent";
+        related: "Related";
+        "worked-on-by": "Session";
+        "works-on": "Works on";
+      };
+      remove: "Remove link to {{title}}";
+      search: "Search sessions, notes, issues, decks…";
+      title: "Linked";
+      untitled: "Untitled";
+    };
+    mermaid: {
+      download: "Download SVG";
+      openPreview: "Open preview";
+      title: "Mermaid diagram";
+    };
     message: {
       showLess: "Show less";
       showMore: "Show more";
@@ -482,18 +481,13 @@ export default interface Resources {
       denied: "";
       pending: "";
     };
-    relativeTime: {
-      lastActiveDays_one: "Last active {{count}} day ago";
-      lastActiveDays_other: "Last active {{count}} days ago";
-      lastActiveHours_one: "Last active {{count}} hour ago";
-      lastActiveHours_other: "Last active {{count}} hours ago";
-      lastActiveMinutes_one: "Last active {{count}} minute ago";
-      lastActiveMinutes_other: "Last active {{count}} minutes ago";
-      lastActiveMonths_one: "Last active {{count}} month ago";
-      lastActiveMonths_other: "Last active {{count}} months ago";
-      lastActiveNow: "Just now";
-      lastActiveYears_one: "Last active {{count}} year ago";
-      lastActiveYears_other: "Last active {{count}} years ago";
+    preview: {
+      closePreview: "Close preview";
+      resetView: "Reset view";
+      resetZoom: "Reset zoom";
+      rotate: "Rotate clockwise";
+      zoomIn: "Zoom in";
+      zoomOut: "Zoom out";
     };
     states: {
       gitEmptyBranchDescription: "";
@@ -517,6 +511,182 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
+    webPairing: {
+      codeLabel: "Pairing code";
+      hint: "On the computer running cocurdex, open Settings › Devices, create a pairing code, then open its link here or enter the code.";
+      pair: "Pair";
+      reason: {
+        invalid: "This pairing code or device was not accepted. It may have expired, been used already, or been revoked.";
+        missing: "This browser is not paired with this computer yet.";
+        rateLimited: "Too many pairing attempts. Wait a minute and try again.";
+        unreachable: "The computer could not be reached. Check that it is on and that remote access is enabled.";
+      };
+      title: "Pair this browser";
+    };
+  };
+  decks: {
+    actions: {
+      addSlide: "Add slide";
+      export: "Export";
+      exportPdf: "Export PDF";
+      exportPptx: "Export PPTX";
+      insertImage: "Insert image";
+      layout: "Layout";
+      present: "Present";
+      presenterView: "Presenter view";
+      theme: "Theme";
+    };
+    editor: {
+      edit: "Edit {{name}}";
+      image: "Image";
+      imageNamed: "Image: {{name}}";
+      notesPlaceholder: "Add speaker notes";
+      placeholders: {
+        subtitle: "Click to add subtitle";
+        text: "Click to add text";
+        title: "Click to add title";
+      };
+      slots: {
+        body: "text";
+        left: "left column";
+        right: "right column";
+        subtitle: "subtitle";
+        textBox: "text box";
+        title: "title";
+      };
+    };
+    errors: {
+      audienceWindow: "Could not open the audience window. Allow pop-ups for this page and try again.";
+      create: "Could not create the deck";
+      edit: "Could not save the change";
+      export: "Could not export the deck";
+      image: "Could not add the image";
+      import: "Could not import the presentation";
+    };
+    imageMenu: {
+      delete: "Delete image";
+      replace: "Replace image…";
+    };
+    import: {
+      warnings: "Imported with some content left out";
+    };
+    layouts: {
+      blank: "Blank";
+      closing: "Closing";
+      cover: "Cover";
+      section: "Section";
+      "title-content": "Title and content";
+      "title-only": "Title only";
+      "two-content": "Two columns";
+    };
+    present: {
+      audience: "Audience view";
+      label: "Presentation";
+      next: "Next slide";
+      position: "Slide {{current}} of {{total}}";
+    };
+    presenter: {
+      current: "Current slide";
+      elapsed: "Elapsed time";
+      end: "End show";
+      label: "Presenter view";
+      lastSlide: "This is the last slide";
+      moveAudienceHint: "Move the audience window to the projector or shared screen.";
+      next: "Next";
+      noNotes: "No speaker notes";
+      previous: "Previous";
+      upNext: "Up next";
+    };
+    sidebar: {
+      collapse: "Hide deck list";
+      delete: "Delete";
+      deleteConfirm: {
+        cancel: "Cancel";
+        confirm: "Delete";
+        description: "This deck and all its slides will be permanently deleted.";
+        title: 'Delete "{{title}}"?';
+      };
+      empty: {
+        create: "New deck";
+        description: "Create a deck, import a PowerPoint file, or ask an agent to make one.";
+        import: "Import PowerPoint";
+        title: "No decks yet";
+      };
+      expand: "Show deck list";
+      importPptx: "Import PowerPoint (.pptx)";
+      newDeck: "New deck";
+      rename: "Rename";
+      resize: "Resize deck list";
+      title: "Decks";
+      untitled: "Untitled deck";
+    };
+    slideMenu: {
+      delete: "Delete slide";
+      duplicate: "Duplicate slide";
+      moveEarlier: "Move earlier";
+      moveLater: "Move later";
+    };
+    themeHints: {
+      academic: "Classic · teaching and lectures";
+      bauhaus: "Design, art, and architecture";
+      blueprint: "Engineering reviews and technical designs";
+      boardroom: "Corporate · business and consulting";
+      botanical: "Health, sustainability, and nonprofits";
+      clinic: "Healthcare and SaaS products";
+      default: "Clean, for any topic";
+      editorial: "Magazine · research and stories";
+      ember: "Dark gradient · creative and events";
+      forest: "Calm, for any topic";
+      midnight: "Dark, for any topic";
+      nebula: "Dark gradient · AI and keynotes";
+      noir: "Finance, annual reports, and premium brands";
+      playful: "Classes, workshops, and creative pitches";
+      pop: "Bold color · marketing and pitches";
+      retro: "Events, festivals, and lifestyle";
+      sand: "Warm, for any topic";
+      swiss: "Strategy, consulting, and planning";
+      tech: "Minimal tech · products and engineering";
+      terminal: "Developer talks and hackathons";
+      zen: "Culture, brand stories, and hospitality";
+    };
+    themes: {
+      academic: "Lecture";
+      bauhaus: "Bauhaus";
+      blueprint: "Blueprint";
+      boardroom: "Boardroom";
+      botanical: "Botanical";
+      clinic: "Clinic";
+      default: "Default";
+      editorial: "Editorial";
+      ember: "Ember";
+      forest: "Forest";
+      midnight: "Midnight";
+      nebula: "Nebula";
+      noir: "Noir";
+      playful: "Playful";
+      pop: "Pop";
+      retro: "Retro";
+      sample: "Aa";
+      sand: "Sand";
+      swiss: "Swiss";
+      tech: "Launch";
+      terminal: "Terminal";
+      zen: "Zen";
+    };
+    viewer: {
+      empty: {
+        description: "Pick a deck from the list to view its slides.";
+        title: "No deck selected";
+      };
+      emptyDeck: {
+        description: "Add a slide from the toolbar, or ask an agent to write the deck.";
+        title: "This deck has no slides";
+      };
+      notes: "Speaker notes";
+      position: "{{current}} / {{total}}";
+      slide: "Slide {{number}}";
+      slides: "Slides";
+    };
   };
   editor: {
     actions: {
@@ -530,7 +700,6 @@ export default interface Resources {
       closeFile: "Close file {{fileName}}";
       detachedChatFabHint: "Show or hide the independent chat window. Drag to reposition this button. Hover and click × to hide the button; {{shortcut}} restores it.";
       dockEditorPanel: "Place panel beside chat";
-      edit: "Edit";
       enterEditorFullscreen: "Enter full screen";
       exitEditorFullscreen: "Exit full screen";
       explorer: "Explorer";
@@ -545,15 +714,19 @@ export default interface Resources {
       pinChatDockNeedsSpace: "The window is too narrow to dock chat. Widen it and try again.";
       preview: "Preview";
       resizeChat: "Resize chat";
+      resizeEditorPanel: "Resize editor panel";
       resizeExplorer: "Resize explorer panel";
       resizeSessionList: "Resize session list";
+      resizeSidebar: "Resize sidebar";
       showBrowser: "Browser";
+      showDecks: "Decks";
       showEditor: "Files";
       showGitChanges: "Git";
       showIssues: "Issues";
       showNotes: "Notes";
       showPdf: "PDF";
       showTerminal: "Terminal";
+      source: "Source";
       toggleChat: "Toggle chat";
       toggleChatSessions: "Toggle session list";
       toggleDetachedChat: "Show or hide the chat window";
@@ -761,6 +934,33 @@ export default interface Resources {
     };
   };
   issues: {
+    activity: {
+      actor: {
+        cli: "CLI";
+        session: "Agent session";
+        user: "You";
+      };
+      changedField: "changed {{field}}";
+      changedFieldTo: "set {{field}} to {{value}}";
+      comment: "Comment";
+      commentPlaceholder: "Leave a comment…";
+      commented: "commented";
+      created: "created the issue";
+      field: {
+        description: "description";
+        labels: "labels";
+        parent: "parent";
+        priority: "priority";
+        status: "status";
+        title: "title";
+        workspace: "workspace";
+      };
+      none: "none";
+      relationAdded: "linked {{issue}}";
+      relationRemoved: "unlinked {{issue}}";
+      sessionLinked: "linked an agent session";
+      title: "Activity";
+    };
     board: {
       addCard: "Add card";
       addColumn: "Add column";
@@ -797,16 +997,47 @@ export default interface Resources {
       priority: "Priority";
       status: "Status";
     };
+    category: {
+      backlog: "Backlog";
+      canceled: "Canceled";
+      completed: "Completed";
+      started: "Started";
+      title: "Status category";
+      unstarted: "Unstarted";
+    };
+    detail: {
+      addRelation: "Add relation";
+      addSubIssue: "Add sub-issue";
+      relation: {
+        blockedBy: "Blocked by";
+        blocks: "Blocks";
+        duplicateOf: "Duplicate of";
+        duplicatedBy: "Duplicated by";
+        related: "Related to";
+      };
+      relations: "Relations";
+      removeRelation: "Remove relation";
+      sessions: "Agent sessions";
+      subIssues: "Sub-issues";
+      untitledSession: "Untitled session";
+    };
     dialog: {
       cancel: "Cancel";
       createIssue: "Create issue";
       descriptionPlaceholder: "Add description…";
       editCard: "Edit issue";
+      labels: "Labels";
       loadFailed: "Couldn't load the full description. Close and reopen the issue to edit it.";
       newIssue: "New issue";
+      newLabel: "New label";
+      newLabelPlaceholder: "Label name";
+      noMatchingIssues: "No matching issues";
+      noParent: "No parent";
       noWorkspace: "No workspace";
+      parent: "Parent";
       priority: "Priority";
       save: "Save";
+      searchIssues: "Search issues…";
       status: "Status";
       titlePlaceholder: "Issue title";
       unknownWorkspace: "Unknown workspace";
@@ -821,8 +1052,11 @@ export default interface Resources {
       saveFailed: "Couldn't save the issue change. The board has been refreshed.";
     };
     filter: {
+      allLabels: "All labels";
       allWorkspaces: "All workspaces";
       ariaLabel: "Filter view";
+      hideClosed: "Hide completed and canceled";
+      label: "Label";
       noWorkspace: "No workspace";
       workspace: "Workspace";
     };
@@ -849,6 +1083,13 @@ export default interface Resources {
       };
       expand: "Expand sidebar";
       hint: "Issues and views are stored privately by cocurdex.";
+      nav: {
+        active: "Active";
+        agent: "Agent working";
+        all: "All issues";
+        backlog: "Backlog";
+        title: "Issues";
+      };
       newBoardTitle: "New view";
       renameBoard: "Rename view";
       resize: "Resize sidebar";
@@ -857,7 +1098,168 @@ export default interface Resources {
       views: "Views";
     };
   };
+  memory: {
+    cloud: {
+      alreadyRegistered: "That username is already registered. Enter its password and recovery key to sign in.";
+      cancel: "Cancel";
+      connected: "Multi-device sync is on";
+      copyRecoveryKey: "Copy recovery key";
+      createHint: "The recovery key is generated when the account is created and shown once. Save it before you close the next step.";
+      description: "Sync memories between your devices through an rsrs account. Records reach the server encrypted; the keys stay on this device.";
+      done: "Done";
+      hidePassword: "Hide password";
+      mode: "Account";
+      modeRegister: "Create account";
+      modeSignIn: "Sign in";
+      password: "Login password";
+      passwordHint: "Used to sign in on this and other devices. Cocurdex does not store it.";
+      passwordPlaceholder: "At least 8 characters";
+      recoveryDescription: "This is your recovery key. It decrypts your memories on another device.";
+      recoveryKey: "Recovery key";
+      recoveryKeyHint: "From the device that already has your memories: Settings, Memory, Recovery key.";
+      recoveryKeyPlaceholder: "A3-...";
+      recoveryTitle: "Save your recovery key";
+      recoveryWarning: "Keep it somewhere safe. Without it your memories cannot be decrypted on another device, and nobody, including the server, can recover them. You can show it again from this page.";
+      showPassword: "Show password";
+      submitCreate: "Create account";
+      submitSignIn: "Sign in";
+      title: "Connect cloud memory";
+      username: "Username";
+      usernamePlaceholder: "Your rsrs account name";
+    };
+    menu: {
+      enable: "Enable memory";
+      settings: "Memory settings";
+      sync: "Multi-device sync";
+    };
+    session: {
+      alreadySaved: "This conversation is already in memory";
+      recallFailed: "Memory recall failed this turn: {{error}}";
+      recallFailedUnknown: "unknown error";
+      save: "Save to memory";
+      saveFailed: "Could not save the conversation";
+      saved: "Conversation saved to memory";
+      saving: "Saving…";
+    };
+    settings: {
+      actions: {
+        doctor: "Run doctor";
+        install: "Install";
+        verify: "Verify";
+      };
+      agentContext: {
+        description: "Recall relevant memories before each agent turn and add them to the prompt.";
+        title: "Recall for agent sessions";
+      };
+      agentTools: {
+        description: "Give agent sessions the memory_recall, memory_show, memory_remember, and memory_policy tools.";
+        title: "Memory tools for agents";
+      };
+      chatRecall: {
+        description: "Recall relevant memories before each chat answer.";
+        title: "Recall for chat sessions";
+      };
+      chatSaveOnEnd: {
+        description: "Summarize a chat session when it is archived or deleted.";
+        title: "Save chat sessions on end";
+      };
+      chatSaveTurns: {
+        description: "Append each completed chat exchange to today's memory diary.";
+        title: "Save chat turns";
+      };
+      cliPath: {
+        description: "Optional path to the rsrs executable. Leave empty to use the installed binary or PATH.";
+        placeholder: "Auto-detect";
+        title: "rsrs executable";
+      };
+      cloud: {
+        cancel: "Cancel";
+        conflicts_one: "{{count}} conflict";
+        conflicts_other: "{{count}} conflicts";
+        description: "Turn on to create or connect an rsrs account, then keep encrypted memories in sync across your devices. Off by default: nothing leaves this device until you turn it on.";
+        needsMemory: "Turn on memory first.";
+        needsRsrs: "rsrs is not installed yet.";
+        offline: "This device is offline.";
+        pending_one: "{{count}} memory waiting to upload";
+        pending_other: "{{count}} memories waiting to upload";
+        recoveryKey: "Recovery key";
+        signOut: "Sign out";
+        signOutDescription: "Automatic sync stops and the cloud copy is no longer updated. Memories on this device stay where they are. Signing back in needs the same username, password, and recovery key.";
+        signOutFailed: "Could not sign out";
+        signOutTitle: "Sign out of cloud memory?";
+        signedOut: "Signed out of cloud memory";
+        syncFailed: "Sync failed: {{error}}";
+        syncing: "Syncing...";
+        title: "Multi-device sync";
+        toggleFailed: "Could not change multi-device sync";
+      };
+      cloudTitle: "Cloud sync";
+      connectionTitle: "Connection";
+      doctorFailed: "rsrs doctor reported a problem";
+      doctorPassed: "rsrs doctor: {{status}}";
+      enabled: {
+        description: "Recall before answers and save useful results to your long-term memory. Entries go to the local rsrs store (~/.rsrs) and sync to your rsrs account when one is connected. You can turn this off at any time.";
+        title: "Enable memory";
+      };
+      groupTitle: "Long-term memory";
+      installFailed: "Could not install rsrs";
+      installReady: "rsrs is ready";
+      keys: {
+        close: "Close";
+        copy: "Copy recovery key";
+        description: "These keys decrypt your memories on another device. Anyone who has them can read your memories.";
+        failed: "Could not read the recovery key";
+        title: "Recovery key";
+      };
+      links: {
+        open: "Open";
+        repo: {
+          action: "Open the Respire source code";
+          description: "Respire CLI is open source: github.com/risense-ai/respire-cli";
+          title: "Source code";
+        };
+        site: {
+          action: "Open the Respire website";
+          description: "rsrs.rs: what Respire is and how it works";
+          title: "Website";
+        };
+      };
+      linksTitle: "About Respire";
+      saveFailed: "Could not save memory settings";
+      status: {
+        available: "rsrs {{version}}";
+        doctor: "doctor: {{status}} · {{pass}} pass · {{warn}} warn · {{fail}} fail";
+        installing: "Installing rsrs…";
+        missing: "rsrs is not installed";
+        title: "Status";
+        unknown: "unknown version";
+        unsupported: "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine.";
+      };
+    };
+    status: {
+      checking: "Checking rsrs…";
+      failed: "rsrs is not available";
+      installing: "Installing rsrs…";
+      missing: "rsrs is not installed";
+      ready: "rsrs {{version}}";
+      readyUnknown: "rsrs is ready";
+      unsupported: "Unsupported here";
+    };
+    switch: {
+      label: "Memory";
+      syncToggleFailed: "Could not change multi-device sync";
+      toggleFailed: "Could not change the memory setting";
+    };
+  };
   notes: {
+    codeBlock: {
+      copied: "Copied";
+      copy: "Copy code";
+      language: "Code language";
+      noLanguage: "No matching language";
+      plainText: "Plain text";
+      searchLanguage: "Search languages…";
+    };
     editor: {
       empty: {
         description: "Select a note from the sidebar or create a new one.";
@@ -870,14 +1272,22 @@ export default interface Resources {
       };
       placeholder: 'Start writing, or press "/" for commands…';
       save: {
-        conflict: "Changed elsewhere";
         error: "Save failed";
-        keepMine: "Keep mine";
         saved: "Saved";
         saving: "Saving…";
-        useRemote: "Load latest";
       };
+      timestamps: {
+        createdAt: "Created {{time}}";
+        edited: "Edited {{time}}";
+        editedAt: "Edited {{time}}";
+      };
+      titleLabel: "Note title";
       untitledPlaceholder: "Untitled";
+    };
+    image: {
+      tooLarge: "Images must be 10 MB or smaller.";
+      unsupported: "Only PNG, JPEG, GIF, or WebP images are supported.";
+      uploadFailed: "Couldn't add the image";
     };
     scope: {
       private: "Private";
@@ -886,31 +1296,30 @@ export default interface Resources {
     };
     sidebar: {
       collapse: "Collapse sidebar";
-      collapseFolder: "Collapse folder";
+      collapsePage: "Collapse subpages";
       delete: "Delete";
       deleteConfirm: {
         cancel: "Cancel";
         confirm: "Delete";
-        descriptionFolder: "This folder and everything inside it will be permanently deleted.";
         descriptionNote: "This note will be permanently deleted.";
+        descriptionTree: "This page and all of its subpages will be permanently deleted.";
         title: 'Delete "{{title}}"?';
       };
-      dropToRoot: "Drop here for top level";
       empty: {
         description: "Create your first note to start writing.";
         title: "No notes yet";
       };
       expand: "Expand sidebar";
-      expandFolder: "Expand folder";
+      expandPage: "Expand subpages";
       moveTo: "Move to";
-      moveToRoot: "Top level";
-      newFolder: "New folder";
-      newFolderDefaultTitle: "New folder";
-      newFolderInside: "New folder inside";
       newNote: "New note";
-      newNoteInside: "New note inside";
+      newPageInSection: "New page in {{section}}";
+      newSubpage: "New subpage";
       rename: "Rename";
       resize: "Resize sidebar";
+      sections: {
+        personal: "Personal";
+      };
       title: "Notes";
       untitled: "Untitled";
     };
@@ -926,8 +1335,36 @@ export default interface Resources {
         heading3: "Heading 3";
         orderedList: "Numbered list";
         paragraph: "Text";
+        table: "Table";
         taskList: "To-do list";
       };
+      label: "Insert block";
+    };
+    table: {
+      addColumn: "Add column";
+      addHint: "Click to add, drag to add more";
+      addRow: "Add row";
+      align: {
+        center: "Center";
+        label: "Align";
+        left: "Left";
+        right: "Right";
+      };
+      clear: "Clear contents";
+      columnOptions: "Column {{index}} options";
+      deleteColumns_one: "Delete column";
+      deleteColumns_other: "Delete {{count}} columns";
+      deleteRows_one: "Delete row";
+      deleteRows_other: "Delete {{count}} rows";
+      deleteTable: "Delete table";
+      duplicate: "Duplicate";
+      insertAbove: "Insert row above";
+      insertBelow: "Insert row below";
+      insertLeft: "Insert column left";
+      insertRight: "Insert column right";
+      rowOptions: "Row {{index}} options";
+      sortAscending: "Sort A → Z";
+      sortDescending: "Sort Z → A";
     };
   };
   onboarding: {
@@ -942,7 +1379,7 @@ export default interface Resources {
     };
     description: "cocurdex runs coding agents against a local folder. Here is what is available on this machine.";
     providers: {
-      description: "Add a provider and enable the models you want. The built-in pi agent needs one; the other adapters bring their own.";
+      description: "Add a provider and enable the models you want. The built-in pi agent needs one; the other agent CLIs bring their own.";
       title: "Configure a model provider";
     };
     title: "Welcome to cocurdex";
@@ -1022,7 +1459,7 @@ export default interface Resources {
       results: "Results";
     };
     hints: {
-      changeCategory: "⌘[ ⌘] Change category";
+      changeCategory: "{{previous}} {{next}} Change category";
       open: "↵ Open";
       select: "↑↓ Select";
     };
@@ -1034,9 +1471,26 @@ export default interface Resources {
   };
   sessions: {
     agentRole: {
+      avatar: {
+        change: "Change avatar";
+        color: "Color";
+        custom: "Custom emoji";
+        customPlaceholder: "Paste or type any emoji";
+        groups: {
+          animals: "Animals";
+          people: "People";
+          symbols: "Symbols";
+          work: "Work";
+        };
+        reset: "Use initial";
+      };
       cancel: "Cancel";
+      description: "Description";
+      descriptionPlaceholder: "What this role does and what it is good at. Team leads use it to pick teammates.";
       empty: "No saved roles";
+      menuCreate: "New role";
       menuLabel: "Roles";
+      menuManage: "Manage roles";
       name: "Name";
       namePlaceholder: "Role name";
       save: "Save as role";
@@ -1046,10 +1500,30 @@ export default interface Resources {
       saveTitle: "Save as role";
       saved: "Role saved";
     };
+    agentSelect: {
+      add: "Add from ACP Registry";
+      editPreset: "Edit {{name}}";
+      manage: "Manage agent CLIs";
+    };
     archive: {
       failed: "Could not archive this session. Try again.";
       success: "Session archived";
       view: "View archived";
+    };
+    archiveGroup: {
+      action: "Archive sessions";
+      cancel: "Cancel";
+      confirm: "Archive";
+      description: "Sessions in “{{group}}” move to the archive. Pinned, running, and waiting sessions are skipped. Restore them anytime from Settings > Archived sessions.";
+      failed: "Could not archive these sessions";
+      skipped_one: "Skipped {{count}} running or waiting session";
+      skipped_other: "Skipped {{count}} running or waiting sessions";
+      success_one: "Archived {{count}} session";
+      success_other: "Archived {{count}} sessions";
+      title_one: "Archive {{count}} session?";
+      title_other: "Archive {{count}} sessions?";
+      undo: "Undo";
+      undoFailed: "Could not restore the sessions";
     };
     branch: {
       branches: "Branches";
@@ -1074,6 +1548,7 @@ export default interface Resources {
       };
       contextFileTooLarge: "File is too large. Select a smaller file or attach a selection.";
       noInstalledAgent: "No agent installed";
+      openWorkspaceFirst: "Open a folder, then describe the task";
       placeholder: "Plan, Build, / for skills, @ for context";
       removeAttachment: "Remove attachment";
       selectAgent: "Select agent";
@@ -1095,6 +1570,50 @@ export default interface Resources {
       treeOutline: "Tree outline";
     };
     defaultTitle: "New {{agentLabel}} session";
+    executionTree: {
+      description: "Runs, tool calls, subagents, and pending approvals for this session. Expand a row to see what it contains, or select a tool call to see its output.";
+      failedCount_one: "{{count}} failed";
+      failedCount_other: "{{count}} failed";
+      issuesOnly: "Issues only";
+      limited: "Subagent {{name}} is not observable: its provider reports no events for it.";
+      noIssues: "No failed tool calls or pending approvals.";
+      noOutput: "No output was recorded.";
+      omittedLines_one: "{{count}} earlier line hidden";
+      omittedLines_other: "{{count}} earlier lines hidden";
+      openSession: "Open {{title}}";
+      outputUnavailable: "The output could not be loaded.";
+      planProgress: "Plan {{done}}/{{total}}";
+      run: "Run started {{time}}";
+      title: "Execution tree";
+      toolCalls: "Tool calls";
+      toolCount_one: "{{count}} tool call";
+      toolCount_other: "{{count}} tool calls";
+      truncated: "Deeper sessions are not shown.";
+      unavailable: "The execution tree is unavailable for this session.";
+      waitingAnswer: "Waiting for an answer: {{question}}";
+      waitingCount_one: "{{count}} waiting";
+      waitingCount_other: "{{count}} waiting";
+      waitingPermission: "Waiting for permission: {{title}}";
+      waitingPlanApproval: "Waiting for plan approval";
+    };
+    lineage: {
+      forkFailed: "Could not fork the session";
+      forkFromHere: "Fork from here";
+      forkTitle: "{{title}} (fork)";
+      handoff: {
+        delta_one: "Handed {{count}} new message from {{sources}} to {{target}}";
+        delta_other: "Handed {{count}} new messages from {{sources}} to {{target}}";
+        fork_one: "Forked with {{count}} message handed to {{target}}";
+        fork_other: "Forked with {{count}} messages handed to {{target}}";
+        full_one: "Handed {{count}} message from {{sources}} to {{target}}";
+        full_other: "Handed {{count}} messages from {{sources}} to {{target}}";
+        hide: "Hide handed-off context";
+        native_one: "Forked {{target}}'s own thread with {{count}} message";
+        native_other: "Forked {{target}}'s own thread with {{count}} messages";
+        show: "Show handed-off context";
+      };
+      switchAgentFailed: "Could not switch the agent";
+    };
     modelMenu: {
       defaultTag: "Default";
       empty: "No matching models.";
@@ -1236,23 +1755,105 @@ export default interface Resources {
       collapseChildren: "Collapse subagent sessions";
       delete: "Delete";
       editWorkspace: "Edit workspace";
+      executionTree: "Execution tree";
       expandChildren: "Expand subagent sessions";
+      fork: "Fork session";
+      markUnread: "Mark as unread";
       marketplace: "Marketplace";
       newSession: "New session";
       newSessionInWorkspace: "New session in {{workspaceName}}";
       noAgentsYet: "No sessions yet";
       pendingAttention: "Needs attention";
+      pin: "Pin";
+      pinFailed: "Could not update pin";
+      pinned: "Pinned";
       removeWorkspace: "Remove";
       rename: "Rename";
       renameSession: "Rename {{title}}";
       revealInFileManager: "Reveal in file manager";
       running: "Running";
+      sessionsHeading: "Sessions";
       settings: "Settings";
       showLess: "Show less";
       showMore_one: "Show more ({{count}} left)";
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
+      unpin: "Unpin";
+      unread: "Unread";
+      view: {
+        agentFilter: "Agent";
+        archived: "Archived sessions";
+        clearAllFilters: "Clear filters";
+        clearFilters_one: "Clear filter";
+        clearFilters_other: "Clear {{count}} filters";
+        collapseAll: "Collapse all";
+        compact: "Compact mode";
+        direction: {
+          asc: "Ascending";
+          desc: "Descending";
+        };
+        environment: {
+          local: "Local";
+          worktree: "Worktree";
+        };
+        environmentFilter: "Environment";
+        expandAll: "Expand all";
+        filtersLabel: "Filters";
+        grouping: {
+          agent: "Agent";
+          none: "No grouping";
+          status: "Status";
+          updated: "Last updated";
+          workspace: "Workspace";
+        };
+        groupingLabel: "Group by";
+        markAllRead: "Mark all as read";
+        menu: "Group and filter sessions";
+        noMatches: "No matching sessions";
+        ordering: {
+          activity: "Recent activity";
+          created: "Created time";
+          title: "Title";
+        };
+        orderingLabel: "Sort by";
+        propertiesLabel: "Properties";
+        property: {
+          agent: "Agent";
+          model: "Model";
+          role: "Role";
+          timestamp: "Last activity";
+          workspace: "Workspace";
+          worktree: "Worktree";
+        };
+        rootLimit: {
+          all: "All";
+          count_one: "{{count}} session";
+          count_other: "{{count}} sessions";
+        };
+        rootLimitLabel: "Sessions per group";
+        showLabel: "Show";
+        source: {
+          created: "Created here";
+          imported: "Imported";
+          issue: "From issues";
+        };
+        sourceFilter: "Source";
+        status: {
+          attention: "Needs attention";
+          error: "Error";
+          idle: "Idle";
+          running: "Running";
+          unread: "Unread";
+        };
+        statusFilter: "Status";
+        updated: {
+          older: "Older";
+          today: "Today";
+          week: "Past 7 days";
+          yesterday: "Yesterday";
+        };
+      };
       workspacesGroup: "Work";
     };
     split: {
@@ -1263,6 +1864,15 @@ export default interface Resources {
       menu: "Split session";
       newSession: "New session";
       right: "Split Right";
+    };
+    team: {
+      leadMissing: "Its lead role was deleted";
+      menuCreate: "New team";
+      menuEmpty: "No teams yet";
+      menuLabel: "Team";
+      menuManage: "Manage teams";
+      summary_one: "{{count}} teammate · Led by {{lead}}";
+      summary_other: "{{count}} teammates · Led by {{lead}}";
     };
     window: {
       detach: "Open in a separate window";
@@ -1278,10 +1888,13 @@ export default interface Resources {
       editCancel: "Cancel";
       editFoldersLabel: "Source folders";
       editMakePrimary: "Make primary";
+      editManageLabel: "Manage";
       editNameLabel: "Workspace name";
       editPrimary: "Primary";
+      editRemoveDescription: "{{name}} and all of its agent sessions are removed from Cocurdex. Files in its folders are not touched.";
       editRemoveFolder: "Remove folder";
-      editRemoveWorkspace: "Remove workspace";
+      editRemoveTitle: "Remove {{name}}?";
+      editRemoveWorkspace: "Remove";
       editSave: "Save";
       editTitle: "Edit workspace";
       empty: "No matching workspaces.";
@@ -1301,8 +1914,11 @@ export default interface Resources {
       };
       missing: "Folder missing — click to relocate";
       openFolder: "Open Folder";
+      openedExisting: "Opened existing workspace “{{name}}”";
       recents: "Recents";
       removeFailed: "Could not remove this workspace. Try again.";
+      rootsAdditional: "Additional folders";
+      rootsPrimary: "Primary folder";
       startDescription: "Pick a model, describe the task, and keep the first prompt scoped.";
       startTitle: "What should we do in {{workspaceName}}?";
       startTitleAfter: "?";
@@ -1326,16 +1942,48 @@ export default interface Resources {
         docs: "Docs";
         refresh: "Refresh";
       };
+      auth: {
+        cancel: "Cancel";
+        confirmCancel: "Cancel";
+        failedKeeping: "{{message}} Still signed in with {{method}}.";
+        login: "Log in";
+        logout: "Log out…";
+        logoutConfirm: "Log out";
+        logoutDescriptionSessions_one: "This stops {{count}} running {{agent}} session. {{agent}} will ask you to log in again before its next session.";
+        logoutDescriptionSessions_other: "This stops {{count}} running {{agent}} sessions. {{agent}} will ask you to log in again before its next session.";
+        logoutDescription_one: "{{agent}} will ask you to log in again before its next session.";
+        logoutDescription_other: "{{agent}} will ask you to log in again before its next session.";
+        logoutTitle: "Log out of {{agent}}?";
+        method: "Login method";
+        readFailed: "Could not read login methods: {{message}}";
+        reading: "Reading login methods…";
+        retry: "Retry";
+        signingIn: "Logging in with {{method}}. If a browser page opens, finish there; this updates when it is done.";
+        switchConfirm: "Switch";
+        switchDescription_one: "Switching stops {{count}} running {{agent}} session. It keeps the current method if the new login fails.";
+        switchDescription_other: "Switching stops {{count}} running {{agent}} sessions. It keeps the current method if the new login fails.";
+        switchTitle: "Switch login method?";
+      };
       badge: {
         builtin: "Built in";
         updateRequired: "Update required";
       };
-      description: "cocurdex runs these agent CLIs on this machine. Install or update the ones you want to pick for new sessions.";
+      description: "Pick any of these agent CLIs when starting a session. cocurdex detects the versions installed on this machine; add more from the ACP Registry.";
+      detail: {
+        builtinNote: "Ships with Cocurdex; nothing to install.";
+        executable: "Executable";
+        install: "Install";
+        manage: "Manage";
+        signIn: "Login";
+        update: "Update";
+        usage: "Usage";
+      };
       kind: {
         builtin: "Built-in";
         detecting: "Checking…";
         error: "Failed";
         missing: "Not installed";
+        needsLogin: "Login required";
         outdated: "Update required";
         ready: "Ready";
       };
@@ -1354,11 +2002,34 @@ export default interface Resources {
         installSucceeded: "Installed {{name}}";
         installed: "Installed";
         loadFailed: "Could not load the ACP Registry";
+        manual: {
+          args: "Arguments";
+          back: "Back";
+          command: "Command";
+          description: "Install the agent yourself first, then enter its executable name or absolute path and the arguments that start ACP mode.";
+          open: "Use my own command";
+          save: "Save";
+        };
         noResults: "No matching agents";
         open: "Add from ACP Registry";
+        plan: {
+          cancel: "Cancel";
+          confirm: "Install";
+          copied: "Command copied";
+          copy: "Copy command";
+          directory: "Install to";
+          download: "Download";
+          launch: "Launch command";
+          localNote: "Found this CLI on your machine. Nothing will be downloaded; the agent runs it directly.";
+          noChecksum: "The registry provides no checksum, so the download cannot be verified.";
+          packageNote: "Installing runs {{runner}} once to download this pinned package version into its local cache. Later starts reuse the cache.";
+          prefetch: "Runs during install";
+        };
         remove: "Remove";
+        removeDescription: "Removes {{name}} from Cocurdex. Existing sessions stay, and you can add it again from the ACP Registry.";
         removeFailed: "Could not remove the agent";
         removeSucceeded: "Removed {{name}}";
+        removeTitle: "Remove {{name}}?";
         retry: "Retry";
         search: "Search agents";
         title: "ACP Registry";
@@ -1376,11 +2047,13 @@ export default interface Resources {
       toast: {
         commandCopied: "Install command copied";
         pathCopied: "Path copied";
-        refreshFailed: "Could not refresh adapters";
+        refreshFailed: "Could not refresh agent CLIs";
       };
     };
     agentRoles: {
       cancel: "Cancel";
+      create: "New role";
+      createTitle: "New role";
       delete: "Delete";
       deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
       deleteFailed: "Could not delete this role.";
@@ -1390,9 +2063,13 @@ export default interface Resources {
       edit: "Edit";
       editTitle: "Edit role";
       empty: "No roles yet";
-      emptyDescription: "Open the model menu in a new session and choose Save as role.";
+      emptyDescription: "Click New role, or choose Save as role from the model menu when starting a session.";
+      listTitle: "Saved roles";
       name: "Name";
       namePlaceholder: "Role name";
+      roleDescription: "Description";
+      roleDescriptionPlaceholder: "What this role does and what it is good at. Team leads use it to pick teammates.";
+      runtime: "Agent and model";
       save: "Save";
       saveFailed: "Could not save this role.";
       saved: "Role updated";
@@ -1569,6 +2246,133 @@ export default interface Resources {
         restarted: "Daemon restarted";
       };
     };
+    devices: {
+      access: {
+        cancel: "Cancel";
+        description: "The device reconnects right away with the new access.";
+        failed: "Could not change the device access";
+        save: "Save";
+        title: "Access for {{name}}";
+      };
+      audit: {
+        action: {
+          deviceRevoked: "Device revoked";
+          deviceScopesChanged: "Device access changed";
+          pairingCancelled: "Pairing cancelled";
+          pairingCreated: "Pairing created";
+          pairingExchanged: "Device paired";
+          pairingRejected: "Pairing attempt rejected";
+          remoteDisabled: "Remote access turned off";
+          remoteEnabled: "Remote access turned on";
+        };
+        groupTitle: "Access log";
+      };
+      copy: "Copy";
+      list: {
+        detail: "{{scopes}} · last seen {{time}}";
+        editAccess: "Edit access";
+        empty: "No devices are paired with this computer yet.";
+        groupTitle: "Paired devices";
+        revoke: "Revoke";
+        revokeCancel: "Cancel";
+        revokeDescription: "The device is disconnected immediately and must pair again to reconnect.";
+        revokeFailed: "Could not revoke the device";
+        revokeTitle: "Revoke {{name}}?";
+        revokedDetail: "Revoked {{time}}";
+        unnamed: "Unnamed device";
+      };
+      localWeb: {
+        groupTitle: "Browser";
+        open: {
+          action: "Open";
+          description: "Use Cocurdex in a browser on this computer, connected to the same workspaces and sessions.";
+          title: "Open in browser";
+        };
+        openFailed: "Could not open Cocurdex in the browser";
+      };
+      pair: {
+        create: "Create pairing code";
+        createdDescription: "Scan the QR code with the Cocurdex app on your phone, or open a link on the other device. The code works once.";
+        description: "Choose what the new device may do. You can revoke it at any time.";
+        done: "Done";
+        enableRemoteFirst: "Turn on remote access to get a link the other device can open.";
+        expires: "Expires {{time}}";
+        failed: "Could not create a pairing code";
+        label: "Device name";
+        labelPlaceholder: "e.g. My phone";
+        open: "Pair device";
+        qrLabel: "Pairing QR code for {{address}}";
+        title: "Pair a device";
+        ttl: "Code valid for";
+        ttlMinutes_one: "{{count}} minute";
+        ttlMinutes_other: "{{count}} minutes";
+      };
+      pairings: {
+        cancel: "Cancel";
+        cancelFailed: "Could not cancel the pairing";
+        expires: "Waiting for a device · expires {{time}}";
+        groupTitle: "Pending pairings";
+      };
+      remote: {
+        enable: {
+          description: "Let paired devices on your network or tailnet connect to this computer.";
+          title: "Allow remote devices";
+        };
+        error: "Remote access could not start: {{error}}";
+        groupDescription: "Off by default. Only paired devices can connect, with the permissions you grant.";
+        groupTitle: "Remote access";
+        invalidPort: "Use a port between 1024 and 65535";
+        kind: {
+          lan: "LAN";
+          tailscale: "Tailscale";
+        };
+        noAddresses: "No network address found. Connect to a network or Tailscale.";
+        plaintextWarning: "Connections are not encrypted. Use remote access on a trusted network or over Tailscale.";
+        port: {
+          description: "Default {{port}}.";
+          title: "Port";
+        };
+        saveFailed: "Could not change remote access";
+      };
+      scope: {
+        approvals: {
+          description: "Answer permission requests, questions, and plan approvals.";
+          title: "Approvals";
+        };
+        credentials: {
+          description: "Manage provider logins and API keys, and view MCP servers.";
+          title: "Credentials";
+        };
+        execute: {
+          description: "Start sessions, teams, script runs, and workflows, and change or run MCP servers.";
+          title: "Start work";
+        };
+        filesRead: {
+          description: "Read workspace files, diffs, and Git status.";
+          title: "Read files";
+        };
+        filesWrite: {
+          description: "Edit workspace files, stage, and commit.";
+          title: "Write files";
+        };
+        gitDestructive: {
+          description: "Discard changes, check out branches, and push.";
+          title: "Destructive Git";
+        };
+        hostAdmin: {
+          description: "Change app settings and manage devices. Only this computer has it.";
+          title: "Host administration";
+        };
+        interact: {
+          description: "Send messages, stop sessions, and edit notes and issues.";
+          title: "Interact";
+        };
+        read: {
+          description: "See sessions, messages, notes, and issues.";
+          title: "Read";
+        };
+      };
+    };
     diagnostics: {
       actions: {
         export: "Export Diagnostics…";
@@ -1619,6 +2423,15 @@ export default interface Resources {
       system: "System";
       workspace: "Workspace";
     };
+    jsonImport: {
+      addManually: "Fill in manually";
+      cancel: "Cancel";
+      chooseFile: "Choose JSON file…";
+      continue: "Continue";
+      pasteButton: "Paste JSON";
+      pasteLabel: "JSON text";
+      pastePlaceholder: '{\n  "mcpServers": { … }\n}';
+    };
     language: {
       description: "Choose the interface language used by product UI.";
       empty: "No languages found";
@@ -1651,40 +2464,177 @@ export default interface Resources {
       view: "View";
     };
     mcp: {
-      description: 'Configure the MCP servers available to the built-in Pi agent. Pi connects to them when a session starts. Server names may contain only letters, digits, "_", and "-".';
-      editorLabel: "MCP server configuration";
-      form: {
+      actions: {
+        remove: "Remove";
+        save: "Save";
+        test: "Test connection";
+        testing: "Testing…";
+      };
+      advanced: {
+        callbackPort: "Callback port";
+        clientId: "OAuth client ID";
+        clientSecret: "OAuth client secret";
+        exposure: "Tool exposure";
+        exposureHint: {
+          codemode: "Pi calls the tools from generated code.";
+          deferred: "Tools load only when the agent searches for them.";
+          direct: "Every tool is added to the agent's tool list.";
+          hidden: "Tools are not offered to the agent.";
+        };
+        exposureOption: {
+          codemode: "Code mode";
+          deferred: "On demand";
+          direct: "Direct";
+          hidden: "Hidden";
+        };
+        oauthClientHint: "Only needed when the server does not support dynamic client registration.";
+        title: "Advanced";
+      };
+      agents: {
+        access: {
+          injected: "Added to new sessions. OAuth servers need a sign-in in that agent too.";
+          native: "Connects through Cocurdex, including sign-in and project servers.";
+        };
+        description: "Cocurdex adds this server to the selected agents when their sessions start. Their own MCP configs stay untouched.";
+        serverUnsupported: {
+          "command-value": "Only Pi can use this server: a value runs a command (!cmd).";
+          cwd: "Only Pi can use this server: it sets a working directory.";
+          invalid: "Only Pi can use this server: it has no command or URL.";
+          "missing-env": "Only Pi can use this server: it references an environment variable that is not set.";
+          "provider-auth": "Only Pi can use this server: it signs in through a Pi provider.";
+        };
+        title: "Agents";
+      };
+      auth: {
+        bearer: "Bearer token";
+        bearerHint: "Sent as the Authorization header. Use ${VAR} to read it from the environment.";
+        cancel: "Cancel";
+        failed: "Sign-in failed.";
+        needsSignIn: "This server requires sign-in.";
+        oauth: "OAuth";
+        oauthHint: "Sign in if the server asks for authorization.";
+        saveFirst: "Save the server before signing in.";
+        signIn: "Sign in";
+        signOut: "Sign out";
+        signedIn: "Signed in.";
+        title: "Authentication";
+        token: "Token";
+        waiting: "Waiting for authorization in the browser…";
+      };
+      backToForm: "Back to form";
+      description: "Tool servers Cocurdex gives to your agents. New sessions pick up changes.";
+      detail: {
+        enabled: "Enabled";
+        label: "MCP server";
+        manageLabel: "Manage";
+        newTitle: "New server";
+        projectReadOnly: "Defined in {{path}}. Project servers are read-only here; edit that file to change them.";
+      };
+      editJson: "Edit mcp.json";
+      empty: {
         add: "Add server";
-        arguments: "Arguments";
-        argumentsDescription: "Enter one argument per line.";
-        argumentsPlaceholder: "-y\npackage-name";
+        description: "Add a local command or remote endpoint so your agents can use its tools.";
+        discovered_one: "{{count}} server found in {{agents}}, ready to import.";
+        discovered_other: "{{count}} servers found in {{agents}}, ready to import.";
+        dropHint: "Finds the mcpServers in it; you confirm each one before import.";
+        title: "No MCP servers yet";
+      };
+      errors: {
+        callbackPortInvalid: "The callback port must be a number from 1 to 65535.";
+        commandRequired: "Enter a command.";
+        nameInvalid: 'Names may only contain letters, digits, "_", and "-".';
+        nameRequired: "Enter a server name.";
+        nameTaken: "A server with this name already exists.";
+        urlInvalid: "Enter an http:// or https:// URL.";
+        urlRequired: "Enter a URL.";
+      };
+      fields: {
+        addEnv: "Add variable";
+        addHeader: "Add header";
+        args: "Arguments";
         command: "Command";
-        commandPlaceholder: "npx";
-        emptyDescription: "Add a local command or remote endpoint to make its tools available to Pi.";
-        emptyTitle: "No MCP servers configured";
-        environment: "Environment variables";
-        environmentDescription: "Enter one KEY=value pair per line.";
-        environmentPlaceholder: "API_KEY=${API_KEY}";
+        env: "Environment variables";
+        headers: "Headers";
+        key: "Key";
         local: "Local";
-        name: "Server name";
-        namePlaceholder: "github";
+        name: "Name";
         remote: "Remote";
-        remove: "Remove server";
-        servers: "Servers";
+        removeRow: "Remove";
         transport: "Connection";
-        url: "Server URL";
-        urlPlaceholder: "https://example.com/mcp";
+        url: "URL";
+        value: "Value";
       };
-      mode: {
-        form: "Form";
-        json: "JSON";
-        label: "Configuration mode";
+      import: {
+        agentsDescription: "MCP servers found in {{agents}} configurations on this computer.";
+        agentsTitle: "Import from other agents";
+        cancel: "Cancel";
+        confirm_one: "Import {{count}} server";
+        confirm_other: "Import {{count}} servers";
+        different: "Replaces existing";
+        empty: "No MCP servers found.";
+        importing: "Importing…";
+        jsonDescription: "Choose the servers to add to the Cocurdex MCP configuration.";
+        jsonTitle: "Import JSON";
+        same: "Already added";
+        source: {
+          antigravity: "Antigravity";
+          claude: "Claude Code";
+          "claude-project": "Claude Code · project";
+          codex: "Codex";
+          "codex-project": "Codex · project";
+          cursor: "Cursor";
+          json: "JSON";
+          opencode: "OpenCode";
+          "opencode-project": "OpenCode · project";
+        };
+        unsupported: "Not supported";
       };
-      restartHint: "Changes apply when a Pi session starts. Existing running sessions keep their current tools.";
-      save: "Save";
-      saved: "MCP configuration saved";
-      saving: "Saving";
+      json: {
+        label: "MCP configuration JSON";
+      };
+      jsonDescription: "Edit the config file directly. Pi's rules validate it on save.";
+      jsonImport: {
+        dropActive: "Drop to import";
+        invalidFile: "Choose a JSON text file.";
+        label: "Import from JSON";
+        pasteDescription: 'Paste an mcpServers object, a map of servers, or a single "name": { … } entry.';
+        pasteTitle: "Paste MCP JSON";
+      };
+      list: {
+        add: "Add";
+        global: "Global";
+        importFromAgents: "Import from other agents";
+        noMatches: "No matching servers";
+        project: "Project · {{workspace}}";
+        readOnly: "Read-only";
+        search: "Search servers";
+      };
+      removeConfirm: {
+        cancel: "Cancel";
+        confirm: "Remove";
+        description: '"{{name}}" will be removed from the Cocurdex MCP configuration. Running sessions keep their current tools.';
+        title: "Remove MCP server?";
+      };
+      revealConfig: "Reveal in file manager";
+      state: {
+        connected: "Connected";
+        disabled: "Disabled";
+        failed: "Connection failed";
+        "needs-auth": "Sign-in required";
+        unknown: "Not checked";
+      };
       title: "MCP";
+      tools: {
+        checkedAt: "Last checked {{time}}";
+        checking: "Checking…";
+        disabled: "The server is disabled.";
+        needsAuth: "Sign in to list the tools.";
+        none: "This server offers no tools.";
+        notChecked: "Not checked yet";
+        title: "Tools";
+        titleWithCount_one: "Tools · {{count}}";
+        titleWithCount_other: "Tools · {{count}}";
+      };
     };
     network: {
       proxy: {
@@ -1726,10 +2676,26 @@ export default interface Resources {
         scopeDescription: "Used for Agents and app outbound network requests. Does not hijack the system proxy or the integrated terminal by default.";
         status: {
           checking: "Checking connectivity…";
+          fields: {
+            egressIp: "Exit IP";
+            error: "Error";
+            latency: "Latency";
+            location: "Location";
+            mode: "Mode";
+          };
           idle: "Hover to check connectivity";
           label: "Proxy status";
+          latencyValue: "{{durationMs}} ms";
           offDetail: "Outbound traffic is direct; no app proxy is applied.";
           openSettings: "Open network settings";
+          state: {
+            checking: "Checking";
+            error: "Failed";
+            incomplete: "Incomplete";
+            off: "Direct";
+            ok: "Connected";
+            unknown: "Not checked";
+          };
         };
         test: {
           action: "Test";
@@ -1773,7 +2739,6 @@ export default interface Resources {
         add: "Add";
         clearKey: "Clear key";
         delete: "Delete";
-        importJson: "Import JSON";
         newProvider: "New";
         refresh: "Refresh";
         save: "Save";
@@ -1868,11 +2833,13 @@ export default interface Resources {
         confirm: "Import";
         description: "Import a pi-style models.json. Each provider is upserted with its models. Literal apiKey values are stored; $ENV and !command keys must be set manually.";
         dropActive: "Drop to import";
-        dropHint: "Drop a JSON file here, or click to choose one.";
+        dropAreaHint: "Imports providers from a pi-style models.json after you confirm.";
         importing: "Importing…";
         intro: "Add or update providers and models from a pi-style models.json.";
         invalidFile: "Choose a JSON text file.";
         label: "Import providers from JSON";
+        pasteDescription: "Paste the contents of a pi-style models.json.";
+        pasteTitle: "Paste provider JSON";
         providerCount: "{{count}} providers";
         providerCount_one: "{{count}} provider";
         providerCount_other: "{{count}} providers";
@@ -1888,6 +2855,7 @@ export default interface Resources {
       list: {
         configuredCount: "{{count}} configured";
       };
+      manageLabel: "Manage";
       models: {
         addTitle: "Add model";
         advanced: "Advanced";
@@ -1970,11 +2938,12 @@ export default interface Resources {
     };
     sections: {
       about: "About";
-      adapters: "Adapters";
+      adapters: "Agent CLIs";
       agentRoles: "Roles";
       appearance: "Appearance";
       archived: "Archived sessions";
       computer: "Computer use";
+      devices: "Devices";
       diagnostics: "Diagnostics";
       editor: "Editor";
       environment: "Network";
@@ -1982,6 +2951,7 @@ export default interface Resources {
       git: "Git";
       licenses: "Open source licenses";
       mcp: "MCP";
+      memory: "Memory";
       personalization: "Personalization";
       providers: "Providers";
       shortcuts: "Shortcuts";
@@ -2056,69 +3026,266 @@ export default interface Resources {
     };
     skills: {
       actions: {
+        cancel: "Cancel";
         install: "Install";
-        refresh: "Refresh";
-        reinstall: "Reinstall";
         remove: "Remove";
+        restore: "Restore";
         update: "Update";
       };
-      cliHint: "CLI: cocurdex skills install --scope project|global  ·  cocurdex skills status --scope project|global";
+      add: {
+        builtin: "Built in";
+        chooseFolder: "Choose folder";
+        description: "Read skills from a GitHub repository (owner/repo or URL) or a folder on this computer, then pick the ones to install.";
+        found_one: "{{count}} skill found";
+        found_other: "{{count}} skills found";
+        install_one: "Install {{count}} skill";
+        install_other: "Install {{count}} skills";
+        installed: "Installed";
+        installedToast_one: "Installed {{count}} skill";
+        installedToast_other: "Installed {{count}} skills";
+        invalid: "Invalid SKILL.md";
+        none: "No skills were found in this source.";
+        open: "Add from GitHub or folder";
+        read: "Read";
+        replaces: "Replaces installed";
+        skippedToast: "Skipped: {{names}}";
+        sourceLabel: "Skill source";
+        sourcePlaceholder: "owner/repo, GitHub URL, or folder path";
+        title: "Add skills";
+      };
+      agents: {
+        access: {
+          copy: "A separate copy at {{path}}";
+          home: "Installed in this agent's own folder at {{path}}";
+          link: "Linked to the shared folder at {{path}}";
+          native: "Reads the shared folder {{path}}";
+          none: "Not available to this agent";
+        };
+        share: "Move to shared folder";
+        sharedMissing: "Only installed at {{path}}. Move it to the shared folder so these agents can use it.";
+        sharedNative: "Read from the shared folder {{path}}";
+        title: "Visible to agents";
+      };
+      audit: {
+        description: "Security audits published by skills.sh for this skill.";
+        none: "No audit results yet.";
+        risk: {
+          critical: "Critical risk";
+          high: "High risk";
+          low: "Low risk";
+          medium: "Medium risk";
+          safe: "Safe";
+        };
+        title: "Security audits";
+      };
+      description: "Skills teach agents how to do specialized work. Install them once and every agent that reads the shared skills folder can use them.";
+      detail: {
+        label: "{{name}} details";
+        manageTitle: "Manage";
+        removeBrokenDescription: "{{name}} is only broken links to a folder that no longer exists. Removing it deletes those links and touches nothing else.";
+        removeDescription: "Deletes {{name}} for every agent, including the links that point to it. The folder is backed up first, so you can restore it from skill-backups for 14 days.";
+        removeTitle: "Remove {{name}}?";
+        reviewUpdate: "Review update";
+        updateBadge: "Update available";
+      };
+      discover: {
+        chooseSkills: "Choose skills to install";
+        install: "Install";
+        installSkill: "Install {{name}}";
+        official: "Official sources";
+        poweredBy: "Search results come from skills.sh.";
+        reading: "Reading {{source}}…";
+        resultMeta_one: "{{source}} · {{count}} install";
+        resultMeta_other: "{{source}} · {{count}} installs";
+        results_one: "{{count}} result";
+        results_other: "{{count}} results";
+        search: "Search skills.sh";
+        sourceSkills_one: "{{count}} skill";
+        sourceSkills_other: "{{count}} skills";
+      };
+      document: {
+        preview: "Preview";
+        source: "Source";
+        title: "Instructions";
+        truncated: "Preview shortened. Open the file to read all of it.";
+        view: "Document view";
+      };
+      files: {
+        reveal: "Show in file manager";
+        scriptWarning_one: "Contains {{count}} script. Agents may run it; review it before use.";
+        scriptWarning_other: "Contains {{count}} scripts. Agents may run them; review them before use.";
+        title_one: "Files ({{count}})";
+        title_other: "Files ({{count}})";
+      };
       groupTitle: "Install location";
+      info: {
+        installed: "Installed";
+        latest: "Latest commit";
+        license: "License";
+        location: "Location";
+        openSource: "Open source";
+        ref: "Branch or tag";
+        source: "Source";
+      };
+      install: {
+        agents: "Agents";
+        global: "All workspaces";
+        linkAgent: "Also link for {{agent}}";
+        scope: "Install for";
+        sharedAgents: "{{agents}} read the shared folder automatically.";
+        workspace: "Workspace {{workspace}}";
+      };
       intro: "Install cocurdex product skills so agents (Claude, OpenCode, Pi, and others) can run Notes and Issues workflows. Installation is manual — nothing is written until you install.";
-      loading: "Checking skill install…";
+      list: {
+        builtin: "Cocurdex";
+        checkFailed: "Could not check {{source}}: {{error}}";
+        checkUpdates: "Check for updates";
+        empty: "No other skills installed yet.";
+        filter: "Filter skills";
+        global: "Global";
+        noMatches: "No matching skills";
+        problems: "Needs attention";
+        workspace: "Workspace · {{workspace}}";
+      };
+      pack: {
+        included_one: "Includes {{count}} skill";
+        included_other: "Includes {{count}} skills";
+        subtitle_one: "{{count}} skill";
+        subtitle_other: "{{count}} skills";
+        title: "Cocurdex skills";
+      };
+      problems: {
+        brokenLinkDescription: "These links point to folders that no longer exist, so those agents cannot read this skill.";
+        brokenLinkRemovableDescription: "These links point to folders that no longer exist, and no files of this skill remain. Remove it to clean up the links.";
+        brokenLinkTitle_one: "Broken link";
+        brokenLinkTitle_other: "{{count}} broken links";
+        copyMeta_one: "{{count}} file · modified {{modified}}";
+        copyMeta_other: "{{count}} files · modified {{modified}}";
+        duplicateDescription: "Agents see different versions of this skill. Keep one copy; the others become links to it and are backed up.";
+        duplicateTitle: "Different copies";
+        invalidDescription: "Agents may ignore this skill until its SKILL.md is fixed.";
+        invalidTitle: "SKILL.md needs fixing";
+        issue: {
+          descriptionTooLong: "The description is longer than 1024 characters.";
+          invalidName: "The name may only use lowercase letters, digits, and hyphens.";
+          missingDescription: "The frontmatter has no description.";
+          missingFrontmatter: "The file has no YAML frontmatter.";
+          missingName: "The frontmatter has no name.";
+          nameMismatch: "The name does not match the folder name.";
+          nameTooLong: "The name is longer than 64 characters.";
+        };
+        keepCopy: "Keep this copy";
+      };
       scope: {
         global: {
-          description: "Install under ~/.agents/skills and ~/.claude/skills for every workspace on this machine.";
           title: "Global (all workspaces)";
         };
         project: {
-          description: "Install into the active workspace (.agents/skills and .claude/skills). Good for team repos you commit.";
           title: "This workspace";
         };
       };
+      source: {
+        unknown: "Added manually";
+      };
+      state: {
+        ok: "Up to date";
+        problem: "Needs attention";
+        update: "Update available";
+      };
       status: {
         conflict: "Unmanaged cocurdex skill folders already exist ({{skills}}). Remove or rename them under {{path}}, then install again.";
-        installed: "Installed v{{version}} at {{path}}";
-        noWorkspace: "Select a workspace first to install workspace-level skills.";
+        installed: "Up to date at {{path}}";
+        modified: "Files were edited locally. Restore puts back the built-in version at {{path}}";
         notInstalled: "Not installed. Would write to {{path}}";
-        updateAvailable: "Installed v{{installed}}; pack v{{latest}} is available at {{path}}";
+        sourceMissing: "This build is missing the bundled skill files ({{path}}), so they cannot be installed. Reinstall or update Cocurdex.";
+        updateAvailable: "A newer version is available for {{path}}";
+      };
+      tabs: {
+        discover: "Discover";
+        installed_one: "Installed ({{count}})";
+        installed_other: "Installed ({{count}})";
       };
       toast: {
-        alreadyInstalled: "Skills are already up to date";
         conflict: "Could not install: conflict with existing skills ({{skills}})";
         installFailed: "Could not install skills";
         installed: "cocurdex skills installed";
         removeFailed: "Could not remove skills";
         removed: "cocurdex skills removed";
+        restored: "Restored cocurdex Skills";
+        skipped: "Skills are already up to date";
         updated: "cocurdex skills updated";
       };
-      workspaceLabel: "Active workspace: {{name}}";
+      update: {
+        changes: "Changed files";
+        confirm: "Update";
+        description: "Update from {{source}} to {{commit}}. Review the changes before applying them.";
+        localModified: "This skill was edited locally. Updating replaces those edits; a backup is kept.";
+        noChanges: "No file changes.";
+        noPreview: "No preview";
+        script: "Script";
+        skip: "Skip this version";
+        status: {
+          added: "Added";
+          modified: "Modified";
+          removed: "Removed";
+        };
+        title: "Update {{name}}";
+      };
     };
     teams: {
       addMember: "Add teammate";
+      backToTeam: "Back to team";
       cancel: "Cancel";
       create: "New team";
+      createFirst: "Create one";
+      createRole: "New role";
       createTitle: "New team";
       delete: "Delete";
       deleteDescription: '"{{name}}" will be removed. This cannot be undone.';
       deleteFailed: "Could not delete this team.";
       deleteTitle: "Delete this team?";
       deleted: "Team deleted";
-      description: "Define reusable teams. A lead agent can spawn a whole team with team_spawn_template, or you can spawn one from the CLI.";
+      description: "Save team lineups you use often. Pick a team from the agent menu when starting a session; its lead plans the work and spawns teammates from the lineup.";
       edit: "Edit";
       editTitle: "Edit team";
-      empty: "No teams yet";
-      emptyDescription: "Create a team, name its teammates, and pick a saved role for each.";
-      inheritRole: "Same as lead";
-      memberName: "Teammate name";
-      memberNamePlaceholder: "reviewer";
+      empty: "No teams yet.";
+      lead: "Lead";
+      leadAgents: "Agents";
+      leadPlaceholder: "Choose a lead";
+      leadPromptPlaceholder: "What the lead focuses on while coordinating.";
+      leadRoles: "Roles";
+      listTitle: "Saved teams";
+      makeLead: "Make lead";
+      memberCount: "{{current}}/{{max}}";
       memberPrompt: "Standing instructions";
       memberPromptPlaceholder: "What this teammate is responsible for.";
       members: "Teammates";
+      membersHint: "The first member is the lead: it runs the session and dispatches the others.";
       name: "Name";
       namePlaceholder: "Team name";
       removeMember: "Remove teammate";
       role: "Role";
+      roleMissing: "Role was deleted";
+      rolePlaceholder: "Choose a role";
+      runLimits: {
+        description: "Runs that teammates and script agents start. Past a limit they wait in order; runs you start yourself never wait, but they count toward the limits.";
+        invalid: "Enter whole numbers within the allowed range.";
+        maxConcurrentRuns: {
+          description: "Agent runs at once across all sessions, including yours (1–64).";
+          title: "Concurrent runs";
+        };
+        maxConcurrentRunsPerAgent: {
+          description: "Runs of the same agent CLI at once, including yours (1–64).";
+          title: "Concurrent runs per agent";
+        };
+        saveFailed: "Could not save run limits.";
+        timeout: {
+          description: "Stops a teammate or script agent run that takes longer. Leave empty for no timeout.";
+          none: "None";
+          title: "Timeout";
+        };
+        title: "Delegated runs";
+      };
       save: "Save";
       saveFailed: "Could not save this team.";
       saved: "Team saved";
@@ -2126,14 +3293,17 @@ export default interface Resources {
         defaultMaxAgents: "Default agent limit";
         defaultMaxAgentsDescription: "Maximum agents one script run may start; you can change it when approving";
         description: "Agents in a session can propose background scripts that orchestrate subagents; they run after you approve them";
-        maxDuration: "Maximum run time (minutes)";
+        maxDuration: "Maximum run time";
         maxDurationDescription: "Cancels the whole run and its subagents when exceeded; leave empty for no limit";
+        minutes: "min";
         saveFailed: "Could not save script run settings";
         schemaMaxAttempts: "Structured reply attempts";
         schemaMaxAttemptsDescription: "How many times an agent may try to reply with JSON matching the script's schema";
         title: "Script runs";
         unlimited: "No limit";
       };
+      teamDescription: "Description";
+      teamDescriptionPlaceholder: "What this team is for. The lead agent reads this to decide when to use it.";
     };
     updates: {
       actions: {
@@ -2164,7 +3334,7 @@ export default interface Resources {
         downloadingWithPercent: "Downloading version {{version}}… {{percent}}%";
         error: "Could not check for updates. {{message}}";
         ready: "Version {{version}} is downloaded and ready to install.";
-        unsupported: "Automatic updates are available in the packaged app.";
+        unsupported: "Automatic updates are off for this build.";
         upToDate: "You're up to date.";
       };
       title: "Version";

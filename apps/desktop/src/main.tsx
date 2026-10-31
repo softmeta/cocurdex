@@ -3,10 +3,15 @@ import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { TooltipProvider } from "@/components/ui";
 import { i18n } from "@/i18n";
-import { applyPlatformAttribute, desktopApi } from "@/lib";
+import {
+  applyPlatformAttribute,
+  desktopApi,
+  installWebHostBridge,
+} from "@/lib";
 
 import "./styles/globals.css";
 
+const webHostAccess = installWebHostBridge();
 // Tag the platform before first paint so platform-conditional styling (e.g.
 // native scrollbar treatment in base.css) applies without a flash.
 applyPlatformAttribute();
@@ -32,6 +37,23 @@ async function loadApp(): Promise<ComponentType> {
   ]);
   preloadScreensWhenIdle();
   return App;
+}
+
+async function loadRoot(): Promise<ComponentType> {
+  if (
+    new URLSearchParams(window.location.search).get("window") ===
+    "deck-audience"
+  ) {
+    const { DeckAudienceApp } = await import("./features/decks/audience");
+    return DeckAudienceApp;
+  }
+  const access = await webHostAccess;
+  if (access?.kind !== "needsPairing") return loadApp();
+  const { WebPairingScreen } = await import("./features/web-pairing");
+  const { reason } = access;
+  return function PairingRoot() {
+    return <WebPairingScreen reason={reason} />;
+  };
 }
 
 const rootElement = document.getElementById("root");
@@ -66,7 +88,7 @@ window.addEventListener("unhandledrejection", (event) => {
   });
 });
 
-void loadApp().then((App) => {
+void loadRoot().then((App) => {
   createRoot(rootElement).render(
     <StrictMode>
       <I18nextProvider i18n={i18n}>

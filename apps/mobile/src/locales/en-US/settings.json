@@ -1,0 +1,35 @@
+{
+  "about": {
+    "title": "About",
+    "version": "Version"
+  },
+  "appearance": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "Match System",
+    "title": "Appearance"
+  },
+  "computers": "Computers",
+  "fontSize": {
+    "code": "Code",
+    "default": "Default",
+    "large": "Large",
+    "preview": "Agents read the repo, run the tests, and report back in plain language.\n\n```ts\nconst total = cart.items.reduce((sum, item) => sum + item.cents, 0);\n```",
+    "small": "Small",
+    "text": "Text",
+    "title": "Text Size",
+    "xlarge": "Extra Large"
+  },
+  "language": {
+    "names": {
+      "enUS": "English",
+      "zhCN": "Chinese, Simplified"
+    },
+    "system": "Match System",
+    "title": "Language"
+  },
+  "sessions": {
+    "archived": "Archived Sessions",
+    "title": "Sessions"
+  }
+}

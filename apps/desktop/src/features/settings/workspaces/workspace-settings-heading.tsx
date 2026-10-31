@@ -13,22 +13,22 @@ export function WorkspaceSettingsHeading() {
 
   if (!selected) {
     return (
-      <h1 className="truncate text-body font-semibold text-foreground">
+      <h1 className="truncate text-title font-semibold text-foreground">
         {sectionLabel}
       </h1>
     );
   }
 
   return (
-    <h1 className="flex min-w-0 items-center gap-1 text-body font-semibold">
+    <h1 className="flex min-w-0 items-center gap-1 text-title font-semibold">
       <button
-        className="app-no-drag shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+        className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
         type="button"
         onClick={() => setSelectedId(null)}
       >
         {sectionLabel}
       </button>
-      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground rtl:rotate-180" />
+      <ChevronRight className="size-5 shrink-0 text-muted-foreground rtl:rotate-180" />
       <span className="min-w-0 truncate text-foreground">{selected.name}</span>
     </h1>
   );

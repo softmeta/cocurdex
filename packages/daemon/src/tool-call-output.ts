@@ -1,6 +1,7 @@
-import type {
-  AgentToolCallContent,
-  AgentToolCallRecord,
+import {
+  type AgentToolCallContent,
+  type AgentToolCallRecord,
+  summarizeToolCallDiff,
 } from "@cocurdex/shared";
 
 export const TOOL_OUTPUT_EDGE_CHARS = 32_000;
@@ -37,6 +38,9 @@ function capContentItem(item: AgentToolCallContent): AgentToolCallContent {
   }
   if (item.type === "data") {
     return { ...item, value: capValue(item.value) };
+  }
+  if (item.type === "diff") {
+    return summarizeToolCallDiff(item);
   }
   return item;
 }

@@ -22,15 +22,15 @@ export function getToneMutedClass(tone: MarkdownRendererTone) {
 
 export function getInlineCodeToneClass(tone: MarkdownRendererTone) {
   if (tone === "system") {
-    return "border-chat-system-border bg-chat-system-bg text-chat-system-fg shadow-chat-inline-inset";
+    return "bg-chat-system-bg text-chat-system-fg";
   }
   if (tone === "editor") {
-    return "border-editor-border bg-editor-pane text-editor-fg";
+    return "bg-editor-pane text-editor-fg";
   }
   if (tone === "user") {
-    return "border-chat-border bg-chat-code-inline-user text-chat-fg shadow-chat-inline-inset";
+    return "bg-chat-code-inline-user text-chat-fg";
   }
-  return "border-chat-border bg-chat-code-inline text-chat-fg shadow-chat-inline-inset";
+  return "bg-chat-code-inline text-chat-fg";
 }
 
 // Tone-aware text color for a confirmed-existing, clickable file-path chip. The

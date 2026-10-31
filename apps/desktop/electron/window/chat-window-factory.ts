@@ -1,6 +1,7 @@
 import { app, BrowserWindow, nativeTheme, screen } from "electron";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "../security";
 import { rendererPageUrl } from "./renderer-page";
+import { titleBarChromeOptions } from "./title-bar-chrome";
 
 export interface ChatWindowFactoryOptions {
   preloadPath: string;
@@ -14,7 +15,9 @@ export function createChatWindow(
   const sourceBounds = source.getBounds();
   const width = Math.min(480, area.width);
   const height = Math.min(780, area.height);
-  const isMac = process.platform === "darwin";
+  const backgroundColor = nativeTheme.shouldUseDarkColors
+    ? "#0f0f11"
+    : "#ffffff";
   const window = new BrowserWindow({
     width,
     height,
@@ -33,9 +36,8 @@ export function createChatWindow(
     ),
     show: false,
     title: "Cocurdex Chat",
-    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0f0f11" : "#ffffff",
-    titleBarStyle: isMac ? "hidden" : undefined,
-    trafficLightPosition: isMac ? { x: 12, y: 9 } : undefined,
+    backgroundColor,
+    ...titleBarChromeOptions(process.platform, backgroundColor),
     webPreferences: {
       preload: options.preloadPath,
       backgroundThrottling: false,

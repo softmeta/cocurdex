@@ -3,6 +3,10 @@ import { initReactI18next } from "react-i18next";
 import { DEFAULT_LOCALE, getSystemLocale, supportedLocales } from "./language";
 import { resources } from "./resources";
 
+i18n.on("languageChanged", (language) => {
+  if (typeof document !== "undefined") document.documentElement.lang = language;
+});
+
 void i18n.use(initReactI18next).init({
   defaultNS: "common",
   fallbackLng: DEFAULT_LOCALE,

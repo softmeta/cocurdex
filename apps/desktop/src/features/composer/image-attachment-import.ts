@@ -3,7 +3,6 @@ import {
   isImageAttachment,
   type MessageAttachment,
 } from "@cocurdex/shared";
-import type { ImportImageAttachmentPayload } from "@/lib";
 import { desktopApi } from "@/lib";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
@@ -31,52 +30,6 @@ export function getImageAttachmentValidationError(file: File) {
   return null;
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(new Error("Unable to read image"));
-    reader.onload = () => {
-      if (typeof reader.result !== "string") {
-        reject(new Error("Unable to read image"));
-        return;
-      }
-
-      resolve(reader.result);
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
-function getImageDimensions(dataUrl: string) {
-  return new Promise<{ height: number; width: number }>((resolve, reject) => {
-    const image = document.createElement("img");
-
-    image.onerror = () => reject(new Error("Unable to decode image"));
-    image.onload = () => {
-      resolve({ height: image.naturalHeight, width: image.naturalWidth });
-    };
-    image.src = dataUrl;
-  });
-}
-
-async function fileToPayload(
-  file: File,
-): Promise<ImportImageAttachmentPayload> {
-  const dataUrl = await readFileAsDataUrl(file);
-  const dimensions = await getImageDimensions(dataUrl);
-
-  return {
-    dataUrl,
-    height: dimensions.height,
-    mimeType: file.type,
-    name: file.name,
-    sizeBytes: file.size,
-    width: dimensions.width,
-  };
-}
-
 export async function importImageDataUrl(dataUrl: string, name: string) {
   const match = /^data:([^;,]+);base64,/u.exec(dataUrl);
   if (!match) {
@@ -88,25 +41,17 @@ export async function importImageDataUrl(dataUrl: string, name: string) {
     throw new Error("Only PNG, JPEG, GIF, or WebP images are supported.");
   }
 
-  const dimensions = await getImageDimensions(dataUrl);
-  const sizeBytes = Math.floor((dataUrl.length * 3) / 4);
-
-  return desktopApi.importImageAttachment({
-    dataUrl,
-    height: dimensions.height,
-    mimeType,
-    name,
-    sizeBytes,
-    width: dimensions.width,
-  });
+  const image = await (await fetch(dataUrl)).blob();
+  return desktopApi.importImageAttachment(image, name);
 }
 
 export async function importImageFiles(files: File[]) {
   const imageAttachments: ImageAttachment[] = [];
 
   for (const file of files) {
-    const payload = await fileToPayload(file);
-    imageAttachments.push(await desktopApi.importImageAttachment(payload));
+    imageAttachments.push(
+      await desktopApi.importImageAttachment(file, file.name),
+    );
   }
 
   return imageAttachments;

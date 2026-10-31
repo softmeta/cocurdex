@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { COCURDEX_DAEMON_DIAGNOSTIC_PREFIX } from "@cocurdex/shared";
+import { withoutNodeEnvProxyFlag } from "@cocurdex/shared";
 import { terminateProcessTree } from "../process";
 
 // Must outlast the daemon's own teardown: each live agent session cancels its
@@ -17,60 +17,27 @@ export interface OwnedDaemonProcess {
 
 interface SpawnOwnedDaemonProcessOptions {
   daemonEntryPath: string;
-  onDiagnostic?(
-    stream: "stderr" | "stdout",
-    message: string,
-    source?: DaemonDiagnosticSource,
-  ): void;
+  onOutput?(stream: DaemonOutputStream, line: string): void;
   onError(error: Error): void;
   onExit(code: number | null, signal: NodeJS.Signals | null): void;
   runtimeFingerprint: string;
   userDataPath: string;
+  webRoot?: string;
 }
 
-export type DaemonDiagnosticSource = "diagnostic" | "stderr";
+export type DaemonOutputStream = "stderr" | "stdout";
 
-export function parseDaemonOutputLine(
-  line: string,
-  stream: "stderr" | "stdout",
-): { message: string; source: DaemonDiagnosticSource } | null {
-  if (line.startsWith(COCURDEX_DAEMON_DIAGNOSTIC_PREFIX)) {
-    return {
-      message: line.slice(COCURDEX_DAEMON_DIAGNOSTIC_PREFIX.length),
-      source: "diagnostic",
-    };
-  }
-
-  if (!line.trim()) {
-    return null;
-  }
-
-  return {
-    message: line,
-    source: stream === "stderr" ? "stderr" : "diagnostic",
-  };
-}
-
-function captureDiagnostics(
+function captureOutput(
   stream: NodeJS.ReadableStream | null,
-  streamName: "stderr" | "stdout",
-  onDiagnostic: SpawnOwnedDaemonProcessOptions["onDiagnostic"],
+  streamName: DaemonOutputStream,
+  onOutput: SpawnOwnedDaemonProcessOptions["onOutput"],
 ) {
   if (!stream) return;
 
-  const lines = createInterface({ input: stream });
+  const lines = createInterface({ input: stream, crlfDelay: Infinity });
   lines.on("line", (line) => {
-    const parsed = parseDaemonOutputLine(line, streamName);
-    if (!parsed?.message.trim()) {
-      return;
-    }
-
-    if (parsed.source === "stderr") {
-      onDiagnostic?.(streamName, parsed.message, parsed.source);
-    } else {
-      // Keep the existing two-argument callback shape for structured daemon
-      // diagnostics; the optional source is only needed for raw stderr.
-      onDiagnostic?.(streamName, parsed.message);
+    if (line.trim()) {
+      onOutput?.(streamName, line);
     }
   });
 }
@@ -99,17 +66,18 @@ export function spawnOwnedDaemonProcess(
   const child = spawn(process.execPath, [options.daemonEntryPath], {
     detached: true,
     env: {
-      ...process.env,
+      ...withoutNodeEnvProxyFlag(process.env),
       COCURDEX_DAEMON_OWNER_FD: "3",
       COCURDEX_DAEMON_RUNTIME_FINGERPRINT: options.runtimeFingerprint,
       COCURDEX_USER_DATA_PATH: options.userDataPath,
+      COCURDEX_WEB_ROOT: options.webRoot ?? "",
       ELECTRON_RUN_AS_NODE: "1",
     },
     stdio: ["ignore", "pipe", "pipe", "pipe"],
     windowsHide: true,
   });
-  captureDiagnostics(child.stdout, "stdout", options.onDiagnostic);
-  captureDiagnostics(child.stderr, "stderr", options.onDiagnostic);
+  captureOutput(child.stdout, "stdout", options.onOutput);
+  captureOutput(child.stderr, "stderr", options.onOutput);
   const ownerPipe = child.stdio[3];
   if (
     ownerPipe &&
@@ -121,8 +89,9 @@ export function spawnOwnedDaemonProcess(
   child.unref();
   child.once("error", options.onError);
   let exitCleanupPromise: Promise<void> = Promise.resolve();
+  const canReapProcessGroupAfterExit = process.platform !== "win32";
   child.once("exit", (code, signal) => {
-    if (child.pid) {
+    if (child.pid && canReapProcessGroupAfterExit) {
       exitCleanupPromise = terminateProcessTree(child.pid).catch(
         options.onError,
       );

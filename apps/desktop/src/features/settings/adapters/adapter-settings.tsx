@@ -1,142 +1,46 @@
 import {
-  ACP_REGISTRY_AGENT_ID_PREFIX,
   type AgentDescriptor,
   type AgentId,
   type AgentRateLimitsReadResult,
-  isAcpRegistryAgentId,
   isPlanUsageAgentId,
 } from "@cocurdex/shared";
-import type { TFunction } from "i18next";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Check, Copy, ExternalLink, RotateCw } from "lucide-react";
+import { PackageSearch, RotateCw } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Badge, Button, Spinner, Text } from "@/components/ui";
+import { SettingsGroup } from "@/components/app";
+import { Button, Spinner, Text } from "@/components/ui";
 import {
-  type AdapterStatus,
   type AdapterStatusKind,
   AgentIcon,
   agentsAtom,
   bootstrapAgentsAtom,
   getAdapterStatus,
 } from "@/features/sessions";
-import { cn, desktopApi, useMountEffect } from "@/lib";
-import {
-  AcpRegistryDialog,
-  AcpRegistryRemoveButton,
-} from "./acp-registry-dialog";
-import {
-  AdapterRateLimits,
-  AdapterRateLimitsLoading,
-} from "./adapter-rate-limits";
+import { desktopApi, useMountEffect } from "@/lib";
+import { AcpRegistryDialog } from "./acp-registry-dialog";
+import { AdapterRateLimits } from "./adapter-rate-limits";
 import { adapterRateLimitsCacheAtom } from "./adapter-rate-limits-cache";
 import { sortAdaptersForSettings } from "./adapter-settings-order";
+import {
+  type AdapterDisplayStatus,
+  AdapterStatusDot,
+  useAdapterStatusLabel,
+} from "./adapter-status-dot";
+import { AgentDetailDialog } from "./agent-detail-dialog";
 
-const statusDotClassName: Record<AdapterStatusKind, string> = {
-  builtin: "bg-status-success",
-  detecting: "bg-muted-foreground/40",
-  ready: "bg-status-success",
-  outdated: "bg-status-warning",
-  missing: "bg-muted-foreground/40",
-  error: "bg-destructive",
-};
-
-function adapterKindLabel(kind: AdapterStatusKind, t: TFunction<"settings">) {
-  if (kind === "builtin") {
-    return t("adapters.kind.builtin");
+function rowStatus(
+  kind: AdapterStatusKind,
+  rateLimitsResult: AgentRateLimitsReadResult | undefined,
+): AdapterDisplayStatus | null {
+  if (kind === "ready" || kind === "builtin") {
+    return rateLimitsResult?.status === "error" &&
+      rateLimitsResult.code === "authentication-required"
+      ? "needs-login"
+      : null;
   }
-  if (kind === "detecting") {
-    return t("adapters.kind.detecting");
-  }
-  if (kind === "error") {
-    return t("adapters.kind.error");
-  }
-  if (kind === "missing") {
-    return t("adapters.kind.missing");
-  }
-  if (kind === "outdated") {
-    return t("adapters.kind.outdated");
-  }
-  return t("adapters.kind.ready");
-}
-
-function AdapterStatusLine({
-  agent,
-  status,
-}: {
-  agent: AgentDescriptor;
-  status: AdapterStatus;
-}) {
-  const { t } = useTranslation("settings");
-
-  if (status.kind === "builtin") {
-    return <>{t("adapters.status.builtin")}</>;
-  }
-  if (status.kind === "detecting") {
-    return <>{t("adapters.status.detecting")}</>;
-  }
-  if (status.kind === "error") {
-    return <>{status.error ?? t("adapters.status.error")}</>;
-  }
-  if (status.kind === "missing") {
-    return (
-      <>
-        {t("adapters.status.missing", {
-          executable: agent.installation?.executableName ?? agent.id,
-        })}
-      </>
-    );
-  }
-  if (status.kind === "outdated") {
-    return (
-      <>
-        {t("adapters.status.outdated", {
-          installed: status.version ?? "?",
-          minimum: status.minimumVersion ?? "?",
-        })}
-      </>
-    );
-  }
-
-  return <>{status.executablePath ?? t("adapters.status.ready")}</>;
-}
-
-function AdapterExecutablePath({ path }: { path: string }) {
-  const { t } = useTranslation("settings");
-  const [copied, setCopied] = useState(false);
-
-  const copyPath = async () => {
-    await navigator.clipboard.writeText(path);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
-  };
-
-  return (
-    <Button
-      aria-label={t("adapters.action.copyPath")}
-      className="relative -start-1.5 mt-0.5 h-auto max-w-full min-w-0 justify-start px-1.5 font-normal"
-      size="xs"
-      type="button"
-      variant="ghost"
-      onClick={() => void copyPath()}
-    >
-      <Text
-        className="min-w-0 font-mono"
-        size="meta"
-        title={path}
-        tone="muted"
-        truncate
-      >
-        {path}
-      </Text>
-      {copied ? (
-        <Check className="size-3.5 text-status-success" />
-      ) : (
-        <Copy className="size-3.5 text-muted-foreground" />
-      )}
-    </Button>
-  );
+  return kind;
 }
 
 function planUsageAgentIds(agents: AgentDescriptor[]) {
@@ -151,149 +55,65 @@ function planUsageAgentIds(agents: AgentDescriptor[]) {
     .map((agent) => agent.id);
 }
 
+function RowStatus({ status }: { status: AdapterDisplayStatus }) {
+  const label = useAdapterStatusLabel(status);
+  return (
+    <Text
+      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap"
+      size="meta"
+      tone="muted"
+    >
+      {label}
+      <AdapterStatusDot kind={status} />
+    </Text>
+  );
+}
+
 function AdapterRow({
   agent,
-  onChanged,
-  rateLimitsLoading,
+  onOpen,
   rateLimitsResult,
 }: {
   agent: AgentDescriptor;
-  onChanged(): Promise<void>;
-  rateLimitsLoading: boolean;
+  onOpen(): void;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
 }) {
   const { t } = useTranslation("settings");
   const status = getAdapterStatus(agent);
-  const needsAction = status.kind === "missing" || status.kind === "outdated";
-  const installHint = status.installHint;
-  const readyPath =
-    status.kind === "ready" || status.kind === "outdated"
-      ? status.executablePath
-      : null;
-  let rateLimitsContent = null;
-  if (rateLimitsResult?.status === "available") {
-    rateLimitsContent = (
-      <AdapterRateLimits rateLimits={rateLimitsResult.rateLimits} />
-    );
-  } else if (rateLimitsLoading) {
-    rateLimitsContent = (
-      <AdapterRateLimitsLoading label={t("adapters.rateLimits.loading")} />
-    );
-  } else if (rateLimitsResult?.status === "error") {
-    let message: string;
-    if (rateLimitsResult.code === "authentication-required") {
-      message = t("adapters.rateLimits.authenticationRequired");
-    } else if (rateLimitsResult.code === "timed-out") {
-      message = t("adapters.rateLimits.timedOut");
-    } else {
-      message = t("adapters.rateLimits.failed", {
-        message: rateLimitsResult.message,
-      });
-    }
-    const errorTone =
-      rateLimitsResult.code === "authentication-required"
-        ? "muted"
-        : "destructive";
-    rateLimitsContent = (
-      <Text className="mt-1.5 block" size="meta" tone={errorTone}>
-        {message}
-      </Text>
-    );
-  }
-
-  const copyInstallCommand = async () => {
-    if (!installHint) {
-      return;
-    }
-    await navigator.clipboard.writeText(installHint.command);
-    toast.success(t("adapters.toast.commandCopied"));
-  };
+  const displayStatus = rowStatus(status.kind, rateLimitsResult);
 
   return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <div className="flex min-w-0 flex-1 gap-2.5">
-        <span
-          aria-label={adapterKindLabel(status.kind, t)}
-          className={cn(
-            "mt-1.5 size-2 shrink-0 rounded-full",
-            statusDotClassName[status.kind],
-          )}
-          role="img"
-          title={adapterKindLabel(status.kind, t)}
+    <button
+      aria-haspopup="dialog"
+      className="-mx-2 flex h-13 w-[calc(100%+1rem)] items-center gap-3 rounded-control px-2 text-start outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50"
+      data-agent-id={agent.id}
+      onClick={onOpen}
+      type="button"
+    >
+      <AgentIcon agentId={agent.id} className="size-4 shrink-0" />
+      <span className="flex min-w-0 flex-1 items-baseline gap-2">
+        <Text className="truncate font-medium" size="body">
+          {agent.label}
+        </Text>
+        {status.kind === "builtin" ? (
+          <Text className="shrink-0" size="meta" tone="muted">
+            {t("adapters.badge.builtin")}
+          </Text>
+        ) : null}
+        {status.version ? (
+          <Text className="shrink-0 font-mono" size="meta" tone="muted">
+            v{status.version}
+          </Text>
+        ) : null}
+      </span>
+      {rateLimitsResult?.status === "available" ? (
+        <AdapterRateLimits
+          layout="row"
+          rateLimits={rateLimitsResult.rateLimits}
         />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <AgentIcon agentId={agent.id} />
-            <Text className="font-medium" size="body">
-              {agent.label}
-            </Text>
-            {status.version ? (
-              <Text className="font-mono" size="meta" tone="muted">
-                v{status.version}
-              </Text>
-            ) : null}
-            {status.kind === "outdated" ? (
-              <Badge variant="destructive">
-                {t("adapters.badge.updateRequired")}
-              </Badge>
-            ) : null}
-          </div>
-          {readyPath ? (
-            <AdapterExecutablePath path={readyPath} />
-          ) : (
-            <Text className="mt-0.5 block truncate" size="meta" tone="muted">
-              <AdapterStatusLine agent={agent} status={status} />
-            </Text>
-          )}
-          {status.kind === "outdated" ? (
-            <Text className="mt-0.5 block" size="meta" tone="muted">
-              {t("adapters.status.outdatedHint")}
-            </Text>
-          ) : null}
-          {rateLimitsContent}
-          {needsAction && installHint ? (
-            <Text
-              className="mt-2 block rounded-control bg-muted px-2.5 py-2 font-mono break-all select-text"
-              size="meta"
-              tone="muted"
-            >
-              {installHint.command}
-            </Text>
-          ) : null}
-        </div>
-      </div>
-      <div className="-mt-0.5 flex shrink-0 items-center gap-1">
-        {isAcpRegistryAgentId(agent.id) ? (
-          <AcpRegistryRemoveButton
-            agentId={agent.id}
-            label={agent.label}
-            onRemoved={onChanged}
-          />
-        ) : null}
-        {needsAction && installHint ? (
-          <>
-            <Button
-              onClick={() => void copyInstallCommand()}
-              size="xs"
-              type="button"
-              variant="ghost"
-            >
-              <Copy className="size-3.5" />
-              {t("adapters.action.copyCommand")}
-            </Button>
-            <Button
-              onClick={() => void desktopApi.openExternal(installHint.docsUrl)}
-              size="xs"
-              type="button"
-              variant="ghost"
-            >
-              <ExternalLink className="size-3.5" />
-              {t("adapters.action.docs")}
-            </Button>
-          </>
-        ) : null}
-      </div>
-    </div>
+      ) : null}
+      {displayStatus ? <RowStatus status={displayStatus} /> : null}
+    </button>
   );
 }
 
@@ -313,12 +133,9 @@ export function AdapterSettingsPanel() {
   const rateLimitsByAgentRef = useRef(rateLimitsByAgent);
   rateLimitsByAgentRef.current = rateLimitsByAgent;
   const sortedAgents = sortAdaptersForSettings(agents);
-  const installedRegistryIds = new Set(
-    agents
-      .map((agent) => agent.id)
-      .filter(isAcpRegistryAgentId)
-      .map((agentId) => agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)),
-  );
+  const [registryOpen, setRegistryOpen] = useState(false);
+  const [openAgentId, setOpenAgentId] = useState<AgentId | null>(null);
+  const openAgent = agents.find((agent) => agent.id === openAgentId) ?? null;
 
   const loadRateLimits = async (
     agentsToProbe: AgentDescriptor[],
@@ -404,9 +221,18 @@ export function AdapterSettingsPanel() {
           {t("adapters.description")}
         </Text>
         <div className="flex shrink-0 items-center gap-1">
+          <Button
+            onClick={() => setRegistryOpen(true)}
+            size="xs"
+            type="button"
+            variant="ghost"
+          >
+            <PackageSearch className="size-3.5" />
+            {t("adapters.registry.open")}
+          </Button>
           <AcpRegistryDialog
-            installedRegistryIds={installedRegistryIds}
-            onInstalled={() => refresh(true)}
+            open={registryOpen}
+            onOpenChange={setRegistryOpen}
           />
           <Button
             disabled={refreshing}
@@ -424,19 +250,34 @@ export function AdapterSettingsPanel() {
           </Button>
         </div>
       </div>
-      <div className="rounded-card border border-border/70 bg-settings-surface px-4">
-        <div className="flex flex-col divide-y divide-border/60">
-          {sortedAgents.map((agent) => (
-            <AdapterRow
-              agent={agent}
-              key={agent.id}
-              onChanged={() => refresh(true)}
-              rateLimitsLoading={loadingAgentIds.includes(agent.id)}
-              rateLimitsResult={rateLimitsByAgent[agent.id]}
-            />
-          ))}
-        </div>
-      </div>
+      <SettingsGroup>
+        {sortedAgents.map((agent) => (
+          <AdapterRow
+            agent={agent}
+            key={agent.id}
+            onOpen={() => setOpenAgentId(agent.id)}
+            rateLimitsResult={rateLimitsByAgent[agent.id]}
+          />
+        ))}
+      </SettingsGroup>
+      <AgentDetailDialog
+        agent={openAgent}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenAgentId(null);
+          }
+        }}
+        onRemoved={() => refresh(true)}
+        rateLimitsLoading={
+          openAgentId !== null && loadingAgentIds.includes(openAgentId)
+        }
+        rateLimitsResult={
+          openAgentId === null ? undefined : rateLimitsByAgent[openAgentId]
+        }
+        showsRateLimits={
+          openAgent !== null && planUsageAgentIds([openAgent]).length > 0
+        }
+      />
     </div>
   );
 }

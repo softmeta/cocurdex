@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import {
   type AgentCapabilityCacheRepository,
+  type ContextTransferConsumption,
   createCocurdexDatabase,
   type ScriptRunRepository,
   type TeamRepository,
@@ -11,20 +12,24 @@ import type {
   AgentEvent,
   AgentId,
   AgentProviderSelection,
+  AgentProviderSessionRecord,
   AgentRoleRecord,
   AgentSessionMode,
   AgentToolCallRecord,
   AgentUsageUpdatedEvent,
-  AppBootstrapData,
+  ContextTransferRecord,
   EditorViewRecord,
   MessageRecord,
   PendingSettingsChangeRecord,
   ProviderConfigRecord,
   ProviderModelRecord,
   QueuedAgentInputRecord,
+  RunRecord,
+  RunStatus,
   SessionMessagesResult,
   SessionRecord,
   SessionStatus,
+  StoredBootstrapData,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
   WorktreeEnvironmentProposal,
@@ -37,17 +42,34 @@ import {
   mergeUsageRecords,
   NETWORK_PROXY_SETTING_KEY,
 } from "@cocurdex/shared";
+import { applyNodeGlobalProxy } from "@cocurdex/shared/node";
 import { SessionAttentionProjection } from "./attention";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { createMessageDeltaBuffer } from "./message-delta-buffer";
 import { getDatabasePath } from "./paths";
+import { StorageMaintenance } from "./storage-maintenance";
+import { formatSyncCursor } from "./sync/sync-cursor";
+import type { SyncPullSources } from "./sync/sync-pull";
 import { withMessageSeq, withTimelineSeq } from "./timeline-seq-event";
 import { capToolCallOutput, withoutToolCallOutput } from "./tool-call-output";
+import {
+  createToolOutputStore,
+  type ToolOutputStore,
+} from "./tool-output-store";
 
 type CocurdexDatabase = ReturnType<typeof createCocurdexDatabase>;
 const TERMINAL_STATUSES = new Set<SessionStatus>(["idle", "error", "exited"]);
+export interface AgentEventPersistenceContext {
+  runId: string | null;
+}
+
 const INTERRUPTED_BY_RESTART_MESSAGE =
   "The agent was interrupted because Cocurdex restarted before this turn finished. Send a message to continue.";
+
+function applyStoredNetworkProxy(raw: string | null) {
+  loadNetworkProxySettingsFromJson(raw, process.env);
+  applyNodeGlobalProxy(process.env);
+}
 
 export class DaemonState {
   readonly sessionAttention: SessionAttentionProjection;
@@ -61,11 +83,21 @@ export class DaemonState {
   private readonly deltaBuffer = createMessageDeltaBuffer();
   private networkProxyReady: Promise<void>;
   private staleToolCallsSwept: Promise<void>;
-  private staleChatStreamsSwept: Promise<void>;
   private staleSessionsSwept: Promise<void>;
+  private readonly toolOutputs: ToolOutputStore;
+  private readonly storageMaintenance: StorageMaintenance;
 
   constructor(userDataPath: string) {
     this.database = createCocurdexDatabase(getDatabasePath(userDataPath));
+    this.toolOutputs = createToolOutputStore(userDataPath);
+    this.storageMaintenance = new StorageMaintenance({
+      toolCalls: this.database.toolCalls,
+      toolOutputs: this.toolOutputs,
+      commandReceipts: this.database.commandReceipts,
+      sync: this.database.sync,
+      reclaimFreePages: (maxPages) => this.database.reclaimFreePages(maxPages),
+      isClosed: () => this.closed,
+    });
     this.workflows = this.database.workflows;
     this.teams = this.database.teams;
     this.scriptRuns = this.database.scriptRuns;
@@ -81,10 +113,6 @@ export class DaemonState {
     // point a non-terminal tool call can only be debris from a previous run.
     this.staleSessionsSwept = this.failInterruptedSessions();
     this.staleToolCallsSwept = this.database.toolCalls.failNonTerminal();
-    // Same reasoning for pure-chat turns: an assistant message still marked
-    // `streaming` when this process starts can have no stream behind it.
-    this.staleChatStreamsSwept =
-      this.database.conversationMessages.failStreaming();
   }
 
   close() {
@@ -92,12 +120,17 @@ export class DaemonState {
       return;
     }
     this.closed = true;
+    this.storageMaintenance.dispose();
+    this.database.transaction(() => {
+      for (const message of this.deltaBuffer.drainAll()) {
+        void this.database.messages.append(message);
+      }
+    });
     this.database.close();
   }
 
-  async getChatDatabase() {
+  async getDatabase() {
     await this.networkProxyReady;
-    await this.staleChatStreamsSwept;
     return this.database;
   }
 
@@ -105,12 +138,11 @@ export class DaemonState {
     await Promise.all([
       this.networkProxyReady,
       this.staleToolCallsSwept,
-      this.staleChatStreamsSwept,
       this.staleSessionsSwept,
     ]);
   }
 
-  async bootstrap(): Promise<AppBootstrapData> {
+  async bootstrap(): Promise<StoredBootstrapData> {
     await this.waitForStartupRecovery();
 
     const queuedAgentInputs = await this.database.queuedAgentInputs.list();
@@ -120,13 +152,16 @@ export class DaemonState {
       ),
     );
 
+    const syncCursor = formatSyncCursor(this.database.sync.readClock());
     return {
+      syncCursor,
       workspaces: await this.database.workspaces.list(),
       sessions: await this.database.sessions.list(),
       queuedMessages: queuedMessages.filter(
         (message): message is MessageRecord => message != null,
       ),
       queuedAgentInputs,
+      activeRuns: this.database.runs.listActive(),
       sessionUsage: await this.database.sessionUsage.list(),
       editorViews: await this.database.editorViews.list(),
     };
@@ -137,12 +172,12 @@ export class DaemonState {
       const raw = await this.database.appSettings.get(
         NETWORK_PROXY_SETTING_KEY,
       );
-      loadNetworkProxySettingsFromJson(raw, process.env);
+      applyStoredNetworkProxy(raw);
     } catch (error) {
       logDaemonDiagnostic("warn", "networkProxy.loadFailed", {
         error: error instanceof Error ? error.message : String(error),
       });
-      loadNetworkProxySettingsFromJson(null, process.env);
+      applyStoredNetworkProxy(null);
     }
   }
 
@@ -192,13 +227,14 @@ export class DaemonState {
     return this.database.appSettings.set(key, valueJson);
   }
 
-  deleteWorkspace(workspaceId: string) {
-    return this.database.workspaces.delete(workspaceId);
+  async deleteWorkspace(workspaceId: string) {
+    await this.database.workspaces.delete(workspaceId);
+    this.storageMaintenance.schedule();
   }
 
   async listSessionMessages(sessionId: string): Promise<SessionMessagesResult> {
     const [messages, turnStats, turnChangeSets] = await Promise.all([
-      this.database.messages.listBySessionId(sessionId),
+      this.listMessagesBySessionId(sessionId),
       this.database.messageTurnStats.listBySessionId(sessionId),
       this.database.turnChangeSets.listBySessionId(sessionId),
     ]);
@@ -217,11 +253,24 @@ export class DaemonState {
   async setNetworkProxySettingJson(valueJson: string) {
     await this.networkProxyReady;
     await this.database.appSettings.set(NETWORK_PROXY_SETTING_KEY, valueJson);
-    loadNetworkProxySettingsFromJson(valueJson, process.env);
+    applyStoredNetworkProxy(valueJson);
+  }
+
+  get appSettings() {
+    return this.database.appSettings;
+  }
+
+  get hostAccessStore() {
+    return {
+      repository: this.database.hostAccess,
+      settings: this.database.appSettings,
+    };
   }
 
   get data() {
     return {
+      decks: this.database.decks,
+      entityLinks: this.database.entityLinks,
       issues: this.database.issues,
       notes: this.database.notes,
       search: this.database.search,
@@ -240,6 +289,10 @@ export class DaemonState {
     await this.database.sessions.upsert(session);
   }
 
+  setSessionPinned(sessionId: string, pinnedAt: string | null) {
+    return this.database.sessions.setPinned(sessionId, pinnedAt);
+  }
+
   archiveSession(sessionId: string, archivedAt?: string) {
     return this.database.sessions.archive(sessionId, archivedAt);
   }
@@ -247,6 +300,27 @@ export class DaemonState {
   async deleteSession(sessionId: string) {
     await this.database.turnChangeSets.deleteBySessionId(sessionId);
     await this.database.sessions.delete(sessionId);
+    this.storageMaintenance.schedule();
+  }
+
+  maintainStorage(): Promise<void> {
+    return this.storageMaintenance.run();
+  }
+
+  async getToolCallResult(toolCallId: string) {
+    const stored = await this.database.toolCalls.getResultById(toolCallId);
+    if (!stored) {
+      return null;
+    }
+    if (!stored.resultRef) {
+      return stored.result;
+    }
+    return (
+      (await this.toolOutputs.get(stored.resultRef)) ?? {
+        content: [],
+        rawOutput: null,
+      }
+    );
   }
 
   get turnChangeSets() {
@@ -274,12 +348,58 @@ export class DaemonState {
     );
   }
 
-  listMessagesBySessionId(sessionId: string) {
-    return this.database.messages.listBySessionId(sessionId);
+  syncSources(
+    runtime: Pick<SyncPullSources, "getPlan" | "getInteractions">,
+  ): SyncPullSources {
+    const { database } = this;
+    const settled = (messages: MessageRecord[]) =>
+      messages.filter((message) => !this.deltaBuffer.has(message.id));
+    return {
+      ...runtime,
+      readClock: () => database.sync.readClock(),
+      bootstrap: () => this.bootstrap(),
+      listSessionsChangedSince: (since) =>
+        database.sessions.listChangedSince(since),
+      listTombstonesSince: (since) => database.sync.listTombstonesSince(since),
+      listMessages: (sessionId) => this.listMessagesBySessionId(sessionId),
+      listMessagesChangedSince: async (sessionId, since) =>
+        settled(await database.messages.listChangedSince(sessionId, since)),
+      listActiveMessages: (sessionId) => this.deltaBuffer.list(sessionId),
+      listToolCalls: (sessionId) =>
+        database.toolCalls.listSummariesBySessionId(sessionId),
+      listToolCallsChangedSince: (sessionId, since) =>
+        database.toolCalls.listSummariesChangedSince(sessionId, since),
+      listTurnStats: (sessionId) =>
+        database.messageTurnStats.listBySessionId(sessionId),
+      listTurnStatsChangedSince: (sessionId, since) =>
+        database.messageTurnStats.listChangedSince(sessionId, since),
+      listTurnChangeSets: (sessionId) =>
+        database.turnChangeSets.listBySessionId(sessionId),
+      hasTurnChangeSetsChangedSince: async (sessionId, since) =>
+        database.sync.hasTurnChangeSetsChangedSince(sessionId, since),
+    };
   }
 
-  listToolCallsBySessionId(sessionId: string) {
-    return this.database.toolCalls.listBySessionId(sessionId);
+  async listMessagesBySessionId(sessionId: string) {
+    const messages = await this.database.messages.listBySessionId(sessionId);
+    return messages.filter((message) => !this.deltaBuffer.has(message.id));
+  }
+
+  async listToolCallsBySessionId(sessionId: string) {
+    const [toolCalls, resultRefs] = await Promise.all([
+      this.database.toolCalls.listBySessionId(sessionId),
+      this.database.toolCalls.listResultRefsBySessionId(sessionId),
+    ]);
+    if (resultRefs.size === 0) {
+      return toolCalls;
+    }
+    return Promise.all(
+      toolCalls.map(async (toolCall) => {
+        const ref = resultRefs.get(toolCall.id);
+        const result = ref ? await this.toolOutputs.get(ref) : null;
+        return result ? { ...toolCall, ...result } : toolCall;
+      }),
+    );
   }
 
   listActiveMessagesBySessionId(sessionId: string) {
@@ -316,6 +436,62 @@ export class DaemonState {
 
   moveMessageToEnd(messageId: string, sessionId: string) {
     return this.database.messages.moveToEnd(messageId, sessionId);
+  }
+
+  async moveSteeredMessageToEnd(
+    message: MessageRecord,
+    runId: string | null,
+  ): Promise<MessageRecord> {
+    let moved: Promise<number | null> = Promise.resolve(null);
+    this.database.transaction(() => {
+      moved = this.database.messages.moveToEnd(message.id, message.sessionId);
+      if (runId) void this.database.messages.assignRun(message.id, runId);
+    });
+    const seq = await moved;
+    return withMessageSeq(
+      runId ? { ...message, runId } : message,
+      seq ?? message.seq,
+    );
+  }
+
+  async startRun(run: RunRecord): Promise<RunRecord> {
+    return this.database.transaction(() => {
+      const started = this.database.runs.insert(run);
+      void this.database.messages.assignRun(run.triggerMessageId, run.id);
+      return started;
+    });
+  }
+
+  async finishRun(
+    runId: string,
+    status: Exclude<RunStatus, "running">,
+    endedAt: string,
+    error: string | null,
+  ) {
+    return this.database.runs.finish(runId, status, endedAt, error);
+  }
+
+  listRunsBySessionId(sessionId: string) {
+    return this.database.runs.listBySessionId(sessionId);
+  }
+
+  getActiveRun(sessionId: string) {
+    return this.database.runs.getActiveBySessionId(sessionId);
+  }
+
+  listActiveRuns() {
+    return this.database.runs.listActive();
+  }
+
+  getLatestRun(sessionId: string) {
+    return this.database.runs.listBySessionId(sessionId).at(-1) ?? null;
+  }
+
+  async getRunReply(sessionId: string, runId: string) {
+    const replies = (await this.listMessagesBySessionId(sessionId)).filter(
+      (message) => message.runId === runId && message.role === "assistant",
+    );
+    return replies.at(-1) ?? null;
   }
 
   async saveQueuedUserMessage(
@@ -386,50 +562,49 @@ export class DaemonState {
     });
   }
 
-  async rewindSessionMessages(message: MessageRecord) {
-    const session = await this.database.sessions.getById(message.sessionId);
-
-    if (!session) {
-      throw new Error("Session not found");
-    }
-
-    this.database.transaction(() => {
-      void this.database.toolCalls.deleteAfter(message.sessionId, message.id);
-      void this.database.messages.deleteAfter(message.sessionId, message.id);
-      void this.database.messages.update(message);
-      void this.database.providerSessions.clear(message.sessionId);
-      void this.database.sessions.upsert({
-        ...session,
-        status: "idle",
-        updatedAt: message.createdAt,
-        lastMessageAt: message.createdAt,
-      });
-    });
-  }
-
-  getProviderSession(sessionId: string) {
-    return this.database.providerSessions.getBySessionId(sessionId);
+  getProviderSession(sessionId: string, agentType: AgentId) {
+    return this.database.providerSessions.get(sessionId, agentType);
   }
 
   async saveProviderSession(
-    sessionId: string,
-    providerSessionId: string | null,
-    providerState: Record<string, unknown>,
-    resumable: boolean,
-    providerVersion: string | null = null,
+    agentType: AgentId,
+    record: AgentProviderSessionRecord,
   ) {
-    await this.database.providerSessions.upsert({
-      sessionId,
-      providerSessionId,
-      providerStateJson: JSON.stringify(providerState),
-      providerVersion,
-      resumable,
-      updatedAt: new Date().toISOString(),
+    await this.database.providerSessions.upsert(agentType, record);
+  }
+
+  async clearProviderSession(sessionId: string, agentType: AgentId) {
+    await this.database.providerSessions.clear(sessionId, agentType);
+  }
+
+  createForkedSession(
+    session: SessionRecord,
+    messages: readonly MessageRecord[],
+    transfer: ContextTransferRecord,
+  ) {
+    this.database.transaction(() => {
+      void this.database.sessions.upsert(session);
+      for (const message of messages) {
+        void this.database.messages.append(message);
+      }
+      this.database.contextTransfers.insert(transfer);
     });
   }
 
-  async clearProviderSession(sessionId: string) {
-    await this.database.providerSessions.clear(sessionId);
+  listContextTransfers(sessionId: string) {
+    return this.database.contextTransfers.listByTargetSession(sessionId);
+  }
+
+  findPendingContextTransfer(sessionId: string) {
+    return this.database.contextTransfers.findPending(sessionId);
+  }
+
+  insertContextTransfer(record: ContextTransferRecord) {
+    this.database.contextTransfers.insert(record);
+  }
+
+  consumeContextTransfer(id: string, consumption: ContextTransferConsumption) {
+    this.database.contextTransfers.consume(id, consumption);
   }
 
   listProviderConfigs() {
@@ -526,8 +701,12 @@ export class DaemonState {
     await this.database.agentRoles.delete(id);
   }
 
-  async persistAgentEvent(event: AgentEvent): Promise<AgentEvent> {
+  async persistAgentEvent(
+    event: AgentEvent,
+    context: AgentEventPersistenceContext = { runId: null },
+  ): Promise<AgentEvent> {
     const eventTimestamp = new Date().toISOString();
+    const runId = context.runId;
 
     if (event.type === "state.changed") {
       if (TERMINAL_STATUSES.has(event.status)) {
@@ -552,28 +731,40 @@ export class DaemonState {
 
     if (event.type === "message.completed") {
       const buffered = this.deltaBuffer.release(event.message.id);
-      const seq = await this.database.messages.append({
+      const message = {
         ...event.message,
         seq: event.message.seq ?? buffered?.seq,
-      });
+        runId: event.message.runId ?? runId,
+      };
+      const seq = await this.database.messages.append(message);
       const session = await this.database.sessions.getById(event.sessionId);
 
       if (session) {
         await this.database.sessions.upsert({
           ...session,
-          status: "idle",
           updatedAt: event.message.createdAt,
           lastMessageAt: event.message.createdAt,
         });
       }
-      return withTimelineSeq(event, seq);
+      const stamped = message.runId
+        ? { ...event, message: { ...event.message, runId: message.runId } }
+        : event;
+      return withTimelineSeq(stamped, seq);
     }
 
     if (event.type === "message.delta") {
       const seq = this.deltaBuffer.has(event.messageId)
         ? null
         : await this.reserveTimelineSeq(event.sessionId, event.messageId);
-      return withTimelineSeq(event, this.deltaBuffer.append(event, seq).seq);
+      const buffered = this.deltaBuffer.append(event, seq);
+      const checkpoint = this.deltaBuffer.takeCheckpoint(event.messageId);
+      if (checkpoint) {
+        await this.database.messages.append({
+          ...checkpoint,
+          runId: checkpoint.runId ?? runId,
+        });
+      }
+      return withTimelineSeq(event, buffered.seq);
     }
 
     if (
@@ -581,8 +772,14 @@ export class DaemonState {
       event.type === "tool.updated" ||
       event.type === "tool.finished"
     ) {
-      const toolCall = capToolCallOutput(event.toolCall);
+      const toolCall = capToolCallOutput({
+        ...event.toolCall,
+        runId: event.toolCall.runId ?? runId,
+      });
       const seq = await this.database.toolCalls.upsert(toolCall);
+      if (toolCall.status === "completed" || toolCall.status === "failed") {
+        this.storageMaintenance.schedule();
+      }
       await this.persistSubagentChildSession(toolCall);
       return withTimelineSeq(
         { ...event, toolCall: withoutToolCallOutput(toolCall) },
@@ -618,18 +815,20 @@ export class DaemonState {
 
     if (event.type === "error") {
       await this.flushBufferedMessages(event.sessionId);
-      const systemMessage = this.createSystemMessage(
-        event.sessionId,
-        event.message,
-        eventTimestamp,
-      );
+      const systemMessage: MessageRecord = {
+        ...this.createSystemMessage(
+          event.sessionId,
+          event.message,
+          eventTimestamp,
+        ),
+        ...(runId ? { runId } : {}),
+      };
       const seq = await this.database.messages.append(systemMessage);
       const session = await this.database.sessions.getById(event.sessionId);
 
       if (session) {
         await this.database.sessions.upsert({
           ...session,
-          status: "error",
           updatedAt: eventTimestamp,
           lastMessageAt: eventTimestamp,
         });
@@ -727,10 +926,20 @@ export class DaemonState {
   }
 
   private async failInterruptedSessions() {
-    const sessionIds = await this.database.sessions.failRunning();
-    await this.database.teams.failActiveMembers();
     const createdAt = new Date().toISOString();
+    const { sessionIds } = this.database.transaction(() =>
+      this.database.runs.interruptRunning(createdAt),
+    );
+    await this.database.teams.failActiveMembers();
+    await this.noteRestartInterruptions(sessionIds, createdAt);
+  }
+
+  async noteRestartInterruptions(
+    sessionIds: string[],
+    createdAt = new Date().toISOString(),
+  ) {
     for (const sessionId of sessionIds) {
+      await this.flushBufferedMessages(sessionId);
       await this.database.messages.append(
         this.createSystemMessage(
           sessionId,

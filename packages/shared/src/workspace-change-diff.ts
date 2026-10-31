@@ -77,12 +77,7 @@ export function createUnifiedDiff(
   oldText: string,
   newText: string,
 ): { patch: string; additions: number; deletions: number } {
-  const oldLines = splitLines(oldText);
-  const newLines = splitLines(newText);
-  const prefix = commonPrefixLength(oldLines, newLines);
-  const suffix = commonSuffixLength(oldLines, newLines, prefix);
-  const oldHunk = oldLines.slice(prefix, oldLines.length - suffix);
-  const newHunk = newLines.slice(prefix, newLines.length - suffix);
+  const { oldHunk, newHunk, prefix } = changedLineHunks(oldText, newText);
   const additions = newHunk.length;
   const deletions = oldHunk.length;
   const oldStart = prefix + 1;
@@ -99,6 +94,30 @@ export function createUnifiedDiff(
     ...hunkLines,
   ].join("\n");
   return { patch, additions, deletions };
+}
+
+export function withoutFilePatches(files: TurnFileChange[]): TurnFileChange[] {
+  return files.map(({ patch: _patch, ...file }) => file);
+}
+
+export function countChangedLines(
+  oldText: string,
+  newText: string,
+): { additions: number; deletions: number } {
+  const { oldHunk, newHunk } = changedLineHunks(oldText, newText);
+  return { additions: newHunk.length, deletions: oldHunk.length };
+}
+
+function changedLineHunks(oldText: string, newText: string) {
+  const oldLines = splitLines(oldText);
+  const newLines = splitLines(newText);
+  const prefix = commonPrefixLength(oldLines, newLines);
+  const suffix = commonSuffixLength(oldLines, newLines, prefix);
+  return {
+    prefix,
+    oldHunk: oldLines.slice(prefix, oldLines.length - suffix),
+    newHunk: newLines.slice(prefix, newLines.length - suffix),
+  };
 }
 
 export function parseUnifiedDiff(diff: string): TurnFileChange[] {

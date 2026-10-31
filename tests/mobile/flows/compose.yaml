@@ -1,0 +1,355 @@
+appId: dev.cocurdex.mobile
+---
+- runFlow: shared/pair-by-link.yaml
+- scrollUntilVisible:
+    element: ${SEND_SESSION_TITLE}
+    direction: UP
+    centerElement: true
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${SEND_SESSION_TITLE}
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 10000
+- assertVisible: ${ATTACH_ACTION}
+- tapOn:
+    id: "composer-input"
+- inputText: ${SEND_PROMPT}
+- tapOn: ${SEND_ACTION}
+- extendedWaitUntil:
+    visible: ${SEND_REPLY}
+    timeout: 20000
+- assertNotVisible: ${REPLYING_STATUS}
+- takeScreenshot: session-streaming
+- extendedWaitUntil:
+    visible: ${SEND_REPLY_END}
+    timeout: 20000
+- assertNotVisible: ${REPLYING_STATUS}
+- assertVisible: ${SEND_REPLY_CODE}
+- assertVisible: ${SEND_PROMPT}
+- tapOn: ${SEND_REPLY}
+- waitForAnimationToEnd
+- takeScreenshot: session-reply
+- tapOn:
+    id: "session-config-chip"
+- extendedWaitUntil:
+    visible:
+      id: "session-config-model"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: session-config
+- tapOn:
+    id: "session-config-model"
+- scrollUntilVisible:
+    element:
+      id: "session-config-model-${AGENT_MODEL_ID}"
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: session-config-model
+- tapOn:
+    id: "session-config-model-${AGENT_MODEL_ID}"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "session-config-save-role"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "session-config-save-role"
+- extendedWaitUntil:
+    visible:
+      id: "save-role-name"
+    timeout: 10000
+- inputText: "E2E Reviewer"
+- waitForAnimationToEnd
+- takeScreenshot: save-role
+- tapOn: ${SAVE_ROLE_SAVE}
+- extendedWaitUntil:
+    visible:
+      id: "session-config-save-role"
+    timeout: 10000
+- tapOn: ${SESSION_CONFIG_CLOSE}
+- extendedWaitUntil:
+    visible:
+      id: "session-config-chip"
+      text: "(?s).*${NEW_SESSION_MODEL}.*"
+    timeout: 10000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${WORKSPACE_NAME}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - repeat:
+          while:
+            visible:
+              id: "composer-input"
+          times: 2
+          commands:
+            - back
+      - extendedWaitUntil:
+          visible: ${WORKSPACE_NAME}
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${NEW_SESSION_ACTION}
+      - extendedWaitUntil:
+          visible:
+            id: "new-session-prompt"
+          timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: new-session
+- tapOn:
+    id: "new-session-agent"
+- extendedWaitUntil:
+    visible:
+      id: "new-session-workspace"
+    timeout: 5000
+- waitForAnimationToEnd
+- tapOn:
+    id: "new-session-workspace"
+- extendedWaitUntil:
+    visible:
+      id: "workspace-choice-.*"
+    timeout: 5000
+- tapOn:
+    id: "workspace-choice-.*"
+- extendedWaitUntil:
+    visible:
+      id: "new-session-agent-row"
+    timeout: 5000
+- waitForAnimationToEnd
+- tapOn:
+    id: "new-session-agent-row"
+- scrollUntilVisible:
+    element:
+      id: "new-session-agent-pi"
+    timeout: 5000
+- tapOn:
+    id: "new-session-agent-pi"
+- extendedWaitUntil:
+    visible:
+      id: "new-session-model"
+    timeout: 10000
+- waitForAnimationToEnd
+- tapOn:
+    id: "new-session-model"
+- scrollUntilVisible:
+    element:
+      id: "new-session-model-${AGENT_MODEL_ID}"
+    timeout: 5000
+- tapOn:
+    id: "new-session-model-${AGENT_MODEL_ID}"
+- extendedWaitUntil:
+    visible:
+      id: "new-session-role"
+    timeout: 5000
+- waitForAnimationToEnd
+- tapOn:
+    id: "new-session-role"
+- scrollUntilVisible:
+    element:
+      id: "new-session-role-${ROLE_ID}"
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: role-sheet
+- tapOn:
+    id: "new-session-role-${ROLE_ID}"
+- extendedWaitUntil:
+    visible:
+      id: "new-session-role"
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: new-session-agent
+- tapOn: ${SESSION_CONFIG_CLOSE}
+- extendedWaitUntil:
+    visible:
+      id: "new-session-prompt"
+    timeout: 5000
+- assertVisible:
+    id: "new-session-agent"
+    text: "(?s).*${ROLE_NAME}.*"
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ${NEW_SESSION_ACTION}
+    timeout: 10000
+- tapOn: ${NEW_SESSION_ACTION}
+- extendedWaitUntil:
+    visible:
+      id: "new-session-agent"
+      text: "(?s).*${ROLE_NAME}.*"
+    timeout: 10000
+- tapOn:
+    id: "new-session-agent"
+- extendedWaitUntil:
+    visible:
+      id: "new-session-workspace"
+      text: "(?s).*${WORKSPACE_NAME}.*"
+    timeout: 5000
+- assertVisible:
+    id: "new-session-model"
+    text: "(?s).*${NEW_SESSION_MODEL}.*"
+- takeScreenshot: new-session-restored
+- tapOn: ${SESSION_CONFIG_CLOSE}
+- extendedWaitUntil:
+    visible:
+      id: "new-session-prompt"
+    timeout: 5000
+- tapOn:
+    id: "new-session-prompt"
+- inputText: ${NEW_SESSION_PROMPT}
+- takeScreenshot: new-session-filled
+- tapOn: ${SEND_ACTION}
+- extendedWaitUntil:
+    visible: ${SEND_REPLY}
+    timeout: 20000
+- assertVisible: ${NEW_SESSION_PROMPT}
+- waitForAnimationToEnd
+- takeScreenshot: new-session-reply
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${WORKSPACE_NAME}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - extendedWaitUntil:
+          visible: ${WORKSPACE_NAME}
+          timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - repeat:
+          times: 3
+          commands:
+            - swipe:
+                start: 50%, 35%
+                end: 50%, 85%
+      - waitForAnimationToEnd
+- tapOn: ${SEARCH_OPEN}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${SEARCH_PLACEHOLDER}
+- inputText: ${SEARCH_QUERY}
+- extendedWaitUntil:
+    visible: ${SEARCHED_SESSION_TITLE}
+    timeout: 5000
+- assertNotVisible: ${OTHER_SESSION_TITLE}
+- waitForAnimationToEnd
+- takeScreenshot: sessions-search
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${SEARCHED_SESSION_TITLE}
+      - extendedWaitUntil:
+          visible: ${SEARCHED_SESSION_LAST_PROMPT}
+          timeout: 10000
+- assertVisible:
+    id: "composer-input"
+- assertNotVisible: ${TAB_SETTINGS}
+- waitForAnimationToEnd
+- takeScreenshot: session-detail
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${PROMPTS_ACTION}
+      - extendedWaitUntil:
+          visible:
+            id: "transcript-prompt-${SEARCHED_SESSION_FIRST_PROMPT_ID}"
+          timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: prompt-outline
+- tapOn:
+    id: "transcript-prompt-${SEARCHED_SESSION_FIRST_PROMPT_ID}"
+- extendedWaitUntil:
+    visible: ${SEARCHED_SESSION_FIRST_PROMPT}
+    timeout: 5000
+- assertNotVisible:
+    id: "transcript-prompt-${SEARCHED_SESSION_FIRST_PROMPT_ID}"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${SEARCHED_SESSION_TITLE}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- tapOn: ${SEARCH_DISMISS}
+- extendedWaitUntil:
+    visible: "${ROLE_NAME}[ ·,].*"
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: ${SHOW_MORE}
+    centerElement: true
+    optional: true
+- tapOn:
+    text: ${SHOW_MORE}
+    optional: true
+- scrollUntilVisible:
+    element: ${OTHER_SESSION_TITLE}
+    timeout: 10000
+- scrollUntilVisible:
+    element: ${SEARCHED_SESSION_TITLE}
+    direction: UP
+    timeout: 10000
+- scrollUntilVisible:
+    element: ${SEND_SESSION_TITLE}
+    direction: UP
+    centerElement: true
+- longPressOn: ${SEND_SESSION_TITLE}
+- extendedWaitUntil:
+    visible:
+      id: session-action-archive
+    timeout: 5000
+- takeScreenshot: session-actions
+- tapOn:
+    id: session-action-archive
+- extendedWaitUntil:
+    notVisible: ${SEND_SESSION_TITLE}
+    timeout: 10000
+- tapOn: ${TAB_SETTINGS}
+- waitForAnimationToEnd
+- tapOn:
+    id: settings-archived
+- extendedWaitUntil:
+    visible: ${SEND_SESSION_TITLE}
+    timeout: 10000
+- takeScreenshot: archived
+- tapOn: ${RESTORE_ACTION}
+- extendedWaitUntil:
+    notVisible: ${SEND_SESSION_TITLE}
+    timeout: 10000

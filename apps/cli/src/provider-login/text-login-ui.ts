@@ -15,7 +15,7 @@ function browserCommand(url: string): [string, string[]] {
   return ["xdg-open", [url]];
 }
 
-function openBrowser(url: string) {
+export function openBrowser(url: string) {
   const [command, args] = browserCommand(url);
   spawn(command, args, { stdio: "ignore", detached: true })
     .on("error", () => {})

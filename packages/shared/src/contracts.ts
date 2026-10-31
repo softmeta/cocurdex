@@ -1,3 +1,4 @@
+import { pathBaseName } from "./files";
 import type {
   AgentNativeWorkspaceEvidenceEvent,
   AgentTurnChangesUpdatedEvent,
@@ -292,7 +293,7 @@ export interface WorkspaceRecord {
   missingRootPaths?: string[];
 }
 
-export type SessionKind = "main" | "subagent" | "teammate";
+export type SessionKind = "main" | "subagent" | "teammate" | "chat";
 
 export interface SessionRecord {
   id: string;
@@ -311,6 +312,7 @@ export interface SessionRecord {
   updatedAt: string;
   lastMessageAt: string | null;
   archivedAt?: string | null;
+  pinnedAt?: string | null;
   providerSnapshot?: AgentProviderSnapshot | null;
   worktreePath?: string | null;
   peerInbound?: "deliver" | "refuse";
@@ -514,22 +516,6 @@ export interface ImageAttachment {
   height: number;
 }
 
-export interface ImportImageAttachmentPayload {
-  dataUrl: string;
-  height: number;
-  mimeType: string;
-  name: string;
-  sizeBytes: number;
-  width: number;
-}
-
-export interface ImportDocumentAttachmentPayload {
-  dataUrl: string;
-  mimeType: string;
-  name: string;
-  sizeBytes: number;
-}
-
 export interface DocumentAttachment {
   kind: "document";
   id: string;
@@ -633,7 +619,7 @@ export function formatContextFileChipLabel(
     | "endColumn"
   >,
 ): string {
-  const fileName = attachment.filePath.split("/").pop() ?? attachment.filePath;
+  const fileName = pathBaseName(attachment.filePath);
   if (attachment.contentOmitted) {
     return fileName;
   }
@@ -664,6 +650,25 @@ export interface MessageRecord {
   createdAt: string;
   seq?: number;
   origin?: MessageOrigin | null;
+  runId?: string | null;
+}
+
+export type RunStatus =
+  | "running"
+  | "completed"
+  | "cancelled"
+  | "failed"
+  | "interrupted";
+
+export interface RunRecord {
+  id: string;
+  sessionId: string;
+  triggerMessageId: string;
+  status: RunStatus;
+  error?: string | null;
+  startedAt: string;
+  endedAt?: string | null;
+  agentType?: AgentId | null;
 }
 
 export interface AgentToolCallLocation {
@@ -680,7 +685,9 @@ export type AgentToolCallContent =
       type: "diff";
       path: string;
       oldText?: string | null;
-      newText: string;
+      newText?: string;
+      additions?: number;
+      deletions?: number;
     }
   | {
       type: "terminal";
@@ -717,6 +724,7 @@ export interface AgentToolCallRecord {
   startedAt: string;
   updatedAt: string;
   seq?: number;
+  runId?: string | null;
 }
 
 export type AgentPermissionDecision =
@@ -909,6 +917,12 @@ export interface AgentStateChangedEvent {
   type: "state.changed";
   sessionId: string;
   status: SessionStatus;
+}
+
+export interface AgentRunUpdatedEvent {
+  type: "run.updated";
+  sessionId: string;
+  run: RunRecord;
 }
 
 export interface AgentErrorEvent {
@@ -1268,6 +1282,7 @@ export type AgentEvent =
   | AgentTurnCompletedEvent
   | AgentNativeWorkspaceEvidenceEvent
   | AgentTurnChangesUpdatedEvent
+  | AgentRunUpdatedEvent
   | AgentErrorEvent;
 
 export type AgentInputDelivery =
@@ -1301,6 +1316,20 @@ export interface UpdateSessionTitlePayload {
   updatedAt?: string;
 }
 
+export interface SetSessionPinnedPayload {
+  sessionId: string;
+  pinned: boolean;
+}
+
+export interface SessionIdsPayload {
+  sessionIds: string[];
+}
+
+export interface ArchiveSessionsResult {
+  archivedSessionIds: string[];
+  skippedCount: number;
+}
+
 export interface ArchiveSessionPayload {
   sessionId: string;
   archivedAt?: string;
@@ -1308,6 +1337,38 @@ export interface ArchiveSessionPayload {
 
 export interface DeleteSessionPayload {
   sessionId: string;
+}
+
+export interface SessionRuntimeSelection {
+  reasoningEffort?: ReasoningEffort | null;
+  serviceTier?: string | null;
+  fastMode?: boolean | null;
+  thinkingLevel?: AgentThinkingLevel | null;
+  openCodeAgent?: string | null;
+  openCodeVariant?: string | null;
+}
+
+export interface CreateSessionPayload {
+  workspaceId: string;
+  agentType?: AgentId;
+  model?: { providerId: string; modelId: string } | null;
+  permissionMode?: AgentPermissionMode | null;
+  agentRoleId?: string | null;
+  title?: string;
+  runtime?: SessionRuntimeSelection;
+}
+
+export interface UpdateSessionRuntimePayload {
+  sessionId: string;
+  model?: { providerId: string; modelId: string };
+  runtime?: SessionRuntimeSelection;
+}
+
+export interface NewSessionDefaults {
+  agentType: AgentId;
+  model: { providerId: string; modelId: string; name: string } | null;
+  permissionMode: AgentPermissionMode | null;
+  permissionModes: AgentPermissionMode[];
 }
 
 export interface RefineSessionTitlePayload {
@@ -1353,6 +1414,14 @@ export interface AppBootstrapData {
   sessions: SessionRecord[];
   queuedMessages: MessageRecord[];
   queuedAgentInputs: QueuedAgentInputRecord[];
+  activeRuns: RunRecord[];
   sessionUsage: Record<string, AgentUsageRecord>;
   editorViews: EditorViewRecord[];
+  syncCursor: string;
+  pausedQueueSessionIds: string[];
 }
+
+export type StoredBootstrapData = Omit<
+  AppBootstrapData,
+  "pausedQueueSessionIds"
+>;

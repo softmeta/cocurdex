@@ -2,10 +2,6 @@ import { requestDaemon } from "@cocurdex/daemon/client";
 import type { TaskApi } from "@cocurdex/shared";
 
 export const taskApi: Omit<TaskApi, "onAgentEvent"> = {
-  submitPreviousMessage: (message) =>
-    requestDaemon("session.resubmit", message),
-  getPreviousMessageCheckpointStatus: (sessionId, messageId) =>
-    requestDaemon("session.checkpointStatus", { sessionId, messageId }),
   listSessions: () => requestDaemon("session.list"),
   getSessionSnapshot: (sessionId) =>
     requestDaemon("session.snapshot", { sessionId }),

@@ -7,7 +7,13 @@ import { CornerDownLeft, Plus } from "lucide-react";
 import type { ClipboardEvent, ReactNode, RefObject } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui";
 import { cn } from "@/lib";
 import {
   composerSendButtonClassName,
@@ -168,7 +174,6 @@ export function PanelComposer({
               menuRef={contextFileMentions.menuRef}
               onSelect={contextFileMentions.selectFile}
               placement={mentionMenuPlacement}
-              tone={tone}
             />
             <SlashCommandMenu
               anchor={mentionAnchor}
@@ -179,7 +184,6 @@ export function PanelComposer({
               onHighlightIndex={slashCommands.setHighlightedIndex}
               onSelect={slashCommands.selectCommand}
               placement={mentionMenuPlacement}
-              tone={tone}
             />
             <MentionEditor
               ariaLabel={
@@ -212,20 +216,32 @@ export function PanelComposer({
           <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-1">
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    aria-label={t("common:actions.attach")}
-                    className={cn(
-                      "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors",
-                      tone === "welcome"
-                        ? "text-welcome-fg-muted hover:bg-chat-surface-control hover:text-welcome-fg-secondary"
-                        : "text-chat-fg-muted hover:bg-chat-surface-control hover:text-chat-fg",
-                    )}
-                    type="button"
-                  >
-                    <Plus className="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <DropdownMenuTrigger
+                        render={
+                          <button
+                            aria-label={t("common:actions.attach")}
+                            className={cn(
+                              "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors",
+                              tone === "welcome" &&
+                                "text-welcome-fg-muted hover:bg-chat-surface-control hover:text-welcome-fg-secondary",
+                              tone !== "welcome" &&
+                                "text-chat-fg-muted hover:bg-chat-surface-control hover:text-chat-fg",
+                            )}
+                            type="button"
+                          >
+                            <Plus className="size-4" />
+                          </button>
+                        }
+                      />
+                    }
+                  />
+                  <TooltipContent side="top" sideOffset={6}>
+                    {t("common:actions.attach")}
+                  </TooltipContent>
+                </Tooltip>
                 {attachMenuContent}
               </DropdownMenu>
               {footerLeading}

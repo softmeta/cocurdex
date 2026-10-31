@@ -32,7 +32,7 @@ describe("daemon data RPCs over the wire", () => {
       },
       daemon.options,
     );
-    expect(updated.bodyMarkdown).toBe("- [ ] smoke\n");
+    expect(updated.bodyMarkdown).toBe("- [ ] smoke");
 
     await expect(
       requestDaemon(
@@ -50,6 +50,8 @@ describe("daemon data RPCs over the wire", () => {
     expect(fetched).toMatchObject({
       id: created.id,
       title: "Release checklist",
+      bodyMarkdown: updated.bodyMarkdown,
+      revision: updated.revision,
     });
 
     const listed = await requestDaemon("note.list", daemon.options);

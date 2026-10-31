@@ -37,7 +37,7 @@ function Toaster(props: ToasterProps) {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
-          "--toast-close-button-start": "unset",
+          "--toast-close-button-start": "auto",
           "--toast-close-button-end": "0",
           "--toast-close-button-transform": "translate(35%, -35%)",
           // Map richColors success/error onto product status tokens so toasts

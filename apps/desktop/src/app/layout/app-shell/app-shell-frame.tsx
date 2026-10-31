@@ -41,21 +41,22 @@ import {
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
-import { SearchPalette, useOpenContextItemBridge } from "../search-palette";
+import { SearchPalette, useOpenEntityBridge } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
-import { ScreenNavButtons, SidebarToggleButton } from "../sidebar";
+import { SidebarToggleButton } from "../sidebar";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
 import { AppShellContent } from "./app-shell-content";
 import {
-  TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_HEIGHT,
+  TITLEBAR_LEADING_RESERVE,
   TITLEBAR_PANE_HEADER_START_INSET,
-  TITLEBAR_TRAFFIC_LIGHT_RESERVE,
+  withTitlebarControlsInset,
 } from "./app-shell-layout";
 import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
 import { BootSplash } from "./boot-splash";
+import { RightPanelWindowActions } from "./right-panel-window-actions";
 
 interface AppShellFrameProps {
   activeScreen: AppScreen;
@@ -63,7 +64,6 @@ interface AppShellFrameProps {
   activeWorkspaceRootPaths: string[];
   appearanceSettings: AppearanceSettings;
   canGoBack: boolean;
-  canGoForward: boolean;
   contentRowRef: Ref<HTMLElement>;
   effectiveRightWidth: number;
   /** Visible in the app shell (may be forced closed while editor is fullscreen). */
@@ -92,7 +92,6 @@ interface AppShellFrameProps {
   onChatLayoutModeChange(mode: ChatLayoutMode): void;
   onHideFabWhenClosedChange(hide: boolean): void;
   onGoBack(): void;
-  onGoForward(): void;
   onOpenFileFromPalette(file: WorkspaceFileEntry): void;
   onOpenSettings(): void;
   onResizeHandleMouseDown(
@@ -117,7 +116,6 @@ export function AppShellFrame({
   activeWorkspaceRootPaths,
   appearanceSettings,
   canGoBack,
-  canGoForward,
   contentRowRef,
   effectiveRightWidth,
   isLeftSidebarOpen,
@@ -139,7 +137,6 @@ export function AppShellFrame({
   onChatLayoutModeChange,
   onHideFabWhenClosedChange,
   onGoBack,
-  onGoForward,
   onOpenFileFromPalette,
   onOpenSettings,
   onResizeHandleMouseDown,
@@ -181,7 +178,7 @@ export function AppShellFrame({
   const setSidebarTab = useSetAtom(sidebarTabAtom);
   const composerRef = useChatContext(() => onChatDockVisibilityChange("open"));
   useChatBrowserContext();
-  useOpenContextItemBridge();
+  useOpenEntityBridge();
   const dock = useDockGeometry();
   const requestChatContext = useSetAtom(requestChatContextAtom);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
@@ -226,11 +223,11 @@ export function AppShellFrame({
   // mount point renders it at a time (center when side by side, dock when the
   // editor is fullscreen), so chat state and composerRef survive the switch.
   // The dock drops the titlebar spacer but keeps the session pane header.
-  let paneHeaderEndInset = 0;
+  let paneHeaderEndInset: number | string = 0;
   if (isRightPanelCompact && !isRightPanelMaximized) {
     paneHeaderEndInset = CHAT_DOCK_ACTIONS_INSET;
   } else if (!isRightPanelOpen) {
-    paneHeaderEndInset = TITLEBAR_EDITOR_TOGGLE_WIDTH;
+    paneHeaderEndInset = withTitlebarControlsInset(0);
   }
   const splitChatNode = (
     <SessionSplitLayout
@@ -309,7 +306,7 @@ export function AppShellFrame({
               className="app-drag flex h-full shrink-0 items-center"
               style={{
                 width: isLeftSidebarOpen ? leftWidth : undefined,
-                paddingInlineStart: TITLEBAR_TRAFFIC_LIGHT_RESERVE,
+                paddingInlineStart: TITLEBAR_LEADING_RESERVE,
               }}
             >
               {/*
@@ -325,16 +322,15 @@ export function AppShellFrame({
                 )}
               >
                 <SidebarToggleButton
-                  ariaLabel={t("editor:actions.toggleSidebar")}
+                  label={t("editor:actions.toggleSidebar")}
+                  open={isLeftSidebarOpen}
                   onToggle={onToggleLeftSidebar}
                 />
-                <ScreenNavButtons
-                  backLabel={t("editor:actions.goBack")}
-                  canGoBack={canGoBack}
-                  canGoForward={canGoForward}
-                  forwardLabel={t("editor:actions.goForward")}
-                  onGoBack={onGoBack}
-                  onGoForward={onGoForward}
+                <AppShellTitlebarActions
+                  isChatDetached={isChatDetached}
+                  isRightPanelOpen={isRightPanelOpen}
+                  onOpenSettings={onOpenSettings}
+                  onToggleRightPanel={onToggleRightPanel}
                 />
               </div>
             </div>
@@ -347,27 +343,22 @@ export function AppShellFrame({
             <div
               className="app-drag flex h-full shrink-0 items-center justify-end px-3"
               style={{
-                width: isRightPanelOpen
-                  ? Math.max(
-                      0,
-                      effectiveRightWidth - TITLEBAR_EDITOR_TOGGLE_WIDTH,
-                    )
-                  : undefined,
+                width: isRightPanelOpen ? effectiveRightWidth : undefined,
               }}
             />
           </header>
 
-          <AppShellTitlebarActions
-            isChatDetached={isChatDetached}
-            isRightPanelOpen={isRightPanelOpen}
-            isRightPanelMaximized={isRightPanelMaximized}
-            onToggleRightPanel={onToggleRightPanel}
-            onToggleRightPanelMaximize={onToggleRightPanelMaximize}
-            onOpenSettings={onOpenSettings}
-          />
-
           <AppShellContent
             isRightPanelCompact={isRightPanelCompact}
+            rightPanelActions={
+              isChatDetached ? null : (
+                <RightPanelWindowActions
+                  isRightPanelMaximized={isRightPanelMaximized}
+                  onToggleRightPanelMaximize={onToggleRightPanelMaximize}
+                  onCloseRightPanel={onToggleRightPanel}
+                />
+              )
+            }
             contentRowRef={contentRowRef}
             dock={dock}
             isLeftSidebarOpen={isLeftSidebarOpen}
@@ -404,13 +395,11 @@ export function AppShellFrame({
             activeSection={activeSettingsSection}
             appearanceSettings={appearanceSettings}
             canGoBack={canGoBack}
-            canGoForward={canGoForward}
             chatLayoutMode={chatLayoutMode}
             hideFabWhenClosed={hideFabWhenClosed}
             isSidebarOpen={isLeftSidebarPreferredOpen}
             sidebarWidth={leftWidth}
             onGoBack={onGoBack}
-            onGoForward={onGoForward}
             languageMode={languageMode}
             notificationSettings={notificationSettings}
             onAppearanceSettingsChange={onAppearanceSettingsChange}

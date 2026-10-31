@@ -1,15 +1,18 @@
+import { hasMacTrafficLights } from "@/lib/platform";
+
 /**
  * Shared layout metrics for the app shell.
  *
- * The titlebar toolbar (sidebar toggle, back, forward) is rendered inside a
- * box clamped to the sidebar width in `app-shell-frame.tsx`. If the sidebar
- * can shrink below the toolbar's intrinsic width, the trailing forward arrow
- * overflows past the sidebar separator. Deriving `MIN_LEFT` from the toolbar
+ * The titlebar toolbar (sidebar toggle, proxy status, editor panel, settings)
+ * is rendered inside a box clamped to the sidebar width in
+ * `app-shell-frame.tsx`. If the sidebar can shrink below the toolbar's
+ * intrinsic width, the trailing control overflows past the sidebar separator. Deriving `MIN_LEFT` from the toolbar
  * footprint keeps every control visible at the narrowest sidebar.
  */
 
 // Keep electron `trafficLightPosition.y` centered in this height:
-// y ≈ (TITLEBAR_HEIGHT - 14) / 2 = 9 for ~14px macOS lights (see main.ts).
+// y ≈ (TITLEBAR_HEIGHT - 14) / 2 = 9 for ~14px macOS lights
+// (see electron/window/title-bar-chrome.ts).
 export const TITLEBAR_HEIGHT = 32;
 
 /**
@@ -22,9 +25,14 @@ export const TITLEBAR_ICON_BUTTON_GAP = 4;
 // Left padding reserved for the macOS traffic lights. Lights end ~59px from
 // the edge at trafficLightPosition.x:12; 80px leaves a comfortable gap before
 // the first size-6 pill (matches the former settings `left-20` spacing).
-export const TITLEBAR_TRAFFIC_LIGHT_RESERVE = 80;
-// Number of square controls in the titlebar toolbar: toggle, back, forward.
-export const TITLEBAR_CONTROL_COUNT = 3;
+// Windows and Linux draw their window controls on the right instead.
+export const TITLEBAR_LEADING_RESERVE = hasMacTrafficLights() ? 80 : 12;
+
+export function withTitlebarControlsInset(px: number): string {
+  return `calc(${px}px + var(--titlebar-controls-inset))`;
+}
+// Square controls in the titlebar toolbar: toggle, panel, proxy, settings.
+export const TITLEBAR_CONTROL_COUNT = 4;
 export const TITLEBAR_CONTROL_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
 // No trailing padding: gap-1 between pills already spaces the cluster; the
 // sidebar separator sits at the box edge.
@@ -32,23 +40,10 @@ export const TITLEBAR_RIGHT_PADDING = 0;
 
 /** Intrinsic width the titlebar toolbar needs to render without overflow. */
 export const TITLEBAR_TOOLBAR_MIN_WIDTH =
-  TITLEBAR_TRAFFIC_LIGHT_RESERVE +
+  TITLEBAR_LEADING_RESERVE +
   TITLEBAR_CONTROL_COUNT * TITLEBAR_CONTROL_SIZE +
   (TITLEBAR_CONTROL_COUNT - 1) * TITLEBAR_ICON_BUTTON_GAP +
   TITLEBAR_RIGHT_PADDING;
-
-/**
- * Absolute top-right titlebar cluster: proxy status / maximize / panel / settings.
- * Keep ViewSwitcherTabs trailing reserve and pinned chat pe in sync.
- */
-export const TITLEBAR_EDITOR_TOGGLE_BUTTON_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
-export const TITLEBAR_EDITOR_TOGGLE_GAP = TITLEBAR_ICON_BUTTON_GAP;
-export const TITLEBAR_EDITOR_TOGGLE_PAD_X = 24; // px-3
-export const TITLEBAR_EDITOR_TOGGLE_COUNT = 5;
-export const TITLEBAR_EDITOR_TOGGLE_WIDTH =
-  TITLEBAR_EDITOR_TOGGLE_PAD_X +
-  TITLEBAR_EDITOR_TOGGLE_COUNT * TITLEBAR_EDITOR_TOGGLE_BUTTON_SIZE +
-  (TITLEBAR_EDITOR_TOGGLE_COUNT - 1) * TITLEBAR_EDITOR_TOGGLE_GAP;
 
 /**
  * Leading inset for a pane header that shares the titlebar row while the
@@ -58,8 +53,13 @@ export const TITLEBAR_EDITOR_TOGGLE_WIDTH =
 export const TITLEBAR_PANE_HEADER_START_INSET =
   TITLEBAR_TOOLBAR_MIN_WIDTH + TITLEBAR_ICON_BUTTON_GAP;
 
+export const MIN_SIDEBAR_CONTENT_WIDTH = 200;
+
 /** Minimum sidebar width; never narrower than the titlebar toolbar. */
-export const MIN_LEFT = TITLEBAR_TOOLBAR_MIN_WIDTH;
+export const MIN_LEFT = Math.max(
+  TITLEBAR_TOOLBAR_MIN_WIDTH,
+  MIN_SIDEBAR_CONTENT_WIDTH,
+);
 
 /**
  * Absolute max for the session/left sidebar. Layout remaining-space clamp can

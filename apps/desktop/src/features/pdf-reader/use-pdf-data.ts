@@ -1,22 +1,18 @@
 import { useState } from "react";
-import { desktopApi, useMountEffect } from "@/lib";
+import { useMountEffect } from "@/lib";
+import { type PdfSource, resolvePdfSource } from "./pdf-source";
 
 export type PdfLoadStatus = "loading" | "ready" | "error";
 
-// Resolves the pdf-asset URL through IPC. Mount-only: PdfViewer remounts
-// (via key) when the file changes, so filePath is stable for this instance's
-// lifetime. The cancelled guard drops a late IPC resolve if we unmount
-// mid-read so it never sets state on a torn-down component.
 export function usePdfData(filePath: string) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [source, setSource] = useState<PdfSource | null>(null);
   const [status, setStatus] = useState<PdfLoadStatus>("loading");
 
   useMountEffect(() => {
     let cancelled = false;
-    desktopApi
-      .readPdfData({ filePath })
-      .then((pdfUrl) => {
-        if (!cancelled) setUrl(pdfUrl);
+    resolvePdfSource(filePath)
+      .then((resolved) => {
+        if (!cancelled) setSource(resolved);
       })
       .catch(() => {
         if (!cancelled) setStatus("error");
@@ -26,5 +22,5 @@ export function usePdfData(filePath: string) {
     };
   });
 
-  return { url, status, setStatus };
+  return { source, status, setStatus };
 }

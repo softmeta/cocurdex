@@ -43,6 +43,7 @@ import {
   OPENCODE_BUILD_AGENT,
   type OpenCodeSessionSelection,
 } from "./opencode-selection";
+import { createOpenCodeSessionMcp } from "./opencode-session-mcp";
 
 const descriptor = getAgentDescriptor("opencode");
 
@@ -97,6 +98,8 @@ export function createOpencodeAdapter(): AgentAdapter {
       let lastNativeDiff: ReturnType<typeof openCodeDiffsToEvidence> | null =
         null;
       const sessionId = payload.session.id;
+      const sessionMcp = createOpenCodeSessionMcp(payload);
+      let resumedPermissions: Parameters<typeof sessionMcp.applyRules>[2];
       const updateNativeSessionTitle = createNativeSessionTitleTracker({
         initialTitle: payload.providerSession ? null : payload.session.title,
         isUsableTitle: (title) => !/^New session(?:\s*-.*)?$/i.test(title),
@@ -148,6 +151,7 @@ export function createOpencodeAdapter(): AgentAdapter {
           if (disposed) {
             throw new Error("OpenCode session was disposed during resume");
           }
+          resumedPermissions = saved.permissions;
           claimSession(saved.id, {
             agent: saved.agent ?? OPENCODE_BUILD_AGENT,
             model: saved.model ?? null,
@@ -205,16 +209,17 @@ export function createOpencodeAdapter(): AgentAdapter {
           payload.session.sessionModeId,
           snapshot,
         );
+        const directory = await resolveSnapshotCapableDirectory(
+          payload.workspaceRootPath,
+        );
+        await sessionMcp.sync(openCodeClient, directory);
         if (!activeSessionId) {
           if (requiresNativeSessionRecovery(messagePayload.history)) {
             throw createNativeSessionRecoveryError("OpenCode");
           }
           const created = await openCodeClient.session.create({
-            location: {
-              directory: await resolveSnapshotCapableDirectory(
-                payload.workspaceRootPath,
-              ),
-            },
+            location: { directory },
+            permissions: sessionMcp.createPermissions(),
             agent: selection.agent,
             ...(selection.model ? { model: selection.model } : {}),
           });
@@ -222,6 +227,7 @@ export function createOpencodeAdapter(): AgentAdapter {
             await openCodeClient.session.remove({ sessionID: created.id });
             throw new Error("OpenCode session was disposed during creation");
           }
+          sessionMcp.markRulesApplied(created.id);
           claimSession(created.id, selection);
           logOpenCode("info", "OpenCode session created", {
             appSessionId: sessionId,
@@ -231,6 +237,11 @@ export function createOpencodeAdapter(): AgentAdapter {
         }
 
         const openCodeSessionId = activeSessionId;
+        await sessionMcp.applyRules(
+          openCodeClient,
+          openCodeSessionId,
+          resumedPermissions,
+        );
         if (sessionSelection?.agent !== selection.agent) {
           await openCodeClient.session.switchAgent({
             sessionID: openCodeSessionId,
@@ -483,6 +494,7 @@ export function createOpencodeAdapter(): AgentAdapter {
           if (activeSessionId) {
             claimedOpenCodeSessionIds.delete(activeSessionId);
           }
+          sessionMcp.dispose(client);
           client = null;
         },
       };

@@ -6,6 +6,7 @@ import type {
 } from "@cocurdex/rpc";
 import type { ProviderAuthMethod } from "@cocurdex/shared";
 import { validateSessionId } from "@cocurdex/shared";
+import { importDocImage, locateDocImage } from "./doc-images";
 import {
   checkoutGitBranch,
   discardGitFiles,
@@ -18,7 +19,36 @@ import {
   stageGitFiles,
   unstageGitFiles,
 } from "./git";
+import {
+  type DaemonRequestContext,
+  handleHostRequest,
+  isHostRequest,
+  LOCAL_REQUEST_CONTEXT,
+} from "./host-access";
+import { parseDaemonRequest } from "./payloads";
 import type { CocurdexDaemonService } from "./service";
+import {
+  handleSkillRequest,
+  isSkillRequest,
+} from "./skills/handle-skill-request";
+
+function assertLocalPrincipal(context: DaemonRequestContext, method: string) {
+  if (context.principal.kind !== "local") {
+    throw new Error(`${method} is only available on this computer`);
+  }
+}
+
+function assertWorkspaceForRemote(
+  context: DaemonRequestContext,
+  method: string,
+  workspaceId: string | undefined,
+) {
+  if (context.principal.kind !== "local" && !workspaceId) {
+    throw new Error(
+      `${method} from another device must run in a registered workspace`,
+    );
+  }
+}
 
 function isProviderAuthMethod(value: unknown): value is ProviderAuthMethod {
   return value === "oauth" || value === "api_key";
@@ -27,41 +57,34 @@ function isProviderAuthMethod(value: unknown): value is ProviderAuthMethod {
 export function handleDaemonRequest<M extends DaemonMethod>(
   service: CocurdexDaemonService,
   request: DaemonRequest<M>,
+  context?: DaemonRequestContext,
 ): Promise<DaemonResultByMethod[M]>;
 export async function handleDaemonRequest(
   service: CocurdexDaemonService,
-  request: DaemonRequest,
+  rawRequest: DaemonRequest,
+  context: DaemonRequestContext = LOCAL_REQUEST_CONTEXT,
 ) {
+  const request = parseDaemonRequest(rawRequest);
+  await service.hostAccessReady;
+  if (isHostRequest(request)) {
+    return handleHostRequest(service.hostAccess, request, context);
+  }
+  if (isSkillRequest(request)) {
+    return handleSkillRequest(service, request, context);
+  }
   await service.acpRegistry.ready;
   switch (request.method) {
-    case "chat.list":
-      return service.chatService.list();
-    case "chat.get":
-      return service.chatService.get(request.params.conversationId);
-    case "chat.create":
-      return service.createConversation(request.params);
-    case "chat.update":
-      return service.chatService.update(request.params);
-    case "chat.archive":
-      return service.chatService.archive(request.params.conversationId);
-    case "chat.delete":
-      return service.chatService.delete(request.params.conversationId);
-    case "chat.stop":
-      return service.chatService.stop(request.params.conversationId);
-    case "chat.send":
-      return service.sendConversationMessage(request.params);
-    case "chat.retry":
-      return service.retryConversationMessage(request.params);
-    case "chat.edit":
-      return service.editConversationMessage(request.params);
     case "daemon.status":
       return service.status();
     case "daemon.shutdownIfIdle":
+    case "daemon.health":
+    case "diagnostics.export":
+    case "diagnostics.logLevel.set":
       throw new Error(
-        "daemon.shutdownIfIdle is intercepted before request dispatch",
+        `${request.method} is intercepted before request dispatch`,
       );
-    case "app.resync":
-      return service.resync(request.params.sessionIds);
+    case "sync.pull":
+      return service.pullSync(request.params);
     case "app.bootstrap":
       return service.bootstrap();
     case "agent.list":
@@ -69,11 +92,19 @@ export async function handleDaemonRequest(
     case "agent.sessionModes.read":
       return service.readAgentSessionModes(request.params.agentId);
     case "agent.login":
-      return service.providerService.loginAgent(request.params.agentId);
+      return service.agentAuth.login(request.params);
+    case "agent.login.cancel":
+      return service.agentAuth.cancelLogin(request.params.agentId);
+    case "agent.logout":
+      return service.agentAuth.logout(request.params.agentId);
+    case "agent.auth.read":
+      return service.agentAuth.read(request.params.agentId);
     case "acpRegistry.catalog":
       return service.acpRegistry.listCatalog(request.params);
     case "acpRegistry.install":
       return service.installAcpRegistryAgent(request.params.registryId);
+    case "acpRegistry.installCommand":
+      return service.installAcpRegistryCommand(request.params);
     case "acpRegistry.uninstall":
       return service.uninstallAcpRegistryAgent(request.params.agentId);
     case "agent.rateLimits.read":
@@ -88,20 +119,50 @@ export async function handleDaemonRequest(
       return service.getNetworkProxySettings();
     case "network.proxy.set":
       return service.setNetworkProxySettings(request.params.settings);
+    case "memory.status":
+      return service.memory.getStatus(request.params.refresh);
+    case "memory.settings.get":
+      return service.memory.getSettings();
+    case "memory.settings.set":
+      return service.memory.setSettings(request.params.settings);
+    case "memory.recall":
+      return service.memory.recall(request.params);
+    case "memory.show":
+      return service.memory.show(request.params.id);
+    case "memory.remember":
+      return service.memory.remember(request.params);
+    case "memory.session.save":
+      return service.memory.saveSession(request.params);
+    case "memory.install":
+      return service.memory.install(request.params.force);
+    case "memory.doctor":
+      return service.memory.doctor(request.params);
+    case "memory.policy":
+      return service.memory.policy();
+    case "memory.cloud.connect":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.connectCloud(request.params);
+    case "memory.cloud.disconnect":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.disconnectCloud();
+    case "memory.cloud.setSync":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.setCloudSync(request.params.enabled);
+    case "memory.cloud.keys":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.cloudKeys();
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":
       return service.updateSessionAttention(request.params);
-    case "attachment.importImage":
-      return service.attachments.importImage(request.params);
-    case "attachment.importDocument":
-      return service.attachments.importDocument(request.params);
-    case "attachment.readImageDataUrl":
-      return service.attachments.readImageDataUrl(request.params.filePath);
     case "note.list":
       return service.dataService.listNotes();
     case "note.get":
       return service.dataService.getNote(request.params);
+    case "note.getDoc":
+      return service.dataService.getNoteDoc(request.params);
+    case "note.applyDocUpdate":
+      return service.dataService.applyNoteDocUpdate(request.params);
     case "note.create":
       return service.dataService.createNote(request.params);
     case "note.update":
@@ -115,6 +176,68 @@ export async function handleDaemonRequest(
       return service.dataService.listNoteTags(request.params.noteId);
     case "note.backlinks":
       return service.dataService.listNoteBacklinks(request.params);
+    case "link.list":
+      return service.dataService.listEntityLinks(request.params);
+    case "link.candidates":
+      return service.dataService.listEntityLinkCandidates();
+    case "link.add":
+      return service.dataService.addEntityLink(request.params);
+    case "link.remove":
+      return service.dataService.removeEntityLink(request.params);
+    case "deck.list":
+      return service.decks.list();
+    case "deck.get":
+      return service.decks.get(request.params);
+    case "deck.create":
+      return service.decks.create(request.params);
+    case "deck.update":
+      return service.decks.update(request.params);
+    case "deck.edit":
+      return service.decks.edit(request.params);
+    case "deck.delete":
+      await service.decks.delete(request.params);
+      return null;
+    case "deck.check":
+      return service.decks.check(request.params);
+    case "deck.createDownload":
+      return service.decks.createDownload(request.params);
+    case "deck.exportFile":
+      await service.assertClientPathAccess(
+        context.principal,
+        request.params.outputPath,
+        "outputFile",
+      );
+      return service.decks.exportFile(request.params);
+    case "deck.importImage":
+      await service.assertClientPathAccess(
+        context.principal,
+        request.params.path,
+        "file",
+      );
+      return service.decks.importImage(request.params);
+    case "image.import":
+      await service.assertClientPathAccess(
+        context.principal,
+        request.params.path,
+        "file",
+      );
+      return importDocImage(service.attachments, request.params);
+    case "image.locate":
+      return locateDocImage(service.attachments, request.params);
+    case "deck.import":
+      await service.assertClientPathAccess(
+        context.principal,
+        request.params.path,
+        "file",
+      );
+      return service.decks.importPptx(request.params);
+    case "deck.readPptx":
+      await service.assertClientPathAccess(
+        context.principal,
+        request.params.path,
+        "file",
+      );
+      return service.decks.readPptx(request.params);
     case "issue.listViews":
       return service.dataService.listIssueViews();
     case "issue.loadView":
@@ -146,6 +269,27 @@ export async function handleDaemonRequest(
     case "issue.delete":
       await service.dataService.deleteIssue(request.params);
       return null;
+    case "issue.getDetail":
+      return service.dataService.getIssueDetail(request.params);
+    case "issue.listLabels":
+      return service.dataService.listIssueLabels();
+    case "issue.createLabel":
+      return service.dataService.createIssueLabel(request.params);
+    case "issue.updateLabel":
+      return service.dataService.updateIssueLabel(request.params);
+    case "issue.deleteLabel":
+      await service.dataService.deleteIssueLabel(request.params);
+      return null;
+    case "issue.addRelation":
+      return service.dataService.addIssueRelation(request.params);
+    case "issue.removeRelation":
+      return service.dataService.removeIssueRelation(request.params);
+    case "issue.comment":
+      return service.dataService.commentIssue(request.params);
+    case "issue.linkSession":
+      return service.dataService.linkIssueSession(request.params);
+    case "issue.listLinkedSessionIds":
+      return service.dataService.listIssueLinkedSessionIds();
     case "search.documents":
       return service.dataService.searchDocuments(request.params);
     case "workspace.list":
@@ -154,12 +298,40 @@ export async function handleDaemonRequest(
       return service.listWorkspaceEntries(request.params.rootPath);
     case "workspace.listFiles":
       return service.listWorkspaceFiles(request.params.rootPath);
+    case "workspace.listDirectory":
+      return service.listWorkspaceDirectory(
+        request.params.rootPath,
+        request.params.relativePath,
+      );
     case "file.readText":
       return service.readWorkspaceTextFile(request.params.filePath);
     case "file.exists":
       return service.workspaceFileExists(request.params.filePath);
     case "fs.listDirectories":
       return service.listHostDirectories(request.params.path);
+    case "system.homeDir":
+      return service.homeDir();
+    case "system.fontFamilies":
+      return service.listFontFamilies();
+    case "system.openDirectory":
+      return service.openDirectoryInFileManager(request.params.path);
+    case "system.revealPath":
+      return service.revealPathInFileManager(request.params.path);
+    case "terminal.spawn":
+      return service.terminals.spawn(request.params);
+    case "terminal.write":
+      service.terminals.write(request.params.terminalId, request.params.data);
+      return null;
+    case "terminal.resize":
+      service.terminals.resize(
+        request.params.terminalId,
+        request.params.cols,
+        request.params.rows,
+      );
+      return null;
+    case "terminal.kill":
+      service.terminals.kill(request.params.terminalId);
+      return null;
     case "search.start":
       await service.searchService.start(request.params);
       return null;
@@ -167,15 +339,77 @@ export async function handleDaemonRequest(
       service.searchService.cancel(request.params.searchId);
       return null;
     case "mcp.readConfig":
-      return service.mcpConfigService.readConfig();
+      return service.mcp.config.readConfig();
     case "mcp.saveConfig":
-      return service.mcpConfigService.saveConfig(request.params.content);
-    case "skills.getStatus":
-      return service.skillsService.getStatus(request.params);
-    case "skills.install":
-      return service.skillsService.install(request.params);
-    case "skills.remove":
-      return service.skillsService.remove(request.params);
+      return service.mcp.config.saveConfig(request.params.content);
+    case "mcp.readProjectConfig":
+      return service.mcp.readProjectConfig(request.params.workspaceId);
+    case "mcp.server.save":
+      return service.mcp.config.saveServer(
+        request.params.name,
+        request.params.config,
+        request.params.previousName,
+      );
+    case "mcp.server.remove":
+      return service.mcp.config.removeServer(request.params.name);
+    case "mcp.server.setEnabled":
+      return service.mcp.config.setServerEnabled(
+        request.params.name,
+        request.params.enabled,
+      );
+    case "mcp.server.setAgents":
+      return service.mcp.config.setServerAgents(
+        request.params.name,
+        request.params.agents,
+      );
+    case "mcp.injection.check":
+      return service.mcp.injectionSupport();
+    case "mcp.servers.merge":
+      return service.mcp.config.mergeServers(request.params.servers);
+    case "mcp.status":
+      assertWorkspaceForRemote(
+        context,
+        "mcp.status",
+        request.params.workspaceId,
+      );
+      return service.mcp.status(
+        request.params.workspaceId,
+        request.params.names,
+      );
+    case "mcp.server.test":
+      assertWorkspaceForRemote(
+        context,
+        "mcp.server.test",
+        request.params.workspaceId,
+      );
+      return service.mcp.test(
+        request.params.name,
+        request.params.config,
+        request.params.workspaceId,
+      );
+    case "mcp.login.start":
+      assertWorkspaceForRemote(
+        context,
+        "mcp.login.start",
+        request.params.workspaceId,
+      );
+      return service.mcp.startLogin(
+        request.params.name,
+        request.params.workspaceId,
+      );
+    case "mcp.login.wait":
+      return service.mcp.logins.wait(request.params.loginId);
+    case "mcp.login.cancel":
+      service.mcp.logins.cancel(request.params.loginId);
+      return null;
+    case "mcp.logout":
+      return service.mcp.logout(
+        request.params.name,
+        request.params.workspaceId,
+      );
+    case "mcp.import.scan":
+      assertLocalPrincipal(context, "mcp.import.scan");
+      return service.mcp.scanImports(request.params.workspaceId);
     case "pdf.loadAnnotations":
       return service.pdfAnnotationsService.loadAnnotations(
         request.params.filePath,
@@ -230,10 +464,33 @@ export async function handleDaemonRequest(
       return service.listSessions();
     case "session.snapshot":
       return service.getSessionSnapshot(request.params.sessionId);
+    case "session.executionTree":
+      return service.getSessionExecutionTree(
+        request.params.sessionId,
+        request.params.maxDepth,
+      );
+    case "session.fork":
+      return service.forkSession(request.params);
+    case "session.switchAgent":
+      return service.switchSessionAgent(
+        request.params.sessionId,
+        request.params.agentType,
+      );
+    case "session.contextTransfers":
+      return service.listContextTransfers(request.params.sessionId);
+    case "session.resolveNew":
+      return service.resolveNewSessionDefaults(request.params);
+    case "session.create":
+      return service.createSession(request.params);
     case "session.configure":
-      return service.saveSessionConfiguration(request.params);
+      return service.saveSessionConfiguration(
+        request.params,
+        context.principal,
+      );
     case "session.get":
       return service.getSession(request.params.sessionId);
+    case "session.runtimeState":
+      return service.getSessionRuntimeState(request.params.sessionId);
     case "session.listPeers":
       return service.peerMessaging.listPeers(request.params.sessionId);
     case "session.sendPeerMessage":
@@ -245,6 +502,8 @@ export async function handleDaemonRequest(
       );
     case "team.get":
       return service.team.get(request.params.leadSessionId);
+    case "team.create":
+      return service.team.create(request.params);
     case "team.spawn": {
       const { leadSessionId, ...payload } = request.params;
       return service.team.spawn(leadSessionId, payload);
@@ -375,6 +634,10 @@ export async function handleDaemonRequest(
       return service.archiveSession(request.params.sessionId);
     case "session.restore":
       return service.restoreSession(request.params.sessionId);
+    case "session.archiveMany":
+      return service.archiveSessions(request.params.sessionIds);
+    case "session.restoreMany":
+      return service.restoreSessions(request.params.sessionIds);
     case "session.listArchived":
       return service.state.listArchivedSessions();
     case "session.delete":
@@ -382,6 +645,8 @@ export async function handleDaemonRequest(
       return null;
     case "session.updateTitle":
       return service.updateSessionTitle(request.params);
+    case "session.setPinned":
+      return service.setSessionPinned(request.params);
     case "session.refineTitle":
       return service.refineSessionTitle(request.params);
     case "session.listMessages":
@@ -395,14 +660,11 @@ export async function handleDaemonRequest(
         request.params.agentType,
         request.params.workspaceRootPath,
       );
-    case "session.resubmit":
-      return service.submitPreviousMessage(request.params);
-    case "session.checkpointStatus":
-      return service.getPreviousMessageCheckpointStatus(
-        request.params.sessionId,
-        request.params.messageId,
-      );
     case "session.send":
+      await service.assertClientAttachmentsAccess(
+        context.principal,
+        request.params.attachments,
+      );
       return service.sendSessionMessage(request.params);
     case "session.resumeQueued":
       return service.resumeQueuedSession(request.params.sessionId);
@@ -440,6 +702,8 @@ export async function handleDaemonRequest(
         request.params.modeId,
       );
       return null;
+    case "session.updateRuntime":
+      return service.updateSessionRuntime(request.params, context.principal);
     case "session.stop":
       return service.stopSession(request.params.sessionId);
     case "session.undoTurnChanges":
@@ -492,6 +756,10 @@ export async function handleDaemonRequest(
       );
     case "provider.listConfigs":
       return service.providerService.listProviderConfigs();
+    case "agent.runLimits.get":
+      return service.getAgentRunLimits();
+    case "agent.runLimits.set":
+      return service.setAgentRunLimits(request.params.limits);
     case "git.commitMessageModel.get":
       return service.commitMessageService.getModelSetting();
     case "git.commitMessageModel.set":

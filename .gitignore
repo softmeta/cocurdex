@@ -25,6 +25,7 @@ apps/desktop/resources/cli/photon_rs_bg.wasm
 apps/desktop/resources/cli/worker.js
 apps/desktop/resources/cli/quickjs.wasm
 apps/desktop/resources/oss-licenses.json
+apps/desktop/resources/skills/
 coverage/
 .playwright/
 playwright-report/
@@ -37,3 +38,6 @@ playwright-report/
 .antigravitycli/
 .codegraph/
 .alma-snapshots
+/dev.ps1
+
+.turbo

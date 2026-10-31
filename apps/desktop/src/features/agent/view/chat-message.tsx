@@ -6,8 +6,9 @@ import {
   isContextFolderAttachment,
   isContextItemAttachment,
   type MessageRecord,
+  pathBaseName,
 } from "@cocurdex/shared";
-import { Brain, FileText, ListTodo, Loader2 } from "lucide-react";
+import { Brain, FileText, ListTodo, Loader2, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FileTypeIcon, LinkifiedText, MarkdownRenderer } from "@/components";
 import {
@@ -15,15 +16,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui";
-import { openContextItem } from "@/lib";
-import { splitContentByMentions } from "./chat-message-utils";
+import { cn, openEntity } from "@/lib";
+import {
+  type MentionContentSegment,
+  splitContentByMentions,
+} from "./chat-message-utils";
 
 function getContextAttachmentLabel(attachment: ContextAttachment) {
   if (isContextItemAttachment(attachment)) {
     return attachment.title;
   }
   if (isContextFolderAttachment(attachment)) {
-    return attachment.folderPath.split("/").pop() ?? attachment.folderPath;
+    return pathBaseName(attachment.folderPath);
   }
 
   return formatContextFileChipLabel(attachment);
@@ -76,7 +80,9 @@ function renderAttachmentChip(attachment: ContextAttachment) {
       <button
         className="mention-pill inline-flex min-h-[1lh] max-w-full cursor-pointer items-center gap-1 text-chat-link hover:text-chat-link-hover hover:underline"
         key={key}
-        onClick={() => openContextItem(attachment)}
+        onClick={() =>
+          openEntity({ kind: attachment.itemKind, id: attachment.id })
+        }
         type="button"
       >
         <ContextAttachmentChipContent attachment={attachment} />
@@ -121,6 +127,28 @@ function MessageTextRun({ text }: { text: string }) {
   );
 }
 
+function SlashCommandChip({ command }: { command: string }) {
+  return (
+    <span className="mention-pill inline-flex min-h-[1lh] max-w-full items-center gap-1 text-chat-link">
+      <Sparkles className="size-[1em] shrink-0" />
+      <span className="min-w-0 truncate leading-none">{command}</span>
+    </span>
+  );
+}
+
+function renderUserMessageSegment(
+  segment: MentionContentSegment,
+  index: number,
+) {
+  if (segment.kind === "mention") {
+    return renderAttachmentChip(segment.attachment);
+  }
+  if (segment.kind === "command") {
+    return <SlashCommandChip command={segment.command} key="command" />;
+  }
+  return <MessageTextRun key={index} text={segment.text} />;
+}
+
 export function UserMessageContent({ message }: { message: MessageRecord }) {
   const contextAttachments = message.attachments.filter(isContextAttachment);
   const { leadingAttachments, segments } = splitContentByMentions(
@@ -131,14 +159,7 @@ export function UserMessageContent({ message }: { message: MessageRecord }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-start text-sm text-chat-fg">
       {leadingAttachments.map((attachment) => renderAttachmentChip(attachment))}
-      {segments.map((segment, index) =>
-        segment.kind === "mention" ? (
-          renderAttachmentChip(segment.attachment)
-        ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: positional text run
-          <MessageTextRun key={index} text={segment.text} />
-        ),
-      )}
+      {segments.map(renderUserMessageSegment)}
     </div>
   );
 }
@@ -167,9 +188,18 @@ function ReasoningTriggerRow({
       ) : (
         <Brain className="size-3.5 shrink-0 text-chat-fg-muted" />
       )}
-      <span className="shrink-0">{label}</span>
+      <span
+        className={cn(
+          "shrink-0",
+          preview &&
+            !isStreaming &&
+            "hidden group-data-[panel-open]/reasoning:inline",
+        )}
+      >
+        {label}
+      </span>
       {preview ? (
-        <span className="min-w-0 truncate font-normal text-chat-fg-muted group-data-[panel-open]/reasoning:hidden">
+        <span className="min-w-0 max-w-lg truncate font-normal text-chat-fg-muted group-data-[panel-open]/reasoning:hidden">
           {preview}
         </span>
       ) : null}
@@ -221,10 +251,11 @@ export function ReasoningMarkdown({
   // gap-2 (8) = 28px. No guide line, matching the tool-call detail.
   return (
     <Collapsible
-      className="flex w-full flex-col gap-1.5"
+      className="relative -mx-1.5 flex min-w-0 flex-col gap-1.5"
+      data-timeline-row=""
       defaultOpen={mode === "full"}
     >
-      <CollapsibleTrigger className="group/reasoning flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-body">
+      <CollapsibleTrigger className="group/reasoning flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left font-medium text-chat-fg-muted text-body transition-colors hover:bg-chat-surface-row-hover">
         <ReasoningTriggerRow
           isStreaming={isStreaming}
           label={label}

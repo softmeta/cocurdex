@@ -7,23 +7,23 @@ export function createSqliteProviderSessionRepository(
   database: DatabaseSync,
 ): ProviderSessionRepository {
   return {
-    async getBySessionId(sessionId) {
+    async get(sessionId, agentType) {
       const row = database
         .prepare(
           `SELECT * FROM agent_provider_sessions
-           WHERE session_id = ?`,
+           WHERE session_id = ? AND agent_type = ?`,
         )
-        .get(sessionId) as SqliteRow | undefined;
+        .get(sessionId, agentType) as SqliteRow | undefined;
       return row ? mapProviderSession(row) : null;
     },
-    async upsert(record) {
+    async upsert(agentType, record) {
       database
         .prepare(
           `INSERT INTO agent_provider_sessions (
-             session_id, provider_session_id, provider_state_json,
+             session_id, agent_type, provider_session_id, provider_state_json,
              provider_version, resumable, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?)
-           ON CONFLICT(session_id) DO UPDATE SET
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(session_id, agent_type) DO UPDATE SET
              provider_session_id = excluded.provider_session_id,
              provider_state_json = excluded.provider_state_json,
              provider_version = excluded.provider_version,
@@ -32,6 +32,7 @@ export function createSqliteProviderSessionRepository(
         )
         .run(
           record.sessionId,
+          agentType,
           record.providerSessionId,
           record.providerStateJson,
           record.providerVersion,
@@ -39,7 +40,15 @@ export function createSqliteProviderSessionRepository(
           record.updatedAt,
         );
     },
-    async clear(sessionId) {
+    async clear(sessionId, agentType) {
+      database
+        .prepare(
+          `DELETE FROM agent_provider_sessions
+           WHERE session_id = ? AND agent_type = ?`,
+        )
+        .run(sessionId, agentType);
+    },
+    async clearSession(sessionId) {
       database
         .prepare(
           `DELETE FROM agent_provider_sessions

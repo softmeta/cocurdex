@@ -2,6 +2,7 @@ import { statSync } from "node:fs";
 import {
   type Query as ClaudeQuery,
   type Options as ClaudeQueryOptions,
+  forkSession as claudeForkSession,
   getSessionInfo as claudeGetSessionInfo,
   query as claudeQuery,
   type GetSessionInfoOptions,
@@ -24,8 +25,10 @@ import type {
 import { errorKindForLog, hashLogValue } from "@cocurdex/shared";
 import {
   buildClaudeUserContent,
+  CLAUDE_SUPPORTED_DIALOG_KINDS,
   createClaudeCanUseTool,
   createClaudeMessageMapper,
+  createClaudeOnUserDialog,
   getClaudeReasoningEffort,
   getClaudeResultError,
   isAuthenticationFailureText,
@@ -36,6 +39,10 @@ import {
   serializeProviderSessionState,
 } from "../shared";
 import { claudeAgentToolsMcpServers } from "../shared/agent-tools-mcp";
+import {
+  claudeInjectedMcpServers,
+  loadInjectedMcpServers,
+} from "../shared/injected-mcp";
 import { createNativeSessionTitleTracker } from "../shared/native-session-title";
 import {
   createNativeSessionRecoveryError,
@@ -62,6 +69,10 @@ import {
   hasSameMcpServerStatuses,
   readClaudeRuntimeFingerprint,
 } from "./claude-runtime";
+import {
+  type ClaudeForkSession,
+  forkClaudeProviderSession,
+} from "./claude-session-fork";
 import { readClaudeNativeSessionTitle } from "./claude-session-title";
 
 const descriptor = getAgentDescriptor("claude-agent");
@@ -114,6 +125,7 @@ interface ClaudeCliAdapterDependencies {
     options?: GetSessionInfoOptions,
   ) => Promise<SDKSessionInfo | undefined>;
   lookupExecutable?: (command: string) => Promise<string | null>;
+  forkSession?: ClaudeForkSession;
 }
 
 function readProviderState(providerStateJson: string | undefined) {
@@ -231,6 +243,7 @@ export function createClaudeCliAdapter(
   const createQuery =
     dependencies.createQuery ?? ((input) => claudeQuery(input));
   const getSessionInfo = dependencies.getSessionInfo ?? claudeGetSessionInfo;
+  const forkSession = dependencies.forkSession ?? claudeForkSession;
 
   return {
     getDescriptor() {
@@ -238,6 +251,13 @@ export function createClaudeCliAdapter(
     },
     discoverCapabilities({ executablePath }) {
       return discoverClaudeCliCapabilities(executablePath);
+    },
+    forkProviderSession(payload) {
+      return forkClaudeProviderSession(
+        payload,
+        forkSession,
+        CLAUDE_PROVIDER_VERSION,
+      );
     },
     createSession(
       payload: CreateAgentSessionPayload,
@@ -392,8 +412,10 @@ export function createClaudeCliAdapter(
 
         try {
           const planUsage = await (
-            getPlanUsage as () => Promise<ClaudePlanUsageResponse>
-          ).call(queryToInspect);
+            getPlanUsage as (opts: {
+              skipBehaviors: boolean;
+            }) => Promise<ClaudePlanUsageResponse>
+          ).call(queryToInspect, { skipBehaviors: true });
           const rateLimits = mapClaudePlanUsage(
             planUsage,
             new Date().toISOString(),
@@ -446,14 +468,19 @@ export function createClaudeCliAdapter(
         }
       }
 
-      async function emitContextUsage(queryToInspect: ClaudeQuery) {
+      async function emitContextUsage(
+        queryToInspect: ClaudeQuery,
+        detail: "summary" | "full",
+      ) {
         const getContextUsage = queryToInspect.getContextUsage;
         if (typeof getContextUsage !== "function") {
           return;
         }
 
         try {
-          const contextUsage = await getContextUsage.call(queryToInspect);
+          const contextUsage = await getContextUsage.call(queryToInspect, {
+            detail,
+          });
           const contextTokensUsed = readContextTokenCount(
             contextUsage?.totalTokens,
             true,
@@ -465,10 +492,13 @@ export function createClaudeCliAdapter(
           // The SDK reports the same composition Claude Code's `/context`
           // prints. Forward it alongside the totals so the footer meter can
           // break the window down instead of only sizing it.
-          const breakdown = mapClaudeContextBreakdown(
-            contextUsage,
-            new Date().toISOString(),
-          );
+          const breakdown =
+            detail === "full"
+              ? mapClaudeContextBreakdown(
+                  contextUsage,
+                  new Date().toISOString(),
+                )
+              : null;
           if (breakdown) {
             onEvent({
               type: "context_breakdown.updated",
@@ -591,8 +621,10 @@ export function createClaudeCliAdapter(
         }
         messageMapper.handleMessage(message);
 
-        if (message.type === "result" || shouldRefreshContextUsage(message)) {
-          await emitContextUsage(queryToConsume);
+        if (message.type === "result") {
+          await emitContextUsage(queryToConsume, "full");
+        } else if (shouldRefreshContextUsage(message)) {
+          await emitContextUsage(queryToConsume, "summary");
         }
 
         // Quota only moves once a turn has been billed, so it rides the result
@@ -757,6 +789,9 @@ export function createClaudeCliAdapter(
           persistProviderCursor();
         }
 
+        const injectedMcpServers = await loadInjectedMcpServers(
+          payload.resolveMcpServers,
+        );
         const queryOptions: ClaudeQueryOptions = {
           additionalDirectories: [
             ...new Set([
@@ -775,13 +810,19 @@ export function createClaudeCliAdapter(
           ...(effort ? { effort } : {}),
           ...(modelId ? { model: modelId } : {}),
           ...(fastMode !== null ? { fastMode } : {}),
-          mcpServers: claudeAgentToolsMcpServers(payload.agentTools),
+          mcpServers: {
+            ...claudeInjectedMcpServers(injectedMcpServers),
+            ...claudeAgentToolsMcpServers(payload.agentTools),
+          },
+          onUserDialog: createClaudeOnUserDialog(payload),
           pathToClaudeCodeExecutable: binaryPath,
           permissionMode,
           ...(resumeSessionId ? { resume: resumeSessionId } : {}),
           ...(resumeSessionId && resumeSessionAt ? { resumeSessionAt } : {}),
           ...(newSessionId ? { sessionId: newSessionId } : {}),
+          settings: { showThinkingSummaries: true },
           settingSources: ["user", "project", "local"],
+          supportedDialogKinds: CLAUDE_SUPPORTED_DIALOG_KINDS,
           systemPrompt: { preset: "claude_code", type: "preset" },
         };
 

@@ -23,7 +23,7 @@ import {
   useWorkspaceFiles,
   workspacesAtom,
 } from "@/features/workspaces";
-import { cn, type WorkspaceFileEntry } from "@/lib";
+import { cn, formatShortcutLabel, type WorkspaceFileEntry } from "@/lib";
 import {
   cycleSearchCategory,
   rankSessions,
@@ -371,7 +371,12 @@ function SearchPaletteContent({
         <div className="flex h-8 items-center gap-3 border-t border-chat-border px-3 text-meta text-muted-foreground">
           <span>{t("search:hints.select")}</span>
           <span>{t("search:hints.open")}</span>
-          <span>{t("search:hints.changeCategory")}</span>
+          <span>
+            {t("search:hints.changeCategory", {
+              previous: formatShortcutLabel({ primary: true, key: "[" }),
+              next: formatShortcutLabel({ primary: true, key: "]" }),
+            })}
+          </span>
         </div>
       </Command>
     </DialogContent>

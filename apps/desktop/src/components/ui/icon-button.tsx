@@ -1,6 +1,11 @@
 import type * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /*
  * IconButton primitive.
@@ -37,15 +42,19 @@ const sizeMap: Record<IconButtonSize, NonNullable<ButtonProps["size"]>> = {
 export type IconButtonProps = Omit<ButtonProps, "size" | "aria-label"> & {
   "aria-label": string;
   size?: IconButtonSize;
+  tooltip?: React.ReactNode | false;
+  tooltipSide?: React.ComponentProps<typeof TooltipContent>["side"];
 };
 
 export function IconButton({
   size = "md",
   variant = "ghost",
   type = "button",
+  tooltip,
+  tooltipSide = "top",
   ...props
 }: IconButtonProps) {
-  return (
+  const button = (
     <Button
       data-slot="icon-button"
       size={sizeMap[size]}
@@ -53,5 +62,14 @@ export function IconButton({
       type={type}
       {...props}
     />
+  );
+  if (tooltip === false) return button;
+  return (
+    <Tooltip>
+      <TooltipTrigger render={button} />
+      <TooltipContent side={tooltipSide} sideOffset={6}>
+        {tooltip ?? props["aria-label"]}
+      </TooltipContent>
+    </Tooltip>
   );
 }

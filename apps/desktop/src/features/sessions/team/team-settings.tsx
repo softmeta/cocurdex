@@ -1,12 +1,15 @@
-import type { TeamTemplateRecord } from "@cocurdex/shared";
-import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import type { AgentRoleRecord, TeamTemplateRecord } from "@cocurdex/shared";
+import { Crown, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppConfirmDialog } from "@/components";
-import { Button, EmptyState, IconButton, Text } from "@/components/ui";
+import { AppConfirmDialog, SettingsGroup } from "@/components";
+import { Button, IconButton, Text } from "@/components/ui";
 import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
+import { AgentRoleAvatar } from "../agent-role/agent-role-avatar";
 import { ScriptRunSettingsSection } from "../script-run";
+import { DelegatedRunLimitsGroup } from "./delegated-run-limits-group";
+import { TeamMemberAvatar } from "./team-member-avatar";
 import { TeamTemplateEditDialog } from "./team-template-edit-dialog";
 import {
   deleteTeamTemplateRecord,
@@ -25,8 +28,8 @@ export function TeamSettingsPanel() {
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<TeamTemplateRecord | null>(null);
 
-  const roleName = (id: string | null) =>
-    roles.find((role) => role.id === id)?.name ?? t("teams.inheritRole");
+  const roleOf = (id: string | null) =>
+    roles.find((role) => role.id === id) ?? null;
 
   const handleDelete = async () => {
     if (!toDelete) return;
@@ -41,65 +44,87 @@ export function TeamSettingsPanel() {
   };
 
   return (
-    <div className="settings-panel-enter flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <Text as="p" tone="muted">
-          {t("teams.description")}
-        </Text>
-        <Button
-          onClick={() => setCreating(true)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          {t("teams.create")}
-        </Button>
-      </div>
-      {templates.length === 0 ? (
-        <EmptyState
-          description={t("teams.emptyDescription")}
-          icon={<Users />}
-          title={t("teams.empty")}
-        />
-      ) : (
-        <ul className="flex flex-col divide-y divide-border">
-          {templates.map((template) => (
-            <li className="flex items-center gap-4 py-4" key={template.id}>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <Text truncate weight="medium">
-                  {template.name}
-                </Text>
-                <Text size="meta" tone="muted" truncate>
-                  {template.members
-                    .map(
-                      (member) =>
-                        `${member.name} · ${roleName(member.agentRoleId)}`,
-                    )
-                    .join(", ")}
-                </Text>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <IconButton
-                  aria-label={t("teams.edit")}
-                  onClick={() => setEditing(template)}
-                  size="sm"
-                >
-                  <Pencil className="size-4" />
-                </IconButton>
-                <IconButton
-                  aria-label={t("teams.delete")}
-                  onClick={() => setToDelete(template)}
-                  size="sm"
-                >
-                  <Trash2 className="size-4" />
-                </IconButton>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="settings-panel-enter flex flex-col gap-6">
+      <SettingsGroup
+        action={
+          <Button
+            onClick={() => setCreating(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="size-3.5" />
+            {t("teams.create")}
+          </Button>
+        }
+        description={t("teams.description")}
+        title={t("teams.listTitle")}
+      >
+        {templates.length === 0 ? (
+          <div className="flex items-center gap-1 py-3.5">
+            <Text tone="muted">{t("teams.empty")}</Text>
+            <Button
+              className="px-1"
+              onClick={() => setCreating(true)}
+              size="sm"
+              type="button"
+              variant="link"
+            >
+              {t("teams.createFirst")}
+            </Button>
+          </div>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border/60">
+            {templates.map((template) => (
+              <li className="flex items-start gap-3 py-3.5" key={template.id}>
+                <AgentRoleAvatar
+                  placeholder={<Users className="size-4" />}
+                  role={template}
+                  size="lg"
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <Text truncate weight="medium">
+                    {template.name}
+                  </Text>
+                  {template.description ? (
+                    <Text as="p" className="line-clamp-2" tone="muted">
+                      {template.description}
+                    </Text>
+                  ) : null}
+                  <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                    {template.members.map((member, index) => (
+                      <TeamMemberChip
+                        isLead={index === 0}
+                        key={member.agentRoleId}
+                        missingLabel={t("teams.roleMissing")}
+                        role={roleOf(member.agentRoleId)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconButton
+                    aria-label={t("teams.edit")}
+                    onClick={() => setEditing(template)}
+                    size="sm"
+                  >
+                    <Pencil className="size-4" />
+                  </IconButton>
+                  <IconButton
+                    aria-label={t("teams.delete")}
+                    onClick={() => setToDelete(template)}
+                    size="sm"
+                  >
+                    <Trash2 className="size-4" />
+                  </IconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SettingsGroup>
       <ScriptRunSettingsSection />
+      <DelegatedRunLimitsGroup />
       <TeamTemplateEditDialog
         onOpenChange={(open) => {
           if (!open) {
@@ -125,5 +150,41 @@ export function TeamSettingsPanel() {
         variant="destructive"
       />
     </div>
+  );
+}
+
+function TeamMemberChip({
+  isLead,
+  missingLabel,
+  role,
+}: {
+  isLead: boolean;
+  missingLabel: string;
+  role: AgentRoleRecord | null;
+}) {
+  return (
+    <li className="flex min-w-0 items-center gap-1.5">
+      <TeamMemberAvatar role={role} />
+      {role ? (
+        <Text size="meta" truncate>
+          {role.name}
+        </Text>
+      ) : (
+        <Text size="meta" tone="muted" truncate>
+          {missingLabel}
+        </Text>
+      )}
+      {isLead ? <LeadMark /> : null}
+    </li>
+  );
+}
+
+function LeadMark() {
+  const { t } = useTranslation("settings");
+  return (
+    <Crown
+      aria-label={t("teams.lead")}
+      className="size-3.5 shrink-0 text-muted-foreground"
+    />
   );
 }

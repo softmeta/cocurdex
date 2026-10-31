@@ -1,0 +1,20 @@
+{
+  "name": "@cocurdex/unit-db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/db": "workspace:*",
+    "@cocurdex/note-doc": "workspace:*",
+    "@cocurdex/shared": "workspace:*",
+    "@cocurdex/test-fixtures": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
+  }
+}

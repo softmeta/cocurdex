@@ -1,20 +1,18 @@
 import type { ManagedWorktree, ManagedWorktreeGroup } from "@cocurdex/shared";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SettingsGroup } from "@/components";
 import { Button, EmptyState, Spinner, Text } from "@/components/ui";
-import { SettingsGroup } from "../settings-fields";
 
 export function WorktreeInventory({
   groups,
-  isLoading,
   pendingPath,
   onDelete,
   onNewSession,
   onOpenSession,
   onRefresh,
 }: {
-  groups: ManagedWorktreeGroup[];
-  isLoading: boolean;
+  groups: ManagedWorktreeGroup[] | null;
   pendingPath: string | null;
   onDelete(worktree: ManagedWorktree): void;
   onNewSession(worktree: ManagedWorktree): void;
@@ -30,20 +28,14 @@ export function WorktreeInventory({
           {t("worktrees.inventoryDescription")}
         </Text>
         <Button size="sm" type="button" variant="ghost" onClick={onRefresh}>
-          {isLoading ? <Spinner /> : <RefreshCw className="size-4" />}
+          <RefreshCw className="size-4" />
           {t("worktrees.refresh")}
         </Button>
       </div>
-      {isLoading && groups.length === 0 ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Spinner />
-          <Text size="body">{t("worktrees.loading")}</Text>
-        </div>
-      ) : null}
-      {!isLoading && groups.length === 0 ? (
+      {groups?.length === 0 ? (
         <EmptyState title={t("worktrees.empty")} />
       ) : null}
-      {groups.map((group) => (
+      {groups?.map((group) => (
         <SettingsGroup key={group.workspaceId} title={group.workspaceName}>
           {group.worktrees.map((worktree) => (
             <WorktreeRow

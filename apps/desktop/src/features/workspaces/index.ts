@@ -16,15 +16,15 @@ export { HostDirectoryPickerHost } from "./host-directory-picker";
 export { useWorkspaceFolderDrop } from "./use-workspace-folder-drop";
 export { activeWorkingPathAtom } from "./working-path";
 export { WorkspaceFolderDropOverlay } from "./workspace-folder-drop-overlay";
+export { workspaceIconFor } from "./workspace-icon";
 export { sortWorkspacesBySortOrder } from "./workspace-order";
 export { compactWorkspacePath } from "./workspace-path";
+export { WorkspacePicker } from "./workspace-picker";
 export {
-  composerContextTriggerHoverClassName,
-  WorkspacePicker,
-} from "./workspace-picker";
+  WorkspaceRootsPreview,
+  WorkspaceRootsTooltip,
+} from "./workspace-roots-preview";
 export {
-  activeBranchAtom,
-  activeBranchesAtom,
   activeWorkspaceIdAtom,
   activeWorktreesAtom,
   addWorkspaceAtom,
@@ -32,6 +32,7 @@ export {
   COLLAPSED_WORKSPACE_IDS_STORAGE_KEY,
   collapsedWorkspaceIdsAtom,
   draftWorktreePathAtom,
+  gitBranchesByRootAtom,
   lastSelectedWorkspaceIdAtom,
   normalizeCollapsedWorkspaceIds,
   openWorkspaceByPathAtom,
@@ -40,6 +41,7 @@ export {
   reorderWorkspacesAtom,
   selectWorkspaceAtom,
   updateWorkspaceAtom,
+  withoutChatWorkspace,
   workspacesAtom,
 } from "./workspace-store";
 export { WorktreePicker } from "./worktree-picker";

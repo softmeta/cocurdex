@@ -24,6 +24,7 @@ function normalizeToolName(value: string) {
 }
 
 const READ_ONLY_WORKSPACE_TOOLS = new Set([
+  "contextcompaction",
   "fetch",
   "find",
   "glob",

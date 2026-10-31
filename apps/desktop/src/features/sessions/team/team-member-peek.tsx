@@ -49,6 +49,7 @@ export function TeamMemberPeek({
     try {
       await taskApi.sendMessage({
         sessionId: member.sessionId,
+        messageId: crypto.randomUUID(),
         content,
         delivery:
           member.status === "running" ? "queue-after-run" : "start-new-run",

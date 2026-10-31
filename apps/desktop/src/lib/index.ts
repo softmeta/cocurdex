@@ -3,13 +3,11 @@ export {
   onOpenHtmlPreview,
   openHtmlPreviewInBrowser,
 } from "./browser-preview-events";
-export {
-  type ContextItemTarget,
-  onOpenContextItem,
-  openContextItem,
-} from "./context-item-events";
 export { readCssVarPx } from "./css-length";
+export { createDaemonBlobUrlStore } from "./daemon-blob-urls";
+export { requestDaemon, resolveLocalDaemonConnection } from "./daemon-client";
 export { logRendererDiagnostic } from "./diagnostics";
+export { onOpenEntity, openEntity } from "./entity-events";
 export { toAbsolutePath } from "./file-path";
 export { htmlPreviewLocationAtom } from "./html-preview-preference";
 export { desktopApi } from "./ipc";
@@ -46,8 +44,7 @@ export type {
   GitCommitInfo,
   GitContentsOmittedReason,
   GitFileStagedState,
-  ImportDocumentAttachmentPayload,
-  ImportImageAttachmentPayload,
+  HostCapabilities,
   WorkspaceFileEntry,
   WorkspaceGitDiffQuery,
   WorkspaceGitDiffStatus,
@@ -55,3 +52,11 @@ export type {
   WorkspaceGitStatusEntry,
 } from "./types";
 export { cn } from "./utils";
+export {
+  buildDevWebClientUrl,
+  installWebHostBridge,
+  pairThisBrowser,
+  type WebHostAccess,
+  type WebPairingReason,
+  webPairingFailureReason,
+} from "./web-host-bridge";

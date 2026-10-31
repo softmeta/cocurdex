@@ -12,15 +12,9 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppConfirmDialog } from "@/components";
-import {
-  Button,
-  IconButton,
-  Text,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui";
+import { Button, IconButton, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import { AgentIconLabel } from "../agent-icon";
 import {
   getAgentDisplayLabel,
   selectSessionAtom,
@@ -103,7 +97,11 @@ export function TeamPanel({
     sessions.find((session) => session.id === memberSessionId);
   const agentLabelOf = (memberSessionId: string) => {
     const agentType = sessionOf(memberSessionId)?.agentType;
-    return agentType ? getAgentDisplayLabel(agentType) : null;
+    return agentType ? (
+      <AgentIconLabel agentId={agentType}>
+        {getAgentDisplayLabel(agentType)}
+      </AgentIconLabel>
+    ) : null;
   };
   const active = team.status === "active";
   const collapsed = collapsedOverride ?? !active;
@@ -213,30 +211,22 @@ export function TeamPanel({
                     </Text>
                   </button>
                   {member.status !== "stopped" ? (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <IconButton
-                            aria-label={t("team.stopMember", {
-                              name: member.name,
-                            })}
-                            className="absolute end-0 text-chat-fg-muted opacity-0 group-hover/member:opacity-100 focus-visible:opacity-100"
-                            onClick={() =>
-                              void desktopApi.stopTeamMember({
-                                teamId: team.id,
-                                sessionId: member.sessionId,
-                              })
-                            }
-                            size="xs"
-                          >
-                            <CircleStop className="size-3.5" />
-                          </IconButton>
-                        }
-                      />
-                      <TooltipContent>
-                        {t("team.stopMember", { name: member.name })}
-                      </TooltipContent>
-                    </Tooltip>
+                    <IconButton
+                      tooltip={t("team.stopMember", { name: member.name })}
+                      aria-label={t("team.stopMember", {
+                        name: member.name,
+                      })}
+                      className="absolute end-0 text-chat-fg-muted opacity-0 group-hover/member:opacity-100 focus-visible:opacity-100"
+                      onClick={() =>
+                        void desktopApi.stopTeamMember({
+                          teamId: team.id,
+                          sessionId: member.sessionId,
+                        })
+                      }
+                      size="xs"
+                    >
+                      <CircleStop className="size-3.5" />
+                    </IconButton>
                   ) : null}
                 </div>
                 {expanded ? (

@@ -1,52 +1,28 @@
+import type { SessionRecord } from "@cocurdex/shared";
+import { isChatSession } from "@cocurdex/shared";
 import type { SidebarTab } from "./sidebar/sidebar-tab-store";
 
 export type CenterPanelSurface =
-  | "conversation"
+  | "chat-session"
   | "agent-session"
   | "agent-session-loading"
   | "new-session"
-  | "new-conversation";
+  | "new-chat";
 
 export function resolveCenterPanelSurface(input: {
   sidebarTab: SidebarTab;
-  hasConversation: boolean;
-  hasSession: boolean;
-  sessionDataLoaded: boolean;
-}): CenterPanelSurface {
-  if (input.sidebarTab === "chat") {
-    return input.hasConversation ? "conversation" : "new-conversation";
-  }
-
-  if (input.hasSession) {
-    return input.sessionDataLoaded ? "agent-session" : "agent-session-loading";
-  }
-
-  return "new-session";
-}
-
-export function resolvePaneCenterSurface(input: {
-  sidebarTab: SidebarTab;
-  conversationId: string | null;
   sessionId: string | null;
-  hasConversation: boolean;
-  hasSession: boolean;
+  session: Pick<SessionRecord, "sessionKind"> | null;
   sessionDataLoaded: boolean;
 }): CenterPanelSurface {
-  if (input.conversationId) {
-    return input.hasConversation ? "conversation" : "new-conversation";
-  }
-
-  if (input.sessionId) {
-    if (!input.hasSession) {
-      return "new-session";
+  if (input.session) {
+    if (isChatSession(input.session)) {
+      return "chat-session";
     }
     return input.sessionDataLoaded ? "agent-session" : "agent-session-loading";
   }
-
-  return resolveCenterPanelSurface({
-    sidebarTab: input.sidebarTab,
-    hasConversation: false,
-    hasSession: false,
-    sessionDataLoaded: false,
-  });
+  if (input.sessionId) {
+    return "new-session";
+  }
+  return input.sidebarTab === "chat" ? "new-chat" : "new-session";
 }

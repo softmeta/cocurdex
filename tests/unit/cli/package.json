@@ -1,0 +1,19 @@
+{
+  "name": "@cocurdex/unit-cli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/cli": "workspace:*",
+    "@cocurdex/daemon": "workspace:*",
+    "@cocurdex/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cocurdex/test-fixtures": "workspace:*",
+    "@types/node": "^24.19.2",
+    "vitest": "^4.1.11"
+  }
+}

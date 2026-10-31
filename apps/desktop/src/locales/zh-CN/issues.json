@@ -1,4 +1,31 @@
 {
+  "activity": {
+    "actor": {
+      "cli": "CLI",
+      "session": "Agent 会话",
+      "user": "你"
+    },
+    "changedField": "修改了{{field}}",
+    "changedFieldTo": "将{{field}}设为 {{value}}",
+    "comment": "评论",
+    "commented": "发表了评论",
+    "commentPlaceholder": "写下评论…",
+    "created": "创建了 issue",
+    "field": {
+      "description": "描述",
+      "labels": "标签",
+      "parent": "父 issue",
+      "priority": "优先级",
+      "status": "状态",
+      "title": "标题",
+      "workspace": "工作区"
+    },
+    "none": "无",
+    "relationAdded": "关联了 {{issue}}",
+    "relationRemoved": "取消关联 {{issue}}",
+    "sessionLinked": "关联了一个 Agent 会话",
+    "title": "动态"
+  },
   "board": {
     "addCard": "添加卡片",
     "addColumn": "添加列",
@@ -35,16 +62,47 @@
     "priority": "优先级",
     "status": "状态"
   },
+  "category": {
+    "backlog": "待规划",
+    "canceled": "已取消",
+    "completed": "已完成",
+    "started": "进行中",
+    "title": "状态类别",
+    "unstarted": "未开始"
+  },
+  "detail": {
+    "addRelation": "添加关联",
+    "addSubIssue": "添加子 issue",
+    "relation": {
+      "blockedBy": "被阻塞于",
+      "blocks": "阻塞",
+      "duplicatedBy": "被重复于",
+      "duplicateOf": "重复于",
+      "related": "相关"
+    },
+    "relations": "关联",
+    "removeRelation": "移除关联",
+    "sessions": "Agent 会话",
+    "subIssues": "子 issue",
+    "untitledSession": "未命名会话"
+  },
   "dialog": {
     "cancel": "取消",
     "createIssue": "创建 Issue",
     "descriptionPlaceholder": "添加描述…",
     "editCard": "编辑 Issue",
+    "labels": "标签",
     "loadFailed": "无法加载完整描述，请关闭后重新打开再编辑。",
     "newIssue": "新建 Issue",
+    "newLabel": "新建标签",
+    "newLabelPlaceholder": "标签名称",
+    "noMatchingIssues": "没有匹配的 issue",
+    "noParent": "无父 issue",
     "noWorkspace": "无工作区",
+    "parent": "父 issue",
     "priority": "优先级",
     "save": "保存",
+    "searchIssues": "搜索 issue…",
     "status": "状态",
     "titlePlaceholder": "Issue 标题",
     "unknownWorkspace": "未知工作区",
@@ -59,8 +117,11 @@
     "saveFailed": "issue 修改未能保存，看板已刷新。"
   },
   "filter": {
+    "allLabels": "全部标签",
     "allWorkspaces": "全部工作区",
     "ariaLabel": "筛选视图",
+    "hideClosed": "隐藏已完成和已取消",
+    "label": "标签",
     "noWorkspace": "无工作区",
     "workspace": "工作区"
   },
@@ -87,6 +148,13 @@
     },
     "expand": "展开侧栏",
     "hint": "Issue 和视图由 cocurdex 私有存储。",
+    "nav": {
+      "active": "进行中",
+      "agent": "Agent 在做",
+      "all": "全部 Issue",
+      "backlog": "Backlog",
+      "title": "Issue"
+    },
     "newBoardTitle": "新视图",
     "renameBoard": "重命名视图",
     "resize": "调整侧栏宽度",

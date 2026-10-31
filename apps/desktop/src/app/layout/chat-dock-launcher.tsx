@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useResolvedShortcutLabel } from "@/features/shortcuts";
+import { cn } from "@/lib";
 import { useFabPosition } from "./chat-dock-geometry";
 
 interface ChatDockLauncherProps {
@@ -24,6 +25,7 @@ export function ChatDockLauncher({
   const toggleChatShortcut = useResolvedShortcutLabel("toggleChatDock");
   const {
     position: fabPosition,
+    windowResizing,
     beginDrag: beginFabDrag,
     consumeDragClick: consumeFabDragClick,
   } = useFabPosition();
@@ -35,33 +37,28 @@ export function ChatDockLauncher({
     : t("actions.chatFabHint", { shortcut: toggleChatShortcut });
   return (
     <div
-      className="app-no-drag group/fab absolute z-50"
+      className={cn(
+        "app-no-drag group/fab absolute z-50",
+        windowResizing && "invisible",
+      )}
       style={{ right: fabPosition.right, bottom: fabPosition.bottom }}
     >
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <IconButton
-              aria-label={label}
-              className="cursor-grab rounded-full shadow-lg active:cursor-grabbing"
-              onClick={() => {
-                if (consumeFabDragClick()) {
-                  return;
-                }
-                onOpen();
-              }}
-              onMouseDown={beginFabDrag}
-              size="lg"
-              variant="default"
-            >
-              <MessageSquare className="size-4" />
-            </IconButton>
+      <IconButton
+        tooltip={toggleChatShortcut ? hint : label}
+        aria-label={label}
+        className="cursor-grab rounded-full shadow-lg active:cursor-grabbing"
+        onClick={() => {
+          if (consumeFabDragClick()) {
+            return;
           }
-        />
-        <TooltipContent side="top" sideOffset={6}>
-          {toggleChatShortcut ? hint : label}
-        </TooltipContent>
-      </Tooltip>
+          onOpen();
+        }}
+        onMouseDown={beginFabDrag}
+        size="lg"
+        variant="default"
+      >
+        <MessageSquare className="size-4" />
+      </IconButton>
       {onHideFab ? (
         <Tooltip>
           <TooltipTrigger

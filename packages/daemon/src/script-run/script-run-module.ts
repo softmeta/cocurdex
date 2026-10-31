@@ -17,16 +17,26 @@ import {
   type StartScriptRunPayload,
   validateSessionId,
 } from "@cocurdex/shared";
-import { createConcurrencyGate } from "./concurrency-gate";
+import {
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  FiberMap,
+  FiberSet,
+  Layer,
+  ManagedRuntime,
+  Semaphore,
+} from "effect";
 import {
   runScriptAgent,
   type ScriptAgentDeps,
   type ScriptAgentRun,
+  ScriptAgentSlots,
   type ScriptRunAbortReason,
 } from "./script-agent";
 import {
   runScript,
-  ScriptAbortedError,
   ScriptRejectedError,
   validateScript,
 } from "./script-sandbox";
@@ -54,38 +64,71 @@ export interface ScriptRunModuleDeps extends ScriptAgentDeps {
   repository: ScriptRunRepository;
   getSession(sessionId: string): Promise<SessionRecord | null>;
   hasActiveTurn(sessionId: string): boolean;
-  stopSession(sessionId: string): Promise<unknown>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string): Promise<void>;
   broadcast(event: ScriptRunChangedEvent): void;
   maxConcurrency?: number;
 }
 
-interface ActiveRun {
-  controller: AbortController;
-  activeSessionIds: Set<string>;
-  timer: ReturnType<typeof setTimeout> | null;
+type ScriptRunOutcome =
+  | { kind: "completed"; result: unknown }
+  | ScriptRunAbortReason;
+
+type AbortRequest = Deferred.Deferred<ScriptRunOutcome>;
+
+class ScriptRunFibers extends Context.Service<
+  ScriptRunFibers,
+  FiberMap.FiberMap<string>
+>()("cocurdex/ScriptRunFibers") {}
+
+function scriptRunLayer(maxConcurrency: number) {
+  return Layer.mergeAll(
+    Layer.effect(ScriptRunFibers, FiberMap.make<string>()),
+    Layer.effect(ScriptAgentSlots, Semaphore.make(maxConcurrency)),
+  );
 }
 
-function errorMessageOf(error: unknown, reason: ScriptRunAbortReason | null) {
-  if (reason?.kind === "failed") return reason.error;
-  return error instanceof Error ? error.message : String(error);
+function withMaxDuration(minutes: number | null | undefined) {
+  return <R>(
+    self: Effect.Effect<ScriptRunOutcome, never, R>,
+  ): Effect.Effect<ScriptRunOutcome, never, R> => {
+    if (!minutes) return self;
+    return Effect.timeoutOrElse(self, {
+      duration: minutes * 60_000,
+      orElse: () =>
+        Effect.succeed<ScriptRunOutcome>({
+          kind: "failed",
+          error: `Script run exceeded ${minutes} minutes.`,
+        }),
+    });
+  };
 }
 
-function abortReasonOf(error: unknown): ScriptRunAbortReason | null {
-  if (!(error instanceof ScriptAbortedError)) return null;
-  const reason = error.reason as ScriptRunAbortReason | undefined;
-  return reason?.kind ? reason : { kind: "cancelled", notifyRequester: true };
+function finishedRun(
+  run: ScriptRunRecord,
+  outcome: ScriptRunOutcome,
+): ScriptRunRecord {
+  if (outcome.kind === "completed") {
+    return {
+      ...run,
+      status: "completed",
+      resultJson: JSON.stringify(outcome.result ?? null),
+    };
+  }
+  if (outcome.kind === "cancelled") return { ...run, status: "cancelled" };
+  return { ...run, status: "failed", error: outcome.error };
 }
 
 export class ScriptRunModule {
-  private readonly active = new Map<string, ActiveRun>();
-  private readonly gate;
+  private readonly aborts = new Map<string, AbortRequest>();
+  private readonly runtime;
 
   constructor(private readonly deps: ScriptRunModuleDeps) {
-    this.gate = createConcurrencyGate(
-      deps.maxConcurrency ??
-        Math.min(SCRIPT_RUN_MAX_CONCURRENCY, os.availableParallelism()),
+    this.runtime = ManagedRuntime.make(
+      scriptRunLayer(
+        deps.maxConcurrency ??
+          Math.min(SCRIPT_RUN_MAX_CONCURRENCY, os.availableParallelism()),
+      ),
     );
   }
 
@@ -161,23 +204,15 @@ export class ScriptRunModule {
     };
     await this.save(run);
 
-    const controller = new AbortController();
-    const active: ActiveRun = {
-      controller,
-      activeSessionIds: new Set(),
-      timer: null,
-    };
-    if (settings.maxDurationMinutes) {
-      const minutes = settings.maxDurationMinutes;
-      active.timer = setTimeout(() => {
-        controller.abort({
-          kind: "failed",
-          error: `Script run exceeded ${minutes} minutes.`,
-        } satisfies ScriptRunAbortReason);
-      }, minutes * 60_000);
-    }
-    this.active.set(run.id, active);
-    void this.execute(run, requester, settings, active);
+    const abort = Deferred.makeUnsafe<ScriptRunOutcome>();
+    this.aborts.set(run.id, abort);
+    const execute = this.execute(run, requester, settings, abort);
+    this.runtime.runFork(
+      Effect.gen(function* () {
+        const fibers = yield* ScriptRunFibers;
+        yield* FiberMap.run(fibers, run.id, execute);
+      }),
+    );
     return run;
   }
 
@@ -206,9 +241,7 @@ export class ScriptRunModule {
   }
 
   async shutdown() {
-    for (const runId of this.active.keys()) {
-      this.abort(runId, { kind: "shutdown" });
-    }
+    await this.runtime.dispose();
     await this.deps.repository.interruptRunning(this.deps.now());
   }
 
@@ -218,74 +251,65 @@ export class ScriptRunModule {
   }
 
   private abort(runId: string, reason: ScriptRunAbortReason) {
-    this.active.get(runId)?.controller.abort(reason);
+    const abort = this.aborts.get(runId);
+    if (abort) Deferred.doneUnsafe(abort, Exit.succeed(reason));
   }
 
-  private async execute(
+  private execute(
     run: ScriptRunRecord,
     requester: SessionRecord,
     settings: ScriptRunSettings,
-    active: ActiveRun,
+    abort: AbortRequest,
   ) {
+    const deps = this.deps;
     const context: ScriptAgentRun = {
       run,
       requester,
       schemaMaxAttempts: settings.schemaMaxAttempts,
-      gate: this.gate,
-      signal: active.controller.signal,
-      activeSessionIds: active.activeSessionIds,
-      abort: (reason) => active.controller.abort(reason),
+      abort: (reason) => Deferred.doneUnsafe(abort, Exit.succeed(reason)),
       onChanged: async () => {
-        if (this.active.has(run.id)) await this.save(run);
+        if (this.aborts.has(run.id)) await this.save(run);
         else this.changed(run);
       },
     };
-    let finished: ScriptRunRecord;
-    let notifyRequester = true;
-    try {
-      const result = await runScript(
+    const script = Effect.gen(function* () {
+      const runAgent = yield* FiberSet.makeRuntimePromise<ScriptAgentSlots>();
+      const result = yield* runScript(
         run.script,
         {
           agent: (prompt, options) =>
-            runScriptAgent(this.deps, context, prompt, options),
+            runAgent(runScriptAgent(deps, context, prompt, options)),
           log: () => {},
         },
-        {
-          signal: active.controller.signal,
-          maxListItems: SCRIPT_RUN_MAX_LIST_ITEMS,
-        },
+        { maxListItems: SCRIPT_RUN_MAX_LIST_ITEMS },
       );
-      finished = {
-        ...run,
-        status: "completed",
-        resultJson: JSON.stringify(result ?? null),
-      };
-    } catch (error) {
-      const reason = abortReasonOf(error);
-      if (reason?.kind === "shutdown") {
-        if (active.timer) clearTimeout(active.timer);
-        this.active.delete(run.id);
-        return;
-      }
-      if (reason?.kind === "cancelled") {
-        notifyRequester = reason.notifyRequester;
-        finished = { ...run, status: "cancelled" };
-      } else {
-        finished = {
-          ...run,
-          status: "failed",
-          error: errorMessageOf(error, reason),
+      return { kind: "completed", result } satisfies ScriptRunOutcome;
+    }).pipe(
+      Effect.catch((error) =>
+        Effect.succeed<ScriptRunOutcome>({
+          kind: "failed",
+          error: error.message,
+        }),
+      ),
+      Effect.scoped,
+    );
+    const finish = (outcome: ScriptRunOutcome) =>
+      Effect.promise(async () => {
+        this.aborts.delete(run.id);
+        const completed = {
+          ...finishedRun(run, outcome),
+          completedAt: deps.now(),
         };
-      }
-    }
-    if (active.timer) clearTimeout(active.timer);
-    this.active.delete(run.id);
-    for (const sessionId of active.activeSessionIds) {
-      await this.deps.stopSession(sessionId).catch(() => {});
-    }
-    const completed = { ...finished, completedAt: this.deps.now() };
-    await this.save(completed);
-    if (notifyRequester) await this.report(completed);
+        await this.save(completed);
+        if (outcome.kind !== "cancelled" || outcome.notifyRequester) {
+          await this.report(completed);
+        }
+      });
+    return Effect.raceFirst(script, Deferred.await(abort)).pipe(
+      withMaxDuration(settings.maxDurationMinutes),
+      Effect.flatMap(finish),
+      Effect.ensuring(Effect.sync(() => this.aborts.delete(run.id))),
+    );
   }
 
   private async report(run: ScriptRunRecord) {
@@ -295,6 +319,7 @@ export class ScriptRunModule {
     await this.deps
       .sendSessionMessage({
         sessionId: requester.id,
+        messageId: crypto.randomUUID(),
         content: renderScriptRunReport(run),
         delivery: this.deps.hasActiveTurn(requester.id)
           ? "queue-after-run"

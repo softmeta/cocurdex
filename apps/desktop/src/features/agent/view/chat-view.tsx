@@ -1,24 +1,20 @@
-import type {
-  AgentQuestionRequestRecord,
-  MessageAttachment,
-  MessageRecord,
+import {
+  type AgentQuestionRequestRecord,
+  type MessageAttachment,
+  resolveJumpButton,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Button,
-  Checkbox,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ScrollArea,
-} from "@/components/ui";
+  createRenderReadiness,
+  RenderReadinessContext,
+  useRenderReadiness,
+} from "@/components";
+import { ScrollArea } from "@/components/ui";
 import {
   ChatContentColumn,
+  type ComposerSendOutcome,
   sessionComposerDraftKey,
 } from "@/features/composer";
 import {
@@ -34,30 +30,27 @@ import {
 import { useChatReadingPosition } from "@/lib/use-chat-reading-position";
 import type { ToolCallPreviewLocation } from "../tool-call";
 import { getActivityState } from "./chat-activity-state";
-import { isDisclosureToggle, resolveJumpButton } from "./chat-scroll";
+import { isDisclosureToggle } from "./chat-scroll";
 import { getCachedTranscriptModel } from "./chat-transcript-model";
 import {
   type UserMessageAnchor,
   UserMessageNavigation,
 } from "./chat-user-navigation";
 import { ComposerDock, EmptyChatState, JumpControls } from "./chat-view-panels";
-import type {
-  ChatViewProps,
-  PendingPreviousMessageSubmit,
-  PreviousMessageRevertPreference,
-} from "./chat-view-types";
+import type { ChatViewProps } from "./chat-view-types";
 import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
+import { useSentPromptAnchor } from "./use-sent-prompt-anchor";
 import {
   type ChatTimelineScrollHandle,
   ChatVirtualTimeline,
 } from "./virtual-timeline";
 
-const PREVIOUS_MESSAGE_REVERT_PREFERENCE_KEY =
-  "agents.previousMessageRevertPreference";
+const CONTENT_READY_DEADLINE_MS = 1_000;
 
 export function ChatView({
+  chatComposer,
   messages,
   permissionRequests = [],
   pendingPlanApproval = null,
@@ -74,7 +67,7 @@ export function ChatView({
   thinkingLevel,
   thinkingLevelOptions,
   activeBranch,
-  workspaceName,
+  workspace,
   workspaceRootPath,
   workspaceRootPaths,
   composerRef,
@@ -93,11 +86,10 @@ export function ChatView({
   onSelectRuntimeMode,
   onSelectAgent,
   onSend,
-  onSubmitPreviousMessage,
-  onCheckPreviousMessageCheckpoint,
   onStop,
   onDeleteQueuedInput,
   onSendNowQueuedInput,
+  onResumeQueuedInputs,
   onSteerQueuedInput,
   onUpdateQueuedInput,
   onOpenToolLocation,
@@ -111,12 +103,12 @@ export function ChatView({
   onOpenParentSession,
 }: ChatViewProps) {
   const { t } = useTranslation("agent");
-  const rememberPreviousMessageChoiceId = useId();
-  const [rememberPreviousMessageChoice, setRememberPreviousMessageChoice] =
-    useState(false);
-  const [pendingPreviousMessageSubmit, setPendingPreviousMessageSubmit] =
-    useState<PendingPreviousMessageSubmit | null>(null);
   const [isInitialBottomSettled, setIsInitialBottomSettled] = useState(false);
+  const [renderReadiness] = useState(createRenderReadiness);
+  const isContentReady = useRenderReadiness(
+    renderReadiness,
+    CONTENT_READY_DEADLINE_MS,
+  );
   const perfSessionId = sessionId ?? messages[0]?.sessionId ?? null;
   const runStartedAtBySession = useAtomValue(sessionRunStartedAtAtom);
   const runStartedAt = perfSessionId
@@ -194,16 +186,12 @@ export function ChatView({
     onAnswerQuestion,
     onResolvePermission,
     onOpenToolLocation,
-    onCheckPreviousMessageCheckpoint,
-    onSubmitPreviousMessage,
     onSend,
   });
   callbacksRef.current = {
     onAnswerQuestion,
     onResolvePermission,
     onOpenToolLocation,
-    onCheckPreviousMessageCheckpoint,
-    onSubmitPreviousMessage,
     onSend,
   };
   const stableOnAnswerQuestion = useCallback(
@@ -257,15 +245,14 @@ export function ChatView({
   );
   const {
     activeUserMessageId,
-    hasUserScrolled,
-    isAutoScrolling,
+    finishInitialPositioning,
     isNearBottom,
     isNearTop,
     scrollDirection,
     markUserScrollIntent,
     markUserScrollStart,
     holdForDisclosure,
-    stickToBottomIfLocked,
+    syncViewportLayout,
     scrollToLatest,
     scrollToTop,
     scrollToUserMessage,
@@ -284,33 +271,35 @@ export function ChatView({
       return timelineScrollRef.current.restorePosition(position);
     },
   );
-  // Sending a new prompt re-engages the bottom lock and jumps to the end —
-  // the user is starting a new turn and expects to see the response, even
-  // if they scrolled up to read history. The appended message has not
-  // rendered yet; the content ResizeObserver below follows it once it does.
+  // Sending a new prompt pins it to the top of the viewport once it renders;
+  // the response then grows in place below it instead of being followed.
+  const { anchoredPromptId, anchorNextPrompt } = useSentPromptAnchor({
+    awaitingReplyOnMount: isRunning && latestMessage?.role === "user",
+    latestPromptId: stickyUserMessages.at(-1)?.id ?? null,
+    scrollToUserMessage,
+  });
   const stableOnSend = useCallback(
     (
       message: string,
       attachments: MessageAttachment[],
       useOppositeFollowUpBehavior?: boolean,
-    ) => {
+    ): ComposerSendOutcome => {
       callbacksRef.current.onSend(
         message,
         attachments,
         useOppositeFollowUpBehavior,
       );
-      scrollToLatest("auto");
+      scrollToLatest();
+      anchorNextPrompt();
+      return "sent";
     },
-    [scrollToLatest],
+    [anchorNextPrompt, scrollToLatest],
   );
   const activeUserNavigationMessageId =
     activeUserMessageId ?? stickyUserMessages.at(-1)?.id ?? null;
-  // One mutually-exclusive jump button. At the edges it points to the opposite
-  // end; in the middle it mirrors the scroll direction.
   const jumpButton = resolveJumpButton({
-    isReady:
-      isInitialBottomSettled && !isAutoScrolling && timelineGroups.length > 0,
-    hasUserScrolled,
+    streaming: isRunning,
+    isReady: isInitialBottomSettled && timelineGroups.length > 0,
     isNearTop,
     isNearBottom,
     scrollDirection,
@@ -345,83 +334,22 @@ export function ChatView({
     },
     [markUserScrollStart],
   );
-  const submitPreviousMessage = useCallback(
-    async (revertWorkspace: boolean) => {
-      if (!pendingPreviousMessageSubmit || !onSubmitPreviousMessage) {
-        return;
-      }
-
-      if (rememberPreviousMessageChoice) {
-        localStorage.setItem(
-          PREVIOUS_MESSAGE_REVERT_PREFERENCE_KEY,
-          revertWorkspace ? "revert" : "dont-revert",
-        );
-      }
-
-      const pending = pendingPreviousMessageSubmit;
-      setPendingPreviousMessageSubmit(null);
-      await onSubmitPreviousMessage(
-        pending.message,
-        pending.content,
-        revertWorkspace,
-      );
-    },
-    [
-      onSubmitPreviousMessage,
-      pendingPreviousMessageSubmit,
-      rememberPreviousMessageChoice,
-    ],
-  );
-  const handleSubmitPromptEdit = useCallback(
-    async (message: MessageRecord, content: string) => {
-      // Read latest parent callbacks via ref so this handler's identity
-      // stays stable across re-renders — propagates through React.memo on
-      // ChatConversationItem → UserPrompt without invalidating them.
-      const submit = callbacksRef.current.onSubmitPreviousMessage;
-      const checkCheckpoint =
-        callbacksRef.current.onCheckPreviousMessageCheckpoint;
-      if (!submit) {
-        return;
-      }
-
-      const checkpointStatus = checkCheckpoint
-        ? await checkCheckpoint(message)
-        : { available: false };
-      const storedPreference = localStorage.getItem(
-        PREVIOUS_MESSAGE_REVERT_PREFERENCE_KEY,
-      ) as PreviousMessageRevertPreference | null;
-
-      if (storedPreference === "dont-revert") {
-        await submit(message, content, false);
-        return;
-      }
-
-      if (storedPreference === "revert" && checkpointStatus.available) {
-        await submit(message, content, true);
-        return;
-      }
-
-      setRememberPreviousMessageChoice(false);
-      setPendingPreviousMessageSubmit({
-        canRevert: checkpointStatus.available,
-        content,
-        message,
-      });
-    },
-    [],
-  );
   if (timelineGroups.length === 0 && !isInitialBottomSettled) {
     setIsInitialBottomSettled(true);
   }
   useChatBottomStick({
     chatContentRef,
+    isContentReady,
+    isContentReadyNow: renderReadiness.isReady,
     isRunning,
+    finishInitialPositioning,
     setInitialBottomSettled: setIsInitialBottomSettled,
     status,
-    stickToBottomIfLocked,
+    syncViewportLayout,
     stickyUserMessages,
     syncScrollState,
     timelineGroupCount: timelineGroups.length,
+    timelineScrollRef,
     viewportRef,
   });
 
@@ -446,162 +374,112 @@ export function ChatView({
           messages={stickyUserMessages}
           onSelect={scrollToUserMessage}
         />
-        <ScrollArea
-          className={cn(
-            "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
-            !isInitialBottomSettled && "opacity-0",
-          )}
-          viewportProps={{
-            className: "[overflow-anchor:none]",
-            onClickCapture: (event) => {
-              if (isDisclosureToggle(event.target)) {
-                holdForDisclosure();
-              }
-            },
-            onKeyDownCapture: () => handleUserScrollIntent(),
-            onPointerDown: markUserScrollIntent,
-            onPointerDownCapture: markUserScrollIntent,
-            onScroll: () => syncScrollState(stickyUserMessages),
-            onTouchMoveCapture: () => handleUserScrollIntent(),
-            onWheelCapture: (event) => handleUserScrollIntent(event.deltaY),
-            tabIndex: 0,
-          }}
-          viewportRef={attachViewport}
-        >
-          <ChatContentColumn className="py-6" ref={chatContentRef}>
-            {timelineGroups.length === 0 && !readOnly ? (
-              <EmptyChatState
-                activeBranch={activeBranch}
-                workspaceName={workspaceName}
-                sessionId={sessionId}
-                agentLabel={agentLabel}
-                agentType={agentType}
-                attachment={attachment}
-                composerContextChips={composerContextChips}
-                draftKey={
-                  sessionId ? sessionComposerDraftKey(sessionId) : undefined
-                }
-                sessionModeId={sessionModeId}
-                composerRef={composerRef}
-                permissionMode={permissionMode}
-                providerSnapshot={providerSnapshot}
-                thinkingLevel={thinkingLevel}
-                thinkingLevelOptions={thinkingLevelOptions}
-                isRunning={isRunning}
-                canSendWhileRunning={canSendWhileRunning}
-                runtimeCommands={runtime?.commands}
-                runtimeMode={runtime?.mode}
-                onClearAttachment={onClearAttachment}
-                onSelectSessionMode={onSelectSessionMode}
-                onSelectPermissionMode={onSelectPermissionMode}
-                onSelectThinkingLevel={onSelectThinkingLevel}
-                onSelectRuntimeMode={onSelectRuntimeMode}
-                onSelectAgent={onSelectAgent}
-                onSend={stableOnSend}
-                onStop={onStop}
-                workspaceRootPath={workspaceRootPath}
-                workspaceRootPaths={workspaceRootPaths}
-              />
-            ) : timelineGroups.length === 0 ? (
-              <div className="text-chat-fg-muted text-meta">
-                {t("toolCalls.subagentEmpty")}
-              </div>
-            ) : (
-              <>
-                <ChatVirtualTimeline
-                  activity={activity}
-                  groups={conversationGroups}
-                  isRunning={isRunning}
-                  latestMessageId={latestMessage?.id ?? null}
-                  onAnswerQuestion={stableOnAnswerQuestion}
-                  onOpenToolLocation={stableOnOpenToolLocation}
-                  onResolvePermission={stableOnResolvePermission}
-                  onSubmitPromptEdit={
-                    readOnly ? undefined : handleSubmitPromptEdit
-                  }
-                  runStartedAt={runStartedAt}
-                  scrollRef={timelineScrollRef}
-                  setUserMessageRef={setUserMessageRef}
-                  showMessageActions={!readOnly}
-                  userMessageRefs={userMessageRefs}
-                  viewportElement={viewportElement}
-                />
-                {sessionId && !readOnly ? (
-                  <ScriptRunProposals key={sessionId} sessionId={sessionId} />
-                ) : null}
-              </>
+        <RenderReadinessContext value={renderReadiness}>
+          <ScrollArea
+            className={cn(
+              "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
+              !isInitialBottomSettled && "opacity-0",
             )}
-          </ChatContentColumn>
-        </ScrollArea>
-        <Dialog
-          onOpenChange={(open) => {
-            if (!open) {
-              setPendingPreviousMessageSubmit(null);
-            }
-          }}
-          open={Boolean(pendingPreviousMessageSubmit)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("previousMessage.dialogTitle")}</DialogTitle>
-              <DialogDescription>
-                {t("previousMessage.dialogDescription")}
-              </DialogDescription>
-            </DialogHeader>
-            <label
-              className="flex items-center gap-2 text-sm text-chat-fg-secondary"
-              htmlFor={rememberPreviousMessageChoiceId}
-            >
-              <Checkbox
-                checked={rememberPreviousMessageChoice}
-                id={rememberPreviousMessageChoiceId}
-                onCheckedChange={(checked) =>
-                  setRememberPreviousMessageChoice(checked === true)
+            scrollbarProps={{
+              onPointerDownCapture: markUserScrollIntent,
+            }}
+            viewportProps={{
+              className: "[overflow-anchor:none]",
+              onClickCapture: (event) => {
+                if (isDisclosureToggle(event.target)) {
+                  holdForDisclosure();
                 }
-              />
-              {t("previousMessage.dontAskAgain")}
-            </label>
-            {!pendingPreviousMessageSubmit?.canRevert ? (
-              <p className="text-sm text-chat-fg-muted">
-                {t("previousMessage.revertUnavailable")}
-              </p>
-            ) : null}
-            <DialogFooter>
-              <Button
-                onClick={() => setPendingPreviousMessageSubmit(null)}
-                type="button"
-                variant="ghost"
-              >
-                {t("previousMessage.cancel")}
-              </Button>
-              <Button
-                onClick={() => void submitPreviousMessage(false)}
-                type="button"
-                variant="outline"
-              >
-                {t("previousMessage.dontRevert")}
-              </Button>
-              <Button
-                disabled={!pendingPreviousMessageSubmit?.canRevert}
-                onClick={() => void submitPreviousMessage(true)}
-                type="button"
-              >
-                {t("previousMessage.revert")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              },
+              onKeyDownCapture: () => handleUserScrollIntent(),
+              onPointerDown: markUserScrollIntent,
+              onPointerDownCapture: markUserScrollIntent,
+              onScroll: () => syncScrollState(stickyUserMessages),
+              onTouchMoveCapture: () => handleUserScrollIntent(),
+              onWheelCapture: (event) => handleUserScrollIntent(event.deltaY),
+              tabIndex: 0,
+            }}
+            viewportRef={attachViewport}
+          >
+            <ChatContentColumn
+              className={cn("pt-6", timelineGroups.length === 0 && "pb-6")}
+              ref={chatContentRef}
+            >
+              {timelineGroups.length === 0 && !readOnly ? (
+                <EmptyChatState
+                  activeBranch={activeBranch}
+                  workspace={workspace}
+                  sessionId={sessionId}
+                  agentLabel={agentLabel}
+                  agentType={agentType}
+                  attachment={attachment}
+                  composerContextChips={composerContextChips}
+                  draftKey={
+                    sessionId ? sessionComposerDraftKey(sessionId) : undefined
+                  }
+                  sessionModeId={sessionModeId}
+                  composerRef={composerRef}
+                  permissionMode={permissionMode}
+                  providerSnapshot={providerSnapshot}
+                  thinkingLevel={thinkingLevel}
+                  thinkingLevelOptions={thinkingLevelOptions}
+                  isRunning={isRunning}
+                  canSendWhileRunning={canSendWhileRunning}
+                  runtimeCommands={runtime?.commands}
+                  runtimeMode={runtime?.mode}
+                  onClearAttachment={onClearAttachment}
+                  onSelectSessionMode={onSelectSessionMode}
+                  onSelectPermissionMode={onSelectPermissionMode}
+                  onSelectThinkingLevel={onSelectThinkingLevel}
+                  onSelectRuntimeMode={onSelectRuntimeMode}
+                  onSelectAgent={onSelectAgent}
+                  onSend={stableOnSend}
+                  onStop={onStop}
+                  workspaceRootPath={workspaceRootPath}
+                  workspaceRootPaths={workspaceRootPaths}
+                />
+              ) : timelineGroups.length === 0 ? (
+                <div className="text-chat-fg-muted text-meta">
+                  {t("toolCalls.subagentEmpty")}
+                </div>
+              ) : (
+                <>
+                  <ChatVirtualTimeline
+                    activity={activity}
+                    anchoredPromptId={anchoredPromptId}
+                    groups={conversationGroups}
+                    isRunning={isRunning}
+                    latestMessageId={latestMessage?.id ?? null}
+                    onAnswerQuestion={stableOnAnswerQuestion}
+                    onOpenToolLocation={stableOnOpenToolLocation}
+                    onResolvePermission={stableOnResolvePermission}
+                    runStartedAt={runStartedAt}
+                    scrollRef={timelineScrollRef}
+                    setUserMessageRef={setUserMessageRef}
+                    showMessageActions={!readOnly}
+                    userMessageRefs={userMessageRefs}
+                    viewportElement={viewportElement}
+                  />
+                  {sessionId && !readOnly ? (
+                    <ScriptRunProposals key={sessionId} sessionId={sessionId} />
+                  ) : null}
+                </>
+              )}
+            </ChatContentColumn>
+          </ScrollArea>
+        </RenderReadinessContext>
         <JumpControls
-          onJumpToLatest={() => scrollToLatest("smooth")}
-          onJumpToTop={() => scrollToTop("smooth")}
+          streaming={isRunning && shouldShowJumpToLatest}
+          onJumpToLatest={() => scrollToLatest(true)}
+          onJumpToTop={scrollToTop}
           showJumpToLatest={shouldShowJumpToLatest}
           showJumpToTop={shouldShowJumpToTop}
         />
       </div>
       {timelineGroups.length > 0 || readOnly ? (
         <ComposerDock
+          chatComposer={chatComposer}
           activeBranch={activeBranch}
-          workspaceName={workspaceName}
+          workspace={workspace}
           sessionId={sessionId}
           agentLabel={agentLabel}
           agentType={agentType}
@@ -630,6 +508,7 @@ export function ChatView({
           onStop={onStop}
           onDeleteQueuedInput={onDeleteQueuedInput}
           onSendNowQueuedInput={onSendNowQueuedInput}
+          onResumeQueuedInputs={onResumeQueuedInputs}
           onSteerQueuedInput={onSteerQueuedInput}
           onUpdateQueuedInput={onUpdateQueuedInput}
           onResolvePermission={onResolvePermission}

@@ -1,0 +1,33 @@
+{
+  "name": "@cocurdex/deck",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./edit": "./src/edit.ts",
+    "./image-info": "./src/image-info.ts",
+    "./images": "./src/images.ts",
+    "./markdown": "./src/markdown.ts",
+    "./pdf": "./src/pdf.ts",
+    "./pptx": "./src/pptx.ts",
+    "./pptx-import": "./src/pptx-import-entry.ts",
+    "./internal/*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/note-doc": "workspace:*",
+    "@cocurdex/shared": "workspace:*",
+    "fast-xml-parser": "^5.11.2",
+    "jszip": "^3.10.2",
+    "pdfkit": "0.20.2",
+    "pptxgenjs": "4.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pdfkit": "^0.17.6"
+  }
+}

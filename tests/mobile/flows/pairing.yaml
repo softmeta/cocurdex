@@ -1,0 +1,230 @@
+appId: dev.cocurdex.mobile
+---
+- launchApp
+- assertVisible: ${EMPTY_TITLE}
+- takeScreenshot: empty
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${EMPTY_SCAN}
+      - extendedWaitUntil:
+          visible: ${SCAN_TITLE}
+          timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: scan
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: ${SCAN_UNREACHABLE}
+          timeout: 15000
+      - takeScreenshot: scan-unreachable
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${SCAN_PASTE}
+      - tapOn:
+          text: ${SYSTEM_CONTINUE}
+          optional: true
+      - extendedWaitUntil:
+          visible:
+            id: "pairing-link"
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: "pairing-link"
+      - eraseText: 120
+      - inputText: ${PAIRING_LINK}
+      - extendedWaitUntil:
+          visible:
+            id: "pairing-link"
+            text: ${PAIRING_LINK}
+          timeout: 10000
+- takeScreenshot: pairing-sheet
+- extendedWaitUntil:
+    visible:
+      text: ${PAIR_ACTION}
+      enabled: true
+    timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          text: ${SYSTEM_CONTINUE}
+          optional: true
+      - tapOn: ${PAIR_ACTION}
+      - extendedWaitUntil:
+          visible: ${WORKSPACE_NAME}
+          timeout: 15000
+- assertNotVisible: ${LINK_PLACEHOLDER}
+- takeScreenshot: sessions
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${LIST_OPTIONS_ACTION}
+      - extendedWaitUntil:
+          visible:
+            id: list-option-statuses
+          timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: list-options
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: list-option-grouping
+      - extendedWaitUntil:
+          visible:
+            id: list-choice-none
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - waitForAnimationToEnd
+      - tapOn:
+          id: list-choice-none
+      - extendedWaitUntil:
+          visible:
+            id: list-option-grouping
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: list-option-grouping
+      - extendedWaitUntil:
+          visible:
+            id: list-choice-workspace
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - waitForAnimationToEnd
+      - tapOn:
+          id: list-choice-workspace
+      - extendedWaitUntil:
+          visible:
+            id: list-option-grouping
+          timeout: 5000
+- tapOn: ${LIST_OPTIONS_CLOSE}
+- extendedWaitUntil:
+    visible: ${WORKSPACE_NAME}
+    timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${TAB_SETTINGS}
+      - tapOn:
+          id: settings-computers
+      - extendedWaitUntil:
+          visible: ".*${HOST_ADDRESS}.*"
+          timeout: 5000
+- takeScreenshot: paired
+- longPressOn:
+    id: "host-row-.*"
+- extendedWaitUntil:
+    visible:
+      id: computer-action-details
+    timeout: 5000
+- takeScreenshot: computer-actions
+- tapOn:
+    id: computer-action-details
+- extendedWaitUntil:
+    visible:
+      id: computer-scope-read
+    timeout: 5000
+- takeScreenshot: computer-detail
+- tapOn:
+    id: computer-rename
+- extendedWaitUntil:
+    visible:
+      id: rename-computer-name
+    timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: rename-computer-name
+            focused: true
+          timeout: 5000
+- eraseText: 80
+- inputText: ${RENAMED_COMPUTER}
+- tapOn: ${RENAME_COMPUTER_SAVE}
+- extendedWaitUntil:
+    visible: ${RENAMED_COMPUTER}
+    timeout: 5000
+- extendedWaitUntil:
+    notVisible:
+      id: rename-computer-name
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 3
+          commands:
+            - waitForAnimationToEnd
+            - tapOn:
+                point: 5%, 9%
+            - extendedWaitUntil:
+                visible:
+                  id: "host-row-.*"
+                timeout: 3000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: "host-row-.*"
+    timeout: 5000
+- assertVisible: ${RENAMED_COMPUTER}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 3
+          commands:
+            - waitForAnimationToEnd
+            - tapOn:
+                point: 5%, 9%
+            - extendedWaitUntil:
+                visible:
+                  id: settings-computers
+                timeout: 3000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: settings-computers
+    timeout: 5000
+- assertVisible: ".*${RENAMED_COMPUTER}.*"
+- tapOn: ${TAB_SETTINGS}
+- waitForAnimationToEnd
+- takeScreenshot: settings
+- tapOn:
+    id: settings-language
+- extendedWaitUntil:
+    visible:
+      id: settings-language-zh-CN
+    timeout: 5000
+- assertVisible:
+    id: settings-language-en-US
+- takeScreenshot: settings-language
+- tapOn:
+    id: settings-language-system
+- extendedWaitUntil:
+    visible:
+      id: settings-archived
+    timeout: 5000

@@ -12,14 +12,12 @@ import {
 } from "@/components";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib";
+import { workspaceIconFor } from "./workspace-icon";
 import { sortWorkspacesByLastOpenedAtDesc } from "./workspace-order";
 import { compactWorkspacePath } from "./workspace-path";
+import { WorkspaceRootsPreview } from "./workspace-roots-preview";
 
 const OPEN_FOLDER_VALUE = "__open_folder__";
-
-export const composerContextTriggerHoverClassName = cn(
-  "hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover",
-);
 
 interface WorkspacePickerProps {
   workspaces: WorkspaceRecord[];
@@ -61,8 +59,7 @@ export function WorkspacePicker({
   // all. Tint against the foreground instead so it reads as clickable on any
   // surface this picker is mounted on.
   const triggerClass = cn(
-    "h-7 max-w-60 gap-1.5 px-2",
-    composerContextTriggerHoverClassName,
+    "h-7 max-w-60 gap-1.5 px-2 hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover",
     triggerClassName,
   );
 
@@ -75,16 +72,22 @@ export function WorkspacePicker({
     () => [
       ...recentWorkspaces.map((workspace) => {
         const missing = (workspace.missingRootPaths?.length ?? 0) > 0;
+        const multiRoot = workspace.rootPaths.length > 1;
         return {
           value: workspace.id,
-          label: compactWorkspacePath(primaryWorkspaceRootPath(workspace)),
+          label: multiRoot
+            ? workspace.name
+            : compactWorkspacePath(primaryWorkspaceRootPath(workspace)),
+          ...(multiRoot
+            ? { preview: <WorkspaceRootsPreview workspace={workspace} /> }
+            : {}),
           keywords: `${workspace.name} ${workspace.rootPaths.join(" ")}`,
           group: "recents",
           groupLabel: t("workspace.recents"),
           icon: missing ? (
             <FolderX className="size-3.5 text-destructive" />
           ) : (
-            <Folder className="size-3.5" />
+            <WorkspaceOptionIcon workspace={workspace} />
           ),
           ...(missing
             ? {
@@ -125,6 +128,14 @@ export function WorkspacePicker({
     );
   }
 
+  const activeWorkspace = workspaces.find(
+    (workspace) => workspace.id === activeWorkspaceId,
+  );
+
+  const ActiveWorkspaceIcon = activeWorkspace
+    ? workspaceIconFor(activeWorkspace)
+    : Folder;
+
   return (
     <AppSearchableSelect
       align={align}
@@ -140,7 +151,7 @@ export function WorkspacePicker({
       triggerLabel={
         triggerLabel ?? (
           <span className="flex min-w-0 items-center gap-1.5">
-            <Folder className="size-3.5 shrink-0" />
+            <ActiveWorkspaceIcon className="size-3.5 shrink-0" />
             <span className="truncate">
               {workspaceName ?? t("workspace.enterWorkspace")}
             </span>
@@ -164,4 +175,9 @@ export function WorkspacePicker({
       }}
     />
   );
+}
+
+function WorkspaceOptionIcon({ workspace }: { workspace: WorkspaceRecord }) {
+  const Icon = workspaceIconFor(workspace);
+  return <Icon className="size-3.5" />;
 }

@@ -13,6 +13,10 @@ import type {
 } from "@opencode/client";
 import { createPermissionOptions } from "../shared";
 import {
+  type ContextCompactionTracker,
+  createContextCompactionTracker,
+} from "../shared/context-compaction-tracker";
+import {
   mapOpenCodeReply,
   type OpenCodePermission,
 } from "./opencode-permissions";
@@ -100,8 +104,16 @@ export class OpenCodeTurn {
   private assistantContent = "";
   private readonly tools = new Map<string, ToolState>();
   private readonly children = new Map<string, ChildState>();
+  private readonly compaction: ContextCompactionTracker;
+  private latestContextTokens: number | null = null;
+  private tokensBeforeCompaction: number | null = null;
 
-  constructor(private readonly options: OpenCodeTurnOptions) {}
+  constructor(private readonly options: OpenCodeTurnOptions) {
+    this.compaction = createContextCompactionTracker({
+      sessionId: options.sessionId,
+      emit: options.onEvent,
+    });
+  }
 
   get hasStarted() {
     return this.started;
@@ -189,11 +201,24 @@ export class OpenCodeTurn {
         if (this.assistantMessageId === event.data.assistantMessageID) {
           this.flushAssistantMessage();
         }
-        this.options.onEvent({
-          type: "usage.updated",
-          sessionId,
-          usage: mapUsage(event.data.tokens, event.data.cost),
-          receivedAt: new Date(event.created).toISOString(),
+        this.emitStepUsage(mapUsage(event.data.tokens, event.data.cost), event);
+        return null;
+      case "session.compaction.started":
+        this.tokensBeforeCompaction = this.latestContextTokens;
+        this.compaction.start({ id: event.id, trigger: event.data.reason });
+        return null;
+      case "session.compaction.ended":
+        this.compaction.finish({
+          status: "completed",
+          trigger: event.data.reason,
+          tokensBefore: this.tokensBeforeCompaction,
+        });
+        return null;
+      case "session.compaction.failed":
+        this.compaction.finish({
+          status: "failed",
+          trigger: event.data.reason,
+          error: formatOpenCodeExecutionError(event.data.error),
         });
         return null;
       case "session.execution.succeeded":
@@ -201,6 +226,7 @@ export class OpenCodeTurn {
       case "session.execution.interrupted":
         return this.finish("interrupted");
       case "session.execution.failed":
+        this.compaction.abandon();
         this.flushAssistantMessage();
         if (event.data.error.type === "aborted") {
           return this.finish("interrupted");
@@ -483,7 +509,19 @@ export class OpenCodeTurn {
     this.assistantContent = "";
   }
 
+  private emitStepUsage(usage: AgentUsageRecord, event: { created: number }) {
+    this.latestContextTokens =
+      usage.contextTokensUsed ?? this.latestContextTokens;
+    this.options.onEvent({
+      type: "usage.updated",
+      sessionId: this.options.sessionId,
+      usage,
+      receivedAt: new Date(event.created).toISOString(),
+    });
+  }
+
   private finish(outcome: OpenCodeTurnOutcome): OpenCodeTurnOutcome {
+    this.compaction.abandon();
     this.flushAssistantMessage();
     this.options.onEvent({
       type: "state.changed",

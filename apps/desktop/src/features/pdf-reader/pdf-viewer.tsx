@@ -73,7 +73,7 @@ function PdfViewerContent({
   const { t } = useTranslation("editor");
   const viewerHandleRef = useRef<PdfJsViewerHandle | null>(null);
 
-  const { url, status, setStatus } = usePdfData(filePath);
+  const { source, status, setStatus } = usePdfData(filePath);
   const readingPositions = useAtomValue(pdfReadingPositionsAtom);
   const setReadingPosition = useSetAtom(setPdfReadingPositionAtom);
   const annotationsByPath = useAtomValue(pdfAnnotationsAtom);
@@ -461,10 +461,10 @@ function PdfViewerContent({
         />
 
         <div className="absolute inset-0">
-          {url ? (
+          {source ? (
             <PdfJsViewer
               ref={viewerHandleRef}
-              url={url}
+              source={source}
               initialPosition={initialPosition}
               highlights={documentAnnotations.highlights}
               scrollContainerRef={scrollRef}

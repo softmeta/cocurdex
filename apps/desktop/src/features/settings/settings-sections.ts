@@ -2,6 +2,7 @@ import {
   Archive,
   Blocks,
   BookOpen,
+  Brain,
   Code2,
   Folder,
   Gauge,
@@ -17,11 +18,12 @@ import {
   Server,
   Settings,
   SlidersHorizontal,
+  Smartphone,
   Stethoscope,
   UserCog,
   Users,
 } from "lucide-react";
-import type { SettingsSectionId } from "@/app/layout";
+import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 
 export const settingsClusters = [
   "interface",
@@ -54,6 +56,7 @@ export const settingsSections = [
   { id: "agentRoles", labelKey: "agentRoles", icon: UserCog, cluster: "agent" },
   { id: "teams", labelKey: "teams", icon: Users, cluster: "agent" },
   { id: "mcp", labelKey: "mcp", icon: Server, cluster: "agent" },
+  { id: "memory", labelKey: "memory", icon: Brain, cluster: "agent" },
   { id: "skills", labelKey: "skills", icon: BookOpen, cluster: "agent" },
   { id: "git", labelKey: "git", icon: GitBranch, cluster: "workspace" },
   {
@@ -72,6 +75,12 @@ export const settingsSections = [
     id: "environment",
     labelKey: "environment",
     icon: Network,
+    cluster: "system",
+  },
+  {
+    id: "devices",
+    labelKey: "devices",
+    icon: Smartphone,
     cluster: "system",
   },
   { id: "licenses", labelKey: "licenses", icon: Scale, cluster: "system" },

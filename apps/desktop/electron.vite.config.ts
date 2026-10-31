@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { getWorkspaceDependencyNames } from "./electron-vite-workspace-dependencies";
+import { buildPolicyDefine } from "./scripts/build-policy-define.mjs";
 
 // pdf.js ships cMaps (CJK glyph maps) and standard fonts as separate assets the
 // renderer fetches at runtime. They must land in the renderer output so the
@@ -42,7 +43,16 @@ const alias = {
     __dirname,
     "../../packages/agent-adapters/src/index.ts",
   ),
+  "@cocurdex/deck": path.resolve(__dirname, "../../packages/deck/src/index.ts"),
   "@cocurdex/db": path.resolve(__dirname, "../../packages/db/src/index.ts"),
+  "@cocurdex/note-doc/bytes": path.resolve(
+    __dirname,
+    "../../packages/note-doc/src/bytes.ts",
+  ),
+  "@cocurdex/note-doc": path.resolve(
+    __dirname,
+    "../../packages/note-doc/src/index.ts",
+  ),
   "@cocurdex/daemon/client": path.resolve(
     __dirname,
     "../../packages/daemon/src/client.ts",
@@ -50,10 +60,6 @@ const alias = {
   "@cocurdex/daemon/paths": path.resolve(
     __dirname,
     "../../packages/daemon/src/paths.ts",
-  ),
-  "@cocurdex/llm-chat": path.resolve(
-    __dirname,
-    "../../packages/llm-chat/src/index.ts",
   ),
   "@cocurdex/product-skills": path.resolve(
     __dirname,
@@ -63,11 +69,20 @@ const alias = {
     __dirname,
     "../../packages/rpc/src/client.ts",
   ),
+  "@cocurdex/client-runtime": path.resolve(
+    __dirname,
+    "../../packages/client-runtime/src/index.ts",
+  ),
+  "@cocurdex/rpc/method-scopes": path.resolve(
+    __dirname,
+    "../../packages/rpc/src/method-scopes.ts",
+  ),
   "@cocurdex/rpc": path.resolve(__dirname, "../../packages/rpc/src/index.ts"),
 };
 
 export default defineConfig(({ command }) => ({
   main: {
+    define: buildPolicyDefine(),
     resolve: {
       alias,
     },
@@ -156,6 +171,12 @@ export default defineConfig(({ command }) => ({
       rollupOptions: {
         input: {
           index: "index.html",
+        },
+        onwarn(warning, warn) {
+          if (warning.code === "CYCLIC_CROSS_CHUNK_REEXPORT") {
+            throw new Error(warning.message);
+          }
+          warn(warning);
         },
       },
     },

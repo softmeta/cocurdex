@@ -1,8 +1,25 @@
 {
   "agentRole": {
+    "avatar": {
+      "change": "Change avatar",
+      "color": "Color",
+      "custom": "Custom emoji",
+      "customPlaceholder": "Paste or type any emoji",
+      "groups": {
+        "animals": "Animals",
+        "people": "People",
+        "symbols": "Symbols",
+        "work": "Work"
+      },
+      "reset": "Use initial"
+    },
     "cancel": "Cancel",
+    "description": "Description",
+    "descriptionPlaceholder": "What this role does and what it is good at. Team leads use it to pick teammates.",
     "empty": "No saved roles",
+    "menuCreate": "New role",
     "menuLabel": "Roles",
+    "menuManage": "Manage roles",
     "name": "Name",
     "namePlaceholder": "Role name",
     "save": "Save as role",
@@ -12,10 +29,30 @@
     "saveFailed": "Could not save this role.",
     "saveTitle": "Save as role"
   },
+  "agentSelect": {
+    "add": "Add from ACP Registry",
+    "editPreset": "Edit {{name}}",
+    "manage": "Manage agent CLIs"
+  },
   "archive": {
     "failed": "Could not archive this session. Try again.",
     "success": "Session archived",
     "view": "View archived"
+  },
+  "archiveGroup": {
+    "action": "Archive sessions",
+    "cancel": "Cancel",
+    "confirm": "Archive",
+    "description": "Sessions in “{{group}}” move to the archive. Pinned, running, and waiting sessions are skipped. Restore them anytime from Settings > Archived sessions.",
+    "failed": "Could not archive these sessions",
+    "skipped_one": "Skipped {{count}} running or waiting session",
+    "skipped_other": "Skipped {{count}} running or waiting sessions",
+    "success_one": "Archived {{count}} session",
+    "success_other": "Archived {{count}} sessions",
+    "title_one": "Archive {{count}} session?",
+    "title_other": "Archive {{count}} sessions?",
+    "undo": "Undo",
+    "undoFailed": "Could not restore the sessions"
   },
   "branch": {
     "branches": "Branches",
@@ -40,6 +77,7 @@
     },
     "contextFileTooLarge": "File is too large. Select a smaller file or attach a selection.",
     "noInstalledAgent": "No agent installed",
+    "openWorkspaceFirst": "Open a folder, then describe the task",
     "placeholder": "Plan, Build, / for skills, @ for context",
     "removeAttachment": "Remove attachment",
     "selectAgent": "Select agent",
@@ -61,6 +99,50 @@
     "treeOutline": "Tree outline"
   },
   "defaultTitle": "New {{agentLabel}} session",
+  "executionTree": {
+    "description": "Runs, tool calls, subagents, and pending approvals for this session. Expand a row to see what it contains, or select a tool call to see its output.",
+    "failedCount_one": "{{count}} failed",
+    "failedCount_other": "{{count}} failed",
+    "issuesOnly": "Issues only",
+    "limited": "Subagent {{name}} is not observable: its provider reports no events for it.",
+    "noIssues": "No failed tool calls or pending approvals.",
+    "noOutput": "No output was recorded.",
+    "omittedLines_one": "{{count}} earlier line hidden",
+    "omittedLines_other": "{{count}} earlier lines hidden",
+    "openSession": "Open {{title}}",
+    "outputUnavailable": "The output could not be loaded.",
+    "planProgress": "Plan {{done}}/{{total}}",
+    "run": "Run started {{time}}",
+    "title": "Execution tree",
+    "toolCalls": "Tool calls",
+    "toolCount_one": "{{count}} tool call",
+    "toolCount_other": "{{count}} tool calls",
+    "truncated": "Deeper sessions are not shown.",
+    "unavailable": "The execution tree is unavailable for this session.",
+    "waitingAnswer": "Waiting for an answer: {{question}}",
+    "waitingCount_one": "{{count}} waiting",
+    "waitingCount_other": "{{count}} waiting",
+    "waitingPermission": "Waiting for permission: {{title}}",
+    "waitingPlanApproval": "Waiting for plan approval"
+  },
+  "lineage": {
+    "forkFailed": "Could not fork the session",
+    "forkFromHere": "Fork from here",
+    "forkTitle": "{{title}} (fork)",
+    "handoff": {
+      "delta_one": "Handed {{count}} new message from {{sources}} to {{target}}",
+      "delta_other": "Handed {{count}} new messages from {{sources}} to {{target}}",
+      "fork_one": "Forked with {{count}} message handed to {{target}}",
+      "fork_other": "Forked with {{count}} messages handed to {{target}}",
+      "full_one": "Handed {{count}} message from {{sources}} to {{target}}",
+      "full_other": "Handed {{count}} messages from {{sources}} to {{target}}",
+      "hide": "Hide handed-off context",
+      "native_one": "Forked {{target}}'s own thread with {{count}} message",
+      "native_other": "Forked {{target}}'s own thread with {{count}} messages",
+      "show": "Show handed-off context"
+    },
+    "switchAgentFailed": "Could not switch the agent"
+  },
   "modelMenu": {
     "defaultTag": "Default",
     "empty": "No matching models.",
@@ -202,23 +284,105 @@
     "collapseChildren": "Collapse subagent sessions",
     "delete": "Delete",
     "editWorkspace": "Edit workspace",
+    "executionTree": "Execution tree",
     "expandChildren": "Expand subagent sessions",
+    "fork": "Fork session",
     "marketplace": "Marketplace",
+    "markUnread": "Mark as unread",
     "newSession": "New session",
     "newSessionInWorkspace": "New session in {{workspaceName}}",
     "noAgentsYet": "No sessions yet",
     "pendingAttention": "Needs attention",
+    "pin": "Pin",
+    "pinFailed": "Could not update pin",
+    "pinned": "Pinned",
     "removeWorkspace": "Remove",
     "rename": "Rename",
     "renameSession": "Rename {{title}}",
     "revealInFileManager": "Reveal in file manager",
     "running": "Running",
+    "sessionsHeading": "Sessions",
     "settings": "Settings",
     "showLess": "Show less",
     "showMore_one": "Show more ({{count}} left)",
     "showMore_other": "Show more ({{count}} left)",
     "splitDown": "Open Below",
     "splitRight": "Open to the Right",
+    "unpin": "Unpin",
+    "unread": "Unread",
+    "view": {
+      "agentFilter": "Agent",
+      "archived": "Archived sessions",
+      "clearAllFilters": "Clear filters",
+      "clearFilters_one": "Clear filter",
+      "clearFilters_other": "Clear {{count}} filters",
+      "collapseAll": "Collapse all",
+      "compact": "Compact mode",
+      "direction": {
+        "asc": "Ascending",
+        "desc": "Descending"
+      },
+      "environment": {
+        "local": "Local",
+        "worktree": "Worktree"
+      },
+      "environmentFilter": "Environment",
+      "expandAll": "Expand all",
+      "filtersLabel": "Filters",
+      "grouping": {
+        "agent": "Agent",
+        "none": "No grouping",
+        "status": "Status",
+        "updated": "Last updated",
+        "workspace": "Workspace"
+      },
+      "groupingLabel": "Group by",
+      "markAllRead": "Mark all as read",
+      "menu": "Group and filter sessions",
+      "noMatches": "No matching sessions",
+      "ordering": {
+        "activity": "Recent activity",
+        "created": "Created time",
+        "title": "Title"
+      },
+      "orderingLabel": "Sort by",
+      "propertiesLabel": "Properties",
+      "property": {
+        "agent": "Agent",
+        "model": "Model",
+        "role": "Role",
+        "timestamp": "Last activity",
+        "workspace": "Workspace",
+        "worktree": "Worktree"
+      },
+      "rootLimit": {
+        "all": "All",
+        "count_one": "{{count}} session",
+        "count_other": "{{count}} sessions"
+      },
+      "rootLimitLabel": "Sessions per group",
+      "showLabel": "Show",
+      "source": {
+        "created": "Created here",
+        "imported": "Imported",
+        "issue": "From issues"
+      },
+      "sourceFilter": "Source",
+      "status": {
+        "attention": "Needs attention",
+        "error": "Error",
+        "idle": "Idle",
+        "running": "Running",
+        "unread": "Unread"
+      },
+      "statusFilter": "Status",
+      "updated": {
+        "older": "Older",
+        "today": "Today",
+        "week": "Past 7 days",
+        "yesterday": "Yesterday"
+      }
+    },
     "workspacesGroup": "Work"
   },
   "split": {
@@ -229,6 +393,15 @@
     "menu": "Split session",
     "newSession": "New session",
     "right": "Split Right"
+  },
+  "team": {
+    "leadMissing": "Its lead role was deleted",
+    "menuCreate": "New team",
+    "menuEmpty": "No teams yet",
+    "menuLabel": "Team",
+    "menuManage": "Manage teams",
+    "summary_one": "{{count}} teammate · Led by {{lead}}",
+    "summary_other": "{{count}} teammates · Led by {{lead}}"
   },
   "window": {
     "detach": "Open in a separate window",
@@ -244,10 +417,13 @@
     "editCancel": "Cancel",
     "editFoldersLabel": "Source folders",
     "editMakePrimary": "Make primary",
+    "editManageLabel": "Manage",
     "editNameLabel": "Workspace name",
     "editPrimary": "Primary",
+    "editRemoveDescription": "{{name}} and all of its agent sessions are removed from Cocurdex. Files in its folders are not touched.",
     "editRemoveFolder": "Remove folder",
-    "editRemoveWorkspace": "Remove workspace",
+    "editRemoveTitle": "Remove {{name}}?",
+    "editRemoveWorkspace": "Remove",
     "editSave": "Save",
     "editTitle": "Edit workspace",
     "empty": "No matching workspaces.",
@@ -266,9 +442,12 @@
       "up": "Go to parent folder"
     },
     "missing": "Folder missing — click to relocate",
+    "openedExisting": "Opened existing workspace “{{name}}”",
     "openFolder": "Open Folder",
     "recents": "Recents",
     "removeFailed": "Could not remove this workspace. Try again.",
+    "rootsAdditional": "Additional folders",
+    "rootsPrimary": "Primary folder",
     "startDescription": "Pick a model, describe the task, and keep the first prompt scoped.",
     "startTitle": "What should we do in {{workspaceName}}?",
     "startTitleAfter": "?",

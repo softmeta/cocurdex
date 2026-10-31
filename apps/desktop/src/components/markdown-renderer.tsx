@@ -1,8 +1,10 @@
+import { hidePendingTableStart } from "@cocurdex/shared";
 import type { ReactNode } from "react";
 import {
   memo,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -14,12 +16,21 @@ import type { MarkdownFilePathHandlers } from "./markdown-file-path";
 import { rewriteMarkdownLocalFileLinks } from "./markdown-file-path";
 import type { HeavyPluginKind } from "./markdown-heavy-plugins";
 import {
+  getLoadedHeavyPluginKinds,
   getStreamdownPlugins,
   LIGHT_STREAMDOWN_PLUGINS,
   loadHeavyPlugins,
   subscribeStreamdownPlugins,
 } from "./markdown-heavy-plugins";
 import { createMarkdownComponents } from "./markdown-renderer-components";
+import { createStreamFadeBlockPlugins } from "./markdown-stream-fade";
+import { useRenderReadinessHold } from "./render-readiness";
+import { StreamFadeBlock } from "./stream-fade-block";
+import { StreamFadeContext } from "./stream-fade-context";
+import {
+  useStreamFadeActive,
+  useStreamFadeAnimations,
+} from "./use-stream-fade";
 
 export type { MarkdownRendererTone } from "./markdown-renderer-styles";
 
@@ -36,7 +47,7 @@ interface MarkdownRendererProps {
 }
 
 // Streamdown 2.x ships heavyweight render paths as plugin packages.
-// - code: Shiki syntax highlighting for fenced code blocks
+// - code: syntax highlighting for fenced code blocks
 // - mermaid: diagram rendering for ```mermaid blocks
 // - math: KaTeX rendering
 // Those three are loaded on demand — see markdown-heavy-plugins.
@@ -190,6 +201,11 @@ function useStreamdownPlugins(neededPlugins: HeavyPluginKind[]) {
       loadHeavyPlugins(neededPlugins);
     }
   }, [neededPlugins]);
+  const loadedKinds = useSyncExternalStore(
+    subscribeStreamdownPlugins,
+    getLoadedHeavyPluginKinds,
+  );
+  useRenderReadinessHold(neededPlugins.some((kind) => !loadedKinds.has(kind)));
 
   return neededPlugins.length > 0 ? loadedPlugins : LIGHT_STREAMDOWN_PLUGINS;
 }
@@ -211,32 +227,46 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     [tone, filePathHandlers],
   );
   const normalizedContent = useMemo(() => {
-    const withCodeFenceLanguages = normalizeMarkdownCodeFenceLanguages(content);
+    const withCodeFenceLanguages = normalizeMarkdownCodeFenceLanguages(
+      streaming ? hidePendingTableStart(content) : content,
+    );
     const withMath = normalizeMathDelimiters(withCodeFenceLanguages);
     // Only rewrite when the chat surface can open files — otherwise the
     // private https://cocurdex.workspace/... URLs would be unclickable.
     return filePathHandlers
       ? rewriteMarkdownLocalFileLinks(withMath)
       : withMath;
-  }, [content, filePathHandlers]);
+  }, [content, filePathHandlers, streaming]);
   const neededPlugins = useMemo(
     () => neededHeavyPlugins(normalizedContent),
     [normalizedContent],
   );
   const plugins = useStreamdownPlugins(neededPlugins);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fadeBlockPlugins] = useState(createStreamFadeBlockPlugins);
+  const fading = useStreamFadeActive(streaming);
+  useStreamFadeAnimations(containerRef, fading);
 
   return (
-    <Streamdown
-      className={cn("min-w-0 max-w-full", className)}
-      components={components}
-      isAnimating={streaming}
-      lineNumbers={false}
-      mode={hasStreamed || streaming ? "streaming" : "static"}
-      parseIncompleteMarkdown={streaming}
-      plugins={plugins}
-      shikiTheme={["github-light", "github-dark"]}
+    <div
+      className="contents"
+      data-streaming={streaming || undefined}
+      ref={containerRef}
     >
-      {normalizedContent}
-    </Streamdown>
+      <StreamFadeContext value={fading ? fadeBlockPlugins : null}>
+        <Streamdown
+          BlockComponent={StreamFadeBlock}
+          className={cn("min-w-0 max-w-full", className)}
+          components={components}
+          isAnimating={streaming}
+          lineNumbers={false}
+          mode={hasStreamed || streaming ? "streaming" : "static"}
+          parseIncompleteMarkdown={streaming}
+          plugins={plugins}
+        >
+          {normalizedContent}
+        </Streamdown>
+      </StreamFadeContext>
+    </div>
   );
 });

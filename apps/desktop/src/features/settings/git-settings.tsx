@@ -3,40 +3,40 @@ import type {
   CommitMessageModelSelection,
   ReasoningEffort,
 } from "@cocurdex/shared";
+import {
+  getDefaultOpenCodeAgent,
+  getOpenCodeRuntimeOptions,
+  getThinkingLevelLabel,
+  getThinkingLevelOptions,
+  resolveOpenCodeRuntimeValue,
+  resolveThinkingLevel,
+} from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { SettingsGroup } from "@/components/app";
 import { Spinner } from "@/components/ui";
-import {
-  getThinkingLevelLabel,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-  ThinkingLevelSubmenu,
-} from "@/features/composer";
 import {
   AgentSelect,
   agentsAtom,
   buildAgentSelectOptions,
   getCachedProviderModelEntry,
-  getDefaultOpenCodeAgent,
   getDefaultProviderModelValue,
-  getOpenCodeRuntimeOptions,
   getProviderModelCacheVersion,
   loadProviderModelOptions,
   ProviderModelMenu,
   parseProviderModelValue,
   providerModelCache,
-  resolveOpenCodeRuntimeValue,
   shouldShowProviderGroupLabels,
   subscribeProviderModelCache,
+  ThinkingLevelSubmenu,
 } from "@/features/sessions";
 import { desktopApi, useMountEffect } from "@/lib";
 import {
   type CommitRuntimeSelection,
   createCommitSelection,
 } from "./git-commit-selection";
-import { settingsSelectTriggerClassName } from "./settings-select";
 
 export function GitSettingsPanel() {
   const { t } = useTranslation(["settings", "common", "sessions"]);
@@ -250,131 +250,120 @@ export function GitSettingsPanel() {
 
   return (
     <div className="settings-panel-enter flex flex-col gap-8">
-      <div className="flex flex-col">
-        <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
-          {t("git.commitMessageModel.group")}
-        </div>
-        <div className="rounded-card border border-border/70 bg-settings-surface px-4">
-          <div className="flex flex-col divide-y divide-border/60">
-            <div className="flex items-center justify-between gap-4 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">
-                  {t("git.commitMessageModel.agentLabel")}
-                </div>
-                <div className="mt-0.5 text-2xs text-muted-foreground">
-                  {t("git.commitMessageModel.agentDescription")}
-                </div>
-              </div>
-              <AgentSelect
-                align="end"
-                appearance="ghost"
-                disabled={isLoading || isSaving}
-                options={agentSelectOptions}
-                showChevron={!isLoading}
-                triggerAriaLabel={t("git.commitMessageModel.agentLabel")}
-                triggerClassName={settingsSelectTriggerClassName}
-                triggerLabel={
-                  <>
-                    <span className="min-w-0 truncate">
-                      {agentSelectOptions.find(
-                        (agent) => agent.value === agentId,
-                      )?.label ?? agentId}
-                    </span>
-                    {isLoading ? <Spinner size="xs" /> : null}
-                  </>
-                }
-                value={agentId}
-                onValueChange={(next) => {
-                  void selectAgent(next);
-                }}
-              />
+      <SettingsGroup title={t("git.commitMessageModel.group")}>
+        <div className="flex items-center justify-between gap-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">
+              {t("git.commitMessageModel.agentLabel")}
             </div>
-            <div className="flex items-center justify-between gap-4 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">
-                  {t("git.commitMessageModel.modelLabel")}
-                </div>
-                <div className="mt-0.5 text-2xs text-muted-foreground">
-                  {t("git.commitMessageModel.modelDescription")}
-                </div>
-              </div>
-              <ProviderModelMenu
-                align="end"
-                appearance="ghost"
-                compatibleProviders={compatibleProviders}
-                footer={
-                  <ThinkingLevelSubmenu
-                    level={selectedThinkingLevel}
-                    options={thinkingLevelOptions}
-                    onChange={(value) => {
-                      void selectRuntimeOption({
-                        thinkingLevel: value === "default" ? null : value,
-                      });
-                    }}
-                  />
-                }
-                disabled={isLoading || isSaving}
-                emptyOptionLabel={
-                  agentId === "claude-agent" ? undefined : noneLabel
-                }
-                isLoading={isLoading}
-                reasoningEffortOptions={codexReasoningOptions}
-                reasoningEffortDefaultValue={codexReasoningDefaultValue}
-                reasoningEffortValue={
-                  selection?.reasoningEffort ?? codexReasoningDefaultValue
-                }
-                fastModeOptions={claudeFastModeOptions}
-                fastModeValue={selection?.fastMode ? "on" : "off"}
-                serviceTierOptions={codexServiceTierOptions}
-                serviceTierValue={selection?.serviceTier ?? ""}
-                openCodeAgentOptions={openCodeRuntimeOptions.agents.map(
-                  (value) => ({ label: value, value }),
-                )}
-                openCodeAgentDefaultValue={openCodeAgentDefaultValue}
-                openCodeAgentValue={openCodeAgentValue}
-                openCodeVariantOptions={[
-                  {
-                    label: t("sessions:modelMenu.openCodeVariantDefault"),
-                    value: "",
-                  },
-                  ...openCodeRuntimeOptions.variants.map((value) => ({
-                    label: value,
-                    value,
-                  })),
-                ]}
-                openCodeVariantValue={openCodeVariantValue}
-                showProviderGroupLabels={shouldShowProviderGroupLabels(agentId)}
-                triggerClassName={settingsSelectTriggerClassName}
-                triggerValues={triggerValues}
-                value={modelValue}
-                onChange={(next) => {
-                  void selectModel(next);
-                }}
-                onReasoningEffortChange={(value) => {
-                  void selectRuntimeOption({
-                    reasoningEffort: value ? (value as ReasoningEffort) : null,
-                  });
-                }}
-                onFastModeChange={(value) => {
-                  void selectRuntimeOption({ fastMode: value === "on" });
-                }}
-                onOpenCodeAgentChange={(value) => {
-                  void selectRuntimeOption({ openCodeAgent: value || null });
-                }}
-                onOpenCodeVariantChange={(value) => {
-                  void selectRuntimeOption({ openCodeVariant: value || null });
-                }}
-                onServiceTierChange={(value) => {
-                  void selectRuntimeOption({ serviceTier: value || null });
-                }}
-              />
+            <div className="mt-0.5 text-2xs text-muted-foreground">
+              {t("git.commitMessageModel.agentDescription")}
             </div>
           </div>
+          <AgentSelect
+            align="end"
+            appearance="ghost"
+            disabled={isLoading || isSaving}
+            options={agentSelectOptions}
+            showChevron={!isLoading}
+            triggerAriaLabel={t("git.commitMessageModel.agentLabel")}
+            triggerClassName="h-7 w-auto max-w-56 gap-1 px-2 font-normal"
+            triggerLabel={
+              <>
+                <span className="min-w-0 truncate">
+                  {agentSelectOptions.find((agent) => agent.value === agentId)
+                    ?.label ?? agentId}
+                </span>
+                {isLoading ? <Spinner size="xs" /> : null}
+              </>
+            }
+            value={agentId}
+            onValueChange={(next) => {
+              void selectAgent(next);
+            }}
+          />
         </div>
-        <p className="mt-2 px-1 text-2xs text-muted-foreground">
-          {t("git.commitMessageModel.footnote")}
-        </p>
-      </div>
+        <div className="flex items-center justify-between gap-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">
+              {t("git.commitMessageModel.modelLabel")}
+            </div>
+            <div className="mt-0.5 text-2xs text-muted-foreground">
+              {t("git.commitMessageModel.modelDescription")}
+            </div>
+          </div>
+          <ProviderModelMenu
+            align="end"
+            appearance="ghost"
+            compatibleProviders={compatibleProviders}
+            footer={
+              <ThinkingLevelSubmenu
+                level={selectedThinkingLevel}
+                options={thinkingLevelOptions}
+                onChange={(value) => {
+                  void selectRuntimeOption({
+                    thinkingLevel: value === "default" ? null : value,
+                  });
+                }}
+              />
+            }
+            disabled={isLoading || isSaving}
+            emptyOptionLabel={
+              agentId === "claude-agent" ? undefined : noneLabel
+            }
+            isLoading={isLoading}
+            reasoningEffortOptions={codexReasoningOptions}
+            reasoningEffortDefaultValue={codexReasoningDefaultValue}
+            reasoningEffortValue={
+              selection?.reasoningEffort ?? codexReasoningDefaultValue
+            }
+            fastModeOptions={claudeFastModeOptions}
+            fastModeValue={selection?.fastMode ? "on" : "off"}
+            serviceTierOptions={codexServiceTierOptions}
+            serviceTierValue={selection?.serviceTier ?? ""}
+            openCodeAgentOptions={openCodeRuntimeOptions.agents.map(
+              (value) => ({ label: value, value }),
+            )}
+            openCodeAgentDefaultValue={openCodeAgentDefaultValue}
+            openCodeAgentValue={openCodeAgentValue}
+            openCodeVariantOptions={[
+              {
+                label: t("sessions:modelMenu.openCodeVariantDefault"),
+                value: "",
+              },
+              ...openCodeRuntimeOptions.variants.map((value) => ({
+                label: value,
+                value,
+              })),
+            ]}
+            openCodeVariantValue={openCodeVariantValue}
+            showProviderGroupLabels={shouldShowProviderGroupLabels(agentId)}
+            triggerClassName="h-7 w-auto max-w-56 gap-1 px-2 font-normal"
+            triggerValues={triggerValues}
+            value={modelValue}
+            onChange={(next) => {
+              void selectModel(next);
+            }}
+            onReasoningEffortChange={(value) => {
+              void selectRuntimeOption({
+                reasoningEffort: value ? (value as ReasoningEffort) : null,
+              });
+            }}
+            onFastModeChange={(value) => {
+              void selectRuntimeOption({ fastMode: value === "on" });
+            }}
+            onOpenCodeAgentChange={(value) => {
+              void selectRuntimeOption({ openCodeAgent: value || null });
+            }}
+            onOpenCodeVariantChange={(value) => {
+              void selectRuntimeOption({ openCodeVariant: value || null });
+            }}
+            onServiceTierChange={(value) => {
+              void selectRuntimeOption({ serviceTier: value || null });
+            }}
+          />
+        </div>
+      </SettingsGroup>
     </div>
   );
 }

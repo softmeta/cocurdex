@@ -13,6 +13,7 @@ import {
 import {
   type AppUpdateEvent,
   type AppUpdateState,
+  appUpdateEventForError,
   createInitialAppUpdateState,
   githubReleaseNotesUrl,
   reduceAppUpdateState,
@@ -54,10 +55,7 @@ async function runCheck() {
   try {
     await autoUpdater.checkForUpdates();
   } catch (error) {
-    apply({
-      type: "error",
-      message: error instanceof Error ? error.message : String(error),
-    });
+    apply(appUpdateEventForError(error));
   }
   return state;
 }
@@ -179,10 +177,7 @@ export async function startAppUpdater(options: {
     });
   });
   updater.on("error", (error) => {
-    apply({
-      type: "error",
-      message: error instanceof Error ? error.message : String(error),
-    });
+    apply(appUpdateEventForError(error));
   });
 
   const beginChecking = () => {

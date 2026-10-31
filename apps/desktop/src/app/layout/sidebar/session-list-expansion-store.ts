@@ -1,26 +1,29 @@
 import { atom } from "jotai";
 
-export const SIDEBAR_SESSION_ROOT_LIMIT = 8;
 const SIDEBAR_SESSION_ROOT_STEP = 10;
 
 export const sessionRootLimitsAtom = atom<Readonly<Record<string, number>>>({});
 
 export const showMoreSessionsAtom = atom(
   null,
-  (get, set, workspaceId: string) => {
+  (get, set, payload: { listKey: string; baseLimit: number }) => {
     const limits = get(sessionRootLimitsAtom);
-    const current = limits[workspaceId] ?? SIDEBAR_SESSION_ROOT_LIMIT;
+    const current = limits[payload.listKey] ?? payload.baseLimit;
     set(sessionRootLimitsAtom, {
       ...limits,
-      [workspaceId]: current + SIDEBAR_SESSION_ROOT_STEP,
+      [payload.listKey]: current + SIDEBAR_SESSION_ROOT_STEP,
     });
   },
 );
 
 export const resetSessionRootLimitAtom = atom(
   null,
-  (get, set, workspaceId: string) => {
-    const { [workspaceId]: _removed, ...rest } = get(sessionRootLimitsAtom);
+  (get, set, listKey: string) => {
+    const { [listKey]: _removed, ...rest } = get(sessionRootLimitsAtom);
     set(sessionRootLimitsAtom, rest);
   },
 );
+
+export const resetAllSessionRootLimitsAtom = atom(null, (_get, set) => {
+  set(sessionRootLimitsAtom, {});
+});

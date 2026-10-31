@@ -10,25 +10,34 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
+  restrictToFirstScrollableAncestor,
+  restrictToVerticalAxis,
+} from "@dnd-kit/modifiers";
+import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { AppConfirmDialog } from "@/components/app";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
 import {
   EditWorkspaceDialog,
   updateWorkspaceAtom,
 } from "@/features/workspaces";
+import { SessionFilterEmpty } from "./session-filter-empty";
 import { SidebarScrollArea } from "./sidebar-scroll-area";
+import { useSidebarSectionCollapse } from "./use-sidebar-section-collapse";
 import { WorkspaceSidebarItem } from "./workspace-sidebar-item";
 
 interface WorkspacesPanelProps {
-  activeConversationId: string | null;
   activeWorkspaceId: string | null;
   collapsedWorkspaceIds: string[];
+  filtered: boolean;
+  leading?: ReactNode;
   optimisticActiveSessionId: string | null;
   sessionsByWorkspace: Record<string, SessionRecord[]>;
   workspaces: WorkspaceRecord[];
@@ -37,14 +46,14 @@ interface WorkspacesPanelProps {
   onReorderWorkspaces(activeId: string, overId: string): void;
   onRevealWorkspace(rootPath: string): void;
   onSelectSession(workspaceId: string, sessionId: string): void;
-  onSelectWorkspace(workspaceId: string): void;
   onToggleWorkspace(workspaceId: string): void;
 }
 
 export function WorkspacesPanel({
-  activeConversationId,
   activeWorkspaceId,
   collapsedWorkspaceIds,
+  filtered,
+  leading,
   optimisticActiveSessionId,
   sessionsByWorkspace,
   workspaces,
@@ -53,9 +62,9 @@ export function WorkspacesPanel({
   onReorderWorkspaces,
   onRevealWorkspace,
   onSelectSession,
-  onSelectWorkspace,
   onToggleWorkspace,
 }: WorkspacesPanelProps) {
+  const { t } = useTranslation("sessions");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(
     null,
@@ -67,12 +76,20 @@ export function WorkspacesPanel({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+  const sessionsSection = useSidebarSectionCollapse("sessions");
+  const listedWorkspaces = sessionsSection.collapsed ? [] : workspaces;
   const workspaceIds = useMemo(
     () => workspaces.map((workspace) => workspace.id),
     [workspaces],
   );
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeId,
+  );
+  const [removingWorkspaceId, setRemovingWorkspaceId] = useState<string | null>(
+    null,
+  );
+  const removingWorkspace = workspaces.find(
+    (workspace) => workspace.id === removingWorkspaceId,
   );
   const editingWorkspace = workspaces.find(
     (workspace) => workspace.id === editingWorkspaceId,
@@ -111,22 +128,27 @@ export function WorkspacesPanel({
           }}
         >
           <SidebarMenu className="pe-3">
+            {leading}
+            {filtered &&
+            !sessionsSection.collapsed &&
+            workspaces.length === 0 ? (
+              <SessionFilterEmpty className="px-1 py-1 text-meta text-sidebar-fg-subtle" />
+            ) : null}
             <SortableContext
               items={workspaceIds}
               strategy={verticalListSortingStrategy}
             >
-              {workspaces.map((workspace) => (
+              {listedWorkspaces.map((workspace) => (
                 <WorkspaceSidebarItem
-                  activeConversationId={activeConversationId}
                   activeWorkspaceId={activeWorkspaceId}
                   expanded={!collapsedWorkspaceIds.includes(workspace.id)}
+                  filtered={filtered}
                   key={workspace.id}
                   onCreateAgent={onCreateAgent}
                   onEditWorkspace={setEditingWorkspaceId}
-                  onRemoveWorkspace={onRemoveWorkspace}
+                  onRemoveWorkspace={setRemovingWorkspaceId}
                   onRevealWorkspace={onRevealWorkspace}
                   onSelectSession={onSelectSession}
-                  onSelectWorkspace={onSelectWorkspace}
                   onToggleWorkspace={onToggleWorkspace}
                   optimisticActiveSessionId={optimisticActiveSessionId}
                   sessions={sessionsByWorkspace[workspace.id] ?? []}
@@ -136,9 +158,17 @@ export function WorkspacesPanel({
             </SortableContext>
           </SidebarMenu>
         </SidebarScrollArea>
-        <DragOverlay>
+        <DragOverlay
+          modifiers={[
+            restrictToVerticalAxis,
+            restrictToFirstScrollableAncestor,
+          ]}
+        >
           {activeWorkspace ? (
-            <div className="flex h-7 max-w-56 items-center gap-1.5 rounded-control bg-sidebar px-1 text-body text-sidebar-fg shadow-sm">
+            <div
+              data-testid="workspace-drag-overlay"
+              className="flex h-7 max-w-56 items-center gap-1.5 rounded-control bg-sidebar px-1 text-body text-sidebar-fg shadow-sm"
+            >
               <Folder className="size-3.5 shrink-0 text-sidebar-fg-subtle" />
               <span className="min-w-0 truncate">{activeWorkspace.name}</span>
             </div>
@@ -164,6 +194,24 @@ export function WorkspacesPanel({
           workspace={editingWorkspace}
         />
       ) : null}
+      <AppConfirmDialog
+        cancelLabel={t("workspace.editCancel")}
+        confirmLabel={t("workspace.editRemoveWorkspace")}
+        description={t("workspace.editRemoveDescription", {
+          name: removingWorkspace?.name ?? "",
+        })}
+        onConfirm={() => {
+          if (removingWorkspaceId) onRemoveWorkspace(removingWorkspaceId);
+        }}
+        onOpenChange={(open) => {
+          if (!open) setRemovingWorkspaceId(null);
+        }}
+        open={removingWorkspace !== undefined}
+        title={t("workspace.editRemoveTitle", {
+          name: removingWorkspace?.name ?? "",
+        })}
+        variant="destructive"
+      />
     </TooltipProvider>
   );
 }

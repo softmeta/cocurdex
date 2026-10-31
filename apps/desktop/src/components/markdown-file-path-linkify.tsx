@@ -1,6 +1,6 @@
+import { scanFilePathCandidates } from "@cocurdex/shared";
 import { Children, type ReactNode } from "react";
 import type { MarkdownFilePathHandlers } from "./markdown-file-path";
-import { scanFilePathCandidates } from "./markdown-file-path";
 import { MarkdownFilePathCode } from "./markdown-renderer-file-path";
 import type { MarkdownRendererTone } from "./markdown-renderer-styles";
 

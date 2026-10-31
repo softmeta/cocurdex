@@ -7,11 +7,13 @@ import {
   ListTodo,
   type LucideIcon,
   NotebookPen,
+  Presentation,
   TerminalSquare,
 } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { type ReactNode, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Separator,
   ToggleGroup,
   ToggleGroupItem,
   Tooltip,
@@ -19,26 +21,25 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui";
-import { cn } from "@/lib";
+import { cn, desktopApi } from "@/lib";
 import {
-  TITLEBAR_EDITOR_TOGGLE_WIDTH,
   TITLEBAR_HEIGHT,
   TITLEBAR_ICON_BUTTON_GAP,
   TITLEBAR_ICON_BUTTON_SIZE,
+  TITLEBAR_LEADING_RESERVE,
 } from "./app-shell/app-shell-layout";
 import {
+  isRightPanelViewAvailable,
   type RightPanelView,
   rightPanelTabOrderAtom,
 } from "./right-editor-panel-store";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  titlebarIconButtonClassName,
-} from "./titlebar-icon-button";
+import { titlebarIconButtonClassName } from "./titlebar-icon-button";
 
 type ViewTabLabelKey =
   | "actions.showGitChanges"
   | "actions.showEditor"
   | "actions.showNotes"
+  | "actions.showDecks"
   | "actions.showIssues"
   | "actions.showBrowser"
   | "actions.showPdf"
@@ -54,6 +55,7 @@ const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
   git: { id: "git", icon: GitCompare, labelKey: "actions.showGitChanges" },
   editor: { id: "editor", icon: FolderTree, labelKey: "actions.showEditor" },
   notes: { id: "notes", icon: NotebookPen, labelKey: "actions.showNotes" },
+  decks: { id: "decks", icon: Presentation, labelKey: "actions.showDecks" },
   issues: { id: "issues", icon: ListTodo, labelKey: "actions.showIssues" },
   browser: { id: "browser", icon: Globe, labelKey: "actions.showBrowser" },
   pdf: { id: "pdf", icon: FileText, labelKey: "actions.showPdf" },
@@ -69,12 +71,15 @@ const DRAG_THRESHOLD_PX = 3;
 const TAB_STEP_PX = TITLEBAR_ICON_BUTTON_SIZE + TITLEBAR_ICON_BUTTON_GAP;
 /** Fixed title chrome height — same as OS titlebar / center spacer / pinned chat. */
 export const VIEW_SWITCHER_ROW_HEIGHT_PX = TITLEBAR_HEIGHT;
+export const VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX =
+  VIEW_SWITCHER_ROW_HEIGHT_PX + 1;
 
 interface ViewSwitcherTabsProps {
   activeView: RightPanelView;
   hasPdfsOpen: boolean;
   onViewChange: (view: RightPanelView) => void;
   reserveTrafficLights?: boolean;
+  trailing?: ReactNode;
 }
 
 export function ViewSwitcherTabs({
@@ -82,11 +87,16 @@ export function ViewSwitcherTabs({
   hasPdfsOpen,
   onViewChange,
   reserveTrafficLights = false,
+  trailing,
 }: ViewSwitcherTabsProps) {
   const { t } = useTranslation("editor");
   const [tabOrder, setTabOrder] = useAtom(rightPanelTabOrderAtom);
 
-  const visibleTabs = tabOrder.filter((id) => id !== "pdf" || hasPdfsOpen);
+  const visibleTabs = tabOrder.filter(
+    (id) =>
+      (id !== "pdf" || hasPdfsOpen) &&
+      isRightPanelViewAvailable(id, desktopApi.capabilities),
+  );
 
   const dragState = useRef<{
     tabId: RightPanelView;
@@ -225,6 +235,7 @@ export function ViewSwitcherTabs({
       if (
         value === "editor" ||
         value === "notes" ||
+        value === "decks" ||
         value === "issues" ||
         value === "browser" ||
         value === "git" ||
@@ -261,12 +272,14 @@ export function ViewSwitcherTabs({
         Split into: tabs (drag) | middle filler (drag) | toggle reserve (no-drag).
       */}
       <div
-        className={cn(
-          "relative z-40 flex w-full shrink-0 items-center border-b border-editor-border",
-          reserveTrafficLights && "ps-20",
-        )}
+        className="relative z-40 box-content flex w-full shrink-0 items-center border-b border-editor-border"
         data-testid="editor-panel-view-switcher"
-        style={{ height: VIEW_SWITCHER_ROW_HEIGHT_PX }}
+        style={{
+          height: VIEW_SWITCHER_ROW_HEIGHT_PX,
+          paddingInlineStart: reserveTrafficLights
+            ? TITLEBAR_LEADING_RESERVE
+            : undefined,
+        }}
       >
         <ToggleGroup
           // Non-zero spacing avoids the connected segmented styles (rounded-none
@@ -299,7 +312,7 @@ export function ViewSwitcherTabs({
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                   >
-                    <Icon className={TITLEBAR_ICON_GLYPH_CLASS} />
+                    <Icon className="size-3.5" />
                   </ToggleGroupItem>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={6}>
@@ -309,18 +322,23 @@ export function ViewSwitcherTabs({
             );
           })}
         </ToggleGroup>
+        {trailing ? (
+          <>
+            <Separator
+              orientation="vertical"
+              className="h-4 bg-editor-border data-[orientation=vertical]:self-center"
+            />
+            <div className="flex items-center px-2">{trailing}</div>
+          </>
+        ) : null}
         <div
           aria-hidden
           className="app-drag min-h-0 min-w-0 flex-1 self-stretch"
         />
-        {/*
-          Matches titlebar-editor-toggle-region (size-6 pills + gap-1 + px-3).
-          app-no-drag so the absolute toggles stay clickable.
-        */}
         <div
           aria-hidden
           className="app-no-drag shrink-0 self-stretch"
-          style={{ width: TITLEBAR_EDITOR_TOGGLE_WIDTH }}
+          style={{ width: "var(--titlebar-controls-inset)" }}
         />
       </div>
     </TooltipProvider>

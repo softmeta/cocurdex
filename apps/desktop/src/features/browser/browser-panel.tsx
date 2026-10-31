@@ -7,10 +7,7 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { desktopApi } from "@/lib";
@@ -68,20 +65,18 @@ export function BrowserPanel({ onClose }: { onClose: () => void }) {
     <>
       <TitlebarIconButton
         aria-label={t("actions.captureScreenshot")}
-        tooltip={t("actions.captureScreenshot")}
         tooltipSide="top"
         onClick={captureScreenshot}
       >
-        <Camera className={TITLEBAR_ICON_GLYPH_CLASS} />
+        <Camera className="size-3.5" />
       </TitlebarIconButton>
       <TitlebarIconButton
         active={isAnnotationMode}
         aria-label={annotationLabel}
-        tooltip={annotationLabel}
         tooltipSide="top"
         onClick={toggleAnnotation}
       >
-        <SquareDashedMousePointer className={TITLEBAR_ICON_GLYPH_CLASS} />
+        <SquareDashedMousePointer className="size-3.5" />
       </TitlebarIconButton>
     </>
   );

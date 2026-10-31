@@ -7,7 +7,14 @@ import { CornerDownLeft, Plus } from "lucide-react";
 import type { ClipboardEvent, ReactNode, RefObject } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, DropdownMenu, DropdownMenuTrigger } from "@/components/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui";
 import { cn } from "@/lib";
 import {
   composerSendButtonClassName,
@@ -253,18 +260,29 @@ export function PillComposer({
             </div>
           ) : null}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                aria-label={t("common:actions.attach")}
-                type="button"
-                className={cn(
-                  "col-start-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-transparent text-chat-fg-muted transition-colors hover:bg-chat-surface-control-hover hover:text-chat-fg",
-                  pillGridRowClassName(actionRow),
-                )}
-              >
-                <Plus className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DropdownMenuTrigger
+                    render={
+                      <button
+                        aria-label={t("common:actions.attach")}
+                        type="button"
+                        className={cn(
+                          "col-start-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-transparent text-chat-fg-muted transition-colors hover:bg-chat-surface-control-hover hover:text-chat-fg",
+                          pillGridRowClassName(actionRow),
+                        )}
+                      >
+                        <Plus className="size-4" />
+                      </button>
+                    }
+                  />
+                }
+              />
+              <TooltipContent side="top" sideOffset={6}>
+                {t("common:actions.attach")}
+              </TooltipContent>
+            </Tooltip>
             {attachMenuContent}
           </DropdownMenu>
           <div

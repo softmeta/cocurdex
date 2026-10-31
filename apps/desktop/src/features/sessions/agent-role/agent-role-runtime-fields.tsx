@@ -5,23 +5,22 @@ import type {
   AgentThinkingLevel,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
-import { supportsInSessionRuntimeAxis } from "@cocurdex/shared";
-import { useTranslation } from "react-i18next";
 import {
+  getDefaultOpenCodeAgent,
+  getOpenCodeRuntimeOptions,
   getThinkingLevelLabel,
   getThinkingLevelOptions,
+  resolveOpenCodeRuntimeValue,
   resolveThinkingLevel,
-  ThinkingLevelSubmenu,
-} from "@/features/composer";
+  supportsInSessionRuntimeAxis,
+} from "@cocurdex/shared";
+import { useTranslation } from "react-i18next";
 import { AgentSelect } from "../agent-select";
 import { buildAgentSelectOptions } from "../agent-select-options";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import {
-  getDefaultOpenCodeAgent,
-  getOpenCodeRuntimeOptions,
   getProviderModelValue,
   ProviderModelMenu,
-  resolveOpenCodeRuntimeValue,
   shouldShowProviderGroupLabels,
 } from "../provider-model";
 import { SessionModeSubmenu } from "../session-mode-control";
@@ -30,6 +29,7 @@ import {
   getPermissionModeOptions,
   getSessionModeOptions,
 } from "../session-store";
+import { ThinkingLevelSubmenu } from "../thinking-level-submenu";
 
 export function AgentRoleRuntimeFields({
   agentId,
@@ -164,9 +164,9 @@ export function AgentRoleRuntimeFields({
   const agentOptions = buildAgentSelectOptions(agents);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       <AgentSelect
-        appearance="ghost"
+        appearance="outline"
         options={agentOptions}
         triggerLabel={
           agentOptions.find((option) => option.value === agentId)?.label ??
@@ -177,7 +177,7 @@ export function AgentRoleRuntimeFields({
       />
       <ProviderModelMenu
         agentId={agentId}
-        appearance="ghost"
+        appearance="outline"
         compatibleProviders={compatibleProviders}
         fastModeOptions={claudeFastModeOptions}
         fastModeValue={fastMode ? "on" : "off"}

@@ -37,12 +37,6 @@ function ImageAttachmentThumbnail({
           COMPOSER_IMAGE_CARD_MAX_HEIGHT,
         )
       : null;
-  const borderClassName =
-    tone === "welcome" ? "border-welcome-border" : "border-chat-border";
-  const removeClassName =
-    tone === "welcome"
-      ? "bg-welcome-surface-strong text-welcome-fg-muted hover:text-welcome-fg"
-      : "bg-chat-surface-strong text-chat-fg-muted hover:text-chat-fg";
 
   return (
     <span
@@ -53,7 +47,8 @@ function ImageAttachmentThumbnail({
           !composerSize &&
           "h-16 w-28 items-center justify-center",
         size === "chip" && "size-16 rounded-control",
-        borderClassName,
+        tone === "welcome" && "border-welcome-border",
+        tone !== "welcome" && "border-chat-border",
       )}
       style={composerSize ?? undefined}
       title={attachment.name}
@@ -82,7 +77,10 @@ function ImageAttachmentThumbnail({
           aria-label={`Remove image ${attachment.name}`}
           className={cn(
             "absolute end-1 top-1 flex size-5 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100",
-            removeClassName,
+            tone === "welcome" &&
+              "bg-welcome-surface-strong text-welcome-fg-muted hover:text-welcome-fg",
+            tone !== "welcome" &&
+              "bg-chat-surface-strong text-chat-fg-muted hover:text-chat-fg",
           )}
           onClick={onRemove}
           type="button"

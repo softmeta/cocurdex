@@ -1,5 +1,6 @@
 import vm from "node:vm";
 import { Worker } from "node:worker_threads";
+import { Effect } from "effect";
 import { SCRIPT_WORKER_SOURCE } from "./script-worker-source";
 
 export interface ScriptHost {
@@ -8,21 +9,12 @@ export interface ScriptHost {
 }
 
 export interface RunScriptOptions {
-  signal: AbortSignal;
   maxListItems: number;
   maxMemoryMb?: number;
 }
 
 export class ScriptRejectedError extends Error {
   override readonly name = "ScriptRejectedError";
-}
-
-export class ScriptAbortedError extends Error {
-  override readonly name = "ScriptAbortedError";
-
-  constructor(readonly reason: unknown) {
-    super("Script run was aborted.");
-  }
 }
 
 type WorkerMessage =
@@ -50,38 +42,37 @@ export function validateScript(script: string) {
   }
 }
 
-export function runScript(
-  script: string,
-  host: ScriptHost,
-  options: RunScriptOptions,
-): Promise<unknown> {
-  try {
-    validateScript(script);
-  } catch (error) {
-    return Promise.reject(error);
-  }
-  if (options.signal.aborted) {
-    return Promise.reject(new ScriptAbortedError(options.signal.reason));
-  }
+function spawnWorker(script: string, options: RunScriptOptions) {
+  return Effect.acquireRelease(
+    Effect.sync(
+      () =>
+        new Worker(SCRIPT_WORKER_SOURCE, {
+          eval: true,
+          workerData: { script, maxListItems: options.maxListItems },
+          resourceLimits: {
+            maxOldGenerationSizeMb: options.maxMemoryMb ?? 256,
+          },
+        }),
+    ),
+    (worker) => Effect.promise(() => worker.terminate()),
+  );
+}
 
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(SCRIPT_WORKER_SOURCE, {
-      eval: true,
-      workerData: { script, maxListItems: options.maxListItems },
-      resourceLimits: { maxOldGenerationSizeMb: options.maxMemoryMb ?? 256 },
-    });
+function errorOf(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function awaitWorker(worker: Worker, host: ScriptHost) {
+  return Effect.callback<unknown, Error>((resume, signal) => {
     let settled = false;
-
-    const settle = (outcome: () => void) => {
+    const settle = (outcome: Effect.Effect<unknown, Error>) => {
       if (settled) return;
       settled = true;
-      options.signal.removeEventListener("abort", onAbort);
-      void worker.terminate();
-      outcome();
+      resume(outcome);
     };
-
-    const onAbort = () =>
-      settle(() => reject(new ScriptAbortedError(options.signal.reason)));
+    signal.addEventListener("abort", () => {
+      settled = true;
+    });
 
     const answerAgent = async (
       message: Extract<WorkerMessage, { type: "agent" }>,
@@ -99,7 +90,7 @@ export function runScript(
         worker.postMessage({
           type: "agent-error",
           id: message.id,
-          message: error instanceof Error ? error.message : String(error),
+          message: errorOf(error).message,
         });
       }
     };
@@ -107,22 +98,37 @@ export function runScript(
     worker.on("message", (message: WorkerMessage) => {
       if (settled) return;
       if (message.type === "agent") {
-        if (options.signal.aborted) return;
         void answerAgent(message);
       } else if (message.type === "log") {
         host.log(message.message);
       } else if (message.type === "done") {
-        settle(() => resolve(message.result));
+        settle(Effect.succeed(message.result));
       } else {
-        settle(() => reject(new Error(message.message)));
+        settle(Effect.fail(new Error(message.message)));
       }
     });
-    worker.on("error", (error) => settle(() => reject(error)));
+    worker.on("error", (error) => settle(Effect.fail(errorOf(error))));
     worker.on("exit", (code) =>
-      settle(() =>
-        reject(new Error(`Script worker exited unexpectedly (code ${code}).`)),
+      settle(
+        Effect.fail(
+          new Error(`Script worker exited unexpectedly (code ${code}).`),
+        ),
       ),
     );
-    options.signal.addEventListener("abort", onAbort, { once: true });
   });
+}
+
+export function runScript(
+  script: string,
+  host: ScriptHost,
+  options: RunScriptOptions,
+): Effect.Effect<unknown, Error> {
+  return Effect.try({
+    try: () => validateScript(script),
+    catch: errorOf,
+  }).pipe(
+    Effect.andThen(spawnWorker(script, options)),
+    Effect.flatMap((worker) => awaitWorker(worker, host)),
+    Effect.scoped,
+  );
 }

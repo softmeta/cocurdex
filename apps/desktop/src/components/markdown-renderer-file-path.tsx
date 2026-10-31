@@ -1,3 +1,4 @@
+import type { FilePathCandidate } from "@cocurdex/shared";
 import {
   isValidElement,
   type KeyboardEvent,
@@ -7,10 +8,7 @@ import {
 } from "react";
 import { cn } from "@/lib";
 import { createMarkdownFileExistenceCache } from "./markdown-file-existence-cache";
-import type {
-  FilePathCandidate,
-  MarkdownFilePathHandlers,
-} from "./markdown-file-path";
+import type { MarkdownFilePathHandlers } from "./markdown-file-path";
 import { splitWorkspaceLinkLabel } from "./markdown-file-path";
 import {
   getFilePathToneClass,
@@ -87,19 +85,21 @@ export function MarkdownFilePathCode({
   );
   const exists = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  const baseClassName = isProse
-    ? className
-    : cn(
-        "break-words rounded-control border px-1.5 py-0.5 font-normal text-[0.92em]",
-        getInlineCodeToneClass(tone),
-        className,
-      );
-
   if (!resolved) {
     if (isProse) {
       return children ?? null;
     }
-    return <code className={baseClassName}>{children}</code>;
+    return (
+      <code
+        className={cn(
+          "break-words rounded-control px-1.5 py-0.5 font-normal text-[0.92em]",
+          getInlineCodeToneClass(tone),
+          className,
+        )}
+      >
+        {children}
+      </code>
+    );
   }
 
   const handleClick = () => {
@@ -125,7 +125,10 @@ export function MarkdownFilePathCode({
   return (
     <Tag
       className={cn(
-        baseClassName,
+        !isProse &&
+          "break-words rounded-control px-1.5 py-0.5 font-normal text-[0.92em]",
+        !isProse && getInlineCodeToneClass(tone),
+        className,
         exists && [
           getFilePathToneClass(tone),
           "cursor-pointer no-underline decoration-current/60 underline-offset-4 transition-colors hover:underline",

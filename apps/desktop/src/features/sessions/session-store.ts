@@ -11,6 +11,7 @@ import {
   agentRuntimeAxisCapabilities,
   type BuiltInAgentId,
   childSessionFromSubagentToolCall,
+  collectSessionSubtreeIds,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   isAcpRegistryAgentId,
@@ -21,6 +22,7 @@ import {
   PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
+  sessionAncestorIds,
   supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
@@ -47,7 +49,6 @@ import {
   findPaneIdBySessionId,
   type SessionSplitDirection,
 } from "./session-split/session-split-tree";
-import { collectSessionSubtreeIds, sessionAncestorIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
 export const sessionRunStartedAtAtom = atom<Record<string, number>>({});
@@ -178,7 +179,7 @@ export function getAgentDisplayLabel(agentId: AgentId) {
       agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)
     );
   }
-  return agentLabels[agentId];
+  return agentLabels[agentId] ?? agentId;
 }
 
 export const bootstrapAgentsAtom = atom(
@@ -491,6 +492,25 @@ export const reconcileSessionsAtom = atom(
   },
 );
 
+export const mergeSessionChangesAtom = atom(
+  null,
+  (
+    get,
+    set,
+    changes: { sessions: SessionRecord[]; removedSessionIds: string[] },
+  ) => {
+    const changed = new Map(
+      changes.sessions.map((session) => [session.id, session]),
+    );
+    const removed = new Set(changes.removedSessionIds);
+    const kept = get(sessionsAtom).filter(
+      (session) => !removed.has(session.id) && !changed.has(session.id),
+    );
+    const active = changes.sessions.filter((session) => !session.archivedAt);
+    set(reconcileSessionsAtom, [...kept, ...active]);
+  },
+);
+
 export const bootstrapSessionsAtom = atom(
   null,
   (_get, set, sessions: SessionRecord[]) => {
@@ -536,10 +556,7 @@ export const activateSessionPaneAtom = atom(
 export const selectSessionAtom = atom(
   null,
   (get, set, sessionId: string | null) => {
-    set(bindFocusedPaneContentAtom, {
-      sessionId,
-      conversationId: null,
-    });
+    set(bindFocusedPaneContentAtom, { sessionId });
     if (!sessionId) {
       return;
     }
@@ -634,10 +651,7 @@ export const createDraftSessionAtom = atom(
     };
 
     set(sessionsAtom, [session, ...get(sessionsAtom)]);
-    set(bindFocusedPaneContentAtom, {
-      sessionId: session.id,
-      conversationId: null,
-    });
+    set(bindFocusedPaneContentAtom, { sessionId: session.id });
     activateWorkspaceForSession(get, set, session.id);
     set(lastSelectedAgentAtom, agentType);
 
@@ -934,6 +948,10 @@ export const upsertSessionAtom = atom(
       ? {
           ...incoming,
           lastMessageAt: incoming.lastMessageAt ?? existing.lastMessageAt,
+          pinnedAt:
+            incoming.pinnedAt === undefined
+              ? existing.pinnedAt
+              : incoming.pinnedAt,
         }
       : incoming;
     const next = existing
@@ -1033,6 +1051,20 @@ function removeSessionSubtree(get: Getter, set: Setter, sessionId: string) {
     }
   }
 }
+
+export const setSessionPinnedAtom = atom(
+  null,
+  (get, set, payload: { sessionId: string; pinnedAt: string | null }) => {
+    set(
+      sessionsAtom,
+      get(sessionsAtom).map((session) =>
+        session.id === payload.sessionId
+          ? { ...session, pinnedAt: payload.pinnedAt }
+          : session,
+      ),
+    );
+  },
+);
 
 export const archiveSessionAtom = atom(
   null,

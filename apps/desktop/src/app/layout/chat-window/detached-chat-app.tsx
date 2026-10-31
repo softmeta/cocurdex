@@ -1,11 +1,9 @@
 import { useAtomValue, useStore } from "jotai";
-import { PanelLeft } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { FileTypeIconSprite } from "@/components";
 import { Button, Text, Toaster } from "@/components/ui";
-import { useChatEventBridge } from "@/features/chat";
 import { composerDraftsAtom } from "@/features/composer";
 import { sessionSplitLayoutAtom } from "@/features/sessions";
 import { HostDirectoryPickerHost } from "@/features/workspaces";
@@ -15,7 +13,7 @@ import { synchronizeAgentState } from "../app-shell/agent-event-bridge";
 import { syncInitialPreferences } from "../app-shell/app-shell-preferences";
 import { SessionSplitLayout } from "../session-split";
 import { LeftSidebar } from "../sidebar";
-import { TitlebarIconButton } from "../titlebar-icon-button";
+import { SidebarToggleButton } from "../titlebar-icon-button";
 import {
   useChatBrowserContext,
   useChatBrowserPreviewBridge,
@@ -79,14 +77,17 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
       className="flex h-screen min-w-0 flex-col overflow-hidden bg-chat-canvas"
       inert={busy}
     >
-      <div className="app-drag flex h-8 shrink-0 items-center justify-end gap-1 border-b border-border px-2">
-        <TitlebarIconButton
-          active={sidebarOpen}
-          aria-label={t("actions.toggleChatSessions")}
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <PanelLeft className="size-3.5" />
-        </TitlebarIconButton>
+      <div
+        className="app-drag flex h-8 shrink-0 items-center justify-end gap-1 border-b border-border px-2"
+        style={{
+          paddingRight: "calc(0.5rem + var(--titlebar-controls-inset))",
+        }}
+      >
+        <SidebarToggleButton
+          label={t("actions.toggleChatSessions")}
+          open={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
         <ChatWindowButton />
       </div>
       <div className="relative min-h-0 flex-1">
@@ -113,7 +114,6 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
 }
 
 export function DetachedChatApp() {
-  useChatEventBridge();
   const store = useStore();
   const { t } = useTranslation("sessions");
   const [transfer, setTransfer] = useState<ChatWindowTransfer | null>(null);

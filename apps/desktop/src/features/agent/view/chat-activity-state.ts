@@ -4,7 +4,6 @@ import {
   type SessionStatus,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
-import { cn } from "@/lib";
 
 // `kind` doubles as the i18n key suffix (`agent:activity.<kind>`), so a renamed
 // state fails to compile instead of silently falling through to "ready".
@@ -13,13 +12,20 @@ export type ActivityKind =
   | "completed"
   | "planning"
   | "ready"
-  | "usingTools"
-  | "writing";
+  | "responding"
+  | "thinking"
+  | "usingTools";
+
+export type ActivityStep =
+  | { headline: string; kind: "reasoning" }
+  | { kind: "toolCall"; toolCall: AgentToolCallRecord };
 
 export type ActivityState = {
-  icon: "check" | "error" | "loader" | "wrench";
+  activeToolCalls?: AgentToolCallRecord[];
   kind: ActivityKind;
+  latestStep?: ActivityStep;
   tone: "complete" | "error" | "muted" | "running";
+  toolActivityId?: string;
 };
 
 function isActiveToolCall(toolCall: AgentToolCallRecord) {
@@ -40,6 +46,85 @@ export function isActivityHeaderBusy(input: {
   );
 }
 
+function startedAfter(toolCall: AgentToolCallRecord, message: MessageRecord) {
+  if (toolCall.seq !== undefined && message.seq !== undefined) {
+    return toolCall.seq > message.seq;
+  }
+  return Date.parse(toolCall.startedAt) > Date.parse(message.createdAt);
+}
+
+function isStreamingResponse(
+  message: MessageRecord,
+  toolCalls: AgentToolCallRecord[],
+) {
+  return (
+    message.kind !== "reasoning" &&
+    message.content.trim().length > 0 &&
+    !toolCalls.some((toolCall) => startedAfter(toolCall, message))
+  );
+}
+
+type ReasoningLine = { isTitle: boolean; text: string };
+
+function parseReasoningLine(line: string): ReasoningLine | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("<!--")) {
+    return null;
+  }
+  const isHeading = trimmed.startsWith("#");
+  const text = trimmed.replace(/^#+/, "").trim();
+  if (!text.startsWith("**")) {
+    return text ? { isTitle: isHeading, text } : null;
+  }
+  const boldEnd = text.indexOf("**", 2);
+  if (boldEnd < 0) {
+    return null;
+  }
+  const title = `${text.slice(2, boldEnd)}${text.slice(boldEnd + 2)}`.trim();
+  return title ? { isTitle: true, text: title } : null;
+}
+
+export function getReasoningHeadline(content: string) {
+  const lines = content
+    .split(/\r?\n/)
+    .map(parseReasoningLine)
+    .filter((line): line is ReasoningLine => line !== null);
+  return (
+    lines.findLast((line) => line.isTitle)?.text ?? lines.at(-1)?.text ?? null
+  );
+}
+
+function getLatestReasoningHeadline(messages: MessageRecord[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!message || message.role === "user") {
+      return null;
+    }
+    const headline =
+      message.kind === "reasoning"
+        ? getReasoningHeadline(message.content)
+        : null;
+    if (headline) {
+      return { headline, message };
+    }
+  }
+  return null;
+}
+
+function getLatestStep(
+  messages: MessageRecord[],
+  latestToolCall: AgentToolCallRecord | undefined,
+): ActivityStep | null {
+  const reasoning = getLatestReasoningHeadline(messages);
+  if (
+    latestToolCall &&
+    (!reasoning || startedAfter(latestToolCall, reasoning.message))
+  ) {
+    return { kind: "toolCall", toolCall: latestToolCall };
+  }
+  return reasoning ? { headline: reasoning.headline, kind: "reasoning" } : null;
+}
+
 export function getActivityState({
   isRunning,
   messages,
@@ -54,45 +139,107 @@ export function getActivityState({
   const latestMessage = messages.at(-1);
 
   if (status === "error") {
-    return { icon: "error", kind: "attention", tone: "error" };
+    return { kind: "attention", tone: "error" };
   }
 
-  const usesTools = toolCalls.some(
+  const latestUserMessage = messages.findLast(
+    (message) => message.role === "user",
+  );
+  const latestToolCall = toolCalls.findLast(
+    (toolCall) =>
+      !isWorktreeSetupToolCall(toolCall) &&
+      (!latestUserMessage || startedAfter(toolCall, latestUserMessage)),
+  );
+  const runningState = {
+    tone: "running" as const,
+    toolActivityId: latestToolCall?.id,
+  };
+  const activeToolCalls = toolCalls.filter(
     (toolCall) =>
       isActiveToolCall(toolCall) && !isWorktreeSetupToolCall(toolCall),
   );
-  if (isRunning && usesTools) {
-    return { icon: "wrench", kind: "usingTools", tone: "running" };
+  if (isRunning && activeToolCalls.length > 0) {
+    return {
+      activeToolCalls,
+      kind: "usingTools",
+      ...runningState,
+    };
   }
 
-  if (isRunning && latestMessage?.role === "assistant") {
-    return { icon: "loader", kind: "writing", tone: "running" };
+  if (!isRunning) {
+    return latestMessage?.role === "assistant"
+      ? { kind: "completed", tone: "complete" }
+      : { kind: "ready", tone: "muted" };
   }
 
-  if (isRunning) {
-    return { icon: "loader", kind: "planning", tone: "running" };
+  if (
+    latestMessage?.role === "assistant" &&
+    isStreamingResponse(latestMessage, toolCalls)
+  ) {
+    return { kind: "responding", ...runningState };
   }
 
-  if (latestMessage?.role === "assistant") {
-    return { icon: "check", kind: "completed", tone: "complete" };
-  }
-
-  return { icon: "check", kind: "ready", tone: "muted" };
+  const latestStep = getLatestStep(messages, latestToolCall);
+  return {
+    kind: latestMessage?.role === "assistant" ? "thinking" : "planning",
+    ...runningState,
+    ...(latestStep ? { latestStep } : {}),
+  };
 }
 
-// The running tool-call state shows a wrench. A static wrench reads as
-// "done", so give it a gentle pulse to signal work is still in progress —
-// mirroring the spinner used while thinking/responding.
-export function getActivityIconClassName(activity: ActivityState): string {
-  return cn("size-3.5", {
-    "animate-spin": activity.icon === "loader",
-    "animate-pulse": activity.icon === "wrench" && activity.tone === "running",
-  });
+const TOOL_CALL_REVEAL_DELAY_MS = 400;
+const TOOL_CALL_MIN_VISIBLE_MS = 800;
+
+export type ShownToolCall = { at: number; toolCall: AgentToolCallRecord };
+
+export function getShownToolCallChangeDelay({
+  activeToolCallId,
+  now,
+  shown,
+}: {
+  activeToolCallId: string | null;
+  now: number;
+  shown: ShownToolCall | null;
+}): number | null {
+  if (activeToolCallId === (shown?.toolCall.id ?? null)) {
+    return null;
+  }
+
+  const remainingVisibleMs = shown
+    ? Math.max(0, shown.at + TOOL_CALL_MIN_VISIBLE_MS - now)
+    : 0;
+
+  if (activeToolCallId === null) {
+    return remainingVisibleMs;
+  }
+
+  return Math.max(TOOL_CALL_REVEAL_DELAY_MS, remainingVisibleMs);
 }
 
-/** `m:ss` for a run duration; minutes keep counting past 60 (`72:05`). */
-export function formatElapsed(elapsedMs: number): string {
-  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const seconds = totalSeconds % 60;
-  return `${Math.floor(totalSeconds / 60)}:${String(seconds).padStart(2, "0")}`;
+const STEP_MIN_VISIBLE_MS = 1500;
+
+export type ShownStep = { at: number; key: string; step: ActivityStep };
+
+export function getActivityStepKey(step: ActivityStep) {
+  return step.kind === "reasoning"
+    ? `reasoning:${step.headline}`
+    : `toolCall:${step.toolCall.id}`;
+}
+
+export function getShownStepChangeDelay({
+  activeKey,
+  now,
+  shown,
+}: {
+  activeKey: string | null;
+  now: number;
+  shown: Pick<ShownStep, "at" | "key"> | null;
+}): number | null {
+  if (activeKey === (shown?.key ?? null)) {
+    return null;
+  }
+  if (!shown) {
+    return 0;
+  }
+  return Math.max(0, shown.at + STEP_MIN_VISIBLE_MS - now);
 }

@@ -4,17 +4,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./method-scopes": "./src/method-scopes.ts",
+    "./internal/*": "./src/*.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cocurdex/shared": "workspace:*"
   },
-  "devDependencies": {
-    "vitest": "^4.1.11"
-  }
+  "devDependencies": {}
 }

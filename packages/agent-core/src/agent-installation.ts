@@ -1,11 +1,10 @@
-import { execFile } from "node:child_process";
 import { access, constants } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { type AgentDescriptor, parseAgentVersion } from "@cocurdex/shared";
 import { getAgentRuntimeOwnership } from "./agent-registry";
+import { runCommand } from "./run-command";
 
-const execFileAsync = promisify(execFile);
+const DEFAULT_WINDOWS_PATHEXT = ".COM;.EXE;.BAT;.CMD";
 
 export type AgentCommandLookup = (command: string) => Promise<string | null>;
 export type AgentVersionReader = (
@@ -36,14 +35,49 @@ function cloneDescriptor(descriptor: AgentDescriptor): AgentDescriptor {
   };
 }
 
-function createLookupArgs(command: string) {
-  return process.platform === "win32"
+function createLookupArgs(command: string, platform: NodeJS.Platform) {
+  return platform === "win32"
     ? { executable: "where.exe", args: [command] }
     : { executable: "which", args: [command] };
 }
 
+function selectLookupResult(
+  stdout: string,
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+): string | null {
+  const candidates = stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (platform !== "win32") {
+    return candidates[0] ?? null;
+  }
+  const executableExtensions = new Set(
+    (env.PATHEXT || DEFAULT_WINDOWS_PATHEXT)
+      .split(";")
+      .map((extension) => extension.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return (
+    candidates.find((candidate) =>
+      executableExtensions.has(path.win32.extname(candidate).toLowerCase()),
+    ) ?? null
+  );
+}
+
+export interface LookupExecutableOptions {
+  platform?: NodeJS.Platform;
+  env?: NodeJS.ProcessEnv;
+  run?: (
+    command: string,
+    args: readonly string[],
+  ) => Promise<{ stdout: string }>;
+}
+
 export async function lookupExecutable(
   command: string,
+  options: LookupExecutableOptions = {},
 ): Promise<string | null> {
   if (path.isAbsolute(command)) {
     return access(command, constants.X_OK).then(
@@ -51,18 +85,14 @@ export async function lookupExecutable(
       () => null,
     );
   }
-  const lookup = createLookupArgs(command);
+  const platform = options.platform ?? process.platform;
+  const env = options.env ?? process.env;
+  const run = options.run ?? runCommand;
+  const lookup = createLookupArgs(command, platform);
 
   try {
-    const { stdout } = await execFileAsync(lookup.executable, lookup.args, {
-      windowsHide: true,
-    });
-    const executablePath = stdout
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .find(Boolean);
-
-    return executablePath ?? null;
+    const { stdout } = await run(lookup.executable, lookup.args);
+    return selectLookupResult(stdout, platform, env);
   } catch {
     return null;
   }
@@ -73,10 +103,8 @@ export async function readExecutableVersion(
   executablePath: string,
 ): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync(executablePath, ["--version"], {
-      encoding: "utf8",
-      timeout: 5_000,
-      windowsHide: true,
+    const { stdout } = await runCommand(executablePath, ["--version"], {
+      timeoutMs: 5_000,
     });
 
     return parseAgentVersion(stdout);

@@ -1,0 +1,562 @@
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import {
+  access,
+  mkdir,
+  readFile,
+  realpath,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
+import { createRequire } from "node:module";
+import net from "node:net";
+import { pathToFileURL } from "node:url";
+import {
+  requestDaemon,
+  subscribeDaemonEvents,
+} from "@cocurdex/daemon/internal/client";
+import {
+  getDaemonMetadataPath,
+  getDaemonSocketPath,
+  getDatabasePath,
+} from "@cocurdex/daemon/internal/paths";
+import { startDaemonServer } from "@cocurdex/daemon/internal/wire";
+import {
+  createDaemonRpcClient,
+  createWebSocketTransport,
+  daemonWebSocketProtocols,
+} from "@cocurdex/rpc/client";
+import type { WorkspaceRecord } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { WebSocket as NodeWebSocket } from "ws";
+
+const tempDirs = createTempDirs();
+
+process.env.COCURDEX_DISABLE_MEMORY_AUTO_START = "1";
+
+afterEach(async () => {
+  await tempDirs.cleanup();
+});
+
+describe("startDaemonServer", () => {
+  it("serves the same RPC and event stream over a loopback WebSocket", async () => {
+    const userDataPath = await tempDirs.create("cd-ws-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "ws-runtime",
+      token: "ws-token",
+      userDataPath,
+    });
+    try {
+      const metadata = JSON.parse(
+        await readFile(getDaemonMetadataPath(userDataPath), "utf8"),
+      ) as { webSocketUrl?: string };
+      expect(metadata.webSocketUrl).toBe(daemon.webSocketUrl);
+      expect(daemon.webSocketUrl).toMatch(/^ws:\/\/127\.0\.0\.1:\d+$/);
+      const unauthenticated = new NodeWebSocket(daemon.webSocketUrl, [
+        "cocurdex.v1",
+      ]);
+      unauthenticated.once("error", () => undefined);
+      const [, rejected] = await once(unauthenticated, "unexpected-response");
+      expect(rejected.statusCode).toBe(401);
+      const transport = createWebSocketTransport(
+        daemon.webSocketUrl,
+        daemonWebSocketProtocols("ws-token"),
+      );
+      const client = createDaemonRpcClient(transport, "ws-token");
+      await expect(
+        client.request("daemon.status", undefined, { timeoutMs: 15_000 }),
+      ).resolves.toMatchObject({ runtimeFingerprint: "ws-runtime" });
+      const onEvent = vi.fn();
+      const subscription = await client.subscribe(onEvent);
+      daemon.service.events.emit("daemon.event", { type: "test" });
+      await vi.waitFor(
+        () =>
+          expect(onEvent).toHaveBeenCalledWith(
+            { type: "test" },
+            { epoch: expect.any(String), seq: 1 },
+          ),
+        { timeout: 5_000 },
+      );
+      subscription.close();
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("streams terminal output live without journaling it for replay", async () => {
+    const userDataPath = await tempDirs.create("cd-term-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    const output = {
+      type: "terminal.data",
+      terminalId: "terminal-1",
+      workspaceId: "ws-1",
+      data: "hello",
+    };
+    try {
+      const live = vi.fn();
+      const subscription = await subscribeDaemonEvents(live, { userDataPath });
+      daemon.service.events.emit("terminal.event", output);
+      await vi.waitFor(
+        () =>
+          expect(live).toHaveBeenCalledWith(
+            output,
+            expect.objectContaining({ seq: null }),
+          ),
+        { timeout: 5_000 },
+      );
+      subscription.close();
+      const replayed = vi.fn();
+      const resumed = await subscribeDaemonEvents(replayed, {
+        afterSeq: 0,
+        userDataPath,
+      });
+      resumed.close();
+      expect(replayed).not.toHaveBeenCalled();
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("replays journaled events to a subscriber resuming after a sequence", async () => {
+    const userDataPath = await tempDirs.create("cd-replay-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    const emit = (scope: string) =>
+      daemon.service.events.emit("daemon.event", {
+        scope,
+        type: "data.changed",
+      });
+    try {
+      emit("first");
+      emit("second");
+      emit("third");
+      const received: string[] = [];
+      const subscription = await subscribeDaemonEvents(
+        (event) =>
+          received.push((event as { scope?: string }).scope ?? event.type),
+        { afterSeq: 1, userDataPath },
+      );
+      try {
+        expect(received).toEqual(["second", "third"]);
+        expect(subscription.lastSeq).toBe(3);
+        emit("fourth");
+        await vi.waitFor(() => expect(received).toContain("fourth"), {
+          timeout: 5_000,
+        });
+        expect(subscription.lastSeq).toBe(4);
+      } finally {
+        subscription.close();
+      }
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("flags a replay gap for a stale epoch and returns the current epoch", async () => {
+    const userDataPath = await tempDirs.create("cd-epoch-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    try {
+      const subscription = await subscribeDaemonEvents(() => undefined, {
+        afterSeq: 1,
+        epoch: "a-previous-daemon-lifetime",
+        userDataPath,
+      });
+      try {
+        expect(subscription.replayGap).toBe(true);
+        expect(subscription.epoch).toBe(daemon.service.status().startedAt);
+      } finally {
+        subscription.close();
+      }
+
+      const fresh = await subscribeDaemonEvents(() => undefined, {
+        userDataPath,
+      });
+      try {
+        expect(fresh.replayGap).toBe(false);
+        expect(fresh.epoch).toBe(daemon.service.status().startedAt);
+      } finally {
+        fresh.close();
+      }
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("replays the stored outcome for a repeated idempotency key", async () => {
+    const userDataPath = await tempDirs.create("cd-receipt-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    try {
+      const timestamp = new Date().toISOString();
+      const workspace: WorkspaceRecord = {
+        createdAt: timestamp,
+        id: "ws-receipt",
+        lastOpenedAt: timestamp,
+        name: "receipt",
+        rootPaths: [userDataPath],
+        sortOrder: 0,
+        updatedAt: timestamp,
+      };
+      const save = vi.spyOn(daemon.service, "saveWorkspace");
+      const options = { idempotencyKey: "save-1", userDataPath };
+      const first = await requestDaemon(
+        "workspace.save",
+        { workspace },
+        options,
+      );
+      const second = await requestDaemon(
+        "workspace.save",
+        { workspace },
+        options,
+      );
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(second).toEqual(first);
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("keeps serving after a malformed WebSocket frame", async () => {
+    const userDataPath = await tempDirs.create("cd-ws-bad-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "ws-runtime",
+      token: "ws-token",
+      userDataPath,
+    });
+    try {
+      const url = daemon.webSocketUrl;
+      const protocols = daemonWebSocketProtocols("ws-token");
+      for (const frame of ["not-json", "null", "[]"]) {
+        const raw = new NodeWebSocket(url, protocols);
+        await once(raw, "open");
+        raw.send(frame);
+        await once(raw, "close");
+      }
+      const client = createDaemonRpcClient(
+        createWebSocketTransport(url, protocols),
+        "ws-token",
+      );
+      await expect(
+        client.request("daemon.status", undefined, { timeoutMs: 15_000 }),
+      ).resolves.toMatchObject({ runtimeFingerprint: "ws-runtime" });
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("rejects browser WebSocket connections from a non-loopback origin", async () => {
+    const userDataPath = await tempDirs.create("cd-ws-origin-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "ws-runtime",
+      token: "ws-token",
+      userDataPath,
+    });
+    try {
+      const raw = new NodeWebSocket(
+        daemon.webSocketUrl,
+        daemonWebSocketProtocols("ws-token"),
+        { origin: "https://evil.example" },
+      );
+      raw.once("error", () => undefined);
+      const [, response] = await once(raw, "unexpected-response");
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("acknowledges editor view saves with a void result over real RPC", async () => {
+    const userDataPath = await tempDirs.create("cd-void-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    try {
+      const timestamp = new Date().toISOString();
+      await daemon.service.state.saveWorkspace({
+        id: "workspace",
+        name: "Test",
+        rootPaths: [userDataPath],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastOpenedAt: timestamp,
+        sortOrder: 0,
+      });
+      await daemon.service.state.saveSession({
+        id: "session",
+        workspaceId: "workspace",
+        title: "Test",
+        agentType: "pi",
+        status: "idle",
+        writeMode: "read-only",
+        sessionModeId: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastMessageAt: null,
+      });
+      const view = {
+        sessionId: "session",
+        openFiles: ["test.ts"],
+        activeFile: "test.ts",
+        selections: [],
+      };
+      await expect(
+        requestDaemon("editorView.save", { view }, { userDataPath }),
+      ).resolves.toBeNull();
+      expect((await daemon.service.bootstrap()).editorViews).toContainEqual(
+        view,
+      );
+    } finally {
+      await daemon.close();
+    }
+  });
+  it("closes owned resources and can be started again", async () => {
+    const userDataPath = await tempDirs.create("cocurdex-daemon-");
+    const first = await startDaemonServer({
+      runtimeFingerprint: "first-runtime",
+      token: "test-token",
+      userDataPath,
+    });
+
+    try {
+      await access(getDaemonMetadataPath(userDataPath));
+      await expect(
+        requestDaemon("daemon.status", { userDataPath }),
+      ).resolves.toMatchObject({ runtimeFingerprint: "first-runtime" });
+      expect(first.service.status().runtimeFingerprint).toBe("first-runtime");
+      const close = (first as typeof first & { close?: () => Promise<void> })
+        .close;
+
+      expect(close).toBeTypeOf("function");
+      await close?.();
+      await close?.();
+
+      await expect(
+        access(getDaemonMetadataPath(userDataPath)),
+      ).rejects.toThrow();
+      if (process.platform !== "win32") {
+        await expect(
+          access(getDaemonSocketPath(userDataPath)),
+        ).rejects.toThrow();
+      }
+
+      const second = await startDaemonServer({
+        runtimeFingerprint: "second-runtime",
+        token: "test-token",
+        userDataPath,
+      });
+      expect(second.service.status().runtimeFingerprint).toBe("second-runtime");
+      await (
+        second as typeof second & { close?: () => Promise<void> }
+      ).close?.();
+    } finally {
+      if (first.server.listening) {
+        await new Promise<void>((resolve, reject) => {
+          first.server.close((error) => {
+            if (error) reject(error);
+            else resolve();
+          });
+        });
+      }
+    }
+  });
+});
+
+const DAEMON_FIXTURE_START_TIMEOUT_MS = 45_000;
+
+async function createDirectory() {
+  const directory = await realpath(await tempDirs.create("cd-wire-"));
+  return directory;
+}
+
+async function closeListener(server: net.Server) {
+  await new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
+}
+
+it("elects one daemon when startup races", async () => {
+  const userDataPath = await createDirectory();
+  const results = await Promise.allSettled(
+    Array.from({ length: 3 }, (_, index) =>
+      startDaemonServer({
+        userDataPath,
+        runtimeFingerprint: String(index),
+        token: "test",
+      }),
+    ),
+  );
+  const winners = results.flatMap((result) =>
+    result.status === "fulfilled" ? [result.value] : [],
+  );
+  try {
+    expect(winners).toHaveLength(1);
+    expect(
+      results.filter((result) => result.status === "rejected"),
+    ).toHaveLength(2);
+  } finally {
+    await Promise.all(winners.map((daemon) => daemon.close()));
+  }
+}, 20_000);
+
+it("does not open the product database while an existing endpoint is live", async () => {
+  const userDataPath = await createDirectory();
+  const listener = net.createServer((socket) => socket.end());
+  await new Promise<void>((resolve) =>
+    listener.listen(getDaemonSocketPath(userDataPath), resolve),
+  );
+  try {
+    await expect(
+      startDaemonServer({
+        userDataPath,
+        runtimeFingerprint: "test",
+        token: "test",
+      }),
+    ).rejects.toThrow("already running");
+    await expect(access(getDatabasePath(userDataPath))).rejects.toThrow();
+  } finally {
+    await closeListener(listener);
+  }
+  const daemon = await startDaemonServer({
+    userDataPath,
+    runtimeFingerprint: "test",
+    token: "test",
+  });
+  await daemon.close();
+});
+
+it("releases startup resources when metadata publication fails", async () => {
+  const userDataPath = await createDirectory();
+  const metadataPath = getDaemonMetadataPath(userDataPath);
+  await mkdir(metadataPath);
+  await expect(
+    startDaemonServer({
+      userDataPath,
+      runtimeFingerprint: "test",
+      token: "test",
+    }),
+  ).rejects.toThrow();
+  await rm(metadataPath, { recursive: true });
+  const daemon = await startDaemonServer({
+    userDataPath,
+    runtimeFingerprint: "test",
+    token: "test",
+  });
+  await daemon.close();
+});
+
+it.skipIf(process.platform === "win32")(
+  "does not unlink a replacement endpoint or metadata on shutdown",
+  async () => {
+    const userDataPath = await createDirectory();
+    const daemon = await startDaemonServer({
+      userDataPath,
+      runtimeFingerprint: "test",
+      token: "test",
+    });
+    const socketPath = getDaemonSocketPath(userDataPath);
+    const metadataPath = getDaemonMetadataPath(userDataPath);
+    const listener = net.createServer((socket) => socket.end());
+    try {
+      await unlink(socketPath);
+      await new Promise<void>((resolve) =>
+        listener.listen(socketPath, resolve),
+      );
+      const replacement = JSON.stringify({
+        pid: process.pid,
+        token: "replacement",
+        startedAt: "replacement",
+      });
+      await writeFile(metadataPath, replacement);
+      await daemon.close();
+      await access(socketPath);
+      expect(await readFile(metadataPath, "utf8")).toBe(replacement);
+    } finally {
+      await daemon.close();
+      if (listener.listening) await closeListener(listener);
+    }
+  },
+);
+
+it("starts again through the canonical endpoint after an abrupt daemon exit", async () => {
+  const userDataPath = await createDirectory();
+  const moduleUrl = pathToFileURL(
+    createRequire(import.meta.url).resolve("@cocurdex/daemon/internal/wire"),
+  ).href;
+  const child = spawn(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      `
+    import { startDaemonServer } from ${JSON.stringify(moduleUrl)};
+    await startDaemonServer({ userDataPath: process.argv[1], token: "crashed", runtimeFingerprint: "crashed" });
+    process.send("ready");
+  `,
+      userDataPath,
+    ],
+    {
+      env: { ...process.env, COCURDEX_DISABLE_MEMORY_AUTO_START: "1" },
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
+      windowsHide: true,
+    },
+  );
+  const exited = once(child, "exit");
+  let stderr = "";
+  child.stderr?.setEncoding("utf8");
+  child.stderr?.on("data", (chunk: string) => {
+    stderr += chunk;
+  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const fail = (message: string) =>
+        reject(new Error(`${message}\n${stderr}`.trimEnd()));
+      const timer = setTimeout(
+        () => fail("Daemon fixture did not start"),
+        DAEMON_FIXTURE_START_TIMEOUT_MS,
+      );
+      child.once("message", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      child.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.once("exit", () => {
+        clearTimeout(timer);
+        fail("Daemon fixture exited");
+      });
+    });
+    await expect(
+      requestDaemon("daemon.status", { userDataPath }),
+    ).resolves.toMatchObject({ runtimeFingerprint: "crashed" });
+  } finally {
+    child.kill("SIGKILL");
+    await exited;
+  }
+  const successor = await startDaemonServer({
+    userDataPath,
+    runtimeFingerprint: "successor",
+    token: "successor",
+  });
+  try {
+    await expect(
+      requestDaemon("daemon.status", { userDataPath }),
+    ).resolves.toMatchObject({ runtimeFingerprint: "successor" });
+  } finally {
+    await successor.close();
+  }
+}, 60_000);

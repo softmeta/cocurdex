@@ -1,10 +1,12 @@
+import type { ComboboxRootHighlightEventDetails } from "@base-ui/react/combobox";
 import type {
   ComponentProps,
   CSSProperties,
   ReactElement,
   ReactNode,
 } from "react";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { FLYOUT_GAP, flyoutAnchor } from "@/components/ui/_flyout";
 import {
   Combobox,
   ComboboxCollection,
@@ -17,12 +19,14 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
+import { TOOLTIP_DELAY_MS, Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib";
 import {
   type AppDropdownTriggerAppearance,
   AppDropdownTriggerButton,
   AppDropdownTriggerLabel,
 } from "./dropdown";
+import { AppPreviewCardTooltipContent } from "./preview-card-tooltip";
 
 /** One row in a searchable single-select list. */
 export interface AppSearchableSelectOption {
@@ -34,6 +38,7 @@ export interface AppSearchableSelectOption {
   icon?: ReactNode;
   description?: ReactNode;
   trailing?: ReactNode;
+  preview?: ReactNode;
   disabled?: boolean;
   /** Optional style on the label span (e.g. font-family previews). */
   labelStyle?: CSSProperties;
@@ -73,6 +78,15 @@ export interface AppSearchableSelectProps {
 }
 
 type SelectItem = AppSearchableSelectOption;
+
+type HighlightedPreview = {
+  content: ReactNode;
+  anchor: Element;
+};
+
+function highlightedItem(popup: HTMLElement | null): Element | null {
+  return popup?.querySelector("[data-highlighted]") ?? null;
+}
 
 type SelectGroup = {
   value: string;
@@ -178,6 +192,56 @@ export function AppSearchableSelect({
     });
   }, [options]);
 
+  const popupRef = useRef<HTMLDivElement>(null);
+  const previewTimerRef = useRef<number | null>(null);
+  const previewWarmRef = useRef(false);
+  const [preview, setPreview] = useState<HighlightedPreview | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const cancelPendingPreview = () => {
+    if (previewTimerRef.current !== null) {
+      window.clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+  };
+
+  const openPreview = (content: ReactNode) => {
+    requestAnimationFrame(() => {
+      const anchor = highlightedItem(popupRef.current);
+      if (!anchor) return;
+      previewWarmRef.current = true;
+      setPreview({ content, anchor });
+      setPreviewOpen(true);
+    });
+  };
+
+  const showPreview = (
+    item: SelectItem | undefined,
+    details: ComboboxRootHighlightEventDetails,
+  ) => {
+    cancelPendingPreview();
+    const content = item?.preview;
+    if (!content || details.reason === "none") {
+      setPreviewOpen(false);
+      return;
+    }
+    if (details.reason === "keyboard" || previewWarmRef.current) {
+      openPreview(content);
+      return;
+    }
+    setPreviewOpen(false);
+    previewTimerRef.current = window.setTimeout(() => {
+      previewTimerRef.current = null;
+      openPreview(content);
+    }, TOOLTIP_DELAY_MS);
+  };
+
+  const resetPreview = () => {
+    cancelPendingPreview();
+    previewWarmRef.current = false;
+    setPreviewOpen(false);
+  };
+
   const resolvedTriggerLabel =
     triggerLabel ?? selected?.label ?? searchPlaceholder ?? "";
 
@@ -191,6 +255,10 @@ export function AppSearchableSelect({
       onValueChange={(next) => {
         // null/undefined when cleared; map back to our string value API.
         onValueChange(next?.value ?? "");
+      }}
+      onItemHighlighted={showPreview}
+      onOpenChange={(open) => {
+        if (!open) resetPreview();
       }}
     >
       <ComboboxTrigger
@@ -224,8 +292,9 @@ export function AppSearchableSelect({
         )}
       </ComboboxTrigger>
       <ComboboxContent
+        ref={popupRef}
         align={align}
-        className={cn("rounded-control!", contentClassName)}
+        className={contentClassName}
         side={side}
       >
         <ComboboxInput
@@ -234,14 +303,14 @@ export function AppSearchableSelect({
           showTrigger={false}
         />
         <ComboboxEmpty>{emptyText}</ComboboxEmpty>
-        <ComboboxList className="grid">
+        <ComboboxList className="grid grid-cols-1">
           {(entry: SelectItem | SelectGroup) => {
             if (entry && typeof entry === "object" && "items" in entry) {
               const group = entry as SelectGroup;
               return (
                 <ComboboxGroup
                   key={group.value || "default"}
-                  className="grid"
+                  className="grid grid-cols-1"
                   items={group.items}
                 >
                   {group.value ? (
@@ -261,6 +330,14 @@ export function AppSearchableSelect({
         </ComboboxList>
         {footer}
       </ComboboxContent>
+      <Tooltip open={previewOpen && preview !== null}>
+        <AppPreviewCardTooltipContent
+          anchor={preview ? flyoutAnchor(preview.anchor) : undefined}
+          sideOffset={FLYOUT_GAP}
+        >
+          {preview?.content}
+        </AppPreviewCardTooltipContent>
+      </Tooltip>
     </Combobox>
   );
 }

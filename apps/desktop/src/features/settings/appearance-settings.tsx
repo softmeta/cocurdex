@@ -1,6 +1,7 @@
 import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { SettingsGroup } from "@/components/app";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui";
 import { useResolvedTheme } from "@/lib";
 import {
@@ -37,29 +38,6 @@ interface SettingRowProps {
   title: string;
 }
 
-function SettingsGroup({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title?: string;
-}) {
-  return (
-    <div className="flex flex-col">
-      {title ? (
-        <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
-          {title}
-        </div>
-      ) : null}
-      <div className="rounded-card border border-border/70 bg-settings-surface px-4">
-        <div className="flex flex-col divide-y divide-border/60">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SettingRow({ children, description, title }: SettingRowProps) {
   return (
     <div className="flex items-center justify-between gap-6 py-3.5">
@@ -93,10 +71,10 @@ function Stepper({
   };
 
   return (
-    <div className="flex h-8 items-center overflow-hidden rounded-control border border-border bg-background/60 text-body text-foreground">
+    <div className="flex h-7 items-center overflow-hidden rounded-control border border-border bg-background/60 text-body text-foreground">
       <button
         aria-label={t("actions.decrease")}
-        className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         onClick={() => updateValue(value - 1)}
         type="button"
       >
@@ -105,7 +83,7 @@ function Stepper({
       <span className="min-w-10 text-center tabular-nums">{value}</span>
       <button
         aria-label={t("actions.increase")}
-        className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         onClick={() => updateValue(value + 1)}
         type="button"
       >

@@ -1,4 +1,8 @@
-import type { IssueRecord, ViewFull } from "@cocurdex/shared";
+import type {
+  IssueRecord,
+  IssueStatusCategory,
+  ViewFull,
+} from "@cocurdex/shared";
 import {
   DndContext,
   type DragEndEvent,
@@ -56,6 +60,7 @@ interface IssuesBoardProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
+  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssuesBoard({
@@ -68,6 +73,7 @@ export function IssuesBoard({
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
+  onSetColumnCategory,
 }: IssuesBoardProps) {
   const [activeCard, setActiveCard] = useState<IssueRecord | null>(null);
 
@@ -250,6 +256,7 @@ export function IssuesBoard({
                 onEditCard={onEditCard}
                 onUpdateCardFields={onUpdateCardFields}
                 onRenameColumn={onRenameColumn}
+                onSetColumnCategory={onSetColumnCategory}
               />
             ))}
           </SortableContext>

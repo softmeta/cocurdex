@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
-export const FULL_INPUT = ["src/**/*.{ts,tsx}", "!src/test/**"];
+export const FULL_INPUT = ["src/**/*.{ts,tsx}"];
 
-const SOURCE_FILE_PATTERN = /^src\/(?!test\/).*\.(ts|tsx)$/;
+const SOURCE_FILE_PATTERN = /^src\/.*\.(ts|tsx)$/;
 const LOCALE_FILE_PATTERN = /^src\/locales\/.*\.json$/;
 const CONFIG_FILE = "i18next.config.ts";
 const I18N_API_PATTERN =

@@ -16,6 +16,7 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
+import { IssueLabelChips } from "../issue-label-chips";
 
 export interface CardFieldOption {
   id: string;
@@ -119,7 +120,7 @@ export function IssueCard({
             weight="medium"
             className="truncate tabular-nums text-editor-fg-subtle"
           >
-            {card.id}
+            {card.identifier}
           </Text>
         </div>
         <Text
@@ -139,6 +140,7 @@ export function IssueCard({
             {card.description}
           </Text>
         ) : null}
+        <IssueLabelChips labelIds={card.labelIds} className="mt-2" />
       </div>
     </div>
   );

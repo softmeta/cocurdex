@@ -1,11 +1,18 @@
-import { randomBytes } from "node:crypto";
-import { existsSync, readdirSync, renameSync, rmSync } from "node:fs";
-import path from "node:path";
+import { existsSync, renameSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import {
   type AgentCapabilityCacheRepository,
   createSqliteAgentCapabilityCacheRepository,
 } from "./agents";
+import { createSqliteDecksRepository, type DecksRepository } from "./decks";
+import {
+  createSqliteEntityLinksRepository,
+  type EntityLinksRepository,
+} from "./entity-links";
+import {
+  createSqliteHostAccessRepository,
+  type HostAccessRepository,
+} from "./host-access";
 import {
   createSqliteIssueTrackerRepository,
   type IssueTrackerRepository,
@@ -16,18 +23,24 @@ import {
   shouldRecreateDatabase,
 } from "./migrations";
 import { createSqliteNotesRepository, type NotesRepository } from "./notes";
+import {
+  preMigrationSnapshotPath,
+  prunePreMigrationSnapshots,
+  snapshotSuffix,
+} from "./pre-migration-snapshots";
 import { createProviderRepositories } from "./provider-repositories";
 import type {
   AgentRoleRepository,
   AppSettingsRepository,
-  ConversationMessageRepository,
-  ConversationRepository,
+  CommandReceiptRepository,
+  ContextTransferRepository,
   EditorViewRepository,
   MessageRepository,
   MessageTurnStatsRepository,
   PendingSettingsChangeRepository,
   ProviderSessionRepository,
   QueuedAgentInputRepository,
+  RunRepository,
   SessionAttentionRepository,
   SessionRepository,
   SessionUsageRepository,
@@ -39,14 +52,15 @@ import type {
 import {
   createSqliteAgentRoleRepository,
   createSqliteAppSettingsRepository,
-  createSqliteConversationMessageRepository,
-  createSqliteConversationRepository,
+  createSqliteCommandReceiptRepository,
+  createSqliteContextTransferRepository,
   createSqliteEditorViewRepository,
   createSqliteMessageRepository,
   createSqliteMessageTurnStatsRepository,
   createSqlitePendingSettingsChangeRepository,
   createSqliteProviderSessionRepository,
   createSqliteQueuedAgentInputRepository,
+  createSqliteRunRepository,
   createSqliteSessionAttentionRepository,
   createSqliteSessionRepository,
   createSqliteSessionUsageRepository,
@@ -60,6 +74,7 @@ import {
   type ScriptRunRepository,
 } from "./script-run";
 import { createSqliteSearchRepository, type SearchRepository } from "./search";
+import { createSqliteSyncRepository, type SyncRepository } from "./sync";
 import { createSqliteTeamRepository, type TeamRepository } from "./team";
 import {
   createSqliteWorkflowRepository,
@@ -68,26 +83,31 @@ import {
 
 export interface CocurdexDatabase {
   notes: NotesRepository;
+  decks: DecksRepository;
+  entityLinks: EntityLinksRepository;
   issues: IssueTrackerRepository;
   search: SearchRepository;
   workspaces: WorkspaceRepository;
   worktreeEnvironments: WorktreeEnvironmentRepository;
   sessions: SessionRepository;
   messages: MessageRepository;
+  runs: RunRepository;
   messageTurnStats: MessageTurnStatsRepository;
   turnChangeSets: TurnChangeSetRepository;
   workflows: WorkflowRepository;
   teams: TeamRepository;
   scriptRuns: ScriptRunRepository;
+  hostAccess: HostAccessRepository;
   sessionUsage: SessionUsageRepository;
   toolCalls: ToolCallRepository;
   editorViews: EditorViewRepository;
   providerSessions: ProviderSessionRepository;
+  contextTransfers: ContextTransferRepository;
   queuedAgentInputs: QueuedAgentInputRepository;
   sessionAttention: SessionAttentionRepository;
-  conversations: ConversationRepository;
-  conversationMessages: ConversationMessageRepository;
   appSettings: AppSettingsRepository;
+  commandReceipts: CommandReceiptRepository;
+  sync: SyncRepository;
   pendingSettingsChanges: PendingSettingsChangeRepository;
   providerConfigs: ReturnType<
     typeof createProviderRepositories
@@ -110,15 +130,8 @@ export interface CocurdexDatabase {
    * Repository methods write synchronously, so call them without awaiting here.
    */
   transaction<T>(fn: () => T): T;
+  reclaimFreePages(maxPages: number): { reclaimed: number; remaining: number };
   close(): void;
-}
-
-const PRE_MIGRATION_SNAPSHOT_PREFIX = ".pre-migration-";
-const PRE_MIGRATION_SNAPSHOT_LIMIT = 3;
-
-function snapshotSuffix() {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `${timestamp}-${randomBytes(3).toString("hex")}`;
 }
 
 function backUpPreReleaseDatabase(databasePath: string): void {
@@ -131,27 +144,28 @@ function backUpPreReleaseDatabase(databasePath: string): void {
   }
 }
 
-function prunePreMigrationSnapshots(databasePath: string): void {
-  const directory = path.dirname(databasePath);
-  const prefix = `${path.basename(databasePath)}${PRE_MIGRATION_SNAPSHOT_PREFIX}`;
-  const stale = readdirSync(directory)
-    .filter((name) => name.startsWith(prefix))
-    .sort()
-    .reverse()
-    .slice(PRE_MIGRATION_SNAPSHOT_LIMIT);
-  for (const name of stale) {
-    rmSync(path.join(directory, name), { force: true });
-  }
-}
-
 function snapshotBeforeMigration(
   database: DatabaseSync,
   databasePath: string,
 ): void {
-  database
-    .prepare("VACUUM INTO ?")
-    .run(`${databasePath}${PRE_MIGRATION_SNAPSHOT_PREFIX}${snapshotSuffix()}`);
-  prunePreMigrationSnapshots(databasePath);
+  database.prepare("VACUUM INTO ?").run(preMigrationSnapshotPath(databasePath));
+}
+
+const INCREMENTAL_AUTO_VACUUM = 2;
+
+function readPragmaNumber(database: DatabaseSync, pragma: string): number {
+  const row = database.prepare(`PRAGMA ${pragma}`).get() as
+    | Record<string, number>
+    | undefined;
+  return row?.[pragma] ?? 0;
+}
+
+function ensureIncrementalAutoVacuum(database: DatabaseSync): void {
+  if (readPragmaNumber(database, "auto_vacuum") === INCREMENTAL_AUTO_VACUUM) {
+    return;
+  }
+  database.exec("PRAGMA auto_vacuum = INCREMENTAL");
+  database.exec("VACUUM");
 }
 
 function openDatabase(databasePath: string): DatabaseSync {
@@ -164,6 +178,7 @@ function openDatabase(databasePath: string): DatabaseSync {
   if (hasPendingMigration(database)) {
     snapshotBeforeMigration(database, databasePath);
   }
+  prunePreMigrationSnapshots(databasePath);
   return database;
 }
 
@@ -178,29 +193,35 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
   database.exec("PRAGMA busy_timeout = 5000");
   database.exec("PRAGMA foreign_keys = ON");
   initializeDatabase(database);
+  ensureIncrementalAutoVacuum(database);
 
   return {
     notes: createSqliteNotesRepository(database),
+    decks: createSqliteDecksRepository(database),
+    entityLinks: createSqliteEntityLinksRepository(database),
     issues: createSqliteIssueTrackerRepository(database),
     search: createSqliteSearchRepository(database),
     workspaces: createSqliteWorkspaceRepository(database),
     worktreeEnvironments: createSqliteWorktreeEnvironmentRepository(database),
     sessions: createSqliteSessionRepository(database),
     messages: createSqliteMessageRepository(database),
+    runs: createSqliteRunRepository(database),
     messageTurnStats: createSqliteMessageTurnStatsRepository(database),
     turnChangeSets: createSqliteTurnChangeSetRepository(database),
     workflows: createSqliteWorkflowRepository(database),
     teams: createSqliteTeamRepository(database),
     scriptRuns: createSqliteScriptRunRepository(database),
+    hostAccess: createSqliteHostAccessRepository(database),
     sessionUsage: createSqliteSessionUsageRepository(database),
     toolCalls: createSqliteToolCallRepository(database),
     editorViews: createSqliteEditorViewRepository(database),
     providerSessions: createSqliteProviderSessionRepository(database),
+    contextTransfers: createSqliteContextTransferRepository(database),
     queuedAgentInputs: createSqliteQueuedAgentInputRepository(database),
     sessionAttention: createSqliteSessionAttentionRepository(database),
-    conversations: createSqliteConversationRepository(database),
-    conversationMessages: createSqliteConversationMessageRepository(database),
     appSettings: createSqliteAppSettingsRepository(database),
+    commandReceipts: createSqliteCommandReceiptRepository(database),
+    sync: createSqliteSyncRepository(database),
     pendingSettingsChanges:
       createSqlitePendingSettingsChangeRepository(database),
     agentRoles: createSqliteAgentRoleRepository(database),
@@ -216,6 +237,15 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
         database.exec("ROLLBACK");
         throw error;
       }
+    },
+    reclaimFreePages(maxPages) {
+      const before = readPragmaNumber(database, "freelist_count");
+      if (before === 0) {
+        return { reclaimed: 0, remaining: 0 };
+      }
+      database.exec(`PRAGMA incremental_vacuum(${Math.max(1, maxPages)})`);
+      const remaining = readPragmaNumber(database, "freelist_count");
+      return { reclaimed: before - remaining, remaining };
     },
     close() {
       database.close();

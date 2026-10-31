@@ -1,0 +1,434 @@
+import type { WorkspaceRecord } from "@cocurdex/shared";
+import { createStore } from "jotai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  activePdfPathAtom,
+  openPdfsAtom,
+  PDF_ACTIVE_PATH_KEY,
+  PDF_OPEN_PATHS_KEY,
+} from "@/features/pdf-reader/pdf-reader-store";
+import {
+  activeWorkspaceIdAtom,
+  addWorkspaceAtom,
+  bootstrapWorkspacesAtom,
+  COLLAPSED_WORKSPACE_IDS_STORAGE_KEY,
+  collapsedWorkspaceIdsAtom,
+  normalizeCollapsedWorkspaceIds,
+  openWorkspaceByPathAtom,
+  relocateWorkspaceAtom,
+  removeWorkspaceAtom,
+  reorderWorkspacesAtom,
+  selectWorkspaceAtom,
+  workspacesAtom,
+} from "@/features/workspaces";
+
+const saveWorkspace =
+  vi.fn<(workspace: WorkspaceRecord) => Promise<WorkspaceRecord>>();
+
+vi.mock("@/lib/product-api", () => ({
+  daemonProductApi: {
+    saveWorkspace: (workspace: WorkspaceRecord) => saveWorkspace(workspace),
+  },
+}));
+
+function makeWorkspace(
+  id: string,
+  lastOpenedAt: string,
+  createdAt = "2024-01-01T00:00:00.000Z",
+  sortOrder = 1000,
+): WorkspaceRecord {
+  return {
+    id,
+    name: id,
+    rootPaths: [`/ws/${id}`],
+    createdAt,
+    updatedAt: createdAt,
+    lastOpenedAt,
+    sortOrder,
+  };
+}
+
+beforeEach(() => {
+  saveWorkspace.mockReset();
+  saveWorkspace.mockImplementation(async (workspace) => ({
+    ...workspace,
+    missingRootPaths: [],
+  }));
+  window.localStorage.removeItem(PDF_OPEN_PATHS_KEY);
+  window.localStorage.removeItem(PDF_ACTIVE_PATH_KEY);
+  (window as unknown as { desktopApi: unknown }).desktopApi = {};
+});
+
+afterEach(() => {
+  (window as unknown as { desktopApi?: unknown }).desktopApi = undefined;
+});
+
+describe("workspace activation persistence", () => {
+  it("stamps a fresh lastOpenedAt and persists when selecting a workspace", () => {
+    const store = createStore();
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    const b = makeWorkspace("b", "2024-01-02T00:00:00.000Z");
+    store.set(workspacesAtom, [a, b]);
+
+    store.set(selectWorkspaceAtom, "a");
+
+    expect(saveWorkspace).toHaveBeenCalledTimes(1);
+    const saved = saveWorkspace.mock.calls[0][0];
+    expect(saved.id).toBe("a");
+    expect(saved.lastOpenedAt > a.lastOpenedAt).toBe(true);
+    expect(store.get(workspacesAtom).map((item) => item.id)).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(store.get(workspacesAtom)[0]?.lastOpenedAt).toBe(saved.lastOpenedAt);
+  });
+
+  it("persists the workspace that just became active on add", () => {
+    const store = createStore();
+
+    store.set(addWorkspaceAtom, makeWorkspace("a", "2024-01-01T00:00:00.000Z"));
+
+    expect(saveWorkspace).toHaveBeenCalledTimes(1);
+    expect(saveWorkspace.mock.calls[0][0].id).toBe("a");
+  });
+
+  it("activates the most recently opened workspace without writing it back", () => {
+    const store = createStore();
+
+    store.set(bootstrapWorkspacesAtom, [
+      makeWorkspace(
+        "a",
+        "2024-01-01T00:00:00.000Z",
+        "2024-01-03T00:00:00.000Z",
+        2000,
+      ),
+      makeWorkspace(
+        "b",
+        "2024-01-02T00:00:00.000Z",
+        "2024-01-01T00:00:00.000Z",
+        1000,
+      ),
+    ]);
+
+    expect(store.get(workspacesAtom).map((item) => item.id)).toEqual([
+      "b",
+      "a",
+    ]);
+    expect(store.get(activeWorkspaceIdAtom)).toBe("b");
+    expect(saveWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("does not persist when bootstrapping an empty list", () => {
+    const store = createStore();
+
+    store.set(bootstrapWorkspacesAtom, []);
+
+    expect(saveWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("drops persisted PDF tabs that belong to a removed workspace", () => {
+    const store = createStore();
+    const kept = makeWorkspace("kept", "2024-01-02T00:00:00.000Z");
+    const reading = makeWorkspace("reading", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [kept, reading]);
+    store.set(openPdfsAtom, [
+      "/ws/kept/guide.pdf",
+      "/ws/reading/AI-Agents-in-Depth-zh-CN.pdf",
+    ]);
+    store.set(activePdfPathAtom, "/ws/reading/AI-Agents-in-Depth-zh-CN.pdf");
+
+    store.set(removeWorkspaceAtom, "reading");
+
+    expect(store.get(openPdfsAtom)).toEqual(["/ws/kept/guide.pdf"]);
+    expect(store.get(activePdfPathAtom)).toBe("/ws/kept/guide.pdf");
+  });
+
+  it("drops persisted PDF tabs on bootstrap when their workspace is gone", () => {
+    const store = createStore();
+    store.set(openPdfsAtom, [
+      "/ws/kept/guide.pdf",
+      "/Users/richard/my-reading/paper.pdf",
+    ]);
+    store.set(activePdfPathAtom, "/Users/richard/my-reading/paper.pdf");
+
+    store.set(bootstrapWorkspacesAtom, [
+      makeWorkspace("kept", "2024-01-02T00:00:00.000Z"),
+    ]);
+
+    expect(store.get(openPdfsAtom)).toEqual(["/ws/kept/guide.pdf"]);
+    expect(store.get(activePdfPathAtom)).toBe("/ws/kept/guide.pdf");
+  });
+
+  it("does not persist when selecting an unknown workspace id", () => {
+    const store = createStore();
+    store.set(workspacesAtom, [makeWorkspace("a", "2024-01-01T00:00:00.000Z")]);
+
+    store.set(selectWorkspaceAtom, "missing");
+
+    expect(saveWorkspace).not.toHaveBeenCalled();
+  });
+});
+
+describe("openWorkspaceByPathAtom", () => {
+  it("selects an existing workspace with the same rootPath", () => {
+    const store = createStore();
+    const existing = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [existing]);
+
+    const result = store.set(openWorkspaceByPathAtom, "/ws/a");
+
+    expect(result.workspace.id).toBe("a");
+    expect(result.didSwitchWorkspace).toBe(true);
+    expect(store.get(activeWorkspaceIdAtom)).toBe("a");
+    expect(store.get(workspacesAtom)).toHaveLength(1);
+    expect(saveWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates a workspace when the path is new", () => {
+    const store = createStore();
+
+    const result = store.set(openWorkspaceByPathAtom, "/tmp/new-project");
+
+    expect(result.workspace.rootPaths).toEqual(["/tmp/new-project"]);
+    expect(result.workspace.name).toBe("new-project");
+    expect(result.didSwitchWorkspace).toBe(true);
+    expect(store.get(activeWorkspaceIdAtom)).toBe(result.workspace.id);
+    expect(store.get(workspacesAtom)).toHaveLength(1);
+    expect(saveWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats trailing slashes as the same path", () => {
+    const store = createStore();
+    const existing = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [existing]);
+
+    const result = store.set(openWorkspaceByPathAtom, "/ws/a/");
+
+    expect(result.workspace.id).toBe("a");
+    expect(store.get(workspacesAtom)).toHaveLength(1);
+  });
+
+  it("keeps inventory order and expands the opened project's session list", () => {
+    const store = createStore();
+    const a = makeWorkspace(
+      "a",
+      "2024-01-01T00:00:00.000Z",
+      "2024-01-01T00:00:00.000Z",
+    );
+    const b = makeWorkspace(
+      "b",
+      "2024-01-02T00:00:00.000Z",
+      "2024-01-02T00:00:00.000Z",
+    );
+    store.set(workspacesAtom, [a, b]);
+    store.set(activeWorkspaceIdAtom, "a");
+    store.set(collapsedWorkspaceIdsAtom, ["b"]);
+
+    const result = store.set(openWorkspaceByPathAtom, "/ws/b");
+
+    expect(result.didSwitchWorkspace).toBe(true);
+    expect(store.get(activeWorkspaceIdAtom)).toBe("b");
+    expect(store.get(workspacesAtom).map((w) => w.id)).toEqual(["a", "b"]);
+    expect(store.get(collapsedWorkspaceIdsAtom)).toEqual([]);
+  });
+
+  it("appends a newly created project after existing ones", () => {
+    const store = createStore();
+    const existing = makeWorkspace(
+      "a",
+      "2024-01-01T00:00:00.000Z",
+      "2024-01-01T00:00:00.000Z",
+    );
+    store.set(workspacesAtom, [existing]);
+
+    const result = store.set(openWorkspaceByPathAtom, "/tmp/new-project");
+
+    expect(store.get(workspacesAtom).map((item) => item.id)).toEqual([
+      "a",
+      result.workspace.id,
+    ]);
+  });
+
+  it("prefers the project whose primary folder matches the path", () => {
+    const store = createStore();
+    const multi = {
+      ...makeWorkspace("multi", "2024-01-01T00:00:00.000Z"),
+      rootPaths: ["/ws/multi", "/ws/a"],
+    };
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [multi, a]);
+
+    expect(store.set(openWorkspaceByPathAtom, "/ws/a").workspace.id).toBe("a");
+  });
+
+  it("creates a separate project when the path is only a secondary folder", () => {
+    const store = createStore();
+    const multi = {
+      ...makeWorkspace("multi", "2024-01-01T00:00:00.000Z"),
+      rootPaths: ["/ws/multi", "/ws/b"],
+    };
+    store.set(workspacesAtom, [multi]);
+
+    const result = store.set(openWorkspaceByPathAtom, "/ws/b");
+
+    expect(result.workspace.id).not.toBe("multi");
+    expect(result.workspace.rootPaths).toEqual(["/ws/b"]);
+    expect(store.get(workspacesAtom)).toHaveLength(2);
+  });
+
+  it("flags reuse of a project whose name differs from the folder", () => {
+    const store = createStore();
+    const renamed = {
+      ...makeWorkspace("a", "2024-01-01T00:00:00.000Z"),
+      name: "Research",
+    };
+    store.set(workspacesAtom, [renamed]);
+
+    expect(
+      store.set(openWorkspaceByPathAtom, "/ws/a").reusedUnderDifferentName,
+    ).toBe(true);
+    expect(
+      store.set(openWorkspaceByPathAtom, "/tmp/new").reusedUnderDifferentName,
+    ).toBe(false);
+  });
+
+  it("reports didSwitchWorkspace false when reopening the active project", () => {
+    const store = createStore();
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [a]);
+    store.set(activeWorkspaceIdAtom, "a");
+
+    const result = store.set(openWorkspaceByPathAtom, "/ws/a");
+
+    expect(result.didSwitchWorkspace).toBe(false);
+    expect(store.get(activeWorkspaceIdAtom)).toBe("a");
+  });
+});
+
+describe("collapsed workspace ids persistence", () => {
+  it("writes collapsed ids to localStorage", () => {
+    const store = createStore();
+    store.set(collapsedWorkspaceIdsAtom, ["b", "a"]);
+
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(COLLAPSED_WORKSPACE_IDS_STORAGE_KEY) ??
+          "[]",
+      ),
+    ).toEqual(["b", "a"]);
+  });
+
+  it("drops a workspace from the collapsed list when it is removed", () => {
+    const store = createStore();
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    const b = makeWorkspace("b", "2024-01-02T00:00:00.000Z");
+    store.set(workspacesAtom, [a, b]);
+    store.set(collapsedWorkspaceIdsAtom, ["a", "b"]);
+
+    store.set(removeWorkspaceAtom, "b");
+
+    expect(store.get(collapsedWorkspaceIdsAtom)).toEqual(["a"]);
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(COLLAPSED_WORKSPACE_IDS_STORAGE_KEY) ??
+          "[]",
+      ),
+    ).toEqual(["a"]);
+  });
+});
+
+describe("normalizeCollapsedWorkspaceIds", () => {
+  it("keeps unique non-empty strings and drops everything else", () => {
+    expect(
+      normalizeCollapsedWorkspaceIds(["ok", 1, "", "ok", null, "next"]),
+    ).toEqual(["ok", "next"]);
+  });
+
+  it("returns an empty list for non-arrays", () => {
+    expect(normalizeCollapsedWorkspaceIds(undefined)).toEqual([]);
+    expect(normalizeCollapsedWorkspaceIds("{oops}")).toEqual([]);
+  });
+});
+
+describe("reorderWorkspacesAtom", () => {
+  it("persists the moved project without changing lastOpenedAt", () => {
+    const store = createStore();
+    const a = makeWorkspace("a", "2024-01-01T00:00:00.000Z", undefined, 1000);
+    const b = makeWorkspace("b", "2024-01-02T00:00:00.000Z", undefined, 2000);
+    const c = makeWorkspace("c", "2024-01-03T00:00:00.000Z", undefined, 3000);
+    store.set(workspacesAtom, [a, b, c]);
+
+    store.set(reorderWorkspacesAtom, { activeId: "c", overId: "a" });
+
+    expect(store.get(workspacesAtom).map((item) => item.id)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+    expect(saveWorkspace).toHaveBeenCalledTimes(1);
+    const saved = saveWorkspace.mock.calls[0][0];
+    expect(saved.id).toBe("c");
+    expect(saved.sortOrder).toBe(0);
+    expect(saved.lastOpenedAt).toBe(c.lastOpenedAt);
+  });
+});
+
+describe("relocateWorkspaceAtom", () => {
+  it("repoints a moved project and persists the new root path", async () => {
+    const store = createStore();
+    const moved = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [
+      moved,
+      makeWorkspace("b", "2024-01-02T00:00:00.000Z"),
+    ]);
+
+    await store.set(relocateWorkspaceAtom, "a", "/osp/project/");
+
+    const [relocated] = store.get(workspacesAtom);
+    expect(relocated.id).toBe("a");
+    expect(relocated.rootPaths).toEqual(["/osp/project"]);
+    expect(relocated.name).toBe("project");
+    expect(relocated.missingRootPaths).toEqual([]);
+    expect(store.get(activeWorkspaceIdAtom)).toBe("a");
+    expect(saveWorkspace.mock.calls.at(-1)?.[0].rootPaths).toEqual([
+      "/osp/project",
+    ]);
+  });
+
+  it("replaces only the missing secondary root and keeps the name", async () => {
+    const store = createStore();
+    const moved: WorkspaceRecord = {
+      ...makeWorkspace("a", "2024-01-01T00:00:00.000Z"),
+      name: "app",
+      rootPaths: ["/repo/app", "/repo/deleted-lib"],
+      missingRootPaths: ["/repo/deleted-lib"],
+    };
+    store.set(workspacesAtom, [moved]);
+
+    await store.set(relocateWorkspaceAtom, "a", "/repo/new-lib");
+
+    const [relocated] = store.get(workspacesAtom);
+    expect(relocated.rootPaths).toEqual(["/repo/app", "/repo/new-lib"]);
+    expect(relocated.name).toBe("app");
+    expect(saveWorkspace.mock.calls[0]?.[0].rootPaths).toEqual([
+      "/repo/app",
+      "/repo/new-lib",
+    ]);
+  });
+
+  it("leaves state untouched when the daemon rejects the save", async () => {
+    saveWorkspace.mockRejectedValue(
+      new Error('Folder /repo/app already belongs to project "b"'),
+    );
+    const store = createStore();
+    const moved = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
+    store.set(workspacesAtom, [moved]);
+
+    await expect(
+      store.set(relocateWorkspaceAtom, "a", "/repo/app"),
+    ).rejects.toThrow("already belongs");
+
+    expect(store.get(workspacesAtom)[0]?.rootPaths).toEqual(["/ws/a"]);
+    expect(store.get(activeWorkspaceIdAtom)).not.toBe("a");
+  });
+});

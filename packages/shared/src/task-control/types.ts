@@ -24,11 +24,12 @@ export type SessionConfiguration = Pick<
   | "providerSnapshot"
   | "worktreePath"
   | "peerInbound"
+  | "sessionKind"
 >;
 
 export interface SendSessionCommand {
   sessionId: string;
-  messageId?: string;
+  messageId: string;
   createdAt?: string;
   content: string;
   attachments?: MessageAttachment[];
@@ -37,22 +38,7 @@ export interface SendSessionCommand {
   origin?: MessageOrigin;
 }
 
-export type SubmitPreviousMessageCommand = Pick<
-  SendSessionCommand,
-  "sessionId" | "content" | "attachments"
-> & {
-  messageId: string;
-  revertWorkspace: boolean;
-};
-
 export interface TaskApi {
-  submitPreviousMessage(
-    input: SubmitPreviousMessageCommand,
-  ): Promise<MessageRecord>;
-  getPreviousMessageCheckpointStatus(
-    sessionId: string,
-    messageId: string,
-  ): Promise<{ available: boolean }>;
   listSessions(): Promise<SessionRecord[]>;
   getSessionSnapshot(
     sessionId: string,

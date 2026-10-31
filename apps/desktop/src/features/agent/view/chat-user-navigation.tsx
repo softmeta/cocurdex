@@ -3,6 +3,7 @@ import {
   isContextItemAttachment,
   isImageAttachment,
   type MessageAttachment,
+  pathBaseName,
 } from "@cocurdex/shared";
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -28,7 +29,7 @@ function getAnchorPreview(message: UserMessageAnchor) {
     const attachment = message.attachments[0];
     if (attachment && isContextFolderAttachment(attachment)) {
       const folderName =
-        attachment.folderPath.split("/").pop() ?? "Attached folder";
+        pathBaseName(attachment.folderPath) || "Attached folder";
       return `Attached ${folderName}`;
     }
 
@@ -37,7 +38,7 @@ function getAnchorPreview(message: UserMessageAnchor) {
     }
 
     if (attachment && !isImageAttachment(attachment)) {
-      const fileName = attachment.filePath.split("/").pop() ?? "Attached file";
+      const fileName = pathBaseName(attachment.filePath) || "Attached file";
       return `Attached ${fileName}`;
     }
 
@@ -46,14 +47,6 @@ function getAnchorPreview(message: UserMessageAnchor) {
 
   return "Empty message";
 }
-
-const panelClassName = cn(
-  "pointer-events-auto w-9 rounded-full border border-chat-border-soft bg-chat-surface-raised/90 p-1 shadow-chat-soft backdrop-blur",
-);
-
-const promptButtonClassName = cn(
-  "relative flex size-7 items-center justify-center rounded-full cursor-pointer text-left transition-colors duration-150",
-);
 
 export function UserMessageNavigation({
   activeMessageId,
@@ -106,7 +99,7 @@ export function UserMessageNavigation({
           inset so it floats clear of it. */}
       <div className={cn("transition-all", isExpanded && "ms-2")}>
         {isExpanded ? (
-          <div className={panelClassName}>
+          <div className="pointer-events-auto w-9 rounded-full border border-chat-border-soft bg-chat-surface-raised/90 p-1 shadow-chat-soft backdrop-blur">
             <div className="flex max-h-[min(50vh,22rem)] flex-col items-center gap-1 overflow-hidden">
               <button
                 aria-label={t("navigation.collapse")}
@@ -138,7 +131,7 @@ export function UserMessageNavigation({
                           })}
                           aria-current={isActive ? "true" : undefined}
                           className={cn(
-                            promptButtonClassName,
+                            "relative flex size-7 items-center justify-center rounded-full cursor-pointer text-left transition-colors duration-150",
                             isActive
                               ? "text-chat-fg"
                               : "text-chat-fg-muted hover:text-chat-fg",

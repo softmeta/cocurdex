@@ -1,19 +1,13 @@
 import { ChevronRight, FoldVertical, UnfoldVertical } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ScrollArea,
   Text,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@/components/ui";
 import { cn, useScrollIntoViewWhenActive } from "@/lib";
 import {
@@ -105,27 +99,18 @@ export function PdfOutlinePanel({
     <div className="flex size-full flex-col">
       {hasNested ? (
         <div className="flex shrink-0 items-center justify-end border-b border-editor-border px-1 py-0.5">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <TitlebarIconButton
-                  aria-label={
-                    allCollapsed ? t("pdf.expandAll") : t("pdf.collapseAll")
-                  }
-                  onClick={handleToggleAll}
-                >
-                  {allCollapsed ? (
-                    <UnfoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
-                  ) : (
-                    <FoldVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
-                  )}
-                </TitlebarIconButton>
-              }
-            />
-            <TooltipContent side="bottom" sideOffset={6}>
-              {allCollapsed ? t("pdf.expandAll") : t("pdf.collapseAll")}
-            </TooltipContent>
-          </Tooltip>
+          <TitlebarIconButton
+            aria-label={
+              allCollapsed ? t("pdf.expandAll") : t("pdf.collapseAll")
+            }
+            onClick={handleToggleAll}
+          >
+            {allCollapsed ? (
+              <UnfoldVertical className="size-3.5" />
+            ) : (
+              <FoldVertical className="size-3.5" />
+            )}
+          </TitlebarIconButton>
         </div>
       ) : null}
 
@@ -170,9 +155,6 @@ interface OutlineItemProps {
 // share the same start edge; the chevron column is always reserved below.
 const OUTLINE_INDENT_PER_DEPTH_PX = 12;
 const OUTLINE_BASE_INSET_PX = 4;
-const OUTLINE_CHEVRON_CLASS =
-  "flex size-4 shrink-0 items-center justify-center";
-
 function OutlineItem({
   node,
   nodeKey,
@@ -205,14 +187,16 @@ function OutlineItem({
       {hasChildren ? (
         <CollapsibleTrigger
           className={cn(
-            OUTLINE_CHEVRON_CLASS,
-            "group rounded-control text-muted-foreground hover:text-foreground",
+            "flex size-4 shrink-0 items-center justify-center group rounded-control text-muted-foreground hover:text-foreground",
           )}
         >
           <ChevronRight className="size-3.5 transition-transform group-data-[panel-open]:rotate-90 rtl:-scale-x-100" />
         </CollapsibleTrigger>
       ) : (
-        <span className={OUTLINE_CHEVRON_CLASS} aria-hidden />
+        <span
+          className="flex size-4 shrink-0 items-center justify-center"
+          aria-hidden
+        />
       )}
       <div className="min-w-0 flex-1">{label}</div>
     </div>

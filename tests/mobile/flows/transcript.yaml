@@ -1,0 +1,270 @@
+appId: dev.cocurdex.mobile
+---
+- runFlow: shared/pair-by-link.yaml
+- scrollUntilVisible:
+    element:
+      text: ${SHOW_MORE}
+    centerElement: true
+    optional: true
+- tapOn:
+    text: ${SHOW_MORE}
+    optional: true
+- scrollUntilVisible:
+    element: ${WORKSPACE_NAME}
+    direction: UP
+- scrollUntilVisible:
+    element: ${CODE_SESSION_TITLE}
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${CODE_SESSION_TITLE}
+      - extendedWaitUntil:
+          visible: ${CODE_BLOCK_TEXT}
+          timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: session-code-block
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${WORKSPACE_NAME}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- scrollUntilVisible:
+    element: ${TOOL_SESSION_TITLE}
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${TOOL_SESSION_TITLE}
+      - extendedWaitUntil:
+          visible:
+            id: "transcript-activity-.*"
+          timeout: 10000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: "transcript-activity-.*"
+      - extendedWaitUntil:
+          visible:
+            id: "transcript-tool-.*"
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: "transcript-tool-.*"
+      - extendedWaitUntil:
+          visible:
+            id: "tool-call-input"
+          timeout: 5000
+- assertVisible: ${TOOL_INPUT_TITLE}
+- waitForAnimationToEnd
+- takeScreenshot: tool-call
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                point: 5%, 9%
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - back
+      - extendedWaitUntil:
+          visible:
+            id: "transcript-tool-.*"
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                text: ${FILE_LINK_TEXT}
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn:
+                text: ${FILE_LINK_TEXT}
+                point: 8%, 90%
+      - extendedWaitUntil:
+          visible: ${FILE_SOURCE_TEXT}
+          timeout: 10000
+- waitForAnimationToEnd
+- assertVisible:
+    id: source-horizontal-scroll
+- takeScreenshot: file-source
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 5%, 9%
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: "transcript-tool-.*"
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${WORKSPACE_NAME}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- scrollUntilVisible:
+    element: ${DIAGRAM_SESSION_TITLE}
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${DIAGRAM_SESSION_TITLE}
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 10000
+- scrollUntilVisible:
+    element: ${DIAGRAM_HEADING}
+    direction: UP
+    speed: 90
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: "mermaid-diagram"
+    direction: UP
+    visibilityPercentage: 40
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: session-mermaid
+- retry:
+    maxRetries: 2
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "mermaid-diagram"
+          direction: UP
+          visibilityPercentage: 40
+          timeout: 10000
+      - scrollUntilVisible:
+          element:
+            id: "mermaid-diagram"
+          direction: DOWN
+          visibilityPercentage: 100
+          speed: 20
+          timeout: 10000
+      - tapOn:
+          id: "mermaid-diagram"
+      - extendedWaitUntil:
+          visible:
+            id: "mermaid-viewer"
+          timeout: 5000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    notVisible:
+      id: "mermaid-viewer-preview"
+    timeout: 30000
+- takeScreenshot: mermaid-viewer
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${DIAGRAM_CLOSE}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: "mermaid-diagram"
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${WORKSPACE_NAME}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- scrollUntilVisible:
+    element: ${IMAGE_SESSION_TITLE}
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${IMAGE_SESSION_TITLE}
+      - extendedWaitUntil:
+          visible: ${IMAGE_NAME}
+          timeout: 10000
+- tapOn: ${IMAGE_NAME}
+- extendedWaitUntil:
+    visible:
+      id: "image-viewer"
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: image-viewer
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${IMAGE_CLOSE}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${IMAGE_NAME}
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: ${TAB_SESSIONS}
+            - extendedWaitUntil:
+                visible: ${WORKSPACE_NAME}
+                timeout: 5000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back

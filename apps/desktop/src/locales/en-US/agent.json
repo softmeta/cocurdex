@@ -4,25 +4,48 @@
     "completed": "Completed",
     "planning": "Working",
     "ready": "Ready",
-    "reasoningCount_one": "{{count}} reasoning step",
-    "reasoningCount_other": "{{count}} reasoning steps",
     "replyCount_one": "{{count}} interim reply",
     "replyCount_other": "{{count}} interim replies",
-    "toolCount_one": "{{count}} tool call",
-    "toolCount_other": "{{count}} tool calls",
+    "responding": "Replying",
+    "stopped": "Stopped",
+    "summary": {
+      "command_one": "Ran {{count}} command",
+      "command_other": "Ran {{count}} commands",
+      "edit_one": "Edited {{count}} file",
+      "edit_other": "Edited {{count}} files",
+      "fetch_one": "Fetched {{count}} page",
+      "fetch_other": "Fetched {{count}} pages",
+      "other_one": "Used {{count}} tool",
+      "other_other": "Used {{count}} tools",
+      "others_one": "{{count}} other action",
+      "others_other": "{{count}} other actions",
+      "read_one": "Read {{count}} file",
+      "read_other": "Read {{count}} files",
+      "reasoning_one": "Thought",
+      "reasoning_other": "Thought {{count}} times",
+      "search_one": "Searched {{count}} time",
+      "search_other": "Searched {{count}} times",
+      "separator": ", ",
+      "skill_one": "Used {{count}} skill",
+      "skill_other": "Used {{count}} skills",
+      "subagent_one": "Ran {{count}} subagent",
+      "subagent_other": "Ran {{count}} subagents"
+    },
+    "thinking": "Thinking",
     "usingTools": "Using tools",
-    "writing": "Responding"
+    "workedFor": "Worked for {{duration}}"
   },
   "assistantMessage": {
     "copy": "Copy response",
     "copyRichText": "Copy Rich Text",
     "turnUsage": {
       "ariaLabel": "Token usage this turn",
-      "tooltipCacheCreation": "Cache write ({{tokens}}): tokens added to the prompt cache.",
-      "tooltipCacheRead": "Cache read ({{tokens}}): tokens reused from the prompt cache.",
-      "tooltipInput": "Processed input ({{tokens}}): total input handled this turn, including cached tokens.",
-      "tooltipNewInput": "Uncached input ({{tokens}}): input processed without a cache hit.",
-      "tooltipOutput": "Output ({{tokens}}): tokens the model generated this turn."
+      "cacheHitRate": "Cache hit rate",
+      "cacheRead": "Cache read",
+      "cacheWrite": "Cache write",
+      "input": "Total input",
+      "newInput": "Uncached input",
+      "output": "Output"
     }
   },
   "contextBreakdown": {
@@ -38,6 +61,13 @@
     },
     "title": "Context usage"
   },
+  "contextCompaction": {
+    "completed": "Context compacted",
+    "completedFrom": "Context compacted from {{before}} tokens",
+    "completedRange": "Context compacted {{before}} → {{after}} tokens",
+    "failed": "Context compaction failed",
+    "running": "Compacting context"
+  },
   "contextWindow": {
     "cacheReadTokens": "Cache read: {{tokens}}",
     "cacheWriteTokens": "Cache write: {{tokens}}",
@@ -50,19 +80,13 @@
     "tooltip": "{{percent}}% of context limit"
   },
   "imagePreview": {
-    "closePreview": "Close image preview",
     "copied": "Copied",
     "copyFailed": "Copy failed",
     "copyImage": "Copy image",
     "downloadImage": "Download image",
     "imagePosition": "{{current}} / {{total}}",
     "nextImage": "Next image",
-    "previousImage": "Previous image",
-    "resetView": "Reset view",
-    "resetZoom": "Reset zoom",
-    "rotate": "Rotate clockwise",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out"
+    "previousImage": "Previous image"
   },
   "jumpToLatest": "Jump to latest",
   "jumpToTop": "Jump to top",
@@ -141,17 +165,7 @@
     "waitingEmpty": "No plan written — approve or request changes"
   },
   "previousMessage": {
-    "cancel": "Cancel",
-    "cancelEdit": "Cancel edit",
-    "copy": "Copy prompt",
-    "dialogDescription": "Submitting from a previous message will clear the messages after this one. Reverting also restores files to their checkpoint before this message.",
-    "dialogTitle": "Submit from a previous message?",
-    "dontAskAgain": "Don't ask again",
-    "dontRevert": "Don't revert",
-    "edit": "Edit previous message",
-    "revert": "Revert",
-    "revertUnavailable": "File revert is unavailable because this message has no git workspace checkpoint.",
-    "submitEdit": "Submit edited message"
+    "copy": "Copy prompt"
   },
   "questions": {
     "answer": "Answer",
@@ -168,6 +182,8 @@
     "editLabel": "Edit queued message",
     "label": "Queued follow-ups",
     "moreActions": "More queue actions",
+    "paused": "Queue paused. Nothing runs until you resume it.",
+    "resume": "Resume",
     "save": "Save",
     "sendNow": "Send now",
     "status": "Queued",
@@ -239,14 +255,17 @@
   "toolCalls": {
     "command": "Command",
     "completed": "Completed",
+    "copyOutput": "Copy output",
     "count_one": "{{count}} call",
     "count_other": "{{count}} calls",
     "execute": "Run",
+    "executeDone": "Ran",
     "failed": "Failed",
     "files": "Files",
     "files_one": "{{count}} file",
     "files_other": "{{count}} files",
     "input": "Input",
+    "interrupted": "Interrupted",
     "openParentSession": "View parent session",
     "openParentSessionNamed": "View {{title}}",
     "output": "Output",
@@ -254,12 +273,15 @@
     "outputLoading": "Loading output…",
     "pending": "Pending",
     "readFile": "Read {{fileName}}{{range}}",
+    "readFileDone": "Read {{fileName}}{{range}}",
     "readFiles": "Read files",
     "running": "Running",
     "search": "Search",
+    "searchDone": "Searched",
     "showLess": "Show less",
     "showMore": "Show more",
     "skill": "Use skill",
+    "skillDone": "Used skill",
     "subagent": "Using subagent",
     "subagentCompleted": "Subagent completed",
     "subagentEmpty": "No subagent messages yet.",
@@ -269,6 +291,8 @@
     "subagentResponse": "Subagent response",
     "subagentSession": "Subagent session",
     "title": "Tool calls",
+    "viewRendered": "View rendered",
+    "viewSource": "View source",
     "worktreeSetup": "Prepare worktree"
   },
   "turnChanges": {

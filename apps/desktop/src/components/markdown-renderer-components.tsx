@@ -1,3 +1,4 @@
+import { parseFilePathCandidate } from "@cocurdex/shared";
 import type { MouseEvent, ReactNode } from "react";
 import { cn, desktopApi } from "@/lib";
 import {
@@ -9,7 +10,6 @@ import {
 import {
   extractInlineCodeText,
   type MarkdownFilePathHandlers,
-  parseFilePathCandidate,
   parseWorkspaceFileHref,
 } from "./markdown-file-path";
 import { linkifyFilePaths } from "./markdown-file-path-linkify";
@@ -65,9 +65,16 @@ function canOpenInSystemBrowser(href: string | undefined): href is string {
 }
 
 // Block code (```lang ... ```) and Mermaid blocks are rendered by Streamdown's
-// built-in CodeBlock (Shiki syntax highlighting) and MermaidBlock. We only
+// built-in CodeBlock (syntax highlighting) and MermaidBlock. We only
 // customize the surrounding markdown elements (headings, lists, tables, inline
 // code, etc.) so the chat surface tone tokens still apply.
+const linkToneClassNames: Record<MarkdownRendererTone, string> = {
+  assistant: "text-chat-link hover:text-chat-link-hover",
+  user: "text-chat-link hover:text-chat-fg",
+  system: "text-chat-system-fg hover:text-chat-fg",
+  editor: "text-editor-fg hover:text-editor-fg",
+};
+
 export function createMarkdownComponents(
   tone: MarkdownRendererTone,
   options?: MarkdownComponentOptions,
@@ -216,15 +223,15 @@ export function createMarkdownComponents(
       return (
         <div
           className={cn(
-            "my-1.5 min-w-0 max-w-full overflow-x-auto rounded-control border [&_code]:rounded-control [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]",
+            "my-1.5 min-w-0 max-w-full overflow-x-auto rounded-card [&_code]:rounded-control [&_code]:bg-foreground/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]",
             tone === "editor"
-              ? "border-editor-border"
+              ? "bg-editor-chrome"
               : tone === "system"
-                ? "border-chat-system-border"
-                : "border-chat-border-soft",
+                ? "bg-chat-system-bg"
+                : "bg-chat-code-block",
           )}
         >
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-sm in-data-streaming:table-fixed">
             {children}
           </table>
         </div>
@@ -236,10 +243,10 @@ export function createMarkdownComponents(
           className={cn(
             "border-b text-xs uppercase tracking-[0.12em]",
             tone === "editor"
-              ? "border-editor-border bg-editor-chrome text-editor-fg-muted"
+              ? "border-editor-border text-editor-fg-muted"
               : tone === "system"
-                ? "border-chat-system-border bg-chat-system-bg text-chat-system-fg"
-                : "border-chat-border-soft bg-chat-surface-tint text-chat-fg-muted",
+                ? "border-chat-system-border text-chat-system-fg"
+                : "border-foreground/6 text-chat-fg-muted dark:border-foreground/8",
           )}
         >
           {children}
@@ -251,7 +258,7 @@ export function createMarkdownComponents(
     },
     tr({ children }: { children?: ReactNode }) {
       return (
-        <tr className="border-b border-chat-border-soft/70 last:border-b-0">
+        <tr className="border-b border-foreground/3 last:border-b-0 dark:border-foreground/5">
           {children}
         </tr>
       );
@@ -303,18 +310,6 @@ export function createMarkdownComponents(
       className?: string;
       href?: string;
     }) {
-      const linkClassName = cn(
-        "underline decoration-white/20 underline-offset-4 transition-colors hover:decoration-current",
-        className?.includes("data-footnote-backref") ? "ml-1 text-xs" : null,
-        tone === "assistant"
-          ? "text-chat-link hover:text-chat-link-hover"
-          : tone === "system"
-            ? "text-chat-system-fg hover:text-chat-fg"
-            : tone === "editor"
-              ? "text-editor-fg hover:text-editor-fg"
-              : "text-chat-link hover:text-chat-fg",
-      );
-
       // Workspace-relative file links rewritten before render
       // (`https://cocurdex.workspace/open?path=...`). Same chip UI as bare
       // `path` tokens — open via filePathHandlers, never the OS browser.
@@ -352,7 +347,11 @@ export function createMarkdownComponents(
 
       return (
         <a
-          className={linkClassName}
+          className={cn(
+            "underline decoration-white/20 underline-offset-4 transition-colors hover:decoration-current",
+            className?.includes("data-footnote-backref") && "ml-1 text-xs",
+            linkToneClassNames[tone],
+          )}
           href={href}
           onClick={isAnchorLink ? handleAnchorClick : handleExternalClick}
           rel={isAnchorLink ? undefined : "noreferrer"}
@@ -417,7 +416,7 @@ export function createMarkdownComponents(
       return (
         <code
           className={cn(
-            "break-words rounded-control border px-1.5 py-0.5 font-normal text-[0.92em]",
+            "break-words rounded-control px-1.5 py-0.5 font-normal text-[0.92em]",
             getInlineCodeToneClass(tone),
             codeClassName,
           )}
@@ -429,10 +428,10 @@ export function createMarkdownComponents(
     },
     hr() {
       return (
-        <div
+        <hr
           className={cn(
-            "h-px",
-            tone === "editor" ? "bg-editor-border" : "bg-chat-border-soft",
+            "my-5 border-0 border-t border-dashed",
+            tone === "editor" ? "border-editor-border" : "border-chat-border",
           )}
         />
       );

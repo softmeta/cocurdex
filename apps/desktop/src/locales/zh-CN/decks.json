@@ -1,0 +1,164 @@
+{
+  "actions": {
+    "addSlide": "添加幻灯片",
+    "export": "导出",
+    "exportPdf": "导出 PDF",
+    "exportPptx": "导出 PPTX",
+    "insertImage": "插入图片",
+    "layout": "版式",
+    "present": "放映",
+    "presenterView": "演讲者视图",
+    "theme": "主题"
+  },
+  "editor": {
+    "edit": "编辑{{name}}",
+    "image": "图片",
+    "imageNamed": "图片：{{name}}",
+    "notesPlaceholder": "添加演讲者备注",
+    "placeholders": {
+      "subtitle": "单击添加副标题",
+      "text": "单击添加文本",
+      "title": "单击添加标题"
+    },
+    "slots": {
+      "body": "正文",
+      "left": "左栏",
+      "right": "右栏",
+      "subtitle": "副标题",
+      "textBox": "文本框",
+      "title": "标题"
+    }
+  },
+  "errors": {
+    "audienceWindow": "无法打开观众窗口。请允许此页面弹出窗口后重试。",
+    "create": "无法新建演示文稿",
+    "edit": "无法保存更改",
+    "export": "无法导出演示文稿",
+    "image": "无法添加图片",
+    "import": "无法导入演示文稿"
+  },
+  "imageMenu": {
+    "delete": "删除图片",
+    "replace": "替换图片…"
+  },
+  "import": {
+    "warnings": "已导入，部分内容未能保留"
+  },
+  "layouts": {
+    "blank": "空白",
+    "closing": "结束页",
+    "cover": "封面",
+    "section": "章节",
+    "title-content": "标题和内容",
+    "title-only": "仅标题",
+    "two-content": "两栏"
+  },
+  "present": {
+    "audience": "观众视图",
+    "label": "放映",
+    "next": "下一页",
+    "position": "第 {{current}} 页，共 {{total}} 页"
+  },
+  "presenter": {
+    "current": "当前幻灯片",
+    "elapsed": "已用时间",
+    "end": "结束放映",
+    "label": "演讲者视图",
+    "lastSlide": "已是最后一张",
+    "moveAudienceHint": "把观众窗口拖到投影屏或共享的屏幕上。",
+    "next": "下一张",
+    "noNotes": "没有演讲者备注",
+    "previous": "上一张",
+    "upNext": "下一张"
+  },
+  "sidebar": {
+    "collapse": "隐藏演示文稿列表",
+    "delete": "删除",
+    "deleteConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "description": "此演示文稿及其所有幻灯片将被永久删除。",
+      "title": "删除“{{title}}”？"
+    },
+    "empty": {
+      "create": "新建演示文稿",
+      "description": "新建或导入 PowerPoint 演示文稿，也可以让 Agent 来制作。",
+      "import": "导入 PowerPoint",
+      "title": "还没有演示文稿"
+    },
+    "expand": "显示演示文稿列表",
+    "importPptx": "导入 PowerPoint (.pptx)",
+    "newDeck": "新建演示文稿",
+    "rename": "重命名",
+    "resize": "调整演示文稿列表宽度",
+    "title": "演示文稿",
+    "untitled": "未命名演示文稿"
+  },
+  "slideMenu": {
+    "delete": "删除幻灯片",
+    "duplicate": "复制幻灯片",
+    "moveEarlier": "前移",
+    "moveLater": "后移"
+  },
+  "themeHints": {
+    "academic": "学院经典 · 教学与讲座",
+    "bauhaus": "设计、艺术与建筑",
+    "blueprint": "工程评审与技术方案",
+    "boardroom": "商务稳重 · 商业与咨询",
+    "botanical": "健康、可持续发展与公益",
+    "clinic": "医疗健康与 SaaS 产品",
+    "default": "简洁，适合任何主题",
+    "editorial": "编辑杂志 · 研究与故事",
+    "ember": "深色渐变 · 创意与活动",
+    "forest": "沉静，适合任何主题",
+    "midnight": "深色，适合任何主题",
+    "nebula": "深色渐变 · AI 与发布会",
+    "noir": "金融、年报与高端品牌",
+    "playful": "课堂、工作坊与创意提案",
+    "pop": "大胆撞色 · 营销与提案",
+    "retro": "活动、音乐节与生活方式",
+    "sand": "暖色，适合任何主题",
+    "swiss": "战略、咨询与规划",
+    "tech": "极简科技 · 产品与技术",
+    "terminal": "开发者分享与黑客松",
+    "zen": "文化、品牌故事与餐饮"
+  },
+  "themes": {
+    "academic": "讲堂",
+    "bauhaus": "包豪斯",
+    "blueprint": "蓝图",
+    "boardroom": "董事会",
+    "botanical": "植物",
+    "clinic": "清新",
+    "default": "默认",
+    "editorial": "杂志",
+    "ember": "余烬",
+    "forest": "森林",
+    "midnight": "午夜",
+    "nebula": "星云",
+    "noir": "黑金",
+    "playful": "波普",
+    "pop": "撞色",
+    "retro": "复古",
+    "sample": "Aa",
+    "sand": "沙色",
+    "swiss": "瑞士",
+    "tech": "发布会",
+    "terminal": "终端",
+    "zen": "和风"
+  },
+  "viewer": {
+    "empty": {
+      "description": "从列表中选择一个演示文稿查看幻灯片。",
+      "title": "未选择演示文稿"
+    },
+    "emptyDeck": {
+      "description": "从工具栏添加幻灯片，或让 agent 编写这份演示文稿。",
+      "title": "此演示文稿没有幻灯片"
+    },
+    "notes": "演讲者备注",
+    "position": "{{current}} / {{total}}",
+    "slide": "第 {{number}} 页",
+    "slides": "幻灯片"
+  }
+}

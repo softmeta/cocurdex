@@ -2,15 +2,8 @@ import type { TurnChangeSet } from "@cocurdex/shared";
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { PanelToolbar } from "@/app/layout/panel-toolbar";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import type { GitBranchInfo, GitCommitInfo } from "@/lib";
 import { cn } from "@/lib/utils";
 import type { GitDiffStyle } from "./git-changes-model";
@@ -61,23 +54,15 @@ export function ToolbarButton({
   onClick,
 }: ToolbarButtonProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <TitlebarIconButton
-            active={active}
-            aria-label={label}
-            disabled={disabled}
-            onClick={onClick}
-          >
-            {icon}
-          </TitlebarIconButton>
-        }
-      />
-      <TooltipContent side="top" sideOffset={6}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
+    <TitlebarIconButton
+      tooltipSide="top"
+      active={active}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {icon}
+    </TitlebarIconButton>
   );
 }
 
@@ -103,10 +88,7 @@ export function GitChangesToolbar({
   onRefresh,
 }: GitChangesToolbarProps) {
   return (
-    <div
-      className="border-b border-editor-border"
-      data-testid="git-changes-toolbar"
-    >
+    <PanelToolbar className="group gap-2" data-testid="git-changes-toolbar">
       <BulkActionsRow
         branches={branches}
         commits={commits}
@@ -128,7 +110,7 @@ export function GitChangesToolbar({
         onWrapChange={onWrapChange}
         scope={scope}
       />
-    </div>
+    </PanelToolbar>
   );
 }
 
@@ -175,7 +157,7 @@ function BulkActionsRow({
 }) {
   const { t } = useTranslation("editor");
   return (
-    <div className="group flex min-h-9 items-center gap-2 ps-3 pe-4 py-1">
+    <>
       <div className="flex min-w-0 items-center">
         <GitChangesScopeMenu
           commits={commits}
@@ -216,12 +198,7 @@ function BulkActionsRow({
         <ToolbarButton
           disabled={disabled}
           icon={
-            <RefreshCw
-              className={cn(
-                TITLEBAR_ICON_GLYPH_CLASS,
-                disabled && "animate-spin",
-              )}
-            />
+            <RefreshCw className={cn("size-3.5", disabled && "animate-spin")} />
           }
           label={t("git.refresh")}
           onClick={onRefresh}
@@ -235,6 +212,6 @@ function BulkActionsRow({
           onWrapChange={onWrapChange}
         />
       </div>
-    </div>
+    </>
   );
 }

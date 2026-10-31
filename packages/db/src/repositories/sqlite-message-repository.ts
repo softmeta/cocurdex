@@ -27,6 +27,16 @@ export function createSqliteMessageRepository(
         .all(sessionId) as SqliteRow[];
       return rows.map(mapMessage);
     },
+    async listChangedSince(sessionId, changeSeq) {
+      const rows = database
+        .prepare(
+          `SELECT * FROM messages
+           WHERE session_id = ? AND change_seq > ?
+           ORDER BY seq ASC`,
+        )
+        .all(sessionId, changeSeq) as SqliteRow[];
+      return rows.map(mapMessage);
+    },
     async getById(messageId) {
       const row = database
         .prepare(
@@ -47,8 +57,8 @@ export function createSqliteMessageRepository(
         .prepare(
           `INSERT INTO messages (
              id, session_id, role, kind, content, attachments_json, created_at,
-             origin_json, seq
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             origin_json, seq, run_id
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              session_id = excluded.session_id,
              role = excluded.role,
@@ -56,7 +66,8 @@ export function createSqliteMessageRepository(
              content = excluded.content,
              attachments_json = excluded.attachments_json,
              created_at = excluded.created_at,
-             origin_json = excluded.origin_json`,
+             origin_json = excluded.origin_json,
+             run_id = COALESCE(messages.run_id, excluded.run_id)`,
         )
         .run(
           message.id,
@@ -68,6 +79,7 @@ export function createSqliteMessageRepository(
           message.createdAt,
           message.origin ? JSON.stringify(message.origin) : null,
           seq,
+          message.runId ?? null,
         );
       return existing ? (existing.seq ?? null) : seq;
     },
@@ -77,6 +89,11 @@ export function createSqliteMessageRepository(
         .prepare("UPDATE messages SET seq = ? WHERE id = ? AND session_id = ?")
         .run(seq, messageId, sessionId);
       return seq;
+    },
+    async assignRun(messageId, runId) {
+      database
+        .prepare("UPDATE messages SET run_id = ? WHERE id = ?")
+        .run(runId, messageId);
     },
     async update(message) {
       database
@@ -96,15 +113,6 @@ export function createSqliteMessageRepository(
     },
     async delete(messageId) {
       database.prepare("DELETE FROM messages WHERE id = ?").run(messageId);
-    },
-    async deleteAfter(sessionId, messageId) {
-      database
-        .prepare(
-          `DELETE FROM messages
-           WHERE session_id = ?
-             AND seq > (SELECT seq FROM messages WHERE id = ?)`,
-        )
-        .run(sessionId, messageId);
     },
   };
 }

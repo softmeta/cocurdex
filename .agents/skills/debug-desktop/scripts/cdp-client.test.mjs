@@ -100,6 +100,19 @@ test("bounds a never-resolving promise and remains usable afterwards", async () 
   );
 });
 
+test("delivers CDP events to subscribers until they unsubscribe", async () => {
+  const contexts = [];
+  const off = client.on("Runtime.executionContextCreated", (params) =>
+    contexts.push(params.context.id),
+  );
+  await client.send("Runtime.enable");
+  off();
+  await client.send("Runtime.disable");
+  await client.send("Runtime.enable");
+  await client.send("Runtime.disable");
+  assert.equal(contexts.length, 1);
+});
+
 test("rejects pending work when the connection is closed", async () => {
   const result = evaluate(client, "new Promise(() => {})", 1000);
   const rejected = assert.rejects(result, /closed/);

@@ -1,0 +1,154 @@
+import { startDaemonServer } from "@cocurdex/daemon/internal/wire";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterEach, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
+
+const daemons: Awaited<ReturnType<typeof startDaemonServer>>[] = [];
+
+afterEach(async () => {
+  await Promise.all(daemons.splice(0).map((daemon) => daemon.close()));
+  await tempDirs.cleanup();
+});
+
+async function start(userDataPath?: string) {
+  if (!userDataPath) {
+    userDataPath = await tempDirs.create("cd-recovery-");
+  }
+  const daemon = await startDaemonServer({
+    userDataPath,
+    runtimeFingerprint: "test",
+    token: "test-token",
+  });
+  daemons.push(daemon);
+  return { daemon, userDataPath };
+}
+
+async function seedActiveWork(
+  daemon: Awaited<ReturnType<typeof startDaemonServer>>,
+) {
+  const database = await daemon.service.state.getDatabase();
+  const timestamp = "2026-09-12T00:00:00.000Z";
+  await database.workspaces.upsert({
+    id: "workspace",
+    name: "Recovery",
+    rootPaths: ["/missing-recovery-workspace"],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastOpenedAt: timestamp,
+    sortOrder: 1000,
+  });
+  await database.sessions.upsert({
+    id: "session",
+    workspaceId: "workspace",
+    title: "Active session",
+    agentType: "pi",
+    status: "running",
+    writeMode: "read-only",
+    sessionModeId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastMessageAt: null,
+  });
+  await database.sessions.upsert({
+    id: "teammate",
+    workspaceId: "workspace",
+    parentSessionId: "session",
+    sessionKind: "teammate",
+    title: "Teammate",
+    agentType: "pi",
+    status: "running",
+    writeMode: "read-only",
+    sessionModeId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastMessageAt: null,
+  });
+  await database.teams.saveTeam({
+    id: "team",
+    leadSessionId: "session",
+    workspaceId: "workspace",
+    status: "active",
+    roster: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  await database.teams.saveMember({
+    teamId: "team",
+    sessionId: "teammate",
+    name: "alpha",
+    agentRoleId: null,
+    status: "running",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  await database.toolCalls.upsert({
+    id: "tool",
+    sessionId: "session",
+    title: "Active tool",
+    status: "in_progress",
+    content: [],
+    locations: [],
+    startedAt: timestamp,
+    updatedAt: timestamp,
+  });
+  return database;
+}
+
+describe("daemon startup recovery", () => {
+  it("does not reset active sessions when clients bootstrap repeatedly", async () => {
+    const { daemon } = await start();
+    await seedActiveWork(daemon);
+    for (let index = 0; index < 2; index += 1) {
+      const snapshot = await daemon.service.bootstrap();
+      expect(snapshot.sessions).toContainEqual(
+        expect.objectContaining({ id: "session", status: "running" }),
+      );
+    }
+  });
+
+  it("rejects a second daemon without sweeping the incumbent's work", async () => {
+    const { daemon, userDataPath } = await start();
+    const database = await seedActiveWork(daemon);
+    await expect(
+      startDaemonServer({
+        userDataPath,
+        runtimeFingerprint: "contender",
+        token: "other-token",
+      }),
+    ).rejects.toThrow();
+    expect(await database.toolCalls.listBySessionId("session")).toEqual([
+      expect.objectContaining({ id: "tool", status: "in_progress" }),
+    ]);
+    expect(await database.sessions.getById("session")).toMatchObject({
+      status: "running",
+    });
+  });
+
+  it("recovers previous work before any client calls bootstrap", async () => {
+    const { daemon: first, userDataPath } = await start();
+    await seedActiveWork(first);
+    await first.close();
+    const { daemon: second } = await start(userDataPath);
+    expect(await second.service.state.getSession("session")).toMatchObject({
+      status: "idle",
+    });
+    const { messages } =
+      await second.service.state.listSessionMessages("session");
+    expect(messages).toEqual([
+      expect.objectContaining({
+        role: "system",
+        content: expect.stringContaining("restarted"),
+      }),
+    ]);
+    const team = await (
+      await second.service.state.getDatabase()
+    ).teams.getByLead("session");
+    expect(team?.members).toEqual([
+      expect.objectContaining({ sessionId: "teammate", status: "error" }),
+    ]);
+    expect(
+      await second.service.state.listToolCallsBySessionId("session"),
+    ).toEqual([expect.objectContaining({ id: "tool", status: "failed" })]);
+  });
+});

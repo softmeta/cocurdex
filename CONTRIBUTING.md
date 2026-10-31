@@ -44,7 +44,7 @@ the primary platform; Windows and Linux follow.
 ```bash
 pnpm install
 pnpm --filter @cocurdex/desktop typecheck
-pnpm --filter @cocurdex/desktop test
+pnpm --filter @cocurdex/unit-desktop test
 pnpm --filter @cocurdex/desktop dev
 ```
 

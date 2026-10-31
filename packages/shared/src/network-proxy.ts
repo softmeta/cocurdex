@@ -242,6 +242,43 @@ export function resolveProxyEnvAssignments(
   };
 }
 
+export interface NodeGlobalProxyEnv {
+  http_proxy?: string;
+  https_proxy?: string;
+  no_proxy?: string;
+}
+
+function httpSchemeProxy(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function resolveNodeGlobalProxyEnv(env: EnvMap): NodeGlobalProxyEnv {
+  const allProxy = httpSchemeProxy(env.ALL_PROXY || env.all_proxy);
+  const httpProxy =
+    httpSchemeProxy(env.HTTP_PROXY || env.http_proxy) || allProxy;
+  const httpsProxy =
+    httpSchemeProxy(env.HTTPS_PROXY || env.https_proxy) || httpProxy;
+  const noProxy = env.NO_PROXY || env.no_proxy;
+  return {
+    ...(httpProxy ? { http_proxy: httpProxy } : {}),
+    ...(httpsProxy ? { https_proxy: httpsProxy } : {}),
+    ...(noProxy ? { no_proxy: noProxy } : {}),
+  };
+}
+
+export function withoutNodeEnvProxyFlag(env: EnvMap): EnvMap {
+  const { NODE_USE_ENV_PROXY: _flag, ...rest } = env;
+  return rest;
+}
+
 /** Mutate `env` so proxy keys match the resolved assignments. */
 export function assignProxyEnv(env: EnvMap, assignments: EnvMap): void {
   for (const [key, value] of Object.entries(assignments)) {

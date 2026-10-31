@@ -1,6 +1,7 @@
 import type { MessageAttachment } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import type { MouseEvent, ReactNode, Ref } from "react";
+import { useTranslation } from "react-i18next";
 import type { AppearanceSettings } from "@/features/settings";
 import { cn } from "@/lib";
 import { ChatDock } from "../chat-dock";
@@ -28,6 +29,7 @@ interface AppShellContentProps {
   isRightPanelMaximized: boolean;
   isPanelFullWidth: boolean;
   isRightPanelCompact: boolean;
+  rightPanelActions: ReactNode;
   rightWidth: number;
   appearanceSettings: AppearanceSettings;
   splitChatNode: ReactNode;
@@ -51,6 +53,7 @@ export function AppShellContent({
   isRightPanelMaximized,
   isPanelFullWidth,
   isRightPanelCompact,
+  rightPanelActions,
   rightWidth,
   appearanceSettings,
   splitChatNode,
@@ -76,6 +79,7 @@ export function AppShellContent({
   );
   const compactChatOpen = chatDockVisibility === "open";
   const isCompact = isRightPanelCompact && !isRightPanelMaximized;
+  const { t } = useTranslation("editor");
   const isRightPanelDocked = useAtomValue(rightPanelDockedAtom);
   const chatOverlayInset =
     isRightPanelOpen && !isPanelFullWidth
@@ -111,6 +115,7 @@ export function AppShellContent({
         >
           {isPanelFullWidth ? null : (
             <ResizeSeparator
+              ariaLabel={t("actions.resizeEditorPanel")}
               testId="panel-separator"
               onMouseDown={(event) => onResizeHandleMouseDown("right", event)}
             />
@@ -123,6 +128,7 @@ export function AppShellContent({
               onInsertTextToChat={onInsertTextToChat}
               overlayInset={editorOverlayInset}
               reserveTrafficLights={isPanelFullWidth}
+              viewSwitcherTrailing={rightPanelActions}
             />
           </div>
         </div>
@@ -144,6 +150,7 @@ export function AppShellContent({
         >
           <ResizableSidebarSlot
             isOpen={isLeftSidebarOpen}
+            separatorAriaLabel={t("actions.resizeSidebar")}
             width={leftWidth}
             onResizeMouseDown={(event) =>
               onResizeHandleMouseDown("left", event)

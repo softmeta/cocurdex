@@ -1,0 +1,1555 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { DatabaseSync } from "node:sqlite";
+import {
+  COCURDEX_APPLICATION_ID,
+  CURRENT_SCHEMA_VERSION,
+  initializeDatabase,
+  UnsupportedDatabaseVersionError,
+} from "@cocurdex/db/internal/migrations";
+import { createSqliteMessageTurnStatsRepository } from "@cocurdex/db/internal/repositories/sqlite-message-turn-stats-repository";
+import { noteDocToMarkdown } from "@cocurdex/note-doc";
+import { describe, expect, it } from "vitest";
+
+function seedVersionFiveDatabase() {
+  const database = new DatabaseSync(":memory:");
+  database.exec(`
+    CREATE TABLE workspaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      root_path TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_opened_at TEXT NOT NULL
+    );
+
+    CREATE TABLE sessions (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      agent_type TEXT NOT NULL,
+      session_kind TEXT NOT NULL DEFAULT 'main',
+      parent_session_id TEXT,
+      parent_tool_call_id TEXT,
+      status TEXT NOT NULL,
+      write_mode TEXT NOT NULL,
+      collaboration_mode TEXT NOT NULL DEFAULT 'default',
+      permission_mode TEXT,
+      provider_snapshot_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_message_at TEXT,
+      archived_at TEXT,
+      FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+      FOREIGN KEY (parent_session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    );
+
+    INSERT INTO workspaces (
+      id, name, root_path, created_at, updated_at, last_opened_at
+    ) VALUES (
+      'workspace-1', 'repo-a', '/tmp/repo-a', '2026-08-01T00:00:00.000Z',
+      '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z'
+    );
+
+    INSERT INTO sessions (
+      id, workspace_id, title, agent_type, status, write_mode,
+      collaboration_mode, created_at, updated_at
+    ) VALUES
+      (
+        'session-1', 'workspace-1', 'Plan the migration', 'codex', 'idle',
+        'read-only', 'plan', '2026-08-01T00:00:00.000Z',
+        '2026-08-01T00:00:00.000Z'
+      ),
+      (
+        'session-2', 'workspace-1', 'Default mode', 'codex', 'idle',
+        'read-only', 'default', '2026-08-01T00:00:00.000Z',
+        '2026-08-01T00:00:00.000Z'
+      );
+
+    PRAGMA application_id = ${COCURDEX_APPLICATION_ID};
+    PRAGMA user_version = 5;
+  `);
+  return database;
+}
+
+function tableShape(database: DatabaseSync, table: string) {
+  return {
+    columns: database
+      .prepare(`PRAGMA table_info(${table})`)
+      .all()
+      .map((column) => ({
+        name: column.name,
+        type: column.type,
+        notNull: column.notnull,
+        defaultValue: column.dflt_value,
+        primaryKey: column.pk,
+      })),
+    indexes: database
+      .prepare(`PRAGMA index_list(${table})`)
+      .all()
+      .map((index) => ({
+        name: String(index.name),
+        unique: index.unique,
+        origin: index.origin,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name)),
+  };
+}
+
+function seedVersionElevenIssueDatabase() {
+  const database = new DatabaseSync(":memory:");
+  initializeDatabase(database);
+  const now = "2026-09-01T00:00:00.000Z";
+  database.exec(`
+    DROP TABLE issue_columns;
+    CREATE TABLE issue_view_columns (
+      view_id TEXT NOT NULL,
+      field TEXT NOT NULL,
+      id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      color TEXT,
+      sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (view_id, field, id)
+    );
+    INSERT INTO issue_views (
+      id, title, group_by, layout, created_at, updated_at
+    ) VALUES
+      ('project', 'Project view', 'status', 'board', '${now}', '${now}'),
+      ('sprint', 'Sprint', 'status', 'board', '${now}', '${now}');
+    INSERT INTO issue_view_columns VALUES
+      ('project', 'status', 'backlog', 'Inbox', NULL, 0, '${now}', '${now}'),
+      ('project', 'status', 'done', 'Done', NULL, 1000, '${now}', '${now}'),
+      ('project', 'priority', 'none', 'No priority', NULL, 0, '${now}', '${now}'),
+      ('sprint', 'status', 'backlog', 'Backlog', NULL, 0, '${now}', '${now}'),
+      ('sprint', 'status', 'col-blocked', 'Blocked', NULL, 500, '${now}', '${now}');
+    INSERT INTO issues (
+      id, title, status, priority, created_at, updated_at
+    ) VALUES
+      ('issue-blocked', 'Blocked work', 'col-blocked', 'none', '${now}', '${now}'),
+      ('issue-orphan', 'Deleted column', 'col-gone', 'urgent', '${now}', '${now}'),
+      ('issue-done', 'Shipped', 'done', 'none', '${now}', '${now}');
+    INSERT INTO notes (
+      id, kind, title, body_markdown, sort_order, created_at, updated_at
+    ) VALUES ('note-1', 'note', 'Kept', 'Body', 0, '${now}', '${now}');
+    PRAGMA user_version = 11;
+  `);
+  return database;
+}
+
+function seedVersionTwelveTeamDatabase() {
+  const database = new DatabaseSync(":memory:");
+  initializeDatabase(database);
+  const now = "2026-10-01T00:00:00.000Z";
+  database.exec(`
+    ALTER TABLE issues ADD COLUMN assignee_session_id TEXT;
+    ALTER TABLE teams ADD COLUMN issue_view_id TEXT NOT NULL DEFAULT '';
+    DROP TABLE team_tasks;
+    CREATE TABLE team_tasks (
+      team_id TEXT NOT NULL,
+      issue_id TEXT NOT NULL,
+      blocked_by_json TEXT NOT NULL,
+      evidence TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (team_id, issue_id)
+    );
+    INSERT INTO workspaces (
+      id, name, root_paths, created_at, updated_at, last_opened_at
+    ) VALUES ('w-1', 'repo', '["/tmp/repo"]', '${now}', '${now}', '${now}');
+    INSERT INTO sessions (
+      id, workspace_id, title, agent_type, status, write_mode, created_at,
+      updated_at
+    ) VALUES (
+      'lead', 'w-1', 'Lead', 'codex', 'idle', 'native-write', '${now}', '${now}'
+    );
+    INSERT INTO issue_views (
+      id, title, group_by, layout, created_at, updated_at
+    ) VALUES
+      ('project', 'Project view', 'status', 'board', '${now}', '${now}'),
+      ('view-team', 'team:lead', 'status', 'board', '${now}', '${now}');
+    INSERT INTO teams (
+      id, lead_session_id, workspace_id, issue_view_id, status, created_at,
+      updated_at
+    ) VALUES ('team-1', 'lead', 'w-1', 'view-team', 'active', '${now}', '${now}');
+    INSERT INTO issues (
+      id, title, description_markdown, status, priority, assignee_session_id,
+      created_at, updated_at
+    ) VALUES
+      ('task-design', 'Design', 'Write it down', 'review', 'none', 'lead',
+       '${now}', '${now}'),
+      ('task-build', 'Build', '', 'backlog', 'none', NULL, '${now}', '${now}'),
+      ('user-issue', 'Ship billing', '', 'backlog', 'none', NULL,
+       '${now}', '${now}');
+    INSERT INTO team_tasks VALUES
+      ('team-1', 'task-design', '[]', 'tests pass', '${now}'),
+      ('team-1', 'task-build', '["task-design"]', NULL, '${now}');
+    INSERT INTO notes (
+      id, kind, title, body_markdown, sort_order, created_at, updated_at
+    ) VALUES ('note-1', 'note', 'Kept', 'Body', 0, '${now}', '${now}');
+    PRAGMA user_version = 12;
+  `);
+  return database;
+}
+
+describe("initializeDatabase", () => {
+  it("moves agent team tasks out of issues and keeps user data", () => {
+    const database = seedVersionTwelveTeamDatabase();
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          `SELECT id, team_id, title, description, status,
+             assignee_session_id, blocked_by_json, evidence
+           FROM team_tasks ORDER BY id`,
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "task-build",
+        team_id: "team-1",
+        title: "Build",
+        description: null,
+        status: "backlog",
+        assignee_session_id: null,
+        blocked_by_json: '["task-design"]',
+        evidence: null,
+      },
+      {
+        id: "task-design",
+        team_id: "team-1",
+        title: "Design",
+        description: "Write it down",
+        status: "review",
+        assignee_session_id: "lead",
+        blocked_by_json: "[]",
+        evidence: "tests pass",
+      },
+    ]);
+    expect(database.prepare("SELECT id FROM issues ORDER BY id").all()).toEqual(
+      [{ id: "task-build" }, { id: "task-design" }, { id: "user-issue" }],
+    );
+    expect(
+      database.prepare("SELECT id FROM issue_views ORDER BY id").all(),
+    ).toEqual([{ id: "project" }]);
+    expect(database.prepare("SELECT id, status FROM teams").all()).toEqual([
+      { id: "team-1", status: "active" },
+    ]);
+    expect(
+      database.prepare("SELECT id, body_markdown FROM notes").all(),
+    ).toEqual([{ id: "note-1", body_markdown: "Body" }]);
+    expect(database.prepare("SELECT id FROM sessions").all()).toEqual([
+      { id: "lead" },
+    ]);
+    expect(
+      tableShape(database, "issues").columns.map((c) => c.name),
+    ).not.toContain("assignee_session_id");
+    expect(
+      tableShape(database, "teams").columns.map((c) => c.name),
+    ).not.toContain("issue_view_id");
+  });
+
+  it("merges per-view issue columns into one global set", () => {
+    const database = seedVersionElevenIssueDatabase();
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT field, id, title FROM issue_columns ORDER BY field, sort_order",
+        )
+        .all(),
+    ).toEqual([
+      { field: "priority", id: "none", title: "No priority" },
+      { field: "status", id: "backlog", title: "Inbox" },
+      { field: "status", id: "done", title: "Done" },
+      { field: "status", id: "col-blocked", title: "Blocked" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id, title, status, priority FROM issues ORDER BY id")
+        .all(),
+    ).toEqual([
+      {
+        id: "issue-blocked",
+        title: "Blocked work",
+        status: "col-blocked",
+        priority: "none",
+      },
+      { id: "issue-done", title: "Shipped", status: "done", priority: "none" },
+      {
+        id: "issue-orphan",
+        title: "Deleted column",
+        status: "backlog",
+        priority: "none",
+      },
+    ]);
+    expect(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE name = 'issue_view_columns'",
+        )
+        .get(),
+    ).toBeUndefined();
+    expect(
+      database.prepare("SELECT id, body_markdown FROM notes").all(),
+    ).toEqual([{ id: "note-1", body_markdown: "Body" }]);
+  });
+
+  it("keeps workspaces and sessions when upgrading a version 5 database", () => {
+    const database = seedVersionFiveDatabase();
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare("SELECT id, name, root_paths, sort_order FROM workspaces")
+        .all(),
+    ).toEqual([
+      {
+        id: "workspace-1",
+        name: "repo-a",
+        root_paths: JSON.stringify(["/tmp/repo-a"]),
+        sort_order: 1000,
+      },
+    ]);
+    expect(
+      database.prepare("SELECT id, session_mode_id FROM sessions").all(),
+    ).toEqual([
+      { id: "session-1", session_mode_id: "plan" },
+      { id: "session-2", session_mode_id: null },
+    ]);
+  });
+
+  it("keeps cascading session deletes after rebuilding workspaces", () => {
+    const database = seedVersionFiveDatabase();
+
+    initializeDatabase(database);
+    database.exec("DELETE FROM workspaces WHERE id = 'workspace-1'");
+
+    expect(
+      database.prepare("SELECT COUNT(*) AS count FROM sessions").get(),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rebuilds workspaces with the current schema and no legacy unique root path", () => {
+    const migrated = seedVersionFiveDatabase();
+    initializeDatabase(migrated);
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+
+    expect(tableShape(migrated, "workspaces")).toEqual(
+      tableShape(fresh, "workspaces"),
+    );
+    expect(
+      migrated
+        .prepare("PRAGMA foreign_key_list(notes)")
+        .all()
+        .map((row) => row.table),
+    ).toContain("workspaces");
+    expect(migrated.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(
+      migrated
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE sql LIKE '%workspaces_migrated%'",
+        )
+        .all(),
+    ).toEqual([]);
+    expect(() =>
+      migrated.exec(`
+        INSERT INTO workspaces (
+          id, name, root_paths, created_at, updated_at, last_opened_at,
+          sort_order
+        ) VALUES (
+          'workspace-2', 'repo-b', '["/tmp/repo-a"]', '2026-08-01T00:00:00.000Z',
+          '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z', 2000
+        )
+      `),
+    ).not.toThrow();
+  });
+
+  it("moves built-in ACP agent ids onto their registry ids and keeps the rows", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-05T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, provider_snapshot_json, created_at, updated_at)
+      VALUES
+        ('s-grok', 'w1', 'Grok work', 'grok-build', 'idle', 'native-write',
+         '{"providerId":"grok-build","modelId":"grok-4.6"}', '${now}', '${now}'),
+        ('s-codex', 'w1', 'Codex work', 'codex', 'idle', 'read-only',
+         '{"providerId":"codex","modelId":"gpt-5.5"}', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's-grok', 'user', 'hello', '[]', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, provider_id, created_at, updated_at)
+      VALUES ('r1', 'Reviewer', 'devin', 'devin', '${now}', '${now}');
+      INSERT INTO agent_provider_defaults (agent_id, provider_id, model_id, created_at, updated_at)
+      VALUES ('cursor', 'cursor', 'auto', '${now}', '${now}');
+      INSERT INTO app_settings (key, value_json, updated_at)
+      VALUES ('commitMessageModel', '{"agentId":"grok-build","providerId":"grok-build","modelId":"grok-4.6"}', '${now}');
+    `);
+    database.exec(`PRAGMA user_version = 13`);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, agent_type, json_extract(provider_snapshot_json, '$.providerId') AS provider FROM sessions ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      { id: "s-codex", agent_type: "codex", provider: "codex" },
+      {
+        id: "s-grok",
+        agent_type: "acp:grok-build",
+        provider: "acp:grok-build",
+      },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(
+      database.prepare("SELECT agent_id, provider_id FROM agent_roles").get(),
+    ).toEqual({ agent_id: "acp:devin", provider_id: "acp:devin" });
+    expect(
+      database
+        .prepare("SELECT agent_id, provider_id FROM agent_provider_defaults")
+        .get(),
+    ).toEqual({ agent_id: "acp:cursor", provider_id: "acp:cursor" });
+    expect(
+      JSON.parse(
+        (
+          database
+            .prepare(
+              "SELECT value_json FROM app_settings WHERE key = 'commitMessageModel'",
+            )
+            .get() as { value_json: string }
+        ).value_json,
+      ),
+    ).toEqual({
+      agentId: "acp:grok-build",
+      providerId: "acp:grok-build",
+      modelId: "grok-4.6",
+    });
+  });
+
+  it("adds avatar_json to agent roles from version 14 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE agent_roles DROP COLUMN avatar_json");
+    const now = "2026-10-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, agent_role_id, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Role work', 'pi', 'idle', 'read-only', 'r1', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Ship avatars', 'w1', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, model_id, skill_ids_json, created_at, updated_at)
+      VALUES ('r1', 'Reviewer', 'pi', 'deepseek', '["review"]', '${now}', '${now}');
+      PRAGMA user_version = 14;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, name, model_id, skill_ids_json, avatar_json FROM agent_roles",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "r1",
+        name: "Reviewer",
+        model_id: "deepseek",
+        skill_ids_json: '["review"]',
+        avatar_json: null,
+      },
+    ]);
+    expect(
+      database.prepare("SELECT id, agent_role_id FROM sessions").all(),
+    ).toEqual([{ id: "s1", agent_role_id: "r1" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Ship avatars" },
+    ]);
+    expect(database.prepare("SELECT name FROM workspaces").all()).toEqual([
+      { name: "Repo" },
+    ]);
+  });
+
+  it("adds description to agent roles from version 15 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE agent_roles DROP COLUMN description");
+    const now = "2026-10-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, agent_role_id, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Role work', 'pi', 'idle', 'read-only', 'r1', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Describe roles', 'w1', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, model_id, avatar_json, created_at, updated_at)
+      VALUES ('r1', 'Reviewer', 'pi', 'deepseek', '{"kind":"initial","color":"red"}', '${now}', '${now}');
+      PRAGMA user_version = 15;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare("SELECT id, name, avatar_json, description FROM agent_roles")
+        .all(),
+    ).toEqual([
+      {
+        id: "r1",
+        name: "Reviewer",
+        avatar_json: '{"kind":"initial","color":"red"}',
+        description: null,
+      },
+    ]);
+    expect(
+      database.prepare("SELECT id, agent_role_id FROM sessions").all(),
+    ).toEqual([{ id: "s1", agent_role_id: "r1" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Describe roles" },
+    ]);
+  });
+
+  it("drops the standalone chat tables from version 16 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-07T00:00:00.000Z";
+    database.exec(`
+      CREATE TABLE conversations (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        provider_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE conversation_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+      );
+      INSERT INTO conversations (id, title, provider_id, model_id, created_at, updated_at)
+      VALUES ('c1', 'Old chat', 'openai', 'gpt-5', '${now}', '${now}');
+      INSERT INTO conversation_messages (id, conversation_id, role, content_json, status, created_at, updated_at)
+      VALUES ('cm1', 'c1', 'user', '[]', 'completed', '${now}', '${now}');
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Agent work', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Chat on pi', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 16;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'conversation%'",
+        )
+        .all(),
+    ).toEqual([]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Agent work" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Chat on pi" },
+    ]);
+  });
+
+  it("adds roster_json to teams from version 17 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE teams DROP COLUMN roster_json");
+    const now = "2026-10-07T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Roster teams', 'w1', '${now}', '${now}');
+      INSERT INTO teams (id, lead_session_id, workspace_id, status, created_at, updated_at)
+      VALUES ('t1', 's1', 'w1', 'active', '${now}', '${now}');
+      PRAGMA user_version = 17;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare("SELECT id, lead_session_id, status, roster_json FROM teams")
+        .all(),
+    ).toEqual([
+      {
+        id: "t1",
+        lead_session_id: "s1",
+        status: "active",
+        roster_json: null,
+      },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Roster teams" },
+    ]);
+  });
+
+  it("numbers issues and types status columns from version 18 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-08T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE issue_sessions;
+      DROP TABLE issue_relations;
+      DROP TABLE issue_label_links;
+      DROP TABLE issue_events;
+      DROP TABLE issues;
+      CREATE TABLE issues (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description_markdown TEXT NOT NULL DEFAULT '',
+        color TEXT,
+        status TEXT NOT NULL DEFAULT 'backlog',
+        priority TEXT NOT NULL DEFAULT 'none',
+        workspace_id TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        revision INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL
+      );
+      ALTER TABLE issue_columns DROP COLUMN category;
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issue_columns (field, id, title, color, sort_order, created_at, updated_at)
+      VALUES
+        ('status', 'backlog', 'Backlog', NULL, 0, '${now}', '${now}'),
+        ('status', 'doing', 'Doing', NULL, 1000, '${now}', '${now}'),
+        ('status', 'blocked', 'Blocked', NULL, 1500, '${now}', '${now}'),
+        ('status', 'done', 'Done', NULL, 2000, '${now}', '${now}'),
+        ('priority', 'none', 'No priority', NULL, 0, '${now}', '${now}');
+      INSERT INTO issues (id, title, status, workspace_id, created_at, updated_at)
+      VALUES
+        ('i-late', 'Second', 'doing', 'w1', '2026-10-02T00:00:00.000Z', '${now}'),
+        ('i-early', 'First', 'done', NULL, '2026-10-01T00:00:00.000Z', '2026-10-05T00:00:00.000Z');
+      PRAGMA user_version = 18;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, number, space_id, parent_id, completed_at FROM issues ORDER BY number",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "i-early",
+        number: 1,
+        space_id: "local",
+        parent_id: null,
+        completed_at: "2026-10-05T00:00:00.000Z",
+      },
+      {
+        id: "i-late",
+        number: 2,
+        space_id: "local",
+        parent_id: null,
+        completed_at: null,
+      },
+    ]);
+    expect(
+      database
+        .prepare(
+          "SELECT id, category FROM issue_columns WHERE field = 'status' ORDER BY sort_order",
+        )
+        .all(),
+    ).toEqual([
+      { id: "backlog", category: "backlog" },
+      { id: "doing", category: "started" },
+      { id: "blocked", category: "unstarted" },
+      { id: "done", category: "completed" },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT title, workspace_id FROM issues ORDER BY number")
+        .all(),
+    ).toEqual([
+      { title: "First", workspace_id: null },
+      { title: "Second", workspace_id: "w1" },
+    ]);
+  });
+
+  it("backfills collaborative note docs from version 19 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE notes DROP COLUMN doc_state");
+    database.exec("ALTER TABLE notes DROP COLUMN space_id");
+    const now = "2026-10-08T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Collab notes', 'w1', '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, revision, created_at, updated_at)
+      VALUES
+        ('f1', 'folder', 'Specs', '', 1, '${now}', '${now}'),
+        ('n1', 'note', 'Plan', '# Plan
+
+- [ ] sync', 4, '${now}', '${now}');
+      PRAGMA user_version = 19;
+    `);
+
+    initializeDatabase(database);
+
+    const notes = database
+      .prepare(
+        "SELECT id, title, body_markdown, revision, space_id, doc_state FROM notes ORDER BY id",
+      )
+      .all() as {
+      id: string;
+      title: string;
+      body_markdown: string;
+      revision: number;
+      space_id: string;
+      doc_state: Uint8Array | null;
+    }[];
+    expect(notes.map(({ doc_state: _doc, ...note }) => note)).toEqual([
+      {
+        id: "f1",
+        title: "Specs",
+        body_markdown: "",
+        revision: 1,
+        space_id: "local",
+      },
+      {
+        id: "n1",
+        title: "Plan",
+        body_markdown: "# Plan\n\n- [ ] sync",
+        revision: 4,
+        space_id: "local",
+      },
+    ]);
+    expect(notes[0]?.doc_state).toBeNull();
+    expect(noteDocToMarkdown(notes[1]?.doc_state as Uint8Array)).toBe(
+      "# Plan\n\n- [ ] sync",
+    );
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Lead" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Collab notes" },
+    ]);
+  });
+
+  it("marks earlier session results as visited from version 20 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-10-08T00:00:00.000Z";
+    const result = "2026-10-07T12:00:00.000Z";
+    const visit = "2026-10-06T12:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES
+        ('s1', 'w1', 'Never visited', 'codex', 'idle', 'read-only', '${now}', '${now}'),
+        ('s2', 'w1', 'Visited earlier', 'codex', 'idle', 'read-only', '${now}', '${now}'),
+        ('s3', 'w1', 'Marked unread', 'codex', 'idle', 'read-only', '${now}', '${now}'),
+        ('s4', 'w1', 'No result', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO session_attention (session_id, last_visited_at, latest_result_at, result_disposition, updated_at)
+      VALUES
+        ('s1', NULL, '${result}', 'automatic', '${now}'),
+        ('s2', '${visit}', '${result}', 'automatic', '${now}'),
+        ('s3', NULL, '${result}', 'unread', '${now}'),
+        ('s4', NULL, NULL, 'automatic', '${now}');
+      PRAGMA user_version = 20;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT session_id, last_visited_at, result_disposition FROM session_attention ORDER BY session_id",
+        )
+        .all(),
+    ).toEqual([
+      {
+        session_id: "s1",
+        last_visited_at: result,
+        result_disposition: "automatic",
+      },
+      {
+        session_id: "s2",
+        last_visited_at: visit,
+        result_disposition: "automatic",
+      },
+      { session_id: "s3", last_visited_at: null, result_disposition: "unread" },
+      {
+        session_id: "s4",
+        last_visited_at: null,
+        result_disposition: "automatic",
+      },
+    ]);
+    expect(
+      database.prepare("SELECT title FROM sessions ORDER BY id").all(),
+    ).toEqual([
+      { title: "Never visited" },
+      { title: "Visited earlier" },
+      { title: "Marked unread" },
+      { title: "No result" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
+  it("adds stop_reason to turn stats from version 21 and keeps user data", async () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE message_turn_stats DROP COLUMN stop_reason");
+    const now = "2026-10-09T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES
+        ('m1', 's1', 'user', 'hello', '[]', '${now}'),
+        ('m2', 's1', 'assistant', 'hi', '[]', '${now}');
+      INSERT INTO message_turn_stats (message_id, session_id, duration_ms, usage_json, completed_at)
+      VALUES ('m2', 's1', 1200, NULL, '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Stop marker', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 21;
+    `);
+
+    initializeDatabase(database);
+
+    const turnStats = createSqliteMessageTurnStatsRepository(database);
+    expect(await turnStats.listBySessionId("s1")).toEqual({
+      m2: {
+        type: "turn.completed",
+        sessionId: "s1",
+        messageId: "m2",
+        durationMs: 1200,
+        usage: undefined,
+        completedAt: now,
+      },
+    });
+    await turnStats.upsert({
+      type: "turn.completed",
+      sessionId: "s1",
+      messageId: "m1",
+      durationMs: 300,
+      stopReason: "cancelled",
+      completedAt: now,
+    });
+    expect((await turnStats.listBySessionId("s1")).m1?.stopReason).toBe(
+      "cancelled",
+    );
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+    ]);
+    expect(
+      database.prepare("SELECT content FROM messages ORDER BY id").all(),
+    ).toEqual([{ content: "hello" }, { content: "hi" }]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Stop marker" },
+    ]);
+  });
+
+  it("adds runs and run ids from version 22 and keeps user data", async () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(
+      readFileSync(
+        createRequire(import.meta.url).resolve(
+          "@cocurdex/test-fixtures/db/schema-v22.sql",
+        ),
+        "utf8",
+      ),
+    );
+    const now = "2026-10-11T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'running', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO tool_calls (id, session_id, title, status, content_json, locations_json, started_at, updated_at)
+      VALUES ('t1', 's1', 'Read', 'completed', '[]', '[]', '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Runs', 'w1', '${now}', '${now}');
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    for (const table of ["messages", "tool_calls", "runs"]) {
+      expect(tableShape(database, table)).toEqual(tableShape(fresh, table));
+    }
+    expect(database.prepare("SELECT id, run_id FROM messages").all()).toEqual([
+      { id: "m1", run_id: null },
+    ]);
+    expect(database.prepare("SELECT id, run_id FROM tool_calls").all()).toEqual(
+      [{ id: "t1", run_id: null }],
+    );
+    expect(database.prepare("SELECT status FROM sessions").all()).toEqual([
+      { status: "running" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Runs" },
+    ]);
+  });
+
+  it("adds host access tables from version 23 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      DROP TABLE host_pairings;
+      DROP TABLE host_devices;
+      DROP TABLE host_access_audit;
+    `);
+    const now = "2026-10-11T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Pairing', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 23;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    for (const table of [
+      "host_devices",
+      "host_pairings",
+      "host_access_audit",
+    ]) {
+      expect(tableShape(database, table)).toEqual(tableShape(fresh, table));
+    }
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Pairing" },
+    ]);
+  });
+
+  it("keys provider threads by agent from version 24 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      DROP TABLE agent_provider_sessions;
+      DROP TABLE context_transfers;
+      ALTER TABLE runs DROP COLUMN agent_type;
+      CREATE TABLE agent_provider_sessions (
+        session_id TEXT PRIMARY KEY,
+        provider_session_id TEXT,
+        provider_state_json TEXT NOT NULL,
+        provider_version TEXT,
+        resumable INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+      );
+    `);
+    const now = "2026-10-12T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO runs (id, session_id, trigger_message_id, status, started_at)
+      VALUES ('r1', 's1', 'm1', 'completed', '${now}');
+      INSERT INTO agent_provider_sessions (
+        session_id, provider_session_id, provider_state_json, resumable, updated_at
+      ) VALUES ('s1', 'thread-1', '{"model":"gpt"}', 1, '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Handoff', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 24;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    for (const table of [
+      "agent_provider_sessions",
+      "runs",
+      "context_transfers",
+    ]) {
+      expect(tableShape(database, table)).toEqual(tableShape(fresh, table));
+    }
+    expect(
+      database
+        .prepare(
+          "SELECT session_id, agent_type, provider_session_id, provider_state_json, resumable FROM agent_provider_sessions",
+        )
+        .all(),
+    ).toEqual([
+      {
+        session_id: "s1",
+        agent_type: "codex",
+        provider_session_id: "thread-1",
+        provider_state_json: '{"model":"gpt"}',
+        resumable: 1,
+      },
+    ]);
+    expect(database.prepare("SELECT id, agent_type FROM runs").all()).toEqual([
+      { id: "r1", agent_type: "codex" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Handoff" },
+    ]);
+  });
+
+  it("accepts native context transfers from version 25 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      DROP TABLE context_transfers;
+      CREATE TABLE context_transfers (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL CHECK (kind IN ('fork', 'agent_switch')),
+        source_session_id TEXT NOT NULL,
+        target_session_id TEXT NOT NULL,
+        source_message_id TEXT,
+        source_agent_types_json TEXT NOT NULL DEFAULT '[]',
+        target_agent_type TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'consumed')),
+        strategy TEXT CHECK (strategy IN ('full', 'delta')),
+        covered_message_count INTEGER NOT NULL DEFAULT 0,
+        handoff_text TEXT,
+        consumed_by_message_id TEXT,
+        created_at TEXT NOT NULL,
+        consumed_at TEXT,
+        FOREIGN KEY (target_session_id) REFERENCES sessions(id) ON DELETE CASCADE
+      );
+    `);
+    const now = "2026-10-12T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO context_transfers (
+        id, kind, source_session_id, target_session_id, status, strategy,
+        covered_message_count, handoff_text, created_at
+      ) VALUES ('t1', 'agent_switch', 's1', 's1', 'consumed', 'full', 1, 'handoff', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Handoff', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 25;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO context_transfers (
+        id, kind, source_session_id, target_session_id, status, strategy, created_at
+      ) VALUES ('t2', 'fork', 's1', 's1', 'consumed', 'native', '${now}');
+    `);
+    expect(
+      database
+        .prepare(
+          "SELECT id, strategy, handoff_text FROM context_transfers ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      { id: "t1", strategy: "full", handoff_text: "handoff" },
+      { id: "t2", strategy: "native", handoff_text: null },
+    ]);
+    expect(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE name = 'idx_context_transfers_target'",
+        )
+        .all(),
+    ).toHaveLength(1);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Handoff" },
+    ]);
+  });
+
+  it("adds session pins from version 26 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE sessions DROP COLUMN pinned_at");
+    const now = "2026-10-12T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Pins', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 26;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database.prepare("SELECT id, title, pinned_at FROM sessions").all(),
+    ).toEqual([{ id: "s1", title: "Explain", pinned_at: null }]);
+    expect(database.prepare("SELECT name FROM workspaces").all()).toEqual([
+      { name: "Repo" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Pins" },
+    ]);
+  });
+
+  it("adds decks from version 31 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE decks");
+    const now = "2026-10-19T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Decks', 'w1', '${now}', '${now}');
+      PRAGMA user_version = 31;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO decks (id, workspace_id, title, content_json, slide_count, created_at, updated_at)
+      VALUES ('d1', 'w1', 'Pitch', '{}', 0, '${now}', '${now}');
+    `);
+    expect(
+      database.prepare("SELECT id, title, revision FROM decks").all(),
+    ).toEqual([{ id: "d1", title: "Pitch", revision: 1 }]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Decks" },
+    ]);
+  });
+
+  it("adds entity links from version 32 and cleans them up on delete", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE entity_links");
+    const now = "2026-10-21T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Links', '${now}', '${now}');
+      PRAGMA user_version = 32;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO entity_links (source_kind, source_id, target_kind, target_id, created_at)
+      VALUES ('issue', 'i1', 'note', 'n1', '${now}');
+    `);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    database.exec("DELETE FROM notes WHERE id = 'n1'");
+    expect(database.prepare("SELECT * FROM entity_links").all()).toEqual([]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Links" },
+    ]);
+  });
+
+  it("keeps an up-to-date database that carries a stale version marker", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("CREATE TABLE legacy_sentinel (id TEXT)");
+    database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION - 1}`);
+
+    initializeDatabase(database);
+
+    const sentinel = database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'legacy_sentinel'",
+      )
+      .get();
+    const version = database.prepare("PRAGMA user_version").get();
+    expect(sentinel).toEqual({ name: "legacy_sentinel" });
+    expect(version).toEqual({ user_version: CURRENT_SCHEMA_VERSION });
+  });
+
+  it("refuses a database written by a newer schema version", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        root_paths TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_opened_at TEXT NOT NULL,
+        sort_order REAL NOT NULL DEFAULT 0
+      );
+    `);
+    database.exec(`PRAGMA application_id = ${COCURDEX_APPLICATION_ID}`);
+    database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION + 1}`);
+
+    expect(() => initializeDatabase(database)).toThrow(
+      UnsupportedDatabaseVersionError,
+    );
+  });
+
+  it("adds permission_mode onto an existing sessions table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        session_kind TEXT NOT NULL DEFAULT 'main',
+        status TEXT NOT NULL,
+        write_mode TEXT NOT NULL,
+        session_mode_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    initializeDatabase(database);
+
+    const columns = database.prepare("PRAGMA table_info(sessions)").all() as {
+      name?: string;
+    }[];
+    expect(columns.map((column) => column.name)).toContain("permission_mode");
+  });
+
+  it("adds agent_role_id onto an existing sessions table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        session_kind TEXT NOT NULL DEFAULT 'main',
+        status TEXT NOT NULL,
+        write_mode TEXT NOT NULL,
+        session_mode_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    initializeDatabase(database);
+
+    const columns = database.prepare("PRAGMA table_info(sessions)").all() as {
+      name?: string;
+    }[];
+    expect(columns.map((column) => column.name)).toContain("agent_role_id");
+  });
+
+  it("adds subagent_json onto an existing tool_calls table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE tool_calls (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        status TEXT NOT NULL,
+        content_json TEXT NOT NULL,
+        locations_json TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    initializeDatabase(database);
+
+    const columns = database.prepare("PRAGMA table_info(tool_calls)").all() as {
+      name?: string;
+    }[];
+    expect(columns.map((column) => column.name)).toContain("subagent_json");
+  });
+
+  it("adds worktree_path onto an existing sessions table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        session_kind TEXT NOT NULL DEFAULT 'main',
+        status TEXT NOT NULL,
+        write_mode TEXT NOT NULL,
+        session_mode_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    initializeDatabase(database);
+
+    const columns = database.prepare("PRAGMA table_info(sessions)").all() as {
+      name?: string;
+    }[];
+    expect(columns.map((column) => column.name)).toContain("worktree_path");
+  });
+
+  it("adds sort_order onto an existing workspaces table", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      CREATE TABLE workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        root_path TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_opened_at TEXT NOT NULL
+      );
+    `);
+    database
+      .prepare(
+        `INSERT INTO workspaces (
+           id, name, root_path, created_at, updated_at, last_opened_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "later",
+        "later",
+        "/tmp/later",
+        "2026-04-20T10:00:00.000Z",
+        "2026-04-20T10:00:00.000Z",
+        "2026-04-20T10:00:00.000Z",
+      );
+    database
+      .prepare(
+        `INSERT INTO workspaces (
+           id, name, root_path, created_at, updated_at, last_opened_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "earlier",
+        "earlier",
+        "/tmp/earlier",
+        "2026-04-20T09:00:00.000Z",
+        "2026-04-20T09:00:00.000Z",
+        "2026-04-20T09:00:00.000Z",
+      );
+
+    initializeDatabase(database);
+
+    const rows = database
+      .prepare("SELECT id, sort_order FROM workspaces ORDER BY sort_order ASC")
+      .all() as { id?: string; sort_order?: number }[];
+    expect(rows).toEqual([
+      { id: "earlier", sort_order: 1000 },
+      { id: "later", sort_order: 2000 },
+    ]);
+  });
+
+  it("adds actions_json while keeping worktree scripts from version 10", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      ALTER TABLE workspace_worktree_environments DROP COLUMN actions_json;
+      INSERT INTO workspaces (
+        id, name, root_paths, created_at, updated_at, last_opened_at
+      ) VALUES (
+        'workspace-1', 'repo', '["/tmp/repo"]', '2026-09-01T00:00:00.000Z',
+        '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z'
+      );
+      INSERT INTO workspace_worktree_environments (
+        workspace_id, setup_script, cleanup_script, updated_at
+      ) VALUES (
+        'workspace-1', 'pnpm install', 'rm -rf .turbo',
+        '2026-09-01T00:00:00.000Z'
+      );
+      PRAGMA user_version = 10;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT workspace_id, setup_script, cleanup_script, actions_json FROM workspace_worktree_environments",
+        )
+        .all()
+        .map((row) => ({ ...row })),
+    ).toEqual([
+      {
+        workspace_id: "workspace-1",
+        setup_script: "pnpm install",
+        cleanup_script: "rm -rf .turbo",
+        actions_json: "[]",
+      },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id FROM workspaces")
+        .all()
+        .map((row) => row.id),
+    ).toEqual(["workspace-1"]);
+  });
+});

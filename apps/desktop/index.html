@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cocurdex Desktop</title>
+    <script>
+      (() => {
+        let mode = "system";
+        try {
+          mode = localStorage.getItem("agents.desktop.theme-mode") ?? "system";
+        } catch {}
+        const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+        const isExplicit = mode === "light" || mode === "dark";
+        const theme = isExplicit ? mode : prefersDark ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <style>
       .boot-splash-static {
         -webkit-app-region: drag;
@@ -11,12 +24,12 @@
         height: 100vh;
         align-items: center;
         justify-content: center;
+        background: color-mix(in srgb, oklch(0.145 0 0) 1%, oklch(1 0 0));
         color: oklch(0.6 0.105 183);
       }
-      @media (prefers-color-scheme: dark) {
-        .boot-splash-static {
-          color: oklch(0.72 0.11 183);
-        }
+      html[data-theme="dark"] .boot-splash-static {
+        background: oklch(0.145 0 0);
+        color: oklch(0.72 0.11 183);
       }
       .boot-splash-static svg {
         width: 80px;

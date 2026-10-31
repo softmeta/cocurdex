@@ -4,6 +4,10 @@ import { Text } from "@/components/ui";
 import { cn } from "@/lib";
 import type { SlashCommandItem } from "./slash-command-items";
 
+function scrollIntoViewIfNeeded(node: HTMLButtonElement | null) {
+  node?.scrollIntoView({ block: "nearest" });
+}
+
 export interface SlashCommandMenuHandle {
   // Returns true if the key was handled (so Suggestion swallows it).
   onKeyDown: (event: KeyboardEvent) => boolean;
@@ -52,8 +56,8 @@ export const SlashCommandMenu = forwardRef<
 
   if (items.length === 0) {
     return (
-      <div className="min-w-52 rounded-overlay border border-editor-border bg-popover p-2 shadow-md">
-        <Text size="xs" tone="muted">
+      <div className="min-w-48 rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10">
+        <Text tone="muted" className="block px-1.5 py-1">
           {t("slash.empty")}
         </Text>
       </div>
@@ -61,24 +65,33 @@ export const SlashCommandMenu = forwardRef<
   }
 
   return (
-    <div className="min-w-52 rounded-overlay border border-editor-border bg-popover p-1 shadow-md">
+    <div
+      role="listbox"
+      aria-label={t("slash.label")}
+      className="flex max-h-[min(20rem,var(--slash-menu-available-height,20rem))] min-w-48 flex-col overflow-y-auto rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10"
+    >
       {items.map((item, index) => {
         const Icon = item.icon;
+        const highlighted = index === activeIndex;
         return (
           <button
             type="button"
+            role="option"
+            aria-selected={highlighted}
             key={item.key}
+            ref={highlighted ? scrollIntoViewIfNeeded : undefined}
             className={cn(
-              "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-start",
-              index === activeIndex
-                ? "bg-editor-tab-active-bg"
-                : "hover:bg-editor-tab-hover-bg",
+              "flex w-full shrink-0 cursor-default items-center gap-1.5 rounded-control px-1.5 py-1 text-start outline-hidden",
+              highlighted && "bg-accent text-accent-foreground",
             )}
+            onMouseDown={(event) => event.preventDefault()}
             onPointerEnter={() => setSelected(index)}
             onClick={() => onSelect(item)}
           >
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
-            <Text size="xs">{t(`slash.items.${item.key}`)}</Text>
+            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+            <Text className="min-w-0 flex-1" truncate>
+              {t(`slash.items.${item.key}`)}
+            </Text>
           </button>
         );
       })}

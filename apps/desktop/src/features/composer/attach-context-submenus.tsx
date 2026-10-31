@@ -8,12 +8,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DropdownMenuItem,
+  DropdownMenuSearchInput,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  Input,
 } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { desktopApi, requestDaemon } from "@/lib";
 import { MenuRowSidecar } from "./menu-row-sidecar";
 import { SlashCommandPreview } from "./slash-command-preview";
 
@@ -61,13 +61,10 @@ function PickerSubmenu({
         <span className="min-w-0 flex-1 truncate">{label}</span>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="flex max-h-80 [--popup-max-width:18rem] flex-col overflow-hidden">
-        <Input
-          autoFocus
-          className="mb-1 h-8 shrink-0"
+        <DropdownMenuSearchInput
           placeholder={t("composer.attachMenu.search")}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => event.stopPropagation()}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
           {visible.map((item) => (
@@ -131,7 +128,7 @@ export function AttachContextSubmenus({
   };
 
   const attachNote = async (id: string) => {
-    const note = await desktopApi.notesGet({ id });
+    const note = await requestDaemon("note.get", { id });
     if (!note) return;
     onInsertContext({
       kind: "context-item",
@@ -172,7 +169,7 @@ export function AttachContextSubmenus({
         icon={FileText}
         label={t("composer.attachMenu.notes")}
         load={async () =>
-          (await desktopApi.notesList())
+          (await requestDaemon("note.list"))
             .filter((note) => note.kind === "note")
             .map((note) => ({
               id: note.id,

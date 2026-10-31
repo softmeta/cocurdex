@@ -29,7 +29,7 @@ export type AcpRegistryLaunchTarget =
   | { kind: "npx" | "uvx"; target: AcpRegistryPackageTarget };
 
 export interface AcpRegistryEntry {
-  agent: AcpRegistryCatalogAgent;
+  agent: Omit<AcpRegistryCatalogAgent, "installPlan">;
   launch: AcpRegistryLaunchTarget | null;
 }
 

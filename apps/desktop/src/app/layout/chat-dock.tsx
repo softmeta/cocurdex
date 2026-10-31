@@ -1,10 +1,8 @@
 import { useAtomValue } from "jotai";
-import { PanelLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
-import { conversationsAtom } from "@/features/chat";
 import { focusedSessionPaneAtom, sessionsAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 import { ChatDockActions } from "./chat-dock-actions";
@@ -21,12 +19,12 @@ import {
   useSessionSplitActions,
 } from "./session-split";
 import { LeftSidebar } from "./sidebar";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "./titlebar-icon-button";
+import { SidebarToggleButton } from "./titlebar-icon-button";
 import { useChatDockViewportWidth } from "./use-chat-dock-viewport";
-import { VIEW_SWITCHER_ROW_HEIGHT_PX } from "./view-switcher-tabs";
+import {
+  VIEW_SWITCHER_ROW_HEIGHT_PX,
+  VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX,
+} from "./view-switcher-tabs";
 
 interface ChatDockProps {
   visibility: ChatDockVisibility;
@@ -89,9 +87,8 @@ export function ChatDock({
   const pinned = pinnable && pinRequested && pinLayout.canPin;
   const { paneCount, focusedPaneId, splitPaneById } = useSessionSplitActions();
   const focusedPane = useAtomValue(focusedSessionPaneAtom);
-  const conversations = useAtomValue(conversationsAtom);
   const sessions = useAtomValue(sessionsAtom);
-  const paneTitle = sessionPaneTitle(focusedPane, conversations, sessions);
+  const paneTitle = sessionPaneTitle(focusedPane, sessions);
   const singlePane = paneCount === 1;
 
   if (visibility === "hidden") {
@@ -105,14 +102,12 @@ export function ChatDock({
   // Session toggle must stay the same size as pin/close so opening the drawer
   // (toggle leaves the row for a width spacer) does not change row height.
   const sessionToggle = (
-    <TitlebarIconButton
-      active={sessionListOpen}
-      aria-label={t("actions.toggleChatSessions")}
-      onClick={() => setSessionListOpen((prev) => !prev)}
+    <SidebarToggleButton
+      label={t("actions.toggleChatSessions")}
+      open={sessionListOpen}
+      onToggle={() => setSessionListOpen((prev) => !prev)}
       onMouseDown={(event) => event.stopPropagation()}
-    >
-      <PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />
-    </TitlebarIconButton>
+    />
   );
 
   const headerTrailing = (
@@ -257,7 +252,7 @@ export function ChatDock({
         // chat surface below stays clear of the header band.
         <div
           aria-hidden
-          className="absolute inset-x-0 top-0 border-b border-editor-border"
+          className="absolute inset-x-0 top-0 box-content border-b border-editor-border"
           style={{ height: VIEW_SWITCHER_ROW_HEIGHT_PX }}
         />
       ) : null}
@@ -274,7 +269,7 @@ export function ChatDock({
         )}
         style={
           pinned
-            ? { top: VIEW_SWITCHER_ROW_HEIGHT_PX }
+            ? { top: VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX }
             : {
                 right: geometry.right,
                 bottom: geometry.bottom,

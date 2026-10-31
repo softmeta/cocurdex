@@ -17,6 +17,8 @@ interface ResizableSidebarProps {
 // A fixed-position sidebar with a draggable separator on its inline-end edge.
 // Width is local component state — not persisted. Shared by the notes and
 // issues tabs.
+export const WORKBENCH_SIDEBAR_WIDTH_PX = 220;
+
 export function ResizableSidebar({
   children,
   defaultWidth,

@@ -1,5 +1,5 @@
-// Wire types shared between the Electron main process (node-pty owner) and the
-// renderer (xterm.js consumer). A PTY session is keyed by terminalId, while
+// Wire types shared between the daemon (node-pty owner) and clients (xterm.js
+// consumers). A PTY session is keyed by terminalId, while
 // workspaceId keeps the renderer able to group broadcast events by workspace.
 
 export interface PtySpawnPayload {
@@ -38,7 +38,7 @@ export interface PtyExitEvent {
   signal?: number;
 }
 
-// Emitted by the main process when a terminal's foreground activity changes:
+// Emitted by the daemon when a terminal's foreground activity changes:
 // the deepest descendant process under the shell (the command the user is
 // currently running) and that process's working directory. Both are best
 // effort and may be null when idle, unresolved, or unsupported on the platform.
@@ -60,3 +60,8 @@ export interface PtySpawnResult {
   shell: string;
   cwd: string;
 }
+
+export type TerminalDaemonEvent =
+  | ({ type: "terminal.data" } & PtyDataEvent)
+  | ({ type: "terminal.exit" } & PtyExitEvent)
+  | ({ type: "terminal.activity" } & PtyActivityEvent);

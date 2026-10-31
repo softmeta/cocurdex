@@ -6,7 +6,7 @@ export default defineConfig({
     defaultNS: "common",
     defaultValue: "",
     indentation: 2,
-    input: ["src/**/*.{ts,tsx}", "!src/test/**"],
+    input: ["src/**/*.{ts,tsx}"],
     keySeparator: ".",
     nsSeparator: ":",
     output: "src/locales/{{language}}/{{namespace}}.json",
@@ -19,7 +19,6 @@ export default defineConfig({
   },
   lint: {
     checkInterpolationParams: true,
-    ignore: ["src/test/**"],
     ignoredAttributes: ["className", "data-testid"],
     ignoredTags: ["code", "pre"],
   },

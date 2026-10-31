@@ -11,26 +11,26 @@ import type {
   MessageAttachment,
   MessageRecord,
   SessionStatus,
+  ThinkingLevelOption,
+  WorkspaceRecord,
 } from "@cocurdex/shared";
 import type { ReactNode, Ref } from "react";
 import type {
   ChatComposerHandle,
-  ThinkingLevelOption,
+  ComposerSendOutcome,
 } from "@/features/composer";
 import type { SessionPlan } from "../plan";
 import type { QueuedAgentInputItem } from "../queued-input";
 import type { AgentSessionRuntimeState } from "../runtime";
 import type { ToolCallPreviewLocation } from "../tool-call";
 
-export type PreviousMessageRevertPreference = "revert" | "dont-revert";
-
-export type PendingPreviousMessageSubmit = {
-  canRevert: boolean;
-  content: string;
-  message: MessageRecord;
-};
+export interface ChatComposerOverride {
+  controls: ReactNode;
+  footerTrailing?: ReactNode;
+}
 
 export interface ChatViewProps {
+  chatComposer?: ChatComposerOverride;
   messages: MessageRecord[];
   permissionRequests?: AgentPermissionRequestRecord[];
   questions?: AgentQuestionRequestRecord[];
@@ -51,7 +51,7 @@ export interface ChatViewProps {
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
   activeBranch?: string | null;
-  workspaceName?: string | null;
+  workspace?: Pick<WorkspaceRecord, "id" | "name" | "rootPaths"> | null;
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
@@ -76,18 +76,11 @@ export interface ChatViewProps {
     message: string,
     attachments: MessageAttachment[],
     useOppositeFollowUpBehavior?: boolean,
-  ): void;
-  onSubmitPreviousMessage?(
-    message: MessageRecord,
-    content: string,
-    revertWorkspace: boolean,
-  ): Promise<void> | void;
-  onCheckPreviousMessageCheckpoint?(
-    message: MessageRecord,
-  ): Promise<{ available: boolean }> | { available: boolean };
+  ): ComposerSendOutcome | Promise<ComposerSendOutcome>;
   onStop?(): void;
   onDeleteQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onSendNowQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
+  onResumeQueuedInputs?(sessionId: string): Promise<void>;
   onSteerQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onUpdateQueuedInput?(
     item: QueuedAgentInputItem,

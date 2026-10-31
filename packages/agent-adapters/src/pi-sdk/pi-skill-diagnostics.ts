@@ -1,10 +1,8 @@
 import { existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import {
-  COCURDEX_DAEMON_DIAGNOSTIC_PREFIX,
-  hashLogValue,
-} from "@cocurdex/shared";
+import { hashLogValue } from "@cocurdex/shared";
+import { logAdapterDiagnostic } from "../diagnostics";
 
 interface PiSkillRootSnapshot {
   entryCount?: number;
@@ -98,11 +96,5 @@ export function logPiSkillDiagnostic(
   event: string,
   details: Record<string, unknown>,
 ) {
-  console.info(
-    `${COCURDEX_DAEMON_DIAGNOSTIC_PREFIX}${JSON.stringify({
-      details,
-      event,
-      level: "info",
-    })}`,
-  );
+  logAdapterDiagnostic("info", event, details);
 }

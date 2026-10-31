@@ -1,12 +1,14 @@
 import { createAgentAdapter } from "@cocurdex/agent-adapters";
 import type {
   AgentAdapter,
+  AgentContextHandoff,
   AgentSession,
   RuntimeProviderConfig,
 } from "@cocurdex/agent-core";
 import {
   type AgentEvent,
   type AgentId,
+  type AgentMcpServer,
   type AgentPermissionRequestPayload,
   type AgentPermissionRequestRecord,
   type AgentPermissionResolution,
@@ -21,6 +23,7 @@ import {
   type AgentSlashCommand,
   type AgentUsageRecord,
   agentToolNameFromPermissionTitle,
+  errorKindForLog,
   hashLogValue,
   hostForLog,
   isAssistantSessionId,
@@ -31,6 +34,7 @@ import {
   workspacePathsEqual,
 } from "@cocurdex/shared";
 import type { AgentToolSessionBinding } from "./agent-tools";
+import { logDaemonDiagnostic } from "./diagnostics";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
 
 export interface RuntimePersistence {
@@ -46,6 +50,17 @@ interface SessionRuntime {
   workspaceRootPath: string;
   workspaceRootPaths: string[];
   runtime: AgentSession;
+  injectsContextHandoff: boolean;
+}
+
+function deliverContextHandoff(
+  content: string,
+  handoff: AgentContextHandoff | undefined,
+  injects: boolean,
+) {
+  if (!handoff) return { content };
+  if (injects) return { content, contextHandoff: handoff };
+  return { content: `${handoff.text}\n\n${content}` };
 }
 
 interface PendingPermission {
@@ -68,22 +83,49 @@ export interface AgentToolsProvider {
   revoke(sessionId: string): void;
 }
 
+export interface AgentEventContext {
+  runId: string | null;
+}
+
+type AgentEventPersistenceHandler = (
+  event: AgentEvent,
+  context: AgentEventContext,
+) => Promise<AgentEvent> | AgentEvent;
+
 interface AgentRuntimeManagerOptions {
   broadcastAgentEvent(event: AgentEvent): void;
+  activeRunId?(sessionId: string): string | null;
+  onProviderEvent?(event: AgentEvent): void;
   createAdapter?: (agentType: AgentId) => AgentAdapter;
   userDataPath?: string;
   agentTools?: AgentToolsProvider;
+  resolveMcpServers?(agentId: AgentId): Promise<AgentMcpServer[]>;
+}
+
+type TurnTracker = {
+  cancelled: boolean;
+  completionEmitted: boolean;
+  messageId: string | null;
+  promptMessageId: string | null;
+  usage: AgentUsageRecord | null;
+};
+
+function anchorTurnCompletion(
+  event: AgentEvent,
+  tracker: TurnTracker,
+): AgentEvent {
+  if (event.type !== "turn.completed") {
+    return event;
+  }
+  return {
+    ...event,
+    messageId: tracker.messageId ?? tracker.promptMessageId ?? event.messageId,
+  };
 }
 
 export class AgentRuntimeManager {
-  private readonly activeTurnTrackers = new Map<
-    string,
-    {
-      cancelled: boolean;
-      messageId: string | null;
-      usage: AgentUsageRecord | null;
-    }
-  >();
+  private readonly activeTurnTrackers = new Map<string, TurnTracker>();
+  private readonly cancelledTurnTrackers = new Map<string, TurnTracker>();
   private readonly broadcastCoalescer;
   private readonly createAdapter;
   private readonly pendingPermissions = new Map<string, PendingPermission>();
@@ -99,15 +141,22 @@ export class AgentRuntimeManager {
     string,
     AgentPlanUpdatedEvent["plan"]
   >();
-  private persistAgentEventHandler:
-    | ((event: AgentEvent) => Promise<AgentEvent> | AgentEvent)
-    | null = null;
+  private persistAgentEventHandler: AgentEventPersistenceHandler | null = null;
+  private readonly activeRunId: (sessionId: string) => string | null;
+  private readonly onProviderEvent: (event: AgentEvent) => void;
   // Serialize persistence so events are written in emission order. Without
   // this queue, async writes can interleave and the DB sees out-of-order rows.
   private persistQueue: Promise<void> = Promise.resolve();
 
   private readonly userDataPath?: string;
   private readonly agentTools: AgentToolsProvider | null;
+  private readonly resolveMcpServers:
+    | ((agentId: AgentId) => Promise<AgentMcpServer[]>)
+    | null;
+
+  get liveSessionCount() {
+    return this.sessionRuntimes.size;
+  }
 
   constructor(options: AgentRuntimeManagerOptions) {
     this.broadcastCoalescer = createEventBroadcastCoalescer(
@@ -116,36 +165,53 @@ export class AgentRuntimeManager {
     this.createAdapter = options.createAdapter ?? createAgentAdapter;
     this.userDataPath = options.userDataPath;
     this.agentTools = options.agentTools ?? null;
+    this.resolveMcpServers = options.resolveMcpServers ?? null;
+    this.activeRunId = options.activeRunId ?? (() => null);
+    this.onProviderEvent = options.onProviderEvent ?? (() => undefined);
   }
 
-  configureAgentEventPersistence(
-    handler: (event: AgentEvent) => Promise<AgentEvent> | AgentEvent,
-  ) {
+  private mcpServersFor(agentId: AgentId) {
+    const resolve = this.resolveMcpServers;
+    return resolve ? () => resolve(agentId) : undefined;
+  }
+
+  configureAgentEventPersistence(handler: AgentEventPersistenceHandler) {
     this.persistAgentEventHandler = handler;
+  }
+
+  liveSessionIdsForAgent(agentId: AgentId) {
+    return [...this.sessionRuntimes.entries()].flatMap(([sessionId, entry]) =>
+      entry.session.agentType === agentId ? [sessionId] : [],
+    );
   }
 
   getAgentSession(sessionId: string) {
     return this.sessionRuntimes.get(sessionId)?.runtime ?? null;
   }
 
-  emitAgentEvent(event: AgentEvent) {
+  emitAgentEvent(sourceEvent: AgentEvent) {
+    const tracker =
+      this.activeTurnTrackers.get(sourceEvent.sessionId) ??
+      this.cancelledTurnTrackers.get(sourceEvent.sessionId);
+    const event = tracker
+      ? anchorTurnCompletion(sourceEvent, tracker)
+      : sourceEvent;
     if (
+      tracker &&
       event.type === "usage.updated" &&
       event.attribution !== "session-only"
     ) {
-      const tracker = this.activeTurnTrackers.get(event.sessionId);
-      if (tracker) {
-        tracker.usage = this.addUsageRecords(tracker.usage, event.usage);
-      }
+      tracker.usage = this.addUsageRecords(tracker.usage, event.usage);
     }
     if (
+      tracker &&
       event.type === "message.completed" &&
       event.message.role === "assistant"
     ) {
-      const tracker = this.activeTurnTrackers.get(event.sessionId);
-      if (tracker) {
-        tracker.messageId = event.message.id;
-      }
+      tracker.messageId = event.message.id;
+    }
+    if (tracker && event.type === "turn.completed") {
+      tracker.completionEmitted = true;
     }
     if (event.type === "plan.updated") {
       this.sessionPlans.set(event.sessionId, event.plan);
@@ -157,11 +223,18 @@ export class AgentRuntimeManager {
       return;
     }
 
-    const persistence = this.persistQueue.then(() => handler(event));
+    const context: AgentEventContext = {
+      runId: this.activeRunId(event.sessionId),
+    };
+    const persistence = this.persistQueue.then(() => handler(event, context));
     this.persistQueue = persistence.then(
       () => undefined,
       (error) => {
-        console.error("[AgentRuntimeManager] Failed to persist event", error);
+        logDaemonDiagnostic("error", "runtime.eventPersistFailed", {
+          error,
+          eventType: event.type,
+          sessionId: event.sessionId,
+        });
       },
     );
     void persistence.then(
@@ -342,6 +415,23 @@ export class AgentRuntimeManager {
     return true;
   }
 
+  async forkProviderSession(
+    agentType: AgentId,
+    payload: {
+      source: AgentProviderSessionRecord;
+      targetSessionId: string;
+      workspaceRootPath: string;
+      userTurnCount: number | null;
+    },
+  ): Promise<AgentProviderSessionRecord | null> {
+    const adapter = this.createAdapter(agentType);
+    if (!adapter.forkProviderSession) return null;
+    return adapter.forkProviderSession({
+      ...payload,
+      userDataPath: this.userDataPath,
+    });
+  }
+
   async listSessionSlashCommands(
     agentType: AgentId,
     workspaceRootPath: string,
@@ -404,8 +494,9 @@ export class AgentRuntimeManager {
     const workspaceRootPaths = payload.workspaceRootPaths ?? [
       payload.workspaceRootPath,
     ];
-    const rootsUnchanged =
+    const runtimeReusable =
       existingRuntime &&
+      existingRuntime.session.agentType === payload.session.agentType &&
       workspacePathsEqual(
         existingRuntime.workspaceRootPath,
         payload.workspaceRootPath,
@@ -415,7 +506,7 @@ export class AgentRuntimeManager {
         workspacePathsEqual(rootPath, workspaceRootPaths[index] ?? ""),
       );
 
-    if (existingRuntime && rootsUnchanged) {
+    if (existingRuntime && runtimeReusable) {
       // Replace the session reference instead of mutating it: callers and the
       // UI may hold onto the old object and rely on referential immutability.
       const updated: SessionRuntime = {
@@ -453,6 +544,7 @@ export class AgentRuntimeManager {
         providerConfig: persistence.providerConfig,
         agentTools: agentToolSession?.binding ?? null,
         agentToolInvoker: agentToolSession?.invoker ?? null,
+        resolveMcpServers: this.mcpServersFor(sessionCopy.agentType),
         onProviderSessionUpdate: (providerSession) => {
           const activeRuntime = this.sessionRuntimes.get(payload.session.id);
           if (!runtime || activeRuntime?.runtime !== runtime) {
@@ -470,6 +562,10 @@ export class AgentRuntimeManager {
         if (!runtime || activeRuntime?.runtime !== runtime) {
           return;
         }
+        this.onProviderEvent(event);
+        if (event.type === "state.changed") {
+          return;
+        }
         this.emitAgentEvent(event);
       },
     );
@@ -479,6 +575,7 @@ export class AgentRuntimeManager {
       workspaceRootPath: payload.workspaceRootPath,
       workspaceRootPaths,
       runtime: createdRuntime,
+      injectsContextHandoff: adapter.injectsContextHandoff === true,
     };
 
     this.sessionRuntimes.set(payload.session.id, nextRuntime);
@@ -487,7 +584,10 @@ export class AgentRuntimeManager {
 
   async sendSessionMessage(
     payload: SessionRuntimeMessage,
-    options: RuntimePersistence & { history: MessageRecord[] },
+    options: RuntimePersistence & {
+      history: MessageRecord[];
+      contextHandoff?: AgentContextHandoff;
+    },
   ) {
     const isSteering = payload.delivery === "steer-active-run";
     if (this.activeTurnTrackers.has(payload.session.id) && !isSteering) {
@@ -513,12 +613,14 @@ export class AgentRuntimeManager {
     }
 
     const startedAt = performance.now();
-    const turnTracker = {
+    const turnTracker: TurnTracker = {
       cancelled: false,
-      messageId: null as string | null,
-      usage: null as AgentUsageRecord | null,
+      completionEmitted: false,
+      messageId: null,
+      promptMessageId: payload.messageId ?? null,
+      usage: null,
     };
-    console.info("[AgentRuntimeManager] send message payload", {
+    logDaemonDiagnostic("info", "runtime.turnStarted", {
       agentType: payload.session.agentType,
       attachments:
         payload.attachments?.map((attachment) =>
@@ -542,7 +644,11 @@ export class AgentRuntimeManager {
       const sessionRuntime = this.ensureSessionRuntime(payload, options);
       const message = await sessionRuntime.runtime.sendMessage({
         messageId: payload.messageId,
-        content: payload.content,
+        ...deliverContextHandoff(
+          payload.content,
+          options.contextHandoff,
+          sessionRuntime.injectsContextHandoff,
+        ),
         attachments: payload.attachments,
         history: options.history,
         thinkingLevel: payload.thinkingLevel,
@@ -555,7 +661,13 @@ export class AgentRuntimeManager {
         delivery: payload.delivery,
       });
 
+      logDaemonDiagnostic("info", "runtime.turnFinished", {
+        cancelled: turnTracker.cancelled,
+        durationMs: Math.round(performance.now() - startedAt),
+        sessionId: payload.session.id,
+      });
       if (!turnTracker.cancelled) {
+        if (message.role === "assistant") turnTracker.messageId ??= message.id;
         this.emitAgentEvent({
           type: "turn.completed",
           sessionId: payload.session.id,
@@ -567,9 +679,40 @@ export class AgentRuntimeManager {
       }
 
       return message;
+    } catch (error) {
+      logDaemonDiagnostic("warn", "runtime.turnFailed", {
+        agentType: payload.session.agentType,
+        durationMs: Math.round(performance.now() - startedAt),
+        error,
+        errorKind: errorKindForLog(error),
+        sessionId: payload.session.id,
+      });
+      throw error;
     } finally {
       if (this.activeTurnTrackers.get(payload.session.id) === turnTracker) {
         this.activeTurnTrackers.delete(payload.session.id);
+      }
+      const stoppedByUser =
+        this.cancelledTurnTrackers.get(payload.session.id) === turnTracker;
+      if (stoppedByUser) {
+        this.cancelledTurnTrackers.delete(payload.session.id);
+      }
+      const cancelledMessageId =
+        turnTracker.messageId ?? turnTracker.promptMessageId;
+      if (
+        stoppedByUser &&
+        !turnTracker.completionEmitted &&
+        cancelledMessageId
+      ) {
+        this.emitAgentEvent({
+          type: "turn.completed",
+          sessionId: payload.session.id,
+          messageId: cancelledMessageId,
+          durationMs: Math.round(performance.now() - startedAt),
+          usage: turnTracker.usage ?? undefined,
+          stopReason: "cancelled",
+          completedAt: new Date().toISOString(),
+        });
       }
     }
   }
@@ -581,22 +724,17 @@ export class AgentRuntimeManager {
    * reload on the very next message.
    */
   async cancelSessionTurn(sessionId: string) {
-    this.clearPendingSessionWork(sessionId);
+    const turnTracker = this.clearPendingSessionWork(sessionId);
+    if (turnTracker) {
+      this.cancelledTurnTrackers.set(sessionId, turnTracker);
+    }
     const sessionRuntime = this.sessionRuntimes.get(sessionId);
 
     if (!sessionRuntime) {
       return false;
     }
 
-    try {
-      await sessionRuntime.runtime.stop();
-    } finally {
-      this.emitAgentEvent({
-        type: "state.changed",
-        sessionId,
-        status: "idle",
-      });
-    }
+    await sessionRuntime.runtime.stop();
     return true;
   }
 
@@ -622,11 +760,6 @@ export class AgentRuntimeManager {
     } catch (error) {
       failures.push(error);
     }
-    this.emitAgentEvent({
-      type: "state.changed",
-      sessionId,
-      status: "idle",
-    });
     if (failures.length === 1) {
       throw failures[0];
     }
@@ -648,6 +781,7 @@ export class AgentRuntimeManager {
     this.denyPendingPermissionsForSession(sessionId);
     this.cancelPendingQuestionsForSession(sessionId);
     this.abandonPendingPlanApprovalsForSession(sessionId);
+    return turnTracker;
   }
 
   async shutdown() {

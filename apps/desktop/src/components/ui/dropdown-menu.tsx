@@ -2,10 +2,13 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 import { asChildToRender } from "@/components/ui/_as-child-render";
+import { FLYOUT_GAP } from "@/components/ui/_flyout";
 import {
-  popupContentWidthClassName,
-  popupSubContentWidthClassName,
-} from "@/components/ui/_popup-width";
+  SubmenuAnchorProvider,
+  useSubmenuAnchor,
+  useSubmenuTriggerRef,
+} from "@/components/ui/_submenu-anchor";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 function DropdownMenu({
@@ -76,8 +79,7 @@ function DropdownMenuContent({
             // No `w-*` here: auto width shrink-wraps to the longest row and
             // keeps caller `w-*` overrides working (`w-max` would sort after
             // and beat them).
-            "relative z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-closed:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            popupContentWidthClassName,
+            "relative z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-closed:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 p-1 min-w-(--anchor-width) max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
           {...props}
@@ -253,7 +255,11 @@ function DropdownMenuShortcut({
 function DropdownMenuSub({
   ...props
 }: React.ComponentProps<typeof MenuPrimitive.SubmenuRoot>) {
-  return <MenuPrimitive.SubmenuRoot {...props} />;
+  return (
+    <SubmenuAnchorProvider>
+      <MenuPrimitive.SubmenuRoot {...props} />
+    </SubmenuAnchorProvider>
+  );
 }
 
 function DropdownMenuSubTrigger({
@@ -261,11 +267,13 @@ function DropdownMenuSubTrigger({
   inset,
   children,
   ...props
-}: React.ComponentProps<typeof MenuPrimitive.SubmenuTrigger> & {
+}: Omit<React.ComponentProps<typeof MenuPrimitive.SubmenuTrigger>, "ref"> & {
   inset?: boolean;
 }) {
+  const triggerRef = useSubmenuTriggerRef();
   return (
     <MenuPrimitive.SubmenuTrigger
+      ref={triggerRef}
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
@@ -297,9 +305,7 @@ type DropdownMenuSubContentProps = React.ComponentProps<
 
 function DropdownMenuSubContent({
   className,
-  // Small positive gap so the flyout does not visually glue onto / cover the
-  // parent menu. Base UI defaults sideOffset to 0 for nested menus.
-  sideOffset = 4,
+  sideOffset = FLYOUT_GAP,
   // Nudge up slightly so the first row of the submenu lines up with the
   // sub-trigger row (classic menu flyout alignment).
   alignOffset = -4,
@@ -307,11 +313,13 @@ function DropdownMenuSubContent({
   side,
   ...props
 }: DropdownMenuSubContentProps) {
+  const anchor = useSubmenuAnchor();
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
         align={align}
         alignOffset={alignOffset}
+        anchor={anchor}
         className="z-50 outline-none"
         side={side}
         sideOffset={sideOffset}
@@ -321,14 +329,31 @@ function DropdownMenuSubContent({
           className={cn(
             // Mirror DropdownMenuContent: allow vertical scroll, keep a clear
             // elevated surface so the flyout reads as a separate panel.
-            "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-closed:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            popupSubContentWidthClassName,
+            "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-closed:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 p-1 max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
           {...props}
         />
       </MenuPrimitive.Positioner>
     </MenuPrimitive.Portal>
+  );
+}
+
+function DropdownMenuSearchInput({
+  className,
+  onKeyDown,
+  ...props
+}: React.ComponentProps<typeof Input>) {
+  return (
+    <Input
+      autoFocus
+      className={cn("mb-1 h-8 shrink-0", className)}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (event.key !== "Escape") event.stopPropagation();
+      }}
+      {...props}
+    />
   );
 }
 
@@ -342,6 +367,7 @@ export {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuSub,

@@ -30,6 +30,7 @@ export type ProductSkillsStatus = {
   managed: boolean;
   installedVersion: string | null;
   updateAvailable: boolean;
+  modified: boolean;
   conflict: boolean;
   conflictSkills: string[];
   skills: string[];
@@ -40,7 +41,7 @@ export type ProductSkillsStatus = {
 };
 
 export type InstallProductSkillsResult = ProductSkillsStatus & {
-  action: "installed" | "updated" | "skipped" | "conflict";
+  action: "installed" | "updated" | "restored" | "skipped" | "conflict";
 };
 
 export type RemoveProductSkillsResult = {
@@ -182,6 +183,11 @@ export async function getProductSkillsStatus(
   const installed = managed && present.length > 0;
   const updateAvailable =
     installed && installedVersion !== null && installedVersion !== packVersion;
+  const modified =
+    installed &&
+    !updateAvailable &&
+    (await getProductSkillsPackVersion(agentsSkillsDir)) !==
+      (marker?.contentHash ?? installedVersion);
 
   let claudeLinkMode: ClaudeLinkMode = "none";
   if (present[0]) {
@@ -195,6 +201,7 @@ export async function getProductSkillsStatus(
     managed,
     installedVersion,
     updateAvailable,
+    modified,
     conflict: conflictSkills.length > 0,
     conflictSkills,
     skills: managed ? [...(marker?.skills ?? [])].sort() : present,
@@ -240,6 +247,15 @@ async function linkOrCopyClaudeSkill(
   return "copy";
 }
 
+function installAction(
+  before: ProductSkillsStatus,
+): InstallProductSkillsResult["action"] {
+  if (!before.installed) {
+    return "installed";
+  }
+  return before.modified ? "restored" : "updated";
+}
+
 export async function installProductSkills(
   scope: SkillScope,
   workspaceRoot?: string,
@@ -268,7 +284,8 @@ export async function installProductSkills(
   if (
     before.installed &&
     before.installedVersion === packVersion &&
-    !before.updateAvailable
+    !before.updateAvailable &&
+    !before.modified
   ) {
     return {
       ...before,
@@ -276,9 +293,7 @@ export async function installProductSkills(
     };
   }
 
-  const action: InstallProductSkillsResult["action"] = before.installed
-    ? "updated"
-    : "installed";
+  const action = installAction(before);
 
   const packSkills = new Set<string>(PRODUCT_SKILL_NAMES);
   const retiredSkills = before.managed
@@ -317,6 +332,7 @@ export async function installProductSkills(
   await writeMarker(agentsSkillsDir, {
     managedBy: "cocurdex",
     packVersion,
+    contentHash: await getProductSkillsPackVersion(agentsSkillsDir),
     skills: [...PRODUCT_SKILL_NAMES],
     scope,
     installedAt,

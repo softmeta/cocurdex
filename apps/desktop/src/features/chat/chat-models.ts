@@ -18,7 +18,3 @@ export const chatProviderModelsAtom = atom((get) => {
     return [{ provider, model }];
   });
 });
-
-export const chatModelsAtom = atom((get) =>
-  get(chatProviderModelsAtom).map(({ model }) => model),
-);

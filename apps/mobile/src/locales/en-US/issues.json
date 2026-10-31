@@ -1,0 +1,57 @@
+{
+  "create": {
+    "creating": "Creating…",
+    "descriptionPlaceholder": "Add a description",
+    "failed": "Couldn't create the issue. Check the connection and try again.",
+    "open": "New Issue",
+    "submit": "Create",
+    "titlePlaceholder": "Issue title"
+  },
+  "edit": {
+    "action": "Edit",
+    "failed": "Couldn't save. The issue may have changed elsewhere; reopen it and try again.",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "empty": {
+    "description": "Issues you track on {{host}} appear here.",
+    "title": "No Issues"
+  },
+  "field": {
+    "labels": "Labels",
+    "none": "None",
+    "priority": "Priority",
+    "status": "Status",
+    "workspace": "Workspace"
+  },
+  "filter": {
+    "any": "Any",
+    "clear": "Clear filters",
+    "close": "Close",
+    "empty": "No issues match these filters",
+    "noWorkspace": "No workspace",
+    "remove": "Remove filter {{label}}",
+    "title": "Filter"
+  },
+  "labels": {
+    "empty": "No labels yet"
+  },
+  "missing": "This issue was deleted on the computer.",
+  "move": {
+    "action": "Move",
+    "failed": "Couldn't move the issue. Check the connection and try again.",
+    "title": "Move to"
+  },
+  "noResults": "No issues match “{{query}}”",
+  "search": "Search issues",
+  "sessions": "Agent Sessions",
+  "subIssues": "Sub-issues {{done}}/{{total}}",
+  "unavailable": {
+    "retry": "Try Again",
+    "title": "Couldn’t load issues from {{host}}"
+  },
+  "untitledSession": "Untitled session",
+  "update": {
+    "failed": "Couldn't update the issue. Check the connection and try again."
+  }
+}

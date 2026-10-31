@@ -10,9 +10,10 @@ import type {
   AgentSlashCommand,
   AgentThinkingLevel,
   MessageAttachment,
+  ThinkingLevelOption,
+  WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { Folder } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -21,22 +22,29 @@ import { JumpControls } from "@/components/chat";
 import {
   ChatComposer,
   type ChatComposerHandle,
+  type ComposerSendOutcome,
   ComposerSurface,
   ComposerSurfaceBody,
   composerFooterControlClassName,
-  type ThinkingLevelOption,
 } from "@/features/composer";
 import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
+import { WorkspaceRootsTooltip, workspaceIconFor } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
 import { QuestionCard, questionsBySessionAtom } from "../question";
-import { type QueuedAgentInputItem, QueuedInputShelf } from "../queued-input";
+import {
+  pausedQueueSessionIdsAtom,
+  type QueuedAgentInputItem,
+  QueuedInputShelf,
+} from "../queued-input";
+import type { ChatComposerOverride } from "./chat-view-types";
 
 // Shared with pure chat — re-export so existing agent imports keep working.
 export { JumpControls };
 
 interface ChatComposerControls {
+  chatComposer?: ChatComposerOverride;
   activeBranch?: string | null;
   agentLabel: string;
   sessionId?: string;
@@ -62,7 +70,7 @@ interface ChatComposerControls {
   supportsSteering?: boolean;
   /** Live ACP task list (todo_write / plan update) — docked above the composer. */
   plan?: SessionPlan | null;
-  workspaceName?: string | null;
+  workspace?: Pick<WorkspaceRecord, "id" | "name" | "rootPaths"> | null;
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
@@ -76,10 +84,11 @@ interface ChatComposerControls {
     message: string,
     attachments: MessageAttachment[],
     useOppositeFollowUpBehavior?: boolean,
-  ): void;
+  ): ComposerSendOutcome | Promise<ComposerSendOutcome>;
   onStop?(): void;
   onDeleteQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onSendNowQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
+  onResumeQueuedInputs?(sessionId: string): Promise<void>;
   onSteerQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onUpdateQueuedInput?(
     item: QueuedAgentInputItem,
@@ -107,24 +116,28 @@ interface ChatComposerControls {
 }
 
 function SessionWorkspaceFooterLabel({
-  workspaceName,
+  workspace,
 }: {
-  workspaceName?: string | null;
+  workspace?: Pick<WorkspaceRecord, "id" | "name" | "rootPaths"> | null;
 }) {
-  if (!workspaceName) {
+  if (!workspace) {
     return null;
   }
 
+  const WorkspaceIcon = workspaceIconFor(workspace);
+
   return (
-    <span
-      className={composerFooterControlClassName(
-        "flex max-w-40 text-chat-fg-muted",
-      )}
-      title={workspaceName}
-    >
-      <Folder className="size-3.5 shrink-0" />
-      <span className="min-w-0 truncate">{workspaceName}</span>
-    </span>
+    <WorkspaceRootsTooltip workspace={workspace}>
+      <span
+        className={composerFooterControlClassName(
+          "flex max-w-40 text-chat-fg-muted",
+        )}
+        data-workspace-id={workspace.id}
+      >
+        <WorkspaceIcon className="size-3.5 shrink-0" />
+        <span className="min-w-0 truncate">{workspace.name}</span>
+      </span>
+    </WorkspaceRootsTooltip>
   );
 }
 
@@ -160,7 +173,7 @@ export function EmptyChatState({
   composerContextChips,
   onAnswerQuestion: _onAnswerQuestion,
   pendingQuestion: _pendingQuestion,
-  workspaceName,
+  workspace,
   ...composerProps
 }: ChatComposerControls) {
   // Workspace leads the footer; branch stays after the agent/runtime controls.
@@ -174,9 +187,7 @@ export function EmptyChatState({
           variant="panel"
           tone="welcome"
           mentionMenuPlacement="bottom"
-          footerLeading={
-            <SessionWorkspaceFooterLabel workspaceName={workspaceName} />
-          }
+          footerLeading={<SessionWorkspaceFooterLabel workspace={workspace} />}
           footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
         />
       </ComposerSurfaceBody>
@@ -201,8 +212,9 @@ function collectPendingPrompts(
 }
 
 export function ComposerDock({
+  chatComposer,
   activeBranch,
-  workspaceName,
+  workspace,
   composerRef,
   isRunning,
   pendingPermissionRequest,
@@ -219,6 +231,7 @@ export function ComposerDock({
   onAnswerQuestion,
   onDeleteQueuedInput,
   onSendNowQueuedInput,
+  onResumeQueuedInputs,
   onSteerQueuedInput,
   onUpdateQueuedInput,
   hideComposer = false,
@@ -230,6 +243,11 @@ export function ComposerDock({
   const { t } = useTranslation("agent");
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
+  const pausedQueueSessionIds = useAtomValue(pausedQueueSessionIdsAtom);
+  const queuePaused =
+    !isRunning &&
+    composerProps.sessionId !== undefined &&
+    pausedQueueSessionIds.has(composerProps.sessionId);
   const pendingPromptBySession = collectPendingPrompts(
     permissionsBySession,
     questionsBySession,
@@ -279,9 +297,10 @@ export function ComposerDock({
               items={queuedInputs}
               onDelete={onDeleteQueuedInput}
               onSendNow={onSendNowQueuedInput}
+              onResume={queuePaused ? onResumeQueuedInputs : undefined}
               onSteer={onSteerQueuedInput}
               onUpdate={onUpdateQueuedInput}
-              supportsSteering={supportsSteering}
+              supportsSteering={supportsSteering && isRunning}
             />
           ) : null}
           {pendingPlanApproval ? (
@@ -331,10 +350,20 @@ export function ComposerDock({
             ref={composerRef}
             contextChips={composerContextChips}
             variant="pill"
-            footerLeading={
-              <SessionWorkspaceFooterLabel workspaceName={workspaceName} />
-            }
-            footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
+            {...(chatComposer
+              ? {
+                  mode: "chat" as const,
+                  controls: chatComposer.controls,
+                  footerTrailing: chatComposer.footerTrailing,
+                }
+              : {
+                  footerLeading: (
+                    <SessionWorkspaceFooterLabel workspace={workspace} />
+                  ),
+                  footerTrailing: (
+                    <SessionBranchFooterLabel branch={activeBranch} />
+                  ),
+                })}
           />
         )}
       </div>

@@ -1,0 +1,164 @@
+{
+  "actions": {
+    "addSlide": "Add slide",
+    "export": "Export",
+    "exportPdf": "Export PDF",
+    "exportPptx": "Export PPTX",
+    "insertImage": "Insert image",
+    "layout": "Layout",
+    "present": "Present",
+    "presenterView": "Presenter view",
+    "theme": "Theme"
+  },
+  "editor": {
+    "edit": "Edit {{name}}",
+    "image": "Image",
+    "imageNamed": "Image: {{name}}",
+    "notesPlaceholder": "Add speaker notes",
+    "placeholders": {
+      "subtitle": "Click to add subtitle",
+      "text": "Click to add text",
+      "title": "Click to add title"
+    },
+    "slots": {
+      "body": "text",
+      "left": "left column",
+      "right": "right column",
+      "subtitle": "subtitle",
+      "textBox": "text box",
+      "title": "title"
+    }
+  },
+  "errors": {
+    "audienceWindow": "Could not open the audience window. Allow pop-ups for this page and try again.",
+    "create": "Could not create the deck",
+    "edit": "Could not save the change",
+    "export": "Could not export the deck",
+    "image": "Could not add the image",
+    "import": "Could not import the presentation"
+  },
+  "imageMenu": {
+    "delete": "Delete image",
+    "replace": "Replace image…"
+  },
+  "import": {
+    "warnings": "Imported with some content left out"
+  },
+  "layouts": {
+    "blank": "Blank",
+    "closing": "Closing",
+    "cover": "Cover",
+    "section": "Section",
+    "title-content": "Title and content",
+    "title-only": "Title only",
+    "two-content": "Two columns"
+  },
+  "present": {
+    "audience": "Audience view",
+    "label": "Presentation",
+    "next": "Next slide",
+    "position": "Slide {{current}} of {{total}}"
+  },
+  "presenter": {
+    "current": "Current slide",
+    "elapsed": "Elapsed time",
+    "end": "End show",
+    "label": "Presenter view",
+    "lastSlide": "This is the last slide",
+    "moveAudienceHint": "Move the audience window to the projector or shared screen.",
+    "next": "Next",
+    "noNotes": "No speaker notes",
+    "previous": "Previous",
+    "upNext": "Up next"
+  },
+  "sidebar": {
+    "collapse": "Hide deck list",
+    "delete": "Delete",
+    "deleteConfirm": {
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "description": "This deck and all its slides will be permanently deleted.",
+      "title": "Delete \"{{title}}\"?"
+    },
+    "empty": {
+      "create": "New deck",
+      "description": "Create a deck, import a PowerPoint file, or ask an agent to make one.",
+      "import": "Import PowerPoint",
+      "title": "No decks yet"
+    },
+    "expand": "Show deck list",
+    "importPptx": "Import PowerPoint (.pptx)",
+    "newDeck": "New deck",
+    "rename": "Rename",
+    "resize": "Resize deck list",
+    "title": "Decks",
+    "untitled": "Untitled deck"
+  },
+  "slideMenu": {
+    "delete": "Delete slide",
+    "duplicate": "Duplicate slide",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later"
+  },
+  "themeHints": {
+    "academic": "Classic · teaching and lectures",
+    "bauhaus": "Design, art, and architecture",
+    "blueprint": "Engineering reviews and technical designs",
+    "boardroom": "Corporate · business and consulting",
+    "botanical": "Health, sustainability, and nonprofits",
+    "clinic": "Healthcare and SaaS products",
+    "default": "Clean, for any topic",
+    "editorial": "Magazine · research and stories",
+    "ember": "Dark gradient · creative and events",
+    "forest": "Calm, for any topic",
+    "midnight": "Dark, for any topic",
+    "nebula": "Dark gradient · AI and keynotes",
+    "noir": "Finance, annual reports, and premium brands",
+    "playful": "Classes, workshops, and creative pitches",
+    "pop": "Bold color · marketing and pitches",
+    "retro": "Events, festivals, and lifestyle",
+    "sand": "Warm, for any topic",
+    "swiss": "Strategy, consulting, and planning",
+    "tech": "Minimal tech · products and engineering",
+    "terminal": "Developer talks and hackathons",
+    "zen": "Culture, brand stories, and hospitality"
+  },
+  "themes": {
+    "academic": "Lecture",
+    "bauhaus": "Bauhaus",
+    "blueprint": "Blueprint",
+    "boardroom": "Boardroom",
+    "botanical": "Botanical",
+    "clinic": "Clinic",
+    "default": "Default",
+    "editorial": "Editorial",
+    "ember": "Ember",
+    "forest": "Forest",
+    "midnight": "Midnight",
+    "nebula": "Nebula",
+    "noir": "Noir",
+    "playful": "Playful",
+    "pop": "Pop",
+    "retro": "Retro",
+    "sample": "Aa",
+    "sand": "Sand",
+    "swiss": "Swiss",
+    "tech": "Launch",
+    "terminal": "Terminal",
+    "zen": "Zen"
+  },
+  "viewer": {
+    "empty": {
+      "description": "Pick a deck from the list to view its slides.",
+      "title": "No deck selected"
+    },
+    "emptyDeck": {
+      "description": "Add a slide from the toolbar, or ask an agent to write the deck.",
+      "title": "This deck has no slides"
+    },
+    "notes": "Speaker notes",
+    "position": "{{current}} / {{total}}",
+    "slide": "Slide {{number}}",
+    "slides": "Slides"
+  }
+}

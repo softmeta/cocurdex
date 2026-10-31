@@ -1,9 +1,20 @@
 import {
   type AgentToolCallContent,
   type AgentToolCallRecord,
+  getCommandPreview,
+  getDisplayDirectory,
+  getLineRangeLabel,
+  getToolCallInputSummary,
+  isContextCompactionToolCall,
+  pathBaseName,
+  sanitizeCommand,
+  toolCallResourceLinkPath,
+  truncateMiddle,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
+import { getContextCompactionLabel } from "./context-compaction-label";
+import { getCommandDescription } from "./tool-call-command-description";
 
 // Lives here (not in tool-call-ui) so the util layer stays a leaf: the UI
 // imports utils, never the other way around.
@@ -14,77 +25,14 @@ export type ToolCallPreviewLocation = {
   title?: string | null;
 };
 
-export function formatToolCallData(data: unknown) {
-  if (data === undefined || data === null) {
-    return null;
-  }
-
-  if (typeof data === "string") {
-    return data;
-  }
-
-  const textContent = extractTextContent(data);
-  if (textContent !== null) {
-    return textContent;
-  }
-
-  return JSON.stringify(data, null, 2);
-}
-
-export function formatToolCallOutput(
-  content: AgentToolCallContent[] | undefined,
-  rawOutput: unknown,
-) {
-  const text = content?.flatMap((item) => {
-    if (item.type === "text") {
-      return [item.text];
-    }
-
-    if (item.type === "diff") {
-      return [
-        [item.oldText, item.newText]
-          .filter((value): value is string => typeof value === "string")
-          .join("\n"),
-      ];
-    }
-
-    if (item.type === "data") {
-      if (getResourceLinkPath(item.value)) {
-        return [];
-      }
-      const formatted = formatToolCallData(item.value);
-      return formatted ? [formatted] : [];
-    }
-
-    return [];
-  });
-
-  return text?.join("\n") || formatToolCallData(rawOutput);
-}
-
-function getResourceLinkPath(value: unknown) {
-  const record = asObjectRecord(value);
-  if (record?.type !== "resource_link" || typeof record.uri !== "string") {
-    return null;
-  }
-  if (!record.uri.startsWith("file://")) {
-    return null;
-  }
-
-  try {
-    const pathname = decodeURIComponent(new URL(record.uri).pathname);
-    return /^\/[A-Za-z]:/.test(pathname) ? pathname.slice(1) : pathname;
-  } catch {
-    return null;
-  }
-}
+export type ToolCallTense = "past" | "present";
 
 export function getToolCallResourceLinks(
   content: AgentToolCallContent[] | undefined,
 ): ToolCallPreviewLocation[] {
   return (content ?? []).flatMap((item) => {
     const filePath =
-      item.type === "data" ? getResourceLinkPath(item.value) : null;
+      item.type === "data" ? toolCallResourceLinkPath(item.value) : null;
     return filePath ? [{ filePath }] : [];
   });
 }
@@ -104,22 +52,6 @@ function asObjectRecord(value: unknown): Record<string, unknown> | null {
   }
 
   return value as Record<string, unknown>;
-}
-
-function extractTextContent(data: unknown) {
-  const dataRecord = asObjectRecord(data);
-  if (!Array.isArray(dataRecord?.content)) {
-    return null;
-  }
-
-  const textBlocks = dataRecord.content.flatMap((block) => {
-    const blockRecord = asObjectRecord(block);
-    return blockRecord?.type === "text" && typeof blockRecord.text === "string"
-      ? [blockRecord.text]
-      : [];
-  });
-
-  return textBlocks.length > 0 ? textBlocks.join("") : null;
 }
 
 export function getSubagentChildSessionId(toolCall: AgentToolCallRecord) {
@@ -214,30 +146,21 @@ function getPositiveNumber(value: unknown) {
 }
 
 function getFileLabel(filePath: string) {
-  return filePath.split("/").pop() ?? filePath;
+  return pathBaseName(filePath);
 }
 
-export function getLineRangeLabel(
-  startLine?: number | null,
-  endLine?: number | null,
+export function getToolPreviewTitle(
+  location: ToolCallPreviewLocation,
+  tense: ToolCallTense = "present",
 ) {
-  if (!startLine && !endLine) {
-    return null;
-  }
-
-  if (startLine && endLine && startLine !== endLine) {
-    return `L${startLine}-${endLine}`;
-  }
-
-  return `L${startLine ?? endLine}`;
-}
-
-export function getToolPreviewTitle(location: ToolCallPreviewLocation) {
   const rangeLabel = getLineRangeLabel(location.startLine, location.endLine);
-  return i18n.t("agent:toolCalls.readFile", {
+  const values = {
     fileName: getFileLabel(location.filePath),
     range: rangeLabel ? ` ${rangeLabel}` : "",
-  });
+  };
+  return tense === "past"
+    ? i18n.t("agent:toolCalls.readFileDone", values)
+    : i18n.t("agent:toolCalls.readFile", values);
 }
 
 export function getToolCallPreviewLocations(
@@ -284,32 +207,49 @@ export function getToolCallPreviewLocations(
   });
 }
 
-export function getToolCallStatusLabel(toolCall: AgentToolCallRecord) {
-  if (toolCall.status === "completed") {
+export type ToolCallDisplayStatus =
+  | AgentToolCallRecord["status"]
+  | "interrupted";
+
+export function getToolCallDisplayStatus(
+  toolCall: AgentToolCallRecord,
+  isSessionRunning: boolean,
+): ToolCallDisplayStatus {
+  const isUnfinished =
+    toolCall.status === "pending" || toolCall.status === "in_progress";
+  return isUnfinished && !isSessionRunning ? "interrupted" : toolCall.status;
+}
+
+export function getToolCallStatusLabel(status: ToolCallDisplayStatus) {
+  if (status === "completed") {
     return i18n.t("agent:toolCalls.completed");
   }
 
-  if (toolCall.status === "failed") {
+  if (status === "failed") {
     return i18n.t("agent:toolCalls.failed");
   }
 
-  if (toolCall.status === "pending") {
+  if (status === "pending") {
     return i18n.t("agent:toolCalls.pending");
+  }
+
+  if (status === "interrupted") {
+    return i18n.t("agent:toolCalls.interrupted");
   }
 
   return i18n.t("agent:toolCalls.running");
 }
 
-export function getToolCallStatusClasses(toolCall: AgentToolCallRecord) {
-  if (toolCall.status === "completed") {
+export function getToolCallStatusClasses(status: ToolCallDisplayStatus) {
+  if (status === "completed" || status === "interrupted") {
     return "text-chat-fg-muted";
   }
 
-  if (toolCall.status === "failed") {
+  if (status === "failed") {
     return "text-chat-status-failed-fg";
   }
 
-  if (toolCall.status === "pending") {
+  if (status === "pending") {
     return "text-chat-status-pending-fg";
   }
 
@@ -326,130 +266,6 @@ function formatToolTime(value: string) {
     second: "2-digit",
     hourCycle: "h23",
   });
-}
-
-function truncateMiddle(value: string, maxLength = 120) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  const edgeLength = Math.floor((maxLength - 1) / 2);
-  return `${value.slice(0, edgeLength)}…${value.slice(-edgeLength)}`;
-}
-
-function sanitizeCommand(command: string) {
-  return command.replace(/\s+/g, " ").trim();
-}
-
-function unwrapShellCommand(command: string) {
-  const normalized = sanitizeCommand(command);
-  const shellMatch = normalized.match(
-    /^\/bin\/(?:zsh|bash|sh)\s+-lc\s+["']([\s\S]+)["']$/,
-  );
-
-  return shellMatch?.[1] ? sanitizeCommand(shellMatch[1]) : normalized;
-}
-
-function getCommandExecutable(command: string) {
-  const match = command.match(/^([^\s]+)/);
-  return match?.[1] ?? command;
-}
-
-function getCommandPathTarget(command: string) {
-  const tokens = command.match(/'[^']*'|"[^"]*"|\S+/g) ?? [];
-
-  for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    const token = tokens[index]?.replace(/^['"]|['"]$/g, "");
-    if (!token || token.startsWith("-")) {
-      continue;
-    }
-
-    if (token.includes("/") || token.includes(".")) {
-      return token;
-    }
-  }
-
-  return null;
-}
-
-function getCommandPreview(command: string) {
-  const unwrapped = unwrapShellCommand(command);
-  const executable = getCommandExecutable(unwrapped);
-  const target = getCommandPathTarget(unwrapped);
-
-  if (!target || target === executable) {
-    return truncateMiddle(unwrapped, 88);
-  }
-
-  return truncateMiddle(`${executable} ${target}`, 88);
-}
-
-function getToolCallInputSummary(toolCall: AgentToolCallRecord) {
-  const rawInput = toolCall.rawInput;
-
-  if (typeof rawInput === "string") {
-    return truncateMiddle(sanitizeCommand(rawInput));
-  }
-
-  const rawInputRecord = asObjectRecord(rawInput);
-  if (!rawInputRecord) {
-    return null;
-  }
-  const inputRecord = asObjectRecord(rawInputRecord.input) ?? rawInputRecord;
-
-  const command =
-    typeof inputRecord.command === "string"
-      ? inputRecord.command
-      : typeof inputRecord.cmd === "string"
-        ? inputRecord.cmd
-        : null;
-
-  if (command) {
-    return truncateMiddle(unwrapShellCommand(command));
-  }
-
-  const path =
-    typeof inputRecord.path === "string"
-      ? inputRecord.path
-      : typeof inputRecord.filePath === "string"
-        ? inputRecord.filePath
-        : typeof inputRecord.file_path === "string"
-          ? inputRecord.file_path
-          : null;
-  const query =
-    typeof inputRecord.query === "string"
-      ? inputRecord.query
-      : typeof inputRecord.pattern === "string"
-        ? inputRecord.pattern
-        : null;
-
-  if (path && query) {
-    return truncateMiddle(`${query} in ${path}`);
-  }
-
-  if (path) {
-    const startLine =
-      getPositiveNumber(inputRecord.offset) ??
-      getPositiveNumber(inputRecord.line) ??
-      null;
-    const limit = getPositiveNumber(inputRecord.limit);
-    const endLine =
-      startLine && limit ? Math.max(startLine, startLine + limit - 1) : null;
-    const rangeLabel = getLineRangeLabel(startLine, endLine);
-
-    return truncateMiddle(rangeLabel ? `${path} ${rangeLabel}` : path);
-  }
-
-  if (query) {
-    return truncateMiddle(query);
-  }
-
-  const description =
-    typeof inputRecord.description === "string"
-      ? inputRecord.description
-      : null;
-
-  return description ? truncateMiddle(description) : null;
 }
 
 export function getToolCallSummary(toolCall: AgentToolCallRecord) {
@@ -489,47 +305,59 @@ export function getSingleReadLocation(toolCall: AgentToolCallRecord) {
   return locations.length === 1 ? locations[0] : null;
 }
 
-function getParentPath(filePath: string) {
-  return filePath.slice(
-    0,
-    Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\")),
-  );
-}
+export function getToolCallTriggerParts(
+  toolCall: AgentToolCallRecord,
+  tense: ToolCallTense = "present",
+  workspacePath: string | null = null,
+) {
+  const isPast = tense === "past";
+  if (isContextCompactionToolCall(toolCall)) {
+    return { title: getContextCompactionLabel(toolCall), secondary: "" };
+  }
 
-export function getToolCallTriggerParts(toolCall: AgentToolCallRecord) {
   if (toolCall.kind === WORKTREE_SETUP_TOOL_KIND) {
     return {
       title: i18n.t("agent:toolCalls.worktreeSetup"),
-      secondary: getToolCallInputSummary(toolCall),
+      secondary: getToolCallInputSummary(toolCall, workspacePath),
     };
   }
 
   const skill = asObjectRecord(toolCall.rawInput)?.skill;
   if (typeof skill === "string" && skill.length > 0) {
-    return { title: i18n.t("agent:toolCalls.skill"), secondary: skill };
+    const title = isPast
+      ? i18n.t("agent:toolCalls.skillDone")
+      : i18n.t("agent:toolCalls.skill");
+    return { title, secondary: skill };
   }
 
   const query = asObjectRecord(toolCall.rawInput)?.query;
   if (toolCall.kind === "search" && typeof query === "string" && query) {
-    return { title: i18n.t("agent:toolCalls.search"), secondary: query };
+    const title = isPast
+      ? i18n.t("agent:toolCalls.searchDone")
+      : i18n.t("agent:toolCalls.search");
+    return { title, secondary: query };
   }
 
   const readLocation = getSingleReadLocation(toolCall);
   if (readLocation) {
     return {
-      title: getToolPreviewTitle(readLocation),
-      secondary: getParentPath(readLocation.filePath) || null,
+      title: getToolPreviewTitle(readLocation, tense),
+      secondary: getDisplayDirectory(readLocation.filePath, workspacePath),
     };
   }
 
   const title = getToolCallTitle(toolCall);
 
   if (isCommandToolCall(toolCall)) {
+    const description = getCommandDescription(toolCall);
+    if (description) {
+      return { title: description, secondary: "" };
+    }
     const titleCommand = title.replace(/^(execute|run)\s*/i, "").trim();
     return {
-      title: i18n.t("agent:toolCalls.execute"),
+      title: "",
       secondary:
-        getToolCallInputSummary(toolCall) ||
+        getToolCallInputSummary(toolCall, workspacePath) ||
         truncateMiddle(sanitizeCommand(titleCommand || title)),
     };
   }

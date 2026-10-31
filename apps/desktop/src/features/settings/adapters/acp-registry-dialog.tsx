@@ -1,12 +1,16 @@
 import {
+  ACP_REGISTRY_AGENT_ID_PREFIX,
   type AcpRegistryAgentId,
   type AcpRegistryCatalogAgent,
+  isAcpRegistryAgentId,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
-import { Check, Download, PackageSearch, Trash2 } from "lucide-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { Check, Download, PackageSearch, Terminal } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppRemoveButton } from "@/components/app";
 import {
   Badge,
   Button,
@@ -20,12 +24,17 @@ import {
   Spinner,
   Text,
 } from "@/components/ui";
-import { AgentIcon } from "@/features/sessions";
-import { desktopApi } from "@/lib";
+import {
+  AgentIcon,
+  agentsAtom,
+  bootstrapAgentsAtom,
+} from "@/features/sessions";
+import { desktopApi, useMountEffect } from "@/lib";
+import { AcpRegistryInstallPanel } from "./acp-registry-install-panel";
 
-interface AcpRegistryDialogProps {
-  installedRegistryIds: ReadonlySet<string>;
-  onInstalled(): Promise<void>;
+export interface AcpRegistryDialogProps {
+  open: boolean;
+  onOpenChange(open: boolean): void;
 }
 
 function matchesQuery(agent: AcpRegistryCatalogAgent, query: string) {
@@ -44,25 +53,31 @@ function errorMessage(error: unknown, fallback: string) {
 
 function RegistryAgentRow({
   agent,
+  expanded,
   installed,
   installing,
   onInstall,
+  onToggle,
+  onUseCommand,
 }: {
   agent: AcpRegistryCatalogAgent;
+  expanded: boolean;
   installed: boolean;
   installing: boolean;
   onInstall(): void;
+  onToggle(): void;
+  onUseCommand(command: string, args: string[]): void;
 }) {
   const { t } = useTranslation("settings");
   let action = (
     <Button
-      disabled={installing}
-      onClick={onInstall}
+      aria-expanded={expanded}
+      onClick={onToggle}
       size="xs"
       type="button"
       variant="outline"
     >
-      {installing ? <Spinner size="xs" /> : <Download className="size-3.5" />}
+      <Download className="size-3.5" />
       {t("adapters.registry.install")}
     </Button>
   );
@@ -79,52 +94,89 @@ function RegistryAgentRow({
         {t("adapters.registry.installed")}
       </Text>
     );
-  } else if (!agent.distribution) {
+  } else if (!agent.installPlan) {
     action = (
-      <Text size="meta" tone="muted">
-        {t("adapters.registry.unsupported")}
-      </Text>
+      <Button
+        aria-expanded={expanded}
+        onClick={onToggle}
+        size="xs"
+        title={t("adapters.registry.unsupported")}
+        type="button"
+        variant="outline"
+      >
+        <Terminal className="size-3.5" />
+        {t("adapters.registry.manual.open")}
+      </Button>
     );
   }
+  const canInstall = !agent.builtInAgentId && !installed;
 
   return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <AgentIcon agentId={toAcpRegistryAgentId(agent.registryId)} />
-          <Text className="font-medium" size="body">
-            {agent.name}
-          </Text>
-          <Text className="font-mono" size="meta" tone="muted">
-            v{agent.version}
-          </Text>
-          {agent.distribution ? (
-            <Badge variant="secondary">{agent.distribution}</Badge>
+    <div className="py-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <AgentIcon agentId={toAcpRegistryAgentId(agent.registryId)} />
+            <Text className="font-medium" size="body">
+              {agent.name}
+            </Text>
+            <Text className="font-mono" size="meta" tone="muted">
+              v{agent.version}
+            </Text>
+            {agent.distribution ? (
+              <Badge variant="secondary">{agent.distribution}</Badge>
+            ) : null}
+          </div>
+          {agent.description ? (
+            <Text className="mt-0.5 line-clamp-2" size="meta" tone="muted">
+              {agent.description}
+            </Text>
           ) : null}
         </div>
-        {agent.description ? (
-          <Text className="mt-0.5 line-clamp-2" size="meta" tone="muted">
-            {agent.description}
-          </Text>
-        ) : null}
+        <div className="shrink-0">{action}</div>
       </div>
-      <div className="shrink-0">{action}</div>
+      {expanded && canInstall ? (
+        <AcpRegistryInstallPanel
+          agent={agent}
+          busy={installing}
+          onCancel={onToggle}
+          onInstall={onInstall}
+          onUseCommand={onUseCommand}
+        />
+      ) : null}
     </div>
   );
 }
 
 export function AcpRegistryDialog({
-  installedRegistryIds,
-  onInstalled,
+  open,
+  onOpenChange,
 }: AcpRegistryDialogProps) {
+  if (!open) {
+    return null;
+  }
+  return <AcpRegistryCatalog onOpenChange={onOpenChange} />;
+}
+
+function AcpRegistryCatalog({
+  onOpenChange,
+}: Pick<AcpRegistryDialogProps, "onOpenChange">) {
   const { t } = useTranslation("settings");
-  const [open, setOpen] = useState(false);
+  const agents = useAtomValue(agentsAtom);
+  const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
+  const installedRegistryIds = new Set(
+    agents
+      .map((agent) => agent.id)
+      .filter(isAcpRegistryAgentId)
+      .map((agentId) => agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)),
+  );
   const [catalog, setCatalog] = useState<AcpRegistryCatalogAgent[] | null>(
     null,
   );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [installingId, setInstallingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadCatalog = async () => {
     setLoadError(null);
@@ -135,18 +187,19 @@ export function AcpRegistryDialog({
     }
   };
 
-  const changeOpen = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (nextOpen && !catalog) {
-      void loadCatalog();
-    }
-  };
+  useMountEffect(() => {
+    void loadCatalog();
+  });
 
-  const install = async (agent: AcpRegistryCatalogAgent) => {
+  const install = async (
+    agent: AcpRegistryCatalogAgent,
+    run: () => Promise<unknown>,
+  ) => {
     setInstallingId(agent.registryId);
     try {
-      await desktopApi.installAcpRegistryAgent(agent.registryId);
-      await onInstalled();
+      await run();
+      bootstrapAgents(await desktopApi.listAgents());
+      setExpandedId(null);
       toast.success(
         t("adapters.registry.installSucceeded", { name: agent.name }),
       );
@@ -161,13 +214,14 @@ export function AcpRegistryDialog({
     matchesQuery(agent, query),
   );
   let body = (
-    <div className="flex justify-center py-10">
+    <div className="flex h-full items-center justify-center">
       <Spinner size="sm" />
     </div>
   );
   if (loadError) {
     body = (
       <EmptyState
+        className="h-full"
         action={
           <Button
             onClick={() => void loadCatalog()}
@@ -185,6 +239,7 @@ export function AcpRegistryDialog({
   } else if (catalog && visibleAgents.length === 0) {
     body = (
       <EmptyState
+        className="h-full"
         icon={<PackageSearch />}
         title={t("adapters.registry.noResults")}
       />
@@ -195,10 +250,29 @@ export function AcpRegistryDialog({
         {visibleAgents.map((agent) => (
           <RegistryAgentRow
             agent={agent}
+            expanded={expandedId === agent.registryId}
             installed={installedRegistryIds.has(agent.registryId)}
             installing={installingId === agent.registryId}
             key={agent.registryId}
-            onInstall={() => void install(agent)}
+            onInstall={() =>
+              void install(agent, () =>
+                desktopApi.installAcpRegistryAgent(agent.registryId),
+              )
+            }
+            onToggle={() =>
+              setExpandedId((current) =>
+                current === agent.registryId ? null : agent.registryId,
+              )
+            }
+            onUseCommand={(command, args) =>
+              void install(agent, () =>
+                desktopApi.installAcpRegistryCommand({
+                  registryId: agent.registryId,
+                  command,
+                  args,
+                }),
+              )
+            }
           />
         ))}
       </div>
@@ -206,33 +280,22 @@ export function AcpRegistryDialog({
   }
 
   return (
-    <>
-      <Button
-        onClick={() => changeOpen(true)}
-        size="xs"
-        type="button"
-        variant="ghost"
-      >
-        <PackageSearch className="size-3.5" />
-        {t("adapters.registry.open")}
-      </Button>
-      <Dialog onOpenChange={changeOpen} open={open}>
-        <DialogContent size="palette">
-          <DialogHeader>
-            <DialogTitle>{t("adapters.registry.title")}</DialogTitle>
-            <DialogDescription>
-              {t("adapters.registry.description")}
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("adapters.registry.search")}
-            value={query}
-          />
-          <div className="max-h-[60vh] overflow-y-auto px-1">{body}</div>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog onOpenChange={onOpenChange} open>
+      <DialogContent size="palette">
+        <DialogHeader>
+          <DialogTitle>{t("adapters.registry.title")}</DialogTitle>
+          <DialogDescription>
+            {t("adapters.registry.description")}
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t("adapters.registry.search")}
+          value={query}
+        />
+        <div className="h-[60vh] overflow-y-auto px-1">{body}</div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -262,15 +325,16 @@ export function AcpRegistryRemoveButton({
   };
 
   return (
-    <Button
-      disabled={removing}
-      onClick={() => void remove()}
-      size="xs"
-      type="button"
-      variant="ghost"
-    >
-      {removing ? <Spinner size="xs" /> : <Trash2 className="size-3.5" />}
-      {t("adapters.registry.remove")}
-    </Button>
+    <AppRemoveButton
+      busy={removing}
+      cancelLabel={t("adapters.registry.plan.cancel")}
+      confirmDescription={t("adapters.registry.removeDescription", {
+        name: label,
+      })}
+      confirmLabel={t("adapters.registry.remove")}
+      confirmTitle={t("adapters.registry.removeTitle", { name: label })}
+      label={t("adapters.registry.remove")}
+      onConfirm={() => void remove()}
+    />
   );
 }

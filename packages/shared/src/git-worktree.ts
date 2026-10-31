@@ -30,13 +30,23 @@ function emptyDraft(): WorktreeDraft {
   };
 }
 
+const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/;
+
+export function isWindowsDrivePath(value: string) {
+  return WINDOWS_DRIVE_PATH.test(value);
+}
+
+function toNativeGitPath(value: string) {
+  return isWindowsDrivePath(value) ? value.replaceAll("/", "\\") : value;
+}
+
 function finishDraft(draft: WorktreeDraft): GitWorktreeInfo | null {
   if (!draft.path) {
     return null;
   }
 
   return {
-    path: draft.path,
+    path: toNativeGitPath(draft.path),
     head: draft.head,
     branch: draft.branch,
     detached: draft.detached,

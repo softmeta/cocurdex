@@ -158,7 +158,7 @@ function HostDirectoryBrowser({
           <ArrowUp />
         </IconButton>
         <Input
-          className="h-8 flex-1"
+          className="h-7 flex-1"
           placeholder={t("workspace.hostPicker.pathPlaceholder")}
           spellCheck={false}
           value={pathDraft}

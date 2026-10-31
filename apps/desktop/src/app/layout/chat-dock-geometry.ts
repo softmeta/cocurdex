@@ -114,6 +114,7 @@ const TOP_MARGIN = 40;
 // the FAB is unavailable (window resize clamp).
 export const CHAT_FAB_SIZE_PX = 36;
 const FAB_DRAG_THRESHOLD_PX = 4;
+const WINDOW_RESIZE_SETTLE_MS = 150;
 
 export interface DockGeometry {
   right: number;
@@ -510,9 +511,17 @@ export function useFabPosition() {
   // True after a real drag; cleared by consumeDragClick or a deferred reset
   // so the trailing click after mouseup can be swallowed.
   const draggedRef = useRef(false);
+  const [windowResizing, setWindowResizing] = useState(false);
 
   useMountEffect(() => {
+    let settleTimer: number | undefined;
     const onResize = () => {
+      setWindowResizing(true);
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(
+        () => setWindowResizing(false),
+        WINDOW_RESIZE_SETTLE_MS,
+      );
       setPosition((prev) => {
         const next = fitFabPositionToWindow(
           prev,
@@ -528,7 +537,10 @@ export function useFabPosition() {
     };
 
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.clearTimeout(settleTimer);
+      window.removeEventListener("resize", onResize);
+    };
   });
 
   const beginDrag = useCallback(
@@ -596,7 +608,7 @@ export function useFabPosition() {
     return true;
   }, []);
 
-  return { position, beginDrag, consumeDragClick };
+  return { position, windowResizing, beginDrag, consumeDragClick };
 }
 
 function getStoredSessionListWidth(): number {

@@ -1,32 +1,15 @@
 import { Text } from "@/components/ui";
-import { cn } from "@/lib";
 
 interface SlashCommandPreviewProps {
   description: string;
-  tone?: "chat" | "welcome";
 }
 
-export function SlashCommandPreview({
-  description,
-  tone = "chat",
-}: SlashCommandPreviewProps) {
-  const panelClassName =
-    tone === "welcome"
-      ? "border-welcome-border/60 bg-welcome-surface/95 text-welcome-fg-secondary backdrop-blur-md"
-      : "border-chat-border-soft bg-chat-surface-raised/95 text-chat-fg backdrop-blur-md";
-  const bodyClassName =
-    tone === "welcome" ? "text-welcome-fg-muted" : "text-chat-fg-muted";
-
+export function SlashCommandPreview({ description }: SlashCommandPreviewProps) {
   return (
-    <div
-      className={cn(
-        "w-72 shrink-0 rounded-card border p-2.5 shadow-chat-soft",
-        panelClassName,
-      )}
-    >
+    <div className="w-70 shrink-0">
       <Text
         as="p"
-        className={cn("whitespace-pre-wrap break-words", bodyClassName)}
+        className="whitespace-pre-wrap break-words px-1.5 py-1 text-muted-foreground"
         size="meta"
       >
         {description}

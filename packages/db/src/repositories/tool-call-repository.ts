@@ -3,6 +3,18 @@ import type {
   AgentToolCallResult,
 } from "@cocurdex/shared";
 
+export interface StoredToolCallResult {
+  result: AgentToolCallResult;
+  resultRef: string | null;
+}
+
+export interface ExternalizableToolCallResult {
+  rowId: number;
+  toolCallId: string;
+  updatedAt: string;
+  result: AgentToolCallResult;
+}
+
 export interface ToolCallRepository {
   list(): Promise<AgentToolCallRecord[]>;
   listBySessionId(sessionId: string): Promise<AgentToolCallRecord[]>;
@@ -11,9 +23,24 @@ export interface ToolCallRepository {
   // serialize, and hold detail payloads users may never expand. The returned
   // records have unloaded result fields; fetch them via getResultById.
   listSummariesBySessionId(sessionId: string): Promise<AgentToolCallRecord[]>;
-  getResultById(toolCallId: string): Promise<AgentToolCallResult | null>;
+  listSummariesChangedSince(
+    sessionId: string,
+    changeSeq: number,
+  ): Promise<AgentToolCallRecord[]>;
+  getResultById(toolCallId: string): Promise<StoredToolCallResult | null>;
+  listResultRefsBySessionId(sessionId: string): Promise<Map<string, string>>;
+  listResultRefs(): Promise<Set<string>>;
+  listExternalizableResults(input: {
+    minBytes: number;
+    limit: number;
+    afterRowId: number;
+  }): Promise<ExternalizableToolCallResult[]>;
+  externalizeResult(
+    toolCallId: string,
+    updatedAt: string,
+    resultRef: string,
+  ): Promise<boolean>;
   upsert(toolCall: AgentToolCallRecord): Promise<number | null>;
-  deleteAfter(sessionId: string, messageId: string): Promise<void>;
   clearBySessionId(sessionId: string): Promise<void>;
   // Daemon-start recovery: a tool call only reaches a terminal status when the
   // agent reports it, so anything still pending/in_progress when the daemon

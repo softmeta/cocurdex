@@ -1,10 +1,5 @@
 export { getDefaultProviderModelValue } from "./default-provider-model";
 export {
-  getDefaultOpenCodeAgent,
-  getOpenCodeRuntimeOptions,
-  resolveOpenCodeRuntimeValue,
-} from "./opencode-runtime-options";
-export {
   getCachedProviderModelEntry,
   getProviderModelCacheVersion,
   getProviderModelValue,

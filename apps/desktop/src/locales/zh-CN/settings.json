@@ -6,16 +6,45 @@
       "docs": "文档",
       "refresh": "刷新"
     },
+    "auth": {
+      "cancel": "取消",
+      "confirmCancel": "取消",
+      "failedKeeping": "{{message}} 仍在使用{{method}}登录。",
+      "login": "登录",
+      "logout": "退出登录…",
+      "logoutConfirm": "退出登录",
+      "logoutDescription_other": "下次用 {{agent}} 新建会话前需要重新登录。",
+      "logoutDescriptionSessions_other": "会停止 {{count}} 个正在运行的 {{agent}} 会话。下次新建会话前需要重新登录。",
+      "logoutTitle": "退出 {{agent}} 登录？",
+      "method": "登录方式",
+      "readFailed": "无法读取登录方式：{{message}}",
+      "reading": "正在读取登录方式…",
+      "retry": "重试",
+      "signingIn": "正在用{{method}}登录。如果浏览器打开了登录页，请在那里完成，完成后这里会自动更新。",
+      "switchConfirm": "切换",
+      "switchDescription_other": "切换会停止 {{count}} 个正在运行的 {{agent}} 会话。新方式登录失败时保留当前方式。",
+      "switchTitle": "切换登录方式？"
+    },
     "badge": {
       "builtin": "内置",
       "updateRequired": "需要升级"
     },
-    "description": "cocurdex 通过本机上的这些 agent CLI 工作。安装或升级你要在新会话里选用的适配器。",
+    "description": "新建会话时可以选用下面这些 agent CLI。cocurdex 会自动检测本机已安装的版本，也可以从 ACP Registry 添加更多。",
+    "detail": {
+      "builtinNote": "随 Cocurdex 提供，无需安装。",
+      "executable": "可执行文件",
+      "install": "安装",
+      "manage": "管理",
+      "signIn": "登录",
+      "update": "更新",
+      "usage": "用量"
+    },
     "kind": {
       "builtin": "内置",
       "detecting": "检测中…",
       "error": "失败",
       "missing": "未安装",
+      "needsLogin": "需要登录",
       "outdated": "需要升级",
       "ready": "可用"
     },
@@ -34,11 +63,34 @@
       "installFailed": "安装失败",
       "installSucceeded": "已安装 {{name}}",
       "loadFailed": "无法加载 ACP Registry",
+      "manual": {
+        "args": "参数",
+        "back": "返回",
+        "command": "命令",
+        "description": "先自行安装这个 agent，再填写它的可执行文件名或绝对路径，以及进入 ACP 模式所需的参数。",
+        "open": "使用自己的命令",
+        "save": "保存"
+      },
       "noResults": "没有匹配的 agent",
       "open": "从 ACP Registry 添加",
+      "plan": {
+        "cancel": "取消",
+        "confirm": "安装",
+        "copied": "已复制命令",
+        "copy": "复制命令",
+        "directory": "安装到",
+        "download": "下载",
+        "launch": "启动命令",
+        "localNote": "已在本机找到这个 CLI。不会下载任何内容，agent 会直接运行它。",
+        "noChecksum": "Registry 没有提供校验和，无法校验下载内容。",
+        "packageNote": "安装时会运行一次 {{runner}}，把这个锁定版本的包下载到本地缓存，之后启动直接使用缓存。",
+        "prefetch": "安装时运行"
+      },
       "remove": "移除",
+      "removeDescription": "从 Cocurdex 移除 {{name}}。已有会话保留，之后可以从 ACP Registry 重新添加。",
       "removeFailed": "无法移除该 agent",
       "removeSucceeded": "已移除 {{name}}",
+      "removeTitle": "移除 {{name}}？",
       "retry": "重试",
       "search": "搜索 agent",
       "title": "ACP Registry",
@@ -56,11 +108,13 @@
     "toast": {
       "commandCopied": "已复制安装命令",
       "pathCopied": "已复制路径",
-      "refreshFailed": "刷新适配器失败"
+      "refreshFailed": "刷新 Agent CLI 失败"
     }
   },
   "agentRoles": {
     "cancel": "取消",
+    "create": "新建角色",
+    "createTitle": "新建角色",
     "delete": "删除",
     "deleted": "角色已删除",
     "deleteDescription": "「{{name}}」将被删除，此操作无法撤销。",
@@ -70,9 +124,13 @@
     "edit": "编辑",
     "editTitle": "编辑角色",
     "empty": "还没有角色",
-    "emptyDescription": "在新建会话的模型菜单中选择「保存为角色」。",
+    "emptyDescription": "点击「新建角色」，或在新建会话的模型菜单中选择「保存为角色」。",
+    "listTitle": "已保存的角色",
     "name": "名称",
     "namePlaceholder": "角色名称",
+    "roleDescription": "描述",
+    "roleDescriptionPlaceholder": "这个角色负责什么、擅长什么。团队协作时 lead agent 会据此挑选队友。",
+    "runtime": "Agent 与模型",
     "save": "保存",
     "saved": "角色已更新",
     "saveFailed": "无法保存这个角色。"
@@ -249,6 +307,132 @@
       "restartFailed": "无法重启 daemon"
     }
   },
+  "devices": {
+    "access": {
+      "cancel": "取消",
+      "description": "设备会立即重新连接并使用新权限。",
+      "failed": "无法修改设备权限",
+      "save": "保存",
+      "title": "{{name}} 的权限"
+    },
+    "audit": {
+      "action": {
+        "deviceRevoked": "已吊销设备",
+        "deviceScopesChanged": "设备权限已修改",
+        "pairingCancelled": "已取消配对",
+        "pairingCreated": "已创建配对",
+        "pairingExchanged": "设备已配对",
+        "pairingRejected": "拒绝了一次配对尝试",
+        "remoteDisabled": "已关闭远程访问",
+        "remoteEnabled": "已开启远程访问"
+      },
+      "groupTitle": "访问记录"
+    },
+    "copy": "复制",
+    "list": {
+      "detail": "{{scopes}} · 最近活动 {{time}}",
+      "editAccess": "修改权限",
+      "empty": "还没有设备与这台电脑配对。",
+      "groupTitle": "已配对设备",
+      "revoke": "吊销",
+      "revokeCancel": "取消",
+      "revokedDetail": "已于 {{time}} 吊销",
+      "revokeDescription": "设备会立即断开，重新连接需要再次配对。",
+      "revokeFailed": "无法吊销设备",
+      "revokeTitle": "吊销 {{name}}？",
+      "unnamed": "未命名设备"
+    },
+    "localWeb": {
+      "groupTitle": "浏览器",
+      "open": {
+        "action": "打开",
+        "description": "在这台电脑的浏览器中使用 Cocurdex，连接同样的工作区和会话。",
+        "title": "在浏览器中打开"
+      },
+      "openFailed": "无法在浏览器中打开 Cocurdex"
+    },
+    "pair": {
+      "create": "生成配对码",
+      "createdDescription": "用手机上的 Cocurdex 扫描二维码，或在另一台设备上打开链接。配对码只能使用一次。",
+      "description": "选择新设备可以做什么，之后随时可以吊销。",
+      "done": "完成",
+      "enableRemoteFirst": "开启远程访问后，才能得到另一台设备可以打开的链接。",
+      "expires": "{{time}} 过期",
+      "failed": "无法生成配对码",
+      "label": "设备名称",
+      "labelPlaceholder": "例如：我的手机",
+      "open": "配对设备",
+      "qrLabel": "{{address}} 的配对二维码",
+      "title": "配对设备",
+      "ttl": "配对码有效期",
+      "ttlMinutes_other": "{{count}} 分钟"
+    },
+    "pairings": {
+      "cancel": "取消",
+      "cancelFailed": "无法取消配对",
+      "expires": "等待设备连接 · {{time}} 过期",
+      "groupTitle": "待完成的配对"
+    },
+    "remote": {
+      "enable": {
+        "description": "允许局域网或 tailnet 中已配对的设备连接这台电脑。",
+        "title": "允许远程设备"
+      },
+      "error": "远程访问无法启动：{{error}}",
+      "groupDescription": "默认关闭。只有已配对的设备能连接，且只拥有你授予的权限。",
+      "groupTitle": "远程访问",
+      "invalidPort": "端口需在 1024 到 65535 之间",
+      "kind": {
+        "lan": "局域网",
+        "tailscale": "Tailscale"
+      },
+      "noAddresses": "没有找到网络地址。请连接网络或 Tailscale。",
+      "plaintextWarning": "连接未加密。请只在可信网络或通过 Tailscale 使用远程访问。",
+      "port": {
+        "description": "默认 {{port}}。",
+        "title": "端口"
+      },
+      "saveFailed": "无法更改远程访问"
+    },
+    "scope": {
+      "approvals": {
+        "description": "处理权限请求、问题和计划审批。",
+        "title": "审批"
+      },
+      "credentials": {
+        "description": "管理模型提供方登录和 API Key，查看 MCP 服务器。",
+        "title": "凭据"
+      },
+      "execute": {
+        "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器。",
+        "title": "启动任务"
+      },
+      "filesRead": {
+        "description": "读取工作区文件、差异和 Git 状态。",
+        "title": "读取文件"
+      },
+      "filesWrite": {
+        "description": "编辑工作区文件、暂存和提交。",
+        "title": "写入文件"
+      },
+      "gitDestructive": {
+        "description": "丢弃更改、切换分支和推送。",
+        "title": "破坏性 Git 操作"
+      },
+      "hostAdmin": {
+        "description": "修改应用设置和管理设备，仅限这台电脑。",
+        "title": "主机管理"
+      },
+      "interact": {
+        "description": "发送消息、停止会话、编辑笔记和 issue。",
+        "title": "交互"
+      },
+      "read": {
+        "description": "查看会话、消息、笔记和 issue。",
+        "title": "读取"
+      }
+    }
+  },
   "diagnostics": {
     "actions": {
       "export": "导出诊断日志…"
@@ -299,6 +483,15 @@
     "system": "系统",
     "workspace": "工作区"
   },
+  "jsonImport": {
+    "addManually": "手动填写",
+    "cancel": "取消",
+    "chooseFile": "选择 JSON 文件…",
+    "continue": "继续",
+    "pasteButton": "粘贴 JSON",
+    "pasteLabel": "JSON 文本",
+    "pastePlaceholder": "{\n  \"mcpServers\": { … }\n}"
+  },
   "language": {
     "description": "选择产品界面使用的语言。",
     "empty": "未找到语言",
@@ -331,40 +524,174 @@
     "view": "查看"
   },
   "mcp": {
-    "description": "配置内置 Pi agent 可用的 MCP 服务器。Pi 会在会话启动时连接这些服务器。服务器名称只能包含字母、数字、“_”和“-”。",
-    "editorLabel": "MCP 服务器配置",
-    "form": {
+    "actions": {
+      "remove": "移除",
+      "save": "保存",
+      "test": "测试连接",
+      "testing": "测试中…"
+    },
+    "advanced": {
+      "callbackPort": "回调端口",
+      "clientId": "OAuth 客户端 ID",
+      "clientSecret": "OAuth 客户端密钥",
+      "exposure": "工具暴露方式",
+      "exposureHint": {
+        "codemode": "Pi 通过生成的代码调用这些工具。",
+        "deferred": "Agent 搜索时才加载这些工具。",
+        "direct": "所有工具直接加入 Agent 的工具列表。",
+        "hidden": "不向 Agent 提供这些工具。"
+      },
+      "exposureOption": {
+        "codemode": "代码模式",
+        "deferred": "按需加载",
+        "direct": "直接暴露",
+        "hidden": "隐藏"
+      },
+      "oauthClientHint": "仅当服务器不支持动态客户端注册时需要填写。",
+      "title": "高级"
+    },
+    "agents": {
+      "access": {
+        "injected": "新会话启动时添加。OAuth 服务器还需要在该 agent 中登录。",
+        "native": "通过 Cocurdex 直接连接，支持登录和项目级服务器。"
+      },
+      "description": "会话启动时，Cocurdex 会把此服务器提供给选中的 agent，不会修改它们自己的 MCP 配置。",
+      "serverUnsupported": {
+        "command-value": "仅 Pi 可用：有值通过命令（!cmd）生成。",
+        "cwd": "仅 Pi 可用：它设置了工作目录。",
+        "invalid": "仅 Pi 可用：该服务器没有命令或 URL。",
+        "missing-env": "仅 Pi 可用：它引用了未设置的环境变量。",
+        "provider-auth": "仅 Pi 可用：它通过 Pi 的提供商登录。"
+      },
+      "title": "Agent"
+    },
+    "auth": {
+      "bearer": "Bearer 令牌",
+      "bearerHint": "作为 Authorization 请求头发送。可用 ${VAR} 从环境变量读取。",
+      "cancel": "取消",
+      "failed": "登录失败。",
+      "needsSignIn": "此服务器需要登录。",
+      "oauth": "OAuth",
+      "oauthHint": "服务器要求授权时再登录。",
+      "saveFirst": "保存服务器后才能登录。",
+      "signedIn": "已登录。",
+      "signIn": "登录",
+      "signOut": "退出登录",
+      "title": "认证",
+      "token": "令牌",
+      "waiting": "正在等待浏览器中完成授权…"
+    },
+    "backToForm": "返回表单",
+    "description": "Cocurdex 提供给各 agent 的工具服务器，新会话开始使用",
+    "detail": {
+      "enabled": "启用",
+      "label": "MCP 服务器",
+      "manageLabel": "管理",
+      "newTitle": "新服务器",
+      "projectReadOnly": "定义在 {{path}}。项目服务器在这里只读，请编辑该文件来修改。"
+    },
+    "editJson": "编辑 mcp.json",
+    "empty": {
       "add": "添加服务器",
-      "arguments": "参数",
-      "argumentsDescription": "每行输入一个参数。",
-      "argumentsPlaceholder": "-y\npackage-name",
+      "description": "添加本地命令或远程端点，让 agent 使用其中的工具。",
+      "discovered_other": "{{agents}} 里已有 {{count}} 个，可以直接导入。",
+      "dropHint": "识别其中的 mcpServers，导入前逐项确认。",
+      "title": "还没有 MCP 服务器"
+    },
+    "errors": {
+      "callbackPortInvalid": "回调端口必须是 1 到 65535 之间的数字。",
+      "commandRequired": "请输入命令。",
+      "nameInvalid": "名称只能包含字母、数字、\"_\" 和 \"-\"。",
+      "nameRequired": "请输入服务器名称。",
+      "nameTaken": "已存在同名服务器。",
+      "urlInvalid": "请输入以 http:// 或 https:// 开头的 URL。",
+      "urlRequired": "请输入 URL。"
+    },
+    "fields": {
+      "addEnv": "添加变量",
+      "addHeader": "添加请求头",
+      "args": "参数",
       "command": "命令",
-      "commandPlaceholder": "npx",
-      "emptyDescription": "添加本地命令或远程端点，让 Pi 可以使用其中的工具。",
-      "emptyTitle": "尚未配置 MCP 服务器",
-      "environment": "环境变量",
-      "environmentDescription": "每行输入一组 KEY=value。",
-      "environmentPlaceholder": "API_KEY=${API_KEY}",
+      "env": "环境变量",
+      "headers": "请求头",
+      "key": "键",
       "local": "本地",
-      "name": "服务器名称",
-      "namePlaceholder": "github",
+      "name": "名称",
       "remote": "远程",
-      "remove": "移除服务器",
-      "servers": "服务器",
+      "removeRow": "移除",
       "transport": "连接方式",
-      "url": "服务器 URL",
-      "urlPlaceholder": "https://example.com/mcp"
+      "url": "URL",
+      "value": "值"
     },
-    "mode": {
-      "form": "表单",
-      "json": "JSON",
-      "label": "配置模式"
+    "import": {
+      "agentsDescription": "在这台电脑上的 {{agents}} 配置中找到的 MCP 服务器。",
+      "agentsTitle": "从其他 Agent 导入",
+      "cancel": "取消",
+      "confirm_other": "导入 {{count}} 个服务器",
+      "different": "将覆盖现有配置",
+      "empty": "没有找到 MCP 服务器。",
+      "importing": "导入中…",
+      "jsonDescription": "选择要添加到 Cocurdex MCP 配置的服务器。",
+      "jsonTitle": "导入 JSON",
+      "same": "已添加",
+      "source": {
+        "antigravity": "Antigravity",
+        "claude": "Claude Code",
+        "claude-project": "Claude Code · 项目",
+        "codex": "Codex",
+        "codex-project": "Codex · 项目",
+        "cursor": "Cursor",
+        "json": "JSON",
+        "opencode": "OpenCode",
+        "opencode-project": "OpenCode · 项目"
+      },
+      "unsupported": "不支持"
     },
-    "restartHint": "更改会在 Pi 会话启动时生效，已经运行的会话会继续使用当前工具。",
-    "save": "保存",
-    "saved": "MCP 配置已保存",
-    "saving": "正在保存",
-    "title": "MCP"
+    "json": {
+      "label": "MCP 配置 JSON"
+    },
+    "jsonDescription": "直接编辑配置文件，保存时按 Pi 的规则校验",
+    "jsonImport": {
+      "dropActive": "松开以导入",
+      "invalidFile": "请选择 JSON 文本文件。",
+      "label": "从 JSON 导入",
+      "pasteDescription": "粘贴 mcpServers 对象、服务器映射，或单个 \"name\": { … } 条目。",
+      "pasteTitle": "粘贴 MCP JSON"
+    },
+    "list": {
+      "add": "添加",
+      "global": "全局",
+      "importFromAgents": "从其他 Agent 导入",
+      "noMatches": "没有匹配的服务器",
+      "project": "项目 · {{workspace}}",
+      "readOnly": "只读",
+      "search": "搜索服务器"
+    },
+    "removeConfirm": {
+      "cancel": "取消",
+      "confirm": "移除",
+      "description": "将从 Cocurdex 的 MCP 配置中移除“{{name}}”。正在运行的会话保留当前工具。",
+      "title": "移除 MCP 服务器？"
+    },
+    "revealConfig": "在文件管理器中显示",
+    "state": {
+      "connected": "已连接",
+      "disabled": "已停用",
+      "failed": "连接失败",
+      "needs-auth": "需要登录",
+      "unknown": "未检查"
+    },
+    "title": "MCP",
+    "tools": {
+      "checkedAt": "上次检查 {{time}}",
+      "checking": "检查中…",
+      "disabled": "服务器已停用。",
+      "needsAuth": "登录后才能列出工具。",
+      "none": "此服务器没有提供工具。",
+      "notChecked": "尚未检查",
+      "title": "工具",
+      "titleWithCount_other": "工具 · {{count}}"
+    }
   },
   "network": {
     "proxy": {
@@ -406,10 +733,26 @@
       "scopeDescription": "用于 Agent 与应用出站网络请求。默认不劫持系统代理，也不接管内置终端。",
       "status": {
         "checking": "正在检测连通性…",
+        "fields": {
+          "egressIp": "出口 IP",
+          "error": "错误",
+          "latency": "延迟",
+          "location": "位置",
+          "mode": "模式"
+        },
         "idle": "悬停可检测连通性",
         "label": "代理状态",
+        "latencyValue": "{{durationMs}} 毫秒",
         "offDetail": "出站流量直连，未使用应用内代理。",
-        "openSettings": "打开网络设置"
+        "openSettings": "打开网络设置",
+        "state": {
+          "checking": "检测中",
+          "error": "失败",
+          "incomplete": "配置不完整",
+          "off": "直连",
+          "ok": "连通",
+          "unknown": "未检测"
+        }
       },
       "test": {
         "action": "测试",
@@ -453,7 +796,6 @@
       "add": "添加",
       "clearKey": "清除密钥",
       "delete": "删除",
-      "importJson": "导入 JSON",
       "newProvider": "新建",
       "refresh": "刷新",
       "save": "保存"
@@ -548,11 +890,13 @@
       "confirm": "导入",
       "description": "导入 pi 风格的 models.json。每个服务商及其模型会写入（同 ID 覆盖）。字面量 apiKey 会保存；$ENV 与 !command 需手动填写密钥。",
       "dropActive": "松开以导入",
-      "dropHint": "拖拽 JSON 文件到此处，或点击选择文件。",
+      "dropAreaHint": "识别 pi 风格 models.json 中的服务商，导入前确认。",
       "importing": "导入中…",
       "intro": "从 pi 风格的 models.json 添加或更新服务商及其模型。",
       "invalidFile": "请选择 JSON 文本文件。",
       "label": "从 JSON 导入服务商",
+      "pasteDescription": "粘贴 pi 风格 models.json 的内容。",
+      "pasteTitle": "粘贴服务商 JSON",
       "providerCount": "{{count}} 个服务商",
       "providerCount_other": "{{count}} 个服务商",
       "summary": "将写入 {{providers}}、{{models}}。",
@@ -567,6 +911,7 @@
     "list": {
       "configuredCount": "已配置 {{count}} 个"
     },
+    "manageLabel": "管理",
     "models": {
       "addTitle": "添加模型",
       "advanced": "高级",
@@ -647,11 +992,12 @@
   },
   "sections": {
     "about": "关于",
-    "adapters": "适配器",
+    "adapters": "Agent CLI",
     "agentRoles": "角色",
     "appearance": "外观",
     "archived": "已归档会话",
     "computer": "电脑使用",
+    "devices": "设备",
     "diagnostics": "诊断",
     "editor": "编辑器",
     "environment": "网络",
@@ -659,6 +1005,7 @@
     "git": "Git",
     "licenses": "开源许可",
     "mcp": "MCP",
+    "memory": "记忆",
     "personalization": "个性化",
     "providers": "服务商",
     "shortcuts": "快捷键",
@@ -733,69 +1080,266 @@
   },
   "skills": {
     "actions": {
+      "cancel": "取消",
       "install": "安装",
-      "refresh": "刷新",
-      "reinstall": "重新安装",
       "remove": "移除",
+      "restore": "恢复",
       "update": "更新"
     },
-    "cliHint": "命令行：cocurdex skills install --scope project|global  ·  cocurdex skills status --scope project|global",
+    "add": {
+      "builtin": "内置",
+      "chooseFolder": "选择文件夹",
+      "description": "从 GitHub 仓库（owner/repo 或链接）或本机文件夹读取 skills，再选择要安装的。",
+      "found_one": "找到 {{count}} 个 skill",
+      "found_other": "找到 {{count}} 个 skill",
+      "install_one": "安装 {{count}} 个",
+      "install_other": "安装 {{count}} 个",
+      "installed": "已安装",
+      "installedToast_one": "已安装 {{count}} 个 skill",
+      "installedToast_other": "已安装 {{count}} 个 skill",
+      "invalid": "SKILL.md 无效",
+      "none": "这个来源里没有找到 skill。",
+      "open": "从 GitHub 或文件夹添加",
+      "read": "读取",
+      "replaces": "将替换已安装的",
+      "skippedToast": "已跳过：{{names}}",
+      "sourceLabel": "Skill 来源",
+      "sourcePlaceholder": "owner/repo、GitHub 链接或文件夹路径",
+      "title": "添加 skills"
+    },
+    "agents": {
+      "access": {
+        "copy": "单独的副本 {{path}}",
+        "home": "安装在这个 agent 自己的文件夹 {{path}}",
+        "link": "已链接到共享文件夹 {{path}}",
+        "native": "读取共享文件夹 {{path}}",
+        "none": "这个 agent 不可用"
+      },
+      "share": "移到共享文件夹",
+      "sharedMissing": "只安装在 {{path}}。移到共享文件夹后，这些 agent 才能使用。",
+      "sharedNative": "从共享文件夹 {{path}} 读取",
+      "title": "可见的 agent"
+    },
+    "audit": {
+      "description": "skills.sh 为这个 skill 发布的安全审计。",
+      "none": "暂无审计结果。",
+      "risk": {
+        "critical": "严重风险",
+        "high": "高风险",
+        "low": "低风险",
+        "medium": "中风险",
+        "safe": "安全"
+      },
+      "title": "安全审计"
+    },
+    "description": "Skills 教 agent 完成专门的工作。安装一次，所有读取共享 skills 文件夹的 agent 都能使用。",
+    "detail": {
+      "label": "{{name}} 详情",
+      "manageTitle": "管理",
+      "removeBrokenDescription": "{{name}} 只剩下失效链接，它们指向的文件夹已不存在。移除只会删除这些链接，不影响其他文件。",
+      "removeDescription": "将为所有 agent 删除 {{name}}，包括指向它的链接。删除前会先备份文件夹，14 天内可在 skill-backups 中找回。",
+      "removeTitle": "移除 {{name}}？",
+      "reviewUpdate": "查看更新",
+      "updateBadge": "有更新"
+    },
+    "discover": {
+      "chooseSkills": "选择要安装的 skills",
+      "install": "安装",
+      "installSkill": "安装 {{name}}",
+      "official": "官方来源",
+      "poweredBy": "搜索结果来自 skills.sh。",
+      "reading": "正在读取 {{source}}…",
+      "resultMeta_one": "{{source}} · {{count}} 次安装",
+      "resultMeta_other": "{{source}} · {{count}} 次安装",
+      "results_one": "{{count}} 个结果",
+      "results_other": "{{count}} 个结果",
+      "search": "搜索 skills.sh",
+      "sourceSkills_one": "{{count}} 个 skill",
+      "sourceSkills_other": "{{count}} 个 skill"
+    },
+    "document": {
+      "preview": "预览",
+      "source": "源码",
+      "title": "说明",
+      "truncated": "预览已截断，打开文件查看全文。",
+      "view": "文档视图"
+    },
+    "files": {
+      "reveal": "在文件管理器中显示",
+      "scriptWarning_one": "包含 {{count}} 个脚本，agent 可能会运行它，使用前请检查。",
+      "scriptWarning_other": "包含 {{count}} 个脚本，agent 可能会运行它们，使用前请检查。",
+      "title_one": "文件（{{count}}）",
+      "title_other": "文件（{{count}}）"
+    },
     "groupTitle": "安装位置",
+    "info": {
+      "installed": "安装时间",
+      "latest": "最新提交",
+      "license": "许可",
+      "location": "位置",
+      "openSource": "打开来源",
+      "ref": "分支或标签",
+      "source": "来源"
+    },
+    "install": {
+      "agents": "Agent",
+      "global": "所有工作区",
+      "linkAgent": "同时链接给 {{agent}}",
+      "scope": "安装范围",
+      "sharedAgents": "{{agents}} 会自动读取共享文件夹。",
+      "workspace": "工作区 {{workspace}}"
+    },
     "intro": "安装 cocurdex 产品 Skills，让 Claude、OpenCode、Pi 等 agent 能跑 Notes / Issues 工作流。默认不会自动安装，需你主动安装。",
-    "loading": "正在检查 Skills 安装状态…",
+    "list": {
+      "builtin": "Cocurdex 内置",
+      "checkFailed": "无法检查 {{source}}：{{error}}",
+      "checkUpdates": "检查更新",
+      "empty": "还没有安装其他 skill。",
+      "filter": "筛选 skills",
+      "global": "全局",
+      "noMatches": "没有匹配的 skill",
+      "problems": "需要处理",
+      "workspace": "工作区 · {{workspace}}"
+    },
+    "pack": {
+      "included_one": "包含 {{count}} 个 skill",
+      "included_other": "包含 {{count}} 个 skill",
+      "subtitle_one": "{{count}} 个 skill",
+      "subtitle_other": "{{count}} 个 skill",
+      "title": "Cocurdex skills"
+    },
+    "problems": {
+      "brokenLinkDescription": "这些链接指向的文件夹已不存在，对应的 agent 读不到这个 skill。",
+      "brokenLinkRemovableDescription": "这些链接指向的文件夹已不存在，这个 skill 已没有可用文件。移除即可清理这些链接。",
+      "brokenLinkTitle_one": "链接失效",
+      "brokenLinkTitle_other": "{{count}} 个链接失效",
+      "copyMeta_one": "{{count}} 个文件 · 修改于 {{modified}}",
+      "copyMeta_other": "{{count}} 个文件 · 修改于 {{modified}}",
+      "duplicateDescription": "不同 agent 看到的是这个 skill 的不同版本。保留一份，其他副本会变成指向它的链接并被备份。",
+      "duplicateTitle": "存在不同副本",
+      "invalidDescription": "修好 SKILL.md 之前，agent 可能会忽略这个 skill。",
+      "invalidTitle": "SKILL.md 需要修正",
+      "issue": {
+        "descriptionTooLong": "description 超过 1024 个字符。",
+        "invalidName": "name 只能包含小写字母、数字和连字符。",
+        "missingDescription": "frontmatter 缺少 description。",
+        "missingFrontmatter": "文件没有 YAML frontmatter。",
+        "missingName": "frontmatter 缺少 name。",
+        "nameMismatch": "name 与文件夹名不一致。",
+        "nameTooLong": "name 超过 64 个字符。"
+      },
+      "keepCopy": "保留这份"
+    },
     "scope": {
       "global": {
-        "description": "安装到本机 ~/.agents/skills 与 ~/.claude/skills，对所有工作区生效。",
         "title": "全局（所有工作区）"
       },
       "project": {
-        "description": "安装到当前工作区（.agents/skills 与 .claude/skills），适合提交到团队仓库。",
         "title": "当前工作区"
       }
     },
+    "source": {
+      "unknown": "手动添加"
+    },
+    "state": {
+      "ok": "最新",
+      "problem": "需要处理",
+      "update": "有更新"
+    },
     "status": {
       "conflict": "已存在非托管的 cocurdex skill 目录（{{skills}}）。请先删除或重命名 {{path}} 下的冲突项，再重新安装。",
-      "installed": "已安装 v{{version}}，路径 {{path}}",
+      "installed": "已安装最新版本，路径 {{path}}",
+      "modified": "本地文件已被修改。恢复会改回内置版本，路径 {{path}}",
       "notInstalled": "未安装。将写入 {{path}}",
-      "noWorkspace": "请先选择一个工作区，再安装工作区级 Skills。",
-      "updateAvailable": "已安装 v{{installed}}；可用 pack v{{latest}}，路径 {{path}}"
+      "sourceMissing": "这个版本缺少内置 skill 文件（{{path}}），暂时无法安装。请重新安装或更新 Cocurdex。",
+      "updateAvailable": "有新版本可更新，路径 {{path}}"
+    },
+    "tabs": {
+      "discover": "发现",
+      "installed_one": "已安装（{{count}}）",
+      "installed_other": "已安装（{{count}}）"
     },
     "toast": {
-      "alreadyInstalled": "Skills 已是最新",
       "conflict": "无法安装：与已有 Skills 冲突（{{skills}}）",
       "installed": "已安装 cocurdex Skills",
       "installFailed": "安装 Skills 失败",
       "removed": "已移除 cocurdex Skills",
       "removeFailed": "移除 Skills 失败",
+      "restored": "已恢复 cocurdex Skills",
+      "skipped": "Skills 已是最新",
       "updated": "已更新 cocurdex Skills"
     },
-    "workspaceLabel": "当前工作区：{{name}}"
+    "update": {
+      "changes": "变更的文件",
+      "confirm": "更新",
+      "description": "从 {{source}} 更新到 {{commit}}。应用前请检查变更。",
+      "localModified": "这个 skill 在本地被修改过。更新会覆盖这些修改，但会保留备份。",
+      "noChanges": "没有文件变更。",
+      "noPreview": "无预览",
+      "script": "脚本",
+      "skip": "跳过这个版本",
+      "status": {
+        "added": "新增",
+        "modified": "修改",
+        "removed": "删除"
+      },
+      "title": "更新 {{name}}"
+    }
   },
   "teams": {
     "addMember": "添加成员",
+    "backToTeam": "返回团队",
     "cancel": "取消",
     "create": "新建团队",
+    "createFirst": "新建一个",
+    "createRole": "新建角色",
     "createTitle": "新建团队",
     "delete": "删除",
     "deleted": "团队已删除",
     "deleteDescription": "将移除“{{name}}”，此操作无法撤销。",
     "deleteFailed": "无法删除该团队。",
     "deleteTitle": "删除这个团队？",
-    "description": "定义可复用的团队。lead agent 可以用 team_spawn_template 一次拉起整个团队，也可以从 CLI 启动。",
+    "description": "保存常用的团队阵容。新建会话时在 Agent 菜单里选择团队，由 lead 规划工作并从名单中派出队友。",
     "edit": "编辑",
     "editTitle": "编辑团队",
-    "empty": "还没有团队",
-    "emptyDescription": "创建一个团队，为每个成员命名并选择已保存的角色。",
-    "inheritRole": "与 lead 相同",
-    "memberName": "成员名称",
-    "memberNamePlaceholder": "reviewer",
+    "empty": "还没有团队。",
+    "lead": "Lead",
+    "leadAgents": "Agent",
+    "leadPlaceholder": "选择 lead",
+    "leadPromptPlaceholder": "Lead 在协调之外还负责什么。",
+    "leadRoles": "角色",
+    "listTitle": "已保存的团队",
+    "makeLead": "设为 Lead",
+    "memberCount": "{{current}}/{{max}}",
     "memberPrompt": "固定职责",
     "memberPromptPlaceholder": "这个成员负责什么。",
     "members": "成员",
+    "membersHint": "第一位成员是 Lead，负责运行会话并派出其他队友。",
     "name": "名称",
     "namePlaceholder": "团队名称",
     "removeMember": "移除成员",
     "role": "角色",
+    "roleMissing": "角色已被删除",
+    "rolePlaceholder": "选择角色",
+    "runLimits": {
+      "description": "队友和脚本 agent 发起的运行。达到上限后按顺序排队；你自己发起的运行不会等待，但计入上限。",
+      "invalid": "请输入允许范围内的整数。",
+      "maxConcurrentRuns": {
+        "description": "所有会话合计同时运行的数量，包括你发起的（1–64）。",
+        "title": "同时运行上限"
+      },
+      "maxConcurrentRunsPerAgent": {
+        "description": "同一个 agent CLI 同时运行的数量，包括你发起的（1–64）。",
+        "title": "每个 agent 同时运行上限"
+      },
+      "saveFailed": "无法保存运行上限。",
+      "timeout": {
+        "description": "队友或脚本 agent 的运行超过该时长会被停止。留空表示不限时。",
+        "none": "不限",
+        "title": "超时"
+      },
+      "title": "委派运行"
+    },
     "save": "保存",
     "saved": "团队已保存",
     "saveFailed": "无法保存该团队。",
@@ -803,14 +1347,17 @@
       "defaultMaxAgents": "默认 agent 上限",
       "defaultMaxAgentsDescription": "每次脚本运行最多启动的 agent 数，批准时可以单独修改",
       "description": "会话里的 agent 可以提议后台脚本来编排多个子 agent，经你批准后运行",
-      "maxDuration": "运行最长时间（分钟）",
+      "maxDuration": "运行最长时间",
       "maxDurationDescription": "超时后取消整个运行和所有子 agent，留空表示不限制",
+      "minutes": "分钟",
       "saveFailed": "保存脚本运行设置失败",
       "schemaMaxAttempts": "结构化回复最多尝试次数",
       "schemaMaxAttemptsDescription": "agent 的回复不符合脚本要求的 JSON Schema 时最多尝试几次",
       "title": "脚本运行",
       "unlimited": "不限制"
-    }
+    },
+    "teamDescription": "描述",
+    "teamDescriptionPlaceholder": "这个团队适合做什么。lead agent 会根据描述决定什么时候用它。"
   },
   "updates": {
     "actions": {
@@ -841,7 +1388,7 @@
       "downloadingWithPercent": "正在下载版本 {{version}}… {{percent}}%",
       "error": "检查更新失败。{{message}}",
       "ready": "版本 {{version}} 已下载，重启后生效。",
-      "unsupported": "自动更新仅在安装版应用中可用。",
+      "unsupported": "此版本已关闭自动更新。",
       "upToDate": "已是最新版本。"
     },
     "title": "版本"

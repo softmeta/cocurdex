@@ -1,0 +1,17 @@
+{
+  "name": "@cocurdex/unit-client-runtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/client-runtime": "workspace:*",
+    "@cocurdex/rpc": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "vitest": "^4.1.11"
+  }
+}

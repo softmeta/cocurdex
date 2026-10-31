@@ -12,6 +12,7 @@ import {
   ListEnd,
   MoreHorizontal,
   Pencil,
+  Play,
   SendHorizontal,
   Trash2,
 } from "lucide-react";
@@ -43,9 +44,11 @@ interface QueuedInputShelfProps {
   onSendNow(item: QueuedAgentInputItem): Promise<void>;
   onSteer(item: QueuedAgentInputItem): Promise<void>;
   onUpdate(item: QueuedAgentInputItem, content: string): Promise<void>;
+  onResume?(sessionId: string): Promise<void>;
 }
 
-interface QueuedInputRowProps extends Omit<QueuedInputShelfProps, "items"> {
+interface QueuedInputRowProps
+  extends Omit<QueuedInputShelfProps, "items" | "onResume"> {
   item: QueuedAgentInputItem;
 }
 
@@ -214,7 +217,7 @@ function QueuedInputRow({
               <MoreHorizontal className="size-4" />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-max rounded-card">
+          <DropdownMenuContent align="end" className="w-max">
             <DropdownMenuItem
               onClick={() => {
                 void runAction("sendNow", () => onSendNow(item));
@@ -254,13 +257,63 @@ function QueuedInputRow({
   );
 }
 
+function QueuedInputResumeRow({ onResume }: { onResume(): Promise<void> }) {
+  const { t } = useTranslation("agent");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const resume = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      await onResume();
+    } catch (resumeError) {
+      setError(
+        resumeError instanceof Error
+          ? resumeError.message
+          : t("queue.actionFailed"),
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5">
+        <Text className="min-w-0 flex-1 text-chat-fg-subtle" size="meta">
+          {t("queue.paused")}
+        </Text>
+        <Button
+          disabled={pending}
+          onClick={() => {
+            void resume();
+          }}
+          size="sm"
+          variant="ghost"
+        >
+          <Play className="size-3.5" />
+          {t("queue.resume")}
+        </Button>
+      </div>
+      {error ? (
+        <Text as="p" className="px-2 pb-1.5" size="meta" tone="destructive">
+          {error}
+        </Text>
+      ) : null}
+    </div>
+  );
+}
+
 export function QueuedInputShelf({
   items,
+  onResume,
   ...rowProps
 }: QueuedInputShelfProps) {
   const { t } = useTranslation("agent");
   const [collapsed, setCollapsed] = useState(false);
-  if (items.length === 0) return null;
+  const [firstItem] = items;
+  if (!firstItem) return null;
   const showHeader = items.length > 1;
   const showRows = !showHeader || !collapsed;
 
@@ -269,6 +322,9 @@ export function QueuedInputShelf({
       aria-label={t("queue.label")}
       className="max-h-44 overflow-y-auto rounded-card border border-chat-border-soft bg-chat-surface-raised shadow-chat-soft divide-y divide-chat-border-soft"
     >
+      {onResume ? (
+        <QueuedInputResumeRow onResume={() => onResume(firstItem.sessionId)} />
+      ) : null}
       {showHeader ? (
         <button
           aria-expanded={!collapsed}

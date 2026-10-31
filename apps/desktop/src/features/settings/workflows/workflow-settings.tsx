@@ -21,6 +21,7 @@ import {
   subscribeAgentRoles,
 } from "@/features/sessions/agent-role";
 import { desktopApi, useMountEffect } from "@/lib";
+import { SettingsListItem } from "../settings-list-item";
 import { WorkflowBindingsEditor } from "./workflow-bindings-editor";
 import { WorkflowCanvasLazy } from "./workflow-canvas-lazy";
 import {
@@ -201,27 +202,23 @@ export function WorkflowSettingsPanel() {
       <Text tone="muted">{t("workflows.description")}</Text>
       <div className="flex min-h-0 flex-1 gap-3">
         <aside className="flex w-56 shrink-0 flex-col gap-2">
-          <div className="flex flex-col gap-1 overflow-y-auto">
+          <div className="flex flex-col gap-2 overflow-y-auto">
             {definitions.map((record) => (
-              <button
+              <SettingsListItem
                 key={record.id}
-                className="rounded-control border border-border px-3 py-2 text-start hover:bg-muted"
-                type="button"
+                isActive={draft?.id === record.id}
+                subtitle={
+                  record.builtin
+                    ? t("workflows.builtin")
+                    : t("workflows.custom")
+                }
+                title={record.name}
                 onClick={() => {
                   setDraft(record);
                   setDirty(false);
                   setSelection(null);
                 }}
-              >
-                <Text className="block" truncate>
-                  {record.name}
-                </Text>
-                <Text size="meta" tone="muted">
-                  {record.builtin
-                    ? t("workflows.builtin")
-                    : t("workflows.custom")}
-                </Text>
-              </button>
+              />
             ))}
           </div>
           <Button
@@ -292,12 +289,14 @@ export function WorkflowSettingsPanel() {
                 </Text>
               ) : null}
               {issues.length > 0 ? (
-                <ul className="rounded-card border border-border bg-muted/40 px-3 py-2">
+                <ul>
                   {issues.map((item) => (
                     <li
                       key={`${item.code}:${item.stepId ?? ""}:${item.message}`}
                     >
-                      <Text size="meta">{item.message}</Text>
+                      <Text role="alert" size="meta" tone="destructive">
+                        {item.message}
+                      </Text>
                     </li>
                   ))}
                 </ul>

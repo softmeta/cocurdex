@@ -1,11 +1,21 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
-import { loadNativeKeyring } from "./native-module";
+import { loadNativeKeyring } from "../packaged-module";
 
 export interface CredentialVault {
   read(id: string): Promise<string | null>;
   write(id: string, value: string): Promise<void>;
   remove(id: string): Promise<void>;
+}
+
+export function credentialStoreUnavailableMessage(
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const base = "System credential store is unavailable";
+  if (platform !== "linux") {
+    return base;
+  }
+  return `${base}. Install and unlock a Secret Service provider such as GNOME Keyring or KWallet, then retry.`;
 }
 
 export function createCredentialVault(userDataPath: string): CredentialVault {
@@ -22,21 +32,21 @@ export function createCredentialVault(userDataPath: string): CredentialVault {
       try {
         return (await (await entry(id)).getPassword()) ?? null;
       } catch {
-        throw new Error("System credential store is unavailable");
+        throw new Error(credentialStoreUnavailableMessage());
       }
     },
     async write(id, value) {
       try {
         await (await entry(id)).setPassword(value);
       } catch {
-        throw new Error("System credential store is unavailable");
+        throw new Error(credentialStoreUnavailableMessage());
       }
     },
     async remove(id) {
       try {
         await (await entry(id)).deleteCredential();
       } catch {
-        throw new Error("System credential store is unavailable");
+        throw new Error(credentialStoreUnavailableMessage());
       }
     },
   };

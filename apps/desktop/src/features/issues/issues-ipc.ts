@@ -1,12 +1,18 @@
 import type {
+  CommentIssuePayload,
   CreateColumnPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateViewPayload,
   DeleteColumnPayload,
   DeleteIssuePayload,
   DeleteViewPayload,
+  GetIssueDetailPayload,
   GetIssuePayload,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
   LoadViewPayload,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -47,4 +53,14 @@ export const issuesIpc = {
     desktopApi.issueMove(payload),
   deleteIssue: (payload: DeleteIssuePayload): Promise<void> =>
     desktopApi.issueDelete(payload),
+  getDetail: (payload: GetIssueDetailPayload): Promise<IssueDetail | null> =>
+    desktopApi.issueGetDetail(payload),
+  createLabel: (payload: CreateIssueLabelPayload): Promise<IssueLabel> =>
+    desktopApi.issueCreateLabel(payload),
+  addRelation: (payload: IssueRelationPayload): Promise<IssueDetail> =>
+    desktopApi.issueAddRelation(payload),
+  removeRelation: (payload: IssueRelationPayload): Promise<IssueDetail> =>
+    desktopApi.issueRemoveRelation(payload),
+  comment: (payload: CommentIssuePayload): Promise<IssueDetail> =>
+    desktopApi.issueComment(payload),
 };

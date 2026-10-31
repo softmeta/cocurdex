@@ -10,11 +10,13 @@ export {
   configureLogging,
   createLogger,
   createUpstreamLogger,
-  exportDiagnostics,
   isDiagnosticsVerbose,
   logProcessError,
   logRendererPayload,
   setDiagnosticsVerbose,
   shutdownLogging,
 } from "./logger";
-export { registerLoggingHandlers } from "./logging-handlers";
+export {
+  exportAppDiagnostics,
+  registerLoggingHandlers,
+} from "./logging-handlers";

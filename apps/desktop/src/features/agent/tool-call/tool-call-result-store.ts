@@ -101,17 +101,3 @@ export const observeToolCallResultAtom = atom(
     };
   },
 );
-
-export const clearToolCallResultsForSessionAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const leases = get(resultLeasesAtom);
-    const cache = { ...get(toolCallResultCacheAtom) };
-    for (const [id, lease] of leases) {
-      if (lease.sessionId !== sessionId) continue;
-      leases.delete(id);
-      delete cache[id];
-    }
-    set(toolCallResultCacheAtom, cache);
-  },
-);

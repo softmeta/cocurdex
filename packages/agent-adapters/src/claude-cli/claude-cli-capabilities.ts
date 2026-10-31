@@ -1,12 +1,11 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import type { DiscoveredAgentCapabilities } from "@cocurdex/agent-core";
+import {
+  type DiscoveredAgentCapabilities,
+  runCommand,
+} from "@cocurdex/agent-core";
 import type {
   AgentPermissionModeOption,
   AgentPermissionModeRisk,
 } from "@cocurdex/shared";
-
-const execFileAsync = promisify(execFile);
 
 export type RunClaudeCliCommand = (
   executablePath: string,
@@ -44,10 +43,8 @@ const PERMISSION_MODE_CANDIDATES = [
 const discoveryCache = new Map<string, Promise<DiscoveredAgentCapabilities>>();
 
 async function runClaudeCliCommand(executablePath: string, args: string[]) {
-  const { stdout } = await execFileAsync(executablePath, args, {
-    encoding: "utf8",
-    timeout: 2_000,
-    windowsHide: true,
+  const { stdout } = await runCommand(executablePath, args, {
+    timeoutMs: 2_000,
   });
 
   return { stdout };

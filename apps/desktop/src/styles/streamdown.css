@@ -3,8 +3,6 @@
  * compiled files for Tailwind's content scanner. Paths are relative to this CSS
  * file: apps/desktop/src/styles -> apps/desktop/node_modules. */
 @source "../../node_modules/streamdown/dist/*.js";
-@source "../../node_modules/@streamdown/code/dist/*.js";
-@source "../../node_modules/@streamdown/mermaid/dist/*.js";
 @source "../../node_modules/@streamdown/math/dist/*.js";
 @source "../../node_modules/@streamdown/cjk/dist/*.js";
 
@@ -12,7 +10,7 @@
   position: relative;
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--chat-border-soft);
+  border: 0;
   border-radius: var(--radius-card);
   background: var(--chat-code-block);
   padding: 0;
@@ -56,14 +54,13 @@
 
 [data-streamdown="code-block-body"] {
   border: 0;
-  border-top: 1px solid var(--chat-border-soft);
   border-radius: 0;
   background: var(--chat-code-panel);
   padding: 16px 18px;
 }
 
 /* Streamdown bug workaround: when lineNumbers={false} the per-line <span>
- * wrapper inside the Shiki code body has no className at all, so each line
+ * wrapper inside the highlighted code body has no className at all, so each line
  * defaults to display:inline and the whole code block collapses onto a
  * single visual line. Force the line wrappers to behave as blocks. Targets
  * only the direct line spans, not the inner token spans. */

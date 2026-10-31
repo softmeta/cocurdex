@@ -154,7 +154,11 @@ function BreakdownGroupSection({
 
   return (
     <Collapsible>
-      <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded-control px-1 py-0.5 text-start hover:bg-accent">
+      <CollapsibleTrigger className="group sticky top-0 z-10 flex w-full items-center gap-1 rounded-control bg-popover px-1 py-0.5 text-start [container-type:scroll-state] hover:bg-accent">
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-full hidden h-2.5 bg-popover [@container_scroll-state(stuck:top)]:block"
+        />
         <ChevronRight className="size-3 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
         <div className="min-w-0 flex-1">
           <UsageRow

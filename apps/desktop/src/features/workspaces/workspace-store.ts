@@ -1,5 +1,6 @@
 import type { GitWorktreeInfo, WorkspaceRecord } from "@cocurdex/shared";
 import {
+  isChatWorkspaceId,
   normalizeWorkspaceRootPath,
   normalizeWorkspaceRootPaths,
   workspacePathsEqual,
@@ -34,6 +35,10 @@ function workspaceNameFromPath(rootPath: string): string {
 }
 
 export const workspacesAtom = atom<WorkspaceRecord[]>([]);
+
+export function withoutChatWorkspace(workspaces: WorkspaceRecord[]) {
+  return workspaces.filter((workspace) => !isChatWorkspaceId(workspace.id));
+}
 export const activeWorkspaceIdAtom = atom<string | null>(null);
 // The most recent workspace the user actually selected. Unlike
 // activeWorkspaceId, it is NOT cleared when the user drops to chat mode (picks
@@ -79,8 +84,9 @@ export const collapsedWorkspaceIdsAtom = atom(
   },
 );
 
-export const activeBranchesAtom = atom<GitBranchInfo[]>([]);
-export const activeBranchAtom = atom<string | null>(null);
+export const gitBranchesByRootAtom = atom<
+  Readonly<Record<string, GitBranchInfo[]>>
+>({});
 export const draftWorktreePathAtom = atom<string | null>(null);
 export const activeWorktreesAtom = atom<GitWorktreeInfo[]>([]);
 
@@ -113,17 +119,13 @@ function ensureWorkspaceExpanded(
 export const bootstrapWorkspacesAtom = atom(
   null,
   (get, set, workspaces: WorkspaceRecord[]) => {
-    const list = sortWorkspacesBySortOrder(workspaces);
+    const list = sortWorkspacesBySortOrder(withoutChatWorkspace(workspaces));
     const active = findMostRecentlyOpenedWorkspace(list);
 
     set(workspacesAtom, list);
     set(activeWorkspaceIdAtom, active?.id ?? null);
     set(lastSelectedWorkspaceIdAtom, active?.id ?? null);
     dropOpenPdfsOutsideWorkspaces(get, set);
-
-    if (active) {
-      markWorkspaceOpened(get, set, active.id);
-    }
   },
 );
 
@@ -165,12 +167,13 @@ export type OpenWorkspaceByPathResult = {
   workspace: WorkspaceRecord;
   /** True when active workspace changed (caller should clear foreign session UI). */
   didSwitchWorkspace: boolean;
+  reusedUnderDifferentName: boolean;
 };
 
 /**
  * Open a workspace by absolute directory path (CLI `cocurdex .` / folder dialog).
- * Prefers the workspace whose primary folder is that path, then any workspace
- * containing it; otherwise creates one.
+ * Reuses the workspace whose primary folder is that path; otherwise creates one,
+ * even when another workspace lists the path as a secondary folder.
  * Always activates the workspace and expands its session list in the sidebar.
  */
 export const openWorkspaceByPathAtom = atom(
@@ -179,15 +182,9 @@ export const openWorkspaceByPathAtom = atom(
     const normalized = normalizeWorkspaceRootPath(rootPath);
     const previousId = get(activeWorkspaceIdAtom);
     const workspaces = get(workspacesAtom);
-    const existing =
-      workspaces.find((workspace) =>
-        workspacePathsEqual(workspace.rootPaths[0], normalized),
-      ) ??
-      workspaces.find((workspace) =>
-        workspace.rootPaths.some((workspaceRootPath) =>
-          workspacePathsEqual(workspaceRootPath, normalized),
-        ),
-      );
+    const existing = workspaces.find((workspace) =>
+      workspacePathsEqual(workspace.rootPaths[0], normalized),
+    );
 
     let workspace: WorkspaceRecord;
     if (existing) {
@@ -215,6 +212,9 @@ export const openWorkspaceByPathAtom = atom(
     return {
       workspace,
       didSwitchWorkspace: previousId !== workspace.id,
+      reusedUnderDifferentName:
+        existing !== undefined &&
+        existing.name !== workspaceNameFromPath(normalized),
     };
   },
 );

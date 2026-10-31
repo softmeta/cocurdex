@@ -58,3 +58,43 @@ export async function deleteTeamTemplateRecord(id: string) {
   templates = templates.filter((template) => template.id !== id);
   notify();
 }
+
+const LAST_SELECTED_TEAM_TEMPLATE_STORAGE_KEY =
+  "cocurdex.lastSelectedTeamTemplateId";
+
+function getTeamTemplateStorage(): Storage | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredTeamTemplateId(): string | null {
+  try {
+    return (
+      getTeamTemplateStorage()?.getItem(
+        LAST_SELECTED_TEAM_TEMPLATE_STORAGE_KEY,
+      ) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function persistTeamTemplateId(templateId: string | null) {
+  const storage = getTeamTemplateStorage();
+  if (!storage) {
+    return;
+  }
+  try {
+    if (templateId) {
+      storage.setItem(LAST_SELECTED_TEAM_TEMPLATE_STORAGE_KEY, templateId);
+    } else {
+      storage.removeItem(LAST_SELECTED_TEAM_TEMPLATE_STORAGE_KEY);
+    }
+  } catch {}
+}

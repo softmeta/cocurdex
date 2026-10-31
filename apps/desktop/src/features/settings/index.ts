@@ -1,3 +1,4 @@
+export { AcpRegistryDialog } from "./adapters/acp-registry-dialog-lazy";
 export { AssistantSuggestionBar } from "./assistant";
 export { NetworkProxyStatusButton } from "./network-proxy-status-button";
 export {

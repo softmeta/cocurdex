@@ -1,0 +1,21 @@
+{
+  "name": "@cocurdex/unit-mobile",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/client-runtime": "workspace:*",
+    "@cocurdex/mobile": "workspace:*",
+    "@cocurdex/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cocurdex/note-doc": "workspace:*",
+    "@types/node": "^24.19.2",
+    "i18next": "^26.5.3",
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
+  }
+}

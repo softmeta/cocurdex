@@ -5,7 +5,6 @@ import type {
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 import {
-  clearToolCallResultsForSessionAtom,
   refreshToolCallResultAtom,
   toolCallResultCacheAtom,
 } from "./tool-call-result-store";
@@ -106,21 +105,6 @@ export const loadSessionToolCallsAtom = atom(
         void set(refreshToolCallResultAtom, toolCall.id);
       }
     }
-  },
-);
-
-export const clearToolCallsForSessionAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const current = get(toolCallsBySessionAtom);
-    const { [sessionId]: _removed, ...next } = current;
-
-    set(toolCallsBySessionAtom, next);
-    const { [sessionId]: _loaded, ...remainingLoaded } = get(
-      toolCallsLoadedBySessionAtom,
-    );
-    set(toolCallsLoadedBySessionAtom, remainingLoaded);
-    set(clearToolCallResultsForSessionAtom, sessionId);
   },
 );
 

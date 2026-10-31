@@ -1,0 +1,304 @@
+import type { ReactNode } from "react";
+import { describe, expect, it } from "vitest";
+import {
+  buildWorkspaceFileHref,
+  extractInlineCodeText,
+  parseWorkspaceFileHref,
+  rewriteMarkdownLocalFileLinks,
+  splitWorkspaceLinkLabel,
+} from "@/components/markdown-file-path";
+
+describe("extractInlineCodeText", () => {
+  it("returns a plain string child", () => {
+    expect(extractInlineCodeText("a/b.ts")).toBe("a/b.ts");
+  });
+
+  it("joins an array of string children", () => {
+    expect(extractInlineCodeText(["a/", "b.ts"])).toBe("a/b.ts");
+  });
+
+  it("returns null for non-text children", () => {
+    expect(
+      extractInlineCodeText([{ type: "span" }] as unknown as ReactNode),
+    ).toBeNull();
+    expect(extractInlineCodeText(undefined)).toBeNull();
+  });
+});
+
+describe("workspace file markdown links", () => {
+  it("round-trips path + line + column through the private href", () => {
+    const href = buildWorkspaceFileHref({
+      path: "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
+      startLine: 12,
+      column: 3,
+    });
+    expect(href.startsWith("https://cocurdex.workspace/open?")).toBe(true);
+    expect(parseWorkspaceFileHref(href)).toEqual({
+      path: "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
+      startLine: 12,
+      column: 3,
+    });
+  });
+
+  it("round-trips a line range through the private href", () => {
+    const href = buildWorkspaceFileHref({
+      path: "packages/daemon/src/service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
+    expect(parseWorkspaceFileHref(href)).toEqual({
+      path: "packages/daemon/src/service.ts",
+      startLine: 1544,
+      endLine: 1572,
+    });
+  });
+
+  it("drops a range that ends before it starts", () => {
+    expect(
+      parseWorkspaceFileHref(
+        "https://cocurdex.workspace/open?path=a.ts&line=20&end=10",
+      ),
+    ).toEqual({ path: "a.ts", startLine: 20 });
+  });
+
+  it("rejects ordinary https links", () => {
+    expect(
+      parseWorkspaceFileHref("https://example.com/open?path=a.ts"),
+    ).toBeNull();
+  });
+
+  it("rewrites bare relative markdown file links", () => {
+    const input =
+      "后者见 [mode.md](crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md)。";
+    const out = rewriteMarkdownLocalFileLinks(input);
+    expect(out).toContain("https://cocurdex.workspace/open?path=");
+    expect(out).toContain(
+      encodeURIComponent(
+        "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
+      ).replace(/%2F/g, "%2F"),
+    );
+    // URLSearchParams encodes `/` as `%2F` — just assert the path is recoverable.
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(hrefMatch).not.toBeNull();
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
+    });
+  });
+
+  it("leaves real web links and code spans alone", () => {
+    const input = [
+      "see [docs](https://example.com/a.md) and `[local](src/a.ts)`",
+      "",
+      "```md",
+      "[keep](src/b.ts)",
+      "```",
+    ].join("\n");
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
+  it("rewrites GitHub-style file links with backtick labels", () => {
+    // Common agent transcript form: [`path`](path)
+    const input =
+      "CLI 参数：[`crates/codegen/xai-grok-pager/src/app/cli.rs`](crates/codegen/xai-grok-pager/src/app/cli.rs)\n" +
+      "后者见 [`docs/user-guide/15-agent-mode.md`](crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md)。";
+    const out = rewriteMarkdownLocalFileLinks(input);
+    expect(out).not.toContain("](crates/");
+    const hrefs = [
+      ...out.matchAll(/\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/g),
+    ].map((m) => m[1]);
+    expect(hrefs).toHaveLength(2);
+    expect(parseWorkspaceFileHref(hrefs[0])).toEqual({
+      path: "crates/codegen/xai-grok-pager/src/app/cli.rs",
+    });
+    expect(parseWorkspaceFileHref(hrefs[1])).toEqual({
+      path: "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
+    });
+    // Label backticks preserved for chip rendering.
+    expect(out).toContain(
+      "[`crates/codegen/xai-grok-pager/src/app/cli.rs`](https://cocurdex.workspace/",
+    );
+  });
+
+  it("unwraps a path-labeled file link that an agent wrapped in backticks", () => {
+    const input =
+      "- 新增 `[session-pane-size.ts](file:///Users/dev/apps/desktop/src/session-pane-size.ts)`：最小宽度。";
+    const out = rewriteMarkdownLocalFileLinks(input);
+    expect(out).not.toContain("`[");
+    expect(out).not.toContain("file://");
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/apps/desktop/src/session-pane-size.ts",
+    });
+    expect(out).toContain("[session-pane-size.ts](https://cocurdex.workspace/");
+  });
+
+  it("unwraps a backticked file link with a line range on both label and href", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "`[a.ts:12-20](file:///Users/dev/src/a.ts:12-20)`",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/src/a.ts",
+      startLine: 12,
+      endLine: 20,
+    });
+  });
+
+  it("keeps a backticked link whose label is prose", () => {
+    const input = "文档示例：`[local](src/a.ts)`，保持代码样式。";
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
+  it("keeps a backticked link to a non-file target", () => {
+    const input = "`[session-pane-size.ts](https://example.com/a.ts)`";
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
+  it("rewrites paths with :line suffixes", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "jump [here](apps/desktop/src/index.ts:42)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "apps/desktop/src/index.ts",
+      startLine: 42,
+    });
+  });
+
+  it("rewrites GitHub-style #L line anchors", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "核心规则位于 [`skills/ponytail/SKILL.md:32`](skills/ponytail/SKILL.md#L32)，" +
+        "见 [range](src/a.ts#L10-L20) 与 [abs](file:///Users/dev/b.ts#L7)。",
+    );
+    const hrefs = [
+      ...out.matchAll(/\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/g),
+    ].map((match) => parseWorkspaceFileHref(match[1]));
+    expect(hrefs).toEqual([
+      { path: "skills/ponytail/SKILL.md", startLine: 32 },
+      { path: "src/a.ts", startLine: 10, endLine: 20 },
+      { path: "/Users/dev/b.ts", startLine: 7 },
+    ]);
+  });
+
+  it("leaves links with non-line fragments alone", () => {
+    const input = "[guide](docs/guide.md#install)";
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+
+  it("rewrites absolute file:// links", () => {
+    const input =
+      "菜单见 [queued-input-shelf.tsx:196-216](file:///Users/dev/apps/desktop/src/features/agent/queued-input/queued-input-shelf.tsx)，" +
+      "RPC 见 [service.ts:1544-1572](file:///Users/dev/packages/daemon/src/service.ts)。";
+    const out = rewriteMarkdownLocalFileLinks(input);
+    expect(out).not.toContain("file://");
+    const hrefs = [
+      ...out.matchAll(/\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/g),
+    ].map((match) => match[1]);
+    expect(hrefs).toHaveLength(2);
+    expect(parseWorkspaceFileHref(hrefs[0])).toEqual({
+      path: "/Users/dev/apps/desktop/src/features/agent/queued-input/queued-input-shelf.tsx",
+    });
+    expect(parseWorkspaceFileHref(hrefs[1])).toEqual({
+      path: "/Users/dev/packages/daemon/src/service.ts",
+    });
+    expect(out).toContain(
+      "[queued-input-shelf.tsx:196-216](https://cocurdex.workspace/",
+    );
+  });
+
+  it("peels a line range off an absolute file:// path", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "[a.ts:12-20](file:///Users/dev/apps/desktop/src/a.ts:12-20)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/apps/desktop/src/a.ts",
+      startLine: 12,
+      endLine: 20,
+    });
+  });
+
+  it("decodes escaped characters in file:// links", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "[a.ts](file:///Users/dev/My%20Docs/a.ts)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "/Users/dev/My Docs/a.ts",
+    });
+  });
+
+  it("rewrites Windows drive-letter file:// links", () => {
+    const out = rewriteMarkdownLocalFileLinks(
+      "[main.ts](file:///C:/dev/app/src/main.ts)",
+    );
+    const hrefMatch = out.match(
+      /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
+    );
+    expect(parseWorkspaceFileHref(hrefMatch?.[1])).toEqual({
+      path: "C:/dev/app/src/main.ts",
+    });
+  });
+
+  it("leaves non-file and remote-host file:// links alone", () => {
+    const input = [
+      "[share](file://server/share/a.ts)",
+      "[empty](file://)",
+      "[dir](file:///Users/dev/apps/)",
+    ].join("\n");
+    expect(rewriteMarkdownLocalFileLinks(input)).toBe(input);
+  });
+});
+
+describe("splitWorkspaceLinkLabel", () => {
+  it("keeps Chinese annotations outside the path chip", () => {
+    expect(splitWorkspaceLinkLabel("headless.rs:846 附近")).toEqual([
+      { kind: "path", text: "headless.rs:846", startLine: 846 },
+      { kind: "text", text: " 附近" },
+    ]);
+    expect(splitWorkspaceLinkLabel("headless.rs:1240 起")).toEqual([
+      { kind: "path", text: "headless.rs:1240", startLine: 1240 },
+      { kind: "text", text: " 起" },
+    ]);
+  });
+
+  it("keeps a line range in the path chip", () => {
+    expect(splitWorkspaceLinkLabel("service.ts:1544-1572")).toEqual([
+      {
+        kind: "path",
+        text: "service.ts:1544-1572",
+        startLine: 1544,
+        endLine: 1572,
+      },
+    ]);
+  });
+
+  it("keeps a pure path label as a single path part", () => {
+    expect(
+      splitWorkspaceLinkLabel("crates/codegen/xai-grok-pager/src/app/cli.rs"),
+    ).toEqual([
+      {
+        kind: "path",
+        text: "crates/codegen/xai-grok-pager/src/app/cli.rs",
+      },
+    ]);
+  });
+
+  it("treats a non-path label as a single path display part", () => {
+    expect(splitWorkspaceLinkLabel("see docs")).toEqual([
+      { kind: "path", text: "see docs" },
+    ]);
+  });
+});

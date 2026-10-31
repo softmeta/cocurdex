@@ -30,7 +30,7 @@ export function ModelRuntimeSelect({
       disabled={disabled}
       options={options}
       triggerAriaLabel={ariaLabel}
-      triggerClassName="h-8 w-full min-w-0 justify-between font-normal text-foreground"
+      triggerClassName="h-7 w-full min-w-0 justify-between font-normal text-foreground"
       triggerLabel={selected?.label ?? value}
       value={value}
       onValueChange={(next) => onChange(next as ProviderApi)}

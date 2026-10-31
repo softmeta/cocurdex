@@ -1,0 +1,273 @@
+import { DatabaseSync } from "node:sqlite";
+import { createSqliteSessionRepository } from "@cocurdex/db/internal/repositories/sqlite-session-repository";
+import { createSqliteWorkspaceRepository } from "@cocurdex/db/internal/repositories/sqlite-workspace-repository";
+import { createSchemaSql } from "@cocurdex/db/internal/schema";
+import { describe, expect, it } from "vitest";
+
+function createDatabase() {
+  const database = new DatabaseSync(":memory:");
+  database.exec("PRAGMA foreign_keys = ON");
+  database.exec(createSchemaSql());
+  return database;
+}
+
+const now = "2026-08-27T00:00:00.000Z";
+
+describe("createSqliteSessionRepository", () => {
+  it("round-trips the session permission mode across restart-style reads", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Claude Agent",
+      agentType: "claude-agent",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      permissionMode: "claude-auto",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+      providerSnapshot: {
+        providerId: "claude-agent",
+        providerName: "Claude Agent",
+        modelId: "opus",
+        modelName: "Opus 5",
+        api: "anthropic-messages",
+        baseUrl: "",
+        headersJson: null,
+      },
+    });
+
+    expect(await sessions.getById("session-1")).toMatchObject({
+      permissionMode: "claude-auto",
+    });
+  });
+
+  it("round-trips a bound worktree path", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Isolated",
+      agentType: "claude-agent",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+      worktreePath: "/tmp/cocurdex-data/worktrees/abcd/session-1",
+    });
+
+    expect(await sessions.getById("session-1")).toMatchObject({
+      worktreePath: "/tmp/cocurdex-data/worktrees/abcd/session-1",
+    });
+  });
+
+  it("round-trips an explicitly selected agent role id", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Frontend",
+      agentType: "acp:grok-build",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      agentRoleId: "role-1",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+    });
+
+    expect(await sessions.getById("session-1")).toMatchObject({
+      agentRoleId: "role-1",
+    });
+  });
+
+  it("lists child sessions with their parent", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "parent",
+      workspaceId: "workspace-1",
+      title: "Parent",
+      agentType: "acp:grok-build",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: now,
+      archivedAt: null,
+    });
+    await sessions.upsert({
+      id: "child",
+      workspaceId: "workspace-1",
+      title: "Standards review",
+      agentType: "acp:grok-build",
+      sessionKind: "subagent",
+      parentSessionId: "parent",
+      status: "running",
+      writeMode: "native-write",
+      sessionModeId: null,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+    });
+
+    const listed = await sessions.list();
+    expect(listed.map((session) => session.id).sort()).toEqual([
+      "child",
+      "parent",
+    ]);
+    expect(listed.find((session) => session.id === "child")).toMatchObject({
+      parentSessionId: "parent",
+      sessionKind: "subagent",
+    });
+  });
+
+  it("archives a parent and its descendant sessions together", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    await sessions.upsert({
+      id: "parent",
+      workspaceId: "workspace-1",
+      title: "Parent",
+      agentType: "acp:grok-build",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: now,
+      archivedAt: null,
+    });
+    await sessions.upsert({
+      id: "child",
+      workspaceId: "workspace-1",
+      title: "Child",
+      agentType: "acp:grok-build",
+      sessionKind: "subagent",
+      parentSessionId: "parent",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+      archivedAt: null,
+    });
+
+    await sessions.archive("parent", "2026-08-31T12:00:00.000Z");
+
+    expect(await sessions.list()).toEqual([]);
+    expect(await sessions.getById("parent")).toMatchObject({
+      archivedAt: "2026-08-31T12:00:00.000Z",
+    });
+    expect(await sessions.getById("child")).toMatchObject({
+      archivedAt: "2026-08-31T12:00:00.000Z",
+    });
+  });
+
+  it("keeps a pin when runtime upserts a record without pinnedAt", async () => {
+    const database = createDatabase();
+    const workspaces = createSqliteWorkspaceRepository(database);
+    const sessions = createSqliteSessionRepository(database);
+    await workspaces.upsert({
+      id: "workspace-1",
+      name: "repo",
+      rootPaths: ["/tmp/repo"],
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      sortOrder: 1000,
+    });
+    const session = {
+      id: "session-1",
+      workspaceId: "workspace-1",
+      title: "Pinned",
+      agentType: "codex",
+      status: "idle",
+      writeMode: "native-write",
+      sessionModeId: null,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+    } as const;
+    await sessions.upsert(session);
+
+    const pinned = await sessions.setPinned("session-1", now);
+    await sessions.upsert({ ...session, status: "running" });
+
+    expect(pinned?.pinnedAt).toBe(now);
+    expect(await sessions.getById("session-1")).toMatchObject({
+      pinnedAt: now,
+      status: "running",
+    });
+    expect((await sessions.setPinned("session-1", null))?.pinnedAt).toBeNull();
+  });
+});

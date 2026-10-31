@@ -1,8 +1,13 @@
-export type DesktopLogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
-export const COCURDEX_DAEMON_DIAGNOSTIC_PREFIX = "[CocurdexDaemonDiagnostic] ";
+export const LOG_LEVELS: readonly LogLevel[] = [
+  "debug",
+  "info",
+  "warn",
+  "error",
+];
 
-export type DesktopLogDetails =
+export type LogDetails =
   | Record<string, unknown>
   | unknown[]
   | string
@@ -12,10 +17,10 @@ export type DesktopLogDetails =
   | undefined;
 
 export interface RendererLogPayload {
-  level: DesktopLogLevel;
+  level: LogLevel;
   scope: string;
   event: string;
-  details?: DesktopLogDetails;
+  details?: LogDetails;
 }
 
 export interface DiagnosticsExportResult {

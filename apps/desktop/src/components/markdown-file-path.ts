@@ -1,11 +1,10 @@
+import {
+  type FilePathCandidate,
+  parseFilePathCandidate,
+  parseLocalFileHref,
+  scanFilePathCandidates,
+} from "@cocurdex/shared";
 import type { ReactNode } from "react";
-
-export interface FilePathCandidate {
-  path: string;
-  startLine?: number;
-  endLine?: number;
-  column?: number;
-}
 
 export interface ResolvedFilePath {
   absolutePath: string;
@@ -25,178 +24,6 @@ export interface MarkdownFilePathHandlers {
   open(target: ResolvedFilePath): void;
   // Localized tooltip label for the clickable affordance.
   openLabel?: string;
-}
-
-// Common source/config file extensions. Used to accept bare filenames (no path
-// separator) while rejecting dotted identifiers like `exec.LookPath`. Paths that
-// contain a separator skip this gate. Existence is still verified before a
-// candidate becomes clickable, so this list only limits how many candidates we
-// probe — it does not need to be exhaustive.
-const KNOWN_EXTENSIONS = new Set([
-  "ts",
-  "tsx",
-  "js",
-  "jsx",
-  "mjs",
-  "cjs",
-  "json",
-  "jsonc",
-  "go",
-  "rs",
-  "py",
-  "rb",
-  "java",
-  "kt",
-  "kts",
-  "c",
-  "h",
-  "cpp",
-  "cc",
-  "hpp",
-  "cs",
-  "swift",
-  "php",
-  "sh",
-  "bash",
-  "zsh",
-  "fish",
-  "md",
-  "mdx",
-  "txt",
-  "yml",
-  "yaml",
-  "toml",
-  "xml",
-  "html",
-  "css",
-  "scss",
-  "sass",
-  "less",
-  "sql",
-  "vue",
-  "svelte",
-  "gradle",
-  "proto",
-  "graphql",
-  "lock",
-  "cfg",
-  "ini",
-  "conf",
-]);
-
-// Only these characters may appear in a path candidate. Spaces, parentheses,
-// quotes and backticks immediately disqualify a token (e.g. `buildArgs()`).
-const PATH_CHARS = /^[\w.\-/@~]+$/;
-// Peel an optional trailing `:line`, `:start-end` or `:line:column` location
-// suffix. Ranges use a hyphen or an en dash — agents write both.
-const LOCATION_SUFFIX = /^(.*?):(\d+)(?:[-–](\d+))?(?::(\d+))?$/;
-
-function looksLikePath(path: string): boolean {
-  if (path.length < 2 || !PATH_CHARS.test(path)) {
-    return false;
-  }
-
-  // A separator is strong evidence of a path.
-  if (path.includes("/")) {
-    return true;
-  }
-
-  // Otherwise require a recognized file extension on a bare filename.
-  const lastDot = path.lastIndexOf(".");
-  if (lastDot <= 0 || lastDot === path.length - 1) {
-    return false;
-  }
-
-  return KNOWN_EXTENSIONS.has(path.slice(lastDot + 1).toLowerCase());
-}
-
-// Split a `<path>:<location>` token, keeping the line range when it is ordered.
-// A reversed range (`:20-10`) collapses to its start line so callers never
-// highlight backwards.
-function parseLocationSuffix(raw: string): FilePathCandidate | null {
-  const match = raw.match(LOCATION_SUFFIX);
-  if (!match || match[1].length === 0) {
-    return null;
-  }
-
-  const path = match[1];
-  if (!looksLikePath(path)) {
-    return null;
-  }
-
-  const startLine = Number(match[2]);
-  const candidate: FilePathCandidate = { path, startLine };
-  const endLine = match[3] === undefined ? undefined : Number(match[3]);
-  if (endLine !== undefined && endLine > startLine) {
-    candidate.endLine = endLine;
-  }
-  if (match[4] !== undefined) {
-    candidate.column = Number(match[4]);
-  }
-  return candidate;
-}
-
-// Decide whether an inline-code token denotes a clickable file path, parsing an
-// optional `:line`, `:start-end` or `:line:column` suffix. Returns null for
-// non-path code so the caller renders the token as ordinary inline code.
-export function parseFilePathCandidate(raw: string): FilePathCandidate | null {
-  const trimmed = raw.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  const location = parseLocationSuffix(trimmed);
-  if (location) {
-    return location;
-  }
-
-  return looksLikePath(trimmed) ? { path: trimmed } : null;
-}
-
-export interface FilePathMatch {
-  index: number;
-  length: number;
-  candidate: FilePathCandidate;
-}
-
-// A run of path-ish characters. Whitespace, quotes, and brackets (half- and
-// full-width, plus CJK punctuation) act as boundaries, so a path wrapped in
-// `（...）`, `(...)` or `"..."` is peeled out cleanly. `:` and `#` stay inside
-// the token so a `:line(:col)` suffix is captured, then re-validated below.
-const PATH_TOKEN = /[\w./\\@~:#-]+/g;
-// Token greediness can pull in surrounding punctuation (a trailing sentence
-// period, a leading suffix marker). Trim it while keeping offsets aligned. A
-// numeric `:line` suffix ends in a digit, so it is never trimmed.
-const LEADING_NOISE = /^[#:]+/;
-const TRAILING_NOISE = /[.,:;#]+$/;
-
-// Scan free-form prose for file-path candidates. Used to linkify paths that
-// appear in plain text (not inline code), e.g. `core/src/main.rs:619` written
-// inside a Chinese sentence with full-width parens. Detection is deliberately
-// permissive — `looksLikePath` only gates how many candidates we surface; the
-// caller still verifies existence before anything becomes clickable, so false
-// positives degrade to plain text rather than dead links.
-export function scanFilePathCandidates(text: string): FilePathMatch[] {
-  const matches: FilePathMatch[] = [];
-  for (const match of text.matchAll(PATH_TOKEN)) {
-    const raw = match[0];
-    const leadTrim = raw.match(LEADING_NOISE)?.[0].length ?? 0;
-    const afterLead = raw.slice(leadTrim);
-    const trailTrim = afterLead.match(TRAILING_NOISE)?.[0].length ?? 0;
-    const token = afterLead.slice(0, afterLead.length - trailTrim);
-    if (token.length < 2) {
-      continue;
-    }
-    const candidate = parseFilePathCandidate(token);
-    if (candidate) {
-      matches.push({
-        index: (match.index ?? 0) + leadTrim,
-        length: token.length,
-        candidate,
-      });
-    }
-  }
-  return matches;
 }
 
 // Split a markdown link label into path-looking spans and plain prose so only
@@ -372,65 +199,6 @@ function isReservedMarkdownHref(href: string): boolean {
   );
 }
 
-function decodeHrefCandidate(href: string): string {
-  try {
-    return decodeURIComponent(href);
-  } catch {
-    return href;
-  }
-}
-
-const FILE_URL_PREFIX = "file:";
-const LEADING_DRIVE_SLASH = /^\/[A-Za-z]:\//;
-const WINDOWS_ABSOLUTE_PATH = /^[A-Za-z]:[\\/]/;
-
-function isLocalFileHost(hostname: string): boolean {
-  return hostname === "" || hostname === "localhost";
-}
-
-function isAbsoluteFilePath(path: string): boolean {
-  if (!path.startsWith("/") && !WINDOWS_ABSOLUTE_PATH.test(path)) {
-    return false;
-  }
-  return path.slice(path.lastIndexOf("/") + 1).length > 0;
-}
-
-function parseFileUrlCandidate(href: string): FilePathCandidate | null {
-  if (!href.toLowerCase().startsWith(FILE_URL_PREFIX)) {
-    return null;
-  }
-
-  let url: URL;
-  try {
-    url = new URL(href);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "file:" || !isLocalFileHost(url.hostname)) {
-    return null;
-  }
-
-  let rawPath: string;
-  try {
-    rawPath = decodeURIComponent(url.pathname);
-  } catch {
-    return null;
-  }
-  if (LEADING_DRIVE_SLASH.test(rawPath)) {
-    rawPath = rawPath.slice(1);
-  }
-
-  // Some agents put the location on the URL path itself
-  // (`file:///…/service.ts:1544-1572`) instead of the link label.
-  const location = parseLocationSuffix(rawPath);
-  const path = location?.path ?? rawPath;
-  if (!isAbsoluteFilePath(path)) {
-    return null;
-  }
-
-  return location ? { ...location, path } : { path };
-}
-
 // Match `[label](href)` / `[label](<href>)` / `[label](href "title")`.
 // Labels often wrap the path in backticks: [`path`](path). Captures keep the
 // original label (including backticks) so we only rewrite the href.
@@ -452,9 +220,7 @@ function rewriteLinksInProse(segment: string): string {
         return match;
       }
 
-      const candidate =
-        parseFileUrlCandidate(href) ??
-        parseFilePathCandidate(decodeHrefCandidate(href));
+      const candidate = parseLocalFileHref(href);
       if (!candidate) {
         return match;
       }
@@ -507,10 +273,7 @@ function unwrapPathLabeledFileLinkCodeSpan(span: string): string | null {
     return null;
   }
 
-  const candidate =
-    parseFileUrlCandidate(href) ??
-    parseFilePathCandidate(decodeHrefCandidate(href));
-  return candidate ? inner : null;
+  return parseLocalFileHref(href) ? inner : null;
 }
 
 // Mask whole inline-code spans, rewrite links on the remainder, then restore.

@@ -1,7 +1,22 @@
 import { createAgentCapabilityCacheSchemaSql } from "./agents/schema";
+import { createDecksSchemaSql } from "./decks/deck-schema";
+import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
+import { createHostAccessSchemaSql } from "./host-access/schema";
 import { createScriptRunSchemaSql } from "./script-run/schema";
 import { createTeamSchemaSql } from "./team/schema";
 import { createWorkflowSchemaSql } from "./workflow/schema";
+
+export function createCommandReceiptsSql() {
+  return `
+    CREATE TABLE IF NOT EXISTS command_receipts (
+      key TEXT PRIMARY KEY,
+      outcome_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_command_receipts_created_at
+      ON command_receipts(created_at);
+  `;
+}
 
 export function createSchemaSql() {
   return `
@@ -53,6 +68,7 @@ export function createSchemaSql() {
       updated_at TEXT NOT NULL,
       last_message_at TEXT,
       archived_at TEXT,
+      pinned_at TEXT,
       worktree_path TEXT,
       peer_inbound TEXT NOT NULL DEFAULT 'deliver',
       timeline_seq INTEGER NOT NULL DEFAULT 0,
@@ -72,8 +88,29 @@ export function createSchemaSql() {
       created_at TEXT NOT NULL,
       origin_json TEXT,
       seq INTEGER,
+      run_id TEXT REFERENCES runs(id) ON DELETE SET NULL,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS runs (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      trigger_message_id TEXT NOT NULL,
+      status TEXT NOT NULL
+        CHECK (status IN ('running', 'completed', 'cancelled', 'failed', 'interrupted')),
+      error TEXT,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      agent_type TEXT,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (trigger_message_id) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_one_running_per_session
+      ON runs(session_id) WHERE status = 'running';
+
+    CREATE INDEX IF NOT EXISTS idx_runs_session_started
+      ON runs(session_id, started_at);
 
     CREATE TABLE IF NOT EXISTS session_attention (
       session_id TEXT PRIMARY KEY,
@@ -115,6 +152,8 @@ export function createSchemaSql() {
       started_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       seq INTEGER,
+      run_id TEXT REFERENCES runs(id) ON DELETE SET NULL,
+      result_ref TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 
@@ -130,6 +169,7 @@ export function createSchemaSql() {
       session_id TEXT NOT NULL,
       duration_ms INTEGER NOT NULL,
       usage_json TEXT,
+      stop_reason TEXT,
       completed_at TEXT NOT NULL,
       FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
@@ -178,14 +218,37 @@ export function createSchemaSql() {
     );
 
     CREATE TABLE IF NOT EXISTS agent_provider_sessions (
-      session_id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      agent_type TEXT NOT NULL,
       provider_session_id TEXT,
       provider_state_json TEXT NOT NULL,
       provider_version TEXT,
       resumable INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL,
+      PRIMARY KEY (session_id, agent_type),
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS context_transfers (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('fork', 'agent_switch')),
+      source_session_id TEXT NOT NULL,
+      target_session_id TEXT NOT NULL,
+      source_message_id TEXT,
+      source_agent_types_json TEXT NOT NULL DEFAULT '[]',
+      target_agent_type TEXT,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'consumed')),
+      strategy TEXT CHECK (strategy IN ('full', 'delta', 'native')),
+      covered_message_count INTEGER NOT NULL DEFAULT 0,
+      handoff_text TEXT,
+      consumed_by_message_id TEXT,
+      created_at TEXT NOT NULL,
+      consumed_at TEXT,
+      FOREIGN KEY (target_session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_context_transfers_target
+      ON context_transfers(target_session_id, created_at);
 
     CREATE TABLE IF NOT EXISTS provider_configs (
       id TEXT PRIMARY KEY,
@@ -252,38 +315,11 @@ export function createSchemaSql() {
       opencode_agent TEXT,
       opencode_variant TEXT,
       instructions TEXT,
+      description TEXT,
       skill_ids_json TEXT,
+      avatar_json TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS conversations (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      provider_id TEXT NOT NULL,
-      model_id TEXT NOT NULL,
-      system_prompt TEXT,
-      preset_id TEXT,
-      web_search_enabled INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      last_message_at TEXT,
-      archived_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS conversation_messages (
-      id TEXT PRIMARY KEY,
-      conversation_id TEXT NOT NULL,
-      role TEXT NOT NULL,
-      content_json TEXT NOT NULL,
-      status TEXT NOT NULL,
-      usage_json TEXT,
-      sources_json TEXT,
-      error TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (conversation_id) REFERENCES conversations(id)
-        ON DELETE CASCADE
     );
 
     ${createWorkflowSchemaSql()}
@@ -294,6 +330,8 @@ export function createSchemaSql() {
       updated_at TEXT NOT NULL
     );
 
+    ${createCommandReceiptsSql()}
+
     CREATE TABLE IF NOT EXISTS notes (
       id TEXT PRIMARY KEY,
       parent_id TEXT,
@@ -302,6 +340,8 @@ export function createSchemaSql() {
       title TEXT NOT NULL,
       icon TEXT,
       body_markdown TEXT NOT NULL DEFAULT '',
+      doc_state BLOB,
+      space_id TEXT NOT NULL DEFAULT 'local',
       sort_order INTEGER NOT NULL DEFAULT 0,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
@@ -347,6 +387,10 @@ export function createSchemaSql() {
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      space_id TEXT NOT NULL DEFAULT 'local',
+      number INTEGER,
+      parent_id TEXT REFERENCES issues(id) ON DELETE SET NULL,
+      completed_at TEXT,
       FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL
     );
 
@@ -370,7 +414,54 @@ export function createSchemaSql() {
       sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      category TEXT,
       PRIMARY KEY (field, id)
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_labels (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_label_links (
+      issue_id TEXT NOT NULL,
+      label_id TEXT NOT NULL,
+      PRIMARY KEY (issue_id, label_id),
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (label_id) REFERENCES issue_labels(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_relations (
+      issue_id TEXT NOT NULL,
+      related_issue_id TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('blocks', 'related', 'duplicate')),
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (issue_id, related_issue_id, kind),
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (related_issue_id) REFERENCES issues(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_events (
+      id TEXT PRIMARY KEY,
+      issue_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      actor_kind TEXT NOT NULL,
+      actor_session_id TEXT,
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS issue_sessions (
+      issue_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      linked_at TEXT NOT NULL,
+      PRIMARY KEY (issue_id, session_id),
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS note_fts USING fts5(
@@ -437,9 +528,6 @@ export function createSchemaSql() {
     CREATE INDEX IF NOT EXISTS idx_tool_calls_session_started
       ON tool_calls(session_id, started_at);
 
-    CREATE INDEX IF NOT EXISTS idx_conv_messages_conv_created
-      ON conversation_messages(conversation_id, created_at);
-
     CREATE INDEX IF NOT EXISTS idx_notes_parent_sort
       ON notes(parent_id, sort_order, title);
 
@@ -461,10 +549,28 @@ export function createSchemaSql() {
     CREATE INDEX IF NOT EXISTS idx_issue_columns_sort
       ON issue_columns(field, sort_order);
 
+    CREATE INDEX IF NOT EXISTS idx_issue_label_links_label
+      ON issue_label_links(label_id);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_relations_related
+      ON issue_relations(related_issue_id);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_events_issue_created
+      ON issue_events(issue_id, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_issue_sessions_session
+      ON issue_sessions(session_id);
+
     ${createTeamSchemaSql()}
 
     ${createScriptRunSchemaSql()}
 
+    ${createHostAccessSchemaSql()}
+
     ${createAgentCapabilityCacheSchemaSql()}
+
+    ${createDecksSchemaSql()}
+
+    ${createEntityLinksSchemaSql()}
   `;
 }

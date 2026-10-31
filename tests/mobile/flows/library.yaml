@@ -1,0 +1,311 @@
+appId: dev.cocurdex.mobile
+---
+- runFlow: shared/pair-by-link.yaml
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${TAB_ISSUES}
+      - extendedWaitUntil:
+          visible: ${IN_PROGRESS_ISSUE_TITLE}
+          timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: issues
+- tapOn: ${NEW_ISSUE_ACTION}
+- extendedWaitUntil:
+    visible:
+      id: note-format-bold
+    timeout: 30000
+- inputText: ${NEW_ISSUE_TITLE}
+- waitForAnimationToEnd
+- takeScreenshot: new-issue
+- tapOn: ${NEW_ISSUE_SUBMIT}
+- extendedWaitUntil:
+    visible: ${NEW_ISSUE_TITLE}
+    timeout: 10000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${TAB_ISSUES}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${NEW_ISSUE_TITLE}
+    timeout: 10000
+- tapOn: ${ISSUE_TITLE}
+- extendedWaitUntil:
+    visible: ${ISSUE_DESCRIPTION}
+    timeout: 10000
+- assertVisible: ${ISSUE_SESSION_TITLE}
+- extendedWaitUntil:
+    visible:
+      id: "doc-image"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: issue-detail
+- tapOn:
+    id: "doc-image"
+- extendedWaitUntil:
+    visible:
+      id: "image-viewer"
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${IMAGE_CLOSE}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${ISSUE_DESCRIPTION}
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${TAB_ISSUES}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${IN_PROGRESS_ISSUE_TITLE}
+    timeout: 5000
+- waitForAnimationToEnd
+- longPressOn: ${IN_PROGRESS_ISSUE_TITLE}
+- extendedWaitUntil:
+    visible:
+      id: issue-move-done
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: issue-move
+- tapOn:
+    id: issue-move-done
+- extendedWaitUntil:
+    notVisible: ${IN_PROGRESS_ISSUE_TITLE}
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: issue-section-done
+    direction: DOWN
+- tapOn:
+    id: issue-section-done
+- scrollUntilVisible:
+    element: ${IN_PROGRESS_ISSUE_TITLE}
+    direction: DOWN
+- longPressOn: ${IN_PROGRESS_ISSUE_TITLE}
+- extendedWaitUntil:
+    visible:
+      id: issue-move-doing
+    timeout: 5000
+- tapOn:
+    id: issue-move-doing
+- scrollUntilVisible:
+    element:
+      id: issue-section-done
+    direction: DOWN
+- tapOn:
+    id: issue-section-done
+- scrollUntilVisible:
+    element: ${IN_PROGRESS_ISSUE_TITLE}
+    direction: UP
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${TAB_NOTES}
+      - extendedWaitUntil:
+          visible: ${NOTE_PARENT_TITLE}
+          timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: notes
+- tapOn: ${NEW_NOTE_ACTION}
+- extendedWaitUntil:
+    visible:
+      id: note-format-bold
+    timeout: 30000
+- inputText: ${NEW_NOTE_TITLE}
+- pressKey: Enter
+- inputText: ${NEW_NOTE_BODY}
+- tapOn:
+    id: note-format-bold
+- waitForAnimationToEnd
+- takeScreenshot: new-note
+- tapOn:
+    id: note-format-hide-keyboard
+- extendedWaitUntil:
+    notVisible:
+      id: note-format-bold
+    timeout: 5000
+- extendedWaitUntil:
+    visible: ${NEW_NOTE_BODY}
+    timeout: 10000
+- takeScreenshot: new-note-saved
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${TAB_NOTES}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${NEW_NOTE_TITLE}
+    timeout: 10000
+- tapOn: ${NEW_NOTE_ACTION}
+- extendedWaitUntil:
+    visible:
+      id: note-format-bold
+    timeout: 30000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${TAB_NOTES}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - back
+            - extendedWaitUntil:
+                visible: ${NEW_NOTE_TITLE}
+                timeout: 3000
+- extendedWaitUntil:
+    visible: ${NEW_NOTE_TITLE}
+    timeout: 10000
+- extendedWaitUntil:
+    notVisible: ${DEFAULT_NOTE_TITLE}
+    timeout: 10000
+- tapOn: ${NOTE_TITLE}
+- extendedWaitUntil:
+    visible: ${NOTE_BODY_TEXT}
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: note-detail
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${TAB_NOTES}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- tapOn: ${LINK_NOTE_TITLE}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: ${ISSUE_LINK_TEXT}
+          timeout: 10000
+      - tapOn: ${ISSUE_LINK_TEXT}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: ${ISSUE_LINK_TEXT}
+          timeout: 10000
+          optional: true
+      - retry:
+          maxRetries: 2
+          commands:
+            - runFlow:
+                when:
+                  notVisible: ${ISSUE_LINK_TEXT}
+                commands:
+                  - back
+                  - tapOn: ${LINK_NOTE_TITLE}
+            - extendedWaitUntil:
+                visible: ${ISSUE_LINK_TEXT}
+                timeout: 10000
+      - tapOn:
+          text: ${ISSUE_LINK_TEXT}
+          point: 10%, 50%
+      - extendedWaitUntil:
+          visible: ${ISSUE_DESCRIPTION}
+          timeout: 5000
+          optional: true
+      - runFlow:
+          when:
+            notVisible: ${ISSUE_DESCRIPTION}
+          commands:
+            - tapOn:
+                text: ${ISSUE_LINK_TEXT}
+                point: 10%, 4%
+- extendedWaitUntil:
+    visible: ${ISSUE_DESCRIPTION}
+    timeout: 10000
+- takeScreenshot: note-issue-link
+- scrollUntilVisible:
+    element: "${LINK_NOTE_TITLE}.*"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "${LINK_NOTE_TITLE}.*"
+- extendedWaitUntil:
+    visible: ${ISSUE_LINK_TEXT}
+    timeout: 10000
+    optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - runFlow:
+                when:
+                  notVisible: ${ISSUE_LINK_TEXT}
+                commands:
+                  - back
+                  - tapOn: "${LINK_NOTE_TITLE}.*"
+            - extendedWaitUntil:
+                visible: ${ISSUE_LINK_TEXT}
+                timeout: 10000
+- extendedWaitUntil:
+    visible: ${ISSUE_LINK_TEXT}
+    timeout: 1000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 5%, 9%
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${ISSUE_DESCRIPTION}
+    timeout: 5000
+- retry:
+    maxRetries: 3
+    commands:
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                point: 5%, 9%
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - back
+      - extendedWaitUntil:
+          visible: ${NOTE_PARENT_TITLE}
+          timeout: 3000

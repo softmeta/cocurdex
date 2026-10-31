@@ -28,7 +28,7 @@ import { ModelParametersDialog } from "./model-parameters-dialog";
 import { ModelRuntimeSelect } from "./model-runtime-select";
 
 const fieldClass =
-  "h-8 min-w-0 rounded-control border-border/70 bg-background/60 text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20";
+  "h-7 min-w-0 rounded-control border-border/70 bg-background/60 text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20";
 
 function getModelInput(model: ProviderModelRecord) {
   return model.capabilities?.includes("vision") ? "text, image" : "text";
@@ -186,7 +186,7 @@ export function ProviderModelsSection({
         )}
       </div>
 
-      <div className="overflow-hidden rounded-control border border-border/40 bg-muted">
+      <div className="overflow-hidden rounded-control bg-muted">
         {visibleModels.length === 0 ? (
           <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
             {readOnly

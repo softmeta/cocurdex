@@ -18,7 +18,7 @@ bump the version or push a tag: that would publish a build nobody asked for.
 | bump `apps/desktop/package.json` | no | yes |
 | push the branch, open the PR | yes | yes |
 | clear review threads, wait for green checks | yes | yes |
-| merge (`gh pr merge --merge`) | yes | yes |
+| merge (`gh pr merge`, through the merge queue) | yes | yes |
 | push the `v<version>` tag | no | yes |
 
 The gate before merging is identical either way. Cut a release only when the user asks for one
@@ -31,7 +31,7 @@ The gate before merging is identical either way. Cut a release only when the use
 - The bump is its own commit, `chore(desktop): bump version to <version>`, made on the branch and merged through the PR — not on `main` after merge.
 - The tag is `v<version>`, must equal `apps/desktop/package.json`, and the tagged commit must be an ancestor of `origin/main`.
 - Tags are lightweight (`git tag <name> <commit>`), matching every existing release tag.
-- Merge with a merge commit (`gh pr merge --merge`). History is merge commits, and the tag goes on that merge commit.
+- Merge through the merge queue (`gh pr merge`), which lands a merge commit. History is merge commits, and the tag goes on that merge commit.
 - Never bypass a required CI check. Fix the failure; do not weaken a test to make it pass.
 - Every review thread is resolved before the merge: fixed, or answered with a reason and then resolved.
 
@@ -111,7 +111,8 @@ Then wait for CI and merge:
 ```bash
 gh pr checks <n> --watch --interval 30
 gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision
-gh pr merge <n> --merge
+gh pr merge <n>
+gh pr view <n> --json state --jq .state   # repeat until MERGED; the queue reruns required checks
 ```
 
 CI runs the full workspace suite (`pnpm test`), not just the packages you touched. Run the

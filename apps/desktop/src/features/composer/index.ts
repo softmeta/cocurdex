@@ -2,8 +2,7 @@ export { ChatComposer, type ChatComposerHandle } from "./chat-composer";
 export { composerFooterControlClassName } from "./chat-composer-layout";
 export {
   composerDraftsAtom,
-  conversationComposerDraftKey,
-  newConversationComposerDraftKey,
+  newChatComposerDraftKey,
   newSessionComposerDraftKey,
   sessionComposerDraftKey,
 } from "./composer-draft-store";
@@ -14,6 +13,7 @@ export {
   ComposerSurfaceBody,
   WelcomeHeading,
 } from "./composer-surface";
+export { formatTokenCount } from "./context-token-format";
 export { ContextUsageMeter } from "./context-window-indicator";
 export { DocumentAttachmentChips } from "./document-attachment-chips";
 export { ImageAttachmentCards } from "./image-attachment-cards";
@@ -32,12 +32,7 @@ export { applyRateLimitsEventAtom } from "./session-rate-limits-store";
 export {
   applyUsageEventAtom,
   bootstrapSessionUsageAtom,
+  getSessionContextTokens,
+  sessionUsageAtom,
 } from "./session-usage-store";
-export {
-  getConfigOptionThinkingLevels,
-  getThinkingLevelLabel,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-  type ThinkingLevelOption,
-} from "./thinking-level";
-export { ThinkingLevelSubmenu } from "./thinking-level-submenu";
+export type { ComposerSendOutcome } from "./use-composer-submission";

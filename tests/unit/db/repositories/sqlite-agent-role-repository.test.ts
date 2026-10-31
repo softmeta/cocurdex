@@ -1,0 +1,80 @@
+import { DatabaseSync } from "node:sqlite";
+import { createSqliteAgentRoleRepository } from "@cocurdex/db/internal/repositories/sqlite-agent-role-repository";
+import { createSchemaSql } from "@cocurdex/db/internal/schema";
+import { describe, expect, it } from "vitest";
+
+function createDatabase() {
+  const database = new DatabaseSync(":memory:");
+  database.exec("PRAGMA foreign_keys = ON");
+  database.exec(createSchemaSql());
+  return database;
+}
+
+const now = "2026-09-06T00:00:00.000Z";
+
+describe("createSqliteAgentRoleRepository", () => {
+  it("round-trips a thin agent role and lists newest first", async () => {
+    const repository = createSqliteAgentRoleRepository(createDatabase());
+
+    await repository.upsert({
+      id: "older",
+      name: "Review",
+      agentId: "codex",
+      providerId: "openai",
+      modelId: "gpt-5.4",
+      modelName: "GPT-5.4",
+      permissionMode: "codex-read-only",
+      sessionModeId: null,
+      reasoningEffort: "high",
+      serviceTier: null,
+      fastMode: null,
+      thinkingLevel: null,
+      openCodeAgent: null,
+      openCodeVariant: null,
+      description: "Reviews diffs for regressions",
+      instructions: null,
+      skillIds: null,
+      avatar: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await repository.upsert({
+      id: "newer",
+      name: "Implement",
+      agentId: "codex",
+      providerId: "openai",
+      modelId: "gpt-5.4",
+      modelName: "GPT-5.4",
+      permissionMode: "codex-auto",
+      sessionModeId: null,
+      reasoningEffort: "medium",
+      serviceTier: null,
+      fastMode: false,
+      thinkingLevel: null,
+      openCodeAgent: null,
+      openCodeVariant: null,
+      description: null,
+      instructions: null,
+      skillIds: ["ship"],
+      avatar: { kind: "emoji", emoji: "🚀", color: "violet" },
+      createdAt: now,
+      updatedAt: "2026-09-06T01:00:00.000Z",
+    });
+
+    const listed = await repository.list();
+    expect(listed.map((item) => item.id)).toEqual(["newer", "older"]);
+    expect(listed[1]?.description).toBe("Reviews diffs for regressions");
+    expect(listed[0]).toMatchObject({
+      name: "Implement",
+      modelName: "GPT-5.4",
+      permissionMode: "codex-auto",
+      fastMode: false,
+      skillIds: ["ship"],
+      avatar: { kind: "emoji", emoji: "🚀", color: "violet" },
+    });
+
+    await repository.delete("newer");
+    expect((await repository.list()).map((item) => item.id)).toEqual(["older"]);
+    expect(await repository.getById("newer")).toBeNull();
+  });
+});

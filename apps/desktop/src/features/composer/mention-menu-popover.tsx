@@ -1,5 +1,6 @@
 import { Popover } from "@base-ui/react/popover";
 import { type ReactNode, type Ref, useMemo } from "react";
+import { Command, CommandGroup, CommandList } from "@/components/ui";
 import type { MentionAnchor } from "./mention-editor-dom";
 
 // Gap between the caret glyph and the menu edge.
@@ -62,5 +63,33 @@ export function MentionMenuPopover({
         </Popover.Positioner>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+interface MentionMenuListProps {
+  children: ReactNode;
+  commandRef?: Ref<HTMLDivElement>;
+  listRef?: Ref<HTMLDivElement>;
+}
+
+export function MentionMenuList({
+  children,
+  commandRef,
+  listRef,
+}: MentionMenuListProps) {
+  return (
+    <Command
+      autoHighlight={false}
+      className="h-auto max-h-(--available-height) rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10"
+      ref={commandRef}
+      shouldFilter={false}
+    >
+      <CommandList
+        className="max-h-[min(18rem,var(--available-height))]"
+        ref={listRef}
+      >
+        <CommandGroup className="p-0">{children}</CommandGroup>
+      </CommandList>
+    </Command>
   );
 }

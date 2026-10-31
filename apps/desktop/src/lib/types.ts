@@ -1,62 +1,93 @@
+import type { DaemonConnectionInfo } from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
+  AgentAuthState,
   AgentDescriptor,
   AgentId,
+  AgentMcpUnsupportedReason,
   AgentProviderModelAxes,
   AgentProviderSelection,
   AgentRateLimitsReadResult,
   AgentRoleRecord,
+  AgentRunLimits,
   AgentSessionConfigOption,
   AgentSessionMode,
+  AgentSessionRuntimeState,
   AgentSlashCommand,
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
-  AppResyncSnapshot,
   ArchiveSessionPayload,
+  ArchiveSessionsResult,
   BrowserAnnotation,
   BrowserTabsSnapshot,
-  ChatEvent,
   CocurdexDataChangedEvent,
+  CommentIssuePayload,
   CommitMessageModelSelection,
   CompatibleProviderModel,
-  ConversationMessageRecord,
-  ConversationRecord,
-  ConversationSnapshot,
+  ContextTransferRecord,
   CreateColumnPayload,
-  CreateConversationPayload,
+  CreatedHostPairing,
+  CreateHostPairingPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
-  CreateNotePayload,
+  CreateTeamPayload,
   CreateViewPayload,
   DeleteColumnPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
-  DeleteNotePayload,
   DeleteSessionPayload,
   DeleteViewPayload,
   DiagnosticsExportResult,
   DocumentAttachment,
-  EditConversationMessagePayload,
   EditorViewRecord,
+  ForkSessionPayload,
+  GetIssueDetailPayload,
   GetIssuePayload,
-  GetNotePayload,
   GitBranchInfo,
   GitCommitInfo,
   GitWorktreeInfo,
+  HostAccessAuditEntry,
+  HostAccessScope,
   HostDirectoryListing,
+  HostPairingRecord,
+  HostRemoteAccessStatus,
   ImageAttachment,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
   LoadViewPayload,
   ManagedWorktree,
+  McpConfigFile,
+  McpImportCandidate,
+  McpLoginOutcome,
+  McpLoginStartResult,
+  McpProjectConfigFile,
+  McpServerConfig,
+  McpServerStatus,
+  McpStatusReport,
+  MemoryCloudConnectInput,
+  MemoryCloudConnectResult,
+  MemoryCloudKeys,
+  MemoryDoctorReport,
+  MemoryEntry,
+  MemoryInstallResult,
+  MemoryRecallResult,
+  MemoryRememberInput,
+  MemoryRememberResult,
+  MemorySessionSaveInput,
+  MemorySessionSaveResult,
+  MemorySettings,
+  MemoryStatus,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
-  MoveNotePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
-  NoteRecord,
-  NoteSummary,
+  PairedDeviceRecord,
   PdfAnnotationsOperation,
   PdfDocumentAnnotations,
   PendingSettingsChangeRecord,
@@ -79,8 +110,8 @@ import type {
   PtySpawnResult,
   QueuedAgentInputActionPayload,
   RefineSessionTitlePayload,
+  RemoteAccessSettings,
   RendererLogPayload,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
@@ -89,10 +120,15 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
-  SendConversationMessagePayload,
+  SessionAttentionSnapshot,
+  SessionExecutionTree,
+  SessionIdsPayload,
   SessionMessagesResult,
   SessionRecord,
+  SetSessionPinnedPayload,
   StartScriptRunPayload,
+  SyncPullInput,
+  SyncPullResult,
   TeamMemberRecord,
   TeamRecord,
   TeamSnapshot,
@@ -107,10 +143,10 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
-  UpdateConversationPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
-  UpdateNotePayload,
   UpdateQueuedAgentInputPayload,
+  UpdateSessionAttentionPayload,
   UpdateSessionTitlePayload,
   UpdateViewPayload,
   ViewColumnRecord,
@@ -199,22 +235,6 @@ export type {
   WorkspaceGitTreeStatus,
 } from "@cocurdex/shared";
 
-export interface ImportImageAttachmentPayload {
-  dataUrl: string;
-  height: number;
-  mimeType: string;
-  name: string;
-  sizeBytes: number;
-  width: number;
-}
-
-export interface ImportDocumentAttachmentPayload {
-  dataUrl: string;
-  mimeType: "application/pdf";
-  name: string;
-  sizeBytes: number;
-}
-
 /** Status of the `cocurdex` shell command install (PATH). */
 export interface CliPathStatus {
   available: boolean;
@@ -293,6 +313,10 @@ export interface HostCapabilities {
    * daemon `fs.listDirectories` browse RPC to pick paths on the daemon host.
    */
   nativeDirectoryDialog: boolean;
+  terminal: boolean;
+  browserView: boolean;
+  localWebClient: boolean;
+  localFilePaths: boolean;
 }
 
 /**
@@ -305,7 +329,7 @@ export interface ProductApi {
   bootstrapApp(): Promise<AppBootstrapData>;
   // Authoritative reload after a daemon event replay gap; the snapshot's
   // eventSeq boundary tells the client which buffered events it covers.
-  resyncApp(sessionIds: string[]): Promise<AppResyncSnapshot>;
+  pullSync(input: SyncPullInput): Promise<SyncPullResult>;
   getProductSkillsStatus(
     scope: ProductSkillScope,
     workspaceRootPath?: string | null,
@@ -345,8 +369,26 @@ export interface ProductApi {
    * native directory dialog is available). Paths are daemon-host absolute.
    */
   listHostDirectories(path?: string): Promise<HostDirectoryListing>;
+  getHomeDir(): Promise<string>;
+  listFontFamilies(): Promise<string[]>;
+  openWorkspaceInFileManager(rootPath: string): Promise<void>;
+  revealPathInFileManager(targetPath: string): Promise<void>;
+  resolveWorkspaceOpenPath(
+    filePath: string,
+  ): Promise<{ rootPath: string } | null>;
+  ptySpawn(payload: PtySpawnPayload): Promise<PtySpawnResult>;
+  ptyWrite(terminalId: string, data: string): Promise<void>;
+  ptyResize(terminalId: string, cols: number, rows: number): Promise<void>;
+  ptyKill(terminalId: string): Promise<void>;
+  onPtyData(listener: (event: PtyDataEvent) => void): () => void;
+  onPtyExit(listener: (event: PtyExitEvent) => void): () => void;
+  onPtyActivity(listener: (event: PtyActivityEvent) => void): () => void;
   listWorkspaceEntries(rootPath: string): Promise<WorkspaceEntry[]>;
   listWorkspaceFiles(rootPath: string): Promise<WorkspaceFileEntry[]>;
+  listWorkspaceDirectory(
+    rootPath: string,
+    relativePath: string,
+  ): Promise<WorkspaceFileEntry[]>;
   listGitBranches(rootPath: string): Promise<GitBranchInfo[]>;
   checkoutGitBranch(rootPath: string, branch: string): Promise<void>;
   listGitWorktrees(rootPath: string): Promise<GitWorktreeInfo[]>;
@@ -366,6 +408,16 @@ export interface ProductApi {
   }): Promise<{ removed: boolean }>;
   listScriptRuns(requesterSessionId: string): Promise<ScriptRunRecord[]>;
   getScriptRun(runId: string): Promise<ScriptRunSnapshot>;
+  forkSession(payload: ForkSessionPayload): Promise<SessionRecord>;
+  switchSessionAgent(
+    sessionId: string,
+    agentType: AgentId,
+  ): Promise<SessionRecord>;
+  listContextTransfers(sessionId: string): Promise<ContextTransferRecord[]>;
+  getSessionRuntimeState(sessionId: string): Promise<AgentSessionRuntimeState>;
+  getSessionExecutionTree(
+    sessionId: string,
+  ): Promise<SessionExecutionTree | null>;
   startScriptRun(payload: StartScriptRunPayload): Promise<ScriptRunRecord>;
   cancelScriptRun(runId: string): Promise<ScriptRunRecord>;
   getScriptRunSettings(): Promise<ScriptRunSettings>;
@@ -373,6 +425,7 @@ export interface ProductApi {
     settings: ScriptRunSettings,
   ): Promise<ScriptRunSettings>;
   getTeam(leadSessionId: string): Promise<TeamSnapshot | null>;
+  createTeam(payload: CreateTeamPayload): Promise<TeamRecord>;
   stopTeam(teamId: string): Promise<TeamRecord>;
   stopTeamMember(payload: {
     teamId: string;
@@ -444,9 +497,14 @@ export interface ProductApi {
   updateSessionTitle(
     payload: UpdateSessionTitlePayload,
   ): Promise<SessionRecord | null>;
+  setSessionPinned(
+    payload: SetSessionPinnedPayload,
+  ): Promise<SessionRecord | null>;
   archiveSession(payload: ArchiveSessionPayload): Promise<SessionRecord | null>;
   listArchivedSessions(): Promise<SessionRecord[]>;
   restoreSession(payload: { sessionId: string }): Promise<SessionRecord[]>;
+  archiveSessions(payload: SessionIdsPayload): Promise<ArchiveSessionsResult>;
+  restoreSessions(payload: SessionIdsPayload): Promise<SessionRecord[]>;
   deleteSession(payload: DeleteSessionPayload): Promise<void>;
   refineSessionTitle(
     payload: RefineSessionTitlePayload,
@@ -455,6 +513,38 @@ export interface ProductApi {
   listProviderTemplates(): Promise<ProviderTemplateRecord[]>;
   readMcpConfig(): Promise<{ content: string; path: string }>;
   saveMcpConfig(content: string): Promise<{ content: string; path: string }>;
+  readMcpProjectConfig(workspaceId: string): Promise<McpProjectConfigFile>;
+  saveMcpServer(
+    name: string,
+    config: McpServerConfig,
+    previousName?: string,
+  ): Promise<McpConfigFile>;
+  removeMcpServer(name: string): Promise<McpConfigFile>;
+  setMcpServerEnabled(name: string, enabled: boolean): Promise<McpConfigFile>;
+  setMcpServerAgents(name: string, agents: AgentId[]): Promise<McpConfigFile>;
+  checkMcpInjection(): Promise<
+    Record<string, AgentMcpUnsupportedReason | null>
+  >;
+  mergeMcpServers(
+    servers: Record<string, McpServerConfig>,
+  ): Promise<McpConfigFile>;
+  getMcpStatus(
+    workspaceId?: string,
+    names?: string[],
+  ): Promise<McpStatusReport>;
+  testMcpServer(
+    name: string,
+    config: McpServerConfig,
+    workspaceId?: string,
+  ): Promise<McpServerStatus>;
+  startMcpLogin(
+    name: string,
+    workspaceId?: string,
+  ): Promise<McpLoginStartResult>;
+  waitMcpLogin(loginId: string): Promise<McpLoginOutcome>;
+  cancelMcpLogin(loginId: string): Promise<void>;
+  logoutMcpServer(name: string, workspaceId?: string): Promise<void>;
+  scanMcpImports(workspaceId?: string): Promise<McpImportCandidate[]>;
   saveProviderConfig(
     config: ProviderConfigRecord,
   ): Promise<ProviderConfigRecord>;
@@ -476,13 +566,21 @@ export interface ProductApi {
     agentId: AgentId,
     modelId: string,
   ): Promise<AgentProviderModelAxes | null>;
-  loginAgent(agentId: AgentId): Promise<void>;
+  loginAgent(agentId: AgentId, methodId?: string): Promise<void>;
+  cancelAgentLogin(agentId: AgentId): Promise<void>;
+  logoutAgent(agentId: AcpRegistryAgentId): Promise<void>;
+  readAgentAuth(agentId: AcpRegistryAgentId): Promise<AgentAuthState>;
   listAcpRegistryCatalog(options?: {
     forceRefresh?: boolean;
   }): Promise<AcpRegistryCatalogAgent[]>;
   installAcpRegistryAgent(
     registryId: string,
   ): Promise<AcpRegistryInstalledAgent>;
+  installAcpRegistryCommand(params: {
+    registryId: string;
+    command: string;
+    args: string[];
+  }): Promise<AcpRegistryInstalledAgent>;
   uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId): Promise<void>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
@@ -502,6 +600,8 @@ export interface ProductApi {
   setCommitMessageModel(
     selection: CommitMessageModelSelection | null,
   ): Promise<void>;
+  getAgentRunLimits(): Promise<AgentRunLimits>;
+  setAgentRunLimits(limits: AgentRunLimits): Promise<AgentRunLimits>;
   getNetworkProxySettings(): Promise<NetworkProxySettings>;
   setNetworkProxySettings(
     settings: NetworkProxySettings,
@@ -510,6 +610,47 @@ export interface ProductApi {
     settings: NetworkProxySettings,
   ): Promise<NetworkProxyTestResult>;
   testCurrentNetworkProxy(): Promise<NetworkProxyTestResult>;
+  getMemoryStatus(refresh?: boolean): Promise<MemoryStatus>;
+  getMemorySettings(): Promise<MemorySettings>;
+  setMemorySettings(settings: MemorySettings): Promise<MemorySettings>;
+  recallMemories(input: {
+    query: string;
+    limit?: number;
+    project?: string | null;
+  }): Promise<MemoryRecallResult>;
+  showMemory(id: string): Promise<MemoryEntry | null>;
+  rememberMemory(input: MemoryRememberInput): Promise<MemoryRememberResult>;
+  saveSessionMemory(
+    input: MemorySessionSaveInput,
+  ): Promise<MemorySessionSaveResult>;
+  installMemory(force?: boolean): Promise<MemoryInstallResult>;
+  runMemoryDoctor(options?: {
+    remote?: boolean;
+    checkUpdate?: boolean;
+  }): Promise<MemoryDoctorReport>;
+  getMemoryPolicy(): Promise<string>;
+  connectMemoryCloud(
+    input: MemoryCloudConnectInput,
+  ): Promise<MemoryCloudConnectResult>;
+  disconnectMemoryCloud(): Promise<MemoryStatus>;
+  setMemoryCloudSync(enabled: boolean): Promise<MemoryStatus>;
+  getMemoryCloudKeys(): Promise<MemoryCloudKeys>;
+  getHostRemoteAccess(): Promise<HostRemoteAccessStatus>;
+  setHostRemoteAccess(
+    settings: RemoteAccessSettings,
+  ): Promise<HostRemoteAccessStatus>;
+  createHostPairing(
+    payload: CreateHostPairingPayload,
+  ): Promise<CreatedHostPairing>;
+  listHostPairings(): Promise<HostPairingRecord[]>;
+  cancelHostPairing(pairingId: string): Promise<HostPairingRecord | null>;
+  listHostDevices(): Promise<PairedDeviceRecord[]>;
+  revokeHostDevice(deviceId: string): Promise<PairedDeviceRecord | null>;
+  updateHostDeviceScopes(
+    deviceId: string,
+    scopes: HostAccessScope[],
+  ): Promise<PairedDeviceRecord | null>;
+  listHostAudit(limit: number): Promise<HostAccessAuditEntry[]>;
   listSessionMessages(sessionId: string): Promise<SessionMessagesResult>;
   listSessionToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;
   // Returns user-facing content and raw machine output for a single tool call.
@@ -533,6 +674,7 @@ export interface ProductApi {
   sendQueuedInputNow(
     payload: QueuedAgentInputActionPayload,
   ): Promise<MessageRecord>;
+  resumeQueuedInputs(sessionId: string): Promise<boolean>;
   saveEditorView(view: EditorViewRecord): Promise<void>;
   listSlashCommands(
     agentType: AgentId,
@@ -555,34 +697,13 @@ export interface ProductApi {
   onWorkspaceSearchError(
     listener: (event: WorkspaceSearchErrorEvent) => void,
   ): () => void;
-  // === Pure chat (ChatGPT-style) ===
-  chatList(): Promise<ConversationRecord[]>;
-  chatGet(conversationId: string): Promise<ConversationSnapshot | null>;
-  chatCreate(payload: CreateConversationPayload): Promise<ConversationRecord>;
-  chatUpdate(
-    payload: UpdateConversationPayload,
-  ): Promise<ConversationRecord | null>;
-  chatArchive(conversationId: string): Promise<ConversationRecord | null>;
-  chatDelete(conversationId: string): Promise<void>;
-  chatSendMessage(
-    payload: SendConversationMessagePayload,
-  ): Promise<ConversationMessageRecord>;
-  chatRetryMessage(payload: RetryConversationMessagePayload): Promise<null>;
-  chatEditMessage(
-    payload: EditConversationMessagePayload,
-  ): Promise<ConversationMessageRecord>;
-  chatStopStream(conversationId: string): Promise<void>;
-  onChatEvent(listener: (event: ChatEvent) => void): () => void;
-  onChatInvalidated(listener: () => void): () => void;
-  // === App-owned notes ===
-  notesList(): Promise<NoteSummary[]>;
-  notesGet(payload: GetNotePayload): Promise<NoteRecord | null>;
-  notesCreate(payload: CreateNotePayload): Promise<NoteRecord>;
-  notesUpdate(payload: UpdateNotePayload): Promise<NoteRecord>;
-  notesMove(payload: MoveNotePayload): Promise<NoteRecord>;
-  notesDelete(payload: DeleteNotePayload): Promise<void>;
   // === App-owned issues and views ===
   issueListViews(): Promise<ViewSummary[]>;
+  issueListLinkedSessionIds(): Promise<string[]>;
+  listSessionAttention(): Promise<SessionAttentionSnapshot[]>;
+  updateSessionAttention(
+    payload: UpdateSessionAttentionPayload,
+  ): Promise<SessionAttentionSnapshot>;
   issueLoad(payload: LoadViewPayload): Promise<ViewFull | null>;
   /** Full markdown body for the issue detail editor. */
   issueGet(payload: GetIssuePayload): Promise<IssueRecord | null>;
@@ -597,6 +718,13 @@ export interface ProductApi {
   issueUpdate(payload: UpdateIssuePayload): Promise<IssueRecord>;
   issueMove(payload: MoveIssuePayload): Promise<IssueRecord>;
   issueDelete(payload: DeleteIssuePayload): Promise<void>;
+  issueGetDetail(payload: GetIssueDetailPayload): Promise<IssueDetail | null>;
+  issueCreateLabel(payload: CreateIssueLabelPayload): Promise<IssueLabel>;
+  issueUpdateLabel(payload: UpdateIssueLabelPayload): Promise<IssueLabel>;
+  issueDeleteLabel(payload: DeleteIssueLabelPayload): Promise<void>;
+  issueAddRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  issueRemoveRelation(payload: IssueRelationPayload): Promise<IssueDetail>;
+  issueComment(payload: CommentIssuePayload): Promise<IssueDetail>;
   searchDocuments(
     payload: SearchDocumentsPayload,
   ): Promise<SearchDocumentResult[]>;
@@ -613,13 +741,11 @@ export interface ProductApi {
   onWorkspaceGitStateChanged(
     listener: (event: WorkspaceFilesChangedEvent) => void,
   ): () => void;
-  importImageAttachment(
-    payload: ImportImageAttachmentPayload,
-  ): Promise<ImageAttachment>;
+  importImageAttachment(file: Blob, name: string): Promise<ImageAttachment>;
   importDocumentAttachment(
-    payload: ImportDocumentAttachmentPayload,
+    file: Blob,
+    name: string,
   ): Promise<DocumentAttachment>;
-  readImageAttachmentDataUrl(filePath: string): Promise<string>;
   startProviderAuthLogin(
     providerId: string,
     method: ProviderAuthMethod,
@@ -635,21 +761,14 @@ export interface ProductApi {
 
 /**
  * Host-only surface (Electron): OS integration the daemon contract does not
- * cover — native dialogs, file-manager reveal, PTY, BrowserView, fonts,
- * updates, CLI install, renderer logging, and daemon process management. Absent
+ * cover — native dialogs, BrowserView, updates, CLI install, renderer
+ * logging, and daemon process management. Absent
  * on clients without a local host; gate features on
  * {@link HostApi.capabilities} instead of calling blindly.
  */
 export interface HostApi {
   readonly chatWindow: ChatWindowApi;
   readonly capabilities: HostCapabilities;
-  /** Absolute user home directory (default terminal cwd without a workspace). */
-  getHomeDir(): Promise<string>;
-  /**
-   * Installed font family names from the OS (for Appearance font pickers).
-   * Empty array when enumeration fails — renderer uses a curated fallback list.
-   */
-  listFontFamilies(): Promise<string[]>;
   getAppUpdateState(): Promise<AppUpdateState>;
   checkForAppUpdate(): Promise<AppUpdateState>;
   dismissAppUpdate(): Promise<AppUpdateState>;
@@ -663,11 +782,7 @@ export interface HostApi {
   uninstallCliFromPath(): Promise<CliPathStatus>;
   getDaemonStatus(): Promise<DaemonRuntimeStatus>;
   restartDaemon(): Promise<DaemonRuntimeStatus>;
-  openWorkspaceInFileManager(rootPath: string): Promise<void>;
-  // Reveal a specific file or directory in the OS file manager, highlighting it
-  // within its parent folder (vs. openWorkspaceInFileManager which opens a dir).
-  revealPathInFileManager(targetPath: string): Promise<void>;
-  readPdfData(payload: { filePath: string }): Promise<string>;
+  getDaemonConnection(): Promise<DaemonConnectionInfo | null>;
   openWorkspace(): Promise<{
     canceled: boolean;
     filePaths: string[];
@@ -679,13 +794,6 @@ export interface HostApi {
    * Returns null when the path cannot be resolved.
    */
   getPathForFile(file: File): string | null;
-  /**
-   * Validate a local path as a workspace root (directory, or parent of a file).
-   * Returns null when the path is missing or unusable.
-   */
-  resolveWorkspaceOpenPath(
-    filePath: string,
-  ): Promise<{ rootPath: string } | null>;
   /** Second-instance / live CLI folder open while the app is running. */
   onOpenWorkspaceFromCli(
     listener: (event: { rootPath: string }) => void,
@@ -730,20 +838,40 @@ export interface HostApi {
   getDiagnosticsVerbose(): Promise<boolean>;
   setDiagnosticsVerbose(enabled: boolean): Promise<boolean>;
   openExternal(url: string): Promise<void>;
-  ptySpawn(payload: PtySpawnPayload): Promise<PtySpawnResult>;
-  ptyWrite(terminalId: string, data: string): Promise<void>;
-  ptyResize(terminalId: string, cols: number, rows: number): Promise<void>;
-  ptyKill(terminalId: string): Promise<void>;
-  onPtyData(listener: (event: PtyDataEvent) => void): () => void;
-  onPtyExit(listener: (event: PtyExitEvent) => void): () => void;
-  onPtyActivity(listener: (event: PtyActivityEvent) => void): () => void;
+  downloadUrl(url: string): Promise<void>;
+  openPresentationWindow(request: {
+    channel: string;
+  }): Promise<PresentationWindowResult>;
+  closePresentationWindow(request: { channel: string }): Promise<void>;
 }
+
+export interface PresentationWindowResult {
+  opened: boolean;
+  externalDisplay: boolean;
+}
+
+export type ProductEventApi = Pick<
+  ProductApi,
+  | "onDataChanged"
+  | "onWorkspaceFilesChanged"
+  | "onWorkspaceGitStateChanged"
+  | "onWorkspaceSearchResult"
+  | "onWorkspaceSearchDone"
+  | "onWorkspaceSearchError"
+  | "onPtyData"
+  | "onPtyExit"
+  | "onPtyActivity"
+>;
+
+export type ProductRequestApi = Omit<ProductApi, keyof ProductEventApi>;
+
+export type HostBridge = HostApi;
 
 /** Desktop facade: product contract plus the Electron host surface. */
 export interface DesktopApi extends ProductApi, HostApi {}
 
 declare global {
   interface Window {
-    desktopApi: DesktopApi;
+    desktopApi?: HostBridge;
   }
 }

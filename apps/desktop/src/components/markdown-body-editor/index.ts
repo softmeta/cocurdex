@@ -1,3 +1,4 @@
+export { focusParagraphAtStart } from "./boundary-paragraph";
 export { buildMarkdownBodyExtensions } from "./extensions";
 export {
   MarkdownBodyEditor,
@@ -9,3 +10,4 @@ export {
   type SlashCommandItem,
   type SlashCommandKey,
 } from "./slash-command-items";
+export { TableControls } from "./table/table-controls";

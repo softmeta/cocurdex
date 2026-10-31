@@ -1,7 +1,8 @@
+import { createSyncEngine } from "@cocurdex/client-runtime";
 import type { AgentEvent, DaemonEventMeta } from "@cocurdex/shared";
 import { getDefaultStore } from "jotai";
 import {
-  appendMessageAtom,
+  agentRuntimeBySessionAtom,
   applyAgentEventAtom,
   applyAgentRuntimeEventAtom,
   applyPermissionEventAtom,
@@ -10,38 +11,31 @@ import {
   applyQuestionEventAtom,
   applyQueuedInputEventAtom,
   applyToolEventAtom,
-  bootstrapQueuedInputsAtom,
-  hydratePendingPermissionsAtom,
-  hydratePendingPlanApprovalsAtom,
-  hydratePendingQuestionsAtom,
-  loadSessionMessagesAtom,
-  loadSessionPlanAtom,
-  loadSessionToolCallsAtom,
-  loadTurnStatsAtom,
   messagesLoadedBySessionAtom,
+  seedAgentRuntimeAtom,
   toolCallsLoadedBySessionAtom,
 } from "@/features/agent";
 import {
   applyContextBreakdownEventAtom,
   applyRateLimitsEventAtom,
   applyUsageEventAtom,
-  bootstrapSessionUsageAtom,
 } from "@/features/composer";
 import {
   activeSessionIdAtom,
   applyRuntimeSessionModesAtom,
+  loadSessionAttentionAtom,
   markSessionMessageAtom,
+  markSessionsVisitedAtom,
   projectSubagentSessionFromToolCallAtom,
-  reconcileSessionsAtom,
+  recordSessionResultAtom,
+  sessionsAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
   upsertSessionAtom,
 } from "@/features/sessions";
-import {
-  applyTurnChangesEventAtom,
-  loadTurnChangeSetsAtom,
-} from "@/features/turn-workspace-changes";
+import { applyTurnChangesEventAtom } from "@/features/turn-workspace-changes";
 import { desktopApi, taskApi } from "@/lib";
+import { applySyncResult } from "./agent-sync-apply";
 
 type Store = ReturnType<typeof getDefaultStore>;
 
@@ -92,6 +86,9 @@ function applyAgentEventToStore(store: Store, event: AgentEvent) {
       sessionId: event.sessionId,
       createdAt: event.message.createdAt,
     });
+    if (event.message.role === "assistant") {
+      recordSessionResult(store, event.sessionId, event.message.createdAt);
+    }
     return;
   }
 
@@ -120,132 +117,85 @@ function applyAgentEventToStore(store: Store, event: AgentEvent) {
   }
 }
 
-// Replay-gap recovery: a dropped journaled event means event-sourced agent
-// state can be stale, so refetch one authoritative snapshot covering the
-// session list, queued inputs, usage, all pending interactions, and every
-// hydrated transcript. Live events arriving while a snapshot loads are
-// buffered; the snapshot's eventSeq boundary tells which of them it already
-// covers, and only newer ones are applied on top.
-export function createAgentEventBridge(store: Store) {
-  const resync = { running: false, again: false };
-  let resyncPromise: Promise<void> | null = null;
-  const requestedSessionIds = new Set<string>();
-  let boundary: { epoch: string | null; seq: number } | null = null;
-  let buffered: { event: AgentEvent; meta: DaemonEventMeta }[] = [];
+function recordSessionResult(store: Store, sessionId: string, at: string) {
+  store.set(recordSessionResultAtom, { sessionId, at });
+  if (store.get(activeSessionIdAtom) === sessionId) {
+    store.set(markSessionsVisitedAtom, [sessionId]);
+  }
+}
 
-  const resyncOnce = async () => {
-    const sessionIds = new Set<string>([
-      ...requestedSessionIds,
-      ...Object.keys(store.get(messagesLoadedBySessionAtom)),
-      ...Object.keys(store.get(toolCallsLoadedBySessionAtom)),
-    ]);
-    const activeSessionId = store.get(activeSessionIdAtom);
-    if (activeSessionId) sessionIds.add(activeSessionId);
-    const snapshot = await desktopApi.resyncApp([...sessionIds]);
+function loadSessionAttention(store: Store) {
+  void store.set(loadSessionAttentionAtom).catch((error: unknown) => {
+    console.error("[AgentEvent] session attention load failed", error);
+  });
+}
 
-    store.set(reconcileSessionsAtom, snapshot.sessions);
-    store.set(bootstrapQueuedInputsAtom, {
-      inputs: snapshot.queuedAgentInputs,
-      messages: snapshot.queuedMessages,
-    });
-    store.set(bootstrapSessionUsageAtom, snapshot.sessionUsage);
-    store.set(hydratePendingPermissionsAtom, snapshot.interactions.permissions);
-    store.set(hydratePendingQuestionsAtom, snapshot.interactions.questions);
-    store.set(
-      hydratePendingPlanApprovalsAtom,
-      snapshot.interactions.planApprovals,
+function startSessionVisitSync(store: Store) {
+  let visibleSessionId = store.get(activeSessionIdAtom);
+  return store.sub(activeSessionIdAtom, () => {
+    const nextSessionId = store.get(activeSessionIdAtom);
+    if (nextSessionId === visibleSessionId) return;
+    const sessions = store.get(sessionsAtom);
+    const previousSessionId = sessions.some(
+      (session) => session.id === visibleSessionId,
+    )
+      ? visibleSessionId
+      : null;
+    const visitedIds = [previousSessionId, nextSessionId].filter(
+      (id): id is string => Boolean(id),
     );
-    for (const [sessionId, transcript] of Object.entries(
-      snapshot.transcripts,
-    )) {
-      if (!transcript) continue;
-      store.set(loadSessionMessagesAtom, {
-        messages: transcript.messages,
-        sessionId,
-      });
-      // Active messages carry in-flight streamed content the durable list
-      // lacks; upsert them after the durable merge so the daemon's
-      // accumulation wins over locally diverged deltas.
-      for (const message of transcript.activeMessages) {
-        store.set(appendMessageAtom, message);
-      }
-      store.set(loadTurnStatsAtom, transcript.turnStats);
-      store.set(loadTurnChangeSetsAtom, {
-        changeSets: transcript.turnChangeSets,
-        sessionId,
-      });
-      store.set(loadSessionToolCallsAtom, {
-        sessionId,
-        toolCalls: transcript.toolCalls,
-      });
-      store.set(loadSessionPlanAtom, { sessionId, plan: transcript.plan });
-    }
-    boundary = { epoch: snapshot.epoch, seq: snapshot.eventSeq };
-  };
+    visibleSessionId = nextSessionId;
+    store.set(markSessionsVisitedAtom, visitedIds);
+  });
+}
 
-  const drainBufferedEvents = () => {
-    const pending = buffered;
-    buffered = [];
-    for (const item of pending) {
-      const covered =
-        boundary !== null &&
-        item.meta.epoch === boundary.epoch &&
-        item.meta.seq !== null &&
-        item.meta.seq <= boundary.seq;
-      if (!covered) applyAgentEventToStore(store, item.event);
-    }
+function startRuntimeStateSeeding(store: Store) {
+  const pending = new Set<string>();
+  const seed = () => {
+    const sessionId = store.get(activeSessionIdAtom);
+    if (!sessionId || pending.has(sessionId)) return;
+    if (store.get(agentRuntimeBySessionAtom)[sessionId]) return;
+    pending.add(sessionId);
+    desktopApi
+      .getSessionRuntimeState(sessionId)
+      .then((state) => store.set(seedAgentRuntimeAtom, { sessionId, state }))
+      .catch((error: unknown) =>
+        console.error("[AgentEvent] runtime state load failed", error),
+      )
+      .finally(() => pending.delete(sessionId));
   };
+  seed();
+  return store.sub(activeSessionIdAtom, seed);
+}
 
-  // Each gap or failed attempt schedules another pass; the loop ends once a
-  // full snapshot completes with no gap pending.
-  const runResync = async () => {
-    let failures = 0;
-    try {
-      do {
-        resync.again = false;
-        try {
-          await resyncOnce();
-          failures = 0;
-        } catch (error) {
-          failures += 1;
-          console.error("[AgentEvent] resync attempt failed", error);
-          if (failures >= 5) throw error;
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.min(500 * 2 ** (failures - 1), 4000)),
-          );
-          resync.again = true;
-          continue;
-        }
-        drainBufferedEvents();
-      } while (resync.again);
-    } catch (error) {
-      console.error("[AgentEvent] resync abandoned after retries", error);
-      throw error;
-    } finally {
-      resync.running = false;
-      drainBufferedEvents();
-    }
-  };
+export function createAgentEventBridge(store: Store) {
+  const engine = createSyncEngine<AgentEvent>({
+    pull: (input) => desktopApi.pullSync(input),
+    scope: () => {
+      const hydrated = new Set([
+        ...Object.keys(store.get(messagesLoadedBySessionAtom)),
+        ...Object.keys(store.get(toolCallsLoadedBySessionAtom)),
+      ]);
+      const activeSessionId = store.get(activeSessionIdAtom);
+      return {
+        sessionIds: activeSessionId ? [...hydrated, activeSessionId] : hydrated,
+        hydratedSessionIds: hydrated,
+      };
+    },
+    apply: (result) => {
+      applySyncResult(store, result);
+      loadSessionAttention(store);
+    },
+    applyEvent: (event) => applyAgentEventToStore(store, event),
+    onError: (error) =>
+      console.error("[AgentEvent] sync attempt failed", error),
+  });
 
-  const synchronize = (sessionIds: string[] = []) => {
-    for (const id of sessionIds) requestedSessionIds.add(id);
-    resync.again = true;
-    if (!resyncPromise) {
-      resync.running = true;
-      resyncPromise = runResync().finally(() => {
-        resyncPromise = null;
-      });
-    }
-    return resyncPromise;
-  };
+  const synchronize = (sessionIds: string[] = []) =>
+    engine.synchronize(sessionIds);
 
-  const handleAgentEvent = (event: AgentEvent, meta?: DaemonEventMeta) => {
-    if (resync.running) {
-      buffered.push({ event, meta: meta ?? { epoch: null, seq: null } });
-      return;
-    }
-    applyAgentEventToStore(store, event);
-  };
+  const handleAgentEvent = (event: AgentEvent, meta?: DaemonEventMeta) =>
+    engine.handleEvent(event, meta);
 
   const start = () => {
     const unsubscribeEvents = taskApi.onAgentEvent(handleAgentEvent);
@@ -253,13 +203,18 @@ export function createAgentEventBridge(store: Store) {
       if (!event.areas.includes("agent")) return;
       void synchronize().catch(console.error);
     });
+    const unsubscribeVisits = startSessionVisitSync(store);
+    const unsubscribeRuntimeSeeding = startRuntimeStateSeeding(store);
+    loadSessionAttention(store);
     return () => {
       unsubscribeEvents();
       unsubscribeData();
+      unsubscribeVisits();
+      unsubscribeRuntimeSeeding();
     };
   };
 
-  return { start, synchronize };
+  return { start, synchronize, adoptCursor: engine.setCursor };
 }
 
 const ACTIVE_BRIDGE = Symbol.for("cocurdex.agentEventBridge");
@@ -275,6 +230,10 @@ export function startAgentEventBridge() {
 
 export function synchronizeAgentState(sessionIds?: string[]) {
   return defaultBridge.synchronize(sessionIds);
+}
+
+export function adoptAgentSyncCursor(cursor: string) {
+  defaultBridge.adoptCursor(cursor);
 }
 
 if (import.meta.hot?.data?.restart) startAgentEventBridge();

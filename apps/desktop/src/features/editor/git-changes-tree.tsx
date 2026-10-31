@@ -1,18 +1,10 @@
 import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react";
 import { useAtomValue, useSetAtom } from "jotai";
-import {
-  List,
-  ListTree,
-  Minus,
-  PanelLeft,
-  Plus,
-  Search,
-  Undo2,
-} from "lucide-react";
+import { List, ListTree, Minus, Plus, Search, Undo2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  TITLEBAR_ICON_GLYPH_CLASS,
+  SidebarToggleButton,
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
 import { Input } from "@/components/ui";
@@ -32,11 +24,6 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Text } from "@/components/ui/text";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { GitFileStagedState } from "@/lib";
 import { cn } from "@/lib/utils";
 import {
@@ -211,36 +198,26 @@ export function GitChangesTree({
                     value={searchQuery}
                   />
                 </div>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <TitlebarIconButton
-                        aria-label={
-                          fileIndexView === "tree"
-                            ? t("git.switchToListView")
-                            : t("git.switchToTreeView")
-                        }
-                        onClick={() =>
-                          setFileIndexView((prev) =>
-                            prev === "tree" ? "list" : "tree",
-                          )
-                        }
-                      >
-                        {/* The glyph previews the layout the click switches to. */}
-                        {fileIndexView === "tree" ? (
-                          <List className={TITLEBAR_ICON_GLYPH_CLASS} />
-                        ) : (
-                          <ListTree className={TITLEBAR_ICON_GLYPH_CLASS} />
-                        )}
-                      </TitlebarIconButton>
-                    }
-                  />
-                  <TooltipContent side="top" sideOffset={6}>
-                    {fileIndexView === "tree"
+                <TitlebarIconButton
+                  tooltipSide="top"
+                  aria-label={
+                    fileIndexView === "tree"
                       ? t("git.switchToListView")
-                      : t("git.switchToTreeView")}
-                  </TooltipContent>
-                </Tooltip>
+                      : t("git.switchToTreeView")
+                  }
+                  onClick={() =>
+                    setFileIndexView((prev) =>
+                      prev === "tree" ? "list" : "tree",
+                    )
+                  }
+                >
+                  {/* The glyph previews the layout the click switches to. */}
+                  {fileIndexView === "tree" ? (
+                    <List className="size-3.5" />
+                  ) : (
+                    <ListTree className="size-3.5" />
+                  )}
+                </TitlebarIconButton>
               </div>
               {fileIndexView === "tree" ? (
                 <div
@@ -339,11 +316,10 @@ function DiffActionsStrip({
   return (
     <div className="shrink-0 px-2 pt-2">
       <div className="flex h-7 items-center gap-1">
-        <ToolbarButton
-          active={showTreePanel}
-          icon={<PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />}
+        <SidebarToggleButton
           label={showTreePanel ? t("git.hideFileTree") : t("git.showFileTree")}
-          onClick={() => onTreePanelVisibleChange(!showTreePanel)}
+          open={showTreePanel}
+          onToggle={() => onTreePanelVisibleChange(!showTreePanel)}
         />
         <div className="mx-1 flex min-w-0 items-center gap-2">
           <Text tone="muted" className="truncate">
@@ -357,19 +333,19 @@ function DiffActionsStrip({
             <>
               <ToolbarButton
                 disabled={actionsBusy}
-                icon={<Undo2 className={TITLEBAR_ICON_GLYPH_CLASS} />}
+                icon={<Undo2 className="size-3.5" />}
                 label={t("git.discardAll")}
                 onClick={() => setDiscardOpen(true)}
               />
               <ToolbarButton
                 disabled={actionsBusy || stagedState === "staged"}
-                icon={<Plus className={TITLEBAR_ICON_GLYPH_CLASS} />}
+                icon={<Plus className="size-3.5" />}
                 label={t("git.stageAll")}
                 onClick={onStageAll}
               />
               <ToolbarButton
                 disabled={actionsBusy || stagedState === "unstaged"}
-                icon={<Minus className={TITLEBAR_ICON_GLYPH_CLASS} />}
+                icon={<Minus className="size-3.5" />}
                 label={t("git.unstageAll")}
                 onClick={onUnstageAll}
               />

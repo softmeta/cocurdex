@@ -3,7 +3,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isAnnotationModeAtom } from "@/features/browser";
-import { useChatEventBridge } from "@/features/chat";
 import {
   editorPanelOpenAtom,
   openFileAtom,
@@ -91,7 +90,6 @@ export function AppShell() {
   const [screenIndex, setScreenIndex] = useState(0);
   const activeScreen = screenHistory[screenIndex];
   const canGoBack = screenIndex > 0;
-  const canGoForward = screenIndex < screenHistory.length - 1;
   // First sidebar item (常规 / General); deep links may override via openSettings.
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionId>("general");
@@ -206,7 +204,6 @@ export function AppShell() {
     isChatDetached: chatDetached,
   });
   useBrowserEventBridge();
-  useChatEventBridge();
   const rendererSettingAppliersRef = useRef<RendererSettingAppliers>({});
   useSettingsChangeBridge(rendererSettingAppliersRef);
   useShellIntents();
@@ -306,8 +303,9 @@ export function AppShell() {
         toggleRightPanel: () => activeScreen === "app",
         toggleEditorFullscreen: () => activeScreen === "app" && !chatDetached,
         toggleChatDock: () =>
-          activeScreen === "app" &&
-          (chatDetached || isRightPanelMaximized || isRightPanelCompact),
+          activeScreen === "settings" ||
+          (activeScreen === "app" &&
+            (chatDetached || isRightPanelMaximized || isRightPanelCompact)),
         toggleDesignMode: () => activeScreen === "app" && shouldShowRightPanel,
       },
       labels: {
@@ -358,12 +356,6 @@ export function AppShell() {
   const goBackScreen = () => {
     if (canGoBack) {
       setScreenIndex((index) => index - 1);
-    }
-  };
-
-  const goForwardScreen = () => {
-    if (canGoForward) {
-      setScreenIndex((index) => index + 1);
     }
   };
 
@@ -469,7 +461,6 @@ export function AppShell() {
       activeWorkspaceRootPaths={activeWorkspaceRootPaths}
       appearanceSettings={appearanceSettings}
       canGoBack={canGoBack}
-      canGoForward={canGoForward}
       contentRowRef={contentRowCallbackRef}
       isRightPanelCompact={isRightPanelCompact}
       effectiveRightWidth={effectiveRightWidth}
@@ -488,7 +479,6 @@ export function AppShell() {
       chatLayoutMode={chatLayoutMode}
       hideFabWhenClosed={hideFabWhenClosed}
       onGoBack={goBackScreen}
-      onGoForward={goForwardScreen}
       onAppearanceSettingsChange={handleAppearanceSettingsChange}
       onChatLayoutModeChange={applyChatLayoutMode}
       onHideFabWhenClosedChange={handleHideFabWhenClosedChange}

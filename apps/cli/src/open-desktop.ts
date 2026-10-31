@@ -1,44 +1,44 @@
 import { spawn } from "node:child_process";
 import { access, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** Flag the desktop main process recognizes for CLI folder open. */
 export const OPEN_FOLDER_FLAG = "--open-folder";
 
-const KNOWN_COMMANDS = new Set([
-  "init",
-  "issue",
-  "note",
-  "search",
-  "skills",
-  "skill",
-  "daemon",
-  "worktree",
-  "workspace",
-  "session",
-  "provider",
-  "role",
-  "workflow",
-  "open",
-  "help",
-  "version",
-]);
-
-export function isKnownCliCommand(resource: string | undefined): boolean {
-  return resource !== undefined && KNOWN_COMMANDS.has(resource);
+function looksLikePath(value: string, platform: NodeJS.Platform) {
+  const pathApi = platform === "win32" ? path.win32 : path.posix;
+  return (
+    value === "." ||
+    value === ".." ||
+    pathApi.isAbsolute(value) ||
+    value.includes("/") ||
+    (platform === "win32" && value.includes("\\"))
+  );
 }
 
 /**
  * True when argv should open the desktop app (optionally with a folder)
- * instead of a subcommand. Matches VS Code-style `code .` / `code`.
+ * before any subcommand is tried. Matches VS Code-style `code .` / `code`.
  */
-export function shouldHandleAsOpen(resource: string | undefined): boolean {
+export function shouldHandleAsOpen(
+  resource: string | undefined,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
   return (
     resource === undefined ||
     resource === "open" ||
-    !isKnownCliCommand(resource)
+    looksLikePath(resource, platform)
   );
+}
+
+export async function isExistingDirectory(folderPath: string) {
+  try {
+    return (await stat(path.resolve(folderPath))).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -82,6 +82,7 @@ export async function openDesktopApp(folderPath?: string): Promise<void> {
   const { binary, args } = await resolveLaunch(folderPath);
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
+  delete env.COCURDEX_APPIMAGE;
 
   const child = spawn(binary, args, {
     detached: true,
@@ -133,7 +134,9 @@ export function isPackagedAppBinary(execPath: string): boolean {
   }
 
   // Packaged product: Cocurdex / Cocurdex.exe (and case variants).
-  return base === "cocurdex" || base === "cocurdex.exe";
+  return (
+    base === "cocurdex" || base === "cocurdex.exe" || base.endsWith(".appimage")
+  );
 }
 
 async function resolveElectronBinary(): Promise<string> {
@@ -141,6 +144,12 @@ async function resolveElectronBinary(): Promise<string> {
   if (fromEnv) {
     await access(fromEnv);
     return fromEnv;
+  }
+
+  const appImage = process.env.COCURDEX_APPIMAGE;
+  if (appImage) {
+    await access(appImage);
+    return appImage;
   }
 
   // Packaged / Electron-as-Node CLI: execPath is the app or Electron binary.
@@ -210,10 +219,7 @@ async function listElectronCandidates(): Promise<string[]> {
   if (process.platform === "darwin") {
     candidates.push(
       "/Applications/Cocurdex.app/Contents/MacOS/Cocurdex",
-      path.join(
-        process.env.HOME ?? "",
-        "Applications/Cocurdex.app/Contents/MacOS/Cocurdex",
-      ),
+      path.join(homedir(), "Applications/Cocurdex.app/Contents/MacOS/Cocurdex"),
     );
   }
 

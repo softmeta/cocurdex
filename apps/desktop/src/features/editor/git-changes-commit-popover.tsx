@@ -18,11 +18,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 export type GitCommitAction = "commit" | "commitAndPush" | "push";
 export interface GitCommitActionResult {
@@ -127,34 +122,25 @@ export function GitChangesCommitPopover({
       }}
       open={popoverOpen}
     >
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <PopoverTrigger
-              render={
-                <IconButton
-                  aria-label={t("git.commitOrPush")}
-                  className="app-no-drag text-editor-fg-subtle hover:text-editor-fg data-[state=open]:text-editor-fg"
-                  // Never disable the trigger while open: a disabled anchor
-                  // can drop the popover mid-flight when parentBusy flips on
-                  // action start.
-                  disabled={!open && (!hasChanges || parentBusy)}
-                  size="sm"
-                >
-                  {actionPending ? (
-                    <Spinner className="size-3.5" />
-                  ) : (
-                    <GitCommitHorizontal className="size-3.5" />
-                  )}
-                </IconButton>
-              }
-            />
-          }
-        />
-        <TooltipContent side="top" sideOffset={6}>
-          {t("git.commitOrPush")}
-        </TooltipContent>
-      </Tooltip>
+      <PopoverTrigger
+        render={
+          <IconButton
+            aria-label={t("git.commitOrPush")}
+            className="app-no-drag text-editor-fg-subtle hover:text-editor-fg data-[state=open]:text-editor-fg"
+            // Never disable the trigger while open: a disabled anchor
+            // can drop the popover mid-flight when parentBusy flips on
+            // action start.
+            disabled={!open && (!hasChanges || parentBusy)}
+            size="sm"
+          >
+            {actionPending ? (
+              <Spinner className="size-3.5" />
+            ) : (
+              <GitCommitHorizontal className="size-3.5" />
+            )}
+          </IconButton>
+        }
+      />
       <PopoverContent
         align="end"
         aria-busy={inFlight || undefined}
@@ -175,30 +161,24 @@ export function GitChangesCommitPopover({
             ) : (
               <span className="min-w-0 flex-1" />
             )}
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <IconButton
-                    aria-label={t("git.generateCommitMessage")}
-                    className="text-muted-foreground hover:text-foreground"
-                    disabled={busy || !hasChanges}
-                    onClick={() => void runGenerate()}
-                    size="xs"
-                  >
-                    {isGenerating ? (
-                      <Spinner className="size-3.5" />
-                    ) : (
-                      <Sparkles className="size-3.5" />
-                    )}
-                  </IconButton>
-                }
-              />
-              <TooltipContent side="top" sideOffset={6}>
-                {isGenerating
+            <IconButton
+              tooltip={
+                isGenerating
                   ? t("git.generatingCommitMessage")
-                  : t("git.generateCommitMessage")}
-              </TooltipContent>
-            </Tooltip>
+                  : t("git.generateCommitMessage")
+              }
+              aria-label={t("git.generateCommitMessage")}
+              className="text-muted-foreground hover:text-foreground"
+              disabled={busy || !hasChanges}
+              onClick={() => void runGenerate()}
+              size="xs"
+            >
+              {isGenerating ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+            </IconButton>
           </div>
           <Textarea
             aria-label={t("git.commitMessage")}

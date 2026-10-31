@@ -3,16 +3,18 @@ import { Scale } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, EmptyState, Input, Text } from "@/components/ui";
-import { cn, desktopApi, useMountEffect } from "@/lib";
+import { Button, EmptyState, Text } from "@/components/ui";
+import { desktopApi, useMountEffect } from "@/lib";
 import type { OssLicensesPayload } from "@/lib/types";
+import { SettingsListItem } from "../settings-list-item";
+import { SettingsSearchInput } from "../settings-search-input";
 import {
   buildOssLicenseRows,
   filterOssLicenseRows,
   type OssLicenseRow,
 } from "./oss-licenses-rows";
 
-const LICENSE_ROW_ESTIMATE = 52;
+const LICENSE_ROW_ESTIMATE = 62;
 
 export function OssLicensesSettingsPanel() {
   const [payload, setPayload] = useState<OssLicensesPayload | null>(null);
@@ -99,10 +101,10 @@ function OssLicensesBrowser({
     );
   } else if (payload) {
     body = (
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(16rem,18rem)_minmax(0,1fr)] overflow-hidden rounded-card border border-border/70">
-        <div className="flex min-h-0 flex-col border-border/40 border-e">
-          <div className="shrink-0 border-border/40 border-b p-2">
-            <Input
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(16rem,18rem)_minmax(0,1fr)] gap-6">
+        <div className="flex min-h-0 flex-col gap-2">
+          <div className="shrink-0">
+            <SettingsSearchInput
               aria-label={t("licenses.searchPlaceholder")}
               autoComplete="off"
               placeholder={t("licenses.searchPlaceholder")}
@@ -173,11 +175,7 @@ function OssLicensesPackageList({
   }
 
   return (
-    <div
-      className="min-h-0 flex-1 overflow-auto"
-      ref={scrollRef}
-      role="listbox"
-    >
+    <div className="min-h-0 flex-1 overflow-auto" ref={scrollRef}>
       <div
         className="relative w-full"
         style={{ height: virtualizer.getTotalSize() }}
@@ -192,34 +190,23 @@ function OssLicensesPackageList({
             row.kind === "chromium" ? t("licenses.chromiumTitle") : row.name;
           return (
             <div
-              className="absolute start-0 top-0 w-full"
+              className="absolute start-0 top-0 w-full pb-2"
               key={row.id}
               style={{
                 height: item.size,
                 transform: `translateY(${item.start}px)`,
               }}
             >
-              <button
-                aria-selected={isSelected}
-                className={cn(
-                  "flex h-full w-full flex-col items-stretch rounded-control px-2 py-1.5 text-start hover:bg-muted/50",
-                  isSelected && "bg-muted hover:bg-muted",
-                )}
-                role="option"
-                type="button"
+              <SettingsListItem
+                isActive={isSelected}
+                subtitle={
+                  row.version ? `${row.license} · ${row.version}` : row.license
+                }
+                title={title}
                 onClick={() => {
                   onSelect(row.id);
                 }}
-              >
-                <Text size="body" truncate weight="medium">
-                  {title}
-                </Text>
-                <Text size="meta" tone="muted" truncate>
-                  {row.version
-                    ? `${row.license} · ${row.version}`
-                    : row.license}
-                </Text>
-              </button>
+              />
             </div>
           );
         })}
@@ -259,7 +246,7 @@ function OssLicensesDetail({
 
   return (
     <div className="flex min-h-0 flex-col">
-      <div className="border-border/40 border-b px-3 py-2">
+      <div className="pb-2">
         <Text className="block" size="body" truncate weight="medium">
           {title}
         </Text>
@@ -268,7 +255,7 @@ function OssLicensesDetail({
         </Text>
       </div>
       {row.kind === "chromium" ? (
-        <div className="flex min-h-0 flex-1 flex-col items-start gap-3 overflow-auto p-3">
+        <div className="flex min-h-0 flex-1 flex-col items-start gap-3 overflow-auto py-3">
           <Text size="body" tone="muted">
             {t("licenses.chromiumDescription")}
           </Text>
@@ -283,7 +270,7 @@ function OssLicensesDetail({
           </Button>
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="min-h-0 flex-1 overflow-auto py-3">
           {text ? (
             <pre className="whitespace-pre-wrap break-words font-mono text-meta text-muted-foreground">
               {text}

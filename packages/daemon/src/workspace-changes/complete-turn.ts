@@ -14,6 +14,7 @@ import {
   selectChangeSetCoverage,
   selectChangeSetSource,
   sumFileStats,
+  withoutFilePatches,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
@@ -166,7 +167,7 @@ export async function completeActiveTurn(input: {
     hostAfterCheckpointRef: after?.ref ?? null,
     hostAfterCheckpointKind: after?.kind ?? null,
     outcome: input.outcome,
-    nativeFiles: active.native?.files ?? null,
+    nativeFiles: active.native ? withoutFilePatches(active.native.files) : null,
     undoable:
       hostFilesAvailable &&
       files.length > 0 &&

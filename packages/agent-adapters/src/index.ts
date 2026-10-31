@@ -8,4 +8,6 @@ export * from "./codex";
 export * from "./commit-message";
 export * from "./opencode";
 export * from "./pi-sdk";
+export { buildChildProcessEnv } from "./shared/process-env";
+export { killProcessTree, spawnCommand } from "./shared/process-tree";
 export * from "./skills";

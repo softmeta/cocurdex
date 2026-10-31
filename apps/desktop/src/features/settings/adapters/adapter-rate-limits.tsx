@@ -5,6 +5,7 @@ import type {
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { CircularProgress, Spinner, Text } from "@/components/ui";
+import { cn } from "@/lib";
 
 function usageRingClassName(percent: number) {
   if (percent >= 90) {
@@ -71,7 +72,7 @@ export function AdapterRateLimitsLoading({ label }: { label: string }) {
     <div
       aria-busy="true"
       aria-live="polite"
-      className="mt-1.5 flex items-center gap-1.5"
+      className="flex items-center gap-1.5"
     >
       <Spinner aria-hidden="true" size="xs" />
       <Text size="meta" tone="muted">
@@ -82,8 +83,10 @@ export function AdapterRateLimitsLoading({ label }: { label: string }) {
 }
 
 export function AdapterRateLimits({
+  layout,
   rateLimits,
 }: {
+  layout: "row" | "detail";
   rateLimits: AgentRateLimitsRecord;
 }) {
   const { t, i18n } = useTranslation("agent");
@@ -94,19 +97,26 @@ export function AdapterRateLimits({
     }).format(amount);
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+    <div
+      className={cn(
+        "flex min-w-0",
+        layout === "row" && "items-center gap-4",
+        layout === "detail" && "flex-col items-start gap-2",
+      )}
+    >
       {rateLimits.windows.map((window) => {
         const usedPercent = Math.round(
           Math.max(0, Math.min(100, window.usedPercent)),
         );
-        const reset = window.resetsAt
-          ? new Intl.DateTimeFormat(i18n.language, {
-              month: "numeric",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            }).format(new Date(window.resetsAt))
-          : null;
+        const reset =
+          layout === "detail" && window.resetsAt
+            ? new Intl.DateTimeFormat(i18n.language, {
+                month: "numeric",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(window.resetsAt))
+            : null;
         const label = windowLabel(window, t);
 
         return (

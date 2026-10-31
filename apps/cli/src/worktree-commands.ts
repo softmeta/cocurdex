@@ -7,6 +7,7 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
+import { resolveWorkspaceId } from "./workspace-lookup";
 
 export function worktreeUsageLines() {
   return [
@@ -96,16 +97,4 @@ export async function handleWorktreeCommand(
   }
 
   return false;
-}
-
-async function resolveWorkspaceId(workspaceValue: string) {
-  const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
-  const workspace = workspaces.find(
-    (item) =>
-      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
-  );
-  if (!workspace) {
-    throw new Error(`Workspace not found: ${workspaceValue}`);
-  }
-  return workspace.id;
 }

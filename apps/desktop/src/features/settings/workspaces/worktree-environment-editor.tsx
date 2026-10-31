@@ -260,6 +260,7 @@ function ScriptField({
         </Text>
       </div>
       <CodeTextarea
+        aria-label={title}
         className={cn("max-h-64", tall ? "min-h-24" : "min-h-20")}
         placeholder={placeholder}
         value={value}

@@ -1,8 +1,8 @@
 import { Popover } from "@base-ui/react/popover";
 import type { ReactNode } from "react";
+import { FLYOUT_GAP, flyoutAnchor } from "@/components/ui";
 
 const VIEWPORT_PADDING = 8;
-const SIDECAR_GAP = 8;
 
 interface MenuRowSidecarProps {
   children: ReactNode;
@@ -19,14 +19,14 @@ export function MenuRowSidecar({ children, reference }: MenuRowSidecarProps) {
       <Popover.Portal>
         <Popover.Positioner
           align="start"
-          anchor={reference}
+          anchor={flyoutAnchor(reference)}
           className="z-50 hidden data-anchor-hidden:invisible md:block"
           collisionPadding={VIEWPORT_PADDING}
           side="inline-end"
-          sideOffset={SIDECAR_GAP}
+          sideOffset={FLYOUT_GAP}
         >
           <Popover.Popup
-            className="max-h-[min(18rem,var(--available-height))] max-w-[min(18rem,var(--available-width))] overflow-y-auto outline-none"
+            className="max-h-[min(18rem,var(--available-height))] max-w-[min(18rem,var(--available-width))] overflow-y-auto rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10 outline-none"
             data-menu-row-sidecar=""
             finalFocus={false}
             initialFocus={false}

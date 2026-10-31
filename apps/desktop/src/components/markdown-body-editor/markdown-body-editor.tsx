@@ -8,6 +8,7 @@ import {
 } from "react";
 import { cn } from "@/lib";
 import { buildMarkdownBodyExtensions } from "./extensions";
+import { TableControls } from "./table/table-controls";
 import "./markdown-body-editor.css";
 
 export interface MarkdownBodyEditorHandle {
@@ -73,7 +74,12 @@ export const MarkdownBodyEditor = forwardRef<
     [editor, content],
   );
 
-  return <EditorContent editor={editor} className={className} />;
+  return (
+    <div className="relative">
+      <EditorContent editor={editor} className={className} />
+      {editor ? <TableControls editor={editor} /> : null}
+    </div>
+  );
 });
 
 MarkdownBodyEditor.displayName = "MarkdownBodyEditor";

@@ -5,7 +5,6 @@ import {
   listOpenCodeProviderModels,
   listPiBuiltInProviderIds,
   listPiProviderTemplates,
-  loginAcpRegistryProvider,
   probeAcpRegistryProviderModelAxes,
 } from "@cocurdex/agent-adapters";
 import type {
@@ -235,14 +234,6 @@ export class DaemonProviderService {
 
   async authLogout(providerId: string) {
     await this.credentials.logout(providerId);
-  }
-
-  async loginAgent(agentId: AgentId) {
-    if (isAcpRegistryAgentId(agentId)) {
-      await loginAcpRegistryProvider(agentId);
-      return null;
-    }
-    throw new Error(`Agent ${agentId} does not support login`);
   }
 
   async listCompatibleProviderModels(

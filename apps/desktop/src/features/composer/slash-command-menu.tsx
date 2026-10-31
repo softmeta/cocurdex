@@ -1,15 +1,9 @@
 import type { AgentSlashCommand } from "@cocurdex/shared";
 import type { Ref } from "react";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  Text,
-} from "@/components/ui";
+import { CommandItem, Text } from "@/components/ui";
 import { cn } from "@/lib";
 import type { MentionAnchor } from "./mention-editor";
-import { MentionMenuPopover } from "./mention-menu-popover";
+import { MentionMenuList, MentionMenuPopover } from "./mention-menu-popover";
 import { MenuRowSidecar } from "./menu-row-sidecar";
 import { SlashCommandPreview } from "./slash-command-preview";
 import { useHighlightedMenuRow } from "./use-highlighted-menu-row";
@@ -23,7 +17,6 @@ interface SlashCommandMenuProps {
   onHighlightIndex(index: number): void;
   onSelect(command: AgentSlashCommand): void;
   placement?: "top" | "bottom";
-  tone?: "chat" | "welcome";
 }
 
 export function SlashCommandMenu({
@@ -35,7 +28,6 @@ export function SlashCommandMenu({
   onHighlightIndex,
   onSelect,
   placement = "top",
-  tone = "chat",
 }: SlashCommandMenuProps) {
   const { highlightedItem, setListNode } = useHighlightedMenuRow({
     highlightedIndex,
@@ -44,18 +36,6 @@ export function SlashCommandMenu({
     itemAttribute: "data-slash-index",
   });
 
-  const menuClassName =
-    tone === "welcome"
-      ? "border-welcome-border/60 bg-welcome-surface/95 text-welcome-fg-secondary backdrop-blur-md"
-      : "border-chat-border-soft bg-chat-surface-raised/95 text-chat-fg backdrop-blur-md";
-  const hoverClassName =
-    tone === "welcome"
-      ? "data-highlighted:bg-welcome-surface-row-hover data-highlighted:text-welcome-fg"
-      : "data-highlighted:bg-chat-surface-row-hover data-highlighted:text-chat-fg";
-  const selectedClassName =
-    tone === "welcome"
-      ? "bg-welcome-surface-selected! text-welcome-fg!"
-      : "bg-chat-surface-selected! text-chat-fg!";
   if (!isOpen || !anchor) {
     return null;
   }
@@ -71,47 +51,33 @@ export function SlashCommandMenu({
         isOpen={isOpen}
         side={placement}
       >
-        <Command
-          className={cn(
-            "h-auto max-h-[var(--available-height)] rounded-card border p-1 shadow-chat-soft",
-            menuClassName,
-          )}
-          autoHighlight={false}
-          shouldFilter={false}
-        >
-          <CommandList
-            className="max-h-[min(18rem,var(--available-height))]"
-            ref={setListNode}
-          >
-            <CommandGroup className="p-0">
-              {commands.map((command, index) => {
-                const isSelected = index === highlightedIndex;
-                return (
-                  <CommandItem
-                    className={cn(
-                      "min-w-0 items-center rounded-control px-1.5 text-current",
-                      isSelected ? selectedClassName : hoverClassName,
-                    )}
-                    data-slash-index={index}
-                    key={command.name}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onPointerEnter={() => onHighlightIndex(index)}
-                    onSelect={() => onSelect(command)}
-                    value={command.name}
-                  >
-                    <Text className="min-w-0 flex-1" size="body" truncate>
-                      {command.name}
-                    </Text>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        <MentionMenuList listRef={setListNode}>
+          {commands.map((command, index) => {
+            const isSelected = index === highlightedIndex;
+            return (
+              <CommandItem
+                className={cn(
+                  "min-w-0",
+                  isSelected && "bg-accent text-accent-foreground",
+                )}
+                data-slash-index={index}
+                key={command.name}
+                onMouseDown={(event) => event.preventDefault()}
+                onPointerEnter={() => onHighlightIndex(index)}
+                onSelect={() => onSelect(command)}
+                value={command.name}
+              >
+                <Text className="min-w-0 flex-1" truncate>
+                  {command.name}
+                </Text>
+              </CommandItem>
+            );
+          })}
+        </MentionMenuList>
       </MentionMenuPopover>
       {previewDescription ? (
         <MenuRowSidecar reference={highlightedItem}>
-          <SlashCommandPreview description={previewDescription} tone={tone} />
+          <SlashCommandPreview description={previewDescription} />
         </MenuRowSidecar>
       ) : null}
     </>

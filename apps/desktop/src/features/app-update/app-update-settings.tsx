@@ -132,7 +132,7 @@ export function AppUpdateSettingsPanel() {
           disabled={inFlight}
           options={channelOptions}
           triggerAriaLabel={t("updates.channel.ariaLabel")}
-          triggerClassName="h-8 w-auto max-w-56 gap-1 px-2 font-normal"
+          triggerClassName="h-7 w-auto max-w-56 gap-1 px-2 font-normal"
           triggerLabel={
             selectedChannel?.label ?? t("updates.channel.options.stable")
           }

@@ -1,0 +1,20 @@
+import type { AgentId } from "@cocurdex/shared";
+import { describe, expect, it } from "vitest";
+import { supportsDocumentAttachments } from "@/features/composer/document-attachment-files";
+
+describe("document attachment adapter support", () => {
+  it.each([
+    ["claude-agent", true],
+    ["acp:grok-build", true],
+    ["opencode", true],
+    ["codex", false],
+    ["acp:cursor", false],
+    ["acp:devin", false],
+    ["pi", false],
+  ] satisfies Array<[AgentId, boolean]>)(
+    "%s support is %s",
+    (agentId, expected) => {
+      expect(supportsDocumentAttachments(agentId)).toBe(expected);
+    },
+  );
+});

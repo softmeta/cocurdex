@@ -5,9 +5,9 @@ description: Split independent work across parallel teammate agents using Cocurd
 
 # /cocurdex-team — Run work as an agent team
 
-You are the lead. Teammates are separate agent sessions that run in parallel, share one task list with you, and deliver their final reply of each turn back to you as `[Teammate "<name>" finished]` or `[Teammate "<name>" failed]`. A teammate that stops on an approval or question also sends `[Teammate "<name>" is waiting for the user]`, at most once per turn.
+You are the lead. Teammates are separate agent sessions that run in parallel, share one task list with you, and deliver their final reply of each turn back to you exactly once as `[Teammate "<name>" finished]`, `[Teammate "<name>" failed]` (with the error), `[Teammate "<name>" was cancelled]`, or `[Teammate "<name>" was interrupted]`. A teammate that stops on an approval or question also sends `[Teammate "<name>" is waiting for the user]`, at most once per turn. Reports from teammates you stopped are not sent. A report that a daemon restart left undelivered is queued on your session without starting a turn.
 
-Tools (available only in a main session): `team_spawn_teammate`, `team_spawn_template`, `team_list_roles`, `team_list_templates`, `team_task_create`, `team_task_list`, `team_task_update`, `team_stop_member`, `team_stop`, `messaging_list_agents`, `messaging_send_message`.
+Tools (available only in a main session): `team_spawn_teammate`, `team_roster`, `team_list_roles`, `team_list_templates`, `team_task_create`, `team_task_list`, `team_task_update`, `team_stop_member`, `team_stop`, `messaging_list_agents`, `messaging_send_message`.
 
 ## 1. Decide
 
@@ -19,8 +19,17 @@ Do not use a team when:
 - Only the result matters and your own provider can do it: use your native subagent tool (for example Claude's Agent tool) instead; it is cheaper than a teammate.
 - A human must approve mid-way. Teammates do not pause for approval.
 - The work is small enough to finish in one turn yourself.
+- The same task runs over many items, or a fixed pipeline needs no conversation with its workers: propose a script run instead (`/cocurdex-script-run`).
 
 Teammates cannot spawn their own teammates. A team holds at most 8 members.
+
+### Assigned team
+
+When the user assigned a team template to your session, your instructions name the team and its roster (re-read it with `team_roster`). You are its coordinator:
+
+- The user already chose a team, so plan the split in step 2 even for work you could do alone; hand back to the user only if no roster member fits.
+- Only roster members can be spawned, by their roster name. Each one keeps the role and standing instructions from the template; do not pass `agentRoleId` or `agentType`. Your prompt adds only the task.
+- Spawn only the members your plan needs, and only after the tasks exist.
 
 ## 2. Plan the split
 
@@ -28,11 +37,11 @@ Teammates cannot spawn their own teammates. A team holds at most 8 members.
 2. Decide the file-write policy before spawning:
    - Teammates that edit files in the same workspace must not touch overlapping files. If overlap is unavoidable, spawn with `isolateWorktree: true`; each such teammate then works on its own branch and you merge afterwards.
    - Read-only teammates (review, research) never need isolation.
-3. If a saved template matches (`team_list_templates`), prefer `team_spawn_template` with the task as `prompt`. Otherwise pick roles with `team_list_roles` when a saved role fits.
+3. With an assigned team, pick members from the roster. Otherwise pick roles with `team_list_roles` when a saved role fits; match the task against each role's `description`. `team_list_templates` shows saved teams whose members you can copy as a reference; a template's first member is its lead, not a teammate.
 
 ## 3. Spawn
 
-One `team_spawn_teammate` per piece. Names are lowercase slugs (`security-review`, `module-auth`) used to address the teammate. Also pass a short `title` in the user's language (`安全审查`, `Auth module`); the app shows it to the user and falls back to the name.
+One `team_spawn_teammate` per piece. The name addresses the teammate: a roster member's name is exactly its roster name (the role's name, in any language); without a roster, use a lowercase slug (`security-review`, `module-auth`). Also pass a short `title` in the user's language (`安全审查`, `Auth module`); the app shows it to the user and falls back to the name.
 
 The prompt must contain everything the teammate needs; it does not see your conversation:
 
@@ -40,6 +49,8 @@ The prompt must contain everything the teammate needs; it does not see your conv
 - Scope limits: which files or directories it may edit, and that it must not edit others.
 - What the final reply must contain: the format you will merge (a list of findings with file:line, a summary of changes, a JSON block). Say the reply is delivered to you automatically.
 - Whether to ask you questions through `messaging_send_message` or to decide alone.
+
+Teammates obey the `agents.runLimits` setting: a teammate past the concurrency limit waits until a slot frees, and a run past the delegated timeout fails with "Run timed out". Spawn no more teammates than the work needs; a waiting teammate is not stuck.
 
 After spawning, end your turn. Do not poll `team_task_list` in a loop; reports arrive as new messages.
 
@@ -49,6 +60,9 @@ Each report arrives as a separate message and may arrive in any order.
 
 - On `finished`: record the outcome, check `team_task_list` for tasks still in `backlog` or `doing`, and reassign or take them yourself if a teammate stopped early.
 - On `failed`: read the error, decide whether to respawn with a corrected prompt or do the piece yourself.
+- To see where a teammate stopped (its runs, tool calls, subagents, and pending approvals), run `cocurdex session tree <teammate-session-id> [--json]`; `cocurdex session list` shows the ids. A subagent marked not observable means its provider reports no events for it; do not guess what it did.
+- To retry a stopped teammate's piece without losing its conversation, run `cocurdex session fork <session-id> [--through <message-id>]` for a parallel attempt, or `cocurdex session switch-agent <session-id> <agent>` on an idle session to continue with a different agent. `--through` keeps the whole turn that contains that message, and a fork of a running session keeps only its finished turns. A fork of a Pi session continues on a native copy of its thread at any turn, and a Claude or Codex fork does so when it keeps every turn; otherwise the next message hands the new thread a budgeted selection of the earlier messages, commands, and file changes (injected as native history on Codex), and the agent reads anything omitted with its `history_read` tool. `cocurdex session handoffs <session-id> [--json]` lists what each handoff covered.
+- To retry with a stronger model or more reasoning on the same agent, run `cocurdex session configure <session-id> [--provider <id> --model <id>] [--effort <level>] [--thinking <level|off>] [--fast on|off]` on that session or its fork; `default` resets an option, and the next turn uses the new settings. `cocurdex session runtime <session-id> --json` shows the configuration options and model the agent currently reports.
 - On `is waiting for the user`: only the user can answer it. Tell the user which teammate is waiting and on what, then end your turn; do not resend its work or force-stop it to get unstuck.
 - Check each task in `review` against its evidence and move it to `done` with `team_task_update`, or send the teammate what is missing.
 - When every task is `review` or `done`, write the merged result for the user and state which teammates contributed what.

@@ -6,6 +6,7 @@
 import {
   chmod,
   copyFile,
+  cp,
   mkdir,
   readdir,
   readFile,
@@ -15,11 +16,17 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
+import { buildPolicyDefine } from "./build-policy-define.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(desktopRoot, "../..");
 const outDir = path.join(desktopRoot, "resources", "cli");
+const productSkillsSource = path.join(
+  repoRoot,
+  "packages/product-skills/skills",
+);
+const productSkillsOut = path.join(desktopRoot, "resources", "skills");
 const entry = path.join(repoRoot, "apps/cli/src/index.ts");
 const daemonEntry = path.join(repoRoot, "packages/daemon/src/bin.ts");
 const piPackagePath = await realpath(
@@ -41,11 +48,13 @@ const codemodeWorkerEntry = path.resolve(
   piPackagePath,
   "../pi-codemode/dist/runtime/worker.js",
 );
-const cliPackageJson = JSON.parse(
-  await readFile(path.join(repoRoot, "apps/cli/package.json"), "utf8"),
+const desktopPackageJson = JSON.parse(
+  await readFile(path.join(desktopRoot, "package.json"), "utf8"),
 );
 const cliVersion =
-  typeof cliPackageJson.version === "string" ? cliPackageJson.version : "0.0.0";
+  typeof desktopPackageJson.version === "string"
+    ? desktopPackageJson.version
+    : "0.0.0";
 
 // electron-builder drops node_modules from extraResources, so the bundled
 // daemon resolves the QuickJS wasm beside itself instead of as a package.
@@ -71,6 +80,10 @@ const alias = {
     repoRoot,
     "packages/agent-adapters/src/provider-auth.ts",
   ),
+  "@cocurdex/agent-adapters/pi-mcp": path.join(
+    repoRoot,
+    "packages/agent-adapters/src/pi-mcp.ts",
+  ),
   "@cocurdex/agent-adapters": path.join(
     repoRoot,
     "packages/agent-adapters/src/index.ts",
@@ -80,7 +93,12 @@ const alias = {
     "packages/agent-core/src/index.ts",
   ),
   "@cocurdex/db": path.join(repoRoot, "packages/db/src/index.ts"),
+  "@cocurdex/note-doc": path.join(repoRoot, "packages/note-doc/src/index.ts"),
   "@cocurdex/rpc/client": path.join(repoRoot, "packages/rpc/src/client.ts"),
+  "@cocurdex/rpc/method-scopes": path.join(
+    repoRoot,
+    "packages/rpc/src/method-scopes.ts",
+  ),
   "@cocurdex/rpc": path.join(repoRoot, "packages/rpc/src/index.ts"),
   "@cocurdex/shared/node": path.join(repoRoot, "packages/shared/src/node.ts"),
   "@cocurdex/shared": path.join(repoRoot, "packages/shared/src/index.ts"),
@@ -104,6 +122,7 @@ await build({
   define: {
     // Packaged cli.mjs has no package.json beside it — inline the version.
     __COCURDEX_CLI_VERSION__: JSON.stringify(cliVersion),
+    ...buildPolicyDefine(),
   },
   build: {
     outDir,
@@ -130,6 +149,8 @@ await build({
   },
 });
 await copyFile(photonWasmPath, path.join(outDir, "photon_rs_bg.wasm"));
+await rm(productSkillsOut, { force: true, recursive: true });
+await cp(productSkillsSource, productSkillsOut, { recursive: true });
 const piThemeSource = path.join(piPackagePath, "dist/modes/interactive/theme");
 const piThemeTarget = path.join(
   outDir,
@@ -149,6 +170,7 @@ await build({
   logLevel: "warn",
   resolve: { alias },
   plugins: [quickjsWasmBesideDaemon],
+  define: buildPolicyDefine(),
   esbuild: { keepNames: true },
   build: {
     outDir,
@@ -162,6 +184,7 @@ await build({
       formats: ["cjs"],
       fileName: () => "daemon.cjs",
     },
+    commonjsOptions: { ignore: ["bufferutil", "utf-8-validate"] },
     rollupOptions: {
       output: {
         entryFileNames: "daemon.cjs",
@@ -177,7 +200,7 @@ await build({
   },
   ssr: {
     noExternal: true,
-    external: ["@napi-rs/keyring"],
+    external: ["@napi-rs/keyring", "font-list", "node-pty"],
   },
 });
 

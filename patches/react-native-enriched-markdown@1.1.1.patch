@@ -1,0 +1,702 @@
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt b/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt
+index b6b38b4cc1a37eacf53f48f940608ed7ead26f93..a113f6ecec1e4b45446383930fb62a03ff400929 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt
+@@ -37,6 +37,7 @@ import com.swmansion.enriched.markdown.utils.text.view.ImagePressHost
+ import com.swmansion.enriched.markdown.utils.text.view.SelectionMenuConfig
+ import com.swmansion.enriched.markdown.utils.text.view.applySelectionColors
+ import com.swmansion.enriched.markdown.utils.text.view.emitImagePressEvent
++import java.util.WeakHashMap
+ import java.util.EnumSet
+ import java.util.concurrent.ExecutorService
+ import java.util.concurrent.Executors
+@@ -58,7 +59,14 @@ class EnrichedMarkdown(
+ 
+   private var currentRenderId = 0L
+   private val dirtyFlags = EnumSet.noneOf(DirtyFlag::class.java)
++  private val tailAnimators = WeakHashMap<EnrichedMarkdownInternalText, TailFadeInAnimator>()
++  private var animateFinalText = false
+   var streamingAnimation: Boolean = false
++    set(value) {
++      if (field == value) return
++      animateFinalText = !value
++      field = value
++    }
+ 
+   // used to force a Yoga re-measure when a block image resolves its box height
+   var stateWrapper: StateWrapper? = null
+@@ -430,6 +438,7 @@ class EnrichedMarkdown(
+     dirtyFlags.clear()
+ 
+     val topologyChanged = applySegments(renderedSegments, reset)
++    animateFinalText = false
+ 
+     // A just-closed block has unchanged content, so the reconciler reuses it
+     // without an update; sync pending here to trigger its deferred highlight.
+@@ -576,7 +585,7 @@ class EnrichedMarkdown(
+       view: View,
+       segment: RenderedSegment,
+     ) {
+-      if (!streamingAnimation) return
++      if (!streamingAnimation && !animateFinalText) return
+       when (segment) {
+         is RenderedSegment.Text -> animateTextViewTail(view as EnrichedMarkdownInternalText, 0)
+ 
+@@ -594,14 +603,16 @@ class EnrichedMarkdown(
+     view: EnrichedMarkdownInternalText,
+     tailStart: Int,
+   ) {
+-    if (!streamingAnimation) return
++    tailAnimators[view]?.restore()
++    if (!streamingAnimation && !animateFinalText) return
++    val animator = tailAnimators.getOrPut(view) { TailFadeInAnimator(view) }
+     val textLength = view.text?.length ?: 0
+     if (textLength <= tailStart) return
+-    TailFadeInAnimator(view).animate(tailStart, textLength)
++    animator.animate(tailStart, textLength)
+   }
+ 
+   private fun animateBlockViewFadeIn(view: View) {
+-    if (!streamingAnimation) return
++    if (!streamingAnimation && !animateFinalText) return
+     if (isReducedMotionEnabled(context)) return
+     view.alpha = 0f
+     view
+@@ -643,6 +654,9 @@ class EnrichedMarkdown(
+   }
+ 
+   fun cleanup() {
++    tailAnimators.values.forEach { it.cancelAll() }
++    tailAnimators.clear()
++    animateFinalText = false
+     executor.shutdownNow()
+   }
+ 
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdownText.kt b/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdownText.kt
+index f3bb9122d27d80746b9b8ed07ca5247f080a25d0..28afa462339a59572108d239606e0981580971d2 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdownText.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdownText.kt
+@@ -113,6 +113,7 @@ class EnrichedMarkdownText
+     private var imageRequestHeaders: Map<String, String> = emptyMap()
+ 
+     private var streamingAnimation: Boolean = false
++    private var animateFinalText: Boolean = false
+     private var previousTextLength: Int = 0
+     private var fadeAnimator: TailFadeInAnimator? = null
+     override var spoilerOverlayDrawer: SpoilerOverlayDrawer? = null
+@@ -221,13 +222,10 @@ class EnrichedMarkdownText
+ 
+     fun setStreamingAnimation(enabled: Boolean) {
+       if (streamingAnimation == enabled) return
++      animateFinalText = !enabled
+       streamingAnimation = enabled
+       if (enabled) {
+         previousTextLength = text?.length ?: 0
+-      } else {
+-        fadeAnimator?.cancelAll()
+-        fadeAnimator = null
+-        previousTextLength = 0
+       }
+     }
+ 
+@@ -308,6 +306,7 @@ class EnrichedMarkdownText
+       }
+ 
+       text = styledText
++      fadeAnimator?.restore()
+ 
+       applyInteractivity()
+ 
+@@ -320,7 +319,8 @@ class EnrichedMarkdownText
+       layoutManager.invalidateLayout()
+       accessibilityHelper.invalidateAccessibilityItems()
+ 
+-      if (streamingAnimation) {
++      if (streamingAnimation || animateFinalText) {
++        animateFinalText = false
+         if (fadeAnimator == null) {
+           fadeAnimator = TailFadeInAnimator(this)
+         }
+@@ -490,6 +490,7 @@ class EnrichedMarkdownText
+       pendingStyledText = null
+       fadeAnimator?.cancelAll()
+       fadeAnimator = null
++      animateFinalText = false
+     }
+ 
+     override fun setPadding(
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/renderer/LinkRenderer.kt b/android/src/main/java/com/swmansion/enriched/markdown/renderer/LinkRenderer.kt
+index 7beb976e1daa8eeee864edca6da33cd2e358ba7f..8e7801cd2f48a6aea6de554688901fee330814fc 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/renderer/LinkRenderer.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/renderer/LinkRenderer.kt
+@@ -2,6 +2,7 @@ package com.swmansion.enriched.markdown.renderer
+ 
+ import android.text.SpannableStringBuilder
+ import com.swmansion.enriched.markdown.parser.MarkdownASTNode
++import com.swmansion.enriched.markdown.spans.CodeSpan
+ import com.swmansion.enriched.markdown.spans.LinkSpan
+ import com.swmansion.enriched.markdown.utils.text.span.SPAN_FLAGS_EXCLUSIVE_EXCLUSIVE
+ 
+@@ -19,7 +20,15 @@ class LinkRenderer(
+ 
+     factory.renderWithSpan(builder, { factory.renderChildren(node, builder, onLinkPress, onLinkLongPress) }) { start, end, blockStyle ->
+       builder.setSpan(
+-        LinkSpan(url, onLinkPress, onLinkLongPress, factory.styleCache, blockStyle, factory.context),
++        LinkSpan(
++          url,
++          onLinkPress,
++          onLinkLongPress,
++          factory.styleCache,
++          blockStyle,
++          factory.context,
++          wrapsCode = builder.getSpans(start, end, CodeSpan::class.java).isNotEmpty(),
++        ),
+         start,
+         end,
+         SPAN_FLAGS_EXCLUSIVE_EXCLUSIVE,
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListItemRenderer.kt b/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListItemRenderer.kt
+index afbf68f737ebaf7d3b9ff876c76212728247217f..86a58fce4dfe5647c91b486061b697b2fe6ff973 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListItemRenderer.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListItemRenderer.kt
+@@ -5,6 +5,7 @@ import android.text.style.ForegroundColorSpan
+ import android.text.style.StrikethroughSpan
+ import com.swmansion.enriched.markdown.parser.MarkdownASTNode
+ import com.swmansion.enriched.markdown.spans.BaseListSpan
++import com.swmansion.enriched.markdown.spans.CodeSpan
+ import com.swmansion.enriched.markdown.spans.CodeBlockSpan
+ import com.swmansion.enriched.markdown.spans.ListMarkerAnchorSpan
+ import com.swmansion.enriched.markdown.spans.OrderedListSpan
+@@ -128,6 +129,14 @@ class ListItemRenderer(
+       builder.setSpan(ListMarkerAnchorSpan(markerSpan), anchor, anchor + 1, SPAN_FLAGS_EXCLUSIVE_EXCLUSIVE)
+     }
+ 
++    for (codeSpan in builder.getSpans(start, itemEnd, CodeSpan::class.java)) {
++      val codeStart = builder.getSpanStart(codeSpan)
++      val codeEnd = builder.getSpanEnd(codeSpan)
++      val codeFlags = builder.getSpanFlags(codeSpan)
++      builder.removeSpan(codeSpan)
++      builder.setSpan(codeSpan, codeStart, codeEnd, codeFlags)
++    }
++
+     if (isTask && isChecked) {
+       applyCheckedDecorations(builder, start, itemEnd, depth)
+     }
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/spans/CodeBackgroundSpan.kt b/android/src/main/java/com/swmansion/enriched/markdown/spans/CodeBackgroundSpan.kt
+index 5060e8a9cce443d1a27c2e7efb04cbb4cfc85ce9..a631eb8e92767b0898ddb990024c8a47725418ea 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/spans/CodeBackgroundSpan.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/spans/CodeBackgroundSpan.kt
+@@ -15,7 +15,8 @@ class CodeBackgroundSpan(
+   private val styleConfig: StyleConfig,
+ ) : LineBackgroundSpan {
+   companion object {
+-    private const val CORNER_RADIUS = 6.0f
++    private val CORNER_RADIUS = 5.0f * android.content.res.Resources.getSystem().displayMetrics.density
++    private val VERTICAL_PADDING = 1.0f * android.content.res.Resources.getSystem().displayMetrics.density
+     private const val BORDER_WIDTH = 1.0f
+ 
+     private val sharedBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+@@ -75,7 +76,10 @@ class CodeBackgroundSpan(
+         right.toFloat()
+       }
+ 
+-    rect.set(min(startX, endX), top.toFloat(), max(startX, endX), finalBottom.toFloat())
++    val metrics = p.fontMetrics
++    val glyphTop = max(top.toFloat(), baseline + metrics.ascent - VERTICAL_PADDING)
++    val glyphBottom = min(finalBottom.toFloat(), baseline + metrics.descent + VERTICAL_PADDING)
++    rect.set(min(startX, endX), glyphTop, max(startX, endX), glyphBottom)
+ 
+     // 3. Apply Style
+     val codeStyle = styleConfig.codeStyle
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/spans/LinkSpan.kt b/android/src/main/java/com/swmansion/enriched/markdown/spans/LinkSpan.kt
+index 392c5be90824d16a9a13cb72ca91793241219e94..e0d9b3fb1f31c1645922bc88072a7447f230f7b0 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/spans/LinkSpan.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/spans/LinkSpan.kt
+@@ -17,6 +17,7 @@ class LinkSpan(
+   private val styleCache: SpanStyleCache,
+   private val blockStyle: BlockStyle,
+   private val context: Context,
++  private val wrapsCode: Boolean = false,
+ ) : ClickableSpan() {
+   @Volatile
+   private var longPressTriggered = false
+@@ -43,16 +44,17 @@ class LinkSpan(
+   override fun updateDrawState(textPaint: TextPaint) {
+     super.updateDrawState(textPaint)
+ 
+-    textPaint.textSize = blockStyle.fontSize
+-
+     val variant = styleCache.resolvedVariantForUrl(url)
+ 
+-    val fontFamily = variant?.fontFamily?.takeIf { it.isNotEmpty() } ?: styleCache.linkFontFamily
+-    if (fontFamily.isNotEmpty()) {
+-      val overriddenBlockStyle = blockStyle.copy(fontFamily = fontFamily)
+-      textPaint.applyBlockStyleFont(overriddenBlockStyle, context)
+-    } else {
+-      textPaint.applyBlockStyleFont(blockStyle, context)
++    if (!wrapsCode) {
++      textPaint.textSize = blockStyle.fontSize
++      val fontFamily = variant?.fontFamily?.takeIf { it.isNotEmpty() } ?: styleCache.linkFontFamily
++      if (fontFamily.isNotEmpty()) {
++        val overriddenBlockStyle = blockStyle.copy(fontFamily = fontFamily)
++        textPaint.applyBlockStyleFont(overriddenBlockStyle, context)
++      } else {
++        textPaint.applyBlockStyleFont(blockStyle, context)
++      }
+     }
+ 
+     textPaint.color = variant?.color ?: styleCache.linkColor
+diff --git a/android/src/main/java/com/swmansion/enriched/markdown/utils/text/TailFadeInAnimator.kt b/android/src/main/java/com/swmansion/enriched/markdown/utils/text/TailFadeInAnimator.kt
+index c0460a14cedf0b7699a924243ce56bae648d6f8a..0277880283c189f43410db7895d7b4de2400ea39 100644
+--- a/android/src/main/java/com/swmansion/enriched/markdown/utils/text/TailFadeInAnimator.kt
++++ b/android/src/main/java/com/swmansion/enriched/markdown/utils/text/TailFadeInAnimator.kt
+@@ -4,7 +4,7 @@ import android.animation.Animator
+ import android.animation.AnimatorListenerAdapter
+ import android.animation.ValueAnimator
+ import android.text.Spannable
+-import android.view.animation.LinearInterpolator
++import android.view.animation.DecelerateInterpolator
+ import android.widget.TextView
+ import com.swmansion.enriched.markdown.spans.FadeInSpan
+ import com.swmansion.enriched.markdown.utils.common.isReducedMotionEnabled
+@@ -16,6 +16,17 @@ class TailFadeInAnimator(
+   private val viewRef = WeakReference(textView)
+ 
+   private val activeAnimations = mutableMapOf<FadeInSpan, ValueAnimator>()
++  private val ranges = mutableMapOf<FadeInSpan, IntRange>()
++
++  fun restore() {
++    val spannable = viewRef.get()?.text as? Spannable ?: return
++    for ((span, range) in ranges) {
++      val end = minOf(range.last + 1, spannable.length)
++      if (end > range.first) {
++        spannable.setSpan(span, range.first, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
++      }
++    }
++  }
+ 
+   fun animate(
+     tailStart: Int,
+@@ -34,7 +45,7 @@ class TailFadeInAnimator(
+     val animator =
+       ValueAnimator.ofFloat(0f, 1f).apply {
+         duration = FADE_DURATION_MS
+-        interpolator = LinearInterpolator()
++        interpolator = DecelerateInterpolator()
+ 
+         addUpdateListener { anim ->
+           fadeSpan.alpha = anim.animatedValue as Float
+@@ -61,12 +72,14 @@ class TailFadeInAnimator(
+         )
+       }
+ 
++    ranges[fadeSpan] = tailStart until tailEnd
+     activeAnimations[fadeSpan] = animator
+     animator.start()
+   }
+ 
+   private fun cleanup(span: FadeInSpan) {
+     activeAnimations.remove(span)
++    ranges.remove(span)
+     val spannable = viewRef.get()?.text as? Spannable ?: return
+     span.alpha = 1f
+     spannable.removeSpan(span)
+@@ -79,6 +92,6 @@ class TailFadeInAnimator(
+   }
+ 
+   companion object {
+-    private const val FADE_DURATION_MS = 150L
++    private const val FADE_DURATION_MS = 400L
+   }
+ }
+diff --git a/ios/EnrichedMarkdown.mm b/ios/EnrichedMarkdown.mm
+index b7edde7a019a91eac7c2e78eacab2654106d607b..08ef2a42618b43be75e25cc21d7ea078ba4119fe 100644
+--- a/ios/EnrichedMarkdown.mm
++++ b/ios/EnrichedMarkdown.mm
+@@ -117,6 +117,7 @@ static char kENRMSegmentFadeAnimatorKey;
+   BOOL _enableTaskListItemToggle;
+   BOOL _enableImagePress;
+   BOOL _streamingAnimation;
++  BOOL _animateFinalText;
+   ENRMTableStreamingMode _tableStreamingMode;
+   ENRMCodeBlockStreamingMode _codeBlockStreamingMode;
+   // Trailing code block whose closing fence hasn't streamed in yet, if any.
+@@ -204,6 +205,7 @@ static char kENRMSegmentFadeAnimatorKey;
+     _enableImagePress = NO;
+     _dynamicBlockProps = [[ENRMDynamicBlockProps alloc] init];
+     _streamingAnimation = NO;
++  _animateFinalText = NO;
+     _tableStreamingMode = ENRMTableStreamingModeProgressive;
+     _codeBlockStreamingMode = ENRMCodeBlockStreamingModeProgressive;
+     _selectionMenuConfig = (ENRMSelectionMenuConfig){.copyAsMarkdown = YES, .copyImageURL = YES};
+@@ -859,6 +861,7 @@ static char kENRMSegmentFadeAnimatorKey;
+ 
+   _segmentViews = result.views;
+   _segmentSignatures = result.signatures;
++  _animateFinalText = NO;
+ 
+   // A just-closed block has unchanged content, so the reconciler reuses it
+   // without an update; sync pending here to trigger its deferred highlight.
+@@ -1017,7 +1020,7 @@ static char kENRMSegmentFadeAnimatorKey;
+ 
+ - (void)animateBlockViewIfNeeded:(RCTUIView *)view
+ {
+-  if (!_streamingAnimation)
++  if (!_streamingAnimation && !_animateFinalText)
+     return;
+ 
+ #if !TARGET_OS_OSX
+@@ -1031,10 +1034,10 @@ static char kENRMSegmentFadeAnimatorKey;
+ 
+ - (void)animateTextView:(EnrichedMarkdownInternalText *)view fromTailStart:(NSUInteger)tailStart
+ {
+-  if (!_streamingAnimation)
+-    return;
+-
+   ENRMTailFadeInAnimator *animator = objc_getAssociatedObject(view.textView, &kENRMSegmentFadeAnimatorKey);
++  [animator restore];
++  if (!_streamingAnimation && !_animateFinalText)
++    return;
+   if (!animator) {
+     animator = [[ENRMTailFadeInAnimator alloc] initWithTextView:view.textView];
+     objc_setAssociatedObject(view.textView, &kENRMSegmentFadeAnimatorKey, animator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+@@ -1150,17 +1153,7 @@ static char kENRMSegmentFadeAnimatorKey;
+   if (newViewProps.streamingAnimation != oldViewProps.streamingAnimation) {
+     _streamingAnimation = newViewProps.streamingAnimation;
+     _dirtyFlags |= ENRMDirtyForceHeight | ENRMDirtyRender;
+-    if (!_streamingAnimation) {
+-      for (RCTUIView *segment in _segmentViews) {
+-        if ([segment isKindOfClass:[EnrichedMarkdownInternalText class]]) {
+-          ENRMTailFadeInAnimator *animator = objc_getAssociatedObject(
+-              ((EnrichedMarkdownInternalText *)segment).textView, &kENRMSegmentFadeAnimatorKey);
+-          [animator cancel];
+-          objc_setAssociatedObject(((EnrichedMarkdownInternalText *)segment).textView, &kENRMSegmentFadeAnimatorKey,
+-                                   nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+-        }
+-      }
+-    }
++    _animateFinalText = !_streamingAnimation;
+   }
+ 
+   if (newViewProps.streamingConfig.tableMode != oldViewProps.streamingConfig.tableMode) {
+@@ -1311,6 +1304,7 @@ static char kENRMSegmentFadeAnimatorKey;
+   _maxFontSizeMultiplier = 0;
+   _allowTrailingMargin = NO;
+   _streamingAnimation = NO;
++  _animateFinalText = NO;
+   _tableStreamingMode = ENRMTableStreamingModeProgressive;
+   _codeBlockStreamingMode = ENRMCodeBlockStreamingModeProgressive;
+   _pendingCodeBlockSegment = nil;
+diff --git a/ios/EnrichedMarkdownText.mm b/ios/EnrichedMarkdownText.mm
+index 1b3841713a0f50789ad338aa3fe5f95adcd66476..a2ba2279e62ef1d09b273518517e946ce228fa38 100644
+--- a/ios/EnrichedMarkdownText.mm
++++ b/ios/EnrichedMarkdownText.mm
+@@ -91,6 +91,7 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
+   BOOL _enableImagePress;
+   BOOL _enableCodeBlockPress;
+   BOOL _streamingAnimation;
++  BOOL _animateFinalText;
+   BOOL _forceHeightUpdateOnNextRender;
+ 
+   size_t _renderedStyleFingerprint;
+@@ -554,7 +555,9 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
+     dispatch_async(dispatch_get_main_queue(), ^{ self->_textView.hidden = NO; });
+   }
+ 
+-  if (_streamingAnimation) {
++  [_fadeAnimator restore];
++  if (_streamingAnimation || _animateFinalText) {
++    _animateFinalText = NO;
+     if (!_fadeAnimator) {
+       _fadeAnimator = [[ENRMTailFadeInAnimator alloc] initWithTextView:_textView];
+     }
+@@ -703,12 +706,9 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
+ 
+   if (newViewProps.streamingAnimation != oldViewProps.streamingAnimation) {
+     _streamingAnimation = newViewProps.streamingAnimation;
++    _animateFinalText = !_streamingAnimation;
+     if (_streamingAnimation) {
+       _previousTextLength = ENRMGetAttributedText(_textView).length;
+-    } else {
+-      [_fadeAnimator cancel];
+-      _fadeAnimator = nil;
+-      _previousTextLength = 0;
+     }
+   }
+ 
+@@ -791,6 +791,7 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
+   _fadeAnimator = nil;
+   _previousTextLength = 0;
+   _streamingAnimation = NO;
++  _animateFinalText = NO;
+   _forceHeightUpdateOnNextRender = NO;
+   _cachedMarkdown = nil;
+   _renderedMarkdown = nil;
+diff --git a/ios/utils/CodeBackground.m b/ios/utils/CodeBackground.m
+index 5e5d5bf06370c9a94ed5645ccba4436894fe2bdb..443dd054b2b27375363c9979f818f57db20ef79f 100644
+--- a/ios/utils/CodeBackground.m
++++ b/ios/utils/CodeBackground.m
+@@ -4,8 +4,9 @@
+ 
+ NSString *const CodeAttributeName = @"Code";
+ 
+-static const CGFloat kCodeBackgroundCornerRadius = 2.0;
++static const CGFloat kCodeBackgroundCornerRadius = 5.0;
+ static const CGFloat kCodeBackgroundBorderWidth = 0.5;
++static const CGFloat kCodeBackgroundVerticalPadding = 1.0;
+ 
+ @implementation CodeBackground {
+   StyleConfig *_config;
+@@ -100,6 +101,22 @@ static const CGFloat kCodeBackgroundBorderWidth = 0.5;
+                                    finalRect.size.height = referenceHeight;
+                                  }
+ 
++                                 UIFont *font = [layoutManager.textStorage attribute:NSFontAttributeName
++                                                                             atIndex:range.location
++                                                                      effectiveRange:NULL];
++                                 if (font) {
++                                   CGPoint glyphLocation = [layoutManager locationForGlyphAtIndex:intersect.location];
++                                   CGFloat baseline = rect.origin.y + origin.y + glyphLocation.y;
++                                   CGFloat top = MAX(finalRect.origin.y,
++                                                     baseline - font.ascender - kCodeBackgroundVerticalPadding);
++                                   CGFloat bottom = MIN(CGRectGetMaxY(finalRect),
++                                                        baseline - font.descender + kCodeBackgroundVerticalPadding);
++                                   if (bottom > top) {
++                                     finalRect.origin.y = top;
++                                     finalRect.size.height = bottom - top;
++                                   }
++                                 }
++
+                                  [self drawBackgroundAndBorders:finalRect
+                                                 backgroundColor:backgroundColor
+                                                     borderColor:borderColor
+diff --git a/ios/utils/ENRMTailFadeInAnimator.h b/ios/utils/ENRMTailFadeInAnimator.h
+index 0be4fa8daea7d85408f6aa158084a15a4464b583..700d9ff20862af88d6263a661874c9f6cc76a5eb 100644
+--- a/ios/utils/ENRMTailFadeInAnimator.h
++++ b/ios/utils/ENRMTailFadeInAnimator.h
+@@ -9,6 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
+ - (instancetype)initWithTextView:(ENRMPlatformTextView *)textView;
+ 
+ - (void)animateFrom:(NSUInteger)tailStart to:(NSUInteger)tailEnd;
++- (void)restore;
+ - (void)cancel;
+ 
+ @end
+diff --git a/ios/utils/ENRMTailFadeInAnimator.m b/ios/utils/ENRMTailFadeInAnimator.m
+index 5c4c3bafd6abb00030a1a3689695f3d9d9113408..48c65f527983fb6bb21004ce4077437c2520823c 100644
+--- a/ios/utils/ENRMTailFadeInAnimator.m
++++ b/ios/utils/ENRMTailFadeInAnimator.m
+@@ -3,23 +3,23 @@
+ #import <QuartzCore/QuartzCore.h>
+ #include <TargetConditionals.h>
+ 
+-static const NSTimeInterval kFadeDuration = 0.20;
++static const NSTimeInterval kFadeDuration = 0.4;
+ 
+-typedef struct {
+-  NSRange range;
+-  __unsafe_unretained RCTUIColor *color;
+-} ENRMColorEntry;
++@interface ENRMTailColorEntry : NSObject
++@property(nonatomic) NSRange range;
++@property(nonatomic, strong) RCTUIColor *color;
++@property(nonatomic) CFTimeInterval startTime;
++@end
++
++@implementation ENRMTailColorEntry
++@end
+ 
+ @implementation ENRMTailFadeInAnimator {
+   __weak ENRMPlatformTextView *_textView;
+ #if !TARGET_OS_OSX
+   CADisplayLink *_displayLink;
+ #endif
+-  CFTimeInterval _startTime;
+-
+-  NSArray<RCTUIColor *> *_retainedColors;
+-  ENRMColorEntry *_colorEntries;
+-  NSUInteger _entriesCount;
++  NSMutableArray<ENRMTailColorEntry *> *_entries;
+ }
+ 
+ - (instancetype)initWithTextView:(ENRMPlatformTextView *)textView
+@@ -27,6 +27,7 @@ typedef struct {
+   self = [super init];
+   if (self) {
+     _textView = textView;
++    _entries = [NSMutableArray array];
+   }
+   return self;
+ }
+@@ -35,104 +36,81 @@ typedef struct {
+ {
+ #if !TARGET_OS_OSX
+   [_displayLink invalidate];
+-  _displayLink = nil;
+ #endif
+-  [self cleanupEntries];
+ }
+ 
+ - (void)animateFrom:(NSUInteger)tailStart to:(NSUInteger)tailEnd
+ {
+-  [self cancel];
+-
++#if TARGET_OS_OSX
++  return;
++#else
++  if (UIAccessibilityIsReduceMotionEnabled()) {
++    [self cancel];
++    return;
++  }
+   NSTextStorage *storage = _textView.textStorage;
+   if (!storage || tailEnd <= tailStart || tailEnd > storage.length)
+     return;
+ 
+-#if !TARGET_OS_OSX
+-  if (UIAccessibilityIsReduceMotionEnabled()) {
+-    return;
++  CFTimeInterval now = CACurrentMediaTime();
++  [storage enumerateAttribute:NSForegroundColorAttributeName
++                      inRange:NSMakeRange(tailStart, tailEnd - tailStart)
++                      options:0
++                   usingBlock:^(RCTUIColor *color, NSRange range, BOOL *stop) {
++                     ENRMTailColorEntry *entry = [ENRMTailColorEntry new];
++                     entry.color = color ?: [RCTUIColor labelColor];
++                     entry.range = range;
++                     entry.startTime = now;
++                     [self->_entries addObject:entry];
++                   }];
++  [self updateAtTime:now finish:NO];
++  if (!_displayLink) {
++    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
++    _displayLink.preferredFramesPerSecond = 0;
++    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+   }
+ #endif
+-
+-  NSRange range = NSMakeRange(tailStart, tailEnd - tailStart);
+-
+-  [self snapshotColorsInRange:range storage:storage];
+-  [self updateAlpha:0.0];
+-
+-#if !TARGET_OS_OSX
+-  _startTime = CACurrentMediaTime();
+-  _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+-  // 0 tells the system to use the display's maximum frame rate — 60 Hz on standard displays and 120 Hz on ProMotion ones
+-  _displayLink.preferredFramesPerSecond = 0;
+-  [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+-#else
+-  // TODO: Implement the tail fade-in animation on macOS.
+-  // CADisplayLink doesn't exist on macOS; the equivalent is CVDisplayLink (Core Video)
+-  // or an NSTimer driven at the display refresh rate. The iOS step:/eased-progress
+-  // logic below can be reused directly once a display-sync callback is wired up.
+-  // TODO: When this is implemented, gate it on
+-  // NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion so macOS
+-  // users with Reduce Motion enabled also skip the fade.
+-  [self updateAlpha:1.0];
+-  [self cleanupEntries];
+-#endif
+ }
+ 
+ #if !TARGET_OS_OSX
+ - (void)step:(CADisplayLink *)link
+ {
+-  CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
+-  CGFloat progress = fmin(elapsed / kFadeDuration, 1.0);
+-
+-  CGFloat eased = 1.0 - (1.0 - progress) * (1.0 - progress);
+-
+-  [self updateAlpha:eased];
+-
+-  if (progress >= 1.0) {
+-    [self cancel];
++  [self updateAtTime:CACurrentMediaTime() finish:NO];
++  if (_entries.count == 0) {
++    [_displayLink invalidate];
++    _displayLink = nil;
+   }
+ }
+ #endif
+ 
+-- (void)updateAlpha:(CGFloat)alpha
++- (void)updateAtTime:(CFTimeInterval)now finish:(BOOL)finish
+ {
+   NSTextStorage *storage = _textView.textStorage;
+-  if (!storage || _entriesCount == 0)
++  if (!storage) {
++    [_entries removeAllObjects];
+     return;
+-
++  }
+   [storage beginEditing];
+-  for (NSUInteger i = 0; i < _entriesCount; i++) {
+-    ENRMColorEntry entry = _colorEntries[i];
++  NSMutableIndexSet *finished = [NSMutableIndexSet indexSet];
++  [_entries enumerateObjectsUsingBlock:^(ENRMTailColorEntry *entry, NSUInteger index, BOOL *stop) {
++    CGFloat progress = finish ? 1.0 : fmin(fmax((now - entry.startTime) / kFadeDuration, 0.0), 1.0);
+     if (NSMaxRange(entry.range) <= storage.length) {
+-      RCTUIColor *fadedColor = [entry.color colorWithAlphaComponent:alpha];
+-      [storage addAttribute:NSForegroundColorAttributeName value:fadedColor range:entry.range];
++      CGFloat eased = 1.0 - (1.0 - progress) * (1.0 - progress);
++      CGFloat baseAlpha = CGColorGetAlpha(entry.color.CGColor);
++      RCTUIColor *color = progress >= 1.0 ? entry.color : [entry.color colorWithAlphaComponent:baseAlpha * eased];
++      [storage addAttribute:NSForegroundColorAttributeName value:color range:entry.range];
++    } else {
++      progress = 1.0;
+     }
+-  }
++    if (progress >= 1.0) [finished addIndex:index];
++  }];
++  [_entries removeObjectsAtIndexes:finished];
+   [storage endEditing];
+ }
+ 
+-- (void)snapshotColorsInRange:(NSRange)range storage:(NSTextStorage *)storage
++- (void)restore
+ {
+-  [self cleanupEntries];
+-
+-  NSMutableArray<RCTUIColor *> *colors = [NSMutableArray array];
+-  NSMutableArray<NSValue *> *ranges = [NSMutableArray array];
+-  [storage enumerateAttribute:NSForegroundColorAttributeName
+-                      inRange:range
+-                      options:0
+-                   usingBlock:^(RCTUIColor *color, NSRange subRange, BOOL *stop) {
+-                     [colors addObject:color ?: [RCTUIColor labelColor]];
+-                     [ranges addObject:[NSValue valueWithRange:subRange]];
+-                   }];
+-
+-  _entriesCount = colors.count;
+-  _retainedColors = [colors copy];
+-  _colorEntries = malloc(sizeof(ENRMColorEntry) * _entriesCount);
+-
+-  for (NSUInteger i = 0; i < _entriesCount; i++) {
+-    _colorEntries[i].color = _retainedColors[i];
+-    _colorEntries[i].range = [ranges[i] rangeValue];
+-  }
++  if (_entries.count > 0) [self updateAtTime:CACurrentMediaTime() finish:NO];
+ }
+ 
+ - (void)cancel
+@@ -141,21 +119,7 @@ typedef struct {
+   [_displayLink invalidate];
+   _displayLink = nil;
+ #endif
+-
+-  if (_entriesCount > 0) {
+-    [self updateAlpha:1.0];
+-    [self cleanupEntries];
+-  }
+-}
+-
+-- (void)cleanupEntries
+-{
+-  if (_colorEntries) {
+-    free(_colorEntries);
+-    _colorEntries = NULL;
+-  }
+-  _retainedColors = nil;
+-  _entriesCount = 0;
++  [self updateAtTime:CACurrentMediaTime() finish:YES];
+ }
+ 
+ @end

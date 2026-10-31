@@ -3,13 +3,11 @@ import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
 import { canSplitPane, type SessionPaneSize } from "./session-pane-size";
 import {
-  clearPaneConversations,
   clearPaneSessions,
   closePane,
   collapseToPane,
   createRootPane,
   findPane,
-  findPaneIdByConversationId,
   findPaneIdBySessionId,
   firstPane,
   paneCount,
@@ -96,16 +94,12 @@ export const bindPaneContentAtom = atom(
     payload: {
       paneId: string;
       sessionId: string | null;
-      conversationId: string | null;
     },
   ) => {
     const result = revealPaneContent(
       get(sessionSplitLayoutAtom),
       payload.paneId,
-      {
-        sessionId: payload.sessionId,
-        conversationId: payload.conversationId,
-      },
+      { sessionId: payload.sessionId },
     );
     if (!result) {
       return;
@@ -117,11 +111,7 @@ export const bindPaneContentAtom = atom(
 
 export const bindFocusedPaneContentAtom = atom(
   null,
-  (
-    get,
-    set,
-    content: Pick<SessionPaneBinding, "sessionId" | "conversationId">,
-  ) => {
+  (get, set, content: Pick<SessionPaneBinding, "sessionId">) => {
     set(bindPaneContentAtom, {
       paneId: get(focusedPaneIdAtom),
       ...content,
@@ -215,37 +205,12 @@ export const focusPaneForSessionAtom = atom(
   },
 );
 
-export const focusPaneForConversationAtom = atom(
-  null,
-  (get, set, conversationId: string) => {
-    const paneId = findPaneIdByConversationId(
-      get(sessionSplitLayoutAtom),
-      conversationId,
-    );
-    if (!paneId) {
-      return false;
-    }
-    set(focusedPaneIdAtom, paneId);
-    return true;
-  },
-);
-
 export const clearRemovedPaneSessionsAtom = atom(
   null,
   (get, set, sessionIds: ReadonlySet<string>) => {
     set(
       sessionSplitLayoutAtom,
       clearPaneSessions(get(sessionSplitLayoutAtom), sessionIds),
-    );
-  },
-);
-
-export const clearRemovedPaneConversationsAtom = atom(
-  null,
-  (get, set, conversationIds: ReadonlySet<string>) => {
-    set(
-      sessionSplitLayoutAtom,
-      clearPaneConversations(get(sessionSplitLayoutAtom), conversationIds),
     );
   },
 );

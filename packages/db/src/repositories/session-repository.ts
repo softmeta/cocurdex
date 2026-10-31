@@ -3,6 +3,7 @@ import type { SessionRecord } from "@cocurdex/shared";
 export interface SessionRepository {
   list(): Promise<SessionRecord[]>;
   listArchived(): Promise<SessionRecord[]>;
+  listChangedSince(changeSeq: number): Promise<SessionRecord[]>;
   restore(sessionId: string): Promise<SessionRecord[]>;
   listByWorkspaceId(workspaceId: string): Promise<SessionRecord[]>;
   getById(sessionId: string): Promise<SessionRecord | null>;
@@ -18,10 +19,13 @@ export interface SessionRepository {
     sessionId: string,
     status: SessionRecord["status"],
   ): Promise<void>;
+  setPinned(
+    sessionId: string,
+    pinnedAt: string | null,
+  ): Promise<SessionRecord | null>;
   archive(
     sessionId: string,
     archivedAt?: string,
   ): Promise<SessionRecord | null>;
   delete(sessionId: string): Promise<void>;
-  failRunning(): Promise<string[]>;
 }

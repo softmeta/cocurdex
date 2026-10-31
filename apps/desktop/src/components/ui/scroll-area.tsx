@@ -113,11 +113,76 @@ function ScrollArea({
   );
 }
 
+type ThumbPointerEvent = Parameters<
+  NonNullable<
+    React.ComponentProps<typeof ScrollAreaPrimitive.Thumb>["onPointerMove"]
+  >
+>[0];
+
+function getVerticalTrack(thumb: HTMLElement) {
+  const track = thumb.parentElement;
+  if (!track) return null;
+  const style = getComputedStyle(track);
+  const rect = track.getBoundingClientRect();
+  const paddingTop = Number.parseFloat(style.paddingTop);
+  const paddingBottom = Number.parseFloat(style.paddingBottom);
+  return {
+    top: rect.top + paddingTop,
+    travel: rect.height - paddingTop - paddingBottom - thumb.offsetHeight,
+  };
+}
+
+function useThumbFollowsPointer() {
+  const grabOffsetRef = React.useRef<number | null>(null);
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    grabOffsetRef.current =
+      event.clientY - event.currentTarget.getBoundingClientRect().top;
+  };
+
+  const onPointerMove = (event: ThumbPointerEvent) => {
+    const thumb = event.currentTarget;
+    const grabOffset = grabOffsetRef.current;
+    const viewport = thumb
+      .closest("[data-slot=scroll-area]")
+      ?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    const track = getVerticalTrack(thumb);
+    if (
+      grabOffset === null ||
+      !viewport ||
+      !track ||
+      event.buttons % 2 === 0 ||
+      !thumb.hasPointerCapture(event.pointerId)
+    ) {
+      return;
+    }
+    event.preventBaseUIHandler();
+    event.preventDefault();
+    if (track.travel <= 0) return;
+    const offset = event.clientY - grabOffset - track.top;
+    const ratio = Math.min(1, Math.max(0, offset / track.travel));
+    viewport.scrollTop =
+      ratio * (viewport.scrollHeight - viewport.clientHeight);
+  };
+
+  const onPointerEnd = () => {
+    grabOffsetRef.current = null;
+  };
+
+  return {
+    onPointerCancel: onPointerEnd,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: onPointerEnd,
+  };
+}
+
 function ScrollBar({
   className,
   orientation = "vertical",
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Scrollbar>) {
+  const thumbDrag = useThumbFollowsPointer();
   return (
     <ScrollAreaPrimitive.Scrollbar
       data-slot="scroll-area-scrollbar"
@@ -129,6 +194,7 @@ function ScrollBar({
       {...props}
     >
       <ScrollAreaPrimitive.Thumb
+        {...(orientation === "vertical" ? thumbDrag : null)}
         data-slot="scroll-area-thumb"
         className="relative flex-1 rounded-full [background:var(--scrollbar-thumb)]"
       />

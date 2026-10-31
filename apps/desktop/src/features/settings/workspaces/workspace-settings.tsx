@@ -72,13 +72,13 @@ function WorkspaceSettingsList({
               title={t("workspaces.noResults")}
             />
           ) : (
-            <ul className="overflow-hidden rounded-card border border-border/70 bg-settings-surface">
+            <ul className="overflow-hidden rounded-card bg-settings-surface">
               {visible.map((workspace) => {
                 const isCurrent = workspace.id === activeWorkspaceId;
                 return (
                   <li
                     key={workspace.id}
-                    className="border-border/60 border-b last:border-b-0"
+                    className="border-border/40 border-b last:border-b-0"
                   >
                     <button
                       aria-current={isCurrent ? "true" : undefined}

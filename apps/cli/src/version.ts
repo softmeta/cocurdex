@@ -7,8 +7,8 @@ import { createRequire } from "node:module";
 declare const __COCURDEX_CLI_VERSION__: string | undefined;
 
 /**
- * CLI package version (`apps/cli/package.json`).
- * Packaged builds get the value inlined; dev reads package.json at runtime.
+ * Packaged builds inline the desktop app version they ship with; dev reads
+ * `apps/cli/package.json` at runtime.
  */
 export function getCliVersion(): string {
   if (

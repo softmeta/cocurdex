@@ -5,10 +5,10 @@ import {
   type AppDropdownRadioSection,
 } from "@/components";
 import {
+  DropdownMenuSearchInput,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  Input,
 } from "@/components/ui";
 
 export interface RuntimeAxisOption {
@@ -95,14 +95,10 @@ export function RuntimeAxisSubmenu({
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="flex max-h-80 [--popup-max-width:18rem] flex-col overflow-hidden">
         {hasSearch ? (
-          <Input
-            autoFocus
-            className="mb-1 h-8 shrink-0"
+          <DropdownMenuSearchInput
             placeholder={t("modelMenu.searchPlaceholder")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            // The menu's typeahead would otherwise swallow the keystrokes.
-            onKeyDown={(event) => event.stopPropagation()}
           />
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto">

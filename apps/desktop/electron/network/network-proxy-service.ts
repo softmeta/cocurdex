@@ -7,7 +7,8 @@ import {
   getNetworkProxySettings,
   type NetworkProxySettings,
 } from "@cocurdex/shared";
-import { app, ipcMain, session } from "electron";
+import { applyNodeGlobalProxy } from "@cocurdex/shared/node";
+import { app, session } from "electron";
 import { chatDaemonOptions } from "../chat/app-state";
 
 let applyQueue: Promise<void> = Promise.resolve();
@@ -42,6 +43,7 @@ export function initializeNetworkProxyRuntime() {
 function applyHostNetworkProxy(settings: NetworkProxySettings) {
   const operation = applyQueue.then(async () => {
     applyNetworkProxySettings(settings, process.env);
+    applyNodeGlobalProxy(process.env);
     const config = buildElectronProxyConfig(settings);
     await session.defaultSession.setProxy({
       mode: config.mode,
@@ -53,45 +55,11 @@ function applyHostNetworkProxy(settings: NetworkProxySettings) {
   return operation;
 }
 
-async function readDaemonNetworkProxySettings() {
-  return requestDaemon("network.proxy.get", await chatDaemonOptions());
-}
-
 export async function loadAndApplyNetworkProxyFromDaemon() {
-  const settings = await readDaemonNetworkProxySettings();
+  const settings = await requestDaemon(
+    "network.proxy.get",
+    await chatDaemonOptions(),
+  );
   await applyHostNetworkProxy(settings);
   return settings;
-}
-
-export function registerNetworkProxyHandlers() {
-  ipcMain.handle(
-    "network:testProxy",
-    async (_event, settings: NetworkProxySettings) => {
-      const result = await requestDaemon(
-        "network.proxy.test",
-        { settings },
-        await chatDaemonOptions(),
-      );
-      await loadAndApplyNetworkProxyFromDaemon();
-      return result;
-    },
-  );
-  ipcMain.handle("network:testCurrentProxy", async () =>
-    requestDaemon("network.proxy.test", {}, await chatDaemonOptions()),
-  );
-  ipcMain.handle("network:getProxySettings", () =>
-    readDaemonNetworkProxySettings(),
-  );
-  ipcMain.handle(
-    "network:setProxySettings",
-    async (_event, input: NetworkProxySettings) => {
-      const settings = await requestDaemon(
-        "network.proxy.set",
-        { settings: input },
-        await chatDaemonOptions(),
-      );
-      await applyHostNetworkProxy(settings);
-      return settings;
-    },
-  );
 }

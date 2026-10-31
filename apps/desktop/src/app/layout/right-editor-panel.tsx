@@ -3,12 +3,13 @@ import {
   primaryWorkspaceRootPath,
 } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
-import { PanelLeft, Search } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
 import { beginColumnResize } from "@/components/use-column-resize";
 import { BrowserPanel } from "@/features/browser";
+import { DecksView } from "@/features/decks";
 import {
   EditorBreadcrumb,
   EditorTabs,
@@ -22,7 +23,6 @@ import {
   setChatComposerAttachmentAtom,
 } from "@/features/editor";
 import { MonacoEditor } from "@/features/editor/monaco";
-import { IssuesView } from "@/features/issues";
 import { NotesView } from "@/features/notes";
 import { openPdfsAtom } from "@/features/pdf-reader";
 import {
@@ -40,7 +40,9 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import { IssuesPanel } from "./issues-panel";
 import { PanScrollbar } from "./pan-scrollbar";
+import { PanelToolbar } from "./panel-toolbar";
 import { PdfReaderView } from "./pdf-reader-view";
 import {
   fileTreeWidthAtom,
@@ -51,7 +53,7 @@ import {
   rightPanelViewTouchedAtom,
 } from "./right-editor-panel-store";
 import {
-  TITLEBAR_ICON_GLYPH_CLASS,
+  SidebarToggleButton,
   TitlebarIconButton,
 } from "./titlebar-icon-button";
 import { ViewSwitcherTabs } from "./view-switcher-tabs";
@@ -97,6 +99,7 @@ export interface RightEditorPanelProps {
   overlayInset?: number;
   onAddContextToChat?(attachment: MessageAttachment): boolean;
   onInsertTextToChat?(text: string): boolean;
+  viewSwitcherTrailing?: ReactNode;
 }
 
 export function RightEditorPanel({
@@ -106,6 +109,7 @@ export function RightEditorPanel({
   onInsertTextToChat,
   overlayInset = 0,
   reserveTrafficLights = false,
+  viewSwitcherTrailing,
 }: RightEditorPanelProps) {
   const { t } = useTranslation("editor");
   const { t: tSearch } = useTranslation("search");
@@ -160,6 +164,8 @@ export function RightEditorPanel({
   // (and any unsaved-but-debounced edits) survive view switches.
   const [notesKeepAlive, setNotesKeepAlive] = useState(false);
   const notesEverActive = notesKeepAlive || activeView === "notes";
+  const [decksKeepAlive, setDecksKeepAlive] = useState(false);
+  const decksEverActive = decksKeepAlive || activeView === "decks";
   const [issuesKeepAlive, setIssuesKeepAlive] = useState(false);
   const issuesEverActive = issuesKeepAlive || activeView === "issues";
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
@@ -315,6 +321,7 @@ export function RightEditorPanel({
         activeView={activeView}
         hasPdfsOpen={hasPdfsOpen}
         reserveTrafficLights={reserveTrafficLights}
+        trailing={viewSwitcherTrailing}
         onViewChange={(value) => {
           setActiveView(value);
           if (value === "terminal") {
@@ -330,6 +337,9 @@ export function RightEditorPanel({
           if (value === "notes") {
             setNotesKeepAlive(true);
           }
+          if (value === "decks") {
+            setDecksKeepAlive(true);
+          }
           if (value === "issues") {
             setIssuesKeepAlive(true);
           }
@@ -337,28 +347,26 @@ export function RightEditorPanel({
       />
 
       {activeView === "editor" ? (
-        <div
-          className="app-drag relative z-30 flex items-center gap-1 border-b border-editor-border px-2 py-1"
+        <PanelToolbar
+          className="app-drag relative z-30 gap-1"
           data-testid="editor-panel-toolbar"
         >
-          <TitlebarIconButton
-            active={fileTreeVisible && !searchPanelVisible}
-            aria-label={t("actions.explorer")}
-            onClick={showFileTreePanel}
-          >
-            <PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />
-          </TitlebarIconButton>
+          <SidebarToggleButton
+            label={t("actions.explorer")}
+            open={fileTreeVisible && !searchPanelVisible}
+            onToggle={showFileTreePanel}
+          />
           <TitlebarIconButton
             active={searchPanelVisible}
             aria-label={tSearch("searchFiles")}
             onClick={toggleSearchPanel}
           >
-            <Search className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <Search className="size-3.5" />
           </TitlebarIconButton>
           <div className="min-w-0 flex-1">
             <EditorTabs />
           </div>
-        </div>
+        </PanelToolbar>
       ) : null}
 
       {/*
@@ -490,6 +498,20 @@ export function RightEditorPanel({
               </div>
             ) : null}
 
+            {decksEverActive ? (
+              <div
+                data-testid="right-panel-decks-layer"
+                className={cn(
+                  "absolute inset-0 flex min-h-0 flex-col",
+                  activeView === "decks"
+                    ? "visible"
+                    : "hidden pointer-events-none",
+                )}
+              >
+                <DecksView />
+              </div>
+            ) : null}
+
             {issuesEverActive ? (
               <div
                 data-testid="right-panel-issues-layer"
@@ -500,7 +522,7 @@ export function RightEditorPanel({
                     : "hidden pointer-events-none",
                 )}
               >
-                <IssuesView />
+                <IssuesPanel />
               </div>
             ) : null}
 

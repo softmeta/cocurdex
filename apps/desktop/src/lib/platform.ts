@@ -9,6 +9,18 @@ export function isMacPlatform() {
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 }
 
+function isElectronRenderer() {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /\bElectron\//.test(navigator.userAgent);
+}
+
+export function hasMacTrafficLights() {
+  return isMacPlatform() && isElectronRenderer();
+}
+
 // Tag the document with the OS family so CSS can branch on it. macOS suppresses
 // native scrollbars entirely (AppKit flashes them on window focus changes, e.g.
 // the cmd+shift screenshot shortcut, leaking phantom bars into screenshots),
@@ -17,4 +29,5 @@ export function applyPlatformAttribute(
   root: HTMLElement = document.documentElement,
 ) {
   root.dataset.platform = isMacPlatform() ? "darwin" : "other";
+  root.toggleAttribute("data-traffic-lights", hasMacTrafficLights());
 }

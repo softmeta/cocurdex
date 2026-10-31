@@ -1,7 +1,6 @@
 export { PlanApprovalCard } from "./plan-approval-card";
 export {
   applyPlanApprovalEventAtom,
-  clearPlanApprovalsForSessionAtom,
   findPendingPlanApproval,
   hydratePendingPlanApprovalsAtom,
   planApprovalsBySessionAtom,
@@ -10,7 +9,6 @@ export { PlanPanel } from "./plan-panel";
 export {
   applyPlanEventAtom,
   autoCollapsedPlansBySessionAtom,
-  clearPlanForSessionAtom,
   collapsedPlansBySessionAtom,
   dismissedPlansBySessionAtom,
   dismissPlanForSessionAtom,

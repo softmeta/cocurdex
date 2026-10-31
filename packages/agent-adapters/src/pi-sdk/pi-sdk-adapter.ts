@@ -24,6 +24,7 @@ import {
   errorKindForLog,
   hashLogValue,
   hostForLog,
+  isChatSession,
   piThinkingLevels,
 } from "@cocurdex/shared";
 import {
@@ -36,11 +37,13 @@ import {
   createMcpExtension,
   createToolSearchExtension,
   DefaultResourceLoader,
+  getAgentDir,
   type InlineExtension,
   ModelRuntime,
   type PromptOptions,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
+import { loadMcpConfig } from "@earendil-works/pi-coding-agent/mcp-config";
 import { logAdapterDiagnostic } from "../diagnostics";
 import {
   assertNoDocumentAttachments,
@@ -50,6 +53,7 @@ import {
   serializeProviderSessionState,
   splitAttachments,
 } from "../shared";
+import { createContextCompactionTracker } from "../shared/context-compaction-tracker";
 import {
   createNativeSessionRecoveryError,
   requiresNativeSessionRecovery,
@@ -59,6 +63,9 @@ import {
   extractPiEditSnapshot,
 } from "../workspace-changes/native-evidence";
 import { createPiAgentToolDefinitions } from "./pi-agent-tools";
+import { createPiChatResourceLoaderOptions } from "./pi-chat-session";
+import { handlePiCompactionEvent } from "./pi-compaction";
+import { onlyPiMcpServers } from "./pi-mcp-agents";
 import {
   buildModelCost,
   buildModelInput,
@@ -67,6 +74,8 @@ import {
   parseJsonObject,
 } from "./pi-model-utils";
 import { getPiAgentDir } from "./pi-paths";
+import { listPiBuiltInProviderIds } from "./pi-provider-catalog";
+import { forkPiProviderSession, readPiSessionFile } from "./pi-session-fork";
 import {
   getPiSkillRootSnapshots,
   logPiSkillDiagnostic,
@@ -84,7 +93,20 @@ function createPiBuiltinExtensions(): InlineExtension[] {
       factory: createToolSearchExtension(),
       builtin: true,
     },
-    { name: "mcp", factory: createMcpExtension(), builtin: true },
+    {
+      name: "mcp",
+      factory: createMcpExtension({
+        loadConfig: (ctx) =>
+          onlyPiMcpServers(
+            loadMcpConfig({
+              agentDir: getAgentDir(),
+              cwd: ctx.cwd,
+              projectTrusted: ctx.isProjectTrusted(),
+            }),
+          ),
+      }),
+      builtin: true,
+    },
   ];
 }
 
@@ -116,7 +138,9 @@ type PiSessionLike = {
   extensionRunner: {
     emit(event: { type: "session_shutdown"; reason: "quit" }): Promise<unknown>;
   };
-  sessionManager?: { getSessionFile(): string | undefined };
+  sessionManager?: {
+    getSessionFile(): string | undefined;
+  };
 };
 
 async function shutdownPiSession(session: PiSessionLike) {
@@ -214,6 +238,14 @@ async function listPiSlashCommands(
   return skills;
 }
 
+const KEYLESS_PROVIDER_API_KEY = "cocurdex-keyless";
+
+function keylessProviderApiKey(providerId: string) {
+  return listPiBuiltInProviderIds().includes(providerId)
+    ? null
+    : KEYLESS_PROVIDER_API_KEY;
+}
+
 async function registerRuntimeProvider(
   modelRuntime: ModelRuntime,
   providerConfig: RuntimeProviderConfig,
@@ -223,11 +255,10 @@ async function registerRuntimeProvider(
     return null;
   }
 
-  if (providerConfig.apiKey) {
-    await modelRuntime.setRuntimeApiKey(
-      providerConfig.providerId,
-      providerConfig.apiKey,
-    );
+  const apiKey =
+    providerConfig.apiKey || keylessProviderApiKey(providerConfig.providerId);
+  if (apiKey) {
+    await modelRuntime.setRuntimeApiKey(providerConfig.providerId, apiKey);
   } else {
     await modelRuntime.removeRuntimeApiKey(providerConfig.providerId);
   }
@@ -256,7 +287,7 @@ async function registerRuntimeProvider(
   modelRuntime.registerProvider(providerConfig.providerId, {
     name: providerConfig.providerName,
     baseUrl: providerConfig.baseUrl || undefined,
-    apiKey: providerConfig.apiKey || undefined,
+    apiKey: apiKey || undefined,
     api,
     headers: parseHeaders(providerConfig.headersJson),
     models: [
@@ -360,25 +391,21 @@ export function createPiSdkAdapter(
     listSlashCommands(payload: ListSlashCommandsPayload) {
       return listPiSlashCommands(payload);
     },
+    async forkProviderSession(payload) {
+      return forkPiProviderSession(
+        payload,
+        sdk.SessionManager,
+        PI_PROVIDER_VERSION,
+      );
+    },
     createSession(
       payload: CreateAgentSessionPayload,
       onEvent: (event: AgentEvent) => void,
     ): AgentSession {
       const sessionId = payload.session.id;
-      const persistedSessionFile = (() => {
-        try {
-          const state = payload.providerSession?.providerStateJson
-            ? (JSON.parse(payload.providerSession.providerStateJson) as {
-                sessionFile?: unknown;
-              })
-            : null;
-          return typeof state?.sessionFile === "string"
-            ? state.sessionFile
-            : null;
-        } catch {
-          return null;
-        }
-      })();
+      const persistedSessionFile = payload.providerSession?.providerStateJson
+        ? readPiSessionFile(payload.providerSession.providerStateJson)
+        : null;
       let disposed = false;
       let piSessionPromise: Promise<PiSessionLike> | null = null;
       let piSession: PiSessionLike | null = null;
@@ -405,6 +432,10 @@ export function createPiSdkAdapter(
       // instead of treating an empty turn as success.
       let lastTurnError: string | null = null;
       let stopRequested = false;
+      const compaction = createContextCompactionTracker({
+        sessionId,
+        emit: onEvent,
+      });
 
       function emitError(message: string) {
         if (disposed) return;
@@ -711,6 +742,10 @@ export function createPiSdkAdapter(
           case "tool_execution_end":
             handleToolExecutionEnd(event);
             break;
+          case "compaction_start":
+          case "compaction_end":
+            handlePiCompactionEvent(compaction, event);
+            break;
           case "agent_end":
             completeMessages();
             // Do not clear lastTurnError here: Pi may still be retrying inside
@@ -790,26 +825,38 @@ export function createPiSdkAdapter(
                 path.join(agentDir, "sessions"),
               );
           const sessionAction = persistedSessionFile ? "resume" : "new";
-          const resourceLoader = new sdk.DefaultResourceLoader({
-            cwd: payload.workspaceRootPath,
-            agentDir,
-            additionalSkillPaths: resolveAdditionalSkillPaths(
-              payload.workspaceRootPath,
-            ),
-            extensionFactories: createPiBuiltinExtensions(),
-            appendSystemPromptOverride: (base) => {
-              const rootsPrompt = renderPiWorkspaceRootsPrompt(
-                payload.workspaceRootPath,
-                payload.workspaceRootPaths,
-              );
-              return rootsPrompt ? [...base, rootsPrompt] : base;
-            },
-          });
+          const chat = isChatSession(payload.session);
+          const resourceLoader = new sdk.DefaultResourceLoader(
+            chat
+              ? createPiChatResourceLoaderOptions(
+                  payload.workspaceRootPath,
+                  agentDir,
+                )
+              : {
+                  cwd: payload.workspaceRootPath,
+                  agentDir,
+                  additionalSkillPaths: resolveAdditionalSkillPaths(
+                    payload.workspaceRootPath,
+                  ),
+                  extensionFactories: createPiBuiltinExtensions(),
+                  appendSystemPromptOverride: (base) => {
+                    const rootsPrompt = renderPiWorkspaceRootsPrompt(
+                      payload.workspaceRootPath,
+                      payload.workspaceRootPaths,
+                    );
+                    return rootsPrompt ? [...base, rootsPrompt] : base;
+                  },
+                },
+          );
           await resourceLoader.reload();
           const result = await sdk.createAgentSession({
-            customTools: await createPiAgentToolDefinitions(
-              payload.agentToolInvoker,
-            ),
+            ...(chat
+              ? { noTools: "all" }
+              : {
+                  customTools: await createPiAgentToolDefinitions(
+                    payload.agentToolInvoker,
+                  ),
+                }),
             cwd: payload.workspaceRootPath,
             agentDir,
             modelRuntime,

@@ -10,10 +10,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import {
   Input,
   Text,
@@ -22,7 +19,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
-import { cn } from "@/lib";
 import {
   collapsedSearchPathsAtom,
   searchCaseSensitiveAtom,
@@ -91,22 +87,14 @@ function ToolButton({
   onClick: () => void;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <TitlebarIconButton
-            aria-label={label}
-            disabled={disabled}
-            onClick={onClick}
-          >
-            {icon}
-          </TitlebarIconButton>
-        }
-      />
-      <TooltipContent side="top" sideOffset={6}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
+    <TitlebarIconButton
+      tooltipSide="top"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {icon}
+    </TitlebarIconButton>
   );
 }
 
@@ -135,10 +123,6 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
   // highlight keys off those.
   // Toggle's default size variant ships `min-w-8 px-2.5`; without min-w-0 the
   // 18px square gets stretched to 32px and the icons eat half the input.
-  const optionToggleClassName =
-    "app-no-drag size-[18px] min-w-0 rounded-control p-0 text-editor-fg-subtle transition-colors hover:bg-editor-tab-hover-bg hover:text-editor-fg aria-pressed:bg-transparent aria-pressed:text-primary data-pressed:bg-transparent data-pressed:text-primary";
-  const inputClassName =
-    "min-w-0 rounded-control border-editor-border bg-editor-canvas px-2.5 text-body placeholder:text-editor-fg-subtle";
   const hasQuery = query.trim() !== "";
   const hasResults = resultCount > 0;
   const resultPaths = [...results.keys()];
@@ -160,35 +144,35 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
       <div className="relative min-w-0">
         <Input
           aria-label={t("fullText.inputLabel")}
-          className={cn(inputClassName, "h-8 pe-20")}
+          className="min-w-0 rounded-control border-editor-border bg-editor-canvas px-2.5 text-body placeholder:text-editor-fg-subtle h-8 pe-20"
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t("fullText.placeholder")}
           value={query}
         />
         <div className="absolute inset-y-0 end-1 flex items-center gap-0">
           <IconToggle
-            className={optionToggleClassName}
+            className="app-no-drag size-[18px] min-w-0 rounded-control p-0 text-editor-fg-subtle transition-colors hover:bg-editor-tab-hover-bg hover:text-editor-fg aria-pressed:bg-transparent aria-pressed:text-primary data-pressed:bg-transparent data-pressed:text-primary"
             icon={<CaseSensitive className="size-3.5" />}
             label={t("fullText.caseSensitive")}
             onPressedChange={setCaseSensitive}
             pressed={caseSensitive}
           />
           <IconToggle
-            className={optionToggleClassName}
+            className="app-no-drag size-[18px] min-w-0 rounded-control p-0 text-editor-fg-subtle transition-colors hover:bg-editor-tab-hover-bg hover:text-editor-fg aria-pressed:bg-transparent aria-pressed:text-primary data-pressed:bg-transparent data-pressed:text-primary"
             icon={<WholeWord className="size-3.5" />}
             label={t("fullText.wholeWord")}
             onPressedChange={setWholeWord}
             pressed={wholeWord}
           />
           <IconToggle
-            className={optionToggleClassName}
+            className="app-no-drag size-[18px] min-w-0 rounded-control p-0 text-editor-fg-subtle transition-colors hover:bg-editor-tab-hover-bg hover:text-editor-fg aria-pressed:bg-transparent aria-pressed:text-primary data-pressed:bg-transparent data-pressed:text-primary"
             icon={<Regex className="size-3.5" />}
             label={t("fullText.useRegex")}
             onPressedChange={setUseRegex}
             pressed={useRegex}
           />
           <IconToggle
-            className={cn(optionToggleClassName, "ms-0.5")}
+            className="app-no-drag size-[18px] min-w-0 rounded-control p-0 text-editor-fg-subtle transition-colors hover:bg-editor-tab-hover-bg hover:text-editor-fg aria-pressed:bg-transparent aria-pressed:text-primary data-pressed:bg-transparent data-pressed:text-primary ms-0.5"
             icon={<MoreHorizontal className="size-3.5" />}
             label={t("fullText.toggleFilters")}
             onPressedChange={setFiltersExpanded}
@@ -204,7 +188,7 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
             </Text>
             <Input
               aria-label={t("fullText.filesToInclude")}
-              className={cn(inputClassName, "h-8")}
+              className="min-w-0 rounded-control border-editor-border bg-editor-canvas px-2.5 text-body placeholder:text-editor-fg-subtle h-8"
               onChange={(event) => setInclude(event.target.value)}
               placeholder={t("fullText.globPlaceholder")}
               value={include}
@@ -216,7 +200,7 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
             </Text>
             <Input
               aria-label={t("fullText.filesToExclude")}
-              className={cn(inputClassName, "h-8")}
+              className="min-w-0 rounded-control border-editor-border bg-editor-canvas px-2.5 text-body placeholder:text-editor-fg-subtle h-8"
               onChange={(event) => setExclude(event.target.value)}
               placeholder={t("fullText.globPlaceholder")}
               value={exclude}
@@ -247,7 +231,7 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
           </div>
           <div className="flex shrink-0 items-center gap-0">
             <ToolButton
-              icon={<ListX className={TITLEBAR_ICON_GLYPH_CLASS} />}
+              icon={<ListX className="size-3.5" />}
               label={t("fullText.clearResults")}
               onClick={handleClearSearch}
             />
@@ -255,9 +239,9 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
               disabled={!hasResults}
               icon={
                 allCollapsed ? (
-                  <ChevronsUpDown className={TITLEBAR_ICON_GLYPH_CLASS} />
+                  <ChevronsUpDown className="size-3.5" />
                 ) : (
-                  <ChevronsDownUp className={TITLEBAR_ICON_GLYPH_CLASS} />
+                  <ChevronsDownUp className="size-3.5" />
                 )
               }
               label={

@@ -4,18 +4,30 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "fixture:db": "node --import tsx fixture-db/cli.ts",
+    "test:desktop": "vitest run --config vitest.desktop.config.ts"
   },
   "dependencies": {
+    "@cocurdex/agent-adapters": "workspace:*",
+    "@cocurdex/cli": "workspace:*",
+    "@cocurdex/client-runtime": "workspace:*",
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/db": "workspace:*",
+    "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
-    "@cocurdex/shared": "workspace:*"
+    "@cocurdex/shared": "workspace:*",
+    "@cocurdex/test-fixtures": "workspace:*"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.31.0",
-    "@playwright/test": "^1.52.0",
-    "@types/node": "^24.13.6",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
     "vitest": "^4.1.11"
+  },
+  "exports": {
+    "./fixture-db/*": "./fixture-db/*.ts",
+    "./helpers/*": "./helpers/*.ts"
   }
 }

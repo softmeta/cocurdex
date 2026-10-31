@@ -4,22 +4,34 @@ import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
-  createProviderSnapshotForModel,
+  type AgentPermissionMode,
+  isChatWorkspaceId,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
-  type SessionRecord,
-  sessionConfiguration,
   type WorkflowAggregate,
   type WorkflowExecutorBinding,
   type WorkflowExecutorBindings,
   type WorkflowRole,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
+import { agentAuthUsageLines, handleAgentCommand } from "./agent-auth-commands";
 import { withDaemon } from "./daemon-command";
+import { handleDeckCommand } from "./deck-commands";
+import {
+  diagnosticsUsageLines,
+  handleDaemonHealthCommand,
+  handleDiagnosticsCommand,
+} from "./diagnostics-commands";
+import { handleHostCommand, hostUsageLines } from "./host-commands";
+import { handleImageCommand, imageUsageLines } from "./image-commands";
 import { handleIssueCommand } from "./issue-commands";
+import { handleLinkCommand } from "./link-commands";
+import { handleMcpCommand, mcpUsageLines } from "./mcp-commands";
+import { handleMemoryCommand, memoryUsageLines } from "./memory-commands";
 import { handleNoteCommand } from "./note-commands";
 import {
   assertDirectory,
+  isExistingDirectory,
   openDesktopApp,
   resolveOpenFolderArg,
   shouldHandleAsOpen,
@@ -38,11 +50,25 @@ import {
   scriptRunUsageLines,
 } from "./script-run-commands";
 import { handleSearchCommand } from "./search-commands";
+import {
+  handleSessionLineageCommand,
+  sessionLineageUsageLines,
+} from "./session-lineage-commands";
+import {
+  handleSessionRuntimeCommand,
+  modelSelectionFromFlags,
+  sessionRuntimeUsageLines,
+} from "./session-runtime-commands";
+import {
+  handleSessionTreeCommand,
+  sessionTreeUsageLines,
+} from "./session-tree-command";
 import { assertSessionTuiAvailable, runSessionTui } from "./session-tui";
 import { handleSkillsCommand, skillsUsageLines } from "./skill-commands";
 import { taskApi } from "./task-client";
 import { handleTeamCommand, teamUsageLines } from "./team-commands";
 import { getCliVersion } from "./version";
+import { handleWebCommand, webUsageLines } from "./web-command";
 import { assertWorkflowTuiAvailable, runWorkflowTui } from "./workflow-tui";
 import { handleWorktreeCommand, worktreeUsageLines } from "./worktree-commands";
 
@@ -95,6 +121,34 @@ async function main(rawArgs: string[]) {
     }
   }
 
+  if (resource === "memory") {
+    const handled = await handleMemoryCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "image") {
+    const handled = await handleImageCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "link") {
+    const handled = await handleLinkCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "deck") {
+    const handled = await handleDeckCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
   if (resource === "team") {
     const handled = await handleTeamCommand(action, parsed);
     if (handled) {
@@ -124,10 +178,41 @@ async function main(rawArgs: string[]) {
     }
   }
 
+  if (resource === "web") {
+    await handleWebCommand(parsed);
+    return;
+  }
+
+  if (resource === "host") {
+    const handled = await handleHostCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
   if (resource === "daemon" && action === "status") {
     const status = await withDaemon(() => requestDaemon("daemon.status"));
     printResult(status, parsed);
     return;
+  }
+
+  if (resource === "daemon" && action === "health") {
+    await handleDaemonHealthCommand(parsed);
+    return;
+  }
+
+  if (resource === "agent") {
+    const handled = await handleAgentCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "diagnostics") {
+    const handled = await handleDiagnosticsCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
   }
 
   if (resource === "worktree") {
@@ -140,10 +225,12 @@ async function main(rawArgs: string[]) {
   if (resource === "workspace" && action === "list") {
     const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
     printRows(
-      workspaces.map((workspace) => ({
-        ...workspace,
-        rootPaths: workspace.rootPaths.join(", "),
-      })),
+      workspaces
+        .filter((workspace) => !isChatWorkspaceId(workspace.id))
+        .map((workspace) => ({
+          ...workspace,
+          rootPaths: workspace.rootPaths.join(", "),
+        })),
       ["id", "name", "rootPaths"],
       parsed,
     );
@@ -190,6 +277,7 @@ async function main(rawArgs: string[]) {
       send: (currentSession, content, delivery) =>
         taskApi.sendMessage({
           sessionId: currentSession.id,
+          messageId: crypto.randomUUID(),
           content,
           delivery,
         }),
@@ -231,6 +319,19 @@ async function main(rawArgs: string[]) {
 
     const message = await sendSessionMessage(sessionId, prompt);
     printResult(message, parsed);
+    return;
+  }
+
+  if (
+    resource === "session" &&
+    ((await handleSessionLineageCommand(action, args, parsed)) ||
+      (await handleSessionRuntimeCommand(action, args, parsed)))
+  ) {
+    return;
+  }
+
+  if (resource === "session" && action === "tree") {
+    await handleSessionTreeCommand(args[0], parsed);
     return;
   }
 
@@ -288,6 +389,15 @@ async function main(rawArgs: string[]) {
     await withDaemon(() => requestDaemon("session.stop", { sessionId }));
     printResult({ stopped: true, sessionId }, parsed);
     return;
+  }
+
+  if (resource === "mcp") {
+    const handled = await handleMcpCommand(
+      rawArgs.slice(rawArgs.indexOf("mcp") + 1),
+    );
+    if (handled) {
+      return;
+    }
   }
 
   if (resource === "provider") {
@@ -419,6 +529,15 @@ async function main(rawArgs: string[]) {
     return;
   }
 
+  if (
+    resource &&
+    action === undefined &&
+    (await isExistingDirectory(resource))
+  ) {
+    await openDesktopApp(await assertDirectory(resource));
+    return;
+  }
+
   printUsage();
   process.exitCode = 1;
 }
@@ -439,18 +558,39 @@ function printUsage() {
       "  cocurdex [path]                         Open folder in desktop app (like code .)",
       "  cocurdex open [path]                    Same as above",
       "  cocurdex --version | -v | version       Print CLI version",
-      "  cocurdex note list|show|create|update|delete|backlinks|tags [--json]",
-      "  cocurdex issue list|show|create|move|delete|views [--view <id>] [--json]",
+      "  cocurdex note list|show|create|update|move|delete|backlinks|tags [--json]",
+      "  cocurdex note create|update ... [--body <markdown> | --body - | --body-file <path>]",
+      ...memoryUsageLines(),
+      "  cocurdex note update <id> ... [--expected-revision <n>]",
+      ...imageUsageLines(),
+      "  cocurdex link list <ref> [--json]",
+      "  cocurdex link add|remove <ref> <ref>   (ref: <kind>:<id> or cocurdex://<kind>/<id>; kind session|note|issue|deck)",
+      "  cocurdex deck list|show|create|update|delete|check [--json]",
+      "  cocurdex deck create|update ... [--title <t>] [--markdown-file <path|-> | --content-file <path|->]",
+      "  cocurdex deck update <id> ... [--expected-revision <n>]",
+      "  cocurdex deck edit <id> --ops-file <path|-> [--expected-revision <n>]",
+      "  cocurdex deck image <id> --slide <slideId> --file <path.png|path.jpg> [--alt <text>] [--replace <elementId>]",
+      "  cocurdex deck export <id> --output <path.pptx|path.pdf> [--format pptx|pdf]",
+      "  cocurdex deck import <file.pptx> [--title <t>] [--workspace <id>] [--json]",
+      "  cocurdex deck read <file.pptx> [--json]",
+      "  cocurdex issue list|show|create|update|move|delete|comment|views [--view <id>] [--json]",
+      "  cocurdex issue relate|unrelate <id> blocks|related|duplicate <id> [--json]",
+      "  cocurdex issue labels | label create --name <name> | label update <id|name> [--name <name>] [--color <color>] | label delete <id|name> [--json]",
       "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
       ...skillsUsageLines(),
-      "  cocurdex daemon status",
+      ...diagnosticsUsageLines(),
+      ...webUsageLines(),
+      ...hostUsageLines(),
       ...worktreeUsageLines(),
       "  cocurdex workspace list",
       "  cocurdex session list",
-      "  cocurdex session create --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
+      "  cocurdex session create --workspace <id|path> [--agent <agent>] [--provider <provider> --model <model>] [--permission <mode>] [--role <role-id>] [--title <title>]",
       "  cocurdex session tui [session-id]",
       "  cocurdex session tui --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
       "  cocurdex session send <session-id> <prompt>",
+      ...sessionTreeUsageLines(),
+      ...sessionLineageUsageLines(),
+      ...sessionRuntimeUsageLines(),
       "  cocurdex session peers <session-id>",
       "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
@@ -458,6 +598,8 @@ function printUsage() {
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
       ...providerUsageLines(),
+      ...agentAuthUsageLines(),
+      ...mcpUsageLines(),
       "  cocurdex workflow list",
       "  cocurdex workflow definitions",
       "  cocurdex workflow tui [run-id]",
@@ -474,16 +616,7 @@ function printUsage() {
 
 async function createSession(parsed: ParsedArgs) {
   const workspaceValue = getRequiredFlag(parsed, "workspace");
-  const agentType = getRequiredFlag(parsed, "agent") as AgentId;
-  const providerId = getRequiredFlag(parsed, "provider");
-  const modelId = getRequiredFlag(parsed, "model");
-  const [workspaces, providers, models] = await withDaemon(async () =>
-    Promise.all([
-      requestDaemon("workspace.list"),
-      requestDaemon("provider.listConfigs"),
-      requestDaemon("provider.listModels", { providerId }),
-    ]),
-  );
+  const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
   const workspace = workspaces.find(
     (item) =>
       item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
@@ -493,40 +626,28 @@ async function createSession(parsed: ParsedArgs) {
     await access(workspaceValue);
   }
 
-  const provider = providers.find((item) => item.id === providerId);
-  const model = models.models.find((item) => item.modelId === modelId);
-
-  if (!provider || !model) {
-    throw new Error("Provider or model not found");
-  }
-
-  const now = new Date().toISOString();
   const targetWorkspace =
     workspace ??
     createWorkspaceFromPath(
       path.resolve(workspaceValue),
-      now,
+      new Date().toISOString(),
       workspaces.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1000,
     );
-  const session: SessionRecord = {
-    id: crypto.randomUUID(),
-    workspaceId: targetWorkspace.id,
-    title: `New ${agentType} session`,
-    agentType,
-    status: "idle",
-    writeMode: "native-write",
-    sessionModeId: null,
-    createdAt: now,
-    updatedAt: now,
-    lastMessageAt: null,
-    providerSnapshot: createProviderSnapshotForModel({ provider, model }),
-  };
 
   return withDaemon(async () => {
     if (!workspace) {
       await requestDaemon("workspace.save", { workspace: targetWorkspace });
     }
-    return taskApi.saveSessionConfiguration(sessionConfiguration(session));
+    return requestDaemon("session.create", {
+      workspaceId: targetWorkspace.id,
+      agentType: stringFlag(parsed, "agent") as AgentId | undefined,
+      model: modelSelectionFromFlags(parsed),
+      permissionMode: stringFlag(parsed, "permission") as
+        | AgentPermissionMode
+        | undefined,
+      agentRoleId: stringFlag(parsed, "role"),
+      title: stringFlag(parsed, "title"),
+    });
   });
 }
 
@@ -559,7 +680,13 @@ async function resolveSessionTuiSession(
 }
 
 async function sendSessionMessage(sessionId: string, prompt: string) {
-  return withDaemon(() => taskApi.sendMessage({ sessionId, content: prompt }));
+  return withDaemon(() =>
+    taskApi.sendMessage({
+      sessionId,
+      messageId: crypto.randomUUID(),
+      content: prompt,
+    }),
+  );
 }
 
 async function createWorkflow(parsed: ParsedArgs) {

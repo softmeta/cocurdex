@@ -11,6 +11,7 @@ import {
   openTerminalTabAtom,
 } from "@/features/terminal";
 import { activeWorkspaceIdAtom } from "@/features/workspaces";
+import { desktopApi } from "@/lib";
 import { useChatWindowIntents } from "../chat-window";
 import { rightPanelResolvedActiveViewAtom } from "../right-editor-panel-store";
 import { bumpRightPanelRevealAtom } from "../right-panel-reveal";
@@ -47,6 +48,7 @@ export function useShellIntents() {
         return true;
       }
       case "run-terminal-command": {
+        if (!desktopApi.capabilities.terminal) return false;
         store.set(openTerminalTabAtom, {
           scopeId:
             store.get(activeWorkspaceIdAtom) ?? NO_WORKSPACE_TERMINAL_SCOPE_ID,

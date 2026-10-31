@@ -2,10 +2,7 @@ import type { ViewGroupBy, ViewLayout } from "@cocurdex/shared";
 import { Columns3, LayoutList, Rows3, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { AppDropdownRadioList } from "@/components";
 import {
   DropdownMenu,
@@ -48,12 +45,12 @@ export function ViewDisplayMenu({
           aria-expanded={open}
           aria-label={t("board.displayOptions")}
         >
-          <Settings2 className={TITLEBAR_ICON_GLYPH_CLASS} />
+          <Settings2 className="size-3.5" />
         </TitlebarIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-52">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex items-center gap-1.5 px-2 py-1.5">
+          <DropdownMenuLabel className="flex items-center gap-1.5">
             <Settings2 className="size-3.5 text-editor-fg-subtle" />
             <Text size="meta" weight="medium" className="text-editor-fg-subtle">
               {t("board.layout")}
@@ -82,7 +79,7 @@ export function ViewDisplayMenu({
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex items-center gap-1.5 px-2 py-1.5">
+          <DropdownMenuLabel className="flex items-center gap-1.5">
             <Rows3 className="size-3.5 text-editor-fg-subtle" />
             <Text size="meta" weight="medium" className="text-editor-fg-subtle">
               {layout === "list" ? t("board.groupBy") : t("board.columnsField")}

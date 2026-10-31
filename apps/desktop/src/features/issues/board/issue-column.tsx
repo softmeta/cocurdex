@@ -1,4 +1,8 @@
-import type { IssueRecord, ViewColumnRecord } from "@cocurdex/shared";
+import type {
+  IssueRecord,
+  IssueStatusCategory,
+  ViewColumnRecord,
+} from "@cocurdex/shared";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -10,14 +14,12 @@ import { Circle, Plus } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { groupFieldColor } from "../group-field-color";
 import { InlineEdit } from "../inline-edit";
+import { ColumnCategoryMenu } from "./column-category-menu";
 import { IssueCard } from "./issue-card";
 
 interface IssueColumnProps {
@@ -33,6 +35,7 @@ interface IssueColumnProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
+  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssueColumn({
@@ -45,6 +48,7 @@ export function IssueColumn({
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
+  onSetColumnCategory,
 }: IssueColumnProps) {
   const { t } = useTranslation("issues");
   const [editing, setEditing] = useState(false);
@@ -137,8 +141,16 @@ export function IssueColumn({
             onClick={() => onAddCard(column.id)}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <Plus className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <Plus className="size-3.5" />
           </TitlebarIconButton>
+          {column.category ? (
+            <ColumnCategoryMenu
+              category={column.category}
+              onCategoryChange={(category) =>
+                onSetColumnCategory(column.id, category)
+              }
+            />
+          ) : null}
         </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">

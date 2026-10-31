@@ -1,6 +1,5 @@
 export {
   applyToolEventAtom,
-  clearToolCallsForSessionAtom,
   loadSessionToolCallsAtom,
   shouldRefreshSessionToolCalls,
   toolCallsBySessionAtom,

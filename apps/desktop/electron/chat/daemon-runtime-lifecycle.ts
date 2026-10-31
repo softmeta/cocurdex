@@ -7,42 +7,9 @@ import type {
   DaemonRuntimeStatus,
 } from "./daemon-runtime-types";
 import {
-  type DaemonDiagnosticSource,
   type OwnedDaemonProcess,
   spawnOwnedDaemonProcess,
 } from "./owned-daemon-process";
-
-type StructuredDaemonDiagnostic = {
-  details?: Record<string, unknown>;
-  event: string;
-  level: "debug" | "info" | "warn";
-};
-
-function parseStructuredDaemonDiagnostic(
-  message: string,
-): StructuredDaemonDiagnostic | null {
-  try {
-    const parsed = JSON.parse(message) as Partial<StructuredDaemonDiagnostic>;
-    if (
-      !parsed ||
-      typeof parsed.event !== "string" ||
-      !["debug", "info", "warn"].includes(parsed.level ?? "")
-    ) {
-      return null;
-    }
-
-    return {
-      details:
-        parsed.details && typeof parsed.details === "object"
-          ? parsed.details
-          : undefined,
-      event: parsed.event,
-      level: parsed.level as StructuredDaemonDiagnostic["level"],
-    };
-  } catch {
-    return null;
-  }
-}
 
 function unavailable(error: unknown) {
   const code = (error as NodeJS.ErrnoException | null)?.code;
@@ -230,35 +197,10 @@ export function createDaemonRuntimeLifecycle(
   function startDaemonProcess(runtimeFingerprint: string) {
     const ownedProcess = spawnOwnedDaemonProcess({
       daemonEntryPath: options.daemonEntryPath,
-      onDiagnostic(
-        stream,
-        message,
-        source: DaemonDiagnosticSource = "diagnostic",
-      ) {
-        if (source === "stderr") {
-          options.logger.warn("daemon.stderr", { message, stream });
-          return;
-        }
-
-        const diagnostic = parseStructuredDaemonDiagnostic(message);
-        if (!diagnostic) {
-          options.logger.info("daemon.diagnostic", { message, stream });
-          return;
-        }
-
-        let log = options.logger.info;
-        if (diagnostic.level === "warn") {
-          log = options.logger.warn;
-        } else if (diagnostic.level === "debug") {
-          log = options.logger.debug;
-        }
-        const sessionId = diagnostic.details?.sessionId;
-        log("daemon.diagnostic", {
-          ...(diagnostic.details ? { details: diagnostic.details } : {}),
-          message: diagnostic.event,
-          ...(typeof sessionId === "string" ? { sessionId } : {}),
-          stream,
-        });
+      onOutput(stream, message) {
+        const log =
+          stream === "stderr" ? options.logger.warn : options.logger.info;
+        log(`daemon.${stream}`, { message, stream });
       },
       onError(error) {
         options.logger.error("daemon.spawnFailed", {
@@ -275,6 +217,7 @@ export function createDaemonRuntimeLifecycle(
       },
       runtimeFingerprint,
       userDataPath: options.userDataPath,
+      webRoot: options.webRoot,
     });
     ownedDaemonProcess = ownedProcess;
     options.logger.info("daemon.spawned", {

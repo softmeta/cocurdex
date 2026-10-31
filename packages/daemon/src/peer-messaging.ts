@@ -90,6 +90,7 @@ export class PeerMessagingService {
     });
     const message = await this.deps.sendSessionMessage({
       sessionId: target.id,
+      messageId: crypto.randomUUID(),
       content: renderEnvelope(origin, payload.content),
       delivery,
       origin,

@@ -3,11 +3,11 @@
  * Theme parity lint.
  *
  * The desktop app switches themes by mirroring the resolved theme to
- * `<html class="dark">`, backed by paired preset variable blocks in
+ * `<html data-theme="dark">`, backed by paired preset variable blocks in
  * apps/desktop/src/styles/theme-preset.css:
  *
  *   :root  — light theme
- *   .dark  — dark theme overrides
+ *   [data-theme="dark"]  — dark theme overrides
  *
  * Every variable defined in one block must be defined in the other so that
  * switching themes does not leave a variable resolving to the wrong color or
@@ -42,12 +42,13 @@ const ALLOW_DARK_ONLY = new Set([
   "--editor-file-icon-active",
 ]);
 const ALLOW_LIGHT_ONLY = new Set();
+const DARK_SELECTOR = '[data-theme="dark"]';
 
 function parseBlocks(source) {
   const blocks = [];
-  // Match `:root` or `.dark` followed by `{ ... }`. CSS variable blocks are
+  // Match `:root` or `[data-theme="dark"]` followed by `{ ... }`. CSS variable blocks are
   // flat (no nesting in this file), so a non-greedy match is sufficient.
-  const blockPattern = /(:root|\.dark)\s*\{([^}]*)\}/g;
+  const blockPattern = /(:root|\[data-theme="dark"\])\s*\{([^}]*)\}/g;
   for (
     let match = blockPattern.exec(source);
     match !== null;
@@ -74,10 +75,10 @@ async function main() {
   const blocks = parseBlocks(source);
 
   const light = blocks.find((b) => b.selector === ":root");
-  const dark = blocks.find((b) => b.selector === ".dark");
+  const dark = blocks.find((b) => b.selector === DARK_SELECTOR);
 
   if (!dark || !light) {
-    console.error("✖ Could not locate both :root and .dark blocks.");
+    console.error(`✖ Could not locate both :root and ${DARK_SELECTOR} blocks.`);
     process.exit(2);
   }
 
@@ -101,13 +102,13 @@ async function main() {
 
   if (onlyInDark.length > 0) {
     console.error(
-      `\n✖ ${onlyInDark.length} variable(s) defined in .dark but missing from :root:`,
+      `\n✖ ${onlyInDark.length} variable(s) defined in ${DARK_SELECTOR} but missing from :root:`,
     );
     for (const name of onlyInDark) console.error(`    ${name}`);
   }
   if (onlyInLight.length > 0) {
     console.error(
-      `\n✖ ${onlyInLight.length} variable(s) defined in :root but missing from .dark:`,
+      `\n✖ ${onlyInLight.length} variable(s) defined in :root but missing from ${DARK_SELECTOR}:`,
     );
     for (const name of onlyInLight) console.error(`    ${name}`);
   }

@@ -9,6 +9,12 @@
       "@cocurdex/shared": ["../../packages/shared/src/index.ts"],
       "@cocurdex/rpc": ["../../packages/rpc/src/index.ts"],
       "@cocurdex/rpc/client": ["../../packages/rpc/src/client.ts"],
+      "@cocurdex/client-runtime": [
+        "../../packages/client-runtime/src/index.ts"
+      ],
+      "@cocurdex/rpc/method-scopes": [
+        "../../packages/rpc/src/method-scopes.ts"
+      ],
       "@cocurdex/daemon": ["../../packages/daemon/src/index.ts"],
       "@cocurdex/daemon/client": ["../../packages/daemon/src/client.ts"],
       "@cocurdex/daemon/paths": ["../../packages/daemon/src/paths.ts"],
@@ -19,10 +25,12 @@
       "@cocurdex/agent-adapters/desktop-provider": [
         "../../packages/agent-adapters/src/desktop-provider.ts"
       ],
+      "@cocurdex/deck": ["../../packages/deck/src/index.ts"],
       "@cocurdex/db": ["../../packages/db/src/index.ts"],
-      "@cocurdex/llm-chat": ["../../packages/llm-chat/src/index.ts"],
+      "@cocurdex/note-doc/bytes": ["../../packages/note-doc/src/bytes.ts"],
+      "@cocurdex/note-doc": ["../../packages/note-doc/src/index.ts"],
       "@cocurdex/product-skills": ["../../packages/product-skills/src/index.ts"]
     }
   },
-  "include": ["src", "electron", "vitest.config.ts"]
+  "include": ["src", "electron"]
 }

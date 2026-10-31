@@ -1,11 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { FileTypeIcon } from "@/components";
 import type { WorkspaceFileEntry } from "@/lib";
-import { cn } from "@/lib";
 
 interface MentionPreviewProps {
   file: WorkspaceFileEntry;
-  tone?: "chat" | "welcome";
 }
 
 interface TreeNode {
@@ -21,7 +19,7 @@ interface TreeNode {
 // renders the highlighted entry's path as a vertically nested chain so the
 // user can see exactly where in the workspace the candidate lives without
 // having to read a long inline path. Purely presentational — no I/O.
-export function MentionPreview({ file, tone = "chat" }: MentionPreviewProps) {
+export function MentionPreview({ file }: MentionPreviewProps) {
   const { t } = useTranslation("sessions");
   const segments = file.relativePath.split("/").filter(Boolean);
 
@@ -46,27 +44,9 @@ export function MentionPreview({ file, tone = "chat" }: MentionPreviewProps) {
     };
   });
 
-  // Match the mention menu's surface so the two popups read as one system
-  // (the menu uses welcome-surface / chat-surface-raised).
-  const panelClassName =
-    tone === "welcome"
-      ? "border-welcome-border/60 bg-welcome-surface/95 text-welcome-fg-secondary backdrop-blur-md"
-      : "border-chat-border-soft bg-chat-surface-raised/95 text-chat-fg backdrop-blur-md";
-  const footerClassName =
-    tone === "welcome"
-      ? "border-welcome-border/40 text-welcome-fg-muted"
-      : "border-chat-border-soft/60 text-chat-fg-muted";
-  const connectorClassName =
-    tone === "welcome" ? "border-welcome-border/60" : "border-chat-border-soft";
-
   return (
-    <div
-      className={cn(
-        "pointer-events-none w-56 shrink-0 rounded-card border p-2 shadow-chat-soft",
-        panelClassName,
-      )}
-    >
-      <ul className="flex min-w-0 flex-col gap-1">
+    <div className="pointer-events-none w-54 shrink-0">
+      <ul className="flex min-w-0 flex-col gap-1 px-1.5 py-1">
         {nodes.map((node, index) => (
           <li
             key={node.hintPath}
@@ -75,20 +55,20 @@ export function MentionPreview({ file, tone = "chat" }: MentionPreviewProps) {
           >
             {index > 0 ? (
               <span
-                className={cn("h-3 w-px border-s", connectorClassName)}
+                className="h-3 w-px border-s border-border"
                 aria-hidden="true"
               />
             ) : null}
             <FileTypeIcon
-              className="size-3.5 shrink-0 text-chat-fg-muted"
+              className="size-3.5 shrink-0 text-muted-foreground"
               isFolder={node.isFolder}
               path={node.hintPath}
             />
-            <span className="min-w-0 truncate text-body">{node.name}</span>
+            <span className="min-w-0 truncate text-sm">{node.name}</span>
           </li>
         ))}
       </ul>
-      <div className={cn("mt-2 border-t pt-1.5 text-meta", footerClassName)}>
+      <div className="mx-1.5 mt-1 border-t border-border py-1 text-meta text-muted-foreground">
         {t("composer.treeOutline")}
       </div>
     </div>

@@ -1,0 +1,720 @@
+import {
+  type AgentId,
+  type AgentPermissionMode,
+  type AgentProviderSnapshot,
+  type AgentRoleDraft,
+  type AgentRoleRecord,
+  type AgentThinkingLevel,
+  type CodexReasoningEffort,
+  type CompatibleProviderModel,
+  getDefaultOpenCodeAgent,
+  getOpenCodeRuntimeOptions,
+  getThinkingLevelOptions,
+  isAgentPermissionModeSupportedForModel,
+  normalizeWorkspaceRootPaths,
+  PLAN_MODE_ID,
+  resolveOpenCodeRuntimeValue,
+  resolveThinkingLevel,
+  supportsInSessionRuntimeAxis,
+} from "@cocurdex/shared";
+import { useSetAtom } from "jotai";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import {
+  selectableAgentOptions as agentDropdownOptions,
+  applyAgentSessionModesAtom,
+  defaultAgentDescriptors,
+  getAgentRuntimePreferences,
+  getCachedProviderModelEntry,
+  getDefaultPermissionMode,
+  getDefaultProviderModelValue,
+  getPermissionModeOptions,
+  getProviderModelCacheVersion,
+  getSessionModeOptions,
+  isAgentReadyToStart,
+  loadProviderModelOptions,
+  parseProviderModelValue,
+  providerModelCache,
+  resolvePreferredPermissionMode,
+  subscribeProviderModelCache,
+  updateAgentRuntimePreferences,
+} from "@/features/sessions";
+import {
+  getProviderModelValue,
+  isProviderModelCacheFresh,
+  type ProviderModelCacheResult,
+  probeProviderModelAxes,
+  shouldRevalidateProviderModels,
+  updateCachedProviderDefault,
+} from "@/features/sessions/provider-model";
+import { desktopApi, logRendererDiagnostic } from "@/lib";
+import type { UseNewSessionCardProps } from "./new-session-card.types";
+import { shouldPersistProviderDefault } from "./new-session-card-provider-default";
+import {
+  resolveNewSessionModeId,
+  useNewSessionModeDraft,
+} from "./new-session-mode-draft";
+
+function permissionModeForAgent(
+  agentId: AgentId,
+  agents: UseNewSessionCardProps["agents"],
+) {
+  return resolvePreferredPermissionMode(
+    agentId,
+    getPermissionModeOptions(agents ?? [], agentId),
+  );
+}
+
+// Owns agent/collaboration/permission/provider/workspace/branch state for
+// the new-session card. The actual composer (editor, mentions, image
+// attachments, paste/drag handling) is delegated to ChatComposer, so this
+// hook intentionally stays out of editor concerns.
+export function useNewSessionCard({
+  workspaceName,
+  agents = defaultAgentDescriptors,
+  activeWorkspaceId,
+  workspaces = [],
+  agentType,
+  sessionModeId = null,
+  workspaceRootPath,
+  onSelectAgent,
+  onSelectSessionMode,
+}: UseNewSessionCardProps) {
+  const { t } = useTranslation("sessions");
+  const applyAgentSessionModes = useSetAtom(applyAgentSessionModesAtom);
+  const initialAgentType = agentType ?? "pi";
+  const [initialRuntimePreferences] = useState(() =>
+    getAgentRuntimePreferences(initialAgentType),
+  );
+  // Prefer the parent-owned last-selected agent (persisted to localStorage so
+  // it survives remounts and restarts). Local state only backs uncontrolled
+  // usage when `agentType` is omitted. Default is built-in cocurdex (`pi`).
+  const [uncontrolledAgent, setUncontrolledAgent] = useState<AgentId>(
+    () => agentType ?? "pi",
+  );
+  const selectedAgent = agentType ?? uncontrolledAgent;
+  const [selectedSessionModeId, setSelectedSessionModeId] =
+    useNewSessionModeDraft(
+      activeWorkspaceId,
+      sessionModeId ??
+        getAgentRuntimePreferences(selectedAgent).sessionModeId ??
+        null,
+    );
+  const [selectedPermissionMode, setSelectedPermissionMode] =
+    useState<AgentPermissionMode | null>(() =>
+      permissionModeForAgent(initialAgentType, agents),
+    );
+  const [compatibleProviders, setCompatibleProviders] = useState<
+    CompatibleProviderModel[]
+  >([]);
+  const [isProviderModelLoading, setIsProviderModelLoading] = useState(false);
+  const [selectedProviderModel, setSelectedProviderModel] = useState("");
+  const [selectedCodexReasoningEffort, setSelectedCodexReasoningEffort] =
+    useState(() => initialRuntimePreferences.reasoningEffort ?? "");
+  const [selectedServiceTier, setSelectedServiceTier] = useState(
+    () => initialRuntimePreferences.serviceTier ?? "",
+  );
+  const [selectedClaudeFastMode, setSelectedClaudeFastMode] = useState(
+    () => initialRuntimePreferences.fastMode ?? false,
+  );
+  const [rawSelectedThinkingLevel, setSelectedThinkingLevel] =
+    useState<AgentThinkingLevel>(
+      () => initialRuntimePreferences.thinkingLevel ?? "default",
+    );
+  const [selectedOpenCodeAgent, setSelectedOpenCodeAgent] = useState(
+    () => initialRuntimePreferences.openCodeAgent ?? "",
+  );
+  const [selectedOpenCodeVariant, setSelectedOpenCodeVariant] = useState(
+    () => initialRuntimePreferences.openCodeVariant ?? "",
+  );
+
+  // Bumped whenever provider settings change, so the load effect below refetches
+  // instead of keeping the pre-edit provider list.
+  const providerModelCacheVersion = useSyncExternalStore(
+    subscribeProviderModelCache,
+    getProviderModelCacheVersion,
+  );
+
+  const hasWorkspace = Boolean(workspaceName);
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+  const contextWorkspaceRootPath =
+    workspaceRootPath ?? activeWorkspace?.rootPaths[0] ?? null;
+  const contextWorkspaceRootPaths = normalizeWorkspaceRootPaths([
+    ...(activeWorkspace?.rootPaths ?? []),
+    ...(contextWorkspaceRootPath ? [contextWorkspaceRootPath] : []),
+  ]);
+
+  const selectedCompatibleProvider = compatibleProviders.find(
+    ({ model, provider }) =>
+      `${provider.id}::${model.modelId}` === selectedProviderModel,
+  );
+  const availableAgents = agents.filter(isAgentReadyToStart);
+  const selectableAgentOptions = agentDropdownOptions.filter((agentOption) =>
+    availableAgents.some((agent) => agent.id === agentOption.id),
+  );
+  const activeAgentAvailable = availableAgents.some(
+    (agent) => agent.id === selectedAgent,
+  );
+  const effectiveSelectedAgent = activeAgentAvailable
+    ? selectedAgent
+    : (selectableAgentOptions[0]?.id ??
+      availableAgents[0]?.id ??
+      selectedAgent);
+  const sessionModeOptions = getSessionModeOptions(
+    agents,
+    effectiveSelectedAgent,
+  );
+  const resolvedSessionModeId = resolveNewSessionModeId(
+    selectedSessionModeId,
+    sessionModeOptions,
+    agents.find((agent) => agent.id === effectiveSelectedAgent)?.capabilities
+      .transport,
+  );
+  const permissionModeOptions = getPermissionModeOptions(
+    agents,
+    effectiveSelectedAgent,
+  );
+  const permissionModeIsCurrent = Boolean(
+    selectedPermissionMode &&
+      permissionModeOptions.some(
+        (option) => option.id === selectedPermissionMode,
+      ),
+  );
+  const resolvedPermissionMode = permissionModeIsCurrent
+    ? selectedPermissionMode
+    : permissionModeForAgent(effectiveSelectedAgent, agents);
+  const canStartWithSelectedAgent = availableAgents.some(
+    (agent) => agent.id === effectiveSelectedAgent,
+  );
+  const requiresProviderModel = effectiveSelectedAgent === "pi";
+  const canStartSession =
+    canStartWithSelectedAgent &&
+    (!requiresProviderModel || Boolean(selectedCompatibleProvider));
+  const thinkingLevelOptions = getThinkingLevelOptions({
+    agentType: effectiveSelectedAgent,
+    supportsReasoning: selectedCompatibleProvider?.model.reasoning,
+    thinkingLevelMapJson:
+      selectedCompatibleProvider?.model.thinkingLevelMapJson,
+    supportedReasoningEfforts:
+      selectedCompatibleProvider?.model.supportedReasoningEfforts,
+    defaultReasoningEffort:
+      selectedCompatibleProvider?.model.defaultReasoningEffort ?? null,
+  });
+  const selectedThinkingLevel = resolveThinkingLevel(
+    thinkingLevelOptions,
+    rawSelectedThinkingLevel,
+  );
+  const openCodeRuntimeOptions =
+    effectiveSelectedAgent === "opencode"
+      ? getOpenCodeRuntimeOptions(selectedCompatibleProvider?.model)
+      : { agents: [], variants: [] };
+  const selectedOpenCodeAgentValue = resolveOpenCodeRuntimeValue(
+    selectedOpenCodeAgent,
+    openCodeRuntimeOptions.agents,
+  );
+  const selectedOpenCodeVariantValue = resolveOpenCodeRuntimeValue(
+    selectedOpenCodeVariant,
+    openCodeRuntimeOptions.variants,
+  );
+  const openCodeAgentDefaultValue = getDefaultOpenCodeAgent(
+    openCodeRuntimeOptions,
+  );
+  const selectedOpenCodeAgentMenuValue =
+    selectedOpenCodeAgentValue || openCodeAgentDefaultValue;
+  const isClaudeAgent = effectiveSelectedAgent === "claude-agent";
+  const claudeFastModeOptions =
+    isClaudeAgent && selectedCompatibleProvider?.model.supportsFastMode
+      ? [
+          { label: t("modelMenu.fastModeOn"), value: "on" },
+          { label: t("modelMenu.fastModeOff"), value: "off" },
+        ]
+      : [];
+
+  const providerSnapshot: AgentProviderSnapshot | null =
+    selectedCompatibleProvider
+      ? {
+          providerId: selectedCompatibleProvider.provider.id,
+          providerName: selectedCompatibleProvider.provider.name,
+          modelId: selectedCompatibleProvider.model.modelId,
+          modelName: selectedCompatibleProvider.model.name,
+          api: selectedCompatibleProvider.model.api,
+          baseUrl: selectedCompatibleProvider.provider.baseUrl,
+          modelBaseUrl: selectedCompatibleProvider.model.baseUrl ?? undefined,
+          headersJson: selectedCompatibleProvider.provider.headersJson ?? null,
+          // Pi-native provider/model metadata. Coalesced to undefined so the
+          // snapshot stays minimal for runtimes that don't populate them.
+          providerCompatJson:
+            selectedCompatibleProvider.provider.compatJson ?? undefined,
+          modelCapabilities: selectedCompatibleProvider.model.capabilities,
+          supportsReasoning: selectedCompatibleProvider.model.reasoning,
+          modelThinkingLevelMapJson:
+            selectedCompatibleProvider.model.thinkingLevelMapJson ?? undefined,
+          supportedReasoningEfforts:
+            selectedCompatibleProvider.model.supportedReasoningEfforts,
+          modelDefaultReasoningEffort:
+            selectedCompatibleProvider.model.defaultReasoningEffort ?? null,
+          modelCostJson: selectedCompatibleProvider.model.costJson ?? undefined,
+          modelCompatJson:
+            selectedCompatibleProvider.model.compatJson ?? undefined,
+          modelContextWindow:
+            selectedCompatibleProvider.model.contextLimit ?? undefined,
+          modelMaxTokens:
+            selectedCompatibleProvider.model.outputLimit ?? undefined,
+          thinkingLevel:
+            rawSelectedThinkingLevel === "default"
+              ? null
+              : selectedThinkingLevel,
+          ...(isClaudeAgent && selectedCompatibleProvider.model.supportsFastMode
+            ? { fastMode: selectedClaudeFastMode }
+            : {}),
+          ...(effectiveSelectedAgent === "codex"
+            ? {
+                reasoningEffort: selectedCodexReasoningEffort
+                  ? (selectedCodexReasoningEffort as CodexReasoningEffort)
+                  : null,
+              }
+            : {}),
+          ...(supportsInSessionRuntimeAxis(effectiveSelectedAgent, "speed")
+            ? { serviceTier: selectedServiceTier || null }
+            : {}),
+          ...(effectiveSelectedAgent === "opencode"
+            ? {
+                openCodeAgent: selectedOpenCodeAgentValue || null,
+                openCodeVariant: selectedOpenCodeVariantValue || null,
+              }
+            : {}),
+        }
+      : null;
+
+  const codexReasoningOptions =
+    effectiveSelectedAgent === "codex" && selectedCompatibleProvider
+      ? (selectedCompatibleProvider.model.supportedReasoningEfforts ?? []).map(
+          (effort) => ({
+            description: effort.description,
+            label: effort.label ?? effort.reasoningEffort,
+            value: effort.reasoningEffort,
+          }),
+        )
+      : [];
+  // No "inherit" row on this axis: an unset session runs at the model's own
+  // default effort, so that level is what the menu preselects.
+  const codexReasoningDefaultValue =
+    selectedCompatibleProvider?.model.defaultReasoningEffort ?? "";
+
+  const serviceTierOptions =
+    supportsInSessionRuntimeAxis(effectiveSelectedAgent, "speed") &&
+    selectedCompatibleProvider
+      ? [
+          { label: t("modelMenu.serviceTierStandard"), value: "" },
+          ...(selectedCompatibleProvider.model.serviceTiers ?? []).map(
+            (tier) => ({
+              description: tier.description,
+              label: tier.name,
+              value: tier.id,
+            }),
+          ),
+        ]
+      : [];
+
+  const applyCatalogResult = useCallback(
+    (agentId: AgentId, result: ProviderModelCacheResult) => {
+      setCompatibleProviders(result.items);
+      setSelectedProviderModel(
+        getDefaultProviderModelValue(
+          agentId,
+          result.items,
+          result.defaultSelection,
+          getAgentRuntimePreferences(agentId).providerSelection,
+        ),
+      );
+      setIsProviderModelLoading(false);
+      const preferences = getAgentRuntimePreferences(agentId);
+      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
+      setSelectedServiceTier(preferences.serviceTier ?? "");
+      setSelectedClaudeFastMode(preferences.fastMode ?? false);
+      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+    },
+    [],
+  );
+
+  const [catalogAgent, setCatalogAgent] = useState<AgentId | null>(null);
+  if (catalogAgent !== effectiveSelectedAgent) {
+    setCatalogAgent(effectiveSelectedAgent);
+    const cachedResult =
+      getCachedProviderModelEntry(providerModelCache, effectiveSelectedAgent)
+        ?.result ?? null;
+    if (cachedResult) {
+      applyCatalogResult(effectiveSelectedAgent, cachedResult);
+    } else {
+      setCompatibleProviders([]);
+      setSelectedProviderModel("");
+      setIsProviderModelLoading(true);
+      const preferences = getAgentRuntimePreferences(effectiveSelectedAgent);
+      setSelectedCodexReasoningEffort(preferences.reasoningEffort ?? "");
+      setSelectedServiceTier(preferences.serviceTier ?? "");
+      setSelectedClaudeFastMode(preferences.fastMode ?? false);
+      setSelectedThinkingLevel(preferences.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(preferences.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(preferences.openCodeVariant ?? "");
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    // providerModelCacheVersion is consumed here so the effect re-runs when
+    // provider settings are edited and the cache is invalidated.
+    void providerModelCacheVersion;
+    const cachedEntry = getCachedProviderModelEntry(
+      providerModelCache,
+      effectiveSelectedAgent,
+    );
+    const cachedResult = cachedEntry?.result ?? null;
+    const shouldRefreshCache = shouldRevalidateProviderModels(
+      effectiveSelectedAgent,
+      isProviderModelCacheFresh(cachedEntry),
+      cachedEntry?.runtimeValidated ?? false,
+    );
+
+    async function loadCompatibleProviders() {
+      if (cachedResult && !shouldRefreshCache) {
+        applyCatalogResult(effectiveSelectedAgent, cachedResult);
+        return;
+      }
+
+      const result = await loadProviderModelOptions(
+        providerModelCache,
+        effectiveSelectedAgent,
+      );
+
+      if (cancelled) return;
+
+      applyCatalogResult(effectiveSelectedAgent, result);
+    }
+
+    void loadCompatibleProviders().catch((error) => {
+      if (cancelled) return;
+
+      logRendererDiagnostic(
+        "debug",
+        "[ProviderModel] load compatible providers failed",
+        {
+          agentId: effectiveSelectedAgent,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      );
+      if (cachedResult) {
+        return;
+      }
+
+      setCompatibleProviders([]);
+      setIsProviderModelLoading(false);
+      setSelectedProviderModel("");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyCatalogResult, effectiveSelectedAgent, providerModelCacheVersion]);
+
+  // ACP agents only reveal their mode list once a session is opened, so the
+  // list is asked for the first time an agent without one is selected. The
+  // daemon caches the answer; later cards read it straight off the descriptor.
+  useEffect(() => {
+    const agent = agents.find((item) => item.id === effectiveSelectedAgent);
+    if (
+      agent?.capabilities.transport !== "acp" ||
+      agent.capabilities.sessionModes.length > 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    void desktopApi
+      .readAgentSessionModes(effectiveSelectedAgent)
+      .then((sessionModes) => {
+        if (cancelled || sessionModes.length === 0) {
+          return;
+        }
+        applyAgentSessionModes({
+          agentId: effectiveSelectedAgent,
+          sessionModes,
+        });
+      })
+      .catch((error: unknown) => {
+        logRendererDiagnostic("debug", "[SessionMode] discovery failed", {
+          agentId: effectiveSelectedAgent,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [agents, applyAgentSessionModes, effectiveSelectedAgent]);
+
+  if (selectedPermissionMode !== resolvedPermissionMode) {
+    setSelectedPermissionMode(resolvedPermissionMode);
+  }
+
+  const handleSelectPermissionMode = (mode: AgentPermissionMode) => {
+    setSelectedPermissionMode(mode);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      permissionMode: mode,
+    });
+  };
+
+  const handleSelectCodexReasoningEffort = (value: string) => {
+    setSelectedCodexReasoningEffort(value);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      reasoningEffort: value ? (value as CodexReasoningEffort) : null,
+    });
+  };
+
+  const handleSelectServiceTier = (value: string) => {
+    setSelectedServiceTier(value);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      serviceTier: value || null,
+    });
+  };
+
+  const handleSelectClaudeFastMode = (value: string) => {
+    const fastMode = value === "on";
+    setSelectedClaudeFastMode(fastMode);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, { fastMode });
+  };
+
+  const handleSelectThinkingLevel = (value: AgentThinkingLevel) => {
+    setSelectedThinkingLevel(value);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      thinkingLevel: value === "default" ? null : value,
+    });
+  };
+
+  const handleSelectSessionMode = (nextModeId: string) => {
+    setSelectedSessionModeId(nextModeId);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      sessionModeId: nextModeId || null,
+    });
+    onSelectSessionMode?.(nextModeId);
+  };
+
+  const handleSelectOpenCodeAgent = (value: string) => {
+    setSelectedOpenCodeAgent(value);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      openCodeAgent: value || null,
+    });
+    // OpenCode's agent list doubles as its mode axis, so picking "plan" has to
+    // start the session in plan mode.
+    handleSelectSessionMode(value === "plan" ? PLAN_MODE_ID : "default");
+  };
+
+  const handleSelectOpenCodeVariant = (value: string) => {
+    setSelectedOpenCodeVariant(value);
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      openCodeVariant: value || null,
+    });
+  };
+
+  const currentRoleDraft: AgentRoleDraft = {
+    agentId: effectiveSelectedAgent,
+    providerId: selectedCompatibleProvider?.provider.id ?? null,
+    modelId: selectedCompatibleProvider?.model.modelId ?? null,
+    modelName: selectedCompatibleProvider?.model.name ?? null,
+    permissionMode: resolvedPermissionMode,
+    sessionModeId: resolvedSessionModeId,
+    reasoningEffort: selectedCodexReasoningEffort
+      ? (selectedCodexReasoningEffort as CodexReasoningEffort)
+      : null,
+    serviceTier: selectedServiceTier || null,
+    fastMode: isClaudeAgent ? selectedClaudeFastMode : null,
+    thinkingLevel:
+      rawSelectedThinkingLevel === "default" ? null : rawSelectedThinkingLevel,
+    openCodeAgent: selectedOpenCodeAgentValue || null,
+    openCodeVariant: selectedOpenCodeVariantValue || null,
+  };
+
+  const handleSelectAgent = (nextAgent: AgentId) => {
+    if (
+      selectedSessionModeId &&
+      !getSessionModeOptions(agents, nextAgent).some(
+        (mode) => mode.id === selectedSessionModeId,
+      )
+    ) {
+      setSelectedSessionModeId(null);
+      onSelectSessionMode?.("");
+    }
+    setUncontrolledAgent(nextAgent);
+    setSelectedPermissionMode(permissionModeForAgent(nextAgent, agents));
+    // Parent (lastSelectedAgentAtom) persists to localStorage so the choice
+    // is restored the next time this card opens, including after restart.
+    onSelectAgent?.(nextAgent);
+  };
+
+  const handleApplyRole = (role: AgentRoleRecord) => {
+    updateAgentRuntimePreferences(role.agentId, {
+      providerSelection:
+        role.providerId && role.modelId
+          ? { providerId: role.providerId, modelId: role.modelId }
+          : undefined,
+      sessionModeId: role.sessionModeId,
+      permissionMode: role.permissionMode,
+      reasoningEffort: role.reasoningEffort,
+      serviceTier: role.serviceTier,
+      fastMode: role.fastMode,
+      thinkingLevel: role.thinkingLevel,
+      openCodeAgent: role.openCodeAgent,
+      openCodeVariant: role.openCodeVariant,
+    });
+    if (role.agentId !== effectiveSelectedAgent) {
+      handleSelectAgent(role.agentId);
+    }
+    setSelectedSessionModeId(role.sessionModeId);
+    onSelectSessionMode?.(role.sessionModeId ?? "");
+    if (role.agentId === effectiveSelectedAgent) {
+      setSelectedPermissionMode(
+        role.permissionMode ?? permissionModeForAgent(role.agentId, agents),
+      );
+      setSelectedCodexReasoningEffort(role.reasoningEffort ?? "");
+      setSelectedServiceTier(role.serviceTier ?? "");
+      setSelectedClaudeFastMode(role.fastMode ?? false);
+      setSelectedThinkingLevel(role.thinkingLevel ?? "default");
+      setSelectedOpenCodeAgent(role.openCodeAgent ?? "");
+      setSelectedOpenCodeVariant(role.openCodeVariant ?? "");
+      if (role.providerId && role.modelId) {
+        setSelectedProviderModel(
+          getProviderModelValue(role.providerId, role.modelId),
+        );
+      }
+    }
+  };
+
+  const handleSelectProviderModel = (nextProviderModel: string) => {
+    const parsedProviderModel = parseProviderModelValue(nextProviderModel);
+    const nextCompatibleProvider = compatibleProviders.find(
+      ({ model, provider }) =>
+        `${provider.id}::${model.modelId}` === nextProviderModel,
+    );
+
+    setSelectedProviderModel(nextProviderModel);
+    handleSelectCodexReasoningEffort("");
+    handleSelectServiceTier("");
+
+    if (!parsedProviderModel) {
+      return;
+    }
+
+    if (
+      resolvedPermissionMode &&
+      !isAgentPermissionModeSupportedForModel(
+        effectiveSelectedAgent,
+        resolvedPermissionMode,
+        nextCompatibleProvider?.model.modelId,
+        nextCompatibleProvider?.model.name,
+      )
+    ) {
+      handleSelectPermissionMode(
+        getDefaultPermissionMode(agents, effectiveSelectedAgent),
+      );
+      toast.warning(
+        t("permissionMode.changedForModel", {
+          model:
+            nextCompatibleProvider?.model.name ??
+            nextCompatibleProvider?.model.modelId ??
+            "Haiku",
+        }),
+      );
+    }
+
+    const { modelId, providerId } = parsedProviderModel;
+    probeProviderModelAxes(
+      providerModelCache,
+      effectiveSelectedAgent,
+      providerId,
+      modelId,
+    );
+    updateAgentRuntimePreferences(effectiveSelectedAgent, {
+      providerSelection: { modelId, providerId },
+    });
+    updateCachedProviderDefault(
+      providerModelCache,
+      effectiveSelectedAgent,
+      providerId,
+      modelId,
+    );
+
+    if (!shouldPersistProviderDefault(effectiveSelectedAgent, providerId)) {
+      return;
+    }
+
+    void desktopApi
+      .setAgentProviderDefault(effectiveSelectedAgent, providerId, modelId)
+      .catch((error: unknown) => {
+        console.error("Failed to save agent provider default", error);
+      });
+  };
+
+  return {
+    selectedSessionModeId: resolvedSessionModeId,
+    sessionModeOptions,
+    selectedPermissionMode: resolvedPermissionMode,
+    permissionModeOptions,
+    setSelectedPermissionMode: handleSelectPermissionMode,
+    selectedCodexReasoningEffort,
+    setSelectedCodexReasoningEffort: handleSelectCodexReasoningEffort,
+    selectedServiceTier,
+    setSelectedServiceTier: handleSelectServiceTier,
+    selectedClaudeFastMode,
+    claudeFastModeOptions,
+    setSelectedClaudeFastMode: handleSelectClaudeFastMode,
+    selectedThinkingLevel,
+    setSelectedThinkingLevel: handleSelectThinkingLevel,
+    hasWorkspace,
+    contextWorkspaceRootPath,
+    compatibleProviders,
+    isProviderModelLoading,
+    selectedProviderModel,
+    effectiveSelectedAgent,
+    canStartSession,
+    canStartWithSelectedAgent,
+    codexReasoningOptions,
+    codexReasoningDefaultValue,
+    serviceTierOptions,
+    thinkingLevelOptions,
+    // Raw preference, not the resolved level: "reset" is only meaningful when
+    // the user actually overrode the agent default.
+    thinkingLevelOverride:
+      rawSelectedThinkingLevel === "default" ? "" : rawSelectedThinkingLevel,
+    openCodeAgentOptions:
+      effectiveSelectedAgent === "opencode"
+        ? [
+            ...openCodeRuntimeOptions.agents.map((agent) => ({
+              label: agent,
+              value: agent,
+            })),
+          ]
+        : [],
+    openCodeAgentDefaultValue,
+    openCodeAgentValue: selectedOpenCodeAgentMenuValue,
+    openCodeVariantOptions:
+      effectiveSelectedAgent === "opencode"
+        ? openCodeRuntimeOptions.variants.map((variant) => ({
+            label: variant,
+            value: variant,
+          }))
+        : [],
+    openCodeVariantValue: selectedOpenCodeVariantValue,
+    contextWorkspaceRootPaths,
+    setSelectedOpenCodeAgent: handleSelectOpenCodeAgent,
+    setSelectedOpenCodeVariant: handleSelectOpenCodeVariant,
+    selectableAgentOptions,
+    providerSnapshot,
+    currentRoleDraft,
+    handleSelectAgent,
+    handleApplyRole,
+    handleSelectSessionMode,
+    handleSelectProviderModel,
+  };
+}

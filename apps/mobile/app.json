@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Cocurdex",
+    "slug": "cocurdex",
+    "scheme": "cocurdex",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "dev.cocurdex.mobile",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "Cocurdex connects to the computers you pair on your local network.",
+        "CFBundleAllowMixedLocalizations": true,
+        "UIViewControllerBasedStatusBarAppearance": true
+      }
+    },
+    "android": {
+      "package": "dev.cocurdex.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "extraProguardRules": "-keep class com.google.mlkit.** { *; }\n-keep class com.google.android.gms.internal.mlkit_** { *; }"
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cocurdex uses the camera to scan the pairing QR code on your computer.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cocurdex lets you attach photos to messages you send to agents.",
+          "cameraPermission": "Cocurdex uses the camera to scan the pairing QR code on your computer.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-secure-store",
+      "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": ["en", "zh-Hans"]
+        }
+      ]
+    ],
+    "locales": {
+      "zh-Hans": "./native-locales/zh-Hans.json"
+    }
+  }
+}

@@ -13,7 +13,7 @@ import { logDaemonDiagnostic } from "../diagnostics";
 import {
   findConfiguredProviderModel,
   type ProviderModelState,
-} from "./chat-provider";
+} from "./configured-model";
 import { getTitleModelSetting } from "./title";
 
 const TITLE_GENERATION_TIMEOUT_MS = 60_000;
@@ -32,7 +32,9 @@ export interface SessionTitleDeps {
   ): Promise<AgentRuntimeProviderConfig | null>;
 }
 
-function buildSnapshotProviderRecords(runtime: AgentRuntimeProviderConfig): {
+export function buildSnapshotProviderRecords(
+  runtime: AgentRuntimeProviderConfig,
+): {
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;
 } {
@@ -140,6 +142,7 @@ export async function generateProviderSessionTitle(
         model: records.model,
         apiKey: records.apiKey,
         message: payload.message,
+        sessionId: session.id,
         signal: controller.signal,
       });
     } else {

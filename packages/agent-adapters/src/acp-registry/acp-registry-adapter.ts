@@ -17,9 +17,15 @@ import {
 import type { AcpConnectionFactory, AcpLaunch } from "../acp/acp-connection";
 import {
   listAcpProviderModels,
-  loginAcpProvider,
   probeAcpProviderModelAxes,
 } from "../acp/acp-model-catalog";
+import {
+  type AcpProviderAuthInfo,
+  cancelAcpProviderLogin,
+  loginAcpProvider,
+  logoutAcpProvider,
+  readAcpProviderAuth,
+} from "../acp/acp-provider-auth";
 import {
   createGrokBuildAdapter,
   GROK_BUILD_ARGS,
@@ -76,7 +82,10 @@ function resolve(agentId: AcpRegistryAgentId) {
   };
   const spec = {
     ...launch,
-    authMethodPriority: profile.authMethodPriority?.() ?? [],
+    authMethodPriority: [
+      ...(agent.authMethodId ? [agent.authMethodId] : []),
+      ...(profile.authMethodPriority?.() ?? []),
+    ],
     providerId: agentId,
     providerName: agent.name,
   };
@@ -113,8 +122,27 @@ export function listAcpRegistryProviderModels(
 
 export function loginAcpRegistryProvider(
   agentId: AcpRegistryAgentId,
+  methodId?: string,
 ): Promise<void> {
-  return loginAcpProvider(resolve(agentId).spec);
+  return loginAcpProvider(resolve(agentId).spec, undefined, { methodId });
+}
+
+export function cancelAcpRegistryProviderLogin(
+  agentId: AcpRegistryAgentId,
+): boolean {
+  return cancelAcpProviderLogin(resolve(agentId).spec);
+}
+
+export function logoutAcpRegistryProvider(
+  agentId: AcpRegistryAgentId,
+): Promise<void> {
+  return logoutAcpProvider(resolve(agentId).spec);
+}
+
+export function readAcpRegistryProviderAuth(
+  agentId: AcpRegistryAgentId,
+): Promise<AcpProviderAuthInfo> {
+  return readAcpProviderAuth(resolve(agentId).spec);
 }
 
 export function probeAcpRegistryProviderModelAxes(

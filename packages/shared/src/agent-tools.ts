@@ -11,6 +11,7 @@ export const agentToolGroupIds = [
   "notes",
   "issues",
   "settings",
+  "history",
 ] as const;
 
 export type AgentToolGroupId = (typeof agentToolGroupIds)[number];
@@ -32,6 +33,7 @@ export interface AgentToolCallerContext {
 export interface AgentToolCatalog {
   caller: AgentToolCallerContext;
   tools: AgentToolDescriptor[];
+  instructions?: string;
 }
 
 export interface AgentToolsBinding {

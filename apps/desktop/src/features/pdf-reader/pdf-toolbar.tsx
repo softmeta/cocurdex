@@ -4,7 +4,6 @@ import {
   GalleryVertical,
   List,
   Minus,
-  PanelLeft,
   Plus,
   RectangleVertical,
   Scaling,
@@ -12,8 +11,9 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import {
-  TITLEBAR_ICON_GLYPH_CLASS,
+  SidebarToggleButton,
   TitlebarIconButton,
   titlebarIconButtonClassName,
 } from "@/app/layout/titlebar-icon-button";
@@ -67,23 +67,14 @@ function ToolbarIconButton({
   children: ReactNode;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <TitlebarIconButton
-            active={active}
-            aria-label={label}
-            disabled={disabled}
-            onClick={onClick}
-          >
-            {children}
-          </TitlebarIconButton>
-        }
-      />
-      <TooltipContent side="bottom" sideOffset={6}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
+    <TitlebarIconButton
+      active={active}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </TitlebarIconButton>
   );
 }
 
@@ -117,30 +108,28 @@ export function PdfToolbar({
 
   return (
     <TooltipProvider>
-      <div className="flex items-center justify-between gap-2 border-b border-editor-border px-2 py-1">
+      <PanelToolbar className="justify-between gap-2">
         <div className="flex items-center gap-1">
           {hasOutline ? (
-            <ToolbarIconButton
-              active={isOutlineOpen}
+            <SidebarToggleButton
               label={t("pdf.toggleOutline")}
-              onClick={onToggleOutline}
-            >
-              <PanelLeft className={TITLEBAR_ICON_GLYPH_CLASS} />
-            </ToolbarIconButton>
+              open={isOutlineOpen}
+              onToggle={onToggleOutline}
+            />
           ) : null}
           <ToolbarIconButton
             active={isThumbnailsOpen}
             label={t("pdf.toggleThumbnails")}
             onClick={onToggleThumbnails}
           >
-            <GalleryVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <GalleryVertical className="size-3.5" />
           </ToolbarIconButton>
           <ToolbarIconButton
             active={isMarksOpen}
             label={t("pdf.toggleMarks")}
             onClick={onToggleMarks}
           >
-            <List className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <List className="size-3.5" />
           </ToolbarIconButton>
           <PdfPageJumpInput
             currentPage={currentPage}
@@ -159,9 +148,9 @@ export function PdfToolbar({
             onClick={onToggleBookmark}
           >
             {isCurrentPageBookmarked ? (
-              <BookmarkCheck className={TITLEBAR_ICON_GLYPH_CLASS} />
+              <BookmarkCheck className="size-3.5" />
             ) : (
-              <Bookmark className={TITLEBAR_ICON_GLYPH_CLASS} />
+              <Bookmark className="size-3.5" />
             )}
           </ToolbarIconButton>
           <ToolbarIconButton
@@ -169,14 +158,14 @@ export function PdfToolbar({
             label={t("pdf.toggleSearch")}
             onClick={onToggleSearch}
           >
-            <Search className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <Search className="size-3.5" />
           </ToolbarIconButton>
           <ToolbarIconButton
             disabled={!canZoomOut}
             label={t("pdf.zoomOut")}
             onClick={onZoomOut}
           >
-            <Minus className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <Minus className="size-3.5" />
           </ToolbarIconButton>
           {isAtActualSize ? (
             <button
@@ -208,20 +197,20 @@ export function PdfToolbar({
             </Tooltip>
           )}
           <ToolbarIconButton label={t("pdf.fitWidth")} onClick={onFitWidth}>
-            <Scaling className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <Scaling className="size-3.5" />
           </ToolbarIconButton>
           <ToolbarIconButton label={t("pdf.fitPage")} onClick={onFitPage}>
-            <RectangleVertical className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <RectangleVertical className="size-3.5" />
           </ToolbarIconButton>
           <ToolbarIconButton
             disabled={!canZoomIn}
             label={t("pdf.zoomIn")}
             onClick={onZoomIn}
           >
-            <Plus className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <Plus className="size-3.5" />
           </ToolbarIconButton>
         </div>
-      </div>
+      </PanelToolbar>
     </TooltipProvider>
   );
 }

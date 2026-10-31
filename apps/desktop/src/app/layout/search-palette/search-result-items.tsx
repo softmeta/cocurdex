@@ -5,9 +5,6 @@ import { CommandItem } from "@/components/ui";
 import { findMatchRange } from "@/features/workspaces";
 import type { WorkspaceFileEntry } from "@/lib";
 
-const commandItemClassName =
-  "h-8 gap-2 rounded-control px-2 text-body text-muted-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground";
-
 function HighlightedText({ text, query }: { text: string; query: string }) {
   const range = findMatchRange(text, query);
   if (!range) {
@@ -38,7 +35,7 @@ export function SessionResultItem({
 }) {
   return (
     <CommandItem
-      className={commandItemClassName}
+      className="h-8 gap-2 rounded-control px-2 text-body text-muted-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground"
       value={`session:${session.id}`}
       onSelect={onSelect}
     >
@@ -66,7 +63,7 @@ export function FileResultItem({
 }) {
   return (
     <CommandItem
-      className={commandItemClassName}
+      className="h-8 gap-2 rounded-control px-2 text-body text-muted-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground"
       value={`file:${file.path}`}
       onSelect={onSelect}
     >
@@ -95,7 +92,7 @@ export function DocumentResultItem({
   const Icon = document.kind === "issue" ? ListTodo : FileText;
   return (
     <CommandItem
-      className={commandItemClassName}
+      className="h-8 gap-2 rounded-control px-2 text-body text-muted-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground"
       value={`${document.kind}:${document.id}`}
       onSelect={onSelect}
     >

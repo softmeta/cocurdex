@@ -28,7 +28,7 @@ export function ComposerSurface({
   return (
     <div
       className={cn(
-        "flex min-h-full items-center justify-center px-8 pb-[12vh] pt-8",
+        "flex min-h-full items-center justify-center px-[clamp(1.5rem,8%,5rem)] pb-[12vh] pt-8",
         className,
       )}
       {...props}
@@ -41,7 +41,7 @@ export function ComposerSurfaceBody({
   ...props
 }: ComponentProps<"div">) {
   return (
-    <div className={cn("w-full min-w-0 max-w-[46rem]", className)} {...props} />
+    <div className={cn("w-full min-w-0 max-w-[36rem]", className)} {...props} />
   );
 }
 

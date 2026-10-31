@@ -1,11 +1,16 @@
-import { access } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import {
   getDefaultSkillsSourceRoot,
   getProductSkillsStatus,
   installProductSkills,
+  PRODUCT_SKILL_NAMES,
   removeProductSkills,
 } from "@cocurdex/product-skills";
 import type {
+  ProductSkillDetail,
+  ProductSkillInfo,
+  ProductSkillShowPayload,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
@@ -13,6 +18,11 @@ import type {
 } from "@cocurdex/shared";
 import { hashLogValue } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "./diagnostics";
+import { readSkillDocument } from "./skills/skill-document";
+import { listSkillFiles, toSkillFileEntries } from "./skills/skill-files";
+import { parseSkillManifest } from "./skills/skill-manifest";
+
+const PACK_SKILL_NAMES: ReadonlySet<string> = new Set(PRODUCT_SKILL_NAMES);
 
 export class DaemonSkillsService {
   private readonly sourceRoot: string;
@@ -42,13 +52,34 @@ export class DaemonSkillsService {
     }
   }
 
-  private async sourceIsAvailable() {
-    try {
-      await access(this.sourceRoot);
-      return true;
-    } catch {
-      return false;
-    }
+  private async readPackSkills(): Promise<ProductSkillInfo[]> {
+    const skills = await Promise.all(
+      PRODUCT_SKILL_NAMES.map(
+        async (name): Promise<ProductSkillInfo | null> => {
+          const content = await readFile(
+            path.join(this.sourceRoot, name, "SKILL.md"),
+            "utf8",
+          ).catch(() => null);
+          if (content === null) {
+            return null;
+          }
+          return {
+            name,
+            description: parseSkillManifest(content, name).description,
+          };
+        },
+      ),
+    );
+    return skills.filter((skill): skill is ProductSkillInfo => skill !== null);
+  }
+
+  private async sourceInfo() {
+    const packSkills = await this.readPackSkills();
+    return {
+      sourceAvailable: packSkills.length === PRODUCT_SKILL_NAMES.length,
+      sourceRoot: this.sourceRoot,
+      packSkills,
+    };
   }
 
   async getStatus(
@@ -62,8 +93,28 @@ export class DaemonSkillsService {
     );
     return {
       ...status,
-      sourceAvailable: await this.sourceIsAvailable(),
-      sourceRoot: this.sourceRoot,
+      ...(await this.sourceInfo()),
+    };
+  }
+
+  async show({ name }: ProductSkillShowPayload): Promise<ProductSkillDetail> {
+    if (!PACK_SKILL_NAMES.has(name)) {
+      throw new Error(`${name} is not a Cocurdex pack skill`);
+    }
+    const skillDir = path.join(this.sourceRoot, name);
+    const [document, files] = await Promise.all([
+      readSkillDocument(skillDir),
+      listSkillFiles(skillDir).catch(() => []),
+    ]);
+    return {
+      skill: {
+        name,
+        description: document
+          ? parseSkillManifest(document.content, name).description
+          : null,
+      },
+      files: toSkillFileEntries(files),
+      document,
     };
   }
 
@@ -84,8 +135,7 @@ export class DaemonSkillsService {
     });
     return {
       ...result,
-      sourceAvailable: await this.sourceIsAvailable(),
-      sourceRoot: this.sourceRoot,
+      ...(await this.sourceInfo()),
     };
   }
 
@@ -94,7 +144,10 @@ export class DaemonSkillsService {
       const status = await getProductSkillsStatus("global", undefined, {
         sourceRoot: this.sourceRoot,
       });
-      if (!status.updateAvailable || !(await this.sourceIsAvailable())) {
+      if (
+        !status.updateAvailable ||
+        !(await this.sourceInfo()).sourceAvailable
+      ) {
         return;
       }
       const result = await installProductSkills("global", undefined, {

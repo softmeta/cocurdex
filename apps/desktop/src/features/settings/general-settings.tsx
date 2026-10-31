@@ -1,6 +1,10 @@
 import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
-import { type ChatLayoutMode, chatLayoutModes } from "@/app/layout";
+import {
+  type ChatLayoutMode,
+  chatLayoutModes,
+} from "@/app/layout/chat-layout-preference";
+import { SettingRow, SettingsGroup } from "@/components";
 import { Switch } from "@/components/ui";
 import {
   type ActivityDisplayMode,
@@ -22,7 +26,6 @@ import { CliPathSettingsPanel } from "./cli-path-settings";
 import { DaemonSettingsPanel } from "./daemon-settings";
 import { LanguagePicker } from "./language-picker";
 import type { NotificationSettings } from "./notifications";
-import { SettingRow, SettingsGroup } from "./settings-fields";
 import { SettingsSelect } from "./settings-select";
 
 export function GeneralPanel({

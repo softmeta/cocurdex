@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   SidebarListRow,
   SidebarListRowActions,
+  SidebarListRowDisclosure,
   SidebarListRowLabel,
   sidebarListRowVariants,
 } from "./sidebar-list-row";
@@ -237,6 +238,7 @@ export {
   SidebarGroupLabel,
   SidebarListRow,
   SidebarListRowActions,
+  SidebarListRowDisclosure,
   SidebarListRowLabel,
   SidebarMenu,
   SidebarMenuAction,

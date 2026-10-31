@@ -2,10 +2,12 @@ import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 import { asChildToRender } from "@/components/ui/_as-child-render";
+import { FLYOUT_GAP } from "@/components/ui/_flyout";
 import {
-  popupContentWidthClassName,
-  popupSubContentWidthClassName,
-} from "@/components/ui/_popup-width";
+  SubmenuAnchorProvider,
+  useSubmenuAnchor,
+  useSubmenuTriggerRef,
+} from "@/components/ui/_submenu-anchor";
 import { cn } from "@/lib/utils";
 
 function ContextMenu({
@@ -53,7 +55,11 @@ function ContextMenuPortal({
 function ContextMenuSub({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubmenuRoot>) {
-  return <ContextMenuPrimitive.SubmenuRoot {...props} />;
+  return (
+    <SubmenuAnchorProvider>
+      <ContextMenuPrimitive.SubmenuRoot {...props} />
+    </SubmenuAnchorProvider>
+  );
 }
 
 function ContextMenuRadioGroup({
@@ -100,8 +106,7 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
           className={cn(
-            "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            popupContentWidthClassName,
+            "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 p-1 min-w-(--anchor-width) max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
           {...props}
@@ -139,11 +144,16 @@ function ContextMenuSubTrigger({
   inset,
   children,
   ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.SubmenuTrigger> & {
+}: Omit<
+  React.ComponentProps<typeof ContextMenuPrimitive.SubmenuTrigger>,
+  "ref"
+> & {
   inset?: boolean;
 }) {
+  const triggerRef = useSubmenuTriggerRef();
   return (
     <ContextMenuPrimitive.SubmenuTrigger
+      ref={triggerRef}
       data-slot="context-menu-sub-trigger"
       data-inset={inset}
       className={cn(
@@ -162,14 +172,20 @@ function ContextMenuSubContent({
   className,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Popup>) {
+  const anchor = useSubmenuAnchor();
   return (
     <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Positioner className="z-50 outline-none">
+      <ContextMenuPrimitive.Positioner
+        align="start"
+        alignOffset={-4}
+        anchor={anchor}
+        className="z-50 outline-none"
+        sideOffset={FLYOUT_GAP}
+      >
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-sub-content"
           className={cn(
-            "z-50 origin-(--transform-origin) overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            popupSubContentWidthClassName,
+            "z-50 origin-(--transform-origin) overflow-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 p-1 max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
           {...props}

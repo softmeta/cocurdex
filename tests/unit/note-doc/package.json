@@ -1,0 +1,17 @@
+{
+  "name": "@cocurdex/unit-note-doc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cocurdex/note-doc": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
+  }
+}

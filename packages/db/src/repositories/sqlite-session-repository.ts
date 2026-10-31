@@ -18,6 +18,16 @@ export function createSqliteSessionRepository(
         .all() as SqliteRow[];
       return rows.map(mapSession);
     },
+    async listChangedSince(changeSeq) {
+      const rows = database
+        .prepare(
+          `SELECT * FROM sessions
+           WHERE change_seq > ?
+           ORDER BY change_seq`,
+        )
+        .all(changeSeq) as SqliteRow[];
+      return rows.map(mapSession);
+    },
     async listArchived() {
       const rows = database
         .prepare(
@@ -169,6 +179,12 @@ export function createSqliteSessionRepository(
         )
         .run(status, now, sessionId);
     },
+    async setPinned(sessionId, pinnedAt) {
+      database
+        .prepare("UPDATE sessions SET pinned_at = ? WHERE id = ?")
+        .run(pinnedAt, sessionId);
+      return this.getById(sessionId);
+    },
     async archive(sessionId, archivedAt) {
       const nextArchivedAt = archivedAt ?? new Date().toISOString();
       database
@@ -192,18 +208,6 @@ export function createSqliteSessionRepository(
       // Child sessions, messages, tool calls and the rest of the session-owned
       // rows are removed by the ON DELETE CASCADE chain declared in the schema.
       database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
-    },
-    async failRunning() {
-      const now = new Date().toISOString();
-      const rows = database
-        .prepare(
-          `UPDATE sessions
-           SET status = 'error', updated_at = ?
-           WHERE status = 'running'
-           RETURNING id`,
-        )
-        .all(now) as Array<{ id: string }>;
-      return rows.map((row) => row.id);
     },
   };
 }

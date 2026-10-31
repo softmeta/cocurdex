@@ -30,9 +30,9 @@ export function createSqliteAgentRoleRepository(
              id, name, agent_id, provider_id, model_id, model_name,
              permission_mode, session_mode_id, reasoning_effort,
              service_tier, fast_mode, thinking_level, opencode_agent,
-             opencode_variant, instructions, skill_ids_json, created_at,
-             updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             opencode_variant, instructions, skill_ids_json, avatar_json,
+             description, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              agent_id = excluded.agent_id,
@@ -49,6 +49,8 @@ export function createSqliteAgentRoleRepository(
              opencode_variant = excluded.opencode_variant,
              instructions = excluded.instructions,
              skill_ids_json = excluded.skill_ids_json,
+             avatar_json = excluded.avatar_json,
+             description = excluded.description,
              updated_at = excluded.updated_at`,
         )
         .run(
@@ -68,6 +70,8 @@ export function createSqliteAgentRoleRepository(
           role.openCodeVariant,
           role.instructions,
           role.skillIds ? JSON.stringify(role.skillIds) : null,
+          role.avatar ? JSON.stringify(role.avatar) : null,
+          role.description,
           role.createdAt,
           role.updatedAt,
         );

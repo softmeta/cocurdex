@@ -1,4 +1,7 @@
-import { stripTrailingPathSeparators } from "./git-worktree";
+import {
+  isWindowsDrivePath,
+  stripTrailingPathSeparators,
+} from "./git-worktree";
 
 export const WORKTREE_SETTING_KEY = "worktree";
 
@@ -123,8 +126,16 @@ export function normalizeWorktreePath(value: string) {
   return stripped;
 }
 
+function comparableWorktreePath(value: string) {
+  const normalized = normalizeWorktreePath(value);
+  if (!isWindowsDrivePath(normalized)) {
+    return normalized;
+  }
+  return normalized.replaceAll("/", "\\").toLowerCase();
+}
+
 export function worktreePathsEqual(left: string, right: string) {
-  return normalizeWorktreePath(left) === normalizeWorktreePath(right);
+  return comparableWorktreePath(left) === comparableWorktreePath(right);
 }
 
 export function sessionsUsingWorktreePath(

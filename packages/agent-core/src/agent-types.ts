@@ -3,6 +3,7 @@ import type {
   AgentDescriptor,
   AgentEvent,
   AgentInputDelivery,
+  AgentMcpServer,
   AgentPermissionMode,
   AgentPermissionRequestPayload,
   AgentPermissionResolution,
@@ -58,6 +59,7 @@ export interface CreateAgentSessionPayload {
   providerSession?: AgentProviderSessionRecord | null;
   agentTools?: AgentToolsBinding | null;
   agentToolInvoker?: AgentToolInvoker | null;
+  resolveMcpServers?(): Promise<AgentMcpServer[]>;
   onProviderSessionUpdate?(
     providerSession: AgentProviderSessionRecord | null,
   ): void;
@@ -72,9 +74,21 @@ export interface CreateAgentSessionPayload {
   ): Promise<AgentPlanApprovalDecision>;
 }
 
+export interface AgentContextHandoffEntry {
+  role: "user" | "assistant";
+  text: string;
+}
+
+export interface AgentContextHandoff {
+  text: string;
+  preamble: string;
+  entries: AgentContextHandoffEntry[];
+}
+
 export interface SendAgentMessagePayload {
   messageId?: string;
   content: string;
+  contextHandoff?: AgentContextHandoff;
   attachments?: MessageAttachment[];
   history: MessageRecord[];
   thinkingLevel?: AgentThinkingLevel;
@@ -118,6 +132,14 @@ export interface AgentSession {
   dispose(): void | Promise<void>;
 }
 
+export interface ForkProviderSessionPayload {
+  source: AgentProviderSessionRecord;
+  targetSessionId: string;
+  workspaceRootPath: string;
+  userTurnCount: number | null;
+  userDataPath?: string;
+}
+
 export interface ListSlashCommandsPayload {
   workspaceRootPath: string;
   userDataPath?: string;
@@ -140,6 +162,10 @@ export interface AgentAdapter {
     payload: CreateAgentSessionPayload,
     onEvent: (event: AgentEvent) => void,
   ): AgentSession;
+  forkProviderSession?(
+    payload: ForkProviderSessionPayload,
+  ): Promise<AgentProviderSessionRecord | null>;
+  injectsContextHandoff?: boolean;
   /** List skills available through the composer's slash-triggered picker. */
   listSlashCommands?(
     payload: ListSlashCommandsPayload,

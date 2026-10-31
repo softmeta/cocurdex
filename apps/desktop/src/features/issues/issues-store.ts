@@ -1,5 +1,7 @@
 import type {
+  IssueLabel,
   IssueRecord,
+  IssueStatusCategory,
   ViewColumnRecord,
   ViewFilter,
   ViewFull,
@@ -35,7 +37,7 @@ async function refreshViewList(
   return views;
 }
 
-function reportIssueError(error: unknown) {
+export function reportIssueError(error: unknown) {
   toast.error(
     isIssueConflictError(error)
       ? i18n.t("issues:errors.conflict")
@@ -169,7 +171,12 @@ export const updateColumnAtom = atom(
   async (
     get,
     set,
-    payload: { id: string; title?: string; color?: string | null },
+    payload: {
+      id: string;
+      title?: string;
+      color?: string | null;
+      category?: IssueStatusCategory;
+    },
   ) =>
     runIssueMutation(get, set, async () => {
       await issuesIpc.updateColumn({ field: activeField(get), ...payload });
@@ -189,6 +196,8 @@ export const createIssueAtom = atom(
       status?: string;
       priority?: string;
       workspaceId?: string | null;
+      parentId?: string | null;
+      labelIds?: string[];
     },
   ) =>
     runIssueMutation(get, set, async () => {
@@ -206,6 +215,8 @@ export interface IssueFieldChanges {
   status?: string;
   priority?: string;
   workspaceId?: string | null;
+  parentId?: string | null;
+  labelIds?: string[];
 }
 
 export const updateIssueAtom = atom(
@@ -305,9 +316,26 @@ export const deleteIssueAtom = atom(null, async (get, set, issueId: string) =>
   }),
 );
 
+export const createIssueLabelAtom = atom(
+  null,
+  async (get, set, name: string): Promise<IssueLabel | null> =>
+    runIssueMutation(get, set, async () => {
+      const label = await issuesIpc.createLabel({ name });
+      await loadActiveView(set, get(activeViewIdAtom));
+      return label;
+    }),
+);
+
 function toViewSummary(view: ViewFull["view"]): ViewSummary {
   const { createdAt: _createdAt, updatedAt: _updatedAt, ...summary } = view;
   return summary;
 }
 
 export type { IssueRecord, ViewColumnRecord, ViewFull };
+
+export const issueLabelsByIdAtom = atom(
+  (get) =>
+    new Map(
+      (get(activeViewAtom)?.labels ?? []).map((label) => [label.id, label]),
+    ),
+);

@@ -1,7 +1,20 @@
-export const supportedLocales = ["en-US", "zh-CN"] as const;
+import {
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  matchSupportedLocale,
+  type SupportedLocale,
+  supportedLocales,
+} from "@cocurdex/shared";
+
+export {
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  type SupportedLocale,
+  supportedLocales,
+};
+
 export const languageModes = ["system", ...supportedLocales] as const;
 
-export type SupportedLocale = (typeof supportedLocales)[number];
 export type LanguageMode = (typeof languageModes)[number];
 
 export interface LocaleDescriptor {
@@ -18,14 +31,7 @@ export const localeDescriptors: Record<SupportedLocale, LocaleDescriptor> = {
   "zh-CN": { locale: "zh-CN", nativeName: "简体中文" },
 };
 
-export const DEFAULT_LOCALE = "en-US" satisfies SupportedLocale;
 export const LANGUAGE_MODE_STORAGE_KEY = "agents.desktop.language-mode";
-
-export function isSupportedLocale(
-  value: string | null,
-): value is SupportedLocale {
-  return value === "en-US" || value === "zh-CN";
-}
 
 export function isLanguageMode(value: string | null): value is LanguageMode {
   return value === "system" || isSupportedLocale(value);
@@ -47,14 +53,9 @@ export function getSystemLocale(): SupportedLocale {
     return DEFAULT_LOCALE;
   }
 
-  const languages = navigator.languages?.length
-    ? navigator.languages
-    : [navigator.language];
-  const matchingLanguage = languages.find((language) =>
-    language.toLowerCase().startsWith("zh"),
+  return matchSupportedLocale(
+    navigator.languages?.length ? navigator.languages : [navigator.language],
   );
-
-  return matchingLanguage ? "zh-CN" : DEFAULT_LOCALE;
 }
 
 export function resolveLanguageMode(

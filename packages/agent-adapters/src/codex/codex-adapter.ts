@@ -24,7 +24,10 @@ import {
   logOutgoingPromptForDiagnostics,
   serializeProviderSessionState,
 } from "../shared";
-import { codexAgentToolsThreadConfig } from "../shared/agent-tools-mcp";
+import {
+  codexThreadMcpConfig,
+  loadInjectedMcpServers,
+} from "../shared/injected-mcp";
 import {
   createNativeSessionRecoveryError,
   requiresNativeSessionRecovery,
@@ -47,6 +50,7 @@ import {
   acquireCodexClient,
   type CodexClientLease,
 } from "./codex-app-server-pool";
+import { prepareCodexTurnContent } from "./codex-context-handoff";
 import {
   CODEX_MCP_STARTUP_STATUS_METHOD,
   mergeCodexMcpServers,
@@ -63,9 +67,11 @@ import {
 import { parseCodexRateLimits } from "./codex-rate-limits";
 import { getCodexReasoningEffortLabel } from "./codex-reasoning-effort";
 import { CodexSubagentRouter } from "./codex-subagent-router";
+import { forkCodexProviderSession } from "./codex-thread-fork";
 import { createCodexTurnStream } from "./codex-turn-stream";
 
 const descriptor = getAgentDescriptor("codex");
+const CODEX_REASONING_SUMMARY = "auto";
 
 type CodexCollaborationMode = {
   mode: "default" | "plan";
@@ -272,6 +278,10 @@ export function createCodexAdapter(
     getDescriptor() {
       return descriptor;
     },
+    forkProviderSession(payload) {
+      return forkCodexProviderSession(payload, acquireClient);
+    },
+    injectsContextHandoff: true,
     createSession(
       payload: CreateAgentSessionPayload,
       onEvent: (event: AgentEvent) => void,
@@ -670,7 +680,10 @@ export function createCodexAdapter(
           sandbox: createCodexSandboxMode(payload, activePermissionMode),
           experimentalRawEvents: false,
           ...(serviceTier ? { serviceTier } : {}),
-          ...codexAgentToolsThreadConfig(payload.agentTools),
+          ...codexThreadMcpConfig(
+            payload.agentTools,
+            await loadInjectedMcpServers(payload.resolveMcpServers),
+          ),
         });
         threadId = result.thread.id;
         subscribeThread(threadId);
@@ -706,7 +719,10 @@ export function createCodexAdapter(
           sandbox: createCodexSandboxMode(payload, activePermissionMode),
           excludeTurns: true,
           ...(serviceTier ? { serviceTier } : {}),
-          ...codexAgentToolsThreadConfig(payload.agentTools),
+          ...codexThreadMcpConfig(
+            payload.agentTools,
+            await loadInjectedMcpServers(payload.resolveMcpServers),
+          ),
         });
         threadReady = true;
         await syncThreadTitle(appServerLease, result.thread.name);
@@ -842,9 +858,22 @@ export function createCodexAdapter(
               }
             }
 
+            if (!threadId) {
+              throw new Error("Codex thread was not started");
+            }
+            const turnContent = await prepareCodexTurnContent(
+              appServerLease.client,
+              threadId,
+              messagePayload.content,
+              messagePayload.contextHandoff,
+            );
+            const turnInput =
+              turnContent === messagePayload.content
+                ? input
+                : buildInput(turnContent, messagePayload.attachments ?? []);
             const serviceTier = getCodexServiceTier(activeSnapshot);
             const promptText =
-              input.find(
+              turnInput.find(
                 (part): part is { text: string; type: "text" } =>
                   part.type === "text",
               )?.text ?? "";
@@ -867,7 +896,7 @@ export function createCodexAdapter(
             const turnEnded = waitForTurnEnd();
             const turn = await appServerLease.client.startTurn({
               threadId,
-              input,
+              input: turnInput,
               cwd: payload.workspaceRootPath,
               approvalPolicy: createCodexApprovalPolicy(
                 payload,
@@ -889,6 +918,7 @@ export function createCodexAdapter(
                     ...(reasoningEffort ? { effort: reasoningEffort } : {}),
                   }),
               ...(serviceTier ? { serviceTier } : {}),
+              summary: CODEX_REASONING_SUMMARY,
               sandboxPolicy: createSandboxPolicy(payload, activePermissionMode),
             });
             activeTurnId = turn.turn.id;

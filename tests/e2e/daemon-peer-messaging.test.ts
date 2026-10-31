@@ -1,12 +1,14 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type { SessionConfiguration, WorkspaceRecord } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { spawnDaemon } from "./helpers/daemon-process";
+
+const tempDirs = createTempDirs();
+
+afterAll(() => tempDirs.cleanup());
 
 function workspaceRecord(rootPath: string): WorkspaceRecord {
   const now = new Date().toISOString();
@@ -44,7 +46,7 @@ describe("daemon peer messaging over the real socket", () => {
       if (!agent) {
         return;
       }
-      const rootPath = mkdtempSync(path.join(tmpdir(), "cocurdex-e2e-peer-"));
+      const rootPath = tempDirs.createSync("cocurdex-e2e-peer-");
       await requestDaemon(
         "workspace.save",
         { workspace: workspaceRecord(rootPath) },

@@ -1,37 +1,10 @@
-import { type CSSProperties, Fragment, useMemo, useState } from "react";
-import type { ThemedToken } from "shiki";
-import { cn, useMountEffect, useResolvedTheme } from "@/lib";
-import {
-  codeToTokenLines,
-  getCodeThemeId,
-  loadCodeHighlighter,
-} from "./code-textarea-highlighter";
+import { Fragment } from "react";
+import { cn } from "@/lib";
+import { shellTokenStyle, useShellTokenLines } from "./use-shell-token-lines";
 import "./code-textarea.css";
 
-// Both layers share this so the highlighted text lands exactly on the editable
-// text. Any change here must stay on both the <pre> and the <textarea>.
-const LAYER_CLASS =
-  "code-textarea-layer col-start-1 row-start-1 m-0 min-w-0 px-2.5 py-2 break-words whitespace-pre-wrap";
-
-// Shiki costs roughly 0.1ms per line, and the highlight re-runs on every
-// keystroke. Past this size the cost would block typing, so the field falls
-// back to a plain textarea instead.
-const MAX_HIGHLIGHT_LENGTH = 6000;
-
-// Shiki's FontStyle flags.
-const ITALIC = 1;
-const BOLD = 2;
-
-function tokenStyle(token: ThemedToken): CSSProperties {
-  const fontStyle = token.fontStyle ?? 0;
-  return {
-    color: token.color,
-    fontStyle: fontStyle & ITALIC ? "italic" : undefined,
-    fontWeight: fontStyle & BOLD ? 700 : undefined,
-  };
-}
-
 interface CodeTextareaProps {
+  "aria-label"?: string;
   className?: string;
   onChange(value: string): void;
   placeholder?: string;
@@ -42,48 +15,13 @@ interface CodeTextareaProps {
 // in one grid cell, so the scroll container is the wrapper and both scroll
 // together; the textarea is on top and owns the caret, selection, and input.
 export function CodeTextarea({
+  "aria-label": ariaLabel,
   className,
   onChange,
   placeholder,
   value,
 }: CodeTextareaProps) {
-  const resolvedTheme = useResolvedTheme();
-  const [highlighter, setHighlighter] = useState<Awaited<
-    ReturnType<typeof loadCodeHighlighter>
-  > | null>(null);
-
-  useMountEffect(() => {
-    let cancelled = false;
-    void loadCodeHighlighter()
-      .then((instance) => {
-        if (!cancelled) {
-          setHighlighter(instance);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  });
-
-  const tokenLines = useMemo(() => {
-    if (
-      !highlighter ||
-      value.length === 0 ||
-      value.length > MAX_HIGHLIGHT_LENGTH
-    ) {
-      return null;
-    }
-    try {
-      return codeToTokenLines(
-        highlighter,
-        value,
-        getCodeThemeId(resolvedTheme),
-      );
-    } catch {
-      return null;
-    }
-  }, [highlighter, resolvedTheme, value]);
+  const tokenLines = useShellTokenLines(value);
 
   const isHighlighted = tokenLines !== null;
 
@@ -98,8 +36,7 @@ export function CodeTextarea({
         <pre
           aria-hidden="true"
           className={cn(
-            LAYER_CLASS,
-            "pointer-events-none select-none overflow-hidden",
+            "code-textarea-layer col-start-1 row-start-1 m-0 min-w-0 px-2.5 py-2 break-words whitespace-pre-wrap pointer-events-none select-none overflow-hidden",
           )}
         >
           {tokenLines.map((line, lineIndex) => (
@@ -110,7 +47,7 @@ export function CodeTextarea({
               {lineIndex > 0 ? "\n" : null}
               {line.map((token, tokenIndex) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: tokens are a pure render of `value` and never reorder
-                <span key={tokenIndex} style={tokenStyle(token)}>
+                <span key={tokenIndex} style={shellTokenStyle(token)}>
                   {token.content}
                 </span>
               ))}
@@ -119,9 +56,9 @@ export function CodeTextarea({
         </pre>
       ) : null}
       <textarea
+        aria-label={ariaLabel}
         className={cn(
-          LAYER_CLASS,
-          "w-full resize-none border-0 bg-transparent outline-none field-sizing-content placeholder:text-muted-foreground",
+          "code-textarea-layer col-start-1 row-start-1 m-0 min-w-0 px-2.5 py-2 break-words whitespace-pre-wrap w-full resize-none border-0 bg-transparent outline-none field-sizing-content placeholder:text-muted-foreground",
           isHighlighted
             ? "text-transparent caret-foreground selection:bg-foreground/25"
             : "text-foreground",

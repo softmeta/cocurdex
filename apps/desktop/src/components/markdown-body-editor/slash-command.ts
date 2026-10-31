@@ -12,8 +12,10 @@ import Suggestion, {
   type SuggestionOptions,
   type SuggestionProps,
 } from "@tiptap/suggestion";
+import { i18n } from "@/i18n";
 import {
   filterSlashCommandItems,
+  SLASH_COMMAND_ITEMS,
   type SlashCommandItem,
 } from "./slash-command-items";
 import {
@@ -53,7 +55,10 @@ function attachMenuPosition(
         size({
           padding: 8,
           apply({ availableHeight, elements }) {
-            elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`;
+            elements.floating.style.setProperty(
+              "--slash-menu-available-height",
+              `${Math.max(0, availableHeight)}px`,
+            );
           },
         }),
       ],
@@ -129,7 +134,10 @@ export function createSlashCommand() {
           char: "/",
           // Only trigger at the start of a line / after whitespace.
           allowSpaces: false,
-          items: ({ query }) => filterSlashCommandItems(query),
+          items: ({ query }) =>
+            filterSlashCommandItems(query, SLASH_COMMAND_ITEMS, (item) =>
+              i18n.t(`notes:slash.items.${item.key}`),
+            ),
           command: ({ editor, range, props }) => props.run(editor, range),
           render: createRenderer(),
         }),

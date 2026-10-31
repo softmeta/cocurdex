@@ -1,3 +1,4 @@
+export { IssueLabelNotFoundError } from "./issue-links";
 export {
   IssueConflictError,
   IssueNotFoundError,

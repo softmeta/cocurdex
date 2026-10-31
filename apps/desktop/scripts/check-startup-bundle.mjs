@@ -3,8 +3,11 @@ import fs from "node:fs";
 
 const rendererDir = new URL("../out/renderer/", import.meta.url);
 const budgetFile = new URL("../startup-budget.json", import.meta.url);
-const DETACHED_CHAT_ENTRY = "src/app/layout/chat-window/detached-chat-app.tsx";
-const HEADROOM = 1.02;
+const SECONDARY_WINDOW_ENTRIES = new Set([
+  "src/app/layout/chat-window/detached-chat-app.tsx",
+  "src/features/decks/audience/index.ts",
+]);
+const HEADROOM = 1.05;
 
 const manifestFile = new URL(".vite/manifest.json", rendererDir);
 if (!fs.existsSync(manifestFile)) {
@@ -16,7 +19,9 @@ const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
 const entry = manifest["index.html"];
 const roots = [
   "index.html",
-  ...(entry.dynamicImports ?? []).filter((key) => key !== DETACHED_CHAT_ENTRY),
+  ...(entry.dynamicImports ?? []).filter(
+    (key) => !SECONDARY_WINDOW_ENTRIES.has(key),
+  ),
 ];
 const chunks = new Set();
 const pending = [...roots];

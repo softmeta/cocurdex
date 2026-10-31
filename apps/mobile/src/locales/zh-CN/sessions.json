@@ -1,0 +1,304 @@
+{
+  "actions": {
+    "archive": "归档",
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteMessage": "会话及其记录会从电脑上删除，无法恢复。",
+    "deleteTitle": "删除「{{title}}」？",
+    "fork": "分叉会话",
+    "markUnread": "标为未读",
+    "pin": "置顶",
+    "rename": "重命名",
+    "unpin": "取消置顶"
+  },
+  "activity": {
+    "command_other": "执行了 {{count}} 条命令",
+    "edit_other": "修改了 {{count}} 个文件",
+    "fetch_other": "获取了 {{count}} 个网页",
+    "other_other": "调用了 {{count}} 个工具",
+    "others_other": "其他 {{count}} 项操作",
+    "read_other": "读取了 {{count}} 个文件",
+    "replies_other": "{{count}} 条中间回复",
+    "search_other": "搜索了 {{count}} 次",
+    "separator": "，",
+    "skill_other": "调用了 {{count}} 个技能",
+    "subagent_other": "运行了 {{count}} 个子代理"
+  },
+  "approvalsUnavailable": {
+    "description": "这台手机配对时没有授予审批权限。",
+    "title": "请在电脑上批准"
+  },
+  "archived": {
+    "archivedAge": "归档于 {{age}}",
+    "count_other": "{{count}} 个会话",
+    "empty": "没有已归档的会话",
+    "restore": "恢复",
+    "restoreSession": "恢复 {{title}}"
+  },
+  "composer": {
+    "attach": "添加照片",
+    "imageFailed": "图片上传失败，请检查连接后重试。",
+    "imageTooLarge": "图片超过 10 MB。",
+    "imageUnsupported": "只能附加 PNG、JPEG、GIF 和 WebP 图片。",
+    "placeholder": "回复 agent",
+    "removeImage": "移除 {{name}}",
+    "send": "发送",
+    "stop": "停止"
+  },
+  "detail": {
+    "actionFailed": "操作没有成功，请检查连接后重试。",
+    "awaitingInput": "有问题要问你",
+    "completedUnread": "已完成",
+    "connecting": "正在连接…",
+    "failed": "运行失败",
+    "imagePrompt": "图片",
+    "jumpToLatest": "跳到最新消息",
+    "jumpToOldest": "跳到第一条消息",
+    "missing": "这个会话已经不在电脑上了。",
+    "monitoring": "正在后台运行",
+    "pendingApproval": "等你批准",
+    "planReady": "计划已写好，等你决定",
+    "promptNumber": "第 {{number}} 次提问",
+    "prompts": "提问目录",
+    "sending": "发送中",
+    "working": "正在工作"
+  },
+  "empty": {
+    "description": "在 {{host}} 上开始的会话会显示在这里。",
+    "title": "没有会话"
+  },
+  "image": {
+    "close": "关闭"
+  },
+  "list": {
+    "agentFilter": "Agent",
+    "childSessions_other": "{{count}} 个子会话",
+    "clearFilters": "清除筛选",
+    "collapseChildren": "折叠子会话",
+    "direction": {
+      "asc": "升序",
+      "desc": "降序"
+    },
+    "environment": {
+      "local": "本地",
+      "worktree": "Worktree"
+    },
+    "environmentFilter": "环境",
+    "expandChildren": "展开子会话",
+    "filtersCount_other": "筛选（{{count}}）",
+    "filtersLabel": "筛选",
+    "grouping": {
+      "agent": "Agent",
+      "none": "不分组",
+      "status": "状态",
+      "updated": "最近更新",
+      "workspace": "工作区"
+    },
+    "groupingLabel": "分组",
+    "markAllRead": "全部标为已读",
+    "menu": "显示选项",
+    "noMatches": "没有符合筛选条件的会话",
+    "options": {
+      "any": "全部",
+      "archived": "已归档会话",
+      "close": "关闭",
+      "title": "显示选项",
+      "view": "视图"
+    },
+    "ordering": {
+      "activity": "最近活动",
+      "created": "创建时间",
+      "title": "标题"
+    },
+    "orderingLabel": "排序",
+    "pinned": "已置顶",
+    "rootLimit": {
+      "all": "全部",
+      "count_other": "{{count}} 个会话"
+    },
+    "rootLimitLabel": "每组显示会话数",
+    "showLess": "收起",
+    "showMore_other": "再显示 {{count}} 个",
+    "status": {
+      "attention": "需要处理",
+      "error": "出错",
+      "idle": "空闲",
+      "running": "运行中",
+      "unread": "未读"
+    },
+    "statusFilter": "状态",
+    "updated": {
+      "older": "更早",
+      "today": "今天",
+      "week": "近 7 天",
+      "yesterday": "昨天"
+    }
+  },
+  "message": {
+    "copied": "已复制",
+    "copy": "复制",
+    "fork": "从这里分叉",
+    "forkTitle": "{{title}}（分叉）"
+  },
+  "newSession": {
+    "addOnComputer": "新工作区只能在电脑上添加。",
+    "agent": "Agent",
+    "agentDefaultModel": "这个 Agent 没有可用的服务商模型，会使用它自带的默认模型。",
+    "availability": {
+      "available": "可用",
+      "error": "在电脑上启动失败",
+      "missing": "电脑上未安装",
+      "unsupported": "电脑不支持"
+    },
+    "failed": "会话没能开始。请检查连接后重试。",
+    "mode": "模式",
+    "model": "模型",
+    "modelsFromComputer": "模型来自电脑上配置的服务商。",
+    "none": "无",
+    "open": "新建会话",
+    "promptPlaceholder": "要让 Agent 做什么？",
+    "role": "角色",
+    "roleFooter": "角色在电脑上设置，选择后会套用它的 agent、模型和权限。",
+    "runsOn": "在 {{host}} 上运行。",
+    "sessionCount_other": "{{count}} 个会话",
+    "title": "新会话",
+    "workspace": "工作区"
+  },
+  "noResults": "没有匹配“{{query}}”的会话",
+  "offline": "连不上 {{host}}，显示的是最后一次更新。",
+  "permission": {
+    "actions": {
+      "edit": "编辑",
+      "read": "读取",
+      "use": "使用",
+      "write": "写入"
+    },
+    "detail": {
+      "command": "命令",
+      "path": "路径",
+      "pattern": "模式",
+      "query": "查询",
+      "url": "URL"
+    },
+    "fileAction": "允许智能体{{action}} {{target}}？",
+    "runCommand": "运行这条命令？"
+  },
+  "permissionMode": {
+    "claude-accept-edits": "自动接受编辑",
+    "claude-auto": "自动模式",
+    "claude-bypass-permissions": "跳过权限确认",
+    "claude-default": "默认权限",
+    "claude-plan": "计划",
+    "codex-auto": "自动",
+    "codex-full-access": "完全访问",
+    "codex-read-only": "只读",
+    "descriptions": {
+      "claude-accept-edits": "自动接受文件编辑，命令仍会询问",
+      "claude-auto": "由 Claude 判断何时询问",
+      "claude-bypass-permissions": "跳过所有权限确认",
+      "claude-default": "编辑和命令前都会询问",
+      "claude-plan": "只做计划，不编辑也不执行命令",
+      "codex-auto": "读写工作区文件并执行命令，联网或越界编辑前询问",
+      "codex-full-access": "不再询问，可编辑工作区外文件并联网",
+      "codex-read-only": "只读取工作区文件，编辑和联网前询问",
+      "grok-always-approve": "自动批准所有工具调用",
+      "grok-ask": "每次工具调用前询问",
+      "grok-auto": "由 Grok 判断何时询问",
+      "opencode-allow": "自动批准所有工具调用",
+      "opencode-ask": "每次工具调用前询问",
+      "opencode-deny": "拒绝所有需要授权的工具调用"
+    },
+    "grok-always-approve": "全部批准",
+    "grok-ask": "每次询问",
+    "grok-auto": "自动判断",
+    "opencode-allow": "允许",
+    "opencode-ask": "询问",
+    "opencode-deny": "拒绝"
+  },
+  "plan": {
+    "approve": "批准",
+    "keepPlanning": "继续规划",
+    "title": "审阅计划"
+  },
+  "question": {
+    "placeholder": "你的回答",
+    "reply": "回复",
+    "title": "agent 有个问题"
+  },
+  "rename": {
+    "failed": "重命名失败，请重试。",
+    "placeholder": "会话标题",
+    "save": "保存",
+    "saving": "正在保存"
+  },
+  "runtime": {
+    "default": "默认",
+    "fastMode": "快速模式",
+    "levels": {
+      "default": "默认",
+      "high": "高",
+      "low": "低",
+      "max": "最高",
+      "medium": "中",
+      "minimal": "极低",
+      "off": "关闭",
+      "ultra": "极高",
+      "xhigh": "超高"
+    },
+    "off": "关闭",
+    "on": "开启",
+    "openCodeAgent": "协作模式",
+    "openCodeVariant": "变体",
+    "speed": "速度",
+    "standard": "标准",
+    "thinking": "推理强度"
+  },
+  "saveRole": {
+    "description": "描述",
+    "descriptionPlaceholder": "可选",
+    "failed": "无法保存角色，请重试。",
+    "name": "名称",
+    "namePlaceholder": "角色名称",
+    "open": "另存为角色…",
+    "save": "保存",
+    "saving": "正在保存…",
+    "title": "另存为角色"
+  },
+  "search": "搜索会话",
+  "sessionConfig": {
+    "close": "关闭",
+    "mcp": "MCP 服务器",
+    "mcpNone": "此会话没有报告 MCP 服务器。",
+    "mcpStatus": {
+      "connected": "已连接",
+      "connecting": "连接中",
+      "disabled": "已停用",
+      "failed": "失败"
+    },
+    "modeNeedsExecute": "修改权限模式需要此设备拥有「启动任务」权限，请在电脑上授予。",
+    "open": "Agent 设置：{{summary}}"
+  },
+  "status": {
+    "needsYou": "需要处理",
+    "running": "运行中",
+    "unread": "未读"
+  },
+  "tool": {
+    "completed": "已完成",
+    "copyOutput": "复制输出",
+    "duration": "{{seconds}} 秒",
+    "failed": "失败",
+    "files": "文件",
+    "input": "输入",
+    "noOutput": "没有输出",
+    "output": "输出",
+    "outputFailed": "无法加载输出",
+    "outputTail": "末尾 64 KB",
+    "running": "运行中"
+  },
+  "unavailable": {
+    "description": "请确认电脑没有休眠，并且和手机在同一网络。",
+    "retry": "重试",
+    "title": "连不上 {{host}}"
+  }
+}

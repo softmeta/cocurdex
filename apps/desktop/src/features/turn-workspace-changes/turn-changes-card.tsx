@@ -212,7 +212,7 @@ export function TurnChangesCard({
     showUndoUnavailable;
 
   return (
-    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card border border-chat-border-soft">
+    <div className="mt-2 w-full max-w-3xl overflow-hidden rounded-card bg-chat-code-block">
       <div className="flex items-center gap-2 px-3 py-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
           <Text className="text-chat-fg" size="meta" weight="medium">

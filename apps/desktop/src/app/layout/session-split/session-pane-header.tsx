@@ -3,17 +3,14 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "../titlebar-icon-button";
+import { TitlebarIconButton } from "../titlebar-icon-button";
 import { SessionSplitMenu } from "./session-split-menu";
 
 interface SessionPaneHeaderProps {
   canClose: boolean;
   isFocused: boolean;
   occupiesTitlebar?: boolean;
-  endInset?: number;
+  endInset?: number | string;
   startInset?: number;
   paneId: string;
   title: string;
@@ -84,7 +81,7 @@ export function SessionPaneHeader({
             cursor="default"
             onClick={onClose}
           >
-            <X className={TITLEBAR_ICON_GLYPH_CLASS} />
+            <X className="size-3.5" />
           </TitlebarIconButton>
         ) : null}
       </div>

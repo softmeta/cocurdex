@@ -1,5 +1,7 @@
 export {
+  AppActivityTime,
   AppConfirmDialog,
+  AppCopyButton,
   AppDropdownContent,
   AppDropdownItem,
   AppDropdownRadioList,
@@ -8,12 +10,15 @@ export {
   AppDropdownTriggerButton,
   AppDropdownTriggerLabel,
   AppGitBranchLabel,
+  AppInlineRenameInput,
+  AppPreviewCardTooltipContent,
+  AppRemoveButton,
   AppSearchableSelect,
   type AppSearchableSelectOption,
   AppSelect,
-  appDropdownContentClassName,
-  appDropdownSeparatorClassName,
-  compactDropdownContentClassName,
+  AppSidebarRowTitle,
+  SettingRow,
+  SettingsGroup,
 } from "./app";
 export { CollapsibleUserMessageBody, LinkifiedText } from "./chat";
 export {
@@ -25,13 +30,17 @@ export {
 // and re-exporting it here would drag that into every `@/components` import —
 // i.e. the startup path. Import it from "@/components/markdown-body-editor".
 export type {
-  FilePathCandidate,
   MarkdownFilePathHandlers,
   ResolvedFilePath,
 } from "./markdown-file-path";
 export { MarkdownRenderer } from "./markdown-renderer";
-export { ResizableSidebar } from "./resizable-sidebar";
 export {
-  SidebarCollapsedRail,
-  SidebarPanelToggle,
-} from "./sidebar-panel-toggle";
+  createRenderReadiness,
+  RenderReadinessContext,
+  useRenderReadiness,
+} from "./render-readiness";
+export {
+  ResizableSidebar,
+  WORKBENCH_SIDEBAR_WIDTH_PX,
+} from "./resizable-sidebar";
+export { SidebarSectionHeader } from "./sidebar-section-header";

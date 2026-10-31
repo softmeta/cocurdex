@@ -1,3 +1,4 @@
+import { pathBaseName } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { X } from "lucide-react";
@@ -16,7 +17,7 @@ import {
 } from "./editor-store";
 
 function getDisplayPath(filePath: string) {
-  return filePath.split("/").pop() ?? filePath;
+  return pathBaseName(filePath);
 }
 
 interface EditorTabItemProps {
@@ -141,10 +142,11 @@ export function EditorTabs() {
       {isMarkdownFile ? (
         <button
           type="button"
+          aria-pressed={!isPreviewMode}
           onClick={() => setIsPreviewMode(!isPreviewMode)}
           className="app-no-drag me-2 shrink-0 rounded-control px-2 py-0.5 text-meta text-editor-fg-muted transition-colors hover:text-editor-fg-subtle"
         >
-          {isPreviewMode ? t("actions.edit") : t("actions.preview")}
+          {isPreviewMode ? t("actions.source") : t("actions.preview")}
         </button>
       ) : null}
     </div>

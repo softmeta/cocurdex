@@ -36,6 +36,7 @@ export async function connect(target, timeout) {
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   let nextId = 0;
   const pending = new Map();
+  const handlers = new Map();
   function rejectPending(error) {
     for (const request of pending.values()) {
       clearTimeout(request.timer);
@@ -52,6 +53,12 @@ export async function connect(target, timeout) {
       socket.close();
       return;
     }
+    if (message.id === undefined) {
+      for (const handler of handlers.get(message.method) ?? []) {
+        handler(message.params);
+      }
+      return;
+    }
     const request = pending.get(message.id);
     if (!request) return;
     pending.delete(message.id);
@@ -66,7 +73,7 @@ export async function connect(target, timeout) {
     rejectPending(new Error("CDP connection closed")),
   );
   socket.addEventListener("error", () =>
-    rejectPending(new Error("CDP WebSocket error")),
+    rejectPending(new Error("CDP connection closed after a WebSocket error")),
   );
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -117,6 +124,12 @@ export async function connect(target, timeout) {
           reject(error);
         }
       });
+    },
+    on(method, handler) {
+      const methodHandlers = handlers.get(method) ?? new Set();
+      methodHandlers.add(handler);
+      handlers.set(method, methodHandlers);
+      return () => methodHandlers.delete(handler);
     },
     close() {
       rejectPending(new Error("CDP client closed"));

@@ -6,10 +6,10 @@ import type {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { SettingsGroup } from "@/components/app";
 import { ProviderAuthSection } from "./provider-auth-section";
 import { ProviderDetailsSection } from "./provider-details-section";
 import { ProviderModelsSection } from "./provider-models-section";
-import { SettingsGroup } from "./settings-group";
 
 function createEmptyModel(providerId: string): ProviderModelRecord {
   const now = new Date().toISOString();

@@ -1,0 +1,11 @@
+{
+  "binary": "无法预览此文件。",
+  "copy": "复制内容",
+  "failed": "无法加载文件。请检查连接后重试。",
+  "missing": "电脑上已没有这个文件。",
+  "outside": "这个文件不在电脑的工作区内。",
+  "retry": "重试",
+  "showPreview": "显示预览",
+  "showSource": "显示源码",
+  "truncated": "仅显示此文件的前 512 KB。"
+}

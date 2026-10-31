@@ -15,7 +15,7 @@ import {
   buildGrokPermissionParams,
   GROK_PERMISSION_NOTIFICATION_METHOD,
 } from "./grok-build-permission-mode";
-import { GROK_INLINE_PLAN_TOOL_TITLES } from "./grok-build-plan-approval";
+import { grokBuildPlanApprovalRequest } from "./grok-build-plan-approval";
 import {
   GROK_BUILD_INITIALIZE_META,
   getGrokBuildAuthMethodPriority,
@@ -68,7 +68,12 @@ export function createGrokBuildAdapter(
         method: GROK_PERMISSION_NOTIFICATION_METHOD,
         buildParams: buildGrokPermissionParams,
       },
-      inlinePlanToolTitles: GROK_INLINE_PLAN_TOOL_TITLES,
+      planApprovalRequest: grokBuildPlanApprovalRequest,
+      // The app transcript is authoritative, so the agent's replay of every
+      // past session update would be deserialized, streamed and dropped.
+      // Grok Build reads `noReplay` to skip loading those updates entirely.
+      loadSessionMeta: { noReplay: true },
+      setModelMeta: (reasoningEffort) => ({ reasoningEffort }),
       steeringRequest: {
         method: GROK_INTERJECT_REQUEST_METHOD,
         buildParams: buildGrokInterjectParams,

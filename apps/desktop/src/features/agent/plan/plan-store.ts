@@ -35,27 +35,6 @@ function withoutSession<T>(
   return next;
 }
 
-export const clearPlanForSessionAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const { [sessionId]: _removedPlan, ...nextPlans } = get(plansBySessionAtom);
-
-    set(plansBySessionAtom, nextPlans);
-    set(
-      collapsedPlansBySessionAtom,
-      withoutSession(get(collapsedPlansBySessionAtom), sessionId),
-    );
-    set(
-      autoCollapsedPlansBySessionAtom,
-      withoutSession(get(autoCollapsedPlansBySessionAtom), sessionId),
-    );
-    set(
-      dismissedPlansBySessionAtom,
-      withoutSession(get(dismissedPlansBySessionAtom), sessionId),
-    );
-  },
-);
-
 export const togglePlanCollapsedForSessionAtom = atom(
   null,
   (get, set, sessionId: string) => {

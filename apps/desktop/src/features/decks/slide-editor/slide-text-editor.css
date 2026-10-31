@@ -1,0 +1,34 @@
+.slide-text-prose p {
+  margin: 0 0 var(--slide-paragraph-gap);
+}
+
+.slide-text-prose ul,
+.slide-text-prose ol {
+  margin: 0;
+  padding-inline-start: var(--slide-list-indent);
+}
+
+.slide-text-prose ul {
+  list-style: disc;
+}
+
+.slide-text-prose ol {
+  list-style: decimal;
+}
+
+.slide-text-prose code {
+  font-family: var(--slide-mono-font);
+}
+
+.slide-text-prose a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.slide-text-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: inline-start;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.45;
+}

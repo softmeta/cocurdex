@@ -1,14 +1,16 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
   ScriptRunRecord,
   SessionConfiguration,
   WorkspaceRecord,
 } from "@cocurdex/shared";
-import { describe, expect, it } from "vitest";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterAll, describe, expect, it } from "vitest";
 import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
+
+const tempDirs = createTempDirs();
+
+afterAll(() => tempDirs.cleanup());
 
 const HANGING_SCRIPT = "await new Promise(() => {});";
 
@@ -29,7 +31,7 @@ async function configureRequester(daemon: DaemonProcess) {
   const agents = await requestDaemon("agent.list", daemon.options);
   const agent = agents.find((item) => item.availability === "available");
   if (!agent) return false;
-  const rootPath = mkdtempSync(path.join(tmpdir(), "cocurdex-e2e-script-"));
+  const rootPath = tempDirs.createSync("cocurdex-e2e-script-");
   await requestDaemon(
     "workspace.save",
     { workspace: workspaceRecord(rootPath) },

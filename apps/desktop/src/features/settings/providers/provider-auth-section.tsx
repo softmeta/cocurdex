@@ -15,11 +15,11 @@ import {
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { SettingsGroup } from "@/components/app";
 import { Button, Input, Spinner, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { SettingsSelect } from "../settings-select";
 import { providerAuthSourceLabel } from "./auth-source-label";
-import { SettingsGroup } from "./settings-group";
 
 function AuthMethodIcon({ method }: { method: ProviderAuthMethod }) {
   return method === "oauth" ? (
@@ -325,7 +325,7 @@ export function ProviderAuthSection({
             ) : (
               <Input
                 autoFocus
-                className="h-8 flex-1"
+                className="h-7 flex-1"
                 placeholder={prompt.placeholder ?? undefined}
                 type={prompt.type === "secret" ? "password" : "text"}
                 value={promptValue}

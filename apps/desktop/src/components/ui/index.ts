@@ -1,3 +1,4 @@
+export { FLYOUT_GAP, flyoutAnchor } from "./_flyout";
 export {
   Avatar,
   AvatarBadge,
@@ -92,6 +93,7 @@ export {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuSub,
@@ -111,6 +113,14 @@ export {
 export { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 export { IconButton, type IconButtonProps } from "./icon-button";
 export { Input } from "./input";
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from "./input-group";
 export { Label } from "./label";
 export {
   Popover,
@@ -163,6 +173,7 @@ export {
   SidebarGroupLabel,
   SidebarListRow,
   SidebarListRowActions,
+  SidebarListRowDisclosure,
   SidebarListRowLabel,
   SidebarMenu,
   SidebarMenuAction,

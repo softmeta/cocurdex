@@ -15,14 +15,14 @@ export type ResizeSeparatorPosition =
   | "absolute-end";
 
 export function ResizeSeparator({
-  ariaLabel = "Resize panel",
+  ariaLabel,
   testId,
   onMouseDown,
   position = "relative",
   className,
   style,
 }: {
-  ariaLabel?: string;
+  ariaLabel: string;
   testId?: string;
   onMouseDown(event: MouseEvent): void;
   position?: ResizeSeparatorPosition;
@@ -40,15 +40,17 @@ export function ResizeSeparator({
       )}
       style={style}
     >
-      <button
+      {/* biome-ignore lint/a11y/useSemanticElements: a splitter wraps its hover line, which an <hr> cannot contain. */}
+      <div
         aria-label={ariaLabel}
+        aria-orientation="vertical"
         className="group absolute inset-y-0 left-1/2 w-[7px] -translate-x-1/2 cursor-col-resize"
         data-testid={testId}
-        type="button"
+        role="separator"
         onMouseDown={onMouseDown}
       >
-        <div className="mx-auto h-full w-px bg-chrome-separator transition-colors duration-150 group-hover:bg-chrome-separator-hover" />
-      </button>
+        <div className="mx-auto h-full w-px bg-chrome-separator transition-[width,background-color] duration-150 group-hover:w-[3px] group-hover:bg-chrome-separator-hover" />
+      </div>
     </div>
   );
 }

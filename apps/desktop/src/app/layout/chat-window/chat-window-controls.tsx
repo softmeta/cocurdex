@@ -21,11 +21,10 @@ export function ChatWindowButton() {
   const { t } = useTranslation("sessions");
   const { busy, canMove, move, isDetachedChatWindow } = useChatWindowActions();
   if (!window.desktopApi?.chatWindow) return null;
+  const label = isDetachedChatWindow ? t("window.return") : t("window.detach");
   return (
     <TitlebarIconButton
-      aria-label={
-        isDetachedChatWindow ? t("window.return") : t("window.detach")
-      }
+      aria-label={label}
       disabled={busy || !canMove}
       onClick={() => void move()}
       onMouseDown={(event) => event.stopPropagation()}

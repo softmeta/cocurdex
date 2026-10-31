@@ -138,7 +138,7 @@ export function formatShortcutLabel(combo: ShortcutCombo | null): string {
   if (!combo) {
     return "";
   }
-  return formatShortcut(combo).join("");
+  return formatShortcut(combo).join(isMacPlatform() ? "" : "+");
 }
 
 function formatShortcutKeyLabel(key: string): string {

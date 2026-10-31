@@ -31,9 +31,27 @@ const TITLE_MAX_TOKENS = 512;
 // the right "disable thinking" parameter per provider (deepseek/zai/qwen/...).
 // Manually configured models lack compat and fall back to pi's URL-based
 // auto-detection.
+const OPENCODE_SESSION_HEADER = "x-opencode-session";
+const OPENCODE_PROVIDER_IDS = new Set(["opencode", "opencode-go"]);
+
+export function withOpenCodeSession(
+  provider: ProviderConfigRecord,
+  headers: Record<string, string> | undefined,
+  sessionId: string | undefined,
+) {
+  if (!sessionId || !OPENCODE_PROVIDER_IDS.has(provider.id)) return headers;
+  const present = Object.keys(headers ?? {}).some(
+    (key) => key.toLowerCase() === OPENCODE_SESSION_HEADER,
+  );
+  return present
+    ? headers
+    : { ...headers, [OPENCODE_SESSION_HEADER]: sessionId };
+}
+
 function buildPiTitleModel(
   provider: ProviderConfigRecord,
   model: ProviderModelRecord,
+  sessionId?: string,
 ): Model<Api> {
   return {
     id: model.modelId,
@@ -47,7 +65,11 @@ function buildPiTitleModel(
     cost: buildModelCost(model.costJson),
     contextWindow: model.contextLimit ?? 0,
     maxTokens: model.outputLimit ?? 0,
-    headers: parseHeaders(provider.headersJson),
+    headers: withOpenCodeSession(
+      provider,
+      parseHeaders(provider.headersJson),
+      sessionId,
+    ),
     compat:
       parseJsonObject(model.compatJson) ?? parseJsonObject(provider.compatJson),
   } as Model<Api>;
@@ -64,18 +86,23 @@ function normalizeTitle(raw: string): string | null {
   return chars.length > 64 ? `${chars.slice(0, 60).join("")}…` : trimmed;
 }
 
-// Single-shot title synthesis through the pi ai layer. Returns null when the
-// model produced no usable text; the caller keeps its fallback title.
-export async function generatePiConversationTitle(params: {
+export async function generatePiText(params: {
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;
   apiKey: string | null;
+  systemPrompt: string;
   message: string;
+  maxTokens: number;
+  sessionId?: string;
   signal?: AbortSignal;
 }): Promise<string | null> {
-  const model = buildPiTitleModel(params.provider, params.model);
+  const model = buildPiTitleModel(
+    params.provider,
+    params.model,
+    params.sessionId,
+  );
   const context: Context = {
-    systemPrompt: TITLE_PROMPT,
+    systemPrompt: params.systemPrompt,
     messages: [
       { role: "user", content: params.message, timestamp: Date.now() },
     ],
@@ -84,18 +111,42 @@ export async function generatePiConversationTitle(params: {
   const result = await completeSimple(model, context, {
     apiKey: params.apiKey ?? undefined,
     signal: params.signal,
-    maxTokens: TITLE_MAX_TOKENS,
+    maxTokens: params.maxTokens,
   });
 
   if (result.stopReason === "error" || result.stopReason === "aborted") {
     throw new Error(
-      result.errorMessage || `Title generation ${result.stopReason}`,
+      result.errorMessage || `Text generation ${result.stopReason}`,
     );
   }
 
-  const text = result.content
-    .flatMap((block) => (block.type === "text" ? [block.text] : []))
-    .join(" ");
+  return (
+    result.content
+      .flatMap((block) => (block.type === "text" ? [block.text] : []))
+      .join(" ")
+      .trim() || null
+  );
+}
 
-  return normalizeTitle(text);
+// Single-shot title synthesis through the pi ai layer. Returns null when the
+// model produced no usable text; the caller keeps its fallback title.
+export async function generatePiConversationTitle(params: {
+  provider: ProviderConfigRecord;
+  model: ProviderModelRecord;
+  apiKey: string | null;
+  message: string;
+  sessionId?: string;
+  signal?: AbortSignal;
+}): Promise<string | null> {
+  const text = await generatePiText({
+    provider: params.provider,
+    model: params.model,
+    apiKey: params.apiKey,
+    systemPrompt: TITLE_PROMPT,
+    message: params.message,
+    maxTokens: TITLE_MAX_TOKENS,
+    sessionId: params.sessionId,
+    signal: params.signal,
+  });
+  return text ? normalizeTitle(text) : null;
 }

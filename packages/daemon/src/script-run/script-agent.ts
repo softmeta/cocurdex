@@ -9,13 +9,12 @@ import {
   type SessionRecord,
 } from "@cocurdex/shared";
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
+import { Context, Effect, type Semaphore } from "effect";
 import type { SessionTurnOutcome } from "../session-control";
-import type { ConcurrencyGate } from "./concurrency-gate";
 
 export type ScriptRunAbortReason =
   | { kind: "cancelled"; notifyRequester: boolean }
-  | { kind: "failed"; error: string }
-  | { kind: "shutdown" };
+  | { kind: "failed"; error: string };
 
 export interface ScriptAgentDeps {
   getAgentRole(id: string): Promise<AgentRoleRecord | null>;
@@ -27,6 +26,7 @@ export interface ScriptAgentDeps {
   }): Promise<{ path: string }>;
   sendSessionMessage(command: SendSessionCommand): Promise<MessageRecord>;
   waitForSessionTurn(sessionId: string): Promise<SessionTurnOutcome | null>;
+  stopSession(sessionId: string): Promise<unknown>;
   now(): string;
   createId(): string;
 }
@@ -35,12 +35,16 @@ export interface ScriptAgentRun {
   run: ScriptRunRecord;
   requester: SessionRecord;
   schemaMaxAttempts: number;
-  gate: ConcurrencyGate;
-  signal: AbortSignal;
-  activeSessionIds: Set<string>;
   abort(reason: ScriptRunAbortReason): void;
   onChanged(): Promise<void>;
 }
+
+export class ScriptAgentSlots extends Context.Service<
+  ScriptAgentSlots,
+  Semaphore.Semaphore
+>()("cocurdex/ScriptAgentSlots") {}
+
+type ConverseResult = { value: unknown } | { error: string; cancelled?: true };
 
 const schemaValidator = new AjvJsonSchemaValidator();
 
@@ -131,6 +135,7 @@ async function runTurn(
 ): Promise<SessionTurnOutcome> {
   await deps.sendSessionMessage({
     sessionId,
+    messageId: crypto.randomUUID(),
     content,
     delivery: "start-new-run",
   });
@@ -148,7 +153,8 @@ async function converse(
   sessionId: string,
   prompt: string,
   schema: Record<string, unknown> | undefined,
-): Promise<{ value: unknown } | { error: string; cancelled?: true }> {
+  signal: AbortSignal,
+): Promise<ConverseResult> {
   const validate = schema ? schemaValidator.getValidator(schema) : null;
   let outcome = await runTurn(
     deps,
@@ -167,7 +173,7 @@ async function converse(
     const problem = checked
       ? checked.errorMessage
       : "the reply did not contain JSON";
-    if (attempt >= context.schemaMaxAttempts || context.signal.aborted) {
+    if (attempt >= context.schemaMaxAttempts || signal.aborted) {
       return { error: `Reply did not match the schema: ${problem}` };
     }
     outcome = await runTurn(
@@ -178,32 +184,49 @@ async function converse(
   }
 }
 
-export async function runScriptAgent(
+function errorOf(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function attempt<A>(run: () => Promise<A>) {
+  return Effect.tryPromise({ try: run, catch: errorOf });
+}
+
+function finishedAgent(
+  agent: ScriptRunAgentRecord,
+  result: ConverseResult,
+  completedAt: string,
+): ScriptRunAgentRecord {
+  if ("value" in result) {
+    return {
+      ...agent,
+      status: "completed",
+      resultJson: JSON.stringify(result.value ?? null),
+      completedAt,
+    };
+  }
+  return {
+    ...agent,
+    status: result.cancelled ? "cancelled" : "failed",
+    error: result.error,
+    completedAt,
+  };
+}
+
+function runAgentSession(
   deps: ScriptAgentDeps,
   context: ScriptAgentRun,
   prompt: string,
-  rawOptions: Record<string, unknown>,
-): Promise<unknown> {
-  const options = parseOptions(rawOptions);
-  if (options.schema) schemaValidator.getValidator(options.schema);
-  const { run } = context;
-  if (run.agentCount >= run.maxAgents) {
-    context.abort({
-      kind: "failed",
-      error: `Agent limit of ${run.maxAgents} reached.`,
-    });
-    return null;
-  }
-  run.agentCount += 1;
-  const label = options.label?.trim() || `agent-${run.agentCount}`;
-  await context.onChanged();
-
-  return context.gate.run(async () => {
-    if (context.signal.aborted) return null;
-    const session = await createAgentSession(deps, context, options, label);
+  options: ScriptAgentOptions,
+  label: string,
+) {
+  return Effect.gen(function* () {
+    const session = yield* attempt(() =>
+      createAgentSession(deps, context, options, label),
+    );
     const agent: ScriptRunAgentRecord = {
       id: deps.createId(),
-      runId: run.id,
+      runId: context.run.id,
       sessionId: session.id,
       label,
       status: "running",
@@ -212,36 +235,61 @@ export async function runScriptAgent(
       createdAt: deps.now(),
       completedAt: null,
     };
-    await deps.saveAgent(agent);
-    await context.onChanged();
-    context.activeSessionIds.add(session.id);
-    try {
-      const result = await converse(
-        deps,
-        context,
-        session.id,
-        prompt,
-        options.schema,
-      );
-      const finished: ScriptRunAgentRecord =
-        "value" in result
-          ? {
-              ...agent,
-              status: "completed",
-              resultJson: JSON.stringify(result.value ?? null),
-              completedAt: deps.now(),
-            }
-          : {
-              ...agent,
-              status: result.cancelled ? "cancelled" : "failed",
-              error: result.error,
-              completedAt: deps.now(),
-            };
-      await deps.saveAgent(finished);
+    const finish = (result: ConverseResult) =>
+      attempt(async () => {
+        await deps.saveAgent(finishedAgent(agent, result, deps.now()));
+        await context.onChanged();
+      });
+    yield* attempt(async () => {
+      await deps.saveAgent(agent);
       await context.onChanged();
-      return "value" in result ? result.value : null;
-    } finally {
-      context.activeSessionIds.delete(session.id);
+    });
+    const result = yield* Effect.tryPromise({
+      try: (signal) =>
+        converse(deps, context, session.id, prompt, options.schema, signal),
+      catch: errorOf,
+    }).pipe(
+      Effect.onInterrupt(() =>
+        attempt(() => deps.stopSession(session.id)).pipe(
+          Effect.andThen(finish({ error: "Cancelled", cancelled: true })),
+          Effect.ignore,
+        ),
+      ),
+    );
+    yield* finish(result);
+    return "value" in result ? result.value : null;
+  });
+}
+
+export function runScriptAgent(
+  deps: ScriptAgentDeps,
+  context: ScriptAgentRun,
+  prompt: string,
+  rawOptions: Record<string, unknown>,
+): Effect.Effect<unknown, Error, ScriptAgentSlots> {
+  return Effect.gen(function* () {
+    const options = yield* Effect.try({
+      try: () => {
+        const parsed = parseOptions(rawOptions);
+        if (parsed.schema) schemaValidator.getValidator(parsed.schema);
+        return parsed;
+      },
+      catch: errorOf,
+    });
+    const { run } = context;
+    if (run.agentCount >= run.maxAgents) {
+      context.abort({
+        kind: "failed",
+        error: `Agent limit of ${run.maxAgents} reached.`,
+      });
+      return null;
     }
+    run.agentCount += 1;
+    const label = options.label?.trim() || `agent-${run.agentCount}`;
+    yield* attempt(() => context.onChanged());
+    const slots = yield* ScriptAgentSlots;
+    return yield* slots.withPermits(1)(
+      runAgentSession(deps, context, prompt, options, label),
+    );
   });
 }

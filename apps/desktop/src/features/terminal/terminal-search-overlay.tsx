@@ -1,10 +1,7 @@
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { Input } from "@/components/ui";
 import { cn } from "@/lib";
 import { clearTerminalSearch, searchInTerminal } from "./terminal-registry";
@@ -68,19 +65,19 @@ export function TerminalSearchOverlay({
         aria-label={t("terminal.searchPrevious")}
         onClick={() => runSearch("previous")}
       >
-        <ArrowUp className={TITLEBAR_ICON_GLYPH_CLASS} />
+        <ArrowUp className="size-3.5" />
       </TitlebarIconButton>
       <TitlebarIconButton
         aria-label={t("terminal.searchNext")}
         onClick={() => runSearch("next")}
       >
-        <ArrowDown className={TITLEBAR_ICON_GLYPH_CLASS} />
+        <ArrowDown className="size-3.5" />
       </TitlebarIconButton>
       <TitlebarIconButton
         aria-label={t("terminal.searchClose")}
         onClick={handleClose}
       >
-        <X className={TITLEBAR_ICON_GLYPH_CLASS} />
+        <X className="size-3.5" />
       </TitlebarIconButton>
     </div>
   );

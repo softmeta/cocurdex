@@ -68,6 +68,24 @@ export function normalizeAppUpdateDownloadPercent(percent: number): number {
   return Math.max(0, Math.min(100, Math.round(percent)));
 }
 
+const UNPUBLISHED_RELEASE_ERROR_CODE = "ERR_UPDATER_CHANNEL_FILE_NOT_FOUND";
+
+function errorCode(error: unknown): unknown {
+  return typeof error === "object" && error !== null && "code" in error
+    ? error.code
+    : undefined;
+}
+
+export function appUpdateEventForError(error: unknown): AppUpdateEvent {
+  if (errorCode(error) === UNPUBLISHED_RELEASE_ERROR_CODE) {
+    return { type: "not-available" };
+  }
+  return {
+    type: "error",
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
 export function githubReleaseNotesUrl(version: string): string {
   return `https://github.com/${APP_UPDATE_GITHUB_REPO}/releases/tag/v${version}`;
 }

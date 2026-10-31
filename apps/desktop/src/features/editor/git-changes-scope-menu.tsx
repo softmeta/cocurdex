@@ -122,12 +122,12 @@ export function GitChangesScopeMenu({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 [--popup-max-width:24rem]">
             {commitsLoading && commits.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div className="px-1.5 py-1 text-xs text-muted-foreground">
                 {t("git.loadingCommits")}
               </div>
             ) : null}
             {!commitsLoading && commits.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div className="px-1.5 py-1 text-xs text-muted-foreground">
                 {t("git.noCommits")}
               </div>
             ) : null}
@@ -142,11 +142,7 @@ export function GitChangesScopeMenu({
                 }
               >
                 {commits.map((commit) => (
-                  <DropdownMenuRadioItem
-                    key={commit.hash}
-                    value={commit.hash}
-                    className="gap-2"
-                  >
+                  <DropdownMenuRadioItem key={commit.hash} value={commit.hash}>
                     <span className="min-w-0 flex-1 truncate">
                       {commit.subject}
                     </span>
@@ -165,12 +161,12 @@ export function GitChangesScopeMenu({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 [--popup-max-width:24rem]">
             {turnsLoading && turns.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div className="px-1.5 py-1 text-xs text-muted-foreground">
                 {t("git.loadingTurns")}
               </div>
             ) : null}
             {!turnsLoading && turns.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div className="px-1.5 py-1 text-xs text-muted-foreground">
                 {t("git.noTurns")}
               </div>
             ) : null}
@@ -191,11 +187,7 @@ export function GitChangesScopeMenu({
                     turnLabels[key] ||
                     t("git.turnFiles", { count: turn.files.length });
                   return (
-                    <DropdownMenuRadioItem
-                      key={key}
-                      value={key}
-                      className="gap-2"
-                    >
+                    <DropdownMenuRadioItem key={key} value={key}>
                       <span className="min-w-0 flex-1 truncate">{title}</span>
                       <span className="shrink-0 text-2xs text-muted-foreground">
                         {t("git.turnFiles", { count: turn.files.length })}

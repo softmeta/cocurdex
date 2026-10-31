@@ -2,45 +2,75 @@ import type {
   AcpRegistryAgentId,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
+  AgentAuthState,
   AgentDescriptor,
   AgentId,
+  AgentMcpUnsupportedReason,
   AgentPlanApprovalDecision,
   AgentProviderModelAxes,
   AgentProviderSelection,
   AgentRateLimitsReadResult,
   AgentRoleRecord,
+  AgentRunLimits,
   AgentSessionConfigOption,
   AgentSessionMode,
+  AgentSessionRuntimeState,
   AgentSlashCommand,
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
-  AppResyncSnapshot,
+  ApplyNoteDocUpdatePayload,
+  ArchiveSessionsResult,
+  CheckDeckPayload,
   CocurdexDaemonEvent,
   CodexAccountState,
   CodexLoginOutcome,
   CodexLoginStartResult,
+  CommentIssuePayload,
   CommitMessageModelSelection,
   CompatibleProviderModel,
-  ConversationMessageRecord,
-  ConversationRecord,
-  ConversationSnapshot,
+  ContextTransferRecord,
   CreateColumnPayload,
-  CreateConversationPayload,
+  CreateDeckDownloadPayload,
+  CreateDeckPayload,
+  CreatedHostPairing,
+  CreateHostPairingPayload,
+  CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
   CreateScriptRunPayload,
+  CreateSessionPayload,
+  CreateTeamPayload,
   CreateViewPayload,
   CreateWorkflowPayload,
+  DeckDownload,
+  DeckImage,
+  DeckIssue,
+  DeckRecord,
+  DeckSummary,
+  DeckWriteResult,
   DeleteColumnPayload,
+  DeleteDeckPayload,
+  DeleteIssueLabelPayload,
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteViewPayload,
-  DocumentAttachment,
-  EditConversationMessagePayload,
+  DiagnosticsExportResult,
+  DocImage,
+  DocImageFile,
+  EditDeckPayload,
   EditorViewRecord,
+  EntityLink,
+  EntityLinkCandidate,
+  EntityLinkPayload,
+  ExportDeckFilePayload,
+  ExportDeckFileResult,
+  ForkSessionPayload,
   GenerateGitCommitMessagePayload,
+  GetDeckPayload,
+  GetIssueDetailPayload,
   GetIssuePayload,
+  GetNoteDocPayload,
   GetNotePayload,
   GetToolCallResultInput,
   GitBranchInfo,
@@ -48,31 +78,71 @@ import type {
   GitCommitResult,
   GitPushResult,
   GitWorktreeInfo,
+  HostAccessAuditEntry,
+  HostAccessScope,
+  HostAccessSession,
   HostDirectoryListing,
-  ImageAttachment,
-  ImportDocumentAttachmentPayload,
-  ImportImageAttachmentPayload,
+  HostIdentity,
+  HostPairingRecord,
+  HostRemoteAccessStatus,
+  ImportDeckImagePayload,
+  ImportDeckPayload,
+  ImportDocImagePayload,
+  InstalledSkillDetail,
+  IssueDetail,
+  IssueLabel,
   IssueRecord,
+  IssueRelationPayload,
+  LinkIssueSessionPayload,
+  ListEntityLinksPayload,
   LoadViewPayload,
+  LocateDocImagePayload,
+  LogLevel,
   ManagedWorktree,
   McpConfigFile,
+  McpImportCandidate,
+  McpLoginOutcome,
+  McpLoginStartResult,
+  McpProjectConfigFile,
+  McpServerConfig,
+  McpServerStatus,
+  McpStatusReport,
+  MemoryCloudConnectInput,
+  MemoryCloudConnectResult,
+  MemoryCloudKeys,
+  MemoryDoctorReport,
+  MemoryEntry,
+  MemoryInstallResult,
+  MemoryRecallResult,
+  MemoryRememberInput,
+  MemoryRememberResult,
+  MemorySessionSaveInput,
+  MemorySessionSaveResult,
+  MemorySettings,
+  MemoryStatus,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
   MoveNotePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
+  NewSessionDefaults,
   NoteBacklinksPayload,
+  NoteDocSnapshot,
   NoteLink,
   NoteRecord,
   NoteSummary,
   NoteTag,
+  PairedDeviceRecord,
   PdfAnnotationsOperation,
   PdfDocumentAnnotations,
   PeerInboundPolicy,
   PeerSessionSummary,
   PendingSettingsChangeRecord,
   PiModelsJson,
+  PptxOutline,
+  ProductSkillDetail,
+  ProductSkillShowPayload,
   ProductSkillsInstallResult,
   ProductSkillsRemoveResult,
   ProductSkillsRequestPayload,
@@ -85,9 +155,15 @@ import type {
   ProviderListModelsResult,
   ProviderModelRecord,
   ProviderTemplateRecord,
+  PtyKillPayload,
+  PtyResizePayload,
+  PtySpawnPayload,
+  PtySpawnResult,
+  PtyWritePayload,
+  ReadPptxPayload,
   RefineSessionTitlePayload,
+  RemoteAccessSettings,
   ResolvedCommitMessageModel,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
@@ -96,19 +172,45 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
-  SendConversationMessagePayload,
   SendPeerMessagePayload,
   SendPeerMessageResult,
   SendSessionCommand,
   SessionAttentionSnapshot,
   SessionConfiguration,
+  SessionExecutionTree,
+  SessionIdsPayload,
   SessionMessagesResult,
   SessionObservationSnapshot,
   SessionRecord,
+  SetSessionPinnedPayload,
+  SkillAddRequest,
+  SkillAddResult,
+  SkillAgentLinkPayload,
+  SkillCatalogAuditPayload,
+  SkillCatalogAuditResult,
+  SkillCatalogSearchPayload,
+  SkillCatalogSearchResult,
+  SkillCatalogSourcesResult,
+  SkillLibraryList,
+  SkillListPayload,
+  SkillRef,
+  SkillRemoveResult,
+  SkillResolveDuplicatePayload,
+  SkillSourceInspectPayload,
+  SkillSourceShowPayload,
+  SkillSourceSkillDetail,
+  SkillSourceSnapshot,
+  SkillUpdateCheckResult,
+  SkillUpdatePreview,
+  SkillUpdateSkipPayload,
+  SkillUpdateSkipResult,
+  SkillUpdatesApplyPayload,
+  SkillUpdatesApplyResult,
   SpawnTeammatePayload,
   SpawnTeamTemplatePayload,
   StartScriptRunPayload,
-  SubmitPreviousMessageCommand,
+  SyncPullInput,
+  SyncPullResult,
   TeamMemberRecord,
   TeamRecord,
   TeamSnapshot,
@@ -123,10 +225,12 @@ import type {
   UndoTurnChangesInput,
   UndoTurnChangesResult,
   UpdateColumnPayload,
-  UpdateConversationPayload,
+  UpdateDeckPayload,
+  UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateSessionAttentionPayload,
+  UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
   UpdateViewPayload,
   ViewColumnRecord,
@@ -148,7 +252,13 @@ import type {
   WorktreeSettingsSnapshot,
 } from "@cocurdex/shared";
 
-export const DAEMON_PROTOCOL_VERSION = 25;
+export {
+  DAEMON_WEBSOCKET_PROTOCOL,
+  daemonWebSocketProtocols,
+  readDaemonWebSocketToken,
+} from "./websocket-protocol.ts";
+
+export const DAEMON_PROTOCOL_VERSION = 32;
 
 export interface DaemonMetadata {
   pid: number;
@@ -157,11 +267,17 @@ export interface DaemonMetadata {
   socketPath: string;
   token: string;
   startedAt: string;
-  webSocketUrl?: string;
+  webSocketUrl: string;
   agentToolsUrl?: string;
 }
 
+export type DaemonConnectionInfo = Pick<
+  DaemonMetadata,
+  "webSocketUrl" | "token"
+>;
+
 export interface DaemonStatus {
+  hostId: string;
   pid: number;
   protocolVersion: number;
   runtimeFingerprint: string;
@@ -172,9 +288,54 @@ export interface DaemonStatus {
 export interface DaemonActiveWork {
   agentTurns: number;
   queuedInputs: number;
-  chatOperations: number;
   workflowActive: boolean;
   workspaceSearches: number;
+}
+
+export interface DaemonHealth {
+  pid: number;
+  startedAt: string;
+  uptimeSeconds: number;
+  platform: string;
+  arch: string;
+  nodeVersion: string;
+  memory: {
+    rssBytes: number;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+    externalBytes: number;
+    arrayBuffersBytes: number;
+  };
+  eventLoop: {
+    windowSeconds: number;
+    utilization: number;
+    delayP50Ms: number;
+    delayP99Ms: number;
+    delayMaxMs: number;
+  };
+  activeRequests: number;
+  activeWork: DaemonActiveWork;
+  connections: { total: number; devices: number };
+  agentRuntimes: number;
+  terminals: number;
+  database: {
+    schemaVersion: number;
+    sizeBytes: number | null;
+    walBytes: number | null;
+  };
+  logs: { level: LogLevel; directory: string | null };
+}
+
+export type DaemonDiagnosticsLogLevel = Extract<LogLevel, "debug" | "info">;
+
+export interface DiagnosticsHostLogDirectory {
+  name: string;
+  path: string;
+}
+
+export interface DiagnosticsExportInput {
+  hostLogDirectories?: DiagnosticsHostLogDirectory[];
+  hostMetadata?: Record<string, unknown>;
 }
 
 export interface DaemonShutdownResult {
@@ -189,30 +350,32 @@ export interface DaemonError {
 }
 
 export type DaemonRequestPayloadByMethod = {
-  "chat.list": undefined;
-  "chat.get": { conversationId: string };
-  "chat.create": CreateConversationPayload;
-  "chat.update": UpdateConversationPayload;
-  "chat.archive": { conversationId: string };
-  "chat.delete": { conversationId: string };
-  "chat.stop": { conversationId: string };
-  "chat.send": SendConversationMessagePayload;
-  "chat.retry": RetryConversationMessagePayload;
-  "chat.edit": EditConversationMessagePayload;
   "daemon.status": undefined;
   "daemon.shutdownIfIdle": { pid: number; startedAt: string };
+  "daemon.health": undefined;
+  "diagnostics.export": DiagnosticsExportInput;
+  "diagnostics.logLevel.set": { level: DaemonDiagnosticsLogLevel };
   "app.bootstrap": undefined;
-  "app.resync": { sessionIds: string[] };
+  "sync.pull": SyncPullInput;
   "agent.list": undefined;
   "agent.sessionModes.read": { agentId: AgentId };
-  "agent.login": { agentId: AgentId };
+  "agent.login": { agentId: AgentId; methodId?: string };
+  "agent.login.cancel": { agentId: AgentId };
+  "agent.logout": { agentId: AcpRegistryAgentId };
+  "agent.auth.read": { agentId: AcpRegistryAgentId };
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "acpRegistry.catalog": { forceRefresh?: boolean };
   "acpRegistry.install": { registryId: string };
+  "acpRegistry.installCommand": {
+    registryId: string;
+    command: string;
+    args: string[];
+  };
   "acpRegistry.uninstall": { agentId: AcpRegistryAgentId };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
   "workspace.listFiles": { rootPath: string };
+  "workspace.listDirectory": { rootPath: string; relativePath: string };
   "workspace.save": { workspace: WorkspaceRecord };
   "workspace.delete": { workspaceId: string };
   "workspace.resolveOpenPath": { path: string; allowFile: boolean };
@@ -243,12 +406,20 @@ export type DaemonRequestPayloadByMethod = {
   };
   "session.list": undefined;
   "session.snapshot": { sessionId: string };
+  "session.executionTree": { sessionId: string; maxDepth?: number };
+  "session.fork": ForkSessionPayload;
+  "session.switchAgent": { sessionId: string; agentType: AgentId };
+  "session.contextTransfers": { sessionId: string };
   "session.configure": SessionConfiguration;
+  "session.create": CreateSessionPayload;
+  "session.resolveNew": CreateSessionPayload;
   "session.get": { sessionId: string };
+  "session.runtimeState": { sessionId: string };
   "session.listPeers": { sessionId: string };
   "session.sendPeerMessage": SendPeerMessagePayload;
   "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
   "team.get": { leadSessionId: string };
+  "team.create": CreateTeamPayload;
   "team.spawn": { leadSessionId: string } & SpawnTeammatePayload;
   "team.stopMember": { teamId: string; sessionId: string };
   "team.stop": { teamId: string };
@@ -266,6 +437,8 @@ export type DaemonRequestPayloadByMethod = {
   "session.delete": { sessionId: string };
   "session.archive": { sessionId: string };
   "session.restore": { sessionId: string };
+  "session.archiveMany": SessionIdsPayload;
+  "session.restoreMany": SessionIdsPayload;
   "session.listArchived": undefined;
   "provider.apiKey.set": { providerId: string; apiKey: string | null };
   "provider.listTemplates": undefined;
@@ -309,6 +482,7 @@ export type DaemonRequestPayloadByMethod = {
   "codex.login.wait": { loginId: string };
   "codex.login.cancel": { loginId: string };
   "session.updateTitle": UpdateSessionTitlePayload;
+  "session.setPinned": SetSessionPinnedPayload;
   "session.refineTitle": RefineSessionTitlePayload;
   "session.listMessages": { sessionId: string };
   "session.listToolCalls": { sessionId: string };
@@ -316,8 +490,6 @@ export type DaemonRequestPayloadByMethod = {
     agentType: AgentId;
     workspaceRootPath: string;
   };
-  "session.resubmit": SubmitPreviousMessageCommand;
-  "session.checkpointStatus": { sessionId: string; messageId: string };
   "session.send": SendSessionCommand;
   "session.resumeQueued": { sessionId: string };
   "session.updateQueued": {
@@ -334,6 +506,7 @@ export type DaemonRequestPayloadByMethod = {
     value: boolean | string;
   };
   "session.setMode": { sessionId: string; modeId: string };
+  "session.updateRuntime": UpdateSessionRuntimePayload;
   "session.stop": { sessionId: string };
   "session.undoTurnChanges": UndoTurnChangesInput;
   "session.getTurnChangeFile": TurnChangeFileContentRequest;
@@ -344,21 +517,83 @@ export type DaemonRequestPayloadByMethod = {
   "network.proxy.test": { settings?: NetworkProxySettings };
   "network.proxy.get": undefined;
   "network.proxy.set": { settings: NetworkProxySettings };
+  "memory.status": { refresh?: boolean };
+  "memory.settings.get": undefined;
+  "memory.settings.set": { settings: MemorySettings };
+  "memory.recall": {
+    query: string;
+    limit?: number;
+    project?: string | null;
+  };
+  "memory.show": { id: string };
+  "memory.remember": MemoryRememberInput;
+  "memory.session.save": MemorySessionSaveInput;
+  "memory.install": { force?: boolean };
+  "memory.doctor": { remote?: boolean; checkUpdate?: boolean };
+  "memory.policy": undefined;
+  "memory.cloud.connect": MemoryCloudConnectInput;
+  "memory.cloud.disconnect": undefined;
+  "memory.cloud.setSync": { enabled: boolean };
+  "memory.cloud.keys": undefined;
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
-  "attachment.importImage": ImportImageAttachmentPayload;
-  "attachment.importDocument": ImportDocumentAttachmentPayload;
-  "attachment.readImageDataUrl": { filePath: string };
   "file.readText": { filePath: string };
   "file.exists": { filePath: string };
   "fs.listDirectories": { path?: string };
+  "system.homeDir": undefined;
+  "system.fontFamilies": undefined;
+  "system.openDirectory": { path: string };
+  "system.revealPath": { path: string };
+  "terminal.spawn": PtySpawnPayload;
+  "terminal.write": PtyWritePayload;
+  "terminal.resize": PtyResizePayload;
+  "terminal.kill": PtyKillPayload;
   "search.start": WorkspaceSearchStartPayload;
   "search.cancel": { searchId: string };
   "mcp.readConfig": undefined;
   "mcp.saveConfig": { content: string };
-  "skills.getStatus": ProductSkillsRequestPayload;
-  "skills.install": ProductSkillsRequestPayload;
-  "skills.remove": ProductSkillsRequestPayload;
+  "mcp.readProjectConfig": { workspaceId: string };
+  "mcp.server.save": {
+    name: string;
+    config: McpServerConfig;
+    previousName?: string;
+  };
+  "mcp.server.remove": { name: string };
+  "mcp.server.setEnabled": { name: string; enabled: boolean };
+  "mcp.server.setAgents": { name: string; agents: AgentId[] };
+  "mcp.injection.check": undefined;
+  "mcp.servers.merge": { servers: Record<string, McpServerConfig> };
+  "mcp.status": { workspaceId?: string; names?: string[] };
+  "mcp.server.test": {
+    name: string;
+    config: McpServerConfig;
+    workspaceId?: string;
+  };
+  "mcp.login.start": { name: string; workspaceId?: string };
+  "mcp.login.wait": { loginId: string };
+  "mcp.login.cancel": { loginId: string };
+  "mcp.logout": { name: string; workspaceId?: string };
+  "mcp.import.scan": { workspaceId?: string };
+  "skills.pack.getStatus": ProductSkillsRequestPayload;
+  "skills.pack.install": ProductSkillsRequestPayload;
+  "skills.pack.remove": ProductSkillsRequestPayload;
+  "skills.pack.show": ProductSkillShowPayload;
+  "skills.list": SkillListPayload;
+  "skills.show": SkillRef;
+  "skills.remove": SkillRef;
+  "skills.setAgentLink": SkillAgentLinkPayload;
+  "skills.share": SkillRef;
+  "skills.resolveDuplicate": SkillResolveDuplicatePayload;
+  "skills.catalog.search": SkillCatalogSearchPayload;
+  "skills.catalog.sources": undefined;
+  "skills.catalog.audit": SkillCatalogAuditPayload;
+  "skills.source.inspect": SkillSourceInspectPayload;
+  "skills.source.show": SkillSourceShowPayload;
+  "skills.add": SkillAddRequest;
+  "skills.updates.check": SkillListPayload;
+  "skills.updates.preview": SkillRef;
+  "skills.updates.apply": SkillUpdatesApplyPayload;
+  "skills.updates.skip": SkillUpdateSkipPayload;
   "pdf.loadAnnotations": { filePath: string };
   "pdf.updateAnnotations": {
     filePath: string;
@@ -366,12 +601,32 @@ export type DaemonRequestPayloadByMethod = {
   };
   "note.list": undefined;
   "note.get": GetNotePayload;
+  "note.getDoc": GetNoteDocPayload;
+  "note.applyDocUpdate": ApplyNoteDocUpdatePayload;
   "note.create": CreateNotePayload;
   "note.update": UpdateNotePayload;
   "note.move": MoveNotePayload;
   "note.delete": DeleteNotePayload;
   "note.listTags": { noteId?: string };
   "note.backlinks": NoteBacklinksPayload;
+  "link.list": ListEntityLinksPayload;
+  "link.candidates": undefined;
+  "link.add": EntityLinkPayload;
+  "link.remove": EntityLinkPayload;
+  "deck.list": undefined;
+  "deck.get": GetDeckPayload;
+  "deck.create": CreateDeckPayload;
+  "deck.update": UpdateDeckPayload;
+  "deck.edit": EditDeckPayload;
+  "deck.delete": DeleteDeckPayload;
+  "deck.check": CheckDeckPayload;
+  "deck.createDownload": CreateDeckDownloadPayload;
+  "deck.exportFile": ExportDeckFilePayload;
+  "deck.importImage": ImportDeckImagePayload;
+  "deck.import": ImportDeckPayload;
+  "image.import": ImportDocImagePayload;
+  "image.locate": LocateDocImagePayload;
+  "deck.readPptx": ReadPptxPayload;
   "issue.listViews": undefined;
   "issue.loadView": LoadViewPayload;
   "issue.createView": CreateViewPayload;
@@ -386,6 +641,16 @@ export type DaemonRequestPayloadByMethod = {
   "issue.update": UpdateIssuePayload;
   "issue.move": MoveIssuePayload;
   "issue.delete": DeleteIssuePayload;
+  "issue.getDetail": GetIssueDetailPayload;
+  "issue.listLabels": undefined;
+  "issue.createLabel": CreateIssueLabelPayload;
+  "issue.updateLabel": UpdateIssueLabelPayload;
+  "issue.deleteLabel": DeleteIssueLabelPayload;
+  "issue.addRelation": IssueRelationPayload;
+  "issue.removeRelation": IssueRelationPayload;
+  "issue.comment": CommentIssuePayload;
+  "issue.linkSession": LinkIssueSessionPayload;
+  "issue.listLinkedSessionIds": undefined;
   "search.documents": SearchDocumentsPayload;
   "workflow.list": undefined;
   "workflow.get": { workflowRunId: string };
@@ -414,6 +679,8 @@ export type DaemonRequestPayloadByMethod = {
     decision: AgentPlanApprovalDecision;
   };
   "provider.listConfigs": undefined;
+  "agent.runLimits.get": undefined;
+  "agent.runLimits.set": { limits: AgentRunLimits };
   "git.commitMessageModel.get": undefined;
   "git.commitMessageModel.set": {
     selection: CommitMessageModelSelection | null;
@@ -442,33 +709,43 @@ export type DaemonRequestPayloadByMethod = {
   "agentRole.get": { id: string };
   "agentRole.save": SaveAgentRolePayload;
   "agentRole.delete": { id: string };
+  "host.identity": undefined;
+  "host.session": undefined;
+  "host.remoteAccess.get": undefined;
+  "host.remoteAccess.set": RemoteAccessSettings;
+  "host.pairing.create": CreateHostPairingPayload;
+  "host.pairing.list": undefined;
+  "host.pairing.cancel": { pairingId: string };
+  "host.devices.list": undefined;
+  "host.devices.revoke": { deviceId: string };
+  "host.devices.revokeSelf": undefined;
+  "host.devices.updateScopes": { deviceId: string; scopes: HostAccessScope[] };
+  "host.audit.list": { limit?: number };
 };
 
 export type DaemonResultByMethod = {
-  "chat.list": ConversationRecord[];
-  "chat.get": ConversationSnapshot | null;
-  "chat.create": ConversationRecord;
-  "chat.update": ConversationRecord;
-  "chat.archive": ConversationRecord;
-  "chat.delete": null;
-  "chat.stop": null;
-  "chat.send": ConversationMessageRecord;
-  "chat.retry": null;
-  "chat.edit": ConversationMessageRecord;
   "daemon.status": DaemonStatus;
   "daemon.shutdownIfIdle": DaemonShutdownResult;
+  "daemon.health": DaemonHealth;
+  "diagnostics.export": DiagnosticsExportResult;
+  "diagnostics.logLevel.set": { level: DaemonDiagnosticsLogLevel };
   "app.bootstrap": AppBootstrapData;
-  "app.resync": AppResyncSnapshot;
+  "sync.pull": SyncPullResult;
   "agent.list": AgentDescriptor[];
   "agent.sessionModes.read": AgentSessionMode[];
   "agent.login": null;
+  "agent.login.cancel": null;
+  "agent.logout": null;
+  "agent.auth.read": AgentAuthState;
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "acpRegistry.catalog": AcpRegistryCatalogAgent[];
   "acpRegistry.install": AcpRegistryInstalledAgent;
+  "acpRegistry.installCommand": AcpRegistryInstalledAgent;
   "acpRegistry.uninstall": null;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];
   "workspace.listFiles": WorkspaceFileRecord[];
+  "workspace.listDirectory": WorkspaceFileRecord[];
   "workspace.save": WorkspaceRecord;
   "workspace.delete": null;
   "workspace.resolveOpenPath": string | null;
@@ -491,6 +768,7 @@ export type DaemonResultByMethod = {
   "session.sendPeerMessage": SendPeerMessageResult;
   "session.setPeerInbound": SessionRecord;
   "team.get": TeamSnapshot | null;
+  "team.create": TeamRecord;
   "team.spawn": TeamMemberRecord;
   "team.stopMember": TeamMemberRecord;
   "team.stop": TeamRecord;
@@ -506,11 +784,20 @@ export type DaemonResultByMethod = {
   "scriptRun.settings.get": ScriptRunSettings;
   "scriptRun.settings.save": ScriptRunSettings;
   "session.snapshot": SessionObservationSnapshot | null;
+  "session.executionTree": SessionExecutionTree | null;
+  "session.fork": SessionRecord;
+  "session.switchAgent": SessionRecord;
+  "session.contextTransfers": ContextTransferRecord[];
   "session.configure": SessionRecord;
+  "session.create": SessionRecord;
+  "session.resolveNew": NewSessionDefaults;
   "session.get": SessionRecord | null;
+  "session.runtimeState": AgentSessionRuntimeState;
   "session.delete": null;
   "session.archive": SessionRecord | null;
   "session.restore": SessionRecord[];
+  "session.archiveMany": ArchiveSessionsResult;
+  "session.restoreMany": SessionRecord[];
   "session.listArchived": SessionRecord[];
   "provider.apiKey.set": null;
   "provider.listTemplates": ProviderTemplateRecord[];
@@ -540,12 +827,11 @@ export type DaemonResultByMethod = {
   "codex.login.wait": CodexLoginOutcome;
   "codex.login.cancel": null;
   "session.updateTitle": SessionRecord | null;
+  "session.setPinned": SessionRecord | null;
   "session.refineTitle": SessionRecord | null;
   "session.listMessages": SessionMessagesResult;
   "session.listToolCalls": AgentToolCallRecord[];
   "session.listSlashCommands": AgentSlashCommand[];
-  "session.resubmit": MessageRecord;
-  "session.checkpointStatus": { available: boolean };
   "session.send": MessageRecord;
   "session.resumeQueued": boolean;
   "session.updateQueued": MessageRecord;
@@ -554,6 +840,7 @@ export type DaemonResultByMethod = {
   "session.sendQueuedNow": MessageRecord;
   "session.setConfig": AgentSessionConfigOption[];
   "session.setMode": null;
+  "session.updateRuntime": SessionRecord;
   "session.stop": null;
   "session.undoTurnChanges": UndoTurnChangesResult;
   "session.getTurnChangeFile": TurnChangeFileContent;
@@ -564,31 +851,101 @@ export type DaemonResultByMethod = {
   "network.proxy.test": NetworkProxyTestResult;
   "network.proxy.get": NetworkProxySettings;
   "network.proxy.set": NetworkProxySettings;
+  "memory.status": MemoryStatus;
+  "memory.settings.get": MemorySettings;
+  "memory.settings.set": MemorySettings;
+  "memory.recall": MemoryRecallResult;
+  "memory.show": MemoryEntry | null;
+  "memory.remember": MemoryRememberResult;
+  "memory.session.save": MemorySessionSaveResult;
+  "memory.install": MemoryInstallResult;
+  "memory.doctor": MemoryDoctorReport;
+  "memory.policy": string;
+  "memory.cloud.connect": MemoryCloudConnectResult;
+  "memory.cloud.disconnect": MemoryStatus;
+  "memory.cloud.setSync": MemoryStatus;
+  "memory.cloud.keys": MemoryCloudKeys;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
-  "attachment.importImage": ImageAttachment;
-  "attachment.importDocument": DocumentAttachment;
-  "attachment.readImageDataUrl": string;
   "file.readText": string;
   "file.exists": boolean;
   "fs.listDirectories": HostDirectoryListing;
+  "system.homeDir": string;
+  "system.fontFamilies": string[];
+  "system.openDirectory": null;
+  "system.revealPath": null;
+  "terminal.spawn": PtySpawnResult;
+  "terminal.write": null;
+  "terminal.resize": null;
+  "terminal.kill": null;
   "search.start": null;
   "search.cancel": null;
   "mcp.readConfig": McpConfigFile;
   "mcp.saveConfig": McpConfigFile;
-  "skills.getStatus": ProductSkillsStatusResult;
-  "skills.install": ProductSkillsInstallResult;
-  "skills.remove": ProductSkillsRemoveResult;
+  "mcp.readProjectConfig": McpProjectConfigFile;
+  "mcp.server.save": McpConfigFile;
+  "mcp.server.remove": McpConfigFile;
+  "mcp.server.setEnabled": McpConfigFile;
+  "mcp.server.setAgents": McpConfigFile;
+  "mcp.injection.check": Record<string, AgentMcpUnsupportedReason | null>;
+  "mcp.servers.merge": McpConfigFile;
+  "mcp.status": McpStatusReport;
+  "mcp.server.test": McpServerStatus;
+  "mcp.login.start": McpLoginStartResult;
+  "mcp.login.wait": McpLoginOutcome;
+  "mcp.login.cancel": null;
+  "mcp.logout": { removed: boolean };
+  "mcp.import.scan": McpImportCandidate[];
+  "skills.pack.getStatus": ProductSkillsStatusResult;
+  "skills.pack.install": ProductSkillsInstallResult;
+  "skills.pack.remove": ProductSkillsRemoveResult;
+  "skills.pack.show": ProductSkillDetail;
+  "skills.list": SkillLibraryList;
+  "skills.show": InstalledSkillDetail;
+  "skills.remove": SkillRemoveResult;
+  "skills.setAgentLink": InstalledSkillDetail;
+  "skills.share": InstalledSkillDetail;
+  "skills.resolveDuplicate": InstalledSkillDetail;
+  "skills.catalog.search": SkillCatalogSearchResult;
+  "skills.catalog.sources": SkillCatalogSourcesResult;
+  "skills.catalog.audit": SkillCatalogAuditResult;
+  "skills.source.inspect": SkillSourceSnapshot;
+  "skills.source.show": SkillSourceSkillDetail;
+  "skills.add": SkillAddResult;
+  "skills.updates.check": SkillUpdateCheckResult;
+  "skills.updates.preview": SkillUpdatePreview;
+  "skills.updates.apply": SkillUpdatesApplyResult;
+  "skills.updates.skip": SkillUpdateSkipResult;
   "pdf.loadAnnotations": PdfDocumentAnnotations;
   "pdf.updateAnnotations": PdfDocumentAnnotations;
   "note.list": NoteSummary[];
   "note.get": NoteRecord | null;
+  "note.getDoc": NoteDocSnapshot | null;
+  "note.applyDocUpdate": NoteRecord;
   "note.create": NoteRecord;
   "note.update": NoteRecord;
   "note.move": NoteRecord;
   "note.delete": null;
   "note.listTags": NoteTag[];
   "note.backlinks": NoteLink[];
+  "link.list": EntityLink[];
+  "link.candidates": EntityLinkCandidate[];
+  "link.add": boolean;
+  "link.remove": boolean;
+  "deck.list": DeckSummary[];
+  "deck.get": DeckRecord | null;
+  "deck.create": DeckWriteResult;
+  "deck.update": DeckWriteResult;
+  "deck.edit": DeckWriteResult;
+  "deck.delete": null;
+  "deck.check": DeckIssue[];
+  "deck.createDownload": DeckDownload;
+  "deck.exportFile": ExportDeckFileResult;
+  "deck.importImage": DeckImage;
+  "deck.import": DeckWriteResult;
+  "image.import": DocImage;
+  "image.locate": DocImageFile | null;
+  "deck.readPptx": PptxOutline;
   "issue.listViews": ViewSummary[];
   "issue.loadView": ViewFull | null;
   "issue.createView": ViewSummary;
@@ -603,6 +960,16 @@ export type DaemonResultByMethod = {
   "issue.update": IssueRecord;
   "issue.move": IssueRecord;
   "issue.delete": null;
+  "issue.getDetail": IssueDetail | null;
+  "issue.listLabels": IssueLabel[];
+  "issue.createLabel": IssueLabel;
+  "issue.updateLabel": IssueLabel;
+  "issue.deleteLabel": null;
+  "issue.addRelation": IssueDetail;
+  "issue.removeRelation": IssueDetail;
+  "issue.comment": IssueDetail;
+  "issue.linkSession": boolean;
+  "issue.listLinkedSessionIds": string[];
   "search.documents": SearchDocumentResult[];
   "workflow.list": WorkflowRunRecord[];
   "workflow.get": WorkflowAggregate | null;
@@ -619,6 +986,8 @@ export type DaemonResultByMethod = {
   "question.resolve": boolean;
   "planApproval.resolve": boolean;
   "provider.listConfigs": ProviderConfigRecord[];
+  "agent.runLimits.get": AgentRunLimits;
+  "agent.runLimits.set": AgentRunLimits;
   "git.commitMessageModel.get": CommitMessageModelSelection | null;
   "git.commitMessageModel.set": null;
   "git.commitMessageModel.resolve": ResolvedCommitMessageModel;
@@ -642,6 +1011,18 @@ export type DaemonResultByMethod = {
   "agentRole.get": AgentRoleRecord | null;
   "agentRole.save": AgentRoleRecord;
   "agentRole.delete": null;
+  "host.identity": HostIdentity;
+  "host.session": HostAccessSession;
+  "host.remoteAccess.get": HostRemoteAccessStatus;
+  "host.remoteAccess.set": HostRemoteAccessStatus;
+  "host.pairing.create": CreatedHostPairing;
+  "host.pairing.list": HostPairingRecord[];
+  "host.pairing.cancel": HostPairingRecord | null;
+  "host.devices.list": PairedDeviceRecord[];
+  "host.devices.revoke": PairedDeviceRecord | null;
+  "host.devices.revokeSelf": PairedDeviceRecord | null;
+  "host.devices.updateScopes": PairedDeviceRecord | null;
+  "host.audit.list": HostAccessAuditEntry[];
 };
 
 export type DaemonMethod = keyof DaemonRequestPayloadByMethod;
@@ -658,15 +1039,33 @@ type DaemonNoParamMethod = {
  * The client uses this to tell `{ userDataPath }` options apart from params.
  */
 export const DAEMON_NO_PARAM_METHODS = {
-  "chat.list": true,
   "agent.list": true,
   "app.bootstrap": true,
   "attention.list": true,
   "daemon.status": true,
+  "daemon.health": true,
+  "system.fontFamilies": true,
+  "system.homeDir": true,
+  "host.identity": true,
+  "host.session": true,
+  "host.remoteAccess.get": true,
+  "host.pairing.list": true,
+  "host.devices.list": true,
+  "host.devices.revokeSelf": true,
   "issue.listViews": true,
+  "issue.listLabels": true,
+  "issue.listLinkedSessionIds": true,
   "teamTemplate.list": true,
+  "memory.settings.get": true,
+  "memory.policy": true,
+  "memory.cloud.disconnect": true,
+  "memory.cloud.keys": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,
+  "mcp.injection.check": true,
+  "skills.catalog.sources": true,
+  "deck.list": true,
+  "link.candidates": true,
   "note.list": true,
   "provider.listConfigs": true,
   "provider.listTemplates": true,
@@ -675,6 +1074,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "codex.logout": true,
   "codex.login.start": true,
   "network.proxy.get": true,
+  "agent.runLimits.get": true,
   "git.commitMessageModel.get": true,
   "git.commitMessageModel.resolve": true,
   "provider.listDefaults": true,
@@ -725,7 +1125,7 @@ export interface DaemonSubscribeResult {
 
 export interface DaemonEventEnvelope {
   event: CocurdexDaemonEvent;
-  seq: number;
+  seq?: number;
   type: "daemon.event";
 }
 

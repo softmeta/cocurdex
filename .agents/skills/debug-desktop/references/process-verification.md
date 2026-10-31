@@ -13,7 +13,7 @@ against an older API. A successful bundle build does not update an existing
 process by itself.
 
 For daemon changes, run `rtk pnpm --filter @cocurdex/desktop prepare:cli`. Restart
-the intended daemon only when doing so will not interrupt unrelated work. Check
+the dev app yourself (see SKILL.md) unless an agent run in it is in progress. Check
 `window.desktopApi.getDaemonStatus()` for `matchesRuntime`, both fingerprints,
 PID, and socket path. Record those before trusting a persistence test.
 
@@ -56,8 +56,10 @@ not be touched. It validates the built changes; it does not update their window.
    ```
 
    Inspect `resolveUserDataPath` first: development currently appends `-dev`.
-   Confirm the resulting socket/profile is isolated. Do not start a second Vite
-   server or change the user's saved startup command for this procedure.
+   Confirm the resulting socket/profile is isolated. Reuse a renderer server
+   only from the same checkout; for other cases prefer the scenario launcher
+   (`tests/scenarios/lib/instance.mjs`), which runs this checkout's own
+   `electron-vite dev`. Do not change the user's saved startup command.
 4. Pass the test CDP port to the existing helper using its environment variable.
    Confirm the new API exists and the daemon fingerprint matches. Seed only
    disposable records in this profile, using the current payload contracts.

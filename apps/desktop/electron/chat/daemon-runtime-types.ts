@@ -1,22 +1,5 @@
-import type {
-  AgentId,
-  AgentPlanApprovalDecision,
-  AgentSessionConfigOption,
-  AgentSlashCommand,
-  CocurdexDaemonEvent,
-  DaemonEventMeta,
-  MessageRecord,
-  SendSessionCommand,
-  SessionConfiguration,
-  SessionRecord,
-  TurnChangeDiff,
-  TurnChangeDiffRequest,
-  TurnChangeFileContent,
-  TurnChangeFileContentRequest,
-  TurnChangeSet,
-  UndoTurnChangesInput,
-  UndoTurnChangesResult,
-} from "@cocurdex/shared";
+import type { DaemonConnectionInfo } from "@cocurdex/rpc";
+import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
 
 export interface DaemonRuntimeLogger {
   debug(event: string, details?: Record<string, unknown>): void;
@@ -31,6 +14,7 @@ export interface DaemonRuntimeClientOptions {
   onEvent(event: CocurdexDaemonEvent, meta?: DaemonEventMeta): void;
   onConnected?(): void;
   userDataPath: string;
+  webRoot?: string;
 }
 
 export interface DaemonRuntimeStatus {
@@ -47,53 +31,9 @@ export interface DaemonRuntimeStatus {
 }
 
 export interface DaemonRuntimeClient {
-  saveSessionConfiguration(
-    payload: SessionConfiguration,
-  ): Promise<SessionRecord>;
-  deleteSession(sessionId: string): Promise<void>;
+  connection(): Promise<DaemonConnectionInfo>;
   dispose(): Promise<void>;
   getStatus(): Promise<DaemonRuntimeStatus>;
   initialize(): Promise<void>;
-  listSlashCommands(
-    agentType: AgentId,
-    workspaceRootPath: string,
-  ): Promise<AgentSlashCommand[]>;
   restart(): Promise<DaemonRuntimeStatus>;
-  resolvePermission(requestId: string, optionId: string): Promise<boolean>;
-  resolveQuestion(questionId: string, answer: string): Promise<boolean>;
-  resolvePlanApproval(
-    approvalId: string,
-    decision: AgentPlanApprovalDecision,
-  ): Promise<boolean>;
-  resumeQueuedSession(sessionId: string): Promise<boolean>;
-  sendMessage(payload: SendSessionCommand): Promise<MessageRecord>;
-  updateQueuedInput(
-    sessionId: string,
-    messageId: string,
-    content: string,
-  ): Promise<MessageRecord>;
-  deleteQueuedInput(sessionId: string, messageId: string): Promise<void>;
-  steerQueuedInput(
-    sessionId: string,
-    messageId: string,
-  ): Promise<MessageRecord>;
-  sendQueuedInputNow(
-    sessionId: string,
-    messageId: string,
-  ): Promise<MessageRecord>;
-  setConfig(
-    sessionId: string,
-    configId: string,
-    value: boolean | string,
-  ): Promise<AgentSessionConfigOption[]>;
-  setMode(sessionId: string, modeId: string): Promise<void>;
-  stop(sessionId: string): Promise<void>;
-  undoTurnChanges(
-    payload: UndoTurnChangesInput,
-  ): Promise<UndoTurnChangesResult>;
-  getTurnChangeFile(
-    payload: TurnChangeFileContentRequest,
-  ): Promise<TurnChangeFileContent>;
-  listTurnChangeSets(sessionId: string): Promise<TurnChangeSet[]>;
-  getTurnChangeDiff(payload: TurnChangeDiffRequest): Promise<TurnChangeDiff>;
 }

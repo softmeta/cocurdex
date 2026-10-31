@@ -1,9 +1,19 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createReadStream } from "node:fs";
+import { formatErrorForLog } from "@cocurdex/shared/node";
+import { configureDaemonLogging } from "./daemon-logging";
+import { logDaemonDiagnostic } from "./diagnostics";
+import { getConfiguredUserDataPath } from "./paths";
 import { startDaemonServer } from "./wire";
 
+const CRASH_SHUTDOWN_DEADLINE_MS = 5_000;
+
 function startDaemonProcess() {
+  const logging = configureDaemonLogging({
+    userDataPath: getConfiguredUserDataPath(),
+    echoToTerminal: process.stdout.isTTY === true,
+  });
   const token =
     process.env.COCURDEX_DAEMON_TOKEN ?? randomBytes(32).toString("hex");
   const ownerFd = Number.parseInt(
@@ -45,10 +55,9 @@ function startDaemonProcess() {
       process.kill(-process.pid, "SIGTERM");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ESRCH") {
-        console.error(
-          "Failed to terminate Cocurdex daemon process group",
+        logDaemonDiagnostic("error", "daemon.processGroupTerminateFailed", {
           error,
-        );
+        });
       }
     }
     setTimeout(() => {
@@ -56,7 +65,9 @@ function startDaemonProcess() {
         process.kill(-process.pid, "SIGKILL");
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ESRCH") {
-          console.error("Failed to kill Cocurdex daemon process group", error);
+          logDaemonDiagnostic("error", "daemon.processGroupKillFailed", {
+            error,
+          });
         }
       }
     }, 1_000);
@@ -71,9 +82,12 @@ function startDaemonProcess() {
 
     shutdownPromise = closeServer()
       .catch((error: unknown) => {
-        console.error("Failed to shut down Cocurdex daemon", error);
+        logDaemonDiagnostic("error", "daemon.shutdownFailed", { error });
       })
       .finally(() => {
+        logDaemonDiagnostic("info", "daemon.stopped", {
+          uptimeSeconds: Math.round(process.uptime()),
+        });
         if (forceOwnedProcessTree) {
           terminateOwnedProcessTree();
         }
@@ -82,13 +96,20 @@ function startDaemonProcess() {
 
   process.on("SIGINT", () => requestShutdown({ forceProcessTree: false }));
   process.on("SIGTERM", () => requestShutdown({ forceProcessTree: false }));
-  process.on("uncaughtException", (error) => {
-    console.error("Cocurdex daemon uncaught exception", error);
+  function crash(event: string, error: unknown) {
+    logDaemonDiagnostic("error", event, { error: formatErrorForLog(error) });
+    setTimeout(() => {
+      terminateOwnedProcessTree();
+      process.exit(1);
+    }, CRASH_SHUTDOWN_DEADLINE_MS).unref();
     requestShutdown({ forceProcessTree: true });
+  }
+
+  process.on("uncaughtException", (error) => {
+    crash("daemon.uncaughtException", error);
   });
   process.on("unhandledRejection", (reason) => {
-    console.error("Cocurdex daemon unhandled rejection", reason);
-    requestShutdown({ forceProcessTree: true });
+    crash("daemon.unhandledRejection", reason);
   });
 
   if (Number.isInteger(ownerFd)) {
@@ -99,25 +120,31 @@ function startDaemonProcess() {
   }
 
   void startDaemonServer({
+    logging,
     runtimeFingerprint,
     token,
     webSocketPort,
+    webRoot: process.env.COCURDEX_WEB_ROOT || undefined,
     onIdleShutdown: () => process.exit(0),
   })
     .then((daemon) => {
       closeServer = daemon.close;
-      console.log("Cocurdex daemon started");
+      logDaemonDiagnostic("info", "daemon.started", {
+        arch: process.arch,
+        node: process.versions.node,
+        platform: process.platform,
+        runtimeFingerprint,
+        startupMs: Math.round(process.uptime() * 1000),
+      });
       void daemon.service.skillsService.refreshManagedGlobalInstall();
       if (shutdownRequested) {
         requestShutdown({ forceProcessTree: forceOwnedProcessTree });
       }
     })
     .catch((error: unknown) => {
-      console.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to start Cocurdex daemon",
-      );
+      logDaemonDiagnostic("error", "daemon.startFailed", {
+        error: formatErrorForLog(error),
+      });
       process.exit(1);
     });
 }

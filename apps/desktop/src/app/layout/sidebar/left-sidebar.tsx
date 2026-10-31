@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, Plus, Search } from "lucide-react";
-import { type ReactNode, startTransition, useMemo, useOptimistic } from "react";
+import { type ReactNode, startTransition, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -14,11 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
-import {
-  activeConversationIdAtom,
-  conversationsAtom,
-  selectConversationAtom,
-} from "@/features/chat";
+import { chatSessionsAtom } from "@/features/chat";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -42,8 +38,13 @@ import {
 } from "@/lib";
 import { isDetachedChatWindow } from "../chat-window/chat-window-state";
 import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
-import { ConversationsPanel } from "./conversations-panel";
+import { ArchiveGroupDialog } from "./archive-group-dialog";
+import { ChatSessionsPanel } from "./chat-sessions-panel";
+import { SessionGroupsPanel } from "./session-groups-panel";
+import { SessionListSections } from "./session-list-sections";
+import { SessionListViewMenu } from "./session-list-view-menu";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
+import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
 
 interface LeftSidebarProps {
@@ -54,26 +55,6 @@ interface LeftSidebarProps {
   headerStart?: ReactNode;
   hideTitlebarSpacer?: boolean;
   onAfterNavigate?(): void;
-}
-
-// Segmented control in sidebar tones. Selected state keys off `data-active`:
-// Base UI renamed the Tabs.Tab attribute, so the `data-selected:` variants the
-// shadcn template ships never match and have to be re-stated here.
-function SidebarTabTrigger({
-  children,
-  value,
-}: {
-  children: ReactNode;
-  value: SidebarTab;
-}) {
-  return (
-    <TabsTrigger
-      className="h-6 flex-1 rounded-control px-2 text-body font-medium text-sidebar-fg-subtle hover:text-sidebar-fg-muted dark:text-sidebar-fg-subtle dark:hover:text-sidebar-fg-muted data-active:bg-background data-active:text-sidebar-fg data-active:shadow-sm dark:data-active:bg-sidebar-accent dark:data-active:text-sidebar-fg"
-      value={value}
-    >
-      {children}
-    </TabsTrigger>
-  );
 }
 
 function SidebarShell({ children }: { children?: ReactNode }) {
@@ -114,9 +95,7 @@ export function LeftSidebar({
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const selectConversation = useSetAtom(selectConversationAtom);
-  const conversations = useAtomValue(conversationsAtom);
-  const activeConversationId = useAtomValue(activeConversationIdAtom);
+  const chatSessions = useAtomValue(chatSessionsAtom);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] =
     useOptimistic(activeSessionId);
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
@@ -128,25 +107,16 @@ export function LeftSidebar({
   const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
   const openSearchPalette = useSetAtom(searchPaletteOpenAtom);
 
-  const sessionsByWorkspace = useMemo(
-    () =>
-      sessions.reduce<Record<string, typeof sessions>>(
-        (accumulator, session) => {
-          if (!accumulator[session.workspaceId]) {
-            accumulator[session.workspaceId] = [];
-          }
-          accumulator[session.workspaceId].push(session);
-          return accumulator;
-        },
-        {},
-      ),
-    [sessions],
-  );
+  const sessionView = useSidebarSessionView(workspaces, sessions);
 
   const handleOpenWorkspace = async () => {
     const rootPath = await pickHostDirectory();
     if (!rootPath) return;
-    const { didSwitchWorkspace } = openWorkspaceByPath(rootPath);
+    const { workspace, didSwitchWorkspace, reusedUnderDifferentName } =
+      openWorkspaceByPath(rootPath);
+    if (reusedUnderDifferentName) {
+      toast(t("sessions:workspace.openedExisting", { name: workspace.name }));
+    }
     if (didSwitchWorkspace) {
       selectSession(null);
     }
@@ -167,8 +137,8 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  const handleCreateConversation = () => {
-    selectConversation(null);
+  const handleCreateChat = () => {
+    selectSession(null);
     onAfterNavigate?.();
   };
 
@@ -223,11 +193,19 @@ export function LeftSidebar({
     : t("chat:list.new", { defaultValue: "New chat" });
   const onCreateAction = isWorkspacesTab
     ? () => handleCreateAgent()
-    : handleCreateConversation;
+    : handleCreateChat;
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
   });
   const searchLabel = t("search:openSearch");
+  const listSections = (
+    <SessionListSections
+      onSelectSession={handleSelectSession}
+      optimisticActiveSessionId={optimisticActiveSessionId}
+      sessions={sessionView.pinnedSessions}
+      workspaceNames={sessionView.workspaceNames}
+    />
+  );
 
   return (
     <SidebarShell>
@@ -249,15 +227,15 @@ export function LeftSidebar({
               gutter as the list rows below, whose inset comes from the
               scroll area's pe-3 padding. */}
           <div className="shrink-0 pe-3">
-            <TabsList className="h-7 w-full gap-0.5 rounded-control bg-sidebar-surface-active p-0.5 dark:bg-background">
-              <SidebarTabTrigger value="workspaces">
+            <TabsList className="w-full">
+              <TabsTrigger value="workspaces">
                 {t("sessions:sidebar.workspacesGroup", {
                   defaultValue: "Work",
                 })}
-              </SidebarTabTrigger>
-              <SidebarTabTrigger value="chat">
+              </TabsTrigger>
+              <TabsTrigger value="chat">
                 {t("chat:sidebar.title", { defaultValue: "Chat" })}
-              </SidebarTabTrigger>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -310,47 +288,73 @@ export function LeftSidebar({
                 </TooltipContent>
               </Tooltip>
             ) : null}
+            {isWorkspacesTab ? (
+              <SessionListViewMenu
+                agentIds={sessionView.agentIds}
+                allCollapsed={sessionView.allCollapsed}
+                onMarkAllRead={sessionView.markAllRead}
+                onToggleCollapseAll={sessionView.toggleCollapseAll}
+                unreadCount={sessionView.unreadCount}
+              />
+            ) : null}
           </div>
 
           <TabsContent
             className="flex min-h-0 flex-1 flex-col"
             value="workspaces"
           >
-            <WorkspacesPanel
-              activeConversationId={activeConversationId}
-              activeWorkspaceId={activeWorkspaceId}
-              collapsedWorkspaceIds={collapsedWorkspaceIds}
-              onCreateAgent={handleCreateAgent}
-              onRemoveWorkspace={(id) => {
-                void handleRemoveWorkspace(id);
-              }}
-              onReorderWorkspaces={(activeId, overId) => {
-                reorderWorkspaces({ activeId, overId });
-              }}
-              onRevealWorkspace={(rootPath) => {
-                void handleRevealWorkspace(rootPath);
-              }}
-              onSelectSession={handleSelectSession}
-              onSelectWorkspace={selectWorkspace}
-              onToggleWorkspace={toggleWorkspace}
-              optimisticActiveSessionId={optimisticActiveSessionId}
-              sessionsByWorkspace={sessionsByWorkspace}
-              workspaces={workspaces}
-            />
+            {sessionView.grouping === "workspace" ? (
+              <WorkspacesPanel
+                leading={listSections}
+                activeWorkspaceId={activeWorkspaceId}
+                collapsedWorkspaceIds={collapsedWorkspaceIds}
+                filtered={sessionView.filtered}
+                onCreateAgent={handleCreateAgent}
+                onRemoveWorkspace={(id) => {
+                  void handleRemoveWorkspace(id);
+                }}
+                onReorderWorkspaces={(activeId, overId) => {
+                  reorderWorkspaces({ activeId, overId });
+                }}
+                onRevealWorkspace={(rootPath) => {
+                  void handleRevealWorkspace(rootPath);
+                }}
+                onSelectSession={handleSelectSession}
+                onToggleWorkspace={toggleWorkspace}
+                optimisticActiveSessionId={optimisticActiveSessionId}
+                sessionsByWorkspace={sessionView.sessionsByWorkspace}
+                workspaces={sessionView.visibleWorkspaces}
+              />
+            ) : (
+              <SessionGroupsPanel
+                hasPinnedSessions={sessionView.pinnedSessions.length > 0}
+                leading={listSections}
+                filtered={sessionView.filtered}
+                grouping={sessionView.grouping}
+                groups={sessionView.groups}
+                onSelectSession={handleSelectSession}
+                optimisticActiveSessionId={optimisticActiveSessionId}
+                workspaceNames={sessionView.workspaceNames}
+              />
+            )}
           </TabsContent>
 
           <TabsContent className="flex min-h-0 flex-1 flex-col" value="chat">
-            <ConversationsPanel
-              activeConversationId={activeConversationId}
-              conversations={conversations}
-              onSelectConversation={(conversationId) => {
-                selectConversation(conversationId);
+            <ChatSessionsPanel
+              activeSessionId={optimisticActiveSessionId}
+              onSelectSession={(sessionId) => {
+                startTransition(() => {
+                  setOptimisticActiveSessionId(sessionId);
+                  selectSession(sessionId);
+                });
                 onAfterNavigate?.();
               }}
+              sessions={chatSessions}
             />
           </TabsContent>
         </Tabs>
       </div>
+      <ArchiveGroupDialog />
     </SidebarShell>
   );
 }

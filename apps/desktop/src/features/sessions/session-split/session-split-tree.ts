@@ -5,7 +5,6 @@ export type SessionSplitDirection = "right" | "down";
 export interface SessionPaneBinding {
   id: string;
   sessionId: string | null;
-  conversationId: string | null;
 }
 
 export type SessionSplitNode =
@@ -20,14 +19,13 @@ export type SessionSplitNode =
     };
 
 export function createRootPane(
-  content?: Pick<SessionPaneBinding, "sessionId" | "conversationId">,
+  content?: Pick<SessionPaneBinding, "sessionId">,
 ): SessionSplitNode {
   return {
     type: "pane",
     pane: {
       id: ROOT_PANE_ID,
       sessionId: content?.sessionId ?? null,
-      conversationId: content?.conversationId ?? null,
     },
   };
 }
@@ -72,22 +70,10 @@ export function findPaneIdBySessionId(
   return null;
 }
 
-export function findPaneIdByConversationId(
-  node: SessionSplitNode,
-  conversationId: string,
-): string | null {
-  for (const pane of listPanes(node)) {
-    if (pane.conversationId === conversationId) {
-      return pane.id;
-    }
-  }
-  return null;
-}
-
 export function setPaneBinding(
   node: SessionSplitNode,
   paneId: string,
-  binding: Partial<Pick<SessionPaneBinding, "sessionId" | "conversationId">>,
+  binding: Partial<Pick<SessionPaneBinding, "sessionId">>,
 ): SessionSplitNode {
   if (node.type === "pane") {
     if (node.pane.id !== paneId) {
@@ -149,45 +135,16 @@ export function clearPaneSessions(
   return { ...node, first, second };
 }
 
-export function clearPaneConversations(
-  node: SessionSplitNode,
-  conversationIds: ReadonlySet<string>,
-): SessionSplitNode {
-  if (node.type === "pane") {
-    if (
-      !node.pane.conversationId ||
-      !conversationIds.has(node.pane.conversationId)
-    ) {
-      return node;
-    }
-    return {
-      type: "pane",
-      pane: { ...node.pane, conversationId: null },
-    };
-  }
-  const first = clearPaneConversations(node.first, conversationIds);
-  const second = clearPaneConversations(node.second, conversationIds);
-  if (first === node.first && second === node.second) {
-    return node;
-  }
-  return { ...node, first, second };
-}
-
 export function revealPaneContent(
   node: SessionSplitNode,
   paneId: string,
-  binding: Pick<SessionPaneBinding, "sessionId" | "conversationId">,
+  binding: Pick<SessionPaneBinding, "sessionId">,
 ): { root: SessionSplitNode; focusedPaneId: string } | null {
   if (!findPane(node, paneId)) {
     return null;
   }
   if (binding.sessionId) {
     const existing = findPaneIdBySessionId(node, binding.sessionId);
-    if (existing) {
-      return { root: node, focusedPaneId: existing };
-    }
-  } else if (binding.conversationId) {
-    const existing = findPaneIdByConversationId(node, binding.conversationId);
     if (existing) {
       return { root: node, focusedPaneId: existing };
     }
@@ -286,7 +243,6 @@ function replacePaneWithSplit(
         pane: {
           id: newPaneId,
           sessionId: null,
-          conversationId: null,
         },
       },
     };

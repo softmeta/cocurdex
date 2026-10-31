@@ -5,10 +5,13 @@ import { fileURLToPath } from "node:url";
 
 /** Product skill directories shipped with Cocurdex (namespaced cocurdex-*). */
 export const PRODUCT_SKILL_NAMES = [
+  "cocurdex-deck",
+  "cocurdex-decide",
   "cocurdex-issue",
   "cocurdex-note",
+  "cocurdex-script-run",
   "cocurdex-settings",
-  "cocurdex-ship",
+  "cocurdex-skills",
   "cocurdex-team",
 ] as const;
 
@@ -21,6 +24,7 @@ export type SkillScope = "project" | "global";
 export type ManagedSkillsMarker = {
   managedBy: "cocurdex";
   packVersion: string;
+  contentHash?: string;
   skills: string[];
   scope: SkillScope;
   installedAt: string;

@@ -6,6 +6,7 @@
     "close": "Close",
     "closeFile": "Close file",
     "closeSearch": "Close search",
+    "copy": "Copy",
     "copyCode": "Copy code",
     "decrease": "Decrease",
     "increase": "Increase",
@@ -40,6 +41,40 @@
   },
   "jumpToLatest": "Jump to latest",
   "jumpToTop": "Jump to top",
+  "links": {
+    "add": "Link an item",
+    "copied": "Link copied",
+    "copy": "Copy link",
+    "empty": "Nothing to link",
+    "kind": {
+      "deck": "Decks",
+      "issue": "Issues",
+      "note": "Notes",
+      "session": "Sessions"
+    },
+    "relation": {
+      "blocked-by": "Blocked by",
+      "blocks": "Blocks",
+      "child": "Sub-issue",
+      "duplicate-of": "Duplicate of",
+      "duplicated-by": "Duplicated by",
+      "mentioned-by": "Mentioned by",
+      "mentions": "Mentions",
+      "parent": "Parent",
+      "related": "Related",
+      "worked-on-by": "Session",
+      "works-on": "Works on"
+    },
+    "remove": "Remove link to {{title}}",
+    "search": "Search sessions, notes, issues, decks…",
+    "title": "Linked",
+    "untitled": "Untitled"
+  },
+  "mermaid": {
+    "download": "Download SVG",
+    "openPreview": "Open preview",
+    "title": "Mermaid diagram"
+  },
   "message": {
     "showLess": "Show less",
     "showMore": "Show more"
@@ -49,18 +84,13 @@
     "denied": "",
     "pending": ""
   },
-  "relativeTime": {
-    "lastActiveDays_one": "Last active {{count}} day ago",
-    "lastActiveDays_other": "Last active {{count}} days ago",
-    "lastActiveHours_one": "Last active {{count}} hour ago",
-    "lastActiveHours_other": "Last active {{count}} hours ago",
-    "lastActiveMinutes_one": "Last active {{count}} minute ago",
-    "lastActiveMinutes_other": "Last active {{count}} minutes ago",
-    "lastActiveMonths_one": "Last active {{count}} month ago",
-    "lastActiveMonths_other": "Last active {{count}} months ago",
-    "lastActiveNow": "Just now",
-    "lastActiveYears_one": "Last active {{count}} year ago",
-    "lastActiveYears_other": "Last active {{count}} years ago"
+  "preview": {
+    "closePreview": "Close preview",
+    "resetView": "Reset view",
+    "resetZoom": "Reset zoom",
+    "rotate": "Rotate clockwise",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
   },
   "states": {
     "gitEmptyBranchDescription": "",
@@ -83,5 +113,17 @@
     "gitErrorTitle": "",
     "gitNotRepoDescription": "",
     "gitNotRepoTitle": ""
+  },
+  "webPairing": {
+    "codeLabel": "Pairing code",
+    "hint": "On the computer running cocurdex, open Settings › Devices, create a pairing code, then open its link here or enter the code.",
+    "pair": "Pair",
+    "reason": {
+      "invalid": "This pairing code or device was not accepted. It may have expired, been used already, or been revoked.",
+      "missing": "This browser is not paired with this computer yet.",
+      "rateLimited": "Too many pairing attempts. Wait a minute and try again.",
+      "unreachable": "The computer could not be reached. Check that it is on and that remote access is enabled."
+    },
+    "title": "Pair this browser"
   }
 }

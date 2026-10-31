@@ -1,4 +1,12 @@
 {
+  "codeBlock": {
+    "copied": "Copied",
+    "copy": "Copy code",
+    "language": "Code language",
+    "noLanguage": "No matching language",
+    "plainText": "Plain text",
+    "searchLanguage": "Search languages…"
+  },
   "editor": {
     "empty": {
       "description": "Select a note from the sidebar or create a new one.",
@@ -11,14 +19,22 @@
     },
     "placeholder": "Start writing, or press \"/\" for commands…",
     "save": {
-      "conflict": "Changed elsewhere",
       "error": "Save failed",
-      "keepMine": "Keep mine",
       "saved": "Saved",
-      "saving": "Saving…",
-      "useRemote": "Load latest"
+      "saving": "Saving…"
     },
+    "timestamps": {
+      "createdAt": "Created {{time}}",
+      "edited": "Edited {{time}}",
+      "editedAt": "Edited {{time}}"
+    },
+    "titleLabel": "Note title",
     "untitledPlaceholder": "Untitled"
+  },
+  "image": {
+    "tooLarge": "Images must be 10 MB or smaller.",
+    "unsupported": "Only PNG, JPEG, GIF, or WebP images are supported.",
+    "uploadFailed": "Couldn't add the image"
   },
   "scope": {
     "private": "Private",
@@ -27,31 +43,30 @@
   },
   "sidebar": {
     "collapse": "Collapse sidebar",
-    "collapseFolder": "Collapse folder",
+    "collapsePage": "Collapse subpages",
     "delete": "Delete",
     "deleteConfirm": {
       "cancel": "Cancel",
       "confirm": "Delete",
-      "descriptionFolder": "This folder and everything inside it will be permanently deleted.",
       "descriptionNote": "This note will be permanently deleted.",
+      "descriptionTree": "This page and all of its subpages will be permanently deleted.",
       "title": "Delete \"{{title}}\"?"
     },
-    "dropToRoot": "Drop here for top level",
     "empty": {
       "description": "Create your first note to start writing.",
       "title": "No notes yet"
     },
     "expand": "Expand sidebar",
-    "expandFolder": "Expand folder",
+    "expandPage": "Expand subpages",
     "moveTo": "Move to",
-    "moveToRoot": "Top level",
-    "newFolder": "New folder",
-    "newFolderDefaultTitle": "New folder",
-    "newFolderInside": "New folder inside",
     "newNote": "New note",
-    "newNoteInside": "New note inside",
+    "newPageInSection": "New page in {{section}}",
+    "newSubpage": "New subpage",
     "rename": "Rename",
     "resize": "Resize sidebar",
+    "sections": {
+      "personal": "Personal"
+    },
     "title": "Notes",
     "untitled": "Untitled"
   },
@@ -67,7 +82,35 @@
       "heading3": "Heading 3",
       "orderedList": "Numbered list",
       "paragraph": "Text",
+      "table": "Table",
       "taskList": "To-do list"
-    }
+    },
+    "label": "Insert block"
+  },
+  "table": {
+    "addColumn": "Add column",
+    "addHint": "Click to add, drag to add more",
+    "addRow": "Add row",
+    "align": {
+      "center": "Center",
+      "label": "Align",
+      "left": "Left",
+      "right": "Right"
+    },
+    "clear": "Clear contents",
+    "columnOptions": "Column {{index}} options",
+    "deleteColumns_one": "Delete column",
+    "deleteColumns_other": "Delete {{count}} columns",
+    "deleteRows_one": "Delete row",
+    "deleteRows_other": "Delete {{count}} rows",
+    "deleteTable": "Delete table",
+    "duplicate": "Duplicate",
+    "insertAbove": "Insert row above",
+    "insertBelow": "Insert row below",
+    "insertLeft": "Insert column left",
+    "insertRight": "Insert column right",
+    "rowOptions": "Row {{index}} options",
+    "sortAscending": "Sort A → Z",
+    "sortDescending": "Sort Z → A"
   }
 }

@@ -1,0 +1,19 @@
+diff --git a/package.json b/package.json
+index e6daaaeea17c25b443213b522bec619495c5563a..5c2f3699a8237ad1df044bbeafc4caef55bbe491 100644
+--- a/package.json
++++ b/package.json
+@@ -18,6 +18,14 @@
+ 		},
+ 		"./rpc-entry": {
+ 			"import": "./dist/bundle/rpc-entry.js"
++		},
++		"./mcp-config": {
++			"types": "./dist/extensions/mcp/config.d.ts",
++			"import": "./dist/extensions/mcp/config.js"
++		},
++		"./mcp-runtime": {
++			"types": "./dist/extensions/mcp/runtime.d.ts",
++			"import": "./dist/extensions/mcp/runtime.js"
+ 		}
+ 	},
+ 	"files": [

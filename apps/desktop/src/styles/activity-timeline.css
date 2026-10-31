@@ -1,0 +1,59 @@
+.activity-timeline {
+  --timeline-node-x: 13px;
+  --timeline-node-y: calc(10px + var(--text-body--line-height) / 2);
+  --timeline-node-clearance: 11px;
+}
+
+.activity-timeline [data-timeline-group] {
+  row-gap: 0;
+}
+
+.activity-timeline [data-timeline-row] {
+  padding-block: 6px;
+}
+
+.activity-timeline [data-timeline-row]::before,
+.activity-timeline [data-timeline-row]::after {
+  position: absolute;
+  inset-inline-start: calc(var(--timeline-node-x) - 0.5px);
+  width: 1px;
+  background: color-mix(in srgb, var(--chat-text-muted) 35%, transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.activity-timeline [data-timeline-row]::before {
+  top: 0;
+  height: calc(var(--timeline-node-y) - var(--timeline-node-clearance));
+}
+
+.activity-timeline [data-timeline-row]::after {
+  top: calc(var(--timeline-node-y) + var(--timeline-node-clearance));
+  bottom: 0;
+}
+
+.activity-timeline
+  > [data-timeline-item]:first-child
+  [data-timeline-row]:first-child::before,
+.activity-timeline
+  > [data-timeline-item]:last-child
+  [data-timeline-row]:last-child::after,
+.activity-timeline [data-timeline-row] [data-timeline-row]::before,
+.activity-timeline [data-timeline-row] [data-timeline-row]::after {
+  display: none;
+}
+
+.activity-timeline [data-timeline-row] [data-timeline-row] {
+  padding-block: 0;
+}
+
+.activity-timeline-dot {
+  position: absolute;
+  top: calc(var(--timeline-node-y) - 3px);
+  inset-inline-start: calc(var(--timeline-node-x) - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--chat-text-muted);
+  opacity: 0.5;
+}

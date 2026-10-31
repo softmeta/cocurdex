@@ -14,6 +14,7 @@ import {
 } from "@cocurdex/shared";
 import type { ProviderCredentials } from "../provider-credentials";
 import type { AgentRuntimeManager, RuntimePersistence } from "../runtime";
+import type { SessionRunCoordinator } from "../session-control";
 import type { DaemonState } from "../state";
 import type {
   WorkflowAgentTurnInput,
@@ -85,7 +86,7 @@ function createSession(
     title: `Workflow: ${stepId}`,
     agentType: attempt.executorBinding.agentId,
     sessionKind: "subagent",
-    status: "running",
+    status: "idle",
     writeMode,
     sessionModeId: sessionModeId(attempt),
     permissionMode: permissionMode(attempt),
@@ -101,6 +102,10 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
   constructor(
     private readonly state: DaemonState,
     private readonly runtime: AgentRuntimeManager,
+    private readonly runs: Pick<
+      SessionRunCoordinator,
+      "start" | "settle" | "stop"
+    >,
     private readonly credentials: Pick<ProviderCredentials, "forSession">,
   ) {}
 
@@ -110,7 +115,7 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
     const existingSession = await this.state.getSession(sessionId);
     const now = new Date().toISOString();
     const session = existingSession
-      ? { ...existingSession, status: "running" as const, updatedAt: now }
+      ? { ...existingSession, updatedAt: now }
       : createSession(
           input.attempt,
           sessionId,
@@ -136,7 +141,10 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
       );
     }
 
-    const providerSession = await this.state.getProviderSession(sessionId);
+    const providerSession = await this.state.getProviderSession(
+      sessionId,
+      session.agentType,
+    );
     let latestIdentity: WorkflowAttemptRuntimeIdentity = {
       ...input.attempt.runtimeIdentity,
       providerSessionId: providerSession?.providerSessionId ?? null,
@@ -151,17 +159,11 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
         checkpointQueue = checkpointQueue.then(async () => {
           if (nextProviderSession) {
             await this.state.saveProviderSession(
-              nextProviderSession.sessionId,
-              nextProviderSession.providerSessionId,
-              JSON.parse(nextProviderSession.providerStateJson) as Record<
-                string,
-                unknown
-              >,
-              nextProviderSession.resumable,
-              nextProviderSession.providerVersion,
+              session.agentType,
+              nextProviderSession,
             );
           } else {
-            await this.state.clearProviderSession(sessionId);
+            await this.state.clearProviderSession(sessionId, session.agentType);
           }
           latestIdentity = {
             ...latestIdentity,
@@ -190,24 +192,46 @@ export class DaemonWorkflowAgentTurnRunner implements WorkflowAgentTurnRunner {
       input.workspaceRootPath,
     ]);
 
+    const run = await this.runs.start(
+      sessionId,
+      userMessage.id,
+      session.agentType,
+    );
     const cancel = () => {
+      void this.runs.stop(sessionId);
       void this.runtime.cancelSessionTurn(sessionId);
     };
     input.signal.addEventListener("abort", cancel, { once: true });
     try {
-      const message = await this.runtime.sendSessionMessage(
-        {
-          session,
-          workspaceRootPath: input.workspaceRootPath,
-          workspaceRootPaths,
-          messageId: userMessage.id,
-          createdAt: userMessage.createdAt,
-          content: userMessage.content,
-          attachments: [],
-          delivery: "start-new-run",
-        },
-        { ...persistence, history, providerConfig: null },
-      );
+      const message = await this.runtime
+        .sendSessionMessage(
+          {
+            session,
+            workspaceRootPath: input.workspaceRootPath,
+            workspaceRootPaths,
+            messageId: userMessage.id,
+            createdAt: userMessage.createdAt,
+            content: userMessage.content,
+            attachments: [],
+            delivery: "start-new-run",
+          },
+          { ...persistence, history },
+        )
+        .catch(async (error: unknown) => {
+          await this.runs.settle(run, {
+            kind: "rejected",
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        });
+      const outcome = await this.runs.settle(run, {
+        kind: "resolved",
+        message,
+      });
+      if (outcome.status === "failed") throw new Error(outcome.error);
+      if (outcome.status === "cancelled") {
+        throw new Error("The workflow agent turn was cancelled.");
+      }
       await checkpointQueue;
       return { content: message.content, providerOperationId: message.id };
     } finally {

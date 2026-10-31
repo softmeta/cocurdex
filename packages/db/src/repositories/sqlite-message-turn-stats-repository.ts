@@ -17,13 +17,32 @@ function parseUsage(value: unknown): AgentUsageRecord | undefined {
   });
 }
 
+type TurnStopReason = NonNullable<AgentTurnCompletedEvent["stopReason"]>;
+
+const TURN_STOP_REASONS = new Set<string>([
+  "cancelled",
+  "end_turn",
+  "max_tokens",
+  "max_turn_requests",
+  "refusal",
+  "unknown",
+] satisfies TurnStopReason[]);
+
+function parseStopReason(value: unknown): TurnStopReason | undefined {
+  return typeof value === "string" && TURN_STOP_REASONS.has(value)
+    ? (value as TurnStopReason)
+    : undefined;
+}
+
 function mapTurnStats(row: SqliteRow): AgentTurnCompletedEvent {
+  const stopReason = parseStopReason(row.stop_reason);
   return {
     type: "turn.completed",
     sessionId: String(row.session_id),
     messageId: String(row.message_id),
     durationMs: Number(row.duration_ms),
     usage: parseUsage(row.usage_json),
+    ...(stopReason ? { stopReason } : {}),
     completedAt: String(row.completed_at),
   };
 }
@@ -48,18 +67,35 @@ export function createSqliteMessageTurnStatsRepository(
         }),
       );
     },
+    async listChangedSince(sessionId, changeSeq) {
+      const rows = database
+        .prepare(
+          `SELECT *
+           FROM message_turn_stats
+           WHERE session_id = ? AND change_seq > ?`,
+        )
+        .all(sessionId, changeSeq) as SqliteRow[];
+      return Object.fromEntries(
+        rows.map((row) => {
+          const stats = mapTurnStats(row);
+          return [stats.messageId, stats];
+        }),
+      );
+    },
     async upsert(event) {
       database
         .prepare(
           `INSERT OR REPLACE INTO message_turn_stats (
-             message_id, session_id, duration_ms, usage_json, completed_at
-           ) VALUES (?, ?, ?, ?, ?)`,
+             message_id, session_id, duration_ms, usage_json, stop_reason,
+             completed_at
+           ) VALUES (?, ?, ?, ?, ?, ?)`,
         )
         .run(
           event.messageId,
           event.sessionId,
           event.durationMs,
           event.usage ? JSON.stringify(event.usage) : null,
+          event.stopReason ?? null,
           event.completedAt,
         );
     },

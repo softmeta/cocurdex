@@ -1,12 +1,22 @@
 import type { DatabaseSync } from "node:sqlite";
-import { createSchemaSql } from "./schema";
+import { createDecksSchemaSql } from "./decks/deck-schema";
+import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
+import { createHostAccessSchemaSql } from "./host-access/schema";
+import {
+  ensureIssueIndexes,
+  migrateIssuesToAgentCore,
+} from "./issues/issue-schema";
+import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
+import { createCommandReceiptsSql, createSchemaSql } from "./schema";
+import { compactStoredDiffs } from "./stored-diff-compaction";
+import { ensureSyncTracking } from "./sync/sync-tracking";
 import { createTeamSchemaSql } from "./team/schema";
 import { ensureTimelineSequence } from "./timeline-sequence";
 
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 33;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -337,6 +347,172 @@ function migrateAcpAgentIdsToRegistry(database: DatabaseSync): void {
   }
 }
 
+function migrateAgentRoleAvatars(database: DatabaseSync): void {
+  if (
+    hasTable(database, "agent_roles") &&
+    !hasColumn(database, "agent_roles", "avatar_json")
+  ) {
+    database.exec("ALTER TABLE agent_roles ADD COLUMN avatar_json TEXT");
+  }
+}
+
+function migrateAgentRoleDescriptions(database: DatabaseSync): void {
+  if (
+    hasTable(database, "agent_roles") &&
+    !hasColumn(database, "agent_roles", "description")
+  ) {
+    database.exec("ALTER TABLE agent_roles ADD COLUMN description TEXT");
+  }
+}
+
+function dropStandaloneChatTables(database: DatabaseSync): void {
+  database.exec("DROP TABLE IF EXISTS conversation_messages");
+  database.exec("DROP TABLE IF EXISTS conversations");
+}
+
+function migrateTeamRosters(database: DatabaseSync): void {
+  if (
+    hasTable(database, "teams") &&
+    !hasColumn(database, "teams", "roster_json")
+  ) {
+    database.exec("ALTER TABLE teams ADD COLUMN roster_json TEXT");
+  }
+}
+
+function baselineSessionAttentionVisits(database: DatabaseSync): void {
+  if (!hasTable(database, "session_attention")) {
+    return;
+  }
+  database.exec(
+    `UPDATE session_attention
+     SET last_visited_at = latest_result_at
+     WHERE last_visited_at IS NULL
+       AND latest_result_at IS NOT NULL
+       AND result_disposition = 'automatic'`,
+  );
+}
+
+function migrateTurnStatsStopReason(database: DatabaseSync): void {
+  if (
+    hasTable(database, "message_turn_stats") &&
+    !hasColumn(database, "message_turn_stats", "stop_reason")
+  ) {
+    database.exec("ALTER TABLE message_turn_stats ADD COLUMN stop_reason TEXT");
+  }
+}
+
+function migrateSessionRuns(database: DatabaseSync): void {
+  for (const table of ["messages", "tool_calls"]) {
+    if (!hasColumn(database, table, "run_id")) {
+      database.exec(
+        `ALTER TABLE ${table} ADD COLUMN run_id TEXT REFERENCES runs(id) ON DELETE SET NULL`,
+      );
+    }
+  }
+}
+
+function addSessionPins(database: DatabaseSync): void {
+  if (!hasColumn(database, "sessions", "pinned_at")) {
+    database.exec("ALTER TABLE sessions ADD COLUMN pinned_at TEXT");
+  }
+}
+
+function addToolCallResultRefs(database: DatabaseSync): void {
+  if (!hasColumn(database, "tool_calls", "result_ref")) {
+    database.exec("ALTER TABLE tool_calls ADD COLUMN result_ref TEXT");
+  }
+}
+
+function createCommandReceipts(database: DatabaseSync): void {
+  database.exec(createCommandReceiptsSql());
+}
+
+function createDecksTable(database: DatabaseSync): void {
+  database.exec(createDecksSchemaSql());
+}
+
+function createEntityLinksTable(database: DatabaseSync): void {
+  database.exec(createEntityLinksSchemaSql());
+}
+
+function createHostAccessTables(database: DatabaseSync): void {
+  database.exec(createHostAccessSchemaSql());
+}
+
+function migrateProviderThreadsPerAgent(database: DatabaseSync): void {
+  if (!hasColumn(database, "runs", "agent_type")) {
+    database.exec("ALTER TABLE runs ADD COLUMN agent_type TEXT");
+  }
+  database.exec(
+    `UPDATE runs SET agent_type = (
+       SELECT agent_type FROM sessions WHERE sessions.id = runs.session_id
+     ) WHERE agent_type IS NULL`,
+  );
+  if (hasColumn(database, "agent_provider_sessions", "agent_type")) return;
+  database.exec(`
+    CREATE TABLE agent_provider_sessions_next (
+      session_id TEXT NOT NULL,
+      agent_type TEXT NOT NULL,
+      provider_session_id TEXT,
+      provider_state_json TEXT NOT NULL,
+      provider_version TEXT,
+      resumable INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (session_id, agent_type),
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    );
+    INSERT INTO agent_provider_sessions_next (
+      session_id, agent_type, provider_session_id, provider_state_json,
+      provider_version, resumable, updated_at
+    )
+    SELECT provider.session_id, sessions.agent_type, provider.provider_session_id,
+      provider.provider_state_json, provider.provider_version,
+      provider.resumable, provider.updated_at
+    FROM agent_provider_sessions AS provider
+    JOIN sessions ON sessions.id = provider.session_id;
+    DROP TABLE agent_provider_sessions;
+    ALTER TABLE agent_provider_sessions_next RENAME TO agent_provider_sessions;
+  `);
+}
+
+function allowNativeContextTransfers(database: DatabaseSync): void {
+  const table = database
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'context_transfers'",
+    )
+    .get() as { sql?: string } | undefined;
+  if (!table?.sql || table.sql.includes("'native'")) return;
+  database.exec(`
+    CREATE TABLE context_transfers_next (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('fork', 'agent_switch')),
+      source_session_id TEXT NOT NULL,
+      target_session_id TEXT NOT NULL,
+      source_message_id TEXT,
+      source_agent_types_json TEXT NOT NULL DEFAULT '[]',
+      target_agent_type TEXT,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'consumed')),
+      strategy TEXT CHECK (strategy IN ('full', 'delta', 'native')),
+      covered_message_count INTEGER NOT NULL DEFAULT 0,
+      handoff_text TEXT,
+      consumed_by_message_id TEXT,
+      created_at TEXT NOT NULL,
+      consumed_at TEXT,
+      FOREIGN KEY (target_session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    );
+    INSERT INTO context_transfers_next SELECT
+      id, kind, source_session_id, target_session_id, source_message_id,
+      source_agent_types_json, target_agent_type, status, strategy,
+      covered_message_count, handoff_text, consumed_by_message_id,
+      created_at, consumed_at
+    FROM context_transfers;
+    DROP TABLE context_transfers;
+    ALTER TABLE context_transfers_next RENAME TO context_transfers;
+    CREATE INDEX IF NOT EXISTS idx_context_transfers_target
+      ON context_transfers(target_session_id, created_at);
+  `);
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -347,6 +523,25 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [11, migrateIssueColumnsToGlobal],
   [12, migrateTeamTasksOffIssues],
   [13, migrateAcpAgentIdsToRegistry],
+  [14, migrateAgentRoleAvatars],
+  [15, migrateAgentRoleDescriptions],
+  [16, dropStandaloneChatTables],
+  [17, migrateTeamRosters],
+  [18, migrateIssuesToAgentCore],
+  [19, migrateNotesToCollaborativeDocs],
+  [20, baselineSessionAttentionVisits],
+  [21, migrateTurnStatsStopReason],
+  [22, migrateSessionRuns],
+  [23, createHostAccessTables],
+  [24, migrateProviderThreadsPerAgent],
+  [25, allowNativeContextTransfers],
+  [26, addSessionPins],
+  [27, compactStoredDiffs],
+  [28, addToolCallResultRefs],
+  [29, createCommandReceipts],
+  [30, ensureSyncTracking],
+  [31, createDecksTable],
+  [32, createEntityLinksTable],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {
@@ -460,6 +655,9 @@ export function initializeDatabase(database: DatabaseSync): void {
 
   migrateDatabase(database, state);
   runMigrationStep(database, ensureTimelineSequence);
+  runMigrationStep(database, ensureSyncTracking);
+  ensureIssueIndexes(database);
+  database.exec(createEntityLinksSchemaSql());
 
   database.exec(`PRAGMA application_id = ${COCURDEX_APPLICATION_ID}`);
   database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`);

@@ -1,24 +1,4 @@
-import type { AgentId, WriteMode } from "./contracts";
-
-export type AgentRuntimeScope = "local" | "remote" | "cloud";
-export type AgentRuntimeStatus = "online" | "offline" | "degraded";
-
-export interface AgentRuntimeRecord {
-  id: string;
-  agentId: AgentId;
-  scope: AgentRuntimeScope;
-  status: AgentRuntimeStatus;
-  version: string | null;
-  supportedModels: string[];
-  capacity: {
-    maxConcurrentTasks: number;
-    activeTaskCount: number;
-  };
-  health: {
-    lastCheckedAt: string;
-    message: string | null;
-  };
-}
+import type { WriteMode } from "./contracts";
 
 export type WorkspaceIsolationMode =
   | "shared-read"
@@ -61,11 +41,4 @@ export function decideWorkspaceIsolation(
   }
 
   return { mode: "git-worktree", allowed: true, reason: null };
-}
-
-export function canDispatchToRuntime(runtime: AgentRuntimeRecord) {
-  return (
-    runtime.status === "online" &&
-    runtime.capacity.activeTaskCount < runtime.capacity.maxConcurrentTasks
-  );
 }

@@ -11,6 +11,18 @@ export const ACP_REGISTRY_BUILT_IN_EQUIVALENTS: Readonly<
   "pi-acp": "pi",
 };
 
+export interface AcpRegistryLaunchCommand {
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+export interface AcpRegistryInstallPlan {
+  launch: AcpRegistryLaunchCommand;
+  download: { url: string; sha256: string | null; directory: string } | null;
+  prefetch: AcpRegistryLaunchCommand | null;
+}
+
 export interface AcpRegistryCatalogAgent {
   registryId: string;
   name: string;
@@ -21,6 +33,7 @@ export interface AcpRegistryCatalogAgent {
   iconUrl: string | null;
   distribution: AcpRegistryDistributionKind | null;
   builtInAgentId: BuiltInAgentId | null;
+  installPlan: AcpRegistryInstallPlan | null;
 }
 
 export interface AcpRegistryInstalledAgent {
@@ -34,6 +47,21 @@ export interface AcpRegistryInstalledAgent {
   args: string[];
   env: Record<string, string>;
   installedAt: string;
+  authMethodId?: string;
+}
+
+export interface AgentAuthMethod {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface AgentAuthState {
+  methods: AgentAuthMethod[];
+  preferredMethodId: string | null;
+  loginMethodId: string | null;
+  logoutSupported: boolean;
+  liveSessionCount: number;
 }
 
 export function toAcpRegistryAgentId(registryId: string): AcpRegistryAgentId {

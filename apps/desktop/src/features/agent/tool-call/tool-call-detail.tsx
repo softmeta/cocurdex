@@ -1,13 +1,22 @@
-import type { AgentToolCallRecord } from "@cocurdex/shared";
+import {
+  type AgentToolCallRecord,
+  formatToolCallData,
+  formatToolCallOutput,
+  getLineRangeLabel,
+} from "@cocurdex/shared";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { FileText, ScrollText, Terminal } from "lucide-react";
-import { useMemo } from "react";
+import { FileText, Terminal } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui";
 import { cn, useMountEffect } from "@/lib";
 
 import { ReadonlySubagentSession } from "./subagent-session-detail";
 import { ToolCallCommandDetail } from "./tool-call-command-detail";
+import {
+  ToolCallOutputContent,
+  ToolCallOutputHeader,
+} from "./tool-call-output";
 import { ToolCallResourceLinkList } from "./tool-call-resource-link-list";
 import {
   observeToolCallResultAtom,
@@ -15,9 +24,6 @@ import {
 } from "./tool-call-result-store";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
-  formatToolCallData,
-  formatToolCallOutput,
-  getLineRangeLabel,
   getSubagentChildSessionId,
   getSubagentDescription,
   getSubagentType,
@@ -36,13 +42,15 @@ import {
   isSubagentToolCall,
   type ToolCallPreviewLocation,
 } from "./tool-call-utils";
+import { useToolCallDisplayStatus } from "./use-tool-call-display-status";
 
 export function ToolCallDetailHeader({
   toolCall,
 }: {
   toolCall: AgentToolCallRecord;
 }) {
-  const statusLabel = getToolCallStatusLabel(toolCall);
+  const status = useToolCallDisplayStatus(toolCall);
+  const statusLabel = getToolCallStatusLabel(status);
   const timestamp = getToolCallTimestamp(toolCall);
   const isSubagent = isSubagentToolCall(toolCall);
   const title = isSubagent
@@ -59,9 +67,7 @@ export function ToolCallDetailHeader({
       </span>
       {showType ? <span className="shrink-0">{type}</span> : null}
       <span className="ml-auto flex shrink-0 items-center gap-1.5">
-        <span className={getToolCallStatusClasses(toolCall)}>
-          {statusLabel}
-        </span>
+        <span className={getToolCallStatusClasses(status)}>{statusLabel}</span>
         <span>·</span>
         <span>{timestamp}</span>
       </span>
@@ -82,6 +88,7 @@ export function ToolCallDetailBody({
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
 }) {
   const { t } = useTranslation("agent");
+  const [showOutputSource, setShowOutputSource] = useState(false);
   const previewLocations = getToolCallPreviewLocations(toolCall);
   const shouldHideRawOutput =
     toolCall.kind === "read" && previewLocations.length > 0;
@@ -120,6 +127,9 @@ export function ToolCallDetailBody({
     : formatToolCallData(toolCall.rawInput);
   const showInputBlock = !isSubagent;
   const commandInput = getToolCallCommandInput(toolCall);
+  const readyOutput = outputLoadStatus === "ready" && output ? output : "";
+  const isMarkdownOutput =
+    toolCall.kind === "search" || toolCall.kind === "fetch";
   const resultSubscription = shouldLoadOutput ? (
     <ToolCallResultSubscription
       key={toolCall.id}
@@ -208,7 +218,7 @@ export function ToolCallDetailBody({
           </div>
           {/* Each code panel owns its bounded scroll region, with default scroll
               chaining so the surrounding chat keeps scrolling at panel edges. */}
-          <dl className="flex max-h-[40vh] flex-col gap-1.5 overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-body leading-5">
+          <dl className="flex max-h-[40vh] flex-col gap-1.5 overflow-auto rounded-control bg-chat-code-panel p-3 text-body leading-5">
             {inputEntries.map((entry) => {
               const multiline = isMultilineInputField(entry);
               return (
@@ -247,7 +257,7 @@ export function ToolCallDetailBody({
             <Terminal className="size-3" />
             {detailLabel}
           </div>
-          <pre className="overflow-x-auto whitespace-pre rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-body leading-5 text-chat-fg-secondary [font-variant-ligatures:none]">
+          <pre className="overflow-x-auto whitespace-pre rounded-control bg-chat-code-panel p-3 font-mono text-body leading-5 text-chat-fg-secondary [font-variant-ligatures:none]">
             {inputFallback}
           </pre>
         </div>
@@ -257,10 +267,12 @@ export function ToolCallDetailBody({
       ) : null}
       {showResourceLinks ? (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-chat-fg-muted">
-            <ScrollText className="size-3" />
-            {t("toolCalls.output")}
-          </div>
+          <ToolCallOutputHeader
+            isMarkdown={isMarkdownOutput}
+            onToggleSource={() => setShowOutputSource((value) => !value)}
+            output={readyOutput}
+            showSource={showOutputSource}
+          />
           {resourceLinks.length > 0 ? (
             <ToolCallResourceLinkList
               links={resourceLinks}
@@ -268,22 +280,19 @@ export function ToolCallDetailBody({
             />
           ) : null}
           {outputLoadStatus === "loading" ? (
-            <div className="flex items-center gap-2 rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-body text-chat-fg-muted">
+            <div className="flex items-center gap-2 rounded-control bg-chat-code-panel p-3 text-body text-chat-fg-muted">
               <Spinner size="xs" />
               <span>{t("toolCalls.outputLoading")}</span>
             </div>
           ) : outputLoadStatus === "error" ? (
-            <div className="rounded-control border border-chat-border-soft bg-chat-code-panel p-3 text-body text-chat-fg-muted">
+            <div className="rounded-control bg-chat-code-panel p-3 text-body text-chat-fg-muted">
               {t("toolCalls.outputLoadError", { message: outputErrorMessage })}
             </div>
           ) : output ? (
-            <pre
-              className={cn(
-                "max-h-[40vh] overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-body leading-5 whitespace-pre text-chat-fg-secondary [font-variant-ligatures:none]",
-              )}
-            >
-              {output}
-            </pre>
+            <ToolCallOutputContent
+              output={output}
+              renderMarkdown={isMarkdownOutput && !showOutputSource}
+            />
           ) : null}
         </div>
       ) : null}

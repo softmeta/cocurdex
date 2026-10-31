@@ -7,16 +7,22 @@ import {
   type AgentSessionConfigOption,
   type AgentThinkingLevel,
   type BrowserAnnotation,
+  generateLocalSessionTitle,
+  getConfigOptionThinkingLevels,
+  getThinkingLevelOptions,
   hashLogValue,
   hostForLog,
+  isChatSession,
   type MessageAttachment,
   type MessageRecord,
   normalizeWorkspaceRootPaths,
   primaryWorkspaceRootPath,
   resolveSessionWorkingPath,
+  resolveThinkingLevel,
   type SessionRecord,
   sessionConfiguration,
   supportsInSessionRuntimeAxis,
+  type ThinkingLevelOption,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -26,13 +32,7 @@ import {
   appendQueuedInputAtom,
   autoCollapsedPlansBySessionAtom,
   ChatView,
-  clearPermissionsForSessionAtom,
-  clearPlanApprovalsForSessionAtom,
-  clearPlanForSessionAtom,
-  clearQuestionsForSessionAtom,
-  clearToolCallsForSessionAtom,
   collapsedPlansBySessionAtom,
-  discardQueuedInputAtom,
   dismissedPlansBySessionAtom,
   dismissPlanForSessionAtom,
   findPendingPlanApproval,
@@ -43,34 +43,20 @@ import {
   permissionsBySessionAtom,
   planApprovalsBySessionAtom,
   plansBySessionAtom,
-  type QueuedAgentInputItem,
   questionsBySessionAtom,
   queuedInputsBySessionAtom,
   removeQueuedInputAtom,
-  rewindMessagesAtom,
   selectVisiblePlan,
   togglePlanCollapsedForSessionAtom,
   toolCallsBySessionAtom,
   toolCallsLoadedBySessionAtom,
-  updateQueuedInputAtom,
   useSessionMessages,
 } from "@/features/agent";
-import {
-  activeConversationIdAtom,
-  ConversationDetail,
-  conversationsAtom,
-  NewConversationCard,
-  rehydrateChatImages,
-  type StartConversationPayload,
-  upsertConversationAtom,
-} from "@/features/chat";
+import { NewChatCard } from "@/features/chat";
 import {
   type ChatComposerHandle,
+  type ComposerSendOutcome,
   ComposerSurface,
-  getConfigOptionThinkingLevels,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-  type ThinkingLevelOption,
 } from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
@@ -79,14 +65,13 @@ import {
   remapEditorRootAtom,
   saveEditorViewSnapshotAtom,
 } from "@/features/editor";
+import { NewSessionCard } from "@/features/new-session";
 import {
   activeSessionIdAtom,
   agentsAtom,
   applyRefinedSessionTitleAtom,
-  bindFocusedPaneContentAtom,
-  bindPaneContentAtom,
+  canSwitchSessionAgent,
   createDraftSessionAtom,
-  generateLocalSessionTitle,
   getAgentDisplayLabel,
   getDisplaySessionStatus,
   getSessionPermissionMode,
@@ -94,7 +79,6 @@ import {
   isSubagentSession,
   lastSelectedAgentAtom,
   markSessionMessageAtom,
-  NewSessionCard,
   type SessionPaneBinding,
   selectSessionAtom,
   sessionsAtom,
@@ -104,10 +88,9 @@ import {
   updateSessionProviderRuntimeAtom,
   updateSessionStatusAtom,
   updateSessionTitleAtom,
+  useSwitchSessionAgent,
 } from "@/features/sessions";
 import {
-  activeBranchAtom,
-  activeBranchesAtom,
   activeWorkingPathAtom,
   activeWorkspaceIdAtom,
   activeWorktreesAtom,
@@ -131,7 +114,9 @@ import {
   useGitWorktrees,
   useSessionSwitchMetrics,
 } from "./center-panel-data";
-import { resolvePaneCenterSurface } from "./center-panel-surface";
+import { resolveCenterPanelSurface } from "./center-panel-surface";
+import { ChatSessionPanel } from "./chat-session/chat-session-panel";
+import { useChatSessionActions } from "./chat-session/use-chat-session-actions";
 import { buildBrowserAnnotationAttachments } from "./chat-window/browser-annotation-attachments";
 import { BrowserAnnotationChips } from "./chat-window/browser-annotation-chips";
 import { withBrowserAnnotations } from "./chat-window/browser-annotation-message";
@@ -141,6 +126,7 @@ import {
   useBrowserAnnotationSender,
 } from "./chat-window/chat-browser-context";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
+import { useQueuedInputActions } from "./use-queued-input-actions";
 
 interface CenterPanelProps {
   composerRef?: Ref<ChatComposerHandle>;
@@ -262,14 +248,7 @@ export function CenterPanel({
   const sessions = useAtomValue(sessionsAtom);
   const atomSessionId = useAtomValue(activeSessionIdAtom);
   const activeSessionId = pane ? pane.sessionId : atomSessionId;
-  const atomConversationId = useAtomValue(activeConversationIdAtom);
-  const activeConversationId = pane ? pane.conversationId : atomConversationId;
-  const bindPaneContent = useSetAtom(bindPaneContentAtom);
-  const bindFocusedPaneContent = useSetAtom(bindFocusedPaneContentAtom);
-  const upsertConversation = useSetAtom(upsertConversationAtom);
-  const conversations = useAtomValue(conversationsAtom);
-  const activeConversation =
-    conversations.find((c) => c.id === activeConversationId) ?? null;
+  const chatSessionActions = useChatSessionActions(pane?.id);
   const agents = useAtomValue(agentsAtom);
   const lastSelectedAgent = useAtomValue(lastSelectedAgentAtom);
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
@@ -289,17 +268,8 @@ export function CenterPanel({
   const composerAttachment = useAtomValue(chatComposerAttachmentAtom);
   const appendMessage = useSetAtom(appendMessageAtom);
   const appendQueuedInput = useSetAtom(appendQueuedInputAtom);
-  const updateQueuedInput = useSetAtom(updateQueuedInputAtom);
   const removeQueuedInput = useSetAtom(removeQueuedInputAtom);
-  const discardQueuedInput = useSetAtom(discardQueuedInputAtom);
-  const rewindMessages = useSetAtom(rewindMessagesAtom);
-  const clearToolCallsForSession = useSetAtom(clearToolCallsForSessionAtom);
-  const clearPermissionsForSession = useSetAtom(clearPermissionsForSessionAtom);
-  const clearQuestionsForSession = useSetAtom(clearQuestionsForSessionAtom);
-  const clearPlanApprovalsForSession = useSetAtom(
-    clearPlanApprovalsForSessionAtom,
-  );
-  const clearPlanForSession = useSetAtom(clearPlanForSessionAtom);
+  const queuedInputActions = useQueuedInputActions();
   const dismissPlanForSession = useSetAtom(dismissPlanForSessionAtom);
   const togglePlanCollapsedForSession = useSetAtom(
     togglePlanCollapsedForSessionAtom,
@@ -313,6 +283,7 @@ export function CenterPanel({
   const saveEditorViewSnapshot = useSetAtom(saveEditorViewSnapshotAtom);
   const setDraftWorktreePath = useSetAtom(draftWorktreePathAtom);
   const setLastSelectedAgent = useSetAtom(lastSelectedAgentAtom);
+  const switchSessionAgent = useSwitchSessionAgent();
   const markSessionMessage = useSetAtom(markSessionMessageAtom);
   const updateSessionMode = useSetAtom(updateSessionModeAtom);
   const updateSessionPermissionMode = useSetAtom(
@@ -326,35 +297,33 @@ export function CenterPanel({
   const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const relocateWorkspace = useSetAtom(relocateWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
-  const activeBranches = useAtomValue(activeBranchesAtom);
-  const activeBranch = useAtomValue(activeBranchAtom);
   const activeWorktrees = useAtomValue(activeWorktreesAtom);
   const draftWorktreePath = useAtomValue(draftWorktreePathAtom);
   const globalWorkingPath = useAtomValue(activeWorkingPathAtom);
-  const activeWorkspace = workspaces.find(
+  const selectedWorkspace = workspaces.find(
     (workspace) => workspace.id === activeWorkspaceId,
   );
   const activeSession = sessions.find((session) => {
     if (session.id !== activeSessionId) {
       return false;
     }
-    if (pane) {
+    if (pane || isChatSession(session)) {
       return true;
     }
     return session.workspaceId === activeWorkspaceId;
   });
-  const sessionWorkspace = activeSession
+  const activeWorkspace = activeSession
     ? workspaces.find((workspace) => workspace.id === activeSession.workspaceId)
-    : undefined;
+    : selectedWorkspace;
   const workingPath =
-    activeSession && sessionWorkspace
+    activeSession && activeWorkspace
       ? resolveSessionWorkingPath({
-          workspaceRootPath: primaryWorkspaceRootPath(sessionWorkspace),
+          workspaceRootPath: primaryWorkspaceRootPath(activeWorkspace),
           worktreePath: activeSession.worktreePath,
         })
       : globalWorkingPath;
   const composerWorkspaceRootPaths = normalizeWorkspaceRootPaths([
-    ...((sessionWorkspace ?? activeWorkspace)?.rootPaths ?? []),
+    ...(activeWorkspace?.rootPaths ?? []),
     ...(workingPath ? [workingPath] : []),
   ]);
   const activeQueuedInputs = activeSession
@@ -472,7 +441,9 @@ export function CenterPanel({
     activeMessages.length,
     activeToolCalls,
   );
-  useGitBranches(workingPath ?? undefined);
+  const { activeBranches, activeBranch } = useGitBranches(
+    workingPath ?? undefined,
+  );
   useGitWorktrees(activeWorkspace?.rootPaths[0]);
 
   useBrowserAnnotationSender((sent) => {
@@ -590,13 +561,13 @@ export function CenterPanel({
       : [],
     useOppositeFollowUpBehavior = false,
     sentAnnotations: BrowserAnnotation[] = annotations,
-  ) => {
+  ): Promise<ComposerSendOutcome> => {
     if (
       !activeSession ||
       !activeWorkspace ||
       isSubagentSession(activeSession)
     ) {
-      return;
+      return "kept";
     }
 
     const isSteering = activeDisplayStatus === "running";
@@ -759,132 +730,7 @@ export function CenterPanel({
         createdAt: new Date().toISOString(),
       });
     }
-  };
-
-  const handleUpdateQueuedInput = async (
-    item: QueuedAgentInputItem,
-    content: string,
-  ) => {
-    const message = await desktopApi.updateQueuedInput({
-      sessionId: item.sessionId,
-      messageId: item.messageId,
-      content,
-    });
-    updateQueuedInput(message);
-  };
-
-  const handleDeleteQueuedInput = async (item: QueuedAgentInputItem) => {
-    await desktopApi.deleteQueuedInput({
-      sessionId: item.sessionId,
-      messageId: item.messageId,
-    });
-    discardQueuedInput({
-      sessionId: item.sessionId,
-      messageId: item.messageId,
-    });
-  };
-
-  const handleSendNowQueuedInput = async (item: QueuedAgentInputItem) => {
-    await desktopApi.sendQueuedInputNow({
-      sessionId: item.sessionId,
-      messageId: item.messageId,
-    });
-  };
-
-  const handleSteerQueuedInput = async (item: QueuedAgentInputItem) => {
-    await desktopApi.steerQueuedInput({
-      sessionId: item.sessionId,
-      messageId: item.messageId,
-    });
-  };
-
-  const clearEphemeralSessionState = (sessionId: string) => {
-    clearToolCallsForSession(sessionId);
-    clearPermissionsForSession(sessionId);
-    clearQuestionsForSession(sessionId);
-    clearPlanApprovalsForSession(sessionId);
-    clearPlanForSession(sessionId);
-  };
-
-  const handleCheckPreviousMessageCheckpoint = async (
-    message: MessageRecord,
-  ) => {
-    if (!activeSession) {
-      return { available: false };
-    }
-
-    return taskApi.getPreviousMessageCheckpointStatus(
-      activeSession.id,
-      message.id,
-    );
-  };
-
-  const handleSubmitPreviousMessage = async (
-    message: MessageRecord,
-    content: string,
-    revertWorkspace: boolean,
-  ) => {
-    if (!activeSession || !activeWorkspace) {
-      return;
-    }
-
-    const requestId = crypto.randomUUID();
-    const startedAt = performance.now();
-
-    logRendererDiagnostic("info", "[AgentSession] submit previous message", {
-      requestId,
-      sessionId: activeSession.id,
-      messageId: message.id,
-      revertWorkspace,
-    });
-
-    try {
-      const userMessage = await taskApi.submitPreviousMessage({
-        sessionId: activeSession.id,
-        messageId: message.id,
-        content,
-        attachments:
-          message.attachments.length > 0 ? message.attachments : undefined,
-        revertWorkspace,
-      });
-
-      updateSessionStatus({ sessionId: activeSession.id, status: "running" });
-      rewindMessages({ message: userMessage });
-      clearEphemeralSessionState(activeSession.id);
-      markSessionMessage({
-        sessionId: activeSession.id,
-        createdAt: userMessage.createdAt,
-      });
-      logRendererDiagnostic(
-        "info",
-        "[AgentSession] submit previous message completed",
-        {
-          requestId,
-          sessionId: activeSession.id,
-          messageId: message.id,
-          durationMs: Math.round(performance.now() - startedAt),
-        },
-      );
-    } catch (error) {
-      updateSessionStatus({ sessionId: activeSession.id, status: "error" });
-      console.error("[AgentSession] submit previous message failed", {
-        requestId,
-        sessionId: activeSession.id,
-        messageId: message.id,
-        durationMs: Math.round(performance.now() - startedAt),
-      });
-      appendMessage({
-        id: crypto.randomUUID(),
-        sessionId: activeSession.id,
-        role: "system",
-        content:
-          error instanceof Error
-            ? error.message
-            : "Unknown previous message submit error",
-        attachments: [],
-        createdAt: new Date().toISOString(),
-      });
-    }
+    return "sent";
   };
 
   const handleStop = async () => {
@@ -919,54 +765,18 @@ export function CenterPanel({
     await taskApi.resolvePlanApproval(approvalId, decision);
   };
 
-  // Chat-mode "first message": create the conversation with the picked model,
-  // then send the first turn and focus it. Mirrors the agent handleStartSession
-  // seam but routes through the pure-chat IPC + conversation store.
-  const handleStartConversation = async ({
-    providerId,
-    modelId,
-    webSearchEnabled,
-    message,
-    attachments = [],
-  }: StartConversationPayload) => {
-    try {
-      const images = await rehydrateChatImages(attachments);
-      const conversation = await desktopApi.chatCreate({
-        providerId,
-        modelId,
-        webSearchEnabled,
-      });
-      upsertConversation({ conversation });
-      await desktopApi.chatSendMessage({
-        conversationId: conversation.id,
-        text: message,
-        images: images.length > 0 ? images : undefined,
-      });
-      if (pane) {
-        bindPaneContent({
-          paneId: pane.id,
-          sessionId: null,
-          conversationId: conversation.id,
-        });
-      } else {
-        bindFocusedPaneContent({
-          sessionId: null,
-          conversationId: conversation.id,
-        });
-      }
-    } catch (error) {
-      console.error("[Chat] start conversation failed", error);
-      throw error;
-    }
-  };
-
-  const handleOpenWorkspace = async () => {
+  const openWorkspaceFromDialog = async () => {
     const rootPath = await pickHostDirectory();
-    if (!rootPath) return;
-    const { didSwitchWorkspace } = openWorkspaceByPath(rootPath);
+    if (!rootPath) return null;
+    const { workspace, didSwitchWorkspace } = openWorkspaceByPath(rootPath);
     if (didSwitchWorkspace) {
       selectSession(null);
     }
+    return workspace;
+  };
+
+  const handleOpenWorkspace = async () => {
+    await openWorkspaceFromDialog();
   };
 
   const handleRelocateWorkspace = async (workspaceId: string) => {
@@ -1022,6 +832,7 @@ export function CenterPanel({
     providerSnapshot,
     thinkingLevel,
     agentRoleId,
+    teamTemplateId,
     worktreePath,
   }: {
     agentType: AgentId;
@@ -1032,14 +843,14 @@ export function CenterPanel({
     providerSnapshot?: AgentProviderSnapshot | null;
     thinkingLevel?: AgentThinkingLevel;
     agentRoleId?: string | null;
+    teamTemplateId?: string | null;
     worktreePath?: string;
-  }) => {
-    if (!activeWorkspace) {
-      return;
-    }
+  }): Promise<ComposerSendOutcome> => {
+    const workspace = activeWorkspace ?? (await openWorkspaceFromDialog());
+    if (!workspace) return "kept";
 
     const session = createDraftSession({
-      workspaceId: activeWorkspace.id,
+      workspaceId: workspace.id,
       agentType,
       sessionModeId,
       permissionMode,
@@ -1062,7 +873,7 @@ export function CenterPanel({
       agentType,
       sessionId: titledSession.id,
       workspaceHash: hashLogValue(
-        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+        workingPath ?? primaryWorkspaceRootPath(workspace),
       ),
       contentLength: message.length,
       attachmentCount: attachments?.length ?? 0,
@@ -1091,6 +902,12 @@ export function CenterPanel({
       await taskApi.saveSessionConfiguration(
         sessionConfiguration(titledSession),
       );
+      if (teamTemplateId) {
+        await desktopApi.createTeam({
+          leadSessionId: titledSession.id,
+          templateId: teamTemplateId,
+        });
+      }
 
       const annotationAttachments =
         await buildBrowserAnnotationAttachments(annotations);
@@ -1115,7 +932,7 @@ export function CenterPanel({
           },
           thinkingLevel,
           workspaceHash: hashLogValue(
-            workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+            workingPath ?? primaryWorkspaceRootPath(workspace),
           ),
         },
       );
@@ -1161,6 +978,7 @@ export function CenterPanel({
         createdAt: new Date().toISOString(),
       });
     }
+    return "sent";
   };
 
   const persistSession = (session: SessionRecord) => {
@@ -1215,25 +1033,24 @@ export function CenterPanel({
     }
   };
 
-  const centerSurface = resolvePaneCenterSurface({
+  const centerSurface = resolveCenterPanelSurface({
     sidebarTab,
-    conversationId: activeConversationId,
     sessionId: activeSessionId,
-    hasConversation: Boolean(activeConversation),
-    hasSession: Boolean(activeSession),
+    session: activeSession ?? null,
     sessionDataLoaded: activeSessionDataLoaded,
   });
 
-  if (centerSurface === "conversation" && activeConversation) {
+  if (centerSurface === "chat-session" && activeSession) {
     return (
       <section className="flex h-full flex-col bg-chat-canvas">
         {hideTitlebarSpacer ? null : (
           <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
         )}
         <div className="min-h-0 flex-1 overflow-hidden">
-          <ConversationDetail
-            key={activeConversation.id}
-            conversation={activeConversation}
+          <ChatSessionPanel
+            composerRef={composerRef}
+            paneId={pane?.id}
+            session={activeSession}
           />
         </div>
       </section>
@@ -1279,10 +1096,10 @@ export function CenterPanel({
         />
       </ComposerSurface>
     );
-  } else if (centerSurface === "new-conversation") {
+  } else if (centerSurface === "new-chat") {
     newSessionSurface = (
       <ComposerSurface>
-        <NewConversationCard onStartConversation={handleStartConversation} />
+        <NewChatCard onStartChat={chatSessionActions.start} />
       </ComposerSurface>
     );
   }
@@ -1302,7 +1119,7 @@ export function CenterPanel({
             // the new content before the layout effect pulled it to bottom.
             key={activeSession.id}
             activeBranch={activeBranch}
-            workspaceName={activeWorkspace?.name}
+            workspace={activeWorkspace}
             agentLabel={getAgentDisplayLabel(activeSession.agentType)}
             agentType={activeSession.agentType}
             attachment={
@@ -1341,20 +1158,14 @@ export function CenterPanel({
             onSelectRuntimeMode={(modeId) => {
               void desktopApi.setSessionRuntimeMode(activeSession.id, modeId);
             }}
-            onSelectAgent={undefined}
-            onCheckPreviousMessageCheckpoint={
-              handleCheckPreviousMessageCheckpoint
+            onSelectAgent={
+              canSwitchSessionAgent(activeSession, activeDisplayStatus)
+                ? (agentType) =>
+                    void switchSessionAgent(activeSession.id, agentType)
+                : undefined
             }
             onSend={handleSend}
-            onDeleteQueuedInput={handleDeleteQueuedInput}
-            onSendNowQueuedInput={handleSendNowQueuedInput}
-            onSteerQueuedInput={handleSteerQueuedInput}
-            onUpdateQueuedInput={handleUpdateQueuedInput}
-            onSubmitPreviousMessage={
-              isSubagentSession(activeSession)
-                ? undefined
-                : handleSubmitPreviousMessage
-            }
+            {...queuedInputActions}
             onStop={handleStop}
             onResolvePlanApproval={handleResolvePlanApproval}
             onDismissPlan={() => {

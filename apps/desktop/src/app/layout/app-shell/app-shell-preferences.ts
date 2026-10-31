@@ -36,7 +36,6 @@ export function syncLanguageMode(
 ) {
   const resolvedLanguage = resolveLanguageMode(languageMode, systemLocale);
 
-  document.documentElement.lang = resolvedLanguage;
   document.documentElement.dir = "ltr";
   window.localStorage.setItem(LANGUAGE_MODE_STORAGE_KEY, languageMode);
 
@@ -64,7 +63,7 @@ function resolveCurrentPrefersDark() {
 
 /**
  * Re-apply the stored color preset for the given resolved light/dark surface.
- * Must run after `class="dark"` / `data-theme` are updated so chrome tokens and
+ * Must run after `data-theme` is updated so chrome tokens and
  * window surface colors match the active mode.
  */
 function syncThemePresetForResolvedTheme(
@@ -80,18 +79,38 @@ function syncThemePresetForResolvedTheme(
   }
 }
 
-export function syncThemeMode(themeMode: ThemeMode, prefersDark: boolean) {
-  const resolvedTheme = resolveThemeMode(themeMode, prefersDark);
-
+function applyResolvedTheme(resolvedTheme: "light" | "dark") {
   document.documentElement.dataset.theme = resolvedTheme;
-  document.documentElement.dataset.themeMode = themeMode;
-  document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
   document.documentElement.style.colorScheme = resolvedTheme;
-  window.localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
 
   // Light/dark flip must re-bind the active preset's matching token map.
   const { themePreset } = getStoredAppearanceSettings();
   syncThemePresetForResolvedTheme(themePreset, resolvedTheme);
+}
+
+export function syncThemeMode(themeMode: ThemeMode, prefersDark: boolean) {
+  document.documentElement.dataset.themeMode = themeMode;
+  window.localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
+  applyResolvedTheme(resolveThemeMode(themeMode, prefersDark));
+}
+
+declare global {
+  interface Window {
+    __cocurdexDebug?: {
+      previewTheme(theme: "light" | "dark"): void;
+      restoreTheme(): void;
+    };
+  }
+}
+
+function installThemeDebugHook() {
+  window.__cocurdexDebug = {
+    previewTheme: applyResolvedTheme,
+    restoreTheme: () =>
+      applyResolvedTheme(
+        resolveThemeMode(getStoredThemeMode(), resolveCurrentPrefersDark()),
+      ),
+  };
 }
 
 export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
@@ -137,8 +156,9 @@ export function syncInitialPreferences() {
 
   syncLanguageMode(getStoredLanguageMode(), getSystemLocale());
   persistNotificationSettings(getStoredNotificationSettings());
-  // Mode first (sets class="dark" / data-theme), then appearance (fonts +
+  // Mode first (sets data-theme), then appearance (fonts +
   // rebinds the preset token map for the resolved light/dark surface).
   syncThemeMode(themeMode, prefersDark);
   syncAppearanceSettings(getStoredAppearanceSettings());
+  if (import.meta.env.DEV) installThemeDebugHook();
 }

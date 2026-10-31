@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { FileTypeIcon } from "@/components";
 import { cn, useScrollIntoViewWhenActive } from "@/lib";
 import {
@@ -93,10 +94,7 @@ export function PdfTabs() {
   }
 
   return (
-    <div
-      className="flex h-7 items-center border-b border-editor-border px-2"
-      data-testid="pdf-tabs-bar"
-    >
+    <PanelToolbar data-testid="pdf-tabs-bar">
       <div className="scrollbar-hide flex min-w-0 flex-1 items-center gap-px overflow-x-auto">
         {openPdfs.map((filePath) => (
           <PdfTabItem
@@ -109,6 +107,6 @@ export function PdfTabs() {
           />
         ))}
       </div>
-    </div>
+    </PanelToolbar>
   );
 }

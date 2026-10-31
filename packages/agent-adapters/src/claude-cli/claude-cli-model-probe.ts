@@ -1,9 +1,10 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { spawnCommand, stopChildProcess } from "../shared/process-tree";
 import { buildClaudeCliEnv } from "./claude-cli-process";
 
 const PROBE_TIMEOUT_MS = 15_000;
@@ -129,11 +130,11 @@ async function stopProbe(
 ) {
   if (!child.stdin.destroyed) child.stdin.end();
   if (child.exitCode === null && child.signalCode === null) {
-    child.kill("SIGTERM");
+    stopChildProcess(child, "SIGTERM");
   }
   const timer = setTimeout(() => {
     if (child.exitCode === null && child.signalCode === null) {
-      child.kill("SIGKILL");
+      stopChildProcess(child, "SIGKILL");
     }
   }, STOP_TIMEOUT_MS);
   try {
@@ -144,7 +145,7 @@ async function stopProbe(
 }
 
 async function runModelProbe(executablePath: string, cwd: string) {
-  const child = spawn(
+  const child = spawnCommand(
     executablePath,
     [
       "-p",
@@ -169,9 +170,8 @@ async function runModelProbe(executablePath: string, cwd: string) {
       cwd,
       env: buildClaudeCliEnv(),
       stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
     },
-  );
+  ) as ChildProcessWithoutNullStreams;
   const closed = new Promise<void>((resolve) => {
     child.once("close", () => resolve());
   });

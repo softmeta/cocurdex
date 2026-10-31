@@ -1,46 +1,24 @@
-import type { ImageAttachment } from "@cocurdex/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { desktopApi, useMountEffect } from "@/lib";
+import {
+  buildDaemonImageAttachmentUrl,
+  type ImageAttachment,
+} from "@cocurdex/shared";
+import { useCallback, useRef, useState } from "react";
+import { createDaemonBlobUrlStore, useMountEffect } from "@/lib";
 
 export type ImageCopyStatus = "copied" | "failed";
 
-// Reads the attachment's data URL through IPC, keyed by file path. Already-
-// inlined data URLs (conversation messages) pass through without a round trip.
-// Errors surface as null (placeholder icon). The cancelled guard drops a late
-// resolve if the path changes or the component unmounts mid-read.
+const useImageAttachmentBlobUrl = createDaemonBlobUrlStore({
+  buildUrl: buildDaemonImageAttachmentUrl,
+  failureDiagnostic: "composer.imageAttachmentLoadFailed",
+});
+
 export function useImageDataUrl(attachment: ImageAttachment) {
   const { filePath } = attachment;
   const inlineDataUrl = filePath.startsWith("data:") ? filePath : null;
-  const [fetched, setFetched] = useState<{
-    path: string;
-    url: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    if (inlineDataUrl) {
-      return;
-    }
-
-    let cancelled = false;
-    desktopApi
-      .readImageAttachmentDataUrl(filePath)
-      .then((url) => {
-        if (!cancelled) {
-          setFetched({ path: filePath, url });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFetched({ path: filePath, url: null });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [filePath, inlineDataUrl]);
-
-  const fetchedUrl = fetched?.path === filePath ? fetched.url : null;
-  return inlineDataUrl ?? fetchedUrl;
+  const storedUrl = useImageAttachmentBlobUrl(
+    inlineDataUrl || filePath.length === 0 ? null : filePath,
+  );
+  return inlineDataUrl ?? storedUrl;
 }
 
 export function useTemporaryImageCopyStatus(durationMs: number) {

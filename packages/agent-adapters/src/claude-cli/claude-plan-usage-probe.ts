@@ -57,7 +57,11 @@ async function readPlanUsage(query: ClaudeQuery) {
       "Installed Claude Agent SDK does not support plan usage.",
     );
   }
-  return (getPlanUsage as () => Promise<ClaudePlanUsageResponse>).call(query);
+  return (
+    getPlanUsage as (opts: {
+      skipBehaviors: boolean;
+    }) => Promise<ClaudePlanUsageResponse>
+  ).call(query, { skipBehaviors: true });
 }
 
 function hasClaudeAuthentication(account: AccountInfo | undefined) {

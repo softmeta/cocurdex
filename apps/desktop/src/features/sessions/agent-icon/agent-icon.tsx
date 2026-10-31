@@ -22,12 +22,20 @@ export function AgentIcon({
     const registryId = agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length);
     const BrandIcon = registryAgentIcons[registryId];
     if (BrandIcon) {
-      return <BrandIcon className={cn("size-4 shrink-0", className)} />;
+      return <BrandIcon className={cn("size-3.5 shrink-0", className)} />;
     }
     return <RegistryAgentIcon className={className} registryId={registryId} />;
   }
   const Icon = builtInAgentIcons[agentId];
-  return <Icon className={cn("size-4 shrink-0", className)} />;
+  if (!Icon) {
+    return (
+      <Bot
+        aria-hidden
+        className={cn("size-4 shrink-0 text-muted-foreground", className)}
+      />
+    );
+  }
+  return <Icon className={cn("size-3.5 shrink-0", className)} />;
 }
 
 function RegistryAgentIcon({
@@ -52,7 +60,7 @@ function RegistryAgentIcon({
     <img
       alt=""
       aria-hidden
-      className={cn("size-4 shrink-0 object-contain dark:invert", className)}
+      className={cn("size-3.5 shrink-0 object-contain dark:invert", className)}
       decoding="async"
       draggable={false}
       referrerPolicy="no-referrer"

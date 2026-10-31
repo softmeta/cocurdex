@@ -1,12 +1,14 @@
-import { existsSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { existsSync } from "node:fs";
 import { createSocketTransport, requestDaemon } from "@cocurdex/daemon/client";
 import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import { createDaemonRpcClient } from "@cocurdex/rpc/client";
-import { describe, expect, it } from "vitest";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterAll, describe, expect, it } from "vitest";
 import { spawnDaemon } from "./helpers/daemon-process";
+
+const tempDirs = createTempDirs();
+afterAll(() => tempDirs.cleanup());
 
 describe("daemon process lifecycle", () => {
   it("publishes metadata and answers daemon.status over the socket", async () => {
@@ -19,6 +21,7 @@ describe("daemon process lifecycle", () => {
 
       const status = await requestDaemon("daemon.status", daemon.options);
       expect(status).toEqual({
+        hostId: expect.any(String),
         pid: daemon.child.pid,
         protocolVersion: DAEMON_PROTOCOL_VERSION,
         runtimeFingerprint: "e2e-runtime",
@@ -91,9 +94,7 @@ describe("daemon process lifecycle", () => {
   });
 
   it("persists data across restarts on the same user data path", async () => {
-    const userDataPath = mkdtempSync(
-      path.join(tmpdir(), "cocurdex-e2e-restart-"),
-    );
+    const userDataPath = tempDirs.createSync("cocurdex-e2e-restart-");
     const first = await spawnDaemon({ userDataPath });
     const note = await requestDaemon(
       "note.create",
@@ -117,9 +118,7 @@ describe("daemon process lifecycle", () => {
   });
 
   it("recovers from a SIGKILLed daemon, keeping data and replacing stale metadata", async () => {
-    const userDataPath = mkdtempSync(
-      path.join(tmpdir(), "cocurdex-e2e-crash-"),
-    );
+    const userDataPath = tempDirs.createSync("cocurdex-e2e-crash-");
     const first = await spawnDaemon({ userDataPath });
     const note = await requestDaemon(
       "note.create",

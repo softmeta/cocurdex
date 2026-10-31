@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Minus,
   Quote,
+  Table,
   Type,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ export type SlashCommandKey =
   | "taskList"
   | "blockquote"
   | "codeBlock"
+  | "table"
   | "divider";
 
 export interface SlashCommandItem {
@@ -116,6 +118,18 @@ export const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
   {
+    key: "table",
+    icon: Table,
+    keywords: ["table", "grid", "columns", "rows"],
+    run: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run(),
+  },
+  {
     key: "divider",
     icon: Minus,
     keywords: ["divider", "rule", "separator", "hr"],
@@ -124,11 +138,20 @@ export const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
   },
 ];
 
-// Pure filter so it can be unit-tested without an editor. Matches the query
-// against each item's key and keywords (case-insensitive, substring).
+const ASCII_QUERY = /^[\x20-\x7e]+$/u;
+
+function matchesLabel(label: string, query: string): boolean {
+  const normalized = label.toLowerCase();
+  if (!ASCII_QUERY.test(query)) {
+    return normalized.includes(query);
+  }
+  return normalized.split(/[\s_-]+/u).some((word) => word.startsWith(query));
+}
+
 export function filterSlashCommandItems(
   query: string,
   items: SlashCommandItem[] = SLASH_COMMAND_ITEMS,
+  labelOf: (item: SlashCommandItem) => string = () => "",
 ): SlashCommandItem[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
@@ -136,7 +159,8 @@ export function filterSlashCommandItems(
   }
   return items.filter(
     (item) =>
-      item.key.toLowerCase().includes(normalized) ||
-      item.keywords.some((keyword) => keyword.includes(normalized)),
+      item.key.toLowerCase().startsWith(normalized) ||
+      item.keywords.some((keyword) => keyword.startsWith(normalized)) ||
+      matchesLabel(labelOf(item), normalized),
   );
 }

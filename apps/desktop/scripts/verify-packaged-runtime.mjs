@@ -19,7 +19,6 @@ const FORBIDDEN_ASAR_PATHS = [
   "electron.vite.config.ts",
   "scripts",
   "src",
-  "node_modules/esbuild/bin",
   "node_modules/@earendil-works/pi-coding-agent/dist/bundle",
 ];
 
@@ -97,7 +96,6 @@ async function inspectAsar(asarPath) {
     const { createRequire } = require("node:module");
     const path = require("node:path");
     const { pathToFileURL } = require("node:url");
-    const { runInNewContext } = require("node:vm");
     const asarPath = ${JSON.stringify(asarPath)};
     const expectedResourcesPath = ${JSON.stringify(expectedResourcesPath)};
     const verifyResourcesPath = ${JSON.stringify(Boolean(packagedExecutable))};
@@ -131,7 +129,6 @@ async function inspectAsar(asarPath) {
       }
       function collectWrongArchNatives(rootPath) {
         const scopes = [
-          ["@esbuild", ""],
           ["@napi-rs", "keyring-"],
           ["@vscode", "ripgrep-"],
         ];
@@ -210,28 +207,13 @@ async function inspectAsar(asarPath) {
 
       const mainEntryPath = path.join(asarPath, "out", "main", "main.js");
       const mainRequire = createRequire(mainEntryPath);
-      const esbuild = mainRequire(
-        path.join(unpackedRoot, "node_modules", "esbuild", "lib", "main.js"),
-      );
-      const bundled = await esbuild.build({
-        stdin: {
-          contents: "export const value: number = 5;",
-          loader: "ts",
-        },
-        bundle: true,
-        format: "cjs",
-        platform: "node",
-        write: false,
-      });
-      esbuild.stop();
-      const bundledModule = { exports: {} };
-      runInNewContext(bundled.outputFiles[0].text, { module: bundledModule });
-      if (bundledModule.exports.value !== 5) {
-        throw new Error("Packaged esbuild failed to bundle TypeScript");
-      }
       const daemonKeyring = mainRequire("@napi-rs/keyring");
       if (typeof daemonKeyring.AsyncEntry !== "function") {
         throw new Error("Packaged daemon keyring native module did not load");
+      }
+      const daemonPty = mainRequire("node-pty");
+      if (typeof daemonPty.spawn !== "function") {
+        throw new Error("Packaged daemon node-pty native module did not load");
       }
       const piPackageDir = path.join(
         asarPath,

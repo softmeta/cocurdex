@@ -14,11 +14,11 @@ const toggleVariants = cva(
         // Connected segmented-control item: lives inside a muted track, the
         // selected item floats above with a raised background + shadow.
         segmented:
-          "rounded-md bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-sm",
+          "rounded-md bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-sm dark:aria-pressed:bg-foreground/12 dark:data-pressed:bg-foreground/12",
       },
       size: {
         default:
-          "h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2",
+          "h-7 min-w-7 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2",
         sm: "h-7 min-w-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-2xs has-data-[icon=inline-end]:pe-1.5 has-data-[icon=inline-start]:ps-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2",
       },

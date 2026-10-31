@@ -19,6 +19,14 @@
   line-height: 1.7;
 }
 
+.md-body-prose > :first-child {
+  margin-top: 0;
+}
+
+.md-body-prose > .tableWrapper:last-child {
+  margin-bottom: 2.5em;
+}
+
 /* Paragraphs */
 .md-body-prose p {
   margin: 0.6em 0;
@@ -129,6 +137,39 @@
   margin: 0.8em 0;
 }
 
+.md-body-prose .md-code-block {
+  background: var(--muted);
+  border-radius: var(--radius-card);
+  margin: 0.8em 0;
+  overflow: hidden;
+}
+
+.md-body-prose .md-code-block pre {
+  background: transparent;
+  border-radius: 0;
+  margin: 0;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  padding: 0.25rem 1rem 0.75rem;
+  white-space: pre;
+}
+
+.md-body-prose .md-code-block pre > code {
+  white-space: pre !important;
+}
+
+.md-body-prose .md-code-block pre code span[style] {
+  color: var(--shiki-light);
+  font-style: var(--shiki-light-font-style);
+  font-weight: var(--shiki-light-font-weight);
+}
+
+[data-theme="dark"] .md-body-prose .md-code-block pre code span[style] {
+  color: var(--shiki-dark);
+  font-style: var(--shiki-dark-font-style);
+  font-weight: var(--shiki-dark-font-weight);
+}
+
 /* Inline code */
 .md-body-prose code {
   font-family: var(--font-mono);
@@ -169,4 +210,71 @@
   pointer-events: none;
   float: inline-start;
   height: 0;
+}
+
+.md-body-prose .tableWrapper {
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
+.md-body-prose table {
+  border-collapse: collapse;
+  table-layout: auto;
+  width: 100%;
+  margin: 0;
+}
+.md-body-prose th,
+.md-body-prose td {
+  border: 1px solid var(--editor-border);
+  padding: 0.35rem 0.65rem;
+  text-align: start;
+  vertical-align: top;
+  min-width: 4em;
+  position: relative;
+}
+.md-body-prose th {
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+  font-weight: 600;
+}
+.md-body-prose th p,
+.md-body-prose td p {
+  margin: 0;
+}
+.md-body-prose .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  pointer-events: none;
+}
+.md-body-prose .column-resize-handle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -2px;
+  width: 4px;
+  background: var(--primary);
+  pointer-events: none;
+}
+
+.md-body-prose .md-body-image {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+  border-radius: var(--radius-md);
+}
+.md-body-prose .md-body-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: inherit;
+}
+.md-body-prose .md-body-image.is-selected {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.md-body-prose .md-body-image-pending {
+  display: block;
+  width: 12rem;
+  height: 6rem;
+  border-radius: inherit;
+  background: var(--muted);
 }

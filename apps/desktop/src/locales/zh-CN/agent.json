@@ -4,22 +4,37 @@
     "completed": "已完成",
     "planning": "工作中",
     "ready": "就绪",
-    "reasoningCount_other": "{{count}} 段推理",
     "replyCount_other": "{{count}} 条中间回复",
-    "toolCount_other": "{{count}} 次工具调用",
+    "responding": "回复中",
+    "stopped": "已停止",
+    "summary": {
+      "command_other": "执行了 {{count}} 条命令",
+      "edit_other": "修改了 {{count}} 个文件",
+      "fetch_other": "获取了 {{count}} 个网页",
+      "other_other": "调用了 {{count}} 个工具",
+      "others_other": "其他 {{count}} 项操作",
+      "read_other": "读取了 {{count}} 个文件",
+      "reasoning_other": "思考了 {{count}} 次",
+      "search_other": "搜索了 {{count}} 次",
+      "separator": "，",
+      "skill_other": "调用了 {{count}} 个技能",
+      "subagent_other": "运行了 {{count}} 个子代理"
+    },
+    "thinking": "思考中",
     "usingTools": "工具调用中",
-    "writing": "回复中"
+    "workedFor": "工作了 {{duration}}"
   },
   "assistantMessage": {
     "copy": "复制回复",
     "copyRichText": "复制富文本",
     "turnUsage": {
       "ariaLabel": "本轮 token 用量",
-      "tooltipCacheCreation": "缓存写入（{{tokens}}）：本轮新增到提示缓存的 token。",
-      "tooltipCacheRead": "缓存读取（{{tokens}}）：本轮从提示缓存复用的 token。",
-      "tooltipInput": "处理输入（{{tokens}}）：本轮处理的输入总量，包含缓存 token。",
-      "tooltipNewInput": "未缓存输入（{{tokens}}）：本轮未命中缓存的输入 token。",
-      "tooltipOutput": "输出（{{tokens}}）：本轮模型写出的内容。"
+      "cacheHitRate": "缓存命中率",
+      "cacheRead": "缓存读取",
+      "cacheWrite": "缓存写入",
+      "input": "输入总量",
+      "newInput": "未缓存输入",
+      "output": "输出"
     }
   },
   "contextBreakdown": {
@@ -35,6 +50,13 @@
     },
     "title": "上下文占用"
   },
+  "contextCompaction": {
+    "completed": "上下文已压缩",
+    "completedFrom": "上下文已压缩（原 {{before}} tokens）",
+    "completedRange": "上下文已压缩 {{before}} → {{after}} tokens",
+    "failed": "上下文压缩失败",
+    "running": "正在压缩上下文"
+  },
   "contextWindow": {
     "cacheReadTokens": "缓存读取：{{tokens}}",
     "cacheWriteTokens": "缓存写入：{{tokens}}",
@@ -47,19 +69,13 @@
     "tooltip": "约为上下文限制的 {{percent}}%"
   },
   "imagePreview": {
-    "closePreview": "关闭图片预览",
     "copied": "已复制",
     "copyFailed": "复制失败",
     "copyImage": "复制图片",
     "downloadImage": "下载图片",
     "imagePosition": "{{current}} / {{total}}",
     "nextImage": "下一张",
-    "previousImage": "上一张",
-    "resetView": "复原视图",
-    "resetZoom": "重置缩放",
-    "rotate": "顺时针旋转",
-    "zoomIn": "放大",
-    "zoomOut": "缩小"
+    "previousImage": "上一张"
   },
   "jumpToLatest": "跳到最新消息",
   "jumpToTop": "跳到顶部",
@@ -136,17 +152,7 @@
     "waitingEmpty": "Agent 未写出计划 — 批准或要求修改"
   },
   "previousMessage": {
-    "cancel": "取消",
-    "cancelEdit": "取消编辑",
-    "copy": "复制 prompt",
-    "dialogDescription": "从旧消息提交会清除这条消息之后的消息。选择回滚还会把文件恢复到这条消息前的检查点。",
-    "dialogTitle": "从旧消息提交？",
-    "dontAskAgain": "不再询问",
-    "dontRevert": "不回滚",
-    "edit": "编辑旧消息",
-    "revert": "回滚",
-    "revertUnavailable": "没有可用的 git 工作区检查点，无法回滚文件。",
-    "submitEdit": "提交编辑后的消息"
+    "copy": "复制 prompt"
   },
   "questions": {
     "answer": "回答",
@@ -163,6 +169,8 @@
     "editLabel": "编辑排队消息",
     "label": "排队中的后续消息",
     "moreActions": "更多队列操作",
+    "paused": "队列已暂停，恢复后才会继续执行。",
+    "resume": "继续",
     "save": "保存",
     "sendNow": "立即发送",
     "status": "排队中",
@@ -233,14 +241,17 @@
   "toolCalls": {
     "command": "命令",
     "completed": "已完成",
+    "copyOutput": "复制输出",
     "count_one": "{{count}} 次调用",
     "count_other": "{{count}} 次调用",
     "execute": "执行",
+    "executeDone": "已执行",
     "failed": "失败",
     "files": "文件",
     "files_one": "{{count}} 个文件",
     "files_other": "{{count}} 个文件",
     "input": "输入",
+    "interrupted": "已中断",
     "openParentSession": "查看父会话",
     "openParentSessionNamed": "查看 {{title}}",
     "output": "输出",
@@ -248,12 +259,15 @@
     "outputLoading": "正在加载输出…",
     "pending": "等待中",
     "readFile": "读取 {{fileName}}{{range}}",
+    "readFileDone": "已读取 {{fileName}}{{range}}",
     "readFiles": "读取文件",
     "running": "运行中",
     "search": "搜索",
+    "searchDone": "已搜索",
     "showLess": "收起",
     "showMore": "展开",
     "skill": "调用技能",
+    "skillDone": "已调用技能",
     "subagent": "正在使用子代理",
     "subagentCompleted": "子代理已完成",
     "subagentEmpty": "暂无子代理消息。",
@@ -263,6 +277,8 @@
     "subagentResponse": "子代理回复",
     "subagentSession": "子代理会话",
     "title": "工具调用",
+    "viewRendered": "查看渲染",
+    "viewSource": "查看源码",
     "worktreeSetup": "准备 Worktree 环境"
   },
   "turnChanges": {

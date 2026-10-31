@@ -73,7 +73,7 @@
     "results": "搜索结果"
   },
   "hints": {
-    "changeCategory": "⌘[ ⌘] 切换分类",
+    "changeCategory": "{{previous}} {{next}} 切换分类",
     "open": "↵ 打开",
     "select": "↑↓ 选择"
   },

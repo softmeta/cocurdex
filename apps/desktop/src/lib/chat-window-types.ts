@@ -25,6 +25,7 @@ export type ChatWindowSurface = "shell" | "chat";
 export type ChatWindowPanelView =
   | "editor"
   | "notes"
+  | "decks"
   | "issues"
   | "git"
   | "browser"

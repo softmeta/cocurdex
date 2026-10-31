@@ -1,0 +1,26 @@
+language js
+
+JsVariableDeclarator(id=$name, initializer=$init) as $declarator where {
+  $name <: or {
+    r"^.*ClassNames?$",
+    r"^.*Classes$",
+    r"^.*_CLASS$",
+    r"^.*_CLASSES$",
+    r"^.*_CLASS_NAME$"
+  },
+  $init <: JsInitializerClause(expression=$value),
+  $value <: or {
+    JsStringLiteralExpression(),
+    JsTemplateExpression(),
+    JsConditionalExpression(),
+    JsBinaryExpression(),
+    JsCallExpression(callee=$callee) where {
+      $callee <: or {
+        `cn`,
+        `clsx`,
+        `cva`
+      }
+    }
+  },
+  register_diagnostic(span=$declarator, message="Write class names inline on the element they style, not in a variable. See apps/desktop/AGENTS.md, Searchable class names.")
+}

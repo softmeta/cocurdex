@@ -45,7 +45,6 @@ async function createConfig(input) {
   },
   lint: {
     checkInterpolationParams: true,
-    ignore: ["src/test/**"],
     ignoredAttributes: ["className", "data-testid"],
     ignoredTags: ["code", "pre"],
   },

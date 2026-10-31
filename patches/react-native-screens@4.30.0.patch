@@ -1,0 +1,57 @@
+diff --git a/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt b/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
+index 68b8d852b8433a05e02372356d00a10530ccb8c9..e5bbeda6800626af630d0f65df22edb8c99d21b1 100644
+--- a/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
++++ b/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
+@@ -371,7 +371,12 @@ class ScreenStackHeaderConfig(
+                         ?: throw JSApplicationIllegalArgumentException(
+                             "Back button header config view should have Image as first child",
+                         )
+-                newActionBar.setHomeAsUpIndicator(firstChild.drawable)
++                val backDrawable = firstChild.drawable?.mutate()
++                if (tintColor != 0) {
++                    backDrawable?.colorFilter =
++                        PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_ATOP)
++                }
++                newActionBar.setHomeAsUpIndicator(backDrawable)
+                 i++
+                 continue
+             }
+diff --git a/lib/commonjs/components/ScreenStackHeaderConfig.js b/lib/commonjs/components/ScreenStackHeaderConfig.js
+index 6e68cd1f83469fb6976aee837ba704f996546b61..bc52d1b3cbac4d295481878b4aa3c3edac0e7a9c 100644
+--- a/lib/commonjs/components/ScreenStackHeaderConfig.js
++++ b/lib/commonjs/components/ScreenStackHeaderConfig.js
+@@ -28,7 +28,7 @@ const ScreenStackHeaderConfig = exports.ScreenStackHeaderConfig = /*#__PURE__*/_
+     consumeLeftInset,
+     consumeRightInset,
+     consumeBottomInset
+-  } = (0, _EdgeInsetApplicationContext.useEdgeInsetApplication)(!props.hidden, props.disableTopInsetApplication ?? false, props.disableLeftInsetApplication ?? false, props.disableRightInsetApplication ?? false, props.disableBottomInsetApplication ?? false);
++  } = (0, _EdgeInsetApplicationContext.useEdgeInsetApplication)(!props.hidden, props.disableTopInsetApplication ?? props.topInsetEnabled === false, props.disableLeftInsetApplication ?? false, props.disableRightInsetApplication ?? false, props.disableBottomInsetApplication ?? false);
+   const {
+     headerLeftBarButtonItems,
+     headerRightBarButtonItems
+diff --git a/lib/module/components/ScreenStackHeaderConfig.js b/lib/module/components/ScreenStackHeaderConfig.js
+index 242898c203307c25e752ee0a9a4abc864d773e78..56a6829a1eb9563988a7d3af5c42a9795ec1ddc5 100644
+--- a/lib/module/components/ScreenStackHeaderConfig.js
++++ b/lib/module/components/ScreenStackHeaderConfig.js
+@@ -24,7 +24,7 @@ export const ScreenStackHeaderConfig = /*#__PURE__*/React.forwardRef((props, ref
+     consumeLeftInset,
+     consumeRightInset,
+     consumeBottomInset
+-  } = useEdgeInsetApplication(!props.hidden, props.disableTopInsetApplication ?? false, props.disableLeftInsetApplication ?? false, props.disableRightInsetApplication ?? false, props.disableBottomInsetApplication ?? false);
++  } = useEdgeInsetApplication(!props.hidden, props.disableTopInsetApplication ?? props.topInsetEnabled === false, props.disableLeftInsetApplication ?? false, props.disableRightInsetApplication ?? false, props.disableBottomInsetApplication ?? false);
+   const {
+     headerLeftBarButtonItems,
+     headerRightBarButtonItems
+diff --git a/src/components/ScreenStackHeaderConfig.tsx b/src/components/ScreenStackHeaderConfig.tsx
+index 509d6cd1410a1b49a6a7b46346f447ad5810bc7f..89d579f7846b485c955cf9090533886c2198b88f 100644
+--- a/src/components/ScreenStackHeaderConfig.tsx
++++ b/src/components/ScreenStackHeaderConfig.tsx
+@@ -48,7 +48,7 @@ export const ScreenStackHeaderConfig = React.forwardRef<
+     consumeBottomInset,
+   } = useEdgeInsetApplication(
+     !props.hidden,
+-    props.disableTopInsetApplication ?? false,
++    props.disableTopInsetApplication ?? props.topInsetEnabled === false,
+     props.disableLeftInsetApplication ?? false,
+     props.disableRightInsetApplication ?? false,
+     props.disableBottomInsetApplication ?? false,

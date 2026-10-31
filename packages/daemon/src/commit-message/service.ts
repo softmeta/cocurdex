@@ -58,7 +58,7 @@ export class DaemonCommitMessageService {
     return resolveCommitMessageModel(this.state, await this.getModelSetting());
   }
   async generate(input: GenerateGitCommitMessagePayload) {
-    await this.state.getChatDatabase();
+    await this.state.getDatabase();
     let agentId = input.agentId;
     let providerConfig = input.providerConfig;
     if (!providerConfig) {

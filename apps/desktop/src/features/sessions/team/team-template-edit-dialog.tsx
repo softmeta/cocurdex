@@ -1,22 +1,27 @@
 import {
-  supportsAgentTeam,
+  type AgentRoleAvatar as AgentRoleAvatarValue,
+  type AgentRoleRecord,
   TEAM_MAX_MEMBERS,
-  TEAM_NAME_PATTERN,
+  TEAM_MIN_MEMBERS,
+  TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH,
   type TeamTemplateMember,
   type TeamTemplateRecord,
 } from "@cocurdex/shared";
-import { Plus, Trash2 } from "lucide-react";
+import { useAtomValue } from "jotai";
+import { ArrowLeft, Plus, Users } from "lucide-react";
 import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppSelect } from "@/components";
 import {
   Button,
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
+  FieldSeparator,
   IconButton,
   Input,
+  Text,
   Textarea,
 } from "@/components/ui";
 import {
@@ -27,20 +32,45 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
+import {
+  AgentRoleForm,
+  blankRoleDraft,
+  getAgentRoles,
+  subscribeAgentRoles,
+} from "../agent-role";
+import { AgentRoleAvatarPicker } from "../agent-role/agent-role-avatar-picker";
+import { agentsAtom } from "../session-store";
+import { TeamMemberRow } from "./team-member-row";
 import { saveTeamTemplateRecord } from "./team-template-store";
-
-const NO_ROLE = "__none__";
 
 type MemberDraft = TeamTemplateMember & { key: string };
 
 function draftMember(member?: TeamTemplateMember): MemberDraft {
   return {
     key: crypto.randomUUID(),
-    name: member?.name ?? "",
-    agentRoleId: member?.agentRoleId ?? null,
+    agentRoleId: member?.agentRoleId ?? "",
     prompt: member?.prompt ?? "",
   };
+}
+
+function initialMembers(roles: readonly AgentRoleRecord[]) {
+  const lead = draftMember({
+    agentRoleId: nextFreeRoleId(roles, []),
+    prompt: "",
+  });
+  const teammate = draftMember({
+    agentRoleId: nextFreeRoleId(roles, [lead]),
+    prompt: "",
+  });
+  return [lead, teammate];
+}
+
+function nextFreeRoleId(
+  roles: readonly AgentRoleRecord[],
+  members: readonly MemberDraft[],
+) {
+  const taken = new Set(members.map((member) => member.agentRoleId));
+  return roles.find((role) => !taken.has(role.id))?.id ?? "";
 }
 
 export function TeamTemplateEditDialog({
@@ -71,23 +101,40 @@ function TeamTemplateForm({
 }) {
   const { t } = useTranslation("settings");
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
+  const [avatarSeed] = useState(() => template?.id ?? crypto.randomUUID());
   const [name, setName] = useState(template?.name ?? "");
-  const [members, setMembers] = useState<MemberDraft[]>(() =>
-    template ? template.members.map(draftMember) : [draftMember()],
+  const [description, setDescription] = useState(template?.description ?? "");
+  const [avatar, setAvatar] = useState<AgentRoleAvatarValue | null>(
+    template?.avatar ?? null,
   );
+  const agents = useAtomValue(agentsAtom);
+  const [members, setMembers] = useState<MemberDraft[]>(() =>
+    template ? template.members.map(draftMember) : initialMembers(roles),
+  );
+  const [creatingRoleFor, setCreatingRoleFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const updateMember = (index: number, patch: Partial<TeamTemplateMember>) =>
+  const updateMember = (key: string, patch: Partial<TeamTemplateMember>) =>
     setMembers((current) =>
-      current.map((member, i) =>
-        i === index ? { ...member, ...patch } : member,
+      current.map((member) =>
+        member.key === key ? { ...member, ...patch } : member,
       ),
     );
+  const removeMember = (key: string) =>
+    setMembers((current) => current.filter((member) => member.key !== key));
+  const makeLead = (key: string) =>
+    setMembers((current) => [
+      ...current.filter((member) => member.key === key),
+      ...current.filter((member) => member.key !== key),
+    ]);
+  const memberRoleIds = new Set(members.map((member) => member.agentRoleId));
   const valid =
     name.trim().length > 0 &&
-    members.length > 0 &&
-    members.every((member) => TEAM_NAME_PATTERN.test(member.name)) &&
-    new Set(members.map((member) => member.name)).size === members.length;
+    members.length >= TEAM_MIN_MEMBERS &&
+    memberRoleIds.size === members.length &&
+    members.every((member) =>
+      roles.some((role) => role.id === member.agentRoleId),
+    );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -97,6 +144,8 @@ function TeamTemplateForm({
       await saveTeamTemplateRecord({
         ...(template ? { id: template.id } : {}),
         name: name.trim(),
+        description: description.trim() || null,
+        avatar,
         members: members.map(({ key: _key, ...member }) => member),
       });
       toast.success(t("teams.saved"));
@@ -107,120 +156,143 @@ function TeamTemplateForm({
     }
   };
 
-  const roleOptions = [
-    { value: NO_ROLE, label: t("teams.inheritRole") },
-    ...roles
-      .filter((role) => supportsAgentTeam(role.agentId))
-      .map((role) => ({ value: role.id, label: role.name })),
-  ];
-
   return (
-    <Dialog disablePointerDismissal onOpenChange={onOpenChange} open>
-      <DialogContent size="wide">
-        <DialogHeader>
-          <DialogTitle>
-            {template ? t("teams.editTitle") : t("teams.createTitle")}
-          </DialogTitle>
-        </DialogHeader>
-        <form className="contents" onSubmit={handleSubmit}>
-          <FieldGroup className="pb-2">
-            <Field>
-              <FieldLabel htmlFor="team-template-name">
-                {t("teams.name")}
-              </FieldLabel>
-              <Input
-                autoFocus
-                id="team-template-name"
-                maxLength={80}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t("teams.namePlaceholder")}
-                value={name}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>{t("teams.members")}</FieldLabel>
-              <ul className="flex flex-col gap-3">
-                {members.map((member, index) => (
-                  <li
-                    className="flex flex-col gap-2 rounded-card border border-border/70 p-3"
-                    key={member.key}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Input
-                        aria-label={t("teams.memberName")}
-                        className="flex-1"
-                        maxLength={32}
-                        onChange={(event) =>
-                          updateMember(index, {
-                            name: event.target.value.toLowerCase(),
-                          })
-                        }
-                        placeholder={t("teams.memberNamePlaceholder")}
-                        value={member.name}
-                      />
-                      <AppSelect
-                        onValueChange={(value) =>
-                          updateMember(index, {
-                            agentRoleId: value === NO_ROLE ? null : value,
-                          })
-                        }
-                        options={roleOptions}
-                        triggerAriaLabel={t("teams.role")}
-                        value={member.agentRoleId ?? NO_ROLE}
-                      />
-                      <IconButton
-                        aria-label={t("teams.removeMember")}
-                        disabled={members.length === 1}
-                        onClick={() =>
-                          setMembers((current) =>
-                            current.filter((_, i) => i !== index),
-                          )
-                        }
-                        size="sm"
-                      >
-                        <Trash2 className="size-4" />
-                      </IconButton>
-                    </div>
-                    <Textarea
-                      aria-label={t("teams.memberPrompt")}
-                      onChange={(event) =>
-                        updateMember(index, { prompt: event.target.value })
-                      }
-                      placeholder={t("teams.memberPromptPlaceholder")}
-                      rows={3}
-                      value={member.prompt}
-                    />
-                  </li>
-                ))}
-              </ul>
-              <Button
-                className="self-start"
-                disabled={members.length >= TEAM_MAX_MEMBERS}
-                onClick={() =>
-                  setMembers((current) => [...current, draftMember()])
-                }
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <Plus className="size-3.5" />
-                {t("teams.addMember")}
-              </Button>
-            </Field>
-          </FieldGroup>
-          <DialogFooter className="py-3">
-            <DialogClose
-              render={
-                <Button type="button" variant="outline">
-                  {t("teams.cancel")}
-                </Button>
-              }
+    <Dialog
+      disablePointerDismissal
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && creatingRoleFor) {
+          setCreatingRoleFor(null);
+          return;
+        }
+        onOpenChange(nextOpen);
+      }}
+      open
+    >
+      <DialogContent>
+        {creatingRoleFor ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-1.5">
+                <IconButton
+                  aria-label={t("teams.backToTeam")}
+                  className="-ms-1.5"
+                  onClick={() => setCreatingRoleFor(null)}
+                  size="sm"
+                >
+                  <ArrowLeft className="size-4 rtl:rotate-180" />
+                </IconButton>
+                {t("agentRoles.createTitle")}
+              </DialogTitle>
+            </DialogHeader>
+            <AgentRoleForm
+              role={blankRoleDraft(agents)}
+              onCancel={() => setCreatingRoleFor(null)}
+              onSaved={(saved) => {
+                updateMember(creatingRoleFor, { agentRoleId: saved.id });
+                setCreatingRoleFor(null);
+              }}
             />
-            <Button disabled={!valid || saving} type="submit">
-              {t("teams.save")}
-            </Button>
-          </DialogFooter>
-        </form>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>
+                {template ? t("teams.editTitle") : t("teams.createTitle")}
+              </DialogTitle>
+            </DialogHeader>
+            <form className="contents" onSubmit={handleSubmit}>
+              <FieldGroup className="-mx-1 max-h-[min(70vh,36rem)] gap-5 overflow-y-auto px-1 pb-2">
+                <div className="flex items-start gap-3">
+                  <AgentRoleAvatarPicker
+                    placeholder={<Users className="size-4" />}
+                    role={{ id: avatarSeed, name, avatar }}
+                    onChange={setAvatar}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <Input
+                      aria-label={t("teams.name")}
+                      autoFocus
+                      maxLength={80}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder={t("teams.namePlaceholder")}
+                      value={name}
+                    />
+                    <Textarea
+                      aria-label={t("teams.teamDescription")}
+                      className="max-h-32 min-h-16"
+                      maxLength={TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH}
+                      onChange={(event) => setDescription(event.target.value)}
+                      placeholder={t("teams.teamDescriptionPlaceholder")}
+                      value={description}
+                    />
+                  </div>
+                </div>
+                <FieldSeparator />
+                <Field className="gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-baseline gap-2">
+                      <FieldLabel>{t("teams.members")}</FieldLabel>
+                      <Text size="meta" tone="muted">
+                        {t("teams.memberCount", {
+                          current: members.length,
+                          max: TEAM_MAX_MEMBERS,
+                        })}
+                      </Text>
+                    </div>
+                    <Button
+                      className="-me-2"
+                      disabled={members.length >= TEAM_MAX_MEMBERS}
+                      onClick={() =>
+                        setMembers((current) => [
+                          ...current,
+                          draftMember({
+                            agentRoleId: nextFreeRoleId(roles, current),
+                            prompt: "",
+                          }),
+                        ])
+                      }
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Plus className="size-3.5" />
+                      {t("teams.addMember")}
+                    </Button>
+                  </div>
+                  <FieldDescription>{t("teams.membersHint")}</FieldDescription>
+                  <ul className="flex flex-col divide-y divide-border/60">
+                    {members.map((member, index) => (
+                      <TeamMemberRow
+                        isLead={index === 0}
+                        key={member.key}
+                        member={member}
+                        removable={members.length > TEAM_MIN_MEMBERS}
+                        roles={roles}
+                        takenRoleIds={memberRoleIds}
+                        onChange={(patch) => updateMember(member.key, patch)}
+                        onCreateRole={() => setCreatingRoleFor(member.key)}
+                        onMakeLead={() => makeLead(member.key)}
+                        onRemove={() => removeMember(member.key)}
+                      />
+                    ))}
+                  </ul>
+                </Field>
+              </FieldGroup>
+              <DialogFooter className="py-3">
+                <DialogClose
+                  render={
+                    <Button type="button" variant="outline">
+                      {t("teams.cancel")}
+                    </Button>
+                  }
+                />
+                <Button disabled={!valid || saving} type="submit">
+                  {t("teams.save")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

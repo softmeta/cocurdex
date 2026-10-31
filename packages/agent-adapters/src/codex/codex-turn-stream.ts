@@ -3,6 +3,7 @@ import type {
   AgentToolCallRecord,
   AgentUsageRecord,
 } from "@cocurdex/shared";
+import { createContextCompactionTracker } from "../shared/context-compaction-tracker";
 import {
   type CodexThreadItem,
   createToolCallRecord,
@@ -48,6 +49,12 @@ export function createCodexTurnStream({
   // than whatever is still streaming at `finishTurn`.
   let lastCompletedAssistantMessageId: string | null = null;
   let lastUsage: AgentUsageRecord | null = null;
+  let latestContextTokens: number | null = null;
+  let tokensBeforeCompaction: number | null = null;
+  const compaction = createContextCompactionTracker({
+    sessionId,
+    emit: onEvent,
+  });
   const activeToolCalls = new Map<string, AgentToolCallRecord>();
   // Keyed by item id like the reasoning summaries: a turn can stream more than
   // one assistant message, and a single active slot would splice them together.
@@ -271,6 +278,7 @@ export function createCodexTurnStream({
     // Kept so the turn summary can report the last usage snapshot alongside
     // the turn duration.
     lastUsage = usage;
+    latestContextTokens = usage.contextTokensUsed ?? latestContextTokens;
     onEvent({
       type: "usage.updated",
       sessionId,
@@ -298,6 +306,11 @@ export function createCodexTurnStream({
       return;
     }
 
+    if (item.type === "contextCompaction") {
+      handleCompactionItem(item.id, isCompleted);
+      return;
+    }
+
     if (!isToolItem(item)) {
       return;
     }
@@ -319,6 +332,21 @@ export function createCodexTurnStream({
     onEvent({ type: "tool.finished", sessionId, toolCall });
   }
 
+  function handleCompactionItem(itemId: string, isCompleted: boolean) {
+    if (!compaction.isActive()) {
+      tokensBeforeCompaction = latestContextTokens;
+    }
+    if (!isCompleted) {
+      compaction.start({ id: itemId });
+      return;
+    }
+    compaction.finish({
+      id: itemId,
+      status: "completed",
+      tokensBefore: tokensBeforeCompaction,
+    });
+  }
+
   // Flushes in-flight messages at turn boundaries so the next turn streams
   // into fresh records.
   // Returns what the caller needs to report the finished turn: the assistant
@@ -335,6 +363,7 @@ export function createCodexTurnStream({
       completeAssistantMessage(itemId);
     }
 
+    compaction.abandon();
     return { messageId: lastCompletedAssistantMessageId, usage: lastUsage };
   }
 

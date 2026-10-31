@@ -1,13 +1,4 @@
-import { homedir } from "node:os";
 import path from "node:path";
-import {
-  isAcpRegistryAgentId,
-  isAgentId,
-  isBroadFilesystemScanRoot as isBroadFilesystemScanRootPath,
-  isToolCallId,
-  providerApis,
-  reasoningEfforts,
-} from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 
@@ -17,79 +8,17 @@ import { z } from "zod";
 // could drive these handlers with arbitrary payloads. Enforce shape and string
 // constraints up front so handlers can assume well-formed input.
 
-export const idSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  // Allow UUIDs, slugs, and ISO-ish identifiers but reject control chars and
-  // path separators that have no legitimate place in an ID.
-  .regex(/^[A-Za-z0-9_.:@-]+$/);
-
-export const isoTimestampSchema = z.string().datetime({ offset: true });
-
-export const filesystemPathSchema = z
+const filesystemPathSchema = z
   .string()
   .min(1)
   .max(4096)
   .refine((value) => !value.includes("\0"), "path contains null byte")
   .refine((value) => path.isAbsolute(value), "path must be absolute");
 
-export function isBroadFilesystemScanRoot(rootPath: string): boolean {
-  return isBroadFilesystemScanRootPath(rootPath, homedir());
-}
-
-const noNullByte = (value: string) => !value.includes("\0");
-
-// Permission/question/plan-approval request IDs are minted by the agent
-// provider and echoed back verbatim (ACP toolCallId, Claude toolUseID,
-// OpenCode permission id), so they follow provider tool call ID rules rather
-// than the app-generated idSchema — e.g. Devin emits "call_<hex>#<hex>".
-const providerRequestIdSchema = z
-  .string()
-  .refine(isToolCallId, "Invalid provider request ID");
-
-const providerIdSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  .refine(noNullByte, "null byte");
-
-const agentIdSchema = z
-  .string()
-  .min(1)
-  .max(80)
-  .refine(isAgentId, "unknown agent");
-
-const providerJsonFieldSchema = z.string().max(131_072).nullish();
-
-const providerModelSelectionSchema = z
-  .string()
-  .max(256)
-  .refine(noNullByte, "null byte");
-
-const reasoningEffortSchema = z.enum(reasoningEfforts);
-
-const titleModelSelectionSchema = z.object({
-  modelId: providerIdSchema,
-  providerId: providerIdSchema,
-});
-
-const gitRelativePathSchema = z
-  .string()
-  .min(1)
-  .max(4096)
-  .refine((value) => !value.includes("\0"), "path contains null byte")
-  .refine((value) => !path.isAbsolute(value), "path must be relative")
-  .refine(
-    (value) => !value.split(/[\\/]+/).includes(".."),
-    "path must stay within the workspace",
-  );
-
 // Only web URLs. file:// is deliberately excluded: shell.openExternal on a
 // file URL launches local files (a code-execution primitive on Windows), and
 // loading file URLs in the in-app browser view would let a compromised
-// renderer read local files. Local content flows through dedicated protocols
-// (e.g. pdf-asset) instead.
+// renderer read local files. Local content flows through daemon RPC instead.
 export const httpUrlSchema = z
   .string()
   .url()
@@ -97,6 +26,13 @@ export const httpUrlSchema = z
     (value) => value.startsWith("http://") || value.startsWith("https://"),
     "URL scheme not allowed",
   );
+
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+export const loopbackHttpUrlSchema = httpUrlSchema.refine((value) => {
+  const url = new URL(value);
+  return url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname);
+}, "URL must point at the local daemon");
 
 // Annotations originate from arbitrary web pages via the browser view's
 // preload bridge — the least trusted input in the app. Strict shape, capped
@@ -141,14 +77,6 @@ const browserAnnotationSchema = z
   })
   .strict();
 
-const decisionSchema = z.union([
-  z.literal("allow_once"),
-  z.literal("allow_always"),
-  z.literal("reject_once"),
-  z.literal("reject_always"),
-  z.literal("cancelled"),
-]);
-
 const boundsSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
@@ -160,188 +88,14 @@ const boundsSchema = z.object({
   anchorY: z.enum(["start", "end", "stretch"]).optional(),
 });
 
-const pdfMarkIdSchema = z.string().min(1).max(256);
-
-const pdfBookmarkSchema = z
-  .object({
-    id: pdfMarkIdSchema,
-    pageNumber: z.number().int().positive().max(1_000_000),
-    label: z.string().max(2000).optional(),
-    scrollYRatio: z.number().finite().min(0).max(1).optional(),
-    createdAt: z.number().finite(),
-  })
-  .strict();
-
-const pdfHighlightSchema = z
-  .object({
-    id: pdfMarkIdSchema,
-    pageNumber: z.number().int().positive().max(1_000_000),
-    color: z.enum(["yellow", "green", "blue", "pink"]),
-    selectedText: z.string().min(1).max(50_000),
-    quads: z
-      .array(
-        z
-          .object({
-            x1: z.number().finite(),
-            y1: z.number().finite(),
-            x2: z.number().finite(),
-            y2: z.number().finite(),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(500),
-    createdAt: z.number().finite(),
-  })
-  .strict();
-
-// Loose object schemas: handlers downstream rely on TypeScript types from
-// @cocurdex/shared. Doing exhaustive deep validation here would couple this
-// file to every record evolution; instead we just guarantee the boundary
-// invariants (presence + critical string fields).
-const workspaceRecordShape = z.object({
-  id: idSchema,
-  rootPaths: z.array(filesystemPathSchema).min(1),
-});
-
 export const schemas = {
-  workspaceSave: workspaceRecordShape.passthrough(),
-  workspaceId: idSchema,
   rootPath: filesystemPathSchema,
-  gitFiles: z.object({
-    rootPath: filesystemPathSchema,
-    filePaths: z.array(gitRelativePathSchema),
-  }),
-  gitCommit: z.object({
-    rootPath: filesystemPathSchema,
-    // Empty string is allowed: the main process fills a Conventional Commits
-    // subject from the staged change set when the user leaves the field blank.
-    message: z
-      .string()
-      .max(10_000)
-      .refine((value) => !value.includes("\0"), "null byte"),
-    includeUnstaged: z.boolean(),
-  }),
-  // Draft only — never stages or commits. includeUnstaged controls whether
-  // the temporary index mirrors the full worktree for model context.
-  gitGenerateCommitMessage: z.object({
-    rootPath: filesystemPathSchema,
-    includeUnstaged: z.boolean(),
-  }),
-  gitBranch: z.object({
-    rootPath: filesystemPathSchema,
-    branch: z
-      .string()
-      .min(1)
-      .max(256)
-      .refine((value) => !value.includes("\0"), "null byte")
-      .refine((value) => !value.startsWith("-"), "option-like branch"),
-  }),
-  gitWorktreeAdd: z.object({
-    repoRootPath: filesystemPathSchema,
-    workspaceId: idSchema,
-  }),
-  worktreeEnvironmentSave: z.object({
-    workspaceId: idSchema,
-    setupScript: z.string().max(100_000),
-    cleanupScript: z.string().max(100_000),
-    actions: z
-      .array(
-        z.object({
-          id: idSchema,
-          name: z.string().max(200),
-          script: z.string().max(100_000),
-        }),
-      )
-      .max(50),
-  }),
-  settingsChangeAck: z.object({ id: idSchema }),
-  settingsValuesReport: z.object({
-    values: z.record(z.string().max(256), z.unknown()),
-  }),
-  worktreeSettingsSave: z.object({
-    fetchBeforeCreate: z.boolean(),
-    rootPath: z
-      .union([z.string().max(4096), z.null()])
-      .refine(
-        (value) => value === null || !value.includes("\0"),
-        "path contains null byte",
-      ),
-  }),
-  worktreeRemove: z.object({
-    workspaceId: idSchema,
-    worktreePath: filesystemPathSchema,
-    workspaceRootPath: filesystemPathSchema.optional(),
-  }),
-  // Diff scope for the git panel. Ref/commit strings are git revisions (branch
-  // names, tags, hashes) — not filesystem paths — so they stay free of path
-  // separators and null bytes but allow `/` for remote refs (origin/main).
-  gitDiffQuery: z.object({
-    rootPath: filesystemPathSchema,
-    query: z
-      .discriminatedUnion("mode", [
-        z.object({ mode: z.literal("working") }),
-        z.object({ mode: z.literal("unstaged") }),
-        z.object({ mode: z.literal("staged") }),
-        z.object({
-          mode: z.literal("commit"),
-          commit: z
-            .string()
-            .min(1)
-            .max(256)
-            .refine((value) => !value.includes("\0"), "null byte"),
-        }),
-        z.object({
-          mode: z.literal("branch"),
-          // Left selector: branch under review (has the changes).
-          source: z
-            .string()
-            .min(1)
-            .max(256)
-            .refine((value) => !value.includes("\0"), "null byte"),
-          // Right selector: branch to compare against (merge destination).
-          target: z
-            .string()
-            .min(1)
-            .max(256)
-            .refine((value) => !value.includes("\0"), "null byte"),
-        }),
-      ])
-      .optional(),
-  }),
-  gitCommitsQuery: z.object({
-    rootPath: filesystemPathSchema,
-    limit: z.number().int().min(1).max(200).optional(),
-  }),
   filePath: filesystemPathSchema,
-  // Daemon-host directory browse; omitted path means the daemon's home dir.
-  directoryBrowse: z.object({
-    path: filesystemPathSchema.optional(),
-  }),
-  sessionId: idSchema,
-  sessionIds: z.array(idSchema).max(500),
-  teamId: idSchema,
-  teamMember: z.object({ teamId: idSchema, sessionId: idSchema }),
-  teamTemplateSave: z.object({
-    id: idSchema.optional(),
-    name: z.string().min(1).max(80),
-    members: z
-      .array(
-        z.object({
-          name: z.string().min(1).max(32),
-          agentRoleId: idSchema.nullable(),
-          prompt: z.string().max(8000),
-        }),
-      )
-      .min(1)
-      .max(8),
-  }),
-  messageId: idSchema,
-  toolCallId: z.string().refine(isToolCallId, "Invalid tool call ID"),
-  questionId: idSchema,
-  decision: decisionSchema,
-  answer: z.string().max(64_000),
   url: httpUrlSchema,
+  loopbackUrl: loopbackHttpUrlSchema,
+  audienceWindow: z.object({
+    channel: z.string().regex(/^[A-Za-z0-9-]{8,64}$/),
+  }),
   browserAnnotation: browserAnnotationSchema,
   browserAnnotationAction: z.enum(["send", "clear", "exit"]),
   browserAnnotationMarkers: z.tuple([
@@ -351,311 +105,11 @@ export const schemas = {
   bounds: boundsSchema,
   visible: z.boolean(),
   enabled: z.boolean(),
-  slashCommands: z.object({
-    agentType: z.string().min(1).max(64),
-    workspaceRootPath: filesystemPathSchema,
-  }),
-  sessionRuntimeMode: z.object({
-    sessionId: idSchema,
-    modeId: idSchema,
-  }),
-  sessionRuntimeConfig: z.object({
-    sessionId: idSchema,
-    configId: idSchema,
-    value: z.union([z.boolean(), z.string().max(4096)]),
-  }),
-  queuedInput: z.object({
-    sessionId: idSchema,
-    messageId: idSchema,
-  }),
-  sessionConfigure: z
-    .object({ id: idSchema, workspaceId: idSchema })
-    .passthrough(),
-  checkpointStatus: z.tuple([idSchema, idSchema]),
-  undoTurnChanges: z.object({
-    sessionId: idSchema,
-    messageId: idSchema,
-  }),
-  turnChangeFile: z.object({
-    sessionId: idSchema,
-    messageId: idSchema,
-    path: z.string().min(1).max(4096),
-    side: z.enum(["before", "after"]),
-  }),
-  turnChangeDiff: z.object({
-    sessionId: idSchema,
-    messageId: idSchema,
-  }),
-  queuedInputUpdate: z.object({
-    sessionId: idSchema,
-    messageId: idSchema,
-    // Empty text is valid for image-only queued messages; the daemon rejects
-    // an edit only when the message ends up with neither text nor attachments.
-    content: z.string().max(200_000),
-  }),
-  permissionResolve: z.tuple([
-    providerRequestIdSchema,
-    z
-      .string()
-      .min(1)
-      .max(256)
-      .refine(noNullByte, "option ID contains null byte"),
-  ]),
-  questionResolve: z.tuple([providerRequestIdSchema, z.string().max(64_000)]),
-  planApprovalResolve: z.tuple([
-    providerRequestIdSchema,
-    z.object({
-      outcome: z.enum(["approved", "cancelled", "abandoned"]),
-      feedback: z.string().max(64_000).nullish(),
-    }),
-  ]),
-  archive: z
-    .object({ sessionId: idSchema, archivedAt: isoTimestampSchema })
-    .passthrough(),
-  delete: z.object({ sessionId: idSchema }).passthrough(),
-  updateTitle: z
-    .object({
-      sessionId: idSchema,
-      title: z.string().min(1).max(2000),
-    })
-    .passthrough(),
-  refineTitle: z
-    .object({
-      sessionId: idSchema,
-      expectedTitle: z.string().max(2000),
-      fallbackTitle: z.string().max(2000),
-      message: z.string().max(200_000),
-    })
-    .passthrough(),
-  importImage: z
-    .object({
-      mimeType: z.string().min(1).max(255),
-      name: z.string().min(1).max(1024),
-      sizeBytes: z.number().int().nonnegative(),
-    })
-    .passthrough(),
-  importDocument: z
-    .object({
-      dataUrl: z
-        .string()
-        .max(45_000_000)
-        .startsWith("data:application/pdf;base64,"),
-      mimeType: z.literal("application/pdf"),
-      name: z.string().min(1).max(1024),
-      sizeBytes: z
-        .number()
-        .int()
-        .nonnegative()
-        .max(32 * 1024 * 1024),
-    })
-    .strict(),
-  readPdf: z.object({
-    filePath: filesystemPathSchema,
-  }),
-  // PDF reader marks (bookmarks + highlights). Stored in userData; the payload
-  // is capped so a compromised renderer cannot dump unbounded JSON to disk.
-  loadPdfAnnotations: z.object({
-    filePath: filesystemPathSchema,
-  }),
-  updatePdfAnnotations: z.object({
-    filePath: filesystemPathSchema,
-    operation: z.discriminatedUnion("type", [
-      z
-        .object({
-          type: z.literal("addHighlight"),
-          highlight: pdfHighlightSchema,
-        })
-        .strict(),
-      z
-        .object({
-          type: z.literal("removeHighlight"),
-          highlightId: pdfMarkIdSchema,
-        })
-        .strict(),
-      z
-        .object({ type: z.literal("addBookmark"), bookmark: pdfBookmarkSchema })
-        .strict(),
-      z
-        .object({
-          type: z.literal("toggleBookmark"),
-          bookmark: pdfBookmarkSchema,
-        })
-        .strict(),
-      z
-        .object({
-          type: z.literal("removeBookmark"),
-          bookmarkId: pdfMarkIdSchema,
-        })
-        .strict(),
-      z
-        .object({
-          type: z.literal("merge"),
-          annotations: z
-            .object({
-              bookmarks: z.array(pdfBookmarkSchema).max(10_000),
-              highlights: z.array(pdfHighlightSchema).max(50_000),
-            })
-            .strict(),
-        })
-        .strict(),
-    ]),
-  }),
-  editorView: z.object({ sessionId: idSchema }).passthrough(),
-  ptySpawn: z.object({
-    terminalId: idSchema,
-    workspaceId: idSchema,
-    cwd: filesystemPathSchema,
-    cols: z.number().int().positive().max(1000),
-    rows: z.number().int().positive().max(1000),
-  }),
-  ptyWrite: z.object({
-    terminalId: idSchema,
-    // PTY input is opaque bytes — keep a generous cap but reject pathological
-    // pastes that could overwhelm node-pty's write buffer.
-    data: z.string().max(1_000_000),
-  }),
-  ptyResize: z.object({
-    terminalId: idSchema,
-    cols: z.number().int().positive().max(1000),
-    rows: z.number().int().positive().max(1000),
-  }),
-  ptyKill: z.object({ terminalId: idSchema }),
-  mcpSaveConfig: z
-    .string()
-    .min(1)
-    .max(1_000_000)
-    .refine((value) => !value.includes("\0"), "null byte"),
-  skillsRequest: z.object({
-    scope: z.enum(["project", "global"]),
-    workspaceRootPath: filesystemPathSchema.nullish(),
-  }),
-  searchStart: z.object({
-    caseSensitive: z.boolean(),
-    exclude: z.string().max(1024),
-    include: z.string().max(1024),
-    maxResults: z.number().int().min(1).max(10_000),
-    query: z.string().max(1024),
-    rootPath: filesystemPathSchema,
-    searchId: idSchema,
-    useRegex: z.boolean(),
-    wholeWord: z.boolean(),
-  }),
-  searchCancel: z.object({ searchId: idSchema }),
   // Accept #rgb / #rrggbb / #rrggbbaa hex colors — anything else risks being
   // interpreted by Electron's color parser in ways we have not vetted.
   hexColor: z
     .string()
     .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/),
-  providerId: providerIdSchema,
-  agentId: agentIdSchema,
-  acpRegistryCatalog: z
-    .object({ forceRefresh: z.boolean().optional() })
-    .optional(),
-  acpRegistryId: z
-    .string()
-    .regex(/^[a-z0-9][a-z0-9._-]{0,63}$/i, "invalid registry id"),
-  acpRegistryAgentId: agentIdSchema.refine(
-    isAcpRegistryAgentId,
-    "not a registry agent",
-  ),
-  providerConfigSave: z.object({
-    id: providerIdSchema,
-    name: z.string().min(1).max(256),
-    baseUrl: z.string().min(1).max(4096).refine(noNullByte, "null byte"),
-    enabled: z.boolean(),
-    apiKeySecretId: z.string().max(256).nullable(),
-    headersJson: providerJsonFieldSchema,
-    compatJson: providerJsonFieldSchema,
-    createdAt: z.string().max(64),
-    updatedAt: z.string().max(64),
-  }),
-  providerModelSave: z.object({
-    providerId: providerIdSchema,
-    modelId: providerIdSchema,
-    name: z.string().min(1).max(256),
-    api: z.enum(providerApis),
-    enabled: z.boolean(),
-    source: z.enum(["api", "manual"]),
-    baseUrl: z.string().max(4096).refine(noNullByte, "null byte").nullish(),
-    contextLimit: z.number().int().positive().nullish(),
-    outputLimit: z.number().int().positive().nullish(),
-    capabilities: z
-      .array(z.enum(["agent", "chat", "vision", "reasoning"]))
-      .optional(),
-    reasoning: z.boolean().optional(),
-    thinkingLevelMapJson: providerJsonFieldSchema,
-    costJson: providerJsonFieldSchema,
-    compatJson: providerJsonFieldSchema,
-    defaultReasoningEffort: reasoningEffortSchema.nullish(),
-    supportedReasoningEfforts: z
-      .array(
-        z.object({
-          reasoningEffort: reasoningEffortSchema,
-          description: z.string().max(1024),
-          label: z.string().max(256).nullish(),
-        }),
-      )
-      .optional(),
-    serviceTiers: z
-      .array(
-        z.object({
-          id: z.string().min(1).max(256),
-          name: z.string().max(256),
-          description: z.string().max(1024),
-        }),
-      )
-      .optional(),
-    supportsFastMode: z.boolean().optional(),
-    isDefault: z.boolean().optional(),
-    createdAt: z.string().max(64),
-    updatedAt: z.string().max(64),
-  }),
-  providerSetApiKey: z.tuple([
-    providerIdSchema,
-    z.string().max(16_384).refine(noNullByte, "null byte"),
-  ]),
-  providerDeleteModel: z.tuple([providerIdSchema, providerIdSchema]),
-  providerImportJson: z.string().max(4_194_304).refine(noNullByte, "null byte"),
-  providerSetDefault: z.tuple([
-    agentIdSchema,
-    providerIdSchema,
-    providerModelSelectionSchema,
-  ]),
-  providerCompatibleForAgent: z.tuple([
-    agentIdSchema,
-    z.object({ forceRefresh: z.boolean().optional() }).optional(),
-  ]),
-  providerModelAxesProbe: z.tuple([
-    agentIdSchema,
-    providerModelSelectionSchema,
-  ]),
-  providerTitleModelSet: titleModelSelectionSchema.nullable(),
-  providerTitleModelProbe: titleModelSelectionSchema,
-  providerCommitMessageModelSet: z
-    .object({
-      agentId: agentIdSchema,
-      providerId: providerIdSchema,
-      modelId: providerModelSelectionSchema,
-      reasoningEffort: reasoningEffortSchema.nullish(),
-      thinkingLevel: z.enum(["default", "off", ...reasoningEfforts]).nullish(),
-      serviceTier: z.string().max(256).nullish(),
-      fastMode: z.boolean().nullish(),
-      openCodeAgent: z.string().max(256).nullish(),
-      openCodeVariant: z.string().max(256).nullish(),
-    })
-    .nullable(),
-  providerAuthLoginStart: z.tuple([
-    providerIdSchema,
-    z.enum(["oauth", "api_key"]),
-  ]),
-  providerAuthLoginRespond: z.tuple([
-    idSchema,
-    idSchema,
-    z.string().max(16_384),
-  ]),
-  // Codex login IDs are generated by the external codex process, not by us —
-  // keep the shape loose (bounded, no null bytes) rather than UUID-strict.
-  codexLoginId: z.string().min(1).max(512).refine(noNullByte, "null byte"),
 } as const;
 
 type Handler<T, R> = (event: IpcMainInvokeEvent, payload: T) => Promise<R> | R;

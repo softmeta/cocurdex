@@ -1,13 +1,13 @@
+import {
+  resolveScrollDirection,
+  type ScrollDirection,
+  scrollDirectionOfDelta,
+} from "@cocurdex/shared";
 import { type RefObject, useCallback, useRef, useState } from "react";
 import {
-  shouldFollowStreamOnResize,
-  shouldReleaseStickOnUserScroll,
-} from "@/components/chat";
-import {
+  getTranscriptContentHeight,
   isViewportAtBottom,
-  isViewportNearBottom,
   isViewportNearTop,
-  resolveStickToBottom,
   resolveStickyUserMessage,
   type StickyUserMessageCandidate,
 } from "./chat-scroll";
@@ -16,7 +16,6 @@ import type { ChatTimelineScrollHandle } from "./virtual-timeline";
 
 const USER_SCROLL_INTENT_WINDOW_MS = 600;
 const DISCLOSURE_HOLD_MS = 400;
-
 function getMountedUserMessageTop(
   element: HTMLDivElement,
   viewport: HTMLDivElement,
@@ -39,6 +38,23 @@ function getMountedUserMessageTop(
   return null;
 }
 
+function scrollViewportToLatest(viewport: HTMLDivElement, smooth: boolean) {
+  const top = Math.max(
+    0,
+    getTranscriptContentHeight(viewport) - viewport.clientHeight,
+  );
+  if (
+    !smooth ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    viewport.scrollTop = top;
+    return;
+  }
+  const glideStart = top - viewport.clientHeight;
+  if (viewport.scrollTop < glideStart) viewport.scrollTop = glideStart;
+  viewport.scrollTo({ top, behavior: "smooth" });
+}
+
 export function useChatScrollState({
   timelineScrollRef,
   userMessageRefs,
@@ -52,12 +68,10 @@ export function useChatScrollState({
   const [isNearTop, setIsNearTop] = useState(true);
   // Last hand-scroll direction. In the middle region the jump button mirrors
   // it: scrolling up offers "back to top", scrolling down offers "to latest".
-  const [scrollDirection, setScrollDirection] = useState<"up" | "down">("down");
+  const [scrollDirection, setScrollDirection] =
+    useState<ScrollDirection>("down");
   const lastScrollTopRef = useRef(0);
-  // Latches once the viewer scrolls by hand. Gates the jump-to-top button so a
-  // freshly opened conversation (auto-pinned to the bottom) does not show it
-  // until the viewer has actually moved the viewport themselves.
-  const [hasUserScrolled, setHasUserScrolled] = useState(false);
+  const inputDirectionRef = useRef<ScrollDirection | null>(null);
   const [stickyUserMessageId, setStickyUserMessageId] = useState<string | null>(
     null,
   );
@@ -66,20 +80,9 @@ export function useChatScrollState({
   >(null);
   const pendingUserMessageIdRef = useRef<string | null>(null);
   const isNearBottomRef = useRef(true);
-  const shouldStickToBottomRef = useRef(true);
+  const initialPositionPendingRef = useRef(true);
   const userScrollIntentTsRef = useRef(0);
-  const scrollAnimationFrameRef = useRef<number | null>(null);
-  // While a smooth jump is in flight the viewport sweeps across both
-  // thresholds, which would otherwise flash the sibling jump button into view
-  // mid-animation. Hide the controls until the jump settles at its target.
-  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-  const autoScrollTargetRef = useRef<"top" | "bottom" | null>(null);
-
-  const endAutoScroll = useCallback(() => {
-    autoScrollTargetRef.current = null;
-    setIsAutoScrolling(false);
-  }, []);
-
+  const latestJumpRef = useRef<{ smooth: boolean } | null>(null);
   const setNearBottomState = useCallback((nextIsNearBottom: boolean) => {
     if (isNearBottomRef.current === nextIsNearBottom) {
       return;
@@ -87,15 +90,6 @@ export function useChatScrollState({
 
     isNearBottomRef.current = nextIsNearBottom;
     setIsNearBottom(nextIsNearBottom);
-  }, []);
-
-  const stopScrollAnimation = useCallback(() => {
-    if (scrollAnimationFrameRef.current === null) {
-      return;
-    }
-
-    cancelAnimationFrame(scrollAnimationFrameRef.current);
-    scrollAnimationFrameRef.current = null;
   }, []);
 
   const setStickyUserMessageState = useCallback((messageId: string | null) => {
@@ -117,39 +111,34 @@ export function useChatScrollState({
         return;
       }
 
-      const nextIsNearBottom = isViewportNearBottom(viewport);
+      const nextIsNearBottom = isViewportAtBottom(viewport);
       const nextIsNearTop = isViewportNearTop(viewport);
       setIsNearTop(nextIsNearTop);
-
-      const scrollTop = viewport.scrollTop;
-      if (scrollTop !== lastScrollTopRef.current) {
-        setScrollDirection(
-          scrollTop > lastScrollTopRef.current ? "down" : "up",
-        );
-        lastScrollTopRef.current = scrollTop;
-      }
-
-      const autoScrollTarget = autoScrollTargetRef.current;
-      if (
-        (autoScrollTarget === "top" && nextIsNearTop) ||
-        (autoScrollTarget === "bottom" && nextIsNearBottom)
-      ) {
-        endAutoScroll();
-      }
+      if (nextIsNearBottom) latestJumpRef.current = null;
 
       const hasRecentUserScrollIntent =
         performance.now() - userScrollIntentTsRef.current <
         USER_SCROLL_INTENT_WINDOW_MS;
+      const scrollTop = viewport.scrollTop;
+      const scrollDelta = scrollTop - lastScrollTopRef.current;
+      if (Math.abs(scrollDelta) >= 12 || !hasRecentUserScrollIntent) {
+        lastScrollTopRef.current = scrollTop;
+      }
+      const inputDirection = hasRecentUserScrollIntent
+        ? inputDirectionRef.current
+        : null;
+      setScrollDirection((current) =>
+        Math.abs(scrollDelta) < 12 && !inputDirection
+          ? current
+          : resolveScrollDirection({
+              current,
+              scrollDelta,
+              inputDirection: inputDirectionRef.current,
+              hasRecentUserScrollIntent,
+            }),
+      );
+
       setNearBottomState(nextIsNearBottom);
-      shouldStickToBottomRef.current =
-        !timelineScrollRef?.current?.hasNavigationTarget() &&
-        resolveStickToBottom({
-          autoScrollTarget,
-          hasRecentUserScrollIntent,
-          isAtBottom: isViewportAtBottom(viewport),
-          isNearBottom: nextIsNearBottom,
-          wasSticking: shouldStickToBottomRef.current,
-        });
 
       if (pendingUserMessageIdRef.current) {
         if (!hasRecentUserScrollIntent) {
@@ -190,7 +179,6 @@ export function useChatScrollState({
       setStickyUserMessageState(selection.id);
     },
     [
-      endAutoScroll,
       setNearBottomState,
       setStickyUserMessageState,
       timelineScrollRef,
@@ -201,37 +189,29 @@ export function useChatScrollState({
 
   const markUserScrollIntent = useCallback(() => {
     timelineScrollRef?.current?.cancelNavigation();
+    latestJumpRef.current = null;
     userScrollIntentTsRef.current = performance.now();
-    setHasUserScrolled(true);
-    endAutoScroll();
+    inputDirectionRef.current = null;
     const viewport = viewportRef.current;
-    if (viewport && !isViewportNearBottom(viewport)) {
-      shouldStickToBottomRef.current = false;
+    if (viewport && !isViewportAtBottom(viewport)) {
+      initialPositionPendingRef.current = false;
       setNearBottomState(false);
     }
-  }, [endAutoScroll, setNearBottomState, timelineScrollRef, viewportRef]);
+  }, [setNearBottomState, timelineScrollRef, viewportRef]);
 
   const markUserScrollStart = useCallback(
     (deltaY?: number) => {
       timelineScrollRef?.current?.cancelNavigation();
+      latestJumpRef.current = null;
       userScrollIntentTsRef.current = performance.now();
-      setHasUserScrolled(true);
-      endAutoScroll();
-      const viewport = viewportRef.current;
-      if (
-        shouldReleaseStickOnUserScroll({
-          deltaY,
-          isAtBottom: viewport ? isViewportAtBottom(viewport) : false,
-        })
-      ) {
-        shouldStickToBottomRef.current = false;
-      }
+      inputDirectionRef.current = scrollDirectionOfDelta(deltaY);
+      initialPositionPendingRef.current = false;
     },
-    [endAutoScroll, timelineScrollRef, viewportRef],
+    [timelineScrollRef],
   );
 
   const scrollToLatest = useCallback(
-    (behavior: ScrollBehavior = "auto") => {
+    (smooth = false) => {
       timelineScrollRef?.current?.cancelNavigation();
       clearPendingUserMessage();
       const viewport = viewportRef.current;
@@ -240,70 +220,42 @@ export function useChatScrollState({
         return;
       }
 
-      stopScrollAnimation();
-
-      const nextTop = viewport.scrollHeight;
-
-      if (behavior === "smooth") {
-        autoScrollTargetRef.current = "bottom";
-        setIsAutoScrolling(true);
-      }
-
-      if (typeof viewport.scrollTo === "function") {
-        viewport.scrollTo({ behavior, top: nextTop });
-      } else {
-        viewport.scrollTop = nextTop;
-      }
-
-      shouldStickToBottomRef.current = true;
-      setNearBottomState(true);
+      scrollViewportToLatest(viewport, smooth);
+      timelineScrollRef?.current?.syncScrollOffset();
+      initialPositionPendingRef.current = false;
+      const atBottom = isViewportAtBottom(viewport);
+      latestJumpRef.current = atBottom ? null : { smooth };
+      setNearBottomState(atBottom);
     },
     [
       clearPendingUserMessage,
       setNearBottomState,
-      stopScrollAnimation,
       timelineScrollRef,
       viewportRef,
     ],
   );
 
-  const scrollToTop = useCallback(
-    (behavior: ScrollBehavior = "auto") => {
-      timelineScrollRef?.current?.cancelNavigation();
-      clearPendingUserMessage();
-      const viewport = viewportRef.current;
+  const scrollToTop = useCallback(() => {
+    timelineScrollRef?.current?.cancelNavigation();
+    clearPendingUserMessage();
+    const viewport = viewportRef.current;
 
-      if (!viewport) {
-        return;
-      }
+    if (!viewport) {
+      return;
+    }
 
-      stopScrollAnimation();
-      // Jumping to the top is an explicit read-history action — break the
-      // bottom lock so streaming updates do not yank the viewport back down.
-      shouldStickToBottomRef.current = false;
-
-      if (behavior === "smooth") {
-        autoScrollTargetRef.current = "top";
-        setIsAutoScrolling(true);
-      }
-
-      if (typeof viewport.scrollTo === "function") {
-        viewport.scrollTo({ behavior, top: 0 });
-      } else {
-        viewport.scrollTop = 0;
-      }
-
-      setNearBottomState(false);
-      setIsNearTop(true);
-    },
-    [
-      clearPendingUserMessage,
-      setNearBottomState,
-      stopScrollAnimation,
-      timelineScrollRef,
-      viewportRef,
-    ],
-  );
+    initialPositionPendingRef.current = false;
+    latestJumpRef.current = null;
+    viewport.scrollTop = 0;
+    timelineScrollRef?.current?.syncScrollOffset();
+    setNearBottomState(false);
+    setIsNearTop(true);
+  }, [
+    clearPendingUserMessage,
+    setNearBottomState,
+    timelineScrollRef,
+    viewportRef,
+  ]);
 
   const scrollToUserMessage = useCallback(
     (messageId: string) => {
@@ -314,8 +266,8 @@ export function useChatScrollState({
         return;
       }
 
-      stopScrollAnimation();
-      shouldStickToBottomRef.current = false;
+      initialPositionPendingRef.current = false;
+      latestJumpRef.current = null;
       userScrollIntentTsRef.current = 0;
       pendingUserMessageIdRef.current = messageId;
       setPendingUserMessageId(messageId);
@@ -336,7 +288,6 @@ export function useChatScrollState({
     },
     [
       setStickyUserMessageState,
-      stopScrollAnimation,
       timelineScrollRef,
       userMessageRefs,
       viewportRef,
@@ -344,40 +295,38 @@ export function useChatScrollState({
   );
 
   const holdForDisclosure = useCallback(() => {
-    shouldStickToBottomRef.current = false;
+    initialPositionPendingRef.current = false;
     timelineScrollRef?.current?.holdScrollPosition(DISCLOSURE_HOLD_MS);
   }, [timelineScrollRef]);
 
-  const stickToBottomIfLocked = useCallback(() => {
-    const viewport = viewportRef.current;
-    if (
-      !shouldFollowStreamOnResize({
-        isAtBottom: viewport ? isViewportAtBottom(viewport) : false,
-        isLocked: shouldStickToBottomRef.current,
-        suppressFollow: autoScrollTargetRef.current === "top",
-      })
-    ) {
-      if (viewport) {
-        setNearBottomState(isViewportNearBottom(viewport));
-        setIsNearTop(isViewportNearTop(viewport));
-      }
-      return;
-    }
+  const finishInitialPositioning = useCallback(() => {
+    initialPositionPendingRef.current = false;
+  }, []);
 
-    scrollToLatest("auto");
-  }, [scrollToLatest, setNearBottomState, viewportRef]);
+  const syncViewportLayout = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    if (initialPositionPendingRef.current) {
+      viewport.scrollTop = viewport.scrollHeight;
+      timelineScrollRef?.current?.syncScrollOffset();
+    } else if (latestJumpRef.current && !isViewportAtBottom(viewport)) {
+      scrollViewportToLatest(viewport, latestJumpRef.current.smooth);
+      timelineScrollRef?.current?.syncScrollOffset();
+    }
+    setNearBottomState(isViewportAtBottom(viewport));
+    setIsNearTop(isViewportNearTop(viewport));
+  }, [setNearBottomState, timelineScrollRef, viewportRef]);
 
   return {
+    finishInitialPositioning,
     activeUserMessageId: pendingUserMessageId ?? stickyUserMessageId,
-    hasUserScrolled,
-    isAutoScrolling,
     isNearBottom,
     isNearTop,
     scrollDirection,
     markUserScrollIntent,
     markUserScrollStart,
     holdForDisclosure,
-    stickToBottomIfLocked,
+    syncViewportLayout,
     scrollToLatest,
     scrollToTop,
     scrollToUserMessage,

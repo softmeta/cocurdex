@@ -61,7 +61,7 @@ export function ScriptRunProposalCard({ run }: { run: ScriptRunRecord }) {
           {t("scriptRun.showScript")}
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <pre className="mt-1.5 max-h-72 overflow-auto rounded-control border border-chat-border-soft bg-chat-surface-subtle px-3 py-2 font-mono text-meta leading-5 text-chat-fg-secondary">
+          <pre className="mt-1.5 max-h-72 overflow-auto rounded-control bg-chat-code-panel px-3 py-2 font-mono text-meta leading-5 text-chat-fg-secondary">
             {run.script}
           </pre>
         </CollapsibleContent>

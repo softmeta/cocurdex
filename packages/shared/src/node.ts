@@ -1,6 +1,10 @@
 import { realpath } from "node:fs/promises";
+import http from "node:http";
 import path from "node:path";
+import { type EnvMap, resolveNodeGlobalProxyEnv } from "./network-proxy";
 import { isPathWithinRoots as isLexicallyWithinRoots } from "./workspace-roots";
+
+export * from "./logs";
 
 // Node-only helpers. This entry is not exported from the package root so the
 // isomorphic `@cocurdex/shared` barrel stays browser-safe; import it as
@@ -74,4 +78,16 @@ export async function resolveAuthorizedPdfReadPath(
   // path so identities like annotation storage keys stay stable across
   // symlinked workspace roots.
   return resolvedPath;
+}
+
+let restoreNodeGlobalProxy: (() => void) | null = null;
+
+export function applyNodeGlobalProxy(env: EnvMap): void {
+  restoreNodeGlobalProxy?.();
+  restoreNodeGlobalProxy = null;
+  const proxyEnv = resolveNodeGlobalProxyEnv(env);
+  if (!proxyEnv.http_proxy && !proxyEnv.https_proxy) {
+    return;
+  }
+  restoreNodeGlobalProxy = http.setGlobalProxyFromEnv({ ...proxyEnv });
 }

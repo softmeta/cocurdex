@@ -1,0 +1,46 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { loadNativeKeyring } from "@cocurdex/daemon/internal/packaged-module";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterEach, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
+
+afterEach(async () => {
+  await tempDirs.cleanup();
+});
+
+async function createResources() {
+  const resources = await tempDirs.create("cd-native-");
+  const archive = path.join(resources, "app.asar");
+  await mkdir(archive);
+  await writeFile(path.join(archive, "package.json"), "{}");
+  return { resources, archive };
+}
+
+it("resolves the packaged native module inside the application archive", async () => {
+  const { resources, archive } = await createResources();
+  const nativePackage = path.join(
+    archive,
+    "node_modules",
+    "@napi-rs",
+    "keyring",
+  );
+  await mkdir(nativePackage, { recursive: true });
+  await writeFile(
+    path.join(nativePackage, "index.js"),
+    "module.exports = { AsyncEntry: class PackagedEntry {} };",
+  );
+
+  const native = await loadNativeKeyring(resources);
+
+  expect(native.AsyncEntry.name).toBe("PackagedEntry");
+});
+
+it("rejects an incomplete package instead of using development dependencies", async () => {
+  const { resources } = await createResources();
+
+  await expect(loadNativeKeyring(resources)).rejects.toThrow(
+    "Cannot find module",
+  );
+});

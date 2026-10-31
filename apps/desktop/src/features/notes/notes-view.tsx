@@ -2,7 +2,8 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { NotebookPen } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ResizableSidebar, SidebarCollapsedRail } from "@/components";
+import { SidebarToggleButton } from "@/app/layout/titlebar-icon-button";
+import { ResizableSidebar, WORKBENCH_SIDEBAR_WIDTH_PX } from "@/components";
 import { EmptyState } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { useMountEffect } from "@/lib";
@@ -14,11 +15,11 @@ import {
 } from "./notes-store";
 import { NotesSidebar } from "./sidebar";
 
-const SIDEBAR_WIDTH_PX = 220;
 // Usable note body strip beside the list (mirrors editor min content width).
 const MIN_NOTES_EDITOR_WIDTH_PX = 280;
 // Sidebar + body; pin / panel resize must not collapse either column.
-const MIN_NOTES_VIEW_WIDTH_PX = SIDEBAR_WIDTH_PX + MIN_NOTES_EDITOR_WIDTH_PX;
+const MIN_NOTES_VIEW_WIDTH_PX =
+  WORKBENCH_SIDEBAR_WIDTH_PX + MIN_NOTES_EDITOR_WIDTH_PX;
 
 export function NotesView() {
   const { t } = useTranslation("notes");
@@ -42,23 +43,27 @@ export function NotesView() {
       className="flex min-h-0 flex-1"
       style={{ minWidth: MIN_NOTES_VIEW_WIDTH_PX }}
     >
-      {sidebarCollapsed ? (
-        <SidebarCollapsedRail
-          onExpand={() => setSidebarCollapsed(false)}
-          expandLabel={t("sidebar.expand")}
-        />
-      ) : (
+      {sidebarCollapsed ? null : (
         <ResizableSidebar
-          defaultWidth={SIDEBAR_WIDTH_PX}
+          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
           ariaLabel={t("sidebar.resize")}
         >
           <NotesSidebar onCollapse={() => setSidebarCollapsed(true)} />
         </ResizableSidebar>
       )}
       <div
-        className="flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas"
         style={{ minWidth: MIN_NOTES_EDITOR_WIDTH_PX }}
       >
+        {sidebarCollapsed ? (
+          <div className="absolute start-2 top-0 z-10 flex h-8 items-center">
+            <SidebarToggleButton
+              label={t("sidebar.expand")}
+              open={false}
+              onToggle={() => setSidebarCollapsed(false)}
+            />
+          </div>
+        ) : null}
         {activeNoteId ? (
           <NoteEditor />
         ) : (

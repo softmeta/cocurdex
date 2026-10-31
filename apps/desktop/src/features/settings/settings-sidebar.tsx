@@ -1,7 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { SettingsSectionId } from "@/app/layout";
+import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import {
   ScrollArea,
   SidebarListRow,

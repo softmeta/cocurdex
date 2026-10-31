@@ -1,10 +1,7 @@
 import { Columns2, FileCode, Rows3, Settings2, WrapText } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TITLEBAR_ICON_GLYPH_CLASS,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { AppDropdownRadioList } from "@/components";
 import {
   DropdownMenu,
@@ -13,11 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { GitDiffStyle } from "./git-changes-model";
 
 interface GitChangesViewMenuProps {
@@ -42,26 +34,18 @@ export function GitChangesViewMenu({
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <DropdownMenuTrigger
-              render={
-                <TitlebarIconButton
-                  active={open}
-                  aria-expanded={open}
-                  aria-label={t("git.diffViewSettings")}
-                >
-                  <Settings2 className={TITLEBAR_ICON_GLYPH_CLASS} />
-                </TitlebarIconButton>
-              }
-            />
-          }
-        />
-        <TooltipContent side="top" sideOffset={6}>
-          {t("git.diffViewSettings")}
-        </TooltipContent>
-      </Tooltip>
+      <DropdownMenuTrigger
+        render={
+          <TitlebarIconButton
+            tooltipSide="top"
+            active={open}
+            aria-expanded={open}
+            aria-label={t("git.diffViewSettings")}
+          >
+            <Settings2 className="size-3.5" />
+          </TitlebarIconButton>
+        }
+      />
       <DropdownMenuContent align="end">
         <AppDropdownRadioList
           closeOnClick={false}

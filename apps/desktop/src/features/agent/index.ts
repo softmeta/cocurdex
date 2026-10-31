@@ -13,7 +13,6 @@ export {
 } from "./follow-up-behavior";
 export {
   applyPermissionEventAtom,
-  clearPermissionsForSessionAtom,
   hydratePendingPermissionsAtom,
   permissionsBySessionAtom,
 } from "./permission";
@@ -21,8 +20,6 @@ export {
   applyPlanApprovalEventAtom,
   applyPlanEventAtom,
   autoCollapsedPlansBySessionAtom,
-  clearPlanApprovalsForSessionAtom,
-  clearPlanForSessionAtom,
   collapsedPlansBySessionAtom,
   dismissedPlansBySessionAtom,
   dismissPlanForSessionAtom,
@@ -36,7 +33,6 @@ export {
 } from "./plan";
 export {
   applyQuestionEventAtom,
-  clearQuestionsForSessionAtom,
   hydratePendingQuestionsAtom,
   questionsBySessionAtom,
 } from "./question";
@@ -45,6 +41,7 @@ export {
   applyQueuedInputEventAtom,
   bootstrapQueuedInputsAtom,
   discardQueuedInputAtom,
+  markQueueResumedAtom,
   type QueuedAgentInputItem,
   queuedInputsBySessionAtom,
   removeQueuedInputAtom,
@@ -54,10 +51,10 @@ export {
   agentRuntimeBySessionAtom,
   applyAgentRuntimeEventAtom,
   getActiveSessionModeId,
+  seedAgentRuntimeAtom,
 } from "./runtime";
 export {
   applyToolEventAtom,
-  clearToolCallsForSessionAtom,
   loadSessionToolCallsAtom,
   shouldRefreshSessionToolCalls,
   toolCallsBySessionAtom,
@@ -71,6 +68,5 @@ export {
   loadTurnStatsAtom,
   messagesBySessionAtom,
   messagesLoadedBySessionAtom,
-  rewindMessagesAtom,
   useSessionMessages,
 } from "./view";

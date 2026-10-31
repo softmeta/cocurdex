@@ -9,7 +9,7 @@ import {
   getAdapterStatus,
   isAdapterSelectable,
 } from "./adapter-status";
-import { agentOptions } from "./new-session-card/new-session-card-config";
+import { agentOptions } from "./agent-options";
 import { getAgentDisplayLabel } from "./session-store";
 
 export interface AgentSelectOption {

@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { openPdfsAtom } from "@/features/pdf-reader/pdf-reader-store";
+import { desktopApi, type HostCapabilities } from "@/lib";
 import {
   rightPanelHandledRevealClockAtom,
   rightPanelRevealIntentAtom,
@@ -9,6 +10,7 @@ import {
 export type RightPanelView =
   | "editor"
   | "notes"
+  | "decks"
   | "issues"
   | "git"
   | "browser"
@@ -19,6 +21,7 @@ export const DEFAULT_TAB_ORDER: RightPanelView[] = [
   "editor",
   "git",
   "notes",
+  "decks",
   "issues",
   "browser",
   "pdf",
@@ -137,6 +140,21 @@ export const freezeRightPanelViewAtom = atom(null, (get, set) => {
   set(rightPanelViewTouchedAtom, true);
 });
 
+export function isRightPanelViewAvailable(
+  view: RightPanelView,
+  capabilities: HostCapabilities,
+) {
+  if (view === "terminal") return capabilities.terminal;
+  if (view === "browser") return capabilities.browserView;
+  return true;
+}
+
+function availableView(view: RightPanelView): RightPanelView {
+  return isRightPanelViewAvailable(view, desktopApi.capabilities)
+    ? view
+    : "editor";
+}
+
 export const rightPanelResolvedActiveViewAtom = atom(
   (get) => {
     const openPdfCount = get(openPdfsAtom).length;
@@ -150,7 +168,7 @@ export const rightPanelResolvedActiveViewAtom = atom(
       intent.clock !== get(rightPanelHandledRevealClockAtom)
     ) {
       if (intent.view !== "pdf" || openPdfCount > 0) {
-        return intent.view;
+        return availableView(intent.view);
       }
     }
 
@@ -161,14 +179,14 @@ export const rightPanelResolvedActiveViewAtom = atom(
       if (fallback === "pdf" || fallback === "terminal") {
         return "editor";
       }
-      return fallback;
+      return availableView(fallback);
     }
 
     if (!get(rightPanelViewTouchedAtom)) {
       return "editor";
     }
 
-    return activeView;
+    return availableView(activeView);
   },
   (get, set, view: RightPanelView) => {
     set(rightPanelActiveViewAtom, view);

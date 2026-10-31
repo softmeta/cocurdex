@@ -39,39 +39,27 @@ export function CopyButton({
       .catch(() => {});
   };
 
-  const buttonClassName = cn(
-    "app-no-drag flex size-4 shrink-0 items-center justify-center rounded-control text-editor-fg-subtle opacity-0 transition-opacity hover:text-editor-fg focus-visible:opacity-100 group-hover:opacity-100",
-    className,
-  );
-  const icon = copied ? (
-    <Check className="size-3" />
-  ) : (
-    <Copy className="size-3" />
+  const button = (
+    <button
+      aria-label={label}
+      className={cn(
+        "app-no-drag flex size-4 shrink-0 items-center justify-center rounded-control text-editor-fg-subtle opacity-0 transition-opacity hover:text-editor-fg focus-visible:opacity-100 group-hover:opacity-100",
+        className,
+      )}
+      onClick={handleCopy}
+      type="button"
+    >
+      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+    </button>
   );
 
   if (!showTooltip) {
-    return (
-      <button
-        aria-label={label}
-        className={buttonClassName}
-        onClick={handleCopy}
-        type="button"
-      >
-        {icon}
-      </button>
-    );
+    return button;
   }
 
   return (
     <Tooltip>
-      <TooltipTrigger
-        aria-label={label}
-        className={buttonClassName}
-        onClick={handleCopy}
-        type="button"
-      >
-        {icon}
-      </TooltipTrigger>
+      <TooltipTrigger render={button} />
       <TooltipContent side="top" sideOffset={6}>
         {label}
       </TooltipContent>

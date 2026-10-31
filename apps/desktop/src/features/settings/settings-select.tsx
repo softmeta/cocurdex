@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type AppDropdownTriggerAppearance,
+  AppDropdownTriggerLabel,
   AppSearchableSelect,
   type AppSearchableSelectOption,
   AppSelect,
@@ -9,6 +10,7 @@ import {
 import { cn } from "@/lib";
 
 export interface SettingsSelectOption {
+  icon?: ReactNode;
   label: string;
   value: string;
 }
@@ -30,12 +32,6 @@ interface SettingsSelectProps {
   onChange(value: string): void;
 }
 
-// Setting-row triggers sit on the trailing edge of the row. They are
-// content-sized (label + chevron, no fixed w-56 gap) and ghost by default —
-// no form-field chrome. Searchable pickers use SettingsSearchableSelect.
-export const settingsSelectTriggerClassName =
-  "h-8 w-auto max-w-56 gap-1 px-2 font-normal";
-
 export function SettingsSelect({
   ariaLabel,
   appearance = "ghost",
@@ -56,8 +52,16 @@ export function SettingsSelect({
     ...(groups?.flatMap((group) => group.options) ?? []),
   ];
   const selectedOption = flatOptions.find((option) => option.value === value);
-  const displayLabel =
+  const displayText =
     selectedOption?.label ?? placeholder ?? t("providers.select");
+  const displayLabel = selectedOption?.icon ? (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {selectedOption.icon}
+      <AppDropdownTriggerLabel>{displayText}</AppDropdownTriggerLabel>
+    </span>
+  ) : (
+    displayText
+  );
 
   return (
     <AppSelect
@@ -66,12 +70,14 @@ export function SettingsSelect({
       contentClassName="max-h-72"
       disabled={disabled}
       options={options?.map((option) => ({
+        icon: option.icon,
         value: option.value,
         label: option.label,
       }))}
       sections={groups?.map((group) => ({
         label: group.label,
         options: group.options.map((option) => ({
+          icon: option.icon,
           value: option.value,
           label: option.label,
         })),
@@ -79,7 +85,7 @@ export function SettingsSelect({
       triggerAriaLabel={ariaLabel}
       triggerRadius="control"
       triggerClassName={cn(
-        settingsSelectTriggerClassName,
+        "h-7 w-auto max-w-56 gap-1 px-2 font-normal",
         !selectedOption && "text-muted-foreground",
         className,
       )}
@@ -123,7 +129,10 @@ export function SettingsSearchableSelect({
       options={options}
       searchPlaceholder={searchPlaceholder}
       triggerAriaLabel={ariaLabel}
-      triggerClassName={cn(settingsSelectTriggerClassName, className)}
+      triggerClassName={cn(
+        "h-7 w-auto max-w-56 gap-1 px-2 font-normal",
+        className,
+      )}
       triggerLabel={triggerLabel}
       value={value}
       onValueChange={onChange}

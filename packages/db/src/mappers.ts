@@ -6,14 +6,10 @@ import {
   type AgentRoleRecord,
   type AgentThinkingLevel,
   type AgentToolCallRecord,
-  type ConversationContentPart,
-  type ConversationMessageRecord,
-  type ConversationRecord,
-  type ConversationSource,
-  type ConversationUsage,
   type EditorViewRecord,
   isAgentId,
   type MessageRecord,
+  normalizeAgentRoleAvatar,
   type ProviderApi,
   type ProviderConfigRecord,
   type ProviderModelCapability,
@@ -59,6 +55,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
     sessionKind:
       row.session_kind === "subagent" ||
       row.session_kind === "teammate" ||
+      row.session_kind === "chat" ||
       row.session_kind === "main"
         ? row.session_kind
         : "main",
@@ -77,6 +74,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
     lastMessageAt:
       typeof row.last_message_at === "string" ? row.last_message_at : null,
     archivedAt: toNullableString(row.archived_at),
+    pinnedAt: toNullableString(row.pinned_at),
     providerSnapshot: parseJson<AgentProviderSnapshot | null>(
       row.provider_snapshot_json,
       null,
@@ -106,6 +104,7 @@ export function mapMessage(row: SqliteRow): MessageRecord {
     ...(typeof row.origin_json === "string" && row.origin_json
       ? { origin: parseJson<MessageRecord["origin"]>(row.origin_json, null) }
       : {}),
+    ...(typeof row.run_id === "string" ? { runId: row.run_id } : {}),
   };
 }
 
@@ -130,6 +129,7 @@ export function mapToolCall(row: SqliteRow): AgentToolCallRecord {
     startedAt: String(row.started_at),
     updatedAt: String(row.updated_at),
     ...(typeof row.seq === "number" ? { seq: row.seq } : {}),
+    ...(typeof row.run_id === "string" ? { runId: row.run_id } : {}),
   };
 }
 
@@ -157,6 +157,7 @@ export function mapToolCallSummary(row: SqliteRow): AgentToolCallRecord {
     startedAt: String(row.started_at),
     updatedAt: String(row.updated_at),
     ...(typeof row.seq === "number" ? { seq: row.seq } : {}),
+    ...(typeof row.run_id === "string" ? { runId: row.run_id } : {}),
   };
 }
 
@@ -246,39 +247,6 @@ export function mapProviderSecret(row: SqliteRow): ProviderSecretRecord {
   };
 }
 
-export function mapConversation(row: SqliteRow): ConversationRecord {
-  return {
-    id: String(row.id),
-    title: String(row.title),
-    providerId: String(row.provider_id),
-    modelId: String(row.model_id),
-    systemPrompt: toNullableString(row.system_prompt),
-    presetId: toNullableString(row.preset_id),
-    webSearchEnabled: toBoolean(row.web_search_enabled),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-    lastMessageAt: toNullableString(row.last_message_at),
-    archivedAt: toNullableString(row.archived_at),
-  };
-}
-
-export function mapConversationMessage(
-  row: SqliteRow,
-): ConversationMessageRecord {
-  return {
-    id: String(row.id),
-    conversationId: String(row.conversation_id),
-    role: row.role as ConversationMessageRecord["role"],
-    content: parseJson<ConversationContentPart[]>(row.content_json, []),
-    status: row.status as ConversationMessageRecord["status"],
-    usage: parseJson<ConversationUsage | null>(row.usage_json, null),
-    sources: parseJson<ConversationSource[]>(row.sources_json, []),
-    error: toNullableString(row.error),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  };
-}
-
 export function mapAgentRole(row: SqliteRow): AgentRoleRecord {
   const agentId = String(row.agent_id);
   if (!isAgentId(agentId)) {
@@ -306,8 +274,10 @@ export function mapAgentRole(row: SqliteRow): AgentRoleRecord {
       null) as AgentThinkingLevel | null,
     openCodeAgent: toNullableString(row.opencode_agent),
     openCodeVariant: toNullableString(row.opencode_variant),
+    description: toNullableString(row.description),
     instructions: toNullableString(row.instructions),
     skillIds: parseJson<string[] | null>(row.skill_ids_json, null),
+    avatar: normalizeAgentRoleAvatar(parseJson(row.avatar_json, null)),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

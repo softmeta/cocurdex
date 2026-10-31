@@ -43,6 +43,10 @@ import {
   useSyncTreeSelection,
 } from "./file-tree-sync";
 import { FILE_TREE_STYLE, TREES_UNSAFE_CSS } from "./tree-style";
+import {
+  useLazyTreeDirectories,
+  useLoadExpandedTreeDirectories,
+} from "./use-lazy-tree-directories";
 
 /**
  * Convert flat file entries into the path list that `@pierre/trees` expects.
@@ -51,7 +55,7 @@ import { FILE_TREE_STYLE, TREES_UNSAFE_CSS } from "./tree-style";
  * paths alone would drop them).
  */
 function entriesToPaths(
-  entries: { kind?: "directory" | "file"; relativePath: string }[],
+  entries: readonly { kind?: "directory" | "file"; relativePath: string }[],
 ): string[] {
   return entries.map((entry) =>
     entry.kind === "directory" ? `${entry.relativePath}/` : entry.relativePath,
@@ -111,9 +115,13 @@ export function FileTree() {
     });
   }, [rootPath]);
   const workspaceFiles = useWorkspaceFiles(rootPath);
+  const lazyDirectories = useLazyTreeDirectories(
+    rootPath,
+    workspaceFiles.files,
+  );
   const filePaths = useMemo(
-    () => entriesToPaths(workspaceFiles.files),
-    [workspaceFiles.files],
+    () => entriesToPaths(lazyDirectories.files),
+    [lazyDirectories.files],
   );
 
   // Keep a ref so the selection-change callback always sees the latest rootPath
@@ -226,6 +234,12 @@ export function FileTree() {
   useSyncTreeSearch(model, rootPath, filePaths, isLoading, searchQuery);
   useSyncTreeSelection(model, rootPath, activeFile, filePaths, isLoading);
   useSyncTreeGitStatus(model, rootPath);
+  useLoadExpandedTreeDirectories(
+    model,
+    filePaths,
+    isLoading,
+    lazyDirectories.loadDirectory,
+  );
 
   // Branch on workspace/listing state before the tree itself; kept as a local
   // helper (not nested ternaries) so each state stays readable.

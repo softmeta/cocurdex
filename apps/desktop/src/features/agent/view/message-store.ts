@@ -3,6 +3,7 @@ import type {
   AgentTurnCompletedEvent,
   MessageRecord,
 } from "@cocurdex/shared";
+import { STREAM_RENDER_BATCH_MS } from "@cocurdex/shared";
 import type { Getter, Setter } from "jotai";
 import { atom } from "jotai";
 import { findMessageById, upsertMessages } from "./message-collection";
@@ -19,7 +20,7 @@ export const messagesBySessionAtom = atom<MessagesBySession>({});
 export const messagesLoadedBySessionAtom = atom<LoadedBySession>({});
 export const turnStatsByMessageAtom = atom<TurnStatsByMessage>({});
 
-const DELTA_FLUSH_DELAY_MS = 16;
+const DELTA_FLUSH_DELAY_MS = STREAM_RENDER_BATCH_MS;
 const EMPTY_MESSAGES: MessageRecord[] = [];
 const deltaBufferAtom = atom(() => ({
   pendingDeltas: new Map<string, PendingDelta>(),
@@ -51,36 +52,6 @@ export const appendMessageAtom = atom(
     });
   },
 );
-
-export const rewindMessagesAtom = atom(
-  null,
-  (
-    get,
-    set,
-    payload: {
-      message: MessageRecord;
-    },
-  ) => {
-    const current = get(messagesBySessionAtom);
-    const sessionMessages = current[payload.message.sessionId] ?? [];
-
-    set(messagesBySessionAtom, {
-      ...current,
-      [payload.message.sessionId]: sessionMessages
-        .filter((message) => isAtOrBefore(message, payload.message))
-        .map((message) =>
-          message.id === payload.message.id ? payload.message : message,
-        ),
-    });
-  },
-);
-
-function isAtOrBefore(message: MessageRecord, target: MessageRecord) {
-  if (message.seq !== undefined && target.seq !== undefined) {
-    return message.seq <= target.seq;
-  }
-  return message.createdAt <= target.createdAt;
-}
 
 export const loadTurnStatsAtom = atom(
   null,

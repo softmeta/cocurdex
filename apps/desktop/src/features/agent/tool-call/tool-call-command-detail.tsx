@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { ShellCode } from "@/components/code-textarea";
 import { Spinner } from "@/components/ui";
 
 import type { ToolCallInputEntry } from "./tool-call-utils";
@@ -19,10 +20,10 @@ export function ToolCallCommandDetail({
   const { t } = useTranslation("agent");
 
   return (
-    <div className="flex max-h-[40vh] flex-col gap-2 overflow-auto rounded-control border border-chat-border-soft bg-chat-code-panel p-3 font-mono text-body leading-5 [font-variant-ligatures:none]">
+    <div className="flex max-h-[40vh] flex-col gap-2 overflow-auto rounded-control bg-chat-code-panel p-3 font-mono text-body leading-5 [font-variant-ligatures:none]">
       <div className="whitespace-pre-wrap break-words text-chat-fg">
         <span className="select-none text-chat-fg-muted">$ </span>
-        {command}
+        <ShellCode code={command} />
       </div>
       {otherEntries.length > 0 ? (
         <dl className="flex flex-col text-chat-fg-muted">

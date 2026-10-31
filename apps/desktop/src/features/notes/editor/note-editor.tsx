@@ -1,52 +1,74 @@
+import { NOTE_DOC_FIELD } from "@cocurdex/note-doc";
 import type { NoteRecord } from "@cocurdex/shared";
 import { offset } from "@floating-ui/dom";
+import Collaboration from "@tiptap/extension-collaboration";
 import DragHandle from "@tiptap/extension-drag-handle-react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { Folder, GripVertical } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { buildMarkdownBodyExtensions } from "@/components/markdown-body-editor";
+import {
+  buildMarkdownBodyExtensions,
+  focusParagraphAtStart,
+  TableControls,
+} from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
-import { Button, EmptyState, Text } from "@/components/ui";
+import { EmptyState, Text } from "@/components/ui";
+import { RelatedEntities } from "@/features/entity-links";
 import { parsePdfNoteCitationHref } from "@/features/pdf-reader/pdf-note-citation";
 import { openPdfAtPageAtom } from "@/features/pdf-reader/pdf-reader-store";
-import { cn } from "@/lib";
+import { cn, useMountEffect } from "@/lib";
 import { appendMarkdownToEditor } from "../append-markdown-to-editor";
 import {
   flushPendingNoteBodyInsert,
   noteBodyInsertHandlerAtom,
   pendingNoteBodyInsertAtom,
 } from "../note-body-insert";
-import { resolveNoteConflictAtom } from "../note-save-store";
+import { attachNoteDocSession, createNoteDoc } from "../note-doc-session";
 import {
+  type ActiveNoteDoc,
   activeNoteAtom,
+  activeNoteDocAtom,
   activeNoteIdAtom,
+  applyNoteDocSaveAtom,
   type NoteSaveStatus,
-  noteContentEpochAtom,
-  noteSaveConflictsAtom,
   noteSaveStatusAtom,
+  noteTitleEpochAtom,
+  openNoteAtom,
 } from "../notes-store";
 import {
   useCommitFolderRename,
   useDebouncedNoteRename,
 } from "./note-editor-sync";
+import { NoteTimestamps } from "./note-timestamps";
 import { useHideDragHandleOnLayoutShift } from "./use-hide-drag-handle-on-layout-shift";
-import { useNoteAutosave } from "./use-note-autosave";
 
-// left-start pins the handle to the block top. Negative mainAxis overlaps the
-// handle into the block so mouseleave relatedTarget stays on the handle — a
-// positive gap creates a dead zone where the grip vanishes before the cursor
-// can reach it. Module-level so DragHandle does not re-register every render.
-const DRAG_HANDLE_COMPUTE_POSITION = {
-  placement: "left-start" as const,
-  strategy: "absolute" as const,
-  middleware: [offset({ mainAxis: -6 })],
-};
+const NOTE_LINK_PREFIX = "note://";
+
+const BLOCK_GRIP_OVERLAP = -6;
+const TABLE_GRIP_GAP = 8;
+
+function createDragHandlePosition() {
+  const hovered = { isTable: false };
+  return {
+    hovered,
+    config: {
+      placement: "left-start" as const,
+      strategy: "absolute" as const,
+      middleware: [
+        offset(() => ({
+          mainAxis: hovered.isTable ? TABLE_GRIP_GAP : BLOCK_GRIP_OVERLAP,
+        })),
+      ],
+    },
+  };
+}
 
 export function NoteEditor() {
   const activeNote = useAtomValue(activeNoteAtom);
   const activeNoteId = useAtomValue(activeNoteIdAtom);
+  const activeNoteDoc = useAtomValue(activeNoteDocAtom);
 
   if (!activeNoteId) {
     return null;
@@ -58,49 +80,72 @@ export function NoteEditor() {
   // While the newly selected note is loading, the previous note's record is
   // still in the atom. Rendering it would let the user type into the old
   // document while autosave targets the new note id — render blank instead.
-  if (!activeNote || activeNote.id !== activeNoteId) {
+  if (
+    !activeNote ||
+    activeNote.id !== activeNoteId ||
+    activeNoteDoc?.noteId !== activeNote.id
+  ) {
     return <div className="flex-1" />;
   }
-  // Keyed by note id + content epoch so external disk reloads remount Tiptap
-  // with the new body without leaking undo history across notes.
-  return <NoteEditorBodyWithEpoch key={activeNote.id} note={activeNote} />;
+  return (
+    <NoteEditorBody
+      key={activeNote.id}
+      note={activeNote}
+      initialDoc={activeNoteDoc}
+    />
+  );
 }
 
-function NoteEditorBodyWithEpoch({ note }: { note: NoteRecord }) {
-  const contentEpoch = useAtomValue(noteContentEpochAtom);
-  return <NoteEditorBody key={`${note.id}:${contentEpoch}`} note={note} />;
+function useNoteDocSession(noteId: string, initialDoc: ActiveNoteDoc) {
+  const store = useStore();
+  const [doc] = useState(() => createNoteDoc(initialDoc.state));
+
+  useMountEffect(() =>
+    attachNoteDocSession(noteId, doc, {
+      onStatus: (status) => {
+        if (store.get(activeNoteIdAtom) === noteId) {
+          store.set(noteSaveStatusAtom, status);
+        }
+      },
+      onSaved: (saved) => store.set(applyNoteDocSaveAtom, saved),
+    }),
+  );
+
+  return doc;
 }
 
-function NoteEditorBody({ note }: { note: NoteRecord }) {
+function readNoteLinkTarget(href: string): string | null {
+  return href.startsWith(NOTE_LINK_PREFIX)
+    ? decodeURIComponent(href.slice(NOTE_LINK_PREFIX.length)) || null
+    : null;
+}
+
+function NoteEditorBody({
+  note,
+  initialDoc,
+}: {
+  note: NoteRecord;
+  initialDoc: ActiveNoteDoc;
+}) {
   const { t } = useTranslation("notes");
   const saveStatus = useAtomValue(noteSaveStatusAtom);
+  const titleEpoch = useAtomValue(noteTitleEpochAtom);
   const setInsertHandler = useSetAtom(noteBodyInsertHandlerAtom);
   const store = useStore();
-  // Parse once per mount; the component is remounted (keyed) per note.
-  const [initialMarkdown] = useState(() => note.bodyMarkdown);
+  const doc = useNoteDocSession(note.id, initialDoc);
 
   const editor = useEditor({
-    extensions: buildMarkdownBodyExtensions(t("editor.placeholder")),
-    content: initialMarkdown,
-    contentType: "markdown",
+    extensions: [
+      ...buildMarkdownBodyExtensions(t("editor.placeholder"), {
+        collaborative: true,
+      }),
+      Collaboration.configure({ document: doc, field: NOTE_DOC_FIELD }),
+    ],
     // Required: avoids "can't access DOM" errors under jsdom / non-DOM render.
     immediatelyRender: false,
     onCreate: ({ editor: created }) => {
-      const insertMarkdown = (markdown: string) => {
-        if (!appendMarkdownToEditor(created, markdown)) {
-          return false;
-        }
-        // Keep the jotai record in sync so a soft-refresh remount does not
-        // reload a stale empty/old bodyMarkdown and wipe in-memory clips.
-        const active = store.get(activeNoteAtom);
-        if (active && typeof created.getMarkdown === "function") {
-          store.set(activeNoteAtom, {
-            ...active,
-            bodyMarkdown: created.getMarkdown(),
-          });
-        }
-        return true;
-      };
+      const insertMarkdown = (markdown: string) =>
+        appendMarkdownToEditor(created, markdown);
       // Jotai treats bare function values as updaters — wrap so the handler
       // itself is stored as the atom value.
       setInsertHandler(() => insertMarkdown);
@@ -131,6 +176,12 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
         }
         // Prefer the raw attribute; `.href` can resolve oddly for custom schemes.
         const attrHref = anchor.getAttribute("href") ?? "";
+        const linkedNoteId = readNoteLinkTarget(attrHref);
+        if (linkedNoteId) {
+          event.preventDefault();
+          void store.set(openNoteAtom, linkedNoteId);
+          return true;
+        }
         const resolvedHref = typeof anchor.href === "string" ? anchor.href : "";
         const isPdfCitation =
           attrHref.startsWith("cocurdex-pdf:") ||
@@ -154,25 +205,39 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
     },
   });
 
-  useNoteAutosave(editor, note.id);
   // DragHandle freezes its floating coords until the hovered node changes;
   // hide on editor-chrome resize so it re-anchors after sidebar/panel drags.
   const editorChromeRef = useHideDragHandleOnLayoutShift(editor);
+  const [dragHandlePosition] = useState(createDragHandlePosition);
 
   return (
     <div
       ref={editorChromeRef}
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 py-8">
-        <NoteTitleInput noteId={note.id} initialTitle={note.title} />
-        <div className="mt-1 mb-4 h-4">
-          <SaveIndicator noteId={note.id} status={saveStatus} />
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
+        <div className="mb-4 flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <NoteTitleInput
+              key={titleEpoch}
+              noteId={note.id}
+              initialTitle={note.title}
+              editor={editor}
+            />
+            <SaveIndicator status={saveStatus} />
+          </div>
+          <NoteTimestamps
+            createdAt={note.createdAt}
+            updatedAt={note.updatedAt}
+          />
         </div>
         {editor ? (
           <DragHandle
             editor={editor}
-            computePositionConfig={DRAG_HANDLE_COMPUTE_POSITION}
+            computePositionConfig={dragHandlePosition.config}
+            onNodeChange={({ node }) => {
+              dragHandlePosition.hovered.isTable = node?.type.name === "table";
+            }}
           >
             {/*
               Match .md-body-prose first-line height (line-height 1.7 × body
@@ -185,7 +250,11 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
             </div>
           </DragHandle>
         ) : null}
-        <EditorContent editor={editor} className="relative flex-1" />
+        <div className="relative flex flex-1 flex-col">
+          <EditorContent editor={editor} className="relative flex-1" />
+          {editor ? <TableControls editor={editor} /> : null}
+        </div>
+        <RelatedEntities entity={{ kind: "note", id: note.id }} />
       </div>
     </div>
   );
@@ -194,11 +263,12 @@ function NoteEditorBody({ note }: { note: NoteRecord }) {
 interface NoteTitleInputProps {
   noteId: string;
   initialTitle: string;
+  editor: Editor | null;
 }
 
 // Title lives outside the Tiptap document as a controlled input, debounced into
 // the note's save queue.
-function NoteTitleInput({ noteId, initialTitle }: NoteTitleInputProps) {
+function NoteTitleInput({ noteId, initialTitle, editor }: NoteTitleInputProps) {
   const { t } = useTranslation("notes");
   const [value, setValue] = useState(initialTitle);
   const rename = useDebouncedNoteRename({ noteId });
@@ -208,13 +278,25 @@ function NoteTitleInput({ noteId, initialTitle }: NoteTitleInputProps) {
       type="text"
       value={value}
       placeholder={t("editor.untitledPlaceholder")}
+      aria-label={t("editor.titleLabel")}
       className={cn(
-        "w-full bg-transparent text-title font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none",
+        "min-w-0 flex-1 bg-transparent text-title font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none",
       )}
       onChange={(event) => {
         const next = event.target.value;
         setValue(next);
         rename(next);
+      }}
+      onKeyDown={(event) => {
+        if (!editor || event.nativeEvent.isComposing) return;
+        if (event.key === "Enter") {
+          event.preventDefault();
+          focusParagraphAtStart(editor.state, editor.view.dispatch);
+          editor.view.focus();
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          editor.commands.focus("start");
+        }
       }}
     />
   );
@@ -238,7 +320,7 @@ function FolderPlaceholder({ note }: { note: NoteRecord }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 py-8">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
         <input
           type="text"
           value={value}
@@ -276,46 +358,9 @@ function FolderPlaceholder({ note }: { note: NoteRecord }) {
   );
 }
 
-function SaveIndicator({
-  noteId,
-  status,
-}: {
-  noteId: string;
-  status: NoteSaveStatus;
-}) {
+function SaveIndicator({ status }: { status: NoteSaveStatus }) {
   const { t } = useTranslation("notes");
-  const conflict = useAtomValue(noteSaveConflictsAtom)[noteId];
-  const resolveConflict = useSetAtom(resolveNoteConflictAtom);
-  if (conflict) {
-    return (
-      <div className="flex items-center gap-2">
-        <Text size="meta" tone="destructive">
-          {t("editor.save.conflict")}
-        </Text>
-        <Button
-          variant="link"
-          size="xs"
-          className="h-4 px-0"
-          onClick={() => {
-            void resolveConflict({ noteId, choice: "keep-mine" });
-          }}
-        >
-          {t("editor.save.keepMine")}
-        </Button>
-        <Button
-          variant="link"
-          size="xs"
-          className="h-4 px-0"
-          onClick={() => {
-            void resolveConflict({ noteId, choice: "use-remote" });
-          }}
-        >
-          {t("editor.save.useRemote")}
-        </Button>
-      </div>
-    );
-  }
-  if (status === "idle" || status === "conflict") {
+  if (status === "idle") {
     return null;
   }
   if (status === "saving") {

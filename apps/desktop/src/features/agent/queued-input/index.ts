@@ -4,6 +4,8 @@ export {
   applyQueuedInputEventAtom,
   bootstrapQueuedInputsAtom,
   discardQueuedInputAtom,
+  markQueueResumedAtom,
+  pausedQueueSessionIdsAtom,
   type QueuedAgentInputItem,
   queuedInputsBySessionAtom,
   removeQueuedInputAtom,

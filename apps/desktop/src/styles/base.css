@@ -12,6 +12,10 @@
     overflow: hidden;
   }
 
+  #root {
+    isolation: isolate;
+  }
+
   body {
     margin: 0;
     background: var(--app-bg);
@@ -46,6 +50,14 @@
 .app-no-drag {
   -webkit-app-region: no-drag;
   app-region: no-drag;
+}
+
+:root {
+  --titlebar-controls-inset: calc(
+    100vw -
+    env(titlebar-area-x, 0px) -
+    env(titlebar-area-width, 100vw)
+  );
 }
 
 /*
@@ -224,14 +236,16 @@ html[data-platform="darwin"] .scrollbar-native-gutter {
   background: var(--scrollbar-thumb);
 }
 
-.scrollbar-interactive:hover [data-slot="scroll-area-thumb"],
+.scrollbar-interactive:hover
+  > [data-slot="scroll-area-scrollbar"]
+  > [data-slot="scroll-area-thumb"],
 .scrollbar-interactive
   [data-slot="scroll-area-scrollbar"][data-scrolling]
   [data-slot="scroll-area-thumb"] {
   background: var(--scrollbar-thumb-hover);
 }
 
-.scrollbar-interactive:hover [data-slot="scroll-area-scrollbar"],
+.scrollbar-interactive:hover > [data-slot="scroll-area-scrollbar"],
 .scrollbar-interactive [data-slot="scroll-area-scrollbar"][data-scrolling] {
   opacity: 1;
   pointer-events: auto;

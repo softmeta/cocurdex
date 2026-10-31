@@ -1,3 +1,5 @@
+import { entityUri, parseEntityRef } from "@cocurdex/shared";
+
 export interface ExtractedNoteLink {
   kind: "markdown" | "wikilink";
   targetRef: string;
@@ -35,6 +37,19 @@ export function extractNoteMetadata(
   }
   for (const match of prose.matchAll(/\[[^\]\n]*\]\(note:\/\/([^)]+)\)/gu)) {
     addLink(links, seenLinks, "markdown", match[1]);
+  }
+
+  for (const match of prose.matchAll(
+    /\[[^\]\n]*\]\((cocurdex:\/\/[^)\s]+)\)/gu,
+  )) {
+    const ref = parseEntityRef(match[1] ?? "");
+    if (!ref) continue;
+    addLink(
+      links,
+      seenLinks,
+      "markdown",
+      ref.kind === "note" ? ref.id : entityUri(ref),
+    );
   }
 
   return { tags: [...tags].sort(), links };

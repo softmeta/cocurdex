@@ -1,8 +1,25 @@
 {
   "agentRole": {
+    "avatar": {
+      "change": "更换头像",
+      "color": "颜色",
+      "custom": "自定义 emoji",
+      "customPlaceholder": "粘贴或输入任意 emoji",
+      "groups": {
+        "animals": "动物",
+        "people": "人物",
+        "symbols": "符号",
+        "work": "工作"
+      },
+      "reset": "使用首字母"
+    },
     "cancel": "取消",
+    "description": "描述",
+    "descriptionPlaceholder": "这个角色负责什么、擅长什么。团队协作时 lead agent 会据此挑选队友。",
     "empty": "还没有保存的角色",
+    "menuCreate": "新建角色",
     "menuLabel": "角色",
+    "menuManage": "管理角色",
     "name": "名称",
     "namePlaceholder": "角色名称",
     "save": "保存为角色",
@@ -12,10 +29,27 @@
     "saveFailed": "无法保存这个角色。",
     "saveTitle": "保存为角色"
   },
+  "agentSelect": {
+    "add": "从 ACP Registry 添加",
+    "editPreset": "编辑「{{name}}」",
+    "manage": "管理 Agent CLI"
+  },
   "archive": {
     "failed": "无法归档此会话，请重试。",
     "success": "会话已归档",
     "view": "查看归档"
+  },
+  "archiveGroup": {
+    "action": "归档会话",
+    "cancel": "取消",
+    "confirm": "归档",
+    "description": "「{{group}}」中的会话将移入归档，已置顶、运行中和等待处理的会话会被跳过。可随时在 设置 > 已归档会话 中恢复。",
+    "failed": "归档失败，请重试",
+    "skipped_other": "已跳过 {{count}} 个运行中或等待处理的会话",
+    "success_other": "已归档 {{count}} 个会话",
+    "title_other": "归档 {{count}} 个会话？",
+    "undo": "撤销",
+    "undoFailed": "恢复失败，请重试"
   },
   "branch": {
     "branches": "分支",
@@ -40,6 +74,7 @@
     },
     "contextFileTooLarge": "文件过大。请选择更小的文件或附加选区。",
     "noInstalledAgent": "尚未安装 Agent",
+    "openWorkspaceFirst": "先打开文件夹，再描述要做的任务",
     "placeholder": "计划、构建，输入 / 使用 Skill，输入 @ 添加上下文",
     "removeAttachment": "移除附件",
     "selectAgent": "选择 Agent",
@@ -61,6 +96,42 @@
     "treeOutline": "目录结构"
   },
   "defaultTitle": "新建 {{agentLabel}} 会话",
+  "executionTree": {
+    "description": "此会话的运行、工具调用、子代理和待处理审批。展开一行可查看其内容，选择工具调用可查看输出。",
+    "failedCount_other": "{{count}} 失败",
+    "issuesOnly": "只看问题",
+    "limited": "子代理 {{name}} 不可观测：其提供方未上报任何事件。",
+    "noIssues": "没有失败的工具调用或待处理的审批。",
+    "noOutput": "没有记录输出。",
+    "omittedLines_other": "已隐藏前面 {{count}} 行",
+    "openSession": "打开 {{title}}",
+    "outputUnavailable": "无法加载输出。",
+    "planProgress": "计划 {{done}}/{{total}}",
+    "run": "运行开始于 {{time}}",
+    "title": "执行树",
+    "toolCalls": "工具调用",
+    "toolCount_other": "{{count}} 次调用",
+    "truncated": "更深层的会话未显示。",
+    "unavailable": "此会话的执行树不可用。",
+    "waitingAnswer": "等待回答：{{question}}",
+    "waitingCount_other": "{{count}} 待处理",
+    "waitingPermission": "等待权限：{{title}}",
+    "waitingPlanApproval": "等待计划审批"
+  },
+  "lineage": {
+    "forkFailed": "无法分叉会话",
+    "forkFromHere": "从这里分叉",
+    "forkTitle": "{{title}}（分叉）",
+    "handoff": {
+      "delta_other": "已将 {{sources}} 的 {{count}} 条新消息交接给 {{target}}",
+      "fork_other": "分叉会话，已将 {{count}} 条消息交接给 {{target}}",
+      "full_other": "已将 {{sources}} 的 {{count}} 条消息交接给 {{target}}",
+      "hide": "收起交接的上下文",
+      "native_other": "沿用 {{target}} 的原生会话分叉，包含 {{count}} 条消息",
+      "show": "查看交接的上下文"
+    },
+    "switchAgentFailed": "无法切换 Agent"
+  },
   "modelMenu": {
     "defaultTag": "默认",
     "empty": "未找到匹配的模型。",
@@ -187,32 +258,114 @@
   },
   "sidebar": {
     "addWorkspace": "添加工作区",
-    "ageDays_other": "{{count}} 天",
-    "ageHours_other": "{{count}} 小时",
-    "ageMinutes_other": "{{count}} 分钟",
-    "ageMonths_other": "{{count}} 个月",
+    "ageDays_other": "{{count}}天",
+    "ageHours_other": "{{count}}小时",
+    "ageMinutes_other": "{{count}}分钟",
+    "ageMonths_other": "{{count}}个月",
     "ageNow": "刚刚",
-    "ageYears_other": "{{count}} 年",
+    "ageYears_other": "{{count}}年",
     "archive": "归档",
     "collapseChildren": "折叠子会话",
     "delete": "删除",
     "editWorkspace": "编辑工作区",
+    "executionTree": "执行树",
     "expandChildren": "展开子会话",
+    "fork": "分叉会话",
     "marketplace": "市场",
+    "markUnread": "标为未读",
     "newSession": "新建会话",
     "newSessionInWorkspace": "在 {{workspaceName}} 中新建会话",
     "noAgentsYet": "暂无会话",
     "pendingAttention": "需要处理",
+    "pin": "置顶",
+    "pinFailed": "置顶失败",
+    "pinned": "已置顶",
     "removeWorkspace": "移除",
     "rename": "重命名",
     "renameSession": "重命名 {{title}}",
     "revealInFileManager": "在文件管理器中打开",
     "running": "运行中",
+    "sessionsHeading": "会话",
     "settings": "设置",
     "showLess": "收起",
     "showMore_other": "显示更多（剩余 {{count}}）",
     "splitDown": "分屏到下侧",
     "splitRight": "分屏到右侧",
+    "unpin": "取消置顶",
+    "unread": "未读",
+    "view": {
+      "agentFilter": "Agent",
+      "archived": "已归档会话",
+      "clearAllFilters": "清除筛选",
+      "clearFilters_one": "清除筛选",
+      "clearFilters_other": "清除 {{count}} 个筛选",
+      "collapseAll": "全部折叠",
+      "compact": "紧凑模式",
+      "direction": {
+        "asc": "升序",
+        "desc": "降序"
+      },
+      "environment": {
+        "local": "本地",
+        "worktree": "Worktree"
+      },
+      "environmentFilter": "环境",
+      "expandAll": "全部展开",
+      "filtersLabel": "筛选",
+      "grouping": {
+        "agent": "Agent",
+        "none": "不分组",
+        "status": "状态",
+        "updated": "最近更新",
+        "workspace": "工作区"
+      },
+      "groupingLabel": "分组",
+      "markAllRead": "全部标为已读",
+      "menu": "会话分组与筛选",
+      "noMatches": "没有匹配的会话",
+      "ordering": {
+        "activity": "最近活动",
+        "created": "创建时间",
+        "title": "标题"
+      },
+      "orderingLabel": "排序",
+      "propertiesLabel": "显示属性",
+      "property": {
+        "agent": "Agent",
+        "model": "模型",
+        "role": "角色",
+        "timestamp": "最近活动时间",
+        "workspace": "工作区",
+        "worktree": "Worktree"
+      },
+      "rootLimit": {
+        "all": "全部",
+        "count_one": "{{count}} 个会话",
+        "count_other": "{{count}} 个会话"
+      },
+      "rootLimitLabel": "每组显示会话数",
+      "showLabel": "显示",
+      "source": {
+        "created": "本地新建",
+        "imported": "导入",
+        "issue": "来自 Issue"
+      },
+      "sourceFilter": "来源",
+      "status": {
+        "attention": "需要处理",
+        "error": "出错",
+        "idle": "空闲",
+        "running": "运行中",
+        "unread": "未读"
+      },
+      "statusFilter": "状态",
+      "updated": {
+        "older": "更早",
+        "today": "今天",
+        "week": "近 7 天",
+        "yesterday": "昨天"
+      }
+    },
     "workspacesGroup": "工作"
   },
   "split": {
@@ -223,6 +376,14 @@
     "menu": "分屏",
     "newSession": "新会话",
     "right": "向右分屏"
+  },
+  "team": {
+    "leadMissing": "lead 角色已被删除",
+    "menuCreate": "新建团队",
+    "menuEmpty": "还没有团队",
+    "menuLabel": "团队",
+    "menuManage": "管理团队",
+    "summary_other": "{{lead}} 带领 {{count}} 名队友"
   },
   "window": {
     "detach": "在独立窗口中打开",
@@ -238,10 +399,13 @@
     "editCancel": "取消",
     "editFoldersLabel": "源文件夹",
     "editMakePrimary": "设为主文件夹",
+    "editManageLabel": "管理",
     "editNameLabel": "工作区名称",
     "editPrimary": "主文件夹",
+    "editRemoveDescription": "将从 Cocurdex 中移除 {{name}} 及其全部 Agent 会话，文件夹中的文件不受影响。",
     "editRemoveFolder": "移除文件夹",
-    "editRemoveWorkspace": "移除工作区",
+    "editRemoveTitle": "移除 {{name}}？",
+    "editRemoveWorkspace": "移除",
     "editSave": "保存",
     "editTitle": "编辑工作区",
     "empty": "没有匹配的工作区。",
@@ -260,9 +424,12 @@
       "up": "返回上一级"
     },
     "missing": "文件夹已丢失，点击重新定位",
+    "openedExisting": "已打开现有工作区「{{name}}」",
     "openFolder": "打开文件夹",
     "recents": "最近",
     "removeFailed": "无法移除该 workspace，请重试。",
+    "rootsAdditional": "附加文件夹",
+    "rootsPrimary": "主文件夹",
     "startDescription": "选择模型，描述任务，并让第一条提示保持聚焦。",
     "startTitle": "接下来在 {{workspaceName}} 做什么？",
     "startTitleAfter": "做什么？",

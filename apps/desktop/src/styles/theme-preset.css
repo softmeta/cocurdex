@@ -92,9 +92,9 @@
   --radius-4xl: var(--radius);
 }
 
-/* The renderer mirrors the resolved theme to <html class="dark"> so the
+/* The renderer mirrors the resolved theme to <html data-theme="dark"> so the
  * shadcn preset and dark: utilities switch from the same source of truth. */
-.dark {
+[data-theme="dark"] {
   --font-ui:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   --font-mono:

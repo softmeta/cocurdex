@@ -5,16 +5,6 @@ type QuestionsBySession = Record<string, AgentQuestionRequestRecord[]>;
 
 export const questionsBySessionAtom = atom<QuestionsBySession>({});
 
-export const clearQuestionsForSessionAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const current = get(questionsBySessionAtom);
-    const { [sessionId]: _removed, ...next } = current;
-
-    set(questionsBySessionAtom, next);
-  },
-);
-
 function upsertQuestion(
   questions: AgentQuestionRequestRecord[],
   nextQuestion: AgentQuestionRequestRecord,

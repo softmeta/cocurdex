@@ -100,11 +100,13 @@ function SidebarListRowLabel({
 
 type SidebarListRowActionsProps = React.ComponentProps<"div"> & {
   /**
-   * `hover` — show on any row hover/focus-within (notes delete).
+   * `hover` — show on any row hover/focus-within, keeping their width.
+   * `hover-reveal` — take no width until the row is hovered or focused, so
+   *   idle titles use the full row (notes tree).
    * `active-hover` — only the selected row, and only while hovered/focused
    * (issue board rename/delete).
    */
-  visibility?: "hover" | "active-hover";
+  visibility?: "hover" | "hover-reveal" | "active-hover";
 };
 
 /**
@@ -122,6 +124,8 @@ function SidebarListRowActions({
         "flex shrink-0 items-center gap-0.5 transition-opacity",
         visibility === "hover" &&
           "opacity-0 group-hover/list-row:opacity-100 focus-within:opacity-100",
+        visibility === "hover-reveal" &&
+          "hidden group-hover/list-row:flex group-focus-within/list-row:flex",
         visibility === "active-hover" &&
           "pointer-events-none opacity-0 group-data-[active]/list-row:pointer-events-auto group-data-[active]/list-row:group-hover/list-row:opacity-100 group-data-[active]/list-row:focus-within:opacity-100",
         className,
@@ -131,5 +135,26 @@ function SidebarListRowActions({
   );
 }
 
+function SidebarListRowDisclosure({
+  className,
+  ...props
+}: React.ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "-mx-0.75 flex size-5 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted outline-hidden hover:text-sidebar-fg focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 export type { SidebarListRowActionsProps, SidebarListRowOwnProps };
-export { SidebarListRow, SidebarListRowActions, SidebarListRowLabel };
+export {
+  SidebarListRow,
+  SidebarListRowActions,
+  SidebarListRowDisclosure,
+  SidebarListRowLabel,
+};

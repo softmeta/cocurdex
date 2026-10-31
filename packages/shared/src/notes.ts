@@ -20,6 +20,7 @@ export interface NoteSummary {
   revision: number;
   createdAt: string;
   updatedAt: string;
+  excerpt?: string;
 }
 
 export interface NoteRecord extends NoteSummary {
@@ -31,6 +32,7 @@ export interface CreateNotePayload {
   workspaceId?: string | null;
   kind?: NoteKind;
   title?: string;
+  bodyMarkdown?: string;
   icon?: string | null;
   sortOrder?: number;
 }
@@ -47,6 +49,7 @@ export interface UpdateNotePayload {
 export interface MoveNotePayload {
   id: string;
   parentId: string | null;
+  workspaceId?: string | null;
   sortOrder?: number;
   expectedRevision?: number;
 }
@@ -58,6 +61,22 @@ export interface DeleteNotePayload {
 
 export interface GetNotePayload {
   id: string;
+}
+
+export interface GetNoteDocPayload {
+  id: string;
+  stateVector?: string;
+}
+
+export interface NoteDocSnapshot {
+  id: string;
+  revision: number;
+  update: string;
+}
+
+export interface ApplyNoteDocUpdatePayload {
+  id: string;
+  update: string;
 }
 
 export interface NoteTag {

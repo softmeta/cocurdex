@@ -25,7 +25,7 @@ export function getDefaultUserDataPath(
 
   return path.join(
     env.XDG_CONFIG_HOME ?? path.join(home, ".config"),
-    "cocurdex",
+    "Cocurdex",
   );
 }
 
@@ -48,11 +48,34 @@ export function getDaemonSocketPath(
     return `\\\\.\\pipe\\cocurdex-daemon-${profileId}`;
   }
 
-  return path.join(userDataPath, "daemon.sock");
+  const socketPath = path.posix.join(userDataPath, "daemon.sock");
+  const maxBytes = platform === "linux" ? 107 : 103;
+  if (Buffer.byteLength(socketPath) > maxBytes) {
+    throw new Error(
+      `Daemon socket path is longer than ${maxBytes} bytes, the limit on ${platform}: ${socketPath}. Use a shorter ${COCURDEX_USER_DATA_PATH_ENV}.`,
+    );
+  }
+  return socketPath;
 }
 
 export function getDaemonMetadataPath(userDataPath = getDefaultUserDataPath()) {
   return path.join(userDataPath, DAEMON_METADATA_FILENAME);
+}
+
+export function getDaemonLogDirectory(userDataPath = getDefaultUserDataPath()) {
+  return path.join(userDataPath, "logs", "daemon");
+}
+
+export function getDesktopLogDirectory(
+  userDataPath = getDefaultUserDataPath(),
+) {
+  return path.join(userDataPath, "logs", "desktop");
+}
+
+export function getDiagnosticsDirectory(
+  userDataPath = getDefaultUserDataPath(),
+) {
+  return path.join(userDataPath, "diagnostics");
 }
 
 export function getDatabasePath(userDataPath = getDefaultUserDataPath()) {
@@ -91,9 +114,9 @@ export function createSessionWorktreePath(input: {
   );
 }
 
-function resolveExistingPath(value: string) {
+export function resolveExistingPath(value: string) {
   try {
-    return realpathSync(value);
+    return realpathSync.native(value);
   } catch {
     return path.resolve(value);
   }

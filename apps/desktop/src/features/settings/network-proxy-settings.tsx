@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { SettingsGroup } from "@/components/app";
 import { Button, Input, Spinner, Text } from "@/components/ui";
 import { desktopApi, useMountEffect } from "@/lib";
 import {
@@ -19,29 +20,6 @@ import {
   applyNetworkProxySettingsToStatus,
 } from "./network-proxy-status-store";
 import { SettingsSelect } from "./settings-select";
-
-function SettingsGroup({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title?: string;
-}) {
-  return (
-    <div className="flex flex-col">
-      {title ? (
-        <div className="mb-2 px-1 text-meta font-medium text-muted-foreground/60">
-          {title}
-        </div>
-      ) : null}
-      <div className="rounded-card border border-border/70 bg-settings-surface px-4">
-        <div className="flex flex-col divide-y divide-border/60">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function SettingRow({
   children,

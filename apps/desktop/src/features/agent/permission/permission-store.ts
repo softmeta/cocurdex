@@ -25,16 +25,6 @@ function upsertPermission(
 
 export const permissionsBySessionAtom = atom<PermissionsBySession>({});
 
-export const clearPermissionsForSessionAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const current = get(permissionsBySessionAtom);
-    const { [sessionId]: _removed, ...next } = current;
-
-    set(permissionsBySessionAtom, next);
-  },
-);
-
 // Reconciles with the daemon's authoritative pending list after an event
 // replay gap: pending records are upserted, locally-pending records the
 // daemon no longer holds were resolved during the gap and are dropped, and

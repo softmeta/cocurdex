@@ -1,16 +1,18 @@
 import {
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
+  type AgentTurnCompletedEvent,
   type AgentUsageRecord,
+  formatDurationMs,
   isContextAttachment,
   isDocumentAttachment,
   isImageAttachment,
   type MessageRecord,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { Check, Copy, Pencil, X } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import type { RefObject } from "react";
-import { memo, useRef, useState } from "react";
+import { Fragment, memo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppDropdownContent,
@@ -24,7 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuTrigger,
-  Textarea,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -33,6 +34,10 @@ import {
   DocumentAttachmentChips,
   ImageAttachmentCards,
 } from "@/features/composer";
+import {
+  ContextHandoffMarker,
+  ForkFromMessageButton,
+} from "@/features/sessions";
 import { useTurnChangeSet } from "@/features/turn-workspace-changes";
 import { TurnChangesCard } from "@/features/turn-workspace-changes/turn-changes-card";
 import { cn } from "@/lib";
@@ -43,13 +48,10 @@ import { QuestionCard } from "../question";
 // detail view, which renders this component.
 import { ToolCallGroup, ToolCallItem } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
-import { useTranscriptState } from "../use-transcript-state";
-import { ActivityLine } from "./chat-activity";
-import { ActivityBlock } from "./chat-activity-block";
-import {
-  type ActivityState,
-  isActivityHeaderBusy,
-} from "./chat-activity-state";
+import { ActivityLiveLabel } from "./chat-activity";
+import { ActivityLiveRow } from "./chat-activity-block";
+import { ActivitySegment, TurnStoppedNote } from "./chat-activity-segment";
+import type { ActivityState } from "./chat-activity-state";
 import {
   MessageAttachments,
   ReasoningMarkdown,
@@ -57,18 +59,23 @@ import {
 } from "./chat-message";
 import { isReasoningMessage } from "./chat-message-utils";
 import {
+  getSegmentGroupKey,
   getSegmentKey,
   groupActivityWithFollowingItem,
 } from "./chat-segment-groups";
 import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
 import {
+  findConversationTurnStats,
   getTurnEndMessageId,
   getVisibleConversationItems,
   segmentConversationItems,
+  type TurnPhase,
   withoutInterimReplies,
 } from "./chat-timeline";
+import { ContextCompactionDivider } from "./context-compaction-divider";
 import { messageOriginLabel } from "./message-origin-label";
 import { turnStatsByMessageAtom } from "./message-store";
+import { MessageTime } from "./message-time";
 import { PeerPrompt } from "./peer-prompt";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
@@ -81,42 +88,17 @@ function getMessageArticleClassName(message: MessageRecord) {
 
   if (message.role === "system") {
     return cn(
-      "w-full min-w-0 max-w-3xl rounded-panel border border-chat-system-border bg-chat-system-bg px-3.5 py-2.5 text-chat-system-fg",
+      "w-full min-w-0 max-w-3xl rounded-panel bg-chat-system-bg px-3.5 py-2.5 text-chat-system-fg",
     );
   }
 
   if (message.role === "user") {
     return cn(
-      "min-w-0 max-w-3xl rounded-panel rounded-tr-md border border-chat-border-soft bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg",
+      "min-w-0 max-w-3xl rounded-panel rounded-tr-md bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg",
     );
   }
 
   return "w-full min-w-0 max-w-3xl text-chat-fg";
-}
-
-function formatMessageTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(value));
-}
-
-function formatDurationMs(durationMs: number) {
-  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
-  }
-
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
 function formatTokenCount(value: number) {
@@ -132,8 +114,14 @@ function formatTokenCount(value: number) {
   return value.toString();
 }
 
-function formatExactTokenCount(value: number) {
-  return new Intl.NumberFormat().format(value);
+function formatDetailedTokenCount(value: number) {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
+  }
+  return value.toString();
 }
 
 function getTurnTokenCounts(usage: AgentUsageRecord | undefined) {
@@ -175,9 +163,38 @@ function TurnTokenUsage({ usage }: { usage: AgentUsageRecord | undefined }) {
     compactParts.push(`↓${formatTokenCount(counts.outputTokens)}`);
   }
 
+  const cacheHitPercent =
+    counts.processedInputTokens > 0
+      ? Math.round(
+          (counts.cacheReadInputTokens / counts.processedInputTokens) * 100,
+        )
+      : 0;
+  const rows = [
+    {
+      label: t("assistantMessage.turnUsage.input"),
+      value: counts.processedInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.newInput"),
+      value: counts.newInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.cacheRead"),
+      value: counts.cacheReadInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.cacheWrite"),
+      value: counts.cacheCreationInputTokens,
+    },
+    {
+      label: t("assistantMessage.turnUsage.output"),
+      value: counts.outputTokens,
+    },
+  ].filter((row) => row.value > 0);
+
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
+      <TooltipTrigger asChild delay={150}>
         <button
           aria-label={t("assistantMessage.turnUsage.ariaLabel")}
           className="cursor-help rounded-control px-0.5 transition-colors hover:bg-chat-surface-row-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -187,44 +204,25 @@ function TurnTokenUsage({ usage }: { usage: AgentUsageRecord | undefined }) {
         </button>
       </TooltipTrigger>
       <TooltipContent
-        className="flex max-w-xs flex-col items-start gap-1.5 whitespace-normal py-2 text-start"
+        className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 py-2 tabular-nums"
         side="top"
         sideOffset={6}
       >
-        {counts.processedInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipInput", {
-              tokens: formatExactTokenCount(counts.processedInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.newInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipNewInput", {
-              tokens: formatExactTokenCount(counts.newInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.cacheReadInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipCacheRead", {
-              tokens: formatExactTokenCount(counts.cacheReadInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.cacheCreationInputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipCacheCreation", {
-              tokens: formatExactTokenCount(counts.cacheCreationInputTokens),
-            })}
-          </p>
-        ) : null}
-        {counts.outputTokens > 0 ? (
-          <p>
-            {t("assistantMessage.turnUsage.tooltipOutput", {
-              tokens: formatExactTokenCount(counts.outputTokens),
-            })}
-          </p>
+        {rows.map((row) => (
+          <Fragment key={row.label}>
+            <span className="opacity-70">{row.label}</span>
+            <span className="text-end">
+              {formatDetailedTokenCount(row.value)}
+            </span>
+          </Fragment>
+        ))}
+        {cacheHitPercent > 0 ? (
+          <>
+            <span className="opacity-70">
+              {t("assistantMessage.turnUsage.cacheHitRate")}
+            </span>
+            <span className="text-end">{cacheHitPercent}%</span>
+          </>
         ) : null}
       </TooltipContent>
     </Tooltip>
@@ -272,58 +270,12 @@ async function copyRenderedMessage(
 }
 
 function UserPromptBody({
-  draftContent,
   isContextVariant,
-  isEditing,
   message,
-  onCancelEdit,
-  onDraftChange,
-  onSubmit,
 }: {
-  draftContent: string | null;
   isContextVariant: boolean;
-  isEditing: boolean;
   message: MessageRecord;
-  onCancelEdit(): void;
-  onDraftChange(value: string): void;
-  onSubmit(): void;
 }) {
-  const { t } = useTranslation("agent");
-
-  if (isEditing) {
-    return (
-      <div className="flex min-w-72 flex-col gap-2">
-        <Textarea
-          autoFocus
-          className="max-h-72 min-h-24 resize-y text-sm"
-          onChange={(event) => onDraftChange(event.target.value)}
-          value={draftContent ?? ""}
-        />
-        <div className="flex justify-end gap-1.5">
-          <Button
-            aria-label={t("previousMessage.cancelEdit")}
-            onClick={onCancelEdit}
-            size="icon-xs"
-            type="button"
-            variant="ghost"
-          >
-            <X className="size-3.5" />
-          </Button>
-          <Button
-            aria-label={t("previousMessage.submitEdit")}
-            disabled={!(draftContent ?? "").trim()}
-            onClick={onSubmit}
-            size="icon-xs"
-            type="button"
-            variant="ghost"
-          >
-            <Check className="size-3.5" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   if (isContextVariant) {
     return (
       <CollapsibleUserMessageBody key={message.id} text={message.content}>
@@ -342,39 +294,18 @@ function UserPromptBody({
 }
 
 const UserPrompt = memo(function UserPrompt({
-  canEdit,
   message,
-  onSubmitEdit,
   setUserMessageRef,
   showActions = true,
   variant = "chat",
 }: {
-  canEdit: boolean;
   message: MessageRecord;
-  onSubmitEdit?(message: MessageRecord, content: string): void;
   setUserMessageRef(id: string, element: HTMLDivElement | null): void;
   showActions?: boolean;
   variant?: "chat" | "context";
 }) {
   const { t } = useTranslation("agent");
-  const [draftContent, setDraftContent] = useTranscriptState<string | null>(
-    `prompt-draft:${message.id}`,
-    null,
-  );
   const [hasCopied, setHasCopied] = useState(false);
-  const isEditing = draftContent !== null;
-  const sentAt = formatMessageTime(message.createdAt);
-
-  const handleSubmit = () => {
-    const content = draftContent?.trim() ?? "";
-
-    if (!content) {
-      return;
-    }
-
-    onSubmitEdit?.(message, content);
-    setDraftContent(null);
-  };
 
   const handleCopy = () => {
     void navigator.clipboard
@@ -390,28 +321,26 @@ const UserPrompt = memo(function UserPrompt({
   const hasDocuments = message.attachments.some(isDocumentAttachment);
   const hasImages = message.attachments.some(isImageAttachment);
   const hasBubbleContent =
-    isEditing ||
     isContextVariant ||
     message.content.trim().length > 0 ||
     message.attachments.some(isContextAttachment);
-  const wrapperClassName = isContextVariant
-    ? "flex w-full justify-start"
-    : "flex w-full justify-end";
-  const containerClassName = isContextVariant
-    ? "group flex w-full min-w-0 max-w-3xl flex-col items-stretch gap-1"
-    : "group flex min-w-0 max-w-3xl flex-col items-end gap-1.5";
-  const articleClassName = isContextVariant
-    ? cn(
-        "w-full min-w-0 rounded-card border border-chat-border-soft bg-chat-surface-subtle px-4 py-3 text-chat-fg-secondary shadow-chat-soft",
-      )
-    : getMessageArticleClassName(message);
 
   return (
     <div
       ref={(element) => setUserMessageRef(message.id, element)}
-      className={wrapperClassName}
+      className={cn(
+        "flex w-full",
+        isContextVariant && "justify-start",
+        !isContextVariant && "justify-end",
+      )}
     >
-      <div className={containerClassName}>
+      <div
+        className={cn(
+          "group flex min-w-0 max-w-3xl flex-col",
+          isContextVariant && "w-full items-stretch gap-1",
+          !isContextVariant && "items-end gap-1.5",
+        )}
+      >
         {hasDocuments ? (
           <DocumentAttachmentChips attachments={message.attachments} />
         ) : null}
@@ -422,26 +351,25 @@ const UserPrompt = memo(function UserPrompt({
           />
         ) : null}
         {hasBubbleContent ? (
-          <article className={articleClassName}>
+          <article
+            className={cn(
+              isContextVariant &&
+                "w-full min-w-0 rounded-card border border-chat-border-soft bg-chat-surface-subtle px-4 py-3 text-chat-fg-secondary shadow-chat-soft",
+              !isContextVariant && getMessageArticleClassName(message),
+            )}
+          >
             <UserPromptBody
-              draftContent={draftContent}
               isContextVariant={isContextVariant}
-              isEditing={isEditing}
               message={message}
-              onCancelEdit={() => setDraftContent(null)}
-              onDraftChange={setDraftContent}
-              onSubmit={handleSubmit}
             />
           </article>
         ) : null}
-        {!isEditing && showActions ? (
+        {showActions ? (
           <div className="flex h-6 items-center justify-end gap-2 pr-1 text-chat-fg-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            <time
-              className="text-xs tabular-nums opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-              dateTime={message.createdAt}
-            >
-              {sentAt}
-            </time>
+            <MessageTime
+              className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+              value={message.createdAt}
+            />
             <div className="flex items-center gap-1">
               <Button
                 aria-label={t("previousMessage.copy")}
@@ -458,19 +386,6 @@ const UserPrompt = memo(function UserPrompt({
                   <Copy className="size-3.5" />
                 )}
               </Button>
-              {canEdit ? (
-                <Button
-                  aria-label={t("previousMessage.edit")}
-                  className="size-6 text-chat-fg-muted hover:bg-transparent hover:text-chat-fg"
-                  onClick={() => setDraftContent(message.content)}
-                  size="icon-xs"
-                  title={t("previousMessage.edit")}
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              ) : null}
             </div>
           </div>
         ) : null}
@@ -482,15 +397,16 @@ const UserPrompt = memo(function UserPrompt({
 const AssistantMessageActions = memo(function AssistantMessageActions({
   contentRef,
   message,
+  stopped,
 }: {
   contentRef: RefObject<HTMLDivElement | null>;
   message: MessageRecord;
+  stopped: boolean;
 }) {
   const { t } = useTranslation("agent");
   const turnStats = useAtomValue(turnStatsByMessageAtom)[message.id];
   const [hasCopied, setHasCopied] = useState(false);
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
-  const sentAt = formatMessageTime(message.createdAt);
   const durationText = turnStats
     ? formatDurationMs(turnStats.durationMs)
     : null;
@@ -514,63 +430,74 @@ const AssistantMessageActions = memo(function AssistantMessageActions({
   };
 
   return (
-    <div
-      className={cn(
-        "mt-2 flex h-6 items-center gap-2 text-chat-fg-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
-        copyMenuOpen && "opacity-100",
-      )}
-    >
-      <DropdownMenu onOpenChange={setCopyMenuOpen} open={copyMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label={t("assistantMessage.copy")}
-            className="size-6 text-chat-fg-muted hover:bg-transparent hover:text-chat-fg"
-            disabled={!message.content.trim()}
-            onClick={handleCopyMarkdown}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              setCopyMenuOpen(true);
-            }}
-            onPointerDown={(event) => {
-              if (event.button === 0) {
-                event.preventDefault();
-              }
-            }}
-            size="icon-xs"
-            title={t("assistantMessage.copy")}
-            type="button"
-            variant="ghost"
-          >
-            {hasCopied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <AppDropdownContent side="top">
-          <DropdownMenuGroup>
-            <AppDropdownItem className="font-medium" onClick={copyRendered}>
-              {t("assistantMessage.copyRichText")}
-            </AppDropdownItem>
-          </DropdownMenuGroup>
-        </AppDropdownContent>
-      </DropdownMenu>
-      {durationText || hasTokenUsage ? (
-        <span className="flex items-center gap-1 text-xs tabular-nums text-chat-fg-muted">
-          {durationText ? <span>{durationText}</span> : null}
-          {durationText && hasTokenUsage ? (
-            <span aria-hidden="true">·</span>
-          ) : null}
-          <TurnTokenUsage usage={turnStats?.usage} />
-        </span>
+    <div className="mt-2 grid h-6 items-center text-chat-fg-muted">
+      {stopped ? (
+        <div
+          className={cn(
+            "pointer-events-none col-start-1 row-start-1 transition-opacity group-hover:opacity-0 group-focus-within:opacity-0",
+            copyMenuOpen && "opacity-0",
+          )}
+        >
+          <TurnStoppedNote />
+        </div>
       ) : null}
-      <time
-        className="text-xs tabular-nums opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-        dateTime={message.createdAt}
+      <div
+        className={cn(
+          "col-start-1 row-start-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+          copyMenuOpen && "opacity-100",
+        )}
       >
-        {sentAt}
-      </time>
+        <DropdownMenu onOpenChange={setCopyMenuOpen} open={copyMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              aria-label={t("assistantMessage.copy")}
+              className="-ms-1.25 size-6 text-chat-fg-muted hover:bg-transparent hover:text-chat-fg"
+              disabled={!message.content.trim()}
+              onClick={handleCopyMarkdown}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setCopyMenuOpen(true);
+              }}
+              onPointerDown={(event) => {
+                if (event.button === 0) {
+                  event.preventDefault();
+                }
+              }}
+              size="icon-xs"
+              title={t("assistantMessage.copy")}
+              type="button"
+              variant="ghost"
+            >
+              {hasCopied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <AppDropdownContent side="top">
+            <DropdownMenuGroup>
+              <AppDropdownItem className="font-medium" onClick={copyRendered}>
+                {t("assistantMessage.copyRichText")}
+              </AppDropdownItem>
+            </DropdownMenuGroup>
+          </AppDropdownContent>
+        </DropdownMenu>
+        <ForkFromMessageButton
+          messageId={message.id}
+          sessionId={message.sessionId}
+        />
+        {durationText || hasTokenUsage ? (
+          <span className="flex items-center gap-1 text-xs tabular-nums text-chat-fg-muted">
+            {durationText ? <span>{durationText}</span> : null}
+            {durationText && hasTokenUsage ? (
+              <span aria-hidden="true">·</span>
+            ) : null}
+            <TurnTokenUsage usage={turnStats?.usage} />
+          </span>
+        ) : null}
+        <MessageTime value={message.createdAt} />
+      </div>
     </div>
   );
 });
@@ -580,11 +507,13 @@ const MessageArticle = memo(function MessageArticle({
   isStreamingLatest,
   message,
   showActions = true,
+  stopped = false,
 }: {
   isRunning: boolean;
   isStreamingLatest: boolean;
   message: MessageRecord;
   showActions?: boolean;
+  stopped?: boolean;
 }) {
   const { t } = useTranslation("agent");
   const filePathHandlers = useMessageFilePathHandlers();
@@ -597,7 +526,6 @@ const MessageArticle = memo(function MessageArticle({
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
   const turnChangeSet = useTurnChangeSet(message.id);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const articleClassName = getMessageArticleClassName(message);
   const hasAssistantBody =
     message.content.trim().length > 0 || message.attachments.length > 0;
   const showAssistantActions =
@@ -606,19 +534,21 @@ const MessageArticle = memo(function MessageArticle({
     message.role === "assistant" &&
     !isReasoning &&
     !(isRunning && isStreamingLatest);
-  const messageClassName = cn(
-    "flex w-full min-w-0",
-    message.role === "user" ? "justify-end" : "justify-start",
-  );
 
   if (isReasoning && activityDisplay === "hidden") {
     return null;
   }
 
   return (
-    <div className={messageClassName}>
+    <div
+      className={cn(
+        "flex w-full min-w-0",
+        message.role === "user" && "justify-end",
+        message.role !== "user" && "justify-start",
+      )}
+    >
       <div className="group w-full min-w-0 max-w-3xl">
-        <article className={articleClassName}>
+        <article className={getMessageArticleClassName(message)}>
           {isSystem ? (
             <div className="mb-1.5 text-meta font-medium uppercase tracking-[0.18em] text-chat-system-muted">
               {t("system")}
@@ -668,31 +598,25 @@ const MessageArticle = memo(function MessageArticle({
           />
         ) : null}
         {showAssistantActions ? (
-          <AssistantMessageActions contentRef={contentRef} message={message} />
+          <AssistantMessageActions
+            contentRef={contentRef}
+            message={message}
+            stopped={stopped}
+          />
         ) : null}
       </div>
     </div>
   );
 });
 
-function getActivitySegmentSummary(items: TimelineGroup[]) {
-  const toolCalls = items.flatMap((item) =>
-    item.kind === "toolCalls" ? item.toolCalls : [],
-  );
-  const messages = items.flatMap((item) =>
-    item.kind === "message" ? [item.message] : [],
-  );
-  const reasoningCount = messages.filter(isReasoningMessage).length;
-
-  return {
-    isBusy: toolCalls.some(
-      (toolCall) =>
-        toolCall.status === "pending" || toolCall.status === "in_progress",
-    ),
-    reasoningCount,
-    replyCount: messages.length - reasoningCount,
-    toolCount: toolCalls.length,
-  };
+function getTurnPhase(
+  isLive: boolean,
+  turnStats: AgentTurnCompletedEvent | undefined,
+): TurnPhase {
+  if (isLive) {
+    return "live";
+  }
+  return turnStats?.stopReason === "cancelled" ? "interrupted" : "completed";
 }
 
 export const ChatConversationItem = memo(function ChatConversationItem({
@@ -702,7 +626,6 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   isRunning,
   latestMessageId,
   onOpenToolLocation,
-  onSubmitPromptEdit,
   onAnswerQuestion,
   onResolvePermission,
   setUserMessageRef,
@@ -710,17 +633,16 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   promptVariant = "chat",
   runStartedAt,
 }: {
-  // History conversation items don't render an ActivityLine (only the latest
+  // History conversation items don't render a live activity label (only the latest
   // conversation does, gated by isLatestConversation && isRunning). Marking
   // this optional lets the parent skip passing the unstable activity object,
   // which would otherwise defeat React.memo on every streaming token.
-  activity?: ActivityState;
+  activity?: ActivityState | null;
   conversationGroup: ConversationGroup;
   isLatestConversation: boolean;
   isRunning: boolean;
   latestMessageId: string | null;
   onOpenToolLocation?(location: ToolCallPreviewLocation): void;
-  onSubmitPromptEdit?(message: MessageRecord, content: string): void;
   onAnswerQuestion?(
     question: AgentQuestionRequestRecord,
     answer: string,
@@ -736,19 +658,43 @@ export const ChatConversationItem = memo(function ChatConversationItem({
 }) {
   const showActivity = isRunning && isLatestConversation;
   const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
+  const turnStats = findConversationTurnStats(
+    conversationGroup,
+    useAtomValue(turnStatsByMessageAtom),
+  );
+  const phase = getTurnPhase(showActivity, turnStats);
   const conversationItems = getVisibleConversationItems(conversationGroup);
   const visibleItems =
-    activityDisplay === "hidden" && !showActivity
-      ? withoutInterimReplies(conversationItems)
+    activityDisplay === "hidden" && phase !== "live"
+      ? withoutInterimReplies(conversationItems, phase)
       : conversationItems;
   const segments = segmentConversationItems(
     visibleItems,
     activityDisplay === "condensed",
-    !showActivity,
+    phase,
   );
-  const turnEndMessageId = showActivity
-    ? undefined
-    : getTurnEndMessageId(visibleItems);
+  const turnEndMessageId =
+    phase === "live" ? undefined : getTurnEndMessageId(visibleItems, phase);
+  const isStopped = phase === "interrupted";
+  const showStoppedInActions =
+    isStopped && showMessageActions && turnEndMessageId != null;
+  const turnWorkSegment =
+    turnEndMessageId === null
+      ? segments.at(-1)
+      : segments[
+          segments.findIndex(
+            (segment) =>
+              segment.kind === "item" && segment.item.id === turnEndMessageId,
+          ) - 1
+        ];
+
+  const liveLabel =
+    showActivity && activity && activity.kind !== "responding" ? (
+      <ActivityLiveLabel activity={activity} runStartedAt={runStartedAt} />
+    ) : null;
+  const lastSegment = segments.at(-1);
+  const liveSegment =
+    liveLabel && lastSegment?.kind === "activity" ? lastSegment : null;
 
   const renderTimelineItem = (group: TimelineGroup, nested = false) => {
     if (group.kind === "toolCalls") {
@@ -773,6 +719,12 @@ export const ChatConversationItem = memo(function ChatConversationItem({
             toolCall={group.toolCall}
           />
         </div>
+      );
+    }
+
+    if (group.kind === "contextCompaction") {
+      return (
+        <ContextCompactionDivider key={group.id} toolCall={group.toolCall} />
       );
     }
 
@@ -807,9 +759,15 @@ export const ChatConversationItem = memo(function ChatConversationItem({
         key={group.id}
         message={group.message}
         showActions={showMessageActions && group.id === turnEndMessageId}
+        stopped={showStoppedInActions && group.id === turnEndMessageId}
       />
     );
   };
+
+  const ownPrompt =
+    conversationGroup.prompt && !conversationGroup.prompt.origin
+      ? conversationGroup.prompt
+      : null;
 
   return (
     <div className="flex flex-col gap-1.5 pb-4 px-2">
@@ -818,55 +776,50 @@ export const ChatConversationItem = memo(function ChatConversationItem({
           message={conversationGroup.prompt}
           setUserMessageRef={setUserMessageRef}
         />
-      ) : conversationGroup.prompt ? (
-        <UserPrompt
-          canEdit={!isRunning && !isLatestConversation}
-          message={conversationGroup.prompt}
-          onSubmitEdit={onSubmitPromptEdit}
-          setUserMessageRef={setUserMessageRef}
-          showActions={showMessageActions}
-          variant={promptVariant}
-        />
+      ) : null}
+      {ownPrompt ? (
+        <>
+          <ContextHandoffMarker message={ownPrompt} />
+          <UserPrompt
+            message={ownPrompt}
+            setUserMessageRef={setUserMessageRef}
+            showActions={showMessageActions}
+            variant={promptVariant}
+          />
+        </>
       ) : null}
 
-      {visibleItems.length > 0 || showActivity ? (
+      {visibleItems.length > 0 || phase !== "completed" ? (
         <div className="flex flex-col gap-5">
           {groupActivityWithFollowingItem(segments).map((group) => (
             <div
               className="flex flex-col gap-0.5"
-              key={getSegmentKey(group[0])}
+              key={getSegmentGroupKey(group)}
             >
               {group.map((segment) => {
                 if (segment.kind === "item") {
                   return renderTimelineItem(segment.item);
                 }
 
-                const summary = getActivitySegmentSummary(segment.items);
-
                 return (
-                  <ActivityBlock
-                    busy={isActivityHeaderBusy({
-                      hasActiveToolCall: summary.isBusy,
-                      isLastSegment: segment === segments.at(-1),
-                      isLiveConversation: showActivity,
-                    })}
+                  <ActivitySegment
+                    durationMs={turnStats?.durationMs}
+                    isLastSegment={segment === segments.at(-1)}
+                    isLiveConversation={showActivity}
+                    isTurnWork={segment === turnWorkSegment}
+                    items={segment.items}
                     key={getSegmentKey(segment)}
-                    stateKey={`activity:${segment.items[0]?.id}`}
-                    reasoningCount={summary.reasoningCount}
-                    replyCount={summary.replyCount}
-                    toolCount={summary.toolCount}
-                  >
-                    {segment.items.map((item) =>
-                      renderTimelineItem(item, true),
-                    )}
-                  </ActivityBlock>
+                    liveLabel={segment === liveSegment ? liveLabel : undefined}
+                    renderItem={renderTimelineItem}
+                  />
                 );
               })}
             </div>
           ))}
-          {showActivity && activity ? (
-            <ActivityLine activity={activity} runStartedAt={runStartedAt} />
+          {liveLabel && !liveSegment ? (
+            <ActivityLiveRow>{liveLabel}</ActivityLiveRow>
           ) : null}
+          {isStopped && !showStoppedInActions ? <TurnStoppedNote /> : null}
         </div>
       ) : null}
     </div>

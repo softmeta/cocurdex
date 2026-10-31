@@ -1,7 +1,6 @@
 import {
-  areLanguagesAttached,
-  areThemesAttached,
   type FileDiffMetadata,
+  getHighlighterIfLoaded,
   preloadHighlighter,
   type SupportedLanguages,
 } from "@pierre/diffs";
@@ -83,7 +82,9 @@ function DeferredDiffBody({ height }: { height: number }) {
 // before mounting it is what turns the placeholder into a diff.
 function useDiffHighlighterReady(language: SupportedLanguages): boolean {
   const [ready, setReady] = useState(
-    () => areLanguagesAttached(language) && areThemesAttached(GIT_DIFF_THEMES),
+    () =>
+      getHighlighterIfLoaded({ theme: GIT_DIFF_THEMES, lang: language }) !==
+      undefined,
   );
 
   useEffect(() => {
@@ -92,6 +93,7 @@ function useDiffHighlighterReady(language: SupportedLanguages): boolean {
     preloadHighlighter({
       themes: GIT_DIFF_THEME_NAMES,
       langs: [language],
+      preferredHighlighter: "highlights",
     }).then(() => {
       if (active) setReady(true);
     });
@@ -214,6 +216,7 @@ export function GitChangeFileDiff({
     expansionLineCount: 20,
     hunkSeparators: "line-info-basic",
     overflow: wrap ? "wrap" : "scroll",
+    preferredHighlighter: "highlights",
     theme: GIT_DIFF_THEMES,
     themeType: diffThemeType,
   };

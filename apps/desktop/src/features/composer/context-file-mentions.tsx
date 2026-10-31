@@ -1,15 +1,10 @@
 import type { Ref } from "react";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui";
+import { CommandItem } from "@/components/ui";
 import type { WorkspaceFileEntry } from "@/lib";
 import { cn } from "@/lib";
 import type { MentionAnchor } from "./mention-editor";
 import { MentionFileRow } from "./mention-file-row";
-import { MentionMenuPopover } from "./mention-menu-popover";
+import { MentionMenuList, MentionMenuPopover } from "./mention-menu-popover";
 import { MentionPreview } from "./mention-preview";
 import { MenuRowSidecar } from "./menu-row-sidecar";
 import { useHighlightedMenuRow } from "./use-highlighted-menu-row";
@@ -25,7 +20,6 @@ interface ContextFileMentionMenuProps {
   menuRef?: Ref<HTMLDivElement>;
   onSelect(file: WorkspaceFileEntry): void;
   placement?: "top" | "bottom";
-  tone?: "chat" | "welcome";
 }
 
 export function ContextFileMentionMenu({
@@ -36,7 +30,6 @@ export function ContextFileMentionMenu({
   menuRef,
   onSelect,
   placement = "top",
-  tone = "chat",
 }: ContextFileMentionMenuProps) {
   const { highlightedItem, setListNode } = useHighlightedMenuRow({
     highlightedIndex,
@@ -44,21 +37,6 @@ export function ContextFileMentionMenu({
     items: files,
     itemAttribute: "data-mention-index",
   });
-
-  const menuClassName =
-    tone === "welcome"
-      ? "border-welcome-border/60 bg-welcome-surface/95 text-welcome-fg-secondary backdrop-blur-md"
-      : "border-chat-border-soft bg-chat-surface-raised/95 text-chat-fg backdrop-blur-md";
-  const hoverClassName =
-    tone === "welcome"
-      ? "data-highlighted:bg-welcome-surface-row-hover data-highlighted:text-welcome-fg"
-      : "data-highlighted:bg-chat-surface-row-hover data-highlighted:text-chat-fg";
-  const selectedClassName =
-    tone === "welcome"
-      ? "bg-welcome-surface-selected! text-welcome-fg!"
-      : "bg-chat-surface-selected! text-chat-fg!";
-  const pathClassName =
-    tone === "welcome" ? "text-welcome-fg-muted" : "text-chat-fg-muted";
 
   if (!isOpen || !anchor) {
     return null;
@@ -69,46 +47,31 @@ export function ContextFileMentionMenu({
   return (
     <>
       <MentionMenuPopover anchor={anchor} isOpen={isOpen} side={placement}>
-        <Command
-          ref={menuRef}
-          className={cn(
-            "h-auto max-h-[var(--available-height)] rounded-card border p-1 shadow-chat-soft",
-            menuClassName,
-          )}
-          autoHighlight={false}
-          shouldFilter={false}
-        >
-          <CommandList
-            className="max-h-[min(18rem,var(--available-height))]"
-            ref={setListNode}
-          >
-            <CommandGroup className="p-0">
-              {files.map((file, index) => {
-                const isSelected = index === highlightedIndex;
+        <MentionMenuList commandRef={menuRef} listRef={setListNode}>
+          {files.map((file, index) => {
+            const isSelected = index === highlightedIndex;
 
-                return (
-                  <CommandItem
-                    className={cn(
-                      "min-w-0 items-center gap-1.5 rounded-control px-1.5 text-current",
-                      isSelected ? selectedClassName : hoverClassName,
-                    )}
-                    data-mention-index={index}
-                    key={file.path}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onSelect={() => onSelect(file)}
-                    value={file.path}
-                  >
-                    <MentionFileRow file={file} pathClassName={pathClassName} />
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+            return (
+              <CommandItem
+                className={cn(
+                  "min-w-0",
+                  isSelected && "bg-accent text-accent-foreground",
+                )}
+                data-mention-index={index}
+                key={file.path}
+                onMouseDown={(event) => event.preventDefault()}
+                onSelect={() => onSelect(file)}
+                value={file.path}
+              >
+                <MentionFileRow file={file} />
+              </CommandItem>
+            );
+          })}
+        </MentionMenuList>
       </MentionMenuPopover>
       {highlightedFile ? (
         <MenuRowSidecar reference={highlightedItem}>
-          <MentionPreview file={highlightedFile} tone={tone} />
+          <MentionPreview file={highlightedFile} />
         </MenuRowSidecar>
       ) : null}
     </>

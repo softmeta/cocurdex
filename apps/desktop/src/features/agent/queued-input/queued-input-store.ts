@@ -13,6 +13,9 @@ export interface QueuedAgentInputItem extends QueuedAgentInputRecord {
 type QueuedInputsBySession = Record<string, QueuedAgentInputItem[]>;
 
 export const queuedInputsBySessionAtom = atom<QueuedInputsBySession>({});
+export const pausedQueueSessionIdsAtom = atom<ReadonlySet<string>>(
+  new Set<string>(),
+);
 const completedQueuedMessageIdsAtom = atom<Set<string>>(new Set<string>());
 
 export const bootstrapQueuedInputsAtom = atom(
@@ -23,8 +26,10 @@ export const bootstrapQueuedInputsAtom = atom(
     payload: {
       inputs: QueuedAgentInputRecord[];
       messages: MessageRecord[];
+      pausedSessionIds: string[];
     },
   ) => {
+    set(pausedQueueSessionIdsAtom, new Set(payload.pausedSessionIds));
     const messageById = new Map(
       payload.messages.map((message) => [message.id, message]),
     );
@@ -40,6 +45,18 @@ export const bootstrapQueuedInputsAtom = atom(
     }
 
     set(queuedInputsBySessionAtom, next);
+  },
+);
+
+export const markQueueResumedAtom = atom(
+  null,
+  (get, set, sessionId: string) => {
+    const paused = get(pausedQueueSessionIdsAtom);
+    if (!paused.has(sessionId)) return;
+    set(
+      pausedQueueSessionIdsAtom,
+      new Set([...paused].filter((id) => id !== sessionId)),
+    );
   },
 );
 
@@ -98,6 +115,7 @@ export const removeQueuedInputAtom = atom(
 
     if (nextSessionInputs.length === sessionInputs.length) return;
     if (nextSessionInputs.length === 0) {
+      set(markQueueResumedAtom, payload.sessionId);
       const { [payload.sessionId]: _removed, ...remaining } = current;
       set(queuedInputsBySessionAtom, remaining);
       return;

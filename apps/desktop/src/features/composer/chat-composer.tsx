@@ -11,6 +11,7 @@ import {
   isContextAttachment,
   isDocumentAttachment,
   supportsInSessionRuntimeAxis,
+  type ThinkingLevelOption,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { Paperclip, Plus } from "lucide-react";
@@ -27,10 +28,10 @@ import {
   AppDropdownContent,
   AppDropdownItem,
   AppDropdownTriggerLabel,
-  appDropdownSeparatorClassName,
-  compactDropdownContentClassName,
 } from "@/components";
 import { DropdownMenuGroup, DropdownMenuSeparator } from "@/components/ui";
+import { CloudSyncDialog } from "@/features/memory/cloud";
+import { MemoryMenuItem } from "@/features/memory/menu";
 import {
   AgentSelect,
   agentsAtom,
@@ -38,6 +39,7 @@ import {
   getAgentDisplayLabel,
   getSessionModeOptions,
   SessionModeSubmenu,
+  ThinkingLevelSubmenu,
 } from "@/features/sessions";
 import { cn } from "@/lib";
 import { AttachContextSubmenus } from "./attach-context-submenus";
@@ -73,14 +75,16 @@ import { PanelComposer } from "./panel-composer";
 import { PillComposer } from "./pill-composer";
 import { sendShortcutAtom } from "./send-shortcut";
 import { SessionRoleName } from "./session-role-name";
-import type { ThinkingLevelOption } from "./thinking-level";
-import { ThinkingLevelSubmenu } from "./thinking-level-submenu";
-import { useComposerSubmission } from "./use-composer-submission";
+import {
+  type ComposerSendOutcome,
+  useComposerSubmission,
+} from "./use-composer-submission";
 import {
   getContextAttachmentMentionLabel,
   getContextAttachmentSerializedText,
   useContextFileMentions,
 } from "./use-context-file-mentions";
+import { useSessionRole } from "./use-session-role";
 import { useSlashCommands } from "./use-slash-commands";
 
 export interface ChatComposerHandle {
@@ -131,7 +135,7 @@ interface ChatComposerProps {
     message: string,
     attachments: MessageAttachment[],
     useOppositeFollowUpBehavior?: boolean,
-  ): void | Promise<void>;
+  ): ComposerSendOutcome | Promise<ComposerSendOutcome>;
   onStop?(): void;
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
@@ -206,6 +210,8 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const [managedAttachments, setManagedAttachments] = useState<
       MessageAttachment[]
     >(initialDraft?.attachments ?? []);
+    const [cloudDialogOpen, setCloudDialogOpen] = useState(false);
+    const [cloudUser, setCloudUser] = useState<string | null>(null);
 
     const writeDraft = (draft: ComposerDraft) => {
       draftVersion.current += 1;
@@ -303,18 +309,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const canSubmitNow =
       canSend && !submitting && (!isRunning || canSendWhileRunning);
     const canSelectAgent = Boolean(onSelectAgent) && !isRunning;
-
-    const handleSelectAgent = (nextAgent: AgentId) => {
-      if (
-        sessionModeId &&
-        !getSessionModeOptions(agents, nextAgent).some(
-          (mode) => mode.id === sessionModeId,
-        )
-      ) {
-        onSelectSessionMode?.("");
-      }
-      onSelectAgent?.(nextAgent);
-    };
+    const sessionRole = useSessionRole(sessionId);
 
     const sendMessage = (useOppositeFollowUpBehavior = false) => {
       if (!canSubmitNow) return;
@@ -453,7 +448,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     if (!canSelectAgent) {
       agentChevronClassName = "hidden";
     } else if (variant === "pill") {
-      agentChevronClassName = "max-[520px]:hidden";
+      agentChevronClassName = "@max-lg/composer:hidden";
     }
 
     const agentMenu = (
@@ -467,7 +462,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
           "max-w-45",
           variant === "pill" &&
             composerFooterControlClassName(
-              "max-[520px]:w-8 max-[520px]:justify-center",
+              "@max-lg/composer:w-8 @max-lg/composer:justify-center",
             ),
         )}
         triggerLabel={
@@ -479,7 +474,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             ) : null}
             <AppDropdownTriggerLabel
               className={cn(
-                variant === "pill" ? "max-[520px]:sr-only" : "font-medium",
+                variant === "pill" ? "@max-lg/composer:sr-only" : "font-medium",
               )}
             >
               {agentLabel}
@@ -487,7 +482,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
           </>
         }
         value={selectedAgent}
-        onValueChange={handleSelectAgent}
+        onValueChange={(agentType) => onSelectAgent?.(agentType)}
       />
     );
 
@@ -514,22 +509,23 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       </>
     ) : null;
 
-    const defaultAgentControls = isAgentMode ? (
-      <>
-        <SessionRoleName sessionId={sessionId} />
-        {agentMenu}
-      </>
-    ) : null;
+    let defaultAgentControls: ReactNode = null;
+    if (isAgentMode && sessionRole && !onSelectAgent) {
+      defaultAgentControls = (
+        <SessionRoleName agentLabel={agentLabel} role={sessionRole} />
+      );
+    } else if (isAgentMode) {
+      defaultAgentControls = (
+        <>
+          {sessionRole ? <SessionRoleName role={sessionRole} /> : null}
+          {agentMenu}
+        </>
+      );
+    }
     const resolvedControls = controls ?? defaultAgentControls;
 
     const attachMenuContent = (
-      <AppDropdownContent
-        className={cn(
-          compactDropdownContentClassName,
-          "**:[[role=menuitem]]:text-body",
-        )}
-        side="bottom"
-      >
+      <AppDropdownContent side="bottom">
         <DropdownMenuGroup>
           <AppDropdownItem onClick={openAttachmentPicker}>
             <Paperclip className="size-4 shrink-0" />
@@ -545,100 +541,115 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
         </DropdownMenuGroup>
         {attachMenuExtras ? (
           <>
-            <DropdownMenuSeparator className={appDropdownSeparatorClassName} />
+            <DropdownMenuSeparator />
             {attachMenuExtras}
           </>
         ) : null}
+        <DropdownMenuSeparator />
+        <MemoryMenuItem
+          onConnectCloud={(user) => {
+            setCloudUser(user);
+            setCloudDialogOpen(true);
+          }}
+        />
       </AppDropdownContent>
     );
 
     return (
-      <form
-        className="relative flex flex-col gap-3 @container/composer"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onSubmit={(event) => {
-          event.preventDefault();
-          sendMessage();
-        }}
-      >
-        <input
-          accept={
-            canAttachDocuments
-              ? `image/png,image/jpeg,image/gif,image/webp,${DOCUMENT_ATTACHMENT_ACCEPT}`
-              : "image/png,image/jpeg,image/gif,image/webp"
-          }
-          className="hidden"
-          multiple
-          onChange={handleAttachmentInputChange}
-          ref={attachmentInputRef}
-          type="file"
-        />
-        {variant === "pill" ? (
-          <PillComposer
-            attachMenuContent={attachMenuContent}
-            canSend={canSubmitNow}
-            composerAttachments={composerAttachments}
-            contextAttachments={contextAttachments}
-            contextChips={contextChips}
-            contextFileMentions={contextFileMentions}
-            editorRef={editorRef}
-            footerLeading={footerLeading}
-            footerTrailing={footerTrailing}
-            initialEditorContent={initialDraft}
-            runtimeMenuExtras={runtimeMenuExtras}
-            sessionId={sessionId}
-            attachmentError={attachmentError}
-            isAgentMode={isAgentMode}
-            isRunning={isRunning}
-            mentionAnchor={mentionAnchor}
-            mentions={mentions}
-            onEditorChange={handleEditorChange}
-            onMentionAnchorChange={setMentionAnchor}
-            onPaste={handlePaste}
-            onRemoveAttachment={removeAttachment}
-            onStop={onStop}
-            onSubmit={sendMessage}
-            placeholderOverride={placeholderOverride}
-            resolvedControls={resolvedControls}
-            slashCommands={slashCommands}
-            sendShortcut={sendShortcut}
-            text={text}
+      <>
+        <form
+          className="relative flex flex-col gap-3 @container/composer"
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onSubmit={(event) => {
+            event.preventDefault();
+            sendMessage();
+          }}
+        >
+          <input
+            accept={
+              canAttachDocuments
+                ? `image/png,image/jpeg,image/gif,image/webp,${DOCUMENT_ATTACHMENT_ACCEPT}`
+                : "image/png,image/jpeg,image/gif,image/webp"
+            }
+            className="hidden"
+            multiple
+            onChange={handleAttachmentInputChange}
+            ref={attachmentInputRef}
+            type="file"
           />
-        ) : (
-          <PanelComposer
-            attachMenuContent={attachMenuContent}
-            canSend={canSubmitNow}
-            composerAttachments={composerAttachments}
-            contextAttachments={contextAttachments}
-            contextChips={contextChips}
-            contextFileMentions={contextFileMentions}
-            editorRef={editorRef}
-            footerLeading={footerLeading}
-            footerTrailing={footerTrailing}
-            initialEditorContent={initialDraft}
-            runtimeMenuExtras={runtimeMenuExtras}
-            sessionId={sessionId}
-            header={header}
-            attachmentError={attachmentError}
-            isAgentMode={isAgentMode}
-            isRunning={isRunning}
-            mentionAnchor={mentionAnchor}
-            mentionMenuPlacement={mentionMenuPlacement}
-            onEditorChange={handleEditorChange}
-            onMentionAnchorChange={setMentionAnchor}
-            onPaste={handlePaste}
-            onRemoveAttachment={removeAttachment}
-            onStop={onStop}
-            onSubmit={sendMessage}
-            placeholderOverride={placeholderOverride}
-            resolvedControls={resolvedControls}
-            slashCommands={slashCommands}
-            sendShortcut={sendShortcut}
-            tone={tone}
+          {variant === "pill" ? (
+            <PillComposer
+              attachMenuContent={attachMenuContent}
+              canSend={canSubmitNow}
+              composerAttachments={composerAttachments}
+              contextAttachments={contextAttachments}
+              contextChips={contextChips}
+              contextFileMentions={contextFileMentions}
+              editorRef={editorRef}
+              footerLeading={footerLeading}
+              footerTrailing={footerTrailing}
+              initialEditorContent={initialDraft}
+              runtimeMenuExtras={runtimeMenuExtras}
+              sessionId={sessionId}
+              attachmentError={attachmentError}
+              isAgentMode={isAgentMode}
+              isRunning={isRunning}
+              mentionAnchor={mentionAnchor}
+              mentions={mentions}
+              onEditorChange={handleEditorChange}
+              onMentionAnchorChange={setMentionAnchor}
+              onPaste={handlePaste}
+              onRemoveAttachment={removeAttachment}
+              onStop={onStop}
+              onSubmit={sendMessage}
+              placeholderOverride={placeholderOverride}
+              resolvedControls={resolvedControls}
+              slashCommands={slashCommands}
+              sendShortcut={sendShortcut}
+              text={text}
+            />
+          ) : (
+            <PanelComposer
+              attachMenuContent={attachMenuContent}
+              canSend={canSubmitNow}
+              composerAttachments={composerAttachments}
+              contextAttachments={contextAttachments}
+              contextChips={contextChips}
+              contextFileMentions={contextFileMentions}
+              editorRef={editorRef}
+              footerLeading={footerLeading}
+              footerTrailing={footerTrailing}
+              initialEditorContent={initialDraft}
+              runtimeMenuExtras={runtimeMenuExtras}
+              sessionId={sessionId}
+              header={header}
+              attachmentError={attachmentError}
+              isAgentMode={isAgentMode}
+              isRunning={isRunning}
+              mentionAnchor={mentionAnchor}
+              mentionMenuPlacement={mentionMenuPlacement}
+              onEditorChange={handleEditorChange}
+              onMentionAnchorChange={setMentionAnchor}
+              onPaste={handlePaste}
+              onRemoveAttachment={removeAttachment}
+              onStop={onStop}
+              onSubmit={sendMessage}
+              placeholderOverride={placeholderOverride}
+              resolvedControls={resolvedControls}
+              slashCommands={slashCommands}
+              sendShortcut={sendShortcut}
+              tone={tone}
+            />
+          )}
+        </form>
+        {cloudDialogOpen ? (
+          <CloudSyncDialog
+            initialUser={cloudUser}
+            onClose={() => setCloudDialogOpen(false)}
           />
-        )}
-      </form>
+        ) : null}
+      </>
     );
   },
 );

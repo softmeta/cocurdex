@@ -9,6 +9,7 @@ export interface TeamRepository {
   getById(teamId: string): Promise<TeamSnapshot | null>;
   getByLead(leadSessionId: string): Promise<TeamSnapshot | null>;
   findBySession(sessionId: string): Promise<TeamSnapshot | null>;
+  listActive(): Promise<TeamSnapshot[]>;
   saveTeam(team: TeamRecord): Promise<void>;
   saveMember(member: TeamMemberRecord): Promise<void>;
   failActiveMembers(): Promise<void>;

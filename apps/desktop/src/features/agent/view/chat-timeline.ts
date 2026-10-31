@@ -2,6 +2,7 @@ import {
   type AgentPermissionRequestRecord,
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
+  isContextCompactionToolCall,
   type MessageRecord,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
@@ -57,6 +58,11 @@ export type TimelineGroup =
   | {
       id: string;
       kind: "worktreeSetup";
+      toolCall: AgentToolCallRecord;
+    }
+  | {
+      id: string;
+      kind: "contextCompaction";
       toolCall: AgentToolCallRecord;
     }
   | {
@@ -238,6 +244,15 @@ function appendTimelineItem(groups: TimelineGroup[], item: TimelineItem) {
     return;
   }
 
+  if (isContextCompactionToolCall(item.toolCall)) {
+    groups.push({
+      id: `context-compaction-${item.id}`,
+      kind: "contextCompaction",
+      toolCall: item.toolCall,
+    });
+    return;
+  }
+
   const lastGroup = groups.at(-1);
 
   if (lastGroup && canMergeToolCall(lastGroup, item.toolCall)) {
@@ -366,10 +381,14 @@ export type ConversationRenderSegment =
   | { kind: "item"; item: TimelineGroup }
   | { kind: "activity"; items: TimelineGroup[] };
 
+export type TurnPhase = "live" | "completed" | "interrupted";
+
+type TurnEnd = string | null | undefined;
+
 // Process items are the turn's "working" steps — tool calls, reasoning and
 // interim replies. Final answers, permissions and questions stay outside:
 // answers are the payload, and permission/question cards are interactive.
-function isProcessItem(item: TimelineGroup, turnEndMessageId?: string) {
+function isProcessItem(item: TimelineGroup, turnEndMessageId: TurnEnd) {
   if (item.kind === "toolCalls") {
     return true;
   }
@@ -389,7 +408,7 @@ function isAssistantReply(item: TimelineGroup) {
   );
 }
 
-function isInterimReply(item: TimelineGroup, turnEndMessageId?: string) {
+function isInterimReply(item: TimelineGroup, turnEndMessageId: TurnEnd) {
   return (
     turnEndMessageId !== undefined &&
     item.id !== turnEndMessageId &&
@@ -397,29 +416,82 @@ function isInterimReply(item: TimelineGroup, turnEndMessageId?: string) {
   );
 }
 
-export function getTurnEndMessageId(items: TimelineGroup[]) {
-  return items.findLast(isAssistantReply)?.id;
+function isWorkItem(item: TimelineGroup) {
+  return (
+    item.kind === "toolCalls" ||
+    (item.kind === "message" && isReasoningMessage(item.message))
+  );
 }
 
-export function withoutInterimReplies(items: TimelineGroup[]) {
-  const turnEndMessageId = getTurnEndMessageId(items);
+export function getTurnEndMessageId(
+  items: TimelineGroup[],
+  phase: Exclude<TurnPhase, "live">,
+): string | null {
+  const replyIndex = items.findLastIndex(isAssistantReply);
+  if (replyIndex < 0) {
+    return null;
+  }
+  if (phase === "interrupted" && items.slice(replyIndex + 1).some(isWorkItem)) {
+    return null;
+  }
+  return items[replyIndex]?.id ?? null;
+}
+
+export function withoutInterimReplies(
+  items: TimelineGroup[],
+  phase: Exclude<TurnPhase, "live">,
+) {
+  const turnEndMessageId = getTurnEndMessageId(items, phase);
   return items.filter((item) => !isInterimReply(item, turnEndMessageId));
+}
+
+function isFoldableTrailingItem(item: TimelineGroup) {
+  if (item.kind === "toolCalls") {
+    return item.toolCalls.every((toolCall) => toolCall.status === "completed");
+  }
+  return item.kind === "message" && isReasoningMessage(item.message);
+}
+
+function moveTrailingWorkBeforeTurnEnd(
+  items: TimelineGroup[],
+  turnEndMessageId: TurnEnd,
+) {
+  const turnEndIndex = items.findIndex((item) => item.id === turnEndMessageId);
+  if (turnEndIndex < 0) {
+    return items;
+  }
+
+  const trailingItems = items.slice(turnEndIndex + 1);
+  const foldedItems = trailingItems.filter(isFoldableTrailingItem);
+  if (foldedItems.length === 0) {
+    return items;
+  }
+
+  return [
+    ...items.slice(0, turnEndIndex),
+    ...foldedItems,
+    items[turnEndIndex],
+    ...trailingItems.filter((item) => !isFoldableTrailingItem(item)),
+  ];
 }
 
 export function segmentConversationItems(
   items: TimelineGroup[],
   condensed: boolean,
-  foldInterimReplies = false,
+  phase: TurnPhase = "live",
 ): ConversationRenderSegment[] {
-  const timelineItems = coalesceAdjacentSubagentGroups(items);
+  const coalescedItems = coalesceAdjacentSubagentGroups(items);
 
   if (!condensed) {
-    return timelineItems.map((item) => ({ kind: "item", item }));
+    return coalescedItems.map((item) => ({ kind: "item", item }));
   }
 
-  const turnEndMessageId = foldInterimReplies
-    ? getTurnEndMessageId(timelineItems)
-    : undefined;
+  const turnEndMessageId =
+    phase === "live" ? undefined : getTurnEndMessageId(coalescedItems, phase);
+  const timelineItems = moveTrailingWorkBeforeTurnEnd(
+    coalescedItems,
+    turnEndMessageId,
+  );
   const segments: ConversationRenderSegment[] = [];
   let run: TimelineGroup[] = [];
 
@@ -444,4 +516,20 @@ export function segmentConversationItems(
 
   flushRun();
   return segments;
+}
+
+export function findConversationTurnStats<T>(
+  conversationGroup: ConversationGroup,
+  statsByMessageId: Record<string, T>,
+): T | undefined {
+  for (const item of conversationGroup.items.toReversed()) {
+    const stats =
+      item.kind === "message" ? statsByMessageId[item.message.id] : undefined;
+    if (stats) {
+      return stats;
+    }
+  }
+  return conversationGroup.prompt
+    ? statsByMessageId[conversationGroup.prompt.id]
+    : undefined;
 }

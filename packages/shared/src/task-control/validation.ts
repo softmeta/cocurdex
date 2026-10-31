@@ -1,10 +1,6 @@
 import { isAgentId } from "../agent-role";
 import { providerApis, reasoningEfforts } from "../contracts";
-import type {
-  SendSessionCommand,
-  SessionConfiguration,
-  SubmitPreviousMessageCommand,
-} from "./types";
+import type { SendSessionCommand, SessionConfiguration } from "./types";
 
 function record(value: unknown): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -29,13 +25,17 @@ function text(value: unknown, name: string, max = 4096, empty = false) {
   }
 }
 
-export function validateSessionId(value: unknown): asserts value is string {
-  text(value, "session ID", 256);
+function validateRecordId(value: unknown, name: string) {
+  text(value, name, 256);
   if (
     typeof value === "string" &&
     (value === "." || value === ".." || /[/\\]/.test(value))
   )
-    throw new Error("Invalid session ID");
+    throw new Error(`Invalid ${name}`);
+}
+
+export function validateSessionId(value: unknown): asserts value is string {
+  validateRecordId(value, "session ID");
 }
 
 function optionalText(value: unknown, name: string) {
@@ -129,8 +129,15 @@ export function validateSessionConfiguration(
     "providerSnapshot",
     "worktreePath",
     "peerInbound",
+    "sessionKind",
   ]);
   validateSessionId(value.id);
+  if (
+    value.sessionKind !== undefined &&
+    value.sessionKind !== "main" &&
+    value.sessionKind !== "chat"
+  )
+    throw new Error("Invalid session kind");
   if (
     value.peerInbound !== undefined &&
     value.peerInbound !== "deliver" &&
@@ -179,7 +186,7 @@ export function validateSendSessionCommand(
   ]);
   validateSessionId(value.sessionId);
   if (value.origin !== undefined) validateMessageOrigin(value.origin);
-  if (value.messageId !== undefined) validateSessionId(value.messageId);
+  validateRecordId(value.messageId, "message ID");
   text(value.content, "message content", 200_000, true);
   if (value.createdAt !== undefined) {
     text(value.createdAt, "message timestamp", 64);
@@ -246,22 +253,4 @@ export function validateSendSessionCommand(
     !(value.attachments as unknown[] | undefined)?.length
   )
     throw new Error("Message must contain text or attachments");
-}
-
-export function validateSubmitPreviousMessageCommand(
-  value: unknown,
-): asserts value is SubmitPreviousMessageCommand {
-  record(value);
-  keys(value, [
-    "sessionId",
-    "messageId",
-    "content",
-    "attachments",
-    "revertWorkspace",
-  ]);
-  const { revertWorkspace, ...message } = value;
-  if (typeof revertWorkspace !== "boolean")
-    throw new Error("Invalid workspace revert choice");
-  validateSessionId(message.messageId);
-  validateSendSessionCommand(message);
 }

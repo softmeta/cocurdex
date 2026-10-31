@@ -1,0 +1,57 @@
+{
+  "create": {
+    "creating": "正在创建…",
+    "descriptionPlaceholder": "添加描述",
+    "failed": "无法创建 issue，请检查连接后重试。",
+    "open": "新建 issue",
+    "submit": "创建",
+    "titlePlaceholder": "Issue 标题"
+  },
+  "edit": {
+    "action": "编辑",
+    "failed": "保存失败。该 issue 可能已在别处修改，请重新打开后再试。",
+    "save": "保存",
+    "saving": "正在保存…"
+  },
+  "empty": {
+    "description": "在 {{host}} 上跟踪的 issue 会显示在这里。",
+    "title": "没有 issue"
+  },
+  "field": {
+    "labels": "标签",
+    "none": "无",
+    "priority": "优先级",
+    "status": "状态",
+    "workspace": "工作区"
+  },
+  "filter": {
+    "any": "全部",
+    "clear": "清除筛选",
+    "close": "关闭",
+    "empty": "没有符合筛选的 issue",
+    "noWorkspace": "未归属工作区",
+    "remove": "移除筛选：{{label}}",
+    "title": "筛选"
+  },
+  "labels": {
+    "empty": "还没有标签"
+  },
+  "missing": "这个 issue 已在电脑上删除。",
+  "move": {
+    "action": "移动",
+    "failed": "无法移动该 issue，请检查连接后重试。",
+    "title": "移动到"
+  },
+  "noResults": "没有与“{{query}}”匹配的 issue",
+  "search": "搜索 issue",
+  "sessions": "Agent 会话",
+  "subIssues": "子 issue {{done}}/{{total}}",
+  "unavailable": {
+    "retry": "重试",
+    "title": "无法从 {{host}} 加载 issue"
+  },
+  "untitledSession": "未命名会话",
+  "update": {
+    "failed": "无法更新该 issue，请检查连接后重试。"
+  }
+}

@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import {
   AppDropdownContent,
   AppDropdownItem,
-  compactDropdownContentClassName,
   MarkdownRenderer,
 } from "@/components";
 import {
@@ -97,10 +96,7 @@ function PreviewTocMenu({ activeKey, headings }: PreviewTocProps) {
       </DropdownMenuTrigger>
       <AppDropdownContent
         align="end"
-        className={cn(
-          "max-h-[min(24rem,var(--available-height))]! max-w-72",
-          compactDropdownContentClassName,
-        )}
+        className="max-h-[min(24rem,var(--available-height))]! max-w-72"
       >
         {headings.map((heading) => (
           <AppDropdownItem

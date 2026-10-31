@@ -1,15 +1,25 @@
-import type { SessionRecord } from "@cocurdex/shared";
+import { isChatSession, type SessionRecord } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   Archive,
   ChevronDown,
   ChevronRight,
+  CircleDot,
+  GitFork,
+  ListTree,
   Pencil,
+  Pin,
+  PinOff,
   SquareSplitHorizontal,
   SquareSplitVertical,
   Trash2,
 } from "lucide-react";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -18,34 +28,46 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
   SidebarListRow,
-  Spinner,
-  Text,
+  SidebarListRowDisclosure,
 } from "@/components/ui";
+import { ExecutionTreeDialog } from "@/features/agent/execution-tree";
 import { permissionsBySessionAtom } from "@/features/agent/permission";
 import { questionsBySessionAtom } from "@/features/agent/question";
 import {
   archiveSessionAtom,
+  canMarkSessionUnread,
   collectSessionSubtreeIds,
   deleteSessionAtom,
   focusedPaneCanSplitDownAtom,
   focusedPaneCanSplitRightAtom,
   getAgentDisplayLabel,
+  markSessionUnreadAtom,
   openSessionInSplitAtom,
+  sessionResultAttentionAtom,
   sessionsAtom,
+  unreadSessionIdsAtom,
   updateSessionTitleAtom,
+  useForkSession,
 } from "@/features/sessions";
 import {
   getAgentRoles,
   subscribeAgentRoles,
   useAgentRoleSummary,
 } from "@/features/sessions/agent-role";
+import type { SessionProperty } from "@/features/sessions/session-list-view";
 import { openSettings } from "@/features/settings";
 import { cn, desktopApi, logRendererDiagnostic } from "@/lib";
-import { getCompactRelativeTime } from "./compact-relative-time";
+import { SessionSidebarMeta } from "./session-sidebar-meta";
+import {
+  resolveSessionMetaItems,
+  type SessionMetaItem,
+} from "./session-sidebar-meta-items";
+import { SessionTrailing } from "./session-sidebar-trailing";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
 import { SidebarItemTooltip } from "./sidebar-item-preview";
 import { SidebarOverflowTitle } from "./sidebar-overflow-title";
 import { SidebarRenameInput } from "./sidebar-rename-input";
+import { useToggleSessionPin } from "./use-toggle-session-pin";
 
 interface SessionSidebarItemProps {
   hasChildren?: boolean;
@@ -53,78 +75,37 @@ interface SessionSidebarItemProps {
   isExpanded?: boolean;
   onSelect(): void;
   onToggleExpand?(): void;
+  properties: readonly SessionProperty[];
   session: SessionRecord;
+  workspaceName?: string;
 }
 
-function SessionStatusIndicator({
-  needsAttention,
-  isRunning,
+function SessionRowBody({
+  metaItems,
+  title,
+  trailing,
 }: {
-  isRunning: boolean;
-  needsAttention: boolean;
+  metaItems: readonly SessionMetaItem[];
+  title: string;
+  trailing: ReactNode;
 }) {
-  const { t } = useTranslation("sessions");
-
-  if (!(needsAttention || isRunning)) {
-    return null;
-  }
-
-  return (
-    <span className="flex size-4 shrink-0 items-center justify-center">
-      {needsAttention ? (
-        <span
-          className="sidebar-activity-dot size-1.5 rounded-full text-chat-status-pending-fg"
-          role="img"
-          aria-label={t("sidebar.pendingAttention")}
-        />
-      ) : (
-        <Spinner
-          aria-label={t("sidebar.running")}
-          className="text-sidebar-thinking-fg"
-          size="xs"
-        />
-      )}
-    </span>
-  );
-}
-
-function SessionAgeLabel({ timestamp }: { timestamp: string }) {
-  const { t } = useTranslation("sessions");
-  const { count, unit } = getCompactRelativeTime(timestamp);
-  const labels = {
-    now: t("sidebar.ageNow"),
-    m: t("sidebar.ageMinutes", { count }),
-    h: t("sidebar.ageHours", { count }),
-    d: t("sidebar.ageDays", { count }),
-    mo: t("sidebar.ageMonths", { count }),
-    y: t("sidebar.ageYears", { count }),
-  };
-
-  return (
-    <Text size="meta" className="shrink-0 text-sidebar-fg-subtle tabular-nums">
-      {labels[unit]}
-    </Text>
-  );
-}
-
-function SessionTrailing({
-  isRunning,
-  needsAttention,
-  timestamp,
-}: {
-  isRunning: boolean;
-  needsAttention: boolean;
-  timestamp: string;
-}) {
-  if (needsAttention || isRunning) {
+  if (metaItems.length === 0) {
     return (
-      <SessionStatusIndicator
-        isRunning={isRunning}
-        needsAttention={needsAttention}
-      />
+      <>
+        <SidebarOverflowTitle>{title}</SidebarOverflowTitle>
+        {trailing}
+      </>
     );
   }
-  return <SessionAgeLabel timestamp={timestamp} />;
+  return (
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <SidebarOverflowTitle>{title}</SidebarOverflowTitle>
+        {trailing}
+      </span>
+      <SessionSidebarMeta items={metaItems} />
+    </span>
+  );
 }
 
 export function SessionSidebarItem({
@@ -133,13 +114,19 @@ export function SessionSidebarItem({
   isExpanded = true,
   onSelect,
   onToggleExpand,
+  properties,
   session,
+  workspaceName,
 }: SessionSidebarItemProps) {
   const { t } = useTranslation("sessions");
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const archiveSession = useSetAtom(archiveSessionAtom);
   const deleteSession = useSetAtom(deleteSessionAtom);
   const openSessionInSplit = useSetAtom(openSessionInSplitAtom);
+  const markSessionUnread = useSetAtom(markSessionUnreadAtom);
+  const toggleSessionPin = useToggleSessionPin();
+  const resultAttention = useAtomValue(sessionResultAttentionAtom)[session.id];
+  const isUnread = useAtomValue(unreadSessionIdsAtom).has(session.id);
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -150,9 +137,13 @@ export function SessionSidebarItem({
   const selectedRole = session.agentRoleId
     ? (roles.find((role) => role.id === session.agentRoleId) ?? null)
     : null;
-  const roleSummary = selectedRole ? formatRoleSummary(selectedRole) : null;
+  const roleSummary = selectedRole
+    ? formatRoleSummary(selectedRole, { includeAgent: false })
+    : null;
   const [isRenaming, setIsRenaming] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isTreeOpen, setIsTreeOpen] = useState(false);
+  const forkSession = useForkSession();
   const [draftTitle, setDraftTitle] = useState(session.title);
   const descendantIds =
     hasChildren && !isExpanded
@@ -176,6 +167,26 @@ export function SessionSidebarItem({
   );
   const isChild = Boolean(session.parentSessionId);
   const activityAt = session.lastMessageAt ?? session.updatedAt;
+  const metaItems = resolveSessionMetaItems(properties, {
+    role: selectedRole ?? undefined,
+    session,
+    workspaceName,
+  });
+  const rowBody = (
+    <SessionRowBody
+      metaItems={metaItems}
+      title={session.title}
+      trailing={
+        <SessionTrailing
+          isRunning={isRunning}
+          isUnread={isUnread && !isActive}
+          needsAttention={needsAttention}
+          showTimestamp={properties.includes("timestamp")}
+          timestamp={activityAt}
+        />
+      }
+    />
+  );
   const renameInputRef = useCallback((node: HTMLInputElement | null) => {
     node?.focus();
     node?.select();
@@ -288,114 +299,143 @@ export function SessionSidebarItem({
   }
 
   return (
-    <ContextMenu>
-      <SidebarItemTooltip
-        agentId={session.agentType}
-        agentLabel={getAgentDisplayLabel(session.agentType)}
-        roleName={selectedRole?.name}
-        roleSummary={roleSummary ?? undefined}
-        timestamp={activityAt}
-        title={session.title}
-      >
-        <ContextMenuTrigger asChild>
-          <SidebarListRow
-            isActive={isActive}
-            className={cn(isChild ? "ps-11 text-sidebar-fg-muted" : "ps-6")}
-            onClick={hasChildren ? undefined : onSelect}
-            render={hasChildren ? undefined : <button type="button" />}
+    <>
+      <ContextMenu>
+        <SidebarItemTooltip
+          agentId={session.agentType}
+          agentLabel={getAgentDisplayLabel(session.agentType)}
+          role={selectedRole ?? undefined}
+          roleSummary={roleSummary ?? undefined}
+          timestamp={activityAt}
+          title={session.title}
+          workspaceName={workspaceName}
+        >
+          <ContextMenuTrigger asChild>
+            <SidebarListRow
+              isActive={isActive}
+              className={cn(
+                isChild && "ps-6 text-sidebar-fg-muted",
+                !isChild && "ps-1",
+                metaItems.length > 0 && "h-auto py-1",
+              )}
+              onClick={hasChildren ? undefined : onSelect}
+              render={hasChildren ? undefined : <button type="button" />}
+            >
+              {hasChildren ? (
+                <SidebarListRowDisclosure
+                  aria-expanded={isExpanded}
+                  aria-label={
+                    isExpanded
+                      ? t("sidebar.collapseChildren")
+                      : t("sidebar.expandChildren")
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleExpand?.();
+                  }}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="size-3.5" />
+                  ) : (
+                    <ChevronRight className="size-3.5 rtl:-scale-x-100" />
+                  )}
+                </SidebarListRowDisclosure>
+              ) : null}
+              {hasChildren ? (
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
+                  onClick={onSelect}
+                >
+                  {rowBody}
+                </button>
+              ) : (
+                rowBody
+              )}
+            </SidebarListRow>
+          </ContextMenuTrigger>
+        </SidebarItemTooltip>
+        <ContextMenuContent className="min-w-26">
+          {isChild ? null : (
+            <SidebarContextMenuItem
+              icon={session.pinnedAt ? PinOff : Pin}
+              onClick={() => toggleSessionPin(session)}
+            >
+              {session.pinnedAt ? t("sidebar.unpin") : t("sidebar.pin")}
+            </SidebarContextMenuItem>
+          )}
+          <SidebarContextMenuItem icon={Pencil} onClick={startRename}>
+            {t("sidebar.rename")}
+          </SidebarContextMenuItem>
+          <SidebarContextMenuItem
+            disabled={!canSplitRight}
+            icon={SquareSplitVertical}
+            onClick={() =>
+              openSessionInSplit({
+                sessionId: session.id,
+                direction: "right",
+              })
+            }
           >
-            {hasChildren ? (
-              <button
-                type="button"
-                className="flex size-3.5 shrink-0 items-center justify-center text-sidebar-fg-muted hover:text-sidebar-fg"
-                aria-expanded={isExpanded}
-                aria-label={
-                  isExpanded
-                    ? t("sidebar.collapseChildren")
-                    : t("sidebar.expandChildren")
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleExpand?.();
-                }}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="size-3.5" />
-                ) : (
-                  <ChevronRight className="size-3.5 rtl:-scale-x-100" />
-                )}
-              </button>
-            ) : null}
-            {hasChildren ? (
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
-                onClick={onSelect}
-              >
-                <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-                <SessionTrailing
-                  isRunning={isRunning}
-                  needsAttention={needsAttention}
-                  timestamp={activityAt}
-                />
-              </button>
-            ) : (
-              <>
-                <SidebarOverflowTitle>{session.title}</SidebarOverflowTitle>
-                <SessionTrailing
-                  isRunning={isRunning}
-                  needsAttention={needsAttention}
-                  timestamp={activityAt}
-                />
-              </>
-            )}
-          </SidebarListRow>
-        </ContextMenuTrigger>
-      </SidebarItemTooltip>
-      <ContextMenuContent className="min-w-26">
-        <SidebarContextMenuItem icon={Pencil} onClick={startRename}>
-          {t("sidebar.rename")}
-        </SidebarContextMenuItem>
-        <SidebarContextMenuItem
-          disabled={!canSplitRight}
-          icon={SquareSplitVertical}
-          onClick={() =>
-            openSessionInSplit({
-              sessionId: session.id,
-              direction: "right",
-            })
-          }
-        >
-          {t("sidebar.splitRight")}
-        </SidebarContextMenuItem>
-        <SidebarContextMenuItem
-          disabled={!canSplitDown}
-          icon={SquareSplitHorizontal}
-          onClick={() =>
-            openSessionInSplit({
-              sessionId: session.id,
-              direction: "down",
-            })
-          }
-        >
-          {t("sidebar.splitDown")}
-        </SidebarContextMenuItem>
-        <SidebarContextMenuItem
-          icon={Archive}
-          onClick={handleArchive}
-          disabled={isArchiving}
-        >
-          {t("sidebar.archive")}
-        </SidebarContextMenuItem>
-        <ContextMenuSeparator />
-        <SidebarContextMenuItem
-          destructive
-          icon={Trash2}
-          onClick={handleDelete}
-        >
-          {t("sidebar.delete")}
-        </SidebarContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+            {t("sidebar.splitRight")}
+          </SidebarContextMenuItem>
+          <SidebarContextMenuItem
+            disabled={!canSplitDown}
+            icon={SquareSplitHorizontal}
+            onClick={() =>
+              openSessionInSplit({
+                sessionId: session.id,
+                direction: "down",
+              })
+            }
+          >
+            {t("sidebar.splitDown")}
+          </SidebarContextMenuItem>
+          {!isActive && canMarkSessionUnread(resultAttention) ? (
+            <SidebarContextMenuItem
+              icon={CircleDot}
+              onClick={() => markSessionUnread(session.id)}
+            >
+              {t("sidebar.markUnread")}
+            </SidebarContextMenuItem>
+          ) : null}
+          {isChatSession(session) ? null : (
+            <SidebarContextMenuItem
+              icon={GitFork}
+              onClick={() => void forkSession(session)}
+            >
+              {t("sidebar.fork")}
+            </SidebarContextMenuItem>
+          )}
+          <SidebarContextMenuItem
+            icon={ListTree}
+            onClick={() => setIsTreeOpen(true)}
+          >
+            {t("sidebar.executionTree")}
+          </SidebarContextMenuItem>
+          <SidebarContextMenuItem
+            icon={Archive}
+            onClick={handleArchive}
+            disabled={isArchiving}
+          >
+            {t("sidebar.archive")}
+          </SidebarContextMenuItem>
+          <ContextMenuSeparator />
+          <SidebarContextMenuItem
+            destructive
+            icon={Trash2}
+            onClick={handleDelete}
+          >
+            {t("sidebar.delete")}
+          </SidebarContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+      {isTreeOpen ? (
+        <ExecutionTreeDialog
+          onClose={() => setIsTreeOpen(false)}
+          sessionId={session.id}
+        />
+      ) : null}
+    </>
   );
 }

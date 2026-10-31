@@ -1,7 +1,11 @@
-import type { AgentProviderSessionRecord } from "@cocurdex/shared";
+import type { AgentId, AgentProviderSessionRecord } from "@cocurdex/shared";
 
 export interface ProviderSessionRepository {
-  getBySessionId(sessionId: string): Promise<AgentProviderSessionRecord | null>;
-  upsert(record: AgentProviderSessionRecord): Promise<void>;
-  clear(sessionId: string): Promise<void>;
+  get(
+    sessionId: string,
+    agentType: AgentId,
+  ): Promise<AgentProviderSessionRecord | null>;
+  upsert(agentType: AgentId, record: AgentProviderSessionRecord): Promise<void>;
+  clear(sessionId: string, agentType: AgentId): Promise<void>;
+  clearSession(sessionId: string): Promise<void>;
 }

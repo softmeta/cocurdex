@@ -50,10 +50,7 @@ function Command({
       <div
         ref={ref}
         data-slot="command"
-        className={cn(
-          "flex size-full flex-col overflow-hidden rounded-xl! bg-popover p-1 text-popover-foreground",
-          className,
-        )}
+        className={cn("flex size-full flex-col overflow-hidden", className)}
         {...props}
       >
         {children}
@@ -137,7 +134,7 @@ function CommandList({
     <Autocomplete.List
       data-slot="command-list"
       className={cn(
-        "scrollbar-hide flex max-h-72 scroll-py-1 flex-col gap-0.5 overflow-x-hidden overflow-y-auto outline-none",
+        "scrollbar-hide flex max-h-72 scroll-py-1 flex-col overflow-x-hidden overflow-y-auto outline-none",
         className,
       )}
       {...props}
@@ -175,7 +172,7 @@ function CommandGroup({
     <Autocomplete.Group
       data-slot="command-group"
       className={cn(
-        "flex shrink-0 flex-col gap-0.5 overflow-hidden p-1 text-foreground **:[[data-slot=command-group-heading]]:px-2 **:[[data-slot=command-group-heading]]:pt-0 **:[[data-slot=command-group-heading]]:pb-1.5 **:[[data-slot=command-group-heading]]:text-meta **:[[data-slot=command-group-heading]]:font-medium **:[[data-slot=command-group-heading]]:text-muted-foreground",
+        "flex shrink-0 flex-col overflow-hidden p-1 **:[[data-slot=command-group-heading]]:px-1.5 **:[[data-slot=command-group-heading]]:pt-0 **:[[data-slot=command-group-heading]]:pb-1.5 **:[[data-slot=command-group-heading]]:text-meta **:[[data-slot=command-group-heading]]:font-medium **:[[data-slot=command-group-heading]]:text-muted-foreground",
         className,
       )}
       {...props}
@@ -240,7 +237,7 @@ function CommandItem({
       className={cn(
         // Selected = persistent check (via children), not a solid fill — keeps
         // parity with DropdownMenuRadioItem. Highlight is hover/keyboard only.
-        "group/command-item relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1 text-body outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-disabled:pointer-events-none data-disabled:opacity-50 data-selected:font-medium data-selected:text-foreground data-highlighted:bg-muted data-highlighted:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-highlighted:*:[svg]:text-foreground",
+        "group/command-item relative flex w-full cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-selected:font-medium data-highlighted:bg-accent data-highlighted:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-highlighted:*:[svg]:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm",
         className,
       )}
       {...props}

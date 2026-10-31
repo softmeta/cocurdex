@@ -1,3 +1,5 @@
+import { logDaemonDiagnostic } from "./diagnostics";
+
 export type DaemonReceiptOutcome =
   | { ok: true; result: unknown }
   | { ok: false; error: { code: string; message: string } };
@@ -7,18 +9,50 @@ export interface DaemonReceiptExecution {
   replayed: boolean;
 }
 
+export interface DurableReceiptLog {
+  read(key: string): Promise<DaemonReceiptOutcome | null>;
+  write(key: string, outcome: DaemonReceiptOutcome): Promise<void>;
+}
+
 export interface DaemonReceiptStore {
   execute(
     key: string,
     run: () => Promise<DaemonReceiptOutcome>,
+    options?: { durable?: boolean },
   ): Promise<DaemonReceiptExecution>;
 }
 
-// In-memory receipts coalesce in-flight duplicates and replay completed
-// outcomes for a short window. A daemon restart drops them; clients must use
-// a new idempotency key when the intent is genuinely a new operation.
+async function readDurable(log: DurableReceiptLog, key: string) {
+  try {
+    return await log.read(key);
+  } catch (error) {
+    logDaemonDiagnostic("warn", "[Receipts] durable read failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+async function writeDurable(
+  log: DurableReceiptLog,
+  key: string,
+  outcome: DaemonReceiptOutcome,
+) {
+  try {
+    await log.write(key, outcome);
+  } catch (error) {
+    logDaemonDiagnostic("warn", "[Receipts] durable write failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export function createDaemonReceiptStore(
-  options: { maxEntries?: number; ttlMs?: number } = {},
+  options: {
+    maxEntries?: number;
+    ttlMs?: number;
+    durableLog?: () => DurableReceiptLog | null;
+  } = {},
 ): DaemonReceiptStore {
   const ttlMs = options.ttlMs ?? 10 * 60 * 1000;
   const maxEntries = options.maxEntries ?? 500;
@@ -53,12 +87,23 @@ export function createDaemonReceiptStore(
   };
 
   return {
-    execute(key, run) {
+    execute(key, run, { durable = false } = {}) {
       const existing = receipts.get(key);
       if (existing) {
         return existing.then((outcome) => ({ outcome, replayed: true }));
       }
-      const outcome = Promise.resolve().then(run);
+      const log = durable ? (options.durableLog?.() ?? null) : null;
+      let replayedFromLog = false;
+      const outcome = Promise.resolve().then(async () => {
+        const stored = log ? await readDurable(log, key) : null;
+        if (stored) {
+          replayedFromLog = true;
+          return stored;
+        }
+        const result = await run();
+        if (log && result.ok) await writeDurable(log, key, result);
+        return result;
+      });
       receipts.set(key, outcome);
       // Retention starts only once the operation settles: an in-flight
       // mutation must keep its receipt so retries coalesce instead of
@@ -73,7 +118,10 @@ export function createDaemonReceiptStore(
       };
       void outcome.then(markSettled, markSettled);
       enforceCapacity();
-      return outcome.then((value) => ({ outcome: value, replayed: false }));
+      return outcome.then((value) => ({
+        outcome: value,
+        replayed: replayedFromLog,
+      }));
     },
   };
 }

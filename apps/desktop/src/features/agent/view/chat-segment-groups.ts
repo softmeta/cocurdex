@@ -28,3 +28,7 @@ export function getSegmentKey(segment: ConversationRenderSegment | undefined) {
   }
   return `activity:${segment?.items[0]?.id ?? ""}`;
 }
+
+export function getSegmentGroupKey(group: ConversationRenderSegment[]) {
+  return getSegmentKey(group.at(-1));
+}

@@ -1,39 +1,79 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, open, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import type {
-  DocumentAttachment,
-  ImageAttachment,
-  ImportDocumentAttachmentPayload,
-  ImportImageAttachmentPayload,
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import {
+  type DocumentAttachment,
+  type ImageAttachment,
+  isStoredImageFileName,
+  storedImageExtension,
 } from "@cocurdex/shared";
+import {
+  IMAGE_ATTACHMENT_MIME_TYPE_BY_EXTENSION,
+  readAttachmentImageInfo,
+} from "./attachment-image-info";
 
 const IMAGE_ATTACHMENT_DIR = "image-attachments";
 const DOCUMENT_ATTACHMENT_DIR = "document-attachments";
-const IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
-  "image/gif": "gif",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const PDF_MIME_TYPE = "application/pdf";
-const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
+const PDF_SIGNATURE = Buffer.from("%PDF-");
+const IMAGE_HEADER_BYTES = 256 * 1024;
+const MAX_NAME_LENGTH = 255;
+const STORED_DOCUMENT_FILE = /^[A-Za-z0-9-]+\.pdf$/;
 
-function decodeAttachmentDataUrl(dataUrl: string, expectedMimeType: string) {
-  const match = /^data:([^;,]+);base64,(.+)$/u.exec(dataUrl);
-  if (!match) {
-    throw new Error("Attachment data must be a base64 data URL");
+export const MAX_IMAGE_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const MAX_DOCUMENT_ATTACHMENT_BYTES = 32 * 1024 * 1024;
+
+export type AttachmentImportFailure = "too-large" | "unsupported" | "invalid";
+
+export class AttachmentImportError extends Error {
+  constructor(
+    message: string,
+    readonly reason: AttachmentImportFailure,
+  ) {
+    super(message);
+    this.name = "AttachmentImportError";
   }
-  const [, actualMimeType, base64Data] = match;
-  if (actualMimeType !== expectedMimeType) {
-    throw new Error("Attachment MIME type does not match its data URL");
-  }
-  return Buffer.from(base64Data, "base64");
 }
 
-function isInside(rootPath: string, targetPath: string) {
-  return targetPath.startsWith(`${rootPath}${path.sep}`);
+export type AttachmentSource =
+  | AsyncIterable<Uint8Array>
+  | NodeJS.ReadableStream;
+
+function byteLimit(maxBytes: number, onTooLarge: () => Error) {
+  let total = 0;
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      total += chunk.byteLength;
+      if (total > maxBytes) {
+        callback(onTooLarge());
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
+}
+
+async function readHeader(filePath: string, length: number) {
+  const handle = await open(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(length);
+    const { bytesRead } = await handle.read(buffer, 0, length, 0);
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
+
+function isStoredDocumentFileName(fileName: string) {
+  return STORED_DOCUMENT_FILE.test(fileName);
+}
+
+function attachmentName(name: string, fallback: string) {
+  const trimmed = name.trim().slice(0, MAX_NAME_LENGTH);
+  return trimmed.length > 0 ? trimmed : fallback;
 }
 
 export class DaemonAttachmentStore {
@@ -45,80 +85,130 @@ export class DaemonAttachmentStore {
     this.documentRootPath = path.resolve(userDataPath, DOCUMENT_ATTACHMENT_DIR);
   }
 
+  private async receive(
+    rootPath: string,
+    source: AttachmentSource,
+    maxBytes: number,
+    tooLargeMessage: string,
+  ) {
+    await mkdir(rootPath, { recursive: true });
+    const tempPath = path.join(rootPath, `.${randomUUID()}.upload`);
+    try {
+      await pipeline(
+        source,
+        byteLimit(
+          maxBytes,
+          () => new AttachmentImportError(tooLargeMessage, "too-large"),
+        ),
+        createWriteStream(tempPath, { flags: "wx" }),
+      );
+      const { size } = await stat(tempPath);
+      return { tempPath, size };
+    } catch (error) {
+      await rm(tempPath, { force: true });
+      throw error;
+    }
+  }
+
+  private async commit(tempPath: string, targetPath: string) {
+    try {
+      await rename(tempPath, targetPath);
+    } catch (error) {
+      await rm(tempPath, { force: true });
+      throw error;
+    }
+  }
+
   async importImage(
-    payload: ImportImageAttachmentPayload,
+    source: AttachmentSource,
+    name: string,
   ): Promise<ImageAttachment> {
-    const extension = IMAGE_EXTENSION_BY_MIME_TYPE[payload.mimeType];
-    if (!extension) {
-      throw new Error("Unsupported image attachment type");
-    }
-    if (payload.sizeBytes > MAX_IMAGE_BYTES) {
-      throw new Error("Image attachment is too large");
-    }
-    if (payload.width <= 0 || payload.height <= 0) {
-      throw new Error("Image attachment dimensions are invalid");
-    }
-    const bytes = decodeAttachmentDataUrl(payload.dataUrl, payload.mimeType);
-    if (bytes.byteLength > MAX_IMAGE_BYTES) {
-      throw new Error("Image attachment is too large");
+    const { tempPath, size } = await this.receive(
+      this.imageRootPath,
+      source,
+      MAX_IMAGE_ATTACHMENT_BYTES,
+      "Image attachment is too large",
+    );
+    const info = readAttachmentImageInfo(
+      await readHeader(tempPath, IMAGE_HEADER_BYTES),
+    );
+    if (!info) {
+      await rm(tempPath, { force: true });
+      throw new AttachmentImportError(
+        "Only PNG, JPEG, GIF, or WebP images are supported",
+        "unsupported",
+      );
     }
     const id = randomUUID();
-    const filePath = path.join(this.imageRootPath, `${id}.${extension}`);
-    await mkdir(this.imageRootPath, { recursive: true });
-    await writeFile(filePath, bytes);
+    const filePath = path.join(this.imageRootPath, `${id}.${info.extension}`);
+    await this.commit(tempPath, filePath);
     return {
       kind: "image",
       filePath,
-      height: payload.height,
+      height: info.height,
       id,
-      mimeType: payload.mimeType,
-      name: payload.name || `image.${extension}`,
-      sizeBytes: bytes.byteLength,
-      width: payload.width,
+      mimeType: info.mimeType,
+      name: attachmentName(name, `image.${info.extension}`),
+      sizeBytes: size,
+      width: info.width,
     };
   }
 
   async importDocument(
-    payload: ImportDocumentAttachmentPayload,
+    source: AttachmentSource,
+    name: string,
   ): Promise<DocumentAttachment> {
-    if (payload.mimeType !== PDF_MIME_TYPE) {
-      throw new Error("Unsupported document attachment type");
-    }
-    if (payload.sizeBytes > MAX_DOCUMENT_BYTES) {
-      throw new Error("Document attachment is too large");
-    }
-    const bytes = decodeAttachmentDataUrl(payload.dataUrl, payload.mimeType);
-    if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
-      throw new Error("Document attachment is too large");
-    }
-    if (!bytes.subarray(0, 5).equals(Buffer.from("%PDF-"))) {
-      throw new Error("Document attachment must be a valid PDF");
+    const { tempPath, size } = await this.receive(
+      this.documentRootPath,
+      source,
+      MAX_DOCUMENT_ATTACHMENT_BYTES,
+      "Document attachment is too large",
+    );
+    const header = await readHeader(tempPath, PDF_SIGNATURE.byteLength);
+    if (!header.equals(PDF_SIGNATURE)) {
+      await rm(tempPath, { force: true });
+      throw new AttachmentImportError(
+        "Document attachment must be a valid PDF",
+        "invalid",
+      );
     }
     const id = randomUUID();
     const filePath = path.join(this.documentRootPath, `${id}.pdf`);
-    await mkdir(this.documentRootPath, { recursive: true });
-    await writeFile(filePath, bytes);
+    await this.commit(tempPath, filePath);
     return {
       filePath,
       id,
       kind: "document",
       mimeType: PDF_MIME_TYPE,
-      name: payload.name || "document.pdf",
-      sizeBytes: bytes.byteLength,
+      name: attachmentName(name, "document.pdf"),
+      sizeBytes: size,
     };
   }
 
-  async readImageDataUrl(filePath: string) {
-    const resolvedPath = path.resolve(filePath);
-    if (!isInside(this.imageRootPath, resolvedPath)) {
-      throw new Error("Image attachment is outside managed storage");
+  isStoredFile(attachment: ImageAttachment | DocumentAttachment) {
+    const filePath = path.resolve(attachment.filePath);
+    const [rootPath, pattern] =
+      attachment.kind === "image"
+        ? [this.imageRootPath, isStoredImageFileName]
+        : [this.documentRootPath, isStoredDocumentFileName];
+    return (
+      path.dirname(filePath) === rootPath && pattern(path.basename(filePath))
+    );
+  }
+
+  async locateImage(fileName: string) {
+    const extension = storedImageExtension(fileName);
+    const mimeType = extension
+      ? IMAGE_ATTACHMENT_MIME_TYPE_BY_EXTENSION[extension]
+      : undefined;
+    if (!mimeType) return null;
+    const filePath = path.join(this.imageRootPath, fileName);
+    try {
+      const info = await stat(filePath);
+      if (!info.isFile()) return null;
+      return { path: filePath, size: info.size, mimeType };
+    } catch {
+      return null;
     }
-    const bytes = await readFile(resolvedPath);
-    const extension = path.extname(resolvedPath).toLowerCase().slice(1);
-    const mimeType =
-      Object.entries(IMAGE_EXTENSION_BY_MIME_TYPE).find(
-        ([, value]) => value === extension,
-      )?.[0] ?? "application/octet-stream";
-    return `data:${mimeType};base64,${bytes.toString("base64")}`;
   }
 }

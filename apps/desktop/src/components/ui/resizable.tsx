@@ -37,7 +37,7 @@ function ResizableHandle({
     <ResizablePrimitive.Separator
       data-slot="resizable-handle"
       className={cn(
-        "relative flex w-px items-center justify-center bg-chrome-separator ring-offset-background transition-colors duration-150 after:absolute after:inset-y-0 after:start-1/2 after:w-[7px] after:-translate-x-1/2 hover:bg-chrome-separator-hover focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden rtl:after:translate-x-1/2 aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full aria-[orientation=horizontal]:after:start-0 aria-[orientation=horizontal]:after:h-[7px] aria-[orientation=horizontal]:after:w-full aria-[orientation=horizontal]:after:translate-x-0 aria-[orientation=horizontal]:after:-translate-y-1/2 rtl:aria-[orientation=horizontal]:after:-translate-x-0 [&[aria-orientation=horizontal]>div]:rotate-90",
+        "relative flex w-px items-center justify-center bg-chrome-separator ring-offset-background transition-[background-color,box-shadow] duration-150 after:absolute after:inset-y-0 after:start-1/2 after:w-[7px] after:-translate-x-1/2 hover:bg-chrome-separator-hover hover:shadow-[0_0_0_1px_var(--color-chrome-separator-hover)] focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden rtl:after:translate-x-1/2 aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full aria-[orientation=horizontal]:after:start-0 aria-[orientation=horizontal]:after:h-[7px] aria-[orientation=horizontal]:after:w-full aria-[orientation=horizontal]:after:translate-x-0 aria-[orientation=horizontal]:after:-translate-y-1/2 rtl:aria-[orientation=horizontal]:after:-translate-x-0 [&[aria-orientation=horizontal]>div]:rotate-90",
         className,
       )}
       {...props}

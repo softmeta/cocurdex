@@ -1,0 +1,13 @@
+{
+  "name": "@cocurdex/scenarios",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:ui": "node run.mjs"
+  },
+  "dependencies": {
+    "@cocurdex/desktop": "workspace:*",
+    "@cocurdex/e2e": "workspace:*",
+    "@cocurdex/shared": "workspace:*"
+  }
+}

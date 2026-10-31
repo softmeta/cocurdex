@@ -20,9 +20,6 @@ import { PlanApprovalFeedback } from "./plan-approval-feedback";
 // Collapsed: readable preview without eating the dock.
 // Expanded: taller for review, still capped. The whole card overlays upward
 // so the chat flex layout does not reflow (and the header stays visible).
-const PLAN_BODY_COLLAPSED_CLASS = "max-h-[min(36dvh,18rem)]";
-const PLAN_BODY_EXPANDED_CLASS = "max-h-[min(60dvh,32rem)]";
-
 export function PlanApprovalCard({
   approval,
   onResolve,
@@ -118,7 +115,8 @@ export function PlanApprovalCard({
           <div
             className={cn(
               "overflow-y-auto overscroll-contain rounded-control bg-chat-surface-subtle px-2.5 py-2",
-              expanded ? PLAN_BODY_EXPANDED_CLASS : PLAN_BODY_COLLAPSED_CLASS,
+              expanded && "max-h-[min(60dvh,32rem)]",
+              !expanded && "max-h-[min(36dvh,18rem)]",
             )}
             // Only the in-flow (collapsed) shell is measured for overflow.
             ref={expanded ? undefined : measureBody}

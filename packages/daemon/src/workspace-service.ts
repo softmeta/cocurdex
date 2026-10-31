@@ -123,23 +123,25 @@ function createWorkspaceFileRecord(
   };
 }
 
-function parseFdOutput(
-  rootPath: string,
-  output: string,
-  kind: WorkspacePathKind,
-) {
-  return output
-    .split("\n")
-    .map((line) => createWorkspaceFileRecord(rootPath, line, kind))
-    .filter((entry): entry is WorkspaceFileRecord => Boolean(entry));
+function prefixRelativePath(prefix: string, relativePath: string) {
+  return prefix ? `${prefix}/${relativePath}` : relativePath;
 }
 
-async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
+async function listWorkspaceFilesWithFd(
+  rootPath: string,
+  fdPath: string,
+  directory: { relativePath: string; maxDepth?: number } = {
+    relativePath: "",
+  },
+) {
   const baseArgs = [
     "--base-directory",
-    rootPath,
+    path.join(rootPath, directory.relativePath),
     "--max-results",
     String(MAX_WORKSPACE_FILE_RESULTS),
+    ...(directory.maxDepth === undefined
+      ? []
+      : ["--max-depth", String(directory.maxDepth)]),
     "--follow",
     "--one-file-system",
     "--hidden",
@@ -154,10 +156,23 @@ async function listWorkspaceFilesWithFd(rootPath: string, fdPath: string) {
     execFileText(fdPath, [...baseArgs, "--type", "d"], rootPath),
     execFileText(fdPath, [...baseArgs, "--type", "f"], rootPath),
   ]);
+  const parse = (output: string, kind: WorkspacePathKind) =>
+    output
+      .split("\n")
+      .map((line) =>
+        createWorkspaceFileRecord(
+          rootPath,
+          line.trim()
+            ? prefixRelativePath(directory.relativePath, line.trim())
+            : "",
+          kind,
+        ),
+      )
+      .filter((entry): entry is WorkspaceFileRecord => Boolean(entry));
 
   return [
-    ...parseFdOutput(rootPath, directoryOutput, "directory"),
-    ...parseFdOutput(rootPath, fileOutput, "file"),
+    ...parse(directoryOutput, "directory"),
+    ...parse(fileOutput, "file"),
   ].slice(0, MAX_WORKSPACE_FILE_RESULTS);
 }
 
@@ -215,7 +230,10 @@ async function listWorkspaceFilesBreadthFirst(rootPath: string) {
       }
 
       const nextPath = path.join(currentPath, entry.name);
-      const relativePath = path.relative(rootPath, nextPath);
+      const relativePath = path
+        .relative(rootPath, nextPath)
+        .split(path.sep)
+        .join(path.posix.sep);
 
       if (entry.isDirectory()) {
         if (!IGNORED_DIRECTORY_NAMES.has(entry.name)) {
@@ -259,6 +277,78 @@ export async function listWorkspaceFiles(rootPath: string) {
   }
 
   return listWorkspaceFilesBreadthFirst(rootPath);
+}
+
+function normalizeWorkspaceRelativeDirectory(relativePath: string) {
+  const collapsed = path.posix.normalize(relativePath.replaceAll("\\", "/"));
+  const normalized = collapsed.endsWith("/")
+    ? collapsed.slice(0, -1)
+    : collapsed;
+  if (normalized === "." || normalized === "") {
+    return "";
+  }
+  if (
+    path.posix.isAbsolute(normalized) ||
+    path.win32.isAbsolute(relativePath)
+  ) {
+    return null;
+  }
+  if (normalized === ".." || normalized.startsWith("../")) {
+    return null;
+  }
+  return normalized;
+}
+
+async function readWorkspaceDirectoryLevel(
+  rootPath: string,
+  relativePath: string,
+): Promise<WorkspaceFileRecord[]> {
+  const entries = await readdir(path.join(rootPath, relativePath), {
+    withFileTypes: true,
+  });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  return entries
+    .map((entry) => {
+      const childRelativePath = prefixRelativePath(relativePath, entry.name);
+      if (entry.isDirectory() && !IGNORED_DIRECTORY_NAMES.has(entry.name)) {
+        return createWorkspaceFileRecord(
+          rootPath,
+          childRelativePath,
+          "directory",
+        );
+      }
+      return entry.isFile()
+        ? createWorkspaceFileRecord(rootPath, childRelativePath, "file")
+        : null;
+    })
+    .filter((entry): entry is WorkspaceFileRecord => Boolean(entry));
+}
+
+export async function listWorkspaceDirectory(
+  rootPath: string,
+  relativePath: string,
+): Promise<WorkspaceFileRecord[]> {
+  if (isBroadFilesystemScanRoot(rootPath, homedir())) {
+    return [];
+  }
+  const directory = normalizeWorkspaceRelativeDirectory(relativePath);
+  if (directory === null) {
+    return [];
+  }
+  const fdPath = await resolveFdPath();
+  if (fdPath) {
+    try {
+      return await listWorkspaceFilesWithFd(rootPath, fdPath, {
+        relativePath: directory,
+        maxDepth: 1,
+      });
+    } catch {}
+  }
+  try {
+    return await readWorkspaceDirectoryLevel(rootPath, directory);
+  } catch {
+    return [];
+  }
 }
 
 export async function listGitBranches(rootPath: string) {

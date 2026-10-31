@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { statSync } from "node:fs";
-import { homedir } from "node:os";
+import { mkdir, stat } from "node:fs/promises";
+import os, { homedir } from "node:os";
 import path from "node:path";
 import {
   deleteOpenCodeSession,
@@ -20,61 +21,87 @@ import type {
   AgentId,
   AgentPlanApprovalDecision,
   AgentRoleRecord,
+  AgentRunLimits,
   AgentRuntimeProviderConfig,
   AppBootstrapData,
-  AppResyncSnapshot,
+  ArchiveSessionsResult,
   CocurdexDaemonEvent,
   CommitMessageModelSelection,
-  CreateConversationPayload,
+  ContextTransferRecord,
+  CreateSessionPayload,
   CreateWorkflowPayload,
-  EditConversationMessagePayload,
+  ForkSessionPayload,
   GetToolCallResultInput,
   GitCommitResult,
+  MemorySettings,
   MessageRecord,
   NetworkProxySettings,
+  QueuedAgentInputRecord,
   RefineSessionTitlePayload,
-  RetryConversationMessagePayload,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
-  SendConversationMessagePayload,
   SendSessionCommand,
   SessionConfiguration,
   SessionRecord,
-  SubmitPreviousMessageCommand,
+  SetSessionPinnedPayload,
+  SyncPullInput,
+  SyncPullResult,
   TurnChangeDiffRequest,
   TurnChangeFileContentRequest,
   UndoTurnChangesInput,
   UpdateSessionAttentionPayload,
+  UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
   WorktreeSettings,
 } from "@cocurdex/shared";
 import {
+  AGENT_RUN_LIMITS_SETTING_KEY,
+  buildContextHandoffText,
+  buildPolicy,
+  CHAT_WORKSPACE_ID,
+  contextHandoffBudget,
   emptyWorktreeEnvironment,
   getNetworkProxySettings,
+  type HostPrincipal,
+  isAgentEvent,
   isAgentId,
   isAssistantSessionId,
+  isChatSession,
+  isChatWorkspaceId,
+  isFeatureEnabled,
+  isHandoffVisibleMessage,
+  isSessionRuntimeEvent,
   isToolCallId,
-  isWorkspaceSearchDaemonEvent,
-  isWorkspaceWatchDaemonEvent,
+  MEMORY_SETTINGS_KEY,
+  type MessageAttachment,
+  messageAgentLookup,
   newAssistantSessionId,
+  normalizeAgentRoleAvatar,
+  normalizeAgentRoleDescription,
   normalizeAgentRoleName,
   normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
+  parseAgentRunLimits,
   primaryWorkspaceRootPath,
+  principalHasScope,
   resolveSessionWorkingPath,
+  resolveStartContext,
+  resolveStoredAgentRunLimits,
   toolMayMutateWorkspace,
   validateSendSessionCommand,
   validateSessionConfiguration,
   validateSessionId,
-  validateSubmitPreviousMessageCommand,
   workspacePathsEqual,
 } from "@cocurdex/shared";
-import { AcpRegistryService } from "./acp-registry";
+import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
+import { AcpRegistryService, AgentAuthService } from "./acp-registry";
 import {
   AgentToolBridge,
+  registerHistoryTools,
+  registerMemoryTools,
   registerMessagingTools,
   registerScriptRunTools,
   registerSettingsTools,
@@ -87,13 +114,20 @@ import {
   discoverInstalledAgentCapabilities,
 } from "./agents";
 import { DaemonAttachmentStore } from "./attachment-store";
-import { DaemonChatService } from "./chat";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
+import { DaemonDeckService, DeckAssetStore } from "./decks";
 import { logDaemonDiagnostic } from "./diagnostics";
+import { loadExecutionTree } from "./execution-tree";
 import { listHostDirectories } from "./fs-browse";
 import { commitGitChanges } from "./git";
-import { DaemonMcpConfigService } from "./mcp-config";
+import {
+  HostAccessService,
+  LOCAL_REQUEST_CONTEXT,
+  listHostAddresses,
+} from "./host-access";
+import { DaemonMcpService } from "./mcp-service";
+import { MemoryService } from "./memory";
 import { probeNetworkProxy } from "./network-proxy-probe";
 import {
   assertTestableNetworkProxySettings,
@@ -104,31 +138,54 @@ import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
-import {
-  resolveChatProvider,
-  resolveTitleChatProvider,
-} from "./provider/chat-provider";
 import { CodexLoginSessions } from "./provider/codex-login";
+import { withServerProviderConnection } from "./provider/server-connection";
 import { generateProviderSessionTitle } from "./provider/session-title";
 import {
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
+import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
 import { ScriptRunModule } from "./script-run";
 import { DaemonSearchService } from "./search-service";
 import {
   applySessionConfiguration,
-  SessionCheckpointStore,
+  collectHandoffItems,
+  decideDelivery,
+  forkProviderThreads,
+  RunCapacity,
+  type RunHandle,
+  readSessionActivity,
+  resolveForkPoint,
+  resolveRepeatedSend,
+  type SessionActivityReader,
   SessionCommandQueue,
   type SessionExecutionContext,
+  SessionRunCoordinator,
   type SessionRuntimeMessage,
   type SessionTurnOutcome,
+  selectArchivableRoots,
 } from "./session-control";
+import {
+  type NewSessionContext,
+  resolveNewSession,
+  resolveNewSessionDefaults,
+} from "./session-control/create-session";
+import { SessionRuntimeStates } from "./session-control/runtime-states";
+import { resolveRuntimeUpdate } from "./session-control/update-runtime";
+import { DaemonSkillLibraryService } from "./skills";
 import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
-import { TeamModule } from "./team";
+import { pullSync } from "./sync/sync-pull";
+import {
+  listFontFamilies,
+  openDirectoryInFileManager,
+  revealPathInFileManager,
+} from "./system";
+import { TeamModule, type TeammateReportCommand } from "./team";
+import { TerminalService } from "./terminal";
 import {
   DaemonWorkflowAgentTurnRunner,
   type DecideWorkflowGateInput,
@@ -144,6 +201,7 @@ import {
 import { resolveWorkspaceOpenPath } from "./workspace-open-path";
 import {
   fileExists,
+  listWorkspaceDirectory as listWorkspaceDirectoryOnDisk,
   listWorkspaceEntries as listWorkspaceEntriesOnDisk,
   listWorkspaceFiles as listWorkspaceFilesOnDisk,
   readTextFile,
@@ -167,9 +225,12 @@ export interface CocurdexDaemonServiceOptions {
   startedAt?: string;
   userDataPath: string;
   agentToolsUrl?: string;
+  localToken?: string;
+  autoStartMemory?: boolean;
 }
 
 export interface CocurdexDaemonStatus {
+  hostId: string;
   pid: number;
   protocolVersion: number;
   runtimeFingerprint: string;
@@ -181,14 +242,8 @@ interface QueuedFollowUp {
   payload: SessionRuntimeMessage & { messageId: string };
 }
 
-interface PendingTurn {
-  cancelled: boolean;
-  onCancel?(): void;
-}
-
-function cancelPendingTurn(pendingTurn: PendingTurn) {
-  pendingTurn.cancelled = true;
-  pendingTurn.onCancel?.();
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 /** How often checkpoint retention runs on a daemon that never restarts. */
@@ -204,29 +259,35 @@ function isExistingDirectory(directoryPath: string) {
 }
 
 export class CocurdexDaemonService {
-  readonly chatService: DaemonChatService;
   readonly events = new EventEmitter();
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
+  readonly decks: DaemonDeckService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
+  readonly agentAuth: AgentAuthService;
   readonly providerCredentials: ProviderCredentials;
   readonly providerLogins: ProviderLoginSessions;
   private startupRecovery: Promise<void> | null = null;
   private stopping = false;
   readonly commitMessageService: DaemonCommitMessageService;
-  readonly mcpConfigService: DaemonMcpConfigService;
+  readonly memory: MemoryService;
+  readonly mcp: DaemonMcpService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
   readonly codexLogins = new CodexLoginSessions();
   private readonly workspaceWatch: WorkspaceWatchService;
   readonly runtime: AgentRuntimeManager;
   readonly searchService: DaemonSearchService;
+  readonly terminals: TerminalService;
   readonly skillsService: DaemonSkillsService;
+  readonly skillLibrary: DaemonSkillLibraryService;
   readonly state: DaemonState;
+  readonly hostAccess: HostAccessService;
+  readonly hostAccessReady: Promise<void>;
   readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;
   private readonly scanPolicy: ReturnType<typeof createWorkspaceScanPolicy>;
@@ -234,16 +295,12 @@ export class CocurdexDaemonService {
   private readonly socketPath: string;
   private readonly startedAt: string;
   private readonly userDataPath: string;
-  private readonly sessionCheckpoints: SessionCheckpointStore;
   private readonly sessionCommands = new SessionCommandQueue();
-  private readonly pendingTurns = new Map<string, PendingTurn>();
+  readonly runs: SessionRunCoordinator;
   private readonly worktreeSetups = new WorktreeSetupRuns();
-  private readonly turnOutcomes = new Map<
-    string,
-    Promise<SessionTurnOutcome>
-  >();
-  private readonly backgroundSends = new Set<Promise<unknown>>();
   private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
+  private readonly sessionRuntimeStates = new SessionRuntimeStates();
+  private readonly runCapacity: RunCapacity;
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
   private shutdownPromise: Promise<void> | null = null;
   private readonly checkpointReconcileTimer: NodeJS.Timeout;
@@ -253,14 +310,23 @@ export class CocurdexDaemonService {
     this.socketPath = options.socketPath ?? "";
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.userDataPath = options.userDataPath;
-    this.sessionCheckpoints = new SessionCheckpointStore(options.userDataPath);
     this.state = new DaemonState(options.userDataPath);
-    this.chatService = new DaemonChatService({
-      getDatabase: () => this.state.getChatDatabase(),
-      broadcast: (event) => this.events.emit("daemon.event", event),
+    this.hostAccess = new HostAccessService({
+      localToken: options.localToken ?? crypto.randomUUID(),
+      repository: this.state.hostAccessStore.repository,
+      settings: this.state.hostAccessStore.settings,
+      hostName: () => os.hostname(),
+      listAddresses: (port) => listHostAddresses(os.networkInterfaces(), port),
+      remoteAccessAllowed: isFeatureEnabled(buildPolicy, "remote-access"),
     });
+    this.hostAccessReady = this.hostAccess.initialize();
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
+    this.decks = new DaemonDeckService(
+      this.state.data.decks,
+      this.events,
+      DeckAssetStore.open(options.userDataPath),
+    );
     this.providerCredentials = new ProviderCredentials(
       this.state,
       options.userDataPath,
@@ -271,6 +337,11 @@ export class CocurdexDaemonService {
       (providerId) => this.providerCredentials.setApiKey(providerId, null),
     );
     this.acpRegistry = new AcpRegistryService(this.state, options.userDataPath);
+    this.agentAuth = new AgentAuthService({
+      registry: this.acpRegistry,
+      liveSessionIds: (agentId) => this.runtime.liveSessionIdsForAgent(agentId),
+      disposeSession: (sessionId) => this.disposeSessionRuntime(sessionId),
+    });
     this.providerService = new DaemonProviderService(
       this.state,
       this.providerCredentials,
@@ -279,12 +350,31 @@ export class CocurdexDaemonService {
       this.state,
       (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
     );
+    this.memory = new MemoryService({
+      userDataPath: options.userDataPath,
+      state: this.state,
+      broadcast: (event) => this.events.emit("daemon.event", event),
+      resolveSessionProvider: (session) =>
+        this.providerCredentials.forSession(session),
+    });
     this.scanPolicy = createWorkspaceScanPolicy(this.state);
     this.searchService = new DaemonSearchService({
       broadcast: (event) => this.events.emit("daemon.event", event),
       canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
     });
-    this.mcpConfigService = new DaemonMcpConfigService(options.userDataPath);
+    this.terminals = new TerminalService({
+      emit: (event) => this.events.emit("terminal.event", event),
+      listWorkspaceRootPaths: () => this.listWorkspaceRootPaths(),
+    });
+    this.mcp = new DaemonMcpService(
+      options.userDataPath,
+      async (workspaceId) => {
+        const workspace = (await this.state.listWorkspaces()).find(
+          (candidate) => candidate.id === workspaceId,
+        );
+        return workspace?.rootPaths[0] ?? null;
+      },
+    );
     this.attachments = new DaemonAttachmentStore(options.userDataPath);
     this.workspaceWatch = new WorkspaceWatchService((event) =>
       this.events.emit("daemon.event", event),
@@ -292,6 +382,12 @@ export class CocurdexDaemonService {
     this.skillsService = new DaemonSkillsService(undefined, (rootPath) =>
       this.scanPolicy.canScan(rootPath),
     );
+    this.skillLibrary = new DaemonSkillLibraryService({
+      userDataPath: options.userDataPath,
+      home: homedir(),
+      settings: this.state.appSettings,
+      listWorkspaces: () => this.state.listWorkspaces(),
+    });
     this.pdfAnnotationsService = new DaemonPdfAnnotationsService(
       options.userDataPath,
       async () =>
@@ -303,16 +399,15 @@ export class CocurdexDaemonService {
       url: options.agentToolsUrl ?? null,
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
+      getLeadRoster: (sessionId) => this.team.rosterForLead(sessionId),
+      memoryInstructions: (hasMemoryTools) =>
+        hasMemoryTools ? this.memory.agentInstructions(true) : undefined,
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
       listSessions: () => this.state.listSessions(),
-      hasActiveTurn: (sessionId) => this.pendingTurns.has(sessionId),
-      supportsSteering: async (session) => {
-        const agents = await this.listAgents();
-        const agent = agents.find((item) => item.id === session.agentType);
-        return agent?.capabilities.supportsSteering ?? false;
-      },
+      hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session) => this.agentSupportsSteering(session),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       broadcast: (event) => this.events.emit("daemon.event", event),
       peerScope: (sessionId) => this.team.peerScope(sessionId),
@@ -328,9 +423,21 @@ export class CocurdexDaemonService {
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       sendPeerMessage: (payload, render) =>
         this.peerMessaging.send(payload, render),
+      deliverReport: (report) => this.deliverTeammateReport(report),
+      hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session) => this.agentSupportsSteering(session),
+      getRunReply: (sessionId, runId) =>
+        this.state.getRunReply(sessionId, runId),
+      latestRun: (sessionId) => this.state.getLatestRun(sessionId),
       stopSession: (sessionId) => this.stopTeammateSession(sessionId),
+      track: (work) => void this.runs.track(work),
+      onReportFailed: (error) =>
+        logDaemonDiagnostic("warn", "team.reportFailed", {
+          error: errorMessage(error, "Unknown error"),
+        }),
       isSessionBusy: (sessionId) =>
-        this.pendingTurns.has(sessionId) || this.queuedFollowUps.has(sessionId),
+        this.runs.hasActiveRun(sessionId) ||
+        this.queuedFollowUps.has(sessionId),
       getMessage: (messageId) => this.state.getMessageById(messageId),
       createWorktree: (input) => this.createWorktree(input),
       broadcast: (event) => {
@@ -346,6 +453,23 @@ export class CocurdexDaemonService {
       sendPeerMessage: (payload) => this.peerMessaging.send(payload),
     });
     registerTeamTools(this.agentTools.registry, this.team);
+    registerHistoryTools(this.agentTools.registry, {
+      readSessionActivity: (caller, sessionId) =>
+        readSessionActivity(
+          this.sessionActivityReader(),
+          caller.sessionId,
+          sessionId,
+        ),
+    });
+    registerMemoryTools(this.agentTools.registry, {
+      isEnabled: () => this.memory.areToolsEnabledSync(),
+      recall: (input) => this.memory.recall(input),
+      show: (id) => this.memory.show(id),
+      remember: (input) => this.memory.remember(input),
+      policy: () => this.memory.policy(),
+      noteToolUse: (sessionId, tool) =>
+        this.memory.noteGateToolUse(sessionId, tool),
+    });
     this.scriptRuns = new ScriptRunModule({
       repository: this.state.scriptRuns,
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -357,7 +481,7 @@ export class CocurdexDaemonService {
       createWorktree: (input) => this.createWorktree(input),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
-      hasActiveTurn: (sessionId) => this.pendingTurns.has(sessionId),
+      hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
       stopSession: (sessionId) => this.stopSession(sessionId),
       broadcast: (event) => {
         this.events.emit("daemon.event", event);
@@ -379,12 +503,36 @@ export class CocurdexDaemonService {
         this.getSettingValue(key, workspaceId),
       setSettingValue: (input) => this.setSettingValue(input),
     });
+    this.runs = new SessionRunCoordinator({
+      store: this.state,
+      emit: (event) => this.runtime.emitAgentEvent(event),
+      afterPersistedEvents: (work) => this.runtime.withEventPersistence(work),
+      onRunSettled: (run) => void this.startNextQueuedFollowUp(run.sessionId),
+      onRunEnded: (run) => this.runCapacity.onRunEnded(run),
+      now: () => new Date().toISOString(),
+      createId: () => crypto.randomUUID(),
+    });
+    this.runCapacity = new RunCapacity({
+      readLimits: () => this.readAgentRunLimits(),
+      activeAgentTypes: () => this.activeAgentTypes(),
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
+      dispatchQueued: (sessionId) => this.startNextQueuedFollowUp(sessionId),
+      expireRun: (sessionId, runId, reason) =>
+        this.expireRun(sessionId, runId, reason),
+      track: (work) => void this.runs.track(work),
+      onError: (error) =>
+        logDaemonDiagnostic("error", "runs.capacityFailed", { error }),
+    });
     this.runtime = new AgentRuntimeManager({
       broadcastAgentEvent: (event) => {
         this.events.emit("daemon.event", event);
       },
+      activeRunId: (sessionId) => this.runs.activeRunId(sessionId),
+      onProviderEvent: (event) => this.runs.noteProviderEvent(event),
       userDataPath: options.userDataPath,
       agentTools: this.agentTools,
+      resolveMcpServers: (agentId) => this.mcp.serversForAgent(agentId),
     });
     this.workspaceChanges = createWorkspaceChangeCoordinator({
       userDataPath: options.userDataPath,
@@ -406,9 +554,10 @@ export class CocurdexDaemonService {
       CHECKPOINT_RECONCILE_INTERVAL_MS,
     );
     this.checkpointReconcileTimer.unref?.();
-    this.runtime.configureAgentEventPersistence(async (event) => {
-      const persisted = await this.state.persistAgentEvent(event);
+    this.runtime.configureAgentEventPersistence(async (event, context) => {
+      const persisted = await this.state.persistAgentEvent(event, context);
       await this.state.sessionAttention.applyEvent(event);
+      if (isSessionRuntimeEvent(event)) this.sessionRuntimeStates.apply(event);
       if (event.type === "session.mode.updated" && event.availableModes) {
         await this.state.cacheSessionModes(
           event.sessionId,
@@ -441,6 +590,15 @@ export class CocurdexDaemonService {
           sessionId: event.sessionId,
           messageId: event.messageId,
         });
+        const completedSession = await this.state.getSession(event.sessionId);
+        if (completedSession && isChatSession(completedSession)) {
+          void this.memory.captureTurn(event.sessionId, event.messageId);
+        } else if (completedSession) {
+          void this.memory.finishTurn({
+            sessionId: event.sessionId,
+            enforce: (completedSession.sessionKind ?? "main") !== "subagent",
+          });
+        }
       }
       await this.team.onAgentEvent(event);
       // Only a terminal error ends the turn; a mid-turn "error" event can be
@@ -454,6 +612,7 @@ export class CocurdexDaemonService {
       new DaemonWorkflowAgentTurnRunner(
         this.state,
         this.runtime,
+        this.runs,
         this.providerCredentials,
       ),
     );
@@ -471,28 +630,54 @@ export class CocurdexDaemonService {
       concurrency: 4,
     });
     this.wakeWorkflowWorker();
+    if (options.autoStartMemory === true) {
+      void this.memory.initializeOnStartup();
+    }
+  }
+
+  private async agentSupportsSteering(session: SessionRecord) {
+    const agents = await this.listAgents(session.agentType);
+    const agent = agents.find((item) => item.id === session.agentType);
+    return agent?.capabilities.supportsSteering ?? false;
   }
 
   startBackgroundRecovery() {
     if (this.startupRecovery || this.stopping) return;
-    this.startupRecovery = this.trackBackgroundSend(
-      this.recoverInterruptedWork(),
-    );
+    this.startupRecovery = this.runs.track(this.recoverInterruptedWork());
   }
 
   private async recoverInterruptedWork() {
     try {
       await this.state.waitForStartupRecovery();
       await this.scriptRuns.recoverInterrupted();
+      await this.team.recoverReports();
+      await this.decks.collectUnusedImages();
     } catch {
       logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
     }
   }
 
   async archiveSession(sessionId: string) {
+    const archived = await this.archiveSessionQuietly(sessionId);
+    if (archived) this.announceSessionsChanged();
+    return archived;
+  }
+
+  private announceSessionsChanged() {
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent"],
+    });
+  }
+
+  private async archiveSessionQuietly(sessionId: string) {
     validateSessionId(sessionId);
     await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
+    const session = await this.state.getSession(sessionId);
+    if (session && isChatSession(session)) {
+      void this.memory.saveSession({ sessionId });
+    }
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
       this.queuedFollowUps.delete(sessionId);
@@ -501,14 +686,69 @@ export class CocurdexDaemonService {
   }
 
   async restoreSession(sessionId: string) {
+    const restored = await this.restoreSessionQuietly(sessionId);
+    if (restored.length > 0) this.announceSessionsChanged();
+    return restored;
+  }
+
+  private async restoreSessionQuietly(sessionId: string) {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, () =>
       this.state.restoreSession(sessionId),
     );
   }
 
+  async archiveSessions(sessionIds: string[]): Promise<ArchiveSessionsResult> {
+    sessionIds.forEach(validateSessionId);
+    const pending = this.runtime.getPendingInteractions();
+    const waitingIds = new Set(
+      [
+        ...pending.permissions,
+        ...pending.questions,
+        ...pending.planApprovals,
+      ].map((item) => item.sessionId),
+    );
+    const { rootIds, skippedCount } = selectArchivableRoots(
+      await this.state.listSessions(),
+      sessionIds,
+      (sessionId) =>
+        waitingIds.has(sessionId) ||
+        this.runs.hasActiveRun(sessionId) ||
+        this.queuedFollowUps.has(sessionId),
+    );
+    const archivedSessionIds: string[] = [];
+    for (const rootId of rootIds) {
+      if (await this.archiveSessionQuietly(rootId)) {
+        archivedSessionIds.push(rootId);
+      }
+    }
+    if (archivedSessionIds.length > 0) {
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
+    }
+    return { archivedSessionIds, skippedCount };
+  }
+
+  async restoreSessions(sessionIds: string[]) {
+    sessionIds.forEach(validateSessionId);
+    const restored: SessionRecord[] = [];
+    for (const sessionId of new Set(sessionIds)) {
+      restored.push(...(await this.restoreSessionQuietly(sessionId)));
+    }
+    if (restored.length > 0) {
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
+    }
+    return restored;
+  }
+
   status(): CocurdexDaemonStatus {
     return {
+      hostId: this.hostAccess.identity().hostId,
       pid: process.pid,
       protocolVersion: DAEMON_PROTOCOL_VERSION,
       runtimeFingerprint: this.runtimeFingerprint,
@@ -519,12 +759,11 @@ export class CocurdexDaemonService {
 
   getActiveWork() {
     return {
-      agentTurns: Math.max(this.pendingTurns.size, this.backgroundSends.size),
+      agentTurns: this.runs.activeWorkCount,
       queuedInputs: [...this.queuedFollowUps.values()].reduce(
         (count, inputs) => count + inputs.length,
         0,
       ),
-      chatOperations: this.chatService.activeOperationCount,
       workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
@@ -541,6 +780,7 @@ export class CocurdexDaemonService {
     const data = await this.state.bootstrap();
     return {
       ...data,
+      pausedQueueSessionIds: this.pausedQueueSessionIds(data.queuedAgentInputs),
       workspaces: data.workspaces.map((workspace) => ({
         ...workspace,
         missingRootPaths: workspace.rootPaths.filter(
@@ -550,8 +790,11 @@ export class CocurdexDaemonService {
     };
   }
 
-  async listAgents() {
-    const agents = await detectAgentInstallations(createAgentRegistry().list());
+  async listAgents(only?: AgentId) {
+    const descriptors = createAgentRegistry()
+      .list()
+      .filter((descriptor) => !only || descriptor.id === only);
+    const agents = await detectAgentInstallations(descriptors);
     this.state.recordAgentVersions(agents);
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
@@ -563,6 +806,19 @@ export class CocurdexDaemonService {
       resetAcpProviderModelsCache(agent.agentId);
       return agent;
     });
+  }
+
+  installAcpRegistryCommand(params: {
+    registryId: string;
+    command: string;
+    args: string[];
+  }) {
+    return this.acpRegistry
+      .installCommand(params.registryId, params.command, params.args)
+      .then((agent) => {
+        resetAcpProviderModelsCache(agent.agentId);
+        return agent;
+      });
   }
 
   async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
@@ -588,6 +844,7 @@ export class CocurdexDaemonService {
     if (settings) {
       assertTestableNetworkProxySettings(settings);
       await saveNetworkProxySettings(this.state, settings);
+      this.broadcastSettingsChanged();
     }
     return probeNetworkProxy(getNetworkProxySettings());
   }
@@ -596,8 +853,10 @@ export class CocurdexDaemonService {
     return readNetworkProxySettings(this.state);
   }
 
-  setNetworkProxySettings(settings: NetworkProxySettings) {
-    return saveNetworkProxySettings(this.state, settings);
+  async setNetworkProxySettings(settings: NetworkProxySettings) {
+    const saved = await saveNetworkProxySettings(this.state, settings);
+    this.broadcastSettingsChanged();
+    return saved;
   }
 
   listSessionAttention() {
@@ -633,6 +892,13 @@ export class CocurdexDaemonService {
     return listWorkspaceFilesOnDisk(rootPath);
   }
 
+  async listWorkspaceDirectory(rootPath: string, relativePath: string) {
+    if (!(await this.scanPolicy.canScan(rootPath))) {
+      return [];
+    }
+    return listWorkspaceDirectoryOnDisk(rootPath, relativePath);
+  }
+
   async watchWorkspace(rootPath: string) {
     if (await this.scanPolicy.canScan(rootPath)) {
       await this.workspaceWatch.ensure(rootPath);
@@ -664,6 +930,61 @@ export class CocurdexDaemonService {
     return readTextFile(filePath);
   }
 
+  async assertClientPathAccess(
+    principal: HostPrincipal,
+    filePath: string,
+    target: "file" | "outputFile",
+  ) {
+    if (principal.kind === "local") return;
+    const scope = target === "file" ? "files.read" : "files.write";
+    if (!principalHasScope(principal, scope)) {
+      throw new Error(`This device is missing the ${scope} scope`);
+    }
+    const checked =
+      target === "outputFile" ? path.dirname(path.resolve(filePath)) : filePath;
+    const exists =
+      target === "file" ||
+      (await stat(checked).then(
+        (info) => info.isDirectory(),
+        () => false,
+      ));
+    if (exists && (await this.scanPolicy.canAccessFile(checked))) return;
+    throw new Error(
+      `Path is outside every registered workspace (path=${filePath})`,
+    );
+  }
+
+  async assertClientAttachmentsAccess(
+    principal: HostPrincipal,
+    attachments: readonly MessageAttachment[] | undefined,
+  ) {
+    if (principal.kind === "local") return;
+    for (const attachment of attachments ?? []) {
+      if (attachment.kind === "context-item") continue;
+      if (attachment.kind === "image" || attachment.kind === "document") {
+        if (this.attachments.isStoredFile(attachment)) continue;
+        throw new Error(
+          `Attachment is not a stored upload (path=${attachment.filePath})`,
+        );
+      }
+      const filePath =
+        attachment.kind === "context-folder"
+          ? attachment.folderPath
+          : attachment.filePath;
+      await this.assertClientPathAccess(principal, filePath, "file");
+    }
+  }
+
+  async resolveWorkspaceFilePath(filePath: string) {
+    const resolvedPath = path.resolve(filePath);
+    if (!(await this.scanPolicy.canAccessFile(resolvedPath))) {
+      throw new Error(
+        `File is outside every registered workspace (path=${resolvedPath})`,
+      );
+    }
+    return resolvedPath;
+  }
+
   async workspaceFileExists(filePath: string) {
     if (!(await this.scanPolicy.canAccessFile(filePath))) {
       return false;
@@ -676,6 +997,36 @@ export class CocurdexDaemonService {
   // directory names only and is still gated by the daemon token.
   async listHostDirectories(directoryPath?: string) {
     return listHostDirectories(directoryPath);
+  }
+
+  homeDir() {
+    return homedir();
+  }
+
+  listFontFamilies() {
+    return listFontFamilies();
+  }
+
+  async openDirectoryInFileManager(directoryPath: string) {
+    await openDirectoryInFileManager(directoryPath);
+    return null;
+  }
+
+  async revealPathInFileManager(targetPath: string) {
+    await revealPathInFileManager(targetPath);
+    return null;
+  }
+
+  async resolvePdfPath(filePath: string) {
+    return resolveAuthorizedPdfReadPath(
+      filePath,
+      await this.listWorkspaceRootPaths(),
+    );
+  }
+
+  private async listWorkspaceRootPaths() {
+    const workspaces = await this.state.listWorkspaces();
+    return workspaces.flatMap((workspace) => workspace.rootPaths);
   }
 
   async commitWorkspaceChanges(input: {
@@ -708,6 +1059,7 @@ export class CocurdexDaemonService {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+    await this.state.maintainStorage();
   }
 
   async saveWorkspace(workspace: WorkspaceRecord) {
@@ -817,6 +1169,10 @@ export class CocurdexDaemonService {
   }
 
   private async readDaemonSetting(key: string): Promise<unknown> {
+    if (key === AGENT_RUN_LIMITS_SETTING_KEY) return this.readAgentRunLimits();
+    if (key === MEMORY_SETTINGS_KEY) {
+      return this.memory.getSettings();
+    }
     if (key === "git.commitMessageModel") {
       return this.commitMessageService.getModelSetting();
     }
@@ -824,6 +1180,14 @@ export class CocurdexDaemonService {
   }
 
   private async writeDaemonSetting(key: string, value: unknown): Promise<void> {
+    if (key === AGENT_RUN_LIMITS_SETTING_KEY) {
+      await this.setAgentRunLimits(value as AgentRunLimits);
+      return;
+    }
+    if (key === MEMORY_SETTINGS_KEY) {
+      await this.memory.setSettings(value as MemorySettings);
+      return;
+    }
     if (key === "git.commitMessageModel") {
       await this.commitMessageService.setModelSetting(
         value as CommitMessageModelSelection | null,
@@ -1119,45 +1483,34 @@ export class CocurdexDaemonService {
     this.readEventSeq = provider;
   }
 
-  // Full authoritative refresh after a replay gap. Reads run behind queued
-  // event persistence, so every journaled event at or below the captured
-  // eventSeq is already reflected here; clients must only apply newer
-  // buffered events on top.
-  async resync(sessionIds: string[]): Promise<AppResyncSnapshot> {
+  async pullSync(input: SyncPullInput): Promise<SyncPullResult> {
     return this.runtime.withEventPersistence(async () => {
       const eventSeq = this.readEventSeq();
-      const data = await this.state.bootstrap();
-      const transcripts = Object.fromEntries(
-        await Promise.all(
-          sessionIds.map(async (sessionId) => {
-            const messages = await this.state.listSessionMessages(sessionId);
-            const toolCalls = await this.state.listToolCallSummaries(sessionId);
-            return [
-              sessionId,
-              {
-                messages: messages.messages,
-                activeMessages:
-                  this.state.listActiveMessagesBySessionId(sessionId),
-                turnStats: messages.turnStats,
-                turnChangeSets: messages.turnChangeSets,
-                toolCalls,
-                plan: this.runtime.getSessionPlan(sessionId),
-              },
-            ] as const;
-          }),
-        ),
+      await this.state.getDatabase();
+      const result = await pullSync(
+        this.state.syncSources({
+          getPlan: (sessionId) => this.runtime.getSessionPlan(sessionId),
+          getInteractions: () => this.runtime.getPendingInteractions(),
+        }),
+        { epoch: this.startedAt, eventSeq },
+        input,
       );
       return {
-        epoch: this.startedAt,
-        eventSeq,
-        sessions: data.sessions,
-        queuedAgentInputs: data.queuedAgentInputs,
-        queuedMessages: data.queuedMessages,
-        sessionUsage: data.sessionUsage,
-        interactions: this.runtime.getPendingInteractions(),
-        transcripts,
+        ...result,
+        pausedQueueSessionIds: this.pausedQueueSessionIds(
+          result.queuedAgentInputs,
+        ),
       };
     });
+  }
+
+  private pausedQueueSessionIds(inputs: QueuedAgentInputRecord[]) {
+    const sessionIds = new Set(inputs.map((input) => input.sessionId));
+    return [...sessionIds].filter(
+      (sessionId) =>
+        !this.queuedFollowUps.has(sessionId) &&
+        !this.runs.hasActiveRun(sessionId),
+    );
   }
 
   async getSessionSnapshot(sessionId: string) {
@@ -1189,11 +1542,26 @@ export class CocurdexDaemonService {
       activeMessages,
       toolCalls,
       queuedAgentInputs,
+      activeRun: this.state.getActiveRun(sessionId),
       usage,
       turnChangeSets,
       interactions: this.runtime.getSessionInteractions(sessionId),
       plan: this.runtime.getSessionPlan(sessionId),
     };
+  }
+
+  getSessionExecutionTree(sessionId: string, maxDepth?: number) {
+    return loadExecutionTree(
+      {
+        listSessions: () => this.state.listSessions(),
+        listRuns: (id) => this.state.listRunsBySessionId(id),
+        listToolCalls: (id) => this.state.listToolCallSummaries(id),
+        getInteractions: () => this.runtime.getPendingInteractions(),
+        getPlan: (id) => this.runtime.getSessionPlan(id),
+      },
+      sessionId,
+      maxDepth,
+    );
   }
 
   listWorkflowRuns() {
@@ -1240,8 +1608,16 @@ export class CocurdexDaemonService {
       thinkingLevel: payload.thinkingLevel,
       openCodeAgent: payload.openCodeAgent,
       openCodeVariant: payload.openCodeVariant,
+      description:
+        payload.description === undefined
+          ? (existing?.description ?? null)
+          : normalizeAgentRoleDescription(payload.description),
       instructions: payload.instructions ?? null,
       skillIds: payload.skillIds ?? null,
+      avatar:
+        payload.avatar === undefined
+          ? (existing?.avatar ?? null)
+          : normalizeAgentRoleAvatar(payload.avatar),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -1324,15 +1700,108 @@ export class CocurdexDaemonService {
     return aggregate;
   }
 
-  async saveSessionConfiguration(input: SessionConfiguration) {
+  async saveSessionConfiguration(
+    input: SessionConfiguration,
+    principal: HostPrincipal = LOCAL_REQUEST_CONTEXT.principal,
+  ) {
     validateSessionConfiguration(input);
-    return this.sessionCommands.run(input.id, () =>
-      this.configureSession(input),
+    const session = await this.sessionCommands.run(input.id, async () =>
+      this.configureSession(
+        principalHasScope(principal, "credentials")
+          ? input
+          : await this.withServerProviderConnection(input),
+      ),
     );
+    this.announceSessionsChanged();
+    return session;
+  }
+
+  private async newSessionContext(
+    input: CreateSessionPayload,
+  ): Promise<NewSessionContext> {
+    const sessions = await this.state.listSessions();
+    const role = input.agentRoleId
+      ? await this.state.getAgentRole(input.agentRoleId)
+      : null;
+    if (input.agentRoleId && !role) {
+      throw new Error(`Agent role ${input.agentRoleId} was not found.`);
+    }
+    const { workspaceId } = input;
+    return {
+      role,
+      agents: await this.listAgents(),
+      workspaceSessions: sessions
+        .filter((session) => session.workspaceId === workspaceId)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+      compatibleModels: (agentId) =>
+        this.providerService.listCompatibleProviderModels(agentId),
+      defaultModel: (agentId) =>
+        this.providerService.getAgentProviderDefault(agentId),
+    };
+  }
+
+  async updateSessionRuntime(
+    input: UpdateSessionRuntimePayload,
+    principal: HostPrincipal,
+  ) {
+    const session = await this.state.getSession(input.sessionId);
+    if (!session) throw new Error(`Session ${input.sessionId} was not found.`);
+    const agent = (await this.listAgents(session.agentType)).find(
+      (candidate) => candidate.id === session.agentType,
+    );
+    const configuration = resolveRuntimeUpdate(session, input, {
+      compatibleModels: await this.providerService.listCompatibleProviderModels(
+        session.agentType,
+      ),
+      permissionModes:
+        agent?.capabilities.permissionModes.map((option) => option.id) ?? [],
+    });
+    return this.saveSessionConfiguration(configuration, principal);
+  }
+
+  async resolveNewSessionDefaults(input: CreateSessionPayload) {
+    return resolveNewSessionDefaults(
+      input,
+      await this.newSessionContext(input),
+    );
+  }
+
+  async createSession(input: CreateSessionPayload) {
+    const configuration = await resolveNewSession(
+      input,
+      crypto.randomUUID(),
+      await this.newSessionContext(input),
+    );
+    return this.saveSessionConfiguration(configuration);
+  }
+
+  private async withServerProviderConnection(
+    input: SessionConfiguration,
+  ): Promise<SessionConfiguration> {
+    const snapshot = input.providerSnapshot;
+    if (!snapshot) return input;
+    const configs = await this.state.listProviderConfigs();
+    const config =
+      configs.find((candidate) => candidate.id === snapshot.providerId) ?? null;
+    const models = config ? await this.state.listProviderModels(config.id) : [];
+    const stored = await this.state.getSession(input.id);
+    return {
+      ...input,
+      providerSnapshot: withServerProviderConnection(snapshot, {
+        config,
+        model:
+          models.find((candidate) => candidate.modelId === snapshot.modelId) ??
+          null,
+        stored: stored?.providerSnapshot ?? null,
+      }),
+    };
   }
 
   private async configureSession(input: SessionConfiguration) {
     await this.ensureAgentAvailable(input.agentType);
+    if (isChatWorkspaceId(input.workspaceId)) {
+      await this.ensureChatWorkspace();
+    }
     const workspace = (await this.state.listWorkspaces()).find(
       (item) => item.id === input.workspaceId,
     );
@@ -1340,7 +1809,7 @@ export class CocurdexDaemonService {
     const existing = await this.state.getSession(input.id);
     if (
       existing &&
-      this.pendingTurns.has(input.id) &&
+      this.runs.hasActiveRun(input.id) &&
       (existing.agentType !== input.agentType ||
         existing.worktreePath !== input.worktreePath)
     ) {
@@ -1355,6 +1824,27 @@ export class CocurdexDaemonService {
     );
     await this.state.saveSession(session);
     return session;
+  }
+
+  private async ensureChatWorkspace() {
+    const rootPath = path.join(this.userDataPath, "chat");
+    await mkdir(rootPath, { recursive: true });
+    const existing = (await this.state.listWorkspaces()).find(
+      (workspace) => workspace.id === CHAT_WORKSPACE_ID,
+    );
+    if (existing && workspacePathsEqual(existing.rootPaths[0] ?? "", rootPath))
+      return;
+    const now = new Date().toISOString();
+    await this.state.saveWorkspace({
+      id: CHAT_WORKSPACE_ID,
+      name: "Chat",
+      rootPaths: [rootPath],
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      lastOpenedAt: existing?.lastOpenedAt ?? now,
+      sortOrder: existing?.sortOrder ?? 0,
+    });
+    this.scanPolicy.invalidate();
   }
 
   async getSession(sessionId: string) {
@@ -1392,15 +1882,40 @@ export class CocurdexDaemonService {
     return { session, ...(await this.requireWorkspacePaths(sessionId)) };
   }
 
+  getSessionRuntimeState(sessionId: string) {
+    validateSessionId(sessionId);
+    return this.sessionRuntimeStates.get(sessionId);
+  }
+
   async deleteSession(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
       return;
     }
+    if (isChatSession(session)) {
+      try {
+        await Promise.race([
+          this.memory.saveSession({ sessionId }),
+          new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 45_000);
+            timer.unref?.();
+          }),
+        ]);
+      } catch (error) {
+        logDaemonDiagnostic("warn", "memory.deleteCaptureFailed", {
+          error: errorMessage(error, "Unknown error"),
+          sessionId,
+        });
+      }
+    }
+    this.sessionRuntimeStates.forget(sessionId);
     await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
 
-    const providerSession = await this.state.getProviderSession(sessionId);
+    const providerSession = await this.state.getProviderSession(
+      sessionId,
+      "opencode",
+    );
     const workspace = (await this.state.listWorkspaces()).find(
       (candidate) => candidate.id === session.workspaceId,
     );
@@ -1413,10 +1928,7 @@ export class CocurdexDaemonService {
     await this.disposeSessionRuntime(sessionId);
     this.runtime.clearSessionPlan(sessionId);
 
-    if (
-      session.agentType === "opencode" &&
-      providerSession?.providerSessionId
-    ) {
+    if (providerSession?.providerSessionId) {
       await deleteOpenCodeSession({
         providerSessionId: providerSession.providerSessionId,
       });
@@ -1428,6 +1940,147 @@ export class CocurdexDaemonService {
       workspaceRootPath,
     );
     await this.releaseSessionWorktree(session, workspace);
+    this.announceSessionsChanged();
+  }
+
+  async forkSession(payload: ForkSessionPayload): Promise<SessionRecord> {
+    validateSessionId(payload.sessionId);
+    const source = await this.state.getSession(payload.sessionId);
+    if (!source) throw new Error(`Session ${payload.sessionId} was not found`);
+    if (isChatSession(source))
+      throw new Error("Chat sessions cannot be forked");
+    const [messages, queuedInputs] = await Promise.all([
+      this.state.listMessagesBySessionId(source.id),
+      this.state.listQueuedAgentInputs(source.id),
+    ]);
+    const queuedIds = new Set(queuedInputs.map((input) => input.messageId));
+    const settled = messages.filter((message) => !queuedIds.has(message.id));
+    const runs = this.state.listRunsBySessionId(source.id);
+    const activeRun = this.runs.hasActiveRun(source.id)
+      ? [...runs].reverse().find((run) => run.status === "running")
+      : undefined;
+    const { included, userTurnCount } = resolveForkPoint({
+      settled,
+      throughMessageId: payload.throughMessageId,
+      activeTriggerMessageId: activeRun?.triggerMessageId ?? null,
+    });
+    const now = new Date().toISOString();
+    const forkId = crypto.randomUUID();
+    const fork: SessionRecord = {
+      ...source,
+      id: forkId,
+      title: payload.title?.trim() || source.title,
+      sessionKind: "main",
+      parentSessionId: null,
+      parentToolCallId: null,
+      status: "idle",
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: included.at(-1)?.createdAt ?? null,
+      archivedAt: null,
+      importedProviderSessionId: null,
+      importedAt: null,
+    };
+    const copies = included.map(
+      (message): MessageRecord => ({
+        ...message,
+        id: crypto.randomUUID(),
+        sessionId: forkId,
+        runId: null,
+        seq: undefined,
+      }),
+    );
+    const agentOf = messageAgentLookup(runs);
+    const sourceAgentTypes = [
+      ...new Set(
+        included.flatMap((message) => {
+          const agent = agentOf(message);
+          return agent ? [agent] : [];
+        }),
+      ),
+    ];
+    this.state.createForkedSession(fork, copies, {
+      id: crypto.randomUUID(),
+      kind: "fork",
+      sourceSessionId: source.id,
+      targetSessionId: forkId,
+      sourceMessageId: included.at(-1)?.id ?? null,
+      sourceAgentTypes:
+        sourceAgentTypes.length > 0 ? sourceAgentTypes : [source.agentType],
+      targetAgentType: null,
+      status: "pending",
+      strategy: null,
+      coveredMessageCount: 0,
+      handoffText: null,
+      consumedByMessageId: null,
+      createdAt: now,
+      consumedAt: null,
+    });
+    const { workspaceRootPath } = await this.getSessionExecutionContext(
+      source.id,
+    );
+    await forkProviderThreads(
+      {
+        getProviderSession: (sessionId, agentType) =>
+          this.state.getProviderSession(sessionId, agentType),
+        saveProviderSession: (agentType, record) =>
+          this.state.saveProviderSession(agentType, record),
+        forkProviderSession: (agentType, forkPayload) =>
+          this.runtime.forkProviderSession(agentType, forkPayload),
+      },
+      {
+        sourceSessionId: source.id,
+        targetSessionId: forkId,
+        workspaceRootPath,
+        userTurnCount,
+        agentTypes: [source.agentType, ...sourceAgentTypes],
+        messages: included,
+        runs,
+      },
+    );
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent"],
+    });
+    return fork;
+  }
+
+  async switchSessionAgent(sessionId: string, agentType: AgentId) {
+    validateSessionId(sessionId);
+    return this.sessionCommands.run(sessionId, async () => {
+      const session = await this.state.getSession(sessionId);
+      if (!session) throw new Error(`Session ${sessionId} was not found`);
+      if (session.archivedAt) {
+        throw new Error("Restore the session before switching its agent");
+      }
+      if (isChatSession(session)) {
+        throw new Error("Chat sessions cannot switch agents");
+      }
+      if (session.agentType === agentType) return session;
+      if (this.runs.hasActiveRun(sessionId)) {
+        throw new Error("Stop the session before switching its agent");
+      }
+      await this.ensureAgentAvailable(agentType);
+      const updated: SessionRecord = {
+        ...session,
+        agentType,
+        providerSnapshot: null,
+        sessionModeId: null,
+        permissionMode: undefined,
+        updatedAt: new Date().toISOString(),
+      };
+      await this.state.saveSession(updated);
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
+      return updated;
+    });
+  }
+
+  listContextTransfers(sessionId: string) {
+    validateSessionId(sessionId);
+    return this.state.listContextTransfers(sessionId);
   }
 
   async updateSessionTitle(payload: UpdateSessionTitlePayload) {
@@ -1452,6 +2105,22 @@ export class CocurdexDaemonService {
       });
     }
     return updatedSession;
+  }
+
+  async setSessionPinned(payload: SetSessionPinnedPayload) {
+    validateSessionId(payload.sessionId);
+    const pinnedAt = payload.pinned ? new Date().toISOString() : null;
+    const session = await this.state.setSessionPinned(
+      payload.sessionId,
+      pinnedAt,
+    );
+    if (session) {
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["agent"],
+      });
+    }
+    return session;
   }
 
   // Only replaces a title the user has not changed since the request was
@@ -1505,54 +2174,6 @@ export class CocurdexDaemonService {
     }
   }
 
-  private resolveChatProvider(providerId: string, modelId: string) {
-    return resolveChatProvider(
-      this.state,
-      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
-      providerId,
-      modelId,
-    );
-  }
-
-  private async resolveConversationProvider(conversationId: string) {
-    const snapshot = await this.chatService.get(conversationId);
-    if (!snapshot) throw new Error("Conversation not found");
-    return this.resolveChatProvider(
-      snapshot.conversation.providerId,
-      snapshot.conversation.modelId,
-    );
-  }
-
-  async createConversation(payload: CreateConversationPayload) {
-    await this.resolveChatProvider(payload.providerId, payload.modelId);
-    return this.chatService.create(payload);
-  }
-
-  async sendConversationMessage(payload: SendConversationMessagePayload) {
-    const providerConfig = await this.resolveConversationProvider(
-      payload.conversationId,
-    );
-    const titleProviderConfig = await resolveTitleChatProvider(
-      this.state,
-      (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
-    );
-    return this.chatService.send(payload, providerConfig, titleProviderConfig);
-  }
-
-  async retryConversationMessage(payload: RetryConversationMessagePayload) {
-    return this.chatService.retry(
-      payload,
-      await this.resolveConversationProvider(payload.conversationId),
-    );
-  }
-
-  async editConversationMessage(payload: EditConversationMessagePayload) {
-    return this.chatService.edit(
-      payload,
-      await this.resolveConversationProvider(payload.conversationId),
-    );
-  }
-
   listSessionSlashCommands(agentType: AgentId, workspaceRootPath: string) {
     return this.runtime.listSessionSlashCommands(agentType, workspaceRootPath);
   }
@@ -1571,8 +2192,7 @@ export class CocurdexDaemonService {
     if (!isToolCallId(input?.toolCallId)) {
       throw new Error("Invalid tool call ID");
     }
-    const database = await this.state.getChatDatabase();
-    return database.toolCalls.getResultById(input.toolCallId);
+    return this.state.getToolCallResult(input.toolCallId);
   }
 
   async getTurnChangeFile(input: TurnChangeFileContentRequest) {
@@ -1607,117 +2227,61 @@ export class CocurdexDaemonService {
     });
   }
 
-  async getPreviousMessageCheckpointStatus(
-    sessionId: string,
-    messageId: string,
-  ) {
-    validateSessionId(messageId);
-    const context = await this.getSessionExecutionContext(sessionId);
-    const message = await this.state.getMessageById(messageId);
-    if (!message || message.sessionId !== sessionId || message.role !== "user")
-      return { available: false };
-    return this.sessionCheckpoints.status({
-      sessionId,
-      messageId,
-      workspaceRootPath: context.workspaceRootPath,
-      workspaceRootPaths: context.workspaceRootPaths,
-    });
-  }
-
-  async submitPreviousMessage(command: SubmitPreviousMessageCommand) {
-    validateSubmitPreviousMessageCommand(command);
-    return this.sessionCommands.run(command.sessionId, () =>
-      this.resubmitMessage(command),
-    );
-  }
-
-  private async resubmitMessage(command: SubmitPreviousMessageCommand) {
-    const context = await this.getSessionExecutionContext(command.sessionId);
-    const existing = await this.state.getMessageById(command.messageId);
-    if (
-      !existing ||
-      existing.sessionId !== command.sessionId ||
-      existing.role !== "user"
-    ) {
-      throw new Error("Previous user message not found");
-    }
-    await this.stopSessionTurn(command.sessionId);
-    if (this.pendingTurns.has(command.sessionId))
-      throw new Error("Session still has an active turn after stop");
-    if (command.revertWorkspace) {
-      await this.sessionCheckpoints.restore({
-        sessionId: command.sessionId,
-        messageId: command.messageId,
-        workspaceRootPath: context.workspaceRootPath,
-        workspaceRootPaths: context.workspaceRootPaths,
-      });
-    }
-    const message: MessageRecord = {
-      ...existing,
-      content: command.content.trim(),
-      attachments: command.attachments ?? [],
-    };
-    await this.rewindSession(message);
-    return this.acceptSessionMessage({
-      sessionId: command.sessionId,
-      messageId: message.id,
-      createdAt: message.createdAt,
-      content: message.content,
-      attachments: message.attachments,
-    });
-  }
-
-  private async captureSessionCheckpoint(
-    payload: SessionRuntimeMessage,
-    message: MessageRecord,
-  ) {
-    await this.sessionCheckpoints
-      .capture({
-        sessionId: message.sessionId,
-        messageId: message.id,
-        workspaceRootPath: payload.workspaceRootPath,
-        workspaceRootPaths: payload.workspaceRootPaths,
-      })
-      .catch((error: unknown) => {
-        logDaemonDiagnostic("warn", "checkpoint.captureSkipped", {
-          sessionId: message.sessionId,
-          messageId: message.id,
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      });
-  }
-
-  private async rewindSession(message: MessageRecord) {
-    if (this.pendingTurns.has(message.sessionId)) {
-      throw new Error(
-        `Session ${message.sessionId} still has an active turn after stop`,
-      );
-    }
-    this.queuedFollowUps.delete(message.sessionId);
-    this.runtime.clearSessionPlan(message.sessionId);
-    await this.state.rewindSessionMessages(message);
-    await this.state.deleteQueuedAgentInput(message.id);
-  }
-
   async sendSessionMessage(command: SendSessionCommand) {
     validateSendSessionCommand(command);
     if (!command.origin) this.peerMessaging.noteHumanInput(command.sessionId);
+    return this.submitSessionMessage(command);
+  }
+
+  private async deliverTeammateReport(report: TeammateReportCommand) {
+    const sender = await this.state.getSession(report.fromSessionId);
+    const hold = report.delivery === "hold";
+    return this.submitSessionMessage(
+      {
+        sessionId: report.toSessionId,
+        messageId: report.messageId,
+        content: report.content,
+        delivery:
+          report.delivery === "hold" ? "queue-after-run" : report.delivery,
+        origin: {
+          kind: "peer",
+          sessionId: report.fromSessionId,
+          sessionTitle: sender?.title ?? report.fromSessionId,
+        },
+      },
+      { hold },
+    );
+  }
+
+  private submitSessionMessage(
+    command: SendSessionCommand,
+    { hold = false } = {},
+  ) {
+    const submittedAt = performance.now();
     return this.sessionCommands.run(command.sessionId, async () => {
-      if (
-        command.messageId &&
-        (await this.state.getMessageById(command.messageId))
-      ) {
-        throw new Error(
-          "Message ID already exists; use the resubmit command to edit a previous message",
-        );
+      const startedAt = performance.now();
+      const existing = await this.state.getMessageById(command.messageId);
+      if (existing) return resolveRepeatedSend(existing, command);
+      const accepted = await this.acceptSessionMessage(command, { hold });
+      await this.dataService.linkAttachedIssues(
+        command.sessionId,
+        command.attachments,
+      );
+      const acceptedAt = performance.now();
+      if (acceptedAt - submittedAt >= SLOW_REQUEST_THRESHOLD_MS) {
+        logDaemonDiagnostic("warn", "session.sendSlow", {
+          sessionId: command.sessionId,
+          queuedMs: Math.round(startedAt - submittedAt),
+          acceptMs: Math.round(acceptedAt - startedAt),
+        });
       }
-      return this.acceptSessionMessage(command);
+      return accepted;
     });
   }
 
   private async acceptSessionMessage(
     command: SendSessionCommand,
-    { dequeued = false } = {},
+    { dequeued = false, hold = false } = {},
   ) {
     let payload: SessionRuntimeMessage = {
       ...command,
@@ -1728,26 +2292,29 @@ export class CocurdexDaemonService {
       payload.session,
     );
     if (this.stopping) throw new Error("Daemon is shutting down");
-    const hasActiveTurn = this.pendingTurns.has(payload.session.id);
-    if (
-      payload.delivery === "steer-active-run" &&
-      !hasActiveTurn &&
-      payload.origin?.kind === "peer"
-    ) {
-      payload = { ...payload, delivery: "start-new-run" };
-    }
-    const isSteering = payload.delivery === "steer-active-run";
-    const isQueuedFollowUp = payload.delivery === "queue-after-run";
-    if (hasActiveTurn && !isSteering && !isQueuedFollowUp) {
+    const sessionId = payload.session.id;
+    const decision = decideDelivery({
+      requested: payload.delivery,
+      hasActiveRun: this.runs.hasActiveRun(sessionId),
+      fromPeer: payload.origin?.kind === "peer",
+      hold,
+    });
+    if (decision.kind === "reject") {
       throw new Error(
-        `Session ${payload.session.id} already has an active turn`,
+        decision.reason === "active-run"
+          ? `Session ${sessionId} already has an active turn`
+          : `Session ${sessionId} has no active turn`,
       );
     }
-    if (isSteering && !hasActiveTurn) {
-      throw new Error(`Session ${payload.session.id} has no active turn`);
+    if (decision.kind === "start") {
+      payload = { ...payload, delivery: "start-new-run" };
     }
+    const heldForCapacity =
+      decision.kind === "start" &&
+      !dequeued &&
+      (await this.runCapacity.mustWait(payload.session));
 
-    if (isSteering) {
+    if (decision.kind === "steer") {
       const agent = await this.ensureAgentAvailable(payload.session.agentType);
       if (!agent.capabilities.supportsSteering) {
         throw new Error(
@@ -1755,18 +2322,21 @@ export class CocurdexDaemonService {
         );
       }
       payload = await this.refreshSessionWorkingPath(payload);
-      const createdMessage = this.createUserMessage(payload);
-      await this.captureSessionCheckpoint(payload, createdMessage);
+      const createdMessage: MessageRecord = {
+        ...this.createUserMessage(payload),
+        runId: this.runs.activeRunId(sessionId),
+      };
       const userMessage = await this.state.saveUserMessage(createdMessage);
-      void this.trackBackgroundSend(
+      this.announceSessionsChanged();
+      void this.runs.track(
         this.dispatchSteeringMessage(payload, userMessage, providerConfig),
       );
       return userMessage;
     }
 
-    if (isQueuedFollowUp && hasActiveTurn) {
+    if (decision.kind === "queue" || heldForCapacity) {
       await this.ensureAgentAvailable(payload.session.agentType);
-      await this.loadQueuedFollowUps(payload.session.id);
+      if (!hold) await this.loadQueuedFollowUps(sessionId);
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
       const userMessage = await this.state.saveQueuedUserMessage(
@@ -1779,107 +2349,118 @@ export class CocurdexDaemonService {
           createdAt: createdMessage.createdAt,
         },
       );
-      const queued = this.queuedFollowUps.get(payload.session.id) ?? [];
-      queued.push({
-        payload: {
-          ...payload,
-          messageId: userMessage.id,
-          createdAt: userMessage.createdAt,
-          delivery: "start-new-run",
-        },
-      });
-      this.queuedFollowUps.set(payload.session.id, queued);
-      this.events.emit("daemon.event", {
-        type: "data.changed",
-        areas: ["agent"],
-      });
+      const loaded = this.queuedFollowUps.get(sessionId);
+      if (loaded || !hold) {
+        const queued = loaded ?? [];
+        queued.push({
+          payload: {
+            ...payload,
+            messageId: userMessage.id,
+            createdAt: userMessage.createdAt,
+            delivery: "start-new-run",
+          },
+        });
+        this.queuedFollowUps.set(sessionId, queued);
+      }
+      if (heldForCapacity) this.runCapacity.hold(sessionId);
+      this.announceSessionsChanged();
       return userMessage;
     }
 
-    const pendingTurn: PendingTurn = { cancelled: false };
-    this.pendingTurns.set(payload.session.id, pendingTurn);
-    let userMessage: MessageRecord;
-    let persistence: RuntimePersistence;
+    await this.ensureAgentAvailable(payload.session.agentType);
+    payload = await this.refreshSessionWorkingPath(payload);
+    const createdMessage = this.createUserMessage(payload);
+    if (dequeued) {
+      await this.state.moveMessageToEnd(createdMessage.id, sessionId);
+    }
+    const savedMessage = await this.state.saveUserMessage(createdMessage);
+    this.announceSessionsChanged();
+    const persistence: RuntimePersistence = {
+      ...(await this.createRuntimePersistence(payload.session)),
+      providerConfig,
+    };
+    if (this.stopping) throw new Error("Daemon is shutting down");
+    const run = await this.runs.start(
+      sessionId,
+      savedMessage.id,
+      payload.session.agentType,
+    );
+    await this.runCapacity.armDeadline(payload.session, run.runId);
+    const userMessage: MessageRecord = { ...savedMessage, runId: run.runId };
     try {
-      await this.ensureAgentAvailable(payload.session.agentType);
-      payload = await this.refreshSessionWorkingPath(payload);
-      const createdMessage = this.createUserMessage(payload);
-      await this.captureSessionCheckpoint(payload, createdMessage);
-      if (dequeued) {
-        await this.state.moveMessageToEnd(
-          createdMessage.id,
-          payload.session.id,
-        );
-      }
-      userMessage = await this.state.saveUserMessage(createdMessage);
-      persistence = {
-        ...(await this.createRuntimePersistence(payload.session.id)),
-        providerConfig,
-      };
       this.runtime.createSessionRuntime(payload, persistence);
-      this.runtime.emitAgentEvent({
-        type: "state.changed",
-        sessionId: payload.session.id,
-        status: "running",
-      });
     } catch (error) {
-      this.pendingTurns.delete(payload.session.id);
+      await this.runs.settle(run, {
+        kind: "rejected",
+        error: errorMessage(error, "Unknown agent runtime error"),
+      });
       throw error;
     }
 
-    const sessionId = payload.session.id;
-    const outcome = this.dispatchSessionMessage(
-      payload,
-      userMessage,
-      pendingTurn,
-      persistence,
-      providerConfig,
-    )
-      .then(
-        (message): SessionTurnOutcome =>
-          message && !pendingTurn.cancelled
-            ? { status: "completed", message }
-            : { status: "cancelled" },
-        (error: unknown): SessionTurnOutcome => {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Unknown agent runtime error";
-          console.error("[CocurdexDaemonService] Background send failed", {
+    void this.runs.track(
+      this.dispatchSessionMessage(payload, userMessage, run, persistence).then(
+        (message) => this.runs.settle(run, { kind: "resolved", message }),
+        (error: unknown) => {
+          const message = errorMessage(error, "Unknown agent runtime error");
+          logDaemonDiagnostic("error", "session.backgroundSendFailed", {
             agentType: payload.session.agentType,
             error: message,
             sessionId,
           });
-          this.runtime.emitAgentEvent({
-            type: "error",
-            sessionId,
-            message,
-          });
-          return { status: "failed", error: message };
+          this.runtime.emitAgentEvent({ type: "error", sessionId, message });
+          return this.runs.settle(run, { kind: "rejected", error: message });
         },
-      )
-      .finally(() => {
-        if (this.turnOutcomes.get(sessionId) === outcome) {
-          this.turnOutcomes.delete(sessionId);
-        }
-        if (this.pendingTurns.get(sessionId) === pendingTurn) {
-          this.pendingTurns.delete(sessionId);
-          void this.startNextQueuedFollowUp(sessionId);
-        }
-      });
-    this.turnOutcomes.set(sessionId, outcome);
-    void this.trackBackgroundSend(outcome);
+      ),
+    );
 
     return userMessage;
   }
 
-  waitForSessionTurn(sessionId: string): Promise<SessionTurnOutcome | null> {
-    return this.turnOutcomes.get(sessionId) ?? Promise.resolve(null);
+  async waitForSessionTurn(
+    sessionId: string,
+  ): Promise<SessionTurnOutcome | null> {
+    try {
+      await this.runCapacity.whenAdmitted(sessionId);
+    } catch {
+      return { status: "cancelled" };
+    }
+    return this.runs.outcomeOf(sessionId);
   }
 
-  private trackBackgroundSend<T>(work: Promise<T>): Promise<T> {
-    this.backgroundSends.add(work);
-    return work.finally(() => this.backgroundSends.delete(work));
+  getAgentRunLimits() {
+    return this.readAgentRunLimits();
+  }
+
+  async setAgentRunLimits(value: AgentRunLimits) {
+    const limits = parseAgentRunLimits(value);
+    if (!limits) throw new Error("Agent run limits are out of range");
+    await this.state.setAppSetting(
+      AGENT_RUN_LIMITS_SETTING_KEY,
+      JSON.stringify(limits),
+    );
+    this.broadcastSettingsChanged();
+    return limits;
+  }
+
+  private async readAgentRunLimits() {
+    return resolveStoredAgentRunLimits(
+      await this.state.getAppSetting(AGENT_RUN_LIMITS_SETTING_KEY),
+    );
+  }
+
+  private async activeAgentTypes() {
+    const sessions = await Promise.all(
+      this.runs.activeRuns().map((run) => this.state.getSession(run.sessionId)),
+    );
+    return sessions.flatMap((session) => (session ? [session.agentType] : []));
+  }
+
+  private async expireRun(sessionId: string, runId: string, reason: string) {
+    await this.sessionCommands.run(sessionId, async () => {
+      if (!(await this.runs.expire(sessionId, runId, reason))) return;
+      await this.workspaceChanges.failTurn(sessionId, "interrupted");
+      await this.runtime.cancelSessionTurn(sessionId);
+    });
   }
 
   async resumeQueuedSession(sessionId: string) {
@@ -1890,7 +2471,7 @@ export class CocurdexDaemonService {
   }
 
   private async restoreQueuedSession(sessionId: string) {
-    if (this.pendingTurns.has(sessionId) || this.stopping) return false;
+    if (this.runs.hasActiveRun(sessionId) || this.stopping) return false;
     if (!(await this.loadQueuedFollowUps(sessionId))) return false;
     return this.dispatchNextQueuedInput(sessionId);
   }
@@ -1992,7 +2573,7 @@ export class CocurdexDaemonService {
   }
 
   async steerQueuedAgentInput(sessionId: string, messageId: string) {
-    if (!this.pendingTurns.has(sessionId)) {
+    if (!this.runs.hasActiveRun(sessionId)) {
       return this.sendQueuedAgentInputNow(sessionId, messageId);
     }
 
@@ -2005,11 +2586,11 @@ export class CocurdexDaemonService {
       throw new Error(`Queued message ${messageId} was not found`);
     }
 
-    const message = await this.state.getMessageById(messageId);
+    const queuedMessage = await this.state.getMessageById(messageId);
     if (
-      !message ||
-      message.sessionId !== sessionId ||
-      message.role !== "user"
+      !queuedMessage ||
+      queuedMessage.sessionId !== sessionId ||
+      queuedMessage.role !== "user"
     ) {
       throw new Error(`Queued message ${messageId} was not found`);
     }
@@ -2021,6 +2602,10 @@ export class CocurdexDaemonService {
       throw new Error(`${agent.label} does not support steering active turns.`);
     }
 
+    const message = await this.state.moveSteeredMessageToEnd(
+      queuedMessage,
+      this.runs.activeRunId(sessionId),
+    );
     const [messages, queuedInputs] = await Promise.all([
       this.state.listMessagesBySessionId(sessionId),
       this.state.listQueuedAgentInputs(sessionId),
@@ -2033,7 +2618,9 @@ export class CocurdexDaemonService {
         historyMessage.id === messageId ||
         !queuedMessageIds.has(historyMessage.id),
     );
-    const persistence = await this.createRuntimePersistence(sessionId);
+    const persistence = await this.createRuntimePersistence(
+      item.payload.session,
+    );
     await this.runtime.sendSessionMessage(
       {
         ...item.payload,
@@ -2083,7 +2670,7 @@ export class CocurdexDaemonService {
         throw new Error(`Queued message ${messageId} was not found`);
       }
 
-      if (this.pendingTurns.has(sessionId)) {
+      if (this.runs.hasActiveRun(sessionId)) {
         await this.stopSessionTurn(sessionId);
       }
 
@@ -2107,7 +2694,7 @@ export class CocurdexDaemonService {
 
   private async dispatchNextQueuedInput(sessionId: string): Promise<boolean> {
     if (this.stopping) return false;
-    if (this.pendingTurns.has(sessionId)) return false;
+    if (this.runs.hasActiveRun(sessionId)) return false;
 
     const queued = this.queuedFollowUps.get(sessionId);
     const next = queued?.shift();
@@ -2192,39 +2779,18 @@ export class CocurdexDaemonService {
   }
 
   private async stopSessionTurn(sessionId: string) {
-    const pendingTurn = this.clearPendingTurn(sessionId);
+    this.runCapacity.release(sessionId, new Error("Session was stopped"));
+    const stopped = this.runs.stop(sessionId);
     await this.workspaceChanges.failTurn(sessionId, "interrupted");
-    const cancelled = await this.runtime.cancelSessionTurn(sessionId);
-    if (pendingTurn && !cancelled) {
-      this.runtime.emitAgentEvent({
-        type: "state.changed",
-        sessionId,
-        status: "idle",
-      });
-    }
+    await Promise.all([stopped, this.runtime.cancelSessionTurn(sessionId)]);
     return null;
   }
 
   private async disposeSessionRuntime(sessionId: string) {
-    const pendingTurn = this.clearPendingTurn(sessionId);
+    this.runCapacity.release(sessionId, new Error("Session was closed"));
+    const stopped = this.runs.stop(sessionId);
     this.queuedFollowUps.delete(sessionId);
-    const disposed = await this.runtime.disposeSessionRuntime(sessionId);
-    if (pendingTurn && !disposed) {
-      this.runtime.emitAgentEvent({
-        type: "state.changed",
-        sessionId,
-        status: "idle",
-      });
-    }
-  }
-
-  private clearPendingTurn(sessionId: string) {
-    const pendingTurn = this.pendingTurns.get(sessionId);
-    if (pendingTurn) {
-      cancelPendingTurn(pendingTurn);
-      this.pendingTurns.delete(sessionId);
-    }
-    return pendingTurn;
+    await Promise.all([stopped, this.runtime.disposeSessionRuntime(sessionId)]);
   }
 
   resolvePermission(requestId: string, optionId: string) {
@@ -2232,7 +2798,7 @@ export class CocurdexDaemonService {
   }
 
   private async ensureAgentAvailable(agentId: AgentId) {
-    const agents = await this.listAgents();
+    const agents = await this.listAgents(agentId);
     const agent = agents.find((item) => item.id === agentId);
 
     if (agent?.availability === "available") {
@@ -2253,28 +2819,22 @@ export class CocurdexDaemonService {
   }
 
   private async createRuntimePersistence(
-    sessionId: string,
+    session: Pick<SessionRecord, "id" | "agentType">,
   ): Promise<RuntimePersistence> {
-    const providerSession = await this.state.getProviderSession(sessionId);
+    const { agentType, id: sessionId } = session;
+    const providerSession = await this.state.getProviderSession(
+      sessionId,
+      agentType,
+    );
 
     return {
       providerSession,
       onProviderSessionUpdate: (nextProviderSession) => {
         if (!nextProviderSession) {
-          void this.state.clearProviderSession(sessionId);
+          void this.state.clearProviderSession(sessionId, agentType);
           return;
         }
-
-        void this.state.saveProviderSession(
-          nextProviderSession.sessionId,
-          nextProviderSession.providerSessionId,
-          JSON.parse(nextProviderSession.providerStateJson) as Record<
-            string,
-            unknown
-          >,
-          nextProviderSession.resumable,
-          nextProviderSession.providerVersion,
-        );
+        void this.state.saveProviderSession(agentType, nextProviderSession);
       },
     };
   }
@@ -2283,23 +2843,25 @@ export class CocurdexDaemonService {
     this.stopping = true;
     await this.startupRecovery;
     clearInterval(this.checkpointReconcileTimer);
-    for (const pendingTurn of this.pendingTurns.values()) {
-      cancelPendingTurn(pendingTurn);
-    }
-    this.pendingTurns.clear();
+    this.runCapacity.close(new Error("Daemon is shutting down"));
+    const interrupted = await this.runs.interruptAll();
+    await this.state.noteRestartInterruptions(
+      interrupted.map((run) => run.sessionId),
+    );
     this.queuedFollowUps.clear();
     await this.scriptRuns.shutdown();
     const schedulerClose = this.workflowWorkerScheduler.close();
     try {
       const results = await Promise.allSettled([
-        this.chatService.shutdown(),
         this.runtime.shutdown(),
         schedulerClose,
         this.acpRegistry.ready,
         Promise.resolve().then(() => this.searchService.dispose()),
+        Promise.resolve().then(() => this.mcp.dispose()),
+        this.terminals.dispose(),
         Promise.resolve().then(() => this.workspaceWatch.close()),
       ]);
-      await Promise.allSettled([...this.backgroundSends]);
+      await this.runs.drainBackground();
       await this.runtime.flushEvents();
       const failures = results.flatMap((result) =>
         result.status === "rejected" ? [result.reason] : [],
@@ -2314,7 +2876,7 @@ export class CocurdexDaemonService {
 
   private wakeWorkflowWorker() {
     void this.workflowWorkerScheduler.wake().catch((error: unknown) => {
-      console.error("[CocurdexDaemonService] Workflow worker failed", error);
+      logDaemonDiagnostic("error", "workflow.workerFailed", { error });
     });
   }
 
@@ -2402,7 +2964,7 @@ export class CocurdexDaemonService {
 
   private createUserMessage(payload: SessionRuntimeMessage): MessageRecord {
     return {
-      id: payload.messageId ?? crypto.randomUUID(),
+      id: payload.messageId,
       sessionId: payload.session.id,
       role: "user",
       content: payload.content.trim(),
@@ -2415,9 +2977,8 @@ export class CocurdexDaemonService {
   private async dispatchSessionMessage(
     payload: SessionRuntimeMessage,
     userMessage: MessageRecord,
-    pendingTurn: PendingTurn,
+    run: RunHandle,
     persistence: RuntimePersistence,
-    providerConfig: AgentRuntimeProviderConfig | null,
   ) {
     const [messages, queuedInputs] = await Promise.all([
       this.state.listMessagesBySessionId(payload.session.id),
@@ -2430,7 +2991,7 @@ export class CocurdexDaemonService {
       (message) =>
         message.id === userMessage.id || !queuedMessageIds.has(message.id),
     );
-    if (pendingTurn.cancelled) {
+    if (run.signal.aborted) {
       return null;
     }
 
@@ -2440,39 +3001,190 @@ export class CocurdexDaemonService {
         runs: this.worktreeSetups,
         sessionId: payload.session.id,
         worktreePath,
-        cancelled: new Promise((resolve) => {
-          pendingTurn.onCancel = resolve;
+        cancelled: new Promise<void>((resolve) => {
+          run.signal.addEventListener("abort", () => resolve(), { once: true });
         }),
         emit: (event) => this.runtime.emitAgentEvent(event),
       });
-      if (pendingTurn.cancelled) {
+      if (run.signal.aborted) {
         return null;
       }
     }
 
-    await this.workspaceChanges.beginTurn({
-      sessionId: payload.session.id,
-      userMessageId: userMessage.id,
-      workspaceRootPath: payload.workspaceRootPath,
-    });
+    if (!isChatSession(payload.session)) {
+      await this.workspaceChanges.beginTurn({
+        sessionId: payload.session.id,
+        userMessageId: userMessage.id,
+        workspaceRootPath: payload.workspaceRootPath,
+      });
+    }
 
-    if (pendingTurn.cancelled) {
+    if (run.signal.aborted) {
       await this.workspaceChanges.failTurn(payload.session.id, "interrupted");
       return null;
     }
 
+    const start = await this.prepareStartContext(
+      payload.session,
+      userMessage,
+      history,
+      persistence,
+    );
     return this.runtime.sendSessionMessage(
       {
         ...payload,
-        content: userMessage.content,
+        content: start.content,
         attachments: userMessage.attachments,
       },
       {
         ...persistence,
-        history,
-        providerConfig,
+        history: start.history,
+        contextHandoff: start.contextHandoff,
       },
     );
+  }
+
+  private async prepareStartContext(
+    session: SessionRecord,
+    userMessage: MessageRecord,
+    history: MessageRecord[],
+    persistence: RuntimePersistence,
+  ) {
+    const pending = this.state.findPendingContextTransfer(session.id);
+    const runs = this.state.listRunsBySessionId(session.id);
+    const priorMessages = history.filter(
+      (message) => message.id !== userMessage.id,
+    );
+    const chatSession = isChatSession(session);
+    const sessionKind = session.sessionKind ?? "main";
+    const memoryGate = await this.memory.beginTurn({
+      sessionId: session.id,
+      mode: chatSession ? "chat" : "agent",
+      enforce: !chatSession && sessionKind !== "subagent",
+    });
+    const memoryContext =
+      !chatSession && sessionKind === "subagent"
+        ? null
+        : await this.memory.buildTurnContext(
+            session,
+            userMessage.content,
+            chatSession ? "chat" : "agent",
+          );
+    const memoryPrefix = [memoryGate, memoryContext?.brief]
+      .filter((section): section is string => Boolean(section))
+      .join("\n\n");
+    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
+    const resolution = resolveStartContext({
+      targetAgentType: session.agentType,
+      priorMessages,
+      runs,
+      hasProviderThread: persistence.providerSession !== null,
+      pendingFork: pending?.kind === "fork",
+    });
+    if (resolution.kind === "native") {
+      if (pending?.kind === "fork") {
+        this.consumeNativeFork(pending, session, userMessage, priorMessages);
+      }
+      return {
+        content: `${memoryText}${userMessage.content}`,
+        history,
+        contextHandoff: undefined,
+      };
+    }
+    const sourceSessionId =
+      resolution.transferKind === "fork"
+        ? (pending?.sourceSessionId ?? null)
+        : null;
+    const items = await collectHandoffItems(this.sessionActivityReader(), {
+      targetSessionId: session.id,
+      targetAgentType: session.agentType,
+      messages: resolution.messages,
+      runs,
+      fork: sourceSessionId ? pending : null,
+    });
+    const handoff = buildContextHandoffText({
+      transferKind: resolution.transferKind,
+      strategy: resolution.strategy,
+      items,
+      budget: contextHandoffBudget({
+        contextWindow: session.providerSnapshot?.modelContextWindow,
+        currentText: userMessage.content,
+        currentAttachments: userMessage.attachments,
+      }),
+      sessionId: session.id,
+      sourceSessionId,
+    });
+    const handoffText = handoff.text;
+    const consumedAt = new Date().toISOString();
+    const consumption = {
+      targetAgentType: session.agentType,
+      sourceAgentTypes:
+        resolution.sourceAgentTypes.length > 0
+          ? resolution.sourceAgentTypes
+          : (pending?.sourceAgentTypes ?? []),
+      strategy: resolution.strategy,
+      coveredMessageCount: resolution.messages.length,
+      handoffText,
+      consumedByMessageId: userMessage.id,
+      consumedAt,
+    };
+    if (pending && resolution.transferKind === "fork") {
+      this.state.consumeContextTransfer(pending.id, consumption);
+    } else {
+      this.state.insertContextTransfer({
+        id: crypto.randomUUID(),
+        kind: "agent_switch",
+        sourceSessionId: session.id,
+        targetSessionId: session.id,
+        sourceMessageId: priorMessages.at(-1)?.id ?? null,
+        status: "consumed",
+        createdAt: consumedAt,
+        ...consumption,
+      });
+    }
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent"],
+    });
+    return {
+      content: `${memoryText}${userMessage.content}`,
+      history: resolution.freshProviderThread ? [userMessage] : history,
+      contextHandoff: {
+        text: handoff.text,
+        preamble: handoff.preamble,
+        entries: handoff.entries,
+      },
+    };
+  }
+
+  private sessionActivityReader(): SessionActivityReader {
+    return {
+      listMessages: (id) => this.state.listMessagesBySessionId(id),
+      listToolCalls: (id) => this.state.listToolCallsBySessionId(id),
+      listRuns: (id) => this.state.listRunsBySessionId(id),
+      listTransfers: (id) => this.state.listContextTransfers(id),
+    };
+  }
+
+  private consumeNativeFork(
+    transfer: ContextTransferRecord,
+    session: SessionRecord,
+    userMessage: MessageRecord,
+    priorMessages: readonly MessageRecord[],
+  ) {
+    this.state.consumeContextTransfer(transfer.id, {
+      targetAgentType: session.agentType,
+      sourceAgentTypes: transfer.sourceAgentTypes,
+      strategy: "native",
+      coveredMessageCount: priorMessages.filter(isHandoffVisibleMessage).length,
+      handoffText: null,
+      consumedByMessageId: userMessage.id,
+      consumedAt: new Date().toISOString(),
+    });
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent"],
+    });
   }
 
   private async dispatchSteeringMessage(
@@ -2484,9 +3196,7 @@ export class CocurdexDaemonService {
       const history = await this.state.listMessagesBySessionId(
         payload.session.id,
       );
-      const persistence = await this.createRuntimePersistence(
-        payload.session.id,
-      );
+      const persistence = await this.createRuntimePersistence(payload.session);
       await this.runtime.sendSessionMessage(
         {
           ...payload,
@@ -2540,7 +3250,7 @@ export class CocurdexDaemonService {
       type: "data.changed",
       areas: ["agent"],
     });
-    if (!this.pendingTurns.has(payload.session.id)) {
+    if (!this.runs.hasActiveRun(payload.session.id)) {
       void this.startNextQueuedFollowUp(payload.session.id);
     }
   }
@@ -2551,15 +3261,7 @@ export function onAgentEvent(
   listener: (event: AgentEvent) => void,
 ) {
   const daemonListener = (event: CocurdexDaemonEvent) => {
-    if (
-      event.type !== "data.changed" &&
-      event.type !== "peer.message" &&
-      event.type !== "team.changed" &&
-      event.type !== "scriptRun.changed" &&
-      !isWorkspaceSearchDaemonEvent(event) &&
-      !isWorkspaceWatchDaemonEvent(event) &&
-      !("conversationId" in event)
-    ) {
+    if (isAgentEvent(event) && !("conversationId" in event)) {
       listener(event);
     }
   };

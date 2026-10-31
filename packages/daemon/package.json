@@ -5,33 +5,42 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./paths": "./src/paths.ts"
+    "./paths": "./src/paths.ts",
+    "./internal/*": "./src/*.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "daemon": "node --import tsx src/bin.ts",
-    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",
     "@cocurdex/agent-core": "workspace:*",
     "@cocurdex/db": "workspace:*",
-    "@cocurdex/llm-chat": "workspace:*",
+    "@cocurdex/deck": "workspace:*",
+    "@cocurdex/note-doc": "workspace:*",
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.31.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@napi-rs/keyring": "^2.1.2",
     "@vscode/ripgrep": "^1.18.0",
-    "@napi-rs/keyring": "^2.1.0",
-    "simple-git": "^3.36.0",
-    "undici": "^8.11.2",
-    "ws": "^8.22.0"
+    "diff": "^9.0.0",
+    "effect": "4.0.5",
+    "font-list": "^2.1.0",
+    "jsonc-parser": "^3.3.1",
+    "node-pty": "^1.1.0",
+    "simple-git": "^4.0.2",
+    "smol-toml": "^1.9.1",
+    "tar": "^7.5.22",
+    "undici": "^8.12.3",
+    "ws": "^8.22.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^24.13.6",
+    "@types/node": "^24.19.2",
     "@types/ws": "^8.18.2",
-    "tsx": "^4.23.15",
-    "vitest": "^4.1.11"
+    "tsx": "^4.23.15"
   }
 }

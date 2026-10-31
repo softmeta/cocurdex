@@ -1,4 +1,12 @@
 {
+  "codeBlock": {
+    "copied": "已复制",
+    "copy": "复制代码",
+    "language": "代码语言",
+    "noLanguage": "没有匹配的语言",
+    "plainText": "纯文本",
+    "searchLanguage": "搜索语言…"
+  },
   "editor": {
     "empty": {
       "description": "从侧栏选择一篇笔记，或新建一篇。",
@@ -11,14 +19,22 @@
     },
     "placeholder": "开始写作，或按 “/” 插入块…",
     "save": {
-      "conflict": "已在别处被修改",
       "error": "保存失败",
-      "keepMine": "保留我的版本",
       "saved": "已保存",
-      "saving": "保存中…",
-      "useRemote": "加载最新版本"
+      "saving": "保存中…"
     },
+    "timestamps": {
+      "createdAt": "创建于 {{time}}",
+      "edited": "{{time}}编辑",
+      "editedAt": "编辑于 {{time}}"
+    },
+    "titleLabel": "笔记标题",
     "untitledPlaceholder": "无标题"
+  },
+  "image": {
+    "tooLarge": "图片不能超过 10 MB。",
+    "unsupported": "仅支持 PNG、JPEG、GIF 或 WebP 图片。",
+    "uploadFailed": "图片添加失败"
   },
   "scope": {
     "private": "私人",
@@ -27,31 +43,30 @@
   },
   "sidebar": {
     "collapse": "折叠侧栏",
-    "collapseFolder": "折叠文件夹",
+    "collapsePage": "收起子页面",
     "delete": "删除",
     "deleteConfirm": {
       "cancel": "取消",
       "confirm": "删除",
-      "descriptionFolder": "此文件夹及其内部的全部内容将被永久删除。",
       "descriptionNote": "此笔记将被永久删除。",
+      "descriptionTree": "此页面及其全部子页面将被永久删除。",
       "title": "删除“{{title}}”？"
     },
-    "dropToRoot": "拖到这里移到顶层",
     "empty": {
       "description": "创建第一篇笔记开始写作。",
       "title": "还没有笔记"
     },
     "expand": "展开侧栏",
-    "expandFolder": "展开文件夹",
+    "expandPage": "展开子页面",
     "moveTo": "移动到",
-    "moveToRoot": "顶层",
-    "newFolder": "新建文件夹",
-    "newFolderDefaultTitle": "新建文件夹",
-    "newFolderInside": "在内部新建文件夹",
     "newNote": "新建笔记",
-    "newNoteInside": "在内部新建笔记",
+    "newPageInSection": "在「{{section}}」中新建页面",
+    "newSubpage": "新建子页面",
     "rename": "重命名",
     "resize": "调整侧栏宽度",
+    "sections": {
+      "personal": "个人"
+    },
     "title": "笔记",
     "untitled": "无标题"
   },
@@ -67,7 +82,33 @@
       "heading3": "标题 3",
       "orderedList": "有序列表",
       "paragraph": "正文",
+      "table": "表格",
       "taskList": "待办列表"
-    }
+    },
+    "label": "插入块"
+  },
+  "table": {
+    "addColumn": "添加列",
+    "addHint": "点击添加，拖动可添加多个",
+    "addRow": "添加行",
+    "align": {
+      "center": "居中",
+      "label": "对齐",
+      "left": "左对齐",
+      "right": "右对齐"
+    },
+    "clear": "清空内容",
+    "columnOptions": "第 {{index}} 列选项",
+    "deleteColumns_other": "删除 {{count}} 列",
+    "deleteRows_other": "删除 {{count}} 行",
+    "deleteTable": "删除表格",
+    "duplicate": "复制",
+    "insertAbove": "在上方插入行",
+    "insertBelow": "在下方插入行",
+    "insertLeft": "在左侧插入列",
+    "insertRight": "在右侧插入列",
+    "rowOptions": "第 {{index}} 行选项",
+    "sortAscending": "升序排列",
+    "sortDescending": "降序排列"
   }
 }
