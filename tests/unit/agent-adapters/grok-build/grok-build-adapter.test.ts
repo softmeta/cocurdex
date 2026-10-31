@@ -43,6 +43,7 @@ describe("GrokBuildAdapter steering", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({ sessionId: "grok-session-1" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: vi.fn(async () => ({})),
@@ -115,6 +116,7 @@ describe("GrokBuildAdapter steering", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({ sessionId: "grok-session-1" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: vi.fn(async () => ({})),
@@ -178,6 +180,7 @@ describe("GrokBuildAdapter steering", () => {
         return { protocolVersion: 1, agentCapabilities: {} };
       }),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => {
         order.push("newSession");
         return { sessionId: "grok-session-1" };
@@ -230,6 +233,7 @@ describe("GrokBuildAdapter steering", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({ sessionId: "grok-session-1" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: vi.fn(async () => ({})),
@@ -305,6 +309,7 @@ describe("GrokBuildAdapter steering", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({ sessionId: "grok-session-1" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: vi.fn(async () => ({})),
@@ -398,6 +403,7 @@ describe("GrokBuildAdapter subagents", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({ sessionId: "provider-parent" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: vi.fn(async () => ({})),
@@ -498,6 +504,7 @@ describe("GrokBuildAdapter plan approval", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({ sessionId: "grok-session-1" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: vi.fn(async () => ({})),

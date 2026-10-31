@@ -4,16 +4,23 @@
   "type": "module",
   "scripts": {
     "flows": "node --import tsx run.ts",
+    "app": "node --import tsx app.ts",
+    "preview": "node --import tsx preview.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/e2e": "workspace:*",
+    "@cocurdex/mobile": "workspace:*",
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
+    "@cocurdex/test-fixtures": "workspace:*",
+    "@expo/fingerprint": "~0.21.6",
+    "@expo/repack-app": "^0.10.4",
     "@types/node": "^24.19.2",
+    "agent-device": "^0.21.31",
     "tsx": "^4.23.15"
   }
 }

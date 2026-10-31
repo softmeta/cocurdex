@@ -192,6 +192,14 @@ export function createSqliteHostAccessRepository(
         .run(now, deviceId);
       return getDevice(deviceId);
     },
+    updateDeviceScopes(deviceId, scopes) {
+      const { changes } = database
+        .prepare(
+          "UPDATE host_devices SET scopes_json = ? WHERE id = ? AND revoked_at IS NULL",
+        )
+        .run(JSON.stringify(scopes), deviceId);
+      return changes > 0 ? getDevice(deviceId) : null;
+    },
     touchDevice(deviceId, now) {
       database
         .prepare("UPDATE host_devices SET last_seen_at = ? WHERE id = ?")

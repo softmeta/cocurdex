@@ -36,6 +36,8 @@ const RENDERER_URL_PATTERN = /Local:\s+(http:\/\/localhost:\d+\/)/;
 const STARTUP_TIMEOUT_MS = 120_000;
 const POLL_INTERVAL_MS = 250;
 const STOP_TIMEOUT_MS = 10_000;
+const REMOVE_RETRIES = 10;
+const REMOVE_RETRY_DELAY_MS = 100;
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -224,6 +226,12 @@ async function waitForExit(pids) {
   }
 }
 
+export async function stopProcessTree(rootPid) {
+  const tree = treePids(rootPid);
+  killTree(rootPid);
+  await waitForExit(tree);
+}
+
 function killTree(rootPid) {
   if (process.platform === "win32") {
     spawnSync("taskkill", ["/PID", String(rootPid), "/T", "/F"]);
@@ -267,11 +275,18 @@ async function waitForTarget(port, url) {
   throw new Error(`Timed out waiting for CDP target ${url} on ${port}`);
 }
 
+export function removeTempDir(dirPath) {
+  return rm(dirPath, {
+    recursive: true,
+    force: true,
+    maxRetries: REMOVE_RETRIES,
+    retryDelay: REMOVE_RETRY_DELAY_MS,
+  });
+}
+
 export async function stopIsolatedInstance(pid, userDataPath) {
-  const tree = treePids(pid);
-  killTree(pid);
-  await waitForExit(tree);
-  await rm(userDataPath, { recursive: true, force: true });
+  await stopProcessTree(pid);
+  await removeTempDir(userDataPath);
 }
 
 function spawnApp(mode, env, logFd) {
@@ -300,7 +315,12 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
   try {
     await prepareUserData?.(userDataPath);
   } catch (error) {
-    await rm(userDataPath, { recursive: true, force: true });
+    await rm(userDataPath, {
+      recursive: true,
+      force: true,
+      maxRetries: REMOVE_RETRIES,
+      retryDelay: REMOVE_RETRY_DELAY_MS,
+    });
     throw error;
   }
   const logPath = `${userDataPath}.log`;
@@ -311,6 +331,7 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
       ...process.env,
       COCURDEX_USER_DATA_PATH: userDataPath,
       COCURDEX_REMOTE_DEBUGGING_PORT: String(port),
+      COCURDEX_DISABLE_MEMORY_AUTO_START: "1",
     },
     logFd,
   );
@@ -332,7 +353,7 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
         );
       }
     }
-    await rm(userDataPath, { recursive: true, force: true });
+    await removeTempDir(userDataPath);
     if (!keepLog) await rm(logPath, { force: true });
   };
   try {

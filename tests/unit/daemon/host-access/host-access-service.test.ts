@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const local = { kind: "local" } as const;
 
-async function setup() {
+async function setup(options: { remoteAccessAllowed?: boolean } = {}) {
   const settings = new Map<string, string>();
   let now = new Date("2026-10-11T00:00:00.000Z");
   const service = new HostAccessService({
@@ -18,6 +18,7 @@ async function setup() {
     },
     hostName: () => "studio",
     now: () => now,
+    ...options,
   });
   await service.initialize();
   return {
@@ -124,13 +125,68 @@ describe("HostAccessService", () => {
     const exchanged = service.exchangePairing({ code }, null);
     if (!exchanged.ok) throw new Error("pairing failed");
     const revoked: string[] = [];
-    service.onDeviceRevoked((deviceId) => revoked.push(deviceId));
+    service.onDeviceAccessChanged((deviceId) => revoked.push(deviceId));
     expect(service.resolve(exchanged.result.token)).not.toBeNull();
 
     service.revokeDevice(exchanged.result.deviceId, local);
 
     expect(service.resolve(exchanged.result.token)).toBeNull();
     expect(revoked).toEqual([exchanged.result.deviceId]);
+  });
+
+  it("applies changed device scopes to the next request and notifies listeners", async () => {
+    const { service } = await setup();
+    const { code } = service.createPairing(
+      { label: "Tablet", scopes: ["read"] },
+      local,
+    );
+    const exchanged = service.exchangePairing({ code }, null);
+    if (!exchanged.ok) throw new Error("pairing failed");
+    const changed: string[] = [];
+    service.onDeviceAccessChanged((deviceId) => changed.push(deviceId));
+    expect(service.resolve(exchanged.result.token)).toMatchObject({
+      scopes: ["read"],
+    });
+
+    const updated = service.updateDeviceScopes(
+      exchanged.result.deviceId,
+      ["read", "files.read", "read"],
+      local,
+    );
+
+    expect(updated?.scopes).toEqual(["read", "files.read"]);
+    expect(service.resolve(exchanged.result.token)).toMatchObject({
+      scopes: ["read", "files.read"],
+    });
+    expect(changed).toEqual([exchanged.result.deviceId]);
+    expect(service.listAudit(1)[0]).toMatchObject({
+      action: "device.scopesChanged",
+      subject: exchanged.result.deviceId,
+    });
+  });
+
+  it("refuses to grant host administration or an empty scope set to a device", async () => {
+    const { service } = await setup();
+    const { code } = service.createPairing(
+      { label: "Tablet", scopes: ["read"] },
+      local,
+    );
+    const exchanged = service.exchangePairing({ code }, null);
+    if (!exchanged.ok) throw new Error("pairing failed");
+
+    expect(() =>
+      service.updateDeviceScopes(
+        exchanged.result.deviceId,
+        ["read", "host.admin"],
+        local,
+      ),
+    ).toThrow();
+    expect(() =>
+      service.updateDeviceScopes(exchanged.result.deviceId, [], local),
+    ).toThrow();
+    expect(service.resolve(exchanged.result.token)).toMatchObject({
+      scopes: ["read"],
+    });
   });
 
   it("defaults remote access to off and audits only enable/disable transitions", async () => {
@@ -159,5 +215,40 @@ describe("HostAccessService", () => {
     expect(service.listAudit(10).map((entry) => entry.action)).toEqual([
       "remote.enabled",
     ]);
+  });
+
+  it("never listens, enables remote access, or pairs when the build disables it", async () => {
+    const { service, settings } = await setup({ remoteAccessAllowed: false });
+    settings.set(
+      "host.remoteAccess",
+      JSON.stringify({ enabled: true, port: 50_000 }),
+    );
+    const applied: unknown[] = [];
+    service.bindRemoteListener({
+      apply: async (next) => {
+        applied.push(next);
+        return { listening: true, error: null };
+      },
+      state: () => ({ listening: false, error: null }),
+    });
+
+    await service.startRemoteListener();
+    await expect(
+      service.setRemoteAccess({ enabled: true, port: 50_000 }, local),
+    ).rejects.toThrow("Remote access is disabled in this build");
+    expect(() =>
+      service.createPairing({ label: "Phone", scopes: ["read"] }, local),
+    ).toThrow("Remote access is disabled in this build");
+
+    expect(applied).toEqual([]);
+    expect(service.listPairings()).toEqual([]);
+    expect(service.listAudit(10)).toEqual([]);
+    expect(await service.remoteAccessStatus()).toEqual({
+      allowed: false,
+      settings: { enabled: false, port: 50_000 },
+      listening: false,
+      addresses: [],
+      error: null,
+    });
   });
 });

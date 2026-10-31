@@ -1,11 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   collectPiModelsEnvNames,
   extractConfigValueEnvNames,
 } from "@cocurdex/agent-adapters/internal/shared/pi-models-env";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 // Build a `${NAME}` reference without a literal template-curly string so Biome's
 // noTemplateCurlyInString does not flag these intentional pi config values.
@@ -48,11 +50,11 @@ describe("collectPiModelsEnvNames", () => {
   let agentDir: string;
 
   beforeEach(() => {
-    agentDir = mkdtempSync(join(tmpdir(), "pi-models-env-"));
+    agentDir = tempDirs.createSync("pi-models-env-");
   });
 
-  afterEach(() => {
-    rmSync(agentDir, { recursive: true, force: true });
+  afterEach(async () => {
+    await tempDirs.cleanup();
   });
 
   function writeModelsJson(content: unknown) {

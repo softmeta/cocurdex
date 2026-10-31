@@ -1,14 +1,16 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import {
   createWebAssetHandler,
   isLoopbackHostHeader,
   resolveWebAssetPath,
 } from "@cocurdex/daemon/internal/web-assets";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 let parent: string;
 let root: string;
@@ -16,7 +18,7 @@ let server: http.Server;
 let port: number;
 
 beforeAll(async () => {
-  parent = await mkdtemp(path.join(os.tmpdir(), "cocurdex-web-"));
+  parent = await tempDirs.create("cocurdex-web-");
   root = path.join(parent, "site");
   await mkdir(path.join(root, "assets"), { recursive: true });
   await writeFile(path.join(root, "index.html"), "<!doctype html>app");
@@ -32,7 +34,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
-  await rm(parent, { recursive: true, force: true });
+  await tempDirs.cleanup();
 });
 
 function get(pathname: string, host = `127.0.0.1:${port}`) {

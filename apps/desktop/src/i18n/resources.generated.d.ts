@@ -403,6 +403,7 @@ export default interface Resources {
       close: "Close";
       closeFile: "Close file";
       closeSearch: "Close search";
+      copy: "Copy";
       copyCode: "Copy code";
       decrease: "Decrease";
       increase: "Increase";
@@ -1097,6 +1098,159 @@ export default interface Resources {
       views: "Views";
     };
   };
+  memory: {
+    cloud: {
+      alreadyRegistered: "That username is already registered. Enter its password and recovery key to sign in.";
+      cancel: "Cancel";
+      connected: "Multi-device sync is on";
+      copyRecoveryKey: "Copy recovery key";
+      createHint: "The recovery key is generated when the account is created and shown once. Save it before you close the next step.";
+      description: "Sync memories between your devices through an rsrs account. Records reach the server encrypted; the keys stay on this device.";
+      done: "Done";
+      hidePassword: "Hide password";
+      mode: "Account";
+      modeRegister: "Create account";
+      modeSignIn: "Sign in";
+      password: "Login password";
+      passwordHint: "Used to sign in on this and other devices. Cocurdex does not store it.";
+      passwordPlaceholder: "At least 8 characters";
+      recoveryDescription: "This is your recovery key. It decrypts your memories on another device.";
+      recoveryKey: "Recovery key";
+      recoveryKeyHint: "From the device that already has your memories: Settings, Memory, Recovery key.";
+      recoveryKeyPlaceholder: "A3-...";
+      recoveryTitle: "Save your recovery key";
+      recoveryWarning: "Keep it somewhere safe. Without it your memories cannot be decrypted on another device, and nobody, including the server, can recover them. You can show it again from this page.";
+      showPassword: "Show password";
+      submitCreate: "Create account";
+      submitSignIn: "Sign in";
+      title: "Connect cloud memory";
+      username: "Username";
+      usernamePlaceholder: "Your rsrs account name";
+    };
+    menu: {
+      enable: "Enable memory";
+      settings: "Memory settings";
+      sync: "Multi-device sync";
+    };
+    session: {
+      alreadySaved: "This conversation is already in memory";
+      recallFailed: "Memory recall failed this turn: {{error}}";
+      recallFailedUnknown: "unknown error";
+      save: "Save to memory";
+      saveFailed: "Could not save the conversation";
+      saved: "Conversation saved to memory";
+      saving: "Saving…";
+    };
+    settings: {
+      actions: {
+        doctor: "Run doctor";
+        install: "Install";
+        verify: "Verify";
+      };
+      agentContext: {
+        description: "Recall relevant memories before each agent turn and add them to the prompt.";
+        title: "Recall for agent sessions";
+      };
+      agentTools: {
+        description: "Give agent sessions the memory_recall, memory_show, memory_remember, and memory_policy tools.";
+        title: "Memory tools for agents";
+      };
+      chatRecall: {
+        description: "Recall relevant memories before each chat answer.";
+        title: "Recall for chat sessions";
+      };
+      chatSaveOnEnd: {
+        description: "Summarize a chat session when it is archived or deleted.";
+        title: "Save chat sessions on end";
+      };
+      chatSaveTurns: {
+        description: "Append each completed chat exchange to today's memory diary.";
+        title: "Save chat turns";
+      };
+      cliPath: {
+        description: "Optional path to the rsrs executable. Leave empty to use the installed binary or PATH.";
+        placeholder: "Auto-detect";
+        title: "rsrs executable";
+      };
+      cloud: {
+        cancel: "Cancel";
+        conflicts_one: "{{count}} conflict";
+        conflicts_other: "{{count}} conflicts";
+        description: "Turn on to create or connect an rsrs account, then keep encrypted memories in sync across your devices. Off by default: nothing leaves this device until you turn it on.";
+        needsMemory: "Turn on memory first.";
+        needsRsrs: "rsrs is not installed yet.";
+        offline: "This device is offline.";
+        pending_one: "{{count}} memory waiting to upload";
+        pending_other: "{{count}} memories waiting to upload";
+        recoveryKey: "Recovery key";
+        signOut: "Sign out";
+        signOutDescription: "Automatic sync stops and the cloud copy is no longer updated. Memories on this device stay where they are. Signing back in needs the same username, password, and recovery key.";
+        signOutFailed: "Could not sign out";
+        signOutTitle: "Sign out of cloud memory?";
+        signedOut: "Signed out of cloud memory";
+        syncFailed: "Sync failed: {{error}}";
+        syncing: "Syncing...";
+        title: "Multi-device sync";
+        toggleFailed: "Could not change multi-device sync";
+      };
+      cloudTitle: "Cloud sync";
+      connectionTitle: "Connection";
+      doctorFailed: "rsrs doctor reported a problem";
+      doctorPassed: "rsrs doctor: {{status}}";
+      enabled: {
+        description: "Recall before answers and save useful results to your long-term memory. Entries go to the local rsrs store (~/.rsrs) and sync to your rsrs account when one is connected. You can turn this off at any time.";
+        title: "Enable memory";
+      };
+      groupTitle: "Long-term memory";
+      installFailed: "Could not install rsrs";
+      installReady: "rsrs is ready";
+      keys: {
+        close: "Close";
+        copy: "Copy recovery key";
+        description: "These keys decrypt your memories on another device. Anyone who has them can read your memories.";
+        failed: "Could not read the recovery key";
+        title: "Recovery key";
+      };
+      links: {
+        open: "Open";
+        repo: {
+          action: "Open the Respire source code";
+          description: "Respire CLI is open source: github.com/risense-ai/respire-cli";
+          title: "Source code";
+        };
+        site: {
+          action: "Open the Respire website";
+          description: "rsrs.rs: what Respire is and how it works";
+          title: "Website";
+        };
+      };
+      linksTitle: "About Respire";
+      saveFailed: "Could not save memory settings";
+      status: {
+        available: "rsrs {{version}}";
+        doctor: "doctor: {{status}} · {{pass}} pass · {{warn}} warn · {{fail}} fail";
+        installing: "Installing rsrs…";
+        missing: "rsrs is not installed";
+        title: "Status";
+        unknown: "unknown version";
+        unsupported: "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine.";
+      };
+    };
+    status: {
+      checking: "Checking rsrs…";
+      failed: "rsrs is not available";
+      installing: "Installing rsrs…";
+      missing: "rsrs is not installed";
+      ready: "rsrs {{version}}";
+      readyUnknown: "rsrs is ready";
+      unsupported: "Unsupported here";
+    };
+    switch: {
+      label: "Memory";
+      syncToggleFailed: "Could not change multi-device sync";
+      toggleFailed: "Could not change the memory setting";
+    };
+  };
   notes: {
     codeBlock: {
       copied: "Copied";
@@ -1129,6 +1283,11 @@ export default interface Resources {
       };
       titleLabel: "Note title";
       untitledPlaceholder: "Untitled";
+    };
+    image: {
+      tooLarge: "Images must be 10 MB or smaller.";
+      unsupported: "Only PNG, JPEG, GIF, or WebP images are supported.";
+      uploadFailed: "Couldn't add the image";
     };
     scope: {
       private: "Private";
@@ -1389,6 +1548,7 @@ export default interface Resources {
       };
       contextFileTooLarge: "File is too large. Select a smaller file or attach a selection.";
       noInstalledAgent: "No agent installed";
+      openWorkspaceFirst: "Open a folder, then describe the task";
       placeholder: "Plan, Build, / for skills, @ for context";
       removeAttachment: "Remove attachment";
       selectAgent: "Select agent";
@@ -1728,10 +1888,13 @@ export default interface Resources {
       editCancel: "Cancel";
       editFoldersLabel: "Source folders";
       editMakePrimary: "Make primary";
+      editManageLabel: "Manage";
       editNameLabel: "Workspace name";
       editPrimary: "Primary";
+      editRemoveDescription: "{{name}} and all of its agent sessions are removed from Cocurdex. Files in its folders are not touched.";
       editRemoveFolder: "Remove folder";
-      editRemoveWorkspace: "Remove workspace";
+      editRemoveTitle: "Remove {{name}}?";
+      editRemoveWorkspace: "Remove";
       editSave: "Save";
       editTitle: "Edit workspace";
       empty: "No matching workspaces.";
@@ -1779,16 +1942,48 @@ export default interface Resources {
         docs: "Docs";
         refresh: "Refresh";
       };
+      auth: {
+        cancel: "Cancel";
+        confirmCancel: "Cancel";
+        failedKeeping: "{{message}} Still signed in with {{method}}.";
+        login: "Log in";
+        logout: "Log out…";
+        logoutConfirm: "Log out";
+        logoutDescriptionSessions_one: "This stops {{count}} running {{agent}} session. {{agent}} will ask you to log in again before its next session.";
+        logoutDescriptionSessions_other: "This stops {{count}} running {{agent}} sessions. {{agent}} will ask you to log in again before its next session.";
+        logoutDescription_one: "{{agent}} will ask you to log in again before its next session.";
+        logoutDescription_other: "{{agent}} will ask you to log in again before its next session.";
+        logoutTitle: "Log out of {{agent}}?";
+        method: "Login method";
+        readFailed: "Could not read login methods: {{message}}";
+        reading: "Reading login methods…";
+        retry: "Retry";
+        signingIn: "Logging in with {{method}}. If a browser page opens, finish there; this updates when it is done.";
+        switchConfirm: "Switch";
+        switchDescription_one: "Switching stops {{count}} running {{agent}} session. It keeps the current method if the new login fails.";
+        switchDescription_other: "Switching stops {{count}} running {{agent}} sessions. It keeps the current method if the new login fails.";
+        switchTitle: "Switch login method?";
+      };
       badge: {
         builtin: "Built in";
         updateRequired: "Update required";
       };
       description: "Pick any of these agent CLIs when starting a session. cocurdex detects the versions installed on this machine; add more from the ACP Registry.";
+      detail: {
+        builtinNote: "Ships with Cocurdex; nothing to install.";
+        executable: "Executable";
+        install: "Install";
+        manage: "Manage";
+        signIn: "Login";
+        update: "Update";
+        usage: "Usage";
+      };
       kind: {
         builtin: "Built-in";
         detecting: "Checking…";
         error: "Failed";
         missing: "Not installed";
+        needsLogin: "Login required";
         outdated: "Update required";
         ready: "Ready";
       };
@@ -1831,31 +2026,14 @@ export default interface Resources {
           prefetch: "Runs during install";
         };
         remove: "Remove";
+        removeDescription: "Removes {{name}} from Cocurdex. Existing sessions stay, and you can add it again from the ACP Registry.";
         removeFailed: "Could not remove the agent";
         removeSucceeded: "Removed {{name}}";
+        removeTitle: "Remove {{name}}?";
         retry: "Retry";
         search: "Search agents";
         title: "ACP Registry";
         unsupported: "Not available for this platform";
-      };
-      runLimits: {
-        description: "Caps how many agent runs execute at once. Delegated runs past a limit wait in the queue; runs you start yourself are never held back.";
-        invalid: "Enter whole numbers within the allowed range.";
-        maxConcurrentRuns: {
-          description: "Total agent runs across all sessions (1–64).";
-          title: "Concurrent runs";
-        };
-        maxConcurrentRunsPerAgent: {
-          description: "Runs of the same agent at once (1–64).";
-          title: "Concurrent runs per agent";
-        };
-        saveFailed: "Could not save run limits.";
-        timeout: {
-          description: "Stops a teammate or subagent run that exceeds this time. Leave empty for no timeout.";
-          none: "None";
-          title: "Delegated run timeout (minutes)";
-        };
-        title: "Run limits";
       };
       status: {
         builtin: "Built in — ships with cocurdex, nothing to install.";
@@ -2069,9 +2247,17 @@ export default interface Resources {
       };
     };
     devices: {
+      access: {
+        cancel: "Cancel";
+        description: "The device reconnects right away with the new access.";
+        failed: "Could not change the device access";
+        save: "Save";
+        title: "Access for {{name}}";
+      };
       audit: {
         action: {
           deviceRevoked: "Device revoked";
+          deviceScopesChanged: "Device access changed";
           pairingCancelled: "Pairing cancelled";
           pairingCreated: "Pairing created";
           pairingExchanged: "Device paired";
@@ -2084,6 +2270,7 @@ export default interface Resources {
       copy: "Copy";
       list: {
         detail: "{{scopes}} · last seen {{time}}";
+        editAccess: "Edit access";
         empty: "No devices are paired with this computer yet.";
         groupTitle: "Paired devices";
         revoke: "Revoke";
@@ -2105,7 +2292,7 @@ export default interface Resources {
       };
       pair: {
         create: "Create pairing code";
-        createdDescription: "Open a link on the other device, or enter the code there. The code works once.";
+        createdDescription: "Scan the QR code with the Cocurdex app on your phone, or open a link on the other device. The code works once.";
         description: "Choose what the new device may do. You can revoke it at any time.";
         done: "Done";
         enableRemoteFirst: "Turn on remote access to get a link the other device can open.";
@@ -2114,6 +2301,7 @@ export default interface Resources {
         label: "Device name";
         labelPlaceholder: "e.g. My phone";
         open: "Pair device";
+        qrLabel: "Pairing QR code for {{address}}";
         title: "Pair a device";
         ttl: "Code valid for";
         ttlMinutes_one: "{{count}} minute";
@@ -2338,6 +2526,7 @@ export default interface Resources {
       detail: {
         enabled: "Enabled";
         label: "MCP server";
+        manageLabel: "Manage";
         newTitle: "New server";
         projectReadOnly: "Defined in {{path}}. Project servers are read-only here; edit that file to change them.";
       };
@@ -2666,6 +2855,7 @@ export default interface Resources {
       list: {
         configuredCount: "{{count}} configured";
       };
+      manageLabel: "Manage";
       models: {
         addTitle: "Add model";
         advanced: "Advanced";
@@ -2761,6 +2951,7 @@ export default interface Resources {
       git: "Git";
       licenses: "Open source licenses";
       mcp: "MCP";
+      memory: "Memory";
       personalization: "Personalization";
       providers: "Providers";
       shortcuts: "Shortcuts";
@@ -2890,6 +3081,7 @@ export default interface Resources {
       description: "Skills teach agents how to do specialized work. Install them once and every agent that reads the shared skills folder can use them.";
       detail: {
         label: "{{name}} details";
+        manageTitle: "Manage";
         removeBrokenDescription: "{{name}} is only broken links to a folder that no longer exists. Removing it deletes those links and touches nothing else.";
         removeDescription: "Deletes {{name}} for every agent, including the links that point to it. The folder is backed up first, so you can restore it from skill-backups for 14 days.";
         removeTitle: "Remove {{name}}?";
@@ -3075,6 +3267,25 @@ export default interface Resources {
       role: "Role";
       roleMissing: "Role was deleted";
       rolePlaceholder: "Choose a role";
+      runLimits: {
+        description: "Runs that teammates and script agents start. Past a limit they wait in order; runs you start yourself never wait, but they count toward the limits.";
+        invalid: "Enter whole numbers within the allowed range.";
+        maxConcurrentRuns: {
+          description: "Agent runs at once across all sessions, including yours (1–64).";
+          title: "Concurrent runs";
+        };
+        maxConcurrentRunsPerAgent: {
+          description: "Runs of the same agent CLI at once, including yours (1–64).";
+          title: "Concurrent runs per agent";
+        };
+        saveFailed: "Could not save run limits.";
+        timeout: {
+          description: "Stops a teammate or script agent run that takes longer. Leave empty for no timeout.";
+          none: "None";
+          title: "Timeout";
+        };
+        title: "Delegated runs";
+      };
       save: "Save";
       saveFailed: "Could not save this team.";
       saved: "Team saved";
@@ -3123,7 +3334,7 @@ export default interface Resources {
         downloadingWithPercent: "Downloading version {{version}}… {{percent}}%";
         error: "Could not check for updates. {{message}}";
         ready: "Version {{version}} is downloaded and ready to install.";
-        unsupported: "Automatic updates are available in the packaged app.";
+        unsupported: "Automatic updates are off for this build.";
         upToDate: "You're up to date.";
       };
       title: "Version";

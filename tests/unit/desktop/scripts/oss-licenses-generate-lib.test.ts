@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   collectUniqueTexts,
   flattenPnpmLicenses,
@@ -13,6 +13,8 @@ import {
   uniqueId,
 } from "@desktop/scripts/oss-licenses-generate-lib.mjs";
 import { describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 describe("parsePnpmLicensesJson", () => {
   it("extracts JSON even when pnpm prints warnings around it", () => {
@@ -199,14 +201,14 @@ describe("ids and text collection", () => {
 
 describe("readLicenseText", () => {
   it("reads the preferred license file from a package directory", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-oss-license-"));
+    const dir = await tempDirs.create("cocurdex-oss-license-");
     try {
       await mkdir(dir, { recursive: true });
       await writeFile(path.join(dir, "NOTICE"), "notice");
       await writeFile(path.join(dir, "LICENSE.md"), "  MIT text  \n");
       await expect(readLicenseText(dir)).resolves.toBe("MIT text");
     } finally {
-      await rm(dir, { recursive: true, force: true });
+      await tempDirs.cleanup();
     }
   });
 });

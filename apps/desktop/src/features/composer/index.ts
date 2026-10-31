@@ -35,3 +35,4 @@ export {
   getSessionContextTokens,
   sessionUsageAtom,
 } from "./session-usage-store";
+export type { ComposerSendOutcome } from "./use-composer-submission";

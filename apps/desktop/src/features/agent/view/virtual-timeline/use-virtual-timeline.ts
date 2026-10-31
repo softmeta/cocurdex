@@ -135,13 +135,10 @@ export function useVirtualTimeline({
     [focusedId, groups.length, lookup, selectedIds, targetId],
   );
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    anchorTo:
-      targetId !== null || performance.now() < holdUntilRef.current
-        ? "start"
-        : "end",
+    anchorTo: "start",
     count: groups.length,
     estimateSize: () => CONVERSATION_ESTIMATED_HEIGHT,
-    followOnAppend: true,
+    followOnAppend: false,
     useFlushSync: false,
     onChange: positionMountedRows,
     observeElementOffset: (instance, callback) => {
@@ -252,15 +249,6 @@ export function useVirtualTimeline({
       hasNavigationTarget: () => targetRef.current !== null,
       holdScrollPosition(durationMs) {
         holdUntilRef.current = performance.now() + durationMs;
-        virtualizer.options.anchorTo = "start";
-        setTimeout(() => {
-          if (
-            performance.now() >= holdUntilRef.current &&
-            targetRef.current === null
-          ) {
-            virtualizer.options.anchorTo = "end";
-          }
-        }, durationMs);
       },
       syncScrollOffset() {
         if (viewportElement) {

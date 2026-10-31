@@ -1,8 +1,16 @@
 import type { AgentThinkingLevel, SessionRecord } from "@cocurdex/shared";
 import { createProviderSnapshotForModel } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import type { Ref } from "react";
+import { Brain } from "lucide-react";
+import { type Ref, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui";
 import {
   ChatView,
   toolCallsBySessionAtom,
@@ -16,11 +24,15 @@ import {
   resolveChatThinkingLevel,
 } from "@/features/chat";
 import type { ChatComposerHandle } from "@/features/composer";
+import { useMemoryStatus } from "@/features/memory";
 import {
   getAgentDisplayLabel,
   getDisplaySessionStatus,
 } from "@/features/sessions";
+import { desktopApi } from "@/lib";
+import { cn } from "@/lib/utils";
 import { useChatSessionActions } from "./use-chat-session-actions";
+import { useMemoryRecallAlert } from "./use-memory-recall-alert";
 
 interface ChatSessionPanelProps {
   session: SessionRecord;
@@ -37,6 +49,9 @@ export function ChatSessionPanel({
   composerRef,
   paneId,
 }: ChatSessionPanelProps) {
+  const { t } = useTranslation("memory");
+  const [savingMemory, setSavingMemory] = useState(false);
+  const { data: memoryStatus } = useMemoryStatus();
   const messages = useSessionMessages(session.id);
   const toolCalls = useAtomValue(toolCallsBySessionAtom)[session.id] ?? [];
   const compatibleModels = useAtomValue(chatProviderModelsAtom);
@@ -49,6 +64,26 @@ export function ChatSessionPanel({
     thinkingLevelOptions,
     snapshot?.thinkingLevel,
     "off",
+  );
+  const lastRecall = memoryStatus?.lastRecall ?? null;
+  const recallFailed =
+    lastRecall?.sessionId === session.id && lastRecall.outcome === "failed";
+  const recallError = recallFailed
+    ? (lastRecall?.error ?? t("session.recallFailedUnknown"))
+    : null;
+  let saveHint: string = t("session.save");
+  if (savingMemory) {
+    saveHint = t("session.saving");
+  } else if (recallFailed && recallError) {
+    saveHint = t("session.recallFailed", { error: recallError });
+  }
+  useMemoryRecallAlert(
+    recallFailed && recallError
+      ? {
+          key: `${session.id}:${recallError}`,
+          message: t("session.recallFailed", { error: recallError }),
+        }
+      : null,
   );
 
   const changeModel = (providerId: string, modelId: string) => {
@@ -81,6 +116,29 @@ export function ChatSessionPanel({
       .catch(notifyFailure);
   };
 
+  const saveMemory = async () => {
+    setSavingMemory(true);
+    try {
+      const result = await desktopApi.saveSessionMemory({
+        sessionId: session.id,
+        importance: "important",
+      });
+      if (result.saved) {
+        toast.success(t("session.saved"));
+      } else if (result.reason === "duplicate") {
+        toast.info(t("session.alreadySaved"));
+      } else {
+        toast.error(result.reason ?? t("session.saveFailed"));
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("session.saveFailed"),
+      );
+    } finally {
+      setSavingMemory(false);
+    }
+  };
+
   return (
     <ChatView
       key={session.id}
@@ -99,7 +157,31 @@ export function ChatSessionPanel({
           />
         ),
         footerTrailing: (
-          <ChatContextMeter sessionId={session.id} snapshot={snapshot} />
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={t("session.save")}
+                  disabled={savingMemory}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => void saveMemory()}
+                >
+                  <Brain
+                    className={cn(
+                      "size-4",
+                      recallFailed && "text-status-warning",
+                    )}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                {saveHint}
+              </TooltipContent>
+            </Tooltip>
+            <ChatContextMeter sessionId={session.id} snapshot={snapshot} />
+          </div>
         ),
       }}
       composerRef={composerRef}
@@ -107,6 +189,7 @@ export function ChatSessionPanel({
       messages={messages}
       onSend={(text, attachments) => {
         void actions.send(session, text, attachments, thinkingLevel);
+        return "sent";
       }}
       onStop={() => {
         void actions.stop(session).catch(notifyFailure);

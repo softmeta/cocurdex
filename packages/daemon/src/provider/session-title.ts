@@ -32,7 +32,9 @@ export interface SessionTitleDeps {
   ): Promise<AgentRuntimeProviderConfig | null>;
 }
 
-function buildSnapshotProviderRecords(runtime: AgentRuntimeProviderConfig): {
+export function buildSnapshotProviderRecords(
+  runtime: AgentRuntimeProviderConfig,
+): {
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;
 } {
@@ -140,6 +142,7 @@ export async function generateProviderSessionTitle(
         model: records.model,
         apiKey: records.apiKey,
         message: payload.message,
+        sessionId: session.id,
         signal: controller.signal,
       });
     } else {

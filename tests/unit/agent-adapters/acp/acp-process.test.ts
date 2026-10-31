@@ -6,7 +6,7 @@ import { ACP_TRACE_DIR_ENV } from "@cocurdex/agent-adapters/internal/acp/acp-tra
 import { grokBuildPlanApprovalRequest } from "@cocurdex/agent-adapters/internal/grok-build/grok-build-plan-approval";
 import type { AgentSession } from "@cocurdex/agent-core";
 import type { AgentDescriptor, AgentEvent } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 const tempDirs = createTempDirs();

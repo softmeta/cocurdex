@@ -1,6 +1,3 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import type {
   AgentProviderModelAxes,
   CodexServiceTierOption,
@@ -9,6 +6,12 @@ import type {
 } from "@cocurdex/shared";
 import { isReasoningEffort } from "@cocurdex/shared";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
+import {
+  type AcpProbeSpec,
+  buildProbeInitializeRequest,
+  silentProbeHandlers,
+  withProbeCwd,
+} from "./acp-probe";
 import {
   type AcpSessionModel,
   type AcpSessionModelState,
@@ -20,21 +23,12 @@ import {
 } from "./acp-session-model";
 import { createSdkAcpConnection } from "./sdk-acp-connection";
 
-export interface AcpModelCatalogSpec {
-  args: string[];
-  command: string;
-  env?: Record<string, string>;
-  initializeMeta?: Record<string, unknown>;
+export interface AcpModelCatalogSpec extends AcpProbeSpec {
   providerId: string;
   providerName: string;
 }
 
-export interface AcpProviderLoginSpec extends AcpModelCatalogSpec {
-  authMethodPriority: string[];
-}
-
 const ACP_MODEL_PROBE_TIMEOUT_MS = 20_000;
-const ACP_PROVIDER_LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
 const catalogCache = new Map<string, CompatibleProviderModel[]>();
 const inFlightProbes = new Map<
@@ -47,7 +41,6 @@ const modelAxesProbes = new Map<
   string,
   Promise<AgentProviderModelAxes | null>
 >();
-const inFlightLogins = new Map<string, Promise<void>>();
 
 // ACP agents spell "no thinking" as `none`; the picker's vocabulary calls it
 // `off` (and the adapter maps it back on the way out).
@@ -157,15 +150,6 @@ function mapCatalog(
   );
 }
 
-async function withProbeCwd<T>(run: (cwd: string) => Promise<T>): Promise<T> {
-  const cwd = await mkdtemp(path.join(tmpdir(), "cocurdex-acp-probe-"));
-  try {
-    return await run(cwd);
-  } finally {
-    await rm(cwd, { recursive: true, force: true });
-  }
-}
-
 async function withProbeTimeout<T>(
   run: () => Promise<T>,
   timeoutMs: number,
@@ -195,46 +179,6 @@ async function withProbeTimeout<T>(
     clearTimeout(timer);
   }
 }
-
-async function withLoginTimeout<T>(
-  run: () => Promise<T>,
-  timeoutMs: number,
-  providerName: string,
-): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      run(),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`${providerName} login timed out`)),
-          timeoutMs,
-        );
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function buildProbeInitializeRequest(spec: AcpModelCatalogSpec) {
-  return {
-    protocolVersion: 1,
-    clientCapabilities: {
-      fs: { readTextFile: false, writeTextFile: false },
-      terminal: false,
-    },
-    clientInfo: { name: "Cocurdex", title: "Cocurdex", version: "0.0.0" },
-    _meta: spec.initializeMeta,
-  };
-}
-
-const silentProbeHandlers = {
-  onSessionUpdate() {},
-  requestPermission() {
-    return Promise.resolve({ outcome: { outcome: "cancelled" as const } });
-  },
-};
 
 // Devin attaches effort/speed to the session's *current* model: switching the
 // probe session to a model reveals which config options that model supports.
@@ -448,58 +392,4 @@ export function resetAcpProviderModelsCache(providerId?: string) {
   catalogCache.clear();
   inFlightProbes.clear();
   modelAxesProbes.clear();
-}
-
-export function loginAcpProvider(
-  spec: AcpProviderLoginSpec,
-  connectionFactory: AcpConnectionFactory = createSdkAcpConnection,
-  options: { timeoutMs?: number } = {},
-): Promise<void> {
-  const pending = inFlightLogins.get(spec.providerId);
-  if (pending) {
-    return pending;
-  }
-
-  const timeoutMs = options.timeoutMs ?? ACP_PROVIDER_LOGIN_TIMEOUT_MS;
-  const login = withProbeCwd(async (cwd) => {
-    const connection = await connectionFactory({
-      args: spec.args,
-      command: spec.command,
-      env: spec.env,
-      cwd,
-      handlers: silentProbeHandlers,
-    });
-    try {
-      await withLoginTimeout(
-        async () => {
-          const response = await connection.initialize(
-            buildProbeInitializeRequest(spec),
-          );
-          const advertised = (response.authMethods ?? []).map(
-            (method) => method.id,
-          );
-          const methodId =
-            spec.authMethodPriority.find((id) => advertised.includes(id)) ??
-            advertised[0];
-          if (!methodId) {
-            return;
-          }
-          await connection.authenticate({ methodId });
-        },
-        timeoutMs,
-        spec.providerName,
-      );
-    } finally {
-      await connection.close();
-    }
-  })
-    .then(() => {
-      resetAcpProviderModelsCache(spec.providerId);
-    })
-    .finally(() => {
-      inFlightLogins.delete(spec.providerId);
-    });
-
-  inFlightLogins.set(spec.providerId, login);
-  return login;
 }

@@ -102,7 +102,7 @@ function TooltipContent({
             // Base UI sets position:absolute + the main-axis offset (left/top)
             // on the arrow; we only position the cross-axis so it straddles the
             // popup edge facing the trigger. Requires the popup to be relative.
-            <TooltipPrimitive.Arrow className="z-50 size-2.5 rotate-45 rounded-[2px] bg-foreground data-[side=bottom]:-top-1 data-[side=left]:-right-1 data-[side=right]:-left-1 data-[side=top]:-bottom-1" />
+            <TooltipPrimitive.Arrow className="z-50 size-2.5 rotate-45 rounded-micro bg-foreground data-[side=bottom]:-top-1 data-[side=left]:-right-1 data-[side=right]:-left-1 data-[side=top]:-bottom-1" />
           )}
         </TooltipPrimitive.Popup>
       </TooltipPrimitive.Positioner>

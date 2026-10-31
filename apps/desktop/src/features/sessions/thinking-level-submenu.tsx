@@ -1,7 +1,6 @@
-import type { AgentThinkingLevel } from "@cocurdex/shared";
+import type { AgentThinkingLevel, ThinkingLevelOption } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import { RuntimeAxisSubmenu } from "./provider-model";
-import type { ThinkingLevelOption } from "./thinking-level";
 
 /**
  * Thinking level as a row of the model menu, next to reasoning effort and

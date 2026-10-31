@@ -2,7 +2,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
-import { clickByRole, clickPoint, waitForRole } from "./lib/locate.mjs";
+import { clickByRole, clickSelector, waitForRole } from "./lib/locate.mjs";
 import { openNote, showPanelView, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
@@ -35,15 +35,9 @@ async function waitForSelector(session, selector, present = true) {
   );
 }
 
-async function clickSelector(session, selector) {
-  await waitForSelector(session, selector);
-  const point = await session.run((target) => {
-    const row = document.querySelector(`${target} button`);
-    row.scrollIntoView({ block: "center" });
-    const rect = row.getBoundingClientRect();
-    return { x: rect.x + 24, y: rect.y + rect.height / 2 };
-  }, selector);
-  await clickPoint(session, point);
+async function clickLink(session, selector) {
+  await waitForSelector(session, `${selector} button`);
+  await clickSelector(session, `${selector} button`, { fromLeft: 24 });
 }
 
 function readSection(selector) {
@@ -118,12 +112,8 @@ runScenario("entity-links", {
     [
       "the linked row opens the issue, whose panel links back to the note",
       async ({ session, noteId, issueId }) => {
-        await clickSelector(session, linkSelector("issue", issueId));
-        await waitForSelector(
-          session,
-          `[role="dialog"] ${linkSelector("note", noteId)}`,
-        );
-        await clickSelector(
+        await clickLink(session, linkSelector("issue", issueId));
+        await clickLink(
           session,
           `[role="dialog"] ${linkSelector("note", noteId)}`,
         );
@@ -207,16 +197,9 @@ runScenario("entity-links", {
           fromIssue,
         );
         await openNote(session, MENTIONING_NOTE_TITLE);
-        const point = await session.run((id) => {
-          const anchor = document.querySelector(
-            `.md-body-prose a[href="cocurdex://issue/${id}"]`,
-          );
-          if (!anchor) return null;
-          const rect = anchor.getBoundingClientRect();
-          return { x: rect.x + 4, y: rect.y + rect.height / 2 };
-        }, issueId);
-        check(point !== null, "link missing from the body", { issueId });
-        await clickPoint(session, point);
+        const anchor = `.md-body-prose a[href="cocurdex://issue/${issueId}"]`;
+        await waitForSelector(session, anchor);
+        await clickSelector(session, anchor, { fromLeft: 4 });
         await waitForSelector(
           session,
           `[role="dialog"] ${linkSelector("note", scratchId)}`,

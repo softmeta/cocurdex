@@ -13,7 +13,12 @@ export function AgentIconLabel({
   className?: string;
 }) {
   return (
-    <span className={cn("inline-flex min-w-0 items-center gap-1.5", className)}>
+    <span
+      className={cn(
+        "inline-flex min-w-0 max-w-full items-center gap-1.5",
+        className,
+      )}
+    >
       <AgentIcon agentId={agentId} className="size-3.5" />
       <span className="min-w-0 truncate">{children}</span>
     </span>

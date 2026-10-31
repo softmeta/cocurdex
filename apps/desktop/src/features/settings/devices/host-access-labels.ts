@@ -56,6 +56,7 @@ export function useAuditActionLabels(): Record<HostAccessAuditAction, string> {
     "pairing.exchanged": t("devices.audit.action.pairingExchanged"),
     "pairing.rejected": t("devices.audit.action.pairingRejected"),
     "device.revoked": t("devices.audit.action.deviceRevoked"),
+    "device.scopesChanged": t("devices.audit.action.deviceScopesChanged"),
     "remote.enabled": t("devices.audit.action.remoteEnabled"),
     "remote.disabled": t("devices.audit.action.remoteDisabled"),
   };

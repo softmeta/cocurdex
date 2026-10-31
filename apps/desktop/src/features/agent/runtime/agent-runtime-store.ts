@@ -1,82 +1,60 @@
-import type {
-  AgentEvent,
-  AgentNegotiatedCapabilities,
-  AgentProviderRuntimeSnapshot,
-  AgentSessionConfigOption,
-  AgentSessionMode,
-  AgentSlashCommand,
+import {
+  type AgentEvent,
+  type AgentSessionRuntimeState,
+  applySessionRuntimeEvent,
+  EMPTY_AGENT_SESSION_RUNTIME_STATE,
+  isSessionRuntimeEvent,
+  seedSessionRuntimeState,
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 
-export interface AgentSessionRuntimeState {
-  capabilities: AgentNegotiatedCapabilities | null;
-  commands: AgentSlashCommand[] | null;
-  configOptions: AgentSessionConfigOption[];
-  mode: {
-    availableModes: AgentSessionMode[];
-    currentModeId: string;
-  } | null;
-  runtime: AgentProviderRuntimeSnapshot | null;
-}
+export type { AgentSessionRuntimeState };
 
 export const agentRuntimeBySessionAtom = atom<
   Record<string, AgentSessionRuntimeState>
 >({});
 
-function getSessionRuntime(
-  current: Record<string, AgentSessionRuntimeState>,
-  sessionId: string,
-): AgentSessionRuntimeState {
-  return (
-    current[sessionId] ?? {
-      capabilities: null,
-      commands: null,
-      configOptions: [],
-      mode: null,
-      runtime: null,
-    }
-  );
-}
-
 export const applyAgentRuntimeEventAtom = atom(
   null,
   (get, set, event: AgentEvent) => {
-    if (
-      event.type !== "capabilities.updated" &&
-      event.type !== "commands.updated" &&
-      event.type !== "provider.runtime.updated" &&
-      event.type !== "session.config.updated" &&
-      event.type !== "session.mode.updated"
-    ) {
-      return;
-    }
-
+    if (!isSessionRuntimeEvent(event)) return;
     const current = get(agentRuntimeBySessionAtom);
-    const session = getSessionRuntime(current, event.sessionId);
-    let next = session;
-
-    if (event.type === "capabilities.updated") {
-      next = { ...session, capabilities: event.capabilities };
-    } else if (event.type === "commands.updated") {
-      next = { ...session, commands: event.commands };
-    } else if (event.type === "provider.runtime.updated") {
-      next = { ...session, runtime: event.runtime };
-    } else if (event.type === "session.config.updated") {
-      next = { ...session, configOptions: event.configOptions };
-    } else {
-      next = {
-        ...session,
-        mode: {
-          availableModes:
-            event.availableModes ?? session.mode?.availableModes ?? [],
-          currentModeId: event.currentModeId,
-        },
-      };
-    }
-
     set(agentRuntimeBySessionAtom, {
       ...current,
-      [event.sessionId]: next,
+      [event.sessionId]: applySessionRuntimeEvent(
+        current[event.sessionId] ?? EMPTY_AGENT_SESSION_RUNTIME_STATE,
+        event,
+      ),
+    });
+  },
+);
+
+function isUnreportedRuntimeState(state: AgentSessionRuntimeState) {
+  return (
+    state.capabilities === null &&
+    state.commands === null &&
+    state.configOptions.length === 0 &&
+    state.mode === null &&
+    state.runtime === null
+  );
+}
+
+export const seedAgentRuntimeAtom = atom(
+  null,
+  (
+    get,
+    set,
+    payload: { sessionId: string; state: AgentSessionRuntimeState },
+  ) => {
+    const current = get(agentRuntimeBySessionAtom);
+    const live = current[payload.sessionId];
+    if (!live && isUnreportedRuntimeState(payload.state)) return;
+    set(agentRuntimeBySessionAtom, {
+      ...current,
+      [payload.sessionId]: seedSessionRuntimeState(
+        current[payload.sessionId],
+        payload.state,
+      ),
     });
   },
 );

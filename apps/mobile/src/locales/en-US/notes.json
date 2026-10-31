@@ -1,0 +1,60 @@
+{
+  "create": {
+    "failed": "Couldn't create the note. Check the connection and try again.",
+    "open": "New Note"
+  },
+  "editor": {
+    "block": {
+      "blockquote": "Quote",
+      "codeBlock": "Code Block",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "paragraph": "Body"
+    },
+    "bodyPlaceholder": "Write something, or type / to insert headings, lists, and to-dos",
+    "edit": "Edit",
+    "finishEditing": "Done Editing",
+    "format": {
+      "bold": "Bold",
+      "bulletList": "Bulleted List",
+      "hideKeyboard": "Hide Keyboard",
+      "insert": "Insert",
+      "taskList": "Checklist",
+      "text": "Text Style"
+    },
+    "insert": {
+      "bulletList": "Bulleted List",
+      "horizontalRule": "Divider",
+      "orderedList": "Numbered List",
+      "table": "Table",
+      "taskList": "Checklist"
+    },
+    "status": {
+      "error": "Not saved",
+      "saved": "Saved",
+      "saving": "Saving…"
+    },
+    "titlePlaceholder": "Untitled",
+    "untitled": "Untitled"
+  },
+  "empty": {
+    "description": "Notes you write on {{host}} appear here.",
+    "title": "No Notes"
+  },
+  "missing": "This note was deleted on the computer.",
+  "noResults": "No notes match “{{query}}”",
+  "noWorkspace": "No Workspace",
+  "properties": {
+    "moveFailed": "Couldn't move the note. Check the connection and try again.",
+    "noParent": "None",
+    "parent": "Parent Note",
+    "title": "Note Properties"
+  },
+  "search": "Search notes",
+  "unavailable": {
+    "retry": "Try Again",
+    "title": "Couldn’t load notes from {{host}}"
+  },
+  "workspace": "Workspace"
+}

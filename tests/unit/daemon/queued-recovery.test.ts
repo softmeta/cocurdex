@@ -1,6 +1,3 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { createAgentRegistry } from "@cocurdex/agent-core";
 import { requestDaemon } from "@cocurdex/daemon/internal/client";
 import { ProviderCredentials } from "@cocurdex/daemon/internal/provider-credentials/service";
@@ -8,9 +5,10 @@ import { AgentRuntimeManager } from "@cocurdex/daemon/internal/runtime";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import { startDaemonServer } from "@cocurdex/daemon/internal/wire";
 import type { MessageRecord } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const directories: string[] = [];
+const tempDirs = createTempDirs();
 const daemons: Awaited<ReturnType<typeof startDaemonServer>>[] = [];
 
 function resumeQueued(root: string) {
@@ -43,11 +41,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   for (const daemon of daemons.splice(0)) await daemon.close();
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((root) => rm(root, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
   vi.restoreAllMocks();
 });
 
@@ -62,8 +56,7 @@ async function start(root: string) {
 }
 
 async function seed(archived = false) {
-  const root = await mkdtemp(path.join(tmpdir(), "cdq-"));
-  directories.push(root);
+  const root = await tempDirs.create("cdq-");
   const first = await start(root);
   await vi.waitFor(() =>
     expect(first.service.getActiveWork().agentTurns).toBe(0),

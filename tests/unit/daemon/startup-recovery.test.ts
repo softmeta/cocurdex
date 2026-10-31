@@ -1,25 +1,19 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { startDaemonServer } from "@cocurdex/daemon/internal/wire";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const directories: string[] = [];
+const tempDirs = createTempDirs();
+
 const daemons: Awaited<ReturnType<typeof startDaemonServer>>[] = [];
 
 afterEach(async () => {
   await Promise.all(daemons.splice(0).map((daemon) => daemon.close()));
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 async function start(userDataPath?: string) {
   if (!userDataPath) {
-    userDataPath = await mkdtemp(path.join(tmpdir(), "cd-recovery-"));
-    directories.push(userDataPath);
+    userDataPath = await tempDirs.create("cd-recovery-");
   }
   const daemon = await startDaemonServer({
     userDataPath,

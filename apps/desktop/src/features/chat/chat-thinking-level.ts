@@ -2,11 +2,11 @@ import type {
   AgentProviderSnapshot,
   AgentThinkingLevel,
 } from "@cocurdex/shared";
-import { CHAT_AGENT_ID } from "@cocurdex/shared";
 import {
+  CHAT_AGENT_ID,
   getThinkingLevelOptions,
   type ThinkingLevelOption,
-} from "@/features/sessions";
+} from "@cocurdex/shared";
 
 export const NEW_CHAT_THINKING_LEVEL: AgentThinkingLevel = "medium";
 

@@ -1,15 +1,13 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { selectLintInput } from "@desktop/scripts/lint-i18n-selection.mjs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const repoRoot = join(tmpdir(), "cocurdex-i18n-selection-repo");
-let tempDirs: string[] = [];
+const tempDirs = createTempDirs();
 
 async function createDesktopRoot() {
-  const tempDir = await mkdtemp(repoRoot);
-  tempDirs = [...tempDirs, tempDir];
+  const tempDir = await tempDirs.create("cocurdex-i18n-selection-repo");
   return join(tempDir, "apps/desktop");
 }
 
@@ -26,10 +24,7 @@ async function writeDesktopFile(
 
 describe("selectLintInput", () => {
   afterEach(async () => {
-    await Promise.all(
-      tempDirs.map((tempDir) => rm(tempDir, { force: true, recursive: true })),
-    );
-    tempDirs = [];
+    await tempDirs.cleanup();
   });
 
   it("skips staged source files that cannot contain i18n issues", async () => {

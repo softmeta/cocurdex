@@ -1,5 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import path from "node:path";
 import {
   AgentSteeringUnavailableError,
@@ -13,20 +12,17 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { sessionConfiguration } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
 
 function waitForDispatch<T>(assertion: () => T | Promise<T>) {
   return vi.waitFor(assertion, { timeout: 5_000 });
 }
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 function createSession(): SessionRecord {
@@ -81,9 +77,7 @@ function createRuntimeMessage(content: string): MessageRecord {
 
 async function createService(existingUserDataPath?: string) {
   const userDataPath =
-    existingUserDataPath ??
-    (await mkdtemp(path.join(tmpdir(), "cocurdex-queue-")));
-  if (!existingUserDataPath) temporaryDirectories.push(userDataPath);
+    existingUserDataPath ?? (await tempDirs.create("cocurdex-queue-"));
   const service = new CocurdexDaemonService({
     runtimeFingerprint: "test",
     userDataPath,
@@ -153,8 +147,7 @@ describe("CocurdexDaemonService workspace roots", () => {
 
 describe("CocurdexDaemonService agent role avatars", () => {
   it("persists an avatar, keeps it on edits that omit it, and clears it on null", async () => {
-    const userDataPath = await mkdtemp(path.join(tmpdir(), "cocurdex-role-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cocurdex-role-");
     const draft = {
       name: "Reviewer",
       agentId: "pi" as const,
@@ -508,6 +501,29 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
+  it("broadcasts a session list change for every session mutation", async () => {
+    const service = await createService();
+    const changes: unknown[] = [];
+    service.events.on("daemon.event", (event) => {
+      if (event.type === "data.changed") changes.push(event);
+    });
+    const change = { type: "data.changed", areas: ["agent"] };
+    try {
+      await service.saveSessionConfiguration(
+        sessionConfiguration({ ...createSession(), id: "session-2" }),
+      );
+      expect(changes).toEqual([change]);
+      await service.archiveSession("session-2");
+      expect(changes).toHaveLength(2);
+      await service.restoreSession("session-2");
+      expect(changes).toHaveLength(3);
+      await service.deleteSession("session-2");
+      expect(changes).toEqual([change, change, change, change]);
+    } finally {
+      await service.shutdown();
+    }
+  });
+
   it("broadcasts a data change when a follow-up queues behind an active turn", async () => {
     const service = await createService();
     const events: unknown[] = [];
@@ -716,10 +732,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
   });
 
   it("keeps follow-ups paused across daemon restarts until sent", async () => {
-    const userDataPath = await mkdtemp(
-      path.join(tmpdir(), "cocurdex-queue-restart-"),
-    );
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cocurdex-queue-restart-");
     const service = await createService(userDataPath);
     let completeActiveTurn!: () => void;
     const activeTurn = new Promise<MessageRecord>((resolve) => {

@@ -1,29 +1,18 @@
-import {
-  mkdir,
-  mkdtemp,
-  realpath,
-  rm,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, realpath, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { listHostDirectories } from "@cocurdex/daemon/internal/fs-browse";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const directories: string[] = [];
+const tempDirs = createTempDirs();
+
 afterEach(async () => {
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("listHostDirectories", () => {
   it("lists only directories, sorted, with hidden flags", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "cd-browse-"));
-    directories.push(root);
+    const root = await tempDirs.create("cd-browse-");
     await mkdir(path.join(root, "beta"));
     await mkdir(path.join(root, ".hidden"));
     await mkdir(path.join(root, "alpha"));
@@ -52,9 +41,8 @@ describe("listHostDirectories", () => {
   });
 
   it("includes symlinked directories but not symlinked files", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "cd-browse-"));
-    const target = await mkdtemp(path.join(tmpdir(), "cd-browse-target-"));
-    directories.push(root, target);
+    const root = await tempDirs.create("cd-browse-");
+    const target = await tempDirs.create("cd-browse-target-");
     await mkdir(path.join(target, "linked-dir"));
     await writeFile(path.join(target, "linked-file.txt"), "x");
     await symlink(
@@ -72,8 +60,7 @@ describe("listHostDirectories", () => {
   });
 
   it("rejects for a missing directory", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "cd-browse-"));
-    directories.push(root);
+    const root = await tempDirs.create("cd-browse-");
     await expect(
       listHostDirectories(path.join(root, "missing")),
     ).rejects.toThrow();

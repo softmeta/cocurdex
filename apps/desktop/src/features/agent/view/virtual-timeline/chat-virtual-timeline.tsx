@@ -58,10 +58,7 @@ export function ChatVirtualTimeline({
             group.prompt?.id === anchoredPromptId;
           return (
             <div
-              className={cn(
-                "absolute inset-x-0 top-0 w-full",
-                isLatestConversation && "pb-6",
-              )}
+              className="absolute inset-x-0 top-0 w-full"
               data-conversation-id={group.id}
               data-index={index}
               key={group.id}
@@ -72,12 +69,19 @@ export function ChatVirtualTimeline({
                   : undefined,
               }}
             >
-              <ChatConversationItem
-                {...conversationProps}
-                activity={isLatestConversation ? activity : undefined}
-                conversationGroup={group}
-                isLatestConversation={isLatestConversation}
-              />
+              <div
+                className={cn(isLatestConversation && "pb-6")}
+                data-transcript-content-end={
+                  isLatestConversation ? "" : undefined
+                }
+              >
+                <ChatConversationItem
+                  {...conversationProps}
+                  activity={isLatestConversation ? activity : undefined}
+                  conversationGroup={group}
+                  isLatestConversation={isLatestConversation}
+                />
+              </div>
             </div>
           );
         })}

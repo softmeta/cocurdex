@@ -1,3 +1,5 @@
+import { storedImageFileName } from "./doc-images";
+
 export const DAEMON_ATTACHMENT_HTTP_PATH = "/attachments";
 export const DAEMON_ATTACHMENT_NAME_QUERY = "name";
 export const DAEMON_ATTACHMENT_FILE_QUERY = "file";
@@ -31,7 +33,9 @@ export function buildDaemonImageAttachmentUrl(
     webSocketUrl,
     `${DAEMON_ATTACHMENT_HTTP_PATH}/image`,
   );
-  const fileName = filePath.split(/[\\/]+/).at(-1) ?? filePath;
-  url.searchParams.set(DAEMON_ATTACHMENT_FILE_QUERY, fileName);
+  url.searchParams.set(
+    DAEMON_ATTACHMENT_FILE_QUERY,
+    storedImageFileName(filePath),
+  );
   return url.toString();
 }

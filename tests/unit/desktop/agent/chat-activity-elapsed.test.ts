@@ -1,7 +1,10 @@
-import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
+import {
+  type AgentToolCallRecord,
+  formatElapsed,
+  type MessageRecord,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
-  formatElapsed,
   getActivityState,
   isActivityHeaderBusy,
 } from "@/features/agent/view/chat-activity-state";

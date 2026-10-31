@@ -84,12 +84,94 @@ export async function clickPoint(session, point, button = "left") {
   }
 }
 
-export async function centerOf(session, backendNodeId) {
+async function settledPointOf(fromLeft, timeout) {
+  const nextFrame = () =>
+    new Promise((resolve) => requestAnimationFrame(resolve));
+  const finiteAnimations = document.getAnimations().filter((animation) => {
+    const target = animation.effect?.target;
+    const { iterations } = animation.effect?.getComputedTiming() ?? {};
+    return (
+      target instanceof Element &&
+      target.contains(this) &&
+      iterations !== Number.POSITIVE_INFINITY
+    );
+  });
+  await Promise.all(
+    finiteAnimations.map((animation) => animation.finished.catch(() => {})),
+  );
+  const deadline = performance.now() + timeout;
+  let previous = null;
+  for (;;) {
+    await nextFrame();
+    const rect = this.getBoundingClientRect();
+    const point = {
+      x: fromLeft === null ? rect.x + rect.width / 2 : rect.x + fromLeft,
+      y: rect.y + rect.height / 2,
+    };
+    const hit = document.elementFromPoint(point.x, point.y);
+    const settled =
+      previous !== null &&
+      previous.x === point.x &&
+      previous.y === point.y &&
+      previous.width === rect.width &&
+      previous.height === rect.height;
+    if (settled && hit && this.contains(hit)) return point;
+    if (performance.now() >= deadline) {
+      const covering = hit?.outerHTML.slice(0, 160) ?? "nothing";
+      throw new Error(`Element did not settle at its point; hit ${covering}`);
+    }
+    previous = { ...point, width: rect.width, height: rect.height };
+  }
+}
+
+export async function settledPoint(
+  session,
+  backendNodeId,
+  { fromLeft = null, timeout = DEFAULT_TIMEOUT_MS } = {},
+) {
   await session.send("DOM.getDocument", { depth: 0 });
   await session.send("DOM.scrollIntoViewIfNeeded", { backendNodeId });
-  const { model } = await session.send("DOM.getBoxModel", { backendNodeId });
-  const [left, top, , , right, bottom] = model.border;
-  return { x: (left + right) / 2, y: (top + bottom) / 2 };
+  const { object } = await session.send("DOM.resolveNode", { backendNodeId });
+  const { result, exceptionDetails } = await session.send(
+    "Runtime.callFunctionOn",
+    {
+      objectId: object.objectId,
+      functionDeclaration: settledPointOf.toString(),
+      arguments: [{ value: fromLeft }, { value: timeout }],
+      awaitPromise: true,
+      returnByValue: true,
+    },
+  );
+  await session.send("Runtime.releaseObject", { objectId: object.objectId });
+  if (exceptionDetails) {
+    throw new Error(
+      exceptionDetails.exception?.description ?? exceptionDetails.text,
+    );
+  }
+  return result.value;
+}
+
+export async function backendNodeIdOf(session, selector) {
+  const { root } = await session.send("DOM.getDocument", { depth: 0 });
+  const { nodeId } = await session.send("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector,
+  });
+  if (!nodeId) throw new Error(`No element matches ${selector}`);
+  const { node } = await session.send("DOM.describeNode", { nodeId });
+  return node.backendNodeId;
+}
+
+export async function centerOf(session, backendNodeId) {
+  return settledPoint(session, backendNodeId);
+}
+
+export async function clickSelector(session, selector, options) {
+  const backendNodeId = await backendNodeIdOf(session, selector);
+  await clickPoint(
+    session,
+    await settledPoint(session, backendNodeId, options),
+  );
 }
 
 export async function clickByRole(

@@ -1,6 +1,6 @@
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { AgentMessageDeltaEvent } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

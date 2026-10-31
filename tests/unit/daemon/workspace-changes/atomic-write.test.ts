@@ -1,7 +1,7 @@
 import { chmod, lstat, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { writeFileAtomically } from "@cocurdex/daemon/internal/workspace-changes/atomic-write";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

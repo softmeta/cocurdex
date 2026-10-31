@@ -2,6 +2,8 @@ import {
   AGENT_RUN_LIMIT_BOUNDS,
   AGENT_RUN_LIMITS_SETTING_KEY,
   type AgentToolCallerContext,
+  MEMORY_SETTINGS_KEY,
+  normalizeMemorySettings,
   parseAgentRunLimits,
   type WorkspaceWorktreeEnvironment,
 } from "@cocurdex/shared";
@@ -83,6 +85,40 @@ const FOLLOW_UP_BEHAVIORS = ["queue", "steer"] as const;
 const ACTIVITY_DISPLAY_MODES = ["expanded", "condensed", "hidden"] as const;
 
 export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
+  {
+    key: MEMORY_SETTINGS_KEY,
+    scope: "global",
+    tier: "write",
+    storage: "daemon",
+    description:
+      "Long-term memory through Respire (rsrs). enabled is the master switch; agent controls automatic recall and memory tools for agent sessions; chat controls recall and automatic capture for chat sessions; cliPath optionally points at the rsrs executable.",
+    valueSchema: {
+      type: "object",
+      properties: {
+        enabled: { type: "boolean" },
+        agent: {
+          type: "object",
+          properties: {
+            injectContext: { type: "boolean" },
+            tools: { type: "boolean" },
+          },
+          additionalProperties: false,
+        },
+        chat: {
+          type: "object",
+          properties: {
+            recall: { type: "boolean" },
+            saveTurns: { type: "boolean" },
+            saveOnEnd: { type: "boolean" },
+          },
+          additionalProperties: false,
+        },
+        cliPath: { type: ["string", "null"] },
+      },
+      additionalProperties: false,
+    },
+    validate: (value) => normalizeMemorySettings(value),
+  },
   {
     key: WORKTREE_ENVIRONMENT_KEY,
     scope: "workspace",

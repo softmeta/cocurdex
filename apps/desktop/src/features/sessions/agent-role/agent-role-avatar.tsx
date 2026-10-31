@@ -1,16 +1,14 @@
-import type {
-  AgentId,
-  AgentRoleAvatar as AgentRoleAvatarValue,
+import {
+  type AgentId,
+  type AgentRoleAvatar as AgentRoleAvatarValue,
+  agentRoleInitial,
+  defaultAgentRoleAvatarColor,
 } from "@cocurdex/shared";
 import { User } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib";
 import { AgentIcon } from "../agent-icon";
-import {
-  agentRoleAvatarColorClassName,
-  agentRoleInitial,
-  defaultAgentRoleAvatarColor,
-} from "./agent-role-avatar-style";
+import { agentRoleAvatarColorClassName } from "./agent-role-avatar-style";
 
 export interface AgentRoleAvatarSource {
   id: string;

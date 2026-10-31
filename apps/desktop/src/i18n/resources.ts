@@ -5,6 +5,7 @@ import commonEnUs from "../locales/en-US/common.json";
 import decksEnUs from "../locales/en-US/decks.json";
 import editorEnUs from "../locales/en-US/editor.json";
 import issuesEnUs from "../locales/en-US/issues.json";
+import memoryEnUs from "../locales/en-US/memory.json";
 import notesEnUs from "../locales/en-US/notes.json";
 import onboardingEnUs from "../locales/en-US/onboarding.json";
 import searchEnUs from "../locales/en-US/search.json";
@@ -17,6 +18,7 @@ import commonZhCn from "../locales/zh-CN/common.json";
 import decksZhCn from "../locales/zh-CN/decks.json";
 import editorZhCn from "../locales/zh-CN/editor.json";
 import issuesZhCn from "../locales/zh-CN/issues.json";
+import memoryZhCn from "../locales/zh-CN/memory.json";
 import notesZhCn from "../locales/zh-CN/notes.json";
 import onboardingZhCn from "../locales/zh-CN/onboarding.json";
 import searchZhCn from "../locales/zh-CN/search.json";
@@ -32,6 +34,7 @@ export const resources = {
     decks: decksEnUs,
     editor: editorEnUs,
     issues: issuesEnUs,
+    memory: memoryEnUs,
     notes: notesEnUs,
     onboarding: onboardingEnUs,
     search: searchEnUs,
@@ -46,6 +49,7 @@ export const resources = {
     decks: decksZhCn,
     editor: editorZhCn,
     issues: issuesZhCn,
+    memory: memoryZhCn,
     notes: notesZhCn,
     onboarding: onboardingZhCn,
     search: searchZhCn,

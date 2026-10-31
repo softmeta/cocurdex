@@ -16,8 +16,9 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
+    "@cocurdex/test-fixtures": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
-    "@pierre/diffs": "^1.6.0",
+    "@pierre/diffs": "^1.6.1",
     "@shikijs/monaco": "^3.23.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -31,6 +32,7 @@
     "electron-log": "^5.4.3",
     "jotai": "^2.20.3",
     "jsdom": "^26.1.0",
+    "jsqr": "^1.4.0",
     "monaco-editor": "^0.57.0",
     "react": "^19.3.1",
     "react-i18next": "^17.1.0",

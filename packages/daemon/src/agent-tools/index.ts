@@ -3,6 +3,7 @@ export {
   type AgentToolSessionBinding,
 } from "./agent-tool-bridge";
 export { registerHistoryTools } from "./groups/history";
+export { registerMemoryTools } from "./groups/memory";
 export { registerMessagingTools } from "./groups/messaging";
 export { registerScriptRunTools } from "./groups/script-run";
 export {

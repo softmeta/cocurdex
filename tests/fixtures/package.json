@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     "./database": "./database.ts",
-    "./db/*": "./db/*"
+    "./db/*": "./db/*",
+    "./temp-dirs": "./temp-dirs.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2"

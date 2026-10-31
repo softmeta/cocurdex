@@ -18,6 +18,9 @@ cocurdex note backlinks <id> --json
 cocurdex note tags [<id>] --json
 ```
 
+`note list` returns summaries without bodies; each note with prose carries an
+`excerpt` of its first lines, so skim it before deciding which note to `show`.
+
 Any note can hold child pages. A child page always belongs to its top-level
 page's workspace: `--workspace` applies only to top-level notes, and moving a
 note under another page moves its whole subtree into that page's workspace.
@@ -39,6 +42,17 @@ into it, and the stored body comes back normalized. Use the `bodyMarkdown`
 returned by the command as the current text. Supported blocks: headings,
 lists, task lists, tables, images, quotes, and code. Unsupported syntax such
 as raw HTML is kept as plain text.
+
+To put a screenshot, diagram, or other image in a body, import the file and
+paste the returned `markdown` (`![name](cocurdex://image/<file>)`) where it
+belongs. Images live in the app, not the workspace, so they work on every
+device. To look at an image a body already contains, `image locate` prints
+the local `filePath`; read that file.
+
+```bash
+cocurdex image import <path.png|jpg|gif|webp> [--name <alt text>] --json
+cocurdex image locate cocurdex://image/<file> --json
+```
 
 People may edit a note in the app while you work on it. When you rewrite a
 body you read earlier, pass the `revision` from that `note show` as

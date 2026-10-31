@@ -10,6 +10,7 @@ import type {
   AgentSlashCommand,
   AgentThinkingLevel,
   MessageAttachment,
+  ThinkingLevelOption,
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
@@ -21,15 +22,12 @@ import { JumpControls } from "@/components/chat";
 import {
   ChatComposer,
   type ChatComposerHandle,
+  type ComposerSendOutcome,
   ComposerSurface,
   ComposerSurfaceBody,
   composerFooterControlClassName,
 } from "@/features/composer";
-import {
-  ScriptRunPanel,
-  TeamPanel,
-  type ThinkingLevelOption,
-} from "@/features/sessions";
+import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
 import { WorkspaceRootsTooltip, workspaceIconFor } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
@@ -86,7 +84,7 @@ interface ChatComposerControls {
     message: string,
     attachments: MessageAttachment[],
     useOppositeFollowUpBehavior?: boolean,
-  ): void;
+  ): ComposerSendOutcome | Promise<ComposerSendOutcome>;
   onStop?(): void;
   onDeleteQueuedInput?(item: QueuedAgentInputItem): Promise<void>;
   onSendNowQueuedInput?(item: QueuedAgentInputItem): Promise<void>;

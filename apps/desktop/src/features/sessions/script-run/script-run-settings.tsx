@@ -7,18 +7,14 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { SettingsGroup } from "@/components";
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-  Text,
-} from "@/components/ui";
+  SettingNumberInput,
+  SettingRow,
+  SettingsGroup,
+} from "@/components/app";
 import { desktopApi, useMountEffect } from "@/lib";
 
 function SettingNumberRow({
-  id,
   title,
   description,
   value,
@@ -28,7 +24,6 @@ function SettingNumberRow({
   unit,
   onCommit,
 }: {
-  id: string;
   title: string;
   description: string;
   value: number | null;
@@ -40,34 +35,19 @@ function SettingNumberRow({
 }) {
   const [draft, setDraft] = useState(value === null ? "" : String(value));
   return (
-    <div className="flex items-center justify-between gap-6 py-3.5">
-      <label className="min-w-0 flex-1" htmlFor={id}>
-        <Text as="div" weight="medium">
-          {title}
-        </Text>
-        <Text as="div" className="mt-0.5" tone="muted">
-          {description}
-        </Text>
-      </label>
-      <InputGroup className="w-24 shrink-0">
-        <InputGroupInput
-          className="text-end tabular-nums"
-          id={id}
-          max={max}
-          min={min}
-          onBlur={() => onCommit(draft.trim() ? Number(draft) : null)}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={placeholder}
-          type="number"
-          value={draft}
-        />
-        {unit ? (
-          <InputGroupAddon align="inline-end">
-            <InputGroupText>{unit}</InputGroupText>
-          </InputGroupAddon>
-        ) : null}
-      </InputGroup>
-    </div>
+    <SettingRow description={description} title={title}>
+      <SettingNumberInput
+        aria-label={title}
+        max={max}
+        min={min}
+        onChange={(event) => setDraft(event.target.value)}
+        onCommit={() => onCommit(draft.trim() ? Number(draft) : null)}
+        placeholder={placeholder}
+        type="number"
+        unit={unit}
+        value={draft}
+      />
+    </SettingRow>
   );
 }
 
@@ -104,7 +84,6 @@ export function ScriptRunSettingsSection() {
     >
       <SettingNumberRow
         description={t("teams.scriptRuns.defaultMaxAgentsDescription")}
-        id="script-run-default-max-agents"
         key={`agents-${settings.defaultMaxAgents}`}
         max={SCRIPT_RUN_HARD_MAX_AGENTS}
         min={1}
@@ -119,7 +98,6 @@ export function ScriptRunSettingsSection() {
       />
       <SettingNumberRow
         description={t("teams.scriptRuns.schemaMaxAttemptsDescription")}
-        id="script-run-schema-attempts"
         key={`attempts-${settings.schemaMaxAttempts}`}
         max={SCRIPT_RUN_MAX_SCHEMA_ATTEMPTS}
         min={1}
@@ -134,7 +112,6 @@ export function ScriptRunSettingsSection() {
       />
       <SettingNumberRow
         description={t("teams.scriptRuns.maxDurationDescription")}
-        id="script-run-max-duration"
         key={`duration-${settings.maxDurationMinutes}`}
         min={1}
         onCommit={(value) => void save({ maxDurationMinutes: value })}

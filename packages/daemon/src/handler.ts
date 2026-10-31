@@ -6,6 +6,7 @@ import type {
 } from "@cocurdex/rpc";
 import type { ProviderAuthMethod } from "@cocurdex/shared";
 import { validateSessionId } from "@cocurdex/shared";
+import { importDocImage, locateDocImage } from "./doc-images";
 import {
   checkoutGitBranch,
   discardGitFiles,
@@ -91,7 +92,13 @@ export async function handleDaemonRequest(
     case "agent.sessionModes.read":
       return service.readAgentSessionModes(request.params.agentId);
     case "agent.login":
-      return service.providerService.loginAgent(request.params.agentId);
+      return service.agentAuth.login(request.params);
+    case "agent.login.cancel":
+      return service.agentAuth.cancelLogin(request.params.agentId);
+    case "agent.logout":
+      return service.agentAuth.logout(request.params.agentId);
+    case "agent.auth.read":
+      return service.agentAuth.read(request.params.agentId);
     case "acpRegistry.catalog":
       return service.acpRegistry.listCatalog(request.params);
     case "acpRegistry.install":
@@ -112,6 +119,38 @@ export async function handleDaemonRequest(
       return service.getNetworkProxySettings();
     case "network.proxy.set":
       return service.setNetworkProxySettings(request.params.settings);
+    case "memory.status":
+      return service.memory.getStatus(request.params.refresh);
+    case "memory.settings.get":
+      return service.memory.getSettings();
+    case "memory.settings.set":
+      return service.memory.setSettings(request.params.settings);
+    case "memory.recall":
+      return service.memory.recall(request.params);
+    case "memory.show":
+      return service.memory.show(request.params.id);
+    case "memory.remember":
+      return service.memory.remember(request.params);
+    case "memory.session.save":
+      return service.memory.saveSession(request.params);
+    case "memory.install":
+      return service.memory.install(request.params.force);
+    case "memory.doctor":
+      return service.memory.doctor(request.params);
+    case "memory.policy":
+      return service.memory.policy();
+    case "memory.cloud.connect":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.connectCloud(request.params);
+    case "memory.cloud.disconnect":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.disconnectCloud();
+    case "memory.cloud.setSync":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.setCloudSync(request.params.enabled);
+    case "memory.cloud.keys":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.cloudKeys();
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":
@@ -176,6 +215,15 @@ export async function handleDaemonRequest(
         "file",
       );
       return service.decks.importImage(request.params);
+    case "image.import":
+      await service.assertClientPathAccess(
+        context.principal,
+        request.params.path,
+        "file",
+      );
+      return importDocImage(service.attachments, request.params);
+    case "image.locate":
+      return locateDocImage(service.attachments, request.params);
     case "deck.import":
       await service.assertClientPathAccess(
         context.principal,
@@ -430,10 +478,19 @@ export async function handleDaemonRequest(
       );
     case "session.contextTransfers":
       return service.listContextTransfers(request.params.sessionId);
+    case "session.resolveNew":
+      return service.resolveNewSessionDefaults(request.params);
+    case "session.create":
+      return service.createSession(request.params);
     case "session.configure":
-      return service.saveSessionConfiguration(request.params);
+      return service.saveSessionConfiguration(
+        request.params,
+        context.principal,
+      );
     case "session.get":
       return service.getSession(request.params.sessionId);
+    case "session.runtimeState":
+      return service.getSessionRuntimeState(request.params.sessionId);
     case "session.listPeers":
       return service.peerMessaging.listPeers(request.params.sessionId);
     case "session.sendPeerMessage":
@@ -604,6 +661,10 @@ export async function handleDaemonRequest(
         request.params.workspaceRootPath,
       );
     case "session.send":
+      await service.assertClientAttachmentsAccess(
+        context.principal,
+        request.params.attachments,
+      );
       return service.sendSessionMessage(request.params);
     case "session.resumeQueued":
       return service.resumeQueuedSession(request.params.sessionId);
@@ -641,6 +702,8 @@ export async function handleDaemonRequest(
         request.params.modeId,
       );
       return null;
+    case "session.updateRuntime":
+      return service.updateSessionRuntime(request.params, context.principal);
     case "session.stop":
       return service.stopSession(request.params.sessionId);
     case "session.undoTurnChanges":

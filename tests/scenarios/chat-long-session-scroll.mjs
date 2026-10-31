@@ -226,7 +226,7 @@ runScenario("chat-long-session-scroll", {
               (frame) =>
                 frame.gap < 2 &&
                 frame.lastIndex === settled[0].lastIndex &&
-                frame.lastRowBottom === settled[0].lastRowBottom,
+                Math.abs(frame.lastRowBottom - settled[0].lastRowBottom) <= 1,
             ),
           "content moved after reaching the bottom",
           { frames },

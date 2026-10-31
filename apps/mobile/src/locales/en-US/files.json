@@ -1,0 +1,11 @@
+{
+  "binary": "This file can't be previewed.",
+  "copy": "Copy Contents",
+  "failed": "Couldn't load the file. Check the connection and try again.",
+  "missing": "This file no longer exists on the computer.",
+  "outside": "This file is outside the computer's workspaces.",
+  "retry": "Try Again",
+  "showPreview": "Show Preview",
+  "showSource": "Show Source",
+  "truncated": "Showing the first 512 KB of this file."
+}

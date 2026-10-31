@@ -4,7 +4,7 @@ import {
   createSessionLogWriter,
   type SessionLogWriter,
 } from "@cocurdex/shared/node";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const DAY_MS = 24 * 60 * 60 * 1000;

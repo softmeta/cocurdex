@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { addGitWorktree } from "@cocurdex/daemon/internal/git-worktree";
 import {
@@ -7,15 +6,13 @@ import {
   removeAppManagedWorktree,
 } from "@cocurdex/daemon/internal/orchestration-workspace";
 import { runGit } from "@cocurdex/daemon/internal/workspace-changes/git-run";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
 
 async function createFixture() {
-  const fixturePath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-remove-worktree-"),
-  );
-  temporaryDirectories.push(fixturePath);
+  const fixturePath = await tempDirs.create("cocurdex-remove-worktree-");
   const repoRootPath = path.join(fixturePath, "repository");
   const worktreeRootPath = path.join(fixturePath, "worktrees");
   await mkdir(repoRootPath);
@@ -45,11 +42,7 @@ async function branchExists(repoRootPath: string, branch: string) {
 }
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("removeAppManagedWorktree", () => {

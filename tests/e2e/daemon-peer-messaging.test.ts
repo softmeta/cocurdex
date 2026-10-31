@@ -1,6 +1,6 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type { SessionConfiguration, WorkspaceRecord } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterAll, describe, expect, it } from "vitest";

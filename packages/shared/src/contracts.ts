@@ -1339,6 +1339,38 @@ export interface DeleteSessionPayload {
   sessionId: string;
 }
 
+export interface SessionRuntimeSelection {
+  reasoningEffort?: ReasoningEffort | null;
+  serviceTier?: string | null;
+  fastMode?: boolean | null;
+  thinkingLevel?: AgentThinkingLevel | null;
+  openCodeAgent?: string | null;
+  openCodeVariant?: string | null;
+}
+
+export interface CreateSessionPayload {
+  workspaceId: string;
+  agentType?: AgentId;
+  model?: { providerId: string; modelId: string } | null;
+  permissionMode?: AgentPermissionMode | null;
+  agentRoleId?: string | null;
+  title?: string;
+  runtime?: SessionRuntimeSelection;
+}
+
+export interface UpdateSessionRuntimePayload {
+  sessionId: string;
+  model?: { providerId: string; modelId: string };
+  runtime?: SessionRuntimeSelection;
+}
+
+export interface NewSessionDefaults {
+  agentType: AgentId;
+  model: { providerId: string; modelId: string; name: string } | null;
+  permissionMode: AgentPermissionMode | null;
+  permissionModes: AgentPermissionMode[];
+}
+
 export interface RefineSessionTitlePayload {
   sessionId: string;
   message: string;

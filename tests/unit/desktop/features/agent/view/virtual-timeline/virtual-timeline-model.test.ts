@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getAdjacentPromptIndexes,
+  getAnchoredConversationMinHeight,
   getConversationWindow,
   getMessageScrollTop,
 } from "@/features/agent/view/virtual-timeline/virtual-timeline-model";
@@ -40,5 +41,26 @@ describe("measured message alignment", () => {
     expect(getMessageScrollTop(0, 0, 20_000, 600)).toBe(0);
     expect(getMessageScrollTop(19_000, 900, 20_000, 600)).toBe(19_400);
     expect(getMessageScrollTop(0, 100, 200, 600)).toBe(0);
+  });
+});
+
+describe("sent prompt anchor", () => {
+  const MESSAGE_INSET = 20;
+  const BOTTOM_PADDING = 24;
+  const anchoredPromptTop = (viewportHeight: number) =>
+    viewportHeight -
+    getAnchoredConversationMinHeight(viewportHeight) -
+    BOTTOM_PADDING;
+
+  it("keeps a fifth of a short viewport of earlier reply above the prompt", () => {
+    expect(anchoredPromptTop(600)).toBe(MESSAGE_INSET + 120);
+  });
+
+  it("caps the earlier reply peek on tall viewports", () => {
+    expect(anchoredPromptTop(1600)).toBe(MESSAGE_INSET + 160);
+  });
+
+  it("never reserves a negative tail", () => {
+    expect(getAnchoredConversationMinHeight(40)).toBe(0);
   });
 });

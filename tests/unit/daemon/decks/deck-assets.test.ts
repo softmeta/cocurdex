@@ -7,7 +7,7 @@ import path from "node:path";
 import { createDeckAssetHttpHandler } from "@cocurdex/daemon/internal/decks/deck-asset-http";
 import { DeckAssetStore } from "@cocurdex/daemon/internal/decks/deck-assets";
 import { buildDaemonDeckAssetUrl, type HostPrincipal } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const PNG_PATH = createRequire(import.meta.url).resolve(

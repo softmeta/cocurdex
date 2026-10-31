@@ -214,7 +214,13 @@ export async function handleDaemonWireMessage(
       : { outcome: await run(), replayed: false };
     replayed = execution.replayed;
     if (execution.outcome.ok) {
-      send({ id: request.id, result: execution.outcome.result });
+      send(
+        { id: request.id, result: execution.outcome.result },
+        request.method === "host.devices.revokeSelf" &&
+          principal.kind === "device"
+          ? () => service.hostAccess.disconnectDevice(principal.deviceId)
+          : undefined,
+      );
     } else {
       send({ id: request.id, error: execution.outcome.error });
     }

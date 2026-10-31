@@ -10,7 +10,7 @@ import {
 } from "@cocurdex/daemon/client";
 import { getDaemonLogDirectory } from "@cocurdex/daemon/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 
 const tempDirs = createTempDirs();
 const activeStops = new Set<() => Promise<number | null>>();
@@ -38,10 +38,13 @@ const STARTUP_TIMEOUT_MS = 20_000;
 const SHUTDOWN_TIMEOUT_MS = 20_000;
 const LOG_TAIL_LINES = 40;
 
-async function daemonLogTail(userDataPath: string) {
+export async function daemonLogTail(
+  userDataPath: string,
+  lines = LOG_TAIL_LINES,
+) {
   const logPath = path.join(getDaemonLogDirectory(userDataPath), "daemon.log");
   const text = await readFile(logPath, "utf8").catch(() => "(no daemon log)");
-  return text.split(/\r?\n/).slice(-LOG_TAIL_LINES).join("\n");
+  return text.split(/\r?\n/).slice(-lines).join("\n");
 }
 
 export function sleep(ms: number) {
@@ -152,6 +155,7 @@ export async function spawnDaemon(
       COCURDEX_USER_DATA_PATH: userDataPath,
       COCURDEX_DAEMON_TOKEN: token,
       COCURDEX_DAEMON_RUNTIME_FINGERPRINT: "e2e-runtime",
+      COCURDEX_DISABLE_MEMORY_AUTO_START: "1",
       NO_COLOR: "1",
       TZ: "UTC",
     },

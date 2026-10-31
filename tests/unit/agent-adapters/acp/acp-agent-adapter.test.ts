@@ -59,6 +59,7 @@ function createAcpConnection(
       agentCapabilities: {},
     }),
     authenticate: async () => ({}),
+    logout: async () => ({}),
     newSession: async () => ({ sessionId: "new-session" }),
     loadSession: async () => ({}),
     resumeSession: async () => ({}),
@@ -134,6 +135,7 @@ describe("AcpAgentAdapter", () => {
         }),
       ),
       authenticate: vi.fn(async () => ({})),
+      logout: vi.fn(async () => ({})),
       newSession: vi.fn(async () => ({
         sessionId: "grok-session-1",
         modes: {
@@ -534,6 +536,7 @@ describe("AcpAgentAdapter", () => {
         ({
           initialize: async () => ({ protocolVersion: 1 }),
           authenticate: async () => ({}),
+          logout: async () => ({}),
           newSession: async () => ({ sessionId: "grok-session-1" }),
           loadSession: async () => ({}),
           resumeSession: async () => ({}),
@@ -625,6 +628,7 @@ describe("AcpAgentAdapter", () => {
       return {
         initialize: async () => ({ protocolVersion: 1 }),
         authenticate: async () => ({}),
+        logout: async () => ({}),
         newSession: async () => ({ sessionId: "unused" }),
         loadSession: async () => ({}),
         resumeSession: async () => ({}),
@@ -876,6 +880,7 @@ describe("AcpAgentAdapter", () => {
         agentCapabilities: { loadSession: true },
       }),
       authenticate: async () => ({}),
+      logout: async () => ({}),
       newSession: vi.fn(async () => ({ sessionId: "replacement-session" })),
       loadSession: vi.fn(async () => {
         throw new Error("session not found");
@@ -964,6 +969,7 @@ describe("AcpAgentAdapter", () => {
         agentCapabilities: { loadSession: true },
       }),
       authenticate: async () => ({}),
+      logout: async () => ({}),
       newSession: vi.fn(async () => ({ sessionId: "unused-session" })),
       loadSession: vi.fn(async () => ({})),
       resumeSession: async () => ({}),

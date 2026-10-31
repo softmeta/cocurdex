@@ -1,26 +1,18 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
+
 const now = "2026-08-31T00:00:00.000Z";
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 async function createService() {
-  const userDataPath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-subagent-persist-"),
-  );
-  temporaryDirectories.push(userDataPath);
+  const userDataPath = await tempDirs.create("cocurdex-subagent-persist-");
   const service = new CocurdexDaemonService({
     runtimeFingerprint: "subagent-persist-test",
     userDataPath,

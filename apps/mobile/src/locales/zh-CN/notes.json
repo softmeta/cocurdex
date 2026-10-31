@@ -1,0 +1,60 @@
+{
+  "create": {
+    "failed": "无法创建笔记，请检查连接后重试。",
+    "open": "新建笔记"
+  },
+  "editor": {
+    "block": {
+      "blockquote": "引用",
+      "codeBlock": "代码块",
+      "heading1": "标题 1",
+      "heading2": "标题 2",
+      "heading3": "标题 3",
+      "paragraph": "正文"
+    },
+    "bodyPlaceholder": "写点什么，或输入 / 插入标题、列表和待办",
+    "edit": "编辑",
+    "finishEditing": "完成编辑",
+    "format": {
+      "bold": "粗体",
+      "bulletList": "项目符号列表",
+      "hideKeyboard": "收起键盘",
+      "insert": "插入",
+      "taskList": "待办清单",
+      "text": "文本样式"
+    },
+    "insert": {
+      "bulletList": "项目符号列表",
+      "horizontalRule": "分割线",
+      "orderedList": "编号列表",
+      "table": "表格",
+      "taskList": "待办清单"
+    },
+    "status": {
+      "error": "未保存",
+      "saved": "已保存",
+      "saving": "正在保存…"
+    },
+    "titlePlaceholder": "无标题",
+    "untitled": "无标题"
+  },
+  "empty": {
+    "description": "在 {{host}} 上写的笔记会显示在这里。",
+    "title": "没有笔记"
+  },
+  "missing": "这篇笔记已在电脑上删除。",
+  "noResults": "没有与“{{query}}”匹配的笔记",
+  "noWorkspace": "未归属工作区",
+  "properties": {
+    "moveFailed": "无法移动笔记，请检查连接后重试。",
+    "noParent": "无",
+    "parent": "上级笔记",
+    "title": "笔记属性"
+  },
+  "search": "搜索笔记",
+  "unavailable": {
+    "retry": "重试",
+    "title": "无法从 {{host}} 加载笔记"
+  },
+  "workspace": "工作区"
+}

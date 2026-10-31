@@ -4,7 +4,7 @@ import path from "node:path";
 import { DaemonSkillLibraryService } from "@cocurdex/daemon/internal/skills/index";
 import { GithubSnapshotStore } from "@cocurdex/daemon/internal/skills/skill-snapshots";
 import type { WorkspaceRecord } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type ArchiveServer,

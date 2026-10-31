@@ -47,6 +47,21 @@ export interface AcpRegistryInstalledAgent {
   args: string[];
   env: Record<string, string>;
   installedAt: string;
+  authMethodId?: string;
+}
+
+export interface AgentAuthMethod {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface AgentAuthState {
+  methods: AgentAuthMethod[];
+  preferredMethodId: string | null;
+  loginMethodId: string | null;
+  logoutSupported: boolean;
+  liveSessionCount: number;
 }
 
 export function toAcpRegistryAgentId(registryId: string): AcpRegistryAgentId {

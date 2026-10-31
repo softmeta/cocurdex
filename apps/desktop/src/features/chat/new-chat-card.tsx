@@ -19,8 +19,6 @@ import {
   bootstrapProviderModelsAtom,
   providerModelsAtom,
 } from "@/features/sessions";
-// Sub-entry, not the settings barrel: that barrel reaches SettingsScreen ->
-// @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
 import { useMountEffect } from "@/lib";
 import { chatProviderModelsAtom } from "./chat-models";
@@ -127,14 +125,15 @@ export function NewChatCard({ onStartChat }: NewChatCardProps) {
         placeholderOverride={t("composer.placeholder", {
           defaultValue: "Ask anything…",
         })}
-        onSend={(text, attachments) => {
-          if (!providerSnapshot) return;
-          return onStartChat({
+        onSend={async (text, attachments) => {
+          if (!providerSnapshot) return "kept";
+          await onStartChat({
             providerSnapshot: { ...providerSnapshot, thinkingLevel },
             thinkingLevel,
             text,
             attachments,
           });
+          return "sent";
         }}
       />
     </ComposerSurfaceBody>

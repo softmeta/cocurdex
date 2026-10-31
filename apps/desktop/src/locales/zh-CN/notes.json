@@ -31,6 +31,11 @@
     "titleLabel": "笔记标题",
     "untitledPlaceholder": "无标题"
   },
+  "image": {
+    "tooLarge": "图片不能超过 10 MB。",
+    "unsupported": "仅支持 PNG、JPEG、GIF 或 WebP 图片。",
+    "uploadFailed": "图片添加失败"
+  },
   "scope": {
     "private": "私人",
     "workspace": "{{name}}",

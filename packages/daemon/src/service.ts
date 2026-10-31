@@ -28,10 +28,12 @@ import type {
   CocurdexDaemonEvent,
   CommitMessageModelSelection,
   ContextTransferRecord,
+  CreateSessionPayload,
   CreateWorkflowPayload,
   ForkSessionPayload,
   GetToolCallResultInput,
   GitCommitResult,
+  MemorySettings,
   MessageRecord,
   NetworkProxySettings,
   QueuedAgentInputRecord,
@@ -48,6 +50,7 @@ import type {
   TurnChangeFileContentRequest,
   UndoTurnChangesInput,
   UpdateSessionAttentionPayload,
+  UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
@@ -56,6 +59,7 @@ import type {
 import {
   AGENT_RUN_LIMITS_SETTING_KEY,
   buildContextHandoffText,
+  buildPolicy,
   CHAT_WORKSPACE_ID,
   contextHandoffBudget,
   emptyWorktreeEnvironment,
@@ -66,8 +70,12 @@ import {
   isAssistantSessionId,
   isChatSession,
   isChatWorkspaceId,
+  isFeatureEnabled,
   isHandoffVisibleMessage,
+  isSessionRuntimeEvent,
   isToolCallId,
+  MEMORY_SETTINGS_KEY,
+  type MessageAttachment,
   messageAgentLookup,
   newAssistantSessionId,
   normalizeAgentRoleAvatar,
@@ -89,10 +97,11 @@ import {
   workspacePathsEqual,
 } from "@cocurdex/shared";
 import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
-import { AcpRegistryService } from "./acp-registry";
+import { AcpRegistryService, AgentAuthService } from "./acp-registry";
 import {
   AgentToolBridge,
   registerHistoryTools,
+  registerMemoryTools,
   registerMessagingTools,
   registerScriptRunTools,
   registerSettingsTools,
@@ -112,8 +121,13 @@ import { logDaemonDiagnostic } from "./diagnostics";
 import { loadExecutionTree } from "./execution-tree";
 import { listHostDirectories } from "./fs-browse";
 import { commitGitChanges } from "./git";
-import { HostAccessService, listHostAddresses } from "./host-access";
+import {
+  HostAccessService,
+  LOCAL_REQUEST_CONTEXT,
+  listHostAddresses,
+} from "./host-access";
 import { DaemonMcpService } from "./mcp-service";
+import { MemoryService } from "./memory";
 import { probeNetworkProxy } from "./network-proxy-probe";
 import {
   assertTestableNetworkProxySettings,
@@ -125,11 +139,13 @@ import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
 import { CodexLoginSessions } from "./provider/codex-login";
+import { withServerProviderConnection } from "./provider/server-connection";
 import { generateProviderSessionTitle } from "./provider/session-title";
 import {
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
+import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
 import { ScriptRunModule } from "./script-run";
@@ -152,6 +168,13 @@ import {
   type SessionTurnOutcome,
   selectArchivableRoots,
 } from "./session-control";
+import {
+  type NewSessionContext,
+  resolveNewSession,
+  resolveNewSessionDefaults,
+} from "./session-control/create-session";
+import { SessionRuntimeStates } from "./session-control/runtime-states";
+import { resolveRuntimeUpdate } from "./session-control/update-runtime";
 import { DaemonSkillLibraryService } from "./skills";
 import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
@@ -203,6 +226,7 @@ export interface CocurdexDaemonServiceOptions {
   userDataPath: string;
   agentToolsUrl?: string;
   localToken?: string;
+  autoStartMemory?: boolean;
 }
 
 export interface CocurdexDaemonStatus {
@@ -244,11 +268,13 @@ export class CocurdexDaemonService {
   readonly decks: DaemonDeckService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
+  readonly agentAuth: AgentAuthService;
   readonly providerCredentials: ProviderCredentials;
   readonly providerLogins: ProviderLoginSessions;
   private startupRecovery: Promise<void> | null = null;
   private stopping = false;
   readonly commitMessageService: DaemonCommitMessageService;
+  readonly memory: MemoryService;
   readonly mcp: DaemonMcpService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
@@ -273,6 +299,7 @@ export class CocurdexDaemonService {
   readonly runs: SessionRunCoordinator;
   private readonly worktreeSetups = new WorktreeSetupRuns();
   private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
+  private readonly sessionRuntimeStates = new SessionRuntimeStates();
   private readonly runCapacity: RunCapacity;
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
   private shutdownPromise: Promise<void> | null = null;
@@ -290,6 +317,7 @@ export class CocurdexDaemonService {
       settings: this.state.hostAccessStore.settings,
       hostName: () => os.hostname(),
       listAddresses: (port) => listHostAddresses(os.networkInterfaces(), port),
+      remoteAccessAllowed: isFeatureEnabled(buildPolicy, "remote-access"),
     });
     this.hostAccessReady = this.hostAccess.initialize();
     this.workflows = new WorkflowModule(this.state.workflows);
@@ -309,6 +337,11 @@ export class CocurdexDaemonService {
       (providerId) => this.providerCredentials.setApiKey(providerId, null),
     );
     this.acpRegistry = new AcpRegistryService(this.state, options.userDataPath);
+    this.agentAuth = new AgentAuthService({
+      registry: this.acpRegistry,
+      liveSessionIds: (agentId) => this.runtime.liveSessionIdsForAgent(agentId),
+      disposeSession: (sessionId) => this.disposeSessionRuntime(sessionId),
+    });
     this.providerService = new DaemonProviderService(
       this.state,
       this.providerCredentials,
@@ -317,6 +350,13 @@ export class CocurdexDaemonService {
       this.state,
       (snapshot) => this.providerCredentials.resolveSnapshot(snapshot),
     );
+    this.memory = new MemoryService({
+      userDataPath: options.userDataPath,
+      state: this.state,
+      broadcast: (event) => this.events.emit("daemon.event", event),
+      resolveSessionProvider: (session) =>
+        this.providerCredentials.forSession(session),
+    });
     this.scanPolicy = createWorkspaceScanPolicy(this.state);
     this.searchService = new DaemonSearchService({
       broadcast: (event) => this.events.emit("daemon.event", event),
@@ -360,6 +400,8 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
       getLeadRoster: (sessionId) => this.team.rosterForLead(sessionId),
+      memoryInstructions: (hasMemoryTools) =>
+        hasMemoryTools ? this.memory.agentInstructions(true) : undefined,
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -418,6 +460,15 @@ export class CocurdexDaemonService {
           caller.sessionId,
           sessionId,
         ),
+    });
+    registerMemoryTools(this.agentTools.registry, {
+      isEnabled: () => this.memory.areToolsEnabledSync(),
+      recall: (input) => this.memory.recall(input),
+      show: (id) => this.memory.show(id),
+      remember: (input) => this.memory.remember(input),
+      policy: () => this.memory.policy(),
+      noteToolUse: (sessionId, tool) =>
+        this.memory.noteGateToolUse(sessionId, tool),
     });
     this.scriptRuns = new ScriptRunModule({
       repository: this.state.scriptRuns,
@@ -506,6 +557,7 @@ export class CocurdexDaemonService {
     this.runtime.configureAgentEventPersistence(async (event, context) => {
       const persisted = await this.state.persistAgentEvent(event, context);
       await this.state.sessionAttention.applyEvent(event);
+      if (isSessionRuntimeEvent(event)) this.sessionRuntimeStates.apply(event);
       if (event.type === "session.mode.updated" && event.availableModes) {
         await this.state.cacheSessionModes(
           event.sessionId,
@@ -538,6 +590,15 @@ export class CocurdexDaemonService {
           sessionId: event.sessionId,
           messageId: event.messageId,
         });
+        const completedSession = await this.state.getSession(event.sessionId);
+        if (completedSession && isChatSession(completedSession)) {
+          void this.memory.captureTurn(event.sessionId, event.messageId);
+        } else if (completedSession) {
+          void this.memory.finishTurn({
+            sessionId: event.sessionId,
+            enforce: (completedSession.sessionKind ?? "main") !== "subagent",
+          });
+        }
       }
       await this.team.onAgentEvent(event);
       // Only a terminal error ends the turn; a mid-turn "error" event can be
@@ -569,10 +630,13 @@ export class CocurdexDaemonService {
       concurrency: 4,
     });
     this.wakeWorkflowWorker();
+    if (options.autoStartMemory === true) {
+      void this.memory.initializeOnStartup();
+    }
   }
 
   private async agentSupportsSteering(session: SessionRecord) {
-    const agents = await this.listAgents();
+    const agents = await this.listAgents(session.agentType);
     const agent = agents.find((item) => item.id === session.agentType);
     return agent?.capabilities.supportsSteering ?? false;
   }
@@ -594,9 +658,26 @@ export class CocurdexDaemonService {
   }
 
   async archiveSession(sessionId: string) {
+    const archived = await this.archiveSessionQuietly(sessionId);
+    if (archived) this.announceSessionsChanged();
+    return archived;
+  }
+
+  private announceSessionsChanged() {
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent"],
+    });
+  }
+
+  private async archiveSessionQuietly(sessionId: string) {
     validateSessionId(sessionId);
     await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
+    const session = await this.state.getSession(sessionId);
+    if (session && isChatSession(session)) {
+      void this.memory.saveSession({ sessionId });
+    }
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
       this.queuedFollowUps.delete(sessionId);
@@ -605,6 +686,12 @@ export class CocurdexDaemonService {
   }
 
   async restoreSession(sessionId: string) {
+    const restored = await this.restoreSessionQuietly(sessionId);
+    if (restored.length > 0) this.announceSessionsChanged();
+    return restored;
+  }
+
+  private async restoreSessionQuietly(sessionId: string) {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, () =>
       this.state.restoreSession(sessionId),
@@ -631,7 +718,7 @@ export class CocurdexDaemonService {
     );
     const archivedSessionIds: string[] = [];
     for (const rootId of rootIds) {
-      if (await this.archiveSession(rootId)) {
+      if (await this.archiveSessionQuietly(rootId)) {
         archivedSessionIds.push(rootId);
       }
     }
@@ -648,7 +735,7 @@ export class CocurdexDaemonService {
     sessionIds.forEach(validateSessionId);
     const restored: SessionRecord[] = [];
     for (const sessionId of new Set(sessionIds)) {
-      restored.push(...(await this.restoreSession(sessionId)));
+      restored.push(...(await this.restoreSessionQuietly(sessionId)));
     }
     if (restored.length > 0) {
       this.events.emit("daemon.event", {
@@ -703,8 +790,11 @@ export class CocurdexDaemonService {
     };
   }
 
-  async listAgents() {
-    const agents = await detectAgentInstallations(createAgentRegistry().list());
+  async listAgents(only?: AgentId) {
+    const descriptors = createAgentRegistry()
+      .list()
+      .filter((descriptor) => !only || descriptor.id === only);
+    const agents = await detectAgentInstallations(descriptors);
     this.state.recordAgentVersions(agents);
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
@@ -862,6 +952,37 @@ export class CocurdexDaemonService {
     throw new Error(
       `Path is outside every registered workspace (path=${filePath})`,
     );
+  }
+
+  async assertClientAttachmentsAccess(
+    principal: HostPrincipal,
+    attachments: readonly MessageAttachment[] | undefined,
+  ) {
+    if (principal.kind === "local") return;
+    for (const attachment of attachments ?? []) {
+      if (attachment.kind === "context-item") continue;
+      if (attachment.kind === "image" || attachment.kind === "document") {
+        if (this.attachments.isStoredFile(attachment)) continue;
+        throw new Error(
+          `Attachment is not a stored upload (path=${attachment.filePath})`,
+        );
+      }
+      const filePath =
+        attachment.kind === "context-folder"
+          ? attachment.folderPath
+          : attachment.filePath;
+      await this.assertClientPathAccess(principal, filePath, "file");
+    }
+  }
+
+  async resolveWorkspaceFilePath(filePath: string) {
+    const resolvedPath = path.resolve(filePath);
+    if (!(await this.scanPolicy.canAccessFile(resolvedPath))) {
+      throw new Error(
+        `File is outside every registered workspace (path=${resolvedPath})`,
+      );
+    }
+    return resolvedPath;
   }
 
   async workspaceFileExists(filePath: string) {
@@ -1049,6 +1170,9 @@ export class CocurdexDaemonService {
 
   private async readDaemonSetting(key: string): Promise<unknown> {
     if (key === AGENT_RUN_LIMITS_SETTING_KEY) return this.readAgentRunLimits();
+    if (key === MEMORY_SETTINGS_KEY) {
+      return this.memory.getSettings();
+    }
     if (key === "git.commitMessageModel") {
       return this.commitMessageService.getModelSetting();
     }
@@ -1058,6 +1182,10 @@ export class CocurdexDaemonService {
   private async writeDaemonSetting(key: string, value: unknown): Promise<void> {
     if (key === AGENT_RUN_LIMITS_SETTING_KEY) {
       await this.setAgentRunLimits(value as AgentRunLimits);
+      return;
+    }
+    if (key === MEMORY_SETTINGS_KEY) {
+      await this.memory.setSettings(value as MemorySettings);
       return;
     }
     if (key === "git.commitMessageModel") {
@@ -1572,11 +1700,101 @@ export class CocurdexDaemonService {
     return aggregate;
   }
 
-  async saveSessionConfiguration(input: SessionConfiguration) {
+  async saveSessionConfiguration(
+    input: SessionConfiguration,
+    principal: HostPrincipal = LOCAL_REQUEST_CONTEXT.principal,
+  ) {
     validateSessionConfiguration(input);
-    return this.sessionCommands.run(input.id, () =>
-      this.configureSession(input),
+    const session = await this.sessionCommands.run(input.id, async () =>
+      this.configureSession(
+        principalHasScope(principal, "credentials")
+          ? input
+          : await this.withServerProviderConnection(input),
+      ),
     );
+    this.announceSessionsChanged();
+    return session;
+  }
+
+  private async newSessionContext(
+    input: CreateSessionPayload,
+  ): Promise<NewSessionContext> {
+    const sessions = await this.state.listSessions();
+    const role = input.agentRoleId
+      ? await this.state.getAgentRole(input.agentRoleId)
+      : null;
+    if (input.agentRoleId && !role) {
+      throw new Error(`Agent role ${input.agentRoleId} was not found.`);
+    }
+    const { workspaceId } = input;
+    return {
+      role,
+      agents: await this.listAgents(),
+      workspaceSessions: sessions
+        .filter((session) => session.workspaceId === workspaceId)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+      compatibleModels: (agentId) =>
+        this.providerService.listCompatibleProviderModels(agentId),
+      defaultModel: (agentId) =>
+        this.providerService.getAgentProviderDefault(agentId),
+    };
+  }
+
+  async updateSessionRuntime(
+    input: UpdateSessionRuntimePayload,
+    principal: HostPrincipal,
+  ) {
+    const session = await this.state.getSession(input.sessionId);
+    if (!session) throw new Error(`Session ${input.sessionId} was not found.`);
+    const agent = (await this.listAgents(session.agentType)).find(
+      (candidate) => candidate.id === session.agentType,
+    );
+    const configuration = resolveRuntimeUpdate(session, input, {
+      compatibleModels: await this.providerService.listCompatibleProviderModels(
+        session.agentType,
+      ),
+      permissionModes:
+        agent?.capabilities.permissionModes.map((option) => option.id) ?? [],
+    });
+    return this.saveSessionConfiguration(configuration, principal);
+  }
+
+  async resolveNewSessionDefaults(input: CreateSessionPayload) {
+    return resolveNewSessionDefaults(
+      input,
+      await this.newSessionContext(input),
+    );
+  }
+
+  async createSession(input: CreateSessionPayload) {
+    const configuration = await resolveNewSession(
+      input,
+      crypto.randomUUID(),
+      await this.newSessionContext(input),
+    );
+    return this.saveSessionConfiguration(configuration);
+  }
+
+  private async withServerProviderConnection(
+    input: SessionConfiguration,
+  ): Promise<SessionConfiguration> {
+    const snapshot = input.providerSnapshot;
+    if (!snapshot) return input;
+    const configs = await this.state.listProviderConfigs();
+    const config =
+      configs.find((candidate) => candidate.id === snapshot.providerId) ?? null;
+    const models = config ? await this.state.listProviderModels(config.id) : [];
+    const stored = await this.state.getSession(input.id);
+    return {
+      ...input,
+      providerSnapshot: withServerProviderConnection(snapshot, {
+        config,
+        model:
+          models.find((candidate) => candidate.modelId === snapshot.modelId) ??
+          null,
+        stored: stored?.providerSnapshot ?? null,
+      }),
+    };
   }
 
   private async configureSession(input: SessionConfiguration) {
@@ -1664,11 +1882,33 @@ export class CocurdexDaemonService {
     return { session, ...(await this.requireWorkspacePaths(sessionId)) };
   }
 
+  getSessionRuntimeState(sessionId: string) {
+    validateSessionId(sessionId);
+    return this.sessionRuntimeStates.get(sessionId);
+  }
+
   async deleteSession(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
       return;
     }
+    if (isChatSession(session)) {
+      try {
+        await Promise.race([
+          this.memory.saveSession({ sessionId }),
+          new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 45_000);
+            timer.unref?.();
+          }),
+        ]);
+      } catch (error) {
+        logDaemonDiagnostic("warn", "memory.deleteCaptureFailed", {
+          error: errorMessage(error, "Unknown error"),
+          sessionId,
+        });
+      }
+    }
+    this.sessionRuntimeStates.forget(sessionId);
     await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
 
@@ -1700,6 +1940,7 @@ export class CocurdexDaemonService {
       workspaceRootPath,
     );
     await this.releaseSessionWorktree(session, workspace);
+    this.announceSessionsChanged();
   }
 
   async forkSession(payload: ForkSessionPayload): Promise<SessionRecord> {
@@ -2016,7 +2257,9 @@ export class CocurdexDaemonService {
     command: SendSessionCommand,
     { hold = false } = {},
   ) {
+    const submittedAt = performance.now();
     return this.sessionCommands.run(command.sessionId, async () => {
+      const startedAt = performance.now();
       const existing = await this.state.getMessageById(command.messageId);
       if (existing) return resolveRepeatedSend(existing, command);
       const accepted = await this.acceptSessionMessage(command, { hold });
@@ -2024,6 +2267,14 @@ export class CocurdexDaemonService {
         command.sessionId,
         command.attachments,
       );
+      const acceptedAt = performance.now();
+      if (acceptedAt - submittedAt >= SLOW_REQUEST_THRESHOLD_MS) {
+        logDaemonDiagnostic("warn", "session.sendSlow", {
+          sessionId: command.sessionId,
+          queuedMs: Math.round(startedAt - submittedAt),
+          acceptMs: Math.round(acceptedAt - startedAt),
+        });
+      }
       return accepted;
     });
   }
@@ -2076,6 +2327,7 @@ export class CocurdexDaemonService {
         runId: this.runs.activeRunId(sessionId),
       };
       const userMessage = await this.state.saveUserMessage(createdMessage);
+      this.announceSessionsChanged();
       void this.runs.track(
         this.dispatchSteeringMessage(payload, userMessage, providerConfig),
       );
@@ -2111,10 +2363,7 @@ export class CocurdexDaemonService {
         this.queuedFollowUps.set(sessionId, queued);
       }
       if (heldForCapacity) this.runCapacity.hold(sessionId);
-      this.events.emit("daemon.event", {
-        type: "data.changed",
-        areas: ["agent"],
-      });
+      this.announceSessionsChanged();
       return userMessage;
     }
 
@@ -2125,6 +2374,7 @@ export class CocurdexDaemonService {
       await this.state.moveMessageToEnd(createdMessage.id, sessionId);
     }
     const savedMessage = await this.state.saveUserMessage(createdMessage);
+    this.announceSessionsChanged();
     const persistence: RuntimePersistence = {
       ...(await this.createRuntimePersistence(payload.session)),
       providerConfig,
@@ -2548,7 +2798,7 @@ export class CocurdexDaemonService {
   }
 
   private async ensureAgentAvailable(agentId: AgentId) {
-    const agents = await this.listAgents();
+    const agents = await this.listAgents(agentId);
     const agent = agents.find((item) => item.id === agentId);
 
     if (agent?.availability === "available") {
@@ -2805,6 +3055,25 @@ export class CocurdexDaemonService {
     const priorMessages = history.filter(
       (message) => message.id !== userMessage.id,
     );
+    const chatSession = isChatSession(session);
+    const sessionKind = session.sessionKind ?? "main";
+    const memoryGate = await this.memory.beginTurn({
+      sessionId: session.id,
+      mode: chatSession ? "chat" : "agent",
+      enforce: !chatSession && sessionKind !== "subagent",
+    });
+    const memoryContext =
+      !chatSession && sessionKind === "subagent"
+        ? null
+        : await this.memory.buildTurnContext(
+            session,
+            userMessage.content,
+            chatSession ? "chat" : "agent",
+          );
+    const memoryPrefix = [memoryGate, memoryContext?.brief]
+      .filter((section): section is string => Boolean(section))
+      .join("\n\n");
+    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
     const resolution = resolveStartContext({
       targetAgentType: session.agentType,
       priorMessages,
@@ -2817,7 +3086,7 @@ export class CocurdexDaemonService {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
       }
       return {
-        content: userMessage.content,
+        content: `${memoryText}${userMessage.content}`,
         history,
         contextHandoff: undefined,
       };
@@ -2878,7 +3147,7 @@ export class CocurdexDaemonService {
       areas: ["agent"],
     });
     return {
-      content: userMessage.content,
+      content: `${memoryText}${userMessage.content}`,
       history: resolution.freshProviderThread ? [userMessage] : history,
       contextHandoff: {
         text: handoff.text,

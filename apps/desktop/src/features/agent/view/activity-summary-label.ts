@@ -1,5 +1,5 @@
+import type { ActivityAction } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
-import type { ActivityAction } from "../tool-call/tool-call-action";
 import type { ActivitySummary } from "./activity-summary";
 
 function formatAction(action: ActivityAction, count: number): string {

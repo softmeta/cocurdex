@@ -4,7 +4,10 @@ import type {
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
-import { sessionConfiguration } from "@cocurdex/shared";
+import {
+  generateLocalSessionTitle,
+  sessionConfiguration,
+} from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { appendMessageAtom } from "@/features/agent";
@@ -16,7 +19,6 @@ import {
   applyRefinedSessionTitleAtom,
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
-  generateLocalSessionTitle,
   markSessionMessageAtom,
   updateSessionStatusAtom,
   upsertSessionAtom,

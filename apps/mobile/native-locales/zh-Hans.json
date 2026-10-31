@@ -1,5 +1,7 @@
 {
   "ios": {
-    "NSLocalNetworkUsageDescription": "Cocurdex 通过局域网连接你配对的电脑。"
+    "NSLocalNetworkUsageDescription": "Cocurdex 通过局域网连接你配对的电脑。",
+    "NSCameraUsageDescription": "Cocurdex 使用相机扫描电脑上的配对二维码。",
+    "NSPhotoLibraryUsageDescription": "Cocurdex 让你在发给智能体的消息里附上照片。"
   }
 }

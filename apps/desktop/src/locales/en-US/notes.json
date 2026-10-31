@@ -31,6 +31,11 @@
     "titleLabel": "Note title",
     "untitledPlaceholder": "Untitled"
   },
+  "image": {
+    "tooLarge": "Images must be 10 MB or smaller.",
+    "unsupported": "Only PNG, JPEG, GIF, or WebP images are supported.",
+    "uploadFailed": "Couldn't add the image"
+  },
   "scope": {
     "private": "Private",
     "workspace": "{{name}}",

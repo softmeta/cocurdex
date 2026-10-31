@@ -1,11 +1,7 @@
-import type { AgentThinkingLevel } from "@cocurdex/shared";
+import type { AgentThinkingLevel, ThinkingLevelOption } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
-import {
-  ProviderModelMenu,
-  type ThinkingLevelOption,
-  ThinkingLevelSubmenu,
-} from "@/features/sessions";
+import { ProviderModelMenu, ThinkingLevelSubmenu } from "@/features/sessions";
 import { chatProviderModelsAtom } from "./chat-models";
 
 interface ModelPickerProps {

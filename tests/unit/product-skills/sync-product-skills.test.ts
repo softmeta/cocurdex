@@ -1,6 +1,5 @@
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { PRODUCT_SKILL_NAMES } from "@cocurdex/product-skills/internal/manifest";
 import {
@@ -8,7 +7,10 @@ import {
   installProductSkills,
   removeProductSkills,
 } from "@cocurdex/product-skills/internal/sync-product-skills";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 const sourceRoot = path.resolve(
   path.dirname(
@@ -17,19 +19,13 @@ const sourceRoot = path.resolve(
   "../skills",
 );
 
-const tempRoots: string[] = [];
-
 async function makeTempRoot(): Promise<string> {
-  const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-skills-"));
-  tempRoots.push(dir);
+  const dir = await tempDirs.create("cocurdex-skills-");
   return dir;
 }
 
 afterEach(async () => {
-  const { rm } = await import("node:fs/promises");
-  await Promise.all(
-    tempRoots.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("product skills install", () => {

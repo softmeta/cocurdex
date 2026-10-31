@@ -1,22 +1,17 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { createAgentRegistry } from "@cocurdex/agent-core";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { SessionRecord, WorkspaceRecord } from "@cocurdex/shared";
 import { isAssistantSessionId, sessionConfiguration } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
+
 const services: CocurdexDaemonService[] = [];
 
 afterEach(async () => {
   await Promise.all(services.splice(0).map((service) => service.shutdown()));
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 function createWorkspace(): WorkspaceRecord {
@@ -47,8 +42,7 @@ function createSession(): SessionRecord {
 }
 
 async function createService() {
-  const userDataPath = await mkdtemp(path.join(tmpdir(), "cocurdex-env-"));
-  temporaryDirectories.push(userDataPath);
+  const userDataPath = await tempDirs.create("cocurdex-env-");
   const service = new CocurdexDaemonService({
     runtimeFingerprint: "test",
     userDataPath,

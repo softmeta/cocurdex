@@ -7,14 +7,16 @@ import {
   diffNoteDoc,
   noteDocToMarkdown,
 } from "@cocurdex/note-doc";
-import type {
-  CreateNotePayload,
-  NoteKind,
-  NoteLink,
-  NoteRecord,
-  NoteSummary,
-  NoteTag,
-  UpdateNotePayload,
+import {
+  type CreateNotePayload,
+  NOTE_EXCERPT_SOURCE_LENGTH,
+  type NoteKind,
+  type NoteLink,
+  type NoteRecord,
+  type NoteSummary,
+  type NoteTag,
+  noteExcerpt,
+  type UpdateNotePayload,
 } from "@cocurdex/shared";
 import type { SqliteRow } from "../sqlite-types";
 import { extractNoteMetadata } from "./note-metadata";
@@ -31,8 +33,8 @@ import {
 } from "./notes-repository";
 
 const NOTE_SUMMARY_COLUMNS = `id, parent_id, workspace_id, kind, title, icon,
-  '' AS body_markdown, NULL AS doc_state, sort_order, revision, created_at,
-  updated_at`;
+  substr(body_markdown, 1, ${NOTE_EXCERPT_SOURCE_LENGTH}) AS body_markdown,
+  NULL AS doc_state, sort_order, revision, created_at, updated_at`;
 
 interface NoteRow extends SqliteRow {
   id: string;
@@ -79,8 +81,9 @@ function mapNote(row: NoteRow): NoteRecord {
 }
 
 function toSummary(note: NoteRecord): NoteSummary {
-  const { bodyMarkdown: _bodyMarkdown, ...summary } = note;
-  return summary;
+  const { bodyMarkdown, ...summary } = note;
+  const excerpt = noteExcerpt(bodyMarkdown);
+  return excerpt ? { ...summary, excerpt } : summary;
 }
 
 function getNote(database: DatabaseSync, id: string): NoteRecord | null {

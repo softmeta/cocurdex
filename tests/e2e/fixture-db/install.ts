@@ -1,10 +1,11 @@
-import { mkdtempSync } from "node:fs";
-import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
+import { existsSync, mkdtempSync } from "node:fs";
+import { copyFile, cp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DATABASE_FILENAME } from "@cocurdex/daemon/paths";
 import {
   buildFixtureDb,
+  FIXTURE_DATA_DIRECTORIES,
   FIXTURE_MANIFEST_FILENAME,
   type FixtureManifest,
 } from "./build";
@@ -24,10 +25,11 @@ export interface InstalledFixture extends FixtureManifest {
 export async function installFixtureDb(input: {
   userDataPath: string;
   workspaceParent: string;
+  builtDir?: string;
 }): Promise<InstalledFixture> {
-  const built = mkdtempSync(path.join(tmpdir(), "cfx-out-"));
+  const built = input.builtDir ?? mkdtempSync(path.join(tmpdir(), "cfx-out-"));
   try {
-    await buildFixtureDb(built);
+    if (!input.builtDir) await buildFixtureDb(built);
     const manifest = JSON.parse(
       await readFile(path.join(built, FIXTURE_MANIFEST_FILENAME), "utf8"),
     ) as FixtureManifest;
@@ -36,6 +38,13 @@ export async function installFixtureDb(input: {
       path.join(built, DATABASE_FILENAME),
       path.join(input.userDataPath, DATABASE_FILENAME),
     );
+    for (const directory of FIXTURE_DATA_DIRECTORIES) {
+      const source = path.join(built, directory);
+      if (!existsSync(source)) continue;
+      await cp(source, path.join(input.userDataPath, directory), {
+        recursive: true,
+      });
+    }
     const installedWorkspaces: InstalledFixtureWorkspace[] = [];
     for (const workspace of manifest.workspaces) {
       installedWorkspaces.push({
@@ -58,6 +67,13 @@ export async function installFixtureDb(input: {
       installedWorkspaces,
     };
   } finally {
-    await rm(built, { recursive: true, force: true });
+    if (!input.builtDir) {
+      await rm(built, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 100,
+      });
+    }
   }
 }

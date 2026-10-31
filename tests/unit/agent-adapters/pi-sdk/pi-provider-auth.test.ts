@@ -1,26 +1,21 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import {
   loginPiProvider,
   logoutPiProvider,
   readPiProviderAuthState,
   resolvePiProviderAuth,
 } from "@cocurdex/agent-adapters/internal/pi-sdk/pi-provider-auth";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const temporaryPaths: string[] = [];
+const tempDirs = createTempDirs();
 
-afterEach(() => {
-  for (const temporaryPath of temporaryPaths.splice(0)) {
-    rmSync(temporaryPath, { force: true, recursive: true });
-  }
+afterEach(async () => {
+  await tempDirs.cleanup();
 });
 
 describe("Pi provider auth", () => {
   it("uses one Pi credential store for API key login, resolution, and logout", async () => {
-    const userDataPath = mkdtempSync(path.join(tmpdir(), "cocurdex-pi-auth-"));
-    temporaryPaths.push(userDataPath);
+    const userDataPath = tempDirs.createSync("cocurdex-pi-auth-");
 
     await loginPiProvider(userDataPath, "openai", "api_key", {
       prompt: async () => "sk-test",
@@ -54,8 +49,7 @@ describe("Pi provider auth", () => {
   });
 
   it("reports an environment API key as an ambient source", async () => {
-    const userDataPath = mkdtempSync(path.join(tmpdir(), "cocurdex-pi-auth-"));
-    temporaryPaths.push(userDataPath);
+    const userDataPath = tempDirs.createSync("cocurdex-pi-auth-");
     vi.stubEnv("OPENAI_API_KEY", "sk-env");
 
     try {

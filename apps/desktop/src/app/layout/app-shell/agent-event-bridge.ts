@@ -2,6 +2,7 @@ import { createSyncEngine } from "@cocurdex/client-runtime";
 import type { AgentEvent, DaemonEventMeta } from "@cocurdex/shared";
 import { getDefaultStore } from "jotai";
 import {
+  agentRuntimeBySessionAtom,
   applyAgentEventAtom,
   applyAgentRuntimeEventAtom,
   applyPermissionEventAtom,
@@ -11,6 +12,7 @@ import {
   applyQueuedInputEventAtom,
   applyToolEventAtom,
   messagesLoadedBySessionAtom,
+  seedAgentRuntimeAtom,
   toolCallsLoadedBySessionAtom,
 } from "@/features/agent";
 import {
@@ -147,6 +149,25 @@ function startSessionVisitSync(store: Store) {
   });
 }
 
+function startRuntimeStateSeeding(store: Store) {
+  const pending = new Set<string>();
+  const seed = () => {
+    const sessionId = store.get(activeSessionIdAtom);
+    if (!sessionId || pending.has(sessionId)) return;
+    if (store.get(agentRuntimeBySessionAtom)[sessionId]) return;
+    pending.add(sessionId);
+    desktopApi
+      .getSessionRuntimeState(sessionId)
+      .then((state) => store.set(seedAgentRuntimeAtom, { sessionId, state }))
+      .catch((error: unknown) =>
+        console.error("[AgentEvent] runtime state load failed", error),
+      )
+      .finally(() => pending.delete(sessionId));
+  };
+  seed();
+  return store.sub(activeSessionIdAtom, seed);
+}
+
 export function createAgentEventBridge(store: Store) {
   const engine = createSyncEngine<AgentEvent>({
     pull: (input) => desktopApi.pullSync(input),
@@ -183,11 +204,13 @@ export function createAgentEventBridge(store: Store) {
       void synchronize().catch(console.error);
     });
     const unsubscribeVisits = startSessionVisitSync(store);
+    const unsubscribeRuntimeSeeding = startRuntimeStateSeeding(store);
     loadSessionAttention(store);
     return () => {
       unsubscribeEvents();
       unsubscribeData();
       unsubscribeVisits();
+      unsubscribeRuntimeSeeding();
     };
   };
 

@@ -33,6 +33,10 @@ import {
   attachDaemonWebSocketServer,
   closeWebSocketServer,
 } from "./wire-websocket";
+import {
+  createWorkspaceFileHttpHandler,
+  isWorkspaceFileHttpRequest,
+} from "./workspace-file-http";
 
 const PAIRING_ATTEMPTS_PER_WINDOW = 10;
 const PAIRING_WINDOW_MS = 60_000;
@@ -44,6 +48,7 @@ export interface RemoteServerFactoryOptions {
   machineName: string;
   webRoot?: string;
   resolvePdfPath(filePath: string): Promise<string>;
+  resolveWorkspaceFilePath(filePath: string): Promise<string>;
   redeemDeckDownload(ticket: string): Promise<DeckFile | null>;
   locateDeckAsset(hash: string): Promise<{ path: string; size: number } | null>;
   onWebSocket(socket: WebSocket, request: http.IncomingMessage): void;
@@ -89,6 +94,13 @@ export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
     resolvePrincipal: (token) => options.hostAccess.resolve(token),
     resolvePdfPath: options.resolvePdfPath,
   });
+  const workspaceFileHandler = createWorkspaceFileHttpHandler({
+    remote: true,
+    isAllowedRequest: (request) =>
+      isAllowedRemoteOrigin(request.headers.origin, request.headers.host),
+    resolvePrincipal: (token) => options.hostAccess.resolve(token),
+    resolveFilePath: options.resolveWorkspaceFilePath,
+  });
   const deckDownloadHandler = createDeckDownloadHttpHandler({
     isAllowedRequest: (request) =>
       isAllowedRemoteOrigin(request.headers.origin, request.headers.host),
@@ -129,6 +141,10 @@ export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
     }
     if (isPdfHttpRequest(request)) {
       await pdfHandler(request, response);
+      return;
+    }
+    if (isWorkspaceFileHttpRequest(request)) {
+      await workspaceFileHandler(request, response);
       return;
     }
     if (isDeckDownloadHttpRequest(request)) {

@@ -41,6 +41,7 @@ export interface HostAccessServiceOptions {
   hostName(): string;
   listAddresses?(port: number): HostAddress[];
   now?(): Date;
+  remoteAccessAllowed?: boolean;
 }
 
 export interface RemoteListenerState {
@@ -96,16 +97,17 @@ export function isValidRemotePort(port: unknown): port is number {
   );
 }
 
-function normalizePairingScopes(scopes: HostAccessScope[]) {
+function normalizeDeviceScopes(scopes: HostAccessScope[]) {
   const unique = [...new Set(scopes)];
-  if (unique.length === 0)
-    throw new Error("A pairing needs at least one scope");
+  if (unique.length === 0) {
+    throw new Error("A device needs at least one scope");
+  }
   const rejected = unique.filter(
     (scope) => !PAIRABLE_HOST_ACCESS_SCOPES.includes(scope),
   );
   if (rejected.length > 0) {
     throw new Error(
-      `Scopes cannot be granted by pairing: ${rejected.join(", ")}`,
+      `Scopes cannot be granted to a device: ${rejected.join(", ")}`,
     );
   }
   return unique;
@@ -129,12 +131,22 @@ export class HostAccessService {
   private hostId: string | null = null;
   private readonly devicesByTokenHash = new Map<string, PairedDeviceRecord>();
   private readonly lastTouched = new Map<string, number>();
-  private readonly revokeListeners = new Set<(deviceId: string) => void>();
+  private readonly accessListeners = new Set<(deviceId: string) => void>();
   private readonly options: HostAccessServiceOptions;
   private remoteListener: RemoteListenerController | null = null;
 
   constructor(options: HostAccessServiceOptions) {
     this.options = options;
+  }
+
+  private get remoteAccessAllowed() {
+    return this.options.remoteAccessAllowed ?? true;
+  }
+
+  private assertRemoteAccessAllowed() {
+    if (!this.remoteAccessAllowed) {
+      throw new Error("Remote access is disabled in this build");
+    }
   }
 
   private now() {
@@ -203,9 +215,10 @@ export class HostAccessService {
     payload: CreateHostPairingPayload,
     principal: HostPrincipal,
   ): CreatedHostPairing {
+    this.assertRemoteAccessAllowed();
     const label = payload.label.trim();
     if (!label) throw new Error("A pairing needs a label");
-    const scopes = normalizePairingScopes(payload.scopes);
+    const scopes = normalizeDeviceScopes(payload.scopes);
     const ttlMinutes = normalizeTtlMinutes(payload.ttlMinutes);
     const now = this.now();
     const code = randomBytes(18).toString("base64url");
@@ -292,17 +305,58 @@ export class HostAccessService {
       this.now().toISOString(),
     );
     if (!device) return null;
-    for (const [tokenHash, cached] of this.devicesByTokenHash) {
-      if (cached.id === deviceId) this.devicesByTokenHash.delete(tokenHash);
-    }
     this.audit("device.revoked", principalActor(principal), deviceId);
-    for (const listener of this.revokeListeners) listener(deviceId);
+    this.deviceAccessChanged(deviceId);
     return device;
   }
 
-  onDeviceRevoked(listener: (deviceId: string) => void) {
-    this.revokeListeners.add(listener);
-    return () => this.revokeListeners.delete(listener);
+  revokeSelf(principal: HostPrincipal) {
+    if (principal.kind !== "device") {
+      throw new Error("Only a paired device can unpair itself");
+    }
+    const device = this.options.repository.revokeDevice(
+      principal.deviceId,
+      this.now().toISOString(),
+    );
+    if (!device) return null;
+    this.audit("device.revoked", principalActor(principal), device.id);
+    this.forgetDeviceTokens(device.id);
+    return device;
+  }
+
+  updateDeviceScopes(
+    deviceId: string,
+    scopes: HostAccessScope[],
+    principal: HostPrincipal,
+  ) {
+    const device = this.options.repository.updateDeviceScopes(
+      deviceId,
+      normalizeDeviceScopes(scopes),
+    );
+    if (!device) return null;
+    this.audit("device.scopesChanged", principalActor(principal), deviceId);
+    this.deviceAccessChanged(deviceId);
+    return device;
+  }
+
+  private deviceAccessChanged(deviceId: string) {
+    this.forgetDeviceTokens(deviceId);
+    this.disconnectDevice(deviceId);
+  }
+
+  private forgetDeviceTokens(deviceId: string) {
+    for (const [tokenHash, cached] of this.devicesByTokenHash) {
+      if (cached.id === deviceId) this.devicesByTokenHash.delete(tokenHash);
+    }
+  }
+
+  disconnectDevice(deviceId: string) {
+    for (const listener of this.accessListeners) listener(deviceId);
+  }
+
+  onDeviceAccessChanged(listener: (deviceId: string) => void) {
+    this.accessListeners.add(listener);
+    return () => this.accessListeners.delete(listener);
   }
 
   listAudit(limit: number) {
@@ -343,17 +397,21 @@ export class HostAccessService {
   }
 
   async startRemoteListener() {
+    if (!this.remoteAccessAllowed) return;
     const settings = await this.readRemoteAccessSettings();
     if (settings.enabled) await this.remoteListener?.apply(settings);
   }
 
   async remoteAccessStatus(): Promise<HostRemoteAccessStatus> {
-    const settings = await this.readRemoteAccessSettings();
+    const stored = await this.readRemoteAccessSettings();
+    const allowed = this.remoteAccessAllowed;
+    const settings = allowed ? stored : { ...stored, enabled: false };
     const state = this.remoteListener?.state() ?? {
       listening: false,
       error: null,
     };
     return {
+      allowed,
       settings,
       listening: state.listening,
       addresses: state.listening
@@ -367,6 +425,7 @@ export class HostAccessService {
     settings: RemoteAccessSettings,
     principal: HostPrincipal,
   ) {
+    if (settings.enabled) this.assertRemoteAccessAllowed();
     const saved = await this.saveRemoteAccessSettings(settings, principal);
     await this.remoteListener?.apply(saved);
     return this.remoteAccessStatus();

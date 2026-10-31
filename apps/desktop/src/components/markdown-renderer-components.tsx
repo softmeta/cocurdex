@@ -1,3 +1,4 @@
+import { parseFilePathCandidate } from "@cocurdex/shared";
 import type { MouseEvent, ReactNode } from "react";
 import { cn, desktopApi } from "@/lib";
 import {
@@ -9,7 +10,6 @@ import {
 import {
   extractInlineCodeText,
   type MarkdownFilePathHandlers,
-  parseFilePathCandidate,
   parseWorkspaceFileHref,
 } from "./markdown-file-path";
 import { linkifyFilePaths } from "./markdown-file-path-linkify";

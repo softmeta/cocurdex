@@ -3,6 +3,7 @@ import type {
   AgentTurnCompletedEvent,
   MessageRecord,
 } from "@cocurdex/shared";
+import { STREAM_RENDER_BATCH_MS } from "@cocurdex/shared";
 import type { Getter, Setter } from "jotai";
 import { atom } from "jotai";
 import { findMessageById, upsertMessages } from "./message-collection";
@@ -19,7 +20,7 @@ export const messagesBySessionAtom = atom<MessagesBySession>({});
 export const messagesLoadedBySessionAtom = atom<LoadedBySession>({});
 export const turnStatsByMessageAtom = atom<TurnStatsByMessage>({});
 
-const DELTA_FLUSH_DELAY_MS = 16;
+const DELTA_FLUSH_DELAY_MS = STREAM_RENDER_BATCH_MS;
 const EMPTY_MESSAGES: MessageRecord[] = [];
 const deltaBufferAtom = atom(() => ({
   pendingDeltas: new Map<string, PendingDelta>(),

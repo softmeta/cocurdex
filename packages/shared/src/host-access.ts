@@ -88,6 +88,7 @@ export type HostAccessAuditAction =
   | "pairing.exchanged"
   | "pairing.rejected"
   | "device.revoked"
+  | "device.scopesChanged"
   | "remote.enabled"
   | "remote.disabled";
 
@@ -114,6 +115,7 @@ export interface HostAddress {
 }
 
 export interface HostRemoteAccessStatus {
+  allowed: boolean;
   settings: RemoteAccessSettings;
   listening: boolean;
   addresses: HostAddress[];

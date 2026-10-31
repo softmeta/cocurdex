@@ -1,6 +1,7 @@
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { docImageUri, findDocImages } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type InstalledFixture, installFixtureDb } from "./fixture-db/install";
 import {
@@ -241,5 +242,25 @@ describe("fixture database", () => {
       "checkout",
       "feature",
     ]);
+
+    const records = await Promise.all(
+      (board?.issues ?? []).map((issue) =>
+        requestDaemon("issue.get", { id: issue.id }, daemon.options),
+      ),
+    );
+    const imageNames = records.flatMap((issue) =>
+      findDocImages(issue?.description ?? "").map((image) => image.fileName),
+    );
+    expect(imageNames).toHaveLength(
+      FIXTURE_ISSUES.filter((issue) => issue.image).length,
+    );
+    for (const fileName of imageNames) {
+      const located = await requestDaemon(
+        "image.locate",
+        { uri: docImageUri(fileName) },
+        daemon.options,
+      );
+      expect(located?.fileName).toBe(fileName);
+    }
   });
 });

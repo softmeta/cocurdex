@@ -3,6 +3,7 @@ import type {
   MessageAttachment,
   TeamTemplateRecord,
 } from "@cocurdex/shared";
+import { getThinkingLevelLabel } from "@cocurdex/shared";
 import { GitBranch } from "lucide-react";
 import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,7 @@ import { CocurdexMark } from "@/components/cocurdex-mark";
 import { Checkbox } from "@/components/ui";
 import {
   ChatComposer,
+  type ComposerSendOutcome,
   ComposerSurfaceBody,
   newSessionComposerDraftKey,
 } from "@/features/composer";
@@ -20,7 +22,6 @@ import {
   buildAgentSelectOptions,
   defaultAgentDescriptors,
   getAgentDisplayLabel,
-  getThinkingLevelLabel,
   PermissionModeSubmenu,
   ProviderModelMenu,
   SessionModeSubmenu,
@@ -168,32 +169,27 @@ export function NewSessionCard({
   // intent. ChatComposer already clears its own editor on send, so we just
   // forward the prompt text + attachments along with the picked agent /
   // permission / provider snapshot.
-  const handleStartSession = (
+  const handleStartSession = async (
     text: string,
     attachments: MessageAttachment[],
-  ) => {
-    if (!createWorktree || !onCreateWorktree) {
-      startSession(text, attachments);
-      return;
+  ): Promise<ComposerSendOutcome> => {
+    if (!hasWorkspace || !createWorktree || !onCreateWorktree) {
+      return startSession(text, attachments);
     }
-    return onCreateWorktree().then(
-      (worktreePath) => {
-        setCreateWorktree(false);
-        startSession(text, attachments, worktreePath);
-      },
-      (error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(t("sessions:worktree.createFailed", { message }));
-      },
-    );
+    const worktreePath = await onCreateWorktree().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(t("sessions:worktree.createFailed", { message }));
+    });
+    setCreateWorktree(false);
+    return startSession(text, attachments, worktreePath);
   };
 
-  const startSession = (
+  const startSession = async (
     text: string,
     attachments: MessageAttachment[],
     worktreePath?: string,
-  ) => {
-    onStartSession?.({
+  ): Promise<ComposerSendOutcome> => {
+    const outcome = await onStartSession?.({
       agentType: effectiveSelectedAgent,
       attachments: attachments.length > 0 ? attachments : undefined,
       sessionModeId: selectedSessionModeId,
@@ -205,6 +201,7 @@ export function NewSessionCard({
       teamTemplateId: chosenTeamId,
       worktreePath,
     });
+    return outcome ?? "sent";
   };
 
   const selectedPermissionModeOption = permissionModeOptions.find(
@@ -523,10 +520,14 @@ export function NewSessionCard({
         onSelectSessionMode={handleSelectSessionMode}
         workspaceRootPath={contextWorkspaceRootPath}
         workspaceRootPaths={contextWorkspaceRootPaths}
-        placeholderOverride={t("sessions:composer.placeholder")}
+        placeholderOverride={
+          hasWorkspace
+            ? t("sessions:composer.placeholder")
+            : t("sessions:composer.openWorkspaceFirst")
+        }
         controls={controls}
         header={header}
-        canSubmit={hasWorkspace && canStartSession}
+        canSubmit={canStartSession}
         onSend={handleStartSession}
       />
       <SaveAgentRoleDialog

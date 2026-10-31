@@ -5,10 +5,10 @@ import {
   type McpServerStatus,
   sameMcpServerConfig,
 } from "@cocurdex/shared";
-import { Check, PlugZap, Trash2 } from "lucide-react";
+import { Check, PlugZap } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppConfirmDialog, SettingsGroup } from "@/components";
+import { AppRemoveButton, SettingsGroup } from "@/components";
 import {
   Button,
   Label,
@@ -69,7 +69,6 @@ export function McpServerDetail({
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
-  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const readOnly = scope === "project";
   const isNew = scope === "new";
   const draftConfig = serverFormToConfig(form, config);
@@ -134,7 +133,6 @@ export function McpServerDetail({
   };
 
   const remove = async () => {
-    setIsRemoveOpen(false);
     try {
       onRemoved(await desktopApi.removeMcpServer(name));
     } catch (removeError) {
@@ -290,27 +288,29 @@ export function McpServerDetail({
 
         <McpAdvancedSection form={form} readOnly={readOnly} onChange={update} />
 
+        {isNew || readOnly ? null : (
+          <div className="flex flex-col items-start gap-1.5 pt-4">
+            <Label>{t("mcp.detail.manageLabel")}</Label>
+            <AppRemoveButton
+              cancelLabel={t("mcp.removeConfirm.cancel")}
+              confirmDescription={t("mcp.removeConfirm.description", {
+                name,
+              })}
+              confirmLabel={t("mcp.removeConfirm.confirm")}
+              confirmTitle={t("mcp.removeConfirm.title")}
+              label={t("mcp.actions.remove")}
+              onConfirm={() => void remove()}
+            />
+          </div>
+        )}
+
         <div className="grid gap-3 py-4">
           {error ? (
             <Text role="alert" size="meta" tone="destructive">
               {error}
             </Text>
           ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {isNew || readOnly ? (
-              <span />
-            ) : (
-              <Button
-                className="text-muted-foreground hover:text-destructive"
-                size="sm"
-                type="button"
-                variant="ghost"
-                onClick={() => setIsRemoveOpen(true)}
-              >
-                <Trash2 className="size-4" />
-                {t("mcp.actions.remove")}
-              </Button>
-            )}
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <div className="flex items-center gap-2">
               <Button
                 disabled={isTesting}
@@ -346,17 +346,6 @@ export function McpServerDetail({
           </div>
         </div>
       </SettingsGroup>
-
-      <AppConfirmDialog
-        cancelLabel={t("mcp.removeConfirm.cancel")}
-        confirmLabel={t("mcp.removeConfirm.confirm")}
-        description={t("mcp.removeConfirm.description", { name })}
-        open={isRemoveOpen}
-        title={t("mcp.removeConfirm.title")}
-        variant="destructive"
-        onConfirm={() => void remove()}
-        onOpenChange={setIsRemoveOpen}
-      />
     </section>
   );
 }

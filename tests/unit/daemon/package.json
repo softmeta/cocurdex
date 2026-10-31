@@ -18,12 +18,14 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
+    "@cocurdex/test-fixtures": "workspace:*",
     "@modelcontextprotocol/sdk": "1.32.1",
     "@napi-rs/keyring": "^2.1.2",
     "@types/node": "^24.19.2",
     "@types/ws": "^8.18.2",
     "effect": "4.0.5",
     "simple-git": "^4.0.2",
+    "tar": "^7.5.22",
     "tsx": "^4.23.15",
     "vitest": "^4.1.11",
     "ws": "^8.22.0",

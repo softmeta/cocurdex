@@ -1,0 +1,44 @@
+appId: dev.cocurdex.mobile
+---
+- launchApp
+- extendedWaitUntil:
+    visible: ${EMPTY_TITLE}
+    timeout: 30000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${EMPTY_PASTE}
+      - tapOn:
+          text: ${SYSTEM_CONTINUE}
+          optional: true
+      - extendedWaitUntil:
+          visible:
+            id: "pairing-link"
+          timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: "pairing-link"
+      - eraseText: 120
+      - inputText: ${PAIRING_LINK}
+      - extendedWaitUntil:
+          visible:
+            id: "pairing-link"
+            text: ${PAIRING_LINK}
+          timeout: 10000
+- extendedWaitUntil:
+    visible:
+      text: ${PAIR_ACTION}
+      enabled: true
+    timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          text: ${SYSTEM_CONTINUE}
+          optional: true
+      - tapOn: ${PAIR_ACTION}
+      - extendedWaitUntil:
+          visible: ${WORKSPACE_NAME}
+          timeout: 15000

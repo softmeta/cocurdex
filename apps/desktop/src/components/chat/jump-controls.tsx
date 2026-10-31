@@ -1,38 +1,24 @@
 import { ArrowDownToLine, ArrowUpToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useVerticalDrag } from "./use-vertical-drag";
 
-// A single jump button on the left rail near the bottom of the message area,
-// just above the composer. Jump-to-top and jump-to-latest are mutually
-// exclusive, so they share one fixed slot. Draggable vertically to reposition.
-// Shared by agent ChatView and pure-chat ConversationDetail.
 export function JumpControls({
+  streaming = false,
   showJumpToTop,
   showJumpToLatest,
   onJumpToTop,
   onJumpToLatest,
 }: {
+  streaming?: boolean;
   showJumpToTop: boolean;
   showJumpToLatest: boolean;
   onJumpToTop(): void;
   onJumpToLatest(): void;
 }) {
-  // Prefer common.* so both modes share one string; agent.* kept as fallback
-  // for older locale packs that have not been re-extracted yet.
   const { t } = useTranslation(["common", "agent"]);
-  const { offsetY, rootRef, startDrag, consumeDragClick } =
-    useVerticalDrag<HTMLDivElement>();
 
   if (!showJumpToTop && !showJumpToLatest) {
     return null;
   }
-
-  const handleClick = (action: () => void) => {
-    if (consumeDragClick()) {
-      return;
-    }
-    action();
-  };
 
   const jumpControl = showJumpToTop
     ? {
@@ -53,25 +39,39 @@ export function JumpControls({
       };
   const { Icon, label, onJump } = jumpControl;
 
-  // Flush with the rail edge (start-0), matching the collapsed
-  // UserMessageNavigation tab, so the glyph clears the message column on its
-  // right. Icon is start-aligned so it sits at the edge, not optically
-  // shifted by a centered hit box.
   return (
-    <div
-      ref={rootRef}
-      className="pointer-events-auto absolute start-0 bottom-6 z-20"
-      style={{ transform: `translateY(${offsetY}px)` }}
-    >
+    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
       <button
         aria-label={label}
-        className="pointer-events-auto flex size-9 cursor-default items-center justify-start text-chat-fg-muted transition-colors hover:text-chat-fg"
-        onMouseDown={(event) => startDrag(event.clientY)}
-        onClick={() => handleClick(onJump)}
+        className="group/jump pointer-events-auto relative flex size-9 cursor-default items-center justify-center rounded-full bg-chat-surface-control text-chat-fg transition-colors hover:bg-chat-surface-control-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        onClick={onJump}
         type="button"
       >
-        <Icon className="size-4" />
+        {streaming && showJumpToLatest ? (
+          <>
+            <StreamingDots />
+            <Icon className="hidden size-4 group-hover/jump:block group-focus-visible/jump:block" />
+          </>
+        ) : (
+          <Icon className="size-4" />
+        )}
       </button>
     </div>
+  );
+}
+
+function StreamingDots() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="stream-dots size-5 group-hover/jump:hidden group-focus-visible/jump:hidden"
+      data-stream-indicator="true"
+      fill="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <circle cx="5" cy="12" r="2.5" />
+      <circle cx="12" cy="12" r="2.5" />
+      <circle cx="19" cy="12" r="2.5" />
+    </svg>
   );
 }

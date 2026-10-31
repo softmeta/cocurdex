@@ -1,9 +1,9 @@
-import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
 import {
   normalizeSessionListView,
   type SessionListView,
-} from "./session-list-view-model";
+} from "@cocurdex/shared";
+import { atom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 
 const SESSION_LIST_VIEW_STORAGE_KEY = "cocurdex.sidebar.session-list-view";
 const COLLAPSED_SESSION_GROUPS_STORAGE_KEY =

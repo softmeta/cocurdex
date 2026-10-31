@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -8,7 +8,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended",
+      "correctness": {
+        "noComponentHookFactories": "off"
+      }
     }
   },
   "css": {
@@ -16,8 +19,24 @@
       "tailwindDirectives": true
     }
   },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
   "files": {
-    "includes": ["**", "!.agents", "!**/.claude"]
+    "includes": [
+      "**",
+      "!.agents",
+      "!**/.claude",
+      "!apps/mobile/src/markdown/mermaid-runtime.generated.ts",
+      "!apps/mobile/src/notes/editor/note-editor-runtime.generated.ts"
+    ]
   },
   "vcs": {
     "enabled": true,
@@ -62,6 +81,16 @@
             "noRestrictedImports": {
               "level": "error",
               "options": {
+                "paths": {
+                  "expo-router": {
+                    "importNames": ["router"],
+                    "message": "Use useRouter(): the imperative router is unbound whenever its bridge remounts, and a tap then crashes the app."
+                  },
+                  "react-native": {
+                    "importNames": ["useColorScheme"],
+                    "message": "Use useThemeName() from @/theme: Appearance.setColorScheme notifies listeners only after a native round trip, so screens read the new scheme a frame before the native header and tab bar."
+                  }
+                },
                 "patterns": [
                   {
                     "group": ["@cocurdex/*/internal/*"],
@@ -98,6 +127,44 @@
         "!apps/desktop/src/components/ui/**"
       ],
       "plugins": ["./biome-plugins/no-hoisted-class-names.grit"]
+    },
+    {
+      "includes": [
+        "tests/**",
+        "!tests/scenarios/lib/**",
+        "!tests/e2e/helpers/**",
+        "!tests/e2e/fixture-db/**",
+        "!tests/fixtures/temp-dirs.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "node:fs": {
+                    "importNames": ["mkdtemp", "mkdtempSync"],
+                    "message": "Use createTempDirs() from @cocurdex/test-fixtures/temp-dirs: its cleanup retries the removal, so Windows can release open handles before the directory is deleted."
+                  },
+                  "node:fs/promises": {
+                    "importNames": ["mkdtemp"],
+                    "message": "Use createTempDirs() from @cocurdex/test-fixtures/temp-dirs: its cleanup retries the removal, so Windows can release open handles before the directory is deleted."
+                  },
+                  "fs": {
+                    "importNames": ["mkdtemp", "mkdtempSync"],
+                    "message": "Use createTempDirs() from @cocurdex/test-fixtures/temp-dirs: its cleanup retries the removal, so Windows can release open handles before the directory is deleted."
+                  },
+                  "fs/promises": {
+                    "importNames": ["mkdtemp"],
+                    "message": "Use createTempDirs() from @cocurdex/test-fixtures/temp-dirs: its cleanup retries the removal, so Windows can release open handles before the directory is deleted."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

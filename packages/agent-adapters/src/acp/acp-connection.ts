@@ -7,6 +7,8 @@ import type {
   InitializeResponse,
   LoadSessionRequest,
   LoadSessionResponse,
+  LogoutRequest,
+  LogoutResponse,
   NewSessionRequest,
   NewSessionResponse,
   PromptRequest,
@@ -33,6 +35,7 @@ export interface SetSessionModelRequest {
 export interface AcpConnection {
   initialize(request: InitializeRequest): Promise<InitializeResponse>;
   authenticate(request: AuthenticateRequest): Promise<AuthenticateResponse>;
+  logout(request: LogoutRequest): Promise<LogoutResponse>;
   newSession(request: NewSessionRequest): Promise<NewSessionResponse>;
   loadSession(request: LoadSessionRequest): Promise<LoadSessionResponse>;
   resumeSession(request: ResumeSessionRequest): Promise<ResumeSessionResponse>;

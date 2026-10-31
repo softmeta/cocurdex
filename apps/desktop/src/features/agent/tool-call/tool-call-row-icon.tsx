@@ -1,4 +1,5 @@
 import type { AgentToolCallRecord } from "@cocurdex/shared";
+import { type ActivityAction, getActivityAction } from "@cocurdex/shared";
 import {
   Bot,
   FilePen,
@@ -11,7 +12,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib";
-import { type ActivityAction, getActivityAction } from "./tool-call-action";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import { useToolCallDisplayStatus } from "./use-tool-call-display-status";
 

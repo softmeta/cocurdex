@@ -46,6 +46,14 @@ export async function handleHostRequest(
         request.params.deviceId,
         context.principal,
       );
+    case "host.devices.revokeSelf":
+      return hostAccess.revokeSelf(context.principal);
+    case "host.devices.updateScopes":
+      return hostAccess.updateDeviceScopes(
+        request.params.deviceId,
+        request.params.scopes,
+        context.principal,
+      );
     case "host.audit.list":
       return hostAccess.listAudit(request.params.limit ?? DEFAULT_AUDIT_LIMIT);
     default: {

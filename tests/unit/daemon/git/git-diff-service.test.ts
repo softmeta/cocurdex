@@ -1,5 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   getWorkspaceDiff,
@@ -8,15 +7,18 @@ import {
   listGitCommits,
   parsePorcelainToGitStatusEntries,
 } from "@cocurdex/daemon/internal/git/git-diff-service";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 describe("git-diff-service", () => {
   let dir: string;
   let featureCommit: string;
 
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), "git-diff-service-"));
+    dir = await tempDirs.create("git-diff-service-");
     const git = simpleGit(dir);
     await git.init();
     await git.addConfig("user.email", "test@example.com");
@@ -45,7 +47,7 @@ describe("git-diff-service", () => {
   }, 30_000);
 
   afterAll(async () => {
-    await rm(dir, { recursive: true, force: true });
+    await tempDirs.cleanup();
   });
 
   it("lists local branches with kinds", async () => {

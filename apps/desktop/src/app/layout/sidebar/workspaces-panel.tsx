@@ -21,6 +21,8 @@ import {
 import { useSetAtom } from "jotai";
 import { Folder } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { AppConfirmDialog } from "@/components/app";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
 import {
   EditWorkspaceDialog,
@@ -62,6 +64,7 @@ export function WorkspacesPanel({
   onSelectSession,
   onToggleWorkspace,
 }: WorkspacesPanelProps) {
+  const { t } = useTranslation("sessions");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(
     null,
@@ -81,6 +84,12 @@ export function WorkspacesPanel({
   );
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === activeId,
+  );
+  const [removingWorkspaceId, setRemovingWorkspaceId] = useState<string | null>(
+    null,
+  );
+  const removingWorkspace = workspaces.find(
+    (workspace) => workspace.id === removingWorkspaceId,
   );
   const editingWorkspace = workspaces.find(
     (workspace) => workspace.id === editingWorkspaceId,
@@ -137,7 +146,7 @@ export function WorkspacesPanel({
                   key={workspace.id}
                   onCreateAgent={onCreateAgent}
                   onEditWorkspace={setEditingWorkspaceId}
-                  onRemoveWorkspace={onRemoveWorkspace}
+                  onRemoveWorkspace={setRemovingWorkspaceId}
                   onRevealWorkspace={onRevealWorkspace}
                   onSelectSession={onSelectSession}
                   onToggleWorkspace={onToggleWorkspace}
@@ -185,6 +194,24 @@ export function WorkspacesPanel({
           workspace={editingWorkspace}
         />
       ) : null}
+      <AppConfirmDialog
+        cancelLabel={t("workspace.editCancel")}
+        confirmLabel={t("workspace.editRemoveWorkspace")}
+        description={t("workspace.editRemoveDescription", {
+          name: removingWorkspace?.name ?? "",
+        })}
+        onConfirm={() => {
+          if (removingWorkspaceId) onRemoveWorkspace(removingWorkspaceId);
+        }}
+        onOpenChange={(open) => {
+          if (!open) setRemovingWorkspaceId(null);
+        }}
+        open={removingWorkspace !== undefined}
+        title={t("workspace.editRemoveTitle", {
+          name: removingWorkspace?.name ?? "",
+        })}
+        variant="destructive"
+      />
     </TooltipProvider>
   );
 }

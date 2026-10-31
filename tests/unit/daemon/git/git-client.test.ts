@@ -1,20 +1,17 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveGitRepositoryPaths } from "@cocurdex/daemon/internal/git/git-client";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { simpleGit } from "simple-git";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
 
 async function createRepositoryFixture(): Promise<{
   repositoryPath: string;
   worktreePath: string;
 }> {
-  const fixturePath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-git-client-"),
-  );
-  temporaryDirectories.push(fixturePath);
+  const fixturePath = await tempDirs.create("cocurdex-git-client-");
 
   const repositoryPath = path.join(fixturePath, "repository");
   const worktreePath = path.join(fixturePath, "worktree");
@@ -33,16 +30,7 @@ async function createRepositoryFixture(): Promise<{
 }
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, {
-        force: true,
-        maxRetries: 5,
-        recursive: true,
-        retryDelay: 100,
-      }),
-    ),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("resolveGitRepositoryPaths", () => {
@@ -72,10 +60,7 @@ describe("resolveGitRepositoryPaths", () => {
   });
 
   it("returns null outside a git repository", async () => {
-    const directory = await mkdtemp(
-      path.join(tmpdir(), "cocurdex-non-git-client-"),
-    );
-    temporaryDirectories.push(directory);
+    const directory = await tempDirs.create("cocurdex-non-git-client-");
 
     await expect(resolveGitRepositoryPaths(directory)).resolves.toBeNull();
   });

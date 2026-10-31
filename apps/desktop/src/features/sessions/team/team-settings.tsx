@@ -8,6 +8,7 @@ import { Button, IconButton, Text } from "@/components/ui";
 import { getAgentRoles, subscribeAgentRoles } from "../agent-role";
 import { AgentRoleAvatar } from "../agent-role/agent-role-avatar";
 import { ScriptRunSettingsSection } from "../script-run";
+import { DelegatedRunLimitsGroup } from "./delegated-run-limits-group";
 import { TeamMemberAvatar } from "./team-member-avatar";
 import { TeamTemplateEditDialog } from "./team-template-edit-dialog";
 import {
@@ -123,6 +124,7 @@ export function TeamSettingsPanel() {
         )}
       </SettingsGroup>
       <ScriptRunSettingsSection />
+      <DelegatedRunLimitsGroup />
       <TeamTemplateEditDialog
         onOpenChange={(open) => {
           if (!open) {

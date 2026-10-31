@@ -1,6 +1,64 @@
 {
+  "actions": {
+    "back": "返回",
+    "cancel": "取消",
+    "close": "关闭",
+    "search": "搜索"
+  },
+  "age": {
+    "days_other": "{{count}}天",
+    "hours_other": "{{count}}小时",
+    "minutes_other": "{{count}}分钟",
+    "months_other": "{{count}}个月",
+    "now": "刚刚",
+    "years_other": "{{count}}年"
+  },
+  "links": {
+    "relation": {
+      "blocked-by": "被阻塞",
+      "blocks": "阻塞",
+      "child": "子 Issue",
+      "duplicate-of": "重复于",
+      "duplicated-by": "被重复",
+      "mentioned-by": "被提及",
+      "mentions": "提及",
+      "parent": "父 Issue",
+      "related": "相关",
+      "worked-on-by": "会话",
+      "works-on": "处理中"
+    },
+    "title": "关联",
+    "untitled": "未命名"
+  },
+  "loading": "正在加载",
+  "markdown": {
+    "closeDiagram": "关闭",
+    "diagram": "图表",
+    "openDiagram": "全屏查看"
+  },
+  "optionSearch": {
+    "empty": "没有匹配项",
+    "placeholder": "搜索"
+  },
   "screens": {
+    "archived": "已归档会话",
     "computers": "电脑",
-    "pair": "配对电脑"
+    "editIssue": "编辑 issue",
+    "fontSize": "字号",
+    "issues": "事项",
+    "language": "语言",
+    "newIssue": "新建 issue",
+    "notes": "笔记",
+    "pair": "配对电脑",
+    "renameComputer": "重命名电脑",
+    "renameSession": "重命名会话",
+    "sessions": "会话",
+    "settings": "设置"
+  },
+  "tabs": {
+    "issues": "事项",
+    "notes": "笔记",
+    "sessions": "会话",
+    "settings": "设置"
   }
 }

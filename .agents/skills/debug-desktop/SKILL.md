@@ -5,6 +5,8 @@ description: Attach to the running Cocurdex Electron desktop app over Chrome Dev
 
 # Debug Cocurdex desktop (CDP)
 
+The user authorizes read-only testing against real sessions in both Cocurdex and Cocurdex-dev, including pairing test devices, browsing, recording, and measurement. Do not require isolated data or ask again merely because the data is real. Identify which host owns the reported session before pairing or reproducing it. This authorization does not include sending messages or modifying session content. Restore temporary UI changes afterward and revoke temporary test pairings. Use isolated fixtures for automated checks that reset or repeatedly mutate data.
+
 All renderer inspection goes through raw CDP via the bundled zero-dependency helper
 `scripts/cdp.mjs` (Node built-in `fetch` + `WebSocket`). No Playwright, no project
 dependency, runs from any cwd.

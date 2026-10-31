@@ -4,7 +4,7 @@ import { buildClaudeUserContent } from "@cocurdex/agent-adapters/internal/claude
 import { buildInput } from "@cocurdex/agent-adapters/internal/codex/codex-app-server-events";
 import { buildPromptInput } from "@cocurdex/agent-adapters/internal/opencode/opencode-events";
 import type { ImageAttachment } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

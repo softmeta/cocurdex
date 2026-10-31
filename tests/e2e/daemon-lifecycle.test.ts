@@ -3,7 +3,7 @@ import { createSocketTransport, requestDaemon } from "@cocurdex/daemon/client";
 import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import { createDaemonRpcClient } from "@cocurdex/rpc/client";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import { spawnDaemon } from "./helpers/daemon-process";
 

@@ -2,6 +2,7 @@ import {
   Archive,
   Blocks,
   BookOpen,
+  Brain,
   Code2,
   Folder,
   Gauge,
@@ -55,6 +56,7 @@ export const settingsSections = [
   { id: "agentRoles", labelKey: "agentRoles", icon: UserCog, cluster: "agent" },
   { id: "teams", labelKey: "teams", icon: Users, cluster: "agent" },
   { id: "mcp", labelKey: "mcp", icon: Server, cluster: "agent" },
+  { id: "memory", labelKey: "memory", icon: Brain, cluster: "agent" },
   { id: "skills", labelKey: "skills", icon: BookOpen, cluster: "agent" },
   { id: "git", labelKey: "git", icon: GitBranch, cluster: "workspace" },
   {

@@ -52,15 +52,17 @@ function render(
 }
 
 describe("applyStreamFade", () => {
-  it("fades words and CJK characters as separate staggered units", () => {
+  it("keeps a growing emoji in one grapheme across batch boundaries", () => {
+    const state = createStreamFadeState();
+    render(state, 0, text("👩"));
+    const tree = render(state, 100, text("👩🏽‍💻"));
+    expect(fadedUnits(tree)).toEqual([{ start: 0, text: "👩🏽‍💻" }]);
+  });
+
+  it("fades new words and CJK characters together without a character queue", () => {
     const tree = render(createStreamFadeState(), 1_000, text("Hi there 你好"));
 
-    expect(fadedUnits(tree)).toEqual([
-      { start: 1_016, text: "Hi" },
-      { start: 1_032, text: "there" },
-      { start: 1_048, text: "你" },
-      { start: 1_064, text: "好" },
-    ]);
+    expect(fadedUnits(tree)).toEqual([{ start: 1_000, text: "Hi there 你好" }]);
   });
 
   it("keeps each unit's start time when the block re-renders", () => {
@@ -69,36 +71,36 @@ describe("applyStreamFade", () => {
     const tree = render(state, 1_100, text("Hello world"));
 
     expect(fadedUnits(tree)).toEqual([
-      { start: 1_016, text: "Hello" },
-      { start: 1_116, text: "world" },
+      { start: 1_000, text: "Hello" },
+      { start: 1_100, text: " world" },
     ]);
   });
 
   it("renders finished units as plain text", () => {
     const state = createStreamFadeState();
     render(state, 1_000, text("Hello"));
-    const now = 1_016 + STREAM_FADE_DURATION_MS;
+    const now = 1_000 + STREAM_FADE_DURATION_MS;
     const tree = render(state, now, text("Hello world"));
 
-    expect(fadedUnits(tree)).toEqual([{ start: now + 16, text: "world" }]);
+    expect(fadedUnits(tree)).toEqual([{ start: now, text: " world" }]);
   });
 
-  it("spreads a burst evenly across the lag window in reading order", () => {
-    const burst = "字".repeat(100);
+  it("shows an entire burst without accumulating animation delay", () => {
+    const burst = "字".repeat(10_000);
     const starts = fadedUnits(
       render(createStreamFadeState(), 0, text(burst)),
     ).map((unit) => unit.start);
 
     expect(starts).toEqual([...starts].sort((a, b) => a - b));
-    expect(starts.at(-1)).toBe(150);
+    expect(starts).toEqual([0]);
   });
 
-  it("continues after the previous burst instead of overlapping it", () => {
+  it("overlaps new batches without resetting the previous batch", () => {
     const state = createStreamFadeState();
     render(state, 0, text("字".repeat(100)));
     const tree = render(state, 100, text(`${"字".repeat(100)}尾`));
 
-    expect(fadedUnits(tree).at(-1)).toEqual({ start: 166, text: "尾" });
+    expect(fadedUnits(tree).at(-1)).toEqual({ start: 100, text: "尾" });
   });
 
   it("fades inline code as one unit", () => {
@@ -109,8 +111,8 @@ describe("applyStreamFade", () => {
     });
 
     expect(fadedUnits(tree)).toEqual([
-      { start: 16, text: "Use" },
-      { start: 32, text: "&mut T" },
+      { start: 0, text: "Use " },
+      { start: 0, text: "&mut T" },
     ]);
   });
 
@@ -132,9 +134,7 @@ describe("applyStreamFade", () => {
     const tree = paragraph(text("字段 用途"));
     applyStreamFade(tree, state, 1, 1_000);
 
-    expect(fadedUnits(tree).map((unit) => unit.start)).toEqual([
-      1_016, 1_032, 1_048, 1_064,
-    ]);
+    expect(fadedUnits(tree).map((unit) => unit.start)).toEqual([1_000]);
   });
 
   it("leaves rendered KaTeX untouched", () => {
@@ -153,6 +153,6 @@ describe("applyStreamFade", () => {
     render(state, 0, text("项"));
     const tree = render(state, 100, text("\n"), text("项"));
 
-    expect(fadedUnits(tree)).toEqual([{ start: 16, text: "项" }]);
+    expect(fadedUnits(tree)).toEqual([{ start: 0, text: "项" }]);
   });
 });

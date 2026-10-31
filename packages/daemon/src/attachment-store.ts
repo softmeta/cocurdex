@@ -4,7 +4,12 @@ import { mkdir, open, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import type { DocumentAttachment, ImageAttachment } from "@cocurdex/shared";
+import {
+  type DocumentAttachment,
+  type ImageAttachment,
+  isStoredImageFileName,
+  storedImageExtension,
+} from "@cocurdex/shared";
 import {
   IMAGE_ATTACHMENT_MIME_TYPE_BY_EXTENSION,
   readAttachmentImageInfo,
@@ -16,7 +21,7 @@ const PDF_MIME_TYPE = "application/pdf";
 const PDF_SIGNATURE = Buffer.from("%PDF-");
 const IMAGE_HEADER_BYTES = 256 * 1024;
 const MAX_NAME_LENGTH = 255;
-const STORED_IMAGE_FILE = /^[A-Za-z0-9-]+\.(gif|jpg|png|webp)$/;
+const STORED_DOCUMENT_FILE = /^[A-Za-z0-9-]+\.pdf$/;
 
 export const MAX_IMAGE_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export const MAX_DOCUMENT_ATTACHMENT_BYTES = 32 * 1024 * 1024;
@@ -60,6 +65,10 @@ async function readHeader(filePath: string, length: number) {
   } finally {
     await handle.close();
   }
+}
+
+function isStoredDocumentFileName(fileName: string) {
+  return STORED_DOCUMENT_FILE.test(fileName);
 }
 
 function attachmentName(name: string, fallback: string) {
@@ -176,10 +185,21 @@ export class DaemonAttachmentStore {
     };
   }
 
+  isStoredFile(attachment: ImageAttachment | DocumentAttachment) {
+    const filePath = path.resolve(attachment.filePath);
+    const [rootPath, pattern] =
+      attachment.kind === "image"
+        ? [this.imageRootPath, isStoredImageFileName]
+        : [this.documentRootPath, isStoredDocumentFileName];
+    return (
+      path.dirname(filePath) === rootPath && pattern(path.basename(filePath))
+    );
+  }
+
   async locateImage(fileName: string) {
-    const match = STORED_IMAGE_FILE.exec(fileName);
-    const mimeType = match
-      ? IMAGE_ATTACHMENT_MIME_TYPE_BY_EXTENSION[match[1] ?? ""]
+    const extension = storedImageExtension(fileName);
+    const mimeType = extension
+      ? IMAGE_ATTACHMENT_MIME_TYPE_BY_EXTENSION[extension]
       : undefined;
     if (!mimeType) return null;
     const filePath = path.join(this.imageRootPath, fileName);

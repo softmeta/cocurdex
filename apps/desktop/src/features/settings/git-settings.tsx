@@ -3,6 +3,14 @@ import type {
   CommitMessageModelSelection,
   ReasoningEffort,
 } from "@cocurdex/shared";
+import {
+  getDefaultOpenCodeAgent,
+  getOpenCodeRuntimeOptions,
+  getThinkingLevelLabel,
+  getThinkingLevelOptions,
+  resolveOpenCodeRuntimeValue,
+  resolveThinkingLevel,
+} from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,18 +22,12 @@ import {
   agentsAtom,
   buildAgentSelectOptions,
   getCachedProviderModelEntry,
-  getDefaultOpenCodeAgent,
   getDefaultProviderModelValue,
-  getOpenCodeRuntimeOptions,
   getProviderModelCacheVersion,
-  getThinkingLevelLabel,
-  getThinkingLevelOptions,
   loadProviderModelOptions,
   ProviderModelMenu,
   parseProviderModelValue,
   providerModelCache,
-  resolveOpenCodeRuntimeValue,
-  resolveThinkingLevel,
   shouldShowProviderGroupLabels,
   subscribeProviderModelCache,
   ThinkingLevelSubmenu,

@@ -3,7 +3,7 @@ import path from "node:path";
 import { createDaemonHealthMonitor } from "@cocurdex/daemon/internal/daemon-health";
 import { handleObservabilityRequest } from "@cocurdex/daemon/internal/observability-requests";
 import type { DaemonRequest } from "@cocurdex/rpc";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

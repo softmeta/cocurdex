@@ -1,9 +1,11 @@
-import { mkdtemp, realpath, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { TerminalService } from "@cocurdex/daemon/internal/terminal/terminal-service";
 import type { TerminalDaemonEvent } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const tempDirs = createTempDirs();
 
 let workspaceRoot: string;
 let service: TerminalService;
@@ -20,9 +22,7 @@ function spawnTerminal(terminalId: string, cwd = workspaceRoot) {
 }
 
 beforeEach(async () => {
-  workspaceRoot = await realpath(
-    await mkdtemp(path.join(tmpdir(), "cd-terminal-")),
-  );
+  workspaceRoot = await realpath(await tempDirs.create("cd-terminal-"));
   events.length = 0;
   service = new TerminalService({
     emit: (event) => events.push(event),
@@ -33,12 +33,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await service.dispose();
-  await rm(workspaceRoot, {
-    recursive: true,
-    force: true,
-    maxRetries: 20,
-    retryDelay: 100,
-  });
+  await tempDirs.cleanup();
 });
 
 describe("TerminalService", () => {

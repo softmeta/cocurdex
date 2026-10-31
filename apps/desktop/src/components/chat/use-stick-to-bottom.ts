@@ -16,31 +16,3 @@ export function isScrollNearTop(
 ): boolean {
   return scrollTop <= threshold;
 }
-
-export function shouldReleaseStickOnUserScroll({
-  isAtBottom,
-  deltaY,
-}: {
-  isAtBottom: boolean;
-  deltaY?: number;
-}): boolean {
-  if (!isAtBottom) {
-    return true;
-  }
-  return typeof deltaY === "number" && deltaY < 0;
-}
-
-export function shouldFollowStreamOnResize({
-  isAtBottom,
-  isLocked,
-  suppressFollow,
-}: {
-  isAtBottom: boolean;
-  isLocked: boolean;
-  suppressFollow: boolean;
-}): boolean {
-  if (suppressFollow) {
-    return false;
-  }
-  return isLocked || isAtBottom;
-}

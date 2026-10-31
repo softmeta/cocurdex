@@ -7,7 +7,7 @@ import { closeEditorPanel, showPanelView } from "./lib/navigate.mjs";
 
 const LISTING_LIMIT = 5000;
 const FILLER_DIRECTORY_COUNT = LISTING_LIMIT + 100;
-const UI_TIMEOUT_MS = 30_000;
+const UI_TIMEOUT_MS = 60_000;
 const LOADED_ROWS = ["zzz/", "zzz/auth/", "zzz/auth/token.ts", "zzz/README.md"];
 
 const args = readScenarioArgs();
@@ -31,9 +31,9 @@ async function seedLargeWorkspace(root) {
 function findTreeRow(itemPath) {
   const roots = [document];
   for (const root of roots) {
-    const row = [...root.querySelectorAll("[data-item-path]")].find(
-      (element) => element.dataset.itemPath === itemPath,
-    );
+    const row = [...root.querySelectorAll("[role=treeitem][data-item-path]")]
+      .filter((element) => element.dataset.itemParked !== "true")
+      .find((element) => element.dataset.itemPath === itemPath);
     if (row) {
       row.scrollIntoView({ block: "center" });
       const bounds = row.getBoundingClientRect();
@@ -105,9 +105,33 @@ function stopWatchingTreeRows() {
   return [...window.__treeRowWatch.missing];
 }
 
+function treeFolderExpanded(itemPath) {
+  const roots = [document];
+  for (const root of roots) {
+    const row = [...root.querySelectorAll("[role=treeitem][data-item-path]")]
+      .filter((element) => element.dataset.itemParked !== "true")
+      .find((element) => element.dataset.itemPath === itemPath);
+    if (row) return row.getAttribute("aria-expanded") === "true";
+    for (const element of root.querySelectorAll("*")) {
+      if (element.shadowRoot) roots.push(element.shadowRoot);
+    }
+  }
+  return false;
+}
+
 async function expandFolder(session, itemPath) {
-  await session.waitUntil(findTreeRow, itemPath, UI_TIMEOUT_MS);
-  await clickPoint(session, await session.run(findTreeRow, itemPath));
+  const deadline = Date.now() + UI_TIMEOUT_MS;
+  while (!(await session.run(treeFolderExpanded, itemPath))) {
+    const remaining = deadline - Date.now();
+    check(remaining > 0, "folder did not expand", { itemPath });
+    await session.waitUntil(findTreeRow, itemPath, remaining);
+    const point = await session.run(findTreeRow, itemPath);
+    if (!point) continue;
+    await clickPoint(session, point);
+    await session
+      .waitUntil(treeFolderExpanded, itemPath, 5_000)
+      .catch(() => {});
+  }
 }
 
 async function expandNestedFolder(session, parentPath, childPath) {

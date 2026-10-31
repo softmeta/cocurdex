@@ -5,7 +5,7 @@ import { handleNoteCommand } from "@cocurdex/cli/internal/note-commands";
 import { parseArgs } from "@cocurdex/cli/internal/parse-args";
 import { handleSearchCommand } from "@cocurdex/cli/internal/search-commands";
 import { handleWorktreeCommand } from "@cocurdex/cli/internal/worktree-commands";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const tempDirs = createTempDirs();

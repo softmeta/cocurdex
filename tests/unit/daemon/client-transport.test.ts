@@ -1,7 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
 import net from "node:net";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import {
   requestDaemon,
   subscribeDaemonEvents,
@@ -9,13 +6,16 @@ import {
 import { getDaemonSocketPath } from "@cocurdex/daemon/internal/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
 import { daemonRequestTimeout } from "@cocurdex/rpc/client";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const tempDirs = createTempDirs();
 
 const cleanups: (() => Promise<void>)[] = [];
 async function serve(
   respond: (socket: net.Socket, request: { id: string }) => void,
 ) {
-  const directory = await mkdtemp(path.join(tmpdir(), "cd-rpc-"));
+  const directory = await tempDirs.create("cd-rpc-");
   const sockets = new Set<net.Socket>();
   const server = net.createServer((socket) => {
     sockets.add(socket);
@@ -31,7 +31,6 @@ async function serve(
   cleanups.push(async () => {
     for (const socket of sockets) socket.destroy();
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    await rm(directory, { recursive: true, force: true });
   });
   const metadata: DaemonMetadata = {
     socketPath,
@@ -47,6 +46,7 @@ async function serve(
 
 afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
+  await tempDirs.cleanup();
 });
 
 describe("daemon request transport", () => {

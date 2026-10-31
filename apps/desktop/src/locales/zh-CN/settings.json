@@ -6,16 +6,45 @@
       "docs": "文档",
       "refresh": "刷新"
     },
+    "auth": {
+      "cancel": "取消",
+      "confirmCancel": "取消",
+      "failedKeeping": "{{message}} 仍在使用{{method}}登录。",
+      "login": "登录",
+      "logout": "退出登录…",
+      "logoutConfirm": "退出登录",
+      "logoutDescription_other": "下次用 {{agent}} 新建会话前需要重新登录。",
+      "logoutDescriptionSessions_other": "会停止 {{count}} 个正在运行的 {{agent}} 会话。下次新建会话前需要重新登录。",
+      "logoutTitle": "退出 {{agent}} 登录？",
+      "method": "登录方式",
+      "readFailed": "无法读取登录方式：{{message}}",
+      "reading": "正在读取登录方式…",
+      "retry": "重试",
+      "signingIn": "正在用{{method}}登录。如果浏览器打开了登录页，请在那里完成，完成后这里会自动更新。",
+      "switchConfirm": "切换",
+      "switchDescription_other": "切换会停止 {{count}} 个正在运行的 {{agent}} 会话。新方式登录失败时保留当前方式。",
+      "switchTitle": "切换登录方式？"
+    },
     "badge": {
       "builtin": "内置",
       "updateRequired": "需要升级"
     },
     "description": "新建会话时可以选用下面这些 agent CLI。cocurdex 会自动检测本机已安装的版本，也可以从 ACP Registry 添加更多。",
+    "detail": {
+      "builtinNote": "随 Cocurdex 提供，无需安装。",
+      "executable": "可执行文件",
+      "install": "安装",
+      "manage": "管理",
+      "signIn": "登录",
+      "update": "更新",
+      "usage": "用量"
+    },
     "kind": {
       "builtin": "内置",
       "detecting": "检测中…",
       "error": "失败",
       "missing": "未安装",
+      "needsLogin": "需要登录",
       "outdated": "需要升级",
       "ready": "可用"
     },
@@ -58,31 +87,14 @@
         "prefetch": "安装时运行"
       },
       "remove": "移除",
+      "removeDescription": "从 Cocurdex 移除 {{name}}。已有会话保留，之后可以从 ACP Registry 重新添加。",
       "removeFailed": "无法移除该 agent",
       "removeSucceeded": "已移除 {{name}}",
+      "removeTitle": "移除 {{name}}？",
       "retry": "重试",
       "search": "搜索 agent",
       "title": "ACP Registry",
       "unsupported": "当前平台不可用"
-    },
-    "runLimits": {
-      "description": "限制同时执行的 agent 运行数量。超出上限的委派运行会排队等待；你自己发起的运行不受限制。",
-      "invalid": "请输入允许范围内的整数。",
-      "maxConcurrentRuns": {
-        "description": "所有会话合计的 agent 运行数（1–64）。",
-        "title": "并发运行数"
-      },
-      "maxConcurrentRunsPerAgent": {
-        "description": "同一 agent 同时运行的数量（1–64）。",
-        "title": "每个 agent 并发运行数"
-      },
-      "saveFailed": "无法保存运行上限。",
-      "timeout": {
-        "description": "队友或子 agent 的运行超过该时长会被停止。留空表示不限时。",
-        "none": "不限",
-        "title": "委派运行超时（分钟）"
-      },
-      "title": "运行上限"
     },
     "status": {
       "builtin": "内置 — 随 cocurdex 提供，无需安装。",
@@ -296,9 +308,17 @@
     }
   },
   "devices": {
+    "access": {
+      "cancel": "取消",
+      "description": "设备会立即重新连接并使用新权限。",
+      "failed": "无法修改设备权限",
+      "save": "保存",
+      "title": "{{name}} 的权限"
+    },
     "audit": {
       "action": {
         "deviceRevoked": "已吊销设备",
+        "deviceScopesChanged": "设备权限已修改",
         "pairingCancelled": "已取消配对",
         "pairingCreated": "已创建配对",
         "pairingExchanged": "设备已配对",
@@ -311,6 +331,7 @@
     "copy": "复制",
     "list": {
       "detail": "{{scopes}} · 最近活动 {{time}}",
+      "editAccess": "修改权限",
       "empty": "还没有设备与这台电脑配对。",
       "groupTitle": "已配对设备",
       "revoke": "吊销",
@@ -332,7 +353,7 @@
     },
     "pair": {
       "create": "生成配对码",
-      "createdDescription": "在另一台设备上打开链接，或输入配对码。配对码只能使用一次。",
+      "createdDescription": "用手机上的 Cocurdex 扫描二维码，或在另一台设备上打开链接。配对码只能使用一次。",
       "description": "选择新设备可以做什么，之后随时可以吊销。",
       "done": "完成",
       "enableRemoteFirst": "开启远程访问后，才能得到另一台设备可以打开的链接。",
@@ -341,6 +362,7 @@
       "label": "设备名称",
       "labelPlaceholder": "例如：我的手机",
       "open": "配对设备",
+      "qrLabel": "{{address}} 的配对二维码",
       "title": "配对设备",
       "ttl": "配对码有效期",
       "ttlMinutes_other": "{{count}} 分钟"
@@ -564,6 +586,7 @@
     "detail": {
       "enabled": "启用",
       "label": "MCP 服务器",
+      "manageLabel": "管理",
       "newTitle": "新服务器",
       "projectReadOnly": "定义在 {{path}}。项目服务器在这里只读，请编辑该文件来修改。"
     },
@@ -888,6 +911,7 @@
     "list": {
       "configuredCount": "已配置 {{count}} 个"
     },
+    "manageLabel": "管理",
     "models": {
       "addTitle": "添加模型",
       "advanced": "高级",
@@ -981,6 +1005,7 @@
     "git": "Git",
     "licenses": "开源许可",
     "mcp": "MCP",
+    "memory": "记忆",
     "personalization": "个性化",
     "providers": "服务商",
     "shortcuts": "快捷键",
@@ -1110,6 +1135,7 @@
     "description": "Skills 教 agent 完成专门的工作。安装一次，所有读取共享 skills 文件夹的 agent 都能使用。",
     "detail": {
       "label": "{{name}} 详情",
+      "manageTitle": "管理",
       "removeBrokenDescription": "{{name}} 只剩下失效链接，它们指向的文件夹已不存在。移除只会删除这些链接，不影响其他文件。",
       "removeDescription": "将为所有 agent 删除 {{name}}，包括指向它的链接。删除前会先备份文件夹，14 天内可在 skill-backups 中找回。",
       "removeTitle": "移除 {{name}}？",
@@ -1295,6 +1321,25 @@
     "role": "角色",
     "roleMissing": "角色已被删除",
     "rolePlaceholder": "选择角色",
+    "runLimits": {
+      "description": "队友和脚本 agent 发起的运行。达到上限后按顺序排队；你自己发起的运行不会等待，但计入上限。",
+      "invalid": "请输入允许范围内的整数。",
+      "maxConcurrentRuns": {
+        "description": "所有会话合计同时运行的数量，包括你发起的（1–64）。",
+        "title": "同时运行上限"
+      },
+      "maxConcurrentRunsPerAgent": {
+        "description": "同一个 agent CLI 同时运行的数量，包括你发起的（1–64）。",
+        "title": "每个 agent 同时运行上限"
+      },
+      "saveFailed": "无法保存运行上限。",
+      "timeout": {
+        "description": "队友或脚本 agent 的运行超过该时长会被停止。留空表示不限时。",
+        "none": "不限",
+        "title": "超时"
+      },
+      "title": "委派运行"
+    },
     "save": "保存",
     "saved": "团队已保存",
     "saveFailed": "无法保存该团队。",
@@ -1343,7 +1388,7 @@
       "downloadingWithPercent": "正在下载版本 {{version}}… {{percent}}%",
       "error": "检查更新失败。{{message}}",
       "ready": "版本 {{version}} 已下载，重启后生效。",
-      "unsupported": "自动更新仅在安装版应用中可用。",
+      "unsupported": "此版本已关闭自动更新。",
       "upToDate": "已是最新版本。"
     },
     "title": "版本"

@@ -4,18 +4,17 @@ import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
-  createProviderSnapshotForModel,
+  type AgentPermissionMode,
   isChatWorkspaceId,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
-  type SessionRecord,
-  sessionConfiguration,
   type WorkflowAggregate,
   type WorkflowExecutorBinding,
   type WorkflowExecutorBindings,
   type WorkflowRole,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
+import { agentAuthUsageLines, handleAgentCommand } from "./agent-auth-commands";
 import { withDaemon } from "./daemon-command";
 import { handleDeckCommand } from "./deck-commands";
 import {
@@ -24,9 +23,11 @@ import {
   handleDiagnosticsCommand,
 } from "./diagnostics-commands";
 import { handleHostCommand, hostUsageLines } from "./host-commands";
+import { handleImageCommand, imageUsageLines } from "./image-commands";
 import { handleIssueCommand } from "./issue-commands";
 import { handleLinkCommand } from "./link-commands";
 import { handleMcpCommand, mcpUsageLines } from "./mcp-commands";
+import { handleMemoryCommand, memoryUsageLines } from "./memory-commands";
 import { handleNoteCommand } from "./note-commands";
 import {
   assertDirectory,
@@ -53,6 +54,11 @@ import {
   handleSessionLineageCommand,
   sessionLineageUsageLines,
 } from "./session-lineage-commands";
+import {
+  handleSessionRuntimeCommand,
+  modelSelectionFromFlags,
+  sessionRuntimeUsageLines,
+} from "./session-runtime-commands";
 import {
   handleSessionTreeCommand,
   sessionTreeUsageLines,
@@ -110,6 +116,20 @@ async function main(rawArgs: string[]) {
 
   if (resource === "note") {
     const handled = await handleNoteCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "memory") {
+    const handled = await handleMemoryCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "image") {
+    const handled = await handleImageCommand(action, args, parsed);
     if (handled) {
       return;
     }
@@ -179,6 +199,13 @@ async function main(rawArgs: string[]) {
   if (resource === "daemon" && action === "health") {
     await handleDaemonHealthCommand(parsed);
     return;
+  }
+
+  if (resource === "agent") {
+    const handled = await handleAgentCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
   }
 
   if (resource === "diagnostics") {
@@ -297,7 +324,8 @@ async function main(rawArgs: string[]) {
 
   if (
     resource === "session" &&
-    (await handleSessionLineageCommand(action, args, parsed))
+    ((await handleSessionLineageCommand(action, args, parsed)) ||
+      (await handleSessionRuntimeCommand(action, args, parsed)))
   ) {
     return;
   }
@@ -532,7 +560,9 @@ function printUsage() {
       "  cocurdex --version | -v | version       Print CLI version",
       "  cocurdex note list|show|create|update|move|delete|backlinks|tags [--json]",
       "  cocurdex note create|update ... [--body <markdown> | --body - | --body-file <path>]",
+      ...memoryUsageLines(),
       "  cocurdex note update <id> ... [--expected-revision <n>]",
+      ...imageUsageLines(),
       "  cocurdex link list <ref> [--json]",
       "  cocurdex link add|remove <ref> <ref>   (ref: <kind>:<id> or cocurdex://<kind>/<id>; kind session|note|issue|deck)",
       "  cocurdex deck list|show|create|update|delete|check [--json]",
@@ -554,12 +584,13 @@ function printUsage() {
       ...worktreeUsageLines(),
       "  cocurdex workspace list",
       "  cocurdex session list",
-      "  cocurdex session create --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
+      "  cocurdex session create --workspace <id|path> [--agent <agent>] [--provider <provider> --model <model>] [--permission <mode>] [--role <role-id>] [--title <title>]",
       "  cocurdex session tui [session-id]",
       "  cocurdex session tui --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
       "  cocurdex session send <session-id> <prompt>",
       ...sessionTreeUsageLines(),
       ...sessionLineageUsageLines(),
+      ...sessionRuntimeUsageLines(),
       "  cocurdex session peers <session-id>",
       "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
@@ -567,6 +598,7 @@ function printUsage() {
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
       ...providerUsageLines(),
+      ...agentAuthUsageLines(),
       ...mcpUsageLines(),
       "  cocurdex workflow list",
       "  cocurdex workflow definitions",
@@ -584,16 +616,7 @@ function printUsage() {
 
 async function createSession(parsed: ParsedArgs) {
   const workspaceValue = getRequiredFlag(parsed, "workspace");
-  const agentType = getRequiredFlag(parsed, "agent") as AgentId;
-  const providerId = getRequiredFlag(parsed, "provider");
-  const modelId = getRequiredFlag(parsed, "model");
-  const [workspaces, providers, models] = await withDaemon(async () =>
-    Promise.all([
-      requestDaemon("workspace.list"),
-      requestDaemon("provider.listConfigs"),
-      requestDaemon("provider.listModels", { providerId }),
-    ]),
-  );
+  const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
   const workspace = workspaces.find(
     (item) =>
       item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
@@ -603,40 +626,28 @@ async function createSession(parsed: ParsedArgs) {
     await access(workspaceValue);
   }
 
-  const provider = providers.find((item) => item.id === providerId);
-  const model = models.models.find((item) => item.modelId === modelId);
-
-  if (!provider || !model) {
-    throw new Error("Provider or model not found");
-  }
-
-  const now = new Date().toISOString();
   const targetWorkspace =
     workspace ??
     createWorkspaceFromPath(
       path.resolve(workspaceValue),
-      now,
+      new Date().toISOString(),
       workspaces.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1000,
     );
-  const session: SessionRecord = {
-    id: crypto.randomUUID(),
-    workspaceId: targetWorkspace.id,
-    title: `New ${agentType} session`,
-    agentType,
-    status: "idle",
-    writeMode: "native-write",
-    sessionModeId: null,
-    createdAt: now,
-    updatedAt: now,
-    lastMessageAt: null,
-    providerSnapshot: createProviderSnapshotForModel({ provider, model }),
-  };
 
   return withDaemon(async () => {
     if (!workspace) {
       await requestDaemon("workspace.save", { workspace: targetWorkspace });
     }
-    return taskApi.saveSessionConfiguration(sessionConfiguration(session));
+    return requestDaemon("session.create", {
+      workspaceId: targetWorkspace.id,
+      agentType: stringFlag(parsed, "agent") as AgentId | undefined,
+      model: modelSelectionFromFlags(parsed),
+      permissionMode: stringFlag(parsed, "permission") as
+        | AgentPermissionMode
+        | undefined,
+      agentRoleId: stringFlag(parsed, "role"),
+      title: stringFlag(parsed, "title"),
+    });
   });
 }
 

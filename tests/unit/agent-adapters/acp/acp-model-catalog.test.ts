@@ -4,7 +4,6 @@ import type {
 } from "@cocurdex/agent-adapters/internal/acp/acp-connection";
 import {
   listAcpProviderModels,
-  loginAcpProvider,
   probeAcpProviderModelAxes,
   resetAcpProviderModelsCache,
 } from "@cocurdex/agent-adapters/internal/acp/acp-model-catalog";
@@ -362,95 +361,5 @@ describe("probeAcpProviderModelAxes", () => {
     expect(opus?.model.serviceTiers).toEqual([
       { id: "fast", name: "Fast", description: "" },
     ]);
-  });
-});
-
-describe("loginAcpProvider", () => {
-  const loginSpec = { ...spec, authMethodPriority: ["cursor_login"] };
-
-  beforeEach(() => {
-    resetAcpProviderModelsCache();
-  });
-
-  it("authenticates with the prioritized advertised method", async () => {
-    const { factory, connection, close } = createFactory();
-
-    await loginAcpProvider(loginSpec, factory);
-
-    expect(connection.authenticate).toHaveBeenCalledWith({
-      methodId: "cursor_login",
-    });
-    expect(connection.newSession).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledOnce();
-  });
-
-  it("falls back to the first advertised method", async () => {
-    const { factory, connection } = createFactory({
-      initialize: vi.fn(async () => ({
-        protocolVersion: 1,
-        authMethods: [{ id: "other_method", name: "Other" }],
-      })),
-    });
-
-    await loginAcpProvider(loginSpec, factory);
-
-    expect(connection.authenticate).toHaveBeenCalledWith({
-      methodId: "other_method",
-    });
-  });
-
-  it("skips authenticate when the agent advertises no auth methods", async () => {
-    const { factory, connection } = createFactory({
-      initialize: vi.fn(async () => ({
-        protocolVersion: 1,
-        authMethods: [],
-      })),
-    });
-
-    await loginAcpProvider(loginSpec, factory);
-
-    expect(connection.authenticate).not.toHaveBeenCalled();
-  });
-
-  it("re-probes the catalog after a successful login", async () => {
-    const { factory } = createFactory();
-
-    await listAcpProviderModels(spec, factory);
-    await loginAcpProvider(loginSpec, factory);
-    await listAcpProviderModels(spec, factory);
-
-    expect(factory).toHaveBeenCalledTimes(3);
-  });
-
-  it("shares a single in-flight login", async () => {
-    let resolveAuth: (() => void) | undefined;
-    const { factory, connection } = createFactory({
-      authenticate: vi.fn(
-        () =>
-          new Promise<Record<string, never>>((resolve) => {
-            resolveAuth = () => resolve({});
-          }),
-      ),
-    });
-
-    const first = loginAcpProvider(loginSpec, factory);
-    const second = loginAcpProvider(loginSpec, factory);
-    await vi.waitFor(() =>
-      expect(connection.authenticate).toHaveBeenCalledOnce(),
-    );
-
-    expect(factory).toHaveBeenCalledOnce();
-    resolveAuth?.();
-    await Promise.all([first, second]);
-  });
-
-  it("rejects when the agent never finishes authenticating", async () => {
-    const { factory } = createFactory({
-      authenticate: vi.fn(() => new Promise<never>(() => {})),
-    });
-
-    await expect(
-      loginAcpProvider(loginSpec, factory, { timeoutMs: 5 }),
-    ).rejects.toThrow("login timed out");
   });
 });

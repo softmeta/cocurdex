@@ -7,9 +7,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@cocurdex/product-skills": "workspace:*"
+    "@cocurdex/product-skills": "workspace:*",
+    "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
+    "@cocurdex/test-fixtures": "workspace:*",
     "@types/node": "^24.19.2",
     "vitest": "^4.1.11"
   }

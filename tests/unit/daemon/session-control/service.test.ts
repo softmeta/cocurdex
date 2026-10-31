@@ -1,27 +1,28 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { createAgentRegistry } from "@cocurdex/agent-core";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { MessageRecord, SendSessionCommand } from "@cocurdex/shared";
 import { CHAT_WORKSPACE_ID } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const tempDirs = createTempDirs();
 
 const dispatchWait = { timeout: 15_000 };
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => {
   for (const dispose of cleanup.splice(0).reverse()) await dispose();
+  await tempDirs.cleanup();
 });
 
 async function fixture() {
-  const root = await mkdtemp(path.join(tmpdir(), "cocurdex-task-control-"));
+  const root = await tempDirs.create("cocurdex-task-control-");
   const service = new CocurdexDaemonService({
     userDataPath: root,
     runtimeFingerprint: "test",
   });
   cleanup.push(async () => {
     await service.shutdown();
-    await rm(root, { force: true, recursive: true });
   });
   const pi = createAgentRegistry()
     .list()

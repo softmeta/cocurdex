@@ -10,7 +10,7 @@ import type {
   DaemonRequestPayloadByMethod,
 } from "@cocurdex/rpc";
 import type { HostPrincipal } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
@@ -34,6 +34,7 @@ async function setup() {
     runtimeFingerprint: "deck-access-test",
     userDataPath,
   });
+  tempDirs.onCleanup(() => service.shutdown());
   await service.saveWorkspace({
     id: "workspace-1",
     name: "acme-shop",

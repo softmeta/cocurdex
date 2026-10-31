@@ -2,7 +2,7 @@ import path from "node:path";
 import { createCommandReceiptLog } from "@cocurdex/daemon/internal/command-receipt-log";
 import { createDaemonReceiptStore } from "@cocurdex/daemon/internal/rpc-receipts";
 import { createCocurdexDatabase } from "@cocurdex/db";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 const tempDirs = createTempDirs();

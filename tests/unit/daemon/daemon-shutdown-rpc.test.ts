@@ -1,18 +1,21 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/internal/client";
 import { startDaemonServer } from "@cocurdex/daemon/internal/wire";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const tempDirs = createTempDirs();
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
   for (const cleanup of cleanups.splice(0)) await cleanup();
+  await tempDirs.cleanup();
 });
 
 async function fixture() {
-  const userDataPath = await mkdtemp(path.join(tmpdir(), "cd-idle-"));
+  const userDataPath = await tempDirs.create("cd-idle-");
   const onIdleShutdown = vi.fn();
   const daemon = await startDaemonServer({
     userDataPath,
@@ -22,7 +25,6 @@ async function fixture() {
   });
   cleanups.push(async () => {
     await daemon.close();
-    await rm(userDataPath, { recursive: true, force: true });
   });
   await vi.waitFor(() =>
     expect(daemon.service.getActiveWork().workflowActive).toBe(false),
@@ -44,7 +46,9 @@ describe("daemon idle shutdown RPC", () => {
       status: "accepted",
       activeRequests: 0,
     });
-    await vi.waitFor(() => expect(onIdleShutdown).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(onIdleShutdown).toHaveBeenCalledOnce(), {
+      timeout: SHUTDOWN_TIMEOUT_MS,
+    });
     expect(daemon.server.listening).toBe(false);
   });
 
@@ -93,6 +97,8 @@ describe("daemon idle shutdown RPC", () => {
     }
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(await shutdown()).toMatchObject({ status: "accepted" });
-    await vi.waitFor(() => expect(onIdleShutdown).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(onIdleShutdown).toHaveBeenCalledOnce(), {
+      timeout: SHUTDOWN_TIMEOUT_MS,
+    });
   });
 });

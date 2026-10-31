@@ -57,6 +57,16 @@ describe("note markdown", () => {
     expect(serializeNoteMarkdown(parseNoteMarkdown(markdown))).toBe(markdown);
   });
 
+  it("keeps app-stored image references through the collaborative doc", () => {
+    const image =
+      "![checkout](cocurdex://image/3f1c2a9e-4b7d-4e2a-9c1f-0a1b2c3d4e5f.png)";
+    const markdown = noteDocToMarkdown(
+      createNoteDocState(`Repro:\n\n${image}\n\nSee ${image} inline.`),
+    );
+
+    expect(markdown.split(image)).toHaveLength(3);
+  });
+
   it.each([
     ["an inline image", "Before ![chart](chart.png) after"],
     ["an image in a table cell", "| shot |\n| --- |\n| ![ui](ui.png) |"],

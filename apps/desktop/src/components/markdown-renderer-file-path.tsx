@@ -1,3 +1,4 @@
+import type { FilePathCandidate } from "@cocurdex/shared";
 import {
   isValidElement,
   type KeyboardEvent,
@@ -7,10 +8,7 @@ import {
 } from "react";
 import { cn } from "@/lib";
 import { createMarkdownFileExistenceCache } from "./markdown-file-existence-cache";
-import type {
-  FilePathCandidate,
-  MarkdownFilePathHandlers,
-} from "./markdown-file-path";
+import type { MarkdownFilePathHandlers } from "./markdown-file-path";
 import { splitWorkspaceLinkLabel } from "./markdown-file-path";
 import {
   getFilePathToneClass,

@@ -1,9 +1,11 @@
-import type {
-  AgentEvent,
-  DaemonEventMeta,
-  SessionRecord,
-  SyncPullInput,
-  SyncPullResult,
+import {
+  type AgentEvent,
+  type AgentSessionRuntimeState,
+  type DaemonEventMeta,
+  EMPTY_AGENT_SESSION_RUNTIME_STATE,
+  type SessionRecord,
+  type SyncPullInput,
+  type SyncPullResult,
 } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +13,7 @@ import {
   createAgentEventBridge,
   startAgentEventBridge,
 } from "@/app/layout/app-shell/agent-event-bridge";
+import { agentRuntimeBySessionAtom } from "@/features/agent/runtime";
 import { messagesBySessionAtom } from "@/features/agent/view/message-store";
 import {
   deleteSessionAtom,
@@ -27,6 +30,9 @@ const host = vi.hoisted(() => ({
   onDataChanged: vi.fn(() => () => {}),
   listSessionAttention: vi.fn(async () => []),
   updateSessionAttention: vi.fn(async (_payload: unknown) => ({})),
+  getSessionRuntimeState: vi.fn<
+    (sessionId: string) => Promise<AgentSessionRuntimeState>
+  >(async () => EMPTY_AGENT_SESSION_RUNTIME_STATE),
   activeListeners: 0,
 }));
 vi.mock("@/lib/ipc", () => ({ desktopApi: host }));
@@ -278,5 +284,67 @@ describe("session visit sync", () => {
     ).toEqual([
       expect.objectContaining({ action: "visited", sessionId: "done" }),
     ]);
+  });
+});
+
+describe("runtime state seeding", () => {
+  it("loads the opened session's runtime state and keeps what the agent reported meanwhile", async () => {
+    let resolveState: (state: AgentSessionRuntimeState) => void = () => {};
+    host.getSessionRuntimeState.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveState = resolve;
+        }),
+    );
+    const store = createStore();
+    store.set(sessionsAtom, [
+      sessionRecord("open", "2026-10-27T00:00:00.000Z"),
+    ]);
+    const stop = createAgentEventBridge(store).start();
+    store.set(selectSessionAtom, "open");
+
+    host.listener?.({
+      type: "session.mode.updated",
+      sessionId: "open",
+      currentModeId: "plan",
+    });
+    resolveState({
+      ...EMPTY_AGENT_SESSION_RUNTIME_STATE,
+      configOptions: [
+        { id: "fast", name: "Fast", type: "boolean", currentValue: true },
+      ],
+      mode: { availableModes: [], currentModeId: "default" },
+    });
+    await vi.waitFor(() =>
+      expect(store.get(agentRuntimeBySessionAtom).open?.configOptions).toEqual([
+        { id: "fast", name: "Fast", type: "boolean", currentValue: true },
+      ]),
+    );
+    stop();
+
+    expect(host.getSessionRuntimeState).toHaveBeenCalledTimes(1);
+    expect(host.getSessionRuntimeState).toHaveBeenCalledWith("open");
+    expect(store.get(agentRuntimeBySessionAtom).open?.mode?.currentModeId).toBe(
+      "plan",
+    );
+  });
+
+  it("leaves a session without reported runtime state unset", async () => {
+    host.getSessionRuntimeState.mockResolvedValue(
+      EMPTY_AGENT_SESSION_RUNTIME_STATE,
+    );
+    const store = createStore();
+    store.set(sessionsAtom, [
+      sessionRecord("idle", "2026-10-27T00:00:00.000Z"),
+    ]);
+    const stop = createAgentEventBridge(store).start();
+    store.set(selectSessionAtom, "idle");
+    await vi.waitFor(() =>
+      expect(host.getSessionRuntimeState).toHaveBeenCalledWith("idle"),
+    );
+    await Promise.resolve();
+    stop();
+
+    expect(store.get(agentRuntimeBySessionAtom).idle).toBeUndefined();
   });
 });

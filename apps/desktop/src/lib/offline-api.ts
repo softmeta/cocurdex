@@ -2,8 +2,11 @@ import {
   type AgentDescriptor,
   type AgentSessionMode,
   DEFAULT_AGENT_RUN_LIMITS,
+  DEFAULT_MEMORY_CLOUD_STATUS,
+  DEFAULT_MEMORY_SETTINGS,
   DEFAULT_REMOTE_ACCESS_PORT,
   DEFAULT_SCRIPT_RUN_SETTINGS,
+  EMPTY_AGENT_SESSION_RUNTIME_STATE,
   emptyWorktreeEnvironment,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
@@ -303,6 +306,7 @@ export const offlineApi: DesktopApi = {
     throw new Error("Switching agents needs the Cocurdex daemon");
   },
   listContextTransfers: async () => [],
+  getSessionRuntimeState: async () => EMPTY_AGENT_SESSION_RUNTIME_STATE,
   getSessionExecutionTree: async () => null,
   getScriptRun: async () => {
     throw new Error("Script runs require the desktop app");
@@ -466,6 +470,13 @@ export const offlineApi: DesktopApi = {
   listCompatibleProvidersForAgent: async () => [],
   probeProviderModelAxes: async () => null,
   loginAgent: async () => {},
+  cancelAgentLogin: async () => {},
+  logoutAgent: async () => {
+    throw new Error("Logging out needs the desktop app");
+  },
+  readAgentAuth: async () => {
+    throw new Error("Agent sign-in needs the desktop app");
+  },
   listAcpRegistryCatalog: async () => [],
   installAcpRegistryAgent: async () => {
     throw new Error("ACP Registry needs the desktop app");
@@ -506,13 +517,93 @@ export const offlineApi: DesktopApi = {
     durationMs: 0,
     error: "Proxy test is unavailable outside the desktop app",
   }),
+  getMemoryStatus: async () => ({
+    settings: DEFAULT_MEMORY_SETTINGS,
+    enabled: DEFAULT_MEMORY_SETTINGS.enabled,
+    supported: true,
+    available: false,
+    installation: "missing" as const,
+    version: null,
+    executable: null,
+    dataDir: null,
+    account: null,
+    space: null,
+    cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS },
+    doctor: null,
+    error: "Memory is unavailable outside the desktop app",
+    checkedAt: null,
+    lastRecall: null,
+  }),
+  getMemorySettings: async () => DEFAULT_MEMORY_SETTINGS,
+  setMemorySettings: async (settings) => settings,
+  recallMemories: async (input) => ({
+    query: input.query,
+    items: [],
+    truncated: false,
+  }),
+  showMemory: async () => null,
+  rememberMemory: async () => ({
+    action: "skipped" as const,
+    id: null,
+    title: null,
+    candidates: [],
+    message: "Memory is unavailable outside the desktop app",
+  }),
+  saveSessionMemory: async () => ({
+    saved: false,
+    memoryId: null,
+    reason: "Memory is unavailable outside the desktop app",
+  }),
+  installMemory: async () => ({
+    status: {
+      settings: DEFAULT_MEMORY_SETTINGS,
+      enabled: DEFAULT_MEMORY_SETTINGS.enabled,
+      supported: true,
+      available: false,
+      installation: "missing" as const,
+      version: null,
+      executable: null,
+      dataDir: null,
+      account: null,
+      space: null,
+      cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS },
+      doctor: null,
+      error: "Memory is unavailable outside the desktop app",
+      checkedAt: null,
+      lastRecall: null,
+    },
+    installed: false,
+    message: "Memory is unavailable outside the desktop app",
+  }),
+  runMemoryDoctor: async () => ({
+    status: "fail" as const,
+    version: null,
+    summary: { total: 0, pass: 0, warn: 0, fail: 1, skip: 0 },
+    checks: [],
+    checkedAt: new Date().toISOString(),
+  }),
+  getMemoryPolicy: async () => "",
+  connectMemoryCloud: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
+  disconnectMemoryCloud: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
+  setMemoryCloudSync: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
+  getMemoryCloudKeys: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
   getHostRemoteAccess: async () => ({
+    allowed: true,
     settings: { enabled: false, port: DEFAULT_REMOTE_ACCESS_PORT },
     listening: false,
     addresses: [],
     error: null,
   }),
   setHostRemoteAccess: async (settings) => ({
+    allowed: true,
     settings,
     listening: false,
     addresses: [],
@@ -525,6 +616,7 @@ export const offlineApi: DesktopApi = {
   cancelHostPairing: async () => null,
   listHostDevices: async () => [],
   revokeHostDevice: async () => null,
+  updateHostDeviceScopes: async () => null,
   listHostAudit: async () => [],
   listSessionMessages: async () => ({
     messages: [],

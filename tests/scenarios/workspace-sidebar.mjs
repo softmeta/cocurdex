@@ -1,6 +1,7 @@
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
-import { clickByRole, waitForRole } from "./lib/locate.mjs";
+import { clickByRole, waitForNoRole, waitForRole } from "./lib/locate.mjs";
+import { translate } from "./lib/navigate.mjs";
 
 const PINNED_SESSION = "Add percentage discount codes";
 const LISTED_SESSION = "Store cart totals in cents";
@@ -212,6 +213,48 @@ runScenario("workspace-sidebar", {
           drag,
         );
         return drag;
+      },
+    ],
+    [
+      "removing a workspace from its context menu asks first",
+      async ({ session }) => {
+        await clickByRole(
+          session,
+          { role: "button", name: new RegExp(`^${OTHER_WORKSPACE.name} `) },
+          UI_TIMEOUT_MS,
+          "right",
+        );
+        await clickByRole(
+          session,
+          {
+            role: "menuitem",
+            name: await translate(session, "sessions:sidebar.removeWorkspace"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        const title = await translate(
+          session,
+          "sessions:workspace.editRemoveTitle",
+          {
+            name: OTHER_WORKSPACE.name,
+          },
+        );
+        await waitForRole(
+          session,
+          { role: "dialog", name: title },
+          UI_TIMEOUT_MS,
+        );
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "sessions:workspace.editCancel"),
+        });
+        await waitForNoRole(session, { role: "dialog" }, UI_TIMEOUT_MS);
+        const rows = await waitForRole(session, {
+          role: "button",
+          name: new RegExp(`^${OTHER_WORKSPACE.name} `),
+        });
+        check(rows.length > 0, "cancelled workspace stays listed");
+        return { dialog: title };
       },
     ],
     [

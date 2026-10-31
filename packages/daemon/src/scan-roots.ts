@@ -11,12 +11,18 @@ import type { DaemonState } from "./state";
 
 const KNOWN_ROOTS_TTL_MS = 2_000;
 
+interface KnownRoots {
+  roots: string[];
+  realRoots: string[];
+}
+
 // Roots a client may scan (browse, search): registered workspace roots plus
 // session and git worktrees. The list is cached briefly; callers that mutate
 // workspaces or worktrees should invalidate it.
 export function createWorkspaceScanPolicy(state: DaemonState) {
   let cacheGeneration = 0;
-  let knownRootsCache: { expiresAt: number; roots: string[] } | null = null;
+  let knownRootsCache: { expiresAt: number; roots: KnownRoots } | null = null;
+  let inFlight: Promise<KnownRoots> | null = null;
 
   async function loadKnownWorkspaceScanRoots() {
     const [workspaces, sessions, archived] = await Promise.all([
@@ -44,41 +50,58 @@ export function createWorkspaceScanPolicy(state: DaemonState) {
     });
   }
 
-  async function listKnownWorkspaceScanRoots(): Promise<string[]> {
+  async function loadKnownRoots(): Promise<KnownRoots> {
+    const roots = await loadKnownWorkspaceScanRoots();
+    const realRoots = await Promise.all(
+      roots.map((rootPath) =>
+        realpath(rootPath).catch(() => path.resolve(rootPath)),
+      ),
+    );
+    return { roots, realRoots };
+  }
+
+  function startLoad() {
+    const load = loadKnownRoots();
+    inFlight = load;
+    const settle = () => {
+      if (inFlight === load) inFlight = null;
+    };
+    load.then(settle, settle);
+    return load;
+  }
+
+  async function knownRoots(): Promise<KnownRoots> {
     if (knownRootsCache && Date.now() < knownRootsCache.expiresAt) {
       return knownRootsCache.roots;
     }
     const generation = cacheGeneration;
-    const roots = await loadKnownWorkspaceScanRoots();
+    const load = inFlight ?? startLoad();
+    const loaded = await load;
     if (generation !== cacheGeneration) {
-      return listKnownWorkspaceScanRoots();
+      return knownRoots();
     }
     knownRootsCache = {
       expiresAt: Date.now() + KNOWN_ROOTS_TTL_MS,
-      roots,
+      roots: loaded,
     };
-    return roots;
+    return loaded;
   }
 
   return {
     invalidate() {
       cacheGeneration += 1;
       knownRootsCache = null;
+      inFlight = null;
     },
     async canScan(rootPath: string) {
-      const allowed = await listKnownWorkspaceScanRoots();
-      return isKnownWorkspaceScanRoot(rootPath, allowed, homedir());
+      const { roots } = await knownRoots();
+      return isKnownWorkspaceScanRoot(rootPath, roots, homedir());
     },
     // File-level access (readText/exists): the candidate may be any path
     // inside an allowed root, not a root itself. Both sides are canonicalized
     // so a symlink inside a workspace cannot escape the allowlist.
     async canAccessFile(filePath: string) {
-      const allowed = await listKnownWorkspaceScanRoots();
-      const realRoots = await Promise.all(
-        allowed.map((rootPath) =>
-          realpath(rootPath).catch(() => path.resolve(rootPath)),
-        ),
-      );
+      const { realRoots } = await knownRoots();
       const resolved = await realpath(filePath).catch(() =>
         path.resolve(filePath),
       );

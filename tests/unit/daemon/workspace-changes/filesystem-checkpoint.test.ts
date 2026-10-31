@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCheckpointBlobStore } from "@cocurdex/daemon/internal/workspace-changes/blob-store";
 import { createFilesystemCheckpointAdapter } from "@cocurdex/daemon/internal/workspace-changes/filesystem-checkpoint";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

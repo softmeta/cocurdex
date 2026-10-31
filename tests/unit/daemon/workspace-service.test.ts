@@ -1,12 +1,11 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   fileExists,
   listWorkspaceDirectory,
   listWorkspaceFiles,
 } from "@cocurdex/daemon/internal/workspace-service";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   afterAll,
   afterEach,
@@ -29,17 +28,18 @@ vi.mock("node:child_process", () => ({
 }));
 
 describe("fileExists", () => {
+  const tempDirs = createTempDirs();
   let dir: string;
   let filePath: string;
 
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), "file-exists-"));
+    dir = await tempDirs.create("file-exists-");
     filePath = join(dir, "note.txt");
     await writeFile(filePath, "hello", "utf8");
   });
 
   afterAll(async () => {
-    await rm(dir, { recursive: true, force: true });
+    await tempDirs.cleanup();
   });
 
   it("returns true for an existing regular file", async () => {
@@ -58,17 +58,14 @@ describe("fileExists", () => {
 const FILE_RESULT_LIMIT = 5000;
 
 describe("listWorkspaceFiles", () => {
-  const roots: string[] = [];
+  const tempDirs = createTempDirs();
 
   afterEach(async () => {
-    await Promise.all(
-      roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
-    );
+    await tempDirs.cleanup();
   });
 
   async function createRoot() {
-    const root = await mkdtemp(join(tmpdir(), "workspace-files-"));
-    roots.push(root);
+    const root = await tempDirs.create("workspace-files-");
     return root;
   }
 

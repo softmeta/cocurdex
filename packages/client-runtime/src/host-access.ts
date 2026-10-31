@@ -4,6 +4,7 @@ import {
   type HostAccessSession,
   type HostPairingExchangeResult,
 } from "@cocurdex/shared";
+import type { HostEndpoint } from "./platform";
 import type { SavedHost, SavedHostStore } from "./saved-hosts";
 
 export type HostAccessFailure = "invalid" | "rateLimited" | "unreachable";
@@ -28,23 +29,34 @@ interface HostHttpOptions {
   fetch?: FetchLike;
 }
 
+const HOST_REQUEST_TIMEOUT_MS = 10_000;
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function callHost(
   options: HostHttpOptions,
   path: string,
   init: RequestInit,
 ) {
   const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HOST_REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetchImpl(new URL(path, options.baseUrl).toString(), {
       ...init,
       cache: "no-store",
+      signal: controller.signal,
     });
   } catch (error) {
     throw new HostAccessError(
       "unreachable",
-      error instanceof Error ? error.message : String(error),
+      controller.signal.aborted ? "The host did not answer" : errorText(error),
     );
+  } finally {
+    clearTimeout(timeout);
   }
   if (response.status === 401) {
     throw new HostAccessError("invalid", "The host rejected this device");
@@ -102,4 +114,12 @@ export async function pairHost(
   };
   options.store.save(saved);
   return saved;
+}
+
+export function savedHostEndpoint(
+  host: Pick<SavedHost, "baseUrl" | "token">,
+): HostEndpoint {
+  const { protocol, host: authority } = new URL(host.baseUrl);
+  const scheme = protocol === "https:" ? "wss:" : "ws:";
+  return { webSocketUrl: `${scheme}//${authority}`, token: host.token };
 }

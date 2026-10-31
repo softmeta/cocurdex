@@ -16,6 +16,7 @@ import {
 import { SettingRow, SettingsGroup } from "@/components";
 import { ScrollArea } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
+import { MemorySettingsPanel } from "@/features/memory";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
 import { TeamSettingsPanel } from "@/features/sessions/team";
 import { ShortcutsSettingsPanel } from "@/features/shortcuts";
@@ -178,6 +179,14 @@ function SectionPanel({
 
   if (sectionId === "mcp") {
     return <McpSettingsPanel />;
+  }
+
+  if (sectionId === "memory") {
+    return (
+      <div className="settings-panel-enter flex flex-col gap-8">
+        <MemorySettingsPanel />
+      </div>
+    );
   }
 
   if (sectionId === "skills") {

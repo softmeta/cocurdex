@@ -1,10 +1,16 @@
 export { type BackoffPolicy, backoffDelay } from "./backoff";
 export {
+  type ForegroundWakeup,
+  foregroundWakeup,
+  SUSPENDED_RECONNECT_AFTER_MS,
+} from "./foreground-wakeup";
+export {
   exchangeHostPairing,
   type FetchLike,
   HostAccessError,
   type HostAccessFailure,
   pairHost,
+  savedHostEndpoint,
   verifyHostCredential,
 } from "./host-access";
 export {

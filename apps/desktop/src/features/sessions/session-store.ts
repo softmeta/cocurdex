@@ -11,6 +11,7 @@ import {
   agentRuntimeAxisCapabilities,
   type BuiltInAgentId,
   childSessionFromSubagentToolCall,
+  collectSessionSubtreeIds,
   getAgentSessionTitleStrategy,
   getFallbackAgentPermissionModes,
   isAcpRegistryAgentId,
@@ -21,6 +22,7 @@ import {
   PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
+  sessionAncestorIds,
   supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
@@ -47,7 +49,6 @@ import {
   findPaneIdBySessionId,
   type SessionSplitDirection,
 } from "./session-split/session-split-tree";
-import { collectSessionSubtreeIds, sessionAncestorIds } from "./session-tree";
 
 export const sessionsAtom = atom<SessionRecord[]>([]);
 export const sessionRunStartedAtAtom = atom<Record<string, number>>({});

@@ -5,7 +5,7 @@ import {
   getTurnWorkspaceChangesRoot,
 } from "@cocurdex/daemon/internal/workspace-changes/blob-store";
 import { hashBuffer } from "@cocurdex/daemon/internal/workspace-changes/hash";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

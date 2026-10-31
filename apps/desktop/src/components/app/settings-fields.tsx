@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
 
 export function SettingsGroup({
   action,
@@ -59,5 +65,32 @@ export function SettingRow({
       </div>
       <div className="shrink-0">{children}</div>
     </div>
+  );
+}
+
+export function SettingNumberInput({
+  onCommit,
+  unit,
+  ...props
+}: Omit<ComponentProps<"input">, "className" | "onBlur" | "onKeyDown"> & {
+  onCommit: () => void;
+  unit?: string;
+}) {
+  return (
+    <InputGroup className="w-24">
+      <InputGroupInput
+        {...props}
+        className="tabular-nums"
+        onBlur={onCommit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") onCommit();
+        }}
+      />
+      {unit ? (
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>{unit}</InputGroupText>
+        </InputGroupAddon>
+      ) : null}
+    </InputGroup>
   );
 }

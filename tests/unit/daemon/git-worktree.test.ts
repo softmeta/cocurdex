@@ -1,20 +1,17 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   addGitWorktree,
   listGitWorktrees,
 } from "@cocurdex/daemon/internal/git-worktree";
 import { runGit } from "@cocurdex/daemon/internal/workspace-changes/git-run";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
 
 async function createRepositoryFixture(): Promise<string> {
-  const fixturePath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-git-worktree-"),
-  );
-  temporaryDirectories.push(fixturePath);
+  const fixturePath = await tempDirs.create("cocurdex-git-worktree-");
 
   const repositoryPath = path.join(fixturePath, "repository");
   await mkdir(repositoryPath);
@@ -32,16 +29,7 @@ async function createRepositoryFixture(): Promise<string> {
 }
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, {
-        force: true,
-        maxRetries: 5,
-        recursive: true,
-        retryDelay: 100,
-      }),
-    ),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("listGitWorktrees", () => {
@@ -59,8 +47,7 @@ describe("listGitWorktrees", () => {
   });
 
   it("returns an empty list outside a git repository", async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), "cocurdex-non-git-"));
-    temporaryDirectories.push(directory);
+    const directory = await tempDirs.create("cocurdex-non-git-");
 
     await expect(listGitWorktrees(directory)).resolves.toEqual([]);
   });

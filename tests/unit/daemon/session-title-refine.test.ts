@@ -1,10 +1,10 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { createAgentRegistry } from "@cocurdex/agent-core";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import { sessionConfiguration } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const tempDirs = createTempDirs();
 
 const generateProviderSessionTitleMock = vi.hoisted(() => vi.fn());
 
@@ -13,23 +13,21 @@ vi.mock("@cocurdex/daemon/internal/provider/session-title", () => ({
 }));
 
 const now = "2026-08-02T00:00:00.000Z";
-const services: { service: CocurdexDaemonService; userDataPath: string }[] = [];
+const services: CocurdexDaemonService[] = [];
 
 afterEach(async () => {
   vi.clearAllMocks();
-  for (const { service, userDataPath } of services.splice(0)) {
-    await service.shutdown();
-    await rm(userDataPath, { force: true, recursive: true });
-  }
+  for (const service of services.splice(0)) await service.shutdown();
+  await tempDirs.cleanup();
 });
 
 async function createService() {
-  const userDataPath = await mkdtemp(path.join(tmpdir(), "cocurdex-title-"));
+  const userDataPath = await tempDirs.create("cocurdex-title-");
   const service = new CocurdexDaemonService({
     runtimeFingerprint: "test",
     userDataPath,
   });
-  services.push({ service, userDataPath });
+  services.push(service);
   const pi = createAgentRegistry()
     .list()
     .find((agent) => agent.id === "pi");

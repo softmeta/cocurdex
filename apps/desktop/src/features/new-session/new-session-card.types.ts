@@ -9,7 +9,10 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import type { ReactNode, Ref } from "react";
-import type { ChatComposerHandle } from "@/features/composer";
+import type {
+  ChatComposerHandle,
+  ComposerSendOutcome,
+} from "@/features/composer";
 import type { GitBranchInfo } from "@/lib";
 
 export interface NewSessionCardProps {
@@ -48,7 +51,7 @@ export interface NewSessionCardProps {
     agentRoleId?: string | null;
     teamTemplateId?: string | null;
     worktreePath?: string;
-  }) => void;
+  }) => ComposerSendOutcome | Promise<ComposerSendOutcome>;
 }
 
 // Hook props are the component props minus render-only fields.

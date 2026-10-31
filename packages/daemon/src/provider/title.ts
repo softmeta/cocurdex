@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { generatePiConversationTitle } from "@cocurdex/agent-adapters";
 import type {
   TitleModelProbeResult,
@@ -102,6 +103,7 @@ export async function probeTitleModel(
       model,
       apiKey,
       message: TITLE_PROBE_MESSAGE,
+      sessionId: `cocurdex-title-probe-${randomUUID()}`,
       signal: controller.signal,
     });
     const latencyMs = Date.now() - startedAt;

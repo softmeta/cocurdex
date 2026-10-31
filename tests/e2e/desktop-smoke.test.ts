@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { killProcessTree } from "@cocurdex/agent-adapters";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   type ElectronApplication,
   _electron as electron,
@@ -23,14 +24,8 @@ const desktopRoot = path.join(repoRoot, "apps", "desktop");
 const mainEntry = path.join(desktopRoot, "out", "main", "main.js");
 const rendererEntry = path.join(desktopRoot, "out", "renderer", "index.html");
 const daemonBundle = path.join(desktopRoot, "resources", "cli", "daemon.cjs");
-const electronPackageDir = path.join(desktopRoot, "node_modules", "electron");
-
-function resolveElectronExecutable() {
-  const relative = readFileSync(
-    path.join(electronPackageDir, "path.txt"),
-    "utf8",
-  ).trim();
-  return path.join(electronPackageDir, "dist", relative);
+function resolveElectronExecutable(): string {
+  return createRequire(path.join(desktopRoot, "package.json"))("electron");
 }
 
 const packaged = process.env.COCURDEX_DESKTOP_PACKAGED === "1";
@@ -117,6 +112,7 @@ describe("desktop app boot", () => {
       if (value !== undefined) env[key] = value;
     }
     env.COCURDEX_USER_DATA_PATH = userDataPath;
+    env.COCURDEX_DISABLE_MEMORY_AUTO_START = "1";
     env.NO_COLOR = "1";
     env.TZ = "UTC";
     delete env.ELECTRON_RUN_AS_NODE;

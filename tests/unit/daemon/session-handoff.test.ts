@@ -1,7 +1,7 @@
 import { createAgentRegistry } from "@cocurdex/agent-core";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { AgentId, MessageRecord } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 const cleanup: Array<() => Promise<void>> = [];

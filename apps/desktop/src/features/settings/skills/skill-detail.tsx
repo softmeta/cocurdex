@@ -3,10 +3,10 @@ import type {
   InstalledSkillDetail,
   SkillLinkAgent,
 } from "@cocurdex/shared";
-import { ArrowUpCircle, Trash2 } from "lucide-react";
+import { ArrowUpCircle } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppConfirmDialog } from "@/components";
+import { AppRemoveButton, SettingsGroup } from "@/components";
 import { Badge, Button, Text } from "@/components/ui";
 import { SkillAgentsSection } from "./skill-agents-section";
 import { SkillDocumentSection, SkillFilesSection } from "./skill-files-section";
@@ -33,7 +33,6 @@ export function SkillDetail({
   const { t } = useTranslation("settings");
   const ref = skillRef(skill);
   const { detail, error, isBusy, run } = useSkillDetail(ref);
-  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
   const current = detail?.skill ?? skill;
   const brokenLinkOnly = isBrokenLinkOnly(current);
@@ -51,7 +50,6 @@ export function SkillDetail({
     void mutate(() => skillsApi.setAgentLink({ ...ref, agent, enabled }));
 
   const remove = async () => {
-    setIsRemoveOpen(false);
     const removed = await run(async () => {
       await skillsApi.remove(ref);
       return null;
@@ -85,18 +83,6 @@ export function SkillDetail({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {current.builtin ? null : (
-              <Button
-                className="text-muted-foreground hover:text-destructive"
-                disabled={isBusy}
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsRemoveOpen(true)}
-              >
-                <Trash2 className="size-4" />
-                {t("skills.actions.remove")}
-              </Button>
-            )}
             {current.update ? (
               <Button
                 disabled={isBusy}
@@ -156,16 +142,23 @@ export function SkillDetail({
         </>
       ) : null}
 
-      <AppConfirmDialog
-        cancelLabel={t("skills.actions.cancel")}
-        confirmLabel={t("skills.actions.remove")}
-        description={removeDescription}
-        open={isRemoveOpen}
-        title={t("skills.detail.removeTitle", { name: current.name })}
-        variant="destructive"
-        onConfirm={() => void remove()}
-        onOpenChange={setIsRemoveOpen}
-      />
+      {current.builtin ? null : (
+        <SettingsGroup title={t("skills.detail.manageTitle")}>
+          <div className="flex items-center py-2">
+            <AppRemoveButton
+              cancelLabel={t("skills.actions.cancel")}
+              confirmDescription={removeDescription}
+              confirmLabel={t("skills.actions.remove")}
+              confirmTitle={t("skills.detail.removeTitle", {
+                name: current.name,
+              })}
+              disabled={isBusy}
+              label={t("skills.actions.remove")}
+              onConfirm={() => void remove()}
+            />
+          </div>
+        </SettingsGroup>
+      )}
       {isUpdateOpen && current.update ? (
         <SkillUpdateDialog
           skill={current}

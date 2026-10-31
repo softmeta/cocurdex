@@ -3,8 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import { createCocurdexDatabase } from "@cocurdex/db";
 import { initializeDatabase } from "@cocurdex/db/internal/migrations";
 import type { MessageRecord } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
 import { seedHistoricalDatabase } from "@cocurdex/test-fixtures/database";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

@@ -1,17 +1,14 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { checkoutGitBranch } from "@cocurdex/daemon/internal/git/git-branch-service";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { simpleGit } from "simple-git";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
 
 async function createRepositoryFixture(): Promise<string> {
-  const fixturePath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-git-branch-"),
-  );
-  temporaryDirectories.push(fixturePath);
+  const fixturePath = await tempDirs.create("cocurdex-git-branch-");
 
   const repositoryPath = path.join(fixturePath, "repository");
   await mkdir(repositoryPath);
@@ -27,11 +24,7 @@ async function createRepositoryFixture(): Promise<string> {
 }
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("checkoutGitBranch", () => {

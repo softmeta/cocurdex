@@ -5,7 +5,14 @@ import {
   pairHost,
   type SavedHost,
 } from "@cocurdex/client-runtime";
+import type { HostAccessScope } from "@cocurdex/shared";
 import { parseHostPairingLink } from "@cocurdex/shared";
+
+function sameScopes(left: HostAccessScope[], right: HostAccessScope[]) {
+  return (
+    left.length === right.length && left.every((scope) => right.includes(scope))
+  );
+}
 
 export type PairFailure = "link" | "invalid" | "rateLimited" | "unreachable";
 
@@ -47,6 +54,19 @@ export function createHostsStore(storage: KeyValueStorage) {
         if (error instanceof HostAccessError) return { failure: error.reason };
         throw error;
       }
+    },
+    adoptScopes(hostId: string, scopes: HostAccessScope[]) {
+      const saved = snapshot.find((host) => host.hostId === hostId);
+      if (!saved || sameScopes(saved.scopes, scopes)) return;
+      store.save({ ...saved, scopes });
+      publish();
+    },
+    rename(hostId: string, name: string) {
+      const saved = snapshot.find((host) => host.hostId === hostId);
+      const trimmed = name.trim();
+      if (!saved || trimmed === "" || trimmed === saved.name) return;
+      store.save({ ...saved, name: trimmed });
+      publish();
     },
     remove(hostId: string) {
       store.remove(hostId);

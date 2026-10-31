@@ -129,4 +129,38 @@ describe("forgetHostsFromPreviousInstall", () => {
 
     expect(createHostsStore(storage).getSnapshot()).toHaveLength(1);
   });
+
+  it("adopts scopes the host reports and stays quiet when they are unchanged", async () => {
+    const storage = memoryStorage();
+    const hosts = createHostsStore(storage);
+    await hosts.pair(LINK, "Pocket", hostAnswering(200, PAIRED));
+    const listener = vi.fn();
+    hosts.subscribe(listener);
+
+    hosts.adoptScopes("host-1", ["interact", "read"]);
+    expect(listener).not.toHaveBeenCalled();
+
+    hosts.adoptScopes("host-1", ["read", "interact", "files.read"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(createHostsStore(storage).getSnapshot()[0]?.scopes).toEqual([
+      "read",
+      "interact",
+      "files.read",
+    ]);
+  });
+  it("renames a computer only on this phone and keeps the name across launches", async () => {
+    const storage = memoryStorage();
+    const hosts = createHostsStore(storage);
+    await hosts.pair(LINK, "Pocket", hostAnswering(200, PAIRED));
+    const listener = vi.fn();
+    hosts.subscribe(listener);
+
+    hosts.rename("host-1", "  Desk Mac  ");
+    hosts.rename("host-1", "   ");
+
+    expect(listener).toHaveBeenCalledOnce();
+    expect(createHostsStore(storage).getSnapshot()).toEqual([
+      expect.objectContaining({ hostId: "host-1", name: "Desk Mac" }),
+    ]);
+  });
 });

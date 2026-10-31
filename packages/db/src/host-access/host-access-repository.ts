@@ -1,5 +1,6 @@
 import type {
   HostAccessAuditEntry,
+  HostAccessScope,
   HostPairingRecord,
   PairedDeviceRecord,
 } from "@cocurdex/shared";
@@ -27,6 +28,10 @@ export interface HostAccessRepository {
   findActiveDeviceByTokenHash(tokenHash: string): PairedDeviceRecord | null;
   listDevices(): PairedDeviceRecord[];
   revokeDevice(deviceId: string, now: string): PairedDeviceRecord | null;
+  updateDeviceScopes(
+    deviceId: string,
+    scopes: HostAccessScope[],
+  ): PairedDeviceRecord | null;
   touchDevice(deviceId: string, now: string): void;
   appendAudit(entry: HostAccessAuditEntry): void;
   listAudit(limit: number): HostAccessAuditEntry[];

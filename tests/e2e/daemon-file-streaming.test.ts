@@ -3,7 +3,7 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { buildDaemonPdfUrl } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, expect, it } from "vitest";
 import { spawnDaemon } from "./helpers/daemon-process";
 import { readProcessMemory } from "./helpers/process-memory";

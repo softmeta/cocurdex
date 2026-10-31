@@ -1,8 +1,25 @@
 {
+  "actions": {
+    "details": "权限与连接",
+    "remove": "移除这台电脑",
+    "rename": "重命名",
+    "switch": "切换到这台电脑"
+  },
+  "detail": {
+    "address": "地址",
+    "name": "名称",
+    "pairedAt": "配对时间",
+    "scopes": "这台手机的权限",
+    "scopesFooter": "权限由电脑授予。要调整，在电脑的 设置 › 设备 里修改。"
+  },
   "empty": {
-    "description": "在电脑上打开 设置 › 设备，生成配对码，然后把它的链接粘贴到这里。",
-    "pair": "配对电脑",
+    "description": "在电脑上打开 Cocurdex 的 设置 › 设备，生成配对二维码，再用这台手机扫一下。",
+    "paste": "粘贴配对链接",
+    "scan": "扫码配对",
     "title": "还没有电脑"
+  },
+  "list": {
+    "current": "当前"
   },
   "pair": {
     "action": "配对",
@@ -14,6 +31,54 @@
     },
     "hint": "在电脑上打开 设置 › 设备，生成配对码。",
     "linkPlaceholder": "配对链接",
-    "pairing": "正在配对…"
+    "pairing": "正在配对…",
+    "scanInstead": "改为扫码"
+  },
+  "remove": {
+    "cancel": "取消",
+    "confirm": "移除",
+    "message": "这台手机将失去访问权限，电脑也会撤销这次配对。电脑离线时，可稍后在电脑的 设置 › 设备 里撤销。",
+    "title": "移除 {{host}}？"
+  },
+  "rename": {
+    "footer": "只改这台手机上显示的名字。",
+    "placeholder": "电脑名称",
+    "save": "保存"
+  },
+  "scan": {
+    "blocked": {
+      "description": "在系统设置里允许使用相机后即可扫码，也可以改为粘贴配对链接。",
+      "openSettings": "打开设置",
+      "title": "相机权限已关闭"
+    },
+    "close": "关闭",
+    "failure": {
+      "notPairingCode": "这不是 Cocurdex 的配对二维码。"
+    },
+    "hint": "在电脑上打开 设置 › 设备 › 配对设备",
+    "paste": "粘贴配对链接",
+    "title": "扫描电脑上的配对二维码",
+    "viewfinder": "取景框"
+  },
+  "scope": {
+    "approvals": "审批",
+    "execute": "启动任务",
+    "filesRead": "读取文件",
+    "filesWrite": "写入文件",
+    "gitDestructive": "破坏性 Git 操作",
+    "interact": "交互",
+    "missingMessage": "如需在这里操作，请在 {{host}} 上打开 Cocurdex 的 设置 › 设备，为这台设备开启「{{scope}}」。",
+    "missingTitle": "这台设备没有该权限",
+    "ok": "好",
+    "read": "读取"
+  },
+  "scopeDetail": {
+    "approvals": "处理权限请求、问题和计划审批。",
+    "execute": "启动会话、团队、脚本运行和工作流。",
+    "filesRead": "读取工作区文件、差异和 Git 状态。",
+    "filesWrite": "编辑工作区文件、暂存和提交。",
+    "gitDestructive": "丢弃更改、切换分支和推送。",
+    "interact": "发送消息、停止会话、编辑笔记和 issue。",
+    "read": "查看会话、消息、笔记和 issue。"
   }
 }

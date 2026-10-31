@@ -1,0 +1,56 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "envMode": "loose",
+  "globalPassThroughEnv": [
+    "COCURDEX_SCENARIO_RECORD_DIR",
+    "COCURDEX_TEST_ARTIFACTS_DIR"
+  ],
+  "globalDependencies": [
+    ".npmrc",
+    "pnpm-workspace.yaml",
+    "patches/**",
+    "tsconfig.base.json",
+    "tsconfig.json"
+  ],
+  "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
+    "typecheck": {
+      "dependsOn": ["transit"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["transit"],
+      "outputs": []
+    },
+    "@cocurdex/desktop#build": {
+      "dependsOn": ["transit"],
+      "cache": false
+    },
+    "@cocurdex/desktop#check:startup-bundle": {
+      "dependsOn": ["@cocurdex/desktop#build"],
+      "cache": false
+    },
+    "@cocurdex/e2e#test:desktop": {
+      "dependsOn": ["@cocurdex/desktop#build"],
+      "cache": false,
+      "inputs": [
+        "desktop-smoke.test.ts",
+        "vitest.desktop.config.ts",
+        "helpers/**"
+      ]
+    },
+    "@cocurdex/scenarios#test:ui": {
+      "dependsOn": ["@cocurdex/desktop#build"],
+      "cache": false,
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/.agents/skills/debug-desktop/scripts/**"
+      ]
+    }
+  },
+  "futureFlags": {
+    "affectedUsingTaskInputs": true
+  }
+}

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",
+    "@cocurdex/cli": "workspace:*",
     "@cocurdex/client-runtime": "workspace:*",
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/db": "workspace:*",
@@ -26,6 +27,7 @@
     "vitest": "^4.1.11"
   },
   "exports": {
+    "./fixture-db/*": "./fixture-db/*.ts",
     "./helpers/*": "./helpers/*.ts"
   }
 }

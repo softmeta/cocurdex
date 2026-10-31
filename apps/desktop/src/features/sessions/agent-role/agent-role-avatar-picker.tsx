@@ -1,6 +1,7 @@
 import {
   AGENT_ROLE_AVATAR_COLORS,
   type AgentRoleAvatar as AgentRoleAvatarValue,
+  defaultAgentRoleAvatarColor,
   normalizeAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { RotateCcw } from "lucide-react";
@@ -20,7 +21,6 @@ import {
   AGENT_ROLE_AVATAR_EMOJI_GROUPS,
   type AgentRoleAvatarEmojiGroupId,
   agentRoleAvatarSwatchClassName,
-  defaultAgentRoleAvatarColor,
 } from "./agent-role-avatar-style";
 
 export function AgentRoleAvatarPicker({

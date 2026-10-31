@@ -61,6 +61,10 @@ import {
   attachDaemonWebSocketServer,
   closeWebSocketServer,
 } from "./wire-websocket";
+import {
+  createWorkspaceFileHttpHandler,
+  isWorkspaceFileHttpRequest,
+} from "./workspace-file-http";
 
 interface StartDaemonServerOptions {
   logging?: DaemonLogging;
@@ -85,8 +89,17 @@ interface DaemonTransport {
 
 const LOCAL_TRANSPORT: DaemonTransport = { remote: false, remoteAddress: null };
 
-function encodeWireMessage(message: unknown) {
-  return `${JSON.stringify(message)}\n`;
+const CREDENTIAL_FIELDS = new Set(["headersJson"]);
+
+function withholdCredentialFields(key: string, value: unknown) {
+  return CREDENTIAL_FIELDS.has(key) && value != null ? null : value;
+}
+
+function encodeWireMessage(message: unknown, withholdCredentials = false) {
+  const json = withholdCredentials
+    ? JSON.stringify(message, withholdCredentialFields)
+    : JSON.stringify(message);
+  return `${json}\n`;
 }
 
 function parseWebSocketJsonFrame(data: { toString(): string }) {
@@ -202,8 +215,11 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     const deviceIds = new Set<string>();
     connections.set(connection, deviceIds);
     let subscribedToDaemonEvents = false;
+    let principal: HostPrincipal | null = null;
     const send = (message: unknown, onSent?: () => void) => {
-      connection.send(encodeWireMessage(message), onSent);
+      const withholdCredentials =
+        principal !== null && !principalHasScope(principal, "credentials");
+      connection.send(encodeWireMessage(message, withholdCredentials), onSent);
     };
     const sendEvent = (entry: DaemonEventJournalEntry) => {
       send({
@@ -219,7 +235,6 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     const terminalListener = (event: TerminalDaemonEvent) => {
       send({ event, type: "daemon.event" } satisfies DaemonEventEnvelope);
     };
-    let principal: HostPrincipal | null = null;
     let releaseTerminalClient: (() => void) | null = null;
     const subscribeToTerminals = () => {
       if (releaseTerminalClient || !principal) return;
@@ -323,6 +338,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
   ) => Promise<void>;
   let agentToolHandler: HttpHandler | undefined;
   let pdfHandler: HttpHandler | undefined;
+  let workspaceFileHandler: HttpHandler | undefined;
   let deckDownloadHandler: HttpHandler | undefined;
   let deckAssetHandler: HttpHandler | undefined;
   let attachmentHandler: HttpHandler | undefined;
@@ -337,6 +353,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     [isDeckAssetHttpRequest, () => deckAssetHandler],
     [isDeckDownloadHttpRequest, () => deckDownloadHandler],
     [isPdfHttpRequest, () => pdfHandler],
+    [isWorkspaceFileHttpRequest, () => workspaceFileHandler],
     [isAgentToolHttpRequest, () => agentToolHandler],
   ];
   const serve = (
@@ -456,6 +473,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       userDataPath,
       agentToolsUrl,
       localToken: options.token,
+      autoStartMemory: process.env.COCURDEX_DISABLE_MEMORY_AUTO_START !== "1",
     });
     const activeService = service;
     health = createDaemonHealthMonitor({
@@ -485,6 +503,16 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         isAllowedWebSocketOrigin(request.headers.origin),
       resolvePrincipal: (token) => hostAccess.resolve(token),
       resolvePdfPath,
+    });
+    const resolveWorkspaceFilePath =
+      service.resolveWorkspaceFilePath.bind(service);
+    workspaceFileHandler = createWorkspaceFileHttpHandler({
+      remote: false,
+      isAllowedRequest: (request) =>
+        isLoopbackHostHeader(request.headers.host) &&
+        isAllowedWebSocketOrigin(request.headers.origin),
+      resolvePrincipal: (token) => hostAccess.resolve(token),
+      resolveFilePath: resolveWorkspaceFilePath,
     });
     const redeemDeckDownload = service.decks.redeemDownload.bind(service.decks);
     deckDownloadHandler = createDeckDownloadHttpHandler({
@@ -518,6 +546,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         attachments: service.attachments,
         machineName: os.hostname(),
         resolvePdfPath,
+        resolveWorkspaceFilePath,
         redeemDeckDownload,
         locateDeckAsset,
         webRoot: options.webRoot,
@@ -529,7 +558,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       }),
     );
     hostAccess.bindRemoteListener(remoteListener);
-    hostAccess.onDeviceRevoked((deviceId) => {
+    hostAccess.onDeviceAccessChanged((deviceId) => {
       for (const [connection, deviceIds] of connections) {
         if (deviceIds.has(deviceId)) connection.close();
       }

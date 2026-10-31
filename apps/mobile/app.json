@@ -15,7 +15,8 @@
           "NSAllowsLocalNetworking": true
         },
         "NSLocalNetworkUsageDescription": "Cocurdex connects to the computers you pair on your local network.",
-        "CFBundleAllowMixedLocalizations": true
+        "CFBundleAllowMixedLocalizations": true,
+        "UIViewControllerBasedStatusBarAppearance": true
       }
     },
     "android": {
@@ -33,8 +34,25 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "extraProguardRules": "-keep class com.google.mlkit.** { *; }\n-keep class com.google.android.gms.internal.mlkit_** { *; }"
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cocurdex uses the camera to scan the pairing QR code on your computer.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cocurdex lets you attach photos to messages you send to agents.",
+          "cameraPermission": "Cocurdex uses the camera to scan the pairing QR code on your computer.",
+          "microphonePermission": false
         }
       ],
       "expo-secure-store",

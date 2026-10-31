@@ -7,6 +7,8 @@ import { type Extensions, ReactNodeViewRenderer } from "@tiptap/react";
 import { BoundaryParagraph } from "./boundary-paragraph";
 import { CodeBlockView } from "./code-block/code-block-view";
 import { CodeHighlight } from "./code-block/code-highlight";
+import { DocImageUpload } from "./image/doc-image-upload";
+import { DocImageView } from "./image/doc-image-view";
 import { LinkClick } from "./link-click";
 import { MarkdownPaste } from "./markdown-paste";
 import { createSlashCommand } from "./slash-command";
@@ -20,6 +22,7 @@ export function buildMarkdownBodyExtensions(
     ...buildNoteDocExtensions({
       ...options,
       codeBlockView: ReactNodeViewRenderer(CodeBlockView),
+      imageView: ReactNodeViewRenderer(DocImageView, { as: "span" }),
     }),
     CodeHighlight,
     LinkClick,
@@ -29,6 +32,7 @@ export function buildMarkdownBodyExtensions(
     }),
     BoundaryParagraph,
     TableEditing,
+    DocImageUpload,
     MarkdownPaste,
     createSlashCommand(),
   ];

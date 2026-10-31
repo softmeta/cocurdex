@@ -1,5 +1,7 @@
 import {
   AGENT_ROLE_AVATAR_COLORS,
+  type AgentPermissionMode,
+  reasoningEfforts,
   SCRIPT_RUN_HARD_MAX_AGENTS,
   SCRIPT_RUN_MAX_SCHEMA_ATTEMPTS,
   TEAM_MAX_MEMBERS,
@@ -7,6 +9,7 @@ import {
 } from "@cocurdex/shared";
 import { z } from "zod";
 import {
+  acpRegistryAgentIdSchema,
   agentIdSchema,
   boundedTextSchema,
   exact,
@@ -47,6 +50,36 @@ const agentRoleAvatarSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const runtimeSelectionSchema = z.object({
+  reasoningEffort: z.enum(reasoningEfforts).nullish(),
+  serviceTier: z.string().max(256).nullish(),
+  fastMode: z.boolean().nullish(),
+  thinkingLevel: z.enum(["default", "off", ...reasoningEfforts]).nullish(),
+  openCodeAgent: z.string().max(256).nullish(),
+  openCodeVariant: z.string().max(256).nullish(),
+});
+
+const modelSelectionSchema = z.object({
+  providerId: idSchema,
+  modelId: z.string().min(1).max(512),
+});
+
+const createSessionPayload = z.object({
+  workspaceId: idSchema,
+  agentType: agentIdSchema.optional(),
+  model: z
+    .object({ providerId: idSchema, modelId: z.string().min(1).max(512) })
+    .nullable()
+    .optional(),
+  permissionMode: z
+    .custom<AgentPermissionMode>((value) => idSchema.safeParse(value).success)
+    .nullable()
+    .optional(),
+  agentRoleId: idSchema.nullable().optional(),
+  title: z.string().max(200).optional(),
+  runtime: runtimeSelectionSchema.optional(),
+});
+
 export const sessionPayloadSchemas = {
   "sync.pull": exact<Payload<"sync.pull">>()(
     z.object({
@@ -80,9 +113,14 @@ export const sessionPayloadSchemas = {
     }),
   ),
   "session.get": exact<Payload<"session.get">>()(sessionIdPayload),
+  "session.runtimeState":
+    exact<Payload<"session.runtimeState">>()(sessionIdPayload),
   "session.configure": loose<Payload<"session.configure">>()(
     z.looseObject({ id: idSchema, workspaceId: idSchema }),
   ),
+  "session.create": exact<Payload<"session.create">>()(createSessionPayload),
+  "session.resolveNew":
+    exact<Payload<"session.resolveNew">>()(createSessionPayload),
   "session.delete": exact<Payload<"session.delete">>()(sessionIdPayload),
   "session.archive": exact<Payload<"session.archive">>()(sessionIdPayload),
   "session.restore": exact<Payload<"session.restore">>()(sessionIdPayload),
@@ -149,6 +187,13 @@ export const sessionPayloadSchemas = {
   ),
   "session.setMode": exact<Payload<"session.setMode">>()(
     z.object({ sessionId: idSchema, modeId: idSchema }),
+  ),
+  "session.updateRuntime": exact<Payload<"session.updateRuntime">>()(
+    z.object({
+      sessionId: idSchema,
+      model: modelSelectionSchema.optional(),
+      runtime: runtimeSelectionSchema.optional(),
+    }),
   ),
   "session.undoTurnChanges": exact<Payload<"session.undoTurnChanges">>()(
     sessionMessagePayload,
@@ -245,7 +290,19 @@ export const sessionPayloadSchemas = {
     z.object({ agentId: agentIdSchema }),
   ),
   "agent.login": exact<Payload<"agent.login">>()(
+    z.object({
+      agentId: agentIdSchema,
+      methodId: boundedTextSchema(200).min(1).optional(),
+    }),
+  ),
+  "agent.login.cancel": exact<Payload<"agent.login.cancel">>()(
     z.object({ agentId: agentIdSchema }),
+  ),
+  "agent.logout": exact<Payload<"agent.logout">>()(
+    z.object({ agentId: acpRegistryAgentIdSchema }),
+  ),
+  "agent.auth.read": exact<Payload<"agent.auth.read">>()(
+    z.object({ agentId: acpRegistryAgentIdSchema }),
   ),
   "agent.rateLimits.read": exact<Payload<"agent.rateLimits.read">>()(
     z.object({ agentIds: z.array(agentIdSchema).max(64) }),

@@ -253,3 +253,23 @@ function sameThinkingLevel(
     !value || value === "default" ? null : value;
   return normalize(left) === normalize(right);
 }
+
+export function defaultAgentRoleAvatarColor(id: string): AgentRoleAvatarColor {
+  let hash = 0;
+  for (const char of id) {
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
+  }
+  return AGENT_ROLE_AVATAR_COLORS[hash % AGENT_ROLE_AVATAR_COLORS.length];
+}
+
+function firstGrapheme(text: string) {
+  if (typeof Intl.Segmenter === "function") {
+    return new Intl.Segmenter().segment(text)[Symbol.iterator]().next().value
+      ?.segment;
+  }
+  return Array.from(text)[0];
+}
+
+export function agentRoleInitial(name: string) {
+  return firstGrapheme(name.trim())?.toLocaleUpperCase() ?? "?";
+}

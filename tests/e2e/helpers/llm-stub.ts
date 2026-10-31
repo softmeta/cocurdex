@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   createServer,
   type IncomingMessage,
@@ -17,14 +18,16 @@ export interface StubToolCall {
   arguments: Record<string, unknown>;
 }
 
+export type StubChunk = string | PromiseLike<void>;
+
 export interface StubTurn {
-  text?: string[];
+  text?: StubChunk[];
   toolCalls?: StubToolCall[];
   intervalMs?: number;
 }
 
 export type StubLlmPlan =
-  | { kind: "stream"; chunks: string[]; intervalMs?: number }
+  | { kind: "stream"; chunks: StubChunk[]; intervalMs?: number }
   | { kind: "script"; turns: StubTurn[] }
   | { kind: "hang" }
   | { kind: "fail"; status: number; message: string };
@@ -35,9 +38,11 @@ export interface StubLlmServer {
   requests: StubLlmRequest[];
   plan: StubLlmPlan;
   /** Resolves with the next incoming request. */
-  nextRequest(): Promise<StubLlmRequest>;
+  nextRequest(timeoutMs?: number): Promise<StubLlmRequest>;
   close(): Promise<void>;
 }
+
+const NEXT_REQUEST_TIMEOUT_MS = 30_000;
 
 function sseChunk(delta: Record<string, unknown>, finishReason: string | null) {
   return `data: ${JSON.stringify({
@@ -77,6 +82,7 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
   const requests: StubLlmRequest[] = [];
   const waiters: ((request: StubLlmRequest) => void)[] = [];
   let consumed = 0;
+  const serverId = randomUUID();
   let toolCallCount = 0;
   const state: { plan: StubLlmPlan } = { plan: { kind: "hang" } };
 
@@ -137,6 +143,10 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
     });
     response.write(sseChunk({ role: "assistant", content: "" }, null));
     for (const text of turn.text ?? []) {
+      if (typeof text !== "string") {
+        await text;
+        continue;
+      }
       if (response.destroyed) return;
       response.write(sseChunk({ content: text }, null));
       if (turn.intervalMs) {
@@ -153,7 +163,7 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
             tool_calls: [
               {
                 index,
-                id: `call_e2e_${toolCallCount}`,
+                id: `call_e2e_${serverId}_${toolCallCount}`,
                 type: "function",
                 function: {
                   name: toolCall.name,
@@ -183,22 +193,33 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
     set plan(plan: StubLlmPlan) {
       state.plan = plan;
     },
-    nextRequest() {
+    nextRequest(timeoutMs = NEXT_REQUEST_TIMEOUT_MS) {
       const buffered = requests[consumed];
       if (buffered) {
         consumed += 1;
         return Promise.resolve(buffered);
       }
-      return new Promise((resolve) =>
-        waiters.push((request) => {
+      return new Promise((resolve, reject) => {
+        const waiter = (request: StubLlmRequest) => {
+          clearTimeout(timer);
           consumed += 1;
           resolve(request);
-        }),
-      );
+        };
+        const timer = setTimeout(() => {
+          waiters.splice(waiters.indexOf(waiter), 1);
+          reject(
+            new Error(
+              `No LLM request within ${timeoutMs} ms (${requests.length} received)`,
+            ),
+          );
+        }, timeoutMs);
+        waiters.push(waiter);
+      });
     },
     close: () =>
-      new Promise((resolve, reject) =>
-        server.close((error) => (error ? reject(error) : resolve())),
-      ),
+      new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+        server.closeAllConnections();
+      }),
   };
 }

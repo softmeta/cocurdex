@@ -5,17 +5,22 @@ import type {
   AgentThinkingLevel,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
-import { supportsInSessionRuntimeAxis } from "@cocurdex/shared";
+import {
+  getDefaultOpenCodeAgent,
+  getOpenCodeRuntimeOptions,
+  getThinkingLevelLabel,
+  getThinkingLevelOptions,
+  resolveOpenCodeRuntimeValue,
+  resolveThinkingLevel,
+  supportsInSessionRuntimeAxis,
+} from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import { AgentSelect } from "../agent-select";
 import { buildAgentSelectOptions } from "../agent-select-options";
 import { PermissionModeSubmenu } from "../permission-mode-submenu";
 import {
-  getDefaultOpenCodeAgent,
-  getOpenCodeRuntimeOptions,
   getProviderModelValue,
   ProviderModelMenu,
-  resolveOpenCodeRuntimeValue,
   shouldShowProviderGroupLabels,
 } from "../provider-model";
 import { SessionModeSubmenu } from "../session-mode-control";
@@ -24,11 +29,6 @@ import {
   getPermissionModeOptions,
   getSessionModeOptions,
 } from "../session-store";
-import {
-  getThinkingLevelLabel,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-} from "../thinking-level";
 import { ThinkingLevelSubmenu } from "../thinking-level-submenu";
 
 export function AgentRoleRuntimeFields({

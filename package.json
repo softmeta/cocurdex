@@ -31,6 +31,11 @@
   "devDependencies": {
     "@biomejs/biome": "2.6.2",
     "lefthook": "2.2.2",
+    "turbo": "^2.11.10",
     "typescript": "6.0.3"
+  },
+  "enriched-markdown": {
+    "enableCodeHighlight": true,
+    "enableMath": false
   }
 }

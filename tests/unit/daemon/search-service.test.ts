@@ -1,12 +1,14 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   DaemonSearchService,
   getUtf16RangeFromByteOffsets,
 } from "@cocurdex/daemon/internal/search-service";
 import type { WorkspaceSearchDaemonEvent } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 function byteOffset(text: string, marker: string) {
   return Buffer.byteLength(text.slice(0, text.indexOf(marker)), "utf8");
@@ -97,7 +99,7 @@ describe("DaemonSearchService", () => {
     let rootPath: string;
 
     beforeAll(async () => {
-      rootPath = await mkdtemp(path.join(tmpdir(), "cocurdex-search-"));
+      rootPath = await tempDirs.create("cocurdex-search-");
       await writeFile(
         path.join(rootPath, "alpha.txt"),
         "needle one\nhay\n",
@@ -111,7 +113,7 @@ describe("DaemonSearchService", () => {
     });
 
     afterAll(async () => {
-      await rm(rootPath, { recursive: true, force: true });
+      await tempDirs.cleanup();
     });
 
     function collectUntilDone(searchId: string) {

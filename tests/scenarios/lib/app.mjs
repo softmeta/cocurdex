@@ -1,12 +1,12 @@
 import { execFile } from "node:child_process";
-import { copyFile, mkdtemp, realpath, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, realpath } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { openAppSession } from "./app-session.mjs";
 import { daemonRequest } from "./daemon-rpc.mjs";
-import { launchIsolatedInstance } from "./instance.mjs";
+import { launchIsolatedInstance, removeTempDir } from "./instance.mjs";
 
 const E2E_DIR = fileURLToPath(new URL("../../e2e/", import.meta.url));
 const FIXTURE_DB_TIMEOUT_MS = 120_000;
@@ -94,7 +94,7 @@ export async function launchSharedScenarioInstance() {
       },
     });
   } catch (error) {
-    await rm(workspaceRoot, { recursive: true, force: true });
+    await removeTempDir(workspaceRoot);
     throw error;
   }
   const { port, url } = instance;
@@ -114,7 +114,7 @@ export async function launchSharedScenarioInstance() {
         await instance.stop({ keepLog: !passed });
         if (!passed) console.error(`Shared instance log: ${instance.logPath}`);
       } finally {
-        await rm(workspaceRoot, { recursive: true, force: true });
+        await removeTempDir(workspaceRoot);
       }
     },
   };
@@ -128,8 +128,7 @@ async function attachSharedInstance(shared, { fixtures, fixtureDb }) {
   const workspaceRoot = await realpath(
     await mkdtemp(path.join(shared.workspaceRoot, "scenario-")),
   );
-  const removeWorkspace = () =>
-    rm(workspaceRoot, { recursive: true, force: true });
+  const removeWorkspace = () => removeTempDir(workspaceRoot);
   let session;
   try {
     const files = await copyFixtures(fixtures, workspaceRoot);
@@ -158,7 +157,7 @@ async function attachSharedInstance(shared, { fixtures, fixtureDb }) {
 
 export async function openScenarioApp(
   { port, url, keep, "fixture-db": fixtureDbArg },
-  { fixtures = [], fixtureDb = fixtureDbArg } = {},
+  { fixtures = [], fixtureDb = fixtureDbArg, isolated = false } = {},
 ) {
   if (port) {
     const session = await openAppSession({ port, url });
@@ -169,7 +168,7 @@ export async function openScenarioApp(
       close: () => session.close(),
     };
   }
-  const shared = readSharedInstance();
+  const shared = isolated ? null : readSharedInstance();
   if (shared) return attachSharedInstance(shared, { fixtures, fixtureDb });
   const workspaceRoot = await realpath(
     await mkdtemp(path.join(os.tmpdir(), "cocu-ws-")),
@@ -188,7 +187,7 @@ export async function openScenarioApp(
         : undefined,
     });
   } catch (error) {
-    await rm(workspaceRoot, { recursive: true, force: true });
+    await removeTempDir(workspaceRoot);
     throw error;
   }
   let session;
@@ -212,7 +211,7 @@ export async function openScenarioApp(
       await instance.stop({ keepLog: !passed });
       if (!passed) console.error(`Isolated instance log: ${instance.logPath}`);
     } finally {
-      await rm(workspaceRoot, { recursive: true, force: true });
+      await removeTempDir(workspaceRoot);
     }
   };
   try {

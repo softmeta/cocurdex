@@ -1,3 +1,4 @@
+import { hidePendingTableStart } from "@cocurdex/shared";
 import type { ReactNode } from "react";
 import {
   memo,
@@ -26,12 +27,10 @@ import { createStreamFadeBlockPlugins } from "./markdown-stream-fade";
 import { useRenderReadinessHold } from "./render-readiness";
 import { StreamFadeBlock } from "./stream-fade-block";
 import { StreamFadeContext } from "./stream-fade-context";
-import { hidePendingTableStart } from "./streaming-table";
 import {
   useStreamFadeActive,
   useStreamFadeAnimations,
 } from "./use-stream-fade";
-import { useStreamingReveal } from "./use-streaming-reveal";
 
 export type { MarkdownRendererTone } from "./markdown-renderer-styles";
 
@@ -215,13 +214,9 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   tone = "assistant",
   className,
-  streaming: streamingProp = false,
+  streaming = false,
   filePathHandlers,
 }: MarkdownRendererProps): ReactNode {
-  const { content: revealedContent, live: streaming } = useStreamingReveal(
-    content,
-    streamingProp,
-  );
   const [hasStreamed, setHasStreamed] = useState(streaming);
   if (streaming && !hasStreamed) setHasStreamed(true);
   const components = useMemo<Components>(
@@ -233,7 +228,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   );
   const normalizedContent = useMemo(() => {
     const withCodeFenceLanguages = normalizeMarkdownCodeFenceLanguages(
-      streaming ? hidePendingTableStart(revealedContent) : revealedContent,
+      streaming ? hidePendingTableStart(content) : content,
     );
     const withMath = normalizeMathDelimiters(withCodeFenceLanguages);
     // Only rewrite when the chat surface can open files — otherwise the
@@ -241,7 +236,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     return filePathHandlers
       ? rewriteMarkdownLocalFileLinks(withMath)
       : withMath;
-  }, [revealedContent, filePathHandlers, streaming]);
+  }, [content, filePathHandlers, streaming]);
   const neededPlugins = useMemo(
     () => neededHeavyPlugins(normalizedContent),
     [normalizedContent],

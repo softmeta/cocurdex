@@ -2,6 +2,7 @@ import type {
   AcpRegistryAgentId,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
+  AgentAuthState,
   AgentDescriptor,
   AgentId,
   AgentMcpUnsupportedReason,
@@ -13,6 +14,7 @@ import type {
   AgentRunLimits,
   AgentSessionConfigOption,
   AgentSessionMode,
+  AgentSessionRuntimeState,
   AgentSlashCommand,
   AgentToolCallRecord,
   AgentToolCallResult,
@@ -37,6 +39,7 @@ import type {
   CreateIssuePayload,
   CreateNotePayload,
   CreateScriptRunPayload,
+  CreateSessionPayload,
   CreateTeamPayload,
   CreateViewPayload,
   CreateWorkflowPayload,
@@ -53,6 +56,8 @@ import type {
   DeleteNotePayload,
   DeleteViewPayload,
   DiagnosticsExportResult,
+  DocImage,
+  DocImageFile,
   EditDeckPayload,
   EditorViewRecord,
   EntityLink,
@@ -74,6 +79,7 @@ import type {
   GitPushResult,
   GitWorktreeInfo,
   HostAccessAuditEntry,
+  HostAccessScope,
   HostAccessSession,
   HostDirectoryListing,
   HostIdentity,
@@ -81,6 +87,7 @@ import type {
   HostRemoteAccessStatus,
   ImportDeckImagePayload,
   ImportDeckPayload,
+  ImportDocImagePayload,
   InstalledSkillDetail,
   IssueDetail,
   IssueLabel,
@@ -89,6 +96,7 @@ import type {
   LinkIssueSessionPayload,
   ListEntityLinksPayload,
   LoadViewPayload,
+  LocateDocImagePayload,
   LogLevel,
   ManagedWorktree,
   McpConfigFile,
@@ -99,12 +107,26 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpStatusReport,
+  MemoryCloudConnectInput,
+  MemoryCloudConnectResult,
+  MemoryCloudKeys,
+  MemoryDoctorReport,
+  MemoryEntry,
+  MemoryInstallResult,
+  MemoryRecallResult,
+  MemoryRememberInput,
+  MemoryRememberResult,
+  MemorySessionSaveInput,
+  MemorySessionSaveResult,
+  MemorySettings,
+  MemoryStatus,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
   MoveNotePayload,
   NetworkProxySettings,
   NetworkProxyTestResult,
+  NewSessionDefaults,
   NoteBacklinksPayload,
   NoteDocSnapshot,
   NoteLink,
@@ -208,6 +230,7 @@ import type {
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdateSessionAttentionPayload,
+  UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
   UpdateViewPayload,
   ViewColumnRecord,
@@ -336,7 +359,10 @@ export type DaemonRequestPayloadByMethod = {
   "sync.pull": SyncPullInput;
   "agent.list": undefined;
   "agent.sessionModes.read": { agentId: AgentId };
-  "agent.login": { agentId: AgentId };
+  "agent.login": { agentId: AgentId; methodId?: string };
+  "agent.login.cancel": { agentId: AgentId };
+  "agent.logout": { agentId: AcpRegistryAgentId };
+  "agent.auth.read": { agentId: AcpRegistryAgentId };
   "agent.rateLimits.read": { agentIds: AgentId[] };
   "acpRegistry.catalog": { forceRefresh?: boolean };
   "acpRegistry.install": { registryId: string };
@@ -385,7 +411,10 @@ export type DaemonRequestPayloadByMethod = {
   "session.switchAgent": { sessionId: string; agentType: AgentId };
   "session.contextTransfers": { sessionId: string };
   "session.configure": SessionConfiguration;
+  "session.create": CreateSessionPayload;
+  "session.resolveNew": CreateSessionPayload;
   "session.get": { sessionId: string };
+  "session.runtimeState": { sessionId: string };
   "session.listPeers": { sessionId: string };
   "session.sendPeerMessage": SendPeerMessagePayload;
   "session.setPeerInbound": { sessionId: string; policy: PeerInboundPolicy };
@@ -477,6 +506,7 @@ export type DaemonRequestPayloadByMethod = {
     value: boolean | string;
   };
   "session.setMode": { sessionId: string; modeId: string };
+  "session.updateRuntime": UpdateSessionRuntimePayload;
   "session.stop": { sessionId: string };
   "session.undoTurnChanges": UndoTurnChangesInput;
   "session.getTurnChangeFile": TurnChangeFileContentRequest;
@@ -487,6 +517,24 @@ export type DaemonRequestPayloadByMethod = {
   "network.proxy.test": { settings?: NetworkProxySettings };
   "network.proxy.get": undefined;
   "network.proxy.set": { settings: NetworkProxySettings };
+  "memory.status": { refresh?: boolean };
+  "memory.settings.get": undefined;
+  "memory.settings.set": { settings: MemorySettings };
+  "memory.recall": {
+    query: string;
+    limit?: number;
+    project?: string | null;
+  };
+  "memory.show": { id: string };
+  "memory.remember": MemoryRememberInput;
+  "memory.session.save": MemorySessionSaveInput;
+  "memory.install": { force?: boolean };
+  "memory.doctor": { remote?: boolean; checkUpdate?: boolean };
+  "memory.policy": undefined;
+  "memory.cloud.connect": MemoryCloudConnectInput;
+  "memory.cloud.disconnect": undefined;
+  "memory.cloud.setSync": { enabled: boolean };
+  "memory.cloud.keys": undefined;
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
   "file.readText": { filePath: string };
@@ -576,6 +624,8 @@ export type DaemonRequestPayloadByMethod = {
   "deck.exportFile": ExportDeckFilePayload;
   "deck.importImage": ImportDeckImagePayload;
   "deck.import": ImportDeckPayload;
+  "image.import": ImportDocImagePayload;
+  "image.locate": LocateDocImagePayload;
   "deck.readPptx": ReadPptxPayload;
   "issue.listViews": undefined;
   "issue.loadView": LoadViewPayload;
@@ -668,6 +718,8 @@ export type DaemonRequestPayloadByMethod = {
   "host.pairing.cancel": { pairingId: string };
   "host.devices.list": undefined;
   "host.devices.revoke": { deviceId: string };
+  "host.devices.revokeSelf": undefined;
+  "host.devices.updateScopes": { deviceId: string; scopes: HostAccessScope[] };
   "host.audit.list": { limit?: number };
 };
 
@@ -682,6 +734,9 @@ export type DaemonResultByMethod = {
   "agent.list": AgentDescriptor[];
   "agent.sessionModes.read": AgentSessionMode[];
   "agent.login": null;
+  "agent.login.cancel": null;
+  "agent.logout": null;
+  "agent.auth.read": AgentAuthState;
   "agent.rateLimits.read": Partial<Record<AgentId, AgentRateLimitsReadResult>>;
   "acpRegistry.catalog": AcpRegistryCatalogAgent[];
   "acpRegistry.install": AcpRegistryInstalledAgent;
@@ -734,7 +789,10 @@ export type DaemonResultByMethod = {
   "session.switchAgent": SessionRecord;
   "session.contextTransfers": ContextTransferRecord[];
   "session.configure": SessionRecord;
+  "session.create": SessionRecord;
+  "session.resolveNew": NewSessionDefaults;
   "session.get": SessionRecord | null;
+  "session.runtimeState": AgentSessionRuntimeState;
   "session.delete": null;
   "session.archive": SessionRecord | null;
   "session.restore": SessionRecord[];
@@ -782,6 +840,7 @@ export type DaemonResultByMethod = {
   "session.sendQueuedNow": MessageRecord;
   "session.setConfig": AgentSessionConfigOption[];
   "session.setMode": null;
+  "session.updateRuntime": SessionRecord;
   "session.stop": null;
   "session.undoTurnChanges": UndoTurnChangesResult;
   "session.getTurnChangeFile": TurnChangeFileContent;
@@ -792,6 +851,20 @@ export type DaemonResultByMethod = {
   "network.proxy.test": NetworkProxyTestResult;
   "network.proxy.get": NetworkProxySettings;
   "network.proxy.set": NetworkProxySettings;
+  "memory.status": MemoryStatus;
+  "memory.settings.get": MemorySettings;
+  "memory.settings.set": MemorySettings;
+  "memory.recall": MemoryRecallResult;
+  "memory.show": MemoryEntry | null;
+  "memory.remember": MemoryRememberResult;
+  "memory.session.save": MemorySessionSaveResult;
+  "memory.install": MemoryInstallResult;
+  "memory.doctor": MemoryDoctorReport;
+  "memory.policy": string;
+  "memory.cloud.connect": MemoryCloudConnectResult;
+  "memory.cloud.disconnect": MemoryStatus;
+  "memory.cloud.setSync": MemoryStatus;
+  "memory.cloud.keys": MemoryCloudKeys;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
   "file.readText": string;
@@ -870,6 +943,8 @@ export type DaemonResultByMethod = {
   "deck.exportFile": ExportDeckFileResult;
   "deck.importImage": DeckImage;
   "deck.import": DeckWriteResult;
+  "image.import": DocImage;
+  "image.locate": DocImageFile | null;
   "deck.readPptx": PptxOutline;
   "issue.listViews": ViewSummary[];
   "issue.loadView": ViewFull | null;
@@ -945,6 +1020,8 @@ export type DaemonResultByMethod = {
   "host.pairing.cancel": HostPairingRecord | null;
   "host.devices.list": PairedDeviceRecord[];
   "host.devices.revoke": PairedDeviceRecord | null;
+  "host.devices.revokeSelf": PairedDeviceRecord | null;
+  "host.devices.updateScopes": PairedDeviceRecord | null;
   "host.audit.list": HostAccessAuditEntry[];
 };
 
@@ -974,10 +1051,15 @@ export const DAEMON_NO_PARAM_METHODS = {
   "host.remoteAccess.get": true,
   "host.pairing.list": true,
   "host.devices.list": true,
+  "host.devices.revokeSelf": true,
   "issue.listViews": true,
   "issue.listLabels": true,
   "issue.listLinkedSessionIds": true,
   "teamTemplate.list": true,
+  "memory.settings.get": true,
+  "memory.policy": true,
+  "memory.cloud.disconnect": true,
+  "memory.cloud.keys": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,
   "mcp.injection.check": true,

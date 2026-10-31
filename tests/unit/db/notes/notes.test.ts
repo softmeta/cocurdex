@@ -6,7 +6,7 @@ import {
   noteDocStateVector,
   noteDocToMarkdown,
 } from "@cocurdex/note-doc";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
@@ -70,6 +70,26 @@ describe("CocurdexDatabase.notes title heading", () => {
 });
 
 describe("CocurdexDatabase.notes", () => {
+  it("lists each note with a plain excerpt of its body", async () => {
+    const database = createTestDatabase();
+    const note = await database.notes.create({
+      title: "Checkout",
+      bodyMarkdown:
+        "## Goal\n\nLet buyers pay on **one page** with [saved cards](https://example.invalid).",
+    });
+    const empty = await database.notes.create({ title: "Empty" });
+
+    const listed = await database.notes.list();
+
+    expect(listed.find((entry) => entry.id === note.id)?.excerpt).toBe(
+      "Let buyers pay on one page with saved cards.",
+    );
+    expect(listed.find((entry) => entry.id === empty.id)).not.toHaveProperty(
+      "excerpt",
+    );
+    expect(listed[0]).not.toHaveProperty("bodyMarkdown");
+  });
+
   it("creates a stable note tree and rejects stale updates", async () => {
     const database = createTestDatabase();
     const folder = await database.notes.create({

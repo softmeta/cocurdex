@@ -1,4 +1,9 @@
-import type { AgentToolCallRecord } from "@cocurdex/shared";
+import {
+  type AgentToolCallRecord,
+  formatToolCallData,
+  formatToolCallOutput,
+  getLineRangeLabel,
+} from "@cocurdex/shared";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { FileText, Terminal } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -19,9 +24,6 @@ import {
 } from "./tool-call-result-store";
 import { ToolCallStatusIcon } from "./tool-call-status-icon";
 import {
-  formatToolCallData,
-  formatToolCallOutput,
-  getLineRangeLabel,
   getSubagentChildSessionId,
   getSubagentDescription,
   getSubagentType,

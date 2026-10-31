@@ -1,15 +1,14 @@
 import type { AgentToolCallRecord } from "@cocurdex/shared";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { formatElapsed } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { cn, useMountEffect } from "@/lib";
 import { useToolCallTriggerParts } from "../tool-call/use-tool-call-trigger-parts";
-import {
-  type ActivityKind,
-  type ActivityState,
-  type ActivityStep,
-  formatElapsed,
+import type {
+  ActivityKind,
+  ActivityState,
+  ActivityStep,
 } from "./chat-activity-state";
 import { useActivityMotion } from "./use-activity-motion";
 import { useSteadyStep } from "./use-steady-step";
@@ -17,23 +16,15 @@ import { useSteadyToolCall } from "./use-steady-tool-call";
 
 function ActivityGlyph({ activity }: { activity: ActivityState }) {
   const { completeWorkingCycle, motion } = useActivityMotion(activity);
-  if (activity.tone === "running") {
-    return (
-      <span className="flex size-3.5 shrink-0 items-center justify-center">
-        <CocurdexMark
-          className="size-4 shrink-0"
-          motion={motion}
-          onWorkingCycleComplete={completeWorkingCycle}
-        />
-      </span>
-    );
-  }
-
-  if (activity.tone === "error") {
-    return <AlertCircle className="size-3.5 shrink-0" />;
-  }
-
-  return <CheckCircle2 className="size-3.5 shrink-0" />;
+  return (
+    <span className="flex size-3.5 shrink-0 items-center justify-center">
+      <CocurdexMark
+        className="size-4 shrink-0"
+        motion={motion}
+        onWorkingCycleComplete={completeWorkingCycle}
+      />
+    </span>
+  );
 }
 
 function ToolCallLabel({
@@ -47,8 +38,8 @@ function ToolCallLabel({
 
   return (
     <>
-      <span className="min-w-0 max-w-lg truncate">
-        {title}
+      <span className="min-w-0 max-w-xs truncate">
+        <span className="activity-shimmer">{title}</span>
         {secondary ? (
           <span
             className={cn(
@@ -74,7 +65,7 @@ function getIdleActivityKind(activity: ActivityState): ActivityKind {
 function LatestStepLabel({ step }: { step: ActivityStep }) {
   if (step.kind === "reasoning") {
     return (
-      <span className="min-w-0 max-w-lg truncate font-normal text-chat-fg-muted/70">
+      <span className="min-w-0 max-w-xs truncate font-normal text-chat-fg-muted/70">
         {step.headline}
       </span>
     );
@@ -86,7 +77,7 @@ function LatestStepLabel({ step }: { step: ActivityStep }) {
 function ToolStepLabel({ toolCall }: { toolCall: AgentToolCallRecord }) {
   const { title, secondary } = useToolCallTriggerParts(toolCall, "past");
   return (
-    <span className="min-w-0 max-w-lg truncate font-normal text-chat-fg-muted/70">
+    <span className="min-w-0 max-w-xs truncate font-normal text-chat-fg-muted/70">
       {[title, secondary].filter(Boolean).join(" ")}
     </span>
   );
@@ -98,7 +89,7 @@ function IdleActivityLabel({ activity }: { activity: ActivityState }) {
 
   return (
     <>
-      <span className="shrink-0">
+      <span className="activity-shimmer shrink-0">
         {t(`activity.${getIdleActivityKind(activity)}`)}
       </span>
       {step ? <LatestStepLabel step={step} /> : null}
@@ -118,7 +109,7 @@ function useElapsedLabel(runStartedAt?: number) {
   return formatElapsed(now - (runStartedAt ?? mountedAt));
 }
 
-export function ActivityLine({
+export function ActivityLiveLabel({
   activity,
   runStartedAt,
 }: {
@@ -133,13 +124,11 @@ export function ActivityLine({
   ).length;
 
   return (
-    <div className="flex min-w-0 max-w-full items-center gap-2 self-start py-1 pe-1.5 text-meta font-medium text-chat-fg-muted">
+    <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
       <ActivityGlyph activity={activity} />
-      {activity.tone === "running" ? (
-        <span className="shrink-0 tabular-nums text-chat-fg-muted/70">
-          {elapsedLabel}
-        </span>
-      ) : null}
+      <span className="shrink-0 tabular-nums text-chat-fg-muted/70">
+        {elapsedLabel}
+      </span>
       {steadyToolCall ? (
         <ToolCallLabel
           otherCount={otherToolCallCount}
@@ -148,6 +137,6 @@ export function ActivityLine({
       ) : (
         <IdleActivityLabel activity={activity} />
       )}
-    </div>
+    </span>
   );
 }

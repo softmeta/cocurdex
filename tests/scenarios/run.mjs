@@ -4,10 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { launchSharedScenarioInstance } from "./lib/app.mjs";
-import { processTreeMemory } from "./lib/instance.mjs";
+import { processTreeMemory, stopProcessTree } from "./lib/instance.mjs";
 
 const SCENARIO_ENTRY = /^runScenario\(/m;
 const ALIVE_TIMEOUT_MS = 2_000;
+const SCENARIO_TIMEOUT_MS = 5 * 60_000;
 
 const runnerPath = fileURLToPath(import.meta.url);
 const scenarioDir = path.dirname(runnerPath);
@@ -50,8 +51,22 @@ function runScenarioProcess(entryPath, env) {
     env: { ...process.env, ...env },
   });
   return new Promise((resolve, reject) => {
-    child.once("error", reject);
-    child.once("exit", (code) => resolve(code));
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      console.error(
+        `${path.basename(entryPath)} exceeded ${SCENARIO_TIMEOUT_MS} ms; stopping it`,
+      );
+      stopProcessTree(child.pid);
+    }, SCENARIO_TIMEOUT_MS);
+    child.once("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      resolve({ code, timedOut });
+    });
   });
 }
 
@@ -78,10 +93,12 @@ try {
       shared = await launchSharedScenarioInstance();
     }
     const startedAt = Date.now();
-    const code = await runScenarioProcess(entryPath, shared?.env);
+    const { code, timedOut } = await runScenarioProcess(entryPath, shared?.env);
+    if (timedOut) await stopShared(false);
     results.push({
       scenario: path.basename(entryPath, ".mjs"),
       passed: code === 0,
+      timedOut,
       ms: Date.now() - startedAt,
       memory: shared ? processTreeMemory(shared.pid) : null,
     });

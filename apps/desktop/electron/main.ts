@@ -2,7 +2,7 @@ import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { getDesktopLogDirectory } from "@cocurdex/daemon/paths";
 import type { BrowserAnnotation } from "@cocurdex/shared";
-import { hashLogValue, hostForLog } from "@cocurdex/shared";
+import { buildPolicy, hashLogValue, hostForLog } from "@cocurdex/shared";
 import {
   app,
   BrowserWindow,
@@ -564,7 +564,7 @@ app
     registerAudienceWindowHandlers(ipcMain, { preloadPath });
     startAppUpdater({
       currentVersion: app.getVersion(),
-      packaged: app.isPackaged,
+      packaged: app.isPackaged && buildPolicy.updates,
       userDataPath,
       whenReadyToCheck: proxyReady,
       broadcast(state) {

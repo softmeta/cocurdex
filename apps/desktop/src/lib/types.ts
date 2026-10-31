@@ -3,6 +3,7 @@ import type {
   AcpRegistryAgentId,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
+  AgentAuthState,
   AgentDescriptor,
   AgentId,
   AgentMcpUnsupportedReason,
@@ -13,6 +14,7 @@ import type {
   AgentRunLimits,
   AgentSessionConfigOption,
   AgentSessionMode,
+  AgentSessionRuntimeState,
   AgentSlashCommand,
   AgentToolCallRecord,
   AgentToolCallResult,
@@ -48,6 +50,7 @@ import type {
   GitCommitInfo,
   GitWorktreeInfo,
   HostAccessAuditEntry,
+  HostAccessScope,
   HostDirectoryListing,
   HostPairingRecord,
   HostRemoteAccessStatus,
@@ -66,6 +69,19 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpStatusReport,
+  MemoryCloudConnectInput,
+  MemoryCloudConnectResult,
+  MemoryCloudKeys,
+  MemoryDoctorReport,
+  MemoryEntry,
+  MemoryInstallResult,
+  MemoryRecallResult,
+  MemoryRememberInput,
+  MemoryRememberResult,
+  MemorySessionSaveInput,
+  MemorySessionSaveResult,
+  MemorySettings,
+  MemoryStatus,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -398,6 +414,7 @@ export interface ProductApi {
     agentType: AgentId,
   ): Promise<SessionRecord>;
   listContextTransfers(sessionId: string): Promise<ContextTransferRecord[]>;
+  getSessionRuntimeState(sessionId: string): Promise<AgentSessionRuntimeState>;
   getSessionExecutionTree(
     sessionId: string,
   ): Promise<SessionExecutionTree | null>;
@@ -549,7 +566,10 @@ export interface ProductApi {
     agentId: AgentId,
     modelId: string,
   ): Promise<AgentProviderModelAxes | null>;
-  loginAgent(agentId: AgentId): Promise<void>;
+  loginAgent(agentId: AgentId, methodId?: string): Promise<void>;
+  cancelAgentLogin(agentId: AgentId): Promise<void>;
+  logoutAgent(agentId: AcpRegistryAgentId): Promise<void>;
+  readAgentAuth(agentId: AcpRegistryAgentId): Promise<AgentAuthState>;
   listAcpRegistryCatalog(options?: {
     forceRefresh?: boolean;
   }): Promise<AcpRegistryCatalogAgent[]>;
@@ -590,6 +610,31 @@ export interface ProductApi {
     settings: NetworkProxySettings,
   ): Promise<NetworkProxyTestResult>;
   testCurrentNetworkProxy(): Promise<NetworkProxyTestResult>;
+  getMemoryStatus(refresh?: boolean): Promise<MemoryStatus>;
+  getMemorySettings(): Promise<MemorySettings>;
+  setMemorySettings(settings: MemorySettings): Promise<MemorySettings>;
+  recallMemories(input: {
+    query: string;
+    limit?: number;
+    project?: string | null;
+  }): Promise<MemoryRecallResult>;
+  showMemory(id: string): Promise<MemoryEntry | null>;
+  rememberMemory(input: MemoryRememberInput): Promise<MemoryRememberResult>;
+  saveSessionMemory(
+    input: MemorySessionSaveInput,
+  ): Promise<MemorySessionSaveResult>;
+  installMemory(force?: boolean): Promise<MemoryInstallResult>;
+  runMemoryDoctor(options?: {
+    remote?: boolean;
+    checkUpdate?: boolean;
+  }): Promise<MemoryDoctorReport>;
+  getMemoryPolicy(): Promise<string>;
+  connectMemoryCloud(
+    input: MemoryCloudConnectInput,
+  ): Promise<MemoryCloudConnectResult>;
+  disconnectMemoryCloud(): Promise<MemoryStatus>;
+  setMemoryCloudSync(enabled: boolean): Promise<MemoryStatus>;
+  getMemoryCloudKeys(): Promise<MemoryCloudKeys>;
   getHostRemoteAccess(): Promise<HostRemoteAccessStatus>;
   setHostRemoteAccess(
     settings: RemoteAccessSettings,
@@ -601,6 +646,10 @@ export interface ProductApi {
   cancelHostPairing(pairingId: string): Promise<HostPairingRecord | null>;
   listHostDevices(): Promise<PairedDeviceRecord[]>;
   revokeHostDevice(deviceId: string): Promise<PairedDeviceRecord | null>;
+  updateHostDeviceScopes(
+    deviceId: string,
+    scopes: HostAccessScope[],
+  ): Promise<PairedDeviceRecord | null>;
   listHostAudit(limit: number): Promise<HostAccessAuditEntry[]>;
   listSessionMessages(sessionId: string): Promise<SessionMessagesResult>;
   listSessionToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { AppConfirmDialog, SettingsGroup } from "@/components/app";
 import { Button, Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
+import { DeviceAccessDialog } from "./device-access-dialog";
 import {
   useAuditActionLabels,
   useFormatDateTime,
@@ -98,6 +99,7 @@ export function PairedDevicesGroup({
   const scopeLabels = useScopeLabels();
   const formatDateTime = useFormatDateTime();
   const [revoking, setRevoking] = useState<PairedDeviceRecord | null>(null);
+  const [editing, setEditing] = useState<PairedDeviceRecord | null>(null);
 
   const describe = (device: PairedDeviceRecord) => {
     const scopes = device.scopes
@@ -127,14 +129,24 @@ export function PairedDevicesGroup({
         <ListRow
           action={
             device.revokedAt ? null : (
-              <Button
-                size="sm"
-                type="button"
-                variant="ghost"
-                onClick={() => setRevoking(device)}
-              >
-                {t("devices.list.revoke")}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setEditing(device)}
+                >
+                  {t("devices.list.editAccess")}
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setRevoking(device)}
+                >
+                  {t("devices.list.revoke")}
+                </Button>
+              </div>
             )
           }
           detail={describe(device)}
@@ -142,6 +154,13 @@ export function PairedDevicesGroup({
           title={device.label || t("devices.list.unnamed")}
         />
       ))}
+      {editing ? (
+        <DeviceAccessDialog
+          device={editing}
+          onClose={() => setEditing(null)}
+          onSaved={onChanged}
+        />
+      ) : null}
       <AppConfirmDialog
         cancelLabel={t("devices.list.revokeCancel")}
         confirmLabel={t("devices.list.revoke")}

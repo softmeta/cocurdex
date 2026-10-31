@@ -27,7 +27,7 @@ export {
   type SessionUpdatedBucket,
   splitPinnedSessions,
   visibleSessionProperties,
-} from "./session-list-view-model";
+} from "@cocurdex/shared";
 export {
   collapsedSessionGroupKeysAtom,
   sessionListViewAtom,

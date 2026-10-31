@@ -3,7 +3,7 @@ import path from "node:path";
 import { createAgentAdapter } from "@cocurdex/agent-adapters/internal/agent-adapter-factory";
 import { setInstalledAcpRegistryAgents } from "@cocurdex/agent-core";
 import { toAcpRegistryAgentId } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

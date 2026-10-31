@@ -3,6 +3,7 @@ import {
   type AgentPermissionMode,
   type AgentRateLimitsRecord,
   type AgentThinkingLevel,
+  getEffectiveThinkingLevel,
   isAcpRegistryAgentId,
   PLAN_MODE_ID,
   type ReasoningEffort,
@@ -19,7 +20,6 @@ import { agentRuntimeBySessionAtom } from "@/features/agent/runtime";
 import {
   agentsAtom,
   getAgentDisplayLabel,
-  getEffectiveThinkingLevel,
   getProviderModelCacheVersion,
   getSessionModeOptions,
   getSessionPermissionMode,

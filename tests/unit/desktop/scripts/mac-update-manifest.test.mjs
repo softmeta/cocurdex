@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   createMacManifest,
   macUpdateChannelFileName,
   mergeMacManifests,
 } from "@desktop/scripts/mac-update-manifest.mjs";
 import { test } from "vitest";
+
+const tempDirs = createTempDirs();
 
 test("names the Mac updater feed after the prerelease identifier", () => {
   assert.equal(macUpdateChannelFileName("1.2.3"), "latest-mac.yml");
@@ -17,7 +19,7 @@ test("names the Mac updater feed after the prerelease identifier", () => {
 });
 
 test("publishes both architectures with hashes of the actual artifacts", async () => {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "mac-manifest-"));
+  const directory = await tempDirs.create("mac-manifest-");
   try {
     const manifests = [];
     for (const arch of ["arm64", "x64"]) {
@@ -55,6 +57,6 @@ test("publishes both architectures with hashes of the actual artifacts", async (
     corrupt[0].files[0].sha512 = "invalid";
     assert.throws(() => mergeMacManifests(corrupt, "1.2.3", assets));
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await tempDirs.cleanup();
   }
 });

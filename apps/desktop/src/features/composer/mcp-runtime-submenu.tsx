@@ -1,4 +1,8 @@
-import type { AgentMcpServerRuntime } from "@cocurdex/shared";
+import {
+  type AgentMcpServerRuntime,
+  getMcpStatusKind,
+  type McpStatusKind,
+} from "@cocurdex/shared";
 import {
   CheckCircle2,
   CircleAlert,
@@ -15,39 +19,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui";
-
-type McpStatusKind =
-  | "connected"
-  | "connecting"
-  | "disabled"
-  | "failed"
-  | "unknown";
-
-function getMcpStatusKind(status: string): McpStatusKind {
-  const normalized = status.toLowerCase();
-  if (normalized === "connected" || normalized === "ready") {
-    return "connected";
-  }
-  if (
-    normalized === "connecting" ||
-    normalized === "pending" ||
-    normalized === "starting"
-  ) {
-    return "connecting";
-  }
-  if (
-    normalized === "disconnected" ||
-    normalized.includes("fail") ||
-    normalized.includes("error") ||
-    normalized.includes("auth")
-  ) {
-    return "failed";
-  }
-  if (normalized.includes("disable")) {
-    return "disabled";
-  }
-  return "unknown";
-}
 
 function McpStatusIcon({ kind }: { kind: McpStatusKind }) {
   if (kind === "connected") {

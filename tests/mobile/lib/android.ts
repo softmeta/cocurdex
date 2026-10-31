@@ -1,63 +1,24 @@
 import { existsSync } from "node:fs";
-import os from "node:os";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { killProcessTree, spawnCommand } from "@cocurdex/agent-adapters";
+import { androidApkPath, androidSdk } from "./android-build";
 import { FatalWaitError, runCommand, waitUntil } from "./command";
 import type { MobileTarget } from "./target";
 
-const EMULATOR_HOST_ALIAS = "10.0.2.2";
+export const EMULATOR_HOST_ALIAS = "10.0.2.2";
 const APP_ID = "dev.cocurdex.mobile";
 const BOOT_TIMEOUT_MS = 240_000;
 const FIRST_CONSOLE_PORT = 5554;
 const LAST_CONSOLE_PORT = 5682;
 const EMULATOR_OUTPUT_LIMIT = 16_384;
-
-function emulatorGpuMode(platform: NodeJS.Platform) {
-  return platform === "linux" ? "swiftshader_indirect" : "auto";
-}
-
-export function defaultAndroidSdk(platform: NodeJS.Platform, home: string) {
-  if (platform === "darwin") return path.join(home, "Library/Android/sdk");
-  if (platform === "win32") {
-    const localAppData =
-      process.env.LOCALAPPDATA ?? path.join(home, "AppData/Local");
-    return path.join(localAppData, "Android/Sdk");
-  }
-  return path.join(home, "Android/Sdk");
-}
-
-export function androidSdk() {
-  return (
-    process.env.ANDROID_HOME ??
-    process.env.ANDROID_SDK_ROOT ??
-    defaultAndroidSdk(process.platform, os.homedir())
-  );
-}
+const IME_DISABLE_TIMEOUT_MS = 15_000;
+const PAIRING_QR_FIXTURE = createRequire(import.meta.url).resolve(
+  "../fixtures/pairing-qr.png",
+);
 
 function adb(sdk: string) {
   return path.join(sdk, "platform-tools", "adb");
-}
-
-export async function buildAndroidApp(mobileDir: string) {
-  const env = { ...process.env, ANDROID_HOME: androidSdk(), CI: "1" };
-  await runCommand(
-    "pnpm",
-    ["exec", "expo", "prebuild", "--platform", "android"],
-    { cwd: mobileDir, env, inherit: true },
-  );
-  const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
-  await runCommand(gradlew, ["assembleRelease", "--console=plain"], {
-    cwd: path.join(mobileDir, "android"),
-    env,
-    inherit: true,
-  });
-}
-
-export function androidApkPath(mobileDir: string) {
-  return path.join(
-    mobileDir,
-    "android/app/build/outputs/apk/release/app-release.apk",
-  );
 }
 
 async function firstAvd(sdk: string) {
@@ -83,9 +44,11 @@ async function freeConsolePort(sdk: string) {
 export async function startAndroidTarget(
   mobileDir: string,
   avdName: string | undefined,
+  options: { visible?: boolean; install?: boolean; appPath?: string } = {},
 ): Promise<MobileTarget> {
-  const apkPath = androidApkPath(mobileDir);
-  if (!existsSync(apkPath)) {
+  const apkPath = options.appPath ?? androidApkPath(mobileDir);
+  const install = options.install ?? true;
+  if (install && !existsSync(apkPath)) {
     throw new Error(`Missing ${apkPath}; run with --build first`);
   }
   const sdk = androidSdk();
@@ -100,10 +63,12 @@ export async function startAndroidTarget(
       "-port",
       String(port),
       "-read-only",
-      "-no-window",
+      ...(options.visible ? [] : ["-no-window"]),
       "-no-audio",
       "-no-boot-anim",
-      "-no-snapshot-save",
+      "-no-snapshot",
+      "-camera-back",
+      `imagefile:${PAIRING_QR_FIXTURE}`,
       "-gpu",
       emulatorGpuMode(process.platform),
     ],
@@ -139,13 +104,12 @@ export async function startAndroidTarget(
       const reason = error instanceof Error ? error.message : String(error);
       throw new Error(`${reason}\nEmulator output:\n${emulatorOutput}`);
     });
-    await runCommand(adb(sdk), ["-s", serial, "install", "-r", apkPath]);
-    for (const ime of parseLines(await shell("ime", "list", "-s"))) {
-      await shell("ime", "disable", ime);
+    if (install) {
+      await runCommand(adb(sdk), ["-s", serial, "install", "-r", apkPath]);
     }
+    await disableInputMethods(shell);
     return {
       deviceId: serial,
-      hostAlias: EMULATOR_HOST_ALIAS,
       setAppearance: async (appearance) => {
         await shell(
           "cmd",
@@ -166,14 +130,45 @@ export async function startAndroidTarget(
       },
       resetState: async () => {
         await shell("pm", "clear", APP_ID);
+        await shell("pm", "grant", APP_ID, "android.permission.CAMERA");
+      },
+      launchApp: async () => {
+        const resolved = await shell(
+          "cmd",
+          "package",
+          "resolve-activity",
+          "--brief",
+          "-c",
+          "android.intent.category.LAUNCHER",
+          APP_ID,
+        );
+        const component = parseLines(resolved).at(-1);
+        if (!component?.includes("/")) {
+          throw new Error(`${APP_ID} has no launcher activity:\n${resolved}`);
+        }
+        await shell("am", "start", "-W", "-n", component);
       },
       diagnostics: async () => {
         const devices = await runCommand(adb(sdk), ["devices", "-l"]).catch(
           (error: unknown) => String(error),
         );
+        const appLog = await runCommand(adb(sdk), [
+          "-s",
+          serial,
+          "logcat",
+          "-d",
+          "-b",
+          "crash,main",
+          "-s",
+          "AndroidRuntime:E",
+          "ReactNativeJS:*",
+          "libc:F",
+          "DEBUG:F",
+        ]).catch((error: unknown) => String(error));
         return [
           `Emulator ${serial} exit code: ${emulator.exitCode ?? "running"}`,
           `adb devices:\n${devices.trim()}`,
+          `App log:\n${appLog.trim()}`,
           `Emulator output:\n${emulatorOutput}`,
         ].join("\n");
       },
@@ -189,6 +184,28 @@ class EmulatorExitedError extends FatalWaitError {
   constructor(code: number) {
     super(`Emulator exited with ${code} before booting`);
   }
+}
+
+async function disableInputMethods(
+  shell: (...args: string[]) => Promise<string>,
+) {
+  const listImes = async () => parseLines(await shell("ime", "list", "-s"));
+  for (const ime of await listImes()) {
+    await shell("pm", "disable-user", "--user", "0", imePackage(ime));
+  }
+  await waitUntil(
+    async () => (await listImes()).length === 0,
+    IME_DISABLE_TIMEOUT_MS,
+    "input methods to be disabled",
+  );
+}
+
+function emulatorGpuMode(platform: NodeJS.Platform) {
+  return platform === "linux" ? "swiftshader_indirect" : "auto";
+}
+
+function imePackage(ime: string) {
+  return ime.split("/")[0] ?? ime;
 }
 
 function parseLines(output: string) {

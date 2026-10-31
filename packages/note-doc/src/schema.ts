@@ -18,6 +18,7 @@ export const NOTE_LINK_PROTOCOLS = ["cocurdex", "cocurdex-pdf", "note"];
 export interface NoteDocExtensionOptions {
   collaborative?: boolean;
   codeBlockView?: NodeViewRenderer;
+  imageView?: NodeViewRenderer;
 }
 
 const CODE_BLOCK_TAB_SIZE = 2;
@@ -30,9 +31,15 @@ function buildCodeBlock(view: NodeViewRenderer | undefined) {
   return view ? configured.extend({ addNodeView: () => view }) : configured;
 }
 
+function buildImage(view: NodeViewRenderer | undefined) {
+  const configured = Image.configure({ inline: true });
+  return view ? configured.extend({ addNodeView: () => view }) : configured;
+}
+
 export function buildNoteDocExtensions({
   collaborative = false,
   codeBlockView,
+  imageView,
 }: NoteDocExtensionOptions = {}): Extensions {
   return [
     StarterKit.configure({
@@ -49,7 +56,7 @@ export function buildNoteDocExtensions({
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: false }),
     NoteTable,
-    Image.configure({ inline: true }),
+    buildImage(imageView),
     Markdown,
   ];
 }

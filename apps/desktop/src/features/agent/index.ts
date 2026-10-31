@@ -51,6 +51,7 @@ export {
   agentRuntimeBySessionAtom,
   applyAgentRuntimeEventAtom,
   getActiveSessionModeId,
+  seedAgentRuntimeAtom,
 } from "./runtime";
 export {
   applyToolEventAtom,

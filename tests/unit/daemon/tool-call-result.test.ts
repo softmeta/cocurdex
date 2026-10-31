@@ -1,7 +1,7 @@
 import { handleDaemonRequest } from "@cocurdex/daemon/internal/handler";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { DaemonRequest } from "@cocurdex/rpc";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, expect, it, vi } from "vitest";
 
 const tempDirs = createTempDirs();

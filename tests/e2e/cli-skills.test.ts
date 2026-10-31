@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
 import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";

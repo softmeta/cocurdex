@@ -93,6 +93,8 @@ export const daemonProductApi: ProductRequestApi = {
     rpc("session.switchAgent", { sessionId, agentType }),
   listContextTransfers: (sessionId) =>
     rpc("session.contextTransfers", { sessionId }),
+  getSessionRuntimeState: (sessionId) =>
+    rpc("session.runtimeState", { sessionId }),
   getSessionExecutionTree: (sessionId) =>
     rpc("session.executionTree", { sessionId }),
   startScriptRun: (payload) => rpc("scriptRun.start", payload),
@@ -228,9 +230,16 @@ export const daemonProductApi: ProductRequestApi = {
     }),
   probeProviderModelAxes: (agentId, modelId) =>
     rpc("provider.modelAxes.probe", { agentId, modelId }),
-  loginAgent: async (agentId) => {
-    await rpc("agent.login", { agentId });
+  loginAgent: async (agentId, methodId) => {
+    await rpc("agent.login", { agentId, methodId });
   },
+  cancelAgentLogin: async (agentId) => {
+    await rpc("agent.login.cancel", { agentId });
+  },
+  logoutAgent: async (agentId) => {
+    await rpc("agent.logout", { agentId });
+  },
+  readAgentAuth: (agentId) => rpc("agent.auth.read", { agentId }),
   listAcpRegistryCatalog: (options) =>
     rpc("acpRegistry.catalog", options ?? {}),
   installAcpRegistryAgent: (registryId) =>
@@ -262,6 +271,20 @@ export const daemonProductApi: ProductRequestApi = {
   setNetworkProxySettings: (settings) => rpc("network.proxy.set", { settings }),
   testNetworkProxy: (settings) => rpc("network.proxy.test", { settings }),
   testCurrentNetworkProxy: () => rpc("network.proxy.test", {}),
+  getMemoryStatus: (refresh) => rpc("memory.status", { refresh }),
+  getMemorySettings: () => rpc("memory.settings.get"),
+  setMemorySettings: (settings) => rpc("memory.settings.set", { settings }),
+  recallMemories: (input) => rpc("memory.recall", input),
+  showMemory: (id) => rpc("memory.show", { id }),
+  rememberMemory: (input) => rpc("memory.remember", input),
+  saveSessionMemory: (input) => rpc("memory.session.save", input),
+  installMemory: (force) => rpc("memory.install", { force }),
+  runMemoryDoctor: (options) => rpc("memory.doctor", options ?? {}),
+  getMemoryPolicy: () => rpc("memory.policy"),
+  connectMemoryCloud: (input) => rpc("memory.cloud.connect", input),
+  disconnectMemoryCloud: () => rpc("memory.cloud.disconnect"),
+  setMemoryCloudSync: (enabled) => rpc("memory.cloud.setSync", { enabled }),
+  getMemoryCloudKeys: () => rpc("memory.cloud.keys"),
   getHostRemoteAccess: () => rpc("host.remoteAccess.get"),
   setHostRemoteAccess: (settings) => rpc("host.remoteAccess.set", settings),
   createHostPairing: (payload) => rpc("host.pairing.create", payload),
@@ -269,6 +292,8 @@ export const daemonProductApi: ProductRequestApi = {
   cancelHostPairing: (pairingId) => rpc("host.pairing.cancel", { pairingId }),
   listHostDevices: () => rpc("host.devices.list"),
   revokeHostDevice: (deviceId) => rpc("host.devices.revoke", { deviceId }),
+  updateHostDeviceScopes: (deviceId, scopes) =>
+    rpc("host.devices.updateScopes", { deviceId, scopes }),
   listHostAudit: (limit) => rpc("host.audit.list", { limit }),
   listSessionMessages: (sessionId) =>
     rpc("session.listMessages", { sessionId }),

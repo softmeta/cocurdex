@@ -1,5 +1,6 @@
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { existsSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -23,11 +24,13 @@ import {
   FIXTURE_ISSUES,
   FIXTURE_LABELS,
   FIXTURE_NOTES,
+  FIXTURE_ROLES,
   FIXTURE_SESSIONS,
   FIXTURE_WORKSPACE_ID,
   FIXTURE_WORKSPACE_NAME,
   FIXTURE_WORKSPACES,
   type FixtureInterruptedTurn,
+  type FixtureIssue,
   type FixtureSession,
   type FixtureTeammate,
   type FixtureTurn,
@@ -35,10 +38,12 @@ import {
 } from "./recipe";
 import { materializeFixtureWorkspace } from "./workspace";
 
+const resolveFixture = createRequire(import.meta.url).resolve;
 const FIXTURE_CREATED_AT = "2026-01-01T09:00:00.000Z";
 const RUN_TIMEOUT_MS = 30_000;
 
 export const FIXTURE_MANIFEST_FILENAME = "fixture.json";
+export const FIXTURE_DATA_DIRECTORIES = ["image-attachments"];
 
 export interface FixtureManifest {
   workspaceId: string;
@@ -75,6 +80,32 @@ function finishedRuns(events: CocurdexDaemonEvent[], sessionId: string) {
   ).length;
 }
 
+async function seedRoles(daemon: DaemonProcess) {
+  for (const role of FIXTURE_ROLES) {
+    await requestDaemon(
+      "agentRole.save",
+      {
+        id: role.id,
+        name: role.name,
+        avatar: { kind: "emoji", emoji: role.emoji, color: "violet" },
+        agentId: "pi",
+        providerId: null,
+        modelId: null,
+        modelName: null,
+        permissionMode: null,
+        sessionModeId: null,
+        reasoningEffort: null,
+        serviceTier: null,
+        fastMode: null,
+        thinkingLevel: null,
+        openCodeAgent: null,
+        openCodeVariant: null,
+      },
+      daemon.options,
+    );
+  }
+}
+
 async function seedSession(
   daemon: DaemonProcess,
   stub: StubLlmServer,
@@ -93,6 +124,7 @@ async function seedSession(
       agentType: "pi",
       writeMode: fixture.kind === "chat" ? "read-only" : "native-write",
       sessionModeId: null,
+      agentRoleId: fixture.roleId ?? null,
       providerSnapshot,
     },
     daemon.options,
@@ -249,6 +281,19 @@ async function seedDecks(daemon: DaemonProcess) {
   }
 }
 
+async function withFixtureImage(daemon: DaemonProcess, issue: FixtureIssue) {
+  if (!issue.image) return issue.description;
+  const image = await requestDaemon(
+    "image.import",
+    {
+      path: resolveFixture(`../fixtures/${issue.image.fixture}`),
+      name: issue.image.name,
+    },
+    daemon.options,
+  );
+  return `${issue.description}\n\n${image.markdown}`;
+}
+
 async function seedIssues(daemon: DaemonProcess) {
   const labelIds = new Map<string, string>();
   for (const label of FIXTURE_LABELS) {
@@ -262,12 +307,13 @@ async function seedIssues(daemon: DaemonProcess) {
   const [view] = await requestDaemon("issue.listViews", daemon.options);
   if (!view) throw new Error("Fixture daemon has no issue view");
   for (const issue of FIXTURE_ISSUES) {
+    const description = await withFixtureImage(daemon, issue);
     const created = await requestDaemon(
       "issue.create",
       {
         viewId: view.id,
         title: issue.title,
-        description: issue.description || null,
+        description: description || null,
         status: issue.status,
         priority: issue.priority,
         workspaceId: FIXTURE_WORKSPACE_ID,
@@ -397,6 +443,7 @@ export async function buildFixtureDb(outDir: string): Promise<FixtureManifest> {
         daemon.options,
       );
     }
+    await seedRoles(daemon);
     const teammateIds: string[] = [];
     for (const session of FIXTURE_SESSIONS) {
       teammateIds.push(...(await seedSession(daemon, stub, events, session)));
@@ -415,6 +462,11 @@ export async function buildFixtureDb(outDir: string): Promise<FixtureManifest> {
       path.join(outDir, DATABASE_FILENAME),
       scratch,
     );
+    for (const directory of FIXTURE_DATA_DIRECTORIES) {
+      const source = path.join(userDataPath, directory);
+      if (!existsSync(source)) continue;
+      await cp(source, path.join(outDir, directory), { recursive: true });
+    }
     const manifest: FixtureManifest = {
       workspaceId: FIXTURE_WORKSPACE_ID,
       workspaceName: FIXTURE_WORKSPACE_NAME,

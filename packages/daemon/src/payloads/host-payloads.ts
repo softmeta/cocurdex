@@ -7,12 +7,14 @@ const remoteAccessSettings = z.object({
   port: z.number().int().min(1024).max(65_535),
 });
 
+const deviceScopes = z
+  .array(z.enum(HOST_ACCESS_SCOPES))
+  .min(1)
+  .max(HOST_ACCESS_SCOPES.length);
+
 const createPairing = z.object({
   label: z.string().trim().min(1).max(120),
-  scopes: z
-    .array(z.enum(HOST_ACCESS_SCOPES))
-    .min(1)
-    .max(HOST_ACCESS_SCOPES.length),
+  scopes: deviceScopes,
   ttlMinutes: z.number().int().min(1).max(60).optional(),
 });
 
@@ -21,6 +23,10 @@ export const hostPayloadSchemas: PayloadSchemas = {
   "host.pairing.create": createPairing,
   "host.pairing.cancel": z.object({ pairingId: idSchema }),
   "host.devices.revoke": z.object({ deviceId: idSchema }),
+  "host.devices.updateScopes": z.object({
+    deviceId: idSchema,
+    scopes: deviceScopes,
+  }),
   "host.audit.list": z.object({
     limit: z.number().int().min(1).max(500).optional(),
   }),

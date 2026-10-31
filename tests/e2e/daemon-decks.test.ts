@@ -6,7 +6,7 @@ import {
   buildDaemonDeckAssetUrl,
   buildDaemonDeckDownloadUrl,
 } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
 import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";

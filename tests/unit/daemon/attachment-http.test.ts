@@ -10,7 +10,7 @@ import {
   type HostPrincipal,
   type ImageAttachment,
 } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
@@ -20,6 +20,7 @@ afterAll(() => tempDirs.cleanup());
 const LOCAL_TOKEN = "local-token";
 const READER_TOKEN = "reader-token";
 const WRITER_TOKEN = "writer-token";
+const VIEWER_TOKEN = "viewer-token";
 
 const PRINCIPALS: Record<string, HostPrincipal> = {
   [LOCAL_TOKEN]: { kind: "local" },
@@ -27,6 +28,11 @@ const PRINCIPALS: Record<string, HostPrincipal> = {
     kind: "device",
     deviceId: "reader",
     scopes: ["read", "files.read"],
+  },
+  [VIEWER_TOKEN]: {
+    kind: "device",
+    deviceId: "viewer",
+    scopes: ["read", "interact"],
   },
   [WRITER_TOKEN]: {
     kind: "device",
@@ -110,6 +116,19 @@ describe("createAttachmentHttpHandler", () => {
     expect(read.status).toBe(200);
     expect(read.headers.get("content-type")).toBe("image/gif");
     expect(Buffer.from(await read.arrayBuffer())).toEqual(GIF);
+  });
+
+  it("serves a sent image to a device paired without files.read", async () => {
+    await startServer(true);
+
+    const attachment = (await (
+      await upload(VIEWER_TOKEN, GIF)
+    ).json()) as ImageAttachment;
+    const read = await fetch(
+      buildDaemonImageAttachmentUrl(webSocketUrl, attachment.filePath),
+      { headers: { Authorization: `Bearer ${VIEWER_TOKEN}` } },
+    );
+    expect(read.status).toBe(200);
   });
 
   it("refuses a device without interact scope and keeps nothing", async () => {

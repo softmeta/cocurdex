@@ -1,6 +1,9 @@
 import type { AgentRoleRecord } from "@cocurdex/shared/internal/agent-role";
 import {
+  AGENT_ROLE_AVATAR_COLORS,
+  agentRoleInitial,
   agentRoleMatchesDraft,
+  defaultAgentRoleAvatarColor,
   normalizeAgentRoleAvatar,
   projectAgentRoleToExecutorBinding,
   workflowPermissionProfileForAgentRole,
@@ -194,5 +197,23 @@ describe("normalizeAgentRoleAvatar", () => {
       normalizeAgentRoleAvatar({ kind: "image", url: "x", color: "red" }),
     ).toBeNull();
     expect(normalizeAgentRoleAvatar(null)).toBeNull();
+  });
+});
+
+describe("agent role avatar defaults", () => {
+  it("gives a role the same palette color on every client", () => {
+    expect(defaultAgentRoleAvatarColor("role-reviewer")).toBe(
+      defaultAgentRoleAvatarColor("role-reviewer"),
+    );
+    expect(AGENT_ROLE_AVATAR_COLORS).toContain(
+      defaultAgentRoleAvatarColor("role-reviewer"),
+    );
+  });
+
+  it("uses the first whole character of the name as the initial", () => {
+    expect(agentRoleInitial("  reviewer")).toBe("R");
+    expect(agentRoleInitial("审阅者")).toBe("审");
+    expect(agentRoleInitial("👩‍💻 Dev")).toBe("👩‍💻");
+    expect(agentRoleInitial("   ")).toBe("?");
   });
 });

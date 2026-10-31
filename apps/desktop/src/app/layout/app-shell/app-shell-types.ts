@@ -11,6 +11,7 @@ export type SettingsSectionId =
   | "teams"
   | "personalization"
   | "mcp"
+  | "memory"
   | "skills"
   | "workflows"
   | "git"

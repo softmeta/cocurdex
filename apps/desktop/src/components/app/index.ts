@@ -6,6 +6,7 @@
 
 export { AppActivityTime } from "./activity-time";
 export { AppConfirmDialog } from "./confirm-dialog";
+export { AppCopyButton } from "./copy-button";
 export {
   AppDropdownContent,
   AppDropdownItem,
@@ -20,11 +21,16 @@ export {
 export { AppGitBranchLabel } from "./git-branch-label";
 export { AppInlineRenameInput } from "./inline-rename-input";
 export { AppPreviewCardTooltipContent } from "./preview-card-tooltip";
+export { AppRemoveButton } from "./remove-button";
 export {
   AppSearchableSelect,
   type AppSearchableSelectOption,
 } from "./searchable-select";
 export { AppSelect } from "./select";
-export { SettingRow, SettingsGroup } from "./settings-fields";
+export {
+  SettingNumberInput,
+  SettingRow,
+  SettingsGroup,
+} from "./settings-fields";
 export { AppSidebarRowTitle } from "./sidebar-row-title";
 export { AppWindowOverlayHeader } from "./window-overlay-header";

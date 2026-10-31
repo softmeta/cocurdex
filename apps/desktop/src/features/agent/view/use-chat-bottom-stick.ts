@@ -15,7 +15,8 @@ interface ChatBottomStickOptions {
   isRunning: boolean;
   setInitialBottomSettled: Dispatch<SetStateAction<boolean>>;
   status: SessionStatus | undefined;
-  stickToBottomIfLocked(): void;
+  syncViewportLayout(): void;
+  finishInitialPositioning(): void;
   stickyUserMessages: UserMessageAnchor[];
   syncScrollState(stickyUserMessages: UserMessageAnchor[]): void;
   timelineGroupCount: number;
@@ -30,7 +31,8 @@ export function useChatBottomStick({
   isRunning,
   setInitialBottomSettled,
   status,
-  stickToBottomIfLocked,
+  syncViewportLayout,
+  finishInitialPositioning,
   stickyUserMessages,
   syncScrollState,
   timelineGroupCount,
@@ -48,11 +50,12 @@ export function useChatBottomStick({
       if (isSettled) return;
       isSettled = true;
       if (frameId !== null) cancelAnimationFrame(frameId);
+      finishInitialPositioning();
       setInitialBottomSettled(true);
     };
-    stickToBottomIfLocked();
+    syncViewportLayout();
     const cancelReveal = timelineScrollRef.current?.revealWhenSettled(
-      stickToBottomIfLocked,
+      syncViewportLayout,
       () => {
         if (isContentReadyNow()) settle();
       },
@@ -60,7 +63,7 @@ export function useChatBottomStick({
     if (!isSettled) {
       frameId = requestAnimationFrame(() => {
         cancelReveal?.();
-        stickToBottomIfLocked();
+        syncViewportLayout();
         settle();
       });
     }
@@ -70,28 +73,22 @@ export function useChatBottomStick({
       cancelReveal?.();
     };
   }, [
+    finishInitialPositioning,
     isContentReady,
     isContentReadyNow,
     setInitialBottomSettled,
-    stickToBottomIfLocked,
+    syncViewportLayout,
     timelineGroupCount,
     timelineScrollRef,
   ]);
 
-  // Content-size growth (streaming deltas, new messages, tool calls, plan
-  // panel updates) is handled by the ResizeObserver attached to chatContent
-  // below. We only re-stick on transitions that flip layout-relevant state
-  // *without* a corresponding box-size change — namely `isRunning` going
-  // false (activity line removal swaps inline indicators) and `status`
-  // transitions. Keying on content length / updatedAt was the hot path
-  // during streaming and is intentionally dropped.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isRunning and status are the re-stick triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: isRunning and status refresh layout state
   useLayoutEffect(() => {
     if (timelineGroupCount === 0) {
       return;
     }
-    stickToBottomIfLocked();
-  }, [isRunning, status, stickToBottomIfLocked, timelineGroupCount]);
+    syncViewportLayout();
+  }, [isRunning, status, syncViewportLayout, timelineGroupCount]);
 
   useLayoutEffect(() => {
     syncScrollState(stickyUserMessages);
@@ -100,30 +97,27 @@ export function useChatBottomStick({
   useLayoutEffect(() => {
     const chatContent = chatContentRef.current;
     const viewport = viewportRef.current;
-    if (!chatContent || !viewport || typeof ResizeObserver === "undefined") {
+    if (
+      !chatContent ||
+      !viewport ||
+      timelineGroupCount === 0 ||
+      typeof ResizeObserver === "undefined"
+    ) {
       return;
     }
 
-    // Scroll synchronously inside the observer callback. ResizeObserver
-    // callbacks fire after layout but before paint, so adjusting scrollTop
-    // here is invisible to the user. Deferring to RAF caused the browser to
-    // paint one frame with stale scrollTop against new content height, which
-    // showed up as a visible jump — most pronounced when the last message
-    // contained a tall code block. viewport.scrollTo does not resize either
-    // observed box, so this cannot loop.
     const observer = new ResizeObserver(() => {
-      stickToBottomIfLocked();
+      syncViewportLayout();
     });
 
-    // chatContent covers content growth (streaming deltas, new messages).
-    // The viewport covers the opposite case: content stays put while the box
-    // shrinks or grows around it — the composer dock changing height (task
-    // panel appearing, collapsing, dismissed; permission cards; multi-line
-    // input) or the window being resized.
     observer.observe(chatContent);
     observer.observe(viewport);
+    const contentEnd = chatContent.querySelector(
+      "[data-transcript-content-end]",
+    );
+    if (contentEnd) observer.observe(contentEnd);
     return () => {
       observer.disconnect();
     };
-  }, [chatContentRef, stickToBottomIfLocked, viewportRef]);
+  }, [chatContentRef, syncViewportLayout, viewportRef, timelineGroupCount]);
 }

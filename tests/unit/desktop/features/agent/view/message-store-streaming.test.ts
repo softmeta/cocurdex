@@ -1,4 +1,8 @@
-import type { AgentEvent, MessageRecord } from "@cocurdex/shared";
+import {
+  type AgentEvent,
+  type MessageRecord,
+  STREAM_RENDER_BATCH_MS,
+} from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -23,6 +27,26 @@ function delta(sessionId: string, content: string): AgentEvent {
 afterEach(() => vi.useRealTimers());
 
 describe("session message updates", () => {
+  it("publishes continuous deltas at the original deadline and completes immediately", () => {
+    vi.useFakeTimers();
+    const store = createStore();
+    const selected = createSessionMessagesAtom("selected");
+    for (let index = 0; index < 5; index += 1) {
+      store.set(applyAgentEventAtom, delta("selected", "字"));
+      vi.advanceTimersByTime(STREAM_RENDER_BATCH_MS / 5);
+    }
+    expect(store.get(selected)[0]?.content).toBe("字".repeat(5));
+    store.set(applyAgentEventAtom, delta("selected", "尾"));
+    store.set(applyAgentEventAtom, {
+      type: "message.completed",
+      sessionId: "selected",
+      message: { ...store.get(selected)[0], content: `${"字".repeat(5)}尾` },
+    });
+    expect(store.get(selected)[0]?.content).toBe(`${"字".repeat(5)}尾`);
+    vi.runOnlyPendingTimers();
+    expect(store.get(selected)).toHaveLength(1);
+  });
+
   it("does not notify a session subscriber when another session streams", () => {
     vi.useFakeTimers();
     const store = createStore();

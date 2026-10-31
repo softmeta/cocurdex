@@ -277,6 +277,30 @@ describe("connection supervisor retries", () => {
     await vi.waitFor(() => expect(supervisor.getState().status).toBe("live"));
   });
 
+  it("replaces a live session at once when the foreground follows a long suspension", async () => {
+    const probe = vi.fn().mockResolvedValue(undefined);
+    let foreground: (wakeup?: "probe" | "reconnect") => void = () => {};
+    const { supervisor, close } = fixture({
+      probe,
+      signals: {
+        network: networkSignal(false),
+        lifecycle: {
+          subscribeForeground(listener) {
+            foreground = listener;
+            return () => {};
+          },
+        },
+      },
+    });
+    await supervisor.connect();
+
+    foreground("reconnect");
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
+    expect(close).toHaveBeenCalled();
+    expect(probe).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(supervisor.getState().status).toBe("live"));
+  });
+
   it("publishes state changes to subscribers", async () => {
     const { supervisor } = fixture();
     const statuses: string[] = [];

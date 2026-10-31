@@ -8,25 +8,25 @@ import type {
   ProviderModelRecord,
   ReasoningEffort,
 } from "@cocurdex/shared";
-import { supportsInSessionRuntimeAxis } from "@cocurdex/shared";
-import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 import {
   findSessionConfigOption,
   getComposerSessionConfigOptions,
   getConfigOptionSpeedTiers,
+  getDefaultOpenCodeAgent,
+  getOccupiedSessionConfigAxes,
+  getOpenCodeRuntimeOptions,
   getSessionConfigTriggerValues,
   isBaselineSpeedOptionValue,
-  type OccupiedSessionConfigAxis,
+  resolveOpenCodeRuntimeValue,
+  supportsInSessionRuntimeAxis,
+} from "@cocurdex/shared";
+import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import {
   PermissionModeSubmenu,
   ProviderModelMenu,
   supportsLivePermissionMode,
 } from "@/features/sessions";
-import {
-  getDefaultOpenCodeAgent,
-  getOpenCodeRuntimeOptions,
-  resolveOpenCodeRuntimeValue,
-} from "@/features/sessions/provider-model/opencode-runtime-options";
 import { shouldShowProviderGroupLabels } from "@/features/sessions/provider-model/provider-model-label";
 import { AgentRuntimeConfigItems } from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
@@ -160,22 +160,7 @@ export function SessionRuntimeMenu({
     openCodeRuntimeOptions.variants,
   );
   const hasPermission = supportsLivePermissionMode(agentType);
-  const occupiedConfigAxes: OccupiedSessionConfigAxis[] = ["model", "mode"];
-  if (supportsRuntimeAxis("thinking") || effortOptions.length > 0) {
-    occupiedConfigAxes.push("thinking");
-  }
-  if (hasPermission) {
-    occupiedConfigAxes.push("permission");
-  }
-  if (supportsRuntimeAxis("speed")) {
-    occupiedConfigAxes.push("speed");
-  }
-  if (supportsRuntimeAxis("agent")) {
-    occupiedConfigAxes.push("agent");
-  }
-  if (supportsRuntimeAxis("variant")) {
-    occupiedConfigAxes.push("variant");
-  }
+  const occupiedConfigAxes = getOccupiedSessionConfigAxes(agentType);
   const sessionConfigOptions = getComposerSessionConfigOptions(
     configOptions ?? [],
     occupiedConfigAxes,

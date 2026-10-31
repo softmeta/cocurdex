@@ -1,7 +1,7 @@
 import path from "node:path";
 import { createCocurdexDatabase } from "@cocurdex/db/internal/sqlite";
 import { type DeckContent, isDeckConflictError } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
@@ -9,9 +9,11 @@ const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());
 
 function createTestDatabase() {
-  return createCocurdexDatabase(
+  const database = createCocurdexDatabase(
     path.join(tempDirs.createSync("cocurdex-decks-"), "cocurdex.sqlite"),
   );
+  tempDirs.onCleanup(() => database.close());
+  return database;
 }
 
 function deckWith(titles: string[]): DeckContent {

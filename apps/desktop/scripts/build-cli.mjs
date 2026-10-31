@@ -16,6 +16,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
+import { buildPolicyDefine } from "./build-policy-define.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(__dirname, "..");
@@ -121,6 +122,7 @@ await build({
   define: {
     // Packaged cli.mjs has no package.json beside it — inline the version.
     __COCURDEX_CLI_VERSION__: JSON.stringify(cliVersion),
+    ...buildPolicyDefine(),
   },
   build: {
     outDir,
@@ -168,6 +170,7 @@ await build({
   logLevel: "warn",
   resolve: { alias },
   plugins: [quickjsWasmBesideDaemon],
+  define: buildPolicyDefine(),
   esbuild: { keepNames: true },
   build: {
     outDir,

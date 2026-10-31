@@ -27,6 +27,7 @@ export function hostUsageLines() {
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
     "  cocurdex host devices [--json] | host revoke <device-id>",
+    "  cocurdex host scopes <device-id> --scopes read,interact,approvals,files.read [--json]",
     "  cocurdex host audit [--limit <n>] [--json]",
   ];
 }
@@ -165,6 +166,16 @@ export async function handleHostCommand(
     );
     if (!revoked) throw new Error(`No device ${deviceId}`);
     printResult(revoked, parsed);
+    return true;
+  }
+  if (action === "scopes" && args[0]) {
+    const deviceId = args[0];
+    const scopes = parseScopesFlag(getRequiredFlag(parsed, "scopes"));
+    const updated = await withDaemon(() =>
+      requestDaemon("host.devices.updateScopes", { deviceId, scopes }),
+    );
+    if (!updated) throw new Error(`No active device ${deviceId}`);
+    printResult(updated, parsed);
     return true;
   }
   if (action === "audit") {

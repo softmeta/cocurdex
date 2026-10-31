@@ -33,10 +33,13 @@ export function parseByteRange(
   return { start, end };
 }
 
-export interface PdfHttpHandlerOptions {
+export interface RangeFileHttpHandlerOptions {
   remote: boolean;
   isAllowedRequest(request: http.IncomingMessage): boolean;
   resolvePrincipal(token: string | null): HostPrincipal | null;
+}
+
+export interface PdfHttpHandlerOptions extends RangeFileHttpHandlerOptions {
   resolvePdfPath(filePath: string): Promise<string>;
 }
 
@@ -106,7 +109,13 @@ async function statFile(filePath: string) {
   }
 }
 
-export function createPdfHttpHandler(options: PdfHttpHandlerOptions) {
+export function createRangeFileHttpHandler(
+  options: RangeFileHttpHandlerOptions & {
+    pathQuery: string;
+    resolvePath(filePath: string): Promise<string>;
+    contentHeaders(filePath: string): http.OutgoingHttpHeaders;
+  },
+) {
   return async (
     request: http.IncomingMessage,
     response: http.ServerResponse,
@@ -136,7 +145,7 @@ export function createPdfHttpHandler(options: PdfHttpHandlerOptions) {
       return;
     }
     const requestedPath = readRequestUrl(request)?.searchParams.get(
-      DAEMON_PDF_PATH_QUERY,
+      options.pathQuery,
     );
     if (!requestedPath) {
       endWith(response, 400, cors);
@@ -144,7 +153,7 @@ export function createPdfHttpHandler(options: PdfHttpHandlerOptions) {
     }
     let filePath: string;
     try {
-      filePath = await options.resolvePdfPath(requestedPath);
+      filePath = await options.resolvePath(requestedPath);
     } catch {
       endWith(response, 403, cors);
       return;
@@ -159,7 +168,7 @@ export function createPdfHttpHandler(options: PdfHttpHandlerOptions) {
       ...cors,
       "Accept-Ranges": "bytes",
       "Cache-Control": "no-store",
-      "Content-Type": "application/pdf",
+      ...options.contentHeaders(filePath),
       "Last-Modified": info.mtime.toUTCString(),
       "X-Content-Type-Options": "nosniff",
     };
@@ -185,4 +194,13 @@ export function createPdfHttpHandler(options: PdfHttpHandlerOptions) {
     }
     pipeline(createReadStream(filePath, { start, end }), response, () => {});
   };
+}
+
+export function createPdfHttpHandler(options: PdfHttpHandlerOptions) {
+  return createRangeFileHttpHandler({
+    ...options,
+    pathQuery: DAEMON_PDF_PATH_QUERY,
+    resolvePath: options.resolvePdfPath,
+    contentHeaders: () => ({ "Content-Type": "application/pdf" }),
+  });
 }

@@ -145,6 +145,8 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
       connection.agent.request(methods.agent.initialize, request),
     authenticate: (request) =>
       connection.agent.request(methods.agent.authenticate, request),
+    logout: (request) =>
+      connection.agent.request(methods.agent.logout, request),
     newSession: (request) =>
       connection.agent.request(methods.agent.session.new, request),
     loadSession: (request) =>

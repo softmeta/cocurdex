@@ -1,4 +1,10 @@
 export {
+  buildVisibleSessionTree,
+  collectSessionSubtreeIds,
+  isSubagentSession,
+  limitSessionTreeRoots,
+} from "@cocurdex/shared";
+export {
   type AdapterStatus,
   type AdapterStatusKind,
   getAdapterStatus,
@@ -26,9 +32,7 @@ export {
   bootstrapProviderModelsAtom,
   findProviderModel,
   getCachedProviderModelEntry,
-  getDefaultOpenCodeAgent,
   getDefaultProviderModelValue,
-  getOpenCodeRuntimeOptions,
   getProviderModelCacheVersion,
   invalidateProviderModelCache,
   loadProviderModelOptions,
@@ -39,7 +43,6 @@ export {
   providerModelsAtom,
   providerModelsLoadedAtom,
   RuntimeAxisSubmenu,
-  resolveOpenCodeRuntimeValue,
   shouldShowProviderGroupLabels,
   subscribeProviderModelCache,
 } from "./provider-model";
@@ -53,14 +56,6 @@ export {
   sessionResultAttentionAtom,
   unreadSessionIdsAtom,
 } from "./session-attention-store";
-export {
-  findSessionConfigOption,
-  getComposerSessionConfigOptions,
-  getConfigOptionSpeedTiers,
-  getSessionConfigTriggerValues,
-  isBaselineSpeedOptionValue,
-  type OccupiedSessionConfigAxis,
-} from "./session-config-options";
 export {
   ContextHandoffMarker,
   canSwitchSessionAgent,
@@ -133,20 +128,5 @@ export {
   updateSessionTitleAtom,
   upsertSessionAtom,
 } from "./session-store";
-export { generateLocalSessionTitle } from "./session-title";
-export {
-  buildVisibleSessionTree,
-  collectSessionSubtreeIds,
-  isSubagentSession,
-  limitSessionTreeRoots,
-} from "./session-tree";
 export { TeamPanel } from "./team";
-export {
-  getConfigOptionThinkingLevels,
-  getEffectiveThinkingLevel,
-  getThinkingLevelLabel,
-  getThinkingLevelOptions,
-  resolveThinkingLevel,
-  type ThinkingLevelOption,
-} from "./thinking-level";
 export { ThinkingLevelSubmenu } from "./thinking-level-submenu";

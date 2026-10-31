@@ -1,4 +1,5 @@
 import type { DaemonTransport } from "@cocurdex/rpc/client";
+import type { ForegroundWakeup } from "./foreground-wakeup";
 
 export interface HostEndpoint {
   webSocketUrl: string;
@@ -11,7 +12,9 @@ export interface NetworkSignal {
 }
 
 export interface LifecycleSignal {
-  subscribeForeground(listener: () => void): () => void;
+  subscribeForeground(
+    listener: (wakeup?: ForegroundWakeup) => void,
+  ): () => void;
 }
 
 export interface PlatformSignals {

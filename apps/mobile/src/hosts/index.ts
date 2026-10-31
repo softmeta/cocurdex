@@ -1,5 +1,7 @@
 export { EmptyHosts } from "./empty-hosts";
-export { hosts, useSavedHosts } from "./hosts";
-export { HostsList } from "./hosts-list";
+export { hostAddress } from "./host-address";
+export { hosts, selectHost, useCurrentHost, useSavedHosts } from "./hosts";
 export type { PairFailure } from "./hosts-store";
-export { PairToolbar } from "./pair-toolbar";
+export { usePairingRoutes } from "./pairing-routes";
+export { ScanPairing } from "./scan-pairing";
+export { type GatedScope, useScopeGate } from "./scope-gate";

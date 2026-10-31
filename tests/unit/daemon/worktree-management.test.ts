@@ -1,35 +1,24 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { handleDaemonRequest } from "@cocurdex/daemon/internal/handler";
 import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import { runGit } from "@cocurdex/daemon/internal/workspace-changes/git-run";
 import type { DaemonRequest } from "@cocurdex/rpc";
 import type { WorkspaceRecord } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
+
 const services: CocurdexDaemonService[] = [];
 
 afterEach(async () => {
   await Promise.all(services.splice(0).map((service) => service.shutdown()));
-  await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, {
-        force: true,
-        maxRetries: 5,
-        recursive: true,
-        retryDelay: 100,
-      }),
-    ),
-  );
+  await tempDirs.cleanup();
 });
 
 async function createService() {
-  const userDataPath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-worktree-mgmt-"),
-  );
-  temporaryDirectories.push(userDataPath);
+  const userDataPath = await tempDirs.create("cocurdex-worktree-mgmt-");
   const service = new CocurdexDaemonService({
     runtimeFingerprint: "test-runtime",
     userDataPath,

@@ -11,7 +11,7 @@ pre-commit:
     - name: biome
       # Format + lint only the staged JS/TS/JSON files so the hook stays fast.
       glob: "*.{ts,tsx,js,jsx,json,jsonc}"
-      run: pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
+      run: node node_modules/@biomejs/biome/bin/biome check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
     # Remaining checks are read-only, so run them in parallel after Biome.
     - group:
@@ -20,10 +20,10 @@ pre-commit:
           - name: design-tokens
             # Repo-wide scan is cheap (regex over .ts/.tsx); always run so
             # violations cannot slip in via an unrelated file edit.
-            run: pnpm lint:design-tokens
+            run: node ./scripts/lint-design-tokens.mjs
           - name: theme-parity
             glob: "apps/desktop/src/styles/theme-tokens.css"
-            run: pnpm lint:theme-parity
+            run: node ./scripts/lint-theme-parity.mjs
     # TypeScript is slower than the targeted checks above, so keep it last.
     - group:
         parallel: true
@@ -32,4 +32,4 @@ pre-commit:
             glob: "{apps/desktop/src/**/*.{ts,tsx},apps/desktop/*.config.ts,apps/desktop/tsconfig*.json,apps/desktop/package.json,packages/*/src/**/*.{ts,tsx},packages/*/package.json,packages/*/tsconfig*.json}"
             # `typecheck` runs `tsc --noEmit --incremental`, caching the program
             # graph in .tsbuildinfo so repeat commits only re-check touched files.
-            run: pnpm --filter @cocurdex/desktop typecheck
+            run: node ./node_modules/typescript/bin/tsc --noEmit --incremental --tsBuildInfoFile apps/desktop/.tsbuildinfo -p apps/desktop/tsconfig.json

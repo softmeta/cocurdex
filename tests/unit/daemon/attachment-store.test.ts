@@ -7,7 +7,7 @@ import {
   DaemonAttachmentStore,
   MAX_IMAGE_ATTACHMENT_BYTES,
 } from "@cocurdex/daemon/internal/attachment-store";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

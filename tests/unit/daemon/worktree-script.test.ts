@@ -1,23 +1,18 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { runWorktreeLifecycleScript } from "@cocurdex/daemon/internal/worktree-script";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("runWorktreeLifecycleScript", () => {
   it("does nothing when the script is blank", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "cocurdex-script-"));
-    temporaryDirectories.push(cwd);
+    const cwd = await tempDirs.create("cocurdex-script-");
     await expect(
       runWorktreeLifecycleScript({ script: "  \n", cwd }),
     ).resolves.toBe("");
@@ -27,8 +22,7 @@ describe("runWorktreeLifecycleScript", () => {
     if (process.platform === "win32") {
       return;
     }
-    const cwd = await mkdtemp(path.join(tmpdir(), "cocurdex-script-"));
-    temporaryDirectories.push(cwd);
+    const cwd = await tempDirs.create("cocurdex-script-");
     await mkdir(cwd, { recursive: true });
     await runWorktreeLifecycleScript({
       script: "printf ready > marker.txt",
@@ -41,8 +35,7 @@ describe("runWorktreeLifecycleScript", () => {
     if (process.platform === "win32") {
       return;
     }
-    const cwd = await mkdtemp(path.join(tmpdir(), "cocurdex-script-"));
-    temporaryDirectories.push(cwd);
+    const cwd = await tempDirs.create("cocurdex-script-");
     await writeFile(path.join(cwd, "keep.txt"), "ok\n");
     await expect(
       runWorktreeLifecycleScript({ script: "exit 2", cwd }),

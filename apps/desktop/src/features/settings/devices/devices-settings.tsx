@@ -26,33 +26,40 @@ export function DevicesSettingsPanel() {
   }
 
   const reload = () => void refresh();
+  const remoteAllowed = snapshot.remote.allowed;
 
   return (
     <div className="settings-panel-enter flex flex-col gap-8">
       <LocalWebGroup />
-      <RemoteAccessGroup
-        key={snapshot.remote.settings.port}
-        status={snapshot.remote}
-        onChanged={reload}
-      />
+      {remoteAllowed ? (
+        <RemoteAccessGroup
+          key={snapshot.remote.settings.port}
+          status={snapshot.remote}
+          onChanged={reload}
+        />
+      ) : null}
       <PairedDevicesGroup
         action={
-          <Button
-            size="sm"
-            type="button"
-            variant="outline"
-            onClick={() => setPairing(true)}
-          >
-            <Plus className="size-3.5" />
-            {t("devices.pair.open")}
-          </Button>
+          remoteAllowed ? (
+            <Button
+              size="sm"
+              type="button"
+              variant="outline"
+              onClick={() => setPairing(true)}
+            >
+              <Plus className="size-3.5" />
+              {t("devices.pair.open")}
+            </Button>
+          ) : null
         }
         devices={snapshot.devices}
         onChanged={reload}
       />
-      <PendingPairingsGroup pairings={snapshot.pairings} onChanged={reload} />
+      {remoteAllowed ? (
+        <PendingPairingsGroup pairings={snapshot.pairings} onChanged={reload} />
+      ) : null}
       <AccessLogGroup entries={snapshot.audit} />
-      {pairing ? (
+      {remoteAllowed && pairing ? (
         <PairDeviceDialog
           addresses={snapshot.remote.addresses}
           onClose={() => setPairing(false)}

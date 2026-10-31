@@ -179,6 +179,12 @@ export class AgentRuntimeManager {
     this.persistAgentEventHandler = handler;
   }
 
+  liveSessionIdsForAgent(agentId: AgentId) {
+    return [...this.sessionRuntimes.entries()].flatMap(([sessionId, entry]) =>
+      entry.session.agentType === agentId ? [sessionId] : [],
+    );
+  }
+
   getAgentSession(sessionId: string) {
     return this.sessionRuntimes.get(sessionId)?.runtime ?? null;
   }

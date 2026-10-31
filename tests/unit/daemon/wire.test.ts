@@ -3,7 +3,6 @@ import { once } from "node:events";
 import {
   access,
   mkdir,
-  mkdtemp,
   readFile,
   realpath,
   rm,
@@ -12,8 +11,6 @@ import {
 } from "node:fs/promises";
 import { createRequire } from "node:module";
 import net from "node:net";
-import os from "node:os";
-import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   requestDaemon,
@@ -31,23 +28,21 @@ import {
   daemonWebSocketProtocols,
 } from "@cocurdex/rpc/client";
 import type { WorkspaceRecord } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket as NodeWebSocket } from "ws";
 
-const temporaryDirectories: string[] = [];
+const tempDirs = createTempDirs();
+
+process.env.COCURDEX_DISABLE_MEMORY_AUTO_START = "1";
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("startDaemonServer", () => {
   it("serves the same RPC and event stream over a loopback WebSocket", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-ws-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-ws-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "ws-runtime",
       token: "ws-token",
@@ -90,8 +85,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("streams terminal output live without journaling it for replay", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-term-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-term-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "test",
       token: "test",
@@ -128,8 +122,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("replays journaled events to a subscriber resuming after a sequence", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-replay-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-replay-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "test",
       token: "test",
@@ -166,8 +159,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("flags a replay gap for a stale epoch and returns the current epoch", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-epoch-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-epoch-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "test",
       token: "test",
@@ -200,8 +192,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("replays the stored outcome for a repeated idempotency key", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-receipt-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-receipt-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "test",
       token: "test",
@@ -237,8 +228,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("keeps serving after a malformed WebSocket frame", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-ws-bad-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-ws-bad-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "ws-runtime",
       token: "ws-token",
@@ -265,8 +255,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("rejects browser WebSocket connections from a non-loopback origin", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-ws-origin-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-ws-origin-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "ws-runtime",
       token: "ws-token",
@@ -286,8 +275,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("acknowledges editor view saves with a void result over real RPC", async () => {
-    const userDataPath = await mkdtemp(path.join(os.tmpdir(), "cd-void-"));
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cd-void-");
     const daemon = await startDaemonServer({
       runtimeFingerprint: "test",
       token: "test",
@@ -333,10 +321,7 @@ describe("startDaemonServer", () => {
     }
   });
   it("closes owned resources and can be started again", async () => {
-    const userDataPath = await mkdtemp(
-      path.join(os.tmpdir(), "cocurdex-daemon-"),
-    );
-    temporaryDirectories.push(userDataPath);
+    const userDataPath = await tempDirs.create("cocurdex-daemon-");
     const first = await startDaemonServer({
       runtimeFingerprint: "first-runtime",
       token: "test-token",
@@ -390,10 +375,7 @@ describe("startDaemonServer", () => {
 const DAEMON_FIXTURE_START_TIMEOUT_MS = 45_000;
 
 async function createDirectory() {
-  const directory = await realpath(
-    await mkdtemp(path.join(os.tmpdir(), "cd-wire-")),
-  );
-  temporaryDirectories.push(directory);
+  const directory = await realpath(await tempDirs.create("cd-wire-"));
   return directory;
 }
 
@@ -525,7 +507,11 @@ it("starts again through the canonical endpoint after an abrupt daemon exit", as
   `,
       userDataPath,
     ],
-    { stdio: ["ignore", "ignore", "pipe", "ipc"], windowsHide: true },
+    {
+      env: { ...process.env, COCURDEX_DISABLE_MEMORY_AUTO_START: "1" },
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
+      windowsHide: true,
+    },
   );
   const exited = once(child, "exit");
   let stderr = "";

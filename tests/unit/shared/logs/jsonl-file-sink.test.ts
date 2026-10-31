@@ -7,7 +7,7 @@ import {
   installLogSink,
   type LogRecord,
 } from "@cocurdex/shared/node";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 const tempDirs = createTempDirs();

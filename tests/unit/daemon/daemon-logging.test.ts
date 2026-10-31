@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { configureDaemonLogging } from "@cocurdex/daemon/internal/daemon-logging";
 import { logDaemonDiagnostic } from "@cocurdex/daemon/internal/diagnostics";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

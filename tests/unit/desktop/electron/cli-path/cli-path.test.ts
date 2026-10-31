@@ -1,13 +1,6 @@
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { buildAppImageCliLauncher } from "@desktop/electron/cli-path/appimage-launcher";
 import {
   buildPathHint,
@@ -22,17 +15,14 @@ import {
 } from "@desktop/electron/cli-path/cli-path";
 import { afterEach, describe, expect, it } from "vitest";
 
-const tempDirs: string[] = [];
+const tempDirs = createTempDirs();
 
 afterEach(async () => {
-  await Promise.all(
-    tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 async function makeTempDir() {
-  const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-cli-path-"));
-  tempDirs.push(dir);
+  const dir = await tempDirs.create("cocurdex-cli-path-");
   return dir;
 }
 

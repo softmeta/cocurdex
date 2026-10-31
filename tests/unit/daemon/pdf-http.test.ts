@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
@@ -8,7 +8,10 @@ import {
   parseByteRange,
 } from "@cocurdex/daemon/internal/pdf-http";
 import { buildDaemonPdfUrl, type HostPrincipal } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 describe("parseByteRange", () => {
   it("reads closed, open-ended, and suffix ranges", () => {
@@ -95,14 +98,14 @@ describe("createPdfHttpHandler", () => {
     });
 
   beforeEach(async () => {
-    directory = await mkdtemp(path.join(os.tmpdir(), "cocurdex-pdf-http-"));
+    directory = await tempDirs.create("cocurdex-pdf-http-");
     pdfPath = path.join(directory, "book.pdf");
     await writeFile(pdfPath, bytes);
   });
 
   afterEach(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    await rm(directory, { recursive: true, force: true });
+    await tempDirs.cleanup();
   });
 
   it("serves the full file with range support advertised", async () => {

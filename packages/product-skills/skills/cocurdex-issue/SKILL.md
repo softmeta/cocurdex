@@ -36,6 +36,11 @@ the activity log. Relate an issue to a note, deck, or session with
 to it, including notes that mention it, with `cocurdex link list issue:COC-12`
 (see `/cocurdex-note` for link URIs).
 
+Descriptions and comments are Markdown. Embed an image (a screenshot of a
+bug, a mockup) by running `cocurdex image import <path> --json` and adding its
+`markdown` to the body; read an embedded `cocurdex://image/<file>` back with
+`cocurdex image locate <uri> --json`, which prints its local `filePath`.
+
 If the prompt already contains an attached `<issue … complete="true">` block,
 treat it as the full issue and do not run `cocurdex issue show` for it. Use the
 CLI only to change the issue, or when the user asks for its current state.

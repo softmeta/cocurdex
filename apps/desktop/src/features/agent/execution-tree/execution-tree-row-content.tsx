@@ -1,4 +1,5 @@
 import type { ExecutionInteraction } from "@cocurdex/shared";
+import { formatDurationMs } from "@cocurdex/shared";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -10,7 +11,6 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton, Text } from "@/components/ui";
 import { AgentIconLabel, getAgentDisplayLabel } from "@/features/sessions";
-import { formatDurationMs } from "../view/chat-activity-state";
 import { getRunDurationMs } from "./execution-tree-output";
 import type {
   ExecutionCallSummary,

@@ -1,5 +1,4 @@
-import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { cp, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   getDefaultSkillsSourceRoot,
@@ -9,21 +8,19 @@ import {
   getProductSkillsStatus,
   installProductSkills,
 } from "@cocurdex/product-skills/internal/sync-product-skills";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
-const tempRoots: string[] = [];
+const tempDirs = createTempDirs();
 
 async function copySource(): Promise<string> {
-  const dir = await mkdtemp(path.join(tmpdir(), "cocurdex-skills-src-"));
-  tempRoots.push(dir);
+  const dir = await tempDirs.create("cocurdex-skills-src-");
   await cp(getDefaultSkillsSourceRoot(), dir, { recursive: true });
   return dir;
 }
 
 afterEach(async () => {
-  await Promise.all(
-    tempRoots.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("product skills pack version", () => {
@@ -37,8 +34,7 @@ describe("product skills pack version", () => {
 
   it("changes when a skill file changes and flags managed installs for update", async () => {
     const source = await copySource();
-    const home = await mkdtemp(path.join(tmpdir(), "cocurdex-skills-home-"));
-    tempRoots.push(home);
+    const home = await tempDirs.create("cocurdex-skills-home-");
     const installed = await installProductSkills("global", undefined, {
       home,
       sourceRoot: source,

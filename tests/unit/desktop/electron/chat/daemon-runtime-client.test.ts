@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { createDaemonRuntimeClient } from "@desktop/electron/chat/daemon-runtime-client";
 import { spawnOwnedDaemonProcess } from "@desktop/electron/chat/owned-daemon-process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const tempDirs = createTempDirs();
 
 vi.mock("@cocurdex/daemon/client", () => ({
   requestDaemon: vi.fn(),
@@ -15,7 +17,6 @@ vi.mock("@cocurdex/daemon/client", () => ({
 vi.mock("@desktop/electron/chat/owned-daemon-process", () => ({
   spawnOwnedDaemonProcess: vi.fn(),
 }));
-const directories: string[] = [];
 const clients: ReturnType<typeof createDaemonRuntimeClient>[] = [];
 
 beforeEach(() => {
@@ -31,16 +32,11 @@ beforeEach(() => {
 afterEach(async () => {
   await Promise.all(clients.splice(0).map((client) => client.dispose()));
   vi.restoreAllMocks();
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 async function fixture() {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "cd-runtime-"));
-  directories.push(directory);
+  const directory = await tempDirs.create("cd-runtime-");
   const daemonEntryPath = path.join(directory, "daemon.cjs");
   const source = "current runtime";
   await writeFile(daemonEntryPath, source);

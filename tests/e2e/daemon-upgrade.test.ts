@@ -3,8 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { getDatabasePath } from "@cocurdex/daemon/paths";
 import { CURRENT_SCHEMA_VERSION } from "@cocurdex/db/internal/migrations";
-import { createTempDirs } from "@cocurdex/shared/testing";
 import { seedHistoricalDatabase } from "@cocurdex/test-fixtures/database";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import { spawnDaemon } from "./helpers/daemon-process";
 

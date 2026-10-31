@@ -1,6 +1,69 @@
 {
+  "actions": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "search": "Search"
+  },
+  "age": {
+    "days_one": "{{count}}d",
+    "days_other": "{{count}}d",
+    "hours_one": "{{count}}h",
+    "hours_other": "{{count}}h",
+    "minutes_one": "{{count}}m",
+    "minutes_other": "{{count}}m",
+    "months_one": "{{count}}mo",
+    "months_other": "{{count}}mo",
+    "now": "now",
+    "years_one": "{{count}}y",
+    "years_other": "{{count}}y"
+  },
+  "links": {
+    "relation": {
+      "blocked-by": "Blocked by",
+      "blocks": "Blocks",
+      "child": "Sub-issue",
+      "duplicate-of": "Duplicate of",
+      "duplicated-by": "Duplicated by",
+      "mentioned-by": "Mentioned by",
+      "mentions": "Mentions",
+      "parent": "Parent",
+      "related": "Related",
+      "worked-on-by": "Session",
+      "works-on": "Works on"
+    },
+    "title": "Linked",
+    "untitled": "Untitled"
+  },
+  "loading": "Loading",
+  "markdown": {
+    "closeDiagram": "Close",
+    "diagram": "Diagram",
+    "openDiagram": "Open full screen"
+  },
+  "optionSearch": {
+    "empty": "No matches",
+    "placeholder": "Search"
+  },
   "screens": {
+    "archived": "Archived Sessions",
     "computers": "Computers",
-    "pair": "Pair a Computer"
+    "editIssue": "Edit Issue",
+    "fontSize": "Text Size",
+    "issues": "Issues",
+    "language": "Language",
+    "newIssue": "New Issue",
+    "notes": "Notes",
+    "pair": "Pair a Computer",
+    "renameComputer": "Rename Computer",
+    "renameSession": "Rename Session",
+    "sessions": "Sessions",
+    "settings": "Settings"
+  },
+  "tabs": {
+    "issues": "Issues",
+    "notes": "Notes",
+    "sessions": "Sessions",
+    "settings": "Settings"
   }
 }

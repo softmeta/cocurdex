@@ -3,7 +3,7 @@ import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import type { SessionRuntimeMessage } from "@cocurdex/daemon/internal/session-control/index";
 import type { MessageRecord } from "@cocurdex/shared";
 import { sessionConfiguration } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, vi } from "vitest";
 
 const tempDirs = createTempDirs();

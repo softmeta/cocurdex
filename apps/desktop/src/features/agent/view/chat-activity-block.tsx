@@ -12,12 +12,14 @@ export function ActivityBlock({
   busy = false,
   children,
   label,
+  liveLabel,
   stateKey,
   variant,
 }: {
   busy?: boolean;
   children: ReactNode;
   label: string;
+  liveLabel?: ReactNode;
   stateKey: string;
   variant: "step" | "turn";
 }) {
@@ -44,7 +46,12 @@ export function ActivityBlock({
     variant === "turn" ? (
       <TurnTrigger busy={busy} label={label} open={open} />
     ) : (
-      <StepTrigger busy={busy} label={label} open={open} />
+      <StepTrigger
+        busy={busy}
+        label={label}
+        liveLabel={liveLabel}
+        open={open}
+      />
     );
 
   return (
@@ -111,28 +118,53 @@ function TurnTrigger({
 function StepTrigger({
   busy,
   label,
+  liveLabel,
   open,
 }: {
   busy: boolean;
   label: string;
+  liveLabel?: ReactNode;
   open: boolean;
 }) {
   return (
     <CollapsibleTrigger className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1.5 py-1 text-left text-body text-chat-fg-muted transition-colors hover:bg-chat-surface-row-hover">
-      <ChevronRight
-        className={cn(
-          "size-3.5 shrink-0 transition-transform rtl:-scale-x-100",
-          open && "rotate-90",
-        )}
-      />
-      <span
-        className={cn(
-          "min-w-0 truncate text-chat-fg-secondary",
-          busy && "activity-shimmer",
-        )}
-      >
-        {label}
-      </span>
+      {liveLabel ? (
+        <>
+          {liveLabel}
+          <StepChevron open={open} />
+        </>
+      ) : (
+        <>
+          <StepChevron open={open} />
+          <span
+            className={cn(
+              "min-w-0 truncate text-chat-fg-secondary",
+              busy && "activity-shimmer",
+            )}
+          >
+            {label}
+          </span>
+        </>
+      )}
     </CollapsibleTrigger>
+  );
+}
+
+function StepChevron({ open }: { open: boolean }) {
+  return (
+    <ChevronRight
+      className={cn(
+        "size-3.5 shrink-0 transition-transform rtl:-scale-x-100",
+        open && "rotate-90",
+      )}
+    />
+  );
+}
+
+export function ActivityLiveRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="-mx-1.5 flex min-w-0 max-w-3xl items-center gap-2 px-1.5 py-1 text-body">
+      {children}
+    </div>
   );
 }

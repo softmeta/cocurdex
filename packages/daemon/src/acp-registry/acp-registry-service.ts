@@ -243,7 +243,11 @@ export class AcpRegistryService {
     }
     const install = (async () => {
       await this.ready;
-      const agent = await resolveAgent();
+      const resolved = await resolveAgent();
+      const authMethodId = this.installed.find(
+        (item) => item.registryId === registryId,
+      )?.authMethodId;
+      const agent = authMethodId ? { ...resolved, authMethodId } : resolved;
       await this.persist([
         ...this.installed.filter((item) => item.registryId !== registryId),
         agent,
@@ -286,6 +290,19 @@ export class AcpRegistryService {
     }
     await this.persist(this.installed.filter((item) => item !== agent));
     await rm(this.agentDirectory(agent), { recursive: true, force: true });
+  }
+
+  async setAuthMethod(agentId: AcpRegistryAgentId, methodId: string | null) {
+    await this.ready;
+    const agent = this.installed.find((item) => item.agentId === agentId);
+    if (!agent) {
+      throw new Error(`ACP Registry agent ${agentId} is not installed`);
+    }
+    const { authMethodId: _previous, ...rest } = agent;
+    const updated = methodId ? { ...rest, authMethodId: methodId } : rest;
+    await this.persist(
+      this.installed.map((item) => (item === agent ? updated : item)),
+    );
   }
 
   private agentDirectory(agent: AcpRegistryInstalledAgent) {

@@ -7,7 +7,7 @@ import {
   isExecutableMode,
   listSkillFiles,
 } from "@cocurdex/daemon/internal/skills/skill-files";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import { SkillTestRepo, skillMarkdown } from "./skill-test-repo";
 

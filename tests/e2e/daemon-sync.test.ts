@@ -1,6 +1,6 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent, MessageRecord } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import { startChatSession } from "./helpers/chat-session";
 import {
@@ -195,6 +195,54 @@ describe("sync.pull across daemon restarts", () => {
         ).toBe("idle");
       } finally {
         await second.stop();
+      }
+    });
+  });
+
+  it("announces a prompt that starts a turn so observers pull it", async () => {
+    await withStub(async (stub) => {
+      const daemon = await spawnDaemon({
+        userDataPath: tempDirs.createSync("cocu-sync-"),
+      });
+      try {
+        const session = await startChatSession(daemon, stub);
+        const before = await pull(daemon, session.id, null);
+        const events: CocurdexDaemonEvent[] = [];
+        const subscription = await subscribeDaemonEvents(
+          (event) => events.push(event),
+          daemon.options,
+        );
+        try {
+          stub.plan = { kind: "hang" };
+          await requestDaemon(
+            "session.send",
+            {
+              sessionId: session.id,
+              messageId: crypto.randomUUID(),
+              content: "observed prompt",
+            },
+            daemon.options,
+          );
+          await waitFor(() =>
+            events.some(
+              (event) =>
+                event.type === "data.changed" && event.areas.includes("agent"),
+            ),
+          );
+          const delta = await pull(daemon, session.id, before.cursor);
+          expect(
+            contents(delta.transcripts[session.id]?.messages ?? []),
+          ).toEqual(["user:observed prompt"]);
+        } finally {
+          subscription.close();
+          await requestDaemon(
+            "session.stop",
+            { sessionId: session.id },
+            daemon.options,
+          );
+        }
+      } finally {
+        await daemon.dispose();
       }
     });
   });

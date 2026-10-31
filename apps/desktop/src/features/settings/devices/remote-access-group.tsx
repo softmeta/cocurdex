@@ -6,10 +6,14 @@ import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { SettingRow, SettingsGroup } from "@/components/app";
-import { Badge, Input, Switch, Text } from "@/components/ui";
+import {
+  AppCopyButton,
+  SettingNumberInput,
+  SettingRow,
+  SettingsGroup,
+} from "@/components/app";
+import { Badge, Switch, Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
-import { CopyButton } from "./copy-button";
 
 function parsePort(value: string) {
   const port = Number(value);
@@ -75,17 +79,13 @@ export function RemoteAccessGroup({
         })}
         title={t("devices.remote.port.title")}
       >
-        <Input
+        <SettingNumberInput
           aria-label={t("devices.remote.port.title")}
-          className="w-24 tabular-nums"
           disabled={saving}
           inputMode="numeric"
           value={portDraft}
-          onBlur={commitPort}
           onChange={(event) => setPortDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") commitPort();
-          }}
+          onCommit={commitPort}
         />
       </SettingRow>
       {status.error ? (
@@ -118,7 +118,7 @@ export function RemoteAccessGroup({
               <Text className="min-w-0 flex-1 font-mono" size="meta" truncate>
                 {address.url}
               </Text>
-              <CopyButton value={address.url} />
+              <AppCopyButton value={address.url} />
             </div>
           ))}
         </div>

@@ -1,19 +1,20 @@
 import {
   type AgentToolCallContent,
   type AgentToolCallRecord,
+  getCommandPreview,
+  getDisplayDirectory,
+  getLineRangeLabel,
+  getToolCallInputSummary,
   isContextCompactionToolCall,
   pathBaseName,
-  summarizeToolCallDiff,
+  sanitizeCommand,
+  toolCallResourceLinkPath,
+  truncateMiddle,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";
 import { getContextCompactionLabel } from "./context-compaction-label";
 import { getCommandDescription } from "./tool-call-command-description";
-import {
-  getDisplayDirectory,
-  getWorkspaceRelativePath,
-  withoutWorkspaceCd,
-} from "./tool-call-display-path";
 
 // Lives here (not in tool-call-ui) so the util layer stays a leaf: the UI
 // imports utils, never the other way around.
@@ -24,76 +25,14 @@ export type ToolCallPreviewLocation = {
   title?: string | null;
 };
 
-export function formatToolCallData(data: unknown) {
-  if (data === undefined || data === null) {
-    return null;
-  }
-
-  if (typeof data === "string") {
-    return data;
-  }
-
-  const textContent = extractTextContent(data);
-  if (textContent !== null) {
-    return textContent;
-  }
-
-  return JSON.stringify(data, null, 2);
-}
-
-export function formatToolCallOutput(
-  content: AgentToolCallContent[] | undefined,
-  rawOutput: unknown,
-) {
-  const text = content?.flatMap((item) => {
-    if (item.type === "text") {
-      return [item.text];
-    }
-
-    if (item.type === "diff") {
-      const { additions, deletions } = summarizeToolCallDiff(item);
-      return [`${item.path} +${additions ?? 0} -${deletions ?? 0}`];
-    }
-
-    if (item.type === "data") {
-      if (getResourceLinkPath(item.value)) {
-        return [];
-      }
-      const formatted = formatToolCallData(item.value);
-      return formatted ? [formatted] : [];
-    }
-
-    return [];
-  });
-
-  return text?.join("\n") || formatToolCallData(rawOutput);
-}
-
 export type ToolCallTense = "past" | "present";
-
-function getResourceLinkPath(value: unknown) {
-  const record = asObjectRecord(value);
-  if (record?.type !== "resource_link" || typeof record.uri !== "string") {
-    return null;
-  }
-  if (!record.uri.startsWith("file://")) {
-    return null;
-  }
-
-  try {
-    const pathname = decodeURIComponent(new URL(record.uri).pathname);
-    return /^\/[A-Za-z]:/.test(pathname) ? pathname.slice(1) : pathname;
-  } catch {
-    return null;
-  }
-}
 
 export function getToolCallResourceLinks(
   content: AgentToolCallContent[] | undefined,
 ): ToolCallPreviewLocation[] {
   return (content ?? []).flatMap((item) => {
     const filePath =
-      item.type === "data" ? getResourceLinkPath(item.value) : null;
+      item.type === "data" ? toolCallResourceLinkPath(item.value) : null;
     return filePath ? [{ filePath }] : [];
   });
 }
@@ -113,22 +52,6 @@ function asObjectRecord(value: unknown): Record<string, unknown> | null {
   }
 
   return value as Record<string, unknown>;
-}
-
-function extractTextContent(data: unknown) {
-  const dataRecord = asObjectRecord(data);
-  if (!Array.isArray(dataRecord?.content)) {
-    return null;
-  }
-
-  const textBlocks = dataRecord.content.flatMap((block) => {
-    const blockRecord = asObjectRecord(block);
-    return blockRecord?.type === "text" && typeof blockRecord.text === "string"
-      ? [blockRecord.text]
-      : [];
-  });
-
-  return textBlocks.length > 0 ? textBlocks.join("") : null;
 }
 
 export function getSubagentChildSessionId(toolCall: AgentToolCallRecord) {
@@ -224,21 +147,6 @@ function getPositiveNumber(value: unknown) {
 
 function getFileLabel(filePath: string) {
   return pathBaseName(filePath);
-}
-
-export function getLineRangeLabel(
-  startLine?: number | null,
-  endLine?: number | null,
-) {
-  if (!startLine && !endLine) {
-    return null;
-  }
-
-  if (startLine && endLine && startLine !== endLine) {
-    return `L${startLine}-${endLine}`;
-  }
-
-  return `L${startLine ?? endLine}`;
 }
 
 export function getToolPreviewTitle(
@@ -358,138 +266,6 @@ function formatToolTime(value: string) {
     second: "2-digit",
     hourCycle: "h23",
   });
-}
-
-function truncateMiddle(value: string, maxLength = 120) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  const edgeLength = Math.floor((maxLength - 1) / 2);
-  return `${value.slice(0, edgeLength)}…${value.slice(-edgeLength)}`;
-}
-
-function sanitizeCommand(command: string) {
-  return command.replace(/\s+/g, " ").trim();
-}
-
-export function unwrapShellCommand(command: string) {
-  const normalized = sanitizeCommand(command);
-  const shellMatch = normalized.match(
-    /^(?:\/(?:usr\/)?bin\/)?(?:zsh|bash|sh)\s+-l?c\s+(["'])([\s\S]+)\1$/,
-  );
-
-  return shellMatch?.[2] ? sanitizeCommand(shellMatch[2]) : normalized;
-}
-
-function getCommandExecutable(command: string) {
-  const match = command.match(/^([^\s]+)/);
-  return match?.[1] ?? command;
-}
-
-function getCommandPathTarget(command: string) {
-  const tokens = command.match(/'[^']*'|"[^"]*"|\S+/g) ?? [];
-
-  for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    const token = tokens[index]?.replace(/^['"]|['"]$/g, "");
-    if (!token || token.startsWith("-")) {
-      continue;
-    }
-
-    if (token.includes("/") || token.includes(".")) {
-      return token;
-    }
-  }
-
-  return null;
-}
-
-function getCommandPreview(command: string) {
-  const unwrapped = unwrapShellCommand(command);
-  const executable = getCommandExecutable(unwrapped);
-  const target = getCommandPathTarget(unwrapped);
-
-  if (!target || target === executable) {
-    return truncateMiddle(unwrapped, 88);
-  }
-
-  return truncateMiddle(`${executable} ${target}`, 88);
-}
-
-function getToolCallInputSummary(
-  toolCall: AgentToolCallRecord,
-  workspacePath: string | null = null,
-) {
-  const rawInput = toolCall.rawInput;
-
-  if (typeof rawInput === "string") {
-    return truncateMiddle(sanitizeCommand(rawInput));
-  }
-
-  const rawInputRecord = asObjectRecord(rawInput);
-  if (!rawInputRecord) {
-    return null;
-  }
-  const inputRecord = asObjectRecord(rawInputRecord.input) ?? rawInputRecord;
-
-  const command =
-    typeof inputRecord.command === "string"
-      ? inputRecord.command
-      : typeof inputRecord.cmd === "string"
-        ? inputRecord.cmd
-        : null;
-
-  if (command) {
-    return truncateMiddle(
-      withoutWorkspaceCd(unwrapShellCommand(command), workspacePath),
-    );
-  }
-
-  const path =
-    typeof inputRecord.path === "string"
-      ? inputRecord.path
-      : typeof inputRecord.filePath === "string"
-        ? inputRecord.filePath
-        : typeof inputRecord.file_path === "string"
-          ? inputRecord.file_path
-          : null;
-  const query =
-    typeof inputRecord.query === "string"
-      ? inputRecord.query
-      : typeof inputRecord.pattern === "string"
-        ? inputRecord.pattern
-        : null;
-
-  if (path && query) {
-    return truncateMiddle(`${query} in ${path}`);
-  }
-
-  if (path) {
-    const displayPath = getWorkspaceRelativePath(path, workspacePath) || path;
-    const startLine =
-      getPositiveNumber(inputRecord.offset) ??
-      getPositiveNumber(inputRecord.line) ??
-      null;
-    const limit = getPositiveNumber(inputRecord.limit);
-    const endLine =
-      startLine && limit ? Math.max(startLine, startLine + limit - 1) : null;
-    const rangeLabel = getLineRangeLabel(startLine, endLine);
-
-    return truncateMiddle(
-      rangeLabel ? `${displayPath} ${rangeLabel}` : displayPath,
-    );
-  }
-
-  if (query) {
-    return truncateMiddle(query);
-  }
-
-  const description =
-    typeof inputRecord.description === "string"
-      ? inputRecord.description
-      : null;
-
-  return description ? truncateMiddle(description) : null;
 }
 
 export function getToolCallSummary(toolCall: AgentToolCallRecord) {

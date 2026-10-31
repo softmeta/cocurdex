@@ -62,6 +62,36 @@ describe("createSyncEngine", () => {
     expect(engine.getCursor()).toBe("cursor-2");
   });
 
+  it("folds requests made during a pull into one follow-up pull from the new cursor", async () => {
+    const first = deferred<SyncPullResult>();
+    const pull = vi
+      .fn<(input: SyncPullInput) => Promise<SyncPullResult>>()
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValue(result({ cursor: "cursor-3" }));
+    const engine = createSyncEngine<string>({
+      pull,
+      scope: () => ({ sessionIds: [], hydratedSessionIds: [] }),
+      apply: vi.fn(),
+      applyEvent: vi.fn(),
+    });
+
+    const initial = engine.synchronize(["a"]);
+    const later = engine.synchronize(["b"]);
+    const latest = engine.synchronize(["c"]);
+    first.resolve(result({ cursor: "cursor-2" }));
+    await Promise.all([initial, later, latest]);
+
+    expect(pull.mock.calls.map(([input]) => input)).toEqual([
+      { sessionIds: ["a"], hydratedSessionIds: [], cursor: null },
+      {
+        sessionIds: ["a", "b", "c"],
+        hydratedSessionIds: [],
+        cursor: "cursor-2",
+      },
+    ]);
+    expect(engine.getCursor()).toBe("cursor-3");
+  });
+
   it("holds live events during a pull and replays only those past its boundary", async () => {
     const pending = deferred<SyncPullResult>();
     const applied: string[] = [];

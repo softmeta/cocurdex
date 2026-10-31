@@ -1,0 +1,35 @@
+{
+  "about": {
+    "title": "关于",
+    "version": "版本"
+  },
+  "appearance": {
+    "dark": "深色",
+    "light": "浅色",
+    "system": "跟随系统",
+    "title": "外观"
+  },
+  "computers": "电脑",
+  "fontSize": {
+    "code": "代码字号",
+    "default": "默认",
+    "large": "大",
+    "preview": "Agent 会读代码、跑测试，再用通俗的话告诉你结果。\n\n```ts\nconst total = cart.items.reduce((sum, item) => sum + item.cents, 0);\n```",
+    "small": "小",
+    "text": "文字大小",
+    "title": "字号",
+    "xlarge": "特大"
+  },
+  "language": {
+    "names": {
+      "enUS": "英语",
+      "zhCN": "简体中文"
+    },
+    "system": "跟随系统",
+    "title": "语言"
+  },
+  "sessions": {
+    "archived": "已归档会话",
+    "title": "会话"
+  }
+}

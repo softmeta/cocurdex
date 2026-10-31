@@ -2,8 +2,10 @@ import type { DaemonMethod, DaemonRequest } from "@cocurdex/rpc";
 import { z } from "zod";
 import { deckPayloadSchemas } from "./deck-payloads";
 import { hostPayloadSchemas } from "./host-payloads";
+import { imagePayloadSchemas } from "./image-payloads";
 import { issuePayloadSchemas } from "./issue-payloads";
 import { mcpPayloadSchemas } from "./mcp-payloads";
+import { memoryPayloadSchemas } from "./memory-payloads";
 import { notePayloadSchemas } from "./note-payloads";
 import type { PayloadSchemas } from "./primitives";
 import { providerPayloadSchemas } from "./provider-payloads";
@@ -15,8 +17,10 @@ import { workspacePayloadSchemas } from "./workspace-payloads";
 export const daemonPayloadSchemas: PayloadSchemas = {
   ...deckPayloadSchemas,
   ...hostPayloadSchemas,
+  ...imagePayloadSchemas,
   ...issuePayloadSchemas,
   ...mcpPayloadSchemas,
+  ...memoryPayloadSchemas,
   ...notePayloadSchemas,
   ...providerPayloadSchemas,
   ...sessionPayloadSchemas,

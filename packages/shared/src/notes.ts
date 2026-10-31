@@ -20,6 +20,7 @@ export interface NoteSummary {
   revision: number;
   createdAt: string;
   updatedAt: string;
+  excerpt?: string;
 }
 
 export interface NoteRecord extends NoteSummary {

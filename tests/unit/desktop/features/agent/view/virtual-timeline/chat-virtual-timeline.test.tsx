@@ -164,23 +164,20 @@ describe("virtual conversation rendering", () => {
     expect(scrollRef.current?.scrollToUserMessage("missing")).toBe(false);
   });
 
-  it("keeps the viewport at the end when the last conversation grows", async () => {
+  it("preserves the reading position when new content grows beyond the end", async () => {
     const { viewport } = mountTimeline();
     await screen.findByRole("button", { name: "Prompt 999" });
     act(() => {
       viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight;
     });
     fireEvent.scroll(viewport);
-    const distanceFromEnd =
-      viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop;
+    const position = viewport.scrollTop;
     act(() => {
       layout.heights.set("conversation-999", 800);
       layout.emitResize(getConversationRow("conversation-999"));
     });
     await waitFor(() => {
-      expect(
-        viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop,
-      ).toBeCloseTo(distanceFromEnd, 0);
+      expect(viewport.scrollTop).toBe(position);
     });
   });
 

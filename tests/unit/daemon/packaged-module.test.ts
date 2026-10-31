@@ -1,22 +1,17 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { loadNativeKeyring } from "@cocurdex/daemon/internal/packaged-module";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, expect, it } from "vitest";
 
-const directories: string[] = [];
+const tempDirs = createTempDirs();
 
 afterEach(async () => {
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 async function createResources() {
-  const resources = await mkdtemp(path.join(tmpdir(), "cd-native-"));
-  directories.push(resources);
+  const resources = await tempDirs.create("cd-native-");
   const archive = path.join(resources, "app.asar");
   await mkdir(archive);
   await writeFile(path.join(archive, "package.json"), "{}");

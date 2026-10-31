@@ -254,3 +254,27 @@
   background: var(--primary);
   pointer-events: none;
 }
+
+.md-body-prose .md-body-image {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+  border-radius: var(--radius-md);
+}
+.md-body-prose .md-body-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: inherit;
+}
+.md-body-prose .md-body-image.is-selected {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.md-body-prose .md-body-image-pending {
+  display: block;
+  width: 12rem;
+  height: 6rem;
+  border-radius: inherit;
+  background: var(--muted);
+}

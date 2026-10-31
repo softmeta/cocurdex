@@ -1,7 +1,4 @@
-import {
-  AGENT_ROLE_AVATAR_COLORS,
-  type AgentRoleAvatarColor,
-} from "@cocurdex/shared";
+import type { AgentRoleAvatarColor } from "@cocurdex/shared";
 
 export const agentRoleAvatarColorClassName: Record<
   AgentRoleAvatarColor,
@@ -154,19 +151,3 @@ export const AGENT_ROLE_AVATAR_EMOJI_GROUPS = [
 
 export type AgentRoleAvatarEmojiGroupId =
   (typeof AGENT_ROLE_AVATAR_EMOJI_GROUPS)[number]["id"];
-
-export function defaultAgentRoleAvatarColor(id: string): AgentRoleAvatarColor {
-  let hash = 0;
-  for (const char of id) {
-    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
-  }
-  return AGENT_ROLE_AVATAR_COLORS[hash % AGENT_ROLE_AVATAR_COLORS.length];
-}
-
-export function agentRoleInitial(name: string) {
-  const first = new Intl.Segmenter()
-    .segment(name.trim())
-    [Symbol.iterator]()
-    .next().value?.segment;
-  return first?.toLocaleUpperCase() ?? "?";
-}

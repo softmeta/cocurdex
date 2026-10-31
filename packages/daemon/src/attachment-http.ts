@@ -174,7 +174,7 @@ export function createAttachmentHttpHandler(
     url: URL,
   ) => {
     const cors = corsHeaders(request);
-    const refusal = authorizationStatus(request, "files.read");
+    const refusal = authorizationStatus(request, "read");
     if (refusal !== null) {
       endWith(response, refusal, cors);
       return;

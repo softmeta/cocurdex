@@ -7,6 +7,22 @@ import type {
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 describe("MarkdownRenderer", () => {
+  it("shows all received text during continuous updates and completion", () => {
+    const { container, rerender } = render(
+      <MarkdownRenderer content="Start" streaming />,
+    );
+    let content = "Start";
+    for (let index = 0; index < 20; index += 1) {
+      content += " 中文 👩🏽‍💻";
+      rerender(<MarkdownRenderer content={content} streaming />);
+      expect(container.textContent).toBe(content);
+    }
+    const paragraph = container.querySelector("p");
+    rerender(<MarkdownRenderer content={content} streaming={false} />);
+    expect(container.textContent).toBe(content);
+    expect(container.querySelector("p")).toBe(paragraph);
+  });
+
   it("highlights file-annotated TSX code fences", async () => {
     const content = [
       "```6:49:apps/v4/registry/bases/base/ui/button.tsx",

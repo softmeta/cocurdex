@@ -72,6 +72,22 @@ describe("sqlite host access repository", () => {
     expect(repository.findActiveDeviceByTokenHash("tok")).toBeNull();
   });
 
+  it("changes the scopes of an active device but not of a revoked one", () => {
+    const repository = setup();
+    repository.consumePairing("code-hash", later, device);
+
+    expect(
+      repository.updateDeviceScopes("d1", ["read", "files.read"])?.scopes,
+    ).toEqual(["read", "files.read"]);
+    expect(repository.findActiveDeviceByTokenHash("tok")?.scopes).toEqual([
+      "read",
+      "files.read",
+    ]);
+    repository.revokeDevice("d1", expired);
+    expect(repository.updateDeviceScopes("d1", ["read"])).toBeNull();
+    expect(repository.listDevices()[0]?.scopes).toEqual(["read", "files.read"]);
+  });
+
   it("cancels only pending pairings", () => {
     const repository = setup();
 

@@ -1,0 +1,320 @@
+{
+  "actions": {
+    "archive": "Archive",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteMessage": "The session and its history are removed from the computer. This can't be undone.",
+    "deleteTitle": "Delete “{{title}}”?",
+    "fork": "Fork Session",
+    "markUnread": "Mark as Unread",
+    "pin": "Pin",
+    "rename": "Rename",
+    "unpin": "Unpin"
+  },
+  "activity": {
+    "command_one": "Ran {{count}} command",
+    "command_other": "Ran {{count}} commands",
+    "edit_one": "Edited {{count}} file",
+    "edit_other": "Edited {{count}} files",
+    "fetch_one": "Fetched {{count}} page",
+    "fetch_other": "Fetched {{count}} pages",
+    "other_one": "Used {{count}} tool",
+    "other_other": "Used {{count}} tools",
+    "others_one": "{{count}} other action",
+    "others_other": "{{count}} other actions",
+    "read_one": "Read {{count}} file",
+    "read_other": "Read {{count}} files",
+    "replies_one": "{{count}} interim reply",
+    "replies_other": "{{count}} interim replies",
+    "search_one": "Searched {{count}} time",
+    "search_other": "Searched {{count}} times",
+    "separator": ", ",
+    "skill_one": "Used {{count}} skill",
+    "skill_other": "Used {{count}} skills",
+    "subagent_one": "Ran {{count}} subagent",
+    "subagent_other": "Ran {{count}} subagents"
+  },
+  "approvalsUnavailable": {
+    "description": "This phone was paired without approval access.",
+    "title": "Approve this on your computer"
+  },
+  "archived": {
+    "archivedAge": "Archived {{age}}",
+    "count_one": "{{count}} session",
+    "count_other": "{{count}} sessions",
+    "empty": "No Archived Sessions",
+    "restore": "Restore",
+    "restoreSession": "Restore {{title}}"
+  },
+  "composer": {
+    "attach": "Attach Photo",
+    "imageFailed": "The image couldn't be uploaded. Check the connection and try again.",
+    "imageTooLarge": "That image is larger than 10 MB.",
+    "imageUnsupported": "Only PNG, JPEG, GIF, and WebP images can be attached.",
+    "placeholder": "Reply to the agent",
+    "removeImage": "Remove {{name}}",
+    "send": "Send",
+    "stop": "Stop"
+  },
+  "detail": {
+    "actionFailed": "That didn't go through. Check the connection and try again.",
+    "awaitingInput": "Has a question for you",
+    "completedUnread": "Finished",
+    "connecting": "Connecting…",
+    "failed": "Run failed",
+    "imagePrompt": "Image",
+    "jumpToLatest": "Jump to latest",
+    "jumpToOldest": "Jump to first message",
+    "missing": "This session is no longer on the computer.",
+    "monitoring": "Working in the background",
+    "pendingApproval": "Waiting for your approval",
+    "planReady": "Plan ready for review",
+    "promptNumber": "Prompt {{number}}",
+    "prompts": "Prompts",
+    "sending": "Sending",
+    "working": "Working…"
+  },
+  "empty": {
+    "description": "Sessions you start on {{host}} appear here.",
+    "title": "No Sessions"
+  },
+  "image": {
+    "close": "Close"
+  },
+  "list": {
+    "agentFilter": "Agent",
+    "childSessions_one": "{{count}} child session",
+    "childSessions_other": "{{count}} child sessions",
+    "clearFilters": "Clear Filters",
+    "collapseChildren": "Collapse child sessions",
+    "direction": {
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
+    "environment": {
+      "local": "Local",
+      "worktree": "Worktree"
+    },
+    "environmentFilter": "Environment",
+    "expandChildren": "Expand child sessions",
+    "filtersCount_one": "Filters ({{count}})",
+    "filtersCount_other": "Filters ({{count}})",
+    "filtersLabel": "Filters",
+    "grouping": {
+      "agent": "Agent",
+      "none": "None",
+      "status": "Status",
+      "updated": "Last Updated",
+      "workspace": "Workspace"
+    },
+    "groupingLabel": "Group By",
+    "markAllRead": "Mark All as Read",
+    "menu": "Display Options",
+    "noMatches": "No sessions match the filters",
+    "options": {
+      "any": "All",
+      "archived": "Archived Sessions",
+      "close": "Close",
+      "title": "Display Options",
+      "view": "View"
+    },
+    "ordering": {
+      "activity": "Recent Activity",
+      "created": "Created",
+      "title": "Title"
+    },
+    "orderingLabel": "Sort By",
+    "pinned": "Pinned",
+    "rootLimit": {
+      "all": "All",
+      "count_one": "{{count}} session",
+      "count_other": "{{count}} sessions"
+    },
+    "rootLimitLabel": "Sessions per Group",
+    "showLess": "Show less",
+    "showMore_one": "Show {{count}} more",
+    "showMore_other": "Show {{count}} more",
+    "status": {
+      "attention": "Needs You",
+      "error": "Failed",
+      "idle": "Idle",
+      "running": "Running",
+      "unread": "Unread"
+    },
+    "statusFilter": "Status",
+    "updated": {
+      "older": "Older",
+      "today": "Today",
+      "week": "Last 7 Days",
+      "yesterday": "Yesterday"
+    }
+  },
+  "message": {
+    "copied": "Copied",
+    "copy": "Copy",
+    "fork": "Fork From Here",
+    "forkTitle": "{{title}} (fork)"
+  },
+  "newSession": {
+    "addOnComputer": "Add new workspaces on the computer.",
+    "agent": "Agent",
+    "agentDefaultModel": "No provider models for this agent; it uses its own default model.",
+    "availability": {
+      "available": "Ready",
+      "error": "Failed to start on the computer",
+      "missing": "Not installed on the computer",
+      "unsupported": "Not supported on the computer"
+    },
+    "failed": "Couldn't start the session. Check the connection and try again.",
+    "mode": "Mode",
+    "model": "Model",
+    "modelsFromComputer": "Models come from the providers set up on the computer.",
+    "none": "None",
+    "open": "New session",
+    "promptPlaceholder": "What should the agent do?",
+    "role": "Role",
+    "roleFooter": "Roles are set up on the computer. Picking one applies its agent, model, and permissions.",
+    "runsOn": "Runs on {{host}}.",
+    "sessionCount_one": "{{count}} session",
+    "sessionCount_other": "{{count}} sessions",
+    "title": "New session",
+    "workspace": "Workspace"
+  },
+  "noResults": "No sessions match “{{query}}”",
+  "offline": "Can't reach {{host}}. Showing the last update.",
+  "permission": {
+    "actions": {
+      "edit": "edit",
+      "read": "read",
+      "use": "use",
+      "write": "write"
+    },
+    "detail": {
+      "command": "Command",
+      "path": "Path",
+      "pattern": "Pattern",
+      "query": "Query",
+      "url": "URL"
+    },
+    "fileAction": "Allow the agent to {{action}} {{target}}?",
+    "runCommand": "Run this command?"
+  },
+  "permissionMode": {
+    "claude-accept-edits": "Accept edits",
+    "claude-auto": "Auto mode",
+    "claude-bypass-permissions": "Bypass permissions",
+    "claude-default": "Default permissions",
+    "claude-plan": "Plan",
+    "codex-auto": "Auto",
+    "codex-full-access": "Full Access",
+    "codex-read-only": "Read Only",
+    "descriptions": {
+      "claude-accept-edits": "Applies file edits automatically; still asks for commands",
+      "claude-auto": "Claude decides when to ask",
+      "claude-bypass-permissions": "Skips every permission prompt",
+      "claude-default": "Asks before edits and commands",
+      "claude-plan": "Plans only; no edits or commands",
+      "codex-auto": "Edits workspace files and runs commands; asks before network or outside edits",
+      "codex-full-access": "Never asks; can edit files outside the workspace and reach the network",
+      "codex-read-only": "Reads workspace files; asks before edits or network access",
+      "grok-always-approve": "Approves every tool call automatically",
+      "grok-ask": "Asks before every tool call",
+      "grok-auto": "Grok decides when to ask",
+      "opencode-allow": "Approves every tool call automatically",
+      "opencode-ask": "Asks before every tool call",
+      "opencode-deny": "Rejects every tool call that needs permission"
+    },
+    "grok-always-approve": "Approve all",
+    "grok-ask": "Ask each time",
+    "grok-auto": "Auto decide",
+    "opencode-allow": "Allow",
+    "opencode-ask": "Ask",
+    "opencode-deny": "Deny"
+  },
+  "plan": {
+    "approve": "Approve",
+    "keepPlanning": "Keep Planning",
+    "title": "Review the plan"
+  },
+  "question": {
+    "placeholder": "Your answer",
+    "reply": "Reply",
+    "title": "The agent has a question"
+  },
+  "rename": {
+    "failed": "Couldn’t rename the session. Try again.",
+    "placeholder": "Session title",
+    "save": "Save",
+    "saving": "Saving"
+  },
+  "runtime": {
+    "default": "Default",
+    "fastMode": "Fast mode",
+    "levels": {
+      "default": "Default",
+      "high": "High",
+      "low": "Low",
+      "max": "Max",
+      "medium": "Medium",
+      "minimal": "Minimal",
+      "off": "Off",
+      "ultra": "Ultra",
+      "xhigh": "XHigh"
+    },
+    "off": "Off",
+    "on": "On",
+    "openCodeAgent": "Collaboration mode",
+    "openCodeVariant": "Variant",
+    "speed": "Speed",
+    "standard": "Standard",
+    "thinking": "Reasoning effort"
+  },
+  "saveRole": {
+    "description": "Description",
+    "descriptionPlaceholder": "Optional",
+    "failed": "Couldn't save the role. Try again.",
+    "name": "Name",
+    "namePlaceholder": "Role name",
+    "open": "Save as Role…",
+    "save": "Save",
+    "saving": "Saving…",
+    "title": "Save as Role"
+  },
+  "search": "Search sessions",
+  "sessionConfig": {
+    "close": "Close",
+    "mcp": "MCP servers",
+    "mcpNone": "This session reports no MCP servers.",
+    "mcpStatus": {
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "disabled": "Disabled",
+      "failed": "Failed"
+    },
+    "modeNeedsExecute": "Changing the permission mode needs the “Start tasks” permission for this device. Grant it on the computer.",
+    "open": "Agent settings: {{summary}}"
+  },
+  "status": {
+    "needsYou": "Needs you",
+    "running": "Running",
+    "unread": "Unread"
+  },
+  "tool": {
+    "completed": "Done",
+    "copyOutput": "Copy Output",
+    "duration": "{{seconds}} s",
+    "failed": "Failed",
+    "files": "Files",
+    "input": "Input",
+    "noOutput": "No output",
+    "output": "Output",
+    "outputFailed": "Couldn't load the output",
+    "outputTail": "Last 64 KB",
+    "running": "Running"
+  },
+  "unavailable": {
+    "description": "Check that the computer is awake and on the same network.",
+    "retry": "Try Again",
+    "title": "Can't reach {{host}}"
+  }
+}

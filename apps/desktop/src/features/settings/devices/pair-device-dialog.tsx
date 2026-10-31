@@ -3,14 +3,13 @@ import {
   type CreatedHostPairing,
   type HostAccessScope,
   type HostAddress,
-  PAIRABLE_HOST_ACCESS_SCOPES,
 } from "@cocurdex/shared";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppCopyButton } from "@/components/app";
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,52 +21,12 @@ import {
 } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import { SettingsSelect } from "../settings-select";
-import { CopyButton } from "./copy-button";
-import { useFormatDateTime, useScopeLabels } from "./host-access-labels";
+import { useFormatDateTime } from "./host-access-labels";
+import { PairingQrCode } from "./pairing-qr-code";
+import { ScopePicker } from "./scope-picker";
 
 const DEFAULT_SCOPES: HostAccessScope[] = ["read", "interact", "approvals"];
 const TTL_OPTIONS = ["10", "30", "60"];
-
-function ScopePicker({
-  scopes,
-  onChange,
-}: {
-  scopes: HostAccessScope[];
-  onChange(next: HostAccessScope[]): void;
-}) {
-  const labels = useScopeLabels();
-  const idPrefix = useId();
-  return (
-    <div className="flex flex-col gap-2">
-      {PAIRABLE_HOST_ACCESS_SCOPES.map((scope) => (
-        <label
-          className="flex cursor-pointer items-start gap-2"
-          htmlFor={`${idPrefix}-${scope}`}
-          key={scope}
-        >
-          <Checkbox
-            checked={scopes.includes(scope)}
-            className="mt-0.5"
-            id={`${idPrefix}-${scope}`}
-            onCheckedChange={(checked) =>
-              onChange(
-                checked
-                  ? [...scopes, scope]
-                  : scopes.filter((item) => item !== scope),
-              )
-            }
-          />
-          <span className="flex min-w-0 flex-col">
-            <Text size="body">{labels[scope].title}</Text>
-            <Text size="meta" tone="muted">
-              {labels[scope].description}
-            </Text>
-          </span>
-        </label>
-      ))}
-    </div>
-  );
-}
 
 function CreatedPairing({
   created,
@@ -84,7 +43,7 @@ function CreatedPairing({
         <Text className="min-w-0 flex-1 font-mono" size="display" truncate>
           {created.code}
         </Text>
-        <CopyButton value={created.code} />
+        <AppCopyButton value={created.code} />
       </div>
       <Text size="meta" tone="muted">
         {t("devices.pair.expires", {
@@ -99,11 +58,20 @@ function CreatedPairing({
       {addresses.map((address) => {
         const link = buildHostPairingLink(address.url, created.code);
         return (
-          <div className="flex min-w-0 items-center gap-2" key={address.url}>
-            <Text className="min-w-0 flex-1 font-mono" size="meta" truncate>
-              {link}
-            </Text>
-            <CopyButton value={link} />
+          <div
+            className="flex min-w-0 flex-col items-center gap-2"
+            key={address.url}
+          >
+            <PairingQrCode
+              label={t("devices.pair.qrLabel", { address: address.url })}
+              link={link}
+            />
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <Text className="min-w-0 flex-1 font-mono" size="meta" truncate>
+                {link}
+              </Text>
+              <AppCopyButton value={link} />
+            </div>
           </div>
         );
       })}

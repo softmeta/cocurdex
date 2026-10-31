@@ -1,8 +1,25 @@
 {
+  "actions": {
+    "details": "Permissions and Connection",
+    "remove": "Remove This Computer",
+    "rename": "Rename",
+    "switch": "Switch to This Computer"
+  },
+  "detail": {
+    "address": "Address",
+    "name": "Name",
+    "pairedAt": "Paired",
+    "scopes": "This Phone Can",
+    "scopesFooter": "The computer grants these permissions. To change them, open Settings › Devices on the computer."
+  },
   "empty": {
-    "description": "On your computer, open Settings › Devices, create a pairing code, and paste its link here.",
-    "pair": "Pair a Computer",
+    "description": "On your computer, open Cocurdex Settings › Devices, create a pairing QR code, and scan it with this phone.",
+    "paste": "Paste Pairing Link",
+    "scan": "Scan to Pair",
     "title": "No Computers"
+  },
+  "list": {
+    "current": "Current"
   },
   "pair": {
     "action": "Pair",
@@ -14,6 +31,54 @@
     },
     "hint": "On your computer, open Settings › Devices and create a pairing code.",
     "linkPlaceholder": "Pairing link",
-    "pairing": "Pairing…"
+    "pairing": "Pairing…",
+    "scanInstead": "Scan Instead"
+  },
+  "remove": {
+    "cancel": "Cancel",
+    "confirm": "Remove",
+    "message": "This phone loses access and the computer revokes its pairing. If the computer is offline, revoke it later in Settings › Devices.",
+    "title": "Remove {{host}}?"
+  },
+  "rename": {
+    "footer": "Only changes the name on this phone.",
+    "placeholder": "Computer name",
+    "save": "Save"
+  },
+  "scan": {
+    "blocked": {
+      "description": "Allow camera access in Settings to scan a pairing code, or paste the pairing link instead.",
+      "openSettings": "Open Settings",
+      "title": "Camera access is off"
+    },
+    "close": "Close",
+    "failure": {
+      "notPairingCode": "This isn't a Cocurdex pairing code."
+    },
+    "hint": "On your computer, open Settings › Devices › Pair Device.",
+    "paste": "Paste Pairing Link",
+    "title": "Scan the pairing QR code on your computer",
+    "viewfinder": "Viewfinder"
+  },
+  "scope": {
+    "approvals": "Approvals",
+    "execute": "Start tasks",
+    "filesRead": "Read Files",
+    "filesWrite": "Write Files",
+    "gitDestructive": "Destructive Git",
+    "interact": "Interact",
+    "missingMessage": "To do this here, open Cocurdex on {{host}}, go to Settings › Devices, and turn on “{{scope}}” for this device.",
+    "missingTitle": "Not Allowed on This Device",
+    "ok": "OK",
+    "read": "Read"
+  },
+  "scopeDetail": {
+    "approvals": "Answer permission requests, questions, and plan approvals.",
+    "execute": "Start sessions, teams, script runs, and workflows.",
+    "filesRead": "Read workspace files, diffs, and Git status.",
+    "filesWrite": "Edit workspace files, stage, and commit.",
+    "gitDestructive": "Discard changes, switch branches, and push.",
+    "interact": "Send messages, stop sessions, and edit notes and issues.",
+    "read": "View sessions, messages, notes, and issues."
   }
 }

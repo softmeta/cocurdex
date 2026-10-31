@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { groupActivityWithFollowingItem } from "@/features/agent/view/chat-segment-groups";
+import {
+  getSegmentGroupKey,
+  groupActivityWithFollowingItem,
+} from "@/features/agent/view/chat-segment-groups";
 import type {
   ConversationRenderSegment,
   TimelineGroup,
@@ -41,4 +44,22 @@ describe("groupActivityWithFollowingItem", () => {
       groupIds([item("r0"), activity("a1"), item("r1"), item("r2")]),
     ).toEqual([["r0"], ["activity:a1", "r1"], ["r2"]]);
   });
+});
+
+it("preserves the answer group identity when completion folds earlier work", () => {
+  const live = groupActivityWithFollowingItem([
+    item("interim"),
+    activity("tool"),
+    item("answer"),
+  ]);
+  const completed = groupActivityWithFollowingItem([
+    activity("interim"),
+    item("answer"),
+  ]);
+  expect(getSegmentGroupKey(live.at(-1) ?? [])).toBe(
+    getSegmentGroupKey(completed[0]),
+  );
+  expect(getSegmentGroupKey([item("answer")])).toBe(
+    getSegmentGroupKey(completed[0]),
+  );
 });

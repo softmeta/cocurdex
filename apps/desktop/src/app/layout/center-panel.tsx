@@ -7,6 +7,9 @@ import {
   type AgentSessionConfigOption,
   type AgentThinkingLevel,
   type BrowserAnnotation,
+  generateLocalSessionTitle,
+  getConfigOptionThinkingLevels,
+  getThinkingLevelOptions,
   hashLogValue,
   hostForLog,
   isChatSession,
@@ -15,9 +18,11 @@ import {
   normalizeWorkspaceRootPaths,
   primaryWorkspaceRootPath,
   resolveSessionWorkingPath,
+  resolveThinkingLevel,
   type SessionRecord,
   sessionConfiguration,
   supportsInSessionRuntimeAxis,
+  type ThinkingLevelOption,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -48,7 +53,11 @@ import {
   useSessionMessages,
 } from "@/features/agent";
 import { NewChatCard } from "@/features/chat";
-import { type ChatComposerHandle, ComposerSurface } from "@/features/composer";
+import {
+  type ChatComposerHandle,
+  type ComposerSendOutcome,
+  ComposerSurface,
+} from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
   clearChatComposerAttachmentAtom,
@@ -63,21 +72,16 @@ import {
   applyRefinedSessionTitleAtom,
   canSwitchSessionAgent,
   createDraftSessionAtom,
-  generateLocalSessionTitle,
   getAgentDisplayLabel,
-  getConfigOptionThinkingLevels,
   getDisplaySessionStatus,
   getSessionPermissionMode,
-  getThinkingLevelOptions,
   isDefaultSessionTitle,
   isSubagentSession,
   lastSelectedAgentAtom,
   markSessionMessageAtom,
-  resolveThinkingLevel,
   type SessionPaneBinding,
   selectSessionAtom,
   sessionsAtom,
-  type ThinkingLevelOption,
   updateAgentRuntimePreferences,
   updateSessionModeAtom,
   updateSessionPermissionModeAtom,
@@ -557,13 +561,13 @@ export function CenterPanel({
       : [],
     useOppositeFollowUpBehavior = false,
     sentAnnotations: BrowserAnnotation[] = annotations,
-  ) => {
+  ): Promise<ComposerSendOutcome> => {
     if (
       !activeSession ||
       !activeWorkspace ||
       isSubagentSession(activeSession)
     ) {
-      return;
+      return "kept";
     }
 
     const isSteering = activeDisplayStatus === "running";
@@ -726,6 +730,7 @@ export function CenterPanel({
         createdAt: new Date().toISOString(),
       });
     }
+    return "sent";
   };
 
   const handleStop = async () => {
@@ -760,13 +765,18 @@ export function CenterPanel({
     await taskApi.resolvePlanApproval(approvalId, decision);
   };
 
-  const handleOpenWorkspace = async () => {
+  const openWorkspaceFromDialog = async () => {
     const rootPath = await pickHostDirectory();
-    if (!rootPath) return;
-    const { didSwitchWorkspace } = openWorkspaceByPath(rootPath);
+    if (!rootPath) return null;
+    const { workspace, didSwitchWorkspace } = openWorkspaceByPath(rootPath);
     if (didSwitchWorkspace) {
       selectSession(null);
     }
+    return workspace;
+  };
+
+  const handleOpenWorkspace = async () => {
+    await openWorkspaceFromDialog();
   };
 
   const handleRelocateWorkspace = async (workspaceId: string) => {
@@ -835,13 +845,12 @@ export function CenterPanel({
     agentRoleId?: string | null;
     teamTemplateId?: string | null;
     worktreePath?: string;
-  }) => {
-    if (!activeWorkspace) {
-      return;
-    }
+  }): Promise<ComposerSendOutcome> => {
+    const workspace = activeWorkspace ?? (await openWorkspaceFromDialog());
+    if (!workspace) return "kept";
 
     const session = createDraftSession({
-      workspaceId: activeWorkspace.id,
+      workspaceId: workspace.id,
       agentType,
       sessionModeId,
       permissionMode,
@@ -864,7 +873,7 @@ export function CenterPanel({
       agentType,
       sessionId: titledSession.id,
       workspaceHash: hashLogValue(
-        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+        workingPath ?? primaryWorkspaceRootPath(workspace),
       ),
       contentLength: message.length,
       attachmentCount: attachments?.length ?? 0,
@@ -923,7 +932,7 @@ export function CenterPanel({
           },
           thinkingLevel,
           workspaceHash: hashLogValue(
-            workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+            workingPath ?? primaryWorkspaceRootPath(workspace),
           ),
         },
       );
@@ -969,6 +978,7 @@ export function CenterPanel({
         createdAt: new Date().toISOString(),
       });
     }
+    return "sent";
   };
 
   const persistSession = (session: SessionRecord) => {

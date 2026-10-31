@@ -1,11 +1,12 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import os from "node:os";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { spawnOwnedDaemonProcess } from "@desktop/electron/chat/owned-daemon-process";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const tempDirs = createTempDirs();
+
 const processGroups: number[] = [];
-const temporaryDirectories: string[] = [];
 
 function isProcessRunning(pid: number) {
   try {
@@ -54,21 +55,14 @@ afterEach(async () => {
       // The process group was already removed by the owner.
     }
   }
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("spawnOwnedDaemonProcess", () => {
   it.runIf(process.platform !== "win32")(
     "kills the process group when the owner pipe closes",
     async () => {
-      const userDataPath = await mkdtemp(
-        path.join(os.tmpdir(), "cocurdex-owned-daemon-"),
-      );
-      temporaryDirectories.push(userDataPath);
+      const userDataPath = await tempDirs.create("cocurdex-owned-daemon-");
       const daemonEntryPath = path.join(
         import.meta.dirname,
         "owned-daemon-process.fixture.cjs",

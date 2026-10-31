@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { DaemonState } from "@cocurdex/daemon/internal/state";
@@ -13,9 +12,11 @@ vi.mock("@cocurdex/agent-adapters", () => ({
 }));
 
 import { DaemonCommitMessageService } from "@cocurdex/daemon/internal/commit-message/service";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+
+const tempDirs = createTempDirs();
 
 const execFileAsync = promisify(execFile);
-const directories: string[] = [];
 const providerConfig = {
   providerId: "provider",
   modelId: "model",
@@ -32,10 +33,7 @@ async function git(rootPath: string, ...args: string[]) {
 }
 
 async function repository() {
-  const rootPath = await mkdtemp(
-    path.join(tmpdir(), "cocurdex-commit-daemon-"),
-  );
-  directories.push(rootPath);
+  const rootPath = await tempDirs.create("cocurdex-commit-daemon-");
   await git(rootPath, "init");
   await git(rootPath, "config", "user.name", "Tests");
   await git(rootPath, "config", "user.email", "tests@localhost");
@@ -57,11 +55,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("daemon commit message generation", () => {

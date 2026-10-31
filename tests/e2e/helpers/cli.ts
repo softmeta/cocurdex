@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+﻿import { spawn } from "node:child_process";
 import path from "node:path";
 import { killProcessTree } from "@cocurdex/agent-adapters";
 import { repoRoot } from "./daemon-process";
@@ -30,6 +30,7 @@ export async function runCli(
       ...process.env,
       ...options.env,
       COCURDEX_USER_DATA_PATH: options.userDataPath,
+      COCURDEX_DISABLE_MEMORY_AUTO_START: "1",
       NO_COLOR: "1",
       TZ: "UTC",
     },

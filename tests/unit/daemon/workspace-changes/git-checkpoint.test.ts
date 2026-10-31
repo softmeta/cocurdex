@@ -5,7 +5,7 @@ import {
   createGitCheckpointAdapter,
 } from "@cocurdex/daemon/internal/workspace-changes/git-checkpoint";
 import { runGit } from "@cocurdex/daemon/internal/workspace-changes/git-run";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();

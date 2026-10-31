@@ -5,12 +5,12 @@ import type {
   CompatibleProviderModel,
 } from "@cocurdex/shared";
 import {
-  getAgentRuntimePreferences,
   getOpenCodeRuntimeOptions,
   getThinkingLevelOptions,
   resolveOpenCodeRuntimeValue,
   resolveThinkingLevel,
-} from "@/features/sessions";
+} from "@cocurdex/shared";
+import { getAgentRuntimePreferences } from "@/features/sessions";
 
 export type CommitRuntimeSelection = Pick<
   AgentRuntimeProviderConfig,

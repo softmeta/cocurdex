@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { getWorkspaceDependencyNames } from "./electron-vite-workspace-dependencies";
+import { buildPolicyDefine } from "./scripts/build-policy-define.mjs";
 
 // pdf.js ships cMaps (CJK glyph maps) and standard fonts as separate assets the
 // renderer fetches at runtime. They must land in the renderer output so the
@@ -81,6 +82,7 @@ const alias = {
 
 export default defineConfig(({ command }) => ({
   main: {
+    define: buildPolicyDefine(),
     resolve: {
       alias,
     },

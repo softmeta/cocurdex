@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
@@ -14,7 +13,8 @@ import {
   ACP_REGISTRY_AGENTS_SETTING_KEY,
   AcpRegistryService,
 } from "@cocurdex/daemon/internal/acp-registry/acp-registry-service";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { create as createTar } from "tar";
 import {
   afterAll,
   afterEach,
@@ -99,7 +99,7 @@ describe("AcpRegistryService", () => {
     await mkdir(path.join(source, "bin"), { recursive: true });
     await writeFile(path.join(source, "bin", "demo"), "#!/bin/sh\n");
     const archive = path.join(userDataPath, "demo.tar.gz");
-    execFileSync("tar", ["-czf", archive, "-C", source, "bin"]);
+    await createTar({ gzip: true, file: archive, cwd: source }, ["bin"]);
     const bytes = await readFile(archive);
     archiveSha = createHash("sha256").update(bytes).digest("hex");
     server = createServer((_request, response) => response.end(bytes));

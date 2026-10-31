@@ -4,7 +4,7 @@ import type {
   SessionConfiguration,
   WorkspaceRecord,
 } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/shared/testing";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 

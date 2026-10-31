@@ -8,6 +8,7 @@ import {
   type DaemonEventMeta,
 } from "@cocurdex/shared";
 import { type BackoffPolicy, backoffDelay, DEFAULT_BACKOFF } from "./backoff";
+import type { ForegroundWakeup } from "./foreground-wakeup";
 import type { PlatformSignals } from "./platform";
 
 export type DaemonEventSubscriber = (
@@ -224,7 +225,12 @@ export function createConnectionSupervisor(
     return attempt;
   }
 
-  function wake() {
+  function wake(wakeup: ForegroundWakeup = "probe") {
+    if (wakeup === "reconnect" && state.status === "live") {
+      release();
+      void connect();
+      return;
+    }
     if (state.status === "retrying" || state.status === "waiting") {
       void connect();
       return;
@@ -250,7 +256,11 @@ export function createConnectionSupervisor(
         }),
       );
     }
-    if (lifecycle) unsubscribers.push(lifecycle.subscribeForeground(wake));
+    if (lifecycle) {
+      unsubscribers.push(
+        lifecycle.subscribeForeground((wakeup) => wake(wakeup)),
+      );
+    }
   }
 
   function reset() {

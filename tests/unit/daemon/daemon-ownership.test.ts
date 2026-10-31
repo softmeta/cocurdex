@@ -1,17 +1,16 @@
 import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { acquireDaemonOwnership } from "@cocurdex/daemon/internal/daemon-ownership";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
+
+const tempDirs = createTempDirs();
 
 const execFileAsync = promisify(execFile);
 const FIXTURE_START_TIMEOUT_MS = 45_000;
-const directories: string[] = [];
 const moduleUrl = pathToFileURL(
   createRequire(import.meta.url).resolve(
     "@cocurdex/daemon/internal/daemon-ownership",
@@ -20,8 +19,7 @@ const moduleUrl = pathToFileURL(
 const importOwnership = `import { acquireDaemonOwnership } from ${JSON.stringify(moduleUrl)};`;
 
 async function directory() {
-  const result = await mkdtemp(path.join(tmpdir(), "cd-owner-"));
-  directories.push(result);
+  const result = await tempDirs.create("cd-owner-");
   return result;
 }
 
@@ -47,11 +45,7 @@ function waitForFixture(child: ChildProcess, name: string) {
 }
 
 afterEach(async () => {
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((entry) => rm(entry, { recursive: true, force: true })),
-  );
+  await tempDirs.cleanup();
 });
 
 describe("daemon ownership", () => {

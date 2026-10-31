@@ -6,10 +6,11 @@ import {
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { Check, Download, PackageSearch, Terminal, Trash2 } from "lucide-react";
+import { Check, Download, PackageSearch, Terminal } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppRemoveButton } from "@/components/app";
 import {
   Badge,
   Button,
@@ -324,15 +325,16 @@ export function AcpRegistryRemoveButton({
   };
 
   return (
-    <Button
-      disabled={removing}
-      onClick={() => void remove()}
-      size="xs"
-      type="button"
-      variant="ghost"
-    >
-      {removing ? <Spinner size="xs" /> : <Trash2 className="size-3.5" />}
-      {t("adapters.registry.remove")}
-    </Button>
+    <AppRemoveButton
+      busy={removing}
+      cancelLabel={t("adapters.registry.plan.cancel")}
+      confirmDescription={t("adapters.registry.removeDescription", {
+        name: label,
+      })}
+      confirmLabel={t("adapters.registry.remove")}
+      confirmTitle={t("adapters.registry.removeTitle", { name: label })}
+      label={t("adapters.registry.remove")}
+      onConfirm={() => void remove()}
+    />
   );
 }
