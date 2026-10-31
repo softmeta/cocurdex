@@ -162,7 +162,7 @@ import type {
   PtyWritePayload,
   ReadPptxPayload,
   RefineSessionTitlePayload,
-  RemoteAccessSettings,
+  RemoteAccessSettingsUpdate,
   ResolvedCommitMessageModel,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
@@ -712,7 +712,7 @@ export type DaemonRequestPayloadByMethod = {
   "host.identity": undefined;
   "host.session": undefined;
   "host.remoteAccess.get": undefined;
-  "host.remoteAccess.set": RemoteAccessSettings;
+  "host.remoteAccess.set": RemoteAccessSettingsUpdate;
   "host.pairing.create": CreateHostPairingPayload;
   "host.pairing.list": undefined;
   "host.pairing.cancel": { pairingId: string };

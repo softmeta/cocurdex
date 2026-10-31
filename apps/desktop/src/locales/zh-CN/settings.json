@@ -374,6 +374,7 @@
       "groupTitle": "待完成的配对"
     },
     "remote": {
+      "awayHint": "要在其他网络（比如出门时）连接这台电脑，请在电脑和手机上都安装 Tailscale，然后用 Tailscale 地址配对。",
       "enable": {
         "description": "允许局域网或 tailnet 中已配对的设备连接这台电脑。",
         "title": "允许远程设备"
@@ -382,6 +383,10 @@
       "groupDescription": "默认关闭。只有已配对的设备能连接，且只拥有你授予的权限。",
       "groupTitle": "远程访问",
       "invalidPort": "端口需在 1024 到 65535 之间",
+      "keepAwake": {
+        "description": "远程访问开启期间阻止这台电脑进入睡眠，让已配对设备随时能连上。合上笔记本盖子仍会睡眠。",
+        "title": "保持电脑唤醒"
+      },
       "kind": {
         "lan": "局域网",
         "tailscale": "Tailscale"

@@ -136,7 +136,7 @@ export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
       return;
     }
     if (pathname === HOST_SESSION_HTTP_PATH) {
-      sessionHandler(request, response);
+      await sessionHandler(request, response);
       return;
     }
     if (isPdfHttpRequest(request)) {

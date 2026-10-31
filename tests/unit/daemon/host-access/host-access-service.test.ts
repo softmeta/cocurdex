@@ -195,9 +195,14 @@ describe("HostAccessService", () => {
     expect(await service.readRemoteAccessSettings()).toEqual({
       enabled: false,
       port: 47_820,
+      keepAwake: false,
     });
     await service.saveRemoteAccessSettings(
       { enabled: true, port: 50_000 },
+      local,
+    );
+    await service.saveRemoteAccessSettings(
+      { enabled: true, port: 50_001, keepAwake: true },
       local,
     );
     await service.saveRemoteAccessSettings(
@@ -211,6 +216,7 @@ describe("HostAccessService", () => {
     expect(await service.readRemoteAccessSettings()).toEqual({
       enabled: true,
       port: 50_001,
+      keepAwake: true,
     });
     expect(service.listAudit(10).map((entry) => entry.action)).toEqual([
       "remote.enabled",
@@ -245,7 +251,7 @@ describe("HostAccessService", () => {
     expect(service.listAudit(10)).toEqual([]);
     expect(await service.remoteAccessStatus()).toEqual({
       allowed: false,
-      settings: { enabled: false, port: 50_000 },
+      settings: { enabled: false, port: 50_000, keepAwake: false },
       listening: false,
       addresses: [],
       error: null,

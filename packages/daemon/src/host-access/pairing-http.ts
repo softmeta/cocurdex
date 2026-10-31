@@ -76,6 +76,9 @@ export function createPairingHttpHandler(options: {
       });
       return;
     }
-    sendJson(response, 200, outcome.result);
+    sendJson(response, 200, {
+      ...outcome.result,
+      endpoints: await options.hostAccess.remoteEndpoints(),
+    });
   };
 }

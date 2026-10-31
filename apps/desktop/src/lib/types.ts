@@ -110,7 +110,7 @@ import type {
   PtySpawnResult,
   QueuedAgentInputActionPayload,
   RefineSessionTitlePayload,
-  RemoteAccessSettings,
+  RemoteAccessSettingsUpdate,
   RendererLogPayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
@@ -637,7 +637,7 @@ export interface ProductApi {
   getMemoryCloudKeys(): Promise<MemoryCloudKeys>;
   getHostRemoteAccess(): Promise<HostRemoteAccessStatus>;
   setHostRemoteAccess(
-    settings: RemoteAccessSettings,
+    settings: RemoteAccessSettingsUpdate,
   ): Promise<HostRemoteAccessStatus>;
   createHostPairing(
     payload: CreateHostPairingPayload,

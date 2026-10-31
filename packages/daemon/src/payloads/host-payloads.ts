@@ -5,6 +5,7 @@ import { idSchema, type PayloadSchemas } from "./primitives";
 const remoteAccessSettings = z.object({
   enabled: z.boolean(),
   port: z.number().int().min(1024).max(65_535),
+  keepAwake: z.boolean().optional(),
 });
 
 const deviceScopes = z

@@ -44,14 +44,18 @@ describe("createRemoteAccessListener", () => {
     listeners.push(listener);
     const port = await freePort();
 
-    expect(await listener.apply({ enabled: true, port })).toEqual({
+    expect(
+      await listener.apply({ enabled: true, port, keepAwake: false }),
+    ).toEqual({
       listening: true,
       error: null,
     });
     const response = await fetch(`http://127.0.0.1:${port}/`);
     expect(await response.text()).toBe("ok");
 
-    expect(await listener.apply({ enabled: false, port })).toEqual({
+    expect(
+      await listener.apply({ enabled: false, port, keepAwake: false }),
+    ).toEqual({
       listening: false,
       error: null,
     });
@@ -68,7 +72,11 @@ describe("createRemoteAccessListener", () => {
     const listener = createRemoteAccessListener(createServer);
     listeners.push(listener);
 
-    const state = await listener.apply({ enabled: true, port });
+    const state = await listener.apply({
+      enabled: true,
+      port,
+      keepAwake: false,
+    });
     await new Promise<void>((resolve) => blocker.close(() => resolve()));
 
     expect(state.listening).toBe(false);

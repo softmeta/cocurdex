@@ -597,14 +597,18 @@ export const offlineApi: DesktopApi = {
   },
   getHostRemoteAccess: async () => ({
     allowed: true,
-    settings: { enabled: false, port: DEFAULT_REMOTE_ACCESS_PORT },
+    settings: {
+      enabled: false,
+      port: DEFAULT_REMOTE_ACCESS_PORT,
+      keepAwake: false,
+    },
     listening: false,
     addresses: [],
     error: null,
   }),
   setHostRemoteAccess: async (settings) => ({
     allowed: true,
-    settings,
+    settings: { ...settings, keepAwake: settings.keepAwake ?? false },
     listening: false,
     addresses: [],
     error: null,

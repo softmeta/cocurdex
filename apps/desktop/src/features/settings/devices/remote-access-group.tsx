@@ -1,6 +1,7 @@
 import {
   DEFAULT_REMOTE_ACCESS_PORT,
   type HostRemoteAccessStatus,
+  type RemoteAccessSettingsUpdate,
 } from "@cocurdex/shared";
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
@@ -31,10 +32,10 @@ export function RemoteAccessGroup({
   const [portDraft, setPortDraft] = useState(String(status.settings.port));
   const [saving, setSaving] = useState(false);
 
-  const save = async (enabled: boolean, port: number) => {
+  const save = async (update: RemoteAccessSettingsUpdate) => {
     setSaving(true);
     try {
-      onChanged(await desktopApi.setHostRemoteAccess({ enabled, port }));
+      onChanged(await desktopApi.setHostRemoteAccess(update));
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("devices.remote.saveFailed"),
@@ -52,7 +53,7 @@ export function RemoteAccessGroup({
       return;
     }
     if (port !== status.settings.port) {
-      void save(status.settings.enabled, port);
+      void save({ enabled: status.settings.enabled, port });
     }
   };
 
@@ -69,7 +70,20 @@ export function RemoteAccessGroup({
           checked={status.settings.enabled}
           disabled={saving}
           onCheckedChange={(enabled) =>
-            void save(enabled, status.settings.port)
+            void save({ enabled, port: status.settings.port })
+          }
+        />
+      </SettingRow>
+      <SettingRow
+        description={t("devices.remote.keepAwake.description")}
+        title={t("devices.remote.keepAwake.title")}
+      >
+        <Switch
+          aria-label={t("devices.remote.keepAwake.title")}
+          checked={status.settings.keepAwake}
+          disabled={saving || !status.settings.enabled}
+          onCheckedChange={(keepAwake) =>
+            void save({ ...status.settings, keepAwake })
           }
         />
       </SettingRow>
@@ -108,6 +122,13 @@ export function RemoteAccessGroup({
               {t("devices.remote.noAddresses")}
             </Text>
           ) : null}
+          {status.addresses.some(
+            (address) => address.kind === "tailscale",
+          ) ? null : (
+            <Text size="meta" tone="muted">
+              {t("devices.remote.awayHint")}
+            </Text>
+          )}
           {status.addresses.map((address) => (
             <div className="flex min-w-0 items-center gap-2" key={address.url}>
               <Badge variant="outline">

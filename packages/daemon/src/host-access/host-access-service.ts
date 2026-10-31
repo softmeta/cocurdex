@@ -20,6 +20,7 @@ import {
   PAIRABLE_HOST_ACCESS_SCOPES,
   type PairedDeviceRecord,
   type RemoteAccessSettings,
+  type RemoteAccessSettingsUpdate,
 } from "@cocurdex/shared";
 
 const HOST_ID_SETTING = "host.id";
@@ -42,6 +43,7 @@ export interface HostAccessServiceOptions {
   listAddresses?(port: number): HostAddress[];
   now?(): Date;
   remoteAccessAllowed?: boolean;
+  onRemoteAccessChanged?(): void;
 }
 
 export interface RemoteListenerState {
@@ -75,13 +77,18 @@ function secretsMatch(offered: string, expected: string) {
 function parseRemoteAccessSettings(
   valueJson: string | null,
 ): RemoteAccessSettings {
-  const fallback = { enabled: false, port: DEFAULT_REMOTE_ACCESS_PORT };
+  const fallback = {
+    enabled: false,
+    port: DEFAULT_REMOTE_ACCESS_PORT,
+    keepAwake: false,
+  };
   if (!valueJson) return fallback;
   try {
     const parsed = JSON.parse(valueJson) as Partial<RemoteAccessSettings>;
     return {
       enabled: parsed.enabled === true,
       port: isValidRemotePort(parsed.port) ? parsed.port : fallback.port,
+      keepAwake: parsed.keepAwake === true,
     };
   } catch {
     return fallback;
@@ -370,14 +377,18 @@ export class HostAccessService {
   }
 
   async saveRemoteAccessSettings(
-    settings: RemoteAccessSettings,
+    settings: RemoteAccessSettingsUpdate,
     principal: HostPrincipal,
   ) {
     if (!isValidRemotePort(settings.port)) {
       throw new Error("Remote access port must be between 1024 and 65535");
     }
     const previous = await this.readRemoteAccessSettings();
-    const next = { enabled: settings.enabled, port: settings.port };
+    const next = {
+      enabled: settings.enabled,
+      port: settings.port,
+      keepAwake: settings.keepAwake ?? previous.keepAwake,
+    };
     await this.options.settings.set(
       REMOTE_ACCESS_SETTING,
       JSON.stringify(next),
@@ -421,13 +432,19 @@ export class HostAccessService {
     };
   }
 
+  async remoteEndpoints() {
+    const status = await this.remoteAccessStatus();
+    return status.addresses.map((address) => address.url);
+  }
+
   async setRemoteAccess(
-    settings: RemoteAccessSettings,
+    settings: RemoteAccessSettingsUpdate,
     principal: HostPrincipal,
   ) {
     if (settings.enabled) this.assertRemoteAccessAllowed();
     const saved = await this.saveRemoteAccessSettings(settings, principal);
     await this.remoteListener?.apply(saved);
+    this.options.onRemoteAccessChanged?.();
     return this.remoteAccessStatus();
   }
 }

@@ -5,7 +5,12 @@ import {
   type HostPairingExchangeResult,
 } from "@cocurdex/shared";
 import type { HostEndpoint } from "./platform";
-import type { SavedHost, SavedHostStore } from "./saved-hosts";
+import {
+  type SavedHost,
+  type SavedHostStore,
+  savedHostOrigins,
+  uniqueOrigins,
+} from "./saved-hosts";
 
 export type HostAccessFailure = "invalid" | "rateLimited" | "unreachable";
 
@@ -27,6 +32,7 @@ export type FetchLike = (
 interface HostHttpOptions {
   baseUrl: string;
   fetch?: FetchLike;
+  timeoutMs?: number;
 }
 
 const HOST_REQUEST_TIMEOUT_MS = 10_000;
@@ -42,7 +48,10 @@ async function callHost(
 ) {
   const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HOST_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? HOST_REQUEST_TIMEOUT_MS,
+  );
   let response: Response;
   try {
     response = await fetchImpl(new URL(path, options.baseUrl).toString(), {
@@ -103,10 +112,12 @@ export async function pairHost(
   },
 ): Promise<SavedHost> {
   const result = await exchangeHostPairing(options);
+  const baseUrl = new URL(options.baseUrl).origin;
   const saved: SavedHost = {
     hostId: result.host.hostId,
     name: result.host.name,
-    baseUrl: new URL(options.baseUrl).origin,
+    baseUrl,
+    endpoints: uniqueOrigins([baseUrl, ...(result.endpoints ?? [])]),
     deviceId: result.deviceId,
     token: result.token,
     scopes: result.scopes,
@@ -122,4 +133,50 @@ export function savedHostEndpoint(
   const { protocol, host: authority } = new URL(host.baseUrl);
   const scheme = protocol === "https:" ? "wss:" : "ws:";
   return { webSocketUrl: `${scheme}//${authority}`, token: host.token };
+}
+
+const REACHABILITY_TIMEOUT_MS = 5_000;
+
+export interface ReachableHostOrigin {
+  origin: string;
+  session: HostAccessSession;
+}
+
+export function findReachableOrigin(options: {
+  host: Pick<SavedHost, "hostId" | "baseUrl" | "endpoints" | "token">;
+  fetch?: FetchLike;
+  timeoutMs?: number;
+}): Promise<ReachableHostOrigin | null> {
+  const origins = savedHostOrigins(options.host);
+  return new Promise((resolve) => {
+    let pending = origins.length;
+    let settled = false;
+    const finishOne = (found: ReachableHostOrigin | null) => {
+      pending -= 1;
+      if (settled) return;
+      if (found) {
+        settled = true;
+        resolve(found);
+      } else if (pending === 0) {
+        resolve(null);
+      }
+    };
+    if (pending === 0) resolve(null);
+    for (const origin of origins) {
+      verifyHostCredential({
+        baseUrl: origin,
+        token: options.host.token,
+        fetch: options.fetch,
+        timeoutMs: options.timeoutMs ?? REACHABILITY_TIMEOUT_MS,
+      }).then(
+        (session) =>
+          finishOne(
+            session.host.hostId === options.host.hostId
+              ? { origin, session }
+              : null,
+          ),
+        () => finishOne(null),
+      );
+    }
+  });
 }
