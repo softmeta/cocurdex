@@ -25,7 +25,11 @@ export async function handleHostRequest(
     case "host.identity":
       return hostAccess.identity();
     case "host.session":
-      return { host: hostAccess.identity(), principal: context.principal };
+      return {
+        host: hostAccess.identity(),
+        principal: context.principal,
+        endpoints: await hostAccess.remoteEndpoints(),
+      };
     case "host.remoteAccess.get":
       return hostAccess.remoteAccessStatus();
     case "host.remoteAccess.set":

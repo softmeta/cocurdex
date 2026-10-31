@@ -1,10 +1,12 @@
 import {
   createHostRegistry,
+  findReachableOrigin,
   foregroundWakeup,
   type HostConnection,
   type LifecycleSignal,
   type NetworkSignal,
   savedHostEndpoint,
+  savedHostOrigins,
 } from "@cocurdex/client-runtime";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { AppState } from "react-native";
@@ -59,7 +61,16 @@ function pairedHost(hostId: string) {
   return host;
 }
 
-function adoptReportedScopes(connection: HostConnection) {
+async function resolveHostEndpoint(hostId: string) {
+  const host = pairedHost(hostId);
+  if (savedHostOrigins(host).length > 1) {
+    const reachable = await findReachableOrigin({ host });
+    if (reachable) hosts.switchOrigin(hostId, reachable.origin);
+  }
+  return savedHostEndpoint(pairedHost(hostId));
+}
+
+function adoptReportedSession(connection: HostConnection) {
   let wasLive = false;
   connection.subscribeState((state) => {
     const live = state.status === "live";
@@ -68,10 +79,11 @@ function adoptReportedScopes(connection: HostConnection) {
     if (!becameLive) return;
     void connection
       .request("host.session", undefined)
-      .then(({ principal }) => {
-        if (principal.kind === "device") {
-          hosts.adoptScopes(connection.hostId, principal.scopes);
-        }
+      .then(({ principal, endpoints }) => {
+        hosts.adoptSession(connection.hostId, {
+          scopes: principal.kind === "device" ? principal.scopes : undefined,
+          endpoints,
+        });
       })
       .catch(() => undefined);
   });
@@ -81,13 +93,13 @@ function adoptReportedScopes(connection: HostConnection) {
 export function hostConnection(hostId: string): HostConnection {
   return (
     registry.get(hostId) ??
-    adoptReportedScopes(
+    adoptReportedSession(
       registry.register({
         hostId,
         platform: {
           lifecycle,
           network,
-          resolveEndpoint: async () => savedHostEndpoint(pairedHost(hostId)),
+          resolveEndpoint: () => resolveHostEndpoint(hostId),
         },
       }),
     )

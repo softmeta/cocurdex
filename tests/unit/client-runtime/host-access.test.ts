@@ -1,5 +1,6 @@
 import {
   type FetchLike,
+  findReachableOrigin,
   HostAccessError,
   pairHost,
   savedHostEndpoint,
@@ -45,6 +46,7 @@ describe("pairHost", () => {
       hostId: "host-1",
       name: "Studio",
       baseUrl: "http://192.168.1.20:47820",
+      endpoints: ["http://192.168.1.20:47820"],
       deviceId: "device-1",
       token: "cocu_dev_a",
       scopes: ["read", "interact"],
@@ -147,5 +149,66 @@ describe("savedHostEndpoint", () => {
         token: "t",
       }),
     ).toEqual({ webSocketUrl: "wss://studio.example.invalid", token: "t" });
+  });
+});
+
+describe("findReachableOrigin", () => {
+  const host = {
+    hostId: "host-1",
+    baseUrl: "http://192.168.1.20:47820",
+    endpoints: [
+      "http://192.168.1.20:47820",
+      "http://100.101.1.2:47820",
+      "http://10.0.0.5:47820",
+    ],
+    token: "cocu_dev_a",
+  };
+
+  function network(answers: Record<string, string | null>): FetchLike {
+    return async (input) => {
+      const hostId = answers[new URL(input).origin];
+      if (hostId === undefined || hostId === null) {
+        throw new TypeError("Network request failed");
+      }
+      return Response.json({
+        host: { hostId, name: "Studio" },
+        principal: { kind: "device", deviceId: "device-1", scopes: ["read"] },
+      });
+    };
+  }
+
+  it("switches to the address that answers when the paired LAN address is gone", async () => {
+    const reachable = await findReachableOrigin({
+      host,
+      fetch: network({ "http://100.101.1.2:47820": "host-1" }),
+    });
+
+    expect(reachable?.origin).toBe("http://100.101.1.2:47820");
+  });
+
+  it("stays on the current address when it answers, even if another answers first", async () => {
+    const answer = network({
+      "http://192.168.1.20:47820": "host-1",
+      "http://100.101.1.2:47820": "host-1",
+    });
+    const slowCurrent: FetchLike = async (input, init) => {
+      if (new URL(input).origin === host.baseUrl) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      return answer(input, init);
+    };
+
+    const reachable = await findReachableOrigin({ host, fetch: slowCurrent });
+
+    expect(reachable?.origin).toBe("http://192.168.1.20:47820");
+  });
+
+  it("ignores a different computer that now answers on a known address", async () => {
+    const reachable = await findReachableOrigin({
+      host,
+      fetch: network({ "http://10.0.0.5:47820": "host-2" }),
+    });
+
+    expect(reachable).toBeNull();
   });
 });

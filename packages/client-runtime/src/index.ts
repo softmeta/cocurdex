@@ -7,9 +7,11 @@ export {
 export {
   exchangeHostPairing,
   type FetchLike,
+  findReachableOrigin,
   HostAccessError,
   type HostAccessFailure,
   pairHost,
+  type ReachableHostOrigin,
   savedHostEndpoint,
   verifyHostCredential,
 } from "./host-access";
@@ -39,6 +41,8 @@ export {
   SAVED_HOSTS_STORAGE_KEY,
   type SavedHost,
   type SavedHostStore,
+  savedHostOrigins,
+  uniqueOrigins,
 } from "./saved-hosts";
 export {
   type ConnectionState,

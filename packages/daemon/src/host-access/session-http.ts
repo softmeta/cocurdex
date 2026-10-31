@@ -13,7 +13,10 @@ export function createSessionHttpHandler(options: {
   limiter: FixedWindowRateLimiter;
   now?(): number;
 }) {
-  return (request: http.IncomingMessage, response: http.ServerResponse) => {
+  return async (
+    request: http.IncomingMessage,
+    response: http.ServerResponse,
+  ) => {
     if (request.method !== "GET") {
       response.writeHead(405, { allow: "GET" });
       response.end();
@@ -34,6 +37,7 @@ export function createSessionHttpHandler(options: {
     sendJson(response, 200, {
       host: options.hostAccess.identity(),
       principal,
+      endpoints: await options.hostAccess.remoteEndpoints(),
     });
   };
 }

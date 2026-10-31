@@ -64,6 +64,7 @@ import {
   queueOpenFolder,
 } from "./open-folder";
 import { registerOssLicensesHandlers } from "./oss-licenses";
+import { syncKeepAwakeFromDaemon } from "./power";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
@@ -87,6 +88,14 @@ const daemonLogger = createLogger("daemon-runtime-client");
 let appQuitAllowed = false;
 let appShutdownPromise: Promise<void> | null = null;
 let daemonRuntimeClient: DaemonRuntimeClient | null = null;
+
+function syncKeepAwake() {
+  syncKeepAwakeFromDaemon().catch((error: unknown) => {
+    appLogger.warn("keepAwake.syncFailed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
 const preloadPath = resolveElectronEntryPath(
   import.meta.url,
   "../preload/preload.cjs",
@@ -514,6 +523,7 @@ app
       daemonEntryPath: getBundledDaemonEntryPath(),
       webRoot: path.join(app.getAppPath(), "out", "renderer"),
       logger: daemonLogger,
+      onConnected: syncKeepAwake,
       onEvent(event) {
         if (event.type === "data.changed" && event.areas.includes("settings")) {
           loadAndApplyNetworkProxyFromDaemon().catch((error: unknown) => {
@@ -521,6 +531,7 @@ app
               message: error instanceof Error ? error.message : String(error),
             });
           });
+          syncKeepAwake();
         }
         if (event.type === "peer.message") {
           appLogger.info("daemon.peerMessage", { ...event });

@@ -38,6 +38,7 @@ export interface HostIdentity {
 export interface HostAccessSession {
   host: HostIdentity;
   principal: HostPrincipal;
+  endpoints?: string[];
 }
 
 export interface PairedDeviceRecord {
@@ -80,6 +81,7 @@ export interface HostPairingExchangeResult {
   deviceId: string;
   token: string;
   scopes: HostAccessScope[];
+  endpoints?: string[];
 }
 
 export type HostAccessAuditAction =
@@ -104,7 +106,14 @@ export interface HostAccessAuditEntry {
 export interface RemoteAccessSettings {
   enabled: boolean;
   port: number;
+  keepAwake: boolean;
 }
+
+export type RemoteAccessSettingsUpdate = Omit<
+  RemoteAccessSettings,
+  "keepAwake"
+> &
+  Partial<Pick<RemoteAccessSettings, "keepAwake">>;
 
 export type HostAddressKind = "lan" | "tailscale";
 

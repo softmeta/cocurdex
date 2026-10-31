@@ -318,6 +318,7 @@ export class CocurdexDaemonService {
       hostName: () => os.hostname(),
       listAddresses: (port) => listHostAddresses(os.networkInterfaces(), port),
       remoteAccessAllowed: isFeatureEnabled(buildPolicy, "remote-access"),
+      onRemoteAccessChanged: () => this.broadcastSettingsChanged(),
     });
     this.hostAccessReady = this.hostAccess.initialize();
     this.workflows = new WorkflowModule(this.state.workflows);

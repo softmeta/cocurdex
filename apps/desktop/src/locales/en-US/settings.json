@@ -378,6 +378,7 @@
       "groupTitle": "Pending pairings"
     },
     "remote": {
+      "awayHint": "To reach this computer away from this network, install Tailscale on it and on your phone, then pair with the Tailscale address.",
       "enable": {
         "description": "Let paired devices on your network or tailnet connect to this computer.",
         "title": "Allow remote devices"
@@ -386,6 +387,10 @@
       "groupDescription": "Off by default. Only paired devices can connect, with the permissions you grant.",
       "groupTitle": "Remote access",
       "invalidPort": "Use a port between 1024 and 65535",
+      "keepAwake": {
+        "description": "Stop this computer from sleeping while remote access is on, so paired devices can reach it. A closed laptop lid still puts it to sleep.",
+        "title": "Keep this computer awake"
+      },
       "kind": {
         "lan": "LAN",
         "tailscale": "Tailscale"

@@ -91,7 +91,11 @@ async function pairDevice(
   expect(response.status).toBe(200);
   return {
     code,
-    paired: (await response.json()) as { token: string; deviceId: string },
+    paired: (await response.json()) as {
+      token: string;
+      deviceId: string;
+      endpoints?: string[];
+    },
   };
 }
 
@@ -143,10 +147,14 @@ describe("remote host access", () => {
     const replay = await exchange(port, { code });
     expect(replay.status).toBe(401);
 
+    const status = await requestDaemon("host.remoteAccess.get", daemon.options);
+    const endpoints = status.addresses.map((address) => address.url);
+    expect(paired.endpoints).toEqual(endpoints);
     const session = await checkSession(port, paired.token);
     expect(session.status).toBe(200);
     await expect(session.json()).resolves.toMatchObject({
       principal: { kind: "device", deviceId: paired.deviceId },
+      endpoints,
     });
     const client = remoteClient(port, paired.token);
     await expect(client.request("session.list", undefined)).resolves.toEqual(
@@ -160,6 +168,7 @@ describe("remote host access", () => {
         deviceId: paired.deviceId,
         scopes: ["read"],
       },
+      endpoints,
     });
     await expect(
       client.request("host.devices.list", undefined),

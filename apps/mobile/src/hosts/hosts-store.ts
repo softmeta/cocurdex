@@ -4,14 +4,28 @@ import {
   type KeyValueStorage,
   pairHost,
   type SavedHost,
+  savedHostOrigins,
+  uniqueOrigins,
 } from "@cocurdex/client-runtime";
 import type { HostAccessScope } from "@cocurdex/shared";
 import { parseHostPairingLink } from "@cocurdex/shared";
 
-function sameScopes(left: HostAccessScope[], right: HostAccessScope[]) {
+function sameMembers<T>(left: readonly T[], right: readonly T[]) {
   return (
-    left.length === right.length && left.every((scope) => right.includes(scope))
+    left.length === right.length && left.every((item) => right.includes(item))
   );
+}
+
+function sameOrder(left: readonly string[], right: readonly string[]) {
+  return (
+    left.length === right.length &&
+    left.every((item, index) => item === right[index])
+  );
+}
+
+export interface ReportedHostSession {
+  scopes?: HostAccessScope[];
+  endpoints?: string[];
 }
 
 export type PairFailure = "link" | "invalid" | "rateLimited" | "unreachable";
@@ -55,10 +69,30 @@ export function createHostsStore(storage: KeyValueStorage) {
         throw error;
       }
     },
-    adoptScopes(hostId: string, scopes: HostAccessScope[]) {
+    adoptSession(hostId: string, reported: ReportedHostSession) {
       const saved = snapshot.find((host) => host.hostId === hostId);
-      if (!saved || sameScopes(saved.scopes, scopes)) return;
-      store.save({ ...saved, scopes });
+      if (!saved) return;
+      const scopes = reported.scopes ?? saved.scopes;
+      const endpoints = reported.endpoints
+        ? uniqueOrigins([saved.baseUrl, ...reported.endpoints])
+        : savedHostOrigins(saved);
+      if (
+        sameMembers(saved.scopes, scopes) &&
+        sameOrder(savedHostOrigins(saved), endpoints)
+      ) {
+        return;
+      }
+      store.save({ ...saved, scopes, endpoints });
+      publish();
+    },
+    switchOrigin(hostId: string, origin: string) {
+      const saved = snapshot.find((host) => host.hostId === hostId);
+      if (!saved || saved.baseUrl === origin) return;
+      store.save({
+        ...saved,
+        baseUrl: origin,
+        endpoints: uniqueOrigins([origin, ...savedHostOrigins(saved)]),
+      });
       publish();
     },
     rename(hostId: string, name: string) {

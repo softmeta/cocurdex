@@ -23,7 +23,7 @@ const DEFAULT_PAIRING_SCOPES: HostAccessScope[] = [
 export function hostUsageLines() {
   return [
     "  cocurdex host status [--json]",
-    "  cocurdex host remote enable [--port <port>] | disable [--json]",
+    "  cocurdex host remote enable [--port <port>] [--keep-awake on|off] | disable [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
     "  cocurdex host devices [--json] | host revoke <device-id>",
@@ -62,12 +62,22 @@ function integerFlag(parsed: ParsedArgs, name: string) {
   return parsedValue;
 }
 
+function keepAwakeFlag(parsed: ParsedArgs) {
+  const value = stringFlag(parsed, "keep-awake");
+  if (value === undefined) return undefined;
+  if (value === "on") return true;
+  if (value === "off") return false;
+  throw new Error("--keep-awake must be on or off");
+}
+
 async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
+  const keepAwake = keepAwakeFlag(parsed);
   const status = await withDaemon(async () => {
     const current = await requestDaemon("host.remoteAccess.get");
     return requestDaemon("host.remoteAccess.set", {
       enabled,
       port: integerFlag(parsed, "port") ?? current.settings.port,
+      ...(keepAwake === undefined ? {} : { keepAwake }),
     });
   });
   if (parsed.flags.has("json")) {
@@ -80,6 +90,9 @@ async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
     return;
   }
   console.log(`Remote access is listening on port ${status.settings.port}`);
+  if (status.settings.keepAwake) {
+    console.log("The desktop app keeps this computer awake while it is on.");
+  }
   console.log(
     "Traffic is not encrypted. Use it on a trusted network or over Tailscale.",
   );

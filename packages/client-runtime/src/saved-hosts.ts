@@ -8,6 +8,7 @@ export interface SavedHost {
   token: string;
   scopes: HostAccessScope[];
   pairedAt: string;
+  endpoints?: string[];
 }
 
 export interface KeyValueStorage {
@@ -27,8 +28,38 @@ function isSavedHost(value: unknown): value is SavedHost {
     Array.isArray(host.scopes) &&
     host.scopes.every(
       (scope) => typeof scope === "string" && isHostAccessScope(scope),
-    )
+    ) &&
+    (host.endpoints === undefined ||
+      (Array.isArray(host.endpoints) &&
+        host.endpoints.every((endpoint) => typeof endpoint === "string")))
   );
+}
+
+function originOf(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function uniqueOrigins(urls: readonly string[]) {
+  const origins: string[] = [];
+  for (const url of urls) {
+    const origin = originOf(url);
+    if (origin && !origins.includes(origin)) origins.push(origin);
+  }
+  return origins;
+}
+
+export function savedHostOrigins(
+  host: Pick<SavedHost, "baseUrl" | "endpoints">,
+) {
+  return uniqueOrigins([host.baseUrl, ...(host.endpoints ?? [])]);
 }
 
 function sameBaseUrl(left: string, right: string) {

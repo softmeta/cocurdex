@@ -137,10 +137,12 @@ describe("forgetHostsFromPreviousInstall", () => {
     const listener = vi.fn();
     hosts.subscribe(listener);
 
-    hosts.adoptScopes("host-1", ["interact", "read"]);
+    hosts.adoptSession("host-1", { scopes: ["interact", "read"] });
     expect(listener).not.toHaveBeenCalled();
 
-    hosts.adoptScopes("host-1", ["read", "interact", "files.read"]);
+    hosts.adoptSession("host-1", {
+      scopes: ["read", "interact", "files.read"],
+    });
     expect(listener).toHaveBeenCalledTimes(1);
     expect(createHostsStore(storage).getSnapshot()[0]?.scopes).toEqual([
       "read",
@@ -148,6 +150,30 @@ describe("forgetHostsFromPreviousInstall", () => {
       "files.read",
     ]);
   });
+
+  it("keeps the addresses a host reports so it stays reachable off the LAN", async () => {
+    const storage = memoryStorage();
+    const hosts = createHostsStore(storage);
+    await hosts.pair(
+      LINK,
+      "Pocket",
+      hostAnswering(200, {
+        ...PAIRED,
+        endpoints: ["http://100.101.1.2:47820", "http://192.168.1.20:47820"],
+      }),
+    );
+
+    hosts.switchOrigin("host-1", "http://100.101.1.2:47820");
+    hosts.adoptSession("host-1", {
+      endpoints: ["http://100.101.1.2:47820", "http://10.0.0.8:47820"],
+    });
+
+    expect(createHostsStore(storage).getSnapshot()[0]).toMatchObject({
+      baseUrl: "http://100.101.1.2:47820",
+      endpoints: ["http://100.101.1.2:47820", "http://10.0.0.8:47820"],
+    });
+  });
+
   it("renames a computer only on this phone and keeps the name across launches", async () => {
     const storage = memoryStorage();
     const hosts = createHostsStore(storage);

@@ -5,7 +5,12 @@ import {
   type HostPairingExchangeResult,
 } from "@cocurdex/shared";
 import type { HostEndpoint } from "./platform";
-import type { SavedHost, SavedHostStore } from "./saved-hosts";
+import {
+  type SavedHost,
+  type SavedHostStore,
+  savedHostOrigins,
+  uniqueOrigins,
+} from "./saved-hosts";
 
 export type HostAccessFailure = "invalid" | "rateLimited" | "unreachable";
 
@@ -27,6 +32,7 @@ export type FetchLike = (
 interface HostHttpOptions {
   baseUrl: string;
   fetch?: FetchLike;
+  timeoutMs?: number;
 }
 
 const HOST_REQUEST_TIMEOUT_MS = 10_000;
@@ -42,7 +48,10 @@ async function callHost(
 ) {
   const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HOST_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? HOST_REQUEST_TIMEOUT_MS,
+  );
   let response: Response;
   try {
     response = await fetchImpl(new URL(path, options.baseUrl).toString(), {
@@ -103,10 +112,12 @@ export async function pairHost(
   },
 ): Promise<SavedHost> {
   const result = await exchangeHostPairing(options);
+  const baseUrl = new URL(options.baseUrl).origin;
   const saved: SavedHost = {
     hostId: result.host.hostId,
     name: result.host.name,
-    baseUrl: new URL(options.baseUrl).origin,
+    baseUrl,
+    endpoints: uniqueOrigins([baseUrl, ...(result.endpoints ?? [])]),
     deviceId: result.deviceId,
     token: result.token,
     scopes: result.scopes,
@@ -122,4 +133,69 @@ export function savedHostEndpoint(
   const { protocol, host: authority } = new URL(host.baseUrl);
   const scheme = protocol === "https:" ? "wss:" : "ws:";
   return { webSocketUrl: `${scheme}//${authority}`, token: host.token };
+}
+
+const REACHABILITY_TIMEOUT_MS = 5_000;
+const CURRENT_ORIGIN_GRACE_MS = 1_000;
+
+export interface ReachableHostOrigin {
+  origin: string;
+  session: HostAccessSession;
+}
+
+type ProbeHost = Pick<SavedHost, "hostId" | "baseUrl" | "endpoints" | "token">;
+
+async function probeOrigin(
+  host: ProbeHost,
+  origin: string,
+  options: { fetch?: FetchLike; timeoutMs?: number },
+): Promise<ReachableHostOrigin | null> {
+  try {
+    const session = await verifyHostCredential({
+      baseUrl: origin,
+      token: host.token,
+      fetch: options.fetch,
+      timeoutMs: options.timeoutMs ?? REACHABILITY_TIMEOUT_MS,
+    });
+    return session.host.hostId === host.hostId ? { origin, session } : null;
+  } catch {
+    return null;
+  }
+}
+
+function firstFound(probes: Promise<ReachableHostOrigin | null>[]) {
+  return new Promise<ReachableHostOrigin | null>((resolve) => {
+    let pending = probes.length;
+    if (pending === 0) resolve(null);
+    for (const probe of probes) {
+      void probe.then((found) => {
+        pending -= 1;
+        if (found) resolve(found);
+        else if (pending === 0) resolve(null);
+      });
+    }
+  });
+}
+
+function withinGrace<T>(promise: Promise<T>, graceMs: number) {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), graceMs)),
+  ]);
+}
+
+export async function findReachableOrigin(options: {
+  host: ProbeHost;
+  fetch?: FetchLike;
+  timeoutMs?: number;
+}): Promise<ReachableHostOrigin | null> {
+  const [current, ...others] = savedHostOrigins(options.host);
+  if (current === undefined) return null;
+  const currentProbe = probeOrigin(options.host, current, options);
+  const otherProbe = firstFound(
+    others.map((origin) => probeOrigin(options.host, origin, options)),
+  );
+  const first = await firstFound([currentProbe, otherProbe]);
+  if (!first || first.origin === current) return first;
+  return (await withinGrace(currentProbe, CURRENT_ORIGIN_GRACE_MS)) ?? first;
 }
