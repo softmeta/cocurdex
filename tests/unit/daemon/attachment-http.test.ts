@@ -50,9 +50,8 @@ describe("createAttachmentHttpHandler", () => {
   let server: http.Server;
   let webSocketUrl: string;
 
-  const startServer = async (remote: boolean) => {
+  const startServer = async () => {
     const handler = createAttachmentHttpHandler({
-      remote,
       isAllowedRequest: (request) =>
         request.headers.origin !== "http://evil.example",
       resolvePrincipal: (token) => (token ? (PRINCIPALS[token] ?? null) : null),
@@ -96,7 +95,7 @@ describe("createAttachmentHttpHandler", () => {
   });
 
   it("uploads an image and serves it back", async () => {
-    await startServer(true);
+    await startServer();
 
     const response = await upload(WRITER_TOKEN, GIF);
     expect(response.status).toBe(201);
@@ -119,7 +118,7 @@ describe("createAttachmentHttpHandler", () => {
   });
 
   it("serves a sent image to a device paired without files.read", async () => {
-    await startServer(true);
+    await startServer();
 
     const attachment = (await (
       await upload(VIEWER_TOKEN, GIF)
@@ -132,22 +131,15 @@ describe("createAttachmentHttpHandler", () => {
   });
 
   it("refuses a device without interact scope and keeps nothing", async () => {
-    await startServer(true);
+    await startServer();
 
     expect((await upload(READER_TOKEN, GIF)).status).toBe(403);
     expect((await upload(null, GIF)).status).toBe(401);
     expect(await storedImages()).toEqual([]);
   });
 
-  it("refuses the local token on the remote listener", async () => {
-    await startServer(true);
-
-    expect((await upload(LOCAL_TOKEN, GIF)).status).toBe(403);
-    expect(await storedImages()).toEqual([]);
-  });
-
   it("reports unsupported and oversized uploads without storing them", async () => {
-    await startServer(false);
+    await startServer();
 
     const unsupported = await upload(LOCAL_TOKEN, Buffer.from("plain text"));
     expect(unsupported.status).toBe(415);
@@ -164,7 +156,7 @@ describe("createAttachmentHttpHandler", () => {
   });
 
   it("does not serve files outside image storage", async () => {
-    await startServer(false);
+    await startServer();
 
     const response = await fetch(
       buildDaemonImageAttachmentUrl(

@@ -21,7 +21,8 @@ function host(overrides: Partial<SavedHost> = {}): SavedHost {
     name: "Studio",
     baseUrl: "http://192.168.1.20:47820",
     deviceId: "device-1",
-    token: "cocu_dev_a",
+    hostKey: "host-key",
+    deviceSecretKey: "secret-a",
     scopes: ["read"],
     pairedAt: "2026-10-12T00:00:00.000Z",
     ...overrides,
@@ -34,20 +35,27 @@ describe("createSavedHostStore", () => {
     store.save(host());
 
     expect(
-      store.findByBaseUrl("http://192.168.1.20:47820/sessions?x=1")?.token,
-    ).toBe("cocu_dev_a");
+      store.findByBaseUrl("http://192.168.1.20:47820/sessions?x=1")
+        ?.deviceSecretKey,
+    ).toBe("secret-a");
     expect(store.findByBaseUrl("http://192.168.1.21:47820")).toBeNull();
   });
 
   it("replaces the credential when the same host or address is paired again", () => {
     const store = createSavedHostStore(memoryStorage(), "hosts");
     store.save(host());
-    store.save(host({ deviceId: "device-2", token: "cocu_dev_b" }));
+    store.save(host({ deviceId: "device-2", deviceSecretKey: "secret-b" }));
     store.save(
-      host({ hostId: "host-2", deviceId: "device-3", token: "cocu_dev_c" }),
+      host({
+        hostId: "host-2",
+        deviceId: "device-3",
+        deviceSecretKey: "secret-c",
+      }),
     );
 
-    expect(store.list().map((saved) => saved.token)).toEqual(["cocu_dev_c"]);
+    expect(store.list().map((saved) => saved.deviceSecretKey)).toEqual([
+      "secret-c",
+    ]);
   });
 
   it("forgets a revoked host", () => {

@@ -18,11 +18,7 @@ import { useViewedSession } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
 import { useTransitionSettled } from "@/ui";
 import { Composer } from "./composer";
-import {
-  imageAttachmentSource,
-  pickImages,
-  uploadImage,
-} from "./image-attachments";
+import { pickImages, uploadImage } from "./image-attachments";
 import { type InteractionActions, InteractionDock } from "./interaction-dock";
 import {
   type PendingSend,
@@ -244,8 +240,6 @@ export function SessionDetailScreen({
             actions={{
               hostId: host.hostId,
               fileRoot: canReadFiles ? workspacePath : undefined,
-              imageSource: (attachment) =>
-                imageAttachmentSource(host, attachment),
               onOpenImage: (attachment) =>
                 router.push({
                   pathname: "/image/[hostId]",
@@ -289,7 +283,7 @@ export function SessionDetailScreen({
               onSend={send}
               onStop={stop}
               onPickImages={pickImages}
-              onUploadImage={(image) => uploadImage(host, image)}
+              onUploadImage={(image) => uploadImage(host.hostId, image)}
               accessory={
                 <SessionConfigChips host={host} sessionId={sessionId} />
               }

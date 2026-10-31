@@ -1,11 +1,16 @@
-import type { KeyValueStorage } from "@cocurdex/client-runtime";
+import {
+  createSavedHostStore,
+  type KeyValueStorage,
+  type SavedHost,
+} from "@cocurdex/client-runtime";
 import {
   createHostsStore,
   forgetHostsFromPreviousInstall,
 } from "@cocurdex/mobile/internal/hosts/hosts-store";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const LINK = "http://192.168.1.20:47820/#pair=K7-2Q";
+const HOST_KEY = `CQ${"A".repeat(41)}`;
+const LINK = `http://192.168.1.20:47820/#pair=K7-2Q&hk=${HOST_KEY}`;
 
 function memoryStorage(): KeyValueStorage {
   const values = new Map<string, string>();
@@ -17,72 +22,81 @@ function memoryStorage(): KeyValueStorage {
   };
 }
 
-function hostAnswering(status: number, body: unknown = {}) {
-  return vi.fn(
-    async () =>
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { "content-type": "application/json" },
-      }),
-  ) as unknown as typeof fetch;
-}
-
-const PAIRED = {
-  host: { hostId: "host-1", name: "Studio Mac" },
+const PAIRED: SavedHost = {
+  hostId: "host-1",
+  name: "Studio Mac",
+  baseUrl: "http://192.168.1.20:47820",
   deviceId: "device-1",
-  token: "token-1",
+  hostKey: HOST_KEY,
+  deviceSecretKey: "B".repeat(43),
   scopes: ["read", "interact"],
+  pairedAt: "2026-10-12T00:00:00.000Z",
 };
 
+function pairedStorage(host: Partial<SavedHost> = {}) {
+  const storage = memoryStorage();
+  createSavedHostStore(storage).save({ ...PAIRED, ...host });
+  return storage;
+}
+
+function unreachableNetwork() {
+  const opened = vi.fn();
+  class Unreachable extends EventTarget {
+    static readonly OPEN = 1;
+    readyState = 0;
+    binaryType = "blob";
+    constructor() {
+      super();
+      opened();
+      queueMicrotask(() => {
+        this.dispatchEvent(new Event("error"));
+        this.dispatchEvent(new Event("close"));
+      });
+    }
+    send() {}
+    close() {}
+  }
+  vi.stubGlobal("WebSocket", Unreachable);
+  return opened;
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
 describe("createHostsStore", () => {
-  it("pairs from a link, saves the host, and notifies subscribers", async () => {
-    const storage = memoryStorage();
-    const hosts = createHostsStore(storage);
-    const listener = vi.fn();
-    hosts.subscribe(listener);
-    const fetchImpl = hostAnswering(200, PAIRED);
-
-    const result = await hosts.pair(LINK, "Pocket", fetchImpl);
-
-    expect(result).toMatchObject({ host: { hostId: "host-1" } });
-    expect(fetchImpl).toHaveBeenCalledWith(
-      "http://192.168.1.20:47820/api/pair",
-      expect.objectContaining({
-        body: JSON.stringify({ code: "K7-2Q", label: "Pocket" }),
-      }),
-    );
-    expect(listener).toHaveBeenCalledOnce();
-    expect(hosts.getSnapshot()).toEqual([
-      expect.objectContaining({
-        hostId: "host-1",
-        baseUrl: "http://192.168.1.20:47820",
-      }),
-    ]);
-    expect(createHostsStore(storage).getSnapshot()).toHaveLength(1);
-  });
-
   it("reports a malformed link without calling the host", async () => {
-    const fetchImpl = hostAnswering(200, PAIRED);
+    const opened = unreachableNetwork();
     const hosts = createHostsStore(memoryStorage());
 
-    await expect(
-      hosts.pair("192.168.1.20", "Pocket", fetchImpl),
-    ).resolves.toEqual({ failure: "link" });
-    expect(fetchImpl).not.toHaveBeenCalled();
+    await expect(hosts.pair("192.168.1.20", "Pocket")).resolves.toEqual({
+      failure: "link",
+    });
+    expect(opened).not.toHaveBeenCalled();
   });
 
-  it("reports a rejected code and keeps nothing", async () => {
+  it("reports a host that cannot be reached and keeps nothing", async () => {
+    const opened = unreachableNetwork();
     const hosts = createHostsStore(memoryStorage());
 
-    await expect(
-      hosts.pair(LINK, "Pocket", hostAnswering(401)),
-    ).resolves.toEqual({ failure: "invalid" });
+    await expect(hosts.pair(LINK, "Pocket")).resolves.toEqual({
+      failure: "unreachable",
+    });
+    expect(opened).toHaveBeenCalledOnce();
     expect(hosts.getSnapshot()).toEqual([]);
   });
 
-  it("forgets a removed host", async () => {
+  it("reports a link whose host key cannot be used instead of throwing", async () => {
+    const opened = unreachableNetwork();
     const hosts = createHostsStore(memoryStorage());
-    await hosts.pair(LINK, "Pocket", hostAnswering(200, PAIRED));
+    const lowOrderKey = LINK.replace(HOST_KEY, "A".repeat(43));
+
+    await expect(hosts.pair(lowOrderKey, "Pocket")).resolves.toEqual({
+      failure: "invalid",
+    });
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it("forgets a removed host", () => {
+    const hosts = createHostsStore(pairedStorage());
 
     hosts.remove("host-1");
 
@@ -101,13 +115,8 @@ function memoryMarker(exists = false) {
 }
 
 describe("forgetHostsFromPreviousInstall", () => {
-  it("drops hosts a previous install left in the keychain", async () => {
-    const storage = memoryStorage();
-    await createHostsStore(storage).pair(
-      LINK,
-      "Pocket",
-      hostAnswering(200, PAIRED),
-    );
+  it("drops hosts a previous install left in the keychain", () => {
+    const storage = pairedStorage();
     const hosts = createHostsStore(storage);
     const marker = memoryMarker();
 
@@ -118,22 +127,20 @@ describe("forgetHostsFromPreviousInstall", () => {
     expect(marker.create).toHaveBeenCalledOnce();
   });
 
-  it("keeps hosts paired since this install", async () => {
+  it("keeps hosts paired since this install", () => {
     const storage = memoryStorage();
-    const hosts = createHostsStore(storage);
     const marker = memoryMarker();
-    forgetHostsFromPreviousInstall(marker, hosts);
-    await hosts.pair(LINK, "Pocket", hostAnswering(200, PAIRED));
+    forgetHostsFromPreviousInstall(marker, createHostsStore(storage));
+    createSavedHostStore(storage).save(PAIRED);
 
     forgetHostsFromPreviousInstall(marker, createHostsStore(storage));
 
     expect(createHostsStore(storage).getSnapshot()).toHaveLength(1);
   });
 
-  it("adopts scopes the host reports and stays quiet when they are unchanged", async () => {
-    const storage = memoryStorage();
+  it("adopts scopes the host reports and stays quiet when they are unchanged", () => {
+    const storage = pairedStorage();
     const hosts = createHostsStore(storage);
-    await hosts.pair(LINK, "Pocket", hostAnswering(200, PAIRED));
     const listener = vi.fn();
     hosts.subscribe(listener);
 
@@ -151,17 +158,11 @@ describe("forgetHostsFromPreviousInstall", () => {
     ]);
   });
 
-  it("keeps the addresses a host reports so it stays reachable off the LAN", async () => {
-    const storage = memoryStorage();
+  it("keeps the addresses a host reports so it stays reachable off the LAN", () => {
+    const storage = pairedStorage({
+      endpoints: ["http://192.168.1.20:47820", "http://100.101.1.2:47820"],
+    });
     const hosts = createHostsStore(storage);
-    await hosts.pair(
-      LINK,
-      "Pocket",
-      hostAnswering(200, {
-        ...PAIRED,
-        endpoints: ["http://100.101.1.2:47820", "http://192.168.1.20:47820"],
-      }),
-    );
 
     hosts.switchOrigin("host-1", "http://100.101.1.2:47820");
     hosts.adoptSession("host-1", {
@@ -174,10 +175,9 @@ describe("forgetHostsFromPreviousInstall", () => {
     });
   });
 
-  it("renames a computer only on this phone and keeps the name across launches", async () => {
-    const storage = memoryStorage();
+  it("renames a computer only on this phone and keeps the name across launches", () => {
+    const storage = pairedStorage();
     const hosts = createHostsStore(storage);
-    await hosts.pair(LINK, "Pocket", hostAnswering(200, PAIRED));
     const listener = vi.fn();
     hosts.subscribe(listener);
 

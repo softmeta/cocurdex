@@ -17,6 +17,7 @@ async function setup(options: { remoteAccessAllowed?: boolean } = {}) {
       },
     },
     hostName: () => "studio",
+    hostKey: () => "host-key",
     now: () => now,
     ...options,
   });
@@ -43,6 +44,7 @@ describe("HostAccessService", () => {
         },
       },
       hostName: () => "studio",
+      hostKey: () => "host-key",
     });
     await again.initialize();
 
@@ -54,35 +56,62 @@ describe("HostAccessService", () => {
 
     expect(service.resolve("local-secret")).toEqual({ kind: "local" });
     expect(service.resolve("local-secreT")).toBeNull();
-    expect(service.resolve("cocu_dev_unknown")).toBeNull();
+    expect(service.resolveDevice("unknown")).toBeNull();
     expect(service.resolve(undefined)).toBeNull();
   });
 
-  it("exchanges a pairing code once for a device token with the pairing's scopes", async () => {
+  it("pairs a device key once with the pairing's scopes", async () => {
     const { service } = await setup();
-    const { code } = service.createPairing(
+    const { code, hostKey } = service.createPairing(
       { label: "Phone", scopes: ["read", "approvals"] },
       local,
     );
 
-    const first = service.exchangePairing({ code, label: "Pixel" }, "10.0.0.2");
-    const second = service.exchangePairing({ code }, "10.0.0.2");
+    const first = service.pairDevice(
+      { secret: code, label: "Pixel" },
+      "key-a",
+      "10.0.0.2",
+    );
+    const second = service.pairDevice({ secret: code }, "key-b", "10.0.0.2");
 
+    expect(hostKey).toBe("host-key");
     expect(first.ok).toBe(true);
     expect(second).toEqual({ ok: false, reason: "consumed" });
     if (!first.ok) return;
     expect(first.result.scopes).toEqual(["read", "approvals"]);
-    expect(service.resolve(first.result.token)).toEqual({
+    expect(service.resolveDevice(first.result.deviceId)).toEqual({
       kind: "device",
       deviceId: first.result.deviceId,
       scopes: ["read", "approvals"],
     });
-    expect(service.listDevices()[0]?.label).toBe("Pixel");
+    expect(service.listDevices()[0]).toMatchObject({
+      label: "Pixel",
+      publicKey: "key-a",
+    });
     expect(service.listAudit(10).map((entry) => entry.action)).toEqual([
       "pairing.rejected",
       "pairing.exchanged",
       "pairing.created",
     ]);
+  });
+
+  it("connects a paired device only with the key it paired with", async () => {
+    const { service } = await setup();
+    const { code } = service.createPairing(
+      { label: "Phone", scopes: ["read"] },
+      local,
+    );
+    const paired = service.pairDevice({ secret: code }, "key-a", null);
+    if (!paired.ok) throw new Error("pairing failed");
+    const { deviceId } = paired.result;
+
+    expect(service.connectDevice({ deviceId }, "key-b")).toBeNull();
+    expect(service.connectDevice({ deviceId: "other" }, "key-a")).toBeNull();
+    expect(service.connectDevice({}, "key-a")).toBeNull();
+    expect(service.connectDevice({ deviceId }, "key-a")).toMatchObject({
+      deviceId,
+      scopes: ["read"],
+    });
   });
 
   it("rejects an expired pairing code", async () => {
@@ -93,7 +122,7 @@ describe("HostAccessService", () => {
     );
     advance(61_000);
 
-    expect(service.exchangePairing({ code }, null)).toEqual({
+    expect(service.pairDevice({ secret: code }, "key", null)).toEqual({
       ok: false,
       reason: "expired",
     });
@@ -122,29 +151,32 @@ describe("HostAccessService", () => {
       { label: "Phone", scopes: ["read"] },
       local,
     );
-    const exchanged = service.exchangePairing({ code }, null);
+    const exchanged = service.pairDevice({ secret: code }, "key", null);
     if (!exchanged.ok) throw new Error("pairing failed");
     const revoked: string[] = [];
     service.onDeviceAccessChanged((deviceId) => revoked.push(deviceId));
-    expect(service.resolve(exchanged.result.token)).not.toBeNull();
+    expect(service.resolveDevice(exchanged.result.deviceId)).not.toBeNull();
 
     service.revokeDevice(exchanged.result.deviceId, local);
 
-    expect(service.resolve(exchanged.result.token)).toBeNull();
+    expect(service.resolveDevice(exchanged.result.deviceId)).toBeNull();
+    expect(
+      service.connectDevice({ deviceId: exchanged.result.deviceId }, "key"),
+    ).toBeNull();
     expect(revoked).toEqual([exchanged.result.deviceId]);
   });
 
-  it("applies changed device scopes to the next request and notifies listeners", async () => {
+  it("drops a device whose scopes changed until it reconnects with them", async () => {
     const { service } = await setup();
     const { code } = service.createPairing(
       { label: "Tablet", scopes: ["read"] },
       local,
     );
-    const exchanged = service.exchangePairing({ code }, null);
+    const exchanged = service.pairDevice({ secret: code }, "key", null);
     if (!exchanged.ok) throw new Error("pairing failed");
     const changed: string[] = [];
     service.onDeviceAccessChanged((deviceId) => changed.push(deviceId));
-    expect(service.resolve(exchanged.result.token)).toMatchObject({
+    expect(service.resolveDevice(exchanged.result.deviceId)).toMatchObject({
       scopes: ["read"],
     });
 
@@ -155,7 +187,11 @@ describe("HostAccessService", () => {
     );
 
     expect(updated?.scopes).toEqual(["read", "files.read"]);
-    expect(service.resolve(exchanged.result.token)).toMatchObject({
+    expect(service.resolveDevice(exchanged.result.deviceId)).toBeNull();
+    expect(
+      service.connectDevice({ deviceId: exchanged.result.deviceId }, "key"),
+    ).toMatchObject({ scopes: ["read", "files.read"] });
+    expect(service.resolveDevice(exchanged.result.deviceId)).toMatchObject({
       scopes: ["read", "files.read"],
     });
     expect(changed).toEqual([exchanged.result.deviceId]);
@@ -171,7 +207,7 @@ describe("HostAccessService", () => {
       { label: "Tablet", scopes: ["read"] },
       local,
     );
-    const exchanged = service.exchangePairing({ code }, null);
+    const exchanged = service.pairDevice({ secret: code }, "key", null);
     if (!exchanged.ok) throw new Error("pairing failed");
 
     expect(() =>
@@ -184,7 +220,7 @@ describe("HostAccessService", () => {
     expect(() =>
       service.updateDeviceScopes(exchanged.result.deviceId, [], local),
     ).toThrow();
-    expect(service.resolve(exchanged.result.token)).toMatchObject({
+    expect(service.resolveDevice(exchanged.result.deviceId)).toMatchObject({
       scopes: ["read"],
     });
   });

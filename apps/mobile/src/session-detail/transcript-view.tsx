@@ -3,15 +3,7 @@ import { SymbolView } from "expo-symbols";
 import type { TFunction } from "i18next";
 import { memo, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Image,
-  type ImageURISource,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
@@ -21,6 +13,8 @@ import { type TranscriptHandle, TranscriptList } from "./transcript-list";
 
 export type { TranscriptHandle } from "./transcript-list";
 
+import { RemoteImage } from "@/connection";
+import { imageAttachmentRequest } from "./image-attachments";
 import { TurnActions } from "./turn-actions";
 import { useActivityLabel } from "./use-activity-label";
 import { useElapsedLabel } from "./use-elapsed-label";
@@ -31,12 +25,10 @@ const BODY_LINE_HEIGHT = 24;
 
 type ToolStatus = Extract<TranscriptItem, { kind: "tool" }>["status"];
 type ActivityItem = Extract<CondensedItem, { kind: "activity" }>;
-export type ImageSource = (attachment: ImageAttachment) => ImageURISource;
 
 export interface TranscriptActions {
   hostId: string;
   fileRoot: string | null | undefined;
-  imageSource: ImageSource;
   onOpenImage(attachment: ImageAttachment): void;
   onOpenTool(toolCallId: string): void;
   onFork: ((messageId: string) => void) | null;
@@ -67,8 +59,9 @@ function UserImages({
       onPress={() => actions.onOpenImage(image)}
       style={[styles.image, { aspectRatio: imageAspect(image) }]}
     >
-      <Image
-        source={actions.imageSource(image)}
+      <RemoteImage
+        hostId={actions.hostId}
+        request={imageAttachmentRequest(image)}
         style={[styles.imageFill, { backgroundColor: colors.muted }]}
       />
     </Pressable>
@@ -370,7 +363,6 @@ function useStableActions(actions: TranscriptActions): TranscriptActions {
     () => ({
       hostId,
       fileRoot,
-      imageSource: (attachment) => latest.current.imageSource(attachment),
       onOpenImage: (attachment) => latest.current.onOpenImage(attachment),
       onOpenTool: (toolCallId) => latest.current.onOpenTool(toolCallId),
       onFork: canFork

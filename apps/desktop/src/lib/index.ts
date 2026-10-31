@@ -55,8 +55,5 @@ export { cn } from "./utils";
 export {
   buildDevWebClientUrl,
   installWebHostBridge,
-  pairThisBrowser,
   type WebHostAccess,
-  type WebPairingReason,
-  webPairingFailureReason,
 } from "./web-host-bridge";

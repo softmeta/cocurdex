@@ -28,10 +28,16 @@ function useFailureMessages(): Record<PairFailure, string> {
   };
 }
 
-function deepLinkPairingLink({ host, code }: { host?: string; code?: string }) {
-  if (!host || !code) return "";
+type PairingParams = {
+  host?: string;
+  code?: string;
+  hk?: string;
+};
+
+function deepLinkPairingLink({ host, code, hk }: PairingParams) {
+  if (!host || !code || !hk) return "";
   try {
-    return buildHostPairingLink(host, code);
+    return buildHostPairingLink(host, code, hk);
   } catch {
     return "";
   }
@@ -43,7 +49,7 @@ export default function PairScreen() {
   const router = useRouter();
   const { switchToScan } = usePairingRoutes();
   const linkInput = useRef<TextInputInstance>(null);
-  const params = useLocalSearchParams<{ host?: string; code?: string }>();
+  const params = useLocalSearchParams<PairingParams>();
   const initialLink = deepLinkPairingLink(params);
   const [link, setLink] = useState(initialLink);
   const [pairing, setPairing] = useState(false);

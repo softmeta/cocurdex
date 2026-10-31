@@ -1,7 +1,11 @@
 import type { DatabaseSync } from "node:sqlite";
 import { createDecksSchemaSql } from "./decks/deck-schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
-import { createHostAccessSchemaSql } from "./host-access/schema";
+import {
+  ADD_HOST_DEVICE_PUBLIC_KEY_SQL,
+  createHostAccessSchemaSql,
+  HOST_DEVICE_PUBLIC_KEY_INDEX_SQL,
+} from "./host-access/schema";
 import {
   ensureIssueIndexes,
   migrateIssuesToAgentCore,
@@ -16,7 +20,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 33;
+export const CURRENT_SCHEMA_VERSION = 34;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -439,6 +443,13 @@ function createHostAccessTables(database: DatabaseSync): void {
   database.exec(createHostAccessSchemaSql());
 }
 
+function addHostDevicePublicKeys(database: DatabaseSync): void {
+  if (!hasColumn(database, "host_devices", "public_key")) {
+    database.exec(ADD_HOST_DEVICE_PUBLIC_KEY_SQL);
+  }
+  database.exec(HOST_DEVICE_PUBLIC_KEY_INDEX_SQL);
+}
+
 function migrateProviderThreadsPerAgent(database: DatabaseSync): void {
   if (!hasColumn(database, "runs", "agent_type")) {
     database.exec("ALTER TABLE runs ADD COLUMN agent_type TEXT");
@@ -542,6 +553,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [30, ensureSyncTracking],
   [31, createDecksTable],
   [32, createEntityLinksTable],
+  [33, addHostDevicePublicKeys],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {
@@ -599,6 +611,7 @@ export function initializeDatabase(database: DatabaseSync): void {
     throw new UnsupportedDatabaseVersionError(state.schemaVersion);
   }
   database.exec(createSchemaSql());
+  addHostDevicePublicKeys(database);
   // Additive: existing same-version DBs keep CREATE TABLE IF NOT EXISTS,
   // so the permission axis has to be patched onto the live sessions table.
   if (!hasColumn(database, "sessions", "permission_mode")) {

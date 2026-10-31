@@ -1,3 +1,5 @@
+import type { DocumentAttachment, ImageAttachment } from "./contracts";
+
 export const HOST_ACCESS_SCOPES = [
   "read",
   "interact",
@@ -48,6 +50,7 @@ export interface PairedDeviceRecord {
   createdAt: string;
   lastSeenAt: string | null;
   revokedAt: string | null;
+  publicKey: string | null;
 }
 
 export interface HostPairingRecord {
@@ -63,6 +66,7 @@ export interface HostPairingRecord {
 export interface CreatedHostPairing {
   pairing: HostPairingRecord;
   code: string;
+  hostKey: string;
 }
 
 export interface CreateHostPairingPayload {
@@ -71,18 +75,57 @@ export interface CreateHostPairingPayload {
   ttlMinutes?: number;
 }
 
-export interface HostPairingExchangeRequest {
-  code: string;
+export interface RemotePairRequest {
+  secret: string;
   label?: string;
 }
 
-export interface HostPairingExchangeResult {
+export interface RemoteConnectRequest {
+  deviceId: string;
+}
+
+export interface RemoteChannelAccepted {
   host: HostIdentity;
   deviceId: string;
-  token: string;
   scopes: HostAccessScope[];
   endpoints?: string[];
 }
+
+export interface RemoteByteRange {
+  start: number;
+  end?: number;
+}
+
+export type RemoteFileRequest =
+  | { kind: "workspaceFile"; path: string; range?: RemoteByteRange }
+  | { kind: "pdf"; path: string; range?: RemoteByteRange }
+  | { kind: "imageAttachment"; file: string }
+  | { kind: "attachmentUpload"; upload: "image" | "document"; name: string };
+
+export type RemoteFileFailure =
+  | "forbidden"
+  | "invalid"
+  | "notFound"
+  | "unsatisfiable"
+  | "tooLarge"
+  | "unsupported";
+
+export type RemoteFileHead =
+  | {
+      ok: true;
+      size: number;
+      start: number;
+      end: number;
+      contentType: string;
+    }
+  | { ok: true; uploaded: ImageAttachment | DocumentAttachment }
+  | { ok: false; error: RemoteFileFailure; message?: string };
+
+export type RemoteChannelRejection = "rejected" | "rateLimited";
+
+export type RemoteChannelReply =
+  | ({ ok: true } & RemoteChannelAccepted)
+  | { ok: false; reason: RemoteChannelRejection };
 
 export type HostAccessAuditAction =
   | "pairing.created"
@@ -131,8 +174,6 @@ export interface HostRemoteAccessStatus {
   error: string | null;
 }
 
-export const HOST_PAIRING_HTTP_PATH = "/api/pair";
-export const HOST_SESSION_HTTP_PATH = "/api/session";
 export const DEFAULT_REMOTE_ACCESS_PORT = 47_820;
 
 export function buildLocalWebClientUrl(webSocketUrl: string, token: string) {
@@ -145,16 +186,24 @@ export function buildLocalWebClientUrl(webSocketUrl: string, token: string) {
 }
 
 export const HOST_PAIRING_LINK_PARAM = "pair";
+export const HOST_KEY_LINK_PARAM = "hk";
 
-export function buildHostPairingLink(addressUrl: string, code: string) {
+export function buildHostPairingLink(
+  addressUrl: string,
+  code: string,
+  hostKey: string,
+) {
   const url = new URL(addressUrl);
   url.pathname = "/";
   url.search = "";
   url.hash = new URLSearchParams({
     [HOST_PAIRING_LINK_PARAM]: code,
+    [HOST_KEY_LINK_PARAM]: hostKey,
   }).toString();
   return url.toString();
 }
+
+const HOST_KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 function asciiPunctuation(text: string) {
   return text.normalize("NFKC").replaceAll("\u3002", ".");
@@ -168,8 +217,9 @@ export function parseHostPairingLink(link: string) {
     return null;
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  const code = new URLSearchParams(url.hash.slice(1))
-    .get(HOST_PAIRING_LINK_PARAM)
-    ?.trim();
-  return code ? { baseUrl: url.origin, code } : null;
+  const params = new URLSearchParams(url.hash.slice(1));
+  const code = params.get(HOST_PAIRING_LINK_PARAM)?.trim();
+  const hostKey = params.get(HOST_KEY_LINK_PARAM)?.trim();
+  if (!code || !hostKey || !HOST_KEY_PATTERN.test(hostKey)) return null;
+  return { baseUrl: url.origin, code, hostKey };
 }

@@ -43,6 +43,7 @@ function toDevice(row: Row): PairedDeviceRecord {
     createdAt: text(row.created_at),
     lastSeenAt: nullableText(row.last_seen_at),
     revokedAt: nullableText(row.revoked_at),
+    publicKey: nullableText(row.public_key),
   };
 }
 
@@ -94,13 +95,15 @@ export function createSqliteHostAccessRepository(
     database
       .prepare(
         `INSERT INTO host_devices
-           (id, label, token_hash, scopes_json, created_at, last_seen_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+           (id, label, token_hash, public_key, scopes_json, created_at,
+            last_seen_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         device.id,
         device.label,
-        device.tokenHash,
+        `public-key:${device.publicKey}`,
+        device.publicKey,
         JSON.stringify(pairing.scopes),
         device.createdAt,
         device.createdAt,
@@ -169,12 +172,12 @@ export function createSqliteHostAccessRepository(
       database.prepare("DELETE FROM host_pairings WHERE id = ?").run(pairingId);
       return toPairing(row);
     },
-    findActiveDeviceByTokenHash(tokenHash) {
+    findActiveDeviceByPublicKey(publicKey) {
       const row = database
         .prepare(
-          "SELECT * FROM host_devices WHERE token_hash = ? AND revoked_at IS NULL",
+          "SELECT * FROM host_devices WHERE public_key = ? AND revoked_at IS NULL",
         )
-        .get(tokenHash) as Row | undefined;
+        .get(publicKey) as Row | undefined;
       return row ? toDevice(row) : null;
     },
     listDevices() {

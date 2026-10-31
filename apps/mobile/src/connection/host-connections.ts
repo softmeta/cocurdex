@@ -10,7 +10,7 @@ import {
 } from "@cocurdex/client-runtime";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { AppState } from "react-native";
-import { hosts } from "@/hosts";
+import { hosts, mobileNoiseCrypto } from "@/hosts";
 
 const lifecycle: LifecycleSignal = {
   subscribeForeground(listener) {
@@ -64,7 +64,10 @@ function pairedHost(hostId: string) {
 async function resolveHostEndpoint(hostId: string) {
   const host = pairedHost(hostId);
   if (savedHostOrigins(host).length > 1) {
-    const reachable = await findReachableOrigin({ host });
+    const reachable = await findReachableOrigin({
+      host,
+      crypto: mobileNoiseCrypto,
+    });
     if (reachable) hosts.switchOrigin(hostId, reachable.origin);
   }
   return savedHostEndpoint(pairedHost(hostId));
@@ -99,6 +102,7 @@ export function hostConnection(hostId: string): HostConnection {
         platform: {
           lifecycle,
           network,
+          noiseCrypto: mobileNoiseCrypto,
           resolveEndpoint: () => resolveHostEndpoint(hostId),
         },
       }),

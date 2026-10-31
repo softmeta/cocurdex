@@ -30,6 +30,7 @@ function pairingDeepLink(pairingLink: string) {
   const query = new URLSearchParams({
     host: parsed.baseUrl,
     code: parsed.code,
+    hk: parsed.hostKey,
   });
   return `cocurdex://pair?${query}`;
 }

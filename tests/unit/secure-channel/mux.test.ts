@@ -61,6 +61,10 @@ async function readAll(stream: MuxStream) {
   return Buffer.concat(parts);
 }
 
+function sameBytes(actual: Uint8Array | undefined, expected: Uint8Array) {
+  return actual !== undefined && Buffer.from(actual).equals(expected);
+}
+
 function pattern(length: number) {
   return Uint8Array.from({ length }, (_, index) => index % 251);
 }
@@ -73,9 +77,7 @@ describe("mux messages", () => {
     await initiator.mux.sendMessage(new Uint8Array(0));
     await settle();
     expect(responder.messages).toHaveLength(2);
-    expect(Buffer.from(responder.messages[0] as Uint8Array)).toEqual(
-      Buffer.from(message),
-    );
+    expect(sameBytes(responder.messages[0], message)).toBe(true);
     expect(responder.messages[1]).toEqual(new Uint8Array(0));
   });
 
@@ -109,7 +111,7 @@ describe("mux streams", () => {
     if (!incoming) throw new Error("Stream did not arrive");
     expect(new TextDecoder().decode(incoming.header)).toBe("file:a.pdf");
     expect(incoming.stream.id % 2).toBe(0);
-    expect(await readAll(incoming.stream)).toEqual(Buffer.from(body));
+    expect(sameBytes(await readAll(incoming.stream), body)).toBe(true);
     await writing;
   });
 

@@ -65,9 +65,8 @@ describe("createDeckAssetHttpHandler", () => {
     ),
   );
 
-  async function serve(remote: boolean) {
+  async function serve() {
     const handler = createDeckAssetHttpHandler({
-      remote,
       isAllowedRequest: () => true,
       resolvePrincipal: (token) => (token ? (PRINCIPALS[token] ?? null) : null),
       locate: (hash) => store.locate(hash),
@@ -88,7 +87,7 @@ describe("createDeckAssetHttpHandler", () => {
 
   it("serves an imported image as an immutable, typed response", async () => {
     const { hash } = await store.importFile(PNG_PATH);
-    const get = await serve(false);
+    const get = await serve();
     const response = await get(hash, "local");
 
     expect(response.status).toBe(200);
@@ -99,13 +98,11 @@ describe("createDeckAssetHttpHandler", () => {
 
   it("requires a token with read scope and hides unknown hashes", async () => {
     const { hash } = await store.importFile(PNG_PATH);
-    const local = await serve(false);
-    const remote = await serve(true);
+    const local = await serve();
 
     expect((await local(hash)).status).toBe(401);
-    expect((await remote(hash, "blind")).status).toBe(403);
-    expect((await remote(hash, "local")).status).toBe(403);
-    expect((await remote(hash, "reader")).status).toBe(200);
+    expect((await local(hash, "blind")).status).toBe(403);
+    expect((await local(hash, "reader")).status).toBe(200);
     expect((await local("e".repeat(64), "local")).status).toBe(404);
     expect((await local("../../etc/passwd", "local")).status).toBe(404);
   });

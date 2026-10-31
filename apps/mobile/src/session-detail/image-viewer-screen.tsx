@@ -1,15 +1,11 @@
 import { NavigationBar } from "expo-navigation-bar";
 import { useTranslation } from "react-i18next";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-} from "react-native";
+import { ScrollView, StyleSheet, useWindowDimensions } from "react-native";
+import { RemoteImage } from "@/connection";
 import { useSavedHosts } from "@/hosts";
 import { themeColors } from "@/theme";
 import { CloseButton } from "@/ui";
-import { imageAttachmentSource } from "./image-attachments";
+import { imageAttachmentRequest } from "./image-attachments";
 
 const viewerColors = themeColors.dark;
 const MAX_ZOOM = 4;
@@ -46,11 +42,12 @@ export function ImageViewerScreen({
         showsVerticalScrollIndicator={false}
       >
         {host ? (
-          <Image
+          <RemoteImage
             accessibilityLabel={name}
             testID="image-viewer"
             resizeMode="contain"
-            source={imageAttachmentSource(host, { filePath })}
+            hostId={host.hostId}
+            request={imageAttachmentRequest({ filePath })}
             style={{ width, height }}
           />
         ) : null}

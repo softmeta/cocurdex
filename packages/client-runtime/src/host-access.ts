@@ -1,126 +1,65 @@
 import {
-  HOST_PAIRING_HTTP_PATH,
-  HOST_SESSION_HTTP_PATH,
-  type HostAccessSession,
-  type HostPairingExchangeResult,
+  decodeBase64Url,
+  encodeBase64Url,
+  generateKeyPair,
+  keyPairFromSecretKey,
+  type NoiseCrypto,
+} from "@cocurdex/secure-channel";
+import type {
+  HostAccessSession,
+  RemoteChannelAccepted,
+  RemoteConnectRequest,
+  RemotePairRequest,
 } from "@cocurdex/shared";
-import type { HostEndpoint } from "./platform";
+import type { PairedHostEndpoint } from "./platform";
 import {
   type SavedHost,
   type SavedHostStore,
   savedHostOrigins,
   uniqueOrigins,
 } from "./saved-hosts";
+import { openSecureSocket, type SecureSocketHandlers } from "./secure-socket";
 
-export type HostAccessFailure = "invalid" | "rateLimited" | "unreachable";
+export { HostAccessError, type HostAccessFailure } from "./host-access-error";
 
-export class HostAccessError extends Error {
-  readonly reason: HostAccessFailure;
-
-  constructor(reason: HostAccessFailure, message: string) {
-    super(message);
-    this.name = "HostAccessError";
-    this.reason = reason;
-  }
-}
-
-export type FetchLike = (
-  input: string,
-  init?: RequestInit,
-) => Promise<Response>;
-
-interface HostHttpOptions {
+export interface PairHostOptions {
   baseUrl: string;
-  fetch?: FetchLike;
+  code: string;
+  hostKey: string;
+  label?: string;
+  store: SavedHostStore;
+  crypto?: NoiseCrypto;
   timeoutMs?: number;
+  now?(): Date;
 }
 
-const HOST_REQUEST_TIMEOUT_MS = 10_000;
-
-function errorText(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function callHost(
-  options: HostHttpOptions,
-  path: string,
-  init: RequestInit,
-) {
-  const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    options.timeoutMs ?? HOST_REQUEST_TIMEOUT_MS,
-  );
-  let response: Response;
-  try {
-    response = await fetchImpl(new URL(path, options.baseUrl).toString(), {
-      ...init,
-      cache: "no-store",
-      signal: controller.signal,
-    });
-  } catch (error) {
-    throw new HostAccessError(
-      "unreachable",
-      controller.signal.aborted ? "The host did not answer" : errorText(error),
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
-  if (response.status === 401) {
-    throw new HostAccessError("invalid", "The host rejected this device");
-  }
-  if (response.status === 429) {
-    throw new HostAccessError("rateLimited", "Too many attempts");
-  }
-  if (!response.ok) {
-    throw new HostAccessError(
-      "unreachable",
-      `The host answered ${response.status}`,
-    );
-  }
-  return response;
-}
-
-export async function exchangeHostPairing(
-  options: HostHttpOptions & { code: string; label?: string },
-): Promise<HostPairingExchangeResult> {
-  const response = await callHost(options, HOST_PAIRING_HTTP_PATH, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code: options.code, label: options.label }),
+export async function pairHost(options: PairHostOptions): Promise<SavedHost> {
+  const deviceKeyPair = generateKeyPair(options.crypto);
+  const payload: RemotePairRequest = {
+    secret: options.code,
+    label: options.label,
+  };
+  const opened = await openSecureSocket({
+    url: options.baseUrl,
+    hostKey: options.hostKey,
+    deviceKeyPair,
+    envelope: { v: 1, mode: "pair" },
+    payload,
+    crypto: options.crypto,
+    timeoutMs: options.timeoutMs,
   });
-  return (await response.json()) as HostPairingExchangeResult;
-}
-
-export async function verifyHostCredential(
-  options: HostHttpOptions & { token: string },
-): Promise<HostAccessSession> {
-  const response = await callHost(options, HOST_SESSION_HTTP_PATH, {
-    method: "GET",
-    headers: { authorization: `Bearer ${options.token}` },
-  });
-  return (await response.json()) as HostAccessSession;
-}
-
-export async function pairHost(
-  options: HostHttpOptions & {
-    code: string;
-    label?: string;
-    store: SavedHostStore;
-    now?(): Date;
-  },
-): Promise<SavedHost> {
-  const result = await exchangeHostPairing(options);
+  opened.close();
+  const { accepted } = opened;
   const baseUrl = new URL(options.baseUrl).origin;
   const saved: SavedHost = {
-    hostId: result.host.hostId,
-    name: result.host.name,
+    hostId: accepted.host.hostId,
+    name: accepted.host.name,
     baseUrl,
-    endpoints: uniqueOrigins([baseUrl, ...(result.endpoints ?? [])]),
-    deviceId: result.deviceId,
-    token: result.token,
-    scopes: result.scopes,
+    endpoints: uniqueOrigins([baseUrl, ...(accepted.endpoints ?? [])]),
+    deviceId: accepted.deviceId,
+    hostKey: options.hostKey,
+    deviceSecretKey: encodeBase64Url(deviceKeyPair.secretKey),
+    scopes: accepted.scopes,
     pairedAt: (options.now?.() ?? new Date()).toISOString(),
   };
   options.store.save(saved);
@@ -128,11 +67,55 @@ export async function pairHost(
 }
 
 export function savedHostEndpoint(
-  host: Pick<SavedHost, "baseUrl" | "token">,
-): HostEndpoint {
-  const { protocol, host: authority } = new URL(host.baseUrl);
-  const scheme = protocol === "https:" ? "wss:" : "ws:";
-  return { webSocketUrl: `${scheme}//${authority}`, token: host.token };
+  host: Pick<
+    SavedHost,
+    "baseUrl" | "hostId" | "hostKey" | "deviceId" | "deviceSecretKey"
+  >,
+): PairedHostEndpoint {
+  return {
+    kind: "paired",
+    baseUrl: host.baseUrl,
+    hostId: host.hostId,
+    hostKey: host.hostKey,
+    deviceId: host.deviceId,
+    deviceSecretKey: host.deviceSecretKey,
+  };
+}
+
+export function connectPairedHost(
+  endpoint: PairedHostEndpoint,
+  options: {
+    crypto?: NoiseCrypto;
+    timeoutMs?: number;
+    handlers?: SecureSocketHandlers;
+  } = {},
+) {
+  const payload: RemoteConnectRequest = { deviceId: endpoint.deviceId };
+  return openSecureSocket({
+    url: endpoint.baseUrl,
+    hostKey: endpoint.hostKey,
+    deviceKeyPair: keyPairFromSecretKey(
+      decodeBase64Url(endpoint.deviceSecretKey),
+      options.crypto,
+    ),
+    envelope: { v: 1, mode: "connect", hostId: endpoint.hostId },
+    payload,
+    crypto: options.crypto,
+    timeoutMs: options.timeoutMs,
+    handlers: options.handlers,
+  });
+}
+
+function acceptedSession(accepted: RemoteChannelAccepted): HostAccessSession {
+  return {
+    host: accepted.host,
+    principal: {
+      kind: "device",
+      deviceId: accepted.deviceId,
+      scopes: accepted.scopes,
+    },
+    endpoints: accepted.endpoints,
+  };
 }
 
 const REACHABILITY_TIMEOUT_MS = 5_000;
@@ -143,21 +126,38 @@ export interface ReachableHostOrigin {
   session: HostAccessSession;
 }
 
-type ProbeHost = Pick<SavedHost, "hostId" | "baseUrl" | "endpoints" | "token">;
+type ProbeHost = Pick<
+  SavedHost,
+  | "hostId"
+  | "baseUrl"
+  | "endpoints"
+  | "hostKey"
+  | "deviceId"
+  | "deviceSecretKey"
+>;
+
+interface ProbeOptions {
+  crypto?: NoiseCrypto;
+  timeoutMs?: number;
+}
 
 async function probeOrigin(
   host: ProbeHost,
   origin: string,
-  options: { fetch?: FetchLike; timeoutMs?: number },
+  options: ProbeOptions,
 ): Promise<ReachableHostOrigin | null> {
   try {
-    const session = await verifyHostCredential({
-      baseUrl: origin,
-      token: host.token,
-      fetch: options.fetch,
-      timeoutMs: options.timeoutMs ?? REACHABILITY_TIMEOUT_MS,
-    });
-    return session.host.hostId === host.hostId ? { origin, session } : null;
+    const opened = await connectPairedHost(
+      savedHostEndpoint({ ...host, baseUrl: origin }),
+      {
+        crypto: options.crypto,
+        timeoutMs: options.timeoutMs ?? REACHABILITY_TIMEOUT_MS,
+      },
+    );
+    opened.close();
+    return opened.accepted.host.hostId === host.hostId
+      ? { origin, session: acceptedSession(opened.accepted) }
+      : null;
   } catch {
     return null;
   }
@@ -184,11 +184,9 @@ function withinGrace<T>(promise: Promise<T>, graceMs: number) {
   ]);
 }
 
-export async function findReachableOrigin(options: {
-  host: ProbeHost;
-  fetch?: FetchLike;
-  timeoutMs?: number;
-}): Promise<ReachableHostOrigin | null> {
+export async function findReachableOrigin(
+  options: { host: ProbeHost } & ProbeOptions,
+): Promise<ReachableHostOrigin | null> {
   const [current, ...others] = savedHostOrigins(options.host);
   if (current === undefined) return null;
   const currentProbe = probeOrigin(options.host, current, options);

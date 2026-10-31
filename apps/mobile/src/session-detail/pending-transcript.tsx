@@ -1,7 +1,6 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { imageAttachmentSource } from "./image-attachments";
 import { type PendingSend, pendingSendItem } from "./pending-send";
 import { StatusLine } from "./status-line";
 import { condenseTranscript } from "./transcript-activity";
@@ -26,7 +25,6 @@ export function PendingTranscript({
       actions={{
         hostId: host.hostId,
         fileRoot: undefined,
-        imageSource: (attachment) => imageAttachmentSource(host, attachment),
         onOpenImage: () => undefined,
         onOpenTool: () => undefined,
         onFork: null,

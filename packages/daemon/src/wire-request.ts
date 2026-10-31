@@ -25,6 +25,7 @@ export interface DaemonRequestRuntime {
 export interface DaemonRequestConnection {
   remote: boolean;
   remoteAddress: string | null;
+  deviceId?: string;
   send(message: unknown, onSent?: () => void): void;
   onPrincipal(principal: HostPrincipal): void;
   subscribe(
@@ -107,7 +108,9 @@ export async function handleDaemonWireMessage(
   const { service, gate, receipts } = runtime;
   const request = message as DaemonRequest;
   const authorization = authorizeDaemonRequest(
-    service.hostAccess.resolve(request.token),
+    connection.deviceId === undefined
+      ? service.hostAccess.resolve(request.token)
+      : service.hostAccess.resolveDevice(connection.deviceId),
     request.method,
     connection.remote,
   );

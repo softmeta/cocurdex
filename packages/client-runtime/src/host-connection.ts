@@ -13,8 +13,10 @@ import {
   type DaemonTransport,
   daemonWebSocketProtocols,
 } from "@cocurdex/rpc/client";
+import type { NoiseCrypto } from "@cocurdex/secure-channel";
 import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
 import type { HostEndpoint, HostPlatform } from "./platform";
+import { createSecureHostTransport } from "./secure-transport";
 import {
   type ConnectionState,
   type ConnectionSupervisorOptions,
@@ -54,18 +56,31 @@ export function isConnectionLoss(error: unknown) {
   return typeof code === "string" && CONNECTION_LOSS_CODES.has(code);
 }
 
-function defaultTransport(endpoint: HostEndpoint): DaemonTransport {
+function defaultTransport(
+  endpoint: HostEndpoint,
+  crypto?: NoiseCrypto,
+): DaemonTransport {
+  if (endpoint.kind === "paired") {
+    return createSecureHostTransport(endpoint, crypto);
+  }
   return createWebSocketTransport(
     endpoint.webSocketUrl,
     daemonWebSocketProtocols(endpoint.token),
   );
 }
 
+function endpointToken(endpoint: HostEndpoint) {
+  return endpoint.kind === "paired" ? "" : endpoint.token;
+}
+
 export type HostConnection = ReturnType<typeof createHostConnection>;
 
 export function createHostConnection(options: HostConnectionOptions) {
   const { platform } = options;
-  const openTransport = platform.openTransport ?? defaultTransport;
+  const openTransport =
+    platform.openTransport ??
+    ((endpoint: HostEndpoint) =>
+      defaultTransport(endpoint, platform.noiseCrypto));
   const listeners = new Set<HostEventListener>();
   let client: Promise<DaemonRpcClient> | null = null;
 
@@ -96,7 +111,7 @@ export function createHostConnection(options: HostConnectionOptions) {
         },
       }),
     );
-    return createDaemonRpcClient(transport, endpoint.token);
+    return createDaemonRpcClient(transport, endpointToken(endpoint));
   }
 
   function getClient() {
@@ -128,7 +143,7 @@ export function createHostConnection(options: HostConnectionOptions) {
       const endpoint = await resolveEndpoint();
       return createDaemonRpcClient(
         openTransport(endpoint),
-        endpoint.token,
+        endpointToken(endpoint),
       ).subscribe(onEvent, subscribeOptions);
     },
     async probe() {

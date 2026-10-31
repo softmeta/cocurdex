@@ -65,9 +65,8 @@ describe("createPdfHttpHandler", () => {
     Array.from({ length: 4096 }, (_, index) => index % 251),
   );
 
-  const startServer = async (remote: boolean) => {
+  const startServer = async () => {
     const handler = createPdfHttpHandler({
-      remote,
       isAllowedRequest: (request) =>
         request.headers.origin !== "http://evil.example",
       resolvePrincipal: (token) => (token ? (PRINCIPALS[token] ?? null) : null),
@@ -109,7 +108,7 @@ describe("createPdfHttpHandler", () => {
   });
 
   it("serves the full file with range support advertised", async () => {
-    await startServer(false);
+    await startServer();
     const response = await request(pdfPath, { token: LOCAL_TOKEN });
     expect(response.status).toBe(200);
     expect(response.headers.get("accept-ranges")).toBe("bytes");
@@ -118,7 +117,7 @@ describe("createPdfHttpHandler", () => {
   });
 
   it("serves only the requested byte range", async () => {
-    await startServer(false);
+    await startServer();
     const response = await request(pdfPath, {
       token: READER_TOKEN,
       headers: { Range: "bytes=100-199" },
@@ -131,7 +130,7 @@ describe("createPdfHttpHandler", () => {
   });
 
   it("answers an unsatisfiable range with 416", async () => {
-    await startServer(false);
+    await startServer();
     const response = await request(pdfPath, {
       token: LOCAL_TOKEN,
       headers: { Range: "bytes=5000-" },
@@ -141,7 +140,7 @@ describe("createPdfHttpHandler", () => {
   });
 
   it("requires a token with the files.read scope", async () => {
-    await startServer(false);
+    await startServer();
     expect((await request(pdfPath)).status).toBe(401);
     expect((await request(pdfPath, { token: "unknown" })).status).toBe(401);
     expect((await request(pdfPath, { token: NO_SCOPE_TOKEN })).status).toBe(
@@ -149,14 +148,8 @@ describe("createPdfHttpHandler", () => {
     );
   });
 
-  it("refuses the local token on the remote listener", async () => {
-    await startServer(true);
-    expect((await request(pdfPath, { token: LOCAL_TOKEN })).status).toBe(403);
-    expect((await request(pdfPath, { token: READER_TOKEN })).status).toBe(200);
-  });
-
   it("refuses paths the workspace authorization rejects", async () => {
-    await startServer(false);
+    await startServer();
     const outside = path.join(os.tmpdir(), "elsewhere.pdf");
     expect((await request(outside, { token: LOCAL_TOKEN })).status).toBe(403);
     const missing = path.join(directory, "missing.pdf");
@@ -164,7 +157,7 @@ describe("createPdfHttpHandler", () => {
   });
 
   it("answers CORS preflights and exposes the range headers", async () => {
-    await startServer(false);
+    await startServer();
     const origin = "http://localhost:5173";
     const preflight = await fetch(buildDaemonPdfUrl(baseUrl, pdfPath), {
       method: "OPTIONS",
@@ -190,7 +183,7 @@ describe("createPdfHttpHandler", () => {
   });
 
   it("rejects requests from disallowed origins", async () => {
-    await startServer(false);
+    await startServer();
     const response = await request(pdfPath, {
       token: LOCAL_TOKEN,
       headers: { Origin: "http://evil.example" },

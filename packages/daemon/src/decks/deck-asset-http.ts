@@ -20,7 +20,6 @@ import {
 const SNIFF_BYTES = 8;
 
 export interface DeckAssetHttpHandlerOptions {
-  remote: boolean;
   isAllowedRequest(request: http.IncomingMessage): boolean;
   resolvePrincipal(token: string | null): HostPrincipal | null;
   locate(hash: string): Promise<{ path: string; size: number } | null>;
@@ -30,9 +29,8 @@ export function isDeckAssetHttpRequest(request: http.IncomingMessage) {
   return readRequestUrl(request)?.pathname === DAEMON_DECK_ASSET_HTTP_PATH;
 }
 
-function isAuthorized(principal: HostPrincipal | null, remote: boolean) {
+function isAuthorized(principal: HostPrincipal | null) {
   if (!principal) return false;
-  if (remote && principal.kind === "local") return false;
   return principalHasScope(principal, "read");
 }
 
@@ -74,7 +72,7 @@ export function createDeckAssetHttpHandler(
       endWith(response, 401, cors);
       return;
     }
-    if (!isAuthorized(principal, options.remote)) {
+    if (!isAuthorized(principal)) {
       endWith(response, 403, cors);
       return;
     }

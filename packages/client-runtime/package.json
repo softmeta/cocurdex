@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@cocurdex/rpc": "workspace:*",
+    "@cocurdex/secure-channel": "workspace:*",
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {}

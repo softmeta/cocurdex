@@ -7,7 +7,8 @@ export function createHostAccessSchemaSql(): string {
       scopes_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
       last_seen_at TEXT,
-      revoked_at TEXT
+      revoked_at TEXT,
+      public_key TEXT
     );
 
     CREATE TABLE IF NOT EXISTS host_pairings (
@@ -35,3 +36,11 @@ export function createHostAccessSchemaSql(): string {
       ON host_access_audit(at);
   `;
 }
+
+export const ADD_HOST_DEVICE_PUBLIC_KEY_SQL =
+  "ALTER TABLE host_devices ADD COLUMN public_key TEXT";
+
+export const HOST_DEVICE_PUBLIC_KEY_INDEX_SQL = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_host_devices_public_key
+    ON host_devices(public_key)
+`;

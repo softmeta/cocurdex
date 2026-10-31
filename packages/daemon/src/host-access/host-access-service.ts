@@ -13,14 +13,14 @@ import {
   type HostAccessScope,
   type HostAddress,
   type HostIdentity,
-  type HostPairingExchangeRequest,
-  type HostPairingExchangeResult,
   type HostPrincipal,
   type HostRemoteAccessStatus,
   PAIRABLE_HOST_ACCESS_SCOPES,
   type PairedDeviceRecord,
   type RemoteAccessSettings,
   type RemoteAccessSettingsUpdate,
+  type RemoteChannelAccepted,
+  type RemotePairRequest,
 } from "@cocurdex/shared";
 
 const HOST_ID_SETTING = "host.id";
@@ -28,7 +28,6 @@ const REMOTE_ACCESS_SETTING = "host.remoteAccess";
 const DEFAULT_PAIRING_TTL_MINUTES = 10;
 const MAX_PAIRING_TTL_MINUTES = 60;
 const TOUCH_INTERVAL_MS = 60_000;
-const DEVICE_TOKEN_PREFIX = "cocu_dev_";
 
 export interface HostAccessSettingsStore {
   get(key: string): Promise<string | null>;
@@ -37,6 +36,7 @@ export interface HostAccessSettingsStore {
 
 export interface HostAccessServiceOptions {
   localToken: string;
+  hostKey(): string;
   repository: HostAccessRepository;
   settings: HostAccessSettingsStore;
   hostName(): string;
@@ -57,7 +57,7 @@ export interface RemoteListenerController {
 }
 
 export type HostPairingExchangeOutcome =
-  | { ok: true; result: HostPairingExchangeResult }
+  | { ok: true; result: RemoteChannelAccepted }
   | { ok: false; reason: "unknown" | "expired" | "consumed" | "invalid" };
 
 export function hashHostSecret(secret: string) {
@@ -136,7 +136,7 @@ function normalizeTtlMinutes(ttlMinutes: number | undefined) {
 
 export class HostAccessService {
   private hostId: string | null = null;
-  private readonly devicesByTokenHash = new Map<string, PairedDeviceRecord>();
+  private readonly activeDevices = new Map<string, PairedDeviceRecord>();
   private readonly lastTouched = new Map<string, number>();
   private readonly accessListeners = new Set<(deviceId: string) => void>();
   private readonly options: HostAccessServiceOptions;
@@ -193,21 +193,44 @@ export class HostAccessService {
     return { hostId: this.hostId, name: this.options.hostName() };
   }
 
+  hostKey() {
+    return this.options.hostKey();
+  }
+
   resolve(token: unknown): HostPrincipal | null {
     if (typeof token !== "string" || token.length === 0) return null;
-    if (!token.startsWith(DEVICE_TOKEN_PREFIX)) {
-      return secretsMatch(token, this.options.localToken)
-        ? { kind: "local" }
-        : null;
-    }
-    const tokenHash = hashHostSecret(token);
-    const device =
-      this.devicesByTokenHash.get(tokenHash) ??
-      this.options.repository.findActiveDeviceByTokenHash(tokenHash);
+    return secretsMatch(token, this.options.localToken)
+      ? { kind: "local" }
+      : null;
+  }
+
+  resolveDevice(deviceId: string): HostPrincipal | null {
+    const device = this.activeDevices.get(deviceId);
     if (!device) return null;
-    this.devicesByTokenHash.set(tokenHash, device);
     this.touch(device.id);
     return { kind: "device", deviceId: device.id, scopes: device.scopes };
+  }
+
+  connectDevice(
+    request: unknown,
+    publicKey: string,
+  ): RemoteChannelAccepted | null {
+    const deviceId = (request as { deviceId?: unknown } | null)?.deviceId;
+    if (typeof deviceId !== "string") return null;
+    const device =
+      this.options.repository.findActiveDeviceByPublicKey(publicKey);
+    if (!device || device.id !== deviceId) return null;
+    this.activeDevices.set(device.id, device);
+    this.touch(device.id);
+    return this.accepted(device);
+  }
+
+  private accepted(device: PairedDeviceRecord): RemoteChannelAccepted {
+    return {
+      host: this.identity(),
+      deviceId: device.id,
+      scopes: device.scopes,
+    };
   }
 
   private touch(deviceId: string) {
@@ -240,7 +263,7 @@ export class HostAccessService {
     };
     this.options.repository.insertPairing(pairing, hashHostSecret(code));
     this.audit("pairing.created", principalActor(principal), pairing.id);
-    return { pairing, code };
+    return { pairing, code, hostKey: this.hostKey() };
   }
 
   listPairings() {
@@ -257,27 +280,24 @@ export class HostAccessService {
     return pairing;
   }
 
-  exchangePairing(
-    request: HostPairingExchangeRequest,
+  pairDevice(
+    request: unknown,
+    publicKey: string,
     remoteAddress: string | null,
   ): HostPairingExchangeOutcome {
-    if (typeof request.code !== "string" || request.code.length === 0) {
+    const { secret, label } = (request ?? {}) as Partial<RemotePairRequest>;
+    if (typeof secret !== "string" || secret.length === 0) {
       this.audit("pairing.rejected", "anonymous", null, remoteAddress);
       return { ok: false, reason: "invalid" };
     }
-    const token = `${DEVICE_TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
     const now = this.now().toISOString();
-    const label =
-      typeof request.label === "string"
-        ? request.label.trim().slice(0, 120)
-        : "";
     const outcome = this.options.repository.consumePairing(
-      hashHostSecret(request.code),
+      hashHostSecret(secret),
       now,
       {
         id: randomUUID(),
-        label,
-        tokenHash: hashHostSecret(token),
+        label: typeof label === "string" ? label.trim().slice(0, 120) : "",
+        publicKey,
         createdAt: now,
       },
     );
@@ -291,15 +311,8 @@ export class HostAccessService {
       outcome.pairing.id,
       remoteAddress,
     );
-    return {
-      ok: true,
-      result: {
-        host: this.identity(),
-        deviceId: outcome.device.id,
-        token,
-        scopes: outcome.device.scopes,
-      },
-    };
+    this.activeDevices.set(outcome.device.id, outcome.device);
+    return { ok: true, result: this.accepted(outcome.device) };
   }
 
   listDevices() {
@@ -327,7 +340,7 @@ export class HostAccessService {
     );
     if (!device) return null;
     this.audit("device.revoked", principalActor(principal), device.id);
-    this.forgetDeviceTokens(device.id);
+    this.activeDevices.delete(device.id);
     return device;
   }
 
@@ -347,14 +360,8 @@ export class HostAccessService {
   }
 
   private deviceAccessChanged(deviceId: string) {
-    this.forgetDeviceTokens(deviceId);
+    this.activeDevices.delete(deviceId);
     this.disconnectDevice(deviceId);
-  }
-
-  private forgetDeviceTokens(deviceId: string) {
-    for (const [tokenHash, cached] of this.devicesByTokenHash) {
-      if (cached.id === deviceId) this.devicesByTokenHash.delete(tokenHash);
-    }
   }
 
   disconnectDevice(deviceId: string) {

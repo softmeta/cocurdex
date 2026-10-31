@@ -3,7 +3,6 @@ import { readFileSync, unlinkSync } from "node:fs";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
-import os from "node:os";
 import type { DaemonEventEnvelope, DaemonMetadata } from "@cocurdex/rpc";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import {
@@ -41,6 +40,7 @@ import {
   type DaemonEventJournalEntry,
 } from "./event-journal";
 import { createRemoteAccessListener } from "./host-access";
+import type { SecureRemoteChannel } from "./host-access/secure-remote-socket";
 import {
   getConfiguredUserDataPath,
   getDaemonMetadataPath,
@@ -48,6 +48,7 @@ import {
   getDatabasePath,
 } from "./paths";
 import { createPdfHttpHandler, isPdfHttpRequest } from "./pdf-http";
+import { serveRemoteFileStream } from "./remote-file-streams";
 import { createDaemonReceiptStore } from "./rpc-receipts";
 import { CocurdexDaemonService } from "./service";
 import { createWebAssetHandler, isLoopbackHostHeader } from "./web-assets";
@@ -85,6 +86,7 @@ interface DaemonConnection {
 interface DaemonTransport {
   remote: boolean;
   remoteAddress: string | null;
+  deviceId?: string;
 }
 
 const LOCAL_TRANSPORT: DaemonTransport = { remote: false, remoteAddress: null };
@@ -212,7 +214,9 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       connection.close();
       return null;
     }
-    const deviceIds = new Set<string>();
+    const deviceIds = new Set<string>(
+      transport.deviceId === undefined ? [] : [transport.deviceId],
+    );
     connections.set(connection, deviceIds);
     let subscribedToDaemonEvents = false;
     let principal: HostPrincipal | null = null;
@@ -315,6 +319,46 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       const message = parseWebSocketJsonFrame(data);
       if (message === undefined) {
         socket.terminate();
+        return;
+      }
+      onMessage(message);
+    });
+  };
+  const attachSecureChannel = (remote: SecureRemoteChannel) => {
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const onMessage = attachConnection(
+      {
+        send: (message, onSent) => {
+          void remote.channel
+            .sendMessage(encoder.encode(message))
+            .then(() => onSent?.(), remote.close);
+        },
+        onClose: remote.onClose,
+        close: remote.close,
+      },
+      {
+        remote: true,
+        remoteAddress: remote.remoteAddress,
+        deviceId: remote.deviceId,
+      },
+    );
+    const activeService = service;
+    if (!onMessage || !activeService) return;
+    remote.onStream((stream, header) =>
+      serveRemoteFileStream(stream, header, {
+        principal: () =>
+          activeService.hostAccess.resolveDevice(remote.deviceId),
+        resolveWorkspaceFilePath: (filePath) =>
+          activeService.resolveWorkspaceFilePath(filePath),
+        resolvePdfPath: (filePath) => activeService.resolvePdfPath(filePath),
+        attachments: activeService.attachments,
+      }),
+    );
+    remote.onMessage((bytes) => {
+      const message = parseWebSocketJsonFrame(decoder.decode(bytes));
+      if (message === undefined) {
+        remote.close();
         return;
       }
       onMessage(message);
@@ -497,7 +541,6 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     agentToolHandler = createAgentToolHttpHandler(service.agentTools);
     const resolvePdfPath = service.resolvePdfPath.bind(service);
     pdfHandler = createPdfHttpHandler({
-      remote: false,
       isAllowedRequest: (request) =>
         isLoopbackHostHeader(request.headers.host) &&
         isAllowedWebSocketOrigin(request.headers.origin),
@@ -507,7 +550,6 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     const resolveWorkspaceFilePath =
       service.resolveWorkspaceFilePath.bind(service);
     workspaceFileHandler = createWorkspaceFileHttpHandler({
-      remote: false,
       isAllowedRequest: (request) =>
         isLoopbackHostHeader(request.headers.host) &&
         isAllowedWebSocketOrigin(request.headers.origin),
@@ -525,7 +567,6 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       service.decks.assets,
     );
     deckAssetHandler = createDeckAssetHttpHandler({
-      remote: false,
       isAllowedRequest: (request) =>
         isLoopbackHostHeader(request.headers.host) &&
         isAllowedWebSocketOrigin(request.headers.origin),
@@ -533,7 +574,6 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       locate: locateDeckAsset,
     });
     attachmentHandler = createAttachmentHttpHandler({
-      remote: false,
       isAllowedRequest: (request) =>
         isLoopbackHostHeader(request.headers.host) &&
         isAllowedWebSocketOrigin(request.headers.origin),
@@ -543,18 +583,8 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     remoteListener = createRemoteAccessListener(
       createRemoteServerFactory({
         hostAccess,
-        attachments: service.attachments,
-        machineName: os.hostname(),
-        resolvePdfPath,
-        resolveWorkspaceFilePath,
-        redeemDeckDownload,
-        locateDeckAsset,
-        webRoot: options.webRoot,
-        onWebSocket: (socket, request) =>
-          attachWebSocketConnection(socket, {
-            remote: true,
-            remoteAddress: request.socket.remoteAddress ?? null,
-          }),
+        hostKeys: service.hostKeys,
+        onChannel: attachSecureChannel,
       }),
     );
     hostAccess.bindRemoteListener(remoteListener);

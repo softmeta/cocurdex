@@ -22,25 +22,42 @@ describe("buildLocalWebClientUrl", () => {
   });
 });
 
+const HOST_KEY = "A".repeat(43);
+
 describe("parseHostPairingLink", () => {
-  it("reads back the host and code of a built link", () => {
+  it("reads back the host, code, and host key of a built link", () => {
     const link = buildHostPairingLink(
       "http://192.168.1.20:47820/x?y=1",
       "K7-2Q",
+      HOST_KEY,
     );
 
     expect(parseHostPairingLink(`  ${link}\n`)).toEqual({
       baseUrl: "http://192.168.1.20:47820",
       code: "K7-2Q",
+      hostKey: HOST_KEY,
     });
+  });
+
+  it("rejects a link without a well-formed host key", () => {
+    expect(
+      parseHostPairingLink("http://host.local:47820/#pair=abc"),
+    ).toBeNull();
+    expect(
+      parseHostPairingLink("http://host.local:47820/#pair=abc&hk=short"),
+    ).toBeNull();
   });
 
   it("accepts a link typed through a full-width input method", () => {
     expect(
       parseHostPairingLink(
-        "ｈｔｔｐ：／／10。0．2。2：38943／＃pair＝MGG8－9ShH",
+        `ｈｔｔｐ：／／10。0．2。2：38943／＃pair＝MGG8－9ShH&hk=${HOST_KEY}`,
       ),
-    ).toEqual({ baseUrl: "http://10.0.2.2:38943", code: "MGG8-9ShH" });
+    ).toEqual({
+      baseUrl: "http://10.0.2.2:38943",
+      code: "MGG8-9ShH",
+      hostKey: HOST_KEY,
+    });
   });
 
   it("rejects links without a code or with another scheme", () => {

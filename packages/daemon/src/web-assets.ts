@@ -76,10 +76,7 @@ function sendStatus(response: http.ServerResponse, status: number) {
   response.end();
 }
 
-export function createWebAssetHandler(
-  root: string,
-  isAllowedHost: (host: string | undefined) => boolean = isLoopbackHostHeader,
-) {
+export function createWebAssetHandler(root: string) {
   const resolvedRoot = path.resolve(root);
   return async (
     request: http.IncomingMessage,
@@ -89,7 +86,7 @@ export function createWebAssetHandler(
       sendStatus(response, 405);
       return;
     }
-    if (!isAllowedHost(request.headers.host)) {
+    if (!isLoopbackHostHeader(request.headers.host)) {
       sendStatus(response, 403);
       return;
     }

@@ -45,10 +45,14 @@ export function parseScopesFlag(value: string | undefined): HostAccessScope[] {
   return scopes as HostAccessScope[];
 }
 
-export function buildPairingLinks(addresses: HostAddress[], code: string) {
+export function buildPairingLinks(
+  addresses: HostAddress[],
+  code: string,
+  hostKey: string,
+) {
   return addresses.map((address) => ({
     kind: address.kind,
-    url: buildHostPairingLink(address.url, code),
+    url: buildHostPairingLink(address.url, code, hostKey),
   }));
 }
 
@@ -111,7 +115,11 @@ async function createPairing(parsed: ParsedArgs) {
     }),
     status: await requestDaemon("host.remoteAccess.get"),
   }));
-  const links = buildPairingLinks(status.addresses, created.code);
+  const links = buildPairingLinks(
+    status.addresses,
+    created.code,
+    created.hostKey,
+  );
   if (parsed.flags.has("json")) {
     printResult({ ...created, links }, parsed);
     return;

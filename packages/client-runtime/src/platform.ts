@@ -1,10 +1,23 @@
 import type { DaemonTransport } from "@cocurdex/rpc/client";
+import type { NoiseCrypto } from "@cocurdex/secure-channel";
 import type { ForegroundWakeup } from "./foreground-wakeup";
 
-export interface HostEndpoint {
+export interface LocalHostEndpoint {
+  kind?: "local";
   webSocketUrl: string;
   token: string;
 }
+
+export interface PairedHostEndpoint {
+  kind: "paired";
+  baseUrl: string;
+  hostId: string;
+  hostKey: string;
+  deviceId: string;
+  deviceSecretKey: string;
+}
+
+export type HostEndpoint = LocalHostEndpoint | PairedHostEndpoint;
 
 export interface NetworkSignal {
   isOnline(): boolean;
@@ -25,4 +38,5 @@ export interface PlatformSignals {
 export interface HostPlatform extends PlatformSignals {
   resolveEndpoint(): Promise<HostEndpoint>;
   openTransport?(endpoint: HostEndpoint): DaemonTransport;
+  noiseCrypto?: NoiseCrypto;
 }

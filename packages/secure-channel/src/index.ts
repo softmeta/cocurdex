@@ -1,3 +1,4 @@
+export { decodeBase64Url, encodeBase64Url } from "./base64url";
 export {
   decodeFrame,
   encodeFrame,
@@ -37,6 +38,27 @@ export {
   type NodeStyleCryptoApi,
 } from "./node-style-crypto";
 export { type NoiseCrypto, nobleCrypto } from "./noise-crypto";
+export {
+  type AcceptChannelOptions,
+  acceptChannelHello,
+  type ChannelEnvelope,
+  type ChannelEstablished,
+  type ChannelHelloOptions,
+  createChannelHello,
+  createSecureChannel,
+  SECURE_CHANNEL_PROLOGUE_LABEL,
+  SECURE_CHANNEL_VERSION,
+  SECURE_CHANNEL_WEBSOCKET_PROTOCOL,
+  type SecureChannel,
+  type SecureChannelOptions,
+} from "./session";
+export {
+  encodeStreamHead,
+  MAX_STREAM_HEAD_LENGTH,
+  readStreamHead,
+  StreamHeadError,
+  writeStreamHead,
+} from "./stream-head";
 export {
   DEFAULT_REKEY_INTERVAL,
   MAX_TRANSPORT_PLAINTEXT_LENGTH,

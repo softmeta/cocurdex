@@ -581,6 +581,9 @@ importers:
       '@cocurdex/client-runtime':
         specifier: workspace:*
         version: link:../../packages/client-runtime
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../../packages/secure-channel
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -794,6 +797,9 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../rpc
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../secure-channel
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../shared
@@ -821,6 +827,9 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../rpc
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../secure-channel
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1017,6 +1026,9 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../../packages/secure-channel
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -1225,6 +1237,12 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../../packages/rpc
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../../../packages/secure-channel
+      '@cocurdex/shared':
+        specifier: workspace:*
+        version: link:../../../packages/shared
     devDependencies:
       '@types/node':
         specifier: ^24.19.2

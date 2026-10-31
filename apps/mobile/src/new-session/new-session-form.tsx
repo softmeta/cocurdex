@@ -138,7 +138,7 @@ function Draft({
             onSend={start}
             onStop={() => undefined}
             onPickImages={pickImages}
-            onUploadImage={(image) => uploadImage(host, image)}
+            onUploadImage={(image) => uploadImage(host.hostId, image)}
             placeholder={t("newSession.promptPlaceholder")}
             inputTestID="new-session-prompt"
             autoFocus

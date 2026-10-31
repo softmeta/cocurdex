@@ -28,7 +28,8 @@ function host(index: number): SavedHost {
     name: `工作站 ${index} 🖥️`,
     baseUrl: `http://192.168.1.${index}:7788`,
     deviceId: `device-${index}`,
-    token: `token-${"x".repeat(64)}-${index}`,
+    hostKey: "h".repeat(43),
+    deviceSecretKey: `${"s".repeat(40)}-${index}`,
     scopes: ["read", "files.read", "interact"],
     pairedAt: "2026-10-24T00:00:00.000Z",
   };
