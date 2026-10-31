@@ -13,6 +13,7 @@ export {
   pairHost,
   type ReachableHostOrigin,
   savedHostEndpoint,
+  savedHostSafetyCode,
 } from "./host-access";
 export {
   createHostConnection,

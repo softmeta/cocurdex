@@ -2261,10 +2261,11 @@ export default interface Resources {
       };
       copy: "Copy";
       list: {
-        detail: "{{scopes}} · last seen {{time}}";
+        detail: "{{scopes}} · last seen {{time}} · safety code {{code}}";
         editAccess: "Edit access";
         empty: "No devices are paired with this computer yet.";
         groupTitle: "Paired devices";
+        needsRepair: "Paired before encryption. Revoke it and pair again.";
         revoke: "Revoke";
         revokeCancel: "Cancel";
         revokeDescription: "The device is disconnected immediately and must pair again to reconnect.";

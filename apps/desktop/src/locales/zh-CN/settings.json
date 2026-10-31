@@ -330,10 +330,11 @@
     },
     "copy": "复制",
     "list": {
-      "detail": "{{scopes}} · 最近活动 {{time}}",
+      "detail": "{{scopes}} · 最近活动 {{time}} · 安全码 {{code}}",
       "editAccess": "修改权限",
       "empty": "还没有设备与这台电脑配对。",
       "groupTitle": "已配对设备",
+      "needsRepair": "在启用加密前配对，请吊销后重新配对。",
       "revoke": "吊销",
       "revokeCancel": "取消",
       "revokedDetail": "已于 {{time}} 吊销",

@@ -4,6 +4,7 @@ import {
   generateKeyPair,
   keyPairFromSecretKey,
   type NoiseCrypto,
+  pairingSafetyCode,
 } from "@cocurdex/secure-channel";
 import type {
   HostAccessSession,
@@ -196,4 +197,19 @@ export async function findReachableOrigin(
   const first = await firstFound([currentProbe, otherProbe]);
   if (!first || first.origin === current) return first;
   return (await withinGrace(currentProbe, CURRENT_ORIGIN_GRACE_MS)) ?? first;
+}
+
+export function savedHostSafetyCode(
+  host: Pick<SavedHost, "hostKey" | "deviceSecretKey">,
+  crypto?: NoiseCrypto,
+) {
+  const device = keyPairFromSecretKey(
+    decodeBase64Url(host.deviceSecretKey),
+    crypto,
+  );
+  return pairingSafetyCode(
+    decodeBase64Url(host.hostKey),
+    device.publicKey,
+    crypto,
+  );
 }

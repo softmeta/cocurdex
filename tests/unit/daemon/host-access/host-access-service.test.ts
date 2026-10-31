@@ -3,6 +3,9 @@ import { createCocurdexDatabase } from "@cocurdex/db";
 import { describe, expect, it } from "vitest";
 
 const local = { kind: "local" } as const;
+const HOST_KEY = "h".repeat(43);
+const KEY_A = "a".repeat(43);
+const KEY_B = "b".repeat(43);
 
 async function setup(options: { remoteAccessAllowed?: boolean } = {}) {
   const settings = new Map<string, string>();
@@ -17,7 +20,7 @@ async function setup(options: { remoteAccessAllowed?: boolean } = {}) {
       },
     },
     hostName: () => "studio",
-    hostKey: () => "host-key",
+    hostKey: () => HOST_KEY,
     now: () => now,
     ...options,
   });
@@ -44,7 +47,7 @@ describe("HostAccessService", () => {
         },
       },
       hostName: () => "studio",
-      hostKey: () => "host-key",
+      hostKey: () => HOST_KEY,
     });
     await again.initialize();
 
@@ -69,12 +72,12 @@ describe("HostAccessService", () => {
 
     const first = service.pairDevice(
       { secret: code, label: "Pixel" },
-      "key-a",
+      KEY_A,
       "10.0.0.2",
     );
-    const second = service.pairDevice({ secret: code }, "key-b", "10.0.0.2");
+    const second = service.pairDevice({ secret: code }, KEY_B, "10.0.0.2");
 
-    expect(hostKey).toBe("host-key");
+    expect(hostKey).toBe(HOST_KEY);
     expect(first.ok).toBe(true);
     expect(second).toEqual({ ok: false, reason: "consumed" });
     if (!first.ok) return;
@@ -86,7 +89,8 @@ describe("HostAccessService", () => {
     });
     expect(service.listDevices()[0]).toMatchObject({
       label: "Pixel",
-      publicKey: "key-a",
+      publicKey: KEY_A,
+      safetyCode: expect.stringMatching(/^\d{6}$/),
     });
     expect(service.listAudit(10).map((entry) => entry.action)).toEqual([
       "pairing.rejected",
@@ -101,14 +105,14 @@ describe("HostAccessService", () => {
       { label: "Phone", scopes: ["read"] },
       local,
     );
-    const paired = service.pairDevice({ secret: code }, "key-a", null);
+    const paired = service.pairDevice({ secret: code }, KEY_A, null);
     if (!paired.ok) throw new Error("pairing failed");
     const { deviceId } = paired.result;
 
-    expect(service.connectDevice({ deviceId }, "key-b")).toBeNull();
-    expect(service.connectDevice({ deviceId: "other" }, "key-a")).toBeNull();
-    expect(service.connectDevice({}, "key-a")).toBeNull();
-    expect(service.connectDevice({ deviceId }, "key-a")).toMatchObject({
+    expect(service.connectDevice({ deviceId }, KEY_B)).toBeNull();
+    expect(service.connectDevice({ deviceId: "other" }, KEY_A)).toBeNull();
+    expect(service.connectDevice({}, KEY_A)).toBeNull();
+    expect(service.connectDevice({ deviceId }, KEY_A)).toMatchObject({
       deviceId,
       scopes: ["read"],
     });

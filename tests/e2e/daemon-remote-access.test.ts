@@ -11,6 +11,7 @@ import {
   RemoteFileError,
   type SavedHost,
   savedHostEndpoint,
+  savedHostSafetyCode,
 } from "@cocurdex/client-runtime";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
@@ -219,6 +220,7 @@ describe("remote host access", () => {
 
     const devices = await requestDaemon("host.devices.list", daemon.options);
     expect(devices[0]?.publicKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(devices[0]?.safetyCode).toBe(savedHostSafetyCode(paired));
     const audit = await requestDaemon("host.audit.list", {}, daemon.options);
     expect(audit.map((entry) => entry.action)).toEqual(
       expect.arrayContaining([

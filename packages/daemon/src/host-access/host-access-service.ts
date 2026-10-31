@@ -5,6 +5,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import type { HostAccessRepository } from "@cocurdex/db";
+import { decodeBase64Url, pairingSafetyCode } from "@cocurdex/secure-channel";
 import {
   type CreatedHostPairing,
   type CreateHostPairingPayload,
@@ -16,6 +17,7 @@ import {
   type HostPrincipal,
   type HostRemoteAccessStatus,
   PAIRABLE_HOST_ACCESS_SCOPES,
+  type PairedDevice,
   type PairedDeviceRecord,
   type RemoteAccessSettings,
   type RemoteAccessSettingsUpdate,
@@ -315,8 +317,14 @@ export class HostAccessService {
     return { ok: true, result: this.accepted(outcome.device) };
   }
 
-  listDevices() {
-    return this.options.repository.listDevices();
+  listDevices(): PairedDevice[] {
+    const hostKey = decodeBase64Url(this.hostKey());
+    return this.options.repository.listDevices().map((device) => ({
+      ...device,
+      safetyCode: device.publicKey
+        ? pairingSafetyCode(hostKey, decodeBase64Url(device.publicKey))
+        : null,
+    }));
   }
 
   revokeDevice(deviceId: string, principal: HostPrincipal) {

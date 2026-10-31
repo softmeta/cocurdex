@@ -175,7 +175,7 @@ export async function handleHostCommand(
     const devices = await withDaemon(() => requestDaemon("host.devices.list"));
     printRows(
       devices.map((device) => ({ ...device, scopes: device.scopes.join(",") })),
-      ["id", "label", "scopes", "lastSeenAt", "revokedAt"],
+      ["id", "label", "scopes", "safetyCode", "lastSeenAt", "revokedAt"],
       parsed,
     );
     return true;

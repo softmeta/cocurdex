@@ -53,6 +53,10 @@ export interface PairedDeviceRecord {
   publicKey: string | null;
 }
 
+export interface PairedDevice extends PairedDeviceRecord {
+  safetyCode: string | null;
+}
+
 export interface HostPairingRecord {
   id: string;
   label: string;

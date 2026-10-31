@@ -1,6 +1,7 @@
 import {
   findReachableOrigin,
   pairHost,
+  savedHostSafetyCode,
 } from "@cocurdex/client-runtime/internal/host-access";
 import { createSavedHostStore } from "@cocurdex/client-runtime/internal/saved-hosts";
 import {
@@ -8,6 +9,7 @@ import {
   encodeBase64Url,
   generateKeyPair,
   type KeyPair,
+  pairingSafetyCode,
 } from "@cocurdex/secure-channel";
 import type { RemoteChannelReply } from "@cocurdex/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +30,7 @@ const accepted = (hostId: string): RemoteChannelReply => ({
 
 function installNetwork(hosts: Record<string, FakeHost>) {
   const payloads: unknown[] = [];
+  const deviceKeys: Uint8Array[] = [];
   class FakeWebSocket extends EventTarget {
     static readonly OPEN = 1;
     readyState = 0;
@@ -59,6 +62,7 @@ function installNetwork(hosts: Record<string, FakeHost>) {
         return;
       }
       payloads.push(hello.payload);
+      deviceKeys.push(hello.remoteStaticKey);
       const reply = host.answer(hello.payload);
       if (reply === "silent") return;
       const { message } = hello.reply(reply);
@@ -78,7 +82,7 @@ function installNetwork(hosts: Record<string, FakeHost>) {
     }
   }
   vi.stubGlobal("WebSocket", FakeWebSocket);
-  return payloads;
+  return { payloads, deviceKeys };
 }
 
 afterEach(() => {
@@ -93,7 +97,7 @@ const tailnet = "http://100.101.1.2:47820";
 
 describe("pairHost", () => {
   it("sends the code inside the handshake and saves the pinned host key", async () => {
-    const payloads = installNetwork({
+    const { payloads } = installNetwork({
       [lan]: { keys: hostKeys, answer: () => accepted("host-1") },
     });
     const store = createSavedHostStore(null);
@@ -121,6 +125,24 @@ describe("pairHost", () => {
     });
     expect(saved.deviceSecretKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(save).toHaveBeenCalledWith(saved);
+  });
+
+  it("shows the same safety code the host derives from the device key it saw", async () => {
+    const network = installNetwork({
+      [lan]: { keys: hostKeys, answer: () => accepted("host-1") },
+    });
+    const saved = await pairHost({
+      baseUrl: lan,
+      code: "abc",
+      hostKey,
+      store: createSavedHostStore(null),
+    });
+    const [deviceKey] = network.deviceKeys;
+    if (!deviceKey) throw new Error("The host saw no device key");
+
+    expect(savedHostSafetyCode(saved)).toBe(
+      pairingSafetyCode(hostKeys.publicKey, deviceKey),
+    );
   });
 
   it.each([

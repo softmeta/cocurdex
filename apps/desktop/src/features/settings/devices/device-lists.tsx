@@ -1,7 +1,7 @@
 import type {
   HostAccessAuditEntry,
   HostPairingRecord,
-  PairedDeviceRecord,
+  PairedDevice,
 } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -91,17 +91,17 @@ export function PairedDevicesGroup({
   action,
   onChanged,
 }: {
-  devices: PairedDeviceRecord[];
+  devices: PairedDevice[];
   action: React.ReactNode;
   onChanged(): void;
 }) {
   const { t } = useTranslation("settings");
   const scopeLabels = useScopeLabels();
   const formatDateTime = useFormatDateTime();
-  const [revoking, setRevoking] = useState<PairedDeviceRecord | null>(null);
-  const [editing, setEditing] = useState<PairedDeviceRecord | null>(null);
+  const [revoking, setRevoking] = useState<PairedDevice | null>(null);
+  const [editing, setEditing] = useState<PairedDevice | null>(null);
 
-  const describe = (device: PairedDeviceRecord) => {
+  const describe = (device: PairedDevice) => {
     const scopes = device.scopes
       .map((scope) => scopeLabels[scope].title)
       .join(", ");
@@ -110,9 +110,11 @@ export function PairedDevicesGroup({
         time: formatDateTime(device.revokedAt),
       });
     }
+    if (!device.safetyCode) return t("devices.list.needsRepair");
     return t("devices.list.detail", {
       scopes,
       time: formatDateTime(device.lastSeenAt),
+      code: device.safetyCode,
     });
   };
 

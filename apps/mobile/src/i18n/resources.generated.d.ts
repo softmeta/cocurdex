@@ -91,6 +91,8 @@ export default interface Resources {
       address: "Address";
       name: "Name";
       pairedAt: "Paired";
+      safetyCode: "Safety Code";
+      safetyCodeFooter: "Matches the code shown for this phone in Settings › Devices on the computer. If it differs, remove this computer and pair again.";
       scopes: "This Phone Can";
       scopesFooter: "The computer grants these permissions. To change them, open Settings › Devices on the computer.";
     };

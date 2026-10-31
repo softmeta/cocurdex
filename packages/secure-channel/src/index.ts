@@ -38,6 +38,7 @@ export {
   type NodeStyleCryptoApi,
 } from "./node-style-crypto";
 export { type NoiseCrypto, nobleCrypto } from "./noise-crypto";
+export { pairingSafetyCode } from "./safety-code";
 export {
   type AcceptChannelOptions,
   acceptChannelHello,

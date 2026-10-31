@@ -133,6 +133,7 @@ import type {
   NoteRecord,
   NoteSummary,
   NoteTag,
+  PairedDevice,
   PairedDeviceRecord,
   PdfAnnotationsOperation,
   PdfDocumentAnnotations,
@@ -1018,7 +1019,7 @@ export type DaemonResultByMethod = {
   "host.pairing.create": CreatedHostPairing;
   "host.pairing.list": HostPairingRecord[];
   "host.pairing.cancel": HostPairingRecord | null;
-  "host.devices.list": PairedDeviceRecord[];
+  "host.devices.list": PairedDevice[];
   "host.devices.revoke": PairedDeviceRecord | null;
   "host.devices.revokeSelf": PairedDeviceRecord | null;
   "host.devices.updateScopes": PairedDeviceRecord | null;
