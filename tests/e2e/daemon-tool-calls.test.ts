@@ -1,10 +1,13 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
+import {
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { describe, expect, it } from "vitest";
-import { saveStubProvider } from "./helpers/chat-session";
-import { spawnDaemon, waitFor } from "./helpers/daemon-process";
 import { createGitRepository } from "./helpers/git-repository";
-import { startStubLlmServer } from "./helpers/llm-stub";
 
 function completedRuns(events: CocurdexDaemonEvent[], sessionId: string) {
   return events.filter(

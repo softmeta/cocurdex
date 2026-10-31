@@ -2,13 +2,16 @@ import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 
 const tempDirs = createTempDirs();
 const fixtureServer = createRequire(import.meta.url).resolve(
-  "./fixtures/mcp-stdio-server.mjs",
+  "@cocurdex/test-harness/fixtures/mcp-stdio-server.mjs",
 );
 
 describe("cocurdex mcp CLI", () => {

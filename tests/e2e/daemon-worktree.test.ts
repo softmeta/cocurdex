@@ -5,8 +5,8 @@ import {
   parseGitWorktreeList,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
+import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
 import { describe, expect, it } from "vitest";
-import { spawnDaemon } from "./helpers/daemon-process";
 import { createGitRepository, runGit } from "./helpers/git-repository";
 
 function gitWorktreePaths(repoPath: string) {

@@ -1,9 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 
 interface LogLine {
   level: string;

@@ -5,14 +5,14 @@ import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runCli } from "./helpers/cli";
 import {
   type DaemonProcess,
   requestDaemonShutdown,
   spawnDaemon,
   waitFor,
-} from "./helpers/daemon-process";
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { runCli } from "./helpers/cli";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());

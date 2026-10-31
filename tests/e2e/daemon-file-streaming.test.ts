@@ -4,8 +4,8 @@ import { performance } from "node:perf_hooks";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { buildDaemonPdfUrl } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, expect, it } from "vitest";
-import { spawnDaemon } from "./helpers/daemon-process";
 import { readProcessMemory } from "./helpers/process-memory";
 
 const tempDirs = createTempDirs();

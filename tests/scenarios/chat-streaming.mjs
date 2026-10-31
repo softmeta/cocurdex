@@ -8,10 +8,12 @@ import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import { clickByRole } from "./lib/locate.mjs";
 import { translate } from "./lib/navigate.mjs";
 
-const require = createRequire(new URL("../e2e/package.json", import.meta.url));
+const require = createRequire(
+  new URL("../harness/package.json", import.meta.url),
+);
 const { tsImport } = await import(require.resolve("tsx/esm/api"));
 const { startStubLlmServer } = await tsImport(
-  require.resolve("@cocurdex/e2e/helpers/llm-stub"),
+  require.resolve("@cocurdex/test-harness/helpers/llm-stub"),
   import.meta.url,
 );
 const { createProviderSnapshotForModel } = await tsImport(

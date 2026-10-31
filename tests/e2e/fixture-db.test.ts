@@ -2,8 +2,10 @@ import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { docImageUri, findDocImages } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type InstalledFixture, installFixtureDb } from "./fixture-db/install";
+import {
+  type InstalledFixture,
+  installFixtureDb,
+} from "@cocurdex/test-harness/fixture-db/install";
 import {
   FIXTURE_DECKS,
   FIXTURE_ISSUES,
@@ -13,12 +15,16 @@ import {
   FIXTURE_TEAM_SESSION,
   FIXTURE_TEAMMATE_TOOL_CALLS,
   FIXTURE_WORKSPACE_ID,
-} from "./fixture-db/recipe";
+} from "@cocurdex/test-harness/fixture-db/recipe";
 import {
   findSensitiveText,
   scanForSensitiveData,
-} from "./fixture-db/sensitive-data";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
+} from "@cocurdex/test-harness/fixture-db/sensitive-data";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 let fixture: InstalledFixture;
