@@ -1023,6 +1023,9 @@ importers:
       '@cocurdex/product-skills':
         specifier: workspace:*
         version: link:../../packages/product-skills
+      '@cocurdex/relay':
+        specifier: workspace:*
+        version: link:../../services/relay
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
@@ -1054,6 +1057,8 @@ importers:
       vitest:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.19.2)(jsdom@26.1.0(supports-color@7.2.0))(vite@7.3.5(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)(yaml@2.9.1))
+
+  services/relay: {}
 
   tests/fixtures:
     devDependencies:

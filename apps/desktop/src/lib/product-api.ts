@@ -287,6 +287,7 @@ export const daemonProductApi: ProductRequestApi = {
   getMemoryCloudKeys: () => rpc("memory.cloud.keys"),
   getHostRemoteAccess: () => rpc("host.remoteAccess.get"),
   setHostRemoteAccess: (settings) => rpc("host.remoteAccess.set", settings),
+  setHostRelay: (settings) => rpc("host.relay.set", settings),
   createHostPairing: (payload) => rpc("host.pairing.create", payload),
   listHostPairings: () => rpc("host.pairing.list"),
   cancelHostPairing: (pairingId) => rpc("host.pairing.cancel", { pairingId }),

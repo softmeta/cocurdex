@@ -1,4 +1,5 @@
 import { HostAccessService } from "@cocurdex/daemon/internal/host-access/host-access-service";
+import { relayRouteId } from "@cocurdex/daemon/internal/host-access/relay-connector";
 import { createCocurdexDatabase } from "@cocurdex/db";
 import { describe, expect, it } from "vitest";
 
@@ -295,6 +296,78 @@ describe("HostAccessService", () => {
       listening: false,
       addresses: [],
       error: null,
+      relay: {
+        url: null,
+        relayOnly: true,
+        credential: null,
+        state: "off",
+        error: null,
+        endpoint: null,
+      },
     });
+  });
+
+  it("routes through the relay instead of the local listener in relay-only mode", async () => {
+    const { service } = await setup();
+    const listener: unknown[] = [];
+    const relay: unknown[] = [];
+    service.bindRemoteListener({
+      apply: async (next) => {
+        listener.push(next.enabled);
+        return { listening: next.enabled, error: null };
+      },
+      state: () => ({ listening: listener.at(-1) === true, error: null }),
+    });
+    service.bindRelayConnector({
+      apply: (target) => relay.push(target),
+      state: () => ({ state: "online", error: null }),
+    });
+    const credential = {
+      accountId: "invite-7",
+      expiresAt: 1_900_000_000,
+      signature: "s".repeat(86),
+    };
+
+    await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
+    const status = await service.setRelay(
+      { url: "https://relay.example.invalid/", credential },
+      local,
+    );
+
+    expect(listener).toEqual([true, false]);
+    expect(relay).toEqual([
+      null,
+      { url: "https://relay.example.invalid", credential },
+    ]);
+    const endpoint = `https://relay.example.invalid/v1/connect/${relayRouteId(HOST_KEY)}`;
+    expect(status.relay).toEqual({
+      url: "https://relay.example.invalid",
+      relayOnly: true,
+      credential: { accountId: "invite-7", expiresAt: 1_900_000_000 },
+      state: "online",
+      error: null,
+      endpoint,
+    });
+    expect(await service.remoteEndpoints()).toEqual([endpoint]);
+
+    await service.setRelay(
+      { url: "https://relay.example.invalid", relayOnly: false },
+      local,
+    );
+    expect(listener.at(-1)).toBe(true);
+    expect((await service.readRelaySettings()).credential).toEqual(credential);
+
+    await service.setRemoteAccess({ enabled: false, port: 50_000 }, local);
+    expect(listener.at(-1)).toBe(false);
+    expect(relay.at(-1)).toBeNull();
+    expect((await service.remoteAccessStatus()).relay.state).toBe("off");
+    expect(service.listAudit(10).map((entry) => entry.action)).toEqual([
+      "remote.disabled",
+      "relay.changed",
+      "remote.enabled",
+    ]);
+    await expect(
+      service.setRelay({ url: "ftp://relay.example.invalid" }, local),
+    ).rejects.toThrow("Relay URL must be an http or https URL");
   });
 });

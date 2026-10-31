@@ -297,7 +297,7 @@
     "running": "运行中"
   },
   "unavailable": {
-    "description": "请确认电脑没有休眠，并且和手机在同一网络。",
+    "description": "请确认电脑没有休眠并已联网，且手机能通过本地网络或中继访问它。",
     "retry": "重试",
     "title": "连不上 {{host}}"
   }

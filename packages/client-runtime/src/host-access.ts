@@ -12,6 +12,7 @@ import type {
   RemoteConnectRequest,
   RemotePairRequest,
 } from "@cocurdex/shared";
+import { hostEndpointBase } from "@cocurdex/shared";
 import type { PairedHostEndpoint } from "./platform";
 import {
   type SavedHost,
@@ -51,7 +52,7 @@ export async function pairHost(options: PairHostOptions): Promise<SavedHost> {
   });
   opened.close();
   const { accepted } = opened;
-  const baseUrl = new URL(options.baseUrl).origin;
+  const baseUrl = hostEndpointBase(options.baseUrl) ?? options.baseUrl;
   const saved: SavedHost = {
     hostId: accepted.host.hostId,
     name: accepted.host.name,

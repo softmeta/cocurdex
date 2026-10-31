@@ -313,7 +313,7 @@
     "running": "Running"
   },
   "unavailable": {
-    "description": "Check that the computer is awake and on the same network.",
+    "description": "Check that the computer is awake and online, and reachable on your network or through its relay.",
     "retry": "Try Again",
     "title": "Can't reach {{host}}"
   }

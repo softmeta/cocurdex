@@ -59,6 +59,7 @@ export function useAuditActionLabels(): Record<HostAccessAuditAction, string> {
     "device.scopesChanged": t("devices.audit.action.deviceScopesChanged"),
     "remote.enabled": t("devices.audit.action.remoteEnabled"),
     "remote.disabled": t("devices.audit.action.remoteDisabled"),
+    "relay.changed": t("devices.audit.action.relayChanged"),
   };
 }
 

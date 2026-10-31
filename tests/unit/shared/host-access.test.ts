@@ -1,7 +1,11 @@
 import {
   buildHostPairingLink,
   buildLocalWebClientUrl,
+  buildRelayEndpoint,
+  hostEndpointBase,
+  normalizeRelayUrl,
   parseHostPairingLink,
+  parseRelayCredential,
 } from "@cocurdex/shared/internal/host-access";
 import { describe, expect, it } from "vitest";
 
@@ -67,5 +71,51 @@ describe("parseHostPairingLink", () => {
     ).toBeNull();
     expect(parseHostPairingLink("cocurdex://host#pair=abc")).toBeNull();
     expect(parseHostPairingLink("not a link")).toBeNull();
+  });
+});
+
+const ROUTE_ID = "R".repeat(22);
+
+describe("relay endpoints", () => {
+  it("keep the relay route while direct addresses reduce to their origin", () => {
+    const relay = normalizeRelayUrl(" https://relay.example.invalid/eu/ ");
+    expect(relay).toBe("https://relay.example.invalid/eu");
+    const endpoint = buildRelayEndpoint(relay ?? "", ROUTE_ID);
+
+    expect(hostEndpointBase(`${endpoint}/`)).toBe(endpoint);
+    expect(hostEndpointBase("http://10.0.0.5:47820/v1/other")).toBe(
+      "http://10.0.0.5:47820",
+    );
+    expect(normalizeRelayUrl("wss://relay.example.invalid")).toBeNull();
+    expect(normalizeRelayUrl("https://u:p@relay.example.invalid")).toBeNull();
+  });
+
+  it("round-trips a pairing link through the relay", () => {
+    const endpoint = buildRelayEndpoint(
+      "https://relay.example.invalid",
+      ROUTE_ID,
+    );
+    const link = buildHostPairingLink(endpoint, "K7-2Q", HOST_KEY);
+
+    expect(parseHostPairingLink(link)).toEqual({
+      baseUrl: endpoint,
+      code: "K7-2Q",
+      hostKey: HOST_KEY,
+    });
+  });
+
+  it("accepts only complete relay credentials", () => {
+    const credential = {
+      accountId: "invite-7",
+      expiresAt: 1_900_000_000,
+      signature: "s".repeat(86),
+    };
+    expect(
+      parseRelayCredential(JSON.stringify({ ...credential, extra: 1 })),
+    ).toEqual(credential);
+    expect(
+      parseRelayCredential(JSON.stringify({ ...credential, signature: "s" })),
+    ).toBeNull();
+    expect(parseRelayCredential("{")).toBeNull();
   });
 });

@@ -1,9 +1,13 @@
+import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   buildHostPairingLink,
   type HostAccessScope,
   type HostAddress,
+  type HostRemoteAccessStatus,
+  hostPairingAddresses,
   isHostAccessScope,
+  parseRelayCredential,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import {
@@ -24,6 +28,7 @@ export function hostUsageLines() {
   return [
     "  cocurdex host status [--json]",
     "  cocurdex host remote enable [--port <port>] [--keep-awake on|off] | disable [--json]",
+    "  cocurdex host relay set <url> [--relay-only on|off] [--credential <file>] | relay off [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
     "  cocurdex host devices [--json] | host revoke <device-id>",
@@ -66,12 +71,64 @@ function integerFlag(parsed: ParsedArgs, name: string) {
   return parsedValue;
 }
 
-function keepAwakeFlag(parsed: ParsedArgs) {
-  const value = stringFlag(parsed, "keep-awake");
+function onOffFlag(parsed: ParsedArgs, name: string) {
+  const value = stringFlag(parsed, name);
   if (value === undefined) return undefined;
   if (value === "on") return true;
   if (value === "off") return false;
-  throw new Error("--keep-awake must be on or off");
+  throw new Error(`--${name} must be on or off`);
+}
+
+function keepAwakeFlag(parsed: ParsedArgs) {
+  return onOffFlag(parsed, "keep-awake");
+}
+
+function printRelayStatus(status: HostRemoteAccessStatus) {
+  const { relay } = status;
+  if (!relay.url) return;
+  const mode = relay.relayOnly ? "relay only" : "relay and direct";
+  console.log(`Relay ${relay.url} (${mode}): ${relay.state}`);
+  if (relay.error) console.log(`  error: ${relay.error}`);
+  if (relay.endpoint) console.log(`  relay     ${relay.endpoint}`);
+}
+
+async function readRelayCredential(file: string) {
+  const credential = parseRelayCredential(await readFile(file, "utf8"));
+  if (!credential) {
+    throw new Error(
+      `${file} is not a relay credential (accountId, expiresAt, signature)`,
+    );
+  }
+  return credential;
+}
+
+async function setRelay(url: string | null, parsed: ParsedArgs) {
+  const relayOnly = onOffFlag(parsed, "relay-only");
+  const credentialFile = stringFlag(parsed, "credential");
+  const credential = credentialFile
+    ? await readRelayCredential(credentialFile)
+    : undefined;
+  const status = await withDaemon(() =>
+    requestDaemon("host.relay.set", {
+      url,
+      ...(relayOnly === undefined ? {} : { relayOnly }),
+      ...(credential === undefined ? {} : { credential }),
+    }),
+  );
+  if (parsed.flags.has("json")) {
+    printResult(status, parsed);
+    return;
+  }
+  if (!status.relay.url) {
+    console.log("The relay is off");
+    return;
+  }
+  if (!status.settings.enabled) {
+    console.log(
+      "The relay is set; run `cocurdex host remote enable` to connect.",
+    );
+  }
+  printRelayStatus(status);
 }
 
 async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
@@ -89,11 +146,14 @@ async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
     return;
   }
   if (status.error) throw new Error(status.error);
-  if (!status.listening) {
+  if (!status.settings.enabled) {
     console.log("Remote access is off");
     return;
   }
-  console.log(`Remote access is listening on port ${status.settings.port}`);
+  if (status.listening) {
+    console.log(`Remote access is listening on port ${status.settings.port}`);
+  }
+  printRelayStatus(status);
   if (status.settings.keepAwake) {
     console.log("The desktop app keeps this computer awake while it is on.");
   }
@@ -116,7 +176,7 @@ async function createPairing(parsed: ParsedArgs) {
     status: await requestDaemon("host.remoteAccess.get"),
   }));
   const links = buildPairingLinks(
-    status.addresses,
+    hostPairingAddresses(status),
     created.code,
     created.hostKey,
   );
@@ -151,6 +211,14 @@ export async function handleHostCommand(
   }
   if (action === "remote" && (args[0] === "enable" || args[0] === "disable")) {
     await setRemoteAccess(args[0] === "enable", parsed);
+    return true;
+  }
+  if (action === "relay" && args[0] === "set" && args[1]) {
+    await setRelay(args[1], parsed);
+    return true;
+  }
+  if (action === "relay" && args[0] === "off") {
+    await setRelay(null, parsed);
     return true;
   }
   if (action === "pair") {

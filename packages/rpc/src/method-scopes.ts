@@ -294,6 +294,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "git.commitMessageModel.set": "host.admin",
   "host.remoteAccess.get": "host.admin",
   "host.remoteAccess.set": "host.admin",
+  "host.relay.set": "host.admin",
   "host.pairing.create": "host.admin",
   "host.pairing.list": "host.admin",
   "host.pairing.cancel": "host.admin",

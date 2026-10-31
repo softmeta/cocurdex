@@ -29,7 +29,7 @@
       "invalid": "This pairing link has expired or was already used.",
       "link": "Paste the full pairing link from your computer.",
       "rateLimited": "Too many attempts. Wait a minute and try again.",
-      "unreachable": "Can't reach the computer. Check that both are on the same network."
+      "unreachable": "Can't reach the computer. Check that it is online and reachable on your network or through its relay."
     },
     "hint": "On your computer, open Settings › Devices and create a pairing code.",
     "linkPlaceholder": "Pairing link",

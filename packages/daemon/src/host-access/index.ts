@@ -13,6 +13,10 @@ export {
 export { listHostAddresses } from "./network-addresses";
 export { createFixedWindowRateLimiter } from "./rate-limiter";
 export {
+  createRelayConnector,
+  type RelayController,
+} from "./relay-connector";
+export {
   createRemoteAccessListener,
   type RemoteServer,
 } from "./remote-listener";

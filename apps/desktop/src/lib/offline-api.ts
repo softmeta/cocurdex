@@ -12,6 +12,7 @@ import {
   getFallbackAgentPermissionModes,
   type MessageRecord,
   PLAN_MODE_ID,
+  RELAY_OFF_STATUS,
 } from "@cocurdex/shared";
 import { chatWindowFallback } from "./chat-window-fallback";
 import { issueFallbackApi } from "./issue-fallback";
@@ -605,13 +606,18 @@ export const offlineApi: DesktopApi = {
     listening: false,
     addresses: [],
     error: null,
+    relay: RELAY_OFF_STATUS,
   }),
+  setHostRelay: async () => {
+    throw new Error("Remote access is unavailable outside the desktop app");
+  },
   setHostRemoteAccess: async (settings) => ({
     allowed: true,
     settings: { ...settings, keepAwake: settings.keepAwake ?? false },
     listening: false,
     addresses: [],
     error: null,
+    relay: RELAY_OFF_STATUS,
   }),
   createHostPairing: async () => {
     throw new Error("Pairing is unavailable outside the desktop app");
