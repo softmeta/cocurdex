@@ -98,7 +98,7 @@ async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
     console.log("The desktop app keeps this computer awake while it is on.");
   }
   console.log(
-    "Traffic is not encrypted. Use it on a trusted network or over Tailscale.",
+    "Paired devices connect end-to-end encrypted to this computer's key.",
   );
   for (const address of status.addresses) {
     console.log(`  ${address.kind.padEnd(9)} ${address.url}`);

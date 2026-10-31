@@ -4,5 +4,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["helpers", "fixture-db"]
+  "include": ["helpers", "fixture-db", "remote"]
 }

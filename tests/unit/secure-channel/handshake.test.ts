@@ -20,9 +20,14 @@ const prologue = text("cocurdex-remote/1");
 const nodeBackend = createNodeStyleCrypto<Buffer>(nodeCrypto, (bytes) =>
   Buffer.from(bytes),
 );
+const boringSslBackend = createNodeStyleCrypto<Buffer>(
+  { ...nodeCrypto, getCiphers: () => ["aes-256-gcm"] },
+  (bytes) => Buffer.from(bytes),
+);
 const backends: Array<[string, NoiseCrypto]> = [
   ["noble", nobleCrypto],
   ["node:crypto", nodeBackend],
+  ["node:crypto without ChaCha20-Poly1305", boringSslBackend],
 ];
 
 describe.each(backends)("%s backend", (_name, crypto) => {

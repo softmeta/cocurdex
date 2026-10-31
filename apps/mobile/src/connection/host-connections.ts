@@ -1,5 +1,6 @@
 import {
   createHostRegistry,
+  createSecureHostTransport,
   findReachableOrigin,
   foregroundWakeup,
   type HostConnection,
@@ -102,7 +103,8 @@ export function hostConnection(hostId: string): HostConnection {
         platform: {
           lifecycle,
           network,
-          noiseCrypto: mobileNoiseCrypto,
+          openPairedTransport: (endpoint) =>
+            createSecureHostTransport(endpoint, mobileNoiseCrypto),
           resolveEndpoint: () => resolveHostEndpoint(hostId),
         },
       }),

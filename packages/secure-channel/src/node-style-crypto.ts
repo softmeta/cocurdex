@@ -1,7 +1,8 @@
-import type { NoiseCrypto } from "./noise-crypto";
+import { type NoiseCrypto, nobleCrypto } from "./noise-crypto";
 
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
+const AEAD_ALGORITHM = "chacha20-poly1305";
 const X25519_PKCS8_PREFIX = Uint8Array.of(
   0x30,
   0x2e,
@@ -64,14 +65,15 @@ interface KeyInput<KeyBytes, Type extends "pkcs8" | "spki"> {
 
 export interface NodeStyleCryptoApi<KeyBytes extends Bytes = Bytes> {
   randomBytes(size: number): Bytes;
+  getCiphers(): string[];
   createCipheriv(
-    algorithm: "chacha20-poly1305",
+    algorithm: typeof AEAD_ALGORITHM,
     key: Bytes,
     nonce: Bytes,
     options: { authTagLength: number },
   ): AeadEncipher;
   createDecipheriv(
-    algorithm: "chacha20-poly1305",
+    algorithm: typeof AEAD_ALGORITHM,
     key: Bytes,
     nonce: Bytes,
     options: { authTagLength: number },
@@ -100,10 +102,45 @@ function bytes(value: Bytes) {
   return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 }
 
+type Aead = Pick<NoiseCrypto, "seal" | "open">;
+
+function nodeAead(api: NodeStyleCryptoApi): Aead {
+  const options = { authTagLength: TAG_LENGTH };
+  return {
+    seal(key, nonce, ad, plaintext) {
+      const cipher = api.createCipheriv(AEAD_ALGORITHM, key, nonce, options);
+      cipher.setAAD(ad, { plaintextLength: plaintext.length });
+      const body = join(bytes(cipher.update(plaintext)), bytes(cipher.final()));
+      return join(body, bytes(cipher.getAuthTag()));
+    },
+    open(key, nonce, ad, ciphertext) {
+      if (ciphertext.length < TAG_LENGTH) {
+        throw new Error("Ciphertext is shorter than its tag");
+      }
+      const bodyLength = ciphertext.length - TAG_LENGTH;
+      const decipher = api.createDecipheriv(
+        AEAD_ALGORITHM,
+        key,
+        nonce,
+        options,
+      );
+      decipher.setAuthTag(ciphertext.subarray(bodyLength));
+      decipher.setAAD(ad, { plaintextLength: bodyLength });
+      return join(
+        bytes(decipher.update(ciphertext.subarray(0, bodyLength))),
+        bytes(decipher.final()),
+      );
+    },
+  };
+}
+
 export function createNodeStyleCrypto<KeyBytes extends Bytes>(
   api: NodeStyleCryptoApi<KeyBytes>,
   toKeyBytes: (bytes: Bytes) => KeyBytes,
 ): NoiseCrypto {
+  const aead: Aead = api.getCiphers().includes(AEAD_ALGORITHM)
+    ? nodeAead(api)
+    : nobleCrypto;
   const privateKey = (secretKey: Bytes) =>
     api.createPrivateKey({
       key: toKeyBytes(join(X25519_PKCS8_PREFIX, secretKey)),
@@ -116,8 +153,6 @@ export function createNodeStyleCrypto<KeyBytes extends Bytes>(
       format: "der",
       type: "spki",
     });
-  const options = { authTagLength: TAG_LENGTH };
-
   return {
     randomSecretKey: () => bytes(api.randomBytes(KEY_LENGTH)),
     publicKey(secretKey) {
@@ -138,35 +173,8 @@ export function createNodeStyleCrypto<KeyBytes extends Bytes>(
       }
       return shared;
     },
-    seal(key, nonce, ad, plaintext) {
-      const cipher = api.createCipheriv(
-        "chacha20-poly1305",
-        key,
-        nonce,
-        options,
-      );
-      cipher.setAAD(ad, { plaintextLength: plaintext.length });
-      const body = join(bytes(cipher.update(plaintext)), bytes(cipher.final()));
-      return join(body, bytes(cipher.getAuthTag()));
-    },
-    open(key, nonce, ad, ciphertext) {
-      if (ciphertext.length < TAG_LENGTH) {
-        throw new Error("Ciphertext is shorter than its tag");
-      }
-      const bodyLength = ciphertext.length - TAG_LENGTH;
-      const decipher = api.createDecipheriv(
-        "chacha20-poly1305",
-        key,
-        nonce,
-        options,
-      );
-      decipher.setAuthTag(ciphertext.subarray(bodyLength));
-      decipher.setAAD(ad, { plaintextLength: bodyLength });
-      return join(
-        bytes(decipher.update(ciphertext.subarray(0, bodyLength))),
-        bytes(decipher.final()),
-      );
-    },
+    seal: aead.seal,
+    open: aead.open,
     sha256: (data) => bytes(api.createHash("sha256").update(data).digest()),
     hmacSha256: (key, data) =>
       bytes(api.createHmac("sha256", key).update(data).digest()),

@@ -13,10 +13,8 @@ import {
   type DaemonTransport,
   daemonWebSocketProtocols,
 } from "@cocurdex/rpc/client";
-import type { NoiseCrypto } from "@cocurdex/secure-channel";
 import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
 import type { HostEndpoint, HostPlatform } from "./platform";
-import { createSecureHostTransport } from "./secure-transport";
 import {
   type ConnectionState,
   type ConnectionSupervisorOptions,
@@ -56,12 +54,26 @@ export function isConnectionLoss(error: unknown) {
   return typeof code === "string" && CONNECTION_LOSS_CODES.has(code);
 }
 
+const unsupportedPairedTransport: DaemonTransport = (handlers) => {
+  queueMicrotask(() =>
+    handlers.onError(
+      new DaemonClientError(
+        "This client cannot reach paired hosts",
+        "UNAVAILABLE",
+      ),
+    ),
+  );
+  return { send: () => {}, close: () => {} };
+};
+
 function defaultTransport(
   endpoint: HostEndpoint,
-  crypto?: NoiseCrypto,
+  platform: HostPlatform,
 ): DaemonTransport {
   if (endpoint.kind === "paired") {
-    return createSecureHostTransport(endpoint, crypto);
+    return (
+      platform.openPairedTransport?.(endpoint) ?? unsupportedPairedTransport
+    );
   }
   return createWebSocketTransport(
     endpoint.webSocketUrl,
@@ -79,8 +91,7 @@ export function createHostConnection(options: HostConnectionOptions) {
   const { platform } = options;
   const openTransport =
     platform.openTransport ??
-    ((endpoint: HostEndpoint) =>
-      defaultTransport(endpoint, platform.noiseCrypto));
+    ((endpoint: HostEndpoint) => defaultTransport(endpoint, platform));
   const listeners = new Set<HostEventListener>();
   let client: Promise<DaemonRpcClient> | null = null;
 

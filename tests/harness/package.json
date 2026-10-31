@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",
+    "@cocurdex/client-runtime": "workspace:*",
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",

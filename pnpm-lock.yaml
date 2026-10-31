@@ -1066,6 +1066,9 @@ importers:
       '@cocurdex/agent-adapters':
         specifier: workspace:*
         version: link:../../packages/agent-adapters
+      '@cocurdex/client-runtime':
+        specifier: workspace:*
+        version: link:../../packages/client-runtime
       '@cocurdex/daemon':
         specifier: workspace:*
         version: link:../../packages/daemon
