@@ -1,10 +1,10 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type { AgentSessionRuntimeState, SessionRecord } from "@cocurdex/shared";
+import { startChatSession } from "@cocurdex/test-harness/helpers/chat-session";
+import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { describe, expect, it } from "vitest";
-import { startChatSession } from "./helpers/chat-session";
 import { runCli } from "./helpers/cli";
-import { spawnDaemon } from "./helpers/daemon-process";
-import { startStubLlmServer } from "./helpers/llm-stub";
 
 describe("session runtime through the CLI", () => {
   it("reads runtime state and changes a session's model and thinking level", async () => {

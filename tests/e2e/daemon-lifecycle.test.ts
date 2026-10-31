@@ -4,8 +4,8 @@ import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import { createDaemonRpcClient } from "@cocurdex/rpc/client";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, describe, expect, it } from "vitest";
-import { spawnDaemon } from "./helpers/daemon-process";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());

@@ -5,7 +5,6 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
-    "fixture:db": "node --import tsx fixture-db/cli.ts",
     "test:desktop": "vitest run --config vitest.desktop.config.ts"
   },
   "dependencies": {
@@ -17,7 +16,8 @@
     "@cocurdex/product-skills": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "@cocurdex/test-fixtures": "workspace:*"
+    "@cocurdex/test-fixtures": "workspace:*",
+    "@cocurdex/test-harness": "workspace:*"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -25,9 +25,5 @@
     "@types/node": "^24.19.2",
     "tsx": "^4.23.15",
     "vitest": "^4.1.11"
-  },
-  "exports": {
-    "./fixture-db/*": "./fixture-db/*.ts",
-    "./helpers/*": "./helpers/*.ts"
   }
 }

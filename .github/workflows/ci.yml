@@ -371,7 +371,7 @@ jobs:
           (
             pnpm --filter @cocurdex/desktop prepare:cli
             tar -czf "${RUNNER_TEMP}/mobile-upload/mobile-cli.tgz" -C apps/desktop/resources cli skills
-            (cd tests/e2e && node --import tsx fixture-db/cli.ts --out "${RUNNER_TEMP}/fixture-db")
+            (cd tests/harness && node --import tsx fixture-db/cli.ts --out "${RUNNER_TEMP}/fixture-db")
             tar -czf "${RUNNER_TEMP}/mobile-upload/fixture-db.tgz" -C "${RUNNER_TEMP}/fixture-db" .
           ) &
           daemon=$!

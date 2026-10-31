@@ -1,15 +1,15 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import type { SupportedLocale } from "@cocurdex/shared";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   FIXTURE_ISSUES,
   FIXTURE_NOTES,
   FIXTURE_ROLES,
   FIXTURE_SESSIONS,
   FIXTURE_WORKSPACE_NAME,
-} from "@cocurdex/e2e/fixture-db/recipe";
-import type { SupportedLocale } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+} from "@cocurdex/test-harness/fixture-db/recipe";
 import { startAndroidTarget } from "./lib/android";
 import { androidSdk, buildAndroidApp } from "./lib/android-build";
 import { runCommand } from "./lib/command";

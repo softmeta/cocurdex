@@ -1,12 +1,86 @@
-import {
-  createFileTreeIconResolver,
-  getBuiltInFileIconColor,
-} from "@pierre/trees";
+import { createFileTreeIconResolver } from "@pierre/trees";
 
 // Match the tree's configuration (see `features/editor/file-tree.tsx`).
 const ICON_SET = { set: "complete", colored: true } as const;
 
 const { resolveIcon } = createFileTreeIconResolver(ICON_SET);
+
+const FILE_ICON_HUE_COLORS = {
+  blue: "light-dark(#1a85d4, #69b1ff)",
+  cyan: "light-dark(#1ca1c7, #68cdf2)",
+  gray: "light-dark(#84848a, #adadb1)",
+  green: "light-dark(#199f43, #5ecc71)",
+  indigo: "light-dark(#693acf, #9d6afb)",
+  mauve: "light-dark(#594c5b, #79697b)",
+  orange: "light-dark(#d47628, #ffa359)",
+  pink: "light-dark(#d32a61, #ff678d)",
+  purple: "light-dark(#a631be, #d568ea)",
+  red: "light-dark(#d52c36, #ff6762)",
+  teal: "light-dark(#17a5af, #64d1db)",
+  vermilion: "light-dark(#ff8c5b, #d5512f)",
+  yellow: "light-dark(#d5a910, #ffd452)",
+} as const;
+
+type FileIconHue = keyof typeof FILE_ICON_HUE_COLORS;
+
+const FILE_ICON_TOKEN_HUES: Readonly<Record<string, FileIconHue>> = {
+  astro: "purple",
+  babel: "yellow",
+  bash: "green",
+  biome: "blue",
+  bootstrap: "indigo",
+  browserslist: "yellow",
+  bun: "mauve",
+  c: "blue",
+  claude: "orange",
+  cpp: "blue",
+  css: "indigo",
+  database: "purple",
+  default: "gray",
+  docker: "blue",
+  eslint: "indigo",
+  git: "vermilion",
+  go: "cyan",
+  graphql: "pink",
+  html: "orange",
+  image: "pink",
+  javascript: "yellow",
+  json: "orange",
+  markdown: "green",
+  mcp: "teal",
+  npm: "red",
+  oxc: "cyan",
+  postcss: "red",
+  prettier: "teal",
+  python: "blue",
+  react: "cyan",
+  ruby: "red",
+  rust: "orange",
+  sass: "pink",
+  svelte: "red",
+  svg: "orange",
+  svgo: "green",
+  swift: "orange",
+  table: "teal",
+  tailwind: "cyan",
+  terraform: "indigo",
+  text: "gray",
+  typescript: "blue",
+  vite: "purple",
+  vscode: "blue",
+  vue: "green",
+  wasm: "indigo",
+  webpack: "blue",
+  yml: "red",
+  zig: "orange",
+  zip: "orange",
+};
+
+function fileIconColor(token: string | undefined): string | undefined {
+  const hue = token ? FILE_ICON_TOKEN_HUES[token] : undefined;
+  if (!hue) return undefined;
+  return `var(--trees-file-icon-color-${token}, var(--trees-file-icon-color, ${FILE_ICON_HUE_COLORS[hue]}))`;
+}
 
 // Pierre only performs per-file brand resolution when handed this internal slot
 // name as the first argument; any other value resolves a fixed tree glyph
@@ -27,7 +101,7 @@ export function getFileTypeIconAttributes(
   const resolved = resolveIcon(FILE_ICON_SLOT, filePath);
   return {
     symbolId: resolved.name,
-    color: resolved.token ? getBuiltInFileIconColor(resolved.token) : undefined,
+    color: fileIconColor(resolved.token),
   };
 }
 

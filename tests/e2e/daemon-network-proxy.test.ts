@@ -2,12 +2,12 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type { ProviderAuthLoginUpdate } from "@cocurdex/shared";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type DaemonProcess,
   spawnDaemon,
   waitFor,
-} from "./helpers/daemon-process";
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const tunnels: string[] = [];
 const proxy = http.createServer((_request, response) => {

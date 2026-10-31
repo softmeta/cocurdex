@@ -8,7 +8,7 @@ import { openAppSession } from "./app-session.mjs";
 import { daemonRequest } from "./daemon-rpc.mjs";
 import { launchIsolatedInstance, removeTempDir } from "./instance.mjs";
 
-const E2E_DIR = fileURLToPath(new URL("../../e2e/", import.meta.url));
+const HARNESS_DIR = fileURLToPath(new URL("../../harness/", import.meta.url));
 const FIXTURE_DB_TIMEOUT_MS = 120_000;
 
 const SCENARIO_WORKSPACE_ID = "scenario-workspace";
@@ -48,7 +48,7 @@ async function installFixtureDb(userDataPath, workspaceParent) {
       "--workspace-parent",
       workspaceParent,
     ],
-    { cwd: E2E_DIR, timeout: FIXTURE_DB_TIMEOUT_MS },
+    { cwd: HARNESS_DIR, timeout: FIXTURE_DB_TIMEOUT_MS },
   );
   return JSON.parse(stdout.trim().split(/\r?\n/).pop());
 }

@@ -8,17 +8,17 @@ import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
+  repoRoot,
+  sleep,
+  waitFor,
+  waitForDaemonStatus,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import {
   type ElectronApplication,
   _electron as electron,
   type Page,
 } from "@playwright/test";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  repoRoot,
-  sleep,
-  waitFor,
-  waitForDaemonStatus,
-} from "./helpers/daemon-process";
 
 const desktopRoot = path.join(repoRoot, "apps", "desktop");
 const mainEntry = path.join(desktopRoot, "out", "main", "main.js");

@@ -5,8 +5,8 @@ import { getDatabasePath } from "@cocurdex/daemon/paths";
 import { CURRENT_SCHEMA_VERSION } from "@cocurdex/db/internal/migrations";
 import { seedHistoricalDatabase } from "@cocurdex/test-fixtures/database";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, describe, expect, it } from "vitest";
-import { spawnDaemon } from "./helpers/daemon-process";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());

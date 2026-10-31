@@ -1,6 +1,9 @@
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 
 describe("cocurdex provider CLI", () => {
   let daemon: DaemonProcess;

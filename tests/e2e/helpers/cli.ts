@@ -1,7 +1,7 @@
 ﻿import { spawn } from "node:child_process";
 import path from "node:path";
 import { killProcessTree } from "@cocurdex/agent-adapters";
-import { repoRoot } from "./daemon-process";
+import { repoRoot } from "@cocurdex/test-harness/helpers/daemon-process";
 
 const cliPackageDir = path.join(repoRoot, "apps", "cli");
 const cliBinPath = path.join(cliPackageDir, "bin", "cocurdex.mjs");

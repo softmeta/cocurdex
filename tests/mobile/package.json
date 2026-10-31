@@ -11,9 +11,9 @@
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",
     "@cocurdex/daemon": "workspace:*",
-    "@cocurdex/e2e": "workspace:*",
     "@cocurdex/mobile": "workspace:*",
-    "@cocurdex/shared": "workspace:*"
+    "@cocurdex/shared": "workspace:*",
+    "@cocurdex/test-harness": "workspace:*"
   },
   "devDependencies": {
     "@cocurdex/test-fixtures": "workspace:*",
