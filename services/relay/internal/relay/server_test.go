@@ -195,6 +195,40 @@ func TestRelaysBinaryMessagesBothWays(t *testing.T) {
 	}
 }
 
+func TestAgreesOnTheSecureChannelSubprotocol(t *testing.T) {
+	base := startRelay(t, nil)
+	host := mustRegister(t, base, newIdentity(t))
+	accepted := make(chan string, 1)
+	go func() {
+		ctx := context.Background()
+		var incoming relay.IncomingMessage
+		if err := wsjson.Read(ctx, host.conn, &incoming); err != nil {
+			accepted <- ""
+			return
+		}
+		options := &websocket.DialOptions{Subprotocols: []string{relay.ChannelSubprotocol}}
+		conn, _, err := websocket.Dial(ctx, base+"/v1/host/accept/"+incoming.Ticket, options)
+		if err != nil {
+			accepted <- ""
+			return
+		}
+		accepted <- conn.Subprotocol()
+		conn.CloseNow()
+	}()
+	options := &websocket.DialOptions{Subprotocols: []string{relay.ChannelSubprotocol}}
+	device, _, err := websocket.Dial(testContext(t), base+"/v1/connect/"+host.routeID, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer device.CloseNow()
+	if device.Subprotocol() != relay.ChannelSubprotocol {
+		t.Fatalf("device subprotocol %q", device.Subprotocol())
+	}
+	if got := <-accepted; got != relay.ChannelSubprotocol {
+		t.Fatalf("host subprotocol %q", got)
+	}
+}
+
 func TestDeviceSeesOfflineWhenNoHostIsRegistered(t *testing.T) {
 	base := startRelay(t, nil)
 	device := dial(t, base+"/v1/connect/"+newIdentity(t).routeID)

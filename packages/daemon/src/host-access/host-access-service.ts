@@ -7,6 +7,7 @@ import {
 import type { HostAccessRepository } from "@cocurdex/db";
 import { decodeBase64Url, pairingSafetyCode } from "@cocurdex/secure-channel";
 import {
+  buildRelayEndpoint,
   type CreatedHostPairing,
   type CreateHostPairingPayload,
   DEFAULT_REMOTE_ACCESS_PORT,
@@ -15,18 +16,25 @@ import {
   type HostAddress,
   type HostIdentity,
   type HostPrincipal,
+  type HostRelayStatus,
   type HostRemoteAccessStatus,
+  normalizeRelayUrl,
   PAIRABLE_HOST_ACCESS_SCOPES,
   type PairedDevice,
   type PairedDeviceRecord,
+  type RelayCredential,
+  type RelaySettings,
+  type RelaySettingsUpdate,
   type RemoteAccessSettings,
   type RemoteAccessSettingsUpdate,
   type RemoteChannelAccepted,
   type RemotePairRequest,
 } from "@cocurdex/shared";
+import { type RelayController, relayRouteId } from "./relay-connector";
 
 const HOST_ID_SETTING = "host.id";
 const REMOTE_ACCESS_SETTING = "host.remoteAccess";
+const RELAY_SETTING = "host.relay";
 const DEFAULT_PAIRING_TTL_MINUTES = 10;
 const MAX_PAIRING_TTL_MINUTES = 60;
 const TOUCH_INTERVAL_MS = 60_000;
@@ -97,6 +105,35 @@ function parseRemoteAccessSettings(
   }
 }
 
+function isRelayCredential(value: unknown): value is RelayCredential {
+  const credential = value as Partial<RelayCredential> | null;
+  return (
+    typeof credential === "object" &&
+    credential !== null &&
+    typeof credential.accountId === "string" &&
+    typeof credential.expiresAt === "number" &&
+    typeof credential.signature === "string"
+  );
+}
+
+function parseRelaySettings(valueJson: string | null): RelaySettings {
+  const fallback = { url: null, relayOnly: true, credential: null };
+  if (!valueJson) return fallback;
+  try {
+    const parsed = JSON.parse(valueJson) as Partial<RelaySettings>;
+    return {
+      url:
+        typeof parsed.url === "string" ? normalizeRelayUrl(parsed.url) : null,
+      relayOnly: parsed.relayOnly !== false,
+      credential: isRelayCredential(parsed.credential)
+        ? parsed.credential
+        : null,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 export function isValidRemotePort(port: unknown): port is number {
   return (
     typeof port === "number" &&
@@ -143,6 +180,7 @@ export class HostAccessService {
   private readonly accessListeners = new Set<(deviceId: string) => void>();
   private readonly options: HostAccessServiceOptions;
   private remoteListener: RemoteListenerController | null = null;
+  private relayConnector: RelayController | null = null;
 
   constructor(options: HostAccessServiceOptions) {
     this.options = options;
@@ -422,10 +460,57 @@ export class HostAccessService {
     this.remoteListener = controller;
   }
 
+  bindRelayConnector(controller: RelayController) {
+    this.relayConnector = controller;
+  }
+
+  async readRelaySettings() {
+    return parseRelaySettings(await this.options.settings.get(RELAY_SETTING));
+  }
+
+  private async applyRemoteAccess() {
+    const settings = await this.readRemoteAccessSettings();
+    const relay = await this.readRelaySettings();
+    const enabled = this.remoteAccessAllowed && settings.enabled;
+    const relayUrl = enabled ? relay.url : null;
+    const direct = enabled && !(relayUrl && relay.relayOnly);
+    await this.remoteListener?.apply({ ...settings, enabled: direct });
+    this.relayConnector?.apply(
+      relayUrl ? { url: relayUrl, credential: relay.credential } : null,
+    );
+  }
+
   async startRemoteListener() {
     if (!this.remoteAccessAllowed) return;
-    const settings = await this.readRemoteAccessSettings();
-    if (settings.enabled) await this.remoteListener?.apply(settings);
+    await this.applyRemoteAccess();
+  }
+
+  remoteAccessChanged() {
+    this.options.onRemoteAccessChanged?.();
+  }
+
+  private relayStatus(
+    relay: RelaySettings,
+    remoteEnabled: boolean,
+  ): HostRelayStatus {
+    const active = remoteEnabled && relay.url !== null;
+    const connector = this.relayConnector?.state();
+    return {
+      url: relay.url,
+      relayOnly: relay.relayOnly,
+      credential: relay.credential
+        ? {
+            accountId: relay.credential.accountId,
+            expiresAt: relay.credential.expiresAt,
+          }
+        : null,
+      state: active ? (connector?.state ?? "off") : "off",
+      error: active ? (connector?.error ?? null) : null,
+      endpoint:
+        active && relay.url
+          ? buildRelayEndpoint(relay.url, relayRouteId(this.hostKey()))
+          : null,
+    };
   }
 
   async remoteAccessStatus(): Promise<HostRemoteAccessStatus> {
@@ -444,12 +529,14 @@ export class HostAccessService {
         ? (this.options.listAddresses?.(settings.port) ?? [])
         : [],
       error: state.error,
+      relay: this.relayStatus(await this.readRelaySettings(), settings.enabled),
     };
   }
 
   async remoteEndpoints() {
     const status = await this.remoteAccessStatus();
-    return status.addresses.map((address) => address.url);
+    const direct = status.addresses.map((address) => address.url);
+    return status.relay.endpoint ? [...direct, status.relay.endpoint] : direct;
   }
 
   async setRemoteAccess(
@@ -457,9 +544,32 @@ export class HostAccessService {
     principal: HostPrincipal,
   ) {
     if (settings.enabled) this.assertRemoteAccessAllowed();
-    const saved = await this.saveRemoteAccessSettings(settings, principal);
-    await this.remoteListener?.apply(saved);
-    this.options.onRemoteAccessChanged?.();
+    await this.saveRemoteAccessSettings(settings, principal);
+    await this.applyRemoteAccess();
+    this.remoteAccessChanged();
+    return this.remoteAccessStatus();
+  }
+
+  async setRelay(update: RelaySettingsUpdate, principal: HostPrincipal) {
+    const url = update.url === null ? null : normalizeRelayUrl(update.url);
+    if (update.url !== null && !url) {
+      throw new Error("Relay URL must be an http or https URL");
+    }
+    const previous = await this.readRelaySettings();
+    const next: RelaySettings = {
+      url,
+      relayOnly: update.relayOnly ?? previous.relayOnly,
+      credential:
+        update.credential === undefined
+          ? previous.credential
+          : update.credential,
+    };
+    await this.options.settings.set(RELAY_SETTING, JSON.stringify(next));
+    if (previous.url !== next.url) {
+      this.audit("relay.changed", principalActor(principal), next.url);
+    }
+    await this.applyRemoteAccess();
+    this.remoteAccessChanged();
     return this.remoteAccessStatus();
   }
 }

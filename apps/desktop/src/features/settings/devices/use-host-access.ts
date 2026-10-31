@@ -37,6 +37,9 @@ export function useHostAccess() {
 
   useMountEffect(() => {
     void refresh();
+    return desktopApi.onDataChanged((event) => {
+      if (event.areas.includes("settings")) void refresh();
+    });
   });
 
   return { snapshot, error, refresh };

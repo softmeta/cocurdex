@@ -111,6 +111,7 @@ import type {
   PtySpawnResult,
   QueuedAgentInputActionPayload,
   RefineSessionTitlePayload,
+  RelaySettingsUpdate,
   RemoteAccessSettingsUpdate,
   RendererLogPayload,
   SaveAgentRolePayload,
@@ -637,6 +638,7 @@ export interface ProductApi {
   setMemoryCloudSync(enabled: boolean): Promise<MemoryStatus>;
   getMemoryCloudKeys(): Promise<MemoryCloudKeys>;
   getHostRemoteAccess(): Promise<HostRemoteAccessStatus>;
+  setHostRelay(settings: RelaySettingsUpdate): Promise<HostRemoteAccessStatus>;
   setHostRemoteAccess(
     settings: RemoteAccessSettingsUpdate,
   ): Promise<HostRemoteAccessStatus>;

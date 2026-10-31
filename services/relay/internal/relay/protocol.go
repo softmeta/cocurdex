@@ -10,6 +10,7 @@ import (
 
 const (
 	ProtocolVersion     = "cocurdex-relay/1"
+	ChannelSubprotocol  = "cocurdex.secure.v1"
 	RouteIDLength       = 16
 	NonceLength         = 32
 	TicketLength        = 32

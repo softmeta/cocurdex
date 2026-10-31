@@ -1,3 +1,4 @@
+import { hostPairingAddresses } from "@cocurdex/shared";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ import {
 } from "./device-lists";
 import { LocalWebGroup } from "./local-web-group";
 import { PairDeviceDialog } from "./pair-device-dialog";
+import { RelayGroup } from "./relay-group";
 import { RemoteAccessGroup } from "./remote-access-group";
 import { useHostAccess } from "./use-host-access";
 
@@ -38,6 +40,13 @@ export function DevicesSettingsPanel() {
           onChanged={reload}
         />
       ) : null}
+      {remoteAllowed ? (
+        <RelayGroup
+          key={snapshot.remote.relay.url ?? ""}
+          status={snapshot.remote}
+          onChanged={reload}
+        />
+      ) : null}
       <PairedDevicesGroup
         action={
           remoteAllowed ? (
@@ -61,7 +70,7 @@ export function DevicesSettingsPanel() {
       <AccessLogGroup entries={snapshot.audit} />
       {remoteAllowed && pairing ? (
         <PairDeviceDialog
-          addresses={snapshot.remote.addresses}
+          addresses={hostPairingAddresses(snapshot.remote)}
           onClose={() => setPairing(false)}
           onCreated={reload}
         />

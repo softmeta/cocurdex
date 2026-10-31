@@ -139,7 +139,8 @@ export type HostAccessAuditAction =
   | "device.revoked"
   | "device.scopesChanged"
   | "remote.enabled"
-  | "remote.disabled";
+  | "remote.disabled"
+  | "relay.changed";
 
 export interface HostAccessAuditEntry {
   id: string;
@@ -162,7 +163,7 @@ export type RemoteAccessSettingsUpdate = Omit<
 > &
   Partial<Pick<RemoteAccessSettings, "keepAwake">>;
 
-export type HostAddressKind = "lan" | "tailscale";
+export type HostAddressKind = "lan" | "tailscale" | "relay";
 
 export interface HostAddress {
   address: string;
@@ -170,12 +171,115 @@ export interface HostAddress {
   url: string;
 }
 
+export interface RelayCredential {
+  accountId: string;
+  expiresAt: number;
+  signature: string;
+}
+
+export interface RelaySettings {
+  url: string | null;
+  relayOnly: boolean;
+  credential: RelayCredential | null;
+}
+
+export interface RelaySettingsUpdate {
+  url: string | null;
+  relayOnly?: boolean;
+  credential?: RelayCredential | null;
+}
+
+export type HostRelayState = "off" | "connecting" | "online" | "offline";
+
+export type HostRelayError =
+  | "unreachable"
+  | "credentialRequired"
+  | "routeTaken"
+  | "rateLimited"
+  | "unauthorized"
+  | "protocol";
+
+export interface HostRelayStatus {
+  url: string | null;
+  relayOnly: boolean;
+  credential: Pick<RelayCredential, "accountId" | "expiresAt"> | null;
+  state: HostRelayState;
+  error: HostRelayError | null;
+  endpoint: string | null;
+}
+
+export function parseRelayCredential(text: string): RelayCredential | null {
+  let parsed: Partial<RelayCredential> | null;
+  try {
+    parsed = JSON.parse(text.trim()) as Partial<RelayCredential> | null;
+  } catch {
+    return null;
+  }
+  if (
+    !parsed ||
+    typeof parsed.accountId !== "string" ||
+    parsed.accountId.length === 0 ||
+    !Number.isInteger(parsed.expiresAt) ||
+    typeof parsed.signature !== "string" ||
+    !/^[A-Za-z0-9_-]{86}$/.test(parsed.signature)
+  ) {
+    return null;
+  }
+  return {
+    accountId: parsed.accountId,
+    expiresAt: parsed.expiresAt as number,
+    signature: parsed.signature,
+  };
+}
+
+export const RELAY_OFF_STATUS: HostRelayStatus = {
+  url: null,
+  relayOnly: true,
+  credential: null,
+  state: "off",
+  error: null,
+  endpoint: null,
+};
+
 export interface HostRemoteAccessStatus {
   allowed: boolean;
   settings: RemoteAccessSettings;
   listening: boolean;
   addresses: HostAddress[];
   error: string | null;
+  relay: HostRelayStatus;
+}
+
+export function hostPairingAddresses(
+  status: Pick<HostRemoteAccessStatus, "addresses" | "relay">,
+): HostAddress[] {
+  const { endpoint } = status.relay;
+  if (!endpoint) return status.addresses;
+  const relay: HostAddress = {
+    address: new URL(endpoint).host,
+    kind: "relay",
+    url: endpoint,
+  };
+  return [relay, ...status.addresses];
+}
+
+export const RELAY_CONNECT_PATH = "/v1/connect/";
+
+export function normalizeRelayUrl(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.username || url.password || url.search || url.hash) return null;
+  const pathname = url.pathname.replace(/\/+$/, "");
+  return `${url.origin}${pathname}`;
+}
+
+export function buildRelayEndpoint(relayUrl: string, routeId: string) {
+  return `${relayUrl}${RELAY_CONNECT_PATH}${routeId}`;
 }
 
 export const DEFAULT_REMOTE_ACCESS_PORT = 47_820;
@@ -192,14 +296,35 @@ export function buildLocalWebClientUrl(webSocketUrl: string, token: string) {
 export const HOST_PAIRING_LINK_PARAM = "pair";
 export const HOST_KEY_LINK_PARAM = "hk";
 
+const RELAY_ROUTE_PATH = /\/v1\/connect\/[A-Za-z0-9_-]{22}$/;
+
+export function hostEndpointBase(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const pathname = url.pathname.replace(/\/+$/, "");
+  return RELAY_ROUTE_PATH.test(pathname)
+    ? `${url.origin}${pathname}`
+    : url.origin;
+}
+
+export function isRelayEndpoint(value: string) {
+  const base = hostEndpointBase(value);
+  return base !== null && RELAY_ROUTE_PATH.test(new URL(base).pathname);
+}
+
 export function buildHostPairingLink(
   addressUrl: string,
   code: string,
   hostKey: string,
 ) {
-  const url = new URL(addressUrl);
-  url.pathname = "/";
-  url.search = "";
+  const base = hostEndpointBase(addressUrl);
+  if (!base) throw new Error(`Not a host address: ${addressUrl}`);
+  const url = new URL(base);
   url.hash = new URLSearchParams({
     [HOST_PAIRING_LINK_PARAM]: code,
     [HOST_KEY_LINK_PARAM]: hostKey,
@@ -220,10 +345,11 @@ export function parseHostPairingLink(link: string) {
   } catch {
     return null;
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const baseUrl = hostEndpointBase(url.toString());
+  if (!baseUrl) return null;
   const params = new URLSearchParams(url.hash.slice(1));
   const code = params.get(HOST_PAIRING_LINK_PARAM)?.trim();
   const hostKey = params.get(HOST_KEY_LINK_PARAM)?.trim();
   if (!code || !hostKey || !HOST_KEY_PATTERN.test(hostKey)) return null;
-  return { baseUrl: url.origin, code, hostKey };
+  return { baseUrl, code, hostKey };
 }

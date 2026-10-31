@@ -34,6 +34,8 @@ export async function handleHostRequest(
       return hostAccess.remoteAccessStatus();
     case "host.remoteAccess.set":
       return hostAccess.setRemoteAccess(request.params, context.principal);
+    case "host.relay.set":
+      return hostAccess.setRelay(request.params, context.principal);
     case "host.pairing.create":
       return hostAccess.createPairing(request.params, context.principal);
     case "host.pairing.list":

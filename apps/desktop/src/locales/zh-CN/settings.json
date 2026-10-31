@@ -323,6 +323,7 @@
         "pairingCreated": "已创建配对",
         "pairingExchanged": "设备已配对",
         "pairingRejected": "拒绝了一次配对尝试",
+        "relayChanged": "中继已更改",
         "remoteDisabled": "已关闭远程访问",
         "remoteEnabled": "已开启远程访问"
       },
@@ -374,6 +375,45 @@
       "expires": "等待设备连接 · {{time}} 过期",
       "groupTitle": "待完成的配对"
     },
+    "relay": {
+      "credential": {
+        "description": "粘贴中继运营方提供的邀请凭证。无需邀请的自托管中继不需要填写。",
+        "invalid": "这不是有效的中继凭证。",
+        "placeholder": "{\"accountId\": …}",
+        "remove": "移除",
+        "summary": "{{account}} · {{expires}} 到期",
+        "title": "邀请凭证"
+      },
+      "error": {
+        "credentialRequired": "中继需要有效的邀请凭证。",
+        "protocol": "中继返回了意外的响应，请检查地址。",
+        "rateLimited": "中继正在限制连接，稍后自动重试。",
+        "routeTaken": "另一台电脑已占用中继上的此路由。",
+        "unauthorized": "中继拒绝了这台电脑的密钥。",
+        "unreachable": "无法连接到中继，正在重试。"
+      },
+      "groupDescription": "通过中继在任何地方连接这台电脑。中继只转发端到端加密的流量，无法读取内容。",
+      "groupTitle": "中继",
+      "relayOnly": {
+        "description": "只接受通过中继的连接，不再监听本地网络端口。",
+        "title": "仅中继"
+      },
+      "saveFailed": "无法保存中继设置",
+      "state": {
+        "connecting": "连接中",
+        "off": "关闭",
+        "offline": "离线",
+        "online": "在线",
+        "remoteOff": "开启远程访问后连接",
+        "title": "状态"
+      },
+      "url": {
+        "description": "自托管的 cocurdex-relay 地址。留空即关闭中继。",
+        "invalid": "请输入 http 或 https 地址。",
+        "placeholder": "https://relay.example.com",
+        "title": "中继地址"
+      }
+    },
     "remote": {
       "awayHint": "要在其他网络（比如出门时）连接这台电脑，请在电脑和手机上都安装 Tailscale，然后用 Tailscale 地址配对。",
       "enable": {
@@ -390,6 +430,7 @@
       },
       "kind": {
         "lan": "局域网",
+        "relay": "中继",
         "tailscale": "Tailscale"
       },
       "noAddresses": "没有找到网络地址。请连接网络或 Tailscale。",

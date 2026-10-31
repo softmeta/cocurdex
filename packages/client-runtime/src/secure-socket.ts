@@ -13,6 +13,7 @@ import type {
   RemoteChannelAccepted,
   RemoteChannelReply,
 } from "@cocurdex/shared";
+import { hostEndpointBase } from "@cocurdex/shared";
 import { HostAccessError } from "./host-access-error";
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
@@ -46,11 +47,8 @@ const idleHandlers: SecureSocketHandlers = {
 };
 
 function webSocketUrl(baseUrl: string) {
-  const url = new URL(baseUrl);
+  const url = new URL(hostEndpointBase(baseUrl) ?? baseUrl);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/";
-  url.search = "";
-  url.hash = "";
   return url.toString();
 }
 

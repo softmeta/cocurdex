@@ -39,7 +39,10 @@ import {
   createDaemonEventJournal,
   type DaemonEventJournalEntry,
 } from "./event-journal";
-import { createRemoteAccessListener } from "./host-access";
+import {
+  createRelayConnector,
+  createRemoteAccessListener,
+} from "./host-access";
 import type { SecureRemoteChannel } from "./host-access/secure-remote-socket";
 import {
   getConfiguredUserDataPath,
@@ -56,7 +59,7 @@ import {
   authorizeDaemonWebSocket,
   isAllowedWebSocketOrigin,
 } from "./websocket-auth";
-import { createRemoteServerFactory } from "./wire-remote";
+import { createRemoteSocketAcceptor } from "./wire-remote";
 import { handleDaemonWireMessage } from "./wire-request";
 import {
   attachDaemonWebSocketServer,
@@ -452,6 +455,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     });
   };
   let remoteListener: ReturnType<typeof createRemoteAccessListener> | undefined;
+  let relayConnector: ReturnType<typeof createRelayConnector> | undefined;
 
   let closePromise: Promise<void> | null = null;
   const close = () => {
@@ -460,6 +464,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       try {
         try {
           for (const connection of connections.keys()) connection.close();
+          relayConnector?.close();
           await remoteListener?.close();
           if (webSocketServer) await closeWebSocketServer(webSocketServer);
           if (httpServer.listening) {
@@ -580,14 +585,20 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       resolvePrincipal: (token) => hostAccess.resolve(token),
       store: service.attachments,
     });
-    remoteListener = createRemoteAccessListener(
-      createRemoteServerFactory({
-        hostAccess,
-        hostKeys: service.hostKeys,
-        onChannel: attachSecureChannel,
-      }),
-    );
+    const hostKeys = service.hostKeys;
+    const remoteSockets = createRemoteSocketAcceptor({
+      hostAccess,
+      hostKeys,
+      onChannel: attachSecureChannel,
+    });
+    remoteListener = createRemoteAccessListener(remoteSockets.createServer);
+    relayConnector = createRelayConnector({
+      hostKeys: () => hostKeys.keys(),
+      onDataSocket: remoteSockets.accept,
+      onStateChanged: () => hostAccess.remoteAccessChanged(),
+    });
     hostAccess.bindRemoteListener(remoteListener);
+    hostAccess.bindRelayConnector(relayConnector);
     hostAccess.onDeviceAccessChanged((deviceId) => {
       for (const [connection, deviceIds] of connections) {
         if (deviceIds.has(deviceId)) connection.close();

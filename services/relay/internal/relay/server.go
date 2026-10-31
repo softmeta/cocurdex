@@ -104,9 +104,10 @@ func (s *Server) clientIP(r *http.Request) string {
 	return host
 }
 
-func accept(w http.ResponseWriter, r *http.Request, readLimit int64) (*websocket.Conn, error) {
+func accept(w http.ResponseWriter, r *http.Request, readLimit int64, subprotocols ...string) (*websocket.Conn, error) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		InsecureSkipVerify: true,
+		Subprotocols:       subprotocols,
 	})
 	if err != nil {
 		return nil, err
@@ -249,7 +250,7 @@ func (s *Server) handleAccept(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unknown ticket", http.StatusNotFound)
 		return
 	}
-	conn, err := accept(w, r, MaxMessageBytes)
+	conn, err := accept(w, r, MaxMessageBytes, ChannelSubprotocol)
 	if err != nil {
 		return
 	}
@@ -297,7 +298,7 @@ func (s *Server) closeSession(opened *session) {
 
 func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	routeID := r.PathValue("routeId")
-	device, err := accept(w, r, MaxMessageBytes)
+	device, err := accept(w, r, MaxMessageBytes, ChannelSubprotocol)
 	if err != nil {
 		return
 	}

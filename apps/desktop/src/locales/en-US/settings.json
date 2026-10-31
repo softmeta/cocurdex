@@ -326,6 +326,7 @@
         "pairingCreated": "Pairing created",
         "pairingExchanged": "Device paired",
         "pairingRejected": "Pairing attempt rejected",
+        "relayChanged": "Relay changed",
         "remoteDisabled": "Remote access turned off",
         "remoteEnabled": "Remote access turned on"
       },
@@ -378,6 +379,45 @@
       "expires": "Waiting for a device · expires {{time}}",
       "groupTitle": "Pending pairings"
     },
+    "relay": {
+      "credential": {
+        "description": "Paste the invite credential from the relay operator. Self-hosted relays without invites do not need one.",
+        "invalid": "This is not a relay credential.",
+        "placeholder": "{\"accountId\": …}",
+        "remove": "Remove",
+        "summary": "{{account}} · expires {{expires}}",
+        "title": "Invite credential"
+      },
+      "error": {
+        "credentialRequired": "The relay needs a valid invite credential.",
+        "protocol": "The relay answered with something unexpected. Check the address.",
+        "rateLimited": "The relay is limiting connections. Retrying shortly.",
+        "routeTaken": "Another computer already holds this route on the relay.",
+        "unauthorized": "The relay refused this computer's key.",
+        "unreachable": "Cannot reach the relay. Retrying."
+      },
+      "groupDescription": "Reach this computer from anywhere through a relay. The relay forwards end-to-end encrypted traffic and cannot read it.",
+      "groupTitle": "Relay",
+      "relayOnly": {
+        "description": "Accept connections only through the relay and stop listening on local network ports.",
+        "title": "Relay only"
+      },
+      "saveFailed": "Could not save relay settings",
+      "state": {
+        "connecting": "Connecting",
+        "off": "Off",
+        "offline": "Offline",
+        "online": "Online",
+        "remoteOff": "Turn on remote access to connect",
+        "title": "Status"
+      },
+      "url": {
+        "description": "A self-hosted cocurdex-relay address. Leave empty to turn the relay off.",
+        "invalid": "Enter an http or https address.",
+        "placeholder": "https://relay.example.com",
+        "title": "Relay address"
+      }
+    },
     "remote": {
       "awayHint": "To reach this computer away from this network, install Tailscale on it and on your phone, then pair with the Tailscale address.",
       "enable": {
@@ -394,6 +434,7 @@
       },
       "kind": {
         "lan": "LAN",
+        "relay": "Relay",
         "tailscale": "Tailscale"
       },
       "noAddresses": "No network address found. Connect to a network or Tailscale.",

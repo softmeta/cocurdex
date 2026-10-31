@@ -8,6 +8,18 @@ const remoteAccessSettings = z.object({
   keepAwake: z.boolean().optional(),
 });
 
+const relayCredential = z.object({
+  accountId: z.string().min(1).max(200),
+  expiresAt: z.number().int().positive(),
+  signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
+});
+
+const relaySettings = z.object({
+  url: z.string().trim().min(1).max(2048).nullable(),
+  relayOnly: z.boolean().optional(),
+  credential: relayCredential.nullable().optional(),
+});
+
 const deviceScopes = z
   .array(z.enum(HOST_ACCESS_SCOPES))
   .min(1)
@@ -21,6 +33,7 @@ const createPairing = z.object({
 
 export const hostPayloadSchemas: PayloadSchemas = {
   "host.remoteAccess.set": remoteAccessSettings,
+  "host.relay.set": relaySettings,
   "host.pairing.create": createPairing,
   "host.pairing.cancel": z.object({ pairingId: idSchema }),
   "host.devices.revoke": z.object({ deviceId: idSchema }),

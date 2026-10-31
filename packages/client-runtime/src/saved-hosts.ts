@@ -1,4 +1,8 @@
-import { type HostAccessScope, isHostAccessScope } from "@cocurdex/shared";
+import {
+  type HostAccessScope,
+  hostEndpointBase,
+  isHostAccessScope,
+} from "@cocurdex/shared";
 
 export interface SavedHost {
   hostId: string;
@@ -42,22 +46,10 @@ function isSavedHost(value: unknown): value is SavedHost {
   );
 }
 
-function originOf(url: string) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return null;
-    }
-    return parsed.origin;
-  } catch {
-    return null;
-  }
-}
-
 export function uniqueOrigins(urls: readonly string[]) {
   const origins: string[] = [];
   for (const url of urls) {
-    const origin = originOf(url);
+    const origin = hostEndpointBase(url);
     if (origin && !origins.includes(origin)) origins.push(origin);
   }
   return origins;
@@ -70,11 +62,8 @@ export function savedHostOrigins(
 }
 
 function sameBaseUrl(left: string, right: string) {
-  try {
-    return new URL(left).origin === new URL(right).origin;
-  } catch {
-    return false;
-  }
+  const base = hostEndpointBase(left);
+  return base !== null && base === hostEndpointBase(right);
 }
 
 export function createSavedHostStore(

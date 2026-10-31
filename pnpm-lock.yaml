@@ -1023,6 +1023,9 @@ importers:
       '@cocurdex/product-skills':
         specifier: workspace:*
         version: link:../../packages/product-skills
+      '@cocurdex/relay':
+        specifier: workspace:*
+        version: link:../../services/relay
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc

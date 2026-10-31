@@ -1,5 +1,6 @@
 import http from "node:http";
 import { SECURE_CHANNEL_WEBSOCKET_PROTOCOL } from "@cocurdex/secure-channel";
+import type { WebSocket } from "ws";
 import {
   createFixedWindowRateLimiter,
   type HostAccessService,
@@ -26,7 +27,9 @@ export interface RemoteServerFactoryOptions {
   onChannel(channel: SecureRemoteChannel): void;
 }
 
-export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
+export function createRemoteSocketAcceptor(
+  options: RemoteServerFactoryOptions,
+) {
   const pairLimiter = createFixedWindowRateLimiter({
     limit: PAIRING_ATTEMPTS_PER_WINDOW,
     windowMs: ATTEMPT_WINDOW_MS,
@@ -36,7 +39,17 @@ export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
     windowMs: ATTEMPT_WINDOW_MS,
   });
 
-  return (): RemoteServer => {
+  const accept = (socket: WebSocket, remoteAddress: string | null) =>
+    acceptSecureRemoteSocket(socket, remoteAddress, {
+      hostAccess: options.hostAccess,
+      hostKeys: () => options.hostKeys.keys().noise,
+      crypto: daemonNoiseCrypto,
+      pairLimiter,
+      connectLimiter,
+      onChannel: options.onChannel,
+    });
+
+  const createServer = (): RemoteServer => {
     const server = http.createServer((_request, response) => {
       response.writeHead(404);
       response.end();
@@ -45,14 +58,7 @@ export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
       protocol: SECURE_CHANNEL_WEBSOCKET_PROTOCOL,
       authorize: () => true,
       onConnection: (socket, request) =>
-        acceptSecureRemoteSocket(socket, request.socket.remoteAddress ?? null, {
-          hostAccess: options.hostAccess,
-          hostKeys: () => options.hostKeys.keys().noise,
-          crypto: daemonNoiseCrypto,
-          pairLimiter,
-          connectLimiter,
-          onChannel: options.onChannel,
-        }),
+        accept(socket, request.socket.remoteAddress ?? null),
     });
     return {
       server,
@@ -66,4 +72,6 @@ export function createRemoteServerFactory(options: RemoteServerFactoryOptions) {
       },
     };
   };
+
+  return { accept, createServer };
 }
