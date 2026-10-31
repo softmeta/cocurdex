@@ -235,9 +235,7 @@ describe("remote host access", () => {
   it("keeps the host key in a private file that survives restarts", async () => {
     const userDataPath = tempDirs.createSync("host-key-");
     const first = await spawnDaemon({ userDataPath });
-    daemons.push(first);
-    const { hostKey } = await createPairing(first);
-    await first.stop();
+    const { hostKey } = await createPairing(first).finally(() => first.stop());
     const second = await spawnDaemon({ userDataPath });
     daemons.push(second);
 
