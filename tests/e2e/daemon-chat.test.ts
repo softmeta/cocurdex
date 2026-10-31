@@ -4,10 +4,13 @@ import {
   type CocurdexDaemonEvent,
   type MessageRecord,
 } from "@cocurdex/shared";
+import { startChatSession } from "@cocurdex/test-harness/helpers/chat-session";
+import {
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { describe, expect, it } from "vitest";
-import { startChatSession } from "./helpers/chat-session";
-import { spawnDaemon, waitFor } from "./helpers/daemon-process";
-import { startStubLlmServer } from "./helpers/llm-stub";
 
 function completedResponses(events: CocurdexDaemonEvent[]): MessageRecord[] {
   return events.flatMap((event) =>

@@ -7,9 +7,12 @@ import {
   type DocImageFile,
   findDocImages,
 } from "@cocurdex/shared";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 
 const SWATCH_PNG = createRequire(import.meta.url).resolve(
   "./fixtures/deck-images/swatch-3x2.png",

@@ -5,12 +5,12 @@ import {
 import { readDaemonMetadata } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
 import {
   type DaemonProcess,
   spawnDaemon,
   waitFor,
-} from "./helpers/daemon-process";
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());

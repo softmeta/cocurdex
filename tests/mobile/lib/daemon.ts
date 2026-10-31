@@ -4,16 +4,6 @@ import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import { installFixtureDb } from "@cocurdex/e2e/fixture-db/install";
-import { FIXTURE_WORKSPACE_ID } from "@cocurdex/e2e/fixture-db/recipe";
-import { saveStubProvider } from "@cocurdex/e2e/helpers/chat-session";
-import {
-  bundledDaemonPath,
-  daemonLogTail,
-  spawnDaemon,
-  waitFor,
-} from "@cocurdex/e2e/helpers/daemon-process";
-import { startStubLlmServer } from "@cocurdex/e2e/helpers/llm-stub";
 import {
   buildDaemonAttachmentUploadUrl,
   buildHostPairingLink,
@@ -22,6 +12,16 @@ import {
   type ImageAttachment,
 } from "@cocurdex/shared";
 import type { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { installFixtureDb } from "@cocurdex/test-harness/fixture-db/install";
+import { FIXTURE_WORKSPACE_ID } from "@cocurdex/test-harness/fixture-db/recipe";
+import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
+import {
+  bundledDaemonPath,
+  daemonLogTail,
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { EMULATOR_HOST_ALIAS } from "./android";
 import type { MobilePlatform } from "./target";
 
@@ -30,7 +30,7 @@ const AGENT_MODEL_NAME = "E2E Agent Model";
 const STUB_REQUEST_TAIL = 6;
 const DAEMON_LOG_TAIL = 150;
 const IMAGE_FIXTURE = createRequire(import.meta.url).resolve(
-  "../../e2e/fixtures/doc-images/checkout-screenshot.png",
+  "@cocurdex/test-harness/fixtures/doc-images/checkout-screenshot.png",
 );
 
 function freePort() {

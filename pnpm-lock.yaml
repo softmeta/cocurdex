@@ -352,6 +352,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.9.0
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@cocurdex/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1008,6 +1011,9 @@ importers:
       '@cocurdex/test-fixtures':
         specifier: workspace:*
         version: link:../fixtures
+      '@cocurdex/test-harness':
+        specifier: workspace:*
+        version: link:../harness
     devDependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
@@ -1031,6 +1037,34 @@ importers:
         specifier: ^24.19.2
         version: 24.19.2
 
+  tests/harness:
+    dependencies:
+      '@cocurdex/agent-adapters':
+        specifier: workspace:*
+        version: link:../../packages/agent-adapters
+      '@cocurdex/daemon':
+        specifier: workspace:*
+        version: link:../../packages/daemon
+      '@cocurdex/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      '@cocurdex/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@cocurdex/test-fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.1
+        version: 1.32.1(supports-color@8.1.1)(zod@4.6.7)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
   tests/mobile:
     dependencies:
       '@cocurdex/agent-adapters':
@@ -1039,15 +1073,15 @@ importers:
       '@cocurdex/daemon':
         specifier: workspace:*
         version: link:../../packages/daemon
-      '@cocurdex/e2e':
-        specifier: workspace:*
-        version: link:../e2e
       '@cocurdex/mobile':
         specifier: workspace:*
         version: link:../../apps/mobile
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cocurdex/test-harness':
+        specifier: workspace:*
+        version: link:../harness
     devDependencies:
       '@cocurdex/test-fixtures':
         specifier: workspace:*
@@ -1073,12 +1107,12 @@ importers:
       '@cocurdex/desktop':
         specifier: workspace:*
         version: link:../../apps/desktop
-      '@cocurdex/e2e':
-        specifier: workspace:*
-        version: link:../e2e
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cocurdex/test-harness':
+        specifier: workspace:*
+        version: link:../harness
 
   tests/unit/agent-adapters:
     dependencies:
@@ -11903,6 +11937,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@modelcontextprotocol/sdk@1.32.1(supports-color@8.1.1)(zod@4.6.7)':
+    dependencies:
+      '@hono/node-server': 1.19.17(hono@4.13.7)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.1.1
+      express: 5.2.1(supports-color@8.1.1)
+      express-rate-limit: 8.7.0(express@5.2.1(supports-color@8.1.1))(supports-color@8.1.1)
+      hono: 4.13.7
+      jose: 6.2.12
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
+    transitivePeerDependencies:
+      - supports-color
+
   '@monaco-editor/loader@1.7.0':
     dependencies:
       state-local: 1.0.7
@@ -13927,6 +13983,20 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  body-parser@2.3.0(supports-color@8.1.1):
+    dependencies:
+      bytes: 3.1.2
+      content-type: 2.1.0
+      debug: 4.4.3(supports-color@8.1.1)
+      http-errors: 2.0.1
+      iconv-lite: 0.7.3
+      on-finished: 2.4.1
+      qs: 6.16.0
+      raw-body: 3.0.2
+      type-is: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
+
   boolbase@1.0.0: {}
 
   boolean@3.2.0:
@@ -15181,6 +15251,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  express-rate-limit@8.7.0(express@5.2.1(supports-color@8.1.1))(supports-color@8.1.1):
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+      express: 5.2.1(supports-color@8.1.1)
+      ip-address: 10.7.0
+    transitivePeerDependencies:
+      - supports-color
+
   express@5.2.1(supports-color@7.2.0):
     dependencies:
       accepts: 2.0.0
@@ -15208,6 +15286,39 @@ snapshots:
       router: 2.2.0(supports-color@7.2.0)
       send: 1.2.1(supports-color@7.2.0)
       serve-static: 2.2.1(supports-color@7.2.0)
+      statuses: 2.0.2
+      type-is: 2.1.0
+      vary: 1.1.2
+    transitivePeerDependencies:
+      - supports-color
+
+  express@5.2.1(supports-color@8.1.1):
+    dependencies:
+      accepts: 2.0.0
+      body-parser: 2.3.0(supports-color@8.1.1)
+      content-disposition: 1.1.0
+      content-type: 1.0.5
+      cookie: 0.7.2
+      cookie-signature: 1.2.2
+      debug: 4.4.3(supports-color@8.1.1)
+      depd: 2.0.0
+      encodeurl: 2.0.0
+      escape-html: 1.0.3
+      etag: 1.8.1
+      finalhandler: 2.1.1(supports-color@8.1.1)
+      fresh: 2.0.0
+      http-errors: 2.0.1
+      merge-descriptors: 2.0.0
+      mime-types: 3.0.2
+      on-finished: 2.4.1
+      once: 1.4.0
+      parseurl: 1.3.3
+      proxy-addr: 2.0.7
+      qs: 6.16.0
+      range-parser: 1.3.0
+      router: 2.2.0(supports-color@8.1.1)
+      send: 1.2.1(supports-color@8.1.1)
+      serve-static: 2.2.1(supports-color@8.1.1)
       statuses: 2.0.2
       type-is: 2.1.0
       vary: 1.1.2
@@ -15339,6 +15450,17 @@ snapshots:
   finalhandler@2.1.1(supports-color@7.2.0):
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
+      encodeurl: 2.0.0
+      escape-html: 1.0.3
+      on-finished: 2.4.1
+      parseurl: 1.3.3
+      statuses: 2.0.2
+    transitivePeerDependencies:
+      - supports-color
+
+  finalhandler@2.1.1(supports-color@8.1.1):
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -18253,6 +18375,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  router@2.2.0(supports-color@8.1.1):
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+      depd: 2.0.0
+      is-promise: 4.0.0
+      parseurl: 1.3.3
+      path-to-regexp: 8.4.2
+    transitivePeerDependencies:
+      - supports-color
+
   rrweb-cssom@0.8.0: {}
 
   rtl-detect@1.1.2: {}
@@ -18340,6 +18472,22 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  send@1.2.1(supports-color@8.1.1):
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+      encodeurl: 2.0.0
+      escape-html: 1.0.3
+      etag: 1.8.1
+      fresh: 2.0.0
+      http-errors: 2.0.1
+      mime-types: 3.0.2
+      ms: 2.1.3
+      on-finished: 2.4.1
+      range-parser: 1.3.0
+      statuses: 2.0.2
+    transitivePeerDependencies:
+      - supports-color
+
   serialize-error@2.1.0: {}
 
   serialize-error@7.0.1:
@@ -18362,6 +18510,15 @@ snapshots:
       escape-html: 1.0.3
       parseurl: 1.3.3
       send: 1.2.1(supports-color@7.2.0)
+    transitivePeerDependencies:
+      - supports-color
+
+  serve-static@2.2.1(supports-color@8.1.1):
+    dependencies:
+      encodeurl: 2.0.0
+      escape-html: 1.0.3
+      parseurl: 1.3.3
+      send: 1.2.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 

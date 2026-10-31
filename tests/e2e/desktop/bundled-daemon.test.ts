@@ -5,16 +5,16 @@ import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { PRODUCT_SKILL_NAMES } from "@cocurdex/product-skills";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   bundledDaemonPath,
   type DaemonProcess,
   spawnDaemon,
-} from "./helpers/daemon-process";
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 const mcpFixtureServer = createRequire(import.meta.url).resolve(
-  "./fixtures/mcp-stdio-server.mjs",
+  "@cocurdex/test-harness/fixtures/mcp-stdio-server.mjs",
 );
 let daemon: DaemonProcess;
 

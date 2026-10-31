@@ -1,8 +1,8 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type { SessionConfiguration, WorkspaceRecord } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, describe, expect, it } from "vitest";
-import { spawnDaemon } from "./helpers/daemon-process";
 
 const tempDirs = createTempDirs();
 

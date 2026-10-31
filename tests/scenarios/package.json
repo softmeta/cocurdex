@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@cocurdex/desktop": "workspace:*",
-    "@cocurdex/e2e": "workspace:*",
-    "@cocurdex/shared": "workspace:*"
+    "@cocurdex/shared": "workspace:*",
+    "@cocurdex/test-harness": "workspace:*"
   }
 }

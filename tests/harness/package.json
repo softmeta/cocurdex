@@ -1,0 +1,26 @@
+{
+  "name": "@cocurdex/test-harness",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "fixture:db": "node --import tsx fixture-db/cli.ts"
+  },
+  "dependencies": {
+    "@cocurdex/agent-adapters": "workspace:*",
+    "@cocurdex/daemon": "workspace:*",
+    "@cocurdex/rpc": "workspace:*",
+    "@cocurdex/shared": "workspace:*",
+    "@cocurdex/test-fixtures": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15"
+  },
+  "exports": {
+    "./fixture-db/*": "./fixture-db/*.ts",
+    "./fixtures/*": "./fixtures/*",
+    "./helpers/*": "./helpers/*.ts"
+  }
+}

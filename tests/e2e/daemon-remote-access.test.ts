@@ -16,10 +16,16 @@ import {
   type ImageAttachment,
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import {
+  saveStubProvider,
+  startChatSession,
+} from "@cocurdex/test-harness/helpers/chat-session";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { saveStubProvider, startChatSession } from "./helpers/chat-session";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
-import { startStubLlmServer } from "./helpers/llm-stub";
 
 function freePort() {
   return new Promise<number>((resolve, reject) => {

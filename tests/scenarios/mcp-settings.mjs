@@ -18,7 +18,7 @@ const UI_TIMEOUT_MS = 30_000;
 const STATUS_TIMEOUT_MS = 60_000;
 const EMPTY_CONFIG = '{\n  "mcpServers": {}\n}\n';
 const FIXTURE_SERVER = createRequire(import.meta.url).resolve(
-  "../e2e/fixtures/mcp-stdio-server.mjs",
+  "@cocurdex/test-harness/fixtures/mcp-stdio-server.mjs",
 );
 
 const args = readScenarioArgs();

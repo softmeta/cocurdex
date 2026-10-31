@@ -32,17 +32,18 @@
       "dependsOn": ["@cocurdex/desktop#build"],
       "cache": false
     },
+    "@cocurdex/e2e#test": {
+      "dependsOn": ["^transit"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "!desktop/**", "!vitest.desktop.config.ts"]
+    },
     "@cocurdex/e2e#test:desktop": {
-      "dependsOn": ["@cocurdex/desktop#build"],
+      "dependsOn": ["^transit", "@cocurdex/desktop#build"],
       "cache": false,
-      "inputs": [
-        "desktop-smoke.test.ts",
-        "vitest.desktop.config.ts",
-        "helpers/**"
-      ]
+      "inputs": ["desktop/**", "vitest.desktop.config.ts", "helpers/**"]
     },
     "@cocurdex/scenarios#test:ui": {
-      "dependsOn": ["@cocurdex/desktop#build"],
+      "dependsOn": ["^transit", "@cocurdex/desktop#build"],
       "cache": false,
       "inputs": [
         "$TURBO_DEFAULT$",

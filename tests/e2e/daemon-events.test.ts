@@ -1,8 +1,11 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import {
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, describe, expect, it } from "vitest";
-import { spawnDaemon, waitFor } from "./helpers/daemon-process";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());

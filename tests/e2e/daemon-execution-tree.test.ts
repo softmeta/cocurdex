@@ -1,10 +1,13 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
+import { startChatSession } from "@cocurdex/test-harness/helpers/chat-session";
+import {
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { describe, expect, it } from "vitest";
-import { startChatSession } from "./helpers/chat-session";
 import { runCli } from "./helpers/cli";
-import { spawnDaemon, waitFor } from "./helpers/daemon-process";
-import { startStubLlmServer } from "./helpers/llm-stub";
 
 describe("session execution tree over the real socket", () => {
   it("projects a finished run for RPC and CLI clients", async () => {

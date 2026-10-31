@@ -5,8 +5,11 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, describe, expect, it } from "vitest";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 
 const tempDirs = createTempDirs();
 

@@ -1,14 +1,17 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent, MessageRecord } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, describe, expect, it } from "vitest";
-import { startChatSession } from "./helpers/chat-session";
+import { startChatSession } from "@cocurdex/test-harness/helpers/chat-session";
 import {
   type DaemonProcess,
   spawnDaemon,
   waitFor,
-} from "./helpers/daemon-process";
-import { type StubLlmServer, startStubLlmServer } from "./helpers/llm-stub";
+} from "@cocurdex/test-harness/helpers/daemon-process";
+import {
+  type StubLlmServer,
+  startStubLlmServer,
+} from "@cocurdex/test-harness/helpers/llm-stub";
+import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());

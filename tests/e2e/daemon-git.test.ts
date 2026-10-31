@@ -1,8 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
+import {
+  type DaemonProcess,
+  spawnDaemon,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type DaemonProcess, spawnDaemon } from "./helpers/daemon-process";
 import {
   createGitRepository,
   type GitRepositoryFixture,

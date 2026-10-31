@@ -120,7 +120,7 @@
         "tests/**",
         "!tests/scenarios/lib/**",
         "!tests/e2e/helpers/**",
-        "!tests/e2e/fixture-db/**",
+        "!tests/harness/**",
         "!tests/fixtures/temp-dirs.ts"
       ],
       "linter": {
