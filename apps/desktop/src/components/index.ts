@@ -1,6 +1,7 @@
 export {
   AppActivityTime,
   AppConfirmDialog,
+  AppCopyButton,
   AppDropdownContent,
   AppDropdownItem,
   AppDropdownRadioList,

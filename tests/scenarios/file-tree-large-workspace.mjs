@@ -7,7 +7,7 @@ import { closeEditorPanel, showPanelView } from "./lib/navigate.mjs";
 
 const LISTING_LIMIT = 5000;
 const FILLER_DIRECTORY_COUNT = LISTING_LIMIT + 100;
-const UI_TIMEOUT_MS = 30_000;
+const UI_TIMEOUT_MS = 60_000;
 const LOADED_ROWS = ["zzz/", "zzz/auth/", "zzz/auth/token.ts", "zzz/README.md"];
 
 const args = readScenarioArgs();

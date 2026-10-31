@@ -45,6 +45,7 @@ export function memoryUsageLines() {
     "  cocurdex memory save-session <session-id> [--force] [--importance important|trivial] [--json]",
     "  cocurdex memory install [--force] [--json]",
     "  cocurdex memory doctor [--remote] [--check-update] [--json]",
+    "  cocurdex memory sync on|off [--json]",
     "  cocurdex memory policy",
   ];
 }
@@ -153,6 +154,18 @@ export async function handleMemoryCommand(
       }),
     );
     printResult(result, parsed);
+    return true;
+  }
+
+  if (action === "sync") {
+    const mode = args[0] ?? stringFlag(parsed, "mode");
+    if (mode !== "on" && mode !== "off") {
+      throw new Error("Usage: cocurdex memory sync on|off");
+    }
+    const status = await withDaemon(() =>
+      requestDaemon("memory.cloud.setSync", { enabled: mode === "on" }),
+    );
+    printResult(status, parsed);
     return true;
   }
 

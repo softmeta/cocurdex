@@ -107,6 +107,9 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpStatusReport,
+  MemoryCloudConnectInput,
+  MemoryCloudConnectResult,
+  MemoryCloudKeys,
   MemoryDoctorReport,
   MemoryEntry,
   MemoryInstallResult,
@@ -528,6 +531,10 @@ export type DaemonRequestPayloadByMethod = {
   "memory.install": { force?: boolean };
   "memory.doctor": { remote?: boolean; checkUpdate?: boolean };
   "memory.policy": undefined;
+  "memory.cloud.connect": MemoryCloudConnectInput;
+  "memory.cloud.disconnect": undefined;
+  "memory.cloud.setSync": { enabled: boolean };
+  "memory.cloud.keys": undefined;
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
   "file.readText": { filePath: string };
@@ -854,6 +861,10 @@ export type DaemonResultByMethod = {
   "memory.install": MemoryInstallResult;
   "memory.doctor": MemoryDoctorReport;
   "memory.policy": string;
+  "memory.cloud.connect": MemoryCloudConnectResult;
+  "memory.cloud.disconnect": MemoryStatus;
+  "memory.cloud.setSync": MemoryStatus;
+  "memory.cloud.keys": MemoryCloudKeys;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
   "file.readText": string;
@@ -1047,6 +1058,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "teamTemplate.list": true,
   "memory.settings.get": true,
   "memory.policy": true,
+  "memory.cloud.disconnect": true,
+  "memory.cloud.keys": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,
   "mcp.injection.check": true,

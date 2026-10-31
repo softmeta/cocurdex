@@ -139,6 +139,18 @@ export async function handleDaemonRequest(
       return service.memory.doctor(request.params);
     case "memory.policy":
       return service.memory.policy();
+    case "memory.cloud.connect":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.connectCloud(request.params);
+    case "memory.cloud.disconnect":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.disconnectCloud();
+    case "memory.cloud.setSync":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.setCloudSync(request.params.enabled);
+    case "memory.cloud.keys":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.cloudKeys();
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":

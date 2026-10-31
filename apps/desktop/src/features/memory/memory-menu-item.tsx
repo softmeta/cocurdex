@@ -1,10 +1,20 @@
 import { DEFAULT_MEMORY_SETTINGS, type MemoryStatus } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
+import { Brain, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { mutate } from "swr";
-import { DropdownMenuCheckboxItem, Text } from "@/components/ui";
+import {
+  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  Text,
+} from "@/components/ui";
+import { openSettings } from "@/features/settings/settings-navigation";
 import { cn, desktopApi } from "@/lib";
 import {
   MEMORY_SETTINGS_KEY,
@@ -22,7 +32,11 @@ function statusNote(t: TFunction<"memory">, status: MemoryStatus | undefined) {
   return t("status.missing");
 }
 
-export function MemoryMenuItem() {
+export function MemoryMenuItem({
+  onConnectCloud,
+}: {
+  onConnectCloud(user: string | null): void;
+}) {
   const { t } = useTranslation("memory");
   const { data } = useMemoryStatus();
   const [pending, setPending] = useState(false);
@@ -31,8 +45,10 @@ export function MemoryMenuItem() {
   const available = data?.available;
   const unsupported = data?.supported === false;
   const note = statusNote(t, data);
+  const cloud = data?.cloud;
+  const syncEnabled = Boolean(cloud?.connected && cloud.autosync);
 
-  const toggle = async (next: boolean) => {
+  const toggleMemory = async (next: boolean) => {
     setPending(true);
     const settings = data?.settings ?? DEFAULT_MEMORY_SETTINGS;
     const optimistic = { ...settings, enabled: next };
@@ -63,33 +79,81 @@ export function MemoryMenuItem() {
     }
   };
 
+  const toggleSync = async (next: boolean) => {
+    if (next && !cloud?.connected) {
+      onConnectCloud(cloud?.user ?? null);
+      return;
+    }
+    setPending(true);
+    try {
+      await desktopApi.setMemoryCloudSync(next);
+      await revalidateMemory();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("switch.syncToggleFailed"),
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
-    <DropdownMenuCheckboxItem
-      checked={enabled}
-      disabled={pending || installing || unsupported}
-      onCheckedChange={(checked) => void toggle(checked === true)}
-      onSelect={(event) => event.preventDefault()}
-    >
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span
-          aria-hidden="true"
-          className={cn("size-1.5 shrink-0 rounded-full", {
-            "bg-status-success": available === true,
-            "bg-status-warning": installing,
-            "bg-destructive": data?.installation === "failed",
-            "bg-muted-foreground/40":
-              !installing &&
-              available !== true &&
-              data?.installation !== "failed",
-          })}
-        />
-        <span className="min-w-0 flex-1 truncate">{t("switch.label")}</span>
-        {note ? (
-          <Text as="span" className="me-6 shrink-0" size="meta" tone="muted">
-            {note}
-          </Text>
-        ) : null}
-      </span>
-    </DropdownMenuCheckboxItem>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Brain className="size-4 shrink-0" />
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={cn("size-1.5 shrink-0 rounded-full", {
+              "bg-status-success": available === true,
+              "bg-status-warning": installing,
+              "bg-destructive": data?.installation === "failed",
+              "bg-muted-foreground/40":
+                !installing &&
+                available !== true &&
+                data?.installation !== "failed",
+            })}
+          />
+          <span className="min-w-0 flex-1 truncate">{t("switch.label")}</span>
+          {note ? (
+            <Text as="span" className="shrink-0" size="meta" tone="muted">
+              {note}
+            </Text>
+          ) : null}
+        </span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        <DropdownMenuCheckboxItem
+          checked={enabled}
+          closeOnClick={false}
+          disabled={pending || installing || unsupported}
+          onCheckedChange={(checked) => void toggleMemory(checked === true)}
+        >
+          {t("menu.enable")}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={syncEnabled}
+          closeOnClick={!cloud?.connected}
+          disabled={
+            pending || installing || unsupported || !available || !enabled
+          }
+          onCheckedChange={(checked) => void toggleSync(checked === true)}
+        >
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span className="min-w-0 truncate">{t("menu.sync")}</span>
+            {cloud?.connected ? (
+              <Text as="span" className="shrink-0" size="meta" tone="muted">
+                {cloud.user}
+              </Text>
+            ) : null}
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => openSettings("memory")}>
+          <Settings2 className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{t("menu.settings")}</span>
+        </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

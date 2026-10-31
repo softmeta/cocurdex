@@ -73,6 +73,20 @@ if (command === "--version") {
   process.stdout.write("rsrs 1.0.0\\n");
 } else if (command === "v") {
   process.stdout.write("rsrs 1.0.0\\n");
+} else if (command === "status") {
+  send({
+    command: "status",
+    status: "ok",
+    summary: {
+      data_dir: "/tmp/rsrs",
+      server_addr: "https://api.rsrs.rs",
+      autosync: false,
+      offline: false,
+      remote_configured: true,
+      session: { user: "local", has_session: false, has_token: false, has_local_keys: false },
+      sync_live: { phase: "ok", pending: 0, conflicts: 0, error: "" },
+    },
+  });
 } else if (command === "config") {
   send({ command: "config", status: "ok", summary: { data_dir: "/tmp/rsrs", addr: "https://api.rsrs.rs" } });
 } else if (command === "recall") {
@@ -171,6 +185,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(status.available).toBe(true);
     expect(status.version).toBe("1.0.0");
     expect(status.dataDir).toBe("/tmp/rsrs");
+    expect(status.cloud.connected).toBe(false);
 
     const result = await service.recall({ query: "cocurdex" });
     expect(result.items).toEqual([

@@ -403,6 +403,7 @@ export default interface Resources {
       close: "Close";
       closeFile: "Close file";
       closeSearch: "Close search";
+      copy: "Copy";
       copyCode: "Copy code";
       decrease: "Decrease";
       increase: "Increase";
@@ -1098,6 +1099,39 @@ export default interface Resources {
     };
   };
   memory: {
+    cloud: {
+      alreadyRegistered: "That username is already registered. Enter its password and recovery key to sign in.";
+      cancel: "Cancel";
+      connected: "Multi-device sync is on";
+      copyRecoveryKey: "Copy recovery key";
+      createHint: "The recovery key is generated when the account is created and shown once. Save it before you close the next step.";
+      description: "Sync memories between your devices through an rsrs account. Records reach the server encrypted; the keys stay on this device.";
+      done: "Done";
+      hidePassword: "Hide password";
+      mode: "Account";
+      modeRegister: "Create account";
+      modeSignIn: "Sign in";
+      password: "Login password";
+      passwordHint: "Used to sign in on this and other devices. Cocurdex does not store it.";
+      passwordPlaceholder: "At least 8 characters";
+      recoveryDescription: "This is your recovery key. It decrypts your memories on another device.";
+      recoveryKey: "Recovery key";
+      recoveryKeyHint: "From the device that already has your memories: Settings, Memory, Recovery key.";
+      recoveryKeyPlaceholder: "A3-...";
+      recoveryTitle: "Save your recovery key";
+      recoveryWarning: "Keep it somewhere safe. Without it your memories cannot be decrypted on another device, and nobody, including the server, can recover them. You can show it again from this page.";
+      showPassword: "Show password";
+      submitCreate: "Create account";
+      submitSignIn: "Sign in";
+      title: "Connect cloud memory";
+      username: "Username";
+      usernamePlaceholder: "Your rsrs account name";
+    };
+    menu: {
+      enable: "Enable memory";
+      settings: "Memory settings";
+      sync: "Multi-device sync";
+    };
     session: {
       alreadySaved: "This conversation is already in memory";
       recallFailed: "Memory recall failed this turn: {{error}}";
@@ -1138,6 +1172,28 @@ export default interface Resources {
         placeholder: "Auto-detect";
         title: "rsrs executable";
       };
+      cloud: {
+        cancel: "Cancel";
+        conflicts_one: "{{count}} conflict";
+        conflicts_other: "{{count}} conflicts";
+        description: "Turn on to create or connect an rsrs account, then keep encrypted memories in sync across your devices. Off by default: nothing leaves this device until you turn it on.";
+        needsMemory: "Turn on memory first.";
+        needsRsrs: "rsrs is not installed yet.";
+        offline: "This device is offline.";
+        pending_one: "{{count}} memory waiting to upload";
+        pending_other: "{{count}} memories waiting to upload";
+        recoveryKey: "Recovery key";
+        signOut: "Sign out";
+        signOutDescription: "Automatic sync stops and the cloud copy is no longer updated. Memories on this device stay where they are. Signing back in needs the same username, password, and recovery key.";
+        signOutFailed: "Could not sign out";
+        signOutTitle: "Sign out of cloud memory?";
+        signedOut: "Signed out of cloud memory";
+        syncFailed: "Sync failed: {{error}}";
+        syncing: "Syncing...";
+        title: "Multi-device sync";
+        toggleFailed: "Could not change multi-device sync";
+      };
+      cloudTitle: "Cloud sync";
       connectionTitle: "Connection";
       doctorFailed: "rsrs doctor reported a problem";
       doctorPassed: "rsrs doctor: {{status}}";
@@ -1148,6 +1204,27 @@ export default interface Resources {
       groupTitle: "Long-term memory";
       installFailed: "Could not install rsrs";
       installReady: "rsrs is ready";
+      keys: {
+        close: "Close";
+        copy: "Copy recovery key";
+        description: "These keys decrypt your memories on another device. Anyone who has them can read your memories.";
+        failed: "Could not read the recovery key";
+        title: "Recovery key";
+      };
+      links: {
+        open: "Open";
+        repo: {
+          action: "Open the Respire source code";
+          description: "Respire CLI is open source: github.com/risense-ai/respire-cli";
+          title: "Source code";
+        };
+        site: {
+          action: "Open the Respire website";
+          description: "rsrs.rs: what Respire is and how it works";
+          title: "Website";
+        };
+      };
+      linksTitle: "About Respire";
       saveFailed: "Could not save memory settings";
       status: {
         available: "rsrs {{version}}";
@@ -1170,6 +1247,7 @@ export default interface Resources {
     };
     switch: {
       label: "Memory";
+      syncToggleFailed: "Could not change multi-device sync";
       toggleFailed: "Could not change the memory setting";
     };
   };

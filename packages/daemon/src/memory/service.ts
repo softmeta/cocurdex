@@ -4,9 +4,14 @@ import {
   type AgentRuntimeProviderConfig,
   buildMemoryRecallQuery,
   type CocurdexDaemonEvent,
+  DEFAULT_MEMORY_CLOUD_STATUS,
   DEFAULT_MEMORY_SETTINGS,
   gateMemorySettings,
   isChatSession,
+  type MemoryCloudConnectInput,
+  type MemoryCloudConnectResult,
+  type MemoryCloudKeys,
+  type MemoryCloudStatus,
   type MemoryDoctorReport,
   type MemoryEntry,
   type MemoryImportance,
@@ -41,20 +46,27 @@ import {
   conversationTurns,
 } from "./digest";
 import {
+  exportRsrsKeys,
   installRsrs,
+  loginRsrsAccount,
+  logoutRsrs,
   materializeNativeBinary,
+  parseRsrsCloudStatus,
+  type RsrsCloudSummary,
   type RsrsExecutable,
-  readRsrsConfig,
   readRsrsDoctor,
   readRsrsPolicy,
+  readRsrsStatus,
   readRsrsVersion,
   recallMemories,
   recallMemoriesViaRuntime,
+  registerRsrsAccount,
   rememberMemory,
   rememberMemoryViaRuntime,
   resolveRsrsExecutable,
   showMemory,
   showMemoryViaRuntime,
+  writeRsrsAutosync,
 } from "./rsrs";
 import {
   callRuntimeTool,
@@ -111,14 +123,32 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-function recordValue(value: unknown) {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
+function toCloudStatus(summary: RsrsCloudSummary | null): MemoryCloudStatus {
+  if (!summary) return { ...DEFAULT_MEMORY_CLOUD_STATUS };
+  const user = summary.account;
+  const connected = summary.hasToken && Boolean(user);
+  return {
+    connected,
+    user,
+    server: summary.server,
+    autosync: summary.autosync,
+    hasKeys: summary.hasKeys,
+    offline: summary.offline,
+    syncing: summary.syncing,
+    pending: summary.pending,
+    conflicts: summary.conflicts,
+    lastSyncAt: summary.lastSyncAt,
+    error: summary.syncError,
+  };
 }
 
-function textValue(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+function redactSecrets(message: string, secrets: ReadonlyArray<string>) {
+  let result = message;
+  for (const secret of secrets) {
+    if (!secret) continue;
+    result = result.split(secret).join("[redacted]");
+  }
+  return result;
 }
 
 export class MemoryService {
@@ -317,6 +347,7 @@ export class MemoryService {
         dataDir: null,
         account: null,
         space: null,
+        cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS, autosync: false },
         doctor: installState.doctor,
         error: installState.error,
         checkedAt: installState.attemptedAt,
@@ -330,22 +361,19 @@ export class MemoryService {
       this.statusCache = { status: runtimeStatus, at: now };
       return runtimeStatus;
     }
-    const [versionResult, configResult] = await Promise.allSettled([
+    const [versionResult, statusResult] = await Promise.allSettled([
       readRsrsVersion(executable, 4_000),
-      readRsrsConfig(executable, 6_000),
+      readRsrsStatus(executable, 20_000),
     ]);
     const version =
       versionResult.status === "fulfilled"
         ? (versionResult.value ?? installState.version)
         : installState.version;
-    const config =
-      configResult.status === "fulfilled" ? configResult.value : null;
-    const dataDir = config?.dataDir ?? null;
-    const account = config?.account ?? null;
-    const space = config?.space ?? null;
+    const summary =
+      statusResult.status === "fulfilled" ? statusResult.value : null;
     const error =
-      configResult.status === "rejected"
-        ? errorMessage(configResult.reason)
+      statusResult.status === "rejected"
+        ? errorMessage(statusResult.reason)
         : versionResult.status === "rejected"
           ? errorMessage(versionResult.reason)
           : null;
@@ -358,9 +386,10 @@ export class MemoryService {
         installState.status === "installing" ? "installing" : "ready",
       version,
       executable: executable.command,
-      dataDir,
-      account,
-      space,
+      dataDir: summary?.dataDir ?? null,
+      account: summary?.account ?? null,
+      space: summary?.space ?? null,
+      cloud: toCloudStatus(summary),
       doctor: installState.doctor,
       error,
       checkedAt: this.now().toISOString(),
@@ -483,6 +512,114 @@ export class MemoryService {
     return this.doctorPromise;
   }
 
+  private async cloudExecutable() {
+    const executable = await this.resolveExecutable(true);
+    if (!executable) throw new Error("rsrs is not installed");
+    return executable;
+  }
+
+  private async refreshAfterCloudMutation() {
+    this.invalidateRuntime();
+    this.statusCache = null;
+    const status = await this.getStatus(true);
+    this.broadcast();
+    return status;
+  }
+
+  async connectCloud(
+    input: MemoryCloudConnectInput,
+  ): Promise<MemoryCloudConnectResult> {
+    await this.ensureInitialized();
+    if (!this.supported) {
+      throw new Error(
+        `The rsrs CLI has no build for ${this.platform.os}/${this.platform.arch}, so cloud sync stays off on this machine.`,
+      );
+    }
+    const user = input.user.trim();
+    const password = input.password;
+    const recoveryKey = input.recoveryKey?.trim() ?? "";
+    if (user.length < 3) {
+      throw new Error("Username must be at least 3 characters");
+    }
+    if (password.length < 8) {
+      throw new Error("Login password must be at least 8 characters");
+    }
+    if (input.mode === "signin" && !recoveryKey) {
+      throw new Error(
+        "The recovery key is required to sign in on a new device",
+      );
+    }
+    const executable = await this.cloudExecutable();
+    try {
+      const issued =
+        input.mode === "register"
+          ? (await registerRsrsAccount(executable, { user, password }))
+              .recoveryKey
+          : (
+              await loginRsrsAccount(executable, {
+                user,
+                password,
+                recoveryKey: recoveryKey || null,
+              })
+            ).recoveryKey;
+      await writeRsrsAutosync(executable, true).catch((error) => {
+        logDaemonDiagnostic("warn", "memory.cloudAutosyncFailed", {
+          error: errorMessage(error),
+        });
+      });
+      this.executable = executable;
+      this.executableResolvedAt = this.now().getTime();
+      const status = await this.refreshAfterCloudMutation();
+      return { status, recoveryKey: issued };
+    } catch (error) {
+      const message = redactSecrets(errorMessage(error), [
+        password,
+        recoveryKey,
+      ]);
+      logDaemonDiagnostic("warn", "memory.cloudConnectFailed", {
+        error: message,
+        mode: input.mode,
+      });
+      throw new Error(message);
+    }
+  }
+
+  async disconnectCloud(): Promise<MemoryStatus> {
+    await this.ensureInitialized();
+    const executable = await this.cloudExecutable();
+    try {
+      await logoutRsrs(executable);
+    } catch (error) {
+      const message = errorMessage(error);
+      logDaemonDiagnostic("warn", "memory.cloudDisconnectFailed", {
+        error: message,
+      });
+      throw new Error(message);
+    }
+    return this.refreshAfterCloudMutation();
+  }
+
+  async setCloudSync(enabled: boolean): Promise<MemoryStatus> {
+    await this.ensureInitialized();
+    const executable = await this.cloudExecutable();
+    if (enabled) {
+      const summary = await readRsrsStatus(executable).catch(() => null);
+      if (!toCloudStatus(summary).connected) {
+        throw new Error(
+          "Connect an rsrs account before turning on multi-device sync",
+        );
+      }
+    }
+    await writeRsrsAutosync(executable, enabled);
+    return this.refreshAfterCloudMutation();
+  }
+
+  async cloudKeys(): Promise<MemoryCloudKeys> {
+    await this.ensureInitialized();
+    const executable = await this.cloudExecutable();
+    return { content: await exportRsrsKeys(executable) };
+  }
+
   private enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
     const run = this.writeQueue.then(task, task);
     this.writeQueue = run.then(
@@ -549,8 +686,7 @@ export class MemoryService {
       this.invalidateRuntime();
       return null;
     }
-    const summary = recordValue(payload.summary) ?? {};
-    const session = recordValue(summary.session) ?? {};
+    const cloudSummary = parseRsrsCloudStatus(payload);
     const settings = this.currentSettings();
     const installState = this.currentInstallState();
     return {
@@ -562,9 +698,10 @@ export class MemoryService {
         installState.status === "installing" ? "installing" : "ready",
       version: runtime.bin ?? installState.version,
       executable: executableCommand,
-      dataDir: textValue(summary.data_dir),
-      account: textValue(session.user),
-      space: null,
+      dataDir: cloudSummary.dataDir,
+      account: cloudSummary.account,
+      space: cloudSummary.space,
+      cloud: toCloudStatus(cloudSummary),
       doctor: installState.doctor,
       error: null,
       checkedAt: this.now().toISOString(),

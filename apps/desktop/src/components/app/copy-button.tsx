@@ -3,19 +3,31 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
 
-export function CopyButton({ value }: { value: string }) {
-  const { t } = useTranslation("settings");
+export function AppCopyButton({
+  value,
+  label,
+  className,
+}: {
+  value: string;
+  label?: string;
+  className?: string;
+}) {
+  const { t } = useTranslation("common");
   const [copied, setCopied] = useState(false);
   return (
     <Button
-      aria-label={t("devices.copy")}
+      aria-label={label ?? t("actions.copy")}
+      className={className}
       size="icon-sm"
       type="button"
       variant="ghost"
       onClick={() => {
         void navigator.clipboard
           .writeText(value)
-          .then(() => setCopied(true))
+          .then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1_200);
+          })
           .catch(() => {});
       }}
     >

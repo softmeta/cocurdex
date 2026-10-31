@@ -6,6 +6,7 @@
 
 export { AppActivityTime } from "./activity-time";
 export { AppConfirmDialog } from "./confirm-dialog";
+export { AppCopyButton } from "./copy-button";
 export {
   AppDropdownContent,
   AppDropdownItem,

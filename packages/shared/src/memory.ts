@@ -4,6 +4,9 @@ export const MEMORY_TOOL_GROUP = "memory" as const;
 
 export const RSRS_CLI_PACKAGE = "@rsrsai/cli";
 export const RSRS_CLI_VERSION = "1.0.18";
+export const RSRS_SITE_URL = "https://rsrs.rs";
+export const RSRS_REPO_URL = "https://github.com/risense-ai/respire-cli";
+export const RSRS_DASHBOARD_URL = "https://dash.rsrs.rs";
 
 export type MemoryImportance = "important" | "trivial";
 
@@ -154,6 +157,52 @@ export function gateMemorySettings(
   return { ...settings, enabled: false };
 }
 
+export type MemoryCloudMode = "register" | "signin";
+
+export interface MemoryCloudStatus {
+  connected: boolean;
+  user: string | null;
+  server: string | null;
+  autosync: boolean;
+  hasKeys: boolean;
+  offline: boolean;
+  syncing: boolean;
+  pending: number;
+  conflicts: number;
+  lastSyncAt: string | null;
+  error: string | null;
+}
+
+export const DEFAULT_MEMORY_CLOUD_STATUS: MemoryCloudStatus = {
+  connected: false,
+  user: null,
+  server: null,
+  autosync: false,
+  hasKeys: false,
+  offline: false,
+  syncing: false,
+  pending: 0,
+  conflicts: 0,
+  lastSyncAt: null,
+  error: null,
+};
+
+export interface MemoryCloudConnectInput {
+  mode: MemoryCloudMode;
+  user: string;
+  password: string;
+  recoveryKey?: string | null;
+}
+
+export interface MemoryCloudConnectResult {
+  status: MemoryStatus;
+  recoveryKey: string | null;
+}
+
+export interface MemoryCloudKeys {
+  content: string;
+}
+
 export interface MemoryStatus {
   settings: MemorySettings;
   enabled: boolean;
@@ -165,6 +214,7 @@ export interface MemoryStatus {
   dataDir: string | null;
   account: string | null;
   space: string | null;
+  cloud: MemoryCloudStatus;
   doctor: MemoryDoctorReport | null;
   error: string | null;
   checkedAt: string | null;

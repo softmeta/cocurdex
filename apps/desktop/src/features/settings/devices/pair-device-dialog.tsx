@@ -7,6 +7,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppCopyButton } from "@/components/app";
 import {
   Button,
   Dialog,
@@ -20,8 +21,7 @@ import {
 } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import { SettingsSelect } from "../settings-select";
-import { CopyButton } from "./copy-button";
-import { useFormatDateTime, useScopeLabels } from "./host-access-labels";
+import { useFormatDateTime } from "./host-access-labels";
 import { PairingQrCode } from "./pairing-qr-code";
 import { ScopePicker } from "./scope-picker";
 
@@ -43,7 +43,7 @@ function CreatedPairing({
         <Text className="min-w-0 flex-1 font-mono" size="display" truncate>
           {created.code}
         </Text>
-        <CopyButton value={created.code} />
+        <AppCopyButton value={created.code} />
       </div>
       <Text size="meta" tone="muted">
         {t("devices.pair.expires", {
@@ -70,7 +70,7 @@ function CreatedPairing({
               <Text className="min-w-0 flex-1 font-mono" size="meta" truncate>
                 {link}
               </Text>
-              <CopyButton value={link} />
+              <AppCopyButton value={link} />
             </div>
           </div>
         );

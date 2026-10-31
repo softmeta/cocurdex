@@ -2,6 +2,7 @@ import {
   type AgentDescriptor,
   type AgentSessionMode,
   DEFAULT_AGENT_RUN_LIMITS,
+  DEFAULT_MEMORY_CLOUD_STATUS,
   DEFAULT_MEMORY_SETTINGS,
   DEFAULT_REMOTE_ACCESS_PORT,
   DEFAULT_SCRIPT_RUN_SETTINGS,
@@ -527,6 +528,7 @@ export const offlineApi: DesktopApi = {
     dataDir: null,
     account: null,
     space: null,
+    cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS },
     doctor: null,
     error: "Memory is unavailable outside the desktop app",
     checkedAt: null,
@@ -564,6 +566,7 @@ export const offlineApi: DesktopApi = {
       dataDir: null,
       account: null,
       space: null,
+      cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS },
       doctor: null,
       error: "Memory is unavailable outside the desktop app",
       checkedAt: null,
@@ -580,6 +583,18 @@ export const offlineApi: DesktopApi = {
     checkedAt: new Date().toISOString(),
   }),
   getMemoryPolicy: async () => "",
+  connectMemoryCloud: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
+  disconnectMemoryCloud: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
+  setMemoryCloudSync: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
+  getMemoryCloudKeys: async () => {
+    throw new Error("Cloud memory is unavailable outside the desktop app");
+  },
   getHostRemoteAccess: async () => ({
     allowed: true,
     settings: { enabled: false, port: DEFAULT_REMOTE_ACCESS_PORT },

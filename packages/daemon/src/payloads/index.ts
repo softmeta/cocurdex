@@ -5,6 +5,7 @@ import { hostPayloadSchemas } from "./host-payloads";
 import { imagePayloadSchemas } from "./image-payloads";
 import { issuePayloadSchemas } from "./issue-payloads";
 import { mcpPayloadSchemas } from "./mcp-payloads";
+import { memoryPayloadSchemas } from "./memory-payloads";
 import { notePayloadSchemas } from "./note-payloads";
 import type { PayloadSchemas } from "./primitives";
 import { providerPayloadSchemas } from "./provider-payloads";
@@ -19,6 +20,7 @@ export const daemonPayloadSchemas: PayloadSchemas = {
   ...imagePayloadSchemas,
   ...issuePayloadSchemas,
   ...mcpPayloadSchemas,
+  ...memoryPayloadSchemas,
   ...notePayloadSchemas,
   ...providerPayloadSchemas,
   ...sessionPayloadSchemas,
