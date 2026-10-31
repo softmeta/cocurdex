@@ -309,14 +309,27 @@ runScenario("chat-streaming", {
             { role: "button", name: new RegExp(`^${title}`) },
             30_000,
           );
-          const text = `${Array.from(
-            { length: 70 },
-            (_, index) =>
-              `Reading section ${index + 1}. New content must not move the reader's viewport while this reply grows.\n\n`,
-          ).join("")}Reading control finished.`;
+          const sections = (from, to) =>
+            Array.from(
+              { length: to - from },
+              (_, index) =>
+                `Reading section ${from + index + 1}. New content must not move the reader's viewport while this reply grows.\n\n`,
+            )
+              .join("")
+              .match(/[\s\S]{1,24}/g);
+          const measured = Promise.withResolvers();
+          const jumpedHold = Promise.withResolvers();
           stub.plan = {
             kind: "stream",
-            chunks: text.match(/[\s\S]{1,24}/g),
+            chunks: [
+              `${title} begins.\n\n`,
+              ...sections(0, 40),
+              measured.promise,
+              ...sections(40, 55),
+              jumpedHold.promise,
+              ...sections(55, 70),
+              "Reading control finished.",
+            ],
             intervalMs: 80,
           };
           await daemonRequest(session, "session.send", {
@@ -326,7 +339,7 @@ runScenario("chat-streaming", {
             attachments: [],
           });
           await session.waitUntil(
-            () => {
+            (opening) => {
               const viewport = [
                 ...document.querySelectorAll(
                   "[data-slot=scroll-area-viewport]",
@@ -335,10 +348,11 @@ runScenario("chat-streaming", {
                 node.querySelector("[data-testid=chat-timeline]"),
               );
               return (
-                viewport && viewport.scrollHeight > viewport.clientHeight * 1.5
+                viewport?.textContent.includes(opening) &&
+                viewport.scrollHeight > viewport.clientHeight * 1.5
               );
             },
-            null,
+            `${title} begins.`,
             30_000,
           );
           const hasRespondingLabel = await session.run((label) => {
@@ -354,6 +368,7 @@ runScenario("chat-streaming", {
             "streaming text must not have a redundant responding status line",
           );
           const before = await session.run(readingState);
+          measured.resolve();
           await session.waitUntil(
             (length) => {
               const viewport = [
@@ -438,6 +453,7 @@ runScenario("chat-streaming", {
           await clickByRole(session, { role: "button", name: jumpLabel });
           await session.run(waitForJumpToSettle);
           const jumped = await session.run(readingState);
+          jumpedHold.resolve();
           check(
             jumped.top > grown.top,
             "explicit jump did not reach new content",
@@ -635,12 +651,16 @@ runScenario("chat-streaming", {
             30_000,
           );
           stub.plan = { kind: "hang" };
+          const hangRequests = stub.requests.length;
           await daemonRequest(session, "session.send", {
             sessionId: configured.id,
             messageId: crypto.randomUUID(),
             content: "Wait before doing anything.",
             attachments: [],
           });
+          while (stub.requests.length <= hangRequests) {
+            await stub.nextRequest();
+          }
           await session.waitUntil(
             (label) =>
               [
