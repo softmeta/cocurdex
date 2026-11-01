@@ -312,13 +312,19 @@ func TestRequiresAValidCredentialWhenAnIssuerIsConfigured(t *testing.T) {
 		c.CredentialIssuer = issuerPublic
 		c.Now = func() time.Time { return now }
 	})
-	valid := relay.IssueCredential(issuer, "invite-1", now.Add(time.Hour))
-	expired := relay.IssueCredential(issuer, "invite-1", now.Add(-time.Second))
-	forged := relay.IssueCredential(stranger, "invite-1", now.Add(time.Hour))
-	cases := map[string]*relay.Credential{
-		"missing": nil,
-		"expired": &expired,
-		"forged":  &forged,
+	issue := func(key ed25519.PrivateKey, expires time.Time) string {
+		token, err := relay.IssueCredential(key, "invite-1", base, expires)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return token
+	}
+	valid := issue(issuer, now.Add(time.Hour))
+	cases := map[string]string{
+		"missing":   "",
+		"expired":   issue(issuer, now.Add(-time.Second)),
+		"forged":    issue(stranger, now.Add(time.Hour)),
+		"malformed": "v4.public.not-a-token",
 	}
 	for name, credential := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -331,7 +337,7 @@ func TestRequiresAValidCredentialWhenAnIssuerIsConfigured(t *testing.T) {
 		})
 	}
 	_, err := register(t, base, newIdentity(t), func(m *relay.RegisterMessage) {
-		m.Credential = &valid
+		m.Credential = valid
 	})
 	if err != nil {
 		t.Fatalf("valid credential refused: %v", err)

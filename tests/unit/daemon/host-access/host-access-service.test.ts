@@ -347,11 +347,11 @@ describe("HostAccessService", () => {
       apply: (target) => relay.push(target),
       state: () => ({ state: "online", error: null }),
     });
-    const credential = {
-      accountId: "invite-7",
-      expiresAt: 1_900_000_000,
-      signature: "s".repeat(86),
-    };
+    const credential = relayToken({
+      sub: "invite-7",
+      exp: "2030-03-17T17:46:40Z",
+      relay: "https://relay.example.invalid",
+    });
 
     await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
     const status = await service.setRelay(
@@ -368,7 +368,11 @@ describe("HostAccessService", () => {
     expect(status.relay).toEqual({
       url: "https://relay.example.invalid",
       relayOnly: true,
-      credential: { accountId: "invite-7", expiresAt: 1_900_000_000 },
+      credential: {
+        accountId: "invite-7",
+        expiresAt: "2030-03-17T17:46:40.000Z",
+        relayUrl: "https://relay.example.invalid",
+      },
       state: "online",
       error: null,
       endpoint,
@@ -394,5 +398,21 @@ describe("HostAccessService", () => {
     await expect(
       service.setRelay({ url: "ftp://relay.example.invalid" }, local),
     ).rejects.toThrow("Relay URL must be an http or https URL");
+    await expect(
+      service.setRelay(
+        { url: "https://other.example.invalid", credential },
+        local,
+      ),
+    ).rejects.toThrow("This credential is for https://relay.example.invalid");
+    await service.setRelay({ url: "https://other.example.invalid" }, local);
+    expect((await service.readRelaySettings()).credential).toBeNull();
   });
 });
+
+function relayToken(claims: Record<string, string>) {
+  const body = Buffer.concat([
+    Buffer.from(JSON.stringify(claims)),
+    Buffer.alloc(64),
+  ]);
+  return `v4.public.${body.toString("base64url")}`;
+}

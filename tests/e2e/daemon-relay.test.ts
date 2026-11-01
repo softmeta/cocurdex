@@ -265,7 +265,7 @@ describe("remote access through the relay", () => {
       (next) => next.relay.error === "credentialRequired",
     );
 
-    const credentialFile = path.join(path.dirname(keysFile), "invite.json");
+    const credentialFile = path.join(path.dirname(keysFile), "invite.token");
     writeFileSync(
       credentialFile,
       await runRelayCommand(relayBinary, [
@@ -274,18 +274,12 @@ describe("remote access through the relay", () => {
         keysFile,
         "--account",
         "invite-7",
+        "--relay",
+        relay.url,
       ]),
     );
     const installed = await runCli(
-      [
-        "host",
-        "relay",
-        "set",
-        relay.url,
-        "--credential",
-        credentialFile,
-        "--json",
-      ],
+      ["host", "relay", "set", "--credential", credentialFile, "--json"],
       cli,
     );
     expect(installed.code).toBe(0);

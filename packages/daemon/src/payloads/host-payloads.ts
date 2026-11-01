@@ -12,16 +12,10 @@ const remoteAccessSettings = z.object({
   keepAwake: z.boolean().optional(),
 });
 
-const relayCredential = z.object({
-  accountId: z.string().min(1).max(200),
-  expiresAt: z.number().int().positive(),
-  signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
-});
-
 const relaySettings = z.object({
   url: z.string().trim().min(1).max(2048).nullable(),
   relayOnly: z.boolean().optional(),
-  credential: relayCredential.nullable().optional(),
+  credential: z.string().trim().min(1).max(4096).nullable().optional(),
 });
 
 const deviceScopes = z

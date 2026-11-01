@@ -4,18 +4,12 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
-	"strconv"
 	"time"
 )
 
-const credentialLabel = "cocurdex-relay-credential/1"
-
-type Credential struct {
-	AccountID string `json:"accountId"`
-	ExpiresAt int64  `json:"expiresAt"`
-	Signature string `json:"signature"`
-}
+const credentialLabel = "cocurdex-relay-credential/2"
 
 var (
 	ErrRouteMismatch     = errors.New("route id does not match the host key")
@@ -86,47 +80,51 @@ func VerifyRegistration(
 	return verified, nil
 }
 
-func CredentialPayload(accountID string, expiresAt int64) []byte {
-	payload := make([]byte, 0, len(credentialLabel)+len(accountID)+24)
-	payload = append(payload, credentialLabel...)
-	payload = append(payload, 0)
-	payload = append(payload, accountID...)
-	payload = append(payload, 0)
-	return strconv.AppendInt(payload, expiresAt, 10)
+type CredentialClaims struct {
+	Subject   string `json:"sub"`
+	ExpiresAt string `json:"exp"`
+	Relay     string `json:"relay"`
 }
 
 func IssueCredential(
 	issuer ed25519.PrivateKey,
 	accountID string,
+	relayURL string,
 	expiresAt time.Time,
-) Credential {
-	expires := expiresAt.Unix()
-	signature := ed25519.Sign(issuer, CredentialPayload(accountID, expires))
-	return Credential{
-		AccountID: accountID,
-		ExpiresAt: expires,
-		Signature: EncodeBase64URL(signature),
+) (string, error) {
+	message, err := json.Marshal(CredentialClaims{
+		Subject:   accountID,
+		ExpiresAt: expiresAt.UTC().Format(time.RFC3339),
+		Relay:     relayURL,
+	})
+	if err != nil {
+		return "", err
 	}
+	return SignPasetoV4Public(issuer, message, []byte(credentialLabel)), nil
 }
 
 func VerifyCredential(
-	credential *Credential,
+	token string,
 	issuer ed25519.PublicKey,
 	now time.Time,
 ) (string, error) {
-	if credential == nil {
+	if token == "" {
 		return "", ErrCredentialMissing
 	}
-	signature, err := DecodeBase64URL(credential.Signature, ed25519.SignatureSize)
-	if err != nil || credential.AccountID == "" {
+	message, err := VerifyPasetoV4Public(token, issuer, []byte(credentialLabel))
+	if err != nil {
 		return "", ErrCredentialInvalid
 	}
-	payload := CredentialPayload(credential.AccountID, credential.ExpiresAt)
-	if !ed25519.Verify(issuer, payload, signature) {
+	var claims CredentialClaims
+	if err := json.Unmarshal(message, &claims); err != nil || claims.Subject == "" {
 		return "", ErrCredentialInvalid
 	}
-	if now.Unix() >= credential.ExpiresAt {
+	expires, err := time.Parse(time.RFC3339, claims.ExpiresAt)
+	if err != nil {
+		return "", ErrCredentialInvalid
+	}
+	if !now.Before(expires) {
 		return "", ErrCredentialExpired
 	}
-	return credential.AccountID, nil
+	return claims.Subject, nil
 }

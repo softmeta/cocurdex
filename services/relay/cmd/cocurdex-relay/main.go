@@ -180,12 +180,13 @@ func credential(args []string, stdout io.Writer) error {
 	flags := flag.NewFlagSet("credential", flag.ContinueOnError)
 	keyFile := flags.String("issuer-key-file", "", "JSON file written by keygen")
 	account := flags.String("account", "", "account or invite id")
+	relayURL := flags.String("relay", "", "relay URL the credential is for")
 	days := flags.Int("days", 30, "days until the credential expires")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if *keyFile == "" || *account == "" {
-		return errors.New("--issuer-key-file and --account are required")
+	if *keyFile == "" || *account == "" || *relayURL == "" {
+		return errors.New("--issuer-key-file, --account, and --relay are required")
 	}
 	if *days <= 0 {
 		return errors.New("--days must be positive")
@@ -203,8 +204,12 @@ func credential(args []string, stdout io.Writer) error {
 		return fmt.Errorf("issuer private key: %w", err)
 	}
 	expires := time.Now().Add(time.Duration(*days) * 24 * time.Hour)
-	issued := relay.IssueCredential(ed25519.NewKeyFromSeed(seed), *account, expires)
-	return writeJSON(stdout, issued)
+	token, err := relay.IssueCredential(ed25519.NewKeyFromSeed(seed), *account, *relayURL, expires)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(stdout, token)
+	return err
 }
 
 func writeJSON(stdout io.Writer, value any) error {

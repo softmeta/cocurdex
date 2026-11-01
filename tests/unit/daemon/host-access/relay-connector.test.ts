@@ -122,7 +122,7 @@ async function waitFor<T>(read: () => T | undefined | false) {
 describe("createRelayConnector", () => {
   it("proves the host key to the relay and reports online", async () => {
     const { relay, keys, connector } = await setup();
-    const credential = { accountId: "acct", expiresAt: 1, signature: "s" };
+    const credential = "v4.public.token";
 
     connector.apply({ url: relay.url, credential });
     await waitFor(() => connector.state().state === "online");
