@@ -101,6 +101,12 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/*/go.sum
+
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
 
@@ -269,6 +275,12 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/*/go.sum
+
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
 
@@ -331,6 +343,12 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/*/go.sum
 
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
