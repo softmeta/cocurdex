@@ -12,7 +12,7 @@ import type {
   RemoteConnectRequest,
   RemotePairRequest,
 } from "@cocurdex/shared";
-import { hostEndpointBase } from "@cocurdex/shared";
+import { hostEndpointBase, isRelayEndpoint } from "@cocurdex/shared";
 import type { PairedHostEndpoint } from "./platform";
 import {
   type SavedHost,
@@ -174,15 +174,41 @@ function withinGrace<T>(promise: Promise<T>, graceMs: number) {
 export async function findReachableOrigin(
   options: { host: ProbeHost } & ProbeOptions,
 ): Promise<ReachableHostOrigin | null> {
-  const [current, ...others] = savedHostOrigins(options.host);
+  const origins = savedHostOrigins(options.host);
+  const [current] = origins;
   if (current === undefined) return null;
-  const currentProbe = probeOrigin(options.host, current, options);
-  const otherProbe = firstFound(
-    others.map((origin) => probeOrigin(options.host, origin, options)),
+  const probes = new Map(
+    origins.map((origin) => [
+      origin,
+      probeOrigin(options.host, origin, options),
+    ]),
   );
-  const first = await firstFound([currentProbe, otherProbe]);
-  if (!first || first.origin === current) return first;
+  const probesOf = (relayed: boolean) =>
+    origins
+      .filter((origin) => isRelayEndpoint(origin) === relayed)
+      .map((origin) => probes.get(origin) ?? Promise.resolve(null));
+  const firstDirect = firstFound(probesOf(false));
+  const first = await firstFound([firstDirect, firstFound(probesOf(true))]);
+  if (!first) return null;
+  if (isRelayEndpoint(first.origin)) {
+    return (await withinGrace(firstDirect, CURRENT_ORIGIN_GRACE_MS)) ?? first;
+  }
+  const currentProbe = probes.get(current);
+  if (first.origin === current || !currentProbe || isRelayEndpoint(current)) {
+    return first;
+  }
   return (await withinGrace(currentProbe, CURRENT_ORIGIN_GRACE_MS)) ?? first;
+}
+
+export function findDirectOrigin(
+  options: { host: ProbeHost } & ProbeOptions,
+): Promise<ReachableHostOrigin | null> {
+  const direct = savedHostOrigins(options.host).filter(
+    (origin) => !isRelayEndpoint(origin),
+  );
+  return firstFound(
+    direct.map((origin) => probeOrigin(options.host, origin, options)),
+  );
 }
 
 export function savedHostSafetyCode(

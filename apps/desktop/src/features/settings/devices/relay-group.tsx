@@ -3,6 +3,7 @@ import {
   type HostRelayState,
   type HostRemoteAccessStatus,
   normalizeRelayUrl,
+  OFFICIAL_RELAY_URL,
   parseRelayCredential,
   type RelaySettingsUpdate,
 } from "@cocurdex/shared";
@@ -80,6 +81,12 @@ export function RelayGroup({
     if (url && url !== relay.url) void save({ url });
   };
 
+  const useOfficialRelay = () => {
+    setUrlDraft(OFFICIAL_RELAY_URL);
+    setUrlError(false);
+    void save({ url: OFFICIAL_RELAY_URL });
+  };
+
   const commitCredential = () => {
     if (!credentialDraft.trim()) {
       setCredentialError(false);
@@ -106,15 +113,28 @@ export function RelayGroup({
         title={t("devices.relay.url.title")}
       >
         <div className="flex w-72 flex-col gap-1">
-          <Input
-            aria-label={t("devices.relay.url.title")}
-            disabled={saving}
-            placeholder={t("devices.relay.url.placeholder")}
-            value={urlDraft}
-            onBlur={commitUrl}
-            onChange={(event) => setUrlDraft(event.target.value)}
-            onKeyDown={blurOnEnter}
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              aria-label={t("devices.relay.url.title")}
+              disabled={saving}
+              placeholder={t("devices.relay.url.placeholder")}
+              value={urlDraft}
+              onBlur={commitUrl}
+              onChange={(event) => setUrlDraft(event.target.value)}
+              onKeyDown={blurOnEnter}
+            />
+            {relay.url === OFFICIAL_RELAY_URL ? null : (
+              <Button
+                disabled={saving}
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={useOfficialRelay}
+              >
+                {t("devices.relay.url.useOfficial")}
+              </Button>
+            )}
+          </div>
           {urlError ? (
             <Text size="meta" tone="destructive">
               {t("devices.relay.url.invalid")}

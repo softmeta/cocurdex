@@ -239,7 +239,7 @@ export function parseRelayCredential(text: string): RelayCredential | null {
 
 export const RELAY_OFF_STATUS: HostRelayStatus = {
   url: null,
-  relayOnly: true,
+  relayOnly: false,
   credential: null,
   state: "off",
   error: null,
@@ -267,6 +267,8 @@ export function hostPairingAddresses(
   };
   return [relay, ...status.addresses];
 }
+
+export const OFFICIAL_RELAY_URL = "https://relay.cocurdex.com";
 
 export const RELAY_CONNECT_PATH = "/v1/connect/";
 

@@ -117,14 +117,14 @@ function isRelayCredential(value: unknown): value is RelayCredential {
 }
 
 function parseRelaySettings(valueJson: string | null): RelaySettings {
-  const fallback = { url: null, relayOnly: true, credential: null };
+  const fallback = { url: null, relayOnly: false, credential: null };
   if (!valueJson) return fallback;
   try {
     const parsed = JSON.parse(valueJson) as Partial<RelaySettings>;
     return {
       url:
         typeof parsed.url === "string" ? normalizeRelayUrl(parsed.url) : null,
-      relayOnly: parsed.relayOnly !== false,
+      relayOnly: parsed.relayOnly === true,
       credential: isRelayCredential(parsed.credential)
         ? parsed.credential
         : null,

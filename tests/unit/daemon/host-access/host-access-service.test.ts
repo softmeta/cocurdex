@@ -298,13 +298,38 @@ describe("HostAccessService", () => {
       error: null,
       relay: {
         url: null,
-        relayOnly: true,
+        relayOnly: false,
         credential: null,
         state: "off",
         error: null,
         endpoint: null,
       },
     });
+  });
+
+  it("keeps the local listener beside a relay unless relay-only is chosen", async () => {
+    const { service } = await setup();
+    const listener: boolean[] = [];
+    service.bindRemoteListener({
+      apply: async (next) => {
+        listener.push(next.enabled);
+        return { listening: next.enabled, error: null };
+      },
+      state: () => ({ listening: listener.at(-1) === true, error: null }),
+    });
+    service.bindRelayConnector({
+      apply: () => undefined,
+      state: () => ({ state: "online", error: null }),
+    });
+
+    await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
+    const status = await service.setRelay(
+      { url: "https://relay.example.invalid" },
+      local,
+    );
+
+    expect(status.relay.relayOnly).toBe(false);
+    expect(listener).toEqual([true, true]);
   });
 
   it("routes through the relay instead of the local listener in relay-only mode", async () => {
@@ -330,7 +355,7 @@ describe("HostAccessService", () => {
 
     await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
     const status = await service.setRelay(
-      { url: "https://relay.example.invalid/", credential },
+      { url: "https://relay.example.invalid/", relayOnly: true, credential },
       local,
     );
 
