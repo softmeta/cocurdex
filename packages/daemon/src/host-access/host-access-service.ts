@@ -22,7 +22,7 @@ import {
   PAIRABLE_HOST_ACCESS_SCOPES,
   type PairedDevice,
   type PairedDeviceRecord,
-  type RelayCredential,
+  parseRelayCredential,
   type RelaySettings,
   type RelaySettingsUpdate,
   type RemoteAccessSettings,
@@ -105,15 +105,24 @@ function parseRemoteAccessSettings(
   }
 }
 
-function isRelayCredential(value: unknown): value is RelayCredential {
-  const credential = value as Partial<RelayCredential> | null;
-  return (
-    typeof credential === "object" &&
-    credential !== null &&
-    typeof credential.accountId === "string" &&
-    typeof credential.expiresAt === "number" &&
-    typeof credential.signature === "string"
-  );
+function relayCredentialFor(
+  url: string | null,
+  token: string | null,
+  explicit: boolean,
+) {
+  if (!url || !token) return null;
+  const credential = parseRelayCredential(token);
+  if (!credential) {
+    if (explicit) throw new Error("Not a relay credential (v4.public token)");
+    return null;
+  }
+  if (credential.relayUrl === url) return token;
+  if (explicit) {
+    throw new Error(
+      `This credential is for ${credential.relayUrl}, not ${url}`,
+    );
+  }
+  return null;
 }
 
 function parseRelaySettings(valueJson: string | null): RelaySettings {
@@ -125,9 +134,11 @@ function parseRelaySettings(valueJson: string | null): RelaySettings {
       url:
         typeof parsed.url === "string" ? normalizeRelayUrl(parsed.url) : null,
       relayOnly: parsed.relayOnly === true,
-      credential: isRelayCredential(parsed.credential)
-        ? parsed.credential
-        : null,
+      credential:
+        typeof parsed.credential === "string" &&
+        parseRelayCredential(parsed.credential)
+          ? parsed.credential
+          : null,
     };
   } catch {
     return fallback;
@@ -499,10 +510,7 @@ export class HostAccessService {
       url: relay.url,
       relayOnly: relay.relayOnly,
       credential: relay.credential
-        ? {
-            accountId: relay.credential.accountId,
-            expiresAt: relay.credential.expiresAt,
-          }
+        ? parseRelayCredential(relay.credential)
         : null,
       state: active ? (connector?.state ?? "off") : "off",
       error: active ? (connector?.error ?? null) : null,
@@ -556,13 +564,15 @@ export class HostAccessService {
       throw new Error("Relay URL must be an http or https URL");
     }
     const previous = await this.readRelaySettings();
+    const credential = relayCredentialFor(
+      url,
+      update.credential === undefined ? previous.credential : update.credential,
+      update.credential !== undefined,
+    );
     const next: RelaySettings = {
       url,
       relayOnly: update.relayOnly ?? previous.relayOnly,
-      credential:
-        update.credential === undefined
-          ? previous.credential
-          : update.credential,
+      credential,
     };
     await this.options.settings.set(RELAY_SETTING, JSON.stringify(next));
     if (previous.url !== next.url) {

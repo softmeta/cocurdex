@@ -30,7 +30,7 @@ export function hostUsageLines() {
   return [
     "  cocurdex host status [--json]",
     "  cocurdex host remote enable [--port <port>] [--keep-awake on|off] | disable [--json]",
-    "  cocurdex host relay set official|<url> [--relay-only on|off] [--credential <file>] | relay off [--json]",
+    "  cocurdex host relay set official|<url> [--relay-only on|off] [--credential <file>] | relay set --credential <file> | relay off [--json]",
     "  cocurdex host push set <url> | push off | push status [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
@@ -96,26 +96,29 @@ function printRelayStatus(status: HostRemoteAccessStatus) {
 }
 
 async function readRelayCredential(file: string) {
-  const credential = parseRelayCredential(await readFile(file, "utf8"));
+  const token = (await readFile(file, "utf8")).trim();
+  const credential = parseRelayCredential(token);
   if (!credential) {
-    throw new Error(
-      `${file} is not a relay credential (accountId, expiresAt, signature)`,
-    );
+    throw new Error(`${file} does not hold a relay credential token`);
   }
-  return credential;
+  return { token, relayUrl: credential.relayUrl };
 }
 
-async function setRelay(url: string | null, parsed: ParsedArgs) {
+async function setRelay(url: string | null | undefined, parsed: ParsedArgs) {
   const relayOnly = onOffFlag(parsed, "relay-only");
   const credentialFile = stringFlag(parsed, "credential");
   const credential = credentialFile
     ? await readRelayCredential(credentialFile)
     : undefined;
+  const target = url === undefined ? credential?.relayUrl : url;
+  if (target === undefined) {
+    throw new Error("Pass a relay URL or --credential <file>");
+  }
   const status = await withDaemon(() =>
     requestDaemon("host.relay.set", {
-      url,
+      url: target,
       ...(relayOnly === undefined ? {} : { relayOnly }),
-      ...(credential === undefined ? {} : { credential }),
+      ...(credential === undefined ? {} : { credential: credential.token }),
     }),
   );
   if (parsed.flags.has("json")) {
@@ -235,11 +238,9 @@ export async function handleHostCommand(
     await setRemoteAccess(args[0] === "enable", parsed);
     return true;
   }
-  if (action === "relay" && args[0] === "set" && args[1]) {
-    await setRelay(
-      args[1] === "official" ? OFFICIAL_RELAY_URL : args[1],
-      parsed,
-    );
+  if (action === "relay" && args[0] === "set") {
+    const url = args[1] === "official" ? OFFICIAL_RELAY_URL : args[1];
+    await setRelay(url, parsed);
     return true;
   }
   if (action === "relay" && args[0] === "off") {

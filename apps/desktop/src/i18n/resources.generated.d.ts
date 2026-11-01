@@ -2298,7 +2298,7 @@ export default interface Resources {
       };
       pair: {
         create: "Create pairing code";
-        createdDescription: "Scan the QR code with the Cocurdex app on your phone, or open a link on the other device. The code works once.";
+        createdDescription: "Scan the QR code with the Cocurdex app on your phone, or open the link on the other device. The code works once.";
         description: "Choose what the new device may do. You can revoke it at any time.";
         done: "Done";
         enableRemoteFirst: "Turn on remote access to get a link the other device can open.";
@@ -2321,9 +2321,9 @@ export default interface Resources {
       };
       relay: {
         credential: {
-          description: "Paste the invite credential from the relay operator. Self-hosted relays without invites do not need one.";
-          invalid: "This is not a relay credential.";
-          placeholder: '{"accountId": …}';
+          description: "Paste the invite credential from the relay operator; the relay URL is filled in for you. Self-hosted relays without invites do not need one.";
+          invalid: "This is not a relay invite credential.";
+          placeholder: "Paste invite credential";
           remove: "Remove";
           summary: "{{account}} · expires {{expires}}";
           title: "Invite credential";

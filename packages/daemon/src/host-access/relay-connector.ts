@@ -1,10 +1,6 @@
 import nodeCrypto from "node:crypto";
 import { SECURE_CHANNEL_WEBSOCKET_PROTOCOL } from "@cocurdex/secure-channel";
-import type {
-  HostRelayError,
-  HostRelayState,
-  RelayCredential,
-} from "@cocurdex/shared";
+import type { HostRelayError, HostRelayState } from "@cocurdex/shared";
 import WebSocket, { type RawData } from "ws";
 import type { HostKeys } from "./host-key-store";
 
@@ -34,7 +30,7 @@ const REFUSALS = new Set<HostRelayError>([
 
 export interface RelayTarget {
   url: string;
-  credential: RelayCredential | null;
+  credential: string | null;
 }
 
 export interface RelayConnectorState {

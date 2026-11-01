@@ -36,12 +36,12 @@ type ChallengeMessage struct {
 }
 
 type RegisterMessage struct {
-	Type       string      `json:"type"`
-	RouteID    string      `json:"routeId"`
-	HostKey    string      `json:"hostKey"`
-	SigningKey string      `json:"signingKey"`
-	Signature  string      `json:"signature"`
-	Credential *Credential `json:"credential,omitempty"`
+	Type       string `json:"type"`
+	RouteID    string `json:"routeId"`
+	HostKey    string `json:"hostKey"`
+	SigningKey string `json:"signingKey"`
+	Signature  string `json:"signature"`
+	Credential string `json:"credential,omitempty"`
 }
 
 type RegisteredMessage struct {

@@ -88,15 +88,18 @@ export function RelayGroup({
   };
 
   const commitCredential = () => {
-    if (!credentialDraft.trim()) {
+    const token = credentialDraft.trim();
+    if (!token) {
       setCredentialError(false);
       return;
     }
-    const credential = parseRelayCredential(credentialDraft);
+    const credential = parseRelayCredential(token);
     setCredentialError(credential === null);
     if (!credential) return;
     setCredentialDraft("");
-    void save({ url: relay.url, credential });
+    setUrlDraft(credential.relayUrl);
+    setUrlError(false);
+    void save({ url: credential.relayUrl, credential: token });
   };
 
   const stateLabel = status.settings.enabled
@@ -164,9 +167,7 @@ export function RelayGroup({
             <Text size="meta" tone="muted">
               {t("devices.relay.credential.summary", {
                 account: relay.credential.accountId,
-                expires: formatDateTime(
-                  new Date(relay.credential.expiresAt * 1000).toISOString(),
-                ),
+                expires: formatDateTime(relay.credential.expiresAt),
               })}
             </Text>
             <Button
@@ -183,7 +184,7 @@ export function RelayGroup({
           <div className="flex w-72 flex-col gap-1">
             <Input
               aria-label={t("devices.relay.credential.title")}
-              disabled={saving || !relay.url}
+              disabled={saving}
               placeholder={t("devices.relay.credential.placeholder")}
               value={credentialDraft}
               onBlur={commitCredential}
