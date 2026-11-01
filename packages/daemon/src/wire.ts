@@ -356,6 +356,9 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
           activeService.resolveWorkspaceFilePath(filePath),
         resolvePdfPath: (filePath) => activeService.resolvePdfPath(filePath),
         attachments: activeService.attachments,
+        locateDeckAsset: (hash) => activeService.decks.assets.locate(hash),
+        redeemDeckDownload: (ticket) =>
+          activeService.decks.redeemDownload(ticket),
       }),
     );
     remote.onMessage((bytes) => {

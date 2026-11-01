@@ -1,7 +1,6 @@
-import { buildDaemonDeckAssetUrl } from "@cocurdex/shared";
 import { createDaemonBlobUrlStore } from "@/lib";
 
 export const useDeckImageUrl = createDaemonBlobUrlStore({
-  buildUrl: buildDaemonDeckAssetUrl,
+  request: (hash) => ({ kind: "deckAsset", hash }),
   failureDiagnostic: "decks.imageLoadFailed",
 });

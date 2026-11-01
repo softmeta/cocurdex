@@ -1,14 +1,14 @@
-import {
-  buildDaemonImageAttachmentUrl,
-  type ImageAttachment,
-} from "@cocurdex/shared";
+import { type ImageAttachment, storedImageFileName } from "@cocurdex/shared";
 import { useCallback, useRef, useState } from "react";
 import { createDaemonBlobUrlStore, useMountEffect } from "@/lib";
 
 export type ImageCopyStatus = "copied" | "failed";
 
 const useImageAttachmentBlobUrl = createDaemonBlobUrlStore({
-  buildUrl: buildDaemonImageAttachmentUrl,
+  request: (filePath) => ({
+    kind: "imageAttachment",
+    file: storedImageFileName(filePath),
+  }),
   failureDiagnostic: "composer.imageAttachmentLoadFailed",
 });
 

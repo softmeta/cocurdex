@@ -5,7 +5,13 @@ export {
 } from "./browser-preview-events";
 export { readCssVarPx } from "./css-length";
 export { createDaemonBlobUrlStore } from "./daemon-blob-urls";
-export { requestDaemon, resolveLocalDaemonConnection } from "./daemon-client";
+export { requestDaemon } from "./daemon-client";
+export {
+  type PdfRangeReader,
+  type PdfSource,
+  resolvePdfSource,
+  saveDeckDownload,
+} from "./daemon-files";
 export { logRendererDiagnostic } from "./diagnostics";
 export { onOpenEntity, openEntity } from "./entity-events";
 export { toAbsolutePath } from "./file-path";
@@ -54,6 +60,13 @@ export type {
 export { cn } from "./utils";
 export {
   buildDevWebClientUrl,
+  connectWebHostBridge,
   installWebHostBridge,
   type WebHostAccess,
+  webPairedHost,
 } from "./web-host-bridge";
+export {
+  listPairedHosts,
+  removePairedHost,
+  savePairedHost,
+} from "./web-paired-hosts";

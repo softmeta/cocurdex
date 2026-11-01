@@ -118,7 +118,6 @@ await build({
   publicDir: false,
   logLevel: "warn",
   resolve: { alias },
-  esbuild: { keepNames: true },
   define: {
     // Packaged cli.mjs has no package.json beside it — inline the version.
     __COCURDEX_CLI_VERSION__: JSON.stringify(cliVersion),
@@ -128,7 +127,7 @@ await build({
     outDir,
     emptyOutDir: false,
     target: "node20",
-    minify: "esbuild",
+    minify: true,
     sourcemap: false,
     ssr: true,
     lib: {
@@ -136,10 +135,11 @@ await build({
       formats: ["es"],
       fileName: () => "cli.mjs",
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         entryFileNames: "cli.mjs",
         chunkFileNames: "cli-[name]-[hash].mjs",
+        keepNames: true,
       },
     },
   },
@@ -171,12 +171,11 @@ await build({
   resolve: { alias },
   plugins: [quickjsWasmBesideDaemon],
   define: buildPolicyDefine(),
-  esbuild: { keepNames: true },
   build: {
     outDir,
     emptyOutDir: false,
     target: "node20",
-    minify: "esbuild",
+    minify: true,
     sourcemap: false,
     ssr: true,
     lib: {
@@ -185,16 +184,17 @@ await build({
       fileName: () => "daemon.cjs",
     },
     commonjsOptions: { ignore: ["bufferutil", "utf-8-validate"] },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         entryFileNames: "daemon.cjs",
+        keepNames: true,
         // Node 24 exposes enumerable EventEmitter methods on `node:stream`'s
         // prototype. Rollup's live-binding namespace helper reads
         // getOwnPropertyDescriptor and throws on those inherited names
         // (`reading 'get'`), so the bundled daemon exits before it can
         // publish daemon.json. Node builtins do not mutate exports after load.
         externalLiveBindings: false,
-        inlineDynamicImports: true,
+        codeSplitting: false,
       },
     },
   },
@@ -213,7 +213,7 @@ await build({
     outDir,
     emptyOutDir: false,
     target: "node20",
-    minify: "esbuild",
+    minify: true,
     sourcemap: false,
     ssr: true,
     lib: {
@@ -221,8 +221,8 @@ await build({
       formats: ["es"],
       fileName: () => "worker.js",
     },
-    rollupOptions: {
-      output: { entryFileNames: "worker.js", inlineDynamicImports: true },
+    rolldownOptions: {
+      output: { entryFileNames: "worker.js", codeSplitting: false },
     },
   },
   ssr: { noExternal: true },

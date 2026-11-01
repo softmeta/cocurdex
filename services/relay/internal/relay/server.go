@@ -27,6 +27,7 @@ type Config struct {
 	HostLimiter         *RateLimiter
 	ConnectLimiter      *RateLimiter
 	TrustProxy          bool
+	WebAssets           http.Handler
 	Logger              *slog.Logger
 	Now                 func() time.Time
 }
@@ -44,8 +45,15 @@ func DefaultConfig() Config {
 }
 
 type hostEntry struct {
-	conn   *websocket.Conn
-	cancel context.CancelFunc
+	conn    *websocket.Conn
+	cancel  context.CancelFunc
+	writeMu sync.Mutex
+}
+
+func (e *hostEntry) write(ctx context.Context, message any) error {
+	e.writeMu.Lock()
+	defer e.writeMu.Unlock()
+	return wsjson.Write(ctx, e.conn, message)
 }
 
 type Server struct {
@@ -78,6 +86,9 @@ func NewServer(config Config) *Server {
 	server.mux.HandleFunc("GET /v1/host", server.handleHost)
 	server.mux.HandleFunc("GET /v1/host/accept/{ticket}", server.handleAccept)
 	server.mux.HandleFunc("GET /v1/connect/{routeId}", server.handleConnect)
+	if config.WebAssets != nil {
+		server.mux.Handle("GET /", config.WebAssets)
+	}
 	return server
 }
 
@@ -106,8 +117,7 @@ func (s *Server) clientIP(r *http.Request) string {
 
 func accept(w http.ResponseWriter, r *http.Request, readLimit int64, subprotocols ...string) (*websocket.Conn, error) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		InsecureSkipVerify: true,
-		Subprotocols:       subprotocols,
+		Subprotocols: subprotocols,
 	})
 	if err != nil {
 		return nil, err
@@ -155,8 +165,17 @@ func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	entry := &hostEntry{conn: conn, cancel: cancel}
+	entry.writeMu.Lock()
 	s.install(routeID, entry)
 	defer s.uninstall(routeID, entry)
+	confirmCtx, cancelConfirm := context.WithTimeout(ctx, s.config.RegisterTimeout)
+	registered := RegisteredMessage{Type: "registered", RouteID: routeID}
+	err = wsjson.Write(confirmCtx, conn, registered)
+	cancelConfirm()
+	entry.writeMu.Unlock()
+	if err != nil {
+		return
+	}
 	s.config.Logger.Info("host registered", "route", routeID[:6])
 	go s.keepAlive(ctx, conn, cancel)
 	for {
@@ -193,10 +212,6 @@ func (s *Server) register(ctx context.Context, conn *websocket.Conn) (string, er
 		return "", err
 	}
 	if err := s.config.Bindings.Claim(verified.RouteID, verified.SigningKey); err != nil {
-		return "", err
-	}
-	registered := RegisteredMessage{Type: "registered", RouteID: verified.RouteID}
-	if err := wsjson.Write(registerCtx, conn, registered); err != nil {
 		return "", err
 	}
 	return verified.RouteID, nil
@@ -318,7 +333,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	defer s.closeSession(opened)
 	notifyCtx, cancelNotify := context.WithTimeout(r.Context(), s.config.HostAcceptTimeout)
 	incoming := IncomingMessage{Type: "incoming", Ticket: opened.ticket}
-	err = wsjson.Write(notifyCtx, opened.entry.conn, incoming)
+	err = opened.entry.write(notifyCtx, incoming)
 	cancelNotify()
 	if err != nil {
 		device.Close(CloseHostOffline, "")

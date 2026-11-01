@@ -2,8 +2,11 @@
   "name": "@cocurdex/client-runtime",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./remote-files": "./src/remote-files.ts",
+    "./secure-transport": "./src/secure-transport.ts",
     "./internal/*": "./src/*.ts"
   },
   "scripts": {

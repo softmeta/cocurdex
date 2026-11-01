@@ -9,6 +9,12 @@
       "@cocurdex/shared": ["../../packages/shared/src/index.ts"],
       "@cocurdex/rpc": ["../../packages/rpc/src/index.ts"],
       "@cocurdex/rpc/client": ["../../packages/rpc/src/client.ts"],
+      "@cocurdex/client-runtime/remote-files": [
+        "../../packages/client-runtime/src/remote-files.ts"
+      ],
+      "@cocurdex/client-runtime/secure-transport": [
+        "../../packages/client-runtime/src/secure-transport.ts"
+      ],
       "@cocurdex/client-runtime": [
         "../../packages/client-runtime/src/index.ts"
       ],

@@ -104,6 +104,8 @@ export type RemoteFileRequest =
   | { kind: "workspaceFile"; path: string; range?: RemoteByteRange }
   | { kind: "pdf"; path: string; range?: RemoteByteRange }
   | { kind: "imageAttachment"; file: string }
+  | { kind: "deckAsset"; hash: string }
+  | { kind: "deckDownload"; ticket: string }
   | { kind: "attachmentUpload"; upload: "image" | "document"; name: string };
 
 export type RemoteFileFailure =
@@ -121,6 +123,7 @@ export type RemoteFileHead =
       start: number;
       end: number;
       contentType: string;
+      fileName?: string;
     }
   | { ok: true; uploaded: ImageAttachment | DocumentAttachment }
   | { ok: false; error: RemoteFileFailure; message?: string };

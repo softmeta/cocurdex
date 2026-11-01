@@ -1,5 +1,6 @@
 import { readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
 import {
@@ -156,6 +157,9 @@ async function waitUntil(condition: () => boolean, timeoutMs = 15_000) {
   }
 }
 
+const SWATCH_PNG = createRequire(import.meta.url).resolve(
+  "./fixtures/deck-images/swatch-3x2.png",
+);
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());
 
@@ -542,6 +546,41 @@ describe("remote host access", () => {
           writer.read({ kind: "workspaceFile", path: filePath }),
         ).rejects.toMatchObject({ reason: "forbidden" });
       }
+
+      const swatch = await requestDaemon(
+        "deck.importImage",
+        { path: SWATCH_PNG },
+        daemon.options,
+      );
+      const deckAsset = { kind: "deckAsset", hash: swatch.hash } as const;
+      const asset = await reader.read(deckAsset);
+      expect(asset.contentType).toBe("image/png");
+      expect(await readAll(asset.body)).toEqual(readFileSync(SWATCH_PNG));
+      await expect(approver.read(deckAsset)).rejects.toMatchObject({
+        reason: "forbidden",
+      });
+
+      const { deck } = await requestDaemon(
+        "deck.create",
+        { title: "Remote plan", markdown: "## Plan" },
+        daemon.options,
+      );
+      const download = await requestDaemon(
+        "deck.createDownload",
+        { id: deck.id, format: "pptx" },
+        daemon.options,
+      );
+      const ticket =
+        new URL(download.path, "http://host").searchParams.get("ticket") ?? "";
+      const deckFile = await reader.read({ kind: "deckDownload", ticket });
+      expect(deckFile.fileName).toBe("Remote plan.pptx");
+      expect(deckFile.contentType).toContain("presentationml");
+      expect((await readAll(deckFile.body)).subarray(0, 2).toString()).toBe(
+        "PK",
+      );
+      await expect(
+        reader.read({ kind: "deckDownload", ticket }),
+      ).rejects.toMatchObject({ reason: "notFound" });
     } finally {
       for (const client of [writer, reader, approver]) client.close();
     }

@@ -478,6 +478,17 @@
         "description": "查看会话、消息、笔记和 issue。",
         "title": "读取"
       }
+    },
+    "webPaired": {
+      "computer": "电脑",
+      "description": "已通过中继与 {{name}} 配对。",
+      "pairedAt": "配对时间",
+      "safetyCode": "安全码",
+      "safetyCodeDescription": "应与电脑上 设置 › 设备 中此浏览器显示的安全码一致。",
+      "title": "此浏览器",
+      "unpair": "解除配对",
+      "unpairDescription": "同时在浏览器和电脑上移除此配对。之后可用新链接重新配对。",
+      "unpairFailed": "此浏览器无法移除配对信息。请允许网站存储数据后重试。"
     }
   },
   "diagnostics": {

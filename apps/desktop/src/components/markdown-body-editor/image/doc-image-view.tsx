@@ -1,12 +1,9 @@
-import {
-  buildDaemonImageAttachmentUrl,
-  parseDocImageUri,
-} from "@cocurdex/shared";
+import { parseDocImageUri } from "@cocurdex/shared";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { cn, createDaemonBlobUrlStore } from "@/lib";
 
 const useStoredImageUrl = createDaemonBlobUrlStore({
-  buildUrl: buildDaemonImageAttachmentUrl,
+  request: (file) => ({ kind: "imageAttachment", file }),
   failureDiagnostic: "notes.docImageLoadFailed",
 });
 

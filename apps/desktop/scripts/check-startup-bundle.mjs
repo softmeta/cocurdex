@@ -7,6 +7,11 @@ const SECONDARY_WINDOW_ENTRIES = new Set([
   "src/app/layout/chat-window/detached-chat-app.tsx",
   "src/features/decks/audience/index.ts",
 ]);
+const WEB_CLIENT_ENTRIES = new Set([
+  "src/features/web-pair/index.ts",
+  "../../packages/client-runtime/src/remote-files.ts",
+  "../../packages/client-runtime/src/secure-transport.ts",
+]);
 const HEADROOM = 1.05;
 
 const manifestFile = new URL(".vite/manifest.json", rendererDir);
@@ -20,7 +25,7 @@ const entry = manifest["index.html"];
 const roots = [
   "index.html",
   ...(entry.dynamicImports ?? []).filter(
-    (key) => !SECONDARY_WINDOW_ENTRIES.has(key),
+    (key) => !SECONDARY_WINDOW_ENTRIES.has(key) && !WEB_CLIENT_ENTRIES.has(key),
   ),
 ];
 const chunks = new Set();

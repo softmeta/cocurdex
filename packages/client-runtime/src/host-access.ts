@@ -17,6 +17,7 @@ import type { PairedHostEndpoint } from "./platform";
 import {
   type SavedHost,
   type SavedHostStore,
+  savedHostEndpoint,
   savedHostOrigins,
   uniqueOrigins,
 } from "./saved-hosts";
@@ -66,22 +67,6 @@ export async function pairHost(options: PairHostOptions): Promise<SavedHost> {
   };
   options.store.save(saved);
   return saved;
-}
-
-export function savedHostEndpoint(
-  host: Pick<
-    SavedHost,
-    "baseUrl" | "hostId" | "hostKey" | "deviceId" | "deviceSecretKey"
-  >,
-): PairedHostEndpoint {
-  return {
-    kind: "paired",
-    baseUrl: host.baseUrl,
-    hostId: host.hostId,
-    hostKey: host.hostKey,
-    deviceId: host.deviceId,
-    deviceSecretKey: host.deviceSecretKey,
-  };
 }
 
 export function connectPairedHost(

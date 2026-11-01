@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
 import path from "node:path";
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { getWorkspaceDependencyNames } from "./electron-vite-workspace-dependencies";
@@ -20,6 +21,18 @@ const desktopPackage = require("./package.json") as {
 const bundledWorkspaceDependencies = getWorkspaceDependencyNames(
   desktopPackage.dependencies,
 );
+
+const sideEffectFreeWorkspaceSources = ["client-runtime", "secure-channel"].map(
+  (name) => path.resolve(__dirname, "../../packages", name, "src"),
+);
+
+function sourceDirectoryPattern(root: string) {
+  const escaped = root
+    .split(/[\\/]/)
+    .map((segment) => segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[\\\\/]");
+  return new RegExp(`^${escaped}[\\\\/]`, "i");
+}
 
 const alias = {
   "@": path.resolve(__dirname, "src"),
@@ -69,6 +82,14 @@ const alias = {
     __dirname,
     "../../packages/rpc/src/client.ts",
   ),
+  "@cocurdex/client-runtime/remote-files": path.resolve(
+    __dirname,
+    "../../packages/client-runtime/src/remote-files.ts",
+  ),
+  "@cocurdex/client-runtime/secure-transport": path.resolve(
+    __dirname,
+    "../../packages/client-runtime/src/secure-transport.ts",
+  ),
   "@cocurdex/client-runtime": path.resolve(
     __dirname,
     "../../packages/client-runtime/src/index.ts",
@@ -86,16 +107,18 @@ export default defineConfig(({ command }) => ({
     resolve: {
       alias,
     },
-    esbuild: {
-      keepNames: true,
-    },
     build: {
-      minify: command === "build" ? "esbuild" : false,
+      minify: command === "build",
       externalizeDeps: {
         exclude: bundledWorkspaceDependencies,
       },
       lib: {
         entry: "electron/main.ts",
+      },
+      rolldownOptions: {
+        output: {
+          keepNames: true,
+        },
       },
     },
   },
@@ -103,15 +126,13 @@ export default defineConfig(({ command }) => ({
     resolve: {
       alias,
     },
-    esbuild: {
-      keepNames: true,
-    },
     build: {
-      minify: command === "build" ? "esbuild" : false,
+      isolatedEntries: true,
+      minify: command === "build",
       externalizeDeps: {
         exclude: bundledWorkspaceDependencies,
       },
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           preload: path.resolve(__dirname, "electron/preload.ts"),
           "browser-preload": path.resolve(
@@ -122,6 +143,7 @@ export default defineConfig(({ command }) => ({
         output: {
           format: "cjs",
           entryFileNames: "[name].cjs",
+          keepNames: true,
         },
       },
     },
@@ -129,11 +151,8 @@ export default defineConfig(({ command }) => ({
   renderer: {
     root: ".",
     plugins: [
-      react({
-        babel: {
-          plugins: [["babel-plugin-react-compiler", { target: "19" }]],
-        },
-      }),
+      react(),
+      babel({ presets: [reactCompilerPreset({ target: "19" })] }),
       tailwindcss(),
       viteStaticCopy({
         targets: [
@@ -158,25 +177,19 @@ export default defineConfig(({ command }) => ({
     optimizeDeps: {
       exclude: ["monaco-editor", "@monaco-editor/react"],
     },
-    // Strip non-actionable console noise from the production renderer bundle.
-    // Marked pure so esbuild's minifier drops these calls in prod builds while
-    // dev (unminified) keeps them. console.warn/error stay for real failures.
-    esbuild: {
-      keepNames: true,
-      pure: ["console.log", "console.info", "console.debug"],
-    },
     build: {
-      minify: command === "build" ? "esbuild" : false,
+      minify: command === "build",
       manifest: true,
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           index: "index.html",
         },
-        onwarn(warning, warn) {
-          if (warning.code === "CYCLIC_CROSS_CHUNK_REEXPORT") {
-            throw new Error(warning.message);
-          }
-          warn(warning);
+        treeshake: {
+          moduleSideEffects: sideEffectFreeWorkspaceSources.map((root) => ({
+            test: sourceDirectoryPattern(root),
+            sideEffects: false,
+          })),
+          manualPureFunctions: ["console.log", "console.info", "console.debug"],
         },
       },
     },

@@ -511,9 +511,21 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
-    webUnlinked: {
-      description: "This page needs a link from the cocurdex desktop app. Open the web client from the app on the computer running cocurdex; remote access from other devices goes through the cocurdex mobile app.";
-      title: "Open cocurdex from your computer";
+    webPair: {
+      action: "Pair";
+      description: "On your computer, turn on a relay in Cocurdex Settings › Devices, create a pairing code, and paste its link here.";
+      deviceLabel: "Web browser";
+      failure: {
+        insecure: "This relay doesn't use HTTPS, so this page can't connect to it.";
+        invalid: "This pairing link has expired, was already used, or is incomplete.";
+        notRelay: "The browser connects only through a relay. Turn on a relay on your computer and create a new pairing code.";
+        rateLimited: "Too many attempts. Wait a minute and try again.";
+        storage: "This browser can't store the pairing. Turn off private browsing or allow site data, then try again.";
+        unreachable: "Can't reach the computer through its relay. Check that it is online.";
+      };
+      linkLabel: "Pairing link";
+      pairing: "Pairing…";
+      title: "Pair with your computer";
     };
   };
   decks: {
@@ -2410,6 +2422,17 @@ export default interface Resources {
           description: "See sessions, messages, notes, and issues.";
           title: "Read";
         };
+      };
+      webPaired: {
+        computer: "Computer";
+        description: "Paired with {{name}} through its relay.";
+        pairedAt: "Paired";
+        safetyCode: "Safety code";
+        safetyCodeDescription: "Matches the code shown for this browser in Settings › Devices on the computer.";
+        title: "This browser";
+        unpair: "Unpair";
+        unpairDescription: "Removes this pairing from the browser and the computer. Pair again with a new link.";
+        unpairFailed: "This browser couldn't remove the pairing. Allow site data and try again.";
       };
     };
     diagnostics: {
