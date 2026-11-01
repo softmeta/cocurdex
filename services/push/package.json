@@ -1,0 +1,10 @@
+{
+  "name": "@cocurdex/push",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "go build -o dist/cocurdex-push ./cmd/cocurdex-push",
+    "typecheck": "go vet ./...",
+    "test": "go test ./..."
+  }
+}
