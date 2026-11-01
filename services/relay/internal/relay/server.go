@@ -18,6 +18,7 @@ import (
 
 type Config struct {
 	Bindings            *Bindings
+	Revocations         *Revocations
 	CredentialIssuer    ed25519.PublicKey
 	MaxSessionsPerRoute int
 	RegisterTimeout     time.Duration
@@ -45,9 +46,19 @@ func DefaultConfig() Config {
 }
 
 type hostEntry struct {
-	conn    *websocket.Conn
-	cancel  context.CancelFunc
-	writeMu sync.Mutex
+	conn      *websocket.Conn
+	cancel    context.CancelFunc
+	account   string
+	expiresAt time.Time
+	writeMu   sync.Mutex
+	revoked   chan struct{}
+	revoke    sync.Once
+}
+
+func (e *hostEntry) end(code websocket.StatusCode, reason string) {
+	e.revoke.Do(func() { close(e.revoked) })
+	e.conn.Close(code, reason)
+	e.cancel()
 }
 
 func (e *hostEntry) write(ctx context.Context, message any) error {
@@ -68,6 +79,9 @@ type Server struct {
 func NewServer(config Config) *Server {
 	if config.Bindings == nil {
 		config.Bindings, _ = OpenBindings("")
+	}
+	if config.Revocations == nil {
+		config.Revocations, _ = OpenRevocations("")
 	}
 	if config.Logger == nil {
 		config.Logger = slog.Default()
@@ -138,7 +152,8 @@ func registrationCloseCode(err error) websocket.StatusCode {
 		return CloseRouteTaken
 	case errors.Is(err, ErrCredentialMissing),
 		errors.Is(err, ErrCredentialInvalid),
-		errors.Is(err, ErrCredentialExpired):
+		errors.Is(err, ErrCredentialExpired),
+		errors.Is(err, ErrCredentialRevoked):
 		return CloseCredentialNeeded
 	case errors.Is(err, errProtocol):
 		return CloseProtocolError
@@ -158,13 +173,20 @@ func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	routeID, err := s.register(ctx, conn)
+	verified, err := s.register(ctx, conn)
 	if err != nil {
 		s.config.Logger.Info("host registration refused", "error", err)
 		conn.Close(registrationCloseCode(err), err.Error())
 		return
 	}
-	entry := &hostEntry{conn: conn, cancel: cancel}
+	routeID := verified.RouteID
+	entry := &hostEntry{
+		conn:      conn,
+		cancel:    cancel,
+		account:   verified.AccountID,
+		expiresAt: verified.ExpiresAt,
+		revoked:   make(chan struct{}),
+	}
 	entry.writeMu.Lock()
 	s.install(routeID, entry)
 	defer s.uninstall(routeID, entry)
@@ -186,21 +208,21 @@ func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) register(ctx context.Context, conn *websocket.Conn) (string, error) {
+func (s *Server) register(ctx context.Context, conn *websocket.Conn) (VerifiedRegistration, error) {
 	registerCtx, cancel := context.WithTimeout(ctx, s.config.RegisterTimeout)
 	defer cancel()
 	nonce := make([]byte, NonceLength)
 	_, _ = rand.Read(nonce)
 	challenge := ChallengeMessage{Type: "challenge", Nonce: EncodeBase64URL(nonce)}
 	if err := wsjson.Write(registerCtx, conn, challenge); err != nil {
-		return "", err
+		return VerifiedRegistration{}, err
 	}
 	var message RegisterMessage
 	if err := wsjson.Read(registerCtx, conn, &message); err != nil {
-		return "", errors.Join(errProtocol, err)
+		return VerifiedRegistration{}, errors.Join(errProtocol, err)
 	}
 	if message.Type != "register" {
-		return "", errProtocol
+		return VerifiedRegistration{}, errProtocol
 	}
 	verified, err := VerifyRegistration(
 		message,
@@ -209,12 +231,61 @@ func (s *Server) register(ctx context.Context, conn *websocket.Conn) (string, er
 		s.config.Now(),
 	)
 	if err != nil {
-		return "", err
+		return VerifiedRegistration{}, err
+	}
+	if verified.AccountID != "" && s.revoked(verified.AccountID) {
+		return VerifiedRegistration{}, ErrCredentialRevoked
 	}
 	if err := s.config.Bindings.Claim(verified.RouteID, verified.SigningKey); err != nil {
-		return "", err
+		return VerifiedRegistration{}, err
 	}
-	return verified.RouteID, nil
+	return verified, nil
+}
+
+func (s *Server) revoked(account string) bool {
+	if _, err := s.config.Revocations.Refresh(); err != nil {
+		s.config.Logger.Error("reading revocations failed", "error", err)
+	}
+	return s.config.Revocations.Revoked(account)
+}
+
+func (s *Server) EnforceCredentials(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.SweepCredentials()
+		}
+	}
+}
+
+func (s *Server) SweepCredentials() {
+	if _, err := s.config.Revocations.Refresh(); err != nil {
+		s.config.Logger.Error("reading revocations failed", "error", err)
+	}
+	now := s.config.Now()
+	s.mu.Lock()
+	var ended []*hostEntry
+	var reasons []error
+	for _, entry := range s.hosts {
+		if entry.account == "" {
+			continue
+		}
+		switch {
+		case s.config.Revocations.Revoked(entry.account):
+			ended, reasons = append(ended, entry), append(reasons, ErrCredentialRevoked)
+		case !now.Before(entry.expiresAt):
+			ended, reasons = append(ended, entry), append(reasons, ErrCredentialExpired)
+		}
+	}
+	s.mu.Unlock()
+	for index, entry := range ended {
+		s.config.Logger.Info("host disconnected", "account", entry.account, "reason", reasons[index])
+		entry.end(CloseCredentialNeeded, reasons[index].Error())
+	}
 }
 
 func (s *Server) install(routeID string, entry *hostEntry) {
@@ -343,7 +414,16 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	defer timer.Stop()
 	select {
 	case host := <-opened.waiting:
-		s.forward(r.Context(), device, host)
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		go func() {
+			select {
+			case <-opened.entry.revoked:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+		s.forward(ctx, device, host)
 	case <-timer.C:
 		device.Close(CloseHostTimeout, "the computer did not answer")
 	case <-r.Context().Done():

@@ -41,8 +41,17 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return keygen(stdout)
 	case "credential":
 		return credential(args, stdout)
+	case "revoke":
+		return revoke(args, stdout)
+	case "restore":
+		return restore(args, stdout)
+	case "revocations":
+		return revocations(args, stdout)
 	default:
-		return fmt.Errorf("unknown command %q (expected serve, keygen, or credential)", command)
+		return fmt.Errorf(
+			"unknown command %q (expected serve, keygen, credential, revoke, restore, or revocations)",
+			command,
+		)
 	}
 }
 
@@ -95,8 +104,13 @@ func serve(args []string, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	revocations, err := relay.OpenRevocations(options.dataDir)
+	if err != nil {
+		return err
+	}
 	config := relay.DefaultConfig()
 	config.Bindings = bindings
+	config.Revocations = revocations
 	config.Logger = logger
 	config.TrustProxy = options.trustProxy
 	config.MaxSessionsPerRoute = options.maxSessions
@@ -114,14 +128,21 @@ func serve(args []string, stderr io.Writer) error {
 			return fmt.Errorf("--credential-issuer: %w", err)
 		}
 		config.CredentialIssuer = ed25519.PublicKey(issuer)
+		if options.dataDir == "" {
+			logger.Warn("without --data-dir, credentials cannot be revoked")
+		}
 	}
+	relayServer := relay.NewServer(config)
 	server := &http.Server{
 		Addr:              options.listen,
-		Handler:           relay.NewServer(config),
+		Handler:           relayServer,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if config.CredentialIssuer != nil {
+		go relayServer.EnforceCredentials(ctx, credentialSweepInterval)
+	}
 	errs := make(chan error, 1)
 	go func() {
 		logger.Info("relay listening", "address", options.listen)
@@ -210,6 +231,66 @@ func credential(args []string, stdout io.Writer) error {
 	}
 	_, err = fmt.Fprintln(stdout, token)
 	return err
+}
+
+const credentialSweepInterval = 10 * time.Second
+
+func revocationFlags(name string) (*flag.FlagSet, *string, *string) {
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "the relay's --data-dir")
+	account := flags.String("account", "", "account or invite id the credential was issued for")
+	return flags, dataDir, account
+}
+
+func revoke(args []string, stdout io.Writer) error {
+	flags, dataDir, account := revocationFlags("revoke")
+	reason := flags.String("reason", "", "why the account was revoked")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" || *account == "" {
+		return errors.New("--data-dir and --account are required")
+	}
+	if err := relay.RevokeAccount(*dataDir, *account, *reason, time.Now()); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(stdout, "revoked %s; a running relay disconnects it within %s\n", *account, credentialSweepInterval)
+	return err
+}
+
+func restore(args []string, stdout io.Writer) error {
+	flags, dataDir, account := revocationFlags("restore")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" || *account == "" {
+		return errors.New("--data-dir and --account are required")
+	}
+	restored, err := relay.RestoreAccount(*dataDir, *account)
+	if err != nil {
+		return err
+	}
+	if !restored {
+		return fmt.Errorf("%s is not revoked", *account)
+	}
+	_, err = fmt.Fprintf(stdout, "restored %s\n", *account)
+	return err
+}
+
+func revocations(args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("revocations", flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "the relay's --data-dir")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" {
+		return errors.New("--data-dir is required")
+	}
+	list, err := relay.ListRevocations(*dataDir)
+	if err != nil {
+		return err
+	}
+	return writeJSON(stdout, list)
 }
 
 func writeJSON(stdout io.Writer, value any) error {

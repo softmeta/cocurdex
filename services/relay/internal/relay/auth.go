@@ -35,6 +35,7 @@ type VerifiedRegistration struct {
 	RouteID    string
 	SigningKey ed25519.PublicKey
 	AccountID  string
+	ExpiresAt  time.Time
 }
 
 func VerifyRegistration(
@@ -72,11 +73,12 @@ func VerifyRegistration(
 	if issuer == nil {
 		return verified, nil
 	}
-	accountID, err := VerifyCredential(message.Credential, issuer, now)
+	credential, err := VerifyCredential(message.Credential, issuer, now)
 	if err != nil {
 		return VerifiedRegistration{}, err
 	}
-	verified.AccountID = accountID
+	verified.AccountID = credential.AccountID
+	verified.ExpiresAt = credential.ExpiresAt
 	return verified, nil
 }
 
@@ -103,28 +105,33 @@ func IssueCredential(
 	return SignPasetoV4Public(issuer, message, []byte(credentialLabel)), nil
 }
 
+type VerifiedCredential struct {
+	AccountID string
+	ExpiresAt time.Time
+}
+
 func VerifyCredential(
 	token string,
 	issuer ed25519.PublicKey,
 	now time.Time,
-) (string, error) {
+) (VerifiedCredential, error) {
 	if token == "" {
-		return "", ErrCredentialMissing
+		return VerifiedCredential{}, ErrCredentialMissing
 	}
 	message, err := VerifyPasetoV4Public(token, issuer, []byte(credentialLabel))
 	if err != nil {
-		return "", ErrCredentialInvalid
+		return VerifiedCredential{}, ErrCredentialInvalid
 	}
 	var claims CredentialClaims
 	if err := json.Unmarshal(message, &claims); err != nil || claims.Subject == "" {
-		return "", ErrCredentialInvalid
+		return VerifiedCredential{}, ErrCredentialInvalid
 	}
 	expires, err := time.Parse(time.RFC3339, claims.ExpiresAt)
 	if err != nil {
-		return "", ErrCredentialInvalid
+		return VerifiedCredential{}, ErrCredentialInvalid
 	}
 	if !now.Before(expires) {
-		return "", ErrCredentialExpired
+		return VerifiedCredential{}, ErrCredentialExpired
 	}
-	return claims.Subject, nil
+	return VerifiedCredential{AccountID: claims.Subject, ExpiresAt: expires}, nil
 }
