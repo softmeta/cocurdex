@@ -101,4 +101,33 @@ describe("webHostCapabilities", () => {
       terminal: false,
     });
   });
+
+  it("opens the terminal on a paired computer only for a device that may execute", () => {
+    const host = {
+      hostId: "h",
+      name: "Studio",
+      baseUrl:
+        "https://relay.example.invalid/v1/connect/AAAAAAAAAAAAAAAAAAAAAA",
+      deviceId: "d",
+      hostKey: "k",
+      deviceSecretKey: "s",
+      pairedAt: "2026-11-01T00:00:00.000Z",
+    };
+    expect(
+      webHostCapabilities({
+        kind: "remote",
+        host: { ...host, scopes: ["read", "interact", "execute"] },
+      }),
+    ).toMatchObject({
+      fileManager: false,
+      terminal: true,
+      localFilePaths: false,
+    });
+    expect(
+      webHostCapabilities({
+        kind: "remote",
+        host: { ...host, scopes: ["read", "interact"] },
+      }),
+    ).toMatchObject({ terminal: false });
+  });
 });

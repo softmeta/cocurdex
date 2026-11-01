@@ -27,6 +27,7 @@ type Config struct {
 	HostLimiter         *RateLimiter
 	ConnectLimiter      *RateLimiter
 	TrustProxy          bool
+	WebAssets           http.Handler
 	Logger              *slog.Logger
 	Now                 func() time.Time
 }
@@ -78,6 +79,9 @@ func NewServer(config Config) *Server {
 	server.mux.HandleFunc("GET /v1/host", server.handleHost)
 	server.mux.HandleFunc("GET /v1/host/accept/{ticket}", server.handleAccept)
 	server.mux.HandleFunc("GET /v1/connect/{routeId}", server.handleConnect)
+	if config.WebAssets != nil {
+		server.mux.Handle("GET /", config.WebAssets)
+	}
 	return server
 }
 
@@ -106,8 +110,7 @@ func (s *Server) clientIP(r *http.Request) string {
 
 func accept(w http.ResponseWriter, r *http.Request, readLimit int64, subprotocols ...string) (*websocket.Conn, error) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		InsecureSkipVerify: true,
-		Subprotocols:       subprotocols,
+		Subprotocols: subprotocols,
 	})
 	if err != nil {
 		return nil, err

@@ -60,6 +60,12 @@ export type {
 export { cn } from "./utils";
 export {
   buildDevWebClientUrl,
+  connectWebHostBridge,
   installWebHostBridge,
   type WebHostAccess,
 } from "./web-host-bridge";
+export {
+  listPairedHosts,
+  removePairedHost,
+  savePairedHost,
+} from "./web-paired-hosts";

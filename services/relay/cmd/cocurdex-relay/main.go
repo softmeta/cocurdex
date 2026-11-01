@@ -55,6 +55,7 @@ type serveOptions struct {
 	credentialIssuer string
 	trustProxy       bool
 	maxSessions      int
+	webRoot          string
 }
 
 func parseServe(args []string) (serveOptions, error) {
@@ -68,6 +69,7 @@ func parseServe(args []string) (serveOptions, error) {
 	flags.StringVar(&options.credentialIssuer, "credential-issuer", "", "base64url Ed25519 public key that signs host credentials")
 	flags.BoolVar(&options.trustProxy, "trust-proxy", false, "read client addresses from X-Forwarded-For")
 	flags.IntVar(&options.maxSessions, "max-sessions-per-host", 32, "concurrent device sessions per host")
+	flags.StringVar(&options.webRoot, "web-root", "", "directory of the web client to serve on the relay's own origin")
 	if err := flags.Parse(args); err != nil {
 		return options, err
 	}
@@ -98,6 +100,12 @@ func serve(args []string, stderr io.Writer) error {
 	config.Logger = logger
 	config.TrustProxy = options.trustProxy
 	config.MaxSessionsPerRoute = options.maxSessions
+	if options.webRoot != "" {
+		config.WebAssets, err = relay.NewWebAssets(options.webRoot)
+		if err != nil {
+			return err
+		}
+	}
 	if options.credentialIssuer != "" {
 		issuer, err := relay.DecodeBase64URL(options.credentialIssuer, ed25519.PublicKeySize)
 		if err != nil {

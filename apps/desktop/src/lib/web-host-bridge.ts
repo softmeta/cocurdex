@@ -1,4 +1,8 @@
-import type { KeyValueStorage } from "@cocurdex/client-runtime";
+import {
+  type KeyValueStorage,
+  type SavedHost,
+  savedHostEndpoint,
+} from "@cocurdex/client-runtime";
 import type { DaemonConnectionInfo } from "@cocurdex/rpc";
 import { offlineApi } from "./offline-api";
 import type { HostBridge, HostCapabilities } from "./types";
@@ -13,6 +17,7 @@ const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 export type WebHostAccess =
   | { kind: "local"; connection: DaemonConnectionInfo }
+  | { kind: "remote"; host: SavedHost }
   | { kind: "unlinked" };
 
 export interface WebLocation {
@@ -139,12 +144,16 @@ function dropFragmentCredentials() {
   window.history.replaceState(window.history.state, "", pathname + search);
 }
 
+function remoteMayExecute(access: WebHostAccess) {
+  return access.kind === "remote" && access.host.scopes.includes("execute");
+}
+
 export function webHostCapabilities(access: WebHostAccess): HostCapabilities {
   const local = access.kind === "local";
   return {
     fileManager: local,
     nativeDirectoryDialog: false,
-    terminal: local,
+    terminal: local || remoteMayExecute(access),
     browserView: false,
     localWebClient: false,
     localFilePaths: false,
@@ -195,5 +204,18 @@ export function installWebHostBridge(): WebHostAccess | null {
     },
   };
   window.desktopApi = bridge;
+  return access;
+}
+
+export function connectWebHostBridge(host: SavedHost): WebHostAccess {
+  const access: WebHostAccess = { kind: "remote", host };
+  const bridge = window.desktopApi;
+  if (bridge) {
+    window.desktopApi = {
+      ...bridge,
+      capabilities: webHostCapabilities(access),
+      pairedHost: savedHostEndpoint(host),
+    };
+  }
   return access;
 }

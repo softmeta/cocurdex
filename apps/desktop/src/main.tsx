@@ -5,8 +5,10 @@ import { TooltipProvider } from "@/components/ui";
 import { i18n } from "@/i18n";
 import {
   applyPlatformAttribute,
+  connectWebHostBridge,
   desktopApi,
   installWebHostBridge,
+  listPairedHosts,
 } from "@/lib";
 
 import "./styles/globals.css";
@@ -48,8 +50,13 @@ async function loadRoot(): Promise<ComponentType> {
     return DeckAudienceApp;
   }
   if (webHostAccess?.kind !== "unlinked") return loadApp();
-  const { WebUnlinkedScreen } = await import("./features/web-unlinked");
-  return WebUnlinkedScreen;
+  const [pairedHost] = await listPairedHosts().catch(() => []);
+  if (pairedHost) {
+    connectWebHostBridge(pairedHost);
+    return loadApp();
+  }
+  const { WebPairScreen } = await import("./features/web-pair");
+  return WebPairScreen;
 }
 
 const rootElement = document.getElementById("root");

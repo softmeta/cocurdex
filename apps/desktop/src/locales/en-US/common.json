@@ -114,8 +114,20 @@
     "gitNotRepoDescription": "",
     "gitNotRepoTitle": ""
   },
-  "webUnlinked": {
-    "description": "This page needs a link from the cocurdex desktop app. Open the web client from the app on the computer running cocurdex; remote access from other devices goes through the cocurdex mobile app.",
-    "title": "Open cocurdex from your computer"
+  "webPair": {
+    "action": "Pair",
+    "description": "On your computer, turn on a relay in Cocurdex Settings › Devices, create a pairing code, and paste its link here.",
+    "deviceLabel": "Web browser",
+    "failure": {
+      "insecure": "This relay doesn't use HTTPS, so this page can't connect to it.",
+      "invalid": "This pairing link has expired, was already used, or is incomplete.",
+      "notRelay": "The browser connects only through a relay. Turn on a relay on your computer and create a new pairing code.",
+      "rateLimited": "Too many attempts. Wait a minute and try again.",
+      "storage": "This browser can't store the pairing. Turn off private browsing or allow site data, then try again.",
+      "unreachable": "Can't reach the computer through its relay. Check that it is online."
+    },
+    "linkLabel": "Pairing link",
+    "pairing": "Pairing…",
+    "title": "Pair with your computer"
   }
 }
