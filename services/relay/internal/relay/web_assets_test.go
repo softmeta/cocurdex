@@ -39,7 +39,7 @@ func get(t *testing.T, url string) (*http.Response, string) {
 func TestServesTheWebClientBesideTheRelayRoutes(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "web")
-	writeFile(t, filepath.Join(root, "index.html"), "<!doctype html>app")
+	writeFile(t, filepath.Join(root, "index.html"), "<!doctype html><script>boot()</script>app")
 	writeFile(t, filepath.Join(root, "assets", "app-1a2b.js"), "console")
 	writeFile(t, filepath.Join(parent, "secret.txt"), "secret")
 	assets, err := relay.NewWebAssets(root)
@@ -51,11 +51,21 @@ func TestServesTheWebClientBesideTheRelayRoutes(t *testing.T) {
 	}), "ws")
 
 	page, body := get(t, base+"/?window=chat")
-	if page.StatusCode != http.StatusOK || body != "<!doctype html>app" {
+	if page.StatusCode != http.StatusOK || !strings.HasSuffix(body, "app") {
 		t.Fatalf("index: %d %q", page.StatusCode, body)
 	}
 	if page.Header.Get("Cache-Control") != "no-cache" {
 		t.Fatalf("index cache %q", page.Header.Get("Cache-Control"))
+	}
+	policy := page.Header.Get("Content-Security-Policy")
+	for _, directive := range []string{
+		"script-src 'self' 'wasm-unsafe-eval' 'sha256-MeZS89WlF0u+o0hCvHTBt4q1WHU+U+sJKgbdRUc36mY='",
+		"connect-src 'self'",
+		"frame-ancestors 'none'",
+	} {
+		if !strings.Contains(policy, directive) {
+			t.Fatalf("policy %q lacks %q", policy, directive)
+		}
 	}
 	script, _ := get(t, base+"/assets/app-1a2b.js")
 	if !strings.Contains(script.Header.Get("Cache-Control"), "immutable") {
