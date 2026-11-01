@@ -2321,9 +2321,9 @@ export default interface Resources {
       };
       relay: {
         credential: {
-          description: "Paste the invite token (v4.public.…) from the relay operator. It also sets the relay URL. Self-hosted relays without invites do not need one.";
-          invalid: "This is not a relay invite token.";
-          placeholder: "v4.public.…";
+          description: "Paste the invite credential from the relay operator; the relay URL is filled in for you. Self-hosted relays without invites do not need one.";
+          invalid: "This is not a relay invite credential.";
+          placeholder: "Paste invite credential";
           remove: "Remove";
           summary: "{{account}} · expires {{expires}}";
           title: "Invite credential";

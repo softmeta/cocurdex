@@ -377,9 +377,9 @@
     },
     "relay": {
       "credential": {
-        "description": "粘贴中继运营方提供的邀请凭证（以 v4.public. 开头），粘贴后会自动填好中继地址。无需邀请的自托管中继不用填写。",
+        "description": "粘贴中继运营方提供的邀请凭证，中继地址会自动填好。无需邀请的自托管中继不用填写。",
         "invalid": "这不是有效的中继邀请凭证。",
-        "placeholder": "v4.public.…",
+        "placeholder": "粘贴邀请凭证",
         "remove": "移除",
         "summary": "{{account}} · {{expires}} 到期",
         "title": "邀请凭证"
