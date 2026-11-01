@@ -68,6 +68,7 @@ export default function RootLayout() {
               title: "",
               headerBackTitle: t("tabs.sessions"),
               animation: PUSH_ANIMATION,
+              headerStyle: { backgroundColor: colors.background },
               contentStyle: { backgroundColor: colors.background },
             }}
           />
