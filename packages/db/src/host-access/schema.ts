@@ -8,7 +8,10 @@ export function createHostAccessSchemaSql(): string {
       created_at TEXT NOT NULL,
       last_seen_at TEXT,
       revoked_at TEXT,
-      public_key TEXT
+      public_key TEXT,
+      push_platform TEXT,
+      push_handle TEXT,
+      push_updated_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS host_pairings (
@@ -44,3 +47,9 @@ export const HOST_DEVICE_PUBLIC_KEY_INDEX_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_host_devices_public_key
     ON host_devices(public_key)
 `;
+
+export const HOST_DEVICE_PUSH_COLUMNS = [
+  "push_platform",
+  "push_handle",
+  "push_updated_at",
+] as const;
