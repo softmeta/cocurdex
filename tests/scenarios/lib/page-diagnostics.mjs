@@ -8,7 +8,15 @@ function clip(text) {
   return String(text ?? "").slice(0, TEXT_LIMIT);
 }
 
+function previewValue(preview) {
+  const entries = (preview.properties ?? []).map(
+    (property) => `${property.name}: ${property.value ?? property.type}`,
+  );
+  return `{${entries.join(", ")}${preview.overflow ? ", …" : ""}}`;
+}
+
 function remoteValue(arg) {
+  if (arg.preview) return previewValue(arg.preview);
   return arg.value ?? arg.description ?? arg.unserializableValue ?? "";
 }
 
