@@ -26,9 +26,12 @@ export type HostEventListener = (
   meta: DaemonEventMeta,
 ) => void;
 
-export interface HostCommandOptions extends DaemonRpcRequestOptions {
-  idempotencyKey: string;
+export interface HostReadOptions extends DaemonRpcRequestOptions {
   maxAttempts?: number;
+}
+
+export interface HostCommandOptions extends HostReadOptions {
+  idempotencyKey: string;
 }
 
 export interface HostConnectionOptions {
@@ -188,13 +191,13 @@ export function createHostConnection(options: HostConnectionOptions) {
     });
   }
 
-  async function command<M extends DaemonMethod>(
+  async function requestUntilAnswered<M extends DaemonMethod>(
     method: M,
-    params: DaemonRequestPayloadByMethod[M],
-    commandOptions: HostCommandOptions,
+    params: DaemonRequestPayloadByMethod[M] | undefined,
+    options: HostReadOptions,
   ): Promise<DaemonResultByMethod[M]> {
     const { maxAttempts = DEFAULT_COMMAND_ATTEMPTS, ...requestOptions } =
-      commandOptions;
+      options;
     for (let attempt = 1; ; attempt += 1) {
       try {
         return await request(method, params, requestOptions);
@@ -206,9 +209,26 @@ export function createHostConnection(options: HostConnectionOptions) {
     }
   }
 
+  function command<M extends DaemonMethod>(
+    method: M,
+    params: DaemonRequestPayloadByMethod[M],
+    commandOptions: HostCommandOptions,
+  ): Promise<DaemonResultByMethod[M]> {
+    return requestUntilAnswered(method, params, commandOptions);
+  }
+
+  function read<M extends DaemonMethod>(
+    method: M,
+    params?: DaemonRequestPayloadByMethod[M],
+    readOptions: HostReadOptions = {},
+  ): Promise<DaemonResultByMethod[M]> {
+    return requestUntilAnswered(method, params, readOptions);
+  }
+
   return {
     hostId: options.hostId,
     request,
+    read,
     command,
     onEvent(listener: HostEventListener) {
       listeners.add(listener);

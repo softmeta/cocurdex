@@ -1,9 +1,9 @@
-import { requestDaemon as rpc } from "./daemon-client";
+import { readDaemon, requestDaemon as rpc } from "./daemon-client";
 import { uploadAttachment } from "./daemon-files";
 import type { ProductRequestApi } from "./types";
 
 export const daemonProductApi: ProductRequestApi = {
-  bootstrapApp: () => rpc("app.bootstrap"),
+  bootstrapApp: () => readDaemon("app.bootstrap"),
   pullSync: (input) => rpc("sync.pull", input),
   getProductSkillsStatus: (scope, workspaceRootPath) =>
     rpc("skills.pack.getStatus", {
@@ -20,7 +20,7 @@ export const daemonProductApi: ProductRequestApi = {
       scope,
       workspaceRootPath: workspaceRootPath ?? null,
     }),
-  listAgents: () => rpc("agent.list"),
+  listAgents: () => readDaemon("agent.list"),
   listAgentRoles: () => rpc("agentRole.list"),
   saveAgentRole: (payload) => rpc("agentRole.save", payload),
   deleteAgentRole: async (id) => {

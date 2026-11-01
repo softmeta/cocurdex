@@ -12,7 +12,6 @@ export {
   type PairHostOptions,
   pairHost,
   type ReachableHostOrigin,
-  savedHostEndpoint,
   savedHostSafetyCode,
 } from "./host-access";
 export {
@@ -21,6 +20,7 @@ export {
   type HostConnection,
   type HostConnectionOptions,
   type HostEventListener,
+  type HostReadOptions,
   isConnectionLoss,
 } from "./host-connection";
 export type {
@@ -51,6 +51,7 @@ export {
   SAVED_HOSTS_STORAGE_KEY,
   type SavedHost,
   type SavedHostStore,
+  savedHostEndpoint,
   savedHostOrigins,
   uniqueOrigins,
 } from "./saved-hosts";

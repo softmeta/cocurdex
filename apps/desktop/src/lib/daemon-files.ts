@@ -1,8 +1,7 @@
-import {
-  createRemoteFileClient,
-  type PairedHostEndpoint,
-  type RemoteFileClient,
-  type RemoteFileRead,
+import type {
+  PairedHostEndpoint,
+  RemoteFileClient,
+  RemoteFileRead,
 } from "@cocurdex/client-runtime";
 import {
   type AttachmentUploadKind,
@@ -40,8 +39,10 @@ interface UploadResultByKind {
 
 const PDF_INITIAL_BYTES = 64 * 1024;
 
-let remoteFiles: { host: PairedHostEndpoint; client: RemoteFileClient } | null =
-  null;
+let remoteFiles: {
+  host: PairedHostEndpoint;
+  client: Promise<RemoteFileClient>;
+} | null = null;
 
 function pairedHost() {
   return getHostBridge()?.pairedHost ?? null;
@@ -49,10 +50,13 @@ function pairedHost() {
 
 function remoteFileClient(host: PairedHostEndpoint) {
   if (remoteFiles?.host !== host) {
-    remoteFiles?.client.close();
+    void remoteFiles?.client.then((client) => client.close());
     remoteFiles = {
       host,
-      client: createRemoteFileClient({ endpoint: async () => host }),
+      client: import("@cocurdex/client-runtime/remote-files").then(
+        ({ createRemoteFileClient }) =>
+          createRemoteFileClient({ endpoint: async () => host }),
+      ),
     };
   }
   return remoteFiles.client;
@@ -86,7 +90,7 @@ function localBlobUrl(webSocketUrl: string, request: DaemonBlobRequest) {
 export async function readDaemonBlob(request: DaemonBlobRequest) {
   const host = pairedHost();
   if (host) {
-    const read = await remoteFileClient(host).read(request);
+    const read = await (await remoteFileClient(host)).read(request);
     return new Blob(await readAll(read), { type: read.contentType });
   }
   const connection = await resolveLocalDaemonConnection();
@@ -125,7 +129,7 @@ export async function uploadAttachment<K extends AttachmentUploadKind>(
 ): Promise<UploadResultByKind[K]> {
   const host = pairedHost();
   if (host) {
-    const uploaded = await remoteFileClient(host).upload(
+    const uploaded = await (await remoteFileClient(host)).upload(
       { kind: "attachmentUpload", upload: kind, name },
       blobChunks(file),
     );
@@ -174,7 +178,7 @@ export async function resolvePdfSource(filePath: string): Promise<PdfSource> {
     return {
       kind: "range",
       path: filePath,
-      reader: await remotePdfReader(remoteFileClient(host), filePath),
+      reader: await remotePdfReader(await remoteFileClient(host), filePath),
     };
   }
   const connection = await resolveLocalDaemonConnection();
@@ -204,7 +208,7 @@ export async function saveDeckDownload(download: DeckDownload) {
       new URL(download.path, "http://host").searchParams.get(
         DAEMON_DECK_DOWNLOAD_TICKET_QUERY,
       ) ?? "";
-    const read = await remoteFileClient(host).read({
+    const read = await (await remoteFileClient(host)).read({
       kind: "deckDownload",
       ticket,
     });

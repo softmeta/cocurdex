@@ -3,6 +3,7 @@ import {
   hostEndpointBase,
   isHostAccessScope,
 } from "@cocurdex/shared";
+import type { PairedHostEndpoint } from "./platform";
 
 export interface SavedHost {
   hostId: string;
@@ -110,3 +111,19 @@ export function createSavedHostStore(
 }
 
 export type SavedHostStore = ReturnType<typeof createSavedHostStore>;
+
+export function savedHostEndpoint(
+  host: Pick<
+    SavedHost,
+    "baseUrl" | "hostId" | "hostKey" | "deviceId" | "deviceSecretKey"
+  >,
+): PairedHostEndpoint {
+  return {
+    kind: "paired",
+    baseUrl: host.baseUrl,
+    hostId: host.hostId,
+    hostKey: host.hostKey,
+    deviceId: host.deviceId,
+    deviceSecretKey: host.deviceSecretKey,
+  };
+}

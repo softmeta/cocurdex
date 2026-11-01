@@ -134,6 +134,29 @@ describe("host connection", () => {
     expect(sends[0]?.id).not.toBe(sends[1]?.id);
   });
 
+  it("rereads a query the connection dropped before it answered", async () => {
+    let dropped = false;
+    const { platform, requests } = fakeDaemon((request, respond, drop) => {
+      if (request.method === "daemon.subscribe") {
+        respond({ id: request.id, result: subscribed });
+        return;
+      }
+      if (!dropped) {
+        dropped = true;
+        drop();
+        return;
+      }
+      respond({ id: request.id, result: [{ id: "pi" }] });
+    });
+    const connection = host(platform);
+    await expect(connection.read("agent.list")).resolves.toEqual([
+      { id: "pi" },
+    ]);
+    expect(
+      requests.filter((request) => request.method === "agent.list"),
+    ).toHaveLength(2);
+  });
+
   it("waits for an unavailable host before sending a command", async () => {
     const { platform, requests } = fakeDaemon((request, respond) => {
       respond({

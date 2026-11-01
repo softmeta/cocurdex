@@ -20,7 +20,7 @@ describe("pairingSafetyCode", () => {
 
   it("keeps leading zeros", () => {
     const codes = Array.from({ length: 2000 }, () =>
-      pairingSafetyCode(host, generateKeyPair().publicKey),
+      pairingSafetyCode(host, crypto.getRandomValues(new Uint8Array(32))),
     );
     expect(codes.every((code) => code.length === 6)).toBe(true);
     expect(codes.some((code) => code.startsWith("0"))).toBe(true);

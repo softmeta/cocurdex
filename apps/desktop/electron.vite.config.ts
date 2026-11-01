@@ -21,6 +21,17 @@ const bundledWorkspaceDependencies = getWorkspaceDependencyNames(
   desktopPackage.dependencies,
 );
 
+const sideEffectFreeWorkspaceSources = ["client-runtime", "secure-channel"].map(
+  (name) => path.resolve(__dirname, "../../packages", name, "src"),
+);
+
+function isSideEffectFreeWorkspaceSource(id: string) {
+  const file = path.resolve(id);
+  return sideEffectFreeWorkspaceSources.some((root) =>
+    file.startsWith(`${root}${path.sep}`),
+  );
+}
+
 const alias = {
   "@": path.resolve(__dirname, "src"),
   "@cocurdex/shared/node": path.resolve(
@@ -68,6 +79,14 @@ const alias = {
   "@cocurdex/rpc/client": path.resolve(
     __dirname,
     "../../packages/rpc/src/client.ts",
+  ),
+  "@cocurdex/client-runtime/remote-files": path.resolve(
+    __dirname,
+    "../../packages/client-runtime/src/remote-files.ts",
+  ),
+  "@cocurdex/client-runtime/secure-transport": path.resolve(
+    __dirname,
+    "../../packages/client-runtime/src/secure-transport.ts",
   ),
   "@cocurdex/client-runtime": path.resolve(
     __dirname,
@@ -171,6 +190,9 @@ export default defineConfig(({ command }) => ({
       rollupOptions: {
         input: {
           index: "index.html",
+        },
+        treeshake: {
+          moduleSideEffects: (id) => !isSideEffectFreeWorkspaceSource(id),
         },
         onwarn(warning, warn) {
           if (warning.code === "CYCLIC_CROSS_CHUNK_REEXPORT") {

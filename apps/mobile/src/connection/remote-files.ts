@@ -37,8 +37,21 @@ hosts.subscribe(() => {
   }
 });
 
+export function remoteFileRequestKey(request: RemoteFileReadRequest) {
+  switch (request.kind) {
+    case "imageAttachment":
+      return request.file;
+    case "deckAsset":
+      return request.hash;
+    case "deckDownload":
+      return request.ticket;
+    default:
+      return request.path;
+  }
+}
+
 function cacheName(request: RemoteFileReadRequest) {
-  const key = request.kind === "imageAttachment" ? request.file : request.path;
+  const key = remoteFileRequestKey(request);
   let hash = 0x811c9dc5;
   for (let index = 0; index < key.length; index += 1) {
     hash = Math.imul(hash ^ key.charCodeAt(index), 0x01000193) >>> 0;
@@ -48,7 +61,7 @@ function cacheName(request: RemoteFileReadRequest) {
 }
 
 function immutable(request: RemoteFileReadRequest) {
-  return request.kind === "imageAttachment";
+  return request.kind === "imageAttachment" || request.kind === "deckAsset";
 }
 
 async function download(
