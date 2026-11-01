@@ -4,6 +4,8 @@ set -eu
 ROOT=/opt/cocurdex-relay
 SERVICE=cocurdex-relay.service
 HEALTH_URL=${COCURDEX_RELAY_HEALTH_URL:-http://127.0.0.1:8081/healthz}
+RELEASES_URL=${COCURDEX_RELAY_RELEASES_URL:-https://github.com/softmeta/cocurdex/releases/download}
+INSTALL_PATH=/usr/local/sbin/deploy-cocurdex-relay
 KEEP_RELEASES=3
 
 fail() {
@@ -75,24 +77,56 @@ prune() {
   done
 }
 
+download() {
+  curl -fsSL --retry 3 --max-time 300 -o "$2" "$RELEASES_URL/$1"
+}
+
 deploy() {
-  version=$1
-  echo "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' ||
-    fail "invalid version $version"
-  incoming=$(mktemp -d "$ROOT/.incoming.XXXXXX")
-  trap 'rm -rf -- "$incoming"' EXIT
-  tar -xzf - -C "$incoming" --no-same-owner
-  package="$incoming/cocurdex-relay-$version-linux-$(release_arch)"
-  [ -x "$package/cocurdex-relay" ] || fail "package has no cocurdex-relay binary for $(release_arch)"
-  [ -d "$package/web" ] || fail "package has no web directory"
+  tag=$1
+  echo "$tag" | grep -Eq '^relay-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' ||
+    fail "expected a relay release tag such as relay-v0.1.0, got $tag"
+  version=${tag#relay-}
   if [ "$(readlink "$ROOT/current" 2>/dev/null || true)" = "$version" ]; then
     fail "$version is already running"
   fi
+  package_name="cocurdex-relay-$version-linux-$(release_arch)"
+  incoming=$(mktemp -d "$ROOT/.incoming.XXXXXX")
+  trap 'rm -rf -- "$incoming"' EXIT
+  download "$tag/$package_name.tar.gz" "$incoming/$package_name.tar.gz"
+  download "$tag/SHA256SUMS" "$incoming/SHA256SUMS"
+  grep -E "  $package_name\.tar\.gz\$" "$incoming/SHA256SUMS" >"$incoming/expected" ||
+    fail "SHA256SUMS of $tag does not list $package_name.tar.gz"
+  (cd "$incoming" && sha256sum -c --quiet expected) || fail "checksum mismatch for $package_name.tar.gz"
+  tar -xzf "$incoming/$package_name.tar.gz" -C "$incoming" --no-same-owner
+  package="$incoming/$package_name"
+  [ -x "$package/cocurdex-relay" ] || fail "package has no cocurdex-relay binary"
+  [ -d "$package/web" ] || fail "package has no web directory"
   rm -rf -- "${ROOT:?}/$version"
   chown -R root:root "$package"
   mv -T "$package" "$ROOT/$version"
   switch_to "$version"
   prune
+}
+
+setup() {
+  command -v curl >/dev/null || fail "curl is required (apt install curl)"
+  command -v sha256sum >/dev/null || fail "sha256sum is required"
+  install -m 0755 -o root -g root "$0" "$INSTALL_PATH"
+  unit=$(systemctl show -P FragmentPath "$SERVICE")
+  [ -n "$unit" ] && [ -f "$unit" ] || fail "cannot find the unit file of $SERVICE"
+  if [ ! -L "$ROOT/current" ]; then
+    running=$(grep -Eo "$ROOT/[^/[:space:]]+/" "$unit" | grep -v "$ROOT/current/" | head -n 1 || true)
+    [ -n "$running" ] || fail "cannot find the running release in $unit"
+    point_current_at "$(basename "$running")"
+  fi
+  if grep -Eo "$ROOT/[^/[:space:]]+/" "$unit" | grep -vq "$ROOT/current/"; then
+    cp -p "$unit" "$unit.bak-$(date +%Y%m%d%H%M%S)"
+    sed -i -E "s#$ROOT/[^/[:space:]]+/#$ROOT/current/#g" "$unit"
+    systemctl daemon-reload
+    systemctl restart "$SERVICE"
+    healthy || fail "$SERVICE did not come back after switching its unit to $ROOT/current"
+  fi
+  echo "$SERVICE runs $(readlink "$ROOT/current") from $ROOT/current; deploy with: sudo deploy-cocurdex-relay deploy <relay-vX.Y.Z>"
 }
 
 rollback() {
@@ -101,11 +135,11 @@ rollback() {
   switch_to "$previous"
 }
 
-command=${SSH_ORIGINAL_COMMAND:-${1:-}}
-case "$command" in
-  arch) release_arch ;;
-  "deploy "*) deploy "${command#deploy }" ;;
+[ "$(id -u)" -eq 0 ] || fail "run as root (sudo)"
+case "${1:-}" in
+  deploy) [ $# -eq 2 ] || fail "usage: deploy <relay-vX.Y.Z>"; deploy "$2" ;;
   rollback) rollback ;;
   status) readlink "$ROOT/current" ;;
-  *) fail "usage: arch | deploy <version> | rollback | status" ;;
+  setup) setup ;;
+  *) fail "usage: deploy <relay-vX.Y.Z> | rollback | status | setup" ;;
 esac

@@ -12,12 +12,7 @@ const pasetoPublicHeader = "v4.public."
 var errMalformedToken = errors.New("malformed v4.public token")
 
 func pasetoPAE(pieces ...[]byte) []byte {
-	size := 8
-	for _, piece := range pieces {
-		size += 8 + len(piece)
-	}
-	out := make([]byte, 0, size)
-	out = binary.LittleEndian.AppendUint64(out, uint64(len(pieces))&^(1<<63))
+	out := binary.LittleEndian.AppendUint64(nil, uint64(len(pieces))&^(1<<63))
 	for _, piece := range pieces {
 		out = binary.LittleEndian.AppendUint64(out, uint64(len(piece))&^(1<<63))
 		out = append(out, piece...)
@@ -28,8 +23,7 @@ func pasetoPAE(pieces ...[]byte) []byte {
 func SignPasetoV4Public(key ed25519.PrivateKey, message, implicit []byte) string {
 	signed := pasetoPAE([]byte(pasetoPublicHeader), message, nil, implicit)
 	signature := ed25519.Sign(key, signed)
-	body := make([]byte, 0, len(message)+len(signature))
-	body = append(append(body, message...), signature...)
+	body := append(append([]byte(nil), message...), signature...)
 	return pasetoPublicHeader + EncodeBase64URL(body)
 }
 
