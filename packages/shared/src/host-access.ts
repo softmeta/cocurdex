@@ -279,10 +279,11 @@ const PAIRING_ADDRESS_ORDER: Record<HostAddressKind, number> = {
 export function hostPairingAddresses(
   status: Pick<HostRemoteAccessStatus, "addresses" | "relay">,
 ): HostAddress[] {
-  const { endpoint } = status.relay;
-  const relay: HostAddress[] = endpoint
-    ? [{ address: new URL(endpoint).host, kind: "relay", url: endpoint }]
-    : [];
+  const { endpoint, state } = status.relay;
+  const relay: HostAddress[] =
+    endpoint && state === "online"
+      ? [{ address: new URL(endpoint).host, kind: "relay", url: endpoint }]
+      : [];
   return [...relay, ...status.addresses].sort(
     (left, right) =>
       PAIRING_ADDRESS_ORDER[left.kind] - PAIRING_ADDRESS_ORDER[right.kind],

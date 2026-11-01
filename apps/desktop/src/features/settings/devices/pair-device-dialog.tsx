@@ -35,7 +35,7 @@ function CreatedPairing({
   created: CreatedHostPairing;
   addresses: HostAddress[];
 }) {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
   const formatDateTime = useFormatDateTime();
   const primary = addresses[0];
   const primaryLink = primary
@@ -49,23 +49,22 @@ function CreatedPairing({
         </Text>
         <AppCopyButton value={created.code} />
       </div>
-      <Text size="meta" tone="muted">
-        {t("devices.pair.expires", {
-          time: formatDateTime(created.pairing.expiresAt),
-        })}
-      </Text>
+      <div className="flex items-center gap-2">
+        <Text className="min-w-0 flex-1" size="meta" tone="muted">
+          {t("devices.pair.expires", {
+            time: formatDateTime(created.pairing.expiresAt),
+          })}
+        </Text>
+        {primary ? (
+          <AppCopyButton label={t("common:links.copy")} value={primaryLink} />
+        ) : null}
+      </div>
       {primary ? (
-        <div className="flex min-w-0 flex-col items-center gap-2">
+        <div className="flex justify-center">
           <PairingQrCode
             label={t("devices.pair.qrLabel", { address: primary.url })}
             link={primaryLink}
           />
-          <div className="flex w-full min-w-0 items-center gap-2">
-            <Text className="min-w-0 flex-1 font-mono" size="meta" truncate>
-              {primaryLink}
-            </Text>
-            <AppCopyButton value={primaryLink} />
-          </div>
         </div>
       ) : (
         <Text size="body" tone="muted">
