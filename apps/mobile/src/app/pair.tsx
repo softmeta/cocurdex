@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextInputInstance } from "react-native";
 import { hosts, type PairFailure, selectHost, usePairingRoutes } from "@/hosts";
+import { enablePushNotifications } from "@/notifications";
 import {
   FieldSection,
   Form,
@@ -71,6 +72,7 @@ export default function PairScreen() {
       return;
     }
     selectHost(result.host.hostId);
+    enablePushNotifications();
     await keyboardHidden();
     if (router.canGoBack()) router.back();
     else router.replace("/");

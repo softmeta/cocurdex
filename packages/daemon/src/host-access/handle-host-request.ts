@@ -3,6 +3,7 @@ import type {
   DaemonRequest,
   DaemonResultByMethod,
 } from "@cocurdex/rpc";
+import type { PushService } from "../push";
 import type { HostAccessService } from "./host-access-service";
 import type { DaemonRequestContext } from "./request-context";
 
@@ -16,8 +17,13 @@ export function isHostRequest(
   return request.method.startsWith("host.");
 }
 
+export interface HostRequestServices {
+  hostAccess: HostAccessService;
+  push: PushService;
+}
+
 export async function handleHostRequest(
-  hostAccess: HostAccessService,
+  { hostAccess, push }: HostRequestServices,
   request: DaemonRequest<HostMethod>,
   context: DaemonRequestContext,
 ): Promise<DaemonResultByMethod[HostMethod]> {
@@ -62,6 +68,14 @@ export async function handleHostRequest(
       );
     case "host.audit.list":
       return hostAccess.listAudit(request.params.limit ?? DEFAULT_AUDIT_LIMIT);
+    case "host.push.get":
+      return push.status();
+    case "host.push.set":
+      return push.setSettings(request.params);
+    case "host.push.register":
+      return push.register(context.principal, request.params);
+    case "host.push.unregister":
+      return push.unregister(context.principal);
     default: {
       const exhaustive: never = request;
       throw new Error(`Unsupported host method: ${JSON.stringify(exhaustive)}`);

@@ -1,4 +1,5 @@
 import type { DocumentAttachment, ImageAttachment } from "./contracts";
+import type { PushPlatform } from "./push";
 
 export const HOST_ACCESS_SCOPES = [
   "read",
@@ -51,6 +52,7 @@ export interface PairedDeviceRecord {
   lastSeenAt: string | null;
   revokedAt: string | null;
   publicKey: string | null;
+  pushPlatform: PushPlatform | null;
 }
 
 export interface PairedDevice extends PairedDeviceRecord {

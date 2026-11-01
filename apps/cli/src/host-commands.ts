@@ -4,6 +4,7 @@ import {
   buildHostPairingLink,
   type HostAccessScope,
   type HostAddress,
+  type HostPushStatus,
   type HostRemoteAccessStatus,
   hostPairingAddresses,
   isHostAccessScope,
@@ -30,6 +31,7 @@ export function hostUsageLines() {
     "  cocurdex host status [--json]",
     "  cocurdex host remote enable [--port <port>] [--keep-awake on|off] | disable [--json]",
     "  cocurdex host relay set official|<url> [--relay-only on|off] [--credential <file>] | relay off [--json]",
+    "  cocurdex host push set <url> | push off | push status [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
     "  cocurdex host devices [--json] | host revoke <device-id>",
@@ -132,6 +134,25 @@ async function setRelay(url: string | null, parsed: ParsedArgs) {
   printRelayStatus(status);
 }
 
+async function setPush(url: string | null, parsed: ParsedArgs) {
+  const status = await withDaemon(() =>
+    requestDaemon("host.push.set", { url }),
+  );
+  printPushStatus(status, parsed);
+}
+
+function printPushStatus(status: HostPushStatus, parsed: ParsedArgs) {
+  if (parsed.flags.has("json")) {
+    printResult(status, parsed);
+    return;
+  }
+  console.log(
+    status.url
+      ? `Notifications go through the push gateway ${status.url}`
+      : "Notifications are off",
+  );
+}
+
 async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
   const keepAwake = keepAwakeFlag(parsed);
   const status = await withDaemon(async () => {
@@ -225,6 +246,19 @@ export async function handleHostCommand(
     await setRelay(null, parsed);
     return true;
   }
+  if (action === "push" && args[0] === "set" && args[1]) {
+    await setPush(args[1], parsed);
+    return true;
+  }
+  if (action === "push" && args[0] === "off") {
+    await setPush(null, parsed);
+    return true;
+  }
+  if (action === "push" && args[0] === "status") {
+    const status = await withDaemon(() => requestDaemon("host.push.get"));
+    printPushStatus(status, parsed);
+    return true;
+  }
   if (action === "pair") {
     await createPairing(parsed);
     return true;
@@ -247,7 +281,15 @@ export async function handleHostCommand(
     const devices = await withDaemon(() => requestDaemon("host.devices.list"));
     printRows(
       devices.map((device) => ({ ...device, scopes: device.scopes.join(",") })),
-      ["id", "label", "scopes", "safetyCode", "lastSeenAt", "revokedAt"],
+      [
+        "id",
+        "label",
+        "scopes",
+        "safetyCode",
+        "pushPlatform",
+        "lastSeenAt",
+        "revokedAt",
+      ],
       parsed,
     );
     return true;

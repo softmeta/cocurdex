@@ -18,6 +18,9 @@
         "NSLocalNetworkUsageDescription": "Cocurdex connects to the computers you pair on your local network.",
         "CFBundleAllowMixedLocalizations": true,
         "UIViewControllerBasedStatusBarAppearance": true
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.dev.cocurdex.mobile"]
       }
     },
     "android": {
@@ -56,15 +59,24 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "mode": "development",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
       "expo-router",
       [
         "expo-localization",
         {
           "supportedLocales": ["en", "zh-Hans"]
         }
-      ]
+      ],
+      "./plugins/push-notifications"
     ],
     "locales": {
+      "en": "./native-locales/en.json",
       "zh-Hans": "./native-locales/zh-Hans.json"
     }
   }

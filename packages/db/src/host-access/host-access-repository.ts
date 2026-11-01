@@ -3,6 +3,7 @@ import type {
   HostAccessScope,
   HostPairingRecord,
   PairedDeviceRecord,
+  PushPlatform,
 } from "@cocurdex/shared";
 
 export interface NewHostDevice {
@@ -15,6 +16,17 @@ export interface NewHostDevice {
 export type HostPairingConsumeResult =
   | { ok: true; pairing: HostPairingRecord; device: PairedDeviceRecord }
   | { ok: false; reason: "unknown" | "expired" | "consumed" };
+
+export interface DevicePush {
+  platform: PushPlatform;
+  handle: string;
+}
+
+export interface PushTarget extends DevicePush {
+  deviceId: string;
+  publicKey: string;
+  scopes: HostAccessScope[];
+}
 
 export interface HostAccessRepository {
   insertPairing(pairing: HostPairingRecord, codeHash: string): void;
@@ -33,6 +45,13 @@ export interface HostAccessRepository {
     scopes: HostAccessScope[],
   ): PairedDeviceRecord | null;
   touchDevice(deviceId: string, now: string): void;
+  setDevicePush(
+    deviceId: string,
+    push: DevicePush | null,
+    now: string,
+  ): boolean;
+  clearDevicePushHandle(handle: string, now: string): void;
+  listPushTargets(): PushTarget[];
   appendAudit(entry: HostAccessAuditEntry): void;
   listAudit(limit: number): HostAccessAuditEntry[];
 }

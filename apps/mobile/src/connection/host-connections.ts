@@ -14,6 +14,7 @@ import { isRelayEndpoint } from "@cocurdex/shared";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { AppState } from "react-native";
 import { hosts, mobileNoiseCrypto } from "@/hosts";
+import { mirrorPushKeys, pushRegistrar } from "@/notifications";
 
 const lifecycle: LifecycleSignal = {
   subscribeForeground(listener) {
@@ -107,6 +108,11 @@ function adoptReportedSession(connection: HostConnection) {
         });
       })
       .catch(() => undefined);
+    void pushRegistrar
+      .hostLive(connection.hostId, (registration) =>
+        connection.request("host.push.register", registration),
+      )
+      .catch(() => undefined);
   });
   return connection;
 }
@@ -152,9 +158,16 @@ AppState.addEventListener("change", (state) => {
   if (state === "active") preferDirectPaths();
 });
 
-hosts.subscribe(() => {
-  const paired = new Set(hosts.getSnapshot().map((host) => host.hostId));
+function syncPairedHosts() {
+  const saved = hosts.getSnapshot();
+  const paired = new Set(saved.map((host) => host.hostId));
   for (const connection of registry.list()) {
-    if (!paired.has(connection.hostId)) registry.remove(connection.hostId);
+    if (paired.has(connection.hostId)) continue;
+    registry.remove(connection.hostId);
+    pushRegistrar.hostRemoved(connection.hostId);
   }
-});
+  mirrorPushKeys(saved);
+}
+
+mirrorPushKeys(hosts.getSnapshot());
+hosts.subscribe(syncPairedHosts);
