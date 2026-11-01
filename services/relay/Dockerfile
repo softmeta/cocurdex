@@ -12,6 +12,8 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags=
 FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /out/cocurdex-relay /cocurdex-relay
 COPY --from=build --chown=65532:65532 /out/data /data
+COPY web /web
+ENV COCURDEX_RELAY_WEB_ROOT=/web
 VOLUME ["/data"]
 EXPOSE 8080
 ENTRYPOINT ["/cocurdex-relay", "serve", "--data-dir", "/data"]
