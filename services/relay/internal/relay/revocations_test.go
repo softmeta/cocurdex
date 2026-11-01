@@ -19,6 +19,7 @@ type credentialRelay struct {
 	base    string
 	dataDir string
 	server  *relay.Server
+	usage   *relay.Usage
 	issuer  ed25519.PrivateKey
 	mu      sync.Mutex
 	now     time.Time
@@ -47,7 +48,12 @@ func startCredentialRelay(t *testing.T) *credentialRelay {
 	if err != nil {
 		t.Fatal(err)
 	}
+	usage, err := relay.OpenUsage(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	harness := &credentialRelay{
+		usage:   usage,
 		dataDir: dataDir,
 		issuer:  issuer,
 		now:     time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
@@ -57,6 +63,7 @@ func startCredentialRelay(t *testing.T) *credentialRelay {
 	config.ConnectLimiter = nil
 	config.CredentialIssuer = issuerPublic
 	config.Revocations = revocations
+	config.Usage = usage
 	config.Now = harness.clock
 	harness.server = relay.NewServer(config)
 	httpServer := httptest.NewServer(harness.server)

@@ -102,26 +102,30 @@ func writeRevocations(path string, accounts map[string]Revocation) error {
 	if err != nil {
 		return err
 	}
-	temp, err := os.CreateTemp(filepath.Dir(path), revocationsFilename+".*")
-	if err != nil {
-		return fmt.Errorf("write revocations: %w", err)
-	}
-	defer os.Remove(temp.Name())
-	if _, err := temp.Write(append(raw, '\n')); err != nil {
-		temp.Close()
-		return fmt.Errorf("write revocations: %w", err)
-	}
-	if err := temp.Chmod(0o644); err != nil {
-		temp.Close()
-		return fmt.Errorf("write revocations: %w", err)
-	}
-	if err := temp.Close(); err != nil {
-		return fmt.Errorf("write revocations: %w", err)
-	}
-	if err := os.Rename(temp.Name(), path); err != nil {
+	if err := writeFileAtomic(path, append(raw, '\n')); err != nil {
 		return fmt.Errorf("write revocations: %w", err)
 	}
 	return nil
+}
+
+func writeFileAtomic(path string, data []byte) error {
+	temp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temp.Name())
+	if _, err := temp.Write(data); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Chmod(0o644); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(temp.Name(), path)
 }
 
 func RevokeAccount(dataDir, account, reason string, now time.Time) error {

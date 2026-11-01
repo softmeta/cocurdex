@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
 	"github.com/softmeta/cocurdex/services/relay/internal/relay"
@@ -47,9 +48,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return restore(args, stdout)
 	case "revocations":
 		return revocations(args, stdout)
+	case "usage":
+		return usage(args, stdout)
 	default:
 		return fmt.Errorf(
-			"unknown command %q (expected serve, keygen, credential, revoke, restore, or revocations)",
+			"unknown command %q (expected serve, keygen, credential, revoke, restore, revocations, or usage)",
 			command,
 		)
 	}
@@ -108,9 +111,14 @@ func serve(args []string, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	usage, err := relay.OpenUsage(options.dataDir)
+	if err != nil {
+		return err
+	}
 	config := relay.DefaultConfig()
 	config.Bindings = bindings
 	config.Revocations = revocations
+	config.Usage = usage
 	config.Logger = logger
 	config.TrustProxy = options.trustProxy
 	config.MaxSessionsPerRoute = options.maxSessions
@@ -143,6 +151,12 @@ func serve(args []string, stderr io.Writer) error {
 	if config.CredentialIssuer != nil {
 		go relayServer.EnforceCredentials(ctx, credentialSweepInterval)
 	}
+	go flushUsage(ctx, usage, logger)
+	defer func() {
+		if err := usage.Flush(time.Now()); err != nil {
+			logger.Error("saving usage failed", "error", err)
+		}
+	}()
 	errs := make(chan error, 1)
 	go func() {
 		logger.Info("relay listening", "address", options.listen)
@@ -233,7 +247,79 @@ func credential(args []string, stdout io.Writer) error {
 	return err
 }
 
-const credentialSweepInterval = 10 * time.Second
+const (
+	credentialSweepInterval = 10 * time.Second
+	usageFlushInterval      = time.Minute
+)
+
+func flushUsage(ctx context.Context, usage *relay.Usage, logger *slog.Logger) {
+	ticker := time.NewTicker(usageFlushInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			if err := usage.Flush(now); err != nil {
+				logger.Error("saving usage failed", "error", err)
+			}
+		}
+	}
+}
+
+func usage(args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("usage", flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "the relay's --data-dir")
+	days := flags.Int("days", 30, "count the last N days, today included")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" {
+		return errors.New("--data-dir is required")
+	}
+	if *days <= 0 {
+		return errors.New("--days must be positive")
+	}
+	summary, err := relay.SummarizeUsage(*dataDir, *days, time.Now())
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return writeJSON(stdout, summary)
+	}
+	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "ACCOUNT\tTRAFFIC\tSESSIONS\tLAST SEEN\tREVOKED")
+	for _, row := range summary {
+		revoked := ""
+		if row.Revoked {
+			revoked = "yes"
+		}
+		fmt.Fprintf(
+			table,
+			"%s\t%s\t%d\t%s\t%s\n",
+			row.Account,
+			formatBytes(row.Bytes),
+			row.Sessions,
+			row.LastSeen.Local().Format("2006-01-02 15:04"),
+			revoked,
+		)
+	}
+	return table.Flush()
+}
+
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	value, suffix := float64(bytes)/unit, 0
+	for value >= unit && suffix < 3 {
+		value /= unit
+		suffix++
+	}
+	return fmt.Sprintf("%.1f %s", value, []string{"KiB", "MiB", "GiB", "TiB"}[suffix])
+}
 
 func revocationFlags(name string) (*flag.FlagSet, *string, *string) {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)

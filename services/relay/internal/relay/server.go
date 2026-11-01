@@ -19,6 +19,7 @@ import (
 type Config struct {
 	Bindings            *Bindings
 	Revocations         *Revocations
+	Usage               *Usage
 	CredentialIssuer    ed25519.PublicKey
 	MaxSessionsPerRoute int
 	RegisterTimeout     time.Duration
@@ -82,6 +83,9 @@ func NewServer(config Config) *Server {
 	}
 	if config.Revocations == nil {
 		config.Revocations, _ = OpenRevocations("")
+	}
+	if config.Usage == nil {
+		config.Usage, _ = OpenUsage("")
 	}
 	if config.Logger == nil {
 		config.Logger = slog.Default()
@@ -414,6 +418,8 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	defer timer.Stop()
 	select {
 	case host := <-opened.waiting:
+		account := opened.entry.account
+		s.config.Usage.AddSession(account, s.config.Now())
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 		go func() {
@@ -423,7 +429,9 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 			case <-ctx.Done():
 			}
 		}()
-		s.forward(ctx, device, host)
+		s.forward(ctx, device, host, func(bytes int) {
+			s.config.Usage.AddBytes(account, bytes, s.config.Now())
+		})
 	case <-timer.C:
 		device.Close(CloseHostTimeout, "the computer did not answer")
 	case <-r.Context().Done():
@@ -431,12 +439,19 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) forward(parent context.Context, device, host *websocket.Conn) {
+func (s *Server) forward(
+	parent context.Context,
+	device, host *websocket.Conn,
+	count func(bytes int),
+) {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	idle := time.AfterFunc(s.config.SessionIdleTimeout, cancel)
 	defer idle.Stop()
-	touch := func() { idle.Reset(s.config.SessionIdleTimeout) }
+	relayed := func(bytes int) {
+		idle.Reset(s.config.SessionIdleTimeout)
+		count(bytes)
+	}
 
 	var once sync.Once
 	finish := func(from, to *websocket.Conn, err error) {
@@ -450,11 +465,11 @@ func (s *Server) forward(parent context.Context, device, host *websocket.Conn) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		finish(device, host, pipe(ctx, device, host, touch))
+		finish(device, host, pipe(ctx, device, host, relayed))
 	}()
 	go func() {
 		defer wg.Done()
-		finish(host, device, pipe(ctx, host, device, touch))
+		finish(host, device, pipe(ctx, host, device, relayed))
 	}()
 	wg.Wait()
 }
@@ -469,7 +484,7 @@ func closeStatusFor(err error) (websocket.StatusCode, string) {
 	return websocket.StatusGoingAway, ""
 }
 
-func pipe(ctx context.Context, from, to *websocket.Conn, touch func()) error {
+func pipe(ctx context.Context, from, to *websocket.Conn, relayed func(bytes int)) error {
 	for {
 		kind, data, err := from.Read(ctx)
 		if err != nil {
@@ -478,7 +493,7 @@ func pipe(ctx context.Context, from, to *websocket.Conn, touch func()) error {
 		if kind != websocket.MessageBinary {
 			return errProtocol
 		}
-		touch()
+		relayed(len(data))
 		if err := to.Write(ctx, websocket.MessageBinary, data); err != nil {
 			return err
 		}
