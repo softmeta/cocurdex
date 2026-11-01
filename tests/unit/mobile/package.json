@@ -9,10 +9,12 @@
   "dependencies": {
     "@cocurdex/client-runtime": "workspace:*",
     "@cocurdex/mobile": "workspace:*",
+    "@cocurdex/secure-channel": "workspace:*",
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
     "@cocurdex/note-doc": "workspace:*",
+    "@cocurdex/test-fixtures": "workspace:*",
     "@types/node": "^24.19.2",
     "i18next": "^26.5.3",
     "vitest": "^4.1.11",

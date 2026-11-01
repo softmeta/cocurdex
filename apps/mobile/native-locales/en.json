@@ -1,0 +1,13 @@
+{
+  "ios": {
+    "Localizable.strings": {
+      "PUSH_FALLBACK": "New activity on your computer",
+      "PUSH_UNTITLED_SESSION": "Untitled session",
+      "PUSH_APPROVAL": "Needs your approval",
+      "PUSH_QUESTION": "Has a question for you",
+      "PUSH_PLAN": "Plan ready for review",
+      "PUSH_TURN_COMPLETED": "Finished",
+      "PUSH_TURN_FAILED": "Stopped with an error"
+    }
+  }
+}
