@@ -15,6 +15,7 @@ export {
 export { logRendererDiagnostic } from "./diagnostics";
 export { onOpenEntity, openEntity } from "./entity-events";
 export { toAbsolutePath } from "./file-path";
+export { hostHasScope, hostScopes } from "./host-scopes";
 export { htmlPreviewLocationAtom } from "./html-preview-preference";
 export { desktopApi } from "./ipc";
 export { lazyComponent } from "./lazy-component";

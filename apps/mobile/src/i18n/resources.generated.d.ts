@@ -104,6 +104,12 @@ export default interface Resources {
     };
     list: {
       current: "Current";
+      status: {
+        checking: "Checking";
+        offline: "Unreachable";
+        online: "Connected · {{latency}} ms";
+        unauthorized: "Access revoked";
+      };
     };
     pair: {
       action: "Pair";

@@ -21,7 +21,13 @@
     "title": "No Computers"
   },
   "list": {
-    "current": "Current"
+    "current": "Current",
+    "status": {
+      "checking": "Checking",
+      "offline": "Unreachable",
+      "online": "Connected · {{latency}} ms",
+      "unauthorized": "Access revoked"
+    }
   },
   "pair": {
     "action": "Pair",

@@ -182,7 +182,9 @@ appId: dev.cocurdex.mobile
     id: "new-session-agent"
     text: "(?s).*${ROLE_NAME}.*"
 - stopApp
-- launchApp
+- launchApp:
+    permissions:
+      notifications: allow
 - extendedWaitUntil:
     visible: ${NEW_SESSION_ACTION}
     timeout: 10000

@@ -21,7 +21,13 @@
     "title": "还没有电脑"
   },
   "list": {
-    "current": "当前"
+    "current": "当前",
+    "status": {
+      "checking": "正在检测",
+      "offline": "无法连接",
+      "online": "已连接 · {{latency}} ms",
+      "unauthorized": "访问已撤销"
+    }
   },
   "pair": {
     "action": "配对",

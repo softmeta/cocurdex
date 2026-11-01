@@ -320,6 +320,8 @@ export interface HostCapabilities {
   browserView: boolean;
   localWebClient: boolean;
   localFilePaths: boolean;
+  localDaemonControl: boolean;
+  scopes?: readonly HostAccessScope[];
 }
 
 /**

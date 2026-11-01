@@ -16,6 +16,7 @@ import {
   useScrollIndicatorWhileScrolling,
 } from "@/ui";
 import { useComputerActions } from "./computer-actions-menu";
+import { HostStatus, useHostStatusLabel } from "./host-status";
 
 function HostRow({
   host,
@@ -29,12 +30,14 @@ function HostRow({
   const { t } = useTranslation("hosts");
   const colors = useThemeColors();
   const address = hostAddress(host);
+  const status = useHostStatusLabel(host.hostId);
+  const detail = `${status} · ${address}`;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={host.name}
       accessibilityValue={{
-        text: current ? `${address}, ${t("list.current")}` : address,
+        text: current ? `${detail}, ${t("list.current")}` : detail,
       }}
       accessibilityState={{ selected: current }}
       onPress={() => selectHost(host.hostId)}
@@ -59,12 +62,15 @@ function HostRow({
         >
           {host.name}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={[styles.detail, { color: colors.mutedForeground }]}
-        >
-          {address}
-        </Text>
+        <View style={styles.detailLine}>
+          <HostStatus hostId={host.hostId} />
+          <Text
+            numberOfLines={1}
+            style={[styles.detail, { color: colors.mutedForeground }]}
+          >
+            {detail}
+          </Text>
+        </View>
       </View>
       {current ? (
         <SymbolView
@@ -128,5 +134,6 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 16, lineHeight: 22 },
-  detail: { fontSize: 14, lineHeight: 19 },
+  detailLine: { flexDirection: "row", alignItems: "center", gap: 6 },
+  detail: { flexShrink: 1, fontSize: 14, lineHeight: 19 },
 });

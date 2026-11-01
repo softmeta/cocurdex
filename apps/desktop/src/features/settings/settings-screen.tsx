@@ -21,7 +21,7 @@ import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
 import { TeamSettingsPanel } from "@/features/sessions/team";
 import { ShortcutsSettingsPanel } from "@/features/shortcuts";
 import type { LanguageMode } from "@/i18n/language";
-import { cn } from "@/lib";
+import { cn, hostScopes } from "@/lib";
 import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
 import { ArchivedSessionsPanel } from "./archived-sessions";
@@ -37,6 +37,7 @@ import { OssLicensesSettingsPanel } from "./oss-licenses";
 import { ProviderSettingsPanel } from "./providers";
 import {
   groupSettingsSectionsByCluster,
+  permittedSettingsSection,
   settingsSections,
 } from "./settings-sections";
 import { SettingsSidebar } from "./settings-sidebar";
@@ -256,7 +257,7 @@ function SectionPanel({
 }
 
 export function SettingsScreen({
-  activeSection,
+  activeSection: requestedSection,
   appearanceSettings,
   canGoBack,
   chatLayoutMode,
@@ -278,8 +279,10 @@ export function SettingsScreen({
   themeMode,
 }: SettingsScreenProps) {
   const { t } = useTranslation(["editor", "settings"]);
-  const sidebarClusters = groupSettingsSectionsByCluster();
+  const scopes = hostScopes();
+  const sidebarClusters = groupSettingsSectionsByCluster(scopes);
   const setSelectedWorkspaceId = useSetAtom(selectedSettingsWorkspaceIdAtom);
+  const activeSection = permittedSettingsSection(requestedSection, scopes);
   const activeSectionMeta =
     settingsSections.find((section) => section.id === activeSection) ??
     settingsSections[0];

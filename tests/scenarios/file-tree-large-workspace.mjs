@@ -119,30 +119,27 @@ function treeFolderExpanded(itemPath) {
   return false;
 }
 
-async function expandFolder(session, itemPath) {
-  const deadline = Date.now() + UI_TIMEOUT_MS;
-  while (!(await session.run(treeFolderExpanded, itemPath))) {
-    const remaining = deadline - Date.now();
-    check(remaining > 0, "folder did not expand", { itemPath });
-    await session.waitUntil(findTreeRow, itemPath, remaining);
-    const point = await session.run(findTreeRow, itemPath);
-    if (!point) continue;
-    await clickPoint(session, point);
-    await session
-      .waitUntil(treeFolderExpanded, itemPath, 5_000)
-      .catch(() => {});
-  }
-}
-
 async function expandNestedFolder(session, parentPath, childPath) {
-  await session.waitUntil(
-    findFirstTreeRow,
-    [childPath, parentPath],
-    UI_TIMEOUT_MS,
-  );
-  const shown = await session.run(findFirstTreeRow, [childPath, parentPath]);
-  if (shown === parentPath) await expandFolder(session, parentPath);
-  await expandFolder(session, childPath);
+  const deadline = Date.now() + UI_TIMEOUT_MS;
+  while (!(await session.run(treeFolderExpanded, childPath))) {
+    const remaining = deadline - Date.now();
+    check(remaining > 0, "nested folder did not expand", { childPath });
+    await session.waitUntil(
+      findFirstTreeRow,
+      [childPath, parentPath],
+      remaining,
+    );
+    const shown = await session.run(findFirstTreeRow, [childPath, parentPath]);
+    if (!shown || (await session.run(treeFolderExpanded, shown))) {
+      await session
+        .waitUntil(treeFolderExpanded, childPath, 1_000)
+        .catch(() => {});
+      continue;
+    }
+    const point = await session.run(findTreeRow, shown);
+    if (point) await clickPoint(session, point);
+    await session.waitUntil(treeFolderExpanded, shown, 5_000).catch(() => {});
+  }
 }
 
 runScenario("file-tree-large-workspace", {

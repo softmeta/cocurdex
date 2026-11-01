@@ -21,7 +21,11 @@ import {
 } from "@/features/composer";
 import { useResolvedShortcutLabel } from "@/features/shortcuts";
 import type { LanguageMode } from "@/i18n/language";
-import { formatShortcutLabel, htmlPreviewLocationAtom } from "@/lib";
+import {
+  desktopApi,
+  formatShortcutLabel,
+  htmlPreviewLocationAtom,
+} from "@/lib";
 import { CliPathSettingsPanel } from "./cli-path-settings";
 import { DaemonSettingsPanel } from "./daemon-settings";
 import { LanguagePicker } from "./language-picker";
@@ -229,13 +233,17 @@ export function GeneralPanel({
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title={t("cli.groupTitle")}>
-        <CliPathSettingsPanel />
-      </SettingsGroup>
+      {desktopApi.capabilities.localDaemonControl ? (
+        <>
+          <SettingsGroup title={t("cli.groupTitle")}>
+            <CliPathSettingsPanel />
+          </SettingsGroup>
 
-      <SettingsGroup title={t("daemon.groupTitle")}>
-        <DaemonSettingsPanel />
-      </SettingsGroup>
+          <SettingsGroup title={t("daemon.groupTitle")}>
+            <DaemonSettingsPanel />
+          </SettingsGroup>
+        </>
+      ) : null}
     </div>
   );
 }
