@@ -102,6 +102,7 @@ export const offlineApi: DesktopApi = {
     browserView: false,
     localWebClient: false,
     localFilePaths: false,
+    localDaemonControl: false,
   },
   bootstrapApp: async () => ({
     workspaces: [],

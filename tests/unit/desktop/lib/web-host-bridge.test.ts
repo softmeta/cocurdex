@@ -130,4 +130,11 @@ describe("webHostCapabilities", () => {
       }),
     ).toMatchObject({ terminal: false });
   });
+
+  it("reports a paired device's scopes and leaves the local page unrestricted", () => {
+    expect(webHostCapabilities({ kind: "local", connection }).scopes).toBe(
+      undefined,
+    );
+    expect(webHostCapabilities({ kind: "unlinked" }).scopes).toEqual([]);
+  });
 });

@@ -144,19 +144,23 @@ function dropFragmentCredentials() {
   window.history.replaceState(window.history.state, "", pathname + search);
 }
 
-function remoteMayExecute(access: WebHostAccess) {
-  return access.kind === "remote" && access.host.scopes.includes("execute");
+function grantedScopes(access: WebHostAccess) {
+  if (access.kind === "local") return undefined;
+  return access.kind === "remote" ? access.host.scopes : [];
 }
 
 export function webHostCapabilities(access: WebHostAccess): HostCapabilities {
   const local = access.kind === "local";
+  const scopes = grantedScopes(access);
   return {
     fileManager: local,
     nativeDirectoryDialog: false,
-    terminal: local || remoteMayExecute(access),
+    terminal: !scopes || scopes.includes("execute"),
     browserView: false,
     localWebClient: false,
     localFilePaths: false,
+    localDaemonControl: false,
+    scopes,
   };
 }
 

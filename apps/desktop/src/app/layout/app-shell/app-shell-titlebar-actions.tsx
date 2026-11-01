@@ -1,6 +1,7 @@
 import { PanelRight, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NetworkProxyStatusButton } from "@/features/settings";
+import { hostHasScope } from "@/lib";
 import { TitlebarIconButton } from "../titlebar-icon-button";
 
 interface AppShellTitlebarActionsProps {
@@ -33,7 +34,7 @@ export function AppShellTitlebarActions({
           <PanelRight className="size-3.5" />
         </TitlebarIconButton>
       )}
-      <NetworkProxyStatusButton />
+      {hostHasScope("host.admin") ? <NetworkProxyStatusButton /> : null}
       <TitlebarIconButton
         aria-label={t("sessions:sidebar.settings")}
         cursor="default"
