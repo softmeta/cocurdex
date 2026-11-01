@@ -38,13 +38,8 @@ describe("settings sections by device scope", () => {
         "workspaces",
       ]),
     );
-    for (const id of [
-      "environment",
-      "devices",
-      "diagnostics",
-      "adapters",
-      "memory",
-    ]) {
+    expect(sections).toContain("devices");
+    for (const id of ["environment", "diagnostics", "adapters", "memory"]) {
       expect(sections).not.toContain(id);
     }
   });
@@ -55,6 +50,7 @@ describe("settings sections by device scope", () => {
       "appearance",
       "editor",
       "shortcuts",
+      "devices",
       "licenses",
       "about",
       "archived",

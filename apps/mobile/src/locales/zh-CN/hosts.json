@@ -23,10 +23,10 @@
   "list": {
     "current": "当前",
     "status": {
-      "online": "已连接 · {{latency}} ms",
+      "checking": "正在检测",
       "offline": "无法连接",
-      "unauthorized": "访问已撤销",
-      "checking": "正在检测"
+      "online": "已连接 · {{latency}} ms",
+      "unauthorized": "访问已撤销"
     }
   },
   "pair": {

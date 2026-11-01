@@ -134,7 +134,7 @@ export const settingsSections = [
     labelKey: "devices",
     icon: Smartphone,
     cluster: "system",
-    requires: "host.admin",
+    requires: "read",
   },
   { id: "licenses", labelKey: "licenses", icon: Scale, cluster: "system" },
   { id: "about", labelKey: "about", icon: Info, cluster: "system" },

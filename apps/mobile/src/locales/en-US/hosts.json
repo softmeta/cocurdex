@@ -23,10 +23,10 @@
   "list": {
     "current": "Current",
     "status": {
-      "online": "Connected · {{latency}} ms",
+      "checking": "Checking",
       "offline": "Unreachable",
-      "unauthorized": "Access revoked",
-      "checking": "Checking"
+      "online": "Connected · {{latency}} ms",
+      "unauthorized": "Access revoked"
     }
   },
   "pair": {
