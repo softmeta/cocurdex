@@ -13,7 +13,7 @@
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
     "@cocurdex/test-fixtures": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.32.1"
+    "@modelcontextprotocol/sdk": "1.32.2"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
