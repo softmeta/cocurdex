@@ -29,6 +29,7 @@ export interface RemoteFileRead {
   start: number;
   end: number;
   contentType: string;
+  fileName?: string;
   body: AsyncIterable<Uint8Array>;
 }
 
@@ -147,6 +148,7 @@ export function createRemoteFileClient(options: {
         start: head.start,
         end: head.end,
         contentType: head.contentType,
+        fileName: head.fileName,
         body,
       };
     },

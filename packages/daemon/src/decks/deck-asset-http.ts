@@ -34,7 +34,7 @@ function isAuthorized(principal: HostPrincipal | null) {
   return principalHasScope(principal, "read");
 }
 
-async function sniffMimeType(filePath: string) {
+export async function sniffDeckAssetMimeType(filePath: string) {
   const handle = await open(filePath, "r");
   try {
     const buffer = Buffer.alloc(SNIFF_BYTES);
@@ -80,7 +80,7 @@ export function createDeckAssetHttpHandler(
       DAEMON_DECK_ASSET_HASH_QUERY,
     );
     const blob = hash ? await options.locate(hash) : null;
-    const mimeType = blob ? await sniffMimeType(blob.path) : null;
+    const mimeType = blob ? await sniffDeckAssetMimeType(blob.path) : null;
     if (!blob || !mimeType) {
       endWith(response, 404, cors);
       return;

@@ -16,6 +16,8 @@ import {
   type AttachmentImportFailure,
   type DaemonAttachmentStore,
 } from "./attachment-store";
+import { sniffDeckAssetMimeType } from "./decks/deck-asset-http";
+import type { DeckFile } from "./decks/deck-service";
 
 const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_REQUEST_HEADER_BYTES = 4096;
@@ -28,6 +30,8 @@ export interface RemoteFileStreamOptions {
     DaemonAttachmentStore,
     "importImage" | "importDocument" | "locateImage"
   >;
+  locateDeckAsset(hash: string): Promise<{ path: string } | null>;
+  redeemDeckDownload(ticket: string): Promise<DeckFile | null>;
 }
 
 const IMPORT_FAILURES: Record<AttachmentImportFailure, RemoteFileFailure> = {
@@ -40,6 +44,8 @@ const REQUIRED_SCOPE: Record<RemoteFileRequest["kind"], HostAccessScope> = {
   workspaceFile: "files.read",
   pdf: "files.read",
   imageAttachment: "read",
+  deckAsset: "read",
+  deckDownload: "read",
   attachmentUpload: "interact",
 };
 
@@ -75,6 +81,14 @@ function parseRequest(header: Uint8Array): RemoteFileRequest | null {
         : null;
     case "imageAttachment":
       return typeof value.file === "string" && value.file
+        ? (value as RemoteFileRequest)
+        : null;
+    case "deckAsset":
+      return typeof value.hash === "string" && value.hash
+        ? (value as RemoteFileRequest)
+        : null;
+    case "deckDownload":
+      return typeof value.ticket === "string" && value.ticket
         ? (value as RemoteFileRequest)
         : null;
     case "attachmentUpload":
@@ -135,6 +149,42 @@ async function sendFile(
   await stream.end();
 }
 
+async function sendDeckAsset(
+  stream: MuxStream,
+  hash: string,
+  locate: RemoteFileStreamOptions["locateDeckAsset"],
+) {
+  const blob = await locate(hash).catch(() => null);
+  const contentType = blob
+    ? await sniffDeckAssetMimeType(blob.path).catch(() => null)
+    : null;
+  if (!blob || !contentType) return fail(stream, "notFound");
+  return sendFile(stream, blob.path, contentType, undefined);
+}
+
+async function sendDeckDownload(
+  stream: MuxStream,
+  ticket: string,
+  redeem: RemoteFileStreamOptions["redeemDeckDownload"],
+) {
+  const file = await redeem(ticket);
+  if (!file) return fail(stream, "notFound");
+  const size = file.bytes.byteLength;
+  const head: RemoteFileHead = {
+    ok: true,
+    size,
+    start: 0,
+    end: size - 1,
+    contentType: file.contentType,
+    fileName: file.fileName,
+  };
+  await writeStreamHead(stream, head);
+  for (let offset = 0; offset < size; offset += READ_CHUNK_BYTES) {
+    await stream.write(file.bytes.subarray(offset, offset + READ_CHUNK_BYTES));
+  }
+  await stream.end();
+}
+
 async function receiveUpload(
   stream: MuxStream,
   request: Extract<RemoteFileRequest, { kind: "attachmentUpload" }>,
@@ -184,6 +234,14 @@ async function serve(
       if (!image) return fail(stream, "notFound");
       return sendFile(stream, image.path, image.mimeType, undefined);
     }
+    case "deckAsset":
+      return sendDeckAsset(stream, request.hash, options.locateDeckAsset);
+    case "deckDownload":
+      return sendDeckDownload(
+        stream,
+        request.ticket,
+        options.redeemDeckDownload,
+      );
     case "attachmentUpload":
       return receiveUpload(stream, request, options.attachments);
   }
