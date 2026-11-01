@@ -99,4 +99,30 @@ describe("sqlite host access repository", () => {
     expect(repository.deletePendingPairing("p1")?.id).toBe("p1");
     expect(repository.deletePendingPairing("p1")).toBeNull();
   });
+
+  it("keeps a device's push handle until it is cleared, unregistered, or revoked", () => {
+    const repository = setup();
+    repository.consumePairing("code-hash", later, device);
+    const push = { platform: "apns" as const, handle: "v1.handle" };
+
+    expect(repository.setDevicePush("d1", push, later)).toBe(true);
+    expect(repository.listPushTargets()).toEqual([
+      {
+        deviceId: "d1",
+        publicKey: "key1",
+        scopes: ["read", "approvals"],
+        ...push,
+      },
+    ]);
+    expect(repository.listDevices()[0]?.pushPlatform).toBe("apns");
+
+    repository.clearDevicePushHandle("v1.handle", later);
+    expect(repository.listPushTargets()).toEqual([]);
+    expect(repository.listDevices()[0]?.pushPlatform).toBeNull();
+
+    repository.setDevicePush("d1", push, later);
+    repository.revokeDevice("d1", expired);
+    expect(repository.listPushTargets()).toEqual([]);
+    expect(repository.setDevicePush("d1", push, expired)).toBe(false);
+  });
 });

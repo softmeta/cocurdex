@@ -55,6 +55,7 @@ import type {
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteViewPayload,
+  DevicePushRegistrationResult,
   DiagnosticsExportResult,
   DocImage,
   DocImageFile,
@@ -84,6 +85,7 @@ import type {
   HostDirectoryListing,
   HostIdentity,
   HostPairingRecord,
+  HostPushStatus,
   HostRemoteAccessStatus,
   ImportDeckImagePayload,
   ImportDeckPayload,
@@ -161,6 +163,8 @@ import type {
   PtySpawnPayload,
   PtySpawnResult,
   PtyWritePayload,
+  PushRegistration,
+  PushSettingsUpdate,
   ReadPptxPayload,
   RefineSessionTitlePayload,
   RelaySettingsUpdate,
@@ -724,6 +728,10 @@ export type DaemonRequestPayloadByMethod = {
   "host.devices.revokeSelf": undefined;
   "host.devices.updateScopes": { deviceId: string; scopes: HostAccessScope[] };
   "host.audit.list": { limit?: number };
+  "host.push.get": undefined;
+  "host.push.set": PushSettingsUpdate;
+  "host.push.register": PushRegistration;
+  "host.push.unregister": undefined;
 };
 
 export type DaemonResultByMethod = {
@@ -1027,6 +1035,10 @@ export type DaemonResultByMethod = {
   "host.devices.revokeSelf": PairedDeviceRecord | null;
   "host.devices.updateScopes": PairedDeviceRecord | null;
   "host.audit.list": HostAccessAuditEntry[];
+  "host.push.get": HostPushStatus;
+  "host.push.set": HostPushStatus;
+  "host.push.register": DevicePushRegistrationResult;
+  "host.push.unregister": DevicePushRegistrationResult;
 };
 
 export type DaemonMethod = keyof DaemonRequestPayloadByMethod;
@@ -1056,6 +1068,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "host.pairing.list": true,
   "host.devices.list": true,
   "host.devices.revokeSelf": true,
+  "host.push.get": true,
+  "host.push.unregister": true,
   "issue.listViews": true,
   "issue.listLabels": true,
   "issue.listLinkedSessionIds": true,

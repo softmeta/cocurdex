@@ -5,6 +5,7 @@ import {
   ADD_HOST_DEVICE_PUBLIC_KEY_SQL,
   createHostAccessSchemaSql,
   HOST_DEVICE_PUBLIC_KEY_INDEX_SQL,
+  HOST_DEVICE_PUSH_COLUMNS,
 } from "./host-access/schema";
 import {
   ensureIssueIndexes,
@@ -20,7 +21,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 34;
+export const CURRENT_SCHEMA_VERSION = 35;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -450,6 +451,14 @@ function addHostDevicePublicKeys(database: DatabaseSync): void {
   database.exec(HOST_DEVICE_PUBLIC_KEY_INDEX_SQL);
 }
 
+function addHostDevicePush(database: DatabaseSync): void {
+  for (const column of HOST_DEVICE_PUSH_COLUMNS) {
+    if (!hasColumn(database, "host_devices", column)) {
+      database.exec(`ALTER TABLE host_devices ADD COLUMN ${column} TEXT`);
+    }
+  }
+}
+
 function migrateProviderThreadsPerAgent(database: DatabaseSync): void {
   if (!hasColumn(database, "runs", "agent_type")) {
     database.exec("ALTER TABLE runs ADD COLUMN agent_type TEXT");
@@ -554,6 +563,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [31, createDecksTable],
   [32, createEntityLinksTable],
   [33, addHostDevicePublicKeys],
+  [34, addHostDevicePush],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

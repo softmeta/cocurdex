@@ -40,6 +40,13 @@ export {
 export { type NoiseCrypto, nobleCrypto } from "./noise-crypto";
 export { pairingSafetyCode } from "./safety-code";
 export {
+  NOISE_N_PROTOCOL_NAME,
+  openMessage,
+  SEALED_MESSAGE_OVERHEAD,
+  SealedMessageError,
+  sealMessage,
+} from "./sealed-message";
+export {
   type AcceptChannelOptions,
   acceptChannelHello,
   type ChannelEnvelope,

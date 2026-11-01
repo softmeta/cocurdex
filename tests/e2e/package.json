@@ -14,6 +14,7 @@
     "@cocurdex/daemon": "workspace:*",
     "@cocurdex/db": "workspace:*",
     "@cocurdex/product-skills": "workspace:*",
+    "@cocurdex/push": "workspace:*",
     "@cocurdex/relay": "workspace:*",
     "@cocurdex/rpc": "workspace:*",
     "@cocurdex/secure-channel": "workspace:*",

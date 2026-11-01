@@ -67,7 +67,7 @@ export async function handleDaemonRequest(
   const request = parseDaemonRequest(rawRequest);
   await service.hostAccessReady;
   if (isHostRequest(request)) {
-    return handleHostRequest(service.hostAccess, request, context);
+    return handleHostRequest(service, request, context);
   }
   if (isSkillRequest(request)) {
     return handleSkillRequest(service, request, context);

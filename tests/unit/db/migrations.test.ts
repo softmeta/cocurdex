@@ -1323,6 +1323,9 @@ describe("initializeDatabase", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);
     database.exec(`
+      ALTER TABLE host_devices DROP COLUMN push_platform;
+      ALTER TABLE host_devices DROP COLUMN push_handle;
+      ALTER TABLE host_devices DROP COLUMN push_updated_at;
       DROP INDEX idx_host_devices_public_key;
       ALTER TABLE host_devices DROP COLUMN public_key;
     `);
@@ -1356,6 +1359,48 @@ describe("initializeDatabase", () => {
     ]);
     expect(database.prepare("SELECT title FROM issues").all()).toEqual([
       { title: "Keys" },
+    ]);
+  });
+
+  it("adds device push columns from version 34 and keeps paired devices", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      ALTER TABLE host_devices DROP COLUMN push_platform;
+      ALTER TABLE host_devices DROP COLUMN push_handle;
+      ALTER TABLE host_devices DROP COLUMN push_updated_at;
+    `);
+    const now = "2026-11-01T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO host_devices
+        (id, label, token_hash, public_key, scopes_json, created_at)
+      VALUES ('d1', 'iPhone', 'public-key:pk', 'pk', '["read"]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Push', '${now}', '${now}');
+      PRAGMA user_version = 34;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    expect(tableShape(database, "host_devices")).toEqual(
+      tableShape(fresh, "host_devices"),
+    );
+    expect(
+      database
+        .prepare("SELECT id, label, public_key, push_handle FROM host_devices")
+        .all(),
+    ).toEqual([
+      { id: "d1", label: "iPhone", public_key: "pk", push_handle: null },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Push" },
     ]);
   });
 

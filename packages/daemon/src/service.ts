@@ -128,6 +128,7 @@ import {
 } from "./host-access";
 import {
   createHostKeyStore,
+  daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
 import { DaemonMcpService } from "./mcp-service";
@@ -149,6 +150,7 @@ import {
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
+import { PushService } from "./push";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
@@ -291,6 +293,7 @@ export class CocurdexDaemonService {
   readonly skillLibrary: DaemonSkillLibraryService;
   readonly state: DaemonState;
   readonly hostAccess: HostAccessService;
+  readonly push: PushService;
   readonly hostAccessReady: Promise<void>;
   readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;
@@ -328,6 +331,14 @@ export class CocurdexDaemonService {
       onRemoteAccessChanged: () => this.broadcastSettingsChanged(),
     });
     this.hostAccessReady = this.hostAccess.initialize();
+    this.push = new PushService({
+      repository: this.state.hostAccessStore.repository,
+      settings: this.state.hostAccessStore.settings,
+      signingKey: () => this.hostKeys.keys().signingPrivateKey,
+      identity: () => this.hostAccess.identity(),
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      crypto: daemonNoiseCrypto,
+    });
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
     this.decks = new DaemonDeckService(
@@ -609,6 +620,11 @@ export class CocurdexDaemonService {
         }
       }
       await this.team.onAgentEvent(event);
+      void this.push
+        .notify(event)
+        .catch((error: unknown) =>
+          logDaemonDiagnostic("warn", "push.notifyFailed", { error }),
+        );
       // Only a terminal error ends the turn; a mid-turn "error" event can be
       // followed by more tool calls whose changes still belong to this turn.
       if (event.type === "state.changed" && event.status === "error") {

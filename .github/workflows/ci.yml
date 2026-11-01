@@ -148,7 +148,7 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: services/relay/go.mod
-          cache-dependency-path: services/relay/go.sum
+          cache-dependency-path: services/*/go.sum
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
       - name: Install dependencies
@@ -248,7 +248,7 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: services/relay/go.mod
-          cache-dependency-path: services/relay/go.sum
+          cache-dependency-path: services/*/go.sum
       - name: Restore pnpm store
         if: env.RUN == 'true'
         uses: ./.github/actions/restore-pnpm-store
