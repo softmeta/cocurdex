@@ -16,7 +16,8 @@ fail() {
 [ $# -eq 2 ] || fail "usage: setup-vps.sh <deploy-script> <ssh-public-key>"
 script=$1
 public_key=$2
-command -v curl >/dev/null || fail "curl is required"
+command -v curl >/dev/null || fail "curl is required (apt install curl)"
+command -v sudo >/dev/null || fail "sudo is required (apt install sudo)"
 echo "$public_key" | grep -Eq '^ssh-ed25519 [A-Za-z0-9+/=]+( .*)?$' || fail "expected an ssh-ed25519 public key"
 
 install -m 0755 -o root -g root "$script" "$DEPLOY_BIN"
