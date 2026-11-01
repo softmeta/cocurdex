@@ -101,10 +101,12 @@ func serve(args []string, stderr io.Writer) error {
 	config.TrustProxy = options.trustProxy
 	config.MaxSessionsPerRoute = options.maxSessions
 	if options.webRoot != "" {
-		config.WebAssets, err = relay.NewWebAssets(options.webRoot)
+		assets, err := relay.NewWebAssets(options.webRoot)
 		if err != nil {
 			return err
 		}
+		defer assets.Close()
+		config.WebAssets = assets
 	}
 	if options.credentialIssuer != "" {
 		issuer, err := relay.DecodeBase64URL(options.credentialIssuer, ed25519.PublicKeySize)

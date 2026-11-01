@@ -3,6 +3,7 @@ package relay_test
 import (
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,16 +37,46 @@ func get(t *testing.T, url string) (*http.Response, string) {
 	return response, string(body)
 }
 
+func openWebAssets(t *testing.T, dir string) *relay.WebAssets {
+	t.Helper()
+	assets, err := relay.NewWebAssets(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { assets.Close() })
+	return assets
+}
+
+func scriptPolicy(t *testing.T, index string) string {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "index.html"), index)
+	recorder := httptest.NewRecorder()
+	openWebAssets(t, root).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+	for _, directive := range strings.Split(recorder.Header().Get("Content-Security-Policy"), "; ") {
+		if strings.HasPrefix(directive, "script-src ") {
+			return directive
+		}
+	}
+	t.Fatal("no script-src directive")
+	return ""
+}
+
+func TestHashesInlineScriptsWithTheLineEndingsBrowsersParse(t *testing.T) {
+	unix := scriptPolicy(t, "<script>\nboot()\n</script>")
+	windows := scriptPolicy(t, "<script>\r\nboot()\r\n</script>")
+	if unix != windows {
+		t.Fatalf("CRLF policy %q differs from LF policy %q", windows, unix)
+	}
+}
+
 func TestServesTheWebClientBesideTheRelayRoutes(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "web")
 	writeFile(t, filepath.Join(root, "index.html"), "<!doctype html><script>boot()</script>app")
 	writeFile(t, filepath.Join(root, "assets", "app-1a2b.js"), "console")
 	writeFile(t, filepath.Join(parent, "secret.txt"), "secret")
-	assets, err := relay.NewWebAssets(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assets := openWebAssets(t, root)
 	base := "http" + strings.TrimPrefix(startRelay(t, func(config *relay.Config) {
 		config.WebAssets = assets
 	}), "ws")

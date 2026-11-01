@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -16,10 +17,15 @@ const webAssetsImmutablePrefix = "assets/"
 
 var inlineScriptPattern = regexp.MustCompile(`(?s)<script>(.*?)</script>`)
 
+func parsedScriptText(raw []byte) []byte {
+	text := bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
+	return bytes.ReplaceAll(text, []byte("\r"), []byte("\n"))
+}
+
 func contentSecurityPolicy(index []byte) string {
 	scripts := []string{"'self'", "'wasm-unsafe-eval'"}
 	for _, match := range inlineScriptPattern.FindAllSubmatch(index, -1) {
-		digest := sha256.Sum256(match[1])
+		digest := sha256.Sum256(parsedScriptText(match[1]))
 		scripts = append(scripts, "'sha256-"+base64.StdEncoding.EncodeToString(digest[:])+"'")
 	}
 	return strings.Join([]string{
@@ -38,7 +44,20 @@ func contentSecurityPolicy(index []byte) string {
 	}, "; ")
 }
 
-func NewWebAssets(dir string) (http.Handler, error) {
+type WebAssets struct {
+	root    *os.Root
+	handler http.Handler
+}
+
+func (a *WebAssets) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	a.handler.ServeHTTP(w, r)
+}
+
+func (a *WebAssets) Close() error {
+	return a.root.Close()
+}
+
+func NewWebAssets(dir string) (*WebAssets, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, fmt.Errorf("open web root: %w", err)
@@ -46,11 +65,12 @@ func NewWebAssets(dir string) (http.Handler, error) {
 	files := root.FS()
 	index, err := fs.ReadFile(files, "index.html")
 	if err != nil {
+		root.Close()
 		return nil, fmt.Errorf("web root has no index.html: %w", err)
 	}
 	policy := contentSecurityPolicy(index)
 	fileServer := http.FileServerFS(files)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
 		if name != "" {
 			info, err := fs.Stat(files, name)
@@ -69,5 +89,6 @@ func NewWebAssets(dir string) (http.Handler, error) {
 		header.Set("X-Content-Type-Options", "nosniff")
 		header.Set("Referrer-Policy", "no-referrer")
 		fileServer.ServeHTTP(w, r)
-	}), nil
+	})
+	return &WebAssets{root: root, handler: handler}, nil
 }
