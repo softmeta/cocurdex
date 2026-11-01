@@ -6,6 +6,7 @@ export {
 } from "./foreground-wakeup";
 export {
   connectPairedHost,
+  findDirectOrigin,
   findReachableOrigin,
   HostAccessError,
   type HostAccessFailure,

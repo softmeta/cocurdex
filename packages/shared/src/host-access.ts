@@ -237,7 +237,7 @@ export function parseRelayCredential(text: string): RelayCredential | null {
 
 export const RELAY_OFF_STATUS: HostRelayStatus = {
   url: null,
-  relayOnly: true,
+  relayOnly: false,
   credential: null,
   state: "off",
   error: null,

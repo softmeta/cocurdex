@@ -1,6 +1,7 @@
 import {
   createHostRegistry,
   createSecureHostTransport,
+  findDirectOrigin,
   findReachableOrigin,
   foregroundWakeup,
   type HostConnection,
@@ -9,6 +10,7 @@ import {
   savedHostEndpoint,
   savedHostOrigins,
 } from "@cocurdex/client-runtime";
+import { isRelayEndpoint } from "@cocurdex/shared";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { AppState } from "react-native";
 import { hosts, mobileNoiseCrypto } from "@/hosts";
@@ -39,10 +41,25 @@ function updateConnected(next: boolean | undefined) {
   for (const listener of networkListeners) listener(next);
 }
 
-addNetworkStateListener((event) => updateConnected(event.isConnected));
+let networkType: string | undefined;
+const networkTypeListeners = new Set<() => void>();
+
+function updateNetworkType(next: string | undefined) {
+  if (next === undefined || next === networkType) return;
+  const changed = networkType !== undefined;
+  networkType = next;
+  if (!changed) return;
+  for (const listener of networkTypeListeners) listener();
+}
+
+addNetworkStateListener((event) => {
+  updateConnected(event.isConnected);
+  updateNetworkType(event.type);
+});
 void getNetworkStateAsync()
   .then((event) => {
     if (connected === undefined) updateConnected(event.isConnected);
+    if (networkType === undefined) networkType = event.type;
   })
   .catch(() => undefined);
 
@@ -113,6 +130,27 @@ export function hostConnection(hostId: string): HostConnection {
 }
 
 export const onHostConnectionRemoved = registry.onHostRemoved;
+
+async function preferDirectPath(connection: HostConnection) {
+  if (connection.getState().status !== "live") return;
+  const host = hosts
+    .getSnapshot()
+    .find((saved) => saved.hostId === connection.hostId);
+  if (!host || !isRelayEndpoint(host.baseUrl)) return;
+  const direct = await findDirectOrigin({ host, crypto: mobileNoiseCrypto });
+  if (!direct || connection.getState().status !== "live") return;
+  hosts.switchOrigin(host.hostId, direct.origin);
+  connection.wake("reconnect");
+}
+
+function preferDirectPaths() {
+  for (const connection of registry.list()) void preferDirectPath(connection);
+}
+
+networkTypeListeners.add(preferDirectPaths);
+AppState.addEventListener("change", (state) => {
+  if (state === "active") preferDirectPaths();
+});
 
 hosts.subscribe(() => {
   const paired = new Set(hosts.getSnapshot().map((host) => host.hostId));

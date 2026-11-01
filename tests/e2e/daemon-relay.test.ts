@@ -6,6 +6,8 @@ import {
   createRemoteFileClient,
   createSavedHostStore,
   createSecureHostTransport,
+  findDirectOrigin,
+  findReachableOrigin,
   HostAccessError,
   pairHost,
   type SavedHost,
@@ -58,12 +60,13 @@ async function launch(
   relays.push(relay);
   const daemon = await spawnDaemon();
   daemons.push(daemon);
+  const port = await freePort();
   await requestDaemon(
     "host.remoteAccess.set",
-    { enabled: true, port: await freePort() },
+    { enabled: true, port },
     daemon.options,
   );
-  return { relay, daemon };
+  return { relay, daemon, port };
 }
 
 async function waitForRelay(
@@ -94,7 +97,7 @@ describe("remote access through the relay", () => {
 
     const set = await requestDaemon(
       "host.relay.set",
-      { url: relay.url },
+      { url: relay.url, relayOnly: true },
       daemon.options,
     );
     expect(set).toMatchObject({ listening: false, addresses: [] });
@@ -143,6 +146,41 @@ describe("remote access through the relay", () => {
     );
     expect(refused).toBeInstanceOf(HostAccessError);
     expect(refused).toMatchObject({ reason: "unreachable" });
+  });
+
+  it("keeps direct access beside the relay and prefers it over the relay", async () => {
+    const { relay, daemon, port } = await launch();
+
+    const set = await requestDaemon(
+      "host.relay.set",
+      { url: relay.url },
+      daemon.options,
+    );
+    expect(set.relay.relayOnly).toBe(false);
+    expect(set.listening).toBe(true);
+    const status = await waitForRelay(
+      daemon,
+      (next) => next.relay.state === "online",
+    );
+    const endpoint = status.relay.endpoint ?? "";
+    const { code, hostKey } = await requestDaemon(
+      "host.pairing.create",
+      { label: "Phone", scopes: ["read"] },
+      daemon.options,
+    );
+    const paired = await pairHost({
+      baseUrl: endpoint,
+      code,
+      hostKey,
+      label: "Pixel",
+      store: createSavedHostStore(null),
+    });
+    expect(paired.baseUrl).toBe(endpoint);
+    const direct = `http://127.0.0.1:${port}`;
+    const host = { ...paired, endpoints: [endpoint, direct] };
+
+    expect((await findReachableOrigin({ host }))?.origin).toBe(direct);
+    expect((await findDirectOrigin({ host }))?.origin).toBe(direct);
   });
 
   it("reconnects to a restarted relay and streams files through it", async () => {

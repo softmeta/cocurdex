@@ -1,4 +1,5 @@
 import {
+  findDirectOrigin,
   findReachableOrigin,
   pairHost,
   savedHostSafetyCode,
@@ -221,6 +222,59 @@ describe("findReachableOrigin", () => {
     });
 
     expect((await findReachableOrigin({ host }))?.origin).toBe(lan);
+  });
+
+  describe("with a relay", () => {
+    const relay = "https://relay.example.invalid";
+    const relayEndpoint = `${relay}/v1/connect/${"r".repeat(22)}`;
+    const relayed = {
+      ...host,
+      baseUrl: relayEndpoint,
+      endpoints: [relayEndpoint, lan, tailnet],
+    };
+
+    it("moves to a direct address that answers, even after the relay answered first", async () => {
+      installNetwork({
+        [relay]: answering("host-1"),
+        [lan]: answering("host-1", 50),
+      });
+
+      expect((await findReachableOrigin({ host: relayed }))?.origin).toBe(lan);
+    });
+
+    it("stays direct when the relay answers first", async () => {
+      installNetwork({
+        [relay]: answering("host-1"),
+        [lan]: answering("host-1", 50),
+      });
+
+      expect(
+        (
+          await findReachableOrigin({
+            host: { ...host, endpoints: [lan, relayEndpoint] },
+          })
+        )?.origin,
+      ).toBe(lan);
+    });
+
+    it("uses the relay when no direct address answers", async () => {
+      installNetwork({ [relay]: answering("host-1") });
+
+      expect((await findReachableOrigin({ host: relayed }))?.origin).toBe(
+        relayEndpoint,
+      );
+    });
+
+    it("finds a direct address without probing the relay", async () => {
+      installNetwork({
+        [relay]: answering("host-1"),
+        [tailnet]: answering("host-1"),
+      });
+
+      expect((await findDirectOrigin({ host: relayed }))?.origin).toBe(tailnet);
+      installNetwork({ [relay]: answering("host-1") });
+      expect(await findDirectOrigin({ host: relayed })).toBeNull();
+    });
   });
 
   it("ignores a different computer that now answers on a known address", async () => {
