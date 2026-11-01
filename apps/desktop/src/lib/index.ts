@@ -63,6 +63,7 @@ export {
   connectWebHostBridge,
   installWebHostBridge,
   type WebHostAccess,
+  webPairedHost,
 } from "./web-host-bridge";
 export {
   listPairedHosts,

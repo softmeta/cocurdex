@@ -2423,6 +2423,17 @@ export default interface Resources {
           title: "Read";
         };
       };
+      webPaired: {
+        computer: "Computer";
+        description: "Paired with {{name}} through its relay.";
+        pairedAt: "Paired";
+        safetyCode: "Safety code";
+        safetyCodeDescription: "Matches the code shown for this browser in Settings › Devices on the computer.";
+        title: "This browser";
+        unpair: "Unpair";
+        unpairDescription: "Removes this pairing from the browser and the computer. Pair again with a new link.";
+        unpairFailed: "This browser couldn't remove the pairing. Allow site data and try again.";
+      };
     };
     diagnostics: {
       actions: {

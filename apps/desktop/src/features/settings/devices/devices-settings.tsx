@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Text } from "@/components/ui";
+import { webPairedHost } from "@/lib";
 import {
   AccessLogGroup,
   PairedDevicesGroup,
@@ -13,8 +14,21 @@ import { PairDeviceDialog } from "./pair-device-dialog";
 import { RelayGroup } from "./relay-group";
 import { RemoteAccessGroup } from "./remote-access-group";
 import { useHostAccess } from "./use-host-access";
+import { WebPairedHostGroup } from "./web-paired-host-group";
 
 export function DevicesSettingsPanel() {
+  const pairedHost = webPairedHost();
+  if (pairedHost) {
+    return (
+      <div className="settings-panel-enter flex flex-col gap-8">
+        <WebPairedHostGroup host={pairedHost} />
+      </div>
+    );
+  }
+  return <HostDevicesPanel />;
+}
+
+function HostDevicesPanel() {
   const { t } = useTranslation("settings");
   const { snapshot, error, refresh } = useHostAccess();
   const [pairing, setPairing] = useState(false);

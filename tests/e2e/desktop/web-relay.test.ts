@@ -62,7 +62,7 @@ describe("web client through the relay", () => {
     await tempDirs.cleanup();
   });
 
-  it("pairs from the page the relay serves and keeps the pairing across reloads", async () => {
+  it("pairs from the page the relay serves, keeps the pairing across reloads, and unpairs", async () => {
     const relayBinary = await buildRelay(tempDirs.createSync("relay-bin-"));
     relay = await startRelay(relayBinary, tempDirs.createSync("relay-data-"), [
       "--web-root",
@@ -132,7 +132,21 @@ describe("web client through the relay", () => {
     expect(
       await page.getByRole("textbox", { name: "Pairing link" }).count(),
     ).toBe(0);
-    expect(pageErrors).toEqual([]);
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page
+      .getByRole("list")
+      .getByRole("button", { name: "Devices" })
+      .click();
     expect(consoleErrors).toEqual([]);
+    await page.getByRole("button", { name: "Unpair" }).click();
+    await expect
+      .poll(
+        () => page.getByRole("textbox", { name: "Pairing link" }).isVisible(),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    const [unpaired] = await requestDaemon("host.devices.list", daemon.options);
+    expect(unpaired?.revokedAt).not.toBeNull();
+    expect(pageErrors).toEqual([]);
   }, 180_000);
 });

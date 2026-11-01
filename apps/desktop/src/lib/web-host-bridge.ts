@@ -207,8 +207,15 @@ export function installWebHostBridge(): WebHostAccess | null {
   return access;
 }
 
+let connectedHost: SavedHost | null = null;
+
+export function webPairedHost() {
+  return connectedHost;
+}
+
 export function connectWebHostBridge(host: SavedHost): WebHostAccess {
   const access: WebHostAccess = { kind: "remote", host };
+  connectedHost = host;
   const bridge = window.desktopApi;
   if (bridge) {
     window.desktopApi = {
