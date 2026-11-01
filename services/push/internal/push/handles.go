@@ -58,12 +58,12 @@ func (s *HandleSealer) Seal(claims HandleClaims) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	sealed := make([]byte, 1+aead.NonceSize(), 1+aead.NonceSize()+len(plaintext)+aead.Overhead())
-	sealed[0] = s.current
-	if _, err := rand.Read(sealed[1:]); err != nil {
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
 		return "", err
 	}
-	sealed = aead.Seal(sealed, sealed[1:], plaintext, []byte(handleAssociatedData))
+	sealed := append([]byte{s.current}, nonce...)
+	sealed = aead.Seal(sealed, nonce, plaintext, []byte(handleAssociatedData))
 	return handlePrefix + EncodeBase64URL(sealed), nil
 }
 
