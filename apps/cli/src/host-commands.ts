@@ -7,6 +7,7 @@ import {
   type HostRemoteAccessStatus,
   hostPairingAddresses,
   isHostAccessScope,
+  OFFICIAL_RELAY_URL,
   parseRelayCredential,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
@@ -28,7 +29,7 @@ export function hostUsageLines() {
   return [
     "  cocurdex host status [--json]",
     "  cocurdex host remote enable [--port <port>] [--keep-awake on|off] | disable [--json]",
-    "  cocurdex host relay set <url> [--relay-only on|off] [--credential <file>] | relay off [--json]",
+    "  cocurdex host relay set official|<url> [--relay-only on|off] [--credential <file>] | relay off [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
     "  cocurdex host devices [--json] | host revoke <device-id>",
@@ -214,7 +215,10 @@ export async function handleHostCommand(
     return true;
   }
   if (action === "relay" && args[0] === "set" && args[1]) {
-    await setRelay(args[1], parsed);
+    await setRelay(
+      args[1] === "official" ? OFFICIAL_RELAY_URL : args[1],
+      parsed,
+    );
     return true;
   }
   if (action === "relay" && args[0] === "off") {

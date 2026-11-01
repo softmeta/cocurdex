@@ -408,10 +408,11 @@
         "title": "状态"
       },
       "url": {
-        "description": "自托管的 cocurdex-relay 地址。留空即关闭中继。",
+        "description": "官方 Cocurdex 中继，或自托管的 cocurdex-relay 地址。留空即关闭中继。",
         "invalid": "请输入 http 或 https 地址。",
         "placeholder": "https://relay.example.com",
-        "title": "中继地址"
+        "title": "中继地址",
+        "useOfficial": "使用官方"
       }
     },
     "remote": {

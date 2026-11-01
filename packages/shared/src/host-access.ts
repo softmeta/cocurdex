@@ -266,6 +266,8 @@ export function hostPairingAddresses(
   return [relay, ...status.addresses];
 }
 
+export const OFFICIAL_RELAY_URL = "https://relay.cocurdex.com";
+
 export const RELAY_CONNECT_PATH = "/v1/connect/";
 
 export function normalizeRelayUrl(value: string) {

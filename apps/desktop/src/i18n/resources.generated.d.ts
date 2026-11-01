@@ -2352,10 +2352,11 @@ export default interface Resources {
           title: "Status";
         };
         url: {
-          description: "A self-hosted cocurdex-relay address. Leave empty to turn the relay off.";
+          description: "The official Cocurdex relay or a self-hosted cocurdex-relay address. Leave empty to turn the relay off.";
           invalid: "Enter an http or https address.";
           placeholder: "https://relay.example.com";
           title: "Relay address";
+          useOfficial: "Use official";
         };
       };
       remote: {
