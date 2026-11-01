@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useMountEffect } from "@/lib";
-import { type PdfSource, resolvePdfSource } from "./pdf-source";
+import { type PdfSource, resolvePdfSource, useMountEffect } from "@/lib";
 
 export type PdfLoadStatus = "loading" | "ready" | "error";
 

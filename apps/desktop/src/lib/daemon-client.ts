@@ -1,6 +1,8 @@
 import {
   createHostRegistry,
+  createSecureHostTransport,
   type HostCommandOptions,
+  type HostEndpoint,
   type HostEventListener,
   type HostRegistry,
   type PlatformSignals,
@@ -56,12 +58,17 @@ export async function resolveLocalDaemonConnection() {
   return info;
 }
 
+async function resolveHostEndpoint(): Promise<HostEndpoint> {
+  return getHostBridge()?.pairedHost ?? resolveLocalDaemonConnection();
+}
+
 export function getLocalHost() {
   return getHostRegistry().register({
     hostId: LOCAL_HOST_ID,
     platform: {
       ...browserSignals(),
-      resolveEndpoint: resolveLocalDaemonConnection,
+      resolveEndpoint: resolveHostEndpoint,
+      openPairedTransport: (endpoint) => createSecureHostTransport(endpoint),
     },
   });
 }

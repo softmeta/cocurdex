@@ -1,3 +1,4 @@
+import type { PairedHostEndpoint } from "@cocurdex/client-runtime";
 import type { DaemonConnectionInfo } from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
@@ -786,6 +787,7 @@ export interface HostApi {
   getDaemonStatus(): Promise<DaemonRuntimeStatus>;
   restartDaemon(): Promise<DaemonRuntimeStatus>;
   getDaemonConnection(): Promise<DaemonConnectionInfo | null>;
+  readonly pairedHost?: PairedHostEndpoint;
   openWorkspace(): Promise<{
     canceled: boolean;
     filePaths: string[];

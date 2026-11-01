@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { resolveLocalDaemonConnection } from "./daemon-client";
+import { type DaemonBlobRequest, readDaemonBlob } from "./daemon-files";
 import { logRendererDiagnostic } from "./diagnostics";
 
 const RELEASE_DELAY_MS = 60_000;
@@ -15,7 +15,7 @@ interface Entry {
 }
 
 export interface DaemonBlobUrlSource {
-  buildUrl(webSocketUrl: string, key: string): string;
+  request(key: string): DaemonBlobRequest;
   failureDiagnostic: string;
 }
 
@@ -44,13 +44,9 @@ export function createDaemonBlobUrlStore(source: DaemonBlobUrlSource) {
   async function fetchBlob(key: string, entry: Entry) {
     entry.loading = true;
     try {
-      const connection = await resolveLocalDaemonConnection();
-      const response = await fetch(
-        source.buildUrl(connection.webSocketUrl, key),
-        { headers: { Authorization: `Bearer ${connection.token}` } },
+      const url = URL.createObjectURL(
+        await readDaemonBlob(source.request(key)),
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const url = URL.createObjectURL(await response.blob());
       entry.loading = false;
       if (!isCurrent(key, entry)) {
         URL.revokeObjectURL(url);

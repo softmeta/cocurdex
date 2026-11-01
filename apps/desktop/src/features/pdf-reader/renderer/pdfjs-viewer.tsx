@@ -12,7 +12,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { useMountEffect } from "@/lib";
+import { type PdfRangeReader, type PdfSource, useMountEffect } from "@/lib";
 import "pdfjs-dist/web/pdf_viewer.css";
 import "./pdf-viewer-overrides.css";
 import type { PdfHighlight } from "../pdf-annotations";
@@ -27,7 +27,6 @@ import {
   resolveRestoredPosition,
 } from "../pdf-reading-position";
 import { MAX_SCALE, MIN_SCALE, ZOOM_STEP } from "../pdf-scale";
-import type { PdfSource } from "../pdf-source";
 import {
   PDF_THUMBNAIL_MAX_EDGE,
   renderPdfPageThumbnail,
@@ -61,6 +60,27 @@ const DOCUMENT_OPTIONS = {
   disableAutoFetch: true,
   disableStream: true,
 } as const;
+
+function rangeTransport(reader: PdfRangeReader) {
+  const transport = new pdfjs.PDFDataRangeTransport(
+    reader.length,
+    reader.initialData,
+  );
+  transport.requestDataRange = (begin, end) => {
+    reader.read(begin, end).then(
+      (chunk) => transport.onDataRange(begin, chunk),
+      () => transport.abort(),
+    );
+  };
+  return transport;
+}
+
+function documentSource(source: PdfSource) {
+  if (source.kind === "url") {
+    return { url: source.url, httpHeaders: source.httpHeaders };
+  }
+  return { range: rangeTransport(source.reader) };
+}
 
 export interface PdfFindMatches {
   // 1-based index of the active match, or 0 when there are none.
@@ -160,7 +180,11 @@ function setRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
 export const PdfJsViewer = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
   function PdfJsViewer(props, handleRef) {
     return (
-      <PdfJsViewerContent {...props} key={props.source.url} ref={handleRef} />
+      <PdfJsViewerContent
+        {...props}
+        key={props.source.kind === "url" ? props.source.url : props.source.path}
+        ref={handleRef}
+      />
     );
   },
 );
@@ -422,8 +446,7 @@ const PdfJsViewerContent = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(
       eventBus.on("pagerendered", handlePageRendered);
 
       const loadingTask = pdfjs.getDocument({
-        url: source.url,
-        httpHeaders: source.httpHeaders,
+        ...documentSource(source),
         ...DOCUMENT_OPTIONS,
       });
 

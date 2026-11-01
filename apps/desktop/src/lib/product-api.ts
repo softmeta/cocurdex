@@ -1,5 +1,5 @@
-import { uploadAttachment } from "./attachment-upload";
 import { requestDaemon as rpc } from "./daemon-client";
+import { uploadAttachment } from "./daemon-files";
 import type { ProductRequestApi } from "./types";
 
 export const daemonProductApi: ProductRequestApi = {
