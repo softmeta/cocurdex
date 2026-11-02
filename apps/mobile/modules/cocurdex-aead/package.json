@@ -1,7 +1,0 @@
-{
-  "name": "cocurdex-aead",
-  "version": "0.1.0",
-  "private": true,
-  "description": "ChaCha20-Poly1305 through the platform's native crypto",
-  "license": "UNLICENSED"
-}

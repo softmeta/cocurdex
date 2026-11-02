@@ -86,8 +86,11 @@ export interface RemotePairRequest {
   label?: string;
 }
 
+export type RemoteMessageCompression = "deflate-raw";
+
 export interface RemoteConnectRequest {
   deviceId: string;
+  compression?: RemoteMessageCompression[];
 }
 
 export interface RemoteChannelAccepted {
@@ -95,6 +98,7 @@ export interface RemoteChannelAccepted {
   deviceId: string;
   scopes: HostAccessScope[];
   endpoints?: string[];
+  compression?: RemoteMessageCompression;
 }
 
 export interface RemoteByteRange {

@@ -6,13 +6,10 @@ export {
 } from "./foreground-wakeup";
 export {
   connectPairedHost,
-  findDirectOrigin,
-  findReachableOrigin,
   HostAccessError,
   type HostAccessFailure,
   type PairHostOptions,
   pairHost,
-  type ReachableHostOrigin,
   savedHostSafetyCode,
 } from "./host-access";
 export {
@@ -33,6 +30,12 @@ export type {
   PairedHostEndpoint,
   PlatformSignals,
 } from "./platform";
+export {
+  type ConnectedOrigin,
+  type ConnectReachableOriginOptions,
+  connectReachableOrigin,
+  findDirectOrigin,
+} from "./reachable-origin";
 export {
   createHostRegistry,
   type HostRegistry,
@@ -60,7 +63,11 @@ export type {
   OpenSecureSocket,
   SecureSocketHandlers,
 } from "./secure-socket";
-export { createSecureHostTransport } from "./secure-transport";
+export {
+  createSecureHostTransport,
+  createSecureTransport,
+  type SecureSocketConnector,
+} from "./secure-transport";
 export {
   type ConnectionState,
   type ConnectionStatus,

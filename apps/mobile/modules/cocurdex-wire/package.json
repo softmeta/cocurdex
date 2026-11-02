@@ -1,0 +1,7 @@
+{
+  "name": "cocurdex-wire",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ChaCha20-Poly1305 and raw deflate through the platform's native libraries",
+  "license": "UNLICENSED"
+}

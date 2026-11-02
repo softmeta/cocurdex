@@ -5,7 +5,17 @@ import {
   HandshakeError,
 } from "./handshake";
 import type { KeyPair } from "./keys";
-import { createMux, type MuxRole, type MuxStream } from "./mux";
+import {
+  decodeChannelMessage,
+  encodeChannelMessage,
+  type MessageCompressor,
+} from "./message-codec";
+import {
+  createMux,
+  DEFAULT_MAX_MESSAGE_LENGTH,
+  type MuxRole,
+  type MuxStream,
+} from "./mux";
 import type { NoiseCrypto } from "./noise-crypto";
 import type { SecureTransport } from "./transport";
 
@@ -156,6 +166,7 @@ export interface SecureChannelOptions {
   onStream(stream: MuxStream, header: Uint8Array): void;
   onError(error: Error): void;
   maxMessageLength?: number;
+  compressor?: MessageCompressor | null;
 }
 
 export interface SecureChannel {
@@ -169,10 +180,18 @@ export function createSecureChannel(
   options: SecureChannelOptions,
 ): SecureChannel {
   let failed = false;
+  const { compressor } = options;
+  const maxMessageLength =
+    options.maxMessageLength ?? DEFAULT_MAX_MESSAGE_LENGTH;
   const mux = createMux({
     role: options.role,
-    maxMessageLength: options.maxMessageLength,
-    onMessage: options.onMessage,
+    maxMessageLength: compressor ? maxMessageLength + 1 : maxMessageLength,
+    onMessage: compressor
+      ? (bytes) =>
+          options.onMessage(
+            decodeChannelMessage(bytes, compressor, maxMessageLength),
+          )
+      : options.onMessage,
     onStream: options.onStream,
     sendFrame(frame) {
       if (failed) return;
@@ -194,7 +213,10 @@ export function createSecureChannel(
         fail(error instanceof Error ? error : new Error(String(error)));
       }
     },
-    sendMessage: (message) => mux.sendMessage(message),
+    sendMessage: (message) =>
+      mux.sendMessage(
+        compressor ? encodeChannelMessage(message, compressor) : message,
+      ),
     open: (header) => mux.open(header),
     close(error) {
       if (failed) return;

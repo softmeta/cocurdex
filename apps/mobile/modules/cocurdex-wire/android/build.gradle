@@ -7,7 +7,7 @@ group = 'dev.cocurdex'
 version = '0.1.0'
 
 android {
-  namespace "dev.cocurdex.aead"
+  namespace "dev.cocurdex.wire"
   defaultConfig {
     versionCode 1
     versionName "0.1.0"

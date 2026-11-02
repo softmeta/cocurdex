@@ -22,8 +22,11 @@ type Reply = (
 
 function fakeDaemon(reply: Reply) {
   const requests: WireRequest[] = [];
+  const connections: { closed: boolean }[] = [];
   const transport: DaemonTransport = (handlers) => {
     let open = true;
+    const connection = { closed: false };
+    connections.push(connection);
     return {
       send(text) {
         const request = JSON.parse(text) as WireRequest;
@@ -43,6 +46,7 @@ function fakeDaemon(reply: Reply) {
       },
       close() {
         open = false;
+        connection.closed = true;
       },
     };
   };
@@ -53,7 +57,7 @@ function fakeDaemon(reply: Reply) {
     }),
     openTransport: () => transport,
   };
-  return { platform, requests };
+  return { platform, requests, connections };
 }
 
 const hosts: HostConnection[] = [];
@@ -123,6 +127,26 @@ describe("host connection", () => {
       status: "live",
       lastSeq: 3,
     });
+  });
+
+  it("carries events and requests over one connection and replaces it on reconnect", async () => {
+    const { platform, connections } = fakeDaemon((request, respond) => {
+      respond({
+        id: request.id,
+        result: request.method === "daemon.subscribe" ? subscribed : "ok",
+      });
+    });
+    const connection = host(platform);
+    connection.onEvent(() => {});
+    await connection.read("daemon.status");
+    await vi.waitFor(() => expect(connection.getState().status).toBe("live"));
+    expect(connections).toEqual([{ closed: false }]);
+
+    connection.wake("reconnect");
+
+    await vi.waitFor(() => expect(connections).toHaveLength(2));
+    await vi.waitFor(() => expect(connection.getState().status).toBe("live"));
+    expect(connections).toEqual([{ closed: true }, { closed: false }]);
   });
 
   it("resends an unconfirmed command with the same idempotency key", async () => {
