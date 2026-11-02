@@ -73,6 +73,7 @@
           "supportedLocales": ["en", "zh-Hans"]
         }
       ],
+      "./plugins/release-signing",
       "./plugins/push-notifications"
     ],
     "locales": {
