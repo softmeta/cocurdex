@@ -5,6 +5,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,10 +18,10 @@ import (
 )
 
 type testHost struct {
-	hostKey    []byte
-	routeID    string
-	signingKey ed25519.PrivateKey
-	conn       *websocket.Conn
+	noise   *ecdh.PrivateKey
+	hostKey []byte
+	routeID string
+	conn    *websocket.Conn
 }
 
 func newIdentity(t *testing.T) testHost {
@@ -29,15 +30,11 @@ func newIdentity(t *testing.T) testHost {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, signing, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
 	hostKey := noise.PublicKey().Bytes()
 	return testHost{
-		hostKey:    hostKey,
-		routeID:    relay.EncodeBase64URL(relay.RouteIDForHostKey(hostKey)),
-		signingKey: signing,
+		noise:   noise,
+		hostKey: hostKey,
+		routeID: relay.EncodeBase64URL(relay.RouteIDForHostKey(hostKey)),
 	}
 }
 
@@ -72,15 +69,25 @@ func dial(t *testing.T, url string) *websocket.Conn {
 	return conn
 }
 
-func registration(host testHost, nonce []byte) relay.RegisterMessage {
-	routeID, _ := relay.DecodeBase64URL(host.routeID, relay.RouteIDLength)
-	signature := ed25519.Sign(host.signingKey, relay.RegistrationPayload(nonce, routeID))
+func registration(t *testing.T, host testHost, challenge relay.ChallengeMessage) relay.RegisterMessage {
+	t.Helper()
+	nonce, err := relay.DecodeBase64URL(challenge.Nonce, relay.NonceLength)
+	if err != nil {
+		t.Fatal(err)
+	}
+	relayKey, err := relay.DecodeBase64URL(challenge.RelayKey, 32)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proof, err := relay.ProveHostKey(host.noise, relayKey, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return relay.RegisterMessage{
-		Type:       "register",
-		RouteID:    host.routeID,
-		HostKey:    relay.EncodeBase64URL(host.hostKey),
-		SigningKey: relay.EncodeBase64URL(host.signingKey.Public().(ed25519.PublicKey)),
-		Signature:  relay.EncodeBase64URL(signature),
+		Type:    "register",
+		RouteID: host.routeID,
+		HostKey: relay.EncodeBase64URL(host.hostKey),
+		Proof:   relay.EncodeBase64URL(proof),
 	}
 }
 
@@ -97,11 +104,7 @@ func register(
 	if err := wsjson.Read(ctx, conn, &challenge); err != nil {
 		t.Fatal(err)
 	}
-	nonce, err := relay.DecodeBase64URL(challenge.Nonce, relay.NonceLength)
-	if err != nil {
-		t.Fatal(err)
-	}
-	message := registration(host, nonce)
+	message := registration(t, host, challenge)
 	if edit != nil {
 		edit(&message)
 	}
@@ -195,6 +198,27 @@ func TestRelaysBinaryMessagesBothWays(t *testing.T) {
 	}
 }
 
+func TestServesDevicesOnAWebClientHostedOnAnotherOrigin(t *testing.T) {
+	base := startRelay(t, nil)
+	host := mustRegister(t, base, newIdentity(t))
+	acceptSessions(t, base, host, echoUpper)
+	ctx := testContext(t)
+
+	device, _, err := websocket.Dial(ctx, base+"/v1/connect/"+host.routeID, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"https://web.example.invalid"}},
+	})
+	if err != nil {
+		t.Fatalf("cross-origin device refused: %v", err)
+	}
+	t.Cleanup(func() { device.CloseNow() })
+	if err := device.Write(ctx, websocket.MessageBinary, []byte("ping")); err != nil {
+		t.Fatal(err)
+	}
+	if _, reply, err := device.Read(ctx); err != nil || string(reply) != "PING" {
+		t.Fatalf("reply %q, err %v", reply, err)
+	}
+}
+
 func TestAgreesOnTheSecureChannelSubprotocol(t *testing.T) {
 	base := startRelay(t, nil)
 	host := mustRegister(t, base, newIdentity(t))
@@ -242,8 +266,8 @@ func TestRefusesRegistrationsThatDoNotProveTheHostKey(t *testing.T) {
 	base := startRelay(t, nil)
 	other := newIdentity(t)
 	cases := map[string]func(*relay.RegisterMessage){
-		"wrong signature": func(m *relay.RegisterMessage) {
-			m.Signature = relay.EncodeBase64URL(make([]byte, ed25519.SignatureSize))
+		"wrong proof": func(m *relay.RegisterMessage) {
+			m.Proof = relay.EncodeBase64URL(make([]byte, sha256.Size))
 		},
 		"route of another host key": func(m *relay.RegisterMessage) {
 			m.HostKey = relay.EncodeBase64URL(other.hostKey)
@@ -259,29 +283,18 @@ func TestRefusesRegistrationsThatDoNotProveTheHostKey(t *testing.T) {
 	}
 }
 
-func TestKeepsARouteBoundToItsFirstSigningKeyAcrossRestarts(t *testing.T) {
-	dataDir := t.TempDir()
+func TestRefusesAClaimOnARouteFromWhoeverOnlyKnowsThePublicHostKey(t *testing.T) {
+	base := startRelay(t, nil)
 	owner := newIdentity(t)
-	bindings, err := relay.OpenBindings(dataDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	first := startRelay(t, func(c *relay.Config) { c.Bindings = bindings })
-	mustRegister(t, first, owner)
+	squatter := newIdentity(t)
+	squatter.hostKey = owner.hostKey
+	squatter.routeID = owner.routeID
 
-	reopened, err := relay.OpenBindings(dataDir)
-	if err != nil {
-		t.Fatal(err)
+	_, err := register(t, base, squatter, nil)
+	if code := registrationCode(err); code != relay.CloseUnauthorized {
+		t.Fatalf("close code %d, want %d", code, relay.CloseUnauthorized)
 	}
-	restarted := startRelay(t, func(c *relay.Config) { c.Bindings = reopened })
-	squatter := owner
-	_, squatter.signingKey, _ = ed25519.GenerateKey(rand.Reader)
-
-	_, err = register(t, restarted, squatter, nil)
-	if code := registrationCode(err); code != relay.CloseRouteTaken {
-		t.Fatalf("close code %d, want %d", code, relay.CloseRouteTaken)
-	}
-	mustRegister(t, restarted, owner)
+	mustRegister(t, base, owner)
 }
 
 func TestANewRegistrationReplacesTheOldControlConnection(t *testing.T) {

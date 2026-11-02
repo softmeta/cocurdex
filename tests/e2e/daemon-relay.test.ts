@@ -18,6 +18,7 @@ import { createDaemonRpcClient } from "@cocurdex/rpc/client";
 import {
   buildHostPairingLink,
   type HostRemoteAccessStatus,
+  type HostTrafficReport,
   parseHostPairingLink,
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
@@ -139,6 +140,28 @@ describe("remote access through the relay", () => {
       audit.find((entry) => entry.action === "pairing.exchanged")
         ?.remoteAddress,
     ).toBe(`relay:${new URL(relay.url).host}`);
+
+    const traffic = await runCli(["host", "traffic", "--json"], {
+      userDataPath: daemon.userDataPath,
+    });
+    expect(traffic.code).toBe(0);
+    const report = JSON.parse(traffic.stdout) as HostTrafficReport;
+    expect(report.frames).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ transport: "relay", direction: "sent" }),
+        expect.objectContaining({ transport: "relay", direction: "received" }),
+      ]),
+    );
+    expect(report.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          transport: "relay",
+          direction: "sent",
+          category: "rpc:host.session",
+          messages: 1,
+        }),
+      ]),
+    );
 
     await requestDaemon("host.relay.set", { url: null }, daemon.options);
     const refused = await connectPairedHost(savedHostEndpoint(paired)).catch(

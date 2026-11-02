@@ -25,7 +25,7 @@ CI=false pnpm exec expo run:ios --device <deviceId> > "$S/dev-ios.log" 2>&1     
 CI=false pnpm exec expo run:android --device <avd> > "$S/dev-android.log" 2>&1     # background
 ```
 
-`CI=false` keeps Metro watching, so edits apply through Fast Refresh. Rebuild only after native changes (`app.json`, plugins, native modules); run `expo prebuild --platform <p> --no-install` first when `app.json` changed.
+`CI=false` keeps Metro watching, so edits apply through Fast Refresh. On Android 17+, React Native's debug manifest declares `ACCESS_LOCAL_NETWORK`, which turns local network access into an ungranted runtime permission, so pairing fails with "Can't reach the computer" (the daemon logs no connection). Grant it after installing: `adb -s <serial> shell pm grant dev.cocurdex.mobile android.permission.ACCESS_LOCAL_NETWORK`. Release builds target SDK 36 and do not declare it, so they keep implicit access. Rebuild only after native changes (`app.json`, plugins, native modules); run `expo prebuild --platform <p> --no-install` first when `app.json` changed.
 
 ## 3. Pair by deep link
 

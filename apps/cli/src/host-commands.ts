@@ -37,6 +37,7 @@ export function hostUsageLines() {
     "  cocurdex host devices [--json] | host revoke <device-id>",
     "  cocurdex host scopes <device-id> --scopes read,interact,approvals,files.read [--json]",
     "  cocurdex host audit [--limit <n>] [--json]",
+    "  cocurdex host traffic [--reset] [--json]",
   ];
 }
 
@@ -312,6 +313,28 @@ export async function handleHostCommand(
     );
     if (!updated) throw new Error(`No active device ${deviceId}`);
     printResult(updated, parsed);
+    return true;
+  }
+  if (action === "traffic") {
+    const method = parsed.flags.has("reset")
+      ? "host.traffic.reset"
+      : "host.traffic.get";
+    const report = await withDaemon(() => requestDaemon(method));
+    if (parsed.flags.has("json")) {
+      printResult(report, parsed);
+      return true;
+    }
+    console.log(`Remote traffic since ${report.since}`);
+    printRows(
+      report.frames,
+      ["transport", "direction", "frames", "bytes"],
+      parsed,
+    );
+    printRows(
+      report.messages,
+      ["transport", "direction", "category", "messages", "bytes"],
+      parsed,
+    );
     return true;
   }
   if (action === "audit") {

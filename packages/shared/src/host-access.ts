@@ -199,7 +199,6 @@ export type HostRelayState = "off" | "connecting" | "online" | "offline";
 export type HostRelayError =
   | "unreachable"
   | "credentialRequired"
-  | "routeTaken"
   | "rateLimited"
   | "unauthorized"
   | "protocol"
@@ -264,6 +263,31 @@ export const RELAY_OFF_STATUS: HostRelayStatus = {
   latencyMs: null,
   endpoint: null,
 };
+
+export type HostTrafficTransport = "relay" | "direct";
+
+export type HostTrafficDirection = "sent" | "received";
+
+export interface HostTrafficMessages {
+  transport: HostTrafficTransport;
+  direction: HostTrafficDirection;
+  category: string;
+  messages: number;
+  bytes: number;
+}
+
+export interface HostTrafficFrames {
+  transport: HostTrafficTransport;
+  direction: HostTrafficDirection;
+  frames: number;
+  bytes: number;
+}
+
+export interface HostTrafficReport {
+  since: string;
+  frames: HostTrafficFrames[];
+  messages: HostTrafficMessages[];
+}
 
 export interface HostRemoteAccessStatus {
   allowed: boolean;

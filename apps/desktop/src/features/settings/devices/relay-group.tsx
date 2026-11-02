@@ -26,7 +26,6 @@ function useRelayLabels() {
   const errors: Record<HostRelayError, string> = {
     unreachable: t("devices.relay.error.unreachable"),
     credentialRequired: t("devices.relay.error.credentialRequired"),
-    routeTaken: t("devices.relay.error.routeTaken"),
     rateLimited: t("devices.relay.error.rateLimited"),
     unauthorized: t("devices.relay.error.unauthorized"),
     protocol: t("devices.relay.error.protocol"),

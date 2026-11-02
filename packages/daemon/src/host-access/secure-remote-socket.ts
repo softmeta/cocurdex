@@ -36,6 +36,7 @@ export interface SecureRemoteSocketOptions {
   connectLimiter: FixedWindowRateLimiter;
   now?(): number;
   onChannel(channel: SecureRemoteChannel): void;
+  onFrame?(direction: "sent" | "received", bytes: number): void;
 }
 
 function toBytes(data: RawData): Uint8Array {
@@ -141,7 +142,9 @@ export function acceptSecureRemoteSocket(
       transport,
       role: "responder",
       send: (ciphertext) => {
-        if (socket.readyState === socket.OPEN) socket.send(ciphertext);
+        if (socket.readyState !== socket.OPEN) return;
+        options.onFrame?.("sent", ciphertext.byteLength);
+        socket.send(ciphertext);
       },
       onMessage: (message) => messageListener(message),
       onStream: (stream, header) => streamListener(stream, header),
@@ -152,7 +155,9 @@ export function acceptSecureRemoteSocket(
         socket.terminate();
         return;
       }
-      channel.receive(toBytes(data));
+      const frame = toBytes(data);
+      options.onFrame?.("received", frame.byteLength);
+      channel.receive(frame);
     });
     socket.once("close", () =>
       channel.close(new Error("Remote connection closed")),

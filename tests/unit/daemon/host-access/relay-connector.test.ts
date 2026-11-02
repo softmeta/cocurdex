@@ -17,8 +17,7 @@ afterAll(() => tempDirs.cleanup());
 interface Registration {
   routeId: string;
   hostKey: string;
-  signingKey: string;
-  signature: string;
+  proof: string;
   credential?: unknown;
 }
 
@@ -27,12 +26,39 @@ interface FakeRelay {
   registrations: Registration[];
   controls: WebSocket[];
   accepted: WebSocket[];
-  announceProtocol: boolean;
+  protocol: number | null;
   onRegister(reply: (socket: WebSocket, message: Registration) => void): void;
   close(): Promise<void>;
 }
 
 const nonce = nodeCrypto.randomBytes(32);
+const relayKey = nodeCrypto.generateKeyPairSync("x25519");
+const relayPublicKey = Buffer.from(
+  relayKey.publicKey.export({ format: "jwk" }).x ?? "",
+  "base64url",
+);
+
+function expectedProof(registration: Registration) {
+  const hostKey = nodeCrypto.createPublicKey({
+    key: { kty: "OKP", crv: "X25519", x: registration.hostKey },
+    format: "jwk",
+  });
+  const shared = nodeCrypto.diffieHellman({
+    privateKey: relayKey.privateKey,
+    publicKey: hostKey,
+  });
+  return nodeCrypto
+    .createHmac("sha256", shared)
+    .update(
+      Buffer.concat([
+        Buffer.from("cocurdex-relay/2"),
+        nonce,
+        Buffer.from(registration.routeId, "base64url"),
+        relayPublicKey,
+      ]),
+    )
+    .digest("base64url");
+}
 
 async function startFakeRelay(): Promise<FakeRelay> {
   const server = new WebSocketServer({
@@ -49,7 +75,7 @@ async function startFakeRelay(): Promise<FakeRelay> {
     registrations: [],
     controls: [],
     accepted: [],
-    announceProtocol: true,
+    protocol: 2,
     onRegister: () => undefined,
     close: () =>
       new Promise<void>((resolve) => {
@@ -70,13 +96,15 @@ async function startFakeRelay(): Promise<FakeRelay> {
       return;
     }
     relay.controls.push(socket);
-    const announcement = relay.announceProtocol
-      ? { protocol: 1, version: "v9.9.9" }
-      : {};
+    const announcement =
+      relay.protocol === null
+        ? {}
+        : { protocol: relay.protocol, version: "v9.9.9" };
     socket.send(
       JSON.stringify({
         type: "challenge",
         nonce: nonce.toString("base64url"),
+        relayKey: relayPublicKey.toString("base64url"),
         ...announcement,
       }),
     );
@@ -142,24 +170,9 @@ describe("createRelayConnector", () => {
     expect(registration?.routeId).toBe(relayRouteId(keys.noisePublicKey));
     expect(registration?.hostKey).toBe(keys.noisePublicKey);
     expect(registration?.credential).toEqual(credential);
-    const routeId = Buffer.from(registration?.routeId ?? "", "base64url");
-    const payload = Buffer.concat([
-      Buffer.from("cocurdex-relay/1"),
-      nonce,
-      routeId,
-    ]);
-    const signingKey = nodeCrypto.createPublicKey({
-      key: { kty: "OKP", crv: "Ed25519", x: registration?.signingKey },
-      format: "jwk",
-    });
-    expect(
-      nodeCrypto.verify(
-        null,
-        payload,
-        signingKey,
-        Buffer.from(registration?.signature ?? "", "base64url"),
-      ),
-    ).toBe(true);
+    expect(registration?.proof).toBe(
+      registration ? expectedProof(registration) : undefined,
+    );
   });
 
   it("hands each incoming session to the secure channel acceptor", async () => {
@@ -196,27 +209,19 @@ describe("createRelayConnector", () => {
     expect(retries).toEqual([{ attempt: 0, refused: true }]);
   });
 
-  it("blames a relay that predates protocol announcements when it refuses", async () => {
-    const { relay, connector, retries, logs } = await setup();
-    relay.announceProtocol = false;
-    relay.onRegister((socket) =>
-      socket.close(4402, "the relay credential is not valid"),
-    );
+  it.each([
+    ["an older protocol", 1],
+    ["no protocol announcement", null],
+  ])("does not register with a relay on %s", async (_label, protocol) => {
+    const { relay, connector, retries } = await setup();
+    relay.protocol = protocol;
 
     connector.apply({ url: relay.url, credential: "v4.public.token" });
     await waitFor(() => connector.state().state === "offline");
 
     expect(connector.state().error).toBe("outdated");
+    expect(relay.registrations).toEqual([]);
     expect(retries).toEqual([{ attempt: 0, refused: true }]);
-    expect(logs.at(-1)).toEqual({
-      event: "relay.disconnected",
-      details: expect.objectContaining({
-        code: 4402,
-        reason: "the relay credential is not valid",
-        error: "outdated",
-        registered: false,
-      }),
-    });
   });
 
   it("backs off when another connection takes over the route", async () => {

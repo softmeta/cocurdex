@@ -24,3 +24,10 @@ export {
   type DaemonRequestContext,
   LOCAL_REQUEST_CONTEXT,
 } from "./request-context";
+export {
+  createTrafficMeter,
+  incomingTrafficCategory,
+  outgoingTrafficCategory,
+  type TrafficMeter,
+  trafficTransport,
+} from "./traffic-meter";

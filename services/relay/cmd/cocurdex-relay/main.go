@@ -108,10 +108,6 @@ func serve(args []string, stderr io.Writer) error {
 		return err
 	}
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
-	bindings, err := relay.OpenBindings(options.dataDir)
-	if err != nil {
-		return err
-	}
 	revocations, err := relay.OpenRevocations(options.dataDir)
 	if err != nil {
 		return err
@@ -121,7 +117,6 @@ func serve(args []string, stderr io.Writer) error {
 		return err
 	}
 	config := relay.DefaultConfig()
-	config.Bindings = bindings
 	config.Revocations = revocations
 	config.Usage = usage
 	config.Logger = logger
