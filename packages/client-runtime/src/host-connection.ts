@@ -41,6 +41,7 @@ export interface HostConnectionOptions {
     ConnectionSupervisorOptions,
     "backoff" | "stableAfterMs" | "now"
   >;
+  filterSessionEvents?: boolean;
 }
 
 const CONNECTION_LOSS_CODES = new Set([
@@ -150,8 +151,13 @@ export function createHostConnection(options: HostConnectionOptions) {
     return rpc.request(method, params, requestOptions);
   }
 
+  const watchCounts = new Map<string, number>();
+  const watchedSessions = () =>
+    options.filterSessionEvents ? [...watchCounts.keys()] : null;
+
   const supervisor = createConnectionSupervisor({
     ...options.supervisor,
+    watchedSessions: watchedSessions(),
     signals: platform,
     async subscribe(onEvent, subscribeOptions) {
       const endpoint = await resolveEndpoint();
@@ -225,8 +231,33 @@ export function createHostConnection(options: HostConnectionOptions) {
     return requestUntilAnswered(method, params, readOptions);
   }
 
+  function watchSession(sessionId: string) {
+    const count = watchCounts.get(sessionId) ?? 0;
+    watchCounts.set(sessionId, count + 1);
+    const watching =
+      count === 0 && options.filterSessionEvents
+        ? supervisor.watchSessions(watchedSessions())
+        : Promise.resolve();
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      const remaining = (watchCounts.get(sessionId) ?? 1) - 1;
+      if (remaining > 0) {
+        watchCounts.set(sessionId, remaining);
+        return;
+      }
+      watchCounts.delete(sessionId);
+      if (options.filterSessionEvents) {
+        void supervisor.watchSessions(watchedSessions());
+      }
+    };
+    return { ready: watching, release };
+  }
+
   return {
     hostId: options.hostId,
+    watchSession,
     request,
     read,
     command,

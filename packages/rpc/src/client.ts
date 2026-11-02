@@ -68,6 +68,7 @@ export interface DaemonRpcSubscribeOptions extends DaemonRpcRequestOptions {
   // Daemon lifetime that produced afterSeq. Catch-up is only meaningful within
   // the same epoch; a mismatched epoch triggers a flagged replay.
   epoch?: string;
+  sessions?: readonly string[] | null;
   onDisconnect?(error?: Error): void;
 }
 
@@ -78,6 +79,7 @@ export interface DaemonEventSubscription {
   // True when the journaled replay could not cover the requested position;
   // subscribers must resync authoritative state instead of trusting replay.
   readonly replayGap: boolean;
+  watchSessions(sessions: readonly string[] | null): Promise<void>;
 }
 
 export class DaemonClientError extends Error {
@@ -222,7 +224,11 @@ export function createDaemonRpcClient(
     subscribe(onEvent, options = {}) {
       const request = buildDaemonRequest(
         "daemon.subscribe",
-        { afterSeq: options.afterSeq, epoch: options.epoch },
+        {
+          afterSeq: options.afterSeq,
+          epoch: options.epoch,
+          ...(options.sessions ? { sessions: [...options.sessions] } : {}),
+        },
         token,
       );
       const timeoutMs = daemonRequestTimeout(
@@ -237,6 +243,7 @@ export function createDaemonRpcClient(
         let lastSeq: number | null = options.afterSeq ?? null;
         let subscriptionEpoch: string | null = null;
         const queuedEvents: DaemonEventEnvelope[] = [];
+        const pendingWatches = new Map<string, () => void>();
         const dispatchEvent = (envelope: DaemonEventEnvelope) => {
           if (typeof envelope.seq === "number") lastSeq = envelope.seq;
           onEvent(envelope.event, {
@@ -248,6 +255,8 @@ export function createDaemonRpcClient(
           if (finished) return;
           finished = true;
           clearTimeout(timer);
+          for (const settle of pendingWatches.values()) settle();
+          pendingWatches.clear();
           options.signal?.removeEventListener("abort", abort);
           connection?.close();
           if (!connected) reject(error);
@@ -289,6 +298,11 @@ export function createDaemonRpcClient(
               dispatchEvent(envelope);
               return;
             }
+            if (typeof message.id === "string") {
+              const settle = pendingWatches.get(message.id);
+              pendingWatches.delete(message.id);
+              settle?.();
+            }
             if (message.id !== request.id || connected) return;
             const error = responseError(message);
             if (error) {
@@ -317,6 +331,18 @@ export function createDaemonRpcClient(
               close: abort,
               epoch,
               replayGap,
+              watchSessions(sessions) {
+                if (finished) return Promise.resolve();
+                const watch = buildDaemonRequest(
+                  "daemon.watchSessions",
+                  { sessions: sessions ? [...sessions] : null },
+                  token,
+                );
+                return new Promise<void>((settle) => {
+                  pendingWatches.set(watch.id, settle);
+                  connection?.send(JSON.stringify(watch));
+                });
+              },
               get lastSeq() {
                 return lastSeq;
               },

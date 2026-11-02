@@ -110,8 +110,9 @@ export async function handleDaemonRequest(
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":
+    case "daemon.watchSessions":
       throw new Error(
-        "daemon.subscribe is intercepted before request dispatch",
+        `${request.method} is intercepted before request dispatch`,
       );
     case "network.proxy.test":
       return service.testNetworkProxy(request.params.settings);

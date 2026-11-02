@@ -1,4 +1,5 @@
 import type { ConnectionState } from "@cocurdex/client-runtime";
+import type { SessionDetailConnection } from "@cocurdex/mobile/internal/session-detail/session-detail-store";
 import type { SessionsConnection } from "@cocurdex/mobile/internal/sessions/sessions-store";
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
 import { vi } from "vitest";
@@ -13,8 +14,17 @@ export function fakeConnection(results: Record<string, unknown[]>) {
     if (next instanceof Error) throw next;
     return next;
   });
+  const watched = new Map<string, number>();
   const connection = {
     request,
+    watchSession(sessionId: string) {
+      watched.set(sessionId, (watched.get(sessionId) ?? 0) + 1);
+      return {
+        ready: Promise.resolve(),
+        release: () =>
+          watched.set(sessionId, (watched.get(sessionId) ?? 1) - 1),
+      };
+    },
     getState: () => state,
     onEvent(listener: (event: CocurdexDaemonEvent) => void) {
       eventListeners.add(listener);
@@ -24,7 +34,7 @@ export function fakeConnection(results: Record<string, unknown[]>) {
       stateListeners.add(listener);
       return () => stateListeners.delete(listener);
     },
-  } as unknown as SessionsConnection;
+  } as unknown as SessionsConnection & SessionDetailConnection;
   return {
     connection,
     request,
@@ -36,6 +46,7 @@ export function fakeConnection(results: Record<string, unknown[]>) {
       for (const listener of stateListeners) listener(state);
     },
     listenerCount: () => eventListeners.size + stateListeners.size,
+    watchCount: (sessionId: string) => watched.get(sessionId) ?? 0,
   };
 }
 
