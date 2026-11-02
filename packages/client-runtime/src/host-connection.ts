@@ -286,10 +286,10 @@ export function createHostConnection(options: HostConnectionOptions) {
   function watchSession(sessionId: string) {
     const count = watchCounts.get(sessionId) ?? 0;
     watchCounts.set(sessionId, count + 1);
-    const watching =
-      count === 0 && options.filterSessionEvents
-        ? supervisor.watchSessions(watchedSessions())
-        : Promise.resolve();
+    const started = count === 0 && options.filterSessionEvents === true;
+    const watching = started
+      ? supervisor.watchSessions(watchedSessions())
+      : Promise.resolve();
     let released = false;
     const release = () => {
       if (released) return;
@@ -304,7 +304,7 @@ export function createHostConnection(options: HostConnectionOptions) {
         void supervisor.watchSessions(watchedSessions());
       }
     };
-    return { ready: watching, release };
+    return { ready: watching, started, release };
   }
 
   return {

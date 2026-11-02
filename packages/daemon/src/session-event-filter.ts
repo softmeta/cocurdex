@@ -1,13 +1,8 @@
 import type { CocurdexDaemonEvent } from "@cocurdex/shared";
 
-const SESSION_DETAIL_EVENTS = new Set<CocurdexDaemonEvent["type"]>([
+const SUPERSEDED_PROGRESS_EVENTS = new Set<CocurdexDaemonEvent["type"]>([
   "message.delta",
-  "message.completed",
-  "tool.started",
   "tool.updated",
-  "tool.finished",
-  "usage.updated",
-  "context_breakdown.updated",
 ]);
 
 export const MAX_WATCHED_SESSIONS = 64;
@@ -29,6 +24,7 @@ export function deliversToWatcher(
   event: CocurdexDaemonEvent,
   watched: WatchedSessions,
 ) {
-  if (watched === null || !SESSION_DETAIL_EVENTS.has(event.type)) return true;
+  if (watched === null || !SUPERSEDED_PROGRESS_EVENTS.has(event.type))
+    return true;
   return "sessionId" in event && watched.has(event.sessionId);
 }

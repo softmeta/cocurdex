@@ -63,9 +63,13 @@ function pairedTransport(endpoint: PairedHostEndpoint): DaemonTransport {
     let connection: DaemonTransportConnection | null = null;
     let closed = false;
     import("@cocurdex/client-runtime/secure-transport").then(
-      ({ createSecureHostTransport }) => {
+      ({ createSecureHostTransport, portableMessageCompressor }) => {
         if (closed) return;
-        connection = createSecureHostTransport(endpoint)(handlers);
+        connection = createSecureHostTransport(
+          endpoint,
+          undefined,
+          portableMessageCompressor,
+        )(handlers);
         for (const message of pending.splice(0)) connection.send(message);
       },
       (error: unknown) => {
@@ -101,6 +105,7 @@ async function resolveHostEndpoint(): Promise<HostEndpoint> {
 export function getLocalHost() {
   return getHostRegistry().register({
     hostId: LOCAL_HOST_ID,
+    filterSessionEvents: getHostBridge()?.pairedHost !== undefined,
     platform: {
       ...browserSignals(),
       resolveEndpoint: resolveHostEndpoint,

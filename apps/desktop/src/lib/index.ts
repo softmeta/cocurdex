@@ -33,6 +33,10 @@ export {
   useScrollIntoViewWhenActive,
 } from "./react-hooks";
 export {
+  onSessionStreamResumed,
+  watchSessionStream,
+} from "./session-stream";
+export {
   formatShortcut,
   formatShortcutLabel,
   isModifierOnlyKey,
