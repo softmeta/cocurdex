@@ -30,6 +30,8 @@ function useRelayLabels() {
     rateLimited: t("devices.relay.error.rateLimited"),
     unauthorized: t("devices.relay.error.unauthorized"),
     protocol: t("devices.relay.error.protocol"),
+    outdated: t("devices.relay.error.outdated"),
+    replaced: t("devices.relay.error.replaced"),
   };
   return { states, errors };
 }
@@ -102,8 +104,13 @@ export function RelayGroup({
     void save({ url: credential.relayUrl, credential: token });
   };
 
+  const latencyMs = relay.state === "online" ? relay.latencyMs : null;
+  const enabledStateLabel =
+    latencyMs === null
+      ? labels.states[relay.state]
+      : t("devices.relay.state.onlineLatency", { latency: latencyMs });
   const stateLabel = status.settings.enabled
-    ? labels.states[relay.state]
+    ? enabledStateLabel
     : t("devices.relay.state.remoteOff");
 
   return (

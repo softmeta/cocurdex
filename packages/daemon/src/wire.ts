@@ -35,6 +35,7 @@ import {
   isDeckAssetHttpRequest,
   isDeckDownloadHttpRequest,
 } from "./decks";
+import { logDaemonDiagnostic } from "./diagnostics";
 import {
   createDaemonEventJournal,
   type DaemonEventJournalEntry,
@@ -599,6 +600,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       hostKeys: () => hostKeys.keys(),
       onDataSocket: remoteSockets.accept,
       onStateChanged: () => hostAccess.remoteAccessChanged(),
+      log: logDaemonDiagnostic,
     });
     hostAccess.bindRemoteListener(remoteListener);
     hostAccess.bindRelayConnector(relayConnector);

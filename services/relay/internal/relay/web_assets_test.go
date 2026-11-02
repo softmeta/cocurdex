@@ -107,7 +107,7 @@ func TestServesTheWebClientBesideTheRelayRoutes(t *testing.T) {
 			t.Fatalf("%s: status %d", path, response.StatusCode)
 		}
 	}
-	if response, body := get(t, base+"/healthz"); response.StatusCode != http.StatusOK || body != "ok\n" {
+	if response, body := get(t, base+"/healthz"); response.StatusCode != http.StatusOK || !strings.Contains(body, `"ok":true`) {
 		t.Fatalf("healthz: %d %q", response.StatusCode, body)
 	}
 	device := dial(t, "ws"+strings.TrimPrefix(base, "http")+"/v1/connect/"+newIdentity(t).routeID)

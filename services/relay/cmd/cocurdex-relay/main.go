@@ -50,9 +50,14 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return revocations(args, stdout)
 	case "usage":
 		return usage(args, stdout)
+	case "smoke":
+		return smoke(args, stdout)
+	case "version":
+		_, err := fmt.Fprintln(stdout, relay.Version)
+		return err
 	default:
 		return fmt.Errorf(
-			"unknown command %q (expected serve, keygen, credential, revoke, restore, revocations, or usage)",
+			"unknown command %q (expected serve, keygen, credential, revoke, restore, revocations, usage, smoke, or version)",
 			command,
 		)
 	}
@@ -383,4 +388,37 @@ func writeJSON(stdout io.Writer, value any) error {
 	encoder := json.NewEncoder(stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+func smoke(args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("smoke", flag.ContinueOnError)
+	url := flags.String("url", "", "relay base URL, for example http://127.0.0.1:8081")
+	credentialFile := flags.String("credential-file", "", "file holding a relay credential, to also check a full session")
+	timeout := flags.Duration("timeout", 15*time.Second, "give up after this long")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *url == "" {
+		return errors.New("--url is required")
+	}
+	token := ""
+	if *credentialFile != "" {
+		data, err := os.ReadFile(*credentialFile)
+		if err != nil {
+			return err
+		}
+		token = strings.TrimSpace(string(data))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	result, err := relay.Smoke(ctx, *url, token)
+	if err != nil {
+		return fmt.Errorf("smoke test failed: %w", err)
+	}
+	if !result.Bridged {
+		_, err = fmt.Fprintf(stdout, "relay %s (protocol %d) verified the registration and asks for a credential; pass --credential-file to check a session\n", result.Version, result.Protocol)
+		return err
+	}
+	_, err = fmt.Fprintf(stdout, "relay %s (protocol %d) carried a session, round trip %s\n", result.Version, result.Protocol, result.RoundTrip.Round(time.Millisecond))
+	return err
 }

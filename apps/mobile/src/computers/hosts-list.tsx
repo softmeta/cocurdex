@@ -1,7 +1,15 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import {
   hostAddress,
   selectHost,
@@ -16,6 +24,7 @@ import {
   useScrollIndicatorWhileScrolling,
 } from "@/ui";
 import { useComputerActions } from "./computer-actions-menu";
+import { refreshHostReachability } from "./host-reachability";
 import { HostStatus, useHostStatusLabel } from "./host-status";
 
 function HostRow({
@@ -88,10 +97,29 @@ export function HostsList() {
   const saved = useSavedHosts();
   const current = useCurrentHost();
   const actions = useComputerActions();
+  const colors = useThemeColors();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshHostReachability();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   return (
     <>
       <FlatList
         {...scrollIndicator}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={colors.mutedForeground}
+            colors={[colors.mutedForeground]}
+            progressBackgroundColor={colors.background}
+          />
+        }
         style={styles.fill}
         contentInsetAdjustmentBehavior="automatic"
         data={saved}

@@ -514,6 +514,7 @@ export class HostAccessService {
         : null,
       state: active ? (connector?.state ?? "off") : "off",
       error: active ? (connector?.error ?? null) : null,
+      latencyMs: active ? (connector?.latencyMs ?? null) : null,
       endpoint:
         active && relay.url
           ? buildRelayEndpoint(relay.url, relayRouteId(this.hostKey()))

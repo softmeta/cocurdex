@@ -27,6 +27,7 @@ interface FakeRelay {
   registrations: Registration[];
   controls: WebSocket[];
   accepted: WebSocket[];
+  announceProtocol: boolean;
   onRegister(reply: (socket: WebSocket, message: Registration) => void): void;
   close(): Promise<void>;
 }
@@ -48,6 +49,7 @@ async function startFakeRelay(): Promise<FakeRelay> {
     registrations: [],
     controls: [],
     accepted: [],
+    announceProtocol: true,
     onRegister: () => undefined,
     close: () =>
       new Promise<void>((resolve) => {
@@ -68,8 +70,15 @@ async function startFakeRelay(): Promise<FakeRelay> {
       return;
     }
     relay.controls.push(socket);
+    const announcement = relay.announceProtocol
+      ? { protocol: 1, version: "v9.9.9" }
+      : {};
     socket.send(
-      JSON.stringify({ type: "challenge", nonce: nonce.toString("base64url") }),
+      JSON.stringify({
+        type: "challenge",
+        nonce: nonce.toString("base64url"),
+        ...announcement,
+      }),
     );
     socket.on("message", (data) => {
       const message = JSON.parse(String(data)) as Registration;
@@ -95,18 +104,20 @@ async function setup() {
   const states: RelayConnectorState[] = [];
   const dataSockets: { socket: WebSocket; remoteAddress: string }[] = [];
   const retries: { attempt: number; refused: boolean }[] = [];
+  const logs: { event: string; details: Record<string, unknown> }[] = [];
   const connector = createRelayConnector({
     hostKeys: () => keys,
     onDataSocket: (socket, remoteAddress) =>
       dataSockets.push({ socket, remoteAddress }),
     onStateChanged: () => states.push(connector.state()),
+    log: (_level, event, details) => logs.push({ event, details }),
     retryDelayMs: (attempt, refused) => {
       retries.push({ attempt, refused });
       return 60_000;
     },
   });
   connectors.push(connector);
-  return { relay, keys, connector, states, dataSockets, retries };
+  return { relay, keys, connector, states, dataSockets, retries, logs };
 }
 
 async function waitFor<T>(read: () => T | undefined | false) {
@@ -180,8 +191,60 @@ describe("createRelayConnector", () => {
     expect(connector.state()).toEqual({
       state: "offline",
       error: "credentialRequired",
+      latencyMs: null,
     });
     expect(retries).toEqual([{ attempt: 0, refused: true }]);
+  });
+
+  it("blames a relay that predates protocol announcements when it refuses", async () => {
+    const { relay, connector, retries, logs } = await setup();
+    relay.announceProtocol = false;
+    relay.onRegister((socket) =>
+      socket.close(4402, "the relay credential is not valid"),
+    );
+
+    connector.apply({ url: relay.url, credential: "v4.public.token" });
+    await waitFor(() => connector.state().state === "offline");
+
+    expect(connector.state().error).toBe("outdated");
+    expect(retries).toEqual([{ attempt: 0, refused: true }]);
+    expect(logs.at(-1)).toEqual({
+      event: "relay.disconnected",
+      details: expect.objectContaining({
+        code: 4402,
+        reason: "the relay credential is not valid",
+        error: "outdated",
+        registered: false,
+      }),
+    });
+  });
+
+  it("backs off when another connection takes over the route", async () => {
+    const { relay, connector, retries } = await setup();
+    connector.apply({ url: relay.url, credential: null });
+    await waitFor(() => connector.state().state === "online");
+
+    relay.controls[0]?.close(4409, "replaced by a newer connection");
+    await waitFor(() => connector.state().state === "offline");
+
+    expect(connector.state().error).toBe("replaced");
+    expect(retries).toEqual([{ attempt: 0, refused: true }]);
+  });
+
+  it("measures the round trip to the relay once online", async () => {
+    const { relay, connector, logs } = await setup();
+    connector.apply({ url: relay.url, credential: null });
+
+    const latencyMs = await waitFor(() => connector.state().latencyMs);
+    expect(latencyMs).toBeGreaterThanOrEqual(1);
+    expect(logs[0]).toEqual({
+      event: "relay.online",
+      details: { url: relay.url, relayVersion: "v9.9.9" },
+    });
+
+    relay.controls[0]?.terminate();
+    await waitFor(() => connector.state().state === "offline");
+    expect(connector.state().latencyMs).toBeNull();
   });
 
   it("reports an unreachable relay", async () => {
@@ -213,11 +276,15 @@ describe("createRelayConnector", () => {
     connector.apply(null);
 
     await Promise.all([controlClosed, sessionClosed]);
-    expect(connector.state()).toEqual({ state: "off", error: null });
-    expect(states.map((state) => state.state)).toEqual([
-      "connecting",
-      "online",
-      "off",
-    ]);
+    expect(connector.state()).toEqual({
+      state: "off",
+      error: null,
+      latencyMs: null,
+    });
+    expect(
+      states
+        .map((state) => state.state)
+        .filter((s, i, all) => s !== all[i - 1]),
+    ).toEqual(["connecting", "online", "off"]);
   });
 });
