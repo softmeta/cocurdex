@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net"
@@ -115,8 +116,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = w.Write([]byte("ok\n"))
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(HealthReport{OK: true, Version: Version, Protocol: WireProtocol})
 }
 
 func (s *Server) clientIP(r *http.Request) string {
@@ -217,7 +219,12 @@ func (s *Server) register(ctx context.Context, conn *websocket.Conn) (VerifiedRe
 	defer cancel()
 	nonce := make([]byte, NonceLength)
 	_, _ = rand.Read(nonce)
-	challenge := ChallengeMessage{Type: "challenge", Nonce: EncodeBase64URL(nonce)}
+	challenge := ChallengeMessage{
+		Type:     "challenge",
+		Nonce:    EncodeBase64URL(nonce),
+		Protocol: WireProtocol,
+		Version:  Version,
+	}
 	if err := wsjson.Write(registerCtx, conn, challenge); err != nil {
 		return VerifiedRegistration{}, err
 	}

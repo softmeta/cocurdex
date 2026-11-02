@@ -302,6 +302,7 @@ describe("HostAccessService", () => {
         credential: null,
         state: "off",
         error: null,
+        latencyMs: null,
         endpoint: null,
       },
     });
@@ -319,7 +320,7 @@ describe("HostAccessService", () => {
     });
     service.bindRelayConnector({
       apply: () => undefined,
-      state: () => ({ state: "online", error: null }),
+      state: () => ({ state: "online", error: null, latencyMs: 42 }),
     });
 
     await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
@@ -345,7 +346,7 @@ describe("HostAccessService", () => {
     });
     service.bindRelayConnector({
       apply: (target) => relay.push(target),
-      state: () => ({ state: "online", error: null }),
+      state: () => ({ state: "online", error: null, latencyMs: 42 }),
     });
     const credential = relayToken({
       sub: "invite-7",
@@ -375,6 +376,7 @@ describe("HostAccessService", () => {
       },
       state: "online",
       error: null,
+      latencyMs: 42,
       endpoint,
     });
     expect(await service.remoteEndpoints()).toEqual([endpoint]);

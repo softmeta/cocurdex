@@ -10,6 +10,7 @@ import (
 
 const (
 	ProtocolVersion     = "cocurdex-relay/1"
+	WireProtocol        = 1
 	ChannelSubprotocol  = "cocurdex.secure.v1"
 	RouteIDLength       = 16
 	NonceLength         = 32
@@ -30,9 +31,19 @@ const (
 	CloseProtocolError    websocket.StatusCode = 4400
 )
 
+var Version = "dev"
+
 type ChallengeMessage struct {
-	Type  string `json:"type"`
-	Nonce string `json:"nonce"`
+	Type     string `json:"type"`
+	Nonce    string `json:"nonce"`
+	Protocol int    `json:"protocol,omitempty"`
+	Version  string `json:"version,omitempty"`
+}
+
+type HealthReport struct {
+	OK       bool   `json:"ok"`
+	Version  string `json:"version"`
+	Protocol int    `json:"protocol"`
 }
 
 type RegisterMessage struct {

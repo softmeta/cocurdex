@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { AppState, type NativeEventSubscription } from "react-native";
 import { hostConnection } from "@/connection";
 import { hosts } from "@/hosts";
 
@@ -8,13 +9,12 @@ export type HostReachability =
   | { state: "offline" }
   | { state: "unauthorized" };
 
-const PROBE_INTERVAL_MS = 10_000;
 const PROBE_TIMEOUT_MS = 5_000;
 const CHECKING: HostReachability = { state: "checking" };
 
 let results: ReadonlyMap<string, HostReachability> = new Map();
 const listeners = new Set<() => void>();
-let timer: ReturnType<typeof setInterval> | null = null;
+let foreground: NativeEventSubscription | null = null;
 
 function publish(hostId: string, reachability: HostReachability) {
   const next = new Map(results);
@@ -44,21 +44,23 @@ async function probe(hostId: string) {
   }
 }
 
-function probeAll() {
-  for (const host of hosts.getSnapshot()) void probe(host.hostId);
+export function refreshHostReachability() {
+  return Promise.all(hosts.getSnapshot().map((host) => probe(host.hostId)));
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  if (!timer) {
-    probeAll();
-    timer = setInterval(probeAll, PROBE_INTERVAL_MS);
+  if (!foreground) {
+    void refreshHostReachability();
+    foreground = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refreshHostReachability();
+    });
   }
   return () => {
     listeners.delete(listener);
-    if (listeners.size > 0 || !timer) return;
-    clearInterval(timer);
-    timer = null;
+    if (listeners.size > 0 || !foreground) return;
+    foreground.remove();
+    foreground = null;
   };
 }
 

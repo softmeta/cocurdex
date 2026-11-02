@@ -4,6 +4,7 @@ set -eu
 ROOT=/opt/cocurdex-relay
 SERVICE=cocurdex-relay.service
 HEALTH_URL=${COCURDEX_RELAY_HEALTH_URL:-http://127.0.0.1:8081/healthz}
+SMOKE_CREDENTIAL=${COCURDEX_RELAY_SMOKE_CREDENTIAL:-}
 RELEASES_URL=${COCURDEX_RELAY_RELEASES_URL:-https://github.com/softmeta/cocurdex/releases/download}
 INSTALL_PATH=/usr/local/sbin/deploy-cocurdex-relay
 KEEP_RELEASES=3
@@ -33,6 +34,20 @@ healthy() {
   return 1
 }
 
+smoke_tested() {
+  binary="$ROOT/$1/cocurdex-relay"
+  "$binary" version >/dev/null 2>&1 || return 0
+  if [ -n "$SMOKE_CREDENTIAL" ]; then
+    "$binary" smoke --url "${HEALTH_URL%/healthz}" --credential-file "$SMOKE_CREDENTIAL"
+  else
+    "$binary" smoke --url "${HEALTH_URL%/healthz}"
+  fi
+}
+
+verified() {
+  healthy && smoke_tested "$1"
+}
+
 point_current_at() {
   ln -sfn "$1" "$ROOT/.current.next"
   mv -T "$ROOT/.current.next" "$ROOT/current"
@@ -43,7 +58,7 @@ switch_to() {
   previous=$(readlink "$ROOT/current" 2>/dev/null || true)
   point_current_at "$target"
   systemctl restart "$SERVICE"
-  if healthy; then
+  if verified "$target"; then
     if [ -n "$previous" ] && [ "$previous" != "$target" ]; then
       ln -sfn "$previous" "$ROOT/previous"
     fi
@@ -54,9 +69,9 @@ switch_to() {
     point_current_at "$previous"
     systemctl restart "$SERVICE"
     healthy || fail "$target failed its health check and $previous did not recover"
-    fail "$target failed its health check; restored $previous"
+    fail "$target failed its health or smoke check; restored $previous"
   fi
-  fail "$target failed its health check"
+  fail "$target failed its health or smoke check"
 }
 
 prune() {

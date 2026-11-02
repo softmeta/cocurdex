@@ -202,7 +202,9 @@ export type HostRelayError =
   | "routeTaken"
   | "rateLimited"
   | "unauthorized"
-  | "protocol";
+  | "protocol"
+  | "outdated"
+  | "replaced";
 
 export interface HostRelayStatus {
   url: string | null;
@@ -210,6 +212,7 @@ export interface HostRelayStatus {
   credential: RelayCredential | null;
   state: HostRelayState;
   error: HostRelayError | null;
+  latencyMs: number | null;
   endpoint: string | null;
 }
 
@@ -258,6 +261,7 @@ export const RELAY_OFF_STATUS: HostRelayStatus = {
   credential: null,
   state: "off",
   error: null,
+  latencyMs: null,
   endpoint: null,
 };
 

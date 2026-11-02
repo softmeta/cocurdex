@@ -2330,8 +2330,10 @@ export default interface Resources {
         };
         error: {
           credentialRequired: "The relay needs a valid invite credential.";
+          outdated: "The relay is running an older version than this app needs. Ask its operator to update it.";
           protocol: "The relay answered with something unexpected. Check the address.";
           rateLimited: "The relay is limiting connections. Retrying shortly.";
+          replaced: "Another app with this computer's key took over the relay route. Close the other copy; this one retries in a few minutes.";
           routeTaken: "Another computer already holds this route on the relay.";
           unauthorized: "The relay refused this computer's key.";
           unreachable: "Cannot reach the relay. Retrying.";
@@ -2348,6 +2350,7 @@ export default interface Resources {
           off: "Off";
           offline: "Offline";
           online: "Online";
+          onlineLatency: "Online · {{latency}} ms";
           remoteOff: "Turn on remote access to connect";
           title: "Status";
         };
