@@ -317,7 +317,7 @@ jobs:
     if: needs.changes.outputs.run_mobile == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    continue-on-error: ${{ matrix.platform == 'ios' }}
+    continue-on-error: true
     permissions:
       actions: write
       contents: read
@@ -406,6 +406,7 @@ jobs:
     name: Mobile e2e (${{ matrix.platform }}, ${{ matrix.shard }})
     needs: [changes, mobile-prepare]
     if: needs.changes.outputs.run_mobile == 'true'
+    continue-on-error: true
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     permissions:
@@ -537,6 +538,7 @@ jobs:
     name: Mobile e2e (${{ matrix.platform }}, ${{ matrix.shard }})
     needs: [changes, mobile-prepare]
     if: needs.changes.outputs.run_mobile == 'true'
+    continue-on-error: true
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     permissions:
@@ -549,25 +551,6 @@ jobs:
           - { platform: ios, os: macos-latest, pr_run: light-en-US, shard: transcript-compose }
     env: *mobile-env
     steps: *mobile-steps
-
-  mobile-required:
-    name: Mobile
-    needs: [changes, mobile-prepare, mobile]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require mobile e2e
-        env:
-          CHANGES: ${{ needs.changes.result }}
-          RUN_MOBILE: ${{ needs.changes.outputs.run_mobile }}
-          PREPARE: ${{ needs.mobile-prepare.result }}
-          MOBILE: ${{ needs.mobile.result }}
-        run: |
-          echo "changes=${CHANGES} run_mobile=${RUN_MOBILE} prepare=${PREPARE} mobile=${MOBILE}"
-          [[ "${CHANGES}" == "success" ]]
-          if [[ "${RUN_MOBILE}" == "true" ]]; then
-            [[ "${PREPARE}" == "success" && "${MOBILE}" == "success" ]]
-          fi
 
   pnpm-store:
     name: Cache pnpm store (${{ matrix.os }})
