@@ -19,6 +19,9 @@ import (
 )
 
 func contentType(name string) string {
+	if kind := compressibleTypes[path.Ext(name)]; kind != "" {
+		return kind
+	}
 	if kind := mime.TypeByExtension(path.Ext(name)); kind != "" {
 		return kind
 	}
@@ -30,9 +33,17 @@ const (
 	minCompressibleBytes     = 1024
 )
 
-var compressibleExtensions = map[string]bool{
-	".css": true, ".html": true, ".js": true, ".json": true, ".mjs": true,
-	".pfb": true, ".svg": true, ".ttf": true, ".txt": true, ".wasm": true,
+var compressibleTypes = map[string]string{
+	".css":  "text/css; charset=utf-8",
+	".html": "text/html; charset=utf-8",
+	".js":   "text/javascript; charset=utf-8",
+	".json": "application/json",
+	".mjs":  "text/javascript; charset=utf-8",
+	".pfb":  "application/octet-stream",
+	".svg":  "image/svg+xml",
+	".ttf":  "font/ttf",
+	".txt":  "text/plain; charset=utf-8",
+	".wasm": "application/wasm",
 }
 
 type compressedFile struct {
@@ -43,7 +54,7 @@ type compressedFile struct {
 func compressWebFiles(files fs.FS) (map[string]compressedFile, error) {
 	compressed := map[string]compressedFile{}
 	err := fs.WalkDir(files, ".", func(name string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !compressibleExtensions[path.Ext(name)] {
+		if err != nil || entry.IsDir() || compressibleTypes[path.Ext(name)] == "" {
 			return err
 		}
 		info, err := entry.Info()
