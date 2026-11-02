@@ -153,8 +153,7 @@ async function repackApp(
     const workDir = tempDirs.createSync("cocu-repack-");
     const signing =
       platform === "android" ? await androidSigningArgs(workDir) : [];
-    rmSync(outDir, { recursive: true, force: true });
-    mkdirSync(outDir, { recursive: true });
+    const repacked = path.join(workDir, APP_FILE[platform]);
     await runCommand(
       "pnpm",
       [
@@ -165,7 +164,7 @@ async function repackApp(
         "--source-app",
         source,
         "--output",
-        path.join(outDir, APP_FILE[platform]),
+        repacked,
         "--working-directory",
         path.join(workDir, "work"),
         ...signing,
@@ -173,6 +172,11 @@ async function repackApp(
       ],
       { cwd: import.meta.dirname, inherit: true },
     );
+    rmSync(outDir, { recursive: true, force: true });
+    mkdirSync(outDir, { recursive: true });
+    cpSync(repacked, path.join(outDir, APP_FILE[platform]), {
+      recursive: true,
+    });
   } finally {
     await tempDirs.cleanup();
   }
