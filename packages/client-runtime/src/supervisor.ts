@@ -47,6 +47,7 @@ export interface ConnectionSupervisorOptions {
   backoff?: Partial<BackoffPolicy>;
   stableAfterMs?: number;
   now?(): number;
+  watchedSessions?: readonly string[] | null;
 }
 
 export type ConnectionSupervisor = ReturnType<
@@ -90,6 +91,7 @@ export function createConnectionSupervisor(
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let stableTimer: ReturnType<typeof setTimeout> | null = null;
   let started = false;
+  let watchedSessions = options.watchedSessions ?? null;
 
   function update(patch: Partial<ConnectionState>) {
     state = { ...state, ...patch };
@@ -202,6 +204,7 @@ export function createConnectionSupervisor(
           {
             afterSeq: state.lastSeq ?? undefined,
             epoch: state.epoch ?? undefined,
+            sessions: watchedSessions,
             signal: attemptController.signal,
             onDisconnect: (error) =>
               fail(
@@ -275,6 +278,10 @@ export function createConnectionSupervisor(
     reset,
     wake,
     getState: () => state,
+    watchSessions(sessions: readonly string[] | null): Promise<void> {
+      watchedSessions = sessions;
+      return subscription?.watchSessions(sessions) ?? Promise.resolve();
+    },
     subscribeState(listener: (state: ConnectionState) => void) {
       listeners.add(listener);
       return () => {

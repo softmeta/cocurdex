@@ -520,7 +520,12 @@ export type DaemonRequestPayloadByMethod = {
   "session.listTurnChangeSets": { sessionId: string };
   "session.getTurnChangeDiff": TurnChangeDiffRequest;
   "session.getToolCallResult": GetToolCallResultInput;
-  "daemon.subscribe": { afterSeq?: number; epoch?: string };
+  "daemon.subscribe": {
+    afterSeq?: number;
+    epoch?: string;
+    sessions?: string[];
+  };
+  "daemon.watchSessions": { sessions: string[] | null };
   "network.proxy.test": { settings?: NetworkProxySettings };
   "network.proxy.get": undefined;
   "network.proxy.set": { settings: NetworkProxySettings };
@@ -862,6 +867,7 @@ export type DaemonResultByMethod = {
   "session.getTurnChangeDiff": TurnChangeDiff;
   "session.getToolCallResult": AgentToolCallResult | null;
   "daemon.subscribe": DaemonSubscribeResult;
+  "daemon.watchSessions": null;
   "network.proxy.test": NetworkProxyTestResult;
   "network.proxy.get": NetworkProxySettings;
   "network.proxy.set": NetworkProxySettings;

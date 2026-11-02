@@ -41,6 +41,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "session.contextTransfers": "read",
   "session.getToolCallResult": "read",
   "daemon.subscribe": "read",
+  "daemon.watchSessions": "read",
   "network.proxy.get": "read",
   "memory.status": "host.admin",
   "memory.settings.get": "host.admin",

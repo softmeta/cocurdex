@@ -13,6 +13,10 @@ import {
 import type { DaemonReceiptOutcome, DaemonReceiptStore } from "./rpc-receipts";
 import { logDaemonRequest, logRejectedDaemonRequest } from "./rpc-request-log";
 import type { CocurdexDaemonService } from "./service";
+import {
+  normalizeWatchedSessions,
+  type WatchedSessions,
+} from "./session-event-filter";
 
 export interface DaemonRequestRuntime {
   service: CocurdexDaemonService;
@@ -31,7 +35,9 @@ export interface DaemonRequestConnection {
   subscribe(
     afterSeq: number | undefined,
     epoch: string | undefined,
+    sessions: WatchedSessions,
   ): { epoch: string; replayGap: boolean };
+  watchSessions(sessions: WatchedSessions): void;
 }
 
 type AuthorizationResult =
@@ -177,11 +183,20 @@ export async function handleDaemonWireMessage(
       subscribeResult = connection.subscribe(
         normalizeAfterSeq(request.params?.afterSeq),
         normalizeEpoch(request.params?.epoch),
+        normalizeWatchedSessions(request.params?.sessions),
+      );
+    }
+    if (request.method === "daemon.watchSessions") {
+      connection.watchSessions(
+        normalizeWatchedSessions(request.params?.sessions),
       );
     }
     const dispatch = () => {
       if (request.method === "daemon.subscribe") {
         return Promise.resolve(subscribeResult);
+      }
+      if (request.method === "daemon.watchSessions") {
+        return Promise.resolve(null);
       }
       if (request.method === "daemon.status") {
         return handleDaemonRequest(service, request, context);

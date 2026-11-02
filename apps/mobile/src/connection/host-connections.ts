@@ -123,6 +123,7 @@ export function hostConnection(hostId: string): HostConnection {
     adoptReportedSession(
       registry.register({
         hostId,
+        filterSessionEvents: true,
         platform: {
           lifecycle,
           network,

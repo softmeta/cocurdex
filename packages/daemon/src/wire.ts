@@ -60,6 +60,10 @@ import { createRemoteDeltaBatcher } from "./remote-delta-batcher";
 import { serveRemoteFileStream } from "./remote-file-streams";
 import { createDaemonReceiptStore } from "./rpc-receipts";
 import { CocurdexDaemonService } from "./service";
+import {
+  deliversToWatcher,
+  type WatchedSessions,
+} from "./session-event-filter";
 import { createWebAssetHandler, isLoopbackHostHeader } from "./web-assets";
 import {
   authorizeDaemonWebSocket,
@@ -230,6 +234,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     );
     connections.set(connection, deviceIds);
     let subscribedToDaemonEvents = false;
+    let watchedSessions: WatchedSessions = null;
     let principal: HostPrincipal | null = null;
     const pendingMethods = new Map<unknown, string>();
     const meter = transport.traffic;
@@ -253,6 +258,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       : null;
     const send = deltaBatcher ? deltaBatcher.send : deliver;
     const sendEvent = (entry: DaemonEventJournalEntry) => {
+      if (!deliversToWatcher(entry.event, watchedSessions)) return;
       send({
         event: entry.event,
         seq: entry.seq,
@@ -305,7 +311,12 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
           deviceIds.add(requestPrincipal.deviceId);
         }
       },
-      subscribe: (afterSeq: number | undefined, requestEpoch?: string) => {
+      subscribe: (
+        afterSeq: number | undefined,
+        requestEpoch: string | undefined,
+        sessions: WatchedSessions,
+      ) => {
+        watchedSessions = sessions;
         // Replay first, then go live: this block is synchronous, so no live
         // event can interleave between the journaled tail and the flag flip.
         const crossEpoch =
@@ -324,6 +335,9 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
           epoch: startedAt,
           replayGap: crossEpoch || replay.hasGap,
         };
+      },
+      watchSessions: (sessions: WatchedSessions) => {
+        watchedSessions = sessions;
       },
     };
     return (message: unknown, bytes = 0) => {

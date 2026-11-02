@@ -158,6 +158,55 @@ describe("startDaemonServer", () => {
       await daemon.close();
     }
   });
+  it("streams transcript events only for the sessions a subscriber watches", async () => {
+    const userDataPath = await tempDirs.create("cd-watch-");
+    const daemon = await startDaemonServer({
+      runtimeFingerprint: "test",
+      token: "test",
+      userDataPath,
+    });
+    const delta = (sessionId: string) =>
+      daemon.service.events.emit("daemon.event", {
+        type: "message.delta",
+        sessionId,
+        messageId: `${sessionId}-m`,
+        role: "assistant",
+        kind: "response",
+        delta: sessionId,
+        createdAt: "2026-11-02T00:00:00.000Z",
+      });
+    try {
+      delta("s1");
+      delta("s2");
+      const received: string[] = [];
+      const subscription = await subscribeDaemonEvents(
+        (event) =>
+          received.push(
+            event.type === "message.delta" ? event.sessionId : event.type,
+          ),
+        { afterSeq: 0, sessions: ["s1"], userDataPath },
+      );
+      try {
+        expect(received).toEqual(["s1"]);
+        await subscription.watchSessions(["s2"]);
+        delta("s1");
+        delta("s2");
+        daemon.service.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["agent"],
+        });
+        await vi.waitFor(() => expect(received).toContain("data.changed"), {
+          timeout: 5_000,
+        });
+        expect(received).toEqual(["s1", "s2", "data.changed"]);
+      } finally {
+        subscription.close();
+      }
+    } finally {
+      await daemon.close();
+    }
+  });
+
   it("flags a replay gap for a stale epoch and returns the current epoch", async () => {
     const userDataPath = await tempDirs.create("cd-epoch-");
     const daemon = await startDaemonServer({

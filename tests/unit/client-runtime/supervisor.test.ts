@@ -27,6 +27,7 @@ function subscription(
     epoch: null,
     lastSeq: null,
     replayGap: false,
+    watchSessions: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
