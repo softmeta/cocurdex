@@ -1,6 +1,8 @@
 package relay_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coder/websocket"
 	"github.com/softmeta/cocurdex/services/relay/internal/relay"
 )
 
@@ -91,7 +92,7 @@ func TestServesTheWebClientBesideTheRelayRoutes(t *testing.T) {
 	policy := page.Header.Get("Content-Security-Policy")
 	for _, directive := range []string{
 		"script-src 'self' 'wasm-unsafe-eval' 'sha256-MeZS89WlF0u+o0hCvHTBt4q1WHU+U+sJKgbdRUc36mY='",
-		"connect-src 'self'",
+		"connect-src 'self' wss:",
 		"frame-ancestors 'none'",
 	} {
 		if !strings.Contains(policy, directive) {
@@ -122,23 +123,60 @@ func TestRefusesAWebClientWithoutIndex(t *testing.T) {
 	}
 }
 
-func TestOnlyBrowserPagesFromTheRelayOriginMayConnect(t *testing.T) {
-	base := startRelay(t, nil)
-	host := mustRegister(t, base, newIdentity(t))
-	acceptSessions(t, base, host, echoUpper)
-	connect := base + "/v1/connect/" + host.routeID
-	withOrigin := func(origin string) *websocket.DialOptions {
-		return &websocket.DialOptions{HTTPHeader: http.Header{"Origin": {origin}}}
+func fetchEncoded(t *testing.T, url, acceptEncoding string) (*http.Response, []byte) {
+	t.Helper()
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if acceptEncoding != "" {
+		request.Header.Set("Accept-Encoding", acceptEncoding)
+	}
+	client := &http.Client{Transport: &http.Transport{DisableCompression: true}}
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return response, body
+}
+
+func TestCompressesTextAssetsForClientsThatAcceptGzip(t *testing.T) {
+	root := t.TempDir()
+	script := strings.Repeat("export const value = 'cocurdex';\n", 200)
+	writeFile(t, filepath.Join(root, "index.html"), "<!doctype html>app")
+	writeFile(t, filepath.Join(root, "assets", "app-1a2b.js"), script)
+	server := httptest.NewServer(openWebAssets(t, root))
+	t.Cleanup(server.Close)
+	url := server.URL + "/assets/app-1a2b.js"
+
+	packed, body := fetchEncoded(t, url, "br, gzip, deflate")
+	if packed.Header.Get("Content-Encoding") != "gzip" || len(body) >= len(script) {
+		t.Fatalf("encoding %q, %d bytes", packed.Header.Get("Content-Encoding"), len(body))
+	}
+	if !strings.HasPrefix(packed.Header.Get("Content-Type"), "text/javascript") {
+		t.Fatalf("content type %q", packed.Header.Get("Content-Type"))
+	}
+	if packed.Header.Get("Vary") != "Accept-Encoding" {
+		t.Fatalf("vary %q", packed.Header.Get("Vary"))
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	unpacked, err := io.ReadAll(reader)
+	if err != nil || string(unpacked) != script {
+		t.Fatalf("gzip body does not round-trip: %v", err)
 	}
 
-	_, response, err := websocket.Dial(testContext(t), connect, withOrigin("https://pages.example.invalid"))
-	if err == nil || response == nil || response.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin page connected: %v", err)
+	for _, refused := range []string{"", "identity", "gzip;q=0", "br"} {
+		plain, body := fetchEncoded(t, url, refused)
+		if plain.Header.Get("Content-Encoding") != "" || string(body) != script {
+			t.Fatalf("Accept-Encoding %q got encoding %q", refused, plain.Header.Get("Content-Encoding"))
+		}
 	}
-	sameOrigin := "http" + strings.TrimPrefix(base, "ws")
-	device, _, err := websocket.Dial(testContext(t), connect, withOrigin(sameOrigin))
-	if err != nil {
-		t.Fatalf("same-origin page refused: %v", err)
-	}
-	device.CloseNow()
 }

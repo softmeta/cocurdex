@@ -132,10 +132,13 @@ func (s *Server) clientIP(r *http.Request) string {
 	return host
 }
 
-func accept(w http.ResponseWriter, r *http.Request, readLimit int64, subprotocols ...string) (*websocket.Conn, error) {
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		Subprotocols: subprotocols,
-	})
+func accept(
+	w http.ResponseWriter,
+	r *http.Request,
+	readLimit int64,
+	options websocket.AcceptOptions,
+) (*websocket.Conn, error) {
+	conn, err := websocket.Accept(w, r, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +167,7 @@ func registrationCloseCode(err error) websocket.StatusCode {
 }
 
 func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
-	conn, err := accept(w, r, maxControlFrameSize)
+	conn, err := accept(w, r, maxControlFrameSize, websocket.AcceptOptions{})
 	if err != nil {
 		return
 	}
@@ -345,7 +348,9 @@ func (s *Server) handleAccept(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unknown ticket", http.StatusNotFound)
 		return
 	}
-	conn, err := accept(w, r, MaxMessageBytes, ChannelSubprotocol)
+	conn, err := accept(w, r, MaxMessageBytes, websocket.AcceptOptions{
+		Subprotocols: []string{ChannelSubprotocol},
+	})
 	if err != nil {
 		return
 	}
@@ -400,7 +405,10 @@ func (s *Server) closeSession(opened *session) {
 
 func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	routeID := r.PathValue("routeId")
-	device, err := accept(w, r, MaxMessageBytes, ChannelSubprotocol)
+	device, err := accept(w, r, MaxMessageBytes, websocket.AcceptOptions{
+		Subprotocols:       []string{ChannelSubprotocol},
+		InsecureSkipVerify: true,
+	})
 	if err != nil {
 		return
 	}

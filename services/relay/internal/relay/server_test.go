@@ -198,6 +198,27 @@ func TestRelaysBinaryMessagesBothWays(t *testing.T) {
 	}
 }
 
+func TestServesDevicesOnAWebClientHostedOnAnotherOrigin(t *testing.T) {
+	base := startRelay(t, nil)
+	host := mustRegister(t, base, newIdentity(t))
+	acceptSessions(t, base, host, echoUpper)
+	ctx := testContext(t)
+
+	device, _, err := websocket.Dial(ctx, base+"/v1/connect/"+host.routeID, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"https://web.example.invalid"}},
+	})
+	if err != nil {
+		t.Fatalf("cross-origin device refused: %v", err)
+	}
+	t.Cleanup(func() { device.CloseNow() })
+	if err := device.Write(ctx, websocket.MessageBinary, []byte("ping")); err != nil {
+		t.Fatal(err)
+	}
+	if _, reply, err := device.Read(ctx); err != nil || string(reply) != "PING" {
+		t.Fatalf("reply %q, err %v", reply, err)
+	}
+}
+
 func TestAgreesOnTheSecureChannelSubprotocol(t *testing.T) {
 	base := startRelay(t, nil)
 	host := mustRegister(t, base, newIdentity(t))
