@@ -24,7 +24,17 @@ export {
   PUBLIC_KEY_LENGTH,
 } from "./keys";
 export {
+  decodeChannelMessage,
+  encodeChannelMessage,
+  MESSAGE_COMPRESSION,
+  MessageCodecError,
+  type MessageCompression,
+  type MessageCompressor,
+  MIN_COMPRESSED_MESSAGE_LENGTH,
+} from "./message-codec";
+export {
   createMux,
+  DEFAULT_MAX_MESSAGE_LENGTH,
   INITIAL_STREAM_WINDOW,
   MESSAGE_STREAM_ID,
   type Mux,

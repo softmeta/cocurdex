@@ -3,10 +3,13 @@ import { readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
+  connectPairedHost,
   createRemoteFileClient,
   createSavedHostStore,
   createSecureHostTransport,
+  createSecureTransport,
   HostAccessError,
   pairHost,
   RemoteFileError,
@@ -20,7 +23,11 @@ import {
   createWebSocketTransport,
   daemonWebSocketProtocols,
 } from "@cocurdex/rpc/client";
-import { encodeBase64Url, generateKeyPair } from "@cocurdex/secure-channel";
+import {
+  encodeBase64Url,
+  generateKeyPair,
+  type MessageCompressor,
+} from "@cocurdex/secure-channel";
 import type { HostAccessScope } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
@@ -234,6 +241,56 @@ describe("remote host access", () => {
         "pairing.rejected",
       ]),
     );
+  });
+
+  it("compresses messages only for devices that offer it", async () => {
+    const daemon = await spawnDaemon();
+    daemons.push(daemon);
+    const port = await enableRemoteAccess(daemon);
+    const paired = await pairDevice(daemon, port);
+    const bodyMarkdown = Array.from(
+      { length: 500 },
+      () => "The checkout total drifts by a cent.",
+    ).join("\n");
+    const note = await requestDaemon(
+      "note.create",
+      { title: "Checkout drift", bodyMarkdown },
+      daemon.options,
+    );
+    const compressor: MessageCompressor = {
+      deflateRaw: (data) => deflateRawSync(data),
+      inflateRaw: (data, maxLength) =>
+        inflateRawSync(data, { maxOutputLength: maxLength }),
+    };
+    const endpoint = savedHostEndpoint(paired);
+    const readNote = async (offer?: MessageCompressor) => {
+      const traffic = captureWebSocketTraffic();
+      try {
+        const client = createDaemonRpcClient(
+          createSecureTransport((handlers) =>
+            connectPairedHost(endpoint, { compressor: offer, handlers }),
+          ),
+          "",
+        );
+        const record = await client.request("note.get", { id: note.id });
+        return { record, bytes: traffic.bytes().length };
+      } finally {
+        traffic.restore();
+      }
+    };
+
+    const offered = await connectPairedHost(endpoint, { compressor });
+    expect(offered.accepted.compression).toBe("deflate-raw");
+    offered.close();
+    const plain = await connectPairedHost(endpoint);
+    expect(plain.accepted.compression).toBeUndefined();
+    plain.close();
+
+    const compressed = await readNote(compressor);
+    const uncompressed = await readNote();
+    expect(compressed.record).toEqual(uncompressed.record);
+    expect(compressed.record?.bodyMarkdown).toBe(bodyMarkdown);
+    expect(compressed.bytes * 3).toBeLessThan(uncompressed.bytes);
   });
 
   it("keeps the host key in a private file that survives restarts", async () => {

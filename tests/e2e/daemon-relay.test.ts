@@ -3,11 +3,11 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   connectPairedHost,
+  connectReachableOrigin,
   createRemoteFileClient,
   createSavedHostStore,
   createSecureHostTransport,
   findDirectOrigin,
-  findReachableOrigin,
   HostAccessError,
   pairHost,
   type SavedHost,
@@ -171,7 +171,7 @@ describe("remote access through the relay", () => {
     expect(refused).toMatchObject({ reason: "unreachable" });
   });
 
-  it("keeps direct access beside the relay and prefers it over the relay", async () => {
+  it("keeps direct access beside the relay and settles on the direct path", async () => {
     const { relay, daemon, port } = await launch();
 
     const set = await requestDaemon(
@@ -202,8 +202,18 @@ describe("remote access through the relay", () => {
     const direct = `http://127.0.0.1:${port}`;
     const host = { ...paired, endpoints: [endpoint, direct] };
 
-    expect((await findReachableOrigin({ host }))?.origin).toBe(direct);
-    expect((await findDirectOrigin({ host }))?.origin).toBe(direct);
+    let directFound: (origin: string) => void = () => {};
+    const laterDirect = new Promise<string>((resolve) => {
+      directFound = resolve;
+    });
+    const connected = await connectReachableOrigin({
+      host,
+      onDirectFound: directFound,
+    });
+    connected?.opened.close();
+    const settled = connected?.origin === direct ? direct : await laterDirect;
+    expect(settled).toBe(direct);
+    expect(await findDirectOrigin({ host })).toBe(direct);
   });
 
   it("reconnects to a restarted relay and streams files through it", async () => {

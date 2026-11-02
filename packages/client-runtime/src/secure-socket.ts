@@ -4,6 +4,7 @@ import {
   createSecureChannel,
   decodeBase64Url,
   type KeyPair,
+  type MessageCompressor,
   type MuxStream,
   type NoiseCrypto,
   SECURE_CHANNEL_WEBSOCKET_PROTOCOL,
@@ -31,6 +32,7 @@ export interface SecureSocketOptions {
   envelope: ChannelEnvelope;
   payload: unknown;
   crypto?: NoiseCrypto;
+  compressor?: MessageCompressor;
   timeoutMs?: number;
   handlers?: SecureSocketHandlers;
 }
@@ -137,6 +139,10 @@ export function openSecureSocket(
         channel = createSecureChannel({
           transport: established.transport,
           role: "initiator",
+          compressor:
+            accepted.compression === "deflate-raw" && options.compressor
+              ? options.compressor
+              : null,
           send: (ciphertext) => {
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(sendable(ciphertext));

@@ -5,13 +5,18 @@ import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
+const databases: ReturnType<typeof createCocurdexDatabase>[] = [];
 
-afterAll(() => tempDirs.cleanup());
+afterAll(async () => {
+  for (const database of databases.splice(0)) database.close();
+  await tempDirs.cleanup();
+});
 
 async function seed() {
   const database = createCocurdexDatabase(
     path.join(tempDirs.createSync("cocurdex-links-"), "cocurdex.sqlite"),
   );
+  databases.push(database);
   const issue = await database.issues.createIssue({
     viewId: DEFAULT_VIEW_ID,
     columnId: "backlog",

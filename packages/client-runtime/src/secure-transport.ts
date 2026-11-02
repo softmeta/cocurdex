@@ -3,10 +3,23 @@ import type { NoiseCrypto, SecureChannel } from "@cocurdex/secure-channel";
 import { connectPairedHost } from "./host-access";
 import { HostAccessError } from "./host-access-error";
 import type { PairedHostEndpoint } from "./platform";
+import type { OpenSecureSocket, SecureSocketHandlers } from "./secure-socket";
+
+export type SecureSocketConnector = (
+  handlers: SecureSocketHandlers,
+) => Promise<OpenSecureSocket>;
 
 export function createSecureHostTransport(
   endpoint: PairedHostEndpoint,
   crypto?: NoiseCrypto,
+): DaemonTransport {
+  return createSecureTransport((handlers) =>
+    connectPairedHost(endpoint, { crypto, handlers }),
+  );
+}
+
+export function createSecureTransport(
+  connect: SecureSocketConnector,
 ): DaemonTransport {
   return (handlers) => {
     const encoder = new TextEncoder();
@@ -20,12 +33,9 @@ export function createSecureHostTransport(
         ?.sendMessage(encoder.encode(message))
         .catch(() => closeSocket?.());
     };
-    connectPairedHost(endpoint, {
-      crypto,
-      handlers: {
-        onMessage: (message) => handlers.onMessage(decoder.decode(message)),
-        onClose: () => handlers.onClose(),
-      },
+    connect({
+      onMessage: (message) => handlers.onMessage(decoder.decode(message)),
+      onClose: () => handlers.onClose(),
     }).then(
       (opened) => {
         if (closed) {

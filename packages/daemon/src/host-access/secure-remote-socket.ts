@@ -2,6 +2,7 @@ import {
   acceptChannelHello,
   createSecureChannel,
   type KeyPair,
+  type MessageCompressor,
   type MuxStream,
   type SecureChannel,
 } from "@cocurdex/secure-channel";
@@ -11,6 +12,10 @@ import type {
 } from "@cocurdex/shared";
 import type { RawData, WebSocket } from "ws";
 import type { HostAccessService } from "./host-access-service";
+import {
+  negotiatedCompression,
+  nodeMessageCompressor,
+} from "./message-compressor";
 import type { FixedWindowRateLimiter } from "./rate-limiter";
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
@@ -119,20 +124,27 @@ export function acceptSecureRemoteSocket(
       return;
     }
     const endpoints = await options.hostAccess.remoteEndpoints();
+    const compression = negotiatedCompression(opened.payload);
     const reply: RemoteChannelReply = {
       ok: true,
       ...admission.accepted,
       endpoints,
+      ...(compression ? { compression } : {}),
     };
     const { message, transport } = opened.reply(reply);
     if (socket.readyState !== socket.OPEN) return;
     socket.send(message);
-    startChannel(admission.accepted.deviceId, transport);
+    startChannel(
+      admission.accepted.deviceId,
+      transport,
+      compression ? nodeMessageCompressor : null,
+    );
   };
 
   const startChannel = (
     deviceId: string,
     transport: Parameters<typeof createSecureChannel>[0]["transport"],
+    compressor: MessageCompressor | null,
   ) => {
     let messageListener: (message: Uint8Array) => void = () => {};
     let streamListener: (stream: MuxStream, header: Uint8Array) => void = (
@@ -141,6 +153,7 @@ export function acceptSecureRemoteSocket(
     const channel = createSecureChannel({
       transport,
       role: "responder",
+      compressor,
       send: (ciphertext) => {
         if (socket.readyState !== socket.OPEN) return;
         options.onFrame?.("sent", ciphertext.byteLength);

@@ -1,4 +1,8 @@
-import { type NoiseCrypto, nobleCrypto } from "@cocurdex/secure-channel";
+import {
+  type MessageCompressor,
+  type NoiseCrypto,
+  nobleCrypto,
+} from "@cocurdex/secure-channel";
 import { requireOptionalNativeModule } from "expo";
 import { getRandomBytes } from "expo-crypto";
 
@@ -6,12 +10,13 @@ const SECRET_KEY_BYTES = 32;
 
 type Aead = Pick<NoiseCrypto, "seal" | "open">;
 
-interface NativeAead extends Aead {
+interface NativeWire extends Aead, MessageCompressor {
   readonly available: boolean;
 }
 
+const native = requireOptionalNativeModule<NativeWire>("CocurdexWire");
+
 function platformAead(): Aead {
-  const native = requireOptionalNativeModule<NativeAead>("CocurdexAead");
   if (!native?.available) return nobleCrypto;
   return {
     seal: (key, nonce, ad, plaintext) => native.seal(key, nonce, ad, plaintext),
@@ -28,3 +33,10 @@ export const mobileNoiseCrypto: NoiseCrypto = {
   open: aead.open,
   randomSecretKey: () => getRandomBytes(SECRET_KEY_BYTES),
 };
+
+export const mobileMessageCompressor: MessageCompressor | undefined = native
+  ? {
+      deflateRaw: (data) => native.deflateRaw(data),
+      inflateRaw: (data, maxLength) => native.inflateRaw(data, maxLength),
+    }
+  : undefined;
