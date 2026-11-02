@@ -1,8 +1,15 @@
 import { DaemonClientError, type DaemonTransport } from "@cocurdex/rpc/client";
-import type { NoiseCrypto, SecureChannel } from "@cocurdex/secure-channel";
+import type {
+  MessageCompressor,
+  NoiseCrypto,
+  SecureChannel,
+} from "@cocurdex/secure-channel";
 import { connectPairedHost } from "./host-access";
 import { HostAccessError } from "./host-access-error";
 import type { PairedHostEndpoint } from "./platform";
+
+export { portableMessageCompressor } from "./portable-message-compressor";
+
 import type { OpenSecureSocket, SecureSocketHandlers } from "./secure-socket";
 
 export type SecureSocketConnector = (
@@ -12,9 +19,10 @@ export type SecureSocketConnector = (
 export function createSecureHostTransport(
   endpoint: PairedHostEndpoint,
   crypto?: NoiseCrypto,
+  compressor?: MessageCompressor,
 ): DaemonTransport {
   return createSecureTransport((handlers) =>
-    connectPairedHost(endpoint, { crypto, handlers }),
+    connectPairedHost(endpoint, { crypto, compressor, handlers }),
   );
 }
 

@@ -3,7 +3,6 @@ import { readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
-import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
   connectPairedHost,
   createRemoteFileClient,
@@ -17,6 +16,7 @@ import {
   savedHostEndpoint,
   savedHostSafetyCode,
 } from "@cocurdex/client-runtime";
+import { portableMessageCompressor } from "@cocurdex/client-runtime/secure-transport";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   createDaemonRpcClient,
@@ -257,11 +257,7 @@ describe("remote host access", () => {
       { title: "Checkout drift", bodyMarkdown },
       daemon.options,
     );
-    const compressor: MessageCompressor = {
-      deflateRaw: (data) => deflateRawSync(data),
-      inflateRaw: (data, maxLength) =>
-        inflateRawSync(data, { maxOutputLength: maxLength }),
-    };
+    const compressor = portableMessageCompressor;
     const endpoint = savedHostEndpoint(paired);
     const readNote = async (offer?: MessageCompressor) => {
       const traffic = captureWebSocketTraffic();

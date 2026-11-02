@@ -815,6 +815,9 @@ importers:
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../shared
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
 
   packages/daemon:
     dependencies:

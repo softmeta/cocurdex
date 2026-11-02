@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui";
 import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
-import { desktopApi, useMountEffect } from "@/lib";
+import { desktopApi, useMountEffect, watchSessionStream } from "@/lib";
 // Intentional render recursion: a tool call can expand into a subagent
 // transcript, whose items render tool call groups again. The import cycle is
 // structural, not a layering mistake — keep the imports deep (never the
@@ -55,6 +55,8 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
   const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
   const messagesLoaded = Boolean(messagesLoadedBySession[sessionId]);
   const toolCallsLoaded = Boolean(toolCallsLoadedBySession[sessionId]);
+
+  useMountEffect(() => watchSessionStream(sessionId));
 
   useMountEffect(() => {
     if (messagesLoaded && toolCallsLoaded) {

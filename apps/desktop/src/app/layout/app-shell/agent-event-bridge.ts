@@ -34,7 +34,12 @@ import {
   upsertSessionAtom,
 } from "@/features/sessions";
 import { applyTurnChangesEventAtom } from "@/features/turn-workspace-changes";
-import { desktopApi, taskApi } from "@/lib";
+import {
+  desktopApi,
+  onSessionStreamResumed,
+  taskApi,
+  watchSessionStream,
+} from "@/lib";
 import { applySyncResult } from "./agent-sync-apply";
 
 type Store = ReturnType<typeof getDefaultStore>;
@@ -168,6 +173,25 @@ function startRuntimeStateSeeding(store: Store) {
   return store.sub(activeSessionIdAtom, seed);
 }
 
+function watchActiveSessionStream(store: Store) {
+  let watched: { sessionId: string; release: () => void } | null = null;
+  const follow = () => {
+    const sessionId = store.get(activeSessionIdAtom);
+    if (watched?.sessionId === sessionId) return;
+    watched?.release();
+    watched = sessionId
+      ? { sessionId, release: watchSessionStream(sessionId) }
+      : null;
+  };
+  follow();
+  const unsubscribe = store.sub(activeSessionIdAtom, follow);
+  return () => {
+    unsubscribe();
+    watched?.release();
+    watched = null;
+  };
+}
+
 export function createAgentEventBridge(store: Store) {
   const engine = createSyncEngine<AgentEvent>({
     pull: (input) => desktopApi.pullSync(input),
@@ -205,8 +229,14 @@ export function createAgentEventBridge(store: Store) {
     });
     const unsubscribeVisits = startSessionVisitSync(store);
     const unsubscribeRuntimeSeeding = startRuntimeStateSeeding(store);
+    const unsubscribeResumed = onSessionStreamResumed((sessionId) => {
+      void synchronize([sessionId]).catch(console.error);
+    });
+    const unwatchActiveSession = watchActiveSessionStream(store);
     loadSessionAttention(store);
     return () => {
+      unwatchActiveSession();
+      unsubscribeResumed();
       unsubscribeEvents();
       unsubscribeData();
       unsubscribeVisits();
