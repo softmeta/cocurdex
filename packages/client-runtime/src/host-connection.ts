@@ -211,6 +211,7 @@ export function createHostConnection(options: HostConnectionOptions) {
           get replayGap() {
             return subscription.replayGap;
           },
+          watchSessions: subscription.watchSessions,
         };
       } catch (error) {
         opened.close();
