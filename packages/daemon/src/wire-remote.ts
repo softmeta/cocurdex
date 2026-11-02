@@ -5,6 +5,8 @@ import {
   createFixedWindowRateLimiter,
   type HostAccessService,
   type RemoteServer,
+  type TrafficMeter,
+  trafficTransport,
 } from "./host-access";
 import type { HostKeyStore } from "./host-access/host-key-store";
 import { daemonNoiseCrypto } from "./host-access/host-key-store";
@@ -25,6 +27,7 @@ export interface RemoteServerFactoryOptions {
   hostAccess: HostAccessService;
   hostKeys: HostKeyStore;
   onChannel(channel: SecureRemoteChannel): void;
+  traffic: TrafficMeter;
 }
 
 export function createRemoteSocketAcceptor(
@@ -47,6 +50,12 @@ export function createRemoteSocketAcceptor(
       pairLimiter,
       connectLimiter,
       onChannel: options.onChannel,
+      onFrame: (direction, bytes) =>
+        options.traffic.recordFrame(
+          trafficTransport(remoteAddress),
+          direction,
+          bytes,
+        ),
     });
 
   const createServer = (): RemoteServer => {

@@ -6,6 +6,7 @@ import type {
 import type { PushService } from "../push";
 import type { HostAccessService } from "./host-access-service";
 import type { DaemonRequestContext } from "./request-context";
+import type { TrafficMeter } from "./traffic-meter";
 
 export type HostMethod = Extract<DaemonMethod, `host.${string}`>;
 
@@ -20,10 +21,11 @@ export function isHostRequest(
 export interface HostRequestServices {
   hostAccess: HostAccessService;
   push: PushService;
+  remoteTraffic: TrafficMeter;
 }
 
 export async function handleHostRequest(
-  { hostAccess, push }: HostRequestServices,
+  { hostAccess, push, remoteTraffic }: HostRequestServices,
   request: DaemonRequest<HostMethod>,
   context: DaemonRequestContext,
 ): Promise<DaemonResultByMethod[HostMethod]> {
@@ -68,6 +70,10 @@ export async function handleHostRequest(
       );
     case "host.audit.list":
       return hostAccess.listAudit(request.params.limit ?? DEFAULT_AUDIT_LIMIT);
+    case "host.traffic.get":
+      return remoteTraffic.report();
+    case "host.traffic.reset":
+      return remoteTraffic.reset();
     case "host.push.get":
       return push.status();
     case "host.push.set":

@@ -87,6 +87,7 @@ import type {
   HostPairingRecord,
   HostPushStatus,
   HostRemoteAccessStatus,
+  HostTrafficReport,
   ImportDeckImagePayload,
   ImportDeckPayload,
   ImportDocImagePayload,
@@ -728,6 +729,8 @@ export type DaemonRequestPayloadByMethod = {
   "host.devices.revokeSelf": undefined;
   "host.devices.updateScopes": { deviceId: string; scopes: HostAccessScope[] };
   "host.audit.list": { limit?: number };
+  "host.traffic.get": undefined;
+  "host.traffic.reset": undefined;
   "host.push.get": undefined;
   "host.push.set": PushSettingsUpdate;
   "host.push.register": PushRegistration;
@@ -1035,6 +1038,8 @@ export type DaemonResultByMethod = {
   "host.devices.revokeSelf": PairedDeviceRecord | null;
   "host.devices.updateScopes": PairedDeviceRecord | null;
   "host.audit.list": HostAccessAuditEntry[];
+  "host.traffic.get": HostTrafficReport;
+  "host.traffic.reset": HostTrafficReport;
   "host.push.get": HostPushStatus;
   "host.push.set": HostPushStatus;
   "host.push.register": DevicePushRegistrationResult;
@@ -1070,6 +1075,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "host.devices.revokeSelf": true,
   "host.push.get": true,
   "host.push.unregister": true,
+  "host.traffic.get": true,
+  "host.traffic.reset": true,
   "issue.listViews": true,
   "issue.listLabels": true,
   "issue.listLinkedSessionIds": true,

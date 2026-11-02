@@ -122,9 +122,11 @@ import { loadExecutionTree } from "./execution-tree";
 import { listHostDirectories } from "./fs-browse";
 import { commitGitChanges } from "./git";
 import {
+  createTrafficMeter,
   HostAccessService,
   LOCAL_REQUEST_CONTEXT,
   listHostAddresses,
+  type TrafficMeter,
 } from "./host-access";
 import {
   createHostKeyStore,
@@ -294,6 +296,7 @@ export class CocurdexDaemonService {
   readonly state: DaemonState;
   readonly hostAccess: HostAccessService;
   readonly push: PushService;
+  readonly remoteTraffic: TrafficMeter = createTrafficMeter();
   readonly hostAccessReady: Promise<void>;
   readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;

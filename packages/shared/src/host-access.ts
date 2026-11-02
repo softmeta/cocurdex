@@ -264,6 +264,31 @@ export const RELAY_OFF_STATUS: HostRelayStatus = {
   endpoint: null,
 };
 
+export type HostTrafficTransport = "relay" | "direct";
+
+export type HostTrafficDirection = "sent" | "received";
+
+export interface HostTrafficMessages {
+  transport: HostTrafficTransport;
+  direction: HostTrafficDirection;
+  category: string;
+  messages: number;
+  bytes: number;
+}
+
+export interface HostTrafficFrames {
+  transport: HostTrafficTransport;
+  direction: HostTrafficDirection;
+  frames: number;
+  bytes: number;
+}
+
+export interface HostTrafficReport {
+  since: string;
+  frames: HostTrafficFrames[];
+  messages: HostTrafficMessages[];
+}
+
 export interface HostRemoteAccessStatus {
   allowed: boolean;
   settings: RemoteAccessSettings;
