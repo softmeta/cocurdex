@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
@@ -18,7 +19,6 @@ import (
 )
 
 type Config struct {
-	Bindings            *Bindings
 	Revocations         *Revocations
 	Usage               *Usage
 	CredentialIssuer    ed25519.PublicKey
@@ -74,14 +74,11 @@ type Server struct {
 	mu       sync.Mutex
 	hosts    map[string]*hostEntry
 	sessions map[string]int
-	tickets  map[string]chan *websocket.Conn
+	tickets  map[string]*session
 	mux      *http.ServeMux
 }
 
 func NewServer(config Config) *Server {
-	if config.Bindings == nil {
-		config.Bindings, _ = OpenBindings("")
-	}
 	if config.Revocations == nil {
 		config.Revocations, _ = OpenRevocations("")
 	}
@@ -98,7 +95,7 @@ func NewServer(config Config) *Server {
 		config:   config,
 		hosts:    map[string]*hostEntry{},
 		sessions: map[string]int{},
-		tickets:  map[string]chan *websocket.Conn{},
+		tickets:  map[string]*session{},
 		mux:      http.NewServeMux(),
 	}
 	server.mux.HandleFunc("GET /healthz", server.handleHealth)
@@ -154,8 +151,6 @@ func randomToken(length int) string {
 
 func registrationCloseCode(err error) websocket.StatusCode {
 	switch {
-	case errors.Is(err, ErrRouteTaken):
-		return CloseRouteTaken
 	case errors.Is(err, ErrCredentialMissing),
 		errors.Is(err, ErrCredentialInvalid),
 		errors.Is(err, ErrCredentialExpired),
@@ -219,9 +214,14 @@ func (s *Server) register(ctx context.Context, conn *websocket.Conn) (VerifiedRe
 	defer cancel()
 	nonce := make([]byte, NonceLength)
 	_, _ = rand.Read(nonce)
+	relayKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		return VerifiedRegistration{}, err
+	}
 	challenge := ChallengeMessage{
 		Type:     "challenge",
 		Nonce:    EncodeBase64URL(nonce),
+		RelayKey: EncodeBase64URL(relayKey.PublicKey().Bytes()),
 		Protocol: WireProtocol,
 		Version:  Version,
 	}
@@ -238,6 +238,7 @@ func (s *Server) register(ctx context.Context, conn *websocket.Conn) (VerifiedRe
 	verified, err := VerifyRegistration(
 		message,
 		nonce,
+		relayKey,
 		s.config.CredentialIssuer,
 		s.config.Now(),
 	)
@@ -246,9 +247,6 @@ func (s *Server) register(ctx context.Context, conn *websocket.Conn) (VerifiedRe
 	}
 	if verified.AccountID != "" && s.revoked(verified.AccountID) {
 		return VerifiedRegistration{}, ErrCredentialRevoked
-	}
-	if err := s.config.Bindings.Claim(verified.RouteID, verified.SigningKey); err != nil {
-		return VerifiedRegistration{}, err
 	}
 	return verified, nil
 }
@@ -340,7 +338,7 @@ func (s *Server) keepAlive(ctx context.Context, conn *websocket.Conn, cancel con
 func (s *Server) handleAccept(w http.ResponseWriter, r *http.Request) {
 	ticket := r.PathValue("ticket")
 	s.mu.Lock()
-	waiting, ok := s.tickets[ticket]
+	opened, ok := s.tickets[ticket]
 	delete(s.tickets, ticket)
 	s.mu.Unlock()
 	if !ok {
@@ -351,14 +349,19 @@ func (s *Server) handleAccept(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	waiting <- conn
+	select {
+	case opened.handoff <- conn:
+	case <-opened.ended:
+		conn.Close(CloseHostTimeout, "the device is gone")
+	}
 }
 
 type session struct {
 	routeID string
 	entry   *hostEntry
 	ticket  string
-	waiting chan *websocket.Conn
+	handoff chan *websocket.Conn
+	ended   chan struct{}
 }
 
 func (s *Server) openSession(routeID string) (*session, websocket.StatusCode) {
@@ -376,13 +379,15 @@ func (s *Server) openSession(routeID string) (*session, websocket.StatusCode) {
 		routeID: routeID,
 		entry:   entry,
 		ticket:  randomToken(TicketLength),
-		waiting: make(chan *websocket.Conn, 1),
+		handoff: make(chan *websocket.Conn),
+		ended:   make(chan struct{}),
 	}
-	s.tickets[opened.ticket] = opened.waiting
+	s.tickets[opened.ticket] = opened
 	return opened, 0
 }
 
 func (s *Server) closeSession(opened *session) {
+	close(opened.ended)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.tickets, opened.ticket)
@@ -424,7 +429,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	timer := time.NewTimer(s.config.HostAcceptTimeout)
 	defer timer.Stop()
 	select {
-	case host := <-opened.waiting:
+	case host := <-opened.handoff:
 		account := opened.entry.account
 		s.config.Usage.AddSession(account, s.config.Now())
 		ctx, cancel := context.WithCancel(r.Context())

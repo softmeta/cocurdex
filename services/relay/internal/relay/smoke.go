@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdh"
-	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -33,35 +32,31 @@ func socketBase(baseURL string) (string, error) {
 	return "", fmt.Errorf("relay URL must start with http:// or https://, got %q", baseURL)
 }
 
-type smokeHost struct {
-	hostKey []byte
-	routeID []byte
-	signing ed25519.PrivateKey
-}
-
-func newSmokeHost() (smokeHost, error) {
-	noise, err := ecdh.X25519().GenerateKey(rand.Reader)
+func smokeRegistration(challenge ChallengeMessage, credential string) (RegisterMessage, error) {
+	nonce, err := DecodeBase64URL(challenge.Nonce, NonceLength)
 	if err != nil {
-		return smokeHost{}, err
+		return RegisterMessage{}, fmt.Errorf("challenge nonce: %w", err)
 	}
-	_, signing, err := ed25519.GenerateKey(rand.Reader)
+	relayKey, err := DecodeBase64URL(challenge.RelayKey, 32)
 	if err != nil {
-		return smokeHost{}, err
+		return RegisterMessage{}, fmt.Errorf("challenge relay key: %w", err)
 	}
-	hostKey := noise.PublicKey().Bytes()
-	return smokeHost{hostKey: hostKey, routeID: RouteIDForHostKey(hostKey), signing: signing}, nil
-}
-
-func (h smokeHost) register(nonce []byte, credential string) RegisterMessage {
-	signature := ed25519.Sign(h.signing, RegistrationPayload(nonce, h.routeID))
+	hostKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		return RegisterMessage{}, err
+	}
+	proof, err := ProveHostKey(hostKey, relayKey, nonce)
+	if err != nil {
+		return RegisterMessage{}, err
+	}
+	public := hostKey.PublicKey().Bytes()
 	return RegisterMessage{
 		Type:       "register",
-		RouteID:    EncodeBase64URL(h.routeID),
-		HostKey:    EncodeBase64URL(h.hostKey),
-		SigningKey: EncodeBase64URL(h.signing.Public().(ed25519.PublicKey)),
-		Signature:  EncodeBase64URL(signature),
+		RouteID:    EncodeBase64URL(RouteIDForHostKey(public)),
+		HostKey:    EncodeBase64URL(public),
+		Proof:      EncodeBase64URL(proof),
 		Credential: credential,
-	}
+	}, nil
 }
 
 func dialChannel(ctx context.Context, url string) (*websocket.Conn, error) {
@@ -97,10 +92,6 @@ func Smoke(ctx context.Context, baseURL, credential string) (SmokeResult, error)
 	if err != nil {
 		return SmokeResult{}, err
 	}
-	host, err := newSmokeHost()
-	if err != nil {
-		return SmokeResult{}, err
-	}
 	control, _, err := websocket.Dial(ctx, base+"/v1/host", nil)
 	if err != nil {
 		return SmokeResult{}, fmt.Errorf("connecting as a host: %w", err)
@@ -114,11 +105,11 @@ func Smoke(ctx context.Context, baseURL, credential string) (SmokeResult, error)
 	if challenge.Protocol < WireProtocol {
 		return result, fmt.Errorf("the relay speaks protocol %d, want %d", challenge.Protocol, WireProtocol)
 	}
-	nonce, err := DecodeBase64URL(challenge.Nonce, NonceLength)
+	registration, err := smokeRegistration(challenge, credential)
 	if err != nil {
-		return result, fmt.Errorf("challenge nonce: %w", err)
+		return result, err
 	}
-	if err := wsjson.Write(ctx, control, host.register(nonce, credential)); err != nil {
+	if err := wsjson.Write(ctx, control, registration); err != nil {
 		return result, err
 	}
 	var registered RegisteredMessage

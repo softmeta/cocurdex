@@ -2,7 +2,9 @@ package relay
 
 import (
 	"bytes"
+	"crypto/ecdh"
 	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -13,7 +15,8 @@ const credentialLabel = "cocurdex-relay-credential/2"
 
 var (
 	ErrRouteMismatch     = errors.New("route id does not match the host key")
-	ErrBadSignature      = errors.New("registration signature does not verify")
+	ErrBadSignature      = errors.New("signature does not verify")
+	ErrBadProof          = errors.New("registration does not prove the host key")
 	ErrCredentialMissing = errors.New("a relay credential is required")
 	ErrCredentialInvalid = errors.New("the relay credential is not valid")
 	ErrCredentialExpired = errors.New("the relay credential has expired")
@@ -24,23 +27,43 @@ func RouteIDForHostKey(hostKey []byte) []byte {
 	return digest[:RouteIDLength]
 }
 
-func RegistrationPayload(nonce, routeID []byte) []byte {
-	payload := make([]byte, 0, len(ProtocolVersion)+len(nonce)+len(routeID))
+func RegistrationPayload(nonce, routeID, relayKey []byte) []byte {
+	payload := make([]byte, 0, len(ProtocolVersion)+len(nonce)+len(routeID)+len(relayKey))
 	payload = append(payload, ProtocolVersion...)
 	payload = append(payload, nonce...)
-	return append(payload, routeID...)
+	payload = append(payload, routeID...)
+	return append(payload, relayKey...)
+}
+
+func RegistrationProof(sharedSecret, nonce, routeID, relayKey []byte) []byte {
+	mac := hmac.New(sha256.New, sharedSecret)
+	mac.Write(RegistrationPayload(nonce, routeID, relayKey))
+	return mac.Sum(nil)
+}
+
+func ProveHostKey(hostKey *ecdh.PrivateKey, relayKey, nonce []byte) ([]byte, error) {
+	peer, err := ecdh.X25519().NewPublicKey(relayKey)
+	if err != nil {
+		return nil, err
+	}
+	shared, err := hostKey.ECDH(peer)
+	if err != nil {
+		return nil, err
+	}
+	routeID := RouteIDForHostKey(hostKey.PublicKey().Bytes())
+	return RegistrationProof(shared, nonce, routeID, relayKey), nil
 }
 
 type VerifiedRegistration struct {
-	RouteID    string
-	SigningKey ed25519.PublicKey
-	AccountID  string
-	ExpiresAt  time.Time
+	RouteID   string
+	AccountID string
+	ExpiresAt time.Time
 }
 
 func VerifyRegistration(
 	message RegisterMessage,
 	nonce []byte,
+	relayKey *ecdh.PrivateKey,
 	issuer ed25519.PublicKey,
 	now time.Time,
 ) (VerifiedRegistration, error) {
@@ -52,24 +75,26 @@ func VerifyRegistration(
 	if err != nil {
 		return VerifiedRegistration{}, err
 	}
-	signingKey, err := DecodeBase64URL(message.SigningKey, ed25519.PublicKeySize)
-	if err != nil {
-		return VerifiedRegistration{}, err
-	}
-	signature, err := DecodeBase64URL(message.Signature, ed25519.SignatureSize)
+	proof, err := DecodeBase64URL(message.Proof, sha256.Size)
 	if err != nil {
 		return VerifiedRegistration{}, err
 	}
 	if !bytes.Equal(RouteIDForHostKey(hostKey), routeID) {
 		return VerifiedRegistration{}, ErrRouteMismatch
 	}
-	if !ed25519.Verify(signingKey, RegistrationPayload(nonce, routeID), signature) {
-		return VerifiedRegistration{}, ErrBadSignature
+	host, err := ecdh.X25519().NewPublicKey(hostKey)
+	if err != nil {
+		return VerifiedRegistration{}, err
 	}
-	verified := VerifiedRegistration{
-		RouteID:    message.RouteID,
-		SigningKey: ed25519.PublicKey(signingKey),
+	shared, err := relayKey.ECDH(host)
+	if err != nil {
+		return VerifiedRegistration{}, ErrBadProof
 	}
+	expected := RegistrationProof(shared, nonce, routeID, relayKey.PublicKey().Bytes())
+	if !hmac.Equal(expected, proof) {
+		return VerifiedRegistration{}, ErrBadProof
+	}
+	verified := VerifiedRegistration{RouteID: message.RouteID}
 	if issuer == nil {
 		return verified, nil
 	}

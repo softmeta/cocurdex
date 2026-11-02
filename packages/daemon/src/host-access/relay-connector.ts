@@ -2,11 +2,13 @@ import nodeCrypto from "node:crypto";
 import { SECURE_CHANNEL_WEBSOCKET_PROTOCOL } from "@cocurdex/secure-channel";
 import type { HostRelayError, HostRelayState } from "@cocurdex/shared";
 import WebSocket, { type RawData } from "ws";
-import type { HostKeys } from "./host-key-store";
+import { daemonNoiseCrypto, type HostKeys } from "./host-key-store";
 
-const RELAY_PROTOCOL_LABEL = "cocurdex-relay/1";
+const RELAY_PROTOCOL_LABEL = "cocurdex-relay/2";
+const RELAY_WIRE_PROTOCOL = 2;
 const ROUTE_ID_BYTES = 16;
 const NONCE_BYTES = 32;
+const RELAY_KEY_BYTES = 32;
 const CONTROL_FRAME_LIMIT = 8 * 1024;
 const HANDSHAKE_TIMEOUT_MS = 15_000;
 const LIVENESS_TIMEOUT_MS = 75_000;
@@ -21,7 +23,6 @@ const CLOSE_ERRORS: Record<number, HostRelayError> = {
   4400: "protocol",
   4401: "unauthorized",
   4402: "credentialRequired",
-  4403: "routeTaken",
   4409: "replaced",
   4429: "rateLimited",
 };
@@ -29,7 +30,6 @@ const CLOSE_ERRORS: Record<number, HostRelayError> = {
 const REFUSALS = new Set<HostRelayError>([
   "unauthorized",
   "credentialRequired",
-  "routeTaken",
   "outdated",
   "replaced",
 ]);
@@ -69,6 +69,7 @@ type ControlMessage =
   | {
       type: "challenge";
       nonce: string;
+      relayKey: string | null;
       protocol: number | null;
       version: string | null;
     }
@@ -106,6 +107,7 @@ function parseControlMessage(data: RawData): ControlMessage | null {
       return {
         type: "challenge",
         nonce: parsed.nonce,
+        relayKey: typeof parsed.relayKey === "string" ? parsed.relayKey : null,
         protocol: typeof parsed.protocol === "number" ? parsed.protocol : null,
         version: typeof parsed.version === "string" ? parsed.version : null,
       };
@@ -122,24 +124,26 @@ function parseControlMessage(data: RawData): ControlMessage | null {
   }
 }
 
-function registration(keys: HostKeys, nonce: Buffer, target: RelayTarget) {
+function registration(
+  keys: HostKeys,
+  nonce: Buffer,
+  relayKey: Buffer,
+  target: RelayTarget,
+) {
   const routeId = routeIdBytes(keys.noisePublicKey);
+  const sharedSecret = daemonNoiseCrypto.dh(keys.noise.secretKey, relayKey);
   const payload = Buffer.concat([
     Buffer.from(RELAY_PROTOCOL_LABEL, "utf8"),
     nonce,
     routeId,
+    relayKey,
   ]);
-  const signingKey = nodeCrypto
-    .createPublicKey(keys.signingPrivateKey)
-    .export({ format: "jwk" }).x;
+  const proof = daemonNoiseCrypto.hmacSha256(sharedSecret, payload);
   return {
     type: "register",
     routeId: routeId.toString("base64url"),
     hostKey: keys.noisePublicKey,
-    signingKey,
-    signature: nodeCrypto
-      .sign(null, payload, keys.signingPrivateKey)
-      .toString("base64url"),
+    proof: Buffer.from(proof).toString("base64url"),
     ...(target.credential ? { credential: target.credential } : {}),
   };
 }
@@ -151,19 +155,6 @@ function latencyChanged(previous: number | null, next: number) {
     previous * LATENCY_CHANGE_RATIO,
   );
   return Math.abs(next - previous) >= threshold;
-}
-
-function refusalError(
-  code: number,
-  challenged: boolean,
-  announced: boolean,
-): HostRelayError | null {
-  const known = CLOSE_ERRORS[code];
-  const deliberate = code >= 4000 && code < 5000;
-  if (deliberate && challenged && !announced && known !== "rateLimited") {
-    return "outdated";
-  }
-  return known ?? null;
 }
 
 function sameTarget(left: RelayTarget | null, right: RelayTarget | null) {
@@ -252,8 +243,6 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     let liveness: NodeJS.Timeout | null = null;
     let latencyTimer: NodeJS.Timeout | null = null;
     let pingSentAt: number | null = null;
-    let challenged = false;
-    let announced = false;
     let registered = false;
     let relayVersion: string | null = null;
     const probeLatency = () => {
@@ -272,14 +261,25 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     };
     const handle = (message: ControlMessage) => {
       if (message.type === "challenge") {
-        challenged = true;
-        announced = message.protocol !== null;
         relayVersion = message.version;
+        if ((message.protocol ?? 0) < RELAY_WIRE_PROTOCOL) {
+          return fail("outdated");
+        }
         const nonce = Buffer.from(message.nonce, "base64url");
-        if (nonce.length !== NONCE_BYTES) return fail("protocol");
-        socket.send(
-          JSON.stringify(registration(options.hostKeys(), nonce, active)),
-        );
+        const relayKey = Buffer.from(message.relayKey ?? "", "base64url");
+        if (
+          nonce.length !== NONCE_BYTES ||
+          relayKey.length !== RELAY_KEY_BYTES
+        ) {
+          return fail("protocol");
+        }
+        let register: ReturnType<typeof registration>;
+        try {
+          register = registration(options.hostKeys(), nonce, relayKey, active);
+        } catch {
+          return fail("protocol");
+        }
+        socket.send(JSON.stringify(register));
         return;
       }
       if (message.type === "registered") {
@@ -315,9 +315,7 @@ export function createRelayConnector(options: RelayConnectorOptions) {
       if (liveness) clearTimeout(liveness);
       if (latencyTimer) clearInterval(latencyTimer);
       if (control === socket) control = null;
-      const refusal = registered
-        ? (CLOSE_ERRORS[code] ?? null)
-        : refusalError(code, challenged, announced);
+      const refusal = CLOSE_ERRORS[code] ?? null;
       const error = refusal ?? failure;
       if (round === generation) {
         log("warn", "relay.disconnected", {

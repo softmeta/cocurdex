@@ -394,7 +394,6 @@
         "protocol": "The relay answered with something unexpected. Check the address.",
         "rateLimited": "The relay is limiting connections. Retrying shortly.",
         "replaced": "Another app with this computer's key took over the relay route. Close the other copy; this one retries in a few minutes.",
-        "routeTaken": "Another computer already holds this route on the relay.",
         "unauthorized": "The relay refused this computer's key.",
         "unreachable": "Cannot reach the relay. Retrying."
       },

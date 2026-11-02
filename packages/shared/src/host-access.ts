@@ -199,7 +199,6 @@ export type HostRelayState = "off" | "connecting" | "online" | "offline";
 export type HostRelayError =
   | "unreachable"
   | "credentialRequired"
-  | "routeTaken"
   | "rateLimited"
   | "unauthorized"
   | "protocol"

@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ProtocolVersion     = "cocurdex-relay/1"
-	WireProtocol        = 1
+	ProtocolVersion     = "cocurdex-relay/2"
+	WireProtocol        = 2
 	ChannelSubprotocol  = "cocurdex.secure.v1"
 	RouteIDLength       = 16
 	NonceLength         = 32
@@ -23,7 +23,6 @@ const (
 	CloseHostOffline      websocket.StatusCode = 4404
 	CloseHostTimeout      websocket.StatusCode = 4408
 	CloseUnauthorized     websocket.StatusCode = 4401
-	CloseRouteTaken       websocket.StatusCode = 4403
 	CloseReplaced         websocket.StatusCode = 4409
 	CloseCredentialNeeded websocket.StatusCode = 4402
 	CloseRateLimited      websocket.StatusCode = 4429
@@ -36,6 +35,7 @@ var Version = "dev"
 type ChallengeMessage struct {
 	Type     string `json:"type"`
 	Nonce    string `json:"nonce"`
+	RelayKey string `json:"relayKey"`
 	Protocol int    `json:"protocol,omitempty"`
 	Version  string `json:"version,omitempty"`
 }
@@ -50,8 +50,7 @@ type RegisterMessage struct {
 	Type       string `json:"type"`
 	RouteID    string `json:"routeId"`
 	HostKey    string `json:"hostKey"`
-	SigningKey string `json:"signingKey"`
-	Signature  string `json:"signature"`
+	Proof      string `json:"proof"`
 	Credential string `json:"credential,omitempty"`
 }
 
