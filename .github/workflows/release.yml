@@ -400,7 +400,8 @@ jobs:
 
   android:
     name: Android (Google Play internal)
-    needs: prepare environment: release
+    needs: prepare
+    environment: release
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -489,7 +490,8 @@ jobs:
 
   ios:
     name: iOS (TestFlight)
-    needs: prepare environment: release
+    needs: prepare
+    environment: release
     runs-on: macos-26
     timeout-minutes: 90
     env:
