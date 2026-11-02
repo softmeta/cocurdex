@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["CocurdexAeadModule"]
+  },
+  "android": {
+    "modules": ["dev.cocurdex.aead.CocurdexAeadModule"]
+  }
+}
