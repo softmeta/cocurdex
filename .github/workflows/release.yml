@@ -60,9 +60,18 @@ jobs:
             fi
             exit 0
           fi
+          notes_file="${RUNNER_TEMP}/release-notes.md"
+          cat > "${notes_file}" <<'NOTES'
+          ### Android APK
+
+          `Cocurdex-android-arm64-v8a.apk` fits most phones; `Cocurdex-android-armeabi-v7a.apk` is for older 32-bit devices. The APK and the Google Play app are signed differently and cannot update each other: uninstall one before installing the other.
+
+          APK 与 Google Play 版签名不同，不能互相覆盖升级；换渠道前请先卸载原来的版本。
+          NOTES
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "Cocurdex ${GITHUB_REF_NAME}" \
+            --notes-file "${notes_file}" \
             --generate-notes \
             --verify-tag \
             --draft \
@@ -399,7 +408,7 @@ jobs:
             --clobber
 
   android:
-    name: Android (Google Play internal)
+    name: Android (Google Play internal and APKs)
     needs: prepare
     environment: release
     runs-on: ubuntu-latest
@@ -431,10 +440,14 @@ jobs:
         env:
           ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
           ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_APK_KEYSTORE_BASE64: ${{ secrets.ANDROID_APK_KEYSTORE_BASE64 }}
+          ANDROID_APK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_APK_KEYSTORE_PASSWORD }}
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           test -n "${ANDROID_UPLOAD_KEYSTORE_BASE64}"
           test -n "${ANDROID_UPLOAD_KEYSTORE_PASSWORD}"
+          test -n "${ANDROID_APK_KEYSTORE_BASE64}"
+          test -n "${ANDROID_APK_KEYSTORE_PASSWORD}"
           if test "${GITHUB_REF_TYPE}" = "tag"; then
             test -n "${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON}"
           fi
@@ -452,6 +465,8 @@ jobs:
 
       - name: Generate native project
         working-directory: apps/mobile
+        env:
+          COCURDEX_ANDROID_APK_ABIS: arm64-v8a,armeabi-v7a
         run: pnpm exec expo prebuild --platform android --no-install
 
       - name: Build signed App Bundle
@@ -484,9 +499,48 @@ jobs:
           track: internal
           status: completed
 
+      - name: Build signed APKs
+        working-directory: apps/mobile/android
+        env:
+          ANDROID_APK_KEYSTORE_BASE64: ${{ secrets.ANDROID_APK_KEYSTORE_BASE64 }}
+          ANDROID_APK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_APK_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore_path="${RUNNER_TEMP}/android-apk.jks"
+          printf '%s' "${ANDROID_APK_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          chmod 600 "${keystore_path}"
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Pandroid.injected.signing.store.file="${keystore_path}" \
+            -Pandroid.injected.signing.store.password="${ANDROID_APK_KEYSTORE_PASSWORD}" \
+            -Pandroid.injected.signing.key.alias=cocurdex-apk \
+            -Pandroid.injected.signing.key.password="${ANDROID_APK_KEYSTORE_PASSWORD}"
+          apksigner="$(find "${ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)/apksigner"
+          out_dir="${RUNNER_TEMP}/android-apks"
+          mkdir -p "${out_dir}"
+          for abi in arm64-v8a armeabi-v7a; do
+            apk="app/build/outputs/apk/release/app-${abi}-release.apk"
+            "${apksigner}" verify --print-certs "${apk}" | grep -q "CN=Cocurdex, O=softmeta"
+            target="${out_dir}/Cocurdex-android-${abi}.apk"
+            cp "${apk}" "${target}"
+            (cd "${out_dir}" && sha256sum "$(basename "${target}")" > "$(basename "${target}").sha256")
+          done
+          echo "ANDROID_APK_DIR=${out_dir}" >> "${GITHUB_ENV}"
+
+      - name: Upload APKs to GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            "${ANDROID_APK_DIR}"/Cocurdex-android-*.apk \
+            "${ANDROID_APK_DIR}"/Cocurdex-android-*.apk.sha256 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber
+
       - name: Remove signing credentials
         if: always()
-        run: rm -f "${RUNNER_TEMP}/android-upload.jks"
+        run: rm -f "${RUNNER_TEMP}/android-upload.jks" "${RUNNER_TEMP}/android-apk.jks"
 
   ios:
     name: iOS (TestFlight)

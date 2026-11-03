@@ -75,7 +75,8 @@
         }
       ],
       "./plugins/release-signing",
-      "./plugins/push-notifications"
+      "./plugins/push-notifications",
+      "./plugins/apk-abi-splits"
     ],
     "locales": {
       "en": "./native-locales/en.json",
