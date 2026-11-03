@@ -491,7 +491,9 @@ jobs:
         working-directory: apps/mobile
         env:
           COCURDEX_ANDROID_APK_ABIS: arm64-v8a,armeabi-v7a
-        run: pnpm exec expo prebuild --platform android --no-install
+        run: |
+          pnpm run ensure:native-assets
+          pnpm exec expo prebuild --platform android --no-install
 
       - name: Build signed App Bundle
         working-directory: apps/mobile/android
@@ -682,7 +684,9 @@ jobs:
 
       - name: Generate native project
         working-directory: apps/mobile
-        run: pnpm exec expo prebuild --platform ios
+        run: |
+          pnpm run ensure:native-assets
+          pnpm exec expo prebuild --platform ios
 
       - name: Archive
         working-directory: apps/mobile/ios

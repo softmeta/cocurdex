@@ -43,16 +43,23 @@ async function latestIosRuntime() {
   const { runtimes } = JSON.parse(output) as { runtimes: SimctlRuntime[] };
   const runtime = runtimes
     .filter(
-      (candidate) => candidate.platform === "iOS" && candidate.isAvailable,
+      (candidate) =>
+        candidate.platform === "iOS" &&
+        candidate.isAvailable &&
+        candidate.supportedDeviceTypes.some(
+          (type) => type.name === PREFERRED_DEVICE_TYPE,
+        ),
     )
     .sort((left, right) => compareVersions(right.version, left.version))[0];
-  if (!runtime) throw new Error("No available iOS simulator runtime");
-  const deviceType =
-    runtime.supportedDeviceTypes.find(
-      (type) => type.name === PREFERRED_DEVICE_TYPE,
-    ) ??
-    runtime.supportedDeviceTypes.find((type) => type.name.startsWith("iPhone"));
-  if (!deviceType) throw new Error(`No iPhone type for ${runtime.identifier}`);
+  if (!runtime) {
+    throw new Error(
+      `No iOS simulator runtime supports ${PREFERRED_DEVICE_TYPE}`,
+    );
+  }
+  const deviceType = runtime.supportedDeviceTypes.find(
+    (type) => type.name === PREFERRED_DEVICE_TYPE,
+  );
+  if (!deviceType) throw new Error(`No ${PREFERRED_DEVICE_TYPE} type`);
   return { runtime: runtime.identifier, deviceType: deviceType.identifier };
 }
 
@@ -90,6 +97,18 @@ async function deleteOrphanedSimulators() {
   }
 }
 
+async function requireAppleSimUtils() {
+  try {
+    await runCommand("applesimutils", ["--version"]);
+  } catch {
+    throw new Error(
+      "The iOS flows grant notification permission through applesimutils. " +
+        "Install it with: " +
+        "brew tap wix/brew && brew install applesimutils",
+    );
+  }
+}
+
 async function createSimulator() {
   await deleteOrphanedSimulators();
   const { runtime, deviceType } = await latestIosRuntime();
@@ -112,6 +131,7 @@ export async function startIosTarget(
   if (install && !existsSync(appPath)) {
     throw new Error(`Missing ${appPath}; run with --build first`);
   }
+  await requireAppleSimUtils();
   const owned = options.deviceId === undefined;
   const udid = options.deviceId ?? (await createSimulator());
   const stop = async () => {
@@ -168,6 +188,14 @@ export async function startIosTarget(
           "grant",
           "camera",
           IOS_APP_ID,
+        ]);
+        await runCommand("applesimutils", [
+          "--byId",
+          udid,
+          "--bundle",
+          IOS_APP_ID,
+          "--setPermissions",
+          "notifications=YES",
         ]);
       },
       launchApp: async () => {

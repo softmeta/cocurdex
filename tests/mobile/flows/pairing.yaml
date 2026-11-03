@@ -64,10 +64,18 @@ appId: dev.cocurdex.mobile
       - tapOn:
           text: ${SYSTEM_CONTINUE}
           optional: true
-      - tapOn: ${PAIR_ACTION}
+      - runFlow:
+          when:
+            visible: ${PAIR_ACTION}
+          commands:
+            - tapOn: ${PAIR_ACTION}
       - extendedWaitUntil:
-          visible: ${WORKSPACE_NAME}
-          timeout: 15000
+          notVisible:
+            id: "pairing-link"
+          timeout: 30000
+- extendedWaitUntil:
+    visible: ${WORKSPACE_NAME}
+    timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}
 - takeScreenshot: sessions
 - retry:

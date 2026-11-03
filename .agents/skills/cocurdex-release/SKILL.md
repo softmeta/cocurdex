@@ -85,8 +85,18 @@ first and refuses a tag that already exists.
 1. Run `status` and agree on what to release with the user.
 2. Make sure everything to ship is merged and the latest `main` CI run is green
    (`gh run list --workflow=ci.yml --branch main --limit 1`).
-3. Run the command with `--dry-run`, check the tag and commit, then run it for real.
-4. Verify:
+3. When the release carries changes under `apps/mobile/` or the packages it uses, run the iOS
+   flows on this Apple Silicon Mac from a checkout of the commit to tag:
+
+   ```bash
+   pnpm --filter @cocurdex/mobile-e2e flows -- --platform ios --build
+   ```
+
+   CI runs only the Android flows, so this is the release's iOS coverage. A failure blocks the
+   tag: fix it on `main` first. The runner needs `applesimutils` (`brew tap wix/brew && brew
+   install applesimutils`) to grant notification permission.
+4. Run the command with `--dry-run`, check the tag and commit, then run it for real.
+5. Verify:
 
    ```bash
    gh run list --workflow=release.yml --limit 1
