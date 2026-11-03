@@ -512,7 +512,7 @@ jobs:
           out="${RUNNER_TEMP}/mobile-tests/host-memory.log"
           mkdir -p "$(dirname "${out}")"
           sysctl -n hw.memsize hw.ncpu > "${out}"
-          nohup bash -c 'while true; do date -u +%H:%M:%S; memory_pressure -Q | tail -n 1; sysctl -n vm.swapusage; ps -axm -o rss=,comm= | head -n 8; sleep 10; done' >> "${out}" 2>&1 &
+          nohup bash -c 'while true; do date -u +%H:%M:%S; sysctl -n vm.loadavg; memory_pressure -Q | tail -n 1; vm_stat | grep -E "compressor|Compressions|Decompressions|Pageins"; ps -axr -o pid=,ppid=,pri=,nice=,%cpu=,rss=,state=,comm= | head -n 8; ps -ax -o pid=,ppid=,pri=,nice=,%cpu=,rss=,state=,comm= | grep -E "[n]ode|[j]ava"; sleep 5; done' >> "${out}" 2>&1 &
       - name: Run mobile flows
         env:
           ALL_RUNS: ${{ github.event_name == 'push' }}
