@@ -411,6 +411,7 @@ export interface ProviderModelRecord {
   serviceTiers?: CodexServiceTierOption[];
   supportsFastMode?: boolean;
   isDefault?: boolean;
+  overridden?: boolean;
   createdAt: string;
   updatedAt: string;
 }

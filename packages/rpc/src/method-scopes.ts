@@ -242,6 +242,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "provider.config.delete": "credentials",
   "provider.model.save": "credentials",
   "provider.model.delete": "credentials",
+  "provider.model.reset": "credentials",
   "provider.default.set": "credentials",
   "provider.titleModel.set": "credentials",
   "provider.auth.logout": "credentials",

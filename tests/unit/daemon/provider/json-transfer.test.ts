@@ -26,6 +26,7 @@ function createState(seed: {
     models,
     getProviderConfig: vi.fn(async (id: string) => providers.get(id) ?? null),
     listProviderConfigs: vi.fn(async () => [...providers.values()]),
+    listProviderModelOverrides: async () => [],
     listProviderModels: vi.fn(async (providerId?: string) =>
       [...models.values()].filter(
         (model) => !providerId || model.providerId === providerId,

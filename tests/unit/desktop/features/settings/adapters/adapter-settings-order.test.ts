@@ -1,6 +1,9 @@
 import type { AgentDescriptor } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import { sortAdaptersForSettings } from "@/features/settings/adapters/adapter-settings-order";
+import {
+  sortAdaptersForSettings,
+  splitAdaptersForSettings,
+} from "@/features/settings/adapters/adapter-settings-order";
 
 function descriptor(
   patch: Partial<AgentDescriptor> & Pick<AgentDescriptor, "id">,
@@ -86,5 +89,46 @@ describe("sortAdaptersForSettings", () => {
     expect(
       sortAdaptersForSettings([grok, codex]).map((agent) => agent.id),
     ).toEqual(["acp:grok-build", "codex"]);
+  });
+});
+
+describe("splitAdaptersForSettings", () => {
+  it("moves only uninstalled adapters into the collapsed group", () => {
+    const missingOpencode = descriptor({
+      id: "opencode",
+      availability: "missing",
+      installation: { executableName: "opencode", executablePath: null },
+    });
+    const failingCodex = descriptor({
+      id: "codex",
+      availability: "error",
+      installation: {
+        executableName: "codex",
+        executablePath: null,
+        error: "lookup failed",
+      },
+    });
+    const outdatedClaude = descriptor({
+      id: "claude-agent",
+      installation: {
+        executableName: "claude",
+        executablePath: "/usr/bin/claude",
+        version: "1.0.0",
+      },
+    });
+
+    const { installed, missing } = splitAdaptersForSettings([
+      missingOpencode,
+      descriptor({ id: "pi" }),
+      failingCodex,
+      outdatedClaude,
+    ]);
+
+    expect(installed.map((agent) => agent.id)).toEqual([
+      "codex",
+      "claude-agent",
+      "pi",
+    ]);
+    expect(missing.map((agent) => agent.id)).toEqual(["opencode"]);
   });
 });

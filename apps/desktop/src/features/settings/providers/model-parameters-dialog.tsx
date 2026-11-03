@@ -3,7 +3,7 @@ import type {
   ProviderModelCapability,
   ProviderModelRecord,
 } from "@cocurdex/shared";
-import { ChevronRight, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ChevronRight, SlidersHorizontal } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -26,7 +26,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui";
-import { cn, desktopApi } from "@/lib";
+import { cn } from "@/lib";
+import { ModelParametersManage } from "./model-parameters-manage";
 import { ModelRuntimeSelect } from "./model-runtime-select";
 
 const fieldClass =
@@ -114,14 +115,14 @@ function FieldCaption({ children }: { children: ReactNode }) {
 
 interface ModelParametersDialogProps {
   model: ProviderModelRecord;
-  readOnly?: boolean;
+  builtIn?: boolean;
   onReload(): Promise<void>;
   onSaveModel(model: ProviderModelRecord): Promise<void>;
 }
 
 export function ModelParametersDialog({
   model,
-  readOnly = false,
+  builtIn = false,
   onReload,
   onSaveModel,
 }: ModelParametersDialogProps) {
@@ -146,7 +147,7 @@ export function ModelParametersDialog({
         {isOpen ? (
           <ModelParametersForm
             model={model}
-            readOnly={readOnly}
+            builtIn={builtIn}
             onClose={() => setIsOpen(false)}
             onReload={onReload}
             onSaveModel={onSaveModel}
@@ -159,13 +160,13 @@ export function ModelParametersDialog({
 
 function ModelParametersForm({
   model,
-  readOnly,
+  builtIn,
   onClose,
   onReload,
   onSaveModel,
 }: {
   model: ProviderModelRecord;
-  readOnly: boolean;
+  builtIn: boolean;
   onClose(): void;
   onReload(): Promise<void>;
   onSaveModel(model: ProviderModelRecord): Promise<void>;
@@ -209,12 +210,6 @@ function ModelParametersForm({
     onClose();
   }
 
-  async function deleteModel() {
-    await desktopApi.deleteProviderModel(model.providerId, model.modelId);
-    await onReload();
-    onClose();
-  }
-
   return (
     <>
       <DialogHeader>
@@ -234,7 +229,6 @@ function ModelParametersForm({
             ariaLabel={t("providers.models.runtimeFor", {
               model: model.name,
             })}
-            disabled={readOnly}
             value={api}
             onChange={setApi}
           />
@@ -245,7 +239,6 @@ function ModelParametersForm({
             <FieldCaption>{t("providers.fields.contextLimit")}</FieldCaption>
             <Input
               className={fieldClass}
-              disabled={readOnly}
               inputMode="numeric"
               value={contextLimit}
               onChange={(event) => setContextLimit(event.target.value)}
@@ -255,7 +248,6 @@ function ModelParametersForm({
             <FieldCaption>{t("providers.fields.outputLimit")}</FieldCaption>
             <Input
               className={fieldClass}
-              disabled={readOnly}
               inputMode="numeric"
               value={outputLimit}
               onChange={(event) => setOutputLimit(event.target.value)}
@@ -268,7 +260,6 @@ function ModelParametersForm({
           <ToggleGroup
             aria-label={t("providers.fields.capabilities")}
             className="flex w-full flex-wrap"
-            disabled={readOnly}
             size="sm"
             spacing={1}
             type="multiple"
@@ -290,7 +281,6 @@ function ModelParametersForm({
           </Label>
           <Switch
             checked={reasoning}
-            disabled={readOnly}
             id={reasoningSwitchId}
             onCheckedChange={(checked) => setReasoning(checked === true)}
           />
@@ -306,7 +296,6 @@ function ModelParametersForm({
                 </Text>
                 <Input
                   className={fieldClass}
-                  disabled={readOnly}
                   inputMode="decimal"
                   value={costDraft[key]}
                   onChange={(event) =>
@@ -346,7 +335,6 @@ function ModelParametersForm({
               </span>
               <Textarea
                 className={textareaClass}
-                disabled={readOnly}
                 value={thinkingLevelMapJson}
                 onChange={(event) =>
                   setThinkingLevelMapJson(event.target.value)
@@ -362,33 +350,25 @@ function ModelParametersForm({
               </span>
               <Textarea
                 className={textareaClass}
-                disabled={readOnly}
                 value={compatJson}
                 onChange={(event) => setCompatJson(event.target.value)}
               />
             </Label>
           </CollapsibleContent>
         </Collapsible>
+        <ModelParametersManage
+          builtIn={builtIn}
+          model={model}
+          onClose={onClose}
+          onReload={onReload}
+        />
       </div>
 
-      {readOnly ? null : (
-        <DialogFooter>
-          <div className="flex w-full items-center justify-between gap-2">
-            <Button
-              className="text-muted-foreground hover:text-destructive"
-              type="button"
-              variant="ghost"
-              onClick={deleteModel}
-            >
-              <Trash2 className="size-4" />
-              {t("providers.actions.delete")}
-            </Button>
-            <Button type="button" variant="secondary" onClick={saveParameters}>
-              {t("providers.actions.save")}
-            </Button>
-          </div>
-        </DialogFooter>
-      )}
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={saveParameters}>
+          {t("providers.actions.save")}
+        </Button>
+      </DialogFooter>
     </>
   );
 }

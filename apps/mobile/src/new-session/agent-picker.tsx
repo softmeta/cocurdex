@@ -33,6 +33,7 @@ import {
   displayedChoices,
   displayedRuntime,
   draftWorkspaceId,
+  pickerAgents,
   workspaceChoices,
 } from "./new-session-draft";
 import { useNewSessionDefaults } from "./new-session-queries";
@@ -63,7 +64,8 @@ function Picker({ host }: { host: SavedHost }) {
   const defaults = useNewSessionDefaults(host.hostId, workspaceId, draft).data;
   const shown = displayedChoices(draft, defaults);
   const agentType = shown.agentType;
-  const agents = useAgents(host.hostId).data ?? [];
+  const agentList = useAgents(host.hostId);
+  const agents = agentList.data ?? [];
   const roles = useAgentRoles(host.hostId).data ?? [];
   const roleId = roles.some((role) => role.id === draft.roleId)
     ? draft.roleId
@@ -137,10 +139,11 @@ function Picker({ host }: { host: SavedHost }) {
       }),
     });
 
-  const openAgents = () =>
+  const openAgents = () => {
+    void agentList.mutate();
     open({
       title: t("newSession.agent"),
-      items: agents.map((entry) => ({
+      items: pickerAgents(agents, agentType).map((entry) => ({
         key: entry.id,
         testID: `new-session-agent-${entry.id}`,
         label: entry.label,
@@ -153,6 +156,7 @@ function Picker({ host }: { host: SavedHost }) {
             : undefined,
       })),
     });
+  };
 
   const openModels = () =>
     open({

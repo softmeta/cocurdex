@@ -1404,6 +1404,42 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds provider model overrides from version 35 and keeps provider data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-03T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE provider_model_overrides;
+      INSERT INTO provider_configs (id, name, base_url, created_at, updated_at)
+      VALUES ('xiaomi-token-plan-cn', 'Xiaomi', 'https://example.invalid', '${now}', '${now}');
+      INSERT INTO provider_models
+        (provider_id, model_id, name, api, enabled, source, created_at, updated_at)
+      VALUES ('xiaomi-token-plan-cn', 'mimo', 'MiMo', 'openai-completions', 0, 'api', '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Params', '${now}', '${now}');
+      PRAGMA user_version = 35;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    expect(tableShape(database, "provider_model_overrides")).toEqual(
+      tableShape(fresh, "provider_model_overrides"),
+    );
+    expect(
+      database.prepare("SELECT model_id, enabled FROM provider_models").all(),
+    ).toEqual([{ model_id: "mimo", enabled: 0 }]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Params" },
+    ]);
+  });
+
   it("keeps an up-to-date database that carries a stale version marker", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

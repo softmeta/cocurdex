@@ -65,6 +65,7 @@ export {
 } from "./permission-request-display";
 export * from "./provider-compatibility";
 export * from "./provider-json";
+export * from "./provider-model-override";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
 export * from "./push";
 export * from "./run-limits";

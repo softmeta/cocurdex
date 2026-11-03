@@ -20,6 +20,8 @@ import type {
   TitleModelSelection,
 } from "@cocurdex/shared";
 import {
+  applyProviderModelOverride,
+  diffProviderModelOverride,
   filterCompatibleProviderModels,
   getAcpAgentProfile,
   getCompatibleProviderApis,
@@ -32,7 +34,12 @@ import {
   exportConfiguredProviderJson,
   importProviderJson,
 } from "./json-transfer";
-import { fetchProviderModels, listConfiguredProviderModels } from "./models";
+import {
+  fetchProviderModels,
+  findBuiltInCatalogModel,
+  isBuiltInProviderConfig,
+  listConfiguredProviderModels,
+} from "./models";
 import {
   getTitleModelSetting,
   isValidTitleModelSelection,
@@ -97,8 +104,45 @@ export class DaemonProviderService {
   }
 
   async saveProviderModel(model: ProviderModelRecord) {
-    await this.state.saveProviderModel(model);
-    return model;
+    const catalog = await this.findCatalogModel(
+      model.providerId,
+      model.modelId,
+    );
+    if (!catalog) {
+      await this.state.saveProviderModel(model);
+      return model;
+    }
+    const override = diffProviderModelOverride(catalog, model);
+    await this.state.deleteProviderModel(model.providerId, model.modelId);
+    if (Object.keys(override).length === 0) {
+      await this.state.deleteProviderModelOverride(
+        model.providerId,
+        model.modelId,
+      );
+    } else {
+      await this.state.saveProviderModelOverride(
+        model.providerId,
+        model.modelId,
+        override,
+      );
+    }
+    return applyProviderModelOverride(catalog, override);
+  }
+
+  async resetProviderModel(providerId: string, modelId: string) {
+    const catalog = await this.findCatalogModel(providerId, modelId);
+    if (!catalog) {
+      throw new Error(`${modelId} is not a built-in model of ${providerId}`);
+    }
+    await this.state.deleteProviderModel(providerId, modelId);
+    await this.state.deleteProviderModelOverride(providerId, modelId);
+    return catalog;
+  }
+
+  private async findCatalogModel(providerId: string, modelId: string) {
+    const config = await this.state.getProviderConfig(providerId);
+    if (!config || !isBuiltInProviderConfig(config)) return null;
+    return findBuiltInCatalogModel(config, modelId);
   }
 
   async deleteProviderModel(providerId: string, modelId: string) {

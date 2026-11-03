@@ -1993,6 +1993,8 @@ export default interface Resources {
         ready: "Ready";
         updateAvailable: "Update available";
       };
+      notInstalledGroup_one: "Not installed ({{count}})";
+      notInstalledGroup_other: "Not installed ({{count}})";
       rateLimits: {
         authenticationRequired: "No usage found. Not signed in. Run claude auth login, then refresh.";
         failed: "Could not read usage: {{message}}";
@@ -2813,6 +2815,7 @@ export default interface Resources {
         delete: "Delete";
         newProvider: "New";
         refresh: "Refresh";
+        resetToDefault: "Reset to default";
         save: "Save";
       };
       auth: {
@@ -2945,11 +2948,14 @@ export default interface Resources {
           thinking: "Thinking map";
           yes: "Yes";
         };
+        deleteConfirmDescription: "Delete {{model}}? Agents can no longer use it through this provider.";
+        deleteConfirmTitle: "Delete model";
         empty: "No models configured for {{provider}}.";
         modelCount: "{{count}} models";
         modelCount_one: "{{count}} model";
         modelCount_other: "{{count}} models";
         noMatches: "No matching models";
+        overridden: "Edited";
         parametersFor: "{{model}} parameters";
         parametersTitle: "Model parameters";
         runtimeFor: "{{model}} runtime";

@@ -50,6 +50,7 @@
       "ready": "可用",
       "updateAvailable": "有更新"
     },
+    "notInstalledGroup_other": "未安装（{{count}}）",
     "rateLimits": {
       "authenticationRequired": "未查询到用量。尚未登录。请运行 claude auth login，然后刷新。",
       "failed": "无法读取用量：{{message}}",
@@ -866,6 +867,7 @@
       "delete": "删除",
       "newProvider": "新建",
       "refresh": "刷新",
+      "resetToDefault": "恢复默认",
       "save": "保存"
     },
     "auth": {
@@ -997,10 +999,13 @@
         "thinking": "思考映射",
         "yes": "是"
       },
+      "deleteConfirmDescription": "删除 {{model}}？之后 agent 将无法通过此服务商使用该模型。",
+      "deleteConfirmTitle": "删除模型",
       "empty": "{{provider}} 尚未配置模型。",
       "modelCount": "{{count}} 个模型",
       "modelCount_other": "{{count}} 个模型",
       "noMatches": "没有匹配的模型",
+      "overridden": "已修改",
       "parametersFor": "设置 {{model}} 参数",
       "parametersTitle": "模型参数",
       "runtimeFor": "{{model}} 运行时",
