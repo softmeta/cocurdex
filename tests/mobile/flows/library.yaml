@@ -26,7 +26,7 @@ appId: dev.cocurdex.mobile
     when:
       platform: iOS
     commands:
-      - tapOn: ${TAB_ISSUES}
+      - tapOn: "${TAB_ISSUES}|${SYSTEM_BACK}"
 - runFlow:
     when:
       platform: Android
@@ -69,7 +69,7 @@ appId: dev.cocurdex.mobile
     when:
       platform: iOS
     commands:
-      - tapOn: ${TAB_ISSUES}
+      - tapOn: "${TAB_ISSUES}|${SYSTEM_BACK}"
 - runFlow:
     when:
       platform: Android
@@ -151,7 +151,7 @@ appId: dev.cocurdex.mobile
     when:
       platform: iOS
     commands:
-      - tapOn: ${TAB_NOTES}
+      - tapOn: "${TAB_NOTES}|${SYSTEM_BACK}"
 - runFlow:
     when:
       platform: Android
@@ -169,7 +169,7 @@ appId: dev.cocurdex.mobile
     when:
       platform: iOS
     commands:
-      - tapOn: ${TAB_NOTES}
+      - tapOn: "${TAB_NOTES}|${SYSTEM_BACK}"
 - runFlow:
     when:
       platform: Android
@@ -197,7 +197,7 @@ appId: dev.cocurdex.mobile
     when:
       platform: iOS
     commands:
-      - tapOn: ${TAB_NOTES}
+      - tapOn: "${TAB_NOTES}|${SYSTEM_BACK}"
 - runFlow:
     when:
       platform: Android
