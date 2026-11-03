@@ -546,6 +546,7 @@ export const offlineApi: DesktopApi = {
     query: input.query,
     items: [],
     truncated: false,
+    error: "Memory is unavailable outside the desktop app",
   }),
   showMemory: async () => null,
   rememberMemory: async () => ({

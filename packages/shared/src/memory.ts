@@ -8,6 +8,28 @@ export const RSRS_SITE_URL = "https://rsrs.rs";
 export const RSRS_REPO_URL = "https://github.com/risense-ai/respire-cli";
 export const RSRS_DASHBOARD_URL = "https://dash.rsrs.rs";
 
+export const MEMORY_INSTALL_HINT =
+  "Install rsrs from Settings > Memory, or run: cocurdex memory install.";
+export const MEMORY_ENABLE_HINT =
+  "Turn memory on in Settings > Memory, or run: cocurdex memory on.";
+export const MEMORY_IDENTITY_HINT =
+  "Register or sign in from Settings > Memory > Multi-device sync, or run: cocurdex memory cloud register --user <name> (use cloud signin for an existing account).";
+
+export const MEMORY_MISSING_EXECUTABLE_MESSAGE = `rsrs is not installed. ${MEMORY_INSTALL_HINT}`;
+export const MEMORY_DISABLED_MESSAGE = `Memory is off. ${MEMORY_ENABLE_HINT}`;
+
+const MISSING_IDENTITY_PATTERN =
+  /no local session|no session|not (?:logged|signed) in/i;
+
+export function isMissingMemoryIdentity(message: string | null) {
+  return MISSING_IDENTITY_PATTERN.test(message ?? "");
+}
+
+export function withMemoryIdentityHint(message: string | null) {
+  const text = message?.trim() ?? "";
+  return text ? `${text} ${MEMORY_IDENTITY_HINT}` : MEMORY_IDENTITY_HINT;
+}
+
 export type MemoryImportance = "important" | "trivial";
 
 export interface MemoryAgentSettings {
@@ -233,6 +255,7 @@ export interface MemoryRecallResult {
   query: string;
   items: MemoryRecallItem[];
   truncated: boolean;
+  error: string | null;
 }
 
 export interface MemoryEntry {

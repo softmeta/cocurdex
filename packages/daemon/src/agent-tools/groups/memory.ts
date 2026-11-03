@@ -45,7 +45,7 @@ export function registerMemoryTools(
       group: "memory",
       name: "recall",
       description:
-        "Search the user's long-term memory through Respire (rsrs). Returns compact ids and titles; use memory_show to read a full entry before relying on it. Memory is shared across every project, so query with concrete keywords and the name of the thing you are looking for, not pronouns. Empty results are normal; try different terms before concluding there is no memory.",
+        "Search the user's long-term memory through Respire (rsrs). Returns compact ids and titles; use memory_show to read a full entry before relying on it. Memory is shared across every project, so query with concrete keywords and the name of the thing you are looking for, not pronouns. Empty results are normal; try different terms before concluding there is no memory. A non-null error is a setup problem, not an empty store: relay its fix to the user instead of retrying.",
       inputSchema: {
         type: "object",
         properties: {
@@ -96,7 +96,7 @@ export function registerMemoryTools(
       group: "memory",
       name: "remember",
       description:
-        "Store one reusable fact, decision, lesson, or procedure in long-term memory. Recall first and prefer update/merge/attach over a new entry. important = a future session must reuse it; trivial = a diary line. Never store passwords, API tokens, private keys, or other secrets. If the result reports candidates, read them and choose merge/attach instead of forcing a new entry.",
+        "Store one reusable fact, decision, lesson, or procedure in long-term memory. Recall first and prefer update/merge/attach over a new entry. important = a future session must reuse it; trivial = a diary line. Never store passwords, API tokens, private keys, or other secrets. If the result reports candidates, read them and choose merge/attach instead of forcing a new entry. If the action is skipped, its message names the fix (install rsrs, turn memory on, or register an rsrs account); relay it to the user instead of retrying.",
       inputSchema: {
         type: "object",
         properties: {

@@ -60,7 +60,11 @@ function fakeMessages(): MessageRecord[] {
 async function createFakeRsrs(
   directory: string,
   logPath: string,
-  options: { failRecall?: boolean; candidateOnRemember?: boolean } = {},
+  options: {
+    failRecall?: boolean;
+    candidateOnRemember?: boolean;
+    identityMissing?: boolean;
+  } = {},
 ) {
   const scriptPath = path.join(directory, "fake-rsrs.mjs");
   const script = `import { appendFileSync } from "node:fs";
@@ -98,7 +102,9 @@ if (command === "--version") {
 } else if (command === "show") {
   send({ command: "show", status: "ok", details: { entry: { id: args[1], title: "Recall title", content: "Recall body", importance: "important", tags: [] } } });
 } else if (command === "remember") {
-  if (args.includes("--parent")) {
+  if (${options.identityMissing === true}) {
+    send({ command: "remember", status: "ok", summary: { action: "skipped", reason: "no local session: rsrs keygen --pass <password> to start fully local (no cloud); or rsrs register / login for a cloud identity" } });
+  } else if (args.includes("--parent")) {
     send({ command: "remember", status: "ok", summary: { action: "created", id: "attached-memory" } });
   } else if (${options.candidateOnRemember === true}) {
     send({ command: "remember", status: "ok", summary: { action: "candidates" }, details: [{ id: "old-memory", title: "Old memory", score: 0.9 }] });
@@ -151,6 +157,7 @@ async function createService(
   options: {
     failRecall?: boolean;
     candidateOnRemember?: boolean;
+    identityMissing?: boolean;
     platform?: { os: string; arch: string };
   } = {},
 ) {
@@ -280,11 +287,24 @@ describe("MemoryService with a fake rsrs CLI", () => {
     await service.setSettings({ ...settings, enabled: false });
     expect(await service.recall({ query: "cocurdex" })).toMatchObject({
       items: [],
+      error: expect.stringContaining("cocurdex memory on"),
     });
     expect(await service.captureTurn("chat-1", "a1")).toMatchObject({
       saved: false,
       reason: "disabled",
     });
+  });
+
+  it("tells the agent how to register when rsrs has no identity", async () => {
+    const { service } = await createService({ identityMissing: true });
+    await service.getStatus();
+    const result = await service.remember({
+      content: "【前因】a\n【行为】b\n【后果】c",
+      title: "A title",
+    });
+    expect(result.action).toBe("skipped");
+    expect(result.message).toContain("no local session");
+    expect(result.message).toContain("cocurdex memory cloud register");
   });
 
   it("nudges the next turn when the store gate was missed", async () => {
