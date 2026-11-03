@@ -107,6 +107,10 @@ export async function handleDaemonRequest(
       return service.installAcpRegistryCommand(request.params);
     case "acpRegistry.uninstall":
       return service.uninstallAcpRegistryAgent(request.params.agentId);
+    case "acpRegistry.updates":
+      return service.acpRegistry.listUpdates(request.params);
+    case "acpRegistry.update":
+      return service.updateAcpRegistryAgent(request.params.agentId);
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":

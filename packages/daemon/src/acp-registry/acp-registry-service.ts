@@ -6,9 +6,11 @@ import {
 } from "@cocurdex/agent-core";
 import {
   type AcpRegistryAgentId,
+  type AcpRegistryAgentUpdate,
   type AcpRegistryCatalogAgent,
   type AcpRegistryInstalledAgent,
   type AcpRegistryInstallPlan,
+  compareAgentVersions,
   isAcpRegistryAgentId,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
@@ -279,6 +281,52 @@ export class AcpRegistryService {
       await this.findInstallableEntry(registryId),
       this.userDataPath,
       this.prefetch,
+    );
+  }
+
+  async listUpdates(
+    options: { forceRefresh?: boolean } = {},
+  ): Promise<AcpRegistryAgentUpdate[]> {
+    await this.ready;
+    const latest = new Map(
+      (await this.entries(options.forceRefresh ?? false)).map((entry) => [
+        entry.agent.registryId,
+        entry.agent.version,
+      ]),
+    );
+    return this.installed.flatMap((agent) => {
+      const latestVersion = latest.get(agent.registryId);
+      const updatable =
+        agent.distribution !== "local" &&
+        agent.version !== "" &&
+        latestVersion !== undefined &&
+        compareAgentVersions(latestVersion, agent.version) > 0;
+      return updatable && latestVersion
+        ? [
+            {
+              agentId: agent.agentId,
+              registryId: agent.registryId,
+              installedVersion: agent.version,
+              latestVersion,
+            },
+          ]
+        : [];
+    });
+  }
+
+  async update(agentId: AcpRegistryAgentId) {
+    await this.ready;
+    const agent = this.installed.find((item) => item.agentId === agentId);
+    if (!agent) {
+      throw new Error(`ACP Registry agent ${agentId} is not installed`);
+    }
+    if (agent.distribution === "local") {
+      throw new Error(
+        `${agent.name} uses a command installed outside Cocurdex; update it with its own installer`,
+      );
+    }
+    return this.save(agent.registryId, () =>
+      this.installFromCatalog(agent.registryId),
     );
   }
 

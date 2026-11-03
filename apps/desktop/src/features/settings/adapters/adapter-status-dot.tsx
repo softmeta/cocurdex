@@ -2,7 +2,10 @@ import { useTranslation } from "react-i18next";
 import type { AdapterStatusKind } from "@/features/sessions";
 import { cn } from "@/lib";
 
-export type AdapterDisplayStatus = AdapterStatusKind | "needs-login";
+export type AdapterDisplayStatus =
+  | AdapterStatusKind
+  | "needs-login"
+  | "update-available";
 
 export function useAdapterStatusLabel(kind: AdapterDisplayStatus) {
   const { t } = useTranslation("settings");
@@ -21,6 +24,8 @@ export function useAdapterStatusLabel(kind: AdapterDisplayStatus) {
       return t("adapters.kind.needsLogin");
     case "ready":
       return t("adapters.kind.ready");
+    case "update-available":
+      return t("adapters.kind.updateAvailable");
   }
 }
 
@@ -35,6 +40,7 @@ export function AdapterStatusDot({ kind }: { kind: AdapterDisplayStatus }) {
         (kind === "detecting" || kind === "missing") &&
           "bg-muted-foreground/40",
         kind === "error" && "bg-destructive",
+        kind === "update-available" && "bg-status-attention",
       )}
     />
   );

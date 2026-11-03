@@ -126,6 +126,12 @@ export const providerPayloadSchemas = {
   "acpRegistry.uninstall": exact<Payload<"acpRegistry.uninstall">>()(
     z.object({ agentId: acpRegistryAgentIdSchema }),
   ),
+  "acpRegistry.updates": exact<Payload<"acpRegistry.updates">>()(
+    z.object({ forceRefresh: z.boolean().optional() }),
+  ),
+  "acpRegistry.update": exact<Payload<"acpRegistry.update">>()(
+    z.object({ agentId: acpRegistryAgentIdSchema }),
+  ),
   "provider.apiKey.set": exact<Payload<"provider.apiKey.set">>()(
     z.object({
       providerId: providerIdSchema,

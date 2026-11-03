@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
@@ -61,12 +61,16 @@ function memorySettings() {
   };
 }
 
-function binaryEntry(archive: string, sha256: string | null): AcpRegistryEntry {
+function binaryEntry(
+  archive: string,
+  sha256: string | null,
+  version = "1.0.0",
+): AcpRegistryEntry {
   return {
     agent: {
       registryId: "demo",
       name: "Demo",
-      version: "1.0.0",
+      version,
       description: null,
       repository: null,
       website: null,
@@ -351,6 +355,69 @@ describe("AcpRegistryService", () => {
       env: { DEMO_MODE: "1" },
     });
     expect(service.listInstalled()).toHaveLength(1);
+  });
+
+  it("updates an installed binary to the newer catalog version", async () => {
+    const settings = memorySettings();
+    let catalogVersion = "1.0.0";
+    const service = new AcpRegistryService(
+      settings,
+      userDataPath,
+      async () => [binaryEntry(archiveUrl, archiveSha, catalogVersion)],
+      noLocalCli,
+    );
+    await service.install("demo");
+    await service.setAuthMethod("acp:demo", "oauth");
+    expect(await service.listUpdates()).toEqual([]);
+
+    catalogVersion = "1.1.0";
+    expect(await service.listUpdates({ forceRefresh: true })).toEqual([
+      {
+        agentId: "acp:demo",
+        registryId: "demo",
+        installedVersion: "1.0.0",
+        latestVersion: "1.1.0",
+      },
+    ]);
+
+    const updated = await service.update("acp:demo");
+
+    expect(updated).toMatchObject({
+      version: "1.1.0",
+      authMethodId: "oauth",
+      command: path.join(
+        userDataPath,
+        "acp-agents",
+        "demo",
+        "1.1.0",
+        "bin",
+        "demo",
+      ),
+    });
+    expect(
+      await readdir(path.join(userDataPath, "acp-agents", "demo")),
+    ).toEqual(["1.1.0"]);
+    expect(await service.listUpdates()).toEqual([]);
+  });
+
+  it("never offers an update for a command installed outside Cocurdex", async () => {
+    const newer = binaryEntry(archiveUrl, archiveSha, "9.0.0");
+    const grokEntry = {
+      ...newer,
+      agent: { ...newer.agent, registryId: "grok-build" },
+    };
+    const service = new AcpRegistryService(
+      memorySettings(),
+      userDataPath,
+      async () => [grokEntry],
+      localGrok,
+    );
+    await service.ready;
+
+    expect(await service.listUpdates()).toEqual([]);
+    await expect(service.update("acp:grok-build")).rejects.toThrow(
+      "installed outside Cocurdex",
+    );
   });
 
   it("ignores corrupt persisted state", async () => {

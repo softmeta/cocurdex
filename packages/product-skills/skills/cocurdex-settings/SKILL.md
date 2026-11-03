@@ -65,6 +65,7 @@ ACP agents installed from the registry (`acp:<id>`, such as Antigravity, Cursor,
 - Inspect: `cocurdex agent auth <agent> [--json]` lists the login methods the agent offers (`*` marks the one in use), whether it supports logging out, and how many of its sessions are running. ACP does not report which account is signed in; never guess one.
 - Switch or repeat a login: `cocurdex agent login <agent> [--method <method-id>]` authenticates with the chosen method, usually by opening the browser for the user to approve, and remembers it once it succeeds; a failed login keeps the previous method. Switching to a different method stops that agent's running sessions first. `cocurdex agent login cancel <agent>` abandons a login that is waiting on the browser.
 - `cocurdex agent logout <agent>` stops that agent's running sessions and signs it out; it fails for agents without logout support.
+- Updates: `cocurdex agent updates [--refresh] [--json]` lists registry agents whose installed version is behind the registry (`--refresh` skips the cached catalog). `cocurdex agent update <agent> [--json]` installs the newest registry version in place, keeps the chosen login method, and removes the old version; agents installed as an outside command cannot be updated this way. New sessions use the new version; ask before updating while the agent has running sessions.
 - These are the user's steps: they stop sessions and may change which account the agent bills. Suggest the command and run it only when the user asks for it.
 
 ## MCP servers
