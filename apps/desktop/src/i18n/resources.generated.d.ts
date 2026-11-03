@@ -511,6 +511,15 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
+    webHostUnreachable: {
+      forget: "Forget this computer";
+      forgetFailed: "This browser couldn't remove the pairing. Allow site data and try again.";
+      offline: "{{name}} isn't connected to its relay. Open Cocurdex on that computer, then try again.";
+      retry: "Try again";
+      revoked: "{{name}} no longer accepts this browser. Forget it here, then pair again with a new link.";
+      title: "Can't reach your computer";
+      unreachable: "The connection to {{name}} closed before it was set up. Try again, or forget this computer and pair again with a new link.";
+    };
     webPair: {
       action: "Pair";
       description: "On your computer, turn on a relay in Cocurdex Settings › Devices, create a pairing code, and paste its link here.";
@@ -519,6 +528,7 @@ export default interface Resources {
         insecure: "This relay doesn't use HTTPS, so this page can't connect to it.";
         invalid: "This pairing link has expired, was already used, or is incomplete.";
         notRelay: "The browser connects only through a relay. Turn on a relay on your computer and create a new pairing code.";
+        offline: "The computer isn't connected to its relay. Open Cocurdex on it and try again.";
         rateLimited: "Too many attempts. Wait a minute and try again.";
         storage: "This browser can't store the pairing. Turn off private browsing or allow site data, then try again.";
         unreachable: "Can't reach the computer through its relay. Check that it is online.";

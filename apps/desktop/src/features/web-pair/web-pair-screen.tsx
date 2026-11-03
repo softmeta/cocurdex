@@ -29,6 +29,7 @@ export function WebPairScreen() {
   const failureMessages: Record<PairFailure, string> = {
     invalid: t("webPair.failure.invalid"),
     notRelay: t("webPair.failure.notRelay"),
+    offline: t("webPair.failure.offline"),
     insecure: t("webPair.failure.insecure"),
     rateLimited: t("webPair.failure.rateLimited"),
     unreachable: t("webPair.failure.unreachable"),

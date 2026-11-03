@@ -68,6 +68,28 @@ function readReply(value: unknown): RemoteChannelReply {
   throw new HostAccessError("unreachable", "The host sent a malformed reply");
 }
 
+const RELAY_HOST_OFFLINE = 4404;
+const RELAY_HOST_TIMEOUT = 4408;
+const RELAY_RATE_LIMITED = 4429;
+const RELAY_TOO_MANY_SESSIONS = 4430;
+
+function closedBeforeHandshake(code: number) {
+  switch (code) {
+    case RELAY_HOST_OFFLINE:
+      return new HostAccessError("offline", "The computer is offline");
+    case RELAY_HOST_TIMEOUT:
+      return new HostAccessError("offline", "The computer did not answer");
+    case RELAY_RATE_LIMITED:
+    case RELAY_TOO_MANY_SESSIONS:
+      return new HostAccessError("rateLimited", "Too many connections");
+    default:
+      return new HostAccessError(
+        "unreachable",
+        "The host closed the connection",
+      );
+  }
+}
+
 function rejection(reply: Extract<RemoteChannelReply, { ok: false }>) {
   return reply.reason === "rateLimited"
     ? new HostAccessError("rateLimited", "Too many attempts")
@@ -164,10 +186,8 @@ export function openSecureSocket(
         );
       }
     });
-    socket.addEventListener("close", () => {
-      fail(
-        new HostAccessError("unreachable", "The host closed the connection"),
-      );
+    socket.addEventListener("close", (event) => {
+      fail(closedBeforeHandshake(event.code));
       if (!channel) return;
       channel.close(new Error("Connection closed"));
       handlers.onClose();
