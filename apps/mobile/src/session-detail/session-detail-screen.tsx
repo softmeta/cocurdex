@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { hostConnection } from "@/connection";
-import { SessionConfigChips } from "@/session-config";
+import { SessionConfigChips, useNeedsExecuteToDrive } from "@/session-config";
 import { useViewedSession } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
 import { useHeaderOverlap, useTransitionSettled } from "@/ui";
@@ -114,6 +114,7 @@ export function SessionDetailScreen({
     : null;
   const connection = hostConnection(host.hostId);
   const canInteract = host.scopes.includes("interact");
+  const needsExecute = useNeedsExecuteToDrive(host, sessionId);
   const canApprove = host.scopes.includes("approvals");
   const canFork = host.scopes.includes("execute");
   const canReadFiles = host.scopes.includes("files.read");
@@ -263,6 +264,14 @@ export function SessionDetailScreen({
               }
             />
           )}
+          {canInteract && needsExecute ? (
+            <Text
+              testID="session-needs-execute"
+              style={[styles.error, { color: colors.mutedForeground }]}
+            >
+              {t("detail.needsExecute")}
+            </Text>
+          ) : null}
           {actionFailed ? (
             <Text
               accessibilityRole="alert"
@@ -281,7 +290,12 @@ export function SessionDetailScreen({
             ) : (
               <Composer
                 running={running}
-                canSend={canInteract && detail.loaded && !detail.missing}
+                canSend={
+                  canInteract &&
+                  !needsExecute &&
+                  detail.loaded &&
+                  !detail.missing
+                }
                 onSend={send}
                 onStop={stop}
                 onPickImages={pickImages}

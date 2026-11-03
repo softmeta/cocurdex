@@ -67,6 +67,7 @@
     "jumpToOldest": "Jump to first message",
     "missing": "This session is no longer on the computer.",
     "monitoring": "Working in the background",
+    "needsExecute": "This agent runs commands without asking for approval. Messaging it needs the “Start tasks” permission for this device. Grant it on the computer.",
     "pendingApproval": "Waiting for your approval",
     "planReady": "Plan ready for review",
     "promptNumber": "Prompt {{number}}",

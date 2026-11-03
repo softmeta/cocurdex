@@ -56,6 +56,7 @@
     "jumpToOldest": "跳到第一条消息",
     "missing": "这个会话已经不在电脑上了。",
     "monitoring": "正在后台运行",
+    "needsExecute": "这个 agent 执行命令不需要批准，给它发消息需要此设备拥有「启动任务」权限，请在电脑上授予。",
     "pendingApproval": "等你批准",
     "planReady": "计划已写好，等你决定",
     "promptNumber": "第 {{number}} 次提问",

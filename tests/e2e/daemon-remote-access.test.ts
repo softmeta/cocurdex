@@ -503,7 +503,7 @@ describe("remote host access", () => {
     }
   });
 
-  it("lets a device that may execute start a session the daemon configures", async () => {
+  it("lets only a device that may execute start or drive an agent that runs without approval", async () => {
     const stub = await startStubLlmServer();
     const daemon = await spawnDaemon();
     daemons.push(daemon);
@@ -570,6 +570,31 @@ describe("remote host access", () => {
         providerSnapshot: { providerId: "e2e-stub", headersJson: null },
       });
       expect(JSON.stringify(session)).not.toContain("e2e-key");
+
+      const viewerClient = remoteClient(viewer);
+      await expect(
+        viewerClient.request("session.send", {
+          sessionId: session.id,
+          messageId: crypto.randomUUID(),
+          content: "Run rm -rf in the cart module",
+        }),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "This device is missing the execute scope",
+      });
+      await expect(
+        viewerClient.request("session.setMode", {
+          sessionId: session.id,
+          modeId: "bypassPermissions",
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        viewerClient.request("session.setMode", {
+          sessionId: session.id,
+          modeId: "plan",
+        }),
+      ).rejects.not.toMatchObject({ code: "FORBIDDEN" });
+      expect(stub.requests).toHaveLength(0);
 
       stub.plan = { kind: "stream", chunks: ["On it"] };
       const sent = stub.nextRequest();

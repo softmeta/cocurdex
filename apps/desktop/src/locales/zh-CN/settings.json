@@ -484,7 +484,7 @@
         "title": "管理设备"
       },
       "execute": {
-        "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器。",
+        "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器，并驱动无需批准即可执行的 agent。",
         "title": "启动任务"
       },
       "filesRead": {

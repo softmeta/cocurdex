@@ -2445,7 +2445,7 @@ export default interface Resources {
           title: "Manage devices";
         };
         execute: {
-          description: "Start sessions, teams, script runs, and workflows, and change or run MCP servers.";
+          description: "Start sessions, teams, script runs, and workflows, change or run MCP servers, and drive agents that run without approval.";
           title: "Start work";
         };
         filesRead: {
