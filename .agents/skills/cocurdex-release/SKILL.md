@@ -1,13 +1,14 @@
 ---
 name: cocurdex-release
-description: Decide what Cocurdex needs to release and ship it end to end — the app (desktop, iOS, Android), the relay, or the push gateway. Use when the user asks what needs releasing, whether to release, or says 发版 / 发测试版 / 发正式版 / 出个 beta / 要不要发版 / 哪些要发 / cut a release / ship a release / release the desktop app / release the relay.
+description: Decide what Cocurdex needs to release and ship it end to end — the app (desktop, iOS, Android), the relay, or the push gateway. Use when the user asks what needs releasing, whether to release, or says 发版 / 发测试版 / 发正式版 / 转正 / 出个 beta / 要不要发版 / 哪些要发 / cut a release / ship a release / promote the beta / release the desktop app / release the relay.
 ---
 
 # Cocurdex release
 
 ## Release lines
 
-Each line ships from its own tag; pushing the tag is the only thing that starts its build.
+Each line ships from its own tag; pushing the tag is the only thing that starts its build. A tag
+names an `origin/main` commit, so a release never needs its own PR or branch.
 
 | line | tag | workflow | ships |
 | --- | --- | --- | --- |
@@ -15,9 +16,12 @@ Each line ships from its own tag; pushing the tag is the only thing that starts 
 | relay | `relay-v<version>` | `relay-release.yml` | relay binaries, with the desktop renderer built in as the web client |
 | push | `push-v<version>` | `push-release.yml` | push gateway |
 
-The rest of this skill covers the app line. The relay and push lines have no version file: the
-tag is the version. Tag an `origin/main` commit with `git tag relay-vX.Y.Z <commit>` and push it,
-then deploy the relay as the deploy script prints (`deploy-cocurdex-relay deploy relay-vX.Y.Z`).
+The tag is the version. The Release workflow stamps it into `apps/desktop/package.json` before each
+build (`release.mjs stamp`); the `version` committed there is a dev placeholder, so never bump it.
+
+The relay and push lines tag an `origin/main` commit by hand with `git tag relay-vX.Y.Z <commit>`
+and push it; once its workflow publishes, deploy the relay on the host with
+`deploy-cocurdex-relay deploy relay-vX.Y.Z`.
 
 ## Decide first
 
@@ -33,8 +37,8 @@ docs, and Markdown, and flags risk signals: `schema migration`, `mobile native`,
 
 - **Release** when a pending change fixes a bug users hit, or changes behavior users see.
 - **Hold** when every pending change is internal (refactors, tooling, unreleased features behind a flag).
-- **Beta, not stable** for the app line when a change carries a `schema migration`, a `mobile native`
-  change, or a broad behavior change; it soaks on the `test` channel before `bump release`.
+- **Beta first** for the app line when a change carries a `schema migration`, a `mobile native`
+  change, or a broad behavior change. A low-risk batch of fixes may go straight to stable.
 - **Relay after the app.** The relay's web client calls the daemon of the user's own app. Release the
   relay once the matching app reaches stable, so the web client never calls RPC methods the
   installed daemon lacks.
@@ -42,151 +46,62 @@ docs, and Markdown, and flags risk signals: `schema migration`, `mobile native`,
 Present the recommendation with the PR list, and release only after the user agrees, unless they
 already asked for a specific release.
 
-## Not every change is a release
+## Channels
 
-Most changes — skills, docs, tooling, ordinary fixes — still ship through a PR, but they must not
-bump the version or push a tag: that would publish a build nobody asked for.
-
-| | routine change | release |
+| | beta, e.g. `v0.1.42-beta.10` | stable, e.g. `v0.1.42` |
 | --- | --- | --- |
-| bump `apps/desktop/package.json` | no | yes |
-| push the branch, open the PR | yes | yes |
-| clear review threads, wait for green checks | yes | yes |
-| merge (`gh pr merge`, through the merge queue) | yes | yes |
-| push the `v<version>` tag | no | yes |
-
-The gate before merging is identical either way. Cut a release only when the user asks for one
-(发版 / 发测试版 / 发正式版 / 出个 beta) or when the change has to reach users through the updater.
-
-## Invariants
-
-- The version lives in exactly one place: `apps/desktop/package.json`.
-- Never commit or push on `main`. Work on a branch; reuse the current one if it is not `main`.
-- The bump is its own commit, `chore(desktop): bump version to <version>`, made on the branch and merged through the PR — not on `main` after merge.
-- The tag is `v<version>`, must equal `apps/desktop/package.json`, and the tagged commit must be an ancestor of `origin/main`.
-- Tags are lightweight (`git tag <name> <commit>`), matching every existing release tag.
-- Merge through the merge queue (`gh pr merge`), which lands a merge commit. History is merge commits, and the tag goes on that merge commit.
-- Never bypass a required CI check. Fix the failure; do not weaken a test to make it pass.
-- Every review thread is resolved before the merge: fixed, or answered with a reason and then resolved.
-
-## Beta vs stable
-
-Both run the identical pipeline. The version suffix is the only difference, and it decides
-who receives the build — not just how it is labelled.
-
-| | beta, e.g. `0.1.42-beta.10` | stable, e.g. `0.1.42` |
-| --- | --- | --- |
-| `bump` kind | `bump beta` | `bump release` |
 | GitHub release | prerelease | full release |
 | macOS feed files | `latest-mac.yml` + `beta-mac.yml` | `latest-mac.yml` |
-| Who gets the update | apps on the `test` update channel | apps on the default `stable` channel |
+| desktop update reaches | apps on the `test` update channel | apps on the default `stable` channel |
+| mobile | new TestFlight and Play internal build | none built; promote the beta's build in App Store Connect and Play Console |
 
-The desktop app's channel setting lives in `app-update-channel.json`; `stable` is the default and
-refuses prereleases, so a beta only reaches users who switched to `test`. Promote a beta with
-`bump release` on the same line — never by editing or re-pointing a tag.
+The desktop channel setting lives in `app-update-channel.json`; `stable` refuses prereleases.
+
+Channels are versions, not branches. There is no long-lived beta or stable branch: work merges to
+`main`, a beta tags a `main` commit, and promotion tags that same commit again.
+
+## Commands
+
+```bash
+node scripts/release.mjs tag beta [patch|minor|major]   # next beta.N, or beta.1 of a new line
+node scripts/release.mjs promote                        # stable tag on the latest beta's commit
+node scripts/release.mjs tag stable [patch|minor|major] # new stable line without a beta
+```
+
+All accept `--dry-run`, which prints the tag and commit without pushing. Each fetches `origin`
+first and refuses a tag that already exists.
+
+- `tag beta` tags the `origin/main` tip. With an open beta line (`v0.1.42-beta.9`) it cuts
+  `v0.1.42-beta.10`; after a stable (`v0.1.42`) it opens `v0.1.43-beta.1`.
+- `promote` tags the latest beta's commit with its stable version, so stable ships exactly what beta
+  users ran; anything merged after that beta waits for the next line. The workflow rebuilds desktop
+  with the stable version, skips the mobile builds (store versions and build numbers would repeat
+  the beta's), and copies the beta's APKs to the stable release.
+- `tag stable` refuses while a beta line is open; promote it or cut another beta.
+- A fix for a beta is a new beta: merge it, then `tag beta`. It soaks again before promotion.
 
 ## Process
 
-### 1. Land the work
+1. Run `status` and agree on what to release with the user.
+2. Make sure everything to ship is merged and the latest `main` CI run is green
+   (`gh run list --workflow=ci.yml --branch main --limit 1`).
+3. Run the command with `--dry-run`, check the tag and commit, then run it for real.
+4. Verify:
 
-Commit any uncommitted changes in logical groups first (English, conventional commits).
+   ```bash
+   gh run list --workflow=release.yml --limit 1
+   gh run watch <run-id> --exit-status
+   gh release view v<version> --json isDraft,isPrerelease,assets
+   ```
 
-### 2. Bump
-
-```bash
-node scripts/release.mjs bump beta      # 0.1.42-beta.9 -> 0.1.42-beta.10
-node scripts/release.mjs bump release   # 0.1.42-beta.10 -> 0.1.42
-```
-
-Refuses on `main` and on a dirty tree. `--dry-run` prints the next version without writing or committing.
-
-### 3. Push and open the PR
-
-```bash
-git push origin <branch>
-gh pr create --base main --head <branch> --title "..." --body-file <file>
-```
-
-### 4. Clear review, wait for CI, merge
-
-Review comes before the merge. Read every thread, then either fix it or resolve it with a reason.
-A PR is not ready to merge while any thread is open.
-
-```bash
-gh api graphql -f query='
-query($owner:String!,$repo:String!,$pr:Int!){
-  repository(owner:$owner,name:$repo){
-    pullRequest(number:$pr){
-      reviewDecision
-      reviewThreads(first:100){nodes{id isResolved isOutdated path line
-        comments(first:20){nodes{databaseId author{login} body}}}}
-    }
-  }
-}' -F owner=<owner> -F repo=<repo> -F pr=<n>
-```
-
-For each unresolved thread:
-
-- **Fixable** → fix it, push, and resolve the thread once the fix is in.
-- **Not fixable or deliberately declined** → reply with the reason, then resolve it. Never resolve a
-  thread you have not answered.
-
-```bash
-gh api repos/<owner>/<repo>/pulls/<n>/comments/<commentId>/replies -f body="<reason>"
-gh api graphql -f query='
-mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<threadId>
-```
-
-`isOutdated: true` means the diff moved past the comment; check whether the fix already landed
-before resolving. Re-run the query until every thread reports `isResolved: true`.
-
-Then wait for CI and merge:
-
-```bash
-gh pr checks <n> --watch --interval 30
-gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision
-gh pr merge <n>
-gh pr view <n> --json state --jq .state   # repeat until MERGED; the queue reruns required checks
-```
-
-CI runs the full workspace suite (`pnpm test`), not just the packages you touched. Run the
-affected packages' tests locally before pushing, but expect the whole suite to be the gate.
-Merge only when every review thread is resolved and every required check is green.
-
-### 5. Tag
-
-```bash
-node scripts/release.mjs check     # clean tree, version on main, tag name free
-node scripts/release.mjs tag       # lightweight tag at the origin/main tip, then push
-```
-
-Pushing the tag triggers `.github/workflows/release.yml`.
-
-### 6. Verify
-
-```bash
-gh run list --workflow=release.yml --limit 1
-gh release view v<version> --json isDraft,isPrerelease,assets
-```
-
-The workflow builds macOS arm64/x64, Windows x64, and Linux x64, then publishes. Expect about
-11 minutes. Success is `isDraft: false` with the platform artifacts plus `latest*.yml` and
-`mac-update-*.json`. A version with a prerelease suffix publishes as a GitHub prerelease.
+   The workflow builds macOS arm64/x64, Windows x64, Linux x64, and, unless promoting, iOS and
+   Android, then publishes; expect about 15 minutes. Success is `isDraft: false` with the platform
+   artifacts, the APKs, `latest*.yml`, and `mac-update-*.json`. A beta publishes as a prerelease.
 
 ## Pitfalls
 
-- **Branch behind `main`.** GitHub reports `mergeStateStatus: BEHIND` when the branch lacks main's
-  merge commits. Updating the branch (through GitHub or `git merge origin/main`) creates a merge
-  commit on the branch; if you hold local unpushed commits, rebase them onto the updated remote
-  (`git rebase origin/<branch>`) before pushing.
-- **Tagging before the merge fails.** The `Validate release tag` job requires the tagged commit to
-  be an ancestor of `origin/main`, so a branch-tip tag is rejected.
-- **Version/tag mismatch fails.** `v<package.json version>` must match exactly, prerelease suffix
-  included.
-- **Never tag from a stale checkout.** `release.mjs` fetches `origin/main` and tags its tip; do not
-  tag a local `main` you have not fetched.
-
-## Script
-
-`scripts/release.mjs` — subcommands `status`, `bump <beta|release|patch|minor|major>`, `check`, and `tag`;
-all accept `--dry-run`.
+- **The tagged commit must be on `origin/main`.** The `Validate release tag` job rejects a tag on
+  a branch commit; merge first.
+- **Never re-point or delete a published tag.** Ship a fix as the next beta or patch instead.
+- **A failed job on a tag** is retried with `gh run rerun <run-id> --failed`; do not push a new tag
+  for the same commit.

@@ -21,6 +21,8 @@ jobs:
     name: Validate tag and draft release
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      promoted_from: ${{ steps.validate.outputs.promoted_from }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -33,22 +35,27 @@ jobs:
           node-version: 24
 
       - name: Validate release tag
+        id: validate
         if: github.ref_type == 'tag'
         run: |
-          package_version="$(node -p "require('./apps/desktop/package.json').version")"
-          test "v${package_version}" = "${GITHUB_REF_NAME}"
+          set -euo pipefail
+          [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]
           git fetch --no-tags origin main
           tag_commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
           git merge-base --is-ancestor "${tag_commit}" origin/main
+          promoted_from=""
+          if [[ "${GITHUB_REF_NAME}" != *-* ]]; then
+            promoted_from="$(git tag --points-at "${tag_commit}" --list "${GITHUB_REF_NAME}-beta.*" --sort=-v:refname | head -n 1)"
+          fi
+          echo "promoted_from=${promoted_from}" >> "${GITHUB_OUTPUT}"
 
       - name: Create draft GitHub release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          package_version="$(node -p "require('./apps/desktop/package.json').version")"
           prerelease_args=()
-          if node -e 'process.exit(/-.+/.test(process.argv[1]) ? 0 : 1)' "${package_version}"; then
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
             prerelease_args+=(--prerelease)
           fi
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
@@ -137,6 +144,10 @@ jobs:
           apple_api_key_path="${RUNNER_TEMP}/AuthKey_${APPLE_API_KEY_ID}.p8"
           APPLE_API_KEY_PATH="${apple_api_key_path}" node -e 'require("node:fs").writeFileSync(process.env.APPLE_API_KEY_PATH, Buffer.from(process.env.APPLE_API_KEY_BASE64, "base64"), { mode: 0o600 })'
           echo "APPLE_API_KEY=${apple_api_key_path}" >> "${GITHUB_ENV}"
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -293,6 +304,10 @@ jobs:
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
 
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -365,6 +380,10 @@ jobs:
       - name: Install native build tools
         run: sudo apt-get update && sudo apt-get install -y python3 make g++
 
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -410,6 +429,7 @@ jobs:
   android:
     name: Android (Google Play internal and APKs)
     needs: prepare
+    if: needs.prepare.outputs.promoted_from == ''
     environment: release
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -451,6 +471,10 @@ jobs:
           if test "${GITHUB_REF_TYPE}" = "tag"; then
             test -n "${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON}"
           fi
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -545,6 +569,7 @@ jobs:
   ios:
     name: iOS (TestFlight)
     needs: prepare
+    if: needs.prepare.outputs.promoted_from == ''
     environment: release
     runs-on: macos-26
     timeout-minutes: 90
@@ -640,6 +665,10 @@ jobs:
           done
           echo "COCURDEX_IOS_PROVISIONING_PROFILES=${profiles}" >> "${GITHUB_ENV}"
 
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -708,6 +737,7 @@ jobs:
   publish:
     name: Publish GitHub release
     needs:
+      - prepare
       - macos
       - windows
       - linux
@@ -737,12 +767,24 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" mac-update/*.yml \
             --repo "${GITHUB_REPOSITORY}" --clobber
 
+      - name: Carry APKs over from the promoted beta
+        if: needs.prepare.outputs.promoted_from != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTED_FROM: ${{ needs.prepare.outputs.promoted_from }}
+        run: |
+          set -euo pipefail
+          gh release download "${PROMOTED_FROM}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern 'Cocurdex-android-*.apk*' --dir promoted-apks
+          gh release upload "${GITHUB_REF_NAME}" promoted-apks/* \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          package_version="$(node -p "require('./apps/desktop/package.json').version")"
-          if node -e 'process.exit(/-.+/.test(process.argv[1]) ? 0 : 1)' "${package_version}"; then
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
             gh release edit "${GITHUB_REF_NAME}" \
               --repo "${GITHUB_REPOSITORY}" \
               --title "Cocurdex ${GITHUB_REF_NAME}" \
