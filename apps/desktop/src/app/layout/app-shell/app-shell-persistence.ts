@@ -4,9 +4,10 @@ import { bootstrapQueuedInputsAtom } from "@/features/agent";
 import { bootstrapSessionUsageAtom } from "@/features/composer";
 import { bootstrapEditorViewsAtom } from "@/features/editor";
 import {
-  bootstrapAgentsAtom,
   bootstrapProviderModelsAtom,
   bootstrapSessionsAtom,
+  detectAgentsAtom,
+  redetectStaleAgentsAtom,
   selectSessionAtom,
 } from "@/features/sessions";
 import {
@@ -22,7 +23,7 @@ export function useAppPersistence() {
   const setAppBootstrapped = useSetAtom(appBootstrappedAtom);
   const bootstrapWorkspaces = useSetAtom(bootstrapWorkspacesAtom);
   const bootstrapSessions = useSetAtom(bootstrapSessionsAtom);
-  const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
+  const detectAgents = useSetAtom(detectAgentsAtom);
   const bootstrapProviderModels = useSetAtom(bootstrapProviderModelsAtom);
   const bootstrapSessionUsage = useSetAtom(bootstrapSessionUsageAtom);
   const bootstrapQueuedInputs = useSetAtom(bootstrapQueuedInputsAtom);
@@ -49,16 +50,9 @@ export function useAppPersistence() {
     // Agent detection spawns a child process per installed agent CLI, so it is
     // kept off the bootstrap payload and loaded alongside it. The sidebar and
     // transcript never wait on it; only the agent picker fills in late.
-    void desktopApi
-      .listAgents()
-      .then((agents) => {
-        if (!cancelled) {
-          bootstrapAgents(agents);
-        }
-      })
-      .catch((error) => {
-        console.error("[AppPersistence] listAgents failed", error);
-      });
+    detectAgents().catch((error) => {
+      console.error("[AppPersistence] listAgents failed", error);
+    });
 
     void desktopApi
       .bootstrapApp()
@@ -125,4 +119,10 @@ export function useAppPersistence() {
   );
 
   useMountEffect(() => startEditorContextSync(store));
+
+  useMountEffect(() => {
+    const redetect = () => store.set(redetectStaleAgentsAtom);
+    window.addEventListener("focus", redetect);
+    return () => window.removeEventListener("focus", redetect);
+  });
 }

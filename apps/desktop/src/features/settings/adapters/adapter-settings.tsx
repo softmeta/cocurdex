@@ -16,7 +16,7 @@ import {
   type AdapterStatusKind,
   AgentIcon,
   agentsAtom,
-  bootstrapAgentsAtom,
+  detectAgentsAtom,
   getAdapterStatus,
 } from "@/features/sessions";
 import { desktopApi, useMountEffect } from "@/lib";
@@ -24,13 +24,14 @@ import { AcpRegistryDialog } from "./acp-registry-dialog";
 import { useAcpRegistryUpdates } from "./acp-registry-queries";
 import { AdapterRateLimits } from "./adapter-rate-limits";
 import { adapterRateLimitsCacheAtom } from "./adapter-rate-limits-cache";
-import { sortAdaptersForSettings } from "./adapter-settings-order";
+import { splitAdaptersForSettings } from "./adapter-settings-order";
 import {
   type AdapterDisplayStatus,
   AdapterStatusDot,
   useAdapterStatusLabel,
 } from "./adapter-status-dot";
 import { AgentDetailDialog } from "./agent-detail-dialog";
+import { MissingAdaptersGroup } from "./missing-adapters-group";
 
 function rowStatus(
   kind: AdapterStatusKind,
@@ -113,6 +114,11 @@ function AdapterRow({
             v{status.version}
           </Text>
         ) : null}
+        {status.kind === "missing" && status.installHint ? (
+          <Text className="min-w-0 truncate font-mono" size="meta" tone="muted">
+            {status.installHint.command}
+          </Text>
+        ) : null}
       </span>
       {rateLimitsResult?.status === "available" ? (
         <AdapterRateLimits
@@ -128,7 +134,7 @@ function AdapterRow({
 export function AdapterSettingsPanel() {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
-  const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
+  const detectAgents = useSetAtom(detectAgentsAtom);
   const [refreshing, setRefreshing] = useState(false);
   const [rateLimitsByAgent, setRateLimitsByAgent] = useAtom(
     adapterRateLimitsCacheAtom,
@@ -140,7 +146,7 @@ export function AdapterSettingsPanel() {
   );
   const rateLimitsByAgentRef = useRef(rateLimitsByAgent);
   rateLimitsByAgentRef.current = rateLimitsByAgent;
-  const sortedAgents = sortAdaptersForSettings(agents);
+  const { installed, missing } = splitAdaptersForSettings(agents);
   const [registryOpen, setRegistryOpen] = useState(false);
   const [openAgentId, setOpenAgentId] = useState<AgentId | null>(null);
   const openAgent = agents.find((agent) => agent.id === openAgentId) ?? null;
@@ -203,8 +209,7 @@ export function AdapterSettingsPanel() {
           { revalidate: false },
         ).catch(() => undefined);
       }
-      const nextAgents = await desktopApi.listAgents();
-      bootstrapAgents(nextAgents);
+      const nextAgents = await detectAgents();
       await loadRateLimits(nextAgents, !silent);
     } catch (error) {
       if (silent) {
@@ -230,6 +235,16 @@ export function AdapterSettingsPanel() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   });
+
+  const renderAdapterRow = (agent: AgentDescriptor) => (
+    <AdapterRow
+      agent={agent}
+      key={agent.id}
+      onOpen={() => setOpenAgentId(agent.id)}
+      rateLimitsResult={rateLimitsByAgent[agent.id]}
+      update={updateFor(agent.id)}
+    />
+  );
 
   return (
     <div className="settings-panel-enter flex flex-col gap-4">
@@ -267,17 +282,12 @@ export function AdapterSettingsPanel() {
           </Button>
         </div>
       </div>
-      <SettingsGroup>
-        {sortedAgents.map((agent) => (
-          <AdapterRow
-            agent={agent}
-            key={agent.id}
-            onOpen={() => setOpenAgentId(agent.id)}
-            rateLimitsResult={rateLimitsByAgent[agent.id]}
-            update={updateFor(agent.id)}
-          />
-        ))}
-      </SettingsGroup>
+      <SettingsGroup>{installed.map(renderAdapterRow)}</SettingsGroup>
+      {missing.length > 0 ? (
+        <MissingAdaptersGroup count={missing.length}>
+          {missing.map(renderAdapterRow)}
+        </MissingAdaptersGroup>
+      ) : null}
       <AgentDetailDialog
         agent={openAgent}
         onOpenChange={(open) => {

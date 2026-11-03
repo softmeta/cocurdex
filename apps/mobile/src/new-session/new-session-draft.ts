@@ -1,4 +1,5 @@
 import {
+  type AgentDescriptor,
   type AgentId,
   type AgentPermissionMode,
   isChatWorkspaceId,
@@ -168,4 +169,13 @@ export function displayedChoices(
       (current ? (resolved.permissionMode ?? null) : null),
     permissionModes: current ? (resolved.permissionModes ?? []) : [],
   };
+}
+
+export function pickerAgents(
+  agents: readonly AgentDescriptor[],
+  selectedAgentId: AgentId | null,
+): AgentDescriptor[] {
+  return agents.filter(
+    (agent) => agent.availability !== "missing" || agent.id === selectedAgentId,
+  );
 }

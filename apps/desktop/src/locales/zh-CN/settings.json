@@ -50,6 +50,7 @@
       "ready": "可用",
       "updateAvailable": "有更新"
     },
+    "notInstalledGroup_other": "未安装（{{count}}）",
     "rateLimits": {
       "authenticationRequired": "未查询到用量。尚未登录。请运行 claude auth login，然后刷新。",
       "failed": "无法读取用量：{{message}}",

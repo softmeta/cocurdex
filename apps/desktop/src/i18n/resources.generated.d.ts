@@ -1993,6 +1993,8 @@ export default interface Resources {
         ready: "Ready";
         updateAvailable: "Update available";
       };
+      notInstalledGroup_one: "Not installed ({{count}})";
+      notInstalledGroup_other: "Not installed ({{count}})";
       rateLimits: {
         authenticationRequired: "No usage found. Not signed in. Run claude auth login, then refresh.";
         failed: "Could not read usage: {{message}}";

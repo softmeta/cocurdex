@@ -1,4 +1,5 @@
 import type { AgentId } from "@cocurdex/shared";
+import { useSetAtom } from "jotai";
 import {
   Check,
   Pencil,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn } from "@/lib";
+import { redetectStaleAgentsAtom } from "./agent-detection";
 import { AgentIcon } from "./agent-icon";
 import {
   type AgentPresetAction,
@@ -32,7 +34,10 @@ import {
   AgentPresetSubmenu,
 } from "./agent-preset-submenu";
 import { AgentRoleAvatar } from "./agent-role/agent-role-avatar";
-import type { AgentSelectOption } from "./agent-select-options";
+import {
+  type AgentSelectOption,
+  visibleAgentSelectOptions,
+} from "./agent-select-options";
 import { agentSelectStatusLabel } from "./agent-select-status";
 
 interface AgentSelectProps {
@@ -100,11 +105,13 @@ export function AgentSelect({
 }: AgentSelectProps) {
   const { t } = useTranslation(["sessions", "settings"]);
   const [open, setOpen] = useState(false);
+  const redetectStaleAgents = useSetAtom(redetectStaleAgentsAtom);
   const isDisabled = disabled || options.length === 0;
-  const selectableOptions = options.filter(
+  const visibleOptions = visibleAgentSelectOptions(options, value);
+  const selectableOptions = visibleOptions.filter(
     (option) => option.selectable !== false,
   );
-  const unavailableOptions = options.filter(
+  const unavailableOptions = visibleOptions.filter(
     (option) => option.selectable === false,
   );
 
@@ -158,7 +165,13 @@ export function AgentSelect({
   );
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) redetectStaleAgents();
+        setOpen(nextOpen);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <AppDropdownTriggerButton
           appearance={appearance}
