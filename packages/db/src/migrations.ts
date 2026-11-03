@@ -12,7 +12,11 @@ import {
   migrateIssuesToAgentCore,
 } from "./issues/issue-schema";
 import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
-import { createCommandReceiptsSql, createSchemaSql } from "./schema";
+import {
+  createCommandReceiptsSql,
+  createProviderModelOverridesSql,
+  createSchemaSql,
+} from "./schema";
 import { compactStoredDiffs } from "./stored-diff-compaction";
 import { ensureSyncTracking } from "./sync/sync-tracking";
 import { createTeamSchemaSql } from "./team/schema";
@@ -21,7 +25,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 35;
+export const CURRENT_SCHEMA_VERSION = 36;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -436,6 +440,10 @@ function createDecksTable(database: DatabaseSync): void {
   database.exec(createDecksSchemaSql());
 }
 
+function createProviderModelOverrides(database: DatabaseSync): void {
+  database.exec(createProviderModelOverridesSql());
+}
+
 function createEntityLinksTable(database: DatabaseSync): void {
   database.exec(createEntityLinksSchemaSql());
 }
@@ -564,6 +572,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [32, createEntityLinksTable],
   [33, addHostDevicePublicKeys],
   [34, addHostDevicePush],
+  [35, createProviderModelOverrides],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

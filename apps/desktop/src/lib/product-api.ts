@@ -223,6 +223,8 @@ export const daemonProductApi: ProductRequestApi = {
   deleteProviderModel: async (providerId, modelId) => {
     await rpc("provider.model.delete", { providerId, modelId });
   },
+  resetProviderModel: (providerId, modelId) =>
+    rpc("provider.model.reset", { providerId, modelId }),
   listCompatibleProvidersForAgent: (agentId, options) =>
     rpc("provider.listCompatibleForAgent", {
       agentId,

@@ -56,6 +56,7 @@ function createState(input: {
   return {
     listProviderConfigs: vi.fn(async () => input.providers),
     listProviderModels: vi.fn(async () => input.models),
+    listProviderModelOverrides: vi.fn(async () => []),
     saveProviderModel: vi.fn(async () => {}),
   };
 }
@@ -117,17 +118,22 @@ describe("listConfiguredProviderModels", () => {
     expect(models).toEqual([model]);
   });
 
-  it("merges DB-backed custom models and built-in model overrides", async () => {
+  it("keeps DB-backed custom models and reads a legacy built-in row as its enabled flag", async () => {
     const customModel = { ...model, providerId: customProvider.id };
-    const overriddenBuiltInModel = { ...model, name: "Custom Sonnet label" };
+    const legacyBuiltInRow = {
+      ...model,
+      name: "Stale copy",
+      contextLimit: 4096,
+      enabled: false,
+    };
     const state = createState({
       providers: [builtInProvider, customProvider],
-      models: [overriddenBuiltInModel, customModel],
+      models: [legacyBuiltInRow, customModel],
     });
 
     const models = await listConfiguredProviderModels(state);
 
-    expect(models).toEqual([overriddenBuiltInModel, customModel]);
+    expect(models).toEqual([customModel, { ...model, enabled: false }]);
   });
 
   it("keeps a persisted disabled flag on built-in catalog models", async () => {

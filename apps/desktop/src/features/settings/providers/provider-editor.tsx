@@ -170,7 +170,7 @@ export function ProviderEditor({
             draftModel={draftModel}
             draftProvider={draftProvider}
             isRefreshing={isRefreshingModels}
-            readOnly={isPresetProvider}
+            builtIn={isPresetProvider}
             selectedModels={selectedModels}
             onDraftModelChange={setDraftModel}
             onRefreshModels={handleRefreshModels}

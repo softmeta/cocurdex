@@ -80,6 +80,7 @@ function deps(withTitleModel: boolean): SessionTitleDeps {
       getProviderConfig: async (id) =>
         id === titleProvider.id ? titleProvider : null,
       listProviderConfigs: async () => [titleProvider],
+      listProviderModelOverrides: async () => [],
       listProviderModels: async () => [titleModel],
     },
     readApiKey: async () => "sk-title",

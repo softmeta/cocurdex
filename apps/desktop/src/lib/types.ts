@@ -564,6 +564,10 @@ export interface ProductApi {
   listAllProviderModels(): Promise<ProviderModelRecord[]>;
   saveProviderModel(model: ProviderModelRecord): Promise<ProviderModelRecord>;
   deleteProviderModel(providerId: string, modelId: string): Promise<void>;
+  resetProviderModel(
+    providerId: string,
+    modelId: string,
+  ): Promise<ProviderModelRecord>;
   listCompatibleProvidersForAgent(
     agentId: AgentId,
     options?: { forceRefresh?: boolean },

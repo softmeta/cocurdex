@@ -87,5 +87,42 @@ export function createSqliteProviderModelRepository(
         .prepare(`DELETE FROM provider_models WHERE provider_id = ?`)
         .run(providerId);
     },
+    async listOverrides(providerId) {
+      const rows = (
+        providerId
+          ? database
+              .prepare(
+                `SELECT * FROM provider_model_overrides WHERE provider_id = ?`,
+              )
+              .all(providerId)
+          : database.prepare(`SELECT * FROM provider_model_overrides`).all()
+      ) as SqliteRow[];
+      return rows.map((row) => ({
+        providerId: String(row.provider_id),
+        modelId: String(row.model_id),
+        overrideJson: String(row.override_json),
+        updatedAt: String(row.updated_at),
+      }));
+    },
+    async upsertOverride(row) {
+      database
+        .prepare(
+          `INSERT INTO provider_model_overrides (
+             provider_id, model_id, override_json, updated_at
+           ) VALUES (?, ?, ?, ?)
+           ON CONFLICT(provider_id, model_id) DO UPDATE SET
+             override_json = excluded.override_json,
+             updated_at = excluded.updated_at`,
+        )
+        .run(row.providerId, row.modelId, row.overrideJson, row.updatedAt);
+    },
+    async deleteOverride(providerId, modelId) {
+      database
+        .prepare(
+          `DELETE FROM provider_model_overrides
+           WHERE provider_id = ? AND model_id = ?`,
+        )
+        .run(providerId, modelId);
+    },
   };
 }

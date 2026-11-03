@@ -4,10 +4,8 @@ import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   type AgentId,
   isAgentId,
-  type ProviderApi,
   type ProviderAuthMethod,
   type ProviderConfigRecord,
-  providerApis,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import {
@@ -27,6 +25,10 @@ import {
   type ProviderLoginClient,
   runProviderLogin,
 } from "./provider-login";
+import {
+  handleModelCommand,
+  providerModelUsageLines,
+} from "./provider-model-commands";
 import { readStdin } from "./read-stdin";
 
 export function providerUsageLines() {
@@ -42,8 +44,7 @@ export function providerUsageLines() {
     "  cocurdex provider key set <id>   (reads the key from stdin)",
     "  cocurdex provider key clear <id>",
     "  cocurdex provider models <id> [--refresh] [--json]",
-    "  cocurdex provider model add <id> <model-id> --api <api> [--name <name>]",
-    "  cocurdex provider model remove <id> <model-id>",
+    ...providerModelUsageLines(),
     "  cocurdex provider default [--agent <agent>] [--provider <id> --model <model-id>] [--json]",
     "  cocurdex provider import <file|->   (pi models.json format)",
     "  cocurdex provider export [--output <file>]",
@@ -209,49 +210,6 @@ async function handleKeyCommand(args: string[]) {
     return;
   }
   throw new Error(`Usage: ${usage}`);
-}
-
-function parseProviderApi(value: string): ProviderApi {
-  const api = providerApis.find((candidate) => candidate === value);
-  if (!api) throw new Error(`--api must be one of: ${providerApis.join(", ")}`);
-  return api;
-}
-
-async function handleModelCommand(args: string[], parsed: ParsedArgs) {
-  const [subaction, providerId, modelId] = args;
-  if (subaction === "add") {
-    const usage = "cocurdex provider model add <id> <model-id> --api <api>";
-    requireArg(providerId, usage);
-    requireArg(modelId, usage);
-    const now = new Date().toISOString();
-    const model = await withDaemon(() =>
-      requestDaemon("provider.model.save", {
-        model: {
-          providerId,
-          modelId,
-          name: stringFlag(parsed, "name") ?? modelId,
-          api: parseProviderApi(getRequiredFlag(parsed, "api")),
-          enabled: true,
-          source: "manual",
-          createdAt: now,
-          updatedAt: now,
-        },
-      }),
-    );
-    printResult(model, parsed);
-    return;
-  }
-  if (subaction === "remove") {
-    const usage = "cocurdex provider model remove <id> <model-id>";
-    requireArg(providerId, usage);
-    requireArg(modelId, usage);
-    await withDaemon(() =>
-      requestDaemon("provider.model.delete", { providerId, modelId }),
-    );
-    printResult({ removed: true, providerId, modelId }, parsed);
-    return;
-  }
-  throw new Error("Usage: cocurdex provider model add|remove ...");
 }
 
 async function listModels(providerId: string | undefined, parsed: ParsedArgs) {

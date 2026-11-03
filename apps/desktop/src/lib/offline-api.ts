@@ -469,6 +469,9 @@ export const offlineApi: DesktopApi = {
   listAllProviderModels: async () => [],
   saveProviderModel: async (model) => model,
   deleteProviderModel: async () => {},
+  resetProviderModel: async () => {
+    throw new Error("Resetting a model needs the desktop app");
+  },
   listCompatibleProvidersForAgent: async () => [],
   probeProviderModelAxes: async () => null,
   loginAgent: async () => {},

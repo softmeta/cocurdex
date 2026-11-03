@@ -2,10 +2,12 @@ import {
   listPiBuiltInProviderIds,
   listPiProviderModels,
 } from "@cocurdex/agent-adapters";
-import type {
-  ProviderConfigRecord,
-  ProviderListModelsResult,
-  ProviderModelRecord,
+import {
+  applyProviderModelOverride,
+  type ProviderConfigRecord,
+  type ProviderListModelsResult,
+  type ProviderModelOverride,
+  type ProviderModelRecord,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
 import { enrichProviderModelsWithModelsDev } from "./models-dev";
@@ -19,8 +21,14 @@ const builtInProviderModelsCache = new Map<
 
 type ProviderModelListState = Pick<
   DaemonState,
-  "listProviderConfigs" | "listProviderModels"
+  "listProviderConfigs" | "listProviderModels" | "listProviderModelOverrides"
 >;
+
+interface StoredProviderModelOverride {
+  providerId: string;
+  modelId: string;
+  override: ProviderModelOverride;
+}
 
 type ProviderModelState = ProviderModelListState &
   Pick<DaemonState, "saveProviderModel">;
@@ -69,24 +77,37 @@ async function listCachedPiProviderModels(
   }
 }
 
+function modelKey(model: { providerId: string; modelId: string }) {
+  return `${model.providerId}\0${model.modelId}`;
+}
+
 function mergeConfiguredProviderModels(
   persistedModels: ProviderModelRecord[],
   builtInModels: ProviderModelRecord[],
+  overrides: StoredProviderModelOverride[],
 ) {
-  const modelsById = new Map<string, ProviderModelRecord>();
+  const persistedByKey = new Map(
+    persistedModels.map((model) => [modelKey(model), model]),
+  );
+  const overrideByKey = new Map(
+    overrides.map((entry) => [modelKey(entry), entry.override]),
+  );
+  const catalogModels = builtInModels.map((catalog) => {
+    const key = modelKey(catalog);
+    const legacy = persistedByKey.get(key);
+    persistedByKey.delete(key);
+    const base = legacy ? { ...catalog, enabled: legacy.enabled } : catalog;
+    return applyProviderModelOverride(base, overrideByKey.get(key) ?? {});
+  });
+  return [...persistedByKey.values(), ...catalogModels];
+}
 
-  for (const model of persistedModels) {
-    modelsById.set(`${model.providerId}\0${model.modelId}`, model);
-  }
-
-  for (const model of builtInModels) {
-    const key = `${model.providerId}\0${model.modelId}`;
-    if (!modelsById.has(key)) {
-      modelsById.set(key, model);
-    }
-  }
-
-  return [...modelsById.values()];
+export async function findBuiltInCatalogModel(
+  provider: ProviderConfigRecord,
+  modelId: string,
+) {
+  const models = await listCachedPiProviderModels(provider).catch(() => null);
+  return models?.find((model) => model.modelId === modelId) ?? null;
 }
 
 export async function listConfiguredProviderModels(
@@ -121,7 +142,15 @@ export async function listConfiguredProviderModels(
     )
   ).flat();
 
-  return mergeConfiguredProviderModels(persistedModels, builtInModels);
+  const overrides = (await state.listProviderModelOverrides()).filter(
+    (entry) => !providerFilter || providerFilter.has(entry.providerId),
+  );
+
+  return mergeConfiguredProviderModels(
+    persistedModels,
+    builtInModels,
+    overrides,
+  );
 }
 
 export async function saveFetchedProviderModels(

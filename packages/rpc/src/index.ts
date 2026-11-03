@@ -457,6 +457,7 @@ export type DaemonRequestPayloadByMethod = {
   "provider.config.delete": { providerId: string };
   "provider.model.save": { model: ProviderModelRecord };
   "provider.model.delete": { providerId: string; modelId: string };
+  "provider.model.reset": { providerId: string; modelId: string };
   "provider.fetchModels": { providerId: string };
   "provider.listAllModels": {
     providerIds?: string[];
@@ -830,6 +831,7 @@ export type DaemonResultByMethod = {
   "provider.config.delete": null;
   "provider.model.save": ProviderModelRecord;
   "provider.model.delete": null;
+  "provider.model.reset": ProviderModelRecord;
   "provider.fetchModels": ProviderListModelsResult;
   "provider.listAllModels": ProviderModelRecord[];
   "provider.default.get": AgentProviderSelection | null;

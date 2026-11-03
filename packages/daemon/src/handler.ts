@@ -572,6 +572,11 @@ export async function handleDaemonRequest(
         request.params.modelId,
       );
       return null;
+    case "provider.model.reset":
+      return service.providerService.resetProviderModel(
+        request.params.providerId,
+        request.params.modelId,
+      );
     case "provider.fetchModels":
       return service.providerService.fetchModels(request.params.providerId);
     case "provider.listAllModels":

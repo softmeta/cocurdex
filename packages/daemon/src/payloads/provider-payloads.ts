@@ -87,6 +87,7 @@ const providerModelSchema = z.object({
     .optional(),
   supportsFastMode: z.boolean().optional(),
   isDefault: z.boolean().optional(),
+  overridden: z.boolean().optional(),
   createdAt: timestampTextSchema,
   updatedAt: timestampTextSchema,
 });
@@ -149,6 +150,9 @@ export const providerPayloadSchemas = {
     z.object({ model: providerModelSchema }),
   ),
   "provider.model.delete": exact<Payload<"provider.model.delete">>()(
+    z.object({ providerId: providerIdSchema, modelId: providerIdSchema }),
+  ),
+  "provider.model.reset": exact<Payload<"provider.model.reset">>()(
     z.object({ providerId: providerIdSchema, modelId: providerIdSchema }),
   ),
   "provider.fetchModels":

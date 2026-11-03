@@ -20,6 +20,7 @@ type TitleModelState = Pick<
   | "getProviderConfig"
   | "listProviderConfigs"
   | "listProviderModels"
+  | "listProviderModelOverrides"
 >;
 
 export function parseTitleModelSetting(
