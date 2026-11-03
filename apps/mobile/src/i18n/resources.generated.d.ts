@@ -165,7 +165,7 @@ export default interface Resources {
     };
     scopeDetail: {
       approvals: "Answer permission requests, questions, and plan approvals.";
-      execute: "Start sessions, teams, script runs, and workflows.";
+      execute: "Start sessions, teams, script runs, and workflows, and drive agents that run without approval.";
       filesRead: "Read workspace files, diffs, and Git status.";
       filesWrite: "Edit workspace files, stage, and commit.";
       gitDestructive: "Discard changes, switch branches, and push.";
@@ -359,6 +359,7 @@ export default interface Resources {
       jumpToOldest: "Jump to first message";
       missing: "This session is no longer on the computer.";
       monitoring: "Working in the background";
+      needsExecute: "This agent runs commands without asking for approval. Messaging it needs the “Start tasks” permission for this device. Grant it on the computer.";
       pendingApproval: "Waiting for your approval";
       planReady: "Plan ready for review";
       promptNumber: "Prompt {{number}}";

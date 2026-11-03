@@ -121,6 +121,7 @@ export {
   unwrapShellCommand,
   withoutWorkspaceCd,
 } from "./tool-call-display";
+export * from "./unattended-execution";
 export * from "./workflow";
 export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";

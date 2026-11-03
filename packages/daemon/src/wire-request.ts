@@ -1,10 +1,18 @@
 import type { DaemonRequest } from "@cocurdex/rpc";
 import { DAEMON_METHOD_SCOPES } from "@cocurdex/rpc/method-scopes";
-import { type HostPrincipal, principalHasScope } from "@cocurdex/shared";
+import {
+  type HostPrincipal,
+  principalHasScope,
+  UNATTENDED_EXECUTION_SCOPE,
+} from "@cocurdex/shared";
 import type { DaemonShutdownGate } from "./daemon-shutdown-gate";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { handleDaemonRequest } from "./handler";
 import { principalActor } from "./host-access";
+import {
+  mayRunUnattended,
+  type UnattendedExecutionLookup,
+} from "./host-access/unattended-execution-guard";
 import {
   type DaemonObservability,
   handleObservabilityRequest,
@@ -99,6 +107,18 @@ export function authorizeDaemonRequest(
   return { ok: true, principal };
 }
 
+function unattendedExecutionLookup(
+  service: CocurdexDaemonService,
+): UnattendedExecutionLookup {
+  return {
+    session: (sessionId) => service.getSession(sessionId),
+    runtimeState: (sessionId) => service.getSessionRuntimeState(sessionId),
+    permissionModes: async (agentId) =>
+      (await service.listAgents(agentId)).find((agent) => agent.id === agentId)
+        ?.capabilities.permissionModes ?? [],
+  };
+}
+
 function requestFailedError(error: unknown) {
   return {
     code: "REQUEST_FAILED",
@@ -155,6 +175,22 @@ export async function handleDaemonWireMessage(
   const context = { principal, remoteAddress: connection.remoteAddress };
 
   try {
+    const permitted = await mayRunUnattended(
+      principal,
+      request.method,
+      "params" in request ? request.params : undefined,
+      unattendedExecutionLookup(service),
+    );
+    if (!permitted) {
+      send({
+        id: request.id,
+        error: {
+          code: "FORBIDDEN",
+          message: `This device is missing the ${UNATTENDED_EXECUTION_SCOPE} scope`,
+        },
+      });
+      return;
+    }
     if (request.method === "daemon.shutdownIfIdle") {
       const status = service.status();
       if (
