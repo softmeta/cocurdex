@@ -210,7 +210,7 @@ jobs:
   desktop:
     name: Desktop (${{ matrix.os }})
     needs: changes
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ ((matrix.os == 'ubuntu-latest' && needs.changes.outputs.run_linux == 'true') || (matrix.os != 'ubuntu-latest' && needs.changes.outputs.run_native == 'true')) && matrix.os || 'ubuntu-latest' }}
     timeout-minutes: 35
     strategy:
       fail-fast: false
