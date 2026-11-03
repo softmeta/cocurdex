@@ -108,6 +108,7 @@ export default interface Resources {
         checking: "Checking";
         offline: "Unreachable";
         online: "Connected · {{latency}} ms";
+        pending: "Waiting for approval on the computer";
         unauthorized: "Access revoked";
       };
     };

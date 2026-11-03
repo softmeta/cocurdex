@@ -298,6 +298,8 @@ export const daemonProductApi: ProductRequestApi = {
   cancelHostPairing: (pairingId) => rpc("host.pairing.cancel", { pairingId }),
   listHostDevices: () => rpc("host.devices.list"),
   revokeHostDevice: (deviceId) => rpc("host.devices.revoke", { deviceId }),
+  approveHostDevice: (deviceId, code) =>
+    rpc("host.devices.approve", { deviceId, code }),
   updateHostDeviceScopes: (deviceId, scopes) =>
     rpc("host.devices.updateScopes", { deviceId, scopes }),
   listHostAudit: (limit) => rpc("host.audit.list", { limit }),

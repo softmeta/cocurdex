@@ -91,9 +91,16 @@ function closedBeforeHandshake(code: number) {
 }
 
 function rejection(reply: Extract<RemoteChannelReply, { ok: false }>) {
-  return reply.reason === "rateLimited"
-    ? new HostAccessError("rateLimited", "Too many attempts")
-    : new HostAccessError("invalid", "The host rejected this device");
+  if (reply.reason === "rateLimited") {
+    return new HostAccessError("rateLimited", "Too many attempts");
+  }
+  if (reply.reason === "pending") {
+    return new HostAccessError(
+      "pending",
+      "This device is waiting for approval on the computer",
+    );
+  }
+  return new HostAccessError("invalid", "The host rejected this device");
 }
 
 export function openSecureSocket(

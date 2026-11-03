@@ -11,7 +11,8 @@ export function createHostAccessSchemaSql(): string {
       public_key TEXT,
       push_platform TEXT,
       push_handle TEXT,
-      push_updated_at TEXT
+      push_updated_at TEXT,
+      approved_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS host_pairings (
@@ -53,3 +54,9 @@ export const HOST_DEVICE_PUSH_COLUMNS = [
   "push_handle",
   "push_updated_at",
 ] as const;
+
+export const ADD_HOST_DEVICE_APPROVED_AT_SQL =
+  "ALTER TABLE host_devices ADD COLUMN approved_at TEXT";
+
+export const BACKFILL_HOST_DEVICE_APPROVED_AT_SQL =
+  "UPDATE host_devices SET approved_at = created_at WHERE approved_at IS NULL";

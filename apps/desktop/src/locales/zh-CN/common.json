@@ -113,6 +113,12 @@
     "gitNotRepoDescription": "",
     "gitNotRepoTitle": ""
   },
+  "webHostPending": {
+    "codeLabel": "安全码",
+    "description": "请在 {{name}} 上批准此浏览器：在那台电脑的 Cocurdex 中打开请求，并输入下面的安全码。",
+    "title": "等待批准",
+    "waiting": "电脑批准后此页面会自动打开。请求 10 分钟后失效。"
+  },
   "webHostUnreachable": {
     "forget": "忘记这台电脑",
     "forgetFailed": "浏览器无法移除配对。请允许网站数据后重试。",

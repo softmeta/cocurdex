@@ -4,6 +4,7 @@ import {
   buildHostPairingLink,
   type HostAccessScope,
   type HostAddress,
+  type HostDeviceApprovalFailure,
   type HostPushStatus,
   type HostRemoteAccessStatus,
   hostPairingAddresses,
@@ -34,7 +35,7 @@ export function hostUsageLines() {
     "  cocurdex host push set <url> | push off | push status [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
-    "  cocurdex host devices [--json] | host revoke <device-id>",
+    "  cocurdex host devices [--json] | host approve <device-id> --code <safety code> | host revoke <device-id>",
     "  cocurdex host scopes <device-id> --scopes read,interact,approvals,files.read [--json]",
     "  cocurdex host audit [--limit <n>] [--json]",
     "  cocurdex host traffic [--reset] [--json]",
@@ -191,6 +192,14 @@ async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
   }
 }
 
+const approvalFailureMessages: Record<HostDeviceApprovalFailure, string> = {
+  notPending:
+    "That device is not waiting for approval; its approval window may have expired",
+  codeMismatch: "The safety code does not match the one the device shows",
+  tooManyAttempts:
+    "Too many wrong safety codes; the device was revoked and must pair again",
+};
+
 async function createPairing(parsed: ParsedArgs) {
   const ttl = integerFlag(parsed, "ttl");
   const { created, status } = await withDaemon(async () => ({
@@ -213,6 +222,9 @@ async function createPairing(parsed: ParsedArgs) {
   console.log(`Pairing code: ${created.code}`);
   console.log(`Scopes: ${created.pairing.scopes.join(", ")}`);
   console.log(`Expires: ${created.pairing.expiresAt}`);
+  console.log(
+    "The device then waits for approval: run `cocurdex host approve <device-id> --code <safety code>` with the code the device shows.",
+  );
   if (links.length === 0) {
     console.log(
       "Remote access is off. Run `cocurdex host remote enable` to get a pairing link.",
@@ -290,10 +302,22 @@ export async function handleHostCommand(
         "safetyCode",
         "pushPlatform",
         "lastSeenAt",
+        "approvedAt",
+        "approvalExpiresAt",
         "revokedAt",
       ],
       parsed,
     );
+    return true;
+  }
+  if (action === "approve" && args[0]) {
+    const deviceId = args[0];
+    const code = getRequiredFlag(parsed, "code");
+    const approval = await withDaemon(() =>
+      requestDaemon("host.devices.approve", { deviceId, code }),
+    );
+    if (!approval.ok) throw new Error(approvalFailureMessages[approval.reason]);
+    printResult(approval.device, parsed);
     return true;
   }
   if (action === "revoke" && args[0]) {

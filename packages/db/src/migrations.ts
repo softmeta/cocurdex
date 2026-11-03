@@ -2,7 +2,9 @@ import type { DatabaseSync } from "node:sqlite";
 import { createDecksSchemaSql } from "./decks/deck-schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import {
+  ADD_HOST_DEVICE_APPROVED_AT_SQL,
   ADD_HOST_DEVICE_PUBLIC_KEY_SQL,
+  BACKFILL_HOST_DEVICE_APPROVED_AT_SQL,
   createHostAccessSchemaSql,
   HOST_DEVICE_PUBLIC_KEY_INDEX_SQL,
   HOST_DEVICE_PUSH_COLUMNS,
@@ -25,7 +27,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 36;
+export const CURRENT_SCHEMA_VERSION = 37;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -467,6 +469,13 @@ function addHostDevicePush(database: DatabaseSync): void {
   }
 }
 
+function addHostDeviceApproval(database: DatabaseSync): void {
+  if (!hasColumn(database, "host_devices", "approved_at")) {
+    database.exec(ADD_HOST_DEVICE_APPROVED_AT_SQL);
+  }
+  database.exec(BACKFILL_HOST_DEVICE_APPROVED_AT_SQL);
+}
+
 function migrateProviderThreadsPerAgent(database: DatabaseSync): void {
   if (!hasColumn(database, "runs", "agent_type")) {
     database.exec("ALTER TABLE runs ADD COLUMN agent_type TEXT");
@@ -573,6 +582,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [33, addHostDevicePublicKeys],
   [34, addHostDevicePush],
   [35, createProviderModelOverrides],
+  [36, addHostDeviceApproval],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

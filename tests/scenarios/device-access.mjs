@@ -5,7 +5,13 @@ import { promisify } from "node:util";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
-import { clickByRole, waitForNoRole, waitForRole } from "./lib/locate.mjs";
+import {
+  centerOf,
+  clickByRole,
+  clickPoint,
+  waitForNoRole,
+  waitForRole,
+} from "./lib/locate.mjs";
 import { openSettingsSection, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
@@ -50,28 +56,88 @@ async function pairDevice(session) {
     ],
     { cwd: HARNESS_DIR, timeout: PAIR_TIMEOUT_MS },
   );
-  const { deviceId } = JSON.parse(stdout.trim().split(/\r?\n/).pop());
-  return { port, deviceId };
+  const { deviceId, safetyCode } = JSON.parse(
+    stdout.trim().split(/\r?\n/).pop(),
+  );
+  return { port, deviceId, safetyCode };
 }
 
-async function deviceScopes(session, deviceId) {
+async function findDevice(session, deviceId) {
   const devices = await daemonRequest(session, "host.devices.list");
-  return devices.find((device) => device.id === deviceId)?.scopes;
+  return devices.find((device) => device.id === deviceId);
+}
+
+async function enterSafetyCode(session, dialog, code) {
+  const [field] = await waitForRole(session, {
+    role: "textbox",
+    name: await translate(session, "settings:devices.approval.codeLabel"),
+    within: dialog,
+  });
+  await clickPoint(session, await centerOf(session, field.backendNodeId));
+  await session.send("Input.insertText", { text: code });
+  await clickByRole(session, {
+    role: "button",
+    name: await translate(session, "settings:devices.approval.allow"),
+    within: dialog,
+  });
 }
 
 runScenario("device-access", {
   open: () => openScenarioApp(args),
   setup: async ({ session }) => {
-    const paired = await pairDevice(session);
-    await openSettingsSection(session, "devices");
-    return paired;
+    return pairDevice(session);
   },
   steps: [
+    [
+      "a new device waits until its safety code is entered",
+      async ({ session, deviceId, safetyCode }) => {
+        const t = (key, options) =>
+          translate(session, `settings:${key}`, options);
+        const dialog = {
+          role: "dialog",
+          name: await t("devices.approval.title", { name: DEVICE_LABEL }),
+        };
+        await waitForRole(session, dialog, UI_TIMEOUT_MS);
+        const pending = await findDevice(session, deviceId);
+        check(
+          pending?.approvedAt === null && pending?.safetyCode === null,
+          "daemon keeps the device pending without revealing its code",
+          pending,
+        );
+
+        const wrongCode = safetyCode === "000000" ? "111111" : "000000";
+        await enterSafetyCode(session, dialog, wrongCode);
+        await waitForRole(
+          session,
+          {
+            role: "StaticText",
+            name: await t("devices.approval.failure.codeMismatch"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        check(
+          (await findDevice(session, deviceId))?.approvedAt === null,
+          "a wrong code leaves the device pending",
+        );
+
+        await enterSafetyCode(session, dialog, safetyCode);
+        await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
+        const approved = await findDevice(session, deviceId);
+        check(
+          typeof approved?.approvedAt === "string" &&
+            approved.safetyCode === safetyCode,
+          "daemon approves the device with the code it shows",
+          approved,
+        );
+        return { approvedAt: approved.approvedAt };
+      },
+    ],
     [
       "a paired device's access can be changed from settings",
       async ({ session, deviceId }) => {
         const t = (key, options) =>
           translate(session, `settings:${key}`, options);
+        await openSettingsSection(session, "devices");
         await clickByRole(
           session,
           { role: "button", name: await t("devices.list.editAccess") },
@@ -94,7 +160,7 @@ runScenario("device-access", {
           within: dialog,
         });
         await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
-        const scopes = await deviceScopes(session, deviceId);
+        const scopes = (await findDevice(session, deviceId))?.scopes;
         check(
           JSON.stringify(scopes) === JSON.stringify(["read", "files.read"]),
           "daemon stores the new scopes",

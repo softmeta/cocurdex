@@ -7,9 +7,11 @@ export type HostReachability =
   | { state: "checking" }
   | { state: "online"; latencyMs: number }
   | { state: "offline" }
+  | { state: "pending" }
   | { state: "unauthorized" };
 
 const PROBE_TIMEOUT_MS = 5_000;
+const PENDING_REPROBE_MS = 5_000;
 const CHECKING: HostReachability = { state: "checking" };
 
 let results: ReadonlyMap<string, HostReachability> = new Map();
@@ -25,9 +27,9 @@ function publish(hostId: string, reachability: HostReachability) {
 
 function reachabilityFromError(error: unknown): HostReachability {
   const code = (error as { code?: unknown } | null)?.code;
-  return code === "UNAUTHORIZED"
-    ? { state: "unauthorized" }
-    : { state: "offline" };
+  if (code === "UNAUTHORIZED") return { state: "unauthorized" };
+  if (code === "PENDING_APPROVAL") return { state: "pending" };
+  return { state: "offline" };
 }
 
 async function probe(hostId: string) {
@@ -40,7 +42,13 @@ async function probe(hostId: string) {
     const latencyMs = Math.max(1, Math.round(performance.now() - started));
     publish(hostId, { state: "online", latencyMs });
   } catch (error) {
-    publish(hostId, reachabilityFromError(error));
+    const reachability = reachabilityFromError(error);
+    publish(hostId, reachability);
+    if (reachability.state === "pending") {
+      setTimeout(() => {
+        if (listeners.size > 0) void probe(hostId);
+      }, PENDING_REPROBE_MS);
+    }
   }
 }
 

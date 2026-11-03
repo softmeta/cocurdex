@@ -26,6 +26,7 @@
       "checking": "正在检测",
       "offline": "无法连接",
       "online": "已连接 · {{latency}} ms",
+      "pending": "等待电脑批准",
       "unauthorized": "访问已撤销"
     }
   },

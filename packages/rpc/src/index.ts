@@ -83,6 +83,7 @@ import type {
   HostAccessAuditEntry,
   HostAccessScope,
   HostAccessSession,
+  HostDeviceApproval,
   HostDirectoryListing,
   HostIdentity,
   HostPairingRecord,
@@ -734,6 +735,7 @@ export type DaemonRequestPayloadByMethod = {
   "host.pairing.list": undefined;
   "host.pairing.cancel": { pairingId: string };
   "host.devices.list": undefined;
+  "host.devices.approve": { deviceId: string; code: string };
   "host.devices.revoke": { deviceId: string };
   "host.devices.revokeSelf": undefined;
   "host.devices.updateScopes": { deviceId: string; scopes: HostAccessScope[] };
@@ -1047,6 +1049,7 @@ export type DaemonResultByMethod = {
   "host.pairing.list": HostPairingRecord[];
   "host.pairing.cancel": HostPairingRecord | null;
   "host.devices.list": PairedDevice[];
+  "host.devices.approve": HostDeviceApproval;
   "host.devices.revoke": PairedDeviceRecord | null;
   "host.devices.revokeSelf": PairedDeviceRecord | null;
   "host.devices.updateScopes": PairedDeviceRecord | null;

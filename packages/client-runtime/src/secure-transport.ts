@@ -30,6 +30,7 @@ function transportErrorCode(error: unknown) {
   if (!(error instanceof HostAccessError)) return "TRANSPORT_ERROR";
   if (error.reason === "invalid") return "UNAUTHORIZED";
   if (error.reason === "offline") return "UNAVAILABLE";
+  if (error.reason === "pending") return "PENDING_APPROVAL";
   return "TRANSPORT_ERROR";
 }
 

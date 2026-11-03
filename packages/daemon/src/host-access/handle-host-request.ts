@@ -55,6 +55,12 @@ export async function handleHostRequest(
       );
     case "host.devices.list":
       return hostAccess.listDevices();
+    case "host.devices.approve":
+      return hostAccess.approveDevice(
+        request.params.deviceId,
+        request.params.code,
+        context.principal,
+      );
     case "host.devices.revoke":
       return hostAccess.revokeDevice(
         request.params.deviceId,

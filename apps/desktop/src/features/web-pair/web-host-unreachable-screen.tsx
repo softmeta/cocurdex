@@ -1,29 +1,76 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
+import { type SavedHost, savedHostSafetyCode } from "@cocurdex/client-runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { Button, Text } from "@/components/ui";
 import { removePairedHost } from "@/lib";
 import type { PairedHostFailure } from "./paired-host-reach";
+import { useApprovalPoll } from "./use-approval-poll";
 
 interface WebHostUnreachableScreenProps {
   host: SavedHost;
   failure: PairedHostFailure;
 }
 
+function reloadPage() {
+  window.location.reload();
+}
+
 export function WebHostUnreachableScreen({
   host,
   failure,
 }: WebHostUnreachableScreenProps) {
+  if (failure === "pending") return <WebHostPendingScreen host={host} />;
+  return <WebHostFailureScreen failure={failure} host={host} />;
+}
+
+function WebHostPendingScreen({ host }: { host: SavedHost }) {
+  const { t } = useTranslation();
+  useApprovalPoll(reloadPage);
+  const code = savedHostSafetyCode(host);
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-app px-4 text-app-foreground">
+      <div className="flex w-full max-w-sm flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.5">
+            <CocurdexMark className="size-7" />
+            <Text as="h1" size="title" weight="medium">
+              {t("webHostPending.title")}
+            </Text>
+          </div>
+          <Text size="body" tone="muted">
+            {t("webHostPending.description", { name: host.name })}
+          </Text>
+        </div>
+        <Text
+          aria-label={t("webHostPending.codeLabel")}
+          as="p"
+          className="font-mono tabular-nums tracking-widest"
+          size="display"
+          weight="medium"
+        >
+          {code}
+        </Text>
+        <Text size="meta" tone="muted">
+          {t("webHostPending.waiting")}
+        </Text>
+        <ForgetHostButton host={host} variant="outline" />
+      </div>
+    </main>
+  );
+}
+
+function ForgetHostButton({
+  host,
+  variant,
+}: {
+  host: SavedHost;
+  variant: "default" | "outline";
+}) {
   const { t } = useTranslation();
   const [forgetting, setForgetting] = useState(false);
   const [forgetFailed, setForgetFailed] = useState(false);
-
-  const descriptions: Record<PairedHostFailure, string> = {
-    offline: t("webHostUnreachable.offline", { name: host.name }),
-    revoked: t("webHostUnreachable.revoked", { name: host.name }),
-    unreachable: t("webHostUnreachable.unreachable", { name: host.name }),
-  };
 
   const forget = async () => {
     setForgetting(true);
@@ -35,6 +82,38 @@ export function WebHostUnreachableScreen({
       setForgetFailed(true);
       setForgetting(false);
     }
+  };
+
+  return (
+    <>
+      <Button
+        disabled={forgetting}
+        variant={variant}
+        onClick={() => void forget()}
+      >
+        {t("webHostUnreachable.forget")}
+      </Button>
+      {forgetFailed ? (
+        <Text size="meta" tone="destructive">
+          {t("webHostUnreachable.forgetFailed")}
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
+function WebHostFailureScreen({
+  host,
+  failure,
+}: {
+  host: SavedHost;
+  failure: Exclude<PairedHostFailure, "pending">;
+}) {
+  const { t } = useTranslation();
+  const descriptions: Record<typeof failure, string> = {
+    offline: t("webHostUnreachable.offline", { name: host.name }),
+    revoked: t("webHostUnreachable.revoked", { name: host.name }),
+    unreachable: t("webHostUnreachable.unreachable", { name: host.name }),
   };
 
   return (
@@ -53,22 +132,14 @@ export function WebHostUnreachableScreen({
         </div>
         <div className="flex flex-col gap-2">
           {failure === "revoked" ? null : (
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={reloadPage}>
               {t("webHostUnreachable.retry")}
             </Button>
           )}
-          <Button
-            disabled={forgetting}
+          <ForgetHostButton
+            host={host}
             variant={failure === "revoked" ? "default" : "outline"}
-            onClick={() => void forget()}
-          >
-            {t("webHostUnreachable.forget")}
-          </Button>
-          {forgetFailed ? (
-            <Text size="meta" tone="destructive">
-              {t("webHostUnreachable.forgetFailed")}
-            </Text>
-          ) : null}
+          />
         </div>
       </div>
     </main>

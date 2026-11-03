@@ -14,10 +14,14 @@ import {
   readRelayPairingLink,
 } from "./relay-pairing-link";
 
-type PairFailure = RelayPairingLinkProblem | HostAccessFailure | "storage";
+type PairFailure =
+  | RelayPairingLinkProblem
+  | Exclude<HostAccessFailure, "pending">
+  | "storage";
 
 function pairFailure(error: unknown): PairFailure {
-  return error instanceof HostAccessError ? error.reason : "storage";
+  if (!(error instanceof HostAccessError)) return "storage";
+  return error.reason === "pending" ? "unreachable" : error.reason;
 }
 
 export function WebPairScreen() {
