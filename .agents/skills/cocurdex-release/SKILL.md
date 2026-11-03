@@ -1,12 +1,46 @@
 ---
-name: desktop-release
-description: Ship a Cocurdex desktop release end to end — bump the apps/desktop version, open and merge the release PR, then tag main to trigger the Release workflow. Use when the user says 发版 / 发测试版 / 发正式版 / 出个 beta / cut a release / ship a release / release the desktop app.
+name: cocurdex-release
+description: Decide what Cocurdex needs to release and ship it end to end — the app (desktop, iOS, Android), the relay, or the push gateway. Use when the user asks what needs releasing, whether to release, or says 发版 / 发测试版 / 发正式版 / 出个 beta / 要不要发版 / 哪些要发 / cut a release / ship a release / release the desktop app / release the relay.
 ---
 
-# Desktop release
+# Cocurdex release
 
-A release is four moves: bump → PR → merge → tag. Pushing the tag is the only thing
-that starts the build; `workflow_dispatch` is not used for releases.
+## Release lines
+
+Each line ships from its own tag; pushing the tag is the only thing that starts its build.
+
+| line | tag | workflow | ships |
+| --- | --- | --- | --- |
+| app | `v<version>` | `release.yml` | desktop (macOS, Windows, Linux), iOS TestFlight, Android Play internal and APKs |
+| relay | `relay-v<version>` | `relay-release.yml` | relay binaries, with the desktop renderer built in as the web client |
+| push | `push-v<version>` | `push-release.yml` | push gateway |
+
+The rest of this skill covers the app line. The relay and push lines have no version file: the
+tag is the version. Tag an `origin/main` commit with `git tag relay-vX.Y.Z <commit>` and push it,
+then deploy the relay as the deploy script prints (`deploy-cocurdex-relay deploy relay-vX.Y.Z`).
+
+## Decide first
+
+Start every release question with:
+
+```bash
+node scripts/release.mjs status
+```
+
+It lists, for each line, what merged on `origin/main` since the line's last tag, skipping tests,
+docs, and Markdown, and flags risk signals: `schema migration`, `mobile native`, and
+`CLI or skill contract`. Read the listed PRs, then recommend per line:
+
+- **Release** when a pending change fixes a bug users hit, or changes behavior users see.
+- **Hold** when every pending change is internal (refactors, tooling, unreleased features behind a flag).
+- **Beta, not stable** for the app line when a change carries a `schema migration`, a `mobile native`
+  change, or a broad behavior change; it soaks on the `test` channel before `bump release`.
+- **Relay after the app.** The relay's web client calls the daemon of the user's own app. Release the
+  relay once the matching app reaches stable, so the web client never calls RPC methods the
+  installed daemon lacks.
+
+Present the recommendation with the PR list, and release only after the user agrees, unless they
+already asked for a specific release.
 
 ## Not every change is a release
 
@@ -154,5 +188,5 @@ The workflow builds macOS arm64/x64, Windows x64, and Linux x64, then publishes.
 
 ## Script
 
-`scripts/release.mjs` — subcommands `bump <beta|release|patch|minor|major>`, `check`, and `tag`;
+`scripts/release.mjs` — subcommands `status`, `bump <beta|release|patch|minor|major>`, `check`, and `tag`;
 all accept `--dry-run`.
