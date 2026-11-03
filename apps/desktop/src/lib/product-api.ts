@@ -249,6 +249,9 @@ export const daemonProductApi: ProductRequestApi = {
   uninstallAcpRegistryAgent: async (agentId) => {
     await rpc("acpRegistry.uninstall", { agentId });
   },
+  listAcpRegistryUpdates: (options) =>
+    rpc("acpRegistry.updates", options ?? {}),
+  updateAcpRegistryAgent: (agentId) => rpc("acpRegistry.update", { agentId }),
   listAgentProviderDefaults: () => rpc("provider.listDefaults"),
   getAgentProviderDefault: (agentId) =>
     rpc("provider.default.get", { agentId }),

@@ -1,4 +1,5 @@
 import {
+  type AcpRegistryAgentUpdate,
   type AgentDescriptor,
   type AgentId,
   type AgentRateLimitsReadResult,
@@ -20,6 +21,7 @@ import {
 } from "@/features/sessions";
 import { desktopApi, useMountEffect } from "@/lib";
 import { AcpRegistryDialog } from "./acp-registry-dialog";
+import { useAcpRegistryUpdates } from "./acp-registry-queries";
 import { AdapterRateLimits } from "./adapter-rate-limits";
 import { adapterRateLimitsCacheAtom } from "./adapter-rate-limits-cache";
 import { sortAdaptersForSettings } from "./adapter-settings-order";
@@ -33,14 +35,18 @@ import { AgentDetailDialog } from "./agent-detail-dialog";
 function rowStatus(
   kind: AdapterStatusKind,
   rateLimitsResult: AgentRateLimitsReadResult | undefined,
+  update: AcpRegistryAgentUpdate | undefined,
 ): AdapterDisplayStatus | null {
-  if (kind === "ready" || kind === "builtin") {
-    return rateLimitsResult?.status === "error" &&
-      rateLimitsResult.code === "authentication-required"
-      ? "needs-login"
-      : null;
+  if (kind !== "ready" && kind !== "builtin") {
+    return kind;
   }
-  return kind;
+  if (
+    rateLimitsResult?.status === "error" &&
+    rateLimitsResult.code === "authentication-required"
+  ) {
+    return "needs-login";
+  }
+  return update ? "update-available" : null;
 }
 
 function planUsageAgentIds(agents: AgentDescriptor[]) {
@@ -73,14 +79,16 @@ function AdapterRow({
   agent,
   onOpen,
   rateLimitsResult,
+  update,
 }: {
   agent: AgentDescriptor;
   onOpen(): void;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
+  update: AcpRegistryAgentUpdate | undefined;
 }) {
   const { t } = useTranslation("settings");
   const status = getAdapterStatus(agent);
-  const displayStatus = rowStatus(status.kind, rateLimitsResult);
+  const displayStatus = rowStatus(status.kind, rateLimitsResult, update);
 
   return (
     <button
@@ -136,6 +144,9 @@ export function AdapterSettingsPanel() {
   const [registryOpen, setRegistryOpen] = useState(false);
   const [openAgentId, setOpenAgentId] = useState<AgentId | null>(null);
   const openAgent = agents.find((agent) => agent.id === openAgentId) ?? null;
+  const { data: updates, mutate: reloadUpdates } = useAcpRegistryUpdates();
+  const updateFor = (agentId: AgentId | null) =>
+    updates?.find((update) => update.agentId === agentId);
 
   const loadRateLimits = async (
     agentsToProbe: AgentDescriptor[],
@@ -186,6 +197,12 @@ export function AdapterSettingsPanel() {
       setRefreshing(true);
     }
     try {
+      if (!silent) {
+        reloadUpdates(
+          desktopApi.listAcpRegistryUpdates({ forceRefresh: true }),
+          { revalidate: false },
+        ).catch(() => undefined);
+      }
       const nextAgents = await desktopApi.listAgents();
       bootstrapAgents(nextAgents);
       await loadRateLimits(nextAgents, !silent);
@@ -257,6 +274,7 @@ export function AdapterSettingsPanel() {
             key={agent.id}
             onOpen={() => setOpenAgentId(agent.id)}
             rateLimitsResult={rateLimitsByAgent[agent.id]}
+            update={updateFor(agent.id)}
           />
         ))}
       </SettingsGroup>
@@ -268,6 +286,9 @@ export function AdapterSettingsPanel() {
           }
         }}
         onRemoved={() => refresh(true)}
+        onUpdated={async () => {
+          await Promise.all([refresh(true), reloadUpdates()]);
+        }}
         rateLimitsLoading={
           openAgentId !== null && loadingAgentIds.includes(openAgentId)
         }
@@ -277,6 +298,7 @@ export function AdapterSettingsPanel() {
         showsRateLimits={
           openAgent !== null && planUsageAgentIds([openAgent]).length > 0
         }
+        update={updateFor(openAgentId)}
       />
     </div>
   );

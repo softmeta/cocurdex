@@ -487,6 +487,10 @@ export const offlineApi: DesktopApi = {
     throw new Error("ACP Registry needs the desktop app");
   },
   uninstallAcpRegistryAgent: async () => {},
+  listAcpRegistryUpdates: async () => [],
+  updateAcpRegistryAgent: async () => {
+    throw new Error("ACP Registry needs the desktop app");
+  },
   listAgentProviderDefaults: async () => [],
   getAgentProviderDefault: async () => null,
   setAgentProviderDefault: async () => {},

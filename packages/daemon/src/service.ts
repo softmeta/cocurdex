@@ -848,6 +848,12 @@ export class CocurdexDaemonService {
       });
   }
 
+  async updateAcpRegistryAgent(agentId: AcpRegistryAgentId) {
+    const agent = await this.acpRegistry.update(agentId);
+    resetAcpProviderModelsCache(agent.agentId);
+    return agent;
+  }
+
   async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
     await this.acpRegistry.uninstall(agentId);
     resetAcpProviderModelsCache(agentId);

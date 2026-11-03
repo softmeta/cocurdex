@@ -1,5 +1,6 @@
 import type {
   AcpRegistryAgentId,
+  AcpRegistryAgentUpdate,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
   AgentAuthState,
@@ -379,6 +380,8 @@ export type DaemonRequestPayloadByMethod = {
     args: string[];
   };
   "acpRegistry.uninstall": { agentId: AcpRegistryAgentId };
+  "acpRegistry.updates": { forceRefresh?: boolean };
+  "acpRegistry.update": { agentId: AcpRegistryAgentId };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
   "workspace.listFiles": { rootPath: string };
@@ -761,6 +764,8 @@ export type DaemonResultByMethod = {
   "acpRegistry.install": AcpRegistryInstalledAgent;
   "acpRegistry.installCommand": AcpRegistryInstalledAgent;
   "acpRegistry.uninstall": null;
+  "acpRegistry.updates": AcpRegistryAgentUpdate[];
+  "acpRegistry.update": AcpRegistryInstalledAgent;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];
   "workspace.listFiles": WorkspaceFileRecord[];

@@ -1,4 +1,5 @@
 import {
+  type AcpRegistryAgentUpdate,
   type AgentDescriptor,
   type AgentRateLimitsReadResult,
   isAcpRegistryAgentId,
@@ -30,6 +31,7 @@ import {
 } from "./adapter-rate-limits";
 import { AdapterStatusDot, useAdapterStatusLabel } from "./adapter-status-dot";
 import { AgentAuthSection } from "./agent-auth-section";
+import { AgentUpdateField } from "./agent-update-field";
 
 function ExecutablePath({ path }: { path: string }) {
   const { t } = useTranslation("settings");
@@ -207,16 +209,20 @@ export function AgentDetailDialog({
   agent,
   onOpenChange,
   onRemoved,
+  onUpdated,
   rateLimitsLoading,
   rateLimitsResult,
   showsRateLimits,
+  update,
 }: {
   agent: AgentDescriptor | null;
   onOpenChange(open: boolean): void;
   onRemoved(): Promise<void>;
+  onUpdated(): Promise<void>;
   rateLimitsLoading: boolean;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
   showsRateLimits: boolean;
+  update: AcpRegistryAgentUpdate | undefined;
 }) {
   return (
     <Dialog open={agent !== null} onOpenChange={onOpenChange}>
@@ -228,9 +234,11 @@ export function AgentDetailDialog({
               onOpenChange(false);
               await onRemoved();
             }}
+            onUpdated={onUpdated}
             rateLimitsLoading={rateLimitsLoading}
             rateLimitsResult={rateLimitsResult}
             showsRateLimits={showsRateLimits}
+            update={update}
           />
         ) : null}
       </DialogContent>
@@ -241,15 +249,19 @@ export function AgentDetailDialog({
 function AgentDetailContent({
   agent,
   onRemoved,
+  onUpdated,
   rateLimitsLoading,
   rateLimitsResult,
   showsRateLimits,
+  update,
 }: {
   agent: AgentDescriptor;
   onRemoved(): Promise<void>;
+  onUpdated(): Promise<void>;
   rateLimitsLoading: boolean;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
   showsRateLimits: boolean;
+  update: AcpRegistryAgentUpdate | undefined;
 }) {
   const { t } = useTranslation("settings");
   const status = getAdapterStatus(agent);
@@ -314,6 +326,15 @@ function AgentDetailContent({
           </DetailField>
         ) : null}
         {needsInstall ? <InstallField status={status} /> : null}
+        {update && !needsInstall ? (
+          <DetailField label={t("adapters.detail.update")}>
+            <AgentUpdateField
+              agentLabel={agent.label}
+              onUpdated={onUpdated}
+              update={update}
+            />
+          </DetailField>
+        ) : null}
         {registryAgentId ? (
           <DetailField label={t("adapters.detail.manage")}>
             <AcpRegistryRemoveButton

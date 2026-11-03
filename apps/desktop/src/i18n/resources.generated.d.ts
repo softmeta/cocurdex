@@ -1962,6 +1962,7 @@ export default interface Resources {
         readFailed: "Could not read login methods: {{message}}";
         reading: "Reading login methods…";
         retry: "Retry";
+        signedIn: "Signed in ({{method}}).";
         signingIn: "Logging in with {{method}}. If a browser page opens, finish there; this updates when it is done.";
         switchConfirm: "Switch";
         switchDescription_one: "Switching stops {{count}} running {{agent}} session. It keeps the current method if the new login fails.";
@@ -1990,6 +1991,7 @@ export default interface Resources {
         needsLogin: "Login required";
         outdated: "Update required";
         ready: "Ready";
+        updateAvailable: "Update available";
       };
       rateLimits: {
         authenticationRequired: "No usage found. Not signed in. Run claude auth login, then refresh.";
@@ -2052,6 +2054,11 @@ export default interface Resources {
         commandCopied: "Install command copied";
         pathCopied: "Path copied";
         refreshFailed: "Could not refresh agent CLIs";
+        updated: "Updated {{agent}} to v{{version}}";
+      };
+      update: {
+        action: "Update to v{{version}}";
+        available: "v{{installed}} installed, v{{latest}} available";
       };
     };
     agentRoles: {

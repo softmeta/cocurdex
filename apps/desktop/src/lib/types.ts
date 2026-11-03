@@ -2,6 +2,7 @@ import type { PairedHostEndpoint } from "@cocurdex/client-runtime";
 import type { DaemonConnectionInfo } from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
+  AcpRegistryAgentUpdate,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
   AgentAuthState,
@@ -587,6 +588,12 @@ export interface ProductApi {
     args: string[];
   }): Promise<AcpRegistryInstalledAgent>;
   uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId): Promise<void>;
+  listAcpRegistryUpdates(options?: {
+    forceRefresh?: boolean;
+  }): Promise<AcpRegistryAgentUpdate[]>;
+  updateAcpRegistryAgent(
+    agentId: AcpRegistryAgentId,
+  ): Promise<AcpRegistryInstalledAgent>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
     agentId: AgentId,
