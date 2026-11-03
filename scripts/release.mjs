@@ -156,6 +156,141 @@ function runTag({ dryRun }) {
   );
 }
 
+const RENDERER_PACKAGES = [
+  "packages/client-runtime/",
+  "packages/deck/",
+  "packages/note-doc/",
+  "packages/rpc/",
+  "packages/shared/",
+  "packages/secure-channel/",
+];
+
+const RELEASE_LINES = [
+  {
+    name: "app",
+    tagMatch: "v[0-9]*",
+    workflow: "release.yml",
+    ships: "desktop (macOS, Windows, Linux), iOS TestFlight, Android",
+    inputs: ["apps/desktop/", "apps/mobile/", "apps/cli/", "packages/"],
+  },
+  {
+    name: "relay",
+    tagMatch: "relay-v[0-9]*",
+    workflow: "relay-release.yml",
+    ships: "relay binaries with the desktop renderer as its web client",
+    inputs: ["services/relay/", "apps/desktop/src/", ...RENDERER_PACKAGES],
+  },
+  {
+    name: "push",
+    tagMatch: "push-v[0-9]*",
+    workflow: "push-release.yml",
+    ships: "push gateway",
+    inputs: ["services/push/"],
+  },
+];
+
+const SIGNALS = [
+  {
+    label: "schema migration",
+    match: (f) => f === "packages/db/src/migrations.ts",
+  },
+  {
+    label: "mobile native",
+    match: (f) =>
+      /^apps\/mobile\/(ios|android|modules|plugins)\//.test(f) ||
+      /^apps\/mobile\/(app\.json|app\.config\.js|package\.json)$/.test(f),
+  },
+  {
+    label: "CLI or skill contract",
+    match: (f) =>
+      f.startsWith("apps/cli/") || f.startsWith("packages/product-skills/"),
+  },
+];
+
+function isShippedFile(file) {
+  if (file.endsWith(".md")) {
+    return false;
+  }
+  return !/(^|\/)(tests?|__tests__|docs)\//.test(file);
+}
+
+function lineFiles(line, files) {
+  return files.filter(
+    (file) =>
+      isShippedFile(file) &&
+      line.inputs.some((input) => file.startsWith(input)),
+  );
+}
+
+function fileSignals(files) {
+  return SIGNALS.filter((signal) => files.some(signal.match)).map(
+    (s) => s.label,
+  );
+}
+
+function lastLineTag(line) {
+  return git(
+    [
+      "describe",
+      "--tags",
+      "--abbrev=0",
+      "--match",
+      line.tagMatch,
+      "origin/main",
+    ],
+    {
+      allowFailure: true,
+    },
+  );
+}
+
+function changesSince(tag) {
+  const range = tag ? `${tag}..origin/main` : "origin/main";
+  const log = git(["log", "--first-parent", "--format=%H%x09%s", range]);
+  if (!log) {
+    return [];
+  }
+  return log.split("\n").map((row) => {
+    const [sha, subject] = row.split("\t");
+    const files = git(["diff", "--name-only", `${sha}^1`, sha], {
+      allowFailure: true,
+    });
+    return { sha, subject, files: files ? files.split("\n") : [] };
+  });
+}
+
+function describeChange({ sha, subject }) {
+  const pr = /^Merge pull request #(\d+) from \S+/.exec(subject);
+  const title = git(["log", "-1", "--format=%b", sha]).split("\n")[0];
+  return pr ? `#${pr[1]} ${title || subject}` : `${sha.slice(0, 7)} ${subject}`;
+}
+
+function runStatus() {
+  git(["fetch", "--tags", "--quiet", "origin", "main"]);
+  for (const line of RELEASE_LINES) {
+    const tag = lastLineTag(line);
+    const pending = changesSince(tag)
+      .map((change) => ({ ...change, files: lineFiles(line, change.files) }))
+      .filter((change) => change.files.length > 0);
+    const since = tag
+      ? `${tag} (${git(["log", "-1", "--format=%cs", tag])})`
+      : "never released";
+    console.log(`\n${line.name}: ${line.ships}`);
+    console.log(`  last tag: ${since}; workflow: ${line.workflow}`);
+    if (pending.length === 0) {
+      console.log("  nothing to release");
+      continue;
+    }
+    for (const change of pending) {
+      const signals = fileSignals(change.files);
+      const flags = signals.length > 0 ? ` [${signals.join(", ")}]` : "";
+      console.log(
+        `  - ${describeChange(change)} (${change.files.length} files)${flags}`,
+      );
+    }
+  }
+}
+
 function printHelp() {
   console.log(`Usage: node scripts/release.mjs <command> [--dry-run]
 
@@ -166,6 +301,8 @@ Commands:
                 tag name free.
   tag           Tag the origin/main tip with the current version and push it.
                 This is what starts the release workflow.
+  status        For each release line (app, relay, push), list what merged on
+                origin/main since its last tag, with risk signals.
 
 Options:
   --dry-run     Print what would happen; write, commit, and push nothing.`);
@@ -191,6 +328,10 @@ function main() {
   }
   if (argument) {
     throw new Error(`${command} takes no positional argument`);
+  }
+  if (command === "status") {
+    runStatus();
+    return;
   }
   if (command === "check") {
     runCheck();
