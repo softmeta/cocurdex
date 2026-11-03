@@ -49,6 +49,7 @@ function toDevice(row: Row): PairedDeviceRecord {
     createdAt: text(row.created_at),
     lastSeenAt: nullableText(row.last_seen_at),
     revokedAt: nullableText(row.revoked_at),
+    approvedAt: nullableText(row.approved_at),
     publicKey: nullableText(row.public_key),
     pushPlatform: row.push_handle ? pushPlatform(row.push_platform) : null,
   };
@@ -103,8 +104,8 @@ export function createSqliteHostAccessRepository(
       .prepare(
         `INSERT INTO host_devices
            (id, label, token_hash, public_key, scopes_json, created_at,
-            last_seen_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            last_seen_at, approved_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         device.id,
@@ -114,6 +115,7 @@ export function createSqliteHostAccessRepository(
         JSON.stringify(pairing.scopes),
         device.createdAt,
         device.createdAt,
+        null,
       );
     database
       .prepare(
@@ -193,6 +195,16 @@ export function createSqliteHostAccessRepository(
           .prepare("SELECT * FROM host_devices ORDER BY created_at DESC")
           .all() as Row[]
       ).map(toDevice);
+    },
+    approveDevice(deviceId, now, pendingSince) {
+      const { changes } = database
+        .prepare(
+          `UPDATE host_devices SET approved_at = ?
+           WHERE id = ? AND revoked_at IS NULL AND approved_at IS NULL
+             AND created_at > ?`,
+        )
+        .run(now, deviceId, pendingSince);
+      return changes > 0 ? getDevice(deviceId) : null;
     },
     revokeDevice(deviceId, now) {
       database

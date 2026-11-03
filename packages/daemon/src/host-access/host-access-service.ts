@@ -14,6 +14,7 @@ import {
   type HostAccessAuditAction,
   type HostAccessScope,
   type HostAddress,
+  type HostDeviceApproval,
   type HostIdentity,
   type HostPrincipal,
   type HostRelayStatus,
@@ -38,6 +39,8 @@ const RELAY_SETTING = "host.relay";
 const DEFAULT_PAIRING_TTL_MINUTES = 10;
 const MAX_PAIRING_TTL_MINUTES = 60;
 const TOUCH_INTERVAL_MS = 60_000;
+const MAX_APPROVAL_ATTEMPTS = 5;
+const APPROVAL_WINDOW_MS = 10 * 60_000;
 
 export interface HostAccessSettingsStore {
   get(key: string): Promise<string | null>;
@@ -66,12 +69,24 @@ export interface RemoteListenerController {
   state(): RemoteListenerState;
 }
 
+export type HostDeviceAdmission =
+  | { ok: true; accepted: RemoteChannelAccepted }
+  | { ok: false; reason: "rejected" | "pending" };
+
 export type HostPairingExchangeOutcome =
   | { ok: true; result: RemoteChannelAccepted }
   | { ok: false; reason: "unknown" | "expired" | "consumed" | "invalid" };
 
 export function hashHostSecret(secret: string) {
   return createHash("sha256").update(secret, "utf8").digest("hex");
+}
+
+function safetyCodesMatch(expected: string, entered: string) {
+  const normalized = Buffer.from(entered.replace(/\s/g, ""), "utf8");
+  const wanted = Buffer.from(expected, "utf8");
+  return (
+    normalized.length === wanted.length && timingSafeEqual(normalized, wanted)
+  );
 }
 
 export function principalActor(principal: HostPrincipal) {
@@ -187,6 +202,7 @@ function normalizeTtlMinutes(ttlMinutes: number | undefined) {
 export class HostAccessService {
   private hostId: string | null = null;
   private readonly activeDevices = new Map<string, PairedDeviceRecord>();
+  private readonly approvalAttempts = new Map<string, number>();
   private readonly lastTouched = new Map<string, number>();
   private readonly accessListeners = new Set<(deviceId: string) => void>();
   private readonly options: HostAccessServiceOptions;
@@ -262,18 +278,83 @@ export class HostAccessService {
     return { kind: "device", deviceId: device.id, scopes: device.scopes };
   }
 
-  connectDevice(
-    request: unknown,
-    publicKey: string,
-  ): RemoteChannelAccepted | null {
+  connectDevice(request: unknown, publicKey: string): HostDeviceAdmission {
     const deviceId = (request as { deviceId?: unknown } | null)?.deviceId;
-    if (typeof deviceId !== "string") return null;
+    if (typeof deviceId !== "string") return { ok: false, reason: "rejected" };
     const device =
       this.options.repository.findActiveDeviceByPublicKey(publicKey);
-    if (!device || device.id !== deviceId) return null;
+    if (!device || device.id !== deviceId) {
+      return { ok: false, reason: "rejected" };
+    }
+    if (!device.approvedAt) {
+      return {
+        ok: false,
+        reason: this.approvalExpiresAt(device) ? "pending" : "rejected",
+      };
+    }
     this.activeDevices.set(device.id, device);
     this.touch(device.id);
-    return this.accepted(device);
+    return { ok: true, accepted: this.accepted(device) };
+  }
+
+  private approvalExpiresAt(device: PairedDeviceRecord) {
+    if (device.approvedAt || device.revokedAt) return null;
+    const expiresAt = Date.parse(device.createdAt) + APPROVAL_WINDOW_MS;
+    if (expiresAt <= this.now().getTime()) return null;
+    return new Date(expiresAt).toISOString();
+  }
+
+  private isAbandoned(device: PairedDeviceRecord) {
+    return (
+      !device.approvedAt &&
+      !device.revokedAt &&
+      this.approvalExpiresAt(device) === null
+    );
+  }
+
+  approveDevice(
+    deviceId: string,
+    code: string,
+    principal: HostPrincipal,
+  ): HostDeviceApproval {
+    const pending = this.options.repository
+      .listDevices()
+      .find((device) => device.id === deviceId);
+    if (!pending?.publicKey || !this.approvalExpiresAt(pending)) {
+      return { ok: false, reason: "notPending" };
+    }
+    const expected = pairingSafetyCode(
+      decodeBase64Url(this.hostKey()),
+      decodeBase64Url(pending.publicKey),
+    );
+    if (!safetyCodesMatch(expected, code)) {
+      return this.rejectApprovalCode(deviceId, principal);
+    }
+    const now = this.now();
+    const device = this.options.repository.approveDevice(
+      deviceId,
+      now.toISOString(),
+      new Date(now.getTime() - APPROVAL_WINDOW_MS).toISOString(),
+    );
+    if (!device) return { ok: false, reason: "notPending" };
+    this.approvalAttempts.delete(deviceId);
+    this.audit("device.approved", principalActor(principal), deviceId);
+    this.remoteAccessChanged();
+    return { ok: true, device };
+  }
+
+  private rejectApprovalCode(
+    deviceId: string,
+    principal: HostPrincipal,
+  ): HostDeviceApproval {
+    const attempts = (this.approvalAttempts.get(deviceId) ?? 0) + 1;
+    if (attempts < MAX_APPROVAL_ATTEMPTS) {
+      this.approvalAttempts.set(deviceId, attempts);
+      return { ok: false, reason: "codeMismatch" };
+    }
+    this.approvalAttempts.delete(deviceId);
+    this.revokeDevice(deviceId, principal);
+    return { ok: false, reason: "tooManyAttempts" };
   }
 
   private accepted(device: PairedDeviceRecord): RemoteChannelAccepted {
@@ -362,18 +443,26 @@ export class HostAccessService {
       outcome.pairing.id,
       remoteAddress,
     );
-    this.activeDevices.set(outcome.device.id, outcome.device);
+    if (outcome.device.approvedAt) {
+      this.activeDevices.set(outcome.device.id, outcome.device);
+    }
+    this.remoteAccessChanged();
     return { ok: true, result: this.accepted(outcome.device) };
   }
 
   listDevices(): PairedDevice[] {
     const hostKey = decodeBase64Url(this.hostKey());
-    return this.options.repository.listDevices().map((device) => ({
-      ...device,
-      safetyCode: device.publicKey
-        ? pairingSafetyCode(hostKey, decodeBase64Url(device.publicKey))
-        : null,
-    }));
+    return this.options.repository
+      .listDevices()
+      .filter((device) => !this.isAbandoned(device))
+      .map((device) => ({
+        ...device,
+        safetyCode:
+          device.publicKey && device.approvedAt
+            ? pairingSafetyCode(hostKey, decodeBase64Url(device.publicKey))
+            : null,
+        approvalExpiresAt: this.approvalExpiresAt(device),
+      }));
   }
 
   revokeDevice(deviceId: string, principal: HostPrincipal) {

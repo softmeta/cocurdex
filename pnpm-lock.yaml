@@ -1100,6 +1100,9 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../../packages/secure-channel
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -1305,6 +1308,9 @@ importers:
       '@cocurdex/rpc':
         specifier: workspace:*
         version: link:../../../packages/rpc
+      '@cocurdex/secure-channel':
+        specifier: workspace:*
+        version: link:../../../packages/secure-channel
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../../packages/shared

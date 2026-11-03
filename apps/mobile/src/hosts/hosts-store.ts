@@ -70,7 +70,9 @@ export function createHostsStore(
       } catch (error) {
         if (error instanceof HostAccessError) {
           const failure =
-            error.reason === "offline" ? "unreachable" : error.reason;
+            error.reason === "offline" || error.reason === "pending"
+              ? "unreachable"
+              : error.reason;
           return { failure };
         }
         throw error;

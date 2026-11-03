@@ -1,6 +1,7 @@
 export type HostAccessFailure =
   | "invalid"
   | "offline"
+  | "pending"
   | "rateLimited"
   | "unreachable";
 

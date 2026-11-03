@@ -20,6 +20,7 @@ import {
   spawnDaemon,
   waitFor,
 } from "@cocurdex/test-harness/helpers/daemon-process";
+import { startDeviceApprover } from "@cocurdex/test-harness/helpers/device-approver";
 import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { EMULATOR_HOST_ALIAS } from "./android";
 import type { MobilePlatform } from "./target";
@@ -164,6 +165,7 @@ export async function startPairingDaemon(
     if (!address) throw new Error("Remote access reported no address");
     const baseUrl = new URL(address.url);
     if (platform === "android") baseUrl.hostname = EMULATOR_HOST_ALIAS;
+    let stopApprover: (() => void) | null = null;
     return {
       hostAddress: baseUrl.host,
       async createPairingLink() {
@@ -175,6 +177,7 @@ export async function startPairingDaemon(
           },
           daemon.options,
         );
+        stopApprover ??= startDeviceApprover(daemon.options, hostKey);
         return buildHostPairingLink(baseUrl.origin, code, hostKey);
       },
       agentModelName: AGENT_MODEL_NAME,
@@ -284,6 +287,7 @@ export async function startPairingDaemon(
         ].join("\n");
       },
       async dispose() {
+        stopApprover?.();
         await daemon.dispose();
         await stub.close();
       },

@@ -635,6 +635,7 @@ export const offlineApi: DesktopApi = {
   cancelHostPairing: async () => null,
   listHostDevices: async () => [],
   revokeHostDevice: async () => null,
+  approveHostDevice: async () => ({ ok: false, reason: "notPending" }),
   updateHostDeviceScopes: async () => null,
   listHostAudit: async () => [],
   listSessionMessages: async () => ({

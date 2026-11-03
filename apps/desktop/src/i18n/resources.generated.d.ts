@@ -511,6 +511,12 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
+    webHostPending: {
+      codeLabel: "Safety code";
+      description: "Approve this browser on {{name}}: open the request in Cocurdex there and enter this safety code.";
+      title: "Waiting for approval";
+      waiting: "This page opens by itself once the computer approves it. The request expires after 10 minutes.";
+    };
     webHostUnreachable: {
       forget: "Forget this computer";
       forgetFailed: "This browser couldn't remove the pairing. Allow site data and try again.";
@@ -2277,8 +2283,25 @@ export default interface Resources {
         save: "Save";
         title: "Access for {{name}}";
       };
+      approval: {
+        allow: "Allow";
+        approve: "Approve";
+        close: "Close";
+        codeHint: "Read the six-digit code from the device asking for access. Only allow it if you started this pairing.";
+        codeLabel: "Safety code shown on the device";
+        deny: "Deny";
+        description: "It asks for: {{scopes}}.";
+        failed: "Could not update the device";
+        failure: {
+          codeMismatch: "That code doesn't match the one this device shows. Check it on the device and try again.";
+          notPending: "This request is no longer waiting. It may have expired; pair the device again.";
+          tooManyAttempts: "Too many wrong codes. The device was denied and must pair again.";
+        };
+        title: "Allow {{name}} to use this computer?";
+      };
       audit: {
         action: {
+          deviceApproved: "Device approved";
           deviceRevoked: "Device revoked";
           deviceScopesChanged: "Device access changed";
           pairingCancelled: "Pairing cancelled";
@@ -2298,6 +2321,7 @@ export default interface Resources {
         empty: "No devices are paired with this computer yet.";
         groupTitle: "Paired devices";
         needsRepair: "Paired before encryption. Revoke it and pair again.";
+        pendingDetail: "{{scopes}} · waiting for approval until {{time}}";
         revoke: "Revoke";
         revokeCancel: "Cancel";
         revokeDescription: "The device is disconnected immediately and must pair again to reconnect.";
@@ -2415,6 +2439,10 @@ export default interface Resources {
         credentials: {
           description: "Manage provider logins and API keys, and view MCP servers.";
           title: "Credentials";
+        };
+        devices: {
+          description: "See, approve, and revoke paired devices.";
+          title: "Manage devices";
         };
         execute: {
           description: "Start sessions, teams, script runs, and workflows, and change or run MCP servers.";

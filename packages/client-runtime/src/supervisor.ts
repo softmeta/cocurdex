@@ -64,8 +64,14 @@ function errorOf(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+const PENDING_APPROVAL_RETRY_MS = 5_000;
+
+function errorCode(error: Error) {
+  return (error as { code?: unknown }).code;
+}
+
 function isUnauthorized(error: Error) {
-  return (error as { code?: unknown }).code === "UNAUTHORIZED";
+  return errorCode(error) === "UNAUTHORIZED";
 }
 
 export function createConnectionSupervisor(
@@ -146,7 +152,10 @@ export function createConnectionSupervisor(
       });
       return;
     }
-    const delay = backoffDelay(failures, policy);
+    const pendingApproval = errorCode(error) === "PENDING_APPROVAL";
+    const delay = pendingApproval
+      ? PENDING_APPROVAL_RETRY_MS
+      : backoffDelay(failures, policy);
     retryTimer = setTimeout(() => {
       retryTimer = null;
       void connect();
@@ -154,7 +163,7 @@ export function createConnectionSupervisor(
     unrefTimer(retryTimer);
     update({
       status: "retrying",
-      failures,
+      failures: pendingApproval ? state.failures : failures,
       retryAt: now() + delay,
       waitReason: null,
       lastError: error.message,

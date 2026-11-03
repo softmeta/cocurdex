@@ -10,6 +10,7 @@ export const HOST_ACCESS_SCOPES = [
   "git.destructive",
   "approvals",
   "credentials",
+  "devices",
   "host.admin",
 ] as const;
 
@@ -51,12 +52,14 @@ export interface PairedDeviceRecord {
   createdAt: string;
   lastSeenAt: string | null;
   revokedAt: string | null;
+  approvedAt: string | null;
   publicKey: string | null;
   pushPlatform: PushPlatform | null;
 }
 
 export interface PairedDevice extends PairedDeviceRecord {
   safetyCode: string | null;
+  approvalExpiresAt: string | null;
 }
 
 export interface HostPairingRecord {
@@ -134,7 +137,7 @@ export type RemoteFileHead =
   | { ok: true; uploaded: ImageAttachment | DocumentAttachment }
   | { ok: false; error: RemoteFileFailure; message?: string };
 
-export type RemoteChannelRejection = "rejected" | "rateLimited";
+export type RemoteChannelRejection = "rejected" | "rateLimited" | "pending";
 
 export type RemoteChannelReply =
   | ({ ok: true } & RemoteChannelAccepted)
@@ -145,6 +148,7 @@ export type HostAccessAuditAction =
   | "pairing.cancelled"
   | "pairing.exchanged"
   | "pairing.rejected"
+  | "device.approved"
   | "device.revoked"
   | "device.scopesChanged"
   | "remote.enabled"
@@ -414,3 +418,12 @@ export function parseHostPairingLink(link: string) {
   if (!code || !hostKey || !HOST_KEY_PATTERN.test(hostKey)) return null;
   return { baseUrl, code, hostKey };
 }
+
+export type HostDeviceApprovalFailure =
+  | "notPending"
+  | "codeMismatch"
+  | "tooManyAttempts";
+
+export type HostDeviceApproval =
+  | { ok: true; device: PairedDeviceRecord }
+  | { ok: false; reason: HostDeviceApprovalFailure };

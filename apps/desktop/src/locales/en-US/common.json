@@ -114,6 +114,12 @@
     "gitNotRepoDescription": "",
     "gitNotRepoTitle": ""
   },
+  "webHostPending": {
+    "codeLabel": "Safety code",
+    "description": "Approve this browser on {{name}}: open the request in Cocurdex there and enter this safety code.",
+    "title": "Waiting for approval",
+    "waiting": "This page opens by itself once the computer approves it. The request expires after 10 minutes."
+  },
   "webHostUnreachable": {
     "forget": "Forget this computer",
     "forgetFailed": "This browser couldn't remove the pairing. Allow site data and try again.",

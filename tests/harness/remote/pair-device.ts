@@ -1,5 +1,9 @@
 import { parseArgs } from "node:util";
-import { createSavedHostStore, pairHost } from "@cocurdex/client-runtime";
+import {
+  createSavedHostStore,
+  pairHost,
+  savedHostSafetyCode,
+} from "@cocurdex/client-runtime";
 
 const { values } = parseArgs({
   options: {
@@ -24,4 +28,6 @@ const paired = await pairHost({
   label,
   store: createSavedHostStore(null),
 });
-process.stdout.write(`${JSON.stringify({ deviceId: paired.deviceId })}\n`);
+process.stdout.write(
+  `${JSON.stringify({ deviceId: paired.deviceId, safetyCode: savedHostSafetyCode(paired) })}\n`,
+);

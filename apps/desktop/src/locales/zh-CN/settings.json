@@ -323,8 +323,25 @@
       "save": "保存",
       "title": "{{name}} 的权限"
     },
+    "approval": {
+      "allow": "允许",
+      "approve": "批准",
+      "close": "关闭",
+      "codeHint": "输入请求访问的设备上显示的 6 位安全码。只有在你本人发起这次配对时才允许。",
+      "codeLabel": "设备上显示的安全码",
+      "deny": "拒绝",
+      "description": "它请求的权限：{{scopes}}。",
+      "failed": "无法更新该设备",
+      "failure": {
+        "codeMismatch": "安全码与该设备显示的不一致。请在设备上核对后重试。",
+        "notPending": "该请求已不再等待批准，可能已过期；请重新配对设备。",
+        "tooManyAttempts": "安全码错误次数过多，已拒绝该设备，需要重新配对。"
+      },
+      "title": "允许 {{name}} 使用这台电脑？"
+    },
     "audit": {
       "action": {
+        "deviceApproved": "已批准设备",
         "deviceRevoked": "已吊销设备",
         "deviceScopesChanged": "设备权限已修改",
         "pairingCancelled": "已取消配对",
@@ -344,6 +361,7 @@
       "empty": "还没有设备与这台电脑配对。",
       "groupTitle": "已配对设备",
       "needsRepair": "在启用加密前配对，请吊销后重新配对。",
+      "pendingDetail": "{{scopes}} · 等待批准，{{time}} 前有效",
       "revoke": "吊销",
       "revokeCancel": "取消",
       "revokedDetail": "已于 {{time}} 吊销",
@@ -460,6 +478,10 @@
       "credentials": {
         "description": "管理模型提供方登录和 API Key，查看 MCP 服务器。",
         "title": "凭据"
+      },
+      "devices": {
+        "description": "查看、批准和吊销已配对的设备。",
+        "title": "管理设备"
       },
       "execute": {
         "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器。",
