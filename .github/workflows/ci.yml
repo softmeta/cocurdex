@@ -352,12 +352,12 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .mobile-native/${{ matrix.platform }}
-          key: mobile-native-v2-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
+          key: mobile-native-v3-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
       - name: Delete older native apps
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP: mobile-native-v2-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
+          KEEP: mobile-native-v3-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
         run: |
           gh cache list --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF}" \
             --key "mobile-native-" --limit 100 --json id,key \
@@ -373,7 +373,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .mobile-native/android
-          key: mobile-native-v2-android-${{ steps.fingerprint.outputs.hash }}
+          key: mobile-native-v3-android-${{ steps.fingerprint.outputs.hash }}
       - name: Repack app and bundle daemon
         env:
           READY: ${{ steps.native.outputs.cache-hit == 'true' || matrix.platform == 'android' }}
@@ -482,7 +482,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .mobile-native/${{ matrix.platform }}
-          key: mobile-native-v2-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
+          key: mobile-native-v3-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
@@ -554,8 +554,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { platform: ios, os: macos-latest, pr_run: light-en-US, shard: pairing-library }
-          - { platform: ios, os: macos-latest, pr_run: light-en-US, shard: transcript-compose }
+          - { platform: ios, os: macos-26-intel, pr_run: light-en-US, shard: pairing-library }
+          - { platform: ios, os: macos-26-intel, pr_run: light-en-US, shard: transcript-compose }
     env: *mobile-env
     steps: *mobile-steps
 
