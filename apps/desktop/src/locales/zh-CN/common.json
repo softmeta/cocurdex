@@ -113,6 +113,15 @@
     "gitNotRepoDescription": "",
     "gitNotRepoTitle": ""
   },
+  "webHostUnreachable": {
+    "forget": "忘记这台电脑",
+    "forgetFailed": "浏览器无法移除配对。请允许网站数据后重试。",
+    "offline": "{{name}} 没有连接到中继。请在那台电脑上打开 Cocurdex 后重试。",
+    "retry": "重试",
+    "revoked": "{{name}} 已不再接受此浏览器。请在这里忘记它，然后用新的链接重新配对。",
+    "title": "无法连接到你的电脑",
+    "unreachable": "与 {{name}} 的连接在建立前就被关闭了。请重试，或忘记这台电脑后用新的链接重新配对。"
+  },
   "webPair": {
     "action": "配对",
     "description": "在电脑上打开 Cocurdex 设置 › 设备，开启中继并生成配对码，然后把配对链接粘贴到这里。",
@@ -121,6 +130,7 @@
       "insecure": "该中继未使用 HTTPS，此页面无法连接。",
       "invalid": "配对链接已过期、已被使用或不完整。",
       "notRelay": "浏览器只能通过中继连接。请在电脑上开启中继，再生成新的配对码。",
+      "offline": "电脑没有连接到中继。请在电脑上打开 Cocurdex 后重试。",
       "rateLimited": "尝试次数过多，请等一分钟再试。",
       "storage": "此浏览器无法保存配对信息。请关闭无痕模式或允许网站存储数据后重试。",
       "unreachable": "无法通过中继连接到电脑。请确认电脑在线。"

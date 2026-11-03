@@ -168,7 +168,7 @@ describe("remote access through the relay", () => {
       (error: unknown) => error,
     );
     expect(refused).toBeInstanceOf(HostAccessError);
-    expect(refused).toMatchObject({ reason: "unreachable" });
+    expect(refused).toMatchObject({ reason: "offline" });
   });
 
   it("keeps direct access beside the relay and settles on the direct path", async () => {

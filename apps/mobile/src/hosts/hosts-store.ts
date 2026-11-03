@@ -68,7 +68,11 @@ export function createHostsStore(
         publish();
         return { host };
       } catch (error) {
-        if (error instanceof HostAccessError) return { failure: error.reason };
+        if (error instanceof HostAccessError) {
+          const failure =
+            error.reason === "offline" ? "unreachable" : error.reason;
+          return { failure };
+        }
         throw error;
       }
     },
