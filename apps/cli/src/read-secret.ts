@@ -6,38 +6,60 @@ export interface CredentialReader {
   close(): void;
 }
 
-export function createCredentialReader(): CredentialReader {
-  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+export interface CredentialReaderOptions {
+  input: NodeJS.ReadableStream;
+  prompts: NodeJS.WritableStream;
+  interactive: boolean;
+}
+
+function stripLineEnding(value: string) {
+  return value.replace(/\r$/, "");
+}
+
+function defaultOptions(): CredentialReaderOptions {
+  return {
+    input: process.stdin,
+    prompts: process.stderr,
+    interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+  };
+}
+
+export function createCredentialReader(
+  overrides: Partial<CredentialReaderOptions> = {},
+): CredentialReader {
+  const options = { ...defaultOptions(), ...overrides };
   let muted = false;
-  const output = new Writable({
+  const echo = new Writable({
     write(chunk, encoding, callback) {
-      if (!muted) process.stdout.write(chunk, encoding);
+      if (!muted) options.prompts.write(chunk, encoding);
       callback();
     },
   });
   const readline = createInterface({
-    input: process.stdin,
-    output,
-    terminal: interactive,
+    input: options.input,
+    output: echo,
+    terminal: options.interactive,
   });
-  const pipedLines = interactive ? null : readline[Symbol.asyncIterator]();
+  const pipedLines = options.interactive
+    ? null
+    : readline[Symbol.asyncIterator]();
 
   async function read(label: string) {
     if (pipedLines) {
-      process.stdout.write(`${label}\n`);
+      options.prompts.write(`${label}\n`);
       const next = await pipedLines.next();
       if (next.done) {
         throw new Error(`${label.trim().replace(/:$/, "")} was not provided`);
       }
-      return next.value.trim();
+      return stripLineEnding(next.value);
     }
-    process.stdout.write(label);
+    options.prompts.write(label);
     muted = true;
     try {
-      return (await readline.question("")).trim();
+      return stripLineEnding(await readline.question(""));
     } finally {
       muted = false;
-      process.stdout.write("\n");
+      options.prompts.write("\n");
     }
   }
 
