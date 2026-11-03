@@ -39,9 +39,12 @@ docs, and Markdown, and flags risk signals: `schema migration`, `mobile native`,
 - **Hold** when every pending change is internal (refactors, tooling, unreleased features behind a flag).
 - **Beta first** for the app line when a change carries a `schema migration`, a `mobile native`
   change, or a broad behavior change. A low-risk batch of fixes may go straight to stable.
-- **Relay after the app.** The relay's web client calls the daemon of the user's own app. Release the
-  relay once the matching app reaches stable, so the web client never calls RPC methods the
-  installed daemon lacks.
+- **Relay with the app, unless the web client would break on an older daemon.** The relay's web
+  client calls the daemon of the user's own app, which may still run the last stable. Read what the
+  pending web changes call: when an installed daemon would serve them (or the client degrades
+  cleanly, such as a state the old daemon never reports), release the relay alongside the app.
+  Hold it until the matching app reaches stable only when the web client depends on RPC methods or
+  fields the installed daemon lacks.
 
 Present the recommendation with the PR list, and release only after the user agrees, unless they
 already asked for a specific release.
