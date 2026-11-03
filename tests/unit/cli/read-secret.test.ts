@@ -2,7 +2,33 @@ import { PassThrough } from "node:stream";
 import { createCredentialReader } from "@cocurdex/cli/internal/read-secret";
 import { describe, expect, it, vi } from "vitest";
 
+class TerminalInput extends PassThrough {
+  isTTY = true;
+  rawModes: boolean[] = [];
+
+  setRawMode(mode: boolean) {
+    this.rawModes.push(mode);
+    return this;
+  }
+}
+
 describe("createCredentialReader", () => {
+  it("disables terminal echo when stdin is a TTY", async () => {
+    const input = new TerminalInput();
+    const prompts = new PassThrough();
+    let written = "";
+    prompts.on("data", (chunk) => {
+      written += String(chunk);
+    });
+    const reader = createCredentialReader({ input, prompts });
+    const pending = reader.read("Login password: ");
+    input.write("secret\n");
+    expect(await pending).toBe("secret");
+    reader.close();
+    expect(input.rawModes).toContain(true);
+    expect(written).not.toContain("secret");
+  });
+
   it("keeps stdout parseable and preserves spaces in the secret", async () => {
     const stdout = vi
       .spyOn(process.stdout, "write")
