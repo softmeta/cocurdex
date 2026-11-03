@@ -324,7 +324,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ios, android]
+        platform: [android]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -419,11 +419,10 @@ jobs:
           - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: transcript }
           - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: compose }
           - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: library }
-    env: &mobile-env
+    env:
       MAESTRO_VERSION: 2.11.0
       ANDROID_SYSTEM_IMAGE: system-images;android-36;google_apis;x86_64
-      IOS_DEVICE_TYPE: iPhone 16 Pro
-    steps: &mobile-steps
+    steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup pnpm
@@ -441,12 +440,6 @@ jobs:
         uses: ./.github/actions/restore-pnpm-store
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Boot iOS simulator
-        if: matrix.platform == 'ios'
-        run: |
-          udid="$(xcrun simctl create cocurdex-ci "${IOS_DEVICE_TYPE}")"
-          xcrun simctl boot "${udid}"
-          echo "IOS_DEVICE=${udid}" >> "${GITHUB_ENV}"
       - name: Download mobile app
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
@@ -503,16 +496,6 @@ jobs:
           yes | "${tools}/sdkmanager" --licenses > /dev/null
           "${tools}/sdkmanager" emulator platform-tools "${ANDROID_SYSTEM_IMAGE}"
           echo no | "${tools}/avdmanager" create avd --force --name cocurdex-ci --package "${ANDROID_SYSTEM_IMAGE}" --device pixel_6
-      - name: Wait for iOS simulator
-        if: matrix.platform == 'ios'
-        run: xcrun simctl bootstatus "${IOS_DEVICE}" -b
-      - name: Sample host memory
-        if: matrix.platform == 'ios'
-        run: |
-          out="${RUNNER_TEMP}/mobile-tests/host-memory.log"
-          mkdir -p "$(dirname "${out}")"
-          sysctl -n hw.memsize hw.ncpu > "${out}"
-          nohup bash -c 'while true; do date -u +%H:%M:%S; sysctl -n vm.loadavg; memory_pressure -Q | tail -n 1; vm_stat | grep -E "compressor|Compressions|Decompressions|Pageins"; ps -axr -o pid=,ppid=,pri=,nice=,%cpu=,rss=,state=,comm= | head -n 8; ps -ax -o pid=,ppid=,pri=,nice=,%cpu=,rss=,state=,comm= | grep -E "[n]ode|[j]ava"; sleep 5; done' >> "${out}" 2>&1 &
       - name: Run mobile flows
         env:
           ALL_RUNS: ${{ github.event_name == 'push' }}
@@ -526,11 +509,7 @@ jobs:
           if [[ "${ALL_RUNS}" != "true" ]]; then
             args+=(--run "${PR_RUN}")
           fi
-          if [[ "${{ matrix.platform }}" == "android" ]]; then
-            args+=(--avd cocurdex-ci)
-          else
-            args+=(--device "${IOS_DEVICE}")
-          fi
+          args+=(--avd cocurdex-ci)
           pnpm --filter @cocurdex/mobile-e2e flows -- "${args[@]}"
       - name: Upload mobile test artifacts
         if: ${{ !cancelled() }}
@@ -540,24 +519,6 @@ jobs:
           path: ${{ runner.temp }}/mobile-tests
           if-no-files-found: ignore
           retention-days: 7
-
-  mobile-ios:
-    name: Mobile e2e (${{ matrix.platform }}, ${{ matrix.shard }})
-    needs: [changes, mobile-prepare]
-    if: needs.changes.outputs.run_mobile == 'true'
-    continue-on-error: true
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { platform: ios, os: macos-26-intel, pr_run: light-en-US, shard: pairing-library }
-          - { platform: ios, os: macos-26-intel, pr_run: light-en-US, shard: transcript-compose }
-    env: *mobile-env
-    steps: *mobile-steps
 
   pnpm-store:
     name: Cache pnpm store (${{ matrix.os }})

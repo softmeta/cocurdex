@@ -92,8 +92,8 @@ first and refuses a tag that already exists.
    pnpm --filter @cocurdex/mobile-e2e flows -- --platform ios --build
    ```
 
-   CI runs them on Intel runners only, so this is the release's arm64 simulator coverage. A
-   failure blocks the tag: fix it on `main` first.
+   CI runs only the Android flows, so this is the release's iOS coverage. A failure blocks the
+   tag: fix it on `main` first.
 4. Run the command with `--dry-run`, check the tag and commit, then run it for real.
 5. Verify:
 
