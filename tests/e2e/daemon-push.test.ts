@@ -28,6 +28,7 @@ import {
   startStubLlmServer,
 } from "@cocurdex/test-harness/helpers/llm-stub";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { approveDevice } from "./helpers/approve-device";
 import { freePort, type ServiceProcess } from "./helpers/go-service";
 import {
   buildPushGateway,
@@ -75,12 +76,13 @@ async function pairPhone() {
     { label: "iPhone", scopes: ["read", "interact", "approvals"] },
     daemon.options,
   );
-  return pairHost({
+  const paired = await pairHost({
     baseUrl: `http://127.0.0.1:${port}`,
     code,
     hostKey,
     store: createSavedHostStore(null),
   });
+  return approveDevice(daemon, paired);
 }
 
 function deviceClient(host: SavedHost) {

@@ -56,7 +56,7 @@ function encodePublicKey(key: Uint8Array) {
 
 type Admission =
   | { ok: true; accepted: RemoteChannelAccepted }
-  | { ok: false; reason: "rejected" | "rateLimited" };
+  | { ok: false; reason: "rejected" | "rateLimited" | "pending" };
 
 export function acceptSecureRemoteSocket(
   socket: WebSocket,
@@ -98,10 +98,7 @@ export function acceptSecureRemoteSocket(
     if (hostId !== options.hostAccess.identity().hostId) {
       return { ok: false, reason: "rejected" };
     }
-    const accepted = options.hostAccess.connectDevice(payload, publicKey);
-    return accepted
-      ? { ok: true, accepted }
-      : { ok: false, reason: "rejected" };
+    return options.hostAccess.connectDevice(payload, publicKey);
   };
 
   const handshake = async (hello: Uint8Array) => {

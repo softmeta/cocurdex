@@ -1,4 +1,9 @@
-export type HostAccessFailure = "invalid" | "rateLimited" | "unreachable";
+export type HostAccessFailure =
+  | "invalid"
+  | "offline"
+  | "pending"
+  | "rateLimited"
+  | "unreachable";
 
 export class HostAccessError extends Error {
   readonly reason: HostAccessFailure;

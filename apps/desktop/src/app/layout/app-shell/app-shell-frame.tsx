@@ -19,7 +19,11 @@ import type {
   NotificationSettings,
   ThemeMode,
 } from "@/features/settings";
-import { AssistantSuggestionBar, SettingsScreen } from "@/features/settings";
+import {
+  AssistantSuggestionBar,
+  DeviceApprovalPrompt,
+  SettingsScreen,
+} from "@/features/settings";
 import {
   openWorkspaceByPathAtom,
   pickHostDirectoryAtom,
@@ -387,6 +391,7 @@ export function AppShellFrame({
           onOpenFile={onOpenFileFromPalette}
           open={isSearchOpen}
         />
+        <DeviceApprovalPrompt />
       </div>
 
       {activeScreen === "settings" ? (

@@ -511,6 +511,21 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
+    webHostPending: {
+      codeLabel: "Safety code";
+      description: "Approve this browser on {{name}}: open the request in Cocurdex there and enter this safety code.";
+      title: "Waiting for approval";
+      waiting: "This page opens by itself once the computer approves it. The request expires after 10 minutes.";
+    };
+    webHostUnreachable: {
+      forget: "Forget this computer";
+      forgetFailed: "This browser couldn't remove the pairing. Allow site data and try again.";
+      offline: "{{name}} isn't connected to its relay. Open Cocurdex on that computer, then try again.";
+      retry: "Try again";
+      revoked: "{{name}} no longer accepts this browser. Forget it here, then pair again with a new link.";
+      title: "Can't reach your computer";
+      unreachable: "The connection to {{name}} closed before it was set up. Try again, or forget this computer and pair again with a new link.";
+    };
     webPair: {
       action: "Pair";
       description: "On your computer, turn on a relay in Cocurdex Settings › Devices, create a pairing code, and paste its link here.";
@@ -519,6 +534,7 @@ export default interface Resources {
         insecure: "This relay doesn't use HTTPS, so this page can't connect to it.";
         invalid: "This pairing link has expired, was already used, or is incomplete.";
         notRelay: "The browser connects only through a relay. Turn on a relay on your computer and create a new pairing code.";
+        offline: "The computer isn't connected to its relay. Open Cocurdex on it and try again.";
         rateLimited: "Too many attempts. Wait a minute and try again.";
         storage: "This browser can't store the pairing. Turn off private browsing or allow site data, then try again.";
         unreachable: "Can't reach the computer through its relay. Check that it is online.";
@@ -2267,8 +2283,25 @@ export default interface Resources {
         save: "Save";
         title: "Access for {{name}}";
       };
+      approval: {
+        allow: "Allow";
+        approve: "Approve";
+        close: "Close";
+        codeHint: "Read the six-digit code from the device asking for access. Only allow it if you started this pairing.";
+        codeLabel: "Safety code shown on the device";
+        deny: "Deny";
+        description: "It asks for: {{scopes}}.";
+        failed: "Could not update the device";
+        failure: {
+          codeMismatch: "That code doesn't match the one this device shows. Check it on the device and try again.";
+          notPending: "This request is no longer waiting. It may have expired; pair the device again.";
+          tooManyAttempts: "Too many wrong codes. The device was denied and must pair again.";
+        };
+        title: "Allow {{name}} to use this computer?";
+      };
       audit: {
         action: {
+          deviceApproved: "Device approved";
           deviceRevoked: "Device revoked";
           deviceScopesChanged: "Device access changed";
           pairingCancelled: "Pairing cancelled";
@@ -2288,6 +2321,7 @@ export default interface Resources {
         empty: "No devices are paired with this computer yet.";
         groupTitle: "Paired devices";
         needsRepair: "Paired before encryption. Revoke it and pair again.";
+        pendingDetail: "{{scopes}} · waiting for approval until {{time}}";
         revoke: "Revoke";
         revokeCancel: "Cancel";
         revokeDescription: "The device is disconnected immediately and must pair again to reconnect.";
@@ -2405,6 +2439,10 @@ export default interface Resources {
         credentials: {
           description: "Manage provider logins and API keys, and view MCP servers.";
           title: "Credentials";
+        };
+        devices: {
+          description: "See, approve, and revoke paired devices.";
+          title: "Manage devices";
         };
         execute: {
           description: "Start sessions, teams, script runs, and workflows, and change or run MCP servers.";

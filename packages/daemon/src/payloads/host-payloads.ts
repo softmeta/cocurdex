@@ -46,6 +46,10 @@ export const hostPayloadSchemas: PayloadSchemas = {
   "host.push.register": pushRegistration,
   "host.pairing.create": createPairing,
   "host.pairing.cancel": z.object({ pairingId: idSchema }),
+  "host.devices.approve": z.object({
+    deviceId: idSchema,
+    code: z.string().max(32),
+  }),
   "host.devices.revoke": z.object({ deviceId: idSchema }),
   "host.devices.updateScopes": z.object({
     deviceId: idSchema,

@@ -27,6 +27,7 @@ import {
   spawnDaemon,
 } from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { approveDevice } from "./helpers/approve-device";
 import { runCli } from "./helpers/cli";
 import {
   buildRelay,
@@ -125,6 +126,7 @@ describe("remote access through the relay", () => {
       label: "Pixel",
       store: createSavedHostStore(null),
     });
+    await approveDevice(daemon, paired);
     expect(paired.baseUrl).toBe(endpoint);
     expect(paired.endpoints).toEqual([endpoint]);
 
@@ -168,7 +170,7 @@ describe("remote access through the relay", () => {
       (error: unknown) => error,
     );
     expect(refused).toBeInstanceOf(HostAccessError);
-    expect(refused).toMatchObject({ reason: "unreachable" });
+    expect(refused).toMatchObject({ reason: "offline" });
   });
 
   it("keeps direct access beside the relay and settles on the direct path", async () => {
@@ -198,6 +200,7 @@ describe("remote access through the relay", () => {
       label: "Pixel",
       store: createSavedHostStore(null),
     });
+    await approveDevice(daemon, paired);
     expect(paired.baseUrl).toBe(endpoint);
     const direct = `http://127.0.0.1:${port}`;
     const host = { ...paired, endpoints: [endpoint, direct] };
@@ -237,6 +240,7 @@ describe("remote access through the relay", () => {
       label: "Pixel",
       store: createSavedHostStore(null),
     });
+    await approveDevice(daemon, paired);
 
     await relay.stop();
     await waitForRelay(daemon, (next) => next.relay.state === "offline");

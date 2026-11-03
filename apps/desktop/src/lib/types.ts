@@ -53,6 +53,7 @@ import type {
   GitWorktreeInfo,
   HostAccessAuditEntry,
   HostAccessScope,
+  HostDeviceApproval,
   HostDirectoryListing,
   HostPairingRecord,
   HostRemoteAccessStatus,
@@ -663,6 +664,10 @@ export interface ProductApi {
   cancelHostPairing(pairingId: string): Promise<HostPairingRecord | null>;
   listHostDevices(): Promise<PairedDevice[]>;
   revokeHostDevice(deviceId: string): Promise<PairedDeviceRecord | null>;
+  approveHostDevice(
+    deviceId: string,
+    code: string,
+  ): Promise<HostDeviceApproval>;
   updateHostDeviceScopes(
     deviceId: string,
     scopes: HostAccessScope[],

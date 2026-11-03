@@ -39,6 +39,11 @@ export interface HostAccessRepository {
   deletePendingPairing(pairingId: string): HostPairingRecord | null;
   findActiveDeviceByPublicKey(publicKey: string): PairedDeviceRecord | null;
   listDevices(): PairedDeviceRecord[];
+  approveDevice(
+    deviceId: string,
+    now: string,
+    pendingSince: string,
+  ): PairedDeviceRecord | null;
   revokeDevice(deviceId: string, now: string): PairedDeviceRecord | null;
   updateDeviceScopes(
     deviceId: string,

@@ -243,6 +243,28 @@ describe("connection supervisor retries", () => {
     await vi.waitFor(() => expect(supervisor.getState().status).toBe("live"));
   });
 
+  it("retries at a steady pace while the device waits for approval", async () => {
+    vi.useFakeTimers();
+    const { supervisor } = fixture();
+    const pending = () =>
+      new DaemonClientError("Waiting for approval", "PENDING_APPROVAL");
+    subscribe
+      .mockRejectedValueOnce(pending())
+      .mockRejectedValueOnce(pending())
+      .mockRejectedValueOnce(pending());
+    await supervisor.connect();
+    for (const attempts of [2, 3, 4]) {
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(subscribe).toHaveBeenCalledTimes(attempts - 1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(subscribe).toHaveBeenCalledTimes(attempts);
+    }
+    expect(supervisor.getState()).toMatchObject({
+      status: "live",
+      failures: 0,
+    });
+  });
+
   it("wakes a pending retry immediately on foreground", async () => {
     vi.useFakeTimers();
     let foreground = () => {};

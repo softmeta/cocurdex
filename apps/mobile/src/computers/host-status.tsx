@@ -14,6 +14,8 @@ function dotColor(reachability: HostReachability): keyof ThemeColors {
       return reachability.latencyMs > SLOW_LATENCY_MS
         ? "statusWarning"
         : "statusSuccess";
+    case "pending":
+      return "statusWarning";
     case "offline":
     case "unauthorized":
       return "destructive";
@@ -30,6 +32,8 @@ export function useHostStatusLabel(hostId: string) {
       return t("list.status.online", { latency: reachability.latencyMs });
     case "offline":
       return t("list.status.offline");
+    case "pending":
+      return t("list.status.pending");
     case "unauthorized":
       return t("list.status.unauthorized");
     case "checking":

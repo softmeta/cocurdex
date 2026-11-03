@@ -26,6 +26,14 @@ export function createSecureHostTransport(
   );
 }
 
+function transportErrorCode(error: unknown) {
+  if (!(error instanceof HostAccessError)) return "TRANSPORT_ERROR";
+  if (error.reason === "invalid") return "UNAUTHORIZED";
+  if (error.reason === "offline") return "UNAVAILABLE";
+  if (error.reason === "pending") return "PENDING_APPROVAL";
+  return "TRANSPORT_ERROR";
+}
+
 export function createSecureTransport(
   connect: SecureSocketConnector,
 ): DaemonTransport {
@@ -55,12 +63,10 @@ export function createSecureTransport(
         for (const message of pending.splice(0)) send(message);
       },
       (error: unknown) => {
-        const rejected =
-          error instanceof HostAccessError && error.reason === "invalid";
         handlers.onError(
           new DaemonClientError(
             error instanceof Error ? error.message : String(error),
-            rejected ? "UNAUTHORIZED" : "TRANSPORT_ERROR",
+            transportErrorCode(error),
           ),
         );
         handlers.onClose();

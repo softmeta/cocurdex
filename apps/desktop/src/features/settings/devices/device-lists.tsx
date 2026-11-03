@@ -10,6 +10,7 @@ import { AppConfirmDialog, SettingsGroup } from "@/components/app";
 import { Button, Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import { DeviceAccessDialog } from "./device-access-dialog";
+import { DeviceApprovalDialog } from "./device-approval-dialog";
 import {
   useAuditActionLabels,
   useFormatDateTime,
@@ -20,13 +21,18 @@ function ListRow({
   title,
   detail,
   action,
+  deviceId,
 }: {
   title: string;
   detail: string;
   action?: React.ReactNode;
+  deviceId?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-3">
+    <div
+      className="flex items-center justify-between gap-6 py-3"
+      data-device-id={deviceId}
+    >
       <div className="min-w-0 flex-1">
         <Text className="block font-medium" size="body" truncate>
           {title}
@@ -100,6 +106,7 @@ export function PairedDevicesGroup({
   const formatDateTime = useFormatDateTime();
   const [revoking, setRevoking] = useState<PairedDevice | null>(null);
   const [editing, setEditing] = useState<PairedDevice | null>(null);
+  const [approving, setApproving] = useState<PairedDevice | null>(null);
 
   const describe = (device: PairedDevice) => {
     const scopes = device.scopes
@@ -110,12 +117,72 @@ export function PairedDevicesGroup({
         time: formatDateTime(device.revokedAt),
       });
     }
+    if (device.approvalExpiresAt) {
+      return t("devices.list.pendingDetail", {
+        scopes,
+        time: formatDateTime(device.approvalExpiresAt),
+      });
+    }
     if (!device.safetyCode) return t("devices.list.needsRepair");
     return t("devices.list.detail", {
       scopes,
       time: formatDateTime(device.lastSeenAt),
       code: device.safetyCode,
     });
+  };
+
+  const deny = (device: PairedDevice) =>
+    void desktopApi
+      .revokeHostDevice(device.id)
+      .then(onChanged)
+      .catch((error: unknown) =>
+        reportError(error, t("devices.approval.failed")),
+      );
+
+  const actionsFor = (device: PairedDevice) => {
+    if (device.revokedAt) return null;
+    if (device.approvalExpiresAt) {
+      return (
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            type="button"
+            variant="ghost"
+            onClick={() => setApproving(device)}
+          >
+            {t("devices.approval.approve")}
+          </Button>
+          <Button
+            size="sm"
+            type="button"
+            variant="ghost"
+            onClick={() => deny(device)}
+          >
+            {t("devices.approval.deny")}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          type="button"
+          variant="ghost"
+          onClick={() => setEditing(device)}
+        >
+          {t("devices.list.editAccess")}
+        </Button>
+        <Button
+          size="sm"
+          type="button"
+          variant="ghost"
+          onClick={() => setRevoking(device)}
+        >
+          {t("devices.list.revoke")}
+        </Button>
+      </div>
+    );
   };
 
   return (
@@ -129,33 +196,20 @@ export function PairedDevicesGroup({
       ) : null}
       {devices.map((device) => (
         <ListRow
-          action={
-            device.revokedAt ? null : (
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setEditing(device)}
-                >
-                  {t("devices.list.editAccess")}
-                </Button>
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setRevoking(device)}
-                >
-                  {t("devices.list.revoke")}
-                </Button>
-              </div>
-            )
-          }
+          action={actionsFor(device)}
           detail={describe(device)}
+          deviceId={device.id}
           key={device.id}
           title={device.label || t("devices.list.unnamed")}
         />
       ))}
+      {approving ? (
+        <DeviceApprovalDialog
+          device={approving}
+          onClose={() => setApproving(null)}
+          onSettled={onChanged}
+        />
+      ) : null}
       {editing ? (
         <DeviceAccessDialog
           device={editing}
