@@ -506,6 +506,13 @@ jobs:
       - name: Wait for iOS simulator
         if: matrix.platform == 'ios'
         run: xcrun simctl bootstatus "${IOS_DEVICE}" -b
+      - name: Sample host memory
+        if: matrix.platform == 'ios'
+        run: |
+          out="${RUNNER_TEMP}/mobile-tests/host-memory.log"
+          mkdir -p "$(dirname "${out}")"
+          sysctl -n hw.memsize hw.ncpu > "${out}"
+          nohup bash -c 'while true; do date -u +%H:%M:%S; memory_pressure -Q | tail -n 1; sysctl -n vm.swapusage; ps -axm -o rss=,comm= | head -n 8; sleep 10; done' >> "${out}" 2>&1 &
       - name: Run mobile flows
         env:
           ALL_RUNS: ${{ github.event_name == 'push' }}
