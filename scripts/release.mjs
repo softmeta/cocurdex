@@ -47,7 +47,7 @@ function nextVersion(kind, version) {
   const [, major, minor, patch, prerelease] = match;
   if (kind === "beta") {
     if (!prerelease) {
-      return `${major}.${minor}.${patch}-beta.1`;
+      return `${major}.${minor}.${Number(patch) + 1}-beta.1`;
     }
     const beta = /^beta\.(\d+)$/.exec(prerelease);
     if (!beta) {
