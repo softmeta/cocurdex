@@ -102,8 +102,8 @@ async function requireAppleSimUtils() {
     await runCommand("applesimutils", ["--version"]);
   } catch {
     throw new Error(
-      "Maestro grants iOS notification permission through applesimutils, " +
-        "and silently skips it when missing. Install it with: " +
+      "The iOS flows grant notification permission through applesimutils. " +
+        "Install it with: " +
         "brew tap wix/brew && brew install applesimutils",
     );
   }
@@ -188,6 +188,14 @@ export async function startIosTarget(
           "grant",
           "camera",
           IOS_APP_ID,
+        ]);
+        await runCommand("applesimutils", [
+          "--byId",
+          udid,
+          "--bundle",
+          IOS_APP_ID,
+          "--setPermissions",
+          "notifications=YES",
         ]);
       },
       launchApp: async () => {

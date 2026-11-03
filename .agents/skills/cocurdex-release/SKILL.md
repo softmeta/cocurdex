@@ -94,7 +94,7 @@ first and refuses a tag that already exists.
 
    CI runs only the Android flows, so this is the release's iOS coverage. A failure blocks the
    tag: fix it on `main` first. The runner needs `applesimutils` (`brew tap wix/brew && brew
-   install applesimutils`), which Maestro uses to grant notification permission.
+   install applesimutils`) to grant notification permission.
 4. Run the command with `--dry-run`, check the tag and commit, then run it for real.
 5. Verify:
 
