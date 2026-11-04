@@ -6,7 +6,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  Circle,
   Ellipsis,
   Pencil,
   Shapes,
@@ -26,9 +25,8 @@ import {
   IconButton,
   Text,
 } from "@/components/ui";
-import { cn } from "@/lib";
-import { groupFieldColor } from "../group-field-color";
 import { InlineEdit } from "../inline-edit";
+import { IssueStatusIcon } from "../issue-status-icon";
 
 export interface IssueStatusRowProps {
   status: ViewColumnRecord;
@@ -58,14 +56,12 @@ export function IssueStatusRow({
   onDelete,
 }: IssueStatusRowProps) {
   const { t } = useTranslation("issues");
-  const color = groupFieldColor(status);
   return (
     <li className="flex h-11 items-center gap-2.5" data-status-id={status.id}>
-      <Circle
-        aria-hidden
-        className={cn("size-3.5 shrink-0", !color && "text-muted-foreground")}
-        strokeWidth={2.25}
-        style={color ? { color } : undefined}
+      <IssueStatusIcon
+        statusId={status.id}
+        category={status.category}
+        color={status.color}
       />
       <div className="min-w-0 flex-1">
         <InlineEdit

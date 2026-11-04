@@ -47,7 +47,7 @@ export function FieldMenu({
 }: {
   icon: ReactNode;
   label: string;
-  options: Array<{ id: string; title: string }>;
+  options: Array<{ id: string; title: string; icon?: ReactNode }>;
   value: string;
   onChange: (id: string) => void;
   ariaLabel: string;
@@ -64,6 +64,7 @@ export function FieldMenu({
             onClick={() => onChange(opt.id)}
             className={cn(opt.id === value && "bg-accent")}
           >
+            {opt.icon}
             {opt.title}
           </DropdownMenuItem>
         ))}

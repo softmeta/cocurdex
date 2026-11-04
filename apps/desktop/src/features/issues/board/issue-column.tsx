@@ -4,22 +4,21 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Circle, Plus } from "lucide-react";
-import type { CSSProperties } from "react";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
-import { groupFieldColor } from "../group-field-color";
+import { GroupFieldMark } from "../group-field-mark";
 import { InlineEdit } from "../inline-edit";
 import { ColumnMenu } from "./column-menu";
-import { IssueCard } from "./issue-card";
+import { type CardFieldOption, IssueCard } from "./issue-card";
 
 interface IssueColumnProps {
   column: ViewColumnRecord;
   issues: IssueRecord[];
-  statusOptions: Array<{ id: string; title: string }>;
+  statusOptions: CardFieldOption[];
   priorityOptions: Array<{ id: string; title: string }>;
   onAddCard: (columnId: string) => void;
   onDeleteCard: (cardId: string) => void;
@@ -51,11 +50,6 @@ export function IssueColumn({
     data: { type: "column-drop", columnId: column.id },
   });
 
-  const statusColor = groupFieldColor(column);
-  const statusStyle: CSSProperties | undefined = statusColor
-    ? { color: statusColor }
-    : undefined;
-
   return (
     <div
       data-column-id={column.id}
@@ -65,15 +59,7 @@ export function IssueColumn({
       )}
     >
       <div className="group flex h-9 items-center gap-1.5 px-1">
-        <Circle
-          className={cn(
-            "size-3.5 shrink-0",
-            !statusColor && "text-editor-fg-subtle",
-          )}
-          style={statusStyle}
-          strokeWidth={2.25}
-          aria-hidden
-        />
+        <GroupFieldMark column={column} />
         <div className="min-w-0" data-testid="issue-column-title-cell">
           <InlineEdit
             value={column.title}
@@ -127,7 +113,6 @@ export function IssueColumn({
               <IssueCard
                 key={card.id}
                 card={card}
-                statusColor={statusColor}
                 statusOptions={statusOptions}
                 priorityOptions={priorityOptions}
                 onDelete={onDeleteCard}

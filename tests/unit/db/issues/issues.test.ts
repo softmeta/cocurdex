@@ -24,9 +24,11 @@ describe("CocurdexDatabase.issues", () => {
     });
     expect(initial?.columns.map((column) => column.id)).toEqual([
       "backlog",
+      "todo",
       "doing",
       "review",
       "done",
+      "canceled",
     ]);
 
     const issue = await database.issues.createIssue({
@@ -146,9 +148,11 @@ describe("CocurdexDatabase.issues", () => {
     expect(view?.columns.map((column) => column.title)).toEqual([
       "Backlog",
       "Triage",
-      "Doing",
+      "Todo",
+      "In Progress",
       "Done",
-      "Review",
+      "In Review",
+      "Canceled",
     ]);
     expect(
       view?.columns.find((column) => column.id === "review")?.category,
@@ -159,7 +163,7 @@ describe("CocurdexDatabase.issues", () => {
   it("keeps deleted default columns deleted and refuses the last one", async () => {
     const databasePath = createTestDatabasePath();
     const database = createCocurdexDatabase(databasePath);
-    for (const id of ["doing", "review", "done"]) {
+    for (const id of ["todo", "doing", "review", "done", "canceled"]) {
       await database.issues.deleteColumn({ field: "status", id });
     }
     await expect(

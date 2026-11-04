@@ -1,7 +1,7 @@
-import type { IssueRecord } from "@cocurdex/shared";
+import type { IssueRecord, IssueStatusCategory } from "@cocurdex/shared";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, Circle, Flag, Pencil, Trash2 } from "lucide-react";
+import { Check, Flag, Pencil, Trash2 } from "lucide-react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,10 +17,12 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { IssueLabelChips } from "../issue-label-chips";
+import { IssueStatusIcon } from "../issue-status-icon";
 
 export interface CardFieldOption {
   id: string;
   title: string;
+  category?: IssueStatusCategory | null;
 }
 
 interface IssueCardProps {
@@ -33,8 +35,6 @@ interface IssueCardProps {
     id: string,
     fields: { status?: string; priority?: string },
   ) => void;
-  /** Column status tint for the leading circle (Linear-style status mark). */
-  statusColor?: string | null;
   // Rendered inside the DragOverlay — lifts the tile with a stronger shadow.
   overlay?: boolean;
 }
@@ -46,7 +46,6 @@ export function IssueCard({
   onDelete,
   onEdit,
   onUpdateFields,
-  statusColor,
   overlay,
 }: IssueCardProps) {
   const { t } = useTranslation("issues");
@@ -65,8 +64,6 @@ export function IssueCard({
     transform: CSS.Transform.toString(transform),
     transition,
   };
-
-  const markColor = card.color ?? statusColor ?? undefined;
 
   const openCard = () => {
     onEdit(card);
@@ -106,14 +103,10 @@ export function IssueCard({
         onKeyDown={handleTileKeyDown}
       >
         <div className="mb-1.5 flex items-center gap-1.5 pe-5">
-          <Circle
-            className={cn(
-              "size-3.5 shrink-0",
-              !markColor && "text-editor-fg-subtle",
-            )}
-            style={markColor ? { color: markColor } : undefined}
-            strokeWidth={2}
-            aria-hidden
+          <IssueStatusIcon
+            statusId={card.status}
+            category={card.statusCategory}
+            color={card.color}
           />
           <Text
             as="span"
@@ -166,7 +159,10 @@ export function IssueCard({
         {statusOptions.length > 0 ? (
           <ContextMenuSub>
             <ContextMenuSubTrigger>
-              <Circle className="size-3.5" strokeWidth={2.25} />
+              <IssueStatusIcon
+                statusId={card.status}
+                category={card.statusCategory}
+              />
               {t("cardMenu.status")}
             </ContextMenuSubTrigger>
             <ContextMenuSubContent>
@@ -181,6 +177,10 @@ export function IssueCard({
                       }
                     }}
                   >
+                    <IssueStatusIcon
+                      statusId={opt.id}
+                      category={opt.category ?? null}
+                    />
                     <span className="flex-1">{opt.title}</span>
                     {selected ? <Check className="size-3.5" /> : null}
                   </ContextMenuItem>

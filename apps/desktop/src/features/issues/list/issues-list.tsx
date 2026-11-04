@@ -11,7 +11,7 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import { groupFieldColor } from "../group-field-color";
+import { GroupFieldMark } from "../group-field-mark";
 import { IssueListRow } from "./issue-list-row";
 
 interface IssuesListProps {
@@ -63,7 +63,6 @@ export function IssuesList({
         {sortedColumns.map((column) => {
           const issues = issuesByColumn.get(column.id) ?? [];
           const open = !collapsed[column.id];
-          const markColor = groupFieldColor(column);
 
           return (
             <Collapsible
@@ -96,17 +95,7 @@ export function IssuesList({
                   ) : (
                     <ChevronRight className="size-3.5 shrink-0 text-editor-fg-subtle" />
                   )}
-                  {/* Quiet status mark: small filled dot, not a loud outline circle. */}
-                  <span
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      !markColor && "bg-editor-fg-subtle/50",
-                    )}
-                    style={
-                      markColor ? { backgroundColor: markColor } : undefined
-                    }
-                    aria-hidden
-                  />
+                  <GroupFieldMark column={column} />
                   <Text
                     size="body"
                     weight="medium"

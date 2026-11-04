@@ -377,7 +377,7 @@ describe("cocurdex CLI against a running daemon", () => {
     expect(
       (
         await runCli(
-          ["issue", "status", "update", "Review", "--category", "completed"],
+          ["issue", "status", "update", "review", "--category", "completed"],
           options,
         )
       ).code,
@@ -385,13 +385,15 @@ describe("cocurdex CLI against a running daemon", () => {
     expect(await statusTitles()).toEqual([
       "backlog:Triage",
       "backlog:Backlog",
-      "started:Doing",
+      "unstarted:Todo",
+      "started:In Progress",
       "completed:Done",
-      "completed:Review",
+      "completed:In Review",
+      "canceled:Canceled",
     ]);
 
     const invalid = await runCli(
-      ["issue", "status", "update", "Review", "--category", "later"],
+      ["issue", "status", "update", "review", "--category", "later"],
       options,
     );
     expect(invalid.code).not.toBe(0);
@@ -399,14 +401,16 @@ describe("cocurdex CLI against a running daemon", () => {
 
     await runCli(["issue", "status", "delete", "Triage"], options);
     await runCli(
-      ["issue", "status", "update", "Review", "--category", "started"],
+      ["issue", "status", "update", "review", "--category", "started"],
       options,
     );
     expect(await statusTitles()).toEqual([
       "backlog:Backlog",
-      "started:Doing",
-      "started:Review",
+      "unstarted:Todo",
+      "started:In Progress",
+      "started:In Review",
       "completed:Done",
+      "canceled:Canceled",
     ]);
   });
 

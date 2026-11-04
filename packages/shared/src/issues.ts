@@ -91,9 +91,29 @@ export const DEFAULT_STATUS_COLUMNS: DefaultIssueColumn[] = [
     color: null,
     category: "backlog",
   },
-  { id: "doing", title: "Doing", order: 1, color: null, category: "started" },
-  { id: "review", title: "Review", order: 2, color: null, category: "started" },
-  { id: "done", title: "Done", order: 3, color: null, category: "completed" },
+  { id: "todo", title: "Todo", order: 1, color: null, category: "unstarted" },
+  {
+    id: "doing",
+    title: "In Progress",
+    order: 2,
+    color: null,
+    category: "started",
+  },
+  {
+    id: "review",
+    title: "In Review",
+    order: 3,
+    color: null,
+    category: "started",
+  },
+  { id: "done", title: "Done", order: 4, color: null, category: "completed" },
+  {
+    id: "canceled",
+    title: "Canceled",
+    order: 5,
+    color: null,
+    category: "canceled",
+  },
 ];
 
 export interface OrderedIssueColumn {

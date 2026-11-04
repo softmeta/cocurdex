@@ -1,5 +1,9 @@
-import type { IssueRecord, ViewGroupBy } from "@cocurdex/shared";
-import { Check, Circle, Flag, Pencil, Trash2 } from "lucide-react";
+import type {
+  IssueRecord,
+  IssueStatusCategory,
+  ViewGroupBy,
+} from "@cocurdex/shared";
+import { Check, Flag, Pencil, Trash2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,12 +18,14 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import { priorityFieldColor, statusFieldColor } from "../group-field-color";
+import { priorityFieldColor } from "../group-field-color";
 import { IssueLabelChips } from "../issue-label-chips";
+import { IssueStatusIcon } from "../issue-status-icon";
 
 export interface ListFieldOption {
   id: string;
   title: string;
+  category?: IssueStatusCategory | null;
 }
 
 interface IssueListRowProps {
@@ -55,7 +61,6 @@ export function IssueListRow({
   onUpdateFields,
 }: IssueListRowProps) {
   const { t } = useTranslation("issues");
-  const statusColor = statusFieldColor(card.status, card.color);
   const priorityColor = priorityFieldColor(card.priority || "none");
   const updated = card.updatedAt !== card.createdAt;
   const metaDate = formatMetaDate(updated ? card.updatedAt : card.createdAt);
@@ -101,14 +106,10 @@ export function IssueListRow({
         />
       ) : null}
       {showStatusMark ? (
-        <Circle
-          className={cn(
-            "size-3.5 shrink-0",
-            !statusColor && "text-muted-foreground",
-          )}
-          style={statusColor ? { color: statusColor } : undefined}
-          strokeWidth={2}
-          aria-hidden
+        <IssueStatusIcon
+          statusId={card.status}
+          category={card.statusCategory}
+          color={card.color}
         />
       ) : null}
       {!showPriorityMark && !showStatusMark ? (
@@ -166,7 +167,10 @@ export function IssueListRow({
         {statusOptions.length > 0 ? (
           <ContextMenuSub>
             <ContextMenuSubTrigger>
-              <Circle className="size-3.5" strokeWidth={2.25} />
+              <IssueStatusIcon
+                statusId={card.status}
+                category={card.statusCategory}
+              />
               {t("cardMenu.status")}
             </ContextMenuSubTrigger>
             <ContextMenuSubContent>
@@ -181,6 +185,10 @@ export function IssueListRow({
                       }
                     }}
                   >
+                    <IssueStatusIcon
+                      statusId={opt.id}
+                      category={opt.category ?? null}
+                    />
                     <span className="flex-1">{opt.title}</span>
                     {selected ? <Check className="size-3.5" /> : null}
                   </ContextMenuItem>
