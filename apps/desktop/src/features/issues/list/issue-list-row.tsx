@@ -82,6 +82,7 @@ export function IssueListRow({
     <div
       role="button"
       tabIndex={0}
+      data-issue-id={card.id}
       className={cn(
         // Same row chrome as notes sidebar / issues sidebar.
         "group flex h-8 w-full items-center gap-1.5 rounded-control px-2 text-start",

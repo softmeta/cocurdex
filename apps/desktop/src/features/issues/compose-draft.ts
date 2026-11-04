@@ -1,5 +1,5 @@
 import type { IssueRecord, ViewFull } from "@cocurdex/shared";
-import type { IssueComposeDraft } from "./dialogs";
+import type { IssueComposeDraft } from "./detail";
 
 function defaultWorkspaceId(
   board: ViewFull,

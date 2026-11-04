@@ -19,11 +19,13 @@ import { cn, useMountEffect } from "@/lib";
 import { IssuesBoard, ViewDisplayMenu, ViewFilterMenu } from "./board";
 import { buildComposeDraft } from "./compose-draft";
 import {
-  CardDetailDialog,
   type IssueComposeDraft,
+  IssueCreateDialog,
   type IssueDetailActions,
+  IssueDetailPage,
+  type IssueFieldOptions,
   type IssueSaveRequest,
-} from "./dialogs";
+} from "./detail";
 import {
   addIssueRelationAtom,
   closeIssueDetailAtom,
@@ -110,7 +112,6 @@ export function IssuesView({
   const handleAddCard = useCallback(
     (columnId: string, parent: IssueRecord | null = null) => {
       if (!activeBoard) return;
-      closeIssueDetail();
       setComposeDraft(
         buildComposeDraft({
           board: activeBoard,
@@ -121,7 +122,7 @@ export function IssuesView({
         }),
       );
     },
-    [activeBoard, activeWorkspaceId, closeIssueDetail, workspaces],
+    [activeBoard, activeWorkspaceId, workspaces],
   );
 
   const handleRenameColumn = useCallback(
@@ -154,14 +155,6 @@ export function IssuesView({
 
   const handleSaveIssue = useCallback(
     async (request: IssueSaveRequest) => {
-      if (request.kind === "update") {
-        const updated = await updateIssue({
-          id: request.id,
-          expectedRevision: request.expectedRevision,
-          ...request.changes,
-        });
-        return updated !== null;
-      }
       const { values } = request;
       const columnId =
         activeBoard?.view.groupBy === "priority"
@@ -170,13 +163,8 @@ export function IssuesView({
       const created = await createIssue({ columnId, ...values });
       return created !== null;
     },
-    [activeBoard?.view.groupBy, createIssue, updateIssue],
+    [activeBoard?.view.groupBy, createIssue],
   );
-
-  const closeIssueDialog = useCallback(() => {
-    closeIssueDetail();
-    setComposeDraft(null);
-  }, [closeIssueDetail]);
 
   const handleEditCard = useCallback(
     (card: IssueRecord) => {
@@ -252,6 +240,24 @@ export function IssuesView({
     return null;
   }
 
+  const sidebarToggle = sidebarCollapsed ? (
+    <SidebarToggleButton
+      label={t("sidebar.expand")}
+      open={false}
+      onToggle={() => setSidebarCollapsed(false)}
+    />
+  ) : null;
+  const fieldOptions: IssueFieldOptions | null = viewBoard
+    ? {
+        statusOptions: viewBoard.statusOptions,
+        priorityOptions: viewBoard.priorityOptions,
+        workspaces,
+        labels: viewBoard.labels,
+        issues: loadedBoard?.issues ?? viewBoard.issues,
+      }
+    : null;
+  const detailPageOpen = issueDetail !== null && fieldOptions !== null;
+
   return (
     <div className="flex min-h-0 flex-1">
       {sidebarCollapsed ? null : (
@@ -261,7 +267,10 @@ export function IssuesView({
         >
           <IssuesSidebar
             selection={nav.selection}
-            onSelect={nav.select}
+            onSelect={(selection) => {
+              closeIssueDetail();
+              nav.select(selection);
+            }}
             agentRunningCount={nav.agentRunningCount}
             views={customViews}
             onCreateView={() => {
@@ -276,53 +285,62 @@ export function IssuesView({
         </ResizableSidebar>
       )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas/80">
-        {/* View-scoped chrome: lives in the content column so layout/groupBy
-            read as settings for the open view, not a panel-wide control. */}
-        {boards.length > 0 || sidebarCollapsed ? (
-          <PanelToolbar
-            className="gap-1"
-            data-testid="issues-view-display-bar"
-            divided={false}
-          >
-            {sidebarCollapsed ? (
-              <SidebarToggleButton
-                label={t("sidebar.expand")}
-                open={false}
-                onToggle={() => setSidebarCollapsed(false)}
-              />
-            ) : null}
-            <Text
-              size="body"
-              weight="medium"
-              className={cn(
-                "me-auto min-w-0 truncate",
-                sidebarCollapsed && "ps-0.5",
-                !sidebarCollapsed && "ps-1",
-              )}
-            >
-              {navTitle}
-            </Text>
-            {boards.length > 0 ? (
-              <>
-                <ViewFilterMenu
-                  filters={viewFilters}
-                  workspaces={workspaces}
-                  labels={activeBoard?.labels ?? []}
-                  onFiltersChange={handleFiltersChange}
-                />
-                <ViewDisplayMenu
-                  layout={layout}
-                  groupBy={groupBy}
-                  onLayoutChange={handleLayout}
-                  onGroupByChange={handleGroupBy}
-                />
-              </>
-            ) : null}
-          </PanelToolbar>
+        {issueDetail && viewBoard && fieldOptions ? (
+          <IssueDetailPage
+            state={issueDetail}
+            viewTitle={viewBoard.view.title}
+            options={fieldOptions}
+            actions={detailActions}
+            leading={sidebarToggle}
+            onBack={closeIssueDetail}
+          />
         ) : null}
-        {viewBoard ? (
-          <>
-            {layout === "list" ? (
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col",
+            detailPageOpen && "hidden",
+          )}
+        >
+          {/* View-scoped chrome: lives in the content column so layout/groupBy
+            read as settings for the open view, not a panel-wide control. */}
+          {boards.length > 0 || sidebarCollapsed ? (
+            <PanelToolbar
+              className="gap-1"
+              data-testid="issues-view-display-bar"
+              divided={false}
+            >
+              {sidebarToggle}
+              <Text
+                size="body"
+                weight="medium"
+                className={cn(
+                  "me-auto min-w-0 truncate",
+                  sidebarCollapsed && "ps-0.5",
+                  !sidebarCollapsed && "ps-1",
+                )}
+              >
+                {navTitle}
+              </Text>
+              {boards.length > 0 ? (
+                <>
+                  <ViewFilterMenu
+                    filters={viewFilters}
+                    workspaces={workspaces}
+                    labels={activeBoard?.labels ?? []}
+                    onFiltersChange={handleFiltersChange}
+                  />
+                  <ViewDisplayMenu
+                    layout={layout}
+                    groupBy={groupBy}
+                    onLayoutChange={handleLayout}
+                    onGroupByChange={handleGroupBy}
+                  />
+                </>
+              ) : null}
+            </PanelToolbar>
+          ) : null}
+          {viewBoard ? (
+            layout === "list" ? (
               <IssuesList
                 board={viewBoard}
                 onAddCard={handleAddCard}
@@ -353,23 +371,28 @@ export function IssuesView({
                   void updateColumn({ id, category });
                 }}
               />
-            )}
-            <CardDetailDialog
-              card={issueDetail?.card ?? null}
-              detail={issueDetail?.detail ?? null}
+            )
+          ) : boards.length > 0 ? (
+            // Selected view id changed; full board payload still loading.
+            <div className="flex-1" />
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <EmptyState
+                icon={<ListTodo />}
+                title={t("empty.title")}
+                description={t("empty.description")}
+              />
+            </div>
+          )}
+        </div>
+        {viewBoard && fieldOptions ? (
+          <>
+            <IssueCreateDialog
               composeDraft={composeDraft}
-              bodyEpoch={issueDetail?.bodyEpoch ?? 0}
-              bodyStatus={issueDetail?.bodyStatus}
-              open={issueDetail !== null || composeDraft !== null}
               viewTitle={viewBoard.view.title}
-              statusOptions={viewBoard.statusOptions}
-              priorityOptions={viewBoard.priorityOptions}
-              workspaces={workspaces}
-              labels={viewBoard.labels}
-              issues={loadedBoard?.issues ?? viewBoard.issues}
-              groupBy={groupBy}
-              actions={detailActions}
-              onClose={closeIssueDialog}
+              options={fieldOptions}
+              onCreateLabel={createIssueLabel}
+              onClose={() => setComposeDraft(null)}
               onSave={handleSaveIssue}
             />
             <DeleteViewDialog
@@ -380,18 +403,7 @@ export function IssuesView({
               }}
             />
           </>
-        ) : boards.length > 0 ? (
-          // Selected view id changed; full board payload still loading.
-          <div className="flex-1" />
-        ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyState
-              icon={<ListTodo />}
-              title={t("empty.title")}
-              description={t("empty.description")}
-            />
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

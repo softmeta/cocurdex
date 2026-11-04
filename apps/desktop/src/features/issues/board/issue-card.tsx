@@ -82,6 +82,7 @@ export function IssueCard({
   const tile = (
     <div
       ref={overlay ? undefined : setNodeRef}
+      data-issue-id={overlay ? undefined : card.id}
       style={overlay ? undefined : style}
       {...(overlay ? {} : attributes)}
       {...(overlay ? {} : listeners)}

@@ -73,6 +73,9 @@
   "detail": {
     "addRelation": "添加关联",
     "addSubIssue": "添加子 issue",
+    "backToView": "返回{{view}}",
+    "loadFailed": "无法加载完整描述。请返回后重新打开该 issue 再编辑。",
+    "notFound": "该 issue 已不存在。",
     "relation": {
       "blockedBy": "被阻塞于",
       "blocks": "阻塞",
@@ -90,9 +93,7 @@
     "cancel": "取消",
     "createIssue": "创建 Issue",
     "descriptionPlaceholder": "添加描述…",
-    "editCard": "编辑 Issue",
     "labels": "标签",
-    "loadFailed": "无法加载完整描述，请关闭后重新打开再编辑。",
     "newIssue": "新建 Issue",
     "newLabel": "新建标签",
     "newLabelPlaceholder": "标签名称",
@@ -101,7 +102,6 @@
     "noWorkspace": "无工作区",
     "parent": "父 issue",
     "priority": "优先级",
-    "save": "保存",
     "searchIssues": "搜索 issue…",
     "status": "状态",
     "titlePlaceholder": "Issue 标题",

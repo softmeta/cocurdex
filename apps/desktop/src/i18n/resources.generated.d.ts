@@ -1028,6 +1028,9 @@ export default interface Resources {
     detail: {
       addRelation: "Add relation";
       addSubIssue: "Add sub-issue";
+      backToView: "Back to {{view}}";
+      loadFailed: "Couldn't load the full description. Go back and reopen the issue to edit it.";
+      notFound: "This issue no longer exists.";
       relation: {
         blockedBy: "Blocked by";
         blocks: "Blocks";
@@ -1045,9 +1048,7 @@ export default interface Resources {
       cancel: "Cancel";
       createIssue: "Create issue";
       descriptionPlaceholder: "Add description…";
-      editCard: "Edit issue";
       labels: "Labels";
-      loadFailed: "Couldn't load the full description. Close and reopen the issue to edit it.";
       newIssue: "New issue";
       newLabel: "New label";
       newLabelPlaceholder: "Label name";
@@ -1056,7 +1057,6 @@ export default interface Resources {
       noWorkspace: "No workspace";
       parent: "Parent";
       priority: "Priority";
-      save: "Save";
       searchIssues: "Search issues…";
       status: "Status";
       titlePlaceholder: "Issue title";
