@@ -21,6 +21,7 @@ async function historyState(session) {
     return {
       index: Number(group?.dataset.historyIndex ?? -1),
       length: Number(group?.dataset.historyLength ?? 0),
+      pending: group?.dataset.historyPending === "true",
     };
   }, HISTORY);
 }
@@ -36,13 +37,19 @@ async function waitForHistory(session, predicate, label) {
   throw new Error(`${label}: ${JSON.stringify(state)}`);
 }
 
+function settledHistory(session, label) {
+  return waitForHistory(session, (state) => !state.pending, label);
+}
+
 async function recordStep(session, action, label) {
-  const before = await historyState(session);
+  const before = await settledHistory(session, `${label} (before)`);
   await action();
   return waitForHistory(
     session,
     (state) =>
-      state.index === before.index + 1 && state.index === state.length - 1,
+      !state.pending &&
+      state.index === before.index + 1 &&
+      state.index === state.length - 1,
     label,
   );
 }
@@ -104,7 +111,11 @@ runScenario("app-navigation", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
   setup: async ({ session }) => {
     await showPanelView(session, "notes");
-    await waitForHistory(session, (state) => state.length > 0, "no history");
+    await waitForHistory(
+      session,
+      (state) => state.length > 0 && !state.pending,
+      "no history",
+    );
     return {};
   },
   steps: [
@@ -232,7 +243,7 @@ runScenario("app-navigation", {
         await openSettingsSection(session, "appearance");
         await pressNavigationKey(session, "back");
         await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
-        const after = await historyState(session);
+        const after = await settledHistory(session, "settings back");
         check(
           after.index === before.index - 1 && after.length === before.length,
           "settings sections were recorded as separate stops",

@@ -4,7 +4,11 @@ import { useTranslation } from "react-i18next";
 import { useResolvedShortcutLabel } from "@/features/shortcuts";
 import { TitlebarIconButton } from "../titlebar-icon-button";
 import { canNavigate } from "./navigation-history";
-import { navigateAtom, navigationHistoryAtom } from "./navigation-store";
+import {
+  navigateAtom,
+  navigationHistoryAtom,
+  navigationPendingAtom,
+} from "./navigation-store";
 
 function withShortcut(label: string, shortcut: string) {
   return shortcut ? `${label} (${shortcut})` : label;
@@ -13,6 +17,7 @@ function withShortcut(label: string, shortcut: string) {
 export function NavigationButtons() {
   const { t } = useTranslation("editor");
   const history = useAtomValue(navigationHistoryAtom);
+  const pending = useAtomValue(navigationPendingAtom);
   const canGoBack = canNavigate(history, "back");
   const canGoForward = canNavigate(history, "forward");
   const navigate = useSetAtom(navigateAtom);
@@ -24,6 +29,7 @@ export function NavigationButtons() {
       aria-label={t("actions.navigationHistory")}
       data-history-index={history.index}
       data-history-length={history.entries.length}
+      data-history-pending={pending}
       className="contents"
     >
       <TitlebarIconButton

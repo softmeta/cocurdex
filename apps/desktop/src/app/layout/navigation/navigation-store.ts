@@ -45,6 +45,7 @@ export const canNavigateBackAtom = atom((get) =>
 );
 const navigationApplyingAtom = atom(false);
 const navigationEpochAtom = atom(0);
+export const navigationPendingAtom = atom(false);
 
 function panelEntityId(get: Getter, view: RightPanelView): string | null {
   if (view === "notes") return get(activeNoteIdAtom);
@@ -64,6 +65,7 @@ export const currentAppLocationAtom = atom((get): AppLocation => {
 });
 
 function settleNavigation(get: Getter, set: Setter) {
+  set(navigationPendingAtom, false);
   const location = get(currentAppLocationAtom);
   const history = get(navigationHistoryAtom);
   if (get(navigationApplyingAtom)) {
@@ -150,6 +152,7 @@ export function subscribeNavigationRecorder(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const schedule = () => {
     store.set(finishApplyingWhenArrivedAtom);
+    store.set(navigationPendingAtom, true);
     clearTimeout(timer);
     timer = setTimeout(
       () => store.set(settleNavigationAtom),
