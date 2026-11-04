@@ -233,37 +233,6 @@ runScenario("app-navigation", {
       },
     ],
     [
-      "Settings is one stop: Back leaves it, Forward reopens the last section",
-      async ({ session, issueId }) => {
-        const before = await recordStep(
-          session,
-          () => openSettingsSection(session, "general"),
-          "settings not recorded",
-        );
-        await openSettingsSection(session, "appearance");
-        await pressNavigationKey(session, "back");
-        await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
-        const after = await settledHistory(session, "settings back");
-        check(
-          after.index === before.index - 1 && after.length === before.length,
-          "settings sections were recorded as separate stops",
-          { before, after },
-        );
-        await pressNavigationKey(session, "forward");
-        await waitForRole(
-          session,
-          {
-            role: "heading",
-            name: await translate(session, "settings:sections.appearance"),
-          },
-          UI_TIMEOUT_MS,
-        );
-        await pressNavigationKey(session, "back");
-        await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
-        return { before, after };
-      },
-    ],
-    [
       "the fullscreen panel keeps Back and Forward next to its view tabs",
       async ({ session }) => {
         const enter = await translate(
@@ -314,6 +283,11 @@ runScenario("app-navigation", {
         );
         await clickByRole(session, { role: "button", name: backName });
         await waitForSelector(session, "[data-note-id][data-active]");
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "editor:actions.navigateForward"),
+        });
+        await waitForSelector(session, '[data-issue-id] [role="button"]');
         await clickByRole(session, { role: "button", name: exit });
         await waitForRole(
           session,
@@ -321,6 +295,43 @@ runScenario("app-navigation", {
           UI_TIMEOUT_MS,
         );
         return { backLeft, tabsLeft };
+      },
+    ],
+    [
+      "each settings section is a stop, and Back to app leaves settings",
+      async ({ session, issueId }) => {
+        const general = await recordStep(
+          session,
+          () => openSettingsSection(session, "general"),
+          "settings not recorded",
+        );
+        await recordStep(
+          session,
+          () => openSettingsSection(session, "appearance"),
+          "settings section not recorded",
+        );
+        const generalHeading = {
+          role: "heading",
+          name: await translate(session, "settings:sections.general"),
+        };
+        await pressNavigationKey(session, "back");
+        await waitForRole(session, generalHeading, UI_TIMEOUT_MS);
+        await pressNavigationKey(session, "back");
+        await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
+        await pressNavigationKey(session, "forward");
+        await waitForRole(session, generalHeading, UI_TIMEOUT_MS);
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:sidebar.backToApp"),
+        });
+        await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
+        const after = await settledHistory(session, "back to app");
+        check(
+          after.index === general.index + 1 && after.length === after.index + 1,
+          "Back to app was not recorded as a new stop",
+          { general, after },
+        );
+        return { general, after };
       },
     ],
     [

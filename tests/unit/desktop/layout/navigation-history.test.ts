@@ -19,13 +19,6 @@ function at(
   return { sessionId, panel: { view, entityId }, settings: null };
 }
 
-function inSettings(
-  location: AppLocation,
-  settings: AppLocation["settings"],
-): AppLocation {
-  return { ...location, settings };
-}
-
 function recordAll(locations: AppLocation[]): NavigationHistory {
   return locations.reduce(recordLocation, EMPTY_HISTORY);
 }
@@ -75,23 +68,6 @@ describe("navigation history", () => {
     expect(currentLocation(history)?.sessionId).toBe(
       `s${MAX_HISTORY_ENTRIES + 4}`,
     );
-  });
-
-  it("keeps settings as one stop while its section changes", () => {
-    const app = at("s1", "notes", "n1");
-    let history = recordAll([
-      app,
-      inSettings(app, "general"),
-      inSettings(app, "appearance"),
-      inSettings(app, "shortcuts"),
-    ]);
-    expect(history.entries).toHaveLength(2);
-    expect(currentLocation(history)?.settings).toBe("shortcuts");
-
-    history = stepHistory(history, "back") ?? history;
-    expect(currentLocation(history)).toEqual(app);
-    history = stepHistory(history, "forward") ?? history;
-    expect(currentLocation(history)?.settings).toBe("shortcuts");
   });
 
   it("replaces the current entry without touching forward entries", () => {

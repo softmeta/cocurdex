@@ -54,12 +54,7 @@ import {
   shouldOpenDockWhenApplyingLayout,
 } from "../chat-layout-preference";
 import { useChatWindowActions, useMainChatWindow } from "../chat-window";
-import {
-  canNavigateBackAtom,
-  leaveSettingsAtom,
-  navigateAtom,
-  useAppNavigation,
-} from "../navigation";
+import { useAppNavigation } from "../navigation";
 import { searchPaletteOpenAtom } from "../search-palette";
 import { synchronizeAgentState } from "./agent-event-bridge";
 import { appScreenAtom, settingsSectionAtom } from "./app-screen-store";
@@ -92,9 +87,6 @@ import { useSystemLocale, useSystemPrefersDark } from "./use-system-prefs";
 export function AppShell() {
   const { t } = useTranslation(["editor", "search"]);
   const [activeScreen, setActiveScreen] = useAtom(appScreenAtom);
-  const canGoBack = useAtomValue(canNavigateBackAtom);
-  const navigate = useSetAtom(navigateAtom);
-  const leaveSettings = useSetAtom(leaveSettingsAtom);
   const [activeSettingsSection, setActiveSettingsSection] =
     useAtom(settingsSectionAtom);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getStoredThemeMode);
@@ -348,8 +340,6 @@ export function AppShell() {
     applyChatLayoutMode(pinned ? "pinned" : "float", "pin");
   };
 
-  const goBackScreen = () => navigate("back");
-
   // Optional section: gear icon reopens the last section; empty states pass
   // "providers" (etc.) to land on the right pane. Guard with typeof so a
   // React click event is never treated as a section id (onClick={openSettings}).
@@ -372,7 +362,7 @@ export function AppShell() {
     }),
   );
 
-  const closeSettings = () => leaveSettings();
+  const closeSettings = () => setActiveScreen("app");
   const closeSettingsRef = useRef(closeSettings);
   closeSettingsRef.current = closeSettings;
   useMountEffect(() =>
@@ -445,7 +435,6 @@ export function AppShell() {
       activeSettingsSection={activeSettingsSection}
       activeWorkspaceRootPaths={activeWorkspaceRootPaths}
       appearanceSettings={appearanceSettings}
-      canGoBack={canGoBack}
       contentRowRef={contentRowCallbackRef}
       isRightPanelCompact={isRightPanelCompact}
       effectiveRightWidth={effectiveRightWidth}
@@ -463,7 +452,7 @@ export function AppShell() {
       notificationSettings={notificationSettings}
       chatLayoutMode={chatLayoutMode}
       hideFabWhenClosed={hideFabWhenClosed}
-      onGoBack={goBackScreen}
+      onCloseSettings={closeSettings}
       onAppearanceSettingsChange={handleAppearanceSettingsChange}
       onChatLayoutModeChange={applyChatLayoutMode}
       onHideFabWhenClosedChange={handleHideFabWhenClosedChange}

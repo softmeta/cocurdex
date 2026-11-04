@@ -14,7 +14,6 @@
     "exitEditorFullscreen": "退出全屏",
     "explorer": "资源管理器",
     "floatEditorPanel": "面板悬浮于聊天之上",
-    "goBack": "后退",
     "goForward": "前进",
     "hideChatFab": "隐藏聊天按钮",
     "hideChatFabHint": "隐藏此按钮。{{shortcut}} 可再次显示。",

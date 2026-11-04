@@ -3,6 +3,5 @@ export { type ChatLayoutMode, chatLayoutModes } from "./chat-layout-preference";
 export { RightEditorPanel } from "./right-editor-panel-lazy";
 export {
   ResizableSidebarSlot,
-  ScreenBackButton,
   SidebarToggleButton,
 } from "./sidebar";

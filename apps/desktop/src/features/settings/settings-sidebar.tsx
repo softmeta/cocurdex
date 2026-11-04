@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import {
@@ -60,6 +60,7 @@ interface SettingsSidebarProps {
   activeSection: SettingsSectionId;
   clusters: SettingsClusterGroup[];
   sidebarWidth?: number;
+  onBackToApp(): void;
   onSectionChange(sectionId: SettingsSectionId): void;
 }
 
@@ -67,6 +68,7 @@ export function SettingsSidebar({
   activeSection,
   clusters,
   sidebarWidth,
+  onBackToApp,
   onSectionChange,
 }: SettingsSidebarProps) {
   const { t } = useTranslation("settings");
@@ -81,6 +83,13 @@ export function SettingsSidebar({
       {/* Draggable titlebar spacer; the back/forward controls live in the
           titlebar overlay rendered by SettingsScreen. */}
       <div className="app-drag h-9 shrink-0" />
+
+      <div className="shrink-0 px-3 pb-2">
+        <SidebarListRow render={<button type="button" />} onClick={onBackToApp}>
+          <ChevronLeft className="size-3.5 shrink-0 rtl:-scale-x-100" />
+          <SidebarListRowLabel>{t("sidebar.backToApp")}</SidebarListRowLabel>
+        </SidebarListRow>
+      </div>
 
       <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
         {clusters.map((cluster, index) => {

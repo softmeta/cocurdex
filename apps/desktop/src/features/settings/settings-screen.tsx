@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import { type MouseEvent, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TITLEBAR_HEIGHT,
@@ -10,7 +10,6 @@ import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import type { ChatLayoutMode } from "@/app/layout/chat-layout-preference";
 import {
   ResizableSidebarSlot,
-  ScreenBackButton,
   SidebarToggleButton,
 } from "@/app/layout/sidebar/sidebar-frame";
 import { SettingRow, SettingsGroup } from "@/components";
@@ -56,14 +55,14 @@ const SETTINGS_HEADING_GAP = 16;
 export interface SettingsScreenProps {
   activeSection: SettingsSectionId;
   appearanceSettings: AppearanceSettings;
-  canGoBack: boolean;
   chatLayoutMode: ChatLayoutMode;
   hideFabWhenClosed: boolean;
   languageMode: LanguageMode;
   notificationSettings: NotificationSettings;
   isSidebarOpen: boolean;
   sidebarWidth?: number;
-  onGoBack(): void;
+  historyControls: ReactNode;
+  onBackToApp(): void;
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onChatLayoutModeChange(mode: ChatLayoutMode): void;
   onHideFabWhenClosedChange(hide: boolean): void;
@@ -259,14 +258,14 @@ function SectionPanel({
 export function SettingsScreen({
   activeSection: requestedSection,
   appearanceSettings,
-  canGoBack,
   chatLayoutMode,
   hideFabWhenClosed,
   isSidebarOpen,
   languageMode,
   notificationSettings,
   sidebarWidth,
-  onGoBack,
+  historyControls,
+  onBackToApp,
   onAppearanceSettingsChange,
   onChatLayoutModeChange,
   onHideFabWhenClosedChange,
@@ -345,6 +344,7 @@ export function SettingsScreen({
             activeSection={activeSection}
             clusters={sidebarClusters}
             sidebarWidth={sidebarWidth}
+            onBackToApp={onBackToApp}
             onSectionChange={handleSectionChange}
           />
         </ResizableSidebarSlot>
@@ -435,11 +435,7 @@ export function SettingsScreen({
             open={isSidebarOpen}
             onToggle={onToggleSidebar}
           />
-          <ScreenBackButton
-            canGoBack={canGoBack}
-            label={t("editor:actions.goBack")}
-            onGoBack={onGoBack}
-          />
+          {historyControls}
         </div>
       </div>
     </main>

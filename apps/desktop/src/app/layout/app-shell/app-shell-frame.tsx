@@ -68,7 +68,6 @@ interface AppShellFrameProps {
   activeSettingsSection: SettingsSectionId;
   activeWorkspaceRootPaths: string[];
   appearanceSettings: AppearanceSettings;
-  canGoBack: boolean;
   contentRowRef: Ref<HTMLElement>;
   effectiveRightWidth: number;
   /** Visible in the app shell (may be forced closed while editor is fullscreen). */
@@ -96,7 +95,7 @@ interface AppShellFrameProps {
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onChatLayoutModeChange(mode: ChatLayoutMode): void;
   onHideFabWhenClosedChange(hide: boolean): void;
-  onGoBack(): void;
+  onCloseSettings(): void;
   onOpenFileFromPalette(file: WorkspaceFileEntry): void;
   onOpenSettings(): void;
   onResizeHandleMouseDown(
@@ -120,7 +119,6 @@ export function AppShellFrame({
   activeSettingsSection,
   activeWorkspaceRootPaths,
   appearanceSettings,
-  canGoBack,
   contentRowRef,
   effectiveRightWidth,
   isLeftSidebarOpen,
@@ -141,7 +139,7 @@ export function AppShellFrame({
   onAppearanceSettingsChange,
   onChatLayoutModeChange,
   onHideFabWhenClosedChange,
-  onGoBack,
+  onCloseSettings,
   onOpenFileFromPalette,
   onOpenSettings,
   onResizeHandleMouseDown,
@@ -401,12 +399,12 @@ export function AppShellFrame({
           <SettingsScreen
             activeSection={activeSettingsSection}
             appearanceSettings={appearanceSettings}
-            canGoBack={canGoBack}
             chatLayoutMode={chatLayoutMode}
             hideFabWhenClosed={hideFabWhenClosed}
             isSidebarOpen={isLeftSidebarPreferredOpen}
             sidebarWidth={leftWidth}
-            onGoBack={onGoBack}
+            historyControls={<NavigationButtons />}
+            onBackToApp={onCloseSettings}
             languageMode={languageMode}
             notificationSettings={notificationSettings}
             onAppearanceSettingsChange={onAppearanceSettingsChange}

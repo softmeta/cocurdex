@@ -724,7 +724,6 @@ export default interface Resources {
       exitEditorFullscreen: "Exit full screen";
       explorer: "Explorer";
       floatEditorPanel: "Float panel over chat";
-      goBack: "Go back";
       goForward: "Go forward";
       hideChatFab: "Hide chat button";
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
@@ -3152,6 +3151,7 @@ export default interface Resources {
       unbound: "None";
     };
     sidebar: {
+      backToApp: "Back to app";
       resize: "Resize settings sidebar";
     };
     skills: {

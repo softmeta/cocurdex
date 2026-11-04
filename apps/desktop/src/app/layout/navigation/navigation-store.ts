@@ -25,7 +25,6 @@ import {
 import { sidebarTabAtom } from "../sidebar";
 import {
   type AppLocation,
-  canNavigate,
   currentLocation,
   EMPTY_HISTORY,
   locationsEqual,
@@ -40,9 +39,6 @@ import {
 
 export const navigationHistoryAtom = atom<NavigationHistory>(EMPTY_HISTORY);
 
-export const canNavigateBackAtom = atom((get) =>
-  canNavigate(get(navigationHistoryAtom), "back"),
-);
 const navigationApplyingAtom = atom(false);
 const navigationEpochAtom = atom(0);
 export const navigationPendingAtom = atom(false);
@@ -169,12 +165,3 @@ export function subscribeNavigationRecorder(
     for (const unsubscribe of unsubscribers) unsubscribe();
   };
 }
-
-export const leaveSettingsAtom = atom(null, (get, set) => {
-  const history = get(navigationHistoryAtom);
-  if (currentLocation(history)?.settings && canNavigate(history, "back")) {
-    set(navigateAtom, "back");
-    return;
-  }
-  set(appScreenAtom, "app");
-});

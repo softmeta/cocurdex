@@ -47,9 +47,6 @@ export function recordLocation(
   if (current && locationsEqual(current, location)) {
     return history;
   }
-  if (current?.settings && location.settings) {
-    return replaceCurrentLocation(history, location);
-  }
   const kept = history.entries.slice(0, history.index + 1);
   const entries = [...kept, location].slice(-MAX_HISTORY_ENTRIES);
   return { entries, index: entries.length - 1 };

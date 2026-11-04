@@ -1190,6 +1190,7 @@
     "unbound": "None"
   },
   "sidebar": {
+    "backToApp": "Back to app",
     "resize": "Resize settings sidebar"
   },
   "skills": {
