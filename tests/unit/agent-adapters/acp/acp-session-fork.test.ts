@@ -1,7 +1,7 @@
 import type {
   ForkSessionRequest,
   InitializeResponse,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 import {
   AcpAgentAdapter,
   type AcpConnection,

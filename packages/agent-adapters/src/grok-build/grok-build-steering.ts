@@ -1,4 +1,4 @@
-import type { ContentBlock } from "@agentclientprotocol/sdk";
+import type { ContentBlock } from "@agentclientprotocol/sdk/unstable";
 
 export const GROK_INTERJECT_REQUEST_METHOD = "x.ai/interject";
 

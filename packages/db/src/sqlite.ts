@@ -248,7 +248,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
       return { reclaimed: before - remaining, remaining };
     },
     close() {
-      database.close();
+      if (database.isOpen) database.close();
     },
   };
 }

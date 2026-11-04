@@ -1,4 +1,4 @@
-import type { RequestPermissionRequest } from "@agentclientprotocol/sdk";
+import type { RequestPermissionRequest } from "@agentclientprotocol/sdk/unstable";
 import { mapPermissionDecision } from "@cocurdex/agent-adapters/internal/acp/acp-mappers";
 import { describe, expect, it } from "vitest";
 

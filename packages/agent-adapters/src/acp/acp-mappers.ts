@@ -4,7 +4,7 @@ import type {
   InitializeResponse,
   RequestPermissionRequest,
   RequestPermissionResponse,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 import type {
   AgentNegotiatedCapabilities,
   AgentPermissionResolution,

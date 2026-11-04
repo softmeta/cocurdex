@@ -1,5 +1,5 @@
 import path from "node:path";
-import { RequestError } from "@agentclientprotocol/sdk";
+import { RequestError } from "@agentclientprotocol/sdk/unstable";
 
 const ACP_AUTH_REQUIRED_CODE = -32000;
 const AUTH_REQUIRED_MESSAGE =

@@ -10,7 +10,7 @@ import type {
   ToolCall,
   ToolCallContent,
   ToolCallUpdate,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 import type {
   AgentEvent,
   AgentSessionConfigOption,

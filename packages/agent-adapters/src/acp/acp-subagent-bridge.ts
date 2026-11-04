@@ -1,4 +1,7 @@
-import type { SessionNotification, StopReason } from "@agentclientprotocol/sdk";
+import type {
+  SessionNotification,
+  StopReason,
+} from "@agentclientprotocol/sdk/unstable";
 import type {
   AgentEvent,
   AgentToolCallRecord,
