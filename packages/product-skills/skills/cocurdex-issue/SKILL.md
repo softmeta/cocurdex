@@ -67,7 +67,7 @@ board order, `status move --position` places a status within its category
 (0 is first), and changing `--category` moves it to the end of the new one.
 Deleting a status moves its issues to another status of the same category,
 or to the first status when none is left. Change statuses only when the user
-asks; the user manages them in Settings › Issue statuses.
+asks; the user manages them in the issues panel under Manage statuses.
 
 A view groups its issues by `status` (default), `priority`, `label`,
 `workspace`, or `parent`. `move` targets a column of the view's grouping: a
