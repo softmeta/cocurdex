@@ -37,24 +37,24 @@
     "dragCard": "拖拽卡片",
     "groupBy": "分组",
     "groupByHint": "行按该事项字段分组。",
+    "groupByLabel": "标签",
+    "groupByParent": "父事项",
     "groupByPriority": "优先级",
     "groupByStatus": "状态",
+    "groupByWorkspace": "工作区",
+    "hiddenColumns": "隐藏的列",
     "layout": "布局",
     "layoutBoard": "看板",
     "layoutList": "列表",
     "manageStatuses": "管理状态",
-    "untitledBoard": "无标题视图",
-    "untitledCard": "无标题卡片",
-    "untitledColumn": "无标题列",
-    "hiddenColumns": "隐藏的列",
-    "groupByLabel": "标签",
-    "groupByWorkspace": "工作区",
-    "groupByParent": "父事项",
     "ungrouped": {
       "label": "无标签",
-      "workspace": "无工作区",
-      "parent": "无父事项"
-    }
+      "parent": "无父事项",
+      "workspace": "无工作区"
+    },
+    "untitledBoard": "无标题视图",
+    "untitledCard": "无标题卡片",
+    "untitledColumn": "无标题列"
   },
   "cardMenu": {
     "delete": "删除",
@@ -109,6 +109,20 @@
     "status": "状态",
     "titlePlaceholder": "事项标题",
     "unknownWorkspace": "未知工作区",
+    "workspace": "工作区"
+  },
+  "display": {
+    "created": "创建时间",
+    "description": "描述",
+    "identifier": "编号",
+    "labels": "标签",
+    "parent": "父事项",
+    "priority": "优先级",
+    "properties": "显示属性",
+    "showEmptyColumns": "显示空列",
+    "showEmptyGroups": "显示空分组",
+    "status": "状态",
+    "updated": "更新时间",
     "workspace": "工作区"
   },
   "empty": {
@@ -191,19 +205,5 @@
     "rename": "重命名",
     "saveFailed": "状态保存失败。",
     "title": "管理状态"
-  },
-  "display": {
-    "identifier": "编号",
-    "status": "状态",
-    "priority": "优先级",
-    "labels": "标签",
-    "workspace": "工作区",
-    "parent": "父事项",
-    "description": "描述",
-    "created": "创建时间",
-    "updated": "更新时间",
-    "showEmptyGroups": "显示空分组",
-    "showEmptyColumns": "显示空列",
-    "properties": "显示属性"
   }
 }

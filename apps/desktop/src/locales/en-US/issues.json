@@ -37,24 +37,24 @@
     "dragCard": "Drag card",
     "groupBy": "Grouping",
     "groupByHint": "Rows are grouped by this issue field.",
+    "groupByLabel": "Label",
+    "groupByParent": "Parent issue",
     "groupByPriority": "Priority",
     "groupByStatus": "Status",
+    "groupByWorkspace": "Workspace",
+    "hiddenColumns": "Hidden columns",
     "layout": "Layout",
     "layoutBoard": "Board",
     "layoutList": "List",
     "manageStatuses": "Manage statuses",
-    "untitledBoard": "Untitled view",
-    "untitledCard": "Untitled card",
-    "untitledColumn": "Untitled column",
-    "hiddenColumns": "Hidden columns",
-    "groupByLabel": "Label",
-    "groupByWorkspace": "Workspace",
-    "groupByParent": "Parent issue",
     "ungrouped": {
       "label": "No label",
-      "workspace": "No workspace",
-      "parent": "No parent"
-    }
+      "parent": "No parent",
+      "workspace": "No workspace"
+    },
+    "untitledBoard": "Untitled view",
+    "untitledCard": "Untitled card",
+    "untitledColumn": "Untitled column"
   },
   "cardMenu": {
     "delete": "Delete",
@@ -109,6 +109,20 @@
     "status": "Status",
     "titlePlaceholder": "Issue title",
     "unknownWorkspace": "Unknown workspace",
+    "workspace": "Workspace"
+  },
+  "display": {
+    "created": "Created",
+    "description": "Description",
+    "identifier": "ID",
+    "labels": "Labels",
+    "parent": "Parent issue",
+    "priority": "Priority",
+    "properties": "Display properties",
+    "showEmptyColumns": "Show empty columns",
+    "showEmptyGroups": "Show empty groups",
+    "status": "Status",
+    "updated": "Updated",
     "workspace": "Workspace"
   },
   "empty": {
@@ -192,19 +206,5 @@
     "rename": "Rename",
     "saveFailed": "Could not save the status.",
     "title": "Manage statuses"
-  },
-  "display": {
-    "identifier": "ID",
-    "status": "Status",
-    "priority": "Priority",
-    "labels": "Labels",
-    "workspace": "Workspace",
-    "parent": "Parent issue",
-    "description": "Description",
-    "created": "Created",
-    "updated": "Updated",
-    "showEmptyGroups": "Show empty groups",
-    "showEmptyColumns": "Show empty columns",
-    "properties": "Display properties"
   }
 }
