@@ -35,7 +35,7 @@
     "jsqr": "^1.4.0",
     "monaco-editor": "^0.57.0",
     "react": "^19.3.1",
-    "react-i18next": "^17.1.0",
+    "react-i18next": "^17.1.10",
     "shiki": "^4.5.0",
     "sonner": "^2.0.7",
     "vite": "^8.3.5",
