@@ -1,13 +1,20 @@
 import type { ViewFilter } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
+  dateSelection,
   FILTER_ALL,
   FILTER_NO_WORKSPACE,
+  FILTER_TOP_LEVEL,
   hidesClosedIssues,
   labelSelection,
+  parentSelection,
   statusCategoryScope,
+  statusSelection,
+  withDateSelection,
   withHideClosedIssues,
   withLabelSelection,
+  withParentSelection,
+  withStatusSelection,
   withWorkspaceSelection,
   workspaceSelection,
 } from "@/features/issues/board/view-filters";
@@ -76,5 +83,25 @@ describe("view filter selections", () => {
         { field: "statusCategory", op: "eq", value: "backlog" },
       ]),
     ).toEqual(["backlog"]);
+  });
+
+  it("round-trips status, parent, and date selections", () => {
+    let filters: ViewFilter[] = [];
+    filters = withStatusSelection(filters, "review");
+    filters = withParentSelection(filters, FILTER_TOP_LEVEL);
+    filters = withDateSelection(filters, "updatedAt", "7");
+    expect(statusSelection(filters)).toBe("review");
+    expect(parentSelection(filters)).toBe(FILTER_TOP_LEVEL);
+    expect(dateSelection(filters, "updatedAt")).toBe("7");
+    expect(dateSelection(filters, "createdAt")).toBe(FILTER_ALL);
+    expect(filters).toContainEqual({
+      field: "updatedAt",
+      op: "within_days",
+      value: "7",
+    });
+    filters = withDateSelection(filters, "updatedAt", FILTER_ALL);
+    filters = withParentSelection(filters, FILTER_ALL);
+    filters = withStatusSelection(filters, FILTER_ALL);
+    expect(filters).toEqual([]);
   });
 });

@@ -1,4 +1,61 @@
-export type ViewGroupBy = "status" | "priority";
+export type IssueColumnField = "status" | "priority";
+
+export const VIEW_GROUP_BY_FIELDS = [
+  "status",
+  "priority",
+  "label",
+  "workspace",
+  "parent",
+] as const;
+export type ViewGroupBy = (typeof VIEW_GROUP_BY_FIELDS)[number];
+
+export function isIssueColumnField(
+  groupBy: ViewGroupBy,
+): groupBy is IssueColumnField {
+  return groupBy === "status" || groupBy === "priority";
+}
+
+export const UNGROUPED_COLUMN_ID = "__none__";
+
+export const ISSUE_DISPLAY_PROPERTIES = [
+  "identifier",
+  "status",
+  "priority",
+  "labels",
+  "workspace",
+  "parent",
+  "description",
+  "created",
+  "updated",
+] as const;
+export type IssueDisplayProperty = (typeof ISSUE_DISPLAY_PROPERTIES)[number];
+
+export interface ViewDisplay {
+  properties: IssueDisplayProperty[];
+  showEmptyGroups: boolean;
+}
+
+export const DEFAULT_VIEW_DISPLAY: ViewDisplay = {
+  properties: ["identifier", "status", "priority", "labels", "description"],
+  showEmptyGroups: false,
+};
+
+export function normalizeViewDisplay(raw: unknown): ViewDisplay {
+  if (!raw || typeof raw !== "object") return DEFAULT_VIEW_DISPLAY;
+  const value = raw as { properties?: unknown; showEmptyGroups?: unknown };
+  const properties = Array.isArray(value.properties)
+    ? ISSUE_DISPLAY_PROPERTIES.filter((property) =>
+        (value.properties as unknown[]).includes(property),
+      )
+    : DEFAULT_VIEW_DISPLAY.properties;
+  return {
+    properties,
+    showEmptyGroups:
+      typeof value.showEmptyGroups === "boolean"
+        ? value.showEmptyGroups
+        : DEFAULT_VIEW_DISPLAY.showEmptyGroups,
+  };
+}
 
 export const ISSUE_CONFLICT_MESSAGE = "Issue was modified";
 
@@ -7,13 +64,21 @@ export function isIssueConflictError(error: unknown): boolean {
     error instanceof Error && error.message.includes(ISSUE_CONFLICT_MESSAGE)
   );
 }
-export type ViewLayout = "board" | "list";
-export type ViewFilterField =
-  | "workspaceId"
-  | "labelId"
-  | "priority"
-  | "statusCategory";
-export type ViewFilterOp = "eq" | "neq" | "is_null";
+export const VIEW_LAYOUTS = ["board", "list"] as const;
+export type ViewLayout = (typeof VIEW_LAYOUTS)[number];
+export const VIEW_FILTER_FIELDS = [
+  "workspaceId",
+  "labelId",
+  "priority",
+  "status",
+  "statusCategory",
+  "parentId",
+  "createdAt",
+  "updatedAt",
+] as const;
+export type ViewFilterField = (typeof VIEW_FILTER_FIELDS)[number];
+export const VIEW_FILTER_OPS = ["eq", "neq", "is_null", "within_days"] as const;
+export type ViewFilterOp = (typeof VIEW_FILTER_OPS)[number];
 
 export const ISSUE_STATUS_CATEGORIES = [
   "backlog",
@@ -179,27 +244,53 @@ export interface FilterableIssue {
   workspaceId: string | null;
   labelIds: readonly string[];
   priority: string;
+  status: string;
   statusCategory: IssueStatusCategory | null;
+  parentId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function filterValues(
   issue: FilterableIssue,
   field: ViewFilterField,
 ): readonly string[] {
-  if (field === "labelId") {
-    return issue.labelIds;
+  switch (field) {
+    case "labelId":
+      return issue.labelIds;
+    case "priority":
+      return [issue.priority];
+    case "status":
+      return [issue.status];
+    case "statusCategory":
+      return issue.statusCategory ? [issue.statusCategory] : [];
+    case "parentId":
+      return issue.parentId ? [issue.parentId] : [];
+    case "createdAt":
+      return [issue.createdAt];
+    case "updatedAt":
+      return [issue.updatedAt];
+    default: {
+      const workspaceId = issue.workspaceId?.trim();
+      return workspaceId ? [workspaceId] : [];
+    }
   }
-  if (field === "priority") {
-    return [issue.priority];
-  }
-  if (field === "statusCategory") {
-    return issue.statusCategory ? [issue.statusCategory] : [];
-  }
-  const workspaceId = issue.workspaceId?.trim();
-  return workspaceId ? [workspaceId] : [];
 }
 
-function issueMatchesFilter(issue: FilterableIssue, filter: ViewFilter) {
+function withinDays(values: readonly string[], days: number, now: number) {
+  return values.some((value) => {
+    const time = Date.parse(value);
+    return Number.isFinite(time) && now - time <= days * DAY_MS;
+  });
+}
+
+function issueMatchesFilter(
+  issue: FilterableIssue,
+  filter: ViewFilter,
+  now: number,
+) {
   const values = filterValues(issue, filter.field);
   if (filter.op === "is_null") {
     return values.length === 0;
@@ -208,6 +299,10 @@ function issueMatchesFilter(issue: FilterableIssue, filter: ViewFilter) {
   if (!target) {
     return false;
   }
+  if (filter.op === "within_days") {
+    const days = Number(target);
+    return Number.isFinite(days) && days > 0 && withinDays(values, days, now);
+  }
   const matches = values.includes(target);
   return filter.op === "neq" ? !matches : matches;
 }
@@ -215,8 +310,9 @@ function issueMatchesFilter(issue: FilterableIssue, filter: ViewFilter) {
 export function issueMatchesFilters(
   issue: FilterableIssue,
   filters: readonly ViewFilter[],
+  now: number = Date.now(),
 ): boolean {
-  return filters.every((filter) => issueMatchesFilter(issue, filter));
+  return filters.every((filter) => issueMatchesFilter(issue, filter, now));
 }
 
 export function issueBodyExcerpt(body: string, maxLength = 240): string | null {
@@ -252,6 +348,7 @@ export interface ViewRecord {
   layout: ViewLayout;
   /** Saved filters for this view (AND). Empty = unfiltered pool. */
   filters: ViewFilter[];
+  display: ViewDisplay;
   revision: number;
   createdAt: string;
   updatedAt: string;
@@ -264,6 +361,7 @@ export interface ViewSummary {
   groupBy: ViewGroupBy;
   layout: ViewLayout;
   filters: ViewFilter[];
+  display: ViewDisplay;
   revision: number;
 }
 
@@ -285,6 +383,7 @@ export interface IssueRecord {
   identifier: string;
   /** Column id in the *current* groupBy view (status or priority value). */
   columnId: string;
+  columnIds: string[];
   viewId: string;
   title: string;
   /**
@@ -416,15 +515,16 @@ export interface UpdateViewPayload {
   groupBy?: ViewGroupBy;
   layout?: ViewLayout;
   filters?: ViewFilter[];
+  display?: ViewDisplay;
   expectedRevision?: number;
 }
 
 export interface ListColumnsPayload {
-  field: ViewGroupBy;
+  field: IssueColumnField;
 }
 
 export interface CreateColumnPayload {
-  field: ViewGroupBy;
+  field: IssueColumnField;
   title?: string;
   color?: string | null;
   category?: IssueStatusCategory;
@@ -432,7 +532,7 @@ export interface CreateColumnPayload {
 }
 
 export interface UpdateColumnPayload {
-  field: ViewGroupBy;
+  field: IssueColumnField;
   id: string;
   title?: string;
   color?: string | null;
@@ -440,13 +540,13 @@ export interface UpdateColumnPayload {
 }
 
 export interface MoveColumnPayload {
-  field: ViewGroupBy;
+  field: IssueColumnField;
   id: string;
   sortOrder: number;
 }
 
 export interface DeleteColumnPayload {
-  field: ViewGroupBy;
+  field: IssueColumnField;
   id: string;
 }
 
@@ -487,6 +587,7 @@ export interface MoveIssuePayload {
   viewId: string;
   id: string;
   columnId: string;
+  fromColumnId?: string;
   sortOrder: number;
   expectedRevision?: number;
   actor?: IssueActor;

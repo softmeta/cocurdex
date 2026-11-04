@@ -1,4 +1,8 @@
-import type { IssueRecord, ViewFull } from "@cocurdex/shared";
+import {
+  type IssueRecord,
+  UNGROUPED_COLUMN_ID,
+  type ViewFull,
+} from "@cocurdex/shared";
 import type { IssueComposeDraft } from "./detail";
 
 function defaultWorkspaceId(
@@ -34,6 +38,12 @@ export function buildComposeDraft({
   workspaceIds: readonly string[];
 }): IssueComposeDraft {
   const { groupBy } = board.view;
+  const group = columnId === UNGROUPED_COLUMN_ID ? null : columnId;
+  const draftWorkspaceId = () => {
+    if (parent) return parent.workspaceId;
+    if (groupBy === "workspace") return group;
+    return defaultWorkspaceId(board, activeWorkspaceId, workspaceIds);
+  };
   const defaultPriority =
     board.priorityOptions.find((option) => option.id === "none")?.id ??
     board.priorityOptions.at(-1)?.id ??
@@ -43,9 +53,8 @@ export function buildComposeDraft({
     status:
       groupBy === "status" ? columnId : (board.statusOptions[0]?.id ?? ""),
     priority: groupBy === "priority" ? columnId : defaultPriority,
-    workspaceId: parent
-      ? parent.workspaceId
-      : defaultWorkspaceId(board, activeWorkspaceId, workspaceIds),
-    parentId: parent?.id ?? null,
+    workspaceId: draftWorkspaceId(),
+    parentId: parent?.id ?? (groupBy === "parent" ? group : null),
+    labelIds: groupBy === "label" && group ? [group] : [],
   };
 }

@@ -1,6 +1,11 @@
-import type { IssueRecord, IssueStatusCategory } from "@cocurdex/shared";
+import type {
+  IssueRecord,
+  IssueStatusCategory,
+  ViewGroupBy,
+} from "@cocurdex/shared";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAtomValue } from "jotai";
 import { Check, Flag, Pencil, Trash2 } from "lucide-react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,7 +21,8 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
-import { IssueLabelChips } from "../issue-label-chips";
+import { issueDisplayPropertiesAtom } from "../issue-display-store";
+import { IssueMetaChips } from "../issue-meta-chips";
 import { IssueStatusIcon } from "../issue-status-icon";
 
 export interface CardFieldOption {
@@ -27,6 +33,9 @@ export interface CardFieldOption {
 
 interface IssueCardProps {
   card: IssueRecord;
+  columnId: string;
+  sortableId: string;
+  groupBy: ViewGroupBy;
   statusOptions?: CardFieldOption[];
   priorityOptions?: CardFieldOption[];
   onDelete: (id: string) => void;
@@ -41,6 +50,9 @@ interface IssueCardProps {
 
 export function IssueCard({
   card,
+  columnId,
+  sortableId,
+  groupBy,
   statusOptions = [],
   priorityOptions = [],
   onDelete,
@@ -56,7 +68,16 @@ export function IssueCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: card.id, data: { type: "card", card } });
+  } = useSortable({
+    id: sortableId,
+    data: { type: "card", card, columnId },
+  });
+  const properties = useAtomValue(issueDisplayPropertiesAtom);
+  const showStatus = properties.has("status");
+  const showIdentifier = properties.has("identifier");
+  const priorityTitle = priorityOptions.find(
+    (option) => option.id === card.priority,
+  )?.title;
 
   // The whole tile is the drag handle; a non-moving press falls through to the
   // onClick (PointerSensor has a 5px activation distance), opening the editor.
@@ -102,21 +123,27 @@ export function IssueCard({
         onClick={openCard}
         onKeyDown={handleTileKeyDown}
       >
-        <div className="mb-1.5 flex items-center gap-1.5 pe-5">
-          <IssueStatusIcon
-            statusId={card.status}
-            category={card.statusCategory}
-            color={card.color}
-          />
-          <Text
-            as="span"
-            size="meta"
-            weight="medium"
-            className="truncate tabular-nums text-editor-fg-subtle"
-          >
-            {card.identifier}
-          </Text>
-        </div>
+        {showStatus || showIdentifier ? (
+          <div className="mb-1.5 flex items-center gap-1.5 pe-5">
+            {showStatus ? (
+              <IssueStatusIcon
+                statusId={card.status}
+                category={card.statusCategory}
+                color={card.color}
+              />
+            ) : null}
+            {showIdentifier ? (
+              <Text
+                as="span"
+                size="meta"
+                weight="medium"
+                className="truncate tabular-nums text-editor-fg-subtle"
+              >
+                {card.identifier}
+              </Text>
+            ) : null}
+          </div>
+        ) : null}
         <Text
           as="span"
           size="body"
@@ -125,7 +152,7 @@ export function IssueCard({
         >
           {card.title || t("board.untitledCard")}
         </Text>
-        {card.description ? (
+        {properties.has("description") && card.description ? (
           <Text
             as="span"
             size="meta"
@@ -134,7 +161,12 @@ export function IssueCard({
             {card.description}
           </Text>
         ) : null}
-        <IssueLabelChips labelIds={card.labelIds} className="mt-2" />
+        <IssueMetaChips
+          card={card}
+          groupBy={groupBy}
+          priorityTitle={priorityTitle}
+          className="mt-2"
+        />
       </div>
     </div>
   );

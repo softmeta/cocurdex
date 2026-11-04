@@ -36,6 +36,27 @@ async function waitForColumnTitles(session, expected) {
   );
 }
 
+async function hoverMenuItem(session, name) {
+  const [item] = await waitForRole(
+    session,
+    { role: "menuitem", name },
+    UI_TIMEOUT_MS,
+  );
+  const center = await centerOf(session, item.backendNodeId);
+  for (const point of [{ x: center.x - 40, y: center.y }, center]) {
+    await session.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      ...point,
+    });
+  }
+}
+
+async function openedIssueId(session) {
+  return session.run(
+    () => document.querySelector("article[data-issue-id]")?.dataset.issueId,
+  );
+}
+
 function filterKey(filter) {
   return `${filter.field}:${filter.op}:${filter.value}`;
 }
@@ -57,7 +78,12 @@ runScenario("issue-scopes", {
       },
       UI_TIMEOUT_MS,
     );
-    return { sourceViewId: board.view.id, statusColumns, viewsBefore };
+    return {
+      sourceViewId: board.view.id,
+      statusColumns,
+      usedStatuses: new Set(board.issues.map((issue) => issue.status)),
+      viewsBefore,
+    };
   },
   steps: [
     [
@@ -88,8 +114,8 @@ runScenario("issue-scopes", {
       },
     ],
     [
-      "the Active tab shows only open, non-backlog status columns",
-      async ({ session, statusColumns }) => {
+      "the Active tab shows only open, non-backlog status columns that hold issues",
+      async ({ session, statusColumns, usedStatuses }) => {
         await clickByRole(session, {
           role: "tab",
           name: await translate(session, "issues:sidebar.nav.active"),
@@ -97,8 +123,9 @@ runScenario("issue-scopes", {
         const expected = statusColumns
           .filter(
             (column) =>
-              column.category === null ||
-              ACTIVE_CATEGORIES.includes(column.category),
+              (column.category === null ||
+                ACTIVE_CATEGORIES.includes(column.category)) &&
+              usedStatuses.has(column.id),
           )
           .map((column) => column.title);
         await waitForColumnTitles(session, expected);
@@ -112,6 +139,10 @@ runScenario("issue-scopes", {
           role: "button",
           name: await translate(session, "issues:filter.ariaLabel"),
         });
+        await hoverMenuItem(
+          session,
+          await translate(session, "issues:filter.workspace"),
+        );
         await waitForRole(session, { role: "menuitemradio" }, UI_TIMEOUT_MS);
         const skip = await Promise.all(
           ["issues:filter.allWorkspaces", "issues:filter.noWorkspace"].map(
@@ -297,6 +328,122 @@ runScenario("issue-scopes", {
           UI_TIMEOUT_MS,
         );
         return { status: status.id };
+      },
+    ],
+    [
+      "grouping by label shows a column per used label and folds empty ones",
+      async ({ session, sourceViewId }) => {
+        await clickByRole(session, {
+          role: "tab",
+          name: await translate(session, "issues:sidebar.nav.all"),
+        });
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "issues:board.displayOptions"),
+        });
+        await clickByRole(
+          session,
+          {
+            role: "menuitemradio",
+            name: await translate(session, "issues:board.groupByLabel"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        await session.send("Input.dispatchKeyEvent", {
+          type: "keyDown",
+          key: "Escape",
+          code: "Escape",
+          windowsVirtualKeyCode: 27,
+        });
+        const deadline = Date.now() + UI_TIMEOUT_MS;
+        let board;
+        while (Date.now() < deadline) {
+          board = await daemonRequest(session, "issue.loadView", {
+            viewId: sourceViewId,
+          });
+          if (board.view.groupBy === "label") break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        check(board.view.groupBy === "label", "group-by not saved", board.view);
+        const used = new Set(board.issues.flatMap((issue) => issue.columnIds));
+        const noLabel = await translate(
+          session,
+          "issues:board.ungrouped.label",
+        );
+        const titleOf = (column) =>
+          column.id === "__none__" ? noLabel : column.title;
+        const visible = board.columns.filter((column) => used.has(column.id));
+        const hidden = board.columns.filter((column) => !used.has(column.id));
+        await waitForColumnTitles(session, visible.map(titleOf));
+        if (hidden.length > 0) {
+          await waitForRole(
+            session,
+            {
+              role: "region",
+              name: await translate(session, "issues:board.hiddenColumns"),
+            },
+            UI_TIMEOUT_MS,
+          );
+        }
+        return {
+          visible: visible.map(titleOf),
+          hidden: hidden.map(titleOf),
+        };
+      },
+    ],
+    [
+      "the detail page steps through the view's issues with J and K",
+      async ({ session, sourceViewId }) => {
+        const firstCard = await session.run(
+          () => document.querySelector("[data-issue-id]")?.dataset.issueId,
+        );
+        check(Boolean(firstCard), "no issue card on the board");
+        const box = await session.run((id) => {
+          const rect = document
+            .querySelector(`[data-issue-id="${id}"]`)
+            .getBoundingClientRect();
+          return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+        }, firstCard);
+        await clickPoint(session, box);
+        await session.waitUntil(
+          (id) =>
+            document.querySelector("article[data-issue-id]")?.dataset
+              .issueId === id,
+          firstCard,
+          UI_TIMEOUT_MS,
+        );
+        await session.run(() => document.activeElement?.blur());
+        const press = (key) =>
+          session.send("Input.dispatchKeyEvent", {
+            type: "keyDown",
+            key,
+            text: key,
+            code: `Key${key.toUpperCase()}`,
+          });
+        await press("j");
+        await session.waitUntil(
+          (id) => {
+            const current = document.querySelector("article[data-issue-id]")
+              ?.dataset.issueId;
+            return Boolean(current) && current !== id;
+          },
+          firstCard,
+          UI_TIMEOUT_MS,
+        );
+        const second = await openedIssueId(session);
+        await press("k");
+        await session.waitUntil(
+          (id) =>
+            document.querySelector("article[data-issue-id]")?.dataset
+              .issueId === id,
+          firstCard,
+          UI_TIMEOUT_MS,
+        );
+        await daemonRequest(session, "issue.updateView", {
+          viewId: sourceViewId,
+          groupBy: "status",
+        });
+        return { first: firstCard, second };
       },
     ],
     [

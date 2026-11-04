@@ -995,12 +995,21 @@ export default interface Resources {
       dragCard: "Drag card";
       groupBy: "Grouping";
       groupByHint: "Rows are grouped by this issue field.";
+      groupByLabel: "Label";
+      groupByParent: "Parent issue";
       groupByPriority: "Priority";
       groupByStatus: "Status";
+      groupByWorkspace: "Workspace";
+      hiddenColumns: "Hidden columns";
       layout: "Layout";
       layoutBoard: "Board";
       layoutList: "List";
       manageStatuses: "Manage statuses";
+      ungrouped: {
+        label: "No label";
+        parent: "No parent";
+        workspace: "No workspace";
+      };
       untitledBoard: "Untitled view";
       untitledCard: "Untitled card";
       untitledColumn: "Untitled column";
@@ -1024,7 +1033,9 @@ export default interface Resources {
       addSubIssue: "Add sub-issue";
       backToView: "Back to {{view}}";
       loadFailed: "Couldn't load the full description. Go back and reopen the issue to edit it.";
+      nextIssue: "Next issue";
       notFound: "This issue no longer exists.";
+      previousIssue: "Previous issue";
       relation: {
         blockedBy: "Blocked by";
         blocks: "Blocks";
@@ -1035,6 +1046,7 @@ export default interface Resources {
       relations: "Issue relations";
       removeRelation: "Remove relation";
       sessions: "Agent sessions";
+      stepTooltip: "{{action}} ({{key}})";
       subIssues: "Sub-issues";
       untitledSession: "Untitled session";
     };
@@ -1057,6 +1069,20 @@ export default interface Resources {
       unknownWorkspace: "Unknown workspace";
       workspace: "Workspace";
     };
+    display: {
+      created: "Created";
+      description: "Description";
+      identifier: "ID";
+      labels: "Labels";
+      parent: "Parent issue";
+      priority: "Priority";
+      properties: "Display properties";
+      showEmptyColumns: "Show empty columns";
+      showEmptyGroups: "Show empty groups";
+      status: "Status";
+      updated: "Updated";
+      workspace: "Workspace";
+    };
     empty: {
       description: "Create a card or column to start organizing work.";
       title: "No view yet";
@@ -1067,14 +1093,24 @@ export default interface Resources {
     };
     filter: {
       activeFilters: "Active filters";
+      allIssues: "All issues";
       allLabels: "All labels";
+      allStatuses: "All statuses";
       allWorkspaces: "All workspaces";
+      anyTime: "Any time";
       ariaLabel: "Filter view";
+      created: "Created";
       hideClosed: "Hide completed and canceled";
       label: "Label";
       noWorkspace: "No workspace";
+      parent: "Parent";
       remove: "Remove filter {{filter}}";
       saveAsView: "Save as view";
+      status: "Status";
+      topLevel: "Top-level only";
+      updated: "Updated";
+      withinDays_one: "Past {{count}} day";
+      withinDays_other: "Past {{count}} days";
       workspace: "Workspace";
     };
     list: {

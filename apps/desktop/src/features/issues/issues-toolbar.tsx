@@ -1,5 +1,7 @@
 import type {
+  IssueFieldOption,
   IssueLabel,
+  ViewDisplay,
   ViewFilter,
   ViewGroupBy,
   ViewLayout,
@@ -21,12 +23,15 @@ export function IssuesToolbar({
   filters,
   workspaces,
   labels,
+  statuses,
   layout,
   groupBy,
   onSelect,
   onFiltersChange,
   onLayoutChange,
   onGroupByChange,
+  display,
+  onDisplayChange,
   onSaveView,
 }: {
   selection: IssueNavSelection;
@@ -37,12 +42,15 @@ export function IssuesToolbar({
   filters: ViewFilter[];
   workspaces: WorkspaceRecord[];
   labels: IssueLabel[];
+  statuses: IssueFieldOption[];
   layout: ViewLayout;
   groupBy: ViewGroupBy;
   onSelect: (selection: IssueNavSelection) => void;
   onFiltersChange: (filters: ViewFilter[]) => void;
   onLayoutChange: (layout: ViewLayout) => void;
   onGroupByChange: (groupBy: ViewGroupBy) => void;
+  display: ViewDisplay | undefined;
+  onDisplayChange: (display: ViewDisplay) => void;
   onSaveView: (title: string) => void;
 }) {
   return (
@@ -73,6 +81,7 @@ export function IssuesToolbar({
               filters={filters}
               workspaces={workspaces}
               labels={labels}
+              statuses={statuses}
               onFiltersChange={onFiltersChange}
             />
             <ViewDisplayMenu
@@ -80,6 +89,8 @@ export function IssuesToolbar({
               groupBy={groupBy}
               onLayoutChange={onLayoutChange}
               onGroupByChange={onGroupByChange}
+              display={display}
+              onDisplayChange={onDisplayChange}
             />
           </>
         ) : null}
@@ -89,6 +100,7 @@ export function IssuesToolbar({
           filters={filters}
           workspaces={workspaces}
           labels={labels}
+          statuses={statuses}
           scopeLabel={scopeLabel}
           canSave={selection.kind === "issues"}
           onFiltersChange={onFiltersChange}

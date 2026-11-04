@@ -45,7 +45,16 @@
     "manageStatuses": "Manage statuses",
     "untitledBoard": "Untitled view",
     "untitledCard": "Untitled card",
-    "untitledColumn": "Untitled column"
+    "untitledColumn": "Untitled column",
+    "hiddenColumns": "Hidden columns",
+    "groupByLabel": "Label",
+    "groupByWorkspace": "Workspace",
+    "groupByParent": "Parent issue",
+    "ungrouped": {
+      "label": "No label",
+      "workspace": "No workspace",
+      "parent": "No parent"
+    }
   },
   "cardMenu": {
     "delete": "Delete",
@@ -66,7 +75,9 @@
     "addSubIssue": "Add sub-issue",
     "backToView": "Back to {{view}}",
     "loadFailed": "Couldn't load the full description. Go back and reopen the issue to edit it.",
+    "nextIssue": "Next issue",
     "notFound": "This issue no longer exists.",
+    "previousIssue": "Previous issue",
     "relation": {
       "blockedBy": "Blocked by",
       "blocks": "Blocks",
@@ -77,6 +88,7 @@
     "relations": "Issue relations",
     "removeRelation": "Remove relation",
     "sessions": "Agent sessions",
+    "stepTooltip": "{{action}} ({{key}})",
     "subIssues": "Sub-issues",
     "untitledSession": "Untitled session"
   },
@@ -109,14 +121,24 @@
   },
   "filter": {
     "activeFilters": "Active filters",
+    "allIssues": "All issues",
     "allLabels": "All labels",
+    "allStatuses": "All statuses",
     "allWorkspaces": "All workspaces",
+    "anyTime": "Any time",
     "ariaLabel": "Filter view",
+    "created": "Created",
     "hideClosed": "Hide completed and canceled",
     "label": "Label",
     "noWorkspace": "No workspace",
+    "parent": "Parent",
     "remove": "Remove filter {{filter}}",
     "saveAsView": "Save as view",
+    "status": "Status",
+    "topLevel": "Top-level only",
+    "updated": "Updated",
+    "withinDays_one": "Past {{count}} day",
+    "withinDays_other": "Past {{count}} days",
     "workspace": "Workspace"
   },
   "list": {
@@ -169,5 +191,19 @@
     "newTitle": "New status",
     "rename": "Rename",
     "saveFailed": "Could not save the status."
+  },
+  "display": {
+    "identifier": "ID",
+    "status": "Status",
+    "priority": "Priority",
+    "labels": "Labels",
+    "workspace": "Workspace",
+    "parent": "Parent issue",
+    "description": "Description",
+    "created": "Created",
+    "updated": "Updated",
+    "showEmptyGroups": "Show empty groups",
+    "showEmptyColumns": "Show empty columns",
+    "properties": "Display properties"
   }
 }

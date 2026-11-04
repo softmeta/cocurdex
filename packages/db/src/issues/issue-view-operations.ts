@@ -3,15 +3,17 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_VIEW_ID,
   ISSUE_STATUS_CATEGORIES,
+  type IssueColumnField,
   type IssueStatusCategory,
   isClosedStatusCategory,
-  type ViewGroupBy,
+  normalizeViewDisplay,
 } from "@cocurdex/shared";
 import {
   assertRevision,
   requireColumn,
   withIssueMutation,
 } from "./issue-mutation-helpers";
+import { projectView } from "./issue-projection";
 import {
   fallbackColumnId,
   getView,
@@ -19,7 +21,6 @@ import {
   listColumns,
   mapColumn,
   mapViewSummary,
-  projectView,
   requireView,
 } from "./issue-storage";
 import {
@@ -43,7 +44,7 @@ type IssueViewOperations = Pick<
 
 function endOfCategory(
   database: DatabaseSync,
-  field: ViewGroupBy,
+  field: IssueColumnField,
   category: IssueStatusCategory | null,
 ): number {
   const orders = listColumns(database, field)
@@ -117,7 +118,8 @@ export function createIssueViewOperations(
         .prepare(
           `UPDATE issue_views
            SET title = ?, icon = ?, group_by = ?, layout = ?,
-               filters_json = ?, revision = revision + 1, updated_at = ?
+               filters_json = ?, display_json = ?,
+               revision = revision + 1, updated_at = ?
            WHERE id = ? AND revision = ?`,
         )
         .run(
@@ -128,6 +130,9 @@ export function createIssueViewOperations(
           payload.filters !== undefined
             ? JSON.stringify(payload.filters)
             : current.filters_json,
+          payload.display !== undefined
+            ? JSON.stringify(normalizeViewDisplay(payload.display))
+            : current.display_json,
           new Date().toISOString(),
           current.id,
           current.revision,
@@ -149,7 +154,7 @@ export function createIssueViewOperations(
           .prepare(
             `UPDATE issue_views
              SET title = 'Project view', icon = NULL, group_by = 'status',
-                 layout = 'board', filters_json = '[]',
+                 layout = 'board', filters_json = '[]', display_json = NULL,
                  revision = revision + 1, updated_at = ?
              WHERE id = ?`,
           )

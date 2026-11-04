@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { ViewGroupBy } from "@cocurdex/shared";
+import type { IssueColumnField } from "@cocurdex/shared";
 import { type ColumnRow, listColumns } from "./issue-storage";
 
 export function assertRevision(
@@ -14,7 +14,7 @@ export function assertRevision(
 
 export function requireColumn(
   database: DatabaseSync,
-  field: ViewGroupBy,
+  field: IssueColumnField,
   columnId: string,
 ): ColumnRow {
   const columns = listColumns(database, field);
@@ -30,7 +30,7 @@ export function requireColumn(
 
 export function assertFieldValue(
   database: DatabaseSync,
-  field: ViewGroupBy,
+  field: IssueColumnField,
   value: string | undefined,
 ): void {
   if (value !== undefined) {

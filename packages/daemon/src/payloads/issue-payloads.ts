@@ -10,6 +10,7 @@ import {
   type DeleteViewPayload,
   type GetIssueDetailPayload,
   type GetIssuePayload,
+  ISSUE_DISPLAY_PROPERTIES,
   ISSUE_RELATION_KINDS,
   ISSUE_STATUS_CATEGORIES,
   type IssueRelationPayload,
@@ -24,6 +25,10 @@ import {
   type UpdateIssuePayload,
   type UpdateSessionAttentionPayload,
   type UpdateViewPayload,
+  VIEW_FILTER_FIELDS,
+  VIEW_FILTER_OPS,
+  VIEW_GROUP_BY_FIELDS,
+  VIEW_LAYOUTS,
 } from "@cocurdex/shared";
 import { z } from "zod";
 import {
@@ -61,8 +66,8 @@ const deleteViewPayloadSchema = z.object({
 }) satisfies z.ZodType<DeleteViewPayload>;
 
 const viewFilterSchema = z.object({
-  field: z.enum(["workspaceId", "labelId", "priority", "statusCategory"]),
-  op: z.enum(["eq", "neq", "is_null"]),
+  field: z.enum(VIEW_FILTER_FIELDS),
+  op: z.enum(VIEW_FILTER_OPS),
   value: z.string().min(1).max(128).optional(),
 });
 
@@ -70,9 +75,15 @@ const updateViewPayloadSchema = z.object({
   viewId: viewIdSchema,
   title: titleSchema.optional(),
   icon: z.string().max(64).nullable().optional(),
-  groupBy: z.enum(["status", "priority"]).optional(),
-  layout: z.enum(["board", "list"]).optional(),
+  groupBy: z.enum(VIEW_GROUP_BY_FIELDS).optional(),
+  layout: z.enum(VIEW_LAYOUTS).optional(),
   filters: z.array(viewFilterSchema).max(32).optional(),
+  display: z
+    .object({
+      properties: z.array(z.enum(ISSUE_DISPLAY_PROPERTIES)).max(32),
+      showEmptyGroups: z.boolean(),
+    })
+    .optional(),
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<UpdateViewPayload>;
 
@@ -148,6 +159,7 @@ const moveIssuePayloadSchema = z.object({
   viewId: viewIdSchema,
   id: refSchema,
   columnId: columnIdSchema,
+  fromColumnId: columnIdSchema.optional(),
   sortOrder: z.number().finite(),
   expectedRevision: revisionSchema,
   actor: issueActorSchema.optional(),

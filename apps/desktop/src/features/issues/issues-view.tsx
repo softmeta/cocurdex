@@ -1,7 +1,10 @@
 import {
   DEFAULT_VIEW_ID,
   type IssueRecord,
+  isIssueColumnField,
+  type ViewDisplay,
   type ViewFilter,
+  type ViewFull,
   type ViewGroupBy,
   type ViewLayout,
 } from "@cocurdex/shared";
@@ -22,9 +25,11 @@ import {
   IssueCreateDialog,
   type IssueDetailActions,
   IssueDetailPage,
+  type IssueDetailStepper,
   type IssueFieldOptions,
   type IssueSaveRequest,
 } from "./detail";
+import { issueStep, orderedIssueIds } from "./group-issues";
 import {
   addIssueRelationAtom,
   closeIssueDetailAtom,
@@ -40,6 +45,7 @@ import {
   createIssueLabelAtom,
   deleteIssueAtom,
   deleteViewAtom,
+  type IssueMovePayload,
   issueLoadingAtom,
   issueViewsAtom,
   loadIssuesAtom,
@@ -60,6 +66,26 @@ import {
   useIssueNavScopeLabel,
   useIssueNavTitle,
 } from "./sidebar";
+
+function buildDetailStepper(
+  board: ViewFull | null,
+  issueId: string | null,
+  open: (issue: IssueRecord) => void,
+): IssueDetailStepper | null {
+  if (!board || !issueId) return null;
+  const step = issueStep(orderedIssueIds(board.columns, board.issues), issueId);
+  if (!step) return null;
+  const openById = (id: string | null) => {
+    const issue = id ? board.issues.find((entry) => entry.id === id) : null;
+    return issue ? () => open(issue) : null;
+  };
+  return {
+    position: step.position,
+    total: step.total,
+    onPrevious: openById(step.previousId),
+    onNext: openById(step.nextId),
+  };
+}
 
 export function IssuesView() {
   const { t } = useTranslation("issues");
@@ -128,26 +154,19 @@ export function IssuesView() {
   );
 
   const handleMoveIssue = useCallback(
-    (id: string, columnId: string, sortOrder: number) => {
-      void moveIssue({ id, columnId, sortOrder });
+    (move: IssueMovePayload) => {
+      void moveIssue(move);
     },
     [moveIssue],
-  );
-
-  const handleMoveIssueLocal = useCallback(
-    (id: string, columnId: string, sortOrder: number) => {
-      moveIssueLocal({ id, columnId, sortOrder });
-    },
-    [moveIssueLocal],
   );
 
   const handleSaveIssue = useCallback(
     async (request: IssueSaveRequest) => {
       const { values } = request;
-      const columnId =
-        activeBoard?.view.groupBy === "priority"
-          ? values.priority
-          : values.status;
+      const groupBy = activeBoard?.view.groupBy ?? "status";
+      const columnId = isIssueColumnField(groupBy)
+        ? values[groupBy]
+        : undefined;
       const created = await createIssue({ columnId, ...values });
       return created !== null;
     },
@@ -169,11 +188,7 @@ export function IssuesView() {
       void openIssueDetail(issueId);
     },
     onAddSubIssue: (parent) => {
-      const groupBy = activeBoard?.view.groupBy ?? "status";
-      handleAddCard(
-        groupBy === "priority" ? parent.priority : parent.status,
-        parent,
-      );
+      handleAddCard(parent.columnId, parent);
     },
     onAddRelation: (change) => {
       void addIssueRelation(change);
@@ -210,6 +225,14 @@ export function IssuesView() {
   const handleFiltersChange = useCallback(
     (filters: ViewFilter[]) => {
       void updateView({ filters });
+    },
+    [updateView],
+  );
+
+  const display = activeBoard?.view.display;
+  const handleDisplayChange = useCallback(
+    (next: ViewDisplay) => {
+      void updateView({ display: next });
     },
     [updateView],
   );
@@ -261,6 +284,13 @@ export function IssuesView() {
       }
     : null;
   const detailPageOpen = issueDetail !== null && fieldOptions !== null;
+  const stepper = buildDetailStepper(
+    viewBoard,
+    issueDetail?.card.id ?? null,
+    (issue) => {
+      void openIssueDetail(issue);
+    },
+  );
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -292,6 +322,7 @@ export function IssuesView() {
             options={fieldOptions}
             actions={detailActions}
             leading={sidebarToggle}
+            stepper={stepper}
             onBack={closeIssueDetail}
           />
         ) : null}
@@ -311,12 +342,15 @@ export function IssuesView() {
               filters={viewFilters}
               workspaces={workspaces}
               labels={activeBoard?.labels ?? []}
+              statuses={activeBoard?.statusOptions ?? []}
               layout={layout}
               groupBy={groupBy}
               onSelect={nav.select}
               onFiltersChange={handleFiltersChange}
               onLayoutChange={handleLayout}
               onGroupByChange={handleGroupBy}
+              display={display}
+              onDisplayChange={handleDisplayChange}
               onSaveView={(title) => {
                 void handleSaveView(title);
               }}
@@ -339,7 +373,7 @@ export function IssuesView() {
               <IssuesBoard
                 board={viewBoard}
                 onMoveIssue={handleMoveIssue}
-                onMoveIssueLocal={handleMoveIssueLocal}
+                onMoveIssueLocal={moveIssueLocal}
                 onAddCard={handleAddCard}
                 onDeleteCard={(id) => {
                   void deleteIssue(id);

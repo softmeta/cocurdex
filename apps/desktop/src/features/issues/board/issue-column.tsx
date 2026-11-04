@@ -1,4 +1,9 @@
-import type { IssueRecord, ViewColumnRecord } from "@cocurdex/shared";
+import {
+  type IssueRecord,
+  isIssueColumnField,
+  type ViewColumnRecord,
+  type ViewGroupBy,
+} from "@cocurdex/shared";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -10,13 +15,16 @@ import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
+import { useGroupColumnTitle } from "../group-column-title";
 import { GroupFieldMark } from "../group-field-mark";
 import { InlineEdit } from "../inline-edit";
+import { cardSortableId } from "./card-placement";
 import { ColumnMenu } from "./column-menu";
 import { type CardFieldOption, IssueCard } from "./issue-card";
 
 interface IssueColumnProps {
   column: ViewColumnRecord;
+  groupBy: ViewGroupBy;
   issues: IssueRecord[];
   statusOptions: CardFieldOption[];
   priorityOptions: Array<{ id: string; title: string }>;
@@ -32,6 +40,7 @@ interface IssueColumnProps {
 
 export function IssueColumn({
   column,
+  groupBy,
   issues,
   statusOptions,
   priorityOptions,
@@ -43,7 +52,12 @@ export function IssueColumn({
 }: IssueColumnProps) {
   const { t } = useTranslation("issues");
   const [editing, setEditing] = useState(false);
-  const cardIds = useMemo(() => issues.map((c) => c.id), [issues]);
+  const columnTitle = useGroupColumnTitle()(column);
+  const renamable = isIssueColumnField(column.field);
+  const cardIds = useMemo(
+    () => issues.map((c) => cardSortableId(groupBy, column.id, c.id)),
+    [issues, groupBy, column.id],
+  );
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: `column-drop-${column.id}`,
@@ -61,27 +75,38 @@ export function IssueColumn({
       <div className="group flex h-9 items-center gap-1.5 px-1">
         <GroupFieldMark column={column} />
         <div className="min-w-0" data-testid="issue-column-title-cell">
-          <InlineEdit
-            value={column.title}
-            editing={editing}
-            placeholder={t("board.untitledColumn")}
-            onSubmit={(title) => {
-              setEditing(false);
-              if (title !== column.title) onRenameColumn(column.id, title);
-            }}
-            onCancel={() => setEditing(false)}
-            className="w-full bg-transparent text-body font-medium text-editor-fg outline-none"
-          >
-            <button
-              type="button"
-              className="block max-w-44 cursor-text truncate text-start"
-              onClick={() => setEditing(true)}
+          {renamable ? (
+            <InlineEdit
+              value={column.title}
+              editing={editing}
+              placeholder={t("board.untitledColumn")}
+              onSubmit={(title) => {
+                setEditing(false);
+                if (title !== column.title) onRenameColumn(column.id, title);
+              }}
+              onCancel={() => setEditing(false)}
+              className="w-full bg-transparent text-body font-medium text-editor-fg outline-none"
             >
-              <Text size="body" weight="medium" className="text-editor-fg">
-                {column.title || t("board.untitledColumn")}
-              </Text>
-            </button>
-          </InlineEdit>
+              <button
+                type="button"
+                className="block max-w-44 cursor-text truncate text-start"
+                onClick={() => setEditing(true)}
+              >
+                <Text size="body" weight="medium" className="text-editor-fg">
+                  {columnTitle}
+                </Text>
+              </button>
+            </InlineEdit>
+          ) : (
+            <Text
+              size="body"
+              weight="medium"
+              truncate
+              className="block max-w-44 text-editor-fg"
+            >
+              {columnTitle}
+            </Text>
+          )}
         </div>
         <Text
           size="meta"
@@ -113,6 +138,9 @@ export function IssueColumn({
               <IssueCard
                 key={card.id}
                 card={card}
+                columnId={column.id}
+                sortableId={cardSortableId(groupBy, column.id, card.id)}
+                groupBy={groupBy}
                 statusOptions={statusOptions}
                 priorityOptions={priorityOptions}
                 onDelete={onDeleteCard}

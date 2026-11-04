@@ -1,4 +1,9 @@
-import type { IssueLabel, ViewFilter, WorkspaceRecord } from "@cocurdex/shared";
+import type {
+  IssueFieldOption,
+  IssueLabel,
+  ViewFilter,
+  WorkspaceRecord,
+} from "@cocurdex/shared";
 import { BookmarkPlus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button, IconButton, Text } from "@/components/ui";
@@ -8,6 +13,7 @@ export function ViewFilterBar({
   filters,
   workspaces,
   labels,
+  statuses,
   scopeLabel,
   canSave,
   onFiltersChange,
@@ -16,13 +22,14 @@ export function ViewFilterBar({
   filters: ViewFilter[];
   workspaces: WorkspaceRecord[];
   labels: IssueLabel[];
+  statuses: IssueFieldOption[];
   scopeLabel: string | null;
   canSave: boolean;
   onFiltersChange: (filters: ViewFilter[]) => void;
   onSave: (title: string) => void;
 }) {
   const { t } = useTranslation("issues");
-  const chips = useViewFilterChips(filters, workspaces, labels);
+  const chips = useViewFilterChips(filters, workspaces, labels, statuses);
   if (chips.length === 0) {
     return null;
   }

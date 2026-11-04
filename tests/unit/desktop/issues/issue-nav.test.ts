@@ -21,6 +21,7 @@ function issue(
     number: 1,
     identifier: `COC-${id}`,
     columnId: "backlog",
+    columnIds: ["backlog"],
     viewId: "project",
     title: id,
     description: null,

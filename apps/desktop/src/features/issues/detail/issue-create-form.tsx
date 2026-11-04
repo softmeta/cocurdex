@@ -38,7 +38,7 @@ export function IssueCreateForm({
     priority: composeDraft.priority || options.priorityOptions.at(-1)?.id || "",
     workspaceId: composeDraft.workspaceId,
     parentId: composeDraft.parentId,
-    labelIds: [],
+    labelIds: composeDraft.labelIds,
   });
   const [saving, setSaving] = useState(false);
   const canCreate = !saving && title.trim().length > 0;

@@ -3,6 +3,7 @@ import type {
   IssueStatusCategory,
   ViewGroupBy,
 } from "@cocurdex/shared";
+import { useAtomValue } from "jotai";
 import { Check, Flag, Pencil, Trash2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,7 +20,11 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { priorityFieldColor } from "../group-field-color";
-import { IssueLabelChips } from "../issue-label-chips";
+import {
+  formatIssueDate,
+  issueDisplayPropertiesAtom,
+} from "../issue-display-store";
+import { IssueMetaChips } from "../issue-meta-chips";
 import { IssueStatusIcon } from "../issue-status-icon";
 
 export interface ListFieldOption {
@@ -42,15 +47,6 @@ interface IssueListRowProps {
   ) => void;
 }
 
-function formatMetaDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export function IssueListRow({
   card,
   groupBy,
@@ -63,13 +59,17 @@ export function IssueListRow({
   const { t } = useTranslation("issues");
   const priorityColor = priorityFieldColor(card.priority || "none");
   const updated = card.updatedAt !== card.createdAt;
-  const metaDate = formatMetaDate(updated ? card.updatedAt : card.createdAt);
+  const properties = useAtomValue(issueDisplayPropertiesAtom);
+  const metaDate =
+    properties.has("created") || properties.has("updated")
+      ? ""
+      : formatIssueDate(updated ? card.updatedAt : card.createdAt);
 
-  // Show the field that is *not* the group key so rows stay quiet under a
-  // section header that already carries the grouping value.
-  const showStatusMark = groupBy !== "status";
+  const showStatusMark = groupBy !== "status" && properties.has("status");
   const showPriorityMark =
-    groupBy !== "priority" && (card.priority || "none") !== "none";
+    groupBy !== "priority" &&
+    properties.has("priority") &&
+    (card.priority || "none") !== "none";
 
   const openCard = () => {
     onEdit(card);
@@ -115,14 +115,16 @@ export function IssueListRow({
       {!showPriorityMark && !showStatusMark ? (
         <span className="size-3.5 shrink-0" aria-hidden />
       ) : null}
-      <Text
-        as="span"
-        size="meta"
-        weight="medium"
-        className="shrink-0 tabular-nums text-editor-fg-subtle"
-      >
-        {card.identifier}
-      </Text>
+      {properties.has("identifier") ? (
+        <Text
+          as="span"
+          size="meta"
+          weight="medium"
+          className="shrink-0 tabular-nums text-editor-fg-subtle"
+        >
+          {card.identifier}
+        </Text>
+      ) : null}
       <Text
         as="span"
         size="body"
@@ -130,8 +132,10 @@ export function IssueListRow({
       >
         {card.title || t("board.untitledCard")}
       </Text>
-      <IssueLabelChips
-        labelIds={card.labelIds}
+      <IssueMetaChips
+        card={card}
+        groupBy={groupBy}
+        omit="priority"
         className="shrink-0 flex-nowrap"
       />
       {metaDate ? (

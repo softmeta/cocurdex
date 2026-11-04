@@ -45,7 +45,16 @@
     "manageStatuses": "管理状态",
     "untitledBoard": "无标题视图",
     "untitledCard": "无标题卡片",
-    "untitledColumn": "无标题列"
+    "untitledColumn": "无标题列",
+    "hiddenColumns": "隐藏的列",
+    "groupByLabel": "标签",
+    "groupByWorkspace": "工作区",
+    "groupByParent": "父事项",
+    "ungrouped": {
+      "label": "无标签",
+      "workspace": "无工作区",
+      "parent": "无父事项"
+    }
   },
   "cardMenu": {
     "delete": "删除",
@@ -66,7 +75,9 @@
     "addSubIssue": "添加子事项",
     "backToView": "返回{{view}}",
     "loadFailed": "无法加载完整描述。请返回后重新打开该事项再编辑。",
+    "nextIssue": "下一个事项",
     "notFound": "该事项已不存在。",
+    "previousIssue": "上一个事项",
     "relation": {
       "blockedBy": "被阻塞于",
       "blocks": "阻塞",
@@ -77,6 +88,7 @@
     "relations": "事项关系",
     "removeRelation": "移除关联",
     "sessions": "Agent 会话",
+    "stepTooltip": "{{action}}（{{key}}）",
     "subIssues": "子事项",
     "untitledSession": "未命名会话"
   },
@@ -109,14 +121,23 @@
   },
   "filter": {
     "activeFilters": "当前筛选",
+    "allIssues": "全部事项",
     "allLabels": "全部标签",
+    "allStatuses": "全部状态",
     "allWorkspaces": "全部工作区",
+    "anyTime": "不限时间",
     "ariaLabel": "筛选视图",
+    "created": "创建时间",
     "hideClosed": "隐藏已完成和已取消",
     "label": "标签",
     "noWorkspace": "无工作区",
+    "parent": "父事项",
     "remove": "移除筛选 {{filter}}",
     "saveAsView": "保存为视图",
+    "status": "状态",
+    "topLevel": "仅顶层事项",
+    "updated": "更新时间",
+    "withinDays_other": "最近 {{count}} 天",
     "workspace": "工作区"
   },
   "list": {
@@ -169,5 +190,19 @@
     "newTitle": "新状态",
     "rename": "重命名",
     "saveFailed": "状态保存失败。"
+  },
+  "display": {
+    "identifier": "编号",
+    "status": "状态",
+    "priority": "优先级",
+    "labels": "标签",
+    "workspace": "工作区",
+    "parent": "父事项",
+    "description": "描述",
+    "created": "创建时间",
+    "updated": "更新时间",
+    "showEmptyGroups": "显示空分组",
+    "showEmptyColumns": "显示空列",
+    "properties": "显示属性"
   }
 }

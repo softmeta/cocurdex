@@ -1,6 +1,7 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   DEFAULT_VIEW_ID,
+  ISSUE_DISPLAY_PROPERTIES,
   ISSUE_RELATION_KINDS,
   ISSUE_STATUS_CATEGORIES,
   type IssueActor,
@@ -8,6 +9,9 @@ import {
   type IssueStatusCategory,
   isClosedStatusCategory,
   sortOrderForColumnPosition,
+  type UpdateViewPayload,
+  VIEW_GROUP_BY_FIELDS,
+  VIEW_LAYOUTS,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import type { ParsedArgs } from "./parse-args";
@@ -46,6 +50,78 @@ function nullableFlag(parsed: ParsedArgs, name: string) {
     return undefined;
   }
   return typeof value === "string" && value !== "none" ? value : null;
+}
+
+function enumFlag<T extends string>(
+  parsed: ParsedArgs,
+  name: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = stringFlag(parsed, name);
+  if (value === undefined) {
+    return undefined;
+  }
+  const match = allowed.find((entry) => entry === value);
+  if (!match) {
+    throw new Error(`--${name} must be one of: ${allowed.join(", ")}`);
+  }
+  return match;
+}
+
+function booleanFlag(parsed: ParsedArgs, name: string): boolean | undefined {
+  const value = parsed.flags.get(name);
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === true || value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  throw new Error(`--${name} must be true or false`);
+}
+
+const VIEW_UPDATE_USAGE =
+  "Usage: cocurdex issue view update <id> [--title <title>] [--group-by <field>] [--layout board|list] [--show-empty true|false] [--properties <a,b,...>]";
+
+async function updateViewFromFlags(viewId: string, parsed: ParsedArgs) {
+  const current = await withDaemon(() =>
+    requestDaemon("issue.loadView", { viewId }),
+  );
+  if (!current) {
+    throw new Error(`View not found: ${viewId}`);
+  }
+  const properties = listFlag(parsed, "properties");
+  const unknown = properties?.filter(
+    (entry) => !ISSUE_DISPLAY_PROPERTIES.some((known) => known === entry),
+  );
+  if (unknown && unknown.length > 0) {
+    throw new Error(
+      `--properties accepts: ${ISSUE_DISPLAY_PROPERTIES.join(", ")}`,
+    );
+  }
+  const showEmpty = booleanFlag(parsed, "show-empty");
+  const display =
+    properties !== undefined || showEmpty !== undefined
+      ? {
+          properties: ISSUE_DISPLAY_PROPERTIES.filter((entry) =>
+            (properties ?? current.view.display.properties).includes(entry),
+          ),
+          showEmptyGroups: showEmpty ?? current.view.display.showEmptyGroups,
+        }
+      : undefined;
+  const payload: UpdateViewPayload = {
+    viewId,
+    title: stringFlag(parsed, "title"),
+    groupBy: enumFlag(parsed, "group-by", VIEW_GROUP_BY_FIELDS),
+    layout: enumFlag(parsed, "layout", VIEW_LAYOUTS),
+    display,
+  };
+  const updated = await withDaemon(() =>
+    requestDaemon("issue.updateView", payload),
+  );
+  return updated.view;
 }
 
 function requiredId(args: string[], usage: string) {
@@ -261,7 +337,9 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
   async move(args, parsed, viewId) {
     const [id, columnId] = args;
     if (!id || !columnId) {
-      throw new Error("Usage: cocurdex issue move <id> <column>");
+      throw new Error(
+        "Usage: cocurdex issue move <id> <column> [--from <column>]",
+      );
     }
     const current = await requireIssue(id, viewId);
     const moved = await withDaemon(() =>
@@ -269,6 +347,7 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
         viewId,
         id: current.id,
         columnId,
+        fromColumnId: stringFlag(parsed, "from"),
         sortOrder: current.sortOrder,
         expectedRevision: current.revision,
         actor: CLI_ACTOR,
@@ -367,6 +446,13 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
   async views(_args, parsed) {
     const views = await withDaemon(() => requestDaemon("issue.listViews"));
     printRows(views, ["id", "title", "groupBy", "layout"], parsed);
+  },
+  async view(args, parsed) {
+    const [operation, ref] = args;
+    if (operation !== "update" || !ref) {
+      throw new Error(VIEW_UPDATE_USAGE);
+    }
+    printResult(await updateViewFromFlags(ref, parsed), parsed);
   },
 };
 

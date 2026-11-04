@@ -29,7 +29,11 @@ describe("issueMatchesFilters", () => {
     workspaceId: "w1",
     labelIds: ["bug", "agent"],
     priority: "high",
+    status: "doing",
     statusCategory: "started",
+    parentId: null,
+    createdAt: "2026-11-01T00:00:00.000Z",
+    updatedAt: "2026-11-04T00:00:00.000Z",
   };
 
   it("combines filters with AND across fields", () => {
@@ -55,6 +59,34 @@ describe("issueMatchesFilters", () => {
         { field: "workspaceId", op: "is_null" },
       ]),
     ).toBe(true);
+  });
+  it("matches a status, top-level issues, and recent dates", () => {
+    const now = Date.parse("2026-11-05T00:00:00.000Z");
+    expect(
+      issueMatchesFilters(
+        issue,
+        [
+          { field: "status", op: "eq", value: "doing" },
+          { field: "parentId", op: "is_null" },
+          { field: "updatedAt", op: "within_days", value: "7" },
+        ],
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      issueMatchesFilters(
+        issue,
+        [{ field: "createdAt", op: "within_days", value: "1" }],
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      issueMatchesFilters(
+        { ...issue, parentId: "p1" },
+        [{ field: "parentId", op: "is_null" }],
+        now,
+      ),
+    ).toBe(false);
   });
 });
 

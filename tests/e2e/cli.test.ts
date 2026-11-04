@@ -286,6 +286,66 @@ describe("cocurdex CLI against a running daemon", () => {
     ).toContain(issue.id);
   });
 
+  it("regroups a view by label and moves an issue between label groups", async () => {
+    const options = { userDataPath: daemon.userDataPath };
+    const json = async (args: string[]) => {
+      const result = await runCli([...args, "--json"], options);
+      expect(result.code, result.stderr).toBe(0);
+      return JSON.parse(result.stdout);
+    };
+    const bug = await json([
+      "issue",
+      "label",
+      "create",
+      "--name",
+      "Grouped bug",
+    ]);
+    const ui = await json(["issue", "label", "create", "--name", "Grouped ui"]);
+    const issue = await json([
+      "issue",
+      "create",
+      "--title",
+      "Grouped issue",
+      "--labels",
+      bug.id,
+    ]);
+
+    const view = await json([
+      "issue",
+      "view",
+      "update",
+      "project",
+      "--group-by",
+      "label",
+      "--show-empty",
+      "true",
+      "--properties",
+      "created,identifier",
+    ]);
+    expect(view.groupBy).toBe("label");
+    expect(view.display).toEqual({
+      properties: ["identifier", "created"],
+      showEmptyGroups: true,
+    });
+
+    const moved = await json([
+      "issue",
+      "move",
+      issue.id,
+      ui.id,
+      "--from",
+      bug.id,
+    ]);
+    expect(moved.labelIds).toEqual([ui.id]);
+
+    const invalid = await runCli(
+      ["issue", "view", "update", "project", "--group-by", "assignee"],
+      options,
+    );
+    expect(invalid.code).not.toBe(0);
+    await json(["issue", "view", "update", "project", "--group-by", "status"]);
+  });
+
   it("renames a label without detaching its issues", async () => {
     const options = { userDataPath: daemon.userDataPath };
     const label = JSON.parse(
