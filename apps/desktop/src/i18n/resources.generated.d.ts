@@ -1114,7 +1114,6 @@ export default interface Resources {
         agent: "Agent working";
         all: "All issues";
         backlog: "Backlog";
-        issues: "Issues";
         scope: "Issue scope";
         title: "Issues";
       };

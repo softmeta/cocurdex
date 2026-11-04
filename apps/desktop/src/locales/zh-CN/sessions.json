@@ -67,7 +67,7 @@
     },
     "attachMenu": {
       "empty": "无匹配项",
-      "issues": "Issue",
+      "issues": "事项",
       "notes": "笔记",
       "search": "搜索…",
       "skills": "Skill"
@@ -348,7 +348,7 @@
       "source": {
         "created": "本地新建",
         "imported": "导入",
-        "issue": "来自 Issue"
+        "issue": "来自事项"
       },
       "sourceFilter": "来源",
       "status": {

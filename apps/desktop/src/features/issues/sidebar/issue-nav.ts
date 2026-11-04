@@ -93,19 +93,6 @@ export function countAgentRunningIssues(
   ).length;
 }
 
-export function isSameIssueNav(
-  left: IssueNavSelection,
-  right: IssueNavSelection,
-): boolean {
-  if (left.kind === "issues" && right.kind === "issues") {
-    return left.preset === right.preset;
-  }
-  if (left.kind === "view" && right.kind === "view") {
-    return left.viewId === right.viewId;
-  }
-  return left.kind === right.kind;
-}
-
 function allowedColumnCategories(
   selection: IssueNavSelection,
 ): readonly IssueStatusCategory[] | null {

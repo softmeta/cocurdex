@@ -6,7 +6,6 @@ import {
   clickByRole,
   clickPoint,
   queryAllByRole,
-  waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
 import { showPanelView, translate } from "./lib/navigate.mjs";
@@ -62,30 +61,29 @@ runScenario("issue-scopes", {
   },
   steps: [
     [
-      "the sidebar keeps one Issues entry and the scopes move to header tabs",
+      "the scope tabs hold every quick filter and the sidebar lists only views",
       async ({ session }) => {
         const tabs = await queryAllByRole(session, { role: "tab" });
         const names = await Promise.all(
-          ["all", "active", "backlog"].map((key) =>
+          ["all", "active", "backlog", "agent"].map((key) =>
             translate(session, `issues:sidebar.nav.${key}`),
           ),
         );
         check(
-          names.every((name) => tabs.some((tab) => tab.name === name)),
+          names.every((name) => tabs.some((tab) => tab.name.startsWith(name))),
           "scope tabs missing",
           { tabs, names },
         );
-        const sidebarActive = await queryAllByRole(session, {
-          role: "button",
-          name: names[1],
-        });
-        check(sidebarActive.length === 0, "sidebar still lists Active", {
-          sidebarActive,
-        });
-        await waitForRole(session, {
-          role: "button",
-          name: await translate(session, "issues:sidebar.nav.issues"),
-        });
+        const sidebarRows = await Promise.all(
+          [names[0], names[1], names[3]].map((name) =>
+            queryAllByRole(session, { role: "button", name }),
+          ),
+        );
+        check(
+          sidebarRows.every((rows) => rows.length === 0),
+          "sidebar still lists a quick filter",
+          { sidebarRows },
+        );
         return { tabs: tabs.map((tab) => tab.name) };
       },
     ],
@@ -190,12 +188,13 @@ runScenario("issue-scopes", {
           { role: "button", name: created.title },
           UI_TIMEOUT_MS,
         );
-        await waitForNoRole(
-          session,
-          {
-            role: "tablist",
-            name: await translate(session, "issues:sidebar.nav.scope"),
-          },
+        const scopeName = await translate(session, "issues:sidebar.nav.scope");
+        await session.waitUntil(
+          (name) =>
+            document.querySelectorAll(
+              `[role="tablist"][aria-label="${name}"] [aria-selected="true"]`,
+            ).length === 0,
+          scopeName,
           UI_TIMEOUT_MS,
         );
         return { title: created.title, filters: created.filters };

@@ -10,15 +10,12 @@ import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { ViewDisplayMenu, ViewFilterBar, ViewFilterMenu } from "./board";
-import {
-  type IssueNavPreset,
-  type IssueNavSelection,
-  IssueScopeTabs,
-} from "./sidebar";
+import { type IssueNavSelection, IssueScopeTabs } from "./sidebar";
 
 export function IssuesToolbar({
   selection,
-  title,
+  viewTitle,
+  agentRunningCount,
   scopeLabel,
   leading,
   showViewControls,
@@ -27,14 +24,15 @@ export function IssuesToolbar({
   labels,
   layout,
   groupBy,
-  onPresetChange,
+  onSelect,
   onFiltersChange,
   onLayoutChange,
   onGroupByChange,
   onSaveView,
 }: {
   selection: IssueNavSelection;
-  title: string;
+  viewTitle: string | null;
+  agentRunningCount: number;
   scopeLabel: string | null;
   leading: ReactNode;
   showViewControls: boolean;
@@ -43,7 +41,7 @@ export function IssuesToolbar({
   labels: IssueLabel[];
   layout: ViewLayout;
   groupBy: ViewGroupBy;
-  onPresetChange: (preset: IssueNavPreset) => void;
+  onSelect: (selection: IssueNavSelection) => void;
   onFiltersChange: (filters: ViewFilter[]) => void;
   onLayoutChange: (layout: ViewLayout) => void;
   onGroupByChange: (groupBy: ViewGroupBy) => void;
@@ -59,21 +57,21 @@ export function IssuesToolbar({
         {leading}
         <div
           className={cn(
-            "me-auto flex min-w-0 items-center",
+            "scrollbar-hide me-auto flex min-w-0 items-center gap-2 overflow-x-auto",
             leading && "ps-0.5",
             !leading && "ps-1",
           )}
         >
-          {selection.kind === "issues" ? (
-            <IssueScopeTabs
-              preset={selection.preset}
-              onPresetChange={onPresetChange}
-            />
-          ) : (
-            <Text size="body" weight="medium" className="min-w-0 truncate">
-              {title}
+          <IssueScopeTabs
+            selection={selection}
+            agentRunningCount={agentRunningCount}
+            onSelect={onSelect}
+          />
+          {viewTitle ? (
+            <Text size="body" weight="medium" className="shrink-0">
+              {viewTitle}
             </Text>
-          )}
+          ) : null}
         </div>
         {showViewControls ? (
           <>

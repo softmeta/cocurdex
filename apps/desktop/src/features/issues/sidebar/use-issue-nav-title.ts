@@ -6,16 +6,13 @@ import { usePresetItems } from "./use-preset-items";
 export function useIssueNavTitle(
   selection: IssueNavSelection,
   views: readonly ViewSummary[],
-): string {
+): string | null {
   const { t } = useTranslation("issues");
-  if (selection.kind === "agent") {
-    return t("sidebar.nav.agent");
+  if (selection.kind !== "view") {
+    return null;
   }
-  if (selection.kind === "view") {
-    const view = views.find((candidate) => candidate.id === selection.viewId);
-    return view?.title || t("sidebar.untitledBoard");
-  }
-  return t("sidebar.nav.issues");
+  const view = views.find((candidate) => candidate.id === selection.viewId);
+  return view?.title || t("sidebar.untitledBoard");
 }
 
 export function useIssueNavScopeLabel(

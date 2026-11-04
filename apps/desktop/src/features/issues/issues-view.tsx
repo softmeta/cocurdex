@@ -209,7 +209,7 @@ export function IssuesView({
   const nav = useIssueNav({ board: loadedBoard, sessions });
   const viewBoard = nav.scopedBoard;
   const customViews = boards.filter((view) => view.id !== DEFAULT_VIEW_ID);
-  const navTitle = useIssueNavTitle(nav.selection, boards);
+  const viewTitle = useIssueNavTitle(nav.selection, boards);
 
   const handleGroupBy = useCallback(
     (next: ViewGroupBy) => {
@@ -289,8 +289,6 @@ export function IssuesView({
               closeIssueDetail();
               nav.select(selection);
             }}
-            lastPreset={nav.lastPreset}
-            agentRunningCount={nav.agentRunningCount}
             views={customViews}
             onDeleteView={setPendingDeleteBoardId}
             onRenameView={(title) => {
@@ -320,7 +318,8 @@ export function IssuesView({
           {boards.length > 0 || sidebarCollapsed ? (
             <IssuesToolbar
               selection={nav.selection}
-              title={navTitle}
+              viewTitle={viewTitle}
+              agentRunningCount={nav.agentRunningCount}
               scopeLabel={scopeLabel}
               leading={sidebarToggle}
               showViewControls={boards.length > 0}
@@ -329,9 +328,7 @@ export function IssuesView({
               labels={activeBoard?.labels ?? []}
               layout={layout}
               groupBy={groupBy}
-              onPresetChange={(preset) =>
-                nav.select({ kind: "issues", preset })
-              }
+              onSelect={nav.select}
               onFiltersChange={handleFiltersChange}
               onLayoutChange={handleLayout}
               onGroupByChange={handleGroupBy}
