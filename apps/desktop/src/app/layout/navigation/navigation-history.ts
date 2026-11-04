@@ -1,3 +1,4 @@
+import type { SettingsSectionId } from "../app-shell/app-shell-types";
 import type { RightPanelView } from "../right-editor-panel-store";
 
 export interface PanelLocation {
@@ -8,6 +9,7 @@ export interface PanelLocation {
 export interface AppLocation {
   sessionId: string | null;
   panel: PanelLocation;
+  settings: SettingsSectionId | null;
 }
 
 export interface NavigationHistory {
@@ -28,6 +30,7 @@ export function panelLocationsEqual(left: PanelLocation, right: PanelLocation) {
 export function locationsEqual(left: AppLocation, right: AppLocation) {
   return (
     left.sessionId === right.sessionId &&
+    left.settings === right.settings &&
     panelLocationsEqual(left.panel, right.panel)
   );
 }
@@ -43,6 +46,9 @@ export function recordLocation(
   const current = currentLocation(history);
   if (current && locationsEqual(current, location)) {
     return history;
+  }
+  if (current?.settings && location.settings) {
+    return replaceCurrentLocation(history, location);
   }
   const kept = history.entries.slice(0, history.index + 1);
   const entries = [...kept, location].slice(-MAX_HISTORY_ENTRIES);

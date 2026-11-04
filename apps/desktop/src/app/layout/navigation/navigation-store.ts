@@ -15,14 +15,20 @@ import {
 } from "@/features/sessions";
 import { selectWorkspaceAtom } from "@/features/workspaces";
 import {
+  appScreenAtom,
+  settingsSectionAtom,
+} from "../app-shell/app-screen-store";
+import {
   type RightPanelView,
   rightPanelResolvedActiveViewAtom,
 } from "../right-editor-panel-store";
 import { sidebarTabAtom } from "../sidebar";
 import {
   type AppLocation,
+  canNavigate,
   currentLocation,
   EMPTY_HISTORY,
+  locationsEqual,
   type NavigationDirection,
   type NavigationHistory,
   type PanelLocation,
@@ -33,7 +39,12 @@ import {
 } from "./navigation-history";
 
 export const navigationHistoryAtom = atom<NavigationHistory>(EMPTY_HISTORY);
+
+export const canNavigateBackAtom = atom((get) =>
+  canNavigate(get(navigationHistoryAtom), "back"),
+);
 const navigationApplyingAtom = atom(false);
+const navigationEpochAtom = atom(0);
 
 function panelEntityId(get: Getter, view: RightPanelView): string | null {
   if (view === "notes") return get(activeNoteIdAtom);
@@ -47,10 +58,12 @@ export const currentAppLocationAtom = atom((get): AppLocation => {
   return {
     sessionId: get(activeSessionIdAtom),
     panel: { view, entityId: panelEntityId(get, view) },
+    settings:
+      get(appScreenAtom) === "settings" ? get(settingsSectionAtom) : null,
   };
 });
 
-const settleNavigationAtom = atom(null, (get, set) => {
+function settleNavigation(get: Getter, set: Setter) {
   const location = get(currentAppLocationAtom);
   const history = get(navigationHistoryAtom);
   if (get(navigationApplyingAtom)) {
@@ -59,7 +72,19 @@ const settleNavigationAtom = atom(null, (get, set) => {
     return;
   }
   set(navigationHistoryAtom, recordLocation(history, location));
-});
+}
+
+const settleNavigationAtom = atom(null, settleNavigation);
+
+function finishApplyingWhenArrived(get: Getter, set: Setter) {
+  if (!get(navigationApplyingAtom)) return;
+  const target = currentLocation(get(navigationHistoryAtom));
+  if (target && locationsEqual(target, get(currentAppLocationAtom))) {
+    set(navigationApplyingAtom, false);
+  }
+}
+
+const finishApplyingWhenArrivedAtom = atom(null, finishApplyingWhenArrived);
 
 function applySession(get: Getter, set: Setter, sessionId: string | null) {
   if (sessionId === get(activeSessionIdAtom)) return;
@@ -102,13 +127,18 @@ function applyPanel(get: Getter, set: Setter, panel: PanelLocation) {
 export const navigateAtom = atom(
   null,
   (get, set, direction: NavigationDirection) => {
+    settleNavigation(get, set);
     const next = stepHistory(get(navigationHistoryAtom), direction);
     const target = next ? currentLocation(next) : null;
     if (!next || !target) return;
     set(navigationHistoryAtom, next);
     set(navigationApplyingAtom, true);
+    set(navigationEpochAtom, get(navigationEpochAtom) + 1);
     applySession(get, set, target.sessionId);
     applyPanel(get, set, target.panel);
+    if (target.settings) set(settingsSectionAtom, target.settings);
+    set(appScreenAtom, target.settings ? "settings" : "app");
+    finishApplyingWhenArrived(get, set);
   },
 );
 
@@ -119,6 +149,7 @@ export function subscribeNavigationRecorder(
 ) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const schedule = () => {
+    store.set(finishApplyingWhenArrivedAtom);
     clearTimeout(timer);
     timer = setTimeout(
       () => store.set(settleNavigationAtom),
@@ -127,7 +158,7 @@ export function subscribeNavigationRecorder(
   };
   const unsubscribers = [
     store.sub(currentAppLocationAtom, schedule),
-    store.sub(navigationApplyingAtom, schedule),
+    store.sub(navigationEpochAtom, schedule),
   ];
   schedule();
   return () => {
@@ -135,3 +166,12 @@ export function subscribeNavigationRecorder(
     for (const unsubscribe of unsubscribers) unsubscribe();
   };
 }
+
+export const leaveSettingsAtom = atom(null, (get, set) => {
+  const history = get(navigationHistoryAtom);
+  if (currentLocation(history)?.settings && canNavigate(history, "back")) {
+    set(navigateAtom, "back");
+    return;
+  }
+  set(appScreenAtom, "app");
+});

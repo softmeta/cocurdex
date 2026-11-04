@@ -1,7 +1,12 @@
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
-import { clickByRole, clickSelector } from "./lib/locate.mjs";
-import { openNote, showPanelView, translate } from "./lib/navigate.mjs";
+import { clickByRole, clickSelector, waitForRole } from "./lib/locate.mjs";
+import {
+  openNote,
+  openSettingsSection,
+  showPanelView,
+  translate,
+} from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const NOTE_TITLE = "Checkout spec";
@@ -36,7 +41,8 @@ async function recordStep(session, action, label) {
   await action();
   return waitForHistory(
     session,
-    (state) => state.length > before.length && state.index === state.length - 1,
+    (state) =>
+      state.index === before.index + 1 && state.index === state.length - 1,
     label,
   );
 }
@@ -213,6 +219,37 @@ runScenario("app-navigation", {
         });
         await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
         return {};
+      },
+    ],
+    [
+      "Settings is one stop: Back leaves it, Forward reopens the last section",
+      async ({ session, issueId }) => {
+        const before = await recordStep(
+          session,
+          () => openSettingsSection(session, "general"),
+          "settings not recorded",
+        );
+        await openSettingsSection(session, "appearance");
+        await pressNavigationKey(session, "back");
+        await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
+        const after = await historyState(session);
+        check(
+          after.index === before.index - 1 && after.length === before.length,
+          "settings sections were recorded as separate stops",
+          { before, after },
+        );
+        await pressNavigationKey(session, "forward");
+        await waitForRole(
+          session,
+          {
+            role: "heading",
+            name: await translate(session, "settings:sections.appearance"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        await pressNavigationKey(session, "back");
+        await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
+        return { before, after };
       },
     ],
     [

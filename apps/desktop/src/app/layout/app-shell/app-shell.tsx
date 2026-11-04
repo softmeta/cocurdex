@@ -54,9 +54,15 @@ import {
   shouldOpenDockWhenApplyingLayout,
 } from "../chat-layout-preference";
 import { useChatWindowActions, useMainChatWindow } from "../chat-window";
-import { useAppNavigation } from "../navigation";
+import {
+  canNavigateBackAtom,
+  leaveSettingsAtom,
+  navigateAtom,
+  useAppNavigation,
+} from "../navigation";
 import { searchPaletteOpenAtom } from "../search-palette";
 import { synchronizeAgentState } from "./agent-event-bridge";
+import { appScreenAtom, settingsSectionAtom } from "./app-screen-store";
 import { useBrowserEventBridge } from "./app-shell-events";
 import { AppShellFrame } from "./app-shell-frame";
 import {
@@ -79,21 +85,18 @@ import {
   reportRendererSettingValue,
   useSettingsChangeBridge,
 } from "./app-shell-settings-bridge";
-import type { AppScreen, SettingsSectionId } from "./app-shell-types";
+import type { SettingsSectionId } from "./app-shell-types";
 import { useShellIntents } from "./shell-intents";
 import { useSystemLocale, useSystemPrefersDark } from "./use-system-prefs";
 
 export function AppShell() {
   const { t } = useTranslation(["editor", "search"]);
-  // Browser-style screen history so the titlebar back/forward arrows can move
-  // between the app and settings screens.
-  const [screenHistory, setScreenHistory] = useState<AppScreen[]>(["app"]);
-  const [screenIndex, setScreenIndex] = useState(0);
-  const activeScreen = screenHistory[screenIndex];
-  const canGoBack = screenIndex > 0;
-  // First sidebar item (常规 / General); deep links may override via openSettings.
+  const [activeScreen, setActiveScreen] = useAtom(appScreenAtom);
+  const canGoBack = useAtomValue(canNavigateBackAtom);
+  const navigate = useSetAtom(navigateAtom);
+  const leaveSettings = useSetAtom(leaveSettingsAtom);
   const [activeSettingsSection, setActiveSettingsSection] =
-    useState<SettingsSectionId>("general");
+    useAtom(settingsSectionAtom);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getStoredThemeMode);
   const [appearanceSettings, setAppearanceSettings] =
     useState<AppearanceSettings>(getStoredAppearanceSettings);
@@ -212,7 +215,7 @@ export function AppShell() {
   useMainChatWindow(() => {
     setChatDockVisibility("open");
     persistChatDockVisibility("open");
-    setScreenIndex(0);
+    setActiveScreen("app");
   }, synchronizeAgentState);
   useCompletionNotifier(notificationSettings);
 
@@ -345,21 +348,7 @@ export function AppShell() {
     applyChatLayoutMode(pinned ? "pinned" : "float", "pin");
   };
 
-  // Truncate any forward entries before pushing the new screen, mirroring
-  // browser history semantics.
-  const navigateToScreen = (screen: AppScreen) => {
-    if (screen === activeScreen) {
-      return;
-    }
-    setScreenHistory((prev) => [...prev.slice(0, screenIndex + 1), screen]);
-    setScreenIndex((index) => index + 1);
-  };
-
-  const goBackScreen = () => {
-    if (canGoBack) {
-      setScreenIndex((index) => index - 1);
-    }
-  };
+  const goBackScreen = () => navigate("back");
 
   // Optional section: gear icon reopens the last section; empty states pass
   // "providers" (etc.) to land on the right pane. Guard with typeof so a
@@ -370,7 +359,7 @@ export function AppShell() {
       expandSettingsClusterForSection(section);
       setActiveSettingsSection(section);
     }
-    navigateToScreen("settings");
+    setActiveScreen("settings");
   };
 
   // Menus (e.g. provider model empty state) call openSettings() without
@@ -383,13 +372,7 @@ export function AppShell() {
     }),
   );
 
-  const closeSettings = () => {
-    if (canGoBack) {
-      goBackScreen();
-      return;
-    }
-    navigateToScreen("app");
-  };
+  const closeSettings = () => leaveSettings();
   const closeSettingsRef = useRef(closeSettings);
   closeSettingsRef.current = closeSettings;
   useMountEffect(() =>
