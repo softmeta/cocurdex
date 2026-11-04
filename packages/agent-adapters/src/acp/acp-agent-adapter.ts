@@ -5,7 +5,7 @@ import {
   RequestError,
   type SessionConfigOption,
   type SessionNotification,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 import type {
   AgentAdapter,
   AgentSession,

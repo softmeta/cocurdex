@@ -1,6 +1,10 @@
 import type { ChildProcess } from "node:child_process";
 import { Readable, Writable } from "node:stream";
-import { client, methods, ndJsonStream } from "@agentclientprotocol/sdk";
+import {
+  client,
+  methods,
+  ndJsonStream,
+} from "@agentclientprotocol/sdk/unstable";
 import { buildChildProcessEnv } from "../shared/process-env";
 import { killProcessTree, spawnCommand } from "../shared/process-tree";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";

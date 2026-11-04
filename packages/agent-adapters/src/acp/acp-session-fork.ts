@@ -1,4 +1,4 @@
-import type { InitializeResponse } from "@agentclientprotocol/sdk";
+import type { InitializeResponse } from "@agentclientprotocol/sdk/unstable";
 import type { ForkProviderSessionPayload } from "@cocurdex/agent-core";
 import type { AgentProviderSessionRecord } from "@cocurdex/shared";
 import { serializeProviderSessionState } from "../shared";
