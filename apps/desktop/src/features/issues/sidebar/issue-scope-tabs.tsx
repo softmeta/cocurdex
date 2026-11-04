@@ -19,7 +19,7 @@ export function IssueScopeTabs({
         onSelect({ kind: "issues", preset: value as IssueNavPreset })
       }
     >
-      <TabsList aria-label={t("sidebar.nav.scope")}>
+      <TabsList variant="pill" aria-label={t("sidebar.nav.scope")}>
         {items.map((item) => (
           <TabsTrigger key={item.preset} value={item.preset}>
             {item.label}
