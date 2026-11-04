@@ -238,10 +238,18 @@ runScenario("issue-scopes", {
           (column) => column.category === "started",
         );
         check(Boolean(status), "fixture has no started status", statusColumns);
-        const [menu] = await queryAllByRole(session, {
-          role: "button",
-          name: await translate(session, "issues:board.columnMenu"),
+        await clickByRole(session, {
+          role: "tab",
+          name: await translate(session, "issues:sidebar.nav.all"),
         });
+        const [menu] = await waitForRole(
+          session,
+          {
+            role: "button",
+            name: await translate(session, "issues:board.columnMenu"),
+          },
+          UI_TIMEOUT_MS,
+        );
         check(Boolean(menu), "column menu missing");
         await clickPoint(session, await centerOf(session, menu.backendNodeId));
         await clickByRole(
