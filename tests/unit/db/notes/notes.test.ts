@@ -20,9 +20,11 @@ function editorUpdate(state: Uint8Array, markdown: string): Uint8Array {
 }
 
 function createTestDatabase() {
-  return createCocurdexDatabase(
+  const database = createCocurdexDatabase(
     path.join(tempDirs.createSync("cocurdex-notes-"), "cocurdex.sqlite"),
   );
+  tempDirs.onCleanup(() => database.close());
+  return database;
 }
 
 describe("CocurdexDatabase.notes title heading", () => {
