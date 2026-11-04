@@ -33,15 +33,20 @@ function electronExecutable(): string {
   return createRequire(path.join(desktopRoot, "package.json"))("electron");
 }
 
-async function pairingLink(daemon: DaemonProcess) {
+async function relayEndpoint(daemon: DaemonProcess) {
   const deadline = Date.now() + 15_000;
-  let endpoint = "";
-  while (!endpoint) {
+  for (;;) {
     if (Date.now() > deadline) throw new Error("The relay never came online");
     const status = await requestDaemon("host.remoteAccess.get", daemon.options);
-    if (status.relay.state === "online") endpoint = status.relay.endpoint ?? "";
-    else await sleep(50);
+    if (status.relay.state === "online" && status.relay.endpoint) {
+      return status.relay.endpoint;
+    }
+    await sleep(50);
   }
+}
+
+async function pairingLink(daemon: DaemonProcess) {
+  const endpoint = await relayEndpoint(daemon);
   const { code, hostKey } = await requestDaemon(
     "host.pairing.create",
     { label: "Browser", scopes: ["read", "interact", "files.read"] },
@@ -62,7 +67,7 @@ describe("web client through the relay", () => {
     await tempDirs.cleanup();
   });
 
-  it("pairs from the page the relay serves, keeps the pairing across reloads, and unpairs", async () => {
+  it("pairs from the page the relay serves, waits for approval, keeps the pairing across reloads, explains an offline computer, and unpairs", async () => {
     const relayBinary = await buildRelay(tempDirs.createSync("relay-bin-"));
     relay = await startRelay(relayBinary, tempDirs.createSync("relay-data-"), [
       "--web-root",
@@ -114,14 +119,29 @@ describe("web client through the relay", () => {
 
     await page.getByRole("textbox", { name: "Pairing link" }).fill(link);
     await page.getByRole("button", { name: "Pair" }).click();
+    const waiting = page.getByRole("heading", { name: "Waiting for approval" });
+    await expect
+      .poll(() => waiting.isVisible(), { timeout: 30_000 })
+      .toBe(true);
+    const shownCode = (
+      (await page.getByLabel("Safety code").textContent()) ?? ""
+    ).trim();
+    expect(shownCode).toMatch(/^\d{6}$/);
+    const [pending] = await requestDaemon("host.devices.list", daemon.options);
+    expect(pending).toMatchObject({ label: "Web browser", approvedAt: null });
+    expect(await page.getByText(WORKSPACE_NAME).count()).toBe(0);
+    await expect(
+      requestDaemon(
+        "host.devices.approve",
+        { deviceId: pending?.id ?? "", code: shownCode },
+        daemon.options,
+      ),
+    ).resolves.toMatchObject({ ok: true });
     await expect
       .poll(() => page.getByText(WORKSPACE_NAME).first().isVisible(), {
         timeout: 30_000,
       })
       .toBe(true);
-
-    const devices = await requestDaemon("host.devices.list", daemon.options);
-    expect(devices.map((device) => device.label)).toContain("Web browser");
 
     await page.reload();
     await expect
@@ -132,6 +152,26 @@ describe("web client through the relay", () => {
     expect(
       await page.getByRole("textbox", { name: "Pairing link" }).count(),
     ).toBe(0);
+
+    await requestDaemon("host.relay.set", { url: null }, daemon.options);
+    await page.reload();
+    const unreachable = page.getByRole("heading", {
+      name: "Can't reach your computer",
+    });
+    await expect
+      .poll(() => unreachable.isVisible(), { timeout: 30_000 })
+      .toBe(true);
+    expect(
+      await page.getByText("isn't connected to its relay").isVisible(),
+    ).toBe(true);
+    await requestDaemon("host.relay.set", { url: relay.url }, daemon.options);
+    await relayEndpoint(daemon);
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect
+      .poll(() => page.getByText(WORKSPACE_NAME).first().isVisible(), {
+        timeout: 30_000,
+      })
+      .toBe(true);
     await page.getByRole("button", { name: "Settings" }).click();
     await page
       .getByRole("list")

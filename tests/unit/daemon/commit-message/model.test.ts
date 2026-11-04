@@ -83,6 +83,7 @@ describe("resolveCommitMessageModel", () => {
   function state(models: ProviderModelRecord[]) {
     return {
       listProviderConfigs: vi.fn().mockResolvedValue([provider]),
+      listProviderModelOverrides: async () => [],
       listProviderModels: vi.fn().mockResolvedValue(models),
     } as unknown as DaemonState;
   }

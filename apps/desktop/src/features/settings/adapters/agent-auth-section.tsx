@@ -11,6 +11,7 @@ import { desktopApi } from "@/lib";
 type LoginPhase =
   | { kind: "idle" }
   | { kind: "signing-in"; methodId: string }
+  | { kind: "signed-in"; methodId: string }
   | { kind: "failed"; methodId: string; message: string };
 
 type PendingConfirm =
@@ -91,7 +92,7 @@ export function AgentAuthSection({
     try {
       await desktopApi.loginAgent(agentId, methodId);
       invalidateProviderModelCache();
-      setPhase({ kind: "idle" });
+      setPhase({ kind: "signed-in", methodId });
       await mutate();
     } catch (loginError) {
       setPhase(
@@ -150,6 +151,13 @@ export function AgentAuthSection({
       }),
       tone: "muted",
     };
+  } else if (phase.kind === "signed-in") {
+    note = {
+      text: t("adapters.auth.signedIn", {
+        method: methodName(auth, phase.methodId),
+      }),
+      tone: "muted",
+    };
   } else if (phase.kind === "failed") {
     note = {
       text: activeMethodId
@@ -200,7 +208,8 @@ export function AgentAuthSection({
             {t("adapters.auth.retry")}
           </Button>
         ) : null}
-        {phase.kind === "idle" && selectedMethodId ? (
+        {(phase.kind === "idle" || phase.kind === "signed-in") &&
+        selectedMethodId ? (
           <Button
             disabled={busy}
             onClick={() => void login(selectedMethodId)}

@@ -10,6 +10,10 @@ export {
   getAdapterStatus,
   isAgentReadyToStart,
 } from "./adapter-status";
+export {
+  detectAgentsAtom,
+  redetectStaleAgentsAtom,
+} from "./agent-detection";
 export { AgentIcon, AgentIconLabel } from "./agent-icon";
 export {
   defaultAgentDescriptors,

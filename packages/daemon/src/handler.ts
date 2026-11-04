@@ -67,7 +67,7 @@ export async function handleDaemonRequest(
   const request = parseDaemonRequest(rawRequest);
   await service.hostAccessReady;
   if (isHostRequest(request)) {
-    return handleHostRequest(service.hostAccess, request, context);
+    return handleHostRequest(service, request, context);
   }
   if (isSkillRequest(request)) {
     return handleSkillRequest(service, request, context);
@@ -107,11 +107,16 @@ export async function handleDaemonRequest(
       return service.installAcpRegistryCommand(request.params);
     case "acpRegistry.uninstall":
       return service.uninstallAcpRegistryAgent(request.params.agentId);
+    case "acpRegistry.updates":
+      return service.acpRegistry.listUpdates(request.params);
+    case "acpRegistry.update":
+      return service.updateAcpRegistryAgent(request.params.agentId);
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "daemon.subscribe":
+    case "daemon.watchSessions":
       throw new Error(
-        "daemon.subscribe is intercepted before request dispatch",
+        `${request.method} is intercepted before request dispatch`,
       );
     case "network.proxy.test":
       return service.testNetworkProxy(request.params.settings);
@@ -567,6 +572,11 @@ export async function handleDaemonRequest(
         request.params.modelId,
       );
       return null;
+    case "provider.model.reset":
+      return service.providerService.resetProviderModel(
+        request.params.providerId,
+        request.params.modelId,
+      );
     case "provider.fetchModels":
       return service.providerService.fetchModels(request.params.providerId);
     case "provider.listAllModels":

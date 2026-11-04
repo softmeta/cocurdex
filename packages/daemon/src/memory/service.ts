@@ -8,6 +8,9 @@ import {
   DEFAULT_MEMORY_SETTINGS,
   gateMemorySettings,
   isChatSession,
+  isMissingMemoryIdentity,
+  MEMORY_DISABLED_MESSAGE,
+  MEMORY_MISSING_EXECUTABLE_MESSAGE,
   type MemoryCloudConnectInput,
   type MemoryCloudConnectResult,
   type MemoryCloudKeys,
@@ -31,6 +34,7 @@ import {
   memoryPlatformSupportsRsrs,
   redactMemorySecrets,
   type SessionRecord,
+  withMemoryIdentityHint,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import { buildSnapshotProviderRecords } from "../provider/session-title";
@@ -86,7 +90,7 @@ import {
 } from "./settings";
 
 const STATUS_CACHE_MS = 30_000;
-const TURN_RECALL_BUDGET_MS = 2_000;
+const TURN_RECALL_BUDGET_MS = 8_000;
 const CHAT_EXCERPT_BUDGET_MS = 4_000;
 const SESSION_DIGEST_TIMEOUT_MS = 60_000;
 
@@ -111,6 +115,7 @@ export interface MemoryServiceOptions {
   platform?: MemoryPlatform;
   rsrsDataDir?: string;
   startRuntime?: boolean;
+  turnRecallBudgetMs?: number;
   now?: () => Date;
 }
 
@@ -489,7 +494,7 @@ export class MemoryService {
     this.doctorPromise = (async () => {
       const executable = await this.resolveExecutable(true);
       if (!executable) {
-        throw new Error("rsrs is not installed");
+        throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
       }
       const result = await readRsrsDoctor(executable, options);
       const version = await readRsrsVersion(executable).catch(
@@ -514,7 +519,7 @@ export class MemoryService {
 
   private async cloudExecutable() {
     const executable = await this.resolveExecutable(true);
-    if (!executable) throw new Error("rsrs is not installed");
+    if (!executable) throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
     return executable;
   }
 
@@ -727,7 +732,7 @@ export class MemoryService {
       logDaemonDiagnostic("info", "memory.runtimeCallFailed", {
         error: errorMessage(error),
       });
-      this.invalidateRuntime();
+      if (!isTimeoutError(error)) this.invalidateRuntime();
       return fallback();
     }
   }
@@ -741,13 +746,27 @@ export class MemoryService {
     await this.ensureInitialized();
     const query = input.query.trim();
     const limit = Math.min(20, Math.max(1, Math.floor(input.limit ?? 8)));
-    if (!query || !this.currentSettings().enabled) {
-      return { query, items: [], truncated: false };
+    if (!query) {
+      return { query, items: [], truncated: false, error: null };
+    }
+    if (!this.currentSettings().enabled) {
+      return {
+        query,
+        items: [],
+        truncated: false,
+        error: MEMORY_DISABLED_MESSAGE,
+      };
     }
     const executable = await this.resolveExecutable();
     if (!executable) {
-      return { query, items: [], truncated: false };
+      return {
+        query,
+        items: [],
+        truncated: false,
+        error: MEMORY_MISSING_EXECUTABLE_MESSAGE,
+      };
     }
+    const budget = startBudget(input.timeoutMs);
     return this.enqueueRead(async () => {
       const runtime = await this.runtime();
       const viaRuntime =
@@ -759,25 +778,31 @@ export class MemoryService {
           recallMemoriesViaRuntime(endpoint, {
             query,
             limit,
-            timeoutMs: input.timeoutMs,
+            timeoutMs: budget.remaining(),
           }),
         () =>
           recallMemories(executable, {
             query,
             limit,
             project: input.project ?? null,
-            timeoutMs: input.timeoutMs,
+            timeoutMs: budget.remainingOrThrow("rsrs recall"),
           }),
       );
-      if (result.error) {
+      const error = result.error
+        ? isMissingMemoryIdentity(result.error)
+          ? withMemoryIdentityHint(result.error)
+          : result.error
+        : null;
+      if (error) {
         logDaemonDiagnostic("info", "memory.recallReportedError", {
-          error: result.error,
+          error,
         });
       }
       return {
         query,
         items: result.items.slice(0, limit),
         truncated: result.items.length > limit,
+        error,
       };
     });
   }
@@ -811,7 +836,7 @@ export class MemoryService {
         id: null,
         title: null,
         candidates: [],
-        message: "Memory is disabled",
+        message: MEMORY_DISABLED_MESSAGE,
       };
     }
     const content = redactMemorySecrets(input.content).trim();
@@ -832,7 +857,7 @@ export class MemoryService {
         id: null,
         title: null,
         candidates: [],
-        message: "rsrs is not installed",
+        message: MEMORY_MISSING_EXECUTABLE_MESSAGE,
       };
     }
     return this.enqueueWrite(async () => {
@@ -850,16 +875,22 @@ export class MemoryService {
         () => rememberMemory(executable, { ...input, content, title }),
       );
       if (result.action === "created") this.broadcast();
+      if (
+        result.action !== "created" &&
+        isMissingMemoryIdentity(result.message)
+      ) {
+        return { ...result, message: withMemoryIdentityHint(result.message) };
+      }
       return result;
     });
   }
 
   async policy() {
     await this.ensureInitialized();
-    if (!this.currentSettings().enabled) return "";
+    if (!this.currentSettings().enabled) return MEMORY_DISABLED_MESSAGE;
     if (this.policyCache) return this.policyCache;
     const executable = await this.resolveExecutable();
-    if (!executable) return "";
+    if (!executable) return MEMORY_MISSING_EXECUTABLE_MESSAGE;
     try {
       this.policyCache = await readRsrsPolicy(executable);
       return this.policyCache;
@@ -942,12 +973,20 @@ export class MemoryService {
       result = await this.recall({
         query,
         limit: 6,
-        timeoutMs: TURN_RECALL_BUDGET_MS,
+        timeoutMs: this.options.turnRecallBudgetMs ?? TURN_RECALL_BUDGET_MS,
       });
     } catch (error) {
       this.noteRecall(session.id, mode, "failed", errorMessage(error));
       logDaemonDiagnostic("warn", "memory.turnRecallFailed", {
         error: errorMessage(error),
+        sessionId: session.id,
+      });
+      return null;
+    }
+    if (result.error) {
+      this.noteRecall(session.id, mode, "failed", result.error);
+      logDaemonDiagnostic("warn", "memory.turnRecallFailed", {
+        error: result.error,
         sessionId: session.id,
       });
       return null;
@@ -1161,13 +1200,7 @@ export class MemoryService {
   }): Promise<MemoryRememberResult> {
     const judged = await this.remember(input);
     if (judged.action !== "candidates" || judged.id) return judged;
-    const parentId = judged.candidates[0]?.id ?? null;
-    if (!parentId) return judged;
-    logDaemonDiagnostic("info", "memory.sessionAttached", {
-      parentId,
-      title: input.title,
-    });
-    return this.remember({ ...input, parentId });
+    return this.remember({ ...input, force: true });
   }
 
   private async summarizeSession(session: SessionRecord, transcript: string) {
@@ -1224,4 +1257,29 @@ export class MemoryService {
   async getTurnMessages(sessionId: string): Promise<MessageRecord[]> {
     return this.options.state.listMessagesBySessionId(sessionId);
   }
+}
+
+function isTimeoutError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || error.name === "AbortError")
+  );
+}
+
+function startBudget(timeoutMs: number | undefined) {
+  const startedAt = performance.now();
+  const remaining = () =>
+    timeoutMs === undefined
+      ? undefined
+      : Math.max(0, Math.floor(timeoutMs - (performance.now() - startedAt)));
+  return {
+    remaining,
+    remainingOrThrow(operation: string) {
+      const left = remaining();
+      if (left === 0) {
+        throw new Error(`${operation} timed out after ${timeoutMs}ms`);
+      }
+      return left;
+    },
+  };
 }

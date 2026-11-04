@@ -50,6 +50,13 @@ export interface AcpRegistryInstalledAgent {
   authMethodId?: string;
 }
 
+export interface AcpRegistryAgentUpdate {
+  agentId: AcpRegistryAgentId;
+  registryId: string;
+  installedVersion: string;
+  latestVersion: string;
+}
+
 export interface AgentAuthMethod {
   id: string;
   name: string;

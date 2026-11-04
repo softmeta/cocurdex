@@ -21,7 +21,14 @@
     "title": "还没有电脑"
   },
   "list": {
-    "current": "当前"
+    "current": "当前",
+    "status": {
+      "checking": "正在检测",
+      "offline": "无法连接",
+      "online": "已连接 · {{latency}} ms",
+      "pending": "等待电脑批准",
+      "unauthorized": "访问已撤销"
+    }
   },
   "pair": {
     "action": "配对",
@@ -76,7 +83,7 @@
   },
   "scopeDetail": {
     "approvals": "处理权限请求、问题和计划审批。",
-    "execute": "启动会话、团队、脚本运行和工作流。",
+    "execute": "启动会话、团队、脚本运行和工作流，并驱动无需批准即可执行的 agent。",
     "filesRead": "读取工作区文件、差异和 Git 状态。",
     "filesWrite": "编辑工作区文件、暂存和提交。",
     "gitDestructive": "丢弃更改、切换分支和推送。",

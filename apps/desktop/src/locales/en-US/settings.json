@@ -22,6 +22,7 @@
       "readFailed": "Could not read login methods: {{message}}",
       "reading": "Reading login methods…",
       "retry": "Retry",
+      "signedIn": "Signed in ({{method}}).",
       "signingIn": "Logging in with {{method}}. If a browser page opens, finish there; this updates when it is done.",
       "switchConfirm": "Switch",
       "switchDescription_one": "Switching stops {{count}} running {{agent}} session. It keeps the current method if the new login fails.",
@@ -49,8 +50,11 @@
       "missing": "Not installed",
       "needsLogin": "Login required",
       "outdated": "Update required",
-      "ready": "Ready"
+      "ready": "Ready",
+      "updateAvailable": "Update available"
     },
+    "notInstalledGroup_one": "Not installed ({{count}})",
+    "notInstalledGroup_other": "Not installed ({{count}})",
     "rateLimits": {
       "authenticationRequired": "No usage found. Not signed in. Run claude auth login, then refresh.",
       "failed": "Could not read usage: {{message}}",
@@ -111,7 +115,12 @@
     "toast": {
       "commandCopied": "Install command copied",
       "pathCopied": "Path copied",
-      "refreshFailed": "Could not refresh agent CLIs"
+      "refreshFailed": "Could not refresh agent CLIs",
+      "updated": "Updated {{agent}} to v{{version}}"
+    },
+    "update": {
+      "action": "Update to v{{version}}",
+      "available": "v{{installed}} installed, v{{latest}} available"
     }
   },
   "agentRoles": {
@@ -318,8 +327,25 @@
       "save": "Save",
       "title": "Access for {{name}}"
     },
+    "approval": {
+      "allow": "Allow",
+      "approve": "Approve",
+      "close": "Close",
+      "codeHint": "Read the six-digit code from the device asking for access. Only allow it if you started this pairing.",
+      "codeLabel": "Safety code shown on the device",
+      "deny": "Deny",
+      "description": "It asks for: {{scopes}}.",
+      "failed": "Could not update the device",
+      "failure": {
+        "codeMismatch": "That code doesn't match the one this device shows. Check it on the device and try again.",
+        "notPending": "This request is no longer waiting. It may have expired; pair the device again.",
+        "tooManyAttempts": "Too many wrong codes. The device was denied and must pair again."
+      },
+      "title": "Allow {{name}} to use this computer?"
+    },
     "audit": {
       "action": {
+        "deviceApproved": "Device approved",
         "deviceRevoked": "Device revoked",
         "deviceScopesChanged": "Device access changed",
         "pairingCancelled": "Pairing cancelled",
@@ -339,6 +365,7 @@
       "empty": "No devices are paired with this computer yet.",
       "groupTitle": "Paired devices",
       "needsRepair": "Paired before encryption. Revoke it and pair again.",
+      "pendingDetail": "{{scopes}} · waiting for approval until {{time}}",
       "revoke": "Revoke",
       "revokeCancel": "Cancel",
       "revokedDetail": "Revoked {{time}}",
@@ -358,7 +385,7 @@
     },
     "pair": {
       "create": "Create pairing code",
-      "createdDescription": "Scan the QR code with the Cocurdex app on your phone, or open a link on the other device. The code works once.",
+      "createdDescription": "Scan the QR code with the Cocurdex app on your phone, or open the link on the other device. The code works once.",
       "description": "Choose what the new device may do. You can revoke it at any time.",
       "done": "Done",
       "enableRemoteFirst": "Turn on remote access to get a link the other device can open.",
@@ -381,18 +408,19 @@
     },
     "relay": {
       "credential": {
-        "description": "Paste the invite credential from the relay operator. Self-hosted relays without invites do not need one.",
-        "invalid": "This is not a relay credential.",
-        "placeholder": "{\"accountId\": …}",
+        "description": "Paste the invite credential from the relay operator; the relay URL is filled in for you. Self-hosted relays without invites do not need one.",
+        "invalid": "This is not a relay invite credential.",
+        "placeholder": "Paste invite credential",
         "remove": "Remove",
         "summary": "{{account}} · expires {{expires}}",
         "title": "Invite credential"
       },
       "error": {
         "credentialRequired": "The relay needs a valid invite credential.",
+        "outdated": "The relay is running an older version than this app needs. Ask its operator to update it.",
         "protocol": "The relay answered with something unexpected. Check the address.",
         "rateLimited": "The relay is limiting connections. Retrying shortly.",
-        "routeTaken": "Another computer already holds this route on the relay.",
+        "replaced": "Another app with this computer's key took over the relay route. Close the other copy; this one retries in a few minutes.",
         "unauthorized": "The relay refused this computer's key.",
         "unreachable": "Cannot reach the relay. Retrying."
       },
@@ -408,14 +436,16 @@
         "off": "Off",
         "offline": "Offline",
         "online": "Online",
+        "onlineLatency": "Online · {{latency}} ms",
         "remoteOff": "Turn on remote access to connect",
         "title": "Status"
       },
       "url": {
-        "description": "A self-hosted cocurdex-relay address. Leave empty to turn the relay off.",
+        "description": "The official Cocurdex relay or a self-hosted cocurdex-relay address. Leave empty to turn the relay off.",
         "invalid": "Enter an http or https address.",
         "placeholder": "https://relay.example.com",
-        "title": "Relay address"
+        "title": "Relay address",
+        "useOfficial": "Use official"
       }
     },
     "remote": {
@@ -454,8 +484,12 @@
         "description": "Manage provider logins and API keys, and view MCP servers.",
         "title": "Credentials"
       },
+      "devices": {
+        "description": "See, approve, and revoke paired devices.",
+        "title": "Manage devices"
+      },
       "execute": {
-        "description": "Start sessions, teams, script runs, and workflows, and change or run MCP servers.",
+        "description": "Start sessions, teams, script runs, and workflows, change or run MCP servers, and drive agents that run without approval.",
         "title": "Start work"
       },
       "filesRead": {
@@ -863,6 +897,7 @@
       "delete": "Delete",
       "newProvider": "New",
       "refresh": "Refresh",
+      "resetToDefault": "Reset to default",
       "save": "Save"
     },
     "auth": {
@@ -995,11 +1030,14 @@
         "thinking": "Thinking map",
         "yes": "Yes"
       },
+      "deleteConfirmDescription": "Delete {{model}}? Agents can no longer use it through this provider.",
+      "deleteConfirmTitle": "Delete model",
       "empty": "No models configured for {{provider}}.",
       "modelCount": "{{count}} models",
       "modelCount_one": "{{count}} model",
       "modelCount_other": "{{count}} models",
       "noMatches": "No matching models",
+      "overridden": "Edited",
       "parametersFor": "{{model}} parameters",
       "parametersTitle": "Model parameters",
       "runtimeFor": "{{model}} runtime",

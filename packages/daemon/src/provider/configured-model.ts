@@ -11,6 +11,7 @@ export type ProviderModelState = Pick<
   | "getProviderConfig"
   | "listProviderConfigs"
   | "listProviderModels"
+  | "listProviderModelOverrides"
 >;
 
 export interface ConfiguredProviderModel {

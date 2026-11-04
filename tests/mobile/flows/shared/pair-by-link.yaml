@@ -1,9 +1,12 @@
 appId: dev.cocurdex.mobile
 ---
-- launchApp
+- launchApp:
+    permissions:
+      notifications: allow
 - extendedWaitUntil:
     visible: ${EMPTY_TITLE}
     timeout: 30000
+- setClipboard: ${PAIRING_LINK}
 - retry:
     maxRetries: 2
     commands:
@@ -15,18 +18,24 @@ appId: dev.cocurdex.mobile
           visible:
             id: "pairing-link"
           timeout: 5000
-- retry:
-    maxRetries: 2
+- runFlow:
+    when:
+      notVisible:
+        id: "pairing-link"
+        text: ${PAIRING_LINK}
     commands:
-      - tapOn:
-          id: "pairing-link"
-      - eraseText: 120
-      - inputText: ${PAIRING_LINK}
-      - extendedWaitUntil:
-          visible:
-            id: "pairing-link"
-            text: ${PAIRING_LINK}
-          timeout: 10000
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn:
+                id: "pairing-link"
+            - eraseText: 120
+            - inputText: ${PAIRING_LINK}
+            - extendedWaitUntil:
+                visible:
+                  id: "pairing-link"
+                  text: ${PAIRING_LINK}
+                timeout: 10000
 - extendedWaitUntil:
     visible:
       text: ${PAIR_ACTION}

@@ -65,7 +65,9 @@ export {
 } from "./permission-request-display";
 export * from "./provider-compatibility";
 export * from "./provider-json";
+export * from "./provider-model-override";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
+export * from "./push";
 export * from "./run-limits";
 export * from "./script-run";
 export * from "./search";
@@ -119,6 +121,7 @@ export {
   unwrapShellCommand,
   withoutWorkspaceCd,
 } from "./tool-call-display";
+export * from "./unattended-execution";
 export * from "./workflow";
 export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";

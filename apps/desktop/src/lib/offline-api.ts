@@ -102,6 +102,7 @@ export const offlineApi: DesktopApi = {
     browserView: false,
     localWebClient: false,
     localFilePaths: false,
+    localDaemonControl: false,
   },
   bootstrapApp: async () => ({
     workspaces: [],
@@ -468,6 +469,9 @@ export const offlineApi: DesktopApi = {
   listAllProviderModels: async () => [],
   saveProviderModel: async (model) => model,
   deleteProviderModel: async () => {},
+  resetProviderModel: async () => {
+    throw new Error("Resetting a model needs the desktop app");
+  },
   listCompatibleProvidersForAgent: async () => [],
   probeProviderModelAxes: async () => null,
   loginAgent: async () => {},
@@ -486,6 +490,10 @@ export const offlineApi: DesktopApi = {
     throw new Error("ACP Registry needs the desktop app");
   },
   uninstallAcpRegistryAgent: async () => {},
+  listAcpRegistryUpdates: async () => [],
+  updateAcpRegistryAgent: async () => {
+    throw new Error("ACP Registry needs the desktop app");
+  },
   listAgentProviderDefaults: async () => [],
   getAgentProviderDefault: async () => null,
   setAgentProviderDefault: async () => {},
@@ -541,6 +549,7 @@ export const offlineApi: DesktopApi = {
     query: input.query,
     items: [],
     truncated: false,
+    error: "Memory is unavailable outside the desktop app",
   }),
   showMemory: async () => null,
   rememberMemory: async () => ({
@@ -626,6 +635,7 @@ export const offlineApi: DesktopApi = {
   cancelHostPairing: async () => null,
   listHostDevices: async () => [],
   revokeHostDevice: async () => null,
+  approveHostDevice: async () => ({ ok: false, reason: "notPending" }),
   updateHostDeviceScopes: async () => null,
   listHostAudit: async () => [],
   listSessionMessages: async () => ({

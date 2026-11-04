@@ -29,6 +29,10 @@ const SYSTEM_CONTINUE: Record<SupportedLocale, string> = {
   "en-US": "Continue",
   "zh-CN": "继续|Continue",
 };
+const SYSTEM_BACK: Record<SupportedLocale, string> = {
+  "en-US": "Back",
+  "zh-CN": "返回|Back",
+};
 const SEARCH_OPEN: Record<SupportedLocale, string> = {
   "en-US": "Search",
   "zh-CN": "搜索",
@@ -149,6 +153,7 @@ function flowLabels(locale: SupportedLocale) {
     PAIR_ACTION: hosts.pair.action,
     LINK_PLACEHOLDER: hosts.pair.linkPlaceholder,
     SYSTEM_CONTINUE: SYSTEM_CONTINUE[locale],
+    SYSTEM_BACK: SYSTEM_BACK[locale],
     SEARCH_OPEN: SEARCH_OPEN[locale],
     SEARCH_DISMISS: SEARCH_DISMISS[locale],
     NEW_SESSION_ACTION: sessions.newSession.open,

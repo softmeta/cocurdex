@@ -1,7 +1,15 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import {
   hostAddress,
   selectHost,
@@ -16,6 +24,8 @@ import {
   useScrollIndicatorWhileScrolling,
 } from "@/ui";
 import { useComputerActions } from "./computer-actions-menu";
+import { refreshHostReachability } from "./host-reachability";
+import { HostStatus, useHostStatusLabel } from "./host-status";
 
 function HostRow({
   host,
@@ -29,12 +39,14 @@ function HostRow({
   const { t } = useTranslation("hosts");
   const colors = useThemeColors();
   const address = hostAddress(host);
+  const status = useHostStatusLabel(host.hostId);
+  const detail = `${status} · ${address}`;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={host.name}
       accessibilityValue={{
-        text: current ? `${address}, ${t("list.current")}` : address,
+        text: current ? `${detail}, ${t("list.current")}` : detail,
       }}
       accessibilityState={{ selected: current }}
       onPress={() => selectHost(host.hostId)}
@@ -59,12 +71,15 @@ function HostRow({
         >
           {host.name}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={[styles.detail, { color: colors.mutedForeground }]}
-        >
-          {address}
-        </Text>
+        <View style={styles.detailLine}>
+          <HostStatus hostId={host.hostId} />
+          <Text
+            numberOfLines={1}
+            style={[styles.detail, { color: colors.mutedForeground }]}
+          >
+            {detail}
+          </Text>
+        </View>
       </View>
       {current ? (
         <SymbolView
@@ -82,10 +97,29 @@ export function HostsList() {
   const saved = useSavedHosts();
   const current = useCurrentHost();
   const actions = useComputerActions();
+  const colors = useThemeColors();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshHostReachability();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   return (
     <>
       <FlatList
         {...scrollIndicator}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={colors.mutedForeground}
+            colors={[colors.mutedForeground]}
+            progressBackgroundColor={colors.background}
+          />
+        }
         style={styles.fill}
         contentInsetAdjustmentBehavior="automatic"
         data={saved}
@@ -128,5 +162,6 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 16, lineHeight: 22 },
-  detail: { fontSize: 14, lineHeight: 19 },
+  detailLine: { flexDirection: "row", alignItems: "center", gap: 6 },
+  detail: { flexShrink: 1, fontSize: 14, lineHeight: 19 },
 });

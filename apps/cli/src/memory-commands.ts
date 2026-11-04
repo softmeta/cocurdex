@@ -1,9 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import type { MemoryImportance, MemorySettings } from "@cocurdex/shared";
+import type {
+  MemoryCloudMode,
+  MemoryImportance,
+  MemorySettings,
+} from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import type { ParsedArgs } from "./parse-args";
 import { printResult, printRows, stringFlag } from "./parse-args";
+import { createCredentialReader } from "./read-secret";
 
 function importanceFlag(parsed: ParsedArgs): MemoryImportance | undefined {
   const value = stringFlag(parsed, "importance");
@@ -35,6 +40,70 @@ async function readContent(args: string[], parsed: ParsedArgs) {
   return positional;
 }
 
+export function memoryCloudMode(action: string | undefined): MemoryCloudMode {
+  if (action === "register" || action === "create") return "register";
+  if (action === "signin" || action === "sign-in" || action === "login") {
+    return "signin";
+  }
+  throw new Error(
+    "Usage: cocurdex memory cloud register|signin --user <name> | signout | keys",
+  );
+}
+
+async function handleCloudCommand(sub: string | undefined, parsed: ParsedArgs) {
+  if (sub === "keys") {
+    printResult(
+      await withDaemon(() => requestDaemon("memory.cloud.keys")),
+      parsed,
+    );
+    return;
+  }
+
+  if (sub === "signout" || sub === "disconnect") {
+    printResult(
+      await withDaemon(() => requestDaemon("memory.cloud.disconnect")),
+      parsed,
+    );
+    return;
+  }
+
+  const mode = memoryCloudMode(sub);
+  const user = stringFlag(parsed, "user");
+  if (!user) throw new Error("Missing required --user");
+
+  const reader = createCredentialReader();
+  try {
+    const password = await reader.read("Login password: ");
+    if (!password) throw new Error("A login password is required");
+    const recoveryKey =
+      mode === "signin" ? await reader.read("Recovery key: ") : null;
+    if (mode === "signin" && !recoveryKey) {
+      throw new Error("A recovery key is required to sign in");
+    }
+    const result = await withDaemon(() =>
+      requestDaemon("memory.cloud.connect", {
+        mode,
+        user,
+        password,
+        recoveryKey,
+      }),
+    );
+    if (parsed.flags.has("json")) {
+      printResult(result, parsed);
+      return;
+    }
+    if (result.recoveryKey) {
+      console.log(`Recovery key: ${result.recoveryKey}`);
+      console.log(
+        "Save it now: it decrypts your memories on another device, and nobody can recover it for you.",
+      );
+    }
+    printResult(result.status, parsed);
+  } finally {
+    reader.close();
+  }
+}
+
 export function memoryUsageLines() {
   return [
     "  cocurdex memory status [--refresh] [--json]",
@@ -46,7 +115,10 @@ export function memoryUsageLines() {
     "  cocurdex memory install [--force] [--json]",
     "  cocurdex memory doctor [--remote] [--check-update] [--json]",
     "  cocurdex memory sync on|off [--json]",
+    "  cocurdex memory cloud register|signin --user <name> [--json]",
+    "  cocurdex memory cloud signout|keys [--json]",
     "  cocurdex memory policy",
+    "  Account secrets are read from a hidden prompt, or from piped stdin when not a terminal (signin: password, then recovery key).",
   ];
 }
 
@@ -87,7 +159,12 @@ export async function handleMemoryCommand(
         project: stringFlag(parsed, "project") ?? null,
       }),
     );
+    if (parsed.flags.has("json")) {
+      printResult(result, parsed);
+      return true;
+    }
     printRows(result.items, ["id", "title", "score"], parsed);
+    if (result.error) console.error(result.error);
     return true;
   }
 
@@ -166,6 +243,11 @@ export async function handleMemoryCommand(
       requestDaemon("memory.cloud.setSync", { enabled: mode === "on" }),
     );
     printResult(status, parsed);
+    return true;
+  }
+
+  if (action === "cloud") {
+    await handleCloudCommand(args[0], parsed);
     return true;
   }
 

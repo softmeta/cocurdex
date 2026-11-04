@@ -42,3 +42,13 @@ export function buildAgentSelectOptions(
     },
   );
 }
+
+export function visibleAgentSelectOptions(
+  options: readonly AgentSelectOption[],
+  selectedAgentId: AgentId,
+): AgentSelectOption[] {
+  return options.filter(
+    (option) =>
+      option.statusKind !== "missing" || option.value === selectedAgentId,
+  );
+}

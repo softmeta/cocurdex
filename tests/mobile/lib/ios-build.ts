@@ -2,6 +2,10 @@ import path from "node:path";
 import { runCommand } from "./command";
 
 export async function buildIosApp(mobileDir: string) {
+  await runCommand("pnpm", ["run", "ensure:native-assets"], {
+    cwd: mobileDir,
+    inherit: true,
+  });
   await runCommand("pnpm", ["exec", "expo", "prebuild", "--platform", "ios"], {
     cwd: mobileDir,
     env: { ...process.env, CI: "1" },

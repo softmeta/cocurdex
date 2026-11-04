@@ -35,8 +35,12 @@ function CreatedPairing({
   created: CreatedHostPairing;
   addresses: HostAddress[];
 }) {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
   const formatDateTime = useFormatDateTime();
+  const primary = addresses[0];
+  const primaryLink = primary
+    ? buildHostPairingLink(primary.url, created.code, created.hostKey)
+    : "";
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
@@ -45,40 +49,28 @@ function CreatedPairing({
         </Text>
         <AppCopyButton value={created.code} />
       </div>
-      <Text size="meta" tone="muted">
-        {t("devices.pair.expires", {
-          time: formatDateTime(created.pairing.expiresAt),
-        })}
-      </Text>
-      {addresses.length === 0 ? (
+      <div className="flex items-center gap-2">
+        <Text className="min-w-0 flex-1" size="meta" tone="muted">
+          {t("devices.pair.expires", {
+            time: formatDateTime(created.pairing.expiresAt),
+          })}
+        </Text>
+        {primary ? (
+          <AppCopyButton label={t("common:links.copy")} value={primaryLink} />
+        ) : null}
+      </div>
+      {primary ? (
+        <div className="flex justify-center">
+          <PairingQrCode
+            label={t("devices.pair.qrLabel", { address: primary.url })}
+            link={primaryLink}
+          />
+        </div>
+      ) : (
         <Text size="body" tone="muted">
           {t("devices.pair.enableRemoteFirst")}
         </Text>
-      ) : null}
-      {addresses.map((address) => {
-        const link = buildHostPairingLink(
-          address.url,
-          created.code,
-          created.hostKey,
-        );
-        return (
-          <div
-            className="flex min-w-0 flex-col items-center gap-2"
-            key={address.url}
-          >
-            <PairingQrCode
-              label={t("devices.pair.qrLabel", { address: address.url })}
-              link={link}
-            />
-            <div className="flex w-full min-w-0 items-center gap-2">
-              <Text className="min-w-0 flex-1 font-mono" size="meta" truncate>
-                {link}
-              </Text>
-              <AppCopyButton value={link} />
-            </div>
-          </div>
-        );
-      })}
+      )}
     </div>
   );
 }

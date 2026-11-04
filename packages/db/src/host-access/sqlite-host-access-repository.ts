@@ -5,6 +5,8 @@ import {
   type HostPairingRecord,
   isHostAccessScope,
   type PairedDeviceRecord,
+  PUSH_PLATFORMS,
+  type PushPlatform,
 } from "@cocurdex/shared";
 import type {
   HostAccessRepository,
@@ -35,6 +37,10 @@ function parseScopes(value: unknown): HostAccessScope[] {
   }
 }
 
+function pushPlatform(value: unknown): PushPlatform | null {
+  return PUSH_PLATFORMS.find((platform) => platform === value) ?? null;
+}
+
 function toDevice(row: Row): PairedDeviceRecord {
   return {
     id: text(row.id),
@@ -43,7 +49,9 @@ function toDevice(row: Row): PairedDeviceRecord {
     createdAt: text(row.created_at),
     lastSeenAt: nullableText(row.last_seen_at),
     revokedAt: nullableText(row.revoked_at),
+    approvedAt: nullableText(row.approved_at),
     publicKey: nullableText(row.public_key),
+    pushPlatform: row.push_handle ? pushPlatform(row.push_platform) : null,
   };
 }
 
@@ -96,8 +104,8 @@ export function createSqliteHostAccessRepository(
       .prepare(
         `INSERT INTO host_devices
            (id, label, token_hash, public_key, scopes_json, created_at,
-            last_seen_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            last_seen_at, approved_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         device.id,
@@ -107,6 +115,7 @@ export function createSqliteHostAccessRepository(
         JSON.stringify(pairing.scopes),
         device.createdAt,
         device.createdAt,
+        null,
       );
     database
       .prepare(
@@ -187,13 +196,69 @@ export function createSqliteHostAccessRepository(
           .all() as Row[]
       ).map(toDevice);
     },
+    approveDevice(deviceId, now, pendingSince) {
+      const { changes } = database
+        .prepare(
+          `UPDATE host_devices SET approved_at = ?
+           WHERE id = ? AND revoked_at IS NULL AND approved_at IS NULL
+             AND created_at > ?`,
+        )
+        .run(now, deviceId, pendingSince);
+      return changes > 0 ? getDevice(deviceId) : null;
+    },
     revokeDevice(deviceId, now) {
       database
         .prepare(
-          "UPDATE host_devices SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
+          `UPDATE host_devices
+           SET revoked_at = ?, push_platform = NULL, push_handle = NULL,
+               push_updated_at = ?
+           WHERE id = ? AND revoked_at IS NULL`,
         )
-        .run(now, deviceId);
+        .run(now, now, deviceId);
       return getDevice(deviceId);
+    },
+    setDevicePush(deviceId, push, now) {
+      const { changes } = database
+        .prepare(
+          `UPDATE host_devices
+           SET push_platform = ?, push_handle = ?, push_updated_at = ?
+           WHERE id = ? AND revoked_at IS NULL`,
+        )
+        .run(push?.platform ?? null, push?.handle ?? null, now, deviceId);
+      return Number(changes) > 0;
+    },
+    clearDevicePushHandle(handle, now) {
+      database
+        .prepare(
+          `UPDATE host_devices
+           SET push_platform = NULL, push_handle = NULL, push_updated_at = ?
+           WHERE push_handle = ?`,
+        )
+        .run(now, handle);
+    },
+    listPushTargets() {
+      return (
+        database
+          .prepare(
+            `SELECT * FROM host_devices
+             WHERE revoked_at IS NULL AND push_handle IS NOT NULL
+               AND public_key IS NOT NULL`,
+          )
+          .all() as Row[]
+      ).flatMap((row) => {
+        const device = toDevice(row);
+        const platform = pushPlatform(row.push_platform);
+        if (!platform || !device.publicKey) return [];
+        return [
+          {
+            deviceId: device.id,
+            publicKey: device.publicKey,
+            scopes: device.scopes,
+            platform,
+            handle: text(row.push_handle),
+          },
+        ];
+      });
     },
     updateDeviceScopes(deviceId, scopes) {
       const { changes } = database

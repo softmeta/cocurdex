@@ -2,16 +2,23 @@ import type { DatabaseSync } from "node:sqlite";
 import { createDecksSchemaSql } from "./decks/deck-schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import {
+  ADD_HOST_DEVICE_APPROVED_AT_SQL,
   ADD_HOST_DEVICE_PUBLIC_KEY_SQL,
+  BACKFILL_HOST_DEVICE_APPROVED_AT_SQL,
   createHostAccessSchemaSql,
   HOST_DEVICE_PUBLIC_KEY_INDEX_SQL,
+  HOST_DEVICE_PUSH_COLUMNS,
 } from "./host-access/schema";
 import {
   ensureIssueIndexes,
   migrateIssuesToAgentCore,
 } from "./issues/issue-schema";
 import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
-import { createCommandReceiptsSql, createSchemaSql } from "./schema";
+import {
+  createCommandReceiptsSql,
+  createProviderModelOverridesSql,
+  createSchemaSql,
+} from "./schema";
 import { compactStoredDiffs } from "./stored-diff-compaction";
 import { ensureSyncTracking } from "./sync/sync-tracking";
 import { createTeamSchemaSql } from "./team/schema";
@@ -20,7 +27,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 34;
+export const CURRENT_SCHEMA_VERSION = 37;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -435,6 +442,10 @@ function createDecksTable(database: DatabaseSync): void {
   database.exec(createDecksSchemaSql());
 }
 
+function createProviderModelOverrides(database: DatabaseSync): void {
+  database.exec(createProviderModelOverridesSql());
+}
+
 function createEntityLinksTable(database: DatabaseSync): void {
   database.exec(createEntityLinksSchemaSql());
 }
@@ -448,6 +459,21 @@ function addHostDevicePublicKeys(database: DatabaseSync): void {
     database.exec(ADD_HOST_DEVICE_PUBLIC_KEY_SQL);
   }
   database.exec(HOST_DEVICE_PUBLIC_KEY_INDEX_SQL);
+}
+
+function addHostDevicePush(database: DatabaseSync): void {
+  for (const column of HOST_DEVICE_PUSH_COLUMNS) {
+    if (!hasColumn(database, "host_devices", column)) {
+      database.exec(`ALTER TABLE host_devices ADD COLUMN ${column} TEXT`);
+    }
+  }
+}
+
+function addHostDeviceApproval(database: DatabaseSync): void {
+  if (!hasColumn(database, "host_devices", "approved_at")) {
+    database.exec(ADD_HOST_DEVICE_APPROVED_AT_SQL);
+  }
+  database.exec(BACKFILL_HOST_DEVICE_APPROVED_AT_SQL);
 }
 
 function migrateProviderThreadsPerAgent(database: DatabaseSync): void {
@@ -554,6 +580,9 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [31, createDecksTable],
   [32, createEntityLinksTable],
   [33, addHostDevicePublicKeys],
+  [34, addHostDevicePush],
+  [35, createProviderModelOverrides],
+  [36, addHostDeviceApproval],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

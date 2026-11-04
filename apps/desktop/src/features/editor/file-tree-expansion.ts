@@ -83,6 +83,19 @@ export function collectExpandedDirectoryPaths(
   return expanded;
 }
 
+export function withAncestorDirectories(
+  directoryPaths: readonly string[],
+): string[] {
+  const paths = new Set<string>();
+  for (const directoryPath of directoryPaths) {
+    const segments = directoryPath.split("/").filter(Boolean);
+    for (let depth = 1; depth <= segments.length; depth++) {
+      paths.add(`${segments.slice(0, depth).join("/")}/`);
+    }
+  }
+  return [...paths];
+}
+
 // Prefer live model state (same mount, path refresh); fall back to the
 // session cache (remount after a tab switch).
 export function resolveExpandedPathsForReset(

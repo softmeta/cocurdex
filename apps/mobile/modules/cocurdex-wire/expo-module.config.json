@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["CocurdexWireModule"]
+  },
+  "android": {
+    "modules": ["dev.cocurdex.wire.CocurdexWireModule"]
+  }
+}

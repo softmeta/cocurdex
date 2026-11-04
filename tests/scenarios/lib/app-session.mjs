@@ -109,10 +109,17 @@ async function waitForPage(base, urlFragment, timeout) {
   }
 }
 
-export async function openAppSession({ port, url }) {
+export async function openAppSession(
+  { port, url },
+  { discardEarlierConsole = false } = {},
+) {
   const base = `http://127.0.0.1:${port}`;
   const targets = await readEndpoint(base, "/json/list", 5_000);
   const client = await attachPage(selectTarget(targets, { url }));
+  if (discardEarlierConsole) {
+    await client.send("Runtime.discardConsoleEntries");
+    await client.send("Log.clear");
+  }
   const pageEvents = await watchPageEvents(client);
   return {
     ...pageSession(client),
@@ -168,6 +175,15 @@ export function check(condition, message, details) {
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function rendererErrorsOf(session) {
+  const events = session?.pageEvents?.snapshot();
+  if (!events) return [];
+  return [
+    ...events.exceptions,
+    ...events.console.filter((message) => message.level !== "warning"),
+  ];
 }
 
 export async function runScenario(name, { open, setup, steps, teardown }) {
@@ -245,6 +261,8 @@ export async function runScenario(name, { open, setup, steps, teardown }) {
         report.diagnosticsError = errorMessage(error);
       }
     }
+    const rendererErrors = rendererErrorsOf(opened?.session);
+    if (rendererErrors.length > 0) report.rendererErrors = rendererErrors;
     if (context) {
       try {
         report.teardown = await teardown(context);

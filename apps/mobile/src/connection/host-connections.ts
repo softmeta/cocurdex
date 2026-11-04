@@ -1,17 +1,21 @@
 import {
+  connectReachableOrigin,
   createHostRegistry,
-  createSecureHostTransport,
-  findReachableOrigin,
+  createSecureTransport,
+  findDirectOrigin,
   foregroundWakeup,
+  HostAccessError,
   type HostConnection,
   type LifecycleSignal,
   type NetworkSignal,
+  type SecureSocketHandlers,
   savedHostEndpoint,
-  savedHostOrigins,
 } from "@cocurdex/client-runtime";
+import { isRelayEndpoint } from "@cocurdex/shared";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { AppState } from "react-native";
-import { hosts, mobileNoiseCrypto } from "@/hosts";
+import { hosts, mobileMessageCompressor, mobileNoiseCrypto } from "@/hosts";
+import { mirrorPushKeys, pushRegistrar } from "@/notifications";
 
 const lifecycle: LifecycleSignal = {
   subscribeForeground(listener) {
@@ -39,10 +43,25 @@ function updateConnected(next: boolean | undefined) {
   for (const listener of networkListeners) listener(next);
 }
 
-addNetworkStateListener((event) => updateConnected(event.isConnected));
+let networkType: string | undefined;
+const networkTypeListeners = new Set<() => void>();
+
+function updateNetworkType(next: string | undefined) {
+  if (next === undefined || next === networkType) return;
+  const changed = networkType !== undefined;
+  networkType = next;
+  if (!changed) return;
+  for (const listener of networkTypeListeners) listener();
+}
+
+addNetworkStateListener((event) => {
+  updateConnected(event.isConnected);
+  updateNetworkType(event.type);
+});
 void getNetworkStateAsync()
   .then((event) => {
     if (connected === undefined) updateConnected(event.isConnected);
+    if (networkType === undefined) networkType = event.type;
   })
   .catch(() => undefined);
 
@@ -62,16 +81,25 @@ function pairedHost(hostId: string) {
   return host;
 }
 
-async function resolveHostEndpoint(hostId: string) {
+const connectedOrigins = new Map<string, string>();
+
+async function connectHost(hostId: string, handlers: SecureSocketHandlers) {
   const host = pairedHost(hostId);
-  if (savedHostOrigins(host).length > 1) {
-    const reachable = await findReachableOrigin({
-      host,
-      crypto: mobileNoiseCrypto,
-    });
-    if (reachable) hosts.switchOrigin(hostId, reachable.origin);
+  const connected = await connectReachableOrigin({
+    host,
+    crypto: mobileNoiseCrypto,
+    compressor: mobileMessageCompressor,
+    handlers,
+    onDirectFound: (origin) => hosts.switchOrigin(hostId, origin),
+  });
+  if (!connected) {
+    throw new HostAccessError("unreachable", "No address of the host answered");
   }
-  return savedHostEndpoint(pairedHost(hostId));
+  connectedOrigins.set(hostId, connected.origin);
+  if (connected.origin !== host.baseUrl) {
+    hosts.switchOrigin(hostId, connected.origin);
+  }
+  return connected.opened;
 }
 
 function adoptReportedSession(connection: HostConnection) {
@@ -90,6 +118,11 @@ function adoptReportedSession(connection: HostConnection) {
         });
       })
       .catch(() => undefined);
+    void pushRegistrar
+      .hostLive(connection.hostId, (registration) =>
+        connection.request("host.push.register", registration),
+      )
+      .catch(() => undefined);
   });
   return connection;
 }
@@ -100,12 +133,13 @@ export function hostConnection(hostId: string): HostConnection {
     adoptReportedSession(
       registry.register({
         hostId,
+        filterSessionEvents: true,
         platform: {
           lifecycle,
           network,
-          openPairedTransport: (endpoint) =>
-            createSecureHostTransport(endpoint, mobileNoiseCrypto),
-          resolveEndpoint: () => resolveHostEndpoint(hostId),
+          openPairedTransport: () =>
+            createSecureTransport((handlers) => connectHost(hostId, handlers)),
+          resolveEndpoint: async () => savedHostEndpoint(pairedHost(hostId)),
         },
       }),
     )
@@ -114,9 +148,39 @@ export function hostConnection(hostId: string): HostConnection {
 
 export const onHostConnectionRemoved = registry.onHostRemoved;
 
-hosts.subscribe(() => {
-  const paired = new Set(hosts.getSnapshot().map((host) => host.hostId));
-  for (const connection of registry.list()) {
-    if (!paired.has(connection.hostId)) registry.remove(connection.hostId);
-  }
+async function preferDirectPath(connection: HostConnection) {
+  if (connection.getState().status !== "live") return;
+  const host = hosts
+    .getSnapshot()
+    .find((saved) => saved.hostId === connection.hostId);
+  const origin = connectedOrigins.get(connection.hostId);
+  if (!host || origin === undefined || !isRelayEndpoint(origin)) return;
+  const direct = await findDirectOrigin({ host, crypto: mobileNoiseCrypto });
+  if (!direct || connection.getState().status !== "live") return;
+  hosts.switchOrigin(host.hostId, direct);
+  connection.wake("reconnect");
+}
+
+function preferDirectPaths() {
+  for (const connection of registry.list()) void preferDirectPath(connection);
+}
+
+networkTypeListeners.add(preferDirectPaths);
+AppState.addEventListener("change", (state) => {
+  if (state === "active") preferDirectPaths();
 });
+
+function syncPairedHosts() {
+  const saved = hosts.getSnapshot();
+  const paired = new Set(saved.map((host) => host.hostId));
+  for (const connection of registry.list()) {
+    if (paired.has(connection.hostId)) continue;
+    registry.remove(connection.hostId);
+    connectedOrigins.delete(connection.hostId);
+    pushRegistrar.hostRemoved(connection.hostId);
+  }
+  mirrorPushKeys(saved);
+}
+
+mirrorPushKeys(hosts.getSnapshot());
+hosts.subscribe(syncPairedHosts);

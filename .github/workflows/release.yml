@@ -21,6 +21,8 @@ jobs:
     name: Validate tag and draft release
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      promoted_from: ${{ steps.validate.outputs.promoted_from }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -33,22 +35,27 @@ jobs:
           node-version: 24
 
       - name: Validate release tag
+        id: validate
         if: github.ref_type == 'tag'
         run: |
-          package_version="$(node -p "require('./apps/desktop/package.json').version")"
-          test "v${package_version}" = "${GITHUB_REF_NAME}"
+          set -euo pipefail
+          [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]
           git fetch --no-tags origin main
           tag_commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
           git merge-base --is-ancestor "${tag_commit}" origin/main
+          promoted_from=""
+          if [[ "${GITHUB_REF_NAME}" != *-* ]]; then
+            promoted_from="$(git tag --points-at "${tag_commit}" --list "${GITHUB_REF_NAME}-beta.*" --sort=-v:refname | head -n 1)"
+          fi
+          echo "promoted_from=${promoted_from}" >> "${GITHUB_OUTPUT}"
 
       - name: Create draft GitHub release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          package_version="$(node -p "require('./apps/desktop/package.json').version")"
           prerelease_args=()
-          if node -e 'process.exit(/-.+/.test(process.argv[1]) ? 0 : 1)' "${package_version}"; then
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
             prerelease_args+=(--prerelease)
           fi
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
@@ -60,9 +67,18 @@ jobs:
             fi
             exit 0
           fi
+          notes_file="${RUNNER_TEMP}/release-notes.md"
+          cat > "${notes_file}" <<'NOTES'
+          ### Android APK
+
+          `Cocurdex-android-arm64-v8a.apk` fits most phones; `Cocurdex-android-armeabi-v7a.apk` is for older 32-bit devices. The APK and the Google Play app are signed differently and cannot update each other: uninstall one before installing the other.
+
+          APK 与 Google Play 版签名不同，不能互相覆盖升级；换渠道前请先卸载原来的版本。
+          NOTES
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "Cocurdex ${GITHUB_REF_NAME}" \
+            --notes-file "${notes_file}" \
             --generate-notes \
             --verify-tag \
             --draft \
@@ -101,6 +117,12 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/*/go.sum
+
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
 
@@ -122,6 +144,10 @@ jobs:
           apple_api_key_path="${RUNNER_TEMP}/AuthKey_${APPLE_API_KEY_ID}.p8"
           APPLE_API_KEY_PATH="${apple_api_key_path}" node -e 'require("node:fs").writeFileSync(process.env.APPLE_API_KEY_PATH, Buffer.from(process.env.APPLE_API_KEY_BASE64, "base64"), { mode: 0o600 })'
           echo "APPLE_API_KEY=${apple_api_key_path}" >> "${GITHUB_ENV}"
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -269,8 +295,18 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/*/go.sum
+
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -332,11 +368,21 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/relay/go.mod
+          cache-dependency-path: services/*/go.sum
+
       - name: Restore pnpm store
         uses: ./.github/actions/restore-pnpm-store
 
       - name: Install native build tools
         run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -380,9 +426,322 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --clobber
 
+  android:
+    name: Android (Google Play internal and APKs)
+    needs: prepare
+    if: needs.prepare.outputs.promoted_from == ''
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+
+      - name: Setup Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Restore pnpm store
+        uses: ./.github/actions/restore-pnpm-store
+
+      - name: Validate signing configuration
+        env:
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_APK_KEYSTORE_BASE64: ${{ secrets.ANDROID_APK_KEYSTORE_BASE64 }}
+          ANDROID_APK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_APK_KEYSTORE_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "${ANDROID_UPLOAD_KEYSTORE_BASE64}"
+          test -n "${ANDROID_UPLOAD_KEYSTORE_PASSWORD}"
+          test -n "${ANDROID_APK_KEYSTORE_BASE64}"
+          test -n "${ANDROID_APK_KEYSTORE_PASSWORD}"
+          if test "${GITHUB_REF_TYPE}" = "tag"; then
+            test -n "${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON}"
+          fi
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve mobile version
+        run: |
+          package_version="$(node -p "require('./apps/desktop/package.json').version")"
+          {
+            echo "COCURDEX_MOBILE_VERSION=${package_version%%-*}"
+            echo "COCURDEX_MOBILE_BUILD_NUMBER=$(git rev-list --count HEAD)"
+          } >> "${GITHUB_ENV}"
+
+      - name: Generate native project
+        working-directory: apps/mobile
+        env:
+          COCURDEX_ANDROID_APK_ABIS: arm64-v8a,armeabi-v7a
+        run: |
+          pnpm run ensure:native-assets
+          pnpm exec expo prebuild --platform android --no-install
+
+      - name: Build signed App Bundle
+        working-directory: apps/mobile/android
+        env:
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore_path="${RUNNER_TEMP}/android-upload.jks"
+          printf '%s' "${ANDROID_UPLOAD_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          chmod 600 "${keystore_path}"
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="${keystore_path}" \
+            -Pandroid.injected.signing.store.password="${ANDROID_UPLOAD_KEYSTORE_PASSWORD}" \
+            -Pandroid.injected.signing.key.alias=cocurdex-upload \
+            -Pandroid.injected.signing.key.password="${ANDROID_UPLOAD_KEYSTORE_PASSWORD}"
+          bundle=app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "${bundle}" >/dev/null
+          echo "ANDROID_BUNDLE=${PWD}/${bundle}" >> "${GITHUB_ENV}"
+
+      - name: Upload to Google Play internal testing
+        if: github.ref_type == 'tag'
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.cocurdex.mobile
+          releaseFiles: ${{ env.ANDROID_BUNDLE }}
+          releaseName: ${{ env.COCURDEX_MOBILE_VERSION }} (${{ env.COCURDEX_MOBILE_BUILD_NUMBER }})
+          track: internal
+          status: completed
+
+      - name: Build signed APKs
+        working-directory: apps/mobile/android
+        env:
+          ANDROID_APK_KEYSTORE_BASE64: ${{ secrets.ANDROID_APK_KEYSTORE_BASE64 }}
+          ANDROID_APK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_APK_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore_path="${RUNNER_TEMP}/android-apk.jks"
+          printf '%s' "${ANDROID_APK_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          chmod 600 "${keystore_path}"
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Pandroid.injected.signing.store.file="${keystore_path}" \
+            -Pandroid.injected.signing.store.password="${ANDROID_APK_KEYSTORE_PASSWORD}" \
+            -Pandroid.injected.signing.key.alias=cocurdex-apk \
+            -Pandroid.injected.signing.key.password="${ANDROID_APK_KEYSTORE_PASSWORD}"
+          apksigner="$(find "${ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)/apksigner"
+          out_dir="${RUNNER_TEMP}/android-apks"
+          mkdir -p "${out_dir}"
+          for abi in arm64-v8a armeabi-v7a; do
+            apk="app/build/outputs/apk/release/app-${abi}-release.apk"
+            "${apksigner}" verify --print-certs "${apk}" | grep -q "CN=Cocurdex, O=softmeta"
+            target="${out_dir}/Cocurdex-android-${abi}.apk"
+            cp "${apk}" "${target}"
+            (cd "${out_dir}" && sha256sum "$(basename "${target}")" > "$(basename "${target}").sha256")
+          done
+          echo "ANDROID_APK_DIR=${out_dir}" >> "${GITHUB_ENV}"
+
+      - name: Upload APKs to GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            "${ANDROID_APK_DIR}"/Cocurdex-android-*.apk \
+            "${ANDROID_APK_DIR}"/Cocurdex-android-*.apk.sha256 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber
+
+      - name: Remove signing credentials
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/android-upload.jks" "${RUNNER_TEMP}/android-apk.jks"
+
+  ios:
+    name: iOS (TestFlight)
+    needs: prepare
+    if: needs.prepare.outputs.promoted_from == ''
+    environment: release
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY_ID: ${{ secrets.IOS_ASC_API_KEY_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+
+      - name: Restore pnpm store
+        uses: ./.github/actions/restore-pnpm-store
+
+      - name: Prepare App Store Connect API key
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.IOS_ASC_API_KEY_BASE64 }}
+        run: |
+          test -n "${APPLE_API_ISSUER}"
+          test -n "${APPLE_API_KEY_BASE64}"
+          test -n "${APPLE_API_KEY_ID}"
+          test -n "${APPLE_TEAM_ID}"
+          apple_api_key_path="${RUNNER_TEMP}/AuthKey_${APPLE_API_KEY_ID}.p8"
+          APPLE_API_KEY_PATH="${apple_api_key_path}" node -e 'require("node:fs").writeFileSync(process.env.APPLE_API_KEY_PATH, Buffer.from(process.env.APPLE_API_KEY_BASE64, "base64"), { mode: 0o600 })'
+          echo "APPLE_API_KEY=${apple_api_key_path}" >> "${GITHUB_ENV}"
+
+      - name: Install distribution certificate and profiles
+        env:
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_PROFILE_APP_BASE64: ${{ secrets.IOS_PROFILE_APP_BASE64 }}
+          IOS_PROFILE_NOTIFICATION_SERVICE_BASE64: ${{ secrets.IOS_PROFILE_NOTIFICATION_SERVICE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "${IOS_DISTRIBUTION_P12_BASE64}"
+          test -n "${IOS_DISTRIBUTION_P12_PASSWORD}"
+          test -n "${IOS_PROFILE_APP_BASE64}"
+          test -n "${IOS_PROFILE_NOTIFICATION_SERVICE_BASE64}"
+          certificate_path="${RUNNER_TEMP}/ios-distribution.p12"
+          keychain_path="${RUNNER_TEMP}/ios-signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+          echo "::add-mask::${keychain_password}"
+          printf '%s' "${IOS_DISTRIBUTION_P12_BASE64}" | base64 --decode > "${certificate_path}"
+          security create-keychain -p "${keychain_password}" "${keychain_path}"
+          security set-keychain-settings -lut 21600 "${keychain_path}"
+          security unlock-keychain -p "${keychain_password}" "${keychain_path}"
+          security import "${certificate_path}" \
+            -P "${IOS_DISTRIBUTION_P12_PASSWORD}" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "${keychain_path}" \
+            -T /usr/bin/codesign
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "${keychain_password}" \
+            "${keychain_path}" \
+            >/dev/null
+          existing_keychains="$(security list-keychains -d user | sed 's/"//g')"
+          security list-keychains -d user -s "${keychain_path}" ${existing_keychains}
+          rm -f "${certificate_path}"
+          security find-identity -v -p codesigning "${keychain_path}" | grep -F "Apple Distribution"
+          echo "IOS_SIGNING_KEYCHAIN=${keychain_path}" >> "${GITHUB_ENV}"
+          profile_dirs=(
+            "${HOME}/Library/MobileDevice/Provisioning Profiles"
+            "${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles"
+          )
+          mkdir -p "${profile_dirs[@]}"
+          profiles="{}"
+          for encoded in "${IOS_PROFILE_APP_BASE64}" "${IOS_PROFILE_NOTIFICATION_SERVICE_BASE64}"; do
+            profile_path="${RUNNER_TEMP}/profile.mobileprovision"
+            printf '%s' "${encoded}" | base64 --decode > "${profile_path}"
+            security cms -D -i "${profile_path}" > "${RUNNER_TEMP}/profile.plist"
+            uuid="$(plutil -extract UUID raw "${RUNNER_TEMP}/profile.plist")"
+            name="$(plutil -extract Name raw "${RUNNER_TEMP}/profile.plist")"
+            app_id="$(plutil -extract Entitlements.application-identifier raw "${RUNNER_TEMP}/profile.plist")"
+            for dir in "${profile_dirs[@]}"; do
+              cp "${profile_path}" "${dir}/${uuid}.mobileprovision"
+            done
+            profiles="$(PROFILES="${profiles}" BUNDLE_ID="${app_id#*.}" NAME="${name}" node -p 'JSON.stringify({ ...JSON.parse(process.env.PROFILES), [process.env.BUNDLE_ID]: process.env.NAME })')"
+            rm -f "${profile_path}" "${RUNNER_TEMP}/profile.plist"
+          done
+          echo "COCURDEX_IOS_PROVISIONING_PROFILES=${profiles}" >> "${GITHUB_ENV}"
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve mobile version
+        run: |
+          package_version="$(node -p "require('./apps/desktop/package.json').version")"
+          {
+            echo "COCURDEX_MOBILE_VERSION=${package_version%%-*}"
+            echo "COCURDEX_MOBILE_BUILD_NUMBER=$(git rev-list --count HEAD)"
+          } >> "${GITHUB_ENV}"
+
+      - name: Generate native project
+        working-directory: apps/mobile
+        run: |
+          pnpm run ensure:native-assets
+          pnpm exec expo prebuild --platform ios
+
+      - name: Archive
+        working-directory: apps/mobile/ios
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace Cocurdex.xcworkspace \
+            -scheme Cocurdex \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${RUNNER_TEMP}/Cocurdex.xcarchive" \
+            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+            archive
+
+      - name: Sign for App Store and upload to TestFlight
+        env:
+          EXPORT_DESTINATION: ${{ github.ref_type == 'tag' && 'upload' || 'export' }}
+        run: |
+          set -euo pipefail
+          options="${RUNNER_TEMP}/ExportOptions.plist"
+          /usr/libexec/PlistBuddy -c "Add :method string app-store-connect" \
+            -c "Add :destination string ${EXPORT_DESTINATION}" \
+            -c "Add :teamID string ${APPLE_TEAM_ID}" \
+            -c "Add :signingStyle string manual" \
+            -c "Add :signingCertificate string Apple Distribution" \
+            -c "Add :manageAppVersionAndBuildNumber bool false" \
+            -c "Add :provisioningProfiles dict" \
+            "${options}"
+          for bundle_id in $(node -p 'Object.keys(JSON.parse(process.env.COCURDEX_IOS_PROVISIONING_PROFILES)).join(" ")'); do
+            name="$(BUNDLE_ID="${bundle_id}" node -p 'JSON.parse(process.env.COCURDEX_IOS_PROVISIONING_PROFILES)[process.env.BUNDLE_ID]')"
+            /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:${bundle_id} string ${name}" "${options}"
+          done
+          xcodebuild -exportArchive \
+            -archivePath "${RUNNER_TEMP}/Cocurdex.xcarchive" \
+            -exportOptionsPlist "${options}" \
+            -exportPath "${RUNNER_TEMP}/export" \
+            -authenticationKeyPath "${APPLE_API_KEY}" \
+            -authenticationKeyID "${APPLE_API_KEY_ID}" \
+            -authenticationKeyIssuerID "${APPLE_API_ISSUER}"
+
+      - name: Remove signing credentials
+        if: always()
+        run: |
+          if test -n "${APPLE_API_KEY:-}"; then
+            rm -f "${APPLE_API_KEY}"
+          fi
+          if test -n "${IOS_SIGNING_KEYCHAIN:-}"; then
+            security delete-keychain "${IOS_SIGNING_KEYCHAIN}" || true
+          fi
+          rm -f "${RUNNER_TEMP}/ios-distribution.p12"
+
   publish:
     name: Publish GitHub release
     needs:
+      - prepare
       - macos
       - windows
       - linux
@@ -412,12 +771,24 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" mac-update/*.yml \
             --repo "${GITHUB_REPOSITORY}" --clobber
 
+      - name: Carry APKs over from the promoted beta
+        if: needs.prepare.outputs.promoted_from != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTED_FROM: ${{ needs.prepare.outputs.promoted_from }}
+        run: |
+          set -euo pipefail
+          gh release download "${PROMOTED_FROM}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern 'Cocurdex-android-*.apk*' --dir promoted-apks
+          gh release upload "${GITHUB_REF_NAME}" promoted-apks/* \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          package_version="$(node -p "require('./apps/desktop/package.json').version")"
-          if node -e 'process.exit(/-.+/.test(process.argv[1]) ? 0 : 1)' "${package_version}"; then
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
             gh release edit "${GITHUB_REF_NAME}" \
               --repo "${GITHUB_REPOSITORY}" \
               --title "Cocurdex ${GITHUB_REF_NAME}" \

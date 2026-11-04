@@ -5,7 +5,7 @@ import {
   createHostsStore,
   forgetHostsFromPreviousInstall,
 } from "./hosts-store";
-import { mobileNoiseCrypto } from "./noise-crypto";
+import { mobileNoiseCrypto } from "./native-wire";
 
 const CURRENT_HOST_KEY = "cocurdex.currentHost";
 

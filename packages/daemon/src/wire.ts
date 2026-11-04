@@ -35,6 +35,7 @@ import {
   isDeckAssetHttpRequest,
   isDeckDownloadHttpRequest,
 } from "./decks";
+import { logDaemonDiagnostic } from "./diagnostics";
 import {
   createDaemonEventJournal,
   type DaemonEventJournalEntry,
@@ -42,6 +43,10 @@ import {
 import {
   createRelayConnector,
   createRemoteAccessListener,
+  incomingTrafficCategory,
+  outgoingTrafficCategory,
+  type TrafficMeter,
+  trafficTransport,
 } from "./host-access";
 import type { SecureRemoteChannel } from "./host-access/secure-remote-socket";
 import {
@@ -51,9 +56,14 @@ import {
   getDatabasePath,
 } from "./paths";
 import { createPdfHttpHandler, isPdfHttpRequest } from "./pdf-http";
+import { createRemoteDeltaBatcher } from "./remote-delta-batcher";
 import { serveRemoteFileStream } from "./remote-file-streams";
 import { createDaemonReceiptStore } from "./rpc-receipts";
 import { CocurdexDaemonService } from "./service";
+import {
+  deliversToWatcher,
+  type WatchedSessions,
+} from "./session-event-filter";
 import { createWebAssetHandler, isLoopbackHostHeader } from "./web-assets";
 import {
   authorizeDaemonWebSocket,
@@ -90,8 +100,10 @@ interface DaemonTransport {
   remote: boolean;
   remoteAddress: string | null;
   deviceId?: string;
+  traffic?: TrafficMeter;
 }
 
+const SNAPSHOT_CATEGORY = "rpc:sync.pull";
 const LOCAL_TRANSPORT: DaemonTransport = { remote: false, remoteAddress: null };
 
 const CREDENTIAL_FIELDS = new Set(["headersJson"]);
@@ -222,13 +234,31 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     );
     connections.set(connection, deviceIds);
     let subscribedToDaemonEvents = false;
+    let watchedSessions: WatchedSessions = null;
     let principal: HostPrincipal | null = null;
-    const send = (message: unknown, onSent?: () => void) => {
+    const pendingMethods = new Map<unknown, string>();
+    const meter = transport.traffic;
+    const transportKind = trafficTransport(transport.remoteAddress);
+    const deliver = (message: unknown, onSent?: () => void) => {
       const withholdCredentials =
         principal !== null && !principalHasScope(principal, "credentials");
-      connection.send(encodeWireMessage(message, withholdCredentials), onSent);
+      const encoded = encodeWireMessage(message, withholdCredentials);
+      const category = outgoingTrafficCategory(message, pendingMethods);
+      meter?.recordMessage(
+        transportKind,
+        "sent",
+        category,
+        Buffer.byteLength(encoded),
+      );
+      connection.send(encoded, onSent);
+      if (category === SNAPSHOT_CATEGORY) deltaBatcher?.resume();
     };
+    const deltaBatcher = transport.remote
+      ? createRemoteDeltaBatcher(deliver)
+      : null;
+    const send = deltaBatcher ? deltaBatcher.send : deliver;
     const sendEvent = (entry: DaemonEventJournalEntry) => {
+      if (!deliversToWatcher(entry.event, watchedSessions)) return;
       send({
         event: entry.event,
         seq: entry.seq,
@@ -255,6 +285,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       eventSubscribers.delete(eventListener);
       terminalSubscribers.delete(terminalListener);
       releaseTerminalClient?.();
+      deltaBatcher?.close();
     });
     const runtime = {
       service: activeService,
@@ -280,7 +311,12 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
           deviceIds.add(requestPrincipal.deviceId);
         }
       },
-      subscribe: (afterSeq: number | undefined, requestEpoch?: string) => {
+      subscribe: (
+        afterSeq: number | undefined,
+        requestEpoch: string | undefined,
+        sessions: WatchedSessions,
+      ) => {
+        watchedSessions = sessions;
         // Replay first, then go live: this block is synchronous, so no live
         // event can interleave between the journaled tail and the flag flip.
         const crossEpoch =
@@ -300,8 +336,14 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
           replayGap: crossEpoch || replay.hasGap,
         };
       },
+      watchSessions: (sessions: WatchedSessions) => {
+        watchedSessions = sessions;
+      },
     };
-    return (message: unknown) => {
+    return (message: unknown, bytes = 0) => {
+      const category = incomingTrafficCategory(message, pendingMethods);
+      if (category === SNAPSHOT_CATEGORY) deltaBatcher?.pause();
+      meter?.recordMessage(transportKind, "received", category, bytes);
       void handleDaemonWireMessage(runtime, requestConnection, message);
     };
   };
@@ -344,6 +386,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         remote: true,
         remoteAddress: remote.remoteAddress,
         deviceId: remote.deviceId,
+        traffic: service?.remoteTraffic,
       },
     );
     const activeService = service;
@@ -367,7 +410,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         remote.close();
         return;
       }
-      onMessage(message);
+      onMessage(message, bytes.byteLength);
     });
   };
   const server = net.createServer((socket) => {
@@ -593,12 +636,14 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       hostAccess,
       hostKeys,
       onChannel: attachSecureChannel,
+      traffic: service.remoteTraffic,
     });
     remoteListener = createRemoteAccessListener(remoteSockets.createServer);
     relayConnector = createRelayConnector({
       hostKeys: () => hostKeys.keys(),
       onDataSocket: remoteSockets.accept,
       onStateChanged: () => hostAccess.remoteAccessChanged(),
+      log: logDaemonDiagnostic,
     });
     hostAccess.bindRemoteListener(remoteListener);
     hostAccess.bindRelayConnector(relayConnector);

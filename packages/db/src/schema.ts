@@ -18,6 +18,20 @@ export function createCommandReceiptsSql() {
   `;
 }
 
+export function createProviderModelOverridesSql() {
+  return `
+    CREATE TABLE IF NOT EXISTS provider_model_overrides (
+      provider_id TEXT NOT NULL,
+      model_id TEXT NOT NULL,
+      override_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (provider_id, model_id),
+      FOREIGN KEY (provider_id) REFERENCES provider_configs(id)
+        ON DELETE CASCADE
+    );
+  `;
+}
+
 export function createSchemaSql() {
   return `
     CREATE TABLE IF NOT EXISTS workspaces (
@@ -282,6 +296,8 @@ export function createSchemaSql() {
       FOREIGN KEY (provider_id) REFERENCES provider_configs(id)
         ON DELETE CASCADE
     );
+
+    ${createProviderModelOverridesSql()}
 
     CREATE TABLE IF NOT EXISTS provider_secrets (
       id TEXT PRIMARY KEY,

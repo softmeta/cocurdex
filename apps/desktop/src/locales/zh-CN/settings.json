@@ -20,6 +20,7 @@
       "readFailed": "无法读取登录方式：{{message}}",
       "reading": "正在读取登录方式…",
       "retry": "重试",
+      "signedIn": "已登录（{{method}}）。",
       "signingIn": "正在用{{method}}登录。如果浏览器打开了登录页，请在那里完成，完成后这里会自动更新。",
       "switchConfirm": "切换",
       "switchDescription_other": "切换会停止 {{count}} 个正在运行的 {{agent}} 会话。新方式登录失败时保留当前方式。",
@@ -46,8 +47,10 @@
       "missing": "未安装",
       "needsLogin": "需要登录",
       "outdated": "需要升级",
-      "ready": "可用"
+      "ready": "可用",
+      "updateAvailable": "有更新"
     },
+    "notInstalledGroup_other": "未安装（{{count}}）",
     "rateLimits": {
       "authenticationRequired": "未查询到用量。尚未登录。请运行 claude auth login，然后刷新。",
       "failed": "无法读取用量：{{message}}",
@@ -108,7 +111,12 @@
     "toast": {
       "commandCopied": "已复制安装命令",
       "pathCopied": "已复制路径",
-      "refreshFailed": "刷新 Agent CLI 失败"
+      "refreshFailed": "刷新 Agent CLI 失败",
+      "updated": "已将 {{agent}} 更新到 v{{version}}"
+    },
+    "update": {
+      "action": "更新到 v{{version}}",
+      "available": "已安装 v{{installed}}，可更新到 v{{latest}}"
     }
   },
   "agentRoles": {
@@ -315,8 +323,25 @@
       "save": "保存",
       "title": "{{name}} 的权限"
     },
+    "approval": {
+      "allow": "允许",
+      "approve": "批准",
+      "close": "关闭",
+      "codeHint": "输入请求访问的设备上显示的 6 位安全码。只有在你本人发起这次配对时才允许。",
+      "codeLabel": "设备上显示的安全码",
+      "deny": "拒绝",
+      "description": "它请求的权限：{{scopes}}。",
+      "failed": "无法更新该设备",
+      "failure": {
+        "codeMismatch": "安全码与该设备显示的不一致。请在设备上核对后重试。",
+        "notPending": "该请求已不再等待批准，可能已过期；请重新配对设备。",
+        "tooManyAttempts": "安全码错误次数过多，已拒绝该设备，需要重新配对。"
+      },
+      "title": "允许 {{name}} 使用这台电脑？"
+    },
     "audit": {
       "action": {
+        "deviceApproved": "已批准设备",
         "deviceRevoked": "已吊销设备",
         "deviceScopesChanged": "设备权限已修改",
         "pairingCancelled": "已取消配对",
@@ -336,6 +361,7 @@
       "empty": "还没有设备与这台电脑配对。",
       "groupTitle": "已配对设备",
       "needsRepair": "在启用加密前配对，请吊销后重新配对。",
+      "pendingDetail": "{{scopes}} · 等待批准，{{time}} 前有效",
       "revoke": "吊销",
       "revokeCancel": "取消",
       "revokedDetail": "已于 {{time}} 吊销",
@@ -377,18 +403,19 @@
     },
     "relay": {
       "credential": {
-        "description": "粘贴中继运营方提供的邀请凭证。无需邀请的自托管中继不需要填写。",
-        "invalid": "这不是有效的中继凭证。",
-        "placeholder": "{\"accountId\": …}",
+        "description": "粘贴中继运营方提供的邀请凭证，中继地址会自动填好。无需邀请的自托管中继不用填写。",
+        "invalid": "这不是有效的中继邀请凭证。",
+        "placeholder": "粘贴邀请凭证",
         "remove": "移除",
         "summary": "{{account}} · {{expires}} 到期",
         "title": "邀请凭证"
       },
       "error": {
         "credentialRequired": "中继需要有效的邀请凭证。",
+        "outdated": "中继版本过旧，跟不上当前应用。请让中继运营方升级。",
         "protocol": "中继返回了意外的响应，请检查地址。",
         "rateLimited": "中继正在限制连接，稍后自动重试。",
-        "routeTaken": "另一台电脑已占用中继上的此路由。",
+        "replaced": "另一个使用这台电脑密钥的应用接管了中继路由。请关掉另一个，这边会在几分钟后重试。",
         "unauthorized": "中继拒绝了这台电脑的密钥。",
         "unreachable": "无法连接到中继，正在重试。"
       },
@@ -404,14 +431,16 @@
         "off": "关闭",
         "offline": "离线",
         "online": "在线",
+        "onlineLatency": "在线 · {{latency}} ms",
         "remoteOff": "开启远程访问后连接",
         "title": "状态"
       },
       "url": {
-        "description": "自托管的 cocurdex-relay 地址。留空即关闭中继。",
+        "description": "官方 Cocurdex 中继，或自托管的 cocurdex-relay 地址。留空即关闭中继。",
         "invalid": "请输入 http 或 https 地址。",
         "placeholder": "https://relay.example.com",
-        "title": "中继地址"
+        "title": "中继地址",
+        "useOfficial": "使用官方"
       }
     },
     "remote": {
@@ -450,8 +479,12 @@
         "description": "管理模型提供方登录和 API Key，查看 MCP 服务器。",
         "title": "凭据"
       },
+      "devices": {
+        "description": "查看、批准和吊销已配对的设备。",
+        "title": "管理设备"
+      },
       "execute": {
-        "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器。",
+        "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器，并驱动无需批准即可执行的 agent。",
         "title": "启动任务"
       },
       "filesRead": {
@@ -856,6 +889,7 @@
       "delete": "删除",
       "newProvider": "新建",
       "refresh": "刷新",
+      "resetToDefault": "恢复默认",
       "save": "保存"
     },
     "auth": {
@@ -987,10 +1021,13 @@
         "thinking": "思考映射",
         "yes": "是"
       },
+      "deleteConfirmDescription": "删除 {{model}}？之后 agent 将无法通过此服务商使用该模型。",
+      "deleteConfirmTitle": "删除模型",
       "empty": "{{provider}} 尚未配置模型。",
       "modelCount": "{{count}} 个模型",
       "modelCount_other": "{{count}} 个模型",
       "noMatches": "没有匹配的模型",
+      "overridden": "已修改",
       "parametersFor": "设置 {{model}} 参数",
       "parametersTitle": "模型参数",
       "runtimeFor": "{{model}} 运行时",

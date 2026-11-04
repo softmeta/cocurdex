@@ -58,6 +58,7 @@ const codexModels = [
 function createState(overrides: Partial<DaemonState> = {}) {
   return {
     listProviderConfigs: vi.fn(async () => []),
+    listProviderModelOverrides: async () => [],
     listProviderModels: vi.fn(async () => []),
     ...overrides,
   } as unknown as DaemonState;
@@ -227,6 +228,7 @@ describe("DaemonProviderService", () => {
           providerConfig("custom"),
         ]),
         getProviderConfig: vi.fn(async (id: string) => providerConfig(id)),
+        listProviderModelOverrides: async () => [],
         listProviderModels: vi.fn(async (providerId?: string) =>
           providerId && providerId !== "custom"
             ? []

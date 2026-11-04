@@ -511,6 +511,21 @@ export default interface Resources {
       gitNotRepoDescription: "";
       gitNotRepoTitle: "";
     };
+    webHostPending: {
+      codeLabel: "Safety code";
+      description: "Approve this browser on {{name}}: open the request in Cocurdex there and enter this safety code.";
+      title: "Waiting for approval";
+      waiting: "This page opens by itself once the computer approves it. The request expires after 10 minutes.";
+    };
+    webHostUnreachable: {
+      forget: "Forget this computer";
+      forgetFailed: "This browser couldn't remove the pairing. Allow site data and try again.";
+      offline: "{{name}} isn't connected to its relay. Open Cocurdex on that computer, then try again.";
+      retry: "Try again";
+      revoked: "{{name}} no longer accepts this browser. Forget it here, then pair again with a new link.";
+      title: "Can't reach your computer";
+      unreachable: "The connection to {{name}} closed before it was set up. Try again, or forget this computer and pair again with a new link.";
+    };
     webPair: {
       action: "Pair";
       description: "On your computer, turn on a relay in Cocurdex Settings › Devices, create a pairing code, and paste its link here.";
@@ -519,6 +534,7 @@ export default interface Resources {
         insecure: "This relay doesn't use HTTPS, so this page can't connect to it.";
         invalid: "This pairing link has expired, was already used, or is incomplete.";
         notRelay: "The browser connects only through a relay. Turn on a relay on your computer and create a new pairing code.";
+        offline: "The computer isn't connected to its relay. Open Cocurdex on it and try again.";
         rateLimited: "Too many attempts. Wait a minute and try again.";
         storage: "This browser can't store the pairing. Turn off private browsing or allow site data, then try again.";
         unreachable: "Can't reach the computer through its relay. Check that it is online.";
@@ -1962,6 +1978,7 @@ export default interface Resources {
         readFailed: "Could not read login methods: {{message}}";
         reading: "Reading login methods…";
         retry: "Retry";
+        signedIn: "Signed in ({{method}}).";
         signingIn: "Logging in with {{method}}. If a browser page opens, finish there; this updates when it is done.";
         switchConfirm: "Switch";
         switchDescription_one: "Switching stops {{count}} running {{agent}} session. It keeps the current method if the new login fails.";
@@ -1990,7 +2007,10 @@ export default interface Resources {
         needsLogin: "Login required";
         outdated: "Update required";
         ready: "Ready";
+        updateAvailable: "Update available";
       };
+      notInstalledGroup_one: "Not installed ({{count}})";
+      notInstalledGroup_other: "Not installed ({{count}})";
       rateLimits: {
         authenticationRequired: "No usage found. Not signed in. Run claude auth login, then refresh.";
         failed: "Could not read usage: {{message}}";
@@ -2052,6 +2072,11 @@ export default interface Resources {
         commandCopied: "Install command copied";
         pathCopied: "Path copied";
         refreshFailed: "Could not refresh agent CLIs";
+        updated: "Updated {{agent}} to v{{version}}";
+      };
+      update: {
+        action: "Update to v{{version}}";
+        available: "v{{installed}} installed, v{{latest}} available";
       };
     };
     agentRoles: {
@@ -2258,8 +2283,25 @@ export default interface Resources {
         save: "Save";
         title: "Access for {{name}}";
       };
+      approval: {
+        allow: "Allow";
+        approve: "Approve";
+        close: "Close";
+        codeHint: "Read the six-digit code from the device asking for access. Only allow it if you started this pairing.";
+        codeLabel: "Safety code shown on the device";
+        deny: "Deny";
+        description: "It asks for: {{scopes}}.";
+        failed: "Could not update the device";
+        failure: {
+          codeMismatch: "That code doesn't match the one this device shows. Check it on the device and try again.";
+          notPending: "This request is no longer waiting. It may have expired; pair the device again.";
+          tooManyAttempts: "Too many wrong codes. The device was denied and must pair again.";
+        };
+        title: "Allow {{name}} to use this computer?";
+      };
       audit: {
         action: {
+          deviceApproved: "Device approved";
           deviceRevoked: "Device revoked";
           deviceScopesChanged: "Device access changed";
           pairingCancelled: "Pairing cancelled";
@@ -2279,6 +2321,7 @@ export default interface Resources {
         empty: "No devices are paired with this computer yet.";
         groupTitle: "Paired devices";
         needsRepair: "Paired before encryption. Revoke it and pair again.";
+        pendingDetail: "{{scopes}} · waiting for approval until {{time}}";
         revoke: "Revoke";
         revokeCancel: "Cancel";
         revokeDescription: "The device is disconnected immediately and must pair again to reconnect.";
@@ -2298,7 +2341,7 @@ export default interface Resources {
       };
       pair: {
         create: "Create pairing code";
-        createdDescription: "Scan the QR code with the Cocurdex app on your phone, or open a link on the other device. The code works once.";
+        createdDescription: "Scan the QR code with the Cocurdex app on your phone, or open the link on the other device. The code works once.";
         description: "Choose what the new device may do. You can revoke it at any time.";
         done: "Done";
         enableRemoteFirst: "Turn on remote access to get a link the other device can open.";
@@ -2321,18 +2364,19 @@ export default interface Resources {
       };
       relay: {
         credential: {
-          description: "Paste the invite credential from the relay operator. Self-hosted relays without invites do not need one.";
-          invalid: "This is not a relay credential.";
-          placeholder: '{"accountId": …}';
+          description: "Paste the invite credential from the relay operator; the relay URL is filled in for you. Self-hosted relays without invites do not need one.";
+          invalid: "This is not a relay invite credential.";
+          placeholder: "Paste invite credential";
           remove: "Remove";
           summary: "{{account}} · expires {{expires}}";
           title: "Invite credential";
         };
         error: {
           credentialRequired: "The relay needs a valid invite credential.";
+          outdated: "The relay is running an older version than this app needs. Ask its operator to update it.";
           protocol: "The relay answered with something unexpected. Check the address.";
           rateLimited: "The relay is limiting connections. Retrying shortly.";
-          routeTaken: "Another computer already holds this route on the relay.";
+          replaced: "Another app with this computer's key took over the relay route. Close the other copy; this one retries in a few minutes.";
           unauthorized: "The relay refused this computer's key.";
           unreachable: "Cannot reach the relay. Retrying.";
         };
@@ -2348,14 +2392,16 @@ export default interface Resources {
           off: "Off";
           offline: "Offline";
           online: "Online";
+          onlineLatency: "Online · {{latency}} ms";
           remoteOff: "Turn on remote access to connect";
           title: "Status";
         };
         url: {
-          description: "A self-hosted cocurdex-relay address. Leave empty to turn the relay off.";
+          description: "The official Cocurdex relay or a self-hosted cocurdex-relay address. Leave empty to turn the relay off.";
           invalid: "Enter an http or https address.";
           placeholder: "https://relay.example.com";
           title: "Relay address";
+          useOfficial: "Use official";
         };
       };
       remote: {
@@ -2394,8 +2440,12 @@ export default interface Resources {
           description: "Manage provider logins and API keys, and view MCP servers.";
           title: "Credentials";
         };
+        devices: {
+          description: "See, approve, and revoke paired devices.";
+          title: "Manage devices";
+        };
         execute: {
-          description: "Start sessions, teams, script runs, and workflows, and change or run MCP servers.";
+          description: "Start sessions, teams, script runs, and workflows, change or run MCP servers, and drive agents that run without approval.";
           title: "Start work";
         };
         filesRead: {
@@ -2803,6 +2853,7 @@ export default interface Resources {
         delete: "Delete";
         newProvider: "New";
         refresh: "Refresh";
+        resetToDefault: "Reset to default";
         save: "Save";
       };
       auth: {
@@ -2935,11 +2986,14 @@ export default interface Resources {
           thinking: "Thinking map";
           yes: "Yes";
         };
+        deleteConfirmDescription: "Delete {{model}}? Agents can no longer use it through this provider.";
+        deleteConfirmTitle: "Delete model";
         empty: "No models configured for {{provider}}.";
         modelCount: "{{count}} models";
         modelCount_one: "{{count}} model";
         modelCount_other: "{{count}} models";
         noMatches: "No matching models";
+        overridden: "Edited";
         parametersFor: "{{model}} parameters";
         parametersTitle: "Model parameters";
         runtimeFor: "{{model}} runtime";

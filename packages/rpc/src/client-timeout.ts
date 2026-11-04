@@ -3,6 +3,7 @@ import type { DaemonMethod } from "@cocurdex/rpc";
 const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "daemon.status": 2_000,
   "daemon.subscribe": 5_000,
+  "daemon.watchSessions": 5_000,
   "daemon.shutdownIfIdle": 5_000,
   "diagnostics.export": 2 * 60_000,
   "workspace.runWorktreeSetup": 15 * 60_000,
@@ -25,6 +26,8 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "session.sendQueuedNow": 2 * 60_000,
   "provider.auth.login.next": 30 * 60_000,
   "acpRegistry.install": 30 * 60_000,
+  "acpRegistry.update": 30 * 60_000,
+  "acpRegistry.updates": 2 * 60_000,
   "skills.source.inspect": 5 * 60_000,
   "skills.source.show": 5 * 60_000,
   "skills.add": 5 * 60_000,

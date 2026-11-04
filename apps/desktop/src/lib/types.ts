@@ -2,6 +2,7 @@ import type { PairedHostEndpoint } from "@cocurdex/client-runtime";
 import type { DaemonConnectionInfo } from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
+  AcpRegistryAgentUpdate,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
   AgentAuthState,
@@ -52,6 +53,7 @@ import type {
   GitWorktreeInfo,
   HostAccessAuditEntry,
   HostAccessScope,
+  HostDeviceApproval,
   HostDirectoryListing,
   HostPairingRecord,
   HostRemoteAccessStatus,
@@ -320,6 +322,8 @@ export interface HostCapabilities {
   browserView: boolean;
   localWebClient: boolean;
   localFilePaths: boolean;
+  localDaemonControl: boolean;
+  scopes?: readonly HostAccessScope[];
 }
 
 /**
@@ -561,6 +565,10 @@ export interface ProductApi {
   listAllProviderModels(): Promise<ProviderModelRecord[]>;
   saveProviderModel(model: ProviderModelRecord): Promise<ProviderModelRecord>;
   deleteProviderModel(providerId: string, modelId: string): Promise<void>;
+  resetProviderModel(
+    providerId: string,
+    modelId: string,
+  ): Promise<ProviderModelRecord>;
   listCompatibleProvidersForAgent(
     agentId: AgentId,
     options?: { forceRefresh?: boolean },
@@ -585,6 +593,12 @@ export interface ProductApi {
     args: string[];
   }): Promise<AcpRegistryInstalledAgent>;
   uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId): Promise<void>;
+  listAcpRegistryUpdates(options?: {
+    forceRefresh?: boolean;
+  }): Promise<AcpRegistryAgentUpdate[]>;
+  updateAcpRegistryAgent(
+    agentId: AcpRegistryAgentId,
+  ): Promise<AcpRegistryInstalledAgent>;
   listAgentProviderDefaults(): Promise<AgentProviderSelection[]>;
   getAgentProviderDefault(
     agentId: AgentId,
@@ -650,6 +664,10 @@ export interface ProductApi {
   cancelHostPairing(pairingId: string): Promise<HostPairingRecord | null>;
   listHostDevices(): Promise<PairedDevice[]>;
   revokeHostDevice(deviceId: string): Promise<PairedDeviceRecord | null>;
+  approveHostDevice(
+    deviceId: string,
+    code: string,
+  ): Promise<HostDeviceApproval>;
   updateHostDeviceScopes(
     deviceId: string,
     scopes: HostAccessScope[],

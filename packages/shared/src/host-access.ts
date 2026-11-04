@@ -1,4 +1,5 @@
 import type { DocumentAttachment, ImageAttachment } from "./contracts";
+import type { PushPlatform } from "./push";
 
 export const HOST_ACCESS_SCOPES = [
   "read",
@@ -9,6 +10,7 @@ export const HOST_ACCESS_SCOPES = [
   "git.destructive",
   "approvals",
   "credentials",
+  "devices",
   "host.admin",
 ] as const;
 
@@ -50,11 +52,14 @@ export interface PairedDeviceRecord {
   createdAt: string;
   lastSeenAt: string | null;
   revokedAt: string | null;
+  approvedAt: string | null;
   publicKey: string | null;
+  pushPlatform: PushPlatform | null;
 }
 
 export interface PairedDevice extends PairedDeviceRecord {
   safetyCode: string | null;
+  approvalExpiresAt: string | null;
 }
 
 export interface HostPairingRecord {
@@ -84,8 +89,11 @@ export interface RemotePairRequest {
   label?: string;
 }
 
+export type RemoteMessageCompression = "deflate-raw";
+
 export interface RemoteConnectRequest {
   deviceId: string;
+  compression?: RemoteMessageCompression[];
 }
 
 export interface RemoteChannelAccepted {
@@ -93,6 +101,7 @@ export interface RemoteChannelAccepted {
   deviceId: string;
   scopes: HostAccessScope[];
   endpoints?: string[];
+  compression?: RemoteMessageCompression;
 }
 
 export interface RemoteByteRange {
@@ -128,7 +137,7 @@ export type RemoteFileHead =
   | { ok: true; uploaded: ImageAttachment | DocumentAttachment }
   | { ok: false; error: RemoteFileFailure; message?: string };
 
-export type RemoteChannelRejection = "rejected" | "rateLimited";
+export type RemoteChannelRejection = "rejected" | "rateLimited" | "pending";
 
 export type RemoteChannelReply =
   | ({ ok: true } & RemoteChannelAccepted)
@@ -139,6 +148,7 @@ export type HostAccessAuditAction =
   | "pairing.cancelled"
   | "pairing.exchanged"
   | "pairing.rejected"
+  | "device.approved"
   | "device.revoked"
   | "device.scopesChanged"
   | "remote.enabled"
@@ -176,20 +186,20 @@ export interface HostAddress {
 
 export interface RelayCredential {
   accountId: string;
-  expiresAt: number;
-  signature: string;
+  expiresAt: string;
+  relayUrl: string;
 }
 
 export interface RelaySettings {
   url: string | null;
   relayOnly: boolean;
-  credential: RelayCredential | null;
+  credential: string | null;
 }
 
 export interface RelaySettingsUpdate {
   url: string | null;
   relayOnly?: boolean;
-  credential?: RelayCredential | null;
+  credential?: string | null;
 }
 
 export type HostRelayState = "off" | "connecting" | "online" | "offline";
@@ -197,52 +207,95 @@ export type HostRelayState = "off" | "connecting" | "online" | "offline";
 export type HostRelayError =
   | "unreachable"
   | "credentialRequired"
-  | "routeTaken"
   | "rateLimited"
   | "unauthorized"
-  | "protocol";
+  | "protocol"
+  | "outdated"
+  | "replaced";
 
 export interface HostRelayStatus {
   url: string | null;
   relayOnly: boolean;
-  credential: Pick<RelayCredential, "accountId" | "expiresAt"> | null;
+  credential: RelayCredential | null;
   state: HostRelayState;
   error: HostRelayError | null;
+  latencyMs: number | null;
   endpoint: string | null;
 }
 
-export function parseRelayCredential(text: string): RelayCredential | null {
-  let parsed: Partial<RelayCredential> | null;
+const RELAY_TOKEN_PATTERN = /^v4\.public\.[A-Za-z0-9_-]+$/;
+const ED25519_SIGNATURE_BYTES = 64;
+
+function decodeBase64Url(text: string) {
+  const base64 = text.replaceAll("-", "+").replaceAll("_", "/");
+  const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function readRelayTokenClaims(token: string): unknown {
+  const body = decodeBase64Url(token.slice("v4.public.".length));
+  if (body.length <= ED25519_SIGNATURE_BYTES) return null;
+  const message = body.subarray(0, body.length - ED25519_SIGNATURE_BYTES);
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(message));
+}
+
+export function parseRelayCredential(token: string): RelayCredential | null {
+  if (!RELAY_TOKEN_PATTERN.test(token)) return null;
+  let claims: { sub?: unknown; exp?: unknown; relay?: unknown } | null;
   try {
-    parsed = JSON.parse(text.trim()) as Partial<RelayCredential> | null;
+    claims = readRelayTokenClaims(token) as typeof claims;
   } catch {
     return null;
   }
-  if (
-    !parsed ||
-    typeof parsed.accountId !== "string" ||
-    parsed.accountId.length === 0 ||
-    !Number.isInteger(parsed.expiresAt) ||
-    typeof parsed.signature !== "string" ||
-    !/^[A-Za-z0-9_-]{86}$/.test(parsed.signature)
-  ) {
+  if (!claims || typeof claims.sub !== "string" || claims.sub.length === 0) {
     return null;
   }
+  const expires =
+    typeof claims.exp === "string" ? new Date(claims.exp) : new Date(NaN);
+  const relayUrl =
+    typeof claims.relay === "string" ? normalizeRelayUrl(claims.relay) : null;
+  if (Number.isNaN(expires.getTime()) || !relayUrl) return null;
   return {
-    accountId: parsed.accountId,
-    expiresAt: parsed.expiresAt as number,
-    signature: parsed.signature,
+    accountId: claims.sub,
+    expiresAt: expires.toISOString(),
+    relayUrl,
   };
 }
 
 export const RELAY_OFF_STATUS: HostRelayStatus = {
   url: null,
-  relayOnly: true,
+  relayOnly: false,
   credential: null,
   state: "off",
   error: null,
+  latencyMs: null,
   endpoint: null,
 };
+
+export type HostTrafficTransport = "relay" | "direct";
+
+export type HostTrafficDirection = "sent" | "received";
+
+export interface HostTrafficMessages {
+  transport: HostTrafficTransport;
+  direction: HostTrafficDirection;
+  category: string;
+  messages: number;
+  bytes: number;
+}
+
+export interface HostTrafficFrames {
+  transport: HostTrafficTransport;
+  direction: HostTrafficDirection;
+  frames: number;
+  bytes: number;
+}
+
+export interface HostTrafficReport {
+  since: string;
+  frames: HostTrafficFrames[];
+  messages: HostTrafficMessages[];
+}
 
 export interface HostRemoteAccessStatus {
   allowed: boolean;
@@ -253,18 +306,27 @@ export interface HostRemoteAccessStatus {
   relay: HostRelayStatus;
 }
 
+const PAIRING_ADDRESS_ORDER: Record<HostAddressKind, number> = {
+  relay: 0,
+  tailscale: 1,
+  lan: 2,
+};
+
 export function hostPairingAddresses(
   status: Pick<HostRemoteAccessStatus, "addresses" | "relay">,
 ): HostAddress[] {
-  const { endpoint } = status.relay;
-  if (!endpoint) return status.addresses;
-  const relay: HostAddress = {
-    address: new URL(endpoint).host,
-    kind: "relay",
-    url: endpoint,
-  };
-  return [relay, ...status.addresses];
+  const { endpoint, state } = status.relay;
+  const relay: HostAddress[] =
+    endpoint && state === "online"
+      ? [{ address: new URL(endpoint).host, kind: "relay", url: endpoint }]
+      : [];
+  return [...relay, ...status.addresses].sort(
+    (left, right) =>
+      PAIRING_ADDRESS_ORDER[left.kind] - PAIRING_ADDRESS_ORDER[right.kind],
+  );
 }
+
+export const OFFICIAL_RELAY_URL = "https://relay.cocurdex.com";
 
 export const RELAY_CONNECT_PATH = "/v1/connect/";
 
@@ -356,3 +418,12 @@ export function parseHostPairingLink(link: string) {
   if (!code || !hostKey || !HOST_KEY_PATTERN.test(hostKey)) return null;
   return { baseUrl, code, hostKey };
 }
+
+export type HostDeviceApprovalFailure =
+  | "notPending"
+  | "codeMismatch"
+  | "tooManyAttempts";
+
+export type HostDeviceApproval =
+  | { ok: true; device: PairedDeviceRecord }
+  | { ok: false; reason: HostDeviceApprovalFailure };

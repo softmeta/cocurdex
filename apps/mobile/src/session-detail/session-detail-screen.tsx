@@ -7,16 +7,15 @@ import type {
 } from "@cocurdex/shared";
 import { randomUUID } from "expo-crypto";
 import { Stack, useRouter } from "expo-router";
-import { useHeaderHeight } from "expo-router/react-navigation";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { hostConnection } from "@/connection";
-import { SessionConfigChips } from "@/session-config";
+import { SessionConfigChips, useNeedsExecuteToDrive } from "@/session-config";
 import { useViewedSession } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
-import { useTransitionSettled } from "@/ui";
+import { useHeaderOverlap, useTransitionSettled } from "@/ui";
 import { Composer } from "./composer";
 import { pickImages, uploadImage } from "./image-attachments";
 import { type InteractionActions, InteractionDock } from "./interaction-dock";
@@ -64,7 +63,7 @@ export function SessionDetailScreen({
   const router = useRouter();
   const { t } = useTranslation("sessions");
   const colors = useThemeColors();
-  const headerHeight = useHeaderHeight();
+  const frame = useHeaderOverlap();
   const bottomInset = Math.max(useSafeAreaInsets().bottom - space.sm, 0);
   const detail = useSessionDetail(host.hostId, sessionId);
   const transcript = useRef<TranscriptHandle>(null);
@@ -115,6 +114,7 @@ export function SessionDetailScreen({
     : null;
   const connection = hostConnection(host.hostId);
   const canInteract = host.scopes.includes("interact");
+  const needsExecute = useNeedsExecuteToDrive(host, sessionId);
   const canApprove = host.scopes.includes("approvals");
   const canFork = host.scopes.includes("execute");
   const canReadFiles = host.scopes.includes("files.read");
@@ -219,78 +219,95 @@ export function SessionDetailScreen({
         items={items}
         onJump={(id) => transcript.current?.jumpToItem(id)}
       />
-      <KeyboardAvoidingView
-        style={[styles.fill, { backgroundColor: colors.background }]}
-        behavior="padding"
-        keyboardVerticalOffset={headerHeight - bottomInset}
-      >
-        {detail.loaded && detail.missing ? (
-          <View style={styles.center}>
-            <Text style={{ color: colors.mutedForeground }}>
-              {t("detail.missing")}
-            </Text>
-          </View>
-        ) : !settled ? (
-          <View style={styles.fill} />
-        ) : (
-          <TranscriptView
-            ref={transcript}
-            sentMessageId={sends.at(-1)?.id}
-            items={items}
-            actions={{
-              hostId: host.hostId,
-              fileRoot: canReadFiles ? workspacePath : undefined,
-              onOpenImage: (attachment) =>
-                router.push({
-                  pathname: "/image/[hostId]",
-                  params: {
-                    hostId: host.hostId,
-                    filePath: attachment.filePath,
-                    name: attachment.name,
-                  },
-                }),
-              onFork: canFork ? fork : null,
-              onOpenTool: (toolCallId) =>
-                router.push({
-                  pathname: "/tool-call/[hostId]/[sessionId]/[toolCallId]",
-                  params: { hostId: host.hostId, sessionId, toolCallId },
-                }),
-            }}
-            footer={
-              status ? <StatusLine text={status} failed={failed} /> : undefined
-            }
-          />
-        )}
-        {actionFailed ? (
-          <Text
-            accessibilityRole="alert"
-            style={[styles.error, { color: colors.destructive }]}
-          >
-            {t("detail.actionFailed")}
-          </Text>
-        ) : null}
-        <View style={{ paddingBottom: bottomInset }}>
-          {pending ? (
-            <InteractionDock
-              pending={pending}
-              canApprove={canApprove}
-              actions={actions}
-            />
+      <View ref={frame.ref} style={styles.fill} onLayout={frame.onLayout}>
+        <KeyboardAvoidingView
+          style={[styles.fill, { backgroundColor: colors.background }]}
+          behavior="padding"
+          keyboardVerticalOffset={frame.windowTop - bottomInset}
+        >
+          {detail.loaded && detail.missing ? (
+            <View style={styles.center}>
+              <Text style={{ color: colors.mutedForeground }}>
+                {t("detail.missing")}
+              </Text>
+            </View>
+          ) : !settled ? (
+            <View style={styles.fill} />
           ) : (
-            <Composer
-              running={running}
-              canSend={canInteract && detail.loaded && !detail.missing}
-              onSend={send}
-              onStop={stop}
-              onPickImages={pickImages}
-              onUploadImage={(image) => uploadImage(host.hostId, image)}
-              accessory={
-                <SessionConfigChips host={host} sessionId={sessionId} />
+            <TranscriptView
+              ref={transcript}
+              sentMessageId={sends.at(-1)?.id}
+              items={items}
+              actions={{
+                hostId: host.hostId,
+                fileRoot: canReadFiles ? workspacePath : undefined,
+                onOpenImage: (attachment) =>
+                  router.push({
+                    pathname: "/image/[hostId]",
+                    params: {
+                      hostId: host.hostId,
+                      filePath: attachment.filePath,
+                      name: attachment.name,
+                    },
+                  }),
+                onFork: canFork ? fork : null,
+                onOpenTool: (toolCallId) =>
+                  router.push({
+                    pathname: "/tool-call/[hostId]/[sessionId]/[toolCallId]",
+                    params: { hostId: host.hostId, sessionId, toolCallId },
+                  }),
+              }}
+              footer={
+                status ? (
+                  <StatusLine text={status} failed={failed} />
+                ) : undefined
               }
             />
           )}
-        </View>
-      </KeyboardAvoidingView>
+          {canInteract && needsExecute ? (
+            <Text
+              testID="session-needs-execute"
+              style={[styles.error, { color: colors.mutedForeground }]}
+            >
+              {t("detail.needsExecute")}
+            </Text>
+          ) : null}
+          {actionFailed ? (
+            <Text
+              accessibilityRole="alert"
+              style={[styles.error, { color: colors.destructive }]}
+            >
+              {t("detail.actionFailed")}
+            </Text>
+          ) : null}
+          <View style={{ paddingBottom: bottomInset }}>
+            {pending ? (
+              <InteractionDock
+                pending={pending}
+                canApprove={canApprove}
+                actions={actions}
+              />
+            ) : (
+              <Composer
+                running={running}
+                canSend={
+                  canInteract &&
+                  !needsExecute &&
+                  detail.loaded &&
+                  !detail.missing
+                }
+                onSend={send}
+                onStop={stop}
+                onPickImages={pickImages}
+                onUploadImage={(image) => uploadImage(host.hostId, image)}
+                accessory={
+                  <SessionConfigChips host={host} sessionId={sessionId} />
+                }
+              />
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </>
   );
 }

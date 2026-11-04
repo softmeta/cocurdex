@@ -22,8 +22,11 @@ type Reply = (
 
 function fakeDaemon(reply: Reply) {
   const requests: WireRequest[] = [];
+  const connections: { closed: boolean }[] = [];
   const transport: DaemonTransport = (handlers) => {
     let open = true;
+    const connection = { closed: false };
+    connections.push(connection);
     return {
       send(text) {
         const request = JSON.parse(text) as WireRequest;
@@ -43,6 +46,7 @@ function fakeDaemon(reply: Reply) {
       },
       close() {
         open = false;
+        connection.closed = true;
       },
     };
   };
@@ -53,7 +57,7 @@ function fakeDaemon(reply: Reply) {
     }),
     openTransport: () => transport,
   };
-  return { platform, requests };
+  return { platform, requests, connections };
 }
 
 const hosts: HostConnection[] = [];
@@ -61,10 +65,11 @@ afterEach(() => {
   for (const host of hosts.splice(0)) host.dispose();
 });
 
-function host(platform: HostPlatform) {
+function host(platform: HostPlatform, filterSessionEvents = false) {
   const connection = createHostConnection({
     hostId: "local",
     platform,
+    filterSessionEvents,
     supervisor: { backoff: { baseMs: 1, random: () => 1 } },
   });
   hosts.push(connection);
@@ -74,6 +79,32 @@ function host(platform: HostPlatform) {
 const subscribed = { epoch: "epoch-1", replayGap: false };
 
 describe("host connection", () => {
+  it("narrows session events to watched sessions once the daemon confirms", async () => {
+    const { platform, requests } = fakeDaemon((request, respond) => {
+      if (request.method === "daemon.subscribe") {
+        respond({ id: request.id, result: subscribed });
+      }
+      if (request.method === "daemon.watchSessions") {
+        respond({ id: request.id, result: null });
+      }
+    });
+    const connection = host(platform, true);
+    connection.onEvent(() => undefined);
+    await vi.waitFor(() => expect(connection.getState().status).toBe("live"));
+    const first = connection.watchSession("s-1");
+    const second = connection.watchSession("s-1");
+    await first.ready;
+    first.release();
+    second.release();
+    await vi.waitFor(() =>
+      expect(
+        requests
+          .filter((request) => request.method !== "daemon.status")
+          .map((request) => request.params?.sessions),
+      ).toEqual([[], ["s-1"], []]),
+    );
+  });
+
   it("delivers daemon events to listeners and reports a live state", async () => {
     const { platform } = fakeDaemon((request, respond) => {
       if (request.method !== "daemon.subscribe") return;
@@ -96,6 +127,26 @@ describe("host connection", () => {
       status: "live",
       lastSeq: 3,
     });
+  });
+
+  it("carries events and requests over one connection and replaces it on reconnect", async () => {
+    const { platform, connections } = fakeDaemon((request, respond) => {
+      respond({
+        id: request.id,
+        result: request.method === "daemon.subscribe" ? subscribed : "ok",
+      });
+    });
+    const connection = host(platform);
+    connection.onEvent(() => {});
+    await connection.read("daemon.status");
+    await vi.waitFor(() => expect(connection.getState().status).toBe("live"));
+    expect(connections).toEqual([{ closed: false }]);
+
+    connection.wake("reconnect");
+
+    await vi.waitFor(() => expect(connections).toHaveLength(2));
+    await vi.waitFor(() => expect(connection.getState().status).toBe("live"));
+    expect(connections).toEqual([{ closed: true }, { closed: false }]);
   });
 
   it("resends an unconfirmed command with the same idempotency key", async () => {

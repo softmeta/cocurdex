@@ -27,3 +27,13 @@ export function sortAdaptersForSettings(
     })
     .map((entry) => entry.agent);
 }
+
+export function splitAdaptersForSettings(agents: readonly AgentDescriptor[]) {
+  const sorted = sortAdaptersForSettings(agents);
+  const isMissing = (agent: AgentDescriptor) =>
+    getAdapterStatus(agent).kind === "missing";
+  return {
+    installed: sorted.filter((agent) => !isMissing(agent)),
+    missing: sorted.filter(isMissing),
+  };
+}

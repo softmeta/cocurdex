@@ -3,6 +3,7 @@ import {
   type HostRelayState,
   type HostRemoteAccessStatus,
   normalizeRelayUrl,
+  OFFICIAL_RELAY_URL,
   parseRelayCredential,
   type RelaySettingsUpdate,
 } from "@cocurdex/shared";
@@ -25,10 +26,11 @@ function useRelayLabels() {
   const errors: Record<HostRelayError, string> = {
     unreachable: t("devices.relay.error.unreachable"),
     credentialRequired: t("devices.relay.error.credentialRequired"),
-    routeTaken: t("devices.relay.error.routeTaken"),
     rateLimited: t("devices.relay.error.rateLimited"),
     unauthorized: t("devices.relay.error.unauthorized"),
     protocol: t("devices.relay.error.protocol"),
+    outdated: t("devices.relay.error.outdated"),
+    replaced: t("devices.relay.error.replaced"),
   };
   return { states, errors };
 }
@@ -80,20 +82,34 @@ export function RelayGroup({
     if (url && url !== relay.url) void save({ url });
   };
 
+  const useOfficialRelay = () => {
+    setUrlDraft(OFFICIAL_RELAY_URL);
+    setUrlError(false);
+    void save({ url: OFFICIAL_RELAY_URL });
+  };
+
   const commitCredential = () => {
-    if (!credentialDraft.trim()) {
+    const token = credentialDraft.trim();
+    if (!token) {
       setCredentialError(false);
       return;
     }
-    const credential = parseRelayCredential(credentialDraft);
+    const credential = parseRelayCredential(token);
     setCredentialError(credential === null);
     if (!credential) return;
     setCredentialDraft("");
-    void save({ url: relay.url, credential });
+    setUrlDraft(credential.relayUrl);
+    setUrlError(false);
+    void save({ url: credential.relayUrl, credential: token });
   };
 
+  const latencyMs = relay.state === "online" ? relay.latencyMs : null;
+  const enabledStateLabel =
+    latencyMs === null
+      ? labels.states[relay.state]
+      : t("devices.relay.state.onlineLatency", { latency: latencyMs });
   const stateLabel = status.settings.enabled
-    ? labels.states[relay.state]
+    ? enabledStateLabel
     : t("devices.relay.state.remoteOff");
 
   return (
@@ -106,15 +122,28 @@ export function RelayGroup({
         title={t("devices.relay.url.title")}
       >
         <div className="flex w-72 flex-col gap-1">
-          <Input
-            aria-label={t("devices.relay.url.title")}
-            disabled={saving}
-            placeholder={t("devices.relay.url.placeholder")}
-            value={urlDraft}
-            onBlur={commitUrl}
-            onChange={(event) => setUrlDraft(event.target.value)}
-            onKeyDown={blurOnEnter}
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              aria-label={t("devices.relay.url.title")}
+              disabled={saving}
+              placeholder={t("devices.relay.url.placeholder")}
+              value={urlDraft}
+              onBlur={commitUrl}
+              onChange={(event) => setUrlDraft(event.target.value)}
+              onKeyDown={blurOnEnter}
+            />
+            {relay.url === OFFICIAL_RELAY_URL ? null : (
+              <Button
+                disabled={saving}
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={useOfficialRelay}
+              >
+                {t("devices.relay.url.useOfficial")}
+              </Button>
+            )}
+          </div>
           {urlError ? (
             <Text size="meta" tone="destructive">
               {t("devices.relay.url.invalid")}
@@ -144,9 +173,7 @@ export function RelayGroup({
             <Text size="meta" tone="muted">
               {t("devices.relay.credential.summary", {
                 account: relay.credential.accountId,
-                expires: formatDateTime(
-                  new Date(relay.credential.expiresAt * 1000).toISOString(),
-                ),
+                expires: formatDateTime(relay.credential.expiresAt),
               })}
             </Text>
             <Button
@@ -163,7 +190,7 @@ export function RelayGroup({
           <div className="flex w-72 flex-col gap-1">
             <Input
               aria-label={t("devices.relay.credential.title")}
-              disabled={saving || !relay.url}
+              disabled={saving}
               placeholder={t("devices.relay.credential.placeholder")}
               value={credentialDraft}
               onBlur={commitCredential}

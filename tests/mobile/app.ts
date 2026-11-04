@@ -21,6 +21,9 @@ const BUILD_SCRIPTS = [
   "lib/command.ts",
   "lib/ios-build.ts",
 ].map((file) => path.join(import.meta.dirname, file));
+const NATIVE_SOURCE_DIRS = ["plugins", "native-locales"].map((dir) =>
+  path.join(mobileDir, dir),
+);
 const APP_FILE: Record<MobilePlatform, string> = {
   ios: "Cocurdex.app",
   android: "Cocurdex.apk",
@@ -55,7 +58,16 @@ function buildInputs() {
   const scripts = BUILD_SCRIPTS.map(
     (file) => `${path.basename(file)}\n${readFileSync(file)}`,
   );
-  return [...patches, ...scripts].join("\n");
+  const nativeSources = NATIVE_SOURCE_DIRS.flatMap((dir) =>
+    readdirSync(dir, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => path.join(entry.parentPath, entry.name))
+      .sort()
+      .map(
+        (file) => `${path.relative(mobileDir, file)}\n${readFileSync(file)}`,
+      ),
+  );
+  return [...patches, ...scripts, ...nativeSources].join("\n");
 }
 
 async function nativeFingerprint(platform: MobilePlatform) {
@@ -67,7 +79,7 @@ async function nativeFingerprint(platform: MobilePlatform) {
         type: "contents",
         id: "cocurdexNativeBuildInputs",
         contents: buildInputs(),
-        reasons: ["pnpmPatches", "e2eBuildScripts"],
+        reasons: ["pnpmPatches", "e2eBuildScripts", "nativeSources"],
       },
     ],
     silent: true,
@@ -141,8 +153,7 @@ async function repackApp(
     const workDir = tempDirs.createSync("cocu-repack-");
     const signing =
       platform === "android" ? await androidSigningArgs(workDir) : [];
-    rmSync(outDir, { recursive: true, force: true });
-    mkdirSync(outDir, { recursive: true });
+    const repacked = path.join(workDir, APP_FILE[platform]);
     await runCommand(
       "pnpm",
       [
@@ -153,7 +164,7 @@ async function repackApp(
         "--source-app",
         source,
         "--output",
-        path.join(outDir, APP_FILE[platform]),
+        repacked,
         "--working-directory",
         path.join(workDir, "work"),
         ...signing,
@@ -161,6 +172,11 @@ async function repackApp(
       ],
       { cwd: import.meta.dirname, inherit: true },
     );
+    rmSync(outDir, { recursive: true, force: true });
+    mkdirSync(outDir, { recursive: true });
+    cpSync(repacked, path.join(outDir, APP_FILE[platform]), {
+      recursive: true,
+    });
   } finally {
     await tempDirs.cleanup();
   }

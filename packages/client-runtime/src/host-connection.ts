@@ -11,6 +11,7 @@ import {
   type DaemonRpcClient,
   type DaemonRpcRequestOptions,
   type DaemonTransport,
+  type DaemonTransportConnection,
   daemonWebSocketProtocols,
 } from "@cocurdex/rpc/client";
 import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
@@ -41,6 +42,7 @@ export interface HostConnectionOptions {
     ConnectionSupervisorOptions,
     "backoff" | "stableAfterMs" | "now"
   >;
+  filterSessionEvents?: boolean;
 }
 
 const CONNECTION_LOSS_CODES = new Set([
@@ -88,6 +90,46 @@ function endpointToken(endpoint: HostEndpoint) {
   return endpoint.kind === "paired" ? "" : endpoint.token;
 }
 
+interface HostSession {
+  rpc: DaemonRpcClient;
+  close(): void;
+}
+
+function singleConnectionTransport(open: DaemonTransport, onEnd: () => void) {
+  let connection: DaemonTransportConnection | null = null;
+  let ended = false;
+  const end = () => {
+    if (ended) return;
+    ended = true;
+    onEnd();
+  };
+  const shared = createSharedTransport((handlers) => {
+    if (connection) {
+      queueMicrotask(() => handlers.onClose());
+      return { send: () => {}, close: () => {} };
+    }
+    connection = open({
+      onMessage: handlers.onMessage,
+      onError(error) {
+        end();
+        handlers.onError(error);
+      },
+      onClose() {
+        end();
+        handlers.onClose();
+      },
+    });
+    return connection;
+  });
+  return {
+    shared,
+    close() {
+      end();
+      connection?.close();
+    },
+  };
+}
+
 export type HostConnection = ReturnType<typeof createHostConnection>;
 
 export function createHostConnection(options: HostConnectionOptions) {
@@ -96,7 +138,7 @@ export function createHostConnection(options: HostConnectionOptions) {
     platform.openTransport ??
     ((endpoint: HostEndpoint) => defaultTransport(endpoint, platform));
   const listeners = new Set<HostEventListener>();
-  let client: Promise<DaemonRpcClient> | null = null;
+  let session: Promise<HostSession> | null = null;
 
   async function resolveEndpoint() {
     try {
@@ -110,34 +152,24 @@ export function createHostConnection(options: HostConnectionOptions) {
     }
   }
 
-  function connectClient(endpoint: HostEndpoint, onDrop: () => void) {
-    const socket = openTransport(endpoint);
-    const transport = createSharedTransport((handlers) =>
-      socket({
-        onMessage: handlers.onMessage,
-        onError(error) {
-          onDrop();
-          handlers.onError(error);
-        },
-        onClose() {
-          onDrop();
-          handlers.onClose();
-        },
-      }),
-    );
-    return createDaemonRpcClient(transport, endpointToken(endpoint));
+  function openSession(endpoint: HostEndpoint, onEnd: () => void) {
+    const transport = singleConnectionTransport(openTransport(endpoint), onEnd);
+    return {
+      rpc: createDaemonRpcClient(transport.shared, endpointToken(endpoint)),
+      close: transport.close,
+    };
   }
 
-  function getClient() {
-    if (client) return client;
-    const attempt = resolveEndpoint().then((endpoint) =>
-      connectClient(endpoint, drop),
+  function getSession() {
+    if (session) return session;
+    const attempt: Promise<HostSession> = resolveEndpoint().then((endpoint) =>
+      openSession(endpoint, end),
     );
-    const drop = () => {
-      if (client === attempt) client = null;
-    };
-    client = attempt;
-    attempt.catch(drop);
+    function end() {
+      if (session === attempt) session = null;
+    }
+    session = attempt;
+    attempt.catch(end);
     return attempt;
   }
 
@@ -146,19 +178,45 @@ export function createHostConnection(options: HostConnectionOptions) {
     params?: DaemonRequestPayloadByMethod[M],
     requestOptions?: DaemonRpcRequestOptions,
   ): Promise<DaemonResultByMethod[M]> {
-    const rpc = await getClient();
+    const { rpc } = await getSession();
     return rpc.request(method, params, requestOptions);
   }
 
+  const watchCounts = new Map<string, number>();
+  const watchedSessions = () =>
+    options.filterSessionEvents ? [...watchCounts.keys()] : null;
+
   const supervisor = createConnectionSupervisor({
     ...options.supervisor,
+    watchedSessions: watchedSessions(),
     signals: platform,
     async subscribe(onEvent, subscribeOptions) {
-      const endpoint = await resolveEndpoint();
-      return createDaemonRpcClient(
-        openTransport(endpoint),
-        endpointToken(endpoint),
-      ).subscribe(onEvent, subscribeOptions);
+      const opened = await getSession();
+      try {
+        const subscription = await opened.rpc.subscribe(
+          onEvent,
+          subscribeOptions,
+        );
+        return {
+          close() {
+            subscription.close();
+            opened.close();
+          },
+          get epoch() {
+            return subscription.epoch;
+          },
+          get lastSeq() {
+            return subscription.lastSeq;
+          },
+          get replayGap() {
+            return subscription.replayGap;
+          },
+          watchSessions: subscription.watchSessions,
+        };
+      } catch (error) {
+        opened.close();
+        throw error;
+      }
     },
     async probe() {
       await request("daemon.status", undefined, { timeoutMs: 5000 });
@@ -225,8 +283,33 @@ export function createHostConnection(options: HostConnectionOptions) {
     return requestUntilAnswered(method, params, readOptions);
   }
 
+  function watchSession(sessionId: string) {
+    const count = watchCounts.get(sessionId) ?? 0;
+    watchCounts.set(sessionId, count + 1);
+    const started = count === 0 && options.filterSessionEvents === true;
+    const watching = started
+      ? supervisor.watchSessions(watchedSessions())
+      : Promise.resolve();
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      const remaining = (watchCounts.get(sessionId) ?? 1) - 1;
+      if (remaining > 0) {
+        watchCounts.set(sessionId, remaining);
+        return;
+      }
+      watchCounts.delete(sessionId);
+      if (options.filterSessionEvents) {
+        void supervisor.watchSessions(watchedSessions());
+      }
+    };
+    return { ready: watching, started, release };
+  }
+
   return {
     hostId: options.hostId,
+    watchSession,
     request,
     read,
     command,
@@ -244,7 +327,8 @@ export function createHostConnection(options: HostConnectionOptions) {
     dispose() {
       supervisor.dispose();
       listeners.clear();
-      client = null;
+      void session?.then((opened) => opened.close());
+      session = null;
     },
   };
 }

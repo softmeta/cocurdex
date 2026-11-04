@@ -110,6 +110,7 @@ export async function startAndroidTarget(
       await runCommand(adb(sdk), ["-s", serial, "install", "-r", apkPath]);
     }
     await disableInputMethods(shell);
+    await buildCompleteWebViewAccessibilityTrees(shell);
     return {
       deviceId: serial,
       setAppearance: async (appearance) => {
@@ -195,6 +196,20 @@ class EmulatorExitedError extends FatalWaitError {
 async function userUnlocked(shell: (...args: string[]) => Promise<string>) {
   const state = await shell("am", "get-started-user-state", "0");
   return state.trim() === "RUNNING_UNLOCKED";
+}
+
+const WEBVIEW_COMMAND_LINE = "/data/local/tmp/webview-command-line";
+
+async function buildCompleteWebViewAccessibilityTrees(
+  shell: (...args: string[]) => Promise<string>,
+) {
+  await shell(
+    `echo '_ --force-renderer-accessibility' > ${WEBVIEW_COMMAND_LINE}`,
+  );
+  const flags = await shell("cat", WEBVIEW_COMMAND_LINE);
+  if (!flags.includes("--force-renderer-accessibility")) {
+    throw new Error(`WebView did not take its command line:\n${flags}`);
+  }
 }
 
 async function disableInputMethods(

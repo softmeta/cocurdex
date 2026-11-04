@@ -24,11 +24,7 @@ import {
   Spinner,
   Text,
 } from "@/components/ui";
-import {
-  AgentIcon,
-  agentsAtom,
-  bootstrapAgentsAtom,
-} from "@/features/sessions";
+import { AgentIcon, agentsAtom, detectAgentsAtom } from "@/features/sessions";
 import { desktopApi, useMountEffect } from "@/lib";
 import { AcpRegistryInstallPanel } from "./acp-registry-install-panel";
 
@@ -163,7 +159,7 @@ function AcpRegistryCatalog({
 }: Pick<AcpRegistryDialogProps, "onOpenChange">) {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
-  const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
+  const detectAgents = useSetAtom(detectAgentsAtom);
   const installedRegistryIds = new Set(
     agents
       .map((agent) => agent.id)
@@ -198,7 +194,7 @@ function AcpRegistryCatalog({
     setInstallingId(agent.registryId);
     try {
       await run();
-      bootstrapAgents(await desktopApi.listAgents());
+      await detectAgents();
       setExpandedId(null);
       toast.success(
         t("adapters.registry.installSucceeded", { name: agent.name }),

@@ -1,0 +1,11 @@
+{
+  "protocol_name": "Noise_N_25519_ChaChaPoly_SHA256",
+  "init_prologue": "4a6f686e2047616c74",
+  "init_ephemeral": "893e28b9dc6ca8d611ab664754b8ceb7bac5117349a4439a6b0569da977c464a",
+  "init_remote_static": "31e0303fd6418d2f8c0e78b91f22e8caed0fbe48656dcf4767e4834f701b8f62",
+  "resp_prologue": "4a6f686e2047616c74",
+  "resp_static": "4a3acbfdb163dec651dfa3194dece676d437029c62a408b4c5ea9114246e4893",
+  "handshake_hash": "6497ab83a10e5d03b42e6f770738f62f91584b0b589380fddff642b141af56b6",
+  "payload": "4c756477696720766f6e204d69736573",
+  "ciphertext": "ca35def5ae56cec33dc2036731ab14896bc4c75dbb07a61f879f8e3afa4c794430db5925e72ccdb0333fb13bd1f920cc34627b8fe30f81383a15d67a9ba306ca"
+}

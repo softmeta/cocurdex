@@ -41,6 +41,10 @@ export function useScopeLabels(): Record<HostAccessScope, ScopeLabel> {
       title: t("devices.scope.credentials.title"),
       description: t("devices.scope.credentials.description"),
     },
+    devices: {
+      title: t("devices.scope.devices.title"),
+      description: t("devices.scope.devices.description"),
+    },
     "host.admin": {
       title: t("devices.scope.hostAdmin.title"),
       description: t("devices.scope.hostAdmin.description"),
@@ -55,6 +59,7 @@ export function useAuditActionLabels(): Record<HostAccessAuditAction, string> {
     "pairing.cancelled": t("devices.audit.action.pairingCancelled"),
     "pairing.exchanged": t("devices.audit.action.pairingExchanged"),
     "pairing.rejected": t("devices.audit.action.pairingRejected"),
+    "device.approved": t("devices.audit.action.deviceApproved"),
     "device.revoked": t("devices.audit.action.deviceRevoked"),
     "device.scopesChanged": t("devices.audit.action.deviceScopesChanged"),
     "remote.enabled": t("devices.audit.action.remoteEnabled"),

@@ -1,8 +1,11 @@
 import {
-  findReachableOrigin,
   pairHost,
   savedHostSafetyCode,
 } from "@cocurdex/client-runtime/internal/host-access";
+import {
+  connectReachableOrigin,
+  findDirectOrigin,
+} from "@cocurdex/client-runtime/internal/reachable-origin";
 import { createSavedHostStore } from "@cocurdex/client-runtime/internal/saved-hosts";
 import {
   acceptChannelHello,
@@ -31,6 +34,7 @@ const accepted = (hostId: string): RemoteChannelReply => ({
 function installNetwork(hosts: Record<string, FakeHost>) {
   const payloads: unknown[] = [];
   const deviceKeys: Uint8Array[] = [];
+  const closed: string[] = [];
   class FakeWebSocket extends EventTarget {
     static readonly OPEN = 1;
     readyState = 0;
@@ -78,11 +82,12 @@ function installNetwork(hosts: Record<string, FakeHost>) {
     close() {
       if (this.readyState === 3) return;
       this.readyState = 3;
+      closed.push(new URL(this.url).origin.replace(/^ws/, "http"));
       queueMicrotask(() => this.dispatchEvent(new Event("close")));
     }
   }
   vi.stubGlobal("WebSocket", FakeWebSocket);
-  return { payloads, deviceKeys };
+  return { payloads, deviceKeys, closed };
 }
 
 afterEach(() => {
@@ -193,7 +198,7 @@ describe("pairHost", () => {
   });
 });
 
-describe("findReachableOrigin", () => {
+describe("connectReachableOrigin", () => {
   const host = {
     hostId: "host-1",
     baseUrl: lan,
@@ -207,26 +212,89 @@ describe("findReachableOrigin", () => {
     answer: () => accepted(hostId),
     delayMs,
   });
+  const connectedOrigin = async (
+    options: Parameters<typeof connectReachableOrigin>[0],
+  ) => (await connectReachableOrigin(options))?.origin ?? null;
 
   it("switches to the address that answers when the paired LAN address is gone", async () => {
     installNetwork({ [tailnet]: answering("host-1") });
 
-    expect((await findReachableOrigin({ host }))?.origin).toBe(tailnet);
+    expect(await connectedOrigin({ host })).toBe(tailnet);
   });
 
   it("stays on the current address when it answers, even if another answers first", async () => {
-    installNetwork({
+    const network = installNetwork({
       [lan]: answering("host-1", 50),
       [tailnet]: answering("host-1"),
     });
 
-    expect((await findReachableOrigin({ host }))?.origin).toBe(lan);
+    expect(await connectedOrigin({ host })).toBe(lan);
+    await vi.waitFor(() => expect(network.closed).toContain(tailnet));
+    expect(network.closed).not.toContain(lan);
+  });
+
+  it("keeps the winning connection open and closes the others", async () => {
+    const network = installNetwork({
+      [lan]: answering("host-1"),
+      [tailnet]: answering("host-1", 20),
+    });
+
+    const connected = await connectReachableOrigin({ host });
+
+    await vi.waitFor(() => expect(network.closed).toContain(tailnet));
+    expect(connected?.origin).toBe(lan);
+    expect(network.closed).not.toContain(lan);
+    connected?.opened.close();
+    await vi.waitFor(() => expect(network.closed).toContain(lan));
+  });
+
+  describe("with a relay", () => {
+    const relay = "https://relay.example.invalid";
+    const relayEndpoint = `${relay}/v1/connect/${"r".repeat(22)}`;
+    const relayed = {
+      ...host,
+      baseUrl: relayEndpoint,
+      endpoints: [relayEndpoint, lan, tailnet],
+    };
+
+    it("takes the relay at once and reports a direct address that answers later", async () => {
+      installNetwork({
+        [relay]: answering("host-1"),
+        [lan]: answering("host-1", 50),
+      });
+      const found: string[] = [];
+
+      const origin = await connectedOrigin({
+        host: relayed,
+        onDirectFound: (direct) => found.push(direct),
+      });
+
+      expect(origin).toBe(relayEndpoint);
+      await vi.waitFor(() => expect(found).toEqual([lan]));
+    });
+
+    it("uses the relay when no direct address answers", async () => {
+      installNetwork({ [relay]: answering("host-1") });
+
+      expect(await connectedOrigin({ host: relayed })).toBe(relayEndpoint);
+    });
+
+    it("finds a direct address without probing the relay", async () => {
+      installNetwork({
+        [relay]: answering("host-1"),
+        [tailnet]: answering("host-1"),
+      });
+
+      expect(await findDirectOrigin({ host: relayed })).toBe(tailnet);
+      installNetwork({ [relay]: answering("host-1") });
+      expect(await findDirectOrigin({ host: relayed })).toBeNull();
+    });
   });
 
   it("ignores a different computer that now answers on a known address", async () => {
     installNetwork({ "http://10.0.0.5:47820": answering("host-2") });
 
-    expect(await findReachableOrigin({ host })).toBeNull();
+    expect(await connectReachableOrigin({ host })).toBeNull();
   });
 
   it("ignores an address whose host does not hold the pinned key", async () => {
@@ -237,6 +305,6 @@ describe("findReachableOrigin", () => {
       },
     });
 
-    expect(await findReachableOrigin({ host })).toBeNull();
+    expect(await connectReachableOrigin({ host })).toBeNull();
   });
 });

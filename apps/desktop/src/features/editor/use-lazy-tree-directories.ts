@@ -7,7 +7,10 @@ import {
   mergeLoadedDirectories,
   withDirectoryChildren,
 } from "./file-tree-directory-entries";
-import { collectExpandedDirectoryPaths } from "./file-tree-expansion";
+import {
+  collectExpandedDirectoryPaths,
+  withAncestorDirectories,
+} from "./file-tree-expansion";
 
 type FileTreeModel = UseFileTreeResult["model"];
 
@@ -117,10 +120,8 @@ export function useLoadExpandedTreeDirectories(
     }
     const loadExpanded = () => {
       loadDirectoryRef.current("");
-      for (const directoryPath of collectExpandedDirectoryPaths(
-        model,
-        filePaths,
-      )) {
+      const expanded = collectExpandedDirectoryPaths(model, filePaths);
+      for (const directoryPath of withAncestorDirectories(expanded)) {
         loadDirectoryRef.current(directoryPath);
       }
     };

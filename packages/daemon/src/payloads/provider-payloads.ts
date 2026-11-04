@@ -87,6 +87,7 @@ const providerModelSchema = z.object({
     .optional(),
   supportsFastMode: z.boolean().optional(),
   isDefault: z.boolean().optional(),
+  overridden: z.boolean().optional(),
   createdAt: timestampTextSchema,
   updatedAt: timestampTextSchema,
 });
@@ -126,6 +127,12 @@ export const providerPayloadSchemas = {
   "acpRegistry.uninstall": exact<Payload<"acpRegistry.uninstall">>()(
     z.object({ agentId: acpRegistryAgentIdSchema }),
   ),
+  "acpRegistry.updates": exact<Payload<"acpRegistry.updates">>()(
+    z.object({ forceRefresh: z.boolean().optional() }),
+  ),
+  "acpRegistry.update": exact<Payload<"acpRegistry.update">>()(
+    z.object({ agentId: acpRegistryAgentIdSchema }),
+  ),
   "provider.apiKey.set": exact<Payload<"provider.apiKey.set">>()(
     z.object({
       providerId: providerIdSchema,
@@ -143,6 +150,9 @@ export const providerPayloadSchemas = {
     z.object({ model: providerModelSchema }),
   ),
   "provider.model.delete": exact<Payload<"provider.model.delete">>()(
+    z.object({ providerId: providerIdSchema, modelId: providerIdSchema }),
+  ),
+  "provider.model.reset": exact<Payload<"provider.model.reset">>()(
     z.object({ providerId: providerIdSchema, modelId: providerIdSchema }),
   ),
   "provider.fetchModels":

@@ -1323,6 +1323,10 @@ describe("initializeDatabase", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);
     database.exec(`
+      ALTER TABLE host_devices DROP COLUMN approved_at;
+      ALTER TABLE host_devices DROP COLUMN push_platform;
+      ALTER TABLE host_devices DROP COLUMN push_handle;
+      ALTER TABLE host_devices DROP COLUMN push_updated_at;
       DROP INDEX idx_host_devices_public_key;
       ALTER TABLE host_devices DROP COLUMN public_key;
     `);
@@ -1356,6 +1360,128 @@ describe("initializeDatabase", () => {
     ]);
     expect(database.prepare("SELECT title FROM issues").all()).toEqual([
       { title: "Keys" },
+    ]);
+  });
+
+  it("adds device push columns from version 34 and keeps paired devices", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      ALTER TABLE host_devices DROP COLUMN approved_at;
+      ALTER TABLE host_devices DROP COLUMN push_platform;
+      ALTER TABLE host_devices DROP COLUMN push_handle;
+      ALTER TABLE host_devices DROP COLUMN push_updated_at;
+    `);
+    const now = "2026-11-01T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO host_devices
+        (id, label, token_hash, public_key, scopes_json, created_at)
+      VALUES ('d1', 'iPhone', 'public-key:pk', 'pk', '["read"]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Push', '${now}', '${now}');
+      PRAGMA user_version = 34;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    expect(tableShape(database, "host_devices")).toEqual(
+      tableShape(fresh, "host_devices"),
+    );
+    expect(
+      database
+        .prepare("SELECT id, label, public_key, push_handle FROM host_devices")
+        .all(),
+    ).toEqual([
+      { id: "d1", label: "iPhone", public_key: "pk", push_handle: null },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Push" },
+    ]);
+  });
+
+  it("adds provider model overrides from version 35 and keeps provider data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-03T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE provider_model_overrides;
+      INSERT INTO provider_configs (id, name, base_url, created_at, updated_at)
+      VALUES ('xiaomi-token-plan-cn', 'Xiaomi', 'https://example.invalid', '${now}', '${now}');
+      INSERT INTO provider_models
+        (provider_id, model_id, name, api, enabled, source, created_at, updated_at)
+      VALUES ('xiaomi-token-plan-cn', 'mimo', 'MiMo', 'openai-completions', 0, 'api', '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Params', '${now}', '${now}');
+      PRAGMA user_version = 35;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    expect(tableShape(database, "provider_model_overrides")).toEqual(
+      tableShape(fresh, "provider_model_overrides"),
+    );
+    expect(
+      database.prepare("SELECT model_id, enabled FROM provider_models").all(),
+    ).toEqual([{ model_id: "mimo", enabled: 0 }]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Params" },
+    ]);
+  });
+
+  it("approves existing devices and keeps pending pairings from version 36", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      ALTER TABLE host_devices DROP COLUMN approved_at;
+    `);
+    const now = "2026-11-03T00:00:00.000Z";
+    const later = "2026-11-03T00:30:00.000Z";
+    database.exec(`
+      INSERT INTO host_devices
+        (id, label, token_hash, public_key, scopes_json, created_at)
+      VALUES ('d1', 'iPhone', 'public-key:pk', 'pk', '["read"]', '${now}');
+      INSERT INTO host_pairings
+        (id, label, code_hash, scopes_json, created_at, expires_at)
+      VALUES ('p1', 'Browser', 'hash', '["read"]', '${now}', '${later}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Approval', '${now}', '${now}');
+      PRAGMA user_version = 36;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    for (const table of ["host_devices", "host_pairings"]) {
+      expect(tableShape(database, table)).toEqual(tableShape(fresh, table));
+    }
+    expect(
+      database.prepare("SELECT id, approved_at FROM host_devices").all(),
+    ).toEqual([{ id: "d1", approved_at: now }]);
+    expect(database.prepare("SELECT id FROM host_pairings").all()).toEqual([
+      { id: "p1" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Approval" },
     ]);
   });
 

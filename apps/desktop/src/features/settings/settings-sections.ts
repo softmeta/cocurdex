@@ -1,3 +1,4 @@
+import type { HostAccessScope } from "@cocurdex/shared";
 import {
   Archive,
   Blocks,
@@ -51,46 +52,105 @@ export const settingsSections = [
     icon: Keyboard,
     cluster: "interface",
   },
-  { id: "providers", labelKey: "providers", icon: KeyRound, cluster: "agent" },
-  { id: "adapters", labelKey: "adapters", icon: Blocks, cluster: "agent" },
-  { id: "agentRoles", labelKey: "agentRoles", icon: UserCog, cluster: "agent" },
-  { id: "teams", labelKey: "teams", icon: Users, cluster: "agent" },
-  { id: "mcp", labelKey: "mcp", icon: Server, cluster: "agent" },
-  { id: "memory", labelKey: "memory", icon: Brain, cluster: "agent" },
-  { id: "skills", labelKey: "skills", icon: BookOpen, cluster: "agent" },
-  { id: "git", labelKey: "git", icon: GitBranch, cluster: "workspace" },
+  {
+    id: "providers",
+    labelKey: "providers",
+    icon: KeyRound,
+    cluster: "agent",
+    requires: "credentials",
+  },
+  {
+    id: "adapters",
+    labelKey: "adapters",
+    icon: Blocks,
+    cluster: "agent",
+    requires: "host.admin",
+  },
+  {
+    id: "agentRoles",
+    labelKey: "agentRoles",
+    icon: UserCog,
+    cluster: "agent",
+    requires: "interact",
+  },
+  {
+    id: "teams",
+    labelKey: "teams",
+    icon: Users,
+    cluster: "agent",
+    requires: "interact",
+  },
+  {
+    id: "mcp",
+    labelKey: "mcp",
+    icon: Server,
+    cluster: "agent",
+    requires: "credentials",
+  },
+  {
+    id: "memory",
+    labelKey: "memory",
+    icon: Brain,
+    cluster: "agent",
+    requires: "host.admin",
+  },
+  {
+    id: "skills",
+    labelKey: "skills",
+    icon: BookOpen,
+    cluster: "agent",
+    requires: "host.admin",
+  },
+  {
+    id: "git",
+    labelKey: "git",
+    icon: GitBranch,
+    cluster: "workspace",
+    requires: "host.admin",
+  },
   {
     id: "worktrees",
     labelKey: "worktrees",
     icon: GitFork,
     cluster: "workspace",
+    requires: "host.admin",
   },
   {
     id: "workspaces",
     labelKey: "workspaces",
     icon: Folder,
     cluster: "workspace",
+    requires: "files.write",
   },
   {
     id: "environment",
     labelKey: "environment",
     icon: Network,
     cluster: "system",
+    requires: "host.admin",
   },
   {
     id: "devices",
     labelKey: "devices",
     icon: Smartphone,
     cluster: "system",
+    requires: "read",
   },
   { id: "licenses", labelKey: "licenses", icon: Scale, cluster: "system" },
   { id: "about", labelKey: "about", icon: Info, cluster: "system" },
-  { id: "archived", labelKey: "archived", icon: Archive, cluster: "system" },
+  {
+    id: "archived",
+    labelKey: "archived",
+    icon: Archive,
+    cluster: "system",
+    requires: "read",
+  },
   {
     id: "diagnostics",
     labelKey: "diagnostics",
     icon: Stethoscope,
     cluster: "system",
+    requires: "host.admin",
   },
   {
     id: "personalization",
@@ -98,13 +158,26 @@ export const settingsSections = [
     icon: SlidersHorizontal,
     cluster: "hidden",
   },
-  { id: "computer", labelKey: "computer", icon: Monitor, cluster: "hidden" },
-  { id: "usage", labelKey: "usage", icon: Gauge, cluster: "hidden" },
+  {
+    id: "computer",
+    labelKey: "computer",
+    icon: Monitor,
+    cluster: "hidden",
+    requires: "host.admin",
+  },
+  {
+    id: "usage",
+    labelKey: "usage",
+    icon: Gauge,
+    cluster: "hidden",
+    requires: "read",
+  },
 ] satisfies Array<{
   cluster: SettingsClusterId | "hidden";
   icon: typeof Settings;
   id: SettingsSectionId;
   labelKey: SettingsSectionId;
+  requires?: HostAccessScope;
 }>;
 
 export type SettingsSectionItem = (typeof settingsSections)[number];
@@ -114,11 +187,33 @@ export type SettingsClusterGroup = {
   items: SettingsSectionItem[];
 };
 
-export function groupSettingsSectionsByCluster(): SettingsClusterGroup[] {
+function sectionAllowed(
+  section: SettingsSectionItem,
+  scopes: readonly HostAccessScope[],
+) {
+  const required = "requires" in section ? section.requires : undefined;
+  return !required || scopes.includes(required);
+}
+
+export function permittedSettingsSection(
+  sectionId: SettingsSectionId,
+  scopes: readonly HostAccessScope[],
+): SettingsSectionId {
+  const section = settingsSections.find((item) => item.id === sectionId);
+  if (section && !sectionAllowed(section, scopes))
+    return settingsSections[0].id;
+  return sectionId;
+}
+
+export function groupSettingsSectionsByCluster(
+  scopes: readonly HostAccessScope[],
+): SettingsClusterGroup[] {
   return settingsClusters
     .map((id) => ({
       id,
-      items: settingsSections.filter((section) => section.cluster === id),
+      items: settingsSections.filter(
+        (section) => section.cluster === id && sectionAllowed(section, scopes),
+      ),
     }))
     .filter((group) => group.items.length > 0);
 }

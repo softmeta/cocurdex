@@ -30,7 +30,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${WORKSPACE_NAME}
                 timeout: 5000
@@ -133,7 +133,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${WORKSPACE_NAME}
                 timeout: 5000
@@ -214,7 +214,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${WORKSPACE_NAME}
                 timeout: 5000
@@ -259,7 +259,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${WORKSPACE_NAME}
                 timeout: 5000

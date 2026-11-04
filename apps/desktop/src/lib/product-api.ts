@@ -223,6 +223,8 @@ export const daemonProductApi: ProductRequestApi = {
   deleteProviderModel: async (providerId, modelId) => {
     await rpc("provider.model.delete", { providerId, modelId });
   },
+  resetProviderModel: (providerId, modelId) =>
+    rpc("provider.model.reset", { providerId, modelId }),
   listCompatibleProvidersForAgent: (agentId, options) =>
     rpc("provider.listCompatibleForAgent", {
       agentId,
@@ -249,6 +251,9 @@ export const daemonProductApi: ProductRequestApi = {
   uninstallAcpRegistryAgent: async (agentId) => {
     await rpc("acpRegistry.uninstall", { agentId });
   },
+  listAcpRegistryUpdates: (options) =>
+    rpc("acpRegistry.updates", options ?? {}),
+  updateAcpRegistryAgent: (agentId) => rpc("acpRegistry.update", { agentId }),
   listAgentProviderDefaults: () => rpc("provider.listDefaults"),
   getAgentProviderDefault: (agentId) =>
     rpc("provider.default.get", { agentId }),
@@ -293,6 +298,8 @@ export const daemonProductApi: ProductRequestApi = {
   cancelHostPairing: (pairingId) => rpc("host.pairing.cancel", { pairingId }),
   listHostDevices: () => rpc("host.devices.list"),
   revokeHostDevice: (deviceId) => rpc("host.devices.revoke", { deviceId }),
+  approveHostDevice: (deviceId, code) =>
+    rpc("host.devices.approve", { deviceId, code }),
   updateHostDeviceScopes: (deviceId, scopes) =>
     rpc("host.devices.updateScopes", { deviceId, scopes }),
   listHostAudit: (limit) => rpc("host.audit.list", { limit }),

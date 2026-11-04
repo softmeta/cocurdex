@@ -104,18 +104,41 @@ describe("relay endpoints", () => {
     });
   });
 
-  it("accepts only complete relay credentials", () => {
-    const credential = {
+  it("reads the claims of a v4.public relay token", () => {
+    const token = relayToken({
+      sub: "invite-7",
+      exp: "2030-03-17T17:46:40Z",
+      relay: "https://relay.example.invalid/",
+    });
+    expect(parseRelayCredential(token)).toEqual({
       accountId: "invite-7",
-      expiresAt: 1_900_000_000,
-      signature: "s".repeat(86),
+      expiresAt: "2030-03-17T17:46:40.000Z",
+      relayUrl: "https://relay.example.invalid",
+    });
+    const valid = {
+      sub: "a",
+      exp: "2030-01-01T00:00:00Z",
+      relay: "https://r.example.invalid",
     };
+    expect(parseRelayCredential(relayToken({ ...valid, sub: "" }))).toBeNull();
     expect(
-      parseRelayCredential(JSON.stringify({ ...credential, extra: 1 })),
-    ).toEqual(credential);
-    expect(
-      parseRelayCredential(JSON.stringify({ ...credential, signature: "s" })),
+      parseRelayCredential(relayToken({ ...valid, exp: "soon" })),
     ).toBeNull();
-    expect(parseRelayCredential("{")).toBeNull();
+    expect(
+      parseRelayCredential(relayToken({ ...valid, relay: "ftp://x" })),
+    ).toBeNull();
+    expect(
+      parseRelayCredential(relayToken(valid).replace("v4", "v3")),
+    ).toBeNull();
+    expect(parseRelayCredential(`${relayToken(valid)}.footer`)).toBeNull();
+    expect(parseRelayCredential(JSON.stringify(valid))).toBeNull();
   });
 });
+
+function relayToken(claims: Record<string, string>) {
+  const body = Buffer.concat([
+    Buffer.from(JSON.stringify(claims)),
+    Buffer.alloc(64),
+  ]);
+  return `v4.public.${body.toString("base64url")}`;
+}

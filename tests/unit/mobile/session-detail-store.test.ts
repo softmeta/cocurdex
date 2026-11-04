@@ -66,6 +66,16 @@ async function loadedStore(results: Record<string, unknown[]>) {
 }
 
 describe("createSessionDetailStore", () => {
+  it("watches its session's stream only while observed", async () => {
+    const fake = fakeConnection({ "session.snapshot": [OBSERVATION] });
+    const store = createSessionDetailStore(fake.connection, "s1");
+    const stop = store.subscribe(() => {});
+    await vi.runAllTimersAsync();
+    expect(fake.watchCount("s1")).toBe(1);
+    stop();
+    expect(fake.watchCount("s1")).toBe(0);
+  });
+
   it("shows the last seen transcript at once and replaces it when the reload lands", async () => {
     const renamed = {
       ...OBSERVATION,

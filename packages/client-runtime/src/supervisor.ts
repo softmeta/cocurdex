@@ -47,6 +47,7 @@ export interface ConnectionSupervisorOptions {
   backoff?: Partial<BackoffPolicy>;
   stableAfterMs?: number;
   now?(): number;
+  watchedSessions?: readonly string[] | null;
 }
 
 export type ConnectionSupervisor = ReturnType<
@@ -63,8 +64,14 @@ function errorOf(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+const PENDING_APPROVAL_RETRY_MS = 5_000;
+
+function errorCode(error: Error) {
+  return (error as { code?: unknown }).code;
+}
+
 function isUnauthorized(error: Error) {
-  return (error as { code?: unknown }).code === "UNAUTHORIZED";
+  return errorCode(error) === "UNAUTHORIZED";
 }
 
 export function createConnectionSupervisor(
@@ -90,6 +97,7 @@ export function createConnectionSupervisor(
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let stableTimer: ReturnType<typeof setTimeout> | null = null;
   let started = false;
+  let watchedSessions = options.watchedSessions ?? null;
 
   function update(patch: Partial<ConnectionState>) {
     state = { ...state, ...patch };
@@ -144,7 +152,10 @@ export function createConnectionSupervisor(
       });
       return;
     }
-    const delay = backoffDelay(failures, policy);
+    const pendingApproval = errorCode(error) === "PENDING_APPROVAL";
+    const delay = pendingApproval
+      ? PENDING_APPROVAL_RETRY_MS
+      : backoffDelay(failures, policy);
     retryTimer = setTimeout(() => {
       retryTimer = null;
       void connect();
@@ -152,7 +163,7 @@ export function createConnectionSupervisor(
     unrefTimer(retryTimer);
     update({
       status: "retrying",
-      failures,
+      failures: pendingApproval ? state.failures : failures,
       retryAt: now() + delay,
       waitReason: null,
       lastError: error.message,
@@ -202,6 +213,7 @@ export function createConnectionSupervisor(
           {
             afterSeq: state.lastSeq ?? undefined,
             epoch: state.epoch ?? undefined,
+            sessions: watchedSessions,
             signal: attemptController.signal,
             onDisconnect: (error) =>
               fail(
@@ -275,6 +287,10 @@ export function createConnectionSupervisor(
     reset,
     wake,
     getState: () => state,
+    watchSessions(sessions: readonly string[] | null): Promise<void> {
+      watchedSessions = sessions;
+      return subscription?.watchSessions(sessions) ?? Promise.resolve();
+    },
     subscribeState(listener: (state: ConnectionState) => void) {
       listeners.add(listener);
       return () => {

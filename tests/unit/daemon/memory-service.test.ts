@@ -1,4 +1,6 @@
-import { chmod, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-tool-bridge";
 import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
@@ -60,7 +62,11 @@ function fakeMessages(): MessageRecord[] {
 async function createFakeRsrs(
   directory: string,
   logPath: string,
-  options: { failRecall?: boolean; candidateOnRemember?: boolean } = {},
+  options: {
+    failRecall?: boolean;
+    candidateOnRemember?: boolean;
+    identityMissing?: boolean;
+  } = {},
 ) {
   const scriptPath = path.join(directory, "fake-rsrs.mjs");
   const script = `import { appendFileSync } from "node:fs";
@@ -98,7 +104,11 @@ if (command === "--version") {
 } else if (command === "show") {
   send({ command: "show", status: "ok", details: { entry: { id: args[1], title: "Recall title", content: "Recall body", importance: "important", tags: [] } } });
 } else if (command === "remember") {
-  if (args.includes("--parent")) {
+  if (${options.identityMissing === true}) {
+    send({ command: "remember", status: "ok", summary: { action: "skipped", reason: "no local session: rsrs keygen --pass <password> to start fully local (no cloud); or rsrs register / login for a cloud identity" } });
+  } else if (${options.candidateOnRemember === true} && args.includes("--force")) {
+    send({ command: "remember", status: "ok", summary: { action: "created", id: "forced-memory" } });
+  } else if (args.includes("--parent")) {
     send({ command: "remember", status: "ok", summary: { action: "created", id: "attached-memory" } });
   } else if (${options.candidateOnRemember === true}) {
     send({ command: "remember", status: "ok", summary: { action: "candidates" }, details: [{ id: "old-memory", title: "Old memory", score: 0.9 }] });
@@ -151,7 +161,9 @@ async function createService(
   options: {
     failRecall?: boolean;
     candidateOnRemember?: boolean;
+    identityMissing?: boolean;
     platform?: { os: string; arch: string };
+    turnRecallBudgetMs?: number;
   } = {},
 ) {
   const directory = await temp.create("cocurdex-memory-");
@@ -173,6 +185,7 @@ async function createService(
     platform: options.platform,
     rsrsDataDir: directory,
     startRuntime: false,
+    turnRecallBudgetMs: options.turnRecallBudgetMs,
     now: () => new Date("2026-10-28T10:00:02.000Z"),
   });
   return { service, state, logPath, directory };
@@ -241,21 +254,21 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(remember).not.toContain("--force");
   });
 
-  it("attaches the session summary under the closest memory instead of duplicating it", async () => {
+  it("stores the session summary on its own instead of claiming a similar memory as its cause", async () => {
     const { service, logPath } = await createService({
       candidateOnRemember: true,
     });
     await service.getStatus();
     const result = await service.saveSession({ sessionId: "chat-1" });
-    expect(result).toMatchObject({ saved: true, memoryId: "attached-memory" });
+    expect(result).toMatchObject({ saved: true, memoryId: "forced-memory" });
     const rememberCalls = (await readFile(logPath, "utf8"))
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line) as string[])
       .filter((args) => args[0] === "remember");
     expect(rememberCalls).toHaveLength(2);
-    expect(rememberCalls[1]).toContain("--parent");
-    expect(rememberCalls[1]).toContain("old-memory");
+    expect(rememberCalls[1]).toContain("--force");
+    expect(rememberCalls[1]).not.toContain("--parent");
   });
 
   it("records a failed turn recall so clients can surface it", async () => {
@@ -273,6 +286,63 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(status.lastRecall?.error).toBeTruthy();
   });
 
+  it("keeps a slow runtime and skips the CLI once the turn budget is spent", async () => {
+    const requests: string[] = [];
+    const server = createServer((request, response) => {
+      let body = "";
+      request.on("data", (chunk) => {
+        body += chunk;
+      });
+      request.on("end", () => {
+        const { method, params } = JSON.parse(body);
+        requests.push(params?.name ?? method);
+        const reply = () =>
+          response.end(
+            JSON.stringify({ jsonrpc: "2.0", result: { tools: [] } }),
+          );
+        if (method === "tools/list") reply();
+        else setTimeout(reply, 1_000);
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    try {
+      const { service, logPath, directory } = await createService({
+        turnRecallBudgetMs: 200,
+      });
+      const { port } = server.address() as AddressInfo;
+      const runtimeDir = path.join(directory, "runtime");
+      await mkdir(runtimeDir, { recursive: true });
+      await writeFile(
+        path.join(runtimeDir, "endpoint.json"),
+        JSON.stringify({ url: `http://127.0.0.1:${port}` }),
+      );
+      await writeFile(path.join(runtimeDir, "token"), "token");
+      await service.getStatus();
+      const probes = () =>
+        requests.filter((name) => name === "tools/list").length;
+      const recall = () =>
+        service.buildTurnContext(fakeSession(), "anything", "chat");
+      expect(await recall()).toBeNull();
+      const probesAfterFirstTurn = probes();
+      expect(await recall()).toBeNull();
+      expect(probes()).toBe(probesAfterFirstTurn);
+      expect(requests.filter((name) => name === "memory_recall")).toHaveLength(
+        2,
+      );
+      expect((await service.getStatus()).lastRecall).toMatchObject({
+        outcome: "failed",
+        error: expect.stringContaining("timed out"),
+      });
+      const calls = (await readFile(logPath, "utf8")).trim().split("\n");
+      expect(calls.some((line) => line.startsWith('["recall"'))).toBe(false);
+    } finally {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
   it("stops recalling and capturing when the switch is off", async () => {
     const { service } = await createService();
     await service.getStatus();
@@ -280,11 +350,24 @@ describe("MemoryService with a fake rsrs CLI", () => {
     await service.setSettings({ ...settings, enabled: false });
     expect(await service.recall({ query: "cocurdex" })).toMatchObject({
       items: [],
+      error: expect.stringContaining("cocurdex memory on"),
     });
     expect(await service.captureTurn("chat-1", "a1")).toMatchObject({
       saved: false,
       reason: "disabled",
     });
+  });
+
+  it("tells the agent how to register when rsrs has no identity", async () => {
+    const { service } = await createService({ identityMissing: true });
+    await service.getStatus();
+    const result = await service.remember({
+      content: "【前因】a\n【行为】b\n【后果】c",
+      title: "A title",
+    });
+    expect(result.action).toBe("skipped");
+    expect(result.message).toContain("no local session");
+    expect(result.message).toContain("cocurdex memory cloud register");
   });
 
   it("nudges the next turn when the store gate was missed", async () => {

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { MermaidRendererHost } from "@/markdown";
+import { useNotificationRoutes } from "@/notifications";
 import {
   navigationThemes,
   themeColors,
@@ -48,6 +49,7 @@ export default function RootLayout() {
   const grouped = useGroupedColors();
   const headerOptions = useHeaderOptions();
   const systemBarStyle = scheme === "dark" ? "light" : "dark";
+  useNotificationRoutes();
   return (
     <GestureHandlerRootView
       style={[styles.root, { backgroundColor: colors.background }]}
@@ -66,6 +68,7 @@ export default function RootLayout() {
               title: "",
               headerBackTitle: t("tabs.sessions"),
               animation: PUSH_ANIMATION,
+              headerStyle: { backgroundColor: colors.background },
               contentStyle: { backgroundColor: colors.background },
             }}
           />

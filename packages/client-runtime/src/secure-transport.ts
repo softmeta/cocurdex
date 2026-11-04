@@ -1,12 +1,41 @@
 import { DaemonClientError, type DaemonTransport } from "@cocurdex/rpc/client";
-import type { NoiseCrypto, SecureChannel } from "@cocurdex/secure-channel";
+import type {
+  MessageCompressor,
+  NoiseCrypto,
+  SecureChannel,
+} from "@cocurdex/secure-channel";
 import { connectPairedHost } from "./host-access";
 import { HostAccessError } from "./host-access-error";
 import type { PairedHostEndpoint } from "./platform";
 
+export { portableMessageCompressor } from "./portable-message-compressor";
+
+import type { OpenSecureSocket, SecureSocketHandlers } from "./secure-socket";
+
+export type SecureSocketConnector = (
+  handlers: SecureSocketHandlers,
+) => Promise<OpenSecureSocket>;
+
 export function createSecureHostTransport(
   endpoint: PairedHostEndpoint,
   crypto?: NoiseCrypto,
+  compressor?: MessageCompressor,
+): DaemonTransport {
+  return createSecureTransport((handlers) =>
+    connectPairedHost(endpoint, { crypto, compressor, handlers }),
+  );
+}
+
+function transportErrorCode(error: unknown) {
+  if (!(error instanceof HostAccessError)) return "TRANSPORT_ERROR";
+  if (error.reason === "invalid") return "UNAUTHORIZED";
+  if (error.reason === "offline") return "UNAVAILABLE";
+  if (error.reason === "pending") return "PENDING_APPROVAL";
+  return "TRANSPORT_ERROR";
+}
+
+export function createSecureTransport(
+  connect: SecureSocketConnector,
 ): DaemonTransport {
   return (handlers) => {
     const encoder = new TextEncoder();
@@ -20,12 +49,9 @@ export function createSecureHostTransport(
         ?.sendMessage(encoder.encode(message))
         .catch(() => closeSocket?.());
     };
-    connectPairedHost(endpoint, {
-      crypto,
-      handlers: {
-        onMessage: (message) => handlers.onMessage(decoder.decode(message)),
-        onClose: () => handlers.onClose(),
-      },
+    connect({
+      onMessage: (message) => handlers.onMessage(decoder.decode(message)),
+      onClose: () => handlers.onClose(),
     }).then(
       (opened) => {
         if (closed) {
@@ -37,12 +63,10 @@ export function createSecureHostTransport(
         for (const message of pending.splice(0)) send(message);
       },
       (error: unknown) => {
-        const rejected =
-          error instanceof HostAccessError && error.reason === "invalid";
         handlers.onError(
           new DaemonClientError(
             error instanceof Error ? error.message : String(error),
-            rejected ? "UNAUTHORIZED" : "TRANSPORT_ERROR",
+            transportErrorCode(error),
           ),
         );
         handlers.onClose();

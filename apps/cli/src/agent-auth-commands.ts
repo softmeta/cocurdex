@@ -1,6 +1,7 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   type AcpRegistryAgentId,
+  type AcpRegistryAgentUpdate,
   type AgentAuthState,
   type AgentId,
   isAcpRegistryAgentId,
@@ -15,6 +16,8 @@ export function agentAuthUsageLines() {
     "  cocurdex agent login <agent> [--method <method-id>]",
     "  cocurdex agent login cancel <agent>",
     "  cocurdex agent logout <agent>",
+    "  cocurdex agent updates [--refresh] [--json]",
+    "  cocurdex agent update <agent> [--json]",
   ];
 }
 
@@ -45,6 +48,16 @@ export function formatAgentAuthLines(state: AgentAuthState) {
     `logout         ${state.logoutSupported ? "supported" : "not supported"}`,
     `live sessions  ${state.liveSessionCount}`,
   ];
+}
+
+function formatAgentUpdateLines(updates: AcpRegistryAgentUpdate[]) {
+  if (updates.length === 0) {
+    return ["All registry agents are up to date"];
+  }
+  return updates.map(
+    (update) =>
+      `${update.agentId.padEnd(24)} ${update.installedVersion} -> ${update.latestVersion}`,
+  );
 }
 
 export async function handleAgentCommand(
@@ -83,6 +96,37 @@ export async function handleAgentCommand(
     const methodId = stringFlag(parsed, "method");
     await withDaemon(() => requestDaemon("agent.login", { agentId, methodId }));
     printResult({ loggedIn: true, agentId, methodId }, parsed);
+    return true;
+  }
+  if (action === "updates") {
+    const updates = await withDaemon(() =>
+      requestDaemon("acpRegistry.updates", {
+        forceRefresh: parsed.flags.has("refresh"),
+      }),
+    );
+    if (parsed.flags.has("json")) {
+      printResult(updates, parsed);
+      return true;
+    }
+    for (const line of formatAgentUpdateLines(updates)) {
+      console.log(line);
+    }
+    return true;
+  }
+  if (action === "update") {
+    const agentId = requireRegistryAgentId(
+      args[0],
+      "cocurdex agent update <agent>",
+    );
+    const agent = await withDaemon(() =>
+      requestDaemon("acpRegistry.update", { agentId }),
+    );
+    printResult(
+      parsed.flags.has("json")
+        ? agent
+        : { updated: true, agentId, version: agent.version },
+      parsed,
+    );
     return true;
   }
   if (action === "logout") {

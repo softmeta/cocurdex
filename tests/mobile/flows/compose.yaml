@@ -83,7 +83,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${WORKSPACE_NAME}
                 timeout: 5000
@@ -182,7 +182,9 @@ appId: dev.cocurdex.mobile
     id: "new-session-agent"
     text: "(?s).*${ROLE_NAME}.*"
 - stopApp
-- launchApp
+- launchApp:
+    permissions:
+      notifications: allow
 - extendedWaitUntil:
     visible: ${NEW_SESSION_ACTION}
     timeout: 10000
@@ -192,13 +194,17 @@ appId: dev.cocurdex.mobile
       id: "new-session-agent"
       text: "(?s).*${ROLE_NAME}.*"
     timeout: 10000
-- tapOn:
-    id: "new-session-agent"
-- extendedWaitUntil:
-    visible:
-      id: "new-session-workspace"
-      text: "(?s).*${WORKSPACE_NAME}.*"
-    timeout: 5000
+- retry:
+    maxRetries: 2
+    commands:
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "new-session-agent"
+      - extendedWaitUntil:
+          visible:
+            id: "new-session-workspace"
+            text: "(?s).*${WORKSPACE_NAME}.*"
+          timeout: 5000
 - assertVisible:
     id: "new-session-model"
     text: "(?s).*${NEW_SESSION_MODEL}.*"
@@ -226,7 +232,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${WORKSPACE_NAME}
                 timeout: 5000
@@ -298,7 +304,7 @@ appId: dev.cocurdex.mobile
       - retry:
           maxRetries: 2
           commands:
-            - tapOn: ${TAB_SESSIONS}
+            - tapOn: "${TAB_SESSIONS}|${SYSTEM_BACK}"
             - extendedWaitUntil:
                 visible: ${SEARCHED_SESSION_TITLE}
                 timeout: 5000

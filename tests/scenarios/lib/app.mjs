@@ -132,7 +132,7 @@ async function attachSharedInstance(shared, { fixtures, fixtureDb }) {
   let session;
   try {
     const files = await copyFixtures(fixtures, workspaceRoot);
-    session = await openAppSession(shared);
+    session = await openAppSession(shared, { discardEarlierConsole: true });
     await seedWorkspaces(
       session,
       scenarioWorkspaces(workspaceRoot, fixtureDbInstall),

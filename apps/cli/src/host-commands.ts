@@ -4,9 +4,12 @@ import {
   buildHostPairingLink,
   type HostAccessScope,
   type HostAddress,
+  type HostDeviceApprovalFailure,
+  type HostPushStatus,
   type HostRemoteAccessStatus,
   hostPairingAddresses,
   isHostAccessScope,
+  OFFICIAL_RELAY_URL,
   parseRelayCredential,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
@@ -28,12 +31,14 @@ export function hostUsageLines() {
   return [
     "  cocurdex host status [--json]",
     "  cocurdex host remote enable [--port <port>] [--keep-awake on|off] | disable [--json]",
-    "  cocurdex host relay set <url> [--relay-only on|off] [--credential <file>] | relay off [--json]",
+    "  cocurdex host relay set official|<url> [--relay-only on|off] [--credential <file>] | relay set --credential <file> | relay off [--json]",
+    "  cocurdex host push set <url> | push off | push status [--json]",
     "  cocurdex host pair --label <name> [--scopes read,interact,approvals] [--ttl <minutes>] [--json]",
     "  cocurdex host pairings [--json] | host pairing cancel <pairing-id>",
-    "  cocurdex host devices [--json] | host revoke <device-id>",
+    "  cocurdex host devices [--json] | host approve <device-id> --code <safety code> | host revoke <device-id>",
     "  cocurdex host scopes <device-id> --scopes read,interact,approvals,files.read [--json]",
     "  cocurdex host audit [--limit <n>] [--json]",
+    "  cocurdex host traffic [--reset] [--json]",
   ];
 }
 
@@ -93,26 +98,29 @@ function printRelayStatus(status: HostRemoteAccessStatus) {
 }
 
 async function readRelayCredential(file: string) {
-  const credential = parseRelayCredential(await readFile(file, "utf8"));
+  const token = (await readFile(file, "utf8")).trim();
+  const credential = parseRelayCredential(token);
   if (!credential) {
-    throw new Error(
-      `${file} is not a relay credential (accountId, expiresAt, signature)`,
-    );
+    throw new Error(`${file} does not hold a relay credential token`);
   }
-  return credential;
+  return { token, relayUrl: credential.relayUrl };
 }
 
-async function setRelay(url: string | null, parsed: ParsedArgs) {
+async function setRelay(url: string | null | undefined, parsed: ParsedArgs) {
   const relayOnly = onOffFlag(parsed, "relay-only");
   const credentialFile = stringFlag(parsed, "credential");
   const credential = credentialFile
     ? await readRelayCredential(credentialFile)
     : undefined;
+  const target = url === undefined ? credential?.relayUrl : url;
+  if (target === undefined) {
+    throw new Error("Pass a relay URL or --credential <file>");
+  }
   const status = await withDaemon(() =>
     requestDaemon("host.relay.set", {
-      url,
+      url: target,
       ...(relayOnly === undefined ? {} : { relayOnly }),
-      ...(credential === undefined ? {} : { credential }),
+      ...(credential === undefined ? {} : { credential: credential.token }),
     }),
   );
   if (parsed.flags.has("json")) {
@@ -129,6 +137,25 @@ async function setRelay(url: string | null, parsed: ParsedArgs) {
     );
   }
   printRelayStatus(status);
+}
+
+async function setPush(url: string | null, parsed: ParsedArgs) {
+  const status = await withDaemon(() =>
+    requestDaemon("host.push.set", { url }),
+  );
+  printPushStatus(status, parsed);
+}
+
+function printPushStatus(status: HostPushStatus, parsed: ParsedArgs) {
+  if (parsed.flags.has("json")) {
+    printResult(status, parsed);
+    return;
+  }
+  console.log(
+    status.url
+      ? `Notifications go through the push gateway ${status.url}`
+      : "Notifications are off",
+  );
 }
 
 async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
@@ -165,6 +192,14 @@ async function setRemoteAccess(enabled: boolean, parsed: ParsedArgs) {
   }
 }
 
+const approvalFailureMessages: Record<HostDeviceApprovalFailure, string> = {
+  notPending:
+    "That device is not waiting for approval; its approval window may have expired",
+  codeMismatch: "The safety code does not match the one the device shows",
+  tooManyAttempts:
+    "Too many wrong safety codes; the device was revoked and must pair again",
+};
+
 async function createPairing(parsed: ParsedArgs) {
   const ttl = integerFlag(parsed, "ttl");
   const { created, status } = await withDaemon(async () => ({
@@ -187,6 +222,9 @@ async function createPairing(parsed: ParsedArgs) {
   console.log(`Pairing code: ${created.code}`);
   console.log(`Scopes: ${created.pairing.scopes.join(", ")}`);
   console.log(`Expires: ${created.pairing.expiresAt}`);
+  console.log(
+    "The device then waits for approval: run `cocurdex host approve <device-id> --code <safety code>` with the code the device shows.",
+  );
   if (links.length === 0) {
     console.log(
       "Remote access is off. Run `cocurdex host remote enable` to get a pairing link.",
@@ -213,12 +251,26 @@ export async function handleHostCommand(
     await setRemoteAccess(args[0] === "enable", parsed);
     return true;
   }
-  if (action === "relay" && args[0] === "set" && args[1]) {
-    await setRelay(args[1], parsed);
+  if (action === "relay" && args[0] === "set") {
+    const url = args[1] === "official" ? OFFICIAL_RELAY_URL : args[1];
+    await setRelay(url, parsed);
     return true;
   }
   if (action === "relay" && args[0] === "off") {
     await setRelay(null, parsed);
+    return true;
+  }
+  if (action === "push" && args[0] === "set" && args[1]) {
+    await setPush(args[1], parsed);
+    return true;
+  }
+  if (action === "push" && args[0] === "off") {
+    await setPush(null, parsed);
+    return true;
+  }
+  if (action === "push" && args[0] === "status") {
+    const status = await withDaemon(() => requestDaemon("host.push.get"));
+    printPushStatus(status, parsed);
     return true;
   }
   if (action === "pair") {
@@ -243,9 +295,29 @@ export async function handleHostCommand(
     const devices = await withDaemon(() => requestDaemon("host.devices.list"));
     printRows(
       devices.map((device) => ({ ...device, scopes: device.scopes.join(",") })),
-      ["id", "label", "scopes", "safetyCode", "lastSeenAt", "revokedAt"],
+      [
+        "id",
+        "label",
+        "scopes",
+        "safetyCode",
+        "pushPlatform",
+        "lastSeenAt",
+        "approvedAt",
+        "approvalExpiresAt",
+        "revokedAt",
+      ],
       parsed,
     );
+    return true;
+  }
+  if (action === "approve" && args[0]) {
+    const deviceId = args[0];
+    const code = getRequiredFlag(parsed, "code");
+    const approval = await withDaemon(() =>
+      requestDaemon("host.devices.approve", { deviceId, code }),
+    );
+    if (!approval.ok) throw new Error(approvalFailureMessages[approval.reason]);
+    printResult(approval.device, parsed);
     return true;
   }
   if (action === "revoke" && args[0]) {
@@ -265,6 +337,28 @@ export async function handleHostCommand(
     );
     if (!updated) throw new Error(`No active device ${deviceId}`);
     printResult(updated, parsed);
+    return true;
+  }
+  if (action === "traffic") {
+    const method = parsed.flags.has("reset")
+      ? "host.traffic.reset"
+      : "host.traffic.get";
+    const report = await withDaemon(() => requestDaemon(method));
+    if (parsed.flags.has("json")) {
+      printResult(report, parsed);
+      return true;
+    }
+    console.log(`Remote traffic since ${report.since}`);
+    printRows(
+      report.frames,
+      ["transport", "direction", "frames", "bytes"],
+      parsed,
+    );
+    printRows(
+      report.messages,
+      ["transport", "direction", "category", "messages", "bytes"],
+      parsed,
+    );
     return true;
   }
   if (action === "audit") {

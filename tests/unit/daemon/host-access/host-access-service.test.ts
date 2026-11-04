@@ -1,12 +1,20 @@
 import { HostAccessService } from "@cocurdex/daemon/internal/host-access/host-access-service";
 import { relayRouteId } from "@cocurdex/daemon/internal/host-access/relay-connector";
 import { createCocurdexDatabase } from "@cocurdex/db";
+import { decodeBase64Url, pairingSafetyCode } from "@cocurdex/secure-channel";
 import { describe, expect, it } from "vitest";
 
 const local = { kind: "local" } as const;
 const HOST_KEY = "h".repeat(43);
 const KEY_A = "a".repeat(43);
 const KEY_B = "b".repeat(43);
+
+function codeFor(deviceKey: string) {
+  return pairingSafetyCode(
+    decodeBase64Url(HOST_KEY),
+    decodeBase64Url(deviceKey),
+  );
+}
 
 async function setup(options: { remoteAccessAllowed?: boolean } = {}) {
   const settings = new Map<string, string>();
@@ -83,6 +91,9 @@ describe("HostAccessService", () => {
     expect(second).toEqual({ ok: false, reason: "consumed" });
     if (!first.ok) return;
     expect(first.result.scopes).toEqual(["read", "approvals"]);
+    expect(service.resolveDevice(first.result.deviceId)).toBeNull();
+    service.approveDevice(first.result.deviceId, codeFor(KEY_A), local);
+    service.connectDevice({ deviceId: first.result.deviceId }, KEY_A);
     expect(service.resolveDevice(first.result.deviceId)).toEqual({
       kind: "device",
       deviceId: first.result.deviceId,
@@ -94,6 +105,7 @@ describe("HostAccessService", () => {
       safetyCode: expect.stringMatching(/^\d{6}$/),
     });
     expect(service.listAudit(10).map((entry) => entry.action)).toEqual([
+      "device.approved",
       "pairing.rejected",
       "pairing.exchanged",
       "pairing.created",
@@ -109,13 +121,137 @@ describe("HostAccessService", () => {
     const paired = service.pairDevice({ secret: code }, KEY_A, null);
     if (!paired.ok) throw new Error("pairing failed");
     const { deviceId } = paired.result;
+    service.approveDevice(deviceId, codeFor(KEY_A), local);
+    const rejected = { ok: false, reason: "rejected" };
 
-    expect(service.connectDevice({ deviceId }, KEY_B)).toBeNull();
-    expect(service.connectDevice({ deviceId: "other" }, KEY_A)).toBeNull();
-    expect(service.connectDevice({}, KEY_A)).toBeNull();
+    expect(service.connectDevice({ deviceId }, KEY_B)).toEqual(rejected);
+    expect(service.connectDevice({ deviceId: "other" }, KEY_A)).toEqual(
+      rejected,
+    );
+    expect(service.connectDevice({}, KEY_A)).toEqual(rejected);
     expect(service.connectDevice({ deviceId }, KEY_A)).toMatchObject({
-      deviceId,
-      scopes: ["read"],
+      ok: true,
+      accepted: { deviceId, scopes: ["read"] },
+    });
+  });
+
+  it("keeps a new device pending until someone approves it", async () => {
+    const { service } = await setup();
+    const { code } = service.createPairing(
+      { label: "Phone", scopes: ["read"] },
+      local,
+    );
+    const paired = service.pairDevice({ secret: code }, KEY_A, null);
+    if (!paired.ok) throw new Error("pairing failed");
+    const { deviceId } = paired.result;
+
+    expect(service.connectDevice({ deviceId }, KEY_A)).toEqual({
+      ok: false,
+      reason: "pending",
+    });
+    expect(service.listDevices()[0]).toMatchObject({
+      id: deviceId,
+      approvedAt: null,
+      approvalExpiresAt: "2026-10-11T00:10:00.000Z",
+      safetyCode: null,
+    });
+
+    expect(
+      service.approveDevice(deviceId, codeFor(KEY_A), local),
+    ).toMatchObject({
+      ok: true,
+      device: { approvedAt: "2026-10-11T00:00:00.000Z" },
+    });
+    expect(service.approveDevice(deviceId, codeFor(KEY_A), local)).toEqual({
+      ok: false,
+      reason: "notPending",
+    });
+    expect(service.connectDevice({ deviceId }, KEY_A)).toMatchObject({
+      ok: true,
+    });
+    expect(service.listDevices()[0]).toMatchObject({
+      approvalExpiresAt: null,
+      safetyCode: codeFor(KEY_A),
+    });
+  });
+
+  it("refuses and hides a device nobody approved within the window", async () => {
+    const { service, advance } = await setup();
+    const { code } = service.createPairing(
+      { label: "Phone", scopes: ["read"] },
+      local,
+    );
+    const paired = service.pairDevice({ secret: code }, KEY_A, null);
+    if (!paired.ok) throw new Error("pairing failed");
+    const { deviceId } = paired.result;
+    advance(10 * 60_000 + 1);
+
+    expect(service.connectDevice({ deviceId }, KEY_A)).toEqual({
+      ok: false,
+      reason: "rejected",
+    });
+    expect(service.approveDevice(deviceId, codeFor(KEY_A), local)).toEqual({
+      ok: false,
+      reason: "notPending",
+    });
+    expect(service.listDevices()).toEqual([]);
+  });
+
+  it("approves only with the safety code the device shows", async () => {
+    const { service } = await setup();
+    const { code } = service.createPairing(
+      { label: "Phone", scopes: ["read"] },
+      local,
+    );
+    const paired = service.pairDevice({ secret: code }, KEY_A, null);
+    if (!paired.ok) throw new Error("pairing failed");
+    const { deviceId } = paired.result;
+    const wrong = codeFor(KEY_B) === codeFor(KEY_A) ? "000000" : codeFor(KEY_B);
+
+    expect(service.approveDevice(deviceId, wrong, local)).toEqual({
+      ok: false,
+      reason: "codeMismatch",
+    });
+    expect(service.connectDevice({ deviceId }, KEY_A)).toEqual({
+      ok: false,
+      reason: "pending",
+    });
+    const spaced = `${codeFor(KEY_A).slice(0, 3)} ${codeFor(KEY_A).slice(3)}`;
+    expect(service.approveDevice(deviceId, spaced, local)).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("revokes a waiting device after five wrong safety codes", async () => {
+    const { service } = await setup();
+    const { code } = service.createPairing(
+      { label: "Phone", scopes: ["read"] },
+      local,
+    );
+    const paired = service.pairDevice({ secret: code }, KEY_A, null);
+    if (!paired.ok) throw new Error("pairing failed");
+    const { deviceId } = paired.result;
+    const wrong = codeFor(KEY_A) === "111111" ? "222222" : "111111";
+
+    const reasons = Array.from({ length: 5 }, () => {
+      const result = service.approveDevice(deviceId, wrong, local);
+      return result.ok ? "ok" : result.reason;
+    });
+
+    expect(reasons).toEqual([
+      "codeMismatch",
+      "codeMismatch",
+      "codeMismatch",
+      "codeMismatch",
+      "tooManyAttempts",
+    ]);
+    expect(service.approveDevice(deviceId, codeFor(KEY_A), local)).toEqual({
+      ok: false,
+      reason: "notPending",
+    });
+    expect(service.connectDevice({ deviceId }, KEY_A)).toEqual({
+      ok: false,
+      reason: "rejected",
     });
   });
 
@@ -158,6 +294,8 @@ describe("HostAccessService", () => {
     );
     const exchanged = service.pairDevice({ secret: code }, "key", null);
     if (!exchanged.ok) throw new Error("pairing failed");
+    service.approveDevice(exchanged.result.deviceId, codeFor("key"), local);
+    service.connectDevice({ deviceId: exchanged.result.deviceId }, "key");
     const revoked: string[] = [];
     service.onDeviceAccessChanged((deviceId) => revoked.push(deviceId));
     expect(service.resolveDevice(exchanged.result.deviceId)).not.toBeNull();
@@ -167,7 +305,7 @@ describe("HostAccessService", () => {
     expect(service.resolveDevice(exchanged.result.deviceId)).toBeNull();
     expect(
       service.connectDevice({ deviceId: exchanged.result.deviceId }, "key"),
-    ).toBeNull();
+    ).toEqual({ ok: false, reason: "rejected" });
     expect(revoked).toEqual([exchanged.result.deviceId]);
   });
 
@@ -179,6 +317,8 @@ describe("HostAccessService", () => {
     );
     const exchanged = service.pairDevice({ secret: code }, "key", null);
     if (!exchanged.ok) throw new Error("pairing failed");
+    service.approveDevice(exchanged.result.deviceId, codeFor("key"), local);
+    service.connectDevice({ deviceId: exchanged.result.deviceId }, "key");
     const changed: string[] = [];
     service.onDeviceAccessChanged((deviceId) => changed.push(deviceId));
     expect(service.resolveDevice(exchanged.result.deviceId)).toMatchObject({
@@ -195,7 +335,7 @@ describe("HostAccessService", () => {
     expect(service.resolveDevice(exchanged.result.deviceId)).toBeNull();
     expect(
       service.connectDevice({ deviceId: exchanged.result.deviceId }, "key"),
-    ).toMatchObject({ scopes: ["read", "files.read"] });
+    ).toMatchObject({ ok: true, accepted: { scopes: ["read", "files.read"] } });
     expect(service.resolveDevice(exchanged.result.deviceId)).toMatchObject({
       scopes: ["read", "files.read"],
     });
@@ -214,6 +354,8 @@ describe("HostAccessService", () => {
     );
     const exchanged = service.pairDevice({ secret: code }, "key", null);
     if (!exchanged.ok) throw new Error("pairing failed");
+    service.approveDevice(exchanged.result.deviceId, codeFor("key"), local);
+    service.connectDevice({ deviceId: exchanged.result.deviceId }, "key");
 
     expect(() =>
       service.updateDeviceScopes(
@@ -298,13 +440,39 @@ describe("HostAccessService", () => {
       error: null,
       relay: {
         url: null,
-        relayOnly: true,
+        relayOnly: false,
         credential: null,
         state: "off",
         error: null,
+        latencyMs: null,
         endpoint: null,
       },
     });
+  });
+
+  it("keeps the local listener beside a relay unless relay-only is chosen", async () => {
+    const { service } = await setup();
+    const listener: boolean[] = [];
+    service.bindRemoteListener({
+      apply: async (next) => {
+        listener.push(next.enabled);
+        return { listening: next.enabled, error: null };
+      },
+      state: () => ({ listening: listener.at(-1) === true, error: null }),
+    });
+    service.bindRelayConnector({
+      apply: () => undefined,
+      state: () => ({ state: "online", error: null, latencyMs: 42 }),
+    });
+
+    await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
+    const status = await service.setRelay(
+      { url: "https://relay.example.invalid" },
+      local,
+    );
+
+    expect(status.relay.relayOnly).toBe(false);
+    expect(listener).toEqual([true, true]);
   });
 
   it("routes through the relay instead of the local listener in relay-only mode", async () => {
@@ -320,17 +488,17 @@ describe("HostAccessService", () => {
     });
     service.bindRelayConnector({
       apply: (target) => relay.push(target),
-      state: () => ({ state: "online", error: null }),
+      state: () => ({ state: "online", error: null, latencyMs: 42 }),
     });
-    const credential = {
-      accountId: "invite-7",
-      expiresAt: 1_900_000_000,
-      signature: "s".repeat(86),
-    };
+    const credential = relayToken({
+      sub: "invite-7",
+      exp: "2030-03-17T17:46:40Z",
+      relay: "https://relay.example.invalid",
+    });
 
     await service.setRemoteAccess({ enabled: true, port: 50_000 }, local);
     const status = await service.setRelay(
-      { url: "https://relay.example.invalid/", credential },
+      { url: "https://relay.example.invalid/", relayOnly: true, credential },
       local,
     );
 
@@ -343,9 +511,14 @@ describe("HostAccessService", () => {
     expect(status.relay).toEqual({
       url: "https://relay.example.invalid",
       relayOnly: true,
-      credential: { accountId: "invite-7", expiresAt: 1_900_000_000 },
+      credential: {
+        accountId: "invite-7",
+        expiresAt: "2030-03-17T17:46:40.000Z",
+        relayUrl: "https://relay.example.invalid",
+      },
       state: "online",
       error: null,
+      latencyMs: 42,
       endpoint,
     });
     expect(await service.remoteEndpoints()).toEqual([endpoint]);
@@ -369,5 +542,21 @@ describe("HostAccessService", () => {
     await expect(
       service.setRelay({ url: "ftp://relay.example.invalid" }, local),
     ).rejects.toThrow("Relay URL must be an http or https URL");
+    await expect(
+      service.setRelay(
+        { url: "https://other.example.invalid", credential },
+        local,
+      ),
+    ).rejects.toThrow("This credential is for https://relay.example.invalid");
+    await service.setRelay({ url: "https://other.example.invalid" }, local);
+    expect((await service.readRelaySettings()).credential).toBeNull();
   });
 });
+
+function relayToken(claims: Record<string, string>) {
+  const body = Buffer.concat([
+    Buffer.from(JSON.stringify(claims)),
+    Buffer.alloc(64),
+  ]);
+  return `v4.public.${body.toString("base64url")}`;
+}

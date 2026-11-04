@@ -19,6 +19,7 @@ const hostBridge: HostBridge = {
     browserView: true,
     localWebClient: true,
     localFilePaths: true,
+    localDaemonControl: true,
   },
   getAppUpdateState: () => ipcRenderer.invoke("app:update:getState"),
   checkForAppUpdate: () => ipcRenderer.invoke("app:update:check"),

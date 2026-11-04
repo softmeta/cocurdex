@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
 	"github.com/softmeta/cocurdex/services/relay/internal/relay"
@@ -41,8 +42,24 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return keygen(stdout)
 	case "credential":
 		return credential(args, stdout)
+	case "revoke":
+		return revoke(args, stdout)
+	case "restore":
+		return restore(args, stdout)
+	case "revocations":
+		return revocations(args, stdout)
+	case "usage":
+		return usage(args, stdout)
+	case "smoke":
+		return smoke(args, stdout)
+	case "version":
+		_, err := fmt.Fprintln(stdout, relay.Version)
+		return err
 	default:
-		return fmt.Errorf("unknown command %q (expected serve, keygen, or credential)", command)
+		return fmt.Errorf(
+			"unknown command %q (expected serve, keygen, credential, revoke, restore, revocations, usage, smoke, or version)",
+			command,
+		)
 	}
 }
 
@@ -91,12 +108,17 @@ func serve(args []string, stderr io.Writer) error {
 		return err
 	}
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
-	bindings, err := relay.OpenBindings(options.dataDir)
+	revocations, err := relay.OpenRevocations(options.dataDir)
+	if err != nil {
+		return err
+	}
+	usage, err := relay.OpenUsage(options.dataDir)
 	if err != nil {
 		return err
 	}
 	config := relay.DefaultConfig()
-	config.Bindings = bindings
+	config.Revocations = revocations
+	config.Usage = usage
 	config.Logger = logger
 	config.TrustProxy = options.trustProxy
 	config.MaxSessionsPerRoute = options.maxSessions
@@ -114,14 +136,27 @@ func serve(args []string, stderr io.Writer) error {
 			return fmt.Errorf("--credential-issuer: %w", err)
 		}
 		config.CredentialIssuer = ed25519.PublicKey(issuer)
+		if options.dataDir == "" {
+			logger.Warn("without --data-dir, credentials cannot be revoked")
+		}
 	}
+	relayServer := relay.NewServer(config)
 	server := &http.Server{
 		Addr:              options.listen,
-		Handler:           relay.NewServer(config),
+		Handler:           relayServer,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if config.CredentialIssuer != nil {
+		go relayServer.EnforceCredentials(ctx, credentialSweepInterval)
+	}
+	go flushUsage(ctx, usage, logger)
+	defer func() {
+		if err := usage.Flush(time.Now()); err != nil {
+			logger.Error("saving usage failed", "error", err)
+		}
+	}()
 	errs := make(chan error, 1)
 	go func() {
 		logger.Info("relay listening", "address", options.listen)
@@ -180,12 +215,13 @@ func credential(args []string, stdout io.Writer) error {
 	flags := flag.NewFlagSet("credential", flag.ContinueOnError)
 	keyFile := flags.String("issuer-key-file", "", "JSON file written by keygen")
 	account := flags.String("account", "", "account or invite id")
+	relayURL := flags.String("relay", "", "relay URL the credential is for")
 	days := flags.Int("days", 30, "days until the credential expires")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if *keyFile == "" || *account == "" {
-		return errors.New("--issuer-key-file and --account are required")
+	if *keyFile == "" || *account == "" || *relayURL == "" {
+		return errors.New("--issuer-key-file, --account, and --relay are required")
 	}
 	if *days <= 0 {
 		return errors.New("--days must be positive")
@@ -203,12 +239,181 @@ func credential(args []string, stdout io.Writer) error {
 		return fmt.Errorf("issuer private key: %w", err)
 	}
 	expires := time.Now().Add(time.Duration(*days) * 24 * time.Hour)
-	issued := relay.IssueCredential(ed25519.NewKeyFromSeed(seed), *account, expires)
-	return writeJSON(stdout, issued)
+	token, err := relay.IssueCredential(ed25519.NewKeyFromSeed(seed), *account, *relayURL, expires)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(stdout, token)
+	return err
+}
+
+const (
+	credentialSweepInterval = 10 * time.Second
+	usageFlushInterval      = time.Minute
+)
+
+func flushUsage(ctx context.Context, usage *relay.Usage, logger *slog.Logger) {
+	ticker := time.NewTicker(usageFlushInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			if err := usage.Flush(now); err != nil {
+				logger.Error("saving usage failed", "error", err)
+			}
+		}
+	}
+}
+
+func usage(args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("usage", flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "the relay's --data-dir")
+	days := flags.Int("days", 30, "count the last N days, today included")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" {
+		return errors.New("--data-dir is required")
+	}
+	if *days <= 0 {
+		return errors.New("--days must be positive")
+	}
+	summary, err := relay.SummarizeUsage(*dataDir, *days, time.Now())
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return writeJSON(stdout, summary)
+	}
+	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "ACCOUNT\tTRAFFIC\tSESSIONS\tLAST SEEN\tREVOKED")
+	for _, row := range summary {
+		revoked := ""
+		if row.Revoked {
+			revoked = "yes"
+		}
+		fmt.Fprintf(
+			table,
+			"%s\t%s\t%d\t%s\t%s\n",
+			row.Account,
+			formatBytes(row.Bytes),
+			row.Sessions,
+			row.LastSeen.Local().Format("2006-01-02 15:04"),
+			revoked,
+		)
+	}
+	return table.Flush()
+}
+
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	value, suffix := float64(bytes)/unit, 0
+	for value >= unit && suffix < 3 {
+		value /= unit
+		suffix++
+	}
+	return fmt.Sprintf("%.1f %s", value, []string{"KiB", "MiB", "GiB", "TiB"}[suffix])
+}
+
+func revocationFlags(name string) (*flag.FlagSet, *string, *string) {
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "the relay's --data-dir")
+	account := flags.String("account", "", "account or invite id the credential was issued for")
+	return flags, dataDir, account
+}
+
+func revoke(args []string, stdout io.Writer) error {
+	flags, dataDir, account := revocationFlags("revoke")
+	reason := flags.String("reason", "", "why the account was revoked")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" || *account == "" {
+		return errors.New("--data-dir and --account are required")
+	}
+	if err := relay.RevokeAccount(*dataDir, *account, *reason, time.Now()); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(stdout, "revoked %s; a running relay disconnects it within %s\n", *account, credentialSweepInterval)
+	return err
+}
+
+func restore(args []string, stdout io.Writer) error {
+	flags, dataDir, account := revocationFlags("restore")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" || *account == "" {
+		return errors.New("--data-dir and --account are required")
+	}
+	restored, err := relay.RestoreAccount(*dataDir, *account)
+	if err != nil {
+		return err
+	}
+	if !restored {
+		return fmt.Errorf("%s is not revoked", *account)
+	}
+	_, err = fmt.Fprintf(stdout, "restored %s\n", *account)
+	return err
+}
+
+func revocations(args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("revocations", flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "the relay's --data-dir")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *dataDir == "" {
+		return errors.New("--data-dir is required")
+	}
+	list, err := relay.ListRevocations(*dataDir)
+	if err != nil {
+		return err
+	}
+	return writeJSON(stdout, list)
 }
 
 func writeJSON(stdout io.Writer, value any) error {
 	encoder := json.NewEncoder(stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+func smoke(args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("smoke", flag.ContinueOnError)
+	url := flags.String("url", "", "relay base URL, for example http://127.0.0.1:8081")
+	credentialFile := flags.String("credential-file", "", "file holding a relay credential, to also check a full session")
+	timeout := flags.Duration("timeout", 15*time.Second, "give up after this long")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *url == "" {
+		return errors.New("--url is required")
+	}
+	token := ""
+	if *credentialFile != "" {
+		data, err := os.ReadFile(*credentialFile)
+		if err != nil {
+			return err
+		}
+		token = strings.TrimSpace(string(data))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	result, err := relay.Smoke(ctx, *url, token)
+	if err != nil {
+		return fmt.Errorf("smoke test failed: %w", err)
+	}
+	if !result.Bridged {
+		_, err = fmt.Fprintf(stdout, "relay %s (protocol %d) verified the registration and asks for a credential; pass --credential-file to check a session\n", result.Version, result.Protocol)
+		return err
+	}
+	_, err = fmt.Fprintf(stdout, "relay %s (protocol %d) carried a session, round trip %s\n", result.Version, result.Protocol, result.RoundTrip.Round(time.Millisecond))
+	return err
 }

@@ -1,10 +1,18 @@
 import type { DaemonRequest } from "@cocurdex/rpc";
 import { DAEMON_METHOD_SCOPES } from "@cocurdex/rpc/method-scopes";
-import { type HostPrincipal, principalHasScope } from "@cocurdex/shared";
+import {
+  type HostPrincipal,
+  principalHasScope,
+  UNATTENDED_EXECUTION_SCOPE,
+} from "@cocurdex/shared";
 import type { DaemonShutdownGate } from "./daemon-shutdown-gate";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { handleDaemonRequest } from "./handler";
 import { principalActor } from "./host-access";
+import {
+  mayRunUnattended,
+  type UnattendedExecutionLookup,
+} from "./host-access/unattended-execution-guard";
 import {
   type DaemonObservability,
   handleObservabilityRequest,
@@ -13,6 +21,10 @@ import {
 import type { DaemonReceiptOutcome, DaemonReceiptStore } from "./rpc-receipts";
 import { logDaemonRequest, logRejectedDaemonRequest } from "./rpc-request-log";
 import type { CocurdexDaemonService } from "./service";
+import {
+  normalizeWatchedSessions,
+  type WatchedSessions,
+} from "./session-event-filter";
 
 export interface DaemonRequestRuntime {
   service: CocurdexDaemonService;
@@ -31,7 +43,9 @@ export interface DaemonRequestConnection {
   subscribe(
     afterSeq: number | undefined,
     epoch: string | undefined,
+    sessions: WatchedSessions,
   ): { epoch: string; replayGap: boolean };
+  watchSessions(sessions: WatchedSessions): void;
 }
 
 type AuthorizationResult =
@@ -93,6 +107,18 @@ export function authorizeDaemonRequest(
   return { ok: true, principal };
 }
 
+function unattendedExecutionLookup(
+  service: CocurdexDaemonService,
+): UnattendedExecutionLookup {
+  return {
+    session: (sessionId) => service.getSession(sessionId),
+    runtimeState: (sessionId) => service.getSessionRuntimeState(sessionId),
+    permissionModes: async (agentId) =>
+      (await service.listAgents(agentId)).find((agent) => agent.id === agentId)
+        ?.capabilities.permissionModes ?? [],
+  };
+}
+
 function requestFailedError(error: unknown) {
   return {
     code: "REQUEST_FAILED",
@@ -149,6 +175,22 @@ export async function handleDaemonWireMessage(
   const context = { principal, remoteAddress: connection.remoteAddress };
 
   try {
+    const permitted = await mayRunUnattended(
+      principal,
+      request.method,
+      "params" in request ? request.params : undefined,
+      unattendedExecutionLookup(service),
+    );
+    if (!permitted) {
+      send({
+        id: request.id,
+        error: {
+          code: "FORBIDDEN",
+          message: `This device is missing the ${UNATTENDED_EXECUTION_SCOPE} scope`,
+        },
+      });
+      return;
+    }
     if (request.method === "daemon.shutdownIfIdle") {
       const status = service.status();
       if (
@@ -177,11 +219,20 @@ export async function handleDaemonWireMessage(
       subscribeResult = connection.subscribe(
         normalizeAfterSeq(request.params?.afterSeq),
         normalizeEpoch(request.params?.epoch),
+        normalizeWatchedSessions(request.params?.sessions),
+      );
+    }
+    if (request.method === "daemon.watchSessions") {
+      connection.watchSessions(
+        normalizeWatchedSessions(request.params?.sessions),
       );
     }
     const dispatch = () => {
       if (request.method === "daemon.subscribe") {
         return Promise.resolve(subscribeResult);
+      }
+      if (request.method === "daemon.watchSessions") {
+        return Promise.resolve(null);
       }
       if (request.method === "daemon.status") {
         return handleDaemonRequest(service, request, context);

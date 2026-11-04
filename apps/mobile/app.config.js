@@ -21,10 +21,20 @@ function buildNumber() {
   return value;
 }
 
+function appVersion(fallback) {
+  const raw = process.env.COCURDEX_MOBILE_VERSION;
+  if (raw === undefined || raw === "") return fallback;
+  if (!/^\d+\.\d+\.\d+$/.test(raw)) {
+    throw new Error(`Mobile version must be MAJOR.MINOR.PATCH: ${raw}`);
+  }
+  return raw;
+}
+
 module.exports = ({ config }) => {
   const build = buildNumber();
   return {
     ...config,
+    version: appVersion(config.version),
     ios: { ...config.ios, buildNumber: String(build) },
     android: { ...config.android, versionCode: build },
   };

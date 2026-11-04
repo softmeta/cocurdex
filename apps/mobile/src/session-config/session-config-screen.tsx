@@ -2,6 +2,7 @@ import type { SavedHost } from "@cocurdex/client-runtime";
 import {
   type AgentPermissionMode,
   isAgentPermissionModeSupportedForModel,
+  isAttendedConfigChange,
   type SessionRuntimeSelection,
   sessionConfigurationOf,
 } from "@cocurdex/shared";
@@ -37,6 +38,7 @@ export function SessionConfigScreen({
   const { session, agent, models, snapshot, axes, configOptions, mcpServers } =
     useSessionConfigState(host, sessionId);
   const [failed, setFailed] = useState(false);
+  const [needsExecute, setNeedsExecute] = useState(false);
   const open = useOptionSheet();
   const canInteract = host.scopes.includes("interact");
   const canConfigure = host.scopes.includes("execute");
@@ -59,10 +61,17 @@ export function SessionConfigScreen({
       connection.request("session.updateRuntime", { sessionId, ...patch }),
     );
 
-  const setConfigOption = (configId: string, value: boolean | string) =>
+  const setConfigOption = (configId: string, value: boolean | string) => {
+    const option = configOptions.find((candidate) => candidate.id === configId);
+    if (!canConfigure && !isAttendedConfigChange(option, value)) {
+      setNeedsExecute(true);
+      return;
+    }
+    setNeedsExecute(false);
     void attempt(() =>
       connection.request("session.setConfig", { sessionId, configId, value }),
     );
+  };
 
   const choosePermissionMode = (permissionMode: AgentPermissionMode) => {
     if (!session) return;
@@ -105,9 +114,11 @@ export function SessionConfigScreen({
         ) : null}
         <FormSection
           footer={
-            canConfigure || permissionModes.length === 0 ? undefined : (
-              <FormNote>{t("sessionConfig.modeNeedsExecute")}</FormNote>
-            )
+            needsExecute || (!canConfigure && permissionModes.length > 0) ? (
+              <FormNote testID="session-config-needs-execute">
+                {t("sessionConfig.modeNeedsExecute")}
+              </FormNote>
+            ) : undefined
           }
         >
           <ValueFormRow

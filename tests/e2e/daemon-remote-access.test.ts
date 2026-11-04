@@ -4,9 +4,11 @@ import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
 import {
+  connectPairedHost,
   createRemoteFileClient,
   createSavedHostStore,
   createSecureHostTransport,
+  createSecureTransport,
   HostAccessError,
   pairHost,
   RemoteFileError,
@@ -14,13 +16,18 @@ import {
   savedHostEndpoint,
   savedHostSafetyCode,
 } from "@cocurdex/client-runtime";
+import { portableMessageCompressor } from "@cocurdex/client-runtime/secure-transport";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   createDaemonRpcClient,
   createWebSocketTransport,
   daemonWebSocketProtocols,
 } from "@cocurdex/rpc/client";
-import { encodeBase64Url, generateKeyPair } from "@cocurdex/secure-channel";
+import {
+  encodeBase64Url,
+  generateKeyPair,
+  type MessageCompressor,
+} from "@cocurdex/secure-channel";
 import type { HostAccessScope } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
@@ -33,6 +40,8 @@ import {
 } from "@cocurdex/test-harness/helpers/daemon-process";
 import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { approveDevice } from "./helpers/approve-device";
+import { runCli } from "./helpers/cli";
 
 function freePort() {
   return new Promise<number>((resolve, reject) => {
@@ -96,13 +105,14 @@ async function pairDevice(
   scopes: HostAccessScope[] = ["read"],
 ) {
   const { code, hostKey } = await createPairing(daemon, scopes);
-  return pairHost({
+  const paired = await pairHost({
     baseUrl: `http://127.0.0.1:${port}`,
     code,
     hostKey,
     label: "Pixel",
     store: createSavedHostStore(null),
   });
+  return approveDevice(daemon, paired);
 }
 
 function openSubscription(host: SavedHost) {
@@ -195,6 +205,10 @@ describe("remote host access", () => {
     await expect(
       pairHost({ baseUrl, code, hostKey, store }),
     ).rejects.toMatchObject({ reason: "invalid" });
+    await expect(
+      remoteClient(paired).request("session.list", undefined),
+    ).rejects.toMatchObject({ code: "PENDING_APPROVAL" });
+    await approveDevice(daemon, paired);
 
     const status = await requestDaemon("host.remoteAccess.get", daemon.options);
     const endpoints = status.addresses.map((address) => address.url);
@@ -236,6 +250,52 @@ describe("remote host access", () => {
     );
   });
 
+  it("compresses messages only for devices that offer it", async () => {
+    const daemon = await spawnDaemon();
+    daemons.push(daemon);
+    const port = await enableRemoteAccess(daemon);
+    const paired = await pairDevice(daemon, port);
+    const bodyMarkdown = Array.from(
+      { length: 500 },
+      () => "The checkout total drifts by a cent.",
+    ).join("\n");
+    const note = await requestDaemon(
+      "note.create",
+      { title: "Checkout drift", bodyMarkdown },
+      daemon.options,
+    );
+    const compressor = portableMessageCompressor;
+    const endpoint = savedHostEndpoint(paired);
+    const readNote = async (offer?: MessageCompressor) => {
+      const traffic = captureWebSocketTraffic();
+      try {
+        const client = createDaemonRpcClient(
+          createSecureTransport((handlers) =>
+            connectPairedHost(endpoint, { compressor: offer, handlers }),
+          ),
+          "",
+        );
+        const record = await client.request("note.get", { id: note.id });
+        return { record, bytes: traffic.bytes().length };
+      } finally {
+        traffic.restore();
+      }
+    };
+
+    const offered = await connectPairedHost(endpoint, { compressor });
+    expect(offered.accepted.compression).toBe("deflate-raw");
+    offered.close();
+    const plain = await connectPairedHost(endpoint);
+    expect(plain.accepted.compression).toBeUndefined();
+    plain.close();
+
+    const compressed = await readNote(compressor);
+    const uncompressed = await readNote();
+    expect(compressed.record).toEqual(uncompressed.record);
+    expect(compressed.record?.bodyMarkdown).toBe(bodyMarkdown);
+    expect(compressed.bytes * 3).toBeLessThan(uncompressed.bytes);
+  });
+
   it("keeps the host key in a private file that survives restarts", async () => {
     const userDataPath = tempDirs.createSync("host-key-");
     const first = await spawnDaemon({ userDataPath });
@@ -274,6 +334,91 @@ describe("remote host access", () => {
     ).resolves.toMatchObject({ scopes: ["read"] });
   });
 
+  it("admits a new device only after approval with its safety code", async () => {
+    const daemon = await spawnDaemon();
+    daemons.push(daemon);
+    const port = await enableRemoteAccess(daemon);
+    const { code, hostKey } = await createPairing(daemon);
+    const pending = await pairHost({
+      baseUrl: `http://127.0.0.1:${port}`,
+      code,
+      hostKey,
+      label: "Pixel",
+      store: createSavedHostStore(null),
+    });
+    const cli = { userDataPath: daemon.userDataPath };
+
+    const listed = await requestDaemon("host.devices.list", daemon.options);
+    expect(listed[0]).toMatchObject({
+      id: pending.deviceId,
+      approvedAt: null,
+      safetyCode: null,
+    });
+    expect(listed[0]?.approvalExpiresAt).toEqual(expect.any(String));
+    const wrongCode =
+      savedHostSafetyCode(pending) === "000000" ? "111111" : "000000";
+    const refused = await runCli(
+      ["host", "approve", pending.deviceId, "--code", wrongCode],
+      cli,
+    );
+    expect(refused.code).not.toBe(0);
+    expect(refused.stderr).toContain("does not match");
+    await expect(
+      remoteClient(pending).request("session.list", undefined),
+    ).rejects.toMatchObject({ code: "PENDING_APPROVAL" });
+
+    const approved = await runCli(
+      [
+        "host",
+        "approve",
+        pending.deviceId,
+        "--code",
+        savedHostSafetyCode(pending),
+        "--json",
+      ],
+      cli,
+    );
+    expect(approved.code).toBe(0);
+    expect(JSON.parse(approved.stdout)).toMatchObject({
+      id: pending.deviceId,
+      approvedAt: expect.any(String),
+    });
+    await expect(
+      remoteClient(pending).request("session.list", undefined),
+    ).resolves.toEqual([]);
+    const audit = await requestDaemon("host.audit.list", {}, daemon.options);
+    expect(audit.map((entry) => entry.action)).toContain("device.approved");
+  });
+
+  it("lets only a device holding the devices scope approve another", async () => {
+    const daemon = await spawnDaemon();
+    daemons.push(daemon);
+    const port = await enableRemoteAccess(daemon);
+    const manager = remoteClient(await pairDevice(daemon, port, ["devices"]));
+    const viewer = remoteClient(await pairDevice(daemon, port, ["read"]));
+    const { code, hostKey } = await createPairing(daemon);
+    const pending = await pairHost({
+      baseUrl: `http://127.0.0.1:${port}`,
+      code,
+      hostKey,
+      store: createSavedHostStore(null),
+    });
+    const approval = {
+      deviceId: pending.deviceId,
+      code: savedHostSafetyCode(pending),
+    };
+
+    await expect(
+      viewer.request("host.devices.approve", approval),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      manager.request("host.devices.approve", approval),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(
+      remoteClient(pending).request("session.list", undefined),
+    ).resolves.toEqual([]);
+  });
+
   it("never puts the pairing secret, ids, or payloads on the wire in clear", async () => {
     const stub = await startStubLlmServer();
     const daemon = await spawnDaemon();
@@ -290,6 +435,7 @@ describe("remote host access", () => {
         label: "Pixel",
         store: createSavedHostStore(null),
       });
+      await approveDevice(daemon, paired);
       const fetched = await remoteClient(paired).request("session.get", {
         sessionId: session.id,
       });
@@ -357,7 +503,7 @@ describe("remote host access", () => {
     }
   });
 
-  it("lets a device that may execute start a session the daemon configures", async () => {
+  it("lets only a device that may execute start or drive an agent that runs without approval", async () => {
     const stub = await startStubLlmServer();
     const daemon = await spawnDaemon();
     daemons.push(daemon);
@@ -424,6 +570,31 @@ describe("remote host access", () => {
         providerSnapshot: { providerId: "e2e-stub", headersJson: null },
       });
       expect(JSON.stringify(session)).not.toContain("e2e-key");
+
+      const viewerClient = remoteClient(viewer);
+      await expect(
+        viewerClient.request("session.send", {
+          sessionId: session.id,
+          messageId: crypto.randomUUID(),
+          content: "Run rm -rf in the cart module",
+        }),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "This device is missing the execute scope",
+      });
+      await expect(
+        viewerClient.request("session.setMode", {
+          sessionId: session.id,
+          modeId: "bypassPermissions",
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        viewerClient.request("session.setMode", {
+          sessionId: session.id,
+          modeId: "plan",
+        }),
+      ).rejects.not.toMatchObject({ code: "FORBIDDEN" });
+      expect(stub.requests).toHaveLength(0);
 
       stub.plan = { kind: "stream", chunks: ["On it"] };
       const sent = stub.nextRequest();

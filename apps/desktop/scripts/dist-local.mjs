@@ -18,11 +18,17 @@ const { values } = parseArgs({
   args: process.argv.slice(2).filter((arg) => arg !== "--"),
   options: {
     disable: { type: "string", default: "" },
+    zip: { type: "boolean", default: false },
   },
 });
 
 const disabledFeatures = parseDisabledFeatures(values.disable);
-const platformTargets = PLATFORM_TARGETS[process.platform];
+if (values.zip && process.platform !== "darwin") {
+  throw new Error("--zip is only supported on macOS");
+}
+const platformTargets = values.zip
+  ? ["--mac", "zip"]
+  : PLATFORM_TARGETS[process.platform];
 if (!platformTargets) {
   throw new Error(`Local builds are not supported on ${process.platform}`);
 }

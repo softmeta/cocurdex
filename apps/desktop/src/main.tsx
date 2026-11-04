@@ -51,12 +51,17 @@ async function loadRoot(): Promise<ComponentType> {
   }
   if (webHostAccess?.kind !== "unlinked") return loadApp();
   const [pairedHost] = await listPairedHosts().catch(() => []);
-  if (pairedHost) {
-    connectWebHostBridge(pairedHost);
-    return loadApp();
+  if (!pairedHost) {
+    const { WebPairScreen } = await import("./features/web-pair");
+    return WebPairScreen;
   }
-  const { WebPairScreen } = await import("./features/web-pair");
-  return WebPairScreen;
+  connectWebHostBridge(pairedHost);
+  const { reachPairedHost, WebHostUnreachableScreen } = await import(
+    "./features/web-pair"
+  );
+  const [failure] = await Promise.all([reachPairedHost(), import("./app/App")]);
+  if (!failure) return loadApp();
+  return () => <WebHostUnreachableScreen failure={failure} host={pairedHost} />;
 }
 
 const rootElement = document.getElementById("root");

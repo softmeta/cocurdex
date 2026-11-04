@@ -106,7 +106,7 @@ interface ProviderModelsSectionProps {
   draftModel: ProviderModelRecord;
   draftProvider: ProviderConfigRecord;
   isRefreshing: boolean;
-  readOnly?: boolean;
+  builtIn?: boolean;
   selectedModels: ProviderModelRecord[];
   onDraftModelChange(model: ProviderModelRecord): void;
   onRefreshModels(): Promise<void>;
@@ -118,7 +118,7 @@ export function ProviderModelsSection({
   draftModel,
   draftProvider,
   isRefreshing,
-  readOnly = false,
+  builtIn = false,
   selectedModels,
   onDraftModelChange,
   onRefreshModels,
@@ -177,7 +177,7 @@ export function ProviderModelsSection({
           <RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
           {t("providers.actions.refresh")}
         </Button>
-        {readOnly ? null : (
+        {builtIn ? null : (
           <AddModelDialog
             draftModel={draftModel}
             onDraftModelChange={onDraftModelChange}
@@ -189,7 +189,7 @@ export function ProviderModelsSection({
       <div className="overflow-hidden rounded-control bg-muted">
         {visibleModels.length === 0 ? (
           <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
-            {readOnly
+            {builtIn
               ? t("providers.models.authenticateToLoad")
               : t("providers.models.empty", { provider: draftProvider.name })}
           </div>
@@ -254,6 +254,11 @@ export function ProviderModelsSection({
                       <span className="truncate font-mono">
                         {model.modelId}
                       </span>
+                      {model.overridden ? (
+                        <span className="shrink-0">
+                          {t("providers.models.overridden")}
+                        </span>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell className="min-w-44 max-w-56 truncate px-3 py-2 text-xs text-muted-foreground">
@@ -306,7 +311,7 @@ export function ProviderModelsSection({
                     <div className="flex items-center justify-end gap-2">
                       <ModelParametersDialog
                         model={model}
-                        readOnly={readOnly}
+                        builtIn={builtIn}
                         onReload={onReload}
                         onSaveModel={onSaveModel}
                       />

@@ -1,6 +1,8 @@
 appId: dev.cocurdex.mobile
 ---
-- launchApp
+- launchApp:
+    permissions:
+      notifications: allow
 - assertVisible: ${EMPTY_TITLE}
 - takeScreenshot: empty
 - retry:
@@ -20,6 +22,7 @@ appId: dev.cocurdex.mobile
           visible: ${SCAN_UNREACHABLE}
           timeout: 15000
       - takeScreenshot: scan-unreachable
+- setClipboard: ${PAIRING_LINK}
 - retry:
     maxRetries: 2
     commands:
@@ -31,18 +34,24 @@ appId: dev.cocurdex.mobile
           visible:
             id: "pairing-link"
           timeout: 5000
-- retry:
-    maxRetries: 2
+- runFlow:
+    when:
+      notVisible:
+        id: "pairing-link"
+        text: ${PAIRING_LINK}
     commands:
-      - tapOn:
-          id: "pairing-link"
-      - eraseText: 120
-      - inputText: ${PAIRING_LINK}
-      - extendedWaitUntil:
-          visible:
-            id: "pairing-link"
-            text: ${PAIRING_LINK}
-          timeout: 10000
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn:
+                id: "pairing-link"
+            - eraseText: 120
+            - inputText: ${PAIRING_LINK}
+            - extendedWaitUntil:
+                visible:
+                  id: "pairing-link"
+                  text: ${PAIRING_LINK}
+                timeout: 10000
 - takeScreenshot: pairing-sheet
 - extendedWaitUntil:
     visible:
@@ -55,10 +64,18 @@ appId: dev.cocurdex.mobile
       - tapOn:
           text: ${SYSTEM_CONTINUE}
           optional: true
-      - tapOn: ${PAIR_ACTION}
+      - runFlow:
+          when:
+            visible: ${PAIR_ACTION}
+          commands:
+            - tapOn: ${PAIR_ACTION}
       - extendedWaitUntil:
-          visible: ${WORKSPACE_NAME}
-          timeout: 15000
+          notVisible:
+            id: "pairing-link"
+          timeout: 30000
+- extendedWaitUntil:
+    visible: ${WORKSPACE_NAME}
+    timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}
 - takeScreenshot: sessions
 - retry:

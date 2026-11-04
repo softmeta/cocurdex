@@ -22,6 +22,7 @@ import type {
   MessageRecord,
   PendingSettingsChangeRecord,
   ProviderConfigRecord,
+  ProviderModelOverride,
   ProviderModelRecord,
   QueuedAgentInputRecord,
   RunRecord,
@@ -41,6 +42,7 @@ import {
   mergeProjectedSubagentSession,
   mergeUsageRecords,
   NETWORK_PROXY_SETTING_KEY,
+  parseProviderModelOverride,
 } from "@cocurdex/shared";
 import { applyNodeGlobalProxy } from "@cocurdex/shared/node";
 import { SessionAttentionProjection } from "./attention";
@@ -671,6 +673,32 @@ export class DaemonState {
 
   async deleteProviderModelsByProvider(providerId: string) {
     await this.database.providerModels.deleteByProvider(providerId);
+  }
+
+  async listProviderModelOverrides(providerId?: string) {
+    const rows = await this.database.providerModels.listOverrides(providerId);
+    return rows.map((row) => ({
+      providerId: row.providerId,
+      modelId: row.modelId,
+      override: parseProviderModelOverride(row.overrideJson),
+    }));
+  }
+
+  async saveProviderModelOverride(
+    providerId: string,
+    modelId: string,
+    override: ProviderModelOverride,
+  ) {
+    await this.database.providerModels.upsertOverride({
+      providerId,
+      modelId,
+      overrideJson: JSON.stringify(override),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async deleteProviderModelOverride(providerId: string, modelId: string) {
+    await this.database.providerModels.deleteOverride(providerId, modelId);
   }
 
   listAgentProviderDefaults() {

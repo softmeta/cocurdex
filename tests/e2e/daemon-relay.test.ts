@@ -3,9 +3,11 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   connectPairedHost,
+  connectReachableOrigin,
   createRemoteFileClient,
   createSavedHostStore,
   createSecureHostTransport,
+  findDirectOrigin,
   HostAccessError,
   pairHost,
   type SavedHost,
@@ -16,6 +18,7 @@ import { createDaemonRpcClient } from "@cocurdex/rpc/client";
 import {
   buildHostPairingLink,
   type HostRemoteAccessStatus,
+  type HostTrafficReport,
   parseHostPairingLink,
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
@@ -24,6 +27,7 @@ import {
   spawnDaemon,
 } from "@cocurdex/test-harness/helpers/daemon-process";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { approveDevice } from "./helpers/approve-device";
 import { runCli } from "./helpers/cli";
 import {
   buildRelay,
@@ -58,12 +62,13 @@ async function launch(
   relays.push(relay);
   const daemon = await spawnDaemon();
   daemons.push(daemon);
+  const port = await freePort();
   await requestDaemon(
     "host.remoteAccess.set",
-    { enabled: true, port: await freePort() },
+    { enabled: true, port },
     daemon.options,
   );
-  return { relay, daemon };
+  return { relay, daemon, port };
 }
 
 async function waitForRelay(
@@ -94,7 +99,7 @@ describe("remote access through the relay", () => {
 
     const set = await requestDaemon(
       "host.relay.set",
-      { url: relay.url },
+      { url: relay.url, relayOnly: true },
       daemon.options,
     );
     expect(set).toMatchObject({ listening: false, addresses: [] });
@@ -121,6 +126,7 @@ describe("remote access through the relay", () => {
       label: "Pixel",
       store: createSavedHostStore(null),
     });
+    await approveDevice(daemon, paired);
     expect(paired.baseUrl).toBe(endpoint);
     expect(paired.endpoints).toEqual([endpoint]);
 
@@ -137,12 +143,80 @@ describe("remote access through the relay", () => {
         ?.remoteAddress,
     ).toBe(`relay:${new URL(relay.url).host}`);
 
+    const traffic = await runCli(["host", "traffic", "--json"], {
+      userDataPath: daemon.userDataPath,
+    });
+    expect(traffic.code).toBe(0);
+    const report = JSON.parse(traffic.stdout) as HostTrafficReport;
+    expect(report.frames).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ transport: "relay", direction: "sent" }),
+        expect.objectContaining({ transport: "relay", direction: "received" }),
+      ]),
+    );
+    expect(report.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          transport: "relay",
+          direction: "sent",
+          category: "rpc:host.session",
+          messages: 1,
+        }),
+      ]),
+    );
+
     await requestDaemon("host.relay.set", { url: null }, daemon.options);
     const refused = await connectPairedHost(savedHostEndpoint(paired)).catch(
       (error: unknown) => error,
     );
     expect(refused).toBeInstanceOf(HostAccessError);
-    expect(refused).toMatchObject({ reason: "unreachable" });
+    expect(refused).toMatchObject({ reason: "offline" });
+  });
+
+  it("keeps direct access beside the relay and settles on the direct path", async () => {
+    const { relay, daemon, port } = await launch();
+
+    const set = await requestDaemon(
+      "host.relay.set",
+      { url: relay.url },
+      daemon.options,
+    );
+    expect(set.relay.relayOnly).toBe(false);
+    expect(set.listening).toBe(true);
+    const status = await waitForRelay(
+      daemon,
+      (next) => next.relay.state === "online",
+    );
+    const endpoint = status.relay.endpoint ?? "";
+    const { code, hostKey } = await requestDaemon(
+      "host.pairing.create",
+      { label: "Phone", scopes: ["read"] },
+      daemon.options,
+    );
+    const paired = await pairHost({
+      baseUrl: endpoint,
+      code,
+      hostKey,
+      label: "Pixel",
+      store: createSavedHostStore(null),
+    });
+    await approveDevice(daemon, paired);
+    expect(paired.baseUrl).toBe(endpoint);
+    const direct = `http://127.0.0.1:${port}`;
+    const host = { ...paired, endpoints: [endpoint, direct] };
+
+    let directFound: (origin: string) => void = () => {};
+    const laterDirect = new Promise<string>((resolve) => {
+      directFound = resolve;
+    });
+    const connected = await connectReachableOrigin({
+      host,
+      onDirectFound: directFound,
+    });
+    connected?.opened.close();
+    const settled = connected?.origin === direct ? direct : await laterDirect;
+    expect(settled).toBe(direct);
+    expect(await findDirectOrigin({ host })).toBe(direct);
   });
 
   it("reconnects to a restarted relay and streams files through it", async () => {
@@ -166,6 +240,7 @@ describe("remote access through the relay", () => {
       label: "Pixel",
       store: createSavedHostStore(null),
     });
+    await approveDevice(daemon, paired);
 
     await relay.stop();
     await waitForRelay(daemon, (next) => next.relay.state === "offline");
@@ -227,7 +302,7 @@ describe("remote access through the relay", () => {
       (next) => next.relay.error === "credentialRequired",
     );
 
-    const credentialFile = path.join(path.dirname(keysFile), "invite.json");
+    const credentialFile = path.join(path.dirname(keysFile), "invite.token");
     writeFileSync(
       credentialFile,
       await runRelayCommand(relayBinary, [
@@ -236,18 +311,12 @@ describe("remote access through the relay", () => {
         keysFile,
         "--account",
         "invite-7",
+        "--relay",
+        relay.url,
       ]),
     );
     const installed = await runCli(
-      [
-        "host",
-        "relay",
-        "set",
-        relay.url,
-        "--credential",
-        credentialFile,
-        "--json",
-      ],
+      ["host", "relay", "set", "--credential", credentialFile, "--json"],
       cli,
     );
     expect(installed.code).toBe(0);

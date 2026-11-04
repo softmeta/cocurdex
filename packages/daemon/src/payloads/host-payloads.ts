@@ -1,4 +1,8 @@
-import { HOST_ACCESS_SCOPES } from "@cocurdex/shared";
+import {
+  HOST_ACCESS_SCOPES,
+  PUSH_ENVIRONMENTS,
+  PUSH_PLATFORMS,
+} from "@cocurdex/shared";
 import { z } from "zod";
 import { idSchema, type PayloadSchemas } from "./primitives";
 
@@ -8,16 +12,10 @@ const remoteAccessSettings = z.object({
   keepAwake: z.boolean().optional(),
 });
 
-const relayCredential = z.object({
-  accountId: z.string().min(1).max(200),
-  expiresAt: z.number().int().positive(),
-  signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
-});
-
 const relaySettings = z.object({
   url: z.string().trim().min(1).max(2048).nullable(),
   relayOnly: z.boolean().optional(),
-  credential: relayCredential.nullable().optional(),
+  credential: z.string().trim().min(1).max(4096).nullable().optional(),
 });
 
 const deviceScopes = z
@@ -31,11 +29,27 @@ const createPairing = z.object({
   ttlMinutes: z.number().int().min(1).max(60).optional(),
 });
 
+const pushSettings = z.object({
+  url: z.string().trim().min(1).max(2048).nullable(),
+});
+
+const pushRegistration = z.object({
+  platform: z.enum(PUSH_PLATFORMS),
+  token: z.string().min(1).max(4096),
+  environment: z.enum(PUSH_ENVIRONMENTS),
+});
+
 export const hostPayloadSchemas: PayloadSchemas = {
   "host.remoteAccess.set": remoteAccessSettings,
   "host.relay.set": relaySettings,
+  "host.push.set": pushSettings,
+  "host.push.register": pushRegistration,
   "host.pairing.create": createPairing,
   "host.pairing.cancel": z.object({ pairingId: idSchema }),
+  "host.devices.approve": z.object({
+    deviceId: idSchema,
+    code: z.string().max(32),
+  }),
   "host.devices.revoke": z.object({ deviceId: idSchema }),
   "host.devices.updateScopes": z.object({
     deviceId: idSchema,

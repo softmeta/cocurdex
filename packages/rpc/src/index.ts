@@ -1,5 +1,6 @@
 import type {
   AcpRegistryAgentId,
+  AcpRegistryAgentUpdate,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
   AgentAuthState,
@@ -55,6 +56,7 @@ import type {
   DeleteIssuePayload,
   DeleteNotePayload,
   DeleteViewPayload,
+  DevicePushRegistrationResult,
   DiagnosticsExportResult,
   DocImage,
   DocImageFile,
@@ -81,10 +83,13 @@ import type {
   HostAccessAuditEntry,
   HostAccessScope,
   HostAccessSession,
+  HostDeviceApproval,
   HostDirectoryListing,
   HostIdentity,
   HostPairingRecord,
+  HostPushStatus,
   HostRemoteAccessStatus,
+  HostTrafficReport,
   ImportDeckImagePayload,
   ImportDeckPayload,
   ImportDocImagePayload,
@@ -161,6 +166,8 @@ import type {
   PtySpawnPayload,
   PtySpawnResult,
   PtyWritePayload,
+  PushRegistration,
+  PushSettingsUpdate,
   ReadPptxPayload,
   RefineSessionTitlePayload,
   RelaySettingsUpdate,
@@ -374,6 +381,8 @@ export type DaemonRequestPayloadByMethod = {
     args: string[];
   };
   "acpRegistry.uninstall": { agentId: AcpRegistryAgentId };
+  "acpRegistry.updates": { forceRefresh?: boolean };
+  "acpRegistry.update": { agentId: AcpRegistryAgentId };
   "workspace.list": undefined;
   "workspace.listEntries": { rootPath: string };
   "workspace.listFiles": { rootPath: string };
@@ -449,6 +458,7 @@ export type DaemonRequestPayloadByMethod = {
   "provider.config.delete": { providerId: string };
   "provider.model.save": { model: ProviderModelRecord };
   "provider.model.delete": { providerId: string; modelId: string };
+  "provider.model.reset": { providerId: string; modelId: string };
   "provider.fetchModels": { providerId: string };
   "provider.listAllModels": {
     providerIds?: string[];
@@ -515,7 +525,12 @@ export type DaemonRequestPayloadByMethod = {
   "session.listTurnChangeSets": { sessionId: string };
   "session.getTurnChangeDiff": TurnChangeDiffRequest;
   "session.getToolCallResult": GetToolCallResultInput;
-  "daemon.subscribe": { afterSeq?: number; epoch?: string };
+  "daemon.subscribe": {
+    afterSeq?: number;
+    epoch?: string;
+    sessions?: string[];
+  };
+  "daemon.watchSessions": { sessions: string[] | null };
   "network.proxy.test": { settings?: NetworkProxySettings };
   "network.proxy.get": undefined;
   "network.proxy.set": { settings: NetworkProxySettings };
@@ -720,10 +735,17 @@ export type DaemonRequestPayloadByMethod = {
   "host.pairing.list": undefined;
   "host.pairing.cancel": { pairingId: string };
   "host.devices.list": undefined;
+  "host.devices.approve": { deviceId: string; code: string };
   "host.devices.revoke": { deviceId: string };
   "host.devices.revokeSelf": undefined;
   "host.devices.updateScopes": { deviceId: string; scopes: HostAccessScope[] };
   "host.audit.list": { limit?: number };
+  "host.traffic.get": undefined;
+  "host.traffic.reset": undefined;
+  "host.push.get": undefined;
+  "host.push.set": PushSettingsUpdate;
+  "host.push.register": PushRegistration;
+  "host.push.unregister": undefined;
 };
 
 export type DaemonResultByMethod = {
@@ -745,6 +767,8 @@ export type DaemonResultByMethod = {
   "acpRegistry.install": AcpRegistryInstalledAgent;
   "acpRegistry.installCommand": AcpRegistryInstalledAgent;
   "acpRegistry.uninstall": null;
+  "acpRegistry.updates": AcpRegistryAgentUpdate[];
+  "acpRegistry.update": AcpRegistryInstalledAgent;
   "workspace.list": WorkspaceRecord[];
   "workspace.listEntries": WorkspaceEntry[];
   "workspace.listFiles": WorkspaceFileRecord[];
@@ -809,6 +833,7 @@ export type DaemonResultByMethod = {
   "provider.config.delete": null;
   "provider.model.save": ProviderModelRecord;
   "provider.model.delete": null;
+  "provider.model.reset": ProviderModelRecord;
   "provider.fetchModels": ProviderListModelsResult;
   "provider.listAllModels": ProviderModelRecord[];
   "provider.default.get": AgentProviderSelection | null;
@@ -851,6 +876,7 @@ export type DaemonResultByMethod = {
   "session.getTurnChangeDiff": TurnChangeDiff;
   "session.getToolCallResult": AgentToolCallResult | null;
   "daemon.subscribe": DaemonSubscribeResult;
+  "daemon.watchSessions": null;
   "network.proxy.test": NetworkProxyTestResult;
   "network.proxy.get": NetworkProxySettings;
   "network.proxy.set": NetworkProxySettings;
@@ -1023,10 +1049,17 @@ export type DaemonResultByMethod = {
   "host.pairing.list": HostPairingRecord[];
   "host.pairing.cancel": HostPairingRecord | null;
   "host.devices.list": PairedDevice[];
+  "host.devices.approve": HostDeviceApproval;
   "host.devices.revoke": PairedDeviceRecord | null;
   "host.devices.revokeSelf": PairedDeviceRecord | null;
   "host.devices.updateScopes": PairedDeviceRecord | null;
   "host.audit.list": HostAccessAuditEntry[];
+  "host.traffic.get": HostTrafficReport;
+  "host.traffic.reset": HostTrafficReport;
+  "host.push.get": HostPushStatus;
+  "host.push.set": HostPushStatus;
+  "host.push.register": DevicePushRegistrationResult;
+  "host.push.unregister": DevicePushRegistrationResult;
 };
 
 export type DaemonMethod = keyof DaemonRequestPayloadByMethod;
@@ -1056,6 +1089,10 @@ export const DAEMON_NO_PARAM_METHODS = {
   "host.pairing.list": true,
   "host.devices.list": true,
   "host.devices.revokeSelf": true,
+  "host.push.get": true,
+  "host.push.unregister": true,
+  "host.traffic.get": true,
+  "host.traffic.reset": true,
   "issue.listViews": true,
   "issue.listLabels": true,
   "issue.listLinkedSessionIds": true,

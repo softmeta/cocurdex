@@ -10,7 +10,7 @@ import { STREAM_RENDER_BATCH_MS } from "@cocurdex/shared";
 
 export type SessionDetailConnection = Pick<
   HostConnection,
-  "request" | "onEvent" | "getState" | "subscribeState"
+  "request" | "onEvent" | "getState" | "subscribeState" | "watchSession"
 >;
 
 export interface SessionDetailSnapshot {
@@ -207,8 +207,10 @@ export function createSessionDetailStore(
       live = state.status === "live";
       if (reconnected) void load();
     });
-    void load();
+    const watch = connection.watchSession(sessionId);
+    void watch.ready.then(load);
     return () => {
+      watch.release();
       stopEvents();
       stopState();
       if (reloadTimer) clearTimeout(reloadTimer);

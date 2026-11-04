@@ -46,6 +46,7 @@ function registryWith(enabled: boolean) {
         },
       ],
       truncated: false,
+      error: null,
     })),
     show: vi.fn(async () => null),
     remember: vi.fn(async () => ({
@@ -289,7 +290,12 @@ describe("memory agent tools", () => {
     });
     const deps = {
       isEnabled: () => true,
-      recall: async () => ({ query: "", items: [], truncated: false }),
+      recall: async () => ({
+        query: "",
+        items: [],
+        truncated: false,
+        error: null,
+      }),
       show: async () => null,
       remember: async () => ({
         action: "skipped" as const,

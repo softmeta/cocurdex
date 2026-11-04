@@ -55,6 +55,11 @@ export async function buildAndroidApp(mobileDir: string) {
     CI: "1",
     ...(javaHome ? { JAVA_HOME: javaHome } : {}),
   };
+  await runCommand("pnpm", ["run", "ensure:native-assets"], {
+    cwd: mobileDir,
+    env,
+    inherit: true,
+  });
   await runCommand(
     "pnpm",
     ["exec", "expo", "prebuild", "--platform", "android"],
