@@ -9,14 +9,13 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { ListTodo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { SidebarToggleButton } from "@/app/layout/titlebar-icon-button";
 import { ResizableSidebar, WORKBENCH_SIDEBAR_WIDTH_PX } from "@/components";
-import { EmptyState, Text } from "@/components/ui";
+import { EmptyState } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { cn, useMountEffect } from "@/lib";
-import { IssuesBoard, ViewDisplayMenu, ViewFilterMenu } from "./board";
+import { IssuesBoard, mergeFilters } from "./board";
 import { buildComposeDraft } from "./compose-draft";
 import {
   type IssueComposeDraft,
@@ -39,7 +38,6 @@ import {
   activeViewIdAtom,
   createIssueAtom,
   createIssueLabelAtom,
-  createViewAtom,
   deleteIssueAtom,
   deleteViewAtom,
   issueLoadingAtom,
@@ -48,16 +46,20 @@ import {
   moveColumnAtom,
   moveIssueAtom,
   moveIssueLocalAtom,
+  saveFiltersAsViewAtom,
   updateColumnAtom,
   updateIssueAtom,
   updateViewAtom,
 } from "./issues-store";
+import { IssuesToolbar } from "./issues-toolbar";
 import { IssuesList } from "./list";
 import {
   DeleteViewDialog,
   type IssueNavSession,
   IssuesSidebar,
+  presetScopeFilters,
   useIssueNav,
+  useIssueNavScopeLabel,
   useIssueNavTitle,
 } from "./sidebar";
 
@@ -86,7 +88,7 @@ export function IssuesView({
   const moveIssueLocal = useSetAtom(moveIssueLocalAtom);
   const moveColumn = useSetAtom(moveColumnAtom);
   const updateView = useSetAtom(updateViewAtom);
-  const createView = useSetAtom(createViewAtom);
+  const saveFiltersAsView = useSetAtom(saveFiltersAsViewAtom);
   const deleteView = useSetAtom(deleteViewAtom);
   const createIssueLabel = useSetAtom(createIssueLabelAtom);
   const commentIssue = useSetAtom(commentIssueAtom);
@@ -234,6 +236,22 @@ export function IssuesView({
     [layout, updateView],
   );
 
+  const scopeLabel = useIssueNavScopeLabel(nav.selection);
+
+  const handleSaveView = async (title: string) => {
+    const scope =
+      nav.selection.kind === "issues"
+        ? presetScopeFilters(nav.selection.preset)
+        : [];
+    const created = await saveFiltersAsView({
+      title,
+      filters: mergeFilters(viewFilters, scope),
+    });
+    if (created) {
+      nav.select({ kind: "view", viewId: created.id });
+    }
+  };
+
   // Loading or first-open auto-init of `.cocurdex`. Prefer a blank pane over a
   // web-style spinner so cold-start restore feels like a native shell.
   if (loading) {
@@ -271,11 +289,9 @@ export function IssuesView({
               closeIssueDetail();
               nav.select(selection);
             }}
+            lastPreset={nav.lastPreset}
             agentRunningCount={nav.agentRunningCount}
             views={customViews}
-            onCreateView={() => {
-              void createView(t("sidebar.newBoardTitle"));
-            }}
             onDeleteView={setPendingDeleteBoardId}
             onRenameView={(title) => {
               void updateView({ title });
@@ -301,43 +317,28 @@ export function IssuesView({
             detailPageOpen && "hidden",
           )}
         >
-          {/* View-scoped chrome: lives in the content column so layout/groupBy
-            read as settings for the open view, not a panel-wide control. */}
           {boards.length > 0 || sidebarCollapsed ? (
-            <PanelToolbar
-              className="gap-1"
-              data-testid="issues-view-display-bar"
-              divided={false}
-            >
-              {sidebarToggle}
-              <Text
-                size="body"
-                weight="medium"
-                className={cn(
-                  "me-auto min-w-0 truncate",
-                  sidebarCollapsed && "ps-0.5",
-                  !sidebarCollapsed && "ps-1",
-                )}
-              >
-                {navTitle}
-              </Text>
-              {boards.length > 0 ? (
-                <>
-                  <ViewFilterMenu
-                    filters={viewFilters}
-                    workspaces={workspaces}
-                    labels={activeBoard?.labels ?? []}
-                    onFiltersChange={handleFiltersChange}
-                  />
-                  <ViewDisplayMenu
-                    layout={layout}
-                    groupBy={groupBy}
-                    onLayoutChange={handleLayout}
-                    onGroupByChange={handleGroupBy}
-                  />
-                </>
-              ) : null}
-            </PanelToolbar>
+            <IssuesToolbar
+              selection={nav.selection}
+              title={navTitle}
+              scopeLabel={scopeLabel}
+              leading={sidebarToggle}
+              showViewControls={boards.length > 0}
+              filters={viewFilters}
+              workspaces={workspaces}
+              labels={activeBoard?.labels ?? []}
+              layout={layout}
+              groupBy={groupBy}
+              onPresetChange={(preset) =>
+                nav.select({ kind: "issues", preset })
+              }
+              onFiltersChange={handleFiltersChange}
+              onLayoutChange={handleLayout}
+              onGroupByChange={handleGroupBy}
+              onSaveView={(title) => {
+                void handleSaveView(title);
+              }}
+            />
           ) : null}
           {viewBoard ? (
             layout === "list" ? (

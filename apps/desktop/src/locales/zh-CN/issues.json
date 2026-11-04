@@ -117,12 +117,15 @@
     "saveFailed": "issue 修改未能保存，看板已刷新。"
   },
   "filter": {
+    "activeFilters": "当前筛选",
     "allLabels": "全部标签",
     "allWorkspaces": "全部工作区",
     "ariaLabel": "筛选视图",
     "hideClosed": "隐藏已完成和已取消",
     "label": "标签",
     "noWorkspace": "无工作区",
+    "remove": "移除筛选 {{filter}}",
+    "saveAsView": "保存为视图",
     "workspace": "工作区"
   },
   "list": {
@@ -137,7 +140,6 @@
     "workspaceFallback": "工作区"
   },
   "sidebar": {
-    "addBoard": "添加视图",
     "collapse": "折叠侧栏",
     "deleteView": "删除视图",
     "deleteViewConfirm": {
@@ -153,13 +155,15 @@
       "agent": "Agent 在做",
       "all": "全部 Issue",
       "backlog": "Backlog",
+      "issues": "Issue",
+      "scope": "Issue 范围",
       "title": "Issue"
     },
-    "newBoardTitle": "新视图",
     "renameBoard": "重命名视图",
     "resize": "调整侧栏宽度",
     "title": "视图",
     "untitledBoard": "无标题视图",
-    "views": "视图"
+    "views": "视图",
+    "viewsEmpty": "筛选 issue 后可保存为视图。"
   }
 }

@@ -8,7 +8,6 @@ export function useIssueNavTitle(
   views: readonly ViewSummary[],
 ): string {
   const { t } = useTranslation("issues");
-  const presets = usePresetItems();
   if (selection.kind === "agent") {
     return t("sidebar.nav.agent");
   }
@@ -16,5 +15,17 @@ export function useIssueNavTitle(
     const view = views.find((candidate) => candidate.id === selection.viewId);
     return view?.title || t("sidebar.untitledBoard");
   }
-  return presets.find((item) => item.preset === selection.preset)?.label ?? "";
+  return t("sidebar.nav.issues");
+}
+
+export function useIssueNavScopeLabel(
+  selection: IssueNavSelection,
+): string | null {
+  const presets = usePresetItems();
+  if (selection.kind !== "issues" || selection.preset === "all") {
+    return null;
+  }
+  return (
+    presets.find((item) => item.preset === selection.preset)?.label ?? null
+  );
 }

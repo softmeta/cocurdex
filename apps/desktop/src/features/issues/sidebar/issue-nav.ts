@@ -1,7 +1,10 @@
-import type {
-  IssueRecord,
-  IssueStatusCategory,
-  SessionRecord,
+import {
+  ISSUE_STATUS_CATEGORIES,
+  type IssueRecord,
+  type IssueStatusCategory,
+  type SessionRecord,
+  type ViewColumnRecord,
+  type ViewFilter,
 } from "@cocurdex/shared";
 
 export type IssueNavPreset = "all" | "active" | "backlog";
@@ -101,4 +104,44 @@ export function isSameIssueNav(
     return left.viewId === right.viewId;
   }
   return left.kind === right.kind;
+}
+
+function allowedColumnCategories(
+  selection: IssueNavSelection,
+): readonly IssueStatusCategory[] | null {
+  if (selection.kind === "agent") {
+    return ISSUE_STATUS_CATEGORIES.filter(
+      (category) => !CLOSED_CATEGORIES.includes(category),
+    );
+  }
+  if (selection.kind === "issues" && selection.preset !== "all") {
+    return PRESET_CATEGORIES[selection.preset];
+  }
+  return null;
+}
+
+export function selectNavColumns(
+  columns: ViewColumnRecord[],
+  selection: IssueNavSelection,
+): ViewColumnRecord[] {
+  const allowed = allowedColumnCategories(selection);
+  if (!allowed) {
+    return columns;
+  }
+  return columns.filter(
+    (column) =>
+      column.field !== "status" ||
+      column.category === null ||
+      allowed.includes(column.category),
+  );
+}
+
+export function presetScopeFilters(preset: IssueNavPreset): ViewFilter[] {
+  if (preset === "all") {
+    return [];
+  }
+  const allowed = PRESET_CATEGORIES[preset];
+  return ISSUE_STATUS_CATEGORIES.filter(
+    (category) => !allowed.includes(category),
+  ).map((value) => ({ field: "statusCategory", op: "neq", value }));
 }

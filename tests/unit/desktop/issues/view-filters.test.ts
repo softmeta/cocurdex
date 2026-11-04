@@ -5,6 +5,7 @@ import {
   FILTER_NO_WORKSPACE,
   hidesClosedIssues,
   labelSelection,
+  statusCategoryScope,
   withHideClosedIssues,
   withLabelSelection,
   withWorkspaceSelection,
@@ -49,5 +50,31 @@ describe("view filter selections", () => {
     const shown = withHideClosedIssues(hidden, false);
     expect(shown).toEqual([{ field: "workspaceId", op: "eq", value: "w1" }]);
     expect(hidesClosedIssues(shown)).toBe(false);
+  });
+
+  it("toggles closed issues without dropping other status filters", () => {
+    const scoped: ViewFilter[] = [
+      { field: "statusCategory", op: "neq", value: "backlog" },
+    ];
+    const hidden = withHideClosedIssues(scoped, true);
+    expect(hidesClosedIssues(hidden)).toBe(true);
+    expect(withHideClosedIssues(hidden, true)).toEqual(hidden);
+    expect(withHideClosedIssues(hidden, false)).toEqual(scoped);
+  });
+
+  it("names the status categories a set of filters lets through", () => {
+    expect(statusCategoryScope([])).toBeNull();
+    expect(
+      statusCategoryScope([
+        { field: "statusCategory", op: "neq", value: "backlog" },
+        { field: "statusCategory", op: "neq", value: "completed" },
+        { field: "statusCategory", op: "neq", value: "canceled" },
+      ]),
+    ).toEqual(["unstarted", "started"]);
+    expect(
+      statusCategoryScope([
+        { field: "statusCategory", op: "eq", value: "backlog" },
+      ]),
+    ).toEqual(["backlog"]);
   });
 });

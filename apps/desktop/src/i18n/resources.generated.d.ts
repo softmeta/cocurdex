@@ -1072,12 +1072,15 @@ export default interface Resources {
       saveFailed: "Couldn't save the issue change. The board has been refreshed.";
     };
     filter: {
+      activeFilters: "Active filters";
       allLabels: "All labels";
       allWorkspaces: "All workspaces";
       ariaLabel: "Filter view";
       hideClosed: "Hide completed and canceled";
       label: "Label";
       noWorkspace: "No workspace";
+      remove: "Remove filter {{filter}}";
+      saveAsView: "Save as view";
       workspace: "Workspace";
     };
     list: {
@@ -1092,7 +1095,6 @@ export default interface Resources {
       workspaceFallback: "Workspace";
     };
     sidebar: {
-      addBoard: "Add view";
       collapse: "Collapse sidebar";
       deleteView: "Delete view";
       deleteViewConfirm: {
@@ -1108,14 +1110,16 @@ export default interface Resources {
         agent: "Agent working";
         all: "All issues";
         backlog: "Backlog";
+        issues: "Issues";
+        scope: "Issue scope";
         title: "Issues";
       };
-      newBoardTitle: "New view";
       renameBoard: "Rename view";
       resize: "Resize sidebar";
       title: "View";
       untitledBoard: "Untitled view";
       views: "Views";
+      viewsEmpty: "Filter issues, then save them as a view.";
     };
   };
   memory: {

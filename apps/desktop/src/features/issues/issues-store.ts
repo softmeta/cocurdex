@@ -83,13 +83,34 @@ export const selectViewAtom = atom(null, async (_get, set, viewId: string) => {
   await loadActiveView(set, viewId);
 });
 
-export const createViewAtom = atom(null, async (_get, set, title?: string) => {
-  const view = await issuesIpc.createView({ title });
-  await refreshViewList(set);
-  set(activeViewIdAtom, view.id);
-  await loadActiveView(set, view.id);
-  return view;
-});
+export const saveFiltersAsViewAtom = atom(
+  null,
+  async (get, set, payload: { title: string; filters: ViewFilter[] }) => {
+    const source = get(activeViewAtom);
+    if (!source) {
+      return null;
+    }
+    return runIssueMutation(get, set, async () => {
+      const created = await issuesIpc.createView({ title: payload.title });
+      await issuesIpc.updateView({
+        viewId: created.id,
+        expectedRevision: created.revision,
+        filters: payload.filters,
+        groupBy: source.view.groupBy,
+        layout: source.view.layout,
+      });
+      await issuesIpc.updateView({
+        viewId: source.view.id,
+        expectedRevision: source.view.revision,
+        filters: [],
+      });
+      await refreshViewList(set);
+      set(activeViewIdAtom, created.id);
+      await loadActiveView(set, created.id);
+      return created;
+    });
+  },
+);
 
 export const deleteViewAtom = atom(null, async (get, set, viewId: string) => {
   const view = get(issueViewsAtom).find((candidate) => candidate.id === viewId);

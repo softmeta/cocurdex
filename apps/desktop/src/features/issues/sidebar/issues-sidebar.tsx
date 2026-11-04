@@ -1,18 +1,21 @@
 import type { ViewSummary } from "@cocurdex/shared";
-import { Bot } from "lucide-react";
+import { Bot, ListTodo } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SidebarPanelHeader } from "@/app/layout/sidebar-panel-header";
-import { type IssueNavSelection, isSameIssueNav } from "./issue-nav";
+import {
+  type IssueNavPreset,
+  type IssueNavSelection,
+  isSameIssueNav,
+} from "./issue-nav";
 import { IssueNavRow } from "./issue-nav-row";
 import { IssueViewsSection } from "./issue-views-section";
-import { usePresetItems } from "./use-preset-items";
 
 interface IssuesSidebarProps {
   selection: IssueNavSelection;
   onSelect: (selection: IssueNavSelection) => void;
+  lastPreset: IssueNavPreset;
   agentRunningCount: number;
   views: ViewSummary[];
-  onCreateView: () => void;
   onDeleteView: (viewId: string) => void;
   onRenameView: (title: string) => void;
   onCollapse: () => void;
@@ -21,15 +24,14 @@ interface IssuesSidebarProps {
 export function IssuesSidebar({
   selection,
   onSelect,
+  lastPreset,
   agentRunningCount,
   views,
-  onCreateView,
   onDeleteView,
   onRenameView,
   onCollapse,
 }: IssuesSidebarProps) {
   const { t } = useTranslation("issues");
-  const presets = usePresetItems();
   const agentSelection: IssueNavSelection = { kind: "agent" };
 
   return (
@@ -41,21 +43,12 @@ export function IssuesSidebar({
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-        {presets.map((item) => {
-          const target: IssueNavSelection = {
-            kind: "issues",
-            preset: item.preset,
-          };
-          return (
-            <IssueNavRow
-              key={item.preset}
-              icon={item.icon}
-              label={item.label}
-              isActive={isSameIssueNav(selection, target)}
-              onSelect={() => onSelect(target)}
-            />
-          );
-        })}
+        <IssueNavRow
+          icon={ListTodo}
+          label={t("sidebar.nav.issues")}
+          isActive={selection.kind === "issues"}
+          onSelect={() => onSelect({ kind: "issues", preset: lastPreset })}
+        />
         <IssueNavRow
           icon={Bot}
           label={t("sidebar.nav.agent")}
@@ -67,7 +60,6 @@ export function IssuesSidebar({
           views={views}
           activeViewId={selection.kind === "view" ? selection.viewId : null}
           onSelectView={(viewId) => onSelect({ kind: "view", viewId })}
-          onCreateView={onCreateView}
           onDeleteView={onDeleteView}
           onRenameView={onRenameView}
         />
