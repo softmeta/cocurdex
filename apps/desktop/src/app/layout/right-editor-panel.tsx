@@ -23,6 +23,7 @@ import {
   setChatComposerAttachmentAtom,
 } from "@/features/editor";
 import { MonacoEditor } from "@/features/editor/monaco";
+import { IssuesView } from "@/features/issues";
 import { NotesView } from "@/features/notes";
 import { openPdfsAtom } from "@/features/pdf-reader";
 import {
@@ -40,7 +41,6 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, desktopApi, useMountEffect } from "@/lib";
-import { IssuesPanel } from "./issues-panel";
 import { PanScrollbar } from "./pan-scrollbar";
 import { PanelToolbar } from "./panel-toolbar";
 import { PdfReaderView } from "./pdf-reader-view";
@@ -99,6 +99,7 @@ export interface RightEditorPanelProps {
   overlayInset?: number;
   onAddContextToChat?(attachment: MessageAttachment): boolean;
   onInsertTextToChat?(text: string): boolean;
+  viewSwitcherLeading?: ReactNode;
   viewSwitcherTrailing?: ReactNode;
 }
 
@@ -109,6 +110,7 @@ export function RightEditorPanel({
   onInsertTextToChat,
   overlayInset = 0,
   reserveTrafficLights = false,
+  viewSwitcherLeading,
   viewSwitcherTrailing,
 }: RightEditorPanelProps) {
   const { t } = useTranslation("editor");
@@ -321,6 +323,7 @@ export function RightEditorPanel({
         activeView={activeView}
         hasPdfsOpen={hasPdfsOpen}
         reserveTrafficLights={reserveTrafficLights}
+        leading={viewSwitcherLeading}
         trailing={viewSwitcherTrailing}
         onViewChange={(value) => {
           setActiveView(value);
@@ -522,7 +525,7 @@ export function RightEditorPanel({
                     : "hidden pointer-events-none",
                 )}
               >
-                <IssuesPanel />
+                <IssuesView />
               </div>
             ) : null}
 

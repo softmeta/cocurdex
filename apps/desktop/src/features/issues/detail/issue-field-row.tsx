@@ -1,11 +1,13 @@
 import type {
+  IssueFieldOption,
   IssueLabel,
   IssueRecord,
   IssueSummary,
   WorkspaceRecord,
 } from "@cocurdex/shared";
-import { Circle, Flag, FolderKanban } from "lucide-react";
+import { Flag, FolderKanban } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IssueStatusIcon } from "../issue-status-icon";
 import type { IssueFieldValues } from "./issue-dialog-types";
 import { FieldMenu, LabelsChip, ParentChip } from "./issue-field-chips";
 
@@ -15,7 +17,7 @@ export type IssueChipValues = Pick<
 >;
 
 export interface IssueFieldOptions {
-  statusOptions: Array<{ id: string; title: string }>;
+  statusOptions: IssueFieldOption[];
   priorityOptions: Array<{ id: string; title: string }>;
   workspaces: WorkspaceRecord[];
   labels: IssueLabel[];
@@ -39,8 +41,12 @@ export function IssueFieldRow({
 }) {
   const { t } = useTranslation("issues");
   const { statusOptions, priorityOptions, workspaces } = options;
-  const statusLabel =
-    statusOptions.find((o) => o.id === values.status)?.title ?? values.status;
+  const currentStatus = statusOptions.find((o) => o.id === values.status);
+  const statusLabel = currentStatus?.title ?? values.status;
+  const statusMenuOptions = statusOptions.map((option) => ({
+    ...option,
+    icon: <IssueStatusIcon statusId={option.id} category={option.category} />,
+  }));
   const priorityLabel =
     priorityOptions.find((o) => o.id === values.priority)?.title ??
     values.priority;
@@ -56,9 +62,14 @@ export function IssueFieldRow({
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-5 py-3">
       <FieldMenu
-        icon={<Circle className="size-3.5" strokeWidth={2.25} />}
+        icon={
+          <IssueStatusIcon
+            statusId={values.status}
+            category={currentStatus?.category ?? null}
+          />
+        }
         label={statusLabel}
-        options={statusOptions}
+        options={statusMenuOptions}
         value={values.status}
         onChange={(status) => onChange({ status })}
         ariaLabel={t("dialog.status")}

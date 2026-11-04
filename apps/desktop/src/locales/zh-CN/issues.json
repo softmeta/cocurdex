@@ -10,11 +10,11 @@
     "comment": "评论",
     "commented": "发表了评论",
     "commentPlaceholder": "写下评论…",
-    "created": "创建了 issue",
+    "created": "创建了事项",
     "field": {
       "description": "描述",
       "labels": "标签",
-      "parent": "父 issue",
+      "parent": "父事项",
       "priority": "优先级",
       "status": "状态",
       "title": "标题",
@@ -28,30 +28,30 @@
   },
   "board": {
     "addCard": "添加卡片",
-    "addColumn": "添加列",
     "columnMenu": "列菜单",
     "columnsField": "列",
-    "columnsFieldHint": "列按该 issue 字段分组。拖拽卡片会更新对应字段。",
+    "columnsFieldHint": "列按该事项字段分组。拖拽卡片会更新对应字段。",
     "deleteCard": "删除卡片",
-    "deleteColumn": "删除列",
-    "deleteColumnConfirm": {
-      "cancel": "取消",
-      "confirm": "删除",
-      "description": "将从当前视图移除「{{title}}」。Issue 的字段值会保留。",
-      "title": "删除列？"
-    },
     "displayOptions": "视图显示",
     "displayOptionsHint": "布局与分组只作用于当前视图。",
     "dragCard": "拖拽卡片",
-    "dragColumn": "拖拽列",
     "groupBy": "分组",
-    "groupByHint": "行按该 issue 字段分组。",
+    "groupByHint": "行按该事项字段分组。",
+    "groupByLabel": "标签",
+    "groupByParent": "父事项",
     "groupByPriority": "优先级",
     "groupByStatus": "状态",
+    "groupByWorkspace": "工作区",
+    "hiddenColumns": "隐藏的列",
     "layout": "布局",
     "layoutBoard": "看板",
     "layoutList": "列表",
-    "renameColumnPrompt": "列名称",
+    "manageStatuses": "管理状态",
+    "ungrouped": {
+      "label": "无标签",
+      "parent": "无父事项",
+      "workspace": "无工作区"
+    },
     "untitledBoard": "无标题视图",
     "untitledCard": "无标题卡片",
     "untitledColumn": "无标题列"
@@ -72,10 +72,12 @@
   },
   "detail": {
     "addRelation": "添加关联",
-    "addSubIssue": "添加子 issue",
+    "addSubIssue": "添加子事项",
     "backToView": "返回{{view}}",
-    "loadFailed": "无法加载完整描述。请返回后重新打开该 issue 再编辑。",
-    "notFound": "该 issue 已不存在。",
+    "loadFailed": "无法加载完整描述。请返回后重新打开该事项再编辑。",
+    "nextIssue": "下一个事项",
+    "notFound": "该事项已不存在。",
+    "previousIssue": "上一个事项",
     "relation": {
       "blockedBy": "被阻塞于",
       "blocks": "阻塞",
@@ -83,29 +85,44 @@
       "duplicateOf": "重复于",
       "related": "相关"
     },
-    "relations": "关联",
+    "relations": "事项关系",
     "removeRelation": "移除关联",
     "sessions": "Agent 会话",
-    "subIssues": "子 issue",
+    "stepTooltip": "{{action}}（{{key}}）",
+    "subIssues": "子事项",
     "untitledSession": "未命名会话"
   },
   "dialog": {
     "cancel": "取消",
-    "createIssue": "创建 Issue",
+    "createIssue": "创建事项",
     "descriptionPlaceholder": "添加描述…",
     "labels": "标签",
-    "newIssue": "新建 Issue",
+    "newIssue": "新建事项",
     "newLabel": "新建标签",
     "newLabelPlaceholder": "标签名称",
-    "noMatchingIssues": "没有匹配的 issue",
-    "noParent": "无父 issue",
+    "noMatchingIssues": "没有匹配的事项",
+    "noParent": "无父事项",
     "noWorkspace": "无工作区",
-    "parent": "父 issue",
+    "parent": "父事项",
     "priority": "优先级",
-    "searchIssues": "搜索 issue…",
+    "searchIssues": "搜索事项…",
     "status": "状态",
-    "titlePlaceholder": "Issue 标题",
+    "titlePlaceholder": "事项标题",
     "unknownWorkspace": "未知工作区",
+    "workspace": "工作区"
+  },
+  "display": {
+    "created": "创建时间",
+    "description": "描述",
+    "identifier": "编号",
+    "labels": "标签",
+    "parent": "父事项",
+    "priority": "优先级",
+    "properties": "显示属性",
+    "showEmptyColumns": "显示空列",
+    "showEmptyGroups": "显示空分组",
+    "status": "状态",
+    "updated": "更新时间",
     "workspace": "工作区"
   },
   "empty": {
@@ -113,16 +130,28 @@
     "title": "还没有视图"
   },
   "errors": {
-    "conflict": "该 issue 已在别处被修改，看板已刷新，请重新修改。",
-    "saveFailed": "issue 修改未能保存，看板已刷新。"
+    "conflict": "该事项已在别处被修改，看板已刷新，请重新修改。",
+    "saveFailed": "事项修改未能保存，看板已刷新。"
   },
   "filter": {
+    "activeFilters": "当前筛选",
+    "allIssues": "全部事项",
     "allLabels": "全部标签",
+    "allStatuses": "全部状态",
     "allWorkspaces": "全部工作区",
+    "anyTime": "不限时间",
     "ariaLabel": "筛选视图",
+    "created": "创建时间",
     "hideClosed": "隐藏已完成和已取消",
     "label": "标签",
     "noWorkspace": "无工作区",
+    "parent": "父事项",
+    "remove": "移除筛选 {{filter}}",
+    "saveAsView": "保存为视图",
+    "status": "状态",
+    "topLevel": "仅顶层事项",
+    "updated": "更新时间",
+    "withinDays_other": "最近 {{count}} 天",
     "workspace": "工作区"
   },
   "list": {
@@ -137,29 +166,44 @@
     "workspaceFallback": "工作区"
   },
   "sidebar": {
-    "addBoard": "添加视图",
     "collapse": "折叠侧栏",
     "deleteView": "删除视图",
     "deleteViewConfirm": {
       "cancel": "取消",
       "confirm": "删除",
-      "description": "删除视图「{{title}}」？Issue 是共享的，不会被删除。",
+      "description": "删除视图「{{title}}」？事项是共享的，不会被删除。",
       "title": "删除视图？"
     },
     "expand": "展开侧栏",
-    "hint": "Issue 和视图由 cocurdex 私有存储。",
+    "hint": "事项和视图由 cocurdex 私有存储。",
     "nav": {
       "active": "进行中",
-      "agent": "Agent 在做",
-      "all": "全部 Issue",
+      "all": "全部事项",
       "backlog": "Backlog",
-      "title": "Issue"
+      "scope": "事项范围",
+      "title": "事项"
     },
-    "newBoardTitle": "新视图",
     "renameBoard": "重命名视图",
     "resize": "调整侧栏宽度",
     "title": "视图",
     "untitledBoard": "无标题视图",
-    "views": "视图"
+    "views": "视图",
+    "viewsEmpty": "筛选事项后可保存为视图。"
+  },
+  "statuses": {
+    "actions": "「{{status}}」的操作",
+    "add": "在「{{category}}」中添加状态",
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteDescription": "其中的事项会移到同类别的其他状态；该类别没有其他状态时，移到第一个状态。",
+    "deleteTitle": "删除「{{status}}」？",
+    "description": "状态按类别分组。类别决定状态出现在哪个快捷筛选里，以及其中的事项是否算作已结束。",
+    "empty": "暂无状态",
+    "moveDown": "下移",
+    "moveUp": "上移",
+    "newTitle": "新状态",
+    "rename": "重命名",
+    "saveFailed": "状态保存失败。",
+    "title": "管理状态"
   }
 }

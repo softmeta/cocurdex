@@ -3,10 +3,9 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { activeViewIdAtom, selectViewAtom } from "../issues-store";
 import {
-  countAgentRunningIssues,
   DEFAULT_ISSUE_NAV,
   type IssueNavSelection,
-  type IssueNavSession,
+  selectNavColumns,
   selectNavIssues,
 } from "./issue-nav";
 
@@ -20,13 +19,7 @@ function resolveSelection(
   return selection.kind === "view" ? DEFAULT_ISSUE_NAV : selection;
 }
 
-export function useIssueNav({
-  board,
-  sessions,
-}: {
-  board: ViewFull | null;
-  sessions: readonly IssueNavSession[];
-}) {
+export function useIssueNav({ board }: { board: ViewFull | null }) {
   const activeViewId = useAtomValue(activeViewIdAtom);
   const selectView = useSetAtom(selectViewAtom);
   const [selection, setSelection] =
@@ -42,12 +35,11 @@ export function useIssueNav({
     }
   };
 
-  const builtInIssues =
-    board?.view.id === DEFAULT_VIEW_ID ? board.issues : null;
   const scopedBoard = board
     ? {
         ...board,
-        issues: selectNavIssues(board.issues, effectiveSelection, sessions),
+        columns: selectNavColumns(board.columns, effectiveSelection),
+        issues: selectNavIssues(board.issues, effectiveSelection),
       }
     : null;
 
@@ -55,8 +47,5 @@ export function useIssueNav({
     selection: effectiveSelection,
     select,
     scopedBoard,
-    agentRunningCount: builtInIssues
-      ? countAgentRunningIssues(builtInIssues, sessions)
-      : 0,
   };
 }

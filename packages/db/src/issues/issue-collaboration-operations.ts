@@ -18,12 +18,12 @@ import {
   requireLabel,
 } from "./issue-links";
 import { withIssueMutation } from "./issue-mutation-helpers";
+import { projectSingleIssue } from "./issue-projection";
 import {
   getIssue,
   type IssueRow,
   listIssueSessionIds,
   listLabels,
-  projectSingleIssue,
   requireIssue,
   requireView,
   statusCategories,

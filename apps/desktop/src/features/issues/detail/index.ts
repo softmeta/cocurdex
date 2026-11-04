@@ -1,5 +1,8 @@
 export { IssueCreateDialog } from "./issue-create-dialog";
-export { IssueDetailPage } from "./issue-detail-page";
+export {
+  IssueDetailPage,
+  type IssueDetailStepper,
+} from "./issue-detail-page";
 export type {
   IssueComposeDraft,
   IssueDetailActions,

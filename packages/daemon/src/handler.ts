@@ -254,6 +254,8 @@ export async function handleDaemonRequest(
     case "issue.deleteView":
       await service.dataService.deleteIssueView(request.params);
       return null;
+    case "issue.listColumns":
+      return service.dataService.listIssueColumns(request.params);
     case "issue.createColumn":
       return service.dataService.createIssueColumn(request.params);
     case "issue.updateColumn":

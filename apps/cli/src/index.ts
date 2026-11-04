@@ -576,6 +576,7 @@ function printUsage() {
       "  cocurdex issue list|show|create|update|move|delete|comment|views [--view <id>] [--json]",
       "  cocurdex issue relate|unrelate <id> blocks|related|duplicate <id> [--json]",
       "  cocurdex issue labels | label create --name <name> | label update <id|name> [--name <name>] [--color <color>] | label delete <id|name> [--json]",
+      "  cocurdex issue statuses | status create --name <name> --category backlog|unstarted|started|completed|canceled [--color <color>] | status update <id|name> [--name <name>] [--category <category>] [--color <color>] | status move <id|name> --position <n> | status delete <id|name> [--json]",
       "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
       ...skillsUsageLines(),
       ...diagnosticsUsageLines(),

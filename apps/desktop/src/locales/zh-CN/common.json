@@ -47,26 +47,26 @@
     "empty": "没有可关联的条目",
     "kind": {
       "deck": "演示文稿",
-      "issue": "Issue",
+      "issue": "事项",
       "note": "笔记",
       "session": "会话"
     },
     "relation": {
       "blocked-by": "被阻塞",
       "blocks": "阻塞",
-      "child": "子 Issue",
+      "child": "子事项",
       "duplicate-of": "重复于",
       "duplicated-by": "被重复",
       "mentioned-by": "被提及",
       "mentions": "提及",
-      "parent": "父 Issue",
+      "parent": "父事项",
       "related": "相关",
       "worked-on-by": "会话",
       "works-on": "处理中"
     },
     "remove": "移除与 {{title}} 的关联",
-    "search": "搜索会话、笔记、Issue、演示文稿…",
-    "title": "关联",
+    "search": "搜索会话、笔记、事项、演示文稿…",
+    "title": "关联内容",
     "untitled": "未命名"
   },
   "mermaid": {

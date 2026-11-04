@@ -414,9 +414,12 @@ export function createSchemaSql() {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       icon TEXT,
-      group_by TEXT NOT NULL CHECK (group_by IN ('status', 'priority')),
+      group_by TEXT NOT NULL CHECK (
+        group_by IN ('status', 'priority', 'label', 'workspace', 'parent')
+      ),
       layout TEXT NOT NULL CHECK (layout IN ('board', 'list')),
       filters_json TEXT NOT NULL DEFAULT '[]',
+      display_json TEXT,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL

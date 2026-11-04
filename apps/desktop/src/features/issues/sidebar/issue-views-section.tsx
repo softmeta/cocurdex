@@ -1,14 +1,14 @@
 import type { ViewSummary } from "@cocurdex/shared";
-import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
+import { Layers, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { SidebarSectionHeader } from "@/components";
 import {
   IconButton,
   SidebarListRow,
   SidebarListRowActions,
   SidebarListRowLabel,
+  Text,
 } from "@/components/ui";
 import { InlineEdit } from "../inline-edit";
 
@@ -16,14 +16,12 @@ export function IssueViewsSection({
   views,
   activeViewId,
   onSelectView,
-  onCreateView,
   onDeleteView,
   onRenameView,
 }: {
   views: ViewSummary[];
   activeViewId: string | null;
   onSelectView: (viewId: string) => void;
-  onCreateView: () => void;
   onDeleteView: (viewId: string) => void;
   onRenameView: (title: string) => void;
 }) {
@@ -37,15 +35,12 @@ export function IssueViewsSection({
         title={t("sidebar.views")}
         collapsed={collapsed}
         onToggle={() => setCollapsed((prev) => !prev)}
-        action={
-          <TitlebarIconButton
-            aria-label={t("sidebar.addBoard")}
-            onClick={onCreateView}
-          >
-            <Plus className="size-3.5" />
-          </TitlebarIconButton>
-        }
       />
+      {!collapsed && views.length === 0 ? (
+        <Text size="meta" tone="muted" className="px-2 py-1">
+          {t("sidebar.viewsEmpty")}
+        </Text>
+      ) : null}
       {collapsed
         ? null
         : views.map((view) => {

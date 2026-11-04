@@ -40,6 +40,7 @@ function relationPayload(
 }
 
 export const issueDetailAtom = atom<IssueDetailState | null>(null);
+export const issueDetailIdAtom = atom<string | null>(null);
 const issueDetailRequestAtom = atom(0);
 
 export const openIssueDetailAtom = atom(
@@ -48,6 +49,7 @@ export const openIssueDetailAtom = atom(
     const requestId = get(issueDetailRequestAtom) + 1;
     set(issueDetailRequestAtom, requestId);
     const issueId = typeof target === "string" ? target : target.id;
+    set(issueDetailIdAtom, issueId);
     if (typeof target !== "string") {
       set(issueDetailAtom, {
         bodyEpoch: 0,
@@ -73,6 +75,7 @@ export const openIssueDetailAtom = atom(
       if (!detail) {
         if (typeof target === "string") {
           toast.error(i18n.t("issues:detail.notFound"));
+          set(issueDetailIdAtom, null);
         }
         markFailed();
         return;
@@ -92,6 +95,7 @@ export const openIssueDetailAtom = atom(
 export const closeIssueDetailAtom = atom(null, (get, set) => {
   set(issueDetailRequestAtom, get(issueDetailRequestAtom) + 1);
   set(issueDetailAtom, null);
+  set(issueDetailIdAtom, null);
 });
 
 function applyDetail(get: Getter, set: Setter, detail: IssueDetail | null) {

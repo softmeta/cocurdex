@@ -1,31 +1,32 @@
-import type {
-  IssueRecord,
-  IssueStatusCategory,
-  ViewColumnRecord,
+import {
+  type IssueRecord,
+  isIssueColumnField,
+  type ViewColumnRecord,
+  type ViewGroupBy,
 } from "@cocurdex/shared";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Circle, Plus } from "lucide-react";
-import type { CSSProperties } from "react";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
-import { groupFieldColor } from "../group-field-color";
+import { useGroupColumnTitle } from "../group-column-title";
+import { GroupFieldMark } from "../group-field-mark";
 import { InlineEdit } from "../inline-edit";
-import { ColumnCategoryMenu } from "./column-category-menu";
-import { IssueCard } from "./issue-card";
+import { cardSortableId } from "./card-placement";
+import { ColumnMenu } from "./column-menu";
+import { type CardFieldOption, IssueCard } from "./issue-card";
 
 interface IssueColumnProps {
   column: ViewColumnRecord;
+  groupBy: ViewGroupBy;
   issues: IssueRecord[];
-  statusOptions: Array<{ id: string; title: string }>;
+  statusOptions: CardFieldOption[];
   priorityOptions: Array<{ id: string; title: string }>;
   onAddCard: (columnId: string) => void;
   onDeleteCard: (cardId: string) => void;
@@ -35,11 +36,11 @@ interface IssueColumnProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
-  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssueColumn({
   column,
+  groupBy,
   issues,
   statusOptions,
   priorityOptions,
@@ -48,85 +49,64 @@ export function IssueColumn({
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
-  onSetColumnCategory,
 }: IssueColumnProps) {
   const { t } = useTranslation("issues");
   const [editing, setEditing] = useState(false);
-  const cardIds = useMemo(() => issues.map((c) => c.id), [issues]);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setSortableRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: column.id, data: { type: "column", column } });
+  const columnTitle = useGroupColumnTitle()(column);
+  const renamable = isIssueColumnField(column.field);
+  const cardIds = useMemo(
+    () => issues.map((c) => cardSortableId(groupBy, column.id, c.id)),
+    [issues, groupBy, column.id],
+  );
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: `column-drop-${column.id}`,
     data: { type: "column-drop", columnId: column.id },
   });
 
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const statusColor = groupFieldColor(column);
-  const statusStyle: CSSProperties | undefined = statusColor
-    ? { color: statusColor }
-    : undefined;
-
   return (
     <div
-      ref={setSortableRef}
-      style={style}
+      data-column-id={column.id}
       className={cn(
-        // Soft column well (Linear-style): muted panel behind white cards.
         "flex w-72 shrink-0 flex-col rounded-panel bg-muted/50 p-2",
-        isDragging && "opacity-50",
         isOver && "bg-muted/70 ring-1 ring-editor-border/50",
       )}
     >
-      {/* Header doubles as the column drag handle; clicking the title renames. */}
-      <div
-        className="group flex h-9 items-center gap-1.5 px-1"
-        {...attributes}
-        {...listeners}
-      >
-        <Circle
-          className={cn(
-            "size-3.5 shrink-0",
-            !statusColor && "text-editor-fg-subtle",
-          )}
-          style={statusStyle}
-          strokeWidth={2.25}
-          aria-hidden
-        />
+      <div className="group flex h-9 items-center gap-1.5 px-1">
+        <GroupFieldMark column={column} />
         <div className="min-w-0" data-testid="issue-column-title-cell">
-          <InlineEdit
-            value={column.title}
-            editing={editing}
-            placeholder={t("board.untitledColumn")}
-            onSubmit={(title) => {
-              setEditing(false);
-              if (title !== column.title) onRenameColumn(column.id, title);
-            }}
-            onCancel={() => setEditing(false)}
-            className="w-full bg-transparent text-body font-medium text-editor-fg outline-none"
-          >
-            <button
-              type="button"
-              className="block max-w-44 cursor-text truncate text-start"
-              onClick={() => setEditing(true)}
-              onPointerDown={(e) => e.stopPropagation()}
+          {renamable ? (
+            <InlineEdit
+              value={column.title}
+              editing={editing}
+              placeholder={t("board.untitledColumn")}
+              onSubmit={(title) => {
+                setEditing(false);
+                if (title !== column.title) onRenameColumn(column.id, title);
+              }}
+              onCancel={() => setEditing(false)}
+              className="w-full bg-transparent text-body font-medium text-editor-fg outline-none"
             >
-              <Text size="body" weight="medium" className="text-editor-fg">
-                {column.title || t("board.untitledColumn")}
-              </Text>
-            </button>
-          </InlineEdit>
+              <button
+                type="button"
+                className="block max-w-44 cursor-text truncate text-start"
+                onClick={() => setEditing(true)}
+              >
+                <Text size="body" weight="medium" className="text-editor-fg">
+                  {columnTitle}
+                </Text>
+              </button>
+            </InlineEdit>
+          ) : (
+            <Text
+              size="body"
+              weight="medium"
+              truncate
+              className="block max-w-44 text-editor-fg"
+            >
+              {columnTitle}
+            </Text>
+          )}
         </div>
         <Text
           size="meta"
@@ -139,18 +119,10 @@ export function IssueColumn({
           <TitlebarIconButton
             aria-label={t("board.addCard")}
             onClick={() => onAddCard(column.id)}
-            onPointerDown={(e) => e.stopPropagation()}
           >
             <Plus className="size-3.5" />
           </TitlebarIconButton>
-          {column.category ? (
-            <ColumnCategoryMenu
-              category={column.category}
-              onCategoryChange={(category) =>
-                onSetColumnCategory(column.id, category)
-              }
-            />
-          ) : null}
+          {column.category ? <ColumnMenu /> : null}
         </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">
@@ -166,7 +138,9 @@ export function IssueColumn({
               <IssueCard
                 key={card.id}
                 card={card}
-                statusColor={statusColor}
+                columnId={column.id}
+                sortableId={cardSortableId(groupBy, column.id, card.id)}
+                groupBy={groupBy}
                 statusOptions={statusOptions}
                 priorityOptions={priorityOptions}
                 onDelete={onDeleteCard}

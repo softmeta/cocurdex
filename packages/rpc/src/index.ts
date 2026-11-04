@@ -99,6 +99,7 @@ import type {
   IssueRecord,
   IssueRelationPayload,
   LinkIssueSessionPayload,
+  ListColumnsPayload,
   ListEntityLinksPayload,
   LoadViewPayload,
   LocateDocImagePayload,
@@ -649,6 +650,7 @@ export type DaemonRequestPayloadByMethod = {
   "issue.createView": CreateViewPayload;
   "issue.updateView": UpdateViewPayload;
   "issue.deleteView": DeleteViewPayload;
+  "issue.listColumns": ListColumnsPayload;
   "issue.createColumn": CreateColumnPayload;
   "issue.updateColumn": UpdateColumnPayload;
   "issue.moveColumn": MoveColumnPayload;
@@ -980,6 +982,7 @@ export type DaemonResultByMethod = {
   "issue.createView": ViewSummary;
   "issue.updateView": ViewFull;
   "issue.deleteView": null;
+  "issue.listColumns": ViewColumnRecord[];
   "issue.createColumn": ViewColumnRecord;
   "issue.updateColumn": ViewColumnRecord;
   "issue.moveColumn": ViewColumnRecord;

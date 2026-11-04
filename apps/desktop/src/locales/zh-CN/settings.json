@@ -504,11 +504,11 @@
         "title": "主机管理"
       },
       "interact": {
-        "description": "发送消息、停止会话、编辑笔记和 issue。",
+        "description": "发送消息、停止会话、编辑笔记和事项。",
         "title": "交互"
       },
       "read": {
-        "description": "查看会话、消息、笔记和 issue。",
+        "description": "查看会话、消息、笔记和事项。",
         "title": "读取"
       }
     },
@@ -1126,6 +1126,14 @@
         "description": "打开工作区文件搜索面板。",
         "title": "搜索文件"
       },
+      "navigateBack": {
+        "description": "回到上一个会话、笔记、事项或面板视图。",
+        "title": "后退"
+      },
+      "navigateForward": {
+        "description": "后退之后再前进。",
+        "title": "前进"
+      },
       "toggleChatDock": {
         "description": "在编辑器全屏时显示或隐藏浮动/钉住的聊天坞。",
         "title": "切换聊天坞"
@@ -1171,6 +1179,7 @@
     "unbound": "无"
   },
   "sidebar": {
+    "backToApp": "返回应用",
     "resize": "调整设置侧边栏宽度"
   },
   "skills": {
@@ -1284,7 +1293,7 @@
       "sharedAgents": "{{agents}} 会自动读取共享文件夹。",
       "workspace": "工作区 {{workspace}}"
     },
-    "intro": "安装 cocurdex 产品 Skills，让 Claude、OpenCode、Pi 等 agent 能跑 Notes / Issues 工作流。默认不会自动安装，需你主动安装。",
+    "intro": "安装 cocurdex 产品 Skills，让 Claude、OpenCode、Pi 等 agent 能跑笔记 / 事项工作流。默认不会自动安装，需你主动安装。",
     "list": {
       "builtin": "Cocurdex 内置",
       "checkFailed": "无法检查 {{source}}：{{error}}",

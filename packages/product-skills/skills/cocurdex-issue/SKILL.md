@@ -15,14 +15,20 @@ cocurdex issue list [--status <column>] [--label <name>] [--parent <id>] [--open
 cocurdex issue show <id> [--detail] --json
 cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <markdown>] [--parent <id>] [--labels <a,b>] --json
 cocurdex issue update <id> [--title <title>] [--body <markdown>] [--status <column>] [--priority <id>] [--parent <id>|none] [--labels <a,b>] --json
-cocurdex issue move <id> <column> [--view <id>] --json
+cocurdex issue move <id> <column> [--from <column>] [--view <id>] --json
 cocurdex issue comment <id> --body <markdown> --json
 cocurdex issue relate|unrelate <id> blocks|related|duplicate <other-id> --json
 cocurdex issue labels --json
 cocurdex issue label create --name <name> [--color <color>] --json
 cocurdex issue label update <id|name> [--name <name>] [--color <color>] --json
+cocurdex issue statuses --json
+cocurdex issue status create --name <name> --category <category> [--color <color>] --json
+cocurdex issue status update <id|name> [--name <name>] [--category <category>] [--color <color>] --json
+cocurdex issue status move <id|name> --position <n> --json
+cocurdex issue status delete <id|name> --json
 cocurdex issue delete <id> --json
 cocurdex issue views --json
+cocurdex issue view update <view-id> [--title <title>] [--group-by status|priority|label|workspace|parent] [--layout board|list] [--show-empty true|false] [--properties <a,b>] --json
 ```
 
 Every `<id>` accepts the issue's stable id or its short identifier such as
@@ -55,7 +61,24 @@ scope or acceptance criteria.
 
 Each status column has a category (`backlog`, `unstarted`, `started`,
 `completed`, `canceled`); `show` reports it as `statusCategory`, and
-`list --open` hides completed and canceled issues.
+`list --open` hides completed and canceled issues. Statuses are ordered by
+category, then by their position inside it: `issue statuses` lists them in
+board order, `status move --position` places a status within its category
+(0 is first), and changing `--category` moves it to the end of the new one.
+Deleting a status moves its issues to another status of the same category,
+or to the first status when none is left. Change statuses only when the user
+asks; the user manages them in the issues panel under Manage statuses.
+
+A view groups its issues by `status` (default), `priority`, `label`,
+`workspace`, or `parent`. `move` targets a column of the view's grouping: a
+status or priority id, a label id, a workspace id, or a parent issue id, and
+`__none__` for the "No label/workspace/parent" column. Under label grouping an
+issue sits in one column per label; pass `--from <label-id>` to swap that label
+for the target, otherwise the target label is added, and moving to `__none__`
+clears its labels. `views --json` includes each view's `display`: the card
+`properties` shown (`identifier`, `status`, `priority`, `labels`, `workspace`,
+`parent`, `description`, `created`, `updated`) and `showEmptyGroups`. Change a
+view's grouping or display only when the user asks.
 
 Status and priority ids are shared by every view; an unknown id is rejected
 with the valid ids in the error. Omit `--status` to use the first status.

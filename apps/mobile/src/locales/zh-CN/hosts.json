@@ -87,7 +87,7 @@
     "filesRead": "读取工作区文件、差异和 Git 状态。",
     "filesWrite": "编辑工作区文件、暂存和提交。",
     "gitDestructive": "丢弃更改、切换分支和推送。",
-    "interact": "发送消息、停止会话、编辑笔记和 issue。",
-    "read": "查看会话、消息、笔记和 issue。"
+    "interact": "发送消息、停止会话、编辑笔记和事项。",
+    "read": "查看会话、消息、笔记和事项。"
   }
 }

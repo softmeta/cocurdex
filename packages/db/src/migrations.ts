@@ -27,7 +27,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 37;
+export const CURRENT_SCHEMA_VERSION = 38;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -469,6 +469,37 @@ function addHostDevicePush(database: DatabaseSync): void {
   }
 }
 
+function widenIssueViewGrouping(database: DatabaseSync): void {
+  if (hasColumn(database, "issue_views", "display_json")) {
+    return;
+  }
+  database.exec(`
+    CREATE TABLE issue_views_next (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      icon TEXT,
+      group_by TEXT NOT NULL CHECK (
+        group_by IN ('status', 'priority', 'label', 'workspace', 'parent')
+      ),
+      layout TEXT NOT NULL CHECK (layout IN ('board', 'list')),
+      filters_json TEXT NOT NULL DEFAULT '[]',
+      display_json TEXT,
+      revision INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    INSERT INTO issue_views_next (
+      id, title, icon, group_by, layout, filters_json, revision,
+      created_at, updated_at
+    )
+    SELECT id, title, icon, group_by, layout, filters_json, revision,
+      created_at, updated_at
+    FROM issue_views;
+    DROP TABLE issue_views;
+    ALTER TABLE issue_views_next RENAME TO issue_views;
+  `);
+}
+
 function addHostDeviceApproval(database: DatabaseSync): void {
   if (!hasColumn(database, "host_devices", "approved_at")) {
     database.exec(ADD_HOST_DEVICE_APPROVED_AT_SQL);
@@ -583,6 +614,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [34, addHostDevicePush],
   [35, createProviderModelOverrides],
   [36, addHostDeviceApproval],
+  [37, widenIssueViewGrouping],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

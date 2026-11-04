@@ -286,6 +286,66 @@ describe("cocurdex CLI against a running daemon", () => {
     ).toContain(issue.id);
   });
 
+  it("regroups a view by label and moves an issue between label groups", async () => {
+    const options = { userDataPath: daemon.userDataPath };
+    const json = async (args: string[]) => {
+      const result = await runCli([...args, "--json"], options);
+      expect(result.code, result.stderr).toBe(0);
+      return JSON.parse(result.stdout);
+    };
+    const bug = await json([
+      "issue",
+      "label",
+      "create",
+      "--name",
+      "Grouped bug",
+    ]);
+    const ui = await json(["issue", "label", "create", "--name", "Grouped ui"]);
+    const issue = await json([
+      "issue",
+      "create",
+      "--title",
+      "Grouped issue",
+      "--labels",
+      bug.id,
+    ]);
+
+    const view = await json([
+      "issue",
+      "view",
+      "update",
+      "project",
+      "--group-by",
+      "label",
+      "--show-empty",
+      "true",
+      "--properties",
+      "created,identifier",
+    ]);
+    expect(view.groupBy).toBe("label");
+    expect(view.display).toEqual({
+      properties: ["identifier", "created"],
+      showEmptyGroups: true,
+    });
+
+    const moved = await json([
+      "issue",
+      "move",
+      issue.id,
+      ui.id,
+      "--from",
+      bug.id,
+    ]);
+    expect(moved.labelIds).toEqual([ui.id]);
+
+    const invalid = await runCli(
+      ["issue", "view", "update", "project", "--group-by", "assignee"],
+      options,
+    );
+    expect(invalid.code).not.toBe(0);
+    await json(["issue", "view", "update", "project", "--group-by", "status"]);
+  });
+
   it("renames a label without detaching its issues", async () => {
     const options = { userDataPath: daemon.userDataPath };
     const label = JSON.parse(
@@ -341,6 +401,77 @@ describe("cocurdex CLI against a running daemon", () => {
     expect(
       (JSON.parse(listed.stdout) as { id: string }[]).map((entry) => entry.id),
     ).toEqual([issue.id]);
+  });
+
+  it("manages issue statuses grouped by category", async () => {
+    const options = { userDataPath: daemon.userDataPath };
+    const statusTitles = async () =>
+      (
+        JSON.parse(
+          (await runCli(["issue", "statuses", "--json"], options)).stdout,
+        ) as { title: string; category: string }[]
+      ).map((status) => `${status.category}:${status.title}`);
+
+    const created = await runCli(
+      [
+        "issue",
+        "status",
+        "create",
+        "--name",
+        "Triage",
+        "--category",
+        "backlog",
+        "--json",
+      ],
+      options,
+    );
+    expect(created.code).toBe(0);
+    expect(
+      (
+        await runCli(
+          ["issue", "status", "move", "triage", "--position", "0"],
+          options,
+        )
+      ).code,
+    ).toBe(0);
+    expect(
+      (
+        await runCli(
+          ["issue", "status", "update", "review", "--category", "completed"],
+          options,
+        )
+      ).code,
+    ).toBe(0);
+    expect(await statusTitles()).toEqual([
+      "backlog:Triage",
+      "backlog:Backlog",
+      "unstarted:Todo",
+      "started:In Progress",
+      "completed:Done",
+      "completed:In Review",
+      "canceled:Canceled",
+    ]);
+
+    const invalid = await runCli(
+      ["issue", "status", "update", "review", "--category", "later"],
+      options,
+    );
+    expect(invalid.code).not.toBe(0);
+    expect(invalid.stderr).toContain("Unknown status category");
+
+    await runCli(["issue", "status", "delete", "Triage"], options);
+    await runCli(
+      ["issue", "status", "update", "review", "--category", "started"],
+      options,
+    );
+    expect(await statusTitles()).toEqual([
+      "backlog:Backlog",
+      "unstarted:Todo",
+      "started:In Progress",
+      "started:In Review",
+      "completed:Done",
+      "canceled:Canceled",
+    ]);
   });
 
   it("links a note and an issue through CLI commands", async () => {

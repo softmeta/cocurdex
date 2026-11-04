@@ -1,6 +1,6 @@
 import type { IssueRecord } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
@@ -18,7 +18,15 @@ import { IssueActivity } from "./issue-activity";
 import { IssueDetailSections } from "./issue-detail-sections";
 import type { IssueDetailActions } from "./issue-dialog-types";
 import { type IssueFieldOptions, IssueFieldRow } from "./issue-field-row";
+import { useIssueStepShortcuts } from "./use-issue-step-shortcuts";
 import { useIssueTextAutosave } from "./use-issue-text-autosave";
+
+export interface IssueDetailStepper {
+  position: number;
+  total: number;
+  onPrevious: (() => void) | null;
+  onNext: (() => void) | null;
+}
 
 export function IssueDetailPage({
   state,
@@ -26,6 +34,7 @@ export function IssueDetailPage({
   options,
   actions,
   leading,
+  stepper,
   onBack,
 }: {
   state: IssueDetailState;
@@ -33,11 +42,13 @@ export function IssueDetailPage({
   options: IssueFieldOptions;
   actions: IssueDetailActions;
   leading?: ReactNode;
+  stepper: IssueDetailStepper | null;
   onBack: () => void;
 }) {
   const { t } = useTranslation("issues");
   const saveDetail = useSetAtom(saveIssueDetailAtom);
   const { card, detail, bodyEpoch, bodyStatus } = state;
+  useIssueStepShortcuts(stepper?.onPrevious ?? null, stepper?.onNext ?? null);
 
   return (
     <article
@@ -68,6 +79,7 @@ export function IssueDetailPage({
             {card.identifier}
           </Text>
         </div>
+        {stepper ? <IssueStepControls stepper={stepper} /> : null}
       </PanelToolbar>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col pb-10">
@@ -110,6 +122,39 @@ export function IssueDetailPage({
         </div>
       </div>
     </article>
+  );
+}
+
+function IssueStepControls({ stepper }: { stepper: IssueDetailStepper }) {
+  const { t } = useTranslation("issues");
+  return (
+    <div className="ms-auto flex shrink-0 items-center gap-0.5">
+      <Text size="meta" className="me-1 tabular-nums text-editor-fg-subtle">
+        {stepper.position} / {stepper.total}
+      </Text>
+      <TitlebarIconButton
+        aria-label={t("detail.previousIssue")}
+        tooltip={t("detail.stepTooltip", {
+          action: t("detail.previousIssue"),
+          key: "K",
+        })}
+        disabled={stepper.onPrevious === null}
+        onClick={() => stepper.onPrevious?.()}
+      >
+        <ChevronUp className="size-3.5" />
+      </TitlebarIconButton>
+      <TitlebarIconButton
+        aria-label={t("detail.nextIssue")}
+        tooltip={t("detail.stepTooltip", {
+          action: t("detail.nextIssue"),
+          key: "J",
+        })}
+        disabled={stepper.onNext === null}
+        onClick={() => stepper.onNext?.()}
+      >
+        <ChevronDown className="size-3.5" />
+      </TitlebarIconButton>
+    </div>
   );
 }
 

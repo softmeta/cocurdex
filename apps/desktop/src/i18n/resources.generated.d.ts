@@ -724,12 +724,15 @@ export default interface Resources {
       exitEditorFullscreen: "Exit full screen";
       explorer: "Explorer";
       floatEditorPanel: "Float panel over chat";
-      goBack: "Go back";
       goForward: "Go forward";
       hideChatFab: "Hide chat button";
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
+      navigateBack: "Back";
+      navigateForward: "Forward";
+      navigationHistory: "Navigation history";
       openChat: "Open chat";
       openEditorPanel: "Open editor panel";
+      panelViews: "Panel views";
       pinChatDock: "Pin chat to the side";
       pinChatDockNeedsSpace: "The window is too narrow to dock chat. Widen it and try again.";
       preview: "Preview";
@@ -983,30 +986,30 @@ export default interface Resources {
     };
     board: {
       addCard: "Add card";
-      addColumn: "Add column";
       columnMenu: "Column menu";
       columnsField: "Columns";
       columnsFieldHint: "Columns follow this issue field. Drag a card to update the field.";
       deleteCard: "Delete card";
-      deleteColumn: "Delete column";
-      deleteColumnConfirm: {
-        cancel: "Cancel";
-        confirm: "Delete";
-        description: '"{{title}}" will be removed from this view. Issues keep their field values.';
-        title: "Delete column?";
-      };
       displayOptions: "View display";
       displayOptionsHint: "Layout and grouping apply only to this view.";
       dragCard: "Drag card";
-      dragColumn: "Drag column";
       groupBy: "Grouping";
       groupByHint: "Rows are grouped by this issue field.";
+      groupByLabel: "Label";
+      groupByParent: "Parent issue";
       groupByPriority: "Priority";
       groupByStatus: "Status";
+      groupByWorkspace: "Workspace";
+      hiddenColumns: "Hidden columns";
       layout: "Layout";
       layoutBoard: "Board";
       layoutList: "List";
-      renameColumnPrompt: "Column name";
+      manageStatuses: "Manage statuses";
+      ungrouped: {
+        label: "No label";
+        parent: "No parent";
+        workspace: "No workspace";
+      };
       untitledBoard: "Untitled view";
       untitledCard: "Untitled card";
       untitledColumn: "Untitled column";
@@ -1030,7 +1033,9 @@ export default interface Resources {
       addSubIssue: "Add sub-issue";
       backToView: "Back to {{view}}";
       loadFailed: "Couldn't load the full description. Go back and reopen the issue to edit it.";
+      nextIssue: "Next issue";
       notFound: "This issue no longer exists.";
+      previousIssue: "Previous issue";
       relation: {
         blockedBy: "Blocked by";
         blocks: "Blocks";
@@ -1038,9 +1043,10 @@ export default interface Resources {
         duplicatedBy: "Duplicated by";
         related: "Related to";
       };
-      relations: "Relations";
+      relations: "Issue relations";
       removeRelation: "Remove relation";
       sessions: "Agent sessions";
+      stepTooltip: "{{action}} ({{key}})";
       subIssues: "Sub-issues";
       untitledSession: "Untitled session";
     };
@@ -1063,6 +1069,20 @@ export default interface Resources {
       unknownWorkspace: "Unknown workspace";
       workspace: "Workspace";
     };
+    display: {
+      created: "Created";
+      description: "Description";
+      identifier: "ID";
+      labels: "Labels";
+      parent: "Parent issue";
+      priority: "Priority";
+      properties: "Display properties";
+      showEmptyColumns: "Show empty columns";
+      showEmptyGroups: "Show empty groups";
+      status: "Status";
+      updated: "Updated";
+      workspace: "Workspace";
+    };
     empty: {
       description: "Create a card or column to start organizing work.";
       title: "No view yet";
@@ -1072,12 +1092,25 @@ export default interface Resources {
       saveFailed: "Couldn't save the issue change. The board has been refreshed.";
     };
     filter: {
+      activeFilters: "Active filters";
+      allIssues: "All issues";
       allLabels: "All labels";
+      allStatuses: "All statuses";
       allWorkspaces: "All workspaces";
+      anyTime: "Any time";
       ariaLabel: "Filter view";
+      created: "Created";
       hideClosed: "Hide completed and canceled";
       label: "Label";
       noWorkspace: "No workspace";
+      parent: "Parent";
+      remove: "Remove filter {{filter}}";
+      saveAsView: "Save as view";
+      status: "Status";
+      topLevel: "Top-level only";
+      updated: "Updated";
+      withinDays_one: "Past {{count}} day";
+      withinDays_other: "Past {{count}} days";
       workspace: "Workspace";
     };
     list: {
@@ -1092,7 +1125,6 @@ export default interface Resources {
       workspaceFallback: "Workspace";
     };
     sidebar: {
-      addBoard: "Add view";
       collapse: "Collapse sidebar";
       deleteView: "Delete view";
       deleteViewConfirm: {
@@ -1105,17 +1137,33 @@ export default interface Resources {
       hint: "Issues and views are stored privately by cocurdex.";
       nav: {
         active: "Active";
-        agent: "Agent working";
         all: "All issues";
         backlog: "Backlog";
+        scope: "Issue scope";
         title: "Issues";
       };
-      newBoardTitle: "New view";
       renameBoard: "Rename view";
       resize: "Resize sidebar";
       title: "View";
       untitledBoard: "Untitled view";
       views: "Views";
+      viewsEmpty: "Filter issues, then save them as a view.";
+    };
+    statuses: {
+      actions: "{{status}} actions";
+      add: "Add a status to {{category}}";
+      cancel: "Cancel";
+      delete: "Delete";
+      deleteDescription: "Its issues move to another status in the same category, or to the first status when the category has no other.";
+      deleteTitle: "Delete {{status}}?";
+      description: "Statuses are grouped by category. The category decides which quick filter shows a status and whether its issues count as finished.";
+      empty: "No statuses";
+      moveDown: "Move down";
+      moveUp: "Move up";
+      newTitle: "New status";
+      rename: "Rename";
+      saveFailed: "Could not save the status.";
+      title: "Manage statuses";
     };
   };
   memory: {
@@ -3093,6 +3141,14 @@ export default interface Resources {
           description: "Open the workspace file search palette.";
           title: "Search files";
         };
+        navigateBack: {
+          description: "Go back to the previous session, note, issue, or panel view.";
+          title: "Go back";
+        };
+        navigateForward: {
+          description: "Go forward again after going back.";
+          title: "Go forward";
+        };
         toggleChatDock: {
           description: "Show or hide the floating/pinned chat dock when the editor is fullscreen.";
           title: "Toggle chat dock";
@@ -3138,6 +3194,7 @@ export default interface Resources {
       unbound: "None";
     };
     sidebar: {
+      backToApp: "Back to app";
       resize: "Resize settings sidebar";
     };
     skills: {

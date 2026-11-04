@@ -1,20 +1,16 @@
-import type {
-  IssueRecord,
-  IssueStatusCategory,
-  SessionRecord,
+import {
+  ISSUE_STATUS_CATEGORIES,
+  type IssueRecord,
+  type IssueStatusCategory,
+  type ViewColumnRecord,
+  type ViewFilter,
 } from "@cocurdex/shared";
 
 export type IssueNavPreset = "all" | "active" | "backlog";
 
 export type IssueNavSelection =
   | { kind: "issues"; preset: IssueNavPreset }
-  | { kind: "agent" }
   | { kind: "view"; viewId: string };
-
-export type IssueNavSession = Pick<
-  SessionRecord,
-  "id" | "status" | "archivedAt"
->;
 
 export const DEFAULT_ISSUE_NAV: IssueNavSelection = {
   kind: "issues",
@@ -29,11 +25,6 @@ const PRESET_CATEGORIES: Record<
   backlog: ["backlog"],
 };
 
-const CLOSED_CATEGORIES: readonly IssueStatusCategory[] = [
-  "completed",
-  "canceled",
-];
-
 function matchesPreset(issue: IssueRecord, preset: IssueNavPreset): boolean {
   if (preset === "all") {
     return true;
@@ -44,61 +35,47 @@ function matchesPreset(issue: IssueRecord, preset: IssueNavPreset): boolean {
   );
 }
 
-function isOpen(issue: IssueRecord): boolean {
-  return (
-    issue.statusCategory === null ||
-    !CLOSED_CATEGORIES.includes(issue.statusCategory)
-  );
-}
-
-function liveSessionStatuses(
-  sessions: readonly IssueNavSession[],
-): Map<string, IssueNavSession["status"]> {
-  return new Map(
-    sessions
-      .filter((session) => !session.archivedAt)
-      .map((session) => [session.id, session.status]),
-  );
-}
-
 export function selectNavIssues(
   issues: IssueRecord[],
   selection: IssueNavSelection,
-  sessions: readonly IssueNavSession[],
 ): IssueRecord[] {
   if (selection.kind === "view") {
     return issues;
   }
-  if (selection.kind === "agent") {
-    const live = liveSessionStatuses(sessions);
-    return issues.filter(
-      (issue) => isOpen(issue) && issue.sessionIds.some((id) => live.has(id)),
-    );
-  }
   return issues.filter((issue) => matchesPreset(issue, selection.preset));
 }
 
-export function countAgentRunningIssues(
-  issues: readonly IssueRecord[],
-  sessions: readonly IssueNavSession[],
-): number {
-  const live = liveSessionStatuses(sessions);
-  return issues.filter(
-    (issue) =>
-      isOpen(issue) &&
-      issue.sessionIds.some((id) => live.get(id) === "running"),
-  ).length;
+function allowedColumnCategories(
+  selection: IssueNavSelection,
+): readonly IssueStatusCategory[] | null {
+  if (selection.kind === "issues" && selection.preset !== "all") {
+    return PRESET_CATEGORIES[selection.preset];
+  }
+  return null;
 }
 
-export function isSameIssueNav(
-  left: IssueNavSelection,
-  right: IssueNavSelection,
-): boolean {
-  if (left.kind === "issues" && right.kind === "issues") {
-    return left.preset === right.preset;
+export function selectNavColumns(
+  columns: ViewColumnRecord[],
+  selection: IssueNavSelection,
+): ViewColumnRecord[] {
+  const allowed = allowedColumnCategories(selection);
+  if (!allowed) {
+    return columns;
   }
-  if (left.kind === "view" && right.kind === "view") {
-    return left.viewId === right.viewId;
+  return columns.filter(
+    (column) =>
+      column.field !== "status" ||
+      column.category === null ||
+      allowed.includes(column.category),
+  );
+}
+
+export function presetScopeFilters(preset: IssueNavPreset): ViewFilter[] {
+  if (preset === "all") {
+    return [];
   }
-  return left.kind === right.kind;
+  const allowed = PRESET_CATEGORIES[preset];
+  return ISSUE_STATUS_CATEGORIES.filter(
+    (category) => !allowed.includes(category),
+  ).map((value) => ({ field: "statusCategory", op: "neq", value }));
 }

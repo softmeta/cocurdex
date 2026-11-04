@@ -1,21 +1,19 @@
 import crypto from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import {
+  compareIssueColumns,
   DEFAULT_PRIORITY_COLUMNS,
   DEFAULT_STATUS_COLUMNS,
   DEFAULT_VIEW_ID,
   formatIssueIdentifier,
-  type IssueFieldOption,
+  type IssueColumnField,
   type IssueLabel,
-  type IssueRecord,
   type IssueStatusCategory,
   type IssueSummary,
-  issueBodyExcerpt,
-  issueMatchesFilters,
+  normalizeViewDisplay,
   parseIssueNumber,
   type ViewColumnRecord,
   type ViewFilter,
-  type ViewFull,
   type ViewGroupBy,
   type ViewLayout,
   type ViewSummary,
@@ -53,13 +51,14 @@ export interface ViewRow extends SqliteRow {
   group_by: ViewGroupBy;
   layout: ViewLayout;
   filters_json: string;
+  display_json: string | null;
   revision: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface ColumnRow extends SqliteRow {
-  field: ViewGroupBy;
+  field: IssueColumnField;
   id: string;
   title: string;
   color: string | null;
@@ -88,6 +87,9 @@ export function mapViewSummary(row: ViewRow): ViewSummary {
     groupBy: row.group_by,
     layout: row.layout,
     filters: parseFilters(row.filters_json),
+    display: normalizeViewDisplay(
+      row.display_json ? JSON.parse(row.display_json) : null,
+    ),
     revision: row.revision,
   };
 }
@@ -158,20 +160,22 @@ export function requireIssue(
 
 export function listColumns(
   database: DatabaseSync,
-  field: ViewGroupBy,
+  field: IssueColumnField,
 ): ColumnRow[] {
-  return database
-    .prepare(
-      `SELECT * FROM issue_columns
-       WHERE field = ?
-       ORDER BY sort_order, id`,
-    )
+  const rows = database
+    .prepare("SELECT * FROM issue_columns WHERE field = ?")
     .all(field) as ColumnRow[];
+  return rows.sort((a, b) =>
+    compareIssueColumns(
+      { id: a.id, category: a.category, sortOrder: a.sort_order },
+      { id: b.id, category: b.category, sortOrder: b.sort_order },
+    ),
+  );
 }
 
 export function fallbackColumnId(
   columns: readonly ColumnRow[],
-  field: ViewGroupBy,
+  field: IssueColumnField,
 ): string {
   if (field === "priority") {
     return (
@@ -275,117 +279,6 @@ export function toIssueSummary(
     status: issue.status,
     statusCategory: categories.get(issue.status) ?? null,
   };
-}
-
-interface IssueProjection {
-  view: ViewRow;
-  columnIds: Set<string>;
-  fallbackColumnId: string;
-  categories: Map<string, IssueStatusCategory | null>;
-  labelIds: Map<string, string[]>;
-  sessionIds: Map<string, string[]>;
-}
-
-function toIssueRecord(
-  issue: IssueRow,
-  projection: IssueProjection,
-  fullBody: boolean,
-): IssueRecord {
-  const { view } = projection;
-  const rawColumnId =
-    view.group_by === "priority" ? issue.priority : issue.status;
-  return {
-    id: issue.id,
-    number: issue.number,
-    identifier: formatIssueIdentifier(issue.number),
-    columnId: projection.columnIds.has(rawColumnId)
-      ? rawColumnId
-      : projection.fallbackColumnId,
-    viewId: view.id,
-    title: issue.title,
-    description: fullBody
-      ? issue.description_markdown || null
-      : issueBodyExcerpt(issue.description_markdown),
-    color: issue.color,
-    status: issue.status,
-    statusCategory: projection.categories.get(issue.status) ?? null,
-    priority: issue.priority,
-    workspaceId: issue.workspace_id,
-    parentId: issue.parent_id,
-    labelIds: projection.labelIds.get(issue.id) ?? [],
-    sessionIds: projection.sessionIds.get(issue.id) ?? [],
-    completedAt: issue.completed_at,
-    sortOrder: issue.sort_order,
-    revision: issue.revision,
-    createdAt: issue.created_at,
-    updatedAt: issue.updated_at,
-  };
-}
-
-function toFieldOption(column: ColumnRow): IssueFieldOption {
-  return {
-    id: column.id,
-    title: column.title,
-    category: column.field === "status" ? column.category : null,
-  };
-}
-
-export function projectView(database: DatabaseSync, view: ViewRow): ViewFull {
-  const statusColumns = listColumns(database, "status");
-  const priorityColumns = listColumns(database, "priority");
-  const activeColumns =
-    view.group_by === "priority" ? priorityColumns : statusColumns;
-  const projection: IssueProjection = {
-    view,
-    columnIds: new Set(activeColumns.map((column) => column.id)),
-    fallbackColumnId: fallbackColumnId(activeColumns, view.group_by),
-    categories: new Map(
-      statusColumns.map((column) => [column.id, column.category]),
-    ),
-    labelIds: listIssueLabelIds(database),
-    sessionIds: listIssueSessionIds(database),
-  };
-  const filters = parseFilters(view.filters_json);
-  const issues = (
-    database
-      .prepare("SELECT * FROM issues ORDER BY sort_order, created_at, id")
-      .all() as IssueRow[]
-  )
-    .map((issue) => toIssueRecord(issue, projection, false))
-    .filter((issue) => issueMatchesFilters(issue, filters));
-
-  return {
-    view: {
-      ...mapViewSummary(view),
-      createdAt: view.created_at,
-      updatedAt: view.updated_at,
-    },
-    columns: activeColumns.map(mapColumn),
-    statusOptions: statusColumns.map(toFieldOption),
-    priorityOptions: priorityColumns.map(toFieldOption),
-    labels: listLabels(database),
-    issues,
-  };
-}
-
-export function projectSingleIssue(
-  database: DatabaseSync,
-  issue: IssueRow,
-  view: ViewRow,
-): IssueRecord {
-  const columns = listColumns(database, view.group_by);
-  return toIssueRecord(
-    issue,
-    {
-      view,
-      columnIds: new Set(columns.map((column) => column.id)),
-      fallbackColumnId: fallbackColumnId(columns, view.group_by),
-      categories: statusCategories(database),
-      labelIds: listIssueLabelIds(database, issue.id),
-      sessionIds: listIssueSessionIds(database, issue.id),
-    },
-    true,
-  );
 }
 
 export function insertDefaultView(database: DatabaseSync): void {

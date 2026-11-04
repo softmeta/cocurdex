@@ -1,10 +1,17 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   DEFAULT_VIEW_ID,
+  ISSUE_DISPLAY_PROPERTIES,
   ISSUE_RELATION_KINDS,
+  ISSUE_STATUS_CATEGORIES,
   type IssueActor,
   type IssueRelationKind,
+  type IssueStatusCategory,
   isClosedStatusCategory,
+  sortOrderForColumnPosition,
+  type UpdateViewPayload,
+  VIEW_GROUP_BY_FIELDS,
+  VIEW_LAYOUTS,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import type { ParsedArgs } from "./parse-args";
@@ -45,6 +52,78 @@ function nullableFlag(parsed: ParsedArgs, name: string) {
   return typeof value === "string" && value !== "none" ? value : null;
 }
 
+function enumFlag<T extends string>(
+  parsed: ParsedArgs,
+  name: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = stringFlag(parsed, name);
+  if (value === undefined) {
+    return undefined;
+  }
+  const match = allowed.find((entry) => entry === value);
+  if (!match) {
+    throw new Error(`--${name} must be one of: ${allowed.join(", ")}`);
+  }
+  return match;
+}
+
+function booleanFlag(parsed: ParsedArgs, name: string): boolean | undefined {
+  const value = parsed.flags.get(name);
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === true || value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  throw new Error(`--${name} must be true or false`);
+}
+
+const VIEW_UPDATE_USAGE =
+  "Usage: cocurdex issue view update <id> [--title <title>] [--group-by <field>] [--layout board|list] [--show-empty true|false] [--properties <a,b,...>]";
+
+async function updateViewFromFlags(viewId: string, parsed: ParsedArgs) {
+  const current = await withDaemon(() =>
+    requestDaemon("issue.loadView", { viewId }),
+  );
+  if (!current) {
+    throw new Error(`View not found: ${viewId}`);
+  }
+  const properties = listFlag(parsed, "properties");
+  const unknown = properties?.filter(
+    (entry) => !ISSUE_DISPLAY_PROPERTIES.some((known) => known === entry),
+  );
+  if (unknown && unknown.length > 0) {
+    throw new Error(
+      `--properties accepts: ${ISSUE_DISPLAY_PROPERTIES.join(", ")}`,
+    );
+  }
+  const showEmpty = booleanFlag(parsed, "show-empty");
+  const display =
+    properties !== undefined || showEmpty !== undefined
+      ? {
+          properties: ISSUE_DISPLAY_PROPERTIES.filter((entry) =>
+            (properties ?? current.view.display.properties).includes(entry),
+          ),
+          showEmptyGroups: showEmpty ?? current.view.display.showEmptyGroups,
+        }
+      : undefined;
+  const payload: UpdateViewPayload = {
+    viewId,
+    title: stringFlag(parsed, "title"),
+    groupBy: enumFlag(parsed, "group-by", VIEW_GROUP_BY_FIELDS),
+    layout: enumFlag(parsed, "layout", VIEW_LAYOUTS),
+    display,
+  };
+  const updated = await withDaemon(() =>
+    requestDaemon("issue.updateView", payload),
+  );
+  return updated.view;
+}
+
 function requiredId(args: string[], usage: string) {
   const [id] = args;
   if (!id) {
@@ -81,6 +160,103 @@ function parseRelation(args: string[], action: string) {
     actor: CLI_ACTOR,
   };
 }
+
+const STATUS_USAGE =
+  "Usage: cocurdex issue status create --name <name> --category <category> [--color <color>] | status update <id|name> [--name <name>] [--category <category>] [--color <color>] | status move <id|name> --position <n> | status delete <id|name>";
+
+function categoryFlag(parsed: ParsedArgs): IssueStatusCategory | undefined {
+  const value = stringFlag(parsed, "category");
+  if (value === undefined) {
+    return undefined;
+  }
+  const category = ISSUE_STATUS_CATEGORIES.find((entry) => entry === value);
+  if (!category) {
+    throw new Error(
+      `Unknown status category: ${value} (valid: ${ISSUE_STATUS_CATEGORIES.join(", ")})`,
+    );
+  }
+  return category;
+}
+
+async function listStatuses() {
+  return withDaemon(() =>
+    requestDaemon("issue.listColumns", { field: "status" }),
+  );
+}
+
+async function requireStatus(ref: string) {
+  const statuses = await listStatuses();
+  const needle = ref.toLowerCase();
+  const status = statuses.find(
+    (entry) => entry.id === ref || entry.title.toLowerCase() === needle,
+  );
+  if (!status) {
+    throw new Error(`Issue status not found: ${ref}`);
+  }
+  return { status, statuses };
+}
+
+function positionFlag(parsed: ParsedArgs): number {
+  const position = Number(getRequiredFlag(parsed, "position"));
+  if (!Number.isInteger(position) || position < 0) {
+    throw new Error("--position must be a non-negative integer");
+  }
+  return position;
+}
+
+const STATUS_ACTIONS: Record<
+  string,
+  (ref: string | undefined, parsed: ParsedArgs) => Promise<unknown>
+> = {
+  async create(_ref, parsed) {
+    const category = categoryFlag(parsed);
+    if (!category) {
+      throw new Error(STATUS_USAGE);
+    }
+    return withDaemon(() =>
+      requestDaemon("issue.createColumn", {
+        field: "status",
+        title: getRequiredFlag(parsed, "name"),
+        category,
+        color: stringFlag(parsed, "color") ?? null,
+      }),
+    );
+  },
+  async update(ref, parsed) {
+    const { status } = await requireStatus(ref ?? "");
+    return withDaemon(() =>
+      requestDaemon("issue.updateColumn", {
+        field: "status",
+        id: status.id,
+        title: stringFlag(parsed, "name"),
+        category: categoryFlag(parsed),
+        color: nullableFlag(parsed, "color"),
+      }),
+    );
+  },
+  async move(ref, parsed) {
+    const { status, statuses } = await requireStatus(ref ?? "");
+    const sortOrder = sortOrderForColumnPosition(
+      statuses,
+      status.id,
+      positionFlag(parsed),
+    );
+    return withDaemon(() =>
+      requestDaemon("issue.moveColumn", {
+        field: "status",
+        id: status.id,
+        sortOrder,
+      }),
+    );
+  },
+  async delete(ref) {
+    const { status } = await requireStatus(ref ?? "");
+    await withDaemon(() =>
+      requestDaemon("issue.deleteColumn", { field: "status", id: status.id }),
+    );
+    return { id: status.id, deleted: true };
+  },
+};
 
 const ISSUE_ACTIONS: Record<string, IssueAction> = {
   async list(_args, parsed, viewId) {
@@ -161,7 +337,9 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
   async move(args, parsed, viewId) {
     const [id, columnId] = args;
     if (!id || !columnId) {
-      throw new Error("Usage: cocurdex issue move <id> <column>");
+      throw new Error(
+        "Usage: cocurdex issue move <id> <column> [--from <column>]",
+      );
     }
     const current = await requireIssue(id, viewId);
     const moved = await withDaemon(() =>
@@ -169,6 +347,7 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
         viewId,
         id: current.id,
         columnId,
+        fromColumnId: stringFlag(parsed, "from"),
         sortOrder: current.sortOrder,
         expectedRevision: current.revision,
         actor: CLI_ACTOR,
@@ -246,9 +425,34 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
       "Usage: cocurdex issue label create --name <name> [--color <color>] | label update <id|name> [--name <name>] [--color <color>] | label delete <id|name>",
     );
   },
+  async statuses(_args, parsed) {
+    printRows(
+      await listStatuses(),
+      ["id", "title", "category", "color"],
+      parsed,
+    );
+  },
+  async status(args, parsed) {
+    const [operation, ref] = args;
+    const action =
+      operation && Object.hasOwn(STATUS_ACTIONS, operation)
+        ? STATUS_ACTIONS[operation]
+        : undefined;
+    if (!action || (operation !== "create" && !ref)) {
+      throw new Error(STATUS_USAGE);
+    }
+    printResult(await action(ref, parsed), parsed);
+  },
   async views(_args, parsed) {
     const views = await withDaemon(() => requestDaemon("issue.listViews"));
     printRows(views, ["id", "title", "groupBy", "layout"], parsed);
+  },
+  async view(args, parsed) {
+    const [operation, ref] = args;
+    if (operation !== "update" || !ref) {
+      throw new Error(VIEW_UPDATE_USAGE);
+    }
+    printResult(await updateViewFromFlags(ref, parsed), parsed);
   },
 };
 

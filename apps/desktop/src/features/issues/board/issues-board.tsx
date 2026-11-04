@@ -1,7 +1,7 @@
-import type {
-  IssueRecord,
-  IssueStatusCategory,
-  ViewFull,
+import {
+  type IssueRecord,
+  sortIssueColumns,
+  type ViewFull,
 } from "@cocurdex/shared";
 import {
   DndContext,
@@ -14,14 +14,12 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  horizontalListSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui";
+import { groupIssuesByColumn, partitionEmptyColumns } from "../group-issues";
+import { cardSortableId, isMultiValuedGrouping } from "./card-placement";
+import { HiddenColumns } from "./hidden-columns";
 import { IssueCard } from "./issue-card";
 import { IssueColumn } from "./issue-column";
 
@@ -47,11 +45,22 @@ function sortOrderAt<T extends { sortOrder: number }>(
   );
 }
 
+export interface IssueMove {
+  id: string;
+  columnId: string;
+  fromColumnId: string;
+  sortOrder: number;
+}
+
+interface DragOrigin {
+  card: IssueRecord;
+  fromColumnId: string;
+}
+
 interface IssuesBoardProps {
   board: ViewFull;
-  onMoveIssue: (id: string, columnId: string, sortOrder: number) => void;
-  onMoveIssueLocal: (id: string, columnId: string, sortOrder: number) => void;
-  onMoveColumn: (id: string, sortOrder: number) => void;
+  onMoveIssue: (move: IssueMove) => void;
+  onMoveIssueLocal: (move: IssueMove) => void;
   onAddCard: (columnId: string) => void;
   onDeleteCard: (cardId: string) => void;
   onEditCard: (card: IssueRecord) => void;
@@ -60,22 +69,24 @@ interface IssuesBoardProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
-  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssuesBoard({
   board,
   onMoveIssue,
   onMoveIssueLocal,
-  onMoveColumn,
   onAddCard,
   onDeleteCard,
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
-  onSetColumnCategory,
 }: IssuesBoardProps) {
-  const [activeCard, setActiveCard] = useState<IssueRecord | null>(null);
+  const [dragOrigin, setDragOrigin] = useState<DragOrigin | null>(null);
+  const [dragVisibleIds, setDragVisibleIds] = useState<Set<string> | null>(
+    null,
+  );
+  const { groupBy, display } = board.view;
+  const multiValued = isMultiValuedGrouping(groupBy);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -85,58 +96,54 @@ export function IssuesBoard({
   );
 
   const sortedColumns = useMemo(
-    () => [...board.columns].sort((a, b) => a.sortOrder - b.sortOrder),
+    () => sortIssueColumns(board.columns),
     [board.columns],
   );
 
-  const columnIds = useMemo(
-    () => sortedColumns.map((c) => c.id),
-    [sortedColumns],
+  const issuesByColumn = useMemo(
+    () => groupIssuesByColumn(sortedColumns, board.issues),
+    [board.issues, sortedColumns],
   );
 
-  const issuesByColumn = useMemo(() => {
-    const map = new Map<string, IssueRecord[]>();
-    for (const col of sortedColumns) {
-      map.set(col.id, []);
-    }
-    for (const card of board.issues) {
-      const list = map.get(card.columnId);
-      if (list) list.push(card);
-    }
-    for (const [, list] of map) {
-      list.sort((a, b) => a.sortOrder - b.sortOrder);
-    }
-    return map;
-  }, [board.issues, sortedColumns]);
+  const { visible, hidden } = useMemo(() => {
+    const partition = partitionEmptyColumns(
+      sortedColumns,
+      issuesByColumn,
+      display.showEmptyGroups,
+    );
+    if (!dragVisibleIds) return partition;
+    return {
+      visible: sortedColumns.filter((column) => dragVisibleIds.has(column.id)),
+      hidden: sortedColumns.filter((column) => !dragVisibleIds.has(column.id)),
+    };
+  }, [sortedColumns, issuesByColumn, display.showEmptyGroups, dragVisibleIds]);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const { active } = event;
-    const data = active.data.current;
-    if (data?.type === "card") {
-      setActiveCard(data.card as IssueRecord);
-    }
-  }, []);
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const data = event.active.data.current;
+      if (data?.type !== "card") return;
+      setDragOrigin({
+        card: data.card as IssueRecord,
+        fromColumnId: data.columnId as string,
+      });
+      setDragVisibleIds(new Set(visible.map((column) => column.id)));
+    },
+    [visible],
+  );
 
   const handleDragOver = useCallback(
     (event: DragOverEvent) => {
       const { active, over } = event;
       if (!over) return;
       const activeData = active.data.current;
-      if (activeData?.type !== "card") return;
-
-      // Determine target column
-      const overData = over.data.current;
-      let targetColumnId: string | undefined;
-      if (overData?.type === "card") {
-        targetColumnId = (overData.card as IssueRecord).columnId;
-      } else if (overData?.type === "column-drop") {
-        targetColumnId = overData.columnId as string;
-      }
-
+      if (multiValued || activeData?.type !== "card") return;
+      const targetColumnId = over.data.current?.columnId as string | undefined;
       if (!targetColumnId) return;
 
-      const card = activeData.card as IssueRecord;
-      if (card.columnId !== targetColumnId) {
+      const card = board.issues.find(
+        (candidate) => candidate.id === (activeData.card as IssueRecord).id,
+      );
+      if (card && card.columnId !== targetColumnId) {
         // Local-only optimistic move so the card renders in the hovered
         // column while dragging; persisted once in handleDragEnd.
         const targetCards = issuesByColumn.get(targetColumnId) ?? [];
@@ -144,88 +151,75 @@ export function IssuesBoard({
           targetCards.length > 0
             ? targetCards[targetCards.length - 1].sortOrder + SORT_STEP
             : SORT_STEP;
-        onMoveIssueLocal(card.id, targetColumnId, lastSort);
+        onMoveIssueLocal({
+          id: card.id,
+          columnId: targetColumnId,
+          fromColumnId: card.columnId,
+          sortOrder: lastSort,
+        });
       }
     },
-    [issuesByColumn, onMoveIssueLocal],
+    [board.issues, issuesByColumn, multiValued, onMoveIssueLocal],
   );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      const { active, over } = event;
-      setActiveCard(null);
+      const { over } = event;
+      const origin = dragOrigin;
+      setDragOrigin(null);
+      setDragVisibleIds(null);
+      if (!over || !origin) return;
 
-      if (!over) return;
-
-      const activeData = active.data.current;
       const overData = over.data.current;
-
-      if (activeData?.type === "column" && overData?.type === "column") {
-        const activeCol = activeData.column as { id: string };
-        const overCol = overData.column as { id: string };
-        const oldIndex = sortedColumns.findIndex((c) => c.id === activeCol.id);
-        const newIndex = sortedColumns.findIndex((c) => c.id === overCol.id);
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          const reordered = arrayMove(sortedColumns, oldIndex, newIndex);
-          onMoveColumn(activeCol.id, sortOrderAt(reordered, newIndex));
-        }
-        return;
-      }
-
-      if (activeData?.type !== "card") return;
-      const cardId = (activeData.card as IssueRecord).id;
+      const targetColumnId = overData?.columnId as string | undefined;
       // Read the card from board state: handleDragOver may already have
       // moved it to the hovered column, and active.data can lag behind.
-      const card = board.issues.find((c) => c.id === cardId);
-      if (!card) return;
+      const card = board.issues.find((c) => c.id === origin.card.id);
+      if (!card || !targetColumnId) return;
+      const move = (sortOrder: number) =>
+        onMoveIssue({
+          id: card.id,
+          columnId: targetColumnId,
+          fromColumnId: origin.fromColumnId,
+          sortOrder,
+        });
+      const targetCards = issuesByColumn.get(targetColumnId) ?? [];
 
       if (overData?.type === "card") {
         const overCard = overData.card as IssueRecord;
         if (card.id === overCard.id) {
-          // Cross-column drop landed on the card itself after the dragOver
-          // move; persist the position dragOver gave it.
-          onMoveIssue(card.id, card.columnId, card.sortOrder);
+          move(card.sortOrder);
           return;
         }
-        const targetCards = issuesByColumn.get(overCard.columnId) ?? [];
         const oldIndex = targetCards.findIndex((c) => c.id === card.id);
         const overIndex = targetCards.findIndex((c) => c.id === overCard.id);
         if (overIndex === -1) return;
         if (oldIndex === -1) {
-          // Not in the target column locally (shouldn't happen after
-          // dragOver, but keep the drop deterministic): insert before over.
-          const sortOrder = sortOrderBetween(
-            targetCards[overIndex - 1]?.sortOrder,
-            overCard.sortOrder,
+          move(
+            sortOrderBetween(
+              targetCards[overIndex - 1]?.sortOrder,
+              overCard.sortOrder,
+            ),
           );
-          onMoveIssue(card.id, overCard.columnId, sortOrder);
           return;
         }
-        const reordered = arrayMove(targetCards, oldIndex, overIndex);
-        onMoveIssue(
-          card.id,
-          overCard.columnId,
-          sortOrderAt(reordered, overIndex),
+        move(
+          sortOrderAt(arrayMove(targetCards, oldIndex, overIndex), overIndex),
         );
         return;
       }
 
       if (overData?.type === "column-drop") {
-        // Dropped on the column's empty space: send the card to the end
-        // (cross-column dragOver already did this locally; same-column drops
-        // below the last card get it here) and persist once.
-        const others = (issuesByColumn.get(card.columnId) ?? []).filter(
-          (c) => c.id !== card.id,
-        );
+        const others = targetCards.filter((c) => c.id !== card.id);
         const last = others[others.length - 1];
-        const sortOrder =
-          last && last.sortOrder > card.sortOrder
+        move(
+          last && last.sortOrder >= card.sortOrder
             ? last.sortOrder + SORT_STEP
-            : card.sortOrder;
-        onMoveIssue(card.id, card.columnId, sortOrder);
+            : card.sortOrder,
+        );
       }
     },
-    [board.issues, issuesByColumn, onMoveIssue, onMoveColumn, sortedColumns],
+    [board.issues, dragOrigin, issuesByColumn, onMoveIssue],
   );
 
   return (
@@ -234,38 +228,42 @@ export function IssuesBoard({
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => {
+        setDragOrigin(null);
+        setDragVisibleIds(null);
+      }}
     >
       <ScrollArea
         scrollbarProps={{ orientation: "horizontal" }}
         className="min-h-0 flex-1"
       >
         <div className="flex h-full w-max items-stretch gap-6 px-5 py-4">
-          <SortableContext
-            items={columnIds}
-            strategy={horizontalListSortingStrategy}
-          >
-            {sortedColumns.map((column) => (
-              <IssueColumn
-                key={column.id}
-                column={column}
-                issues={issuesByColumn.get(column.id) ?? []}
-                statusOptions={board.statusOptions}
-                priorityOptions={board.priorityOptions}
-                onAddCard={onAddCard}
-                onDeleteCard={onDeleteCard}
-                onEditCard={onEditCard}
-                onUpdateCardFields={onUpdateCardFields}
-                onRenameColumn={onRenameColumn}
-                onSetColumnCategory={onSetColumnCategory}
-              />
-            ))}
-          </SortableContext>
+          {visible.map((column) => (
+            <IssueColumn
+              key={column.id}
+              column={column}
+              groupBy={groupBy}
+              issues={issuesByColumn.get(column.id) ?? []}
+              statusOptions={board.statusOptions}
+              priorityOptions={board.priorityOptions}
+              onAddCard={onAddCard}
+              onDeleteCard={onDeleteCard}
+              onEditCard={onEditCard}
+              onUpdateCardFields={onUpdateCardFields}
+              onRenameColumn={onRenameColumn}
+            />
+          ))}
+          <HiddenColumns columns={hidden} />
         </div>
       </ScrollArea>
       <DragOverlay>
-        {activeCard ? (
+        {dragOrigin ? (
           <IssueCard
-            card={activeCard}
+            card={dragOrigin.card}
+            columnId={dragOrigin.fromColumnId}
+            sortableId={`overlay-${cardSortableId(groupBy, dragOrigin.fromColumnId, dragOrigin.card.id)}`}
+            groupBy={groupBy}
+            priorityOptions={board.priorityOptions}
             onDelete={() => {}}
             onEdit={() => {}}
             overlay

@@ -1,15 +1,21 @@
 import type {
+  IssueColumnField,
   IssueLabel,
   IssueRecord,
   IssueStatusCategory,
   ViewColumnRecord,
+  ViewDisplay,
   ViewFilter,
   ViewFull,
   ViewGroupBy,
   ViewLayout,
   ViewSummary,
 } from "@cocurdex/shared";
-import { DEFAULT_VIEW_ID, isIssueConflictError } from "@cocurdex/shared";
+import {
+  DEFAULT_VIEW_ID,
+  isIssueColumnField,
+  isIssueConflictError,
+} from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
 import { toast } from "sonner";
 import { i18n } from "@/i18n";
@@ -83,13 +89,34 @@ export const selectViewAtom = atom(null, async (_get, set, viewId: string) => {
   await loadActiveView(set, viewId);
 });
 
-export const createViewAtom = atom(null, async (_get, set, title?: string) => {
-  const view = await issuesIpc.createView({ title });
-  await refreshViewList(set);
-  set(activeViewIdAtom, view.id);
-  await loadActiveView(set, view.id);
-  return view;
-});
+export const saveFiltersAsViewAtom = atom(
+  null,
+  async (get, set, payload: { title: string; filters: ViewFilter[] }) => {
+    const source = get(activeViewAtom);
+    if (!source) {
+      return null;
+    }
+    return runIssueMutation(get, set, async () => {
+      const created = await issuesIpc.createView({ title: payload.title });
+      await issuesIpc.updateView({
+        viewId: created.id,
+        expectedRevision: created.revision,
+        filters: payload.filters,
+        groupBy: source.view.groupBy,
+        layout: source.view.layout,
+      });
+      await issuesIpc.updateView({
+        viewId: source.view.id,
+        expectedRevision: source.view.revision,
+        filters: [],
+      });
+      await refreshViewList(set);
+      set(activeViewIdAtom, created.id);
+      await loadActiveView(set, created.id);
+      return created;
+    });
+  },
+);
 
 export const deleteViewAtom = atom(null, async (get, set, viewId: string) => {
   const view = get(issueViewsAtom).find((candidate) => candidate.id === viewId);
@@ -136,6 +163,7 @@ export const updateViewAtom = atom(
       groupBy?: ViewGroupBy;
       layout?: ViewLayout;
       filters?: ViewFilter[];
+      display?: ViewDisplay;
     },
   ) => {
     const current = get(activeViewAtom);
@@ -162,8 +190,9 @@ export const updateViewAtom = atom(
   },
 );
 
-function activeField(get: Getter): ViewGroupBy {
-  return get(activeViewAtom)?.view.groupBy ?? "status";
+function activeColumnField(get: Getter): IssueColumnField | null {
+  const groupBy = get(activeViewAtom)?.view.groupBy ?? "status";
+  return isIssueColumnField(groupBy) ? groupBy : null;
 }
 
 export const updateColumnAtom = atom(
@@ -179,7 +208,9 @@ export const updateColumnAtom = atom(
     },
   ) =>
     runIssueMutation(get, set, async () => {
-      await issuesIpc.updateColumn({ field: activeField(get), ...payload });
+      const field = activeColumnField(get);
+      if (!field) return;
+      await issuesIpc.updateColumn({ field, ...payload });
       await loadActiveView(set, get(activeViewIdAtom));
     }),
 );
@@ -190,7 +221,7 @@ export const createIssueAtom = atom(
     get,
     set,
     payload: {
-      columnId: string;
+      columnId?: string;
       title?: string;
       description?: string | null;
       status?: string;
@@ -241,29 +272,44 @@ export const updateIssueAtom = atom(
     }),
 );
 
+export interface IssueMovePayload {
+  id: string;
+  columnId: string;
+  fromColumnId: string;
+  sortOrder: number;
+}
+
+function movedColumnIds(issue: IssueRecord, move: IssueMovePayload): string[] {
+  const kept = issue.columnIds.filter((id) => id !== move.fromColumnId);
+  return [...new Set([...kept, move.columnId])];
+}
+
 export const moveIssueLocalAtom = atom(
   null,
-  (get, set, payload: { id: string; columnId: string; sortOrder: number }) => {
+  (get, set, payload: IssueMovePayload) => {
     const current = get(activeViewAtom);
     if (!current) {
       return;
     }
     set(activeViewAtom, {
       ...current,
-      issues: current.issues.map((issue) =>
-        issue.id === payload.id ? { ...issue, ...payload } : issue,
-      ),
+      issues: current.issues.map((issue) => {
+        if (issue.id !== payload.id) return issue;
+        const columnIds = movedColumnIds(issue, payload);
+        return {
+          ...issue,
+          columnId: columnIds[0] ?? payload.columnId,
+          columnIds,
+          sortOrder: payload.sortOrder,
+        };
+      }),
     });
   },
 );
 
 export const moveIssueAtom = atom(
   null,
-  async (
-    get,
-    set,
-    payload: { id: string; columnId: string; sortOrder: number },
-  ) => {
+  async (get, set, payload: IssueMovePayload) => {
     const issue = get(activeViewAtom)?.issues.find(
       (candidate) => candidate.id === payload.id,
     );
@@ -286,15 +332,6 @@ export const moveIssueAtom = atom(
       return moved;
     });
   },
-);
-
-export const moveColumnAtom = atom(
-  null,
-  async (get, set, payload: { id: string; sortOrder: number }) =>
-    runIssueMutation(get, set, async () => {
-      await issuesIpc.moveColumn({ field: activeField(get), ...payload });
-      await loadActiveView(set, get(activeViewIdAtom));
-    }),
 );
 
 export const deleteIssueAtom = atom(null, async (get, set, issueId: string) =>

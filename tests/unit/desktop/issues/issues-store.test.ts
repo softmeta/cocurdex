@@ -1,4 +1,8 @@
-import type { ViewFull, ViewSummary } from "@cocurdex/shared";
+import {
+  DEFAULT_VIEW_DISPLAY,
+  type ViewFull,
+  type ViewSummary,
+} from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -32,6 +36,7 @@ const summary: ViewSummary = {
   groupBy: "status",
   layout: "board",
   filters: [],
+  display: DEFAULT_VIEW_DISPLAY,
   revision: 1,
 };
 const full: ViewFull = {
@@ -73,6 +78,7 @@ describe("SQLite-backed issues store", () => {
     const issue = {
       id: "issue-1",
       columnId: "backlog",
+      columnIds: ["backlog"],
       viewId: "project",
       title: "Card",
       description: null,
@@ -93,6 +99,7 @@ describe("SQLite-backed issues store", () => {
     const result = await store.set(moveIssueAtom, {
       id: "issue-1",
       columnId: "doing",
+      fromColumnId: "backlog",
       sortOrder: 5,
     });
 

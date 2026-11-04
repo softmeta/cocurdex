@@ -13,6 +13,7 @@ const issue: IssueRecord = {
   number: 1,
   identifier: "ACME-1",
   columnId: "todo",
+  columnIds: ["todo"],
   viewId: "view-1",
   title: "Store cart totals in cents",
   description: "Avoid float math.",

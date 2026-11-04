@@ -1485,6 +1485,66 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("keeps issue views and allows derived grouping from version 37", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-04T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE issue_views;
+      CREATE TABLE issue_views (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        icon TEXT,
+        group_by TEXT NOT NULL CHECK (group_by IN ('status', 'priority')),
+        layout TEXT NOT NULL CHECK (layout IN ('board', 'list')),
+        filters_json TEXT NOT NULL DEFAULT '[]',
+        revision INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      INSERT INTO issue_views
+        (id, title, group_by, layout, filters_json, revision, created_at, updated_at)
+      VALUES ('v1', 'Mine', 'priority', 'list', '[{"field":"priority","op":"eq","value":"high"}]', 4, '${now}', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, created_at, updated_at)
+      VALUES ('i1', 'Grouping', '${now}', '${now}');
+      PRAGMA user_version = 37;
+    `);
+
+    initializeDatabase(database);
+
+    const fresh = new DatabaseSync(":memory:");
+    initializeDatabase(fresh);
+    expect(tableShape(database, "issue_views")).toEqual(
+      tableShape(fresh, "issue_views"),
+    );
+    expect(
+      database
+        .prepare(
+          "SELECT id, title, group_by, layout, filters_json, display_json, revision FROM issue_views",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "v1",
+        title: "Mine",
+        group_by: "priority",
+        layout: "list",
+        filters_json: '[{"field":"priority","op":"eq","value":"high"}]',
+        display_json: null,
+        revision: 4,
+      },
+    ]);
+    database.exec("UPDATE issue_views SET group_by = 'label' WHERE id = 'v1'");
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Grouping" },
+    ]);
+  });
+
   it("keeps an up-to-date database that carries a stale version marker", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

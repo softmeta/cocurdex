@@ -15,6 +15,7 @@ import type {
   IssueRecord,
   IssueRelationPayload,
   LinkIssueSessionPayload,
+  ListColumnsPayload,
   LoadViewPayload,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -34,6 +35,7 @@ export interface IssueTrackerRepository {
   createView(payload: CreateViewPayload): Promise<ViewSummary>;
   updateView(payload: UpdateViewPayload): Promise<ViewFull>;
   deleteView(payload: DeleteViewPayload): Promise<void>;
+  listColumns(payload: ListColumnsPayload): Promise<ViewColumnRecord[]>;
   createColumn(payload: CreateColumnPayload): Promise<ViewColumnRecord>;
   updateColumn(payload: UpdateColumnPayload): Promise<ViewColumnRecord>;
   moveColumn(payload: MoveColumnPayload): Promise<ViewColumnRecord>;

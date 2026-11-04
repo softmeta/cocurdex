@@ -6,15 +6,23 @@ import { usePresetItems } from "./use-preset-items";
 export function useIssueNavTitle(
   selection: IssueNavSelection,
   views: readonly ViewSummary[],
-): string {
+): string | null {
   const { t } = useTranslation("issues");
+  if (selection.kind !== "view") {
+    return null;
+  }
+  const view = views.find((candidate) => candidate.id === selection.viewId);
+  return view?.title || t("sidebar.untitledBoard");
+}
+
+export function useIssueNavScopeLabel(
+  selection: IssueNavSelection,
+): string | null {
   const presets = usePresetItems();
-  if (selection.kind === "agent") {
-    return t("sidebar.nav.agent");
+  if (selection.kind !== "issues" || selection.preset === "all") {
+    return null;
   }
-  if (selection.kind === "view") {
-    const view = views.find((candidate) => candidate.id === selection.viewId);
-    return view?.title || t("sidebar.untitledBoard");
-  }
-  return presets.find((item) => item.preset === selection.preset)?.label ?? "";
+  return (
+    presets.find((item) => item.preset === selection.preset)?.label ?? null
+  );
 }

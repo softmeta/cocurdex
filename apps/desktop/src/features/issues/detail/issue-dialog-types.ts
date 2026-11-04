@@ -23,6 +23,7 @@ export interface IssueComposeDraft {
   priority: string;
   workspaceId: string | null;
   parentId: string | null;
+  labelIds: string[];
 }
 
 export interface IssueDetailActions {

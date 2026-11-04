@@ -79,6 +79,7 @@ interface ViewSwitcherTabsProps {
   hasPdfsOpen: boolean;
   onViewChange: (view: RightPanelView) => void;
   reserveTrafficLights?: boolean;
+  leading?: ReactNode;
   trailing?: ReactNode;
 }
 
@@ -87,6 +88,7 @@ export function ViewSwitcherTabs({
   hasPdfsOpen,
   onViewChange,
   reserveTrafficLights = false,
+  leading,
   trailing,
 }: ViewSwitcherTabsProps) {
   const { t } = useTranslation("editor");
@@ -281,12 +283,18 @@ export function ViewSwitcherTabs({
             : undefined,
         }}
       >
+        {leading ? (
+          <div className="app-no-drag flex h-full shrink-0 items-center gap-1 ps-2">
+            {leading}
+          </div>
+        ) : null}
         <ToggleGroup
           // Non-zero spacing avoids the connected segmented styles (rounded-none
           // flush first/last) so each tab stays an independent pill with inset.
           spacing={1}
           className="app-drag flex h-full w-fit items-center rounded-none px-2"
           type="single"
+          aria-label={t("actions.panelViews")}
           value={activeView}
           onValueChange={handleValueChange}
         >

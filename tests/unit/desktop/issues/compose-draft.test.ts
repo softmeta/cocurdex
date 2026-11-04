@@ -1,4 +1,8 @@
-import type { ViewFilter, ViewFull } from "@cocurdex/shared";
+import {
+  DEFAULT_VIEW_DISPLAY,
+  type ViewFilter,
+  type ViewFull,
+} from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { buildComposeDraft } from "@/features/issues/compose-draft";
 
@@ -11,6 +15,7 @@ function boardWithFilters(filters: ViewFilter[]): ViewFull {
       groupBy: "status",
       layout: "board",
       filters,
+      display: DEFAULT_VIEW_DISPLAY,
       revision: 1,
       createdAt: "2026-10-08T00:00:00.000Z",
       updatedAt: "2026-10-08T00:00:00.000Z",

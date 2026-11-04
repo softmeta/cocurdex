@@ -3,14 +3,17 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_VIEW_ID,
   ISSUE_STATUS_CATEGORIES,
+  type IssueColumnField,
   type IssueStatusCategory,
   isClosedStatusCategory,
+  normalizeViewDisplay,
 } from "@cocurdex/shared";
 import {
   assertRevision,
   requireColumn,
   withIssueMutation,
 } from "./issue-mutation-helpers";
+import { projectView } from "./issue-projection";
 import {
   fallbackColumnId,
   getView,
@@ -18,7 +21,6 @@ import {
   listColumns,
   mapColumn,
   mapViewSummary,
-  projectView,
   requireView,
 } from "./issue-storage";
 import {
@@ -33,11 +35,23 @@ type IssueViewOperations = Pick<
   | "createView"
   | "updateView"
   | "deleteView"
+  | "listColumns"
   | "createColumn"
   | "updateColumn"
   | "moveColumn"
   | "deleteColumn"
 >;
+
+function endOfCategory(
+  database: DatabaseSync,
+  field: IssueColumnField,
+  category: IssueStatusCategory | null,
+): number {
+  const orders = listColumns(database, field)
+    .filter((column) => column.category === category)
+    .map((column) => column.sort_order);
+  return orders.length > 0 ? Math.max(...orders) + 1000 : 0;
+}
 
 function assertCategory(category: string | undefined): void {
   if (
@@ -104,7 +118,8 @@ export function createIssueViewOperations(
         .prepare(
           `UPDATE issue_views
            SET title = ?, icon = ?, group_by = ?, layout = ?,
-               filters_json = ?, revision = revision + 1, updated_at = ?
+               filters_json = ?, display_json = ?,
+               revision = revision + 1, updated_at = ?
            WHERE id = ? AND revision = ?`,
         )
         .run(
@@ -115,6 +130,9 @@ export function createIssueViewOperations(
           payload.filters !== undefined
             ? JSON.stringify(payload.filters)
             : current.filters_json,
+          payload.display !== undefined
+            ? JSON.stringify(normalizeViewDisplay(payload.display))
+            : current.display_json,
           new Date().toISOString(),
           current.id,
           current.revision,
@@ -136,7 +154,7 @@ export function createIssueViewOperations(
           .prepare(
             `UPDATE issue_views
              SET title = 'Project view', icon = NULL, group_by = 'status',
-                 layout = 'board', filters_json = '[]',
+                 layout = 'board', filters_json = '[]', display_json = NULL,
                  revision = revision + 1, updated_at = ?
              WHERE id = ?`,
           )
@@ -144,6 +162,9 @@ export function createIssueViewOperations(
         return;
       }
       database.prepare("DELETE FROM issue_views WHERE id = ?").run(current.id);
+    },
+    async listColumns({ field }) {
+      return listColumns(database, field).map(mapColumn);
     },
     async createColumn(payload) {
       const { field } = payload;
@@ -181,16 +202,22 @@ export function createIssueViewOperations(
           current.field === "status"
             ? (payload.category ?? current.category)
             : null;
+        const sortOrder =
+          category === current.category
+            ? current.sort_order
+            : endOfCategory(database, current.field, category);
         database
           .prepare(
             `UPDATE issue_columns
-             SET title = ?, color = ?, category = ?, updated_at = ?
+             SET title = ?, color = ?, category = ?, sort_order = ?,
+                 updated_at = ?
              WHERE field = ? AND id = ?`,
           )
           .run(
             payload.title?.trim() || current.title,
             payload.color !== undefined ? payload.color : current.color,
             category,
+            sortOrder,
             now,
             current.field,
             current.id,
@@ -220,14 +247,18 @@ export function createIssueViewOperations(
     async deleteColumn(payload) {
       const { field } = payload;
       return withIssueMutation(database, () => {
-        requireColumn(database, field, payload.id);
+        const deleted = requireColumn(database, field, payload.id);
         const remaining = listColumns(database, field).filter(
           (column) => column.id !== payload.id,
         );
         if (remaining.length === 0) {
           throw new Error(`Cannot delete the last issue ${field} column`);
         }
-        const fallbackId = fallbackColumnId(remaining, field);
+        const fallbackId =
+          (field === "status"
+            ? remaining.find((column) => column.category === deleted.category)
+                ?.id
+            : undefined) ?? fallbackColumnId(remaining, field);
         const now = new Date().toISOString();
         database
           .prepare(

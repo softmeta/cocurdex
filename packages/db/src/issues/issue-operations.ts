@@ -6,6 +6,7 @@ import {
   isClosedStatusCategory,
 } from "@cocurdex/shared";
 import { diffIssue, recordIssueEvent } from "./issue-events";
+import { groupedFieldsForColumn } from "./issue-group-moves";
 import {
   assertValidParent,
   replaceIssueLabels,
@@ -14,16 +15,15 @@ import {
 import {
   assertFieldValue,
   assertRevision,
-  requireColumn,
   withIssueMutation,
 } from "./issue-mutation-helpers";
+import { projectSingleIssue } from "./issue-projection";
 import {
   fallbackColumnId,
   getIssue,
   LOCAL_ISSUE_SPACE_ID,
   listColumns,
   listIssueLabelIds,
-  projectSingleIssue,
   requireIssue,
   requireView,
   statusCategories,
@@ -105,33 +105,31 @@ export function createIssueOperations(database: DatabaseSync): IssueOperations {
       const view = requireView(database, payload.viewId);
       assertFieldValue(database, "status", payload.status);
       assertFieldValue(database, "priority", payload.priority);
-      const groupValue =
-        view.group_by === "status" ? payload.status : payload.priority;
-      const columnId =
-        payload.columnId ??
-        groupValue ??
-        fallbackColumnId(listColumns(database, view.group_by), view.group_by);
-      requireColumn(database, view.group_by, columnId);
+      const grouped = payload.columnId
+        ? groupedFieldsForColumn(database, view.group_by, payload.columnId)
+        : {};
       const status =
         payload.status ??
-        (view.group_by === "status"
-          ? columnId
-          : fallbackColumnId(listColumns(database, "status"), "status"));
+        grouped.status ??
+        fallbackColumnId(listColumns(database, "status"), "status");
       const priority =
         payload.priority ??
-        (view.group_by === "priority"
-          ? columnId
-          : fallbackColumnId(listColumns(database, "priority"), "priority"));
+        grouped.priority ??
+        fallbackColumnId(listColumns(database, "priority"), "priority");
+      const orderField = view.group_by === "priority" ? "priority" : "status";
       return withIssueMutation(database, () => {
         const id = crypto.randomUUID();
         const now = new Date().toISOString();
         const parentId = resolveParentId(
           database,
           null,
-          payload.parentId,
+          payload.parentId !== undefined ? payload.parentId : grouped.parentId,
           null,
         );
-        const labelIds = resolveLabelIds(database, payload.labelIds ?? []);
+        const labelIds = resolveLabelIds(
+          database,
+          payload.labelIds ?? grouped.labelIds ?? [],
+        );
         database
           .prepare(
             `INSERT INTO issues (
@@ -147,9 +145,15 @@ export function createIssueOperations(database: DatabaseSync): IssueOperations {
             payload.color ?? null,
             status,
             priority,
-            payload.workspaceId ?? null,
+            payload.workspaceId !== undefined
+              ? payload.workspaceId
+              : (grouped.workspaceId ?? null),
             payload.sortOrder ??
-              maxIssueOrder(database, view.group_by, columnId),
+              maxIssueOrder(
+                database,
+                orderField,
+                orderField === "priority" ? priority : status,
+              ),
             now,
             now,
             LOCAL_ISSUE_SPACE_ID,
@@ -247,7 +251,6 @@ export function createIssueOperations(database: DatabaseSync): IssueOperations {
     },
     async moveIssue(payload) {
       const view = requireView(database, payload.viewId);
-      requireColumn(database, view.group_by, payload.columnId);
       return withIssueMutation(database, () => {
         const current = requireIssue(database, payload.id);
         assertRevision(
@@ -256,20 +259,35 @@ export function createIssueOperations(database: DatabaseSync): IssueOperations {
           new IssueConflictError(),
         );
         const now = new Date().toISOString();
-        const status =
-          view.group_by === "status" ? payload.columnId : current.status;
-        const priority =
-          view.group_by === "priority" ? payload.columnId : current.priority;
+        const beforeLabels = labelIdsOf(database, current.id);
+        const grouped = groupedFieldsForColumn(
+          database,
+          view.group_by,
+          payload.columnId,
+          beforeLabels,
+          payload.fromColumnId,
+        );
+        const status = grouped.status ?? current.status;
         const result = database
           .prepare(
             `UPDATE issues
-             SET status = ?, priority = ?, sort_order = ?, completed_at = ?,
+             SET status = ?, priority = ?, workspace_id = ?, parent_id = ?,
+                 sort_order = ?, completed_at = ?,
                  revision = revision + 1, updated_at = ?
              WHERE id = ? AND revision = ?`,
           )
           .run(
             status,
-            priority,
+            grouped.priority ?? current.priority,
+            grouped.workspaceId !== undefined
+              ? grouped.workspaceId
+              : current.workspace_id,
+            resolveParentId(
+              database,
+              current.id,
+              grouped.parentId,
+              current.parent_id,
+            ),
             payload.sortOrder,
             completedAtFor(
               statusCategories(database),
@@ -284,12 +302,14 @@ export function createIssueOperations(database: DatabaseSync): IssueOperations {
         if (result.changes !== 1) {
           throw new IssueConflictError();
         }
+        if (grouped.labelIds) {
+          replaceIssueLabels(database, current.id, grouped.labelIds);
+        }
         const next = requireIssue(database, current.id);
-        const labelIds = labelIdsOf(database, current.id);
         const changes = diffIssue(
           database,
-          { row: current, labelIds },
-          { row: next, labelIds },
+          { row: current, labelIds: beforeLabels },
+          { row: next, labelIds: labelIdsOf(database, current.id) },
         );
         if (changes.length > 0) {
           recordIssueEvent(database, {

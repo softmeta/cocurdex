@@ -1137,6 +1137,14 @@
         "description": "Open the workspace file search palette.",
         "title": "Search files"
       },
+      "navigateBack": {
+        "description": "Go back to the previous session, note, issue, or panel view.",
+        "title": "Go back"
+      },
+      "navigateForward": {
+        "description": "Go forward again after going back.",
+        "title": "Go forward"
+      },
       "toggleChatDock": {
         "description": "Show or hide the floating/pinned chat dock when the editor is fullscreen.",
         "title": "Toggle chat dock"
@@ -1182,6 +1190,7 @@
     "unbound": "None"
   },
   "sidebar": {
+    "backToApp": "Back to app",
     "resize": "Resize settings sidebar"
   },
   "skills": {

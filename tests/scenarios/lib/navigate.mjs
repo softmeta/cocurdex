@@ -77,7 +77,14 @@ export async function showPanelView(session, view) {
   const panel = await openEditorPanel(session);
   await clickByRole(
     session,
-    { role: "button", name: await translate(session, key) },
+    {
+      role: "button",
+      name: await translate(session, key),
+      within: {
+        role: "group",
+        name: await translate(session, "editor:actions.panelViews"),
+      },
+    },
     NAVIGATION_TIMEOUT_MS,
   );
   return panel;
