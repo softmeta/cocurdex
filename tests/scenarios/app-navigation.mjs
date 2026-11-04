@@ -253,6 +253,66 @@ runScenario("app-navigation", {
       },
     ],
     [
+      "the fullscreen panel keeps Back and Forward next to its view tabs",
+      async ({ session }) => {
+        const enter = await translate(
+          session,
+          "editor:actions.enterEditorFullscreen",
+        );
+        await clickByRole(session, { role: "button", name: enter });
+        const exit = await translate(
+          session,
+          "editor:actions.exitEditorFullscreen",
+        );
+        await waitForRole(
+          session,
+          { role: "button", name: exit },
+          UI_TIMEOUT_MS,
+        );
+        const backName = await translate(
+          session,
+          "editor:actions.navigateBack",
+        );
+        const [back] = await waitForRole(
+          session,
+          { role: "button", name: backName },
+          UI_TIMEOUT_MS,
+        );
+        const tabsLeft = await session.run(
+          () =>
+            document
+              .querySelector('[data-testid="editor-panel-view-switcher"]')
+              ?.querySelector('[role="group"]')
+              ?.getBoundingClientRect().left,
+        );
+        const backLeft = await session.run(
+          (name) =>
+            [...document.querySelectorAll("button")]
+              .find(
+                (button) =>
+                  button.getAttribute("aria-label") === name &&
+                  button.getClientRects().length > 0,
+              )
+              ?.getBoundingClientRect().left,
+          backName,
+        );
+        check(
+          typeof backLeft === "number" && backLeft < tabsLeft,
+          "Back is not before the view tabs",
+          { backLeft, tabsLeft, back },
+        );
+        await clickByRole(session, { role: "button", name: backName });
+        await waitForSelector(session, "[data-note-id][data-active]");
+        await clickByRole(session, { role: "button", name: exit });
+        await waitForRole(
+          session,
+          { role: "button", name: enter },
+          UI_TIMEOUT_MS,
+        );
+        return { backLeft, tabsLeft };
+      },
+    ],
+    [
       "renderer has no errors",
       async ({ session }) => {
         const errors = await session.run(() =>

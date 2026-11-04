@@ -14,6 +14,7 @@ import {
 import { ChatDockLauncher } from "../chat-dock-launcher";
 import { resolveChatDockPinLayout } from "../chat-dock-sizing";
 import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
+import { NavigationButtons } from "../navigation";
 import { RightEditorPanel } from "../right-editor-panel-lazy";
 import { rightPanelDockedAtom } from "../right-editor-panel-store";
 import { LeftSidebar, ResizableSidebarSlot, ResizeSeparator } from "../sidebar";
@@ -128,6 +129,9 @@ export function AppShellContent({
               onInsertTextToChat={onInsertTextToChat}
               overlayInset={editorOverlayInset}
               reserveTrafficLights={isPanelFullWidth}
+              viewSwitcherLeading={
+                isPanelFullWidth ? <NavigationButtons /> : null
+              }
               viewSwitcherTrailing={rightPanelActions}
             />
           </div>

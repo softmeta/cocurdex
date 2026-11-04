@@ -99,6 +99,7 @@ export interface RightEditorPanelProps {
   overlayInset?: number;
   onAddContextToChat?(attachment: MessageAttachment): boolean;
   onInsertTextToChat?(text: string): boolean;
+  viewSwitcherLeading?: ReactNode;
   viewSwitcherTrailing?: ReactNode;
 }
 
@@ -109,6 +110,7 @@ export function RightEditorPanel({
   onInsertTextToChat,
   overlayInset = 0,
   reserveTrafficLights = false,
+  viewSwitcherLeading,
   viewSwitcherTrailing,
 }: RightEditorPanelProps) {
   const { t } = useTranslation("editor");
@@ -321,6 +323,7 @@ export function RightEditorPanel({
         activeView={activeView}
         hasPdfsOpen={hasPdfsOpen}
         reserveTrafficLights={reserveTrafficLights}
+        leading={viewSwitcherLeading}
         trailing={viewSwitcherTrailing}
         onViewChange={(value) => {
           setActiveView(value);
