@@ -79,7 +79,7 @@
     "esbuild": "^0.28.2",
     "i18next-cli": "^1.81.0",
     "mermaid": "11.16.1",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "enriched-markdown": {
     "enableCodeHighlight": true,
