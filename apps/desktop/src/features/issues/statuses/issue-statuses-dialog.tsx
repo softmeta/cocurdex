@@ -4,14 +4,24 @@ import {
   sortIssueColumns,
   type ViewColumnRecord,
 } from "@cocurdex/shared";
+import { useAtom } from "jotai";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppConfirmDialog, SettingsGroup } from "@/components";
-import { IconButton, Text } from "@/components/ui";
+import { AppConfirmDialog } from "@/components";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+  Text,
+} from "@/components/ui";
 import { issueStatusApi, useIssueStatuses } from "./issue-status-queries";
 import { IssueStatusRow } from "./issue-status-row";
+import { issueStatusesDialogOpenAtom } from "./issue-statuses-dialog-store";
 
 function useCategoryLabels(): Record<IssueStatusCategory, string> {
   const { t } = useTranslation("issues");
@@ -24,7 +34,25 @@ function useCategoryLabels(): Record<IssueStatusCategory, string> {
   };
 }
 
-export function IssueStatusSettingsPanel() {
+export function IssueStatusesDialog() {
+  const { t } = useTranslation("issues");
+  const [open, setOpen] = useAtom(issueStatusesDialogOpenAtom);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        <DialogHeader className="pe-8">
+          <DialogTitle>{t("statuses.title")}</DialogTitle>
+          <DialogDescription>{t("statuses.description")}</DialogDescription>
+        </DialogHeader>
+        <div className="-mx-4 min-h-0 overflow-y-auto px-4">
+          <IssueStatusList />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function IssueStatusList() {
   const { t } = useTranslation("issues");
   const categoryLabels = useCategoryLabels();
   const { data, mutate } = useIssueStatuses();
@@ -64,19 +92,17 @@ export function IssueStatusSettingsPanel() {
   if (!data) return null;
 
   return (
-    <div className="settings-panel-enter flex flex-col gap-6">
-      <Text as="p" tone="muted">
-        {t("statuses.description")}
-      </Text>
+    <div className="flex flex-col gap-4 pb-1">
       {ISSUE_STATUS_CATEGORIES.map((category) => {
         const members = statuses.filter(
           (status) => status.category === category,
         );
         return (
-          <SettingsGroup
-            key={category}
-            title={categoryLabels[category]}
-            action={
+          <section key={category} className="flex flex-col">
+            <div className="flex h-7 items-center justify-between">
+              <Text size="meta" weight="medium" tone="muted">
+                {categoryLabels[category]}
+              </Text>
               <IconButton
                 aria-label={t("statuses.add", {
                   category: categoryLabels[category],
@@ -86,10 +112,9 @@ export function IssueStatusSettingsPanel() {
               >
                 <Plus />
               </IconButton>
-            }
-          >
+            </div>
             {members.length === 0 ? (
-              <Text className="py-3" tone="muted">
+              <Text className="py-2" tone="muted">
                 {t("statuses.empty")}
               </Text>
             ) : (
@@ -131,7 +156,7 @@ export function IssueStatusSettingsPanel() {
                 ))}
               </ul>
             )}
-          </SettingsGroup>
+          </section>
         );
       })}
       <AppConfirmDialog

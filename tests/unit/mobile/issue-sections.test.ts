@@ -29,6 +29,7 @@ function issue(
     number,
     identifier: `COC-${number}`,
     columnId: status,
+    columnIds: [status],
     viewId: "view",
     title: `Issue ${number}`,
     description: null,

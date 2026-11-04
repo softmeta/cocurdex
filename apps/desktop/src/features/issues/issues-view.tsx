@@ -66,6 +66,7 @@ import {
   useIssueNavScopeLabel,
   useIssueNavTitle,
 } from "./sidebar";
+import { IssueStatusesDialog } from "./statuses";
 
 function buildDetailStepper(
   board: ViewFull | null,
@@ -415,6 +416,7 @@ export function IssuesView() {
                 void deleteView(viewId);
               }}
             />
+            <IssueStatusesDialog />
           </>
         ) : null}
       </div>

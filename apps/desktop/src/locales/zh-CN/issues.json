@@ -189,7 +189,8 @@
     "moveUp": "上移",
     "newTitle": "新状态",
     "rename": "重命名",
-    "saveFailed": "状态保存失败。"
+    "saveFailed": "状态保存失败。",
+    "title": "管理状态"
   },
   "display": {
     "identifier": "编号",

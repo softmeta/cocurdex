@@ -4,7 +4,6 @@ import {
   Blocks,
   BookOpen,
   Brain,
-  CircleDashed,
   Code2,
   Folder,
   Gauge,
@@ -101,13 +100,6 @@ export const settingsSections = [
     icon: BookOpen,
     cluster: "agent",
     requires: "host.admin",
-  },
-  {
-    id: "issueStatuses",
-    labelKey: "issueStatuses",
-    icon: CircleDashed,
-    cluster: "workspace",
-    requires: "interact",
   },
   {
     id: "git",

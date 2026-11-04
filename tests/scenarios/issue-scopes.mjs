@@ -232,7 +232,7 @@ runScenario("issue-scopes", {
       },
     ],
     [
-      "the column menu opens the status settings, where a category change moves the status",
+      "the column menu opens the status dialog, where a category change moves the status",
       async ({ session, statusColumns }) => {
         const status = statusColumns.find(
           (column) => column.category === "started",
@@ -260,14 +260,11 @@ runScenario("issue-scopes", {
           },
           UI_TIMEOUT_MS,
         );
-        await waitForRole(
-          session,
-          {
-            role: "heading",
-            name: await translate(session, "settings:sections.issueStatuses"),
-          },
-          UI_TIMEOUT_MS,
-        );
+        const dialog = {
+          role: "dialog",
+          name: await translate(session, "issues:statuses.title"),
+        };
+        await waitForRole(session, dialog, UI_TIMEOUT_MS);
         await clickByRole(
           session,
           {
@@ -323,16 +320,19 @@ runScenario("issue-scopes", {
           id: status.id,
           category: "started",
         });
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "settings:sidebar.backToApp"),
+        await session.send("Input.dispatchKeyEvent", {
+          type: "keyDown",
+          key: "Escape",
+          code: "Escape",
+          windowsVirtualKeyCode: 27,
         });
-        await waitForRole(
-          session,
-          {
-            role: "tablist",
-            name: await translate(session, "issues:sidebar.nav.scope"),
-          },
+        await session.waitUntil(
+          (name) =>
+            !document.querySelector(`[role="dialog"][aria-labelledby]`) ||
+            ![...document.querySelectorAll('[role="dialog"]')].some((node) =>
+              node.textContent.includes(name),
+            ),
+          dialog.name,
           UI_TIMEOUT_MS,
         );
         return { status: status.id };

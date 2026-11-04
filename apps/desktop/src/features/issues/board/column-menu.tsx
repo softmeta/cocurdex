@@ -1,3 +1,4 @@
+import { useSetAtom } from "jotai";
 import { Ellipsis, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
@@ -7,10 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui";
-import { openSettings } from "@/features/settings/settings-navigation";
+import { issueStatusesDialogOpenAtom } from "../statuses/issue-statuses-dialog-store";
 
 export function ColumnMenu() {
   const { t } = useTranslation("issues");
+  const openStatuses = useSetAtom(issueStatusesDialogOpenAtom);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -19,7 +21,7 @@ export function ColumnMenu() {
         </TitlebarIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
-        <DropdownMenuItem onClick={() => openSettings("issueStatuses")}>
+        <DropdownMenuItem onClick={() => openStatuses(true)}>
           <Settings2 className="size-3.5" />
           {t("board.manageStatuses")}
         </DropdownMenuItem>

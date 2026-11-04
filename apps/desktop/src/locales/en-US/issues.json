@@ -190,7 +190,8 @@
     "moveUp": "Move up",
     "newTitle": "New status",
     "rename": "Rename",
-    "saveFailed": "Could not save the status."
+    "saveFailed": "Could not save the status.",
+    "title": "Manage statuses"
   },
   "display": {
     "identifier": "ID",

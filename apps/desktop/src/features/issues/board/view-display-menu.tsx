@@ -7,7 +7,9 @@ import {
   type ViewGroupBy,
   type ViewLayout,
 } from "@cocurdex/shared";
+import { useSetAtom } from "jotai";
 import {
+  CircleDashed,
   Columns3,
   LayoutList,
   ListChecks,
@@ -23,6 +25,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -31,6 +34,7 @@ import {
   DropdownMenuTrigger,
   Text,
 } from "@/components/ui";
+import { issueStatusesDialogOpenAtom } from "../statuses/issue-statuses-dialog-store";
 
 const LAYOUT_OPTIONS: ViewLayout[] = ["list", "board"];
 
@@ -85,6 +89,7 @@ export function ViewDisplayMenu({
     updated: t("display.updated"),
   };
   const [open, setOpen] = useState(false);
+  const openStatuses = useSetAtom(issueStatusesDialogOpenAtom);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -178,6 +183,11 @@ export function ViewDisplayMenu({
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => openStatuses(true)}>
+          <CircleDashed className="size-3.5" />
+          {t("board.manageStatuses")}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

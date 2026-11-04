@@ -15,7 +15,6 @@ import {
 import { SettingRow, SettingsGroup } from "@/components";
 import { ScrollArea } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
-import { IssueStatusSettingsPanel } from "@/features/issues/settings";
 import { MemorySettingsPanel } from "@/features/memory";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
 import { TeamSettingsPanel } from "@/features/sessions/team";
@@ -208,10 +207,6 @@ function SectionPanel({
 
   if (sectionId === "devices") {
     return <DevicesSettingsPanel />;
-  }
-
-  if (sectionId === "issueStatuses") {
-    return <IssueStatusSettingsPanel />;
   }
 
   if (sectionId === "git") {

@@ -1163,6 +1163,7 @@ export default interface Resources {
       newTitle: "New status";
       rename: "Rename";
       saveFailed: "Could not save the status.";
+      title: "Manage statuses";
     };
   };
   memory: {
@@ -3112,7 +3113,6 @@ export default interface Resources {
       environment: "Network";
       general: "General";
       git: "Git";
-      issueStatuses: "Issue statuses";
       licenses: "Open source licenses";
       mcp: "MCP";
       memory: "Memory";
