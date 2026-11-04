@@ -23,6 +23,7 @@ import {
   setChatComposerAttachmentAtom,
 } from "@/features/editor";
 import { MonacoEditor } from "@/features/editor/monaco";
+import { IssuesView } from "@/features/issues";
 import { NotesView } from "@/features/notes";
 import { openPdfsAtom } from "@/features/pdf-reader";
 import {
@@ -40,7 +41,6 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, desktopApi, useMountEffect } from "@/lib";
-import { IssuesPanel } from "./issues-panel";
 import { PanScrollbar } from "./pan-scrollbar";
 import { PanelToolbar } from "./panel-toolbar";
 import { PdfReaderView } from "./pdf-reader-view";
@@ -525,7 +525,7 @@ export function RightEditorPanel({
                     : "hidden pointer-events-none",
                 )}
               >
-                <IssuesPanel />
+                <IssuesView />
               </div>
             ) : null}
 

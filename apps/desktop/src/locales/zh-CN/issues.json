@@ -152,7 +152,6 @@
     "hint": "事项和视图由 cocurdex 私有存储。",
     "nav": {
       "active": "进行中",
-      "agent": "Agent 在做",
       "all": "全部事项",
       "backlog": "Backlog",
       "scope": "事项范围",

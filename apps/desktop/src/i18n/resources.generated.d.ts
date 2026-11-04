@@ -1111,7 +1111,6 @@ export default interface Resources {
       hint: "Issues and views are stored privately by cocurdex.";
       nav: {
         active: "Active";
-        agent: "Agent working";
         all: "All issues";
         backlog: "Backlog";
         scope: "Issue scope";

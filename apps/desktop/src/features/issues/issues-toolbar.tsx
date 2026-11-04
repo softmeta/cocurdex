@@ -15,7 +15,6 @@ import { type IssueNavSelection, IssueScopeTabs } from "./sidebar";
 export function IssuesToolbar({
   selection,
   viewTitle,
-  agentRunningCount,
   scopeLabel,
   leading,
   showViewControls,
@@ -32,7 +31,6 @@ export function IssuesToolbar({
 }: {
   selection: IssueNavSelection;
   viewTitle: string | null;
-  agentRunningCount: number;
   scopeLabel: string | null;
   leading: ReactNode;
   showViewControls: boolean;
@@ -62,11 +60,7 @@ export function IssuesToolbar({
             !leading && "ps-1",
           )}
         >
-          <IssueScopeTabs
-            selection={selection}
-            agentRunningCount={agentRunningCount}
-            onSelect={onSelect}
-          />
+          <IssueScopeTabs selection={selection} onSelect={onSelect} />
           {viewTitle ? (
             <Text size="body" weight="medium" className="shrink-0">
               {viewTitle}

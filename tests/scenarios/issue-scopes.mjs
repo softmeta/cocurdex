@@ -65,17 +65,17 @@ runScenario("issue-scopes", {
       async ({ session }) => {
         const tabs = await queryAllByRole(session, { role: "tab" });
         const names = await Promise.all(
-          ["all", "active", "backlog", "agent"].map((key) =>
+          ["all", "active", "backlog"].map((key) =>
             translate(session, `issues:sidebar.nav.${key}`),
           ),
         );
         check(
-          names.every((name) => tabs.some((tab) => tab.name.startsWith(name))),
+          names.every((name) => tabs.some((tab) => tab.name === name)),
           "scope tabs missing",
           { tabs, names },
         );
         const sidebarRows = await Promise.all(
-          [names[0], names[1], names[3]].map((name) =>
+          [names[0], names[1]].map((name) =>
             queryAllByRole(session, { role: "button", name }),
           ),
         );

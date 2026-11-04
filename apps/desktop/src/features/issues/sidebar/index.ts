@@ -2,7 +2,6 @@ export { DeleteViewDialog } from "./delete-view-dialog";
 export {
   type IssueNavPreset,
   type IssueNavSelection,
-  type IssueNavSession,
   presetScopeFilters,
 } from "./issue-nav";
 export { IssueScopeTabs } from "./issue-scope-tabs";

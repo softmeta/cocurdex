@@ -2,7 +2,6 @@ import {
   ISSUE_STATUS_CATEGORIES,
   type IssueRecord,
   type IssueStatusCategory,
-  type SessionRecord,
   type ViewColumnRecord,
   type ViewFilter,
 } from "@cocurdex/shared";
@@ -11,13 +10,7 @@ export type IssueNavPreset = "all" | "active" | "backlog";
 
 export type IssueNavSelection =
   | { kind: "issues"; preset: IssueNavPreset }
-  | { kind: "agent" }
   | { kind: "view"; viewId: string };
-
-export type IssueNavSession = Pick<
-  SessionRecord,
-  "id" | "status" | "archivedAt"
->;
 
 export const DEFAULT_ISSUE_NAV: IssueNavSelection = {
   kind: "issues",
@@ -32,11 +25,6 @@ const PRESET_CATEGORIES: Record<
   backlog: ["backlog"],
 };
 
-const CLOSED_CATEGORIES: readonly IssueStatusCategory[] = [
-  "completed",
-  "canceled",
-];
-
 function matchesPreset(issue: IssueRecord, preset: IssueNavPreset): boolean {
   if (preset === "all") {
     return true;
@@ -47,60 +35,19 @@ function matchesPreset(issue: IssueRecord, preset: IssueNavPreset): boolean {
   );
 }
 
-function isOpen(issue: IssueRecord): boolean {
-  return (
-    issue.statusCategory === null ||
-    !CLOSED_CATEGORIES.includes(issue.statusCategory)
-  );
-}
-
-function liveSessionStatuses(
-  sessions: readonly IssueNavSession[],
-): Map<string, IssueNavSession["status"]> {
-  return new Map(
-    sessions
-      .filter((session) => !session.archivedAt)
-      .map((session) => [session.id, session.status]),
-  );
-}
-
 export function selectNavIssues(
   issues: IssueRecord[],
   selection: IssueNavSelection,
-  sessions: readonly IssueNavSession[],
 ): IssueRecord[] {
   if (selection.kind === "view") {
     return issues;
   }
-  if (selection.kind === "agent") {
-    const live = liveSessionStatuses(sessions);
-    return issues.filter(
-      (issue) => isOpen(issue) && issue.sessionIds.some((id) => live.has(id)),
-    );
-  }
   return issues.filter((issue) => matchesPreset(issue, selection.preset));
-}
-
-export function countAgentRunningIssues(
-  issues: readonly IssueRecord[],
-  sessions: readonly IssueNavSession[],
-): number {
-  const live = liveSessionStatuses(sessions);
-  return issues.filter(
-    (issue) =>
-      isOpen(issue) &&
-      issue.sessionIds.some((id) => live.get(id) === "running"),
-  ).length;
 }
 
 function allowedColumnCategories(
   selection: IssueNavSelection,
 ): readonly IssueStatusCategory[] | null {
-  if (selection.kind === "agent") {
-    return ISSUE_STATUS_CATEGORIES.filter(
-      (category) => !CLOSED_CATEGORIES.includes(category),
-    );
-  }
   if (selection.kind === "issues" && selection.preset !== "all") {
     return PRESET_CATEGORIES[selection.preset];
   }

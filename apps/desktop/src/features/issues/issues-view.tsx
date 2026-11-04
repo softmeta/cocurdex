@@ -55,7 +55,6 @@ import { IssuesToolbar } from "./issues-toolbar";
 import { IssuesList } from "./list";
 import {
   DeleteViewDialog,
-  type IssueNavSession,
   IssuesSidebar,
   presetScopeFilters,
   useIssueNav,
@@ -63,11 +62,7 @@ import {
   useIssueNavTitle,
 } from "./sidebar";
 
-export function IssuesView({
-  sessions,
-}: {
-  sessions: readonly IssueNavSession[];
-}) {
+export function IssuesView() {
   const { t } = useTranslation("issues");
   const loadIssues = useSetAtom(loadIssuesAtom);
   const loading = useAtomValue(issueLoadingAtom);
@@ -206,7 +201,7 @@ export function IssuesView({
   const layout = activeSummary?.layout ?? activeBoard?.view.layout ?? "board";
   const loadedBoard =
     activeBoard?.view.id === activeBoardId ? activeBoard : null;
-  const nav = useIssueNav({ board: loadedBoard, sessions });
+  const nav = useIssueNav({ board: loadedBoard });
   const viewBoard = nav.scopedBoard;
   const customViews = boards.filter((view) => view.id !== DEFAULT_VIEW_ID);
   const viewTitle = useIssueNavTitle(nav.selection, boards);
@@ -319,7 +314,6 @@ export function IssuesView({
             <IssuesToolbar
               selection={nav.selection}
               viewTitle={viewTitle}
-              agentRunningCount={nav.agentRunningCount}
               scopeLabel={scopeLabel}
               leading={sidebarToggle}
               showViewControls={boards.length > 0}

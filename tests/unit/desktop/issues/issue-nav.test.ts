@@ -2,12 +2,10 @@ import {
   type IssueRecord,
   type IssueStatusCategory,
   issueMatchesFilters,
-  type SessionRecord,
   type ViewColumnRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
-  countAgentRunningIssues,
   presetScopeFilters,
   selectNavColumns,
   selectNavIssues,
@@ -43,14 +41,6 @@ function issue(
   };
 }
 
-function session(
-  id: string,
-  status: SessionRecord["status"],
-  archivedAt: string | null = null,
-): Pick<SessionRecord, "id" | "status" | "archivedAt"> {
-  return { id, status, archivedAt };
-}
-
 const ids = (issues: IssueRecord[]) => issues.map((entry) => entry.id);
 
 describe("selectNavIssues", () => {
@@ -64,41 +54,20 @@ describe("selectNavIssues", () => {
 
   it("scopes issues by status preset", () => {
     expect(
-      ids(selectNavIssues(issues, { kind: "issues", preset: "all" }, [])),
+      ids(selectNavIssues(issues, { kind: "issues", preset: "all" })),
     ).toEqual(["backlog-a", "started-a", "todo-b", "done-a", "loose"]);
     expect(
-      ids(selectNavIssues(issues, { kind: "issues", preset: "active" }, [])),
+      ids(selectNavIssues(issues, { kind: "issues", preset: "active" })),
     ).toEqual(["started-a", "todo-b", "loose"]);
     expect(
-      ids(selectNavIssues(issues, { kind: "issues", preset: "backlog" }, [])),
+      ids(selectNavIssues(issues, { kind: "issues", preset: "backlog" })),
     ).toEqual(["backlog-a"]);
   });
 
   it("leaves a saved view's issues untouched", () => {
-    expect(
-      selectNavIssues(issues, { kind: "view", viewId: "custom" }, []),
-    ).toBe(issues);
-  });
-
-  it("lists open issues that a live agent session is working on", () => {
-    const linked = [
-      issue("running", "started", { sessionIds: ["s-run"] }),
-      issue("idle", "unstarted", { sessionIds: ["s-idle"] }),
-      issue("archived", "started", { sessionIds: ["s-archived"] }),
-      issue("closed", "completed", { sessionIds: ["s-run"] }),
-      issue("unlinked", "started"),
-    ];
-    const sessions = [
-      session("s-run", "running"),
-      session("s-idle", "idle"),
-      session("s-archived", "idle", "2026-10-08T00:00:00.000Z"),
-    ];
-
-    expect(ids(selectNavIssues(linked, { kind: "agent" }, sessions))).toEqual([
-      "running",
-      "idle",
-    ]);
-    expect(countAgentRunningIssues(linked, sessions)).toBe(1);
+    expect(selectNavIssues(issues, { kind: "view", viewId: "custom" })).toBe(
+      issues,
+    );
   });
 });
 
@@ -142,9 +111,6 @@ describe("selectNavColumns", () => {
         selectNavColumns(statusColumns, { kind: "issues", preset: "backlog" }),
       ),
     ).toEqual(["backlog", "custom"]);
-    expect(
-      columnIds(selectNavColumns(statusColumns, { kind: "agent" })),
-    ).toEqual(["backlog", "todo", "doing", "custom"]);
   });
 
   it("keeps every column for all issues, saved views, and priority groups", () => {
@@ -174,7 +140,7 @@ describe("presetScopeFilters", () => {
       const filters = presetScopeFilters(preset);
       expect(
         ids(issues.filter((entry) => issueMatchesFilters(entry, filters))),
-      ).toEqual(ids(selectNavIssues(issues, { kind: "issues", preset }, [])));
+      ).toEqual(ids(selectNavIssues(issues, { kind: "issues", preset })));
     }
   });
 });
