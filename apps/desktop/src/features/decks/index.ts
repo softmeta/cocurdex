@@ -1,2 +1,2 @@
-export { openDeckAtom } from "./decks-store";
+export { activeDeckIdAtom, openDeckAtom } from "./decks-store";
 export { DecksView } from "./decks-view-lazy";

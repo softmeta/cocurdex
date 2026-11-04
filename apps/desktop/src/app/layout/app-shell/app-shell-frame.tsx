@@ -45,6 +45,7 @@ import {
 import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
+import { NavigationButtons } from "../navigation";
 import { SearchPalette, useOpenEntityBridge } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
 import { SidebarToggleButton } from "../sidebar";
@@ -336,6 +337,7 @@ export function AppShellFrame({
                   onOpenSettings={onOpenSettings}
                   onToggleRightPanel={onToggleRightPanel}
                 />
+                <NavigationButtons />
               </div>
             </div>
 

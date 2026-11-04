@@ -1126,6 +1126,14 @@
         "description": "打开工作区文件搜索面板。",
         "title": "搜索文件"
       },
+      "navigateBack": {
+        "description": "回到上一个会话、笔记、Issue 或面板视图。",
+        "title": "后退"
+      },
+      "navigateForward": {
+        "description": "后退之后再前进。",
+        "title": "前进"
+      },
       "toggleChatDock": {
         "description": "在编辑器全屏时显示或隐藏浮动/钉住的聊天坞。",
         "title": "切换聊天坞"

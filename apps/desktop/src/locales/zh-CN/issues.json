@@ -83,7 +83,7 @@
       "duplicateOf": "重复于",
       "related": "相关"
     },
-    "relations": "关联",
+    "relations": "Issue 关系",
     "removeRelation": "移除关联",
     "sessions": "Agent 会话",
     "subIssues": "子 issue",

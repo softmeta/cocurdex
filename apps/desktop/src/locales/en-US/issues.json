@@ -83,7 +83,7 @@
       "duplicateOf": "Duplicate of",
       "related": "Related to"
     },
-    "relations": "Relations",
+    "relations": "Issue relations",
     "removeRelation": "Remove relation",
     "sessions": "Agent sessions",
     "subIssues": "Sub-issues",

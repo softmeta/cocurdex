@@ -1,4 +1,5 @@
 import type { ShortcutCombo } from "@/lib";
+import { isMacPlatform } from "@/lib/platform";
 
 /**
  * Built-in keyboard shortcut catalog.
@@ -20,6 +21,8 @@ export type ShortcutCategory = (typeof shortcutCategories)[number];
 
 export const shortcutIds = [
   "fileSearch",
+  "navigateBack",
+  "navigateForward",
   "toggleLeftSidebar",
   "toggleRightPanel",
   "toggleEditorFullscreen",
@@ -41,12 +44,34 @@ export interface ShortcutDefinition {
   allowInEditable: boolean;
 }
 
+export function navigationDefaultCombo(
+  direction: "back" | "forward",
+  isMac: boolean,
+): ShortcutCombo {
+  if (isMac) {
+    return { key: direction === "back" ? "[" : "]", primary: true };
+  }
+  return { key: direction === "back" ? "arrowleft" : "arrowright", alt: true };
+}
+
 export const SHORTCUT_CATALOG: readonly ShortcutDefinition[] = [
   {
     id: "fileSearch",
     category: "general",
     defaultCombo: { key: "p", primary: true },
     allowInEditable: false,
+  },
+  {
+    id: "navigateBack",
+    category: "general",
+    defaultCombo: navigationDefaultCombo("back", isMacPlatform()),
+    allowInEditable: true,
+  },
+  {
+    id: "navigateForward",
+    category: "general",
+    defaultCombo: navigationDefaultCombo("forward", isMacPlatform()),
+    allowInEditable: true,
   },
   {
     id: "toggleLeftSidebar",

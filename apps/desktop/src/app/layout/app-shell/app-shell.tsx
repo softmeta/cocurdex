@@ -54,6 +54,7 @@ import {
   shouldOpenDockWhenApplyingLayout,
 } from "../chat-layout-preference";
 import { useChatWindowActions, useMainChatWindow } from "../chat-window";
+import { useAppNavigation } from "../navigation";
 import { searchPaletteOpenAtom } from "../search-palette";
 import { synchronizeAgentState } from "./agent-event-bridge";
 import { useBrowserEventBridge } from "./app-shell-events";
@@ -264,6 +265,7 @@ export function AppShell() {
     applyChatLayoutMode(getStoredLastDockLayout(), "maximize");
   };
 
+  useAppNavigation();
   useAppShortcuts(
     {
       fileSearch: () => setIsSearchOpen(true),

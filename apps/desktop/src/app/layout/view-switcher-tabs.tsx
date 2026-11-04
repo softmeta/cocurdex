@@ -287,6 +287,7 @@ export function ViewSwitcherTabs({
           spacing={1}
           className="app-drag flex h-full w-fit items-center rounded-none px-2"
           type="single"
+          aria-label={t("actions.panelViews")}
           value={activeView}
           onValueChange={handleValueChange}
         >

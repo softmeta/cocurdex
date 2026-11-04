@@ -728,8 +728,12 @@ export default interface Resources {
       goForward: "Go forward";
       hideChatFab: "Hide chat button";
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
+      navigateBack: "Back";
+      navigateForward: "Forward";
+      navigationHistory: "Navigation history";
       openChat: "Open chat";
       openEditorPanel: "Open editor panel";
+      panelViews: "Panel views";
       pinChatDock: "Pin chat to the side";
       pinChatDockNeedsSpace: "The window is too narrow to dock chat. Widen it and try again.";
       preview: "Preview";
@@ -1038,7 +1042,7 @@ export default interface Resources {
         duplicatedBy: "Duplicated by";
         related: "Related to";
       };
-      relations: "Relations";
+      relations: "Issue relations";
       removeRelation: "Remove relation";
       sessions: "Agent sessions";
       subIssues: "Sub-issues";
@@ -3096,6 +3100,14 @@ export default interface Resources {
         fileSearch: {
           description: "Open the workspace file search palette.";
           title: "Search files";
+        };
+        navigateBack: {
+          description: "Go back to the previous session, note, issue, or panel view.";
+          title: "Go back";
+        };
+        navigateForward: {
+          description: "Go forward again after going back.";
+          title: "Go forward";
         };
         toggleChatDock: {
           description: "Show or hide the floating/pinned chat dock when the editor is fullscreen.";

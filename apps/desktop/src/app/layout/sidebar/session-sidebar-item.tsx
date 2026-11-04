@@ -313,6 +313,7 @@ export function SessionSidebarItem({
           <ContextMenuTrigger asChild>
             <SidebarListRow
               isActive={isActive}
+              data-session-id={session.id}
               className={cn(
                 isChild && "ps-6 text-sidebar-fg-muted",
                 !isChild && "ps-1",
