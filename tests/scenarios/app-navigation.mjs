@@ -2,6 +2,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clickByRole, clickSelector, waitForRole } from "./lib/locate.mjs";
 import {
+  closeEditorPanel,
   openNote,
   openSettingsSection,
   showPanelView,
@@ -110,13 +111,13 @@ async function pressMouseBack(session) {
 runScenario("app-navigation", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
   setup: async ({ session }) => {
-    await showPanelView(session, "notes");
+    const { wasOpen } = await showPanelView(session, "notes");
     await waitForHistory(
       session,
       (state) => state.length > 0 && !state.pending,
       "no history",
     );
-    return {};
+    return { panelWasOpen: wasOpen };
   },
   steps: [
     [
@@ -345,5 +346,8 @@ runScenario("app-navigation", {
       },
     ],
   ],
-  teardown: async () => ({}),
+  teardown: async ({ session, panelWasOpen }) => {
+    if (!panelWasOpen) await closeEditorPanel(session);
+    return {};
+  },
 });
