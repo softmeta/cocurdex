@@ -96,6 +96,58 @@ export const DEFAULT_STATUS_COLUMNS: DefaultIssueColumn[] = [
   { id: "done", title: "Done", order: 3, color: null, category: "completed" },
 ];
 
+export interface OrderedIssueColumn {
+  id: string;
+  category: IssueStatusCategory | null;
+  sortOrder: number;
+}
+
+const ISSUE_COLUMN_SORT_STEP = 1000;
+
+function categoryRank(category: IssueStatusCategory | null): number {
+  return category
+    ? ISSUE_STATUS_CATEGORIES.indexOf(category)
+    : ISSUE_STATUS_CATEGORIES.length;
+}
+
+export function compareIssueColumns(
+  a: OrderedIssueColumn,
+  b: OrderedIssueColumn,
+): number {
+  return (
+    categoryRank(a.category) - categoryRank(b.category) ||
+    a.sortOrder - b.sortOrder ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+export function sortIssueColumns<T extends OrderedIssueColumn>(
+  columns: readonly T[],
+): T[] {
+  return [...columns].sort(compareIssueColumns);
+}
+
+export function sortOrderForColumnPosition(
+  columns: readonly OrderedIssueColumn[],
+  columnId: string,
+  index: number,
+): number {
+  const moving = columns.find((column) => column.id === columnId);
+  const siblings = sortIssueColumns(
+    columns.filter(
+      (column) =>
+        column.id !== columnId && column.category === moving?.category,
+    ),
+  );
+  const position = Math.max(0, Math.min(index, siblings.length));
+  const before = siblings[position - 1]?.sortOrder;
+  const after = siblings[position]?.sortOrder;
+  if (before !== undefined && after !== undefined) return (before + after) / 2;
+  if (before !== undefined) return before + ISSUE_COLUMN_SORT_STEP;
+  if (after !== undefined) return after - ISSUE_COLUMN_SORT_STEP;
+  return moving?.sortOrder ?? 0;
+}
+
 export function defaultStatusCategory(columnId: string): IssueStatusCategory {
   return (
     DEFAULT_STATUS_COLUMNS.find((column) => column.id === columnId)?.category ??
@@ -345,6 +397,10 @@ export interface UpdateViewPayload {
   layout?: ViewLayout;
   filters?: ViewFilter[];
   expectedRevision?: number;
+}
+
+export interface ListColumnsPayload {
+  field: ViewGroupBy;
 }
 
 export interface CreateColumnPayload {

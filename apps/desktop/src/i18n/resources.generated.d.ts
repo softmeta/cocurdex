@@ -986,22 +986,13 @@ export default interface Resources {
     };
     board: {
       addCard: "Add card";
-      addColumn: "Add column";
       columnMenu: "Column menu";
       columnsField: "Columns";
       columnsFieldHint: "Columns follow this issue field. Drag a card to update the field.";
       deleteCard: "Delete card";
-      deleteColumn: "Delete column";
-      deleteColumnConfirm: {
-        cancel: "Cancel";
-        confirm: "Delete";
-        description: '"{{title}}" will be removed from this view. Issues keep their field values.';
-        title: "Delete column?";
-      };
       displayOptions: "View display";
       displayOptionsHint: "Layout and grouping apply only to this view.";
       dragCard: "Drag card";
-      dragColumn: "Drag column";
       groupBy: "Grouping";
       groupByHint: "Rows are grouped by this issue field.";
       groupByPriority: "Priority";
@@ -1009,7 +1000,7 @@ export default interface Resources {
       layout: "Layout";
       layoutBoard: "Board";
       layoutList: "List";
-      renameColumnPrompt: "Column name";
+      manageStatuses: "Manage statuses";
       untitledBoard: "Untitled view";
       untitledCard: "Untitled card";
       untitledColumn: "Untitled column";
@@ -1121,6 +1112,21 @@ export default interface Resources {
       untitledBoard: "Untitled view";
       views: "Views";
       viewsEmpty: "Filter issues, then save them as a view.";
+    };
+    statuses: {
+      actions: "{{status}} actions";
+      add: "Add a status to {{category}}";
+      cancel: "Cancel";
+      delete: "Delete";
+      deleteDescription: "Its issues move to another status in the same category, or to the first status when the category has no other.";
+      deleteTitle: "Delete {{status}}?";
+      description: "Statuses are grouped by category. The category decides which quick filter shows a status and whether its issues count as finished.";
+      empty: "No statuses";
+      moveDown: "Move down";
+      moveUp: "Move up";
+      newTitle: "New status";
+      rename: "Rename";
+      saveFailed: "Could not save the status.";
     };
   };
   memory: {
@@ -3070,6 +3076,7 @@ export default interface Resources {
       environment: "Network";
       general: "General";
       git: "Git";
+      issueStatuses: "Issue statuses";
       licenses: "Open source licenses";
       mcp: "MCP";
       memory: "Memory";

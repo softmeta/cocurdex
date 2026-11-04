@@ -167,6 +167,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "issue.createView": "interact",
   "issue.updateView": "interact",
   "issue.deleteView": "interact",
+  "issue.listColumns": "read",
   "issue.createColumn": "interact",
   "issue.updateColumn": "interact",
   "issue.moveColumn": "interact",

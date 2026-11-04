@@ -21,6 +21,11 @@ cocurdex issue relate|unrelate <id> blocks|related|duplicate <other-id> --json
 cocurdex issue labels --json
 cocurdex issue label create --name <name> [--color <color>] --json
 cocurdex issue label update <id|name> [--name <name>] [--color <color>] --json
+cocurdex issue statuses --json
+cocurdex issue status create --name <name> --category <category> [--color <color>] --json
+cocurdex issue status update <id|name> [--name <name>] [--category <category>] [--color <color>] --json
+cocurdex issue status move <id|name> --position <n> --json
+cocurdex issue status delete <id|name> --json
 cocurdex issue delete <id> --json
 cocurdex issue views --json
 ```
@@ -55,7 +60,13 @@ scope or acceptance criteria.
 
 Each status column has a category (`backlog`, `unstarted`, `started`,
 `completed`, `canceled`); `show` reports it as `statusCategory`, and
-`list --open` hides completed and canceled issues.
+`list --open` hides completed and canceled issues. Statuses are ordered by
+category, then by their position inside it: `issue statuses` lists them in
+board order, `status move --position` places a status within its category
+(0 is first), and changing `--category` moves it to the end of the new one.
+Deleting a status moves its issues to another status of the same category,
+or to the first status when none is left. Change statuses only when the user
+asks; the user manages them in Settings › Issue statuses.
 
 Status and priority ids are shared by every view; an unknown id is rejected
 with the valid ids in the error. Omit `--status` to use the first status.

@@ -5,6 +5,7 @@ import {
   ISSUE_STATUS_CATEGORIES,
   type IssueStatusCategory,
   isClosedStatusCategory,
+  type ViewGroupBy,
 } from "@cocurdex/shared";
 import {
   assertRevision,
@@ -33,11 +34,23 @@ type IssueViewOperations = Pick<
   | "createView"
   | "updateView"
   | "deleteView"
+  | "listColumns"
   | "createColumn"
   | "updateColumn"
   | "moveColumn"
   | "deleteColumn"
 >;
+
+function endOfCategory(
+  database: DatabaseSync,
+  field: ViewGroupBy,
+  category: IssueStatusCategory | null,
+): number {
+  const orders = listColumns(database, field)
+    .filter((column) => column.category === category)
+    .map((column) => column.sort_order);
+  return orders.length > 0 ? Math.max(...orders) + 1000 : 0;
+}
 
 function assertCategory(category: string | undefined): void {
   if (
@@ -145,6 +158,9 @@ export function createIssueViewOperations(
       }
       database.prepare("DELETE FROM issue_views WHERE id = ?").run(current.id);
     },
+    async listColumns({ field }) {
+      return listColumns(database, field).map(mapColumn);
+    },
     async createColumn(payload) {
       const { field } = payload;
       assertCategory(payload.category);
@@ -181,16 +197,22 @@ export function createIssueViewOperations(
           current.field === "status"
             ? (payload.category ?? current.category)
             : null;
+        const sortOrder =
+          category === current.category
+            ? current.sort_order
+            : endOfCategory(database, current.field, category);
         database
           .prepare(
             `UPDATE issue_columns
-             SET title = ?, color = ?, category = ?, updated_at = ?
+             SET title = ?, color = ?, category = ?, sort_order = ?,
+                 updated_at = ?
              WHERE field = ? AND id = ?`,
           )
           .run(
             payload.title?.trim() || current.title,
             payload.color !== undefined ? payload.color : current.color,
             category,
+            sortOrder,
             now,
             current.field,
             current.id,
@@ -220,14 +242,18 @@ export function createIssueViewOperations(
     async deleteColumn(payload) {
       const { field } = payload;
       return withIssueMutation(database, () => {
-        requireColumn(database, field, payload.id);
+        const deleted = requireColumn(database, field, payload.id);
         const remaining = listColumns(database, field).filter(
           (column) => column.id !== payload.id,
         );
         if (remaining.length === 0) {
           throw new Error(`Cannot delete the last issue ${field} column`);
         }
-        const fallbackId = fallbackColumnId(remaining, field);
+        const fallbackId =
+          (field === "status"
+            ? remaining.find((column) => column.category === deleted.category)
+                ?.id
+            : undefined) ?? fallbackColumnId(remaining, field);
         const now = new Date().toISOString();
         database
           .prepare(

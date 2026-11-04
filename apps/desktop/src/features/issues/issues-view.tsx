@@ -43,7 +43,6 @@ import {
   issueLoadingAtom,
   issueViewsAtom,
   loadIssuesAtom,
-  moveColumnAtom,
   moveIssueAtom,
   moveIssueLocalAtom,
   saveFiltersAsViewAtom,
@@ -81,7 +80,6 @@ export function IssuesView() {
   const closeIssueDetail = useSetAtom(closeIssueDetailAtom);
   const moveIssue = useSetAtom(moveIssueAtom);
   const moveIssueLocal = useSetAtom(moveIssueLocalAtom);
-  const moveColumn = useSetAtom(moveColumnAtom);
   const updateView = useSetAtom(updateViewAtom);
   const saveFiltersAsView = useSetAtom(saveFiltersAsViewAtom);
   const deleteView = useSetAtom(deleteViewAtom);
@@ -141,13 +139,6 @@ export function IssuesView() {
       moveIssueLocal({ id, columnId, sortOrder });
     },
     [moveIssueLocal],
-  );
-
-  const handleMoveColumn = useCallback(
-    (id: string, sortOrder: number) => {
-      void moveColumn({ id, sortOrder });
-    },
-    [moveColumn],
   );
 
   const handleSaveIssue = useCallback(
@@ -349,7 +340,6 @@ export function IssuesView() {
                 board={viewBoard}
                 onMoveIssue={handleMoveIssue}
                 onMoveIssueLocal={handleMoveIssueLocal}
-                onMoveColumn={handleMoveColumn}
                 onAddCard={handleAddCard}
                 onDeleteCard={(id) => {
                   void deleteIssue(id);
@@ -359,9 +349,6 @@ export function IssuesView() {
                   void updateIssue({ id, ...fields });
                 }}
                 onRenameColumn={handleRenameColumn}
-                onSetColumnCategory={(id, category) => {
-                  void updateColumn({ id, category });
-                }}
               />
             )
           ) : boards.length > 0 ? (

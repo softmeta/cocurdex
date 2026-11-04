@@ -309,15 +309,6 @@ export const moveIssueAtom = atom(
   },
 );
 
-export const moveColumnAtom = atom(
-  null,
-  async (get, set, payload: { id: string; sortOrder: number }) =>
-    runIssueMutation(get, set, async () => {
-      await issuesIpc.moveColumn({ field: activeField(get), ...payload });
-      await loadActiveView(set, get(activeViewIdAtom));
-    }),
-);
-
 export const deleteIssueAtom = atom(null, async (get, set, issueId: string) =>
   runIssueMutation(get, set, async () => {
     const issue = get(activeViewAtom)?.issues.find(

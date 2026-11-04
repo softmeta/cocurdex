@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import {
+  compareIssueColumns,
   DEFAULT_PRIORITY_COLUMNS,
   DEFAULT_STATUS_COLUMNS,
   DEFAULT_VIEW_ID,
@@ -160,13 +161,15 @@ export function listColumns(
   database: DatabaseSync,
   field: ViewGroupBy,
 ): ColumnRow[] {
-  return database
-    .prepare(
-      `SELECT * FROM issue_columns
-       WHERE field = ?
-       ORDER BY sort_order, id`,
-    )
+  const rows = database
+    .prepare("SELECT * FROM issue_columns WHERE field = ?")
     .all(field) as ColumnRow[];
+  return rows.sort((a, b) =>
+    compareIssueColumns(
+      { id: a.id, category: a.category, sortOrder: a.sort_order },
+      { id: b.id, category: b.category, sortOrder: b.sort_order },
+    ),
+  );
 }
 
 export function fallbackColumnId(

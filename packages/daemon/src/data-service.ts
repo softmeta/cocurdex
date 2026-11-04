@@ -23,6 +23,7 @@ import {
   isContextItemAttachment,
   isLinkableEntityKind,
   type LinkIssueSessionPayload,
+  type ListColumnsPayload,
   type ListEntityLinksPayload,
   type LoadViewPayload,
   type MessageAttachment,
@@ -137,6 +138,10 @@ export class DaemonDataService {
   async deleteIssueView(payload: DeleteViewPayload) {
     await this.state.data.issues.deleteView(payload);
     this.emitChanged("issues");
+  }
+
+  listIssueColumns(payload: ListColumnsPayload) {
+    return this.state.data.issues.listColumns(payload);
   }
 
   async createIssueColumn(payload: CreateColumnPayload) {

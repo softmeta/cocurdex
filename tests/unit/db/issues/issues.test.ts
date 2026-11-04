@@ -104,19 +104,55 @@ describe("CocurdexDatabase.issues", () => {
     database.close();
   });
 
-  it("moves issues to the fallback column when their column is deleted", async () => {
+  it("moves issues to a status of the same category when their status is deleted", async () => {
     const database = createTestDatabase();
     const issue = await database.issues.createIssue({
       viewId: DEFAULT_VIEW_ID,
       columnId: "doing",
       title: "In flight",
     });
+    const done = await database.issues.createIssue({
+      viewId: DEFAULT_VIEW_ID,
+      columnId: "done",
+      title: "Shipped",
+    });
 
     await database.issues.deleteColumn({ field: "status", id: "doing" });
+    await database.issues.deleteColumn({ field: "status", id: "done" });
 
-    const moved = await database.issues.getIssue({ id: issue.id });
-    expect(moved?.status).toBe("backlog");
-    expect(moved?.revision).toBe(issue.revision + 1);
+    expect((await database.issues.getIssue({ id: issue.id }))?.status).toBe(
+      "review",
+    );
+    const reopened = await database.issues.getIssue({ id: done.id });
+    expect(reopened?.status).toBe("backlog");
+    expect(reopened?.revision).toBe(done.revision + 1);
+    database.close();
+  });
+
+  it("orders statuses by category, then by their own order", async () => {
+    const database = createTestDatabase();
+    await database.issues.createColumn({
+      field: "status",
+      title: "Triage",
+      category: "backlog",
+    });
+    await database.issues.updateColumn({
+      field: "status",
+      id: "review",
+      category: "completed",
+    });
+
+    const view = await database.issues.loadView({ viewId: DEFAULT_VIEW_ID });
+    expect(view?.columns.map((column) => column.title)).toEqual([
+      "Backlog",
+      "Triage",
+      "Doing",
+      "Done",
+      "Review",
+    ]);
+    expect(
+      view?.columns.find((column) => column.id === "review")?.category,
+    ).toBe("completed");
     database.close();
   });
 

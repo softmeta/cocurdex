@@ -14,6 +14,7 @@ export type SettingsSectionId =
   | "memory"
   | "skills"
   | "workflows"
+  | "issueStatuses"
   | "git"
   | "worktrees"
   | "about"

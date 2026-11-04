@@ -1,15 +1,9 @@
-import type {
-  IssueRecord,
-  IssueStatusCategory,
-  ViewColumnRecord,
-} from "@cocurdex/shared";
+import type { IssueRecord, ViewColumnRecord } from "@cocurdex/shared";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Circle, Plus } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
@@ -19,7 +13,7 @@ import { ScrollArea, Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { groupFieldColor } from "../group-field-color";
 import { InlineEdit } from "../inline-edit";
-import { ColumnCategoryMenu } from "./column-category-menu";
+import { ColumnMenu } from "./column-menu";
 import { IssueCard } from "./issue-card";
 
 interface IssueColumnProps {
@@ -35,7 +29,6 @@ interface IssueColumnProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
-  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssueColumn({
@@ -48,30 +41,15 @@ export function IssueColumn({
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
-  onSetColumnCategory,
 }: IssueColumnProps) {
   const { t } = useTranslation("issues");
   const [editing, setEditing] = useState(false);
   const cardIds = useMemo(() => issues.map((c) => c.id), [issues]);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setSortableRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: column.id, data: { type: "column", column } });
-
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: `column-drop-${column.id}`,
     data: { type: "column-drop", columnId: column.id },
   });
-
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
 
   const statusColor = groupFieldColor(column);
   const statusStyle: CSSProperties | undefined = statusColor
@@ -80,21 +58,13 @@ export function IssueColumn({
 
   return (
     <div
-      ref={setSortableRef}
-      style={style}
+      data-column-id={column.id}
       className={cn(
-        // Soft column well (Linear-style): muted panel behind white cards.
         "flex w-72 shrink-0 flex-col rounded-panel bg-muted/50 p-2",
-        isDragging && "opacity-50",
         isOver && "bg-muted/70 ring-1 ring-editor-border/50",
       )}
     >
-      {/* Header doubles as the column drag handle; clicking the title renames. */}
-      <div
-        className="group flex h-9 items-center gap-1.5 px-1"
-        {...attributes}
-        {...listeners}
-      >
+      <div className="group flex h-9 items-center gap-1.5 px-1">
         <Circle
           className={cn(
             "size-3.5 shrink-0",
@@ -120,7 +90,6 @@ export function IssueColumn({
               type="button"
               className="block max-w-44 cursor-text truncate text-start"
               onClick={() => setEditing(true)}
-              onPointerDown={(e) => e.stopPropagation()}
             >
               <Text size="body" weight="medium" className="text-editor-fg">
                 {column.title || t("board.untitledColumn")}
@@ -139,18 +108,10 @@ export function IssueColumn({
           <TitlebarIconButton
             aria-label={t("board.addCard")}
             onClick={() => onAddCard(column.id)}
-            onPointerDown={(e) => e.stopPropagation()}
           >
             <Plus className="size-3.5" />
           </TitlebarIconButton>
-          {column.category ? (
-            <ColumnCategoryMenu
-              category={column.category}
-              onCategoryChange={(category) =>
-                onSetColumnCategory(column.id, category)
-              }
-            />
-          ) : null}
+          {column.category ? <ColumnMenu /> : null}
         </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">

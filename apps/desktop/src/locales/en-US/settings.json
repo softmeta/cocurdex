@@ -1109,6 +1109,7 @@
     "environment": "Network",
     "general": "General",
     "git": "Git",
+    "issueStatuses": "Issue statuses",
     "licenses": "Open source licenses",
     "mcp": "MCP",
     "memory": "Memory",

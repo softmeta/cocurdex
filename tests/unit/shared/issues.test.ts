@@ -1,7 +1,10 @@
 import {
   type FilterableIssue,
   issueMatchesFilters,
+  type OrderedIssueColumn,
   parseIssueNumber,
+  sortIssueColumns,
+  sortOrderForColumnPosition,
 } from "@cocurdex/shared/internal/issues";
 import { describe, expect, it } from "vitest";
 
@@ -52,5 +55,39 @@ describe("issueMatchesFilters", () => {
         { field: "workspaceId", op: "is_null" },
       ]),
     ).toBe(true);
+  });
+});
+
+describe("issue status order", () => {
+  const columns: OrderedIssueColumn[] = [
+    { id: "done", category: "completed", sortOrder: 0 },
+    { id: "review", category: "started", sortOrder: 3000 },
+    { id: "doing", category: "started", sortOrder: 1000 },
+    { id: "backlog", category: "backlog", sortOrder: 5000 },
+  ];
+
+  it("orders statuses by category before their own order", () => {
+    expect(sortIssueColumns(columns).map((column) => column.id)).toEqual([
+      "backlog",
+      "doing",
+      "review",
+      "done",
+    ]);
+  });
+
+  it("places a status among the others of its category", () => {
+    const first = sortOrderForColumnPosition(columns, "review", 0);
+    const moved = sortIssueColumns(
+      columns.map((column) =>
+        column.id === "review" ? { ...column, sortOrder: first } : column,
+      ),
+    );
+    expect(moved.map((column) => column.id)).toEqual([
+      "backlog",
+      "review",
+      "doing",
+      "done",
+    ]);
+    expect(sortOrderForColumnPosition(columns, "doing", 9)).toBe(4000);
   });
 });

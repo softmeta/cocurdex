@@ -201,6 +201,105 @@ runScenario("issue-scopes", {
       },
     ],
     [
+      "the column menu opens the status settings, where a category change moves the status",
+      async ({ session, statusColumns }) => {
+        const status = statusColumns.find(
+          (column) => column.category === "started",
+        );
+        check(Boolean(status), "fixture has no started status", statusColumns);
+        const [menu] = await queryAllByRole(session, {
+          role: "button",
+          name: await translate(session, "issues:board.columnMenu"),
+        });
+        check(Boolean(menu), "column menu missing");
+        await clickPoint(session, await centerOf(session, menu.backendNodeId));
+        await clickByRole(
+          session,
+          {
+            role: "menuitem",
+            name: await translate(session, "issues:board.manageStatuses"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        await waitForRole(
+          session,
+          {
+            role: "heading",
+            name: await translate(session, "settings:sections.issueStatuses"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        await clickByRole(
+          session,
+          {
+            role: "button",
+            name: await translate(session, "issues:statuses.actions", {
+              status: status.title,
+            }),
+          },
+          UI_TIMEOUT_MS,
+        );
+        const [categoryItem] = await waitForRole(
+          session,
+          {
+            role: "menuitem",
+            name: await translate(session, "issues:category.title"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        const center = await centerOf(session, categoryItem.backendNodeId);
+        for (const point of [{ x: center.x - 40, y: center.y }, center]) {
+          await session.send("Input.dispatchMouseEvent", {
+            type: "mouseMoved",
+            ...point,
+          });
+        }
+        const completed = await translate(session, "issues:category.completed");
+        await clickByRole(
+          session,
+          { role: "menuitemradio", name: completed },
+          UI_TIMEOUT_MS,
+        );
+        await session.waitUntil(
+          ({ list, id }) =>
+            Boolean(
+              document.querySelector(
+                `ul[aria-label="${list}"] [data-status-id="${id}"]`,
+              ),
+            ),
+          { list: completed, id: status.id },
+          UI_TIMEOUT_MS,
+        );
+        const saved = await daemonRequest(session, "issue.listColumns", {
+          field: "status",
+        });
+        check(
+          saved.find((column) => column.id === status.id)?.category ===
+            "completed",
+          "category not saved",
+          saved,
+        );
+        await daemonRequest(session, "issue.updateColumn", {
+          field: "status",
+          id: status.id,
+          category: "started",
+        });
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:sidebar.backToApp"),
+        });
+        await waitForRole(
+          session,
+          {
+            role: "tablist",
+            name: await translate(session, "issues:sidebar.nav.scope"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        return { status: status.id };
+      },
+    ],
+    [
       "renderer has no errors",
       async ({ session }) => {
         const errors = await session.run(() =>

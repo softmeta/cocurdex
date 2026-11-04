@@ -14,7 +14,6 @@ import type {
   IssueRecord,
   IssueRelationPayload,
   LoadViewPayload,
-  MoveColumnPayload,
   MoveIssuePayload,
   UpdateColumnPayload,
   UpdateIssuePayload,
@@ -41,8 +40,6 @@ export const issuesIpc = {
     desktopApi.issueCreateColumn(payload),
   updateColumn: (payload: UpdateColumnPayload): Promise<ViewColumnRecord> =>
     desktopApi.issueUpdateColumn(payload),
-  moveColumn: (payload: MoveColumnPayload): Promise<ViewColumnRecord> =>
-    desktopApi.issueMoveColumn(payload),
   deleteColumn: (payload: DeleteColumnPayload): Promise<void> =>
     desktopApi.issueDeleteColumn(payload),
   createIssue: (payload: CreateIssuePayload): Promise<IssueRecord> =>

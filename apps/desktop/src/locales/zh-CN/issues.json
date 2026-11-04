@@ -28,22 +28,13 @@
   },
   "board": {
     "addCard": "添加卡片",
-    "addColumn": "添加列",
     "columnMenu": "列菜单",
     "columnsField": "列",
     "columnsFieldHint": "列按该事项字段分组。拖拽卡片会更新对应字段。",
     "deleteCard": "删除卡片",
-    "deleteColumn": "删除列",
-    "deleteColumnConfirm": {
-      "cancel": "取消",
-      "confirm": "删除",
-      "description": "将从当前视图移除「{{title}}」。事项的字段值会保留。",
-      "title": "删除列？"
-    },
     "displayOptions": "视图显示",
     "displayOptionsHint": "布局与分组只作用于当前视图。",
     "dragCard": "拖拽卡片",
-    "dragColumn": "拖拽列",
     "groupBy": "分组",
     "groupByHint": "行按该事项字段分组。",
     "groupByPriority": "优先级",
@@ -51,7 +42,7 @@
     "layout": "布局",
     "layoutBoard": "看板",
     "layoutList": "列表",
-    "renameColumnPrompt": "列名称",
+    "manageStatuses": "管理状态",
     "untitledBoard": "无标题视图",
     "untitledCard": "无标题卡片",
     "untitledColumn": "无标题列"
@@ -163,5 +154,20 @@
     "untitledBoard": "无标题视图",
     "views": "视图",
     "viewsEmpty": "筛选事项后可保存为视图。"
+  },
+  "statuses": {
+    "actions": "「{{status}}」的操作",
+    "add": "在「{{category}}」中添加状态",
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteDescription": "其中的事项会移到同类别的其他状态；该类别没有其他状态时，移到第一个状态。",
+    "deleteTitle": "删除「{{status}}」？",
+    "description": "状态按类别分组。类别决定状态出现在哪个快捷筛选里，以及其中的事项是否算作已结束。",
+    "empty": "暂无状态",
+    "moveDown": "下移",
+    "moveUp": "上移",
+    "newTitle": "新状态",
+    "rename": "重命名",
+    "saveFailed": "状态保存失败。"
   }
 }

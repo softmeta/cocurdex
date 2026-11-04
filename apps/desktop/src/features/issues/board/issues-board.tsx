@@ -1,7 +1,7 @@
-import type {
-  IssueRecord,
-  IssueStatusCategory,
-  ViewFull,
+import {
+  type IssueRecord,
+  sortIssueColumns,
+  type ViewFull,
 } from "@cocurdex/shared";
 import {
   DndContext,
@@ -14,12 +14,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  horizontalListSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui";
 import { IssueCard } from "./issue-card";
@@ -51,7 +46,6 @@ interface IssuesBoardProps {
   board: ViewFull;
   onMoveIssue: (id: string, columnId: string, sortOrder: number) => void;
   onMoveIssueLocal: (id: string, columnId: string, sortOrder: number) => void;
-  onMoveColumn: (id: string, sortOrder: number) => void;
   onAddCard: (columnId: string) => void;
   onDeleteCard: (cardId: string) => void;
   onEditCard: (card: IssueRecord) => void;
@@ -60,20 +54,17 @@ interface IssuesBoardProps {
     fields: { status?: string; priority?: string },
   ) => void;
   onRenameColumn: (id: string, title: string) => void;
-  onSetColumnCategory: (id: string, category: IssueStatusCategory) => void;
 }
 
 export function IssuesBoard({
   board,
   onMoveIssue,
   onMoveIssueLocal,
-  onMoveColumn,
   onAddCard,
   onDeleteCard,
   onEditCard,
   onUpdateCardFields,
   onRenameColumn,
-  onSetColumnCategory,
 }: IssuesBoardProps) {
   const [activeCard, setActiveCard] = useState<IssueRecord | null>(null);
 
@@ -85,13 +76,8 @@ export function IssuesBoard({
   );
 
   const sortedColumns = useMemo(
-    () => [...board.columns].sort((a, b) => a.sortOrder - b.sortOrder),
+    () => sortIssueColumns(board.columns),
     [board.columns],
-  );
-
-  const columnIds = useMemo(
-    () => sortedColumns.map((c) => c.id),
-    [sortedColumns],
   );
 
   const issuesByColumn = useMemo(() => {
@@ -160,18 +146,6 @@ export function IssuesBoard({
       const activeData = active.data.current;
       const overData = over.data.current;
 
-      if (activeData?.type === "column" && overData?.type === "column") {
-        const activeCol = activeData.column as { id: string };
-        const overCol = overData.column as { id: string };
-        const oldIndex = sortedColumns.findIndex((c) => c.id === activeCol.id);
-        const newIndex = sortedColumns.findIndex((c) => c.id === overCol.id);
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          const reordered = arrayMove(sortedColumns, oldIndex, newIndex);
-          onMoveColumn(activeCol.id, sortOrderAt(reordered, newIndex));
-        }
-        return;
-      }
-
       if (activeData?.type !== "card") return;
       const cardId = (activeData.card as IssueRecord).id;
       // Read the card from board state: handleDragOver may already have
@@ -225,7 +199,7 @@ export function IssuesBoard({
         onMoveIssue(card.id, card.columnId, sortOrder);
       }
     },
-    [board.issues, issuesByColumn, onMoveIssue, onMoveColumn, sortedColumns],
+    [board.issues, issuesByColumn, onMoveIssue],
   );
 
   return (
@@ -240,26 +214,20 @@ export function IssuesBoard({
         className="min-h-0 flex-1"
       >
         <div className="flex h-full w-max items-stretch gap-6 px-5 py-4">
-          <SortableContext
-            items={columnIds}
-            strategy={horizontalListSortingStrategy}
-          >
-            {sortedColumns.map((column) => (
-              <IssueColumn
-                key={column.id}
-                column={column}
-                issues={issuesByColumn.get(column.id) ?? []}
-                statusOptions={board.statusOptions}
-                priorityOptions={board.priorityOptions}
-                onAddCard={onAddCard}
-                onDeleteCard={onDeleteCard}
-                onEditCard={onEditCard}
-                onUpdateCardFields={onUpdateCardFields}
-                onRenameColumn={onRenameColumn}
-                onSetColumnCategory={onSetColumnCategory}
-              />
-            ))}
-          </SortableContext>
+          {sortedColumns.map((column) => (
+            <IssueColumn
+              key={column.id}
+              column={column}
+              issues={issuesByColumn.get(column.id) ?? []}
+              statusOptions={board.statusOptions}
+              priorityOptions={board.priorityOptions}
+              onAddCard={onAddCard}
+              onDeleteCard={onDeleteCard}
+              onEditCard={onEditCard}
+              onUpdateCardFields={onUpdateCardFields}
+              onRenameColumn={onRenameColumn}
+            />
+          ))}
         </div>
       </ScrollArea>
       <DragOverlay>

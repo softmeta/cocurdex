@@ -343,6 +343,73 @@ describe("cocurdex CLI against a running daemon", () => {
     ).toEqual([issue.id]);
   });
 
+  it("manages issue statuses grouped by category", async () => {
+    const options = { userDataPath: daemon.userDataPath };
+    const statusTitles = async () =>
+      (
+        JSON.parse(
+          (await runCli(["issue", "statuses", "--json"], options)).stdout,
+        ) as { title: string; category: string }[]
+      ).map((status) => `${status.category}:${status.title}`);
+
+    const created = await runCli(
+      [
+        "issue",
+        "status",
+        "create",
+        "--name",
+        "Triage",
+        "--category",
+        "backlog",
+        "--json",
+      ],
+      options,
+    );
+    expect(created.code).toBe(0);
+    expect(
+      (
+        await runCli(
+          ["issue", "status", "move", "triage", "--position", "0"],
+          options,
+        )
+      ).code,
+    ).toBe(0);
+    expect(
+      (
+        await runCli(
+          ["issue", "status", "update", "Review", "--category", "completed"],
+          options,
+        )
+      ).code,
+    ).toBe(0);
+    expect(await statusTitles()).toEqual([
+      "backlog:Triage",
+      "backlog:Backlog",
+      "started:Doing",
+      "completed:Done",
+      "completed:Review",
+    ]);
+
+    const invalid = await runCli(
+      ["issue", "status", "update", "Review", "--category", "later"],
+      options,
+    );
+    expect(invalid.code).not.toBe(0);
+    expect(invalid.stderr).toContain("Unknown status category");
+
+    await runCli(["issue", "status", "delete", "Triage"], options);
+    await runCli(
+      ["issue", "status", "update", "Review", "--category", "started"],
+      options,
+    );
+    expect(await statusTitles()).toEqual([
+      "backlog:Backlog",
+      "started:Doing",
+      "started:Review",
+      "completed:Done",
+    ]);
+  });
+
   it("links a note and an issue through CLI commands", async () => {
     const options = { userDataPath: daemon.userDataPath };
     const note = JSON.parse(

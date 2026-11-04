@@ -13,6 +13,7 @@ import {
   ISSUE_RELATION_KINDS,
   ISSUE_STATUS_CATEGORIES,
   type IssueRelationPayload,
+  type ListColumnsPayload,
   type LoadViewPayload,
   type MoveColumnPayload,
   type MoveIssuePayload,
@@ -81,6 +82,10 @@ const issueActorSchema = z.object({
   sessionId: z.string().min(1).max(128).nullable().optional(),
 });
 const labelIdsSchema = z.array(refSchema).max(64);
+
+const listColumnsPayloadSchema = z.object({
+  field: issueFieldSchema,
+}) satisfies z.ZodType<ListColumnsPayload>;
 
 const createColumnPayloadSchema = z.object({
   field: issueFieldSchema,
@@ -300,6 +305,7 @@ export const issuePayloadSchemas = {
   "issue.updateView": updateViewPayloadSchema,
   "issue.deleteView": deleteViewPayloadSchema,
   "issue.createColumn": createColumnPayloadSchema,
+  "issue.listColumns": listColumnsPayloadSchema,
   "issue.updateColumn": updateColumnPayloadSchema,
   "issue.moveColumn": moveColumnPayloadSchema,
   "issue.deleteColumn": deleteColumnPayloadSchema,
