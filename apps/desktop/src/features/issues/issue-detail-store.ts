@@ -6,8 +6,16 @@ import type {
   IssueRelationPayload,
 } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
+import { toast } from "sonner";
+import { i18n } from "@/i18n";
 import { issuesIpc } from "./issues-ipc";
-import { activeViewIdAtom, reportIssueError } from "./issues-store";
+import {
+  activeViewAtom,
+  activeViewIdAtom,
+  type IssueFieldChanges,
+  reportIssueError,
+  updateIssueAtom,
+} from "./issues-store";
 
 export interface IssueDetailState {
   bodyEpoch: number;
@@ -63,6 +71,9 @@ export const openIssueDetailAtom = atom(
         return;
       }
       if (!detail) {
+        if (typeof target === "string") {
+          toast.error(i18n.t("issues:detail.notFound"));
+        }
         markFailed();
         return;
       }
@@ -86,7 +97,7 @@ export const closeIssueDetailAtom = atom(null, (get, set) => {
 function applyDetail(get: Getter, set: Setter, detail: IssueDetail | null) {
   const current = get(issueDetailAtom);
   if (detail && current?.card.id === detail.issue.id) {
-    set(issueDetailAtom, { ...current, detail });
+    set(issueDetailAtom, { ...current, card: detail.issue, detail });
   }
 }
 
@@ -155,4 +166,69 @@ export const removeIssueRelationAtom = atom(
     runDetailMutation(get, set, (id) =>
       issuesIpc.removeRelation(relationPayload(id, change)),
     ),
+);
+
+let detailSaveChain: Promise<unknown> = Promise.resolve();
+
+function knownRevision(get: Getter, issueId: string): number | undefined {
+  const current = get(issueDetailAtom);
+  if (current?.card.id === issueId) {
+    return current.card.revision;
+  }
+  return get(activeViewAtom)?.issues.find((issue) => issue.id === issueId)
+    ?.revision;
+}
+
+async function reloadAfterFailedSave(get: Getter, set: Setter, id: string) {
+  try {
+    const detail = await issuesIpc.getDetail({
+      id,
+      viewId: get(activeViewIdAtom),
+    });
+    const current = get(issueDetailAtom);
+    if (detail && current?.card.id === id) {
+      set(issueDetailAtom, {
+        bodyEpoch: current.bodyEpoch + 1,
+        bodyStatus: "ready",
+        card: detail.issue,
+        detail,
+      });
+    }
+  } catch {
+    return;
+  }
+}
+
+export const saveIssueDetailAtom = atom(
+  null,
+  (get, set, request: { id: string; changes: IssueFieldChanges }) => {
+    const { id, changes } = request;
+    const current = get(issueDetailAtom);
+    if (current?.card.id === id) {
+      set(issueDetailAtom, {
+        ...current,
+        card: { ...current.card, ...changes },
+      });
+    }
+    const run = async () => {
+      const updated = await set(updateIssueAtom, {
+        id,
+        expectedRevision: knownRevision(get, id),
+        ...changes,
+      });
+      const latest = get(issueDetailAtom);
+      if (latest?.card.id !== id) {
+        return updated !== null;
+      }
+      if (updated) {
+        set(issueDetailAtom, { ...latest, card: updated });
+        return true;
+      }
+      await reloadAfterFailedSave(get, set, id);
+      return false;
+    };
+    const result = detailSaveChain.then(run, run);
+    detailSaveChain = result;
+    return result;
+  },
 );

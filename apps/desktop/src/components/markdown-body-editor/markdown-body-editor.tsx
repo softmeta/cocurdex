@@ -22,6 +22,7 @@ interface MarkdownBodyEditorProps {
   placeholder: string;
   className?: string;
   editorClassName?: string;
+  onChange?: () => void;
 }
 
 function readMarkdown(editor: {
@@ -39,7 +40,7 @@ export const MarkdownBodyEditor = forwardRef<
   MarkdownBodyEditorHandle,
   MarkdownBodyEditorProps
 >(function MarkdownBodyEditor(
-  { initialMarkdown, placeholder, className, editorClassName },
+  { initialMarkdown, placeholder, className, editorClassName, onChange },
   ref,
 ): ReactNode {
   // Capture once per mount so parent re-renders do not reset the document.
@@ -54,6 +55,7 @@ export const MarkdownBodyEditor = forwardRef<
     immediatelyRender: false,
     onUpdate: () => {
       dirtyRef.current = true;
+      onChange?.();
     },
     editorProps: {
       attributes: {

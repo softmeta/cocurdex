@@ -17,6 +17,10 @@ function linkSelector(kind, id) {
   return `[data-entity-link="${kind}:${id}"]`;
 }
 
+function issuePageSelector(issueId) {
+  return `article[data-issue-id="${issueId}"]`;
+}
+
 async function candidate(session, kind, title) {
   const candidates = await daemonRequest(session, "link.candidates");
   const found = candidates.find(
@@ -113,15 +117,22 @@ runScenario("entity-links", {
       "the linked row opens the issue, whose panel links back to the note",
       async ({ session, noteId, issueId }) => {
         await clickLink(session, linkSelector("issue", issueId));
+        await waitForSelector(session, issuePageSelector(issueId));
+        check(
+          !(await session.run(() =>
+            Boolean(document.querySelector('[role="dialog"]')),
+          )),
+          "issue detail opened as a dialog",
+        );
         await clickLink(
           session,
-          `[role="dialog"] ${linkSelector("note", noteId)}`,
+          `${issuePageSelector(issueId)} ${linkSelector("note", noteId)}`,
         );
         await session.waitUntil(
           (id) =>
             Boolean(
               document.querySelector(`[data-note-id="${id}"][data-active]`),
-            ) && !document.querySelector('[role="dialog"]'),
+            ),
           noteId,
           UI_TIMEOUT_MS,
         );
@@ -200,37 +211,33 @@ runScenario("entity-links", {
         const anchor = `.md-body-prose a[href="cocurdex://issue/${issueId}"]`;
         await waitForSelector(session, anchor);
         await clickSelector(session, anchor, { fromLeft: 4 });
+        const page = issuePageSelector(issueId);
         await waitForSelector(
           session,
-          `[role="dialog"] ${linkSelector("note", scratchId)}`,
+          `${page} ${linkSelector("note", scratchId)}`,
         );
         await waitForSelector(
           session,
-          `[role="dialog"] ${linkSelector("note", noteId)}`,
+          `${page} ${linkSelector("note", noteId)}`,
         );
-        await session.send("Input.dispatchKeyEvent", {
-          type: "keyDown",
-          key: "Escape",
-          code: "Escape",
-          windowsVirtualKeyCode: 27,
+        const backPrefix = await translate(
+          session,
+          "issues:detail.backToView",
+          {
+            view: "",
+          },
+        );
+        await clickByRole(session, {
+          role: "button",
+          name: new RegExp(`^${RegExp.escape(backPrefix)}`),
         });
-        await session.send("Input.dispatchKeyEvent", {
-          type: "keyUp",
-          key: "Escape",
-          code: "Escape",
-          windowsVirtualKeyCode: 27,
-        });
+        await waitForSelector(session, page, false);
         return { relations: fromIssue.map((link) => link.relation) };
       },
     ],
     [
       "copy link puts the note URI on the clipboard",
       async ({ session, scratchId }) => {
-        await session.waitUntil(
-          () => !document.querySelector('[role="dialog"]'),
-          null,
-          UI_TIMEOUT_MS,
-        );
         await showPanelView(session, "notes");
         await openNote(session, MENTIONING_NOTE_TITLE);
         await clickByRole(session, {

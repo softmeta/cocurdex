@@ -11,14 +11,11 @@ export interface IssueFieldValues {
   labelIds: string[];
 }
 
-export type IssueSaveRequest =
-  | { kind: "create"; columnId: string; values: IssueFieldValues }
-  | {
-      kind: "update";
-      id: string;
-      expectedRevision: number;
-      changes: Partial<IssueFieldValues>;
-    };
+export interface IssueSaveRequest {
+  kind: "create";
+  columnId: string;
+  values: IssueFieldValues;
+}
 
 export interface IssueComposeDraft {
   columnId: string;
