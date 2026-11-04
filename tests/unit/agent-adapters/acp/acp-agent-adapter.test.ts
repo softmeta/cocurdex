@@ -4,7 +4,7 @@ import {
   RequestError,
   type RequestPermissionRequest,
   type SetSessionConfigOptionRequest,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 import {
   AcpAgentAdapter,
   type AcpConnection,

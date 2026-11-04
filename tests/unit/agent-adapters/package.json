@@ -12,7 +12,7 @@
     "@cocurdex/shared": "workspace:*"
   },
   "devDependencies": {
-    "@agentclientprotocol/sdk": "^1.5.1",
+    "@agentclientprotocol/sdk": "^2.4.0",
     "@anthropic-ai/claude-agent-sdk": "0.3.306",
     "@cocurdex/test-fixtures": "workspace:*",
     "@earendil-works/pi-ai": "1.5.0",

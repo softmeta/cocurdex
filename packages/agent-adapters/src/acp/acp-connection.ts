@@ -22,7 +22,7 @@ import type {
   SetSessionConfigOptionResponse,
   SetSessionModeRequest,
   SetSessionModeResponse,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 
 // `session/set_model` is not in the ACP TypeScript SDK's typed method map yet,
 // so the request/response shape lives here.

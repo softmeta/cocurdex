@@ -1,8 +1,8 @@
 import type {
   InitializeResponse,
   PromptResponse,
-} from "@agentclientprotocol/sdk";
-import { RequestError } from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
+import { RequestError } from "@agentclientprotocol/sdk/unstable";
 import type {
   AcpConnection,
   AcpConnectionFactory,
