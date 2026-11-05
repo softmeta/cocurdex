@@ -75,3 +75,16 @@ cocurdex routine delete <routine> --json
 - A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
 - Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines. Tools cannot grant `full` access or change or run a `full` routine.
 - Deleting a persona deletes its routines and their threads.
+
+## Inbox and brief
+
+The inbox gathers what needs the user across every form: pending approvals, questions, and plans, failed or unread finished sessions, and routine results, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
+
+```bash
+cocurdex inbox [list] --json
+cocurdex inbox read <item-id> --json
+cocurdex inbox brief [--tz <zone>] --json
+```
+
+- `read` marks the item's thread visited, which clears it; do it only after the user has seen or handled the item.
+- Use the brief to answer "what happened today" or "what needs me" instead of reading every thread.

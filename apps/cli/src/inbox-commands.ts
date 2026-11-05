@@ -1,12 +1,18 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
-import type { InboxItem } from "@cocurdex/shared";
+import type { Brief, InboxItem } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
-import { type ParsedArgs, printResult, printRows } from "./parse-args";
+import {
+  type ParsedArgs,
+  printResult,
+  printRows,
+  stringFlag,
+} from "./parse-args";
 
 export function inboxUsageLines() {
   return [
     "  cocurdex inbox [list] [--json]",
     "  cocurdex inbox read <item-id> [--json]",
+    "  cocurdex inbox brief [--tz <zone>] [--json]",
   ];
 }
 
@@ -19,6 +25,24 @@ function inboxRow(item: InboxItem) {
     detail: item.detail ?? "",
     at: item.at,
   };
+}
+
+function briefLines(brief: Brief) {
+  const section = (title: string, lines: string[]) =>
+    lines.length > 0 ? [`${title}:`, ...lines.map((line) => `  ${line}`)] : [];
+  const itemLine = (item: InboxItem) =>
+    item.detail ? `${item.title} - ${item.detail}` : item.title;
+  return [
+    `Brief for ${brief.day} (${brief.timeZone})`,
+    ...section("Needs you", brief.needsYou.map(itemLine)),
+    ...section(
+      "Routine results",
+      brief.results.map(
+        (result) => `${result.routineName} - ${result.summary}`,
+      ),
+    ),
+    ...section("Failures", brief.failures.map(itemLine)),
+  ];
 }
 
 export async function handleInboxCommand(
@@ -36,6 +60,19 @@ export async function handleInboxCommand(
       items.map(inboxRow),
       ["kind", "form", "title", "detail", "at", "id"],
       parsed,
+    );
+    return true;
+  }
+  if (action === "brief") {
+    const brief = await withDaemon(() =>
+      requestDaemon("inbox.brief", { timeZone: stringFlag(parsed, "tz") }),
+    );
+    if (parsed.flags.has("json")) {
+      printResult(brief, parsed);
+      return true;
+    }
+    console.log(
+      brief ? briefLines(brief).join("\n") : "Nothing to brief today.",
     );
     return true;
   }

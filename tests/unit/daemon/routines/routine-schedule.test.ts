@@ -3,6 +3,7 @@ import {
   routineBackoffMs,
   routineDecision,
   routineNextRunAt,
+  zonedDayStart,
 } from "@cocurdex/daemon/internal/routines/routine-schedule";
 import { describe, expect, it } from "vitest";
 
@@ -113,5 +114,19 @@ describe("routineDecision", () => {
         now,
       ),
     ).toEqual({ kind: "skip", reason: "limit" });
+  });
+});
+
+describe("zonedDayStart", () => {
+  it("returns the local calendar day and its midnight in UTC", () => {
+    const evening = new Date("2026-11-05T20:30:00Z");
+    expect(zonedDayStart(evening, "Asia/Shanghai")).toEqual({
+      day: "2026-11-06",
+      start: new Date("2026-11-05T16:00:00Z"),
+    });
+    expect(zonedDayStart(evening, "America/Los_Angeles")).toEqual({
+      day: "2026-11-05",
+      start: new Date("2026-11-05T08:00:00Z"),
+    });
   });
 });

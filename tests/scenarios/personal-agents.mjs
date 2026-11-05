@@ -212,6 +212,49 @@ runScenario("personal-agents", {
       },
     ],
     [
+      "the brief lists today's routine results without popping up mid-use",
+      async ({ session }) => {
+        const title = await translate(session, "personal:brief.title");
+        const dialog = { role: "dialog", name: title };
+        const popped = await session.run(
+          (name) =>
+            [...document.querySelectorAll('[role="dialog"]')].some((node) =>
+              node.textContent.includes(name),
+            ),
+          title,
+        );
+        check(!popped, "new content does not open the brief by itself");
+        await clickByRole(
+          session,
+          {
+            role: "button",
+            name: await translate(session, "personal:brief.open"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        await waitForRole(session, dialog, UI_TIMEOUT_MS);
+        const result = {
+          role: "button",
+          name: /Morning brief/,
+          within: {
+            role: "region",
+            name: await translate(session, "personal:brief.results"),
+          },
+        };
+        await clickByRole(session, result, UI_TIMEOUT_MS);
+        await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
+        await session.waitUntil(
+          (reply) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(reply),
+            ),
+          "Two meetings today.",
+          UI_TIMEOUT_MS,
+        );
+        return {};
+      },
+    ],
+    [
       "a new assistant is named in the edit dialog",
       async ({ session }) => {
         await clickByRole(session, {

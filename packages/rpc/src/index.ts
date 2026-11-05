@@ -22,6 +22,7 @@ import type {
   AppBootstrapData,
   ApplyNoteDocUpdatePayload,
   ArchiveSessionsResult,
+  Brief,
   CheckDeckPayload,
   CocurdexDaemonEvent,
   CodexAccountState,
@@ -769,6 +770,7 @@ export type DaemonRequestPayloadByMethod = {
   "personalAgent.delete": { id: string };
   "inbox.list": undefined;
   "inbox.read": { id: string };
+  "inbox.brief": { timeZone?: string | null };
   "routine.list": { agentId?: string | null };
   "routine.get": { id: string };
   "routine.create": CreateRoutinePayload;
@@ -1110,6 +1112,7 @@ export type DaemonResultByMethod = {
   "personalAgent.delete": null;
   "inbox.list": InboxItem[];
   "inbox.read": null;
+  "inbox.brief": Brief | null;
   "routine.list": RoutineRecord[];
   "routine.get": RoutineRecord | null;
   "routine.create": RoutineRecord;

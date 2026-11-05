@@ -43,6 +43,7 @@ import {
 import { isDetachedChatWindow } from "../chat-window/chat-window-state";
 import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ArchiveGroupDialog } from "./archive-group-dialog";
+import { BriefControl } from "./brief-control";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
 import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
 import { PersonalAgentsPanel } from "./personal-agents-panel";
@@ -329,6 +330,12 @@ export function LeftSidebar({
                 </TooltipContent>
               </Tooltip>
             )}
+            {activeTab === "personal" ? (
+              <BriefControl
+                onOpenItem={openInboxItem}
+                onOpenSession={selectFormSession}
+              />
+            ) : null}
             {isWorkspacesTab ? (
               <Tooltip>
                 <TooltipTrigger

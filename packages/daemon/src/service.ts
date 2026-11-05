@@ -138,6 +138,7 @@ import {
   daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
+import { buildBrief } from "./inbox/build-brief";
 import { buildInbox } from "./inbox/build-inbox";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
@@ -168,8 +169,10 @@ import {
 import { PushService } from "./push";
 import {
   createRoutineSessions,
+  isValidTimeZone,
   RoutineService,
   routinePushAllowed,
+  zonedDayStart,
 } from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
@@ -1060,6 +1063,19 @@ export class CocurdexDaemonService {
       },
       routines: this.routines.list(),
       latestRuns: this.routines.latestRuns(),
+    });
+  }
+
+  async getBrief(timeZone?: string | null) {
+    const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!isValidTimeZone(zone)) throw new Error(`Unknown time zone: ${zone}`);
+    const { day, start } = zonedDayStart(new Date(), zone);
+    return buildBrief({
+      day,
+      timeZone: zone,
+      inbox: await this.listInbox(),
+      routines: this.routines.list(),
+      runsToday: this.routines.runsFinishedSince(start.toISOString()),
     });
   }
 

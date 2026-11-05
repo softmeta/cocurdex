@@ -875,6 +875,8 @@ export async function handleDaemonRequest(
       return null;
     case "inbox.list":
       return service.listInbox();
+    case "inbox.brief":
+      return service.getBrief(request.params.timeZone);
     case "inbox.read":
       await service.readInboxItem(request.params.id);
       return null;

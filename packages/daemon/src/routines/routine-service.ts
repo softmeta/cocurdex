@@ -125,6 +125,10 @@ export class RoutineService {
     );
   }
 
+  runsFinishedSince(since: string) {
+    return this.deps.repository.listFinishedRunsSince(since);
+  }
+
   findBySession(sessionId: string) {
     return this.deps.repository.findBySession(sessionId);
   }

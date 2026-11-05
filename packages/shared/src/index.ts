@@ -9,6 +9,7 @@ export * from "./agent-tools";
 export * from "./agent-versions";
 export * from "./assistant-session";
 export * from "./attachment-http";
+export * from "./brief";
 export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
 export * from "./build-policy";
 export * from "./chat-elapsed";

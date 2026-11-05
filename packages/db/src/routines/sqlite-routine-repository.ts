@@ -239,5 +239,11 @@ export function createSqliteRoutineRepository(
          ) WHERE position = 1`,
       );
     },
+    listFinishedRunsSince(since) {
+      return runs(
+        "SELECT * FROM routine_runs WHERE status IN ('succeeded', 'failed') AND finished_at >= ? ORDER BY finished_at DESC, id DESC",
+        since,
+      );
+    },
   };
 }

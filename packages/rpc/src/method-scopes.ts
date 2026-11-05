@@ -112,6 +112,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "agentRole.get": "read",
   "personalAgent.list": "read",
   "inbox.list": "read",
+  "inbox.brief": "read",
   "routine.list": "read",
   "routine.get": "read",
   "routine.runs": "read",
