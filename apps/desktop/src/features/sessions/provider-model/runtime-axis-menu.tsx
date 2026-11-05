@@ -5,6 +5,7 @@ import {
   type AppDropdownRadioSection,
 } from "@/components";
 import {
+  DropdownMenuEmpty,
   DropdownMenuSearchInput,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -109,6 +110,9 @@ export function RuntimeAxisSubmenu({
             sections={filteredSections}
             closeOnClick={false}
           />
+          {hasSearch && filteredSections.length === 0 ? (
+            <DropdownMenuEmpty>{t("modelMenu.empty")}</DropdownMenuEmpty>
+          ) : null}
         </div>
       </DropdownMenuSubContent>
     </DropdownMenuSub>

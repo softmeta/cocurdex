@@ -12,8 +12,21 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppCopyButton, SettingRow, SettingsGroup } from "@/components/app";
 import { Badge, Button, Input, Switch, Text } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { cn, desktopApi } from "@/lib";
 import { useFormatDateTime } from "./host-access-labels";
+
+const SLOW_RELAY_LATENCY_MS = 300;
+
+function relayStateTone(state: HostRelayState, latencyMs: number | null) {
+  if (state === "online") {
+    return latencyMs !== null && latencyMs > SLOW_RELAY_LATENCY_MS
+      ? "slow"
+      : "good";
+  }
+  if (state === "connecting") return "pending";
+  if (state === "offline") return "down";
+  return "off";
+}
 
 function useRelayLabels() {
   const { t } = useTranslation("settings");
@@ -111,6 +124,10 @@ export function RelayGroup({
   const stateLabel = status.settings.enabled
     ? enabledStateLabel
     : t("devices.relay.state.remoteOff");
+  const stateTone = relayStateTone(
+    status.settings.enabled ? relay.state : "off",
+    latencyMs,
+  );
 
   return (
     <SettingsGroup
@@ -209,6 +226,19 @@ export function RelayGroup({
         <div className="flex flex-col gap-2 py-3.5">
           <div className="flex items-center gap-2">
             <Badge variant="outline">{t("devices.relay.state.title")}</Badge>
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                {
+                  good: "bg-status-success",
+                  slow: "bg-status-warning",
+                  pending: "bg-status-warning",
+                  down: "bg-destructive",
+                  off: "bg-muted-foreground/40",
+                }[stateTone],
+              )}
+            />
             <Text size="body">{stateLabel}</Text>
           </div>
           {relay.error ? (

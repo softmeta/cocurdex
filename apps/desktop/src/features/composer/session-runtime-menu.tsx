@@ -28,6 +28,7 @@ import {
   supportsLivePermissionMode,
 } from "@/features/sessions";
 import { shouldShowProviderGroupLabels } from "@/features/sessions/provider-model/provider-model-label";
+import { cn } from "@/lib";
 import { AgentRuntimeConfigItems } from "./agent-runtime-controls";
 import { composerFooterControlClassName } from "./chat-composer-layout";
 import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
@@ -54,6 +55,7 @@ export function SessionRuntimeMenu({
   mcpServers,
   configOptions = [],
   thinkingLevel,
+  triggerLeading,
   triggerValues,
   onPermissionModeChange,
   onModelChange,
@@ -82,6 +84,7 @@ export function SessionRuntimeMenu({
   configOptions?: readonly AgentSessionConfigOption[] | null;
   thinkingLevel?: string | null;
   /** Extra trigger chips (thinking / permission), matching new-session card. */
+  triggerLeading?: ReactNode;
   triggerValues?: readonly string[];
   onPermissionModeChange(mode: AgentPermissionMode): void;
   onModelChange(value: string): void;
@@ -238,7 +241,14 @@ export function SessionRuntimeMenu({
       serviceTierValue={serviceTier ?? liveSpeedValue ?? DEFAULT_VALUE}
       thinkingLevelValue={thinkingLevel ?? DEFAULT_VALUE}
       showProviderGroupLabels={shouldShowProviderGroupLabels(agentType)}
-      triggerClassName={composerFooterControlClassName("min-w-0 max-w-[280px]")}
+      triggerClassName={composerFooterControlClassName(
+        cn(
+          "min-w-0",
+          !triggerLeading && "max-w-[280px]",
+          Boolean(triggerLeading) && "max-w-[400px]",
+        ),
+      )}
+      triggerLeading={triggerLeading}
       triggerValues={[
         ...(triggerValues ?? []),
         ...getSessionConfigTriggerValues(

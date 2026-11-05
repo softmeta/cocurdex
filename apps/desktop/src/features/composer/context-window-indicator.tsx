@@ -203,12 +203,14 @@ export function ContextWindowIndicator({
   footer,
   layout = "inline",
   afterModel,
+  modelLeading,
   sessionId,
 }: {
   footer?: ReactNode;
   isRunning?: boolean;
   layout?: "inline" | "split";
   afterModel?: ReactNode;
+  modelLeading?: ReactNode;
   sessionId?: string | null;
 }) {
   const { t } = useTranslation("sessions");
@@ -461,6 +463,7 @@ export function ContextWindowIndicator({
       mcpServers={sessionRuntime?.runtime?.mcpServers ?? null}
       configOptions={sessionConfigOptions}
       thinkingLevel={snapshot?.thinkingLevel ?? null}
+      triggerLeading={modelLeading}
       triggerValues={menuTriggerValues}
       onPermissionModeChange={(permissionMode) =>
         changePermissionMode(session.id, permissionMode)

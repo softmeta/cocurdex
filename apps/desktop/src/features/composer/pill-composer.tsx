@@ -68,6 +68,7 @@ interface PillComposerProps {
   footerLeading?: ReactNode;
   footerTrailing?: ReactNode;
   runtimeMenuExtras?: ReactNode;
+  modelLeading?: ReactNode;
   sessionId?: string | null;
   mentionAnchor: MentionAnchor | null;
   placeholderOverride?: string;
@@ -162,6 +163,7 @@ export function PillComposer({
   footerLeading,
   footerTrailing,
   runtimeMenuExtras,
+  modelLeading,
   sessionId,
   mentionAnchor,
   placeholderOverride,
@@ -383,6 +385,7 @@ export function PillComposer({
               <ContextWindowIndicator
                 afterModel={footerTrailing}
                 footer={runtimeMenuExtras}
+                modelLeading={modelLeading}
                 isRunning={isRunning}
                 layout="split"
                 sessionId={sessionId}

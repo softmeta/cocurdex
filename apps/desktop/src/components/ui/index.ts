@@ -87,6 +87,7 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuEmpty,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,

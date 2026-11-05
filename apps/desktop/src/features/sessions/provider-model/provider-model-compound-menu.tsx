@@ -73,6 +73,7 @@ export function ProviderModelCompoundMenu({
   serviceTierValue,
   triggerClassName,
   triggerLabel,
+  triggerLeading,
   triggerValues,
   onModelChange,
   onFastModeChange,
@@ -104,6 +105,7 @@ export function ProviderModelCompoundMenu({
   thinkingLevelValue?: string;
   triggerClassName?: string;
   triggerLabel: string;
+  triggerLeading?: ReactNode;
   /** Additional selected runtime values owned by the menu footer. */
   triggerValues?: readonly string[];
   onModelChange(value: string): void;
@@ -149,6 +151,7 @@ export function ProviderModelCompoundMenu({
 
   const triggerBody = (
     <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      {triggerLeading}
       <AppDropdownTriggerLabel>{triggerLabel}</AppDropdownTriggerLabel>
       {activeTriggerValues.length > 0 ? (
         <span className="min-w-0 truncate font-normal text-muted-foreground @max-[26rem]/composer:hidden">

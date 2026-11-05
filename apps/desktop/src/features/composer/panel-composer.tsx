@@ -51,6 +51,7 @@ interface PanelComposerProps {
   footerLeading?: ReactNode;
   footerTrailing?: ReactNode;
   runtimeMenuExtras?: ReactNode;
+  modelLeading?: ReactNode;
   sessionId?: string | null;
   mentionAnchor: MentionAnchor | null;
   placeholderOverride?: string;
@@ -83,6 +84,7 @@ export function PanelComposer({
   footerLeading,
   footerTrailing,
   runtimeMenuExtras,
+  modelLeading,
   sessionId,
   mentionAnchor,
   placeholderOverride,
@@ -250,6 +252,7 @@ export function PanelComposer({
                 <ContextWindowIndicator
                   afterModel={footerTrailing}
                   footer={runtimeMenuExtras}
+                  modelLeading={modelLeading}
                   isRunning={isRunning}
                   layout="split"
                   sessionId={sessionId}
