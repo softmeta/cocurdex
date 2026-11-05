@@ -24,6 +24,7 @@ import {
 } from "@/features/editor";
 import { MonacoEditor } from "@/features/editor/monaco";
 import { IssuesView } from "@/features/issues";
+import { MemoryLibraryView } from "@/features/memory";
 import { NotesView } from "@/features/notes";
 import { openPdfsAtom } from "@/features/pdf-reader";
 import {
@@ -526,6 +527,15 @@ export function RightEditorPanel({
                 )}
               >
                 <IssuesView />
+              </div>
+            ) : null}
+
+            {activeView === "memory" ? (
+              <div
+                data-testid="right-panel-memory-layer"
+                className="absolute inset-0 flex min-h-0 flex-col"
+              >
+                <MemoryLibraryView />
               </div>
             ) : null}
 

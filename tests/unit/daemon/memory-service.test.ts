@@ -226,6 +226,24 @@ describe("MemoryService with a fake rsrs CLI", () => {
     ]);
   });
 
+  it("switches to a newly configured rsrs executable", async () => {
+    const { service } = await createService();
+    await service.list();
+    const other = await temp.create("cocurdex-memory-other-");
+    const otherLog = path.join(other, "calls.log");
+    const otherExecutable = await createFakeRsrs(other, otherLog);
+    await service.setSettings({
+      ...(await service.getSettings()),
+      cliPath: otherExecutable,
+    });
+    await service.list();
+    const calls = (await readFile(otherLog, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as string[]);
+    expect(calls.some((call) => call[0] === "list")).toBe(true);
+  });
+
   it("reads the library through the rsrs CLI", async () => {
     const { service, logPath } = await createService();
     const mine = await service.list({ partition: { kind: "me" } });

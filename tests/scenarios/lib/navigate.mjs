@@ -17,6 +17,7 @@ const PANEL_VIEW_KEYS = {
   pdf: "editor:actions.showPdf",
   notes: "editor:actions.showNotes",
   issues: "editor:actions.showIssues",
+  memory: "editor:actions.showMemory",
   decks: "editor:actions.showDecks",
 };
 

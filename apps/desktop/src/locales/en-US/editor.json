@@ -36,6 +36,7 @@
     "showEditor": "Files",
     "showGitChanges": "Git",
     "showIssues": "Issues",
+    "showMemory": "Memory",
     "showNotes": "Notes",
     "showPdf": "PDF",
     "showTerminal": "Terminal",

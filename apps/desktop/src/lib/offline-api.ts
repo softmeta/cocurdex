@@ -585,6 +585,22 @@ export const offlineApi: DesktopApi = {
     installed: false,
     message: "Memory is unavailable outside the desktop app",
   }),
+  listMemories: async () => ({
+    items: [],
+    error: "Memory is unavailable outside the desktop app",
+  }),
+  updateMemory: async () => {
+    throw new Error("Memory is unavailable outside the desktop app");
+  },
+  forgetMemory: async () => {
+    throw new Error("Memory is unavailable outside the desktop app");
+  },
+  restoreMemory: async () => {
+    throw new Error("Memory is unavailable outside the desktop app");
+  },
+  getMemoryHistory: async () => [],
+  getMemoryRevision: async () => null,
+  getMemoryCapabilities: async () => null,
   runMemoryDoctor: async () => ({
     status: "fail" as const,
     version: null,

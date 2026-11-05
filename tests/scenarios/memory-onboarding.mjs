@@ -1,6 +1,4 @@
-import { chmod, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { writeFakeRsrs } from "@cocurdex/test-harness/fixtures/fake-rsrs/index.mjs";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
@@ -9,31 +7,8 @@ import { translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const SKIPPED_KEY = "cocurdex.memory-onboarding-skipped";
-const FAKE_RSRS = fileURLToPath(
-  new URL("./fixtures/fake-rsrs.mjs", import.meta.url),
-);
 const args = readScenarioArgs();
 const state = {};
-
-async function writeFakeRsrs(directory) {
-  if (process.platform === "win32") {
-    const wrapper = path.join(directory, "fake-rsrs.cmd");
-    await writeFile(
-      wrapper,
-      `@echo off\r\n"${process.execPath}" "${FAKE_RSRS}" %*\r\n`,
-      "utf8",
-    );
-    return wrapper;
-  }
-  const wrapper = path.join(directory, "fake-rsrs.sh");
-  await writeFile(
-    wrapper,
-    `#!/bin/sh\nexec "${process.execPath}" "${FAKE_RSRS}" "$@"\n`,
-    "utf8",
-  );
-  await chmod(wrapper, 0o755);
-  return wrapper;
-}
 
 async function memoryRegion(session, labelKey) {
   return { role: "region", name: await translate(session, labelKey) };

@@ -263,11 +263,13 @@ export class MemoryService {
 
   async setSettings(input: MemorySettings): Promise<MemorySettings> {
     await this.ensureInitialized();
+    const previousCliPath = this.currentSettings().cliPath;
     const settings = await writeMemorySettings(
       this.options.state,
       gateMemorySettings(input, this.platform),
     );
     this.settings = settings;
+    if (settings.cliPath !== previousCliPath) this.rsrs.forgetExecutable();
     this.statusCache = null;
     this.broadcast();
     return settings;

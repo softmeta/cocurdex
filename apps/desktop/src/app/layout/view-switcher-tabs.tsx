@@ -1,5 +1,6 @@
 import { useAtom } from "jotai";
 import {
+  Brain,
   FileText,
   FolderTree,
   GitCompare,
@@ -41,6 +42,7 @@ type ViewTabLabelKey =
   | "actions.showNotes"
   | "actions.showDecks"
   | "actions.showIssues"
+  | "actions.showMemory"
   | "actions.showBrowser"
   | "actions.showPdf"
   | "actions.showTerminal";
@@ -57,6 +59,7 @@ const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
   notes: { id: "notes", icon: NotebookPen, labelKey: "actions.showNotes" },
   decks: { id: "decks", icon: Presentation, labelKey: "actions.showDecks" },
   issues: { id: "issues", icon: ListTodo, labelKey: "actions.showIssues" },
+  memory: { id: "memory", icon: Brain, labelKey: "actions.showMemory" },
   browser: { id: "browser", icon: Globe, labelKey: "actions.showBrowser" },
   pdf: { id: "pdf", icon: FileText, labelKey: "actions.showPdf" },
   terminal: {
@@ -234,17 +237,8 @@ export function ViewSwitcherTabs({
   const handleValueChange = useCallback(
     (value: string) => {
       if (isDraggingRef.current) return;
-      if (
-        value === "editor" ||
-        value === "notes" ||
-        value === "decks" ||
-        value === "issues" ||
-        value === "browser" ||
-        value === "git" ||
-        value === "pdf" ||
-        value === "terminal"
-      ) {
-        onViewChange(value);
+      if (Object.hasOwn(TAB_REGISTRY, value)) {
+        onViewChange(value as RightPanelView);
       }
     },
     [onViewChange],

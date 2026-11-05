@@ -127,6 +127,14 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return this.resolved;
   }
 
+  forgetExecutable() {
+    this.resolved = null;
+    this.resolvedAt = 0;
+    this.capabilitySet = null;
+    this.policyText = null;
+    this.invalidateRuntime();
+  }
+
   adoptExecutable(executable: RsrsExecutable) {
     this.resolved = executable;
     this.resolvedAt = this.nowMs();
