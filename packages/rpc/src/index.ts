@@ -451,6 +451,7 @@ export type DaemonRequestPayloadByMethod = {
   "session.create": CreateSessionPayload;
   "session.resolveNew": CreateSessionPayload;
   "session.get": { sessionId: string };
+  "session.lastMessage": { sessionId: string };
   "session.runtimeState": { sessionId: string };
   "session.listPeers": { sessionId: string };
   "session.sendPeerMessage": SendPeerMessagePayload;
@@ -771,6 +772,7 @@ export type DaemonRequestPayloadByMethod = {
   "inbox.list": undefined;
   "inbox.read": { id: string };
   "inbox.brief": { timeZone?: string | null };
+  "inbox.postBrief": { updatedAt: string; day: string; content: string };
   "routine.list": { agentId?: string | null };
   "routine.get": { id: string };
   "routine.create": CreateRoutinePayload;
@@ -873,6 +875,7 @@ export type DaemonResultByMethod = {
   "session.create": SessionRecord;
   "session.resolveNew": NewSessionDefaults;
   "session.get": SessionRecord | null;
+  "session.lastMessage": MessageRecord | null;
   "session.runtimeState": AgentSessionRuntimeState;
   "session.delete": null;
   "session.archive": SessionRecord | null;
@@ -1113,6 +1116,7 @@ export type DaemonResultByMethod = {
   "inbox.list": InboxItem[];
   "inbox.read": null;
   "inbox.brief": Brief | null;
+  "inbox.postBrief": MessageRecord | null;
   "routine.list": RoutineRecord[];
   "routine.get": RoutineRecord | null;
   "routine.create": RoutineRecord;

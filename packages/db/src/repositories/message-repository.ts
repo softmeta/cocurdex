@@ -8,6 +8,7 @@ export interface MessageRepository {
     changeSeq: number,
   ): Promise<MessageRecord[]>;
   getById(messageId: string): Promise<MessageRecord | null>;
+  latestReplyBySessionId(sessionId: string): Promise<MessageRecord | null>;
   append(message: MessageRecord): Promise<number | null>;
   moveToEnd(messageId: string, sessionId: string): Promise<number | null>;
   assignRun(messageId: string, runId: string): Promise<void>;

@@ -4,7 +4,13 @@ import {
   stripPeerEnvelope,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { AlarmClock, ArrowUpRight, Bot, Workflow } from "lucide-react";
+import {
+  AlarmClock,
+  ArrowUpRight,
+  Bot,
+  Newspaper,
+  Workflow,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleUserMessageBody, MarkdownRenderer } from "@/components";
 import { Avatar, AvatarFallback } from "@/components/ui";
@@ -15,6 +21,7 @@ const ORIGIN_ICONS = {
   peer: Bot,
   scriptRun: Workflow,
   routine: AlarmClock,
+  brief: Newspaper,
 } satisfies Record<MessageOrigin["kind"], unknown>;
 
 function PeerOriginAvatar({ origin }: { origin: MessageOrigin }) {

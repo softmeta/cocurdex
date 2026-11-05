@@ -9,13 +9,13 @@ import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppDropdownTriggerLabel, AppSearchableSelect } from "@/components";
-import { CocurdexMark } from "@/components/cocurdex-mark";
 import { Checkbox } from "@/components/ui";
 import {
   ChatComposer,
   type ComposerSendOutcome,
-  ComposerSurfaceBody,
+  EmptyStage,
   newSessionComposerDraftKey,
+  StageIdentity,
 } from "@/features/composer";
 import {
   AgentSelect,
@@ -497,23 +497,21 @@ export function NewSessionCard({
           {t("sessions:worktree.label")}
         </label>
       ) : null}
-      <CocurdexMark className="ms-auto me-0.5 size-7" interactive />
     </div>
   );
 
   return (
-    <ComposerSurfaceBody className="flex flex-col">
+    <EmptyStage identity={<StageIdentity title={t("sessions:stage.title")} />}>
       {sessionTitle ? <div className="sr-only">{sessionTitle}</div> : null}
+      <div className="flex min-w-0 px-1">{header}</div>
       <ChatComposer
         ref={composerRef}
         mode="agent"
-        variant="panel"
-        tone="welcome"
+        variant="pill"
         sessionId={null}
         draftKey={newSessionComposerDraftKey(activeWorkspaceId)}
         agentType={effectiveSelectedAgent}
         sessionModeId={selectedSessionModeId}
-        mentionMenuPlacement="bottom"
         attachment={attachment}
         contextChips={composerContextChips}
         onClearAttachment={onClearAttachment}
@@ -526,7 +524,6 @@ export function NewSessionCard({
             : t("sessions:composer.openWorkspaceFirst")
         }
         controls={controls}
-        header={header}
         canSubmit={canStartSession}
         onSend={handleStartSession}
       />
@@ -571,6 +568,6 @@ export function NewSessionCard({
           }
         }}
       />
-    </ComposerSurfaceBody>
+    </EmptyStage>
   );
 }

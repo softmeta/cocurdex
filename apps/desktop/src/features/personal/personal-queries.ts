@@ -1,6 +1,6 @@
 import type { PersonalAgentRecord } from "@cocurdex/shared";
-import useSWR from "swr";
-import { desktopApi, useMountEffect } from "@/lib";
+import useSWR, { mutate as mutateGlobal } from "swr";
+import { desktopApi, requestDaemon, useMountEffect } from "@/lib";
 import { personalApi } from "./personal-api";
 
 const PERSONAL_AGENTS_KEY = "personalAgent.list";
@@ -31,4 +31,26 @@ export function usePersonalAgents(defaultName: string) {
     loaded: data !== undefined,
     revalidate: () => mutate(),
   };
+}
+
+export function revalidatePersonalAgents() {
+  return mutateGlobal(PERSONAL_AGENTS_KEY);
+}
+
+export function usePersonaRole(roleId: string | null, defaultName: string) {
+  const { data } = useSWR(
+    roleId ? PERSONAL_AGENTS_KEY : null,
+    () => loadPersonalAgents(defaultName),
+    { dedupingInterval: 0 },
+  );
+  return data?.find((agent) => agent.role.id === roleId)?.role ?? null;
+}
+
+export function useLatestReply(sessionId: string, stamp: string | null) {
+  const { data } = useSWR(
+    stamp ? ["session.lastMessage", sessionId, stamp] : null,
+    () => requestDaemon("session.lastMessage", { sessionId }),
+    { dedupingInterval: 0, keepPreviousData: true },
+  );
+  return data ?? null;
 }

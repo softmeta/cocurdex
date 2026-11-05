@@ -523,6 +523,8 @@ export async function handleDaemonRequest(
       );
     case "session.get":
       return service.getSession(request.params.sessionId);
+    case "session.lastMessage":
+      return service.getLatestSessionReply(request.params.sessionId);
     case "session.runtimeState":
       return service.getSessionRuntimeState(request.params.sessionId);
     case "session.listPeers":
@@ -877,6 +879,8 @@ export async function handleDaemonRequest(
       return service.listInbox();
     case "inbox.brief":
       return service.getBrief(request.params.timeZone);
+    case "inbox.postBrief":
+      return service.postBrief(request.params);
     case "inbox.read":
       await service.readInboxItem(request.params.id);
       return null;

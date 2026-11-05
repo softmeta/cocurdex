@@ -113,6 +113,8 @@ export const sessionPayloadSchemas = {
     }),
   ),
   "session.get": exact<Payload<"session.get">>()(sessionIdPayload),
+  "session.lastMessage":
+    exact<Payload<"session.lastMessage">>()(sessionIdPayload),
   "session.runtimeState":
     exact<Payload<"session.runtimeState">>()(sessionIdPayload),
   "session.configure": loose<Payload<"session.configure">>()(

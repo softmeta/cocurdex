@@ -394,6 +394,9 @@
     "newSession": "New session",
     "right": "Split Right"
   },
+  "stage": {
+    "title": "What are we building today?"
+  },
   "team": {
     "leadMissing": "Its lead role was deleted",
     "menuCreate": "New team",

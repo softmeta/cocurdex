@@ -87,6 +87,7 @@
   "openFile": "打开文件",
   "peerMessage": {
     "from": "来自会话 {{title}}",
+    "fromBrief": "今日简报",
     "fromRoutine": "来自例行任务 {{name}}",
     "fromScriptRun": "来自脚本 {{name}}"
   },

@@ -648,12 +648,20 @@ export interface RoutineMessageOrigin {
   kind: "routine";
   routineId: string;
   routineName: string;
+  runId?: string;
+  sessionId?: string;
+}
+
+export interface BriefMessageOrigin {
+  kind: "brief";
+  day: string;
 }
 
 export type MessageOrigin =
   | PeerMessageOrigin
   | ScriptRunMessageOrigin
-  | RoutineMessageOrigin;
+  | RoutineMessageOrigin
+  | BriefMessageOrigin;
 
 export interface MessageRecord {
   id: string;

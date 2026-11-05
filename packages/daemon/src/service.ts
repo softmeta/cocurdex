@@ -78,6 +78,7 @@ import {
   isToolCallId,
   MEMORY_SETTINGS_KEY,
   type MessageAttachment,
+  type MessageOrigin,
   messageAgentLookup,
   newAssistantSessionId,
   normalizeAgentRoleAvatar,
@@ -154,6 +155,7 @@ import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import {
   buildPersonaSoulBlock,
+  buildPostedMessagesBlock,
   PersonalAgentService,
   personaMemoryScope,
   personaWritePartition,
@@ -280,6 +282,7 @@ function errorMessage(error: unknown, fallback: string) {
 /** How often checkpoint retention runs on a daemon that never restarts. */
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
+const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
 
 function isExistingDirectory(directoryPath: string) {
   try {
@@ -420,7 +423,7 @@ export class CocurdexDaemonService {
       announceChanged: () =>
         this.events.emit("daemon.event", {
           type: "data.changed",
-          areas: ["personal"],
+          areas: ["personal", "agent"],
         }),
     });
     const routineSessions = createRoutineSessions({
@@ -438,6 +441,14 @@ export class CocurdexDaemonService {
         this.state.data.personalAgents.getById(id) !== null,
       ensureSession: routineSessions.ensureSession,
       runTurn: routineSessions.runTurn,
+      deliverResult: (routine, run, content) =>
+        this.postToHomeThread(routine.agentId, content, {
+          kind: "routine",
+          routineId: routine.id,
+          routineName: routine.name,
+          runId: run.id,
+          ...(run.sessionId ? { sessionId: run.sessionId } : {}),
+        }).then(() => undefined),
       announceChanged: () =>
         this.events.emit("daemon.event", {
           type: "data.changed",
@@ -1088,6 +1099,51 @@ export class CocurdexDaemonService {
       routines: this.routines.list(),
       runsToday: this.routines.runsFinishedSince(start.toISOString()),
     });
+  }
+
+  async postBrief(payload: {
+    updatedAt: string;
+    day: string;
+    content: string;
+  }) {
+    const content = payload.content.trim();
+    if (!content) throw new Error("The brief cannot be empty.");
+    const posted = await this.state.getAppSetting(BRIEF_POSTED_SETTING_KEY);
+    if (posted && JSON.parse(posted) >= payload.updatedAt) return null;
+    const message = await this.postToHomeThread(null, content, {
+      kind: "brief",
+      day: payload.day,
+    });
+    if (message) {
+      await this.state.setAppSetting(
+        BRIEF_POSTED_SETTING_KEY,
+        JSON.stringify(payload.updatedAt),
+      );
+    }
+    return message;
+  }
+
+  private async postToHomeThread(
+    agentId: string | null,
+    content: string,
+    origin: MessageOrigin,
+  ) {
+    const persona = agentId
+      ? this.state.data.personalAgents.getById(agentId)
+      : this.state.data.personalAgents.getDefault();
+    if (!persona) return null;
+    const message = await this.state.appendMessage({
+      id: crypto.randomUUID(),
+      sessionId: persona.homeSessionId,
+      role: "assistant",
+      kind: "response",
+      content,
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      origin,
+    });
+    this.announceSessionsChanged();
+    return message;
   }
 
   async readInboxItem(id: string) {
@@ -2122,6 +2178,11 @@ export class CocurdexDaemonService {
   async getSession(sessionId: string) {
     validateSessionId(sessionId);
     return this.state.getSession(sessionId);
+  }
+
+  async getLatestSessionReply(sessionId: string) {
+    validateSessionId(sessionId);
+    return this.state.getLatestReply(sessionId);
   }
 
   async setSessionPeerInbound(sessionId: string, policy: "deliver" | "refuse") {
@@ -3382,8 +3443,10 @@ export class CocurdexDaemonService {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
       }
+      const posted = persona ? buildPostedMessagesBlock(priorMessages) : null;
+      const postedText = posted ? `${posted}\n\n` : "";
       return {
-        content: `${memoryText}${userMessage.content}`,
+        content: `${memoryText}${postedText}${userMessage.content}`,
         history,
         contextHandoff: undefined,
       };

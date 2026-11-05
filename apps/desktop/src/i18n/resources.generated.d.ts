@@ -100,6 +100,7 @@ export default interface Resources {
     openFile: "Open file";
     peerMessage: {
       from: "From session {{title}}";
+      fromBrief: "Today's brief";
       fromRoutine: "From routine {{name}}";
       fromScriptRun: "From script {{name}}";
     };
@@ -1656,6 +1657,16 @@ export default interface Resources {
     sidebar: {
       title: "Assistants";
     };
+    thread: {
+      introFallback: "Your personal assistant. It remembers you and keeps an eye on your day.";
+      placeholder: "Message {{name}}";
+      suggestions: {
+        attention: "What needs my attention today?";
+        brief: "Send me a brief every morning at 8";
+        label: "Suggestions";
+        memory: "What do you remember about me?";
+      };
+    };
   };
   search: {
     categories: {
@@ -2137,6 +2148,9 @@ export default interface Resources {
       menu: "Split session";
       newSession: "New session";
       right: "Split Right";
+    };
+    stage: {
+      title: "What are we building today?";
     };
     team: {
       leadMissing: "Its lead role was deleted";

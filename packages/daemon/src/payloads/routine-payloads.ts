@@ -43,6 +43,13 @@ export const routinePayloadSchemas: PayloadSchemas = {
   "inbox.brief": exact<Payload<"inbox.brief">>()(
     z.object({ timeZone: timeZoneSchema.nullish() }),
   ),
+  "inbox.postBrief": exact<Payload<"inbox.postBrief">>()(
+    z.object({
+      updatedAt: boundedTextSchema(40),
+      day: boundedTextSchema(20),
+      content: promptSchema,
+    }),
+  ),
   "routine.list": exact<Payload<"routine.list">>()(
     z.object({ agentId: idSchema.nullish() }),
   ),

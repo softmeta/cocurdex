@@ -1,3 +1,4 @@
-export { markBriefShown, useBriefPresenting } from "./brief-presence";
+export { briefDayLabel } from "./brief-text";
 export { inboxApi } from "./inbox-api";
+export { inboxDotClass, inboxKindLabel } from "./inbox-labels";
 export { useBrief, useInbox } from "./inbox-queries";

@@ -57,10 +57,9 @@ import {
   useSessionMessages,
 } from "@/features/agent";
 import { NewChatCard } from "@/features/chat";
-import {
-  type ChatComposerHandle,
-  type ComposerSendOutcome,
-  ComposerSurface,
+import type {
+  ChatComposerHandle,
+  ComposerSendOutcome,
 } from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
@@ -133,6 +132,7 @@ import {
 } from "./chat-window/chat-browser-context";
 import { PersonalEmptyState } from "./personal-empty-state";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
+import { usePersonalSessionView } from "./use-personal-session-view";
 import { useQueuedInputActions } from "./use-queued-input-actions";
 
 interface CenterPanelProps {
@@ -339,6 +339,7 @@ export function CenterPanel({
   const activeWorkspace = activeSession
     ? workspaces.find((workspace) => workspace.id === activeSession.workspaceId)
     : selectedWorkspace;
+  const personalView = usePersonalSessionView(activeSession, composerRef);
   const workingPath = resolveCenterWorkingPath(
     activeSession,
     activeWorkspace,
@@ -1095,45 +1096,41 @@ export function CenterPanel({
   let newSessionSurface: ReactNode = null;
   if (centerSurface === "new-session") {
     newSessionSurface = (
-      <ComposerSurface>
-        <NewSessionCard
-          activeBranch={activeBranch}
-          activeBranches={activeBranches}
-          activeWorkspaceId={activeWorkspaceId}
-          agents={agents}
-          agentType={lastSelectedAgent}
-          attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
-          composerContextChips={annotationChips}
-          sessionModeId={null}
-          composerRef={composerRef}
-          onClearAttachment={clearChatComposerAttachment}
-          onOpenWorkspace={handleOpenWorkspace}
-          onRelocateWorkspace={(workspaceId) =>
-            void handleRelocateWorkspace(workspaceId)
-          }
-          onSelectBranch={handleSelectBranch}
-          onSelectWorktree={handleSelectWorktree}
-          onCreateWorktree={handleCreateWorktree}
-          onSelectAgent={setLastSelectedAgent}
-          onSelectWorkspace={selectWorkspace}
-          onStartSession={handleStartSession}
-          worktrees={activeWorktrees}
-          selectedWorktreePath={draftWorktreePath}
-          sessionTitle={undefined}
-          workspaces={workspaces}
-          workspaceRootPath={workingPath ?? activeWorkspace?.rootPaths[0]}
-          workspaceName={activeWorkspace?.name}
-        />
-      </ComposerSurface>
+      <NewSessionCard
+        activeBranch={activeBranch}
+        activeBranches={activeBranches}
+        activeWorkspaceId={activeWorkspaceId}
+        agents={agents}
+        agentType={lastSelectedAgent}
+        attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
+        composerContextChips={annotationChips}
+        sessionModeId={null}
+        composerRef={composerRef}
+        onClearAttachment={clearChatComposerAttachment}
+        onOpenWorkspace={handleOpenWorkspace}
+        onRelocateWorkspace={(workspaceId) =>
+          void handleRelocateWorkspace(workspaceId)
+        }
+        onSelectBranch={handleSelectBranch}
+        onSelectWorktree={handleSelectWorktree}
+        onCreateWorktree={handleCreateWorktree}
+        onSelectAgent={setLastSelectedAgent}
+        onSelectWorkspace={selectWorkspace}
+        onStartSession={handleStartSession}
+        worktrees={activeWorktrees}
+        selectedWorktreePath={draftWorktreePath}
+        sessionTitle={undefined}
+        workspaces={workspaces}
+        workspaceRootPath={workingPath ?? activeWorkspace?.rootPaths[0]}
+        workspaceName={activeWorkspace?.name}
+      />
     );
   } else if (centerSurface === "personal-empty") {
-    newSessionSurface = <PersonalEmptyState />;
-  } else if (centerSurface === "new-chat") {
     newSessionSurface = (
-      <ComposerSurface>
-        <NewChatCard onStartChat={chatSessionActions.start} />
-      </ComposerSurface>
+      <PersonalEmptyState selectedSessionId={activeSessionId ?? null} />
     );
+  } else if (centerSurface === "new-chat") {
+    newSessionSurface = <NewChatCard onStartChat={chatSessionActions.start} />;
   }
 
   return (
@@ -1159,7 +1156,10 @@ export function CenterPanel({
             }
             composerContextChips={annotationChips}
             sessionModeId={activeSessionModeId}
-            composerRef={composerRef}
+            composerRef={personalView?.composerRef ?? composerRef}
+            composerRole={personalView?.composerRole}
+            composerPlaceholder={personalView?.composerPlaceholder}
+            emptyState={personalView?.emptyState}
             permissionMode={activePermissionMode}
             providerSnapshot={activeSession.providerSnapshot}
             thinkingLevel={selectedThinkingLevel}

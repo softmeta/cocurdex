@@ -389,6 +389,10 @@ export class DaemonState {
     return messages.filter((message) => !this.deltaBuffer.has(message.id));
   }
 
+  async getLatestReply(sessionId: string) {
+    return this.database.messages.latestReplyBySessionId(sessionId);
+  }
+
   async listToolCallsBySessionId(sessionId: string) {
     const [toolCalls, resultRefs] = await Promise.all([
       this.database.toolCalls.listBySessionId(sessionId),
@@ -422,7 +426,11 @@ export class DaemonState {
     await this.database.editorViews.upsert(view);
   }
 
-  async saveUserMessage(message: MessageRecord): Promise<MessageRecord> {
+  saveUserMessage(message: MessageRecord): Promise<MessageRecord> {
+    return this.appendMessage(message);
+  }
+
+  async appendMessage(message: MessageRecord): Promise<MessageRecord> {
     const session = await this.database.sessions.getById(message.sessionId);
     let stored: Promise<number | null> = Promise.resolve(null);
     this.database.transaction(() => {

@@ -46,6 +46,20 @@ export function createSqliteMessageRepository(
         .get(messageId) as SqliteRow | undefined;
       return row ? mapMessage(row) : null;
     },
+    async latestReplyBySessionId(sessionId) {
+      const row = database
+        .prepare(
+          `SELECT * FROM messages
+           WHERE session_id = ?
+             AND role IN ('user', 'assistant')
+             AND (kind IS NULL OR kind <> 'reasoning')
+             AND content <> ''
+           ORDER BY seq DESC
+           LIMIT 1`,
+        )
+        .get(sessionId) as SqliteRow | undefined;
+      return row ? mapMessage(row) : null;
+    },
     async append(message) {
       const existing = database
         .prepare("SELECT seq FROM messages WHERE id = ?")

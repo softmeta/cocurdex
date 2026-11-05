@@ -193,6 +193,7 @@ export function ChatDock({
             isFocused
             leading={leading}
             paneId={focusedPaneId}
+            sessionId={focusedPane?.sessionId}
             title={paneTitle}
             trailing={headerTrailing}
             onSplitDown={() => splitPaneById(focusedPaneId, "down")}

@@ -2,6 +2,7 @@ import type {
   AgentId,
   AgentPermissionMode,
   AgentProviderSnapshot,
+  AgentRoleRecord,
   AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
@@ -124,6 +125,7 @@ interface ChatComposerProps {
   canSubmit?: boolean;
   canSendWhileRunning?: boolean;
   placeholderOverride?: string;
+  role?: AgentRoleRecord | null;
   mentionMenuPlacement?: "top" | "bottom";
   onClearAttachment?(): void;
   onSelectSessionMode?(modeId: string): void;
@@ -167,6 +169,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       canSubmit,
       canSendWhileRunning = false,
       placeholderOverride,
+      role = null,
       mentionMenuPlacement = "top",
       onClearAttachment,
       onSelectSessionMode,
@@ -309,7 +312,8 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const canSubmitNow =
       canSend && !submitting && (!isRunning || canSendWhileRunning);
     const canSelectAgent = Boolean(onSelectAgent) && !isRunning;
-    const sessionRole = useSessionRole(sessionId);
+    const storedRole = useSessionRole(sessionId);
+    const sessionRole = role ?? storedRole;
 
     const sendMessage = (useOppositeFollowUpBehavior = false) => {
       if (!canSubmitNow) return;

@@ -15,8 +15,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
-import { markBriefShown, useBrief, useBriefPresenting } from "@/features/inbox";
-import { inboxDotClass, inboxKindLabel } from "./inbox-labels";
+import {
+  briefDayLabel,
+  inboxDotClass,
+  inboxKindLabel,
+  useBrief,
+} from "@/features/inbox";
 
 function BriefSection({
   title,
@@ -110,13 +114,6 @@ function BriefResultRow({
   );
 }
 
-function briefDayLabel(day: string, language: string) {
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: "full",
-    timeZone: "UTC",
-  }).format(new Date(`${day}T12:00:00Z`));
-}
-
 function BriefDialog({
   brief,
   open,
@@ -195,16 +192,10 @@ export function BriefControl({
 }) {
   const { t } = useTranslation("personal");
   const brief = useBrief();
-  const presenting = useBriefPresenting();
-  const [requested, setRequested] = useState(false);
+  const [open, setOpen] = useState(false);
   if (!brief) return null;
 
-  const open = requested || presenting;
   const label = t("brief.open");
-  const changeOpen = (next: boolean) => {
-    setRequested(next);
-    if (!next) markBriefShown(brief.updatedAt);
-  };
 
   return (
     <>
@@ -212,7 +203,7 @@ export function BriefControl({
         <TooltipTrigger
           aria-label={label}
           className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
-          onClick={() => setRequested(true)}
+          onClick={() => setOpen(true)}
           type="button"
         >
           <Newspaper className="size-3.5" />
@@ -223,7 +214,7 @@ export function BriefControl({
       </Tooltip>
       <BriefDialog
         brief={brief}
-        onOpenChange={changeOpen}
+        onOpenChange={setOpen}
         onOpenItem={onOpenItem}
         onOpenSession={onOpenSession}
         open={open}

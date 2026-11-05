@@ -11,9 +11,9 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
 import {
   ChatComposer,
-  ComposerSurfaceBody,
+  EmptyStage,
   newChatComposerDraftKey,
-  WelcomeHeading,
+  StageIdentity,
 } from "@/features/composer";
 import {
   bootstrapProviderModelsAtom,
@@ -98,28 +98,35 @@ export function NewChatCard({ onStartChat }: NewChatCardProps) {
   );
 
   return (
-    <ComposerSurfaceBody className="flex flex-col">
-      <WelcomeHeading>
-        {selected ? t("detail.empty.title") : t("detail.empty.noProviderTitle")}
-        {selected ? null : (
-          <Button
-            aria-label={t("detail.empty.openProviderSettings")}
-            className="self-center"
-            onClick={() => openSettings("providers")}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <Settings2 className="size-4" />
-          </Button>
-        )}
-      </WelcomeHeading>
+    <EmptyStage
+      identity={
+        <StageIdentity
+          title={
+            <>
+              {selected
+                ? t("detail.empty.title")
+                : t("detail.empty.noProviderTitle")}
+              {selected ? null : (
+                <Button
+                  aria-label={t("detail.empty.openProviderSettings")}
+                  className="self-center"
+                  onClick={() => openSettings("providers")}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Settings2 className="size-4" />
+                </Button>
+              )}
+            </>
+          }
+        />
+      }
+    >
       <ChatComposer
         mode="chat"
-        variant="panel"
-        tone="welcome"
+        variant="pill"
         draftKey={newChatComposerDraftKey()}
-        mentionMenuPlacement="bottom"
         controls={controls}
         canSubmit={Boolean(providerSnapshot)}
         placeholderOverride={t("composer.placeholder", {
@@ -136,6 +143,6 @@ export function NewChatCard({ onStartChat }: NewChatCardProps) {
           return "sent";
         }}
       />
-    </ComposerSurfaceBody>
+    </EmptyStage>
   );
 }

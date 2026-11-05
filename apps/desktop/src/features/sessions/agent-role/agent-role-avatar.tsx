@@ -20,30 +20,34 @@ export interface AgentRoleAvatarSource {
 export type AvatarSource = Omit<AgentRoleAvatarSource, "agentId"> &
   Partial<Pick<AgentRoleAvatarSource, "agentId">>;
 
-type AgentRoleAvatarSize = "sm" | "md" | "lg";
+type AgentRoleAvatarSize = "sm" | "md" | "lg" | "xl";
 
 const sizeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "size-5 text-meta",
   md: "size-7 text-body",
   lg: "size-9 text-display",
+  xl: "size-14 text-title",
 };
 
 const emojiSizeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "text-avatar-emoji-sm",
   md: "text-avatar-emoji-md",
   lg: "text-avatar-emoji-lg",
+  xl: "text-avatar-emoji-xl",
 };
 
 const placeholderIconClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "size-3",
   md: "size-3.5",
   lg: "size-4",
+  xl: "size-6",
 };
 
 const badgeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "size-2.5",
   md: "size-3",
   lg: "size-3.5",
+  xl: "size-4",
 };
 
 export function AgentRoleAvatar({

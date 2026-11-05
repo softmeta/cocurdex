@@ -1,16 +1,28 @@
-import { Contact } from "lucide-react";
+import { useSetAtom } from "jotai";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { EmptyState } from "@/components/ui";
+import { usePersonalAgents } from "@/features/personal";
+import { selectSessionAtom } from "@/features/sessions";
 
-export function PersonalEmptyState() {
+function useOpenDefaultAssistant(selectedSessionId: string | null) {
   const { t } = useTranslation("personal");
-  return (
-    <div className="flex h-full items-center justify-center">
-      <EmptyState
-        description={t("empty.description")}
-        icon={<Contact />}
-        title={t("empty.title")}
-      />
-    </div>
+  const { agents } = usePersonalAgents(t("defaultName"));
+  const selectSession = useSetAtom(selectSessionAtom);
+  const homeSessionId =
+    agents.find((agent) => agent.isDefault)?.homeSessionId ?? null;
+  const enabled = !agents.some(
+    (agent) => agent.homeSessionId === selectedSessionId,
   );
+  useEffect(() => {
+    if (enabled && homeSessionId) selectSession(homeSessionId);
+  }, [enabled, homeSessionId, selectSession]);
+}
+
+export function PersonalEmptyState({
+  selectedSessionId,
+}: {
+  selectedSessionId: string | null;
+}) {
+  useOpenDefaultAssistant(selectedSessionId);
+  return <div className="h-full" />;
 }

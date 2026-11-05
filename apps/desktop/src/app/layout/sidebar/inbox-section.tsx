@@ -1,8 +1,8 @@
 import type { InboxItem } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import { SidebarListRow, Text } from "@/components/ui";
+import { inboxDotClass, inboxKindLabel } from "@/features/inbox";
 import { useCompactAgeLabel } from "@/lib/relative-time";
-import { inboxDotClass, inboxKindLabel } from "./inbox-labels";
 import { SidebarOverflowTitle } from "./sidebar-overflow-title";
 import { SidebarSectionHeading } from "./sidebar-section-heading";
 import { useSidebarSectionCollapse } from "./use-sidebar-section-collapse";

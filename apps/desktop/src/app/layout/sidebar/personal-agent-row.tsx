@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { permissionsBySessionAtom } from "@/features/agent/permission";
 import { questionsBySessionAtom } from "@/features/agent/question";
+import { useLatestReply } from "@/features/personal";
 import {
   AgentRoleAvatar,
   getAgentDisplayLabel,
@@ -49,6 +50,13 @@ function useHomeSessionState(sessionId: string) {
   return { isUnread, needsAttention };
 }
 
+function previewLine(content: string) {
+  return content
+    .replace(/[`*_>#~]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function PersonalAgentRow({
   actions,
   agent,
@@ -72,20 +80,25 @@ export function PersonalAgentRow({
   ]
     .filter(Boolean)
     .join(" · ");
-  const subtitle = isRunning ? t("roster.working") : engine;
+  const reply = useLatestReply(
+    agent.homeSessionId,
+    homeSession?.lastMessageAt ?? null,
+  );
+  const preview = reply ? previewLine(reply.content) : "";
+  const subtitle = isRunning ? t("roster.working") : preview || engine;
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <SidebarListRow
-          className="h-auto gap-2 py-1 ps-1"
+          className="h-auto gap-2.5 py-1.5 ps-1"
           data-personal-agent-id={agent.id}
           data-session-id={agent.homeSessionId}
           isActive={isActive}
           onClick={() => actions.onSelect(agent)}
           render={<button type="button" />}
         >
-          <AgentRoleAvatar role={agent.role} size="md" />
+          <AgentRoleAvatar role={agent.role} showAgent={false} size="lg" />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="flex min-w-0 items-center gap-1.5">
               <SidebarOverflowTitle>{agent.role.name}</SidebarOverflowTitle>

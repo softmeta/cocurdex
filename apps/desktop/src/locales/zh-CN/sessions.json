@@ -377,6 +377,9 @@
     "newSession": "新会话",
     "right": "向右分屏"
   },
+  "stage": {
+    "title": "今天要做点什么？"
+  },
   "team": {
     "leadMissing": "lead 角色已被删除",
     "menuCreate": "新建团队",

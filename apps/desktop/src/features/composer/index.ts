@@ -9,9 +9,9 @@ export {
 export { composerPendingOperationsAtom } from "./composer-pending-operations";
 export {
   ChatContentColumn,
-  ComposerSurface,
-  ComposerSurfaceBody,
-  WelcomeHeading,
+  ComposerDockFrame,
+  EmptyStage,
+  StageIdentity,
 } from "./composer-surface";
 export { formatTokenCount } from "./context-token-format";
 export { ContextUsageMeter } from "./context-window-indicator";

@@ -1,2 +1,8 @@
+export { PersonaIntro } from "./persona-intro";
 export { personalApi } from "./personal-api";
-export { usePersonalAgents } from "./personal-queries";
+export {
+  revalidatePersonalAgents,
+  useLatestReply,
+  usePersonalAgents,
+  usePersonaRole,
+} from "./personal-queries";

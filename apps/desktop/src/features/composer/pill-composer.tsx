@@ -313,7 +313,10 @@ export function PillComposer({
               onSelect={slashCommands.selectCommand}
             />
             <MentionEditor
-              ariaLabel={t("sessions:composer.sendFollowUpCompact")}
+              ariaLabel={
+                placeholderOverride ??
+                t("sessions:composer.sendFollowUpCompact")
+              }
               containerRef={editorContainerRef}
               initialContent={initialEditorContent}
               onChange={onEditorChange}

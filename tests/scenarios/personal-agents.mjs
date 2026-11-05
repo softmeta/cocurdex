@@ -28,7 +28,7 @@ let stub;
 const state = {};
 
 function rowName(name) {
-  return new RegExp(`^${name}`);
+  return new RegExp(`^${name}\\s`);
 }
 
 async function personas(session) {
@@ -38,7 +38,9 @@ async function personas(session) {
 async function composerQuery(session) {
   return {
     role: "textbox",
-    name: await translate(session, "sessions:composer.sendFollowUpCompact"),
+    name: await translate(session, "personal:thread.placeholder", {
+      name: await translate(session, "personal:defaultName"),
+    }),
     exact: false,
   };
 }
@@ -95,6 +97,7 @@ runScenario("personal-agents", {
           { role: "button", name: rowName(defaultName) },
           UI_TIMEOUT_MS,
         );
+        await waitForRole(session, await composerQuery(session), UI_TIMEOUT_MS);
         const [assistant] = await personas(session);
         check(
           assistant?.isDefault && assistant.role.name === defaultName,
@@ -130,6 +133,22 @@ runScenario("personal-agents", {
           assistant.id,
         );
         check(selected, "the default assistant row is selected");
+        await waitForRole(
+          session,
+          { role: "region", name: defaultName },
+          UI_TIMEOUT_MS,
+        );
+        const [composer] = await waitForRole(
+          session,
+          await composerQuery(session),
+        );
+        const composerTop = (await centerOf(session, composer.backendNodeId)).y;
+        const viewport = await session.run(() => window.innerHeight);
+        check(
+          composerTop > viewport * 0.7,
+          "an empty thread shows the intro with the composer docked below",
+          { composerTop, viewport },
+        );
         state.homeSessionId = assistant.homeSessionId;
         return { homeSessionId: assistant.homeSessionId };
       },
@@ -192,7 +211,7 @@ runScenario("personal-agents", {
       },
     ],
     [
-      "a routine result lands in the inbox and opens its own thread",
+      "a routine result posts to the home thread and links its run",
       async ({ session }) => {
         const [assistant] = await personas(session);
         const routine = await daemonRequest(session, "routine.create", {
@@ -219,13 +238,31 @@ runScenario("personal-agents", {
           "the run used its own thread",
           run,
         );
-        await clickByRole(session, row);
+        const source = {
+          role: "button",
+          name: await translate(session, "agent:peerMessage.fromRoutine", {
+            name: "Morning brief",
+          }),
+        };
+        await waitForRole(session, source, UI_TIMEOUT_MS);
+        const home = await daemonRequest(session, "session.snapshot", {
+          sessionId: state.homeSessionId,
+        });
+        const posted = home.messages.at(-1);
+        check(
+          posted?.role === "assistant" &&
+            posted.content === "Two meetings today." &&
+            posted.origin?.sessionId === run.sessionId,
+          "the result is the latest message of the home thread",
+          posted,
+        );
+        await clickByRole(session, source);
         await session.waitUntil(
-          (reply) =>
+          (prompt) =>
             [...document.querySelectorAll("article")].some((node) =>
-              node.textContent.includes(reply),
+              node.textContent.includes(prompt),
             ),
-          "Two meetings today.",
+          "Summarize today",
           UI_TIMEOUT_MS,
         );
         await waitForNoRole(session, row, UI_TIMEOUT_MS);
@@ -276,6 +313,54 @@ runScenario("personal-agents", {
       },
     ],
     [
+      "the next turn tells the assistant what was posted to its thread",
+      async ({ session }) => {
+        const defaultName = await translate(session, "personal:defaultName");
+        await clickByRole(
+          session,
+          {
+            role: "button",
+            name: rowName(defaultName),
+            within: {
+              role: "region",
+              name: await translate(session, "personal:roster.label"),
+            },
+          },
+          UI_TIMEOUT_MS,
+        );
+        stub.plan = { kind: "stream", chunks: ["The standup."] };
+        const [composer] = await waitForRole(
+          session,
+          await composerQuery(session),
+          UI_TIMEOUT_MS,
+        );
+        const before = stub.requests.length;
+        await typeInto(session, composer, "Which meeting first?");
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "common:actions.send"),
+        });
+        await session.waitUntil(
+          (reply) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(reply),
+            ),
+          "The standup.",
+          UI_TIMEOUT_MS,
+        );
+        const request = JSON.stringify(
+          stub.requests.slice(before).map((entry) => entry.body.messages),
+        );
+        check(
+          request.includes("Two meetings today.") &&
+            request.includes("Morning brief"),
+          "the routine result reaches the model with its source",
+          request.slice(-1200),
+        );
+        return {};
+      },
+    ],
+    [
       "a new assistant is named in the edit dialog",
       async ({ session }) => {
         await clickByRole(session, {
@@ -310,6 +395,16 @@ runScenario("personal-agents", {
         await waitForRole(
           session,
           { role: "button", name: rowName("Coach") },
+          UI_TIMEOUT_MS,
+        );
+        await waitForRole(
+          session,
+          {
+            role: "textbox",
+            name: await translate(session, "personal:thread.placeholder", {
+              name: "Coach",
+            }),
+          },
           UI_TIMEOUT_MS,
         );
         const coach = (await personas(session)).find(

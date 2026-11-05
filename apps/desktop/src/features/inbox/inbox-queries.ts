@@ -1,6 +1,8 @@
-import type { InboxItem } from "@cocurdex/shared";
+import type { Brief, InboxItem } from "@cocurdex/shared";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
-import { considerBriefOnEntry } from "./brief-presence";
+import { deliverBriefOnEntry } from "./brief-presence";
+import { briefText } from "./brief-text";
 import { inboxApi } from "./inbox-api";
 import { useInboxRevalidation } from "./use-inbox-revalidation";
 
@@ -16,10 +18,23 @@ export function useInbox() {
 }
 
 export function useBrief() {
+  const { t, i18n } = useTranslation("personal");
+  const post = (brief: Brief) => {
+    void inboxApi
+      .postBrief({
+        updatedAt: brief.updatedAt,
+        day: brief.day,
+        content: briefText(brief, t, i18n.language),
+      })
+      .catch(() => undefined);
+  };
   const { data, mutate } = useSWR(
     ["inbox.brief", timeZone],
     () => inboxApi.brief(timeZone),
-    { dedupingInterval: 0, onSuccess: considerBriefOnEntry },
+    {
+      dedupingInterval: 0,
+      onSuccess: (brief) => deliverBriefOnEntry(brief, post),
+    },
   );
   useInboxRevalidation(mutate);
   return data ?? null;

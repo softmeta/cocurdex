@@ -73,7 +73,7 @@ import {
   withoutInterimReplies,
 } from "./chat-timeline";
 import { ContextCompactionDivider } from "./context-compaction-divider";
-import { messageOriginLabel } from "./message-origin-label";
+import { MessageOriginLine } from "./message-origin-line";
 import { turnStatsByMessageAtom } from "./message-store";
 import { MessageTime } from "./message-time";
 import { PeerPrompt } from "./peer-prompt";
@@ -555,9 +555,7 @@ const MessageArticle = memo(function MessageArticle({
             </div>
           ) : null}
           {message.origin ? (
-            <div className="mb-1.5 text-meta font-medium text-chat-fg-secondary">
-              {messageOriginLabel(t, message.origin)}
-            </div>
+            <MessageOriginLine origin={message.origin} />
           ) : null}
           <MessageAttachments message={message} />
           {isReasoning ? (

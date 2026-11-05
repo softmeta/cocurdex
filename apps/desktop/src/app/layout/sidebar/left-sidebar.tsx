@@ -17,7 +17,7 @@ import {
 } from "@/components/ui";
 import { chatSessionsAtom } from "@/features/chat";
 import { inboxApi } from "@/features/inbox";
-import { personalApi } from "@/features/personal";
+import { personalApi, revalidatePersonalAgents } from "@/features/personal";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -170,6 +170,7 @@ export function LeftSidebar({
           modelName: template?.modelName ?? null,
         },
       });
+      await revalidatePersonalAgents();
       selectFormSession(created.homeSessionId);
       setPersonalAgentEditId(created.id);
     } catch (error) {

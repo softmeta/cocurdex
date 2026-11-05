@@ -11,6 +11,7 @@ import {
   routineScheduleError,
   type UpdateRoutinePayload,
 } from "@cocurdex/shared";
+import { logDaemonDiagnostic } from "../diagnostics";
 import type { SessionTurnOutcome } from "../session-control/execution-types";
 import {
   isValidTimeZone,
@@ -32,6 +33,11 @@ export interface RoutineServiceDeps {
     routine: RoutineRecord,
     sessionId: string,
   ): Promise<SessionTurnOutcome>;
+  deliverResult(
+    routine: RoutineRecord,
+    run: RoutineRunRecord,
+    content: string,
+  ): Promise<void>;
   announceChanged(): void;
   defaultTimeZone?: () => string;
   now?: () => Date;
@@ -373,6 +379,16 @@ export class RoutineService {
     };
     this.deps.repository.upsert(updated);
     this.deps.announceChanged();
+    const content =
+      outcome.status === "completed" ? outcome.message.content.trim() : "";
+    if (content && routine.deliver !== "silent") {
+      await this.deps.deliverResult(routine, run, content).catch((error) =>
+        logDaemonDiagnostic("warn", "routine.deliverFailed", {
+          routineId: routine.id,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
     return run;
   }
 

@@ -6,6 +6,7 @@ import type {
   AgentPlanApprovalRecord,
   AgentProviderSnapshot,
   AgentQuestionRequestRecord,
+  AgentRoleRecord,
   AgentSessionMode,
   AgentSlashCommand,
   AgentThinkingLevel,
@@ -22,9 +23,8 @@ import { JumpControls } from "@/components/chat";
 import {
   ChatComposer,
   type ChatComposerHandle,
+  ComposerDockFrame,
   type ComposerSendOutcome,
-  ComposerSurface,
-  ComposerSurfaceBody,
   composerFooterControlClassName,
 } from "@/features/composer";
 import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
@@ -58,6 +58,8 @@ interface ChatComposerControls {
   thinkingLevel?: AgentThinkingLevel | null;
   thinkingLevelOptions?: ThinkingLevelOption[];
   isRunning: boolean;
+  role?: AgentRoleRecord | null;
+  placeholderOverride?: string;
   canSendWhileRunning?: boolean;
   runtimeCommands?: AgentSlashCommand[] | null;
   runtimeMode?: {
@@ -167,34 +169,6 @@ function SessionBranchFooterLabel({ branch }: { branch?: string | null }) {
   );
 }
 
-export function EmptyChatState({
-  activeBranch,
-  composerRef,
-  composerContextChips,
-  onAnswerQuestion: _onAnswerQuestion,
-  pendingQuestion: _pendingQuestion,
-  workspace,
-  ...composerProps
-}: ChatComposerControls) {
-  // Workspace leads the footer; branch stays after the agent/runtime controls.
-  return (
-    <ComposerSurface>
-      <ComposerSurfaceBody>
-        <ChatComposer
-          {...composerProps}
-          ref={composerRef}
-          contextChips={composerContextChips}
-          variant="panel"
-          tone="welcome"
-          mentionMenuPlacement="bottom"
-          footerLeading={<SessionWorkspaceFooterLabel workspace={workspace} />}
-          footerTrailing={<SessionBranchFooterLabel branch={activeBranch} />}
-        />
-      </ComposerSurfaceBody>
-    </ComposerSurface>
-  );
-}
-
 function collectPendingPrompts(
   permissionsBySession: Record<string, AgentPermissionRequestRecord[]>,
   questionsBySession: Record<string, AgentQuestionRequestRecord[]>,
@@ -254,119 +228,115 @@ export function ComposerDock({
   );
 
   return (
-    <div className="overflow-visible bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent px-2 pb-2 @lg/chat:px-3 @3xl/chat:px-6">
-      {/* Composer sits slightly wider than the message column so the follow-up
-          input has a bit more breathing room while messages stay readable. */}
-      <div className="relative mx-auto flex w-full max-w-[780px] flex-col gap-2 overflow-visible">
-        {/* Every panel above the composer floats out of flow: the task list,
+    <ComposerDockFrame className="bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent">
+      {/* Every panel above the composer floats out of flow: the task list,
             status panels, queued inputs, and prompt cards appear, expand, and
             resolve on their own, and taking dock height would shove the
             transcript up and down each time. They paint over the tail of the
             transcript on opaque surfaces instead, and the cap keeps a tall
             stack from reaching the window chrome. */}
-        <div className="absolute inset-x-0 bottom-full z-10 -mx-1 -mt-1 mb-1 flex max-h-[75dvh] min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain p-1">
-          {plan && !hideComposer ? (
-            <PlanPanel
-              collapsed={planCollapsed}
-              isRunning={isRunning}
-              onDismiss={onDismissPlan}
-              onToggleCollapsed={onTogglePlanCollapsed}
-              plan={plan}
-            />
-          ) : null}
-          {composerProps.sessionId && !hideComposer ? (
-            <ScriptRunPanel
-              key={`script-runs:${composerProps.sessionId}`}
-              sessionId={composerProps.sessionId}
-            />
-          ) : null}
-          {composerProps.sessionId && !hideComposer ? (
-            <TeamPanel
-              key={composerProps.sessionId}
-              pendingPromptBySession={pendingPromptBySession}
-              sessionId={composerProps.sessionId}
-            />
-          ) : null}
-          {queuedInputs.length > 0 &&
-          !hideComposer &&
-          onDeleteQueuedInput &&
-          onSendNowQueuedInput &&
-          onSteerQueuedInput &&
-          onUpdateQueuedInput ? (
-            <QueuedInputShelf
-              items={queuedInputs}
-              onDelete={onDeleteQueuedInput}
-              onSendNow={onSendNowQueuedInput}
-              onResume={queuePaused ? onResumeQueuedInputs : undefined}
-              onSteer={onSteerQueuedInput}
-              onUpdate={onUpdateQueuedInput}
-              supportsSteering={supportsSteering && isRunning}
-            />
-          ) : null}
-          {pendingPlanApproval ? (
-            <PlanApprovalCard
-              approval={pendingPlanApproval}
-              onResolve={onResolvePlanApproval}
-            />
-          ) : null}
-          {pendingPermissionRequest ? (
-            <PermissionCard
-              onResolve={onResolvePermission}
-              permission={pendingPermissionRequest}
-              variant="dock"
-            />
-          ) : null}
-          {pendingQuestion ? (
-            <QuestionCard
-              onAnswer={onAnswerQuestion}
-              question={pendingQuestion}
-              variant="dock"
-            />
+      <div className="absolute inset-x-0 bottom-full z-10 -mx-1 -mt-1 mb-1 flex max-h-[75dvh] min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain p-1">
+        {plan && !hideComposer ? (
+          <PlanPanel
+            collapsed={planCollapsed}
+            isRunning={isRunning}
+            onDismiss={onDismissPlan}
+            onToggleCollapsed={onTogglePlanCollapsed}
+            plan={plan}
+          />
+        ) : null}
+        {composerProps.sessionId && !hideComposer ? (
+          <ScriptRunPanel
+            key={`script-runs:${composerProps.sessionId}`}
+            sessionId={composerProps.sessionId}
+          />
+        ) : null}
+        {composerProps.sessionId && !hideComposer ? (
+          <TeamPanel
+            key={composerProps.sessionId}
+            pendingPromptBySession={pendingPromptBySession}
+            sessionId={composerProps.sessionId}
+          />
+        ) : null}
+        {queuedInputs.length > 0 &&
+        !hideComposer &&
+        onDeleteQueuedInput &&
+        onSendNowQueuedInput &&
+        onSteerQueuedInput &&
+        onUpdateQueuedInput ? (
+          <QueuedInputShelf
+            items={queuedInputs}
+            onDelete={onDeleteQueuedInput}
+            onSendNow={onSendNowQueuedInput}
+            onResume={queuePaused ? onResumeQueuedInputs : undefined}
+            onSteer={onSteerQueuedInput}
+            onUpdate={onUpdateQueuedInput}
+            supportsSteering={supportsSteering && isRunning}
+          />
+        ) : null}
+        {pendingPlanApproval ? (
+          <PlanApprovalCard
+            approval={pendingPlanApproval}
+            onResolve={onResolvePlanApproval}
+          />
+        ) : null}
+        {pendingPermissionRequest ? (
+          <PermissionCard
+            onResolve={onResolvePermission}
+            permission={pendingPermissionRequest}
+            variant="dock"
+          />
+        ) : null}
+        {pendingQuestion ? (
+          <QuestionCard
+            onAnswer={onAnswerQuestion}
+            question={pendingQuestion}
+            variant="dock"
+          />
+        ) : null}
+      </div>
+      {hideComposer ? (
+        <div className="flex min-w-0 items-center gap-2 rounded-control border border-chat-border-soft bg-chat-surface-raised px-3 py-2">
+          <span className="min-w-0 flex-1 truncate text-meta text-chat-fg-muted">
+            {t("toolCalls.subagentReadOnly")}
+          </span>
+          {onOpenParentSession ? (
+            <button
+              className="shrink-0 text-meta text-chat-link"
+              onClick={onOpenParentSession}
+              type="button"
+            >
+              {parentSessionTitle
+                ? t("toolCalls.openParentSessionNamed", {
+                    title: parentSessionTitle,
+                  })
+                : t("toolCalls.openParentSession")}
+            </button>
           ) : null}
         </div>
-        {hideComposer ? (
-          <div className="flex min-w-0 items-center gap-2 rounded-control border border-chat-border-soft bg-chat-surface-raised px-3 py-2">
-            <span className="min-w-0 flex-1 truncate text-meta text-chat-fg-muted">
-              {t("toolCalls.subagentReadOnly")}
-            </span>
-            {onOpenParentSession ? (
-              <button
-                className="shrink-0 text-meta text-chat-link"
-                onClick={onOpenParentSession}
-                type="button"
-              >
-                {parentSessionTitle
-                  ? t("toolCalls.openParentSessionNamed", {
-                      title: parentSessionTitle,
-                    })
-                  : t("toolCalls.openParentSession")}
-              </button>
-            ) : null}
-          </div>
-        ) : (
-          <ChatComposer
-            {...composerProps}
-            isRunning={isRunning}
-            ref={composerRef}
-            contextChips={composerContextChips}
-            variant="pill"
-            {...(chatComposer
-              ? {
-                  mode: "chat" as const,
-                  controls: chatComposer.controls,
-                  footerTrailing: chatComposer.footerTrailing,
-                }
-              : {
-                  footerLeading: (
-                    <SessionWorkspaceFooterLabel workspace={workspace} />
-                  ),
-                  footerTrailing: (
-                    <SessionBranchFooterLabel branch={activeBranch} />
-                  ),
-                })}
-          />
-        )}
-      </div>
-    </div>
+      ) : (
+        <ChatComposer
+          {...composerProps}
+          isRunning={isRunning}
+          ref={composerRef}
+          contextChips={composerContextChips}
+          variant="pill"
+          {...(chatComposer
+            ? {
+                mode: "chat" as const,
+                controls: chatComposer.controls,
+                footerTrailing: chatComposer.footerTrailing,
+              }
+            : {
+                footerLeading: (
+                  <SessionWorkspaceFooterLabel workspace={workspace} />
+                ),
+                footerTrailing: (
+                  <SessionBranchFooterLabel branch={activeBranch} />
+                ),
+              })}
+        />
+      )}
+    </ComposerDockFrame>
   );
 }

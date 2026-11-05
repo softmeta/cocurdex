@@ -1,42 +1,7 @@
-import { type Brief, briefDue, briefEntryAfterAway } from "@cocurdex/shared";
-import { useSyncExternalStore } from "react";
+import { type Brief, briefEntryAfterAway } from "@cocurdex/shared";
 
-interface BriefPresenceState {
-  entryPending: boolean;
-  presenting: boolean;
-}
-
-const SHOWN_STORAGE_KEY = "cocurdex.brief.shownUpdatedAt";
-
-let state: BriefPresenceState = {
-  entryPending: true,
-  presenting: false,
-};
-let shownFallback: string | null = null;
-
-function readShown() {
-  try {
-    return window.localStorage.getItem(SHOWN_STORAGE_KEY) ?? shownFallback;
-  } catch {
-    return shownFallback;
-  }
-}
-
-function writeShown(updatedAt: string) {
-  shownFallback = updatedAt;
-  try {
-    window.localStorage.setItem(SHOWN_STORAGE_KEY, updatedAt);
-  } catch {
-    return;
-  }
-}
+let entryPending = true;
 let leftAt: number | null = null;
-const listeners = new Set<() => void>();
-
-function publish(next: BriefPresenceState) {
-  state = next;
-  for (const listener of listeners) listener();
-}
 
 function leave() {
   leftAt ??= Date.now();
@@ -46,9 +11,7 @@ function comeBack() {
   if (leftAt === null) return;
   const awayMs = Date.now() - leftAt;
   leftAt = null;
-  if (briefEntryAfterAway(awayMs) && !state.entryPending) {
-    publish({ ...state, entryPending: true });
-  }
+  if (briefEntryAfterAway(awayMs)) entryPending = true;
 }
 
 if (typeof window !== "undefined") {
@@ -60,25 +23,11 @@ if (typeof window !== "undefined") {
   });
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-export function considerBriefOnEntry(brief: Brief | null) {
-  if (!state.entryPending) return;
-  publish({
-    ...state,
-    entryPending: false,
-    presenting: briefDue(brief, readShown()),
-  });
-}
-
-export function markBriefShown(updatedAt: string) {
-  writeShown(updatedAt);
-  publish({ ...state, presenting: false });
-}
-
-export function useBriefPresenting() {
-  return useSyncExternalStore(subscribe, () => state.presenting);
+export function deliverBriefOnEntry(
+  brief: Brief | null,
+  deliver: (brief: Brief) => void,
+) {
+  if (!entryPending) return;
+  entryPending = false;
+  if (brief) deliver(brief);
 }

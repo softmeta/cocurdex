@@ -6,6 +6,7 @@ import type {
   AgentPlanApprovalRecord,
   AgentProviderSnapshot,
   AgentQuestionRequestRecord,
+  AgentRoleRecord,
   AgentThinkingLevel,
   AgentToolCallRecord,
   MessageAttachment,
@@ -31,6 +32,9 @@ export interface ChatComposerOverride {
 
 export interface ChatViewProps {
   chatComposer?: ChatComposerOverride;
+  composerRole?: AgentRoleRecord | null;
+  composerPlaceholder?: string;
+  emptyState?: ReactNode;
   messages: MessageRecord[];
   permissionRequests?: AgentPermissionRequestRecord[];
   questions?: AgentQuestionRequestRecord[];

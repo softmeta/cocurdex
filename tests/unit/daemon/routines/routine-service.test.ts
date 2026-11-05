@@ -32,17 +32,26 @@ function reply(content: string): SessionTurnOutcome {
   };
 }
 
-function harness(outcomes: SessionTurnOutcome[] = []) {
+function harness(
+  outcomes: SessionTurnOutcome[] | Record<string, SessionTurnOutcome> = [],
+) {
   const repository = createSqliteRoutineRepository(seededDatabase());
   let clock = new Date("2026-11-05T09:00:00Z");
   const prompts: string[] = [];
+  const delivered: { routine: string; run: string; content: string }[] = [];
   const service = new RoutineService({
     repository,
     personaExists: async (id) => id === "coach",
     ensureSession: async () => "routine-session",
     runTurn: async (routine) => {
       prompts.push(routine.prompt);
-      return outcomes.shift() ?? reply("All clear");
+      const outcome = Array.isArray(outcomes)
+        ? outcomes.shift()
+        : outcomes[routine.prompt];
+      return outcome ?? reply("All clear");
+    },
+    deliverResult: async (routine, run, content) => {
+      delivered.push({ routine: routine.name, run: run.id, content });
     },
     announceChanged: () => {},
     now: () => clock,
@@ -57,7 +66,7 @@ function harness(outcomes: SessionTurnOutcome[] = []) {
       .listRuns(null, 200)
       .filter((run) => run.status !== "running" && run.status !== "skipped")
       .reverse();
-  return { service, repository, prompts, finished, advance };
+  return { service, repository, prompts, delivered, finished, advance };
 }
 
 describe("RoutineService", () => {
@@ -87,6 +96,38 @@ describe("RoutineService", () => {
       nextRunAt: "2026-11-05T11:00:00.000Z",
       sessionId: "routine-session",
     });
+  });
+
+  it("delivers each reply to the home thread unless the routine is silent", async () => {
+    const { service, delivered, finished, advance } = harness({
+      Morning: reply("  Two meetings today.  "),
+      Broken: { status: "failed", error: "boom" },
+      Silent: reply("Quiet one"),
+    });
+    const create = (name: string, deliver: "inbox" | "silent") =>
+      service.create({
+        agentId: "coach",
+        name,
+        prompt: name,
+        schedule: { kind: "interval", minutes: 60 },
+        timeZone: "UTC",
+        deliver,
+      });
+    const morning = await create("Morning", "inbox");
+    await create("Broken", "inbox");
+    await create("Silent", "silent");
+
+    await advance(60 * MINUTE);
+
+    expect(finished()).toHaveLength(3);
+    const morningRun = finished().find((run) => run.routineId === morning.id);
+    expect(delivered).toEqual([
+      {
+        routine: "Morning",
+        run: morningRun?.id,
+        content: "Two meetings today.",
+      },
+    ]);
   });
 
   it("runs once to catch up after the machine slept through several runs", async () => {
