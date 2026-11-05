@@ -5,6 +5,7 @@ export {
 export { registerHistoryTools } from "./groups/history";
 export { registerMemoryTools } from "./groups/memory";
 export { registerMessagingTools } from "./groups/messaging";
+export { registerRoutineTools } from "./groups/routines";
 export { registerScriptRunTools } from "./groups/script-run";
 export {
   registerSettingsTools,

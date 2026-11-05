@@ -50,6 +50,7 @@ import {
 } from "./parse-args";
 import { handlePersonaCommand, personaUsageLines } from "./persona-commands";
 import { handleProviderCommand, providerUsageLines } from "./provider-commands";
+import { handleRoutineCommand, routineUsageLines } from "./routine-commands";
 import {
   handleScriptRunCommand,
   scriptRunUsageLines,
@@ -156,6 +157,13 @@ async function main(rawArgs: string[]) {
 
   if (resource === "persona") {
     const handled = await handlePersonaCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "routine") {
+    const handled = await handleRoutineCommand(action, args, parsed);
     if (handled) {
       return;
     }
@@ -615,6 +623,7 @@ function printUsage() {
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
       "  cocurdex session stop <session-id>",
       ...personaUsageLines(),
+      ...routineUsageLines(),
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
       ...providerUsageLines(),

@@ -8,6 +8,7 @@ export const agentToolGroupIds = [
   "team",
   "script_run",
   "memory",
+  "routine",
   "notes",
   "issues",
   "settings",

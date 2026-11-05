@@ -106,6 +106,7 @@ import {
   registerHistoryTools,
   registerMemoryTools,
   registerMessagingTools,
+  registerRoutineTools,
   registerScriptRunTools,
   registerSettingsTools,
   registerTeamTools,
@@ -614,6 +615,21 @@ export class CocurdexDaemonService {
       createId: () => crypto.randomUUID(),
     });
     registerScriptRunTools(this.agentTools.registry, this.scriptRuns);
+    registerRoutineTools(this.agentTools.registry, {
+      personaOf: async (sessionId) => {
+        const session = await this.state.getSession(sessionId);
+        return session
+          ? (this.personalAgents.personaForSession(session)?.id ?? null)
+          : null;
+      },
+      list: (agentId) => this.routines.list(agentId),
+      get: (id) => this.routines.get(id),
+      create: (payload) => this.routines.create(payload),
+      update: (payload) => this.routines.update(payload),
+      delete: (id) => this.routines.delete(id),
+      run: (id) => this.routines.runNow(id).run,
+      runs: (routineId, limit) => this.routines.runs(routineId, limit),
+    });
     registerSettingsTools(this.agentTools.registry, {
       getWorktreeEnvironment: (workspaceId) =>
         this.getWorktreeEnvironment(workspaceId),

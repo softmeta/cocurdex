@@ -130,10 +130,14 @@ function listPersonas() {
   return requestDaemon("personalAgent.list");
 }
 
+export async function findPersonaByRef(ref: string) {
+  return resolvePersona(await listPersonas(), ref);
+}
+
 async function findPersona(args: string[], usage: string) {
   const ref = args[0];
   if (!ref) throw new Error(`Usage: ${usage}`);
-  return resolvePersona(await listPersonas(), ref);
+  return findPersonaByRef(ref);
 }
 
 function responsesAfter(messages: readonly MessageRecord[], messageId: string) {

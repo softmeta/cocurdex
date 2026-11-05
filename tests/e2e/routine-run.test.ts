@@ -1,131 +1,166 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
-import type { PersonalAgentRecord, RoutineRunRecord } from "@cocurdex/shared";
-import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import type {
+  PersonalAgentRecord,
+  RoutineRecord,
+  RoutineRunRecord,
+} from "@cocurdex/shared";
 import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
 import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
-import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
-import { afterAll, describe, expect, it } from "vitest";
+import {
+  type StubLlmRequest,
+  startStubLlmServer,
+} from "@cocurdex/test-harness/helpers/llm-stub";
+import { describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
 
-const tempDirs = createTempDirs();
+function toolResults(request: StubLlmRequest | undefined) {
+  const messages = (request?.body.messages ?? []) as {
+    role: string;
+    content: unknown;
+  }[];
+  return messages
+    .filter((message) => message.role === "tool")
+    .map((message) =>
+      typeof message.content === "string"
+        ? message.content
+        : JSON.stringify(message.content),
+    );
+}
 
-async function waitForRun(
-  read: () => Promise<RoutineRunRecord[]>,
-  done: (runs: RoutineRunRecord[]) => boolean,
-) {
-  const deadline = Date.now() + 20_000;
-  for (;;) {
-    const runs = await read();
-    if (done(runs)) return runs;
-    if (Date.now() > deadline) {
-      throw new Error(`Routine run did not finish: ${JSON.stringify(runs)}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+async function setUp() {
+  const stub = await startStubLlmServer();
+  const daemon = await spawnDaemon();
+  await saveStubProvider(daemon, stub);
+  const now = new Date().toISOString();
+  await requestDaemon(
+    "provider.model.save",
+    {
+      model: {
+        providerId: "e2e-stub",
+        modelId: "e2e-agent-model",
+        name: "E2E Agent Model",
+        api: "openai-completions",
+        enabled: true,
+        source: "manual",
+        capabilities: ["chat", "agent"],
+        createdAt: now,
+        updatedAt: now,
+      },
+    },
+    daemon.options,
+  );
+  const cli = async <T>(args: string[]) => {
+    const result = await runCli([...args, "--json"], {
+      userDataPath: daemon.userDataPath,
+    });
+    expect(result.stderr).toBe("");
+    expect(result.code).toBe(0);
+    return JSON.parse(result.stdout) as T;
+  };
+  const coach = await cli<PersonalAgentRecord>([
+    "persona",
+    "create",
+    "--name",
+    "Coach",
+    "--agent",
+    "pi",
+    "--provider",
+    "e2e-stub",
+    "--model",
+    "e2e-agent-model",
+  ]);
+  return {
+    stub,
+    daemon,
+    cli,
+    coach,
+    async dispose() {
+      await daemon.dispose();
+      await stub.close();
+    },
+  };
 }
 
 describe("routines", () => {
-  afterAll(async () => {
-    await tempDirs.cleanup();
-  });
-
-  it("runs a routine in its own persona thread and cleans up with the persona", async () => {
-    const stub = await startStubLlmServer();
-    const daemon = await spawnDaemon();
+  it("runs a routine from the CLI in its own thread and cleans up with the persona", async () => {
+    const { stub, daemon, cli, coach, dispose } = await setUp();
     try {
-      await saveStubProvider(daemon, stub);
-      const now = new Date().toISOString();
-      await requestDaemon(
-        "provider.model.save",
-        {
-          model: {
-            providerId: "e2e-stub",
-            modelId: "e2e-agent-model",
-            name: "E2E Agent Model",
-            api: "openai-completions",
-            enabled: true,
-            source: "manual",
-            capabilities: ["chat", "agent"],
-            createdAt: now,
-            updatedAt: now,
-          },
-        },
-        daemon.options,
-      );
-      const created = await runCli(
-        [
-          "persona",
-          "create",
-          "--name",
-          "Coach",
-          "--agent",
-          "pi",
-          "--provider",
-          "e2e-stub",
-          "--model",
-          "e2e-agent-model",
-          "--json",
-        ],
-        { userDataPath: daemon.userDataPath },
-      );
-      expect(created.code).toBe(0);
-      const coach = JSON.parse(created.stdout) as PersonalAgentRecord;
-
-      const routine = await requestDaemon(
-        "routine.create",
-        {
-          agentId: coach.id,
-          name: "Morning check",
-          prompt: "Summarize my day",
-          schedule: { kind: "daily", time: "08:00", weekdays: null },
-          timeZone: "UTC",
-        },
-        daemon.options,
-      );
+      const routine = await cli<RoutineRecord>([
+        "routine",
+        "create",
+        "--persona",
+        "Coach",
+        "--name",
+        "Morning check",
+        "--prompt",
+        "Summarize my day",
+        "--at",
+        "08:00",
+        "--days",
+        "weekdays",
+        "--tz",
+        "UTC",
+      ]);
       expect(routine).toMatchObject({
+        agentId: coach.id,
+        schedule: { kind: "daily", time: "08:00", weekdays: [1, 2, 3, 4, 5] },
         access: "read-and-draft",
         deliver: "inbox",
-        pausedReason: null,
       });
 
-      stub.plan = { kind: "stream", chunks: ["Three meetings", " today"] };
-      const started = await requestDaemon(
-        "routine.run",
-        { id: routine.id },
-        daemon.options,
-      );
-      expect(started).toMatchObject({ trigger: "manual", status: "running" });
+      const paused = await cli<RoutineRecord>([
+        "routine",
+        "pause",
+        "Morning check",
+      ]);
+      expect(paused.pausedReason).toBe("user");
+      const resumed = await cli<RoutineRecord>([
+        "routine",
+        "update",
+        routine.id,
+        "--every",
+        "90",
+        "--deliver",
+        "push",
+      ]);
+      expect(resumed).toMatchObject({
+        schedule: { kind: "interval", minutes: 90 },
+        deliver: "push",
+        pausedReason: "user",
+      });
+      await cli(["routine", "resume", routine.id]);
 
-      const runs = await waitForRun(
-        () =>
-          requestDaemon(
-            "routine.runs",
-            { routineId: routine.id },
-            daemon.options,
-          ),
-        (list) => list[0]?.status !== "running",
-      );
-      expect(runs[0]).toMatchObject({
+      stub.plan = { kind: "stream", chunks: ["Three meetings", " today"] };
+      const run = await cli<RoutineRunRecord>([
+        "routine",
+        "run",
+        "Morning check",
+        "--wait",
+      ]);
+      expect(run).toMatchObject({
+        trigger: "manual",
         status: "succeeded",
         summary: "Three meetings today",
       });
-      const sessionId = runs[0].sessionId;
-      expect(sessionId).not.toBeNull();
-      expect(sessionId).not.toBe(coach.homeSessionId);
+      expect(run.sessionId).not.toBe(coach.homeSessionId);
+      const runs = await cli<RoutineRunRecord[]>([
+        "routine",
+        "runs",
+        "Morning check",
+      ]);
+      expect(runs.map((entry) => entry.id)).toEqual([run.id]);
 
-      const session = await requestDaemon(
-        "session.get",
-        { sessionId: sessionId as string },
-        daemon.options,
-      );
-      expect(session).toMatchObject({
+      const sessionId = run.sessionId as string;
+      expect(
+        await requestDaemon("session.get", { sessionId }, daemon.options),
+      ).toMatchObject({
         sessionKind: "personal",
         agentRoleId: coach.role.id,
         title: "Morning check",
       });
       const { messages } = await requestDaemon(
         "session.listMessages",
-        { sessionId: sessionId as string },
+        { sessionId },
         daemon.options,
       );
       expect(messages.find((message) => message.role === "user")).toMatchObject(
@@ -139,24 +174,89 @@ describe("routines", () => {
         },
       );
 
-      await requestDaemon(
-        "personalAgent.delete",
-        { id: coach.id },
-        daemon.options,
-      );
-      expect(await requestDaemon("routine.list", {}, daemon.options)).toEqual(
-        [],
-      );
+      await cli(["persona", "delete", coach.id]);
+      expect(await cli(["routine", "list"])).toEqual([]);
       expect(
-        await requestDaemon(
-          "session.get",
-          { sessionId: sessionId as string },
-          daemon.options,
-        ),
+        await requestDaemon("session.get", { sessionId }, daemon.options),
       ).toBeNull();
     } finally {
-      await daemon.dispose();
-      await stub.close();
+      await dispose();
+    }
+  });
+
+  it("lets an assistant schedule its own routines but not touch full-access ones", async () => {
+    const { stub, cli, coach, dispose } = await setUp();
+    try {
+      const guarded = await cli<RoutineRecord>([
+        "routine",
+        "create",
+        "--persona",
+        coach.id,
+        "--name",
+        "Deploy",
+        "--prompt",
+        "Ship the release",
+        "--every",
+        "60",
+        "--access",
+        "full",
+      ]);
+      stub.plan = {
+        kind: "script",
+        turns: [
+          {
+            toolCalls: [
+              {
+                name: "routine_create",
+                arguments: {
+                  name: "Weekly review",
+                  prompt: "Review my week",
+                  schedule: { kind: "daily", time: "18:00", weekdays: [5] },
+                  timeZone: "Asia/Shanghai",
+                },
+              },
+              {
+                name: "routine_update",
+                arguments: { id: guarded.id, prompt: "Delete everything" },
+              },
+            ],
+          },
+          { text: ["Scheduled"] },
+        ],
+      };
+      await cli([
+        "persona",
+        "send",
+        coach.id,
+        "Review my week every Friday evening",
+        "--wait",
+      ]);
+
+      const routines = await cli<RoutineRecord[]>([
+        "routine",
+        "list",
+        "--persona",
+        coach.id,
+      ]);
+      expect(routines).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "Weekly review",
+            agentId: coach.id,
+            access: "read-and-draft",
+            timeZone: "Asia/Shanghai",
+          }),
+          expect.objectContaining({
+            id: guarded.id,
+            prompt: "Ship the release",
+          }),
+        ]),
+      );
+      expect(toolResults(stub.requests[1]).join("\n")).toContain(
+        "Only the user can change or run a routine with full access",
+      );
+    } finally {
+      await dispose();
     }
   });
 });

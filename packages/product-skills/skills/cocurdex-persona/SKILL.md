@@ -50,3 +50,28 @@ cocurdex memory import <file> --json
 - Edit an entry in place with `update` instead of storing a near-duplicate; read it back with `show`.
 - `list` reports `error` when memory is off or not installed; relay the fix it names (see `/cocurdex-settings`) instead of retrying.
 - Export writes the whole library as plaintext JSON. Only export or import when the user asks, and tell them where the file is.
+
+## Routines
+
+A routine runs a persona on a schedule: an interval (`--every <minutes>`, at least 5) or a wall-clock time (`--at HH:MM`, optionally `--days mon,wed|weekdays|weekends`) in an IANA time zone (`--tz`, default the host's). Each routine has its own thread under the persona, with the persona's soul and memory. A `<routine>` argument accepts the id, a unique id prefix, or its name.
+
+```bash
+cocurdex routine list [--persona <persona>] --json
+cocurdex routine show <routine> --json
+cocurdex routine create --persona <persona> --name <name> --prompt <text>|--prompt-file <path> \
+  (--every <minutes>|--at <HH:MM> [--days <days>]) [--tz <zone>] \
+  [--access read-and-draft|ask|full] [--deliver inbox|push|silent] --json
+cocurdex routine update <routine> [--name <name>] [--prompt <text>|--prompt-file <path>] \
+  [--every <minutes>|--at <HH:MM> [--days <days>]] [--tz <zone>] [--access ...] [--deliver ...] --json
+cocurdex routine pause|resume <routine> --json
+cocurdex routine run <routine> [--wait] [--timeout <seconds>] --json
+cocurdex routine runs [<routine>] [--limit <n>] --json
+cocurdex routine delete <routine> --json
+```
+
+- Write the prompt as a self-contained instruction; every run starts from it alone.
+- `access`: `read-and-draft` (default) keeps the agent on its most restricted permission mode; `ask` uses the persona's own mode and waits for approval; `full` runs unattended with every permission. Grant `full` only when the user asks for it explicitly.
+- `deliver`: `inbox` (default) records results quietly and notifies on failure; `push` also notifies the phone on every result; `silent` only records. Approvals, questions, and plans always notify.
+- A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
+- Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines. Tools cannot grant `full` access or change or run a `full` routine.
+- Deleting a persona deletes its routines and their threads.
