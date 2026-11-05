@@ -17,9 +17,11 @@ import {
 } from "@/features/chat";
 import {
   applyRefinedSessionTitleAtom,
+  beginSessionSendAtom,
   bindFocusedPaneContentAtom,
   bindPaneContentAtom,
   markSessionMessageAtom,
+  settleSessionSendAtom,
   updateSessionStatusAtom,
   upsertSessionAtom,
 } from "@/features/sessions";
@@ -52,6 +54,8 @@ export function useChatSessionActions(paneId?: string) {
   const appendMessage = useSetAtom(appendMessageAtom);
   const markSessionMessage = useSetAtom(markSessionMessageAtom);
   const updateSessionStatus = useSetAtom(updateSessionStatusAtom);
+  const beginSessionSend = useSetAtom(beginSessionSendAtom);
+  const settleSessionSend = useSetAtom(settleSessionSendAtom);
   const applyRefinedSessionTitle = useSetAtom(applyRefinedSessionTitleAtom);
 
   const reportFailure = (sessionId: string, error: unknown) => {
@@ -67,7 +71,7 @@ export function useChatSessionActions(paneId?: string) {
   };
 
   const showOptimisticTurn = (message: MessageRecord) => {
-    updateSessionStatus({ sessionId: message.sessionId, status: "running" });
+    beginSessionSend(message.sessionId);
     appendMessage(message);
     markSessionMessage({
       sessionId: message.sessionId,
@@ -133,6 +137,8 @@ export function useChatSessionActions(paneId?: string) {
       refineTitle(session, payload.text);
     } catch (error) {
       reportFailure(session.id, error);
+    } finally {
+      settleSessionSend(session.id);
     }
   };
 
@@ -155,6 +161,8 @@ export function useChatSessionActions(paneId?: string) {
       });
     } catch (error) {
       reportFailure(session.id, error);
+    } finally {
+      settleSessionSend(session.id);
     }
   };
 
