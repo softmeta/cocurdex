@@ -88,7 +88,6 @@ Markdown is an explicit import/export format, never a second writable store.
 | `apps/cli` | `cocurdex` CLI |
 | `packages/daemon` | Local daemon (owns SQLite and agent runtimes) |
 | `packages/rpc` | Desktop/CLI ↔ daemon contract (internal; no compatibility promise yet) |
-| `apps/console` | Team console (early) |
 | `apps/api` | Team HTTP API (early; self-hosting comes later) |
 
 The desktop works without `apps/api`. Team sync and a self-hosted control plane

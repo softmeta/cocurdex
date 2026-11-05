@@ -61,8 +61,6 @@ allowBuilds:
   node-pty: true
   protobufjs: false
   react-native-enriched-markdown: true
-  # next/image optimization (apps/console)
-  sharp: true
 patchedDependencies:
   '@earendil-works/pi-coding-agent@1.5.0': patches/@earendil-works__pi-coding-agent@1.5.0.patch
   '@expo/ui@58.0.22': patches/@expo__ui@58.0.22.patch

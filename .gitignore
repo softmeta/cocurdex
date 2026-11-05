@@ -10,7 +10,6 @@ dist/
 build/
 out/
 .next/
-apps/console/.next/
 apps/desktop/release/
 *.p12
 AuthKey_*.p8

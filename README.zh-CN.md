@@ -80,7 +80,6 @@ pnpm --filter @cocurdex/desktop dev
 | `apps/cli` | `cocurdex` CLI |
 | `packages/daemon` | 本地守护进程（持有 SQLite 和智能体运行时） |
 | `packages/rpc` | 桌面端/CLI ↔ 守护进程的契约（内部接口，暂不承诺兼容性） |
-| `apps/console` | 团队控制台（早期） |
 | `apps/api` | 团队 HTTP API（早期；自托管后续推出） |
 
 桌面端不依赖 `apps/api` 即可运行。团队同步和自托管控制面在规划中，
