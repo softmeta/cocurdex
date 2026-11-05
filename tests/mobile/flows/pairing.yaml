@@ -74,9 +74,19 @@ appId: dev.cocurdex.mobile
             id: "pairing-link"
           timeout: 30000
 - extendedWaitUntil:
-    visible: ${WORKSPACE_NAME}
+    visible:
+      id: "assistant-section-agents"
     timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}
+- assertVisible: ${TAB_ASSISTANT}
+- takeScreenshot: assistant
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${TAB_SESSIONS}
+      - extendedWaitUntil:
+          visible: ${WORKSPACE_NAME}
+          timeout: 30000
 - takeScreenshot: sessions
 - retry:
     maxRetries: 2

@@ -47,6 +47,7 @@
   },
   "screens": {
     "archived": "Archived Sessions",
+    "assistant": "Assistant",
     "computers": "Computers",
     "editIssue": "Edit Issue",
     "fontSize": "Text Size",
@@ -61,6 +62,7 @@
     "settings": "Settings"
   },
   "tabs": {
+    "assistant": "Assistant",
     "issues": "Issues",
     "notes": "Notes",
     "sessions": "Sessions",

@@ -6,6 +6,7 @@ import {
   centerOf,
   clickByRole,
   clickPoint,
+  queryAllByRole,
   waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
@@ -32,6 +33,14 @@ function rowName(name) {
 
 async function personas(session) {
   return daemonRequest(session, "personalAgent.list");
+}
+
+async function composerQuery(session) {
+  return {
+    role: "textbox",
+    name: await translate(session, "sessions:composer.sendFollowUpCompact"),
+    exact: false,
+  };
 }
 
 async function typeInto(session, field, text) {
@@ -112,7 +121,7 @@ runScenario("personal-agents", {
           { role: "button", name: rowName(defaultName) },
           UI_TIMEOUT_MS,
         );
-        await waitForRole(session, { role: "textbox" }, UI_TIMEOUT_MS);
+        await waitForRole(session, await composerQuery(session), UI_TIMEOUT_MS);
         const selected = await session.run(
           (id) =>
             document
@@ -133,24 +142,47 @@ runScenario("personal-agents", {
           kind: "stream",
           chunks: ["Ten push-ups,", " then stretch."],
         };
-        const [composer] = await waitForRole(session, { role: "textbox" });
+        const [composer] = await waitForRole(
+          session,
+          await composerQuery(session),
+        );
         await typeInto(session, composer, "Plan my workout");
         await clickByRole(session, {
           role: "button",
           name: await translate(session, "common:actions.send"),
         });
-        await session.waitUntil(
-          (reply) =>
-            [...document.querySelectorAll("article")].some((node) =>
-              node.textContent.includes(reply),
-            ),
-          REPLY,
-          UI_TIMEOUT_MS,
-        );
+        const shown = await session
+          .waitUntil(
+            (reply) =>
+              [...document.querySelectorAll("article")].some((node) =>
+                node.textContent.includes(reply),
+              ),
+            REPLY,
+            UI_TIMEOUT_MS,
+          )
+          .then(
+            () => true,
+            () => false,
+          );
         const snapshot = await daemonRequest(session, "session.snapshot", {
           sessionId: homeSessionId,
         });
         const contents = snapshot.messages.map((message) => message.content);
+        check(shown, "the reply shows in the home thread", {
+          model: snapshot.session.providerSnapshot,
+          run: snapshot.activeRun,
+          stubRequests: stub.requests.length,
+          textboxes: (await queryAllByRole(session, { role: "textbox" })).map(
+            (box) => box.name,
+          ),
+          focused: await session.run(
+            () => document.activeElement?.outerHTML.slice(0, 300) ?? null,
+          ),
+          messages: snapshot.messages.map(({ role, content }) => ({
+            role,
+            content: content.slice(0, 200),
+          })),
+        });
         check(
           contents.includes("Plan my workout") && contents.includes(REPLY),
           "the exchange is stored in the assistant's home thread",

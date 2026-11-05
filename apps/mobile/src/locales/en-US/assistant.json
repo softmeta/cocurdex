@@ -1,0 +1,30 @@
+{
+  "agents": {
+    "title": "Assistants"
+  },
+  "brief": {
+    "title": "Today"
+  },
+  "defaultName": "Assistant",
+  "empty": {
+    "description": "Create an assistant on {{host}} to see it here.",
+    "title": "No assistants yet"
+  },
+  "inbox": {
+    "kind": {
+      "approval": "Needs approval",
+      "completed": "Finished",
+      "failed": "Run failed",
+      "plan": "Plan to review",
+      "question": "Has a question",
+      "routineFailed": "Routine failed",
+      "routinePaused": "Routine paused",
+      "routineResult": "New result"
+    },
+    "title": "Inbox"
+  },
+  "unavailable": {
+    "retry": "Try Again",
+    "title": "Can't reach {{host}}"
+  }
+}

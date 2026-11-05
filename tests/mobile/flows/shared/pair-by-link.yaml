@@ -54,5 +54,13 @@ appId: dev.cocurdex.mobile
           commands:
             - tapOn: ${PAIR_ACTION}
       - extendedWaitUntil:
-          visible: ${WORKSPACE_NAME}
+          visible:
+            id: "assistant-section-agents"
           timeout: 15000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: ${TAB_SESSIONS}
+      - extendedWaitUntil:
+          visible: ${WORKSPACE_NAME}
+          timeout: 30000

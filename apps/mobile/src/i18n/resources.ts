@@ -1,3 +1,4 @@
+import assistantEnUs from "../locales/en-US/assistant.json";
 import commonEnUs from "../locales/en-US/common.json";
 import filesEnUs from "../locales/en-US/files.json";
 import hostsEnUs from "../locales/en-US/hosts.json";
@@ -5,6 +6,7 @@ import issuesEnUs from "../locales/en-US/issues.json";
 import notesEnUs from "../locales/en-US/notes.json";
 import sessionsEnUs from "../locales/en-US/sessions.json";
 import settingsEnUs from "../locales/en-US/settings.json";
+import assistantZhCn from "../locales/zh-CN/assistant.json";
 import commonZhCn from "../locales/zh-CN/common.json";
 import filesZhCn from "../locales/zh-CN/files.json";
 import hostsZhCn from "../locales/zh-CN/hosts.json";
@@ -15,6 +17,7 @@ import settingsZhCn from "../locales/zh-CN/settings.json";
 
 export const resources = {
   "en-US": {
+    assistant: assistantEnUs,
     common: commonEnUs,
     files: filesEnUs,
     hosts: hostsEnUs,
@@ -24,6 +27,7 @@ export const resources = {
     settings: settingsEnUs,
   },
   "zh-CN": {
+    assistant: assistantZhCn,
     common: commonZhCn,
     files: filesZhCn,
     hosts: hostsZhCn,
