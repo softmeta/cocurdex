@@ -284,9 +284,15 @@ export function ViewSwitcherTabs({
         }}
       >
         {leading ? (
-          <div className="app-no-drag flex h-full shrink-0 items-center gap-1 ps-2">
-            {leading}
-          </div>
+          <>
+            <div className="app-no-drag flex h-full shrink-0 items-center gap-1 px-2">
+              {leading}
+            </div>
+            <Separator
+              orientation="vertical"
+              className="h-4 bg-editor-border data-[orientation=vertical]:self-center"
+            />
+          </>
         ) : null}
         <ToggleGroup
           // Non-zero spacing avoids the connected segmented styles (rounded-none
