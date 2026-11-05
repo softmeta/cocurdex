@@ -3,6 +3,8 @@ import {
   CHAT_AGENT_ID,
   isChatSession,
   isChatWorkspaceId,
+  isPersonalSession,
+  isPersonalWorkspaceId,
   validateSessionConfiguration,
 } from "@cocurdex/shared";
 
@@ -16,6 +18,18 @@ function assertChatSessionShape(session: SessionRecord) {
     throw new Error("Chat sessions must use the Pi agent");
   if (session.worktreePath)
     throw new Error("Chat sessions cannot use a worktree");
+}
+
+function assertPersonalSessionShape(session: SessionRecord) {
+  const personal = isPersonalSession(session);
+  if (personal !== isPersonalWorkspaceId(session.workspaceId)) {
+    throw new Error("Personal sessions must live in the personal workspace");
+  }
+  if (!personal) return;
+  if (!session.agentRoleId)
+    throw new Error("Personal sessions must belong to a personal agent");
+  if (session.worktreePath)
+    throw new Error("Personal sessions cannot use a worktree");
 }
 
 export function applySessionConfiguration(
@@ -45,5 +59,6 @@ export function applySessionConfiguration(
     updatedAt: now,
   };
   assertChatSessionShape(session);
+  assertPersonalSessionShape(session);
   return session;
 }

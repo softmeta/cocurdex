@@ -275,6 +275,7 @@ export class DaemonState {
       entityLinks: this.database.entityLinks,
       issues: this.database.issues,
       notes: this.database.notes,
+      personalAgents: this.database.personalAgents,
       search: this.database.search,
     };
   }

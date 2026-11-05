@@ -39,6 +39,7 @@ import type {
   CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
+  CreatePersonalAgentPayload,
   CreateScriptRunPayload,
   CreateSessionPayload,
   CreateTeamPayload,
@@ -60,8 +61,10 @@ import type {
   DiagnosticsExportResult,
   DocImage,
   DocImageFile,
+  DuplicatePersonalAgentPayload,
   EditDeckPayload,
   EditorViewRecord,
+  EnsureDefaultPersonalAgentPayload,
   EntityLink,
   EntityLinkCandidate,
   EntityLinkPayload,
@@ -146,6 +149,7 @@ import type {
   PeerInboundPolicy,
   PeerSessionSummary,
   PendingSettingsChangeRecord,
+  PersonalAgentRecord,
   PiModelsJson,
   PptxOutline,
   ProductSkillDetail,
@@ -239,6 +243,7 @@ import type {
   UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
+  UpdatePersonalAgentPayload,
   UpdateSessionAttentionPayload,
   UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
@@ -736,6 +741,12 @@ export type DaemonRequestPayloadByMethod = {
   "agentRole.get": { id: string };
   "agentRole.save": SaveAgentRolePayload;
   "agentRole.delete": { id: string };
+  "personalAgent.list": undefined;
+  "personalAgent.ensureDefault": EnsureDefaultPersonalAgentPayload;
+  "personalAgent.create": CreatePersonalAgentPayload;
+  "personalAgent.update": UpdatePersonalAgentPayload;
+  "personalAgent.duplicate": DuplicatePersonalAgentPayload;
+  "personalAgent.delete": { id: string };
   "host.identity": undefined;
   "host.session": undefined;
   "host.remoteAccess.get": undefined;
@@ -1053,6 +1064,12 @@ export type DaemonResultByMethod = {
   "agentRole.get": AgentRoleRecord | null;
   "agentRole.save": AgentRoleRecord;
   "agentRole.delete": null;
+  "personalAgent.list": PersonalAgentRecord[];
+  "personalAgent.ensureDefault": PersonalAgentRecord;
+  "personalAgent.create": PersonalAgentRecord;
+  "personalAgent.update": PersonalAgentRecord;
+  "personalAgent.duplicate": PersonalAgentRecord;
+  "personalAgent.delete": null;
   "host.identity": HostIdentity;
   "host.session": HostAccessSession;
   "host.remoteAccess.get": HostRemoteAccessStatus;
@@ -1135,6 +1152,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "provider.listDefaults": true,
   "provider.exportJson": true,
   "agentRole.list": true,
+  "personalAgent.list": true,
   "session.list": true,
   "session.listArchived": true,
   "settings.pendingChanges.list": true,

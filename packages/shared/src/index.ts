@@ -63,6 +63,7 @@ export {
   type PermissionRequestDisplay,
   type PermissionRequestSummary,
 } from "./permission-request-display";
+export * from "./personal-agent";
 export * from "./provider-compatibility";
 export * from "./provider-json";
 export * from "./provider-model-override";

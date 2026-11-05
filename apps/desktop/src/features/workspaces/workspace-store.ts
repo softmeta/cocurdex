@@ -1,6 +1,6 @@
 import type { GitWorktreeInfo, WorkspaceRecord } from "@cocurdex/shared";
 import {
-  isChatWorkspaceId,
+  isFormWorkspaceId,
   normalizeWorkspaceRootPath,
   normalizeWorkspaceRootPaths,
   workspacePathsEqual,
@@ -37,7 +37,7 @@ function workspaceNameFromPath(rootPath: string): string {
 export const workspacesAtom = atom<WorkspaceRecord[]>([]);
 
 export function withoutChatWorkspace(workspaces: WorkspaceRecord[]) {
-  return workspaces.filter((workspace) => !isChatWorkspaceId(workspace.id));
+  return workspaces.filter((workspace) => !isFormWorkspaceId(workspace.id));
 }
 export const activeWorkspaceIdAtom = atom<string | null>(null);
 // The most recent workspace the user actually selected. Unlike

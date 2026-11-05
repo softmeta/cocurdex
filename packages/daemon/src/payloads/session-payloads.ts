@@ -38,7 +38,7 @@ const runIdPayload = z.object({ runId: idSchema });
 
 const maxAgentsSchema = z.number().int().min(1).max(SCRIPT_RUN_HARD_MAX_AGENTS);
 
-const agentRoleAvatarSchema = z.discriminatedUnion("kind", [
+export const agentRoleAvatarSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("emoji"),
     emoji: z.string().min(1).max(32),

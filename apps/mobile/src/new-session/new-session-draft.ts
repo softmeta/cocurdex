@@ -2,7 +2,7 @@ import {
   type AgentDescriptor,
   type AgentId,
   type AgentPermissionMode,
-  isChatWorkspaceId,
+  isFormWorkspaceId,
   type SessionRecord,
   type SessionRuntimeSelection,
   type WorkspaceRecord,
@@ -124,7 +124,7 @@ export function workspaceChoices(
     });
   }
   return workspaces
-    .filter((workspace) => !isChatWorkspaceId(workspace.id))
+    .filter((workspace) => !isFormWorkspaceId(workspace.id))
     .map((workspace, order) => ({
       workspace,
       order,

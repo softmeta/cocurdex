@@ -1290,6 +1290,64 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds personal agents from version 38 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE personal_agents");
+    const now = "2026-11-05T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Repo', '["/repo"]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'codex', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'body', '${now}', '${now}');
+      INSERT INTO issues (id, title, workspace_id, created_at, updated_at)
+      VALUES ('i1', 'Assistant', 'w1', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, created_at, updated_at)
+      VALUES ('r1', 'Coach', 'pi', '${now}', '${now}'),
+             ('r2', 'Writer', 'pi', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s2', 'w1', 'Draft', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      PRAGMA user_version = 38;
+    `);
+
+    initializeDatabase(database);
+
+    const insertAgent = (id: string, row: string, isDefault: number) =>
+      database.exec(`
+        INSERT INTO personal_agents (id, role_id, home_session_id, is_default, created_at, updated_at)
+        VALUES ('${id}', 'r${row}', 's${row}', ${isDefault}, '${now}', '${now}');
+      `);
+    insertAgent("p1", "1", 1);
+    expect(
+      database
+        .prepare("SELECT id, is_default, sort_order FROM personal_agents")
+        .all(),
+    ).toEqual([{ id: "p1", is_default: 1, sort_order: 0 }]);
+    expect(() => insertAgent("p2", "2", 1)).toThrow();
+    insertAgent("p2", "2", 0);
+    expect(database.prepare("SELECT name FROM agent_roles").all()).toEqual([
+      { name: "Coach" },
+      { name: "Writer" },
+    ]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+      { title: "Draft" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Assistant" },
+    ]);
+  });
+
   it("adds entity links from version 32 and cleans them up on delete", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

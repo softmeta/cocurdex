@@ -20,7 +20,9 @@ const canRead = (caller: AgentToolCallerContext) =>
   caller.sessionKind !== "subagent";
 
 const canWrite = (caller: AgentToolCallerContext) =>
-  caller.sessionKind === "main" || caller.sessionKind === "teammate";
+  caller.sessionKind === "main" ||
+  caller.sessionKind === "teammate" ||
+  caller.sessionKind === "personal";
 
 function optionalNumber(value: unknown) {
   return typeof value === "number" ? value : undefined;

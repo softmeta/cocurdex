@@ -837,6 +837,19 @@ export async function handleDaemonRequest(
       return service.getAgentRole(request.params.id);
     case "agentRole.save":
       return service.saveAgentRole(request.params);
+    case "personalAgent.list":
+      return service.personalAgents.list();
+    case "personalAgent.ensureDefault":
+      return service.personalAgents.ensureDefault(request.params);
+    case "personalAgent.create":
+      return service.personalAgents.create(request.params);
+    case "personalAgent.update":
+      return service.personalAgents.update(request.params);
+    case "personalAgent.duplicate":
+      return service.personalAgents.duplicate(request.params);
+    case "personalAgent.delete":
+      await service.personalAgents.delete(request.params.id);
+      return null;
     case "agentRole.delete":
       await service.deleteAgentRole(request.params.id);
       return null;

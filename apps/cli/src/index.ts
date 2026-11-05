@@ -5,7 +5,7 @@ import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
   type AgentPermissionMode,
-  isChatWorkspaceId,
+  isFormWorkspaceId,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type WorkflowAggregate,
@@ -235,7 +235,7 @@ async function main(rawArgs: string[]) {
     const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
     printRows(
       workspaces
-        .filter((workspace) => !isChatWorkspaceId(workspace.id))
+        .filter((workspace) => !isFormWorkspaceId(workspace.id))
         .map((workspace) => ({
           ...workspace,
           rootPaths: workspace.rootPaths.join(", "),

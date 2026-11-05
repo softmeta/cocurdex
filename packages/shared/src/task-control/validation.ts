@@ -135,7 +135,8 @@ export function validateSessionConfiguration(
   if (
     value.sessionKind !== undefined &&
     value.sessionKind !== "main" &&
-    value.sessionKind !== "chat"
+    value.sessionKind !== "chat" &&
+    value.sessionKind !== "personal"
   )
     throw new Error("Invalid session kind");
   if (

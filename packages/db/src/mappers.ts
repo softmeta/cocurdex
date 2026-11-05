@@ -56,6 +56,7 @@ export function mapSession(row: SqliteRow): SessionRecord {
       row.session_kind === "subagent" ||
       row.session_kind === "teammate" ||
       row.session_kind === "chat" ||
+      row.session_kind === "personal" ||
       row.session_kind === "main"
         ? row.session_kind
         : "main",

@@ -72,6 +72,8 @@ import {
   isChatWorkspaceId,
   isFeatureEnabled,
   isHandoffVisibleMessage,
+  isPersonalSession,
+  isPersonalWorkspaceId,
   isSessionRuntimeEvent,
   isToolCallId,
   MEMORY_SETTINGS_KEY,
@@ -83,6 +85,7 @@ import {
   normalizeAgentRoleName,
   normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
+  PERSONAL_WORKSPACE_ID,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
   parseAgentRunLimits,
   primaryWorkspaceRootPath,
@@ -146,6 +149,7 @@ import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
+import { PersonalAgentService } from "./personal";
 import { DaemonProviderService } from "./provider";
 import { CodexLoginSessions } from "./provider/codex-login";
 import { withServerProviderConnection } from "./provider/server-connection";
@@ -278,6 +282,7 @@ export class CocurdexDaemonService {
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly decks: DaemonDeckService;
+  readonly personalAgents: PersonalAgentService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
   readonly agentAuth: AgentAuthService;
@@ -377,6 +382,24 @@ export class CocurdexDaemonService {
       this.events,
       DeckAssetStore.open(options.userDataPath),
     );
+    this.personalAgents = new PersonalAgentService({
+      repository: this.state.data.personalAgents,
+      getRole: (id) => this.state.getAgentRole(id),
+      saveRole: (payload) => this.saveAgentRole(payload),
+      deleteRole: (id) => this.state.deleteAgentRole(id),
+      createHomeSession: (role) =>
+        this.createSession({
+          workspaceId: PERSONAL_WORKSPACE_ID,
+          agentRoleId: role.id,
+          title: role.name,
+        }),
+      removeSession: (sessionId) => this.removeSession(sessionId),
+      announceChanged: () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["personal"],
+        }),
+    });
     this.providerCredentials = new ProviderCredentials(
       this.state,
       options.userDataPath,
@@ -727,6 +750,7 @@ export class CocurdexDaemonService {
 
   private async archiveSessionQuietly(sessionId: string) {
     validateSessionId(sessionId);
+    this.assertNotPersonalHome(sessionId);
     await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
     const session = await this.state.getSession(sessionId);
@@ -1699,6 +1723,9 @@ export class CocurdexDaemonService {
   }
 
   async deleteAgentRole(id: string) {
+    if (this.personalAgents.ownsRole(id)) {
+      throw new Error("Delete the personal agent instead of its role");
+    }
     await this.state.deleteAgentRole(id);
   }
 
@@ -1873,7 +1900,10 @@ export class CocurdexDaemonService {
   private async configureSession(input: SessionConfiguration) {
     await this.ensureAgentAvailable(input.agentType);
     if (isChatWorkspaceId(input.workspaceId)) {
-      await this.ensureChatWorkspace();
+      await this.ensureFormWorkspace(CHAT_WORKSPACE_ID, "Chat");
+    }
+    if (isPersonalWorkspaceId(input.workspaceId)) {
+      await this.ensureFormWorkspace(PERSONAL_WORKSPACE_ID, "Personal");
     }
     const workspace = (await this.state.listWorkspaces()).find(
       (item) => item.id === input.workspaceId,
@@ -1899,18 +1929,18 @@ export class CocurdexDaemonService {
     return session;
   }
 
-  private async ensureChatWorkspace() {
-    const rootPath = path.join(this.userDataPath, "chat");
+  private async ensureFormWorkspace(id: string, name: string) {
+    const rootPath = path.join(this.userDataPath, id);
     await mkdir(rootPath, { recursive: true });
     const existing = (await this.state.listWorkspaces()).find(
-      (workspace) => workspace.id === CHAT_WORKSPACE_ID,
+      (workspace) => workspace.id === id,
     );
     if (existing && workspacePathsEqual(existing.rootPaths[0] ?? "", rootPath))
       return;
     const now = new Date().toISOString();
     await this.state.saveWorkspace({
-      id: CHAT_WORKSPACE_ID,
-      name: "Chat",
+      id,
+      name,
       rootPaths: [rootPath],
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -1960,7 +1990,18 @@ export class CocurdexDaemonService {
     return this.sessionRuntimeStates.get(sessionId);
   }
 
+  private assertNotPersonalHome(sessionId: string) {
+    if (this.personalAgents.ownsHomeSession(sessionId)) {
+      throw new Error("A personal agent's home thread cannot be removed");
+    }
+  }
+
   async deleteSession(sessionId: string) {
+    this.assertNotPersonalHome(sessionId);
+    await this.removeSession(sessionId);
+  }
+
+  private async removeSession(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
       return;
@@ -2043,7 +2084,7 @@ export class CocurdexDaemonService {
       ...source,
       id: forkId,
       title: payload.title?.trim() || source.title,
-      sessionKind: "main",
+      sessionKind: isPersonalSession(source) ? "personal" : "main",
       parentSessionId: null,
       parentToolCallId: null,
       status: "idle",
