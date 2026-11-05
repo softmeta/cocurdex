@@ -1,4 +1,8 @@
-import { isPersonalSession, type SessionRecord } from "@cocurdex/shared";
+import {
+  isPersonalSession,
+  resolveAgentRoleAvatar,
+  type SessionRecord,
+} from "@cocurdex/shared";
 import { type MutableRefObject, type Ref, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatComposerHandle } from "@/features/composer";
@@ -32,6 +36,7 @@ export function usePersonalSessionView(
 
   return {
     composerRole: role,
+    hue: resolveAgentRoleAvatar(role).color,
     composerPlaceholder: t("thread.placeholder", { name: role.name }),
     composerRef: (handle: ChatComposerHandle | null) => {
       composer.current = handle;

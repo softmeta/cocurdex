@@ -1134,7 +1134,12 @@ export function CenterPanel({
   }
 
   return (
-    <section className="flex h-full flex-col bg-chat-canvas">
+    <section
+      className="flex h-full flex-col bg-chat-canvas"
+      data-persona-hue={
+        centerSurface === "agent-session" ? personalView?.hue : undefined
+      }
+    >
       {hideTitlebarSpacer ? null : (
         <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
       )}

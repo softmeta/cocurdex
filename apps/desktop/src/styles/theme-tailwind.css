@@ -16,6 +16,8 @@
   --color-chat-surface-strong: var(--chat-surface-strong);
   --color-chat-surface-input: var(--chat-surface-input);
   --color-chat-surface-bubble: var(--chat-surface-bubble);
+  --color-chat-user-bubble: var(--chat-surface-bubble);
+  --color-chat-user-bubble-fg: var(--chat-fg);
   --color-chat-surface-subtle: var(--chat-surface-subtle);
   --color-chat-surface-control: var(--chat-surface-control);
   --color-chat-surface-control-hover: var(--chat-surface-control-hover);

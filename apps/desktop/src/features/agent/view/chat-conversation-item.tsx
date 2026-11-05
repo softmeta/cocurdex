@@ -94,7 +94,7 @@ function getMessageArticleClassName(message: MessageRecord) {
 
   if (message.role === "user") {
     return cn(
-      "min-w-0 max-w-3xl rounded-panel rounded-tr-md bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg",
+      "min-w-0 max-w-3xl rounded-panel rounded-tr-md bg-chat-user-bubble px-3.5 py-2.5 text-chat-user-bubble-fg",
     );
   }
 

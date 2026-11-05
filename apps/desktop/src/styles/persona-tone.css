@@ -1,0 +1,51 @@
+[data-persona-hue="gray"] {
+  --persona-hue: var(--role-avatar-gray);
+}
+
+[data-persona-hue="red"] {
+  --persona-hue: var(--role-avatar-red);
+}
+
+[data-persona-hue="orange"] {
+  --persona-hue: var(--role-avatar-orange);
+}
+
+[data-persona-hue="amber"] {
+  --persona-hue: var(--role-avatar-amber);
+}
+
+[data-persona-hue="green"] {
+  --persona-hue: var(--role-avatar-green);
+}
+
+[data-persona-hue="teal"] {
+  --persona-hue: var(--role-avatar-teal);
+}
+
+[data-persona-hue="blue"] {
+  --persona-hue: var(--role-avatar-blue);
+}
+
+[data-persona-hue="violet"] {
+  --persona-hue: var(--role-avatar-violet);
+}
+
+[data-persona-hue="pink"] {
+  --persona-hue: var(--role-avatar-pink);
+}
+
+[data-persona-hue] {
+  --color-chat-user-bubble: color-mix(
+    in oklch,
+    var(--persona-hue) 13%,
+    var(--chat-canvas)
+  );
+}
+
+[data-theme="dark"] [data-persona-hue] {
+  --color-chat-user-bubble: color-mix(
+    in oklch,
+    var(--persona-hue) 20%,
+    var(--chat-canvas)
+  );
+}
