@@ -23,7 +23,7 @@ import {
   Text,
 } from "@/components/ui";
 import { pickHostDirectoryAtom } from "@/features/workspaces";
-import { useMountEffect } from "@/lib";
+import { useDialogExit, useMountEffect } from "@/lib";
 import { SkillInstallOptions } from "./skill-install-options";
 import {
   defaultInstallChoice,
@@ -107,6 +107,7 @@ export function SkillAddDialog({
   onClose,
   onInstalled,
 }: SkillAddDialogProps) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("settings");
   const idPrefix = useId();
   const pickDirectory = useSetAtom(pickHostDirectoryAtom);
@@ -200,7 +201,7 @@ export function SkillAddDialog({
           }),
         );
       }
-      onClose();
+      exit.close();
     } catch (installError) {
       setError(errorMessage(installError));
       setIsInstalling(false);
@@ -220,10 +221,11 @@ export function SkillAddDialog({
 
   return (
     <Dialog
-      open
+      open={exit.open}
       onOpenChange={(open) => {
-        if (!open && !isInstalling) onClose();
+        if (!open && !isInstalling) exit.close();
       }}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
     >
       <DialogContent size="default">
         <DialogHeader>
@@ -307,7 +309,7 @@ export function SkillAddDialog({
             disabled={isInstalling}
             type="button"
             variant="outline"
-            onClick={onClose}
+            onClick={exit.close}
           >
             {t("skills.actions.cancel")}
           </Button>

@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { desktopApi, useDialogExit } from "@/lib";
 import { ScopePicker } from "./scope-picker";
 
 function sameScopes(left: HostAccessScope[], right: HostAccessScope[]) {
@@ -29,6 +29,7 @@ export function DeviceAccessDialog({
   onClose(): void;
   onSaved(): void;
 }) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("settings");
   const [scopes, setScopes] = useState(device.scopes);
   const [saving, setSaving] = useState(false);
@@ -38,7 +39,7 @@ export function DeviceAccessDialog({
     try {
       await desktopApi.updateHostDeviceScopes(device.id, scopes);
       onSaved();
-      onClose();
+      exit.close();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("devices.access.failed"),
@@ -49,7 +50,11 @@ export function DeviceAccessDialog({
   };
 
   return (
-    <Dialog onOpenChange={(open) => !open && onClose()} open>
+    <Dialog
+      onOpenChange={(open) => !open && exit.close()}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+      open={exit.open}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -63,7 +68,7 @@ export function DeviceAccessDialog({
         </DialogHeader>
         <ScopePicker scopes={scopes} onChange={setScopes} />
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={exit.close}>
             {t("devices.access.cancel")}
           </Button>
           <Button

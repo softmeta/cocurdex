@@ -23,7 +23,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { desktopApi, useDialogExit } from "@/lib";
 import { revalidateMemory } from "./memory-queries";
 
 const MIN_USERNAME_LENGTH = 3;
@@ -142,6 +142,7 @@ export function CloudSyncDialog({
   initialUser?: string | null;
   onClose(): void;
 }) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("memory");
   const idPrefix = useId();
   const [mode, setMode] = useState<MemoryCloudMode>(
@@ -177,7 +178,7 @@ export function CloudSyncDialog({
         return;
       }
       toast.success(t("cloud.connected"));
-      onClose();
+      exit.close();
     } catch (failure) {
       const message = errorMessage(failure);
       if (mode === "register" && /already registered/i.test(message)) {
@@ -193,7 +194,11 @@ export function CloudSyncDialog({
 
   if (issuedKey) {
     return (
-      <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <Dialog
+        open={exit.open}
+        onOpenChangeComplete={exit.onOpenChangeComplete}
+        onOpenChange={(open) => !open && exit.close()}
+      >
         <DialogContent size="compact">
           <DialogHeader>
             <DialogTitle>{t("cloud.recoveryTitle")}</DialogTitle>
@@ -214,7 +219,7 @@ export function CloudSyncDialog({
             {t("cloud.recoveryWarning")}
           </Text>
           <DialogFooter>
-            <Button type="button" onClick={onClose}>
+            <Button type="button" onClick={exit.close}>
               {t("cloud.done")}
             </Button>
           </DialogFooter>
@@ -224,7 +229,11 @@ export function CloudSyncDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+    <Dialog
+      open={exit.open}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+      onOpenChange={(open) => !open && !busy && exit.close()}
+    >
       <DialogContent size="compact">
         <form className="contents" onSubmit={submit}>
           <DialogHeader>
@@ -277,7 +286,7 @@ export function CloudSyncDialog({
               disabled={busy}
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={exit.close}
             >
               {t("cloud.cancel")}
             </Button>

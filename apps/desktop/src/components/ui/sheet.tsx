@@ -3,11 +3,36 @@ import { XIcon } from "lucide-react";
 import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import { asChildToRender } from "@/components/ui/_as-child-render";
+import {
+  OverlayOpenContext,
+  useContentWhileClosing,
+  useOverlayRootOpen,
+} from "@/components/ui/_overlay-open-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root {...props} />;
+function Sheet({
+  children,
+  defaultOpen,
+  onOpenChange,
+  open,
+  ...props
+}: Omit<React.ComponentProps<typeof SheetPrimitive.Root>, "children"> & {
+  children?: React.ReactNode;
+}) {
+  const rootOpen = useOverlayRootOpen({ defaultOpen, onOpenChange, open });
+  return (
+    <SheetPrimitive.Root
+      defaultOpen={defaultOpen}
+      onOpenChange={rootOpen.onOpenChange}
+      open={open}
+      {...props}
+    >
+      <OverlayOpenContext value={rootOpen.isOpen}>
+        {children}
+      </OverlayOpenContext>
+    </SheetPrimitive.Root>
+  );
 }
 
 type SheetTriggerProps = React.ComponentProps<typeof SheetPrimitive.Trigger> & {
@@ -75,6 +100,7 @@ function SheetContent({
   showOverlay?: boolean;
 }) {
   const { t } = useTranslation("common");
+  const content = useContentWhileClosing(children);
   return (
     <SheetPortal>
       {showOverlay && <SheetOverlay />}
@@ -87,7 +113,7 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
+        {content}
         {showCloseButton && (
           <SheetClose asChild>
             <Button
