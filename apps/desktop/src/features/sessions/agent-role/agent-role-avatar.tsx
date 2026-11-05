@@ -2,12 +2,13 @@ import {
   type AgentId,
   type AgentRoleAvatar as AgentRoleAvatarValue,
   agentRoleInitial,
-  defaultAgentRoleAvatarColor,
+  resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { User } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib";
 import { AgentIcon } from "../agent-icon";
+import { AgentRoleAvatarShapeGlyph } from "./agent-role-avatar-shape";
 import { agentRoleAvatarColorClassName } from "./agent-role-avatar-style";
 
 export interface AgentRoleAvatarSource {
@@ -63,7 +64,8 @@ export function AgentRoleAvatar({
   showAgent?: boolean;
   size?: AgentRoleAvatarSize;
 }) {
-  const color = role.avatar?.color ?? defaultAgentRoleAvatarColor(role.id);
+  const avatar = resolveAgentRoleAvatar(role);
+  const isShape = avatar.kind === "shape";
 
   return (
     <span
@@ -71,17 +73,26 @@ export function AgentRoleAvatar({
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center rounded-full font-medium leading-none select-none",
         sizeClassName[size],
-        role.avatar?.kind === "emoji" && emojiSizeClassName[size],
-        agentRoleAvatarColorClassName[color],
+        avatar.kind === "emoji" && emojiSizeClassName[size],
+        !isShape && agentRoleAvatarColorClassName[avatar.color],
         className,
       )}
     >
-      <AvatarGlyph
-        placeholder={
-          placeholder ?? <User className={placeholderIconClassName[size]} />
-        }
-        role={role}
-      />
+      {isShape ? (
+        <AgentRoleAvatarShapeGlyph
+          color={avatar.color}
+          face={avatar.face}
+          shape={avatar.shape}
+        />
+      ) : (
+        <AvatarGlyph
+          avatar={avatar}
+          name={role.name}
+          placeholder={
+            placeholder ?? <User className={placeholderIconClassName[size]} />
+          }
+        />
+      )}
       {showAgent && role.agentId ? (
         <span className="absolute -end-0.5 -bottom-0.5 inline-flex rounded-full bg-popover p-px">
           <AgentIcon
@@ -95,17 +106,19 @@ export function AgentRoleAvatar({
 }
 
 function AvatarGlyph({
+  avatar,
+  name,
   placeholder,
-  role,
 }: {
+  avatar: AgentRoleAvatarValue;
+  name: string;
   placeholder: ReactNode;
-  role: AvatarSource;
 }) {
-  if (role.avatar?.kind === "emoji") {
-    return role.avatar.emoji;
+  if (avatar.kind === "emoji") {
+    return avatar.emoji;
   }
-  if (!role.name.trim()) {
+  if (!name.trim()) {
     return placeholder;
   }
-  return agentRoleInitial(role.name);
+  return agentRoleInitial(name);
 }

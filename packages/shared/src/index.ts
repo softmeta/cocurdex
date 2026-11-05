@@ -3,6 +3,7 @@ export * from "./acp-registry";
 export * from "./agent-brand-icons";
 export * from "./agent-permission-modes";
 export * from "./agent-role";
+export * from "./agent-role-avatar-shapes";
 export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-tools";

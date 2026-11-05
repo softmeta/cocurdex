@@ -106,6 +106,7 @@
   --color-role-avatar-blue: var(--role-avatar-blue);
   --color-role-avatar-violet: var(--role-avatar-violet);
   --color-role-avatar-pink: var(--role-avatar-pink);
+  --color-role-avatar-face: var(--role-avatar-face);
   --color-editor-monaco-bg: var(--editor-monaco-bg);
   --color-editor-monaco-line-highlight: var(--editor-monaco-line-highlight);
   --color-editor-monaco-selection: var(--editor-monaco-selection);

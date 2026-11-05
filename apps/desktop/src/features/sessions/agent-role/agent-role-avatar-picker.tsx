@@ -1,8 +1,13 @@
 import {
   AGENT_ROLE_AVATAR_COLORS,
+  AGENT_ROLE_AVATAR_FACES,
+  AGENT_ROLE_AVATAR_SHAPES,
+  type AgentRoleAvatarColor,
+  type AgentRoleAvatarFace,
+  type AgentRoleAvatarShape,
   type AgentRoleAvatar as AgentRoleAvatarValue,
-  defaultAgentRoleAvatarColor,
   normalizeAgentRoleAvatar,
+  resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
@@ -17,6 +22,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import { AgentRoleAvatar, type AvatarSource } from "./agent-role-avatar";
+import { AgentRoleAvatarShapeGlyph } from "./agent-role-avatar-shape";
 import {
   AGENT_ROLE_AVATAR_EMOJI_GROUPS,
   type AgentRoleAvatarEmojiGroupId,
@@ -34,8 +40,8 @@ export function AgentRoleAvatarPicker({
 }) {
   const { t } = useTranslation("sessions");
   const avatar = role.avatar;
-  const color = avatar?.color ?? defaultAgentRoleAvatarColor(role.id);
-  const selectedEmoji = avatar?.kind === "emoji" ? avatar.emoji : null;
+  const current = resolveAgentRoleAvatar(role);
+  const color = current.color;
 
   const selectEmoji = (emoji: string) => {
     const next = normalizeAgentRoleAvatar({ kind: "emoji", emoji, color });
@@ -44,12 +50,20 @@ export function AgentRoleAvatarPicker({
     }
   };
 
-  const selectColor = (nextColor: AgentRoleAvatarValue["color"]) => {
-    onChange(
-      selectedEmoji
-        ? { kind: "emoji", emoji: selectedEmoji, color: nextColor }
-        : { kind: "initial", color: nextColor },
-    );
+  const shapeAvatar = current.kind === "shape" ? current : null;
+  const face = shapeAvatar?.face ?? "dots";
+  const shape = shapeAvatar?.shape ?? AGENT_ROLE_AVATAR_SHAPES[0];
+
+  const selectShape = (nextShape: AgentRoleAvatarShape) => {
+    onChange({ kind: "shape", shape: nextShape, face, color });
+  };
+
+  const selectFace = (nextFace: AgentRoleAvatarFace) => {
+    onChange({ kind: "shape", shape, face: nextFace, color });
+  };
+
+  const selectColor = (nextColor: AgentRoleAvatarColor) => {
+    onChange({ ...current, color: nextColor });
   };
 
   return (
@@ -64,7 +78,22 @@ export function AgentRoleAvatarPicker({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto gap-3 rounded-card p-3">
-        <AvatarEmojiGrid selectedEmoji={selectedEmoji} onSelect={selectEmoji} />
+        <AvatarShapeGrid
+          color={color}
+          face={face}
+          selectedShape={shapeAvatar?.shape ?? null}
+          onSelect={selectShape}
+        />
+        <AvatarFaceRow
+          color={color}
+          selectedFace={shapeAvatar?.face ?? null}
+          shape={shape}
+          onSelect={selectFace}
+        />
+        <AvatarEmojiGrid
+          selectedEmoji={current.kind === "emoji" ? current.emoji : null}
+          onSelect={selectEmoji}
+        />
         <Input
           aria-label={t("agentRole.avatar.custom")}
           placeholder={t("agentRole.avatar.customPlaceholder")}
@@ -105,6 +134,101 @@ export function AgentRoleAvatarPicker({
         ) : null}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function AvatarShapeGrid({
+  color,
+  face,
+  selectedShape,
+  onSelect,
+}: {
+  color: AgentRoleAvatarColor;
+  face: AgentRoleAvatarFace;
+  selectedShape: AgentRoleAvatarShape | null;
+  onSelect(shape: AgentRoleAvatarShape): void;
+}) {
+  const { t } = useTranslation("sessions");
+  const label = t("agentRole.avatar.shapes");
+
+  return (
+    <section aria-label={label} className="flex flex-col gap-1.5">
+      <Text as="h3" size="meta" tone="muted">
+        {label}
+      </Text>
+      <div className="grid grid-cols-5 gap-1">
+        {AGENT_ROLE_AVATAR_SHAPES.map((shape, index) => (
+          <button
+            key={shape}
+            aria-label={t("agentRole.avatar.shape", { index: index + 1 })}
+            aria-pressed={shape === selectedShape}
+            className={cn(
+              "inline-flex size-9 cursor-pointer items-center justify-center rounded-control p-1 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
+              shape === selectedShape && "bg-accent",
+            )}
+            type="button"
+            onClick={() => onSelect(shape)}
+          >
+            <AgentRoleAvatarShapeGlyph
+              color={color}
+              face={face}
+              shape={shape}
+            />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AvatarFaceRow({
+  color,
+  selectedFace,
+  shape,
+  onSelect,
+}: {
+  color: AgentRoleAvatarColor;
+  selectedFace: AgentRoleAvatarFace | null;
+  shape: AgentRoleAvatarShape;
+  onSelect(face: AgentRoleAvatarFace): void;
+}) {
+  const { t } = useTranslation("sessions");
+  const label = t("agentRole.avatar.faces");
+  const faceLabels: Record<AgentRoleAvatarFace, string> = {
+    dots: t("agentRole.avatar.face.dots"),
+    happy: t("agentRole.avatar.face.happy"),
+    wink: t("agentRole.avatar.face.wink"),
+    sleepy: t("agentRole.avatar.face.sleepy"),
+    curious: t("agentRole.avatar.face.curious"),
+  };
+
+  return (
+    <section aria-label={label} className="flex flex-col gap-1.5">
+      <Text as="h3" size="meta" tone="muted">
+        {label}
+      </Text>
+      <div className="grid grid-cols-5 gap-1">
+        {AGENT_ROLE_AVATAR_FACES.map((face) => (
+          <button
+            key={face}
+            aria-label={faceLabels[face]}
+            aria-pressed={face === selectedFace}
+            className={cn(
+              "inline-flex size-9 cursor-pointer items-center justify-center rounded-control p-1 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
+              face === selectedFace && "bg-accent",
+            )}
+            type="button"
+            onClick={() => onSelect(face)}
+          >
+            <AgentRoleAvatarShapeGlyph
+              color={color}
+              face={face}
+              shape={shape}
+            />
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 

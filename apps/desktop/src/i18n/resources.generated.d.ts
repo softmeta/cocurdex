@@ -1758,13 +1758,23 @@ export default interface Resources {
         color: "Color";
         custom: "Custom emoji";
         customPlaceholder: "Paste or type any emoji";
+        face: {
+          curious: "Curious";
+          dots: "Calm";
+          happy: "Happy";
+          sleepy: "Sleepy";
+          wink: "Wink";
+        };
+        faces: "Expression";
         groups: {
           animals: "Animals";
           people: "People";
           symbols: "Symbols";
           work: "Work";
         };
-        reset: "Use initial";
+        reset: "Use default";
+        shape: "Shape {{index}}";
+        shapes: "Shape";
       };
       cancel: "Cancel";
       description: "Description";

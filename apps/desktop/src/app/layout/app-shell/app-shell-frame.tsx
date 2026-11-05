@@ -340,9 +340,10 @@ export function AppShellFrame({
                   isRightPanelOpen={isRightPanelOpen}
                   onToggleRightPanel={onToggleRightPanel}
                 />
-                <div className="min-w-0 flex-1" />
-                <NavigationButtons />
-                <SearchPaletteButton />
+                <div className="ms-auto flex items-center gap-1">
+                  <NavigationButtons />
+                  <SearchPaletteButton />
+                </div>
               </div>
             </div>
 

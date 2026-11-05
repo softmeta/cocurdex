@@ -1,5 +1,11 @@
 import { getFallbackAgentPermissionModes } from "./agent-permission-modes";
 import {
+  AGENT_ROLE_AVATAR_FACES,
+  AGENT_ROLE_AVATAR_SHAPES,
+  type AgentRoleAvatarFace,
+  type AgentRoleAvatarShape,
+} from "./agent-role-avatar-shapes";
+import {
   type AgentId,
   type AgentPermissionMode,
   type AgentProviderSnapshot,
@@ -33,7 +39,13 @@ export type AgentRoleAvatarColor = (typeof AGENT_ROLE_AVATAR_COLORS)[number];
 
 export type AgentRoleAvatar =
   | { kind: "emoji"; emoji: string; color: AgentRoleAvatarColor }
-  | { kind: "initial"; color: AgentRoleAvatarColor };
+  | { kind: "initial"; color: AgentRoleAvatarColor }
+  | {
+      kind: "shape";
+      shape: AgentRoleAvatarShape;
+      face: AgentRoleAvatarFace;
+      color: AgentRoleAvatarColor;
+    };
 
 const BUILT_IN_AGENT_IDS: readonly BuiltInAgentId[] = [
   "claude-agent",
@@ -117,7 +129,13 @@ export function normalizeAgentRoleAvatar(
   if (!value || typeof value !== "object") {
     return null;
   }
-  const { kind, emoji, color: rawColor } = value as Record<string, unknown>;
+  const {
+    kind,
+    emoji,
+    shape,
+    face,
+    color: rawColor,
+  } = value as Record<string, unknown>;
   const color = AGENT_ROLE_AVATAR_COLORS.includes(
     rawColor as AgentRoleAvatarColor,
   )
@@ -125,6 +143,20 @@ export function normalizeAgentRoleAvatar(
     : "gray";
   if (kind === "initial") {
     return { kind, color };
+  }
+  if (kind === "shape") {
+    if (!AGENT_ROLE_AVATAR_SHAPES.includes(shape as AgentRoleAvatarShape)) {
+      return null;
+    }
+    const knownFace = AGENT_ROLE_AVATAR_FACES.includes(
+      face as AgentRoleAvatarFace,
+    );
+    return {
+      kind,
+      shape: shape as AgentRoleAvatarShape,
+      face: knownFace ? (face as AgentRoleAvatarFace) : "dots",
+      color,
+    };
   }
   if (kind !== "emoji" || typeof emoji !== "string") {
     return null;
@@ -254,12 +286,52 @@ function sameThinkingLevel(
   return normalize(left) === normalize(right);
 }
 
-export function defaultAgentRoleAvatarColor(id: string): AgentRoleAvatarColor {
+const DEFAULT_AVATAR_COLORS = AGENT_ROLE_AVATAR_COLORS.filter(
+  (color) => color !== "gray",
+);
+
+function hashAvatarId(id: string) {
   let hash = 0;
   for (const char of id) {
     hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
   }
-  return AGENT_ROLE_AVATAR_COLORS[hash % AGENT_ROLE_AVATAR_COLORS.length];
+  return hash;
+}
+
+export function defaultAgentRoleAvatarColor(id: string): AgentRoleAvatarColor {
+  const hash = hashAvatarId(id);
+  return DEFAULT_AVATAR_COLORS[hash % DEFAULT_AVATAR_COLORS.length];
+}
+
+export function defaultAgentRoleAvatarShape(id: string): AgentRoleAvatarShape {
+  const hash = hashAvatarId(id);
+  const index =
+    Math.floor(hash / DEFAULT_AVATAR_COLORS.length) %
+    AGENT_ROLE_AVATAR_SHAPES.length;
+  return AGENT_ROLE_AVATAR_SHAPES[index];
+}
+
+export function defaultAgentRoleAvatarFace(id: string): AgentRoleAvatarFace {
+  const hash = hashAvatarId(id);
+  const index =
+    Math.floor(
+      hash / (DEFAULT_AVATAR_COLORS.length * AGENT_ROLE_AVATAR_SHAPES.length),
+    ) % AGENT_ROLE_AVATAR_FACES.length;
+  return AGENT_ROLE_AVATAR_FACES[index];
+}
+
+export function resolveAgentRoleAvatar(role: {
+  id: string;
+  avatar: AgentRoleAvatar | null;
+}): AgentRoleAvatar {
+  return (
+    role.avatar ?? {
+      kind: "shape",
+      shape: defaultAgentRoleAvatarShape(role.id),
+      face: defaultAgentRoleAvatarFace(role.id),
+      color: defaultAgentRoleAvatarColor(role.id),
+    }
+  );
 }
 
 function firstGrapheme(text: string) {
