@@ -13,6 +13,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, G, Path } from "react-native-svg";
 import { type ThemeColors, useThemeColors } from "@/theme";
 import { AgentIcon } from "./agent-icon";
+import { avatarEyeColor } from "./avatar-eye-color";
 
 export interface RoleAvatarSource {
   id: string;
@@ -46,6 +47,11 @@ export function RoleAvatar({
   const colors = useThemeColors();
   const avatar = resolveAgentRoleAvatar(role);
   const hue = colors[AVATAR_COLOR[avatar.color]];
+  const eye = avatarEyeColor(
+    hue,
+    colors.roleAvatarFace,
+    colors.roleAvatarFaceLight,
+  );
   const badge = Math.round(size * 0.5);
   const isShape = avatar.kind === "shape";
   const emoji = avatar.kind === "emoji" ? avatar.emoji : null;
@@ -78,7 +84,7 @@ export function RoleAvatar({
                 <Circle
                   cx={feature.cx}
                   cy={feature.cy}
-                  fill={colors.roleAvatarFace}
+                  fill={eye}
                   key={`${feature.cx}:${feature.cy}`}
                   r={feature.r}
                 />
@@ -87,7 +93,7 @@ export function RoleAvatar({
                   d={feature.d}
                   fill="none"
                   key={feature.d}
-                  stroke={colors.roleAvatarFace}
+                  stroke={eye}
                   strokeLinecap="round"
                   strokeWidth={feature.width}
                 />

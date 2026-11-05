@@ -109,6 +109,10 @@
   --color-role-avatar-violet: var(--role-avatar-violet);
   --color-role-avatar-pink: var(--role-avatar-pink);
   --color-role-avatar-face: var(--role-avatar-face);
+  --color-role-avatar-eye: oklch(
+    from currentColor calc(0.21 + 0.775 * clamp(0, (0.6 - l) * 1000, 1))
+      calc(0.006 - 0.004 * clamp(0, (0.6 - l) * 1000, 1)) 285.885
+  );
   --color-editor-monaco-bg: var(--editor-monaco-bg);
   --color-editor-monaco-line-highlight: var(--editor-monaco-line-highlight);
   --color-editor-monaco-selection: var(--editor-monaco-selection);

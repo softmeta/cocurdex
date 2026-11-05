@@ -290,6 +290,7 @@
   --role-avatar-violet: oklch(0.541 0.281 293.009);
   --role-avatar-pink: oklch(0.592 0.249 0.584);
   --role-avatar-face: oklch(0.21 0.006 285.885);
+  --role-avatar-face-light: oklch(0.985 0.002 285.885);
   --editor-monaco-bg: var(--editor-canvas);
   --editor-monaco-line-highlight: color-mix(
     in srgb,
@@ -469,6 +470,7 @@
   --role-avatar-violet: oklch(0.702 0.183 293.541);
   --role-avatar-pink: oklch(0.718 0.202 349.761);
   --role-avatar-face: oklch(0.21 0.006 285.885);
+  --role-avatar-face-light: oklch(0.985 0.002 285.885);
   --welcome-surface-strong-hover: color-mix(
     in srgb,
     var(--foreground) 14%,

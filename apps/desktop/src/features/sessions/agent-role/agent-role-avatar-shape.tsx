@@ -43,7 +43,7 @@ export function AgentRoleAvatarShapeGlyph({
           {AGENT_ROLE_AVATAR_FACE_FEATURES[face].map((feature) =>
             feature.kind === "dot" ? (
               <circle
-                className="fill-role-avatar-face"
+                className="fill-role-avatar-eye"
                 cx={feature.cx}
                 cy={feature.cy}
                 key={`${feature.cx}:${feature.cy}`}
@@ -51,7 +51,7 @@ export function AgentRoleAvatarShapeGlyph({
               />
             ) : (
               <path
-                className="stroke-role-avatar-face"
+                className="stroke-role-avatar-eye"
                 d={feature.d}
                 fill="none"
                 key={feature.d}

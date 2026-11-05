@@ -36,16 +36,26 @@
 
 [data-persona-hue] {
   --color-chat-user-bubble: color-mix(
-    in oklch,
+    in oklab,
     var(--persona-hue) 13%,
     var(--chat-canvas)
+  );
+  --color-chat-user-bubble-fg: color-mix(
+    in oklab,
+    var(--persona-hue) 22%,
+    var(--chat-text-primary)
   );
 }
 
 [data-theme="dark"] [data-persona-hue] {
   --color-chat-user-bubble: color-mix(
-    in oklch,
+    in oklab,
     var(--persona-hue) 20%,
     var(--chat-canvas)
+  );
+  --color-chat-user-bubble-fg: color-mix(
+    in oklab,
+    var(--persona-hue) 14%,
+    var(--chat-text-primary)
   );
 }
