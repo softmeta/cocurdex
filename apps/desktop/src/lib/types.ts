@@ -1,5 +1,8 @@
 import type { PairedHostEndpoint } from "@cocurdex/client-runtime";
-import type { DaemonConnectionInfo } from "@cocurdex/rpc";
+import type {
+  DaemonBackgroundStatus,
+  DaemonConnectionInfo,
+} from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
   AcpRegistryAgentUpdate,
@@ -652,6 +655,8 @@ export interface ProductApi {
   disconnectMemoryCloud(): Promise<MemoryStatus>;
   setMemoryCloudSync(enabled: boolean): Promise<MemoryStatus>;
   getMemoryCloudKeys(): Promise<MemoryCloudKeys>;
+  getDaemonBackground(): Promise<DaemonBackgroundStatus>;
+  setDaemonBackground(enabled: boolean): Promise<DaemonBackgroundStatus>;
   getHostRemoteAccess(): Promise<HostRemoteAccessStatus>;
   setHostRelay(settings: RelaySettingsUpdate): Promise<HostRemoteAccessStatus>;
   setHostRemoteAccess(

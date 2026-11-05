@@ -2302,6 +2302,11 @@ export default interface Resources {
         restart: "Restart";
         start: "Start";
       };
+      background: {
+        description: "Keep the daemon running after you quit Cocurdex and start it when you log in, so the CLI and paired devices keep working.";
+        saveFailed: "Could not change background mode";
+        title: "Keep running in the background";
+      };
       description: "The local cocurdex daemon holds the app database and agent sessions. Restart it if notes, issues, or agents stop responding.";
       details: {
         protocol: "Protocol version {{version}}";
@@ -2314,6 +2319,7 @@ export default interface Resources {
       status: {
         outdated: "Running (pid {{pid}}), but the runtime does not match this app. Restart to replace it.";
         running: "Running (pid {{pid}}).";
+        runningBackground: "Running (pid {{pid}}) in the background; it keeps running after Cocurdex quits.";
         runningOwned: "Running (pid {{pid}}), managed by this app.";
         stopped: "Not running. Start or restart to bring it back.";
       };

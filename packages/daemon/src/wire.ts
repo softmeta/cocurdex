@@ -81,6 +81,7 @@ import {
 } from "./workspace-file-http";
 
 interface StartDaemonServerOptions {
+  appLaunchCommand?: readonly string[] | null;
   logging?: DaemonLogging;
   runtimeFingerprint: string;
   token: string;
@@ -569,6 +570,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       agentToolsUrl,
       localToken: options.token,
       autoStartMemory: process.env.COCURDEX_DISABLE_MEMORY_AUTO_START !== "1",
+      appLaunchCommand: options.appLaunchCommand,
     });
     const activeService = service;
     health = createDaemonHealthMonitor({
@@ -684,6 +686,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     metadataPublished = true;
     ready = true;
     await hostAccess.startRemoteListener();
+    service.syncKeepAwake();
     service.startBackgroundRecovery();
     return { close, server, service, webSocketUrl };
   } catch (error) {

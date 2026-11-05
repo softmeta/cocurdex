@@ -14,7 +14,7 @@ import {
   Label,
   Text,
 } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { desktopApi, useDialogExit } from "@/lib";
 import { useScopeLabels } from "./host-access-labels";
 
 const SAFETY_CODE_LENGTH = 6;
@@ -32,6 +32,11 @@ export function DeviceApprovalDialog({
   onClose(): void;
   onSettled(): void;
 }) {
+  const [decided, setDecided] = useState(false);
+  const exit = useDialogExit(() => {
+    if (decided) onSettled();
+    onClose();
+  });
   const { t, i18n } = useTranslation("settings");
   const scopeLabels = useScopeLabels();
   const [code, setCode] = useState("");
@@ -47,8 +52,8 @@ export function DeviceApprovalDialog({
   };
 
   const finish = () => {
-    onSettled();
-    onClose();
+    setDecided(true);
+    exit.close();
   };
 
   const allow = async (event: FormEvent) => {
@@ -87,8 +92,9 @@ export function DeviceApprovalDialog({
   return (
     <Dialog
       disablePointerDismissal
-      open
-      onOpenChange={(open) => !open && onClose()}
+      open={exit.open}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+      onOpenChange={(open) => !open && exit.close()}
     >
       <DialogContent size="compact">
         <form className="contents" onSubmit={(event) => void allow(event)}>
@@ -134,7 +140,7 @@ export function DeviceApprovalDialog({
           </div>
           <DialogFooter>
             {settled ? (
-              <Button type="button" onClick={onClose}>
+              <Button type="button" onClick={exit.close}>
                 {t("devices.approval.close")}
               </Button>
             ) : (

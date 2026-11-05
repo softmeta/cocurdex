@@ -354,6 +354,12 @@ export interface DaemonShutdownResult {
   activeWork: DaemonActiveWork;
 }
 
+export interface DaemonBackgroundStatus {
+  enabled: boolean;
+  available: boolean;
+  registered: boolean;
+}
+
 export interface DaemonError {
   code: string;
   message: string;
@@ -362,6 +368,8 @@ export interface DaemonError {
 export type DaemonRequestPayloadByMethod = {
   "daemon.status": undefined;
   "daemon.shutdownIfIdle": { pid: number; startedAt: string };
+  "daemon.background.get": undefined;
+  "daemon.background.set": { enabled: boolean };
   "daemon.health": undefined;
   "diagnostics.export": DiagnosticsExportInput;
   "diagnostics.logLevel.set": { level: DaemonDiagnosticsLogLevel };
@@ -753,6 +761,8 @@ export type DaemonRequestPayloadByMethod = {
 export type DaemonResultByMethod = {
   "daemon.status": DaemonStatus;
   "daemon.shutdownIfIdle": DaemonShutdownResult;
+  "daemon.background.get": DaemonBackgroundStatus;
+  "daemon.background.set": DaemonBackgroundStatus;
   "daemon.health": DaemonHealth;
   "diagnostics.export": DiagnosticsExportResult;
   "diagnostics.logLevel.set": { level: DaemonDiagnosticsLogLevel };
@@ -1084,6 +1094,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "attention.list": true,
   "daemon.status": true,
   "daemon.health": true,
+  "daemon.background.get": true,
   "system.fontFamilies": true,
   "system.homeDir": true,
   "host.identity": true,

@@ -25,7 +25,7 @@ import {
   Text,
 } from "@/components/ui";
 import { AgentIcon, agentsAtom, detectAgentsAtom } from "@/features/sessions";
-import { desktopApi, useMountEffect } from "@/lib";
+import { desktopApi, useMountEffect, useMountedUntilClosed } from "@/lib";
 import { AcpRegistryInstallPanel } from "./acp-registry-install-panel";
 
 export interface AcpRegistryDialogProps {
@@ -148,15 +148,24 @@ export function AcpRegistryDialog({
   open,
   onOpenChange,
 }: AcpRegistryDialogProps) {
-  if (!open) {
+  const presence = useMountedUntilClosed(open);
+  if (!presence.mounted) {
     return null;
   }
-  return <AcpRegistryCatalog onOpenChange={onOpenChange} />;
+  return (
+    <AcpRegistryCatalog
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={presence.onOpenChangeComplete}
+      open={open}
+    />
+  );
 }
 
 function AcpRegistryCatalog({
   onOpenChange,
-}: Pick<AcpRegistryDialogProps, "onOpenChange">) {
+  onOpenChangeComplete,
+  open,
+}: AcpRegistryDialogProps & { onOpenChangeComplete(open: boolean): void }) {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
   const detectAgents = useSetAtom(detectAgentsAtom);
@@ -276,7 +285,11 @@ function AcpRegistryCatalog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open>
+    <Dialog
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
+      open={open}
+    >
       <DialogContent size="palette">
         <DialogHeader>
           <DialogTitle>{t("adapters.registry.title")}</DialogTitle>

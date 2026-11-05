@@ -3,6 +3,7 @@ import { access, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BACKGROUND_DAEMON_ARG } from "@cocurdex/daemon/background-launch";
 
 /** Flag the desktop main process recognizes for CLI folder open. */
 export const OPEN_FOLDER_FLAG = "--open-folder";
@@ -80,6 +81,15 @@ export async function assertDirectory(folderPath: string): Promise<string> {
  */
 export async function openDesktopApp(folderPath?: string): Promise<void> {
   const { binary, args } = await resolveLaunch(folderPath);
+  spawnDesktopApp(binary, args);
+}
+
+export async function launchBackgroundDaemon(): Promise<void> {
+  const { binary, args } = await resolveLaunch();
+  spawnDesktopApp(binary, [...args, BACKGROUND_DAEMON_ARG]);
+}
+
+function spawnDesktopApp(binary: string, args: string[]) {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.COCURDEX_APPIMAGE;
@@ -88,6 +98,7 @@ export async function openDesktopApp(folderPath?: string): Promise<void> {
     detached: true,
     stdio: "ignore",
     env,
+    windowsHide: true,
   });
   child.unref();
 }

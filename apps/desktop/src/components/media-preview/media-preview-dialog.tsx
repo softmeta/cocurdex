@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib";
+import { cn, useDialogExit } from "@/lib";
 import {
   clampPreviewPan,
   type PreviewPanOffset,
@@ -78,6 +78,7 @@ export function MediaPreviewDialog({
   viewKey?: string;
 }) {
   const { t } = useTranslation("common");
+  const exit = useDialogExit(onClose);
   const [view, setView] = useState(() => initialView(viewKey));
   if (view.key !== viewKey) {
     setView(initialView(viewKey));
@@ -210,9 +211,10 @@ export function MediaPreviewDialog({
 
   return (
     <Dialog
-      open
+      open={exit.open}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open) exit.close();
       }}
     >
       <DialogContent
@@ -295,7 +297,7 @@ export function MediaPreviewDialog({
               {actions}
               <PreviewToolbarButton
                 label={t("preview.closePreview")}
-                onClick={onClose}
+                onClick={exit.close}
                 tooltipSide="bottom"
               >
                 <X className="size-3.5" />

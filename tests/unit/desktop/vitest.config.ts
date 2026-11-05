@@ -13,6 +13,7 @@ const packageEntries: Record<string, string> = {
   "@cocurdex/rpc": "rpc/src/index.ts",
   "@cocurdex/client-runtime": "client-runtime/src/index.ts",
   "@cocurdex/daemon/client": "daemon/src/client.ts",
+  "@cocurdex/daemon/background-launch": "daemon/src/background/launch-args.ts",
   "@cocurdex/daemon/paths": "daemon/src/paths.ts",
   "@cocurdex/daemon": "daemon/src/index.ts",
   "@cocurdex/agent-core": "agent-core/src/index.ts",

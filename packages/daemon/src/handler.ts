@@ -76,6 +76,10 @@ export async function handleDaemonRequest(
   switch (request.method) {
     case "daemon.status":
       return service.status();
+    case "daemon.background.get":
+      return service.background.status();
+    case "daemon.background.set":
+      return service.background.set(request.params.enabled, context.principal);
     case "daemon.shutdownIfIdle":
     case "daemon.health":
     case "diagnostics.export":

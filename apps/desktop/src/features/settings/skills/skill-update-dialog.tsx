@@ -21,7 +21,7 @@ import {
   Spinner,
   Text,
 } from "@/components/ui";
-import { useMountEffect } from "@/lib";
+import { useDialogExit, useMountEffect } from "@/lib";
 import { SkillFilePatch } from "./skill-file-patch-lazy";
 import { shortCommit, skillRef } from "./skill-library-model";
 import { skillsApi } from "./skills-api";
@@ -86,6 +86,7 @@ export function SkillUpdateDialog({
   onClose(): void;
   onUpdated(): void;
 }) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("settings");
   const ref = skillRef(skill);
   const [preview, setPreview] = useState<SkillUpdatePreview | null>(null);
@@ -121,7 +122,7 @@ export function SkillUpdateDialog({
         });
       }
       onUpdated();
-      onClose();
+      exit.close();
     } catch (actionError) {
       setError(errorMessage(actionError));
       setAction(null);
@@ -129,12 +130,16 @@ export function SkillUpdateDialog({
   };
 
   const close = (open: boolean) => {
-    if (!open && action === null) onClose();
+    if (!open && action === null) exit.close();
   };
   const firstPatch = preview?.changes.find((change) => change.patch !== null);
 
   return (
-    <Dialog open onOpenChange={close}>
+    <Dialog
+      open={exit.open}
+      onOpenChange={close}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+    >
       <DialogContent size="wide">
         <DialogHeader>
           <DialogTitle>
@@ -188,7 +193,7 @@ export function SkillUpdateDialog({
           <Button
             disabled={action !== null}
             variant="outline"
-            onClick={onClose}
+            onClick={exit.close}
           >
             {t("skills.actions.cancel")}
           </Button>

@@ -62,6 +62,7 @@ export type {
   WorkspaceGitFileChange,
   WorkspaceGitStatusEntry,
 } from "./types";
+export { useDialogExit, useMountedUntilClosed } from "./use-dialog-exit";
 export { cn } from "./utils";
 export {
   buildDevWebClientUrl,

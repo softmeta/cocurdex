@@ -1,9 +1,11 @@
+import type { DaemonBackgroundStatus } from "@cocurdex/rpc";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button, Spinner, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import type { DaemonRuntimeStatus } from "@/lib/types";
+import { DaemonBackgroundSetting } from "./daemon-background-setting";
 
 type DaemonStatusKind = "loading" | "running" | "outdated" | "stopped";
 
@@ -62,10 +64,17 @@ function shortenFingerprint(fingerprint: string | null) {
 export function DaemonSettingsPanel() {
   const { t, i18n } = useTranslation("settings");
   const [status, setStatus] = useState<DaemonRuntimeStatus | null>(null);
+  const [background, setBackground] = useState<DaemonBackgroundStatus | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
 
   useMountEffect(() => {
     void desktopApi.getDaemonStatus().then(setStatus);
+    void desktopApi
+      .getDaemonBackground()
+      .then(setBackground)
+      .catch(() => setBackground(null));
   });
 
   const refresh = async () => {
@@ -115,6 +124,9 @@ export function DaemonSettingsPanel() {
       case "outdated":
         return t("daemon.status.outdated", { pid: pidLabel });
       case "running":
+        if (background?.enabled) {
+          return t("daemon.status.runningBackground", { pid: pidLabel });
+        }
         if (status?.ownedByThisApp) {
           return t("daemon.status.runningOwned", { pid: pidLabel });
         }
@@ -134,86 +146,94 @@ export function DaemonSettingsPanel() {
     : t("daemon.actions.start");
 
   return (
-    <div className="flex flex-col gap-3 py-3.5">
-      <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <div className="text-body font-medium text-foreground">
-            {t("daemon.title")}
-          </div>
-          <div className="mt-0.5 text-body text-muted-foreground">
-            {t("daemon.description")}
-          </div>
-          <Text
-            className={cn(
-              "mt-2 block font-medium",
-              daemonStatusTextClassName(statusKind),
-            )}
-            size="meta"
-          >
-            {statusText}
-          </Text>
-          {status?.running ? (
-            <div className="mt-2 flex flex-col gap-1">
-              {status.socketPath ? (
-                <Text
-                  className="block break-all font-mono"
-                  size="meta"
-                  tone="muted"
-                >
-                  {t("daemon.details.socket", { path: status.socketPath })}
-                </Text>
-              ) : null}
-              {startedAtLabel ? (
-                <Text className="block" size="meta" tone="muted">
-                  {t("daemon.details.startedAt", { value: startedAtLabel })}
-                </Text>
-              ) : null}
-              {status.protocolVersion !== null ? (
-                <Text className="block" size="meta" tone="muted">
-                  {t("daemon.details.protocol", {
-                    version: String(status.protocolVersion),
-                  })}
-                </Text>
-              ) : null}
-              {fingerprintLabel ? (
-                <Text className="block font-mono" size="meta" tone="muted">
-                  {t("daemon.details.runtime", {
-                    fingerprint: fingerprintLabel,
-                  })}
-                </Text>
-              ) : null}
+    <>
+      <div className="flex flex-col gap-3 py-3.5">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <div className="text-body font-medium text-foreground">
+              {t("daemon.title")}
             </div>
-          ) : null}
-          {status && !status.running && status.error ? (
+            <div className="mt-0.5 text-body text-muted-foreground">
+              {t("daemon.description")}
+            </div>
             <Text
-              className="mt-2 block whitespace-pre-wrap rounded-control bg-muted/40 px-2 py-1.5 font-mono"
+              className={cn(
+                "mt-2 block font-medium",
+                daemonStatusTextClassName(statusKind),
+              )}
               size="meta"
-              tone="muted"
             >
-              {status.error}
+              {statusText}
             </Text>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {busy ? <Spinner size="md" /> : null}
-          <Button
-            disabled={busy}
-            size="sm"
-            variant="outline"
-            onClick={() => void runRestart()}
-          >
-            {primaryActionLabel}
-          </Button>
-          <Button
-            disabled={busy}
-            size="sm"
-            variant="ghost"
-            onClick={() => void refresh()}
-          >
-            {t("daemon.actions.refresh")}
-          </Button>
+            {status?.running ? (
+              <div className="mt-2 flex flex-col gap-1">
+                {status.socketPath ? (
+                  <Text
+                    className="block break-all font-mono"
+                    size="meta"
+                    tone="muted"
+                  >
+                    {t("daemon.details.socket", { path: status.socketPath })}
+                  </Text>
+                ) : null}
+                {startedAtLabel ? (
+                  <Text className="block" size="meta" tone="muted">
+                    {t("daemon.details.startedAt", { value: startedAtLabel })}
+                  </Text>
+                ) : null}
+                {status.protocolVersion !== null ? (
+                  <Text className="block" size="meta" tone="muted">
+                    {t("daemon.details.protocol", {
+                      version: String(status.protocolVersion),
+                    })}
+                  </Text>
+                ) : null}
+                {fingerprintLabel ? (
+                  <Text className="block font-mono" size="meta" tone="muted">
+                    {t("daemon.details.runtime", {
+                      fingerprint: fingerprintLabel,
+                    })}
+                  </Text>
+                ) : null}
+              </div>
+            ) : null}
+            {status && !status.running && status.error ? (
+              <Text
+                className="mt-2 block whitespace-pre-wrap rounded-control bg-muted/40 px-2 py-1.5 font-mono"
+                size="meta"
+                tone="muted"
+              >
+                {status.error}
+              </Text>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {busy ? <Spinner size="md" /> : null}
+            <Button
+              disabled={busy}
+              size="sm"
+              variant="outline"
+              onClick={() => void runRestart()}
+            >
+              {primaryActionLabel}
+            </Button>
+            <Button
+              disabled={busy}
+              size="sm"
+              variant="ghost"
+              onClick={() => void refresh()}
+            >
+              {t("daemon.actions.refresh")}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+      {background?.available ? (
+        <DaemonBackgroundSetting
+          status={background}
+          onChanged={setBackground}
+        />
+      ) : null}
+    </>
   );
 }

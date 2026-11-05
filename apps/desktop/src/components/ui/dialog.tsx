@@ -3,6 +3,11 @@ import { XIcon } from "lucide-react";
 import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import { asChildToRender } from "@/components/ui/_as-child-render";
+import {
+  OverlayOpenContext,
+  useContentWhileClosing,
+  useOverlayRootOpen,
+} from "@/components/ui/_overlay-open-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +22,26 @@ const dialogContentSizeClassName = {
 
 function Dialog({
   children,
+  defaultOpen,
+  onOpenChange,
+  open,
   ...props
 }: Omit<React.ComponentProps<typeof DialogPrimitive.Root>, "children"> & {
   children?: React.ReactNode;
 }) {
-  return <DialogPrimitive.Root {...props}>{children}</DialogPrimitive.Root>;
+  const rootOpen = useOverlayRootOpen({ defaultOpen, onOpenChange, open });
+  return (
+    <DialogPrimitive.Root
+      defaultOpen={defaultOpen}
+      onOpenChange={rootOpen.onOpenChange}
+      open={open}
+      {...props}
+    >
+      <OverlayOpenContext value={rootOpen.isOpen}>
+        {children}
+      </OverlayOpenContext>
+    </DialogPrimitive.Root>
+  );
 }
 
 type DialogTriggerProps = React.ComponentProps<
@@ -88,6 +108,7 @@ function DialogContent({
   showCloseButton?: boolean;
 }) {
   const { t } = useTranslation("common");
+  const content = useContentWhileClosing(children);
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -100,7 +121,7 @@ function DialogContent({
         )}
         {...props}
       >
-        {children}
+        {content}
         {showCloseButton && (
           <DialogClose asChild>
             <Button

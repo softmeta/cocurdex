@@ -14,6 +14,7 @@ import {
   Text,
 } from "@/components/ui";
 import { selectSessionAtom } from "@/features/sessions";
+import { useDialogExit } from "@/lib";
 import { ExecutionTreeRowContent } from "./execution-tree-row-content";
 import {
   DEFAULT_EXECUTION_TREE_VIEW,
@@ -169,6 +170,7 @@ export function ExecutionTreeDialog({
   sessionId,
   onClose,
 }: ExecutionTreeDialogProps) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("sessions");
   const selectSession = useSetAtom(selectSessionAtom);
   const [view, setView] = useState<ExecutionTreeView>(
@@ -176,7 +178,11 @@ export function ExecutionTreeDialog({
   );
 
   return (
-    <Dialog onOpenChange={(open) => !open && onClose()} open>
+    <Dialog
+      onOpenChange={(open) => !open && exit.close()}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+      open={exit.open}
+    >
       <DialogContent className="top-[12vh] translate-y-0" size="wide">
         <div className="flex min-w-0 items-end gap-4">
           <DialogHeader className="min-w-0 flex-1">
@@ -195,7 +201,7 @@ export function ExecutionTreeDialog({
           view={view}
           onOpenSession={(id) => {
             selectSession(id);
-            onClose();
+            exit.close();
           }}
           sessionId={sessionId}
         />

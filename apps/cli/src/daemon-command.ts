@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { readDaemonMetadata, requestDaemon } from "@cocurdex/daemon/client";
 import { withoutNodeEnvProxyFlag } from "@cocurdex/shared";
-import { findMonorepoRoot } from "./open-desktop";
+import { findMonorepoRoot, launchBackgroundDaemon } from "./open-desktop";
 
 export async function withDaemon<T>(operation: () => Promise<T>) {
   try {
@@ -14,6 +14,10 @@ export async function withDaemon<T>(operation: () => Promise<T>) {
 }
 
 async function startDaemon() {
+  if (process.versions.electron) {
+    await launchBackgroundDaemon();
+    return waitForDaemon();
+  }
   const monorepoRoot = await findMonorepoRoot();
   if (!monorepoRoot) {
     throw new Error(
@@ -34,7 +38,10 @@ async function startDaemon() {
     },
   );
   child.unref();
+  return waitForDaemon();
+}
 
+async function waitForDaemon() {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 20_000) {
     try {

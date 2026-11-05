@@ -1,6 +1,10 @@
 import path from "node:path";
+import { parseBackgroundLaunch } from "@cocurdex/daemon/background-launch";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import { getDesktopLogDirectory } from "@cocurdex/daemon/paths";
+import {
+  COCURDEX_USER_DATA_PATH_ENV,
+  getDesktopLogDirectory,
+} from "@cocurdex/daemon/paths";
 import type { BrowserAnnotation } from "@cocurdex/shared";
 import { buildPolicy, hashLogValue, hostForLog } from "@cocurdex/shared";
 import {
@@ -36,6 +40,8 @@ import {
   createDaemonRuntimeClient,
   type DaemonRuntimeClient,
 } from "./chat/daemon-runtime-client";
+import { createDaemonRuntimeLifecycle } from "./chat/daemon-runtime-lifecycle";
+import type { DaemonRuntimeClientOptions } from "./chat/daemon-runtime-types";
 import {
   ensureCliOnPathBestEffort,
   getBundledDaemonEntryPath,
@@ -64,7 +70,6 @@ import {
   queueOpenFolder,
 } from "./open-folder";
 import { registerOssLicensesHandlers } from "./oss-licenses";
-import { syncKeepAwakeFromDaemon } from "./power";
 import { denyWindowNavigation, resolveMainWindowDevTools } from "./security";
 import { applyShellEnv, resolveShellEnv } from "./shell-env";
 import { registerAppUpdateHandlers, startAppUpdater } from "./updater";
@@ -88,14 +93,7 @@ const daemonLogger = createLogger("daemon-runtime-client");
 let appQuitAllowed = false;
 let appShutdownPromise: Promise<void> | null = null;
 let daemonRuntimeClient: DaemonRuntimeClient | null = null;
-
-function syncKeepAwake() {
-  syncKeepAwakeFromDaemon().catch((error: unknown) => {
-    appLogger.warn("keepAwake.syncFailed", {
-      message: error instanceof Error ? error.message : String(error),
-    });
-  });
-}
+const backgroundLaunch = parseBackgroundLaunch(process.argv);
 const preloadPath = resolveElectronEntryPath(
   import.meta.url,
   "../preload/preload.cjs",
@@ -136,6 +134,9 @@ function configureRemoteDebugging() {
 // Isolate local-dev persisted state from an installed build. Must run before
 // app 'ready' so Chromium storage (IndexedDB, cookies, Local Storage) also
 // lands in the dev-specific directory.
+if (backgroundLaunch?.userDataPath) {
+  process.env[COCURDEX_USER_DATA_PATH_ENV] = backgroundLaunch.userDataPath;
+}
 app.setPath(
   "userData",
   resolveUserDataPath(app.getPath("userData"), app.isPackaged),
@@ -148,10 +149,14 @@ app.setPath(
 // Packaged builds: second-instance argv order is unstable on some platforms —
 // pass the folder via additionalData (Electron-recommended) and fall back to argv.
 const openFolderFromLaunch = extractOpenFolderFromProcess(process.argv);
-const gotTheLock = app.requestSingleInstanceLock(
-  openFolderFromLaunch ? { openFolder: openFolderFromLaunch } : {},
-);
-if (!gotTheLock) {
+const gotTheLock =
+  !backgroundLaunch &&
+  app.requestSingleInstanceLock(
+    openFolderFromLaunch ? { openFolder: openFolderFromLaunch } : {},
+  );
+if (backgroundLaunch) {
+  app.dock?.hide();
+} else if (!gotTheLock) {
   app.quit();
 } else {
   app.on(
@@ -494,36 +499,80 @@ process.on("unhandledRejection", (reason) => {
 // Privileges must be registered before app ready.
 protocol.registerSchemesAsPrivileged([rendererScheme]);
 
+function configureAppLogging(userDataPath: string) {
+  const logsPath = getDesktopLogDirectory(userDataPath);
+  configureLogging({
+    appVersion: app.getVersion(),
+    diagnosticsPreferencesPath: path.join(
+      userDataPath,
+      "diagnostics-preferences.json",
+    ),
+    logDirectory: logsPath,
+    sessionLogDirectory: path.join(logsPath, "sessions"),
+    pretty: !app.isPackaged,
+    verbose: !app.isPackaged || isMainDiagnosticsEnabled(),
+  });
+}
+
+function appLaunchCommand() {
+  if (app.isPackaged) return [process.env.APPIMAGE || process.execPath];
+  return [process.execPath, app.getAppPath()];
+}
+
+function daemonRuntimeOptions(
+  userDataPath: string,
+): Omit<DaemonRuntimeClientOptions, "onEvent"> {
+  return {
+    appLaunchCommand: appLaunchCommand(),
+    daemonEntryPath: getBundledDaemonEntryPath(),
+    logger: daemonLogger,
+    userDataPath,
+    webRoot: path.join(app.getAppPath(), "out", "renderer"),
+  };
+}
+
+async function launchBackgroundDaemon() {
+  const userDataPath = app.getPath("userData");
+  configureAppLogging(userDataPath);
+  const lifecycle = createDaemonRuntimeLifecycle({
+    ...daemonRuntimeOptions(userDataPath),
+    detached: true,
+    onEvent: () => undefined,
+  });
+  let exitCode = 0;
+  try {
+    await lifecycle.ensure();
+    appLogger.info("daemon.backgroundLaunched");
+  } catch (error) {
+    exitCode = 1;
+    appLogger.error("daemon.backgroundLaunchFailed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+  await shutdownLogging().catch(() => undefined);
+  app.exit(exitCode);
+}
+
 app
   .whenReady()
   .then(async () => {
+    if (backgroundLaunch) {
+      await launchBackgroundDaemon();
+      return;
+    }
     if (!gotTheLock) {
       return;
     }
 
     const userDataPath = app.getPath("userData");
-    const logsPath = getDesktopLogDirectory(userDataPath);
-    configureLogging({
-      appVersion: app.getVersion(),
-      diagnosticsPreferencesPath: path.join(
-        userDataPath,
-        "diagnostics-preferences.json",
-      ),
-      logDirectory: logsPath,
-      sessionLogDirectory: path.join(logsPath, "sessions"),
-      pretty: !app.isPackaged,
-      verbose: !app.isPackaged || isMainDiagnosticsEnabled(),
-    });
+    configureAppLogging(userDataPath);
     // Surface where native minidumps land so crash investigations can find them.
     appLogger.info("crashReporter.ready", {
       crashDumpsDirectory: app.getPath("crashDumps"),
     });
     initializeAppState(userDataPath);
     daemonRuntimeClient = createDaemonRuntimeClient({
-      daemonEntryPath: getBundledDaemonEntryPath(),
-      webRoot: path.join(app.getAppPath(), "out", "renderer"),
-      logger: daemonLogger,
-      onConnected: syncKeepAwake,
+      ...daemonRuntimeOptions(userDataPath),
       onEvent(event) {
         if (event.type === "data.changed" && event.areas.includes("settings")) {
           loadAndApplyNetworkProxyFromDaemon().catch((error: unknown) => {
@@ -531,7 +580,6 @@ app
               message: error instanceof Error ? error.message : String(error),
             });
           });
-          syncKeepAwake();
         }
         if (event.type === "peer.message") {
           appLogger.info("daemon.peerMessage", { ...event });
@@ -539,7 +587,6 @@ app
           appLogger.info("daemon.teamChanged", { ...event });
         }
       },
-      userDataPath,
     });
     // Spawning the daemon and loading the renderer are independent, so start
     // the daemon and keep going: the window appears while it boots. Everything

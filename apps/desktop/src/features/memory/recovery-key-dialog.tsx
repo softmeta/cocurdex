@@ -10,6 +10,7 @@ import {
   DialogTitle,
   Text,
 } from "@/components/ui";
+import { useDialogExit } from "@/lib";
 
 export function RecoveryKeyDialog({
   content,
@@ -18,9 +19,14 @@ export function RecoveryKeyDialog({
   content: string;
   onClose(): void;
 }) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("memory");
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={exit.open}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+      onOpenChange={(open) => !open && exit.close()}
+    >
       <DialogContent size="default">
         <DialogHeader>
           <DialogTitle>{t("settings.keys.title")}</DialogTitle>
@@ -40,7 +46,7 @@ export function RecoveryKeyDialog({
           <AppCopyButton label={t("settings.keys.copy")} value={content} />
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={exit.close}>
             {t("settings.keys.close")}
           </Button>
         </DialogFooter>

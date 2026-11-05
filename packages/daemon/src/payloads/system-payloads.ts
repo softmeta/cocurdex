@@ -15,6 +15,9 @@ const terminalSize = {
 const pathPayload = z.object({ path: filesystemPathSchema });
 
 export const systemPayloadSchemas: PayloadSchemas = {
+  "daemon.background.set": exact<Payload<"daemon.background.set">>()(
+    z.object({ enabled: z.boolean() }),
+  ),
   "diagnostics.export": exact<Payload<"diagnostics.export">>()(
     z.object({
       hostLogDirectories: z

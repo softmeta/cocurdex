@@ -19,7 +19,7 @@ import {
   Input,
   Text,
 } from "@/components/ui";
-import { desktopApi } from "@/lib";
+import { desktopApi, useDialogExit } from "@/lib";
 import { SettingsSelect } from "../settings-select";
 import { useFormatDateTime } from "./host-access-labels";
 import { PairingQrCode } from "./pairing-qr-code";
@@ -84,6 +84,7 @@ export function PairDeviceDialog({
   onClose(): void;
   onCreated(): void;
 }) {
+  const exit = useDialogExit(onClose);
   const { t } = useTranslation("settings");
   const [label, setLabel] = useState("");
   const [scopes, setScopes] = useState<HostAccessScope[]>(DEFAULT_SCOPES);
@@ -117,7 +118,11 @@ export function PairDeviceDialog({
   }));
 
   return (
-    <Dialog onOpenChange={(open) => !open && onClose()} open>
+    <Dialog
+      onOpenChange={(open) => !open && exit.close()}
+      onOpenChangeComplete={exit.onOpenChangeComplete}
+      open={exit.open}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("devices.pair.title")}</DialogTitle>
@@ -151,7 +156,7 @@ export function PairDeviceDialog({
         )}
         <DialogFooter>
           {created ? (
-            <Button type="button" onClick={onClose}>
+            <Button type="button" onClick={exit.close}>
               {t("devices.pair.done")}
             </Button>
           ) : (

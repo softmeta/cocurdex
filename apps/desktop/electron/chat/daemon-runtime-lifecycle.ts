@@ -30,8 +30,17 @@ function matches(status: DaemonStatus, fingerprint: string) {
   );
 }
 
+const QUIT_REQUEST_TIMEOUT_MS = 2_000;
+
 const delay = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function withinQuitDeadline<T>(work: Promise<T>) {
+  return Promise.race([
+    work.catch(() => null),
+    delay(QUIT_REQUEST_TIMEOUT_MS).then(() => null),
+  ]);
+}
 
 export function createDaemonRuntimeLifecycle(
   options: DaemonRuntimeClientOptions,
@@ -42,10 +51,15 @@ export function createDaemonRuntimeLifecycle(
   let ownedDaemonProcess: OwnedDaemonProcess | null = null;
   let retryTimer: NodeJS.Timeout | null = null;
   let disposed = false;
+  let disposing: Promise<void> | null = null;
   const controller = new AbortController();
   const requestOptions = () => ({
     userDataPath: options.userDataPath,
     signal: controller.signal,
+  });
+  const quitOptions = () => ({
+    userDataPath: options.userDataPath,
+    signal: AbortSignal.timeout(QUIT_REQUEST_TIMEOUT_MS),
   });
   const fingerprint = async () =>
     createHash("sha256")
@@ -196,7 +210,9 @@ export function createDaemonRuntimeLifecycle(
 
   function startDaemonProcess(runtimeFingerprint: string) {
     const ownedProcess = spawnOwnedDaemonProcess({
+      appLaunchCommand: options.appLaunchCommand,
       daemonEntryPath: options.daemonEntryPath,
+      detached: options.detached ?? false,
       onOutput(stream, message) {
         const log =
           stream === "stderr" ? options.logger.warn : options.logger.info;
@@ -226,6 +242,15 @@ export function createDaemonRuntimeLifecycle(
     });
   }
 
+  async function stopUnownedDaemonIfIdle() {
+    const status = await requestDaemon("daemon.status", quitOptions());
+    await requestDaemon(
+      "daemon.shutdownIfIdle",
+      { pid: status.pid, startedAt: status.startedAt },
+      quitOptions(),
+    );
+  }
+
   async function getStatus(): Promise<DaemonRuntimeStatus> {
     let expectedRuntimeFingerprint: string | null = null;
     try {
@@ -253,6 +278,31 @@ export function createDaemonRuntimeLifecycle(
         error: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  async function disposeRuntime() {
+    disposed = true;
+    clearRetry();
+    controller.abort();
+    await Promise.allSettled(
+      [daemonReady, restartReady].filter(
+        (work): work is Promise<void> => work !== null,
+      ),
+    );
+    const owned = ownedDaemonProcess;
+    ownedDaemonProcess = null;
+    const background = await withinQuitDeadline(
+      requestDaemon("daemon.background.get", quitOptions()),
+    );
+    if (background?.enabled) {
+      owned?.release();
+      return;
+    }
+    if (owned) {
+      await owned.shutdown();
+      return;
+    }
+    await withinQuitDeadline(stopUnownedDaemonIfIdle());
   }
 
   return {
@@ -291,18 +341,9 @@ export function createDaemonRuntimeLifecycle(
       restartReady = attempt;
       return attempt;
     },
-    async dispose() {
-      disposed = true;
-      clearRetry();
-      controller.abort();
-      await Promise.allSettled(
-        [daemonReady, restartReady].filter(
-          (work): work is Promise<void> => work !== null,
-        ),
-      );
-      const owned = ownedDaemonProcess;
-      ownedDaemonProcess = null;
-      await owned?.shutdown();
+    dispose() {
+      disposing ??= disposeRuntime();
+      return disposing;
     },
   };
 }

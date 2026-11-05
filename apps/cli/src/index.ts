@@ -15,6 +15,10 @@ import {
   type WorkspaceRecord,
 } from "@cocurdex/shared";
 import { agentAuthUsageLines, handleAgentCommand } from "./agent-auth-commands";
+import {
+  daemonBackgroundUsageLines,
+  handleDaemonBackgroundCommand,
+} from "./daemon-background-command";
 import { withDaemon } from "./daemon-command";
 import { handleDeckCommand } from "./deck-commands";
 import {
@@ -193,6 +197,11 @@ async function main(rawArgs: string[]) {
   if (resource === "daemon" && action === "status") {
     const status = await withDaemon(() => requestDaemon("daemon.status"));
     printResult(status, parsed);
+    return;
+  }
+
+  if (resource === "daemon" && action === "background") {
+    await handleDaemonBackgroundCommand(args, parsed);
     return;
   }
 
@@ -580,6 +589,7 @@ function printUsage() {
       "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
       ...skillsUsageLines(),
       ...diagnosticsUsageLines(),
+      ...daemonBackgroundUsageLines(),
       ...webUsageLines(),
       ...hostUsageLines(),
       ...worktreeUsageLines(),

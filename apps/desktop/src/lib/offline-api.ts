@@ -605,6 +605,14 @@ export const offlineApi: DesktopApi = {
   getMemoryCloudKeys: async () => {
     throw new Error("Cloud memory is unavailable outside the desktop app");
   },
+  getDaemonBackground: async () => ({
+    enabled: false,
+    available: false,
+    registered: false,
+  }),
+  setDaemonBackground: async () => {
+    throw new Error("Background mode is unavailable outside the desktop app");
+  },
   getHostRemoteAccess: async () => ({
     allowed: true,
     settings: {

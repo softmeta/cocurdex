@@ -294,6 +294,11 @@
       "restart": "重启",
       "start": "启动"
     },
+    "background": {
+      "description": "退出 Cocurdex 后保持 daemon 运行，并在登录时自动启动，CLI 和已配对设备可以继续使用。",
+      "saveFailed": "无法更改后台常驻设置",
+      "title": "后台常驻"
+    },
     "description": "本地 cocurdex daemon 持有应用数据库与 agent 会话。若笔记、议题或 agent 无响应，可在此重启。",
     "details": {
       "protocol": "协议版本 {{version}}",
@@ -306,6 +311,7 @@
     "status": {
       "outdated": "运行中（pid {{pid}}），但运行时与当前应用不匹配。请重启以替换。",
       "running": "运行中（pid {{pid}}）。",
+      "runningBackground": "运行中（pid {{pid}}），后台常驻，退出应用后继续运行。",
       "runningOwned": "运行中（pid {{pid}}），由本应用管理。",
       "stopped": "未运行。可启动或重启以恢复。"
     },

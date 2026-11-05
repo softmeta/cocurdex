@@ -66,6 +66,10 @@ const alias = {
     __dirname,
     "../../packages/note-doc/src/index.ts",
   ),
+  "@cocurdex/daemon/background-launch": path.resolve(
+    __dirname,
+    "../../packages/daemon/src/background/launch-args.ts",
+  ),
   "@cocurdex/daemon/client": path.resolve(
     __dirname,
     "../../packages/daemon/src/client.ts",

@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./background-launch": "./src/background/launch-args.ts",
     "./client": "./src/client.ts",
     "./paths": "./src/paths.ts",
     "./internal/*": "./src/*.ts"
