@@ -3,3 +3,4 @@ export {
   revealPathInFileManager,
 } from "./file-manager";
 export { listFontFamilies } from "./font-families";
+export { createKeepAwake } from "./keep-awake";

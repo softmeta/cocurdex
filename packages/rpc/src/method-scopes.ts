@@ -274,6 +274,8 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "mcp.logout": "credentials",
   "mcp.import.scan": "credentials",
   "daemon.shutdownIfIdle": "host.admin",
+  "daemon.background.get": "host.admin",
+  "daemon.background.set": "host.admin",
   "diagnostics.export": "host.admin",
   "diagnostics.logLevel.set": "host.admin",
   "system.openDirectory": "host.admin",

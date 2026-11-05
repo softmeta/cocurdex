@@ -78,6 +78,10 @@ const quickjsWasmBesideDaemon = {
 const alias = {
   // Subpath exports must be listed before the package root alias, otherwise
   // Vite resolves `@cocurdex/daemon/paths` as `index.ts/paths`.
+  "@cocurdex/daemon/background-launch": path.join(
+    repoRoot,
+    "packages/daemon/src/background/launch-args.ts",
+  ),
   "@cocurdex/daemon/client": path.join(
     repoRoot,
     "packages/daemon/src/client.ts",

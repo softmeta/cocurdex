@@ -69,7 +69,9 @@ describe("spawnOwnedDaemonProcess", () => {
       );
       const onOutput = vi.fn();
       const ownedProcess = spawnOwnedDaemonProcess({
+        appLaunchCommand: [process.execPath],
         daemonEntryPath,
+        detached: false,
         onOutput,
         onError: vi.fn(),
         onExit: vi.fn(),

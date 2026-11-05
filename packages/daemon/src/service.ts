@@ -114,6 +114,7 @@ import {
   discoverInstalledAgentCapabilities,
 } from "./agents";
 import { DaemonAttachmentStore } from "./attachment-store";
+import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { DaemonDeckService, DeckAssetStore } from "./decks";
@@ -142,6 +143,7 @@ import {
   saveNetworkProxySettings,
 } from "./network-proxy-settings";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
+import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import { DaemonProviderService } from "./provider";
@@ -188,6 +190,7 @@ import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
 import { pullSync } from "./sync/sync-pull";
 import {
+  createKeepAwake,
   listFontFamilies,
   openDirectoryInFileManager,
   revealPathInFileManager,
@@ -235,6 +238,7 @@ export interface CocurdexDaemonServiceOptions {
   agentToolsUrl?: string;
   localToken?: string;
   autoStartMemory?: boolean;
+  appLaunchCommand?: readonly string[] | null;
 }
 
 export interface CocurdexDaemonStatus {
@@ -296,6 +300,14 @@ export class CocurdexDaemonService {
   readonly state: DaemonState;
   readonly hostAccess: HostAccessService;
   readonly push: PushService;
+  readonly background: DaemonBackgroundService;
+  private readonly keepAwake = createKeepAwake({
+    platform: process.platform,
+    pid: process.pid,
+    onError: (error) =>
+      logDaemonDiagnostic("warn", "daemon.keepAwakeFailed", { error }),
+  });
+  private keepAwakeSync: Promise<void> = Promise.resolve();
   readonly remoteTraffic: TrafficMeter = createTrafficMeter();
   readonly hostAccessReady: Promise<void>;
   readonly workflows: WorkflowModule;
@@ -331,7 +343,10 @@ export class CocurdexDaemonService {
       hostName: () => os.hostname(),
       listAddresses: (port) => listHostAddresses(os.networkInterfaces(), port),
       remoteAccessAllowed: isFeatureEnabled(buildPolicy, "remote-access"),
-      onRemoteAccessChanged: () => this.broadcastSettingsChanged(),
+      onRemoteAccessChanged: () => {
+        this.broadcastSettingsChanged();
+        this.syncKeepAwake();
+      },
     });
     this.hostAccessReady = this.hostAccess.initialize();
     this.push = new PushService({
@@ -341,6 +356,19 @@ export class CocurdexDaemonService {
       identity: () => this.hostAccess.identity(),
       getSession: (sessionId) => this.state.getSession(sessionId),
       crypto: daemonNoiseCrypto,
+    });
+    this.background = new DaemonBackgroundService({
+      settings: this.state.hostAccessStore.settings,
+      target: options.appLaunchCommand
+        ? {
+            platform: process.platform,
+            launchCommand: options.appLaunchCommand,
+            userDataPath: options.userDataPath,
+            defaultUserDataPath: getDefaultUserDataPath(),
+            homeDir: homedir(),
+            xdgConfigHome: process.env.XDG_CONFIG_HOME,
+          }
+        : null,
     });
     this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
@@ -794,6 +822,18 @@ export class CocurdexDaemonService {
       workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
+  }
+
+  syncKeepAwake() {
+    this.keepAwakeSync = this.keepAwakeSync
+      .then(async () => {
+        if (this.shutdownPromise) return;
+        const status = await this.hostAccess.remoteAccessStatus();
+        this.keepAwake.set(status.listening && status.settings.keepAwake);
+      })
+      .catch((error: unknown) =>
+        logDaemonDiagnostic("warn", "daemon.keepAwakeFailed", { error }),
+      );
   }
 
   shutdown() {
@@ -2876,6 +2916,7 @@ export class CocurdexDaemonService {
     this.stopping = true;
     await this.startupRecovery;
     clearInterval(this.checkpointReconcileTimer);
+    this.keepAwake.dispose();
     this.runCapacity.close(new Error("Daemon is shutting down"));
     const interrupted = await this.runs.interruptAll();
     await this.state.noteRestartInterruptions(

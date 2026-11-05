@@ -62,8 +62,13 @@ async function fixture() {
   };
   let stopped = false;
   let busy = false;
+  let background = false;
   const shutdown = vi.fn().mockResolvedValue(undefined);
+  const release = vi.fn();
   vi.mocked(requestDaemon).mockImplementation(async (method) => {
+    if (method === "daemon.background.get") {
+      return { enabled: background, available: true, registered: background };
+    }
     if (method === "daemon.shutdownIfIdle") {
       if (!busy) stopped = true;
       return {
@@ -84,9 +89,10 @@ async function fixture() {
   vi.mocked(spawnOwnedDaemonProcess).mockImplementation(() => {
     stopped = false;
     status = current;
-    return { pid: current.pid, shutdown };
+    return { pid: current.pid, release, shutdown };
   });
   const client = createDaemonRuntimeClient({
+    appLaunchCommand: ["/Applications/Cocurdex.app/Contents/MacOS/Cocurdex"],
     daemonEntryPath,
     userDataPath: directory,
     logger,
@@ -97,7 +103,11 @@ async function fixture() {
     client,
     logger,
     current,
+    release,
     shutdown,
+    setBackground(value: boolean) {
+      background = value;
+    },
     setBusy(value: boolean) {
       busy = value;
     },
@@ -203,7 +213,7 @@ describe("daemon runtime replacement", () => {
     });
     vi.mocked(spawnOwnedDaemonProcess).mockImplementation(() => {
       spawned = true;
-      return { pid: current.pid, shutdown };
+      return { pid: current.pid, release: vi.fn(), shutdown };
     });
     await client.initialize();
     expect(settling).toHaveLength(0);
@@ -245,7 +255,7 @@ describe("daemon runtime replacement", () => {
     });
     vi.mocked(spawnOwnedDaemonProcess).mockImplementation(() => {
       spawned = true;
-      return { pid: current.pid, shutdown };
+      return { pid: current.pid, release: vi.fn(), shutdown };
     });
     await client.initialize();
     expect(settling).toHaveLength(0);
@@ -308,6 +318,36 @@ describe("daemon runtime replacement", () => {
     expect(shutdown).toHaveBeenCalledOnce();
     expect(spawnOwnedDaemonProcess).toHaveBeenCalledTimes(2);
     expect(process.kill).not.toHaveBeenCalled();
+  });
+
+  it("leaves an owned daemon running on quit when background mode is on", async () => {
+    const { client, release, setBackground, shutdown } = await fixture();
+    await client.initialize();
+    setBackground(true);
+    await client.dispose();
+    expect(release).toHaveBeenCalledOnce();
+    expect(shutdown).not.toHaveBeenCalled();
+  });
+
+  it("stops an owned daemon on quit when background mode is off", async () => {
+    const { client, release, shutdown } = await fixture();
+    await client.initialize();
+    await client.dispose();
+    expect(shutdown).toHaveBeenCalledOnce();
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it("asks an adopted daemon to stop when idle on quit once background mode is off", async () => {
+    const { client, current, setStatus } = await fixture();
+    setStatus(current);
+    await client.initialize();
+    expect(spawnOwnedDaemonProcess).not.toHaveBeenCalled();
+    await client.dispose();
+    expect(requestDaemon).toHaveBeenCalledWith(
+      "daemon.shutdownIfIdle",
+      { pid: current.pid, startedAt: current.startedAt },
+      expect.anything(),
+    );
   });
 
   it("does not spawn after disposal during status lookup", async () => {

@@ -9,7 +9,9 @@ export interface DaemonRuntimeLogger {
 }
 
 export interface DaemonRuntimeClientOptions {
+  appLaunchCommand: readonly string[];
   daemonEntryPath: string;
+  detached?: boolean;
   logger: DaemonRuntimeLogger;
   onEvent(event: CocurdexDaemonEvent, meta?: DaemonEventMeta): void;
   onConnected?(): void;

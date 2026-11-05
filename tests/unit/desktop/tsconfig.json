@@ -18,6 +18,9 @@
       ],
       "@cocurdex/daemon": ["../../../packages/daemon/src/index.ts"],
       "@cocurdex/daemon/client": ["../../../packages/daemon/src/client.ts"],
+      "@cocurdex/daemon/background-launch": [
+        "../../../packages/daemon/src/background/launch-args.ts"
+      ],
       "@cocurdex/daemon/paths": ["../../../packages/daemon/src/paths.ts"],
       "@cocurdex/agent-core": ["../../../packages/agent-core/src/index.ts"],
       "@cocurdex/agent-adapters": [

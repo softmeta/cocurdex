@@ -12,11 +12,14 @@ const SHUTDOWN_TIMEOUT_MS = 12_000;
 
 export interface OwnedDaemonProcess {
   pid: number | undefined;
+  release(): void;
   shutdown(): Promise<void>;
 }
 
 interface SpawnOwnedDaemonProcessOptions {
+  appLaunchCommand: readonly string[];
   daemonEntryPath: string;
+  detached: boolean;
   onOutput?(stream: DaemonOutputStream, line: string): void;
   onError(error: Error): void;
   onExit(code: number | null, signal: NodeJS.Signals | null): void;
@@ -63,17 +66,19 @@ function waitForExit(child: ChildProcess, timeoutMs: number) {
 export function spawnOwnedDaemonProcess(
   options: SpawnOwnedDaemonProcessOptions,
 ): OwnedDaemonProcess {
+  const ownerEnv = options.detached ? {} : { COCURDEX_DAEMON_OWNER_FD: "3" };
   const child = spawn(process.execPath, [options.daemonEntryPath], {
     detached: true,
     env: {
       ...withoutNodeEnvProxyFlag(process.env),
-      COCURDEX_DAEMON_OWNER_FD: "3",
+      ...ownerEnv,
+      COCURDEX_APP_LAUNCH_COMMAND: JSON.stringify(options.appLaunchCommand),
       COCURDEX_DAEMON_RUNTIME_FINGERPRINT: options.runtimeFingerprint,
       COCURDEX_USER_DATA_PATH: options.userDataPath,
       COCURDEX_WEB_ROOT: options.webRoot ?? "",
       ELECTRON_RUN_AS_NODE: "1",
     },
-    stdio: ["ignore", "pipe", "pipe", "pipe"],
+    stdio: options.detached ? "ignore" : ["ignore", "pipe", "pipe", "pipe"],
     windowsHide: true,
   });
   captureOutput(child.stdout, "stdout", options.onOutput);
@@ -102,6 +107,11 @@ export function spawnOwnedDaemonProcess(
 
   return {
     pid: child.pid,
+    release() {
+      ownerPipe?.destroy();
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+    },
     shutdown() {
       if (!shutdownPromise) {
         shutdownPromise = (async () => {
