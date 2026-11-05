@@ -13,6 +13,7 @@ const reply = (id: string, streaming = true): CondensedItem => ({
   id,
   text: id,
   streaming,
+  source: null,
   turnEnd: !streaming,
 });
 

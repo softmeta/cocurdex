@@ -289,6 +289,8 @@
   --role-avatar-blue: oklch(0.546 0.245 262.881);
   --role-avatar-violet: oklch(0.541 0.281 293.009);
   --role-avatar-pink: oklch(0.592 0.249 0.584);
+  --role-avatar-face: oklch(0.21 0.006 285.885);
+  --role-avatar-face-light: oklch(0.985 0.002 285.885);
   --editor-monaco-bg: var(--editor-canvas);
   --editor-monaco-line-highlight: color-mix(
     in srgb,
@@ -399,8 +401,17 @@
     var(--foreground)
   );
   --modal-scrim: rgb(0 0 0 / 0.4);
-  /* Lifted off the near-black canvas enough to read as a separate plane. */
-  --sidebar: color-mix(in srgb, var(--foreground) 7%, var(--background));
+  --sidebar: color-mix(in srgb, black 22%, var(--background));
+  --sidebar-surface-hover: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 7%,
+    var(--sidebar)
+  );
+  --sidebar-surface-active: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 11%,
+    var(--sidebar)
+  );
   --editor-canvas: var(--background);
   --settings-surface: color-mix(
     in srgb,
@@ -467,6 +478,8 @@
   --role-avatar-blue: oklch(0.707 0.165 254.624);
   --role-avatar-violet: oklch(0.702 0.183 293.541);
   --role-avatar-pink: oklch(0.718 0.202 349.761);
+  --role-avatar-face: oklch(0.21 0.006 285.885);
+  --role-avatar-face-light: oklch(0.985 0.002 285.885);
   --welcome-surface-strong-hover: color-mix(
     in srgb,
     var(--foreground) 14%,

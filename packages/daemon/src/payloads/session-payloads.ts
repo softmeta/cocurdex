@@ -38,7 +38,7 @@ const runIdPayload = z.object({ runId: idSchema });
 
 const maxAgentsSchema = z.number().int().min(1).max(SCRIPT_RUN_HARD_MAX_AGENTS);
 
-const agentRoleAvatarSchema = z.discriminatedUnion("kind", [
+export const agentRoleAvatarSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("emoji"),
     emoji: z.string().min(1).max(32),
@@ -113,6 +113,8 @@ export const sessionPayloadSchemas = {
     }),
   ),
   "session.get": exact<Payload<"session.get">>()(sessionIdPayload),
+  "session.lastMessage":
+    exact<Payload<"session.lastMessage">>()(sessionIdPayload),
   "session.runtimeState":
     exact<Payload<"session.runtimeState">>()(sessionIdPayload),
   "session.configure": loose<Payload<"session.configure">>()(

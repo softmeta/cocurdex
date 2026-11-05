@@ -5,7 +5,7 @@ import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
   type AgentPermissionMode,
-  isChatWorkspaceId,
+  isFormWorkspaceId,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
   type WorkflowAggregate,
@@ -28,6 +28,7 @@ import {
 } from "./diagnostics-commands";
 import { handleHostCommand, hostUsageLines } from "./host-commands";
 import { handleImageCommand, imageUsageLines } from "./image-commands";
+import { handleInboxCommand, inboxUsageLines } from "./inbox-commands";
 import { handleIssueCommand } from "./issue-commands";
 import { handleLinkCommand } from "./link-commands";
 import { handleMcpCommand, mcpUsageLines } from "./mcp-commands";
@@ -48,7 +49,9 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
+import { handlePersonaCommand, personaUsageLines } from "./persona-commands";
 import { handleProviderCommand, providerUsageLines } from "./provider-commands";
+import { handleRoutineCommand, routineUsageLines } from "./routine-commands";
 import {
   handleScriptRunCommand,
   scriptRunUsageLines,
@@ -153,6 +156,27 @@ async function main(rawArgs: string[]) {
     }
   }
 
+  if (resource === "persona") {
+    const handled = await handlePersonaCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "inbox") {
+    const handled = await handleInboxCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "routine") {
+    const handled = await handleRoutineCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
   if (resource === "team") {
     const handled = await handleTeamCommand(action, parsed);
     if (handled) {
@@ -235,7 +259,7 @@ async function main(rawArgs: string[]) {
     const workspaces = await withDaemon(() => requestDaemon("workspace.list"));
     printRows(
       workspaces
-        .filter((workspace) => !isChatWorkspaceId(workspace.id))
+        .filter((workspace) => !isFormWorkspaceId(workspace.id))
         .map((workspace) => ({
           ...workspace,
           rootPaths: workspace.rootPaths.join(", "),
@@ -606,6 +630,9 @@ function printUsage() {
       "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
       "  cocurdex session stop <session-id>",
+      ...personaUsageLines(),
+      ...routineUsageLines(),
+      ...inboxUsageLines(),
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
       ...providerUsageLines(),

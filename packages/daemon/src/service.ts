@@ -72,10 +72,13 @@ import {
   isChatWorkspaceId,
   isFeatureEnabled,
   isHandoffVisibleMessage,
+  isPersonalSession,
+  isPersonalWorkspaceId,
   isSessionRuntimeEvent,
   isToolCallId,
   MEMORY_SETTINGS_KEY,
   type MessageAttachment,
+  type MessageOrigin,
   messageAgentLookup,
   newAssistantSessionId,
   normalizeAgentRoleAvatar,
@@ -83,6 +86,7 @@ import {
   normalizeAgentRoleName,
   normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
+  PERSONAL_WORKSPACE_ID,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
   parseAgentRunLimits,
   primaryWorkspaceRootPath,
@@ -103,6 +107,7 @@ import {
   registerHistoryTools,
   registerMemoryTools,
   registerMessagingTools,
+  registerRoutineTools,
   registerScriptRunTools,
   registerSettingsTools,
   registerTeamTools,
@@ -134,6 +139,8 @@ import {
   daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
+import { buildBrief } from "./inbox/build-brief";
+import { buildInbox } from "./inbox/build-inbox";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
 import { probeNetworkProxy } from "./network-proxy-probe";
@@ -146,6 +153,14 @@ import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
+import {
+  buildPersonaSoulBlock,
+  buildPostedMessagesBlock,
+  isPostedMessage,
+  PersonalAgentService,
+  personaMemoryScope,
+  personaWritePartition,
+} from "./personal";
 import { DaemonProviderService } from "./provider";
 import { CodexLoginSessions } from "./provider/codex-login";
 import { withServerProviderConnection } from "./provider/server-connection";
@@ -155,6 +170,13 @@ import {
   ProviderLoginSessions,
 } from "./provider-credentials";
 import { PushService } from "./push";
+import {
+  createRoutineSessions,
+  isValidTimeZone,
+  RoutineService,
+  routinePushAllowed,
+  zonedDayStart,
+} from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
@@ -261,6 +283,7 @@ function errorMessage(error: unknown, fallback: string) {
 /** How often checkpoint retention runs on a daemon that never restarts. */
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
+const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
 
 function isExistingDirectory(directoryPath: string) {
   try {
@@ -278,6 +301,8 @@ export class CocurdexDaemonService {
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly decks: DaemonDeckService;
+  readonly personalAgents: PersonalAgentService;
+  readonly routines: RoutineService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
   readonly agentAuth: AgentAuthService;
@@ -355,6 +380,10 @@ export class CocurdexDaemonService {
       signingKey: () => this.hostKeys.keys().signingPrivateKey,
       identity: () => this.hostAccess.identity(),
       getSession: (sessionId) => this.state.getSession(sessionId),
+      allows: (session, kind) => {
+        const routine = this.routines.findBySession(session.id);
+        return !routine || routinePushAllowed(routine.deliver, kind);
+      },
       crypto: daemonNoiseCrypto,
     });
     this.background = new DaemonBackgroundService({
@@ -377,6 +406,56 @@ export class CocurdexDaemonService {
       this.events,
       DeckAssetStore.open(options.userDataPath),
     );
+    this.personalAgents = new PersonalAgentService({
+      repository: this.state.data.personalAgents,
+      getRole: (id) => this.state.getAgentRole(id),
+      saveRole: (payload) => this.saveAgentRole(payload),
+      deleteRole: (id) => this.state.deleteAgentRole(id),
+      createHomeSession: (role) =>
+        this.createSession({
+          workspaceId: PERSONAL_WORKSPACE_ID,
+          agentRoleId: role.id,
+          title: role.name,
+        }),
+      removeSession: (sessionId) => this.removeSession(sessionId),
+      removeDependents: (agentId) => this.removeRoutinesOf(agentId),
+      applyRole: (agentId, homeSessionId, role) =>
+        this.applyPersonaRole(agentId, homeSessionId, role),
+      announceChanged: () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["personal", "agent"],
+        }),
+    });
+    const routineSessions = createRoutineSessions({
+      getPersona: (id) => this.state.data.personalAgents.getById(id),
+      getRole: (id) => this.state.getAgentRole(id),
+      getSession: (id) => this.state.getSession(id),
+      createSession: (input) => this.createSession(input),
+      saveSessionConfiguration: (input) => this.saveSessionConfiguration(input),
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
+    });
+    this.routines = new RoutineService({
+      repository: this.state.data.routines,
+      personaExists: async (id) =>
+        this.state.data.personalAgents.getById(id) !== null,
+      ensureSession: routineSessions.ensureSession,
+      runTurn: routineSessions.runTurn,
+      deliverResult: (routine, run, content) =>
+        this.postToHomeThread(routine.agentId, content, {
+          kind: "routine",
+          routineId: routine.id,
+          routineName: routine.name,
+          runId: run.id,
+          ...(run.sessionId ? { sessionId: run.sessionId } : {}),
+        }).then(() => undefined),
+      announceChanged: () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["routines"],
+        }),
+    });
     this.providerCredentials = new ProviderCredentials(
       this.state,
       options.userDataPath,
@@ -406,6 +485,7 @@ export class CocurdexDaemonService {
       broadcast: (event) => this.events.emit("daemon.event", event),
       resolveSessionProvider: (session) =>
         this.providerCredentials.forSession(session),
+      startRuntime: options.autoStartMemory !== false,
     });
     this.scanPolicy = createWorkspaceScanPolicy(this.state);
     this.searchService = new DaemonSearchService({
@@ -513,9 +593,18 @@ export class CocurdexDaemonService {
     });
     registerMemoryTools(this.agentTools.registry, {
       isEnabled: () => this.memory.areToolsEnabledSync(),
-      recall: (input) => this.memory.recall(input),
+      recall: async (input, caller) => {
+        const scope = await this.personaMemoryScopeFor(caller.sessionId);
+        return this.memory.recallIn(input, scope?.read ?? null);
+      },
       show: (id) => this.memory.show(id),
-      remember: (input) => this.memory.remember(input),
+      remember: async (input, caller, target) => {
+        const scope = await this.personaMemoryScopeFor(caller.sessionId);
+        return this.memory.rememberIn(
+          input,
+          scope ? personaWritePartition(scope, target) : null,
+        );
+      },
       policy: () => this.memory.policy(),
       noteToolUse: (sessionId, tool) =>
         this.memory.noteGateToolUse(sessionId, tool),
@@ -544,6 +633,21 @@ export class CocurdexDaemonService {
       createId: () => crypto.randomUUID(),
     });
     registerScriptRunTools(this.agentTools.registry, this.scriptRuns);
+    registerRoutineTools(this.agentTools.registry, {
+      personaOf: async (sessionId) => {
+        const session = await this.state.getSession(sessionId);
+        return session
+          ? (this.personalAgents.personaForSession(session)?.id ?? null)
+          : null;
+      },
+      list: (agentId) => this.routines.list(agentId),
+      get: (id) => this.routines.get(id),
+      create: (payload) => this.routines.create(payload),
+      update: (payload) => this.routines.update(payload),
+      delete: (id, callerSessionId) => this.deleteRoutine(id, callerSessionId),
+      run: (id) => this.routines.runNow(id).run,
+      runs: (routineId, limit) => this.routines.runs(routineId, limit),
+    });
     registerSettingsTools(this.agentTools.registry, {
       getWorktreeEnvironment: (workspaceId) =>
         this.getWorktreeEnvironment(workspaceId),
@@ -707,8 +811,25 @@ export class CocurdexDaemonService {
       await this.scriptRuns.recoverInterrupted();
       await this.team.recoverReports();
       await this.decks.collectUnusedImages();
+      if (!this.stopping) this.routines.start();
     } catch {
       logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
+    }
+  }
+
+  async deleteRoutine(id: string, keepSessionId?: string) {
+    const routine = this.routines.get(id);
+    this.routines.delete(id);
+    const sessionId = routine?.sessionId;
+    if (sessionId && sessionId !== keepSessionId) {
+      await this.removeSession(sessionId);
+    }
+  }
+
+  private async removeRoutinesOf(agentId: string) {
+    const removed = this.routines.deleteForAgent(agentId);
+    for (const routine of removed) {
+      if (routine.sessionId) await this.removeSession(routine.sessionId);
     }
   }
 
@@ -727,6 +848,7 @@ export class CocurdexDaemonService {
 
   private async archiveSessionQuietly(sessionId: string) {
     validateSessionId(sessionId);
+    this.assertNotPersonalHome(sessionId);
     await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
     const session = await this.state.getSession(sessionId);
@@ -938,6 +1060,101 @@ export class CocurdexDaemonService {
 
   updateSessionAttention(payload: UpdateSessionAttentionPayload) {
     return this.state.sessionAttention.update(payload);
+  }
+
+  async listInbox() {
+    const pending = this.runtime.getPendingInteractions();
+    return buildInbox({
+      sessions: await this.state.listSessions(),
+      attention: await this.state.sessionAttention.list(),
+      pending: {
+        permissions: pending.permissions.map((request) => ({
+          sessionId: request.sessionId,
+          detail: request.title,
+          createdAt: request.createdAt,
+        })),
+        questions: pending.questions.map((question) => ({
+          sessionId: question.sessionId,
+          detail: question.question,
+          createdAt: question.createdAt,
+        })),
+        planApprovals: pending.planApprovals.map((approval) => ({
+          sessionId: approval.sessionId,
+          detail: null,
+          createdAt: approval.createdAt,
+        })),
+      },
+      routines: this.routines.list(),
+      latestRuns: this.routines.latestRuns(),
+    });
+  }
+
+  async getBrief(timeZone?: string | null) {
+    const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!isValidTimeZone(zone)) throw new Error(`Unknown time zone: ${zone}`);
+    const { day, start } = zonedDayStart(new Date(), zone);
+    return buildBrief({
+      day,
+      timeZone: zone,
+      inbox: await this.listInbox(),
+      routines: this.routines.list(),
+      runsToday: this.routines.runsFinishedSince(start.toISOString()),
+    });
+  }
+
+  async postBrief(payload: {
+    updatedAt: string;
+    day: string;
+    content: string;
+  }) {
+    const content = payload.content.trim();
+    if (!content) throw new Error("The brief cannot be empty.");
+    const posted = await this.state.getAppSetting(BRIEF_POSTED_SETTING_KEY);
+    if (posted && JSON.parse(posted) >= payload.updatedAt) return null;
+    const message = await this.postToHomeThread(null, content, {
+      kind: "brief",
+      day: payload.day,
+    });
+    if (message) {
+      await this.state.setAppSetting(
+        BRIEF_POSTED_SETTING_KEY,
+        JSON.stringify(payload.updatedAt),
+      );
+    }
+    return message;
+  }
+
+  private async postToHomeThread(
+    agentId: string | null,
+    content: string,
+    origin: MessageOrigin,
+  ) {
+    const persona = agentId
+      ? this.state.data.personalAgents.getById(agentId)
+      : this.state.data.personalAgents.getDefault();
+    if (!persona) return null;
+    const message = await this.state.appendMessage({
+      id: crypto.randomUUID(),
+      sessionId: persona.homeSessionId,
+      role: "assistant",
+      kind: "response",
+      content,
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      origin,
+    });
+    this.announceSessionsChanged();
+    return message;
+  }
+
+  async readInboxItem(id: string) {
+    const item = (await this.listInbox()).find((entry) => entry.id === id);
+    if (!item?.sessionId) return;
+    await this.state.sessionAttention.update({
+      sessionId: item.sessionId,
+      action: "visited",
+      at: new Date().toISOString(),
+    });
   }
 
   async listWorkspaces() {
@@ -1645,12 +1862,46 @@ export class CocurdexDaemonService {
     return this.workflows.get(workflowRunId);
   }
 
-  listAgentRoles() {
-    return this.state.listAgentRoles();
+  async listAgentRoles() {
+    const roles = await this.state.listAgentRoles();
+    return roles.filter((role) => !this.personalAgents.ownsRole(role.id));
   }
 
   getAgentRole(id: string) {
     return this.state.getAgentRole(id);
+  }
+
+  private async applyPersonaRole(
+    agentId: string,
+    homeSessionId: string,
+    role: AgentRoleRecord,
+  ) {
+    const home = await this.state.getSession(homeSessionId);
+    if (home && home.title !== role.name) {
+      await this.updateSessionTitle({
+        sessionId: homeSessionId,
+        title: role.name,
+      });
+    }
+    const { providerId, modelId } = role;
+    if (!providerId || !modelId) return;
+    const routineSessionIds = this.routines
+      .list(agentId)
+      .map((routine) => routine.sessionId);
+    for (const sessionId of [homeSessionId, ...routineSessionIds]) {
+      if (!sessionId) continue;
+      const session = await this.state.getSession(sessionId);
+      if (!session || session.archivedAt) continue;
+      if (session.agentType !== role.agentId) continue;
+      const current = session.providerSnapshot;
+      if (current?.providerId === providerId && current.modelId === modelId) {
+        continue;
+      }
+      await this.updateSessionRuntime(
+        { sessionId, model: { providerId, modelId } },
+        LOCAL_REQUEST_CONTEXT.principal,
+      );
+    }
   }
 
   async saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord> {
@@ -1695,10 +1946,14 @@ export class CocurdexDaemonService {
       updatedAt: now,
     };
     await this.state.saveAgentRole(role);
+    await this.personalAgents.roleSaved(role);
     return role;
   }
 
   async deleteAgentRole(id: string) {
+    if (this.personalAgents.ownsRole(id)) {
+      throw new Error("Delete the personal agent instead of its role");
+    }
     await this.state.deleteAgentRole(id);
   }
 
@@ -1873,7 +2128,10 @@ export class CocurdexDaemonService {
   private async configureSession(input: SessionConfiguration) {
     await this.ensureAgentAvailable(input.agentType);
     if (isChatWorkspaceId(input.workspaceId)) {
-      await this.ensureChatWorkspace();
+      await this.ensureFormWorkspace(CHAT_WORKSPACE_ID, "Chat");
+    }
+    if (isPersonalWorkspaceId(input.workspaceId)) {
+      await this.ensureFormWorkspace(PERSONAL_WORKSPACE_ID, "Personal");
     }
     const workspace = (await this.state.listWorkspaces()).find(
       (item) => item.id === input.workspaceId,
@@ -1899,18 +2157,18 @@ export class CocurdexDaemonService {
     return session;
   }
 
-  private async ensureChatWorkspace() {
-    const rootPath = path.join(this.userDataPath, "chat");
+  private async ensureFormWorkspace(id: string, name: string) {
+    const rootPath = path.join(this.userDataPath, id);
     await mkdir(rootPath, { recursive: true });
     const existing = (await this.state.listWorkspaces()).find(
-      (workspace) => workspace.id === CHAT_WORKSPACE_ID,
+      (workspace) => workspace.id === id,
     );
     if (existing && workspacePathsEqual(existing.rootPaths[0] ?? "", rootPath))
       return;
     const now = new Date().toISOString();
     await this.state.saveWorkspace({
-      id: CHAT_WORKSPACE_ID,
-      name: "Chat",
+      id,
+      name,
       rootPaths: [rootPath],
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -1923,6 +2181,11 @@ export class CocurdexDaemonService {
   async getSession(sessionId: string) {
     validateSessionId(sessionId);
     return this.state.getSession(sessionId);
+  }
+
+  async getLatestSessionReply(sessionId: string) {
+    validateSessionId(sessionId);
+    return this.state.getLatestReply(sessionId);
   }
 
   async setSessionPeerInbound(sessionId: string, policy: "deliver" | "refuse") {
@@ -1960,7 +2223,18 @@ export class CocurdexDaemonService {
     return this.sessionRuntimeStates.get(sessionId);
   }
 
+  private assertNotPersonalHome(sessionId: string) {
+    if (this.personalAgents.ownsHomeSession(sessionId)) {
+      throw new Error("A personal agent's home thread cannot be removed");
+    }
+  }
+
   async deleteSession(sessionId: string) {
+    this.assertNotPersonalHome(sessionId);
+    await this.removeSession(sessionId);
+  }
+
+  private async removeSession(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
       return;
@@ -2043,7 +2317,7 @@ export class CocurdexDaemonService {
       ...source,
       id: forkId,
       title: payload.title?.trim() || source.title,
-      sessionKind: "main",
+      sessionKind: isPersonalSession(source) ? "personal" : "main",
       parentSessionId: null,
       parentToolCallId: null,
       status: "idle",
@@ -2915,6 +3189,7 @@ export class CocurdexDaemonService {
   private async performShutdown() {
     this.stopping = true;
     await this.startupRecovery;
+    this.routines.stop();
     clearInterval(this.checkpointReconcileTimer);
     this.keepAwake.dispose();
     this.runCapacity.close(new Error("Daemon is shutting down"));
@@ -3131,23 +3406,23 @@ export class CocurdexDaemonService {
     );
     const chatSession = isChatSession(session);
     const sessionKind = session.sessionKind ?? "main";
+    const persona = this.personalAgents.personaForSession(session);
+    const hostInjectsMemory =
+      !chatSession && (await this.memory.injectsInto(session.agentType));
     const memoryGate = await this.memory.beginTurn({
       sessionId: session.id,
       mode: chatSession ? "chat" : "agent",
-      enforce: !chatSession && sessionKind !== "subagent",
+      enforce: !chatSession && sessionKind !== "subagent" && !hostInjectsMemory,
     });
     const memoryContext =
-      !chatSession && sessionKind === "subagent"
+      (!chatSession && sessionKind === "subagent") || hostInjectsMemory
         ? null
         : await this.memory.buildTurnContext(
             session,
             userMessage.content,
             chatSession ? "chat" : "agent",
+            persona ? personaMemoryScope(persona.id).read : null,
           );
-    const memoryPrefix = [memoryGate, memoryContext?.brief]
-      .filter((section): section is string => Boolean(section))
-      .join("\n\n");
-    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
     const resolution = resolveStartContext({
       targetAgentType: session.agentType,
       priorMessages,
@@ -3155,13 +3430,29 @@ export class CocurdexDaemonService {
       hasProviderThread: persistence.providerSession !== null,
       pendingFork: pending?.kind === "fork",
     });
+    const freshThread =
+      resolution.kind === "native"
+        ? persistence.providerSession === null
+        : resolution.freshProviderThread;
+    const memoryPrefix = [
+      freshThread ? buildPersonaSoulBlock(persona?.soul ?? null) : null,
+      memoryGate,
+      memoryContext?.brief,
+    ]
+      .filter((section): section is string => Boolean(section))
+      .join("\n\n");
+    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
     if (resolution.kind === "native") {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
       }
+      const posted = persona ? buildPostedMessagesBlock(priorMessages) : null;
+      const postedText = posted ? `${posted}\n\n` : "";
       return {
-        content: `${memoryText}${userMessage.content}`,
-        history,
+        content: `${memoryText}${postedText}${userMessage.content}`,
+        history: persona
+          ? history.filter((message) => !isPostedMessage(message))
+          : history,
         contextHandoff: undefined,
       };
     }
@@ -3229,6 +3520,14 @@ export class CocurdexDaemonService {
         entries: handoff.entries,
       },
     };
+  }
+
+  private async personaMemoryScopeFor(sessionId: string) {
+    const session = await this.state.getSession(sessionId);
+    const persona = session
+      ? this.personalAgents.personaForSession(session)
+      : null;
+    return persona ? personaMemoryScope(persona.id) : null;
   }
 
   private sessionActivityReader(): SessionActivityReader {

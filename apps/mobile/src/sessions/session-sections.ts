@@ -4,6 +4,7 @@ import {
   filterSessionsByView,
   groupSessionsByView,
   isChatSession,
+  isFormWorkspaceId,
   limitSessionTreeRoots,
   resolveRootLimit,
   rootSessionId,
@@ -176,6 +177,7 @@ export function buildSessionSections(
   const listed = input.sessions.filter(
     (session) =>
       workspaces.has(session.workspaceId) &&
+      !isFormWorkspaceId(session.workspaceId) &&
       !session.archivedAt &&
       !isChatSession(session),
   );

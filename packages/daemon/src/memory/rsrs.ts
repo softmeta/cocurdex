@@ -27,6 +27,7 @@ const SHOW_TIMEOUT_MS = 25_000;
 const REMEMBER_TIMEOUT_MS = 180_000;
 const INSTALL_TIMEOUT_MS = 300_000;
 const POLICY_TIMEOUT_MS = 30_000;
+const INJECT_TARGETS_TIMEOUT_MS = 10_000;
 const CLOUD_AUTH_TIMEOUT_MS = 120_000;
 const MAX_OUTPUT_BYTES = 2_000_000;
 
@@ -209,17 +210,17 @@ export function parseRsrsJson(stdout: string): Record<string, unknown> {
   throw commandError("rsrs returned output that is not valid JSON", "bad_json");
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+export function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 }
 
-function stringValue(value: unknown) {
+export function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function numberValue(value: unknown) {
+export function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
@@ -579,7 +580,11 @@ export function parseShowPayload(
   payload: Record<string, unknown>,
 ): MemoryEntry | null {
   const details = asRecord(payload.details);
-  const entry = asRecord(details?.entry);
+  return parseEntryRecord(details?.entry);
+}
+
+export function parseEntryRecord(value: unknown): MemoryEntry | null {
+  const entry = asRecord(value);
   if (!entry) return null;
   const id = stringValue(entry.id);
   if (!id) return null;
@@ -721,6 +726,28 @@ export async function readRsrsPolicy(executable: RsrsExecutable) {
   return result.stdout.trim();
 }
 
+const INJECTED_HOST_STATES = new Set(["present", "stale", "partial"]);
+
+export function parseInjectedHosts(payload: Record<string, unknown>) {
+  const details = Array.isArray(payload.details) ? payload.details : [];
+  return details.flatMap((detail) => {
+    if (!detail || typeof detail !== "object") return [];
+    const { id, state } = detail as { id?: unknown; state?: unknown };
+    return typeof id === "string" &&
+      typeof state === "string" &&
+      INJECTED_HOST_STATES.has(state)
+      ? [id]
+      : [];
+  });
+}
+
+export async function readInjectedHosts(executable: RsrsExecutable) {
+  const result = await runRsrs(executable, ["inject", "--targets", "--json"], {
+    timeoutMs: INJECT_TARGETS_TIMEOUT_MS,
+  });
+  return parseInjectedHosts(parseRsrsJson(result.stdout));
+}
+
 function quoteForShell(value: string) {
   return /\s/.test(value) ? JSON.stringify(value) : value;
 }
@@ -794,13 +821,19 @@ export async function recallMemoriesViaRuntime(
   input: {
     query: string;
     limit?: number;
+    project?: string | null;
     timeoutMs?: number;
   },
 ) {
+  const args: Record<string, unknown> = {
+    query: input.query,
+    limit: input.limit ?? 8,
+  };
+  if (input.project) args.project = input.project;
   const payload = await callRuntimeTool(
     endpoint,
     "memory_recall",
-    { query: input.query, limit: input.limit ?? 8 },
+    args,
     input.timeoutMs ?? RECALL_TIMEOUT_MS,
   );
   return {
@@ -835,6 +868,7 @@ export async function rememberMemoryViaRuntime(
   if (input.title) args.title = input.title;
   if (input.importance) args.importance = input.importance;
   if (input.type) args.type = input.type;
+  if (input.project) args.project = input.project;
   if (input.parentId) args.parent = input.parentId;
   if (input.force) args.force = true;
   if (input.mergeIds?.length) args.merge_ids = input.mergeIds.join(",");

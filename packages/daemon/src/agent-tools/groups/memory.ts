@@ -7,11 +7,20 @@ import type {
 } from "@cocurdex/shared";
 import type { AgentToolRegistry } from "../tool-registry";
 
+export type MemoryWriteTarget = "assistant" | "user";
+
 export interface MemoryToolDependencies {
   isEnabled(): boolean;
-  recall(input: { query: string; limit?: number }): Promise<MemoryRecallResult>;
+  recall(
+    input: { query: string; limit?: number },
+    caller: AgentToolCallerContext,
+  ): Promise<MemoryRecallResult>;
   show(id: string): Promise<MemoryEntry | null>;
-  remember(input: MemoryRememberInput): Promise<MemoryRememberResult>;
+  remember(
+    input: MemoryRememberInput,
+    caller: AgentToolCallerContext,
+    target: MemoryWriteTarget,
+  ): Promise<MemoryRememberResult>;
   policy(): Promise<string>;
   noteToolUse?(sessionId: string, tool: "recall" | "show" | "remember"): void;
 }
@@ -20,7 +29,9 @@ const canRead = (caller: AgentToolCallerContext) =>
   caller.sessionKind !== "subagent";
 
 const canWrite = (caller: AgentToolCallerContext) =>
-  caller.sessionKind === "main" || caller.sessionKind === "teammate";
+  caller.sessionKind === "main" ||
+  caller.sessionKind === "teammate" ||
+  caller.sessionKind === "personal";
 
 function optionalNumber(value: unknown) {
   return typeof value === "number" ? value : undefined;
@@ -62,10 +73,13 @@ export function registerMemoryTools(
     isAvailable: (caller) => deps.isEnabled() && canRead(caller),
     execute: async (caller, input) => {
       deps.noteToolUse?.(caller.sessionId, "recall");
-      return deps.recall({
-        query: String(input.query),
-        limit: optionalNumber(input.limit),
-      });
+      return deps.recall(
+        {
+          query: String(input.query),
+          limit: optionalNumber(input.limit),
+        },
+        caller,
+      );
     },
   });
 
@@ -149,6 +163,12 @@ export function registerMemoryTools(
             items: { type: "string" },
             description: "Bidirectional links to related live memories",
           },
+          about: {
+            type: "string",
+            enum: ["assistant", "user"],
+            description:
+              "Personal assistant sessions only: user = a fact about the user that every assistant should share; assistant (default) = this assistant's own memory. Ignored elsewhere.",
+          },
         },
         required: ["content", "title"],
         additionalProperties: false,
@@ -157,18 +177,25 @@ export function registerMemoryTools(
     isAvailable: (caller) => deps.isEnabled() && canWrite(caller),
     execute: async (caller, input) => {
       deps.noteToolUse?.(caller.sessionId, "remember");
-      return deps.remember({
-        content: String(input.content),
-        title: String(input.title),
-        importance: input.importance === "important" ? "important" : "trivial",
-        tags: stringArray(input.tags),
-        parentId: optionalString(input.parentId) ?? null,
-        type: optionalString(input.type) ?? null,
-        force: input.force === true,
-        mergeIds: stringArray(input.mergeIds),
-        supersedes: stringArray(input.supersedes),
-        seeAlso: stringArray(input.seeAlso),
-      });
+      const target: MemoryWriteTarget =
+        input.about === "user" ? "user" : "assistant";
+      return deps.remember(
+        {
+          content: String(input.content),
+          title: String(input.title),
+          importance:
+            input.importance === "important" ? "important" : "trivial",
+          tags: stringArray(input.tags),
+          parentId: optionalString(input.parentId) ?? null,
+          type: optionalString(input.type) ?? null,
+          force: input.force === true,
+          mergeIds: stringArray(input.mergeIds),
+          supersedes: stringArray(input.supersedes),
+          seeAlso: stringArray(input.seeAlso),
+        },
+        caller,
+        target,
+      );
     },
   });
 

@@ -1140,6 +1140,10 @@
         "description": "后退之后再前进。",
         "title": "前进"
       },
+      "openSettings": {
+        "description": "打开设置页面。",
+        "title": "打开设置"
+      },
       "toggleChatDock": {
         "description": "在编辑器全屏时显示或隐藏浮动/钉住的聊天坞。",
         "title": "切换聊天坞"

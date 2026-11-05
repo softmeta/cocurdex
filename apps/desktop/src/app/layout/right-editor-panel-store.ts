@@ -12,6 +12,8 @@ export type RightPanelView =
   | "notes"
   | "decks"
   | "issues"
+  | "memory"
+  | "routines"
   | "git"
   | "browser"
   | "pdf"
@@ -23,6 +25,8 @@ export const DEFAULT_TAB_ORDER: RightPanelView[] = [
   "notes",
   "decks",
   "issues",
+  "memory",
+  "routines",
   "browser",
   "pdf",
   "terminal",

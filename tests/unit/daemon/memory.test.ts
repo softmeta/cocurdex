@@ -258,10 +258,10 @@ describe("memory agent tools", () => {
       query: "cocurdex",
       limit: 3,
     });
-    expect(deps.recall).toHaveBeenCalledWith({
-      query: "cocurdex",
-      limit: 3,
-    });
+    expect(deps.recall).toHaveBeenCalledWith(
+      { query: "cocurdex", limit: 3 },
+      expect.objectContaining({ sessionId: "session-1" }),
+    );
     expect(result).toMatchObject({ items: [{ id: "memory-1" }] });
   });
 

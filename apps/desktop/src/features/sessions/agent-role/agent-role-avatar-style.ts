@@ -30,6 +30,21 @@ export const agentRoleAvatarSwatchClassName: Record<
   pink: "bg-role-avatar-pink",
 };
 
+export const agentRoleAvatarFillClassName: Record<
+  AgentRoleAvatarColor,
+  string
+> = {
+  gray: "text-role-avatar-gray",
+  red: "text-role-avatar-red",
+  orange: "text-role-avatar-orange",
+  amber: "text-role-avatar-amber",
+  green: "text-role-avatar-green",
+  teal: "text-role-avatar-teal",
+  blue: "text-role-avatar-blue",
+  violet: "text-role-avatar-violet",
+  pink: "text-role-avatar-pink",
+};
+
 export const AGENT_ROLE_AVATAR_EMOJI_GROUPS = [
   {
     id: "people",

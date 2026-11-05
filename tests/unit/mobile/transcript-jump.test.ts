@@ -105,6 +105,7 @@ describe("promptOutline", () => {
         id: "a1",
         text: "Done",
         streaming: false,
+        source: null,
         turnEnd: true,
       },
       { kind: "user", id: "u2", text: "Ship it", images: [] },

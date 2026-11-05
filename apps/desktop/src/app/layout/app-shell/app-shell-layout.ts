@@ -3,7 +3,7 @@ import { hasMacTrafficLights } from "@/lib/platform";
 /**
  * Shared layout metrics for the app shell.
  *
- * The titlebar toolbar (sidebar toggle, proxy status, editor panel, settings)
+ * The titlebar toolbar (sidebar toggle, editor panel, back, forward, search)
  * is rendered inside a box clamped to the sidebar width in
  * `app-shell-frame.tsx`. If the sidebar can shrink below the toolbar's
  * intrinsic width, the trailing control overflows past the sidebar separator. Deriving `MIN_LEFT` from the toolbar
@@ -31,13 +31,14 @@ export const TITLEBAR_LEADING_RESERVE = hasMacTrafficLights() ? 80 : 12;
 export function withTitlebarControlsInset(px: number): string {
   return `calc(${px}px + var(--titlebar-controls-inset))`;
 }
-// Square controls in the titlebar toolbar: toggle, panel, proxy, settings,
-// back, forward.
-export const TITLEBAR_CONTROL_COUNT = 6;
+// Square controls in the titlebar toolbar: toggle, panel, back, forward,
+// search.
+export const TITLEBAR_CONTROL_COUNT = 5;
 export const TITLEBAR_CONTROL_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
 // No trailing padding: gap-1 between pills already spaces the cluster; the
 // sidebar separator sits at the box edge.
 export const TITLEBAR_RIGHT_PADDING = 0;
+export const TITLEBAR_SIDEBAR_END_INSET = 14;
 
 /** Intrinsic width the titlebar toolbar needs to render without overflow. */
 export const TITLEBAR_TOOLBAR_MIN_WIDTH =
@@ -58,7 +59,7 @@ export const MIN_SIDEBAR_CONTENT_WIDTH = 200;
 
 /** Minimum sidebar width; never narrower than the titlebar toolbar. */
 export const MIN_LEFT = Math.max(
-  TITLEBAR_TOOLBAR_MIN_WIDTH,
+  TITLEBAR_TOOLBAR_MIN_WIDTH + TITLEBAR_SIDEBAR_END_INSET,
   MIN_SIDEBAR_CONTENT_WIDTH,
 );
 

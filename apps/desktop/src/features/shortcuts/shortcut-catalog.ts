@@ -23,6 +23,7 @@ export const shortcutIds = [
   "fileSearch",
   "navigateBack",
   "navigateForward",
+  "openSettings",
   "toggleLeftSidebar",
   "toggleRightPanel",
   "toggleEditorFullscreen",
@@ -71,6 +72,12 @@ export const SHORTCUT_CATALOG: readonly ShortcutDefinition[] = [
     id: "navigateForward",
     category: "general",
     defaultCombo: navigationDefaultCombo("forward", isMacPlatform()),
+    allowInEditable: true,
+  },
+  {
+    id: "openSettings",
+    category: "general",
+    defaultCombo: { key: ",", primary: true },
     allowInEditable: true,
   },
   {

@@ -347,6 +347,22 @@ export function createConversationGroups(timelineGroups: TimelineGroup[]) {
       continue;
     }
 
+    if (
+      timelineGroup.kind === "message" &&
+      timelineGroup.message.role === "assistant" &&
+      timelineGroup.message.origin
+    ) {
+      if (currentGroup) {
+        conversationGroups.push(currentGroup);
+      }
+      conversationGroups.push({
+        id: `conversation-${timelineGroup.id}`,
+        items: [timelineGroup],
+      });
+      currentGroup = null;
+      continue;
+    }
+
     if (!currentGroup) {
       currentGroup = {
         id: `conversation-${timelineGroup.id}`,

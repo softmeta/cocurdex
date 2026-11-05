@@ -6,8 +6,14 @@ import { TabBarInsetContext, useKeyboardVisible } from "@/ui";
 
 const TABS = [
   {
-    name: "(sessions)",
+    name: "(assistant)",
     href: "/",
+    icon: { ios: "sparkles", android: "auto_awesome" },
+    label: "tabs.assistant",
+  },
+  {
+    name: "sessions",
+    href: "/sessions",
     icon: { ios: "bubble.left.and.bubble.right", android: "forum" },
     label: "tabs.sessions",
   },

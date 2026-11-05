@@ -18,6 +18,8 @@ export const cocurdexDataAreas = [
   "workspace",
   "settings",
   "memory",
+  "personal",
+  "routines",
 ] as const;
 
 export type CocurdexDataArea = (typeof cocurdexDataAreas)[number];

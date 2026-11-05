@@ -45,10 +45,12 @@ export function AgentRoleForm({
   role,
   onCancel,
   onSaved,
+  save = saveAgentRoleRecord,
 }: {
   role: SaveAgentRolePayload;
   onCancel(): void;
   onSaved(role: AgentRoleRecord): void;
+  save?(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
 }) {
   const { t } = useTranslation(["settings", "sessions"]);
   const agents = useAtomValue(agentsAtom);
@@ -179,7 +181,7 @@ export function AgentRoleForm({
     const parsed = parseProviderModelValue(modelValue);
     setSaving(true);
     try {
-      const saved = await saveAgentRoleRecord({
+      const saved = await save({
         id: role.id,
         name: trimmed,
         description: description.trim() || null,

@@ -1,6 +1,6 @@
 import { applySessionConfiguration } from "@cocurdex/daemon/internal/session-control/configuration";
 import type { SessionConfiguration, SessionRecord } from "@cocurdex/shared";
-import { CHAT_WORKSPACE_ID } from "@cocurdex/shared";
+import { CHAT_WORKSPACE_ID, PERSONAL_WORKSPACE_ID } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
 const input: SessionConfiguration = {
@@ -114,6 +114,35 @@ describe("session configuration ownership", () => {
           now,
         ),
       ).toThrow("cannot change its kind");
+    });
+  });
+
+  describe("personal sessions", () => {
+    const personal: SessionConfiguration = {
+      ...input,
+      workspaceId: PERSONAL_WORKSPACE_ID,
+      sessionKind: "personal",
+      agentType: "codex",
+      agentRoleId: "role-1",
+    };
+
+    it("creates a session for a personal agent on any engine", () => {
+      expect(applySessionConfiguration(personal, null, now)).toMatchObject({
+        workspaceId: PERSONAL_WORKSPACE_ID,
+        sessionKind: "personal",
+        agentType: "codex",
+      });
+    });
+
+    it.each([
+      [{ ...input, sessionKind: "personal" as const }, "personal workspace"],
+      [{ ...input, workspaceId: PERSONAL_WORKSPACE_ID }, "personal workspace"],
+      [{ ...personal, agentRoleId: null }, "personal agent"],
+      [{ ...personal, worktreePath: "/tmp/tree" }, "worktree"],
+    ])("rejects an invalid personal configuration", (config, message) => {
+      expect(() => applySessionConfiguration(config, null, now)).toThrow(
+        message,
+      );
     });
   });
 });

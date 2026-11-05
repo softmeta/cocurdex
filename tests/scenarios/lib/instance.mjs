@@ -332,6 +332,7 @@ export async function launchIsolatedInstance({ prepareUserData } = {}) {
       COCURDEX_USER_DATA_PATH: userDataPath,
       COCURDEX_REMOTE_DEBUGGING_PORT: String(port),
       COCURDEX_DISABLE_MEMORY_AUTO_START: "1",
+      RSRS_DATA_DIR: path.join(userDataPath, "rsrs"),
     },
     logFd,
   );

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { TitlebarIconButton } from "../titlebar-icon-button";
+import { PersonaTitleAvatar } from "./persona-title-avatar";
 import { SessionSplitMenu } from "./session-split-menu";
 
 interface SessionPaneHeaderProps {
@@ -13,6 +14,7 @@ interface SessionPaneHeaderProps {
   endInset?: number | string;
   startInset?: number;
   paneId: string;
+  sessionId?: string | null;
   title: string;
   /** Chrome owned by the surrounding shell, rendered inside this row. */
   leading?: ReactNode;
@@ -31,6 +33,7 @@ export function SessionPaneHeader({
   endInset = 0,
   startInset = 0,
   paneId,
+  sessionId,
   title,
   leading,
   trailing,
@@ -85,7 +88,8 @@ export function SessionPaneHeader({
           </TitlebarIconButton>
         ) : null}
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        {sessionId ? <PersonaTitleAvatar sessionId={sessionId} /> : null}
         {title ? (
           <Text
             className="truncate"

@@ -160,6 +160,29 @@ export async function handleDaemonRequest(
     case "memory.cloud.keys":
       assertLocalPrincipal(context, request.method);
       return service.memory.cloudKeys();
+    case "memory.list":
+      return service.memory.list(request.params);
+    case "memory.update":
+      return service.memory.update(request.params);
+    case "memory.forget":
+      await service.memory.forget(request.params.id);
+      return null;
+    case "memory.restore":
+      await service.memory.restore(request.params.id);
+      return null;
+    case "memory.history":
+      return service.memory.history(request.params);
+    case "memory.revision":
+      return service.memory.revision();
+    case "memory.capabilities":
+      return service.memory.capabilities();
+    case "memory.export":
+      assertLocalPrincipal(context, request.method);
+      await service.memory.exportTo(request.params.file);
+      return null;
+    case "memory.import":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.importFrom(request.params.file);
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":
@@ -500,6 +523,8 @@ export async function handleDaemonRequest(
       );
     case "session.get":
       return service.getSession(request.params.sessionId);
+    case "session.lastMessage":
+      return service.getLatestSessionReply(request.params.sessionId);
     case "session.runtimeState":
       return service.getSessionRuntimeState(request.params.sessionId);
     case "session.listPeers":
@@ -837,6 +862,46 @@ export async function handleDaemonRequest(
       return service.getAgentRole(request.params.id);
     case "agentRole.save":
       return service.saveAgentRole(request.params);
+    case "personalAgent.list":
+      return service.personalAgents.list();
+    case "personalAgent.ensureDefault":
+      return service.personalAgents.ensureDefault(request.params);
+    case "personalAgent.create":
+      return service.personalAgents.create(request.params);
+    case "personalAgent.update":
+      return service.personalAgents.update(request.params);
+    case "personalAgent.duplicate":
+      return service.personalAgents.duplicate(request.params);
+    case "personalAgent.delete":
+      await service.personalAgents.delete(request.params.id);
+      return null;
+    case "inbox.list":
+      return service.listInbox();
+    case "inbox.brief":
+      return service.getBrief(request.params.timeZone);
+    case "inbox.postBrief":
+      return service.postBrief(request.params);
+    case "inbox.read":
+      await service.readInboxItem(request.params.id);
+      return null;
+    case "routine.list":
+      return service.routines.list(request.params.agentId);
+    case "routine.get":
+      return service.routines.get(request.params.id);
+    case "routine.create":
+      return service.routines.create(request.params);
+    case "routine.update":
+      return service.routines.update(request.params);
+    case "routine.delete":
+      await service.deleteRoutine(request.params.id);
+      return null;
+    case "routine.run":
+      return service.routines.runNow(request.params.id).run;
+    case "routine.runs":
+      return service.routines.runs(
+        request.params.routineId ?? null,
+        request.params.limit,
+      );
     case "agentRole.delete":
       await service.deleteAgentRole(request.params.id);
       return null;

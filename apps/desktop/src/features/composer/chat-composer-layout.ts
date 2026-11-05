@@ -96,10 +96,6 @@ export function getNextPillExpandedState({
   return renderedHeight > wrappedHeight;
 }
 
-export function getPillComposerShapeClassName(isExpanded: boolean) {
-  return isExpanded ? "rounded-card" : "rounded-full";
-}
-
 export function composerSendButtonClassName(canSend: boolean) {
   if (!canSend) {
     return "size-8 rounded-full bg-chat-surface-disabled text-chat-fg-muted transition-colors hover:bg-chat-surface-disabled";

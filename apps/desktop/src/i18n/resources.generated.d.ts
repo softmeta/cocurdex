@@ -100,6 +100,8 @@ export default interface Resources {
     openFile: "Open file";
     peerMessage: {
       from: "From session {{title}}";
+      fromBrief: "Today's brief";
+      fromRoutine: "From routine {{name}}";
       fromScriptRun: "From script {{name}}";
     };
     permissions: {
@@ -746,8 +748,10 @@ export default interface Resources {
       showEditor: "Files";
       showGitChanges: "Git";
       showIssues: "Issues";
+      showMemory: "Memory";
       showNotes: "Notes";
       showPdf: "PDF";
+      showRoutines: "Routines";
       showTerminal: "Terminal";
       source: "Source";
       toggleChat: "Toggle chat";
@@ -1195,10 +1199,79 @@ export default interface Resources {
       username: "Username";
       usernamePlaceholder: "Your rsrs account name";
     };
+    library: {
+      action: {
+        create: "Created";
+        delete: "Deleted";
+        merge: "Merged";
+        restore: "Restored";
+        update: "Edited";
+      };
+      cancel: "Cancel";
+      collapse: "Hide memory list";
+      content: "Content";
+      detail: "Memory details";
+      empty: "No memories yet";
+      emptyDescription: "What your assistants learn about you shows up here.";
+      entryHistory: "History";
+      expand: "Show memory list";
+      forget: "Delete";
+      forgetDescription: "Assistants stop recalling it. You can restore it from History.";
+      forgetFailed: "Could not delete the memory";
+      forgetTitle: "Delete this memory?";
+      forgotten: "Memory deleted";
+      history: "Memory history";
+      historyEmpty: "No history yet";
+      historyEmptyDescription: "Edits, deletions, and restores show up here.";
+      label: "Memory";
+      list: "Memories";
+      manage: "Manage";
+      mode: {
+        diary: "Diary";
+        history: "History";
+        tree: "Tree";
+      };
+      off: "Memory is off";
+      offDescription: "Turn on memory in the Assistants sidebar or in Settings to browse what your assistants remember.";
+      pick: "Pick a memory";
+      pickDescription: "Select a memory on the left to read or edit it.";
+      resize: "Resize memory list";
+      restore: "Restore";
+      restoreFailed: "Could not restore the memory";
+      save: "Save";
+      scope: {
+        all: "All memories";
+        label: "Partition";
+        me: "About me";
+      };
+      search: "Filter memories";
+      tags: "Tags";
+      tagsPlaceholder: "Comma-separated";
+      title: "Title";
+      undated: "Undated";
+      undo: "Undo";
+      updatedAt: "Updated {{time}}";
+    };
     menu: {
       enable: "Enable memory";
       settings: "Memory settings";
       sync: "Multi-device sync";
+    };
+    onboarding: {
+      description: "Assistants keep what you tell them about yourself and what they learn, in an encrypted library on this device.";
+      enable: "Turn on memory";
+      failed: "Memory could not be installed.";
+      label: "Long-term memory";
+      retry: "Retry";
+      skip: "Skip";
+      state: {
+        failed: "Memory is not ready";
+        installing: "Installing memory…";
+        off: "Memory is off";
+        ready: "Memory is on";
+      };
+      sync: "Sync devices";
+      title: "Let your assistants remember";
     };
     session: {
       alreadySaved: "This conversation is already in memory";
@@ -1452,6 +1525,147 @@ export default interface Resources {
     };
     title: "Welcome to cocurdex";
   };
+  personal: {
+    brief: {
+      failures: "Failures";
+      needsYou: "Needs you";
+      open: "Today's brief";
+      results: "Routine results";
+    };
+    copyName: "{{name}} copy";
+    defaultName: "Assistant";
+    delete: {
+      cancel: "Cancel";
+      confirm: "Delete";
+      description: "This deletes the assistant and its conversation. Memories stay in the memory store.";
+      title: "Delete {{name}}?";
+    };
+    edit: {
+      title: "Edit assistant";
+    };
+    empty: {
+      description: "Pick an assistant on the left to continue your conversation.";
+      title: "Your assistants";
+    };
+    inbox: {
+      heading: "Inbox";
+      headingCount: "Inbox · {{total}}";
+      kind: {
+        approval: "Needs approval";
+        completed: "Done";
+        failed: "Failed";
+        plan: "Plan ready";
+        question: "Has a question";
+        routineFailed: "Routine failed";
+        routinePaused: "Paused after failures";
+        routineResult: "New result";
+      };
+    };
+    menu: {
+      delete: "Delete";
+      duplicate: "Duplicate";
+      edit: "Edit";
+      mute: "Mute";
+      pin: "Pin";
+      unmute: "Unmute";
+      unpin: "Unpin";
+    };
+    newName: "New assistant";
+    roster: {
+      label: "Assistants";
+      muted: "Muted";
+      "new": "New assistant";
+      working: "Working…";
+    };
+    routines: {
+      access: {
+        ask: "Ask first";
+        askDescription: "Uses the assistant's own mode and waits for your approval.";
+        full: "Full access";
+        fullDescription: "Runs unattended with every permission.";
+        label: "Access";
+        readAndDraft: "Read and draft";
+        readAndDraftDescription: "Reads and drafts only; nothing is sent or changed.";
+      };
+      agent: "Assistant";
+      allAgents: "All assistants";
+      cancel: "Cancel";
+      collapse: "Hide routines list";
+      create: "Create";
+      delete: "Delete";
+      deleteDescription: "The routine and its thread are deleted. This cannot be undone.";
+      deleteFailed: "Could not delete the routine";
+      deleteTitle: "Delete {{name}}?";
+      deliver: {
+        inbox: "Inbox";
+        inboxDescription: "Results land in the inbox; failures notify you.";
+        label: "Notify";
+        push: "Push";
+        pushDescription: "Also notifies your phone on every result.";
+        silent: "Silent";
+        silentDescription: "Only records the run.";
+      };
+      empty: "No routines yet";
+      emptyDescription: "Create a routine to have an assistant check in on a schedule.";
+      expand: "Show routines list";
+      label: "Routines";
+      manage: "Manage";
+      name: "Name";
+      "new": "New routine";
+      noRuns: "No runs yet.";
+      openThread: "Open thread";
+      pause: "Pause";
+      pausedAfterFailures: "Paused after three failed runs in a row. Resume it once the cause is fixed.";
+      pick: "Pick a routine";
+      pickDescription: "Select a routine to edit it and see its recent runs.";
+      prompt: "Instruction";
+      promptPlaceholder: "What should the assistant do on each run?";
+      resize: "Resize routines list";
+      resume: "Resume";
+      run: {
+        failed: "Failed";
+        running: "Running";
+        skipped: "Skipped";
+        succeeded: "Succeeded";
+      };
+      runFailed: "Could not run the routine";
+      runNow: "Run now";
+      runs: "Recent runs";
+      save: "Save";
+      saveFailed: "Could not save the routine";
+      schedule: {
+        daily: "Daily at {{time}}";
+        days: "{{days}} at {{time}}";
+        every: "Every {{minutes}} min";
+        kindDaily: "At a time";
+        kindInterval: "Repeat";
+        label: "Schedule";
+        minutes: "Every (minutes)";
+        repeatOn: "Repeat on";
+        time: "Time";
+        weekdays: "Weekdays at {{time}}";
+        weekends: "Weekends at {{time}}";
+      };
+      status: {
+        failures: "Paused after failures";
+        paused: "Paused";
+      };
+      timeZone: "Time zone";
+    };
+    sidebar: {
+      title: "Assistants";
+    };
+    thread: {
+      introFallback: "Your personal assistant. It remembers you and keeps an eye on your day.";
+      placeholder: "Message {{name}}";
+      suggestions: {
+        attention: "What needs my attention today?";
+        brief: "Send me a brief every morning at 8";
+        label: "Suggestions";
+        memory: "What do you remember about me?";
+      };
+    };
+  };
   search: {
     categories: {
       all: "All";
@@ -1544,13 +1758,23 @@ export default interface Resources {
         color: "Color";
         custom: "Custom emoji";
         customPlaceholder: "Paste or type any emoji";
+        face: {
+          curious: "Curious";
+          dots: "Calm";
+          happy: "Happy";
+          sleepy: "Sleepy";
+          wink: "Wink";
+        };
+        faces: "Expression";
         groups: {
           animals: "Animals";
           people: "People";
           symbols: "Symbols";
           work: "Work";
         };
-        reset: "Use initial";
+        reset: "Use default";
+        shape: "Shape {{index}}";
+        shapes: "Shape";
       };
       cancel: "Cancel";
       description: "Description";
@@ -1847,6 +2071,7 @@ export default interface Resources {
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
+      switchForm: "Switch view ({{name}})";
       unpin: "Unpin";
       unread: "Unread";
       view: {
@@ -1932,6 +2157,9 @@ export default interface Resources {
       menu: "Split session";
       newSession: "New session";
       right: "Split Right";
+    };
+    stage: {
+      title: "What are we building today?";
     };
     team: {
       leadMissing: "Its lead role was deleted";
@@ -3154,6 +3382,10 @@ export default interface Resources {
         navigateForward: {
           description: "Go forward again after going back.";
           title: "Go forward";
+        };
+        openSettings: {
+          description: "Open the settings screen.";
+          title: "Open settings";
         };
         toggleChatDock: {
           description: "Show or hide the floating/pinned chat dock when the editor is fullscreen.";

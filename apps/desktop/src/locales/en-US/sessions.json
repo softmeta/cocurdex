@@ -5,13 +5,23 @@
       "color": "Color",
       "custom": "Custom emoji",
       "customPlaceholder": "Paste or type any emoji",
+      "face": {
+        "curious": "Curious",
+        "dots": "Calm",
+        "happy": "Happy",
+        "sleepy": "Sleepy",
+        "wink": "Wink"
+      },
+      "faces": "Expression",
       "groups": {
         "animals": "Animals",
         "people": "People",
         "symbols": "Symbols",
         "work": "Work"
       },
-      "reset": "Use initial"
+      "reset": "Use default",
+      "shape": "Shape {{index}}",
+      "shapes": "Shape"
     },
     "cancel": "Cancel",
     "description": "Description",
@@ -308,6 +318,7 @@
     "showMore_other": "Show more ({{count}} left)",
     "splitDown": "Open Below",
     "splitRight": "Open to the Right",
+    "switchForm": "Switch view ({{name}})",
     "unpin": "Unpin",
     "unread": "Unread",
     "view": {
@@ -393,6 +404,9 @@
     "menu": "Split session",
     "newSession": "New session",
     "right": "Split Right"
+  },
+  "stage": {
+    "title": "What are we building today?"
   },
   "team": {
     "leadMissing": "Its lead role was deleted",

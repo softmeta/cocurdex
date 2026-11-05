@@ -33,5 +33,9 @@ export {
   SettingRow,
   SettingsGroup,
 } from "./settings-fields";
+export {
+  AppSidebarIconButton,
+  type AppSidebarIconButtonProps,
+} from "./sidebar-icon-button";
 export { AppSidebarRowTitle } from "./sidebar-row-title";
 export { AppWindowOverlayHeader } from "./window-overlay-header";

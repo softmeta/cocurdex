@@ -42,6 +42,7 @@
   },
   "screens": {
     "archived": "已归档会话",
+    "assistant": "助理",
     "computers": "电脑",
     "editIssue": "编辑事项",
     "fontSize": "字号",
@@ -56,6 +57,7 @@
     "settings": "设置"
   },
   "tabs": {
+    "assistant": "助理",
     "issues": "事项",
     "notes": "笔记",
     "sessions": "会话",

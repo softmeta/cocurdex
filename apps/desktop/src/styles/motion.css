@@ -335,3 +335,48 @@
     opacity: 0.45;
   }
 }
+
+@keyframes avatar-blink {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+
+[data-avatar] {
+  transform: rotate(var(--avatar-lean, 0deg));
+  transform-origin: 50% 90%;
+  transition: transform 320ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+[data-avatar-look] {
+  transform: translate(
+    calc(var(--avatar-look-x, var(--avatar-rest-x, 0)) * 1px),
+    calc(var(--avatar-look-y, var(--avatar-rest-y, 0)) * 1px)
+  );
+  transition: transform 160ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+[data-avatar-face] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+[data-avatar-hover]:hover [data-avatar-face] {
+  animation: avatar-blink 180ms ease-in-out 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-avatar],
+  [data-avatar-look] {
+    transition: none;
+  }
+
+  [data-avatar-hover]:hover [data-avatar-face] {
+    animation: none;
+  }
+}

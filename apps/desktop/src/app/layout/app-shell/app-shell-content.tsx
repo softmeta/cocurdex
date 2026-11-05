@@ -160,7 +160,7 @@ export function AppShellContent({
               onResizeHandleMouseDown("left", event)
             }
           >
-            <LeftSidebar />
+            <LeftSidebar showFooter />
           </ResizableSidebarSlot>
           <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
             <div

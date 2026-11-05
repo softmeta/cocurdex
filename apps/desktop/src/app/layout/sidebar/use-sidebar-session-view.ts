@@ -1,6 +1,7 @@
 import {
   type AgentId,
   isChatSession,
+  isPersonalSession,
   type SessionRecord,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
@@ -79,7 +80,10 @@ export function useSidebarSessionView(
   const filtered = countActiveSessionFilters(view) > 0;
 
   const workSessions = useMemo(
-    () => sessions.filter((session) => !isChatSession(session)),
+    () =>
+      sessions.filter(
+        (session) => !(isChatSession(session) || isPersonalSession(session)),
+      ),
     [sessions],
   );
   const facts: SessionListFacts = useMemo(

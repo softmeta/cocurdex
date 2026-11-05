@@ -5,13 +5,23 @@
       "color": "颜色",
       "custom": "自定义 emoji",
       "customPlaceholder": "粘贴或输入任意 emoji",
+      "face": {
+        "curious": "好奇",
+        "dots": "平静",
+        "happy": "开心",
+        "sleepy": "困倦",
+        "wink": "眨眼"
+      },
+      "faces": "表情",
       "groups": {
         "animals": "动物",
         "people": "人物",
         "symbols": "符号",
         "work": "工作"
       },
-      "reset": "使用首字母"
+      "reset": "恢复默认",
+      "shape": "形状 {{index}}",
+      "shapes": "形状"
     },
     "cancel": "取消",
     "description": "描述",
@@ -291,6 +301,7 @@
     "showMore_other": "显示更多（剩余 {{count}}）",
     "splitDown": "分屏到下侧",
     "splitRight": "分屏到右侧",
+    "switchForm": "切换视图（{{name}}）",
     "unpin": "取消置顶",
     "unread": "未读",
     "view": {
@@ -376,6 +387,9 @@
     "menu": "分屏",
     "newSession": "新会话",
     "right": "向右分屏"
+  },
+  "stage": {
+    "title": "今天要做点什么？"
   },
   "team": {
     "leadMissing": "lead 角色已被删除",

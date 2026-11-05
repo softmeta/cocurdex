@@ -284,6 +284,17 @@ export const daemonProductApi: ProductRequestApi = {
   rememberMemory: (input) => rpc("memory.remember", input),
   saveSessionMemory: (input) => rpc("memory.session.save", input),
   installMemory: (force) => rpc("memory.install", { force }),
+  listMemories: (input) => rpc("memory.list", input),
+  updateMemory: (input) => rpc("memory.update", input),
+  forgetMemory: async (id) => {
+    await rpc("memory.forget", { id });
+  },
+  restoreMemory: async (id) => {
+    await rpc("memory.restore", { id });
+  },
+  getMemoryHistory: (input) => rpc("memory.history", input),
+  getMemoryRevision: () => rpc("memory.revision"),
+  getMemoryCapabilities: () => rpc("memory.capabilities"),
   runMemoryDoctor: (options) => rpc("memory.doctor", options ?? {}),
   getMemoryPolicy: () => rpc("memory.policy"),
   connectMemoryCloud: (input) => rpc("memory.cloud.connect", input),

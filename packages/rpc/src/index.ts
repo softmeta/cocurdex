@@ -22,6 +22,7 @@ import type {
   AppBootstrapData,
   ApplyNoteDocUpdatePayload,
   ArchiveSessionsResult,
+  Brief,
   CheckDeckPayload,
   CocurdexDaemonEvent,
   CodexAccountState,
@@ -39,6 +40,8 @@ import type {
   CreateIssueLabelPayload,
   CreateIssuePayload,
   CreateNotePayload,
+  CreatePersonalAgentPayload,
+  CreateRoutinePayload,
   CreateScriptRunPayload,
   CreateSessionPayload,
   CreateTeamPayload,
@@ -60,8 +63,10 @@ import type {
   DiagnosticsExportResult,
   DocImage,
   DocImageFile,
+  DuplicatePersonalAgentPayload,
   EditDeckPayload,
   EditorViewRecord,
+  EnsureDefaultPersonalAgentPayload,
   EntityLink,
   EntityLinkCandidate,
   EntityLinkPayload,
@@ -93,6 +98,7 @@ import type {
   ImportDeckImagePayload,
   ImportDeckPayload,
   ImportDocImagePayload,
+  InboxItem,
   InstalledSkillDetail,
   IssueDetail,
   IssueLabel,
@@ -118,7 +124,12 @@ import type {
   MemoryCloudKeys,
   MemoryDoctorReport,
   MemoryEntry,
+  MemoryHistoryEntry,
+  MemoryImportResult,
   MemoryInstallResult,
+  MemoryListInput,
+  MemoryListResult,
+  MemoryProviderCapabilities,
   MemoryRecallResult,
   MemoryRememberInput,
   MemoryRememberResult,
@@ -126,6 +137,7 @@ import type {
   MemorySessionSaveResult,
   MemorySettings,
   MemoryStatus,
+  MemoryUpdateInput,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -146,6 +158,7 @@ import type {
   PeerInboundPolicy,
   PeerSessionSummary,
   PendingSettingsChangeRecord,
+  PersonalAgentRecord,
   PiModelsJson,
   PptxOutline,
   ProductSkillDetail,
@@ -174,6 +187,8 @@ import type {
   RelaySettingsUpdate,
   RemoteAccessSettingsUpdate,
   ResolvedCommitMessageModel,
+  RoutineRecord,
+  RoutineRunRecord,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
@@ -239,6 +254,8 @@ import type {
   UpdateIssueLabelPayload,
   UpdateIssuePayload,
   UpdateNotePayload,
+  UpdatePersonalAgentPayload,
+  UpdateRoutinePayload,
   UpdateSessionAttentionPayload,
   UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
@@ -434,6 +451,7 @@ export type DaemonRequestPayloadByMethod = {
   "session.create": CreateSessionPayload;
   "session.resolveNew": CreateSessionPayload;
   "session.get": { sessionId: string };
+  "session.lastMessage": { sessionId: string };
   "session.runtimeState": { sessionId: string };
   "session.listPeers": { sessionId: string };
   "session.sendPeerMessage": SendPeerMessagePayload;
@@ -561,6 +579,15 @@ export type DaemonRequestPayloadByMethod = {
   "memory.cloud.disconnect": undefined;
   "memory.cloud.setSync": { enabled: boolean };
   "memory.cloud.keys": undefined;
+  "memory.list": MemoryListInput;
+  "memory.update": MemoryUpdateInput;
+  "memory.forget": { id: string };
+  "memory.restore": { id: string };
+  "memory.history": { id?: string | null; limit?: number };
+  "memory.revision": undefined;
+  "memory.capabilities": undefined;
+  "memory.export": { file: string };
+  "memory.import": { file: string };
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
   "file.readText": { filePath: string };
@@ -736,6 +763,23 @@ export type DaemonRequestPayloadByMethod = {
   "agentRole.get": { id: string };
   "agentRole.save": SaveAgentRolePayload;
   "agentRole.delete": { id: string };
+  "personalAgent.list": undefined;
+  "personalAgent.ensureDefault": EnsureDefaultPersonalAgentPayload;
+  "personalAgent.create": CreatePersonalAgentPayload;
+  "personalAgent.update": UpdatePersonalAgentPayload;
+  "personalAgent.duplicate": DuplicatePersonalAgentPayload;
+  "personalAgent.delete": { id: string };
+  "inbox.list": undefined;
+  "inbox.read": { id: string };
+  "inbox.brief": { timeZone?: string | null };
+  "inbox.postBrief": { updatedAt: string; day: string; content: string };
+  "routine.list": { agentId?: string | null };
+  "routine.get": { id: string };
+  "routine.create": CreateRoutinePayload;
+  "routine.update": UpdateRoutinePayload;
+  "routine.delete": { id: string };
+  "routine.run": { id: string };
+  "routine.runs": { routineId?: string | null; limit?: number };
   "host.identity": undefined;
   "host.session": undefined;
   "host.remoteAccess.get": undefined;
@@ -831,6 +875,7 @@ export type DaemonResultByMethod = {
   "session.create": SessionRecord;
   "session.resolveNew": NewSessionDefaults;
   "session.get": SessionRecord | null;
+  "session.lastMessage": MessageRecord | null;
   "session.runtimeState": AgentSessionRuntimeState;
   "session.delete": null;
   "session.archive": SessionRecord | null;
@@ -906,6 +951,15 @@ export type DaemonResultByMethod = {
   "memory.cloud.disconnect": MemoryStatus;
   "memory.cloud.setSync": MemoryStatus;
   "memory.cloud.keys": MemoryCloudKeys;
+  "memory.list": MemoryListResult;
+  "memory.update": MemoryEntry | null;
+  "memory.forget": null;
+  "memory.restore": null;
+  "memory.history": MemoryHistoryEntry[];
+  "memory.revision": string | null;
+  "memory.capabilities": MemoryProviderCapabilities | null;
+  "memory.export": null;
+  "memory.import": MemoryImportResult;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
   "file.readText": string;
@@ -1053,6 +1107,23 @@ export type DaemonResultByMethod = {
   "agentRole.get": AgentRoleRecord | null;
   "agentRole.save": AgentRoleRecord;
   "agentRole.delete": null;
+  "personalAgent.list": PersonalAgentRecord[];
+  "personalAgent.ensureDefault": PersonalAgentRecord;
+  "personalAgent.create": PersonalAgentRecord;
+  "personalAgent.update": PersonalAgentRecord;
+  "personalAgent.duplicate": PersonalAgentRecord;
+  "personalAgent.delete": null;
+  "inbox.list": InboxItem[];
+  "inbox.read": null;
+  "inbox.brief": Brief | null;
+  "inbox.postBrief": MessageRecord | null;
+  "routine.list": RoutineRecord[];
+  "routine.get": RoutineRecord | null;
+  "routine.create": RoutineRecord;
+  "routine.update": RoutineRecord;
+  "routine.delete": null;
+  "routine.run": RoutineRunRecord;
+  "routine.runs": RoutineRunRecord[];
   "host.identity": HostIdentity;
   "host.session": HostAccessSession;
   "host.remoteAccess.get": HostRemoteAccessStatus;
@@ -1115,6 +1186,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "memory.policy": true,
   "memory.cloud.disconnect": true,
   "memory.cloud.keys": true,
+  "memory.revision": true,
+  "memory.capabilities": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,
   "mcp.injection.check": true,
@@ -1135,6 +1208,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "provider.listDefaults": true,
   "provider.exportJson": true,
   "agentRole.list": true,
+  "personalAgent.list": true,
+  "inbox.list": true,
   "session.list": true,
   "session.listArchived": true,
   "settings.pendingChanges.list": true,

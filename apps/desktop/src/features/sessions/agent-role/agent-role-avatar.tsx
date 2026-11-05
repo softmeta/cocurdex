@@ -2,12 +2,13 @@ import {
   type AgentId,
   type AgentRoleAvatar as AgentRoleAvatarValue,
   agentRoleInitial,
-  defaultAgentRoleAvatarColor,
+  resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { User } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib";
 import { AgentIcon } from "../agent-icon";
+import { AgentRoleAvatarShapeGlyph } from "./agent-role-avatar-shape";
 import { agentRoleAvatarColorClassName } from "./agent-role-avatar-style";
 
 export interface AgentRoleAvatarSource {
@@ -20,30 +21,34 @@ export interface AgentRoleAvatarSource {
 export type AvatarSource = Omit<AgentRoleAvatarSource, "agentId"> &
   Partial<Pick<AgentRoleAvatarSource, "agentId">>;
 
-type AgentRoleAvatarSize = "sm" | "md" | "lg";
+type AgentRoleAvatarSize = "sm" | "md" | "lg" | "xl";
 
 const sizeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "size-5 text-meta",
   md: "size-7 text-body",
   lg: "size-9 text-display",
+  xl: "size-14 text-title",
 };
 
 const emojiSizeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "text-avatar-emoji-sm",
   md: "text-avatar-emoji-md",
   lg: "text-avatar-emoji-lg",
+  xl: "text-avatar-emoji-xl",
 };
 
 const placeholderIconClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "size-3",
   md: "size-3.5",
   lg: "size-4",
+  xl: "size-6",
 };
 
 const badgeClassName: Record<AgentRoleAvatarSize, string> = {
   sm: "size-2.5",
   md: "size-3",
   lg: "size-3.5",
+  xl: "size-4",
 };
 
 export function AgentRoleAvatar({
@@ -59,25 +64,36 @@ export function AgentRoleAvatar({
   showAgent?: boolean;
   size?: AgentRoleAvatarSize;
 }) {
-  const color = role.avatar?.color ?? defaultAgentRoleAvatarColor(role.id);
+  const avatar = resolveAgentRoleAvatar(role);
+  const isShape = avatar.kind === "shape";
 
   return (
     <span
       aria-hidden
+      data-avatar=""
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center rounded-full font-medium leading-none select-none",
         sizeClassName[size],
-        role.avatar?.kind === "emoji" && emojiSizeClassName[size],
-        agentRoleAvatarColorClassName[color],
+        avatar.kind === "emoji" && emojiSizeClassName[size],
+        !isShape && agentRoleAvatarColorClassName[avatar.color],
         className,
       )}
     >
-      <AvatarGlyph
-        placeholder={
-          placeholder ?? <User className={placeholderIconClassName[size]} />
-        }
-        role={role}
-      />
+      {isShape ? (
+        <AgentRoleAvatarShapeGlyph
+          color={avatar.color}
+          face={avatar.face}
+          shape={avatar.shape}
+        />
+      ) : (
+        <AvatarGlyph
+          avatar={avatar}
+          name={role.name}
+          placeholder={
+            placeholder ?? <User className={placeholderIconClassName[size]} />
+          }
+        />
+      )}
       {showAgent && role.agentId ? (
         <span className="absolute -end-0.5 -bottom-0.5 inline-flex rounded-full bg-popover p-px">
           <AgentIcon
@@ -91,17 +107,19 @@ export function AgentRoleAvatar({
 }
 
 function AvatarGlyph({
+  avatar,
+  name,
   placeholder,
-  role,
 }: {
+  avatar: AgentRoleAvatarValue;
+  name: string;
   placeholder: ReactNode;
-  role: AvatarSource;
 }) {
-  if (role.avatar?.kind === "emoji") {
-    return role.avatar.emoji;
+  if (avatar.kind === "emoji") {
+    return avatar.emoji;
   }
-  if (!role.name.trim()) {
+  if (!name.trim()) {
     return placeholder;
   }
-  return agentRoleInitial(role.name);
+  return agentRoleInitial(name);
 }

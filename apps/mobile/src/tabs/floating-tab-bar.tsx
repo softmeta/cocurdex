@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { space, useThemeColors } from "@/theme";
 import { useFloatingSurface } from "@/ui";
 
-const TAB_WIDTH = 64;
+const TAB_WIDTH = 52;
 const TAB_HEIGHT = 48;
 const BAR_PADDING = 6;
 const BAR_GAP = space.md;

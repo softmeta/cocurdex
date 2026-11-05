@@ -222,6 +222,7 @@ export function SessionSplitLayout({
             isFocused={isFocused}
             occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
             paneId={node.pane.id}
+            sessionId={node.pane.sessionId}
             title={sessionPaneTitle(node.pane, sessions)}
             onClose={() => handleClose(node.pane.id)}
             onCloseAll={() => handleCloseAll(node.pane.id)}

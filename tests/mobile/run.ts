@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import type { SupportedLocale } from "@cocurdex/shared";
+import { isFormWorkspaceId, type SupportedLocale } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   FIXTURE_ISSUES,
@@ -101,6 +101,7 @@ function flowLabels(locale: SupportedLocale) {
   const issues = readMessages(locale, "issues");
   const notes = readMessages(locale, "notes");
   return {
+    TAB_ASSISTANT: common.tabs.assistant,
     TAB_SETTINGS: common.tabs.settings,
     TAB_SESSIONS: common.tabs.sessions,
     TAB_ISSUES: common.tabs.issues,
@@ -333,6 +334,7 @@ async function verifyComposedSessions(
   const started = (await daemon.sessions()).filter(
     (session) =>
       session.agentType === "pi" &&
+      !isFormWorkspaceId(session.workspaceId) &&
       session.providerSnapshot?.modelName === daemon.agentModelName &&
       !replySessionTitles.includes(session.title),
   );

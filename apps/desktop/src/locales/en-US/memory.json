@@ -27,10 +27,79 @@
     "username": "Username",
     "usernamePlaceholder": "Your rsrs account name"
   },
+  "library": {
+    "action": {
+      "create": "Created",
+      "delete": "Deleted",
+      "merge": "Merged",
+      "restore": "Restored",
+      "update": "Edited"
+    },
+    "cancel": "Cancel",
+    "collapse": "Hide memory list",
+    "content": "Content",
+    "detail": "Memory details",
+    "empty": "No memories yet",
+    "emptyDescription": "What your assistants learn about you shows up here.",
+    "entryHistory": "History",
+    "expand": "Show memory list",
+    "forget": "Delete",
+    "forgetDescription": "Assistants stop recalling it. You can restore it from History.",
+    "forgetFailed": "Could not delete the memory",
+    "forgetTitle": "Delete this memory?",
+    "forgotten": "Memory deleted",
+    "history": "Memory history",
+    "historyEmpty": "No history yet",
+    "historyEmptyDescription": "Edits, deletions, and restores show up here.",
+    "label": "Memory",
+    "list": "Memories",
+    "manage": "Manage",
+    "mode": {
+      "diary": "Diary",
+      "history": "History",
+      "tree": "Tree"
+    },
+    "off": "Memory is off",
+    "offDescription": "Turn on memory in the Assistants sidebar or in Settings to browse what your assistants remember.",
+    "pick": "Pick a memory",
+    "pickDescription": "Select a memory on the left to read or edit it.",
+    "resize": "Resize memory list",
+    "restore": "Restore",
+    "restoreFailed": "Could not restore the memory",
+    "save": "Save",
+    "scope": {
+      "all": "All memories",
+      "label": "Partition",
+      "me": "About me"
+    },
+    "search": "Filter memories",
+    "tags": "Tags",
+    "tagsPlaceholder": "Comma-separated",
+    "title": "Title",
+    "undated": "Undated",
+    "undo": "Undo",
+    "updatedAt": "Updated {{time}}"
+  },
   "menu": {
     "enable": "Enable memory",
     "settings": "Memory settings",
     "sync": "Multi-device sync"
+  },
+  "onboarding": {
+    "description": "Assistants keep what you tell them about yourself and what they learn, in an encrypted library on this device.",
+    "enable": "Turn on memory",
+    "failed": "Memory could not be installed.",
+    "label": "Long-term memory",
+    "retry": "Retry",
+    "skip": "Skip",
+    "state": {
+      "failed": "Memory is not ready",
+      "installing": "Installing memory…",
+      "off": "Memory is off",
+      "ready": "Memory is on"
+    },
+    "sync": "Sync devices",
+    "title": "Let your assistants remember"
   },
   "session": {
     "alreadySaved": "This conversation is already in memory",

@@ -1,4 +1,4 @@
-import type { AgentRoleRecord } from "@cocurdex/shared";
+import type { AgentRoleRecord, SaveAgentRolePayload } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,11 +16,15 @@ export function AgentRoleEditDialog({
   open,
   onOpenChange,
   onSaved,
+  save,
+  title,
 }: {
   role?: AgentRoleRecord | null;
   open: boolean;
   onOpenChange(open: boolean): void;
   onSaved?(role: AgentRoleRecord): void;
+  save?(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
+  title?: string;
 }) {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
@@ -33,12 +37,14 @@ export function AgentRoleEditDialog({
       <DialogContent size="compact">
         <DialogHeader>
           <DialogTitle>
-            {role ? t("agentRoles.editTitle") : t("agentRoles.createTitle")}
+            {title ??
+              (role ? t("agentRoles.editTitle") : t("agentRoles.createTitle"))}
           </DialogTitle>
         </DialogHeader>
         <AgentRoleForm
           key={role?.id ?? "new"}
           role={role ?? blankRoleDraft(agents)}
+          save={save}
           onCancel={() => onOpenChange(false)}
           onSaved={(saved) => {
             onSaved?.(saved);

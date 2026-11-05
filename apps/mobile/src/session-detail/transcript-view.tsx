@@ -7,7 +7,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
-import type { TranscriptItem } from "./transcript";
+import type { PostedSource, TranscriptItem } from "./transcript";
 import type { ActivityChild, CondensedItem } from "./transcript-activity";
 import { type TranscriptHandle, TranscriptList } from "./transcript-list";
 
@@ -271,6 +271,21 @@ function ActivityChildRow({
   );
 }
 
+function PostedSourceLine({
+  source,
+  color,
+}: {
+  source: PostedSource;
+  color: string;
+}) {
+  const { t } = useTranslation("sessions");
+  const label =
+    source.kind === "brief"
+      ? t("detail.postedBrief")
+      : t("detail.postedRoutine", { name: source.name });
+  return <Text style={[styles.postedSource, { color }]}>{label}</Text>;
+}
+
 function UserText({ text, color }: { text: string; color: string }) {
   const scale = useTextScale();
   return (
@@ -318,6 +333,12 @@ const TranscriptRow = memo(function TranscriptRow({
   if (item.kind === "assistant") {
     return (
       <View>
+        {item.source ? (
+          <PostedSourceLine
+            source={item.source}
+            color={colors.mutedForeground}
+          />
+        ) : null}
         <MarkdownText
           markdown={item.text}
           streaming={item.streaming}
@@ -441,6 +462,7 @@ const styles = StyleSheet.create({
   toolText: { flex: 1, fontSize: 14 },
   activity: { gap: space.xs },
   activityText: { flex: 1, fontSize: 14 },
+  postedSource: { fontSize: 13, marginBottom: space.xs },
   elapsed: { fontSize: 14, fontVariant: ["tabular-nums"] },
   activityItems: { gap: space.sm, paddingLeft: space.md },
   toolDetail: {

@@ -293,7 +293,12 @@ export interface WorkspaceRecord {
   missingRootPaths?: string[];
 }
 
-export type SessionKind = "main" | "subagent" | "teammate" | "chat";
+export type SessionKind =
+  | "main"
+  | "subagent"
+  | "teammate"
+  | "chat"
+  | "personal";
 
 export interface SessionRecord {
   id: string;
@@ -639,7 +644,24 @@ export interface ScriptRunMessageOrigin {
   runName: string;
 }
 
-export type MessageOrigin = PeerMessageOrigin | ScriptRunMessageOrigin;
+export interface RoutineMessageOrigin {
+  kind: "routine";
+  routineId: string;
+  routineName: string;
+  runId?: string;
+  sessionId?: string;
+}
+
+export interface BriefMessageOrigin {
+  kind: "brief";
+  day: string;
+}
+
+export type MessageOrigin =
+  | PeerMessageOrigin
+  | ScriptRunMessageOrigin
+  | RoutineMessageOrigin
+  | BriefMessageOrigin;
 
 export interface MessageRecord {
   id: string;

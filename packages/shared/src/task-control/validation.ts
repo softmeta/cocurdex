@@ -135,7 +135,8 @@ export function validateSessionConfiguration(
   if (
     value.sessionKind !== undefined &&
     value.sessionKind !== "main" &&
-    value.sessionKind !== "chat"
+    value.sessionKind !== "chat" &&
+    value.sessionKind !== "personal"
   )
     throw new Error("Invalid session kind");
   if (
@@ -162,6 +163,12 @@ function validateMessageOrigin(value: unknown) {
     keys(value, ["kind", "runId", "runName"]);
     validateSessionId(value.runId);
     text(value.runName, "origin run name", 4096, true);
+    return;
+  }
+  if (value.kind === "routine") {
+    keys(value, ["kind", "routineId", "routineName"]);
+    validateSessionId(value.routineId);
+    text(value.routineName, "origin routine name", 4096, true);
     return;
   }
   keys(value, ["kind", "sessionId", "sessionTitle"]);

@@ -1,20 +1,13 @@
+import { type InboxItem, personalAgentRoleDraft } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { FolderPlus, Plus, Search } from "lucide-react";
+import { FolderPlus, SquarePen } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-  SidebarListRow,
-  SidebarListRowLabel,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui";
+import { AppSidebarIconButton } from "@/components/app";
 import { chatSessionsAtom } from "@/features/chat";
+import { inboxApi } from "@/features/inbox";
+import { personalApi, revalidatePersonalAgents } from "@/features/personal";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -32,17 +25,22 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import {
+  cn,
   desktopApi,
+  logRendererDiagnostic,
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
-import { isDetachedChatWindow } from "../chat-window/chat-window-state";
-import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ArchiveGroupDialog } from "./archive-group-dialog";
+import { BriefControl } from "./brief-control";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
+import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
+import { PersonalAgentsPanel } from "./personal-agents-panel";
 import { SessionGroupsPanel } from "./session-groups-panel";
 import { SessionListSections } from "./session-list-sections";
 import { SessionListViewMenu } from "./session-list-view-menu";
+import { SidebarFooter } from "./sidebar-footer";
+import { SidebarFormSwitcher } from "./sidebar-form-switcher";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
 import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
@@ -55,6 +53,7 @@ interface LeftSidebarProps {
   headerStart?: ReactNode;
   hideTitlebarSpacer?: boolean;
   onAfterNavigate?(): void;
+  showFooter?: boolean;
 }
 
 function SidebarShell({ children }: { children?: ReactNode }) {
@@ -82,8 +81,9 @@ export function LeftSidebar({
   headerStart,
   hideTitlebarSpacer,
   onAfterNavigate,
+  showFooter = false,
 }: LeftSidebarProps) {
-  const { t } = useTranslation(["sessions", "chat", "search"]);
+  const { t } = useTranslation(["sessions", "chat", "personal"]);
   const workspaces = useAtomValue(workspacesAtom);
   const sessions = useAtomValue(sessionsAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
@@ -96,6 +96,7 @@ export function LeftSidebar({
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const chatSessions = useAtomValue(chatSessionsAtom);
+  const setPersonalAgentEditId = useSetAtom(personalAgentEditIdAtom);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] =
     useOptimistic(activeSessionId);
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
@@ -105,7 +106,6 @@ export function LeftSidebar({
   // lists: only one list competes for the sidebar height at a time. The center
   // panel reads the same atom so its empty state matches the visible tab.
   const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
-  const openSearchPalette = useSetAtom(searchPaletteOpenAtom);
 
   const sessionView = useSidebarSessionView(workspaces, sessions);
 
@@ -140,6 +140,34 @@ export function LeftSidebar({
   const handleCreateChat = () => {
     selectSession(null);
     onAfterNavigate?.();
+  };
+
+  const selectFormSession = (sessionId: string) => {
+    startTransition(() => {
+      setOptimisticActiveSessionId(sessionId);
+      selectSession(sessionId);
+    });
+    onAfterNavigate?.();
+  };
+
+  const handleCreatePersonalAgent = async () => {
+    try {
+      const agents = await personalApi.list();
+      const template = agents.find((agent) => agent.isDefault)?.role;
+      const created = await personalApi.create({
+        role: {
+          ...personalAgentRoleDraft(t("personal:newName"), template?.agentId),
+          providerId: template?.providerId ?? null,
+          modelId: template?.modelId ?? null,
+          modelName: template?.modelName ?? null,
+        },
+      });
+      await revalidatePersonalAgents();
+      selectFormSession(created.homeSessionId);
+      setPersonalAgentEditId(created.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const toggleWorkspace = (workspaceId: string) => {
@@ -185,21 +213,48 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
+  const openInboxItem = (item: InboxItem) => {
+    void inboxApi.read(item.id).catch((error: unknown) =>
+      logRendererDiagnostic("info", "inbox.readFailed", {
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    if (!item.sessionId) return;
+    if (item.form === "work" && item.workspaceId) {
+      handleSelectSession(item.workspaceId, item.sessionId);
+      return;
+    }
+    selectFormSession(item.sessionId);
+  };
+
   const isWorkspacesTab = activeTab === "workspaces";
-  const createActionLabel = isWorkspacesTab
-    ? t("sessions:sidebar.newSession", {
-        defaultValue: "New session",
-      })
-    : t("chat:list.new", { defaultValue: "New chat" });
-  const onCreateAction = isWorkspacesTab
-    ? () => handleCreateAgent()
-    : handleCreateChat;
+  const createActions: Record<SidebarTab, { label: string; run(): void }> = {
+    workspaces: {
+      label: t("sessions:sidebar.newSession"),
+      run: () => handleCreateAgent(),
+    },
+    chat: { label: t("chat:list.new"), run: handleCreateChat },
+    personal: {
+      label: t("personal:roster.new"),
+      run: () => void handleCreatePersonalAgent(),
+    },
+  };
+  const createActionLabel = createActions[activeTab].label;
+  const onCreateAction = createActions[activeTab].run;
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
   });
-  const searchLabel = t("search:openSearch");
   const listSections = (
     <SessionListSections
+      headingActions={
+        <SessionListViewMenu
+          agentIds={sessionView.agentIds}
+          allCollapsed={sessionView.allCollapsed}
+          onMarkAllRead={sessionView.markAllRead}
+          onToggleCollapseAll={sessionView.toggleCollapseAll}
+          unreadCount={sessionView.unreadCount}
+        />
+      }
       onSelectSession={handleSelectSession}
       optimisticActiveSessionId={optimisticActiveSessionId}
       sessions={sessionView.pinnedSessions}
@@ -217,143 +272,101 @@ export function LeftSidebar({
       {/* Start-only padding so ScrollArea roots reach the edge and the custom
           thumb sits flush right; every row (chrome and list alike) takes its
           end inset from a pe-3 parent so the hover fills line up. */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3 pb-4">
-        <Tabs
-          className="flex min-h-0 min-w-0 flex-1 flex-col gap-2"
-          onValueChange={(value) => setActiveTab(value as SidebarTab)}
-          value={activeTab}
-        >
-          {/* pe-3 (not a margin on the child) so these rows end on the same
-              gutter as the list rows below, whose inset comes from the
-              scroll area's pe-3 padding. */}
-          <div className="shrink-0 pe-3">
-            <TabsList className="w-full">
-              <TabsTrigger value="workspaces">
-                {t("sessions:sidebar.workspacesGroup", {
-                  defaultValue: "Work",
-                })}
-              </TabsTrigger>
-              <TabsTrigger value="chat">
-                {t("chat:sidebar.title", { defaultValue: "Chat" })}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3",
+          !showFooter && "pb-4",
+        )}
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex shrink-0 items-center gap-0.5 pe-3">
-            <SidebarListRow
-              className="min-w-0 flex-1 ps-1 pe-1"
-              render={
-                <button
-                  type="button"
-                  aria-label={createActionLabel}
-                  onClick={onCreateAction}
-                />
-              }
+            <SidebarFormSwitcher
+              onValueChange={setActiveTab}
+              value={activeTab}
+            />
+            <div className="min-w-0 flex-1" />
+            {activeTab === "personal" ? (
+              <BriefControl onOpenSession={selectFormSession} />
+            ) : null}
+            {isWorkspacesTab ? (
+              <AppSidebarIconButton
+                aria-label={addWorkspaceLabel}
+                onClick={() => {
+                  void handleOpenWorkspace();
+                }}
+              >
+                <FolderPlus className="size-3.5" />
+              </AppSidebarIconButton>
+            ) : null}
+            <AppSidebarIconButton
+              aria-label={createActionLabel}
+              onClick={onCreateAction}
             >
-              <Plus />
-              <SidebarListRowLabel>{createActionLabel}</SidebarListRowLabel>
-            </SidebarListRow>
-            {isDetachedChatWindow ? null : (
-              <Tooltip>
-                <TooltipTrigger
-                  aria-label={searchLabel}
-                  className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
-                  onClick={() => {
-                    openSearchPalette(true);
-                    onAfterNavigate?.();
-                  }}
-                  type="button"
-                >
-                  <Search className="size-3.5" />
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {searchLabel}
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {isWorkspacesTab ? (
-              <Tooltip>
-                <TooltipTrigger
-                  aria-label={addWorkspaceLabel}
-                  className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
-                  onClick={() => {
-                    void handleOpenWorkspace();
-                  }}
-                  type="button"
-                >
-                  <FolderPlus className="size-3.5" />
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {addWorkspaceLabel}
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
-            {isWorkspacesTab ? (
-              <SessionListViewMenu
-                agentIds={sessionView.agentIds}
-                allCollapsed={sessionView.allCollapsed}
-                onMarkAllRead={sessionView.markAllRead}
-                onToggleCollapseAll={sessionView.toggleCollapseAll}
-                unreadCount={sessionView.unreadCount}
-              />
-            ) : null}
+              <SquarePen className="size-3.5" />
+            </AppSidebarIconButton>
           </div>
 
-          <TabsContent
-            className="flex min-h-0 flex-1 flex-col"
-            value="workspaces"
-          >
-            {sessionView.grouping === "workspace" ? (
-              <WorkspacesPanel
-                leading={listSections}
-                activeWorkspaceId={activeWorkspaceId}
-                collapsedWorkspaceIds={collapsedWorkspaceIds}
-                filtered={sessionView.filtered}
-                onCreateAgent={handleCreateAgent}
-                onRemoveWorkspace={(id) => {
-                  void handleRemoveWorkspace(id);
-                }}
-                onReorderWorkspaces={(activeId, overId) => {
-                  reorderWorkspaces({ activeId, overId });
-                }}
-                onRevealWorkspace={(rootPath) => {
-                  void handleRevealWorkspace(rootPath);
-                }}
-                onSelectSession={handleSelectSession}
-                onToggleWorkspace={toggleWorkspace}
-                optimisticActiveSessionId={optimisticActiveSessionId}
-                sessionsByWorkspace={sessionView.sessionsByWorkspace}
-                workspaces={sessionView.visibleWorkspaces}
+          {activeTab === "workspaces" ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {sessionView.grouping === "workspace" ? (
+                <WorkspacesPanel
+                  leading={listSections}
+                  activeWorkspaceId={activeWorkspaceId}
+                  collapsedWorkspaceIds={collapsedWorkspaceIds}
+                  filtered={sessionView.filtered}
+                  onCreateAgent={handleCreateAgent}
+                  onRemoveWorkspace={(id) => {
+                    void handleRemoveWorkspace(id);
+                  }}
+                  onReorderWorkspaces={(activeId, overId) => {
+                    reorderWorkspaces({ activeId, overId });
+                  }}
+                  onRevealWorkspace={(rootPath) => {
+                    void handleRevealWorkspace(rootPath);
+                  }}
+                  onSelectSession={handleSelectSession}
+                  onToggleWorkspace={toggleWorkspace}
+                  optimisticActiveSessionId={optimisticActiveSessionId}
+                  sessionsByWorkspace={sessionView.sessionsByWorkspace}
+                  workspaces={sessionView.visibleWorkspaces}
+                />
+              ) : (
+                <SessionGroupsPanel
+                  hasPinnedSessions={sessionView.pinnedSessions.length > 0}
+                  leading={listSections}
+                  filtered={sessionView.filtered}
+                  grouping={sessionView.grouping}
+                  groups={sessionView.groups}
+                  onSelectSession={handleSelectSession}
+                  optimisticActiveSessionId={optimisticActiveSessionId}
+                  workspaceNames={sessionView.workspaceNames}
+                />
+              )}
+            </div>
+          ) : null}
+          {activeTab === "chat" ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <ChatSessionsPanel
+                activeSessionId={optimisticActiveSessionId}
+                onSelectSession={selectFormSession}
+                sessions={chatSessions}
               />
-            ) : (
-              <SessionGroupsPanel
-                hasPinnedSessions={sessionView.pinnedSessions.length > 0}
-                leading={listSections}
-                filtered={sessionView.filtered}
-                grouping={sessionView.grouping}
-                groups={sessionView.groups}
-                onSelectSession={handleSelectSession}
-                optimisticActiveSessionId={optimisticActiveSessionId}
-                workspaceNames={sessionView.workspaceNames}
+            </div>
+          ) : null}
+          {activeTab === "personal" ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <PersonalAgentsPanel
+                activeSessionId={optimisticActiveSessionId}
+                onOpenInboxItem={openInboxItem}
+                onSelectSession={selectFormSession}
               />
-            )}
-          </TabsContent>
-
-          <TabsContent className="flex min-h-0 flex-1 flex-col" value="chat">
-            <ChatSessionsPanel
-              activeSessionId={optimisticActiveSessionId}
-              onSelectSession={(sessionId) => {
-                startTransition(() => {
-                  setOptimisticActiveSessionId(sessionId);
-                  selectSession(sessionId);
-                });
-                onAfterNavigate?.();
-              }}
-              sessions={chatSessions}
-            />
-          </TabsContent>
-        </Tabs>
+            </div>
+          ) : null}
+        </div>
       </div>
+      {showFooter ? (
+        <SidebarFooter showMemory={activeTab === "personal"} />
+      ) : null}
       <ArchiveGroupDialog />
     </SidebarShell>
   );

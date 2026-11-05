@@ -13,7 +13,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
+import { AppSidebarIconButton } from "@/components/app";
 import {
   Button,
   Popover,
@@ -226,9 +226,8 @@ export function NetworkProxyStatusButton() {
         delay={HOVER_OPEN_DELAY_MS}
         openOnHover
       >
-        <TitlebarIconButton
+        <AppSidebarIconButton
           aria-label={t("network.proxy.status.label")}
-          cursor="default"
           tooltip={false}
           onClick={handleOpenSettings}
         >
@@ -236,14 +235,14 @@ export function NetworkProxyStatusButton() {
           {ALERT_TONES.has(tone) ? (
             <span
               className={cn(
-                "absolute end-0.5 bottom-0.5 size-1.5 rounded-full ring-2 ring-background",
+                "absolute end-1 bottom-1 size-1.5 rounded-full ring-2 ring-sidebar",
                 statusDotClassName[tone],
               )}
             />
           ) : null}
-        </TitlebarIconButton>
+        </AppSidebarIconButton>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 rounded-card" side="bottom">
+      <PopoverContent align="start" className="w-72 rounded-card" side="top">
         <PopoverHeader className="flex-row items-center justify-between gap-3">
           <PopoverTitle>{t("network.proxy.status.label")}</PopoverTitle>
           <StatusBadge label={statusLabel(tone, t)} tone={tone} />

@@ -16,6 +16,8 @@
   --color-chat-surface-strong: var(--chat-surface-strong);
   --color-chat-surface-input: var(--chat-surface-input);
   --color-chat-surface-bubble: var(--chat-surface-bubble);
+  --color-chat-user-bubble: var(--chat-surface-bubble);
+  --color-chat-user-bubble-fg: var(--chat-fg);
   --color-chat-surface-subtle: var(--chat-surface-subtle);
   --color-chat-surface-control: var(--chat-surface-control);
   --color-chat-surface-control-hover: var(--chat-surface-control-hover);
@@ -106,6 +108,11 @@
   --color-role-avatar-blue: var(--role-avatar-blue);
   --color-role-avatar-violet: var(--role-avatar-violet);
   --color-role-avatar-pink: var(--role-avatar-pink);
+  --color-role-avatar-face: var(--role-avatar-face);
+  --color-role-avatar-eye: oklch(
+    from currentColor calc(0.21 + 0.775 * clamp(0, (0.6 - l) * 1000, 1))
+      calc(0.006 - 0.004 * clamp(0, (0.6 - l) * 1000, 1)) 285.885
+  );
   --color-editor-monaco-bg: var(--editor-monaco-bg);
   --color-editor-monaco-line-highlight: var(--editor-monaco-line-highlight);
   --color-editor-monaco-selection: var(--editor-monaco-selection);
@@ -193,6 +200,8 @@
   --text-avatar-emoji-md--line-height: 1;
   --text-avatar-emoji-lg: 1.375rem;
   --text-avatar-emoji-lg--line-height: 1;
+  --text-avatar-emoji-xl: 2rem;
+  --text-avatar-emoji-xl--line-height: 1;
   --text-sm: var(--app-ui-font-size);
   --text-sm--line-height: round(calc(var(--app-ui-font-size) * 18 / 13), 1px);
   /* Default Tailwind ratios vs text-sm (12/14, 16/14, 18/14, 20/14). */

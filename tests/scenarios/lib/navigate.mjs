@@ -17,6 +17,8 @@ const PANEL_VIEW_KEYS = {
   pdf: "editor:actions.showPdf",
   notes: "editor:actions.showNotes",
   issues: "editor:actions.showIssues",
+  memory: "editor:actions.showMemory",
+  routines: "editor:actions.showRoutines",
   decks: "editor:actions.showDecks",
 };
 
@@ -175,4 +177,28 @@ export async function openExecutionTree(session, sessionTitle) {
     },
     NAVIGATION_TIMEOUT_MS,
   );
+}
+
+export async function openSidebarForm(session, labelKey) {
+  const template = await translate(session, "sessions:sidebar.switchForm", {
+    name: "\u0000",
+  });
+  const [before, after] = template.split("\u0000");
+  await clickByRole(
+    session,
+    {
+      role: "button",
+      name: new RegExp(`^${escapeRegExp(before)}.*${escapeRegExp(after)}$`),
+    },
+    NAVIGATION_TIMEOUT_MS,
+  );
+  await clickByRole(
+    session,
+    { role: "menuitemradio", name: await translate(session, labelKey) },
+    NAVIGATION_TIMEOUT_MS,
+  );
+}
+
+export async function openAssistantsTab(session) {
+  await openSidebarForm(session, "personal:sidebar.title");
 }

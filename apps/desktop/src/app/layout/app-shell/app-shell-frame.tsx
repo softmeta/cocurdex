@@ -46,7 +46,11 @@ import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
 import { NavigationButtons } from "../navigation";
-import { SearchPalette, useOpenEntityBridge } from "../search-palette";
+import {
+  SearchPalette,
+  SearchPaletteButton,
+  useOpenEntityBridge,
+} from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
 import { SidebarToggleButton } from "../sidebar";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
@@ -56,6 +60,7 @@ import {
   TITLEBAR_HEIGHT,
   TITLEBAR_LEADING_RESERVE,
   TITLEBAR_PANE_HEADER_START_INSET,
+  TITLEBAR_SIDEBAR_END_INSET,
   withTitlebarControlsInset,
 } from "./app-shell-layout";
 import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
@@ -97,7 +102,6 @@ interface AppShellFrameProps {
   onHideFabWhenClosedChange(hide: boolean): void;
   onCloseSettings(): void;
   onOpenFileFromPalette(file: WorkspaceFileEntry): void;
-  onOpenSettings(): void;
   onResizeHandleMouseDown(
     target: "left" | "right",
     event: React.MouseEvent,
@@ -141,7 +145,6 @@ export function AppShellFrame({
   onHideFabWhenClosedChange,
   onCloseSettings,
   onOpenFileFromPalette,
-  onOpenSettings,
   onResizeHandleMouseDown,
   onSearchClose,
   onSettingsSectionChange,
@@ -310,6 +313,9 @@ export function AppShellFrame({
               style={{
                 width: isLeftSidebarOpen ? leftWidth : undefined,
                 paddingInlineStart: TITLEBAR_LEADING_RESERVE,
+                paddingInlineEnd: isLeftSidebarOpen
+                  ? TITLEBAR_SIDEBAR_END_INSET
+                  : undefined,
               }}
             >
               {/*
@@ -320,7 +326,7 @@ export function AppShellFrame({
               <div
                 className={cn(
                   // Vertically center size-6 pills in TITLEBAR_HEIGHT (no mt).
-                  "app-no-drag items-center gap-1",
+                  "app-no-drag min-w-0 flex-1 items-center gap-1",
                   isPanelFullWidth ? "hidden" : "flex",
                 )}
               >
@@ -332,10 +338,12 @@ export function AppShellFrame({
                 <AppShellTitlebarActions
                   isChatDetached={isChatDetached}
                   isRightPanelOpen={isRightPanelOpen}
-                  onOpenSettings={onOpenSettings}
                   onToggleRightPanel={onToggleRightPanel}
                 />
-                <NavigationButtons />
+                <div className="ms-auto flex items-center gap-1">
+                  <NavigationButtons />
+                  <SearchPaletteButton />
+                </div>
               </div>
             </div>
 

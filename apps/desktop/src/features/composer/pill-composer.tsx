@@ -22,7 +22,6 @@ import {
   composerStopGlyphClassName,
   getCollapsedPillTextareaWidth,
   getNextPillExpandedState,
-  getPillComposerShapeClassName,
   getSingleLineTextareaHeight,
   measureWrappedTextareaHeight,
 } from "./chat-composer-layout";
@@ -226,8 +225,7 @@ export function PillComposer({
         <div
           ref={pillComposerRef}
           className={cn(
-            "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 border border-chat-border bg-chat-surface-input px-3",
-            getPillComposerShapeClassName(isExpanded),
+            "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 rounded-panel border border-chat-border bg-chat-surface-input px-3",
             isExpanded && "min-h-12 py-2",
             !isExpanded && "h-12",
           )}
@@ -313,7 +311,10 @@ export function PillComposer({
               onSelect={slashCommands.selectCommand}
             />
             <MentionEditor
-              ariaLabel={t("sessions:composer.sendFollowUpCompact")}
+              ariaLabel={
+                placeholderOverride ??
+                t("sessions:composer.sendFollowUpCompact")
+              }
               containerRef={editorContainerRef}
               initialContent={initialEditorContent}
               onChange={onEditorChange}
@@ -377,7 +378,7 @@ export function PillComposer({
             ) : null}
           </div>
         </div>
-        <div className="flex min-h-8 items-center justify-between gap-3 px-3 text-xs text-chat-fg-muted">
+        <div className="-ms-1.5 flex min-h-8 items-center justify-between gap-3 text-xs text-chat-fg-muted">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {footerLeading}
             {resolvedControls}

@@ -13,6 +13,7 @@ import {
   hashLogValue,
   hostForLog,
   isChatSession,
+  isPersonalSession,
   type MessageAttachment,
   type MessageRecord,
   normalizeWorkspaceRootPaths,
@@ -23,6 +24,7 @@ import {
   sessionConfiguration,
   supportsInSessionRuntimeAxis,
   type ThinkingLevelOption,
+  type WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -55,10 +57,9 @@ import {
   useSessionMessages,
 } from "@/features/agent";
 import { NewChatCard } from "@/features/chat";
-import {
-  type ChatComposerHandle,
-  type ComposerSendOutcome,
-  ComposerSurface,
+import type {
+  ChatComposerHandle,
+  ComposerSendOutcome,
 } from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
@@ -129,7 +130,9 @@ import {
   consumeBrowserAnnotations,
   useBrowserAnnotationSender,
 } from "./chat-window/chat-browser-context";
+import { PersonalEmptyState } from "./personal-empty-state";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
+import { usePersonalSessionView } from "./use-personal-session-view";
 import { useQueuedInputActions } from "./use-queued-input-actions";
 
 interface CenterPanelProps {
@@ -240,6 +243,19 @@ function summarizeProviderSnapshotForLog(
   };
 }
 
+function resolveCenterWorkingPath(
+  session: SessionRecord | undefined,
+  workspace: WorkspaceRecord | undefined,
+  globalWorkingPath: string | null,
+) {
+  if (session && isPersonalSession(session)) return null;
+  if (!(session && workspace)) return globalWorkingPath;
+  return resolveSessionWorkingPath({
+    workspaceRootPath: primaryWorkspaceRootPath(workspace),
+    worktreePath: session.worktreePath,
+  });
+}
+
 export function CenterPanel({
   composerRef,
   hideTitlebarSpacer,
@@ -315,7 +331,7 @@ export function CenterPanel({
     if (session.id !== activeSessionId) {
       return false;
     }
-    if (pane || isChatSession(session)) {
+    if (pane || isChatSession(session) || isPersonalSession(session)) {
       return true;
     }
     return session.workspaceId === activeWorkspaceId;
@@ -323,13 +339,18 @@ export function CenterPanel({
   const activeWorkspace = activeSession
     ? workspaces.find((workspace) => workspace.id === activeSession.workspaceId)
     : selectedWorkspace;
-  const workingPath =
-    activeSession && activeWorkspace
-      ? resolveSessionWorkingPath({
-          workspaceRootPath: primaryWorkspaceRootPath(activeWorkspace),
-          worktreePath: activeSession.worktreePath,
-        })
-      : globalWorkingPath;
+  const personalView = usePersonalSessionView(activeSession, composerRef);
+  const workingPath = resolveCenterWorkingPath(
+    activeSession,
+    activeWorkspace,
+    globalWorkingPath,
+  );
+  const sessionRootPath =
+    workingPath ??
+    (activeWorkspace ? primaryWorkspaceRootPath(activeWorkspace) : null);
+  const canDriveActiveSession = Boolean(
+    activeSession && (activeWorkspace || isPersonalSession(activeSession)),
+  );
   const composerWorkspaceRootPaths = normalizeWorkspaceRootPaths([
     ...(activeWorkspace?.rootPaths ?? []),
     ...(workingPath ? [workingPath] : []),
@@ -420,7 +441,7 @@ export function CenterPanel({
     activeSession?.providerSnapshot?.thinkingLevel ?? "default",
   );
   const selectThinkingLevel = (thinkingLevel: AgentThinkingLevel) => {
-    if (!activeSession || !activeWorkspace) {
+    if (!(activeSession && canDriveActiveSession)) {
       return;
     }
     const updatedSession = updateSessionProviderRuntime({
@@ -571,8 +592,7 @@ export function CenterPanel({
     sentAnnotations: BrowserAnnotation[] = annotations,
   ): Promise<ComposerSendOutcome> => {
     if (
-      !activeSession ||
-      !activeWorkspace ||
+      !(activeSession && canDriveActiveSession) ||
       isSubagentSession(activeSession)
     ) {
       return "kept";
@@ -592,9 +612,7 @@ export function CenterPanel({
       requestId,
       agentType: activeSession.agentType,
       sessionId: activeSession.id,
-      workspaceHash: hashLogValue(
-        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-      ),
+      workspaceHash: hashLogValue(sessionRootPath ?? ""),
       contentLength: message.length,
       attachmentCount: attachments.length,
     });
@@ -619,8 +637,7 @@ export function CenterPanel({
       const isQueuedFollowUp = delivery === "queue-after-run";
       const queuedInputBase = {
         sessionId: nextSession.id,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+        workspaceRootPath: sessionRootPath ?? "",
         thinkingLevel: selectedThinkingLevel ?? undefined,
       };
 
@@ -664,9 +681,7 @@ export function CenterPanel({
         },
         thinkingLevel:
           thinkingLevelOptions.length > 0 ? selectedThinkingLevel : undefined,
-        workspaceHash: hashLogValue(
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-        ),
+        workspaceHash: hashLogValue(sessionRootPath ?? ""),
       });
       if (nextSession.title !== activeSession.title) {
         await desktopApi.updateSessionTitle({
@@ -998,7 +1013,7 @@ export function CenterPanel({
   };
 
   const persistSession = (session: SessionRecord) => {
-    if (!activeWorkspace) {
+    if (!canDriveActiveSession) {
       return;
     }
 
@@ -1081,47 +1096,50 @@ export function CenterPanel({
   let newSessionSurface: ReactNode = null;
   if (centerSurface === "new-session") {
     newSessionSurface = (
-      <ComposerSurface>
-        <NewSessionCard
-          activeBranch={activeBranch}
-          activeBranches={activeBranches}
-          activeWorkspaceId={activeWorkspaceId}
-          agents={agents}
-          agentType={lastSelectedAgent}
-          attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
-          composerContextChips={annotationChips}
-          sessionModeId={null}
-          composerRef={composerRef}
-          onClearAttachment={clearChatComposerAttachment}
-          onOpenWorkspace={handleOpenWorkspace}
-          onRelocateWorkspace={(workspaceId) =>
-            void handleRelocateWorkspace(workspaceId)
-          }
-          onSelectBranch={handleSelectBranch}
-          onSelectWorktree={handleSelectWorktree}
-          onCreateWorktree={handleCreateWorktree}
-          onSelectAgent={setLastSelectedAgent}
-          onSelectWorkspace={selectWorkspace}
-          onStartSession={handleStartSession}
-          worktrees={activeWorktrees}
-          selectedWorktreePath={draftWorktreePath}
-          sessionTitle={undefined}
-          workspaces={workspaces}
-          workspaceRootPath={workingPath ?? activeWorkspace?.rootPaths[0]}
-          workspaceName={activeWorkspace?.name}
-        />
-      </ComposerSurface>
+      <NewSessionCard
+        activeBranch={activeBranch}
+        activeBranches={activeBranches}
+        activeWorkspaceId={activeWorkspaceId}
+        agents={agents}
+        agentType={lastSelectedAgent}
+        attachment={isFocused ? (composerAttachment ?? undefined) : undefined}
+        composerContextChips={annotationChips}
+        sessionModeId={null}
+        composerRef={composerRef}
+        onClearAttachment={clearChatComposerAttachment}
+        onOpenWorkspace={handleOpenWorkspace}
+        onRelocateWorkspace={(workspaceId) =>
+          void handleRelocateWorkspace(workspaceId)
+        }
+        onSelectBranch={handleSelectBranch}
+        onSelectWorktree={handleSelectWorktree}
+        onCreateWorktree={handleCreateWorktree}
+        onSelectAgent={setLastSelectedAgent}
+        onSelectWorkspace={selectWorkspace}
+        onStartSession={handleStartSession}
+        worktrees={activeWorktrees}
+        selectedWorktreePath={draftWorktreePath}
+        sessionTitle={undefined}
+        workspaces={workspaces}
+        workspaceRootPath={workingPath ?? activeWorkspace?.rootPaths[0]}
+        workspaceName={activeWorkspace?.name}
+      />
+    );
+  } else if (centerSurface === "personal-empty") {
+    newSessionSurface = (
+      <PersonalEmptyState selectedSessionId={activeSessionId ?? null} />
     );
   } else if (centerSurface === "new-chat") {
-    newSessionSurface = (
-      <ComposerSurface>
-        <NewChatCard onStartChat={chatSessionActions.start} />
-      </ComposerSurface>
-    );
+    newSessionSurface = <NewChatCard onStartChat={chatSessionActions.start} />;
   }
 
   return (
-    <section className="flex h-full flex-col bg-chat-canvas">
+    <section
+      className="flex h-full flex-col bg-chat-canvas"
+      data-persona-hue={
+        centerSurface === "agent-session" ? personalView?.hue : undefined
+      }
+    >
       {hideTitlebarSpacer ? null : (
         <div className="shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
       )}
@@ -1143,7 +1161,10 @@ export function CenterPanel({
             }
             composerContextChips={annotationChips}
             sessionModeId={activeSessionModeId}
-            composerRef={composerRef}
+            composerRef={personalView?.composerRef ?? composerRef}
+            composerRole={personalView?.composerRole}
+            composerPlaceholder={personalView?.composerPlaceholder}
+            emptyState={personalView?.emptyState}
             permissionMode={activePermissionMode}
             providerSnapshot={activeSession.providerSnapshot}
             thinkingLevel={selectedThinkingLevel}

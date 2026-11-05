@@ -63,7 +63,11 @@ function snapshot(
   };
 }
 
-const WORKSPACES = [workspace("shop", "acme-shop"), workspace("docs", "docs")];
+const WORKSPACES = [
+  workspace("shop", "acme-shop"),
+  workspace("docs", "docs"),
+  workspace("personal", "Personal"),
+];
 
 function sections(
   sessions: SessionRecord[],
@@ -114,7 +118,7 @@ describe("buildSessionSections", () => {
     expect(result[1]?.rows[1]?.activityAt).toBe("2026-10-02T00:00:00.000Z");
   });
 
-  it("leaves out chat, archived, and orphaned sessions", () => {
+  it("leaves out chat, assistant, archived, and orphaned sessions", () => {
     const result = sections([
       session("main", "shop", "2026-10-20T10:00:00.000Z"),
       session("chat", "shop", "2026-10-21T10:00:00.000Z", {
@@ -124,6 +128,7 @@ describe("buildSessionSections", () => {
         archivedAt: "2026-10-22T00:00:00.000Z",
       }),
       session("orphan", "gone", "2026-10-21T10:00:00.000Z"),
+      session("assistant", "personal", "2026-10-21T10:00:00.000Z"),
     ]);
 
     expect(ids(result)).toEqual([["workspace:shop", ["main"]]]);

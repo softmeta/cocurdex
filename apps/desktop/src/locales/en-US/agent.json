@@ -98,6 +98,8 @@
   "openFile": "Open file",
   "peerMessage": {
     "from": "From session {{title}}",
+    "fromBrief": "Today's brief",
+    "fromRoutine": "From routine {{name}}",
     "fromScriptRun": "From script {{name}}"
   },
   "permissions": {

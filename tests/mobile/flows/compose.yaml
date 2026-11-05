@@ -186,6 +186,11 @@ appId: dev.cocurdex.mobile
     permissions:
       notifications: allow
 - extendedWaitUntil:
+    visible:
+      id: "assistant-section-agents"
+    timeout: 30000
+- tapOn: ${TAB_SESSIONS}
+- extendedWaitUntil:
     visible: ${NEW_SESSION_ACTION}
     timeout: 10000
 - tapOn: ${NEW_SESSION_ACTION}

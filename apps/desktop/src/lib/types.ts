@@ -80,7 +80,11 @@ import type {
   MemoryCloudKeys,
   MemoryDoctorReport,
   MemoryEntry,
+  MemoryHistoryEntry,
   MemoryInstallResult,
+  MemoryListInput,
+  MemoryListResult,
+  MemoryProviderCapabilities,
   MemoryRecallResult,
   MemoryRememberInput,
   MemoryRememberResult,
@@ -88,6 +92,7 @@ import type {
   MemorySessionSaveResult,
   MemorySettings,
   MemoryStatus,
+  MemoryUpdateInput,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -644,6 +649,16 @@ export interface ProductApi {
     input: MemorySessionSaveInput,
   ): Promise<MemorySessionSaveResult>;
   installMemory(force?: boolean): Promise<MemoryInstallResult>;
+  listMemories(input: MemoryListInput): Promise<MemoryListResult>;
+  updateMemory(input: MemoryUpdateInput): Promise<MemoryEntry | null>;
+  forgetMemory(id: string): Promise<void>;
+  restoreMemory(id: string): Promise<void>;
+  getMemoryHistory(input: {
+    id?: string | null;
+    limit?: number;
+  }): Promise<MemoryHistoryEntry[]>;
+  getMemoryRevision(): Promise<string | null>;
+  getMemoryCapabilities(): Promise<MemoryProviderCapabilities | null>;
   runMemoryDoctor(options?: {
     remote?: boolean;
     checkUpdate?: boolean;

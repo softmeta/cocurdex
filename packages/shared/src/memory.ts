@@ -272,6 +272,84 @@ export interface MemoryEntry {
   device: string | null;
 }
 
+export type MemoryPartition =
+  | { kind: "me" }
+  | { kind: "agent"; agentId: string };
+
+const MEMORY_PARTITION_PREFIX = "cocurdex/";
+const ME_PARTITION_PROJECT = `${MEMORY_PARTITION_PREFIX}me`;
+const AGENT_PARTITION_PREFIX = `${MEMORY_PARTITION_PREFIX}agent/`;
+
+export function memoryPartitionProject(partition: MemoryPartition) {
+  return partition.kind === "me"
+    ? ME_PARTITION_PROJECT
+    : `${AGENT_PARTITION_PREFIX}${partition.agentId}`;
+}
+
+export function memoryPartitionOf(
+  project: string | null,
+): MemoryPartition | null {
+  if (project === ME_PARTITION_PROJECT) return { kind: "me" };
+  if (project?.startsWith(AGENT_PARTITION_PREFIX)) {
+    const agentId = project.slice(AGENT_PARTITION_PREFIX.length);
+    return agentId ? { kind: "agent", agentId } : null;
+  }
+  return null;
+}
+
+export interface MemoryProviderCapabilities {
+  partitions: boolean;
+  list: boolean;
+  update: boolean;
+  forget: boolean;
+  restore: boolean;
+  history: boolean;
+  revision: boolean;
+  export: boolean;
+  import: boolean;
+}
+
+export interface MemoryListInput {
+  limit?: number;
+  since?: string | null;
+  partition?: MemoryPartition | null;
+}
+
+export interface MemoryListResult {
+  items: MemoryEntry[];
+  error: string | null;
+}
+
+export interface MemoryUpdateInput {
+  id: string;
+  title?: string;
+  content?: string;
+  tags?: string[];
+  importance?: MemoryImportance;
+}
+
+export type MemoryHistoryAction =
+  | "create"
+  | "update"
+  | "delete"
+  | "restore"
+  | "purge";
+
+export interface MemoryHistoryEntry {
+  entryId: string;
+  action: MemoryHistoryAction | string;
+  title: string | null;
+  excerpt: string | null;
+  actor: string | null;
+  at: string | null;
+}
+
+export interface MemoryImportResult {
+  imported: number;
+  duplicates: number;
+  skipped: number;
+}
+
 export interface MemoryRememberInput {
   content: string;
   title: string;

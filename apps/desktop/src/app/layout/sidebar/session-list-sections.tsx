@@ -1,4 +1,5 @@
 import type { SessionRecord } from "@cocurdex/shared";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarMenuItem } from "@/components/ui";
 import { SidebarSectionHeading } from "./sidebar-section-heading";
@@ -6,6 +7,7 @@ import { SidebarSessionTree } from "./sidebar-session-tree";
 import { useSidebarSectionCollapse } from "./use-sidebar-section-collapse";
 
 interface SessionListSectionsProps {
+  headingActions?: ReactNode;
   optimisticActiveSessionId: string | null;
   sessions: SessionRecord[];
   workspaceNames: ReadonlyMap<string, string>;
@@ -13,6 +15,7 @@ interface SessionListSectionsProps {
 }
 
 export function SessionListSections({
+  headingActions,
   optimisticActiveSessionId,
   sessions,
   workspaceNames,
@@ -42,7 +45,7 @@ export function SessionListSections({
         </SidebarMenuItem>
       ) : null}
       <SidebarMenuItem className="sticky top-0 z-10 bg-sidebar">
-        <SidebarSectionHeading section="sessions">
+        <SidebarSectionHeading actions={headingActions} section="sessions">
           {t("sidebar.sessionsHeading")}
         </SidebarSectionHeading>
       </SidebarMenuItem>

@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui";
 import {
   ChatContentColumn,
   type ComposerSendOutcome,
+  StageIdentity,
   sessionComposerDraftKey,
 } from "@/features/composer";
 import {
@@ -36,7 +37,7 @@ import {
   type UserMessageAnchor,
   UserMessageNavigation,
 } from "./chat-user-navigation";
-import { ComposerDock, EmptyChatState, JumpControls } from "./chat-view-panels";
+import { ComposerDock, JumpControls } from "./chat-view-panels";
 import type { ChatViewProps } from "./chat-view-types";
 import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
@@ -51,6 +52,9 @@ const CONTENT_READY_DEADLINE_MS = 1_000;
 
 export function ChatView({
   chatComposer,
+  composerRole,
+  composerPlaceholder,
+  emptyState,
   messages,
   permissionRequests = [],
   pendingPlanApproval = null,
@@ -366,6 +370,8 @@ export function ChatView({
     shouldShowJumpToLatest,
   });
 
+  const showsEmptyState = timelineGroups.length === 0 && !readOnly;
+
   return (
     <section className="@container/chat flex h-full flex-col bg-chat-canvas">
       <div className="relative flex-1 overflow-hidden">
@@ -404,40 +410,7 @@ export function ChatView({
               className={cn("pt-6", timelineGroups.length === 0 && "pb-6")}
               ref={chatContentRef}
             >
-              {timelineGroups.length === 0 && !readOnly ? (
-                <EmptyChatState
-                  activeBranch={activeBranch}
-                  workspace={workspace}
-                  sessionId={sessionId}
-                  agentLabel={agentLabel}
-                  agentType={agentType}
-                  attachment={attachment}
-                  composerContextChips={composerContextChips}
-                  draftKey={
-                    sessionId ? sessionComposerDraftKey(sessionId) : undefined
-                  }
-                  sessionModeId={sessionModeId}
-                  composerRef={composerRef}
-                  permissionMode={permissionMode}
-                  providerSnapshot={providerSnapshot}
-                  thinkingLevel={thinkingLevel}
-                  thinkingLevelOptions={thinkingLevelOptions}
-                  isRunning={isRunning}
-                  canSendWhileRunning={canSendWhileRunning}
-                  runtimeCommands={runtime?.commands}
-                  runtimeMode={runtime?.mode}
-                  onClearAttachment={onClearAttachment}
-                  onSelectSessionMode={onSelectSessionMode}
-                  onSelectPermissionMode={onSelectPermissionMode}
-                  onSelectThinkingLevel={onSelectThinkingLevel}
-                  onSelectRuntimeMode={onSelectRuntimeMode}
-                  onSelectAgent={onSelectAgent}
-                  onSend={stableOnSend}
-                  onStop={onStop}
-                  workspaceRootPath={workspaceRootPath}
-                  workspaceRootPaths={workspaceRootPaths}
-                />
-              ) : timelineGroups.length === 0 ? (
+              {showsEmptyState ? null : timelineGroups.length === 0 ? (
                 <div className="text-chat-fg-muted text-meta">
                   {t("toolCalls.subagentEmpty")}
                 </div>
@@ -467,6 +440,13 @@ export function ChatView({
             </ChatContentColumn>
           </ScrollArea>
         </RenderReadinessContext>
+        {showsEmptyState ? (
+          <div className="absolute inset-0 flex flex-col overflow-y-auto px-2 @lg/chat:px-3 @3xl/chat:px-6">
+            <ChatContentColumn className="my-auto py-10">
+              {emptyState ?? <StageIdentity />}
+            </ChatContentColumn>
+          </div>
+        ) : null}
         <JumpControls
           streaming={isRunning && shouldShowJumpToLatest}
           onJumpToLatest={() => scrollToLatest(true)}
@@ -475,59 +455,59 @@ export function ChatView({
           showJumpToTop={shouldShowJumpToTop}
         />
       </div>
-      {timelineGroups.length > 0 || readOnly ? (
-        <ComposerDock
-          chatComposer={chatComposer}
-          activeBranch={activeBranch}
-          workspace={workspace}
-          sessionId={sessionId}
-          agentLabel={agentLabel}
-          agentType={agentType}
-          attachment={attachment}
-          composerContextChips={composerContextChips}
-          draftKey={sessionId ? sessionComposerDraftKey(sessionId) : undefined}
-          sessionModeId={sessionModeId}
-          composerRef={composerRef}
-          permissionMode={permissionMode}
-          providerSnapshot={providerSnapshot}
-          thinkingLevel={thinkingLevel}
-          thinkingLevelOptions={thinkingLevelOptions}
-          isRunning={isRunning}
-          canSendWhileRunning={canSendWhileRunning}
-          runtimeCommands={runtime?.commands}
-          runtimeMode={runtime?.mode}
-          queuedInputs={queuedInputs}
-          supportsSteering={supportsSteering}
-          onClearAttachment={onClearAttachment}
-          onSelectSessionMode={onSelectSessionMode}
-          onSelectPermissionMode={onSelectPermissionMode}
-          onSelectThinkingLevel={onSelectThinkingLevel}
-          onSelectRuntimeMode={onSelectRuntimeMode}
-          onSelectAgent={onSelectAgent}
-          onSend={stableOnSend}
-          onStop={onStop}
-          onDeleteQueuedInput={onDeleteQueuedInput}
-          onSendNowQueuedInput={onSendNowQueuedInput}
-          onResumeQueuedInputs={onResumeQueuedInputs}
-          onSteerQueuedInput={onSteerQueuedInput}
-          onUpdateQueuedInput={onUpdateQueuedInput}
-          onResolvePermission={onResolvePermission}
-          onResolvePlanApproval={onResolvePlanApproval}
-          onDismissPlan={onDismissPlan}
-          onTogglePlanCollapsed={onTogglePlanCollapsed}
-          pendingPermissionRequest={pendingPermissionRequest}
-          pendingPlanApproval={pendingPlanApproval}
-          pendingQuestion={pendingQuestion}
-          onAnswerQuestion={stableOnAnswerQuestion}
-          plan={plan}
-          planCollapsed={planCollapsed}
-          workspaceRootPath={workspaceRootPath}
-          workspaceRootPaths={workspaceRootPaths}
-          hideComposer={readOnly}
-          parentSessionTitle={parentSessionTitle}
-          onOpenParentSession={onOpenParentSession}
-        />
-      ) : null}
+      <ComposerDock
+        chatComposer={chatComposer}
+        role={composerRole}
+        placeholderOverride={composerPlaceholder}
+        activeBranch={activeBranch}
+        workspace={workspace}
+        sessionId={sessionId}
+        agentLabel={agentLabel}
+        agentType={agentType}
+        attachment={attachment}
+        composerContextChips={composerContextChips}
+        draftKey={sessionId ? sessionComposerDraftKey(sessionId) : undefined}
+        sessionModeId={sessionModeId}
+        composerRef={composerRef}
+        permissionMode={permissionMode}
+        providerSnapshot={providerSnapshot}
+        thinkingLevel={thinkingLevel}
+        thinkingLevelOptions={thinkingLevelOptions}
+        isRunning={isRunning}
+        canSendWhileRunning={canSendWhileRunning}
+        runtimeCommands={runtime?.commands}
+        runtimeMode={runtime?.mode}
+        queuedInputs={queuedInputs}
+        supportsSteering={supportsSteering}
+        onClearAttachment={onClearAttachment}
+        onSelectSessionMode={onSelectSessionMode}
+        onSelectPermissionMode={onSelectPermissionMode}
+        onSelectThinkingLevel={onSelectThinkingLevel}
+        onSelectRuntimeMode={onSelectRuntimeMode}
+        onSelectAgent={onSelectAgent}
+        onSend={stableOnSend}
+        onStop={onStop}
+        onDeleteQueuedInput={onDeleteQueuedInput}
+        onSendNowQueuedInput={onSendNowQueuedInput}
+        onResumeQueuedInputs={onResumeQueuedInputs}
+        onSteerQueuedInput={onSteerQueuedInput}
+        onUpdateQueuedInput={onUpdateQueuedInput}
+        onResolvePermission={onResolvePermission}
+        onResolvePlanApproval={onResolvePlanApproval}
+        onDismissPlan={onDismissPlan}
+        onTogglePlanCollapsed={onTogglePlanCollapsed}
+        pendingPermissionRequest={pendingPermissionRequest}
+        pendingPlanApproval={pendingPlanApproval}
+        pendingQuestion={pendingQuestion}
+        onAnswerQuestion={stableOnAnswerQuestion}
+        plan={plan}
+        planCollapsed={planCollapsed}
+        workspaceRootPath={workspaceRootPath}
+        workspaceRootPaths={workspaceRootPaths}
+        hideComposer={readOnly}
+        parentSessionTitle={parentSessionTitle}
+        onOpenParentSession={onOpenParentSession}
+      />
     </section>
   );
 }

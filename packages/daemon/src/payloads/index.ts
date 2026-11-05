@@ -7,8 +7,10 @@ import { issuePayloadSchemas } from "./issue-payloads";
 import { mcpPayloadSchemas } from "./mcp-payloads";
 import { memoryPayloadSchemas } from "./memory-payloads";
 import { notePayloadSchemas } from "./note-payloads";
+import { personalPayloadSchemas } from "./personal-payloads";
 import type { PayloadSchemas } from "./primitives";
 import { providerPayloadSchemas } from "./provider-payloads";
+import { routinePayloadSchemas } from "./routine-payloads";
 import { sessionPayloadSchemas } from "./session-payloads";
 import { skillPayloadSchemas } from "./skill-payloads";
 import { systemPayloadSchemas } from "./system-payloads";
@@ -22,6 +24,8 @@ export const daemonPayloadSchemas: PayloadSchemas = {
   ...mcpPayloadSchemas,
   ...memoryPayloadSchemas,
   ...notePayloadSchemas,
+  ...personalPayloadSchemas,
+  ...routinePayloadSchemas,
   ...providerPayloadSchemas,
   ...sessionPayloadSchemas,
   ...skillPayloadSchemas,

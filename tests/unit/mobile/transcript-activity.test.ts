@@ -14,6 +14,14 @@ const reply = (id: string): TranscriptItem => ({
   id,
   text: id,
   streaming: false,
+  source: null,
+});
+const posted = (id: string): TranscriptItem => ({
+  kind: "assistant",
+  id,
+  text: id,
+  streaming: false,
+  source: { kind: "routine", name: "Morning brief" },
 });
 const tool = (
   id: string,
@@ -166,4 +174,18 @@ it("times only the live turn from the run start", () => {
   const result = condenseTranscript(items, records, true, 1_000);
   const activities = result.filter((item) => item.kind === "activity");
   expect(activities.map((item) => item.startedAt)).toEqual([undefined, 1_000]);
+});
+
+it("keeps a posted result apart from the reply before it", () => {
+  const condensed = condenseTranscript(
+    [user("u1"), tool("t1"), reply("a1"), posted("p1"), posted("p2")],
+    records,
+  );
+  expect(condensed.map((item) => item.id)).toEqual([
+    "u1",
+    "t1",
+    "a1",
+    "p1",
+    "p2",
+  ]);
 });

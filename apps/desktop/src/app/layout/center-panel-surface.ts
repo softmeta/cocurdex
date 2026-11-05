@@ -7,7 +7,8 @@ export type CenterPanelSurface =
   | "agent-session"
   | "agent-session-loading"
   | "new-session"
-  | "new-chat";
+  | "new-chat"
+  | "personal-empty";
 
 export function resolveCenterPanelSurface(input: {
   sidebarTab: SidebarTab;
@@ -20,6 +21,9 @@ export function resolveCenterPanelSurface(input: {
       return "chat-session";
     }
     return input.sessionDataLoaded ? "agent-session" : "agent-session-loading";
+  }
+  if (input.sidebarTab === "personal") {
+    return "personal-empty";
   }
   if (input.sessionId) {
     return "new-session";

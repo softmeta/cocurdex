@@ -24,8 +24,10 @@ import {
 } from "@/features/editor";
 import { MonacoEditor } from "@/features/editor/monaco";
 import { IssuesView } from "@/features/issues";
+import { MemoryLibraryView } from "@/features/memory";
 import { NotesView } from "@/features/notes";
 import { openPdfsAtom } from "@/features/pdf-reader";
+import { RoutinesView } from "@/features/routines";
 import {
   type AppearanceSettings,
   defaultAppearanceSettings,
@@ -56,6 +58,7 @@ import {
   SidebarToggleButton,
   TitlebarIconButton,
 } from "./titlebar-icon-button";
+import { useOpenPersonalSession } from "./use-open-personal-session";
 import { ViewSwitcherTabs } from "./view-switcher-tabs";
 
 const MIN_FILE_TREE_WIDTH = 170;
@@ -116,6 +119,7 @@ export function RightEditorPanel({
   const { t } = useTranslation("editor");
   const { t: tSearch } = useTranslation("search");
   const store = useStore();
+  const openRoutineSession = useOpenPersonalSession();
   // Atom-backed so a drag-resized width survives panel collapse/remount.
   const [fileTreeWidth, setFileTreeWidth] = useAtom(fileTreeWidthAtom);
   // Shared so a chat path link can collapse the explorer straight from its click
@@ -526,6 +530,24 @@ export function RightEditorPanel({
                 )}
               >
                 <IssuesView />
+              </div>
+            ) : null}
+
+            {activeView === "memory" ? (
+              <div
+                data-testid="right-panel-memory-layer"
+                className="absolute inset-0 flex min-h-0 flex-col"
+              >
+                <MemoryLibraryView />
+              </div>
+            ) : null}
+
+            {activeView === "routines" ? (
+              <div
+                data-testid="right-panel-routines-layer"
+                className="absolute inset-0 flex min-h-0 flex-col"
+              >
+                <RoutinesView onOpenSession={openRoutineSession} />
               </div>
             ) : null}
 

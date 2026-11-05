@@ -1,7 +1,13 @@
 import { useAtom } from "jotai";
 import { collapsedSessionGroupKeysAtom } from "@/features/sessions/session-list-view";
 
-export type SidebarSection = "chat" | "chatPinned" | "pinned" | "sessions";
+export type SidebarSection =
+  | "assistants"
+  | "chat"
+  | "chatPinned"
+  | "inbox"
+  | "pinned"
+  | "sessions";
 
 export function useSidebarSectionCollapse(section: SidebarSection) {
   const [collapsedKeys, setCollapsedKeys] = useAtom(

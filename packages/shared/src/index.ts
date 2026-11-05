@@ -3,12 +3,14 @@ export * from "./acp-registry";
 export * from "./agent-brand-icons";
 export * from "./agent-permission-modes";
 export * from "./agent-role";
+export * from "./agent-role-avatar-shapes";
 export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-tools";
 export * from "./agent-versions";
 export * from "./assistant-session";
 export * from "./attachment-http";
+export * from "./brief";
 export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
 export * from "./build-policy";
 export * from "./chat-elapsed";
@@ -35,6 +37,7 @@ export * from "./files";
 export * from "./git";
 export * from "./git-worktree";
 export * from "./host-access";
+export * from "./inbox";
 export * from "./issues";
 export * from "./local-session-title";
 export * from "./locales";
@@ -63,11 +66,13 @@ export {
   type PermissionRequestDisplay,
   type PermissionRequestSummary,
 } from "./permission-request-display";
+export * from "./personal-agent";
 export * from "./provider-compatibility";
 export * from "./provider-json";
 export * from "./provider-model-override";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
 export * from "./push";
+export * from "./routine";
 export * from "./run-limits";
 export * from "./script-run";
 export * from "./search";

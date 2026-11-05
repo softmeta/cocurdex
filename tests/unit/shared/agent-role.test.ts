@@ -6,6 +6,7 @@ import {
   defaultAgentRoleAvatarColor,
   normalizeAgentRoleAvatar,
   projectAgentRoleToExecutorBinding,
+  resolveAgentRoleAvatar,
   workflowPermissionProfileForAgentRole,
 } from "@cocurdex/shared/internal/agent-role";
 import { describe, expect, it } from "vitest";
@@ -208,6 +209,42 @@ describe("agent role avatar defaults", () => {
     expect(AGENT_ROLE_AVATAR_COLORS).toContain(
       defaultAgentRoleAvatarColor("role-reviewer"),
     );
+  });
+
+  it("gives a role without an avatar a colorful shape with a face", () => {
+    const ids = Array.from({ length: 200 }, (_, index) => `role-${index}`);
+    const avatars = ids.map((id) =>
+      resolveAgentRoleAvatar({ id, avatar: null }),
+    );
+    expect(avatars.every((avatar) => avatar.kind === "shape")).toBe(true);
+    expect(avatars.some((avatar) => avatar.color === "gray")).toBe(false);
+    const looks = new Set(
+      avatars.map((avatar) =>
+        avatar.kind === "shape" ? `${avatar.shape}:${avatar.face}` : "",
+      ),
+    );
+    expect(looks.size).toBeGreaterThan(20);
+  });
+
+  it("keeps a stored shape avatar and reads one saved without a face", () => {
+    expect(
+      normalizeAgentRoleAvatar({
+        kind: "shape",
+        shape: "star",
+        face: "wink",
+        color: "teal",
+      }),
+    ).toEqual({ kind: "shape", shape: "star", face: "wink", color: "teal" });
+    expect(
+      normalizeAgentRoleAvatar({ kind: "shape", shape: "star", color: "teal" }),
+    ).toEqual({ kind: "shape", shape: "star", face: "dots", color: "teal" });
+    expect(
+      normalizeAgentRoleAvatar({
+        kind: "shape",
+        shape: "hexagon",
+        color: "teal",
+      }),
+    ).toBeNull();
   });
 
   it("uses the first whole character of the name as the initial", () => {
