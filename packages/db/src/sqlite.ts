@@ -74,6 +74,10 @@ import {
   createSqliteWorktreeEnvironmentRepository,
 } from "./repositories";
 import {
+  createSqliteRoutineRepository,
+  type RoutineRepository,
+} from "./routines";
+import {
   createSqliteScriptRunRepository,
   type ScriptRunRepository,
 } from "./script-run";
@@ -128,6 +132,7 @@ export interface CocurdexDatabase {
   agentRoles: AgentRoleRepository;
   agentCapabilityCache: AgentCapabilityCacheRepository;
   personalAgents: PersonalAgentRepository;
+  routines: RoutineRepository;
   /**
    * Run a set of repository writes atomically. The callback must be synchronous:
    * node:sqlite is a single synchronous connection, so awaiting inside a
@@ -232,6 +237,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     agentRoles: createSqliteAgentRoleRepository(database),
     agentCapabilityCache: createSqliteAgentCapabilityCacheRepository(database),
     personalAgents: createSqlitePersonalAgentRepository(database),
+    routines: createSqliteRoutineRepository(database),
     ...createProviderRepositories(database),
     transaction(fn) {
       database.exec("BEGIN");

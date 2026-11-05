@@ -644,7 +644,16 @@ export interface ScriptRunMessageOrigin {
   runName: string;
 }
 
-export type MessageOrigin = PeerMessageOrigin | ScriptRunMessageOrigin;
+export interface RoutineMessageOrigin {
+  kind: "routine";
+  routineId: string;
+  routineName: string;
+}
+
+export type MessageOrigin =
+  | PeerMessageOrigin
+  | ScriptRunMessageOrigin
+  | RoutineMessageOrigin;
 
 export interface MessageRecord {
   id: string;

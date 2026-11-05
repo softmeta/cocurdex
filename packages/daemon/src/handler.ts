@@ -873,6 +873,24 @@ export async function handleDaemonRequest(
     case "personalAgent.delete":
       await service.personalAgents.delete(request.params.id);
       return null;
+    case "routine.list":
+      return service.routines.list(request.params.agentId);
+    case "routine.get":
+      return service.routines.get(request.params.id);
+    case "routine.create":
+      return service.routines.create(request.params);
+    case "routine.update":
+      return service.routines.update(request.params);
+    case "routine.delete":
+      service.routines.delete(request.params.id);
+      return null;
+    case "routine.run":
+      return service.routines.runNow(request.params.id).run;
+    case "routine.runs":
+      return service.routines.runs(
+        request.params.routineId ?? null,
+        request.params.limit,
+      );
     case "agentRole.delete":
       await service.deleteAgentRole(request.params.id);
       return null;

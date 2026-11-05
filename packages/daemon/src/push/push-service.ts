@@ -14,6 +14,7 @@ import {
   type HostPushStatus,
   normalizeRelayUrl,
   PUSH_SEAL_PROLOGUE,
+  type PushNotificationKind,
   type PushRegistration,
   type PushSettings,
   type PushSettingsUpdate,
@@ -50,6 +51,7 @@ export interface PushServiceOptions {
   signingKey(): KeyObject;
   identity(): HostIdentity;
   getSession(sessionId: string): Promise<SessionRecord | null>;
+  allows?(session: SessionRecord, kind: PushNotificationKind): boolean;
   crypto: NoiseCrypto;
   defaultGatewayUrl?: string | null;
   fetch?: typeof fetch;
@@ -162,6 +164,9 @@ export class PushService {
     if (!url) return;
     const session = await this.options.getSession(trigger.sessionId);
     if (!session || !shouldNotifyForSession(session)) return;
+    if (this.options.allows && !this.options.allows(session, trigger.kind)) {
+      return;
+    }
     const plaintext = encodePushContent(
       buildPushContent(trigger, session, this.options.identity()),
     );

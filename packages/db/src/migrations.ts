@@ -15,6 +15,7 @@ import {
 } from "./issues/issue-schema";
 import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
 import { createPersonalAgentsSchemaSql } from "./personal/schema";
+import { createRoutinesSchemaSql } from "./routines/schema";
 import {
   createCommandReceiptsSql,
   createProviderModelOverridesSql,
@@ -28,7 +29,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 39;
+export const CURRENT_SCHEMA_VERSION = 40;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -447,6 +448,10 @@ function createPersonalAgentsTable(database: DatabaseSync): void {
   database.exec(createPersonalAgentsSchemaSql());
 }
 
+function createRoutinesTables(database: DatabaseSync): void {
+  database.exec(createRoutinesSchemaSql());
+}
+
 function createProviderModelOverrides(database: DatabaseSync): void {
   database.exec(createProviderModelOverridesSql());
 }
@@ -621,6 +626,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [36, addHostDeviceApproval],
   [37, widenIssueViewGrouping],
   [38, createPersonalAgentsTable],
+  [39, createRoutinesTables],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

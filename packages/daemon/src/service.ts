@@ -164,6 +164,11 @@ import {
   ProviderLoginSessions,
 } from "./provider-credentials";
 import { PushService } from "./push";
+import {
+  createRoutineSessions,
+  RoutineService,
+  routinePushAllowed,
+} from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
 import { createWorkspaceScanPolicy } from "./scan-roots";
@@ -288,6 +293,7 @@ export class CocurdexDaemonService {
   readonly dataService: DaemonDataService;
   readonly decks: DaemonDeckService;
   readonly personalAgents: PersonalAgentService;
+  readonly routines: RoutineService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
   readonly agentAuth: AgentAuthService;
@@ -365,6 +371,10 @@ export class CocurdexDaemonService {
       signingKey: () => this.hostKeys.keys().signingPrivateKey,
       identity: () => this.hostAccess.identity(),
       getSession: (sessionId) => this.state.getSession(sessionId),
+      allows: (session, kind) => {
+        const routine = this.routines.findBySession(session.id);
+        return !routine || routinePushAllowed(routine.deliver, kind);
+      },
       crypto: daemonNoiseCrypto,
     });
     this.background = new DaemonBackgroundService({
@@ -399,10 +409,32 @@ export class CocurdexDaemonService {
           title: role.name,
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
+      removeDependents: (agentId) => this.removeRoutinesOf(agentId),
       announceChanged: () =>
         this.events.emit("daemon.event", {
           type: "data.changed",
           areas: ["personal"],
+        }),
+    });
+    const routineSessions = createRoutineSessions({
+      getPersona: (id) => this.state.data.personalAgents.getById(id),
+      getRole: (id) => this.state.getAgentRole(id),
+      getSession: (id) => this.state.getSession(id),
+      createSession: (input) => this.createSession(input),
+      saveSessionConfiguration: (input) => this.saveSessionConfiguration(input),
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
+    });
+    this.routines = new RoutineService({
+      repository: this.state.data.routines,
+      personaExists: async (id) =>
+        this.state.data.personalAgents.getById(id) !== null,
+      ensureSession: routineSessions.ensureSession,
+      runTurn: routineSessions.runTurn,
+      announceChanged: () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["routines"],
         }),
     });
     this.providerCredentials = new ProviderCredentials(
@@ -745,8 +777,16 @@ export class CocurdexDaemonService {
       await this.scriptRuns.recoverInterrupted();
       await this.team.recoverReports();
       await this.decks.collectUnusedImages();
+      if (!this.stopping) this.routines.start();
     } catch {
       logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
+    }
+  }
+
+  private async removeRoutinesOf(agentId: string) {
+    const removed = this.routines.deleteForAgent(agentId);
+    for (const routine of removed) {
+      if (routine.sessionId) await this.removeSession(routine.sessionId);
     }
   }
 
@@ -2978,6 +3018,7 @@ export class CocurdexDaemonService {
   private async performShutdown() {
     this.stopping = true;
     await this.startupRecovery;
+    this.routines.stop();
     clearInterval(this.checkpointReconcileTimer);
     this.keepAwake.dispose();
     this.runCapacity.close(new Error("Daemon is shutting down"));

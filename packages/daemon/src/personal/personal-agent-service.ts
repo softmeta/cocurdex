@@ -22,6 +22,7 @@ export interface PersonalAgentServiceDeps {
   deleteRole(id: string): Promise<void>;
   createHomeSession(role: AgentRoleRecord): Promise<SessionRecord>;
   removeSession(sessionId: string): Promise<void>;
+  removeDependents(agentId: string): Promise<void>;
   announceChanged(): void;
   now?: () => string;
 }
@@ -122,6 +123,7 @@ export class PersonalAgentService {
     if (row.isDefault) {
       throw new Error("The default personal agent cannot be deleted");
     }
+    await this.deps.removeDependents(row.id);
     this.deps.repository.delete(row.id);
     await this.deps.removeSession(row.homeSessionId);
     await this.deps.deleteRole(row.roleId);

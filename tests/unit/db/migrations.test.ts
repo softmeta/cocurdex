@@ -1290,6 +1290,48 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds routines from version 39 and keeps personal agents", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE routine_runs; DROP TABLE routines;");
+    const now = "2026-11-05T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, created_at, updated_at)
+      VALUES ('r1', 'Coach', 'pi', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO personal_agents (id, role_id, home_session_id, soul, is_default, created_at, updated_at)
+      VALUES ('p1', 'r1', 's1', 'Calm', 1, '${now}', '${now}');
+      PRAGMA user_version = 39;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO routines (id, agent_id, name, prompt, schedule_json, time_zone, created_at, updated_at)
+      VALUES ('rt1', 'p1', 'Morning', 'Plan my day', '{"kind":"interval","minutes":60}', 'UTC', '${now}', '${now}');
+      INSERT INTO routine_runs (id, routine_id, trigger, status, started_at)
+      VALUES ('run1', 'rt1', 'manual', 'succeeded', '${now}');
+    `);
+    expect(
+      database
+        .prepare("SELECT access, deliver, failure_count FROM routines")
+        .all(),
+    ).toEqual([
+      { access: "read-and-draft", deliver: "inbox", failure_count: 0 },
+    ]);
+    expect(
+      database.prepare("SELECT id, soul FROM personal_agents").all(),
+    ).toEqual([{ id: "p1", soul: "Calm" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("adds personal agents from version 38 and keeps user data", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

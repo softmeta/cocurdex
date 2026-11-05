@@ -165,6 +165,12 @@ function validateMessageOrigin(value: unknown) {
     text(value.runName, "origin run name", 4096, true);
     return;
   }
+  if (value.kind === "routine") {
+    keys(value, ["kind", "routineId", "routineName"]);
+    validateSessionId(value.routineId);
+    text(value.routineName, "origin routine name", 4096, true);
+    return;
+  }
   keys(value, ["kind", "sessionId", "sessionTitle"]);
   if (value.kind !== "peer") throw new Error("Invalid message origin");
   validateSessionId(value.sessionId);

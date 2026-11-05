@@ -7,6 +7,7 @@ export { CURRENT_SCHEMA_VERSION } from "./migrations";
 export * from "./notes";
 export * from "./personal";
 export * from "./repositories";
+export * from "./routines";
 export * from "./schema";
 export * from "./script-run";
 export * from "./search";

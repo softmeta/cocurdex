@@ -100,6 +100,7 @@ export default interface Resources {
     openFile: "Open file";
     peerMessage: {
       from: "From session {{title}}";
+      fromRoutine: "From routine {{name}}";
       fromScriptRun: "From script {{name}}";
     };
     permissions: {

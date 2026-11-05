@@ -40,6 +40,7 @@ import type {
   CreateIssuePayload,
   CreateNotePayload,
   CreatePersonalAgentPayload,
+  CreateRoutinePayload,
   CreateScriptRunPayload,
   CreateSessionPayload,
   CreateTeamPayload,
@@ -184,6 +185,8 @@ import type {
   RelaySettingsUpdate,
   RemoteAccessSettingsUpdate,
   ResolvedCommitMessageModel,
+  RoutineRecord,
+  RoutineRunRecord,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
   SaveWorkflowDefinitionPayload,
@@ -250,6 +253,7 @@ import type {
   UpdateIssuePayload,
   UpdateNotePayload,
   UpdatePersonalAgentPayload,
+  UpdateRoutinePayload,
   UpdateSessionAttentionPayload,
   UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
@@ -762,6 +766,13 @@ export type DaemonRequestPayloadByMethod = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
+  "routine.list": { agentId?: string | null };
+  "routine.get": { id: string };
+  "routine.create": CreateRoutinePayload;
+  "routine.update": UpdateRoutinePayload;
+  "routine.delete": { id: string };
+  "routine.run": { id: string };
+  "routine.runs": { routineId?: string | null; limit?: number };
   "host.identity": undefined;
   "host.session": undefined;
   "host.remoteAccess.get": undefined;
@@ -1094,6 +1105,13 @@ export type DaemonResultByMethod = {
   "personalAgent.update": PersonalAgentRecord;
   "personalAgent.duplicate": PersonalAgentRecord;
   "personalAgent.delete": null;
+  "routine.list": RoutineRecord[];
+  "routine.get": RoutineRecord | null;
+  "routine.create": RoutineRecord;
+  "routine.update": RoutineRecord;
+  "routine.delete": null;
+  "routine.run": RoutineRunRecord;
+  "routine.runs": RoutineRunRecord[];
   "host.identity": HostIdentity;
   "host.session": HostAccessSession;
   "host.remoteAccess.get": HostRemoteAccessStatus;

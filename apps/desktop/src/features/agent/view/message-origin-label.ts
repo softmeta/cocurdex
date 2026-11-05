@@ -5,6 +5,9 @@ export function messageOriginLabel(
   t: TFunction<"agent">,
   origin: MessageOrigin,
 ) {
+  if (origin.kind === "routine") {
+    return t("peerMessage.fromRoutine", { name: origin.routineName });
+  }
   if (origin.kind === "scriptRun") {
     return t("peerMessage.fromScriptRun", { name: origin.runName });
   }

@@ -69,6 +69,7 @@ export * from "./provider-json";
 export * from "./provider-model-override";
 export { createProviderSnapshotForModel } from "./provider-snapshot";
 export * from "./push";
+export * from "./routine";
 export * from "./run-limits";
 export * from "./script-run";
 export * from "./search";

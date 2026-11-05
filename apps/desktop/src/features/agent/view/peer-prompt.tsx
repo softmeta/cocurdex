@@ -4,15 +4,21 @@ import {
   stripPeerEnvelope,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
-import { ArrowUpRight, Bot, Workflow } from "lucide-react";
+import { AlarmClock, ArrowUpRight, Bot, Workflow } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleUserMessageBody, MarkdownRenderer } from "@/components";
 import { Avatar, AvatarFallback } from "@/components/ui";
 import { selectSessionAtom, sessionsAtom } from "@/features/sessions";
 import { messageOriginLabel } from "./message-origin-label";
 
+const ORIGIN_ICONS = {
+  peer: Bot,
+  scriptRun: Workflow,
+  routine: AlarmClock,
+} satisfies Record<MessageOrigin["kind"], unknown>;
+
 function PeerOriginAvatar({ origin }: { origin: MessageOrigin }) {
-  const Icon = origin.kind === "peer" ? Bot : Workflow;
+  const Icon = ORIGIN_ICONS[origin.kind];
   return (
     <Avatar className="size-7">
       <AvatarFallback className="bg-chat-surface-control text-chat-fg-muted transition-colors group-hover/peer:bg-chat-surface-control-hover group-hover/peer:text-chat-fg">
@@ -32,7 +38,7 @@ function PeerOriginHeader({
   const { t } = useTranslation("agent");
   const selectSession = useSetAtom(selectSessionAtom);
 
-  if (origin.kind === "scriptRun") {
+  if (origin.kind !== "peer") {
     return (
       <div className="flex max-w-full flex-row-reverse items-center gap-2 text-meta text-chat-fg-muted">
         <PeerOriginAvatar origin={origin} />
