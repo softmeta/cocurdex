@@ -19,23 +19,23 @@ export function useInbox() {
 
 export function useBrief() {
   const { t, i18n } = useTranslation("personal");
-  const post = (brief: Brief) => {
-    void inboxApi
+  const post = (brief: Brief) =>
+    inboxApi
       .postBrief({
         updatedAt: brief.updatedAt,
         day: brief.day,
         content: briefText(brief, t, i18n.language),
       })
-      .catch(() => undefined);
-  };
+      .catch(() => null);
   const { data, mutate } = useSWR(
     ["inbox.brief", timeZone],
     () => inboxApi.brief(timeZone),
     {
       dedupingInterval: 0,
-      onSuccess: (brief) => deliverBriefOnEntry(brief, post),
+      onSuccess: (brief) =>
+        deliverBriefOnEntry(brief, (entry) => void post(entry)),
     },
   );
   useInboxRevalidation(mutate);
-  return data ?? null;
+  return { brief: data ?? null, post };
 }

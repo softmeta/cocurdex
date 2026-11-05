@@ -270,45 +270,26 @@ runScenario("personal-agents", {
       },
     ],
     [
-      "the brief lists today's routine results without popping up mid-use",
+      "the brief opens in the home thread, not in a dialog",
       async ({ session }) => {
-        const title = await translate(session, "personal:brief.title");
-        const dialog = { role: "dialog", name: title };
-        const popped = await session.run(
-          (name) =>
-            [...document.querySelectorAll('[role="dialog"]')].some((node) =>
-              node.textContent.includes(name),
-            ),
-          title,
-        );
-        check(!popped, "new content does not open the brief by itself");
-        await clickByRole(
-          session,
-          {
-            role: "button",
-            name: await translate(session, "personal:brief.open"),
-          },
-          UI_TIMEOUT_MS,
-        );
-        await waitForRole(session, dialog, UI_TIMEOUT_MS);
-        const result = {
+        const resultsTitle = await translate(session, "personal:brief.results");
+        const briefButton = {
           role: "button",
-          name: /Morning brief/,
-          within: {
-            role: "region",
-            name: await translate(session, "personal:brief.results"),
-          },
+          name: await translate(session, "personal:brief.open"),
         };
-        await clickByRole(session, result, UI_TIMEOUT_MS);
-        await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
+        await clickByRole(session, briefButton, UI_TIMEOUT_MS);
         await session.waitUntil(
-          (reply) =>
-            [...document.querySelectorAll("article")].some((node) =>
-              node.textContent.includes(reply),
+          (heading) =>
+            [...document.querySelectorAll("article")].some(
+              (node) =>
+                node.textContent.includes(heading) &&
+                node.textContent.includes("Morning brief"),
             ),
-          "Two meetings today.",
+          resultsTitle,
           UI_TIMEOUT_MS,
         );
+        const dialogs = await queryAllByRole(session, { role: "dialog" });
+        check(dialogs.length === 0, "the brief opens no dialog", dialogs);
         return {};
       },
     ],

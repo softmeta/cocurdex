@@ -1527,12 +1527,10 @@ export default interface Resources {
   };
   personal: {
     brief: {
-      dismiss: "Got it";
       failures: "Failures";
       needsYou: "Needs you";
       open: "Today's brief";
       results: "Routine results";
-      title: "Today's brief";
     };
     copyName: "{{name}} copy";
     defaultName: "Assistant";

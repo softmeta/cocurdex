@@ -294,10 +294,7 @@ export function LeftSidebar({
               </AppSidebarIconButton>
             )}
             {activeTab === "personal" ? (
-              <BriefControl
-                onOpenItem={openInboxItem}
-                onOpenSession={selectFormSession}
-              />
+              <BriefControl onOpenSession={selectFormSession} />
             ) : null}
             {isWorkspacesTab ? (
               <AppSidebarIconButton
