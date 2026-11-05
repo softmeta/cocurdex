@@ -415,6 +415,8 @@ export class CocurdexDaemonService {
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
       removeDependents: (agentId) => this.removeRoutinesOf(agentId),
+      applyRole: (agentId, homeSessionId, role) =>
+        this.applyPersonaRole(agentId, homeSessionId, role),
       announceChanged: () =>
         this.events.emit("daemon.event", {
           type: "data.changed",
@@ -1810,6 +1812,32 @@ export class CocurdexDaemonService {
 
   getAgentRole(id: string) {
     return this.state.getAgentRole(id);
+  }
+
+  private async applyPersonaRole(
+    agentId: string,
+    homeSessionId: string,
+    role: AgentRoleRecord,
+  ) {
+    const { providerId, modelId } = role;
+    if (!providerId || !modelId) return;
+    const routineSessionIds = this.routines
+      .list(agentId)
+      .map((routine) => routine.sessionId);
+    for (const sessionId of [homeSessionId, ...routineSessionIds]) {
+      if (!sessionId) continue;
+      const session = await this.state.getSession(sessionId);
+      if (!session || session.archivedAt) continue;
+      if (session.agentType !== role.agentId) continue;
+      const current = session.providerSnapshot;
+      if (current?.providerId === providerId && current.modelId === modelId) {
+        continue;
+      }
+      await this.updateSessionRuntime(
+        { sessionId, model: { providerId, modelId } },
+        LOCAL_REQUEST_CONTEXT.principal,
+      );
+    }
   }
 
   async saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord> {

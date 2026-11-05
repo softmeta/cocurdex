@@ -90,6 +90,7 @@ async function createHarness(): Promise<Harness> {
     },
     removeSession: (id) => database.sessions.delete(id),
     removeDependents: async () => {},
+    applyRole: async () => {},
     announceChanged: () => {
       announced += 1;
     },

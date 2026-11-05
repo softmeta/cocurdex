@@ -3,10 +3,12 @@ import {
   type CocurdexDaemonEvent,
   PERSONAL_WORKSPACE_ID,
 } from "@cocurdex/shared";
+import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
 import {
   spawnDaemon,
   waitFor,
 } from "@cocurdex/test-harness/helpers/daemon-process";
+import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { describe, expect, it } from "vitest";
 
 function personalChanges(events: CocurdexDaemonEvent[]) {
@@ -98,6 +100,91 @@ describe("personal agents over the daemon socket", () => {
       subscription.close();
     } finally {
       await daemon.dispose();
+    }
+  });
+
+  it("moves an existing home thread to the model its persona switches to", async () => {
+    const stub = await startStubLlmServer();
+    const daemon = await spawnDaemon();
+    try {
+      await saveStubProvider(daemon, stub);
+      const now = new Date().toISOString();
+      for (const modelId of ["e2e-agent-model", "e2e-other-model"]) {
+        await requestDaemon(
+          "provider.model.save",
+          {
+            model: {
+              providerId: "e2e-stub",
+              modelId,
+              name: modelId,
+              api: "openai-completions",
+              enabled: true,
+              source: "manual",
+              capabilities: ["chat", "agent"],
+              createdAt: now,
+              updatedAt: now,
+            },
+          },
+          daemon.options,
+        );
+      }
+      const assistant = await requestDaemon(
+        "personalAgent.create",
+        {
+          role: {
+            name: "Coach",
+            agentId: "pi",
+            providerId: "e2e-stub",
+            modelId: "e2e-agent-model",
+            modelName: "e2e-agent-model",
+            permissionMode: null,
+            sessionModeId: null,
+            reasoningEffort: null,
+            serviceTier: null,
+            fastMode: null,
+            thinkingLevel: null,
+            openCodeAgent: null,
+            openCodeVariant: null,
+          },
+        },
+        daemon.options,
+      );
+      const before = await requestDaemon(
+        "session.get",
+        { sessionId: assistant.homeSessionId },
+        daemon.options,
+      );
+      expect(before?.providerSnapshot?.modelId).toBe("e2e-agent-model");
+      const {
+        id: _id,
+        createdAt: _created,
+        updatedAt: _updated,
+        ...role
+      } = assistant.role;
+      await requestDaemon(
+        "personalAgent.update",
+        {
+          id: assistant.id,
+          role: {
+            ...role,
+            modelId: "e2e-other-model",
+            modelName: "e2e-other-model",
+          },
+        },
+        daemon.options,
+      );
+      const home = await requestDaemon(
+        "session.get",
+        { sessionId: assistant.homeSessionId },
+        daemon.options,
+      );
+      expect(home?.providerSnapshot).toMatchObject({
+        providerId: "e2e-stub",
+        modelId: "e2e-other-model",
+      });
+    } finally {
+      await daemon.dispose();
+      await stub.close();
     }
   });
 });

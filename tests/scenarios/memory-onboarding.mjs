@@ -3,7 +3,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import { clickByRole, waitForNoRole, waitForRole } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { openAssistantsTab, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const SKIPPED_KEY = "cocurdex.memory-onboarding-skipped";
@@ -32,14 +32,7 @@ runScenario("memory-onboarding", {
     [
       "the assistants form offers to turn memory on",
       async ({ session }) => {
-        await clickByRole(
-          session,
-          {
-            role: "tab",
-            name: await translate(session, "personal:sidebar.title"),
-          },
-          UI_TIMEOUT_MS,
-        );
+        await openAssistantsTab(session);
         const offer = await memoryRegion(session, "memory:onboarding.title");
         await waitForRole(session, offer, UI_TIMEOUT_MS);
         await waitForRole(session, {

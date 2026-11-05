@@ -1,9 +1,11 @@
+import { daemonRequest } from "./daemon-rpc.mjs";
 import { translateFor } from "./i18n.mjs";
 import {
   centerOf,
   clickByRole,
   clickPoint,
   queryAllByRole,
+  waitForNoRole,
   waitForRole,
 } from "./locate.mjs";
 
@@ -177,4 +179,34 @@ export async function openExecutionTree(session, sessionTitle) {
     },
     NAVIGATION_TIMEOUT_MS,
   );
+}
+
+async function briefDueOnEntry(session) {
+  const { timeZone, shown } = await session.run(() => ({
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    shown: window.localStorage.getItem("cocurdex.brief.shownUpdatedAt"),
+  }));
+  const brief = await daemonRequest(session, "inbox.brief", { timeZone });
+  return Boolean(brief) && (!shown || brief.updatedAt > shown);
+}
+
+export async function openAssistantsTab(session) {
+  const due = await briefDueOnEntry(session);
+  await clickByRole(
+    session,
+    { role: "tab", name: await translate(session, "personal:sidebar.title") },
+    NAVIGATION_TIMEOUT_MS,
+  );
+  if (!due) return;
+  const dialog = {
+    role: "dialog",
+    name: await translate(session, "personal:brief.title"),
+  };
+  await waitForRole(session, dialog, NAVIGATION_TIMEOUT_MS);
+  await clickByRole(session, {
+    role: "button",
+    name: await translate(session, "personal:brief.dismiss"),
+    within: dialog,
+  });
+  await waitForNoRole(session, dialog, NAVIGATION_TIMEOUT_MS);
 }

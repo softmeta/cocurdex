@@ -9,7 +9,7 @@ import {
   waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { openAssistantsTab, translate } from "./lib/navigate.mjs";
 
 const require = createRequire(
   new URL("../harness/package.json", import.meta.url),
@@ -79,14 +79,7 @@ runScenario("personal-agents", {
     [
       "the assistants tab creates and opens the default assistant",
       async ({ session }) => {
-        await clickByRole(
-          session,
-          {
-            role: "tab",
-            name: await translate(session, "personal:sidebar.title"),
-          },
-          UI_TIMEOUT_MS,
-        );
+        await openAssistantsTab(session);
         const defaultName = await translate(session, "personal:defaultName");
         await waitForRole(
           session,
@@ -203,11 +196,7 @@ runScenario("personal-agents", {
           "Two meetings today.",
           UI_TIMEOUT_MS,
         );
-        await waitForNoRole(
-          session,
-          { role: "region", name: inboxName },
-          UI_TIMEOUT_MS,
-        );
+        await waitForNoRole(session, row, UI_TIMEOUT_MS);
         return { routine: routine.id, sessionId: run.sessionId };
       },
     ],

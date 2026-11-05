@@ -23,6 +23,11 @@ export interface PersonalAgentServiceDeps {
   createHomeSession(role: AgentRoleRecord): Promise<SessionRecord>;
   removeSession(sessionId: string): Promise<void>;
   removeDependents(agentId: string): Promise<void>;
+  applyRole(
+    agentId: string,
+    homeSessionId: string,
+    role: AgentRoleRecord,
+  ): Promise<void>;
   announceChanged(): void;
   now?: () => string;
 }
@@ -91,7 +96,11 @@ export class PersonalAgentService {
   async update(payload: UpdatePersonalAgentPayload) {
     const row = this.require(payload.id);
     if (payload.role) {
-      await this.deps.saveRole({ ...payload.role, id: row.roleId });
+      const role = await this.deps.saveRole({
+        ...payload.role,
+        id: row.roleId,
+      });
+      await this.deps.applyRole(row.id, row.homeSessionId, role);
     }
     const now = this.now();
     const pinnedAt = this.toggleStamp(row.pinnedAt, payload.pinned, now);

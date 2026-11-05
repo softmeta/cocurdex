@@ -2,16 +2,34 @@ import { type Brief, briefDue, briefEntryAfterAway } from "@cocurdex/shared";
 import { useSyncExternalStore } from "react";
 
 interface BriefPresenceState {
-  shownUpdatedAt: string | null;
   entryPending: boolean;
   presenting: boolean;
 }
 
+const SHOWN_STORAGE_KEY = "cocurdex.brief.shownUpdatedAt";
+
 let state: BriefPresenceState = {
-  shownUpdatedAt: null,
   entryPending: true,
   presenting: false,
 };
+let shownFallback: string | null = null;
+
+function readShown() {
+  try {
+    return window.localStorage.getItem(SHOWN_STORAGE_KEY) ?? shownFallback;
+  } catch {
+    return shownFallback;
+  }
+}
+
+function writeShown(updatedAt: string) {
+  shownFallback = updatedAt;
+  try {
+    window.localStorage.setItem(SHOWN_STORAGE_KEY, updatedAt);
+  } catch {
+    return;
+  }
+}
 let leftAt: number | null = null;
 const listeners = new Set<() => void>();
 
@@ -52,12 +70,13 @@ export function considerBriefOnEntry(brief: Brief | null) {
   publish({
     ...state,
     entryPending: false,
-    presenting: briefDue(brief, state.shownUpdatedAt),
+    presenting: briefDue(brief, readShown()),
   });
 }
 
 export function markBriefShown(updatedAt: string) {
-  publish({ ...state, shownUpdatedAt: updatedAt, presenting: false });
+  writeShown(updatedAt);
+  publish({ ...state, presenting: false });
 }
 
 export function useBriefPresenting() {

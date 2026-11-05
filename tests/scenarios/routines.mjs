@@ -8,7 +8,11 @@ import {
   clickPoint,
   waitForRole,
 } from "./lib/locate.mjs";
-import { showPanelView, translate } from "./lib/navigate.mjs";
+import {
+  openAssistantsTab,
+  showPanelView,
+  translate,
+} from "./lib/navigate.mjs";
 
 const require = createRequire(
   new URL("../harness/package.json", import.meta.url),
@@ -68,11 +72,7 @@ async function seedStubModel(session) {
 }
 
 async function setUpAssistant(session) {
-  await clickByRole(
-    session,
-    { role: "tab", name: await translate(session, "personal:sidebar.title") },
-    UI_TIMEOUT_MS,
-  );
+  await openAssistantsTab(session);
   const defaultName = await translate(session, "personal:defaultName");
   await waitForRole(
     session,
@@ -114,6 +114,9 @@ runScenario("routines", {
   setup: async ({ session }) => {
     stub = await startStubLlmServer();
     await seedStubModel(session);
+    for (const routine of await routines(session)) {
+      await daemonRequest(session, "routine.delete", { id: routine.id });
+    }
     return {};
   },
   steps: [
