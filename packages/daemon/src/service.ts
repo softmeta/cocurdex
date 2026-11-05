@@ -429,6 +429,7 @@ export class CocurdexDaemonService {
       broadcast: (event) => this.events.emit("daemon.event", event),
       resolveSessionProvider: (session) =>
         this.providerCredentials.forSession(session),
+      startRuntime: options.autoStartMemory !== false,
     });
     this.scanPolicy = createWorkspaceScanPolicy(this.state);
     this.searchService = new DaemonSearchService({

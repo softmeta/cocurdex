@@ -1,3 +1,4 @@
+export { MemoryOnboarding } from "./memory-onboarding";
 export {
   MEMORY_SETTINGS_KEY,
   MEMORY_STATUS_KEY,

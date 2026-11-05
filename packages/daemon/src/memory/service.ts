@@ -141,6 +141,10 @@ function toCloudStatus(summary: RsrsCloudSummary | null): MemoryCloudStatus {
   };
 }
 
+function rsrsDataDirFromEnv() {
+  return process.env.RSRS_DATA_DIR?.trim() || undefined;
+}
+
 function withIdentityHint(message: string) {
   return isMissingMemoryIdentity(message)
     ? withMemoryIdentityHint(message)
@@ -185,7 +189,7 @@ export class MemoryService {
     this.now = options.now ?? (() => new Date());
     this.rsrs = new RsrsMemoryProvider({
       settings: () => this.currentSettings(),
-      dataDir: options.rsrsDataDir,
+      dataDir: options.rsrsDataDir ?? rsrsDataDirFromEnv(),
       startRuntime: options.startRuntime,
       now: () => this.now(),
     });
@@ -436,7 +440,10 @@ export class MemoryService {
             "rsrs was installed but no executable could be resolved",
           );
         }
-        executable = (await materializeNativeBinary(executable)) ?? executable;
+        if (executable.source === "path") {
+          executable =
+            (await materializeNativeBinary(executable)) ?? executable;
+        }
         this.rsrs.adoptExecutable(executable);
         this.policyCache = null;
         const version = await readRsrsVersion(executable).catch(() => null);

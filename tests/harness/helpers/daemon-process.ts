@@ -156,6 +156,7 @@ export async function spawnDaemon(
       COCURDEX_DAEMON_TOKEN: token,
       COCURDEX_DAEMON_RUNTIME_FINGERPRINT: "e2e-runtime",
       COCURDEX_DISABLE_MEMORY_AUTO_START: "1",
+      RSRS_DATA_DIR: path.join(userDataPath, "rsrs"),
       NO_COLOR: "1",
       TZ: "UTC",
     },

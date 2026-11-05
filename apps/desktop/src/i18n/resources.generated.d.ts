@@ -1200,6 +1200,22 @@ export default interface Resources {
       settings: "Memory settings";
       sync: "Multi-device sync";
     };
+    onboarding: {
+      description: "Assistants keep what you tell them about yourself and what they learn, in an encrypted library on this device.";
+      enable: "Turn on memory";
+      failed: "Memory could not be installed.";
+      label: "Long-term memory";
+      retry: "Retry";
+      skip: "Skip";
+      state: {
+        failed: "Memory is not ready";
+        installing: "Installing memory…";
+        off: "Memory is off";
+        ready: "Memory is on";
+      };
+      sync: "Sync devices";
+      title: "Let your assistants remember";
+    };
     session: {
       alreadySaved: "This conversation is already in memory";
       recallFailed: "Memory recall failed this turn: {{error}}";

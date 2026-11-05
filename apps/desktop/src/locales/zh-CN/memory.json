@@ -32,6 +32,22 @@
     "settings": "记忆设置",
     "sync": "多设备同步"
   },
+  "onboarding": {
+    "description": "助理会记住你说过的关于自己的事，以及它们学到的东西，加密保存在这台设备上。",
+    "enable": "开启记忆",
+    "failed": "记忆安装失败。",
+    "label": "长期记忆",
+    "retry": "重试",
+    "skip": "跳过",
+    "state": {
+      "failed": "记忆还不可用",
+      "installing": "正在安装记忆…",
+      "off": "记忆未开启",
+      "ready": "记忆已开启"
+    },
+    "sync": "多设备同步",
+    "title": "让助理记住你"
+  },
   "session": {
     "alreadySaved": "这段对话已经在记忆里了",
     "recallFailed": "本轮记忆召回失败：{{error}}",

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components/app";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
+import { MemoryOnboarding } from "@/features/memory";
 import { personalApi, usePersonalAgents } from "@/features/personal";
 import { sessionsAtom } from "@/features/sessions";
 import { AgentRoleEditDialog } from "@/features/sessions/agent-role";
@@ -81,6 +82,7 @@ export function PersonalAgentsPanel({
           ))}
         </SidebarMenu>
       </SidebarScrollArea>
+      <MemoryOnboarding />
       <AgentRoleEditDialog
         onOpenChange={(open) => {
           if (!open) setEditId(null);
