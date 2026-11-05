@@ -503,7 +503,7 @@ export function NewSessionCard({
   return (
     <EmptyStage identity={<StageIdentity title={t("sessions:stage.title")} />}>
       {sessionTitle ? <div className="sr-only">{sessionTitle}</div> : null}
-      <div className="flex min-w-0 px-1">{header}</div>
+      <div className="flex min-w-0">{header}</div>
       <ChatComposer
         ref={composerRef}
         mode="agent"

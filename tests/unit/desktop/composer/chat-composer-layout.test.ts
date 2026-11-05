@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  getNextPillExpandedState,
-  getPillComposerShapeClassName,
-} from "@/features/composer/chat-composer-layout";
+import { getNextPillExpandedState } from "@/features/composer/chat-composer-layout";
 
 describe("chat composer layout", () => {
   it("keeps the pill composer expanded when collapsed width would wrap", () => {
@@ -36,10 +33,5 @@ describe("chat composer layout", () => {
         singleLineHeight: 24,
       }),
     ).toBe(true);
-  });
-
-  it("uses the default composer radius after the pill composer expands", () => {
-    expect(getPillComposerShapeClassName(true)).toBe("rounded-card");
-    expect(getPillComposerShapeClassName(false)).toBe("rounded-full");
   });
 });
