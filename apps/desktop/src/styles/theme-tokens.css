@@ -401,8 +401,17 @@
     var(--foreground)
   );
   --modal-scrim: rgb(0 0 0 / 0.4);
-  /* Lifted off the near-black canvas enough to read as a separate plane. */
-  --sidebar: color-mix(in srgb, var(--foreground) 7%, var(--background));
+  --sidebar: color-mix(in srgb, black 22%, var(--background));
+  --sidebar-surface-hover: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 7%,
+    var(--sidebar)
+  );
+  --sidebar-surface-active: color-mix(
+    in srgb,
+    var(--sidebar-foreground) 11%,
+    var(--sidebar)
+  );
   --editor-canvas: var(--background);
   --settings-surface: color-mix(
     in srgb,
