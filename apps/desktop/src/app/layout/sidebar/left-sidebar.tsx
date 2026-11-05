@@ -1,6 +1,6 @@
 import { type InboxItem, personalAgentRoleDraft } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { FolderPlus, Plus } from "lucide-react";
+import { FolderPlus, SquarePen } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -302,7 +302,7 @@ export function LeftSidebar({
               aria-label={createActionLabel}
               onClick={onCreateAction}
             >
-              <Plus className="size-3.5" />
+              <SquarePen className="size-3.5" />
             </AppSidebarIconButton>
           </div>
 

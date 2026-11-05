@@ -38,6 +38,7 @@ export const TITLEBAR_CONTROL_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
 // No trailing padding: gap-1 between pills already spaces the cluster; the
 // sidebar separator sits at the box edge.
 export const TITLEBAR_RIGHT_PADDING = 0;
+export const TITLEBAR_SIDEBAR_END_INSET = 14;
 
 /** Intrinsic width the titlebar toolbar needs to render without overflow. */
 export const TITLEBAR_TOOLBAR_MIN_WIDTH =
@@ -58,7 +59,7 @@ export const MIN_SIDEBAR_CONTENT_WIDTH = 200;
 
 /** Minimum sidebar width; never narrower than the titlebar toolbar. */
 export const MIN_LEFT = Math.max(
-  TITLEBAR_TOOLBAR_MIN_WIDTH,
+  TITLEBAR_TOOLBAR_MIN_WIDTH + TITLEBAR_SIDEBAR_END_INSET,
   MIN_SIDEBAR_CONTENT_WIDTH,
 );
 

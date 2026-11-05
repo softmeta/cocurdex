@@ -60,6 +60,7 @@ import {
   TITLEBAR_HEIGHT,
   TITLEBAR_LEADING_RESERVE,
   TITLEBAR_PANE_HEADER_START_INSET,
+  TITLEBAR_SIDEBAR_END_INSET,
   withTitlebarControlsInset,
 } from "./app-shell-layout";
 import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
@@ -312,6 +313,9 @@ export function AppShellFrame({
               style={{
                 width: isLeftSidebarOpen ? leftWidth : undefined,
                 paddingInlineStart: TITLEBAR_LEADING_RESERVE,
+                paddingInlineEnd: isLeftSidebarOpen
+                  ? TITLEBAR_SIDEBAR_END_INSET
+                  : undefined,
               }}
             >
               {/*
@@ -322,7 +326,7 @@ export function AppShellFrame({
               <div
                 className={cn(
                   // Vertically center size-6 pills in TITLEBAR_HEIGHT (no mt).
-                  "app-no-drag items-center gap-1",
+                  "app-no-drag min-w-0 flex-1 items-center gap-1",
                   isPanelFullWidth ? "hidden" : "flex",
                 )}
               >
@@ -336,6 +340,7 @@ export function AppShellFrame({
                   isRightPanelOpen={isRightPanelOpen}
                   onToggleRightPanel={onToggleRightPanel}
                 />
+                <div className="min-w-0 flex-1" />
                 <NavigationButtons />
                 <SearchPaletteButton />
               </div>
