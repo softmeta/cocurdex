@@ -11,6 +11,7 @@ export {
   AppDropdownTriggerLabel,
   AppGitBranchLabel,
   AppInlineRenameInput,
+  AppPanelTab,
   AppPreviewCardTooltipContent,
   AppRemoveButton,
   AppSearchableSelect,
