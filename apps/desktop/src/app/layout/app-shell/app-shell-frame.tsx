@@ -97,7 +97,6 @@ interface AppShellFrameProps {
   onHideFabWhenClosedChange(hide: boolean): void;
   onCloseSettings(): void;
   onOpenFileFromPalette(file: WorkspaceFileEntry): void;
-  onOpenSettings(): void;
   onResizeHandleMouseDown(
     target: "left" | "right",
     event: React.MouseEvent,
@@ -141,7 +140,6 @@ export function AppShellFrame({
   onHideFabWhenClosedChange,
   onCloseSettings,
   onOpenFileFromPalette,
-  onOpenSettings,
   onResizeHandleMouseDown,
   onSearchClose,
   onSettingsSectionChange,
@@ -332,7 +330,6 @@ export function AppShellFrame({
                 <AppShellTitlebarActions
                   isChatDetached={isChatDetached}
                   isRightPanelOpen={isRightPanelOpen}
-                  onOpenSettings={onOpenSettings}
                   onToggleRightPanel={onToggleRightPanel}
                 />
                 <NavigationButtons />

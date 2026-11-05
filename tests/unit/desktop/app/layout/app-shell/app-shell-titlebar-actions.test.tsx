@@ -11,7 +11,6 @@ function renderActions(
     <AppShellTitlebarActions
       isChatDetached={false}
       isRightPanelOpen
-      onOpenSettings={() => {}}
       onToggleRightPanel={() => {}}
       {...overrides}
     />,
@@ -25,7 +24,6 @@ describe("AppShellTitlebarActions", () => {
     expect(
       screen.getByRole("button", { name: "Close editor panel" }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: "Settings" })).toBeVisible();
   });
 
   it("offers to open a closed editor panel", () => {
@@ -36,7 +34,7 @@ describe("AppShellTitlebarActions", () => {
     ).toBeVisible();
   });
 
-  it("keeps only settings while chat lives in its own window", () => {
+  it("leaves the editor panel to the main window while chat lives in its own window", () => {
     renderActions({ isChatDetached: true });
 
     expect(
@@ -45,7 +43,6 @@ describe("AppShellTitlebarActions", () => {
     expect(
       screen.queryByRole("button", { name: "Close editor panel" }),
     ).toBeNull();
-    expect(screen.getByRole("button", { name: "Settings" })).toBeVisible();
   });
 });
 

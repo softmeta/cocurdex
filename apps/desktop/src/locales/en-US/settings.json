@@ -1151,6 +1151,10 @@
         "description": "Go forward again after going back.",
         "title": "Go forward"
       },
+      "openSettings": {
+        "description": "Open the settings screen.",
+        "title": "Open settings"
+      },
       "toggleChatDock": {
         "description": "Show or hide the floating/pinned chat dock when the editor is fullscreen.",
         "title": "Toggle chat dock"

@@ -291,6 +291,7 @@
     "showMore_other": "显示更多（剩余 {{count}}）",
     "splitDown": "分屏到下侧",
     "splitRight": "分屏到右侧",
+    "switchForm": "切换视图（{{name}}）",
     "unpin": "取消置顶",
     "unread": "未读",
     "view": {

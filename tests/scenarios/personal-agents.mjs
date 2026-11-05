@@ -328,6 +328,14 @@ runScenario("personal-agents", {
           },
           UI_TIMEOUT_MS,
         );
+        await session.waitUntil(
+          (runPrompt) =>
+            ![...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(runPrompt),
+            ),
+          "Summarize today",
+          UI_TIMEOUT_MS,
+        );
         stub.plan = { kind: "stream", chunks: ["The standup."] };
         const [composer] = await waitForRole(
           session,

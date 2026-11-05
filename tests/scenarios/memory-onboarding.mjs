@@ -2,13 +2,34 @@ import { writeFakeRsrs } from "@cocurdex/test-harness/fixtures/fake-rsrs/index.m
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
-import { clickByRole, waitForNoRole, waitForRole } from "./lib/locate.mjs";
+import {
+  clickByRole,
+  queryAllByRole,
+  waitForNoRole,
+  waitForRole,
+} from "./lib/locate.mjs";
 import { openAssistantsTab, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const SKIPPED_KEY = "cocurdex.memory-onboarding-skipped";
 const args = readScenarioArgs();
 const state = {};
+
+async function openMemoryStatus(session) {
+  const region = await memoryRegion(session, "memory:onboarding.label");
+  const [shown] = await queryAllByRole(session, region);
+  if (shown) return region;
+  await clickByRole(
+    session,
+    {
+      role: "button",
+      name: await translate(session, "memory:onboarding.label"),
+    },
+    UI_TIMEOUT_MS,
+  );
+  await waitForRole(session, region, UI_TIMEOUT_MS);
+  return region;
+}
 
 async function memoryRegion(session, labelKey) {
   return { role: "region", name: await translate(session, labelKey) };
@@ -53,8 +74,7 @@ runScenario("memory-onboarding", {
           within: offer,
         });
         await waitForNoRole(session, offer, UI_TIMEOUT_MS);
-        const row = await memoryRegion(session, "memory:onboarding.label");
-        await waitForRole(session, row, UI_TIMEOUT_MS);
+        await openMemoryStatus(session);
         const offText = await translate(session, "memory:onboarding.state.off");
         await session.waitUntil(
           (text) => document.body.textContent.includes(text),
@@ -72,7 +92,7 @@ runScenario("memory-onboarding", {
     [
       "turning memory on from the entry reaches the ready state",
       async ({ session }) => {
-        const row = await memoryRegion(session, "memory:onboarding.label");
+        const row = await openMemoryStatus(session);
         await clickByRole(session, {
           role: "button",
           name: await translate(session, "memory:onboarding.enable"),
@@ -99,7 +119,7 @@ runScenario("memory-onboarding", {
     [
       "sync opens the account dialog",
       async ({ session }) => {
-        const row = await memoryRegion(session, "memory:onboarding.label");
+        const row = await openMemoryStatus(session);
         await clickByRole(session, {
           role: "button",
           name: await translate(session, "memory:onboarding.sync"),

@@ -2,7 +2,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import { clickByRole, clickPoint, waitForRole } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { openSidebarForm, translate } from "./lib/navigate.mjs";
 
 const SOURCE_TITLE = "Add percentage discount codes";
 const FIRST_PROMPT = "Add support for percentage discount codes";
@@ -42,7 +42,7 @@ async function openSession(session, title) {
     name: new RegExp(`^${title}`),
   });
   await session.waitUntil(
-    (text) => document.body.innerText.includes(text),
+    (text) => document.body.textContent.includes(text),
     title === SOURCE_TITLE ? SECOND_PROMPT : "debounce",
     UI_TIMEOUT_MS,
   );
@@ -140,8 +140,8 @@ runScenario("session-fork", {
         );
         await session.waitUntil(
           (text) =>
-            document.body.innerText.includes(text.first) &&
-            !document.body.innerText.includes(text.second),
+            document.body.textContent.includes(text.first) &&
+            !document.body.textContent.includes(text.second),
           { first: FIRST_PROMPT, second: SECOND_PROMPT },
           UI_TIMEOUT_MS,
         );
@@ -154,8 +154,7 @@ runScenario("session-fork", {
     [
       "chat sessions offer no fork from a message",
       async ({ session, forkLabel }) => {
-        const chatTab = await translate(session, "chat:sidebar.title");
-        await clickByRole(session, { role: "tab", name: chatTab });
+        await openSidebarForm(session, "chat:sidebar.title");
         await openSession(session, CHAT_TITLE);
         const count = await session.run(
           (label) =>
@@ -176,11 +175,7 @@ runScenario("session-fork", {
     ],
   ],
   teardown: async ({ session }) => {
-    const workTab = await translate(
-      session,
-      "sessions:sidebar.workspacesGroup",
-    );
-    await clickByRole(session, { role: "tab", name: workTab });
+    await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
     return {};
   },
 });

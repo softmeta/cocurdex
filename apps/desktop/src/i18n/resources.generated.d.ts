@@ -2063,6 +2063,7 @@ export default interface Resources {
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
+      switchForm: "Switch view ({{name}})";
       unpin: "Unpin";
       unread: "Unread";
       view: {
@@ -3373,6 +3374,10 @@ export default interface Resources {
         navigateForward: {
           description: "Go forward again after going back.";
           title: "Go forward";
+        };
+        openSettings: {
+          description: "Open the settings screen.";
+          title: "Open settings";
         };
         toggleChatDock: {
           description: "Show or hide the floating/pinned chat dock when the editor is fullscreen.";

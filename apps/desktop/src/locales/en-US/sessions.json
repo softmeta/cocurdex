@@ -308,6 +308,7 @@
     "showMore_other": "Show more ({{count}} left)",
     "splitDown": "Open Below",
     "splitRight": "Open to the Right",
+    "switchForm": "Switch view ({{name}})",
     "unpin": "Unpin",
     "unread": "Unread",
     "view": {

@@ -1,47 +1,34 @@
-import { PanelRight, Settings } from "lucide-react";
+import { PanelRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { NetworkProxyStatusButton } from "@/features/settings";
-import { hostHasScope } from "@/lib";
 import { TitlebarIconButton } from "../titlebar-icon-button";
 
 interface AppShellTitlebarActionsProps {
   isChatDetached: boolean;
   isRightPanelOpen: boolean;
   onToggleRightPanel(): void;
-  onOpenSettings(): void;
 }
 
 export function AppShellTitlebarActions({
   isChatDetached,
   isRightPanelOpen,
   onToggleRightPanel,
-  onOpenSettings,
 }: AppShellTitlebarActionsProps) {
-  const { t } = useTranslation(["editor", "sessions"]);
+  const { t } = useTranslation("editor");
   const panelLabel = isRightPanelOpen
-    ? t("editor:actions.closeEditorPanel")
-    : t("editor:actions.openEditorPanel");
+    ? t("actions.closeEditorPanel")
+    : t("actions.openEditorPanel");
 
+  if (isChatDetached) {
+    return null;
+  }
   return (
-    <>
-      {isChatDetached ? null : (
-        <TitlebarIconButton
-          active={isRightPanelOpen}
-          aria-label={panelLabel}
-          cursor="default"
-          onClick={onToggleRightPanel}
-        >
-          <PanelRight className="size-3.5" />
-        </TitlebarIconButton>
-      )}
-      {hostHasScope("host.admin") ? <NetworkProxyStatusButton /> : null}
-      <TitlebarIconButton
-        aria-label={t("sessions:sidebar.settings")}
-        cursor="default"
-        onClick={onOpenSettings}
-      >
-        <Settings className="size-3.5" />
-      </TitlebarIconButton>
-    </>
+    <TitlebarIconButton
+      active={isRightPanelOpen}
+      aria-label={panelLabel}
+      cursor="default"
+      onClick={onToggleRightPanel}
+    >
+      <PanelRight className="size-3.5" />
+    </TitlebarIconButton>
   );
 }

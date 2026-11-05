@@ -2,6 +2,7 @@ import type { Brief, BriefRoutineResult, InboxItem } from "@cocurdex/shared";
 import { Newspaper } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AppSidebarIconButton } from "@/components/app";
 import {
   Button,
   Dialog,
@@ -11,9 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   Text,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@/components/ui";
 import {
   briefDayLabel,
@@ -199,19 +197,9 @@ export function BriefControl({
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger
-          aria-label={label}
-          className="flex size-7 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
-          onClick={() => setOpen(true)}
-          type="button"
-        >
-          <Newspaper className="size-3.5" />
-        </TooltipTrigger>
-        <TooltipContent side="right" sideOffset={8}>
-          {label}
-        </TooltipContent>
-      </Tooltip>
+      <AppSidebarIconButton aria-label={label} onClick={() => setOpen(true)}>
+        <Newspaper className="size-3.5" />
+      </AppSidebarIconButton>
       <BriefDialog
         brief={brief}
         onOpenChange={setOpen}

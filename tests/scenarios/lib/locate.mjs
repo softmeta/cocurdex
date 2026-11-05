@@ -103,6 +103,7 @@ async function settledPointOf(fromLeft, timeout) {
   let previous = null;
   for (;;) {
     await nextFrame();
+    if (!this.isConnected) throw new Error("Node is detached from document");
     const rect = this.getBoundingClientRect();
     const point = {
       x: fromLeft === null ? rect.x + rect.width / 2 : rect.x + fromLeft,
@@ -180,6 +181,19 @@ export async function clickByRole(
   timeout = DEFAULT_TIMEOUT_MS,
   button = "left",
 ) {
+  const target = await uniqueMatch(session, query, timeout);
+  const point = await centerOf(session, target.backendNodeId).catch(
+    async (error) => {
+      if (!String(error?.message).includes("detached")) throw error;
+      const fresh = await uniqueMatch(session, query, timeout);
+      return centerOf(session, fresh.backendNodeId);
+    },
+  );
+  await clickPoint(session, point, button);
+  return target;
+}
+
+async function uniqueMatch(session, query, timeout) {
   const matches = await waitForRole(session, query, timeout);
   if (matches.length > 1) {
     const names = matches.map((match) => match.name);
@@ -187,10 +201,5 @@ export async function clickByRole(
       `${describeQuery(query)} is ambiguous: ${JSON.stringify(names)}`,
     );
   }
-  await clickPoint(
-    session,
-    await centerOf(session, matches[0].backendNodeId),
-    button,
-  );
   return matches[0];
 }

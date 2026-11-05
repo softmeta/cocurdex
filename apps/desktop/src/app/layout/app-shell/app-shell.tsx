@@ -264,6 +264,7 @@ export function AppShell() {
   useAppShortcuts(
     {
       fileSearch: () => setIsSearchOpen(true),
+      openSettings: () => openSettings(),
       toggleLeftSidebar,
       toggleRightPanel,
       toggleEditorFullscreen: toggleRightPanelMaximize,
@@ -296,6 +297,7 @@ export function AppShell() {
     {
       enabled: {
         fileSearch: () => activeScreen === "app",
+        openSettings: () => activeScreen === "app",
         toggleLeftSidebar: () => activeScreen === "app",
         toggleRightPanel: () => activeScreen === "app",
         toggleEditorFullscreen: () => activeScreen === "app" && !chatDetached,
@@ -459,7 +461,6 @@ export function AppShell() {
       onLanguageModeChange={handleLanguageModeChange}
       onNotificationSettingsChange={handleNotificationSettingsChange}
       onOpenFileFromPalette={openFileFromPalette}
-      onOpenSettings={openSettings}
       onResizeHandleMouseDown={handleResizeMouseDown}
       onSearchClose={() => setIsSearchOpen(false)}
       onSettingsSectionChange={setActiveSettingsSection}
