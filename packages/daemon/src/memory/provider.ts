@@ -27,6 +27,7 @@ export interface MemoryProvider {
   available(): Promise<boolean>;
   capabilities(): Promise<MemoryProviderCapabilities>;
   policy(): Promise<string>;
+  injectedAgents(): Promise<string[]>;
   recall(
     input: MemoryProviderRecallInput,
   ): Promise<{ items: MemoryRecallItem[]; error: string | null }>;

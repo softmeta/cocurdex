@@ -64,6 +64,18 @@ export class PersonalAgentService {
     return this.deps.repository.findByHomeSession(sessionId) !== null;
   }
 
+  personaForSession(
+    session: Pick<SessionRecord, "id" | "sessionKind" | "agentRoleId">,
+  ): { id: string; soul: string | null } | null {
+    if (session.sessionKind !== "personal") return null;
+    const row =
+      this.deps.repository.findByHomeSession(session.id) ??
+      (session.agentRoleId
+        ? this.deps.repository.findByRole(session.agentRoleId)
+        : null);
+    return row ? { id: row.id, soul: row.soul } : null;
+  }
+
   ensureDefault(payload: EnsureDefaultPersonalAgentPayload) {
     this.ensuringDefault ??= this.createDefault(payload).finally(() => {
       this.ensuringDefault = null;

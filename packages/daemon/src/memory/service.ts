@@ -22,6 +22,7 @@ import {
   type MemoryInstallResult,
   type MemoryListInput,
   type MemoryListResult,
+  type MemoryPartition,
   type MemoryPlatform,
   type MemoryProviderCapabilities,
   type MemoryRecallItem,
@@ -55,6 +56,7 @@ import {
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
+import { mergeRecallResults } from "./partition-recall";
 import type { MemoryProvider } from "./provider";
 import {
   exportRsrsKeys,
@@ -158,6 +160,10 @@ function redactSecrets(message: string, secrets: ReadonlyArray<string>) {
     result = result.split(secret).join("[redacted]");
   }
   return result;
+}
+
+function clampRecallLimit(limit: number | undefined) {
+  return Math.min(20, Math.max(1, Math.floor(limit ?? 8)));
 }
 
 export class MemoryService {
@@ -674,7 +680,7 @@ export class MemoryService {
     timeoutMs?: number;
   }): Promise<MemoryRecallResult> {
     const query = input.query.trim();
-    const limit = Math.min(20, Math.max(1, Math.floor(input.limit ?? 8)));
+    const limit = clampRecallLimit(input.limit);
     if (!query) {
       return { query, items: [], truncated: false, error: null };
     }
@@ -709,6 +715,56 @@ export class MemoryService {
       });
     }
     return result.entry;
+  }
+
+  async recallIn(
+    input: { query: string; limit?: number; timeoutMs?: number },
+    partitions: MemoryPartition[] | null,
+  ): Promise<MemoryRecallResult> {
+    if (!partitions?.length || !(await this.supportsPartitions())) {
+      return this.recall(input);
+    }
+    const results = await Promise.all(
+      partitions.map((partition) =>
+        this.recall({
+          ...input,
+          project: memoryPartitionProject(partition),
+        }).catch(
+          (error): MemoryRecallResult => ({
+            query: input.query.trim(),
+            items: [],
+            truncated: false,
+            error: errorMessage(error),
+          }),
+        ),
+      ),
+    );
+    return mergeRecallResults(results, clampRecallLimit(input.limit));
+  }
+
+  async rememberIn(
+    input: MemoryRememberInput,
+    partition: MemoryPartition | null,
+  ): Promise<MemoryRememberResult> {
+    if (!partition || !(await this.supportsPartitions())) {
+      return this.remember(input);
+    }
+    return this.remember({
+      ...input,
+      project: memoryPartitionProject(partition),
+    });
+  }
+
+  async injectsInto(agentType: string) {
+    if (await this.readyProvider()) return false;
+    const injected = await this.provider
+      .injectedAgents()
+      .catch((): string[] => []);
+    return injected.includes(agentType);
+  }
+
+  private async supportsPartitions() {
+    return (await this.capabilities())?.partitions === true;
   }
 
   async remember(input: MemoryRememberInput): Promise<MemoryRememberResult> {
@@ -882,6 +938,7 @@ export class MemoryService {
     session: SessionRecord,
     message: string,
     mode: "agent" | "chat",
+    partitions: MemoryPartition[] | null = null,
   ): Promise<MemoryTurnContext | null> {
     await this.ensureInitialized();
     const settings = this.currentSettings();
@@ -897,11 +954,14 @@ export class MemoryService {
     if (!query) return null;
     let result: MemoryRecallResult;
     try {
-      result = await this.recall({
-        query,
-        limit: 6,
-        timeoutMs: this.options.turnRecallBudgetMs ?? TURN_RECALL_BUDGET_MS,
-      });
+      result = await this.recallIn(
+        {
+          query,
+          limit: 6,
+          timeoutMs: this.options.turnRecallBudgetMs ?? TURN_RECALL_BUDGET_MS,
+        },
+        partitions,
+      );
     } catch (error) {
       this.noteRecall(session.id, mode, "failed", errorMessage(error));
       logDaemonDiagnostic("warn", "memory.turnRecallFailed", {

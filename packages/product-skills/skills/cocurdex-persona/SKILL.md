@@ -45,6 +45,7 @@ cocurdex memory export <file> --json
 cocurdex memory import <file> --json
 ```
 
+- Inside a persona's thread, each turn recalls that persona's partition plus `me`, never another persona's. `memory_remember` writes to the persona's partition; pass `about: "user"` for a fact every persona should share. The soul is sent at the start of each new thread, so a soul edit applies from the next thread.
 - `forget` is reversible: `history` lists the deleted entry with its full id, and `restore` takes that full id.
 - Edit an entry in place with `update` instead of storing a near-duplicate; read it back with `show`.
 - `list` reports `error` when memory is off or not installed; relay the fix it names (see `/cocurdex-settings`) instead of retrying.

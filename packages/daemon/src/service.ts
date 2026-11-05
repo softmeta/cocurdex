@@ -149,7 +149,12 @@ import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
-import { PersonalAgentService } from "./personal";
+import {
+  buildPersonaSoulBlock,
+  PersonalAgentService,
+  personaMemoryScope,
+  personaWritePartition,
+} from "./personal";
 import { DaemonProviderService } from "./provider";
 import { CodexLoginSessions } from "./provider/codex-login";
 import { withServerProviderConnection } from "./provider/server-connection";
@@ -537,9 +542,18 @@ export class CocurdexDaemonService {
     });
     registerMemoryTools(this.agentTools.registry, {
       isEnabled: () => this.memory.areToolsEnabledSync(),
-      recall: (input) => this.memory.recall(input),
+      recall: async (input, caller) => {
+        const scope = await this.personaMemoryScopeFor(caller.sessionId);
+        return this.memory.recallIn(input, scope?.read ?? null);
+      },
       show: (id) => this.memory.show(id),
-      remember: (input) => this.memory.remember(input),
+      remember: async (input, caller, target) => {
+        const scope = await this.personaMemoryScopeFor(caller.sessionId);
+        return this.memory.rememberIn(
+          input,
+          scope ? personaWritePartition(scope, target) : null,
+        );
+      },
       policy: () => this.memory.policy(),
       noteToolUse: (sessionId, tool) =>
         this.memory.noteGateToolUse(sessionId, tool),
@@ -3180,23 +3194,23 @@ export class CocurdexDaemonService {
     );
     const chatSession = isChatSession(session);
     const sessionKind = session.sessionKind ?? "main";
+    const persona = this.personalAgents.personaForSession(session);
+    const hostInjectsMemory =
+      !chatSession && (await this.memory.injectsInto(session.agentType));
     const memoryGate = await this.memory.beginTurn({
       sessionId: session.id,
       mode: chatSession ? "chat" : "agent",
-      enforce: !chatSession && sessionKind !== "subagent",
+      enforce: !chatSession && sessionKind !== "subagent" && !hostInjectsMemory,
     });
     const memoryContext =
-      !chatSession && sessionKind === "subagent"
+      (!chatSession && sessionKind === "subagent") || hostInjectsMemory
         ? null
         : await this.memory.buildTurnContext(
             session,
             userMessage.content,
             chatSession ? "chat" : "agent",
+            persona ? personaMemoryScope(persona.id).read : null,
           );
-    const memoryPrefix = [memoryGate, memoryContext?.brief]
-      .filter((section): section is string => Boolean(section))
-      .join("\n\n");
-    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
     const resolution = resolveStartContext({
       targetAgentType: session.agentType,
       priorMessages,
@@ -3204,6 +3218,18 @@ export class CocurdexDaemonService {
       hasProviderThread: persistence.providerSession !== null,
       pendingFork: pending?.kind === "fork",
     });
+    const freshThread =
+      resolution.kind === "native"
+        ? persistence.providerSession === null
+        : resolution.freshProviderThread;
+    const memoryPrefix = [
+      freshThread ? buildPersonaSoulBlock(persona?.soul ?? null) : null,
+      memoryGate,
+      memoryContext?.brief,
+    ]
+      .filter((section): section is string => Boolean(section))
+      .join("\n\n");
+    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
     if (resolution.kind === "native") {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
@@ -3278,6 +3304,14 @@ export class CocurdexDaemonService {
         entries: handoff.entries,
       },
     };
+  }
+
+  private async personaMemoryScopeFor(sessionId: string) {
+    const session = await this.state.getSession(sessionId);
+    const persona = session
+      ? this.personalAgents.personaForSession(session)
+      : null;
+    return persona ? personaMemoryScope(persona.id) : null;
   }
 
   private sessionActivityReader(): SessionActivityReader {

@@ -78,6 +78,9 @@ class InMemoryProvider implements MemoryProvider {
   async policy() {
     return "policy";
   }
+  async injectedAgents() {
+    return [];
+  }
   async recall(input: { query: string }) {
     this.recalled.push(input.query);
     const items: MemoryRecallItem[] = [...this.live.values()].map((item) => ({

@@ -16,6 +16,7 @@ import type {
 import {
   materializeNativeBinary,
   type RsrsExecutable,
+  readInjectedHosts,
   readRsrsPolicy,
   recallMemories,
   recallMemoriesViaRuntime,
@@ -44,6 +45,12 @@ import {
 } from "./runtime";
 
 const CACHE_MS = 30_000;
+const AGENT_BY_RSRS_HOST: Record<string, string> = {
+  claude: "claude-agent",
+  codex: "codex",
+  opencode: "opencode",
+  pi: "pi",
+};
 const PARTITION_LIST_WINDOW = 500;
 
 export interface RsrsMemoryProviderOptions {
@@ -104,6 +111,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   private tools: Map<string, Set<string>> | null = null;
   private policyText: string | null = null;
   private capabilitySet: MemoryProviderCapabilities | null = null;
+  private injected: { agents: string[]; at: number } | null = null;
   private readonly reads = new TaskQueue();
   private readonly writes = new TaskQueue();
 
@@ -132,6 +140,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
     this.resolvedAt = 0;
     this.capabilitySet = null;
     this.policyText = null;
+    this.injected = null;
     this.invalidateRuntime();
   }
 
@@ -240,6 +249,20 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return this.policyText;
   }
 
+  async injectedAgents() {
+    if (this.injected && this.nowMs() - this.injected.at < CACHE_MS) {
+      return this.injected.agents;
+    }
+    const executable = await this.requireExecutable();
+    const hosts = await readInjectedHosts(executable).catch((): string[] => []);
+    const agents = hosts.flatMap((host) => {
+      const agent = AGENT_BY_RSRS_HOST[host];
+      return agent ? [agent] : [];
+    });
+    this.injected = { agents, at: this.nowMs() };
+    return agents;
+  }
+
   async recall(input: MemoryProviderRecallInput) {
     const executable = await this.requireExecutable();
     const budget = startBudget(input.timeoutMs);
@@ -254,6 +277,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
           recallMemoriesViaRuntime(target, {
             query: input.query,
             limit: input.limit,
+            project: input.project,
             timeoutMs: budget.remaining(),
           }),
         () =>
@@ -300,8 +324,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
         endpoint !== null &&
         (!input.project ||
           this.runtimeSupports("memory_remember", "project")) &&
-        (!input.tags?.length ||
-          this.runtimeSupports("memory_remember", "tags"));
+        !input.tags?.length;
       return this.viaRuntime(
         useRuntime ? endpoint : null,
         (target) => rememberMemoryViaRuntime(target, input),

@@ -17,7 +17,11 @@ Commands:
   restore          Restore a deleted memory
   history          Show the change log
   memory-revision  Print the library revision
+  inject           Distribute the inject source
+  prompt           Print the memory workflow
 `;
+
+const INJECT_HOSTS = ["claude", "codex", "opencode", "pi"];
 
 function readState() {
   if (!statePath || !existsSync(statePath)) {
@@ -55,6 +59,63 @@ function record(state, entry, action) {
     ts: new Date().toISOString(),
   });
   writeState(state);
+}
+
+function words(text) {
+  return text.toLowerCase().split(/\W+/).filter(Boolean);
+}
+
+function recallCommand(state) {
+  const query = args.at(-1) ?? "";
+  const project = flag("project") ?? null;
+  const limit = Number(flag("limit") ?? 8);
+  const terms = new Set(words(query));
+  const details = state.live
+    .filter((entry) => !project || entry.project === project)
+    .map((entry) => ({
+      entry,
+      score: words(`${entry.title} ${entry.content}`).filter((word) =>
+        terms.has(word),
+      ).length,
+    }))
+    .filter((match) => match.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ entry, score }) => ({ id: entry.id, title: entry.title, score }));
+  state.recalls = [...(state.recalls ?? []), { query, project }];
+  writeState(state);
+  send({ command, status: "ok", summary: { count: details.length }, details });
+}
+
+function rememberCommand(state) {
+  const entry = {
+    id: `m-${state.revision + 1}`,
+    title: flag("title") ?? "",
+    content: args.at(-1) ?? "",
+    project: flag("project") ?? null,
+    tags: (flag("tags") ?? "").split(",").filter(Boolean),
+    updated_at: new Date().toISOString(),
+  };
+  state.live.unshift(entry);
+  record(state, entry, "create");
+  send({
+    command,
+    status: "ok",
+    summary: { action: "created", id: entry.id, title: entry.title },
+  });
+}
+
+function injectTargetsCommand(state) {
+  const injected = new Set(state.injected ?? []);
+  send({
+    command,
+    status: "ok",
+    summary: { count: INJECT_HOSTS.length },
+    details: INJECT_HOSTS.map((id) => ({
+      id,
+      state: injected.has(id) ? "present" : "absent",
+    })),
+  });
 }
 
 function libraryCommand(state) {
@@ -126,6 +187,18 @@ function libraryCommand(state) {
     send({ command, status: "ok", details });
     return true;
   }
+  if (command === "recall") {
+    recallCommand(state);
+    return true;
+  }
+  if (command === "remember") {
+    rememberCommand(state);
+    return true;
+  }
+  if (command === "inject" && args.includes("--targets")) {
+    injectTargetsCommand(state);
+    return true;
+  }
   if (command === "memory-revision") {
     send({ command, status: "ok", summary: { revision: state.revision } });
     return true;
@@ -155,6 +228,8 @@ if (command === "--version" || command === "v") {
       sync_live: { phase: "ok", pending: 0, conflicts: 0, error: "" },
     },
   });
+} else if (command === "prompt") {
+  process.stdout.write("Fake memory policy.\n");
 } else if (command === "doctor") {
   send({
     command: "doctor",
