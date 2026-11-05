@@ -357,10 +357,24 @@ function DropdownMenuSearchInput({
   );
 }
 
+function DropdownMenuEmpty({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      role="status"
+      className={cn("px-1.5 py-1 text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  );
+}
+
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuEmpty,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,

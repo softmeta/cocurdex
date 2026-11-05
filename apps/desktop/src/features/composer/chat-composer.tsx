@@ -509,19 +509,11 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       </>
     ) : null;
 
-    let defaultAgentControls: ReactNode = null;
-    if (isAgentMode && sessionRole && !onSelectAgent) {
-      defaultAgentControls = (
-        <SessionRoleName agentLabel={agentLabel} role={sessionRole} />
-      );
-    } else if (isAgentMode) {
-      defaultAgentControls = (
-        <>
-          {sessionRole ? <SessionRoleName role={sessionRole} /> : null}
-          {agentMenu}
-        </>
-      );
-    }
+    const showsAgentMenu = isAgentMode && !(sessionRole && !onSelectAgent);
+    const defaultAgentControls = showsAgentMenu ? agentMenu : null;
+    const modelLeading = sessionRole ? (
+      <SessionRoleName role={sessionRole} />
+    ) : null;
     const resolvedControls = controls ?? defaultAgentControls;
 
     const attachMenuContent = (
@@ -591,6 +583,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
               footerTrailing={footerTrailing}
               initialEditorContent={initialDraft}
               runtimeMenuExtras={runtimeMenuExtras}
+              modelLeading={modelLeading}
               sessionId={sessionId}
               attachmentError={attachmentError}
               isAgentMode={isAgentMode}
@@ -622,6 +615,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
               footerTrailing={footerTrailing}
               initialEditorContent={initialDraft}
               runtimeMenuExtras={runtimeMenuExtras}
+              modelLeading={modelLeading}
               sessionId={sessionId}
               header={header}
               attachmentError={attachmentError}

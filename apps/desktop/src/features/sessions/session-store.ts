@@ -36,6 +36,12 @@ import {
 } from "../workspaces/workspace-store";
 import { isAgentReadyToStart } from "./adapter-status";
 import {
+  beginSessionSend,
+  keepSendingSessionsRunning,
+  type SessionSendsInFlight,
+  settleSessionSend,
+} from "./session-sends-in-flight";
+import {
   bindFocusedPaneContentAtom,
   clearRemovedPaneSessionsAtom,
   focusedPaneIdAtom,
@@ -485,10 +491,38 @@ function compareSessionsByRecency(
   return rightValue.localeCompare(leftValue);
 }
 
+const sessionSendsInFlightAtom = atom<SessionSendsInFlight>({});
+
 export const reconcileSessionsAtom = atom(
   null,
-  (_get, set, sessions: SessionRecord[]) => {
-    set(sessionsAtom, [...sessions].sort(compareSessionsByRecency));
+  (get, set, sessions: SessionRecord[]) => {
+    const held = keepSendingSessionsRunning(
+      sessions,
+      get(sessionsAtom),
+      get(sessionSendsInFlightAtom),
+    );
+    set(sessionsAtom, held.sort(compareSessionsByRecency));
+  },
+);
+
+export const beginSessionSendAtom = atom(
+  null,
+  (get, set, sessionId: string) => {
+    set(
+      sessionSendsInFlightAtom,
+      beginSessionSend(get(sessionSendsInFlightAtom), sessionId),
+    );
+    set(updateSessionStatusAtom, { sessionId, status: "running" });
+  },
+);
+
+export const settleSessionSendAtom = atom(
+  null,
+  (get, set, sessionId: string) => {
+    set(
+      sessionSendsInFlightAtom,
+      settleSessionSend(get(sessionSendsInFlightAtom), sessionId),
+    );
   },
 );
 
@@ -954,11 +988,16 @@ export const upsertSessionAtom = atom(
               : incoming.pinnedAt,
         }
       : incoming;
+    const [heldSession] = keepSendingSessionsRunning(
+      [nextSession],
+      current,
+      get(sessionSendsInFlightAtom),
+    );
     const next = existing
       ? current.map((session) =>
-          session.id === incoming.id ? nextSession : session,
+          session.id === incoming.id ? heldSession : session,
         )
-      : [nextSession, ...current];
+      : [heldSession, ...current];
 
     set(sessionsAtom, next.sort(compareSessionsByRecency));
   },

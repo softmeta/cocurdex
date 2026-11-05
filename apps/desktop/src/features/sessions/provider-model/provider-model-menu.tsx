@@ -82,6 +82,7 @@ interface ProviderModelMenuProps {
   showProviderGroupLabels?: boolean;
   thinkingLevelValue?: string;
   triggerClassName?: string;
+  triggerLeading?: ReactNode;
   triggerValues?: readonly string[];
   value: string;
   readOnly?: boolean;
@@ -125,6 +126,7 @@ export function ProviderModelMenu({
   showProviderGroupLabels = true,
   thinkingLevelValue = "",
   triggerClassName,
+  triggerLeading,
   triggerValues,
   value,
   readOnly = false,
@@ -304,6 +306,7 @@ export function ProviderModelMenu({
         serviceTierValue={serviceTierValue}
         triggerClassName={triggerClassName}
         triggerLabel={triggerLabel}
+        triggerLeading={triggerLeading}
         triggerValues={triggerValues}
         onModelChange={onChange}
         onFastModeChange={onFastModeChange}

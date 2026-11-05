@@ -39,6 +39,8 @@ import {
   followUpBehaviorAtom,
   getActiveSessionModeId,
   getAgentInputDelivery,
+  loadSessionMessagesAtom,
+  loadSessionToolCallsAtom,
   messagesLoadedBySessionAtom,
   permissionsBySessionAtom,
   planApprovalsBySessionAtom,
@@ -70,6 +72,7 @@ import {
   activeSessionIdAtom,
   agentsAtom,
   applyRefinedSessionTitleAtom,
+  beginSessionSendAtom,
   canSwitchSessionAgent,
   createDraftSessionAtom,
   getAgentDisplayLabel,
@@ -82,6 +85,7 @@ import {
   type SessionPaneBinding,
   selectSessionAtom,
   sessionsAtom,
+  settleSessionSendAtom,
   updateAgentRuntimePreferences,
   updateSessionModeAtom,
   updateSessionPermissionModeAtom,
@@ -290,6 +294,10 @@ export function CenterPanel({
     updateSessionPermissionModeAtom,
   );
   const updateSessionStatus = useSetAtom(updateSessionStatusAtom);
+  const beginSessionSend = useSetAtom(beginSessionSendAtom);
+  const settleSessionSend = useSetAtom(settleSessionSendAtom);
+  const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
+  const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
   const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
   const applyRefinedSessionTitle = useSetAtom(applyRefinedSessionTitleAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
@@ -592,6 +600,7 @@ export function CenterPanel({
     });
 
     let optimisticQueuedMessageId: string | null = null;
+    let sendInFlight = false;
     try {
       const nextSession = prepareAutoSessionTitle(
         activeSession,
@@ -624,7 +633,8 @@ export function CenterPanel({
           message: userMessage,
         });
       } else {
-        updateSessionStatus({ sessionId: nextSession.id, status: "running" });
+        sendInFlight = true;
+        beginSessionSend(nextSession.id);
         appendMessage(userMessage);
       }
       markSessionMessage({
@@ -729,6 +739,8 @@ export function CenterPanel({
         attachments: [],
         createdAt: new Date().toISOString(),
       });
+    } finally {
+      if (sendInFlight) settleSessionSend(activeSession.id);
     }
     return "sent";
   };
@@ -864,6 +876,8 @@ export function CenterPanel({
     // reflects the pre-draft view because the draft (null session) no longer
     // clears it (see restoreEditorViewForSession).
     saveEditorViewSnapshot(session.id);
+    loadSessionMessages({ messages: [], sessionId: session.id });
+    loadSessionToolCalls({ sessionId: session.id, toolCalls: [] });
     const titledSession = prepareAutoSessionTitle(session, message, true);
     const requestId = crypto.randomUUID();
     const startedAt = performance.now();
@@ -890,7 +904,7 @@ export function CenterPanel({
         createdAt: new Date().toISOString(),
       };
 
-      updateSessionStatus({ sessionId: titledSession.id, status: "running" });
+      beginSessionSend(titledSession.id);
       appendMessage(userMessage);
       markSessionMessage({
         sessionId: titledSession.id,
@@ -977,6 +991,8 @@ export function CenterPanel({
         attachments: [],
         createdAt: new Date().toISOString(),
       });
+    } finally {
+      settleSessionSend(titledSession.id);
     }
     return "sent";
   };

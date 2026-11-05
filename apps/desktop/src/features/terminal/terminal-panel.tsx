@@ -167,7 +167,7 @@ export function TerminalPanel({
             button sits right after the last tab; the row's leftover space is
             left as a window-drag region. */}
         <div className="app-no-drag flex min-w-0 items-center gap-1">
-          <div className="scrollbar-hide flex min-w-0 items-center gap-1 overflow-x-auto">
+          <div className="scrollbar-hide flex min-w-0 items-center gap-px overflow-x-auto">
             {terminalTabs.map((tab, index) => (
               <TerminalTabItem
                 index={index + 1}

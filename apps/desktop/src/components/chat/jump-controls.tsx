@@ -43,7 +43,7 @@ export function JumpControls({
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
       <button
         aria-label={label}
-        className="group/jump pointer-events-auto relative flex size-9 cursor-default items-center justify-center rounded-full bg-chat-surface-control text-chat-fg transition-colors hover:bg-chat-surface-control-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="group/jump pointer-events-auto relative flex size-9 cursor-default items-center justify-center rounded-full bg-popover text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         onClick={onJump}
         type="button"
       >

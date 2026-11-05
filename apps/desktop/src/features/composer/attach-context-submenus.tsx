@@ -7,6 +7,7 @@ import { FileText, ListTodo, type LucideIcon, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  DropdownMenuEmpty,
   DropdownMenuItem,
   DropdownMenuSearchInput,
   DropdownMenuSub,
@@ -84,9 +85,9 @@ function PickerSubmenu({
             </DropdownMenuItem>
           ))}
           {items !== null && visible.length === 0 ? (
-            <div className="px-1.5 py-1 text-meta text-muted-foreground">
+            <DropdownMenuEmpty>
               {t("composer.attachMenu.empty")}
-            </div>
+            </DropdownMenuEmpty>
           ) : null}
         </div>
       </DropdownMenuSubContent>
