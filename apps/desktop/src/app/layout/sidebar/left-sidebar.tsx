@@ -1,6 +1,6 @@
 import { type InboxItem, personalAgentRoleDraft } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { FolderPlus, Plus, Search } from "lucide-react";
+import { FolderPlus, Plus } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -31,8 +31,6 @@ import {
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
-import { isDetachedChatWindow } from "../chat-window/chat-window-state";
-import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ArchiveGroupDialog } from "./archive-group-dialog";
 import { BriefControl } from "./brief-control";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
@@ -85,7 +83,7 @@ export function LeftSidebar({
   onAfterNavigate,
   showFooter = false,
 }: LeftSidebarProps) {
-  const { t } = useTranslation(["sessions", "chat", "search", "personal"]);
+  const { t } = useTranslation(["sessions", "chat", "personal"]);
   const workspaces = useAtomValue(workspacesAtom);
   const sessions = useAtomValue(sessionsAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
@@ -108,7 +106,6 @@ export function LeftSidebar({
   // lists: only one list competes for the sidebar height at a time. The center
   // panel reads the same atom so its empty state matches the visible tab.
   const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
-  const openSearchPalette = useSetAtom(searchPaletteOpenAtom);
 
   const sessionView = useSidebarSessionView(workspaces, sessions);
 
@@ -224,11 +221,9 @@ export function LeftSidebar({
     );
     if (!item.sessionId) return;
     if (item.form === "work" && item.workspaceId) {
-      setActiveTab("workspaces");
       handleSelectSession(item.workspaceId, item.sessionId);
       return;
     }
-    if (item.form === "chat") setActiveTab("chat");
     selectFormSession(item.sessionId);
   };
 
@@ -249,9 +244,17 @@ export function LeftSidebar({
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
   });
-  const searchLabel = t("search:openSearch");
   const listSections = (
     <SessionListSections
+      headingActions={
+        <SessionListViewMenu
+          agentIds={sessionView.agentIds}
+          allCollapsed={sessionView.allCollapsed}
+          onMarkAllRead={sessionView.markAllRead}
+          onToggleCollapseAll={sessionView.toggleCollapseAll}
+          unreadCount={sessionView.unreadCount}
+        />
+      }
       onSelectSession={handleSelectSession}
       optimisticActiveSessionId={optimisticActiveSessionId}
       sessions={sessionView.pinnedSessions}
@@ -282,17 +285,6 @@ export function LeftSidebar({
               value={activeTab}
             />
             <div className="min-w-0 flex-1" />
-            {isDetachedChatWindow ? null : (
-              <AppSidebarIconButton
-                aria-label={searchLabel}
-                onClick={() => {
-                  openSearchPalette(true);
-                  onAfterNavigate?.();
-                }}
-              >
-                <Search className="size-3.5" />
-              </AppSidebarIconButton>
-            )}
             {activeTab === "personal" ? (
               <BriefControl onOpenSession={selectFormSession} />
             ) : null}
@@ -305,15 +297,6 @@ export function LeftSidebar({
               >
                 <FolderPlus className="size-3.5" />
               </AppSidebarIconButton>
-            ) : null}
-            {isWorkspacesTab ? (
-              <SessionListViewMenu
-                agentIds={sessionView.agentIds}
-                allCollapsed={sessionView.allCollapsed}
-                onMarkAllRead={sessionView.markAllRead}
-                onToggleCollapseAll={sessionView.toggleCollapseAll}
-                unreadCount={sessionView.unreadCount}
-              />
             ) : null}
             <AppSidebarIconButton
               aria-label={createActionLabel}

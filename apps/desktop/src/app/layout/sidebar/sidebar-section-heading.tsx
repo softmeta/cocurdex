@@ -7,14 +7,16 @@ import {
 } from "./use-sidebar-section-collapse";
 
 export function SidebarSectionHeading({
+  actions,
   children,
   section,
 }: {
+  actions?: ReactNode;
   children: ReactNode;
   section: SidebarSection;
 }) {
   const { collapsed, toggle } = useSidebarSectionCollapse(section);
-  return (
+  const heading = (
     <button
       type="button"
       aria-expanded={!collapsed}
@@ -28,5 +30,12 @@ export function SidebarSectionHeading({
         <ChevronDown className="hidden size-3 shrink-0 group-hover/section:block group-focus-visible/section:block" />
       )}
     </button>
+  );
+  if (!actions) return heading;
+  return (
+    <div className="sticky top-0 z-10 flex w-full min-w-0 items-center bg-sidebar">
+      <div className="min-w-0 flex-1">{heading}</div>
+      <div className="flex shrink-0 items-center pe-0.5">{actions}</div>
+    </div>
   );
 }

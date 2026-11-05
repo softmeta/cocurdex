@@ -34,7 +34,11 @@ async function openSession(session, title) {
 }
 
 async function setExpanded(session, workspace, expanded) {
-  await clickByRole(session, { role: "button", name: workspace.name });
+  await clickByRole(session, {
+    role: "button",
+    name: workspace.name,
+    within: { role: "complementary" },
+  });
   await session.waitUntil(
     ({ name, expanded }) =>
       [...document.querySelectorAll("button[aria-expanded]")].some(

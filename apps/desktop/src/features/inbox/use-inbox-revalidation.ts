@@ -6,7 +6,7 @@ import { sessionResultAttentionAtom, sessionsAtom } from "@/features/sessions";
 import { desktopApi, useMountEffect } from "@/lib";
 
 const REFRESH_DELAY_MS = 250;
-const WATCHED_AREAS = ["routines", "personal"];
+const WATCHED_AREAS = ["agent", "routines", "personal"];
 
 export function useInboxRevalidation(revalidate: () => unknown) {
   const store = useStore();

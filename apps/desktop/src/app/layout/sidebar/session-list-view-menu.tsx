@@ -18,7 +18,7 @@ export function SessionListViewMenu(props: SessionListViewMenuContentProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<AppSidebarIconButton aria-label={menuLabel} />}
+        render={<AppSidebarIconButton aria-label={menuLabel} size="sm" />}
       >
         <ListFilter className="size-3.5" />
         {isCustomizedSessionListView(view) ? (
