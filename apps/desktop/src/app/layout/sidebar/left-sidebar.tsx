@@ -25,6 +25,7 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import {
+  cn,
   desktopApi,
   logRendererDiagnostic,
   markSessionSwitch,
@@ -268,7 +269,12 @@ export function LeftSidebar({
       {/* Start-only padding so ScrollArea roots reach the edge and the custom
           thumb sits flush right; every row (chrome and list alike) takes its
           end inset from a pe-3 parent so the hover fills line up. */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3 pb-4">
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3",
+          !showFooter && "pb-4",
+        )}
+      >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex shrink-0 items-center gap-0.5 pe-3">
             <SidebarFormSwitcher

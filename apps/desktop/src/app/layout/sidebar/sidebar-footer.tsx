@@ -9,7 +9,7 @@ export function SidebarFooter({ showMemory }: { showMemory: boolean }) {
   const { t } = useTranslation("sessions");
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-0.5 pe-3 ps-3">
+    <div className="flex h-8 shrink-0 items-center gap-0.5 pe-3 ps-3">
       <div className="min-w-0 flex-1" />
       {showMemory ? <MemoryStatusButton /> : null}
       {hostHasScope("host.admin") ? <NetworkProxyStatusButton /> : null}
