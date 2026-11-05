@@ -1,5 +1,6 @@
 import { useAtom } from "jotai";
 import {
+  AlarmClock,
   Brain,
   FileText,
   FolderTree,
@@ -43,6 +44,7 @@ type ViewTabLabelKey =
   | "actions.showDecks"
   | "actions.showIssues"
   | "actions.showMemory"
+  | "actions.showRoutines"
   | "actions.showBrowser"
   | "actions.showPdf"
   | "actions.showTerminal";
@@ -60,6 +62,11 @@ const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
   decks: { id: "decks", icon: Presentation, labelKey: "actions.showDecks" },
   issues: { id: "issues", icon: ListTodo, labelKey: "actions.showIssues" },
   memory: { id: "memory", icon: Brain, labelKey: "actions.showMemory" },
+  routines: {
+    id: "routines",
+    icon: AlarmClock,
+    labelKey: "actions.showRoutines",
+  },
   browser: { id: "browser", icon: Globe, labelKey: "actions.showBrowser" },
   pdf: { id: "pdf", icon: FileText, labelKey: "actions.showPdf" },
   terminal: {

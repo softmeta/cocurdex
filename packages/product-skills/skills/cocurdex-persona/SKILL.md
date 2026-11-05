@@ -74,7 +74,7 @@ cocurdex routine delete <routine> --json
 - `deliver`: `inbox` (default) records results quietly and notifies on failure; `push` also notifies the phone on every result; `silent` only records. Approvals, questions, and plans always notify.
 - A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
 - Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines. Tools cannot grant `full` access or change or run a `full` routine.
-- Deleting a persona deletes its routines and their threads.
+- Deleting a routine deletes its thread; deleting a persona deletes its routines and their threads.
 
 ## Inbox and brief
 

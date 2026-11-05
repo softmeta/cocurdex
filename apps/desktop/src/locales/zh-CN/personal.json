@@ -52,6 +52,81 @@
     "new": "新建助理",
     "working": "正在处理…"
   },
+  "routines": {
+    "access": {
+      "ask": "先问我",
+      "askDescription": "使用助理自己的权限模式，需要你审批。",
+      "full": "完全权限",
+      "fullDescription": "无人值守，拥有全部权限。",
+      "label": "权限",
+      "readAndDraft": "只读加草稿",
+      "readAndDraftDescription": "只能读取和起草，不会发送或修改任何东西。"
+    },
+    "agent": "助理",
+    "allAgents": "全部助理",
+    "cancel": "取消",
+    "collapse": "隐藏例行任务列表",
+    "create": "创建",
+    "delete": "删除",
+    "deleteDescription": "例行任务和它的线程都会被删除，无法撤销。",
+    "deleteFailed": "无法删除例行任务",
+    "deleteTitle": "删除「{{name}}」？",
+    "deliver": {
+      "inbox": "收件箱",
+      "inboxDescription": "结果进收件箱，失败时通知你。",
+      "label": "通知",
+      "push": "推送",
+      "pushDescription": "每次有结果都推送到手机。",
+      "silent": "静默",
+      "silentDescription": "只记录运行。"
+    },
+    "empty": "还没有例行任务",
+    "emptyDescription": "新建一个例行任务，让助理按时替你检查和汇报。",
+    "expand": "显示例行任务列表",
+    "label": "例行任务",
+    "manage": "管理",
+    "name": "名称",
+    "new": "新建例行任务",
+    "noRuns": "还没有运行记录。",
+    "openThread": "打开线程",
+    "pause": "暂停",
+    "pausedAfterFailures": "连续三次运行失败，已自动暂停。排除原因后再恢复。",
+    "pick": "选择一个例行任务",
+    "pickDescription": "选中后可以编辑它，并查看最近的运行记录。",
+    "prompt": "指令",
+    "promptPlaceholder": "每次运行时助理要做什么？",
+    "resize": "调整例行任务列表宽度",
+    "resume": "恢复",
+    "run": {
+      "failed": "失败",
+      "running": "运行中",
+      "skipped": "已跳过",
+      "succeeded": "成功"
+    },
+    "runFailed": "无法运行例行任务",
+    "runNow": "立即运行",
+    "runs": "最近运行",
+    "save": "保存",
+    "saveFailed": "无法保存例行任务",
+    "schedule": {
+      "daily": "每天 {{time}}",
+      "days": "{{days}} {{time}}",
+      "every": "每 {{minutes}} 分钟",
+      "kindDaily": "定时",
+      "kindInterval": "间隔",
+      "label": "时间安排",
+      "minutes": "间隔（分钟）",
+      "repeatOn": "重复日",
+      "time": "时间",
+      "weekdays": "工作日 {{time}}",
+      "weekends": "周末 {{time}}"
+    },
+    "status": {
+      "failures": "连续失败已暂停",
+      "paused": "已暂停"
+    },
+    "timeZone": "时区"
+  },
   "sidebar": {
     "title": "助理"
   }

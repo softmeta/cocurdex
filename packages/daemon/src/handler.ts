@@ -889,7 +889,7 @@ export async function handleDaemonRequest(
     case "routine.update":
       return service.routines.update(request.params);
     case "routine.delete":
-      service.routines.delete(request.params.id);
+      await service.deleteRoutine(request.params.id);
       return null;
     case "routine.run":
       return service.routines.runNow(request.params.id).run;

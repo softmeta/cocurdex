@@ -18,6 +18,7 @@ const PANEL_VIEW_KEYS = {
   notes: "editor:actions.showNotes",
   issues: "editor:actions.showIssues",
   memory: "editor:actions.showMemory",
+  routines: "editor:actions.showRoutines",
   decks: "editor:actions.showDecks",
 };
 

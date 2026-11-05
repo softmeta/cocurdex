@@ -750,6 +750,7 @@ export default interface Resources {
       showMemory: "Memory";
       showNotes: "Notes";
       showPdf: "PDF";
+      showRoutines: "Routines";
       showTerminal: "Terminal";
       source: "Source";
       toggleChat: "Toggle chat";
@@ -1576,6 +1577,81 @@ export default interface Resources {
       muted: "Muted";
       "new": "New assistant";
       working: "Working…";
+    };
+    routines: {
+      access: {
+        ask: "Ask first";
+        askDescription: "Uses the assistant's own mode and waits for your approval.";
+        full: "Full access";
+        fullDescription: "Runs unattended with every permission.";
+        label: "Access";
+        readAndDraft: "Read and draft";
+        readAndDraftDescription: "Reads and drafts only; nothing is sent or changed.";
+      };
+      agent: "Assistant";
+      allAgents: "All assistants";
+      cancel: "Cancel";
+      collapse: "Hide routines list";
+      create: "Create";
+      delete: "Delete";
+      deleteDescription: "The routine and its thread are deleted. This cannot be undone.";
+      deleteFailed: "Could not delete the routine";
+      deleteTitle: "Delete {{name}}?";
+      deliver: {
+        inbox: "Inbox";
+        inboxDescription: "Results land in the inbox; failures notify you.";
+        label: "Notify";
+        push: "Push";
+        pushDescription: "Also notifies your phone on every result.";
+        silent: "Silent";
+        silentDescription: "Only records the run.";
+      };
+      empty: "No routines yet";
+      emptyDescription: "Create a routine to have an assistant check in on a schedule.";
+      expand: "Show routines list";
+      label: "Routines";
+      manage: "Manage";
+      name: "Name";
+      "new": "New routine";
+      noRuns: "No runs yet.";
+      openThread: "Open thread";
+      pause: "Pause";
+      pausedAfterFailures: "Paused after three failed runs in a row. Resume it once the cause is fixed.";
+      pick: "Pick a routine";
+      pickDescription: "Select a routine to edit it and see its recent runs.";
+      prompt: "Instruction";
+      promptPlaceholder: "What should the assistant do on each run?";
+      resize: "Resize routines list";
+      resume: "Resume";
+      run: {
+        failed: "Failed";
+        running: "Running";
+        skipped: "Skipped";
+        succeeded: "Succeeded";
+      };
+      runFailed: "Could not run the routine";
+      runNow: "Run now";
+      runs: "Recent runs";
+      save: "Save";
+      saveFailed: "Could not save the routine";
+      schedule: {
+        daily: "Daily at {{time}}";
+        days: "{{days}} at {{time}}";
+        every: "Every {{minutes}} min";
+        kindDaily: "At a time";
+        kindInterval: "Repeat";
+        label: "Schedule";
+        minutes: "Every (minutes)";
+        repeatOn: "Repeat on";
+        time: "Time";
+        weekdays: "Weekdays at {{time}}";
+        weekends: "Weekends at {{time}}";
+      };
+      status: {
+        failures: "Paused after failures";
+        paused: "Paused";
+      };
+      timeZone: "Time zone";
     };
     sidebar: {
       title: "Assistants";

@@ -14,7 +14,7 @@ export interface RoutineToolDependencies {
   get(id: string): RoutineRecord | null;
   create(payload: CreateRoutinePayload): Promise<RoutineRecord>;
   update(payload: UpdateRoutinePayload): RoutineRecord;
-  delete(id: string): void;
+  delete(id: string, callerSessionId: string): Promise<void>;
   run(id: string): RoutineRunRecord;
   runs(routineId: string, limit: number): RoutineRunRecord[];
 }
@@ -220,7 +220,7 @@ export function registerRoutineTools(
     isAvailable: isPersonal,
     execute: async (caller, input) => {
       const routine = await owned(caller, input.id);
-      deps.delete(routine.id);
+      await deps.delete(routine.id, caller.sessionId);
       return { deleted: routine.id };
     },
   });

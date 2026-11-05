@@ -630,7 +630,7 @@ export class CocurdexDaemonService {
       get: (id) => this.routines.get(id),
       create: (payload) => this.routines.create(payload),
       update: (payload) => this.routines.update(payload),
-      delete: (id) => this.routines.delete(id),
+      delete: (id, callerSessionId) => this.deleteRoutine(id, callerSessionId),
       run: (id) => this.routines.runNow(id).run,
       runs: (routineId, limit) => this.routines.runs(routineId, limit),
     });
@@ -800,6 +800,15 @@ export class CocurdexDaemonService {
       if (!this.stopping) this.routines.start();
     } catch {
       logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
+    }
+  }
+
+  async deleteRoutine(id: string, keepSessionId?: string) {
+    const routine = this.routines.get(id);
+    this.routines.delete(id);
+    const sessionId = routine?.sessionId;
+    if (sessionId && sessionId !== keepSessionId) {
+      await this.removeSession(sessionId);
     }
   }
 
