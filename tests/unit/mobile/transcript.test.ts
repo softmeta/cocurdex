@@ -95,7 +95,13 @@ describe("buildTranscript", () => {
         detail: null,
         status: "completed",
       },
-      { kind: "assistant", id: "a1", text: "Done.", streaming: false },
+      {
+        kind: "assistant",
+        id: "a1",
+        text: "Done.",
+        streaming: false,
+        source: null,
+      },
     ]);
   });
 
@@ -158,6 +164,7 @@ describe("buildTranscript", () => {
         id: "a2",
         text: "Writing the tests",
         streaming: true,
+        source: null,
       },
     ]);
   });

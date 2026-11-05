@@ -33,6 +33,10 @@ function splitTurns(items: readonly TranscriptItem[]) {
     if (item.kind === "user") {
       if (current.prompt || current.items.length > 0) turns.push(current);
       current = { prompt: item, items: [] };
+    } else if (item.kind === "assistant" && item.source) {
+      if (current.prompt || current.items.length > 0) turns.push(current);
+      turns.push({ prompt: null, items: [item] });
+      current = { prompt: null, items: [] };
     } else {
       current.items.push(item);
     }

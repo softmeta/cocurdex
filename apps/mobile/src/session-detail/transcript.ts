@@ -10,9 +10,19 @@ import {
   type SessionInteractionSnapshot,
 } from "@cocurdex/shared";
 
+export type PostedSource =
+  | { kind: "brief" }
+  | { kind: "routine"; name: string };
+
 export type TranscriptItem =
   | { kind: "user"; id: string; text: string; images: ImageAttachment[] }
-  | { kind: "assistant"; id: string; text: string; streaming: boolean }
+  | {
+      kind: "assistant";
+      id: string;
+      text: string;
+      streaming: boolean;
+      source: PostedSource | null;
+    }
   | {
       kind: "tool";
       id: string;
@@ -63,7 +73,16 @@ function messageItem(
       id: message.id,
       text: message.content,
       streaming,
+      source: postedSource(message),
     };
+  }
+  return null;
+}
+
+function postedSource(message: MessageRecord): PostedSource | null {
+  if (message.origin?.kind === "brief") return { kind: "brief" };
+  if (message.origin?.kind === "routine") {
+    return { kind: "routine", name: message.origin.routineName };
   }
   return null;
 }

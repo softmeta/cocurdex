@@ -71,7 +71,7 @@ cocurdex routine delete <routine> --json
 
 - Write the prompt as a self-contained instruction; every run starts from it alone.
 - `access`: `read-and-draft` (default) keeps the agent on its most restricted permission mode; `ask` uses the persona's own mode and waits for approval; `full` runs unattended with every permission. Grant `full` only when the user asks for it explicitly.
-- `deliver`: `inbox` (default) records results quietly and notifies on failure; `push` also notifies the phone on every result; `silent` only records. Approvals, questions, and plans always notify.
+- `deliver`: `inbox` (default) records results quietly and notifies on failure; `push` also notifies the phone on every result; `silent` only records. Unless the routine is `silent`, each successful result is also posted into the persona's home thread, marked with the routine as its source, and the persona sees it on its next turn there. Approvals, questions, and plans always notify.
 - A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
 - Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines. Tools cannot grant `full` access or change or run a `full` routine.
 - Deleting a routine deletes its thread; deleting a persona deletes its routines and their threads.

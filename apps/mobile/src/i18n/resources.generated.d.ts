@@ -394,6 +394,8 @@ export default interface Resources {
       needsExecute: "This agent runs commands without asking for approval. Messaging it needs the “Start tasks” permission for this device. Grant it on the computer.";
       pendingApproval: "Waiting for your approval";
       planReady: "Plan ready for review";
+      postedBrief: "Today's brief";
+      postedRoutine: "From routine {{name}}";
       promptNumber: "Prompt {{number}}";
       prompts: "Prompts";
       sending: "Sending";

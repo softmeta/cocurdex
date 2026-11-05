@@ -59,6 +59,8 @@
     "needsExecute": "这个 agent 执行命令不需要批准，给它发消息需要此设备拥有「启动任务」权限，请在电脑上授予。",
     "pendingApproval": "等你批准",
     "planReady": "计划已写好，等你决定",
+    "postedBrief": "今日简报",
+    "postedRoutine": "来自例行任务 {{name}}",
     "promptNumber": "第 {{number}} 次提问",
     "prompts": "提问目录",
     "sending": "发送中",
