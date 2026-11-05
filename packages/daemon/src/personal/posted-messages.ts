@@ -8,6 +8,10 @@ function postedLabel(origin: MessageOrigin | null | undefined) {
   return null;
 }
 
+export function isPostedMessage(message: MessageRecord) {
+  return message.role === "assistant" && postedLabel(message.origin) !== null;
+}
+
 export function buildPostedMessagesBlock(
   priorMessages: readonly MessageRecord[],
 ): string | null {

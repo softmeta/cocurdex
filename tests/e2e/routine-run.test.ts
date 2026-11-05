@@ -213,6 +213,43 @@ describe("routines", () => {
     }
   });
 
+  it("answers the first message after a routine result is posted to a fresh home thread", async () => {
+    const { stub, cli, coach, dispose } = await setUp();
+    try {
+      await cli([
+        "routine",
+        "create",
+        "--persona",
+        coach.id,
+        "--name",
+        "Standup",
+        "--prompt",
+        "List my meetings",
+        "--every",
+        "60",
+      ]);
+      stub.plan = { kind: "stream", chunks: ["Two meetings today"] };
+      await cli(["routine", "run", "Standup", "--wait"]);
+
+      stub.plan = { kind: "stream", chunks: ["The first is at nine"] };
+      const before = stub.requests.length;
+      await cli([
+        "persona",
+        "send",
+        coach.id,
+        "Which meeting comes first?",
+        "--wait",
+      ]);
+
+      expect(stub.requests.length).toBe(before + 1);
+      expect(JSON.stringify(stub.requests.at(-1)?.body.messages)).toContain(
+        "Two meetings today",
+      );
+    } finally {
+      await dispose();
+    }
+  });
+
   it("lets an assistant schedule its own routines but not touch full-access ones", async () => {
     const { stub, cli, coach, dispose } = await setUp();
     try {

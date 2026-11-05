@@ -133,22 +133,6 @@ runScenario("personal-agents", {
           assistant.id,
         );
         check(selected, "the default assistant row is selected");
-        await waitForRole(
-          session,
-          { role: "region", name: defaultName },
-          UI_TIMEOUT_MS,
-        );
-        const [composer] = await waitForRole(
-          session,
-          await composerQuery(session),
-        );
-        const composerTop = (await centerOf(session, composer.backendNodeId)).y;
-        const viewport = await session.run(() => window.innerHeight);
-        check(
-          composerTop > viewport * 0.7,
-          "an empty thread shows the intro with the composer docked below",
-          { composerTop, viewport },
-        );
         state.homeSessionId = assistant.homeSessionId;
         return { homeSessionId: assistant.homeSessionId };
       },
@@ -395,6 +379,24 @@ runScenario("personal-agents", {
             }),
           },
           UI_TIMEOUT_MS,
+        );
+        await waitForRole(
+          session,
+          { role: "region", name: "Coach" },
+          UI_TIMEOUT_MS,
+        );
+        const [composer] = await waitForRole(session, {
+          role: "textbox",
+          name: await translate(session, "personal:thread.placeholder", {
+            name: "Coach",
+          }),
+        });
+        const composerTop = (await centerOf(session, composer.backendNodeId)).y;
+        const viewport = await session.run(() => window.innerHeight);
+        check(
+          composerTop > viewport * 0.7,
+          "an empty thread shows the intro with the composer docked below",
+          { composerTop, viewport },
         );
         const coach = (await personas(session)).find(
           (agent) => agent.role.name === "Coach",

@@ -156,6 +156,7 @@ import { PeerMessagingService } from "./peer-messaging";
 import {
   buildPersonaSoulBlock,
   buildPostedMessagesBlock,
+  isPostedMessage,
   PersonalAgentService,
   personaMemoryScope,
   personaWritePartition,
@@ -3449,7 +3450,9 @@ export class CocurdexDaemonService {
       const postedText = posted ? `${posted}\n\n` : "";
       return {
         content: `${memoryText}${postedText}${userMessage.content}`,
-        history,
+        history: persona
+          ? history.filter((message) => !isPostedMessage(message))
+          : history,
         contextHandoff: undefined,
       };
     }
