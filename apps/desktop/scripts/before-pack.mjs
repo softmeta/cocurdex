@@ -32,20 +32,12 @@ function cloneFiles(files) {
 }
 
 function toFileSets(entries) {
-  const fileSets = [];
-  for (const entry of entries) {
-    if (typeof entry !== "string") {
-      fileSets.push(entry);
-      continue;
-    }
-    const previous = fileSets.at(-1);
-    if (previous != null && previous.from == null && previous.to == null) {
-      previous.filter.push(entry);
-    } else {
-      fileSets.push({ filter: [entry] });
-    }
+  const appDirPatterns = entries.filter((entry) => typeof entry === "string");
+  const sourceFileSets = entries.filter((entry) => typeof entry !== "string");
+  if (appDirPatterns.length === 0) {
+    return sourceFileSets;
   }
-  return fileSets;
+  return [{ filter: appDirPatterns }, ...sourceFileSets];
 }
 
 export default function beforePack(context) {
